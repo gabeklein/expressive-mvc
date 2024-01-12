@@ -48,25 +48,6 @@ class Context {
       this.include(inputs);
   }
 
-  protected has(model: Model){
-    const K = key(model.constructor as Model.Type, true);
-    const result = this[K as keyof this] as Context.Expect | undefined;
-    const waiting = Register.get(model);
-  
-    if(waiting instanceof Array)
-      waiting.forEach(cb => cb(this));
-
-    Register.set(model, this);
-
-    if(!result)
-      return;
-
-    const callback = result(model);
-      
-    if(callback)
-      this.cleanup.add(callback);
-  }
-
   public get<T extends Model>(Type: Model.Type<T>): T | undefined;
   public get<T extends Model>(Type: Model.Type<T>, callback: (model: T) => void): void;
   public get<T extends Model>(Type: Model.Type<T>, callback?: ((model: T) => void)){
@@ -79,6 +60,28 @@ class Context {
       throw new Error(`Did find ${Type} in context, but multiple were defined.`);
 
     return result as T | undefined;
+  }
+
+  public push(inputs?: Context.Input){
+    const next = Object.create(this) as this;
+
+    next.layer = new Map();
+    next.cleanup = new Set();
+
+    if(inputs)
+      next.include(inputs);
+
+    return next;
+  }
+
+  public pop(){
+    for(const key of Object.getOwnPropertySymbols(this))
+      delete (this as any)[key];
+
+    this.cleanup.forEach(cb => cb());
+    this.layer.clear();
+
+    return Object.getPrototypeOf(this) as this;
   }
 
   public include(
@@ -141,10 +144,29 @@ class Context {
       T = I.constructor as Model.Type<T>;
     }
 
-    this.has(I);
+    this.has(T, I);
     this.put(T, I, implicit);
 
     return I;
+  }
+
+  protected has<T extends Model>(type: Model.Type<T>, model: T){
+    const K = key(type, true);
+    const result = this[K as keyof this] as Context.Expect | undefined;
+    const waiting = Register.get(model);
+  
+    if(waiting instanceof Array)
+      waiting.forEach(cb => cb(this));
+
+    Register.set(model, this);
+
+    if(!result)
+      return;
+
+    const callback = result(model);
+      
+    if(callback)
+      this.cleanup.add(callback);
   }
 
   protected put<T extends Model>(
@@ -165,28 +187,6 @@ class Context {
       T = Object.getPrototypeOf(T);
     }
     while(T !== Model);
-  }
-
-  public push(inputs?: Context.Input){
-    const next = Object.create(this) as this;
-
-    next.layer = new Map();
-    next.cleanup = new Set();
-
-    if(inputs)
-      next.include(inputs);
-
-    return next;
-  }
-
-  public pop(){
-    for(const key of Object.getOwnPropertySymbols(this))
-      delete (this as any)[key];
-
-    this.cleanup.forEach(cb => cb());
-    this.layer.clear();
-
-    return Object.getPrototypeOf(this) as this;
   }
 }
 
