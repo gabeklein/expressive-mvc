@@ -80,8 +80,6 @@ class Context {
 
     this.cleanup.forEach(cb => cb());
     this.layer.clear();
-
-    return Object.getPrototypeOf(this) as this;
   }
 
   public include(
