@@ -28,6 +28,7 @@ class Context {
   public id!: string;
 
   protected layer = new Map<string | number, Model | Model.Type>();
+  protected cleanup = new Set<() => void>();
 
   constructor(inputs?: Context.Input){
     if(inputs)
@@ -62,11 +63,7 @@ class Context {
     const callback = result(model);
       
     if(callback)
-      Object.defineProperty(this, this.key(model), {
-        configurable: true,
-        writable: true,
-        value: callback
-      });
+      this.cleanup.add(callback);
   }
 
   public get<T extends Model>(Type: Model.Type<T>){
@@ -125,22 +122,21 @@ class Context {
     input: T | Model.Type<T>,
     implicit?: boolean){
 
-    let writable = true;
     let T: Model.Type<T>;
     let I: T;
 
     if(typeof input == "function"){
       T = input;
       I = new input() as T;
+      this.cleanup.add(() => I.set(null));
     }
     else {
       I = input;
       T = I.constructor as Model.Type<T>;
-      writable = false;
     }
 
     this.has(I);
-    this.put(T, I, implicit, writable);
+    this.put(T, I, implicit);
 
     return I;
   }
@@ -148,8 +144,7 @@ class Context {
   public put<T extends Model>(
     T: Model.Type<T>,
     I: T | ((model: T) => void),
-    implicit?: boolean,
-    writable?: boolean){
+    implicit?: boolean){
 
     do {
       const key = this.key(T, typeof I == "function");
@@ -158,7 +153,6 @@ class Context {
       if(value || this[key] !== I && !implicit)
         Object.defineProperty(this, key, {
           configurable: true,
-          writable,
           value
         });
 
@@ -170,6 +164,7 @@ class Context {
   public push(inputs?: Context.Input){
     const next = Object.create(this) as this;
     next.layer = new Map();
+    next.cleanup = new Set();
 
     if(inputs)
       next.include(inputs);
@@ -178,21 +173,10 @@ class Context {
   }
 
   public pop(){
-    const items = new Set<Model | (() => void)>();
-
-    for(const key of Object.getOwnPropertySymbols(this)){
-      const entry = Object.getOwnPropertyDescriptor(this, key)!;
-
-      if(entry.writable && entry.value)
-        items.add(entry.value);
-
+    for(const key of Object.getOwnPropertySymbols(this))
       delete (this as any)[key];
-    }
 
-    items.forEach(item => (
-      typeof item == "function" ? item() : item.set(null)
-    ))
-
+    this.cleanup.forEach(cb => cb());
     this.layer.clear();
 
     return Object.getPrototypeOf(this) as this;
