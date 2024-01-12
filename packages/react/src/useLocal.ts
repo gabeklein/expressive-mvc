@@ -36,9 +36,7 @@ export function useLocal <T extends Model> (
           enabled = true;
       }
       
-      const context = useContext();
-
-      context.has(instance);
+      const context = useContext().push({ instance });
 
       if(!local)
         instance.set();
@@ -48,6 +46,7 @@ export function useLocal <T extends Model> (
         return () => {
           release();
           instance.set(null);
+          context.pop();
         }
       }, []);
 
