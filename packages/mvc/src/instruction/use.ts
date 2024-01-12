@@ -5,7 +5,8 @@ const INSTRUCT = new Map<symbol, Model.Instruction>();
 
 function use<T = any>(instruction: Model.Instruction): T;
 
-function use <T extends Model> (Type: Model.Type<T>, required: false): T | undefined;
+function use <T extends Model> (Type: Model.Type<T>, required: true): T;
+function use <T extends Model> (Type: Model.Type<T>, required: boolean): T | undefined;
 
 function use <T extends Model> (Type: Model.Type<T>, ready?: (i: T) => void): T;
 
@@ -17,7 +18,6 @@ function use(
 
   if(Model.is(arg1)){
     const type = arg1;
-    const value = new type();
 
     arg1 = (key, subject) => {
       function set(next: Model | undefined){
@@ -32,9 +32,7 @@ function use(
         return false;
       }
   
-      set(value);
-  
-      return { set, value };
+      return { set };
     }
   }
 
