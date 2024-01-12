@@ -4,12 +4,12 @@ const Register = new WeakMap<Model, Context | ((got: Context) => void)[]>();
 const Upstream = new WeakMap<Model | Model.Type, symbol>();
 const Downstream = new WeakMap<Model | Model.Type, symbol>();
 
-function key(T: Model.Type | Model, upstream?: boolean){
+function key(T: Model.Type, upstream?: boolean){
   const table = upstream ? Upstream : Downstream;
   let key = table.get(T);
 
   if(!key){
-    key = Symbol(String(T) + (upstream ? " request" : ""));
+    key = Symbol(T.name + (upstream ? " request" : ""));
     table.set(T, key);
   }
 
@@ -144,29 +144,9 @@ class Context {
       T = I.constructor as Model.Type<T>;
     }
 
-    this.has(T, I);
     this.put(T, I, implicit);
 
     return I;
-  }
-
-  protected has<T extends Model>(type: Model.Type<T>, model: T){
-    const K = key(type, true);
-    const result = this[K as keyof this] as Context.Expect | undefined;
-    const waiting = Register.get(model);
-  
-    if(waiting instanceof Array)
-      waiting.forEach(cb => cb(this));
-
-    Register.set(model, this);
-
-    if(!result)
-      return;
-
-    const callback = result(model);
-      
-    if(callback)
-      this.cleanup.add(callback);
   }
 
   protected put<T extends Model>(
@@ -175,18 +155,33 @@ class Context {
     implicit?: boolean){
 
     do {
-      const K = key(T, typeof I == "function");
+      let K = key(T, true) as keyof this;
+
+      if(I instanceof Model){
+        const expect = this[K] as Context.Expect | undefined;
+        const waiting = Register.get(I);
+      
+        if(waiting instanceof Array)
+          waiting.forEach(cb => cb(this));
+
+        Register.set(I, this);
+
+        if(expect){
+          const callback = expect(I);
+            
+          if(callback)
+            this.cleanup.add(callback);
+        }
+
+        K = key(T, false) as keyof this;
+      }
+
       const value = this.hasOwnProperty(K) ? null : I;
 
       if(value || this[K as keyof this] !== I && !implicit)
-        Object.defineProperty(this, K, {
-          configurable: true,
-          value
-        });
-
-      T = Object.getPrototypeOf(T);
+        Object.defineProperty(this, K, { configurable: true, value });
     }
-    while(T !== Model);
+    while((T = Object.getPrototypeOf(T)) !== Model);
   }
 }
 
