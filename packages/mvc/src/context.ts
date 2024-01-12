@@ -154,28 +154,36 @@ class Context {
     I: T | ((model: T) => void),
     implicit?: boolean){
 
+    const U = key(T, true) as keyof this;
+    const CB = new WeakSet<Function>();
+
+    if(I instanceof Model){
+      const waiting = Register.get(I);
+    
+      if(waiting instanceof Array)
+        waiting.forEach(cb => cb(this));
+
+      Register.set(I, this);
+    }
+
     do {
-      let K = key(T, true) as keyof this;
 
-      if(I instanceof Model){
-        const expect = this[K] as Context.Expect | undefined;
-        const waiting = Register.get(I);
-      
-        if(waiting instanceof Array)
-          waiting.forEach(cb => cb(this));
+      if(I instanceof Model && U in this){
+        const cb = this[U] as (model: Model) => (() => void) | void;
 
-        Register.set(I, this);
+        if(!CB.has(cb)){
+          CB.add(cb);
 
-        if(expect){
-          const callback = expect(I);
-            
-          if(callback)
-            this.cleanup.add(callback);
+          const result = cb(I);
+
+          if(result)
+            this.cleanup.add(result);
         }
-
-        K = key(T, false) as keyof this;
+        
+        CB.add(this[U] as (model: Model) => void);
       }
 
+      const K = typeof I == "function" ? U : key(T) as keyof this;
       const value = this.hasOwnProperty(K) ? null : I;
 
       if(value || this[K as keyof this] !== I && !implicit)
