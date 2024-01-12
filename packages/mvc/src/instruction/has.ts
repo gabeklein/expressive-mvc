@@ -2,7 +2,7 @@ import { Context } from '../context';
 import { Model } from '../model';
 import { use } from './use';
 
-const APPLY = new WeakMap<Model, (model: Model) => (() => void) | void>();
+const APPLY = new WeakMap<Model, (model: Model) => (() => void) | boolean | void>();
 
 declare namespace has {
   type Callback<T = any> = (model: T, recipient: Model) => void | boolean | (() => void);
@@ -16,9 +16,9 @@ function has <T extends Model> (
   arg2?: has.Callback<T>){
 
   return use<T>((key, subject) => {
-    const register = new Set<Model>();
+    const applied = new Set<Model>();
     const update = () => {
-      subject.set(key, Object.freeze(Array.from(register)));
+      subject.set(key, Object.freeze(Array.from(applied)));
     }
 
     if(!Model.is(arg1)){
@@ -26,23 +26,20 @@ function has <T extends Model> (
         throw new Error(`'has' callback can only be used once per model.`);
 
       APPLY.set(subject, recipient => {
-        if(register.has(recipient))
-          return;
-
         let remove: (() => void) | boolean | void;
 
         if(arg1){
           remove = arg1(recipient, subject);
   
           if(remove === false)
-            return;
+            return false;
         }
 
-        register.add(recipient);
+        applied.add(recipient);
         update();
 
         return () => {
-          register.delete(recipient);
+          applied.delete(recipient);
           update();
 
           if(typeof remove == "function")
@@ -55,21 +52,26 @@ function has <T extends Model> (
         let remove: (() => void) | void | undefined;
         let disconnect: (() => void) | undefined;
 
-        if(register.has(got))
+        if(applied.has(got))
           return;
         
         const callback = APPLY.get(got);
 
         if(callback){
-          const after = callback(subject)
-          disconnect = () => after && after()
+          const after = callback(subject);
+
+          if(after === false)
+            return;
+
+          if(typeof after == "function")
+            disconnect = after;
         }
 
         if(typeof arg2 == "function"){
           const done = arg2(got, subject);
 
           if(done === false)
-            return;
+            return false;
           
           remove = () => {
             if(typeof done == "function")
@@ -77,13 +79,13 @@ function has <T extends Model> (
           }
         }
 
-        register.add(got);
+        applied.add(got);
         update();
 
-        const done = () => {
+        const done = () => { 
           reset();
 
-          register.delete(got);
+          applied.delete(got);
           update();
 
           if(disconnect)

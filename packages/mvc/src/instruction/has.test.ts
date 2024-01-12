@@ -147,19 +147,20 @@ describe("recipient", () => {
 
   it("will register own type", async () => {
     class Test extends Model {
+      id = String(this);
       tests = has(Test, gotTest);
     }
 
     const gotTest = jest.fn();
-    const test = Test.new();
-    const test2 = Test.new();
-    const test3 = Test.new();
+    const test = Test.new("1");
+    const test2 = Test.new("2");
+    const test3 = Test.new("3");
 
     new Context({ test }).push({ test2 }).push({ test3 });
 
-    expect(gotTest).toBeCalledTimes(2);
     expect(gotTest).toBeCalledWith(test2, test);
     expect(gotTest).toBeCalledWith(test3, test2);
+    expect(gotTest).toBeCalledTimes(2);
   })
 
   it("will register implicit", () => {
@@ -276,6 +277,48 @@ describe("target", () => {
 
     expect(gotChild).toHaveBeenCalled();
     expect(gotParent).toHaveBeenCalled();
+  })
+
+  it("will prevent register", () => {
+    class Child extends Model {
+      parents = has(gotParent);
+    }
+    class Parent extends Model {
+      children = has(Child, gotChild);
+    }
+  
+    const gotChild = jest.fn();
+    const gotParent = jest.fn(() => false);
+
+    const parent = Parent.new();
+    const child = Child.new();
+  
+    new Context({ parent }).push({ child });
+
+    expect(gotParent).toHaveBeenCalled();
+    expect(gotChild).not.toHaveBeenCalled();
+  })
+
+  it("will callback on removal", async () => {
+    class Child extends Model {
+      parents = has(() => {
+        return removedParent;
+      });
+    }
+    class Parent extends Model {
+      children = has(Child);
+    }
+  
+    const removedParent = jest.fn();
+
+    const parent = Parent.new();
+    const child = Child.new();
+  
+    const context = new Context({ parent }).push({ child });
+
+    context.pop();
+
+    expect(removedParent).toHaveBeenCalledTimes(1);
   })
 
   it("will complain if used more than once", () => {

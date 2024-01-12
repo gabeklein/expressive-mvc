@@ -144,9 +144,33 @@ class Context {
       T = I.constructor as Model.Type<T>;
     }
 
+    this.has(T, I);
     this.put(T, I, implicit);
 
     return I;
+  }
+
+  protected has<T extends Model>(type: Model.Type<T>, model: T){
+    do {
+      const K = key(type, true);
+      const result = this[K as keyof this] as Context.Expect | undefined;
+  
+      if(!result)
+        continue;
+  
+      const callback = result(model);
+        
+      if(callback)
+        this.cleanup.add(callback);
+    }
+    while((type = Object.getPrototypeOf(type)) !== Model);
+
+    const waiting = Register.get(model);
+  
+    if(waiting instanceof Array)
+      waiting.forEach(cb => cb(this));
+
+    Register.set(model, this);
   }
 
   protected put<T extends Model>(
@@ -155,27 +179,7 @@ class Context {
     implicit?: boolean){
 
     do {
-      let K = key(T, true) as keyof this;
-
-      if(I instanceof Model){
-        const expect = this[K] as Context.Expect | undefined;
-        const waiting = Register.get(I);
-      
-        if(waiting instanceof Array)
-          waiting.forEach(cb => cb(this));
-
-        Register.set(I, this);
-
-        if(expect){
-          const callback = expect(I);
-            
-          if(callback)
-            this.cleanup.add(callback);
-        }
-
-        K = key(T, false) as keyof this;
-      }
-
+      const K = key(T, typeof I == "function");
       const value = this.hasOwnProperty(K) ? null : I;
 
       if(value || this[K as keyof this] !== I && !implicit)
