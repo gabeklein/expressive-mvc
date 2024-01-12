@@ -1,4 +1,4 @@
-import { Model } from '@expressive/mvc';
+import { Context, Model } from '@expressive/mvc';
 
 import { useContext, useEffect, useState } from './useContext';
 
@@ -9,6 +9,7 @@ export function useLocal <T extends Model> (
 
   const state = useState(() => {
     let enabled: boolean | undefined;
+    let context: Context;
     let local: T;
 
     const instance = new this(argument as Model.Argument);
@@ -36,17 +37,17 @@ export function useLocal <T extends Model> (
           enabled = true;
       }
       
-      const context = useContext().push({ instance });
+      const ctx = useContext();
 
-      if(!local)
-        instance.set();
+      if(!context)
+        context = ctx.push({ instance });
 
       useEffect(() => {
         enabled = true;
         return () => {
           release();
           instance.set(null);
-          context.pop();
+          context.pop()
         }
       }, []);
 
