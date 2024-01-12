@@ -4,8 +4,21 @@ const Register = new WeakMap<Model, Context | ((got: Context) => void)[]>();
 const Upstream = new WeakMap<Model | Model.Type, symbol>();
 const Downstream = new WeakMap<Model | Model.Type, symbol>();
 
+function key(T: Model.Type | Model, upstream?: boolean){
+  const table = upstream ? Upstream : Downstream;
+  let key = table.get(T);
+
+  if(!key){
+    key = Symbol(String(T) + (upstream ? " request" : ""));
+    table.set(T, key);
+  }
+
+  return key;
+}
+
 declare namespace Context {
-  type Input = Record<string | number, Model | Model.Type<Model>>
+  type Input = Record<string | number, Model | Model.Type<Model>>;
+  type Expect = (model: Model) => (() => void) | void;
 }
 
 class Context {
@@ -35,21 +48,9 @@ class Context {
       this.include(inputs);
   }
 
-  protected key(T: Model.Type | Model, upstream?: boolean){
-    const table = upstream ? Upstream : Downstream;
-    let key = table.get(T);
-
-    if(!key){
-      key = Symbol(String(T) + (upstream ? " request" : ""));
-      table.set(T, key);
-    }
-
-    return key as keyof this;
-  }
-
   protected has(model: Model){
-    const key = this.key(model.constructor as Model.Type, true);
-    const result = this[key] as ((model: Model) => (() => void) | void) | undefined;
+    const K = key(model.constructor as Model.Type, true);
+    const result = this[K as keyof this] as Context.Expect | undefined;
     const waiting = Register.get(model);
   
     if(waiting instanceof Array)
@@ -57,7 +58,7 @@ class Context {
 
     Register.set(model, this);
 
-    if(typeof result != "function")
+    if(!result)
       return;
 
     const callback = result(model);
@@ -67,7 +68,7 @@ class Context {
   }
 
   public get<T extends Model>(Type: Model.Type<T>){
-    const result = this[this.key(Type)] as T | undefined;
+    const result = this[key(Type) as keyof this] as T | undefined;
 
     if(result === null)
       throw new Error(`Did find ${Type} in context, but multiple were defined.`);
@@ -147,11 +148,11 @@ class Context {
     implicit?: boolean){
 
     do {
-      const key = this.key(T, typeof I == "function");
-      const value = this.hasOwnProperty(key) ? null : I;
+      const K = key(T, typeof I == "function");
+      const value = this.hasOwnProperty(K) ? null : I;
 
-      if(value || this[key] !== I && !implicit)
-        Object.defineProperty(this, key, {
+      if(value || this[K as keyof this] !== I && !implicit)
+        Object.defineProperty(this, K, {
           configurable: true,
           value
         });
