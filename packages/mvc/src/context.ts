@@ -1,19 +1,17 @@
 import { Model, PARENT, uid } from './model';
 
 const Register = new WeakMap<Model, Context | ((got: Context) => void)[]>();
-const Upstream = new WeakMap<Model | Model.Type, symbol>();
-const Downstream = new WeakMap<Model | Model.Type, symbol>();
+const Table = new Map<symbol | Model.Type, symbol>();
 
-function key(T: Model.Type, upstream?: boolean){
-  const table = upstream ? Upstream : Downstream;
-  let key = table.get(T);
+function key(T: Model.Type | symbol, upstream?: boolean): symbol {
+  let K = Table.get(T);
 
-  if(!key){
-    key = Symbol(T.name + (upstream ? " request" : ""));
-    table.set(T, key);
-  }
-
-  return key;
+  if(!K)
+    Table.set(T, K = Symbol(
+      typeof T == "symbol" ? "get " + T.description : String(T)
+    ));
+  
+  return upstream ? key(K) : K;
 }
 
 declare namespace Context {
