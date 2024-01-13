@@ -31,6 +31,21 @@ describe("recipient", () => {
 
     expect(parent.children).toEqual([child]);
   })
+
+  it("will not register super class", () => {
+    class Child extends Model {}
+    class Child2 extends Child {}
+    class Parent extends Model {
+      children = has(Child2);
+    }
+  
+    const parent = Parent.new();
+    const child = Child.new();
+  
+    new Context({ parent }).push({ child });
+
+    expect(parent.children.length).toBe(0);
+  })
   
   it("will run callback on register", () => {
     class Child extends Model {}
