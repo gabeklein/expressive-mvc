@@ -42,22 +42,35 @@ describe("instruction", () => {
 })
 
 describe("model", () => {
-  it('will run callback on every assign', () => {
-    const callback = jest.fn();
-
+  it("will init upon access", () => {
     class Child extends Model {
       value = "foo"
     }
+    class Test extends Model {
+      child = use(Child, mockInit);
+    }
   
+    const mockInit = jest.fn();
+    const test = Test.new();
+
+    expect(mockInit).not.toBeCalled();
+    expect(test.child.value).toBe("foo");
+    expect(mockInit).toBeCalledTimes(1);
+  })
+
+  it('will run callback on every assign', () => {
+    class Child extends Model {
+      value = "foo"
+    }
     class Parent extends Model {
       child = use(Child, callback);
     }
   
+    const callback = jest.fn();
     const parent = Parent.new();
-    expect(callback).toBeCalled();
 
     parent.child = new Child();
-    expect(callback).toBeCalledTimes(2);
+    expect(callback).toBeCalledTimes(1);
   })
   
   it('will only reassign a matching model', () => {

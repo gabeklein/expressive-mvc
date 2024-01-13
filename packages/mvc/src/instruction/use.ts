@@ -17,9 +17,10 @@ function use(
 
   if(Model.is(arg1)){
     const type = arg1;
-    const value = new type();
 
     arg1 = (key, subject) => {
+      const desc: Model.Descriptor = { set, get };
+
       function set(next: Model | undefined){
         if(next ? !(next instanceof type) : arg2 !== false)
           throw new Error(`${subject}.${key} expected Model of type ${type} but got ${next && next.constructor}.`)
@@ -32,9 +33,20 @@ function use(
         return false;
       }
   
-      set(value);
+      function get(){
+        const model = new type();
+        const required = arg2 !== false;
+
+        if(model instanceof Promise)
+          model.then(set);
+        else
+          set(model);
   
-      return { set, value };
+        desc.get = required;
+        return fetch(subject, key, required);
+      }
+  
+      return desc;
     }
   }
 
