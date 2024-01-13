@@ -84,13 +84,13 @@ function get<R, T extends Model>(
           throw new Error(`${from} may only exist as a child of type ${arg0}.`);
 
         source = (resolve) => {
-          Context.get(from, (context) => {
-            const got = context.get(arg0);
-
-            if(got)
-              resolve(got);
-            else if(arg1 !== false)
-              throw new Error(`Required ${arg0} not found in context for ${from}.`)
+          Context.get(from, context => {
+            context.get(arg0, got => {
+              if(got)
+                resolve(got);
+              else if(arg1 !== false)
+                throw new Error(`Required ${arg0} not found in context for ${from}.`)
+            });
           });
         }
       }

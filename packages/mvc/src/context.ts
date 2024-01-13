@@ -27,11 +27,11 @@ function keys(from: Model.Type, upstream?: boolean){
 
 declare namespace Context {
   type Input = Record<string | number, Model | Model.Type<Model>>;
-  type Expect = (model: Model) => (() => void) | void;
+  type Expect<T = Model> = (model: T, upstream?: boolean) => (() => void) | void;
 }
 
 interface Context {
-  [key: symbol]: Model | Context.Expect | null | undefined;
+  [key: symbol]: Model | Set<Context.Expect> | null | undefined;
 }
 
 class Context {
@@ -65,20 +65,23 @@ class Context {
   }
 
   public get<T extends Model>(Type: Model.Type<T>): T | undefined;
-  public get<T extends Model>(Type: Model.Type<T>, callback: (model: T) => void): void;
-  public get<T extends Model>(Type: Model.Type<T>, callback?: ((model: T) => void)){
-    if(callback){
-      const K = key(Type, true);
-      
-      Object.defineProperty(this, K, {
-        value: this.hasOwnProperty(K) ? null : callback
-      });
-    }
-
+  public get<T extends Model>(Type: Model.Type<T>, callback: Context.Expect<T>): void;
+  public get<T extends Model>(Type: Model.Type<T>, callback?: Context.Expect<T>){
     const result = this[key(Type)];
 
     if(result === null)
       throw new Error(`Did find ${Type} in context, but multiple were defined.`);
+
+    if(callback){
+      const K = key(Type, true);
+      let callbacks = this.hasOwnProperty(K) && this[K] as Set<Context.Expect> | undefined;
+
+      if(!callbacks)
+        this[K] = callbacks = new Set();
+
+      callbacks.add(callback as Context.Expect);
+      callback(result as T);
+    }
 
     return result as T | undefined;
   }
@@ -164,15 +167,15 @@ class Context {
     }
 
     keys(T, true).forEach(K => {
-      const result = this[K] as Context.Expect | undefined;
+      const result = this[K];
   
-      if(!result)
-        return;
-  
-      const callback = result(I);
+      if(result instanceof Set)
+        result.forEach(cb => {
+          const cleanup = cb(I, true);
         
-      if(callback)
-        this.cleanup.add(callback);
+          if(cleanup)
+            this.cleanup.add(cleanup);
+        });
     });
 
     keys(T).forEach(K => {

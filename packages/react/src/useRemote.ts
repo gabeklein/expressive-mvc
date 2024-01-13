@@ -6,16 +6,10 @@ export function useRemote<T extends Model, R>(
   this: Model.Type<T>,
   argument?: boolean | Model.get.Factory<T, any>
 ){
-  const context = useContext()
+  const context = useContext();
   const state = useState(() => {
-    const instance = context.get(this);
     const refresh = () => state[1](x => x.bind(null));
-
-    if(!instance)
-      if(argument === false)
-        return () => {};
-      else
-        throw new Error(`Could not find ${this} in context.`);
+    let output: (() => R) | undefined | null;
 
     function forceUpdate(): void;
     function forceUpdate<T>(action: Promise<T> | (() => Promise<T>)): Promise<T>;
@@ -29,51 +23,60 @@ export function useRemote<T extends Model, R>(
         return action.finally(refresh);
     }
 
-    let release: (() => void) | undefined;
-    let value: any;
-
-    release = effect(instance, current => {
-      if(typeof argument === "function"){
-        const next = argument.call(current, current, forceUpdate);
-
-        if(next === value)
+    context.get(this, instance => {
+      if(!instance)
+        if(argument === false)
           return;
-
-        value = next;
+        else
+          throw new Error(`Could not find ${this} in context.`);
+  
+      let release: (() => void) | undefined;
+      let value: any;
+  
+      release = effect(instance, current => {
+        if(typeof argument === "function"){
+          const next = argument.call(current, current, forceUpdate);
+  
+          if(next === value)
+            return;
+  
+          value = next;
+        }
+        else
+          value = current;
+  
+        if(release)
+          refresh();
+      }, argument === true);
+  
+      if(value === null){
+        release();
+        output = null;
+      }
+      else if(value instanceof Promise){
+        let error: Error | undefined;
+  
+        release();
+  
+        // TODO: ignore update if resolves to undefined or null
+        value.then(x => value = x).catch(e => error = e).finally(refresh);
+        value = null;
+  
+        output = () => {
+          if(error)
+            throw error;
+  
+          return value === undefined ? null : value;
+        }
       }
       else
-        value = current;
+        output = () => {
+          useEffect(() => release, []);
+          return value === undefined ? null : value;
+        }
+    });
 
-      if(release)
-        refresh();
-    }, argument === true);
-
-    if(value instanceof Promise){
-      let error: Error | undefined;
-
-      release();
-
-      // TODO: ignore update if resolves to undefined or null
-      value.then(x => value = x).catch(e => error = e).finally(refresh);
-      value = null;
-
-      return () => {
-        if(error)
-          throw error;
-
-        return value === undefined ? null : value;
-      }
-    }
-
-    if(value === null){
-      release();
-      return () => null;
-    }
-
-    return () => {
-      useEffect(() => release, []);
-      return value === undefined ? null : value;
-    }
+    return () => output && output();
   });
 
   return state[0]() as R;

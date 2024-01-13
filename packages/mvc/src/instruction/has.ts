@@ -48,13 +48,13 @@ function has <T extends Model> (
       });
     }
     else
-      Context.get(subject, ctx => ctx.get(arg1, got => {
+      Context.get(subject, ctx => ctx.get(arg1, (got, upstream) => {
+        if(!upstream || applied.has(got))
+          return;
+
         let remove: (() => void) | void | undefined;
         let disconnect: (() => void) | undefined;
-
-        if(applied.has(got))
-          return;
-        
+      
         const callback = APPLY.get(got);
 
         if(callback){
@@ -71,7 +71,7 @@ function has <T extends Model> (
           const done = arg2(got, subject);
 
           if(done === false)
-            return false;
+            return;
           
           remove = () => {
             if(typeof done == "function")
