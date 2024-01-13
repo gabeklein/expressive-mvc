@@ -1,4 +1,4 @@
-import { Model } from '@expressive/mvc';
+import { Context, Model } from '@expressive/mvc';
 import { ReactNode } from 'react';
 
 export function createComponent<T extends Model, P extends Model.Assign<T>> (
@@ -17,6 +17,8 @@ export function createComponent<T extends Model, P extends Model.Assign<T>> (
 
   Component.Model = this;
   Component.displayName = this.name;
+
+  Context.key(Component, this);
   
   return Component;
 }

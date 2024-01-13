@@ -1,5 +1,6 @@
 import { fetch, Model, STATE, update } from '../model';
 import { watch } from '../control';
+import { Context } from '../context';
 
 const INSTRUCT = new Map<symbol, Model.Instruction>();
 
@@ -32,7 +33,7 @@ function use(
   
         return false;
       }
-  
+
       function get(){
         const model = new type();
         const required = arg2 !== false;
@@ -41,7 +42,7 @@ function use(
           model.then(set);
         else
           set(model);
-  
+
         desc.get = required;
         return fetch(subject, key, required);
       }

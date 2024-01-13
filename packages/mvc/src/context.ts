@@ -1,9 +1,9 @@
 import { Model, PARENT, uid } from './model';
 
 const Register = new WeakMap<Model, Context | ((got: Context) => void)[]>();
-const Table = new Map<symbol | Model.Type, symbol>();
+const Table = new Map<symbol | Model.Link | Model.Type, symbol>();
 
-function key(T: Model.Type | symbol, upstream?: boolean): symbol {
+function key(T: Model.Link | symbol, upstream?: boolean): symbol {
   let K = Table.get(T);
 
   if(!K)
@@ -20,6 +20,23 @@ declare namespace Context {
 }
 
 class Context {
+  static readonly Key: unique symbol;
+
+  static key<T extends Model>(
+    proxy: Model.Link<T>,
+    symbol?: symbol | Model.Link<T>): symbol {
+
+    if(symbol && typeof symbol != "symbol")
+      symbol = Context.key(symbol);
+
+    if(!symbol)
+      symbol = Symbol(String(proxy));
+
+    Table.set(proxy, symbol);
+
+    return symbol;
+  }
+
   static get<T extends Model>(on: Model, callback: ((got: Context) => void)): void;
   static get<T extends Model>(on: Model): Context | undefined;
   static get(from: Model, callback?: (got: Context) => void){
@@ -46,9 +63,9 @@ class Context {
       this.include(inputs);
   }
 
-  public get<T extends Model>(Type: Model.Type<T>): T | undefined;
-  public get<T extends Model>(Type: Model.Type<T>, callback: (model: T) => void): void;
-  public get<T extends Model>(Type: Model.Type<T>, callback?: ((model: T) => void)){
+  public get<T extends Model>(Type: Model.Link<T>): T | undefined;
+  public get<T extends Model>(Type: Model.Link<T>, callback: (model: T) => void): void;
+  public get<T extends Model>(Type: Model.Link<T>, callback?: ((model: T) => void)){
     if(callback)
       return this.put(Type, callback);
 
@@ -170,7 +187,7 @@ class Context {
   }
 
   protected put<T extends Model>(
-    T: Model.Type<T>,
+    T: Model.Link<T>,
     I: T | ((model: T) => void),
     implicit?: boolean){
 

@@ -38,6 +38,8 @@ declare module '@expressive/mvc' {
     }
 
     interface Component<T extends Model, P extends Model.Assign<T>> {
+      readonly [Model.Key]?: Model.Type<T>;
+
       (props: P): JSX.Element;
 
       Model: Model.Type<T>;

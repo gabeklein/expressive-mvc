@@ -1,3 +1,4 @@
+import { Context } from '../context';
 import { Model } from '../model';
 import { use } from './use';
 
@@ -105,5 +106,17 @@ describe("model", () => {
     parent.child = undefined;
 
     expect(parent.child).toBeUndefined();
+  })
+
+  it('will attach to context', () => {
+    class Child extends Model {}
+    class Parent extends Model {
+      child = use(Child);
+    }
+  
+    const parent = Parent.new("ID");
+    const context = new Context({ parent });
+    
+    
   })
 })

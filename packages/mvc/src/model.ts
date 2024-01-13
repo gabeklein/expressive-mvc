@@ -20,6 +20,8 @@ const PARENT = new WeakMap<Model, Model | null>();
 /** Reference bound instance methods to real ones. */
 const METHOD = new WeakMap<any, any>();
 
+declare const Key: unique symbol;
+
 const define = Object.defineProperty;
 
 type MaybeAsync<T> = T | Promise<T>;
@@ -103,6 +105,8 @@ declare namespace Model {
    * @param update - `true` if update is pending, `false` effect has been cancelled, `null` if controller is destroyed.
    */
   type EffectCallback = ((update: boolean | null) => void);
+
+  type Link<T extends Model = any> = Model.Type<T> | { [Key]?: Model.Type<T> };
 
   /**
    * Property initializer, will run upon instance creation.
