@@ -14,9 +14,24 @@ function key(T: Model.Type | symbol, upstream?: boolean): symbol {
   return upstream ? key(K) : K;
 }
 
+function keys(from: Model.Type, upstream?: boolean){
+  const keys = new Set<symbol>();
+
+  do {
+    keys.add(key(from, upstream));
+  }
+  while((from = Object.getPrototypeOf(from)) !== Model);
+
+  return keys;
+}
+
 declare namespace Context {
   type Input = Record<string | number, Model | Model.Type<Model>>;
   type Expect = (model: Model) => (() => void) | void;
+}
+
+interface Context {
+  [key: symbol]: Model | Context.Expect | null | undefined;
 }
 
 class Context {
@@ -25,15 +40,18 @@ class Context {
   static get(from: Model, callback?: (got: Context) => void){
     const waiting = Register.get(from);
 
-    if(!callback)
-      return waiting instanceof Context ? waiting : undefined;
-  
-    if(waiting instanceof Context)
-      callback(waiting);
-    else if(waiting)
-      waiting.push(callback);
-    else
-      Register.set(from, [callback]);
+    if(waiting instanceof Context){
+      if(callback)
+        callback(waiting);
+
+      return waiting;
+    }
+
+    if(callback)
+      if(waiting) 
+        waiting.push(callback);
+      else 
+        Register.set(from, [callback]);
   }
 
   public id!: string;
@@ -50,9 +68,13 @@ class Context {
   public get<T extends Model>(Type: Model.Type<T>, callback: (model: T) => void): void;
   public get<T extends Model>(Type: Model.Type<T>, callback?: ((model: T) => void)){
     if(callback)
-      return this.put(Type, callback);
+      keys(Type, true).forEach(K => {
+        Object.defineProperty(this, K, {
+          value: this.hasOwnProperty(K) ? null : callback
+        });
+      });
 
-    const result = this[key(Type) as keyof this];
+    const result = this[key(Type)];
 
     if(result === null)
       throw new Error(`Did find ${Type} in context, but multiple were defined.`);
@@ -97,7 +119,7 @@ class Context {
 
       if(!exists){
         const instance = this.add(input);
-  
+
         this.layer.set(key, input)
         init.set(instance, true);
       }
@@ -140,48 +162,36 @@ class Context {
       T = I.constructor as Model.Type<T>;
     }
 
-    this.has(T, I);
-    this.put(T, I, implicit);
-
-    return I;
-  }
-
-  protected has<T extends Model>(type: Model.Type<T>, model: T){
-    do {
-      const K = key(type, true);
-      const result = this[K as keyof this] as Context.Expect | undefined;
+    keys(T, true).forEach(K => {
+      const result = this[K] as Context.Expect | undefined;
   
       if(!result)
-        continue;
+        return;
   
-      const callback = result(model);
+      const callback = result(I);
         
       if(callback)
         this.cleanup.add(callback);
-    }
-    while((type = Object.getPrototypeOf(type)) !== Model);
+    });
 
-    const waiting = Register.get(model);
+    keys(T).forEach(K => {
+      const value = this.hasOwnProperty(K) ? null : I;
+
+      if(value || this[K] !== I && !implicit)
+        Object.defineProperty(this, K, {
+          configurable: true,
+          value
+        });
+    });
+
+    const waiting = Register.get(I);
   
     if(waiting instanceof Array)
       waiting.forEach(cb => cb(this));
 
-    Register.set(model, this);
-  }
+    Register.set(I, this);
 
-  protected put<T extends Model>(
-    T: Model.Type<T>,
-    I: T | ((model: T) => void),
-    implicit?: boolean){
-
-    do {
-      const K = key(T, typeof I == "function");
-      const value = this.hasOwnProperty(K) ? null : I;
-
-      if(value || this[K as keyof this] !== I && !implicit)
-        Object.defineProperty(this, K, { configurable: true, value });
-    }
-    while((T = Object.getPrototypeOf(T)) !== Model);
+    return I;
   }
 }
 
