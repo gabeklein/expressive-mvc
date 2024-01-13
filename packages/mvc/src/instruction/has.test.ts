@@ -162,8 +162,9 @@ describe("recipient", () => {
 
   it("will register own type", async () => {
     class Test extends Model {
-      id = String(this);
-      tests = has(Test, gotTest);
+      tests = has(Test, (got, self) => {
+        gotTest(got.toString(), self.toString());
+      });
     }
 
     const gotTest = jest.fn();
@@ -173,8 +174,8 @@ describe("recipient", () => {
 
     new Context({ test }).push({ test2 }).push({ test3 });
 
-    expect(gotTest).toBeCalledWith(test2, test);
-    expect(gotTest).toBeCalledWith(test3, test2);
+    expect(gotTest).toBeCalledWith("2", "1");
+    expect(gotTest).toBeCalledWith("3", "2");
     expect(gotTest).toBeCalledTimes(2);
   })
 

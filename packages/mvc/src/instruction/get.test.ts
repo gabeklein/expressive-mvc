@@ -174,8 +174,10 @@ describe("fetch mode", () => {
   it("will throw if not found in context", () => {
     class Parent extends Model {}
     class Child extends Model {
-      constructor(){super("ID")}
       expects = get(Parent);
+      constructor(){
+        super("ID");
+      }
     }
 
     const attempt = () => new Context({ Child });
