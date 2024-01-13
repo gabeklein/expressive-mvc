@@ -51,7 +51,7 @@ function Consumer<T extends Model>(
   }
 
   if(typeof children == "function")
-    return children(Type.get() as T)
+    return Type.get(children);
 
   const context = useContext();
   const instance = useMemo(() => {
