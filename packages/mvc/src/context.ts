@@ -14,9 +14,24 @@ function key(T: Model.Type | symbol, upstream?: boolean): symbol {
   return upstream ? key(K) : K;
 }
 
+function keys(from: Model.Type, upstream?: boolean){
+  const keys = new Set<symbol>();
+
+  do {
+    keys.add(key(from, upstream));
+  }
+  while((from = Object.getPrototypeOf(from)) !== Model);
+
+  return keys;
+}
+
 declare namespace Context {
   type Input = Record<string | number, Model | Model.Type<Model>>;
   type Expect = (model: Model) => (() => void) | void;
+}
+
+interface Context {
+  [key: symbol]: Model | Context.Expect | null | undefined;
 }
 
 class Context {
@@ -52,7 +67,7 @@ class Context {
     if(callback)
       return this.put(Type, callback);
 
-    const result = this[key(Type) as keyof this];
+    const result = this[key(Type)];
 
     if(result === null)
       throw new Error(`Did find ${Type} in context, but multiple were defined.`);
@@ -97,7 +112,7 @@ class Context {
 
       if(!exists){
         const instance = this.add(input);
-  
+
         this.layer.set(key, input)
         init.set(instance, true);
       }
@@ -147,19 +162,17 @@ class Context {
   }
 
   protected has<T extends Model>(type: Model.Type<T>, model: T){
-    do {
-      const K = key(type, true);
-      const result = this[K as keyof this] as Context.Expect | undefined;
+    keys(type, true).forEach(K => {
+      const result = this[K] as Context.Expect | undefined;
   
       if(!result)
-        continue;
+        return;
   
       const callback = result(model);
         
       if(callback)
         this.cleanup.add(callback);
-    }
-    while((type = Object.getPrototypeOf(type)) !== Model);
+    });
 
     const waiting = Register.get(model);
   
@@ -174,14 +187,15 @@ class Context {
     I: T | ((model: T) => void),
     implicit?: boolean){
 
-    do {
-      const K = key(T, typeof I == "function");
+    keys(T, typeof I == "function").forEach(K => {
       const value = this.hasOwnProperty(K) ? null : I;
 
-      if(value || this[K as keyof this] !== I && !implicit)
-        Object.defineProperty(this, K, { configurable: true, value });
-    }
-    while((T = Object.getPrototypeOf(T)) !== Model);
+      if(value || this[K] !== I && !implicit)
+        Object.defineProperty(this, K, {
+          configurable: true,
+          value
+        });
+    });
   }
 }
 
