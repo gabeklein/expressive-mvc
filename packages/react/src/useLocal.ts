@@ -22,6 +22,9 @@ export function useLocal <T extends Model> (
     });
 
     return (props?: Model.Assign<T> | Model.Callback<T>) => {
+      if(!context)
+        context = outer.push({ instance });
+
       if(repeat && enabled) {
         enabled = false;
 
@@ -37,10 +40,6 @@ export function useLocal <T extends Model> (
         else
           enabled = true;
       }
-      
-
-      if(!context)
-        context = outer.push({ instance });
 
       useEffect(() => {
         enabled = true;
