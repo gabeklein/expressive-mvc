@@ -1,6 +1,6 @@
 import { Model } from '@expressive/mvc';
 
-import { useContext, useMemo } from './useContext';
+import { useShared, useMemo } from './useContext';
 
 declare namespace Consumer {
   type HasProps<T extends Model> = {
@@ -53,7 +53,7 @@ function Consumer<T extends Model>(
   if(typeof children == "function")
     return Type.get(children);
 
-  const context = useContext();
+  const context = useShared();
   const instance = useMemo(() => {
     const instance = context.get(Type);
 

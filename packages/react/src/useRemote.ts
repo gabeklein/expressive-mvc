@@ -1,12 +1,12 @@
 import { Model, effect } from '@expressive/mvc';
 
-import { useContext, useEffect, useState } from './useContext';
+import { useShared, useEffect, useState } from './useContext';
 
 export function useRemote<T extends Model, R>(
   this: Model.Type<T>,
   argument?: boolean | Model.get.Factory<T, any>
 ){
-  const context = useContext()
+  const context = useShared()
   const state = useState(() => {
     const instance = context.get(this);
     const refresh = () => state[1](x => x.bind(null));

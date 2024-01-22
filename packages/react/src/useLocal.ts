@@ -1,12 +1,13 @@
 import { Context, Model } from '@expressive/mvc';
 
-import { useContext, useEffect, useState } from './useContext';
+import { useShared, useEffect, useState } from './useContext';
 
 export function useLocal <T extends Model> (
   this: Model.Type<T>,
   argument?: Model.Assign<T> | Model.Callback<T>,
   repeat?: boolean){
 
+  const outer = useShared();
   const state = useState(() => {
     let enabled: boolean | undefined;
     let context: Context;
@@ -37,10 +38,9 @@ export function useLocal <T extends Model> (
           enabled = true;
       }
       
-      const ctx = useContext();
 
       if(!context)
-        context = ctx.push({ instance });
+        context = outer.push({ instance });
 
       useEffect(() => {
         enabled = true;

@@ -1,6 +1,6 @@
 import { Context, Model } from '@expressive/mvc';
 
-import { createContext, useContext, useEffect, useMemo } from './useContext';
+import { createProvider, useShared, useEffect, useMemo } from './useContext';
 
 import type { FunctionComponentElement, ReactNode } from 'react';
 
@@ -37,7 +37,7 @@ declare namespace Provider {
 function Provider<T extends Provider.Item>(props: Provider.Props<T>): Provider.Element {
   let { for: include, use: assign } = props;
 
-  const ambient = useContext();
+  const ambient = useShared();
   const context = useMemo(() => ambient.push(), []);
 
   if(typeof include == "function" || include instanceof Model)
@@ -50,7 +50,7 @@ function Provider<T extends Provider.Item>(props: Provider.Props<T>): Provider.E
 
   useEffect(() => () => context.pop(), []);
 
-  return createContext(context, props.children);
+  return createProvider(context, props.children);
 }
 
 export { Provider };
