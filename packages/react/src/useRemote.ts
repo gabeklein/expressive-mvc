@@ -4,7 +4,7 @@ import { useShared, useEffect, useState } from './useContext';
 
 export function useRemote<T extends Model, R>(
   this: Model.Type<T>,
-  argument?: boolean | Model.get.Factory<T, any>
+  argument?: boolean | Model.Assign<T> | Model.get.Factory<T, any>
 ){
   const context = useShared()
   const state = useState(() => {

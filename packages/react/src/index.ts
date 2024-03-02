@@ -72,6 +72,12 @@ declare module '@expressive/mvc' {
   }
 }
 
+declare global {
+  namespace JSX {
+    type ElementType = string | React.JSXElementConstructor<any>
+  }
+}
+
 Model.as = createComponent;
 Model.get = useRemote;
 Model.use = useLocal;
