@@ -21,7 +21,61 @@ function has <T extends Model> (
       subject.set(key, Object.freeze(Array.from(applied)));
     }
 
-    if(!Model.is(arg1)){
+    if(Model.is(arg1))
+      Context.get(subject, context => {
+        context.get(arg1, got => {
+          let remove: (() => void) | void | undefined;
+          let disconnect: (() => void) | undefined;
+  
+          if(applied.has(got))
+            return;
+          
+          const callback = APPLY.get(got);
+  
+          if(callback){
+            const after = callback(subject);
+  
+            if(after === false)
+              return;
+  
+            if(typeof after == "function")
+              disconnect = after;
+          }
+  
+          if(typeof arg2 == "function"){
+            const done = arg2(got, subject);
+  
+            if(done === false)
+              return false;
+            
+            remove = () => {
+              if(typeof done == "function")
+                done();
+            }
+          }
+  
+          applied.add(got);
+          update();
+  
+          const done = () => { 
+            reset();
+  
+            applied.delete(got);
+            update();
+  
+            if(disconnect)
+              disconnect();
+  
+            if(typeof remove == "function")
+              remove();
+          }
+  
+          const reset = got.get(null, done);
+          
+          return done;
+        })
+      });
+    else {
       if(APPLY.has(subject))
         throw new Error(`'has' callback can only be used once per model.`);
 
@@ -47,58 +101,6 @@ function has <T extends Model> (
         }
       });
     }
-    else
-      Context.get(subject, ctx => ctx.get(arg1, got => {
-        let remove: (() => void) | void | undefined;
-        let disconnect: (() => void) | undefined;
-
-        if(applied.has(got))
-          return;
-        
-        const callback = APPLY.get(got);
-
-        if(callback){
-          const after = callback(subject);
-
-          if(after === false)
-            return;
-
-          if(typeof after == "function")
-            disconnect = after;
-        }
-
-        if(typeof arg2 == "function"){
-          const done = arg2(got, subject);
-
-          if(done === false)
-            return false;
-          
-          remove = () => {
-            if(typeof done == "function")
-              done();
-          }
-        }
-
-        applied.add(got);
-        update();
-
-        const done = () => { 
-          reset();
-
-          applied.delete(got);
-          update();
-
-          if(disconnect)
-            disconnect();
-
-          if(typeof remove == "function")
-            remove();
-        }
-
-        const reset = got.get(null, done);
-        
-        return done;
-      }));
 
     return { value: [] };
   })
