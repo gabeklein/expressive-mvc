@@ -67,13 +67,8 @@ class Context {
   public get<T extends Model>(Type: Model.Type<T>): T | undefined;
   public get<T extends Model>(Type: Model.Type<T>, callback: (model: T) => void): void;
   public get<T extends Model>(Type: Model.Type<T>, callback?: ((model: T) => void)){
-    if(callback){
-      const K = key(Type, true);
-      
-      Object.defineProperty(this, K, {
-        value: this.hasOwnProperty(K) ? null : callback
-      });
-    }
+    if(callback)
+      Object.defineProperty(this, key(Type, true), { value: callback });
 
     const result = this[key(Type)];
 

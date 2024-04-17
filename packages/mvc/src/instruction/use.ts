@@ -34,16 +34,9 @@ function use(
       }
   
       function get(){
-        const model = new type();
-        const required = arg2 !== false;
-
-        if(model instanceof Promise)
-          model.then(set);
-        else
-          set(model);
-  
-        desc.get = required;
-        return fetch(subject, key, required);
+        set(new type());
+        desc.get = arg2 !== false;
+        return fetch(subject, key);
       }
   
       return desc;
