@@ -1,9 +1,9 @@
 import { Model, PARENT, uid } from './model';
 
 const Register = new WeakMap<Model, Context | ((got: Context) => void)[]>();
-const Table = new Map<symbol | Model.Type, symbol>();
+const Table = new Map<symbol | Model.Accept, symbol>();
 
-function key(T: Model.Type | symbol, upstream?: boolean): symbol {
+function key(T: Model.Accept | symbol, upstream?: boolean): symbol {
   let K = Table.get(T);
 
   if(!K)
@@ -26,7 +26,7 @@ function keys(from: Model.Type, upstream?: boolean){
 }
 
 declare namespace Context {
-  type Input = Record<string | number, Model | Model.Type<Model>>;
+  type Input = Record<string | number, Model | Model.Init<Model>>;
   type Expect = (model: Model) => (() => void) | void;
 }
 
@@ -147,7 +147,7 @@ class Context {
   }
 
   protected add<T extends Model>(
-    input: T | Model.Type<T>,
+    input: T | (Model.Type<T> & typeof Model),
     implicit?: boolean){
 
     let T: Model.Type<T>;

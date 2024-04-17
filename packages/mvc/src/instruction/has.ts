@@ -21,7 +21,9 @@ function has <T extends Model> (
       subject.set(key, Object.freeze(Array.from(applied)));
     }
 
-    if(Model.is(arg1))
+    if(Model.is(arg1)){
+      const type = arg1;
+
       Context.get(subject, context => {
         context.get(arg1, got => {
           let remove: (() => void) | void | undefined;
@@ -75,6 +77,7 @@ function has <T extends Model> (
           return done;
         })
       });
+    }
     else {
       if(APPLY.has(subject))
         throw new Error(`'has' callback can only be used once per model.`);

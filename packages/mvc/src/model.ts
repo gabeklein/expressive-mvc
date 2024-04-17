@@ -26,7 +26,12 @@ type MaybeAsync<T> = T | Promise<T>;
 
 declare namespace Model {
   /** Any type of Model, using own class constructor as its identifier. */
-  type Type<T extends Model = Model> = (abstract new (...args: any[]) => T) & typeof Model;
+  type Type<T extends Model = Model> = (abstract new (...args: any[]) => T) & Omit<typeof Model, never>;
+
+  type Init<T extends Model = Model> = (new (...args: any[]) => T) & typeof Model;
+
+  /** Any type of Model, using own class constructor as its identifier. */
+  type Accept<T extends Model = Model> = (abstract new (...args: any[]) => T);
 
   /**
    * Model constructor callback - is called when Model finishes intializing.
@@ -420,7 +425,9 @@ class Model {
    * 
    * @param args - arguments sent to constructor
    */
-  static new <T extends Model> (this: Model.Type<T>, ...args: Model.Args<T>){
+  static new <T extends Model> (
+    this: Model.Init<T>, ...args: Model.Args<T>){
+
     const instance = new this(...args) as T;
     emit(instance, true);
     return instance;

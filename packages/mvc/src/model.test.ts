@@ -1718,6 +1718,13 @@ describe("is method (static)", () => {
     expect(Model.is(NotATest)).toBe(true);
     expect(Test.is(NotATest)).toBe(false);
   })
+
+  it("will narrow type from function", () => {
+    let something: Model.Type | Model.Instruction | undefined;
+    
+    if(Model.is(something))
+      expect<Test>(something.new()).toBeInstanceOf(Test);
+  })
 })
 
 describe("on method (static)", () => {

@@ -3,8 +3,6 @@ import { effect } from '../control';
 import { fetch, METHOD, Model, PARENT, push, update } from '../model';
 import { use } from './use';
 
-type Type<T extends Model> = Model.Type<T> & typeof Model;
-
 const STALE = new WeakSet<() => void>();
 
 declare namespace get {
@@ -62,7 +60,7 @@ function get <R, T extends Model> (source: T, compute: get.Function<R, T>): R;
 function get <R, T> (compute: get.Factory<R, T>): R;
  
 function get<R, T extends Model>(
-  arg0: T | get.Factory<R, T> | Type<T>,
+  arg0: T | Model.Type<T> | get.Factory<R, T>,
   arg1?: get.Function<R, T> | boolean){
 
   return use<R>((key, subject, state) => {
@@ -77,6 +75,8 @@ function get<R, T extends Model>(
       from = arg0;
     }
     else if(Model.is(arg0)){
+      // TODO: this assertion should be implicit.
+      const type = arg0 as Model.Type<T>;
       const hasParent = PARENT.get(from) as T;
 
       if(!hasParent){
@@ -85,7 +85,7 @@ function get<R, T extends Model>(
 
         source = (resolve) => {
           Context.get(from, (context) => {
-            const got = context.get(arg0);
+            const got = context.get(type);
 
             if(got)
               resolve(got);

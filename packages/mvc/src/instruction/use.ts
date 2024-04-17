@@ -50,7 +50,7 @@ function use(
     }
   }
 
-  INSTRUCT.set(token, arg1);
+  INSTRUCT.set(token, arg1 as Model.Instruction);
   return token;
 }
 
