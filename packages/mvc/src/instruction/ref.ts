@@ -58,7 +58,7 @@ function ref <O extends Model, R>
  *
  * @param callback - Optional callback to synchronously fire when reference is first set or does update.
  */
-function ref <T = HTMLElement> (callback?: ref.Callback<T>): ref.Object<T>;
+function ref <T> (callback?: ref.Callback<T>): ref.Object<T>;
 
 /**
  * Creates a ref-compatible property.
@@ -69,7 +69,7 @@ function ref <T = HTMLElement> (callback?: ref.Callback<T>): ref.Object<T>;
  * @param callback - Optional callback to synchronously fire when reference is first set or does update.
  * @param ignoreNull - Default `true`. If `false`, will still callback with `null`.
  */
-function ref <T = HTMLElement> (callback: ref.Callback<T | null>, ignoreNull: boolean): ref.Object<T>;
+function ref <T> (callback: ref.Callback<T | null>, ignoreNull: boolean): ref.Object<T>;
 
 function ref<T>(
   arg?: ref.Callback<T> | Model,

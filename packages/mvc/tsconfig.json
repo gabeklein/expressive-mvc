@@ -5,7 +5,8 @@
     "moduleResolution": "node",
     "noUnusedLocals": true,
     "strict": true,
-    "types": [ "jest" ]
+    "types": ["jest", "node"],
+    "lib": ["ES2020"],
   },
   "exclude": [
     "node_modules",
