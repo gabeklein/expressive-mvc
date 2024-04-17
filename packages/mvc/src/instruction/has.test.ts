@@ -18,9 +18,11 @@ describe("recipient", () => {
   })
 
   it("will register a subclass", () => {
-    class Child extends Model {}
+    abstract class Child extends Model {}
+
     class Child2 extends Child {}
     class Parent extends Model {
+      // @ts-expect-error
       children = has(Child);
     }
   
@@ -32,7 +34,7 @@ describe("recipient", () => {
     expect(parent.children).toEqual([child]);
   })
 
-  it("will not register super class", () => {
+  it("will not register superclass", () => {
     class Child extends Model {}
     class Child2 extends Child {}
     class Parent extends Model {
@@ -40,9 +42,8 @@ describe("recipient", () => {
     }
   
     const parent = Parent.new();
-    const child = Child.new();
   
-    new Context({ parent }).push({ child });
+    new Context({ parent }).push({ Child });
 
     expect(parent.children.length).toBe(0);
   })
