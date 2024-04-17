@@ -1,7 +1,5 @@
 import { addListener, effect, emit, OnUpdate, queue, watch } from './control';
 
-let EXPORT: Map<any, any> | undefined;
-
 /** Register for all active models via string identifiers (usually unique). */
 const NAMES = new WeakMap<Model, string>();
 
@@ -19,6 +17,9 @@ const PARENT = new WeakMap<Model, Model | null>();
 
 /** Reference bound instance methods to real ones. */
 const METHOD = new WeakMap<any, any>();
+
+/** Currently accumulating export. */
+let EXPORT: Map<any, any> | undefined;
 
 const define = Object.defineProperty;
 
