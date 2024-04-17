@@ -58,6 +58,19 @@ describe("model", () => {
     expect(mockInit).toBeCalledTimes(1);
   })
 
+  it("will not create base Model", () => {
+    class Test extends Model {
+      // @ts-expect-error
+      child = use(Model);
+    }
+  
+    const attempt = () => Test.new();
+
+    expect(attempt).toThrowError(
+      "Model is abstract and not a valid type."
+    );
+  })
+
   it('will run callback on every assign', () => {
     class Child extends Model {
       value = "foo"

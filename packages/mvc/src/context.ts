@@ -26,7 +26,7 @@ function keys(from: Model.Type, upstream?: boolean){
 }
 
 declare namespace Context {
-  type Input = Record<string | number, Model | Model.Type<Model>>;
+  type Input = Record<string | number, Model | Model.Init>;
   type Expect = (model: Model) => (() => void) | void;
 }
 
@@ -147,13 +147,15 @@ class Context {
   }
 
   protected add<T extends Model>(
-    input: T | Model.Type<T>,
+    input: T | Model.Init<T>,
     implicit?: boolean){
 
     let T: Model.Type<T>;
     let I: T;
 
     if(typeof input == "function"){
+      Model.is(input);
+
       T = input;
       I = new input() as T;
       this.cleanup.add(() => I.set(null));

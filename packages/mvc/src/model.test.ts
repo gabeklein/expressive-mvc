@@ -5,6 +5,8 @@ import { set } from './instruction/set';
 import { mockError, mockPromise } from './mocks';
 import { Model } from './model';
 
+class Generic extends Model {}
+
 it('will extend custom class', () => {
   class Subject extends Model {
     value = 1;
@@ -13,6 +15,25 @@ it('will extend custom class', () => {
   const state = Subject.new();
 
   expect(state.value).toBe(1);
+})
+
+it("will not create base Model", () => {
+  // @ts-expect-error
+  const create = () => Model.new();
+
+  expect(create).toThrowError(
+    "Model is abstract and not a valid type."
+  );
+})
+
+it("will not create abstract Model", () => {
+  abstract class Subject extends Model {}
+
+  void function create(){
+    // No runtime error but typescript should complain.
+    // @ts-expect-error
+    Subject.new()
+  }
 })
 
 it('will update on assignment', async () => {
@@ -243,8 +264,8 @@ describe("subscriber", () => {
 
 describe("string coercion", () => {
   it("will output a unique ID", () => {
-    const foo = String(Model.new());
-    const bar = String(Model.new());
+    const foo = String(Generic.new());
+    const bar = String(Generic.new());
 
     expect(foo).not.toBe(bar);
   })
@@ -258,7 +279,7 @@ describe("string coercion", () => {
   })
 
   it("will be class name and supplied ID", () => {
-    const a = Model.new("ID");
+    const a = Generic.new("ID");
 
     expect(String(a)).toBe("ID");
   })
@@ -517,7 +538,7 @@ describe("get method", () => {
 
   describe("null", () => {
     it("will return true if model is not destroyed", () => {
-      const test = Model.new();
+      const test = Generic.new();
 
       expect(test.get(null)).toBe(false);
 
@@ -527,7 +548,7 @@ describe("get method", () => {
     })
 
     it("will callback when model is destroyed", () => {
-      const test = Model.new();
+      const test = Generic.new();
       const mock = jest.fn();
 
       test.get(null, mock);
@@ -1473,7 +1494,7 @@ describe("set method", () => {
 
 describe("new method (static)", () => {
   it("will use string argument as ID", () => {
-    const state = Model.new("ID");
+    const state = Generic.new("ID");
   
     expect(String(state)).toBe("ID");
   })
@@ -1482,7 +1503,7 @@ describe("new method (static)", () => {
     const didDestroy = jest.fn();
     const didCreate = jest.fn(() => didDestroy);
   
-    const state = Model.new(didCreate);
+    const state = Generic.new(didCreate);
   
     expect(didCreate).toBeCalledTimes(1);
     expect(didDestroy).not.toBeCalled();
@@ -1529,7 +1550,7 @@ describe("new method (static)", () => {
   })
 
   it("will prefer last ID provided", () => {
-    const test = Model.new("ID", "ID2");
+    const test = Generic.new("ID", "ID2");
 
     expect(String(test)).toBe("ID2");
   })
@@ -1562,7 +1583,7 @@ describe("new method (static)", () => {
       return willDestroy1;
     });
 
-    const test = Model.new(willCreate1, willCreate2);
+    const test = Generic.new(willCreate1, willCreate2);
 
     expect(willCreate1).toBeCalledTimes(1);
     expect(willCreate2).toBeCalledTimes(1);
@@ -1588,7 +1609,7 @@ describe("new method (static)", () => {
       return willDestroy1;
     });
 
-    const test = Model.new(willCreate1, willCreate2);
+    const test = Generic.new(willCreate1, willCreate2);
 
     expect(willCreate1).toBeCalledTimes(1);
     expect(willCreate2).not.toBeCalled();
@@ -1606,7 +1627,7 @@ describe("new method (static)", () => {
 
   it("will throw if destroyed before ready", () => {
     const promise = mockPromise();
-    const test = Model.new("ID", () => promise);
+    const test = Generic.new("ID", () => promise);
 
     expect(() => test.set(null)).toThrowError(
       "Tried to destroy ID but not fully initialized."
@@ -1618,7 +1639,7 @@ describe("new method (static)", () => {
   it("will ingore promise from callback", () => {
     const didCreate = jest.fn(() => Promise.resolve());
   
-    Model.new(didCreate);
+    Generic.new(didCreate);
   
     expect(didCreate).toBeCalledTimes(1);
   })
@@ -1629,7 +1650,7 @@ describe("new method (static)", () => {
     const expects = new Error("Model callback rejected.");
 
     const init = jest.fn(() => Promise.reject(expects));
-    const test = Model.new("ID", init);
+    const test = Generic.new("ID", init);
   
     expect(init).toBeCalledTimes(1);
     

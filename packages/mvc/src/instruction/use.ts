@@ -5,12 +5,12 @@ const INSTRUCT = new Map<symbol, Model.Instruction>();
 
 function use<T = any>(instruction: Model.Instruction): T;
 
-function use <T extends Model> (Type: Model.Type<T>, required: false): T | undefined;
+function use <T extends Model> (Type: Model.Init<T>, required: false): T | undefined;
 
-function use <T extends Model> (Type: Model.Type<T>, ready?: (i: T) => void): T;
+function use <T extends Model> (Type: Model.Init<T>, ready?: (i: T) => void): T;
 
 function use(
-  arg1: Model.Type | Model.Instruction,
+  arg1: Model.Init | Model.Instruction,
   arg2?: ((i: Model) => void) | boolean){
 
   const token = Symbol("instruction");

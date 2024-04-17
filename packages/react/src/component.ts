@@ -2,8 +2,10 @@ import { Model } from '@expressive/mvc';
 import { ReactNode } from 'react';
 
 export function createComponent<T extends Model, P extends Model.Assign<T>> (
-  this: Model.Type<T>,
+  this: Model.Init<T>,
   render: (using: T & P) => ReactNode){
+
+  Model.is(this);
 
   const Component = ((inputProps: P) => {
     const props = this.use(inputProps, true) as T & P;

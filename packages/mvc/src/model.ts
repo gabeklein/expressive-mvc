@@ -26,7 +26,12 @@ type MaybeAsync<T> = T | Promise<T>;
 
 declare namespace Model {
   /** Any type of Model, using own class constructor as its identifier. */
-  type Type<T extends Model = Model> = (abstract new (...args: any[]) => T) & typeof Model;
+  type Type<T extends Model = Model> =
+    (abstract new (...args: any[]) => T) & typeof Model;
+
+  /** A Model constructor, but which is not abstract. */
+  type Init<T extends Model = Model> =
+    (new (...args: Model.Args<T>) => T) & Omit<typeof Model, never>;
 
   /**
    * Model constructor callback - is called when Model finishes intializing.
@@ -132,7 +137,7 @@ interface Model {
   is: this;
 }
 
-class Model {
+abstract class Model {
   constructor(...args: Model.Args){
     const state = {} as Record<string | number | symbol, unknown>;
     let Type = this.constructor as Model.Type;
@@ -420,8 +425,9 @@ class Model {
    * 
    * @param args - arguments sent to constructor
    */
-  static new <T extends Model> (this: Model.Type<T>, ...args: Model.Args<T>){
-    const instance = new this(...args) as T;
+  static new <T extends Model> (this: Model.Init<T>, ...args: Model.Args<T>){
+    Model.is(this);
+    const instance = new this(...args);
     emit(instance, true);
     return instance;
   }
@@ -432,7 +438,10 @@ class Model {
    * If so, language server will make available all static
    * methods and properties of this class.
    */
-  static is<T extends Model.Type> (this: T, maybe: any): maybe is T {
+  static is<T extends Model.Type> (this: T, maybe: unknown): maybe is T {
+    if(maybe === Model)
+      throw new Error("Model is abstract and not a valid type.");
+
     return typeof maybe == "function" && maybe.prototype instanceof this;
   }
 

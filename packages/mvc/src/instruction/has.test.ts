@@ -22,7 +22,6 @@ describe("recipient", () => {
 
     class Child2 extends Child {}
     class Parent extends Model {
-      // @ts-expect-error
       children = has(Child);
     }
   

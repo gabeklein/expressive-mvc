@@ -3,7 +3,7 @@ import { Context, Model } from '@expressive/mvc';
 import { useShared, useEffect, useState } from './useContext';
 
 export function useLocal <T extends Model> (
-  this: Model.Type<T>,
+  this: Model.Init<T>,
   argument?: Model.Assign<T> | Model.Callback<T>,
   repeat?: boolean){
 
@@ -12,6 +12,8 @@ export function useLocal <T extends Model> (
     let enabled: boolean | undefined;
     let context: Context;
     let local: T;
+
+    Model.is(this);
 
     const instance = new this(argument as Model.Argument);
     const release = instance.get(current => {

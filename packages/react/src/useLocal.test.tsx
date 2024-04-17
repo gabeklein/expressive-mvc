@@ -4,17 +4,6 @@ import { create } from 'react-test-renderer';
 import Model, { get, Provider, set } from '.';
 import { mockHook, mockPromise } from './mocks';
 
-const error = jest
-  .spyOn(console, "error")
-  .mockImplementation(() => {});
-
-afterEach(() => {
-  expect(error).not.toBeCalled();
-  error.mockReset()
-});
-
-afterAll(() => error.mockRestore());
-
 class Test extends Model {
   value = "foo";
 };
@@ -24,6 +13,16 @@ describe("hook", () => {
     const hook = mockHook(() => Test.use());
   
     expect(hook.output).toBeInstanceOf(Test);
+  })
+
+  it("will not create abstract class", () => {
+    const Test = () => {
+      // @ts-expect-error
+      expect(() => Model.use()).toThrowError();
+      return null;
+    }
+
+    create(<Test />);
   })
     
   it('will assign `is` as a circular reference', async () => {

@@ -19,6 +19,15 @@ it("will create instance in context", () => {
   expect(context.get(Example)).toBeInstanceOf(Example);
 })
 
+it("will not create base Model", () => {
+  // @ts-expect-error
+  const attempt = () => new Context({ Model });
+
+  expect(attempt).toThrowError(
+    "Model is abstract and not a valid type."
+  );
+})
+
 it("will access upstream controller", () => {
   const example = Example.new();
 
