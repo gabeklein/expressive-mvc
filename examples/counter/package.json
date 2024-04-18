@@ -6,6 +6,5 @@
     "@expressive/react": "^0.51.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
-  },
-  "version": "0.51.0"
+  }
 }
