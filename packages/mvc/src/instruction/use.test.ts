@@ -1,3 +1,4 @@
+import { Context } from '../context';
 import { Model } from '../model';
 import { use } from './use';
 
@@ -51,10 +52,9 @@ describe("model", () => {
     }
   
     const mockInit = jest.fn();
-    const test = Test.new();
 
-    expect(mockInit).not.toBeCalled();
-    expect(test.child.value).toBe("foo");
+    Test.new();
+
     expect(mockInit).toBeCalledTimes(1);
   })
 
@@ -82,9 +82,15 @@ describe("model", () => {
     const callback = jest.fn();
     const parent = Parent.new();
 
-    parent.child = new Child();
+    // Initial assignment
     expect(callback).toBeCalledTimes(1);
+
+    parent.child = new Child();
+    expect(callback).toBeCalledTimes(2);
   })
+
+  it.todo("will run callback after assign completes");
+  it.todo("will run cleanup on reassign");
   
   it('will only reassign a matching model', () => {
     class Child extends Model {}
@@ -119,4 +125,15 @@ describe("model", () => {
 
     expect(parent.child).toBeUndefined();
   })
+
+  it("will be provided by parent", () => {
+    class Child extends Model {};
+    class Test extends Model {
+      child = use(Child);
+    }
+  
+    const context = new Context({ Test });
+  
+    expect(context.get(Child)).toBeInstanceOf(Child);
+  });
 })

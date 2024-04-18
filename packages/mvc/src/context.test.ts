@@ -28,6 +28,27 @@ it("will not create base Model", () => {
   );
 })
 
+it("will include children of Model", () => {
+  class Test extends Model {
+    example = new Example();
+  }
+
+  const context = new Context({ Test });
+
+  expect(context.get(Example)).toBeInstanceOf(Example);
+});
+
+it("will not include initialized child", () => {
+  class Test extends Model {
+    // this will be initialized before parent is
+    example = Example.new();
+  }
+
+  const context = new Context({ Test });
+
+  expect(context.get(Example)).toBeUndefined();
+});
+
 it("will access upstream controller", () => {
   const example = Example.new();
 

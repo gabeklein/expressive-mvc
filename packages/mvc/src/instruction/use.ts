@@ -1,4 +1,4 @@
-import { fetch, Model, STATE, update } from '../model';
+import { fetch, Model, STATE, PARENT, update } from '../model';
 import { watch } from '../control';
 
 const INSTRUCT = new Map<symbol, Model.Instruction>();
@@ -19,7 +19,11 @@ function use(
     const type = arg1;
 
     arg1 = (key, subject) => {
-      const desc: Model.Descriptor = { set, get };
+      const value = new type();
+      const desc: Model.Descriptor = { set };
+
+      set(value);
+      PARENT.set(value, subject);
 
       function set(next: Model | undefined){
         if(next ? !(next instanceof type) : arg2 !== false)
@@ -31,12 +35,6 @@ function use(
           arg2(next);
   
         return false;
-      }
-  
-      function get(){
-        set(new type());
-        desc.get = arg2 !== false;
-        return fetch(subject, key);
       }
   
       return desc;

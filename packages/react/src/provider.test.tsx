@@ -1,7 +1,7 @@
 import React, { Fragment, Suspense } from 'react';
 import { create } from 'react-test-renderer';
 
-import { get, Model, set } from '.';
+import { get, Model, set, use } from '.';
 import { mockAsync } from './mocks';
 import { Provider } from './provider';
 import { Consumer } from './consumer';
@@ -20,6 +20,21 @@ describe("component", () => {
         <Consumer for={Foo} get={i => expect(i).toBeInstanceOf(Foo)} />
       </Provider>
     );
+  })
+
+  it("will provide children of given model", () => {
+    class Foo extends Model {
+      value?: string = undefined;
+    }
+    class Bar extends Model {
+      foo = use(Foo);
+    }
+
+    create(
+      <Provider for={Bar}>
+        <Consumer for={Foo} get={i => expect(i).toBeInstanceOf(Foo)} />
+      </Provider>
+    )
   })
   
   it("will destroy instance of given model", async () => {
