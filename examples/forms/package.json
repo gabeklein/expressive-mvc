@@ -1,5 +1,4 @@
 {
-  "name": "@example/forms",
   "private": true,
   "main": "src/index.tsx",
   "module": "src/Demo.tsx",
