@@ -13,7 +13,6 @@
 		"push": "lerna publish"
 	},
 	"devDependencies": {
-		"@rollup/plugin-commonjs": "^22.0.0",
 		"@swc/core": "^1.3.80",
 		"@swc/jest": "^0.2.29",
 		"@types/jest": "^27.4.1",
