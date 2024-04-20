@@ -53,7 +53,7 @@ declare namespace Model {
   /** Any valid key for controller, including but not limited to Field<T>. */
   type Event<T> = Field<T> | (string & {}) | number | symbol;
 
-  /** Object overlay which may be used to override values and methods on a model. */
+  /** Object overlay to override values and methods on a model. */
   type Assign<T> = {
     [K in Exclude<keyof T, keyof Model>]?:
       T[K] extends (...args: infer A) => infer R 
@@ -116,8 +116,10 @@ declare namespace Model {
    */
   type Instruction<T = any, M extends Model = any> =
     // TODO: Should this allow for numbers/symbol properties?
-    (this: M, key: Field<M> & string, thisArg: M, state: State<M>) =>
+    (this: M, key: Extract<Field<M>, string>, thisArg: M, state: State<M>) =>
       Descriptor<T> | Getter<T> | void;
+
+  // TODO: VoidInstruction
 
   type Getter<T> = (source: Model) => T;
   type Setter<T> = (value: T, previous: T) => boolean | void | (() => T);
@@ -378,9 +380,17 @@ abstract class Model {
    * @param value - value to update property with (if the same as current, no update will occur)
    * @param silent - if true, will not notify listeners of an update
    */
-  set<K extends string>(key: K, value?: Model.Value<this, K>, silent?: boolean): PromiseLike<Model.Event<this>[]> | undefined;
+  set<K extends string>(
+    key: K,
+    value?: Model.Value<this, K>,
+    silent?: boolean
+  ): PromiseLike<Model.Event<this>[]> | undefined;
 
-  set(arg1?: Model.OnEvent<this> | Model.Assign<this> | string | number | symbol | null, arg2?: unknown, arg3?: boolean){
+  set(
+    arg1?: Model.OnEvent<this> | Model.Assign<this> | string | number | symbol | null,
+    arg2?: unknown,
+    arg3?: boolean){
+
     const self = this.is;
 
     if(typeof arg1 == "function")
@@ -389,8 +399,10 @@ abstract class Model {
           return arg1.call(self, key, self);
       })
 
-    if(arg1 === null)
-      return emit(this, null);
+    if(arg1 === null){
+      emit(this, null);
+      return
+    }
 
     if(typeof arg1 == "object")
       assign(self, arg1);
@@ -414,15 +426,18 @@ abstract class Model {
       }
   }
 
-  /** Iterate over managed properties in this instance of Model. */
+  /**
+   * Iterate over managed properties in this instance of Model.
+   * Yeilds the key and underlying value for each property.
+   */
   [Symbol.iterator](): Iterator<[string, unknown]> {
     return Object.entries(STATE.get(this.is)!)[Symbol.iterator]();
   }
 
   /**
-   * Creates a new instance of this controller.
+   * Create and activate a new instance of this controller.
    * 
-   * **Important** - Use instead of `new this(...)` as this method also activates state.
+   * **Important** - Unlike `new this(...)` - this method also activates state.
    * 
    * @param args - arguments sent to constructor
    */
