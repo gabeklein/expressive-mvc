@@ -1,3 +1,5 @@
+import { describe, expect, it, vi } from 'vitest';
+
 import { Context } from '../context';
 import { mockError, mockPromise, mockWarn } from '../mocks';
 import { Model } from '../model';
@@ -53,7 +55,7 @@ describe("fetch mode", () => {
 
     const test = Test.new();
     const remote = Remote.new();
-    const effect = jest.fn();
+    const effect = vi.fn();
     
     new Context({ remote, test });
 
@@ -75,8 +77,8 @@ describe("fetch mode", () => {
     }
 
     const remote = Remote.new();
-    const effect = jest.fn();
-    const compute = jest.fn();
+    const effect = vi.fn();
+    const compute = vi.fn();
 
     class Test extends Model {
       value = get(Remote, ({ remote }) => {
@@ -121,7 +123,7 @@ describe("fetch mode", () => {
     }
   
     const foo = Foo.new();
-    const mockEffect = jest.fn();
+    const mockEffect = vi.fn();
     let promise = mockPromise();
     
     expect(foo.bar.foo).toBe(foo);
@@ -225,7 +227,7 @@ describe("fetch mode", () => {
     }
   
     const { child } = Parent.new();
-    const effect = jest.fn((it: Child) => {
+    const effect = vi.fn((it: Child) => {
       void it.value;
       void it.parent.value;
     })
@@ -340,7 +342,7 @@ describe("compute mode", () => {
       });
     }
   
-    const didCompute = jest.fn();
+    const didCompute = vi.fn();
     const test = Test.new();
   
     expect(test.plusOne).toBe(1);
@@ -369,8 +371,8 @@ describe("compute mode", () => {
   })
   
   it('will be squashed with regular updates', async () => {
-    const exec = jest.fn();
-    const emit = jest.fn();
+    const exec = vi.fn();
+    const emit = vi.fn();
   
     class Inner extends Model {
       value = 1;
@@ -554,8 +556,8 @@ describe("compute mode", () => {
     })
 
     it("will not trigger itself", async () => {
-      const didGetOldValue = jest.fn();
-      const didGetNewValue = jest.fn();
+      const didGetOldValue = vi.fn();
+      const didGetNewValue = vi.fn();
 
       class Test extends Model {
         input = 1;
@@ -653,7 +655,7 @@ describe("compute mode", () => {
     })
 
     it("will provide key and self to factory", () => {
-      const factory = jest.fn<"foo", [string, Test]>(() => "foo");
+      const factory = vi.fn<[string, Test], "foo">(() => "foo");
 
       class Test extends Model {
         fooBar = get(factory);

@@ -1,3 +1,4 @@
+import { expect, vi, it, describe } from 'vitest';
 import { effect } from './control';
 import { set } from './instruction/set';
 import { use } from './instruction/use';
@@ -6,8 +7,8 @@ import { Model } from './model';
 
 describe("instruction", () => {
   class Test extends Model {
-    didRunInstruction = jest.fn();
-    didRunGetter = jest.fn();
+    didRunInstruction = vi.fn();
+    didRunGetter = vi.fn();
 
     property = use((key) => {
       this.didRunInstruction(key);
@@ -57,7 +58,7 @@ describe("instruction", () => {
 
   describe("set", () => {
     it("will prevent update if returns false", async () => {
-      const didSetValue = jest.fn((newValue) => {
+      const didSetValue = vi.fn((newValue) => {
         if(newValue == "ignore")
           return false;
       });
@@ -125,7 +126,7 @@ describe("instruction", () => {
       }
 
       const test = Test.new();
-      const didUpdate = jest.fn();
+      const didUpdate = vi.fn();
 
       test.set(didUpdate);
 
@@ -148,7 +149,7 @@ describe("instruction", () => {
       }
 
       const test = Test.new();
-      const didUpdate = jest.fn();
+      const didUpdate = vi.fn();
 
       test.set(didUpdate);
 
@@ -162,8 +163,8 @@ describe("instruction", () => {
   })
 
   it("will run getter upon access", () => {
-    const mockAccess = jest.fn((_subscriber) => "foobar");
-    const mockApply = jest.fn((_key) => mockAccess);
+    const mockAccess = vi.fn((_subscriber) => "foobar");
+    const mockApply = vi.fn((_key) => mockAccess);
 
     class Test extends Model {
       property = use(mockApply);
@@ -178,7 +179,7 @@ describe("instruction", () => {
   })
 
   it("will pass subscriber if within one", () => {
-    const didGetValue = jest.fn();
+    const didGetValue = vi.fn();
 
     class Test extends Model {
       property = use(() => didGetValue)
@@ -196,7 +197,7 @@ describe("instruction", () => {
 
 describe("effect", () => {
   it("will run after properties", () => {
-    const mock = jest.fn();
+    const mock = vi.fn();
   
     class Test extends Model {
       property = use((_key, _model, state) => {

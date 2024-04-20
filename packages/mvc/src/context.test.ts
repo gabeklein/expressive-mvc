@@ -1,3 +1,4 @@
+import { expect, vi, it, describe } from 'vitest';
 import { Context } from './context';
 import { Model } from './model';
 
@@ -98,7 +99,7 @@ it("will ignore if multiple but same", () => {
 
 it("will destroy modules created by layer", () => {
   class Test extends Model {
-    destroyed = jest.fn();
+    destroyed = vi.fn();
 
     constructor(){
       super();
@@ -145,7 +146,7 @@ describe("include", () => {
   it("will callback once per unique added", () => {
     const foo = Foo.new();
     const bar = Bar.new();
-    const cb = jest.fn();
+    const cb = vi.fn();
 
     const context = new Context();
     
@@ -169,7 +170,7 @@ describe("include", () => {
 
   // This will be made more elegant later.
   it("will hard-reset if inputs differ", () => {
-    const bazDidDie = jest.fn();
+    const bazDidDie = vi.fn();
 
     class Baz extends Model {
       constructor(){

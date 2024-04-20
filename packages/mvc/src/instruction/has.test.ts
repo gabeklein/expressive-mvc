@@ -1,3 +1,4 @@
+import { expect, vi, it, describe } from 'vitest';
 import { Context } from '../context';
 import { Model } from '../model';
 import { has } from './has';
@@ -53,7 +54,7 @@ describe("recipient", () => {
       child = has(Child, gotChild);
     }
   
-    const gotChild = jest.fn();
+    const gotChild = vi.fn();
     const parent = Parent.new();
     const child = Child.new();
   
@@ -68,7 +69,7 @@ describe("recipient", () => {
       children = has(Child, hasChild);
     }
   
-    const hasChild = jest.fn();
+    const hasChild = vi.fn();
     const parent = Parent.new();
     const child1 = Child.new();
     const child2 = Child.new();
@@ -80,8 +81,8 @@ describe("recipient", () => {
   })
   
   it("will remove children which unmount", async () => {
-    const didRemove = jest.fn();
-    const didAdd = jest.fn(() => didRemove);
+    const didRemove = vi.fn();
+    const didAdd = vi.fn(() => didRemove);
   
     class Child extends Model {
       value = 0;
@@ -124,7 +125,7 @@ describe("recipient", () => {
       children = has(Child, hasChild);
     }
   
-    const hasChild = jest.fn(() => false);
+    const hasChild = vi.fn(() => false);
     const parent = Parent.new();
     const context = new Context({ parent });
 
@@ -149,7 +150,7 @@ describe("recipient", () => {
       child = has(Child, gotChild);
     }
   
-    const gotChild = jest.fn();
+    const gotChild = vi.fn();
     const parent = Parent.new();
     const child = Child.new();
 
@@ -167,7 +168,7 @@ describe("recipient", () => {
       });
     }
 
-    const gotTest = jest.fn();
+    const gotTest = vi.fn();
     const test = Test.new("1");
     const test2 = Test.new("2");
     const test3 = Test.new("3");
@@ -188,7 +189,7 @@ describe("recipient", () => {
       baz = has(Baz, gotBaz);
     }
   
-    const gotBaz = jest.fn();
+    const gotBaz = vi.fn();
     const foo = Foo.new();
     const baz = Baz.new();
   
@@ -264,7 +265,7 @@ describe("target", () => {
       child = has(Child);
     }
   
-    const gotParent = jest.fn();
+    const gotParent = vi.fn();
     const parent = Parent.new();
     const child = Child.new();
   
@@ -281,8 +282,8 @@ describe("target", () => {
       children = has(Child, gotChild);
     }
   
-    const gotChild = jest.fn();
-    const gotParent = jest.fn(() => {
+    const gotChild = vi.fn();
+    const gotParent = vi.fn(() => {
       expect(gotChild).not.toHaveBeenCalled();
     });
 
@@ -303,8 +304,8 @@ describe("target", () => {
       children = has(Child, gotChild);
     }
   
-    const gotChild = jest.fn();
-    const gotParent = jest.fn(() => false);
+    const gotChild = vi.fn();
+    const gotParent = vi.fn(() => false);
 
     const parent = Parent.new();
     const child = Child.new();
@@ -325,7 +326,7 @@ describe("target", () => {
       children = has(Child);
     }
   
-    const removedParent = jest.fn();
+    const removedParent = vi.fn();
 
     const parent = Parent.new();
     const child = Child.new();

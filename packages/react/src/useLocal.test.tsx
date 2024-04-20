@@ -49,7 +49,7 @@ describe("hook", () => {
   })
   
   it("will run callback", () => {
-    const callback = jest.fn();
+    const callback = vi.fn();
   
     mockHook(() => Test.use(callback));
   
@@ -124,7 +124,7 @@ describe("callback argument", () => {
   }
 
   it("will run callback once", async () => {
-    const callback = jest.fn();
+    const callback = vi.fn();
 
     const hook = mockHook(() => Test.use(callback));
     expect(callback).toHaveBeenCalledTimes(1);
@@ -136,7 +136,7 @@ describe("callback argument", () => {
   })
 
   it("will run callback on every render", async () => {
-    const callback = jest.fn();
+    const callback = vi.fn();
     const hook = mockHook(() => {
       Test.use(callback, true);
     });
@@ -181,8 +181,8 @@ describe("callback argument", () => {
   });
 
   it("will run argument before effects", () => {
-    const effect = jest.fn();
-    const argument = jest.fn(() => {
+    const effect = vi.fn();
+    const argument = vi.fn(() => {
       expect(effect).not.toHaveBeenCalled();
     });
 
@@ -214,7 +214,7 @@ describe("props argument", () => {
       bar: "bar"
     }
   
-    const didRender = jest.fn();
+    const didRender = vi.fn();
   
     const hook = mockHook(() => {
       didRender();
@@ -317,7 +317,7 @@ describe("props argument", () => {
   })
 
   it("will trigger set instruction", () => {
-    const mock = jest.fn();
+    const mock = vi.fn();
 
     class Test extends Model {
       foo = set("foo", mock);
