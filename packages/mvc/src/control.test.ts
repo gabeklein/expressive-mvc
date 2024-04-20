@@ -9,7 +9,7 @@ describe("instruction", () => {
     didRunInstruction = jest.fn();
     didRunGetter = jest.fn();
 
-    property: unknown = use((key) => {
+    property = use((key) => {
       this.didRunInstruction(key);
 
       return () => {

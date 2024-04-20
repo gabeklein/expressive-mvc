@@ -15,9 +15,7 @@ describe("instruction", () => {
   
   it("will throw error if set is false", () => {
     class Test extends Model {
-      value = use(() => {
-        return ({ set: false });
-      });
+      value = use(() => ({ set: false }));
     }
   
     const test = Test.new('ID');

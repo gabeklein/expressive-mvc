@@ -117,16 +117,18 @@ declare namespace Model {
   type Instruction<T = any, M extends Model = any> =
     // TODO: Should this allow for numbers/symbol properties?
     (this: M, key: Extract<Field<M>, string>, thisArg: M, state: State<M>) =>
-      Descriptor<T> | Getter<T> | void;
+      Descriptor<T> | ((source: M) => T) | void;
 
-  // TODO: VoidInstruction
+  type VoidInstruction<M extends Model = any> =
+    (this: M, key: Extract<Field<M>, string>, thisArg: M, state: State<M>) =>
+      ((source: Model) => void) | void;
 
   type Getter<T> = (source: Model) => T;
   type Setter<T> = (value: T, previous: T) => boolean | void | (() => T);
 
   type Descriptor<T = any> = {
     get?: Getter<T> | boolean;
-    set?: Setter<T> | false;
+    set?: Setter<T> | boolean;
     enumerable?: boolean;
     value?: T;
   }
