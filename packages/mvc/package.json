@@ -28,5 +28,10 @@
     "prebuild": "rm -rf dist",
     "preversion": "npm run test && npm run build"
   },
+  "devDependencies": {
+    "jest": "^27.0.6",
+    "tsup": "^8.0.2",
+    "typescript": "^4.9.5"
+  },
   "version": "0.51.0"
 }
