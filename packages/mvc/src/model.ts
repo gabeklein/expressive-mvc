@@ -119,10 +119,6 @@ declare namespace Model {
     (this: M, key: Extract<Field<M>, string>, thisArg: M, state: State<M>) =>
       Descriptor<T> | ((source: M) => T) | void;
 
-  type VoidInstruction<M extends Model = any> =
-    (this: M, key: Extract<Field<M>, string>, thisArg: M, state: State<M>) =>
-      ((source: Model) => void) | void;
-
   type Getter<T> = (source: Model) => T;
   type Setter<T> = (value: T, previous: T) => boolean | void | (() => T);
 

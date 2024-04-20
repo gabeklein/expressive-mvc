@@ -3,9 +3,7 @@ import { watch } from '../control';
 
 const INSTRUCT = new Map<symbol, Model.Instruction>();
 
-function use (instruction: Model.VoidInstruction): unknown;
-
-function use <T> (instruction: Model.Instruction<T>): T;
+function use <T> (instruction: Model.Instruction<T>): T extends void ? unknown : T;
 
 function use <T extends Model> (Type: Model.Init<T>, required: false): T | undefined;
 
