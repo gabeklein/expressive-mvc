@@ -15,7 +15,7 @@ function has <T extends Model> (
   arg1?: Model.Type<T> | has.Callback<Model>,
   arg2?: has.Callback<T>){
 
-  return use<T>((key, subject) => {
+  return use<T[]>((key, subject) => {
     const applied = new Set<Model>();
     const update = () => {
       subject.set(key, Object.freeze(Array.from(applied)));

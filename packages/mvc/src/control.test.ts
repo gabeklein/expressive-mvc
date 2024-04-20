@@ -9,7 +9,7 @@ describe("instruction", () => {
     didRunInstruction = jest.fn();
     didRunGetter = jest.fn();
 
-    property = use((key) => {
+    property: unknown = use((key) => {
       this.didRunInstruction(key);
 
       return () => {
@@ -20,7 +20,7 @@ describe("instruction", () => {
 
   it("will use symbol as placeholder", () => {
     const { property } = new Test();
-    const { description } = property;
+    const { description } = property as symbol;
 
     expect(typeof property).toBe("symbol");
     expect(description).toBe("instruction");

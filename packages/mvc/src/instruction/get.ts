@@ -65,7 +65,7 @@ function get<R, T extends Model>(
   arg0: T | get.Factory<R, T> | Type<T>,
   arg1?: get.Function<R, T> | boolean){
 
-  return use<R>((key, subject, state) => {
+  return use((key, subject, state) => {
     let from = subject;
 
     if(typeof arg0 == "symbol")
