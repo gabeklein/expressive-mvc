@@ -154,7 +154,8 @@ abstract class Model {
         NAMES.set(this, arg);
 
     while(true){
-      new Set(NOTIFY.get(Type)).forEach(x => addListener(this, x));
+      for(const cb of NOTIFY.get(Type) || [])
+        addListener(this, cb);
 
       if(Type === Model)
         break;
