@@ -165,26 +165,23 @@ abstract class Model {
     addListener(this, () => {
       let done: Set<() => void> | undefined;
 
-      (async () => {
-        const cleanup = new Set<() => void>();
-          
-        for(const arg of args){
-          let use = typeof arg == "function" ? arg.call(this, this) : arg;
-  
-          if(use instanceof Promise)
-            use = await use.catch(err => {
-              console.error(`Async error in constructor for ${this}:`);
-              console.error(err);
-            });
+      const gc = args.map(async arg => {
+        let use = typeof arg == "function"
+          ? arg.call(this, this)
+          : arg;
 
-          if(typeof use == "object")
-            assign(this, use);
-          else if(typeof use == "function")
-            cleanup.add(use);
-        }
+        if(use instanceof Promise)
+          use = await use.catch(err => {
+            console.error(`Async error in constructor for ${this}:`);
+            console.error(err);
+          });
 
-        done = cleanup;
-      })();
+        if(typeof use == "function")
+          return use;
+
+        if(typeof use == "object")
+          assign(this, use);
+      });
 
       for(const key in this){
         const desc = Object.getOwnPropertyDescriptor(this, key)!;
