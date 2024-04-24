@@ -128,6 +128,8 @@ declare namespace Model {
     enumerable?: boolean;
     value?: T;
   }
+
+  function foo<T extends Model>(this: T, x: number): number;
 }
 
 interface Model {
@@ -136,90 +138,12 @@ interface Model {
    * to keep write access to `this` after a destructure. You can use it to read variables silently as well.
    **/
   is: this;
-}
 
-abstract class Model {
-  constructor(...args: Model.Args){
-    const state = {} as Record<string | number | symbol, unknown>;
-    let Type = this.constructor as Model.Type;
-    
-    bindMethods(Type);
-    define(this, "is", { value: this });
-
-    STATE.set(this, state);
-    NAMES.set(this, `${Type}-${uid()}`);
-
-    for(const arg of args)
-      if(typeof arg == "string")
-        NAMES.set(this, arg);
-
-    while(true){
-      for(const cb of NOTIFY.get(Type) || [])
-        addListener(this, cb);
-
-      if(Type === Model)
-        break;
-
-      Type = Object.getPrototypeOf(Type);
-    }
-
-    addListener(this, () => {
-      let done: Set<() => void> | undefined;
-
-      (async () => {
-        const cleanup = new Set<() => void>();
-          
-        for(const arg of args){
-          let use = typeof arg == "function" ? arg.call(this, this) : arg;
-  
-          if(use instanceof Promise)
-            use = await use.catch(err => {
-              console.error(`Async error in constructor for ${this}:`);
-              console.error(err);
-            });
-
-          if(typeof use == "object")
-            assign(this, use);
-          else if(typeof use == "function")
-            cleanup.add(use);
-        }
-
-        done = cleanup;
-      })();
-
-      for(const key in this){
-        const desc = Object.getOwnPropertyDescriptor(this, key)!;
-    
-        if("value" in desc){
-          update(this, key, desc.value, true);
-          define(this, key, {
-            configurable: false,
-            set: (x) => update(this, key, x),
-            get(){
-              return watch(this, key, state[key]);
-            }
-          });
-        }
-      }
-
-      if(!PARENT.has(this))
-        PARENT.set(this, null);
-    
-      addListener(this, () => {
-        if(!done)
-          throw new Error(`Tried to destroy ${this} but not fully initialized.`);
-
-        for(const [_, value] of this)
-          if(value instanceof Model && PARENT.get(value) === this)
-            value.set(null);
-
-        done.forEach(x => x());
-        Object.freeze(state);
-      }, null);
-    
-      return null;
-    });
-  }
+  /**
+  * Iterate over managed properties in this instance of Model.
+  * Yeilds the key and underlying value for each property.
+  */
+  [Symbol.iterator](): Iterator<[string, unknown]>;
 
   /** Pull current values from state. Flattens all models and exotic values recursively. */
   get(): Model.State<this>;
@@ -266,62 +190,6 @@ abstract class Model {
    */
   get(status: null, callback: () => void): () => void;
 
-  get(arg1?: Model.Effect<this> | string | null, arg2?: boolean | Function){
-    const self = this.is;
-
-    if(typeof arg1 == "function"){
-      let pending = new Set<Model.Event<this>>();
-
-      return effect(self, (state) => {
-        const cb = arg1.call(state, state, pending);
-
-        return cb === null ? cb : ((update) => {
-          pending = PENDING.get(self)!;
-          if(typeof cb == "function")
-            return cb(update);
-        })
-      });
-    }
-
-    if(arg1 === undefined){
-      const values = {} as any;
-      const current = !EXPORT && (EXPORT = new Map([[self, values]]));
-
-      type Exportable = Iterable<[string, { get?: () => any }]>;
-
-      for(let [key, value] of self as Exportable){
-        if(EXPORT.has(value))
-          value = EXPORT.get(value);
-        else if(value && typeof value.get === "function")
-          EXPORT.set(value, value = value.get());
-
-        values[key] = value;
-      }
-
-      if(current)
-        EXPORT = undefined;
-
-      return Object.freeze(values);
-    }
-
-    if(typeof arg2 == "function"){
-      if(arg1 === null)
-        return addListener(self, arg2.bind(this, this), null);
-
-      const state = STATE.get(self)!;
-
-      if(arg1 in state)
-        arg2.call(this, state[arg1], arg1, this)
-
-      return addListener(self, () => {
-        arg2.call(this, arg1 in state ? state[arg1] : arg1, arg1, this)
-      }, arg1)
-    }
-
-    return arg1 === null
-      ? Object.isFrozen(STATE.get(self))
-      : fetch(self, arg1, arg2);
-  }
 
   /**
    * Get update in progress.
@@ -384,53 +252,92 @@ abstract class Model {
     value?: Model.Value<this, K>,
     silent?: boolean
   ): PromiseLike<Model.Event<this>[]> | undefined;
+}
 
-  set(
-    arg1?: Model.OnEvent<this> | Model.Assign<this> | string | number | symbol | null,
-    arg2?: unknown,
-    arg3?: boolean){
+abstract class Model {
+  constructor(...args: Model.Args){
+    const state = {} as Record<string | number | symbol, unknown>;
+    let Type = this.constructor as Model.Type;
+    
+    bindMethods(Type);
+    define(this, "is", { value: this });
 
-    const self = this.is;
+    STATE.set(this, state);
+    NAMES.set(this, `${Type}-${uid()}`);
 
-    if(typeof arg1 == "function")
-      return addListener(self, key => {
-        if(typeof key == "string")
-          return arg1.call(self, key, self);
-      })
+    while(true){
+      for(const cb of NOTIFY.get(Type) || [])
+        addListener(this, cb);
 
-    if(arg1 === null){
-      emit(this, null);
-      return
+      if(Type === Model)
+        break;
+
+      Type = Object.getPrototypeOf(Type);
     }
 
-    if(typeof arg1 == "object")
-      assign(self, arg1);
-    else if(arg1 == undefined)  
-      emit(this, true);
-    else if(1 in arguments)
-      update(self, arg1, arg2, arg3);
-    else
-      push(self, arg1);
+    args = args.flat().filter(arg => {
+      if(typeof arg != "string")
+        return true;
 
-    if(PENDING.has(self))
-      return <PromiseLike<Model.Event<this>[]>> {
-        then: (res) => new Promise<any>(res => {
-          const remove = addListener(self, key => {
-            if(key !== true){
-              remove();
-              return res.bind(null, Array.from(PENDING.get(self)!));
+      NAMES.set(this, arg);
+    })
+
+    addListener(this, () => {
+      let done: Set<() => void> | undefined;
+
+      if(!PARENT.has(this))
+        PARENT.set(this, null);
+
+      (async () => {
+        const cleanup = new Set<() => void>();
+          
+        for(const arg of args){
+          let use = typeof arg == "function" ? arg.call(this, this) : arg;
+  
+          if(use instanceof Promise)
+            use = await use.catch(err => {
+              console.error(`Async error in constructor for ${this}:`);
+              console.error(err);
+            });
+
+          if(typeof use == "object")
+            assign(this, use);
+          else if(typeof use == "function")
+            cleanup.add(use);
+        }
+
+        done = cleanup;
+      })();
+
+      for(const key in this){
+        const desc = Object.getOwnPropertyDescriptor(this, key)!;
+    
+        if("value" in desc){
+          update(this, key, desc.value, true);
+          define(this, key, {
+            configurable: false,
+            set: (x) => update(this, key, x),
+            get(){
+              return watch(this, key, state[key]);
             }
           });
-        }).then(res)
+        }
       }
-  }
+    
+      addListener(this, () => {
+        if(!done)
+          throw new Error(`Tried to destroy ${this} but not fully initialized.`);
 
-  /**
-   * Iterate over managed properties in this instance of Model.
-   * Yeilds the key and underlying value for each property.
-   */
-  [Symbol.iterator](): Iterator<[string, unknown]> {
-    return Object.entries(STATE.get(this.is)!)[Symbol.iterator]();
+        for(const [_, value] of this)
+          if(value instanceof Model && PARENT.get(value) === this)
+            value.set(null);
+
+        done.forEach(x => x());
+        Object.freeze(state);
+      }, null);
+    
+      return null;
+    });
   }
 
   /**
@@ -477,9 +384,14 @@ abstract class Model {
   }
 }
 
-define(Model.prototype, "toString", {
-  value(){
-    return NAMES.get(this.is);
+Object.defineProperties(Model.prototype, {
+  [Symbol.iterator]: { value: values },
+  "get": { value: get },
+  "set": { value: set },
+  "toString": {
+    value(){
+      return NAMES.get(this.is);
+    }
   }
 });
 
@@ -488,6 +400,112 @@ define(Model, "toString", {
     return this.name;
   }
 });
+
+function values(this: Model){
+  return Object.entries(STATE.get(this.is)!)[Symbol.iterator]();
+}
+
+function get<T extends Model>(
+  this: T,
+  arg1?: Model.Effect<T> | string | null,
+  arg2?: boolean | Function){
+
+  const self = this.is;
+
+  if(typeof arg1 == "function"){
+    let pending = new Set<Model.Event<T>>();
+
+    return effect(self, (state) => {
+      const cb = arg1.call(state, state, pending);
+
+      return cb === null ? cb : ((update) => {
+        pending = PENDING.get(self)!;
+        if(typeof cb == "function")
+          return cb(update);
+      })
+    });
+  }
+
+  if(arg1 === undefined){
+    const values = {} as any;
+    const current = !EXPORT && (EXPORT = new Map([[self, values]]));
+
+    type Exportable = Iterable<[string, { get?: () => any }]>;
+
+    for(let [key, value] of self as Exportable){
+      if(EXPORT.has(value))
+        value = EXPORT.get(value);
+      else if(value && typeof value.get === "function")
+        EXPORT.set(value, value = value.get());
+
+      values[key] = value;
+    }
+
+    if(current)
+      EXPORT = undefined;
+
+    return Object.freeze(values);
+  }
+
+  if(typeof arg2 == "function"){
+    if(arg1 === null)
+      return addListener(self, arg2.bind(this, this), null);
+
+    const state = STATE.get(self)!;
+
+    if(arg1 in state)
+      arg2.call(this, state[arg1], arg1, this)
+
+    return addListener(self, () => {
+      arg2.call(this, arg1 in state ? state[arg1] : arg1, arg1, this)
+    }, arg1)
+  }
+
+  return arg1 === null
+    ? Object.isFrozen(STATE.get(self))
+    : fetch(self, arg1, arg2);
+}
+
+function set<T extends Model>(
+  this: T,
+  arg1?: Model.OnEvent<T> | Model.Assign<T> | string | number | symbol | null,
+  arg2?: unknown,
+  arg3?: boolean){
+
+  const self = this.is;
+
+  if(typeof arg1 == "function")
+    return addListener(self, key => {
+      if(typeof key == "string")
+        return arg1.call(self, key, self);
+    })
+
+  if(arg1 === null){
+    emit(this, null);
+    return
+  }
+
+  if(typeof arg1 == "object")
+    assign(self, arg1);
+  else if(arg1 == undefined)  
+    emit(this, true);
+  else if(1 in arguments)
+    update(self, arg1, arg2, arg3);
+  else
+    push(self, arg1);
+
+  if(PENDING.has(self))
+    return <PromiseLike<Model.Event<T>[]>> {
+      then: (res) => new Promise<any>(res => {
+        const remove = addListener(self, key => {
+          if(key !== true){
+            remove();
+            return res.bind(null, Array.from(PENDING.get(self)!));
+          }
+        });
+      }).then(res)
+    }
+}
 
 function fetch(subject: Model, property: string, required?: boolean){
   const state = STATE.get(subject)!;
@@ -584,42 +602,45 @@ const METHODS = new WeakMap<Model.Type, string[]>([[Model, []]]);
 
 function assign<T extends Model>(to: T, values: Model.Assign<T>){
   const methods = METHODS.get(to.constructor as Model.Type)!;
-  const applicable = new Set(Object.keys(to).concat(methods));
 
   for(const key in values)
-    if(applicable.has(key))
+    if(key in to || methods.includes(key))
       to[key as keyof T] = values[key as Model.Field<T>] as any;
 }
 
-function bindMethods<T extends Model>(type: Model.Type<T>): string[] {
-  let keys = METHODS.get(type);
+function bindMethods<T extends Model>(Type: Model.Type<T>): string[] {
+  let keys = METHODS.get(Type);
 
   if(!keys){
-    METHODS.set(type, keys = bindMethods(Object.getPrototypeOf(type)).slice());
+    METHODS.set(Type,
+      keys = bindMethods(Object.getPrototypeOf(Type)).slice()
+    );
 
-    const desc = Object.getOwnPropertyDescriptors(type.prototype);
+    const prototype = Object.entries(
+      Object.getOwnPropertyDescriptors(Type.prototype)
+    );
 
-    for(const key in desc)
-      if(key != "constructor" && "value" in desc[key]){
-        let { value } = desc[key];
+    for(const [key, { value }] of prototype){
+      if(!value || key == "constructor")
+        continue;
 
-        keys.push(key);
-        Object.defineProperty(type.prototype, key, {
-          set: bind,
-          get(){
-            return this.hasOwnProperty(key) ? value : bind.call(this, value)
-          }
-        });
-      
-        function bind(this: Model, method: Function){
-          const value = method.bind(this.is);
-          
-          METHOD.set(value, method);
-          define(this.is, key, { value, writable: true });
-          
-          return value;
+      keys.push(key);
+      Object.defineProperty(Type.prototype, key, {
+        set: bind,
+        get(){
+          return this.hasOwnProperty(key) ? value : bind.call(this, value)
         }
+      });
+
+      function bind(this: Model, method: Function){
+        const value = method.bind(this.is);
+        
+        METHOD.set(value, method);
+        define(this.is, key, { value, writable: true });
+        
+        return value;
       }
+    }
   }
   
   return keys;
