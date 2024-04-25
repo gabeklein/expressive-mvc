@@ -221,16 +221,19 @@ abstract class Model {
     });
   }
 
-  /** Pull current values from state. Flattens all models and exotic values recursively. */
+  /**
+   * Pull current values from state. Flattens all models and exotic values recursively.
+   * 
+   * @returns Object with all values from this controller.
+   **/
   get(): Model.State<this>;
 
   /**
    * Run a function which will run automatically when accessed values change.
    * 
-   * @param effect - Function to run, and again whenever accessed values change.
-   * If effect returns a function, it will be called when a change occurs (syncronously),
-   * effect is cancelled, or parent controller is destroyed.
-   * 
+   * @param effect Function to run, and again whenever accessed values change.
+   *               If effect returns a function, it will be called when a change occurs (syncronously),
+   *               effect is cancelled, or parent controller is destroyed.
    * @returns Function to cancel listener.
    */
   get(effect: Model.Effect<this>): () => void;
@@ -240,6 +243,7 @@ abstract class Model {
    * 
    * @param key - Property to get value of.
    * @param required - If true, will throw an error if property is not available.
+   * @returns Value of property.
    */
   get<T extends Model.Event<this>>(key: T, required?: boolean): Model.Value<this, T>;
 
@@ -248,12 +252,14 @@ abstract class Model {
    * 
    * @param key - Property to watch for updates.
    * @param callback - Function to call when property is updated.
+   * @returns Function to cancel listener.
    */
   get<T extends Model.Event<this>>(key: T, callback: Model.OnUpdate<this, T>): () => void;
 
   /**
    * Check if model is expired.
    * 
+   * @param status - `null` to check if model is expired.
    * @returns `true` if model is expired, `false` otherwise.
    */
   get(status: null): boolean;
@@ -347,6 +353,8 @@ abstract class Model {
   /**
    * Declare an end to updates. This event is final and will freeze state.
    * This event can be watched for as well, to run cleanup logic and internally will remove all listeners.
+   * 
+   * @param status - `null` to end updates.
    */
   set(status: null): void;
 
@@ -369,6 +377,9 @@ abstract class Model {
   /**
    * Update mulitple properties at once. Merges argument with current state.
    * Properties which are not managed by this controller will be ignored.
+   * 
+   * @param assign - Object with properties to update.
+   * @returns Promise which resolves an array of keys which were updated.
    */
   set(assign: Model.Assign<this>): PromiseLike<Model.Event<this>[]> | undefined;
 
