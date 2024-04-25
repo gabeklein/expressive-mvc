@@ -1,4 +1,4 @@
-import { fetch, Model, STATE, PARENT, update } from '../model';
+import { fetch, Model, STATE, PARENT, update, entries } from '../model';
 import { watch } from '../control';
 
 const INSTRUCT = new Map<symbol, Model.Instruction>();
@@ -45,25 +45,23 @@ function use(
   return token;
 }
 
-Model.on((_, subject) => {
-  const state = STATE.get(subject)!;
-  const props = Object.getOwnPropertyDescriptors(subject);
+Model.on((_, model) => {
+  const state = STATE.get(model)!;
 
-  for(const key in props){
-    const { value } = props[key];
+  for(const { key, value } of entries(model)){
     const instruction = INSTRUCT.get(value);
 
     if(!instruction){
       if(value instanceof Model && key !== "is")
-        update(subject, key, value);
+        update(model, key, value);
 
       continue;
     }
 
     INSTRUCT.delete(value);
-    delete (subject as any)[key];
+    delete (model as any)[key];
 
-    const output = instruction.call(subject, key, subject, state);
+    const output = instruction.call(model, key, model, state);
 
     if(!output)
       continue;
@@ -73,20 +71,20 @@ Model.on((_, subject) => {
     if("value" in desc)
       state[key] = desc.value;
 
-    Object.defineProperty(subject, key, {
+    Object.defineProperty(model, key, {
       enumerable: desc.enumerable !== false,
       get(this: Model){
         return watch(this, key, 
           typeof desc.get == "function"
             ? desc.get(this)
-            : fetch(subject, key, desc.get)
+            : fetch(model, key, desc.get)
         );
       },
       set(next){
         if(desc.set === false)
-          throw new Error(`${subject}.${key} is read-only.`);
+          throw new Error(`${model}.${key} is read-only.`);
 
-        update(subject, key, next, desc.set);
+        update(model, key, next, desc.set);
       }
     })
   }

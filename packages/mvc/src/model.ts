@@ -630,7 +630,15 @@ function uid(){
   return (Math.random() * 0.722 + 0.278).toString(36).substring(2, 8).toUpperCase();
 }
 
+/** Object to iterable decriptors, including key. */
+function entries(object: {}){
+  return Object.entries(
+    Object.getOwnPropertyDescriptors(object)
+  ).map(([key, desc]) => ({ key, ...desc }));
+}
+
 export {
+  entries,
   update,
   fetch,
   push,
