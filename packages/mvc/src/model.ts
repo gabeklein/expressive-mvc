@@ -1,7 +1,7 @@
 import { addListener, effect, emit, OnUpdate, queue, watch } from './control';
 
 /** Register for all active models via string identifiers (usually unique). */
-const NAMES = new WeakMap<Model, string>();
+const ID = new WeakMap<Model, string>();
 
 /** Internal state assigned to controllers. */
 const STATE = new WeakMap<Model, Record<string | number | symbol, unknown>>();
@@ -23,8 +23,6 @@ let EXPORT: Map<any, any> | undefined;
 
 const define = Object.defineProperty;
 
-type MaybeAsync<T> = T | Promise<T>;
-
 declare namespace Model {
   /** Any type of Model, using own class constructor as its identifier. */
   type Type<T extends Model = Model> =
@@ -39,7 +37,7 @@ declare namespace Model {
    * Returned function will call when model is destroyed.
    */
   type Callback<T extends Model = Model> =
-    (this: T, thisArg: T) => MaybeAsync<(() => void) | Assign<T> | void>;
+    (this: T, thisArg: T) => Promise<void> | (() => void) | Assign<T> | void;
 
   /** Model constructor argument */
   type Argument<T extends Model = Model> = Assign<T> | Callback<T> | string | void;
@@ -140,53 +138,9 @@ interface Model {
 
 abstract class Model {
   constructor(...args: Model.Args){
+    const id = `${this.constructor}-${uid()}`;
     const state = {} as Record<string | number | symbol, unknown>;
-    let Type = this.constructor as Model.Type;
-    
-    bindMethods(Type);
-    define(this, "is", { value: this });
-
-    STATE.set(this, state);
-    NAMES.set(this, `${Type}-${uid()}`);
-
-    for(const arg of args)
-      if(typeof arg == "string")
-        NAMES.set(this, arg);
-
-    while(true){
-      for(const cb of NOTIFY.get(Type) || [])
-        addListener(this, cb);
-
-      if(Type === Model)
-        break;
-
-      Type = Object.getPrototypeOf(Type);
-    }
-
-    addListener(this, () => {
-      let done: Set<() => void> | undefined;
-
-      (async () => {
-        const cleanup = new Set<() => void>();
-          
-        for(const arg of args){
-          let use = typeof arg == "function" ? arg.call(this, this) : arg;
-  
-          if(use instanceof Promise)
-            use = await use.catch(err => {
-              console.error(`Async error in constructor for ${this}:`);
-              console.error(err);
-            });
-
-          if(typeof use == "object")
-            assign(this, use);
-          else if(typeof use == "function")
-            cleanup.add(use);
-        }
-
-        done = cleanup;
-      })();
-
+    const ready = () => {
       for(const key in this){
         const desc = Object.getOwnPropertyDescriptor(this, key)!;
     
@@ -201,24 +155,21 @@ abstract class Model {
           });
         }
       }
-
-      if(!PARENT.has(this))
-        PARENT.set(this, null);
-    
-      addListener(this, () => {
-        if(!done)
-          throw new Error(`Tried to destroy ${this} but not fully initialized.`);
-
+  
+      return () => {
         for(const [_, value] of this)
           if(value instanceof Model && PARENT.get(value) === this)
             value.set(null);
-
-        done.forEach(x => x());
+  
         Object.freeze(state);
-      }, null);
+      }
+    }
     
-      return null;
-    });
+    prepare(this);
+    define(this, "is", { value: this });
+    apply(this, [id, ...args, ready]);
+    
+    STATE.set(this, state);
   }
 
   /**
@@ -289,26 +240,8 @@ abstract class Model {
       });
     }
 
-    if(arg1 === undefined){
-      const values = {} as any;
-      const current = !EXPORT && (EXPORT = new Map([[self, values]]));
-
-      type Exportable = Iterable<[string, { get?: () => any }]>;
-
-      for(let [key, value] of self as Exportable){
-        if(EXPORT.has(value))
-          value = EXPORT.get(value);
-        else if(value && typeof value.get === "function")
-          EXPORT.set(value, value = value.get());
-
-        values[key] = value;
-      }
-
-      if(current)
-        EXPORT = undefined;
-
-      return Object.freeze(values);
-    }
+    if(arg1 === undefined)
+      return values(self);
 
     if(typeof arg2 == "function"){
       if(arg1 === null)
@@ -490,7 +423,7 @@ abstract class Model {
 
 define(Model.prototype, "toString", {
   value(){
-    return NAMES.get(this.is);
+    return ID.get(this.is);
   }
 });
 
@@ -591,49 +524,117 @@ function push(
     emit(subject, key);
 }
 
-const METHODS = new WeakMap<Model.Type, string[]>([[Model, []]]);
+const METHODS = new WeakMap<Model.Type, Set<string>>();
 
 function assign<T extends Model>(to: T, values: Model.Assign<T>){
   const methods = METHODS.get(to.constructor as Model.Type)!;
-  const applicable = new Set(Object.keys(to).concat(methods));
 
   for(const key in values)
-    if(applicable.has(key))
+    if(key in to || methods.has(key))
       to[key as keyof T] = values[key as Model.Field<T>] as any;
 }
 
-function bindMethods<T extends Model>(type: Model.Type<T>): string[] {
-  let keys = METHODS.get(type);
+function values<T extends Model>(model: T): Model.State<T> {
+  const values = {} as any;
+  const current = !EXPORT && (EXPORT = new Map([[model, values]]));
 
-  if(!keys){
-    METHODS.set(type, keys = bindMethods(Object.getPrototypeOf(type)).slice());
+  type Exportable = Iterable<[string, { get?: () => any }]>;
 
-    const desc = Object.getOwnPropertyDescriptors(type.prototype);
+  for(let [key, value] of model as Exportable){
+    if(EXPORT.has(value))
+      value = EXPORT.get(value);
+    else if(value && typeof value.get === "function")
+      EXPORT.set(value, value = value.get());
 
-    for(const key in desc)
-      if(key != "constructor" && "value" in desc[key]){
-        let { value } = desc[key];
-
-        keys.push(key);
-        Object.defineProperty(type.prototype, key, {
-          set: bind,
-          get(){
-            return this.hasOwnProperty(key) ? value : bind.call(this, value)
-          }
-        });
-      
-        function bind(this: Model, method: Function){
-          const value = method.bind(this.is);
-          
-          METHOD.set(value, method);
-          define(this.is, key, { value, writable: true });
-          
-          return value;
-        }
-      }
+    values[key] = value;
   }
+
+  if(current)
+    EXPORT = undefined;
+
+  return Object.freeze(values);
+}
+
+function prepare(model: Model){
+  const chain = [];
+
+  let keys = new Set<string>();
+
+  for(let T = model.constructor as Model.Type; T.name; T = Object.getPrototypeOf(T))
+    chain.unshift(T);
+
+  for(const T of chain){
+    for(const cb of NOTIFY.get(T) || [])
+      addListener(model, cb);
+
+    if(T == Model)
+      continue;
+
+    if(METHODS.has(T)){
+      keys = METHODS.get(T)!;
+      continue;
+    }
+
+    METHODS.set(T, keys = new Set(keys));
   
-  return keys;
+    for(const { key, value } of entries(T.prototype)){
+      if(!value || key == "constructor")
+        continue;
+
+      keys.add(key);
+      Object.defineProperty(T.prototype, key, {
+        set,
+        get(){
+          return this.hasOwnProperty(key)
+            ? value : set.call(this, value)
+        }
+      });
+
+      function set(this: Model, method: Function){
+        const value = method.bind(this.is);
+        
+        METHOD.set(value, method);
+        define(this.is, key, { value, writable: true });
+        
+        return value;
+      }
+    }
+  }
+}
+
+function apply(model: Model, args: Model.Args){
+  for(const arg of args)
+    if(typeof arg == "string")
+      ID.set(model, arg);
+
+  addListener(model, () => {
+    const done = new Set<() => void>();
+
+    if(!PARENT.has(model))
+      PARENT.set(model, null);
+
+    for(const arg of args){
+      const use = typeof arg == "function"
+        ? arg.call(model, model)
+        : arg;
+
+      if(use instanceof Promise)
+        use.catch(err => {
+          console.error(`Async error in constructor for ${model}:`);
+          throw err;
+        });
+      else if(typeof use == "object")
+        assign(model, use);
+      else if(typeof use == "function")
+        done.add(use);
+    }
+
+    addListener(model, () => {
+      done.forEach(x => x());
+    }, null);
+  
+    return null;
+  });
 }
 
 /** Random alphanumberic of length 6; always starts with a letter. */
@@ -650,12 +651,12 @@ function entries(object: {}){
 
 export {
   entries,
-  update,
   fetch,
-  push,
   METHOD,
   Model,
   PARENT,
+  push,
   STATE,
-  uid
+  uid,
+  update,
 }
