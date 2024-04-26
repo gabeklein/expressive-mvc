@@ -147,34 +147,26 @@ it('will destroy children before self', () => {
 
 it("will not break super calls", () => {
   class Test extends Model {
-    greeting = "";
-
     action(){
-      this.greeting += "Foo ";
+      return "Foo ";
     }
   }
   
   class Test2 extends Test {
     action(){
-      super.action();
-      this.greeting += "Bar ";
+      return super.action() + "Bar ";
     }
   }
 
   class Test3 extends Test2 {
     action(){
-      super.action();
-      this.greeting += "Baz";
+      return super.action() + "Baz";
     }
   }
 
-  const { is: test, action } = Test3.new();
+  const { action } = Test3.new();  
 
-  expect(test.greeting).toBe("");    
-
-  action();
-
-  expect(test.greeting).toBe("Foo Bar Baz");
+  expect(action()).toBe("Foo Bar Baz");
 });
 
 it("will allow method to be overwritten", () => {
