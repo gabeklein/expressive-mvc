@@ -168,11 +168,11 @@ abstract class Model {
       }
     }
     
+    STATE.set(this, state);
+    
     prepare(this);
     define(this, "is", { value: this });
     apply(this, [id, ...args, ready]);
-    
-    STATE.set(this, state);
   }
 
   /**
