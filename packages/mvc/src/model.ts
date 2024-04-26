@@ -1,5 +1,7 @@
 import { addListener, effect, emit, OnUpdate, queue, watch } from './control';
 
+const define = Object.defineProperty;
+
 /** Register for all active models via string identifiers (usually unique). */
 const ID = new WeakMap<Model, string>();
 
@@ -20,8 +22,6 @@ const METHOD = new WeakMap<any, any>();
 
 /** Currently accumulating export. */
 let EXPORT: Map<any, any> | undefined;
-
-const define = Object.defineProperty;
 
 declare namespace Model {
   /** Any type of Model, using own class constructor as its identifier. */
