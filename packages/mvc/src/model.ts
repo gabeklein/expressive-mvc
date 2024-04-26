@@ -141,6 +141,9 @@ abstract class Model {
     const id = `${this.constructor}-${uid()}`;
     const state = {} as Record<string | number | symbol, unknown>;
     const ready = () => {
+      if(!PARENT.has(this))
+        PARENT.set(this, null);
+
       for(const key in this){
         const desc = Object.getOwnPropertyDescriptor(this, key)!;
     
@@ -609,9 +612,6 @@ function apply(model: Model, args: Model.Args){
 
   addListener(model, () => {
     const done = new Set<() => void>();
-
-    if(!PARENT.has(model))
-      PARENT.set(model, null);
 
     for(const arg of args){
       const use = typeof arg == "function"
