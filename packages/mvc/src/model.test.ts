@@ -2,6 +2,7 @@ import { Context } from './context';
 import { get } from './instruction/get';
 import { ref } from './instruction/ref';
 import { set } from './instruction/set';
+import { use } from './instruction/use';
 import { mockError, mockPromise } from './mocks';
 import { Model } from './model';
 
@@ -1295,6 +1296,21 @@ describe("set method", () => {
       test.foo = "baz";
 
       expect(mock).toBeCalledWith("foo", test);
+      expect(mock).toBeCalledWith("foo", test);
+    })
+
+    it.skip("will callback on subsequent", async () => {
+      class Test extends Model {
+        foo = use((_, self) => {
+          self.set(mock);
+        })
+      }
+
+      const mock = jest.fn();
+      const test = Test.new();
+
+      test.set(mock);
+
       expect(mock).toBeCalledWith("foo", test);
     })
   })
