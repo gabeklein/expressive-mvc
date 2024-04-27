@@ -141,12 +141,12 @@ interface Model {
 
 abstract class Model {
   constructor(...args: Model.Args){
+    define(this, "is", { value: this });
     ID.set(this, `${this.constructor}-${uid()}`);
     STATE.set(this, {});
 
     prepare(this);
-    define(this, "is", { value: this });
-    apply(this, [...args, init]);
+    init(this, args);
   }
 
   /**
@@ -410,7 +410,7 @@ define(Model, "toString", {
   }
 });
 
-/** Apply inheritance chain events, and ensure class metadata is ready.. */
+/** Apply inheritance chain events, and ensure class metadata is ready. */
 function prepare(model: Model){
   const chain = [] as Model.Type[];
 
@@ -461,13 +461,17 @@ function prepare(model: Model){
   }
 }
 
-function apply(model: Model, args: Model.Args){
+function init(model: Model, args: Model.Args){
+  const done = new Set<() => void>();
+  const state = STATE.get(model)!;
+  
   for(const arg of args)
     if(typeof arg == "string")
       ID.set(model, arg);
 
   addListener(model, () => {
-    const done = new Set<() => void>();
+    if(!PARENT.has(model))
+      PARENT.set(model, null);
 
     for(const arg of args){
       const use = typeof arg == "function"
@@ -485,42 +489,33 @@ function apply(model: Model, args: Model.Args){
         done.add(use);
     }
 
-    addListener(model, () => {
-      done.forEach(x => x());
-    }, null);
+    for(const key in model){
+      const desc = Object.getOwnPropertyDescriptor(model, key)!;
+
+      if("value" in desc){
+        update(model, key, desc.value, true);
+        define(model, key, {
+          configurable: false,
+          set: (x) => update(model, key, x),
+          get(){
+            return watch(this, key, state[key]);
+          }
+        });
+      }
+    }
   
     return null;
   });
-}
 
-function init(model: Model){
-  const state = STATE.get(model)!;
+  addListener(model, () => {
+    done.forEach(x => x());
 
-  if(!PARENT.has(model))
-    PARENT.set(model, null);
-
-  for(const key in model){
-    const desc = Object.getOwnPropertyDescriptor(model, key)!;
-
-    if("value" in desc){
-      update(model, key, desc.value, true);
-      define(model, key, {
-        configurable: false,
-        set: (x) => update(model, key, x),
-        get(){
-          return watch(this, key, state[key]);
-        }
-      });
-    }
-  }
-
-  return () => {
     for(const [_, value] of model)
       if(value instanceof Model && PARENT.get(value) === model)
         value.set(null);
 
     Object.freeze(state);
-  }
+  }, null);
 }
 
 function fetch(subject: Model, property: string, required?: boolean){
