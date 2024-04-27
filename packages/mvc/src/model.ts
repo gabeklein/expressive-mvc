@@ -555,6 +555,27 @@ function fetch(subject: Model, property: string, required?: boolean){
   });
 }
 
+function values<T extends Model>(model: T): Model.State<T> {
+  const values = {} as any;
+  const current = !EXPORT && (EXPORT = new Map([[model, values]]));
+
+  type Exportable = Iterable<[string, { get?: () => any }]>;
+
+  for(let [key, value] of model as Exportable){
+    if(EXPORT.has(value))
+      value = EXPORT.get(value);
+    else if(value && typeof value.get === "function")
+      EXPORT.set(value, value = value.get());
+
+    values[key] = value;
+  }
+
+  if(current)
+    EXPORT = undefined;
+
+  return Object.freeze(values);
+}
+
 function update<T>(
   subject: Model,
   key: string | number | symbol,
@@ -621,27 +642,6 @@ function assign<T extends Model>(to: T, values: Model.Assign<T>){
   for(const key in values)
     if(key in to || methods.has(key))
       to[key as keyof T] = values[key as Model.Field<T>] as any;
-}
-
-function values<T extends Model>(model: T): Model.State<T> {
-  const values = {} as any;
-  const current = !EXPORT && (EXPORT = new Map([[model, values]]));
-
-  type Exportable = Iterable<[string, { get?: () => any }]>;
-
-  for(let [key, value] of model as Exportable){
-    if(EXPORT.has(value))
-      value = EXPORT.get(value);
-    else if(value && typeof value.get === "function")
-      EXPORT.set(value, value = value.get());
-
-    values[key] = value;
-  }
-
-  if(current)
-    EXPORT = undefined;
-
-  return Object.freeze(values);
 }
 
 /** Random alphanumberic of length 6; always starts with a letter. */
