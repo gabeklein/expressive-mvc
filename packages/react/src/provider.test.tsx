@@ -1,5 +1,6 @@
 import React, { Fragment, Suspense } from 'react';
 import { create } from 'react-test-renderer';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { get, Model, set, use } from '.';
 import { mockAsync } from './mocks';
@@ -45,7 +46,7 @@ describe("component", () => {
       }
     };
   
-    const willDestroy = jest.fn();
+    const willDestroy = vi.fn();
     const element = create(
       <Provider for={Test} />
     );
@@ -65,7 +66,7 @@ describe("component", () => {
   })
   
   it("will destroy created model on unmount", async () => {
-    const willDestroy = jest.fn();
+    const willDestroy = vi.fn();
   
     class Test extends Model {}
   
@@ -84,7 +85,7 @@ describe("component", () => {
   })
   
   it("will destroy multiple created on unmount", async () => {
-    const willDestroy = jest.fn();
+    const willDestroy = vi.fn();
   
     class Foo extends Model {}
     class Bar extends Model {}
@@ -106,7 +107,7 @@ describe("component", () => {
   })
   
   it("will not destroy given instance on unmount", async () => {
-    const didUnmount = jest.fn();
+    const didUnmount = vi.fn();
   
     class Test extends Model {}
   
@@ -139,7 +140,7 @@ describe("component", () => {
   it("will conflict colliding Model types", () => {
     const foo = Foo.new();
   
-    const Consumer: React.FC = jest.fn(() => {
+    const Consumer: React.FC = vi.fn(() => {
       expect(() => Foo.get()).toThrowError(
         "Did find Foo in context, but multiple were defined."
       );
@@ -223,9 +224,9 @@ describe("suspense", () => {
   const promise = mockAsync<string>();
   const didRefresh = mockAsync();
 
-  const willRender = jest.fn();
-  const didRender = jest.fn();
-  const didSuspend = jest.fn();
+  const willRender = vi.fn();
+  const didRender = vi.fn();
+  const didSuspend = vi.fn();
 
   afterEach(() => {
     willRender.mockClear();
@@ -314,7 +315,7 @@ describe("get instruction", () => {
   })
 
   it("will maintain hook", async () => {
-    const Inner: React.FC = jest.fn(() => {
+    const Inner: React.FC = vi.fn(() => {
       Foo.use();
       return null;
     })

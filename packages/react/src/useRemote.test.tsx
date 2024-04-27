@@ -1,7 +1,9 @@
+import { afterAll, afterEach, describe, expect, it, vi } from 'vitest';
+
 import Model, { get, set } from '.';
 import { mockHook, mockPromise } from './mocks';
 
-const error = jest
+const error = vi
   .spyOn(console, "error")
   .mockImplementation(() => {});
 
@@ -63,7 +65,7 @@ it("will throw if not found", () => {
     value = 1;
   }
 
-  const useTest = jest.fn(() => {
+  const useTest = vi.fn(() => {
     expect(() => Test.get()).toThrow("Could not find Test in context.");
   });
   
@@ -76,7 +78,7 @@ it("will not throw if optional", () => {
     value = 1;
   }
 
-  const useTest = jest.fn(() => {
+  const useTest = vi.fn(() => {
     expect(Test.get(false)).toBeUndefined();
   });
   
@@ -125,7 +127,7 @@ describe("computed", () => {
       value = 1;
     }
 
-    const useTest = jest.fn(() => {
+    const useTest = vi.fn(() => {
       expect(() => Test.get(x => x)).toThrow("Could not find Test in context.");
     });
     
@@ -150,7 +152,7 @@ describe("computed", () => {
 
   it('will ignore updates with same result', async () => {
     const test = Test.new();
-    const compute = jest.fn();
+    const compute = vi.fn();
 
     const hook = mockHook(test, () => {
       return Test.get(x => {
@@ -183,12 +185,12 @@ describe("computed", () => {
   })
 
   it("will disable updates if null returned", async () => {
-    const factory = jest.fn(($: Test) => {
+    const factory = vi.fn(($: Test) => {
       void $.foo;
       return null;
     });
 
-    const render = jest.fn(() => {
+    const render = vi.fn(() => {
       return Test.get(factory);
     })
 
@@ -213,7 +215,7 @@ describe("force update", () => {
   };
 
   it("will force a refresh", async () => {
-    const didEvaluate = jest.fn();
+    const didEvaluate = vi.fn();
     let forceUpdate!: () => void;
 
     const hook = mockHook(Test, () => {
@@ -235,7 +237,7 @@ describe("force update", () => {
   })
 
   it("will refresh without reevaluating", async () => {
-    const didEvaluate = jest.fn();
+    const didEvaluate = vi.fn();
     let forceUpdate!: () => void;
     
     const hook = mockHook(Test, () => {

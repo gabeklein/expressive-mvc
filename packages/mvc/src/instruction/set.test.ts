@@ -1,3 +1,4 @@
+import { expect, vi, it, describe } from 'vitest';
 import { mockPromise, mockWarn } from '../mocks';
 import { Model } from '../model';
 import { set } from './set';
@@ -12,7 +13,7 @@ describe("placeholder", () => {
   it('will suspend if value is accessed before assign', async () => {
     const instance = Test.new();
     const promise = mockPromise<string>();
-    const mockEffect = jest.fn((state: Test) => {
+    const mockEffect = vi.fn((state: Test) => {
       promise.resolve(state.foobar);
     });
 
@@ -30,8 +31,8 @@ describe("placeholder", () => {
 
   it("will resolve suspense after latest value", async () => {
     const test = Test.new();
-    const foobar = jest.fn();
-    const effect = jest.fn((state: Test) => {
+    const foobar = vi.fn();
+    const effect = vi.fn((state: Test) => {
       foobar(state.foobar);
     });
 
@@ -55,7 +56,7 @@ describe("placeholder", () => {
 
     instance.foobar = "bar!";
 
-    const mockEffect = jest.fn((state: Test) => {
+    const mockEffect = vi.fn((state: Test) => {
       expect(state.foobar).toBe("bar!");
     });
 
@@ -73,8 +74,8 @@ describe("callback", () => {
     }
 
     const state = Subject.new();
-    const didAssign = jest.fn()
-    const didUpdate = jest.fn();
+    const didAssign = vi.fn()
+    const didUpdate = vi.fn();
 
     expect(didAssign).not.toBeCalled();
 
@@ -98,7 +99,7 @@ describe("callback", () => {
       });
     }
 
-    const callback = jest.fn()
+    const callback = vi.fn()
     const state = Subject.new();
 
     state.test = 2;
@@ -118,7 +119,7 @@ describe("callback", () => {
       });
     }
 
-    const callback = jest.fn()
+    const callback = vi.fn()
     const state = Subject.new();
 
     expect(state.test).toBe("foo");
@@ -165,7 +166,7 @@ describe("intercept", () => {
       });
     }
 
-    const callback = jest.fn()
+    const callback = vi.fn()
     const state = Subject.new();
 
     expect(state.test).toBe("foo");
@@ -177,8 +178,8 @@ describe("intercept", () => {
   })
 
   it('will not call prior cleanup if supressed', async () => {
-    const cleanup = jest.fn();
-    const setter = jest.fn(value => {
+    const cleanup = vi.fn();
+    const setter = vi.fn(value => {
       return value === 3 ? false : cleanup;
     });
     
@@ -211,7 +212,7 @@ describe("intercept", () => {
 
 describe("factory", () => {
   it("will ignore setter if assigned", () => {
-    const getValue = jest.fn(() => "foo");
+    const getValue = vi.fn(() => "foo");
     
     class Test extends Model {
       value = set(getValue);
@@ -227,7 +228,7 @@ describe("factory", () => {
   })
 
   it("will compute when accessed", () => {
-    const factory = jest.fn(() => "Hello World");
+    const factory = vi.fn(() => "Hello World");
 
     class Test extends Model {
       value = set(factory);
@@ -243,7 +244,7 @@ describe("factory", () => {
   })
 
   it("will compute lazily", () => {
-    const factory = jest.fn(async () => "Hello World");
+    const factory = vi.fn(async () => "Hello World");
 
     class Test extends Model {
       value = set(factory, false);
@@ -349,7 +350,7 @@ describe("suspense", () => {
 
   it("will be undefined if not required", async () => {
     const promise = mockPromise<string>();
-    const mock = jest.fn();
+    const mock = vi.fn();
 
     class Test extends Model {
       value = set(promise);
@@ -370,7 +371,7 @@ describe("suspense", () => {
     const greet = mockPromise<string>();
     const name = mockPromise<string>();
 
-    const didEvaluate = jest.fn(function(this: Test){
+    const didEvaluate = vi.fn(function(this: Test){
       return this.greet + " " + this.name;
     });
 
@@ -399,7 +400,7 @@ describe("suspense", () => {
     const greet = mockPromise<string>();
     const name = mockPromise<string>();
 
-    const didEvaluate = jest.fn(async function(this: Test){
+    const didEvaluate = vi.fn(async function(this: Test){
       return this.greet + " " + this.name;
     });
 
@@ -440,7 +441,7 @@ describe("suspense", () => {
     }
 
     const test = Test.new();
-    const effect = jest.fn((state: Test) => {
+    const effect = vi.fn((state: Test) => {
       didUpdate.resolve(state.childValue);
     })
 
@@ -478,7 +479,7 @@ describe("suspense", () => {
     let pending = mockPromise();
     let suspend = true;
 
-    const compute = jest.fn(() => {
+    const compute = vi.fn(() => {
       if(suspend)
         throw pending;
 
@@ -492,7 +493,7 @@ describe("suspense", () => {
     const test = Test.new();
     const didEvaluate = mockPromise<string>();
     
-    const effect = jest.fn((state: Test) => {
+    const effect = vi.fn((state: Test) => {
       didEvaluate.resolve(state.message);
     });
 
@@ -540,7 +541,7 @@ describe("suspense", () => {
 
     const test = Test.new();
 
-    const effect = jest.fn((state: Test) => void state.sum);
+    const effect = vi.fn((state: Test) => void state.sum);
 
     test.get(effect);
 

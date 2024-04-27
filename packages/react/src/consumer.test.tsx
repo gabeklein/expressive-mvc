@@ -1,11 +1,12 @@
 import React from 'react';
 import { create } from 'react-test-renderer';
+import { afterAll, expect, it, vi } from 'vitest';
 
 import { Model } from '.';
 import { Consumer } from './consumer';
 import { Provider } from './provider';
 
-const error = jest
+const error = vi
   .spyOn(console, "error")
   .mockImplementation(() => {});
 
@@ -41,7 +42,7 @@ it("will render with instance for child-function", async () => {
   }
 
   const instance = Test.new();
-  const didRender = jest.fn();
+  const didRender = vi.fn();
 
   function onRender(instance: Test){
     const { value } = instance;

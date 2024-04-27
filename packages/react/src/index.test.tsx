@@ -1,13 +1,14 @@
 import React from 'react';
 import { create } from 'react-test-renderer';
+import { describe, expect, vi, it } from 'vitest';
 
 import { get, Model } from '.';
 import { Provider } from './provider';
 import { mockHook } from './mocks';
 
 it("will call constructor argument as lifecycle", () => {
-  const didCreate = jest.fn(() => didDestroy);
-  const didDestroy = jest.fn();
+  const didCreate = vi.fn(() => didDestroy);
+  const didDestroy = vi.fn();
 
   class Test extends Model {
     constructor(){
@@ -80,8 +81,8 @@ describe("useContext", () => {
     )
   
     const parent = Parent.new();
-    const didUpdateValues = jest.fn();
-    const didPushToValues = jest.fn();
+    const didUpdateValues = vi.fn();
+    const didPushToValues = vi.fn();
 
     parent.get(state => {
       didUpdateValues(state.values.length);
@@ -208,7 +209,7 @@ describe("suspense", () => {
     }
 
     const bar = Bar.new();
-    const effect = jest.fn(bar => void bar.foo);
+    const effect = vi.fn(bar => void bar.foo);
 
     bar.get(effect);
 

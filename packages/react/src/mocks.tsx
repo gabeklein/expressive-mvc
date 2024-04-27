@@ -1,5 +1,6 @@
 import React, { Suspense } from 'react';
 import { act, create } from 'react-test-renderer';
+import { Mock, vi } from 'vitest';
 
 import { Model, Provider } from '.';
 
@@ -24,7 +25,7 @@ export function mockAsync<T = void>(){
   }
 }
 
-interface MockHook<T> extends jest.Mock<T, []> {
+interface MockHook<T> extends Mock<[], T> {
   /** Current output of this hook. */
   output: T;
 
@@ -49,7 +50,7 @@ export function mockHook<T>(provide: Model | Model.Init, implementation: () => T
 export function mockHook<T>(arg1: (() => T) | Model | Model.Init, arg2?: () => T){
   let implementation = typeof arg1 === 'function' && !Model.is(arg1) ? arg1 : arg2!;
 
-  const mock = jest.fn(() => implementation()) as MockHook<T>;
+  const mock = vi.fn(() => implementation()) as MockHook<T>;
   let waiting: () => void;
 
   const Component = () => {
