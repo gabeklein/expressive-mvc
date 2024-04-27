@@ -302,7 +302,7 @@ abstract class Model {
    */
   set<K extends string>(
     key: K,
-    value?: Model.Value<this, K>,
+    value: Model.Value<this, K>,
     silent?: boolean
   ): PromiseLike<Model.Event<this>[]> | undefined;
 
