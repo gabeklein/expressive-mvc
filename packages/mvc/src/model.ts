@@ -477,7 +477,7 @@ function apply(model: Model, args: Model.Args){
       if(use instanceof Promise)
         use.catch(err => {
           console.error(`Async error in constructor for ${model}:`);
-          throw err;
+          console.error(err);
         });
       else if(typeof use == "object")
         assign(model, use);

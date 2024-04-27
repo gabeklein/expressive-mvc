@@ -1595,24 +1595,20 @@ describe("new method (static)", () => {
   })
   
   // TODO: fix. This fails despite error intercept.
-  it.skip("will log error from rejected initializer", async () => {
+  it("will log error from rejected initializer", async () => {
     const error = jest.spyOn(console, "error").mockImplementation(() => {});
     const expects = new Error("Model callback rejected.");
 
-    process.on('unhandledRejection', (reason, p) => {
-      // Catch unhandled promise rejections and do nothing
-      debugger;
-    });
-
     const init = jest.fn(() => Promise.reject(expects));
     const test = Generic.new("ID", init);
-
+  
     expect(init).toBeCalledTimes(1);
-
+    
     await expect(test).not.toHaveUpdated();
-    expect(error).toBeCalledWith("Async error in constructor for ID:");
 
-    await new Promise(setImmediate);
+    expect(error).toBeCalledWith("Async error in constructor for ID:");
+    expect(error).toBeCalledWith(expects);
+
     error.mockRestore();
   })
 
