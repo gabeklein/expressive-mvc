@@ -17,6 +17,9 @@ const PENDING = new WeakMap<Model, Set<string | number | symbol>>();
 /** Parent-child relationships. */
 const PARENT = new WeakMap<Model, Model | null>();
 
+/** List of methods defined by a given type. */
+const METHODS = new WeakMap<Model.Type, Set<string>>();
+
 /** Reference bound instance methods to real ones. */
 const METHOD = new WeakMap<any, any>();
 
@@ -138,41 +141,12 @@ interface Model {
 
 abstract class Model {
   constructor(...args: Model.Args){
-    const id = `${this.constructor}-${uid()}`;
-    const state = {} as Record<string | number | symbol, unknown>;
-    const ready = () => {
-      if(!PARENT.has(this))
-        PARENT.set(this, null);
+    ID.set(this, `${this.constructor}-${uid()}`);
+    STATE.set(this, {});
 
-      for(const key in this){
-        const desc = Object.getOwnPropertyDescriptor(this, key)!;
-    
-        if("value" in desc){
-          update(this, key, desc.value, true);
-          define(this, key, {
-            configurable: false,
-            set: (x) => update(this, key, x),
-            get(){
-              return watch(this, key, state[key]);
-            }
-          });
-        }
-      }
-  
-      return () => {
-        for(const [_, value] of this)
-          if(value instanceof Model && PARENT.get(value) === this)
-            value.set(null);
-  
-        Object.freeze(state);
-      }
-    }
-    
-    STATE.set(this, state);
-    
     prepare(this);
     define(this, "is", { value: this });
-    apply(this, [id, ...args, ready]);
+    apply(this, [...args, init]);
   }
 
   /**
@@ -357,7 +331,7 @@ abstract class Model {
     else if(1 in arguments)
       update(self, arg1, arg2, arg3);
     else
-      push(self, arg1);
+      event(self, arg1);
 
     if(PENDING.has(self))
       return <PromiseLike<Model.Event<this>[]>> {
@@ -436,6 +410,118 @@ define(Model, "toString", {
   }
 });
 
+function prepare(model: Model){
+  const chain = [];
+
+  let type = model.constructor as Model.Type;
+  let keys = new Set<string>();
+
+  while(type.name){
+    chain.unshift(type);
+    type = Object.getPrototypeOf(type)
+  }
+
+  for(const type of chain){
+    for(const cb of NOTIFY.get(type) || [])
+      addListener(model, cb);
+
+    if(type == Model)
+      continue;
+
+    if(METHODS.has(type)){
+      keys = METHODS.get(type)!;
+      continue;
+    }
+
+    METHODS.set(type, keys = new Set(keys));
+  
+    for(const { key, value } of entries(type.prototype)){
+      if(!value || key == "constructor")
+        continue;
+
+      function set(this: Model, method: Function){
+        const value = method.bind(this.is);
+        
+        METHOD.set(value, method);
+        define(this.is, key, { value, writable: true });
+        
+        return value;
+      }
+
+      keys.add(key);
+      Object.defineProperty(type.prototype, key, {
+        set,
+        get(){
+          return this.hasOwnProperty(key)
+            ? value : set.call(this, value)
+        }
+      });
+    }
+  }
+}
+
+function apply(model: Model, args: Model.Args){
+  for(const arg of args)
+    if(typeof arg == "string")
+      ID.set(model, arg);
+
+  addListener(model, () => {
+    const done = new Set<() => void>();
+
+    for(const arg of args){
+      const use = typeof arg == "function"
+        ? arg.call(model, model)
+        : arg;
+
+      if(use instanceof Promise)
+        use.catch(err => {
+          console.error(`Async error in constructor for ${model}:`);
+          throw err;
+        });
+      else if(typeof use == "object")
+        assign(model, use);
+      else if(typeof use == "function")
+        done.add(use);
+    }
+
+    addListener(model, () => {
+      done.forEach(x => x());
+    }, null);
+  
+    return null;
+  });
+}
+
+function init(model: Model){
+  const state = STATE.get(model)!;
+
+  if(!PARENT.has(model))
+    PARENT.set(model, null);
+
+  for(const key in model){
+    const desc = Object.getOwnPropertyDescriptor(model, key)!;
+
+    if("value" in desc){
+      update(model, key, desc.value, true);
+      define(model, key, {
+        configurable: false,
+        set: (x) => update(model, key, x),
+        get(){
+          return watch(this, key, state[key]);
+        }
+      });
+    }
+  }
+
+  return () => {
+    for(const [_, value] of model)
+      if(value instanceof Model && PARENT.get(value) === model)
+        value.set(null);
+
+    Object.freeze(state);
+  }
+}
+
 function fetch(subject: Model, property: string, required?: boolean){
   const state = STATE.get(subject)!;
   
@@ -501,10 +587,10 @@ function update<T>(
   state[key] = value;
 
   if(arg !== true)
-    push(subject, key);
+    event(subject, key);
 }
 
-function push(
+function event(
   subject: Model,
   key: string | number | symbol,
   silent?: boolean){
@@ -526,8 +612,6 @@ function push(
   if(!silent)
     emit(subject, key);
 }
-
-const METHODS = new WeakMap<Model.Type, Set<string>>();
 
 function assign<T extends Model>(to: T, values: Model.Assign<T>){
   const methods = METHODS.get(to.constructor as Model.Type)!;
@@ -558,85 +642,6 @@ function values<T extends Model>(model: T): Model.State<T> {
   return Object.freeze(values);
 }
 
-function prepare(model: Model){
-  const chain = [];
-
-  let keys = new Set<string>();
-
-  for(let T = model.constructor as Model.Type; T.name; T = Object.getPrototypeOf(T))
-    chain.unshift(T);
-
-  for(const T of chain){
-    for(const cb of NOTIFY.get(T) || [])
-      addListener(model, cb);
-
-    if(T == Model)
-      continue;
-
-    if(METHODS.has(T)){
-      keys = METHODS.get(T)!;
-      continue;
-    }
-
-    METHODS.set(T, keys = new Set(keys));
-  
-    for(const { key, value } of entries(T.prototype)){
-      if(!value || key == "constructor")
-        continue;
-
-      keys.add(key);
-      Object.defineProperty(T.prototype, key, {
-        set,
-        get(){
-          return this.hasOwnProperty(key)
-            ? value : set.call(this, value)
-        }
-      });
-
-      function set(this: Model, method: Function){
-        const value = method.bind(this.is);
-        
-        METHOD.set(value, method);
-        define(this.is, key, { value, writable: true });
-        
-        return value;
-      }
-    }
-  }
-}
-
-function apply(model: Model, args: Model.Args){
-  for(const arg of args)
-    if(typeof arg == "string")
-      ID.set(model, arg);
-
-  addListener(model, () => {
-    const done = new Set<() => void>();
-
-    for(const arg of args){
-      const use = typeof arg == "function"
-        ? arg.call(model, model)
-        : arg;
-
-      if(use instanceof Promise)
-        use.catch(err => {
-          console.error(`Async error in constructor for ${model}:`);
-          throw err;
-        });
-      else if(typeof use == "object")
-        assign(model, use);
-      else if(typeof use == "function")
-        done.add(use);
-    }
-
-    addListener(model, () => {
-      done.forEach(x => x());
-    }, null);
-  
-    return null;
-  });
-}
-
 /** Random alphanumberic of length 6; always starts with a letter. */
 function uid(){
   return (Math.random() * 0.722 + 0.278).toString(36).substring(2, 8).toUpperCase();
@@ -655,7 +660,7 @@ export {
   METHOD,
   Model,
   PARENT,
-  push,
+  event as push,
   STATE,
   uid,
   update,
