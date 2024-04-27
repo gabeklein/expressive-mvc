@@ -32,7 +32,7 @@ function addListener(
 
   const filter = select !== undefined && new Set([select]);
 
-  if(!filter && !subs.has(onReady))
+  if(!subs.has(onReady) && !filter)
     callback(true, subject);
 
   subs.set(callback, filter);
