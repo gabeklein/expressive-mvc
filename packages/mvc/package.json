@@ -30,7 +30,8 @@
   },
   "devDependencies": {
     "jest": "^27.0.6",
-    "tsup": "^8.0.2"
+    "tsup": "^8.0.2",
+    "vitest": "^1.5.0"
   },
   "version": "0.51.2"
 }

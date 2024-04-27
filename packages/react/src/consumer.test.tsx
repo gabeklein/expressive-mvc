@@ -41,7 +41,7 @@ it("will render with instance for child-function", async () => {
   }
 
   const instance = Test.new();
-  const didRender = jest.fn();
+  const didRender = vi.fn();
 
   function onRender(instance: Test){
     const { value } = instance;

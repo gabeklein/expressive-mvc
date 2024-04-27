@@ -1,3 +1,5 @@
+import { afterAll, afterEach, vi } from 'vitest';
+
 export interface MockPromise<T> extends Promise<T> {
   resolve: (value: T | PromiseLike<T>) => void;
   reject: (reason?: any) => void;
@@ -14,19 +16,19 @@ export function mockPromise<T = void>(){
 }
 
 export function mockWarn(){
-  const warn = jest.spyOn(console, "warn");
+  const warn = vi.spyOn(console, "warn");
 
-  afterEach(() => warn.mockReset());
-  afterAll(() => warn.mockRestore());
+  afterEach(() => void warn.mockReset());
+  afterAll(() => void warn.mockRestore());
 
   return warn;
 }
 
 export function mockError(){
-  const error = jest.spyOn(console, "error");
+  const error = vi.spyOn(console, "error");
 
-  afterEach(() => error.mockReset());
-  afterAll(() => error.mockRestore());
+  afterEach(() => void error.mockReset());
+  afterAll(() => void error.mockRestore());
 
   return error;
 }

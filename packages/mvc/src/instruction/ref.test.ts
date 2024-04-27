@@ -1,3 +1,4 @@
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Model } from '../model';
 import { ref } from './ref';
 
@@ -35,7 +36,7 @@ describe("property", () => {
     }
 
     const state = Subject.new();
-    const didCallback = jest.fn();
+    const didCallback = vi.fn();
 
     state.set((key) => {
       if(key == "ref")
@@ -54,7 +55,7 @@ describe("property", () => {
     }
 
     const state = Subject.new();
-    const didUpdate = jest.fn();
+    const didUpdate = vi.fn();
 
     state.set((key) => {
       if(key == "ref")
@@ -68,8 +69,8 @@ describe("property", () => {
   })
   
   it('will invoke callback', async () => {
-    const didTrigger = jest.fn();
-    const didUpdate = jest.fn();
+    const didTrigger = vi.fn();
+    const didUpdate = vi.fn();
 
     class Subject extends Model {
       ref = ref<string>(didTrigger);
@@ -97,7 +98,7 @@ describe("property", () => {
     }
 
     const state = Subject.new();
-    const didTrigger = jest.fn();
+    const didTrigger = vi.fn();
   
     state.ref.current = 1;
   
@@ -110,7 +111,7 @@ describe("property", () => {
   })
 
   it('will not callback when gets null', async () => {
-    const callback = jest.fn()
+    const callback = vi.fn()
 
     class Subject extends Model {
       ref = ref<string>(callback);
@@ -123,7 +124,7 @@ describe("property", () => {
   });
 
   it('will callback when on null if ignore false', async () => {
-    const callback = jest.fn()
+    const callback = vi.fn()
 
     class Subject extends Model {
       ref = ref<string>(callback, false);
@@ -169,7 +170,7 @@ describe("property", () => {
     }
 
     const test = Subject.new();
-    const effect = jest.fn(($: Subject) => {
+    const effect = vi.fn(($: Subject) => {
       void $.ref.current;
     });
     
@@ -228,7 +229,7 @@ describe("proxy", () => {
 })
 
 describe("mapped", () => {
-  const generateRef = jest.fn((key: any) => key as string);
+  const generateRef = vi.fn((key: any) => key as string);
 
   class Test extends Model {
     foo = "foo";
