@@ -1,5 +1,6 @@
 import React from 'react';
 import { act, create } from 'react-test-renderer';
+import { expect, it, vi } from 'vitest';
 
 import Model from '.';
 
@@ -47,7 +48,7 @@ it("will not create abstract Model", () => {
 });
 
 it("will pass props to model", () => {
-  const didUpdateFoo = jest.fn();
+  const didUpdateFoo = vi.fn();
   
   class Test extends Model {
     foo = "foo";

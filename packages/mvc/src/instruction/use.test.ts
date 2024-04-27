@@ -1,3 +1,5 @@
+import { describe, expect, it, vi } from 'vitest';
+
 import { Context } from '../context';
 import { Model } from '../model';
 import { use } from './use';
@@ -30,7 +32,7 @@ describe("instruction", () => {
     }
   
     const test = Test.new('ID');
-    const effect = jest.fn((test: Test) => void test.value);
+    const effect = vi.fn((test: Test) => void test.value);
   
     test.get(effect);
     test.value = "foo";
@@ -49,7 +51,7 @@ describe("model", () => {
       child = use(Child, mockInit);
     }
   
-    const mockInit = jest.fn();
+    const mockInit = vi.fn();
 
     Test.new();
 
@@ -77,7 +79,7 @@ describe("model", () => {
       child = use(Child, callback);
     }
   
-    const callback = jest.fn();
+    const callback = vi.fn();
     const parent = Parent.new();
 
     // Initial assignment
