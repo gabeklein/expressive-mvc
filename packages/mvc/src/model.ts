@@ -203,6 +203,9 @@ abstract class Model {
   get(arg1?: Model.Effect<this> | string | null, arg2?: boolean | Function){
     const self = this.is;
 
+    if(arg1 === undefined)
+      return values(self);
+
     if(typeof arg1 == "function"){
       let pending = new Set<Model.Event<this>>();
 
@@ -216,9 +219,6 @@ abstract class Model {
         })
       });
     }
-
-    if(arg1 === undefined)
-      return values(self);
 
     if(typeof arg2 == "function"){
       if(arg1 === null)
@@ -412,7 +412,7 @@ define(Model, "toString", {
 
 /** Apply inheritance chain events, and ensure class metadata is ready.. */
 function prepare(model: Model){
-  const chain = [];
+  const chain = [] as Model.Type[];
 
   let type = model.constructor as Model.Type;
   let keys = new Set<string>();
