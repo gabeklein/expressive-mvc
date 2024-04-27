@@ -5,7 +5,7 @@ const define = Object.defineProperty;
 /** Register for all active models via string identifiers (usually unique). */
 const ID = new WeakMap<Model, string>();
 
-/** Internal state assigned to controllers. */
+/** Internal state assigned to models. */
 const STATE = new WeakMap<Model, Record<string | number | symbol, unknown>>();
 
 /** External listeners for any given Model. */
@@ -37,7 +37,7 @@ declare namespace Model {
 
   /**
    * Model constructor callback - is called when Model finishes intializing.
-   * Returned function will call when model is destroyed.
+   * Returned function will run when model is destroyed.
    */
   type Callback<T extends Model = Model> =
     (this: T, thisArg: T) => Promise<void> | (() => void) | Assign<T> | void;
@@ -51,7 +51,7 @@ declare namespace Model {
   /** Subset of `keyof T` which are not methods or defined by base Model U. **/
   type Field<T> = Exclude<keyof T, keyof Model>;
 
-  /** Any valid key for controller, including but not limited to Field<T>. */
+  /** Any valid key for model, including but not limited to Field<T>. */
   type Event<T> = Field<T> | (string & {}) | number | symbol;
 
   /** Object overlay to override values and methods on a model. */
@@ -65,7 +65,7 @@ declare namespace Model {
   /** Export/Import compatible value for a given property in a Model. */
   type Export<R> = R extends { get(): infer T } ? T : R;
 
-  /** Value for a property managed by a controller. */
+  /** Value for a property managed by a model. */
   type Value<T extends Model, K extends Event<T>> =
     K extends keyof T ? Export<T[K]> : unknown;
 
@@ -76,7 +76,7 @@ declare namespace Model {
     (this: T, value: Value<T, K>, key: K, thisArg: K) => void;
 
   /**
-   * Values from current state of given controller.
+   * Values from current state of given model.
    * Differs from `Values` as values here will drill
    * into "real" values held by exotics like ref.Object.
    */
@@ -94,7 +94,7 @@ declare namespace Model {
   /**
    * A callback function which is subscribed to parent and updates when accessed properties change.
    * 
-   * @param current - Current state of this controller. This is a proxy which detects properties which
+   * @param current - Current state of this model. This is a proxy which detects properties which
    * where accessed, and thus depended upon to stay current.
    * 
    * @param update - Set of properties which have changed, and events fired, since last update.
@@ -107,7 +107,7 @@ declare namespace Model {
   /**
    * A callback function returned by effect. Will be called when effect is stale.
    * 
-   * @param update - `true` if update is pending, `false` effect has been cancelled, `null` if controller is destroyed.
+   * @param update - `true` if update is pending, `false` effect has been cancelled, `null` if model is destroyed.
    */
   type EffectCallback = ((update: boolean | null) => void);
 
@@ -152,7 +152,7 @@ abstract class Model {
   /**
    * Pull current values from state. Flattens all models and exotic values recursively.
    * 
-   * @returns Object with all values from this controller.
+   * @returns Object with all values from this model.
    **/
   get(): Model.State<this>;
 
@@ -161,7 +161,7 @@ abstract class Model {
    * 
    * @param effect Function to run, and again whenever accessed values change.
    *               If effect returns a function, it will be called when a change occurs (syncronously),
-   *               effect is cancelled, or parent controller is destroyed.
+   *               effect is cancelled, or parent model is destroyed.
    * @returns Function to cancel listener.
    */
   get(effect: Model.Effect<this>): () => void;
@@ -280,16 +280,16 @@ abstract class Model {
    * to prefix an event with "!" and/or use dash-case. e.g. `set("!event")` or `set("my-event")`.
    * 
    * @param key - Property or event to dispatch.
-   * @returns Promise which resolves an array of keys which were updated.
+   * @returns Promise resolves an array of keys updated.
    */
   set(key: Model.Event<this>): PromiseLike<Model.Event<this>[]>;
 
   /**
    * Update mulitple properties at once. Merges argument with current state.
-   * Properties which are not managed by this controller will be ignored.
+   * Properties which are not managed by this model will be ignored.
    * 
    * @param assign - Object with properties to update.
-   * @returns Promise which resolves an array of keys which were updated.
+   * @returns Promise resolving an array of keys updated, `undefined` (immediately) if a noop.
    */
   set(assign: Model.Assign<this>): PromiseLike<Model.Event<this>[]> | undefined;
 
@@ -299,6 +299,7 @@ abstract class Model {
    * @param key - property to update
    * @param value - value to update property with (if the same as current, no update will occur)
    * @param silent - if true, will not notify listeners of an update
+   * @returns Promise resolving an array of keys updated, `undefined` (immediately) if a noop.
    */
   set<K extends string>(
     key: K,
@@ -355,7 +356,7 @@ abstract class Model {
   }
 
   /**
-   * Create and activate a new instance of this controller.
+   * Create and activate a new instance of this model.
    * 
    * **Important** - Unlike `new this(...)` - this method also activates state.
    * 
