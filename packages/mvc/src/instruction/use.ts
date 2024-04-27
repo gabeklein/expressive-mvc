@@ -1,5 +1,5 @@
-import { fetch, Model, STATE, PARENT, update, entries } from '../model';
 import { watch } from '../control';
+import { fetch, Model, PARENT, STATE, update } from '../model';
 
 const INSTRUCT = new Map<symbol, Model.Instruction>();
 
@@ -48,7 +48,8 @@ function use(
 Model.on((_, model) => {
   const state = STATE.get(model)!;
 
-  for(const { key, value } of entries(model)){
+  for(const key in model){
+    const { value } = Object.getOwnPropertyDescriptor(model, key)!;
     const instruction = INSTRUCT.get(value);
 
     if(!instruction){

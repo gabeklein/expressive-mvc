@@ -435,8 +435,10 @@ function prepare(model: Model){
     }
 
     METHODS.set(type, keys = new Set(keys));
-  
-    for(const { key, value } of entries(type.prototype)){
+
+    for(const [key, { value }] of Object.entries(
+      Object.getOwnPropertyDescriptors(type.prototype)
+    )){
       if(!value || key == "constructor")
         continue;
 
@@ -647,15 +649,7 @@ function uid(){
   return (Math.random() * 0.722 + 0.278).toString(36).substring(2, 8).toUpperCase();
 }
 
-/** Get iterable decriptors of object, include key. */
-function entries(object: {}){
-  return Object.entries(
-    Object.getOwnPropertyDescriptors(object)
-  ).map(([key, desc]) => ({ key, ...desc }));
-}
-
 export {
-  entries,
   fetch,
   METHOD,
   Model,
