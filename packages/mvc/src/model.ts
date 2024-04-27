@@ -410,6 +410,7 @@ define(Model, "toString", {
   }
 });
 
+/** Apply inheritance chain events, and ensure class metadata is ready.. */
 function prepare(model: Model){
   const chain = [];
 
@@ -647,7 +648,7 @@ function uid(){
   return (Math.random() * 0.722 + 0.278).toString(36).substring(2, 8).toUpperCase();
 }
 
-/** Object to iterable decriptors, including key. */
+/** Get iterable decriptors of object, include key. */
 function entries(object: {}){
   return Object.entries(
     Object.getOwnPropertyDescriptors(object)
