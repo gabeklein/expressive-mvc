@@ -410,7 +410,7 @@ define(Model, "toString", {
   }
 });
 
-/** Apply inheritance chain events, and ensure class metadata is ready. */
+/** Apply instructions, inherited event listeners and ensure class metadata is ready. */
 function prepare(model: Model){
   const chain = [] as Model.Type[];
 
@@ -461,6 +461,10 @@ function prepare(model: Model){
   }
 }
 
+/**
+ * Apply model arguemnts, run callbacks and observe properties.
+ * Accumulate and handle cleanup events.
+ **/
 function init(model: Model, args: Model.Args){
   const done = new Set<() => void>();
   const state = STATE.get(model)!;
