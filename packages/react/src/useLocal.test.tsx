@@ -187,8 +187,8 @@ describe("callback argument", () => {
     });
 
     class Test extends Model {
-      constructor(arg?: Model.Argument){
-        super(arg);
+      constructor(...args: Model.Args){
+        super(args);
         this.get(effect);
       }
     }
