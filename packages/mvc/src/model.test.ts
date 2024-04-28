@@ -1541,6 +1541,27 @@ describe("new method (static)", () => {
     expect(willDestroy).toBeCalledTimes(1);
   })
 
+  it("will flatten inherited arguments", () => {
+    class Test extends Model {
+      foo = 0;
+      bar = 1;
+      baz = 2;
+    }
+
+    class Test2 extends Test {
+      constructor(...args: Model.Args){
+        super(args, { baz: 3 });
+      }
+    }
+
+    const test = Test2.new("Test-ID", { foo: 1 }, { bar: 2 });
+
+    expect(String(test)).toBe("Test-ID");
+    expect(test.foo).toBe(1);
+    expect(test.bar).toBe(2);
+    expect(test.baz).toBe(3);
+  })
+
   it("will prefer last ID provided", () => {
     const test = Generic.new("ID", "ID2");
 

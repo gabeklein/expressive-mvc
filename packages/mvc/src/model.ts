@@ -46,7 +46,7 @@ declare namespace Model {
   type Argument<T extends Model = Model> = Assign<T> | Callback<T> | string | void;
 
   /** Model constructor arguments */
-  type Args<T extends Model = any> = Argument<T>[];
+  type Args<T extends Model = any> = (Argument<T> | Args<T>)[];
 
   /** Subset of `keyof T` which are not methods or defined by base Model U. **/
   type Field<T> = Exclude<keyof T, keyof Model>;
@@ -471,30 +471,33 @@ function prepare(model: Model){
 function init(model: Model, args: Model.Args){
   const done = new Set<() => void>();
   const state = STATE.get(model)!;
-  
-  for(const arg of args)
-    if(typeof arg == "string")
-      ID.set(model, arg);
+
+  args = args.flat().filter(arg => {
+    if(typeof arg != "string")
+      return true;
+
+    ID.set(model, arg);
+  });
 
   addListener(model, () => {
     if(!PARENT.has(model))
       PARENT.set(model, null);
-
-    for(const arg of args){
+    
+    args.forEach((arg) => {
       const use = typeof arg == "function"
         ? arg.call(model, model)
-        : arg;
+        : arg as Model.Assign<Model>;
 
       if(use instanceof Promise)
         use.catch(err => {
           console.error(`Async error in constructor for ${model}:`);
           console.error(err);
         });
-      else if(typeof use == "object")
-        assign(model, use);
       else if(typeof use == "function")
         done.add(use);
-    }
+      else if(typeof use == "object")
+        assign(model, use);
+    });
 
     for(const key in model){
       const desc = Object.getOwnPropertyDescriptor(model, key)!;
