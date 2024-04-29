@@ -658,7 +658,7 @@ export {
   METHOD,
   Model,
   PARENT,
-  event as push,
+  event,
   STATE,
   uid,
   update,

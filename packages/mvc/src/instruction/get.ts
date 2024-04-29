@@ -1,6 +1,6 @@
 import { Context } from '../context';
 import { effect } from '../control';
-import { fetch, METHOD, Model, PARENT, push, update } from '../model';
+import { fetch, METHOD, Model, PARENT, event, update } from '../model';
 import { use } from './use';
 
 type Type<T extends Model> = Model.Type<T> & typeof Model;
@@ -120,7 +120,7 @@ function get<R, T extends Model>(
           return (didUpdate) => {
             if(didUpdate){
               STALE.add(compute);
-              push(subject, key, true);
+              event(subject, key, true);
             }
           };
         })
