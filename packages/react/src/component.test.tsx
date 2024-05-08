@@ -87,11 +87,13 @@ it("will pass untracked props to render", () => {
     foo = "foo";
   }
 
-  const Component = Test.as<Test, { value: string }>((props) => (
+  const Component = Test.as((props: { value: string }) => (
     <span>{props.value}</span>
   ))
 
-  const rendered = create(<Component value="foobar" />);
+  const rendered = create(
+    <Component foo="foo" value="foobar" />
+  );
 
   expect(rendered.toJSON()).toEqual({
     type: "span",
