@@ -142,9 +142,6 @@ interface Model {
 abstract class Model {
   constructor(...args: Model.Args){
     define(this, "is", { value: this });
-    ID.set(this, `${this.constructor}-${uid()}`);
-    STATE.set(this, {});
-
     prepare(this);
     init(this, args);
   }
@@ -418,6 +415,8 @@ function prepare(model: Model){
   let type = model.constructor as Model.Type;
   let keys = new Set<string>();
 
+  ID.set(model, `${type}-${uid()}`);
+
   while(type.name){
     chain.unshift(type);
     type = Object.getPrototypeOf(type)
@@ -469,8 +468,10 @@ function prepare(model: Model){
  * Accumulate and handle cleanup events.
  **/
 function init(model: Model, args: Model.Args){
-  const done = new Set<() => void>();
-  const state = STATE.get(model)!;
+  const state = {} as Record<string | number | symbol, unknown>;
+  const clean = new Set<() => void>();
+
+  STATE.set(model, state);
 
   args = args.flat().filter(arg => {
     if(typeof arg != "string")
@@ -493,10 +494,10 @@ function init(model: Model, args: Model.Args){
           console.error(`Async error in constructor for ${model}:`);
           console.error(err);
         });
-      else if(typeof use == "function")
-        done.add(use);
       else if(typeof use == "object")
         assign(model, use);
+      else if(typeof use == "function")
+        clean.add(use);
     });
 
     for(const key in model){
@@ -518,7 +519,7 @@ function init(model: Model, args: Model.Args){
   });
 
   addListener(model, () => {
-    done.forEach(x => x());
+    clean.forEach(x => x());
 
     for(const [_, value] of model)
       if(value instanceof Model && PARENT.get(value) === model)
