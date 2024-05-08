@@ -1,15 +1,15 @@
 import { Model, effect } from '@expressive/mvc';
 
-import { useShared, useEffect, useState } from './useContext';
+import { useEffect, useShared, useStateful } from './useContext';
 
 export function useRemote<T extends Model, R>(
   this: Model.Type<T>,
   argument?: boolean | Model.GetFrom<T, unknown>
 ){
-  const context = useShared()
-  const state = useState(() => {
+  const context = useShared();
+  const state = useStateful((context, dispatch) => {
     const instance = context.get(this);
-    const refresh = () => state[1](x => x.bind(null));
+    const refresh = () => dispatch(x => x.bind(null));
 
     if(!instance)
       if(argument === false)
