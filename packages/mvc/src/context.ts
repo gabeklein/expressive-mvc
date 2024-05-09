@@ -1,13 +1,13 @@
 import { Model, PARENT, define, uid } from './model';
 
-const Register = new WeakMap<Model, Context | ((got: Context) => void)[]>();
-const Table = new Map<symbol | Model.Type, symbol>();
+const LOOKUP = new WeakMap<Model, Context | ((got: Context) => void)[]>();
+const KEYS = new Map<symbol | Model.Type, symbol>();
 
 function key(T: Model.Type | symbol, upstream?: boolean): symbol {
-  let K = Table.get(T);
+  let K = KEYS.get(T);
 
   if(!K)
-    Table.set(T, K = Symbol(
+    KEYS.set(T, K = Symbol(
       typeof T == "symbol" ? "get " + T.description : String(T)
     ));
   
@@ -38,7 +38,7 @@ class Context {
   static get<T extends Model>(on: Model, callback: ((got: Context) => void)): void;
   static get<T extends Model>(on: Model): Context | undefined;
   static get(from: Model, callback?: (got: Context) => void){
-    const waiting = Register.get(from);
+    const waiting = LOOKUP.get(from);
 
     if(waiting instanceof Context){
       if(callback)
@@ -51,7 +51,7 @@ class Context {
       if(waiting) 
         waiting.push(callback);
       else 
-        Register.set(from, [callback]);
+        LOOKUP.set(from, [callback]);
   }
 
   public id!: string;
@@ -182,12 +182,12 @@ class Context {
         });
     });
 
-    const waiting = Register.get(I);
+    const waiting = LOOKUP.get(I);
   
     if(waiting instanceof Array)
       waiting.forEach(cb => cb(this));
 
-    Register.set(I, this);
+    LOOKUP.set(I, this);
 
     return I;
   }
