@@ -1,4 +1,4 @@
-import { Model, PARENT, uid } from './model';
+import { Model, PARENT, define, uid } from './model';
 
 const Register = new WeakMap<Model, Context | ((got: Context) => void)[]>();
 const Table = new Map<symbol | Model.Type, symbol>();
@@ -68,7 +68,7 @@ class Context {
   public get<T extends Model>(Type: Model.Type<T>, callback: (model: T) => void): void;
   public get<T extends Model>(Type: Model.Type<T>, callback?: ((model: T) => void)){
     if(callback)
-      Object.defineProperty(this, key(Type, true), { value: callback });
+      define(this, key(Type, true), { value: callback });
 
     const result = this[key(Type)];
 
@@ -176,7 +176,7 @@ class Context {
       const value = this.hasOwnProperty(K) ? null : I;
 
       if(value || this[K] !== I && !implicit)
-        Object.defineProperty(this, K, {
+        define(this, K, {
           configurable: true,
           value
         });

@@ -1,7 +1,5 @@
-import { Model } from '../model';
+import { Model, define } from '../model';
 import { use } from './use';
-
-const define = Object.defineProperty;
 
 declare namespace ref {
   type Callback<T> = (argument: T) =>

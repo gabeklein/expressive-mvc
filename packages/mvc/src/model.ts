@@ -1,6 +1,6 @@
 import { addListener, effect, emit, OnUpdate, queue, watch } from './control';
 
-const define = Object.defineProperty;
+export const define = Object.defineProperty;
 
 /** Register for all active models via string identifiers (usually unique). */
 const ID = new WeakMap<Model, string>();
@@ -452,7 +452,7 @@ function prepare(model: Model){
       }
 
       keys.add(key);
-      Object.defineProperty(type.prototype, key, {
+      define(type.prototype, key, {
         set,
         get(){
           return this.hasOwnProperty(key)
