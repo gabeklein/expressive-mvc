@@ -141,8 +141,8 @@ interface Model {
 
 abstract class Model {
   constructor(...args: Model.Args){
-    define(this, "is", { value: this });
     prepare(this);
+    define(this, "is", { value: this });
     init(this, args);
   }
 
@@ -406,13 +406,13 @@ define(Model, "toString", {
 
 /** Apply instructions, inherited event listeners and ensure class metadata is ready. */
 function prepare(model: Model){
-  const chain = [] as Model.Type[];
-
   let type = model.constructor as Model.Type;
-  let keys = new Set<string>();
 
   if(type === Model)
     throw new Error("Cannot create base Model.");
+
+  const chain = [] as Model.Type[];
+  let keys = new Set<string>();
 
   ID.set(model, `${type}-${uid()}`);
 
