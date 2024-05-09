@@ -1,14 +1,14 @@
 import { Context, Model } from '@expressive/mvc';
 
-import { useShared, useEffect, useState } from './useContext';
+import { useContext, useFactory, useOnMount } from './useContext';
 
 export function useLocal <T extends Model> (
   this: Model.Init<T>,
   argument?: Model.Assign<T> | Model.Callback<T>,
   repeat?: boolean){
 
-  const outer = useShared();
-  const state = useState(() => {
+  const outer = useContext();
+  const getter = useFactory((refresh) => {
     let enabled: boolean | undefined;
     let context: Context;
     let local: T;
@@ -20,7 +20,7 @@ export function useLocal <T extends Model> (
       local = current;
 
       if(enabled)
-        state[1]((x: Function) => x.bind(null));
+        refresh();
     });
 
     return (props?: Model.Assign<T> | Model.Callback<T>) => {
@@ -43,18 +43,18 @@ export function useLocal <T extends Model> (
           enabled = true;
       }
 
-      useEffect(() => {
+      useOnMount(() => {
         enabled = true;
         return () => {
           release();
           instance.set(null);
           context.pop()
         }
-      }, []);
+      });
 
       return local; 
     };
   });
 
-  return state[0](argument);
+  return getter(argument);
 }

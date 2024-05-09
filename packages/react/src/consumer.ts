@@ -1,6 +1,6 @@
 import { Model } from '@expressive/mvc';
 
-import { useShared, useMemo } from './useContext';
+import { useContext } from './useContext';
 
 declare namespace Consumer {
   type HasProps<T extends Model> = {
@@ -53,15 +53,14 @@ function Consumer<T extends Model>(
   if(typeof children == "function")
     return Type.get(children);
 
-  const context = useShared();
-  const instance = useMemo(() => {
-    const instance = context.get(Type);
+  const instance = useContext(ambient => {
+    const instance = ambient.get(Type);
 
     if(!instance && has)
       throw new Error(`Could not find ${Type} in context.`);
 
     return instance as T;
-  }, []);
+  });
 
   const callback = has || get;
 

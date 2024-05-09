@@ -1,12 +1,39 @@
 import { Context } from '@expressive/mvc';
-import { createContext, createElement, ReactNode, useContext } from 'react';
+import React from 'react';
 
-const Shared = createContext(new Context());
+const Pragma = React;
 
-const useShared = () => useContext(Shared);
+export declare namespace Pragma {
+  type Node = React.ReactNode;
+  type FCE<P = {}> = React.FunctionComponentElement<P>;
+}
 
-const createProvider = (value: Context, children?: ReactNode) =>
-  createElement(Shared.Provider, { key: value.id, value }, children);
+const Shared = Pragma.createContext(new Context());
 
-export { createProvider, useShared };
-export { useState, useEffect, useMemo } from 'react';
+const createProvider = (value: Context, children?: Pragma.Node) =>
+  Pragma.createElement(Shared.Provider, { key: value.id, value }, children);
+
+function useContext(): Context;
+function useContext<T>(factory?: (context: Context) => T): T;
+function useContext<T>(factory?: (context: Context) => T) {
+  const ambient = Pragma.useContext(Shared)
+
+  return factory
+    ? Pragma.useMemo(() => factory(ambient), [])
+    : ambient;
+}
+
+const useOnMount = (callback: () => () => void) =>
+  Pragma.useEffect(() => callback(), []);
+
+function useFactory<T extends () => unknown>(
+  factory: (refresh: () => void) => T){
+
+  const state = Pragma.useState(() => factory(() => {
+    state[1](x => x.bind(null) as T);
+  }));
+
+  return state[0];
+}
+
+export { createProvider, useContext, useFactory, useOnMount };

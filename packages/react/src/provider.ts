@@ -1,15 +1,13 @@
 import { Context, Model } from '@expressive/mvc';
 
-import { createProvider, useShared, useEffect, useMemo } from './useContext';
-
-import type { FunctionComponentElement, ReactNode } from 'react';
+import { createProvider, useContext, useOnMount, Pragma } from './useContext';
 
 type Node = JSX.Element | Iterable<Node> | string | number | boolean | null | undefined;
 
 declare namespace Provider {
-  type Element = FunctionComponentElement<{
+  type Element = Pragma.FCE<{
     value: Context;
-    children?: ReactNode;
+    children?: Pragma.Node;
   }>;
 
   type Item = Model | Model.Init;
@@ -37,8 +35,7 @@ declare namespace Provider {
 function Provider<T extends Provider.Item>(props: Provider.Props<T>): Provider.Element {
   let { for: include, use: assign } = props;
 
-  const ambient = useShared();
-  const context = useMemo(() => ambient.push(), []);
+  const context = useContext(ctx => ctx.push());
 
   if(typeof include == "function" || include instanceof Model)
     include = { [""]: include };
@@ -48,7 +45,7 @@ function Provider<T extends Provider.Item>(props: Provider.Props<T>): Provider.E
       model.set(assign);
   });
 
-  useEffect(() => () => context.pop(), []);
+  useOnMount(() => () => context.pop());
 
   return createProvider(context, props.children);
 }

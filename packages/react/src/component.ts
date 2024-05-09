@@ -1,9 +1,10 @@
 import { Model } from '@expressive/mvc';
-import { ReactNode } from 'react';
+
+import { Pragma } from './useContext';
 
 export function createComponent<T extends Model, P extends Model.Assign<T>> (
   this: Model.Init<T>,
-  render: (using: T & P) => ReactNode){
+  render: (using: T & P) => Pragma.Node){
 
   Model.is(this);
 
