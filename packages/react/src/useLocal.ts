@@ -13,8 +13,6 @@ export function useLocal <T extends Model> (
     let context: Context;
     let local: T;
 
-    Model.is(this);
-
     const instance = new this(argument as Model.Argument);
     const release = instance.get(current => {
       local = current;

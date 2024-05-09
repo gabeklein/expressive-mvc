@@ -105,8 +105,17 @@ class Context {
     const init = new Map<Model, boolean>();
 
     Object.entries(inputs).forEach(([K, V]) => {
-      if(!(Model.is(V) || V instanceof Model))
-        throw new Error(`Context can only include Model or instance but got ${V}${K && (" as " + K)}.`);
+      if(Model.is(V) || V instanceof Model)
+        return;
+
+      let instead = V === Model ? "abstract Model" : V;
+
+      if(K && K != V)
+        instead += ` (as '${K}')`;
+
+      throw new Error(
+        `Context may only include instance or class \`extends Model\` but got ${instead}.`
+      );
     })
 
     for(const key in inputs){

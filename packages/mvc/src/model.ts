@@ -360,7 +360,6 @@ abstract class Model {
    * @param args - arguments sent to constructor
    */
   static new <T extends Model> (this: Model.Init<T>, ...args: Model.Args<T>){
-    Model.is(this);
     const instance = new this(...args);
     emit(instance, true);
     return instance;
@@ -373,10 +372,7 @@ abstract class Model {
    * methods and properties of this class.
    */
   static is<T extends Model.Type> (this: T, maybe: unknown): maybe is T {
-    if(maybe === Model)
-      throw new Error("Model is abstract and not a valid type.");
-
-    return typeof maybe == "function" && maybe.prototype instanceof this;
+    return maybe === this || typeof maybe == "function" && maybe.prototype instanceof this;
   }
 
   /**
@@ -414,6 +410,9 @@ function prepare(model: Model){
 
   let type = model.constructor as Model.Type;
   let keys = new Set<string>();
+
+  if(type === Model)
+    throw new Error("Cannot create base Model.");
 
   ID.set(model, `${type}-${uid()}`);
 
