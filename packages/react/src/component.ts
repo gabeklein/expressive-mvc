@@ -1,9 +1,7 @@
 import { Model } from '@expressive/mvc';
-import { ReactNode } from 'react';
 
 export function createComponent<T extends Model, P extends Model.Assign<T>> (
-  this: Model.Init<T>,
-  render: (using: T & P) => ReactNode){
+  this: Model.Init<T>, render: (using: T & P) => unknown){
 
   if(this === Model)
     throw new Error("Cannot create component from base Model.");
