@@ -2,6 +2,7 @@ import { Model, PARENT, define, uid } from './model';
 
 const LOOKUP = new WeakMap<Model, Context | ((got: Context) => void)[]>();
 const KEYS = new Map<symbol | Model.Type, symbol>();
+const ID = new Map<Context, string>();
 
 function key(T: Model.Type | symbol, upstream?: boolean): symbol {
   let K = KEYS.get(T);
@@ -60,6 +61,8 @@ class Context {
   protected cleanup = new Set<() => void>();
 
   constructor(inputs?: Context.Input){
+    ID.set(this, "Context-" + uid());
+
     if(inputs)
       this.include(inputs);
   }
@@ -192,5 +195,11 @@ class Context {
     return I;
   }
 }
+
+define(Context.prototype, "toString", {
+  value(){
+    return ID.get(this.is);
+  }
+});
 
 export { Context }

@@ -1,6 +1,6 @@
 import { Model } from '@expressive/mvc';
 
-import { useShared, useMemo } from './useContext';
+import { useShared, useMemo, useEffect } from './useContext';
 
 declare namespace Consumer {
   type HasProps<T extends Model> = {
@@ -43,30 +43,28 @@ declare namespace Consumer {
 function Consumer<T extends Model>(
   props: Consumer.Props<T>): JSX.Element | null {
 
-  const { children, has, get, for: Type } = props as {
-    for: Model.Type<T>;
-    has?: ((value: T) => void) | boolean;
-    get?: (value: T | undefined) => void;
-    children?: (value: T) => JSX.Element | null;
-  }
+  const Type = props.for;
 
-  if(typeof children == "function")
-    return Type.get(children);
+  if("children" in props)
+    return Type.get(props.children);
 
   const context = useShared();
   const instance = useMemo(() => {
     const instance = context.get(Type);
 
-    if(!instance && has)
-      throw new Error(`Could not find ${Type} in context.`);
-
     return instance as T;
-  }, []);
+  }, [context]);
 
-  const callback = has || get;
+  useEffect(() => {
+    if("has" in props){
+      throw new Error(`Could not find ${Type} in context.`);
+    }
 
-  if(typeof callback == "function")
-    callback(instance);
+    const callback = "has" in props ? props.has : props.get;
+
+    if(typeof callback == "function")
+      callback(instance);
+  }, [instance])
 
   return null;
 }
