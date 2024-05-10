@@ -21,9 +21,7 @@ it("will not create base Model", () => {
   // @ts-expect-error
   const create = () => Model.new();
 
-  expect(create).toThrowError(
-    "Model is abstract and not a valid type."
-  );
+  expect(create).toThrowError("Cannot create base Model.");
 })
 
 it("will not create abstract Model", () => {
@@ -1709,6 +1707,10 @@ describe("is method (static)", () => {
 
     expect(Model.is(NotATest)).toBe(true);
     expect(Test.is(NotATest)).toBe(false);
+  })
+
+  it("will be true if same", () => {
+    expect(Test.is(Test)).toBe(true);
   })
 })
 

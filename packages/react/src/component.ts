@@ -1,12 +1,10 @@
 import { Model } from '@expressive/mvc';
 
-import { Pragma } from './useContext';
-
 export function createComponent<T extends Model, P extends Model.Assign<T>> (
-  this: Model.Init<T>,
-  render: (using: T & P) => Pragma.Node){
+  this: Model.Init<T>, render: (using: T & P) => unknown){
 
-  Model.is(this);
+  if(this === Model)
+    throw new Error("Cannot create component from base Model.");
 
   const Component = ((inputProps: P) => {
     const props = this.use(inputProps, true) as T & P;

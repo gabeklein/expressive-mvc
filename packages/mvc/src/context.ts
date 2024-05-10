@@ -1,13 +1,13 @@
-import { Model, PARENT, uid } from './model';
+import { Model, PARENT, define, uid } from './model';
 
-const Register = new WeakMap<Model, Context | ((got: Context) => void)[]>();
-const Table = new Map<symbol | Model.Type, symbol>();
+const LOOKUP = new WeakMap<Model, Context | ((got: Context) => void)[]>();
+const KEYS = new Map<symbol | Model.Type, symbol>();
 
 function key(T: Model.Type | symbol, upstream?: boolean): symbol {
-  let K = Table.get(T);
+  let K = KEYS.get(T);
 
   if(!K)
-    Table.set(T, K = Symbol(
+    KEYS.set(T, K = Symbol(
       typeof T == "symbol" ? "get " + T.description : String(T)
     ));
   
@@ -38,7 +38,7 @@ class Context {
   static get<T extends Model>(on: Model, callback: ((got: Context) => void)): void;
   static get<T extends Model>(on: Model): Context | undefined;
   static get(from: Model, callback?: (got: Context) => void){
-    const waiting = Register.get(from);
+    const waiting = LOOKUP.get(from);
 
     if(waiting instanceof Context){
       if(callback)
@@ -51,7 +51,7 @@ class Context {
       if(waiting) 
         waiting.push(callback);
       else 
-        Register.set(from, [callback]);
+        LOOKUP.set(from, [callback]);
   }
 
   public id!: string;
@@ -68,7 +68,7 @@ class Context {
   public get<T extends Model>(Type: Model.Type<T>, callback: (model: T) => void): void;
   public get<T extends Model>(Type: Model.Type<T>, callback?: ((model: T) => void)){
     if(callback)
-      Object.defineProperty(this, key(Type, true), { value: callback });
+      define(this, key(Type, true), { value: callback });
 
     const result = this[key(Type)];
 
@@ -104,9 +104,16 @@ class Context {
   ){
     const init = new Map<Model, boolean>();
 
-    Object.entries(inputs).forEach(([K, V]) => {
-      if(!(Model.is(V) || V instanceof Model))
-        throw new Error(`Context can only include Model or instance but got ${V}${K && (" as " + K)}.`);
+    Object.entries(inputs).forEach(([K, V]: [string, unknown]) => {
+      if(Model.is(V) || V instanceof Model)
+        return;
+
+      if(K && K != V)
+        V = `${V} (as '${K}')`;
+
+      throw new Error(
+        `Context may only include instance or class \`extends Model\` but got ${V}.`
+      );
     })
 
     for(const key in inputs){
@@ -176,18 +183,18 @@ class Context {
       const value = this.hasOwnProperty(K) ? null : I;
 
       if(value || this[K] !== I && !implicit)
-        Object.defineProperty(this, K, {
+        define(this, K, {
           configurable: true,
           value
         });
     });
 
-    const waiting = Register.get(I);
+    const waiting = LOOKUP.get(I);
   
     if(waiting instanceof Array)
       waiting.forEach(cb => cb(this));
 
-    Register.set(I, this);
+    LOOKUP.set(I, this);
 
     return I;
   }

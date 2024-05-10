@@ -64,9 +64,7 @@ describe("model", () => {
   
     const attempt = () => Test.new();
 
-    expect(attempt).toThrowError(
-      "Model is abstract and not a valid type."
-    );
+    expect(attempt).toThrowError("Cannot create base Model.");
   })
 
   it('will run callback on every assign', () => {

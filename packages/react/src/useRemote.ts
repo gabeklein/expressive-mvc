@@ -4,7 +4,7 @@ import { useContext, useFactory, useOnMount } from './useContext';
 
 export function useRemote<T extends Model, R>(
   this: Model.Type<T>,
-  argument?: boolean | Model.GetFrom<T, unknown>
+  argument?: boolean | Model.GetFactory<T, unknown>
 ){
   const context = useContext()
   const get = useFactory((refresh) => {

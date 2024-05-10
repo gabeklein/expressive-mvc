@@ -1,6 +1,6 @@
 import { addListener, effect, emit, OnUpdate, queue, watch } from './control';
 
-const define = Object.defineProperty;
+export const define = Object.defineProperty;
 
 /** Register for all active models via string identifiers (usually unique). */
 const ID = new WeakMap<Model, string>();
@@ -141,8 +141,8 @@ interface Model {
 
 abstract class Model {
   constructor(...args: Model.Args){
-    define(this, "is", { value: this });
     prepare(this);
+    define(this, "is", { value: this });
     init(this, args);
   }
 
@@ -360,7 +360,6 @@ abstract class Model {
    * @param args - arguments sent to constructor
    */
   static new <T extends Model> (this: Model.Init<T>, ...args: Model.Args<T>){
-    Model.is(this);
     const instance = new this(...args);
     emit(instance, true);
     return instance;
@@ -373,10 +372,7 @@ abstract class Model {
    * methods and properties of this class.
    */
   static is<T extends Model.Type> (this: T, maybe: unknown): maybe is T {
-    if(maybe === Model)
-      throw new Error("Model is abstract and not a valid type.");
-
-    return typeof maybe == "function" && maybe.prototype instanceof this;
+    return maybe === this || typeof maybe == "function" && maybe.prototype instanceof this;
   }
 
   /**
@@ -410,9 +406,12 @@ define(Model, "toString", {
 
 /** Apply instructions, inherited event listeners and ensure class metadata is ready. */
 function prepare(model: Model){
-  const chain = [] as Model.Type[];
-
   let type = model.constructor as Model.Type;
+
+  if(type === Model)
+    throw new Error("Cannot create base Model.");
+
+  const chain = [] as Model.Type[];
   let keys = new Set<string>();
 
   ID.set(model, `${type}-${uid()}`);
@@ -452,7 +451,7 @@ function prepare(model: Model){
       }
 
       keys.add(key);
-      Object.defineProperty(type.prototype, key, {
+      define(type.prototype, key, {
         set,
         get(){
           return this.hasOwnProperty(key)

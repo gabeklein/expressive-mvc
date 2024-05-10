@@ -23,9 +23,7 @@ it("will not create base Model", () => {
   // @ts-expect-error
   const attempt = () => new Context({ Model });
 
-  expect(attempt).toThrowError(
-    "Model is abstract and not a valid type."
-  );
+  expect(attempt).toThrowError("Cannot create base Model.");
 })
 
 it("will include children of Model", () => {
@@ -227,11 +225,18 @@ it("will throw on bad include", () => {
   expect(() => context.include(undefined as any)).toThrowError();
 })
 
+it("will throw on base Model include", () => {
+  const context = new Context();
+
+  // @ts-ignore
+  expect(() => context.include({ Model })).toThrowError("Cannot create base Model.");
+});
+
 it("will throw on bad include property", () => {
   const context = new Context();
 
   // @ts-ignore
-  const render = () => context.include({ Thing: undefined });
-
-  expect(render).toThrowError("Context can only include Model or instance but got undefined as Thing.");
+  expect(() => context.include({ Thing: undefined })).toThrowError(
+    "Context may only include instance or class `extends Model` but got undefined (as 'Thing')."
+  );
 })
