@@ -39,7 +39,7 @@ importers:
   examples/async:
     dependencies:
       '@expressive/react':
-        specifier: ^0.51.0
+        specifier: ^0.52.1
         version: link:../../packages/react
       react:
         specifier: ^18.2.0
@@ -51,7 +51,7 @@ importers:
   examples/context:
     dependencies:
       '@expressive/react':
-        specifier: ^0.51.0
+        specifier: ^0.52.1
         version: link:../../packages/react
       react:
         specifier: ^18.2.0
@@ -63,7 +63,7 @@ importers:
   examples/counter:
     dependencies:
       '@expressive/react':
-        specifier: ^0.51.0
+        specifier: ^0.52.1
         version: link:../../packages/react
       react:
         specifier: ^18.2.0
@@ -75,7 +75,7 @@ importers:
   examples/fetch:
     dependencies:
       '@expressive/react':
-        specifier: ^0.51.0
+        specifier: ^0.52.1
         version: link:../../packages/react
       react:
         specifier: ^18.2.0
@@ -87,7 +87,7 @@ importers:
   examples/forms:
     dependencies:
       '@expressive/react':
-        specifier: ^0.51.0
+        specifier: ^0.52.1
         version: link:../../packages/react
       react:
         specifier: ^18.2.0
@@ -105,10 +105,23 @@ importers:
         specifier: ^8.0.2
         version: 8.0.2(@swc/core@1.4.16)(typescript@5.4.5)
 
+  packages/preact:
+    dependencies:
+      '@expressive/mvc':
+        specifier: ^0.52.1
+        version: link:../mvc
+      '@expressive/react':
+        specifier: ^0.52.1
+        version: link:../react
+    devDependencies:
+      preact:
+        specifier: ^10.0.0
+        version: 10.21.0
+
   packages/react:
     dependencies:
       '@expressive/mvc':
-        specifier: ^0.51.0
+        specifier: ^0.52.1
         version: link:../mvc
     devDependencies:
       '@types/react':
@@ -5522,6 +5535,10 @@ packages:
     dependencies:
       lilconfig: 3.1.1
       yaml: 2.4.1
+    dev: true
+
+  /preact@10.21.0:
+    resolution: {integrity: sha512-aQAIxtzWEwH8ou+OovWVSVNlFImL7xUCwJX3YMqA3U8iKCNC34999fFOnWjYNsylgfPgMexpbk7WYOLtKr/mxg==}
     dev: true
 
   /pretty-format@27.5.1:
