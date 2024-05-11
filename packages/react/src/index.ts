@@ -1,6 +1,20 @@
-import './component';
-import './useLocal';
-import './useRemote';
+import { Pragma } from './bootstrap';
+import { Context } from '@expressive/mvc';
+import React from 'react';
+
+export const Lookup = React.createContext(new Context());
+
+Pragma.useContext = () => React.useContext(Lookup);
+
+Pragma.useMount = (callback) => React.useEffect(() => callback(), [])
+
+Pragma.useFactory = (factory) => {
+  const state = React.useState(() => factory(() => {
+    state[1](x => x.bind(null) as any);
+  }));
+
+  return state[0];
+}
 
 export {
   Model, Model as default,

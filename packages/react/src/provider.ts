@@ -1,7 +1,7 @@
 import Model, { Context } from '@expressive/mvc';
 import React from 'react';
 
-import { Shared, useMount, useContext } from './useContext';
+import { Lookup } from '.';
 
 declare namespace Provider {
   interface Props<T extends Model> {
@@ -14,14 +14,14 @@ declare namespace Provider {
 function Provider<T extends Model>(props: Provider.Props<T>){
   let { children, for: include, set: assign } = props;
 
-  const context = useContext();
+  const context = React.useContext(Lookup);
   const value = React.useMemo(() => context.push(), []);
   
   value.include(include, assign);
 
-  useMount(() => () => value.pop());
+  React.useEffect(() => () => value.pop(), []);
 
-  return React.createElement(Shared.Provider, {
+  return React.createElement(Lookup.Provider, {
     key: value.id, value, children
   });
 }

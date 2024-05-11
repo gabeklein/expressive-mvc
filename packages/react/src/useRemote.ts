@@ -1,6 +1,6 @@
 import { effect, Model } from '@expressive/mvc';
 
-import { useContext, useFactory, useMount } from './useContext';
+import { Pragma } from './bootstrap';
 
 /** Type may not be undefined - instead will be null.  */
 type NoVoid<T> = T extends undefined | void ? null : T;
@@ -53,8 +53,8 @@ Model.get = function <T extends Model, R> (
   this: Model.Type<T>,
   argument?: boolean | Model.GetFactory<T, unknown>
 ){
-  const context = useContext();
-  const get = useFactory((refresh) => {
+  const context = Pragma.useContext();
+  const get = Pragma.useFactory((refresh) => {
     const instance = context.get(this);
 
     if(!instance)
@@ -117,7 +117,7 @@ Model.get = function <T extends Model, R> (
     }
 
     return () => {
-      useMount(() => release);
+      Pragma.useMount(() => release);
       return value === undefined ? null : value;
     }
   });

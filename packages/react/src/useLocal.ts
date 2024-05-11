@@ -1,5 +1,5 @@
 import { Context, Model } from '@expressive/mvc';
-import { useContext, useFactory, useMount } from './useContext';
+import { Pragma } from './bootstrap';
 
 declare module '@expressive/mvc' {
   namespace Model {
@@ -14,8 +14,8 @@ Model.use = function <T extends Model> (
   argument?: Model.Assign<T> | Model.Callback<T>,
   repeat?: boolean){
 
-  const outer = useContext();
-  const getter = useFactory((refresh) => {
+  const outer = Pragma.useContext();
+  const getter = Pragma.useFactory((refresh) => {
     let enabled: boolean | undefined;
     let context: Context;
     let local: T;
@@ -48,7 +48,7 @@ Model.use = function <T extends Model> (
           enabled = true;
       }
 
-      useMount(() => {
+      Pragma.useMount(() => {
         enabled = true;
         return () => {
           release();

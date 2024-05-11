@@ -1,7 +1,7 @@
 import Model from '@expressive/mvc';
 import React from 'react';
 
-import { Shared } from './useContext';
+import { Lookup } from './';
 
 declare namespace Consumer {
   type HasProps<T extends Model> = {
@@ -47,7 +47,7 @@ function Consumer<T extends Model>(props: Consumer.Props<T>){
   if("children" in props)
     return Type.get(props.children);
 
-  const ambient = React.useContext(Shared);
+  const ambient = React.useContext(Lookup);
   const onRender = React.useMemo(() => {
     const instance = ambient.get(Type);
 
