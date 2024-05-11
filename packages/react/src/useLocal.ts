@@ -1,6 +1,5 @@
 import { Context, Model } from '@expressive/mvc';
-
-import { useContextState, useOnMount } from './useContext';
+import { useContext, useFactory, useMount } from './useContext';
 
 declare module '@expressive/mvc' {
   namespace Model {
@@ -15,7 +14,8 @@ Model.use = function <T extends Model> (
   argument?: Model.Assign<T> | Model.Callback<T>,
   repeat?: boolean){
 
-  const getter = useContextState((outer, refresh) => {
+  const outer = useContext();
+  const getter = useFactory((refresh) => {
     let enabled: boolean | undefined;
     let context: Context;
     let local: T;
@@ -48,7 +48,7 @@ Model.use = function <T extends Model> (
           enabled = true;
       }
 
-      useOnMount(() => {
+      useMount(() => {
         enabled = true;
         return () => {
           release();

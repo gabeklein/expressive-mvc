@@ -1,5 +1,7 @@
-import { Model } from '.';
-import { useContextMemo } from './useContext';
+import Model from '@expressive/mvc';
+import React from 'react';
+
+import { Shared } from './useContext';
 
 declare namespace Consumer {
   type HasProps<T extends Model> = {
@@ -45,7 +47,8 @@ function Consumer<T extends Model>(props: Consumer.Props<T>){
   if("children" in props)
     return Type.get(props.children);
 
-  const onRender = useContextMemo(ambient => {
+  const ambient = React.useContext(Shared);
+  const onRender = React.useMemo(() => {
     const instance = ambient.get(Type);
 
     if(!instance && "has" in props)
@@ -55,7 +58,7 @@ function Consumer<T extends Model>(props: Consumer.Props<T>){
   
     if(typeof callback == "function")
       return () => callback(instance!);
-  });
+  }, [ambient]);
 
   if(onRender)
     onRender();

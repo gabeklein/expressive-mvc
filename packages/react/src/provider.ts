@@ -1,11 +1,12 @@
-import { Context, Model } from '@expressive/mvc';
+import Model, { Context } from '@expressive/mvc';
+import React from 'react';
 
-import { createProvider, useOnMount, useContextMemo, Pragma } from './useContext';
+import { Shared, useMount, useContext } from './useContext';
 
 declare namespace Provider {
   interface Props<T extends Model> {
     for: Context.Accept<T>;
-    children?: Pragma.Node;
+    children?: React.ReactNode;
     set?: Model.Assign<T>;
   }
 }
@@ -13,13 +14,16 @@ declare namespace Provider {
 function Provider<T extends Model>(props: Provider.Props<T>){
   let { children, for: include, set: assign } = props;
 
-  const context = useContextMemo(ctx => ctx.push());
+  const context = useContext();
+  const value = React.useMemo(() => context.push(), []);
   
-  context.include(include, assign);
+  value.include(include, assign);
 
-  useOnMount(() => () => context.pop());
+  useMount(() => () => value.pop());
 
-  return createProvider(context, children as Pragma.Node);
+  return React.createElement(Shared.Provider, {
+    key: value.id, value, children
+  });
 }
 
 export { Provider };

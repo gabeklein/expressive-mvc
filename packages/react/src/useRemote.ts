@@ -1,6 +1,6 @@
-import { Model, effect } from '@expressive/mvc';
+import { effect, Model } from '@expressive/mvc';
 
-import { useContextState, useOnMount } from './useContext';
+import { useContext, useFactory, useMount } from './useContext';
 
 /** Type may not be undefined - instead will be null.  */
 type NoVoid<T> = T extends undefined | void ? null : T;
@@ -53,7 +53,8 @@ Model.get = function <T extends Model, R> (
   this: Model.Type<T>,
   argument?: boolean | Model.GetFactory<T, unknown>
 ){
-  const get = useContextState((context, refresh) => {
+  const context = useContext();
+  const get = useFactory((refresh) => {
     const instance = context.get(this);
 
     if(!instance)
@@ -116,7 +117,7 @@ Model.get = function <T extends Model, R> (
     }
 
     return () => {
-      useOnMount(() => release);
+      useMount(() => release);
       return value === undefined ? null : value;
     }
   });

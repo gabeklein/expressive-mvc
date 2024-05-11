@@ -3,10 +3,14 @@ import { Model } from '@expressive/mvc';
 declare module '@expressive/mvc' {
   namespace Model {
     interface Component<T extends Model, P extends Model.Assign<T>> {
-      (props: P): JSX.Element;
+      (props: P): React.ReactNode;
 
+      displayName?: string;
       Model: Model.Type<T>;
-      displayName: string;
+    }
+
+    interface Render <T extends Model, P extends Model.Assign<T>> {
+      (using: P): React.ReactNode;
     }
 
     /**
@@ -15,13 +19,13 @@ declare module '@expressive/mvc' {
      * @param render Function which renders component. This function receives all Model state merged with props. Normal subscription behavior still applies.
      */
     function as <T extends Model, P extends Model.Assign<T>> (
-      this: Model.Init<T>, render: (using: P) => React.ReactNode
+      this: Model.Init<T>, render: Render<T, P>
     ): Component<T, P & Model.Assign<T>>;
   }
 }
 
 Model.as = function <T extends Model, P extends Model.Assign<T>> (
-  this: Model.Init<T>, render: (using: T & P) => unknown){
+  this: Model.Init<T>, render: Model.Render<T, P>){
 
   if(this === Model)
     throw new Error("Cannot create component from base Model.");

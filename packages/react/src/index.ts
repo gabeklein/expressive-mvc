@@ -9,9 +9,3 @@ export {
 
 export { Consumer } from "./consumer";
 export { Provider } from "./provider";
-
-declare module "./useContext" {
-  namespace Pragma {
-    
-  }
-}
