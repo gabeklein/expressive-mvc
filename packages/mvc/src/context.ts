@@ -26,7 +26,12 @@ function keys(from: Model.Type, upstream?: boolean){
 }
 
 declare namespace Context {
-  type Input = Record<string | number, Model | Model.Init>;
+  type Multiple<T extends Model> = {
+    [key: string | number]: Model.Init<T> | T;
+  };
+
+  type Accept<T extends Model = Model> = T | Model.Init<T> | Multiple<T>;
+
   type Expect = (model: Model) => (() => void) | void;
 }
 
@@ -59,7 +64,7 @@ class Context {
   protected layer = new Map<string | number, Model | Model.Type>();
   protected cleanup = new Set<() => void>();
 
-  constructor(inputs?: Context.Input){
+  constructor(inputs?: Context.Accept){
     if(inputs)
       this.include(inputs);
   }
@@ -78,7 +83,7 @@ class Context {
     return result as T | undefined;
   }
 
-  public push(inputs?: Context.Input){
+  public push(inputs?: Context.Accept){
     const next = Object.create(this) as this;
 
     next.layer = new Map();
@@ -98,11 +103,24 @@ class Context {
     this.layer.clear();
   }
 
+  public include<T extends Model>(
+    inputs: Context.Accept<T>,
+    forEach?: (added: T, explicit: boolean) => void
+  ): void;
+
+  public include<T extends Model>(
+    inputs: Context.Accept<T>,
+    set?: Model.Assign<T>
+  ): void;
+
   public include(
-    inputs: Context.Input,
-    forEach?: (added: Model, explicit: boolean) => void
+    inputs: Context.Accept,
+    forEach?: ((added: Model, explicit: boolean) => void) | Model.Assign<Model>
   ){
     const init = new Map<Model, boolean>();
+
+    if(typeof inputs == "function" || inputs instanceof Model)
+      inputs = { 0: inputs };
 
     Object.entries(inputs).forEach(([K, V]: [string, unknown]) => {
       if(Model.is(V) || V instanceof Model)
@@ -137,9 +155,11 @@ class Context {
     for(const [model, explicit] of init){
       model.set();
 
-      if(forEach)
+      if(typeof forEach == "function")
         forEach(model, explicit);
-  
+      else if(forEach && explicit)
+        model.set(forEach);
+
       for(const [_key, value] of model)
         if(PARENT.get(value as Model) === model){
           this.add(value as Model, true);
