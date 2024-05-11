@@ -6,12 +6,12 @@ declare namespace Provider {
   interface Props<T extends Model> {
     for: Context.Accept<T>;
     children?: Pragma.Node;
-    set?: Model.Assign<T>;
+    forEach?: Model.Assign<T> | Context.ForEach;
   }
 }
 
 function Provider<T extends Model>(props: Provider.Props<T>){
-  let { children, for: include, set: assign } = props;
+  let { children, for: include, forEach: assign } = props;
 
   const context = useContextMemo(ctx => ctx.push());
   
