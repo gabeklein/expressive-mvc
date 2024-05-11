@@ -32,6 +32,8 @@ declare namespace Context {
 
   type Accept<T extends Model = Model> = T | Model.Init<T> | Multiple<T>;
 
+  type ForEach = (added: Model, explicit: boolean) => void;
+
   type Expect = (model: Model) => (() => void) | void;
 }
 
@@ -105,17 +107,7 @@ class Context {
 
   public include<T extends Model>(
     inputs: Context.Accept<T>,
-    forEach?: (added: T, explicit: boolean) => void
-  ): void;
-
-  public include<T extends Model>(
-    inputs: Context.Accept<T>,
-    set?: Model.Assign<T>
-  ): void;
-
-  public include(
-    inputs: Context.Accept,
-    forEach?: ((added: Model, explicit: boolean) => void) | Model.Assign<Model>
+    forEach?: Context.ForEach | Model.Assign<T>
   ){
     const init = new Map<Model, boolean>();
 
