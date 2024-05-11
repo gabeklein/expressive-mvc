@@ -45,19 +45,20 @@ function Consumer<T extends Model>(props: Consumer.Props<T>){
   if("children" in props)
     return Type.get(props.children);
 
-  const instance = useContextMemo(ambient => {
+  const onRender = useContextMemo(ambient => {
     const instance = ambient.get(Type);
 
     if(!instance && "has" in props)
       throw new Error(`Could not find ${Type} in context.`);
 
-    return instance as T;
+    const callback = "has" in props ? props.has : props.get;
+  
+    if(typeof callback == "function")
+      return () => callback(instance!);
   });
 
-  const callback = "has" in props ? props.has : props.get;
-
-  if(typeof callback == "function")
-    callback(instance);
+  if(onRender)
+    onRender();
 
   return null;
 }
