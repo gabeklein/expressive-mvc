@@ -107,8 +107,8 @@ it("will eagerly select extended class", () => {
 
 it("will select closest instance of same type", () => {
   create(
-    <Provider for={Foo} set={{ value: "outer" }}>
-      <Provider for={Foo} set={{ value: "inner" }}>
+    <Provider for={Foo} forEach={{ value: "outer" }}>
+      <Provider for={Foo} forEach={{ value: "inner" }}>
         <Consumer for={Foo} has={i => expect(i.value).toBe("inner")} />
       </Provider>
     </Provider>

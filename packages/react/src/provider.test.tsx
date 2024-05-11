@@ -163,7 +163,7 @@ describe("use prop", () => {
 
   it("will assign values to instance", () => {
     create(
-      <Provider for={Foo} set={{ value: "foobar" }}>
+      <Provider for={Foo} forEach={{ value: "foobar" }}>
         <Consumer for={Foo} has={i => expect(i.value).toBe("foobar")} />
       </Provider>
     );
@@ -175,7 +175,7 @@ describe("use prop", () => {
     }
 
     create(
-      <Provider for={{ Foo, Bar }} set={{ value: "foobar" }}>
+      <Provider for={{ Foo, Bar }} forEach={{ value: "foobar" }}>
         <Consumer for={Foo} has={i => expect(i.value).toBe("foobar")} />
         <Consumer for={Bar} has={i => expect(i.value).toBe("foobar")} />
       </Provider>
@@ -184,7 +184,7 @@ describe("use prop", () => {
 
   it("will not assign foreign values", () => {
     create(
-      <Provider for={Foo} set={{ nonValue: "foobar" }}>
+      <Provider for={Foo} forEach={{ nonValue: "foobar" }}>
         <Consumer for={Foo} has={i => {
           // @ts-expect-error
           expect(i.nonValue).toBeUndefined();
