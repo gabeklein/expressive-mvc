@@ -18,9 +18,9 @@
   ],
   "main": "dist/index.js",
   "module": "dist/index.mjs",
-  "types": "types.d.ts",
+  "types": "dist/index.d.ts",
   "files": [
-    "types.d.ts",
+    "dist/index.d.ts",
     "dist/index.js",
     "dist/index.mjs"
   ],

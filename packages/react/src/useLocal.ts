@@ -1,14 +1,21 @@
 import { Context, Model } from '@expressive/mvc';
 
-import { useContext, useFactory, useOnMount } from './useContext';
+import { useContextState, useOnMount } from './useContext';
 
-export function useLocal <T extends Model> (
+declare module '@expressive/mvc' {
+  namespace Model {
+    function use <T extends Model> (this: Model.Init<T>, apply?: Model.Assign<T>, repeat?: boolean): T;
+
+    function use <T extends Model> (this: Model.Init<T>, callback?: Model.Callback<T>, repeat?: boolean): T;
+  }
+}
+
+Model.use = function <T extends Model> (
   this: Model.Init<T>,
   argument?: Model.Assign<T> | Model.Callback<T>,
   repeat?: boolean){
 
-  const outer = useContext();
-  const getter = useFactory((refresh) => {
+  const getter = useContextState((outer, refresh) => {
     let enabled: boolean | undefined;
     let context: Context;
     let local: T;

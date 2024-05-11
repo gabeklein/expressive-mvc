@@ -1,6 +1,26 @@
 import { Model } from '@expressive/mvc';
 
-export function createComponent<T extends Model, P extends Model.Assign<T>> (
+declare module '@expressive/mvc' {
+  namespace Model {
+    interface Component<T extends Model, P extends Model.Assign<T>> {
+      (props: P): JSX.Element;
+
+      Model: Model.Type<T>;
+      displayName: string;
+    }
+
+    /**
+     * Creates a component which reflects this Model. All managed properties may be assigned using props.
+     * 
+     * @param render Function which renders component. This function receives all Model state merged with props. Normal subscription behavior still applies.
+     */
+    function as <T extends Model, P extends Model.Assign<T>> (
+      this: Model.Init<T>, render: (using: P) => React.ReactNode
+    ): Component<T, P & Model.Assign<T>>;
+  }
+}
+
+Model.as = function <T extends Model, P extends Model.Assign<T>> (
   this: Model.Init<T>, render: (using: T & P) => unknown){
 
   if(this === Model)

@@ -10,30 +10,28 @@ export declare namespace Pragma {
 
 const Shared = Pragma.createContext(new Context());
 
-const createProvider = (value: Context, children?: Pragma.Node) =>
-  Pragma.createElement(Shared.Provider, { key: value.id, value }, children);
-
-function useContext(): Context;
-function useContext<T>(factory?: (context: Context) => T): T;
-function useContext<T>(factory?: (context: Context) => T) {
-  const ambient = Pragma.useContext(Shared)
-
-  return factory
-    ? Pragma.useMemo(() => factory(ambient), [])
-    : ambient;
+function createProvider(value: Context, children?: Pragma.Node) {
+  return Pragma.createElement(Shared.Provider, { key: value.id, value }, children);
 }
 
-const useOnMount = (callback: () => () => void) =>
-  Pragma.useEffect(() => callback(), []);
+function useContextMemo<T>(factory: (context: Context) => T) {
+  const ambient = Pragma.useContext(Shared);
+  return Pragma.useMemo(() => factory(ambient), []);
+}
 
-function useFactory<T extends () => unknown>(
-  factory: (refresh: () => void) => T){
+function useContextState<T extends () => unknown>(
+  factory: (context: Context, refresh: () => void) => T){
 
-  const state = Pragma.useState(() => factory(() => {
+  const context = Pragma.useContext(Shared);
+  const state = Pragma.useState(() => factory(context, () => {
     state[1](x => x.bind(null) as T);
   }));
 
   return state[0];
 }
 
-export { createProvider, useContext, useFactory, useOnMount };
+function useOnMount(callback: () => () => void) {
+  return Pragma.useEffect(() => callback(), []);
+}
+
+export { createProvider, useContextMemo, useContextState, useOnMount };
