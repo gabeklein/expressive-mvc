@@ -31,11 +31,11 @@ Model.as = function <T extends Model, P extends Model.Assign<T>> (
     throw new Error("Cannot create component from base Model.");
 
   const Component = ((inputProps: P) => {
-    const props = this.use(inputProps, true) as T & P;
+    const props = this.use(inputProps, true);
 
     for(const key in inputProps)
       if(!(key in props))
-        Object.defineProperty(props, key, { value: inputProps[key] });
+        Object.defineProperty(props, key, { value: inputProps[key] });    
 
     return render(props);
   }) as Model.Component<T, P>;
