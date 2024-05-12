@@ -49,7 +49,7 @@ declare module '@expressive/mvc' {
     function get <T extends Model, R> (this: Model.Type<T>, factory: GetFactory<T, Promise<R> | R>): NoVoid<R>;
   
     // TODO: eagerly metch this so any nulls are caught - would prevent updates.
-    function get <T extends Model, R> (this: Model.Type<T>, factory: GetEffect<T>): null;
+    function get <T extends Model> (this: Model.Type<T>, factory: GetEffect<T>): null;
   }
 }
 
@@ -59,14 +59,6 @@ Model.get = function <T extends Model, R> (
 ){
   const context = Pragma.useContext();
   const render = Pragma.useFactory((refresh) => {
-    const instance = context.get(this);
-
-    if(!instance)
-      if(argument === false)
-        return () => undefined;
-      else
-        throw new Error(`Could not find ${this} in context.`);
-
     function forceUpdate(): void;
     function forceUpdate<T>(action: Promise<T> | (() => Promise<T>)): Promise<T>;
     function forceUpdate<T>(action?: Promise<T> | (() => Promise<T>)){
@@ -78,6 +70,14 @@ Model.get = function <T extends Model, R> (
       if(action)
         return action.finally(refresh);
     }
+
+    const instance = context.get(this);
+
+    if(!instance)
+      if(argument === false)
+        return () => undefined;
+      else
+        throw new Error(`Could not find ${this} in context.`);
 
     let unwatch: (() => void) | undefined;
     let value: any;
