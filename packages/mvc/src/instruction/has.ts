@@ -23,7 +23,7 @@ function has <T extends Model> (
 
     if(Model.is(arg1))
       Context.get(subject, context => {
-        context.get(arg1, got => {
+        context.has(arg1, got => {
           let remove: (() => void) | void | undefined;
           let disconnect: (() => void) | undefined;
   

@@ -71,12 +71,13 @@ class Context {
       this.include(inputs);
   }
 
-  public get<T extends Model>(Type: Model.Type<T>): T | undefined;
-  public get<T extends Model>(Type: Model.Type<T>, callback: (model: T) => void): void;
-  public get<T extends Model>(Type: Model.Type<T>, callback?: ((model: T) => void)){
-    if(callback)
-      define(this, key(Type, true), { value: callback });
+  /** Run callback when a specified type is registered to a **child** context. */
+  public has<T extends Model>(Type: Model.Type<T>, callback: (model: T) => void){
+    define(this, key(Type, true), { value: callback });
+  }
 
+  /** Find specified type registered to a parent context. Returns undefined if none are found. */
+  public get<T extends Model>(Type: Model.Type<T>){
     const result = this[key(Type)];
 
     if(result === null)
