@@ -18,7 +18,6 @@ function Provider<T extends Model>(props: Provider.Props<T>){
   const value = React.useMemo(() => context.push(), []);
   
   value.include(include, assign);
-
   React.useEffect(() => () => value.pop(), []);
 
   return React.createElement(Lookup.Provider, {
