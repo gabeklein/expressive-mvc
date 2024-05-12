@@ -1,11 +1,20 @@
-import { Context, Model } from '@expressive/mvc';
+import { Model } from '@expressive/mvc';
+
 import { Pragma } from '.';
 
 declare module '@expressive/mvc' {
   namespace Model {
-    function use <T extends Model> (this: Model.Init<T>, apply?: Model.Assign<T>, repeat?: boolean): T;
+    function use <T extends Model> (
+      this: Model.Init<T>,
+      apply?: Model.Assign<T>,
+      repeat?: boolean
+    ): T;
 
-    function use <T extends Model> (this: Model.Init<T>, callback?: Model.Callback<T>, repeat?: boolean): T;
+    function use <T extends Model> (
+      this: Model.Init<T>,
+      callback?: Model.Callback<T>,
+      repeat?: boolean
+    ): T;
   }
 }
 
@@ -17,22 +26,30 @@ Model.use = function <T extends Model> (
   const outer = Pragma.useContext();
   const getter = Pragma.useFactory((refresh) => {
     let enabled: boolean | undefined;
-    let context: Context;
     let local: T;
 
-    const instance = new this(argument as Model.Argument);
-    const release = instance.get(current => {
+    const instance = new this(argument);
+    const context = outer.push({ instance });
+    const unwatch = instance.get(current => {
       local = current;
 
       if(enabled)
         refresh();
     });
 
-    return (props?: Model.Assign<T> | Model.Callback<T>) => {
-      if(!context)
-        context = outer.push({ instance });
+    function didMount(){
+      enabled = true;
+      return () => {
+        unwatch();
+        instance.set(null);
+        context.pop()
+      }
+    }
 
-      if(repeat && enabled) {
+    return (props?: Model.Assign<T> | Model.Callback<T>) => {
+      Pragma.useMount(didMount);
+
+      if(repeat && enabled && props){
         enabled = false;
 
         if(typeof props == "function")
@@ -47,15 +64,6 @@ Model.use = function <T extends Model> (
         else
           enabled = true;
       }
-
-      Pragma.useMount(() => {
-        enabled = true;
-        return () => {
-          release();
-          instance.set(null);
-          context.pop()
-        }
-      });
 
       return local; 
     };

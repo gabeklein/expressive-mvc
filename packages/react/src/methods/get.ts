@@ -38,10 +38,10 @@ declare module '@expressive/mvc' {
     function get <T extends Model> (this: Model.Type<T>): T;
   
     /** Fetch instance of this class optionally. */
-    function get <T extends Model> (this: Model.Type<T>, expect: false): T | undefined;
+    function get <T extends Model> (this: Model.Type<T>, required: false): T | undefined;
 
     /** Fetch instance of this class from context. */
-    function get <T extends Model> (this: Model.Type<T>, expectValues: true): Required<T>
+    function get <T extends Model> (this: Model.Type<T>, requireValues: true): Required<T>
   
     function get <T extends Model, R> (this: Model.Type<T>, factory: GetFactory<T, Promise<R> | R>): NoVoid<R>;
   
@@ -75,10 +75,10 @@ Model.get = function <T extends Model, R> (
         return action.finally(refresh);
     }
 
-    let release: (() => void) | undefined;
+    let unwatch: (() => void) | undefined;
     let value: any;
 
-    release = effect(instance, current => {
+    unwatch = effect(instance, current => {
       if(typeof argument === "function"){
         const next = argument.call(current, current, forceUpdate);
 
@@ -90,14 +90,14 @@ Model.get = function <T extends Model, R> (
       else
         value = current;
 
-      if(release)
+      if(unwatch)
         refresh();
     }, argument === true);
 
     if(value instanceof Promise){
       let error: Error | undefined;
 
-      release();
+      unwatch();
 
       // TODO: ignore update if resolves to undefined or null
       value.then(x => value = x).catch(e => error = e).finally(refresh);
@@ -112,12 +112,12 @@ Model.get = function <T extends Model, R> (
     }
 
     if(value === null){
-      release();
+      unwatch();
       return () => null;
     }
 
     return () => {
-      Pragma.useMount(() => release);
+      Pragma.useMount(() => unwatch);
       return value === undefined ? null : value;
     }
   });
