@@ -7,8 +7,14 @@ declare module '@expressive/mvc' {
     function use <T extends Model> (
       this: Model.Init<T>,
       apply?: Model.Assign<T>,
-      repeat?: boolean
+      repeat?: false
     ): T;
+
+    function use <T extends Model, A extends Model.Assign<T>> (
+      this: Model.Init<T>,
+      assign: A,
+      passthru: boolean
+    ): T & A;
 
     function use <T extends Model> (
       this: Model.Init<T>,
@@ -49,13 +55,16 @@ Model.use = function <T extends Model> (
     return (props?: Model.Assign<T> | Model.Callback<T>) => {
       Pragma.useMount(didMount);
 
-      if(repeat && enabled && props){
+      if(props && enabled && repeat){
         enabled = false;
 
         if(typeof props == "function")
           props.call(instance, instance);
-        else if(typeof props == "object")
+        else if(typeof props == "object"){
           instance.set(props);
+          // for(const key in props)
+          //   (local as any)[key] = props[key];
+        }
 
         const update = instance.set();
 
