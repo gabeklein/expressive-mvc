@@ -25,7 +25,7 @@
     "dist/index.mjs"
   ],
   "scripts": {
-    "build": "tsup src/index.ts --format esm,cjs",
+    "build": "tsup",
     "test": "tsc --noEmit && jest --collectCoverage",
     "prebuild": "rm -rf dist",
     "preversion": "npm run test && npm run build"
