@@ -63,7 +63,7 @@ Model.get = function <T extends Model, R> (
 
     if(!instance)
       if(argument === false)
-        return () => {};
+        return () => undefined;
       else
         throw new Error(`Could not find ${this} in context.`);
 
