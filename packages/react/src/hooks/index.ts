@@ -12,6 +12,5 @@ const Pragma = {} as {
 
 export { Pragma };
 
-import './as';
 import './use';
 import './get';

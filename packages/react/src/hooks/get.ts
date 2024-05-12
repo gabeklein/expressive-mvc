@@ -58,7 +58,7 @@ Model.get = function <T extends Model, R> (
   argument?: boolean | Model.GetFactory<T, unknown>
 ){
   const context = Pragma.useContext();
-  const get = Pragma.useFactory((refresh) => {
+  const render = Pragma.useFactory((refresh) => {
     const instance = context.get(this);
 
     if(!instance)
@@ -126,5 +126,5 @@ Model.get = function <T extends Model, R> (
     }
   });
 
-  return get() as R;
+  return render() as R;
 }

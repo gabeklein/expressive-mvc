@@ -1,7 +1,7 @@
 import { Context } from '@expressive/mvc';
 import React from 'react';
 
-import { Pragma } from './methods';
+import { Pragma } from './hooks';
 
 const Lookup = React.createContext(new Context());
 
@@ -16,6 +16,8 @@ Pragma.useFactory = (factory) => {
 
   return state[0];
 }
+
+import "./component";
 
 export {
   Model, Model as default,

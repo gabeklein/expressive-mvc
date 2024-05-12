@@ -23,13 +23,13 @@ Model.use = function <T extends Model> (
   argument?: Model.Assign<T> | Model.Callback<T>,
   repeat?: boolean){
 
-  const outer = Pragma.useContext();
-  const getter = Pragma.useFactory((refresh) => {
+  const ambient = Pragma.useContext();
+  const render = Pragma.useFactory((refresh) => {
     let enabled: boolean | undefined;
     let local: T;
 
     const instance = new this(argument);
-    const context = outer.push({ instance });
+    const context = ambient.push({ instance });
     const unwatch = instance.get(current => {
       local = current;
 
@@ -69,5 +69,5 @@ Model.use = function <T extends Model> (
     };
   });
 
-  return getter(argument);
+  return render(argument);
 }
