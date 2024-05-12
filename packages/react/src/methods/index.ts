@@ -12,6 +12,6 @@ const Pragma = {} as {
 
 export { Pragma };
 
-import './component';
-import './useLocal';
-import './useRemote';
+import './as';
+import './use';
+import './get';

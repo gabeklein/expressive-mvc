@@ -1,5 +1,5 @@
 import { Context, Model } from '@expressive/mvc';
-import { Pragma } from './bootstrap';
+import { Pragma } from '.';
 
 declare module '@expressive/mvc' {
   namespace Model {

@@ -1,12 +1,13 @@
-import { Pragma } from './bootstrap';
 import { Context } from '@expressive/mvc';
 import React from 'react';
 
-export const Lookup = React.createContext(new Context());
+import { Pragma } from './methods';
+
+const Lookup = React.createContext(new Context());
 
 Pragma.useContext = () => React.useContext(Lookup);
 
-Pragma.useMount = (callback) => React.useEffect(() => callback(), [])
+Pragma.useMount = (callback) => React.useEffect(() => callback(), []);
 
 Pragma.useFactory = (factory) => {
   const state = React.useState(() => factory(() => {
@@ -21,5 +22,6 @@ export {
   get, use, ref, set, has
 } from '@expressive/mvc';
 
+export { Lookup };
 export { Consumer } from "./consumer";
 export { Provider } from "./provider";

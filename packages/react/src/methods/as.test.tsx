@@ -1,7 +1,7 @@
 import React from 'react';
 import { act, create } from 'react-test-renderer';
 
-import Model from '.';
+import Model from '..';
 
 it("will update component as values change", async () => {
   class Test extends Model {
