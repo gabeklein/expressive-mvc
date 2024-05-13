@@ -1,20 +1,11 @@
-import { Context } from '@expressive/mvc';
-import { createContext, createElement, useContext, useEffect, useMemo, useState } from 'react';
+import { useContext, useEffect, useState } from 'react';
 
 import { Pragma } from './adapter';
+import { Context } from './context';
 
-const Lookup = createContext(new Context());
+Pragma.useContext = () => useContext(Context);
 
-Pragma.useContext = (create?: boolean) => {
-  let ambient = useContext(Lookup);
-
-  if(create){
-    useEffect(() => () => ambient.pop(), [ambient]);
-    ambient = useMemo(() => ambient.push(), [ambient]);
-  }
-
-  return ambient;
-}
+Pragma.useLifecycle = (callback) => useEffect(() => callback(), []);
 
 Pragma.useFactory = (factory) => {
   const state = useState(() => factory(() => {
@@ -24,18 +15,7 @@ Pragma.useFactory = (factory) => {
   return state[0];
 }
 
-Pragma.useMount = (callback) => {
-  return useEffect(() => callback(), []);
-}
+export { Model, Model as default } from '@expressive/mvc';
+export { get, use, ref, set, has } from '@expressive/mvc';
 
-Pragma.useProvider = (value, children) => {
-  return createElement(Lookup.Provider, { key: value.id, value, children });
-}
-
-export {
-  Model, Model as default,
-  get, use, ref, set, has
-} from '@expressive/mvc';
-
-export { Consumer, Provider } from './adapter'
-export { Lookup };
+export { Consumer, Provider } from "./context";

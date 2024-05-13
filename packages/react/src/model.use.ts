@@ -47,7 +47,7 @@ Model.use = function <T extends Model> (
     }
 
     return (props?: Model.Assign<T> | Model.Callback<T>) => {
-      Pragma.useMount(didMount);
+      Pragma.useLifecycle(didMount);
 
       if(repeat && enabled && props){
         enabled = false;

@@ -121,7 +121,7 @@ Model.get = function <T extends Model, R> (
     }
 
     return () => {
-      Pragma.useMount(() => unwatch);
+      Pragma.useLifecycle(() => unwatch);
       return value === undefined ? null : value;
     }
   });
