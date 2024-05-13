@@ -1,8 +1,8 @@
 import React from 'react';
 import { create } from 'react-test-renderer';
 
-import Model, { get, Provider, set } from '..';
-import { mockHook, mockPromise } from '../mocks';
+import Model, { get, Provider, set } from '.';
+import { mockHook, mockPromise } from './mocks';
 
 class Test extends Model {
   value = "foo";

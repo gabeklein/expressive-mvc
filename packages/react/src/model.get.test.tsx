@@ -1,5 +1,5 @@
-import Model, { get, set } from '..';
-import { mockHook, mockPromise } from '../mocks';
+import Model, { get, set } from '.';
+import { mockHook, mockPromise } from './mocks';
 
 const error = jest
   .spyOn(console, "error")

@@ -15,7 +15,7 @@ Pragma.useFactory = (factory) => {
   return state[0];
 }
 
-import "./component";
+import "./model.as";
 
 export {
   Model, Model as default,
