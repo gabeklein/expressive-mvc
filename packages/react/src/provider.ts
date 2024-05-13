@@ -1,7 +1,7 @@
 import Model, { Context } from '@expressive/mvc';
 import React from 'react';
 
-import { Lookup } from '.';
+import { Pragma } from './hooks';
 
 declare namespace Provider {
   interface Props<T extends Model> {
@@ -12,17 +12,11 @@ declare namespace Provider {
 }
 
 function Provider<T extends Model>(props: Provider.Props<T>){
-  let { children, for: include, set: assign } = props;
-
-  const context = React.useContext(Lookup);
-  const value = React.useMemo(() => context.push(), []);
+  const context = Pragma.useContext(true);
   
-  value.include(include, assign);
-  React.useEffect(() => () => value.pop(), []);
+  context.include(props.for, props.set);
 
-  return React.createElement(Lookup.Provider, {
-    key: value.id, value, children
-  });
+  return Pragma.useProvider(context, props.children);
 }
 
 export { Provider };
