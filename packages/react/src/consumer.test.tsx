@@ -1,9 +1,7 @@
 import React from 'react';
 import { create } from 'react-test-renderer';
 
-import { Model } from '.';
-import { Consumer } from './consumer';
-import { Provider } from './provider';
+import Model, { Consumer, Provider } from '.';
 
 const error = jest
   .spyOn(console, "error")

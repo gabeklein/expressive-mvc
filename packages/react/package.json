@@ -21,18 +21,13 @@
       "types": "./dist/index.d.ts",
       "require": "./dist/index.js"
     },
-    "./hooks": {
-      "types": "./dist/hooks.d.ts",
-      "require": "./dist/hooks.js"
+    "./adapter": {
+      "types": "./dist/adapter.d.ts",
+      "require": "./dist/adapter.js"
     }
   },
-  "main": "dist/index.js",
-  "module": "dist/index.mjs",
-  "types": "dist/index.d.ts",
   "files": [
-    "dist/index.d.ts",
-    "dist/index.js",
-    "dist/index.mjs"
+    "dist"
   ],
   "scripts": {
     "build": "tsup",

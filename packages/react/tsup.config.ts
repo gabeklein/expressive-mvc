@@ -6,10 +6,10 @@ export default defineConfig({
   clean: true, // Clean output directory before building
   outDir: "dist", // Output directory
   treeshake: false,
-  external: ["./hooks"],
+  external: ["./adapter"],
   entry: {
     "index": 'src/index.ts',
-    "hooks": 'src/hooks/index.ts'
+    "adapter": 'src/adapter.ts'
   }, // Entry point(s)
   format: ['cjs'], // Output format(s)
 });

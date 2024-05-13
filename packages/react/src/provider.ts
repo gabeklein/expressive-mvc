@@ -1,12 +1,11 @@
 import Model, { Context } from '@expressive/mvc';
-import React from 'react';
 
-import { Pragma } from './hooks';
+import { Pragma } from './adapter';
 
 declare namespace Provider {
   interface Props<T extends Model> {
     for: Context.Accept<T>;
-    children?: React.ReactNode;
+    children?: JSX.Element | null | void | (JSX.Element)[];
     set?: Model.Assign<T>;
   }
 }

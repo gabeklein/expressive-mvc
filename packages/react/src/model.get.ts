@@ -1,6 +1,6 @@
 import { effect, Model } from '@expressive/mvc';
 
-import { Pragma } from './hooks';
+import { Pragma } from './adapter';
 
 /** Type may not be undefined - instead will be null.  */
 type NoVoid<T> = T extends undefined | void ? null : T;

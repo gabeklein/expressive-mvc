@@ -1,6 +1,6 @@
 import { Model } from '@expressive/mvc';
 
-import { Pragma } from './hooks';
+import { Pragma } from './adapter';
 
 declare module '@expressive/mvc' {
   namespace Model {
