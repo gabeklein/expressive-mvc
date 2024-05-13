@@ -16,10 +16,6 @@ Pragma.useContext = (create?: boolean) => {
   return ambient;
 }
 
-Pragma.useMount = (callback) => {
-  return React.useEffect(() => callback(), []);
-}
-
 Pragma.useFactory = (factory) => {
   const state = React.useState(() => factory(() => {
     state[1](x => x.bind(null) as any);
@@ -28,10 +24,12 @@ Pragma.useFactory = (factory) => {
   return state[0];
 }
 
-Pragma.useProvider = (context, children) => {
-  return React.createElement(Lookup.Provider, {
-    value: context, key: context.id
-  }, children);
+Pragma.useMount = (callback) => {
+  return React.useEffect(() => callback(), []);
+}
+
+Pragma.useProvider = (value, children) => {
+  return React.createElement(Lookup.Provider, { key: value.id, value, children });
 }
 
 export {
