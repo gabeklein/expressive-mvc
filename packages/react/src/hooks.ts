@@ -14,5 +14,9 @@ const Pragma = {} as {
 
 export { Pragma };
 
+import "./model.as";
 import './model.use';
 import './model.get';
+
+export { Consumer } from "./consumer";
+export { Provider } from "./provider";
