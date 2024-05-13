@@ -1,4 +1,7 @@
-import Model, { get, set } from '.';
+import React from 'react';
+import { create } from 'react-test-renderer';
+
+import Model, { get, Provider, set } from '.';
 import { mockHook, mockPromise } from './mocks';
 
 const error = jest
@@ -16,9 +19,7 @@ it("will fetch model", () => {
   class Test extends Model {}
 
   const test = Test.new();
-  const hook = mockHook(test, () => {
-    return Test.get();
-  });
+  const hook = mockHook(test, () => Test.get());
 
   expect(hook.output.is).toBe(test);
 })
@@ -174,7 +175,16 @@ describe("computed", () => {
     expect(hook.output).toBe(2);
   })
 
-  it("will convert void to null", () => {
+  it("will return null", () => {
+    class Test extends Model {}
+  
+    const test = Test.new();
+    const render = mockHook(test, () => Test.get(() => null));
+
+    expect(render.output).toBe(null);
+  })
+
+  it("will convert undefined to null", () => {
     const hook = mockHook(Test, () => {
       return Test.get(() => {});
     });
@@ -204,6 +214,49 @@ describe("computed", () => {
 
     expect(factory).toBeCalledTimes(1);
     expect(render).toBeCalledTimes(1);
+  })
+  it("will run initial callback syncronously", async () => {
+    class Parent extends Model {
+      values = [] as string[]
+    }
+    
+    type ChildProps = {
+      value: string;
+    }
+  
+    const Child = (props: ChildProps) => (
+      Parent.get($ => {
+        didPushToValues();
+        $.values = [...$.values, props.value];
+        return null;
+      })
+    )
+  
+    const parent = Parent.new();
+    const didUpdateValues = jest.fn();
+    const didPushToValues = jest.fn();
+
+    parent.get(state => {
+      didUpdateValues(state.values.length);
+    })
+  
+    const element = create(
+      <Provider for={parent}>
+        <Child value='foo' />
+        <Child value='bar' />
+        <Child value='baz' />
+      </Provider>
+    )
+  
+    expect(didPushToValues).toBeCalledTimes(3);
+  
+    await expect(parent).toHaveUpdated();
+  
+    // Expect updates to have bunched up before new frame.
+    expect(didUpdateValues).toBeCalledTimes(2);
+    expect(didUpdateValues).toBeCalledWith(3);
+  
+    element.unmount();
   })
 })
 
