@@ -12,12 +12,17 @@
     "access": "public"
   },
   "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsup src/index.ts --dts"
+  },
   "dependencies": {
     "@expressive/mvc": "^0.52.1",
     "@expressive/react": "^0.52.1"
   },
   "devDependencies": {
-    "preact": "^10.0.0"
+    "preact": "^10.0.0",
+    "tsup": "^8.0.2"
   },
   "peerDependencies": {
     "preact": "^10.0.0"

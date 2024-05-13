@@ -32,7 +32,6 @@
   "scripts": {
     "build": "tsup",
     "test": "tsc --noEmit && jest --collectCoverage",
-    "prebuild": "rm -rf dist",
     "preversion": "npm run test && npm run build"
   },
   "dependencies": {
@@ -50,7 +49,8 @@
     "@types/react": "^18.2.14",
     "@types/react-test-renderer": "^18.0.0",
     "react": "^18.2.0",
-    "react-test-renderer": "^18.2.0"
+    "react-test-renderer": "^18.2.0",
+    "tsup": "^8.0.2"
   },
   "version": "0.52.1"
 }
