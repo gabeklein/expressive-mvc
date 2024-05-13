@@ -38,4 +38,4 @@ export {
 } from '@expressive/mvc';
 
 export { Consumer, Provider } from './adapter'
-export { Lookup, Pragma };
+export { Lookup };
