@@ -1,5 +1,5 @@
 import Model, { Context } from '@expressive/mvc';
-import { createContext, createElement, VNode } from 'preact';
+import { ComponentChildren, createContext, createElement } from 'preact';
 import { useContext, useEffect, useMemo } from 'preact/hooks';
 
 const Lookup = createContext(new Context());
@@ -16,7 +16,7 @@ declare namespace Consumer {
      * Similar to `Model.get()`, updates to properties accessed in
      * this function will cause a refresh when they change.
      */
-    children: (value: T) => JSX.Element | null | void;
+    children: (value: T) => ComponentChildren;
   }
 }
 
@@ -28,7 +28,7 @@ declare namespace Provider {
   interface Props<T extends Model> {
     for: Context.Accept<T>;
     set?: Model.Assign<T>;
-    children?: VNode | VNode[] | null;
+    children?: ComponentChildren;
   }
 }
 
@@ -46,4 +46,4 @@ function Provider<T extends Model>(props: Provider.Props<T>){
   }, props.children);
 }
 
-export { Consumer, Provider, Lookup as Context }
+export { Consumer, Provider, Lookup }

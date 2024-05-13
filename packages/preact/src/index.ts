@@ -1,9 +1,9 @@
 import { Pragma } from '@expressive/react/adapter';
 import { useContext, useEffect, useState } from 'preact/compat';
 
-import { Context } from './context';
+import { Lookup } from './context';
 
-Pragma.useContext = () => useContext(Context);
+Pragma.useContext = () => useContext(Lookup);
 
 Pragma.useLifecycle = (callback) => useEffect(() => callback(), []);
 
@@ -20,8 +20,5 @@ export {
   get, use, ref, set, has
 } from '@expressive/mvc';
 
-export {
-  Context,
-  Consumer,
-  Provider
-} from './context';
+export { Consumer, Provider } from './context';
+export { Pragma };
