@@ -17,7 +17,9 @@ describe("component", () => {
   it("will create instance of given model", () => {
     create(
       <Provider for={Foo}>
-        <Consumer for={Foo} get={i => expect(i).toBeInstanceOf(Foo)} />
+        <Consumer for={Foo}>
+          {i => expect(i).toBeInstanceOf(Foo)}
+        </Consumer>
       </Provider>
     );
   })
@@ -32,7 +34,9 @@ describe("component", () => {
 
     create(
       <Provider for={Bar}>
-        <Consumer for={Foo} get={i => expect(i).toBeInstanceOf(Foo)} />
+        <Consumer for={Foo}>
+          {i => expect(i).toBeInstanceOf(Foo)}
+        </Consumer>
       </Provider>
     )
   })
@@ -58,8 +62,12 @@ describe("component", () => {
   it("will create all models in given object", () => {
     create(
       <Provider for={{ Foo, Bar }}>
-        <Consumer for={Foo} get={i => expect(i).toBeInstanceOf(Foo)} />
-        <Consumer for={Bar} get={i => expect(i).toBeInstanceOf(Bar)} />
+        <Consumer for={Foo}>
+          {i => expect(i).toBeInstanceOf(Foo)}
+        </Consumer>
+        <Consumer for={Bar}>
+          {i => expect(i).toBeInstanceOf(Bar)}
+        </Consumer>
       </Provider>
     )
   })
@@ -71,10 +79,12 @@ describe("component", () => {
   
     const rendered = create(
       <Provider for={{ Test }}>
-        <Consumer for={Test} has={i => {
-          expect(i).toBeInstanceOf(Test)
-          i.get(() => willDestroy);
-        }} />
+        <Consumer for={Test}>
+          {i => {
+            expect(i).toBeInstanceOf(Test)
+            i.get(() => willDestroy);
+          }}
+        </Consumer>
       </Provider>
     );
   
@@ -91,12 +101,12 @@ describe("component", () => {
   
     const rendered = create(
       <Provider for={{ Foo, Bar }}>
-        <Consumer for={Foo} has={i => {
-          i.get(() => willDestroy);
-        }} />
-        <Consumer for={Bar} has={i => {
-          i.get(() => willDestroy);
-        }} />
+        <Consumer for={Foo}>
+          {i => { i.get(() => willDestroy) }}
+        </Consumer>
+        <Consumer for={Bar}>
+          {i => { i.get(() => willDestroy) }}
+        </Consumer>
       </Provider>
     );
   
@@ -114,9 +124,9 @@ describe("component", () => {
   
     const rendered = create(
       <Provider for={{ instance }}>
-        <Consumer for={Test} has={i => {
-          i.get(() => didUnmount);
-        }} />
+        <Consumer for={Test}>
+          {i => void i.get(() => didUnmount)}
+        </Consumer>
       </Provider>
     );
   
@@ -130,8 +140,12 @@ describe("component", () => {
   
     create(
       <Provider for={{ foo, Bar }}>
-        <Consumer for={Foo} get={i => expect(i).toBe(foo)} />
-        <Consumer for={Bar} get={i => expect(i).toBeInstanceOf(Bar)} />
+        <Consumer for={Foo}>
+          {({ is }) => expect(is).toBe(foo)}
+        </Consumer>
+        <Consumer for={Bar}>
+          {i => expect(i).toBeInstanceOf(Bar)}
+        </Consumer>
       </Provider>
     )
   })
@@ -164,7 +178,9 @@ describe("use prop", () => {
   it("will assign values to instance", () => {
     create(
       <Provider for={Foo} set={{ value: "foobar" }}>
-        <Consumer for={Foo} has={i => expect(i.value).toBe("foobar")} />
+        <Consumer for={Foo}>
+          {i => expect(i.value).toBe("foobar")}
+        </Consumer>
       </Provider>
     );
   })
@@ -176,8 +192,12 @@ describe("use prop", () => {
 
     create(
       <Provider for={{ Foo, Bar }} set={{ value: "foobar" }}>
-        <Consumer for={Foo} has={i => expect(i.value).toBe("foobar")} />
-        <Consumer for={Bar} has={i => expect(i.value).toBe("foobar")} />
+        <Consumer for={Foo}>
+          {i => expect(i.value).toBe("foobar")}
+        </Consumer>
+        <Consumer for={Bar}>
+          {i => expect(i.value).toBe("foobar")}
+        </Consumer>
       </Provider>
     );
   });
@@ -185,10 +205,12 @@ describe("use prop", () => {
   it("will not assign foreign values", () => {
     create(
       <Provider for={Foo} set={{ nonValue: "foobar" }}>
-        <Consumer for={Foo} has={i => {
-          // @ts-expect-error
-          expect(i.nonValue).toBeUndefined();
-        }} />
+        <Consumer for={Foo}>
+          {i => {
+            // @ts-expect-error
+            expect(i.nonValue).toBeUndefined();
+          }}
+        </Consumer>
       </Provider>
     );
   })
@@ -268,7 +290,9 @@ describe("get instruction", () => {
     create(
       <Provider for={Bar}>
         <Provider for={Foo}>
-          <Consumer for={Foo} has={i => expect(i.bar).toBeInstanceOf(Bar)} />
+          <Consumer for={Foo}>
+            {i => expect(i.bar).toBeInstanceOf(Bar)}
+          </Consumer>
         </Provider>
       </Provider>
     );
@@ -284,8 +308,12 @@ describe("get instruction", () => {
 
     create(
       <Provider for={{ Foo, Bar }}>
-        <Consumer for={Bar} has={i => expect(i.foo.bar).toBe(i)} />
-        <Consumer for={Foo} has={i => expect(i.bar.foo).toBe(i)} />
+        <Consumer for={Bar}>
+          {({ is }) => expect(is.foo.bar).toBe(is)}
+        </Consumer>
+        <Consumer for={Foo}>
+          {({ is }) => expect(is.bar.foo).toBe(is)}
+        </Consumer>
       </Provider>
     );
   });

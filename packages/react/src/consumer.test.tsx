@@ -26,9 +26,15 @@ it("will handle complex arrangement", () => {
     <Provider for={instance}>
       <Provider for={Baz}>
         <Provider for={{ Bar }}>
-          <Consumer for={Foo} get={i => expect(i).toBe(instance)} />
-          <Consumer for={Bar} get={i => expect(i).toBeInstanceOf(Bar)} />
-          <Consumer for={Baz} get={i => expect(i).toBeInstanceOf(Baz)} />
+          <Consumer for={Foo}>
+            {({ is }) => expect(is).toBe(instance)}
+          </Consumer>
+          <Consumer for={Bar}>
+            {i => expect(i).toBeInstanceOf(Bar)}
+          </Consumer>
+          <Consumer for={Baz}>
+            {i => expect(i).toBeInstanceOf(Baz)}
+          </Consumer>
         </Provider>
       </Provider>
     </Provider>
@@ -75,23 +81,11 @@ it("will render with instance for child-function", async () => {
   });
 })
 
-it("will pass undefined if not found for get-prop", () => {
-  create(
-    <Consumer for={Bar} get={i => expect(i).toBeUndefined()} />
-  )
-})
-
-it("will throw if not found if has is true", () => {
-  const test = () => create(
-    <Consumer for={Bar} has={true} />
-  )
-
-  expect(test).toThrowError("Could not find Bar in context.");
-})
-
 it("will throw if not found where required", () => {
   const test = () => create(
-    <Consumer for={Bar} has={i => void i} />
+    <Consumer for={Bar}>
+      {i => void i}
+    </Consumer>
   )
 
   expect(test).toThrowError("Could not find Bar in context.");
@@ -100,7 +94,9 @@ it("will throw if not found where required", () => {
 it("will eagerly select extended class", () => {
   create(
     <Provider for={Baz}>
-      <Consumer for={Bar} get={i => expect(i).toBeInstanceOf(Baz)} />
+      <Consumer for={Bar}>
+        {i => expect(i).toBeInstanceOf(Baz)}
+      </Consumer>
     </Provider>
   )
 })
@@ -109,7 +105,9 @@ it("will select closest instance of same type", () => {
   create(
     <Provider for={Foo} set={{ value: "outer" }}>
       <Provider for={Foo} set={{ value: "inner" }}>
-        <Consumer for={Foo} has={i => expect(i.value).toBe("inner")} />
+        <Consumer for={Foo}>
+          {i => expect(i.value).toBe("inner")}
+        </Consumer>
       </Provider>
     </Provider>
   )
@@ -119,7 +117,9 @@ it("will select closest match over best match", () => {
   create(
     <Provider for={Bar}>
       <Provider for={Baz}>
-        <Consumer for={Bar} get={i => expect(i).toBeInstanceOf(Baz)} />
+        <Consumer for={Bar}>
+          {i => expect(i).toBeInstanceOf(Baz)}
+        </Consumer>
       </Provider>
     </Provider>
   )
