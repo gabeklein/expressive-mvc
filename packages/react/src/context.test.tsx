@@ -304,67 +304,6 @@ describe("Consumer", () => {
   })
 })
 
-describe("suspense", () => {
-  class Test extends Model {
-    value = set(promise.pending, true);
-  }
-
-  const DidSuspend = () => {
-    didSuspend();
-    return null;
-  }
-
-  const TestComponent = (props: {}) => {
-    willRender();
-    return (
-      <Provider for={Test}>
-        <GetValue />
-      </Provider>
-    )
-  }
-
-  const GetValue = () => {
-    const test = Test.get();
-    didRender(test.value);
-    didRefresh.resolve();
-    return null;
-  }
-
-  const promise = mockAsync<string>();
-  const didRefresh = mockAsync();
-
-  const willRender = jest.fn();
-  const didRender = jest.fn();
-  const didSuspend = jest.fn();
-
-  afterEach(() => {
-    willRender.mockClear();
-    didSuspend.mockClear();
-    didRender.mockClear();
-  })
-
-  it("will apply fallback", async () => {
-    const element = create(
-      <Suspense fallback={<DidSuspend />}>
-        <TestComponent />
-      </Suspense>
-    )
-
-    expect(willRender).toBeCalledTimes(1);
-    expect(didSuspend).toBeCalledTimes(1);
-    expect(didRender).not.toBeCalled();
-
-    promise.resolve("hello!");
-    await didRefresh.pending();
-
-    expect(willRender).toBeCalledTimes(1);
-    expect(didSuspend).toBeCalledTimes(1);
-    expect(didRender).toBeCalledWith("hello!");
-
-    element.unmount();
-  });
-})
-
 describe("get instruction", () => {
   class Foo extends Model {
     bar = get(Bar);
@@ -609,6 +548,67 @@ describe("get instruction", () => {
 
     expect(render.toJSON()).toBe("foobar");
   })
+})
+
+describe("suspense", () => {
+  class Test extends Model {
+    value = set(promise.pending, true);
+  }
+
+  const DidSuspend = () => {
+    didSuspend();
+    return null;
+  }
+
+  const TestComponent = (props: {}) => {
+    willRender();
+    return (
+      <Provider for={Test}>
+        <GetValue />
+      </Provider>
+    )
+  }
+
+  const GetValue = () => {
+    const test = Test.get();
+    didRender(test.value);
+    didRefresh.resolve();
+    return null;
+  }
+
+  const promise = mockAsync<string>();
+  const didRefresh = mockAsync();
+
+  const willRender = jest.fn();
+  const didRender = jest.fn();
+  const didSuspend = jest.fn();
+
+  afterEach(() => {
+    willRender.mockClear();
+    didSuspend.mockClear();
+    didRender.mockClear();
+  })
+
+  it("will apply fallback", async () => {
+    const element = create(
+      <Suspense fallback={<DidSuspend />}>
+        <TestComponent />
+      </Suspense>
+    )
+
+    expect(willRender).toBeCalledTimes(1);
+    expect(didSuspend).toBeCalledTimes(1);
+    expect(didRender).not.toBeCalled();
+
+    promise.resolve("hello!");
+    await didRefresh.pending();
+
+    expect(willRender).toBeCalledTimes(1);
+    expect(didSuspend).toBeCalledTimes(1);
+    expect(didRender).toBeCalledWith("hello!");
+
+    element.unmount();
+  });
 })
 
 describe("HMR", () => {
