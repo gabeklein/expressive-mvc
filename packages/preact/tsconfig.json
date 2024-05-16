@@ -4,7 +4,7 @@
     "baseUrl": ".",
     "target": "es2020",
     "esModuleInterop": true,
-    "jsx": "react",
+    "jsx": "preserve",
     "lib": ["ES2020", "DOM"],
     "moduleResolution": "node",
     "noUnusedLocals": true,

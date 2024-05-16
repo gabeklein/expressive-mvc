@@ -117,6 +117,9 @@ importers:
       preact:
         specifier: ^10.0.0
         version: 10.21.0
+      tsup:
+        specifier: ^8.0.2
+        version: 8.0.2(@swc/core@1.4.16)(typescript@5.4.5)
 
   packages/react:
     dependencies:
@@ -136,6 +139,28 @@ importers:
       react-test-renderer:
         specifier: ^18.2.0
         version: 18.2.0(react@18.2.0)
+      tsup:
+        specifier: ^8.0.2
+        version: 8.0.2(@swc/core@1.4.16)(typescript@5.4.5)
+
+  packages/solid:
+    dependencies:
+      '@expressive/mvc':
+        specifier: ^0.52.1
+        version: link:../mvc
+      '@expressive/react':
+        specifier: ^0.52.1
+        version: link:../react
+    devDependencies:
+      solid:
+        specifier: ^0.2.1
+        version: 0.2.1
+      solid-js:
+        specifier: ^1.8.17
+        version: 1.8.17
+      tsup:
+        specifier: ^8.0.2
+        version: 8.0.2(@swc/core@1.4.16)(typescript@5.4.5)
 
 packages:
 
@@ -2531,6 +2556,15 @@ packages:
       typedarray: 0.0.6
     dev: true
 
+  /connect@1.9.2:
+    resolution: {integrity: sha512-6Z9RPjQOHjaI47gK385djHVv7SEkRm1Y9AAvBhiI7gSXpO5sFktTkAD+dkbcaiEo2xaNlS1KIJU3XRxqbPLx6w==}
+    deprecated: connect 1.x series is deprecated
+    dependencies:
+      formidable: 1.0.17
+      mime: 1.2.4
+      qs: 0.4.2
+    dev: true
+
   /console-control-strings@1.1.0:
     resolution: {integrity: sha512-ty/fTekppD2fIwRvnZAVdeOiGd1c7YXEixbgJTNzqcxJWKQnjJ/V1bNEEE6hygpM3WjwHFUVK6HTjWSzV4a8sQ==}
     dev: true
@@ -3001,6 +3035,17 @@ packages:
     resolution: {integrity: sha512-dX7e/LHVJ6W3DE1MHWi9S1EYzDESENfLrYohG2G++ovZrYOkm4Knwa0mc1cn84xJOR4KEU0WSchhLbd0UklbHw==}
     dev: true
 
+  /express@2.5.11:
+    resolution: {integrity: sha512-gc3jJ0P3Bh1Zjkxe0ICSNmjhDvYWKiXfQIdDWuRPr8S4IZAZexzJHjrzNz56LsRKHTL0OiXQq602GfwZjZ8xPQ==}
+    deprecated: express 2.x series is deprecated
+    hasBin: true
+    dependencies:
+      connect: 1.9.2
+      mime: 1.2.4
+      mkdirp: 0.3.0
+      qs: 0.4.2
+    dev: true
+
   /external-editor@3.1.0:
     resolution: {integrity: sha512-hMQ4CX1p1izmuLYyZqLMO/qGNw10wSv9QDCPfzXfyFrOaCSSoRfqE1Kf1s5an66J5JZC62NewG+mK49jOCtQew==}
     engines: {node: '>=4'}
@@ -3111,6 +3156,12 @@ packages:
       asynckit: 0.4.0
       combined-stream: 1.0.8
       mime-types: 2.1.35
+    dev: true
+
+  /formidable@1.0.17:
+    resolution: {integrity: sha512-95MFT5qipMvUiesmuvGP1BI4hh5XWCzyTapiNJ/k8JBQda7rPy7UCWYItz2uZEdTgGNy1eInjzlL9Wx1O9fedg==}
+    engines: {node: '>=0.8.0'}
+    deprecated: 'Please upgrade to latest, formidable@v2 or formidable@v3! Check these notes: https://bit.ly/2ZEqIau'
     dev: true
 
   /fs-constants@1.0.0:
@@ -4757,6 +4808,10 @@ packages:
       mime-db: 1.52.0
     dev: true
 
+  /mime@1.2.4:
+    resolution: {integrity: sha512-u4y8WFj7SnfbHxyzCMSV2nL/GKbfZ+lidPf1V4/XUKCJ49N6ttQWp/xnqpbMQEx3naBSt93i2qtPLFj/mjPDaA==}
+    dev: true
+
   /mimic-fn@2.1.0:
     resolution: {integrity: sha512-OqbOk5oEQeAZ8WXWydlu9HJjz9WVdEIvamMCcXmuqUYjTknH/sqsWvhQ3vgwKFRR1HpjvNBKQ37nbJgYzGqGcg==}
     engines: {node: '>=6'}
@@ -4898,6 +4953,11 @@ packages:
     dependencies:
       minipass: 3.3.6
       yallist: 4.0.0
+    dev: true
+
+  /mkdirp@0.3.0:
+    resolution: {integrity: sha512-OHsdUcVAQ6pOtg5JYWpCBo9W/GySVuwvP9hueRMW7UqshC0tbfzLv8wjySTPm3tfUZ/21CE9E1pJagOA91Pxew==}
+    deprecated: Legacy versions of mkdirp are no longer supported. Please update to mkdirp 1.x. (Note that the API surface has changed to use Promises in 1.x.)
     dev: true
 
   /mkdirp@1.0.4:
@@ -5617,6 +5677,10 @@ packages:
     engines: {node: '>=6'}
     dev: true
 
+  /qs@0.4.2:
+    resolution: {integrity: sha512-VAtfWeUtlBOnGiWFok2vOIMmwumiLmpqXDcXQcAEIQmLYgDbjrkHrcFBfth+YVDeRsz7jX44dhJr7IBJR0t/FQ==}
+    dev: true
+
   /querystringify@2.2.0:
     resolution: {integrity: sha512-FIqgj2EUvTa7R50u0rGsyTftzjYmv/a3hO345bZNrqabNqjtgiDMgmo4mkUjd+nzU5oF3dClKqFIPUKybUyqoQ==}
     dev: true
@@ -5950,6 +6014,20 @@ packages:
       lru-cache: 6.0.0
     dev: true
 
+  /seroval-plugins@1.0.5(seroval@1.0.5):
+    resolution: {integrity: sha512-8+pDC1vOedPXjKG7oz8o+iiHrtF2WswaMQJ7CKFpccvSYfrzmvKY9zOJWCg+881722wIHfwkdnRmiiDm9ym+zQ==}
+    engines: {node: '>=10'}
+    peerDependencies:
+      seroval: ^1.0
+    dependencies:
+      seroval: 1.0.5
+    dev: true
+
+  /seroval@1.0.5:
+    resolution: {integrity: sha512-TM+Z11tHHvQVQKeNlOUonOWnsNM+2IBwZ4vwoi4j3zKzIpc5IDw8WPwCfcc8F17wy6cBcJGbZbFOR0UCuTZHQA==}
+    engines: {node: '>=10'}
+    dev: true
+
   /set-blocking@2.0.0:
     resolution: {integrity: sha512-KiKBS8AnWGEyLzofFfmvKwpdPzqiy16LvQfK3yv/fVH7Bj13/wl3JSR1J+rfgRE9q7xUJK4qvgS8raSOeLUehw==}
     dev: true
@@ -6027,6 +6105,21 @@ packages:
     dependencies:
       ip-address: 9.0.5
       smart-buffer: 4.2.0
+    dev: true
+
+  /solid-js@1.8.17:
+    resolution: {integrity: sha512-E0FkUgv9sG/gEBWkHr/2XkBluHb1fkrHywUgA6o6XolPDCJ4g1HaLmQufcBBhiF36ee40q+HpG/vCZu7fLpI3Q==}
+    dependencies:
+      csstype: 3.1.3
+      seroval: 1.0.5
+      seroval-plugins: 1.0.5(seroval@1.0.5)
+    dev: true
+
+  /solid@0.2.1:
+    resolution: {integrity: sha512-kVdiCZd2dMH7ESvmHrEZuOUgjADW2nWjiDzyhgPfC79i6UnZyzyspaMbpjxPh1JTul6Zh3bLocY9FaFY/ikyKA==}
+    dependencies:
+      express: 2.5.11
+      thermos: 0.1.0
     dev: true
 
   /sort-keys@2.0.0:
@@ -6325,6 +6418,10 @@ packages:
     resolution: {integrity: sha512-RVZSIV5IG10Hk3enotrhvz0T9em6cyHBLkH/YAZuKqd8hRkKhSfCGIcP2KUY0EPxndzANBmNllzWPwak+bheSw==}
     dependencies:
       any-promise: 1.3.0
+    dev: true
+
+  /thermos@0.1.0:
+    resolution: {integrity: sha512-1sYrbXxpUJyoBpPlDzXpiB4uS8OzwPL+C/chT58X8gD+EpQpIeLOAYEBx/JnCDIKa53ur9WYMvYEuAjbXwr8UQ==}
     dev: true
 
   /throat@6.0.2:
