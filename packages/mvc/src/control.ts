@@ -15,22 +15,21 @@ type Event = number | string | null | boolean | symbol;
 
 const DISPATCH = new Set<() => void>();
 const OBSERVER = new WeakMap<{}, <T extends {}>(from: any, key: string | number, value: T) => T>();
-const LISTENER = new WeakMap<{}, Map<OnUpdate, Set<Event> | false>>();
+const LISTENER = new WeakMap<{}, Map<OnUpdate, Set<Event> | undefined>>();
 
-/** Placeholder event determines if initialized or not. */
+/** Events pending for a given object. */
+const PENDING = new WeakMap<{}, Set<Event>>();
+
+/** Placeholder event determines if model is initialized or not. */
 const onReady = () => null;
 
-function addListener(
-  subject: {},
-  callback: OnUpdate,
-  select?: Event){
-
+function addListener(subject: {}, callback: OnUpdate, select?: Event){
   let subs = LISTENER.get(subject)!;
 
   if(!subs)
-    LISTENER.set(subject, subs = new Map([[onReady, false]]));
+    LISTENER.set(subject, subs = new Map([[onReady, undefined]]));
 
-  const filter = select !== undefined && new Set([select]);
+  const filter = select === undefined ? undefined : new Set([select]);
 
   if(!subs.has(onReady) && !filter)
     callback(true, subject);
@@ -44,8 +43,6 @@ function watch(from: any, key: string | number, value?: any){
   const access = OBSERVER.get(from);
   return access ? access(from, key, value) : value;
 }
-
-const PENDING = new WeakMap<{}, Set<Event>>();
 
 function emit(source: {}, key: Event){
   const subs = LISTENER.get(source)!;
@@ -82,7 +79,7 @@ function emit(source: {}, key: Event){
   PENDING.delete(source);
 }
 
-function queue(event: (() => void)){
+function queue(eventHandler: (() => void)){
   if(!DISPATCH.size)
     setTimeout(() => {
       DISPATCH.forEach(event => {
@@ -96,7 +93,7 @@ function queue(event: (() => void)){
       DISPATCH.clear();
     }, 0);
 
-  DISPATCH.add(event);
+  DISPATCH.add(eventHandler);
 }
 
 type Effect<T extends {}> = (this: T, argument: T) =>

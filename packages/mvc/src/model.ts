@@ -384,11 +384,11 @@ abstract class Model {
     let notify = NOTIFY.get(this);
 
     if(!notify)
-      NOTIFY.set(this, notify = new Set());
+      NOTIFY.set(this, notify = new Set);
 
     notify.add(listener);
 
-    return () => notify!.delete(listener);
+    return () => notify.delete(listener);
   }
 }
 
@@ -627,6 +627,7 @@ function event(
   if(!pending){
     PENDING.set(subject, pending = new Set());
 
+    // TODO: if non-silent event follows a silent one, it would not emit.
     if(!silent)
       queue(() => {
         emit(subject, false);
