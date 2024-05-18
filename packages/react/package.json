@@ -24,6 +24,14 @@
     "./adapter": {
       "types": "./dist/adapter.d.ts",
       "require": "./dist/adapter.js"
+    },
+    "./jsx-runtime": {
+      "types": "./jsx/jsx-runtime.d.ts",
+      "require": "./jsx/jsx-runtime.js"
+    },
+    "./jsx-dev-runtime": {
+      "types": "./jsx/jsx-dev-runtime.d.ts",
+      "require": "./jsx/jsx-dev-runtime.js"
     }
   },
   "files": [
