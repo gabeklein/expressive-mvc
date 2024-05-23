@@ -15,7 +15,9 @@ Pragma.useFactory = (factory) => {
   return state[0];
 }
 
-export { Model, Model as default } from '@expressive/mvc';
-export { get, use, ref, set, has } from '@expressive/mvc';
+export {
+  Model, Model as default,
+  get, use, ref, set, has
+} from '@expressive/mvc';
 
-export { Consumer, Provider } from "./context";
+export { Consumer, Provider } from './context';
