@@ -1,5 +1,5 @@
 import { Context } from '../context';
-import { effect } from '../control';
+import { createEffect } from '../control';
 import { fetch, METHOD, Model, PARENT, event, update } from '../model';
 import { use } from './use';
 
@@ -111,7 +111,7 @@ function get<R, T extends Model>(
       let proxy: any;
   
       function connect(model: Model){
-        reset = effect(model, current => {
+        reset = createEffect(model, current => {
           proxy = current;
   
           if(!(key in state) || STALE.delete(compute))

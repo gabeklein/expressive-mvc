@@ -11,10 +11,12 @@
 type OnUpdate<T = any> = 
   (this: T, key: unknown, source: T) => (() => void) | null | void;
 
+type OnAccess<T, R = unknown> = (from: T, key: string | number, value: R) => unknown;
+
 type Event = number | string | null | boolean | symbol;
 
 const DISPATCH = new Set<() => void>();
-const OBSERVER = new WeakMap<{}, <T extends {}>(from: any, key: string | number, value: T) => T>();
+const OBSERVER = new WeakMap<{}, OnAccess<any>>();
 const LISTENER = new WeakMap<{}, Map<OnUpdate, Set<Event> | undefined>>();
 
 /** Events pending for a given object. */
@@ -37,6 +39,15 @@ function addListener(subject: {}, callback: OnUpdate, select?: Event){
   subs.set(callback, filter);
 
   return () => subs.delete(callback);
+}
+
+function setObserver<T extends {}>(from: T, observer: OnAccess<T>){
+  if(OBSERVER.has(from))
+    throw new Error("Observer exists for this context.");
+    
+  OBSERVER.set(from, observer);
+
+  return () => OBSERVER.delete(from);
 }
 
 function watch(from: any, key: string | number, value?: any){
@@ -107,9 +118,9 @@ type Effect<T extends {}> = (this: T, argument: T) =>
  * @param callback - Function to invoke when values change.
  * @param requireValues - If `true` will throw if accessing a value which is `undefined`.
  */
-function effect<T extends {}>(target: T, callback: Effect<Required<T>>, requireValues: true): () => void;
-function effect<T extends {}>(target: T, callback: Effect<T>, requireValues?: boolean): () => void;
-function effect<T extends {}>(target: T, callback: Effect<T>, requireValues?: boolean){
+function createEffect<T extends {}>(target: T, callback: Effect<Required<T>>, requireValues: true): () => void;
+function createEffect<T extends {}>(target: T, callback: Effect<T>, requireValues?: boolean): () => void;
+function createEffect<T extends {}>(target: T, callback: Effect<T>, requireValues?: boolean){
   const listeners = LISTENER.get(target)!;
 
   let unset: ((update: boolean | null) => void) | undefined;
@@ -150,14 +161,14 @@ function effect<T extends {}>(target: T, callback: Effect<T>, requireValues?: bo
 
       if(nested){
         LISTENER.set(value = Object.create(value), nested);
-        OBSERVER.set(value, access);
+        setObserver(value, access);
       }
 
       return value;
     }
 
     LISTENER.set(subscriber, listeners);
-    OBSERVER.set(subscriber, access);
+    setObserver(subscriber, access);
 
     try {
       const out = callback.call(subscriber, subscriber);
@@ -196,9 +207,10 @@ function effect<T extends {}>(target: T, callback: Effect<T>, requireValues?: bo
 
 export {
   addListener,
-  effect,
+  createEffect,
   emit,
   OnUpdate,
   queue,
+  setObserver,
   watch
 }

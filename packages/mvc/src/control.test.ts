@@ -1,4 +1,4 @@
-import { effect } from './control';
+import { createEffect } from './control';
 import { set } from './instruction/set';
 import { use } from './instruction/use';
 import { mockError } from './mocks';
@@ -219,7 +219,7 @@ describe("effect", () => {
 
     const test = Test.new("ID");
     const attempt = () =>  {
-      effect(test, $ => {
+      createEffect(test, $ => {
         expect<string>($.property);
       }, true);
     }

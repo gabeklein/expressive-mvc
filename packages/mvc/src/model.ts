@@ -1,4 +1,4 @@
-import { addListener, effect, emit, OnUpdate, queue, watch } from './control';
+import { addListener, createEffect, emit, OnUpdate, queue, watch } from './control';
 
 export const define = Object.defineProperty;
 
@@ -206,7 +206,7 @@ abstract class Model {
     if(typeof arg1 == "function"){
       let pending = new Set<Model.Event<this>>();
 
-      return effect(self, (state) => {
+      return createEffect(self, (state) => {
         const cb = arg1.call(state, state, pending);
 
         return cb === null ? cb : ((update) => {
@@ -440,6 +440,10 @@ function prepare(model: Model){
     )){
       if(!value || key == "constructor")
         continue;
+      
+      function get(this: Model){
+        return this.hasOwnProperty(key) ? value : set.call(this, value);
+      }
 
       function set(this: Model, method: Function){
         const value = method.bind(this.is);
@@ -451,13 +455,7 @@ function prepare(model: Model){
       }
 
       keys.add(key);
-      define(type.prototype, key, {
-        set,
-        get(){
-          return this.hasOwnProperty(key)
-            ? value : set.call(this, value)
-        }
-      });
+      define(type.prototype, key, { get, set });
     }
   }
 }

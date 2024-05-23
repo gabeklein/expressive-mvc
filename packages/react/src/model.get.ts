@@ -1,4 +1,4 @@
-import { effect, Model } from '@expressive/mvc';
+import { createEffect, Model } from '@expressive/mvc';
 
 import { Pragma } from './adapter';
 
@@ -82,7 +82,7 @@ Model.get = function <T extends Model, R> (
     let unwatch: (() => void) | undefined;
     let value: any;
 
-    unwatch = effect(instance, current => {
+    unwatch = createEffect(instance, current => {
       if(typeof argument === "function"){
         const next = argument.call(current, current, forceUpdate);
 
