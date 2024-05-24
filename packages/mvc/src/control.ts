@@ -17,7 +17,7 @@ type Event = number | string | null | boolean | symbol;
 
 const DISPATCH = new Set<() => void>();
 const OBSERVER = new WeakMap<{}, OnAccess<any>>();
-const LISTENER = new WeakMap<{}, Map<OnUpdate, Set<Event> | undefined>>();
+const LISTENERS = new WeakMap<{}, Map<OnUpdate, Set<Event> | undefined>>();
 
 /** Events pending for a given object. */
 const PENDING = new WeakMap<{}, Set<Event>>();
@@ -26,10 +26,10 @@ const PENDING = new WeakMap<{}, Set<Event>>();
 const onReady = () => null;
 
 function addListener(subject: {}, callback: OnUpdate, select?: Event){
-  let subs = LISTENER.get(subject)!;
+  let subs = LISTENERS.get(subject)!;
 
   if(!subs)
-    LISTENER.set(subject, subs = new Map([[onReady, undefined]]));
+    LISTENERS.set(subject, subs = new Map([[onReady, undefined]]));
 
   const filter = select === undefined ? undefined : new Set([select]);
 
@@ -41,13 +41,10 @@ function addListener(subject: {}, callback: OnUpdate, select?: Event){
   return () => subs.delete(callback);
 }
 
-function setObserver<T extends {}>(from: T, observer: OnAccess<T>){
-  if(OBSERVER.has(from))
-    throw new Error("Observer exists for this context.");
-    
-  OBSERVER.set(from, observer);
-
-  return () => OBSERVER.delete(from);
+function createObserver<T extends {}>(from: T, observer: OnAccess<T>){
+  const proxy = Object.create(from);
+  OBSERVER.set(proxy, observer);
+  return proxy;
 }
 
 function watch(from: any, key: string | number, value?: any){
@@ -56,7 +53,7 @@ function watch(from: any, key: string | number, value?: any){
 }
 
 function emit(source: {}, key: Event){
-  const subs = LISTENER.get(source)!;
+  const subs = LISTENERS.get(source)!;
   const ready = !subs.has(onReady);
 
   if(key === true && ready)
@@ -121,7 +118,7 @@ type Effect<T extends {}> = (this: T, argument: T) =>
 function createEffect<T extends {}>(target: T, callback: Effect<Required<T>>, requireValues: true): () => void;
 function createEffect<T extends {}>(target: T, callback: Effect<T>, requireValues?: boolean): () => void;
 function createEffect<T extends {}>(target: T, callback: Effect<T>, requireValues?: boolean){
-  const listeners = LISTENER.get(target)!;
+  const listeners = LISTENERS.get(target)!;
 
   let unset: ((update: boolean | null) => void) | undefined;
   let reset: (() => void) | null | undefined;
@@ -129,7 +126,9 @@ function createEffect<T extends {}>(target: T, callback: Effect<T>, requireValue
   function invoke(){
     let stale: boolean | undefined;
 
-    const subscriber = Object.create(target);
+    const subscriber = createObserver(target, access);
+
+    LISTENERS.set(subscriber, listeners);
 
     function onUpdate() {
       if (stale)
@@ -149,7 +148,7 @@ function createEffect<T extends {}>(target: T, callback: Effect<T>, requireValue
       if(value === undefined && requireValues)
         throw new Error(`${from}.${key} is required in this context.`);
 
-      const listeners = LISTENER.get(from)!;
+      const listeners = LISTENERS.get(from)!;
       let listener = listeners.get(onUpdate);
 
       if(!listener)
@@ -157,18 +156,16 @@ function createEffect<T extends {}>(target: T, callback: Effect<T>, requireValue
 
       listener.add(key);
 
-      const nested = LISTENER.get(value);
+      const nested = LISTENERS.get(value);
 
-      if(nested){
-        LISTENER.set(value = Object.create(value), nested);
-        setObserver(value, access);
-      }
+      if(nested)
+        LISTENERS.set(
+          value = createObserver(value, access),
+          nested
+        );
 
       return value;
     }
-
-    LISTENER.set(subscriber, listeners);
-    setObserver(subscriber, access);
 
     try {
       const out = callback.call(subscriber, subscriber);
@@ -208,9 +205,9 @@ function createEffect<T extends {}>(target: T, callback: Effect<T>, requireValue
 export {
   addListener,
   createEffect,
+  createObserver,
   emit,
   OnUpdate,
   queue,
-  setObserver,
   watch
 }
