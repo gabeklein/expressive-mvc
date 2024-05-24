@@ -1,0 +1,22 @@
+
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "target": "es2020",
+    "esModuleInterop": true,
+    "lib": ["ES2020", "DOM"],
+    "moduleResolution": "node",
+    "noUnusedLocals": true,
+    "sourceMap": true,
+    "strict": true,
+    "paths": {
+      "@expressive/*": [
+        "../*/src"
+      ]
+    }
+  },
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
+}
