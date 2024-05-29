@@ -1,4 +1,4 @@
-import { Model, createObserver } from '@expressive/mvc';
+import { Model, createProxy } from '@expressive/mvc';
 import { Signal, createSignal } from "solid-js";
 
 export const SIGNALS = new WeakMap<Model, Map<string, Signal<unknown>>>();
@@ -17,13 +17,13 @@ declare module '@expressive/mvc' {
   }
 }
 
-export function createProxy<T extends Model>(instance: T) {
+export function signalProxy<T extends Model>(instance: T) {
   let signals = SIGNALS.get(instance);
 
   if (!signals)
     SIGNALS.set(instance, signals = new Map);
 
-  const proxy = createObserver(instance, (_, key, value) => {
+  const proxy = createProxy(instance, (_, key, value) => {
     if (typeof value !== 'function') {
       let signal = signals.get(key as string);
 

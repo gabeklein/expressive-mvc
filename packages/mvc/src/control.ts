@@ -41,7 +41,7 @@ function addListener(subject: {}, callback: OnUpdate, select?: Event){
   return () => subs.delete(callback);
 }
 
-function createObserver<T extends {}>(from: T, observer: OnAccess<T>){
+function createProxy<T extends {}>(from: T, observer: OnAccess<T>){
   const proxy = Object.create(from);
   OBSERVER.set(proxy, observer);
   return proxy;
@@ -126,7 +126,7 @@ function createEffect<T extends {}>(target: T, callback: Effect<T>, requireValue
   function invoke(){
     let stale: boolean | undefined;
 
-    const subscriber = createObserver(target, access);
+    const subscriber = createProxy(target, access);
 
     LISTENERS.set(subscriber, listeners);
 
@@ -160,7 +160,7 @@ function createEffect<T extends {}>(target: T, callback: Effect<T>, requireValue
 
       if(nested)
         LISTENERS.set(
-          value = createObserver(value, access),
+          value = createProxy(value, access),
           nested
         );
 
@@ -205,7 +205,7 @@ function createEffect<T extends {}>(target: T, callback: Effect<T>, requireValue
 export {
   addListener,
   createEffect,
-  createObserver,
+  createProxy,
   emit,
   OnUpdate,
   queue,

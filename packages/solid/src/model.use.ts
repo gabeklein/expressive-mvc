@@ -1,7 +1,7 @@
 import { Model } from '@expressive/mvc';
 import { onCleanup } from 'solid-js';
 
-import { createProxy } from './signals';
+import { signalProxy } from './signals';
 
 declare module '@expressive/mvc' {
   namespace Model {
@@ -17,7 +17,7 @@ Model.use = function <T extends Model> (
   argument?: Model.Assign<T>){
  
   const instance = this.new(argument);
-  const proxy = createProxy(instance);
+  const proxy = signalProxy(instance);
 
   onCleanup(() => instance.set(null));
   

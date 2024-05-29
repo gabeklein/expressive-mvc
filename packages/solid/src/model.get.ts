@@ -2,7 +2,7 @@ import { Model } from '@expressive/mvc';
 import { useContext } from 'solid-js';
 
 import { Lookup } from './context';
-import { createProxy } from './signals';
+import { signalProxy } from './signals';
 
 declare module '@expressive/mvc' {
   namespace Model {
@@ -16,5 +16,5 @@ Model.get = function <T extends Model> (this: Model.Init<T>){
   if (!instance)
     throw new Error(`Model not found in context: ${this.name}`);
 
-  return createProxy(instance);
+  return signalProxy(instance);
 }
