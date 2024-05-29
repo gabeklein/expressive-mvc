@@ -406,24 +406,24 @@ define(Model, "toString", {
 
 /** Apply instructions, inherited event listeners and ensure class metadata is ready. */
 function prepare(model: Model){
-  let type = model.constructor as Model.Type;
+  let T = model.constructor as Model.Type;
 
-  if(type === Model)
+  if(T === Model)
     throw new Error("Cannot create base Model.");
 
   const chain = [] as Model.Type[];
   let keys = new Set<string>();
 
-  ID.set(model, `${type}-${uid()}`);
+  ID.set(model, `${T}-${uid()}`);
 
-  while(type.name){
-    for(const cb of NOTIFY.get(type) || [])
+  while(T.name){
+    for(const cb of NOTIFY.get(T) || [])
       addListener(model, cb);
 
-    if(type === Model) break;
-    else chain.unshift(type);
+    if(T === Model) break;
+    else chain.unshift(T);
 
-    type = Object.getPrototypeOf(type)
+    T = Object.getPrototypeOf(T)
   }
 
   for(const type of chain){
