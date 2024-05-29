@@ -417,17 +417,16 @@ function prepare(model: Model){
   ID.set(model, `${type}-${uid()}`);
 
   while(type.name){
-    chain.unshift(type);
+    for(const cb of NOTIFY.get(type) || [])
+      addListener(model, cb);
+
+    if(type === Model) break;
+    else chain.unshift(type);
+
     type = Object.getPrototypeOf(type)
   }
 
   for(const type of chain){
-    for(const cb of NOTIFY.get(type) || [])
-      addListener(model, cb);
-
-    if(type == Model)
-      continue;
-
     if(METHODS.has(type)){
       keys = METHODS.get(type)!;
       continue;
