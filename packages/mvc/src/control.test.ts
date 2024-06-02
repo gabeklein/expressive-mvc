@@ -1,4 +1,4 @@
-import { createEffect } from './control';
+import { createEffect, createProxy } from './control';
 import { set } from './instruction/set';
 import { use } from './instruction/use';
 import { mockError } from './mocks';
@@ -306,4 +306,36 @@ describe("errors", () => {
 
     expect(error).toBeCalledWith(expected);
   });
+})
+
+describe("proxy", () => {
+  it("will create a proxy object", () => {
+    class Test extends Model {
+      foo = 1;
+      bar = 2;
+      baz = 3;
+    }
+
+    const test = Test.new("Test");
+    const getter = jest.fn((
+      self: Model,
+      key: string | number,
+      value: unknown): string => {
+  
+      return `${self}.${key}=${value}`;
+    });
+  
+    const proxy = createProxy(test, getter);
+
+    expect(proxy.foo).toBe(`Test.foo=1`);
+    expect(getter).toBeCalledWith(test, "foo", 1);
+
+    expect(proxy.bar).toBe(`Test.bar=2`);
+    expect(getter).toBeCalledWith(test, "bar", 2);
+
+    expect(proxy.baz).toBe(`Test.baz=3`);
+    expect(getter).toBeCalledWith(test, "baz", 3);
+
+    expect(getter).toBeCalledTimes(3);
+  })
 })
