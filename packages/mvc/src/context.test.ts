@@ -8,13 +8,13 @@ it("will add instance to context", () => {
   const example = Example.new();
   const context = new Context();
 
-  context.include({ example });
+  context.include(example);
 
   expect(context.get(Example)).toBe(example);
 })
 
 it("will create instance in context", () => {
-  const context = new Context({ Example });
+  const context = new Context(Example);
 
   expect(context.get(Example)).toBeInstanceOf(Example);
 })
