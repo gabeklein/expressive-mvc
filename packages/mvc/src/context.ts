@@ -137,7 +137,7 @@ class Context {
         this.layer.set(key, input)
         init.set(instance, true);
       }
-      // Context must force-reset becasue inputs are no longer safe.
+      // Context must force-reset because inputs are no longer safe.
       else if(exists !== input){    
         this.pop();
         this.id = uid();

@@ -239,7 +239,7 @@ abstract class Model {
   /**
    * Get update in progress.
    *
-   * @returns Promise which resolves object with updated values. Is `undefined` if there is no update.
+   * @returns Promise which resolves object with updated values, `undefined` if there no update is pending.
    **/
   set(): PromiseLike<Model.Event<this>[]> | undefined;
 
