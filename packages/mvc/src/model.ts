@@ -378,9 +378,7 @@ abstract class Model {
   /**
    * Register a callback to run when any instance of this Model is updated. 
    */
-  static on<T extends Model>(
-    this: Model.Type<T>, listener: Model.OnEvent<T>){
-
+  static on<T extends Model>(this: Model.Type<T>, listener: Model.OnEvent<T>){
     let notify = NOTIFY.get(this);
 
     if(!notify)
