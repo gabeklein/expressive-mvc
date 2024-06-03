@@ -16,7 +16,7 @@ declare namespace Consumer {
      * Similar to `Model.get()`, updates to properties accessed in
      * this function will cause a refresh when they change.
      */
-    children: (value: T) => ComponentChildren;
+    children: (value: T) => ComponentChildren | void;
   }
 }
 
