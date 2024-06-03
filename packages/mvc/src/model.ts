@@ -650,6 +650,7 @@ function uid(){
 }
 
 export {
+  assign,
   fetch,
   METHOD,
   Model,

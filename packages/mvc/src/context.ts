@@ -1,4 +1,5 @@
-import { Model, PARENT, define, uid } from './model';
+import { emit } from './control';
+import { Model, PARENT, assign, define, uid } from './model';
 
 const LOOKUP = new WeakMap<Model, Context | ((got: Context) => void)[]>();
 const KEYS = new Map<symbol | Model.Type, symbol>();
@@ -146,12 +147,12 @@ class Context {
     } 
 
     for(const [model, explicit] of init){
-      model.set();
+      emit(model, true);
 
       if(typeof forEach == "function")
         forEach(model, explicit);
       else if(forEach && explicit)
-        model.set(forEach);
+        assign(model, forEach);
 
       for(const [_key, value] of model)
         if(PARENT.get(value as Model) === model){
