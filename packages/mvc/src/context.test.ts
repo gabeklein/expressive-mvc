@@ -165,6 +165,29 @@ describe("include", () => {
     expect(cb).toBeCalledTimes(3);
   })
 
+  it("will assign to newly added instances", () => {
+    class Test extends Model {
+      value = 0;
+    }
+
+    const t1 = Test.new();
+    const t2 = Test.new();
+
+    const context = new Context();
+
+    context.include({ t1 }, { value: 1 });
+
+    expect(t1.value).toBe(1);
+
+    t1.value = 2;
+    
+    context.include({ t1, t2 }, { value: 3 });
+
+    // t1 is already in context, should not be reassigned.
+    expect(t1.value).toBe(2);
+    expect(t2.value).toBe(3);
+  })
+
   // This will be made more elegant later.
   it("will hard-reset if inputs differ", () => {
     const bazDidDie = jest.fn();
