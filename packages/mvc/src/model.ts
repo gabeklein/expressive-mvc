@@ -212,7 +212,7 @@ abstract class Model {
         return cb === null ? cb : ((update) => {
           pending = PENDING.get(self)!;
           if(typeof cb == "function")
-            return cb(update);
+            cb(update);
         })
       });
     }
