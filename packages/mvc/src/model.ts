@@ -23,9 +23,6 @@ const METHODS = new WeakMap<Model.Type, Set<string>>();
 /** Reference bound instance methods to real ones. */
 const METHOD = new WeakMap<any, any>();
 
-/** Currently accumulating export. */
-let EXPORT: Map<any, any> | undefined;
-
 declare namespace Model {
   /** Any type of Model, using own class constructor as its identifier. */
   type Type<T extends Model = Model> =
@@ -201,7 +198,7 @@ abstract class Model {
     const self = this.is;
 
     if(arg1 === undefined)
-      return values(self);
+      return snapshot(self);
 
     if(typeof arg1 == "function"){
       let pending = new Set<Model.Event<this>>();
@@ -550,22 +547,28 @@ function fetch(subject: Model, property: string, required?: boolean){
   });
 }
 
-function values<T extends Model>(model: T): Model.State<T> {
+/** Currently accumulating export. Stores real values of placeholder properties such as ref() or child models. */
+let EXPORT: Map<any, any> | undefined;
+
+function snapshot<T extends Model>(model: T): Model.State<T> {
   const values = {} as any;
-  const current = !EXPORT && (EXPORT = new Map([[model, values]]));
+  let isNotRecursive;
 
-  type Exportable = Iterable<[string, { get?: () => any }]>;
+  if(!EXPORT){
+    isNotRecursive = true;
+    EXPORT = new Map([[model, values]]);
+  }
 
-  for(let [key, value] of model as Exportable){
+  for(let [key, value] of model){
     if(EXPORT.has(value))
       value = EXPORT.get(value);
-    else if(value && typeof value.get === "function")
+    else if(value && typeof value == "object" && "get" in value && typeof value.get === "function")
       EXPORT.set(value, value = value.get());
 
     values[key] = value;
   }
 
-  if(current)
+  if(isNotRecursive)
     EXPORT = undefined;
 
   return Object.freeze(values);
