@@ -1,6 +1,7 @@
 {
   "name": "@expressive/solid",
   "description": "Use classes to define state in SolidJS!",
+  "private": true,
   "author": {
     "name": "Gabe Klein",
     "email": "gabe@expressive.dev",

@@ -1,6 +1,7 @@
 {
   "name": "@expressive/preact",
   "description": "Use classes to define state in Preact!",
+  "private": true,
   "author": {
     "name": "Gabe Klein",
     "email": "gabe@expressive.dev",
