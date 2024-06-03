@@ -244,6 +244,41 @@ abstract class Model {
   set(): PromiseLike<Model.Event<this>[]> | undefined;
 
   /**
+   * Update mulitple properties at once. Merges argument with current state.
+   * Properties which are not managed by this model will be ignored.
+   * 
+   * @param assign - Object with properties to update.
+   * @returns Promise resolving an array of keys updated, `undefined` (immediately) if a noop.
+   */
+  set(assign: Model.Assign<this>): PromiseLike<Model.Event<this>[]> | undefined;
+
+  /**
+   * Push an update. This will not change the value of associated property.
+   * 
+   * Useful where a property value internally has changed, but the object is the same.
+   * For example: An array has pushed a new value, or a nested property is updated.
+   * 
+   * You can also use this to dispatch arbitrary events.
+   * Symbols are recommended as non-property events, however you can use any string.
+   * If doing so, be sure to avoid collisions with property names! An easy way to do this is
+   * to prefix an event with "!" and/or use dash-case. e.g. `set("!event")` or `set("my-event")`.
+   * 
+   * @param key - Property or event to dispatch.
+   * @returns Promise resolves an array of keys updated.
+   */
+  set(key: Model.Event<this>): PromiseLike<Model.Event<this>[]>;
+
+  /**
+   * Update a property with value. 
+   * 
+   * @param key - property to update
+   * @param value - value to update property with (if the same as current, no update will occur)
+   * @param silent - if true, will not notify listeners of an update
+   * @returns Promise resolving an array of keys updated, `undefined` (immediately) if a noop.
+   */
+  set<K extends string>(key: K, value: Model.Value<this, K>, silent?: boolean): PromiseLike<Model.Event<this>[]> | undefined;
+
+  /**
    * Call a function when update occurs.
    * 
    * Given function is called for every assignment (which changes value) or explicit `set`.
@@ -265,47 +300,8 @@ abstract class Model {
    */
   set(status: null): void;
 
-  /**
-   * Push an update. This will not change the value of associated property.
-   * 
-   * Useful where a property value internally has changed, but the object is the same.
-   * For example: An array has pushed a new value, or a nested property is updated.
-   * 
-   * You can also use this to dispatch arbitrary events.
-   * Symbols are recommended as non-property events, however you can use any string.
-   * If doing so, be sure to avoid collisions with property names! An easy way to do this is
-   * to prefix an event with "!" and/or use dash-case. e.g. `set("!event")` or `set("my-event")`.
-   * 
-   * @param key - Property or event to dispatch.
-   * @returns Promise resolves an array of keys updated.
-   */
-  set(key: Model.Event<this>): PromiseLike<Model.Event<this>[]>;
-
-  /**
-   * Update mulitple properties at once. Merges argument with current state.
-   * Properties which are not managed by this model will be ignored.
-   * 
-   * @param assign - Object with properties to update.
-   * @returns Promise resolving an array of keys updated, `undefined` (immediately) if a noop.
-   */
-  set(assign: Model.Assign<this>): PromiseLike<Model.Event<this>[]> | undefined;
-
-  /**
-   * Update a property with value. 
-   * 
-   * @param key - property to update
-   * @param value - value to update property with (if the same as current, no update will occur)
-   * @param silent - if true, will not notify listeners of an update
-   * @returns Promise resolving an array of keys updated, `undefined` (immediately) if a noop.
-   */
-  set<K extends string>(
-    key: K,
-    value: Model.Value<this, K>,
-    silent?: boolean
-  ): PromiseLike<Model.Event<this>[]> | undefined;
-
   set(
-    arg1?: Model.OnEvent<this> | Model.Assign<this> | string | number | symbol | null,
+    arg1?: Model.OnEvent<this> | Model.Assign<this> | Model.Event<this> | null,
     arg2?: unknown,
     arg3?: boolean){
 
@@ -359,7 +355,7 @@ abstract class Model {
    * 
    * @param args - arguments sent to constructor
    */
-  static new <T extends Model> (this: Model.Init<T>, ...args: Model.Args<T>){
+  static new<T extends Model>(this: Model.Init<T>, ...args: Model.Args<T>){
     const instance = new this(...args);
     emit(instance, true);
     return instance;
@@ -371,7 +367,7 @@ abstract class Model {
    * If so, language server will make available all static
    * methods and properties of this class.
    */
-  static is<T extends Model.Type> (this: T, maybe: unknown): maybe is T {
+  static is<T extends Model.Type>(this: T, maybe: unknown): maybe is T {
     return maybe === this || typeof maybe == "function" && maybe.prototype instanceof this;
   }
 
