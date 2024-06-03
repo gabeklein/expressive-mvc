@@ -9,10 +9,10 @@ declare namespace set {
 }
 
 /**
- * Set property with a placeholder.
+ * Set property as `undefined` but required.
  * 
  * Property cannot be accessed until it is defined. If accessed while undefined, a hybrid
- * `Promise`/`Error` (ala: [Suspense](https://reactjs.org/docs/concurrent-mode-suspense.html)) will be thrown.
+ * `Promise`/`Error` (aka: [Suspense](https://reactjs.org/docs/concurrent-mode-suspense.html)) will be thrown.
  */
 function set <T = any>(): T;
 
