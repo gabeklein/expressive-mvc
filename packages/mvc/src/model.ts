@@ -245,9 +245,10 @@ abstract class Model {
    * Properties which are not managed by this model will be ignored.
    * 
    * @param assign - Object with properties to update.
+   * @param silent - If an update does occur, listeners will not be refreshed automatically.
    * @returns Promise resolving an array of keys updated, `undefined` (immediately) if a noop.
    */
-  set(assign: Model.Assign<this>): PromiseLike<Model.Event<this>[]> | undefined;
+  set(assign: Model.Assign<this>, silent?: boolean): PromiseLike<Model.Event<this>[]> | undefined;
 
   /**
    * Push an update. This will not change the value of associated property.
@@ -264,16 +265,6 @@ abstract class Model {
    * @returns Promise resolves an array of keys updated.
    */
   set(key: Model.Event<this>): PromiseLike<Model.Event<this>[]>;
-
-  /**
-   * Update a property with value. 
-   * 
-   * @param key - property to update
-   * @param value - value to update property with (if the same as current, no update will occur)
-   * @param silent - if true, will not notify listeners of an update
-   * @returns Promise resolving an array of keys updated, `undefined` (immediately) if a noop.
-   */
-  set<K extends string>(key: K, value: Model.Value<this, K>, silent?: boolean): PromiseLike<Model.Event<this>[]> | undefined;
 
   /**
    * Call a function when update occurs.
@@ -299,8 +290,7 @@ abstract class Model {
 
   set(
     arg1?: Model.OnEvent<this> | Model.Assign<this> | Model.Event<this> | null,
-    arg2?: unknown,
-    arg3?: boolean){
+    arg2?: unknown){
 
     const self = this.is;
 
@@ -326,8 +316,6 @@ abstract class Model {
     }
     else if(arg1 === undefined)  
       emit(this, true);
-    else if(1 in arguments)
-      update(self, arg1, arg2, arg3);
     else
       event(self, arg1);
 

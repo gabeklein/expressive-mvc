@@ -1161,30 +1161,6 @@ describe("set method", () => {
       foo = "foo";
     }
 
-    it("will update value", async () => {
-      const test = Test.new();
-
-      expect(test.foo).toBe("foo");
-
-      test.set("foo", "bar");
-
-      await expect(test).toHaveUpdated("foo");
-
-      expect(test.foo).toBe("bar");
-    })
-
-    it("will ignore update with same value", async () => {
-      const test = Test.new();
-
-      expect(test.foo).toBe("foo");
-
-      test.set("foo", "foo");
-
-      await expect(test).not.toHaveUpdated();
-      
-      expect(test.foo).toBe("foo");
-    })
-
     it("will force update", async () => {
       const test = Test.new();
 
@@ -1415,6 +1391,22 @@ describe("set method", () => {
       test.set({ foo: "bar" });
 
       await expect(test).toHaveUpdated("foo");
+
+      expect(test.foo).toBe("bar");
+      expect(test.bar).toBe("bar");
+    })
+
+    it("will merge object silently", async () => {
+      class Test extends Model {
+        foo = "foo";
+        bar = "bar";
+      }
+
+      const test = Test.new();
+
+      test.set({ foo: "bar" }, true);
+
+      await expect(test).not.toHaveUpdated("foo");
 
       expect(test.foo).toBe("bar");
       expect(test.bar).toBe("bar");
