@@ -315,9 +315,16 @@ abstract class Model {
       return
     }
 
-    if(typeof arg1 == "object")
-      assign(self, arg1);
-    else if(arg1 == undefined)  
+    if(typeof arg1 == "object"){
+      const methods = METHODS.get(self.constructor as Model.Type)!;
+    
+      for(const key in arg1)
+        if(methods.has(key))
+          self[key as keyof this] = arg1[key] as any;
+        else if(key in self)
+          update(self, key, arg1[key], arg2 === true);
+    }
+    else if(arg1 === undefined)  
       emit(this, true);
     else if(1 in arguments)
       update(self, arg1, arg2, arg3);
@@ -455,6 +462,7 @@ function prepare(model: Model){
  * Accumulate and handle cleanup events.
  **/
 function init(model: Model, args: Model.Args){
+  const methods = METHODS.get(model.constructor as Model.Type)!;
   const state = {} as Record<string | number | symbol, unknown>;
   const clean = new Set<() => void>();
 
@@ -481,10 +489,12 @@ function init(model: Model, args: Model.Args){
           console.error(`Async error in constructor for ${model}:`);
           console.error(err);
         });
-      else if(typeof use == "object")
-        assign(model, use);
       else if(typeof use == "function")
         clean.add(use);
+      else if(typeof use == "object")
+        for(const key in use)
+          if(key in model || methods.has(key))
+            model[key as keyof Model] = use[key] as any;
     });
 
     for(const key in model){
@@ -639,21 +649,12 @@ function event(
     emit(subject, key);
 }
 
-function assign<T extends Model>(to: T, values: Model.Assign<T>){
-  const methods = METHODS.get(to.constructor as Model.Type)!;
-
-  for(const key in values)
-    if(key in to || methods.has(key))
-      to[key as keyof T] = values[key as Model.Field<T>] as any;
-}
-
 /** Random alphanumberic of length 6; always starts with a letter. */
 function uid(){
   return (Math.random() * 0.722 + 0.278).toString(36).substring(2, 8).toUpperCase();
 }
 
 export {
-  assign,
   fetch,
   METHOD,
   Model,
