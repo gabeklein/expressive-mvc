@@ -334,7 +334,7 @@ abstract class Model {
 
   /**
    * Iterate over managed properties in this instance of Model.
-   * Yeilds the key and underlying value for each property.
+   * Yeilds the key and current value for each property.
    */
   [Symbol.iterator](): Iterator<[string, unknown]> {
     return Object.entries(STATE.get(this.is)!)[Symbol.iterator]();
