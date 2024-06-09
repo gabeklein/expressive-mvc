@@ -90,7 +90,9 @@ function ref<T>(
             })
           else {
             const get = () => state[key];
-            const set = (value: unknown) => update(subject, key, value);
+            const set = (value: unknown) => {
+              update(subject, key, value)
+            };
           
             define(set, "current", { get, set });
             define(set, "get", { value: get });
@@ -106,7 +108,7 @@ function ref<T>(
 
       const get = () => state[key];
       const set = (value?: any) => {
-        if(!subject.set(key, value) || !arg)
+        if(!update(subject, key, value) || !arg)
           return;
 
         if(unSet)

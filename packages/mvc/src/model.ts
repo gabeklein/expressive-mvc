@@ -494,9 +494,11 @@ function init(model: Model, args: Model.Args){
         update(model, key, desc.value, true);
         define(model, key, {
           configurable: false,
-          set: (x) => update(model, key, x),
           get(){
             return watch(this, key, state[key]);
+          },
+          set(x){
+            update(model, key, x);
           }
         });
       }
@@ -598,7 +600,7 @@ function update<T>(
   }
 
   if(value === previous)
-    return true;
+    return;
 
   if(value instanceof Model && !PARENT.has(value)){
     PARENT.set(value, subject);
@@ -609,6 +611,8 @@ function update<T>(
 
   if(arg !== true)
     event(subject, key);
+
+  return true;
 }
 
 function event(
