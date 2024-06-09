@@ -174,7 +174,7 @@ class Context {
 
       T = input;
       I = new input() as T;
-      this.cleanup.add(() => I.set(null));
+      this.cleanup.add(() => emit(I, null));
     }
     else {
       I = input;

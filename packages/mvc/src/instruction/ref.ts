@@ -1,4 +1,4 @@
-import { Model, define } from '../model';
+import { Model, define, update } from '../model';
 import { use } from './use';
 
 declare namespace ref {
@@ -90,7 +90,7 @@ function ref<T>(
             })
           else {
             const get = () => state[key];
-            const set = (value: unknown) => subject.set(key, value);
+            const set = (value: unknown) => update(subject, key, value);
           
             define(set, "current", { get, set });
             define(set, "get", { value: get });

@@ -1,5 +1,5 @@
 import { Context } from '../context';
-import { Model } from '../model';
+import { Model, update } from '../model';
 import { use } from './use';
 
 const APPLY = new WeakMap<Model, (model: Model) => (() => void) | boolean | void>();
@@ -17,8 +17,8 @@ function has <T extends Model> (
 
   return use<T[]>((key, subject) => {
     const applied = new Set<Model>();
-    const update = () => {
-      subject.set(key, Object.freeze(Array.from(applied)));
+    const apply = () => {
+      update(subject, key, Object.freeze(Array.from(applied)));
     }
 
     if(Model.is(arg1))
@@ -55,13 +55,13 @@ function has <T extends Model> (
           }
   
           applied.add(got);
-          update();
+          apply();
   
           const done = () => { 
             reset();
   
             applied.delete(got);
-            update();
+            apply();
   
             if(disconnect)
               disconnect();
@@ -90,11 +90,11 @@ function has <T extends Model> (
         }
 
         applied.add(recipient);
-        update();
+        apply();
 
         return () => {
           applied.delete(recipient);
-          update();
+          apply();
 
           if(typeof remove == "function")
             remove();

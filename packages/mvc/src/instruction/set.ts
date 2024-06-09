@@ -1,4 +1,4 @@
-import { Model } from '../model';
+import { Model, event, update } from '../model';
 import { use } from './use';
 
 declare namespace set {
@@ -66,16 +66,16 @@ function set <T> (
         if(value instanceof Promise){
           value
             .then(value => {
-              subject.set(key, value);
+              update(subject, key, value);
               return value;
             })
             .catch(err => {
-              subject.set(key);
+              event(subject, key);
               output.get = () => { throw err };
             })
         }
         else
-          subject.set(key, value);
+          update(subject, key, value);
 
         if(0 in arguments)
           return subject[key];
@@ -108,7 +108,7 @@ function set <T> (
     else
       output.set = value => {
         output.get = undefined;
-        subject.set(key, value);
+        update(subject, key, value);
       }
 
     return output;

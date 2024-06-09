@@ -157,7 +157,7 @@ function get<R, T extends Model>(
       }
     }
     else 
-      source((got) => subject.set(key, got));
+      source((got) => update(subject, key, got));
 
     return { get: arg1 };
   })
