@@ -197,40 +197,17 @@ abstract class Model {
   get(arg1?: Model.Effect<this> | string | null, arg2?: boolean | Function){
     const self = this.is;
 
-    if(arg1 === undefined)
-      return snapshot(self);
-
-    if(typeof arg1 == "function"){
-      let pending = new Set<Model.Event<this>>();
-
-      return createEffect(self, (state) => {
-        const cb = arg1.call(state, state, pending);
-
-        return cb === null ? cb : ((update) => {
-          pending = PENDING.get(self)!;
-          if(typeof cb == "function")
-            cb(update);
-        })
-      });
-    }
-
-    if(typeof arg2 == "function"){
-      if(arg1 === null)
-        return addListener(self, arg2.bind(this, this), null);
-
-      const state = STATE.get(self)!;
-
-      if(arg1 in state)
-        arg2.call(this, state[arg1], arg1, this)
-
-      return addListener(self, () => {
-        arg2.call(this, arg1 in state ? state[arg1] : arg1, arg1, this)
-      }, arg1)
-    }
-
-    return arg1 === null
-      ? Object.isFrozen(STATE.get(self))
-      : fetch(self, arg1, arg2);
+    return (
+      arg1 === undefined ?
+        snapshot(self) :
+      typeof arg1 == "function" ?
+        effect(self, arg1) :
+      typeof arg2 == "function" ?
+        callback(self, arg1, arg2) :
+      arg1 === null ?
+        Object.isFrozen(STATE.get(self)) :
+        fetch(self, arg1, arg2)
+    )
   }
 
   /**
@@ -635,6 +612,52 @@ function event(
 
   if(!silent)
     emit(subject, key);
+}
+
+let NESTED: Set<() => void> | undefined;
+
+function effect<T extends Model>(self: T, arg1: Model.Effect<T>){
+  let pending = new Set<Model.Event<T>>();
+
+  const done = createEffect(self, (state) => {
+    const parent = NESTED;
+    const gc = NESTED = new Set<() => void>();
+    const cb = arg1.call(state, state, pending);
+
+    NESTED = parent;
+
+    return cb === null ? cb : ((update) => {
+      pending = PENDING.get(self)!;
+      gc.forEach(x => x());
+
+      if(typeof cb == "function")
+        cb(update);
+    })
+  });
+
+  if(NESTED)
+    NESTED.add(done);
+
+  return done;
+}
+
+function callback<T extends Model>(self: T, key: string | null, cb: Function){
+  let callback;
+
+  if(key === null)
+    callback = cb.bind(self, self);
+  else {
+    const state = STATE.get(self)!;
+
+    if(key in state)
+      cb.call(self, state[key], key, self);
+
+    callback = () => {
+      cb.call(self, key in state ? state[key] : key, key, self)
+    }
+  }
+
+  return addListener(self, callback, key);
 }
 
 /** Random alphanumberic of length 6; always starts with a letter. */
