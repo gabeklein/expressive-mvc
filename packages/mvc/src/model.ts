@@ -200,19 +200,8 @@ abstract class Model {
     if(arg1 === undefined)
       return snapshot(self);
 
-    if(typeof arg1 == "function"){
-      let pending = new Set<Model.Event<this>>();
-
-      return createEffect(self, (state) => {
-        const cb = arg1.call(state, state, pending);
-
-        return cb === null ? cb : ((update) => {
-          pending = PENDING.get(self)!;
-          if(typeof cb == "function")
-            cb(update);
-        })
-      });
-    }
+    if(typeof arg1 == "function")
+      return effect(self, arg1);
 
     if(typeof arg2 == "function"){
       if(arg1 === null)
@@ -635,6 +624,33 @@ function event(
 
   if(!silent)
     emit(subject, key);
+}
+
+let NESTED: Set<() => void> | undefined;
+
+function effect<T extends Model>(self: T, arg1: Model.Effect<T>){
+  let pending = new Set<Model.Event<T>>();
+
+  const done = createEffect(self, (state) => {
+    const parent = NESTED;
+    const gc = NESTED = new Set<() => void>();
+    const cb = arg1.call(state, state, pending);
+
+    NESTED = parent;
+
+    return cb === null ? cb : ((update) => {
+      pending = PENDING.get(self)!;
+      gc.forEach(x => x());
+
+      if(typeof cb == "function")
+        cb(update);
+    })
+  });
+
+  if(NESTED)
+    NESTED.add(done);
+
+  return done;
 }
 
 /** Random alphanumberic of length 6; always starts with a letter. */
