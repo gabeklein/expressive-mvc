@@ -157,8 +157,8 @@ function get<R, T extends Model>(
       }
     }
     else 
-      source((got) => {
-        update(subject, key, got)
+      source((callback) => {
+        update(subject, key, callback)
       });
 
     return { get: arg1 };
