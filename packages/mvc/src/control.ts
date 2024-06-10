@@ -107,6 +107,8 @@ function queue(eventHandler: (() => void)){
 type Effect<T extends {}> = (this: T, argument: T) =>
   ((update: boolean | null) => void) | Promise<void> | null | void;
 
+let GC: Set<(update: boolean | null) => void> | undefined;
+
 /**
  * Create a side-effect which will update whenever values accessed change.
  * Callback is called immediately and if ever values are stale.
@@ -120,8 +122,15 @@ function createEffect<T extends {}>(target: T, callback: Effect<T>, requireValue
 function createEffect<T extends {}>(target: T, callback: Effect<T>, requireValues?: boolean){
   const listeners = LISTENERS.get(target)!;
 
-  let unset: ((update: boolean | null) => void) | undefined;
+  const unsets = new Set<(update: boolean | null) => void>();
   let reset: (() => void) | null | undefined;
+
+  function notify(type: boolean | null){
+    unsets.forEach(x => {
+      unsets.delete(x);
+      x(type);
+    });
+  }
 
   function invoke(){
     let stale: boolean | undefined;
@@ -136,10 +145,8 @@ function createEffect<T extends {}>(target: T, callback: Effect<T>, requireValue
 
       stale = true;
 
-      if (reset && unset) {
-        unset(true);
-        unset = undefined;
-      }
+      if (reset)
+        notify(true);
 
       return reset;
     }
@@ -168,9 +175,16 @@ function createEffect<T extends {}>(target: T, callback: Effect<T>, requireValue
     }
 
     try {
+      const parentGC = GC;
+
+      GC = unsets
       const out = callback.call(subscriber, subscriber);
 
-      unset = typeof out == "function" ? out : undefined;
+      GC = parentGC;
+
+      if(typeof out == "function")
+        unsets.add(out);
+
       reset = out === null ? out : invoke;
     }
     catch(err){
@@ -184,22 +198,27 @@ function createEffect<T extends {}>(target: T, callback: Effect<T>, requireValue
   }
 
   addListener(target, key => {
-    if(key === true)
+    if(key === null)
+      notify(null);
+    else if(key === true)
       invoke();
 
     else if(!reset)
       return reset;
 
-    if(key === null && unset)
-      unset(null);
   });
 
-  return () => {
-    if(unset)
-      unset(false);
-
-    reset = null;
+  const done = () => {
+    if(reset !== null){
+      notify(false);
+      reset = null;
+    }
   };
+
+  if(GC)
+    GC.add(done);
+
+  return done;
 }
 
 export {
