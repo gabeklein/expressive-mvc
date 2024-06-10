@@ -104,6 +104,9 @@ function queue(eventHandler: (() => void)){
   DISPATCH.add(eventHandler);
 }
 
+/** Recursive garbage collection, ensures effects within effects are also cleaned. */
+let GC: ((_update: boolean | null) => void)[] | undefined = undefined;
+
 type Effect<T extends {}> = (this: T, argument: T) =>
   ((update: boolean | null) => void) | Promise<void> | null | void;
 
@@ -120,13 +123,18 @@ function createEffect<T extends {}>(target: T, callback: Effect<T>, requireValue
 function createEffect<T extends {}>(target: T, callback: Effect<T>, requireValues?: boolean){
   const listeners = LISTENERS.get(target)!;
 
-  let unset: ((update: boolean | null) => void) | undefined;
+  let unset = [] as ((update: boolean | null) => void)[];
   let reset: (() => void) | null | undefined;
 
-  function invoke(){
-    let stale: boolean | undefined;
+  function gc(type: boolean | null){
+    unset.forEach(x => x(type));
+    unset = [];
+  }
 
+  function invoke(){
+    const exists = GC;
     const subscriber = createProxy(target, access);
+    let stale: boolean | undefined;
 
     LISTENERS.set(subscriber, listeners);
 
@@ -136,10 +144,8 @@ function createEffect<T extends {}>(target: T, callback: Effect<T>, requireValue
 
       stale = true;
 
-      if (reset && unset) {
-        unset(true);
-        unset = undefined;
-      }
+      if (reset)
+        gc(true);
 
       return reset;
     }
@@ -168,9 +174,13 @@ function createEffect<T extends {}>(target: T, callback: Effect<T>, requireValue
     }
 
     try {
+      GC = unset;
       const out = callback.call(subscriber, subscriber);
+      GC = exists;
 
-      unset = typeof out == "function" ? out : undefined;
+      if(typeof out == "function")
+        unset.push(out);
+
       reset = out === null ? out : invoke;
     }
     catch(err){
@@ -190,16 +200,19 @@ function createEffect<T extends {}>(target: T, callback: Effect<T>, requireValue
     else if(!reset)
       return reset;
 
-    if(key === null && unset)
-      unset(null);
+    if(key === null)
+      gc(null);
   });
 
-  return () => {
-    if(unset)
-      unset(false);
-
+  const done = () => {
+    gc(null);
     reset = null;
   };
+
+  if(GC)
+    GC.push(done);
+
+  return done
 }
 
 export {
