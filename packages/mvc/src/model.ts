@@ -200,19 +200,8 @@ abstract class Model {
     if(arg1 === undefined)
       return snapshot(self);
 
-    if(typeof arg1 == "function"){
-      let pending = new Set<Model.Event<this>>();
-
-      return createEffect(self, (state) => {
-        const cb = arg1.call(state, state, pending);
-
-        return cb === null ? cb : ((update) => {
-          pending = PENDING.get(self)!;
-          if(typeof cb == "function")
-            cb(update);
-        })
-      });
-    }
+    if(typeof arg1 == "function")
+      return effect(self, arg1);
 
     if(typeof arg2 == "function"){
       if(arg1 === null)
@@ -635,6 +624,49 @@ function event(
 
   if(!silent)
     emit(subject, key);
+}
+
+let DISPOSE: Set<() => void> | undefined;
+
+function wrap<T extends Function>(fn: T){
+  let pending = new Set<Model.Event<T>>();
+
+  return function(this: any, ...args: any[]){
+    const parent = DISPOSE;
+    const dispose = DISPOSE = new Set<() => void>();
+
+    try {
+      return fn.apply(this, args);
+    }
+    finally {
+      DISPOSE = parent;
+    }
+  }
+}
+
+function effect<T extends Model>(self: T, arg1: Model.Effect<T>){
+  let pending = new Set<Model.Event<T>>();
+
+  const done = createEffect(self, (state) => {
+    const parent = DISPOSE;
+    const dispose = DISPOSE = new Set<() => void>();
+    const cb = arg1.call(state, state, pending);
+
+    DISPOSE = parent;
+
+    return cb === null ? cb : ((update) => {
+      pending = PENDING.get(self)!;
+      dispose.forEach(x => x());
+
+      if(typeof cb == "function")
+        cb(update);
+    })
+  });
+
+  if(DISPOSE)
+    DISPOSE.add(done);
+
+  return done;
 }
 
 /** Random alphanumberic of length 6; always starts with a letter. */
