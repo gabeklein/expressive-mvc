@@ -107,6 +107,8 @@ function queue(eventHandler: (() => void)){
 type Effect<T extends {}> = (this: T, argument: T) =>
   ((update: boolean | null) => void) | Promise<void> | null | void;
 
+let DISPOSE: Set<(update: boolean | null) => void> | undefined;
+
 /**
  * Create a side-effect which will update whenever values accessed change.
  * Callback is called immediately and if ever values are stale.
@@ -120,8 +122,15 @@ function createEffect<T extends {}>(target: T, callback: Effect<T>, requireValue
 function createEffect<T extends {}>(target: T, callback: Effect<T>, requireValues?: boolean){
   const listeners = LISTENERS.get(target)!;
 
-  let unset: ((update: boolean | null) => void) | undefined;
+  const unsets = new Set<(update: boolean | null) => void>();
   let reset: (() => void) | null | undefined;
+
+  function unset(type: boolean | null){
+    unsets.forEach(x => {
+      unsets.delete(x);
+      x(type);
+    });
+  }
 
   function invoke(){
     let stale: boolean | undefined;
@@ -136,10 +145,8 @@ function createEffect<T extends {}>(target: T, callback: Effect<T>, requireValue
 
       stale = true;
 
-      if (reset && unset) {
+      if (reset)
         unset(true);
-        unset = undefined;
-      }
 
       return reset;
     }
@@ -168,9 +175,16 @@ function createEffect<T extends {}>(target: T, callback: Effect<T>, requireValue
     }
 
     try {
+      const parent = DISPOSE;
+
+      DISPOSE = unsets;
       const out = callback.call(subscriber, subscriber);
 
-      unset = typeof out == "function" ? out : undefined;
+      DISPOSE = parent;
+
+      if(typeof out == "function")
+        unsets.add(out);
+
       reset = out === null ? out : invoke;
     }
     catch(err){
@@ -189,17 +203,21 @@ function createEffect<T extends {}>(target: T, callback: Effect<T>, requireValue
 
     else if(!reset)
       return reset;
-
-    if(key === null && unset)
+    else if(key === null)
       unset(null);
   });
 
-  return () => {
-    if(unset)
+  const done = () => {
+    if(reset !== null){
       unset(false);
-
-    reset = null;
+      reset = null;
+    }
   };
+
+  if(DISPOSE)
+    DISPOSE.add(done);
+
+  return done;
 }
 
 export {
