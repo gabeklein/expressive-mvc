@@ -23,14 +23,14 @@ function has <T extends Model> (
 
     if(Model.is(arg1))
       Context.get(subject, context => {
-        context.has(arg1, got => {
+        context.has(arg1, model => {
           let remove: (() => void) | void | undefined;
           let disconnect: (() => void) | undefined;
   
-          if(applied.has(got))
+          if(applied.has(model))
             return;
           
-          const callback = APPLY.get(got);
+          const callback = APPLY.get(model);
   
           if(callback){
             const after = callback(subject);
@@ -43,7 +43,7 @@ function has <T extends Model> (
           }
   
           if(typeof arg2 == "function"){
-            const done = arg2(got, subject);
+            const done = arg2(model, subject);
   
             if(done === false)
               return false;
@@ -54,13 +54,13 @@ function has <T extends Model> (
             }
           }
   
-          applied.add(got);
+          applied.add(model);
           apply();
   
           const done = () => { 
-            reset();
+            ignore();
   
-            applied.delete(got);
+            applied.delete(model);
             apply();
   
             if(disconnect)
@@ -70,7 +70,7 @@ function has <T extends Model> (
               remove();
           }
   
-          const reset = got.get(null, done);
+          const ignore = model.get(null, done);
           
           return done;
         })
