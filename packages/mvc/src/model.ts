@@ -426,21 +426,17 @@ function prepare(model: Model){
       if(!value || key == "constructor")
         continue;
       
-      function get(this: Model){
-        return this.hasOwnProperty(key) ? value : set.call(this, value);
-      }
-
-      function set(this: Model, method: Function){
-        const value = method.bind(this.is);
+      function bind(method = value){
+        const value = method.bind(model);
         
         METHOD.set(value, method);
-        define(this.is, key, { value, writable: true });
+        define(model, key, { value, writable: true });
         
         return value;
       }
 
       keys.add(key);
-      define(type.prototype, key, { get, set });
+      define(type.prototype, key, { get: bind, set: bind });
     }
   }
 }
