@@ -197,9 +197,6 @@ abstract class Model {
   get(arg1?: Model.Effect<this> | string | null, arg2?: boolean | Model.OnUpdate<this, any>){
     const self = this.is;
 
-    if(arg1 === undefined)
-      return snapshot(self);
-
     if(typeof arg1 == "function"){
       let pending = new Set<Model.Event<this>>();
 
@@ -213,6 +210,9 @@ abstract class Model {
         })
       });
     }
+
+    if(arg1 === undefined)
+      return snapshot(self);
 
     if(typeof arg2 == "function")
       return addListener(self, arg2, arg1)
