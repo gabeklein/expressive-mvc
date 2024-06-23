@@ -1269,7 +1269,24 @@ describe("set method", () => {
       test.foo = "baz";
 
       expect(mock).toBeCalledWith("foo", test);
-      expect(mock).toBeCalledWith("foo", test);
+      expect(mock).toBeCalledTimes(2);
+    })
+
+    it("will not self-update", () => {
+      class Test extends Model {
+        foo = "foo";
+      }
+
+      const test = Test.new();
+      const mock = jest.fn(() => {
+        test.foo = "baz";
+      });
+
+      test.set(mock);
+      test.foo = "bar";
+
+      expect(mock).toBeCalledTimes(1);
+      expect(test.foo).toBe("baz");
     })
   })
 

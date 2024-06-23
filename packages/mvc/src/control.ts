@@ -53,10 +53,10 @@ function watch(from: any, key: string | number, value?: any){
 }
 
 function emit(source: {}, key: Event){
-  const subs = LISTENERS.get(source)!;
-  const ready = !subs.has(onReady);
+  const listeners = LISTENERS.get(source)!;
+  const isActive = !listeners.has(onReady);
 
-  if(key === true && ready)
+  if(key === true && isActive)
     return;
 
   let pending = PENDING.get(source);
@@ -66,23 +66,23 @@ function emit(source: {}, key: Event){
     return;
   }
 
-  PENDING.set(source, pending = new Set(
-    key !== true && ready ? [key] : [true, key]
-  ));
+  pending = new Set(isActive ? [key] : [true, key]);
 
-  pending.forEach(key => {
-    pending!.delete(key);
-    subs.forEach((select, callback) => {
-      let after;
+  PENDING.set(source, pending);
+
+  for(const key of pending)
+    listeners.forEach((select, callback) => {
+      if(select && !select.has(key))
+        return;
       
-      if(!select || select.has(key))
-        if(after = callback.call(source, key, source))
+      const after = callback.call(source, key, source);
+
+      if(after)
           queue(after);
   
       if(after === null || key === null)
-        subs.delete(callback);
+        listeners.delete(callback);
     });
-  })
   
   PENDING.delete(source);
 }
