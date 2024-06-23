@@ -51,23 +51,22 @@ function emit(source: {}, key: Event){
     return;
   }
 
-  pending = new Set(isActive ? [key] : [true, key]);
-
-  PENDING.set(source, pending);
+  PENDING.set(source, pending = new Set(isActive ? [key] : [true, key]));
 
   for(const key of pending)
-    listeners.forEach((select, callback) => {
-      if(select && !select.has(key))
-        return;
-      
-      const after = callback.call(source, key, source);
+    for(const [callback, filter] of listeners)
+      if(!filter || filter.has(key)){
+        const after = callback.call(source, key, source);
 
-      if(after)
-        queue(after);
+        if(after)
+          queue(after);
 
-      if(after === null || key === null)
-        listeners.delete(callback);
-    });
+        else if(after === null)
+          listeners.delete(callback);
+      }
+
+  if(key === null)
+    listeners.clear();
   
   PENDING.delete(source);
 }
