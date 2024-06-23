@@ -19,19 +19,19 @@ const onReady = () => null;
 const LISTENERS = new WeakMap<{}, Map<OnUpdate, Set<Event> | undefined>>();
 
 function addListener(subject: {}, callback: OnUpdate, select?: Event){
-  let subs = LISTENERS.get(subject)!;
+  let listeners = LISTENERS.get(subject)!;
 
-  if(!subs)
-    LISTENERS.set(subject, subs = new Map([[onReady, undefined]]));
+  if(!listeners)
+    LISTENERS.set(subject, listeners = new Map([[onReady, undefined]]));
 
   const filter = select === undefined ? undefined : new Set([select]);
 
-  if(!subs.has(onReady) && !filter)
+  if(!listeners.has(onReady) && !filter)
     callback.call(subject, true, subject);
 
-  subs.set(callback, filter);
+  listeners.set(callback, filter);
 
-  return () => subs.delete(callback);
+  return () => listeners.delete(callback);
 }
 
 /** Events pending for a given object. */
