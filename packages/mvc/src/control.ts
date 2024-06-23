@@ -11,19 +11,12 @@
 type OnUpdate<T = any> = 
   (this: T, key: unknown, source: T) => (() => void) | null | void;
 
-type OnAccess<T, R = unknown> = (from: T, key: string | number, value: R) => unknown;
-
 type Event = number | string | null | boolean | symbol;
-
-const DISPATCH = new Set<() => void>();
-const OBSERVER = new WeakMap<{}, OnAccess<any>>();
-const LISTENERS = new WeakMap<{}, Map<OnUpdate, Set<Event> | undefined>>();
-
-/** Events pending for a given object. */
-const PENDING = new WeakMap<{}, Set<Event>>();
 
 /** Placeholder event determines if model is initialized or not. */
 const onReady = () => null;
+
+const LISTENERS = new WeakMap<{}, Map<OnUpdate, Set<Event> | undefined>>();
 
 function addListener(subject: {}, callback: OnUpdate, select?: Event){
   let subs = LISTENERS.get(subject)!;
@@ -41,16 +34,8 @@ function addListener(subject: {}, callback: OnUpdate, select?: Event){
   return () => subs.delete(callback);
 }
 
-function createProxy<T extends {}>(from: T, observer: OnAccess<T>){
-  const proxy = Object.create(from);
-  OBSERVER.set(proxy, observer);
-  return proxy;
-}
-
-function watch(from: any, key: string | number, value?: any){
-  const access = OBSERVER.get(from);
-  return access ? access(from, key, value) : value;
-}
+/** Events pending for a given object. */
+const PENDING = new WeakMap<{}, Set<Event>>();
 
 function emit(source: {}, key: Event){
   const listeners = LISTENERS.get(source)!;
@@ -87,6 +72,9 @@ function emit(source: {}, key: Event){
   PENDING.delete(source);
 }
 
+/** Central event dispatch. Bunches all updates to occur at same time. */
+const DISPATCH = new Set<() => void>();
+
 function queue(eventHandler: (() => void)){
   if(!DISPATCH.size)
     setTimeout(() => {
@@ -102,6 +90,21 @@ function queue(eventHandler: (() => void)){
     }, 0);
 
   DISPATCH.add(eventHandler);
+}
+
+type OnAccess<T, R = unknown> = (from: T, key: string | number, value: R) => unknown;
+
+const OBSERVER = new WeakMap<{}, OnAccess<any>>();
+
+function createProxy<T extends {}>(from: T, observer: OnAccess<T>){
+  const proxy = Object.create(from);
+  OBSERVER.set(proxy, observer);
+  return proxy;
+}
+
+function watch(from: any, key: string | number, value?: any){
+  const access = OBSERVER.get(from);
+  return access ? access(from, key, value) : value;
 }
 
 type Effect<T extends {}> = (this: T, argument: T) =>
