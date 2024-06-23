@@ -491,27 +491,25 @@ describe("get method", () => {
 
     it("will call callback on update", async () => {
       const test = Test.new();
-      const mock = jest.fn();
+      const done = jest.fn();
+      const mock = jest.fn(() => done);
 
       test.get("foo", mock);
+
+      expect(mock).toBeCalledTimes(0);
 
       test.foo = "bar";
       test.foo = "baz";
 
-      expect(mock).toBeCalledWith("bar", "foo", test);
-      expect(mock).toBeCalledWith("baz", "foo", test);
+      expect(mock).toBeCalledTimes(2);
+      expect(mock).toBeCalledWith("foo", test);
+
+      await expect(test).toHaveUpdated("foo");
+
+      expect(done).toBeCalledTimes(1);
     })
 
-    it("will call immediately if defined", () => {
-      const test = Test.new();
-      const mock = jest.fn();
-
-      test.get("foo", mock);
-
-      expect(mock).toBeCalledWith("foo", "foo", test);
-    })
-
-    it("will call on event if not defined", async () => {
+    it("will call on event", async () => {
       const test = Test.new();
       const mock = jest.fn();
 
@@ -522,7 +520,7 @@ describe("get method", () => {
       // dispatch explicit event
       test.set("baz");
 
-      expect(mock).toBeCalledWith("baz", "baz", test);
+      expect(mock).toBeCalledWith("baz", test);
     })
   })
 

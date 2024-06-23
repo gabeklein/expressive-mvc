@@ -70,7 +70,7 @@ declare namespace Model {
     (this: T, key: unknown, source: T) => (() => void) | void | null;
 
   type OnUpdate<T extends Model, K extends Event<T>> =
-    (this: T, value: Value<T, K>, key: K, thisArg: K) => void;
+    (this: T, key: K, thisArg: K) => void;
 
   /**
    * Values from current state of given model.
@@ -194,7 +194,7 @@ abstract class Model {
    */
   get(status: null, callback: () => void): () => void;
 
-  get(arg1?: Model.Effect<this> | string | null, arg2?: boolean | Function){
+  get(arg1?: Model.Effect<this> | string | null, arg2?: boolean | Model.OnUpdate<this, any>){
     const self = this.is;
 
     if(arg1 === undefined)
@@ -214,19 +214,8 @@ abstract class Model {
       });
     }
 
-    if(typeof arg2 == "function"){
-      if(arg1 === null)
-        return addListener(self, arg2.bind(this, this), null);
-
-      const state = STATE.get(self)!;
-
-      if(arg1 in state)
-        arg2.call(this, state[arg1], arg1, this)
-
-      return addListener(self, () => {
-        arg2.call(this, arg1 in state ? state[arg1] : arg1, arg1, this)
-      }, arg1)
-    }
+    if(typeof arg2 == "function")
+      return addListener(self, arg2, arg1)
 
     return arg1 === null
       ? Object.isFrozen(STATE.get(self))
@@ -390,7 +379,7 @@ define(Model, "toString", {
   }
 });
 
-/** Apply instructions, inherited event listeners and ensure class metadata is ready. */
+/** Apply instructions and inherited event listeners. Ensure class metadata is ready. */
 function prepare(model: Model){
   let T = model.constructor as Model.Type;
 

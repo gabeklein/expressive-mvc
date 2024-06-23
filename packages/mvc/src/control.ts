@@ -34,7 +34,7 @@ function addListener(subject: {}, callback: OnUpdate, select?: Event){
   const filter = select === undefined ? undefined : new Set([select]);
 
   if(!subs.has(onReady) && !filter)
-    callback(true, subject);
+    callback.call(subject, true, subject);
 
   subs.set(callback, filter);
 
@@ -78,8 +78,8 @@ function emit(source: {}, key: Event){
       const after = callback.call(source, key, source);
 
       if(after)
-          queue(after);
-  
+        queue(after);
+
       if(after === null || key === null)
         listeners.delete(callback);
     });
