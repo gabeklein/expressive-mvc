@@ -200,8 +200,8 @@ abstract class Model {
     if(typeof arg1 == "function"){
       let pending = new Set<Model.Event<this>>();
 
-      return createEffect(self, (state) => {
-        const cb = arg1.call(state, state, pending);
+      return createEffect(self, (proxy) => {
+        const cb = arg1.call(proxy, proxy, pending);
 
         return cb === null ? cb : ((update) => {
           pending = PENDING.get(self)!;

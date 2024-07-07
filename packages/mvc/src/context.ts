@@ -177,8 +177,8 @@ class Context {
       this.cleanup.add(() => emit(I, null));
     }
     else {
+      T = input.constructor as Model.Type<T>;
       I = input;
-      T = I.constructor as Model.Type<T>;
     }
 
     keys(T, true).forEach(K => {

@@ -106,7 +106,7 @@ function watch(from: any, key: string | number, value?: any){
   return access ? access(from, key, value) : value;
 }
 
-type Effect<T extends {}> = (this: T, argument: T) =>
+type Effect<T extends {}> = (this: T, proxy: T) =>
   ((update: boolean | null) => void) | Promise<void> | null | void;
 
 /**
