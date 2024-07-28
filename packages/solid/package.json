@@ -7,6 +7,10 @@
     "email": "gabe@expressive.dev",
     "url": "https://github.com/gabeklein"
   },
+  "scripts": {
+    "test": "vitest",
+    "build": "tsup src/index.ts --minify"
+  },
   "license": "MIT",
   "repository": "https://github.com/gabeklein/expressive-mvc",
   "publishConfig": {
@@ -16,12 +20,12 @@
   "module": "src",
   "types": "src",
   "dependencies": {
-    "@expressive/mvc": "^0.52.1"
+    "@expressive/mvc": "^0.52.1",
+    "vitest": "^1.6.0"
   },
   "devDependencies": {
     "@solidjs/testing-library": "^0.8.8",
-    "solid-js": "^1.0.0",
-    "tsup": "^8.0.2"
+    "solid-js": "^1.0.0"
   },
   "peerDependencies": {
     "solid-js": "^1.0.0"

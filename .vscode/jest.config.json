@@ -3,7 +3,8 @@
   "rootDir": "../",
   "roots": [
     "<rootDir>/packages/mvc",
-    "<rootDir>/packages/react"
+    "<rootDir>/packages/react",
+    "<rootDir>/packages/solid"
   ],
   "transform": {
     "^.+\\.[tj]sx?$": "@swc/jest"

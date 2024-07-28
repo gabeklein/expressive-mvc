@@ -5,6 +5,7 @@
     "target": "es2020",
     "esModuleInterop": true,
     "lib": ["ES2020", "DOM"],
+    "jsx": "preserve",
     "moduleResolution": "node",
     "noUnusedLocals": true,
     "sourceMap": true,
