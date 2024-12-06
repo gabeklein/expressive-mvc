@@ -1,3 +1,5 @@
+import type { Model } from "./model";
+
 /**
  * Update callback function.
  * 
@@ -8,17 +10,31 @@
  *   - `null` - terminal event; instance is expired.
  * @param source - Instance of Model for which update has occured.
  */
-type OnUpdate<T = any> = 
+type OnUpdate<T extends Model = any> = 
   (this: T, key: unknown, source: T) => (() => void) | null | void;
+
+type OnAccess<T extends Model = any, R = unknown> =
+  (from: T, key: string | number, value: R) => unknown;
+
+type Effect<T extends Model> = (this: T, proxy: T) =>
+  ((update: boolean | null) => void) | Promise<void> | null | void;
 
 type Event = number | string | null | boolean | symbol;
 
 /** Placeholder event determines if model is initialized or not. */
 const onReady = () => null;
 
-const LISTENERS = new WeakMap<{}, Map<OnUpdate, Set<Event> | undefined>>();
+const LISTENERS = new WeakMap<Model, Map<OnUpdate, Set<Event> | undefined>>();
 
-function addListener(subject: {}, callback: OnUpdate, select?: Event){
+/** Events pending for a given object. */
+const PENDING = new WeakMap<Model, Set<Event>>();
+
+/** Central event dispatch. Bunches all updates to occur at same time. */
+const DISPATCH = new Set<() => void>();
+
+const OBSERVER = new WeakMap<Model, OnAccess>();
+
+function addListener<T extends Model>(subject: T, callback: OnUpdate<T>, select?: Event){
   let listeners = LISTENERS.get(subject)!;
 
   if(!listeners)
@@ -34,10 +50,7 @@ function addListener(subject: {}, callback: OnUpdate, select?: Event){
   return () => listeners.delete(callback);
 }
 
-/** Events pending for a given object. */
-const PENDING = new WeakMap<{}, Set<Event>>();
-
-function emit(source: {}, key: Event){
+function emit(source: Model, key: Event){
   const listeners = LISTENERS.get(source)!;
   const isActive = !listeners.has(onReady);
 
@@ -71,9 +84,6 @@ function emit(source: {}, key: Event){
   PENDING.delete(source);
 }
 
-/** Central event dispatch. Bunches all updates to occur at same time. */
-const DISPATCH = new Set<() => void>();
-
 function enqueue(eventHandler: (() => void)){
   if(!DISPATCH.size)
     setTimeout(() => {
@@ -91,12 +101,8 @@ function enqueue(eventHandler: (() => void)){
   DISPATCH.add(eventHandler);
 }
 
-type OnAccess<T, R = unknown> = (from: T, key: string | number, value: R) => unknown;
-
-const OBSERVER = new WeakMap<{}, OnAccess<any>>();
-
-function createProxy<T extends {}>(from: T, observer: OnAccess<T>){
-  const proxy = Object.create(from);
+function createProxy<T extends Model>(from: T, observer: OnAccess<T>){
+  const proxy = Object.create(from) as T;
   OBSERVER.set(proxy, observer);
   return proxy;
 }
@@ -106,9 +112,6 @@ function watch(from: any, key: string | number, value?: any){
   return access ? access(from, key, value) : value;
 }
 
-type Effect<T extends {}> = (this: T, proxy: T) =>
-  ((update: boolean | null) => void) | Promise<void> | null | void;
-
 /**
  * Create a side-effect which will update whenever values accessed change.
  * Callback is called immediately and if ever values are stale.
@@ -117,9 +120,9 @@ type Effect<T extends {}> = (this: T, proxy: T) =>
  * @param callback - Function to invoke when values change.
  * @param requireValues - If `true` will throw if accessing a value which is `undefined`.
  */
-function createEffect<T extends {}>(target: T, callback: Effect<Required<T>>, requireValues: true): () => void;
-function createEffect<T extends {}>(target: T, callback: Effect<T>, requireValues?: boolean): () => void;
-function createEffect<T extends {}>(target: T, callback: Effect<T>, requireValues?: boolean){
+function createEffect<T extends Model>(target: T, callback: Effect<Required<T>>, requireValues: true): () => void;
+function createEffect<T extends Model>(target: T, callback: Effect<T>, requireValues?: boolean): () => void;
+function createEffect<T extends Model>(target: T, callback: Effect<T>, requireValues?: boolean){
   const listeners = LISTENERS.get(target)!;
 
   let unset: ((update: boolean | null) => void) | undefined;
@@ -146,7 +149,7 @@ function createEffect<T extends {}>(target: T, callback: Effect<T>, requireValue
       return reset;
     }
 
-    function access(from: any, key: string | number, value: any) {
+    function access(from: Model, key: string | number, value: any) {
       if(value === undefined && requireValues)
         throw new Error(`${from}.${key} is required in this context.`);
 
