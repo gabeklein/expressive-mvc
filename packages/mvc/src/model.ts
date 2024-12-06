@@ -1,4 +1,4 @@
-import { addListener, createEffect, emit, OnUpdate, enqueue, watch } from './control';
+import { addListener, createEffect, emit, event, OnUpdate, extract, uid, update, watch } from './control';
 
 export const define = Object.defineProperty;
 
@@ -212,7 +212,7 @@ abstract class Model {
     }
 
     if(arg1 === undefined)
-      return snapshot(self);
+      return extract(self);
 
     if(typeof arg2 == "function")
       return addListener(self, arg2, arg1)
@@ -501,139 +501,9 @@ function init(model: Model, args: Model.Args){
   }, null);
 }
 
-function fetch(subject: Model, property: string, required?: boolean){
-  const state = STATE.get(subject)!;
-  
-  if(property in state || required === false){
-    const value = state[property];
-
-    if(value !== undefined || !required)
-      return value;
-  }
-
-  const error = new Error(`${subject}.${property} is not yet available.`);
-  const promise = new Promise<any>((resolve, reject) => {
-    addListener(subject, key => {
-      if(key === property){
-        resolve(state[key]);
-        return null;
-      }
-
-      if(key === null)
-        reject(new Error(`${subject} is destroyed.`));
-    });
-  });
-
-  throw Object.assign(promise, {
-    toString: () => String(error),
-    name: "Suspense",
-    message: error.message,
-    stack: error.stack
-  });
-}
-
-/** Currently accumulating export. Stores real values of placeholder properties such as ref() or child models. */
-let EXPORT: Map<any, any> | undefined;
-
-function snapshot<T extends Model>(model: T): Model.State<T> {
-  const values = {} as any;
-  let isNotRecursive;
-
-  if(!EXPORT){
-    isNotRecursive = true;
-    EXPORT = new Map([[model, values]]);
-  }
-
-  for(let [key, value] of model){
-    if(EXPORT.has(value))
-      value = EXPORT.get(value);
-    else if(value && typeof value == "object" && "get" in value && typeof value.get === "function")
-      EXPORT.set(value, value = value.get());
-
-    values[key] = value;
-  }
-
-  if(isNotRecursive)
-    EXPORT = undefined;
-
-  return Object.freeze(values);
-}
-
-function update<T>(
-  subject: Model,
-  key: string | number | symbol,
-  value: T,
-  arg?: boolean | Model.Setter<T>){
-
-  const state = STATE.get(subject)!;
-
-  if(Object.isFrozen(state))
-    throw new Error(`Tried to update ${String(key)} but ${subject} is destroyed.`);
-
-  const previous = state[key] as T;
-
-  if(typeof arg == "function"){
-    const out = arg.call(subject, value, previous);
-
-    if(out === false)
-      return false;
-
-    if(typeof out == "function")
-      value = out();
-  }
-
-  if(value === previous)
-    return;
-
-  if(value instanceof Model && !PARENT.has(value)){
-    PARENT.set(value, subject);
-    emit(value, true);
-  }
-
-  state[key] = value;
-
-  if(arg !== true)
-    event(subject, key);
-
-  return true;
-}
-
-function event(
-  subject: Model,
-  key: string | number | symbol,
-  silent?: boolean){
-
-  let pending = PENDING.get(subject);
-
-  if(!pending){
-    PENDING.set(subject, pending = new Set());
-
-    // TODO: if non-silent event follows a silent one, it would not emit.
-    if(!silent)
-      enqueue(() => {
-        emit(subject, false);
-        PENDING.delete(subject)
-      })
-  }
-
-  pending.add(key);
-
-  if(!silent)
-    emit(subject, key);
-}
-
-/** Random alphanumberic of length 6; always starts with a letter. */
-function uid(){
-  return (Math.random() * 0.722 + 0.278).toString(36).substring(2, 8).toUpperCase();
-}
-
 export {
-  fetch,
   METHOD,
   Model,
   PARENT,
-  event,
   STATE,
-  uid,
-  update,
 }

@@ -1,4 +1,5 @@
-import { Model, event, update } from '../model';
+import { Model } from '../model';
+import { event, update } from '../control';
 import { use } from './use';
 
 declare namespace set {

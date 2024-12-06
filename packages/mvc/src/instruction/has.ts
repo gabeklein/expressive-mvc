@@ -1,5 +1,6 @@
 import { Context } from '../context';
-import { Model, update } from '../model';
+import { update } from '../control';
+import { Model } from '../model';
 import { use } from './use';
 
 const APPLY = new WeakMap<Model, (model: Model) => (() => void) | boolean | void>();

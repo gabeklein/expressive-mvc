@@ -1,5 +1,5 @@
-import { emit } from './control';
-import { Model, PARENT, define, uid } from './model';
+import { emit, uid } from './control';
+import { Model, PARENT, define } from './model';
 
 const LOOKUP = new WeakMap<Model, Context | ((got: Context) => void)[]>();
 const KEYS = new Map<symbol | Model.Type, symbol>();

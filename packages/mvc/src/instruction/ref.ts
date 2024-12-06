@@ -1,4 +1,5 @@
-import { Model, define, update } from '../model';
+import { update } from '../control';
+import { Model, define } from '../model';
 import { use } from './use';
 
 declare namespace ref {

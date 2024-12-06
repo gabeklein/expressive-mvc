@@ -1,6 +1,6 @@
 import { Context } from '../context';
-import { createEffect } from '../control';
-import { fetch, METHOD, Model, PARENT, event, update } from '../model';
+import { createEffect, event, fetch, update } from '../control';
+import { METHOD, Model, PARENT } from '../model';
 import { use } from './use';
 
 type Type<T extends Model> = Model.Type<T> & typeof Model;
