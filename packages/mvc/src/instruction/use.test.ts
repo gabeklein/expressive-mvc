@@ -3,40 +3,224 @@ import { Model } from '../model';
 import { use } from './use';
 
 describe("instruction", () => {
-  it("will delete value prior to instruction", () => {
+  it("will run on create", () => {
     class Test extends Model {
-      value = use((key) => {
-        expect(key in this).toBe(false);
-      });
+      property = use((key) => {
+        didRunInstruction(key);
+      })
     }
-  
+
+    const didRunInstruction = jest.fn();
+    
     Test.new();
+
+    expect(didRunInstruction).toBeCalledWith("property");
   })
+
+  describe("symbol", () => {
+    it("will use symbol as placeholder", async () => {
+      class Test extends Model {
+        value = use(() => ({ value: 1 })) as unknown;
+      }
   
-  it("will throw error if set is false", () => {
-    class Test extends Model {
-      value = use(() => ({ set: false }));
-    }
+      const test = new Test();
   
-    const test = Test.new('ID');
-    const assign = () => test.value = "foo";
+      if(typeof test.value !== "symbol")
+        throw new Error("value is not a symbol");
+      else
+        expect(test.value.description).toBe("instruction");
   
-    expect(assign).toThrowError(`ID.value is read-only.`);
+      await test.set();
+  
+      expect(test.value).toBe(1);
+    })
+  
+    it("will be deleted prior to instruction", () => {
+      class Test extends Model {
+        value = use(() => {
+          expect("value" in this).toBe(false);
+        });
+      }
+    
+      Test.new();
+    })
+  
+    it("will ignore normal symbol", () => {
+      class Test extends Model {
+        value = Symbol("hello");
+      }
+      
+      const test = Test.new();
+  
+      expect(typeof test.value).toBe("symbol");
+    })
   })
+
+  describe("getter", () => {
+    it("will run upon access", () => {
+      const mockAccess = jest.fn((_subscriber) => "foobar");
+      const mockApply = jest.fn((_key) => mockAccess);
+
+      class Test extends Model {
+        property = use(mockApply);
+      }
+
+      const instance = Test.new();
+
+      expect(mockApply).toBeCalledWith("property", expect.any(Test), {});
+      expect(mockAccess).not.toBeCalled();
+
+      expect(instance.property).toBe("foobar");
+      expect(mockAccess).toBeCalledWith(instance);
+    })
+
+    it("will pass subscriber if within one", () => {
+      const didGetValue = jest.fn();
+
+      class Test extends Model {
+        property = use(() => didGetValue)
+      }
+
+      const state = Test.new();
+
+      state.get(own => {
+        void own.property;
+      });
+
+      expect(didGetValue).toBeCalledWith(state);
+    });
   
-  it("will not throw suspense if get (required) is false", async () => {
-    class Test extends Model {
-      value = use(() => ({ get: false }));
-    }
+    it("will not throw suspense if get (required) is false", async () => {
+      class Test extends Model {
+        value = use(() => ({ get: false }));
+      }
+    
+      const test = Test.new('ID');
+      const effect = jest.fn((test: Test) => void test.value);
+    
+      test.get(effect);
+      test.value = "foo";
+    
+      await expect(test).toHaveUpdated();
+      expect(effect).toBeCalledTimes(2);
+    })
+  })
+
+  describe("setter", () => {
+    it("will reject update if false", () => {
+      class Test extends Model {
+        value = use(() => ({ set: false }));
+      }
+    
+      const test = Test.new('ID');
+      const assign = () => test.value = "foo";
+    
+      expect(assign).toThrowError(`ID.value is read-only.`);
+    })
+
+    it("will prevent update if returns false", async () => {
+      const didSetValue = jest.fn((newValue) => {
+        if(newValue == "ignore")
+          return false;
+      });
   
-    const test = Test.new('ID');
-    const effect = jest.fn((test: Test) => void test.value);
+      class Test extends Model {
+        property = use(() => {
+          return {
+            value: "foobar",
+            set: didSetValue
+          }
+        })
+      }
   
-    test.get(effect);
-    test.value = "foo";
+      const test = Test.new();
   
-    await expect(test).toHaveUpdated();
-    expect(effect).toBeCalledTimes(2);
+      expect(test.property).toBe("foobar");
+  
+      test.property = "test";
+      expect(didSetValue).toBeCalledWith("test", "foobar");
+      expect(test.property).toBe("test");
+      await expect(test).toHaveUpdated();
+  
+      test.property = "ignore";
+      expect(didSetValue).toBeCalledWith("ignore", "test");
+      expect(test.property).toBe("test");
+      await expect(test).not.toHaveUpdated();
+    })
+  
+    // duplicate test?
+    it("will revert update if returns false", async () => {
+      let ignore = false;
+
+      class Test extends Model {
+        property = use(() => {
+          return {
+            value: 0,
+            set: (value) => ignore
+              ? false
+              : () => value + 10
+          }
+        })
+      }
+  
+      const instance = Test.new();
+  
+      expect(instance.property).toBe(0);
+  
+      instance.property = 10;
+      expect(instance.property).toBe(20);
+      await expect(instance).toHaveUpdated();
+
+      ignore = true;
+
+      instance.property = 0;
+      expect(instance.property).toBe(20);
+      await expect(instance).not.toHaveUpdated();
+    })
+
+    it("will not duplicate explicit update", () => {
+      class Test extends Model {
+        property = use<string>(() => ({
+          value: "foobar",
+          set: (value) => () => value + "!"
+        }))
+      }
+
+      const test = Test.new();
+      const didUpdate = jest.fn();
+
+      test.set(didUpdate);
+
+      expect(test.property).toBe("foobar");
+
+      test.property = "test";
+
+      expect(test.property).toBe("test!");
+      expect(didUpdate).toBeCalledTimes(1);
+    })
+
+    it("will not update on reassignment", () => {
+      class Test extends Model {
+        property = use<string>((key) => ({
+          value: "foobar",
+          set: (value: any) => {
+            return () => value + "!";
+          }
+        }))
+      }
+
+      const test = Test.new();
+      const didUpdate = jest.fn();
+
+      test.set(didUpdate);
+
+      expect(test.property).toBe("foobar");
+
+      test.property = "test";
+
+      expect(test.property).toBe("test!");
+      expect(didUpdate).toBeCalledTimes(1);
+    })
   })
 })
 
