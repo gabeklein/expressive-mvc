@@ -59,7 +59,7 @@ function emit(source: {}, key: Event){
         const after = callback.call(source, key, source);
 
         if(after)
-          queue(after);
+          enqueue(after);
 
         else if(after === null)
           listeners.delete(callback);
@@ -74,7 +74,7 @@ function emit(source: {}, key: Event){
 /** Central event dispatch. Bunches all updates to occur at same time. */
 const DISPATCH = new Set<() => void>();
 
-function queue(eventHandler: (() => void)){
+function enqueue(eventHandler: (() => void)){
   if(!DISPATCH.size)
     setTimeout(() => {
       DISPATCH.forEach(event => {
@@ -210,6 +210,6 @@ export {
   createProxy,
   emit,
   OnUpdate,
-  queue,
+  enqueue,
   watch
 }

@@ -1,4 +1,4 @@
-import { addListener, createEffect, emit, OnUpdate, queue, watch } from './control';
+import { addListener, createEffect, emit, OnUpdate, enqueue, watch } from './control';
 
 export const define = Object.defineProperty;
 
@@ -610,7 +610,7 @@ function event(
 
     // TODO: if non-silent event follows a silent one, it would not emit.
     if(!silent)
-      queue(() => {
+      enqueue(() => {
         emit(subject, false);
         PENDING.delete(subject)
       })
