@@ -103,7 +103,6 @@ function event(
   if(!pending){
     PENDING_KEYS.set(subject, pending = new Set());
 
-    // TODO: if non-silent event follows a silent one, it would not emit.
     if(!silent)
       enqueue(() => {
         emit(subject, false);

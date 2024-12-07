@@ -36,6 +36,30 @@ describe("effect", () => {
 
     expect(attempt).toThrowError(`ID.property is required in this context.`);
   });
+
+  it("will still get events after silent ones", async () => {
+    class Test extends Model {
+      value1 = 1;
+      value2 = 2;
+    }
+  
+    const test = Test.new();
+    const didGetValue = jest.fn();
+  
+    test.get($ => {
+      didGetValue($.value1, $.value2);
+    });
+  
+    expect(didGetValue).toBeCalledWith(1, 2);
+  
+    test.set({ value1: 10 }, true);
+    test.set({ value2: 20 });
+  
+    await expect(test).toHaveUpdated();
+  
+    expect(didGetValue).toBeCalledWith(10, 20);
+    expect(didGetValue).toBeCalledTimes(2);
+  });
 })
 
 describe("suspense", () => {
