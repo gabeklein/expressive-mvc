@@ -478,8 +478,9 @@ function init(model: Model, args: Model.Args){
           get(){
             return watch(this, key, state[key]);
           },
-          set(x){
-            update(model, key, x);
+          set(value){
+            update(model, key, value);
+            mayAdopt(model, value);
           }
         });
       }
@@ -497,6 +498,13 @@ function init(model: Model, args: Model.Args){
 
     Object.freeze(state);
   }, null);
+}
+
+function mayAdopt(parent: Model, child: unknown){
+  if(child instanceof Model && !PARENT.has(child)){
+    PARENT.set(child, parent);
+    event(child);
+  }
 }
 
 function fetch(subject: Model, property: string, required?: boolean){
@@ -583,11 +591,6 @@ function update<T>(
   if(value === previous)
     return;
 
-  if(value instanceof Model && !PARENT.has(value)){
-    PARENT.set(value, subject);
-    emit(value, true);
-  }
-
   state[key] = value;
 
   if(arg !== true)
@@ -626,11 +629,12 @@ function uid(){
 }
 
 export {
+  event,
   fetch,
+  mayAdopt,
   METHOD,
   Model,
   PARENT,
-  event,
   STATE,
   uid,
   update,

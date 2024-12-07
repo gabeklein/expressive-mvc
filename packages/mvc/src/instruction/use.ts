@@ -1,5 +1,5 @@
 import { watch } from '../control';
-import { define, fetch, Model, PARENT, STATE, update } from '../model';
+import { define, fetch, mayAdopt, Model, PARENT, STATE, update } from '../model';
 
 const INSTRUCT = new Map<symbol, Model.Instruction>();
 
@@ -53,9 +53,7 @@ Model.on((_, model) => {
     const instruction = INSTRUCT.get(value);
 
     if(!instruction){
-      if(value instanceof Model && key !== "is")
-        update(model, key, value);
-
+      mayAdopt(model, value);
       continue;
     }
 
