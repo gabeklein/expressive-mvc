@@ -50,26 +50,26 @@ function addListener<T extends Model>(subject: T, callback: OnUpdate<T>, select?
   return () => listeners.delete(callback);
 }
 
-function emit(source: Model, key: Event): void {
-  const listeners = LISTENERS.get(source)!;
-  const active = !listeners.has(onReady);
+function emit(model: Model, key: Event): void {
+  const listeners = LISTENERS.get(model)!;
+  const notReady = listeners.has(onReady);
 
-  if(key === true && active)
+  if(key === true && !notReady)
     return;
 
-  let pending = PENDING.get(source);
+  let pending = PENDING.get(model);
 
   if(pending){
     pending.add(key);
     return;
   }
 
-  PENDING.set(source, pending = new Set(active ? [key] : [true, key]));
+  PENDING.set(model, pending = new Set(notReady ? [true, key] : [key]));
 
   for(const key of pending)
     for(const [callback, filter] of listeners)
       if(!filter || filter.has(key)){
-        const after = callback.call(source, key, source);
+        const after = callback.call(model, key, model);
 
         if(after)
           enqueue(after);
@@ -81,7 +81,7 @@ function emit(source: Model, key: Event): void {
   if(key === null)
     listeners.clear();
   
-  PENDING.delete(source);
+  PENDING.delete(model);
 }
 
 function enqueue(eventHandler: (() => void)){
