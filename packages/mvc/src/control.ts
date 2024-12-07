@@ -29,6 +29,9 @@ const LISTENERS = new WeakMap<Model, Map<OnUpdate, Set<Event> | undefined>>();
 /** Events pending for a given object. */
 const PENDING = new WeakMap<Model, Set<Event>>();
 
+/** Update register. */
+const PENDING_KEYS = new WeakMap<Model, Set<string | number | symbol>>();
+
 /** Central event dispatch. Bunches all updates to occur at same time. */
 const DISPATCH = new Set<() => void>();
 
@@ -82,6 +85,50 @@ function emit(model: Model, key: Event): void {
     listeners.clear();
   
   PENDING.delete(model);
+}
+
+function event(
+  subject: Model,
+  key?: string | number | symbol | null,
+  silent?: boolean){
+
+  if(key === null)
+    return emit(subject, key);
+
+  if(!key)
+    return emit(subject, true);
+
+  let pending = PENDING_KEYS.get(subject);
+
+  if(!pending){
+    PENDING_KEYS.set(subject, pending = new Set());
+
+    // TODO: if non-silent event follows a silent one, it would not emit.
+    if(!silent)
+      enqueue(() => {
+        emit(subject, false);
+        PENDING_KEYS.delete(subject)
+      })
+  }
+
+  pending.add(key);
+
+  if(!silent)
+    emit(subject, key);
+}
+
+function pending<T extends Model>(subject: T){
+  if(PENDING_KEYS.has(subject))
+    return <PromiseLike<Model.Event<T>[]>> {
+      then: (res) => new Promise<any>(res => {
+        const remove = addListener(subject, key => {
+          if(key !== true){
+            remove();
+            return res.bind(null, Array.from(PENDING_KEYS.get(subject)!));
+          }
+        });
+      }).then(res)
+    }
 }
 
 function enqueue(eventHandler: (() => void)){
@@ -212,7 +259,10 @@ export {
   createEffect,
   createProxy,
   emit,
+  event,
   OnUpdate,
+  PENDING_KEYS,
+  pending,
   enqueue,
   watch
 }

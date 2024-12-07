@@ -1,4 +1,4 @@
-import { addListener, createEffect, emit, OnUpdate, enqueue, watch } from './control';
+import { addListener, createEffect, event, OnUpdate, pending, PENDING_KEYS, watch } from './control';
 
 export const define = Object.defineProperty;
 
@@ -10,9 +10,6 @@ const STATE = new WeakMap<Model, Record<string | number | symbol, unknown>>();
 
 /** External listeners for any given Model. */
 const NOTIFY = new WeakMap<Model.Type, Set<OnUpdate>>();
-
-/** Update register. */
-const PENDING = new WeakMap<Model, Set<string | number | symbol>>();
 
 /** Parent-child relationships. */
 const PARENT = new WeakMap<Model, Model | null>();
@@ -204,7 +201,7 @@ abstract class Model {
         const cb = arg1.call(proxy, proxy, pending);
 
         return cb === null ? cb : ((update) => {
-          pending = PENDING.get(self)!;
+          pending = PENDING_KEYS.get(self)!;
           if(typeof cb == "function")
             cb(update);
         })
@@ -289,10 +286,7 @@ abstract class Model {
           return arg1.call(self, key, self);
       })
 
-    if(arg1 === null)
-      return emit(this, null);
-
-    if(typeof arg1 == "object"){
+    if(arg1 && typeof arg1 == "object"){
       const methods = METHODS.get(self.constructor as Model.Type)!;
     
       for(const key in arg1)
@@ -301,22 +295,10 @@ abstract class Model {
         else if(key in self)
           update(self, key, arg1[key], arg2 === true);
     }
-    else if(arg1 === undefined)  
-      emit(this, true);
     else
       event(self, arg1);
 
-    if(PENDING.has(self))
-      return <PromiseLike<Model.Event<this>[]>> {
-        then: (res) => new Promise<any>(res => {
-          const remove = addListener(self, key => {
-            if(key !== true){
-              remove();
-              return res.bind(null, Array.from(PENDING.get(self)!));
-            }
-          });
-        }).then(res)
-      }
+    return pending(self);
   }
 
   /**
@@ -336,7 +318,7 @@ abstract class Model {
    */
   static new<T extends Model>(this: Model.Init<T>, ...args: Model.Args<T>){
     const instance = new this(...args);
-    emit(instance, true);
+    event(instance);
     return instance;
   }
 
@@ -433,9 +415,9 @@ function prepare(model: Model){
  * Accumulate and handle cleanup events.
  **/
 function init(model: Model, args: Model.Args){
+  const cleanup = new Set<() => void>();
   const methods = METHODS.get(model.constructor as Model.Type)!;
   const state = {} as Record<string | number | symbol, unknown>;
-  const clean = new Set<() => void>();
 
   STATE.set(model, state);
 
@@ -461,7 +443,7 @@ function init(model: Model, args: Model.Args){
           console.error(err);
         });
       else if(typeof use == "function")
-        clean.add(use);
+        cleanup.add(use);
       else if(typeof use == "object")
         for(const key in use)
           if(key in model || methods.has(key))
@@ -490,7 +472,7 @@ function init(model: Model, args: Model.Args){
   });
 
   addListener(model, () => {
-    clean.forEach(x => x());
+    cleanup.forEach(x => x());
 
     for(const [_, value] of model)
       if(value instanceof Model && PARENT.get(value) === model)
@@ -597,30 +579,6 @@ function update<T>(
     event(subject, key);
 
   return true;
-}
-
-function event(
-  subject: Model,
-  key: string | number | symbol,
-  silent?: boolean){
-
-  let pending = PENDING.get(subject);
-
-  if(!pending){
-    PENDING.set(subject, pending = new Set());
-
-    // TODO: if non-silent event follows a silent one, it would not emit.
-    if(!silent)
-      enqueue(() => {
-        emit(subject, false);
-        PENDING.delete(subject)
-      })
-  }
-
-  pending.add(key);
-
-  if(!silent)
-    emit(subject, key);
 }
 
 /** Random alphanumberic of length 6; always starts with a letter. */
