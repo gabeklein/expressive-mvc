@@ -415,7 +415,6 @@ function prepare(model: Model){
  * Accumulate and handle cleanup events.
  **/
 function init(model: Model, args: Model.Args){
-  const cleanup = new Set<() => void>();
   const methods = METHODS.get(model.constructor as Model.Type)!;
   const state = {} as Record<string | number | symbol, unknown>;
 
@@ -443,7 +442,7 @@ function init(model: Model, args: Model.Args){
           console.error(err);
         });
       else if(typeof use == "function")
-        cleanup.add(use);
+        addListener(model, use, null)
       else if(typeof use == "object")
         for(const key in use)
           if(key in model || methods.has(key))
@@ -467,19 +466,17 @@ function init(model: Model, args: Model.Args){
         });
       }
     }
+
+    addListener(model, () => {
+      for(const [_, value] of model)
+        if(value instanceof Model && PARENT.get(value) === model)
+          value.set(null);
+  
+      Object.freeze(state);
+    }, null);
   
     return null;
   });
-
-  addListener(model, () => {
-    cleanup.forEach(x => x());
-
-    for(const [_, value] of model)
-      if(value instanceof Model && PARENT.get(value) === model)
-        value.set(null);
-
-    Object.freeze(state);
-  }, null);
 }
 
 function mayAdopt(parent: Model, child: unknown){
