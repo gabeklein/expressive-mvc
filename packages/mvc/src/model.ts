@@ -289,10 +289,8 @@ abstract class Model {
           return arg1.call(self, key, self);
       })
 
-    if(arg1 === null){
-      emit(this, null);
-      return
-    }
+    if(arg1 === null)
+      return emit(this, null);
 
     if(typeof arg1 == "object"){
       const methods = METHODS.get(self.constructor as Model.Type)!;

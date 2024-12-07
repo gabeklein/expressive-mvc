@@ -1,4 +1,3 @@
-import { emit } from './control';
 import { Model, PARENT, define, uid } from './model';
 
 const LOOKUP = new WeakMap<Model, Context | ((got: Context) => void)[]>();
@@ -147,7 +146,7 @@ class Context {
     } 
 
     for(const [model, explicit] of init){
-      emit(model, true);
+      model.set();
 
       if(typeof forEach == "function")
         forEach(model, explicit);
@@ -174,7 +173,7 @@ class Context {
 
       T = input;
       I = new input() as T;
-      this.cleanup.add(() => emit(I, null));
+      this.cleanup.add(() => I.set(null));
     }
     else {
       T = input.constructor as Model.Type<T>;

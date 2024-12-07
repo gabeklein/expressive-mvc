@@ -50,11 +50,11 @@ function addListener<T extends Model>(subject: T, callback: OnUpdate<T>, select?
   return () => listeners.delete(callback);
 }
 
-function emit(source: Model, key: Event){
+function emit(source: Model, key: Event): void {
   const listeners = LISTENERS.get(source)!;
-  const isActive = !listeners.has(onReady);
+  const active = !listeners.has(onReady);
 
-  if(key === true && isActive)
+  if(key === true && active)
     return;
 
   let pending = PENDING.get(source);
@@ -64,7 +64,7 @@ function emit(source: Model, key: Event){
     return;
   }
 
-  PENDING.set(source, pending = new Set(isActive ? [key] : [true, key]));
+  PENDING.set(source, pending = new Set(active ? [key] : [true, key]));
 
   for(const key of pending)
     for(const [callback, filter] of listeners)
