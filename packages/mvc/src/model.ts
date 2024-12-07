@@ -622,7 +622,7 @@ function event(
 
 /** Random alphanumberic of length 6; always starts with a letter. */
 function uid(){
-  return (Math.random() * 0.722 + 0.278).toString(36).substring(2, 8).toUpperCase();
+  return (0.278 + Math.random() * 0.722).toString(36).substring(2, 8).toUpperCase();
 }
 
 export {
