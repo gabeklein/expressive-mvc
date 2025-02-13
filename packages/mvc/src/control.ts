@@ -257,11 +257,9 @@ export {
   addListener,
   createEffect,
   createProxy,
-  emit,
   event,
   OnUpdate,
   PENDING_KEYS,
   pending,
-  enqueue,
   watch
 }
