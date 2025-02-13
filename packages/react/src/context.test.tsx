@@ -512,12 +512,12 @@ describe("get instruction", () => {
       value = "foobar";
     }
     class Bar extends Model {
-      foo = get(Foo, foo => foo.value);
+      foo = get(Foo);
     }
 
     const bar = Bar.new();
     
-    expect(() => bar.foo).toThrow(expect.any(Promise));
+    expect(() => bar.foo.value).toThrow(expect.any(Promise));
 
     create(
       <Provider for={Foo}>
@@ -525,7 +525,7 @@ describe("get instruction", () => {
       </Provider>
     );
 
-    expect(bar.foo).toBe("foobar");
+    expect(bar.foo.value).toBe("foobar");
   })
 
   it("will compute immediately in context", () => {
@@ -533,11 +533,11 @@ describe("get instruction", () => {
       value = "foobar";
     }
     class Bar extends Model {
-      foo = get(Foo, foo => foo.value);
+      foo = get(Foo);
     }
 
     const FooBar = () => {
-      return <>{Bar.use().foo}</>
+      return <>{Bar.use().foo.value}</>
     }
 
     const render = create(

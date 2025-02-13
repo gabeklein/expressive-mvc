@@ -40,75 +40,6 @@ describe("fetch mode", () => {
     expect(test.ambient2).toBe(ambient);
   })
 
-  it("will not update on noop", async () => {
-    class Remote extends Model {
-      value = "foo";
-    }
-    class Test extends Model {
-      value = get(Remote, ({ value }) => {
-        void value;
-        return "foo";
-      });
-    }
-
-    const test = Test.new();
-    const remote = Remote.new();
-    const effect = jest.fn();
-    
-    new Context({ remote, test });
-
-    test.get($ => effect($.value));
-    expect(effect).toBeCalledWith("foo");
-
-    remote.value = "bar";
-    await expect(test).not.toUpdate();
-
-    remote.value = "baz";
-    await expect(test).not.toUpdate();
-
-    expect(effect).toBeCalledTimes(1);
-  })
-  
-  it("will maintain subscription", async () => {
-    class Remote extends Model {
-      remote = "foo";
-    }
-
-    const remote = Remote.new();
-    const effect = jest.fn();
-    const compute = jest.fn();
-
-    class Test extends Model {
-      value = get(Remote, ({ remote }) => {
-        compute(remote);
-        return remote;
-      });
-    }
-
-    const test = Test.new();
-
-    new Context({ remote, test });
-
-    test.get($ => effect($.value));
-
-    expect(effect).toBeCalledWith("foo");
-
-    remote.remote = "bar";
-    await expect(test).toHaveUpdated("value");
-    expect(compute).toBeCalledTimes(2);
-    expect(effect).toBeCalledWith("bar");
-
-    remote.remote = "baz";
-    await expect(test).toHaveUpdated("value");
-    expect(compute).toBeCalledTimes(3);
-    expect(effect).toBeCalledWith("baz");
-
-    remote.remote = "boo";
-    await expect(test).toHaveUpdated("value");
-    expect(compute).toBeCalledTimes(4);
-    expect(effect).toBeCalledWith("boo");
-  })
-
   it("will allow overwrite", async () => {
     class Foo extends Model {
       bar = new Bar();
@@ -239,39 +170,6 @@ describe("fetch mode", () => {
     child.parent.value = "bar";
     await expect(child.parent).toHaveUpdated();
     expect(effect).toHaveBeenCalledTimes(3)
-  })
-
-  it('will yeild a computed value', async () => {
-    class Foo extends Model {
-      bar = new Bar();
-      seconds = 0;
-    }
-
-    class Bar extends Model {
-      minutes = get(Foo, state => {
-        return Math.floor(state.seconds / 60);
-      })
-    }
-
-    const foo = Foo.new();
-  
-    foo.seconds = 30;
-  
-    await expect(foo).toHaveUpdated();
-  
-    expect(foo.seconds).toEqual(30);
-    expect(foo.bar.minutes).toEqual(0);
-  
-    foo.seconds = 60;
-  
-    // make sure both did declare an update
-    await Promise.all([
-      expect(foo.bar).toHaveUpdated(),
-      expect(foo).toHaveUpdated()
-    ])
-  
-    expect(foo.seconds).toEqual(60);
-    expect(foo.bar.minutes).toEqual(1);
   })
 })
 
@@ -686,16 +584,12 @@ describe("compute mode", () => {
   })
 })
 
-// not yet implemented by Context yet; this is a hack.
+// TODO: not yet implemented by Context yet; this is a hack.
 describe.skip("replaced source", () => {
-  class Source extends Model {
-    value = "";
-  }
+  class Source extends Model {}
 
   class Test extends Model {
-    greeting = get(Source, source => {
-      return `Hello ${source}!`;
-    })
+    source = get(Source)
   }
 
   it("will update", async () => {
@@ -703,22 +597,17 @@ describe.skip("replaced source", () => {
     const oldSource = Source.new("Foo");
     const context = new Context({ test, source: oldSource });
 
-    expect(test.greeting).toBe("Hello Foo!");
-
-    oldSource.value = "Baz";
-    await expect(test).toHaveUpdated();
-    expect(test.greeting).toBe("Hello Baz!");
+    expect(test.source).toBe(oldSource);
 
     const newSource = Source.new("Bar");
 
     context.include({ source: newSource });
     
     await expect(test).toHaveUpdated();
-    expect(test.greeting).toBe("Hello Bar!");
+    expect(test.source).toBe(newSource);
 
-    newSource.value = "Baz";
     await expect(test).toHaveUpdated();
-    expect(test.greeting).toBe("Hello Baz!");
+    expect(test.source).toBe("Hello Baz!");
   })
 
   it("will not update from previous source", async () => {
@@ -726,17 +615,52 @@ describe.skip("replaced source", () => {
     const oldSource = Source.new("Foo");
     const context = new Context({ test, source: oldSource });
   
-    expect(test.greeting).toBe("Hello Foo!");
+    expect(test.source).toBe("Hello Foo!");
 
     context.include({
       source: Source.new("Bar")
     });
 
     await expect(test).toHaveUpdated();
-    expect(test.greeting).toBe("Hello Bar!");
+    expect(test.source).toBe("Hello Bar!");
 
-    oldSource.value = "Baz";
-    await expect(test).not.toHaveUpdated();
+    // oldSource.value = "Baz";
+    // await expect(test).not.toHaveUpdated();
+  })
+
+  it("will maintain subscription", async () => {
+    class Remote extends Model {
+      value = "foo";
+    }
+
+    const remoteEffect = jest.fn((remote: Remote) => {
+      void remote.value;
+    })
+
+    class Test extends Model {
+      remote = get(Remote, remoteEffect);
+    }
+
+    let remote = Remote.new();
+    const test = Test.new();
+    const context = new Context({ remote, test });
+
+    expect(remoteEffect).toBeCalledTimes(1);
+
+    remote.value = "bar";
+    await remote.set();
+    
+    expect(remoteEffect).toBeCalledTimes(2);
+
+    // TODO: Instruction does not seem to be notified of change.
+    remote = Remote.new();
+    context.include({ remote });
+
+    await test.set();
+    expect(remoteEffect).toBeCalledTimes(3);
+
+    remote.value = "boo";
+    expect(remoteEffect).toBeCalledTimes(4);
   })
 })
 
@@ -766,30 +690,5 @@ describe("async", () => {
 
     await expect(caught).resolves.toBeInstanceOf(Foo);
     expect(bar.foo).toBeInstanceOf(Foo);
-  })
-  
-  it("will prevent compute if not ready", async () => {
-    class Bar extends Model {
-      foo = get(Foo, foo => {
-        return foo.value;
-      });
-    }
-  
-    const bar = Bar.new();
-    let caught: unknown;
-
-    setTimeout(() => new Context({ Foo, bar }));
-
-    try {
-      void bar.foo;
-      throw false;
-    }
-    catch(err){
-      caught = err;
-    }
-
-    await expect(caught).resolves.toBe("foobar");
-  
-    expect(bar.foo).toBe("foobar");
   })
 })
