@@ -73,14 +73,11 @@ function get<R, T extends Model>(
 
     if(Model.is(arg0)){
       const hasParent = PARENT.get(subject) as T;
-      let cb: (() => void) | void;
 
+      // TODO: notify on discovered context 
       function assign(value: T) {
-        if (typeof cb == "function")
-          cb = void cb();
-
         if (typeof arg1 == "function")
-          cb = value.get(x => (arg1 as Function)(x, key));
+          value.get(x => (arg1 as Function)(x, key));
 
         update(subject, key, value);
       }
@@ -103,10 +100,11 @@ function get<R, T extends Model>(
       else
         throw new Error(`New ${subject} created as child of ${hasParent}, but must be instanceof ${arg0}.`);
 
-      return { get: arg1 !== false };
+      return {
+        get: arg1 !== false
+      };
     }
     
-    const source: get.Source<T> = resolve => resolve(from);
     let from = subject;
     
     if(arg0 instanceof Model){
@@ -117,64 +115,58 @@ function get<R, T extends Model>(
       arg1 = ((p, k) => fn.call(p, k, p)) as get.Effect<T>;
     }
 
-    if(typeof arg1 == "function"){
-      const getter = arg1 as get.Compute<R, T>;
-      let reset: (() => void) | undefined;
-      let isAsync: boolean;
-      let proxy: any;
-  
-      function connect(model: Model){
-        reset = createEffect(model, current => {
-          proxy = current;
-  
-          if(!(key in state) || STALE.delete(compute))
-            compute(!reset);
-  
-          return (didUpdate) => {
-            if(didUpdate){
-              STALE.add(compute);
-              event(subject, key, true);
-            }
-          };
-        })
-      }
-  
-      function compute(initial?: boolean){
-        let next: R | undefined;
-  
-        try {
-          next = getter.call(proxy, proxy, key);
-        }
-        catch(err){
-          console.warn(`An exception was thrown while ${initial ? "initializing" : "refreshing"} ${subject}.${key}.`)
-  
-          if(initial)
-            throw err;
-  
-          console.error(err);
-        }
-  
-        update(subject, key, next, !isAsync);
-      }
-  
-      return () => {
-        if(!proxy){
-          source(connect);
-          isAsync = true;
-        }
-  
-        if(STALE.delete(compute))
-          compute();
-  
-        return fetch(subject, key, !proxy) as T;
-      }
-    }
-    else 
-      source(model => {
-        update(subject, key, model)
-      });
+    const source: get.Source<T> = resolve => resolve(from);
+    const getter = arg1 as get.Compute<R, T>;
 
-    return { get: arg1 };
+    let reset: (() => void) | undefined;
+    let isAsync: boolean;
+    let proxy: any;
+
+    function connect(model: Model){
+      reset = createEffect(model, current => {
+        proxy = current;
+
+        if(!(key in state) || STALE.delete(compute))
+          compute(!reset);
+
+        return (didUpdate) => {
+          if(didUpdate){
+            STALE.add(compute);
+            event(subject, key, true);
+          }
+        };
+      })
+    }
+
+    function compute(initial?: boolean){
+      let next: R | undefined;
+
+      try {
+        next = getter.call(proxy, proxy, key);
+      }
+      catch(err){
+        console.warn(`An exception was thrown while ${initial ? "initializing" : "refreshing"} ${subject}.${key}.`)
+
+        if(initial)
+          throw err;
+
+        console.error(err);
+      }
+
+      update(subject, key, next, !isAsync);
+    }
+
+    return () => {
+      if(!proxy){
+        source(connect);
+        isAsync = true;
+      }
+
+      if(STALE.delete(compute))
+        compute();
+
+      return fetch(subject, key, !proxy) as T;
+    }
   })
 }
 

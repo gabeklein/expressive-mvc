@@ -173,6 +173,34 @@ describe("fetch mode", () => {
   })
 })
 
+describe("callback", () => {
+  it("will subscribe to found instance", async () => {
+    class Remote extends Model {
+      value = "foo";
+    }
+
+    const remoteEffect = jest.fn((remote: Remote) => {
+      void remote.value;
+    })
+
+    class Test extends Model {
+      remote = get(Remote, remoteEffect);
+    }
+
+    const remote = Remote.new();
+    const test = Test.new();
+
+    new Context({ remote, test });
+
+    expect(remoteEffect).toBeCalledTimes(1);
+
+    remote.value = "bar";
+    await remote.set();
+    
+    expect(remoteEffect).toBeCalledTimes(2);
+  })
+})
+
 describe("compute mode", () => {
   it('will reevaluate when inputs change', async () => {
     class Subject extends Model {
