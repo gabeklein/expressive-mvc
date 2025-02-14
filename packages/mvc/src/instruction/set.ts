@@ -36,12 +36,12 @@ function set <T> (factory: set.Factory<T> | Promise<T>, required: false): T | un
 function set <T> (factory: set.Factory<T> | Promise<T>, required?: boolean): T;
 
 /**
- * Set a property with empty placeholder and update callback.
+ * Set a property with empty placeholder and/or update callback.
  * 
  * @param value - Starting value for property. If undefined, suspense will be thrown on access, until value is set and accepted by callback.
  * @param onUpdate - Callback run when property is set. If returns false, update is not accepted and property will keep previous value.
  */
-function set <T> (value: T | undefined, onUpdate: set.Callback<T>): T;
+function set <T> (value: T | undefined, onUpdate?: set.Callback<T>): T;
 
 function set <T> (
   value?: set.Factory<T> | Promise<T> | T,
