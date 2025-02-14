@@ -21,11 +21,13 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "require": "./dist/index.js"
+      "require": "./dist/index.js",
+      "import": "./dist/index.js"
     },
     "./adapter": {
       "types": "./dist/adapter.d.ts",
-      "require": "./dist/adapter.js"
+      "require": "./dist/adapter.js",
+      "import": "./dist/adapter.js"
     }
   },
   "files": [
