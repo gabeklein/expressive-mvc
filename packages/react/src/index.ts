@@ -21,3 +21,4 @@ export {
 } from '@expressive/mvc';
 
 export { Consumer, Provider } from './context';
+export { type Pragma };
