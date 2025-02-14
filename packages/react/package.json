@@ -56,5 +56,5 @@
     "react-test-renderer": "^18.2.0",
     "tsup": "^8.0.2"
   },
-  "version": "0.53.3"
+  "version": "0.53.4"
 }
