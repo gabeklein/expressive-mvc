@@ -48,7 +48,7 @@ function set <T> (
   argument?: set.Callback<any> | boolean){
 
   return use<T>((key, subject) => {
-    const output: Model.Descriptor = {};
+    const property: Model.Descriptor = {};
 
     if(typeof value == "function" || value instanceof Promise){
       function init(){
@@ -61,7 +61,7 @@ function set <T> (
             throw err;
           }
 
-        output.get = argument === true;
+        property.get = argument === true;
 
         if(value instanceof Promise){
           value
@@ -71,7 +71,7 @@ function set <T> (
             })
             .catch(err => {
               event(subject, key);
-              output.get = () => { throw err };
+              property.get = () => { throw err };
             })
         }
         else
@@ -84,15 +84,15 @@ function set <T> (
       if(argument)
         init();
       else
-        output.get = init;
+        property.get = init;
     }
     else if(value !== undefined)
-      output.value = value;
+      property.value = value;
 
     if(typeof argument == "function"){
       let unSet: ((next: T) => void) | undefined;
 
-      output.set = function(this: any, value: any, previous: any){
+      property.set = function(this: any, value: any, previous: any){
         const out = argument.call(this, value, previous);
 
         if(out === false)
@@ -106,12 +106,12 @@ function set <T> (
       }
     }
     else
-      output.set = value => {
-        output.get = undefined;
+      property.set = value => {
+        property.get = undefined;
         update(subject, key, value);
       }
 
-    return output;
+    return property;
   })
 }
 
