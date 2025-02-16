@@ -2,6 +2,7 @@
   "compilerOptions": {
     "target": "es2020",
     "esModuleInterop": true,
+    "skipLibCheck": true,
     "moduleResolution": "node",
     "noUnusedLocals": true,
     "strict": true,
