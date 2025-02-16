@@ -1,4 +1,5 @@
 import { Model } from "@expressive/mvc";
+import { expect } from 'jest';
 
 expect.extend({
   toUpdate,
