@@ -22,12 +22,12 @@
     ".": {
       "types": "./dist/index.d.ts",
       "require": "./dist/index.js",
-      "import": "./dist/index.js"
+      "import": "./dist/esm/index.mjs"
     },
     "./adapter": {
       "types": "./dist/adapter.d.ts",
       "require": "./dist/adapter.js",
-      "import": "./dist/adapter.js"
+      "import": "./dist/esm/adapter.mjs"
     }
   },
   "files": [
