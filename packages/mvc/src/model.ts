@@ -200,7 +200,7 @@ abstract class Model {
       return createEffect(self, (proxy) => {
         const cb = arg1.call(proxy, proxy, pending);
 
-        return cb === null ? cb : ((update) => {
+        return cb === null ? null : ((update) => {
           pending = PENDING_KEYS.get(self)!;
           if(typeof cb == "function")
             cb(update);

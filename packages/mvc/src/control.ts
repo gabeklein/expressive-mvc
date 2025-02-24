@@ -160,7 +160,7 @@ function watch(from: any, key: string | number, value?: any){
 
 /**
  * Create a side-effect which will update whenever values accessed change.
- * Callback is called immediately and if ever values are stale.
+ * Callback is called immediately and whenever values are stale.
  * 
  * @param target - Instance of Model to observe.
  * @param callback - Function to invoke when values change.

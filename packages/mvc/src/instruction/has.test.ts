@@ -50,7 +50,7 @@ describe("recipient", () => {
   it("will run callback on register", () => {
     class Child extends Model {}
     class Parent extends Model {
-      child = has(Child, gotChild);
+      children = has(Child, gotChild);
     }
   
     const gotChild = jest.fn();
