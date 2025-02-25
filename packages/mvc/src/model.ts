@@ -395,11 +395,11 @@ function prepare(model: Model){
       if(!value || key == "constructor")
         continue;
       
-      function bind(method = value){
-        const value = method.bind(model);
+      function bind(this: Model, method = value){
+        const value = method.bind(this.is);
         
         METHOD.set(value, method);
-        define(model, key, { value, writable: true });
+        define(this.is, key, { value, writable: true });
         
         return value;
       }

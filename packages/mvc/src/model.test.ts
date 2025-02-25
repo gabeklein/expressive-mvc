@@ -187,6 +187,19 @@ it("will allow method to be overwritten", () => {
   expect(test.method()).toBe("baz");
 })
 
+it("will properly bind methods", async () => {
+  class FooBar extends Model {
+    method(){
+      return String(this);
+    }
+  }
+
+  const foo1 = String(FooBar.new().method());
+  const foo2 = String(FooBar.new().method());
+  
+  expect(foo1).not.toBe(foo2);
+})
+
 describe("subscriber", () => {
   class Subject extends Model {
     value = 1;
@@ -573,7 +586,7 @@ describe("get method", () => {
       test.value1 = 2;
 
       // wait for update event, thus queue flushed
-      await expect(test).toHaveUpdated();
+      await expect(test).toHaveUpdated("value1");
 
       expect(effect).toBeCalledWith(test, new Set(["value1"]));
 
@@ -581,7 +594,7 @@ describe("get method", () => {
       test.value3 = 4;
 
       // wait for update event to flush queue
-      await expect(test).toHaveUpdated();
+      await expect(test).toHaveUpdated("value2", "value3", "value4");
 
       expect(effect).toBeCalledWith(test, new Set(["value2", "value3", "value4"]));
 
