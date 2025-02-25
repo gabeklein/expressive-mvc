@@ -1,7 +1,7 @@
 import React, { Fragment, Suspense } from 'react';
 import { act, create } from 'react-test-renderer';
 
-import Model, { Consumer, get, Provider, set, use } from '.';
+import Model, { Consumer, get, has, Provider, set, use } from '.';
 import { mockAsync } from './mocks';
 
 const error = jest
@@ -548,6 +548,33 @@ describe("get instruction", () => {
 
     expect(render.toJSON()).toBe("foobar");
   })
+})
+
+describe("has instruction", () => {
+  it("will notify parent of instance", () => {
+    class Foo extends Model {
+      value = has(Bar, didGetBar);
+    }
+
+    class Bar extends Model {
+      foo = get(Foo);
+    }
+
+    const didGetBar = jest.fn();
+    const FooBar = () => void Bar.use();
+    const foo = Foo.new();
+
+    create(
+      <Provider for={foo}>
+        <FooBar />
+        <FooBar />
+      </Provider>
+    );
+
+    expect(didGetBar).toBeCalledTimes(2);
+    expect(foo.value).toEqual([expect.any(Bar), expect.any(Bar)]);
+    expect(foo.value.map(i => i.foo)).toEqual([foo, foo]);
+  });
 })
 
 describe("suspense", () => {
