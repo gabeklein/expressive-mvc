@@ -135,7 +135,7 @@ function get<R, T extends Model>(
             event(subject, key, true);
           }
         };
-      })
+      }, false)
     }
 
     function compute(initial?: boolean){

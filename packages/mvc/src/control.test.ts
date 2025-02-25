@@ -60,6 +60,45 @@ describe("effect", () => {
     expect(didGetValue).toBeCalledWith(10, 20);
     expect(didGetValue).toBeCalledTimes(2);
   });
+
+  it("will cleanup nested effects", async () => {
+    class Test extends Model {
+      foo = 1;
+      bar = 2;
+    }
+  
+    const test = Test.new();
+    const didInvoke = jest.fn();
+  
+    const done = createEffect(test, ({ foo }) => {
+      createEffect(test, ({ bar }) => {
+        didInvoke({ foo, bar });
+      });
+    });
+
+    expect(didInvoke).toBeCalledTimes(1);
+    expect(didInvoke).toBeCalledWith({ foo: 1, bar: 2 });
+
+    await test.set({ bar: 3 });
+
+    expect(didInvoke).toBeCalledWith({ foo: 1, bar: 3 });
+  
+    await test.set({ foo: 2, bar: 4 });
+
+    expect(didInvoke).toBeCalledWith({ foo: 2, bar: 4 });
+    expect(didInvoke).not.toBeCalledWith({ foo: 1, bar: 4 });
+
+    await test.set({ bar: 2 });
+
+    expect(didInvoke).toBeCalledWith({ foo: 2, bar: 2 });
+
+    done();
+
+    await test.set({ bar: 1 });
+
+    expect(didInvoke).not.toBeCalledWith({ foo: 2, bar: 1 });
+    expect(didInvoke).toBeCalledTimes(4);
+  })
 })
 
 describe("suspense", () => {

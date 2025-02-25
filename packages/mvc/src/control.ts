@@ -167,8 +167,8 @@ function watch(from: any, key: string | number, value?: any){
  * @param requireValues - If `true` will throw if accessing a value which is `undefined`.
  */
 function createEffect<T extends Model>(target: T, callback: Effect<Required<T>>, requireValues: true): () => void;
-function createEffect<T extends Model>(target: T, callback: Effect<T>, requireValues?: boolean): () => void;
-function createEffect<T extends Model>(target: T, callback: Effect<T>, requireValues?: boolean){
+function createEffect<T extends Model>(target: T, callback: Effect<T>, recursive?: boolean): () => void;
+function createEffect<T extends Model>(target: T, callback: Effect<T>, argument?: boolean){
   const listeners = LISTENERS.get(target)!;
 
   let unset: ((update: boolean | null) => void) | undefined;
@@ -196,7 +196,7 @@ function createEffect<T extends Model>(target: T, callback: Effect<T>, requireVa
     }
 
     function access(from: Model, key: string | number, value: any) {
-      if(value === undefined && requireValues)
+      if(value === undefined && argument)
         throw new Error(`${from}.${key} is required in this context.`);
 
       const listeners = LISTENERS.get(from)!;
@@ -219,10 +219,17 @@ function createEffect<T extends Model>(target: T, callback: Effect<T>, requireVa
     }
 
     try {
-      const out = callback.call(subscriber, subscriber);
+      const ctx = context(argument === false)
+      const ret = callback.call(subscriber, subscriber);
+      const flush = ctx();
 
-      unset = typeof out == "function" ? out : undefined;
-      reset = out === null ? out : invoke;
+      reset = ret === null ? null : invoke;
+      unset = key => {
+        if(typeof ret == "function")
+          ret(key);
+
+        flush();
+      }
     }
     catch(err){
       if(err instanceof Promise){
@@ -234,6 +241,16 @@ function createEffect<T extends Model>(target: T, callback: Effect<T>, requireVa
     }
   }
 
+  function cleanup(){
+    if(unset)
+      unset(false);
+
+    reset = null;
+  };
+
+  if(EffectContext && argument !== false)
+    EffectContext.add(cleanup);
+
   addListener(target, key => {
     if(key === true)
       invoke();
@@ -244,13 +261,26 @@ function createEffect<T extends Model>(target: T, callback: Effect<T>, requireVa
     if(key === null && unset)
       unset(null);
   });
+  
+  return cleanup;
+}
+
+let EffectContext: Set<() => void> | undefined;
+
+export function context(ignore?: boolean){
+  if(ignore)
+    return () => () => {};
+
+  const current = EffectContext;
+  const ctx = EffectContext = new Set;
 
   return () => {
-    if(unset)
-      unset(false);
-
-    reset = null;
-  };
+    EffectContext = current;
+    
+    return () => {
+      ctx.forEach(fn => fn());
+    }
+  }
 }
 
 export {

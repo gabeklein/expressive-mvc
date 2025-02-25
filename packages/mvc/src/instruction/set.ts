@@ -1,3 +1,4 @@
+import { context } from '../control';
 import { Model, event, update } from '../model';
 import { use } from './use';
 
@@ -90,19 +91,25 @@ function set <T> (
       property.value = value;
 
     if(typeof argument == "function"){
-      let unSet: ((next: T) => void) | undefined;
+      let unset: ((next: T) => void) | undefined;
 
       property.set = function(this: any, value: any, previous: any){
+        const ctx = context();
         const out = argument.call(this, value, previous);
+        const flush = ctx();
 
         if(out === false)
           return out;
 
-        if(typeof unSet == "function")
-          unSet = void unSet(value);
-    
-        if(typeof out == "function")
-          unSet = out;
+        if(typeof unset == "function")
+          unset(value);
+
+        unset = (next: T) => {
+          if(typeof out == "function")
+            out(next);
+
+          flush();
+        }
       }
     }
     else

@@ -1,3 +1,4 @@
+import { context } from '../control';
 import { Model, define, update } from '../model';
 import { use } from './use';
 
@@ -104,21 +105,28 @@ function ref<T>(
       throw new Error("ref instruction does not support object which is not 'this'");
 
     else {
-      let unSet: ((next: T) => void) | undefined;
+      let unset: ((next: T) => void) | undefined;
 
       const get = () => state[key];
       const set = (value?: any) => {
         if(!update(subject, key, value) || !arg)
           return;
 
-        if(unSet)
-          unSet = void unSet(value);
+        if(unset)
+          unset = void unset(value);
     
-        if(value !== null || arg2 === false){  
-          const out = arg.call(subject, value);
-      
+        if(value === null && arg2 !== false)
+          return;
+
+        const ctx = context();
+        const out = arg.call(subject, value);
+        const flush = ctx();
+
+        unset = key => {
           if(typeof out == "function")
-            unSet = out;
+            out(key);
+
+          flush();
         }
       };
   

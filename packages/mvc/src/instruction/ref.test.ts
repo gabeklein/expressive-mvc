@@ -118,8 +118,11 @@ describe("property", () => {
 
     const state = Subject.new();
 
+    state.ref("hello");
+    expect(callback).toBeCalledWith("hello");
+
     state.ref(null);
-    expect(callback).not.toBeCalled();
+    expect(callback).not.toBeCalledWith(null);
   });
 
   it('will callback when on null if ignore false', async () => {
@@ -137,6 +140,37 @@ describe("property", () => {
     state.ref(null);
     expect(callback).toBeCalledWith(null);
   });
+
+  it('will reset nested effects', async () => {
+    class Subject extends Model {
+      name = "World";
+
+      hello = ref((value) => {
+        this.get(({ name }) => {
+          effect(`${value} ${name}!`);
+        })
+      });
+    }
+
+    const effect = jest.fn();
+    const state = Subject.new();
+    
+    state.hello("Hola");
+    await expect(state).toHaveUpdated(); 
+
+    expect(effect).toBeCalledWith("Hola World!");
+
+    state.hello("Bonjour");
+    await expect(state).toHaveUpdated();
+
+    expect(effect).toBeCalledWith("Bonjour World!");
+
+    state.name = "Earth";
+    await expect(state).toHaveUpdated();
+
+    expect(effect).toBeCalledWith("Bonjour Earth!");
+    expect(effect).not.toBeCalledWith("Hola Earth!");
+  })
 
   it('will export value of ref-properties', () => {
     class Subject extends Model {
