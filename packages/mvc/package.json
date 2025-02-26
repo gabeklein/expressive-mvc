@@ -15,7 +15,7 @@
     "mvc"
   ],
   "main": "dist/index.js",
-  "module": "dist/esm/index.mjs",
+  "module": "dist/esm/index.js",
   "types": "dist/index.d.ts",
   "files": [
     "dist"

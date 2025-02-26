@@ -14,6 +14,7 @@ export default defineConfig([
     format: ['esm'],
     outDir: "dist/esm",
     sourcemap: "inline",
+    outExtension: () => ({ js: '.js' }),
     entry: [
       "src/**/*.ts",
       "!src/**/*.test.ts",
