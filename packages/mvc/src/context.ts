@@ -116,8 +116,25 @@ class Context {
       inputs = { 0: inputs };
 
     Object.entries(inputs).forEach(([K, V]: [string, unknown]) => {
-      if(Model.is(V) || V instanceof Model)
+      if(Model.is(V) || V instanceof Model){
+        const V = inputs[K];
+        const exists = this.layer.get(K);
+  
+        if(!exists){
+          const instance = this.add(V);
+  
+          this.layer.set(K, V)
+          init.set(instance, true);
+        }
+        // Context must force-reset because inputs are no longer safe.
+        else if(exists !== V){    
+          this.pop();
+          this.id = uid();
+          this.include(inputs);
+        }
+
         return;
+      }
 
       if(K && K != V)
         V = `${V} (as '${K}')`;
@@ -126,24 +143,6 @@ class Context {
         `Context may only include instance or class \`extends Model\` but got ${V}.`
       );
     })
-
-    for(const key in inputs){
-      const input = inputs[key];
-      const exists = this.layer.get(key);
-
-      if(!exists){
-        const instance = this.add(input);
-
-        this.layer.set(key, input)
-        init.set(instance, true);
-      }
-      // Context must force-reset because inputs are no longer safe.
-      else if(exists !== input){    
-        this.pop();
-        this.id = uid();
-        this.include(inputs);
-      }
-    } 
 
     for(const [model, explicit] of init){
       model.set();

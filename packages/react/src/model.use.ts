@@ -29,7 +29,7 @@ Model.use = function <T extends Model> (
     let local: T;
 
     const instance = new this(argument);
-    const context = ambient.push({ instance });
+    const context = ambient.push();
     const unwatch = instance.get(current => {
       local = current;
 
@@ -48,6 +48,7 @@ Model.use = function <T extends Model> (
 
     return (props?: Model.Assign<T> | Model.Callback<T>) => {
       Pragma.useLifecycle(didMount);
+      context.include({ instance });
 
       if(repeat && enabled && props){
         enabled = false;
