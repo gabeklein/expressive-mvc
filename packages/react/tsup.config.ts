@@ -17,6 +17,7 @@ export default defineConfig([
     sourcemap: true,
     outDir: "dist/esm",
     external: ["./adapter", "./context"],
+    outExtension: () => ({ js: '.js' }),
     entry: {
       "index": 'src/index.ts',
       "adapter": 'src/adapter.ts',

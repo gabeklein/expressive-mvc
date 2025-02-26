@@ -27,7 +27,7 @@
     "./adapter": {
       "types": "./dist/adapter.d.ts",
       "require": "./dist/adapter.js",
-      "import": "./dist/esm/adapter.mjs"
+      "import": "./dist/esm/adapter.js"
     }
   },
   "files": [
