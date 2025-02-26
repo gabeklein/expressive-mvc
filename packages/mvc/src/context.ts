@@ -6,21 +6,21 @@ const KEYS = new Map<symbol | Model.Type, symbol>();
 function key(T: Model.Type | symbol, upstream?: boolean): symbol {
   let K = KEYS.get(T);
 
-  if(!K)
+  if(!K) {
     KEYS.set(T, K = Symbol(
       typeof T == "symbol" ? "get " + T.description : String(T)
     ));
+  }
   
   return upstream ? key(K) : K;
 }
 
-function keys(from: Model.Type, upstream?: boolean){
+function getKeys(from: Model.Type, upstream?: boolean) {
   const keys = new Set<symbol>();
-
+  
   do {
     keys.add(key(from, upstream));
-  }
-  while((from = Object.getPrototypeOf(from)) !== Model);
+  } while((from = Object.getPrototypeOf(from)) !== Model);
 
   return keys;
 }
@@ -44,40 +44,58 @@ interface Context {
 class Context {
   static get<T extends Model>(on: Model, callback: ((got: Context) => void)): void;
   static get<T extends Model>(on: Model): Context | undefined;
-  static get(from: Model, callback?: (got: Context) => void){
+  static get(from: Model, callback?: (got: Context) => void) {
     const waiting = LOOKUP.get(from);
 
-    if(waiting instanceof Context){
-      if(callback)
-        callback(waiting);
-
+    if(waiting instanceof Context) {
+      if(callback) callback(waiting);
       return waiting;
     }
 
-    if(callback)
-      if(waiting) 
-        waiting.push(callback);
-      else 
-        LOOKUP.set(from, [callback]);
+    if(callback) {
+      LOOKUP.set(from, waiting ? [...waiting, callback] : [callback]);
+    }
   }
 
   public id!: string;
 
   protected layer = new Map<string | number, Model | Model.Type>();
   protected cleanup = new Set<() => void>();
+  // Store callbacks to support multiple invocations
+  protected typeCallbacks = new Map<symbol, Set<(model: Model) => void>>();
 
-  constructor(inputs?: Context.Accept){
-    if(inputs)
-      this.include(inputs);
+  constructor(inputs?: Context.Accept) {
+    if(inputs) this.include(inputs);
   }
 
   /** Run callback when a specified type is registered to a **child** context. */
-  public has<T extends Model>(Type: Model.Type<T>, callback: (model: T) => void){
-    define(this, key(Type, true), { value: callback });
+  public has<T extends Model>(Type: Model.Type<T>, callback: (model: T) => void) {
+    const k = key(Type, true);
+    
+    // Store the callback in our map for multiple invocations
+    if (!this.typeCallbacks.has(k)) {
+      this.typeCallbacks.set(k, new Set());
+      
+      // Define the property that will invoke all stored callbacks
+      define(this, k, { 
+        value: (model: Model) => {
+          const callbacks = this.typeCallbacks.get(k);
+          if (callbacks) {
+            for (const cb of callbacks) {
+              cb(model as T);
+            }
+          }
+          return undefined;
+        }
+      });
+    }
+    
+    // Add the callback to our set
+    this.typeCallbacks.get(k)?.add(callback as (model: Model) => void);
   }
 
   /** Find specified type registered to a parent context. Returns undefined if none are found. */
-  public get<T extends Model>(Type: Model.Type<T>){
+  public get<T extends Model>(Type: Model.Type<T>) {
     const result = this[key(Type)];
 
     if(result === null)
@@ -86,65 +104,68 @@ class Context {
     return result as T | undefined;
   }
 
-  public push(inputs?: Context.Accept){
+  public push(inputs?: Context.Accept) {
     const next = Object.create(this) as this;
 
     next.layer = new Map();
     next.cleanup = new Set();
+    next.typeCallbacks = new Map();
 
-    if(inputs)
-      next.include(inputs);
+    if(inputs) next.include(inputs);
 
     return next;
   }
 
-  public pop(){
+  public pop() {
     for(const key of Object.getOwnPropertySymbols(this))
       delete (this as any)[key];
 
     this.cleanup.forEach(cb => cb());
     this.layer.clear();
+    this.typeCallbacks.clear();
   }
 
   public include<T extends Model>(
     inputs: Context.Accept<T>,
     forEach?: Context.ForEach | Model.Assign<T>
-  ){
+  ) {
     const init = new Map<Model, boolean>();
 
     if(typeof inputs == "function" || inputs instanceof Model)
       inputs = { 0: inputs };
 
-    Object.entries(inputs).forEach(([K, V]: [string, unknown]) => {
-      if(Model.is(V) || V instanceof Model){
-        const V = inputs[K];
-        const exists = this.layer.get(K);
-  
-        if(!exists){
-          const instance = this.add(V);
-  
-          this.layer.set(K, V)
-          init.set(instance, true);
-        }
-        // Context must force-reset because inputs are no longer safe.
-        else if(exists !== V){    
-          this.pop();
-          this.id = uid();
-          this.include(inputs);
+    try {
+      Object.entries(inputs).forEach(([K, V]: [string, any]) => {
+        if(Model.is(V) || V instanceof Model) {
+          const exists = this.layer.get(K);
+    
+          if(!exists) {
+            const instance = this.add(V);
+            this.layer.set(K, V);
+            init.set(instance, true);
+          }
+          // Context must force-reset because inputs are no longer safe.
+          else if(exists !== V) {    
+            this.pop();
+            this.id = uid();
+            this.include(inputs);
+          }
+          return;
         }
 
-        return;
+        throw new Error(
+          `Context may only include instance or class \`extends Model\` but got ${K && K != V ? `${V} (as '${K}')` : V}.`
+        );
+      });
+    } catch (error) {
+      // Ensure cleanup happens even if error occurs
+      if (init.size > 0) {
+        this.pop();
       }
+      throw error;
+    }
 
-      if(K && K != V)
-        V = `${V} (as '${K}')`;
-
-      throw new Error(
-        `Context may only include instance or class \`extends Model\` but got ${V}.`
-      );
-    })
-
-    for(const [model, explicit] of init){
+    for(const [model, explicit] of init) {
       model.set();
 
       if(typeof forEach == "function")
@@ -153,7 +174,7 @@ class Context {
         model.set(forEach);
 
       for(const [_key, value] of model)
-        if(PARENT.get(value as Model) === model){
+        if(PARENT.get(value as Model) === model) {
           this.add(value as Model, true);
           init.set(value as Model, false);
         }
@@ -162,12 +183,12 @@ class Context {
 
   protected add<T extends Model>(
     input: T | Model.Init<T>,
-    implicit?: boolean){
+    implicit?: boolean) {
 
     let T: Model.Type<T>;
     let I: T;
 
-    if(typeof input == "function"){
+    if(typeof input == "function") {
       Model.is(input);
 
       T = input;
@@ -179,11 +200,11 @@ class Context {
       I = input;
     }
 
-    keys(T, true).forEach(K => {
+    // Invoke callbacks for all parent types
+    getKeys(T, true).forEach(K => {
       const result = this[K] as Context.Expect | undefined;
   
-      if(!result)
-        return;
+      if(!result) return;
   
       const callback = result(I);
         
@@ -191,7 +212,7 @@ class Context {
         this.cleanup.add(callback);
     });
 
-    keys(T).forEach(K => {
+    getKeys(T).forEach(K => {
       const value = this.hasOwnProperty(K) ? null : I;
 
       if(value || this[K] !== I && !implicit)
@@ -203,7 +224,7 @@ class Context {
 
     const waiting = LOOKUP.get(I);
   
-    if(waiting instanceof Array)
+    if(Array.isArray(waiting))
       waiting.forEach(cb => cb(this));
 
     LOOKUP.set(I, this);
