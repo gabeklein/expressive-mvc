@@ -22,7 +22,7 @@
     ".": {
       "types": "./dist/index.d.ts",
       "require": "./dist/index.js",
-      "import": "./dist/esm/index.mjs"
+      "import": "./dist/esm/index.js"
     },
     "./adapter": {
       "types": "./dist/adapter.d.ts",
