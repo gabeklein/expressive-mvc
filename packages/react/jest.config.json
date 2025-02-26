@@ -7,7 +7,7 @@
     "index.ts"
   ],
   "setupFilesAfterEnv": [
-    "@expressive/mvc/jest"
+    "./jest.js"
   ],
   "coverageThreshold": {
     "global": {
