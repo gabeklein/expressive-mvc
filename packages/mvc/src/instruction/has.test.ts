@@ -214,6 +214,26 @@ describe("recipient", () => {
     expect(foo.baz).toEqual([ bar.baz ]);
   });
 
+  it.skip("will not self conflict", () => {
+    class Child extends Model {}
+    class Parent extends Model {
+      children = has(Child, didNotify);
+    }
+  
+    const context = new Context();
+    const didNotify = jest.fn();
+    const parent = Parent.new();
+
+    // when already pushed, creates edge-case.
+    context.push({ parent });
+
+    const c2 = context.push({ parent });
+
+    c2.push({ child: Child.new() });
+
+    expect(didNotify).toHaveBeenCalledTimes(1);
+  })
+
   it.todo("will unwrap children on export")
 })
 

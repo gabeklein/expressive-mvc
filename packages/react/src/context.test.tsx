@@ -551,7 +551,7 @@ describe("get instruction", () => {
 })
 
 describe("has instruction", () => {
-  it("will notify parent of instance", () => {
+  it("will notify parent", () => {
     class Foo extends Model {
       value = has(Bar, didGetBar);
     }
@@ -574,6 +574,32 @@ describe("has instruction", () => {
     expect(didGetBar).toBeCalledTimes(2);
     expect(foo.value).toEqual([expect.any(Bar), expect.any(Bar)]);
     expect(foo.value.map(i => i.foo)).toEqual([foo, foo]);
+  });
+
+  it.skip("will notify parent of instance", () => {
+    class Foo extends Model {
+      value = has(Bar, didGetBar);
+    }
+
+    class Bar extends Model {
+      foo = get(Foo);
+    }
+
+    const didGetBar = jest.fn();
+    const FooBar = () => void Bar.use();
+
+    const Component = () => {
+      const foo = Foo.use();
+
+      return (
+        <Provider for={foo}>
+          <FooBar />
+        </Provider>
+      )
+    }
+
+    create(<Component />);
+    expect(didGetBar).toBeCalled();
   });
 })
 
