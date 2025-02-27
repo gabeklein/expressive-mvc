@@ -154,6 +154,37 @@ describe("callback", () => {
     state.property = "foo";
     expect(propertyWas).toBe("bar");
   })
+
+  it('will reset nested effects', async () => {
+    class Subject extends Model {
+      name = "World";
+
+      hello = set("Hello", async (value) => {
+        this.get(({ name }) => {
+          effect(`${value} ${name}!`);
+        })
+      });
+    }
+
+    const effect = jest.fn();
+    const state = Subject.new();
+    
+    state.hello = "Hola";
+    await expect(state).toHaveUpdated(); 
+
+    expect(effect).toBeCalledWith("Hola World!");
+
+    state.hello = "Bonjour";
+    await expect(state).toHaveUpdated();
+
+    expect(effect).toBeCalledWith("Bonjour World!");
+
+    state.name = "Earth";
+    await expect(state).toHaveUpdated();
+
+    expect(effect).toBeCalledWith("Bonjour Earth!");
+    expect(effect).not.toBeCalledWith("Hola Earth!");
+  })
 })
 
 describe("intercept", () => {

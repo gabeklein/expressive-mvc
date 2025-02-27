@@ -4,9 +4,9 @@
   "main": "src/index.tsx",
   "module": "src/SayHello.tsx",
   "dependencies": {
-    "@expressive/react": "^0.52.1",
+    "@expressive/react": "^0.54.3",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },
-  "version": "0.52.1"
+  "version": "0.54.3"
 }

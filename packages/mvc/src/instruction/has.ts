@@ -1,5 +1,5 @@
 import { Context } from '../context';
-import { Model } from '../model';
+import { Model, update } from '../model';
 import { use } from './use';
 
 const APPLY = new WeakMap<Model, (model: Model) => (() => void) | boolean | void>();
@@ -17,20 +17,20 @@ function has <T extends Model> (
 
   return use<T[]>((key, subject) => {
     const applied = new Set<Model>();
-    const update = () => {
-      subject.set(key, Object.freeze(Array.from(applied)));
+    const apply = () => {
+      update(subject, key, Object.freeze(Array.from(applied)));
     }
 
     if(Model.is(arg1))
       Context.get(subject, context => {
-        context.has(arg1, got => {
+        context.has(arg1, model => {
           let remove: (() => void) | void | undefined;
           let disconnect: (() => void) | undefined;
   
-          if(applied.has(got))
+          if(applied.has(model))
             return;
           
-          const callback = APPLY.get(got);
+          const callback = APPLY.get(model);
   
           if(callback){
             const after = callback(subject);
@@ -43,7 +43,7 @@ function has <T extends Model> (
           }
   
           if(typeof arg2 == "function"){
-            const done = arg2(got, subject);
+            const done = arg2(model, subject);
   
             if(done === false)
               return false;
@@ -54,14 +54,14 @@ function has <T extends Model> (
             }
           }
   
-          applied.add(got);
-          update();
+          applied.add(model);
+          apply();
   
           const done = () => { 
-            reset();
+            ignore();
   
-            applied.delete(got);
-            update();
+            applied.delete(model);
+            apply();
   
             if(disconnect)
               disconnect();
@@ -70,7 +70,7 @@ function has <T extends Model> (
               remove();
           }
   
-          const reset = got.get(null, done);
+          const ignore = model.get(null, done);
           
           return done;
         })
@@ -90,11 +90,11 @@ function has <T extends Model> (
         }
 
         applied.add(recipient);
-        update();
+        apply();
 
         return () => {
           applied.delete(recipient);
-          update();
+          apply();
 
           if(typeof remove == "function")
             remove();

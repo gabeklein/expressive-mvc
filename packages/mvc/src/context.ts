@@ -115,35 +115,32 @@ class Context {
     if(typeof inputs == "function" || inputs instanceof Model)
       inputs = { 0: inputs };
 
-    Object.entries(inputs).forEach(([K, V]: [string, unknown]) => {
-      if(Model.is(V) || V instanceof Model)
-        return;
+    Object.entries(inputs).forEach(([K, V]: [string, Model | Model.Init<Model>]) => {
+      if(Model.is(V) || V instanceof Model){
+        const exists = this.layer.get(K);
+  
+        if(!exists){
+          const instance = this.add(V);
+  
+          this.layer.set(K, V)
+          init.set(instance, true);
+        }
+        // Context must force-reset because inputs are no longer safe.
+        else if(exists !== V){    
+          this.pop();
+          this.id = uid();
+          this.include(inputs);
+        }
 
-      if(K && K != V)
-        V = `${V} (as '${K}')`;
+        return;
+      }
+
+      const blame = K && K != String(V) ? `${V} (as '${K}')` : V;
 
       throw new Error(
-        `Context may only include instance or class \`extends Model\` but got ${V}.`
+        `Context may only include instance or class \`extends Model\` but got ${blame}.`
       );
     })
-
-    for(const key in inputs){
-      const input = inputs[key];
-      const exists = this.layer.get(key);
-
-      if(!exists){
-        const instance = this.add(input);
-
-        this.layer.set(key, input)
-        init.set(instance, true);
-      }
-      // Context must force-reset becasue inputs are no longer safe.
-      else if(exists !== input){    
-        this.pop();
-        this.id = uid();
-        this.include(inputs);
-      }
-    } 
 
     for(const [model, explicit] of init){
       model.set();
@@ -176,17 +173,17 @@ class Context {
       this.cleanup.add(() => I.set(null));
     }
     else {
+      T = input.constructor as Model.Type<T>;
       I = input;
-      T = I.constructor as Model.Type<T>;
     }
 
     keys(T, true).forEach(K => {
-      const result = this[K] as Context.Expect | undefined;
+      const expects = this[K] as Context.Expect | undefined;
   
-      if(!result)
+      if(!expects)
         return;
   
-      const callback = result(I);
+      const callback = expects(I);
         
       if(callback)
         this.cleanup.add(callback);

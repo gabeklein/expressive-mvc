@@ -8,13 +8,13 @@ it("will add instance to context", () => {
   const example = Example.new();
   const context = new Context();
 
-  context.include({ example });
+  context.include(example);
 
   expect(context.get(Example)).toBe(example);
 })
 
 it("will create instance in context", () => {
-  const context = new Context({ Example });
+  const context = new Context(Example);
 
   expect(context.get(Example)).toBeInstanceOf(Example);
 })
@@ -163,6 +163,29 @@ describe("include", () => {
 
     expect(cb).toBeCalledWith(foo2, true);
     expect(cb).toBeCalledTimes(3);
+  })
+
+  it("will assign to newly added instances", () => {
+    class Test extends Model {
+      value = 0;
+    }
+
+    const t1 = Test.new();
+    const t2 = Test.new();
+
+    const context = new Context();
+
+    context.include({ t1 }, { value: 1 });
+
+    expect(t1.value).toBe(1);
+
+    t1.value = 2;
+    
+    context.include({ t1, t2 }, { value: 3 });
+
+    // t1 is already in context, should not be reassigned.
+    expect(t1.value).toBe(2);
+    expect(t2.value).toBe(3);
   })
 
   // This will be made more elegant later.

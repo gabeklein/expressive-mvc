@@ -16,14 +16,18 @@
     "react",
     "mvc"
   ],
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "require": "./dist/index.js"
+      "require": "./dist/index.js",
+      "import": "./dist/esm/index.js"
     },
     "./adapter": {
       "types": "./dist/adapter.d.ts",
-      "require": "./dist/adapter.js"
+      "require": "./dist/adapter.js",
+      "import": "./dist/esm/adapter.js"
     },
     "./jsx-runtime": {
       "types": "./jsx/jsx-runtime.d.ts",
@@ -43,7 +47,7 @@
     "preversion": "npm run test && npm run build"
   },
   "dependencies": {
-    "@expressive/mvc": "^0.52.1"
+    "@expressive/mvc": "^0.54.1"
   },
   "peerDependencies": {
     "react": ">=16.8.0 <19.0.0"
@@ -56,9 +60,10 @@
   "devDependencies": {
     "@types/react": "^18.2.14",
     "@types/react-test-renderer": "^18.0.0",
+    "jest": "^27.0.6",
     "react": "^18.2.0",
     "react-test-renderer": "^18.2.0",
     "tsup": "^8.0.2"
   },
-  "version": "0.52.1"
+  "version": "0.54.3"
 }

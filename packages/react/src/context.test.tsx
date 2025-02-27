@@ -1,7 +1,7 @@
 import React, { Fragment, Suspense } from 'react';
 import { act, create } from 'react-test-renderer';
 
-import Model, { Consumer, get, Provider, set, use } from '.';
+import Model, { Consumer, get, has, Provider, set, use } from '.';
 import { mockAsync } from './mocks';
 
 const error = jest
@@ -512,12 +512,12 @@ describe("get instruction", () => {
       value = "foobar";
     }
     class Bar extends Model {
-      foo = get(Foo, foo => foo.value);
+      foo = get(Foo);
     }
 
     const bar = Bar.new();
     
-    expect(() => bar.foo).toThrow(expect.any(Promise));
+    expect(() => bar.foo.value).toThrow(expect.any(Promise));
 
     create(
       <Provider for={Foo}>
@@ -525,7 +525,7 @@ describe("get instruction", () => {
       </Provider>
     );
 
-    expect(bar.foo).toBe("foobar");
+    expect(bar.foo.value).toBe("foobar");
   })
 
   it("will compute immediately in context", () => {
@@ -533,11 +533,11 @@ describe("get instruction", () => {
       value = "foobar";
     }
     class Bar extends Model {
-      foo = get(Foo, foo => foo.value);
+      foo = get(Foo);
     }
 
     const FooBar = () => {
-      return <>{Bar.use().foo}</>
+      return <>{Bar.use().foo.value}</>
     }
 
     const render = create(
@@ -548,6 +548,59 @@ describe("get instruction", () => {
 
     expect(render.toJSON()).toBe("foobar");
   })
+})
+
+describe("has instruction", () => {
+  it("will notify parent", () => {
+    class Foo extends Model {
+      value = has(Bar, didGetBar);
+    }
+
+    class Bar extends Model {
+      foo = get(Foo);
+    }
+
+    const didGetBar = jest.fn();
+    const FooBar = () => void Bar.use();
+    const foo = Foo.new();
+
+    create(
+      <Provider for={foo}>
+        <FooBar />
+        <FooBar />
+      </Provider>
+    );
+
+    expect(didGetBar).toBeCalledTimes(2);
+    expect(foo.value).toEqual([expect.any(Bar), expect.any(Bar)]);
+    expect(foo.value.map(i => i.foo)).toEqual([foo, foo]);
+  });
+
+  it.skip("will notify parent of instance", () => {
+    class Foo extends Model {
+      value = has(Bar, didGetBar);
+    }
+
+    class Bar extends Model {
+      foo = get(Foo);
+    }
+
+    const didGetBar = jest.fn();
+    const FooBar = () => void Bar.use();
+
+    const Component = () => {
+      const foo = Foo.use();
+
+      return (
+        <Provider for={foo}>
+          <FooBar />
+        </Provider>
+      )
+    }
+
+    create(<Component />);
+    expect(didGetBar).toBeCalled();
+  });
 })
 
 describe("suspense", () => {

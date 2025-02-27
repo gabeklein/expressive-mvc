@@ -1,15 +1,19 @@
+
 {
   "compilerOptions": {
+    "baseUrl": ".",
     "target": "es2020",
-    "outDir": "./dist/esm",
     "esModuleInterop": true,
-    "skipLibCheck": true,
+    "lib": ["ES2020", "DOM"],
     "moduleResolution": "node",
-    "declaration": false,
     "noUnusedLocals": true,
+    "sourceMap": true,
     "strict": true,
-    "types": ["jest", "node"],
-    "lib": ["ES2020", "dom"],
+    "paths": {
+      "@expressive/*": [
+        "../*/src"
+      ]
+    }
   },
   "exclude": [
     "node_modules",

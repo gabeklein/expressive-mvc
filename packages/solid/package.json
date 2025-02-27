@@ -1,6 +1,6 @@
 {
-  "name": "@expressive/preact",
-  "description": "Use classes to define state in Preact!",
+  "name": "@expressive/solid",
+  "description": "Use classes to define state in SolidJS!",
   "private": true,
   "author": {
     "name": "Gabe Klein",
@@ -13,20 +13,18 @@
     "access": "public"
   },
   "main": "dist/index.js",
-  "types": "dist/index.d.ts",
-  "scripts": {
-    "build": "tsup src/index.ts --dts"
-  },
+  "module": "src",
+  "types": "src",
   "dependencies": {
-    "@expressive/mvc": "^0.54.1",
-    "@expressive/react": "^0.54.3"
+    "@expressive/mvc": "^0.54.1"
   },
   "devDependencies": {
-    "preact": "^10.0.0",
+    "@solidjs/testing-library": "^0.8.8",
+    "solid-js": "^1.0.0",
     "tsup": "^8.0.2"
   },
   "peerDependencies": {
-    "preact": "^10.0.0"
+    "solid-js": "^1.0.0"
   },
-  "version": "0.54.3"
+  "version": "0.54.1"
 }

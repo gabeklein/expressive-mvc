@@ -1,3 +1,5 @@
+import type { Model } from "./model";
+
 /**
  * Update callback function.
  * 
@@ -8,78 +10,127 @@
  *   - `null` - terminal event; instance is expired.
  * @param source - Instance of Model for which update has occured.
  */
-type OnUpdate<T = any> = 
+type OnUpdate<T extends Model = any> = 
   (this: T, key: unknown, source: T) => (() => void) | null | void;
 
+type OnAccess<T extends Model = any, R = unknown> =
+  (from: T, key: string | number, value: R) => unknown;
+
+type Effect<T extends Model> = (this: T, proxy: T) =>
+  ((update: boolean | null) => void) | Promise<void> | null | void;
+
 type Event = number | string | null | boolean | symbol;
-
-const DISPATCH = new Set<() => void>();
-const OBSERVER = new WeakMap<{}, <T extends {}>(from: any, key: string | number, value: T) => T>();
-const LISTENER = new WeakMap<{}, Map<OnUpdate, Set<Event> | undefined>>();
-
-/** Events pending for a given object. */
-const PENDING = new WeakMap<{}, Set<Event>>();
 
 /** Placeholder event determines if model is initialized or not. */
 const onReady = () => null;
 
-function addListener(subject: {}, callback: OnUpdate, select?: Event){
-  let subs = LISTENER.get(subject)!;
+const LISTENERS = new WeakMap<Model, Map<OnUpdate, Set<Event> | undefined>>();
 
-  if(!subs)
-    LISTENER.set(subject, subs = new Map([[onReady, undefined]]));
+/** Events pending for a given object. */
+const PENDING = new WeakMap<Model, Set<Event>>();
+
+/** Update register. */
+const PENDING_KEYS = new WeakMap<Model, Set<string | number | symbol>>();
+
+/** Central event dispatch. Bunches all updates to occur at same time. */
+const DISPATCH = new Set<() => void>();
+
+const OBSERVER = new WeakMap<Model, OnAccess>();
+
+function addListener<T extends Model>(subject: T, callback: OnUpdate<T>, select?: Event){
+  let listeners = LISTENERS.get(subject)!;
+
+  if(!listeners)
+    LISTENERS.set(subject, listeners = new Map([[onReady, undefined]]));
 
   const filter = select === undefined ? undefined : new Set([select]);
 
-  if(!subs.has(onReady) && !filter)
-    callback(true, subject);
+  if(!listeners.has(onReady) && !filter)
+    callback.call(subject, true, subject);
 
-  subs.set(callback, filter);
+  listeners.set(callback, filter);
 
-  return () => subs.delete(callback);
+  return () => listeners.delete(callback);
 }
 
-function watch(from: any, key: string | number, value?: any){
-  const access = OBSERVER.get(from);
-  return access ? access(from, key, value) : value;
-}
+function emit(model: Model, key: Event): void {
+  const listeners = LISTENERS.get(model)!;
+  const notReady = listeners.has(onReady);
 
-function emit(source: {}, key: Event){
-  const subs = LISTENER.get(source)!;
-  const ready = !subs.has(onReady);
-
-  if(key === true && ready)
+  if(key === true && !notReady)
     return;
 
-  let pending = PENDING.get(source);
+  let pending = PENDING.get(model);
 
   if(pending){
     pending.add(key);
     return;
   }
 
-  PENDING.set(source, pending = new Set(
-    key !== true && ready ? [key] : [true, key]
-  ));
+  PENDING.set(model, pending = new Set(notReady ? [true, key] : [key]));
 
-  pending.forEach(key => {
-    pending!.delete(key);
-    subs.forEach((select, callback) => {
-      let after;
-      
-      if(!select || select.has(key))
-        if(after = callback.call(source, key, source))
-          queue(after);
+  for(const key of pending)
+    for(const [callback, filter] of listeners)
+      if(!filter || filter.has(key)){
+        const after = callback.call(model, key, model);
+
+        if(after)
+          enqueue(after);
+
+        else if(after === null)
+          listeners.delete(callback);
+      }
+
+  if(key === null)
+    listeners.clear();
   
-      if(after === null || key === null)
-        subs.delete(callback);
-    });
-  })
-  
-  PENDING.delete(source);
+  PENDING.delete(model);
 }
 
-function queue(eventHandler: (() => void)){
+function event(
+  subject: Model,
+  key?: string | number | symbol | null,
+  silent?: boolean){
+
+  if(key === null)
+    return emit(subject, key);
+
+  if(!key)
+    return emit(subject, true);
+
+  let pending = PENDING_KEYS.get(subject);
+
+  if(!pending){
+    PENDING_KEYS.set(subject, pending = new Set());
+
+    if(!silent)
+      enqueue(() => {
+        emit(subject, false);
+        PENDING_KEYS.delete(subject)
+      })
+  }
+
+  pending.add(key);
+
+  if(!silent)
+    emit(subject, key);
+}
+
+function pending<T extends Model>(subject: T){
+  if(PENDING_KEYS.has(subject))
+    return <PromiseLike<Model.Event<T>[]>> {
+      then: (res) => new Promise<any>(res => {
+        const remove = addListener(subject, key => {
+          if(key !== true){
+            remove();
+            return res.bind(null, Array.from(PENDING_KEYS.get(subject)!));
+          }
+        });
+      }).then(res)
+    }
+}
+
+function enqueue(eventHandler: (() => void)){
   if(!DISPATCH.size)
     setTimeout(() => {
       DISPATCH.forEach(event => {
@@ -96,21 +147,29 @@ function queue(eventHandler: (() => void)){
   DISPATCH.add(eventHandler);
 }
 
-type Effect<T extends {}> = (this: T, argument: T) =>
-  ((update: boolean | null) => void) | Promise<void> | null | void;
+function createProxy<T extends Model>(from: T, observer: OnAccess<T>){
+  const proxy = Object.create(from) as T;
+  OBSERVER.set(proxy, observer);
+  return proxy;
+}
+
+function watch(from: any, key: string | number, value?: any){
+  const access = OBSERVER.get(from);
+  return access ? access(from, key, value) : value;
+}
 
 /**
  * Create a side-effect which will update whenever values accessed change.
- * Callback is called immediately and if ever values are stale.
+ * Callback is called immediately and whenever values are stale.
  * 
  * @param target - Instance of Model to observe.
  * @param callback - Function to invoke when values change.
  * @param requireValues - If `true` will throw if accessing a value which is `undefined`.
  */
-function effect<T extends {}>(target: T, callback: Effect<Required<T>>, requireValues: true): () => void;
-function effect<T extends {}>(target: T, callback: Effect<T>, requireValues?: boolean): () => void;
-function effect<T extends {}>(target: T, callback: Effect<T>, requireValues?: boolean){
-  const listeners = LISTENER.get(target)!;
+function createEffect<T extends Model>(target: T, callback: Effect<Required<T>>, requireValues: true): () => void;
+function createEffect<T extends Model>(target: T, callback: Effect<T>, recursive?: boolean): () => void;
+function createEffect<T extends Model>(target: T, callback: Effect<T>, argument?: boolean){
+  const listeners = LISTENERS.get(target)!;
 
   let unset: ((update: boolean | null) => void) | undefined;
   let reset: (() => void) | null | undefined;
@@ -118,7 +177,9 @@ function effect<T extends {}>(target: T, callback: Effect<T>, requireValues?: bo
   function invoke(){
     let stale: boolean | undefined;
 
-    const subscriber = Object.create(target);
+    const subscriber = createProxy(target, access);
+
+    LISTENERS.set(subscriber, listeners);
 
     function onUpdate() {
       if (stale)
@@ -134,11 +195,11 @@ function effect<T extends {}>(target: T, callback: Effect<T>, requireValues?: bo
       return reset;
     }
 
-    function access(from: any, key: string | number, value: any) {
-      if(value === undefined && requireValues)
+    function access(from: Model, key: string | number, value: any) {
+      if(value === undefined && argument)
         throw new Error(`${from}.${key} is required in this context.`);
 
-      const listeners = LISTENER.get(from)!;
+      const listeners = LISTENERS.get(from)!;
       let listener = listeners.get(onUpdate);
 
       if(!listener)
@@ -146,24 +207,29 @@ function effect<T extends {}>(target: T, callback: Effect<T>, requireValues?: bo
 
       listener.add(key);
 
-      const nested = LISTENER.get(value);
+      const nested = LISTENERS.get(value);
 
-      if(nested){
-        LISTENER.set(value = Object.create(value), nested);
-        OBSERVER.set(value, access);
-      }
+      if(nested)
+        LISTENERS.set(
+          value = createProxy(value, access),
+          nested
+        );
 
       return value;
     }
 
-    LISTENER.set(subscriber, listeners);
-    OBSERVER.set(subscriber, access);
-
     try {
-      const out = callback.call(subscriber, subscriber);
+      const ctx = context(argument === false)
+      const ret = callback.call(subscriber, subscriber);
+      const flush = ctx();
 
-      unset = typeof out == "function" ? out : undefined;
-      reset = out === null ? out : invoke;
+      reset = ret === null ? null : invoke;
+      unset = key => {
+        if(typeof ret == "function")
+          ret(key);
+
+        flush();
+      }
     }
     catch(err){
       if(err instanceof Promise){
@@ -175,6 +241,16 @@ function effect<T extends {}>(target: T, callback: Effect<T>, requireValues?: bo
     }
   }
 
+  function cleanup(){
+    if(unset)
+      unset(false);
+
+    reset = null;
+  };
+
+  if(EffectContext && argument !== false)
+    EffectContext.add(cleanup);
+
   addListener(target, key => {
     if(key === true)
       invoke();
@@ -185,20 +261,35 @@ function effect<T extends {}>(target: T, callback: Effect<T>, requireValues?: bo
     if(key === null && unset)
       unset(null);
   });
+  
+  return cleanup;
+}
+
+let EffectContext: Set<() => void> | undefined;
+
+export function context(ignore?: boolean){
+  if(ignore)
+    return () => () => {};
+
+  const current = EffectContext;
+  const ctx = EffectContext = new Set;
 
   return () => {
-    if(unset)
-      unset(false);
-
-    reset = null;
-  };
+    EffectContext = current;
+    
+    return () => {
+      ctx.forEach(fn => fn());
+    }
+  }
 }
 
 export {
   addListener,
-  effect,
-  emit,
+  createEffect,
+  createProxy,
+  event,
   OnUpdate,
-  queue,
+  PENDING_KEYS,
+  pending,
   watch
 }

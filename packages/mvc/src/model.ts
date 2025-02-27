@@ -1,4 +1,4 @@
-import { addListener, effect, emit, OnUpdate, queue, watch } from './control';
+import { addListener, createEffect, event, OnUpdate, pending, PENDING_KEYS, watch } from './control';
 
 export const define = Object.defineProperty;
 
@@ -11,9 +11,6 @@ const STATE = new WeakMap<Model, Record<string | number | symbol, unknown>>();
 /** External listeners for any given Model. */
 const NOTIFY = new WeakMap<Model.Type, Set<OnUpdate>>();
 
-/** Update register. */
-const PENDING = new WeakMap<Model, Set<string | number | symbol>>();
-
 /** Parent-child relationships. */
 const PARENT = new WeakMap<Model, Model | null>();
 
@@ -22,9 +19,6 @@ const METHODS = new WeakMap<Model.Type, Set<string>>();
 
 /** Reference bound instance methods to real ones. */
 const METHOD = new WeakMap<any, any>();
-
-/** Currently accumulating export. */
-let EXPORT: Map<any, any> | undefined;
 
 declare namespace Model {
   /** Any type of Model, using own class constructor as its identifier. */
@@ -73,7 +67,7 @@ declare namespace Model {
     (this: T, key: unknown, source: T) => (() => void) | void | null;
 
   type OnUpdate<T extends Model, K extends Event<T>> =
-    (this: T, value: Value<T, K>, key: K, thisArg: K) => void;
+    (this: T, key: K, thisArg: K) => void;
 
   /**
    * Values from current state of given model.
@@ -197,39 +191,28 @@ abstract class Model {
    */
   get(status: null, callback: () => void): () => void;
 
-  get(arg1?: Model.Effect<this> | string | null, arg2?: boolean | Function){
+  get(arg1?: Model.Effect<this> | string | null, arg2?: boolean | Model.OnUpdate<this, any>){
     const self = this.is;
-
-    if(arg1 === undefined)
-      return values(self);
 
     if(typeof arg1 == "function"){
       let pending = new Set<Model.Event<this>>();
 
-      return effect(self, (state) => {
-        const cb = arg1.call(state, state, pending);
+      return createEffect(self, (proxy) => {
+        const cb = arg1.call(proxy, proxy, pending);
 
-        return cb === null ? cb : ((update) => {
-          pending = PENDING.get(self)!;
+        return cb === null ? null : ((update) => {
+          pending = PENDING_KEYS.get(self)!;
           if(typeof cb == "function")
-            return cb(update);
+            cb(update);
         })
       });
     }
 
-    if(typeof arg2 == "function"){
-      if(arg1 === null)
-        return addListener(self, arg2.bind(this, this), null);
+    if(arg1 === undefined)
+      return snapshot(self);
 
-      const state = STATE.get(self)!;
-
-      if(arg1 in state)
-        arg2.call(this, state[arg1], arg1, this)
-
-      return addListener(self, () => {
-        arg2.call(this, arg1 in state ? state[arg1] : arg1, arg1, this)
-      }, arg1)
-    }
+    if(typeof arg2 == "function")
+      return addListener(self, arg2, arg1)
 
     return arg1 === null
       ? Object.isFrozen(STATE.get(self))
@@ -239,9 +222,35 @@ abstract class Model {
   /**
    * Get update in progress.
    *
-   * @returns Promise which resolves object with updated values. Is `undefined` if there is no update.
+   * @returns Promise which resolves object with updated values, `undefined` if there no update is pending.
    **/
   set(): PromiseLike<Model.Event<this>[]> | undefined;
+
+  /**
+   * Update mulitple properties at once. Merges argument with current state.
+   * Properties which are not managed by this model will be ignored.
+   * 
+   * @param assign - Object with properties to update.
+   * @param silent - If an update does occur, listeners will not be refreshed automatically.
+   * @returns Promise resolving an array of keys updated, `undefined` (immediately) if a noop.
+   */
+  set(assign: Model.Assign<this>, silent?: boolean): PromiseLike<Model.Event<this>[]> | undefined;
+
+  /**
+   * Push an update. This will not change the value of associated property.
+   * 
+   * Useful where a property value internally has changed, but the object is the same.
+   * For example: An array has pushed a new value, or a nested property is updated.
+   * 
+   * You can also use this to dispatch arbitrary events.
+   * Symbols are recommended as non-property events, however you can use any string.
+   * If doing so, be sure to avoid collisions with property names! An easy way to do this is
+   * to prefix an event with "!" and/or use dash-case. e.g. `set("!event")` or `set("my-event")`.
+   * 
+   * @param key - Property or event to dispatch.
+   * @returns Promise resolves an array of keys updated.
+   */
+  set(key: Model.Event<this>): PromiseLike<Model.Event<this>[]>;
 
   /**
    * Call a function when update occurs.
@@ -265,49 +274,9 @@ abstract class Model {
    */
   set(status: null): void;
 
-  /**
-   * Push an update. This will not change the value of associated property.
-   * 
-   * Useful where a property value internally has changed, but the object is the same.
-   * For example: An array has pushed a new value, or a nested property is updated.
-   * 
-   * You can also use this to dispatch arbitrary events.
-   * Symbols are recommended as non-property events, however you can use any string.
-   * If doing so, be sure to avoid collisions with property names! An easy way to do this is
-   * to prefix an event with "!" and/or use dash-case. e.g. `set("!event")` or `set("my-event")`.
-   * 
-   * @param key - Property or event to dispatch.
-   * @returns Promise resolves an array of keys updated.
-   */
-  set(key: Model.Event<this>): PromiseLike<Model.Event<this>[]>;
-
-  /**
-   * Update mulitple properties at once. Merges argument with current state.
-   * Properties which are not managed by this model will be ignored.
-   * 
-   * @param assign - Object with properties to update.
-   * @returns Promise resolving an array of keys updated, `undefined` (immediately) if a noop.
-   */
-  set(assign: Model.Assign<this>): PromiseLike<Model.Event<this>[]> | undefined;
-
-  /**
-   * Update a property with value. 
-   * 
-   * @param key - property to update
-   * @param value - value to update property with (if the same as current, no update will occur)
-   * @param silent - if true, will not notify listeners of an update
-   * @returns Promise resolving an array of keys updated, `undefined` (immediately) if a noop.
-   */
-  set<K extends string>(
-    key: K,
-    value: Model.Value<this, K>,
-    silent?: boolean
-  ): PromiseLike<Model.Event<this>[]> | undefined;
-
   set(
-    arg1?: Model.OnEvent<this> | Model.Assign<this> | string | number | symbol | null,
-    arg2?: unknown,
-    arg3?: boolean){
+    arg1?: Model.OnEvent<this> | Model.Assign<this> | Model.Event<this> | null,
+    arg2?: unknown){
 
     const self = this.is;
 
@@ -317,36 +286,24 @@ abstract class Model {
           return arg1.call(self, key, self);
       })
 
-    if(arg1 === null){
-      emit(this, null);
-      return
+    if(arg1 && typeof arg1 == "object"){
+      const methods = METHODS.get(self.constructor as Model.Type)!;
+    
+      for(const key in arg1)
+        if(methods.has(key))
+          self[key as keyof this] = arg1[key] as any;
+        else if(key in self)
+          update(self, key, arg1[key], arg2 === true);
     }
-
-    if(typeof arg1 == "object")
-      assign(self, arg1);
-    else if(arg1 == undefined)  
-      emit(this, true);
-    else if(1 in arguments)
-      update(self, arg1, arg2, arg3);
     else
       event(self, arg1);
 
-    if(PENDING.has(self))
-      return <PromiseLike<Model.Event<this>[]>> {
-        then: (res) => new Promise<any>(res => {
-          const remove = addListener(self, key => {
-            if(key !== true){
-              remove();
-              return res.bind(null, Array.from(PENDING.get(self)!));
-            }
-          });
-        }).then(res)
-      }
+    return pending(self);
   }
 
   /**
    * Iterate over managed properties in this instance of Model.
-   * Yeilds the key and underlying value for each property.
+   * Yeilds the key and current value for each property.
    */
   [Symbol.iterator](): Iterator<[string, unknown]> {
     return Object.entries(STATE.get(this.is)!)[Symbol.iterator]();
@@ -359,9 +316,9 @@ abstract class Model {
    * 
    * @param args - arguments sent to constructor
    */
-  static new <T extends Model> (this: Model.Init<T>, ...args: Model.Args<T>){
+  static new<T extends Model>(this: Model.Init<T>, ...args: Model.Args<T>){
     const instance = new this(...args);
-    emit(instance, true);
+    event(instance);
     return instance;
   }
 
@@ -371,16 +328,14 @@ abstract class Model {
    * If so, language server will make available all static
    * methods and properties of this class.
    */
-  static is<T extends Model.Type> (this: T, maybe: unknown): maybe is T {
+  static is<T extends Model.Type>(this: T, maybe: unknown): maybe is T {
     return maybe === this || typeof maybe == "function" && maybe.prototype instanceof this;
   }
 
   /**
    * Register a callback to run when any instance of this Model is updated. 
    */
-  static on<T extends Model>(
-    this: Model.Type<T>, listener: Model.OnEvent<T>){
-
+  static on<T extends Model>(this: Model.Type<T>, listener: Model.OnEvent<T>){
     let notify = NOTIFY.get(this);
 
     if(!notify)
@@ -404,30 +359,29 @@ define(Model, "toString", {
   }
 });
 
-/** Apply instructions, inherited event listeners and ensure class metadata is ready. */
+/** Apply instructions and inherited event listeners. Ensure class metadata is ready. */
 function prepare(model: Model){
-  let type = model.constructor as Model.Type;
+  let T = model.constructor as Model.Type;
 
-  if(type === Model)
+  if(T === Model)
     throw new Error("Cannot create base Model.");
 
   const chain = [] as Model.Type[];
   let keys = new Set<string>();
 
-  ID.set(model, `${type}-${uid()}`);
+  ID.set(model, `${T}-${uid()}`);
 
-  while(type.name){
-    chain.unshift(type);
-    type = Object.getPrototypeOf(type)
+  while(T.name){
+    for(const cb of NOTIFY.get(T) || [])
+      addListener(model, cb);
+
+    if(T === Model) break;
+    else chain.unshift(T);
+
+    T = Object.getPrototypeOf(T)
   }
 
   for(const type of chain){
-    for(const cb of NOTIFY.get(type) || [])
-      addListener(model, cb);
-
-    if(type == Model)
-      continue;
-
     if(METHODS.has(type)){
       keys = METHODS.get(type)!;
       continue;
@@ -440,8 +394,8 @@ function prepare(model: Model){
     )){
       if(!value || key == "constructor")
         continue;
-
-      function set(this: Model, method: Function){
+      
+      function bind(this: Model, method = value){
         const value = method.bind(this.is);
         
         METHOD.set(value, method);
@@ -451,13 +405,7 @@ function prepare(model: Model){
       }
 
       keys.add(key);
-      define(type.prototype, key, {
-        set,
-        get(){
-          return this.hasOwnProperty(key)
-            ? value : set.call(this, value)
-        }
-      });
+      define(type.prototype, key, { get: bind, set: bind });
     }
   }
 }
@@ -467,8 +415,8 @@ function prepare(model: Model){
  * Accumulate and handle cleanup events.
  **/
 function init(model: Model, args: Model.Args){
+  const methods = METHODS.get(model.constructor as Model.Type)!;
   const state = {} as Record<string | number | symbol, unknown>;
-  const clean = new Set<() => void>();
 
   STATE.set(model, state);
 
@@ -493,10 +441,12 @@ function init(model: Model, args: Model.Args){
           console.error(`Async error in constructor for ${model}:`);
           console.error(err);
         });
-      else if(typeof use == "object")
-        assign(model, use);
       else if(typeof use == "function")
-        clean.add(use);
+        addListener(model, use, null)
+      else if(typeof use == "object")
+        for(const key in use)
+          if(key in model || methods.has(key))
+            model[key as keyof Model] = use[key] as any;
     });
 
     for(const key in model){
@@ -506,26 +456,34 @@ function init(model: Model, args: Model.Args){
         update(model, key, desc.value, true);
         define(model, key, {
           configurable: false,
-          set: (x) => update(model, key, x),
           get(){
             return watch(this, key, state[key]);
+          },
+          set(value){
+            update(model, key, value);
+            mayAdopt(model, value);
           }
         });
       }
     }
+
+    addListener(model, () => {
+      for(const [_, value] of model)
+        if(value instanceof Model && PARENT.get(value) === model)
+          value.set(null);
+  
+      Object.freeze(state);
+    }, null);
   
     return null;
   });
+}
 
-  addListener(model, () => {
-    clean.forEach(x => x());
-
-    for(const [_, value] of model)
-      if(value instanceof Model && PARENT.get(value) === model)
-        value.set(null);
-
-    Object.freeze(state);
-  }, null);
+function mayAdopt(parent: Model, child: unknown){
+  if(child instanceof Model && !PARENT.has(child)){
+    PARENT.set(child, parent);
+    event(child);
+  }
 }
 
 function fetch(subject: Model, property: string, required?: boolean){
@@ -559,22 +517,28 @@ function fetch(subject: Model, property: string, required?: boolean){
   });
 }
 
-function values<T extends Model>(model: T): Model.State<T> {
+/** Currently accumulating export. Stores real values of placeholder properties such as ref() or child models. */
+let EXPORT: Map<any, any> | undefined;
+
+function snapshot<T extends Model>(model: T): Model.State<T> {
   const values = {} as any;
-  const current = !EXPORT && (EXPORT = new Map([[model, values]]));
+  let isNotRecursive;
 
-  type Exportable = Iterable<[string, { get?: () => any }]>;
+  if(!EXPORT){
+    isNotRecursive = true;
+    EXPORT = new Map([[model, values]]);
+  }
 
-  for(let [key, value] of model as Exportable){
+  for(let [key, value] of model){
     if(EXPORT.has(value))
       value = EXPORT.get(value);
-    else if(value && typeof value.get === "function")
+    else if(value && typeof value == "object" && "get" in value && typeof value.get === "function")
       EXPORT.set(value, value = value.get());
 
     values[key] = value;
   }
 
-  if(current)
+  if(isNotRecursive)
     EXPORT = undefined;
 
   return Object.freeze(values);
@@ -604,62 +568,28 @@ function update<T>(
   }
 
   if(value === previous)
-    return true;
-
-  if(value instanceof Model && !PARENT.has(value)){
-    PARENT.set(value, subject);
-    emit(value, true);
-  }
+    return;
 
   state[key] = value;
 
   if(arg !== true)
     event(subject, key);
-}
 
-function event(
-  subject: Model,
-  key: string | number | symbol,
-  silent?: boolean){
-
-  let pending = PENDING.get(subject);
-
-  if(!pending){
-    PENDING.set(subject, pending = new Set());
-
-    // TODO: if non-silent event follows a silent one, it would not emit.
-    if(!silent)
-      queue(() => {
-        emit(subject, false);
-        PENDING.delete(subject)
-      })
-  }
-
-  pending.add(key);
-
-  if(!silent)
-    emit(subject, key);
-}
-
-function assign<T extends Model>(to: T, values: Model.Assign<T>){
-  const methods = METHODS.get(to.constructor as Model.Type)!;
-
-  for(const key in values)
-    if(key in to || methods.has(key))
-      to[key as keyof T] = values[key as Model.Field<T>] as any;
+  return true;
 }
 
 /** Random alphanumberic of length 6; always starts with a letter. */
 function uid(){
-  return (Math.random() * 0.722 + 0.278).toString(36).substring(2, 8).toUpperCase();
+  return (0.278 + Math.random() * 0.722).toString(36).substring(2, 8).toUpperCase();
 }
 
 export {
+  event,
   fetch,
+  mayAdopt,
   METHOD,
   Model,
   PARENT,
-  event,
   STATE,
   uid,
   update,

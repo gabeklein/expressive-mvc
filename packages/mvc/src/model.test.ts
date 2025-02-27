@@ -187,6 +187,19 @@ it("will allow method to be overwritten", () => {
   expect(test.method()).toBe("baz");
 })
 
+it("will properly bind methods", async () => {
+  class FooBar extends Model {
+    method(){
+      return String(this);
+    }
+  }
+
+  const foo1 = String(FooBar.new().method());
+  const foo2 = String(FooBar.new().method());
+  
+  expect(foo1).not.toBe(foo2);
+})
+
 describe("subscriber", () => {
   class Subject extends Model {
     value = 1;
@@ -491,27 +504,25 @@ describe("get method", () => {
 
     it("will call callback on update", async () => {
       const test = Test.new();
-      const mock = jest.fn();
+      const done = jest.fn();
+      const mock = jest.fn(() => done);
 
       test.get("foo", mock);
+
+      expect(mock).toBeCalledTimes(0);
 
       test.foo = "bar";
       test.foo = "baz";
 
-      expect(mock).toBeCalledWith("bar", "foo", test);
-      expect(mock).toBeCalledWith("baz", "foo", test);
+      expect(mock).toBeCalledTimes(2);
+      expect(mock).toBeCalledWith("foo", test);
+
+      await expect(test).toHaveUpdated("foo");
+
+      expect(done).toBeCalledTimes(1);
     })
 
-    it("will call immediately if defined", () => {
-      const test = Test.new();
-      const mock = jest.fn();
-
-      test.get("foo", mock);
-
-      expect(mock).toBeCalledWith("foo", "foo", test);
-    })
-
-    it("will call on event if not defined", async () => {
+    it("will call on event", async () => {
       const test = Test.new();
       const mock = jest.fn();
 
@@ -522,7 +533,7 @@ describe("get method", () => {
       // dispatch explicit event
       test.set("baz");
 
-      expect(mock).toBeCalledWith("baz", "baz", test);
+      expect(mock).toBeCalledWith("baz", test);
     })
   })
 
@@ -575,7 +586,7 @@ describe("get method", () => {
       test.value1 = 2;
 
       // wait for update event, thus queue flushed
-      await expect(test).toHaveUpdated();
+      await expect(test).toHaveUpdated("value1");
 
       expect(effect).toBeCalledWith(test, new Set(["value1"]));
 
@@ -583,7 +594,7 @@ describe("get method", () => {
       test.value3 = 4;
 
       // wait for update event to flush queue
-      await expect(test).toHaveUpdated();
+      await expect(test).toHaveUpdated("value2", "value3", "value4");
 
       expect(effect).toBeCalledWith(test, new Set(["value2", "value3", "value4"]));
 
@@ -1161,30 +1172,6 @@ describe("set method", () => {
       foo = "foo";
     }
 
-    it("will update value", async () => {
-      const test = Test.new();
-
-      expect(test.foo).toBe("foo");
-
-      test.set("foo", "bar");
-
-      await expect(test).toHaveUpdated("foo");
-
-      expect(test.foo).toBe("bar");
-    })
-
-    it("will ignore update with same value", async () => {
-      const test = Test.new();
-
-      expect(test.foo).toBe("foo");
-
-      test.set("foo", "foo");
-
-      await expect(test).not.toHaveUpdated();
-      
-      expect(test.foo).toBe("foo");
-    })
-
     it("will force update", async () => {
       const test = Test.new();
 
@@ -1293,7 +1280,24 @@ describe("set method", () => {
       test.foo = "baz";
 
       expect(mock).toBeCalledWith("foo", test);
-      expect(mock).toBeCalledWith("foo", test);
+      expect(mock).toBeCalledTimes(2);
+    })
+
+    it("will not self-update", () => {
+      class Test extends Model {
+        foo = "foo";
+      }
+
+      const test = Test.new();
+      const mock = jest.fn(() => {
+        test.foo = "baz";
+      });
+
+      test.set(mock);
+      test.foo = "bar";
+
+      expect(mock).toBeCalledTimes(1);
+      expect(test.foo).toBe("baz");
     })
   })
 
@@ -1415,6 +1419,22 @@ describe("set method", () => {
       test.set({ foo: "bar" });
 
       await expect(test).toHaveUpdated("foo");
+
+      expect(test.foo).toBe("bar");
+      expect(test.bar).toBe("bar");
+    })
+
+    it("will merge object silently", async () => {
+      class Test extends Model {
+        foo = "foo";
+        bar = "bar";
+      }
+
+      const test = Test.new();
+
+      test.set({ foo: "bar" }, true);
+
+      await expect(test).not.toHaveUpdated("foo");
 
       expect(test.foo).toBe("bar");
       expect(test.bar).toBe("bar");
