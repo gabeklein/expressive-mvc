@@ -39,7 +39,7 @@ importers:
   examples/async:
     dependencies:
       '@expressive/react':
-        specifier: ^0.54.2
+        specifier: ^0.54.3
         version: link:../../packages/react
       react:
         specifier: ^18.2.0
@@ -51,7 +51,7 @@ importers:
   examples/context:
     dependencies:
       '@expressive/react':
-        specifier: ^0.54.2
+        specifier: ^0.54.3
         version: link:../../packages/react
       react:
         specifier: ^18.2.0
@@ -63,7 +63,7 @@ importers:
   examples/counter:
     dependencies:
       '@expressive/react':
-        specifier: ^0.54.2
+        specifier: ^0.54.3
         version: link:../../packages/react
       react:
         specifier: ^18.2.0
@@ -75,7 +75,7 @@ importers:
   examples/fetch:
     dependencies:
       '@expressive/react':
-        specifier: ^0.54.2
+        specifier: ^0.54.3
         version: link:../../packages/react
       react:
         specifier: ^18.2.0
@@ -87,7 +87,7 @@ importers:
   examples/forms:
     dependencies:
       '@expressive/react':
-        specifier: ^0.54.2
+        specifier: ^0.54.3
         version: link:../../packages/react
       react:
         specifier: ^18.2.0
@@ -114,7 +114,7 @@ importers:
         specifier: ^0.54.1
         version: link:../mvc
       '@expressive/react':
-        specifier: ^0.54.2
+        specifier: ^0.54.3
         version: link:../react
     devDependencies:
       preact:
@@ -3976,7 +3976,7 @@ packages:
     hasBin: true
     dependencies:
       async: 3.2.6
-      chalk: 4.1.0
+      chalk: 4.1.2
       filelist: 1.0.4
       minimatch: 3.1.2
     dev: true
