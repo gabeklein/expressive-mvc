@@ -1,7 +1,8 @@
+import { Model } from '@expressive/mvc';
 import * as React from 'react';
-import { jsx as reactJsx, jsxs as reactJsxs } from 'react/jsx-runtime';
+import * as Runtime from 'react/jsx-runtime';
 
-import { Model, Provider } from '.';
+import { Provider } from './context';
 
 export declare namespace JSX {
   type ElementType = React.JSX.ElementType | Model.Type;
@@ -25,12 +26,8 @@ export function jsx(
   key?: React.Key,
 ): React.ReactElement {
   return Model.is(type)
-    ? reactJsx(Provider, { 
-      for: type,
-      set: props,
-      children: props.children 
-    }, key)
-    : reactJsx(type, props, key);
+    ? Runtime.jsx(Provider, { for: type, set: props, children: props.children }, key)
+    : Runtime.jsx(type, props, key);
 }
 
 /**
@@ -43,12 +40,8 @@ export function jsxs(
     key?: React.Key,
 ): React.ReactElement {
   return Model.is(type)
-    ? reactJsxs(Provider, { 
-      for: type,
-      set: props,
-      children: props.children 
-    }, key)
-    : reactJsxs(type, props, key);
+    ? Runtime.jsxs(Provider, { for: type, set: props, children: props.children }, key)
+    : Runtime.jsxs(type, props, key);
 }
 
 export { Fragment } from "react";

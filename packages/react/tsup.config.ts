@@ -22,7 +22,8 @@ export default defineConfig([
     entry: {
       "index": 'src/index.ts',
       "adapter": 'src/adapter.ts',
-      "context": 'src/context.ts'
+      "context": 'src/context.ts',
+      "jsx-runtime": 'src/jsx-runtime.ts'
     },
     format: ['esm'],
   }

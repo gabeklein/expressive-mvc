@@ -31,7 +31,8 @@
     },
     "./jsx-runtime": {
       "types": "./dist/jsx-runtime.d.ts",
-      "require": "./dist/jsx-runtime.js"
+      "require": "./dist/jsx-runtime.js",
+      "import": "./dist/esm/jsx-runtime.js"
     }
   },
   "files": [
