@@ -3,6 +3,7 @@
     "target": "es2020",
     "esModuleInterop": true,
     "jsx": "react-jsx",
+    "jsxImportSource": ".",
     "lib": ["ES2020", "DOM"],
     "moduleResolution": "node",
     "skipLibCheck": true,

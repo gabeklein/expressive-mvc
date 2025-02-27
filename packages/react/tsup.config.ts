@@ -9,7 +9,8 @@ export default defineConfig([
     external: ["./adapter"],
     entry: {
       "index": 'src/index.ts',
-      "adapter": 'src/adapter.ts'
+      "adapter": 'src/adapter.ts',
+      "jsx-runtime": 'src/jsx-runtime.ts',
     },
     format: ['cjs'],
   },

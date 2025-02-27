@@ -1,4 +1,4 @@
-import React, { Suspense } from 'react';
+import { Suspense } from 'react';
 import { act, create } from 'react-test-renderer';
 
 import { Model, Provider } from '.';

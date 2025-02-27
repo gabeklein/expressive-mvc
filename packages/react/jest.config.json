@@ -2,14 +2,14 @@
   "testTimeout": 1000,
   "transform": {
     "^.+\\.[tj]sx?$": ["@swc/jest", {
-      "transform": {
-        "react": {
-          "runtime": "automatic",
-          "pragma": "React.createElement",
-          "pragmaFrag": "React.Fragment",
-          "throwIfNamespace": true,
-          "development": false,
-          "useBuiltins": false
+      "jsc": {
+        "transform": {
+          "react": {
+            "runtime": "automatic",
+            "importSource": ".",
+            "development": false,
+            "useBuiltins": false
+          }
         }
       }
     }]

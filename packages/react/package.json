@@ -30,12 +30,8 @@
       "import": "./dist/esm/adapter.js"
     },
     "./jsx-runtime": {
-      "types": "./jsx/jsx-runtime.d.ts",
-      "require": "./jsx/jsx-runtime.js"
-    },
-    "./jsx-dev-runtime": {
-      "types": "./jsx/jsx-dev-runtime.d.ts",
-      "require": "./jsx/jsx-dev-runtime.js"
+      "types": "./dist/jsx-runtime.d.ts",
+      "require": "./dist/jsx-runtime.js"
     }
   },
   "files": [

@@ -1,16 +1,9 @@
-/** @jsxImportSource ../jsx */
+import { create } from 'react-test-renderer';
 
-import Model from ".";
-import { create } from "react-test-renderer";
-import { Consumer } from "./context";
+import Model from '.';
+import { Consumer } from './context';
 
 describe("built-in", () => {
-  // class Whatever extends Component<{ foo: string }> {
-  //   static propTypes?: {
-  //     foo: string;
-  //   }
-  // }
-
   it("will create new instance", () => {
     class Control extends Model {
       foo = "bar";
@@ -25,7 +18,18 @@ describe("built-in", () => {
     );
   })
 
-  it.only("will render multiple times", () => {
+  it("will handle jsxs for coverage", () => {
+    class Control extends Model {}
+
+    create(
+      <Control>
+        <div />
+        <div />
+      </Control>
+    );
+  })
+
+  it.skip("will render multiple times", () => {
     class Control extends Model {
       foo = "bar";
     }
