@@ -135,10 +135,10 @@ class Context {
         return;
       }
 
-      const blame = K && K != String(V) ? `${V} (as '${K}')` : V;
-
       throw new Error(
-        `Context may only include instance or class \`extends Model\` but got ${blame}.`
+        `Context may only include instance or class \`extends Model\` but got ${
+          K && K != V ? `${V} (as '${K}')` : V
+        }.`
       );
     })
 

@@ -263,3 +263,12 @@ it("will throw on bad include property", () => {
     "Context may only include instance or class `extends Model` but got undefined (as 'Thing')."
   );
 })
+
+it("will throw on bad include property (no alias)", () => {
+  const context = new Context();
+
+  // @ts-ignore
+  expect(() => context.include({ [0]: undefined })).toThrowError(
+    "Context may only include instance or class `extends Model` but got undefined."
+  );
+})
