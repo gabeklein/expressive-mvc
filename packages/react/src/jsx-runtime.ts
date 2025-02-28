@@ -1,16 +1,25 @@
-import { Model } from '@expressive/mvc';
 import * as React from 'react';
 import * as Runtime from 'react/jsx-runtime';
 
+import { Model } from '.';
 import { Provider } from './context';
 
 export declare namespace JSX {
-  type ElementType = React.JSX.ElementType | Model.Type;
+  type ElementType = Model.Type | React.JSX.ElementType;
+
+  type LibraryManagedAttributes<C, P> =
+    // For React Components, pull from props property explicitly because we dorked up ElementAttributesProperty.
+    C extends new (...args: any[]) => { props: infer U } ? U :
+    C extends Model.Type<infer U> ?
+      Partial<Pick<U, Exclude<keyof U, keyof Model>>> & { children?: React.ReactNode } :
+      React.JSX.LibraryManagedAttributes<C, P>;
+
   interface Element extends React.JSX.Element {}
   interface ElementClass extends React.JSX.ElementClass {}
-  interface ElementAttributesProperty extends React.JSX.ElementAttributesProperty {}
+  // This is a hack to make TypeScript happy - React insists on `props` property existing.
+  interface ElementAttributesProperty {}
   interface ElementChildrenAttribute extends React.JSX.ElementChildrenAttribute {}
-  type LibraryManagedAttributes<C, P> = React.JSX.LibraryManagedAttributes<C, P>;
+
   interface IntrinsicAttributes extends React.JSX.IntrinsicAttributes {}
   interface IntrinsicClassAttributes<T> extends React.JSX.IntrinsicClassAttributes<T> {}
   interface IntrinsicElements extends React.JSX.IntrinsicElements {}
