@@ -1,7 +1,7 @@
+import { Model } from '@expressive/mvc';
 import * as React from 'react';
 import * as Runtime from 'react/jsx-runtime';
 
-import { Model } from '.';
 import { Provider } from './context';
 
 type MaybeArray<T> = T | T[];
@@ -20,14 +20,15 @@ export declare namespace JSX {
   type ElementType = Model.Type | React.JSX.ElementType;
 
   type LibraryManagedAttributes<C, P> =
-    // For React Components, pull from props property explicitly because we dorked up ElementAttributesProperty.
+    // For normal class components, pull from props property explicitly because we dorked up ElementAttributesProperty.
     C extends new (...args: any[]) => { props: infer U } ? U :
     C extends Model.Type<infer U> ? Model.Props<U> :
     React.JSX.LibraryManagedAttributes<C, P>;
 
   interface Element extends React.JSX.Element {}
   interface ElementClass extends React.JSX.ElementClass {}
-  // This is a hack to make TypeScript happy - React insists on `props` property existing.
+  // This is a hack to make TypeScript happy - React one insists on `props` property existing.
+  // I await the "Find Out" phase in git issues.
   interface ElementAttributesProperty {}
   interface ElementChildrenAttribute extends React.JSX.ElementChildrenAttribute {}
 
@@ -36,11 +37,31 @@ export declare namespace JSX {
   interface IntrinsicElements extends React.JSX.IntrinsicElements {}
 }
 
+function component<T extends Model>(
+  this: Model.Type<T>,
+  child: React.ReactNode | Model.Render<T>,
+  key: number){
+
+  if(typeof child == 'function')
+    return React.createElement(() => {
+      const self = this.get();
+      return child.call(self, self);
+    }, { key });
+
+  return child;
+}
+
 export function createElement(
-  this: (type: React.ElementType, props: Record<string, any>, key?: React.Key) => React.ReactElement,
+  this: (
+    type: React.ElementType,
+    props: Record<string, any>,
+    key?: React.Key,
+    ...rest: any[]
+  ) => React.ReactElement,
   type: React.ElementType,
   props: Record<string, any>,
-  key?: React.Key){
+  key?: React.Key,
+  ...args: any[]){
 
   if(Model.is(type)){
     const { children, ...rest } = props;
@@ -51,30 +72,12 @@ export function createElement(
       children: Array.isArray(children) ?
         children.map(component, type) :
         component.call(type, children, 0)
-    }, key);
+    }, key, ...args);
   }
 
-  return this(type, props, key);
+  return this(type, props, key, ...args);
 }
 
-function component<T extends Model>(
-  this: Model.Type<T>,
-  child: React.ReactNode | Model.Render<T>,
-  key: number){
-
-  if(typeof child != 'function')
-    return child;
-
-  return React.createElement(() => {
-    const self = this.get();
-    return child.call(self, self);
-  }, { key });
-}
-
-/**
- * Create a React element.
- * You should not use this function directly. Use JSX and a transpiler instead.
- */
 export const jsx = createElement.bind(Runtime.jsx);
 export const jsxs = createElement.bind(Runtime.jsxs);
 

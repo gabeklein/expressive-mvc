@@ -6,24 +6,26 @@ export default defineConfig([
     sourcemap: true,
     clean: true,
     outDir: "dist",
-    external: ["./adapter"],
+    external: ["./adapter", "./jsx-runtime"],
     entry: {
       "index": 'src/index.ts',
       "adapter": 'src/adapter.ts',
       "jsx-runtime": 'src/jsx-runtime.ts',
+      "jsx-dev-runtime": 'src/jsx-dev-runtime.ts',
     },
     format: ['cjs'],
   },
   {
     sourcemap: true,
     outDir: "dist/esm",
-    external: ["./adapter", "./context"],
+    external: ["./adapter", "./context", "./jsx-runtime"],
     outExtension: () => ({ js: '.js' }),
     entry: {
       "index": 'src/index.ts',
       "adapter": 'src/adapter.ts',
       "context": 'src/context.ts',
-      "jsx-runtime": 'src/jsx-runtime.ts'
+      "jsx-runtime": 'src/jsx-runtime.ts',
+      "jsx-dev-runtime": 'src/jsx-dev-runtime.ts',
     },
     format: ['esm'],
   }
