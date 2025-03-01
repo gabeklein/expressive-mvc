@@ -20,6 +20,5 @@ export {
   get, use, ref, set, has
 } from '@expressive/mvc';
 
-export { createElement, JSX } from "react";
 export { Consumer, Provider } from './context';
 export { type Pragma };
