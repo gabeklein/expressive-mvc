@@ -4,12 +4,14 @@ import * as Runtime from 'react/jsx-runtime';
 import { Model } from '.';
 import { Provider } from './context';
 
+type MaybeArray<T> = T | T[];
+
 declare module '@expressive/mvc' {
   namespace Model {
     type Render<T extends Model> = (this: T, self: T) => React.ReactNode | null;
 
     type Props<T extends Model> = Partial<Pick<T, Exclude<keyof T, keyof Model>>> & {
-      children?: React.ReactNode | Render<T>;
+      children?: MaybeArray<React.ReactNode | Render<T>>;
     }
   }
 }
