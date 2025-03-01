@@ -1,5 +1,5 @@
 import Model, { Context } from '@expressive/mvc';
-import { ReactNode, createContext, createElement, useContext, useEffect, useMemo } from 'react';
+import React, { ReactNode, createContext, createElement, useContext, useEffect, useMemo, Children } from 'react';
 
 const Lookup = createContext(new Context());
 
@@ -33,16 +33,22 @@ declare namespace Provider {
 
 function Provider<T extends Model>(props: Provider.Props<T>){
   const ambient = useContext(Lookup);
-  const context = useMemo(() => ambient.push(), [ambient]);
+  const value = useMemo(() => ambient.push(), [ambient]);
+  const inner = Children.map(props.children, (child: ReactNode | ((model: T) => ReactNode)) => {
+    if(typeof child === 'function'){
+      return child(value) || null;
+    }
+    return child;
+  });
 
-  useEffect(() => () => context.pop(), [ambient]);
+  useEffect(() => () => value.pop(), [ambient]);
   
-  context.include(props.for, props.set);
+  value.include(props.for, props.set);
 
-  return createElement(Lookup.Provider, {
-    key: context.id,
-    value: context
-  }, props.children);
+  return createElement(Lookup.Provider, { key: value.id, value }, inner);
+}
+
+function functionToComponent<T extends Model>(fn: Consumer.Props<T>['children']){
 }
 
 export { Consumer, Provider, Lookup as Context }
