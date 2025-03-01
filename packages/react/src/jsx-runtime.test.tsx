@@ -33,6 +33,21 @@ it("will accept props", () => {
   );
 });
 
+it("will accept render function as child", () => {
+  class Control extends Model {
+    /** Hover over this prop to see description. */
+    foo = "bar";
+  }
+
+  const rendered = create(
+    <Control foo="baz">
+      {c => c.foo}
+    </Control>
+  );
+
+  expect(rendered.toJSON()).toBe("baz");
+});
+
 it("will handle jsxs for coverage", () => {
   class Control extends Model {
     foo = "bar"
@@ -52,11 +67,8 @@ it.skip("will render multiple times", () => {
     foo = "bar";
   }
 
-  const Something = (props: { foo: "bar" }) => null;
-
   const render = create(
     <Control >
-      <Something foo='bar' />
       <Consumer for={Control}>
         {c => expect(c).toBeInstanceOf(Control)}
       </Consumer>
