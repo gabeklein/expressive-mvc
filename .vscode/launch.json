@@ -25,7 +25,24 @@
       "console": "integratedTerminal",
       "internalConsoleOptions": "neverOpen",
       "runtimeExecutable": "/usr/local/bin/node"
-    }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "React Tests",
+      "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
+      "cwd": "${workspaceFolder}/packages/react",
+      "args": [
+        "--watchAll",
+        "--runInBand",
+        "--config",
+        "./jest.config.json",
+        "${input:pattern}"
+      ],
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "runtimeExecutable": "/usr/local/bin/node"
+    },
   ],
   "inputs": [
     {
