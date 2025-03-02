@@ -7,7 +7,7 @@ declare module '@expressive/mvc' {
   namespace Model {
     type Render<T extends Model> = (this: T, self: T) => React.ReactNode | void;
 
-    /** Model which can be used directly as Component in React. */
+    /** Model which is not incompatable as Component in React. */
     interface Compat extends Model {
       render?(props: Model.Assign<this>, self: this): React.ReactNode | void;
       children?: React.ReactNode;
