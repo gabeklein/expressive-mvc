@@ -157,8 +157,8 @@ describe("include", () => {
     
     context.include({ foo, bar }, cb);
   
-    expect(cb).toBeCalledWith(foo, true);
-    expect(cb).toBeCalledWith(bar, true);
+    expect(cb).toBeCalledWith(foo);
+    expect(cb).toBeCalledWith(bar);
     expect(cb).toBeCalledTimes(2);
 
     context.include({ foo, bar }, cb);
@@ -169,7 +169,7 @@ describe("include", () => {
 
     context.include({ foo, bar, foo2 }, cb);
 
-    expect(cb).toBeCalledWith(foo2, true);
+    expect(cb).toBeCalledWith(foo2);
     expect(cb).toBeCalledTimes(3);
   })
 

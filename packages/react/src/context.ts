@@ -33,7 +33,7 @@ declare namespace Provider {
 
   interface NewProps<T extends Model> {
     for: Context.Accept<T>;
-    forEach?: Context.ForEach;
+    forEach?: Context.Expect;
     children?: ReactNode;
   }
 
@@ -47,13 +47,17 @@ function Provider<T extends Model>(props: Provider.Props<T>){
   useEffect(() => () => context.pop(), [ambient]);
   
   // TODO: Replace with Context.ForEach instead.
-  context.include(props.for, (model, explicit) => {
-    if("forEach" in props)
-      props.forEach!(model, explicit);
-    else if("set" in props)
-      for(const key in props.set!)
+  context.include(props.for, (model) => {
+    if("forEach" in props && props.forEach){
+      const cleanup = props.forEach(model);
+
+      if(cleanup)
+        model.get(null, cleanup);
+    }
+    else if("set" in props && props.set)
+      for(const key in props.set)
         if(key in model)
-          (model as any)[key] = props.set![key];
+          (model as any)[key] = props.set[key];
   });
 
   return createElement(Lookup.Provider, {

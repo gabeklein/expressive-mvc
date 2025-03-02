@@ -163,8 +163,26 @@ describe("Provider", () => {
       );
   
       expect(forEach).toBeCalledTimes(2);
-      expect(forEach).toBeCalledWith(expect.any(Foo), true);
-      expect(forEach).toBeCalledWith(expect.any(Bar), true);
+      expect(forEach).toBeCalledWith(expect.any(Foo));
+      expect(forEach).toBeCalledWith(expect.any(Bar));
+    });
+
+    it("will cleanup on unmount", async () => {
+      const forEach = jest.fn(() => cleanup);
+  
+      const cleanup = jest.fn();
+      const rendered = create(
+        <Provider for={{ Foo, Bar }} forEach={forEach} />
+      );
+  
+      expect(forEach).toBeCalledTimes(2);
+      expect(forEach).toBeCalledWith(expect.any(Foo));
+      expect(forEach).toBeCalledWith(expect.any(Bar));
+      expect(cleanup).not.toBeCalled();
+
+      rendered.unmount();
+      await new Promise(res => setTimeout(res, 10));
+      expect(cleanup).toBeCalledTimes(2);
     });
   })
 
