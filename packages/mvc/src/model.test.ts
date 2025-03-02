@@ -1301,6 +1301,58 @@ describe("set method", () => {
     })
   })
 
+  describe("listener", () => {
+    it("will call listener on update", async () => {
+      class Test extends Model {
+        foo = "foo";
+        bar = "bar";
+      }
+
+      const test = Test.new();
+      const didUpdateFoo = jest.fn();
+      
+      test.set("foo", didUpdateFoo);
+
+      test.foo = "bar";
+      test.foo = "baz";
+      expect(didUpdateFoo).toBeCalledWith("foo", test);
+      expect(didUpdateFoo).toBeCalledTimes(2);
+
+      test.bar = "baz";
+      expect(didUpdateFoo).toBeCalledTimes(2);
+    })
+
+    it("will self-unsubscribe", async () => {
+      class Test extends Model {
+        foo = "foo";
+      }
+
+      const test = Test.new();
+      const didUpdateFoo = jest.fn(() => null);
+
+      test.set("foo", didUpdateFoo);
+
+      test.foo = "bar";
+      test.foo = "baz";
+
+      expect(didUpdateFoo).toBeCalledTimes(1);
+    });
+
+    it("will call synconously on destroy", async () => {
+      class Test extends Model {
+        foo = "foo";
+      }
+
+      const test = Test.new();
+      const didDestroy = jest.fn();
+
+      test.set(null, didDestroy);
+      test.set(null);
+
+      expect(didDestroy).toBeCalledWith(null, test);
+    });
+  });
+
   describe("effect", () => {
     const error = mockError();
 

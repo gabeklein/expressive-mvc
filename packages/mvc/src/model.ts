@@ -267,6 +267,15 @@ abstract class Model {
   set(callback: Model.OnEvent<this>): () => boolean;
 
   /**
+   * Call a function when a property is updated.
+   * Unlike `get`, this calsl synchronously and will fire as many times as the property is updated.
+   * 
+   * @param key - Property to watch for updates.
+   * @param callback - Function to call when property is updated.
+   */
+  set(key: Model.Event<this> | null, callback: Model.OnEvent<this>): () => boolean;
+
+  /**
    * Declare an end to updates. This event is final and will freeze state.
    * This event can be watched for as well, to run cleanup logic and internally will remove all listeners.
    * 
@@ -276,7 +285,7 @@ abstract class Model {
 
   set(
     arg1?: Model.OnEvent<this> | Model.Assign<this> | Model.Event<this> | null,
-    arg2?: unknown){
+    arg2?: boolean | Model.OnEvent<this>){
 
     const self = this.is;
 
@@ -285,6 +294,12 @@ abstract class Model {
         if(typeof key == "string")
           return arg1.call(self, key, self);
       })
+      
+    if(typeof arg2 == "function")
+      return addListener(self, key => {
+        if(key === arg1)
+          return arg2.call(self, key, self);
+      });
 
     if(arg1 && typeof arg1 == "object"){
       const methods = METHODS.get(self.constructor as Model.Type)!;
