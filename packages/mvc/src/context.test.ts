@@ -19,6 +19,14 @@ it("will create instance in context", () => {
   expect(context.get(Example)).toBeInstanceOf(Example);
 })
 
+it("will throw if context doesn't exist if required", () => {
+  const context = new Context();
+
+  const attempt = () => context.get(Example, true);
+
+  expect(attempt).toThrowError("Could not find Example in context.");
+})
+
 it("will not create base Model", () => {
   // @ts-expect-error
   const attempt = () => new Context({ Model });

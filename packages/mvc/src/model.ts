@@ -50,7 +50,7 @@ declare namespace Model {
 
   /** Object overlay to override values and methods on a model. */
   type Assign<T> = {
-    [K in Exclude<keyof T, keyof Model>]?:
+    [K in Field<T>]?:
       T[K] extends (...args: infer A) => infer R 
         ? (this: T, ...args: A) => R
         : T[K];

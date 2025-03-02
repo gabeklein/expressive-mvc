@@ -77,13 +77,19 @@ class Context {
   }
 
   /** Find specified type registered to a parent context. Returns undefined if none are found. */
-  public get<T extends Model>(Type: Model.Type<T>){
+  public get<T extends Model>(Type: Model.Type<T>, require: true): T;
+  public get<T extends Model>(Type: Model.Type<T>, require?: boolean): T | undefined;
+  public get<T extends Model>(Type: Model.Type<T>, require?: boolean){
     const result = this[key(Type)];
 
     if(result === null)
       throw new Error(`Did find ${Type} in context, but multiple were defined.`);
 
-    return result as T | undefined;
+    if(result)
+      return result as T;
+
+    if(require)
+      throw new Error(`Could not find ${Type} in context.`);
   }
 
   public push(inputs?: Context.Accept){
