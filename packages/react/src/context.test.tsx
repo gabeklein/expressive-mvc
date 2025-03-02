@@ -184,67 +184,6 @@ describe("Provider", () => {
       expect(cleanup).toBeCalledTimes(2);
     });
   })
-
-  describe("set prop", () => {
-    it("will assign values to instance", () => {
-      create(
-        <Provider for={Foo} set={{ value: "foobar" }}>
-          <Consumer for={Foo}>
-            {i => expect(i.value).toBe("foobar")}
-          </Consumer>
-        </Provider>
-      );
-    })
-  
-    it("will trigger set instruction", () => {
-      class Foo extends Model {
-        value = set("foobar", didSet);
-      }
-  
-      const didSet = jest.fn();
-  
-      create(
-        <Provider for={Foo} set={{ value: "barfoo" }}>
-          <Consumer for={Foo}>
-            {i => {
-              expect(didSet).toBeCalled();
-              expect(i.value).toBe("barfoo");
-            }}
-          </Consumer>
-        </Provider>
-      );
-    })
-    
-    it("will assign values to muliple", () => {
-      class Bar extends Model {
-        value = "";
-      }
-    
-      create(
-        <Provider for={{ Foo, Bar }} set={{ value: "foobar" }}>
-          <Consumer for={Foo}>
-            {i => expect(i.value).toBe("foobar")}
-          </Consumer>
-          <Consumer for={Bar}>
-            {i => expect(i.value).toBe("foobar")}
-          </Consumer>
-        </Provider>
-      );
-    });
-    
-    it("will not assign foreign values", () => {
-      create(
-        <Provider for={Foo} set={{ nonValue: "foobar" }}>
-          <Consumer for={Foo}>
-            {i => {
-              // @ts-expect-error
-              expect(i.nonValue).toBeUndefined();
-            }}
-          </Consumer>
-        </Provider>
-      );
-    })
-  });
 });
 
 describe("Consumer", () => {
@@ -310,8 +249,8 @@ describe("Consumer", () => {
 
   it("will select closest instance of same type", () => {
     create(
-      <Provider for={Foo} set={{ value: "outer" }}>
-        <Provider for={Foo} set={{ value: "inner" }}>
+      <Provider for={Foo} forEach={x => { x.value = "outer" }}>
+        <Provider for={Foo} forEach={x => { x.value = "inner" }}>
           <Consumer for={Foo}>
             {i => expect(i.value).toBe("inner")}
           </Consumer>

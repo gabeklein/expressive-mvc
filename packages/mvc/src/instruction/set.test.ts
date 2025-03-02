@@ -65,7 +65,7 @@ describe("placeholder", () => {
 })
 
 describe("callback", () => {
-  it('will invoke callback on property put', async () => {
+  it('will invoke callback on property assign', async () => {
     class Subject extends Model {
       test = set<number>(1, value => {
         didAssign(value + 1);
@@ -78,15 +78,26 @@ describe("callback", () => {
 
     expect(didAssign).not.toBeCalled();
 
-    state.set((key) => {
-      if(key == "test")
-        didUpdate();
-    });
-
+    state.set("test", didUpdate);
     state.test = 2;
 
     expect(didUpdate).toBeCalledTimes(1);
     expect(didAssign).toBeCalledWith(3);
+  })
+
+  // TODO: this is not implemented yet
+  it.skip('will invoke callback on set assignment', async () => {
+    const didAssign = jest.fn();
+  
+    class Subject extends Model {
+      test = set<number>(1, didAssign);
+    }
+
+    const state = Subject.new();
+
+    state.set({ test: 2 });
+
+    expect(didAssign).toBeCalledWith(1);
   })
 
   it('will invoke return-callback on overwrite', async () => {

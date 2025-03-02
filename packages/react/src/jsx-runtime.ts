@@ -41,7 +41,7 @@ export declare namespace JSX {
   interface Element extends React.JSX.Element {}
   interface ElementClass extends React.JSX.ElementClass {}
   // This is a hack to make TypeScript happy - React one insists on `props` property existing.
-  // I await the "Find Out" phase in git issues.
+  // I await the "Find Out" phase of this experiment in git issues.
   interface ElementAttributesProperty {}
   interface ElementChildrenAttribute extends React.JSX.ElementChildrenAttribute {}
 
@@ -54,13 +54,18 @@ function Render<T extends Model.Compat>(
   this: Model.Init<T>,
   props: Model.Assign<T>
 ){
+  const { is, ...rest } = props;
+
   return jsx(Provider, {
     for: this,
-    set: props,
-    forEach: props.is,
+    forEach: is,
     children: jsx(() => {
       const self = this.get();
       const { render } = self;
+  
+      for(const key in rest)
+        if(key in self)
+          (self as any)[key] = rest[key];
 
       if(render)
         return jsx(() => {

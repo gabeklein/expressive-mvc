@@ -32,7 +32,7 @@ declare namespace Context {
 
   type Accept<T extends Model = Model> = T | Model.Init<T> | Multiple<T>;
 
-  type Expect = (model: Model) => (() => void) | void;
+  type Expect<T extends Model = Model> = (model: T) => (() => void) | void;
 }
 
 interface Context {
@@ -112,7 +112,7 @@ class Context {
 
   public include<T extends Model>(
     inputs: Context.Accept<T>,
-    forEach?: Context.Expect | Model.Assign<T>
+    forEach?: Context.Expect<T>
   ){
     const init = new Map<Model, boolean>();
 
@@ -149,11 +149,8 @@ class Context {
     for(const [model, explicit] of init){
       model.set();
 
-      if(explicit)
-        if(typeof forEach == "function")
-          forEach(model);
-        else if(forEach)
-          model.set(forEach);
+      if(explicit && forEach)
+          forEach(model as T);
 
       for(const [_key, value] of model)
         if(PARENT.get(value as Model) === model){

@@ -54,20 +54,66 @@ it("will call is method on creation", () => {
   expect(didDestroy).toHaveBeenCalledTimes(1);
 })
 
-it("will accept managed values as props", () => {
-  class Control extends Model {
+describe("element props", () => {
+  class Foo extends Model {
     /** Hover over this prop to see description. */
-    foo = "bar";
+    value?: string = undefined;
   }
 
-  create(
-    <Control foo="baz">
-      <Consumer for={Control}>
-        {c => expect(c.foo).toBe("baz")}
-      </Consumer>
-    </Control>
-  );
-});
+  it("will accept managed values", () => {
+    create(
+      <Foo value="baz">
+        <Consumer for={Foo}>
+          {c => expect(c.value).toBe("baz")}
+        </Consumer>
+      </Foo>
+    );
+  });
+
+  it("will assign values to instance", () => {
+    create(
+      <Foo value="foobar">
+        <Consumer for={Foo}>
+          {i => expect(i.value).toBe("foobar")}
+        </Consumer>
+      </Foo>
+    );
+  })
+
+  it("will trigger set instruction", () => {
+    class Foo extends Model {
+      value = set("foobar", didSet);
+    }
+
+    const didSet = jest.fn();
+
+    create(
+      <Foo value="barfoo">
+        <Consumer for={Foo}>
+          {i => {
+            expect(i.value).toBe("barfoo");
+          }}
+        </Consumer>
+      </Foo>
+    );
+
+    expect(didSet).toBeCalled();
+  })
+  
+  it("will not assign foreign values", () => {
+    create(
+      // @ts-expect-error
+      <Foo nonValue="foobar">
+        <Consumer for={Foo}>
+          {i => {
+            // @ts-expect-error
+            expect(i.nonValue).toBeUndefined();
+          }}
+        </Consumer>
+      </Foo>
+    );
+  })
+})
 
 describe("element children", () => {
   it("will accept function", () => {

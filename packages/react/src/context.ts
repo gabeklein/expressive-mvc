@@ -24,20 +24,11 @@ function Consumer<T extends Model>(props: Consumer.Props<T>){
 }
 
 declare namespace Provider {
-  interface SetProps<T extends Model> {
+  interface Props<T extends Model> {
     for: Context.Accept<T>;
-    /** @deprecated May be removed in future versions. Use component Models instead. */
-    set?: Model.Assign<T>;
+    forEach?: Context.Expect<T>;
     children?: ReactNode;
   }
-
-  interface NewProps<T extends Model> {
-    for: Context.Accept<T>;
-    forEach?: Context.Expect;
-    children?: ReactNode;
-  }
-
-  type Props<T extends Model> = SetProps<T> | NewProps<T>;
 }
 
 function Provider<T extends Model>(props: Provider.Props<T>){
@@ -46,18 +37,17 @@ function Provider<T extends Model>(props: Provider.Props<T>){
 
   useEffect(() => () => context.pop(), [ambient]);
   
-  // TODO: Replace with Context.ForEach instead.
   context.include(props.for, (model) => {
-    if("forEach" in props && props.forEach){
+    // TODO: remove next minor release
+    if("set" in props)
+      throw new Error("`set` prop is deprecated. Use `forEach` instead.");
+
+    if(props.forEach){
       const cleanup = props.forEach(model);
 
       if(cleanup)
         model.set(null, cleanup);
     }
-    else if("set" in props && props.set)
-      for(const key in props.set)
-        if(key in model)
-          (model as any)[key] = props.set[key];
   });
 
   return createElement(Lookup.Provider, {
