@@ -24,12 +24,20 @@ function Consumer<T extends Model>(props: Consumer.Props<T>){
 }
 
 declare namespace Provider {
-  interface Props<T extends Model> {
+  interface SetProps<T extends Model> {
     for: Context.Accept<T>;
     /** @deprecated May be removed in future versions. Use component Models instead. */
     set?: Model.Assign<T>;
     children?: ReactNode;
   }
+
+  interface NewProps<T extends Model> {
+    for: Context.Accept<T>;
+    forEach?: Context.ForEach;
+    children?: ReactNode;
+  }
+
+  type Props<T extends Model> = SetProps<T> | NewProps<T>;
 }
 
 function Provider<T extends Model>(props: Provider.Props<T>){
@@ -39,7 +47,14 @@ function Provider<T extends Model>(props: Provider.Props<T>){
   useEffect(() => () => context.pop(), [ambient]);
   
   // TODO: Replace with Context.ForEach instead.
-  context.include(props.for, props.set);
+  context.include(props.for, (model, explicit) => {
+    if("forEach" in props)
+      props.forEach!(model, explicit);
+    else if("set" in props)
+      for(const key in props.set!)
+        if(key in model)
+          (model as any)[key] = props.set![key];
+  });
 
   return createElement(Lookup.Provider, {
     key: context.id,

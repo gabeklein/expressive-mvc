@@ -153,47 +153,81 @@ describe("Provider", () => {
   
     expect(Consumer).toHaveBeenCalled();
   })
+
+  describe("forEach prop", () => {
+    it("will call function for each model", () => {
+      const forEach = jest.fn();
   
-  it("will assign values to instance", () => {
-    create(
-      <Provider for={Foo} set={{ value: "foobar" }}>
-        <Consumer for={Foo}>
-          {i => expect(i.value).toBe("foobar")}
-        </Consumer>
-      </Provider>
-    );
-  })
+      create(
+        <Provider for={{ Foo, Bar }} forEach={forEach} />
+      );
   
-  it("will assign values to muliple", () => {
-    class Bar extends Model {
-      value = "";
-    }
-  
-    create(
-      <Provider for={{ Foo, Bar }} set={{ value: "foobar" }}>
-        <Consumer for={Foo}>
-          {i => expect(i.value).toBe("foobar")}
-        </Consumer>
-        <Consumer for={Bar}>
-          {i => expect(i.value).toBe("foobar")}
-        </Consumer>
-      </Provider>
-    );
-  });
-  
-  it("will not assign foreign values", () => {
-    create(
-      <Provider for={Foo} set={{ nonValue: "foobar" }}>
-        <Consumer for={Foo}>
-          {i => {
-            // @ts-expect-error
-            expect(i.nonValue).toBeUndefined();
-          }}
-        </Consumer>
-      </Provider>
-    );
+      expect(forEach).toBeCalledTimes(2);
+      expect(forEach).toBeCalledWith(expect.any(Foo), true);
+      expect(forEach).toBeCalledWith(expect.any(Bar), true);
+    });
   })
 
+  describe("set prop", () => {
+    it("will assign values to instance", () => {
+      create(
+        <Provider for={Foo} set={{ value: "foobar" }}>
+          <Consumer for={Foo}>
+            {i => expect(i.value).toBe("foobar")}
+          </Consumer>
+        </Provider>
+      );
+    })
+  
+    it("will trigger set instruction", () => {
+      class Foo extends Model {
+        value = set("foobar", didSet);
+      }
+  
+      const didSet = jest.fn();
+  
+      create(
+        <Provider for={Foo} set={{ value: "barfoo" }}>
+          <Consumer for={Foo}>
+            {i => {
+              expect(didSet).toBeCalled();
+              expect(i.value).toBe("barfoo");
+            }}
+          </Consumer>
+        </Provider>
+      );
+    })
+    
+    it("will assign values to muliple", () => {
+      class Bar extends Model {
+        value = "";
+      }
+    
+      create(
+        <Provider for={{ Foo, Bar }} set={{ value: "foobar" }}>
+          <Consumer for={Foo}>
+            {i => expect(i.value).toBe("foobar")}
+          </Consumer>
+          <Consumer for={Bar}>
+            {i => expect(i.value).toBe("foobar")}
+          </Consumer>
+        </Provider>
+      );
+    });
+    
+    it("will not assign foreign values", () => {
+      create(
+        <Provider for={Foo} set={{ nonValue: "foobar" }}>
+          <Consumer for={Foo}>
+            {i => {
+              // @ts-expect-error
+              expect(i.nonValue).toBeUndefined();
+            }}
+          </Consumer>
+        </Provider>
+      );
+    })
+  });
 });
 
 describe("Consumer", () => {
