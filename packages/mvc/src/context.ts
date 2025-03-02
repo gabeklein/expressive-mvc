@@ -137,7 +137,7 @@ class Context {
 
       throw new Error(
         `Context may only include instance or class \`extends Model\` but got ${
-          K && K != V ? `${V} (as '${K}')` : V
+          K == '0' || K == V ? V : `${V} (as '${K}')`
         }.`
       );
     })
