@@ -35,7 +35,7 @@ it("will accept managed values as props", () => {
   );
 });
 
-describe("children", () => {
+describe("element children", () => {
   it("will accept function", () => {
     class Control extends Model {
       /** Hover over this prop to see description. */
@@ -77,22 +77,6 @@ describe("children", () => {
     expect(rendered.toJSON()).toBe("qux");
   });
 
-  it("will handle multiple functions", () => {
-    class Control extends Model {
-      foo = "bar";
-      baz = "qux";
-    }
-  
-    const rendered = create(
-      <Control>
-        {c => c.foo}
-        {c => c.baz}
-      </Control>
-    );
-  
-    expect(rendered.toJSON()).toEqual(["bar", "qux"]);
-  });
-  
   it("will handle multiple elements", () => {
     class Control extends Model {
       foo = "bar"
@@ -107,65 +91,34 @@ describe("children", () => {
   
     expect(rendered.toJSON()).toEqual(["Hello", "World"]);
   })
-  
-  it("will mix elements and functions", () => {
+})
+
+describe("children property", () => {
+  it("will pass through without render method", () => {
     class Control extends Model {
-      count = 42;
+      children = <>Hello</>;
     }
   
+    const rendered = create(<Control />);
+  
+    expect(rendered.toJSON()).toBe("Hello");
+  })
+
+  it("will notify parent", async () => {
+    class Control extends Model {
+      children = set<React.ReactNode>(undefined, didUpdate);
+    }
+
+    const didUpdate = jest.fn();
     const rendered = create(
       <Control>
-        <div>Static content</div>
-        {c => `Count: ${c.count}`}
-        <span>More content</span>
+        Hello
       </Control>
     );
   
-    expect(rendered.toJSON()).toMatchInlineSnapshot(`
-      Array [
-        <div>
-          Static content
-        </div>,
-        "Count: 42",
-        <span>
-          More content
-        </span>,
-      ]
-    `);
-  });
-  
-  // TODO: do I need this test?
-  it("will handle functions returning complex elements", () => {
-    class Control extends Model {
-      items = ["apple", "banana", "cherry"];
-    }
-  
-    const rendered = create(
-      <Control>
-        {c => (
-          <ul>
-            {c.items.map((item, i) => (
-              <li key={i}>{item}</li>
-            ))}
-          </ul>
-        )}
-      </Control>
-    );
-  
-    expect(rendered.toJSON()).toMatchInlineSnapshot(`
-      <ul>
-        <li>
-          apple
-        </li>
-        <li>
-          banana
-        </li>
-        <li>
-          cherry
-        </li>
-      </ul>
-    `);
-  });
+    expect(rendered.toJSON()).toBe("Hello");
+    expect(didUpdate).toHaveBeenCalled();
+  })
 })
 
 describe("render method", () => {

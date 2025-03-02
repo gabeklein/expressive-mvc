@@ -1,10 +1,7 @@
 import { Model } from '@expressive/mvc';
-import * as React from 'react';
-import * as Runtime from 'react/jsx-runtime';
+import { jsx, jsxs } from 'react/jsx-runtime';
 
 import { Provider } from './context';
-
-type MaybeArray<T> = T | T[];
 
 declare module '@expressive/mvc' {
   namespace Model {
@@ -20,7 +17,7 @@ declare module '@expressive/mvc' {
       T extends { render(props: infer P): any }
         ? Partial<Pick<T, Exclude<keyof T, keyof Model | "render">>> & P
         : Partial<Pick<T, Exclude<keyof T, keyof Model>>> & {
-          children?: MaybeArray<React.ReactNode | Render<T>>
+          children?: React.ReactNode | Render<T>;
         }
   }
 }
@@ -46,40 +43,42 @@ export declare namespace JSX {
   interface IntrinsicElements extends React.JSX.IntrinsicElements {}
 }
 
-function component<T extends Model>(
-  this: Model.Type<T>,
-  child: React.ReactNode | Model.Render<T>,
-  key: number){
-
-  if(typeof child == 'function')
-    return React.createElement(() => {
-      const self = this.get();
-      return child.call(self, self) || null;
-    }, { key });
-
-  return child;
-}
-
 function Render<T extends Model.Compat>(
   this: Model.Init<T>,
-  set: Model.Assign<T>
+  props: Model.Assign<T>
 ){
-  return React.createElement(Provider, { for: this, set }, 
-    React.createElement(() => {
-      const { render } = this.get();
+  return jsx(Provider, {
+    for: this,
+    set: props,
+    children: jsx(() => {
+      const self = this.get();
+      const { render } = self;
 
       if(render)
-        return React.createElement(() => {
+        return jsx(() => {
           const self = this.get();
-          return render.call(self, set, self) || null;
-        })
+          return render.call(self, props, self) || null;
+        }, {});
 
-      return ([] as any[]).concat(set.children).map(component, this)
-    })
-  );
+      const { children } = self;
+
+      if(children)
+        return children;
+
+      const fn = props.children as React.ReactNode | Model.Render<T>;
+
+      if(typeof fn != "function")
+        return fn;
+
+      return jsx(() => {
+        const self = this.get();
+        return fn.call(self, self) || null;
+      }, {});
+    }, {})
+  });
 }
 
-export function createElement(
+export function create(
   this: (
     type: React.ElementType,
     props: Record<string, any>,
@@ -97,7 +96,11 @@ export function createElement(
   return this(type, props, key, ...args);
 }
 
-export const jsx = createElement.bind(Runtime.jsx);
-export const jsxs = createElement.bind(Runtime.jsxs);
+const jsx2 = create.bind(jsx);
+const jsxs2 = create.bind(jsxs);
 
 export { Fragment } from "react";
+export {
+  jsx2 as jsx,
+  jsxs2 as jsxs
+}
