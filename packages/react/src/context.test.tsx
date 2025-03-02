@@ -1,5 +1,5 @@
-import React, { Fragment, Suspense } from 'react';
-import { act, create } from 'react-test-renderer';
+import React, { act, Fragment, Suspense } from 'react';
+import { create } from 'react-test-renderer';
 
 import Model, { Consumer, get, has, Provider, set, use } from '.';
 import { mockAsync } from './mocks';
@@ -74,7 +74,7 @@ describe("Provider", () => {
     )
   })
   
-  it("will destroy created model on unmount", async () => {
+  it("will destroy created model on unmount", () => {
     const willDestroy = jest.fn();
   
     class Test extends Model {}
@@ -90,7 +90,7 @@ describe("Provider", () => {
       </Provider>
     );
   
-    await act(() => element.unmount());
+    act(() => element.unmount());
     expect(willDestroy).toBeCalled();
   })
   
@@ -112,7 +112,7 @@ describe("Provider", () => {
     );
   
     
-    await act(() => element.unmount());
+    act(() => element.unmount());
     expect(willDestroy).toBeCalledTimes(2);
   })
   
@@ -167,10 +167,10 @@ describe("Provider", () => {
       expect(forEach).toBeCalledWith(expect.any(Bar));
     });
 
-    it("will cleanup on unmount", async () => {
+    it("will cleanup on unmount", () => {
       const forEach = jest.fn(() => cleanup);
-  
       const cleanup = jest.fn();
+
       const rendered = create(
         <Provider for={{ Foo, Bar }} forEach={forEach} />
       );
@@ -180,8 +180,7 @@ describe("Provider", () => {
       expect(forEach).toBeCalledWith(expect.any(Bar));
       expect(cleanup).not.toBeCalled();
 
-      rendered.unmount();
-      await new Promise(res => setTimeout(res, 10));
+      act(() => rendered.unmount());
       expect(cleanup).toBeCalledTimes(2);
     });
   })

@@ -37,7 +37,7 @@ it("will create instance only once", () => {
   expect(didConstruct).toHaveBeenCalledTimes(1);
 })
 
-it("will call is method on creation", async () => {
+it("will call is method on creation", () => {
   class Control extends Model {}
 
   const didCreate = jest.fn(() => didDestroy);
@@ -50,8 +50,7 @@ it("will call is method on creation", async () => {
   rendered.update(<Control is={didCreate} />);
   expect(didCreate).toHaveBeenCalledTimes(1);
 
-  rendered.unmount();
-  await new Promise(res => setTimeout(res, 10));
+  act(() => rendered.unmount());
   expect(didDestroy).toHaveBeenCalledTimes(1);
 })
 

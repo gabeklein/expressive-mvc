@@ -52,7 +52,7 @@ function Provider<T extends Model>(props: Provider.Props<T>){
       const cleanup = props.forEach(model);
 
       if(cleanup)
-        model.get(null, cleanup);
+        model.set(null, cleanup);
     }
     else if("set" in props && props.set)
       for(const key in props.set)
