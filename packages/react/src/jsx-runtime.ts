@@ -5,11 +5,11 @@ import { Provider } from './context';
 
 declare module '@expressive/mvc' {
   namespace Model {
-    type Render<T extends Model> = (this: T, self: T) => React.ReactNode | void;
+    type Render<T extends Model> = (this: T, self: T) => React.ReactNode;
 
     /** Model which is not incompatable as Component in React. */
     interface Compat extends Model {
-      render?(props: Model.Assign<this>, self: this): React.ReactNode | void;
+      render?(props: Model.Assign<this>, self: this): React.ReactNode;
       children?: React.ReactNode;
     }
 
@@ -65,7 +65,7 @@ function Render<T extends Model.Compat>(
       if(render)
         return jsx(() => {
           const self = this.get();
-          return render.call(self, props, self) || null;
+          return render.call(self, props, self);
         }, {});
 
       const { children } = self;
@@ -80,7 +80,7 @@ function Render<T extends Model.Compat>(
 
       return jsx(() => {
         const self = this.get();
-        return fn.call(self, self) || null;
+        return fn.call(self, self);
       }, {});
     }, {})
   });
