@@ -20,6 +20,24 @@ it("will create and provide instance", () => {
   expect(rendered.toJSON()).toBe("bar");
 })
 
+it("will create instance only once", () => {
+  class Control extends Model {
+    constructor(...args: Model.Args){
+      super(args);
+      didConstruct(this);
+    }
+  }
+
+  const didConstruct = jest.fn();
+  const rendered = create(<Control />);
+
+  expect(didConstruct).toHaveBeenCalledTimes(1);
+
+  rendered.update(<Control />);
+
+  expect(didConstruct).toHaveBeenCalledTimes(1);
+})
+
 it("will accept managed values as props", () => {
   class Control extends Model {
     /** Hover over this prop to see description. */

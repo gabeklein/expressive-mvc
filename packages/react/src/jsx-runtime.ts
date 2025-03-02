@@ -78,6 +78,8 @@ function Render<T extends Model.Compat>(
   });
 }
 
+const RENDER = new WeakMap<typeof Model, React.FC>();
+
 export function create(
   this: (
     type: React.ElementType,
@@ -90,9 +92,15 @@ export function create(
   key?: React.Key,
   ...args: any[]){
 
-  if(Model.is(type))
-    return this(Render.bind(type as Model.Init), props, key, ...args);
+  if(Model.is(type)){
+    const bound = RENDER.get(type);
 
+    if(bound)
+      type = bound;
+    else
+      RENDER.set(type, type = Render.bind(type as Model.Init));
+  }
+    
   return this(type, props, key, ...args);
 }
 
