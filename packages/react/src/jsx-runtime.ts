@@ -14,11 +14,18 @@ declare module '@expressive/mvc' {
     }
 
     type Props<T extends Model> = 
-      T extends { render(props: infer P): any }
+      & T extends { render(props: infer P): any }
         ? Partial<Pick<T, Exclude<keyof T, keyof Model | "render">>> & P
         : Partial<Pick<T, Exclude<keyof T, keyof Model>>> & {
           children?: React.ReactNode | Render<T>;
         }
+      & {
+        /**
+         * Callback for newly created instance. Only called once.
+         * @returns Callback to run when instance is destroyed.
+         */
+        is?: (instance: T) => void | (() => void);
+      };
   }
 }
 
@@ -50,6 +57,7 @@ function Render<T extends Model.Compat>(
   return jsx(Provider, {
     for: this,
     set: props,
+    forEach: props.is,
     children: jsx(() => {
       const self = this.get();
       const { render } = self;

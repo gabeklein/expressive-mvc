@@ -1,8 +1,7 @@
+import { act, Component } from 'react';
 import { create } from 'react-test-renderer';
 
-import { Model, set } from '.';
-import { Consumer } from './context';
-import { act, Component } from 'react';
+import { Consumer, Model, set } from '.';
 
 it("will create and provide instance", () => {
   class Control extends Model {
@@ -36,6 +35,24 @@ it("will create instance only once", () => {
   rendered.update(<Control />);
 
   expect(didConstruct).toHaveBeenCalledTimes(1);
+})
+
+it("will call is method on creation", async () => {
+  class Control extends Model {}
+
+  const didCreate = jest.fn(() => didDestroy);
+  const didDestroy = jest.fn();
+
+  const rendered = create(<Control is={didCreate} />);
+
+  expect(didCreate).toHaveBeenCalledTimes(1);
+
+  rendered.update(<Control is={didCreate} />);
+  expect(didCreate).toHaveBeenCalledTimes(1);
+
+  rendered.unmount();
+  await new Promise(res => setTimeout(res, 10));
+  expect(didDestroy).toHaveBeenCalledTimes(1);
 })
 
 it("will accept managed values as props", () => {
