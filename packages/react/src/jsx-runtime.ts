@@ -8,16 +8,25 @@ type MaybeArray<T> = T | T[];
 
 declare module '@expressive/mvc' {
   namespace Model {
-    type Render<T extends Model> = (this: T, self: T) => React.ReactNode | null;
+    type Render<T extends Model> = (this: T, self: T) => React.ReactNode | void;
 
-    type Props<T extends Model> = Partial<Pick<T, Exclude<keyof T, keyof Model>>> & {
-      children?: MaybeArray<React.ReactNode | Render<T>>;
+    /** Model which can be used directly as Component in React. */
+    interface Compat extends Model {
+      render?(props: Model.Assign<this>, self: this): React.ReactNode | void;
+      children?: React.ReactNode;
     }
+
+    type Props<T extends Model> = 
+      T extends { render(props: infer P): any }
+        ? Partial<Pick<T, Exclude<keyof T, keyof Model | "render">>> & P
+        : Partial<Pick<T, Exclude<keyof T, keyof Model>>> & {
+          children?: MaybeArray<React.ReactNode | Render<T>>
+        }
   }
 }
 
 export declare namespace JSX {
-  type ElementType = Model.Type | React.JSX.ElementType;
+  type ElementType = Model.Type<Model.Compat> | React.JSX.ElementType;
 
   type LibraryManagedAttributes<C, P> =
     // For normal class components, pull from props property explicitly because we dorked up ElementAttributesProperty.
@@ -45,10 +54,29 @@ function component<T extends Model>(
   if(typeof child == 'function')
     return React.createElement(() => {
       const self = this.get();
-      return child.call(self, self);
+      return child.call(self, self) || null;
     }, { key });
 
   return child;
+}
+
+function Render<T extends Model.Compat>(
+  this: Model.Init<T>,
+  set: Model.Assign<T>
+){
+  return React.createElement(Provider, { for: this, set }, 
+    React.createElement(() => {
+      const { render } = this.get();
+
+      if(render)
+        return React.createElement(() => {
+          const self = this.get();
+          return render.call(self, set, self) || null;
+        })
+
+      return ([] as any[]).concat(set.children).map(component, this)
+    })
+  );
 }
 
 export function createElement(
@@ -63,17 +91,8 @@ export function createElement(
   key?: React.Key,
   ...args: any[]){
 
-  if(Model.is(type)){
-    const { children, ...rest } = props;
-
-    return this(Provider, {
-      for: type,
-      set: rest,
-      children: Array.isArray(children) ?
-        children.map(component, type) :
-        component.call(type, children, 0)
-    }, key, ...args);
-  }
+  if(Model.is(type))
+    return this(Render.bind(type as Model.Init), props, key, ...args);
 
   return this(type, props, key, ...args);
 }

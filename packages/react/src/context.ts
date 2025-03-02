@@ -26,6 +26,7 @@ function Consumer<T extends Model>(props: Consumer.Props<T>){
 declare namespace Provider {
   interface Props<T extends Model> {
     for: Context.Accept<T>;
+    /** @deprecated May be removed in future versions. Use component Models instead. */
     set?: Model.Assign<T>;
     children?: ReactNode;
   }
@@ -37,6 +38,7 @@ function Provider<T extends Model>(props: Provider.Props<T>){
 
   useEffect(() => () => context.pop(), [ambient]);
   
+  // TODO: Replace with Context.ForEach instead.
   context.include(props.for, props.set);
 
   return createElement(Lookup.Provider, {
