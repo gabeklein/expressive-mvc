@@ -40,7 +40,7 @@ function Provider<T extends Model>(props: Provider.Props<T>){
   context.include(props.for, (model) => {
     // TODO: remove next minor release
     if("set" in props)
-      throw new Error("`set` prop is deprecated. Use `forEach` instead.");
+      throw new Error(`The \`set\` prop is deprecated. Use \`forEach\` or <${model.constructor} {...props} /> instead.`);
 
     if(props.forEach){
       const cleanup = props.forEach(model);

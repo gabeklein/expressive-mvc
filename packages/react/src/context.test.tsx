@@ -154,6 +154,17 @@ describe("Provider", () => {
     expect(Consumer).toHaveBeenCalled();
   })
 
+  it("will throw if set prop is used", () => {
+    const test = () => create(
+      // @ts-expect-error
+      <Provider for={Foo} set={jest.fn()} />
+    )
+  
+    expect(test).toThrowError(
+      "The `set` prop is deprecated. Use `forEach` or <Foo {...props} /> instead."
+    );
+  })
+
   describe("forEach prop", () => {
     it("will call function for each model", () => {
       const forEach = jest.fn();
