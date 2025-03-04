@@ -12,18 +12,12 @@ it("will update component as values change", async () => {
     }
   }
 
-  const Component = Test.as(props => (
-    <span>{props.foo}</span>
-  ))
-
   let test: Test;
+
+  const Component = Test.as((_, own) => <>{own.foo}</>);
   const rendered = create(<Component />);
 
-  expect(rendered.toJSON()).toEqual({
-    type: "span",
-    props: {},
-    children: ["bar"]
-  });
+  expect(rendered.toJSON()).toEqual("bar");
 
   await act(() => {
     test!.foo = "baz";
@@ -31,11 +25,7 @@ it("will update component as values change", async () => {
 
   rendered.update(<Component />);
 
-  expect(rendered.toJSON()).toEqual({
-    type: "span",
-    props: {},
-    children: ["baz"]
-  });
+  expect(rendered.toJSON()).toEqual("baz");
 });
 
 it("will not create abstract Model", () => {
@@ -57,25 +47,14 @@ it("will pass props to model", () => {
     }
   }
 
-  const Component = Test.as(props => (
-    <span>{props.foo}</span>
-  ))
-
+  const Component = Test.as((_, own) => <>{own.foo}</>)
   const rendered = create(<Component foo="bar" />);
 
-  expect(rendered.toJSON()).toEqual({
-    type: "span",
-    props: {},
-    children: ["bar"]
-  });
+  expect(rendered.toJSON()).toEqual("bar");
 
   rendered.update(<Component foo="baz" />);
 
-  expect(rendered.toJSON()).toEqual({
-    type: "span",
-    props: {},
-    children: ["baz"]
-  });
+  expect(rendered.toJSON()).toEqual("baz");
 
   expect(didUpdateFoo).toHaveBeenCalledTimes(1);
   expect(didUpdateFoo).toHaveBeenCalledWith("foo", { foo: "baz" });
@@ -83,20 +62,22 @@ it("will pass props to model", () => {
 
 it("will pass untracked props to render", () => {
   class Test extends Model {
+    /** This is foo */
     foo = "foo";
   }
 
-  const Component = Test.as((props: { value: string }) => (
-    <span>{props.value}</span>
+  interface TestProps {
+    /** This is bar */
+    value: string;
+  }
+
+  const Component = Test.as((props: TestProps, own) => (
+    <>{props.value}{own.foo}</>
   ))
 
   const rendered = create(
     <Component foo="foo" value="foobar" />
   );
 
-  expect(rendered.toJSON()).toEqual({
-    type: "span",
-    props: {},
-    children: ["foobar"]
-  });
+  expect(rendered.toJSON()).toEqual(["foobar", "foo"]);
 });
