@@ -21,4 +21,5 @@ export {
 } from '@expressive/mvc';
 
 export { Consumer, Provider } from './context';
+export { Fragment, createElement } from 'react';
 export { type Pragma };
