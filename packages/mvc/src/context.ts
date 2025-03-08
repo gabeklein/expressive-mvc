@@ -71,7 +71,7 @@ class Context {
 
   /** Run callback when a specified type is registered to a **child** context. */
   public has<T extends Model>(Type: Model.Type<T>, callback: (model: T) => void){
-    define(this, key(Type, true), { value: callback });
+    define(this, key(Type, true), { value: callback, configurable: true });
   }
 
   /** Find specified type registered to a parent context. Returns undefined if none are found. */
