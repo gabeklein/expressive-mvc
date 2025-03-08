@@ -70,7 +70,7 @@ function has <T extends Model> (
               remove();
           }
   
-          const ignore = model.get(null, done);
+          const ignore = model.set(null, done);
           
           return done;
         })
