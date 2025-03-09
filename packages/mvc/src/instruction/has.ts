@@ -68,6 +68,8 @@ function has <T extends Model> (
   
             if(typeof remove == "function")
               remove();
+
+            remove = undefined;
           }
   
           const ignore = model.set(null, done);

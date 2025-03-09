@@ -1,5 +1,5 @@
-import React, { act, Fragment, Suspense } from 'react';
-import { create } from 'react-test-renderer';
+import React, { Fragment, Suspense } from 'react';
+import { act, create } from 'react-test-renderer';
 
 import Model, { Consumer, get, has, Provider, set, use } from '.';
 import { mockAsync } from './mocks';
@@ -131,7 +131,7 @@ describe("Provider", () => {
       </Provider>
     );
   
-    await act(() => element.unmount());
+    act(() => element.unmount());
     expect(didUnmount).not.toBeCalled();
   })
   
@@ -163,6 +163,34 @@ describe("Provider", () => {
     expect(test).toThrowError(
       "The `set` prop is deprecated. Use `forEach` or <Foo {...props} /> instead."
     );
+  })
+
+  it("will destroy from bottom-up", async () => {
+    const didDestroy = jest.fn();
+    
+    class Test extends Model {
+      constructor(...args: Model.Args){
+        super(...args);
+        this.set(null, () => {
+          didDestroy(this.constructor.name);
+        });
+      }
+    }
+
+    class Parent extends Test {}
+    class Child extends Test {}
+    
+    const Example = () => (
+      <Provider for={Parent}>
+        <Provider for={Child} />
+      </Provider>
+    )
+
+    const element = create(<Example />);
+
+    act(() => element.unmount());
+    
+    expect(didDestroy.mock.calls).toEqual([["Child"], ["Parent"]]);
   })
 
   describe("forEach prop", () => {

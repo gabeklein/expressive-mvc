@@ -214,6 +214,36 @@ describe("recipient", () => {
     expect(foo.baz).toEqual([ bar.baz ]);
   });
 
+  it("will cleanup before destroying", async () => {
+    class Child extends Model {}
+    class Parent extends Model {
+      children = has(Child, child => {
+        didNotify();
+        return () => {
+          // this should occure before both
+          // target and recipient are destroyed.
+          expect(this.get(null)).toBe(false);
+          expect(child.get(null)).toBe(false);
+          didRemove();
+        }
+      });
+    }
+  
+    const didNotify = jest.fn();
+    const didRemove = jest.fn();
+
+    const context = new Context()
+    
+    context.push({ Parent }).push({ Child });
+
+    expect(didNotify).toHaveBeenCalledTimes(1);
+    expect(didRemove).not.toHaveBeenCalled();
+
+    context.pop();
+
+    expect(didRemove).toHaveBeenCalledTimes(1);
+  })
+
   it.skip("will not self conflict", () => {
     class Child extends Model {}
     class Parent extends Model {

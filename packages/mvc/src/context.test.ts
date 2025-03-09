@@ -227,6 +227,30 @@ describe("include", () => {
   })
 })
 
+it("will pop child context", () => {
+  class Test extends Model {
+    constructor(...args: Model.Args){
+      super(args);
+      this.set(null, () => {
+        didDestroy(this.constructor.name);
+      });
+    }
+  }
+
+  class Test2 extends Test {}
+  class Test3 extends Test {}
+
+  const didDestroy = jest.fn();
+  const context = new Context({ Test });
+  
+  context.push({ Test2 }).push({ Test3 });
+  context.pop();
+
+  expect(didDestroy).nthCalledWith(1, "Test3");
+  expect(didDestroy).nthCalledWith(2, "Test2");
+  expect(didDestroy).nthCalledWith(3, "Test");
+});
+
 it("will throw on bad include", () => {
   const context = new Context();
 

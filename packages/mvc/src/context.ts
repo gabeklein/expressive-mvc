@@ -93,6 +93,8 @@ class Context {
   public push(inputs?: Context.Accept){
     const next = Object.create(this) as this;
 
+    this.cleanup = new Set([() => next.pop(), ...this.cleanup]);
+
     next.layer = new Map();
     next.cleanup = new Set();
 
@@ -107,6 +109,7 @@ class Context {
       delete (this as any)[key];
 
     this.cleanup.forEach(cb => cb());
+    this.cleanup.clear();
     this.layer.clear();
   }
 
