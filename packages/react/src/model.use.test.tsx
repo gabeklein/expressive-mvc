@@ -1,7 +1,7 @@
-import { create } from 'react-test-renderer';
+import { act, create } from 'react-test-renderer';
 
 import Model, { get, Provider, set } from '.';
-import { mockHook, mockPromise } from './mocks';
+import { mockHook } from './mocks';
 
 class Test extends Model {
   value = "foo";
@@ -56,20 +56,22 @@ describe("hook", () => {
   })
   
   it("will destroy instance of given class", async () => {
-    const didDestroy = mockPromise();
+    const didDestroy = jest.fn();
   
     class Test extends Model {
       constructor(){
         super();
-        this.get(null, didDestroy.resolve);
+        this.get(null, didDestroy);
       }
     }
+
+    const Component = () => void Test.use();
+
+    const rendered = create(<Component />);
   
-    const hook = mockHook(() => Test.use());
-  
-    hook.unmount();
-  
-    await didDestroy;
+    await act(() => rendered.unmount());
+
+    expect(didDestroy).toHaveBeenCalled();
   })
   
   it("will ignore updates after unmount", async () => {
