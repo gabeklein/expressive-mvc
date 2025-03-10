@@ -1,4 +1,4 @@
-import { Model, PARENT, define, uid } from './model';
+import { Model, PARENT, uid } from './model';
 
 const LOOKUP = new WeakMap<Model, Context | ((got: Context) => void)[]>();
 const KEYS = new Map<symbol | Model.Type, symbol>();
@@ -71,7 +71,7 @@ class Context {
 
   /** Run callback when a specified type is registered to a **child** context. */
   public has<T extends Model>(Type: Model.Type<T>, callback: (model: T) => void){
-    define(this, key(Type, true), { value: callback, configurable: true });
+    Object.defineProperty(this, key(Type, true), { value: callback, configurable: true });
   }
 
   /** Find specified type registered to a parent context. Returns undefined if none are found. */
@@ -198,7 +198,7 @@ class Context {
       const value = this.hasOwnProperty(K) ? null : I;
 
       if(value || this[K] !== I && !implicit)
-        define(this, K, {
+        Object.defineProperty(this, K, {
           configurable: true,
           value
         });

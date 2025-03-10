@@ -1,6 +1,8 @@
 import { context } from '../control';
-import { Model, define, update } from '../model';
+import { Model, update } from '../model';
 import { use } from './use';
+
+const { defineProperty, defineProperties } = Object;
 
 declare namespace ref {
   type Callback<T> = (argument: T) =>
@@ -81,11 +83,11 @@ function ref<T>(
       subject.get(() => {
         for(const key in state)
           if(typeof arg2 == "function")
-            define(value, key, {
+            defineProperty(value, key, {
               configurable: true,
               get(){
                 const out = arg2(key);
-                define(value, key, { value: out });
+                defineProperty(value, key, { value: out });
                 return out;
               }
             })
@@ -95,9 +97,9 @@ function ref<T>(
               update(subject, key, value)
             };
           
-            define(set, "current", { get, set });
-            define(set, "get", { value: get });
-            define(value, key, { value: set });
+            defineProperty(set, "current", { get, set });
+            defineProperty(set, "get", { value: get });
+            defineProperty(value, key, { value: set });
           }
       })
 
@@ -131,13 +133,13 @@ function ref<T>(
       };
   
       state[key] = null;
-      value = Object.defineProperties(set, {
+      value = defineProperties(set, {
         current: { get, set },
         get: { value: get }
       }) as ref.Object<T>;
     }
 
-    define(subject, key, { value });
+    defineProperty(subject, key, { value });
   })
 }
 

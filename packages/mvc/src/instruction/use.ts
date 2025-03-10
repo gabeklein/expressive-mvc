@@ -1,5 +1,5 @@
 import { watch } from '../control';
-import { define, fetch, mayAdopt, Model, PARENT, STATE, update } from '../model';
+import { fetch, mayAdopt, Model, PARENT, STATE, update } from '../model';
 
 const INSTRUCT = new Map<symbol, Model.Instruction>();
 
@@ -70,7 +70,7 @@ Model.on((_, model) => {
     if("value" in desc)
       state[key] = desc.value;
 
-    define(model, key, {
+    Object.defineProperty(model, key, {
       enumerable: desc.enumerable !== false,
       get(this: Model){
         return watch(this, key, 

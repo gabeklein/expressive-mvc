@@ -1,6 +1,6 @@
 import { addListener, createEffect, event, OnUpdate, pending, PENDING_KEYS, watch } from './control';
 
-export const define = Object.defineProperty;
+const define = Object.defineProperty;
 
 /** Register for all active models via string identifiers (usually unique). */
 const ID = new WeakMap<Model, string>();
@@ -214,7 +214,7 @@ abstract class Model {
         typeof arg2 == "function" ?
           addListener(self, arg2, arg1) :
           arg1 === null ?
-            isFrozen(STATE.get(self)) :
+            Object.isFrozen(STATE.get(self)) :
             fetch(self, arg1, arg2)
     )
   }
