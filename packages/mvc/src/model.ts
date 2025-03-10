@@ -208,15 +208,15 @@ abstract class Model {
       });
     }
 
-    if(arg1 === undefined)
-      return snapshot(self);
-
-    if(typeof arg2 == "function")
-      return addListener(self, arg2, arg1)
-
-    return arg1 === null
-      ? Object.isFrozen(STATE.get(self))
-      : fetch(self, arg1, arg2);
+    return (
+      arg1 === undefined ?
+        snapshot(self) :
+        typeof arg2 == "function" ?
+          addListener(self, arg2, arg1) :
+          arg1 === null ?
+            isFrozen(STATE.get(self)) :
+            fetch(self, arg1, arg2)
+    )
   }
 
   /**
