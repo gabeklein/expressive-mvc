@@ -419,23 +419,23 @@ describe("get instruction", () => {
   })
 
   it("will attach before model init", () => {
-    class Ambient extends Model {
+    class Parent extends Model {
       foo = "foo";
     }
 
-    class Test extends Model {
-      ambient = get(Ambient);
+    class Child extends Model {
+      parent = get(Parent);
 
       constructor(){
         super(() => {
-          expect(this.ambient).toBeInstanceOf(Ambient);
+          expect(this.parent).toBeInstanceOf(Parent);
         });
       }
     }
 
     create(
-      <Provider for={Ambient}>
-        <Provider for={Test} />
+      <Provider for={Parent}>
+        <Provider for={Child} />
       </Provider>
     )
   })
