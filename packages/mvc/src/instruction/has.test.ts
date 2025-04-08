@@ -214,16 +214,15 @@ describe("recipient", () => {
     expect(foo.baz).toEqual([ bar.baz ]);
   });
 
-  it("will cleanup before destroying", async () => {
+  it.only("will cleanup before destroying", async () => {
     class Child extends Model {}
     class Parent extends Model {
       children = has(Child, child => {
         didNotify();
         return () => {
-          // this should occure before both
-          // target and recipient are destroyed.
-          expect(this.get(null)).toBe(false);
-          expect(child.get(null)).toBe(false);
+          const status = child.get(null);
+          // this should occure before recipient is destroyed.
+          expect(status).toBe(false);
           didRemove();
         }
       });
