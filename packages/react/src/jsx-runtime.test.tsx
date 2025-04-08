@@ -1,7 +1,28 @@
 import { act, Component } from 'react';
 import { create } from 'react-test-renderer';
 
-import { Consumer, Model, set } from '.';
+import { Consumer, Model, set, has } from '.';
+
+it("will recieve ready instance", async () => {
+  const didSet = jest.fn();
+  
+  class Child extends Model {
+    value = set();
+  }
+  
+  class Parent extends Model {
+    child = has(Child, (child) => {
+      const status = child.get(null);
+      debugger;
+    });
+  }
+
+  create(
+    <Parent>
+      <Child />
+    </Parent>
+  );
+});
 
 it("will create and provide instance", () => {
   class Control extends Model {
