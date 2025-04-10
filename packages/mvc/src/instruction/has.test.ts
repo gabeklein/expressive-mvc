@@ -1,6 +1,7 @@
 import { Context } from '../context';
 import { Model } from '../model';
 import { has } from './has';
+import { set } from './set';
 
 describe("recipient", () => {
   it("will register child", () => {
@@ -214,6 +215,26 @@ describe("recipient", () => {
     expect(foo.baz).toEqual([ bar.baz ]);
   });
 
+  it("will recieve ready instance", async () => {
+    const didSet = jest.fn();
+    
+    class Child extends Model {
+      value = set(undefined, didSet);
+    }
+    
+    class Parent extends Model {
+      child = has(Child, (child) => {
+        child.value = "Hello";
+      });
+    }
+  
+    const context = new Context();
+
+    context.push({ Parent }).push({ Child });
+
+    expect(didSet).toHaveBeenCalledWith("Hello", undefined);
+  });
+
   it("will cleanup before destroying", async () => {
     class Child extends Model {}
     class Parent extends Model {
@@ -242,6 +263,7 @@ describe("recipient", () => {
     context.pop();
 
     expect(didRemove).toHaveBeenCalledTimes(1);
+    expect(didNotify).toHaveBeenCalledTimes(1);
   })
 
   it.skip("will not self conflict", () => {

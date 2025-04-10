@@ -1,4 +1,5 @@
-import { Model, PARENT, uid } from './model';
+import { addListener } from './control';
+import { event, Model, PARENT, uid } from './model';
 
 const LOOKUP = new WeakMap<Model, Context | ((got: Context) => void)[]>();
 const KEYS = new Map<symbol | Model.Type, symbol>();
@@ -167,6 +168,7 @@ class Context {
     input: T | Model.Init<T>,
     implicit?: boolean){
 
+    const cleanup = new Set<() => void>();
     let T: Model.Type<T>;
     let I: T;
 
@@ -175,7 +177,6 @@ class Context {
 
       T = input;
       I = new input() as T;
-      this.cleanup.add(() => I.set(null));
     }
     else {
       T = input.constructor as Model.Type<T>;
@@ -188,10 +189,16 @@ class Context {
       if(!expects)
         return;
   
-      const callback = expects(I);
-        
-      if(callback)
-        this.cleanup.add(callback);
+      addListener(I, event => {
+        if(event === true){
+          const callback = expects(I);
+            
+          if(callback)
+            cleanup.add(callback);
+        }
+
+        return null;
+      })  
     });
 
     keys(T).forEach(K => {
@@ -203,6 +210,13 @@ class Context {
           value
         });
     });
+
+    this.cleanup.add(() => {
+      cleanup.forEach(cb => cb());
+
+      if(I !== input)
+        event(I, null);
+    })
 
     const waiting = LOOKUP.get(I);
   
