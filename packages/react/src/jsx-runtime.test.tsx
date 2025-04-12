@@ -1,7 +1,37 @@
 import { act, Component } from 'react';
 import { create } from 'react-test-renderer';
 
-import { Consumer, Model, set } from '.';
+import { Consumer, has, Model, set } from '.';
+
+describe("has instruction", () => {
+  it("will callback on register", () => {
+    class Child extends Model {
+      parents = has(gotParent);
+    }
+    class Parent extends Model {
+      child = has(Child, gotChild);
+    }
+  
+    const didCallback = jest.fn();
+    const gotParent = jest.fn(() => didCallback.bind(null, "parent"));
+    const gotChild = jest.fn(() => didCallback.bind(null, "child"));
+
+    const rendered = create(
+      <Parent>
+        <Child />
+      </Parent>
+    );
+
+    expect(gotParent).toHaveBeenCalledTimes(1);
+    expect(gotChild).toHaveBeenCalledTimes(1);
+
+    act(() => rendered.unmount());
+
+    expect(didCallback).toHaveBeenCalledTimes(2);
+    expect(didCallback.mock.calls[0][0]).toBe("parent");
+    expect(didCallback.mock.calls[1][0]).toBe("child");
+  });
+})
 
 it("will create and provide instance", () => {
   class Control extends Model {
