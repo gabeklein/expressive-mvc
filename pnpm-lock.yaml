@@ -39,7 +39,7 @@ importers:
   examples/async:
     dependencies:
       '@expressive/react':
-        specifier: ^0.57.2
+        specifier: ^0.57.4
         version: link:../../packages/react
       react:
         specifier: ^18.2.0
@@ -51,7 +51,7 @@ importers:
   examples/context:
     dependencies:
       '@expressive/react':
-        specifier: ^0.57.2
+        specifier: ^0.57.4
         version: link:../../packages/react
       react:
         specifier: ^18.2.0
@@ -63,7 +63,7 @@ importers:
   examples/counter:
     dependencies:
       '@expressive/react':
-        specifier: ^0.57.2
+        specifier: ^0.57.4
         version: link:../../packages/react
       react:
         specifier: ^18.2.0
@@ -75,7 +75,7 @@ importers:
   examples/fetch:
     dependencies:
       '@expressive/react':
-        specifier: ^0.57.2
+        specifier: ^0.57.4
         version: link:../../packages/react
       react:
         specifier: ^18.2.0
@@ -87,7 +87,7 @@ importers:
   examples/forms:
     dependencies:
       '@expressive/react':
-        specifier: ^0.57.2
+        specifier: ^0.57.4
         version: link:../../packages/react
       react:
         specifier: ^18.2.0
@@ -111,10 +111,10 @@ importers:
   packages/preact:
     dependencies:
       '@expressive/mvc':
-        specifier: ^0.57.2
+        specifier: ^0.57.4
         version: link:../mvc
       '@expressive/react':
-        specifier: ^0.57.2
+        specifier: ^0.57.4
         version: link:../react
     devDependencies:
       preact:
@@ -127,7 +127,7 @@ importers:
   packages/react:
     dependencies:
       '@expressive/mvc':
-        specifier: ^0.57.2
+        specifier: ^0.57.4
         version: link:../mvc
     devDependencies:
       '@types/react':
@@ -152,7 +152,7 @@ importers:
   packages/solid:
     dependencies:
       '@expressive/mvc':
-        specifier: ^0.57.2
+        specifier: ^0.57.4
         version: link:../mvc
     devDependencies:
       '@solidjs/testing-library':
