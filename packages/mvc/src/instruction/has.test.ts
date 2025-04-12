@@ -337,12 +337,12 @@ describe("target", () => {
     }
   
     const gotParent = jest.fn();
-    const parent = Parent.new();
-    const child = Child.new();
   
-    new Context({ parent }).push({ child });
+    new Context({ Parent }).push({ Child });
 
-    expect(gotParent).toHaveBeenCalledWith(parent, child);
+    expect(gotParent).toHaveBeenCalledWith(
+      expect.any(Parent), expect.any(Child)
+    );
   })
 
   it("will callback before recipient does", () => {
