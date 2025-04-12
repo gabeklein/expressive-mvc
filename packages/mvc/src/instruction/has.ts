@@ -17,7 +17,7 @@ function has <T extends Model> (
 
   return use<T[]>((key, subject) => {
     const applied = new Set<Model>();
-    const apply = () => {
+    const reset = () => {
       update(subject, key, Object.freeze(Array.from(applied)));
     }
 
@@ -30,10 +30,10 @@ function has <T extends Model> (
           if(applied.has(model))
             return;
           
-          const callback = APPLY.get(model);
+          const notify = APPLY.get(model);
   
-          if(callback){
-            const after = callback(subject);
+          if(notify){
+            const after = notify(subject);
   
             if(after === false)
               return;
@@ -55,13 +55,13 @@ function has <T extends Model> (
           }
   
           applied.add(model);
-          apply();
+          reset();
   
           const done = () => { 
             ignore();
   
             applied.delete(model);
-            apply();
+            reset();
   
             if(disconnect)
               disconnect();
@@ -92,11 +92,11 @@ function has <T extends Model> (
         }
 
         applied.add(recipient);
-        apply();
+        reset();
 
         return () => {
           applied.delete(recipient);
-          apply();
+          reset();
 
           if(typeof remove == "function")
             remove();
