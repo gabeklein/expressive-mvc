@@ -27,7 +27,7 @@ function Consumer<T extends Model>(props: Consumer.Props<T>){
 declare namespace Provider {
   interface Props<T extends Model> {
     for: Context.Accept<T>;
-    set?: Model.Assign<T>;
+    forEach?: Context.Expect<T>;
     children?: ComponentChildren;
   }
 }
@@ -38,7 +38,14 @@ function Provider<T extends Model>(props: Provider.Props<T>){
 
   useEffect(() => () => context.pop(), [ambient]);
   
-  context.include(props.for, props.set);
+  context.include(props.for, (model) => {
+    if(props.forEach){
+      const cleanup = props.forEach(model);
+
+      if(cleanup)
+        model.set(null, cleanup);
+    }
+  });
 
   return createElement(Lookup.Provider, {
     key: context.id,
