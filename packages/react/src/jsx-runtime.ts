@@ -19,7 +19,7 @@ declare module '@expressive/mvc' {
      * The second type parameter is additional props the component expects to receive.
      * 
      * @example
-     * ```jsx
+     * ```tsx
      * import { Model } from '@expressive/react';
      * 
      * class MyModel extends Model {
