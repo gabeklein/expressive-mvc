@@ -311,6 +311,30 @@ it.skip("will render multiple times", () => {
   )
 })
 
+describe("Model.FC", () => {
+  it("will have correct types", () => {
+    class Control extends Model {
+      foo = "bar";
+      bar = "baz";
+    }
+  
+    interface CorrectProps {
+      baz: string;
+      foo?: string | undefined
+      bar?: string | undefined
+      chidren?: React.ReactNode | Model.Render<Control>;
+      is?: ((instance: Control) => void | (() => void)) | undefined;
+    }
+  
+    const Component: Model.FC<Control, { baz: string }> = (props) => {
+      expect<CorrectProps>(props);
+      return <div>{props.baz}</div>;
+    };
+  
+    expect<(props: CorrectProps) => React.ReactNode>(Component);
+  })
+})
+
 describe("types", () => {
   it("will not compromise existing Component props", () => {
     const FunctionComponent = (props: {
@@ -352,5 +376,5 @@ describe("types", () => {
         baz
       </div>
     `);
-  })
+  });
 })

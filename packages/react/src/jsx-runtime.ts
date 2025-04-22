@@ -7,6 +7,37 @@ declare module '@expressive/mvc' {
   namespace Model {
     type Render<T extends Model> = (this: T, self: T) => React.ReactNode;
 
+    namespace FC {
+      type Extends <T extends Model, P extends {}> = Props<T> & P;
+
+      export { Extends as Props };
+    }
+
+    /**
+     * Use this to define a component which wraps a Model, intended to forward props.
+     * This is to be used explicity, in JSDoc types or type annotations.
+     * The second type parameter is additional props the component expects to receive.
+     * 
+     * @example
+     * ```jsx
+     * import { Model } from '@expressive/react';
+     * 
+     * class MyModel extends Model {
+     *   foo: string;
+     *   bar: number;
+     * }
+     * 
+     * const MyComponent: Model.FC<MyModel, { label: string }> =
+     *   ({ label, ...rest }) => (
+     *     <div>
+     *      <span>{label}</span>
+     *      <MyModel {...rest} />
+     *     </div>
+     *   );
+     * ```
+     */
+    type FC<T extends Model, P extends {}> = React.FC<FC.Props<T, P>>;
+
     /** Model which is not incompatable as Component in React. */
     interface Compat extends Model {
       render?(props: Model.Assign<this>, self: this): React.ReactNode;
