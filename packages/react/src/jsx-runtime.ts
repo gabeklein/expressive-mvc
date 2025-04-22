@@ -8,7 +8,7 @@ declare module '@expressive/mvc' {
     type Render<T extends Model> = (this: T, self: T) => React.ReactNode;
 
     namespace FC {
-      type Extends <T extends Model, P extends {}> = Props<T> & P;
+      type Extends <T extends Model, P extends {} = {}> = Props<T> & P;
 
       export { Extends as Props };
     }
@@ -36,7 +36,7 @@ declare module '@expressive/mvc' {
      *   );
      * ```
      */
-    type FC<T extends Model, P extends {}> = React.FC<FC.Props<T, P>>;
+    type FC<T extends Model, P extends {} = {}> = React.FC<FC.Props<T, P>>;
 
     /** Model which is not incompatable as Component in React. */
     interface Compat extends Model {
