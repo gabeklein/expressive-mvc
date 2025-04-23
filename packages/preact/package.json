@@ -19,7 +19,7 @@
   },
   "dependencies": {
     "@expressive/mvc": "^0.58.0",
-    "@expressive/react": "^0.58.3"
+    "@expressive/react": "^0.58.4"
   },
   "devDependencies": {
     "preact": "^10.0.0",
@@ -28,5 +28,5 @@
   "peerDependencies": {
     "preact": "^10.0.0"
   },
-  "version": "0.58.3"
+  "version": "0.58.4"
 }
