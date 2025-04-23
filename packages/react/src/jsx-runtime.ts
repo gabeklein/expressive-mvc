@@ -45,7 +45,7 @@ declare module '@expressive/mvc' {
     }
 
     type Props<T extends Model> = 
-      & T extends { render(props: infer P): any }
+      & T extends { render(props: infer P, self: any): any }
         ? Partial<Pick<T, Exclude<keyof T, keyof Model | "render">>> & P
         : Partial<Pick<T, Exclude<keyof T, keyof Model>>> & {
           children?: React.ReactNode | Render<T>;
