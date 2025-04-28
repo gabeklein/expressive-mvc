@@ -16,18 +16,12 @@ function use(
   const token = Symbol("instruction");
 
   if(Model.is(arg1)){
-    const type = arg1;
+    const Type = arg1;
 
     arg1 = (key, subject) => {
-      const value = new type();
-      const desc: Model.Descriptor = { set };
-
-      set(value);
-      PARENT.set(value, subject);
-
       function set(next: Model | undefined){
-        if(next ? !(next instanceof type) : arg2 !== false)
-          throw new Error(`${subject}.${key} expected Model of type ${type} but got ${next && next.constructor}.`)
+        if(next ? !(next instanceof Type) : arg2 !== false)
+          throw new Error(`${subject}.${key} expected Model of type ${Type} but got ${next && next.constructor}.`);
   
         update(subject, key, next);
   
@@ -36,8 +30,13 @@ function use(
   
         return false;
       }
+
+      const value = new Type();
+
+      set(value);
+      PARENT.set(value, subject);
   
-      return desc;
+      return { set };
     }
   }
 
