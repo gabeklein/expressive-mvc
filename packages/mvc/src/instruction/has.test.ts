@@ -266,6 +266,32 @@ describe("recipient", () => {
     expect(didNotify).toHaveBeenCalledTimes(1);
   })
 
+  it("will cleanup effects before destroying", async () => {
+    class Child extends Model {}
+    class Parent extends Model {
+      children = has(Child, () => {
+        didNotify();
+        this.get(() => {
+          return didRemove;
+        })
+      });
+    }
+  
+    const didNotify = jest.fn();
+    const didRemove = jest.fn();
+
+    const context = new Context({ Parent })
+    const inner = context.push({ Child });
+    
+    expect(didNotify).toHaveBeenCalledTimes(1);
+    expect(didRemove).not.toHaveBeenCalled();
+
+    inner.pop();
+
+    expect(didRemove).toHaveBeenCalledTimes(1);
+    expect(didNotify).toHaveBeenCalledTimes(1);
+  })
+
   it.skip("will not self conflict", () => {
     class Child extends Model {}
     class Parent extends Model {
