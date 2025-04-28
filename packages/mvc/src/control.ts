@@ -219,16 +219,17 @@ function createEffect<T extends Model>(target: T, callback: Effect<T>, argument?
     }
 
     try {
-      const ctx = context(argument === false)
+      const ctx = argument === false && context()
       const ret = callback.call(subscriber, subscriber);
-      const flush = ctx();
+      const flush = ctx && ctx();
 
       reset = ret === null ? null : invoke;
       unset = key => {
         if(typeof ret == "function")
           ret(key);
 
-        flush();
+        if(flush)
+          flush();
       }
     }
     catch(err){
@@ -267,10 +268,7 @@ function createEffect<T extends Model>(target: T, callback: Effect<T>, argument?
 
 let EffectContext: Set<() => void> | undefined;
 
-export function context(ignore?: boolean){
-  if(ignore)
-    return () => () => {};
-
+function context(){
   const current = EffectContext;
   const ctx = EffectContext = new Set;
 
@@ -285,6 +283,7 @@ export function context(ignore?: boolean){
 
 export {
   addListener,
+  context,
   createEffect,
   createProxy,
   event,
