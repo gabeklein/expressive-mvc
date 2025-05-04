@@ -1,7 +1,8 @@
 import { Model } from '@expressive/mvc';
+import { useContext, useEffect, useMemo } from 'react';
 import { jsx, jsxs } from 'react/jsx-runtime';
 
-import { Provider } from './context';
+import { Context } from './context';
 
 declare module '@expressive/mvc' {
   namespace Model {
@@ -82,26 +83,38 @@ export declare namespace JSX {
 }
 
 function Component<T extends Model.Compat>(
-  this: Model.Type<T>,
-  props: Model.Assign<T>
+  this: Model.Init<T>,
+  props: Model.Props<T>
 ){
-  const { is, ...rest } = props;
+  const { is: callback, ...rest } = props;
+  const ambient = useContext(Context);
+  const context = useMemo(() => ambient.push(), [ambient]);
 
-  return jsx(Provider, {
-    for: this,
-    forEach: is,
+  useEffect(() => () => context.pop(), [ambient]);
+
+  context.include(this, (model) => {
+    if (callback) {
+      const cleanup = callback(model);
+
+      if (cleanup)
+        model.set(null, cleanup);
+    }
+  });
+
+  return jsx(Context.Provider, {
+    value: context,
     children: jsx(() => {
       const self = this.get();
       const { render } = self;
   
       for(const key in rest)
         if(key in self)
-          (self as any)[key] = rest[key];
+          (self as any)[key] = (rest as any)[key];
 
       if(render)
         return jsx(() => {
           const self = this.get();
-          return render.call(self, props, self);
+          return render.call(self, (rest as any), self);
         }, {});
 
       const { children } = self;
@@ -124,7 +137,7 @@ function Component<T extends Model.Compat>(
 
 const RENDER = new WeakMap<typeof Model, React.FC>();
 
-export function compat(type: React.ElementType | Model.Type){
+export function compat(type: React.ElementType | Model.Init){
   const bound = RENDER.get(type as any);
 
   if(bound) return bound;
@@ -136,7 +149,7 @@ export function compat(type: React.ElementType | Model.Type){
 }
 
 function jsx2(
-  type: React.ElementType | Model.Type,
+  type: React.ElementType | Model.Init,
   props: Record<string, any>,
   key?: React.Key) {
   
@@ -144,7 +157,7 @@ function jsx2(
 }
 
 function jsxs2(
-  type: React.ElementType | Model.Type,
+  type: React.ElementType | Model.Init,
   props: Record<string, any>,
   key?: React.Key) {
   
