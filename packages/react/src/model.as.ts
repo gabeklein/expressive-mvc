@@ -21,19 +21,19 @@ declare module '@expressive/mvc' {
 }
 
 Model.as = function <T extends Model, P extends Model.Assign<T>> (
-  this: Model.Init<T>, render: (using: P) => JSX.Element | null){
+  this: Model.Init<T>, render: (using: P, self: T) => JSX.Element | null){
 
   if(this === Model)
     throw new Error("Cannot create component from base Model.");
 
-  const Component = ((inputProps: P) => {
-    const props = this.use(inputProps, true) as T & P;
+  const Component = ((props: P) => {
+    // const props = this.use(inputProps, true) as T & P;
 
-    for(const key in inputProps)
-      if(!(key in props))
-        Object.defineProperty(props, key, { value: inputProps[key] });
+    // for(const key in inputProps)
+    //   if(!(key in props))
+    //     Object.defineProperty(props, key, { value: inputProps[key] });
 
-    return render(props);
+    // return render(props);
   }) as Model.Component<T, P>;
 
   Component.Model = this;
