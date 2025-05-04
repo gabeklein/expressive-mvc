@@ -81,8 +81,8 @@ export declare namespace JSX {
   interface IntrinsicElements extends React.JSX.IntrinsicElements {}
 }
 
-function Render<T extends Model.Compat>(
-  this: Model.Init<T>,
+function Component<T extends Model.Compat>(
+  this: Model.Type<T>,
   props: Model.Assign<T>
 ){
   const { is, ...rest } = props;
@@ -124,32 +124,32 @@ function Render<T extends Model.Compat>(
 
 const RENDER = new WeakMap<typeof Model, React.FC>();
 
-export function create(
-  this: (
-    type: React.ElementType,
-    props: Record<string, any>,
-    key?: React.Key,
-    ...rest: any[]
-  ) => React.ReactElement,
-  type: React.ElementType,
-  props: Record<string, any>,
-  key?: React.Key,
-  ...args: any[]){
+export function compat(type: React.ElementType | Model.Type){
+  const bound = RENDER.get(type as any);
 
-  if(Model.is(type)){
-    const bound = RENDER.get(type);
+  if(bound) return bound;
 
-    if(bound)
-      type = bound;
-    else
-      RENDER.set(type, type = Render.bind(type as Model.Init));
-  }
-    
-  return this(type, props, key, ...args);
+  if(Model.is(type))
+    RENDER.set(type, type = Component.bind(type));
+
+  return type;
 }
 
-const jsx2 = create.bind(jsx);
-const jsxs2 = create.bind(jsxs);
+function jsx2(
+  type: React.ElementType | Model.Type,
+  props: Record<string, any>,
+  key?: React.Key) {
+  
+  return jsx(compat(type), props, key);
+}
+
+function jsxs2(
+  type: React.ElementType | Model.Type,
+  props: Record<string, any>,
+  key?: React.Key) {
+  
+  return jsxs(compat(type), props, key);
+}
 
 export { Fragment } from "react";
 export {
