@@ -85,18 +85,16 @@ function Component<T extends Model.Compat>(
   this: Model.Type<T>,
   props: Model.Assign<T>
 ){
-  const { is, ...rest } = props;
-
   return jsx(Provider, {
     for: this,
-    forEach: is,
+    forEach: props.is,
     children: jsx(() => {
       const self = this.get();
       const { render } = self;
   
-      for(const key in rest)
-        if(key in self)
-          (self as any)[key] = rest[key];
+      for(const key in props)
+        if(key in self && key != "is")
+          (self as any)[key] = props[key];
 
       if(render)
         return jsx(() => {
