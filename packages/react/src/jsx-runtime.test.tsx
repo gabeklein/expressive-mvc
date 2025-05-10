@@ -204,16 +204,6 @@ describe("element children", () => {
 })
 
 describe("children property", () => {
-  it("will pass through without render method", () => {
-    class Control extends Model {
-      children = <>Hello</>;
-    }
-  
-    const rendered = create(<Control />);
-  
-    expect(rendered.toJSON()).toBe("Hello");
-  })
-
   it("will notify parent", async () => {
     class Control extends Model {
       children = set<React.ReactNode>(undefined, didUpdate);

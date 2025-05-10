@@ -104,11 +104,6 @@ function Component<T extends Model.Compat>(
           return render.call(null, props, hot);
         }, {});
 
-      const { children } = self;
-
-      if(children)
-        return children;
-
       const fn = props.children as React.ReactNode | Model.Render<T>;
 
       if(typeof fn != "function")
