@@ -100,8 +100,8 @@ function Component<T extends Model.Compat>(
 
       if(render)
         return jsx(() => {
-          const self = this.get();
-          return render.call(self, props, self);
+          const hot: any = render.length > 1 && this.get();
+          return render.call(null, props, hot);
         }, {});
 
       const { children } = self;
