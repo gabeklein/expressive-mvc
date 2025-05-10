@@ -15,7 +15,7 @@ const NOTIFY = new WeakMap<Model.Type, Set<OnUpdate>>();
 const PARENT = new WeakMap<Model, Model | null>();
 
 /** List of methods defined by a given type. */
-const METHODS = new WeakMap<Model.Type, Set<string>>();
+const METHODS = new WeakMap<Model.Type, Map<string, (value: any) => void>>();
 
 /** Reference bound instance methods to real ones. */
 const METHOD = new WeakMap<any, any>();
@@ -304,11 +304,13 @@ abstract class Model {
     if(arg1 && typeof arg1 == "object"){
       const methods = METHODS.get(self.constructor as Model.Type)!;
     
-      for(const key in arg1)
-        if(methods.has(key))
-          self[key as keyof this] = arg1[key] as any;
+      for(const key in arg1){
+        const bind = methods.get(key);
+        if(bind)
+          bind.call(this, arg1[key]);
         else if(key in self)
           update(self, key, arg1[key], arg2 === true);
+      }
     }
     else
       event(self, arg1);
@@ -382,7 +384,7 @@ function prepare(model: Model){
     throw new Error("Cannot create base Model.");
 
   const chain = [] as Model.Type[];
-  let keys = new Set<string>();
+  let keys = new Map<string, (value: any) => void>();
 
   ID.set(model, `${T}-${uid()}`);
 
@@ -402,7 +404,7 @@ function prepare(model: Model){
       continue;
     }
 
-    METHODS.set(type, keys = new Set(keys));
+    METHODS.set(type, keys = new Map(keys));
 
     for(const [key, { value }] of Object.entries(
       Object.getOwnPropertyDescriptors(type.prototype)
@@ -419,7 +421,7 @@ function prepare(model: Model){
         return value;
       }
 
-      keys.add(key);
+      keys.set(key, bind);
       define(type.prototype, key, { get: bind, set: bind });
     }
   }
