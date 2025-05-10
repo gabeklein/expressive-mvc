@@ -5,7 +5,7 @@ import { Provider } from './context';
 
 declare module '@expressive/mvc' {
   namespace Model {
-    type Render<T extends Model> = (this: T, self: T) => React.ReactNode;
+    type Render<T extends Model> = (self: T) => React.ReactNode;
 
     namespace FC {
       type Extends <T extends Model, P extends {} = {}> = Props<T> & P;
@@ -99,20 +99,14 @@ function Component<T extends Model.Compat>(
           (self as any)[key] = rest[key];
 
       if(render)
-        return jsx(() => {
-          const hot: any = render.length > 1 && this.get();
-          return render.call(null, props, hot);
-        }, {});
+        return jsx(() => render(props, render.length > 1 && this.get() as any), {});
 
       const fn = props.children as React.ReactNode | Model.Render<T>;
 
-      if(typeof fn != "function")
-        return fn;
+      if(typeof fn == "function")
+        return jsx(() => fn(this.get()), {});
 
-      return jsx(() => {
-        const self = this.get();
-        return fn.call(self, self);
-      }, {});
+      return fn;
     }, {})
   });
 }
