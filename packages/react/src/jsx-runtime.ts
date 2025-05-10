@@ -5,8 +5,6 @@ import { Provider } from './context';
 
 declare module '@expressive/mvc' {
   namespace Model {
-    type Render<T extends Model> = (self: T) => React.ReactNode;
-
     namespace FC {
       type Extends <T extends Model, P extends {} = {}> = Props<T> & P;
 
@@ -40,23 +38,25 @@ declare module '@expressive/mvc' {
 
     /** Model which is not incompatable as Component in React. */
     interface Compat extends Model {
-      render?(props: Model.Assign<this>, self: this): React.ReactNode;
-      children?: React.ReactNode;
+      render?(props: HasProps<this>, self: this): React.ReactNode;
     }
 
+    interface BaseProps<T extends Model> {
+      /**
+       * Callback for newly created instance. Only called once.
+       * @returns Callback to run when instance is destroyed.
+       */
+      is?: (instance: T) => void | (() => void);
+
+      render?(props: HasProps<T>, self: T): React.ReactNode;
+    }
+
+    type HasProps<T extends Model> = Partial<Pick<T, Exclude<keyof T, keyof Model>>>;
+
     type Props<T extends Model> = 
-      & T extends { render(props: infer P, self: any): any }
-        ? Partial<Pick<T, Exclude<keyof T, keyof Model | "render">>> & P
-        : Partial<Pick<T, Exclude<keyof T, keyof Model>>> & {
-          children?: React.ReactNode | Render<T>;
-        }
-      & {
-        /**
-         * Callback for newly created instance. Only called once.
-         * @returns Callback to run when instance is destroyed.
-         */
-        is?: (instance: T) => void | (() => void);
-      };
+      T extends { render(props: infer P, self: any): any }
+        ? BaseProps<T> & HasProps<T> & P
+        : BaseProps<T> & HasProps<T> & { children?: React.ReactNode };
   }
 }
 
@@ -83,7 +83,7 @@ export declare namespace JSX {
 
 function Component<T extends Model.Compat>(
   this: Model.Type<T>,
-  props: Model.Assign<T>
+  props: Model.Props<T>
 ){
   const { is, ...rest } = props;
 
@@ -92,21 +92,15 @@ function Component<T extends Model.Compat>(
     forEach: is,
     children: jsx(() => {
       const self = this.get();
-      const { render } = self;
   
-      for(const key in rest)
-        if(key in self)
-          (self as any)[key] = rest[key];
+      Object.assign(Object.create(self.is), rest);
+
+      const render = props.render || self.render;
 
       if(render)
         return jsx(() => render(props, render.length > 1 && this.get() as any), {});
 
-      const fn = props.children as React.ReactNode | Model.Render<T>;
-
-      if(typeof fn == "function")
-        return jsx(() => fn(this.get()), {});
-
-      return fn;
+      return props.children;
     }, {})
   });
 }

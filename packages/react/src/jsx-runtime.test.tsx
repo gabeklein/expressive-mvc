@@ -1,5 +1,5 @@
-import { act, Component } from 'react';
-import { create } from 'react-test-renderer';
+import { Component } from 'react';
+import { create, act } from 'react-test-renderer';
 
 import { Consumer, has, Model, set } from '.';
 
@@ -146,47 +146,6 @@ describe("element props", () => {
 })
 
 describe("element children", () => {
-  it("will accept function", () => {
-    class Control extends Model {
-      /** Hover over this prop to see description. */
-      foo = "bar";
-    }
-  
-    const rendered = create(
-      <Control foo="baz">
-        {c => c.foo}
-      </Control>
-    );
-  
-    expect(rendered.toJSON()).toBe("baz")
-  });
-
-  it("will self-update function", async () => {
-    class Control extends Model {
-      constructor(...args: Model.Args){
-        super(args);
-        control = this;
-      }
-  
-      /** Hover over this prop to see description. */
-      foo = "bar";
-    }
-  
-    let control!: Control;
-  
-    const rendered = create(
-      <Control foo="baz">
-        {c => c.foo}
-      </Control>
-    );
-  
-    expect(rendered.toJSON()).toBe("baz");
-  
-    await act(async () => control.set({ foo: "qux" }));
-  
-    expect(rendered.toJSON()).toBe("qux");
-  });
-
   it("will handle multiple elements", () => {
     class Control extends Model {
       foo = "bar"
@@ -201,9 +160,7 @@ describe("element children", () => {
   
     expect(rendered.toJSON()).toEqual(["Hello", "World"]);
   })
-})
 
-describe("children property", () => {
   it("will notify parent", async () => {
     class Control extends Model {
       children = set<React.ReactNode>(undefined, didUpdate);
@@ -211,13 +168,32 @@ describe("children property", () => {
 
     const didUpdate = jest.fn();
     const rendered = create(
-      <Control>
+      <Control >
         Hello
       </Control>
     );
   
     expect(rendered.toJSON()).toBe("Hello");
     expect(didUpdate).toHaveBeenCalled();
+  })
+
+  it("will accept arbitrary children with render", () => {
+    const symbol = Symbol("foo");
+    
+    class Control extends Model {
+      render(props: { children: symbol }) {
+        expect(props.children).toBe(symbol);
+        return "Hello";
+      }
+    }
+  
+    const rendered = create(
+      <Control>
+        {symbol}
+      </Control>
+    );
+  
+    expect(rendered.toJSON()).toEqual("Hello");
   })
 })
 
@@ -274,31 +250,41 @@ describe("render method", () => {
   
     expect(rendered.toJSON()).toEqual(["Hello", "World"]);
   })
-})
 
-it.skip("will render multiple times", () => {
-  class Control extends Model {
-    /** Hello this is bar */
-    foo = "bar";
-  }
+  it("will use render prop if defined", () => {
+    class Control extends Model {
+      value = "bar";
+    }
 
-  const render = create(
-    <Control >
-      <Consumer for={Control}>
-        {c => expect(c).toBeInstanceOf(Control)}
-      </Consumer>
-    </Control>
-  );
+    const rendered = create(
+      <Control render={() => "bar"} />
+    );
 
-  render.update(
-    <Control foo='sdas'>
-      <Consumer for={Control}>
-        {control => {
-          debugger
-        }}
-      </Consumer>
-    </Control>
-  )
+    expect(rendered.toJSON()).toEqual("bar");
+  });
+
+  it("will refresh on update", async () => {
+    class Control extends Model {
+      value = "bar";
+
+      render(props: {}, self: this){
+        return self.value;
+      }
+    }
+
+    let control: Control;
+    const rendered = create(
+      <Control is={x => {control = x}} />
+    );
+
+    expect(rendered.toJSON()).toEqual("bar");
+
+    await act(() => {
+      control.set({ value: "foo" });
+    });
+
+    expect(rendered.toJSON()).toEqual("foo");
+  })
 })
 
 describe("Model.FC", () => {
@@ -312,7 +298,6 @@ describe("Model.FC", () => {
       baz: string;
       foo?: string | undefined
       bar?: string | undefined
-      chidren?: React.ReactNode | Model.Render<Control>;
       is?: ((instance: Control) => void | (() => void)) | undefined;
     }
   
