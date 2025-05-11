@@ -279,8 +279,8 @@ describe("render method", () => {
 
     expect(rendered.toJSON()).toEqual("bar");
 
-    await act(() => {
-      control.set({ value: "foo" });
+    await act(async () => {
+      await control.set({ value: "foo" });
     });
 
     expect(rendered.toJSON()).toEqual("foo");
