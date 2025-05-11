@@ -2,6 +2,7 @@ import { Model } from '@expressive/mvc';
 import { jsx, jsxs } from 'react/jsx-runtime';
 
 import { Provider } from './context';
+import { isValidElement } from 'react';
 
 declare module '@expressive/mvc' {
   namespace Model {
@@ -86,23 +87,19 @@ function Component<T extends Model.Compat>(
   props: Model.Props<T>
 ){
   const { is, ...rest } = props;
+  const self = this.use(is);
 
-  return jsx(Provider, {
-    for: this,
-    forEach: is,
-    children: jsx(() => {
-      const self = this.get();
-  
-      Object.assign(Object.create(self), rest);
+  Object.assign(Object.create(self), rest);
 
-      const render = props.render || self.render;
+  const render = self.render || props.render;
 
-      if(render)
-        return jsx(() => render(props, render.length > 1 ? this.get() : undefined as never), {});
+  if(render)
+    return render(props, self);
 
-      return props.children;
-    }, {})
-  });
+  if(isValidElement(props.children))
+    return jsx(Provider, { for: self, children: props.children });
+
+  return props.children;
 }
 
 const RENDER = new WeakMap<typeof Model, React.FC>();

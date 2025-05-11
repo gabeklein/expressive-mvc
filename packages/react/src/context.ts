@@ -32,23 +32,27 @@ declare namespace Provider {
 }
 
 function Provider<T extends Model>(props: Provider.Props<T>){
-  const ambient = useContext(Lookup);
-  const context = useMemo(() => ambient.push(), [ambient]);
-
-  useEffect(() => () => context.pop(), [ambient]);
+  let context = Context.has(props.for instanceof Model ? props.for.is : undefined as never);
   
-  context.include(props.for, (model) => {
-    // TODO: remove next minor release
-    if("set" in props)
-      throw new Error(`The \`set\` prop is deprecated. Use \`forEach\` or <${model.constructor} {...props} /> instead.`);
-
-    if(props.forEach){
-      const cleanup = props.forEach(model);
-
-      if(cleanup)
-        model.set(null, cleanup);
-    }
-  });
+  if(!context){
+    const ambient = useContext(Lookup);
+    context = useMemo(() => ambient.push(), [ambient]);
+  
+    useEffect(() => () => context!.pop(), [ambient]);
+    
+    context.include(props.for, (model) => {
+      // TODO: remove next minor release
+      if("set" in props)
+        throw new Error(`The \`set\` prop is deprecated. Use \`forEach\` or <${model.constructor} {...props} /> instead.`);
+  
+      if(props.forEach){
+        const cleanup = props.forEach(model);
+  
+        if(cleanup)
+          model.set(null, cleanup);
+      }
+    });
+  }
 
   return createElement(Lookup.Provider, {
     key: context.id,

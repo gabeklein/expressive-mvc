@@ -3,6 +3,7 @@ import { event, Model, PARENT, uid } from './model';
 
 const LOOKUP = new WeakMap<Model, Context | ((got: Context) => void)[]>();
 const KEYS = new Map<symbol | Model.Type, symbol>();
+const ASSOC = new WeakMap<Model, Context>();
 
 function key(T: Model.Type | symbol, upstream?: boolean): symbol {
   let K = KEYS.get(T);
@@ -41,6 +42,15 @@ interface Context {
 }
 
 class Context {
+  static has(model: Model): Context | undefined;
+  static has(model: Model, context: Context): void;
+  static has(model: Model, context?: Context){
+    if(!context)
+      return ASSOC.get(model) as Context;
+    
+    ASSOC.set(model, context);
+  }
+
   static get<T extends Model>(on: Model, callback: ((got: Context) => void)): void;
   static get<T extends Model>(on: Model): Context | undefined;
   static get(from: Model, callback?: (got: Context) => void){

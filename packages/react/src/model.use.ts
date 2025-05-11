@@ -1,4 +1,4 @@
-import { Model } from '@expressive/mvc';
+import { Model, Context } from '@expressive/mvc';
 
 import { Pragma } from './adapter';
 
@@ -36,6 +36,8 @@ Model.use = function <T extends Model> (
       if(enabled) 
         refresh();
     });
+
+    Context.has(instance, context);
 
     function didMount(){
       enabled = true;
