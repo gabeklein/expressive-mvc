@@ -4,7 +4,7 @@ import Model from '.';
 import { compat } from './jsx-runtime';
 
 function jsxDEV2(
-  type: React.ElementType | Model.Type,
+  type: React.ElementType | Model.Init,
   props: Record<string, any>,
   key: React.Key,
   isStatic: boolean,

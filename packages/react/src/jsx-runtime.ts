@@ -82,7 +82,7 @@ export declare namespace JSX {
 }
 
 function Component<T extends Model.Compat>(
-  this: Model.Type<T>,
+  this: Model.Init<T>,
   props: Model.Props<T>
 ){
   const { is, ...rest } = props;
@@ -107,7 +107,7 @@ function Component<T extends Model.Compat>(
 
 const RENDER = new WeakMap<typeof Model, React.FC>();
 
-export function compat(type: React.ElementType | Model.Type){
+export function compat(type: React.ElementType | Model.Init){
   const bound = RENDER.get(type as any);
 
   if(bound) return bound;
@@ -119,7 +119,7 @@ export function compat(type: React.ElementType | Model.Type){
 }
 
 function jsx2(
-  type: React.ElementType | Model.Type,
+  type: React.ElementType | Model.Init,
   props: Record<string, any>,
   key?: React.Key) {
   
@@ -127,7 +127,7 @@ function jsx2(
 }
 
 function jsxs2(
-  type: React.ElementType | Model.Type,
+  type: React.ElementType | Model.Init,
   props: Record<string, any>,
   key?: React.Key) {
   

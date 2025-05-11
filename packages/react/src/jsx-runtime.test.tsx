@@ -5,11 +5,12 @@ import { Consumer, has, Model, set } from '.';
 
 describe("has instruction", () => {
   it("will callback on register", () => {
-    class Child extends Model {
-      parents = has(gotParent);
-    }
     class Parent extends Model {
       child = has(Child, gotChild);
+    }
+
+    class Child extends Model {
+      parents = has(gotParent);
     }
   
     const didCallback = jest.fn();

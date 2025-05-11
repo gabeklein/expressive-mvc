@@ -5,8 +5,14 @@ it("exports jsxDEV", () => {
   expect(jsxDEV).toBeDefined();
 });
 
+it("exports Fragment", () => {
+  expect(Fragment).toBeDefined();
+});
+
 it("will convert Model to element", () => {
-  const element = jsxDEV(Model, { children: "Hello" }, "key", false);
+  class Test extends Model {}
+
+  const element = jsxDEV(Test, { children: "Hello" }, "key", false);
 
   expect(element).toMatchObject({
     type: expect.any(Function),
@@ -15,7 +21,3 @@ it("will convert Model to element", () => {
     }
   });
 })
-
-it("exports Fragment", () => {
-  expect(Fragment).toBeDefined();
-});
