@@ -3,7 +3,7 @@ import { Context } from '@expressive/mvc';
 const Pragma = {} as {
   useContext(): Context;
 
-  useFactory<T extends () => unknown>(
+  useFactory<T extends (...args: any[]) => unknown>(
     factory: (refresh: () => void) => T
   ): T;
 
