@@ -4,7 +4,7 @@ import { create, act } from 'react-test-renderer';
 import { Consumer, has, Model, set } from '.';
 
 describe("has instruction", () => {
-  it("will callback on register", () => {
+  it("will callback on register", async () => {
     class Child extends Model {
       parents = has(gotParent);
     }
@@ -25,7 +25,7 @@ describe("has instruction", () => {
     expect(gotParent).toHaveBeenCalledTimes(1);
     expect(gotChild).toHaveBeenCalledTimes(1);
 
-    act(() => rendered.unmount());
+    await act(async () => rendered.unmount());
 
     expect(didCallback).toHaveBeenCalledTimes(2);
     expect(didCallback.mock.calls[0][0]).toBe("parent");
@@ -279,8 +279,8 @@ describe("render method", () => {
 
     expect(rendered.toJSON()).toEqual("bar");
 
-    await act(() => {
-      control.set({ value: "foo" });
+    await act(async () => {
+      await control.set({ value: "foo" });
     });
 
     expect(rendered.toJSON()).toEqual("foo");

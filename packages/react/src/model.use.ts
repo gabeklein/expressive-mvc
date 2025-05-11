@@ -1,4 +1,4 @@
-import { Model } from '@expressive/mvc';
+import { createEffect, Model } from '@expressive/mvc';
 
 import { Pragma } from './adapter';
 
@@ -30,7 +30,7 @@ Model.use = function <T extends Model> (
 
     const instance = new this(argument);
     const context = ambient.push({ instance });
-    const unwatch = instance.get(current => {
+    const unwatch = createEffect(instance, current => {
       local = current;
 
       if(enabled) 

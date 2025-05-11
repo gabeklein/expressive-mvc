@@ -1,7 +1,9 @@
-import { Model } from '@expressive/mvc';
+import { createEffect, Model } from '@expressive/mvc';
+import { isValidElement } from 'react';
 import { jsx, jsxs } from 'react/jsx-runtime';
 
-import { Provider } from './context';
+import { Pragma } from './adapter';
+import { Context } from './context';
 
 declare module '@expressive/mvc' {
   namespace Model {
@@ -82,32 +84,77 @@ export declare namespace JSX {
 }
 
 function Component<T extends Model.Compat>(
-  this: Model.Type<T>,
+  this: Model.Init<T>,
   props: Model.Props<T>
 ){
-  const { is, ...rest } = props;
+  const ambient = Pragma.useContext();
+  const onRender = Pragma.useFactory((refresh) => {
+    let enabled: boolean | undefined;
+    let local: T;
 
-  return jsx(Provider, {
-    for: this,
-    forEach: is,
-    children: jsx(() => {
-      const self = this.get();
-  
-      Object.assign(Object.create(self), rest);
+    const { is, ...rest } = props;
+    const instance = new this(rest as Model.HasProps<Model>);
+    const context = ambient.push({ instance });
+    const unwatch = createEffect(instance, current => {
+      local = current;
 
-      const render = props.render || self.render;
+      if(enabled) 
+        refresh();
+    });
+
+
+    if(is){
+      const done = is(instance);
+      if(typeof done == "function")
+        instance.set(null, done);
+    }
+
+    function didMount(){
+      enabled = true;
+      return () => {
+        unwatch();
+        instance.set(null);
+        context.pop()
+      }
+    }
+
+    return (props: Model.Props<T>) => {
+      Pragma.useLifecycle(didMount);
+
+      const { is, render = instance.render, ...rest } = props;
+
+      if(enabled){
+        enabled = false;
+        instance.set(rest as {});
+
+        const update = instance.set();
+
+        if(update)
+          update.then(() => enabled = true);
+        else
+          enabled = true;
+      }
 
       if(render)
-        return jsx(() => render(props, render.length > 1 ? this.get() : undefined as never), {});
+        return render(props, local);
 
-      return props.children;
-    }, {})
+      if(isValidElement(rest.children))
+        return jsx(Context.Provider, {
+          // key: context.id,
+          value: context,
+          children: rest.children
+        });
+
+      return rest.children;
+    }
   });
+
+  return onRender(props);
 }
 
 const RENDER = new WeakMap<typeof Model, React.FC>();
 
-export function compat(type: React.ElementType | Model.Type){
+export function compat(type: React.ElementType | Model.Init){
   const bound = RENDER.get(type as any);
 
   if(bound) return bound;
@@ -119,7 +166,7 @@ export function compat(type: React.ElementType | Model.Type){
 }
 
 function jsx2(
-  type: React.ElementType | Model.Type,
+  type: React.ElementType | Model.Init,
   props: Record<string, any>,
   key?: React.Key) {
   
@@ -127,7 +174,7 @@ function jsx2(
 }
 
 function jsxs2(
-  type: React.ElementType | Model.Type,
+  type: React.ElementType | Model.Init,
   props: Record<string, any>,
   key?: React.Key) {
   
