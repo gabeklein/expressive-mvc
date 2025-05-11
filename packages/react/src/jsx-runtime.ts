@@ -93,12 +93,12 @@ function Component<T extends Model.Compat>(
     children: jsx(() => {
       const self = this.get();
   
-      Object.assign(Object.create(self.is), rest);
+      Object.assign(Object.create(self), rest);
 
       const render = props.render || self.render;
 
       if(render)
-        return jsx(() => render(props, render.length > 1 && this.get() as any), {});
+        return jsx(() => render(props, render.length > 1 ? this.get() : undefined as never), {});
 
       return props.children;
     }, {})
