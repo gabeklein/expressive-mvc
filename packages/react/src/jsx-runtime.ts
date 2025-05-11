@@ -105,37 +105,36 @@ function Component<T extends Model.Compat>(
   });
 }
 
-const RENDER = new WeakMap<typeof Model, React.FC>();
+type RestParams<T> = T extends (_first: any, ...args: infer U) => any ? U : never;
 
-export function compat(type: React.ElementType | Model.Type){
-  const bound = RENDER.get(type as any);
+const LAST = new WeakMap<Function, React.ReactElement>();
 
-  if(bound) return bound;
-
-  if(Model.is(type))
-    RENDER.set(type, type = Component.bind(type));
-
-  return type;
+function Expressive<T>(this: React.FC<T>, props: T){
+  return this(props) || LAST.get(this) || null;
 }
 
-function jsx2(
-  type: React.ElementType | Model.Type,
-  props: Record<string, any>,
-  key?: React.Key) {
+const RENDER = new WeakMap<any, React.FC>();
+
+type RuntimeJSX =
+  | typeof import("react/jsx-runtime").jsx
+  | typeof import("react/jsx-dev-runtime").jsxDEV;
+
+export function compat<T extends RuntimeJSX>(jsx: T){
+  return (type: React.ElementType | Model.Type, ...rest: RestParams<T>) => {
+    let bound = RENDER.get(type) as React.ElementType;
   
-  return jsx(compat(type), props, key);
+    if(!bound && typeof type === "function")
+      if(!type.prototype)
+        RENDER.set(type, bound = Expressive.bind(type as React.FC<any>));
+      else if(type.prototype instanceof Model)
+        RENDER.set(type, bound = Component.bind(type as Model.Init));
+  
+    return jsx(bound || type, ...rest as [any, any, any, any]);
+  }
 }
 
-function jsxs2(
-  type: React.ElementType | Model.Type,
-  props: Record<string, any>,
-  key?: React.Key) {
-  
-  return jsxs(compat(type), props, key);
-}
+const jsx2 = compat(jsx);
+const jsxs2 = compat(jsxs);
 
 export { Fragment } from "react";
-export {
-  jsx2 as jsx,
-  jsxs2 as jsxs
-}
+export { jsx2 as jsx, jsxs2 as jsxs };
