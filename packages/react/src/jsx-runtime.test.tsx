@@ -4,13 +4,20 @@ import { create, act } from 'react-test-renderer';
 import { Consumer, has, Model, set } from '.';
 
 describe("has instruction", () => {
-  it("will callback on register", () => {
+  it.only("will callback on register", () => {
     class Parent extends Model {
       child = has(Child, gotChild);
     }
 
     class Child extends Model {
-      parents = has(gotParent);
+      parents = has(() => {
+        gotParent();
+      });
+    }
+
+    const Inner = () => {
+      Child.use();
+      return null;
     }
   
     const didCallback = jest.fn();
@@ -19,12 +26,12 @@ describe("has instruction", () => {
 
     const rendered = create(
       <Parent>
-        <Child />
+        <Inner />
       </Parent>
     );
 
-    expect(gotParent).toHaveBeenCalledTimes(1);
     expect(gotChild).toHaveBeenCalledTimes(1);
+    expect(gotParent).toHaveBeenCalledTimes(1);
 
     act(() => rendered.unmount());
 

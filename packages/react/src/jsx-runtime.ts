@@ -1,7 +1,7 @@
 import { Model } from '@expressive/mvc';
 import { jsx, jsxs } from 'react/jsx-runtime';
 
-import { Provider } from './context';
+import { Context, Provider, Register } from './context';
 
 declare module '@expressive/mvc' {
   namespace Model {
@@ -86,23 +86,33 @@ function Component<T extends Model.Compat>(
   props: Model.Props<T>
 ){
   const { is, ...rest } = props;
+  const self = this.use(is);
+  const context = Register.get(self)!;
 
-  return jsx(Provider, {
-    for: this,
-    forEach: is,
-    children: jsx(() => {
-      const self = this.get();
+  Object.assign(Object.create(self), rest);
+
+  const render = props.render || self.render;
+  const children = render
+    ? jsx(() => render(props, render.length > 1 ? this.get() : undefined as never), {})
+    : props.children;
+
+  return jsx(Context.Provider, { value: context, children });
+
+  // return jsx(Context.Provider, {
+  //   value: context,
+  //   children: jsx(() => {
+  //     const self = this.get();
   
-      Object.assign(Object.create(self), rest);
+  //     Object.assign(Object.create(self), rest);
 
-      const render = props.render || self.render;
+  //     const render = props.render || self.render;
 
-      if(render)
-        return jsx(() => render(props, render.length > 1 ? this.get() : undefined as never), {});
+  //     if(render)
+  //       return jsx(() => render(props, render.length > 1 ? this.get() : undefined as never), {});
 
-      return props.children;
-    }, {})
-  });
+  //     return props.children;
+  //   }, {})
+  // });
 }
 
 const RENDER = new WeakMap<typeof Model, React.FC>();

@@ -1,6 +1,7 @@
 import { Model } from '@expressive/mvc';
 
 import { Pragma } from './adapter';
+import { Register } from './context';
 
 declare module '@expressive/mvc' {
   namespace Model {
@@ -36,6 +37,8 @@ Model.use = function <T extends Model> (
       if(enabled) 
         refresh();
     });
+
+    Register.set(instance, context);
 
     function didMount(){
       enabled = true;
