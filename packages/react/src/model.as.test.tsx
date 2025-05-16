@@ -12,8 +12,8 @@ it("will update component as values change", async () => {
     }
   }
 
-  const Component = Test.as(props => (
-    <span>{props.foo}</span>
+  const Component = Test.as((_, self) => (
+    <span>{self.foo}</span>
   ))
 
   let test: Test;
@@ -81,22 +81,33 @@ it("will pass props to model", () => {
   expect(didUpdateFoo).toHaveBeenCalledWith("foo", { foo: "baz" });
 });
 
-it("will pass untracked props to render", () => {
+it("will pass untracked props to render", async () => {
   class Test extends Model {
     foo = "foo";
   }
 
-  const Component = Test.as((props: { value: string }) => (
-    <span>{props.value}</span>
+  const Component = Test.as((props: { value: string }, self) => (
+    <span>{self.foo}{props.value}</span>
   ))
 
+  let test: Test;
   const rendered = create(
-    <Component foo="foo" value="foobar" />
+    <Component foo="foo" value="bar" is={self => {test = self}} />
   );
 
   expect(rendered.toJSON()).toEqual({
     type: "span",
     props: {},
-    children: ["foobar"]
+    children: ["foo", "bar"]
+  });
+
+  await act(async () => {
+    test!.foo = "baz";
+  });
+
+  expect(rendered.toJSON()).toEqual({
+    type: "span",
+    props: {},
+    children: ["baz", "bar"]
   });
 });
