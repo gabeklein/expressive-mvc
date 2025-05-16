@@ -19,7 +19,8 @@ function has <T extends Model> (
   return use<T[]>((key, subject) => {
     const applied = new Set<Model>();
     const reset = () => {
-      update(subject, key, Object.freeze(Array.from(applied)));
+      if(!subject.get(null))
+        update(subject, key, Object.freeze(Array.from(applied)));
     }
 
     if(Model.is(arg1))
