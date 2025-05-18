@@ -1,12 +1,14 @@
 import { Model } from '@expressive/mvc';
+import { useEffect, useMemo, useState } from 'react';
 import { jsx, jsxs } from 'react/jsx-runtime';
 
-import { Provider } from './context';
+import { Pragma } from './adapter';
+import { Context } from './context';
 
-declare module '@expressive/mvc' {
+declare module "@expressive/mvc" {
   namespace Model {
     namespace FC {
-      type Extends <T extends Model, P extends {} = {}> = Props<T> & P;
+      type Extends<T extends Model, P extends {} = {}> = Props<T> & P;
 
       export { Extends as Props };
     }
@@ -84,24 +86,27 @@ export declare namespace JSX {
 function Component<T extends Model.Compat>(
   this: Model.Init<T>,
   props: Model.Props<T>
-){
-  const { is, ...rest } = props;
+) {
+  const ambient = Pragma.useContext();
+  const model = useState(() => new this(props.is))[0];
+  const context = useMemo(() => ambient.push(model), [ambient]);
 
-  return jsx(Provider, {
-    for: this,
-    forEach: is,
+  for(const key in model)
+    if(key in props)
+      model[key] = (props as any)[key];
+
+  useEffect(() => () => {
+    context.pop();
+    model.set(null);
+  }, []);
+
+  return jsx(Context.Provider, {
+    value: context,
     children: jsx(() => {
       const self = this.get();
-  
-      Object.assign(Object.create(self), rest);
-
       const render = props.render || self.render;
-
-      if(render)
-        return jsx(() => render(props, render.length > 1 ? this.get() : undefined as never), {});
-
-      return props.children;
-    }, {})
+      return render ? render(props, self) : props.children;
+    }, {}, context.id),
   });
 }
 
