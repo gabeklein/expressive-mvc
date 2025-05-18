@@ -1,9 +1,7 @@
 import { Model } from '@expressive/mvc';
-import { useEffect, useMemo, useState } from 'react';
 import { jsx, jsxs } from 'react/jsx-runtime';
 
-import { Pragma } from './adapter';
-import { Context } from './context';
+import { Context, Register } from './context';
 
 declare module "@expressive/mvc" {
   namespace Model {
@@ -87,26 +85,16 @@ function Component<T extends Model.Compat>(
   this: Model.Init<T>,
   props: Model.Props<T>
 ) {
-  const ambient = Pragma.useContext();
-  const model = useState(() => new this(props.is))[0];
-  const context = useMemo(() => ambient.push(model), [ambient]);
+  const local = this.use(props.is);
+  const render = props.render || local.render;
 
-  for(const key in model)
+  for(const key in local)
     if(key in props)
-      model[key] = (props as any)[key];
-
-  useEffect(() => () => {
-    context.pop();
-    model.set(null);
-  }, []);
+      local[key] = (props as any)[key];
 
   return jsx(Context.Provider, {
-    value: context,
-    children: jsx(() => {
-      const self = this.get();
-      const render = props.render || self.render;
-      return render ? render(props, self) : props.children;
-    }, {}, context.id),
+    value: Register.get(local.is),
+    children: render ? render(props, local) : props.children
   });
 }
 

@@ -234,7 +234,7 @@ abstract class Model {
    * @param silent - If an update does occur, listeners will not be refreshed automatically.
    * @returns Promise resolving an array of keys updated, `undefined` (immediately) if a noop.
    */
-  set(assign: Model.Assign<this>, silent?: boolean): PromiseLike<Model.Event<this>[]> | undefined;
+  set(assign?: Model.Assign<this>, silent?: boolean): PromiseLike<Model.Event<this>[]> | undefined;
 
   /**
    * Push an update. This will not change the value of associated property.

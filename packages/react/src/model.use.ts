@@ -1,6 +1,7 @@
 import { Model } from '@expressive/mvc';
 
 import { Pragma } from './adapter';
+import { Register } from './context';
 
 declare module '@expressive/mvc' {
   namespace Model {
@@ -41,10 +42,12 @@ Model.use = function <T extends Model> (
       enabled = true;
       return () => {
         unwatch();
-        instance.set(null);
         context.pop()
+        instance.set(null);
       }
     }
+
+    Register.set(instance, context);
 
     return (props?: Model.Assign<T> | Model.Callback<T>) => {
       Pragma.useLifecycle(didMount);
@@ -52,12 +55,12 @@ Model.use = function <T extends Model> (
       if(enabled && repeat && props){
         enabled = false;
 
-        if(typeof props == "function")
+        if(typeof props == "function"){
           props.call(instance, instance);
-        else if(typeof props == "object")
-          instance.set(props);
+          props = undefined
+        }
 
-        const update = instance.set();
+        const update = instance.set(props);
 
         if(update)
           update.then(() => enabled = true);
