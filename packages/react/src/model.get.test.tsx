@@ -1,11 +1,9 @@
 import { act, render, renderHook } from '@testing-library/react';
-import { ReactNode, Suspense } from 'react';
+import { Suspense } from 'react';
 
-import { get, Model, set } from '.';
-import { Provider } from './context';
-import { mockHook } from './mockHook';
+import { get, Model, Provider, set } from '.';
 
-export function renderWith(Type: Model.Init | Model, hook: () => ReactNode) {
+export function renderWith<T>(Type: Model.Init | Model, hook: () => T) {
   return renderHook(hook, {
     wrapper: ({ children }) => (
       <Provider for={Type}>
@@ -48,9 +46,9 @@ it("will fetch model", () => {
   class Test extends Model {}
 
   const test = Test.new();
-  const hook = mockHook(test, () => Test.get());
+  const hook = renderWith(test, () => Test.get());
 
-  expect(hook.output.is).toBe(test);
+  expect(hook.result.current.is).toBe(test);
 })
 
 it("will refresh for values accessed", async () => {
@@ -59,16 +57,18 @@ it("will refresh for values accessed", async () => {
   }
 
   const test = Test.new();
-  const hook = mockHook(test, () => {
+  const didRender = jest.fn();
+  const hook = renderWith(test, () => {
+    didRender();
     return Test.get().foo;
   });
 
-  expect(hook.output).toBe("foo");
+  expect(hook.result.current).toBe("foo");
 
   await act(async () => test.set({ foo: "bar" }));
 
-  expect(hook.output).toBe("bar");
-  expect(hook).toBeCalledTimes(2);
+  expect(hook.result.current).toBe("bar");
+  expect(didRender).toBeCalledTimes(2);
 })
 
 it("will not update on death event", async () => {
@@ -77,14 +77,16 @@ it("will not update on death event", async () => {
   }
 
   const test = Test.new();
-  const hook = mockHook(test, () => {
+  const didRender = jest.fn();
+  const hook = renderWith(test, () => {
+    didRender();
     return Test.get().foo;
   });
 
-  expect(hook.output).toBe("foo");
+  expect(hook.result.current).toBe("foo");
   test.set(null);
 
-  expect(hook).toBeCalledTimes(1);
+  expect(didRender).toBeCalledTimes(1);
 })
 
 it("will throw if not found", () => {
@@ -96,7 +98,7 @@ it("will throw if not found", () => {
     expect(() => Test.get()).toThrow("Could not find Test in context.");
   });
   
-  mockHook(useTest);
+  renderHook(useTest);
   expect(useTest).toHaveReturned();
 });
 
@@ -109,7 +111,7 @@ it("will not throw if optional", () => {
     expect(Test.get(false)).toBeUndefined();
   });
   
-  mockHook(useTest);
+  renderHook(useTest);
   expect(useTest).toHaveReturned();
 });
 
@@ -121,7 +123,7 @@ it("will throw if expected value undefined", () => {
     value?: number = undefined;
   }
 
-  mockHook(Test, () => {
+  renderWith(Test, () => {
     expect(() => {
       void Test.get(true).value;
     }).toThrow("ID.value is required in this context.");
@@ -136,15 +138,15 @@ describe("computed", () => {
 
   it('will select and subscribe to subvalue', async () => {
     const test = Test.new();
-    const hook = mockHook(test, () => {
+    const hook = renderWith(test, () => {
       return Test.get(x => x.foo);
     });
 
-    expect(hook.output).toBe(1);
+    expect(hook.result.current).toBe(1);
 
     await act(async () => test.set({ foo: 2 }))
 
-    expect(hook.output).toBe(2);
+    expect(hook.result.current).toBe(2);
   })
 
   it("will throw if instance not found", () => {
@@ -156,28 +158,30 @@ describe("computed", () => {
       expect(() => Test.get(x => x)).toThrow("Could not find Test in context.");
     });
     
-    mockHook(useTest);
+    renderHook(useTest);
     expect(useTest).toHaveReturned();
   });
 
   it('will compute output', async () => {
     const test = Test.new();
-    const hook = mockHook(test, () => {
+    const hook = renderWith(test, () => {
       return Test.get(x => x.foo + x.bar);
     });
 
-    expect(hook.output).toBe(3);
+    expect(hook.result.current).toBe(3);
 
     await act(async () => test.set({ foo: 2 }));
 
-    expect(hook.output).toBe(4);
+    expect(hook.result.current).toBe(4);
   })
 
   it('will ignore updates with same result', async () => {
     const test = Test.new();
     const compute = jest.fn();
+    const didRender = jest.fn();
 
-    const hook = mockHook(test, () => {
+    const hook = renderWith(test, () => {
+      didRender();
       return Test.get(x => {
         compute();
         void x.foo;
@@ -185,7 +189,7 @@ describe("computed", () => {
       });
     });
 
-    expect(hook.output).toBe(2);
+    expect(hook.result.current).toBe(2);
     expect(compute).toBeCalled();
 
     test.foo = 2;
@@ -195,25 +199,25 @@ describe("computed", () => {
     expect(compute).toBeCalledTimes(2);
 
     // compute did not trigger a new render
-    expect(hook).toBeCalledTimes(1);
-    expect(hook.output).toBe(2);
+    expect(didRender).toBeCalledTimes(1);
+    expect(hook.result.current).toBe(2);
   })
 
   it("will return null", () => {
     class Test extends Model {}
   
     const test = Test.new();
-    const render = mockHook(test, () => Test.get(() => null));
+    const rendered = renderWith(test, () => Test.get(() => null));
 
-    expect(render.output).toBe(null);
+    expect(rendered.result.current).toBe(null);
   })
 
   it("will convert undefined to null", () => {
-    const hook = mockHook(Test, () => {
+    const hook = renderWith(Test, () => {
       return Test.get(() => {});
     });
 
-    expect(hook.output).toBe(null);
+    expect(hook.result.current).toBe(null);
   })
 
   it("will disable updates if null returned", async () => {
@@ -222,23 +226,24 @@ describe("computed", () => {
       return null;
     });
 
-    const render = jest.fn(() => {
+    const didRender = jest.fn(() => {
       return Test.get(factory);
     })
 
     const test = Test.new();
-    const hook = mockHook(test, render);
+    const hook = renderWith(test, didRender);
 
-    expect(render).toBeCalledTimes(1);
-    expect(hook.output).toBe(null);
+    expect(didRender).toBeCalledTimes(1);
+    expect(hook.result.current).toBe(null);
 
     test.foo = 2;
 
     await expect(test).toHaveUpdated();
 
     expect(factory).toBeCalledTimes(1);
-    expect(render).toBeCalledTimes(1);
+    expect(didRender).toBeCalledTimes(1);
   })
+
   it("will run initial callback syncronously", async () => {
     class Parent extends Model {
       values = [] as string[]
@@ -288,10 +293,12 @@ describe("force update", () => {
   };
 
   it("will force a refresh", async () => {
+    const didRender = jest.fn();
     const didEvaluate = jest.fn();
     let forceUpdate!: () => void;
 
-    const hook = mockHook(Test, () => {
+    renderWith(Test, () => {
+      didRender();
       return Test.get((_, update) => {
         didEvaluate();
         forceUpdate = update;
@@ -299,21 +306,23 @@ describe("force update", () => {
     });
 
     expect(didEvaluate).toHaveBeenCalledTimes(1);
-    expect(hook).toHaveBeenCalledTimes(1);
+    expect(didRender).toHaveBeenCalledTimes(1);
     
     act(() => {
       forceUpdate();
     });
     
     expect(didEvaluate).toHaveBeenCalledTimes(1);
-    expect(hook).toHaveBeenCalledTimes(2);
+    expect(didRender).toHaveBeenCalledTimes(2);
   })
 
   it("will refresh without reevaluating", async () => {
     const didEvaluate = jest.fn();
+    const didRender = jest.fn();
     let forceUpdate!: () => void;
     
-    const hook = mockHook(Test, () => {
+    renderWith(Test, () => {
+      didRender();
       return Test.get((_, update) => {
         didEvaluate();
         forceUpdate = update;
@@ -323,67 +332,71 @@ describe("force update", () => {
     });
 
     expect(didEvaluate).toHaveBeenCalledTimes(1);
-    expect(hook).toHaveBeenCalledTimes(1);
+    expect(didRender).toHaveBeenCalledTimes(1);
     
     act(forceUpdate);
     
     expect(didEvaluate).toHaveBeenCalledTimes(1);
-    expect(hook).toHaveBeenCalledTimes(2);
+    expect(didRender).toHaveBeenCalledTimes(2);
   })
 
   it("will refresh again after promise", async () => {
     const promise = mockPromise();
+    const didRender = jest.fn();
     
     let forceUpdate!: <T>(after: Promise<T>) => Promise<T>;
 
-    const hook = mockHook(Test, () => {
+    const { result } = renderWith(Test, () => {
+      didRender();
       return Test.get((_, update) => {
         forceUpdate = update;
         return null;
       });
     });
 
-    expect<null>(hook.output).toBe(null);
-    expect(hook).toHaveBeenCalledTimes(1);
+    expect<null>(result.current).toBe(null);
+    expect(didRender).toHaveBeenCalledTimes(1);
 
     await act(async () => {
       forceUpdate(promise);
     })
 
-    expect(hook).toHaveBeenCalledTimes(2);
+    expect(didRender).toHaveBeenCalledTimes(2);
 
     await act(async () => {
        promise.resolve();
     });
 
-    expect(hook).toHaveBeenCalledTimes(3);
+    expect(didRender).toHaveBeenCalledTimes(3);
   })
 
   it("will invoke async function", async () => {
     const promise = mockPromise();
+    const didRender = jest.fn();
     
     let forceUpdate!: <T>(after: () => Promise<T>) => Promise<T>;
 
-    const hook = mockHook(Test, () => {
+    renderWith(Test, () => {
+      didRender();
       return Test.get((_, update) => {
         forceUpdate = update;
         return null;
       });
     });
 
-    expect(hook).toHaveBeenCalledTimes(1);
+    expect(didRender).toHaveBeenCalledTimes(1);
 
     act(() => {
       forceUpdate(() => promise);
     })
 
-    expect(hook).toHaveBeenCalledTimes(2);
+    expect(didRender).toHaveBeenCalledTimes(2);
 
     await act(async () => {
       promise.resolve();
     });
 
-    expect(hook).toHaveBeenCalledTimes(3);
+    expect(didRender).toHaveBeenCalledTimes(3);
   })
 })
 
@@ -395,47 +408,49 @@ describe("async", () => {
   it("will convert void to null", async () => {
     const promise = mockPromise<void>();
 
-    const hook = mockHook(Test, () => {
+    const hook = renderWith(Test, () => {
       return Test.get(async () => promise);
     });
 
     act(promise.resolve);
 
-    expect(hook.output).toBe(null);
+    expect(hook.result.current).toBe(null);
   })
 
   it('will not subscribe to values', async () => {
     const promise = mockPromise<string>();
 
     const test = Test.new();
-    const hook = mockHook(test, () => {
+    const didRender = jest.fn();
+    const hook = renderWith(test, () => {
+      didRender();
       return Test.get(async $ => {
         void $.foo;
         return promise;
       });
     });
 
-    expect(hook).toBeCalledTimes(1);
-    expect(hook.output).toBe(null);
+    expect(didRender).toBeCalledTimes(1);
+    expect(hook.result.current).toBe(null);
 
     await act(async () => {
       promise.resolve("foobar");
     })
 
-    expect(hook).toBeCalledTimes(2);
-    expect(hook.output).toBe("foobar");
+    expect(didRender).toBeCalledTimes(2);
+    expect(hook.result.current).toBe("foobar");
 
     test.foo = "foo";
     await expect(test).toHaveUpdated();
 
-    expect(hook).toBeCalledTimes(2);
+    expect(didRender).toBeCalledTimes(2);
   });
   
   it('will refresh and throw if async rejects', async () => {
     class Test extends Model {}
     
     const promise = mockPromise();
-    const hook = mockHook(Test, () => {
+    const hook = renderWith(Test, () => {
       try {
         Test.get(async () => {
           await promise;
@@ -447,14 +462,14 @@ describe("async", () => {
       }
     });
 
-    expect(hook.output).toBeUndefined();
+    expect(hook.result.current).toBeUndefined();
   
 
     await act(async () => {
       promise.resolve();
     });
 
-    expect(hook.output).toBe("oh no");
+    expect(hook.result.current).toBe("oh no");
   })
 })
 
@@ -469,23 +484,27 @@ describe("get instruction", () => {
 
   it("will attach peer from context", async () => {
     const bar = Bar.new();
-    const hook = mockHook(bar, () => Foo.use().is.bar);
+    const hook = renderWith(bar, () => Foo.use().is.bar);
 
-    expect(hook.output).toBe(bar);
+    expect(hook.result.current).toBe(bar);
   })
 
   it("will subscribe peer from context", async () => {
     const bar = Bar.new();
-    const hook = mockHook(bar, () => Foo.use().bar.value);
+    const didRender = jest.fn();
+    const hook = renderWith(bar, () => {
+      didRender();
+      return Foo.use().bar.value;
+    });
 
-    expect(hook.output).toBe("bar");
+    expect(hook.result.current).toBe("bar");
 
     await act(async () => {
       bar.value = "foo";
     });
 
-    expect(hook.output).toBe("foo");
-    expect(hook).toBeCalledTimes(2);
+    expect(hook.result.current).toBe("foo");
+    expect(didRender).toBeCalledTimes(2);
   })
 
   it("will return undefined if instance not found", () => {
@@ -493,9 +512,9 @@ describe("get instruction", () => {
       bar = get(Bar, false);
     }
 
-    const hook = mockHook(() => Foo.use().bar);
+    const hook = renderHook(() => Foo.use().bar);
 
-    expect(hook.output).toBeUndefined();
+    expect(hook.result.current).toBeUndefined();
   })
 
   it("will throw if instance not found", () => {
@@ -507,7 +526,7 @@ describe("get instruction", () => {
       }
     }
 
-    const tryToRender = () => mockHook(() => Foo.use());
+    const tryToRender = () => renderHook(() => Foo.use());
 
     expect(tryToRender).toThrowError(`Required Bar not found in context for ID.`);
   })
@@ -522,9 +541,9 @@ describe("get instruction", () => {
       parent = get(Parent);
     }
 
-    const { output } = mockHook(Parent, () => Parent.use().is);
+    const { result } = renderWith(Parent, () => Parent.use().is);
 
-    expect(output.child.parent).toBe(output);
+    expect(result.current.child.parent).toBe(result.current);
   })
 
   it("will throw if parent required in-context", () => {

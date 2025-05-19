@@ -1,7 +1,6 @@
-import { act, render } from '@testing-library/react';
+import { act, render, renderHook } from '@testing-library/react';
 
 import { get, Model, Provider, set } from '.';
-import { mockHook } from './mockHook';
 
 class Test extends Model {
   value = "foo";
@@ -9,9 +8,9 @@ class Test extends Model {
 
 describe("hook", () => {
   it("will create instance given a class", () => {
-    const hook = mockHook(() => Test.use());
+    const hook = renderHook(() => Test.use());
   
-    expect(hook.output).toBeInstanceOf(Test);
+    expect(hook.result.current).toBeInstanceOf(Test);
   })
 
   it("will not create abstract class", () => {
@@ -23,34 +22,35 @@ describe("hook", () => {
 
     render(<Test />);
   })
-    
-  it('will assign `is` as a circular reference', async () => {
-    const { output } = mockHook(() => Test.use());
-  
-    expect(output.is.value).toBe("foo");
-  
-    output.value = "bar";
-    await expect(output).toHaveUpdated();
-  
-    expect(output.is.value).toBe("bar")
-  })
   
   it("will subscribe to instance of controller", async () => {
-    const hook = mockHook(() => Test.use());
+    const { result } = renderHook(() => Test.use());
   
-    expect(hook.output.value).toBe("foo");
+    expect(result.current.value).toBe("foo");
   
     await act(async () => {
-      hook.output.value = "bar";
+      result.current.value = "bar";
     });
   
-    expect(hook.output.value).toBe("bar");
+    expect(result.current.value).toBe("bar");
+  })
+    
+  it('will assign `is` as a circular reference', async () => {
+    const { result } = renderHook(() => Test.use());
+  
+    expect(result.current.value).toBe("foo");
+  
+    await act(async () => {
+      result.current.is.value = "bar";
+    });
+  
+    expect(result.current.value).toBe("bar")
   })
   
   it("will run callback", () => {
     const callback = jest.fn();
   
-    mockHook(() => Test.use(callback));
+    renderHook(() => Test.use(callback));
   
     expect(callback).toHaveBeenCalledWith(expect.any(Test));
   })
@@ -75,22 +75,20 @@ describe("hook", () => {
   })
   
   it("will ignore updates after unmount", async () => {
-    const hook = mockHook(() => {
+    const hook = renderHook(() => {
       const test = Test.use();
       void test.value;
       return test.is;
     });
   
-    const test = hook.output;
-  
     act(() => {
-      test.value = "bar";
+      hook.result.current.value = "bar";
     });
   
     hook.unmount();
 
     expect(() => {
-      test.value = "baz";
+      hook.result.current.value = "baz";
     }).toThrow()
   })
 
@@ -99,11 +97,11 @@ describe("hook", () => {
       current = 0;
 
       action(){
-        this.current += 1;
+        this.current++;
       }
     }
     
-    const hook = mockHook(() => {
+    const hook = renderHook(() => {
       const { action, current } = Test.use();
 
       action();
@@ -111,11 +109,11 @@ describe("hook", () => {
       return current;
     });
 
-    expect(hook.output).toBe(0);    
+    expect(hook.result.current).toBe(0);    
 
-    await hook.update();
+    hook.rerender();
 
-    expect(hook.output).toBe(1);
+    expect(hook.result.current).toBe(1);
 
     hook.unmount();
   });
@@ -129,29 +127,26 @@ describe("callback argument", () => {
 
   it("will run callback once", async () => {
     const callback = jest.fn();
-
-    const hook = mockHook(() => Test.use(callback));
-    expect(callback).toHaveBeenCalledTimes(1);
-
-    await hook.update(() => Test.use(callback));
+    const hook = renderHook(() => Test.use(callback));
 
     expect(callback).toHaveBeenCalledTimes(1);
-    expect(hook).toHaveBeenCalledTimes(2);
+
+    hook.rerender(() => Test.use(callback));
+
+    expect(callback).toHaveBeenCalledTimes(1);
   })
 
   it("will run callback on every render", async () => {
     const callback = jest.fn();
-    const hook = mockHook(() => {
+    const hook = renderHook(() => {
       Test.use(callback, true);
     });
 
     expect(callback).toHaveBeenCalledTimes(1);
-    expect(hook).toHaveBeenCalledTimes(1);
 
-    await hook.update(() => Test.use(callback, true));
+    hook.rerender(() => Test.use(callback, true));
 
     expect(callback).toHaveBeenCalledTimes(2);
-    expect(hook).toHaveBeenCalledTimes(2);
   })
 
   it("will include updates in callback without reload", async () => {
@@ -160,7 +155,7 @@ describe("callback argument", () => {
       bar = 0;
     };
   
-    const hook = mockHook(() => {
+    const hook = renderHook(() => {
       const test = Test.use(test => {
         test.foo += 1;
       }, true);
@@ -172,16 +167,14 @@ describe("callback argument", () => {
     });
 
     // does have value change in callback
-    expect(hook).toHaveBeenCalledTimes(1);
-    expect(hook.output.foo).toBe(1);
+    expect(hook.result.current.foo).toBe(1);
 
     // does still respond to normal updates
-    await act(() => {
-      hook.output.bar = 2;
+    await act(async () => {
+      hook.result.current.bar = 2;
     });
 
-    expect(hook).toHaveBeenCalledTimes(2);
-    expect(hook.output.foo).toBe(2);
+    expect(hook.result.current.foo).toBe(2);
   });
 
   it("will run argument before effects", () => {
@@ -197,7 +190,7 @@ describe("callback argument", () => {
       }
     }
 
-    mockHook(() => {
+    renderHook(() => {
       Test.use(argument);
     });
 
@@ -220,54 +213,46 @@ describe("props argument", () => {
   
     const didRender = jest.fn();
   
-    const hook = mockHook(() => {
+    const hook = renderHook(() => {
       didRender();
       return Test.use(mockExternal);
     });
   
-    expect(hook.output).toMatchObject(mockExternal);
+    expect(hook.result.current).toMatchObject(mockExternal);
   })
   
   it("will apply props only once by default", async () => {
-    const hook = mockHook(() => {
+    const hook = renderHook(() => {
       return Test.use({ foo: "foo", bar: "bar" });
     });
 
-    expect(hook.output).toMatchObject({ foo: "foo", bar: "bar" });
+    expect(hook.result.current).toMatchObject({ foo: "foo", bar: "bar" });
 
-    await expect(hook.output).not.toHaveUpdated();
+    await expect(hook.result.current).not.toHaveUpdated();
 
-    hook.update(() => {
+    hook.rerender(() => {
       return Test.use({ foo: "bar", bar: "foo" })
     });
 
-    await expect(hook.output).not.toHaveUpdated();
+    await expect(hook.result.current).not.toHaveUpdated();
 
     await act(async () => {
-      hook.output.foo = "bar";
+      hook.result.current.foo = "bar";
     });
 
-    expect(hook.output.foo).toBe("bar");
-    expect(hook).toBeCalledTimes(3);
+    expect(hook.result.current.foo).toBe("bar");
   })
   
   it("will apply props per-render", async () => {
-    const hook = mockHook(() => {
-      return Test.use({ foo: "foo", bar: "bar" }, true);
-    });
+    const hook = renderHook(({ foo }) => {
+      return Test.use({ foo, bar: "bar" }, true);
+    }, { initialProps: { foo: "foo" } });
 
-    expect(hook.output).toMatchObject({ foo: "foo", bar: "bar" });
+    expect(hook.result.current).toMatchObject({ foo: "foo", bar: "bar" });
     
-    await expect(hook.output).not.toHaveUpdated();
+    hook.rerender({ foo: "bar" });
 
-    hook.update(() => {
-      return Test.use({ foo: "bar", bar: "foo" }, true)
-    });
-
-    await expect(hook.output).toHaveUpdated();
-
-    expect(hook.output.foo).toBe("bar");
-    expect(hook).toBeCalledTimes(2);
+    expect(hook.result.current.foo).toBe("bar");
   })
   
   it("will apply props over (untracked) arrow functions", () => {
@@ -279,11 +264,11 @@ describe("props argument", () => {
       foobar: () => "Goodbye cruel world!"
     }
   
-    const hook = mockHook(() => {
+    const hook = renderHook(() => {
       return Test.use(mockExternal);
     });
   
-    const { foobar } = hook.output;
+    const { foobar } = hook.result.current;
   
     expect(foobar).toBe(mockExternal.foobar);
   })
@@ -299,25 +284,23 @@ describe("props argument", () => {
       foobar: () => "Goodbye cruel world!"
     }
   
-    const { output } = mockHook(() => {
+    const { result } = renderHook(() => {
       return Test.use(mockExternal);
     });
   
-    expect(output.foobar).not.toBe(mockExternal.foobar);
+    expect(result.current).not.toBe(mockExternal.foobar);
   })
   
-  it("will ignore updates itself caused", async () => {
-    const hook = mockHook(() => {
-      return Test.use({}, true);
-    })
+  it("will not trigger updates it caused", async () => {
+    const didRender = jest.fn();
+    const hook = renderHook((props) => {
+      didRender();
+      return Test.use(props, true);
+    }, { initialProps: { foo: "foo" } });
 
-    hook.update(() => {
-      return Test.use({ foo: "bar" }, true);
-    })
+    hook.rerender({ foo: "bar" });
 
-    await expect(hook.output).toHaveUpdated();
-
-    expect(hook).toBeCalledTimes(2);
+    expect(didRender).toHaveBeenCalledTimes(2);
   })
 
   it("will trigger set instruction", () => {
@@ -327,11 +310,11 @@ describe("props argument", () => {
       foo = set("foo", mock);
     }
 
-    const { output } = mockHook(() => {
+    const { result } = renderHook(() => {
       return Test.use({ foo: "bar" });
     });
 
-    expect(output.foo).toBe("bar");
+    expect(result.current.foo).toBe("bar");
     expect(mock).toHaveBeenCalledWith("bar", "foo");
   })
 })
