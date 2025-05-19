@@ -1,7 +1,6 @@
-import { create } from 'react-test-renderer';
-
 import Model, { get, Provider, set } from '.';
 import { mockHook } from './mockHook';
+import { render } from '@testing-library/react';
 
 interface MockPromise<T> extends Promise<T> {
   resolve: (value: T) => void;
@@ -254,7 +253,7 @@ describe("computed", () => {
       didUpdateValues(state.values.length);
     })
   
-    const element = create(
+    render(
       <Provider for={parent}>
         <Child value='foo' />
         <Child value='bar' />
@@ -269,8 +268,6 @@ describe("computed", () => {
     // Expect updates to have bunched up before new frame.
     expect(didUpdateValues).toBeCalledTimes(2);
     expect(didUpdateValues).toBeCalledWith(3);
-  
-    element.unmount();
   })
 })
 

@@ -1,4 +1,4 @@
-import { act, create } from 'react-test-renderer';
+import { render } from '@testing-library/react';
 
 import Model, { get, Provider, set } from '.';
 import { mockHook } from './mockHook';
@@ -21,7 +21,7 @@ describe("hook", () => {
       return null;
     }
 
-    create(<Test />);
+    render(<Test />);
   })
     
   it('will assign `is` as a circular reference', async () => {
@@ -67,9 +67,9 @@ describe("hook", () => {
 
     const Component = () => void Test.use();
 
-    const rendered = create(<Component />);
-  
-    await act(() => rendered.unmount());
+    const rendered = render(<Component />);
+    
+    rendered.unmount()
 
     expect(didDestroy).toHaveBeenCalled();
   })
@@ -355,7 +355,7 @@ describe("context", () => {
       return null;
     }
 
-    create(
+    render(
       <Provider for={Ambient}>
         <Element />
       </Provider>
