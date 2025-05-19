@@ -2,7 +2,7 @@ import React, { Fragment, Suspense } from 'react';
 import { act, create } from 'react-test-renderer';
 
 import Model, { Consumer, get, has, Provider, set, use } from '.';
-import { mockAsync } from './mocks';
+import { mockAsync } from './mockAsync';
 
 const error = jest
   .spyOn(console, "error")

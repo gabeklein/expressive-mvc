@@ -1,7 +1,8 @@
 import { create } from 'react-test-renderer';
 
 import Model, { get, Provider, set } from '.';
-import { mockHook, mockPromise } from './mocks';
+import { mockHook } from './mockHook';
+import { mockPromise } from './mockPromise';
 
 const error = jest
   .spyOn(console, "error")

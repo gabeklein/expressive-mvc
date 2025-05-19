@@ -3,27 +3,6 @@ import { act, create } from 'react-test-renderer';
 
 import { Model, Provider } from '.';
 
-export function mockAsync<T = void>(){
-  const pending = new Set<[Function, Function]>();
-
-  const event = () =>
-    new Promise<T>((res, rej) => pending.add([res, rej]))
-
-  const resolve = (value: T) => {
-    const done = event();
-
-    pending.forEach(x => x[0](value));
-    pending.clear();
-
-    return done;
-  }
-
-  return {
-    pending: event,
-    resolve
-  }
-}
-
 interface MockHook<T> extends jest.Mock<T, []> {
   /** Current output of this hook. */
   output: T;
@@ -119,17 +98,3 @@ export function mockHook<T>(arg1: (() => T) | Model | Model.Init, arg2?: () => T
   return mock;
 }
 
-export interface MockPromise<T> extends Promise<T> {
-  resolve: (value: T) => void;
-  reject: (reason?: any) => void;
-}
-
-export function mockPromise<T = void>(){
-  const methods = {} as MockPromise<T>;
-  const promise = new Promise((res, rej) => {
-    methods.resolve = res;
-    methods.reject = rej;
-  }) as MockPromise<T>;
-
-  return Object.assign(promise, methods);
-}

@@ -1,7 +1,7 @@
 import { act, create } from 'react-test-renderer';
 
 import Model, { get, Provider, set } from '.';
-import { mockHook } from './mocks';
+import { mockHook } from './mockHook';
 
 class Test extends Model {
   value = "foo";
