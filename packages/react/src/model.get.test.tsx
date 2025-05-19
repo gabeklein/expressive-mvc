@@ -2,7 +2,21 @@ import { create } from 'react-test-renderer';
 
 import Model, { get, Provider, set } from '.';
 import { mockHook } from './mockHook';
-import { mockPromise } from './mockPromise';
+
+interface MockPromise<T> extends Promise<T> {
+  resolve: (value: T) => void;
+  reject: (reason?: any) => void;
+}
+
+function mockPromise<T = void>() {
+  const methods = {} as MockPromise<T>;
+  const promise = new Promise((res, rej) => {
+    methods.resolve = res;
+    methods.reject = rej;
+  }) as MockPromise<T>;
+
+  return Object.assign(promise, methods);
+}
 
 const error = jest
   .spyOn(console, "error")
