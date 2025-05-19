@@ -1,7 +1,7 @@
 import { Model } from '@expressive/mvc';
-import React, { createElement, FunctionComponent, useState } from 'react';
+import React, { createElement, FunctionComponent } from 'react';
 
-import { Provider } from './context';
+import { Context, Register } from './context';
 
 declare module '@expressive/mvc' {
   namespace Model {
@@ -32,16 +32,16 @@ Model.as = function <T extends Model, P extends Model.Assign<T>> (
     throw new Error("Cannot create component from base Model.");
 
   const Component: Model.Component<T, P> = (props) => {
-    const { is, ...rest } = props;
-    const self = useState(() => this.new(rest as Model.Assign<T>, is))[0];
+    const local = this.use(props.is);
 
-    Object.assign(Object.create(self), rest);
+    for(const key in local)
+      if(key in props)
+        local[key] = (props as any)[key];
 
-    return createElement(Provider, { for: self },
-      createElement(() => render(
-        props as P, render.length > 1 ? this.get() : undefined as never
-      ), {})
-    );
+    return createElement(Context.Provider, {
+      value: Register.get(local.is)!,
+      children: render(props, local)
+    });
   }
 
   Component.Model = this;
