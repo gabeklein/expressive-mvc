@@ -18,13 +18,20 @@ class Foo extends Model {
 class Bar extends Model {}
 class Baz extends Bar {}
 
+const Expect = (props: { type: Model.Type, toBe?: Model }) => {
+  const instance = props.type.get();
+
+  if(props.toBe)
+    expect(instance.is).toBe(props.toBe);
+
+  return null;
+}
+
 describe("Provider", () => {
   it("will create instance of given model", () => {
     create(
       <Provider for={Foo}>
-        <Consumer for={Foo}>
-          {i => expect(i).toBeInstanceOf(Foo)}
-        </Consumer>
+        <Expect type={Foo} />
       </Provider>
     );
   })
@@ -32,12 +39,8 @@ describe("Provider", () => {
   it("will create all models in given object", () => {
     create(
       <Provider for={{ Foo, Bar }}>
-        <Consumer for={Foo}>
-          {i => expect(i).toBeInstanceOf(Foo)}
-        </Consumer>
-        <Consumer for={Bar}>
-          {i => expect(i).toBeInstanceOf(Bar)}
-        </Consumer>
+        <Expect type={Foo} />
+        <Expect type={Bar} />
       </Provider>
     )
   })
@@ -47,12 +50,8 @@ describe("Provider", () => {
   
     create(
       <Provider for={{ foo, Bar }}>
-        <Consumer for={Foo}>
-          {({ is }) => expect(is).toBe(foo)}
-        </Consumer>
-        <Consumer for={Bar}>
-          {i => expect(i).toBeInstanceOf(Bar)}
-        </Consumer>
+        <Expect type={Foo} toBe={foo} />
+        <Expect type={Bar} />
       </Provider>
     )
   })
@@ -67,9 +66,7 @@ describe("Provider", () => {
   
     create(
       <Provider for={Bar}>
-        <Consumer for={Foo}>
-          {i => expect(i).toBeInstanceOf(Foo)}
-        </Consumer>
+        <Expect type={Foo} />
       </Provider>
     )
   })
@@ -279,9 +276,7 @@ describe("Consumer", () => {
   it("will select extended class", () => {
     create(
       <Provider for={Baz}>
-        <Consumer for={Bar}>
-          {i => expect(i).toBeInstanceOf(Baz)}
-        </Consumer>
+        <Expect type={Bar} />
       </Provider>
     )
   })
@@ -302,9 +297,7 @@ describe("Consumer", () => {
     create(
       <Provider for={Bar}>
         <Provider for={Baz}>
-          <Consumer for={Bar}>
-            {i => expect(i).toBeInstanceOf(Baz)}
-          </Consumer>
+          <Expect type={Bar} />
         </Provider>
       </Provider>
     )
@@ -317,15 +310,9 @@ describe("Consumer", () => {
       <Provider for={instance}>
         <Provider for={Baz}>
           <Provider for={{ Bar }}>
-            <Consumer for={Foo}>
-              {({ is }) => expect(is).toBe(instance)}
-            </Consumer>
-            <Consumer for={Bar}>
-              {i => expect(i).toBeInstanceOf(Bar)}
-            </Consumer>
-            <Consumer for={Baz}>
-              {i => expect(i).toBeInstanceOf(Baz)}
-            </Consumer>
+            <Expect type={Foo} toBe={instance} />
+            <Expect type={Bar} />
+            <Expect type={Baz} />
           </Provider>
         </Provider>
       </Provider>
