@@ -159,8 +159,8 @@ describe("element children", () => {
       </Control>
     );
   
-    expect(screen.getByText("Hello")).toBeInTheDocument();
-    expect(screen.getByText("World")).toBeInTheDocument();
+    screen.getByText("Hello");
+    screen.getByText("World");
   })
 
   it("will notify parent", async () => {
@@ -175,7 +175,7 @@ describe("element children", () => {
       </Control>
     );
   
-    expect(screen.getByText("Hello")).toBeInTheDocument();
+    screen.getByText("Hello");
     expect(didUpdate).toHaveBeenCalled();
   })
 
@@ -195,7 +195,7 @@ describe("element children", () => {
       </Control>
     );
   
-    expect(screen.getByText("Hello")).toBeInTheDocument();
+    screen.getByText("Hello");
   })
 })
 
@@ -218,8 +218,8 @@ describe("render method", () => {
       <Control bar='foo' />
     );
   
-    expect(screen.getByText("foo")).toBeInTheDocument();
-    expect(screen.getByText("bar")).toBeInTheDocument();
+    screen.getByText("foo");
+    screen.getByText("bar");
   })
   
   it("will ignore children not handled", () => {
@@ -265,8 +265,8 @@ describe("render method", () => {
       </Control>
     );
   
-    expect(screen.getByText("Hello")).toBeInTheDocument();
-    expect(screen.getByText("World")).toBeInTheDocument();
+    screen.getByText("Hello");
+    screen.getByText("World");
   })
 
   it("will use render prop if defined", () => {
@@ -278,7 +278,7 @@ describe("render method", () => {
       <Control render={() => "bar"} />
     );
 
-    expect(screen.getByText("bar")).toBeInTheDocument();
+    screen.getByText("bar");
   });
 
   it("will refresh on update", async () => {
@@ -300,11 +300,11 @@ describe("render method", () => {
     let control: Control;
     const screen = render(<Control />);
 
-    expect(screen.getByText("bar")).toBeInTheDocument();
+    screen.getByText("bar");
 
     await act(async () => control.set({ value: "foo" }));
 
-    expect(screen.getByText("foo")).toBeInTheDocument();
+    screen.getByText("foo");
   })
 })
 
@@ -355,12 +355,12 @@ describe("types", () => {
       <FunctionComponent foo="bar" />
     );
     
-    expect(screen.getByText("Hello bar")).toBeInTheDocument();
+    screen.getByText("Hello bar");
 
     screen.rerender(
       <ClassComponent bar="baz" />
     );
 
-    expect(screen.getByText("Hello baz")).toBeInTheDocument();
+    screen.getByText("Hello baz");
   });
 })

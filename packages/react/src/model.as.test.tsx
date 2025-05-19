@@ -15,11 +15,11 @@ describe("model.as", () => {
     const Component = Test.as((_, self) => <span>{self.foo}</span>);
 
     render(<Component />);
-    expect(screen.getByText("bar")).toBeInTheDocument();
+    screen.getByText("bar");
 
     await act(async () => test.set({ foo: "baz" }));
 
-    expect(screen.getByText("baz")).toBeInTheDocument();
+    screen.getByText("baz");
   });
 
   it("will not create abstract Model", () => {
@@ -40,11 +40,11 @@ describe("model.as", () => {
     const Component = Test.as((props) => <span>{props.foo}</span>);
     const { rerender } = render(<Component foo="bar" />);
 
-    expect(screen.getByText("bar")).toBeInTheDocument();
+    screen.getByText("bar");
 
     rerender(<Component foo="baz" />);
 
-    expect(screen.getByText("baz")).toBeInTheDocument();
+    screen.getByText("baz");
     expect(didUpdateFoo).toHaveBeenCalledTimes(1);
     expect(didUpdateFoo).toHaveBeenCalledWith("foo", { foo: "baz" });
   });
@@ -69,8 +69,8 @@ describe("model.as", () => {
         }}
       />
     );
-    expect(screen.getByText("foobar")).toBeInTheDocument();
+    screen.getByText("foobar");
     await act(async () => test.set({ foo: "baz" }));
-    expect(screen.getByText("bazbar")).toBeInTheDocument();
+    screen.getByText("bazbar");
   });
 });
