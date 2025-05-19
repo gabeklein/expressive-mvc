@@ -1,5 +1,4 @@
-import { create } from 'react-test-renderer';
-
+import { render } from '@testing-library/react';
 import Model, { get, Provider, set } from '.';
 import { mockHook, mockPromise } from './mocks';
 
@@ -197,14 +196,14 @@ describe("computed", () => {
       return null;
     });
 
-    const render = jest.fn(() => {
+    const Component = jest.fn(() => {
       return Test.get(factory);
     })
 
     const test = Test.new();
-    const hook = mockHook(test, render);
+    const hook = mockHook(test, Component);
 
-    expect(render).toBeCalledTimes(1);
+    expect(Component).toBeCalledTimes(1);
     expect(hook.output).toBe(null);
 
     test.foo = 2;
@@ -212,7 +211,7 @@ describe("computed", () => {
     await expect(test).toHaveUpdated();
 
     expect(factory).toBeCalledTimes(1);
-    expect(render).toBeCalledTimes(1);
+    expect(Component).toBeCalledTimes(1);
   })
   it("will run initial callback syncronously", async () => {
     class Parent extends Model {
@@ -239,7 +238,7 @@ describe("computed", () => {
       didUpdateValues(state.values.length);
     })
   
-    const element = create(
+    const screen = render(
       <Provider for={parent}>
         <Child value='foo' />
         <Child value='bar' />
@@ -255,7 +254,7 @@ describe("computed", () => {
     expect(didUpdateValues).toBeCalledTimes(2);
     expect(didUpdateValues).toBeCalledWith(3);
   
-    element.unmount();
+    screen.unmount();
   })
 })
 

@@ -1,5 +1,5 @@
 import { Suspense } from 'react';
-import { act, create } from 'react-test-renderer';
+import { act, render } from '@testing-library/react';
 
 import { Model, Provider } from '.';
 
@@ -86,10 +86,11 @@ export function mockHook<T>(arg1: (() => T) | Model | Model.Init, arg2?: () => T
       </Provider>
     );
 
-  const render = create(element);
+  // Use @testing-library/react's render
+  const screen = render(element);
 
   mock.unmount = () => {
-    render.unmount();
+    screen.unmount();
     return new Promise(res => setTimeout(res, 10));
   }
 
@@ -107,7 +108,7 @@ export function mockHook<T>(arg1: (() => T) | Model | Model.Init, arg2?: () => T
     if(next)
       implementation = next;
 
-    render.update(
+    screen.rerender(
       <Suspense fallback={<Pending />}>
         <Component />
       </Suspense>
