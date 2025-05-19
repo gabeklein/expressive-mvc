@@ -1,5 +1,5 @@
+import { act, render, screen } from '@testing-library/react';
 import { Component } from 'react';
-import { create, act } from 'react-test-renderer';
 
 import { Consumer, has, Model, set } from '.';
 
@@ -17,7 +17,7 @@ describe("has instruction", () => {
     const gotParent = jest.fn(() => didCallback.bind(null, "parent"));
     const gotChild = jest.fn(() => didCallback.bind(null, "child"));
 
-    const rendered = create(
+    const { unmount } = render(
       <Parent>
         <Child />
       </Parent>
@@ -26,7 +26,7 @@ describe("has instruction", () => {
     expect(gotParent).toHaveBeenCalledTimes(1);
     expect(gotChild).toHaveBeenCalledTimes(1);
 
-    act(() => rendered.unmount());
+    unmount();
 
     expect(didCallback).toHaveBeenCalledTimes(2);
     expect(didCallback.mock.calls[0][0]).toBe("parent");
@@ -39,7 +39,7 @@ it("will create and provide instance", () => {
     foo = "bar";
   }
 
-  const rendered = create(
+  render(
     <Control>
       <Consumer for={Control}>
         {c => c.foo}
@@ -47,7 +47,7 @@ it("will create and provide instance", () => {
     </Control>
   );
 
-  expect(rendered.toJSON()).toBe("bar");
+  screen.getByText("bar");
 })
 
 it("will create instance only once", () => {
@@ -59,11 +59,11 @@ it("will create instance only once", () => {
   }
 
   const didConstruct = jest.fn();
-  const rendered = create(<Control />);
+  const { rerender } = render(<Control />);
 
   expect(didConstruct).toHaveBeenCalledTimes(1);
 
-  rendered.update(<Control />);
+  rerender(<Control />);
 
   expect(didConstruct).toHaveBeenCalledTimes(1);
 })
@@ -74,14 +74,14 @@ it("will call is method on creation", () => {
   const didCreate = jest.fn(() => didDestroy);
   const didDestroy = jest.fn();
 
-  const rendered = create(<Control is={didCreate} />);
+  const screen = render(<Control is={didCreate} />);
 
   expect(didCreate).toHaveBeenCalledTimes(1);
 
-  rendered.update(<Control is={didCreate} />);
+  screen.rerender(<Control is={didCreate} />);
   expect(didCreate).toHaveBeenCalledTimes(1);
 
-  act(() => rendered.unmount());
+  act(screen.unmount);
   expect(didDestroy).toHaveBeenCalledTimes(1);
 })
 
@@ -92,7 +92,7 @@ describe("element props", () => {
   }
 
   it("will accept managed values", () => {
-    create(
+    render(
       <Foo value="baz">
         <Consumer for={Foo}>
           {c => expect(c.value).toBe("baz")}
@@ -102,7 +102,7 @@ describe("element props", () => {
   });
 
   it("will assign values to instance", () => {
-    create(
+    render(
       <Foo value="foobar">
         <Consumer for={Foo}>
           {i => expect(i.value).toBe("foobar")}
@@ -118,7 +118,7 @@ describe("element props", () => {
 
     const didSet = jest.fn();
 
-    create(
+    render(
       <Foo value="barfoo">
         <Consumer for={Foo}>
           {i => {
@@ -132,7 +132,7 @@ describe("element props", () => {
   })
   
   it("will not assign foreign values", () => {
-    create(
+    render(
       // @ts-expect-error
       <Foo nonValue="foobar">
         <Consumer for={Foo}>
@@ -152,14 +152,15 @@ describe("element children", () => {
       foo = "bar"
     }
   
-    const rendered = create(
+    const screen = render(
       <Control foo='sd'>
-        <>Hello</>
-        <>World</>
+        <span>Hello</span>
+        <span>World</span>
       </Control>
     );
   
-    expect(rendered.toJSON()).toEqual(["Hello", "World"]);
+    expect(screen.getByText("Hello")).toBeInTheDocument();
+    expect(screen.getByText("World")).toBeInTheDocument();
   })
 
   it("will notify parent", async () => {
@@ -168,13 +169,13 @@ describe("element children", () => {
     }
 
     const didUpdate = jest.fn();
-    const rendered = create(
-      <Control >
+    const screen = render(
+      <Control>
         Hello
       </Control>
     );
   
-    expect(rendered.toJSON()).toBe("Hello");
+    expect(screen.getByText("Hello")).toBeInTheDocument();
     expect(didUpdate).toHaveBeenCalled();
   })
 
@@ -188,13 +189,13 @@ describe("element children", () => {
       }
     }
   
-    const rendered = create(
+    const screen = render(
       <Control>
         {symbol}
       </Control>
     );
   
-    expect(rendered.toJSON()).toEqual("Hello");
+    expect(screen.getByText("Hello")).toBeInTheDocument();
   })
 })
 
@@ -204,15 +205,21 @@ describe("render method", () => {
       foo = "bar";
   
       render(props: { bar: string }) {
-        return <>{props.bar}{this.foo}</>;
+        return (
+          <>
+            <span>{props.bar}</span>
+            <span>{this.foo}</span>
+          </>
+        );
       }
     }
   
-    const rendered = create(
+    const screen = render(
       <Control bar='foo' />
     );
   
-    expect(rendered.toJSON()).toEqual(["foo", "bar"]);
+    expect(screen.getByText("foo")).toBeInTheDocument();
+    expect(screen.getByText("bar")).toBeInTheDocument();
   })
   
   it("will ignore children not handled", () => {
@@ -222,7 +229,7 @@ describe("render method", () => {
       }
     }
   
-    const rendered = create(
+    const screen = render(
       // while by default children are passed through,
       // we shouldn't accept props not defined in render
       // @ts-expect-error
@@ -231,7 +238,10 @@ describe("render method", () => {
       </Control>
     );
   
-    expect(rendered.toJSON()).toEqual("Goodbye");
+    // getByText throws if element not found, so this is sufficient
+    screen.getByText("Goodbye");
+    // or use queryByText with null check for absence
+    expect(screen.queryByText("Hello")).toBe(null);
   })
   
   it("will handle children if managed by this", () => {
@@ -239,17 +249,24 @@ describe("render method", () => {
       children = set<React.ReactNode>();
   
       render(props: { value: string }) {
-        return <>{props.value}{this.children}</>;
+        // return <>{props.value}{this.children}</>;
+        return (
+          <>
+            <span>{props.value}</span>
+            {this.children}
+          </>
+        )
       }
     }
   
-    const rendered = create(
+    const screen = render(
       <Control value='Hello'>
         World
       </Control>
     );
   
-    expect(rendered.toJSON()).toEqual(["Hello", "World"]);
+    expect(screen.getByText("Hello")).toBeInTheDocument();
+    expect(screen.getByText("World")).toBeInTheDocument();
   })
 
   it("will use render prop if defined", () => {
@@ -257,34 +274,37 @@ describe("render method", () => {
       value = "bar";
     }
 
-    const rendered = create(
+    const screen = render(
       <Control render={() => "bar"} />
     );
 
-    expect(rendered.toJSON()).toEqual("bar");
+    expect(screen.getByText("bar")).toBeInTheDocument();
   });
 
   it("will refresh on update", async () => {
     class Control extends Model {
       value = "bar";
 
+      constructor(...args: Model.Args){
+        super(args);
+        control = this;
+      }
+
       render(props: {}, self: this){
-        return self.value;
+        return (
+          <span>{self.value}</span>
+        );
       }
     }
 
     let control: Control;
-    const rendered = create(
-      <Control is={x => {control = x}} />
-    );
+    const screen = render(<Control />);
 
-    expect(rendered.toJSON()).toEqual("bar");
+    expect(screen.getByText("bar")).toBeInTheDocument();
 
-    await act(async () => {
-      await control.set({ value: "foo" });
-    });
+    await act(async () => control.set({ value: "foo" }));
 
-    expect(rendered.toJSON()).toEqual("foo");
+    expect(screen.getByText("foo")).toBeInTheDocument();
   })
 })
 
@@ -331,26 +351,16 @@ describe("types", () => {
       }
     }
     
-    const render = create(
+    const screen = render(
       <FunctionComponent foo="bar" />
     );
     
-    expect(render.toJSON()).toMatchInlineSnapshot(`
-      <div>
-        Hello 
-        bar
-      </div>
-    `);
+    expect(screen.getByText("Hello bar")).toBeInTheDocument();
 
-    const render2 = create(
+    screen.rerender(
       <ClassComponent bar="baz" />
     );
 
-    expect(render2.toJSON()).toMatchInlineSnapshot(`
-      <div>
-        Hello 
-        baz
-      </div>
-    `);
+    expect(screen.getByText("Hello baz")).toBeInTheDocument();
   });
 })

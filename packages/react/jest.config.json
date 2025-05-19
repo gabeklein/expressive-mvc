@@ -1,5 +1,6 @@
 {
   "testTimeout": 1000,
+  "testEnvironment": "jsdom",
   "transform": {
     "^.+\\.[tj]sx?$": ["@swc/jest", {
       "jsc": {
@@ -18,7 +19,8 @@
     "index.ts"
   ],
   "setupFilesAfterEnv": [
-    "./jest.js"
+    "./jest.js",
+    "./jest.setup.ts"
   ],
   "coverageThreshold": {
     "global": {
