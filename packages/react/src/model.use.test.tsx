@@ -81,7 +81,7 @@ describe("hook", () => {
       return test.is;
     });
   
-    act(() => {
+    await act(async () => {
       hook.result.current.value = "bar";
     });
   

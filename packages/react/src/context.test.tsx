@@ -651,7 +651,7 @@ describe("suspense", () => {
 
     screen.getByText("Loading...")
 
-    act(() => {
+    await act(async () => {
       resolve("hello!");
     });
 

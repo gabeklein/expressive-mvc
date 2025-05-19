@@ -308,7 +308,7 @@ describe("force update", () => {
     expect(didEvaluate).toHaveBeenCalledTimes(1);
     expect(didRender).toHaveBeenCalledTimes(1);
     
-    act(() => {
+    await act(async () => {
       forceUpdate();
     });
     
@@ -386,7 +386,7 @@ describe("force update", () => {
 
     expect(didRender).toHaveBeenCalledTimes(1);
 
-    act(() => {
+    await act(async () => {
       forceUpdate(() => promise);
     })
 
@@ -412,7 +412,7 @@ describe("async", () => {
       return Test.get(async () => promise);
     });
 
-    act(promise.resolve);
+    await act(async () => promise.resolve(undefined));
 
     expect(hook.result.current).toBe(null);
   })
