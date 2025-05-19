@@ -1,6 +1,6 @@
-import { render } from '@testing-library/react';
+import { act, render } from '@testing-library/react';
 
-import Model, { get, Provider, set } from '.';
+import { get, Model, Provider, set } from '.';
 import { mockHook } from './mockHook';
 
 class Test extends Model {
@@ -40,7 +40,7 @@ describe("hook", () => {
   
     expect(hook.output.value).toBe("foo");
   
-    await hook.act(() => {
+    await act(async () => {
       hook.output.value = "bar";
     });
   
@@ -83,12 +83,15 @@ describe("hook", () => {
   
     const test = hook.output;
   
-    await hook.act(() => {
+    act(() => {
       test.value = "bar";
     });
   
     hook.unmount();
-    test.value = "baz";
+
+    expect(() => {
+      test.value = "baz";
+    }).toThrow()
   })
 
   it("will bind methods to instance", async () => {
@@ -173,7 +176,7 @@ describe("callback argument", () => {
     expect(hook.output.foo).toBe(1);
 
     // does still respond to normal updates
-    await hook.act(() => {
+    await act(() => {
       hook.output.bar = 2;
     });
 
@@ -240,7 +243,7 @@ describe("props argument", () => {
 
     await expect(hook.output).not.toHaveUpdated();
 
-    await hook.act(() => {
+    await act(async () => {
       hook.output.foo = "bar";
     });
 

@@ -1,6 +1,22 @@
-import Model, { get, Provider, set } from '.';
+import { act, render, renderHook } from '@testing-library/react';
+import { ReactNode, Suspense } from 'react';
+
+import { get, Model, set } from '.';
+import { Provider } from './context';
 import { mockHook } from './mockHook';
-import { render } from '@testing-library/react';
+
+export function renderWith(Type: Model.Init | Model, hook: () => ReactNode) {
+  return renderHook(hook, {
+    wrapper: ({ children }) => (
+      <Provider for={Type}>
+        <Suspense fallback={null}>
+          {children}
+        </Suspense>
+      </Provider>
+    )
+  });
+}
+
 
 interface MockPromise<T> extends Promise<T> {
   resolve: (value: T) => void;
@@ -49,9 +65,7 @@ it("will refresh for values accessed", async () => {
 
   expect(hook.output).toBe("foo");
 
-  await hook.act(() => {
-    test.foo = "bar";
-  });
+  await act(async () => test.set({ foo: "bar" }));
 
   expect(hook.output).toBe("bar");
   expect(hook).toBeCalledTimes(2);
@@ -67,6 +81,7 @@ it("will not update on death event", async () => {
     return Test.get().foo;
   });
 
+  expect(hook.output).toBe("foo");
   test.set(null);
 
   expect(hook).toBeCalledTimes(1);
@@ -127,9 +142,7 @@ describe("computed", () => {
 
     expect(hook.output).toBe(1);
 
-    await hook.act(() => {
-      test.foo = 2;
-    })
+    await act(async () => test.set({ foo: 2 }))
 
     expect(hook.output).toBe(2);
   })
@@ -155,9 +168,7 @@ describe("computed", () => {
 
     expect(hook.output).toBe(3);
 
-    await hook.act(() => {
-      test.foo = 2;
-    })
+    await act(async () => test.set({ foo: 2 }));
 
     expect(hook.output).toBe(4);
   })
@@ -290,7 +301,7 @@ describe("force update", () => {
     expect(didEvaluate).toHaveBeenCalledTimes(1);
     expect(hook).toHaveBeenCalledTimes(1);
     
-    await hook.act(() => {
+    act(() => {
       forceUpdate();
     });
     
@@ -314,9 +325,7 @@ describe("force update", () => {
     expect(didEvaluate).toHaveBeenCalledTimes(1);
     expect(hook).toHaveBeenCalledTimes(1);
     
-    await hook.act(() => {
-      forceUpdate();
-    })
+    act(forceUpdate);
     
     expect(didEvaluate).toHaveBeenCalledTimes(1);
     expect(hook).toHaveBeenCalledTimes(2);
@@ -337,14 +346,14 @@ describe("force update", () => {
     expect<null>(hook.output).toBe(null);
     expect(hook).toHaveBeenCalledTimes(1);
 
-    await hook.act(() => {
-      forceUpdate(promise)
-    });
+    await act(async () => {
+      forceUpdate(promise);
+    })
 
     expect(hook).toHaveBeenCalledTimes(2);
 
-    await hook.act(() => {
-      promise.resolve();
+    await act(async () => {
+       promise.resolve();
     });
 
     expect(hook).toHaveBeenCalledTimes(3);
@@ -364,13 +373,13 @@ describe("force update", () => {
 
     expect(hook).toHaveBeenCalledTimes(1);
 
-    await hook.act(() => {
+    act(() => {
       forceUpdate(() => promise);
     })
 
     expect(hook).toHaveBeenCalledTimes(2);
 
-    await hook.act(() => {
+    await act(async () => {
       promise.resolve();
     });
 
@@ -390,9 +399,7 @@ describe("async", () => {
       return Test.get(async () => promise);
     });
 
-    await hook.act(() => {
-      promise.resolve();
-    })
+    act(promise.resolve);
 
     expect(hook.output).toBe(null);
   })
@@ -411,7 +418,7 @@ describe("async", () => {
     expect(hook).toBeCalledTimes(1);
     expect(hook.output).toBe(null);
 
-    await hook.act(() => {
+    await act(async () => {
       promise.resolve("foobar");
     })
 
@@ -442,9 +449,10 @@ describe("async", () => {
 
     expect(hook.output).toBeUndefined();
   
-    promise.resolve();
 
-    await hook.act(() => {});
+    await act(async () => {
+      promise.resolve();
+    });
 
     expect(hook.output).toBe("oh no");
   })
@@ -472,7 +480,7 @@ describe("get instruction", () => {
 
     expect(hook.output).toBe("bar");
 
-    await hook.act(() => {
+    await act(async () => {
       bar.value = "foo";
     });
 
@@ -539,34 +547,28 @@ describe("set instruction", () => {
       class Test extends Model {
         value = set(() => promise, true);
       }
-  
-      const hook = mockHook(Test, () => {
-        const { value } = Test.get();
-        return value;
+
+      const hook = renderWith(Test, () => {
+        return Test.get().value;
       });
     
-      expect(hook.suspense).toBe(true);
+      expect(hook.result.current).toBe(null);
   
-      promise.resolve("hello");
-      await hook.act(() => {})
-    
-      expect(hook).toBeCalledTimes(2);
-      expect(hook.output).toBe("hello");
-      expect(hook).toHaveReturnedTimes(1);
+      await act(async () => {
+        promise.resolve("hello");
+      })
+
+      expect(hook.result.current).toBe("hello");
     })
   
     it('will refresh and throw if async rejects', async () => {
       const promise = mockPromise();
     
       class Test extends Model {
-        value = set(async () => {
-          await promise;
-          throw "oh no";
-        }, true);
+        value = set(promise, true);
       }
     
-      const didThrow = mockPromise();
-      const hook = mockHook(Test, () => {
+      const hook = renderWith(Test, () => {
         try {
           void Test.get().value;
         }
@@ -574,63 +576,42 @@ describe("set instruction", () => {
           if(err instanceof Promise)
             throw err;
           else
-            didThrow.resolve(err);
+            return err;
         }
       });
     
-      expect(hook.suspense).toBe(true);
+      expect(hook.result.current).toBe(null);
     
-      promise.resolve();
-    
-      const error = await didThrow;
-    
-      expect(error).toBe("oh no");
-    })
-  
-    it('will suspend if required value is promise', async () => {
-      const promise = mockPromise<string>();
-    
-      class Test extends Model {
-        value = set(promise, true);
-      }
-  
-      const hook = mockHook(Test, () => {
-        return Test.get().value;
+      await act(async () => {
+        promise.reject("oh no");
       });
 
-      expect(hook.suspense).toBe(true);
-
-      // why can't this be nested in act?
-      promise.resolve("hello");
-      await hook.act(() => {});
-    
-      expect(hook).toBeCalledTimes(2);
-      expect(hook.output).toBe("hello");
+      expect(hook.result.current).toBe("oh no");
     })
   });
   
   describe("placeholder", () => {
-    it.skip('will suspend if value is not yet assigned', async () => {
+    it('will suspend if value not yet assigned', async () => {
       class Test extends Model {
         foobar = set<string>();
       }
   
       const test = Test.new();
-      const hook = mockHook(test, () => {
-        Test.get().foobar;
-      })
-  
-      expect(hook.suspense).toBe(true);
+      const hook = renderWith(test, () => {
+        return Test.get().foobar;
+      });
+
+      expect(hook.result.current).toBe(null);
   
       // expect refresh caused by update
-      await hook.act(() => {
+      await act(async () => {
         test.foobar = "foo!";
       });
   
-      expect(hook).toBeCalledTimes(2);
+      expect(hook.result.current).toBe("foo!");
     })
   
-    it('will not suspend if value is defined', async () => {
+    it('will not suspend if already defined', async () => {
       class Test extends Model {
         foobar = set<string>();
       }
@@ -639,11 +620,10 @@ describe("set instruction", () => {
   
       test.foobar = "foo!";
   
-      const hook = mockHook(test, () => {
+      const hook = renderWith(test, () => {
         return Test.get().foobar;
       })
-  
-      expect(hook).toHaveReturnedWith("foo!");
+      expect(hook.result.current).toBe("foo!");
     })
   });
 })
