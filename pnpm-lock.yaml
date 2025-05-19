@@ -155,8 +155,8 @@ importers:
         specifier: ^18.2.0
         version: 18.3.1
       react-test-renderer:
-        specifier: ^19.1.0
-        version: 19.1.0(react@18.3.1)
+        specifier: 17.0.0
+        version: 17.0.0(react@18.3.1)
       tsup:
         specifier: ^8.0.2
         version: 8.3.6(@swc/core@1.10.16)(typescript@5.7.3)
@@ -6779,18 +6779,26 @@ packages:
     resolution: {integrity: sha512-/LLMVyas0ljjAtoYiPqYiL8VWXzUUdThrmU5+n20DZv+a+ClRoevUzw5JxU+Ieh5/c87ytoTBV9G1FiKfNJdmg==}
     dev: true
 
-  /react-is@19.1.0:
-    resolution: {integrity: sha512-Oe56aUPnkHyyDxxkvqtd7KkdQP5uIUfHxd5XTb3wE9d/kRnZLmKbDB0GWk919tdQ+mxxPtG6EAs6RMT6i1qtHg==}
+  /react-shallow-renderer@16.15.0(react@18.3.1):
+    resolution: {integrity: sha512-oScf2FqQ9LFVQgA73vr86xl2NaOIX73rh+YFqcOp68CWj56tSfgtGKrEbyhCj0rSijyG9M1CYprTh39fBi5hzA==}
+    peerDependencies:
+      react: ^16.0.0 || ^17.0.0 || ^18.0.0
+    dependencies:
+      object-assign: 4.1.1
+      react: 18.3.1
+      react-is: 18.3.1
     dev: true
 
-  /react-test-renderer@19.1.0(react@18.3.1):
-    resolution: {integrity: sha512-jXkSl3CpvPYEF+p/eGDLB4sPoDX8pKkYvRl9+rR8HxLY0X04vW7hCm1/0zHoUSjPZ3bDa+wXWNTDVIw/R8aDVw==}
+  /react-test-renderer@17.0.0(react@18.3.1):
+    resolution: {integrity: sha512-aOMAmsfRjesHTFLehW5yuVTgEa7Umm4Yi49NwEP8L2jcI+LxoLDUe8V2xxS44lPQ/4SrVJpgQ/HqZXhwc7Z8aw==}
     peerDependencies:
-      react: ^19.1.0
+      react: 17.0.0
     dependencies:
+      object-assign: 4.1.1
       react: 18.3.1
-      react-is: 19.1.0
-      scheduler: 0.26.0
+      react-is: 17.0.2
+      react-shallow-renderer: 16.15.0(react@18.3.1)
+      scheduler: 0.20.2
     dev: true
 
   /react@18.3.1:
@@ -7063,14 +7071,17 @@ packages:
       xmlchars: 2.2.0
     dev: true
 
+  /scheduler@0.20.2:
+    resolution: {integrity: sha512-2eWfGgAqqWFGqtdMmcL5zCMK1U8KlXv8SQFGglL3CEtd0aDVDWgeF/YoCmvln55m5zSk3J/20hTaSBeSObsQDQ==}
+    dependencies:
+      loose-envify: 1.4.0
+      object-assign: 4.1.1
+    dev: true
+
   /scheduler@0.23.2:
     resolution: {integrity: sha512-UOShsPwz7NrMUqhR6t0hWjFduvOzbtv7toDH1/hIrfRNIDBnnBWd0CwJTGvTpngVlmwGCdP9/Zl/tVrDqcuYzQ==}
     dependencies:
       loose-envify: 1.4.0
-
-  /scheduler@0.26.0:
-    resolution: {integrity: sha512-NlHwttCI/l5gCPR3D1nNXtWABUmBwvZpEQiD4IXSbIDq8BzLIK/7Ir5gTFSGZDUu37K5cMNp0hFtzO38sC7gWA==}
-    dev: true
 
   /semver@5.7.2:
     resolution: {integrity: sha512-cBznnQ9KjJqU67B52RMC65CMarK2600WFnbkcaiwWq3xy/5haFJlshgnpjovMVJ+Hff49d8GEn0b87C5pDQ10g==}
