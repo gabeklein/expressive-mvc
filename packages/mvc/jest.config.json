@@ -8,7 +8,7 @@
     "dist"
   ],
   "setupFilesAfterEnv": [
-    "./jest.js"
+    "./jest.setup.js"
   ],
   "coverageThreshold": {
     "global": {

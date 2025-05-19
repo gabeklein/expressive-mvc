@@ -19,7 +19,7 @@
     "index.ts"
   ],
   "setupFilesAfterEnv": [
-    "./jest.js"
+    "./jest.setup.js"
   ],
   "coverageThreshold": {
     "global": {
