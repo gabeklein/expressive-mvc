@@ -1,7 +1,8 @@
 import { Model } from '@expressive/mvc';
-import { jsx, jsxs } from 'react/jsx-runtime';
+import Runtime from 'react/jsx-runtime';
 
 import { Context, Register } from './context';
+import React from 'react';
 
 declare module "@expressive/mvc" {
   namespace Model {
@@ -98,37 +99,28 @@ function Component<T extends Model.Compat>(
   });
 }
 
-const RENDER = new WeakMap<typeof Model, React.FC>();
+const RENDER = new WeakMap<Object, React.ElementType>();
 
-export function compat(type: React.ElementType | Model.Init){
-  const bound = RENDER.get(type as any);
+export function compat(
+  this: (
+    type: React.ElementType,
+    props: Record<string, any>,
+    ...args: any[]
+  ) => React.ReactElement,
+  type: React.ElementType | Model.Init,
+  props: Record<string, any>,
+  ...args: any[]
+): React.ReactElement {
+  if(RENDER.has(type))
+    type = RENDER.get(type)!;
 
-  if(bound) return bound;
-
-  if(Model.is(type))
+  else if(Model.is(type))
     RENDER.set(type, type = Component.bind(type));
 
-  return type;
+  return this(type, props, ...args);
 }
 
-function jsx2(
-  type: React.ElementType | Model.Init,
-  props: Record<string, any>,
-  key?: React.Key) {
-  
-  return jsx(compat(type), props, key);
-}
-
-function jsxs2(
-  type: React.ElementType | Model.Init,
-  props: Record<string, any>,
-  key?: React.Key) {
-  
-  return jsxs(compat(type), props, key);
-}
+export const jsx = compat.bind(Runtime.jsx);
+export const jsxs = compat.bind(Runtime.jsxs);
 
 export { Fragment } from "react";
-export {
-  jsx2 as jsx,
-  jsxs2 as jsxs
-}
