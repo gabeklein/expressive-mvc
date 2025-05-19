@@ -20,18 +20,11 @@
         "--runInBand",
         "--config",
         "${workspaceFolder}/jest.config.json",
-        "${input:pattern}"
+        "${relativeFile}"
       ],
       "console": "integratedTerminal",
       "internalConsoleOptions": "neverOpen",
       "runtimeExecutable": "/usr/local/bin/node"
     },
-  ],
-  "inputs": [
-    {
-      "id": "pattern",
-      "type": "promptString",
-      "description": "Tests you wish to run a debug session for."
-    }
   ]
 }
