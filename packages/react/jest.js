@@ -1,42 +1,8 @@
 import { Model } from "@expressive/mvc";
 
 expect.extend({
-  toUpdate,
   toHaveUpdated
 });
-
-/**
- * @param {Model} received
- * @param {number} timeout
- */
-async function toUpdate(received, timeout = 0){
-  if(!(received instanceof Model))
-    return {
-      pass: false,
-      message: () => `Expected Model but got ${received}.`
-    }
-
-  return new Promise((resolve) => {
-    const remove = received.set(() => {
-      clearTimeout(timer);
-      return () => {
-        remove();
-        resolve({
-          pass: true,
-          message: () => `Expected ${received} not to update.`
-        })
-      };
-    });
-
-    const timer = setTimeout(() => {
-      remove();
-      resolve({
-        pass: false,
-        message: () => `Expected ${received} to update within ${timeout}ms.`
-      });
-    }, timeout);
-  })
-}
 
 /**
  * @param {Model} received
