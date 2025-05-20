@@ -3,6 +3,14 @@ import { ReactNode, createContext, createElement, useContext, useEffect, useMemo
 
 const Lookup = createContext(new Context());
 
+Context.use = (create?: boolean) => {
+  const ambient = useContext(Lookup);
+
+  return create ?
+    useMemo(() => ambient.push(), []) :
+    ambient;
+}
+
 declare namespace Consumer {
   type Props<T extends Model> = {
     /** Type of controller to fetch from context. */
@@ -23,8 +31,6 @@ function Consumer<T extends Model>(props: Consumer.Props<T>){
   return props.for.get(i => props.children(i));
 }
 
-export const Register = new WeakMap<Model, Context>();
-
 declare namespace Provider {
   interface Props<T extends Model> {
     for: Context.Accept<T>;
@@ -34,11 +40,10 @@ declare namespace Provider {
 }
 
 function Provider<T extends Model>(props: Provider.Props<T>){
-  const ambient = useContext(Lookup);
-  const context = useMemo(() => ambient.push(), [ambient]);
+  const context = Context.use(true);
 
-  useEffect(() => () => context.pop(), [ambient]);
-  
+  useEffect(() => () => context.pop(), [context]);
+
   context.include(props.for, (model) => {
     // TODO: remove next minor release
     if("set" in props)
@@ -58,4 +63,4 @@ function Provider<T extends Model>(props: Provider.Props<T>){
   }, props.children);
 }
 
-export { Consumer, Provider, Lookup as Context }
+export { Consumer, Provider, Lookup, Context }

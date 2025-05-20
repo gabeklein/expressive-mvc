@@ -1,9 +1,9 @@
-import { useContext, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { Pragma } from './adapter';
 import { Context } from './context';
 
-Pragma.useContext = () => useContext(Context);
+Pragma.useContext = () => Context.use();
 
 Pragma.useLifecycle = (callback) => useEffect(() => callback(), []);
 
@@ -22,4 +22,4 @@ export {
 
 export { Consumer, Provider } from './context';
 export { Fragment, createElement } from 'react';
-export { type Pragma };
+export { type Pragma, Context };

@@ -1,7 +1,6 @@
-import { Model } from '@expressive/mvc';
+import { Model, Context } from '@expressive/mvc';
 
 import { Pragma } from './adapter';
-import { Register } from './context';
 
 declare module '@expressive/mvc' {
   namespace Model {
@@ -24,13 +23,15 @@ Model.use = function <T extends Model> (
   argument?: Model.Assign<T> | Model.Callback<T>,
   repeat?: boolean){
 
-  const ambient = Pragma.useContext();
+  const context = Context.use(true);
   const render = Pragma.useFactory((refresh) => {
     let enabled: boolean | undefined;
     let local: T;
 
     const instance = new this(argument);
-    const context = ambient.push({ instance });
+
+    context.include(instance);
+  
     const unwatch = instance.get(current => {
       local = current;
 
@@ -46,8 +47,6 @@ Model.use = function <T extends Model> (
         instance.set(null);
       }
     }
-
-    Register.set(instance, context);
 
     return (props?: Model.Assign<T> | Model.Callback<T>) => {
       Pragma.useLifecycle(didMount);

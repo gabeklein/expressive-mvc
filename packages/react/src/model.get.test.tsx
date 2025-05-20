@@ -484,7 +484,9 @@ describe("get instruction", () => {
 
   it("will attach peer from context", async () => {
     const bar = Bar.new();
-    const hook = renderWith(bar, () => Foo.use().is.bar);
+    const hook = renderWith(bar, () => {
+      return Foo.use().is.bar;
+    });
 
     expect(hook.result.current).toBe(bar);
   })
@@ -492,18 +494,18 @@ describe("get instruction", () => {
   it("will subscribe peer from context", async () => {
     const bar = Bar.new();
     const didRender = jest.fn();
-    const hook = renderWith(bar, () => {
+    const { result } = renderWith(bar, () => {
       didRender();
-      return Foo.use().bar.value;
+      return Foo.use().bar.value; 
     });
 
-    expect(hook.result.current).toBe("bar");
+    expect(result.current).toBe("bar");
 
     await act(async () => {
-      bar.value = "foo";
+      await bar.set({ value: "foo" });
     });
 
-    expect(hook.result.current).toBe("foo");
+    expect(result.current).toBe("foo");
     expect(didRender).toBeCalledTimes(2);
   })
 
