@@ -1,5 +1,5 @@
 import { Model } from '@expressive/mvc';
-import React, { isValidElement, useContext, useMemo } from 'react';
+import React, { isValidElement } from 'react';
 import Runtime from 'react/jsx-runtime';
 
 import { Context, Lookup } from './context';
@@ -84,18 +84,16 @@ export declare namespace JSX {
 
 let Ambient: Context | null | undefined = undefined;
 
+const useContext = Context.use;
+
 Context.use = (create?: boolean): any => {
   if(Ambient || create === false)
     return Ambient;
 
-  let context = useContext(Lookup);
+  const context = useContext(create);
 
-  if(create){
-    context = useMemo(() => context.push(), [context]);
-
-    if(Ambient === null)
-      Ambient = context;
-  }
+  if(Ambient === null)
+    Ambient = context;
 
   return context;
 }
