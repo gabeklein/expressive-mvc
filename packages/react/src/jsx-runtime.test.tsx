@@ -428,3 +428,15 @@ describe("implicit context", () => {
     expect(baz.bar).toBeInstanceOf(Bar);
   })
 })
+
+describe("implicit return", () => {
+  const Test = (props: { name?: string }) => {
+    <div>Hello {props.name || "World"}</div>
+  }
+
+  render(<Test />);
+  screen.getByText("Hello World");
+
+  render(<Test name="Foo" />);
+  screen.getByText("Hello Foo");
+})

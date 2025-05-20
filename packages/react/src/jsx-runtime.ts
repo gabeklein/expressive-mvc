@@ -62,7 +62,10 @@ declare module "@expressive/mvc" {
 }
 
 export declare namespace JSX {
-  type ElementType = Model.Type<Model.Compat> | React.JSX.ElementType;
+  type ElementType = 
+    | Model.Type<Model.Compat>
+    | React.JSX.ElementType
+    | ((props: {}, ref?: any) => void);
 
   type LibraryManagedAttributes<C, P> =
     // For normal class components, pull from props property explicitly because we dorked up ElementAttributesProperty.
@@ -83,6 +86,7 @@ export declare namespace JSX {
 }
 
 let Ambient: Context | null | undefined = undefined;
+let Children: React.ReactNode | null = null;
 
 const useContext = Context.use;
 
@@ -99,6 +103,9 @@ Context.use = (create?: boolean): any => {
 }
 
 function provider(children: React.ReactNode) {
+  if(children === undefined)
+    children = Children;
+
   if(Ambient && (Array.isArray(children) || isValidElement(children) && children.type !== Lookup.Provider))
     children = jsx(Lookup.Provider, { value: Ambient, children });
 
@@ -111,7 +118,8 @@ function Component<T extends Model.Compat>(
   this: Model.Init<T>,
   props: Model.Props<T>
 ) {
-  Ambient = null;
+  Ambient = Children = null;
+
   const local = this.use(props.is);
   const render = props.render || local.render;
 
@@ -123,7 +131,7 @@ function Component<T extends Model.Compat>(
 }
 
 function FC<T extends {}>(this: React.FC<T>, props: T, ref: any) {
-  Ambient = null;
+  Ambient = Children = null;
   return provider(this(props, ref));
 }
 
@@ -145,7 +153,7 @@ export function compat(
           FC.bind(type as React.FC)
       ));
 
-  return this(type, ...args);
+  return Children = this(type, ...args);
 }
 
 export const jsx = compat.bind(Runtime.jsx);
