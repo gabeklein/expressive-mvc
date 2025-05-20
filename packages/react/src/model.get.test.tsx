@@ -484,9 +484,20 @@ describe("get instruction", () => {
 
   it("will attach peer from context", async () => {
     const bar = Bar.new();
-    const hook = renderWith(bar, () => Foo.use().is.bar);
+    const Inner = () => Foo.use().bar.value;
+    const rendered = render(
+      <Provider for={bar}>
+        <Inner />
+      </Provider>
+    ); 
 
-    expect(hook.result.current).toBe(bar);
+    rendered.getByText("bar");
+
+    await act(async () => {
+      await bar.set({ value: "foo" });
+    });
+
+    rendered.getByText("foo");
   })
 
   it("will subscribe peer from context", async () => {
@@ -500,7 +511,7 @@ describe("get instruction", () => {
     expect(hook.result.current).toBe("bar");
 
     await act(async () => {
-      bar.value = "foo";
+      await bar.set({ value: "foo" });
     });
 
     expect(hook.result.current).toBe("foo");
