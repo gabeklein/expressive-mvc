@@ -92,7 +92,7 @@ Context.use = (create?: boolean): any => {
 
   const context = useContext(create);
 
-  if(Ambient === null)
+  if(Ambient === null && create)
     Ambient = context;
 
   return context;
