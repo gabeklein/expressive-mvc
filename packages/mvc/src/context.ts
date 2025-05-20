@@ -41,12 +41,6 @@ interface Context {
 }
 
 class Context {
-  static use(create?: true): Context;
-  static use(create: boolean): Context | null | undefined;
-  static use(create?: boolean): never {
-    throw new Error("Adapter is required to use Context.use");
-  }
-
   static get<T extends Model>(on: Model, callback: ((got: Context) => void)): void;
   static get<T extends Model>(on: Model): Context | undefined;
   static get({ is }: Model, callback?: (got: Context) => void){

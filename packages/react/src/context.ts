@@ -3,6 +3,13 @@ import { ReactNode, createContext, createElement, useContext, useEffect, useMemo
 
 const Lookup = createContext(new Context());
 
+declare module '@expressive/mvc' {
+  namespace Context {
+    function use(create?: true): Context;
+    function use(create: boolean): Context | null | undefined;
+  }
+}
+
 Context.use = (create?: boolean) => {
   const ambient = useContext(Lookup);
 
