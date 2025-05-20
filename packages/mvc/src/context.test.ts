@@ -173,6 +173,41 @@ describe("include", () => {
     expect(cb).toBeCalledTimes(3);
   })
 
+  it("will include multiple", () => {
+    const foo = Foo.new();
+    const bar = Bar.new();
+
+    const context = new Context();
+
+    context.include(foo);
+    context.include(bar);
+    
+    expect(context.get(Foo)).toBe(foo);
+    expect(context.get(Bar)).toBe(bar);
+  })
+
+  it("will ignore subsequent if callback", () => {
+    const cb = jest.fn();
+    const context = new Context();
+
+    context.include(Foo, cb);
+    context.include(Foo, cb);
+
+    expect(context.get(Foo)).toBeInstanceOf(Foo);
+
+    expect(cb).toBeCalledTimes(1);
+  })
+
+  it("will override multiple same", () => {
+    const context = new Context();
+    const fetch = () => context.get(Foo);
+
+    context.include(Foo);
+    context.include(Foo);
+
+    expect(fetch).toThrowError(`Did find Foo in context, but multiple were defined.`);
+  })
+
   // This will be made more elegant later.
   it("will hard-reset if inputs differ", () => {
     const bazDidDie = jest.fn();
