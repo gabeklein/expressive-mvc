@@ -42,7 +42,7 @@ interface Context {
 
 class Context {
   static use(create?: true): Context;
-  static use(create: boolean): Context;
+  static use(create: boolean): Context | null | undefined;
   static use(create?: boolean): never {
     throw new Error("Adapter is required to use Context.use");
   }
