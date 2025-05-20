@@ -173,8 +173,6 @@ class Context {
     let I: T;
 
     if(typeof input == "function"){
-      Model.is(input);
-
       T = input;
       I = new input() as T;
     }
