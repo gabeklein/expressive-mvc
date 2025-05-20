@@ -430,13 +430,46 @@ describe("implicit context", () => {
 })
 
 describe("implicit return", () => {
-  const Test = (props: { name?: string }) => {
-    <div>Hello {props.name || "World"}</div>
-  }
+  it("will return element", () => {
+    const Test = (props: { name?: string }) => {
+      <div>Hello {props.name || "World"}</div>
+    }
 
-  render(<Test />);
-  screen.getByText("Hello World");
+    const element = render(<Test />);
+    screen.getByText("Hello World");
 
-  render(<Test name="Foo" />);
-  screen.getByText("Hello Foo");
+    element.rerender(<Test name="Foo" />);
+    screen.getByText("Hello Foo");
+  });
+
+  it("will select last element", () => {
+    const Test = (props: { hi?: boolean }) => {
+      if(props.hi)
+        <div>
+          <span>Hello</span>
+          <span>World</span>
+        </div>;
+      else
+        <div>Goodbye World</div>;
+    }
+
+    const element = render(<Test />);
+    screen.getByText("Goodbye World");
+
+    element.rerender(<Test hi />);
+    screen.getByText("Hello");
+    screen.getByText("World");
+  })
+
+  it("will always select returned", () => {
+    const Test = (props: { hi?: boolean }) => {
+      const hi = <span>Hello World</span>;
+      const bye = <div>Goodbye World</div>;
+
+      return props.hi ? hi : bye;
+    }
+
+    render(<Test hi />);
+    screen.getByText("Hello World");
+  })
 })
