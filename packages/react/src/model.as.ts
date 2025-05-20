@@ -1,7 +1,7 @@
-import { Model } from '@expressive/mvc';
+import { Context, Model } from '@expressive/mvc';
 import React, { createElement, FunctionComponent } from 'react';
 
-import { Context, Register } from './context';
+import { Lookup } from './context';
 
 declare module '@expressive/mvc' {
   namespace Model {
@@ -38,8 +38,8 @@ Model.as = function <T extends Model, P extends Model.Assign<T>> (
       if(key in props)
         local[key] = (props as any)[key];
 
-    return createElement(Context.Provider, {
-      value: Register.get(local.is)!,
+    return createElement(Lookup.Provider, {
+      value: Context.get(local)!,
       children: render(props, local)
     });
   }

@@ -1,7 +1,7 @@
-import { Model } from '@expressive/mvc';
+import {  Context, Model } from '@expressive/mvc';
 import Runtime from 'react/jsx-runtime';
 
-import { Context, Register } from './context';
+import { Lookup } from './context';
 import React from 'react';
 
 declare module "@expressive/mvc" {
@@ -93,8 +93,8 @@ function Component<T extends Model.Compat>(
     if(key in props)
       local[key] = (props as any)[key];
 
-  return jsx(Context.Provider, {
-    value: Register.get(local.is),
+  return jsx(Lookup.Provider, {
+    value: Context.get(local.is),
     children: render ? render(props, local) : props.children
   });
 }

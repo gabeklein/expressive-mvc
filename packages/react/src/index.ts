@@ -1,9 +1,9 @@
 import { useContext, useEffect, useState } from 'react';
 
 import { Pragma } from './adapter';
-import { Context } from './context';
+import { Lookup } from './context';
 
-Pragma.useContext = () => useContext(Context);
+Pragma.useContext = () => useContext(Lookup);
 
 Pragma.useLifecycle = (callback) => useEffect(() => callback(), []);
 

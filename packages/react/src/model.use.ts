@@ -1,7 +1,6 @@
 import { Model } from '@expressive/mvc';
 
 import { Pragma } from './adapter';
-import { Register } from './context';
 
 declare module '@expressive/mvc' {
   namespace Model {
@@ -46,8 +45,6 @@ Model.use = function <T extends Model> (
         instance.set(null);
       }
     }
-
-    Register.set(instance, context);
 
     return (props?: Model.Assign<T> | Model.Callback<T>) => {
       Pragma.useLifecycle(didMount);

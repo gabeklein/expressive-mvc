@@ -23,8 +23,6 @@ function Consumer<T extends Model>(props: Consumer.Props<T>){
   return props.for.get(i => props.children(i));
 }
 
-export const Register = new WeakMap<Model, Context>();
-
 declare namespace Provider {
   interface Props<T extends Model> {
     for: Context.Accept<T>;
@@ -58,4 +56,4 @@ function Provider<T extends Model>(props: Provider.Props<T>){
   }, props.children);
 }
 
-export { Consumer, Provider, Lookup as Context }
+export { Consumer, Provider, Lookup }
