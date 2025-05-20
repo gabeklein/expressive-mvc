@@ -1,7 +1,7 @@
 import { act, render, screen } from '@testing-library/react';
 import { Component } from 'react';
 
-import { Consumer, has, Model, set } from '.';
+import { Consumer, get, has, Model, set } from '.';
 
 describe("has instruction", () => {
   it("will callback on register", () => {
@@ -363,4 +363,37 @@ describe("types", () => {
 
     screen.getByText("Hello baz");
   });
+})
+
+describe("implicit context", () => {
+  it("will provide automatically", async () => {
+    class Parent extends Model {
+      value = "foobar";
+    }
+    class Child extends Model {
+      parent = get(Parent);
+    }
+
+    let parent: Parent;
+    const Outer = (props: React.PropsWithChildren) => {
+      parent = Parent.use().is;
+      return props.children;
+    }
+
+    const Inner = () => {
+      return Child.use().parent.value;
+    }
+
+    render(
+      <Outer>
+        <Inner />
+      </Outer>
+    );
+
+    screen.getByText("foobar");
+
+    await act(async () => parent.set({ value: "barfoo" }));
+
+    screen.getByText("barfoo");
+  })
 })
