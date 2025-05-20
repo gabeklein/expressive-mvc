@@ -43,8 +43,8 @@ interface Context {
 class Context {
   static get<T extends Model>(on: Model, callback: ((got: Context) => void)): void;
   static get<T extends Model>(on: Model): Context | undefined;
-  static get(from: Model, callback?: (got: Context) => void){
-    const waiting = LOOKUP.get(from);
+  static get({ is }: Model, callback?: (got: Context) => void){
+    const waiting = LOOKUP.get(is);
 
     if(waiting instanceof Context){
       if(callback)
@@ -57,7 +57,7 @@ class Context {
       if(waiting) 
         waiting.push(callback);
       else 
-        LOOKUP.set(from, [callback]);
+        LOOKUP.set(is, [callback]);
   }
 
   public id!: string;
