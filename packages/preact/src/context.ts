@@ -36,7 +36,7 @@ function Provider<T extends Model>(props: Provider.Props<T>){
   const ambient = useContext(Lookup);
   const context = useMemo(() => ambient.push(), [ambient]);
 
-  useEffect(() => () => context.pop(), [ambient]);
+  useEffect(() => () => context.pop(), [context]);
   
   context.include(props.for, (model) => {
     if(props.forEach){
