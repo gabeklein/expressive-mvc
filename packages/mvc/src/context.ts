@@ -41,6 +41,12 @@ interface Context {
 }
 
 class Context {
+  static use(create?: true): Context;
+  static use(create: boolean): Context;
+  static use(create?: boolean): never {
+    throw new Error("Adapter is required to use Context.use");
+  }
+
   static get<T extends Model>(on: Model, callback: ((got: Context) => void)): void;
   static get<T extends Model>(on: Model): Context | undefined;
   static get({ is }: Model, callback?: (got: Context) => void){
@@ -121,7 +127,7 @@ class Context {
     const init = new Map<Model, boolean>();
 
     if(typeof inputs == "function" || inputs instanceof Model)
-      inputs = { 0: inputs };
+      inputs = { [forEach ? 0 : this.layer.size]: inputs };
 
     Object.entries(inputs).forEach(([K, V]: [string, Model | Model.Init<Model>]) => {
       if(Model.is(V) || V instanceof Model){
@@ -130,7 +136,7 @@ class Context {
         if(!exists){
           const instance = this.add(V);
   
-          this.layer.set(K, V)
+          this.layer.set(K, V);
           init.set(instance, true);
         }
         // Context must force-reset because inputs are no longer safe.

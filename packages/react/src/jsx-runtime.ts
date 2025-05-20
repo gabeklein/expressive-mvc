@@ -1,8 +1,8 @@
-import {  Context, Model } from '@expressive/mvc';
+import { Model } from '@expressive/mvc';
+import React, { isValidElement, useContext, useMemo } from 'react';
 import Runtime from 'react/jsx-runtime';
 
-import { Lookup } from './context';
-import React from 'react';
+import { Context, Lookup } from './context';
 
 declare module "@expressive/mvc" {
   namespace Model {
@@ -82,10 +82,38 @@ export declare namespace JSX {
   interface IntrinsicElements extends React.JSX.IntrinsicElements {}
 }
 
+let Ambient: Context | null | undefined = undefined;
+
+Context.use = (create?: boolean): any => {
+  if(Ambient || create === false)
+    return Ambient;
+
+  let context = useContext(Lookup);
+
+  if(create){
+    context = useMemo(() => context.push(), [context]);
+
+    if(Ambient === null)
+      Ambient = context;
+  }
+
+  return context;
+}
+
+function provider(children: React.ReactNode) {
+  if(Ambient && (Array.isArray(children) || isValidElement(children) && children.type !== Lookup.Provider))
+    children = jsx(Lookup.Provider, { value: Ambient, children });
+
+  Ambient = undefined;
+
+  return children;
+}
+
 function Component<T extends Model.Compat>(
   this: Model.Init<T>,
   props: Model.Props<T>
 ) {
+  Ambient = null;
   const local = this.use(props.is);
   const render = props.render || local.render;
 
@@ -93,31 +121,33 @@ function Component<T extends Model.Compat>(
     if(key in props)
       local[key] = (props as any)[key];
 
-  return jsx(Lookup.Provider, {
-    value: Context.get(local.is),
-    children: render ? render(props, local) : props.children
-  });
+  return provider(render ? render(props, local) : props.children);
 }
 
-const RENDER = new WeakMap<Object, React.ElementType>();
+function FC<T extends {}>(this: React.FC<T>, props: T, ref: any) {
+  Ambient = null;
+  return provider(this(props, ref));
+}
+
+const RENDER = new WeakMap<Function, React.ComponentType>();
 
 export function compat(
-  this: (
-    type: React.ElementType,
-    props: Record<string, any>,
-    ...args: any[]
-  ) => React.ReactElement,
-  type: React.ElementType | Model.Init,
-  props: Record<string, any>,
-  ...args: any[]
-): React.ReactElement {
-  if(RENDER.has(type))
-    type = RENDER.get(type)!;
+  this: (type: React.ElementType, ...args: any[]) => React.ReactElement,
+  type: React.ElementType | Model.Init, ...args: any[]): React.ReactElement {
 
-  else if(Model.is(type))
-    RENDER.set(type, type = Component.bind(type));
+  if(typeof type == "function")
+    if(RENDER.has(type))
+      type = RENDER.get(type)!;
+    else if(typeof type == "function")
+      RENDER.set(type, type = (
+        type.prototype instanceof Model ?
+          Component.bind(type as Model.Init) :
+        type.prototype instanceof React.Component ? 
+          type as React.ComponentClass :
+          FC.bind(type as React.FC)
+      ));
 
-  return this(type, props, ...args);
+  return this(type, ...args);
 }
 
 export const jsx = compat.bind(Runtime.jsx);

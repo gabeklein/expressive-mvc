@@ -15,7 +15,6 @@ export function renderWith<T>(Type: Model.Init | Model, hook: () => T) {
   });
 }
 
-
 interface MockPromise<T> extends Promise<T> {
   resolve: (value: T) => void;
   reject: (reason?: any) => void;

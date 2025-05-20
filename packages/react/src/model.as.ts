@@ -1,7 +1,7 @@
-import { Context, Model } from '@expressive/mvc';
+import { Model } from '@expressive/mvc';
 import React, { createElement, FunctionComponent } from 'react';
 
-import { Lookup } from './context';
+import { Context, Lookup } from './context';
 
 declare module '@expressive/mvc' {
   namespace Model {
