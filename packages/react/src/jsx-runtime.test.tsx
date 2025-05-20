@@ -396,4 +396,35 @@ describe("implicit context", () => {
 
     screen.getByText("barfoo");
   })
+
+  it("will recycle context", () => {
+    class Foo extends Model {};
+    class Bar extends Model {};
+    class Baz extends Model {
+      foo = get(Foo);
+      bar = get(Bar);
+
+      constructor(...args: Model.Args){
+        super(args);
+        baz = this;
+      }
+    }
+
+    let baz!: Baz;
+    const Outer = (props: React.PropsWithChildren) => {
+      Foo.use();
+      Bar.use();
+
+      return props.children;
+    }
+
+    render(
+      <Outer>
+        <Baz />
+      </Outer>
+    );
+    
+    expect(baz.foo).toBeInstanceOf(Foo);
+    expect(baz.bar).toBeInstanceOf(Bar);
+  })
 })
