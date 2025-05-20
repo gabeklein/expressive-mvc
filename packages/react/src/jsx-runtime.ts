@@ -2,6 +2,7 @@ import { Model } from '@expressive/mvc';
 import React, { isValidElement, useContext, useMemo } from 'react';
 import Runtime from 'react/jsx-runtime';
 
+import { Pragma } from './adapter';
 import { Context, Lookup } from './context';
 
 declare module "@expressive/mvc" {
@@ -84,7 +85,7 @@ export declare namespace JSX {
 
 let Ambient: Context | null | undefined = undefined;
 
-Context.use = (create?: boolean): any => {
+Pragma.useContext = (create?: boolean): any => {
   if(Ambient || create === false)
     return Ambient;
 

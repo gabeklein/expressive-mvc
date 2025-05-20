@@ -1,20 +1,13 @@
 import Model, { Context } from '@expressive/mvc';
-import { ReactNode, createContext, createElement, useContext, useEffect, useMemo } from 'react';
+import React, { ReactNode } from 'react';
 
-const Lookup = createContext(new Context());
+const Lookup = React.createContext(new Context());
 
-declare module '@expressive/mvc' {
-  namespace Context {
-    function use(create?: true): Context;
-    function use(create: boolean): Context | null | undefined;
-  }
-}
-
-Context.use = (create?: boolean) => {
-  const ambient = useContext(Lookup);
+function useContext(create?: boolean){
+  const ambient = React.useContext(Lookup);
 
   return create ?
-    useMemo(() => ambient.push(), []) :
+    React.useMemo(() => ambient.push(), []) :
     ambient;
 }
 
@@ -47,9 +40,9 @@ declare namespace Provider {
 }
 
 function Provider<T extends Model>(props: Provider.Props<T>){
-  const context = Context.use(true);
+  const context = useContext(true);
 
-  useEffect(() => () => context.pop(), [context]);
+  React.useEffect(() => () => context.pop(), [context]);
 
   context.include(props.for, (model) => {
     if(props.forEach){
@@ -60,10 +53,10 @@ function Provider<T extends Model>(props: Provider.Props<T>){
     }
   });
 
-  return createElement(Lookup.Provider, {
+  return React.createElement(Lookup.Provider, {
     key: context.id,
     value: context
   }, props.children);
 }
 
-export { Consumer, Provider, Lookup, Context }
+export { Consumer, Provider, Lookup, Context, useContext }

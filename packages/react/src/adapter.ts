@@ -1,7 +1,7 @@
 import { Context } from '@expressive/mvc';
 
 const Pragma = {} as {
-  useContext(): Context;
+  useContext(create?: true): Context;
 
   useFactory<T extends Function>(
     factory: (refresh: () => void) => T

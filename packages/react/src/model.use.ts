@@ -1,4 +1,4 @@
-import { Model, Context } from '@expressive/mvc';
+import { Model } from '@expressive/mvc';
 
 import { Pragma } from './adapter';
 
@@ -23,7 +23,7 @@ Model.use = function <T extends Model> (
   argument?: Model.Assign<T> | Model.Callback<T>,
   repeat?: boolean){
 
-  const context = Context.use(true);
+  const context = Pragma.useContext(true);
   const render = Pragma.useFactory((refresh) => {
     let enabled: boolean | undefined;
     let local: T;
