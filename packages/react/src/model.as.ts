@@ -39,7 +39,7 @@ Model.as = function <T extends Model, P extends Model.Assign<T>> (
         local[key] = (props as any)[key];
 
     return createElement(Context.Provider, {
-      value: Register.get(local.is)!,
+      value: Context.get(local)!,
       children: render(props, local)
     });
   }
