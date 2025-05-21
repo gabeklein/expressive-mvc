@@ -133,7 +133,6 @@ describe("element props", () => {
   
   it("will not assign foreign values", () => {
     render(
-      // @ts-expect-error
       <Foo nonValue="foobar">
         <Consumer for={Foo}>
           {i => {
@@ -230,9 +229,6 @@ describe("render method", () => {
     }
   
     const screen = render(
-      // while by default children are passed through,
-      // we shouldn't accept props not defined in render
-      // @ts-expect-error
       <Control value='Goodbye'>
         Hello
       </Control>
@@ -471,5 +467,16 @@ describe("implicit return", () => {
 
     render(<Test hi />);
     screen.getByText("Hello World");
+  })
+
+  it.only("will apply styles", () => {
+    const Something = () => {
+      <div>
+        <span something>Hello</span>
+        <span foo>World</span>
+      </div>
+    }
+    
+    render(<Something />);
   })
 })

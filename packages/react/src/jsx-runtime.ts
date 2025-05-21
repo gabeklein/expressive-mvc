@@ -61,6 +61,12 @@ declare module "@expressive/mvc" {
   }
 }
 
+declare module "react" {
+  interface Attributes {
+    [key: string]: unknown;
+  }
+}
+
 export declare namespace JSX {
   type ElementType = 
     | Model.Type<Model.Compat>
