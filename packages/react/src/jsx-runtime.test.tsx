@@ -1,5 +1,5 @@
 import { act, render, screen } from '@testing-library/react';
-import { Component } from 'react';
+import { Children, Component, isValidElement } from 'react';
 
 import { Consumer, get, has, Model, set } from '.';
 
@@ -472,4 +472,39 @@ describe("implicit return", () => {
     render(<Test hi />);
     screen.getByText("Hello World");
   })
+
+  it("will ignore non-arrow functions", () => {
+    const Container = (props: { children: React.ReactNode }) => {
+      const [
+        child1,
+        child2,
+        child3
+      ] = Children.toArray(props.children);
+
+      // Runtime wraps arrow functions in an HOC so should be different.
+      expect(isValidElement(child1) && child1.type !== ArrowFunction).toBe(true);
+
+      // function expressions and declarations are not wrapped.
+      expect(isValidElement(child2) && child2.type === FunctionExpression).toBe(true);
+      expect(isValidElement(child3) && child3.type === FunctionDeclaration).toBe(true);
+
+      return null;
+    }
+
+    const ArrowFunction = () => null;
+    const FunctionExpression = function() {
+      return null;
+    }
+    function FunctionDeclaration() {
+      return null;
+    }
+
+    render(
+      <Container>
+        <ArrowFunction />
+        <FunctionExpression />
+        <FunctionDeclaration />
+      </Container>
+    )
+  });
 })

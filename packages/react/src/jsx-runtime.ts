@@ -148,8 +148,8 @@ export function compat(
       RENDER.set(type, type = (
         type.prototype instanceof Model ?
           Component.bind(type as Model.Init) :
-        type.prototype instanceof React.Component ? 
-          type as React.ComponentClass :
+        type.prototype ? 
+          type as React.ComponentType :
           FC.bind(type as React.FC)
       ));
 
