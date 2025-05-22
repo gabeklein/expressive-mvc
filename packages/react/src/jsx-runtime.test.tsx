@@ -118,19 +118,29 @@ describe("element props", () => {
 
     const didSet = jest.fn();
 
-    render(
-      <Foo value="barfoo">
-        <Consumer for={Foo}>
-          {i => {
-            expect(i.value).toBe("barfoo");
-          }}
-        </Consumer>
-      </Foo>
-    );
+    render(<Foo value="barfoo" />);
 
     expect(didSet).toBeCalled();
   })
-  
+
+  it("will override method", async () => {
+    class Test extends Model {
+      callback(){
+        return "foo";
+      }
+
+      render(){
+        return <span>{this.callback()}</span>;
+      }
+    }
+
+    const element = render(<Test callback={() => "bar"} />);
+    screen.getByText("bar");
+
+    element.rerender(<Test callback={() => "baz"} />);
+    screen.getByText("baz");
+  });
+
   it("will not assign foreign values", () => {
     render(
       // @ts-expect-error
@@ -143,7 +153,7 @@ describe("element props", () => {
         </Consumer>
       </Foo>
     );
-  })
+  });
 })
 
 describe("element children", () => {

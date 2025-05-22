@@ -34,9 +34,7 @@ Model.as = function <T extends Model, P extends Model.Assign<T>> (
   const Component: Model.Component<T, P> = (props) => {
     const local = this.use(props.is);
 
-    for(const key in local)
-      if(key in props)
-        local[key] = (props as any)[key];
+    local.set(props);
 
     return createElement(Lookup.Provider, {
       value: Context.get(local)!,

@@ -1,6 +1,7 @@
 import { act, render, screen } from '@testing-library/react';
 
 import Model from '.';
+import { set } from '@expressive/mvc';
 
 describe("model.as", () => {
   it("will update component as values change", async () => {
@@ -109,4 +110,35 @@ describe("model.as", () => {
     expect(didSetFoo).toHaveBeenCalledTimes(3);
     expect(didRender).toHaveBeenCalledTimes(2);
   });
+
+  it("will override method", async () => {
+    class Test extends Model {
+      callback(){
+        return "foo";
+      }
+    }
+
+    const Component = Test.as((_, self) => {
+      return <span>{self.callback()}</span>;
+    });
+
+    const element = render(<Component callback={() => "bar"} />);
+    screen.getByText("bar");
+
+    element.rerender(<Component callback={() => "baz"} />);
+    screen.getByText("baz");
+  });
+
+  it("will trigger set instruction", () => {
+    class Foo extends Model {
+      value = set("foobar", didSet);
+    }
+
+    const Component = Foo.as((_, self) => null);
+    const didSet = jest.fn();
+
+    render(<Component value="barfoo" />);
+
+    expect(didSet).toBeCalled();
+  })
 });

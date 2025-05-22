@@ -307,9 +307,12 @@ abstract class Model {
       for(const key in arg1){
         const bind = methods.get(key);
         if(bind)
-          bind.call(this, arg1[key]);
+          bind.call(self, arg1[key]);
         else if(key in self)
-          update(self, key, arg1[key], arg2 === true);
+          if(arg2 === true || !Object.getOwnPropertyDescriptor(self, key)?.set)
+            update(self, key, arg1[key], arg2 === true);
+          else
+            (self as any)[key] = arg1[key];
       }
     }
     else

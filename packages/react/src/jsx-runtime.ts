@@ -116,18 +116,18 @@ function provider(children: React.ReactNode) {
 
 function Component<T extends Model.Compat>(
   this: Model.Init<T>,
-  props: Model.Props<T>
+  { is, render, ...rest }: Model.Props<T>
 ) {
   Ambient = Children = null;
 
-  const local = this.use(props.is);
-  const render = props.render || local.render;
+  const local = this.use(is);
+  
+  if(!render)
+    render = local.render;
 
-  for(const key in local)
-    if(key in props)
-      local[key] = (props as any)[key];
+  local.set(rest as Model.Assign<T>);
 
-  return provider(render ? render(props, local) : props.children);
+  return provider(render ? render(rest as Model.HasProps<T>, local) : rest.children);
 }
 
 function FC<T extends {}>(this: React.FC<T>, props: T, ref: any) {
