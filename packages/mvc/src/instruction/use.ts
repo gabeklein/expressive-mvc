@@ -15,33 +15,37 @@ function use(
 
   const token = Symbol("instruction");
 
-  if(Model.is(arg1)){
-    const Type = arg1;
-
-    arg1 = (key, subject) => {
-      function set(next: Model | undefined){
-        if(next ? !(next instanceof Type) : arg2 !== false)
-          throw new Error(`${subject}.${key} expected Model of type ${Type} but got ${next && next.constructor}.`);
-  
-        update(subject, key, next);
-  
-        if(next && typeof arg2 == "function")
-          arg2(next);
-  
-        return false;
-      }
-
-      const value = new Type();
-
-      set(value);
-      PARENT.set(value, subject);
-  
-      return { set };
-    }
-  }
+  if(Model.is(arg1))
+    arg1 = child(arg1, arg2);
 
   INSTRUCT.set(token, arg1);
   return token;
+}
+
+function child(
+  type: Model.Init<Model>,
+  arg2?: ((i: Model) => void) | boolean
+): Model.Instruction<any, any> {
+  return (key, subject) => {
+    function set(next: Model | undefined){
+      if(next ? !(next instanceof type) : arg2 !== false)
+        throw new Error(`${subject}.${key} expected Model of type ${type} but got ${next && next.constructor}.`);
+
+      update(subject, key, next);
+
+      if(next && typeof arg2 == "function")
+        arg2(next);
+
+      return false;
+    }
+
+    const value = new type();
+
+    set(value);
+    PARENT.set(value, subject);
+
+    return { set };
+  }
 }
 
 Model.on((_, model) => {
