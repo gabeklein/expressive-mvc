@@ -1,6 +1,6 @@
-import { createEffect, Model } from '@expressive/mvc';
+import { Context, createEffect, Model } from '@expressive/mvc';
 
-import { Pragma } from './adapter';
+import { Pragma, useFactory } from './adapter';
 
 /** Type may not be undefined - instead will be null.  */
 type NoVoid<T> = T extends undefined | void ? null : T;
@@ -57,8 +57,8 @@ Model.get = function <T extends Model, R> (
   this: Model.Type<T>,
   argument?: boolean | Model.GetFactory<T, unknown>
 ){
-  const context = Pragma.useContext();
-  const render = Pragma.useFactory((refresh) => {
+  const context = Context.use();
+  const render = useFactory((refresh) => {
     function forceUpdate(): void;
     function forceUpdate<T>(action: Promise<T> | (() => Promise<T>)): Promise<T>;
     function forceUpdate<T>(action?: Promise<T> | (() => Promise<T>)){
@@ -121,7 +121,7 @@ Model.get = function <T extends Model, R> (
     }
 
     return () => {
-      Pragma.useLifecycle(() => unwatch);
+      Pragma.useEffect(() => unwatch, []);
       return value === undefined ? null : value;
     }
   });

@@ -1,8 +1,8 @@
 import { Model } from '@expressive/mvc';
-import React, { isValidElement } from 'react';
 import Runtime from 'react/jsx-runtime';
 
-import { Context, Lookup } from './context';
+import { createProvider, isProvider } from './adapter';
+import { Context } from './context';
 
 declare module "@expressive/mvc" {
   namespace Model {
@@ -106,8 +106,8 @@ function provider(children: React.ReactNode) {
   if(children === undefined)
     children = Children;
 
-  if(Ambient && (Array.isArray(children) || isValidElement(children) && children.type !== Lookup.Provider))
-    children = jsx(Lookup.Provider, { value: Ambient, children });
+  if(Ambient && (Array.isArray(children) || isProvider(children)))
+    children = createProvider(Ambient, children);
 
   Ambient = undefined;
 

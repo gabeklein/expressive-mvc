@@ -1,6 +1,6 @@
 import { Model, Context } from '@expressive/mvc';
 
-import { Pragma } from './adapter';
+import { Pragma, useFactory } from './adapter';
 
 declare module '@expressive/mvc' {
   namespace Model {
@@ -24,7 +24,7 @@ Model.use = function <T extends Model> (
   repeat?: boolean){
 
   const context = Context.use(true);
-  const render = Pragma.useFactory((refresh) => {
+  const render = useFactory((refresh) => {
     let enabled: boolean | undefined;
     let local: T;
 
@@ -49,7 +49,7 @@ Model.use = function <T extends Model> (
     }
 
     return (props?: Model.Assign<T> | Model.Callback<T>) => {
-      Pragma.useLifecycle(didMount);
+      Pragma.useEffect(didMount, []);
 
       if(enabled && repeat && props){
         enabled = false;

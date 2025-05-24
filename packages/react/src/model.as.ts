@@ -1,11 +1,11 @@
 import { Model } from '@expressive/mvc';
-import React, { createElement, FunctionComponent } from 'react';
 
-import { Context, Lookup } from './context';
+import { createProvider, Pragma } from './adapter';
+import { Context } from './context';
 
 declare module '@expressive/mvc' {
   namespace Model {
-    interface Component<T extends Model, P extends Model.Assign<T>> extends FunctionComponent<P & Component.Props<T>> {
+    interface Component<T extends Model, P extends Model.Assign<T>> extends Pragma.FC<P & Component.Props<T>> {
       displayName?: string;
       Model: Model.Type<T>;
     }
@@ -26,7 +26,7 @@ declare module '@expressive/mvc' {
 
 Model.as = function <T extends Model, P extends Model.Assign<T>> (
   this: Model.Init<T>,
-  render: (props: P, self: T) => React.ReactNode
+  render: (props: P, self: T) => Pragma.Node
 ){
   if(this === Model)
     throw new Error("Cannot create component from base Model.");
@@ -36,10 +36,10 @@ Model.as = function <T extends Model, P extends Model.Assign<T>> (
 
     local.set(props);
 
-    return createElement(Lookup.Provider, {
-      value: Context.get(local)!,
-      children: render(props, local)
-    });
+    return createProvider(
+      Context.get(local)!,
+      render(props, local)
+    );
   }
 
   Component.Model = this;
