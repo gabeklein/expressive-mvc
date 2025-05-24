@@ -1,8 +1,8 @@
 import { Model } from '@expressive/mvc';
-import React, { isValidElement } from 'react';
+import React from 'react';
 import Runtime from 'react/jsx-runtime';
 
-import { Context, Lookup } from './context';
+import { Context, createProvider } from './context';
 
 declare module "@expressive/mvc" {
   namespace Model {
@@ -102,12 +102,12 @@ Context.use = (create?: boolean): any => {
   return context;
 }
 
-function provider(children: React.ReactNode) {
+function provide(children: React.ReactNode) {
   if(children === undefined)
     children = Children;
 
-  if(Ambient && (Array.isArray(children) || isValidElement(children) && children.type !== Lookup.Provider))
-    children = jsx(Lookup.Provider, { value: Ambient, children });
+  if(Ambient)
+    children = createProvider(Ambient, children, true);
 
   Ambient = undefined;
 
@@ -126,12 +126,12 @@ function MC<T extends Model.Compat>(
 
   const render = local.render || props.render;
 
-  return provider(render ? render(props as Model.HasProps<T>, local) : props.children);
+  return provide(render ? render(props as Model.HasProps<T>, local) : props.children);
 }
 
 function FC<T extends {}>(this: React.FC<T>, props: T, ref: any) {
   Ambient = Children = null;
-  return provider(this(props, ref));
+  return provide(this(props, ref));
 }
 
 const RENDER = new WeakMap<Function, React.ComponentType>();

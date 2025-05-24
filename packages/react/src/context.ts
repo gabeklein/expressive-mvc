@@ -1,5 +1,5 @@
 import Model, { Context } from '@expressive/mvc';
-import { ReactNode, createContext, createElement, useContext, useEffect, useMemo } from 'react';
+import { createContext, createElement, isValidElement, ReactNode, useContext, useEffect, useMemo } from 'react';
 
 const Lookup = createContext(new Context());
 
@@ -60,10 +60,26 @@ function Provider<T extends Model>(props: Provider.Props<T>){
     }
   });
 
-  return createElement(Lookup.Provider, {
-    key: context.id,
-    value: context
-  }, props.children);
+  return createProvider(context, props.children);
 }
 
-export { Consumer, Provider, Lookup, Context }
+export function createProvider(
+  context: Context,
+  children: ReactNode,
+  strict?: boolean
+): ReactNode {
+  if(!strict || Array.isArray(children) || isNonProviderElement(children))
+    return createElement(Lookup.Provider, {
+      key: context.id,
+      value: context,
+      children
+    });
+
+  return children;
+}
+
+export function isNonProviderElement(children: ReactNode){
+  return isValidElement(children) && children.type !== Lookup.Provider;
+}
+
+export { Consumer, Provider, Context }

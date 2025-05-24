@@ -1,7 +1,7 @@
 import { Model } from '@expressive/mvc';
-import React, { createElement, FunctionComponent } from 'react';
+import React, { FunctionComponent } from 'react';
 
-import { Context, Lookup } from './context';
+import { Context, createProvider } from './context';
 
 declare module '@expressive/mvc' {
   namespace Model {
@@ -36,10 +36,7 @@ Model.as = function <T extends Model, P extends Model.Assign<T>> (
 
     local.set(props);
 
-    return createElement(Lookup.Provider, {
-      value: Context.get(local)!,
-      children: render(props, local)
-    });
+    return createProvider(Context.get(local)!, render(props, local));
   }
 
   Component.Model = this;
