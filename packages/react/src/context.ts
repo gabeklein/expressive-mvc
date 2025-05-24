@@ -1,21 +1,13 @@
 import Model, { Context } from '@expressive/mvc';
-import { createContext, createElement, isValidElement, ReactNode, useContext, useEffect, useMemo } from 'react';
+import { createContext, ReactNode, useContext, useEffect, useMemo } from 'react';
 
-const Lookup = createContext(new Context());
+import { Pragma } from './adapter';
 
 declare module '@expressive/mvc' {
   namespace Context {
     function use(create?: true): Context;
     function use(create: boolean): Context | null | undefined;
   }
-}
-
-Context.use = (create?: boolean) => {
-  const ambient = useContext(Lookup);
-
-  return create ?
-    useMemo(() => ambient.push(), []) :
-    ambient;
 }
 
 declare namespace Consumer {
@@ -60,26 +52,7 @@ function Provider<T extends Model>(props: Provider.Props<T>){
     }
   });
 
-  return createProvider(context, props.children);
-}
-
-export function createProvider(
-  context: Context,
-  children: ReactNode,
-  strict?: boolean
-): ReactNode {
-  if(!strict || Array.isArray(children) || isNonProviderElement(children))
-    return createElement(Lookup.Provider, {
-      key: context.id,
-      value: context,
-      children
-    });
-
-  return children;
-}
-
-export function isNonProviderElement(children: ReactNode){
-  return isValidElement(children) && children.type !== Lookup.Provider;
+  return Pragma.useProvider(context, props.children);
 }
 
 export { Consumer, Provider, Context }

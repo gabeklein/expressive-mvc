@@ -2,7 +2,8 @@ import { Model } from '@expressive/mvc';
 import React from 'react';
 import Runtime from 'react/jsx-runtime';
 
-import { Context, createProvider } from './context';
+import { Pragma } from './adapter';
+import { Context } from './context';
 
 declare module "@expressive/mvc" {
   namespace Model {
@@ -107,7 +108,7 @@ function provide(children: React.ReactNode) {
     children = Children;
 
   if(Ambient)
-    children = createProvider(Ambient, children, true);
+    children = Pragma.useProvider(Ambient, children, true);
 
   Ambient = undefined;
 
