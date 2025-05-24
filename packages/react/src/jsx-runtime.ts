@@ -114,20 +114,19 @@ function provider(children: React.ReactNode) {
   return children;
 }
 
-function Component<T extends Model.Compat>(
+function MC<T extends Model.Compat>(
   this: Model.Init<T>,
-  { is, render, ...rest }: Model.Props<T>
+  props: Model.Props<T>
 ) {
   Ambient = Children = null;
 
-  const local = this.use(is);
-  
-  if(!render)
-    render = local.render;
+  const local = this.use(props.is);
 
-  local.set(rest as Model.Assign<T>);
+  local.set(props as Model.Assign<T>);
 
-  return provider(render ? render(rest as Model.HasProps<T>, local) : rest.children);
+  const render = local.render || props.render;
+
+  return provider(render ? render(props as Model.HasProps<T>, local) : props.children);
 }
 
 function FC<T extends {}>(this: React.FC<T>, props: T, ref: any) {
@@ -146,11 +145,11 @@ export function compat(
       type = RENDER.get(type)!;
     else if(typeof type == "function")
       RENDER.set(type, type = (
-        type.prototype instanceof Model ?
-          Component.bind(type as Model.Init) :
         type.prototype ? 
+          type.prototype instanceof Model ?
+            MC.bind(type as Model.Init) :
           type as React.ComponentType :
-          FC.bind(type as React.FC)
+        FC.bind(type as React.FC)
       ));
 
   return Children = this(type, ...args);
