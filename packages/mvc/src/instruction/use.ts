@@ -1,7 +1,7 @@
 import { watch } from '../control';
 import { fetch, mayAdopt, Model, PARENT, STATE, update } from '../model';
 
-const INSTRUCT = new Map<symbol, Model.Instruction>();
+const INSTRUCTION = new Map<symbol, Model.Instruction>();
 
 function use <T> (instruction: Model.Instruction<T>): T extends void ? unknown : T;
 
@@ -18,7 +18,7 @@ function use(
   if(Model.is(arg1))
     arg1 = child(arg1, arg2);
 
-  INSTRUCT.set(token, arg1);
+  INSTRUCTION.set(token, arg1);
   return token;
 }
 
@@ -48,22 +48,22 @@ function child(
   }
 }
 
-Model.on((_, model) => {
-  const state = STATE.get(model)!;
+function init(this: Model){
+  const state = STATE.get(this)!;
 
-  for(const key in model){
-    const { value } = Object.getOwnPropertyDescriptor(model, key)!;
-    const instruction = INSTRUCT.get(value);
+  for(const key in this){
+    const { value } = Object.getOwnPropertyDescriptor(this, key)!;
+    const instruction = INSTRUCTION.get(value);
 
     if(!instruction){
-      mayAdopt(model, value);
+      mayAdopt(this, value);
       continue;
     }
 
-    INSTRUCT.delete(value);
-    delete (model as any)[key];
+    INSTRUCTION.delete(value);
+    delete (this as any)[key];
 
-    const output = instruction.call(model, key, model, state);
+    const output = instruction.call(this, key, this, state);
 
     if(!output)
       continue;
@@ -72,6 +72,8 @@ Model.on((_, model) => {
 
     if("value" in desc)
       state[key] = desc.value;
+
+    const model = this;
 
     Object.defineProperty(model, key, {
       enumerable: desc.enumerable !== false,
@@ -92,6 +94,8 @@ Model.on((_, model) => {
   }
 
   return null;
-});
+}
+
+Model.on(init);
 
 export { use }
