@@ -1,7 +1,6 @@
 import Model, { Context } from '@expressive/mvc';
-import { ReactNode, createContext, createElement, useContext, useEffect, useMemo } from 'react';
 
-const Lookup = createContext(new Context());
+import { createProvider, Pragma, useContext } from './adapter';
 
 declare module '@expressive/mvc' {
   namespace Context {
@@ -11,10 +10,10 @@ declare module '@expressive/mvc' {
 }
 
 Context.use = (create?: boolean) => {
-  const ambient = useContext(Lookup);
+  const ambient = useContext();
 
   return create ?
-    useMemo(() => ambient.push(), []) :
+    Pragma.useMemo(() => ambient.push(), []) :
     ambient;
 }
 
@@ -30,7 +29,7 @@ declare namespace Consumer {
      * Similar to `Model.get()`, updates to properties accessed in
      * this function will cause a refresh when they change.
      */
-    children: (value: T) => ReactNode | void;
+    children: (value: T) => Pragma.Node | void;
   }
 }
 
@@ -42,14 +41,14 @@ declare namespace Provider {
   interface Props<T extends Model> {
     for: Context.Accept<T>;
     forEach?: Context.Expect<T>;
-    children?: ReactNode;
+    children?: Pragma.Node;
   }
 }
 
 function Provider<T extends Model>(props: Provider.Props<T>){
   const context = Context.use(true);
 
-  useEffect(() => () => context.pop(), [context]);
+  Pragma.useEffect(() => () => context.pop(), [context]);
 
   context.include(props.for, (model) => {
     if(props.forEach){
@@ -60,10 +59,7 @@ function Provider<T extends Model>(props: Provider.Props<T>){
     }
   });
 
-  return createElement(Lookup.Provider, {
-    key: context.id,
-    value: context
-  }, props.children);
+  return createProvider(context, props.children);
 }
 
-export { Consumer, Provider, Lookup, Context }
+export { Consumer, Provider, Context }

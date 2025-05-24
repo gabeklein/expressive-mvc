@@ -1,7 +1,6 @@
 import { act, render, screen } from '@testing-library/react';
 
-import Model from '.';
-import { set } from '@expressive/mvc';
+import Model, { set } from '.';
 
 describe("model.as", () => {
   it("will update component as values change", async () => {

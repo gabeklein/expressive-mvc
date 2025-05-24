@@ -1,19 +1,11 @@
-import { useEffect, useState } from 'react';
+import { Context } from '@expressive/mvc';
+import * as react from 'react';
 
 import { Pragma } from './adapter';
-import { Context } from './context';
 
-Pragma.useContext = () => Context.use();
+Object.assign(Pragma, react);
 
-Pragma.useLifecycle = (callback) => useEffect(() => callback(), []);
-
-Pragma.useFactory = (factory) => {
-  const state = useState(() => factory(() => {
-    state[1](x => x.bind(null) as any);
-  }));
-
-  return state[0];
-}
+Pragma.Context = react.createContext(new Context());
 
 export {
   Model, Model as default,
@@ -22,4 +14,4 @@ export {
 
 export { Consumer, Context, Provider } from './context';
 export { Fragment, createElement } from 'react';
-export { type Pragma };
+// export { type Pragma };
