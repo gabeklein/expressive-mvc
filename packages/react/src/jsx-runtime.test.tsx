@@ -1,6 +1,7 @@
+/** @jsxImportSource . */
+
 import { act, render, screen } from '@testing-library/react';
 import { Children, Component, isValidElement } from 'react';
-
 import { Consumer, get, has, Model, set } from '.';
 
 describe("has instruction", () => {

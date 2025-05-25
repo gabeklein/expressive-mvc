@@ -7,7 +7,6 @@
         "transform": {
           "react": {
             "runtime": "automatic",
-            "importSource": ".",
             "development": false,
             "useBuiltins": false
           }
