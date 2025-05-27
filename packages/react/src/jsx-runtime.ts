@@ -129,11 +129,6 @@ function MC<T extends Model.Compat>(
   return provide(render ? render(props as Model.HasProps<T>, local) : props.children);
 }
 
-function FC<T extends {}>(this: React.FC<T>, props: T, ref: any) {
-  Ambient = Children = null;
-  return provide(this(props, ref));
-}
-
 const RENDER = new WeakMap<Function, React.ComponentType>();
 
 export function compat(
@@ -145,11 +140,9 @@ export function compat(
       type = RENDER.get(type)!;
     else if(typeof type == "function")
       RENDER.set(type, type = (
-        type.prototype ? 
-          type.prototype instanceof Model ?
-            MC.bind(type as Model.Init) :
-          type as React.ComponentType :
-        FC.bind(type as React.FC)
+        type.prototype instanceof Model ?
+          MC.bind(type as Model.Init) :
+        type as React.ComponentType
       ));
 
   return Children = this(type, ...args);

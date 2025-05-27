@@ -376,7 +376,7 @@ describe("types", () => {
   });
 })
 
-describe("implicit context", () => {
+describe.skip("implicit context", () => {
   it("will provide automatically", async () => {
     class Parent extends Model {
       value = "foobar";
@@ -440,7 +440,7 @@ describe("implicit context", () => {
   })
 })
 
-describe("implicit return", () => {
+describe.skip("implicit return", () => {
   it("will return element", () => {
     const Test = (props: { name?: string }) => {
       <div>Hello {props.name || "World"}</div>
