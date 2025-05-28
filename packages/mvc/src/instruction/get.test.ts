@@ -2,6 +2,7 @@ import { Context } from '../context';
 import { mockError, mockPromise, mockWarn } from '../mocks';
 import { Model } from '../model';
 import { get } from './get';
+import { use } from './use';
 
 const error = mockError();
 const warn = mockWarn();
@@ -117,7 +118,7 @@ describe("fetch mode", () => {
     expect(attempt).toThrowError(`Required Parent not found in context for ID.`);
   })
   
-  it("retuns undefined if required is false", () => {
+  it("will return undefined if required is false", () => {
     class MaybeParent extends Model {}
     class StandAlone extends Model {
       maybe = get(MaybeParent, false);
@@ -130,7 +131,21 @@ describe("fetch mode", () => {
     expect(instance.maybe).toBeUndefined();
   })
   
-  it("throws if parent is of incorrect type", () => {
+  it("will throw if parent is of incorrect type", () => {
+    class Expected extends Model {}
+    class Unexpected extends Model {
+      child = new Adopted("ID");
+    }
+    class Adopted extends Model {
+      expects = get(Expected, true);
+    }
+  
+    const attempt = () => Unexpected.new("ID");
+  
+    expect(attempt).toThrowError(`New ID created as child of ID, but must be instanceof Expected.`);
+  })
+  
+  it("will not throw if has parent but not type-required", () => {
     class Expected extends Model {}
     class Unexpected extends Model {
       child = new Adopted("ID");
@@ -141,7 +156,7 @@ describe("fetch mode", () => {
   
     const attempt = () => Unexpected.new("ID");
   
-    expect(attempt).toThrowError(`New ID created as child of ID, but must be instanceof Expected.`);
+    expect(attempt).not.toThrow();
   })
 
   it('will track recursively', async () => {
@@ -171,6 +186,22 @@ describe("fetch mode", () => {
     await expect(child.parent).toHaveUpdated();
     expect(effect).toHaveBeenCalledTimes(3)
   })
+
+  it("will inherit parent context", () => {
+    class Foo extends Model {}
+    class Bar extends Model {
+      baz = use(Baz);
+    }
+
+    class Baz extends Model {
+      foo = get(Foo);
+    }
+
+    const context = new Context({ Foo, Bar })
+    const bar = context.get(Bar, true);
+
+    expect(bar.baz.foo).toBeInstanceOf(Foo);
+  });
 })
 
 describe("callback", () => {

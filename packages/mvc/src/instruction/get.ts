@@ -82,23 +82,24 @@ function get<R, T extends Model>(
         update(subject, key, value);
       }
 
-      if(!hasParent){
-        if(arg1 === true)
-          throw new Error(`${subject} may only exist as a child of type ${arg0}.`);
+      if(!hasParent && arg1 === true)
+        throw new Error(`${subject} may only exist as a child of type ${arg0}.`);
+      else if(hasParent)
+        if(hasParent instanceof arg0){
+          assign(hasParent);
+          return {}
+        }
+        else if(arg1 === true)
+          throw new Error(`New ${subject} created as child of ${hasParent}, but must be instanceof ${arg0}.`);
+ 
+      Context.get(subject, (context) => {
+        const model = context.get(arg0);
 
-        Context.get(subject, (context) => {
-          const model = context.get(arg0);
-
-          if(model)
-            assign(model);
-          else if(arg1 !== false)
-            throw new Error(`Required ${arg0} not found in context for ${subject}.`)
-        });
-      }
-      else if(!arg0 || hasParent instanceof arg0)
-        assign(hasParent);
-      else
-        throw new Error(`New ${subject} created as child of ${hasParent}, but must be instanceof ${arg0}.`);
+        if(model)
+          assign(model);
+        else if(arg1 !== false)
+          throw new Error(`Required ${arg0} not found in context for ${subject}.`)
+      });
 
       return {
         get: arg1 !== false

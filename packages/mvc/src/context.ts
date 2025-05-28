@@ -154,7 +154,7 @@ class Context {
       model.set();
 
       if(explicit && forEach)
-          forEach(model as T);
+        forEach(model as T);
 
       for(const [_key, value] of model)
         if(PARENT.get(value as Model) === model){
