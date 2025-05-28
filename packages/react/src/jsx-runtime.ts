@@ -1,8 +1,8 @@
-import { Model } from '@expressive/mvc';
+import { Context, Model } from '@expressive/mvc';
 import React from 'react';
 import Runtime from 'react/jsx-runtime';
 
-import { Context, createProvider } from './context';
+import { createProvider } from './context';
 
 declare module "@expressive/mvc" {
   namespace Model {
@@ -85,48 +85,20 @@ export declare namespace JSX {
   interface IntrinsicElements extends React.JSX.IntrinsicElements {}
 }
 
-let Ambient: Context | null | undefined = undefined;
-let Children: React.ReactNode | null = null;
-
-const useContext = Context.use;
-
-Context.use = (create?: boolean): any => {
-  if(Ambient || create === false)
-    return Ambient;
-
-  const context = useContext(create);
-
-  if(Ambient === null && create)
-    Ambient = context;
-
-  return context;
-}
-
-function provide(children: React.ReactNode) {
-  if(children === undefined)
-    children = Children;
-
-  if(Ambient)
-    children = createProvider(Ambient, children, true);
-
-  Ambient = undefined;
-
-  return children;
-}
-
 function MC<T extends Model.Compat>(
   this: Model.Init<T>,
   props: Model.Props<T>
 ) {
-  Ambient = Children = null;
-
   const local = this.use(props.is);
 
   local.set(props as Model.Assign<T>);
 
   const render = local.render || props.render;
 
-  return provide(render ? render(props as Model.HasProps<T>, local) : props.children);
+  return createProvider(
+    Context.get(local)!,
+    render ? render(props as Model.HasProps<T>, local) : props.children
+  );
 }
 
 const RENDER = new WeakMap<Function, React.ComponentType>();
@@ -145,7 +117,7 @@ export function compat(
         type as React.ComponentType
       ));
 
-  return Children = this(type, ...args);
+  return this(type, ...args);
 }
 
 export const jsx = compat.bind(Runtime.jsx);
