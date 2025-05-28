@@ -43,6 +43,7 @@ function child(
 
     set(value);
     PARENT.set(value, subject);
+    value.set();
 
     return { set };
   }
