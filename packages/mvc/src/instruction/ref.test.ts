@@ -277,6 +277,25 @@ describe("proxy", () => {
     expect(test.foo).toBe("bar");
     expect(test.bar).toBe("foo");
   })
+
+  it("will subscribe from property", async () => {
+    const test = Subject.new();
+    const callback = jest.fn();
+    const { refs } = test;
+
+    const done = refs.foo.on(callback);
+    expect(callback).not.toBeCalled();
+    
+    test.foo = "bar";
+    await expect(test).toHaveUpdated();
+    expect(callback).toBeCalledWith("bar");
+
+    done();
+
+    test.foo = "baz";
+    await expect(test).toHaveUpdated();
+    expect(callback).toBeCalledTimes(1);
+  });
 })
 
 describe("mapped", () => {
