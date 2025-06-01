@@ -374,14 +374,11 @@ function assign(subject: Model, data: Model.Assign<Model>, silent?: boolean){
     const bind = methods.get(key);
     if(bind)
       bind.call(subject, data[key]);
-    else if(key in subject){
-      const desc = Object.getOwnPropertyDescriptor(subject, key);
+    else if(key in subject && key !== "is"){
+      const desc = Object.getOwnPropertyDescriptor(subject, key)!;
       const set = desc && desc.set as (value: any, silent?: boolean) => void;
 
-      if(set)
-        set.call(subject, data[key], silent === true);
-      else
-        update(subject, key, data[key], silent === true);
+      set.call(subject, data[key], silent === true);
     }
   }
 }

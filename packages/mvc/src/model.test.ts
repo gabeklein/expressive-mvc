@@ -1534,6 +1534,17 @@ describe("set method", () => {
       expect(test).not.toHaveProperty("bar");
     })
 
+    it("will ignore built-in properties", async () => {
+      class Test extends Model {
+        foo = "foo";
+      }
+      const test = Test.new();
+
+      test.set({ is: "bar" });
+
+      await expect(test).not.toHaveUpdated();
+    });
+
     it("will assign from inside method", () => {
       class Test extends Model {
         foo = "foo";
