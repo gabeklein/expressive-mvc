@@ -28,6 +28,24 @@ describe("property", () => {
   
     expect(state.ref.get()).toBe("foobar");
   })
+
+  it('will subscribe from ref-object', async () => {
+    class Subject extends Model {
+      ref = ref<string>();
+    }
+
+    const state = Subject.new();
+    const callback = jest.fn();
+
+    state.ref.on(callback);
+
+    expect(callback).not.toBeCalled();
+  
+    state.ref.current = "foobar";
+
+    await expect(state).toHaveUpdated();
+    expect(callback).toBeCalledWith("foobar");
+  })
   
   it('will watch "current" of property', async () => {
     class Subject extends Model {

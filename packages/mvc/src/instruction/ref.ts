@@ -1,4 +1,4 @@
-import { context } from '../control';
+import { addListener, context } from '../control';
 import { Model, update } from '../model';
 import { use } from './use';
 
@@ -13,6 +13,14 @@ declare namespace ref {
 
     /** Current value held by this reference. */
     current: T | null;
+
+    /** 
+     * Subscribe to changes of this reference.
+     * 
+     * @param callback - Callback to invoke with the current value when it changes.
+     * @returns Unsubscribe function to stop listening to changes.
+     */
+    on(callback: (value: T) => void): () => void;
 
     /** Retrieve current value. */
     get(): T | null;
@@ -96,9 +104,16 @@ function ref<T>(
             const set = (value: unknown) => {
               update(subject, key, value)
             };
-          
-            defineProperty(set, "current", { get, set });
-            defineProperty(set, "get", { value: get });
+
+            defineProperties(set, {
+              current: { get, set  },
+              get: { value: get },
+              on: {
+                value: (callback: (value: T) => void) => 
+                  addListener(subject, () => callback(state[key]), key)
+              }
+            });
+
             defineProperty(value, key, { value: set });
           }
       })
@@ -135,7 +150,11 @@ function ref<T>(
       state[key] = null;
       value = defineProperties(set, {
         current: { get, set },
-        get: { value: get }
+        get: { value: get },
+        on: {
+          value: (callback: (value: T) => void) => 
+            addListener(subject, () => callback(state[key]), key)
+        }
       }) as ref.Object<T>;
     }
 
