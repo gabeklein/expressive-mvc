@@ -4,9 +4,9 @@
   "main": "src/index.tsx",
   "module": "src/Situation.tsx",
   "dependencies": {
-    "@expressive/react": "^0.61.0",
+    "@expressive/react": "^0.62.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },
-  "version": "0.61.0"
+  "version": "0.62.0"
 }

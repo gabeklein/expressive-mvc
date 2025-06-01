@@ -49,7 +49,7 @@
     "preversion": "npm run test && npm run build"
   },
   "dependencies": {
-    "@expressive/mvc": "^0.61.0"
+    "@expressive/mvc": "^0.62.0"
   },
   "peerDependencies": {
     "react": ">=16.8.0 <19.0.0"
@@ -66,5 +66,5 @@
     "react": "^18.2.0",
     "tsup": "^8.0.2"
   },
-  "version": "0.61.0"
+  "version": "0.62.0"
 }
