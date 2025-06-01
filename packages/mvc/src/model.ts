@@ -587,7 +587,7 @@ function update<T>(
       value = out();
   }
 
-  if(value === previous)
+  if(value === previous && value !== undefined)
     return;
 
   state[key] = value;

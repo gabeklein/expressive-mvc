@@ -315,6 +315,17 @@ describe("mapped", () => {
     expect(() => Test.new()).toThrowError(`ref instruction does not support object which is not 'this'`);
   })
 
+  it("will include undefined properties", () => {
+    class Test extends Model {
+      foo = undefined;
+      fields = ref(this);
+    }
+
+    const { fields } = Test.new();
+
+    expect(fields.foo).toBeDefined();
+  });
+
   it.skip("will not break on recursive", () => {
     class Test extends Model {
       foo = ref<boolean>();
