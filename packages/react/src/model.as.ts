@@ -36,7 +36,7 @@ Model.as = function <T extends Model, P extends Model.Assign<T>> (
       self.set(props);
 
       if(props.is)
-        props.is(self);
+        return props.is(self);
     });
 
     local.set(props);

@@ -70,6 +70,25 @@ describe("model.as", () => {
     screen.getByText("bar");
   });
 
+  it("will call is method on creation", () => {
+    class Control extends Model {}
+
+    const Test = Control.as(() => null);
+
+    const didCreate = jest.fn(() => didDestroy);
+    const didDestroy = jest.fn();
+
+    const screen = render(<Test is={didCreate} />);
+
+    expect(didCreate).toHaveBeenCalledTimes(1);
+
+    screen.rerender(<Test is={didCreate} />);
+    expect(didCreate).toHaveBeenCalledTimes(1);
+
+    act(screen.unmount);
+    expect(didDestroy).toHaveBeenCalledTimes(1);
+  })
+
   it("will pass untracked props to render", async () => {
     class Test extends Model {
       foo = "foo";
