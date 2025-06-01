@@ -52,6 +52,24 @@ describe("model.as", () => {
     expect(didUpdateFoo).toHaveBeenCalledWith("foo", { foo: "baz" });
   });
 
+  it("will pass props before effects run", async () => {
+    class Test extends Model {
+      foo = "foo";
+
+      constructor(...args: Model.Args) {
+        super(...args, self => {
+          expect(self.foo).toBe("bar");
+        });
+      }
+    }
+
+    const Component = Test.as(({ foo }) => <span>{foo}</span>);
+
+    render(<Component foo="bar" />);
+
+    screen.getByText("bar");
+  });
+
   it("will pass untracked props to render", async () => {
     class Test extends Model {
       foo = "foo";

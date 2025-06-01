@@ -32,7 +32,12 @@ Model.as = function <T extends Model, P extends Model.Assign<T>> (
     throw new Error("Cannot create component from base Model.");
 
   const Component: Model.Component<T, P> = (props) => {
-    const local = this.use(props.is);
+    const local = this.use((self) => {
+      self.set(props);
+
+      if(props.is)
+        props.is(self);
+    });
 
     local.set(props);
 
