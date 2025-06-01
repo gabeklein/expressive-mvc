@@ -301,20 +301,8 @@ abstract class Model {
           return arg2.call(self, key, self);
       });
 
-    if(arg1 && typeof arg1 == "object"){
-      const methods = METHODS.get(self.constructor as Model.Type)!;
-    
-      for(const key in arg1){
-        const bind = methods.get(key);
-        if(bind)
-          bind.call(self, arg1[key]);
-        else if(key in self)
-          if(arg2 === true || !Object.getOwnPropertyDescriptor(self, key)?.set)
-            update(self, key, arg1[key], arg2 === true);
-          else
-            (self as any)[key] = arg1[key];
-      }
-    }
+    if(arg1 && typeof arg1 == "object")
+      assign(self, arg1, arg2 === true);
     else
       event(self, arg1);
 
@@ -379,6 +367,25 @@ define(Model, "toString", {
   }
 });
 
+function assign(subject: Model, data: Model.Assign<Model>, silent?: boolean){
+  const methods = METHODS.get(subject.constructor as Model.Type)!;
+    
+  for(const key in data){
+    const bind = methods.get(key);
+    if(bind)
+      bind.call(subject, data[key]);
+    else if(key in subject){
+      const desc = Object.getOwnPropertyDescriptor(subject, key);
+      const set = desc && desc.set as (value: any, silent?: boolean) => void;
+
+      if(set)
+        set.call(subject, data[key], silent === true);
+      else
+        update(subject, key, data[key], silent === true);
+    }
+  }
+}
+
 /** Apply instructions and inherited event listeners. Ensure class metadata is ready. */
 function prepare(model: Model){
   let T = model.constructor as Model.Type;
@@ -435,7 +442,6 @@ function prepare(model: Model){
  * Accumulate and handle cleanup events.
  **/
 function init(model: Model, args: Model.Args){
-  const methods = METHODS.get(model.constructor as Model.Type)!;
   const state = {} as Record<string | number | symbol, unknown>;
 
   STATE.set(model, state);
@@ -450,6 +456,24 @@ function init(model: Model, args: Model.Args){
   addListener(model, () => {
     if(!PARENT.has(model))
       PARENT.set(model, null);
+
+    for(const key in model){
+      const desc = Object.getOwnPropertyDescriptor(model, key)!;
+
+      if("value" in desc){
+        update(model, key, desc.value, true);
+        define(model, key, {
+          configurable: false,
+          get(){
+            return watch(this, key, state[key]);
+          },
+          set(value, silent?: boolean){
+            update(model, key, value, silent);
+            mayAdopt(model, value);
+          }
+        });
+      }
+    }
     
     args.forEach((arg) => {
       const use = typeof arg == "function"
@@ -464,28 +488,8 @@ function init(model: Model, args: Model.Args){
       else if(typeof use == "function")
         addListener(model, use, null)
       else if(typeof use == "object")
-        for(const key in use)
-          if(key in model || methods.has(key))
-            model[key as keyof Model] = use[key] as any;
+        assign(model, use, true);
     });
-
-    for(const key in model){
-      const desc = Object.getOwnPropertyDescriptor(model, key)!;
-
-      if("value" in desc){
-        update(model, key, desc.value, true);
-        define(model, key, {
-          configurable: false,
-          get(){
-            return watch(this, key, state[key]);
-          },
-          set(value){
-            update(model, key, value);
-            mayAdopt(model, value);
-          }
-        });
-      }
-    }
 
     addListener(model, () => {
       for(const [_, value] of model)
