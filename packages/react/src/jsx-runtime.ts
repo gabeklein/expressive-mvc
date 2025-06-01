@@ -89,7 +89,12 @@ function MC<T extends Model.Compat>(
   this: Model.Init<T>,
   props: Model.Props<T>
 ) {
-  const local = this.use(props.is);
+  const local = this.use((self) => {
+    self.set(props as Model.Assign<T>);
+
+    if(props.is)
+      return props.is(self);
+  });
 
   local.set(props as Model.Assign<T>);
 
