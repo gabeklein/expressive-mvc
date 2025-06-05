@@ -49,7 +49,9 @@ function set <T> (
   argument?: set.Callback<any> | boolean){
 
   return use<T>((key, subject) => {
-    const property: Model.Descriptor = {};
+    const property: Model.Descriptor = {
+      enumerable: false
+    };
 
     if(typeof value == "function" || value instanceof Promise){
       function init(){

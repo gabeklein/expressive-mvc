@@ -4,6 +4,16 @@ import { set } from './set';
 
 const warn = mockWarn();
 
+it("will not enumerate a property", () => {
+  class Test extends Model {
+    value = set("foo");
+  }
+
+  const test = Test.new();
+
+  expect(Object.keys(test)).not.toContain("value");
+})
+
 describe("placeholder", () => {
   class Test extends Model {
     foobar = set<string>();
