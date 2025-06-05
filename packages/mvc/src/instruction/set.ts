@@ -40,6 +40,15 @@ function set <T> (factory: set.Factory<T> | Promise<T>, required?: boolean): T;
  * Set a property with empty placeholder and/or update callback.
  * 
  * @param value - Starting value for property. If undefined, suspense will be thrown on access, until value is set and accepted by callback.
+ * @param hidden - If true, property will not be visible when iterating over subject.
+ *                 This is useful for special properties which are not part of final model, when extended.
+ */
+function set <T> (value: T | undefined, hidden?: boolean): T;
+
+/**
+ * Set a property with empty placeholder and/or update callback.
+ * 
+ * @param value - Starting value for property. If undefined, suspense will be thrown on access, until value is set and accepted by callback.
  * @param onUpdate - Callback run when property is set. If returns false, update is not accepted and property will keep previous value.
  */
 function set <T> (value: T | undefined, onUpdate?: set.Callback<T>): T;
@@ -49,7 +58,9 @@ function set <T> (
   argument?: set.Callback<any> | boolean){
 
   return use<T>((key, subject) => {
-    const property: Model.Descriptor = {};
+    const property: Model.Descriptor = {
+      enumerable: false
+    };
 
     if(typeof value == "function" || value instanceof Promise){
       function init(){
@@ -112,11 +123,13 @@ function set <T> (
         }
       }
     }
-    else
+    else {
+      property.enumerable = argument === false;
       property.set = value => {
         property.get = undefined;
         update(subject, key, value);
       }
+    }
 
     return property;
   })
