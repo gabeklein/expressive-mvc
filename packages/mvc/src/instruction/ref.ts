@@ -150,11 +150,7 @@ function ref<T>(
       state[key] = null;
       value = defineProperties(set, {
         current: { get, set },
-        get: { value: get },
-        on: {
-          value: (callback: (value: T) => void) => 
-            addListener(subject, () => callback(state[key]), key)
-        }
+        get: { value: get }
       }) as ref.Object<T>;
     }
 
