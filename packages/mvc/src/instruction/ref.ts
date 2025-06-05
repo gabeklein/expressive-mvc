@@ -20,7 +20,7 @@ declare namespace ref {
      * @param callback - Callback to invoke with the current value when it changes.
      * @returns Unsubscribe function to stop listening to changes.
      */
-    on(callback: (value: T) => void): () => void;
+    get(callback: (value: T) => void): () => void;
 
     /** Retrieve current value. */
     get(): T | null;
@@ -86,6 +86,10 @@ function ref<T>(
 
   return use<T>((key, subject, state) => {
     let value = {};
+    const method = (key: string) =>
+      (callback?: (value: T) => void) => callback
+        ? addListener(subject, () => callback(state[key]), key)
+        : state[key];
 
     if(arg === subject)
       subject.get(() => {
@@ -100,18 +104,14 @@ function ref<T>(
               }
             })
           else {
-            const get = () => state[key];
+            const get = method(key);
             const set = (value: unknown) => {
               update(subject, key, value)
             };
 
             defineProperties(set, {
-              current: { get, set  },
-              get: { value: get },
-              on: {
-                value: (callback: (value: T) => void) => 
-                  addListener(subject, () => callback(state[key]), key)
-              }
+              current: { get, set },
+              get: { value: get }
             });
 
             defineProperty(value, key, { value: set });
@@ -124,7 +124,7 @@ function ref<T>(
     else {
       let unset: ((next: T) => void) | undefined;
 
-      const get = () => state[key];
+      const get = method(key);
       const set = (value?: any) => {
         if(!update(subject, key, value) || !arg)
           return;

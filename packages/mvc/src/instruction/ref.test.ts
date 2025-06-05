@@ -37,7 +37,7 @@ describe("property", () => {
     const state = Subject.new();
     const callback = jest.fn();
 
-    state.ref.on(callback);
+    state.ref.get(callback);
 
     expect(callback).not.toBeCalled();
   
@@ -283,7 +283,7 @@ describe("proxy", () => {
     const callback = jest.fn();
     const { refs } = test;
 
-    const done = refs.foo.on(callback);
+    const done = refs.foo.get(callback);
     expect(callback).not.toBeCalled();
     
     test.foo = "bar";
