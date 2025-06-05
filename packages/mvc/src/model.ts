@@ -227,6 +227,17 @@ abstract class Model {
   set(): PromiseLike<Model.Event<this>[]> | undefined;
 
   /**
+   * Register a property to be managed by this model.
+   * 
+   * **Use with caution** - properties added in this way are not tracked by TypeScript.
+   * 
+   * @param key - Property or event to dispatch.
+   * @param dispatch - If `true` event will be dispatched, otherwise it will added silently.
+   * @returns Promise resolves an array of keys updated.
+   */
+  set(key: string | number | symbol, register: boolean): PromiseLike<Model.Event<this>[]>;
+
+  /**
    * Update mulitple properties at once. Merges argument with current state.
    * Properties which are not managed by this model will be ignored.
    * 
@@ -303,6 +314,8 @@ abstract class Model {
 
     if(arg1 && typeof arg1 == "object")
       assign(self, arg1, arg2 === true);
+    else if(arg1 !== null && typeof arg2 === "boolean")
+      manage(self, arg1 as string, arg2);
     else
       event(self, arg1);
 
@@ -454,23 +467,8 @@ function init(model: Model, args: Model.Args){
     if(!PARENT.has(model))
       PARENT.set(model, null);
 
-    for(const key in model){
-      const desc = Object.getOwnPropertyDescriptor(model, key)!;
-
-      if("value" in desc){
-        update(model, key, desc.value, true);
-        define(model, key, {
-          configurable: false,
-          get(){
-            return watch(this, key, state[key]);
-          },
-          set(value, silent?: boolean){
-            update(model, key, value, silent);
-            mayAdopt(model, value);
-          }
-        });
-      }
-    }
+    for(const key in model)
+      manage(model, key, false);
     
     args.forEach((arg) => {
       const use = typeof arg == "function"
@@ -498,6 +496,25 @@ function init(model: Model, args: Model.Args){
   
     return null;
   });
+}
+
+function manage<T extends Model>(model: T, key: string, emit?: boolean){
+  const state = STATE.get(model)!
+  const desc = Object.getOwnPropertyDescriptor(model, key)!;
+
+  if("value" in desc){
+    update(model, key, desc.value, emit === false);
+    define(model, key, {
+      configurable: false,
+      get(){
+        return watch(this, key, state[key]);
+      },
+      set(value, silent?: boolean){
+        update(model, key, value, silent);
+        mayAdopt(model, value);
+      }
+    });
+  }
 }
 
 function mayAdopt(parent: Model, child: unknown){

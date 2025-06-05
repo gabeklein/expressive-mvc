@@ -1167,6 +1167,18 @@ describe("get method", () => {
 })
 
 describe("set method", () => {
+  describe("manage", () => {
+    it("will track keys retroactively", () => {
+      class Test extends Model {}
+
+      const test = Test.new();
+
+      test.set("foo", true);
+    })
+
+
+  })
+
   describe("update", () => {
     class Test extends Model {
       foo = "foo";
