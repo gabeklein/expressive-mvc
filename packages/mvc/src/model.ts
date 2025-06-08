@@ -209,13 +209,10 @@ abstract class Model {
     }
 
     return (
-      arg1 === undefined ?
-        snapshot(self) :
-        typeof arg2 == "function" ?
-          addListener(self, arg2, arg1) :
-          arg1 === null ?
-            Object.isFrozen(STATE.get(self)) :
-            fetch(self, arg1, arg2)
+      arg1 === undefined ? snapshot(self) :
+      typeof arg2 == "function" ? addListener(self, arg2, arg1) :
+      arg1 === null ? Object.isFrozen(STATE.get(self)) :
+      fetch(self, arg1, arg2)
     )
   }
 
@@ -372,6 +369,7 @@ function assign(subject: Model, data: Model.Assign<Model>, silent?: boolean){
     
   for(const key in data){
     const bind = methods.get(key);
+
     if(bind)
       bind.call(subject, data[key]);
     else if(key in subject && key !== "is"){
