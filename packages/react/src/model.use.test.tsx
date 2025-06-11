@@ -348,3 +348,43 @@ describe("context", () => {
     )
   })
 })
+
+it.skip("will do something", async () => {
+  class Foo extends Model {
+    foo = "foo";
+    method(){
+      return this.foo;
+    }
+  }
+
+  class Bar extends Model {
+    foo = get(Foo);
+    active = false;
+  }
+
+  let foo: Foo;
+  let bar: Bar;
+
+  const { result } = renderHook(() => {
+    const { is, active, foo: { method } } = Bar.use();
+
+    bar = is;
+
+    return active + method();
+  }, { wrapper: ({ children }) => (
+    <Provider for={Foo} forEach={x => {
+      if(x instanceof Foo)
+        foo = x;
+    }}>
+      {children}
+    </Provider>
+  )});
+
+  expect(result.current).toBe("falsefoo");
+
+  await act(async () => {
+    bar.active = true;
+  });
+
+  expect(result.current).toBe("truefoo");
+})
