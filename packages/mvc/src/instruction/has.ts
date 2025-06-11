@@ -26,7 +26,7 @@ function has <T extends Model> (
       Context.get(subject, ctx => {
         ctx.has(arg1, model => {
           const ctx = context();
-          let remove: (() => void) | void | undefined;
+          let remove: (() => void) | undefined;
           let disconnect: (() => void) | undefined;
   
           if(applied.has(model))
@@ -49,11 +49,9 @@ function has <T extends Model> (
   
             if(done === false)
               return false;
-            
-            remove = () => {
-              if(typeof done == "function")
-                done();
-            }
+
+            if(typeof done == "function")
+              remove = done;
           }
 
           const flush = ctx();
