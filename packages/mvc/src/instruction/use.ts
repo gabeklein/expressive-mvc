@@ -14,11 +14,10 @@ function use(
   arg2?: ((i: Model) => void) | boolean){
 
   const token = Symbol("instruction");
+  const config = Model.is(arg1) ? child(arg1, arg2) : arg1;
 
-  if(Model.is(arg1))
-    arg1 = child(arg1, arg2);
+  INSTRUCTION.set(token, config);
 
-  INSTRUCTION.set(token, arg1);
   return token;
 }
 
@@ -49,7 +48,7 @@ function child(
   }
 }
 
-function init(this: Model){
+Model.on(function init(){
   const state = STATE.get(this)!;
 
   for(const key in this){
@@ -95,8 +94,6 @@ function init(this: Model){
   }
 
   return null;
-}
-
-Model.on(init);
+});
 
 export { use }
