@@ -4,9 +4,9 @@
   "main": "src/index.tsx",
   "module": "src/Counter.tsx",
   "dependencies": {
-    "@expressive/react": "^0.63.1",
+    "@expressive/react": "^0.63.2",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },
-  "version": "0.63.1"
+  "version": "0.63.2"
 }

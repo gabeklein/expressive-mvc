@@ -16,7 +16,7 @@
   "module": "src",
   "types": "src",
   "dependencies": {
-    "@expressive/mvc": "^0.63.1"
+    "@expressive/mvc": "^0.63.2"
   },
   "devDependencies": {
     "@solidjs/testing-library": "^0.8.8",
@@ -26,5 +26,5 @@
   "peerDependencies": {
     "solid-js": "^1.0.0"
   },
-  "version": "0.63.1"
+  "version": "0.63.2"
 }
