@@ -1,4 +1,4 @@
-import { Context, Model } from '@expressive/mvc';
+import { Context, METHOD, Model } from '@expressive/mvc';
 import React from 'react';
 import Runtime from 'react/jsx-runtime';
 
@@ -98,11 +98,11 @@ function MC<T extends Model.Compat>(
 
   local.set(props as Model.Assign<T>);
 
-  const render = local.render || props.render;
+  const render = METHOD.get(local.render) || props.render;
 
   return createProvider(
     Context.get(local)!,
-    render ? render(props as Model.HasProps<T>, local) : props.children
+    render ? render.call(local, props as Model.HasProps<T>, local) : props.children
   );
 }
 

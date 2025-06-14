@@ -301,9 +301,9 @@ describe("render method", () => {
         control = this;
       }
 
-      render(props: {}, self: this){
+      render(){
         return (
-          <span>{self.value}</span>
+          <span>{this.value}</span>
         );
       }
     }
