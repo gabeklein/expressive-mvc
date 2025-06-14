@@ -1,4 +1,4 @@
-import { Context, Model } from '@expressive/mvc';
+import { Context, METHOD, Model } from '@expressive/mvc';
 import React from 'react';
 import Runtime from 'react/jsx-runtime';
 
@@ -40,6 +40,7 @@ declare module "@expressive/mvc" {
     /** Model which is not incompatable as Component in React. */
     interface Compat extends Model {
       render?(props: HasProps<this>, self: this): React.ReactNode;
+      fallback?: React.ReactNode;
     }
 
     interface BaseProps<T extends Model> {
@@ -50,6 +51,7 @@ declare module "@expressive/mvc" {
       is?: (instance: T) => void | (() => void);
 
       render?(props: HasProps<T>, self: T): React.ReactNode;
+      fallback?: React.ReactNode;
     }
 
     type HasProps<T extends Model> = Partial<Pick<T, Exclude<keyof T, keyof Model>>>;
@@ -102,7 +104,8 @@ function MC<T extends Model.Compat>(
 
   return createProvider(
     Context.get(local)!,
-    render ? render.call(local, props as Model.HasProps<T>, local) : props.children
+    render ? render.call(local, props as Model.HasProps<T>, local) : props.children,
+    local.fallback || props.fallback
   );
 }
 
