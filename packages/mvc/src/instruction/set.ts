@@ -1,4 +1,4 @@
-import { context } from '../control';
+import { addListener, context } from '../control';
 import { Model, event, update } from '../model';
 import { use } from './use';
 
@@ -49,9 +49,7 @@ function set <T> (
   argument?: set.Callback<any> | boolean){
 
   return use<T>((key, subject) => {
-    const property: Model.Descriptor = {
-      enumerable: false
-    };
+    const property: Model.Descriptor = { enumerable: false };
 
     if(typeof value == "function" || value instanceof Promise){
       function init(){
@@ -64,13 +62,12 @@ function set <T> (
             throw err;
           }
 
-        property.get = argument === true;
+        property.get = argument !== false;
 
         if(value instanceof Promise){
           value
             .then(value => {
               update(subject, key, value);
-              return value;
             })
             .catch(err => {
               event(subject, key);
@@ -80,12 +77,14 @@ function set <T> (
         else
           update(subject, key, value);
 
-        if(0 in arguments)
-          return subject[key];
+        if(argument)
+          return null;
+        
+        return subject[key];
       }
 
       if(argument)
-        init();
+        addListener(subject, init, true);
       else
         property.get = init;
     }

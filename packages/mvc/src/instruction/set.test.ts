@@ -295,15 +295,17 @@ describe("factory", () => {
   })
 
   it("will compute lazily", () => {
-    const factory = jest.fn(async () => "Hello World");
+    const factory = jest.fn(() => "Hello World");
 
     class Test extends Model {
       value = set(factory, false);
     }
 
-    Test.new();
+    const test = Test.new();
 
     expect(factory).not.toBeCalled();
+    expect(test.value).toBe("Hello World");
+    expect(factory).toBeCalledTimes(1);
   })
 
   it('will bind factory function to self', async () => {
@@ -347,6 +349,48 @@ describe("suspense", () => {
 
     expect(() => instance.value).toThrowError(`ID.value is not yet available.`);
     promise.resolve();
+  })
+
+  it("will suspend on another pending set", async () => {
+    const didEvaluate = jest.fn(function(this: Test){
+      return this.value + " world!";
+    });
+
+    class Test extends Model {
+      value = set<string>();
+      greet = set(didEvaluate);
+    }
+
+    const test = Test.new();
+    expect(() => test.greet).toThrow(expect.any(Promise));
+    expect(didEvaluate).toBeCalledTimes(1);
+
+    await test.set({ value: "hello" });
+
+    expect(didEvaluate).toBeCalledTimes(2);
+    expect(test.greet).toBe("hello world!");
+  })
+
+  it("will suspend other set factories", async () => {
+    const promise = mockPromise<string>();
+    const didEvaluate = jest.fn(function(this: Test){
+      return this.value + " world!";
+    });
+
+    class Test extends Model {
+      value = set(promise);
+      greet = set(didEvaluate);
+    }
+
+    const test = Test.new();
+    expect(() => test.greet).toThrow(expect.any(Promise));
+    expect(didEvaluate).toBeCalledTimes(1);
+
+    promise.resolve("hello");
+    await expect(test).toUpdate();
+
+    expect(didEvaluate).toBeCalledTimes(2);
+    expect(test.greet).toBe("hello world!");
   })
 
   it("will resolve when factory does", async () => {
@@ -404,7 +448,7 @@ describe("suspense", () => {
     const mock = jest.fn();
 
     class Test extends Model {
-      value = set(promise);
+      value = set(promise, false);
     }
 
     const test = Test.new();
@@ -513,7 +557,7 @@ describe("suspense", () => {
     class Test extends Model {
       asyncValue = set(() => promise, true);
 
-      value = set(() => `Hello ${this.asyncValue}`);
+      value = set(() => `Hello ${this.asyncValue}`, false);
     }
 
     const test = Test.new();
