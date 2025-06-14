@@ -60,7 +60,7 @@ declare namespace Model {
   type Export<R> = R extends { get(): infer T } ? T : R;
 
   /** Value for a property managed by a model. */
-  type Value<T extends Model, K extends Event<T>> =
+  type Value<T extends Model, K> =
     K extends keyof T ? Export<T[K]> : unknown;
 
   type OnEvent<T extends Model> =
@@ -508,12 +508,21 @@ function mayAdopt(parent: Model, child: unknown){
 function fetch(subject: Model, property: string, required?: boolean){
   const state = STATE.get(subject)!;
   
-  if(property in state || required === false){
+  if(property in state){
     const value = state[property];
 
     if(value !== undefined || !required)
       return value;
   }
+  else if(property in subject){
+    const value = subject[property as keyof typeof subject];
+
+    if(METHOD.has(value))
+      return METHOD.get(value);
+  }
+
+  if(required === false)
+    return;
 
   const error = new Error(`${subject}.${property} is not yet available.`);
   const promise = new Promise<any>((resolve, reject) => {
