@@ -417,10 +417,10 @@ function prepare(model: Model){
       if(!value || key == "constructor")
         continue;
       
-      function bind(this: Model, method = value){
-        const value = method.bind(this.is);
+      function bind(this: Model, original = value){
+        const value = original.bind(this.is);
         
-        METHOD.set(value, method);
+        METHOD.set(value, original);
         define(this.is, key, { value, writable: true });
         
         return value;
