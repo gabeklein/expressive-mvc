@@ -104,7 +104,7 @@ Model.get = function <T extends Model, R> (
       unwatch();
 
       // TODO: ignore update if resolves to undefined or null
-      value.then(x => value = x).catch(e => error = e).finally(refresh);
+      value.then(x => value = x, e => error = e).finally(refresh);
       value = null;
 
       return () => {

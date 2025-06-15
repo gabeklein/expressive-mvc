@@ -64,16 +64,14 @@ function set <T> (
 
         property.get = argument !== false;
 
-        if(value instanceof Promise){
-          value
-            .then(value => {
-              update(subject, key, value);
-            })
-            .catch(err => {
+        if(value instanceof Promise)
+          value.then(
+            value => update(subject, key, value),
+            error => {
               event(subject, key);
-              property.get = () => { throw err };
-            })
-        }
+              property.get = () => { throw error };
+            }
+          )
         else
           update(subject, key, value);
 
