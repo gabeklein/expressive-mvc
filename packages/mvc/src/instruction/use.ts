@@ -1,5 +1,5 @@
 import { watch } from '../control';
-import { fetch, mayAdopt, Model, PARENT, STATE, update } from '../model';
+import { fetch, Model, PARENT, STATE, uid, update } from '../model';
 
 const INSTRUCTION = new Map<symbol, Model.Instruction>();
 
@@ -13,7 +13,7 @@ function use(
   arg1: Model.Init | Model.Instruction,
   arg2?: ((i: Model) => void) | boolean){
 
-  const token = Symbol("instruction");
+  const token = Symbol("instruction-" + uid());
 
   if(Model.is(arg1))
     arg1 = child(arg1, arg2);

@@ -18,7 +18,7 @@ describe("instruction", () => {
   })
 
   describe("symbol", () => {
-    it("will use symbol as placeholder", async () => {
+    it("will use unique symbol as placeholder", async () => {
       class Test extends Model {
         value = use(() => ({ value: 1 })) as unknown;
       }
@@ -28,7 +28,7 @@ describe("instruction", () => {
       if(typeof test.value !== "symbol")
         throw new Error("value is not a symbol");
       else
-        expect(test.value.description).toBe("instruction");
+        expect(test.value.description).toMatch(/instruction-\w{6}/);
   
       await test.set();
   
