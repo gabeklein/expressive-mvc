@@ -25,6 +25,21 @@ describe("fetch mode", () => {
     expect(test.sibling).toBe(test);
   })
 
+  it("will not be enumerable", () => {
+    class Ambient extends Model {}
+    class Test extends Model {
+      ambient = get(Ambient);
+      foo = "bar";
+    }
+    const test = Test.new();
+    const ambient = Ambient.new();
+
+    new Context({ ambient, test });
+
+    expect(test.ambient).toBe(ambient);
+    expect(Object.keys(test)).toMatchObject(["foo"]);
+  });
+
   it("will fetch multiple", () => {
     class Ambient extends Model {}
     class Test extends Model {

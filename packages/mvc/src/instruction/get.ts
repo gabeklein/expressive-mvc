@@ -25,7 +25,7 @@ declare namespace get {
  * @param Type - Type of controller compatible with this class. 
  * @param expectParent - If true, will throw if Model is created without a parent.
  */
-function get <T extends Model> (Type: Model.Type<T>, asParent?: true): T;
+function get <T extends Model> (Type: Model.Type<T>, expectParent?: true): T;
 
 /**
  * Fetches and assigns the controller which spawned this host.
@@ -102,7 +102,8 @@ function get<R, T extends Model>(
       });
 
       return {
-        get: arg1 !== false
+        get: arg1 !== false,
+        enumerable: false
       };
     }
     
