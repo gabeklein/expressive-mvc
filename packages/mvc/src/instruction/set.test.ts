@@ -338,6 +338,8 @@ describe("factory", () => {
 });
 
 describe("suspense", () => {
+  it.todo("will suspend for promise-like values");
+
   it("will throw suspense-promise resembling an error", () => {
     const promise = mockPromise();
 

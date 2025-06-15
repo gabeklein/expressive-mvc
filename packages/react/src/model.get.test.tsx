@@ -135,6 +135,8 @@ describe("computed", () => {
     bar = 2;
   }
 
+  it.todo("will suspend if factory does");
+
   it('will select and subscribe to subvalue', async () => {
     const test = Test.new();
     const hook = renderWith(test, () => {
