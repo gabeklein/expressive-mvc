@@ -47,6 +47,34 @@ describe("recipient", () => {
 
     expect(parent.children.length).toBe(0);
   })
+
+  it("will not register subclass", () => {
+    class Child extends Model {}
+    class Child2 extends Child {}
+    class Parent extends Model {
+      children = has(Child);
+    }
+  
+    const parent = Parent.new();
+  
+    new Context({ parent }).push({ Child2 });
+
+    expect(parent.children.length).toBe(1);
+  })
+
+  it("will regsiter for superclass", () => {
+    class Child extends Model {}
+    class Parent extends Model {
+      children = has(Child);
+    }
+    class Parent2 extends Parent {}
+  
+    const parent = Parent2.new();
+  
+    new Context({ parent }).push({ Child });
+
+    expect(parent.children.length).toBe(1);
+  })
   
   it("will run callback on register", () => {
     class Child extends Model {}
