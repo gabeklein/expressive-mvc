@@ -456,15 +456,20 @@ function init(model: Model, args: Model.Args){
       const desc = Object.getOwnPropertyDescriptor(model, key)!;
 
       if("value" in desc){
-        update(model, key, desc.value, true);
+        function set(value: unknown, silent?: boolean){
+          update(model, key, value, silent);
+          if(value instanceof Model && !PARENT.has(value)){
+            PARENT.set(value, model);
+            event(value);
+          }
+        }
+
+        set(desc.value, true);
         define(model, key, {
           configurable: false,
+          set,
           get(){
             return watch(this, key, state[key]);
-          },
-          set(value, silent?: boolean){
-            update(model, key, value, silent);
-            mayAdopt(model, value);
           }
         });
       }
@@ -496,13 +501,6 @@ function init(model: Model, args: Model.Args){
   
     return null;
   });
-}
-
-function mayAdopt(parent: Model, child: unknown){
-  if(child instanceof Model && !PARENT.has(child)){
-    PARENT.set(child, parent);
-    event(child);
-  }
 }
 
 function fetch(subject: Model, property: string, required?: boolean){
@@ -605,7 +603,6 @@ function uid(){
 export {
   event,
   fetch,
-  mayAdopt,
   METHOD,
   Model,
   PARENT,

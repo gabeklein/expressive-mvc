@@ -56,10 +56,8 @@ function init(this: Model){
     const { value } = Object.getOwnPropertyDescriptor(this, key)!;
     const instruction = INSTRUCTION.get(value);
 
-    if(!instruction){
-      mayAdopt(this, value);
+    if(!instruction)
       continue;
-    }
 
     INSTRUCTION.delete(value);
     delete (this as any)[key];
