@@ -20,8 +20,8 @@ function set <T = any>(): T;
 /**
  * Set property with a factory function.
  * 
- * Run factory only if/when accessed. Value will be undefined until
- * factory resolves, which will also dispatch an update for the property.
+ * **Note** Factory is lazy! It will only run if/when property is accessed.
+ * Value will be undefined until factory resolves, which will also dispatch an update for the property.
  */
 function set <T> (factory: set.Factory<T> | Promise<T>, required: false): T | undefined;
 
