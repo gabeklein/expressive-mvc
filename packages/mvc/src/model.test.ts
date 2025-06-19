@@ -143,61 +143,82 @@ it('will destroy children before self', () => {
   expect(destroyed).toBeCalled();
 });
 
-it("will not break super calls", () => {
-  class Test extends Model {
-    action(){
-      return "Foo ";
+describe("methods", () => {
+  it("will auto bind", async () => {
+    class FooBar extends Model {
+      method(){
+        return String(this);
+      }
     }
-  }
-  
-  class Test2 extends Test {
-    action(){
-      return super.action() + "Bar ";
+
+    const foo1 = String(FooBar.new().method());
+    const foo2 = String(FooBar.new().method());
+    
+    expect(foo1).not.toBe(foo2);
+  })
+
+  it("will allow overwrite", () => {
+    class Test extends Model {
+      foo = "foo";
+
+      method(){
+        return this.foo;
+      }
     }
-  }
 
-  class Test3 extends Test2 {
-    action(){
-      return super.action() + "Baz";
+    const test = Test.new();
+
+    test.method = () => "bar";
+
+    expect(test.method()).toBe("bar");
+
+    test.method = () => "baz";
+
+    expect(test.method()).toBe("baz");
+  })
+
+  it("will not break super calls", () => {
+    class Test extends Model {
+      action(){
+        return "Foo ";
+      }
     }
-  }
-
-  const { action } = Test3.new();  
-
-  expect(action()).toBe("Foo Bar Baz");
-});
-
-it("will allow method to be overwritten", () => {
-  class Test extends Model {
-    foo = "foo";
-
-    method(){
-      return this.foo;
+    
+    class Test2 extends Test {
+      action(){
+        return super.action() + "Bar ";
+      }
     }
-  }
 
-  const test = Test.new();
-
-  test.method = () => "bar";
-
-  expect(test.method()).toBe("bar");
-
-  test.method = () => "baz";
-
-  expect(test.method()).toBe("baz");
-})
-
-it("will properly bind methods", async () => {
-  class FooBar extends Model {
-    method(){
-      return String(this);
+    class Test3 extends Test2 {
+      action(){
+        return super.action() + "Baz";
+      }
     }
-  }
 
-  const foo1 = String(FooBar.new().method());
-  const foo2 = String(FooBar.new().method());
-  
-  expect(foo1).not.toBe(foo2);
+    const { action } = Test3.new();  
+
+    expect(action()).toBe("Foo Bar Baz");
+  });
+
+  it("will not bind a super method", () => {
+    class Test extends Model {
+      action(){
+        return "Foo";
+      }
+    }
+
+    class Test2 extends Test {
+      action(){
+        return super.action() + " Bar";
+      }
+    }
+
+    const test = Test2.new();
+
+    expect(test.action()).toBe("Foo Bar");
+    expect(test.action()).toBe("Foo Bar");
+  })
 })
 
 describe("subscriber", () => {

@@ -417,13 +417,19 @@ function prepare(model: Model){
       if(!value || key == "constructor")
         continue;
       
-      function bind(this: Model, original = value){
-        const value = original.bind(this.is);
+      function bind(this: Model, original?: Function){
+        const { is } = this;
+
+        if(is.hasOwnProperty(key) && !original)
+          return value as Function;
+
+        const fn = original || value;
+        const bound = fn.bind(is);
         
-        METHOD.set(value, original);
-        define(this.is, key, { value, writable: true });
+        METHOD.set(bound, fn);
+        define(is, key, { value: bound, writable: true });
         
-        return value;
+        return bound;
       }
 
       keys.set(key, bind);
