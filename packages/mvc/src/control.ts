@@ -1,4 +1,4 @@
-import type { Model } from "./model";
+import { createProxy, type Model } from "./model";
 
 /**
  * Update callback function.
@@ -12,9 +12,6 @@ import type { Model } from "./model";
  */
 type OnUpdate<T extends Model = any> = 
   (this: T, key: unknown, source: T) => (() => void) | null | void;
-
-type OnAccess<T extends Model = any, R = unknown> =
-  (from: T, key: string | number, value: R) => unknown;
 
 type Effect<T extends Model> = (this: T, proxy: T) =>
   ((update: boolean | null) => void) | Promise<void> | null | void;
@@ -35,7 +32,7 @@ const PENDING_KEYS = new WeakMap<Model, Set<string | number | symbol>>();
 /** Central event dispatch. Bunches all updates to occur at same time. */
 const DISPATCH = new Set<() => void>();
 
-const OBSERVER = new WeakMap<Model, OnAccess>();
+const OBSERVE = Symbol("observe");
 
 function addListener<T extends Model>(subject: T, callback: OnUpdate<T>, select?: Event){
   let listeners = LISTENERS.get(subject)!;
@@ -147,17 +144,6 @@ function enqueue(eventHandler: (() => void)){
   DISPATCH.add(eventHandler);
 }
 
-function createProxy<T extends Model>(from: T, observer: OnAccess<T>){
-  const proxy = Object.create(from) as T;
-  OBSERVER.set(proxy, observer);
-  return proxy;
-}
-
-function watch(from: any, key: string | number, value?: any){
-  const access = OBSERVER.get(from);
-  return access ? access(from, key, value) : value;
-}
-
 /**
  * Create a side-effect which will update whenever values accessed change.
  * Callback is called immediately and whenever values are stale.
@@ -195,7 +181,10 @@ function createEffect<T extends Model>(target: T, callback: Effect<T>, argument?
       return reset;
     }
 
-    function access(from: Model, key: string | number, value: any) {
+    function access<T extends Model>(from: T, key: Model.Event<T>, value: any) {
+      if(typeof key !== "string")
+        throw new Error("Key must be a string.");
+      
       if(value === undefined && argument)
         throw new Error(`${from}.${key} is required in this context.`);
 
@@ -283,10 +272,8 @@ export function context(ignore?: boolean){
 export {
   addListener,
   createEffect,
-  createProxy,
   event,
   OnUpdate,
   PENDING_KEYS,
   pending,
-  watch
 }

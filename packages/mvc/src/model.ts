@@ -1,4 +1,4 @@
-import { addListener, createEffect, event, OnUpdate, pending, PENDING_KEYS, watch } from './control';
+import { addListener, createEffect, event, OnUpdate, pending, PENDING_KEYS } from './control';
 
 const define = Object.defineProperty;
 
@@ -19,6 +19,8 @@ const METHODS = new WeakMap<Model.Type, Map<string, (value: any) => void>>();
 
 /** Reference bound instance methods to real ones. */
 const METHOD = new WeakMap<any, any>();
+
+const SOMETHING = Symbol("observe");
 
 declare namespace Model {
   /** Any type of Model, using own class constructor as its identifier. */
@@ -138,6 +140,10 @@ abstract class Model {
     prepare(this);
     define(this, "is", { value: this });
     init(this, args);
+  }
+
+  [SOMETHING](){
+    
   }
 
   /**
@@ -509,6 +515,22 @@ function init(model: Model, args: Model.Args){
   });
 }
 
+type OnAccess<T extends Model = any, R = unknown> =
+  (from: T, key: Model.Field<T>, value: R) => unknown;
+
+const OBSERVER = new WeakMap<Model, OnAccess>();
+
+function createProxy<T extends Model>(from: T, observer: OnAccess<T>) {
+  const proxy = Object.create(from) as T;
+  OBSERVER.set(proxy, observer);
+  return proxy;
+}
+
+function watch<T extends Model>(from: T, key: string | number, value?: any) {
+  const access = OBSERVER.get(from);
+  return access ? access(from, key, value) : value;
+}
+
 function fetch(subject: Model, property: string, required?: boolean){
   const state = STATE.get(subject)!;
   
@@ -607,6 +629,7 @@ function uid(){
 }
 
 export {
+  createProxy,
   event,
   fetch,
   METHOD,
@@ -615,4 +638,5 @@ export {
   STATE,
   uid,
   update,
+  watch,
 }
