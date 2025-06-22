@@ -210,10 +210,7 @@ function createEffect<T extends Model>(target: T, callback: Effect<T>, argument?
       const nested = LISTENERS.get(value);
 
       if(nested)
-        LISTENERS.set(
-          value = createProxy(value, access),
-          nested
-        );
+        LISTENERS.set(value = createProxy(value, access), nested);
 
       return value;
     }
