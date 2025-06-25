@@ -686,3 +686,54 @@ describe("suspense", () => {
     expect(didThrow).toBe("oh no");
   })
 })
+
+describe("factory with callback overload", () => {
+  it("calls callback after factory resolves", async () => {
+    const callback = jest.fn();
+    class Test extends Model {
+      value = set(() => "computed", callback);
+    }
+    const test = Test.new();
+    expect(test.value).toBe("computed");
+    expect(callback).toBeCalledWith("computed", undefined);
+  });
+
+  it("calls callback after async factory resolves", async () => {
+    const callback = jest.fn();
+    class Test extends Model {
+      value = set(async () => {
+        await new Promise(res => setTimeout(res, 10));
+        return "asyncValue";
+      }, callback);
+    }
+    const test = Test.new();
+    // Should throw a promise first (suspense)
+    let threw: Promise<unknown> | undefined;
+    try {
+      void test.value;
+    } catch (e) {
+      threw = e as Promise<unknown>;
+    }
+    expect(threw).toBeInstanceOf(Promise);
+    // Wait for promise to resolve
+    await threw;
+    expect(test.value).toBe("asyncValue");
+    expect(callback).toBeCalledWith("asyncValue", undefined);
+  });
+
+  it("will callback if set before factory run", () => {
+    const callback = jest.fn();
+    class Test extends Model {
+      value = set(async () => "something", callback);
+    }
+    const test = Test.new();
+    
+    test.value = "setBefore";
+    expect(test.value).toBe("setBefore");
+    expect(callback).toBeCalledWith("setBefore", undefined);
+
+    test.value = "setAfter";
+    expect(test.value).toBe("setAfter");
+    expect(callback).toBeCalledWith("setAfter", "setBefore");
+  })
+});

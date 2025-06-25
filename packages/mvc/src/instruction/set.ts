@@ -37,6 +37,17 @@ function set <T> (factory: set.Factory<T> | Promise<T>, required: false): T | un
 function set <T> (factory: set.Factory<T> | Promise<T>, required?: boolean): T;
 
 /**
+ * Set property with a factory function.
+ *
+ * If async, property cannot be accessed until resolves, yeilding a result.
+ * If accessed while still processing, React Suspense will be thrown.
+ *
+ * @param factory - Callback run to derrive property value.
+ * @param onUpdate - Callback run when property is finished computing or is set. 
+ */
+function set <T> (factory: set.Factory<T> | Promise<T>, onUpdate?: set.Callback<T>): T;
+
+/**
  * Set a property with empty placeholder and/or update callback.
  * 
  * @param value - Starting value for property. If undefined, suspense will be thrown on access, until value is set and accepted by callback.
@@ -64,16 +75,15 @@ function set <T> (
 
         property.get = argument !== false;
 
+        const set = (value: any) => subject[key] = value;
+
         if(value instanceof Promise)
-          value.then(
-            value => update(subject, key, value),
-            error => {
-              event(subject, key);
-              property.get = () => { throw error };
-            }
-          )
+          value.then(set, error => {
+            event(subject, key);
+            property.get = () => { throw error };
+          })
         else
-          update(subject, key, value);
+          set(value);
 
         if(argument)
           return null;
