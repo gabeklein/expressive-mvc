@@ -1,5 +1,4 @@
-import { watch } from '../control';
-import { fetch, Model, PARENT, STATE, uid, update } from '../model';
+import { fetch, Model, PARENT, STATE, uid, update, watch } from '../model';
 
 const INSTRUCTION = new Map<symbol, Model.Instruction>();
 

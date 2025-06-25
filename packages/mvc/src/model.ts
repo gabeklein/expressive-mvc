@@ -1,4 +1,4 @@
-import { addListener, createEffect, event, OnUpdate, pending, PENDING_KEYS, watch } from './control';
+import { addListener, createEffect, event, Observable, OnUpdate, pending, PENDING_KEYS } from './control';
 
 const define = Object.defineProperty;
 
@@ -133,11 +133,17 @@ interface Model {
   is: this;
 }
 
-abstract class Model {
+abstract class Model implements Observable {
   constructor(...args: Model.Args){
     prepare(this);
     define(this, "is", { value: this });
     init(this, args);
+  }
+
+  [Observable](callback: Observable.Callback<this>){
+    const proxy = Object.create(this);
+    OBSERVER.set(proxy, callback);
+    return proxy as this;
   }
 
   /**
@@ -540,6 +546,16 @@ function fetch(subject: Model, property: string, required?: boolean){
   });
 }
 
+type OnAccess<T extends Model = any, R = unknown> =
+  (from: T, key: string | number, value: R) => unknown;
+
+const OBSERVER = new WeakMap<Model, OnAccess>();
+
+function watch(from: Model, key: string | number, value?: any){
+  const access = OBSERVER.get(from);
+  return access ? access(from, key, value) : value;
+}
+
 /** Currently accumulating export. Stores real values of placeholder properties such as ref() or child models. */
 let EXPORT: Map<any, any> | undefined;
 
@@ -615,4 +631,5 @@ export {
   STATE,
   uid,
   update,
+  watch
 }

@@ -1,4 +1,4 @@
-import { createEffect, createProxy } from './control';
+import { createEffect, Observable } from './control';
 import { set } from './instruction/set';
 import { use } from './instruction/use';
 import { mockError } from './mocks';
@@ -192,13 +192,16 @@ describe("proxy", () => {
     const test = Test.new("Test");
     const getter = jest.fn((
       self: Model,
-      key: string | number,
+      key: string | number | symbol,
       value: unknown): string => {
+
+      if(typeof key == "symbol")
+        key = key.description || "symbol";
   
       return `${self}.${key}=${value}`;
     });
   
-    const proxy = createProxy(test, getter);
+    const proxy = test[Observable](getter);
 
     expect(proxy.foo).toBe(`Test.foo=1`);
     expect(getter).toBeCalledWith(test, "foo", 1);
