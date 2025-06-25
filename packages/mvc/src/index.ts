@@ -5,5 +5,5 @@ export { use } from './instruction/use';
 export { has } from './instruction/has';
 
 export { Model, Model as default, METHOD } from './model';
-export { createEffect, createProxy, addListener } from './control';
+export { createEffect, addListener, event } from './control';
 export { Context } from './context';
