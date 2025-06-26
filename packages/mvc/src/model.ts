@@ -305,7 +305,7 @@ abstract class Model implements Observable {
       });
 
     if(arg1 && typeof arg1 == "object")
-      assign(self, arg1, arg2 === true);
+      assign(self, arg1, arg2);
     else
       event(self, arg1);
 
@@ -382,7 +382,7 @@ function assign(subject: Model, data: Model.Assign<Model>, silent?: boolean){
       const desc = Object.getOwnPropertyDescriptor(subject, key)!;
       const set = desc && desc.set as (value: any, silent?: boolean) => void;
 
-      set.call(subject, data[key], silent === true);
+      set.call(subject, data[key], silent);
     }
   }
 }
