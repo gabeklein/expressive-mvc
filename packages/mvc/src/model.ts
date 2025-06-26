@@ -468,6 +468,10 @@ function init(model: Model, args: Model.Args){
       const desc = Object.getOwnPropertyDescriptor(model, key)!;
 
       if("value" in desc){
+        function get(this: Model){
+          return watch(this, key, state[key]);
+        }
+
         function set(value: unknown, silent?: boolean){
           update(model, key, value, silent);
           if(value instanceof Model && !PARENT.has(value)){
@@ -477,13 +481,7 @@ function init(model: Model, args: Model.Args){
         }
 
         set(desc.value, true);
-        define(model, key, {
-          configurable: false,
-          set,
-          get(){
-            return watch(this, key, state[key]);
-          }
-        });
+        define(model, key, { set, get });
       }
     }
     
