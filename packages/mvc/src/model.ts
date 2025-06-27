@@ -267,9 +267,10 @@ abstract class Model implements Observable {
    * 
    * @param key - Property to set value for.
    * @param value - Value to set for property.
+   * @param init - If true, model will begin to manage the property if it is not already.
    * @returns Promise resolves an array of keys updated.
    */
-  set(key: Model.Event<this>, value: unknown): PromiseLike<Model.Event<this>[]>;
+  set(key: Model.Event<this>, value: unknown, init?: boolean): PromiseLike<Model.Event<this>[]>;
 
   /**
    * Call a function when update occurs.
@@ -304,7 +305,8 @@ abstract class Model implements Observable {
 
   set(
     arg1?: Model.OnEvent<this> | Model.Assign<this> | Model.Event<this> | null,
-    arg2?: unknown){
+    arg2?: unknown,
+    arg3?: boolean){
 
     const self = this.is;
 
@@ -316,10 +318,12 @@ abstract class Model implements Observable {
       
     if(arg1 && typeof arg1 == "object")
       assign(self, arg1, arg2 === true);
-    else if(arg1 != null && arg2 != null)
-      update(self, arg1, arg2)
-    else
+    else if(!arg2)
       event(self, arg1);
+    else if(arg3)
+      manage(self, arg1 as string | number, arg2);
+    else
+      update(self, arg1 as string | number, arg2)
 
     return pending(self);
   }
