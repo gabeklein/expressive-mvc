@@ -479,22 +479,8 @@ function init(model: Model, args: Model.Args){
     for(const key in model){
       const desc = Object.getOwnPropertyDescriptor(model, key)!;
 
-      if("value" in desc){
-        function get(this: Model){
-          return watch(this, key, state[key]);
-        }
-
-        function set(value: unknown, silent?: boolean){
-          update(model, key, value, silent);
-          if(value instanceof Model && !PARENT.has(value)){
-            PARENT.set(value, model);
-            event(value);
-          }
-        }
-
-        set(desc.value, true);
-        define(model, key, { set, get });
-      }
+      if("value" in desc)
+        manage(model, key, desc.value);
     }
     
     args.forEach((arg) => {
@@ -523,6 +509,35 @@ function init(model: Model, args: Model.Args){
   
     return null;
   });
+}
+
+function manage(target: Model, key: string | number, value: any){
+  const state = STATE.get(target)!;
+  
+  function get(this: Model){
+    return watch(this, key, state[key]);
+  }
+
+  function set(value: unknown, silent?: boolean){
+    update(target, key, value, silent);
+    if(value instanceof Model && !PARENT.has(value)){
+      PARENT.set(value, target);
+      event(value);
+    }
+  }
+
+  define(target, key, { set, get });
+  set(value, true);
+}
+
+type OnAccess<T extends Model = any, R = unknown> =
+  (from: T, key: string | number, value: R) => unknown;
+
+const OBSERVER = new WeakMap<Model, OnAccess>();
+
+function watch(from: Model, key: string | number, value?: any){
+  const access = OBSERVER.get(from);
+  return access ? access(from, key, value) : value;
 }
 
 function fetch(subject: Model, property: string, required?: boolean){
@@ -554,16 +569,6 @@ function fetch(subject: Model, property: string, required?: boolean){
     message: error.message,
     stack: error.stack
   });
-}
-
-type OnAccess<T extends Model = any, R = unknown> =
-  (from: T, key: string | number, value: R) => unknown;
-
-const OBSERVER = new WeakMap<Model, OnAccess>();
-
-function watch(from: Model, key: string | number, value?: any){
-  const access = OBSERVER.get(from);
-  return access ? access(from, key, value) : value;
 }
 
 /** Currently accumulating export. Stores real values of placeholder properties such as ref() or child models. */
