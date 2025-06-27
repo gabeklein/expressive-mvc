@@ -1,4 +1,4 @@
-import { addListener, createEffect, event, Observable, OnUpdate, pending, PENDING_KEYS } from './control';
+import { addListener, createEffect, event, Observable, OnUpdate, PENDING_KEYS } from './control';
 
 const define = Object.defineProperty;
 
@@ -325,7 +325,19 @@ abstract class Model implements Observable {
     else
       update(self, arg1 as string | number, arg2)
 
-    return pending(self);
+    const pending = PENDING_KEYS.get(this);
+
+    if(pending)
+      return <PromiseLike<Model.Event<this>[]>> {
+        then: (res) => new Promise<any>(res => {
+          const remove = addListener(this, key => {
+            if(key !== true){
+              remove();
+              return res.bind(null, Array.from(pending));
+            }
+          });
+        }).then(res)
+      }
   }
 
   /**

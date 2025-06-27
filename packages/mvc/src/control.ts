@@ -1,5 +1,3 @@
-import type { Model } from "./model";
-
 /**
  * Update callback function.
  * 
@@ -119,20 +117,6 @@ function event(
 
   if(!silent)
     emit(subject, key);
-}
-
-function pending<T extends Model>(subject: T){
-  if(PENDING_KEYS.has(subject))
-    return <PromiseLike<Model.Event<T>[]>> {
-      then: (res) => new Promise<any>(res => {
-        const remove = addListener(subject, key => {
-          if(key !== true){
-            remove();
-            return res.bind(null, Array.from(PENDING_KEYS.get(subject)!));
-          }
-        });
-      }).then(res)
-    }
 }
 
 function enqueue(eventHandler: (() => void)){
@@ -284,6 +268,5 @@ export {
   event,
   OnUpdate,
   PENDING_KEYS,
-  pending,
   Observable
 }
