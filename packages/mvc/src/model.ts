@@ -256,6 +256,22 @@ abstract class Model implements Observable {
   set(key: Model.Event<this>): PromiseLike<Model.Event<this>[]>;
 
   /**
+   * Set a value for a property. This will update the value and notify listeners.
+   * 
+   * **Use with caution!** Key nor value are checked for validity.
+   * 
+   * This is meant for assigning values programmatically,
+   * where simple assignment is not practicable.
+   * 
+   * For example: `(this as any)[myProperty] = value;`
+   * 
+   * @param key - Property to set value for.
+   * @param value - Value to set for property.
+   * @returns Promise resolves an array of keys updated.
+   */
+  set(key: Model.Event<this>, value: unknown): PromiseLike<Model.Event<this>[]>;
+
+  /**
    * Call a function when update occurs.
    * 
    * Given function is called for every assignment (which changes value) or explicit `set`.
@@ -288,7 +304,7 @@ abstract class Model implements Observable {
 
   set(
     arg1?: Model.OnEvent<this> | Model.Assign<this> | Model.Event<this> | null,
-    arg2?: Model.Event<this> | null | boolean){
+    arg2?: unknown){
 
     const self = this.is;
 
@@ -300,6 +316,8 @@ abstract class Model implements Observable {
       
     if(arg1 && typeof arg1 == "object")
       assign(self, arg1, arg2 === true);
+    else if(arg1 != null && arg2 != null)
+      update(self, arg1, arg2)
     else
       event(self, arg1);
 

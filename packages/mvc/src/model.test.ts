@@ -1188,7 +1188,7 @@ describe("get method", () => {
 })
 
 describe("set method", () => {
-  describe("update", () => {
+  describe("event", () => {
     class Test extends Model {
       foo = "foo";
     }
@@ -1230,6 +1230,36 @@ describe("set method", () => {
       await expect(test).toHaveUpdated(42);
     });
   });
+
+  describe("update", () => {
+    it("will assign a value", async () => {
+      class Test extends Model {
+        foo = "foo";
+      }
+
+      const test = Test.new();
+
+      test.set("foo", "bar");
+
+      await expect(test).toHaveUpdated("foo");
+
+      expect(test.foo).toBe("bar");
+    })
+
+    it("will assign a value to ref", async () => {
+      class Test extends Model {
+        foo = ref<string>();
+      }
+
+      const test = Test.new();
+
+      test.set("foo", "bar");
+
+      await expect(test).toHaveUpdated("foo");
+
+      expect(test.foo.current).toBe("bar");
+    })
+  })
 
   describe("promise-like", () => {
     it("will resolve update frame", async () => {
