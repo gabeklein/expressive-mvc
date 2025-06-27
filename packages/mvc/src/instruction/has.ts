@@ -75,7 +75,7 @@ function has <T extends Model> (
             remove = undefined;
           }
   
-          const ignore = model.set(null, done);
+          const ignore = model.set(done, null);
           
           return done;
         })

@@ -1332,7 +1332,7 @@ describe("set method", () => {
       const test = Test.new();
       const didUpdateFoo = jest.fn();
       
-      test.set("foo", didUpdateFoo);
+      test.set(didUpdateFoo, "foo");
 
       test.foo = "bar";
       test.foo = "baz";
@@ -1351,7 +1351,7 @@ describe("set method", () => {
       const test = Test.new();
       const didUpdateFoo = jest.fn(() => null);
 
-      test.set("foo", didUpdateFoo);
+      test.set(didUpdateFoo, "foo");
 
       test.foo = "bar";
       test.foo = "baz";
@@ -1367,7 +1367,7 @@ describe("set method", () => {
       const test = Test.new();
       const didDestroy = jest.fn();
 
-      test.set(null, didDestroy);
+      test.set(didDestroy, null);
       test.set(null);
 
       expect(didDestroy).toBeCalledWith(null, test);

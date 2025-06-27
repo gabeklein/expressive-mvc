@@ -266,9 +266,9 @@ it("will pop child context", () => {
   class Test extends Model {
     constructor(...args: Model.Args){
       super(args);
-      this.set(null, () => {
+      this.set(() => {
         didDestroy(this.constructor.name);
-      });
+      }, null);
     }
   }
 

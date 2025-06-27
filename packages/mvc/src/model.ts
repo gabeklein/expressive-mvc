@@ -273,10 +273,10 @@ abstract class Model implements Observable {
    * Call a function when a property is updated.
    * Unlike `get`, this calsl synchronously and will fire as many times as the property is updated.
    * 
-   * @param key - Property to watch for updates.
    * @param callback - Function to call when property is updated.
+   * @param event - Property to watch for updates.
    */
-  set(key: Model.Event<this> | null, callback: Model.OnEvent<this>): () => boolean;
+  set(callback: Model.OnEvent<this>, event: Model.Event<this> | null): () => boolean;
 
   /**
    * Declare an end to updates. This event is final and will freeze state.
@@ -288,24 +288,18 @@ abstract class Model implements Observable {
 
   set(
     arg1?: Model.OnEvent<this> | Model.Assign<this> | Model.Event<this> | null,
-    arg2?: boolean | Model.OnEvent<this>){
+    arg2?: Model.Event<this> | null | boolean){
 
     const self = this.is;
 
     if(typeof arg1 == "function")
       return addListener(self, key => {
-        if(typeof key == "string")
+        if(arg2 === key || arg2 === undefined && typeof key == "string")
           return arg1.call(self, key, self);
       })
       
-    if(typeof arg2 == "function")
-      return addListener(self, key => {
-        if(key === arg1)
-          return arg2.call(self, key, self);
-      });
-
     if(arg1 && typeof arg1 == "object")
-      assign(self, arg1, arg2);
+      assign(self, arg1, arg2 === true);
     else
       event(self, arg1);
 
