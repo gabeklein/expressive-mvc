@@ -15,13 +15,13 @@ function use(
   const token = Symbol("instruction-" + uid());
 
   if(Model.is(arg1))
-    arg1 = child(arg1, arg2);
+    arg1 = childInstruction(arg1, arg2);
 
   INSTRUCTION.set(token, arg1);
   return token;
 }
 
-function child(
+function childInstruction(
   type: Model.Init<Model>,
   arg2?: ((i: Model) => void) | boolean
 ): Model.Instruction<any, any> {
