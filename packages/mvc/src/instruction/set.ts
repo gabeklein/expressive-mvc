@@ -1,4 +1,4 @@
-import { addListener, context } from '../control';
+import { addListener, enter } from '../control';
 import { Model, event, update } from '../model';
 import { use } from './use';
 
@@ -103,19 +103,19 @@ function set <T> (
       let unset: ((next: T) => void) | undefined;
 
       property.set = function(this: any, value: any, previous: any){
-        const ctx = context();
-        const out = argument.call(this, value, previous);
-        const flush = ctx();
+        const exit = enter();
+        const returns = argument.call(this, value, previous);
+        const flush = exit();
 
-        if(out === false)
-          return out;
+        if(returns === false)
+          return false;
 
         if(typeof unset == "function")
           unset(value);
 
         unset = (next: T) => {
-          if(typeof out == "function")
-            out(next);
+          if(typeof returns == "function")
+            returns(next);
 
           flush();
         }

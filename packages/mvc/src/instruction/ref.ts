@@ -1,4 +1,4 @@
-import { addListener, context } from '../control';
+import { addListener, enter } from '../control';
 import { Model, update } from '../model';
 import { use } from './use';
 
@@ -135,9 +135,9 @@ function ref<T>(
         if(value === null && arg2 !== false)
           return;
 
-        const ctx = context();
+        const exit = enter();
         const out = arg.call(subject, value);
-        const flush = ctx();
+        const flush = exit();
 
         unset = key => {
           if(typeof out == "function")

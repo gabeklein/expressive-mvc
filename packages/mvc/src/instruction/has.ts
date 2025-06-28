@@ -1,4 +1,4 @@
-import { context } from '../control';
+import { enter } from '../control';
 import { Context } from '../context';
 import { Model, update } from '../model';
 import { use } from './use';
@@ -25,7 +25,7 @@ function has <T extends Model> (
     if(Model.is(arg1))
       Context.get(subject, ctx => {
         ctx.has(arg1, model => {
-          const ctx = context();
+          const exit = enter();
           let remove: (() => void) | undefined;
           let disconnect: (() => void) | undefined;
   
@@ -54,7 +54,7 @@ function has <T extends Model> (
               remove = done;
           }
 
-          const flush = ctx();
+          const flush = exit();
   
           applied.add(model);
           reset();

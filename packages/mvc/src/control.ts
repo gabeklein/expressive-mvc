@@ -155,10 +155,6 @@ function createEffect<T extends Observable>(target: T, callback: Effect<T>, argu
   function invoke(){
     let stale: boolean | undefined;
 
-    const subscriber = target[Observable](access);
-
-    LISTENERS.set(subscriber, listeners);
-
     function onUpdate() {
       if (stale)
         return null;
@@ -197,10 +193,14 @@ function createEffect<T extends Observable>(target: T, callback: Effect<T>, argu
       return value;
     }
 
+    const subscriber = target[Observable](access);
+
+    LISTENERS.set(subscriber, listeners);
+
     try {
-      const ctx = context(argument === false)
+      const exit = enter(argument === false)
       const ret = callback.call(subscriber, subscriber);
-      const flush = ctx();
+      const flush = exit();
 
       reset = ret === null ? null : invoke;
       unset = key => {
@@ -246,19 +246,16 @@ function createEffect<T extends Observable>(target: T, callback: Effect<T>, argu
 
 let EffectContext: Set<() => void> | undefined;
 
-export function context(ignore?: boolean){
+export function enter(ignore?: boolean){
   if(ignore)
     return () => () => {};
 
-  const current = EffectContext;
-  const ctx = EffectContext = new Set;
+  const last = EffectContext;
+  const context = EffectContext = new Set;
 
   return () => {
-    EffectContext = current;
-    
-    return () => {
-      ctx.forEach(fn => fn());
-    }
+    EffectContext = last;
+    return () => context.forEach(fn => fn());
   }
 }
 
