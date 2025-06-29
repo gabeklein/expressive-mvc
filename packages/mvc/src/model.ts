@@ -1,4 +1,4 @@
-import { addListener, createEffect, event, Observable, OnUpdate, PENDING_KEYS } from './control';
+import { addListener, createEffect, event, Observable, OnUpdate, PENDING_KEYS, watch } from './control';
 
 const define = Object.defineProperty;
 
@@ -133,18 +133,18 @@ interface Model {
   is: this;
 }
 
-abstract class Model implements Observable {
+abstract class Model {
   constructor(...args: Model.Args){
     prepare(this);
     define(this, "is", { value: this });
     init(this, args);
   }
 
-  [Observable](callback: Observable.Callback<this>){
-    const proxy = Object.create(this);
-    OBSERVER.set(proxy, callback);
-    return proxy as this;
-  }
+  // [Observable](callback: Observable.Callback<this>){
+  //   const proxy = Object.create(this);
+  //   OBSERVER.set(proxy, callback);
+  //   return proxy as this;
+  // }
 
   /**
    * Pull current values from state. Flattens all models and exotic values recursively.
@@ -544,16 +544,6 @@ function manage(target: Model, key: string | number, value: any){
 
   define(target, key, { set, get });
   set(value, true);
-}
-
-type OnAccess<T extends Model = any, R = unknown> =
-  (from: T, key: string | number, value: R) => unknown;
-
-const OBSERVER = new WeakMap<Model, OnAccess>();
-
-function watch(from: Model, key: string | number, value?: any){
-  const access = OBSERVER.get(from);
-  return access ? access(from, key, value) : value;
 }
 
 function fetch(subject: Model, property: string, required?: boolean){

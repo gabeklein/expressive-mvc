@@ -8,39 +8,31 @@
  *   - `null` - terminal event; instance is expired.
  * @param source - Instance of Model for which update has occured.
  */
-type OnUpdate<T extends Observable = any> = 
+type OnUpdate<T extends {} = any> = 
   (this: T, key: unknown, source: T) => (() => void) | null | void;
 
-type Effect<T extends Observable> = (this: T, proxy: T) =>
+type Effect<T extends {}> = (this: T, proxy: T) =>
   ((update: boolean | null) => void) | Promise<void> | null | void;
 
 type Event = number | string | null | boolean | symbol;
 
-namespace Observable {
-  export type Callback<T> = (object: T, key: string | number | symbol, value: unknown) => void;
-}
-
-interface Observable {
-  [Observable](callback: Observable.Callback<this>): this;
-}
-
-const Observable = Symbol("observe");
+const {} = Symbol("observe");
 
 /** Placeholder event determines if model is initialized or not. */
 const onReady = () => null;
 
-const LISTENERS = new WeakMap<Observable, Map<OnUpdate, Set<Event> | undefined>>();
+const LISTENERS = new WeakMap<{}, Map<OnUpdate, Set<Event> | undefined>>();
 
 /** Events pending for a given object. */
-const PENDING = new WeakMap<Observable, Set<Event>>();
+const PENDING = new WeakMap<{}, Set<Event>>();
 
 /** Update register. */
-const PENDING_KEYS = new WeakMap<Observable, Set<string | number | symbol>>();
+const PENDING_KEYS = new WeakMap<{}, Set<string | number | symbol>>();
 
 /** Central event dispatch. Bunches all updates to occur at same time. */
 const DISPATCH = new Set<() => void>();
 
-function addListener<T extends Observable>(subject: T, callback: OnUpdate<T>, select?: Event){
+function addListener<T extends {}>(subject: T, callback: OnUpdate<T>, select?: Event){
   let listeners = LISTENERS.get(subject)!;
 
   if(!listeners)
@@ -56,7 +48,7 @@ function addListener<T extends Observable>(subject: T, callback: OnUpdate<T>, se
   return () => listeners.delete(callback);
 }
 
-function emit(model: Observable, key: Event): void {
+function emit(model: {}, key: Event): void {
   const listeners = LISTENERS.get(model)!;
   const notReady = listeners.has(onReady);
 
@@ -91,7 +83,7 @@ function emit(model: Observable, key: Event): void {
 }
 
 function event(
-  subject: Observable,
+  subject: {},
   key?: string | number | symbol | null,
   silent?: boolean){
 
@@ -136,6 +128,24 @@ function enqueue(eventHandler: (() => void)){
   DISPATCH.add(eventHandler);
 }
 
+type OnAccess<T extends {} = any, R = unknown> =
+  (from: T, key: string | number, value: R) => unknown;
+
+const OBSERVER = new WeakMap<{}, OnAccess>();
+
+function subscribe<T extends {}>(object: T): T {
+  const callback = EffectContext
+
+  const proxy = Object.create(object);
+  OBSERVER.set(proxy, callback);
+  return proxy;
+}
+
+// function watch(from: {}, key: string | number, value?: any){
+//   const access = OBSERVER.get(from);
+//   return access ? access(from, key, value) : value;
+// }
+
 /**
  * Create a side-effect which will update whenever values accessed change.
  * Callback is called immediately and whenever values are stale.
@@ -144,9 +154,9 @@ function enqueue(eventHandler: (() => void)){
  * @param callback - Function to invoke when values change.
  * @param requireValues - If `true` will throw if accessing a value which is `undefined`.
  */
-function createEffect<T extends Observable>(target: T, callback: Effect<Required<T>>, requireValues: true): () => void;
-function createEffect<T extends Observable>(target: T, callback: Effect<T>, recursive?: boolean): () => void;
-function createEffect<T extends Observable>(target: T, callback: Effect<T>, argument?: boolean){
+function createEffect<T extends {}>(target: T, callback: Effect<Required<T>>, requireValues: true): () => void;
+function createEffect<T extends {}>(target: T, callback: Effect<T>, recursive?: boolean): () => void;
+function createEffect<T extends {}>(target: T, callback: Effect<T>, argument?: boolean){
   const listeners = LISTENERS.get(target)!;
 
   let unset: ((update: boolean | null) => void) | undefined;
@@ -169,38 +179,38 @@ function createEffect<T extends Observable>(target: T, callback: Effect<T>, argu
       return reset;
     }
 
-    function access(from: Observable, key: string | number | symbol, value: any) {
-      if(value === undefined && argument){
-        if(typeof key == "symbol")
-          key = key.description || "symbol";
+    // function access(from: {}, key: string | number | symbol, value: any) {
+    //   if(value === undefined && argument){
+    //     if(typeof key == "symbol")
+    //       key = key.description || "symbol";
 
-        throw new Error(`${from}.${key} is required in this context.`);
-      }
+    //     throw new Error(`${from}.${key} is required in this context.`);
+    //   }
 
-      const listeners = LISTENERS.get(from)!;
-      let listener = listeners.get(onUpdate);
+    //   const listeners = LISTENERS.get(from)!;
+    //   let listener = listeners.get(onUpdate);
 
-      if(!listener)
-        listeners.set(onUpdate, listener = new Set);
+    //   if(!listener)
+    //     listeners.set(onUpdate, listener = new Set);
 
-      listener.add(key);
+    //   listener.add(key);
 
-      const nested = LISTENERS.get(value);
+    //   const nested = LISTENERS.get(value);
 
-      if(nested)
-        LISTENERS.set(value = value[Observable](access), nested);
+    //   if(nested)
+    //     LISTENERS.set(value = subscribe(value, access), nested);
 
-      return value;
-    }
+    //   return value;
+    // }
 
-    const subscriber = target[Observable](access);
-
-    LISTENERS.set(subscriber, listeners);
 
     try {
-      const exit = enter(argument === false)
+      const subscriber = subscribe(target);
+
+      LISTENERS.set(subscriber, listeners);
+      const exit = enter(onUpdate, argument !== false);
       const result = callback.call(subscriber, subscriber);
-      const flush = exit();
+      const flush = exit()
 
       reset = result === null ? null : invoke;
       unset = key => {
@@ -228,7 +238,7 @@ function createEffect<T extends Observable>(target: T, callback: Effect<T>, argu
   };
 
   if(EffectContext && argument !== false)
-    EffectContext.add(cleanup);
+    EffectContext.cleanup.add(cleanup);
 
   addListener(target, key => {
     if(key === true)
@@ -244,18 +254,30 @@ function createEffect<T extends Observable>(target: T, callback: Effect<T>, argu
   return cleanup;
 }
 
-let EffectContext: Set<() => void> | undefined;
+let EffectContext: {
+  cleanup: Set<() => void>;
+  onUpdate: (() => (() => void) | null | undefined);
+  require?: boolean;
+} | undefined;
 
-export function enter(ignore?: boolean){
+export function enter(
+  onUpdate?: (() => (() => void) | null | undefined),
+  ignore?: boolean){
+
   if(ignore)
     return () => () => {};
 
   const last = EffectContext;
-  const context = EffectContext = new Set;
+  const cleanup = new Set<() => void>();
+
+  EffectContext = { cleanup, onUpdate: last?.onUpdate };
 
   return () => {
     EffectContext = last;
-    return () => context.forEach(fn => fn());
+    return () => {
+      cleanup.forEach(fn => fn());
+      cleanup.clear();
+    };
   }
 }
 
@@ -264,6 +286,5 @@ export {
   createEffect,
   event,
   OnUpdate,
-  PENDING_KEYS,
-  Observable
+  PENDING_KEYS
 }
