@@ -25,36 +25,41 @@ function has <T extends Model> (
     if(Model.is(arg1))
       Context.get(subject, ctx => {
         ctx.has(arg1, model => {
-          const exit = enter();
           let remove: (() => void) | undefined;
           let disconnect: (() => void) | undefined;
+          let flush: (() => void) | undefined;
   
           if(applied.has(model))
             return;
           
-          const notify = APPLY.get(model);
-  
-          if(notify){
-            const after = notify(subject);
-  
-            if(after === false)
-              return;
-  
-            if(typeof after == "function")
-              disconnect = after;
-          }
-  
-          if(typeof arg2 == "function"){
-            const done = arg2(model, subject);
-  
-            if(done === false)
-              return false;
+          const exit = enter();
 
-            if(typeof done == "function")
-              remove = done;
-          }
+          try {
+            const notify = APPLY.get(model);
 
-          const flush = exit();
+            if(notify){
+              const after = notify(subject);
+    
+              if(after === false)
+                return;
+    
+              if(typeof after == "function")
+                disconnect = after;
+            }
+    
+            if(typeof arg2 == "function"){
+              const done = arg2(model, subject);
+    
+              if(done === false)
+                return false;
+
+              if(typeof done == "function")
+                remove = done;
+            }
+          }
+          finally {
+            flush = exit();
+          }
   
           applied.add(model);
           reset();
