@@ -1,4 +1,4 @@
-import { addListener, createEffect, event, Observable, OnUpdate, PENDING_KEYS } from './control';
+import { addListener, createEffect, event, LISTENERS, Observable, OnUpdate, PENDING_KEYS } from './control';
 
 const define = Object.defineProperty;
 
@@ -140,9 +140,27 @@ abstract class Model implements Observable {
     init(this, args);
   }
 
-  [Observable](callback: Observable.Callback<this>){
+  [Observable](callback: OnUpdate, required?: boolean){
+    const watch = new Set<Model.Event<this>>();
     const proxy = Object.create(this);
-    OBSERVER.set(proxy, callback);
+    
+    LISTENERS.get(this)!.set(callback, watch);
+    OBSERVER.set(proxy, (from, key, value) => {
+      if(value === undefined && required)
+        throw new Error(`${from}.${key} is required in this context.`);
+
+      watch.add(key);
+
+      const nested = LISTENERS.get(value);
+
+      if(nested){
+        value = value[Observable](callback, required);
+        LISTENERS.set(value, nested);
+      }
+
+      return value;
+    });
+
     return proxy as this;
   }
 
@@ -546,7 +564,7 @@ function manage(target: Model, key: string | number, value: any){
   set(value, true);
 }
 
-type OnAccess<T extends Model = any, R = unknown> =
+type OnAccess<T extends Model = any, R = any> =
   (from: T, key: string | number, value: R) => unknown;
 
 const OBSERVER = new WeakMap<Model, OnAccess>();

@@ -16,12 +16,8 @@ type Effect<T extends Observable> = (this: T, proxy: T) =>
 
 type Event = number | string | null | boolean | symbol;
 
-namespace Observable {
-  export type Callback<T> = (object: T, key: string | number | symbol, value: unknown) => void;
-}
-
 interface Observable {
-  [Observable](callback: Observable.Callback<this>): this;
+  [Observable](callback: OnUpdate, required?: boolean): this;
 }
 
 const Observable = Symbol("observe");
@@ -169,31 +165,7 @@ function createEffect<T extends Observable>(target: T, callback: Effect<T>, argu
       return reset;
     }
 
-    function access(from: Observable, key: string | number | symbol, value: any) {
-      if(value === undefined && argument){
-        if(typeof key == "symbol")
-          key = key.description || "symbol";
-
-        throw new Error(`${from}.${key} is required in this context.`);
-      }
-
-      const listeners = LISTENERS.get(from)!;
-      let listener = listeners.get(onUpdate);
-
-      if(!listener)
-        listeners.set(onUpdate, listener = new Set);
-
-      listener.add(key);
-
-      const nested = LISTENERS.get(value);
-
-      if(nested)
-        LISTENERS.set(value = value[Observable](access), nested);
-
-      return value;
-    }
-
-    const subscriber = target[Observable](access);
+    const subscriber = target[Observable](onUpdate, argument);
 
     LISTENERS.set(subscriber, listeners);
 
@@ -265,5 +237,6 @@ export {
   event,
   OnUpdate,
   PENDING_KEYS,
-  Observable
+  Observable,
+  LISTENERS
 }
