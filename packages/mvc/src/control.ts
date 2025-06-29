@@ -17,11 +17,11 @@ type Effect<T extends Observable> = (this: T, proxy: T) =>
 type Event = number | string | null | boolean | symbol;
 
 namespace Observable {
-  export type Callback<T> = (object: T, key: string | number | symbol, value: unknown) => void;
+  export type Callback<T> = () => void;
 }
 
 interface Observable {
-  [Observable](callback: Observable.Callback<this>): this;
+  [Observable](callback: OnUpdate, require: boolean): this;
 }
 
 const Observable = Symbol("observe");
@@ -40,18 +40,21 @@ const PENDING_KEYS = new WeakMap<Observable, Set<string | number | symbol>>();
 /** Central event dispatch. Bunches all updates to occur at same time. */
 const DISPATCH = new Set<() => void>();
 
-function addListener<T extends Observable>(subject: T, callback: OnUpdate<T>, select?: Event){
+function addListener<T extends Observable>(
+  subject: T, callback: OnUpdate<T>, select?: Event | Set<Event>){
+
   let listeners = LISTENERS.get(subject)!;
 
   if(!listeners)
     LISTENERS.set(subject, listeners = new Map([[onReady, undefined]]));
 
-  const filter = select === undefined ? undefined : new Set([select]);
+  if(select !== undefined && !(select instanceof Set))
+    select = new Set([select]);
 
-  if(!listeners.has(onReady) && !filter)
+  if(!listeners.has(onReady) && !select)
     callback.call(subject, true, subject);
 
-  listeners.set(callback, filter);
+  listeners.set(callback, select);
 
   return () => listeners.delete(callback);
 }
@@ -136,6 +139,21 @@ function enqueue(eventHandler: (() => void)){
   DISPATCH.add(eventHandler);
 }
 
+const OBSERVER = new WeakMap<Observable, Set<string | number | symbol>>();
+
+function watch(from: Observable, key: string | number, value?: any){
+  const observer = OBSERVER.get(from);
+
+  if(observer){
+    observer.add(key);
+
+    if(Observable in value)
+      return value[Observable]();
+  }
+
+  return value;
+}
+
 /**
  * Create a side-effect which will update whenever values accessed change.
  * Callback is called immediately and whenever values are stale.
@@ -169,31 +187,40 @@ function createEffect<T extends Observable>(target: T, callback: Effect<T>, argu
       return reset;
     }
 
-    function access(from: Observable, key: string | number | symbol, value: any) {
-      if(value === undefined && argument){
-        if(typeof key == "symbol")
-          key = key.description || "symbol";
-
-        throw new Error(`${from}.${key} is required in this context.`);
-      }
-
-      const listeners = LISTENERS.get(from)!;
-      let listener = listeners.get(onUpdate);
-
-      if(!listener)
-        listeners.set(onUpdate, listener = new Set);
-
-      listener.add(key);
-
-      const nested = LISTENERS.get(value);
-
-      if(nested)
-        LISTENERS.set(value = value[Observable](access), nested);
-
-      return value;
+    function wrap(object: Observable){
+      const proxy = Object.create(object);
+      const used = new Set<string | number | symbol>();
+  
+      addListener(object, onUpdate, used);
+      OBSERVER.set(proxy, used);
+      return proxy;
     }
 
-    const subscriber = target[Observable](access);
+    // function access(from: Observable, key: string | number | symbol, value: any) {
+    //   if(value === undefined && argument){
+    //     if(typeof key == "symbol")
+    //       key = key.description || "symbol";
+ 
+    //     throw new Error(`${from}.${key} is required in this context.`);
+    //   }
+
+    //   const listeners = LISTENERS.get(from)!;
+    //   let listener = listeners.get(onUpdate);
+
+    //   if(!listener)
+    //     listeners.set(onUpdate, listener = new Set);
+
+    //   listener.add(key);
+
+    //   const nested = LISTENERS.get(value);
+
+    //   if(nested)
+    //     LISTENERS.set(value = value[Observable](onUpdate, !!argument), nested);
+
+    //   return value;
+    // }
+
+    const subscriber = target[Observable](onUpdate, !!argument);
 
     LISTENERS.set(subscriber, listeners);
 
@@ -265,5 +292,6 @@ export {
   event,
   OnUpdate,
   PENDING_KEYS,
-  Observable
+  Observable,
+  watch
 }

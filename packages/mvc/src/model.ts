@@ -1,4 +1,4 @@
-import { addListener, createEffect, event, Observable, OnUpdate, PENDING_KEYS } from './control';
+import { addListener, createEffect, event, Observable, OnUpdate, PENDING_KEYS, watch } from './control';
 
 const define = Object.defineProperty;
 
@@ -138,12 +138,6 @@ abstract class Model implements Observable {
     prepare(this);
     define(this, "is", { value: this });
     init(this, args);
-  }
-
-  [Observable](callback: Observable.Callback<this>){
-    const proxy = Object.create(this);
-    OBSERVER.set(proxy, callback);
-    return proxy as this;
   }
 
   /**
@@ -318,12 +312,13 @@ abstract class Model implements Observable {
       
     if(arg1 && typeof arg1 == "object")
       assign(self, arg1, arg2 === true);
-    else if(!arg2)
+    else if(!arg2 || !arg1 || typeof arg1 == "symbol")
+      // TODO: accept symbol downstream?
       event(self, arg1);
     else if(arg3)
-      manage(self, arg1 as string | number, arg2);
+      manage(self, arg1, arg2);
     else
-      update(self, arg1 as string | number, arg2)
+      update(self, arg1, arg2)
 
     const pending = PENDING_KEYS.get(this);
 
@@ -346,6 +341,15 @@ abstract class Model implements Observable {
    */
   [Symbol.iterator](): Iterator<[string, unknown]> {
     return Object.entries(STATE.get(this.is)!)[Symbol.iterator]();
+  }
+
+  [Observable](callback: OnUpdate){
+    const proxy = Object.create(this);
+    const used = new Set<string | number | symbol>();
+
+    addListener(this, callback, used);
+    OBSERVER.set(proxy, used);
+    return proxy as this;
   }
 
   /**
@@ -544,16 +548,6 @@ function manage(target: Model, key: string | number, value: any){
 
   define(target, key, { set, get });
   set(value, true);
-}
-
-type OnAccess<T extends Model = any, R = unknown> =
-  (from: T, key: string | number, value: R) => unknown;
-
-const OBSERVER = new WeakMap<Model, OnAccess>();
-
-function watch(from: Model, key: string | number, value?: any){
-  const access = OBSERVER.get(from);
-  return access ? access(from, key, value) : value;
 }
 
 function fetch(subject: Model, property: string, required?: boolean){
