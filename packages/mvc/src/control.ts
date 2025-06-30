@@ -36,18 +36,21 @@ const PENDING_KEYS = new WeakMap<Observable, Set<string | number | symbol>>();
 /** Central event dispatch. Bunches all updates to occur at same time. */
 const DISPATCH = new Set<() => void>();
 
-function addListener<T extends Observable>(subject: T, callback: OnUpdate<T>, select?: Event){
+function addListener<T extends Observable>(
+  subject: T, callback: OnUpdate<T>, select?: Event | Set<Event>){
+
   let listeners = LISTENERS.get(subject)!;
 
   if(!listeners)
     LISTENERS.set(subject, listeners = new Map([[onReady, undefined]]));
 
-  const filter = select === undefined ? undefined : new Set([select]);
+  if(select !== undefined && !(select instanceof Set))
+    select = new Set([select]);
 
-  if(!listeners.has(onReady) && !filter)
+  if(!listeners.has(onReady) && !select)
     callback.call(subject, true, subject);
 
-  listeners.set(callback, filter);
+  listeners.set(callback, select);
 
   return () => listeners.delete(callback);
 }
