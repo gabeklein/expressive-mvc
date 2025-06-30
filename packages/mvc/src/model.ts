@@ -513,21 +513,7 @@ function init(model: Model, args: Model.Args){
         manage(model, key, desc.value);
     }
     
-    args.forEach((arg) => {
-      const use = typeof arg == "function"
-        ? arg.call(model, model)
-        : arg as Model.Assign<Model>;
-
-      if(use instanceof Promise)
-        use.catch(err => {
-          console.error(`Async error in constructor for ${model}:`);
-          console.error(err);
-        });
-      else if(typeof use == "function")
-        addListener(model, use, null)
-      else if(typeof use == "object")
-        assign(model, use, true);
-    });
+    args.forEach(apply, model);
 
     addListener(model, () => {
       for(const [_, value] of model)
@@ -539,6 +525,22 @@ function init(model: Model, args: Model.Args){
   
     return null;
   });
+}
+
+function apply<T extends Model>(this: T, arg: Model.Argument<T> | Model.Args){
+  const use = typeof arg == "function"
+    ? arg.call(this, this)
+    : arg as Model.Assign<Model>;
+
+  if(use instanceof Promise)
+    use.catch(err => {
+      console.error(`Async error in constructor for ${this}:`);
+      console.error(err);
+    });
+  else if(typeof use == "function")
+    addListener(this, use, null)
+  else if(typeof use == "object")
+    assign(this, use, true);
 }
 
 function manage(target: Model, key: string | number, value: any){
