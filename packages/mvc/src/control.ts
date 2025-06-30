@@ -146,8 +146,6 @@ function enqueue(eventHandler: (() => void)){
 function createEffect<T extends Observable>(target: T, callback: Effect<Required<T>>, requireValues: true): () => void;
 function createEffect<T extends Observable>(target: T, callback: Effect<T>, recursive?: boolean): () => void;
 function createEffect<T extends Observable>(target: T, callback: Effect<T>, argument?: boolean){
-  const listeners = LISTENERS.get(target)!;
-
   let unset: ((update: boolean | null) => void) | undefined;
   let reset: (() => void) | null | undefined;
 
@@ -168,9 +166,7 @@ function createEffect<T extends Observable>(target: T, callback: Effect<T>, argu
       return reset;
     }
 
-    const subscriber = target[Observable](onUpdate, argument);
-
-    LISTENERS.set(subscriber, listeners);
+    const subscriber = target[Observable](onUpdate, argument === true);
 
     try {
       const exit = enter(argument === false)
@@ -240,6 +236,5 @@ export {
   event,
   OnUpdate,
   PENDING_KEYS,
-  Observable,
-  LISTENERS
+  Observable
 }

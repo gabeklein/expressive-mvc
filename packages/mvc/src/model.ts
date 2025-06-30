@@ -1,4 +1,4 @@
-import { addListener, createEffect, event, LISTENERS, Observable, OnUpdate, PENDING_KEYS } from './control';
+import { addListener, createEffect, event, Observable, OnUpdate, PENDING_KEYS } from './control';
 
 const define = Object.defineProperty;
 
@@ -144,19 +144,15 @@ abstract class Model implements Observable {
     const watch = new Set<Model.Event<this>>();
     const proxy = Object.create(this);
     
-    LISTENERS.get(this)!.set(callback, watch);
+    addListener(this, callback, watch);
     OBSERVER.set(proxy, (from, key, value) => {
       if(value === undefined && required)
         throw new Error(`${from}.${key} is required in this context.`);
 
       watch.add(key);
 
-      const nested = LISTENERS.get(value);
-
-      if(nested){
-        value = value[Observable](callback, required);
-        LISTENERS.set(value, nested);
-      }
+      if(value instanceof Object && Observable in value)
+        return value[Observable](callback, required);
 
       return value;
     });
