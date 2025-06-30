@@ -145,9 +145,9 @@ abstract class Model implements Observable {
     const proxy = Object.create(this);
     
     addListener(this, callback, watch);
-    OBSERVER.set(proxy, (from, key, value) => {
+    OBSERVER.set(proxy, (key, value) => {
       if(value === undefined && required)
-        throw new Error(`${from}.${key} is required in this context.`);
+        throw new Error(`${this}.${key} is required in this context.`);
 
       watch.add(key);
 
@@ -560,14 +560,13 @@ function manage(target: Model, key: string | number, value: any){
   set(value, true);
 }
 
-type OnAccess<T extends Model = any, R = any> =
-  (from: T, key: string | number, value: R) => unknown;
+type Proxy<T = any> = (key: string | number, value: T) => T;
 
-const OBSERVER = new WeakMap<Model, OnAccess>();
+const OBSERVER = new WeakMap<Model, Proxy>();
 
 function watch(from: Model, key: string | number, value?: any){
   const access = OBSERVER.get(from);
-  return access ? access(from, key, value) : value;
+  return access ? access(key, value) : value;
 }
 
 function fetch(subject: Model, property: string, required?: boolean){
