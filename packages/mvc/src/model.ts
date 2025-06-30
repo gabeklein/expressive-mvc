@@ -512,8 +512,8 @@ function init(model: Model, args: Model.Args){
       if("value" in desc)
         manage(model, key, desc.value);
     }
-    
-    args.forEach((arg) => {
+
+    for(const arg of args){
       const use = typeof arg == "function"
         ? arg.call(model, model)
         : arg as Model.Assign<Model>;
@@ -527,7 +527,7 @@ function init(model: Model, args: Model.Args){
         addListener(model, use, null)
       else if(typeof use == "object")
         assign(model, use, true);
-    });
+    }
 
     addListener(model, () => {
       for(const [_, value] of model)
