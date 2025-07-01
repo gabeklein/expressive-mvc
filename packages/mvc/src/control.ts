@@ -169,14 +169,14 @@ function createEffect<T extends Observable>(target: T, callback: Effect<T>, argu
     const subscriber = target[Observable](onUpdate, argument === true);
 
     try {
-      const exit = enter(argument === false)
-      const result = callback.call(subscriber, subscriber);
+      const exit = enter(argument === false);
+      const output = callback.call(subscriber, subscriber);
       const flush = exit();
 
-      reset = result === null ? null : invoke;
+      reset = output === null ? null : invoke;
       unset = key => {
-        if(typeof result == "function")
-          result(key);
+        if(typeof output == "function")
+          output(key);
 
         flush();
       }
