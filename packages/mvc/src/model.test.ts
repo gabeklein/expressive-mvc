@@ -1259,6 +1259,58 @@ describe("set method", () => {
 
       expect(test.foo.current).toBe("bar");
     })
+
+    it("will add property to tracking", async () => {
+      class Test extends Model {
+        foo = "foo";
+      }
+
+      interface Test {
+        bar: string;
+      }
+
+      const test = Test.new();
+      const mock = jest.fn();
+
+      test.get(({ foo, bar }) => {
+        mock(foo, bar);
+      });
+
+      test.foo = "bar";
+
+      await expect(test).toHaveUpdated("foo");
+      expect(mock).toBeCalledWith("bar", undefined);
+
+      test.bar = "bob";
+
+      expect(test.bar).toBe("bob");
+
+      // bar assignment is ignored because it's not formally defined
+      await expect(test).not.toHaveUpdated("bar");
+      expect(mock).not.toBeCalledWith("bar", "bob");
+
+      // assign bar formally adding to model
+      test.set("bar", "baz", true);
+      
+      // bar is redefined
+      expect(test.bar).toBe("baz");
+      expect(test).toHaveUpdated("bar");
+      
+      // The effect isn't observing bar yet
+      expect(mock).not.toBeCalledWith("bar", "baz");
+
+      // force refresh using foo instead
+      test.set("foo");
+      await expect(test).toHaveUpdated("foo");
+      expect(mock).toBeCalledWith("bar", "baz");
+
+      test.bar = "qux";
+
+      // updates no longer ignored
+      await expect(test).toHaveUpdated("bar");
+      expect(test.bar).toBe("qux");
+      expect(mock).toBeCalledWith("bar", "qux");
+    })
   })
 
   describe("promise-like", () => {
