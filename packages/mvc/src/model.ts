@@ -510,7 +510,7 @@ function init(model: Model, args: Model.Args){
       const desc = Object.getOwnPropertyDescriptor(model, key)!;
 
       if("value" in desc)
-        manage(model, key, desc.value);
+        manage(model, key, desc.value, true);
     }
 
     for(const arg of args){
@@ -541,7 +541,7 @@ function init(model: Model, args: Model.Args){
   });
 }
 
-function manage(target: Model, key: string | number, value: any){
+function manage(target: Model, key: string | number, value: any, silent?: boolean){
   const state = STATE.get(target)!;
   
   function get(this: Model){
@@ -557,7 +557,7 @@ function manage(target: Model, key: string | number, value: any){
   }
 
   define(target, key, { set, get });
-  set(value, true);
+  set(value, silent);
 }
 
 type Proxy<T = any> = (key: string | number, value: T) => T;
