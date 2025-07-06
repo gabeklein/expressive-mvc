@@ -9,15 +9,21 @@
  * @param source - Instance of Model for which update has occured.
  */
 type OnUpdate<T extends Observable = any> = 
-  (this: T, key: unknown, source: T) => (() => void) | null | void;
+  (this: T, key: Event, source: T) => (() => void) | null | void;
 
 type Effect<T extends Observable> = (this: T, proxy: T) =>
   ((update: boolean | null) => void) | Promise<void> | null | void;
 
 type Event = number | string | null | boolean | symbol;
 
+type PromiseLite<T = void> = { then: (callback: () => T) => T };
+
+declare namespace Observable {
+  export type Callback = () => void | PromiseLite;
+}
+
 interface Observable {
-  [Observable](callback: OnUpdate, required?: boolean): this;
+  [Observable](callback: Observable.Callback, required?: boolean): this;
 }
 
 const Observable = Symbol("observe");
@@ -149,12 +155,12 @@ function createEffect<T extends Observable>(target: T, callback: Effect<T>, argu
   let unset: ((update: boolean | null) => void) | undefined;
   let reset: (() => void) | null | undefined;
 
-  function invoke(){
+  function invoke() {
     let stale: boolean | undefined;
 
-    function onUpdate() {
-      if (stale)
-        return null;
+    function onUpdate(): void | PromiseLite<void> {
+      if (stale || reset === null)
+        return;
 
       stale = true;
 
@@ -163,7 +169,8 @@ function createEffect<T extends Observable>(target: T, callback: Effect<T>, argu
         unset = undefined;
       }
 
-      return reset;
+      enqueue(invoke);
+      return { then: enqueue }
     }
 
     const subscriber = target[Observable](onUpdate, argument === true);

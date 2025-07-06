@@ -140,11 +140,12 @@ abstract class Model implements Observable {
     init(this, args);
   }
 
-  [Observable](callback: OnUpdate, required?: boolean){
+  [Observable](callback: Observable.Callback, required?: boolean){
     const watch = new Set<Model.Event<this>>();
     const proxy = Object.create(this);
     
-    addListener(this, callback, watch);
+    addListener(this, () => void callback(), watch);
+
     OBSERVER.set(proxy, (key, value) => {
       if(value === undefined && required)
         throw new Error(`${this}.${key} is required in this context.`);

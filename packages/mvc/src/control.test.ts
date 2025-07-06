@@ -1,4 +1,4 @@
-import { createEffect } from './control';
+import { createEffect, Observable } from './control';
 import { set } from './instruction/set';
 import { use } from './instruction/use';
 import { mockError } from './mocks';
@@ -179,4 +179,43 @@ describe("errors", () => {
 
     expect(error).toBeCalledWith(expected);
   });
+})
+
+describe("observable", () => {
+  it("will update effect", async () => {
+    class MyObservable implements Observable {
+      value = "foo";
+      watch?: Observable.Callback = undefined;
+  
+      [Observable](onUpdate: Observable.Callback) {
+        this.watch = onUpdate
+        return this;
+      }
+
+      async update(value: string){
+        this.value = value;
+        
+        if(this.watch)
+          return this.watch();
+      }
+    }
+
+    class Test extends Model {
+      observable = new MyObservable();
+    }
+
+    const mock = jest.fn();
+    const test = Test.new();
+
+    test.get($ => {
+      mock($.observable.value);
+    });
+
+    expect(mock).toBeCalledWith("foo");
+
+    await test.observable.update("bar");
+
+    expect(mock).toBeCalledWith("bar");
+    expect(mock).toBeCalledTimes(2);
+  })
 })
