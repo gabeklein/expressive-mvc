@@ -737,3 +737,36 @@ describe("factory with callback overload", () => {
     expect(callback).toBeCalledWith("setAfter", "setBefore");
   })
 });
+
+it('supports custom PromiseLike objects as factory return', async () => {
+  type Thenable<T> = {
+    then: (onFulfilled?: (value: T) => any) => any;
+  };
+
+  const resolve: Thenable<string> = {
+    then: (onFulfilled) => {
+      setTimeout(() => {
+        if (onFulfilled)
+          onFulfilled("foobar");
+      }, 0);
+  
+      return resolve;
+    }
+  };
+
+  class Test extends Model {
+    value = set(() => resolve);
+  }
+
+  const test = Test.new();
+  let threw: Promise<string> | undefined;
+
+  try {
+    expect<string>(test.value);
+  } catch (e) {
+    threw = e as Promise<string>;
+  }
+  
+  await expect(threw).resolves.toBe("foobar");
+  expect(test.value).toBe('foobar');
+});
