@@ -112,7 +112,10 @@ function has <T extends Model> (
       });
     }
 
-    return { value: [] };
+    return {
+      value: [],
+      enumerable: false
+    };
   })
 }
 

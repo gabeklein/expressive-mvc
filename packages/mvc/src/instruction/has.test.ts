@@ -18,6 +18,21 @@ describe("recipient", () => {
     expect(parent.children).toEqual([child]);
   })
 
+  it("will not be enumerable", () => {
+    class Child extends Model {}
+    class Parent extends Model {
+      children = has(Child);
+    }
+
+    const parent = Parent.new();
+
+    new Context({ parent }).push({ Child });
+
+    expect(Object.keys(parent)).not.toContain("children");
+    expect(parent.children).toEqual([expect.any(Child)]);
+  });
+
+
   it("will register a subclass", () => {
     abstract class Child extends Model {}
 
