@@ -1,4 +1,4 @@
-import { Model, Context } from '@expressive/mvc';
+import { Model, Context, createEffect } from '@expressive/mvc';
 
 import { Pragma } from './adapter';
 
@@ -6,22 +6,19 @@ declare module '@expressive/mvc' {
   namespace Model {
     function use <T extends Model> (
       this: Model.Init<T>,
-      apply?: Model.Assign<T>,
-      repeat?: boolean
+      apply?: Model.Assign<T>
     ): T;
 
     function use <T extends Model> (
       this: Model.Init<T>,
-      callback?: Model.Callback<T>,
-      repeat?: boolean
+      callback?: Model.Callback<T>
     ): T;
   }
 }
 
 Model.use = function <T extends Model> (
   this: Model.Init<T>,
-  argument?: Model.Assign<T> | Model.Callback<T>,
-  repeat?: boolean){
+  argument?: Model.Assign<T> | Model.Callback<T>){
 
   const context = Context.use(true);
   const render = Pragma.useFactory((refresh) => {
@@ -32,7 +29,7 @@ Model.use = function <T extends Model> (
 
     context.include(instance);
   
-    const unwatch = instance.get(current => {
+    const unwatch = createEffect(instance, current => {
       local = current;
 
       if(enabled) 
@@ -50,22 +47,6 @@ Model.use = function <T extends Model> (
 
     return (props?: Model.Assign<T> | Model.Callback<T>) => {
       Pragma.useLifecycle(didMount);
-
-      if(enabled && repeat && props){
-        enabled = false;
-
-        if(typeof props == "function"){
-          props.call(instance, instance);
-          props = undefined
-        }
-
-        const update = instance.set(props);
-
-        if(update)
-          update.then(() => enabled = true);
-        else
-          enabled = true;
-      }
 
       return local; 
     };
