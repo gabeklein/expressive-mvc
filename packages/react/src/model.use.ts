@@ -1,4 +1,4 @@
-import { Model, Context } from '@expressive/mvc';
+import { Model, Context, createEffect } from '@expressive/mvc';
 
 import { Pragma } from './adapter';
 
@@ -32,7 +32,7 @@ Model.use = function <T extends Model> (
 
     context.include(instance);
   
-    const unwatch = instance.get(current => {
+    const unwatch = createEffect(instance, current => {
       local = current;
 
       if(enabled) 
