@@ -141,10 +141,13 @@ abstract class Model implements Observable {
   }
 
   [Observable](callback: Observable.Callback, required?: boolean){
-    const watch = new Set<Model.Event<this>>();
+    const watch = new Set<unknown>();
     const proxy = Object.create(this);
     
-    addListener(this, () => void callback(), watch);
+    addListener(this, (key) => {
+      if(watch.has(key))
+        callback();
+    });
 
     OBSERVER.set(proxy, (key, value) => {
       if(value === undefined && required)

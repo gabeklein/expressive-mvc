@@ -156,13 +156,13 @@ function createEffect<T extends Observable>(target: T, callback: Effect<T>, argu
   let reset: (() => void) | null | undefined;
 
   function invoke() {
-    let stale: boolean | undefined;
+    let ignore: boolean = true;
 
     function onUpdate(): void | PromiseLite<void> {
-      if (stale || reset === null)
+      if (ignore || reset === null)
         return;
 
-      stale = true;
+      ignore = true;
 
       if (reset && unset) {
         unset(true);
@@ -179,7 +179,8 @@ function createEffect<T extends Observable>(target: T, callback: Effect<T>, argu
       const exit = enter(argument === false);
       const output = callback.call(subscriber, subscriber);
       const flush = exit();
-
+      
+      ignore = false;
       reset = output === null ? null : invoke;
       unset = key => {
         if(typeof output == "function")

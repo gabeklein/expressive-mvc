@@ -99,6 +99,103 @@ describe("effect", () => {
     expect(didInvoke).not.toBeCalledWith({ foo: 2, bar: 1 });
     expect(didInvoke).toBeCalledTimes(4);
   })
+
+  it("will ignore circular update", async () => {
+    class Test extends Model {
+      foo = 1;
+      bar?: number = undefined;
+    }
+
+    const didUpdate = jest.fn();
+    const test = Test.new();
+
+    createEffect(test, ({ foo, bar }) => {
+      didUpdate(foo, bar);
+      test.bar = foo;
+    });
+
+    expect(didUpdate).toBeCalledTimes(1);
+    expect(didUpdate).toHaveBeenCalledWith(1, undefined);
+
+    // is syncronously 1 after effect did run.
+    expect(test.bar).toBe(1);
+
+    // flush events to check if effect updates.
+    await expect(test).toHaveUpdated("bar");
+    expect(didUpdate).not.toHaveBeenCalledWith(1, 1);
+
+    test.foo = 2;
+    await expect(test).toHaveUpdated("foo");
+    expect(didUpdate).toHaveBeenCalledWith(2, 1);
+
+    expect(didUpdate).toBeCalledTimes(2);
+    expect(test.bar).toBe(2);
+
+    test.foo = 3;
+    await expect(test).toHaveUpdated("foo");
+
+    expect(didUpdate).toBeCalledTimes(3);
+    expect(test.bar).toBe(3);
+  })
+
+  it("will ignore circular update", async () => {
+    class Test extends Model {
+      foo = 1;
+      bar?: number = undefined;
+    }
+
+    const didUpdate = jest.fn();
+    const test = Test.new();
+
+    createEffect(test, ({ foo, bar }) => {
+      didUpdate(foo, bar);
+      test.bar = foo;
+    });
+
+    expect(didUpdate).toBeCalledTimes(1);
+    expect(didUpdate).toHaveBeenCalledWith(1, undefined);
+
+    // is syncronously 1 after effect did run.
+    expect(test.bar).toBe(1);
+
+    // flush events to check if effect updates.
+    await expect(test).toHaveUpdated("bar");
+    expect(didUpdate).not.toHaveBeenCalledWith(1, 1);
+
+    test.foo = 2;
+    await expect(test).toHaveUpdated("foo");
+    expect(didUpdate).toHaveBeenCalledWith(2, 1);
+
+    expect(didUpdate).toBeCalledTimes(2);
+    expect(test.bar).toBe(2);
+
+    test.foo = 3;
+    await expect(test).toHaveUpdated("foo");
+
+    expect(didUpdate).toBeCalledTimes(3);
+    expect(test.bar).toBe(3);
+  })
+
+  it("will override circular update", async () => {
+    class Test extends Model {
+      foo = 1;
+      bar?: number = undefined;
+    }
+
+    const test = Test.new();
+    
+    createEffect(test, ({ foo, bar = 0 }) => {
+      test.bar = foo + bar;
+    });
+
+    expect(test.bar).toBe(1);
+
+    test.bar = 2;
+    expect(test.bar).toBe(2);
+
+    await expect(test).toHaveUpdated("bar");
+    expect(test.bar).toBe(3);
+  });
 })
 
 describe("suspense", () => {
