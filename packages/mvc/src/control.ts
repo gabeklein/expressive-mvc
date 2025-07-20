@@ -152,25 +152,47 @@ function enqueue(eventHandler: (() => void)){
 function createEffect<T extends Observable>(target: T, callback: Effect<Required<T>>, requireValues: true): () => void;
 function createEffect<T extends Observable>(target: T, callback: Effect<T>, recursive?: boolean): () => void;
 function createEffect<T extends Observable>(target: T, callback: Effect<T>, argument?: boolean){
-  let unset: ((update: boolean | null) => void) | undefined;
+
   let reset: (() => void) | null | undefined;
+  let unset: ((update: boolean | null) => number | Promise<void> | void) | void;
 
   function invoke() {
     let stale: boolean | undefined;
+    let timeout: any | undefined;
+    let defer: (() => void) | undefined;
 
     function onUpdate(): void | PromiseLite<void> {
+      if(defer)
+        return defer();
+
       if (stale || reset === null)
         return;
 
-      stale = true;
-
       if (reset && unset) {
-        unset(true);
+        const out = unset(true);
         unset = undefined;
+
+        if(typeof out === "number"){
+          const release = new Promise<void>(res => {
+            defer = () => {
+              if(timeout) clearTimeout(timeout);
+              timeout = setTimeout(res, out);
+              return release;
+            }
+          }).then(() => {
+            invoke();
+            defer = undefined;
+            stale = true;
+          });
+
+          return release;
+        }
       }
 
+      stale = true;
+
       enqueue(invoke);
-      return { then: enqueue }
+      return { then: enqueue };
     }
 
     const subscriber = target[Observable](onUpdate, argument === true);
@@ -182,10 +204,9 @@ function createEffect<T extends Observable>(target: T, callback: Effect<T>, argu
 
       reset = output === null ? null : invoke;
       unset = key => {
-        if(typeof output == "function")
-          output(key);
-
         flush();
+        if(typeof output == "function")
+          return output(key);
       }
     }
     catch(err){
