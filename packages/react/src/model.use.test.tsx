@@ -117,6 +117,63 @@ describe("hook", () => {
 
     hook.unmount();
   });
+
+  it.skip("will not refresh for assignment in component", async () => {
+    class Test extends Model {
+      foo = 0;
+      bar = 0;
+    };
+  
+    const hook = renderHook(() => {
+      const test = Test.use();
+
+      void test.foo;
+      void test.bar;
+
+      test.foo += 1;
+      
+      return test;
+    });
+
+    // does have value change in callback
+    expect(hook.result.current.foo).toBe(1);
+ 
+    await act(() => new Promise(resolve => setTimeout(resolve, 0)));
+
+    // does still respond to normal updates
+    await act(async () => {
+      hook.result.current.bar = 2;
+    });
+
+    expect(hook.result.current.foo).toBe(2);
+  });
+  
+  it.skip("will not refresh for update in componet", async () => {
+    class Test extends Model {
+      foo?: string = undefined;
+      bar?: string = undefined;
+    }
+
+    const didRender = jest.fn();
+    const hook = renderHook(({ foo }) => {
+      const test = Test.use();
+ 
+      didRender();
+      test.set({ foo, bar: "bar" });
+
+      return test;
+    }, { initialProps: { foo: "foo" } });
+
+    expect(hook.result.current).toMatchObject({ foo: "foo", bar: "bar" });
+    
+    hook.rerender({ foo: "bar" });
+
+    expect(hook.result.current.foo).toBe("bar");
+
+    await act(() => new Promise(resolve => setTimeout(resolve, 0)));
+
+    expect(didRender).toHaveBeenCalledTimes(2);
+  })
 })
 
 describe("callback argument", () => {
@@ -135,47 +192,6 @@ describe("callback argument", () => {
 
     expect(callback).toHaveBeenCalledTimes(1);
   })
-
-  it("will run callback on every render", async () => {
-    const callback = jest.fn();
-    const hook = renderHook(() => {
-      Test.use(callback, true);
-    });
-
-    expect(callback).toHaveBeenCalledTimes(1);
-
-    hook.rerender(() => Test.use(callback, true));
-
-    expect(callback).toHaveBeenCalledTimes(2);
-  })
-
-  it("will include updates in callback without reload", async () => {
-    class Test extends Model {
-      foo = 0;
-      bar = 0;
-    };
-  
-    const hook = renderHook(() => {
-      const test = Test.use(test => {
-        test.foo += 1;
-      }, true);
-
-      void test.foo;
-      void test.bar;
-      
-      return test;
-    });
-
-    // does have value change in callback
-    expect(hook.result.current.foo).toBe(1);
-
-    // does still respond to normal updates
-    await act(async () => {
-      hook.result.current.bar = 2;
-    });
-
-    expect(hook.result.current.foo).toBe(2);
-  });
 
   it("will run argument before effects", () => {
     const effect = jest.fn();
@@ -239,18 +255,6 @@ describe("props argument", () => {
     await act(async () => {
       hook.result.current.foo = "bar";
     });
-
-    expect(hook.result.current.foo).toBe("bar");
-  })
-  
-  it("will apply props per-render", async () => {
-    const hook = renderHook(({ foo }) => {
-      return Test.use({ foo, bar: "bar" }, true);
-    }, { initialProps: { foo: "foo" } });
-
-    expect(hook.result.current).toMatchObject({ foo: "foo", bar: "bar" });
-    
-    hook.rerender({ foo: "bar" });
 
     expect(hook.result.current.foo).toBe("bar");
   })

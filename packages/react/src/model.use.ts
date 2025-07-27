@@ -20,8 +20,7 @@ declare module '@expressive/mvc' {
 
 Model.use = function <T extends Model> (
   this: Model.Init<T>,
-  argument?: Model.Assign<T> | Model.Callback<T>,
-  repeat?: boolean){
+  argument?: Model.Argument<T>){
 
   const context = Context.use(true);
   const render = Pragma.useFactory((refresh) => {
@@ -48,28 +47,11 @@ Model.use = function <T extends Model> (
       }
     }
 
-    return (props?: Model.Assign<T> | Model.Callback<T>) => {
+    return () => {
       Pragma.useLifecycle(didMount);
-
-      if(ready && repeat && props){
-        ready = false;
-
-        if(typeof props == "function"){
-          props.call(instance, instance);
-          props = undefined
-        }
-
-        const update = instance.set(props);
-
-        if(update)
-          update.then(() => ready = true);
-        else
-          ready = true;
-      }
-
       return local; 
     };
   });
 
-  return render(argument);
+  return render();
 }
