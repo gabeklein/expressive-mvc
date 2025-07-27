@@ -105,9 +105,7 @@ function ref<T>(
             })
           else {
             const get = method(key);
-            const set = (value: unknown) => {
-              update(subject, key, value)
-            };
+            const set = update.bind(null, subject, key);
 
             defineProperties(set, {
               current: { get, set },
