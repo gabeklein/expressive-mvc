@@ -64,7 +64,7 @@ function set <T> (
   argument?: set.Callback<any> | boolean){
 
   return use<T>((key, subject) => {
-    const property: Model.Descriptor = { enumerable: false };
+    const property: Model.Descriptor = {};
 
     if(typeof value == "function" || isThenable(value)){
       function init(){

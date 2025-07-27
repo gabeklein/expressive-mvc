@@ -4,14 +4,14 @@ import { set } from './set';
 
 const warn = mockWarn();
 
-it("will not enumerate a property", () => {
+it("will be enumerable", () => {
   class Test extends Model {
     value = set("foo");
   }
 
   const test = Test.new();
 
-  expect(Object.keys(test)).not.toContain("value");
+  expect(Object.keys(test)).toContain("value");
 })
 
 describe("placeholder", () => {
