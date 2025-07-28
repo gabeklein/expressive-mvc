@@ -297,7 +297,9 @@ describe("proxy", () => {
     await expect(test).toHaveUpdated();
     expect(callback).toBeCalledTimes(1);
   });
+})
 
+describe("set instruction", () => {
   it("will include computed properties", () => {
     class Subject extends Model {
       ref = ref(this);
@@ -308,6 +310,20 @@ describe("proxy", () => {
 
     expect(test.ref).toHaveProperty("foo");
     expect(test.ref.foo.current).toBe("foo");
+  })
+
+  it("will trigger callback", () => {
+    const callback = jest.fn();
+
+    class Subject extends Model {
+      ref = ref(this);
+      foo = set(() => "foo", callback);
+    }
+
+    const test = Subject.new();
+
+    test.ref.foo("bar");
+    expect(callback).toBeCalledWith("bar", "foo");
   })
 })
 
