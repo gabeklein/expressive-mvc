@@ -173,11 +173,9 @@ function createEffect<T extends Observable>(target: T, callback: Effect<T>, argu
       return { then: enqueue }
     }
 
-    const subscriber = target[Observable](onUpdate, argument === true);
-
     try {
       const exit = enter(argument === false);
-      const output = callback(subscriber);
+      const output = callback(target[Observable](onUpdate, argument === true));
       const flush = exit();
       
       ignore = false;
