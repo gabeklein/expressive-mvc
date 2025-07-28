@@ -86,14 +86,14 @@ function ref<T>(
 
   return use<T>((key, subject, state) => {
     let value = {};
-    const method = (key: string) =>
+    const method = (key: string, from: Record<string, T>) =>
       (callback?: (value: T) => void) => callback
-        ? addListener(subject, () => callback(state[key]), key)
-        : state[key];
+        ? addListener(subject, () => callback(from[key]), key)
+        : from[key];
 
     if(arg === subject)
-      subject.get(() => {
-        for(const key in state)
+      addListener(subject, () => {
+        for(const key in subject)
           if(typeof arg2 == "function")
             defineProperty(value, key, {
               configurable: true,
@@ -104,7 +104,7 @@ function ref<T>(
               }
             })
           else {
-            const get = method(key);
+            const get = method(key, subject);
             const set = update.bind(null, subject, key);
 
             defineProperties(set, {
@@ -114,15 +114,16 @@ function ref<T>(
 
             defineProperty(value, key, { value: set });
           }
-      })
+
+        return null;
+      }, true);
 
     else if(typeof arg == "object")
       throw new Error("ref instruction does not support object which is not 'this'");
 
     else {
       let unset: ((next: T) => void) | undefined;
-
-      const get = method(key);
+      const get = method(key, state);
       const set = (value?: any) => {
         if(!update(subject, key, value) || !arg)
           return;

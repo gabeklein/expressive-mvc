@@ -300,8 +300,8 @@ describe("proxy", () => {
 
   it("will include computed properties", () => {
     class Subject extends Model {
-      foo = set(() => "foo", true);
       ref = ref(this);
+      foo = set(() => "foo");
     }
 
     const test = Subject.new();
@@ -309,17 +309,6 @@ describe("proxy", () => {
     expect(test.ref).toHaveProperty("foo");
     expect(test.ref.foo.current).toBe("foo");
   })
-
-  it("will not include pending computed properties", () => {
-    class Subject extends Model {
-      foo = set(() => "foo");
-      ref = ref(this);
-    }
-
-    const test = Subject.new();
-
-    expect(test.ref).not.toHaveProperty("foo");
-  });
 })
 
 describe("mapped", () => {
