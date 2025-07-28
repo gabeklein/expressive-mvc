@@ -11,7 +11,7 @@
 type OnUpdate<T extends Observable = any> = 
   (this: T, key: Event, source: T) => (() => void) | null | void;
 
-type Effect<T extends Observable> = (this: T, proxy: T) =>
+type Effect<T extends Observable> = (proxy: T) =>
   ((update: boolean | null) => void) | Promise<void> | null | void;
 
 type Event = number | string | null | boolean | symbol;
@@ -177,7 +177,7 @@ function createEffect<T extends Observable>(target: T, callback: Effect<T>, argu
 
     try {
       const exit = enter(argument === false);
-      const output = callback.call(subscriber, subscriber);
+      const output = callback(subscriber);
       const flush = exit();
       
       ignore = false;
