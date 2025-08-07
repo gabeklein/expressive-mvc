@@ -1,5 +1,5 @@
 import Model, { Context } from '@expressive/mvc';
-import { createContext, createElement, ReactNode, useContext, useEffect, useMemo } from 'react';
+import { createContext, createElement, ReactNode, Suspense, useContext, useEffect, useMemo } from 'react';
 
 const Lookup = createContext(new Context());
 
@@ -40,9 +40,20 @@ function Consumer<T extends Model>(props: Consumer.Props<T>){
 
 declare namespace Provider {
   interface Props<T extends Model> {
+    /** Model or group of Models to provide to descendant Consumers. */
     for: Context.Accept<T>;
+
     forEach?: Context.Expect<T>;
     children?: ReactNode;
+
+    /** A fallback react tree to show when suspended. */
+    fallback?: ReactNode;
+
+    /**
+     * A name for this Suspense boundary for instrumentation purposes.
+     * The name will help identify this boundary in React DevTools.
+     */
+    name?: string | undefined;
   }
 }
 
@@ -60,7 +71,9 @@ function Provider<T extends Model>(props: Provider.Props<T>){
     }
   });
 
-  return createProvider(context, props.children);
+  const element = createProvider(context, props.children);
+
+  return props.fallback ? createElement(Suspense, props, element) : element;
 }
 
 export function createProvider(context: Context, children: ReactNode){

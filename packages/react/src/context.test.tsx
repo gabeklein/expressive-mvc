@@ -1,3 +1,5 @@
+import "@testing-library/jest-dom";
+
 import { act, render, screen } from '@testing-library/react';
 import React, { Suspense } from 'react';
 
@@ -210,6 +212,62 @@ describe("Provider", () => {
       act(() => rendered.unmount());
       expect(cleanup).toBeCalledTimes(2);
     });
+  })
+
+  describe("suspense", () => {
+    it("will render fallback prop", async () => {
+      class Foo extends Model {
+        value = set<string>();
+      }
+
+      const foo = Foo.new();
+      const Consumer = () => Foo.get().value;
+
+      const element = render(
+        <Provider for={foo} fallback={<span>Loading...</span>}>
+          <Consumer />
+        </Provider>
+      );
+
+      expect(element.getByText("Loading...")).toBeInTheDocument();
+
+      await act(async () => {
+        foo.value = "Hello World";
+      });
+      
+      expect(element.getByText("Hello World")).toBeInTheDocument();
+      expect(element.queryByText("Loading...")).not.toBeInTheDocument();
+    });
+
+    it("will ignore suspense if undefined", () => {
+      class Foo extends Model {
+        value = set<string>();
+      }
+
+      const foo = Foo.new();
+      const Consumer = () => Foo.get().value;
+
+      const element = render(
+        <Suspense fallback={<span>Foo</span>}>
+          <Provider for={foo} fallback={undefined}>
+            <Consumer />
+          </Provider>
+        </Suspense>
+      );
+
+      expect(element.queryByText("Foo")).toBeInTheDocument();
+
+      element.rerender(
+        <Suspense fallback={<span>Foo</span>}>
+          <Provider for={foo} fallback={<span>Bar</span>}>
+            <Consumer />
+          </Provider>
+        </Suspense>
+      );
+
+      expect(element.getByText("Bar")).toBeInTheDocument();
+      expect(element.queryByText("Foo")).not.toBeInTheDocument();
+    })
   })
 });
 

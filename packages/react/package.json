@@ -61,6 +61,7 @@
   },
   "devDependencies": {
     "@testing-library/react": "^16.3.0",
+    "@testing-library/jest-dom": "^6.6.4",
     "@types/react": "^18.2.14",
     "jest": "^27.5.1",
     "react": "^18.2.0",
