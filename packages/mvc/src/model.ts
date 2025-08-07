@@ -640,7 +640,7 @@ function update<T>(
   const state = STATE.get(subject)!;
 
   if(Object.isFrozen(state))
-    throw new Error(`Tried to update ${String(key)} but ${subject} is destroyed.`);
+    throw new Error(`Tried to update ${subject}.${String(key)} but model is destroyed.`);
 
   const previous = state[key] as T;
 

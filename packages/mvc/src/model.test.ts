@@ -1555,7 +1555,7 @@ describe("set method", () => {
 
       test.set(null);
 
-      expect(() => test.foo++).toThrowError("Tried to update foo but ID is destroyed.");
+      expect(() => test.foo++).toThrowError("Tried to update ID.foo but model is destroyed.");
       expect(callback).toBeCalledTimes(1);
     })
 
