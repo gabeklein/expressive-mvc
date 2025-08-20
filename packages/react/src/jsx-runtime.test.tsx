@@ -342,6 +342,91 @@ describe("Model.FC", () => {
   })
 })
 
+describe("suspense", () => {
+  it("will render fallback prop", async () => {
+    class Foo extends Model {
+      value = set<string>();
+    }
+
+    let foo!: Foo;
+    const Consumer = () => (foo = Foo.get()).value;
+
+    const element = render(
+      <Foo fallback={<span>Loading...</span>}>
+        <Consumer />
+      </Foo>
+    );
+
+    expect(element.getByText("Loading...")).toBeInTheDocument();
+
+    await act(async () => foo.value = "Hello World");
+    
+    expect(element.getByText("Hello World")).toBeInTheDocument();
+  });
+
+  it("will use fallback property first", async () => {
+    class Foo extends Model {
+      value = set<string>();
+      fallback = <span>Loading!</span>;
+    }
+
+    let foo!: Foo;
+    const Consumer = () => (foo = Foo.get()).value;
+
+    const element = render(
+      <Foo>
+        <Consumer />
+      </Foo>
+    );
+
+    expect(element.getByText("Loading!")).toBeInTheDocument();
+
+    element.rerender(
+      <Foo fallback={<span>Loading...</span>}>
+        <Consumer />
+      </Foo>
+    );
+
+    expect(element.getByText("Loading...")).toBeInTheDocument();
+
+    await act(async () => {
+      foo.value = "Hello World";
+    });
+    
+    expect(element.getByText("Hello World")).toBeInTheDocument();
+  });
+
+  it.only("will update with new fallback", async () => {
+    class Foo extends Model {
+      value = set<string>();
+      fallback = <span>Loading!</span>;
+    }
+
+    let foo!: Foo;
+    const Consumer = () => (foo = Foo.get()).value;
+
+    const element = render(
+      <Foo>
+        <Consumer />
+      </Foo>
+    );
+
+    expect(element.getByText("Loading!")).toBeInTheDocument();
+
+    await act(async () => {
+      foo.fallback = <span>Loading...</span>;
+    });
+
+    expect(element.getByText("Loading...")).toBeInTheDocument();
+
+    await act(async () => {
+      foo.value = "Hello World";
+    });
+    
+    expect(element.getByText("Hello World")).toBeInTheDocument();
+  })
+})
+
 describe("types", () => {
   it("will not compromise existing Component props", () => {
     const FunctionComponent = (props: {

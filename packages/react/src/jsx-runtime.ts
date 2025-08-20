@@ -1,5 +1,5 @@
-import { Context, METHOD, Model } from '@expressive/mvc';
-import React from 'react';
+import { Context, createEffect, METHOD, Model } from '@expressive/mvc';
+import React, { useLayoutEffect, useState } from 'react';
 import Runtime from 'react/jsx-runtime';
 
 import { createProvider } from './context';
@@ -37,9 +37,10 @@ declare module "@expressive/mvc" {
      */
     type FC<T extends Model, P extends {} = {}> = React.FC<FC.Props<T, P>>;
 
-    /** Model which is not incompatable as Component in React. */
+    /** Model which is may be used directly as a Component in React. */
     interface Compat extends Model {
       render?(props: HasProps<this>, self: this): React.ReactNode;
+      fallback?: React.ReactNode;
     }
 
     interface BaseProps<T extends Model> {
@@ -50,6 +51,12 @@ declare module "@expressive/mvc" {
       is?: (instance: T) => void | (() => void);
 
       render?(props: HasProps<T>, self: T): React.ReactNode;
+
+      /**
+       * A fallback react tree to show when suspended.
+       * If not provided, `fallback` property of the Model will be used.
+       */
+      fallback?: React.ReactNode;
     }
 
     type HasProps<T extends Model> = Partial<Pick<T, Exclude<keyof T, keyof Model>>>;
@@ -89,21 +96,37 @@ function MC<T extends Model.Compat>(
   this: Model.Init<T>,
   props: Model.Props<T>
 ) {
-  const local = this.use((self) => {
+  const model = this.use((self) => {
     self.set(props as Model.Assign<T>);
 
     if(props.is)
       return props.is(self);
   });
 
-  local.set(props as Model.Assign<T>);
+  model.set(props as Model.Assign<T>);
 
-  const render = METHOD.get(local.render) || props.render;
+  const render = METHOD.get(model.render) || props.render;
+  const children = render
+    ? render.call(model, props as Model.HasProps<T>, model)
+    : props.children;
 
-  return createProvider(
-    Context.get(local)!,
-    render ? render.call(local, props as Model.HasProps<T>, local) : props.children
-  );
+  const fallback = props.fallback || "fallback" in model && jsx(Fallback, { model });
+
+  return createProvider(Context.get(model)!, children, fallback, String(model));
+}
+
+const Fallback = (props: { model: Model.Compat }) => {
+  const [fallback, setFallback] = useState<React.ReactNode | null>(null);
+
+  useLayoutEffect(() => {
+    const done = createEffect(props.model, (x) => {
+      setFallback(x.fallback);
+    });
+
+    return () => done();
+  }, [props.model]);
+
+  return fallback;
 }
 
 const RENDER = new WeakMap<Function, React.ComponentType>();

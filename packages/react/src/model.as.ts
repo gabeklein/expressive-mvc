@@ -15,6 +15,7 @@ declare module '@expressive/mvc' {
         & Partial<Pick<T, Exclude<keyof T, keyof Model>>>
         & {
           is?: (instance: T) => void | (() => void);
+          fallback?: React.ReactNode;
         }
     }
 
@@ -24,7 +25,7 @@ declare module '@expressive/mvc' {
   }
 }
 
-Model.as = function <T extends Model, P extends Model.Assign<T>> (
+Model.as = function <T extends Model.Compat, P extends Model.Assign<T>> (
   this: Model.Init<T>,
   render: (props: P, self: T) => React.ReactNode
 ){
@@ -41,7 +42,12 @@ Model.as = function <T extends Model, P extends Model.Assign<T>> (
 
     local.set(props);
 
-    return createProvider(Context.get(local)!, render(props, local));
+    return createProvider(
+      Context.get(local)!,
+      render(props, local),
+      props.fallback || local.fallback,
+      String(local)
+    );
   }
 
   Component.Model = this;

@@ -1,3 +1,5 @@
+import "@testing-library/jest-dom";
+
 import { Model } from "@expressive/mvc";
 
 expect.extend({

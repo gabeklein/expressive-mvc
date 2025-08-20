@@ -70,18 +70,25 @@ function Provider<T extends Model>(props: Provider.Props<T>){
         model.set(cleanup, null);
     }
   });
-
-  const element = createProvider(context, props.children);
-
-  return props.fallback ? createElement(Suspense, props, element) : element;
+  
+  return createProvider(context, props.children, props.fallback, props.name);
 }
 
-export function createProvider(context: Context, children: ReactNode){
-  return createElement(Lookup.Provider, {
+export function createProvider(
+  context: Context,
+  children: ReactNode,
+  fallback?: ReactNode,
+  name?: string | undefined){
+
+  const element = createElement(Lookup.Provider, {
     key: context.id,
     value: context,
     children
   });
+
+  return fallback !== undefined ?
+    createElement(Suspense, { fallback, name }, element) :
+    element;
 }
 
 export { Consumer, Provider, Context }

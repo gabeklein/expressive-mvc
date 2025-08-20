@@ -177,3 +177,54 @@ it("will trigger set instruction", () => {
 
   expect(didSet).toBeCalled();
 })
+
+describe("suspense", () => {
+  it("will render fallback prop", async () => {
+    class Foo extends Model {
+      value = set<string>();
+    }
+
+    let foo!: Foo;
+    const Provider = Foo.as(() => <Consumer />)
+
+    const Consumer = () => (foo = Foo.get()).value;
+
+    const element = render(
+      <Provider fallback={ <span>Loading...</span>} />
+    );
+
+    expect(element.getByText("Loading...")).toBeInTheDocument();
+
+    await act(async () => foo.value = "Hello World");
+    
+    expect(element.getByText("Hello World")).toBeInTheDocument();
+  });
+
+  it("will use fallback property first", async () => {
+    class Foo extends Model {
+      value = set<string>();
+      fallback = <span>Loading!</span>;
+    }
+
+    let foo!: Foo;
+    const Provider = Foo.as(() => <Consumer />)
+
+    const Consumer = () => (foo = Foo.get()).value;
+
+    const element = render(<Provider />);
+
+    expect(element.queryByText("Loading!")).toBeInTheDocument();
+
+    element.rerender(
+      <Provider fallback={ <span>Loading...</span>} />
+    );
+
+    expect(element.getByText("Loading...")).toBeInTheDocument();
+
+    await act(async () => {
+      foo.value = "Hello World";
+    });
+    
+    expect(element.getByText("Hello World")).toBeInTheDocument();
+  });
+})
