@@ -516,6 +516,23 @@ describe("get method", () => {
       
       await expect(suspense).resolves.toBe("foobar");
     })
+
+    it("will get unbound method", () => {
+      class Test extends Model {
+        value = "foo";
+
+        method(){
+          return this.value;
+        }
+      }
+
+      const { method, is: test } = Test.new();
+
+      const test2 = Test.new({ value: "bar" });
+
+      expect(method.call(test2)).toBe("foo");
+      expect(test.get("method").call(test2)).toBe("bar");
+    })
   })
 
   describe("callback", () => {

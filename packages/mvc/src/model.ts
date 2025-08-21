@@ -583,6 +583,9 @@ function fetch(subject: Model, property: string, required?: boolean){
       return value;
   }
 
+  if(METHODS.get(subject.constructor as Model.Init)!.has(property))
+    return METHOD.get((subject as any)[property]);
+
   const error = new Error(`${subject}.${property} is not yet available.`);
   const promise = new Promise<any>((resolve, reject) => {
     addListener(subject, key => {
