@@ -132,7 +132,7 @@ describe("property", () => {
     const callback = jest.fn()
 
     class Subject extends Model {
-      ref = ref<string>(callback);
+      ref = ref<string | null>(callback);
     }
 
     const state = Subject.new();
@@ -148,7 +148,7 @@ describe("property", () => {
     const callback = jest.fn()
 
     class Subject extends Model {
-      ref = ref<string>(callback, false);
+      ref = ref<string | null>(callback, false);
     }
 
     const state = Subject.new();

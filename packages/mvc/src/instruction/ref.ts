@@ -9,10 +9,10 @@ declare namespace ref {
     ((next: T | null) => void) | Promise<void> | void | boolean;
 
   interface Object<T = any> {
-    (next: T | null): void;
+    (value: T): void;
 
     /** Current value held by this reference. */
-    current: T | null;
+    current: T;
 
     /** 
      * Subscribe to changes of this reference.
