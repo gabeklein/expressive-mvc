@@ -1,8 +1,9 @@
-import { Context, METHOD, Model } from '@expressive/mvc';
+import { Context, createEffect, METHOD, Model } from '@expressive/mvc';
 import React from 'react';
 import Runtime from 'react/jsx-runtime';
 
 import { createProvider } from './context';
+import { Pragma } from './adapter';
 
 declare module "@expressive/mvc" {
   namespace Model {
@@ -85,7 +86,7 @@ export declare namespace JSX {
   interface IntrinsicElements extends React.JSX.IntrinsicElements {}
 }
 
-function MC<T extends Model.Compat>(
+function TC<T extends Model.Compat>(
   this: Model.Init<T>,
   props: Model.Props<T>
 ) {
@@ -106,19 +107,58 @@ function MC<T extends Model.Compat>(
   );
 }
 
-const RENDER = new WeakMap<Function, React.ComponentType>();
+function MC<T extends Model.Compat>(this: T, props: Model.Props<T>){
+  const r = Pragma.useFactory((refresh) => {
+    let element: React.ReactNode;
+    let ready: boolean | undefined;
+
+    createEffect(this, self => {
+      const render = METHOD.get(this.render) || self.render;
+
+      element = createProvider(
+        Context.get(this)!,
+        render ? render.call(self, props as Model.HasProps<T>, self) : props.children
+      );
+
+      if(ready)
+        refresh();
+    })
+
+    function didMount(){
+      ready = true;
+      return () => {};
+    }
+
+    return (p: Model.Props<T>) => {
+      this.set(props as Model.Assign<T>);
+      const render = METHOD.get(this.render) || p.render;
+      Pragma.useLifecycle(didMount);
+
+      return createProvider(
+        Context.get(this)!,
+        render ? render.call(this, props as Model.HasProps<T>, this) : props.children
+      );
+    }
+  })
+
+  return r(props);
+}
+
+const RENDER = new WeakMap<Function | Model, React.ComponentType>();
 
 export function compat(
   this: (type: React.ElementType, ...args: any[]) => React.ReactElement,
-  type: React.ElementType | Model.Init, ...args: any[]): React.ReactElement {
+  type: React.ElementType | Model.Init | Model.Compat, ...args: any[]): React.ReactElement {
 
-  if(typeof type == "function")
+  if(type instanceof Model)
+    type = MC.bind(type);
+  else if(typeof type == "function")
     if(RENDER.has(type))
       type = RENDER.get(type)!;
     else if(typeof type == "function")
       RENDER.set(type, type = (
         type.prototype instanceof Model ?
-          MC.bind(type as Model.Init) :
+          TC.bind(type as Model.Init) :
         type as React.ComponentType
       ));
 
