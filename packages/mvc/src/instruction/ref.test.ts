@@ -16,6 +16,17 @@ describe("property", () => {
     expect(state.ref.current).toBe("foobar");
   })
 
+  it('will reference parent', () => {
+    class Subject extends Model {
+      ref = ref<string>();
+    }
+
+    const state = Subject.new();
+  
+    expect(state.ref.is).toBe(state);
+    expect(state.ref.key).toBe("ref");
+  });
+
   it('will get value from ref-object', async () => {
     class Subject extends Model {
       ref = ref<string>();
@@ -297,6 +308,23 @@ describe("proxy", () => {
     await expect(test).toHaveUpdated();
     expect(callback).toBeCalledTimes(1);
   });
+
+  it('will reference parent', () => {
+    class Subject extends Model {
+      refs = ref(this);
+      foo = "foo";
+      bar = "bar";
+    }
+
+    const { is: subject, refs } = Subject.new();
+    
+    expect(refs.foo.is).toBe(subject);
+    expect(refs.bar.is).toBe(subject);
+
+    expect(refs.foo.key).toBe("foo");
+    expect(refs.bar.key).toBe("bar");
+  });
+
 })
 
 describe("set instruction", () => {

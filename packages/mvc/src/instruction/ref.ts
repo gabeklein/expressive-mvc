@@ -14,6 +14,12 @@ declare namespace ref {
     /** Current value held by this reference. */
     current: T;
 
+    /** Model instance this reference belongs to. */
+    is: Model;
+
+    /** Key of property on model this reference belongs to. */
+    key: string;
+
     /** 
      * Subscribe to changes of this reference.
      * 
@@ -109,7 +115,9 @@ function ref<T>(
 
             defineProperties(set, {
               current: { get, set },
-              get: { value: get }
+              get: { value: get },
+              is: { value: subject },
+              key: { value: key },
             });
 
             defineProperty(value, key, { value: set });
@@ -149,7 +157,9 @@ function ref<T>(
       state[key] = null;
       value = defineProperties(set, {
         current: { get, set },
-        get: { value: get }
+        get: { value: get },
+        is: { value: subject },
+        key: { value: key },
       }) as ref.Object<T>;
     }
 
