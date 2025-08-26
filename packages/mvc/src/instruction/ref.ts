@@ -9,8 +9,6 @@ declare namespace ref {
     ((next: T | null) => void) | Promise<void> | void | boolean;
 
   interface Object<T = any> {
-    (value: T): void;
-
     /** Current value held by this reference. */
     current: T;
 
@@ -155,11 +153,8 @@ function ref<T>(
       };
   
       state[key] = null;
-      value = defineProperties(set, {
-        current: { get, set },
-        get: { value: get },
-        is: { value: subject },
-        key: { value: key },
+      value = defineProperties({ get, key, is: subject }, {
+        current: { get, set }
       }) as ref.Object<T>;
     }
 

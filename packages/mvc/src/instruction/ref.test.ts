@@ -77,25 +77,7 @@ describe("property", () => {
     await expect(state).toHaveUpdated();
     expect(didCallback).toBeCalledWith();
   })
-  
-  it('will update "current" when property invoked', async () => {
-    class Subject extends Model {
-      ref = ref<string>();
-    }
 
-    const state = Subject.new();
-    const didUpdate = jest.fn();
-
-    state.set((key) => {
-      if(key == "ref")
-        didUpdate();
-    })
-
-    state.ref("foobar");
-  
-    await expect(state).toHaveUpdated();
-    expect(didUpdate).toBeCalledWith();
-  })
   
   it('will invoke callback', async () => {
     const didTrigger = jest.fn();
@@ -139,7 +121,7 @@ describe("property", () => {
     expect(didTrigger).toBeCalled();
   })
 
-  it('will not callback when gets null', async () => {
+  it('will not callback when set to null', async () => {
     const callback = jest.fn()
 
     class Subject extends Model {
@@ -148,10 +130,10 @@ describe("property", () => {
 
     const state = Subject.new();
 
-    state.ref("hello");
+    state.ref.current = "hello"
     expect(callback).toBeCalledWith("hello");
 
-    state.ref(null);
+    state.ref.current = null;
     expect(callback).not.toBeCalledWith(null);
   });
 
@@ -164,10 +146,10 @@ describe("property", () => {
 
     const state = Subject.new();
 
-    state.ref("hello");
+    state.ref.current = "hello";
     expect(callback).toBeCalledWith("hello");
 
-    state.ref(null);
+    state.ref.current = null;
     expect(callback).toBeCalledWith(null);
   });
 
@@ -185,12 +167,12 @@ describe("property", () => {
     const effect = jest.fn();
     const state = Subject.new();
     
-    state.hello("Hola");
+    state.hello.current = "Hola";
     await expect(state).toHaveUpdated(); 
 
     expect(effect).toBeCalledWith("Hola World!");
 
-    state.hello("Bonjour");
+    state.hello.current = "Bonjour";
     await expect(state).toHaveUpdated();
 
     expect(effect).toBeCalledWith("Bonjour World!");
@@ -210,7 +192,7 @@ describe("property", () => {
     const test = Subject.new();
     const values = { ref: "foobar" }
   
-    test.ref(values.ref);
+    test.ref.current = values.ref;
   
     expect(test.get()).toMatchObject(values);
   })
@@ -241,7 +223,7 @@ describe("property", () => {
     
     expect(effect).toBeCalledTimes(1);
 
-    test.ref("foobar");
+    test.ref.current = "foobar";
 
     await expect(test).toHaveUpdated();
     expect(effect).toBeCalledTimes(2);
@@ -281,8 +263,8 @@ describe("proxy", () => {
     expect(test.foo).toBe("foo");
     expect(test.bar).toBe("bar");
 
-    test.refs.foo("bar");
-    test.refs.bar("foo");
+    test.refs.foo.current = "bar";
+    test.refs.bar.current = "foo";
 
     await expect(test).toHaveUpdated();
 
@@ -350,7 +332,7 @@ describe("set instruction", () => {
 
     const test = Subject.new();
 
-    test.ref.foo("bar");
+    test.ref.foo.current = "bar";
     expect(callback).toBeCalledWith("bar", "foo");
   })
 })
