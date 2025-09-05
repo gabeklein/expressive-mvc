@@ -467,9 +467,8 @@ describe("get method", () => {
 
       expect(test.get("foo")).toBe(null);
 
-      test.foo("foobar");
+      test.foo.current = "foobar";
 
-      expect<ref.Object>(test.foo).toBeInstanceOf(Function);
       expect<string | null>(test.get("foo")).toBe("foobar");
     })
 
