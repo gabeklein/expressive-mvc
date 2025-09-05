@@ -98,7 +98,7 @@ function MC<T extends Model.Compat>(
 
   local.set(props as Model.Assign<T>);
 
-  const render = METHOD.get(local.render) || props.render;
+  const render = props.render || METHOD.get(local.render) || local.render;
 
   return createProvider(
     Context.get(local)!,
