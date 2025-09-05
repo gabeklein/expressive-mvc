@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.69.0](https://github.com/gabeklein/expressive-mvc/compare/v0.68.0...v0.69.0) (2025-09-05)
+
+
+### Bug Fixes
+
+* support assigning function components as render method ([fade81e](https://github.com/gabeklein/expressive-mvc/commit/fade81eba5a049cc1aa30366823516142bc449dc))
+
+
+
+
+
 # [0.68.0](https://github.com/gabeklein/expressive-mvc/compare/v0.67.0...v0.68.0) (2025-08-21)
 
 
