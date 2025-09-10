@@ -1682,6 +1682,32 @@ describe("set method", () => {
       expect(test.foo).toBe("bar");
     })
   })
+
+  it("will trigger normal setters", async () => {
+    let observed: string | null = null;
+
+    class Test extends Model {
+      _foo = "foo";
+
+      get foo(){
+        return this._foo;
+      }
+
+      set foo(value: string){
+        observed = value;
+        this._foo = value;
+      }
+    }
+
+    const test = Test.new();
+
+    test.set({ foo: "bar" });
+
+    await expect(test).toHaveUpdated("_foo");
+
+    expect(test.foo).toBe("bar");
+    expect(observed).toBe("bar");
+  })
 })
 
 describe("new method (static)", () => {

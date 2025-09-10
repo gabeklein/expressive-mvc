@@ -428,7 +428,10 @@ function assign(subject: Model, data: Model.Assign<Model>, silent?: boolean){
       const desc = Object.getOwnPropertyDescriptor(subject, key)!;
       const set = desc && desc.set as (value: any, silent?: boolean) => void;
 
-      set.call(subject, data[key], silent);
+      if(set)
+        set.call(subject, data[key], silent);
+      else
+        (subject as any)[key] = data[key];
     }
   }
 }
