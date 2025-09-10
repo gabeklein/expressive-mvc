@@ -1,3 +1,5 @@
+import type { Model } from "./model";
+
 /**
  * Update callback function.
  * 
@@ -149,9 +151,9 @@ function enqueue(eventHandler: (() => void)){
  * @param callback - Function to invoke when values change.
  * @param requireValues - If `true` will throw if accessing a value which is `undefined`.
  */
-function createEffect<T extends Observable>(target: T, callback: Effect<Required<T>>, requireValues: true): () => void;
-function createEffect<T extends Observable>(target: T, callback: Effect<T>, recursive?: boolean): () => void;
-function createEffect<T extends Observable>(target: T, callback: Effect<T>, argument?: boolean){
+function createEffect<T extends Model>(target: T, callback: Effect<Required<T>>, requireValues: true): () => void;
+function createEffect<T extends Model>(target: T, callback: Effect<T>, recursive?: boolean): () => void;
+function createEffect<T extends Model>(target: T, callback: Effect<T>, argument?: boolean){
   let unset: ((update: boolean | null) => void) | undefined;
   let reset: (() => void) | null | undefined;
 
@@ -175,7 +177,7 @@ function createEffect<T extends Observable>(target: T, callback: Effect<T>, argu
 
     try {
       const exit = enter(argument === false);
-      const output = callback(target[Observable](onUpdate, argument === true) || target);
+      const output = callback(target[Observable](onUpdate, argument === true));
       const flush = exit();
       
       ignore = false;
