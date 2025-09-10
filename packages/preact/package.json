@@ -18,8 +18,8 @@
     "build": "tsup src/index.ts --dts"
   },
   "dependencies": {
-    "@expressive/mvc": "^0.69.0",
-    "@expressive/react": "^0.69.0"
+    "@expressive/mvc": "^0.69.1",
+    "@expressive/react": "^0.69.1"
   },
   "devDependencies": {
     "preact": "^10.0.0",
@@ -28,5 +28,5 @@
   "peerDependencies": {
     "preact": "^10.0.0"
   },
-  "version": "0.69.0"
+  "version": "0.69.1"
 }

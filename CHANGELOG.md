@@ -3,6 +3,20 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.69.1](https://github.com/gabeklein/expressive-mvc/compare/v0.69.0...v0.69.1) (2025-09-10)
+
+
+### Bug Fixes
+
+* add coverage for Observable method ([b7a7d9e](https://github.com/gabeklein/expressive-mvc/commit/b7a7d9e06731df3a628303266f42cf33f78e192d))
+* correct signature of createEffect ([1174916](https://github.com/gabeklein/expressive-mvc/commit/11749166f9eb573fef07308b3f542d05ef9317bf))
+* enhance setter handling in assign function to prevent errors ([86fa3b8](https://github.com/gabeklein/expressive-mvc/commit/86fa3b8677659ae0c95ee25ad46c9f8886ff5a6c))
+* update Observable interface to allow void, returning `this` ([41fbca8](https://github.com/gabeklein/expressive-mvc/commit/41fbca881e323b249925a07fb7e51108e4ab29d3))
+
+
+
+
+
 # [0.69.0](https://github.com/gabeklein/expressive-mvc/compare/v0.68.0...v0.69.0) (2025-09-05)
 
 
