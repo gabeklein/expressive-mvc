@@ -285,8 +285,7 @@ describe("observable", () => {
       watch?: Observable.Callback = undefined;
   
       [Observable](onUpdate: Observable.Callback) {
-        this.watch = onUpdate
-        return this;
+        this.watch = onUpdate;
       }
 
       async update(value: string){

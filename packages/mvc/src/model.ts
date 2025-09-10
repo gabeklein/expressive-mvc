@@ -156,7 +156,7 @@ abstract class Model implements Observable {
       watch.add(key);
 
       if(value instanceof Object && Observable in value)
-        return value[Observable](callback, required);
+        return value[Observable](callback, required) || value;
 
       return value;
     });

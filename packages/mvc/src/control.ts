@@ -23,7 +23,7 @@ declare namespace Observable {
 }
 
 interface Observable {
-  [Observable](callback: Observable.Callback, required?: boolean): this;
+  [Observable](callback: Observable.Callback, required?: boolean): this | void;
 }
 
 const Observable = Symbol("observe");
@@ -175,7 +175,7 @@ function createEffect<T extends Observable>(target: T, callback: Effect<T>, argu
 
     try {
       const exit = enter(argument === false);
-      const output = callback(target[Observable](onUpdate, argument === true));
+      const output = callback(target[Observable](onUpdate, argument === true) || target);
       const flush = exit();
       
       ignore = false;
