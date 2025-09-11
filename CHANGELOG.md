@@ -3,6 +3,21 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.69.2](https://github.com/gabeklein/expressive-mvc/compare/v0.69.1...v0.69.2) (2025-09-11)
+
+
+### Bug Fixes
+
+* update Props type to omit Model keys for better compatibility ([77a1cbe](https://github.com/gabeklein/expressive-mvc/commit/77a1cbef3faddeebab5f57e034ad798556a8325f))
+
+
+
+## [0.63.6](https://github.com/gabeklein/expressive-mvc/compare/v0.63.5...v0.63.6) (2025-06-26)
+
+
+
+
+
 ## [0.69.1](https://github.com/gabeklein/expressive-mvc/compare/v0.69.0...v0.69.1) (2025-09-10)
 
 
