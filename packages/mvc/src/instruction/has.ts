@@ -1,4 +1,4 @@
-import { context } from '../control';
+import { enter } from '../control';
 import { Context } from '../context';
 import { Model, update } from '../model';
 import { use } from './use';
@@ -25,36 +25,41 @@ function has <T extends Model> (
     if(Model.is(arg1))
       Context.get(subject, ctx => {
         ctx.has(arg1, model => {
-          const ctx = context();
           let remove: (() => void) | undefined;
           let disconnect: (() => void) | undefined;
+          let flush: (() => void) | undefined;
   
           if(applied.has(model))
             return;
           
-          const notify = APPLY.get(model);
-  
-          if(notify){
-            const after = notify(subject);
-  
-            if(after === false)
-              return;
-  
-            if(typeof after == "function")
-              disconnect = after;
-          }
-  
-          if(typeof arg2 == "function"){
-            const done = arg2(model, subject);
-  
-            if(done === false)
-              return false;
+          const exit = enter();
 
-            if(typeof done == "function")
-              remove = done;
-          }
+          try {
+            const notify = APPLY.get(model);
 
-          const flush = ctx();
+            if(notify){
+              const after = notify(subject);
+    
+              if(after === false)
+                return;
+    
+              if(typeof after == "function")
+                disconnect = after;
+            }
+    
+            if(typeof arg2 == "function"){
+              const done = arg2(model, subject);
+    
+              if(done === false)
+                return false;
+
+              if(typeof done == "function")
+                remove = done;
+            }
+          }
+          finally {
+            flush = exit();
+          }
   
           applied.add(model);
           reset();
@@ -75,7 +80,7 @@ function has <T extends Model> (
             remove = undefined;
           }
   
-          const ignore = model.set(null, done);
+          const ignore = model.set(done, null);
           
           return done;
         })
@@ -107,7 +112,10 @@ function has <T extends Model> (
       });
     }
 
-    return { value: [] };
+    return {
+      value: [],
+      enumerable: false
+    };
   })
 }
 

@@ -10,50 +10,60 @@ import type { Model } from "./model";
  *   - `null` - terminal event; instance is expired.
  * @param source - Instance of Model for which update has occured.
  */
-type OnUpdate<T extends Model = any> = 
-  (this: T, key: unknown, source: T) => (() => void) | null | void;
+type OnUpdate<T extends Observable = any> = 
+  (this: T, key: Event, source: T) => (() => void) | null | void;
 
-type OnAccess<T extends Model = any, R = unknown> =
-  (from: T, key: string | number, value: R) => unknown;
-
-type Effect<T extends Model> = (this: T, proxy: T) =>
+type Effect<T extends Observable> = (proxy: T) =>
   ((update: boolean | null) => void) | Promise<void> | null | void;
 
 type Event = number | string | null | boolean | symbol;
 
+type PromiseLite<T = void> = { then: (callback: () => T) => T };
+
+declare namespace Observable {
+  export type Callback = () => void | PromiseLite;
+}
+
+interface Observable {
+  [Observable](callback: Observable.Callback, required?: boolean): this | void;
+}
+
+const Observable = Symbol("observe");
+
 /** Placeholder event determines if model is initialized or not. */
 const onReady = () => null;
 
-const LISTENERS = new WeakMap<Model, Map<OnUpdate, Set<Event> | undefined>>();
+const LISTENERS = new WeakMap<Observable, Map<OnUpdate, Set<Event> | undefined>>();
 
 /** Events pending for a given object. */
-const PENDING = new WeakMap<Model, Set<Event>>();
+const PENDING = new WeakMap<Observable, Set<Event>>();
 
 /** Update register. */
-const PENDING_KEYS = new WeakMap<Model, Set<string | number | symbol>>();
+const PENDING_KEYS = new WeakMap<Observable, Set<string | number | symbol>>();
 
 /** Central event dispatch. Bunches all updates to occur at same time. */
 const DISPATCH = new Set<() => void>();
 
-const OBSERVER = new WeakMap<Model, OnAccess>();
+function addListener<T extends Observable>(
+  subject: T, callback: OnUpdate<T>, select?: Event | Set<Event>){
 
-function addListener<T extends Model>(subject: T, callback: OnUpdate<T>, select?: Event){
   let listeners = LISTENERS.get(subject)!;
 
   if(!listeners)
     LISTENERS.set(subject, listeners = new Map([[onReady, undefined]]));
 
-  const filter = select === undefined ? undefined : new Set([select]);
+  if(select !== undefined && !(select instanceof Set))
+    select = new Set([select]);
 
-  if(!listeners.has(onReady) && !filter)
+  if(!listeners.has(onReady) && !select)
     callback.call(subject, true, subject);
 
-  listeners.set(callback, filter);
+  listeners.set(callback, select);
 
   return () => listeners.delete(callback);
 }
 
-function emit(model: Model, key: Event): void {
+function emit(model: Observable, key: Event): void {
   const listeners = LISTENERS.get(model)!;
   const notReady = listeners.has(onReady);
 
@@ -88,7 +98,7 @@ function emit(model: Model, key: Event): void {
 }
 
 function event(
-  subject: Model,
+  subject: Observable,
   key?: string | number | symbol | null,
   silent?: boolean){
 
@@ -116,20 +126,6 @@ function event(
     emit(subject, key);
 }
 
-function pending<T extends Model>(subject: T){
-  if(PENDING_KEYS.has(subject))
-    return <PromiseLike<Model.Event<T>[]>> {
-      then: (res) => new Promise<any>(res => {
-        const remove = addListener(subject, key => {
-          if(key !== true){
-            remove();
-            return res.bind(null, Array.from(PENDING_KEYS.get(subject)!));
-          }
-        });
-      }).then(res)
-    }
-}
-
 function enqueue(eventHandler: (() => void)){
   if(!DISPATCH.size)
     setTimeout(() => {
@@ -147,17 +143,6 @@ function enqueue(eventHandler: (() => void)){
   DISPATCH.add(eventHandler);
 }
 
-function createProxy<T extends Model>(from: T, observer: OnAccess<T>){
-  const proxy = Object.create(from) as T;
-  OBSERVER.set(proxy, observer);
-  return proxy;
-}
-
-function watch(from: any, key: string | number, value?: any){
-  const access = OBSERVER.get(from);
-  return access ? access(from, key, value) : value;
-}
-
 /**
  * Create a side-effect which will update whenever values accessed change.
  * Callback is called immediately and whenever values are stale.
@@ -169,61 +154,37 @@ function watch(from: any, key: string | number, value?: any){
 function createEffect<T extends Model>(target: T, callback: Effect<Required<T>>, requireValues: true): () => void;
 function createEffect<T extends Model>(target: T, callback: Effect<T>, recursive?: boolean): () => void;
 function createEffect<T extends Model>(target: T, callback: Effect<T>, argument?: boolean){
-  const listeners = LISTENERS.get(target)!;
-
   let unset: ((update: boolean | null) => void) | undefined;
   let reset: (() => void) | null | undefined;
 
-  function invoke(){
-    let stale: boolean | undefined;
+  function invoke() {
+    let ignore: boolean = true;
 
-    const subscriber = createProxy(target, access);
+    function onUpdate(): void | PromiseLite<void> {
+      if (ignore || reset === null)
+        return;
 
-    LISTENERS.set(subscriber, listeners);
-
-    function onUpdate() {
-      if (stale)
-        return null;
-
-      stale = true;
+      ignore = true;
 
       if (reset && unset) {
         unset(true);
         unset = undefined;
       }
 
-      return reset;
-    }
-
-    function access(from: Model, key: string | number, value: any) {
-      if(value === undefined && argument)
-        throw new Error(`${from}.${key} is required in this context.`);
-
-      const listeners = LISTENERS.get(from)!;
-      let listener = listeners.get(onUpdate);
-
-      if(!listener)
-        listeners.set(onUpdate, listener = new Set);
-
-      listener.add(key);
-
-      const nested = LISTENERS.get(value);
-
-      if(nested)
-        LISTENERS.set(value = createProxy(value, access), nested);
-
-      return value;
+      enqueue(invoke);
+      return { then: enqueue }
     }
 
     try {
-      const ctx = context(argument === false)
-      const ret = callback.call(subscriber, subscriber);
-      const flush = ctx();
-
-      reset = ret === null ? null : invoke;
+      const exit = enter(argument === false);
+      const output = callback(target[Observable](onUpdate, argument === true));
+      const flush = exit();
+      
+      ignore = false;
+      reset = output === null ? null : invoke;
       unset = key => {
-        if(typeof ret == "function")
-          ret(key);
+        if(typeof output == "function")
+          output(key);
 
         flush();
       }
@@ -264,29 +225,24 @@ function createEffect<T extends Model>(target: T, callback: Effect<T>, argument?
 
 let EffectContext: Set<() => void> | undefined;
 
-export function context(ignore?: boolean){
+export function enter(ignore?: boolean){
   if(ignore)
     return () => () => {};
 
-  const current = EffectContext;
-  const ctx = EffectContext = new Set;
+  const last = EffectContext;
+  const context = EffectContext = new Set;
 
   return () => {
-    EffectContext = current;
-    
-    return () => {
-      ctx.forEach(fn => fn());
-    }
+    EffectContext = last;
+    return () => context.forEach(fn => fn());
   }
 }
 
 export {
   addListener,
   createEffect,
-  createProxy,
   event,
   OnUpdate,
   PENDING_KEYS,
-  pending,
-  watch
+  Observable
 }

@@ -467,9 +467,8 @@ describe("get method", () => {
 
       expect(test.get("foo")).toBe(null);
 
-      test.foo("foobar");
+      test.foo.current = "foobar";
 
-      expect<ref.Object>(test.foo).toBeInstanceOf(Function);
       expect<string | null>(test.get("foo")).toBe("foobar");
     })
 
@@ -515,6 +514,23 @@ describe("get method", () => {
       test.foo = "foobar";
       
       await expect(suspense).resolves.toBe("foobar");
+    })
+
+    it("will get unbound method", () => {
+      class Test extends Model {
+        value = "foo";
+
+        method(){
+          return this.value;
+        }
+      }
+
+      const { method, is: test } = Test.new();
+
+      const test2 = Test.new({ value: "bar" });
+
+      expect(method.call(test2)).toBe("foo");
+      expect(test.get("method").call(test2)).toBe("bar");
     })
   })
 
@@ -1188,7 +1204,7 @@ describe("get method", () => {
 })
 
 describe("set method", () => {
-  describe("update", () => {
+  describe("event", () => {
     class Test extends Model {
       foo = "foo";
     }
@@ -1230,6 +1246,88 @@ describe("set method", () => {
       await expect(test).toHaveUpdated(42);
     });
   });
+
+  describe("update", () => {
+    it("will assign a value", async () => {
+      class Test extends Model {
+        foo = "foo";
+      }
+
+      const test = Test.new();
+
+      test.set("foo", "bar");
+
+      await expect(test).toHaveUpdated("foo");
+
+      expect(test.foo).toBe("bar");
+    })
+
+    it("will assign a value to ref", async () => {
+      class Test extends Model {
+        foo = ref<string>();
+      }
+
+      const test = Test.new();
+
+      test.set("foo", "bar");
+
+      await expect(test).toHaveUpdated("foo");
+
+      expect(test.foo.current).toBe("bar");
+    })
+
+    it("will add property to tracking", async () => {
+      class Test extends Model {
+        foo = "foo";
+      }
+
+      interface Test {
+        bar: string;
+      }
+
+      const test = Test.new();
+      const mock = jest.fn();
+
+      test.get(({ foo, bar }) => {
+        mock(foo, bar);
+      });
+
+      test.foo = "bar";
+
+      await expect(test).toHaveUpdated("foo");
+      expect(mock).toBeCalledWith("bar", undefined);
+
+      test.bar = "bob";
+
+      expect(test.bar).toBe("bob");
+
+      // bar assignment is ignored because it's not formally defined
+      await expect(test).not.toHaveUpdated("bar");
+      expect(mock).not.toBeCalledWith("bar", "bob");
+
+      // assign bar formally adding to model
+      test.set("bar", "baz", true);
+      
+      // bar is redefined
+      expect(test.bar).toBe("baz");
+      expect(test).toHaveUpdated("bar");
+      
+      // The effect isn't observing bar yet
+      expect(mock).not.toBeCalledWith("bar", "baz");
+
+      // force refresh using foo instead
+      test.set("foo");
+      await expect(test).toHaveUpdated("foo");
+      expect(mock).toBeCalledWith("bar", "baz");
+
+      test.bar = "qux";
+
+      // updates no longer ignored
+      await expect(test).toHaveUpdated("bar");
+      expect(test.bar).toBe("qux");
+      expect(mock).toBeCalledWith("bar", "qux");
+    })
+  })
 
   describe("promise-like", () => {
     it("will resolve update frame", async () => {
@@ -1332,7 +1430,7 @@ describe("set method", () => {
       const test = Test.new();
       const didUpdateFoo = jest.fn();
       
-      test.set("foo", didUpdateFoo);
+      test.set(didUpdateFoo, "foo");
 
       test.foo = "bar";
       test.foo = "baz";
@@ -1351,7 +1449,7 @@ describe("set method", () => {
       const test = Test.new();
       const didUpdateFoo = jest.fn(() => null);
 
-      test.set("foo", didUpdateFoo);
+      test.set(didUpdateFoo, "foo");
 
       test.foo = "bar";
       test.foo = "baz";
@@ -1367,7 +1465,7 @@ describe("set method", () => {
       const test = Test.new();
       const didDestroy = jest.fn();
 
-      test.set(null, didDestroy);
+      test.set(didDestroy, null);
       test.set(null);
 
       expect(didDestroy).toBeCalledWith(null, test);
@@ -1473,7 +1571,7 @@ describe("set method", () => {
 
       test.set(null);
 
-      expect(() => test.foo++).toThrowError("Tried to update foo but ID is destroyed.");
+      expect(() => test.foo++).toThrowError("Tried to update ID.foo but model is destroyed.");
       expect(callback).toBeCalledTimes(1);
     })
 
@@ -1583,6 +1681,32 @@ describe("set method", () => {
 
       expect(test.foo).toBe("bar");
     })
+  })
+
+  it("will trigger normal setters", async () => {
+    let observed: string | null = null;
+
+    class Test extends Model {
+      _foo = "foo";
+
+      get foo(){
+        return this._foo;
+      }
+
+      set foo(value: string){
+        observed = value;
+        this._foo = value;
+      }
+    }
+
+    const test = Test.new();
+
+    test.set({ foo: "bar" });
+
+    await expect(test).toHaveUpdated("_foo");
+
+    expect(test.foo).toBe("bar");
+    expect(observed).toBe("bar");
   })
 })
 

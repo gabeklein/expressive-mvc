@@ -1,4 +1,4 @@
-import { createEffect, createProxy } from './control';
+import { createEffect, Observable } from './control';
 import { set } from './instruction/set';
 import { use } from './instruction/use';
 import { mockError } from './mocks';
@@ -99,6 +99,103 @@ describe("effect", () => {
     expect(didInvoke).not.toBeCalledWith({ foo: 2, bar: 1 });
     expect(didInvoke).toBeCalledTimes(4);
   })
+
+  it("will ignore circular update", async () => {
+    class Test extends Model {
+      foo = 1;
+      bar?: number = undefined;
+    }
+
+    const didUpdate = jest.fn();
+    const test = Test.new();
+
+    createEffect(test, ({ foo, bar }) => {
+      didUpdate(foo, bar);
+      test.bar = foo;
+    });
+
+    expect(didUpdate).toBeCalledTimes(1);
+    expect(didUpdate).toHaveBeenCalledWith(1, undefined);
+
+    // is syncronously 1 after effect did run.
+    expect(test.bar).toBe(1);
+
+    // flush events to check if effect updates.
+    await expect(test).toHaveUpdated("bar");
+    expect(didUpdate).not.toHaveBeenCalledWith(1, 1);
+
+    test.foo = 2;
+    await expect(test).toHaveUpdated("foo");
+    expect(didUpdate).toHaveBeenCalledWith(2, 1);
+
+    expect(didUpdate).toBeCalledTimes(2);
+    expect(test.bar).toBe(2);
+
+    test.foo = 3;
+    await expect(test).toHaveUpdated("foo");
+
+    expect(didUpdate).toBeCalledTimes(3);
+    expect(test.bar).toBe(3);
+  })
+
+  it("will ignore circular update", async () => {
+    class Test extends Model {
+      foo = 1;
+      bar?: number = undefined;
+    }
+
+    const didUpdate = jest.fn();
+    const test = Test.new();
+
+    createEffect(test, ({ foo, bar }) => {
+      didUpdate(foo, bar);
+      test.bar = foo;
+    });
+
+    expect(didUpdate).toBeCalledTimes(1);
+    expect(didUpdate).toHaveBeenCalledWith(1, undefined);
+
+    // is syncronously 1 after effect did run.
+    expect(test.bar).toBe(1);
+
+    // flush events to check if effect updates.
+    await expect(test).toHaveUpdated("bar");
+    expect(didUpdate).not.toHaveBeenCalledWith(1, 1);
+
+    test.foo = 2;
+    await expect(test).toHaveUpdated("foo");
+    expect(didUpdate).toHaveBeenCalledWith(2, 1);
+
+    expect(didUpdate).toBeCalledTimes(2);
+    expect(test.bar).toBe(2);
+
+    test.foo = 3;
+    await expect(test).toHaveUpdated("foo");
+
+    expect(didUpdate).toBeCalledTimes(3);
+    expect(test.bar).toBe(3);
+  })
+
+  it("will override circular update", async () => {
+    class Test extends Model {
+      foo = 1;
+      bar?: number = undefined;
+    }
+
+    const test = Test.new();
+    
+    createEffect(test, ({ foo, bar = 0 }) => {
+      test.bar = foo + bar;
+    });
+
+    expect(test.bar).toBe(1);
+
+    test.bar = 2;
+    expect(test.bar).toBe(2);
+
+    await expect(test).toHaveUpdated("bar");
+    expect(test.bar).toBe(3);
+  });
 })
 
 describe("suspense", () => {
@@ -181,34 +278,42 @@ describe("errors", () => {
   });
 })
 
-describe("proxy", () => {
-  it("will create a proxy object", () => {
-    class Test extends Model {
-      foo = 1;
-      bar = 2;
-      baz = 3;
+describe("observable", () => {
+  it.each([" (returning)", ""])(
+    "will update effect%s",
+    async (returns) => {
+      class MyObservable implements Observable {
+        value = "foo";
+        watch?: Observable.Callback = undefined;
+
+        [Observable](onUpdate: Observable.Callback) {
+          this.watch = onUpdate;
+          if (returns) return this;
+        }
+
+        async update(value: string) {
+          this.value = value;
+          if (this.watch) return this.watch();
+        }
+      }
+
+      class Test extends Model {
+        observable = new MyObservable();
+      }
+
+      const mock = jest.fn();
+      const test = Test.new();
+
+      test.get($ => {
+        mock($.observable.value);
+      });
+
+      expect(mock).toBeCalledWith("foo");
+
+      await test.observable.update("bar");
+
+      expect(mock).toBeCalledWith("bar");
+      expect(mock).toBeCalledTimes(2);
     }
-
-    const test = Test.new("Test");
-    const getter = jest.fn((
-      self: Model,
-      key: string | number,
-      value: unknown): string => {
-  
-      return `${self}.${key}=${value}`;
-    });
-  
-    const proxy = createProxy(test, getter);
-
-    expect(proxy.foo).toBe(`Test.foo=1`);
-    expect(getter).toBeCalledWith(test, "foo", 1);
-
-    expect(proxy.bar).toBe(`Test.bar=2`);
-    expect(getter).toBeCalledWith(test, "bar", 2);
-
-    expect(proxy.baz).toBe(`Test.baz=3`);
-    expect(getter).toBeCalledWith(test, "baz", 3);
-
-    expect(getter).toBeCalledTimes(3);
-  })
-})
+  );
+});

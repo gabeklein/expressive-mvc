@@ -1,4 +1,4 @@
-import { addListener, context } from '../control';
+import { addListener, enter } from '../control';
 import { Model, update } from '../model';
 import { use } from './use';
 
@@ -9,10 +9,14 @@ declare namespace ref {
     ((next: T | null) => void) | Promise<void> | void | boolean;
 
   interface Object<T = any> {
-    (next: T | null): void;
-
     /** Current value held by this reference. */
-    current: T | null;
+    current: T;
+
+    /** Model instance this reference belongs to. */
+    is: Model;
+
+    /** Key of property on model this reference belongs to. */
+    key: string;
 
     /** 
      * Subscribe to changes of this reference.
@@ -86,14 +90,14 @@ function ref<T>(
 
   return use<T>((key, subject, state) => {
     let value = {};
-    const method = (key: string) =>
+    const method = (key: string, from: Record<string, T>) =>
       (callback?: (value: T) => void) => callback
-        ? addListener(subject, () => callback(state[key]), key)
-        : state[key];
+        ? addListener(subject, () => callback(from[key]), key)
+        : from[key];
 
     if(arg === subject)
-      subject.get(() => {
-        for(const key in state)
+      addListener(subject, () => {
+        for(const key in subject)
           if(typeof arg2 == "function")
             defineProperty(value, key, {
               configurable: true,
@@ -104,27 +108,28 @@ function ref<T>(
               }
             })
           else {
-            const get = method(key);
-            const set = (value: unknown) => {
-              update(subject, key, value)
-            };
+            const get = method(key, subject);
+            const set = (x: any) => subject[key] = x;
 
             defineProperties(set, {
               current: { get, set },
-              get: { value: get }
+              get: { value: get },
+              is: { value: subject },
+              key: { value: key },
             });
 
             defineProperty(value, key, { value: set });
           }
-      })
+
+        return null;
+      }, true);
 
     else if(typeof arg == "object")
       throw new Error("ref instruction does not support object which is not 'this'");
 
     else {
       let unset: ((next: T) => void) | undefined;
-
-      const get = method(key);
+      const get = method(key, state);
       const set = (value?: any) => {
         if(!update(subject, key, value) || !arg)
           return;
@@ -135,9 +140,9 @@ function ref<T>(
         if(value === null && arg2 !== false)
           return;
 
-        const ctx = context();
+        const exit = enter();
         const out = arg.call(subject, value);
-        const flush = ctx();
+        const flush = exit();
 
         unset = key => {
           if(typeof out == "function")
@@ -148,9 +153,8 @@ function ref<T>(
       };
   
       state[key] = null;
-      value = defineProperties(set, {
-        current: { get, set },
-        get: { value: get }
+      value = defineProperties({ get, key, is: subject }, {
+        current: { get, set }
       }) as ref.Object<T>;
     }
 

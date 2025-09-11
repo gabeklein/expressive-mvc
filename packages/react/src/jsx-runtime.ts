@@ -56,7 +56,7 @@ declare module "@expressive/mvc" {
 
     type Props<T extends Model> = 
       T extends { render(props: infer P, self: any): any }
-        ? BaseProps<T> & HasProps<T> & P
+        ? BaseProps<T> & HasProps<T> & Omit<P, keyof Model>
         : BaseProps<T> & HasProps<T> & { children?: React.ReactNode };
   }
 }
@@ -98,7 +98,7 @@ function MC<T extends Model.Compat>(
 
   local.set(props as Model.Assign<T>);
 
-  const render = METHOD.get(local.render) || props.render;
+  const render = props.render || METHOD.get(local.render) || local.render;
 
   return createProvider(
     Context.get(local)!,

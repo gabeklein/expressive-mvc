@@ -59,18 +59,6 @@ Model.get = function <T extends Model, R> (
 ){
   const context = Pragma.useContext();
   const render = Pragma.useFactory((refresh) => {
-    function forceUpdate(): void;
-    function forceUpdate<T>(action: Promise<T> | (() => Promise<T>)): Promise<T>;
-    function forceUpdate<T>(action?: Promise<T> | (() => Promise<T>)){
-      if(typeof action == "function")
-        action = action();
-
-      refresh();
-
-      if(action)
-        return action.finally(refresh);
-    }
-
     const instance = context.get(this);
 
     if(!instance)
@@ -79,12 +67,12 @@ Model.get = function <T extends Model, R> (
       else
         throw new Error(`Could not find ${this} in context.`);
 
-    let unwatch: (() => void) | undefined;
+    let ready: boolean | undefined;
     let value: any;
 
-    unwatch = createEffect(instance, current => {
+    const unwatch = createEffect(instance, current => {
       if(typeof argument === "function"){
-        const next = argument.call(current, current, forceUpdate);
+        const next = argument.call(current, current, update);
 
         if(next === value)
           return;
@@ -94,7 +82,7 @@ Model.get = function <T extends Model, R> (
       else
         value = current;
 
-      if(unwatch)
+      if(ready)
         refresh();
     }, argument === true);
 
@@ -103,7 +91,6 @@ Model.get = function <T extends Model, R> (
 
       unwatch();
 
-      // TODO: ignore update if resolves to undefined or null
       value.then(x => value = x, e => error = e).finally(refresh);
       value = null;
 
@@ -118,10 +105,25 @@ Model.get = function <T extends Model, R> (
     if(value === null){
       unwatch();
       return () => null;
+    };
+
+    function update<T>(action?: Promise<T> | (() => Promise<T>)): any {
+      if(typeof action == "function")
+        action = action();
+
+      refresh();
+
+      if(action)
+        return action.finally(refresh);
+    }
+
+    function didMount(){
+      ready = true;
+      return unwatch;
     }
 
     return () => {
-      Pragma.useLifecycle(() => unwatch);
+      Pragma.useLifecycle(didMount);
       return value === undefined ? null : value;
     }
   });

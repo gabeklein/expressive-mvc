@@ -39,7 +39,7 @@ importers:
   examples/async:
     dependencies:
       '@expressive/react':
-        specifier: ^0.59.0
+        specifier: ^0.67.0
         version: link:../../packages/react
       react:
         specifier: ^18.2.0
@@ -51,7 +51,7 @@ importers:
   examples/context:
     dependencies:
       '@expressive/react':
-        specifier: ^0.59.0
+        specifier: ^0.67.0
         version: link:../../packages/react
       react:
         specifier: ^18.2.0
@@ -63,7 +63,7 @@ importers:
   examples/counter:
     dependencies:
       '@expressive/react':
-        specifier: ^0.59.0
+        specifier: ^0.67.0
         version: link:../../packages/react
       react:
         specifier: ^18.2.0
@@ -75,7 +75,7 @@ importers:
   examples/fetch:
     dependencies:
       '@expressive/react':
-        specifier: ^0.59.0
+        specifier: ^0.67.0
         version: link:../../packages/react
       react:
         specifier: ^18.2.0
@@ -87,7 +87,7 @@ importers:
   examples/forms:
     dependencies:
       '@expressive/react':
-        specifier: ^0.59.0
+        specifier: ^0.67.0
         version: link:../../packages/react
       react:
         specifier: ^18.2.0
@@ -111,10 +111,10 @@ importers:
   packages/preact:
     dependencies:
       '@expressive/mvc':
-        specifier: ^0.59.0
+        specifier: ^0.67.0
         version: link:../mvc
       '@expressive/react':
-        specifier: ^0.59.0
+        specifier: ^0.67.0
         version: link:../react
     devDependencies:
       preact:
@@ -127,9 +127,12 @@ importers:
   packages/react:
     dependencies:
       '@expressive/mvc':
-        specifier: ^0.60.3
-        version: 0.60.3
+        specifier: ^0.67.0
+        version: link:../mvc
     devDependencies:
+      '@testing-library/jest-dom':
+        specifier: ^6.6.4
+        version: 6.6.4
       '@testing-library/react':
         specifier: ^16.3.0
         version: 16.3.0(@testing-library/dom@10.4.0)(@types/react@18.3.18)(react-dom@18.3.1)(react@18.3.1)
@@ -144,12 +147,12 @@ importers:
         version: 18.3.1
       tsup:
         specifier: ^8.0.2
-        version: 8.3.6
+        version: 8.3.6(@swc/core@1.10.16)(typescript@5.7.3)
 
   packages/solid:
     dependencies:
       '@expressive/mvc':
-        specifier: ^0.59.0
+        specifier: ^0.67.0
         version: link:../mvc
     devDependencies:
       '@solidjs/testing-library':
@@ -163,6 +166,10 @@ importers:
         version: 8.3.6(@swc/core@1.10.16)(typescript@5.7.3)
 
 packages:
+
+  /@adobe/css-tools@4.4.3:
+    resolution: {integrity: sha512-VQKMkwriZbaOgVCby1UDY/LDk5fIjhQicCvVPFqfe+69fWaPWydbWJ3wRt59/YzIwda1I81loas3oCoHxnqvdA==}
+    dev: true
 
   /@ampproject/remapping@2.3.0:
     resolution: {integrity: sha512-30iZtAPgz+LTIYoeivqYo853f02jBYSd5uGnGpkFV0M3xOt9aN73erkgYAmZU43x4VfqcnLxW9Kpg3R5LC4YYw==}
@@ -707,10 +714,6 @@ packages:
     requiresBuild: true
     dev: true
     optional: true
-
-  /@expressive/mvc@0.60.3:
-    resolution: {integrity: sha512-zNx6c/8B5rhP3OssWAAlhj8YBQspYHwMWQ0ASGKGdTIZMuyz5VvIKjx4pP50VThXbFfsa+usVL5eI+i5UYiMAQ==}
-    dev: false
 
   /@gar/promisify@1.1.3:
     resolution: {integrity: sha512-k2Ty1JcVojjJFwrg/ThKi2ujJ7XNLYaFGNB/bWT9wGR+oSMJHMa5w+CUq6p/pVrKeNNgA7pCqEcjSnHVoqJQFw==}
@@ -1815,6 +1818,19 @@ packages:
       pretty-format: 27.5.1
     dev: true
 
+  /@testing-library/jest-dom@6.6.4:
+    resolution: {integrity: sha512-xDXgLjVunjHqczScfkCJ9iyjdNOVHvvCdqHSSxwM9L0l/wHkTRum67SDc020uAlCoqktJplgO2AAQeLP1wgqDQ==}
+    engines: {node: '>=14', npm: '>=6', yarn: '>=1'}
+    dependencies:
+      '@adobe/css-tools': 4.4.3
+      aria-query: 5.3.0
+      css.escape: 1.5.1
+      dom-accessibility-api: 0.6.3
+      lodash: 4.17.21
+      picocolors: 1.1.1
+      redent: 3.0.0
+    dev: true
+
   /@testing-library/react@16.3.0(@testing-library/dom@10.4.0)(@types/react@18.3.18)(react-dom@18.3.1)(react@18.3.1):
     resolution: {integrity: sha512-kFSyxiEDwv1WLl2fgsq6pPBbw5aWKrsY2/noi1Id0TK0UParSF62oFQFGHXIyaG4pp2tEub/Zlel+fjjZILDsw==}
     engines: {node: '>=18'}
@@ -2744,6 +2760,10 @@ packages:
       which: 2.0.2
     dev: true
 
+  /css.escape@1.5.1:
+    resolution: {integrity: sha512-YUifsXXuknHlUsmlgyY0PKzgPOr7/FjCePfHNt0jxm83wHZi44VDMQ7/fGNkjY3/jV1MC+1CmZbaHzugyeRtpg==}
+    dev: true
+
   /cssom@0.3.8:
     resolution: {integrity: sha512-b0tGHbfegbhPJpxpiBPU2sCkigAqtM9O121le6bbOlgyV+NyGyCmVfJ6QW9eRjz8CpNfWEOYBIMIGRYkLwsIYg==}
     dev: true
@@ -2877,6 +2897,10 @@ packages:
 
   /dom-accessibility-api@0.5.16:
     resolution: {integrity: sha512-X7BJ2yElsnOJ30pZF4uIIDfBEVgF4XEBxL9Bxhy6dnrm5hkzqmsWHGTiHqRiITNhMyFLyAiWndIJP7Z1NTteDg==}
+    dev: true
+
+  /dom-accessibility-api@0.6.3:
+    resolution: {integrity: sha512-7ZgogeTnjuHbo+ct10G9Ffp0mif17idi0IyWNVA/wcwcm7NPOD/WEHVP3n7n3MhXqxoIYm8d6MuZohYWIZ4T3w==}
     dev: true
 
   /domexception@2.0.1:
@@ -6649,48 +6673,6 @@ packages:
 
   /tslib@2.8.1:
     resolution: {integrity: sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w==}
-    dev: true
-
-  /tsup@8.3.6:
-    resolution: {integrity: sha512-XkVtlDV/58S9Ye0JxUUTcrQk4S+EqlOHKzg6Roa62rdjL1nGWNUstG0xgI4vanHdfIpjP448J8vlN0oK6XOJ5g==}
-    engines: {node: '>=18'}
-    hasBin: true
-    peerDependencies:
-      '@microsoft/api-extractor': ^7.36.0
-      '@swc/core': ^1
-      postcss: ^8.4.12
-      typescript: '>=4.5.0'
-    peerDependenciesMeta:
-      '@microsoft/api-extractor':
-        optional: true
-      '@swc/core':
-        optional: true
-      postcss:
-        optional: true
-      typescript:
-        optional: true
-    dependencies:
-      bundle-require: 5.1.0(esbuild@0.24.2)
-      cac: 6.7.14
-      chokidar: 4.0.3
-      consola: 3.4.0
-      debug: 4.4.0
-      esbuild: 0.24.2
-      joycon: 3.1.1
-      picocolors: 1.1.1
-      postcss-load-config: 6.0.1
-      resolve-from: 5.0.0
-      rollup: 4.34.7
-      source-map: 0.8.0-beta.0
-      sucrase: 3.35.0
-      tinyexec: 0.3.2
-      tinyglobby: 0.2.10
-      tree-kill: 1.2.2
-    transitivePeerDependencies:
-      - jiti
-      - supports-color
-      - tsx
-      - yaml
     dev: true
 
   /tsup@8.3.6(@swc/core@1.10.16)(typescript@5.7.3):

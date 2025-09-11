@@ -10,7 +10,7 @@
 		"test": "lerna run test",
 		"build": "lerna run build",
 		"clean": "find . -name 'node_modules' -type d -prune -exec rm -rf '{}' +",
-		"push": "lerna publish"
+		"push": "lerna publish --conventional-commits"
 	},
 	"devDependencies": {
 		"@swc/core": "^1.3.80",

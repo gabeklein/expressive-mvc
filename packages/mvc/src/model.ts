@@ -1,4 +1,4 @@
-import { addListener, createEffect, event, OnUpdate, pending, PENDING_KEYS, watch } from './control';
+import { addListener, createEffect, event, Observable, OnUpdate, PENDING_KEYS } from './control';
 
 const define = Object.defineProperty;
 
@@ -133,11 +133,35 @@ interface Model {
   is: this;
 }
 
-abstract class Model {
+abstract class Model implements Observable {
   constructor(...args: Model.Args){
     prepare(this);
     define(this, "is", { value: this });
     init(this, args);
+  }
+
+  [Observable](callback: Observable.Callback, required?: boolean){
+    const watch = new Set<unknown>();
+    const proxy = Object.create(this);
+    
+    addListener(this, (key) => {
+      if(watch.has(key))
+        callback();
+    });
+
+    OBSERVER.set(proxy, (key, value) => {
+      if(value === undefined && required)
+        throw new Error(`${this}.${key} is required in this context.`);
+
+      watch.add(key);
+
+      if(value instanceof Object && Observable in value)
+        return value[Observable](callback, required) || value;
+
+      return value;
+    });
+
+    return proxy as this;
   }
 
   /**
@@ -250,6 +274,23 @@ abstract class Model {
   set(key: Model.Event<this>): PromiseLike<Model.Event<this>[]>;
 
   /**
+   * Set a value for a property. This will update the value and notify listeners.
+   * 
+   * **Use with caution!** Key nor value are checked for validity.
+   * 
+   * This is meant for assigning values programmatically,
+   * where simple assignment is not practicable.
+   * 
+   * For example: `(this as any)[myProperty] = value;`
+   * 
+   * @param key - Property to set value for.
+   * @param value - Value to set for property.
+   * @param init - If true, model will begin to manage the property if it is not already.
+   * @returns Promise resolves an array of keys updated.
+   */
+  set(key: Model.Event<this>, value: unknown, init?: boolean): PromiseLike<Model.Event<this>[]>;
+
+  /**
    * Call a function when update occurs.
    * 
    * Given function is called for every assignment (which changes value) or explicit `set`.
@@ -267,10 +308,10 @@ abstract class Model {
    * Call a function when a property is updated.
    * Unlike `get`, this calsl synchronously and will fire as many times as the property is updated.
    * 
-   * @param key - Property to watch for updates.
    * @param callback - Function to call when property is updated.
+   * @param event - Property to watch for updates.
    */
-  set(key: Model.Event<this> | null, callback: Model.OnEvent<this>): () => boolean;
+  set(callback: Model.OnEvent<this>, event: Model.Event<this> | null): () => boolean;
 
   /**
    * Declare an end to updates. This event is final and will freeze state.
@@ -282,28 +323,39 @@ abstract class Model {
 
   set(
     arg1?: Model.OnEvent<this> | Model.Assign<this> | Model.Event<this> | null,
-    arg2?: boolean | Model.OnEvent<this>){
+    arg2?: unknown,
+    arg3?: boolean){
 
     const self = this.is;
 
     if(typeof arg1 == "function")
       return addListener(self, key => {
-        if(typeof key == "string")
+        if(arg2 === key || arg2 === undefined && typeof key == "string")
           return arg1.call(self, key, self);
       })
       
-    if(typeof arg2 == "function")
-      return addListener(self, key => {
-        if(key === arg1)
-          return arg2.call(self, key, self);
-      });
-
     if(arg1 && typeof arg1 == "object")
       assign(self, arg1, arg2 === true);
-    else
+    else if(!arg2)
       event(self, arg1);
+    else if(arg3)
+      manage(self, arg1 as string | number, arg2);
+    else
+      update(self, arg1 as string | number, arg2)
 
-    return pending(self);
+    const pending = PENDING_KEYS.get(this);
+
+    if(pending)
+      return <PromiseLike<Model.Event<this>[]>> {
+        then: (res) => new Promise<any>(res => {
+          const remove = addListener(this, key => {
+            if(key !== true){
+              remove();
+              return res.bind(null, Array.from(pending));
+            }
+          });
+        }).then(res)
+      }
   }
 
   /**
@@ -376,7 +428,10 @@ function assign(subject: Model, data: Model.Assign<Model>, silent?: boolean){
       const desc = Object.getOwnPropertyDescriptor(subject, key)!;
       const set = desc && desc.set as (value: any, silent?: boolean) => void;
 
-      set.call(subject, data[key], silent === true);
+      if(set)
+        set.call(subject, data[key], silent);
+      else
+        (subject as any)[key] = data[key];
     }
   }
 }
@@ -461,27 +516,11 @@ function init(model: Model, args: Model.Args){
     for(const key in model){
       const desc = Object.getOwnPropertyDescriptor(model, key)!;
 
-      if("value" in desc){
-        function set(value: unknown, silent?: boolean){
-          update(model, key, value, silent);
-          if(value instanceof Model && !PARENT.has(value)){
-            PARENT.set(value, model);
-            event(value);
-          }
-        }
-
-        set(desc.value, true);
-        define(model, key, {
-          configurable: false,
-          set,
-          get(){
-            return watch(this, key, state[key]);
-          }
-        });
-      }
+      if("value" in desc)
+        manage(model, key, desc.value, true);
     }
-    
-    args.forEach((arg) => {
+
+    for(const arg of args){
       const use = typeof arg == "function"
         ? arg.call(model, model)
         : arg as Model.Assign<Model>;
@@ -495,7 +534,7 @@ function init(model: Model, args: Model.Args){
         addListener(model, use, null)
       else if(typeof use == "object")
         assign(model, use, true);
-    });
+    }
 
     addListener(model, () => {
       for(const [_, value] of model)
@@ -509,6 +548,34 @@ function init(model: Model, args: Model.Args){
   });
 }
 
+function manage(target: Model, key: string | number, value: any, silent?: boolean){
+  const state = STATE.get(target)!;
+  
+  function get(this: Model){
+    return watch(this, key, state[key]);
+  }
+
+  function set(value: unknown, silent?: boolean){
+    update(target, key, value, silent);
+    if(value instanceof Model && !PARENT.has(value)){
+      PARENT.set(value, target);
+      event(value);
+    }
+  }
+
+  define(target, key, { set, get });
+  set(value, silent);
+}
+
+type Proxy<T = any> = (key: string | number, value: T) => T;
+
+const OBSERVER = new WeakMap<Model, Proxy>();
+
+function watch(from: Model, key: string | number, value?: any){
+  const access = OBSERVER.get(from);
+  return access ? access(key, value) : value;
+}
+
 function fetch(subject: Model, property: string, required?: boolean){
   const state = STATE.get(subject)!;
   
@@ -518,6 +585,9 @@ function fetch(subject: Model, property: string, required?: boolean){
     if(value !== undefined || !required)
       return value;
   }
+
+  if(METHODS.get(subject.constructor as Model.Init)!.has(property))
+    return METHOD.get((subject as any)[property]);
 
   const error = new Error(`${subject}.${property} is not yet available.`);
   const promise = new Promise<any>((resolve, reject) => {
@@ -576,7 +646,7 @@ function update<T>(
   const state = STATE.get(subject)!;
 
   if(Object.isFrozen(state))
-    throw new Error(`Tried to update ${String(key)} but ${subject} is destroyed.`);
+    throw new Error(`Tried to update ${subject}.${String(key)} but model is destroyed.`);
 
   const previous = state[key] as T;
 
@@ -590,7 +660,7 @@ function update<T>(
       value = out();
   }
 
-  if(value === previous && value !== undefined)
+  if(value === previous && key in state)
     return;
 
   state[key] = value;
@@ -615,4 +685,5 @@ export {
   STATE,
   uid,
   update,
+  watch
 }

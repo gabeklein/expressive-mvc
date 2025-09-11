@@ -1,4 +1,4 @@
-import { Model, Context } from '@expressive/mvc';
+import { Model, Context, createEffect } from '@expressive/mvc';
 
 import { Pragma } from './adapter';
 
@@ -25,22 +25,22 @@ Model.use = function <T extends Model> (
 
   const context = Context.use(true);
   const render = Pragma.useFactory((refresh) => {
-    let enabled: boolean | undefined;
+    let ready: boolean | undefined;
     let local: T;
 
     const instance = new this(argument);
 
     context.include(instance);
   
-    const unwatch = instance.get(current => {
+    const unwatch = createEffect(instance, current => {
       local = current;
 
-      if(enabled) 
+      if(ready) 
         refresh();
     });
 
     function didMount(){
-      enabled = true;
+      ready = true;
       return () => {
         unwatch();
         context.pop()
@@ -51,8 +51,8 @@ Model.use = function <T extends Model> (
     return (props?: Model.Assign<T> | Model.Callback<T>) => {
       Pragma.useLifecycle(didMount);
 
-      if(enabled && repeat && props){
-        enabled = false;
+      if(ready && repeat && props){
+        ready = false;
 
         if(typeof props == "function"){
           props.call(instance, instance);
@@ -62,9 +62,9 @@ Model.use = function <T extends Model> (
         const update = instance.set(props);
 
         if(update)
-          update.then(() => enabled = true);
+          update.then(() => ready = true);
         else
-          enabled = true;
+          ready = true;
       }
 
       return local; 

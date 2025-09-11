@@ -232,6 +232,29 @@ describe("render method", () => {
     screen.getByText("foo");
     screen.getByText("bar");
   })
+
+  it("will accept function component", async () => {
+    const FunctionComponent = (props: { name: string }, self: ClassComponent) => {
+      return <div>{self.salutation} {props.name}</div>;
+    };
+    
+    class ClassComponent extends Model {
+      salutation = "Hello";
+      render = FunctionComponent;
+    }
+
+    const screen = render(
+      <ClassComponent name="World" />
+    );
+
+    screen.getByText("Hello World");
+
+    screen.rerender(
+      <ClassComponent salutation='Bonjour' name="React" />
+    );
+
+    screen.getByText("Bonjour React");
+  });
   
   it("will ignore children not handled", () => {
     class Control extends Model {

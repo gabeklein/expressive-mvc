@@ -4,14 +4,14 @@ import { set } from './set';
 
 const warn = mockWarn();
 
-it("will not enumerate a property", () => {
+it("will be enumerable", () => {
   class Test extends Model {
     value = set("foo");
   }
 
   const test = Test.new();
 
-  expect(Object.keys(test)).not.toContain("value");
+  expect(Object.keys(test)).toContain("value");
 })
 
 describe("placeholder", () => {
@@ -88,7 +88,7 @@ describe("callback", () => {
 
     expect(didAssign).not.toBeCalled();
 
-    state.set("test", didUpdate);
+    state.set(didUpdate, "test");
     state.test = 2;
 
     expect(didUpdate).toBeCalledTimes(1);
@@ -736,4 +736,37 @@ describe("factory with callback overload", () => {
     expect(test.value).toBe("setAfter");
     expect(callback).toBeCalledWith("setAfter", "setBefore");
   })
+});
+
+it('supports custom PromiseLike objects as factory return', async () => {
+  type Thenable<T> = {
+    then: (onFulfilled?: (value: T) => any) => any;
+  };
+
+  const resolve: Thenable<string> = {
+    then: (onFulfilled) => {
+      setTimeout(() => {
+        if (onFulfilled)
+          onFulfilled("foobar");
+      }, 0);
+  
+      return resolve;
+    }
+  };
+
+  class Test extends Model {
+    value = set(() => resolve);
+  }
+
+  const test = Test.new();
+  let threw: Promise<string> | undefined;
+
+  try {
+    expect<string>(test.value);
+  } catch (e) {
+    threw = e as Promise<string>;
+  }
+  
+  await expect(threw).resolves.toBe("foobar");
+  expect(test.value).toBe('foobar');
 });

@@ -1,4 +1,4 @@
-import { addListener, context } from '../control';
+import { addListener, enter } from '../control';
 import { Model, event, update } from '../model';
 import { use } from './use';
 
@@ -6,7 +6,11 @@ declare namespace set {
   type Callback<T, S = any> = (this: S, next: T, previous: T) =>
     ((next: T) => void) | Promise<any> | void | boolean;
 
-  type Factory<T, S = any> = (this: S, key: string) => Promise<T> | T;
+  type Factory<T, S = any> = (this: S, key: string) => Thenable<T> | T;
+
+  type Thenable<T> = {
+    then: (onFulfilled?: (value: T) => any, onRejected?: (reason: any) => any) => any;
+  };
 }
 
 /**
@@ -23,7 +27,7 @@ function set <T = any>(): T;
  * **Note** Factory is lazy! It will only run if/when property is accessed.
  * Value will be undefined until factory resolves, which will also dispatch an update for the property.
  */
-function set <T> (factory: set.Factory<T> | Promise<T>, required: false): T | undefined;
+function set <T> (factory: set.Factory<T> | set.Thenable<T>, required: false): T | undefined;
 
 /**
  * Set property with a factory function.
@@ -34,7 +38,7 @@ function set <T> (factory: set.Factory<T> | Promise<T>, required: false): T | un
  * @param factory - Callback run to derrive property value.
  * @param required - If true run factory immediately on creation, otherwise on access.
  */
-function set <T> (factory: set.Factory<T> | Promise<T>, required?: boolean): T;
+function set <T> (factory: set.Factory<T> | set.Thenable<T>, required?: boolean): T;
 
 /**
  * Set property with a factory function.
@@ -45,7 +49,7 @@ function set <T> (factory: set.Factory<T> | Promise<T>, required?: boolean): T;
  * @param factory - Callback run to derrive property value.
  * @param onUpdate - Callback run when property is finished computing or is set. 
  */
-function set <T> (factory: set.Factory<T> | Promise<T>, onUpdate?: set.Callback<T>): T;
+function set <T> (factory: set.Factory<T> | set.Thenable<T>, onUpdate?: set.Callback<T>): T;
 
 /**
  * Set a property with empty placeholder and/or update callback.
@@ -56,13 +60,13 @@ function set <T> (factory: set.Factory<T> | Promise<T>, onUpdate?: set.Callback<
 function set <T> (value: T | undefined, onUpdate?: set.Callback<T>): T;
 
 function set <T> (
-  value?: set.Factory<T> | Promise<T> | T,
+  value?: set.Factory<T> | set.Thenable<T> | T,
   argument?: set.Callback<any> | boolean){
 
   return use<T>((key, subject) => {
-    const property: Model.Descriptor = { enumerable: false };
+    const property: Model.Descriptor = {};
 
-    if(typeof value == "function" || value instanceof Promise){
+    if(typeof value == "function" || isThenable(value)){
       function init(){
         if(typeof value == "function")
           try {
@@ -77,7 +81,7 @@ function set <T> (
 
         const set = (value: any) => subject[key] = value;
 
-        if(value instanceof Promise)
+        if(isThenable(value))
           value.then(set, error => {
             event(subject, key);
             property.get = () => { throw error };
@@ -103,19 +107,19 @@ function set <T> (
       let unset: ((next: T) => void) | undefined;
 
       property.set = function(this: any, value: any, previous: any){
-        const ctx = context();
-        const out = argument.call(this, value, previous);
-        const flush = ctx();
+        const exit = enter();
+        const returns = argument.call(this, value, previous);
+        const flush = exit();
 
-        if(out === false)
-          return out;
+        if(returns === false)
+          return false;
 
         if(typeof unset == "function")
           unset(value);
 
         unset = (next: T) => {
-          if(typeof out == "function")
-            out(next);
+          if(typeof returns == "function")
+            returns(next);
 
           flush();
         }
@@ -153,6 +157,10 @@ function attempt(fn: () => any): any {
   }
 
   return compute();
+}
+
+function isThenable(value: any): value is set.Thenable<any> {
+  return value && typeof value == "object" && typeof value.then == "function";
 }
 
 export { set }
