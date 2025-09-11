@@ -56,7 +56,7 @@ declare module "@expressive/mvc" {
 
     type Props<T extends Model> = 
       T extends { render(props: infer P, self: any): any }
-        ? BaseProps<T> & HasProps<T> & P
+        ? BaseProps<T> & HasProps<T> & Omit<P, keyof Model>
         : BaseProps<T> & HasProps<T> & { children?: React.ReactNode };
   }
 }
