@@ -9,10 +9,14 @@ declare namespace ref {
     ((next: T | null) => void) | Promise<void> | void | boolean;
 
   interface Object<T = any> {
-    (next: T | null): void;
-
     /** Current value held by this reference. */
-    current: T | null;
+    current: T;
+
+    /** Model instance this reference belongs to. */
+    is: Model;
+
+    /** Key of property on model this reference belongs to. */
+    key: string;
 
     /** 
      * Subscribe to changes of this reference.
@@ -109,7 +113,9 @@ function ref<T>(
 
             defineProperties(set, {
               current: { get, set },
-              get: { value: get }
+              get: { value: get },
+              is: { value: subject },
+              key: { value: key },
             });
 
             defineProperty(value, key, { value: set });
@@ -147,9 +153,8 @@ function ref<T>(
       };
   
       state[key] = null;
-      value = defineProperties(set, {
-        current: { get, set },
-        get: { value: get }
+      value = defineProperties({ get, key, is: subject }, {
+        current: { get, set }
       }) as ref.Object<T>;
     }
 

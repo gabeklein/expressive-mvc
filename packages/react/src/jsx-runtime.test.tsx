@@ -232,6 +232,29 @@ describe("render method", () => {
     screen.getByText("foo");
     screen.getByText("bar");
   })
+
+  it("will accept function component", async () => {
+    const FunctionComponent = (props: { name: string }, self: ClassComponent) => {
+      return <div>{self.salutation} {props.name}</div>;
+    };
+    
+    class ClassComponent extends Model {
+      salutation = "Hello";
+      render = FunctionComponent;
+    }
+
+    const screen = render(
+      <ClassComponent name="World" />
+    );
+
+    screen.getByText("Hello World");
+
+    screen.rerender(
+      <ClassComponent salutation='Bonjour' name="React" />
+    );
+
+    screen.getByText("Bonjour React");
+  });
   
   it("will ignore children not handled", () => {
     class Control extends Model {
@@ -316,6 +339,30 @@ describe("render method", () => {
     await act(async () => control.set({ value: "foo" }));
 
     screen.getByText("foo");
+  })
+
+  it("will not pass is prop", () => {
+    class Invalid extends Model {
+      render(props: { is: "hello" }) {
+        return null;
+      }
+    }
+
+    // @ts-expect-error
+    void <Invalid />;
+
+    class Test extends Model {
+      render(props: { is?: "hello" }) {
+        expect("is" in props).toBeFalsy();
+        return null;
+      }
+    }
+
+    const callback = jest.fn();
+
+    render(<Test is={callback} />);
+
+    expect(callback).toHaveBeenCalledTimes(1);
   })
 })
 

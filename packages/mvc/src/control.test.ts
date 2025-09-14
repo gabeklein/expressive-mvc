@@ -279,40 +279,41 @@ describe("errors", () => {
 })
 
 describe("observable", () => {
-  it("will update effect", async () => {
-    class MyObservable implements Observable {
-      value = "foo";
-      watch?: Observable.Callback = undefined;
-  
-      [Observable](onUpdate: Observable.Callback) {
-        this.watch = onUpdate
-        return this;
+  it.each([" (returning)", ""])(
+    "will update effect%s",
+    async (returns) => {
+      class MyObservable implements Observable {
+        value = "foo";
+        watch?: Observable.Callback = undefined;
+
+        [Observable](onUpdate: Observable.Callback) {
+          this.watch = onUpdate;
+          if (returns) return this;
+        }
+
+        async update(value: string) {
+          this.value = value;
+          if (this.watch) return this.watch();
+        }
       }
 
-      async update(value: string){
-        this.value = value;
-        
-        if(this.watch)
-          return this.watch();
+      class Test extends Model {
+        observable = new MyObservable();
       }
+
+      const mock = jest.fn();
+      const test = Test.new();
+
+      test.get($ => {
+        mock($.observable.value);
+      });
+
+      expect(mock).toBeCalledWith("foo");
+
+      await test.observable.update("bar");
+
+      expect(mock).toBeCalledWith("bar");
+      expect(mock).toBeCalledTimes(2);
     }
-
-    class Test extends Model {
-      observable = new MyObservable();
-    }
-
-    const mock = jest.fn();
-    const test = Test.new();
-
-    test.get($ => {
-      mock($.observable.value);
-    });
-
-    expect(mock).toBeCalledWith("foo");
-
-    await test.observable.update("bar");
-
-    expect(mock).toBeCalledWith("bar");
-    expect(mock).toBeCalledTimes(2);
-  })
-})
+  );
+});

@@ -37,9 +37,20 @@ declare module "@expressive/mvc" {
      */
     type FC<T extends Model, P extends {} = {}> = React.FC<FC.Props<T, P>>;
 
-    /** Model which is may be used directly as a Component in React. */
+    /**
+     * Props which will not conflict with a Model's use as a Component.
+     * 
+     * Built-in properties must be optional, as they will always be omitted.
+     */
+    type RenderProps<T extends Model> = HasProps<T> & {
+      is?: undefined;
+      get?: undefined;
+      set?: undefined;
+    };
+
+    /** Model which is not incompatable as Component in React. */
     interface Compat extends Model {
-      render?(props: HasProps<this>, self: this): React.ReactNode;
+      render?(props: RenderProps<this>, self: this): React.ReactNode;
       fallback?: React.ReactNode;
     }
 
@@ -63,7 +74,7 @@ declare module "@expressive/mvc" {
 
     type Props<T extends Model> = 
       T extends { render(props: infer P, self: any): any }
-        ? BaseProps<T> & HasProps<T> & P
+        ? BaseProps<T> & HasProps<T> & Omit<P, keyof Model>
         : BaseProps<T> & HasProps<T> & { children?: React.ReactNode };
   }
 }
@@ -94,18 +105,18 @@ export declare namespace JSX {
 
 function MC<T extends Model.Compat>(
   this: Model.Init<T>,
-  props: Model.Props<T>
+  { is, ...props }: Model.Props<T>
 ) {
   const model = this.use((self) => {
     self.set(props as Model.Assign<T>);
 
-    if(props.is)
-      return props.is(self);
+    if(is)
+      return is(self);
   });
 
   model.set(props as Model.Assign<T>);
 
-  const render = METHOD.get(model.render) || props.render;
+  const render = METHOD.get(model.render) || props.render || model.render;
   const children = render
     ? render.call(model, props as Model.HasProps<T>, model)
     : props.children;

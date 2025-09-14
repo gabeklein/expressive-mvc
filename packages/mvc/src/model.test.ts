@@ -467,9 +467,8 @@ describe("get method", () => {
 
       expect(test.get("foo")).toBe(null);
 
-      test.foo("foobar");
+      test.foo.current = "foobar";
 
-      expect<ref.Object>(test.foo).toBeInstanceOf(Function);
       expect<string | null>(test.get("foo")).toBe("foobar");
     })
 
@@ -515,6 +514,23 @@ describe("get method", () => {
       test.foo = "foobar";
       
       await expect(suspense).resolves.toBe("foobar");
+    })
+
+    it("will get unbound method", () => {
+      class Test extends Model {
+        value = "foo";
+
+        method(){
+          return this.value;
+        }
+      }
+
+      const { method, is: test } = Test.new();
+
+      const test2 = Test.new({ value: "bar" });
+
+      expect(method.call(test2)).toBe("foo");
+      expect(test.get("method").call(test2)).toBe("bar");
     })
   })
 
@@ -1665,6 +1681,32 @@ describe("set method", () => {
 
       expect(test.foo).toBe("bar");
     })
+  })
+
+  it("will trigger normal setters", async () => {
+    let observed: string | null = null;
+
+    class Test extends Model {
+      _foo = "foo";
+
+      get foo(){
+        return this._foo;
+      }
+
+      set foo(value: string){
+        observed = value;
+        this._foo = value;
+      }
+    }
+
+    const test = Test.new();
+
+    test.set({ foo: "bar" });
+
+    await expect(test).toHaveUpdated("_foo");
+
+    expect(test.foo).toBe("bar");
+    expect(observed).toBe("bar");
   })
 })
 

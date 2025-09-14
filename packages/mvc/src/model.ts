@@ -156,7 +156,7 @@ abstract class Model implements Observable {
       watch.add(key);
 
       if(value instanceof Object && Observable in value)
-        return value[Observable](callback, required);
+        return value[Observable](callback, required) || value;
 
       return value;
     });
@@ -428,7 +428,10 @@ function assign(subject: Model, data: Model.Assign<Model>, silent?: boolean){
       const desc = Object.getOwnPropertyDescriptor(subject, key)!;
       const set = desc && desc.set as (value: any, silent?: boolean) => void;
 
-      set.call(subject, data[key], silent);
+      if(set)
+        set.call(subject, data[key], silent);
+      else
+        (subject as any)[key] = data[key];
     }
   }
 }
@@ -582,6 +585,9 @@ function fetch(subject: Model, property: string, required?: boolean){
     if(value !== undefined || !required)
       return value;
   }
+
+  if(METHODS.get(subject.constructor as Model.Init)!.has(property))
+    return METHOD.get((subject as any)[property]);
 
   const error = new Error(`${subject}.${property} is not yet available.`);
   const promise = new Promise<any>((resolve, reject) => {
