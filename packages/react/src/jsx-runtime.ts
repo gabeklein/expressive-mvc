@@ -1,5 +1,5 @@
-import { Context, createEffect, METHOD, Model } from '@expressive/mvc';
-import React, { useLayoutEffect, useState } from 'react';
+import { METHOD, Model } from '@expressive/mvc';
+import React from 'react';
 import Runtime from 'react/jsx-runtime';
 
 import { createProvider } from './context';
@@ -110,23 +110,7 @@ function MC<T extends Model.Compat>(
     ? render.call(model, props as Model.HasProps<T>, model)
     : props.children;
 
-  const fallback = props.fallback || "fallback" in model && jsx(Fallback, { model });
-
-  return createProvider(Context.get(model)!, children, fallback, String(model));
-}
-
-const Fallback = (props: { model: Model.Compat }) => {
-  const [fallback, setFallback] = useState<React.ReactNode | null>(null);
-
-  useLayoutEffect(() => {
-    const done = createEffect(props.model, (x) => {
-      setFallback(x.fallback);
-    });
-
-    return () => done();
-  }, [props.model]);
-
-  return fallback;
+  return createProvider(model, children, props.fallback || model.fallback, String(model));
 }
 
 const RENDER = new WeakMap<Function, React.ComponentType>();

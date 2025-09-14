@@ -1,7 +1,7 @@
 import { Model } from '@expressive/mvc';
 import React, { FunctionComponent } from 'react';
 
-import { Context, createProvider } from './context';
+import { createProvider } from './context';
 
 declare module '@expressive/mvc' {
   namespace Model {
@@ -43,7 +43,7 @@ Model.as = function <T extends Model.Compat, P extends Model.Assign<T>> (
     local.set(props);
 
     return createProvider(
-      Context.get(local)!,
+      local,
       render(props, local),
       props.fallback || local.fallback,
       String(local)

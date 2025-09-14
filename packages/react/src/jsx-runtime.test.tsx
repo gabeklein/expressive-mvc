@@ -371,7 +371,10 @@ describe("suspense", () => {
     }
 
     let foo!: Foo;
-    const Consumer = () => (foo = Foo.get()).value;
+    const Consumer = () => {
+      foo = Foo.get();
+      return foo.value;
+    }
 
     const element = render(
       <Foo>
@@ -396,14 +399,17 @@ describe("suspense", () => {
     expect(element.getByText("Hello World")).toBeInTheDocument();
   });
 
-  it.only("will update with new fallback", async () => {
+  it("will update with new fallback", async () => {
     class Foo extends Model {
       value = set<string>();
       fallback = <span>Loading!</span>;
     }
 
     let foo!: Foo;
-    const Consumer = () => (foo = Foo.get()).value;
+    const Consumer = () => {
+      (foo = Foo.get());
+      return foo.value;
+    }
 
     const element = render(
       <Foo>
@@ -415,12 +421,14 @@ describe("suspense", () => {
 
     await act(async () => {
       foo.fallback = <span>Loading...</span>;
+      await new Promise(r => setTimeout(r, 0));
     });
 
     expect(element.getByText("Loading...")).toBeInTheDocument();
 
     await act(async () => {
       foo.value = "Hello World";
+      await new Promise(r => setTimeout(r, 0));
     });
     
     expect(element.getByText("Hello World")).toBeInTheDocument();

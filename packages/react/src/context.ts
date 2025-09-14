@@ -75,10 +75,13 @@ function Provider<T extends Model>(props: Provider.Props<T>){
 }
 
 export function createProvider(
-  context: Context,
+  context: Context | Model,
   children: ReactNode,
   fallback?: ReactNode,
   name?: string | undefined){
+
+  if(context instanceof Model)
+    context = Context.get(context)!;
 
   const element = createElement(Lookup.Provider, {
     key: context.id,
