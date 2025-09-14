@@ -37,9 +37,20 @@ declare module "@expressive/mvc" {
      */
     type FC<T extends Model, P extends {} = {}> = React.FC<FC.Props<T, P>>;
 
+    /**
+     * Props which will not conflict with a Model's use as a Component.
+     * 
+     * Built-in properties must be optional, as they will always be omitted.
+     */
+    type RenderProps<T extends Model> = HasProps<T> & {
+      is?: undefined;
+      get?: undefined;
+      set?: undefined;
+    };
+
     /** Model which is not incompatable as Component in React. */
     interface Compat extends Model {
-      render?(props: HasProps<this>, self: this): React.ReactNode;
+      render?(props: RenderProps<this>, self: this): React.ReactNode;
     }
 
     interface BaseProps<T extends Model> {
@@ -87,13 +98,13 @@ export declare namespace JSX {
 
 function MC<T extends Model.Compat>(
   this: Model.Init<T>,
-  props: Model.Props<T>
+  { is, ...props }: Model.Props<T>
 ) {
   const local = this.use((self) => {
     self.set(props as Model.Assign<T>);
 
-    if(props.is)
-      return props.is(self);
+    if(is)
+      return is(self);
   });
 
   local.set(props as Model.Assign<T>);

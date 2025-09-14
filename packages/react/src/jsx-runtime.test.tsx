@@ -340,6 +340,30 @@ describe("render method", () => {
 
     screen.getByText("foo");
   })
+
+  it("will not pass is prop", () => {
+    class Invalid extends Model {
+      render(props: { is: "hello" }) {
+        return null;
+      }
+    }
+
+    // @ts-expect-error
+    void <Invalid />;
+
+    class Test extends Model {
+      render(props: { is?: "hello" }) {
+        expect("is" in props).toBeFalsy();
+        return null;
+      }
+    }
+
+    const callback = jest.fn();
+
+    render(<Test is={callback} />);
+
+    expect(callback).toHaveBeenCalledTimes(1);
+  })
 })
 
 describe("Model.FC", () => {
