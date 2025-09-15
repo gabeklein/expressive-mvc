@@ -219,10 +219,11 @@ abstract class Model implements Observable {
     const self = this.is;
 
     if(typeof arg1 == "function"){
+      const effect = METHOD.get(arg1) || arg1;
       let pending = new Set<Model.Event<this>>();
 
       return createEffect(self, (proxy) => {
-        const cb = arg1.call(proxy, proxy, pending);
+        const cb = effect.call(proxy, proxy, pending);
 
         return cb === null ? null : ((update) => {
           pending = PENDING_KEYS.get(self)!;

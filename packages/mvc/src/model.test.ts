@@ -935,6 +935,32 @@ describe("get method", () => {
       expect(effect).toBeCalledTimes(2);
     })
 
+    it("will subscribe method passed directly", async () => {
+      const didInvoke = jest.fn();
+      
+      class Test extends Model {
+        foo = 1;
+
+        constructor(...args: Model.Args){
+          super(args, () => {
+            this.get(this.action);
+          });
+        }
+
+        action(){
+          didInvoke(this.foo);
+        }
+      }
+
+      const test = Test.new();
+
+      expect(didInvoke).toBeCalledWith(1);
+
+      test.foo = 2;
+
+      await expect(test).toHaveUpdated();
+    });
+
     describe("return value", () => {
       it("will callback on next update", async () => {
         class Test extends Model {
