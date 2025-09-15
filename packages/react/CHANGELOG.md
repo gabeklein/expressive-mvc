@@ -3,6 +3,24 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.70.0](https://github.com/gabeklein/expressive-mvc/compare/v0.69.2...v0.70.0) (2025-09-15)
+
+
+### Bug Fixes
+
+* update RenderProps type to prevent passing 'is' prop to Model components ([26ec4a3](https://github.com/gabeklein/expressive-mvc/commit/26ec4a3c190fde350f409537ee9869ab54df6869))
+
+
+### Features
+
+* enhance Model interfaces and props for better compatibility and fallback support ([849f282](https://github.com/gabeklein/expressive-mvc/commit/849f28273291605e2c49950c8e6cc3e5b5638050))
+* enhance provider and consumer functionality with fallback support ([6de2ba9](https://github.com/gabeklein/expressive-mvc/commit/6de2ba940de5769bcd745f88cef0103d9a629393))
+* implement fallback prop ([d7402ca](https://github.com/gabeklein/expressive-mvc/commit/d7402ca4aa789c257f3c66ff94247cff8e6fbd89))
+
+
+
+
+
 ## [0.69.2](https://github.com/gabeklein/expressive-mvc/compare/v0.69.1...v0.69.2) (2025-09-11)
 
 

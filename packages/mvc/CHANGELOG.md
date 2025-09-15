@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.70.0](https://github.com/gabeklein/expressive-mvc/compare/v0.69.2...v0.70.0) (2025-09-15)
+
+
+### Features
+
+* add subscription for methods passed to get() ([67edf28](https://github.com/gabeklein/expressive-mvc/commit/67edf28f0b596398dfa31cc7518e8aacd8d958a2))
+
+
+
+
+
 ## [0.69.2](https://github.com/gabeklein/expressive-mvc/compare/v0.69.1...v0.69.2) (2025-09-11)
 
 **Note:** Version bump only for package @expressive/mvc
