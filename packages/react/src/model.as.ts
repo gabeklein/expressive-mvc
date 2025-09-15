@@ -5,18 +5,9 @@ import { createProvider } from './context';
 
 declare module '@expressive/mvc' {
   namespace Model {
-    interface Component<T extends Model, P extends Model.Assign<T>> extends FunctionComponent<P & Component.Props<T>> {
+    interface Component<T extends Model, P extends Model.Assign<T>> extends FunctionComponent<P & Model.Props<T>> {
       displayName?: string;
       Model: Model.Type<T>;
-    }
-
-    namespace Component {
-      type Props<T extends Model> = 
-        & Partial<Pick<T, Exclude<keyof T, keyof Model>>>
-        & {
-          is?: (instance: T) => void | (() => void);
-          fallback?: React.ReactNode;
-        }
     }
 
     function as <T extends Model, P extends Model.Assign<T>> (
