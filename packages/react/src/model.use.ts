@@ -4,31 +4,25 @@ import { Pragma } from './adapter';
 
 declare module '@expressive/mvc' {
   namespace Model {
-    function use <T extends Model> (
-      this: Model.Init<T>,
-      apply?: Model.Assign<T>,
-      repeat?: boolean
-    ): T;
-
-    function use <T extends Model> (
-      this: Model.Init<T>,
-      callback?: Model.Callback<T>,
-      repeat?: boolean
-    ): T;
+    function use <T extends Model> (this: Model.Init<T>, ...args: Argument<T>[]): T;
   }
 }
 
-Model.use = function <T extends Model> (
+interface Compat extends Model {
+  render?(...props: Model.Argument<this>[]): React.ReactNode;
+  fallback?: React.ReactNode;
+}
+
+Model.use = function <T extends Compat> (
   this: Model.Init<T>,
-  argument?: Model.Assign<T> | Model.Callback<T>,
-  repeat?: boolean){
+  ...args: Model.Argument<T>[]){
 
   const context = Context.use(true);
   const render = Pragma.useFactory((refresh) => {
     let ready: boolean | undefined;
     let local: T;
 
-    const instance = new this(argument);
+    const instance = new this(...args);
 
     context.include(instance);
   
@@ -48,28 +42,22 @@ Model.use = function <T extends Model> (
       }
     }
 
-    return (props?: Model.Assign<T> | Model.Callback<T>) => {
+    return (...args: Model.Argument<T>[]) => {
       Pragma.useLifecycle(didMount);
 
-      if(ready && repeat && props){
+      if(instance.render)
+        instance.render(...args);
+      else {
         ready = false;
-
-        if(typeof props == "function"){
-          props.call(instance, instance);
-          props = undefined
-        }
-
-        const update = instance.set(props);
-
-        if(update)
-          update.then(() => ready = true);
-        else
-          ready = true;
+        Promise.all(args.map(arg => {
+          if(typeof arg == "object")
+            return instance.set(arg as Model.Assign<T>);
+        })).then(() => ready = true);
       }
 
       return local; 
     };
   });
 
-  return render(argument);
+  return render(...args);
 }

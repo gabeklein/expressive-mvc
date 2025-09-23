@@ -61,16 +61,9 @@ function MC<T extends Model.Compat>(
   this: Model.Init<T>,
   { is, ...props }: Model.Props<T>
 ) {
-  const model = this.use((self) => {
-    self.set(props as Model.Assign<T>);
+  const model = this.use(props as any, is);
 
-    if(is)
-      return is(self);
-  });
-
-  model.set(props as Model.Assign<T>);
-
-  const render = METHOD.get(model.render) || props.render || model.render;
+  const render = METHOD.get(model.render) || model.render;
   const children = render
     ? render.call(model, props as Model.HasProps<T>, model)
     : props.children;
@@ -87,7 +80,7 @@ export function compat(
   if(typeof type == "function")
     if(RENDER.has(type))
       type = RENDER.get(type)!;
-    else if(typeof type == "function")
+    else
       RENDER.set(type, type = (
         type.prototype instanceof Model ?
           MC.bind(type as Model.Init) :

@@ -234,8 +234,8 @@ describe("render method", () => {
   })
 
   it("will accept function component", async () => {
-    const FunctionComponent = (props: { name: string }, self: ClassComponent) => {
-      return <div>{self.salutation} {props.name}</div>;
+    function FunctionComponent(this: ClassComponent, props: { name: string }){
+      return <div>{this.salutation} {props.name}</div>;
     };
     
     class ClassComponent extends Model {
@@ -302,18 +302,6 @@ describe("render method", () => {
     screen.getByText("Hello");
     screen.getByText("World");
   })
-
-  it("will use render prop if defined", () => {
-    class Control extends Model {
-      value = "bar";
-    }
-
-    const screen = render(
-      <Control render={() => "bar"} />
-    );
-
-    screen.getByText("bar");
-  });
 
   it("will refresh on update", async () => {
     class Control extends Model {

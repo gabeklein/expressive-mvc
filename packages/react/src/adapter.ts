@@ -19,7 +19,7 @@ declare module '@expressive/mvc' {
 
     /** Model which is not incompatable as Component in React. */
     interface Compat extends Model {
-      render?(props: RenderProps<this>, self: this): React.ReactNode;
+      render?(props: RenderProps<this>): React.ReactNode;
       fallback?: React.ReactNode;
     }
 
@@ -29,8 +29,6 @@ declare module '@expressive/mvc' {
        * @returns Callback to run when instance is destroyed.
        */
       is?: (instance: T) => void | (() => void);
-
-      render?(props: HasProps<T>, self: T): React.ReactNode;
 
       /**
        * A fallback react tree to show when suspended.

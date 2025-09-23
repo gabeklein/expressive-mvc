@@ -49,12 +49,14 @@ declare namespace Model {
   type Event<T> = Field<T> | (string & {}) | number | symbol;
 
   /** Object overlay to override values and methods on a model. */
-  type Assign<T> = {
-    [K in Field<T>]?:
-      T[K] extends (...args: infer A) => infer R 
-        ? (this: T, ...args: A) => R
-        : T[K];
-  } & Record<string, unknown>;
+  type Assign<T> = 
+    & Record<string, unknown>
+    & {
+      [K in Field<T>]?:
+        T[K] extends (...args: infer A) => infer R 
+          ? (this: T, ...args: A) => R
+          : T[K];
+    };
 
   /** Export/Import compatible value for a given property in a Model. */
   type Export<R> = R extends { get(): infer T } ? T : R;

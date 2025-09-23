@@ -279,7 +279,7 @@ describe("errors", () => {
 })
 
 describe("observable", () => {
-  it.each([" (returning)", ""])(
+  it.each(["", " (returning)"])(
     "will update effect%s",
     async (returns) => {
       class MyObservable implements Observable {
