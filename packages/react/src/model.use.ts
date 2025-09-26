@@ -45,15 +45,14 @@ Model.use = function <T extends Compat> (
     return (...args: Model.Argument<T>[]) => {
       Pragma.useLifecycle(didMount);
 
+      ready = false;
+      Promise.all(args.map(arg => {
+        if(typeof arg == "object")
+          return instance.set(arg as Model.Assign<T>);
+      })).then(() => ready = true);
+
       if(instance.render)
         instance.render(...args);
-      else {
-        ready = false;
-        Promise.all(args.map(arg => {
-          if(typeof arg == "object")
-            return instance.set(arg as Model.Assign<T>);
-        })).then(() => ready = true);
-      }
 
       return local; 
     };
