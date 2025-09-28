@@ -368,12 +368,12 @@ describe("Model.FC", () => {
       is?: ((instance: Control) => void | (() => void)) | undefined;
     }
   
-    const Component: Model.FC<Control, { baz: string }> = (props) => {
+    const Component = (props: { baz: string }) => {
       expect<CorrectProps>(props);
       return <div>{props.baz}</div>;
     };
   
-    expect<(props: CorrectProps) => React.ReactNode>(Component);
+    expect<React.FC<CorrectProps>>(Component);
   })
 })
 
