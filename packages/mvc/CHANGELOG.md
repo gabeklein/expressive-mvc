@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.71.0](https://github.com/gabeklein/expressive-mvc/compare/v0.70.0...v0.71.0) (2025-10-05)
+
+
+### Features
+
+* refactor input handling in Context.include ([f4823a2](https://github.com/gabeklein/expressive-mvc/commit/f4823a29dc3590b04c4027c382b5715731df590b))
+
+
+
+
+
 # [0.70.0](https://github.com/gabeklein/expressive-mvc/compare/v0.69.2...v0.70.0) (2025-09-15)
 
 

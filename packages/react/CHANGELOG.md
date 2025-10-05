@@ -3,6 +3,20 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.71.0](https://github.com/gabeklein/expressive-mvc/compare/v0.70.0...v0.71.0) (2025-10-05)
+
+
+* feat!: simplify 'is' callback handling in Model interface and tests ([f77e413](https://github.com/gabeklein/expressive-mvc/commit/f77e413d5a049037b77a3cd1aedf29e2f835d1c3))
+
+
+### BREAKING CHANGES
+
+* is prop no longer accepts destroy callback
+
+
+
+
+
 # [0.70.0](https://github.com/gabeklein/expressive-mvc/compare/v0.69.2...v0.70.0) (2025-09-15)
 
 
