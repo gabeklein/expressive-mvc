@@ -65,7 +65,7 @@ function MC<T extends Model.Compat>(
     self.set(props as Model.Assign<T>);
 
     if(is)
-      return is(self);
+      is(self);
   });
 
   model.set(props as Model.Assign<T>);

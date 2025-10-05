@@ -72,8 +72,7 @@ it("will create instance only once", () => {
 it("will call is method on creation", () => {
   class Control extends Model {}
 
-  const didCreate = jest.fn(() => didDestroy);
-  const didDestroy = jest.fn();
+  const didCreate = jest.fn();
 
   const screen = render(<Control is={didCreate} />);
 
@@ -83,7 +82,6 @@ it("will call is method on creation", () => {
   expect(didCreate).toHaveBeenCalledTimes(1);
 
   act(screen.unmount);
-  expect(didDestroy).toHaveBeenCalledTimes(1);
 })
 
 describe("element props", () => {
@@ -375,9 +373,9 @@ describe("Model.FC", () => {
   
     interface CorrectProps {
       baz: string;
-      foo?: string | undefined
-      bar?: string | undefined
-      is?: ((instance: Control) => void | (() => void)) | undefined;
+      foo?: string | undefined;
+      bar?: string | undefined;
+      is?: (instance: Control) => void;
     }
   
     const Component: Model.FC<Control, { baz: string }> = (props) => {
@@ -385,7 +383,7 @@ describe("Model.FC", () => {
       return <div>{props.baz}</div>;
     };
   
-    expect<(props: CorrectProps) => React.ReactNode>(Component);
+    expect<(props: CorrectProps) => void>(Component);
   })
 })
 

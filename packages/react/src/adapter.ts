@@ -28,7 +28,7 @@ declare module '@expressive/mvc' {
        * Callback for newly created instance. Only called once.
        * @returns Callback to run when instance is destroyed.
        */
-      is?: (instance: T) => void | (() => void);
+      is?: (instance: T) => void;
 
       render?(props: HasProps<T>, self: T): React.ReactNode;
 
