@@ -122,8 +122,8 @@ class Context {
 
     if(typeof inputs == "function" || inputs instanceof Model)
       inputs = { [forEach ? 0 : this.layer.size]: inputs };
-
-    Object.entries(inputs).forEach(([K, V]: [string, Model | Model.Init<Model>]) => {
+    
+    for(const [K, V] of Object.entries(inputs)){
       if(Model.is(V) || V instanceof Model){
         const exists = this.layer.get(K);
   
@@ -140,15 +140,15 @@ class Context {
           this.include(inputs);
         }
 
-        return;
+        continue;
       }
 
       throw new Error(
         `Context may only include instance or class \`extends Model\` but got ${
-          K == '0' || K == V ? V : `${V} (as '${K}')`
+          K == '0' || K == String(V) ? V : `${V} (as '${K}')`
         }.`
       );
-    })
+    }
 
     for(const [model, explicit] of init){
       model.set();
