@@ -87,7 +87,7 @@ export function compat(
   if(typeof type == "function")
     if(RENDER.has(type))
       type = RENDER.get(type)!;
-    else if(typeof type == "function")
+    else
       RENDER.set(type, type = (
         type.prototype instanceof Model ?
           MC.bind(type as Model.Init) :
