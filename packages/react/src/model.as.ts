@@ -28,7 +28,7 @@ Model.as = function <T extends Model.Compat, P extends Model.Assign<T>> (
       self.set(props);
 
       if(props.is)
-        return props.is(self);
+        props.is(self);
     });
 
     local.set(props);
