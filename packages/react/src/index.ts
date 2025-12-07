@@ -1,19 +1,9 @@
 import { useEffect, useState } from 'react';
 
-import { Pragma } from './adapter';
-import { Context } from './context';
+import { Hook } from './adapter';
 
-Pragma.useContext = () => Context.use();
-
-Pragma.useLifecycle = (callback) => useEffect(() => callback(), []);
-
-Pragma.useFactory = (factory) => {
-  const state = useState(() => factory(() => {
-    state[1](x => x.bind(null) as any);
-  }));
-
-  return state[0];
-}
+Hook.useEffect = useEffect;
+Hook.useState = useState;
 
 export {
   Observable,
@@ -23,4 +13,4 @@ export {
 
 export { Consumer, Context, Provider } from './context';
 export { Fragment, createElement } from 'react';
-export { type Pragma };
+export { type Hook as Pragma };

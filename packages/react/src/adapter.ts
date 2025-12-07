@@ -1,5 +1,3 @@
-import { Context } from '@expressive/mvc';
-
 declare module '@expressive/mvc' {
   namespace Model {
     type HasProps<T extends Model> = {
@@ -46,17 +44,12 @@ declare module '@expressive/mvc' {
   }
 }
 
-const Pragma = {} as {
-  useContext(): Context;
-
-  useFactory<T extends Function>(
-    factory: (refresh: () => void) => T
-  ): T;
-
-  useLifecycle(callback: () => () => void): void;
+const Hook = {} as {
+  useState<S>(initial: () => S): [S, (next: (previous: S) => S) => void];
+  useEffect(effect: () => () => void, deps?: any[]): void;
 };
 
-export { Pragma };
+export { Hook };
 
 import "./model.as";
 import './model.use';
