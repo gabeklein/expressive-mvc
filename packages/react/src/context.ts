@@ -14,7 +14,7 @@ Context.use = (create?: boolean) => {
   const ambient = useContext(Lookup);
 
   return create ?
-    useMemo(() => ambient.push(), []) :
+    useMemo(() => ambient.push(), [ambient]) :
     ambient;
 }
 

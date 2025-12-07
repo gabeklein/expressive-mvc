@@ -227,4 +227,11 @@ class Context {
   }
 }
 
+Object.defineProperty(Context.prototype, "toString", {
+  value(){
+    return `Context-${this.id}`;
+  }
+});
+
+
 export { Context }
