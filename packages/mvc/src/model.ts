@@ -104,6 +104,7 @@ declare namespace Model {
    * @param update - `true` if update is pending, `false` effect has been cancelled, `null` if model is destroyed.
    */
   type EffectCallback = ((update: boolean | null) => void);
+}
 
 /**
  * Property initializer, will run upon instance creation.
@@ -643,7 +644,7 @@ function update<T>(
   subject: Model,
   key: string | number | symbol,
   value: T,
-  arg?: boolean | Model.Setter<T>){
+  arg?: boolean | Instruction.Setter<T>){
 
   const state = STATE.get(subject)!;
 
@@ -681,6 +682,7 @@ function uid(){
 export {
   event,
   fetch,
+  Instruction,
   METHOD,
   Model,
   PARENT,
