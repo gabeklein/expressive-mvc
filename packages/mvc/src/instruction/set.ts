@@ -1,5 +1,5 @@
 import { addListener, enter } from '../control';
-import { Model, event, update } from '../model';
+import { Instruction, event, update } from '../model';
 import { use } from './use';
 
 declare namespace set {
@@ -64,7 +64,7 @@ function set <T> (
   argument?: set.Callback<any> | boolean){
 
   return use<T>((key, subject) => {
-    const property: Model.Descriptor = {};
+    const property: Instruction.Descriptor = {};
 
     if(typeof value == "function" || isThenable(value)){
       function init(){
