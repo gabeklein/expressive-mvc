@@ -13,12 +13,31 @@ import type { Model } from "./model";
 type OnUpdate<T extends Observable = any> = 
   (this: T, key: Event, source: T) => (() => void) | null | void;
 
-type Effect<T extends Observable> = (proxy: T) =>
-  ((update: boolean | null) => void) | Promise<void> | null | void;
-
 type Event = number | string | null | boolean | symbol;
 
 type PromiseLite<T = void> = { then: (callback: () => T) => T };
+
+declare namespace Effect {
+  /**
+   * A callback function returned by effect, be called when effect is stale.
+   * 
+   * @param update - `true` if update is pending, `false` effect has been cancelled, `null` if model is destroyed.
+   */
+  type Callback = ((update: boolean | null) => void);
+}
+
+/**
+ * A callback function which is subscribed to parent and updates when accessed properties change.
+ * 
+ * @param current - Current state of this model. This is a proxy which detects properties which
+ * where accessed, and thus depended upon to stay current.
+ * 
+ * @param update - Set of properties which have changed, and events fired, since last update.
+ * 
+ * @returns A callback function which will be called when this effect is stale.
+ */
+type Effect<T extends Observable> = (this: T, current: T, update: Set<Model.Event<T>>) =>
+  Effect.Callback | Promise<void> | null | void;
 
 declare namespace Observable {
   export type Callback = () => void | PromiseLite;
@@ -156,6 +175,7 @@ function createEffect<T extends Model>(target: T, callback: Effect<T>, recursive
 function createEffect<T extends Model>(target: T, callback: Effect<T>, argument?: boolean){
   let unset: ((update: boolean | null) => void) | undefined;
   let reset: (() => void) | null | undefined;
+  let pending = new Set<Model.Event<T>>();
 
   function invoke() {
     let ignore: boolean = true;
@@ -177,7 +197,8 @@ function createEffect<T extends Model>(target: T, callback: Effect<T>, argument?
 
     try {
       const exit = enter(argument === false);
-      const output = callback(target[Observable](onUpdate, argument === true));
+      const active = target[Observable](onUpdate, argument === true);
+      const output = callback.call(active, active, pending);
       const flush = exit();
       
       ignore = false;
@@ -242,6 +263,7 @@ export {
   addListener,
   createEffect,
   event,
+  Effect,
   OnUpdate,
   PENDING_KEYS,
   Observable

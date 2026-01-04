@@ -1,4 +1,4 @@
-import { addListener, createEffect, event, Observable, OnUpdate, PENDING_KEYS } from './control';
+import { addListener, createEffect, event, Observable, OnUpdate, PENDING_KEYS, Effect } from './control';
 
 const define = Object.defineProperty;
 
@@ -84,26 +84,7 @@ declare namespace Model {
     (next: T): void;
     current: T | null;
   }
-
-  /**
-   * A callback function which is subscribed to parent and updates when accessed properties change.
-   * 
-   * @param current - Current state of this model. This is a proxy which detects properties which
-   * where accessed, and thus depended upon to stay current.
-   * 
-   * @param update - Set of properties which have changed, and events fired, since last update.
-   * 
-   * @returns A callback function which will be called when this effect is stale.
-   */
-  type Effect<T> = (this: T, current: T, update: Set<Event<T>>) =>
-    EffectCallback | Promise<void> | null | void;
-
-  /**
-   * A callback function returned by effect. Will be called when effect is stale.
-   * 
-   * @param update - `true` if update is pending, `false` effect has been cancelled, `null` if model is destroyed.
-   */
-  type EffectCallback = ((update: boolean | null) => void);
+}
 
 /**
  * Property initializer, will run upon instance creation.
@@ -180,7 +161,7 @@ abstract class Model implements Observable {
    *               effect is cancelled, or parent model is destroyed.
    * @returns Function to cancel listener.
    */
-  get(effect: Model.Effect<this>): () => void;
+  get(effect: Effect<this>): () => void;
 
   /**
    * Get value of a property.
@@ -216,7 +197,7 @@ abstract class Model implements Observable {
    */
   get(status: null, callback: () => void): () => void;
 
-  get(arg1?: Model.Effect<this> | string | null, arg2?: boolean | Model.OnUpdate<this, any>){
+  get(arg1?: Effect<this> | string | null, arg2?: boolean | Model.OnUpdate<this, any>){
     const self = this.is;
 
     if(typeof arg1 == "function"){
@@ -643,7 +624,7 @@ function update<T>(
   subject: Model,
   key: string | number | symbol,
   value: T,
-  arg?: boolean | Model.Setter<T>){
+  arg?: boolean | Instruction.Setter<T>){
 
   const state = STATE.get(subject)!;
 
@@ -682,6 +663,7 @@ export {
   event,
   fetch,
   METHOD,
+  Instruction,
   Model,
   PARENT,
   STATE,
