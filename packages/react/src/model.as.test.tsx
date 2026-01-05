@@ -69,7 +69,7 @@ it("will pass props before effects run", async () => {
   screen.getByText("bar");
 });
 
-it.only("will call is method on creation", () => {
+it("will call is method on creation", () => {
   class Control extends Model {}
 
   const Test = Control.as(() => null);
