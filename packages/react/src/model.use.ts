@@ -1,6 +1,6 @@
 import { Model, Context, createEffect } from '@expressive/mvc';
 
-import { Hook } from './adapter';
+import { React } from './compat';
 
 declare module '@expressive/mvc' {
   namespace Model {
@@ -24,7 +24,7 @@ Model.use = function <T extends Model> (
   repeat?: boolean){
 
   const context = Context.use(true);
-  const state = Hook.useState(() => {
+  const state = React.useState(() => {
     const refresh = () => state[1](x => x.bind(null));
     let ready: boolean | undefined;
     let local: T;
@@ -50,7 +50,7 @@ Model.use = function <T extends Model> (
     }
 
     return (props?: Model.Assign<T> | Model.Callback<T>) => {
-      Hook.useEffect(didMount, []);
+      React.useEffect(didMount, []);
 
       if(ready && repeat && props){
         ready = false;
