@@ -13,6 +13,14 @@ it("will add instance to context", () => {
   expect(context.get(Example)).toBe(example);
 })
 
+it("will UID context", () => {
+  const contextA = new Context();
+  const contextB = new Context();
+  
+  expect(String(contextA)).toBe("Context-" + contextA.id);
+  expect(String(contextA)).not.toBe(String(contextB));
+})
+
 it("will create instance in context", () => {
   const context = new Context(Example);
 

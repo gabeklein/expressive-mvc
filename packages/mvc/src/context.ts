@@ -60,7 +60,7 @@ class Context {
         LOOKUP.set(is, [callback]);
   }
 
-  public id!: string;
+  public id = uid();
 
   protected layer = new Map<string | number, Model | Model.Type>();
   protected cleanup = new Set<() => void>();
