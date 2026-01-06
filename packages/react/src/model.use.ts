@@ -43,13 +43,12 @@ Model.use = function <T extends Compat> (
     }
 
     return (...args: Model.Argument<T>[]) => {
-      React.useEffect(didMount, []);
-
       ready = false;
-      Promise.all(args.map(arg => {
-        if(typeof arg == "object")
-          return instance.set(arg as Model.Assign<T>);
-      })).then(() => ready = true);
+
+      React.useEffect(didMount, []);
+      Promise
+        .all(args.map(arg => typeof arg == "object" && instance.set(arg)))
+        .finally(() => ready = true);
 
       if(instance.render)
         instance.render(...args);
