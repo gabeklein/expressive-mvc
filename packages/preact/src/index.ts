@@ -1,10 +1,10 @@
 import { Model, get, use, ref, set, has, Observable } from '@expressive/mvc';
-import { Hook } from '@expressive/react/adapter';
+import { React } from '@expressive/react/compat';
 
 import { useEffect, useState } from 'preact/compat';
 
-Hook.useEffect = useEffect;
-Hook.useState = useState;
+React.useEffect = useEffect;
+React.useState = useState;
 
 export default Model;
 export { get, has, Model, Observable, ref, set, use };

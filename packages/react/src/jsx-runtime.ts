@@ -47,8 +47,9 @@ export declare namespace JSX {
 
   interface Element extends React.JSX.Element {}
   interface ElementClass extends React.JSX.ElementClass {}
-  // This is a hack to make TypeScript happy - React one insists on `props` property existing.
-  // I await the "Find Out" phase of this experiment in git issues.
+
+  // This is a hack to make TypeScript happy - React's interface insists on `props` property existing.
+  // I await the "Find Out" phase of this in git issues.
   interface ElementAttributesProperty {}
   interface ElementChildrenAttribute extends React.JSX.ElementChildrenAttribute {}
 
@@ -77,15 +78,11 @@ export function compat(
   this: (type: React.ElementType, ...args: any[]) => React.ReactElement,
   type: React.ElementType | Model.Init, ...args: any[]): React.ReactElement {
 
-  if(typeof type == "function")
+  if(Model.is(type))
     if(RENDER.has(type))
       type = RENDER.get(type)!;
     else
-      RENDER.set(type, type = (
-        type.prototype instanceof Model ?
-          MC.bind(type as Model.Init) :
-        type as React.ComponentType
-      ));
+      RENDER.set(type, type = MC.bind(type as Model.Init));
 
   return this(type, ...args);
 }

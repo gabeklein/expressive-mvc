@@ -1,6 +1,6 @@
 import { createEffect, Model } from '@expressive/mvc';
 
-import { Hook } from './adapter';
+import { React } from './compat';
 import { Context } from '@expressive/mvc';
 
 /** Type may not be undefined - instead will be null.  */
@@ -59,7 +59,7 @@ Model.get = function <T extends Model, R> (
   argument?: boolean | Model.GetFactory<T, unknown>
 ){
   const context = Context.use();
-  const state = Hook.useState(() => {
+  const state = React.useState(() => {
     const refresh = () => state[1](x => x.bind(null));
     const instance = context.get(this);
 
@@ -125,7 +125,7 @@ Model.get = function <T extends Model, R> (
     }
 
     return () => {
-      Hook.useEffect(didMount, []);
+      React.useEffect(didMount, []);
       return value === undefined ? null : value;
     }
   });

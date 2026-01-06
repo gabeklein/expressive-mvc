@@ -42,12 +42,10 @@ declare module '@expressive/mvc' {
   }
 }
 
-const Hook = {} as {
+export const React = {} as {
   useState<S>(initial: () => S): [S, (next: (previous: S) => S) => void];
   useEffect(effect: () => () => void, deps?: any[]): void;
 };
-
-export { Hook };
 
 import "./model.as";
 import './model.use';

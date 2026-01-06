@@ -1,15 +1,15 @@
-import { fetch, Model, PARENT, STATE, uid, update, watch } from '../model';
+import { fetch, Model, PARENT, STATE, uid, update, watch, Instruction } from '../model';
 
-const INSTRUCTION = new Map<symbol, Model.Instruction>();
+const INSTRUCTION = new Map<symbol, Instruction>();
 
-function use <T> (instruction: Model.Instruction<T>): T extends void ? unknown : T;
+function use <T> (instruction: Instruction<T>): T extends void ? unknown : T;
 
 function use <T extends Model> (Type: Model.Init<T>, required: false): T | undefined;
 
 function use <T extends Model> (Type: Model.Init<T>, ready?: (i: T) => void): T;
 
 function use(
-  arg1: Model.Init | Model.Instruction,
+  arg1: Model.Init | Instruction,
   arg2?: ((i: Model) => void) | boolean){
 
   if(Model.is(arg1))
@@ -23,7 +23,7 @@ function use(
 function childInstruction(
   type: Model.Init<Model>,
   arg2?: ((i: Model) => void) | boolean
-): Model.Instruction<any, any> {
+): Instruction<any, any> {
   return (key, subject) => {
     function set(next: Model | undefined){
       if(next ? !(next instanceof type) : arg2 !== false)
