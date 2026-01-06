@@ -63,7 +63,7 @@ function MC<T extends Model.Compat>(
 ) {
   const model = this.use(props as any, is);
 
-  const render = METHOD.get(model.render) || model.render;
+  const render = METHOD.get(model.render) || props.render || model.render;
   const children = render
     ? render.call(model, props as Model.HasProps<T>, model)
     : props.children;

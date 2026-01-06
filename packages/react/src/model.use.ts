@@ -1,6 +1,6 @@
 import { Model, Context, createEffect } from '@expressive/mvc';
 
-import { Pragma } from './adapter';
+import { Hook } from './adapter';
 
 declare module '@expressive/mvc' {
   namespace Model {
@@ -18,7 +18,8 @@ Model.use = function <T extends Compat> (
   ...args: Model.Argument<T>[]){
 
   const context = Context.use(true);
-  const render = Pragma.useFactory((refresh) => {
+  const state = Hook.useState(() => {
+    const refresh = () => state[1](x => x.bind(null));
     let ready: boolean | undefined;
     let local: T;
 
@@ -43,7 +44,7 @@ Model.use = function <T extends Compat> (
     }
 
     return (...args: Model.Argument<T>[]) => {
-      Pragma.useLifecycle(didMount);
+      Hook.useEffect(didMount, []);
 
       ready = false;
       Promise.all(args.map(arg => {
@@ -58,5 +59,5 @@ Model.use = function <T extends Compat> (
     };
   });
 
-  return render(...args);
+  return state[0](...args);
 }

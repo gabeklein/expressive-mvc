@@ -1,5 +1,3 @@
-import { Context } from '@expressive/mvc';
-
 declare module '@expressive/mvc' {
   namespace Model {
     type HasProps<T extends Model> = {
@@ -28,7 +26,7 @@ declare module '@expressive/mvc' {
        * Callback for newly created instance. Only called once.
        * @returns Callback to run when instance is destroyed.
        */
-      is?: (instance: T) => void | (() => void);
+      is?: (instance: T) => void;
 
       /**
        * A fallback react tree to show when suspended.
@@ -44,17 +42,12 @@ declare module '@expressive/mvc' {
   }
 }
 
-const Pragma = {} as {
-  useContext(): Context;
-
-  useFactory<T extends Function>(
-    factory: (refresh: () => void) => T
-  ): T;
-
-  useLifecycle(callback: () => () => void): void;
+const Hook = {} as {
+  useState<S>(initial: () => S): [S, (next: (previous: S) => S) => void];
+  useEffect(effect: () => () => void, deps?: any[]): void;
 };
 
-export { Pragma };
+export { Hook };
 
 import "./model.as";
 import './model.use';

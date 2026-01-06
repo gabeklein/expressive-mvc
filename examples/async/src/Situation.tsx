@@ -5,10 +5,11 @@ import Control from './Control';
 const Situation = () => {
   const { agent, dead, getNewAgent, remaining } = Control.use();
 
-  if(dead !== undefined)
-    return dead
-      ? <h2>🙀💥 Unforunately, the cat exploded.</h2>
-      : <h2>😸👍 Oh, the cat did not explode.</h2>
+  if (dead === true)
+    return <h2>🙀💥 Unforunately, the cat exploded.</h2>;
+
+  if (dead === false)
+    return <h2>😸👍 Oh, the cat did not explode.</h2>;
 
   return (
     <div className="timer">

@@ -4,6 +4,21 @@ import { useContext, useEffect, useMemo } from 'preact/hooks';
 
 const Lookup = createContext(new Context());
 
+declare module '@expressive/mvc' {
+  namespace Context {
+    function use(create?: true): Context;
+    function use(create: boolean): Context | null | undefined;
+  }
+}
+
+Context.use = (create?: boolean) => {
+  const ambient = useContext(Lookup);
+
+  return create ?
+    useMemo(() => ambient.push(), [ambient]) :
+    ambient;
+}
+
 declare namespace Consumer {
   type Props<T extends Model> = {
     /** Type of controller to fetch from context. */
@@ -33,8 +48,7 @@ declare namespace Provider {
 }
 
 function Provider<T extends Model>(props: Provider.Props<T>){
-  const ambient = useContext(Lookup);
-  const context = useMemo(() => ambient.push(), [ambient]);
+  const context = Context.use(true);
 
   useEffect(() => () => context.pop(), [context]);
   
@@ -43,7 +57,7 @@ function Provider<T extends Model>(props: Provider.Props<T>){
       const cleanup = props.forEach(model);
 
       if(cleanup)
-        model.set(null, cleanup);
+        model.set(cleanup, null);
     }
   });
 

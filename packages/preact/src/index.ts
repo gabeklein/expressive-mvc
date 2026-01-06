@@ -1,24 +1,11 @@
-import { Pragma } from '@expressive/react/adapter';
-import { useContext, useEffect, useState } from 'preact/compat';
+import { Model, get, use, ref, set, has, Observable } from '@expressive/mvc';
+import { Hook } from '@expressive/react/adapter';
 
-import { Lookup } from './context';
+import { useEffect, useState } from 'preact/compat';
 
-Pragma.useContext = () => useContext(Lookup);
+Hook.useEffect = useEffect;
+Hook.useState = useState;
 
-Pragma.useLifecycle = (callback) => useEffect(() => callback(), []);
-
-Pragma.useFactory = (factory) => {
-  const state = useState(() => factory(() => {
-    state[1](x => x.bind(null) as any);
-  }));
-
-  return state[0];
-}
-
-export {
-  Model, Model as default,
-  get, use, ref, set, has
-} from '@expressive/mvc';
-
+export default Model;
+export { get, has, Model, Observable, ref, set, use };
 export { Consumer, Provider } from './context';
-export { type Pragma };
