@@ -20,9 +20,6 @@ Model.as = function <T extends Model.Compat, P extends Model.Assign<T>> (
   this: Model.Init<T>,
   render: (props: P, self: T) => React.ReactNode
 ){
-  if(this === Model)
-    throw new Error("Cannot create component from base Model.");
-
   const Component: Model.Component<T, P> = (props) => {
     const local = this.use((self) => {
       self.set(props);
