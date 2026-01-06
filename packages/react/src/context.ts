@@ -94,4 +94,4 @@ export function createProvider(
     element;
 }
 
-export { Consumer, Provider, Context }
+export { Consumer, Provider }
