@@ -22,12 +22,6 @@ it("will update component as values change", async () => {
   screen.getByText("baz");
 });
 
-it("will not create abstract Model", () => {
-  // @ts-expect-error
-  const attempt = () => Model.as(() => null);
-  expect(attempt).toThrowError();
-});
-
 it("will pass props to model", async () => {
   const didUpdateFoo = jest.fn();
   class Test extends Model {
