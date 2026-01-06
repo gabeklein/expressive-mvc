@@ -44,8 +44,8 @@ export declare namespace JSX {
     C extends new (...args: any[]) => { props: infer U }
       ? U
       : C extends Model.Type<infer U>
-      ? Model.Props<U>
-      : React.JSX.LibraryManagedAttributes<C, P>;
+        ? Model.Props<U>
+        : React.JSX.LibraryManagedAttributes<C, P>;
 
   interface Element extends React.JSX.Element {}
   interface ElementClass extends React.JSX.ElementClass {}
@@ -57,17 +57,16 @@ export declare namespace JSX {
     extends React.JSX.ElementChildrenAttribute {}
 
   interface IntrinsicAttributes extends React.JSX.IntrinsicAttributes {}
-  interface IntrinsicClassAttributes<T>
-    extends React.JSX.IntrinsicClassAttributes<T> {}
+  interface IntrinsicClassAttributes<T> extends React.JSX
+    .IntrinsicClassAttributes<T> {}
   interface IntrinsicElements extends React.JSX.IntrinsicElements {}
 }
 
-function MC<T extends Model.Compat>(
+function Component<T extends Model.Compat>(
   this: Model.Init<T>,
   { is, ...props }: Model.Props<T>
 ) {
   const model = this.use(props as any, is);
-
   const render = METHOD.get(model.render) || props.render || model.render;
   const children = render
     ? render.call(model, props as Model.HasProps<T>, model)
@@ -83,19 +82,19 @@ function MC<T extends Model.Compat>(
 
 const RENDER = new WeakMap<Function, React.ComponentType>();
 
-export function compat(
+export function createElement(
   this: (type: React.ElementType, ...args: any[]) => React.ReactElement,
   type: React.ElementType | Model.Init,
   ...args: any[]
 ): React.ReactElement {
   if (Model.is(type))
     if (RENDER.has(type)) type = RENDER.get(type)!;
-    else RENDER.set(type, (type = MC.bind(type as Model.Init)));
+    else RENDER.set(type, (type = Component.bind(type)));
 
   return this(type, ...args);
 }
 
-export const jsx = compat.bind(Runtime.jsx);
-export const jsxs = compat.bind(Runtime.jsxs);
+export const jsx = createElement.bind(Runtime.jsx);
+export const jsxs = createElement.bind(Runtime.jsxs);
 
 export { Fragment } from 'react';
