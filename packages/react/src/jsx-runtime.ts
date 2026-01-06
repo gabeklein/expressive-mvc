@@ -47,8 +47,9 @@ export declare namespace JSX {
 
   interface Element extends React.JSX.Element {}
   interface ElementClass extends React.JSX.ElementClass {}
-  // This is a hack to make TypeScript happy - React one insists on `props` property existing.
-  // I await the "Find Out" phase of this experiment in git issues.
+
+  // This is a hack to make TypeScript happy - React's interface insists on `props` property existing.
+  // I await the "Find Out" phase of this in git issues.
   interface ElementAttributesProperty {}
   interface ElementChildrenAttribute extends React.JSX.ElementChildrenAttribute {}
 
