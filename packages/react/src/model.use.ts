@@ -19,7 +19,6 @@ Model.use = function <T extends Compat> (
 
   const context = Context.use(true);
   const state = React.useState(() => {
-    const refresh = () => state[1](x => x.bind(null));
     let ready: boolean | undefined;
     let local: T;
 
@@ -31,7 +30,7 @@ Model.use = function <T extends Compat> (
       local = current;
 
       if(ready) 
-        refresh();
+        state[1](x => x.bind(null));
     });
 
     function didMount(){
