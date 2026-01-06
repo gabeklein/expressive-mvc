@@ -60,7 +60,6 @@ Model.get = function <T extends Model, R> (
 ){
   const context = Context.use();
   const state = React.useState(() => {
-    const refresh = () => state[1](x => x.bind(null));
     const instance = context.get(this);
 
     if(!instance)
@@ -72,9 +71,28 @@ Model.get = function <T extends Model, R> (
     let ready: boolean | undefined;
     let value: any;
 
+    function render(){
+      state[1](x => x.bind(null));
+    }
+
+    function refresh<T>(action?: Promise<T> | (() => Promise<T>)): any {
+      if(typeof action == "function")
+        action = action();
+
+      render();
+
+      if(action)
+        return action.finally(render);
+    }
+
+    function onMount(){
+      ready = true;
+      return unwatch;
+    }
+  
     const unwatch = createEffect(instance, current => {
       if(typeof argument === "function"){
-        const next = argument.call(current, current, update);
+        const next = argument.call(current, current, refresh);
 
         if(next === value)
           return;
@@ -85,7 +103,7 @@ Model.get = function <T extends Model, R> (
         value = current;
 
       if(ready)
-        refresh();
+        render();
     }, argument === true);
 
     if(value instanceof Promise){
@@ -93,7 +111,7 @@ Model.get = function <T extends Model, R> (
 
       unwatch();
 
-      value.then(x => value = x, e => error = e).finally(refresh);
+      value.then(x => value = x, e => error = e).finally(render);
       value = null;
 
       return () => {
@@ -109,23 +127,8 @@ Model.get = function <T extends Model, R> (
       return () => null;
     };
 
-    function update<T>(action?: Promise<T> | (() => Promise<T>)): any {
-      if(typeof action == "function")
-        action = action();
-
-      refresh();
-
-      if(action)
-        return action.finally(refresh);
-    }
-
-    function didMount(){
-      ready = true;
-      return unwatch;
-    }
-
     return () => {
-      React.useEffect(didMount, []);
+      React.useEffect(onMount, []);
       return value === undefined ? null : value;
     }
   });
