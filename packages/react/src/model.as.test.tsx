@@ -35,13 +35,12 @@ it("will pass props to model", async () => {
   const { rerender } = render(<Component foo="bar" />);
 
   screen.getByText("bar");
-  expect(didUpdateFoo).toHaveBeenCalledTimes(1);
-  expect(didUpdateFoo).toHaveBeenCalledWith("foo", { foo: "bar" });
+  expect(didUpdateFoo).not.toHaveBeenCalled();
 
   rerender(<Component foo="baz" />);
 
   screen.getByText("baz");
-  expect(didUpdateFoo).toHaveBeenCalledTimes(2);
+  expect(didUpdateFoo).toHaveBeenCalledTimes(1);
   expect(didUpdateFoo).toHaveBeenCalledWith("foo", { foo: "baz" });
 });
 
@@ -117,26 +116,32 @@ it("will revert to value from prop", async () => {
 
   let test: Test;
   const didSetFoo = jest.fn();
-  const didRender = jest.fn();
-
-  const Component = Test.as((_, self) => {
-    didRender();
-    return <span>{self.foo} </span>;
+  const renderSpy = jest.fn((_, { foo }) => {
+    return <span>{foo}</span>;
   });
 
+  const Component = Test.as(renderSpy);
+
+  // Notice that foo is set to "bar" from prop
+  // This will always override value on render
   render(<Component foo='bar' />);
+
+  // Expect initial render to be based on prop's value
   screen.getByText("bar");
 
   await act(async () => {
-    await test.set({ foo: "baz" });
+    // explicitly update foo; calls for new render
+    test.foo = "baz";
+    await test.set();
     expect(test.foo).toBe("baz");
   });
 
+  // Should re-render due to update however,
   // is reset to bar by prop before render completes
   screen.getByText("bar");
 
-  expect(didSetFoo).toHaveBeenCalledTimes(3);
-  expect(didRender).toHaveBeenCalledTimes(2);
+  expect(didSetFoo).toHaveBeenCalledTimes(2);
+  expect(renderSpy).toHaveBeenCalledTimes(2);
 });
 
 it("will override method", async () => {

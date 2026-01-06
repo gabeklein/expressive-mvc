@@ -21,14 +21,7 @@ Model.as = function <T extends Model.Compat, P extends Model.Assign<T>> (
   render: (props: P, self: T) => React.ReactNode
 ){
   const Component: Model.Component<T, P> = (props) => {
-    const local = this.use((self) => {
-      self.set(props);
-
-      if(props.is)
-        props.is(self);
-    });
-
-    local.set(props);
+    const local = this.use(props, props.is);
 
     return createProvider(
       local,
