@@ -4,7 +4,7 @@ import { React } from './compat';
 
 declare module '@expressive/mvc' {
   namespace Model {
-    function use <T extends Model> (this: Model.Init<T>, ...args: Argument<T>[]): T;
+    function use <T extends Model> (this: Init<T>, ...args: Argument<T>[]): T;
   }
 }
 

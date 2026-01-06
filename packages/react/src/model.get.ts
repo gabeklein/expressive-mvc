@@ -39,18 +39,18 @@ declare module '@expressive/mvc' {
       (this: T, current: T, refresh: ForceRefresh) => null;
 
     /** Fetch instance of this class from context. */
-    function get <T extends Model> (this: Model.Type<T>): T;
+    function get <T extends Model> (this: Type<T>): T;
   
     /** Fetch instance of this class optionally. */
-    function get <T extends Model> (this: Model.Type<T>, required: false): T | undefined;
+    function get <T extends Model> (this: Type<T>, required: false): T | undefined;
 
     /** Fetch instance of this class from context. */
-    function get <T extends Model> (this: Model.Type<T>, requireValues: true): Required<T>
+    function get <T extends Model> (this: Type<T>, requireValues: true): Required<T>
   
-    function get <T extends Model, R> (this: Model.Type<T>, factory: GetFactory<T, Promise<R> | R>): NoVoid<R>;
+    function get <T extends Model, R> (this: Type<T>, factory: GetFactory<T, Promise<R> | R>): NoVoid<R>;
   
     // TODO: eagerly match this so any nulls are caught - would prevent updates.
-    function get <T extends Model> (this: Model.Type<T>, factory: GetEffect<T>): null;
+    function get <T extends Model> (this: Type<T>, factory: GetEffect<T>): null;
   }
 }
 
