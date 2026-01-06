@@ -7,49 +7,25 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 **Note:** Version bump only for package @expressive/solid
 
-
-
-
-
 # [0.70.0](https://github.com/gabeklein/expressive-mvc/compare/v0.69.2...v0.70.0) (2025-09-15)
 
 **Note:** Version bump only for package @expressive/solid
-
-
-
-
 
 ## [0.69.2](https://github.com/gabeklein/expressive-mvc/compare/v0.69.1...v0.69.2) (2025-09-11)
 
 **Note:** Version bump only for package @expressive/solid
 
-
-
-
-
 ## [0.69.1](https://github.com/gabeklein/expressive-mvc/compare/v0.69.0...v0.69.1) (2025-09-10)
 
 **Note:** Version bump only for package @expressive/solid
-
-
-
-
 
 # [0.69.0](https://github.com/gabeklein/expressive-mvc/compare/v0.68.0...v0.69.0) (2025-09-05)
 
 **Note:** Version bump only for package @expressive/solid
 
-
-
-
-
 # [0.68.0](https://github.com/gabeklein/expressive-mvc/compare/v0.67.0...v0.68.0) (2025-08-21)
 
 **Note:** Version bump only for package @expressive/solid
-
-
-
-
 
 # [0.67.0](https://github.com/gabeklein/expressive-mvc/compare/v0.66.2...v0.67.0) (2025-07-28)
 

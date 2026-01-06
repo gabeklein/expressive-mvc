@@ -1,4 +1,3 @@
-
 {
   "compilerOptions": {
     "baseUrl": ".",
@@ -11,16 +10,9 @@
     "sourceMap": true,
     "strict": true,
     "paths": {
-      "@expressive/*": [
-        "../*/src"
-      ],
-      "@expressive/react/compat": [
-        "../react/src/compat"
-      ]
+      "@expressive/*": ["../*/src"],
+      "@expressive/react/compat": ["../react/src/compat"]
     }
   },
-  "exclude": [
-    "node_modules",
-    "dist"
-  ]
+  "exclude": ["node_modules", "dist"]
 }

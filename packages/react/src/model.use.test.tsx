@@ -3,63 +3,63 @@ import { act, render, renderHook } from '@testing-library/react';
 import { get, Model, Provider, set } from '.';
 
 class Test extends Model {
-  value = "foo";
-};
+  value = 'foo';
+}
 
-describe("hook", () => {
-  it("will create instance given a class", () => {
+describe('hook', () => {
+  it('will create instance given a class', () => {
     const hook = renderHook(() => Test.use());
-  
-    expect(hook.result.current).toBeInstanceOf(Test);
-  })
 
-  it("will not create abstract class", () => {
+    expect(hook.result.current).toBeInstanceOf(Test);
+  });
+
+  it('will not create abstract class', () => {
     const Test = () => {
       // @ts-expect-error
       expect(() => Model.use()).toThrowError();
       return null;
-    }
+    };
 
     render(<Test />);
-  })
-  
-  it("will subscribe to instance of controller", async () => {
+  });
+
+  it('will subscribe to instance of controller', async () => {
     const { result } = renderHook(() => Test.use());
-  
-    expect(result.current.value).toBe("foo");
-  
+
+    expect(result.current.value).toBe('foo');
+
     await act(async () => {
-      result.current.value = "bar";
+      result.current.value = 'bar';
     });
-  
-    expect(result.current.value).toBe("bar");
-  })
-    
+
+    expect(result.current.value).toBe('bar');
+  });
+
   it('will assign `is` as a circular reference', async () => {
     const { result } = renderHook(() => Test.use());
-  
-    expect(result.current.value).toBe("foo");
-  
+
+    expect(result.current.value).toBe('foo');
+
     await act(async () => {
-      result.current.is.value = "bar";
+      result.current.is.value = 'bar';
     });
-  
-    expect(result.current.value).toBe("bar")
-  })
-  
-  it("will run callback", () => {
+
+    expect(result.current.value).toBe('bar');
+  });
+
+  it('will run callback', () => {
     const callback = jest.fn();
-  
+
     renderHook(() => Test.use(callback));
-  
+
     expect(callback).toHaveBeenCalledWith(expect.any(Test));
-  })
-  
-  it("will destroy instance of given class", async () => {
+  });
+
+  it('will destroy instance of given class', async () => {
     const didDestroy = jest.fn();
-  
+
     class Test extends Model {
-      constructor(){
+      constructor() {
         super();
         this.get(null, didDestroy);
       }
@@ -68,39 +68,39 @@ describe("hook", () => {
     const Component = () => void Test.use();
 
     const rendered = render(<Component />);
-    
-    rendered.unmount()
+
+    rendered.unmount();
 
     expect(didDestroy).toHaveBeenCalled();
-  })
-  
-  it("will ignore updates after unmount", async () => {
+  });
+
+  it('will ignore updates after unmount', async () => {
     const hook = renderHook(() => {
       const test = Test.use();
       void test.value;
       return test.is;
     });
-  
+
     await act(async () => {
-      hook.result.current.value = "bar";
+      hook.result.current.value = 'bar';
     });
-  
+
     hook.unmount();
 
     expect(() => {
-      hook.result.current.value = "baz";
-    }).toThrow()
-  })
+      hook.result.current.value = 'baz';
+    }).toThrow();
+  });
 
-  it("will bind methods to instance", async () => {
+  it('will bind methods to instance', async () => {
     class Test extends Model {
       current = 0;
 
-      action(){
+      action() {
         this.current++;
       }
     }
-    
+
     const hook = renderHook(() => {
       const { action, current } = Test.use();
 
@@ -109,7 +109,7 @@ describe("hook", () => {
       return current;
     });
 
-    expect(hook.result.current).toBe(0);    
+    expect(hook.result.current).toBe(0);
 
     hook.rerender();
 
@@ -117,15 +117,15 @@ describe("hook", () => {
 
     hook.unmount();
   });
-})
+});
 
-describe("callback argument", () => {
+describe('callback argument', () => {
   class Test extends Model {
     foo?: string = undefined;
     bar?: string = undefined;
   }
 
-  it("will run callback once", async () => {
+  it('will run callback once', async () => {
     const callback = jest.fn();
     const hook = renderHook(() => Test.use(callback));
 
@@ -134,16 +134,16 @@ describe("callback argument", () => {
     hook.rerender(() => Test.use(callback));
 
     expect(callback).toHaveBeenCalledTimes(1);
-  })
+  });
 
-  it("will run argument before effects", () => {
+  it('will run argument before effects', () => {
     const effect = jest.fn();
     const argument = jest.fn(() => {
       expect(effect).not.toHaveBeenCalled();
     });
 
     class Test extends Model {
-      constructor(...args: Model.Args){
+      constructor(...args: Model.Args) {
         super(args);
         this.get(effect);
       }
@@ -155,139 +155,145 @@ describe("callback argument", () => {
 
     expect(argument).toHaveBeenCalled();
     expect(effect).toHaveBeenCalled();
-  })
-})
+  });
+});
 
-describe("props argument", () => {
+describe('props argument', () => {
   class Test extends Model {
     foo?: string = undefined;
     bar?: string = undefined;
   }
-  
-  it("will apply props to model", async () => {
+
+  it('will apply props to model', async () => {
     const mockExternal = {
-      foo: "foo",
-      bar: "bar"
-    }
-  
+      foo: 'foo',
+      bar: 'bar'
+    };
+
     const didRender = jest.fn();
-  
+
     const hook = renderHook(() => {
       didRender();
       return Test.use(mockExternal);
     });
-  
+
     expect(hook.result.current).toMatchObject(mockExternal);
-  })
-  
-  it("will apply callback only once", async () => {
+  });
+
+  it('will apply callback only once', async () => {
     const hook = renderHook(() => {
-      return Test.use(() => ({ foo: "foo", bar: "bar" }));
+      return Test.use(() => ({ foo: 'foo', bar: 'bar' }));
     });
 
-    expect(hook.result.current).toMatchObject({ foo: "foo", bar: "bar" });
+    expect(hook.result.current).toMatchObject({ foo: 'foo', bar: 'bar' });
 
     await expect(hook.result.current).not.toHaveUpdated();
 
     hook.rerender(() => {
-      return Test.use({ foo: "bar", bar: "foo" })
+      return Test.use({ foo: 'bar', bar: 'foo' });
     });
 
     await expect(hook.result.current).not.toHaveUpdated();
 
     await act(async () => {
-      hook.result.current.foo = "bar";
+      hook.result.current.foo = 'bar';
     });
 
-    expect(hook.result.current.foo).toBe("bar");
-  })
-  
-  it("will apply object every render", async () => {
-    const hook = renderHook(({ foo }) => {
-      return Test.use({ foo, bar: "bar" });
-    }, { initialProps: { foo: "foo" } });
+    expect(hook.result.current.foo).toBe('bar');
+  });
 
-    expect(hook.result.current).toMatchObject({ foo: "foo", bar: "bar" });
-    
-    hook.rerender({ foo: "bar" });
+  it('will apply object every render', async () => {
+    const hook = renderHook(
+      ({ foo }) => {
+        return Test.use({ foo, bar: 'bar' });
+      },
+      { initialProps: { foo: 'foo' } }
+    );
 
-    expect(hook.result.current.foo).toBe("bar");
-  })
-  
-  it("will apply props over (untracked) arrow functions", () => {
+    expect(hook.result.current).toMatchObject({ foo: 'foo', bar: 'bar' });
+
+    hook.rerender({ foo: 'bar' });
+
+    expect(hook.result.current.foo).toBe('bar');
+  });
+
+  it('will apply props over (untracked) arrow functions', () => {
     class Test extends Model {
-      foobar = () => "Hello world!";
+      foobar = () => 'Hello world!';
     }
-  
+
     const mockExternal = {
-      foobar: () => "Goodbye cruel world!"
-    }
-  
+      foobar: () => 'Goodbye cruel world!'
+    };
+
     const hook = renderHook(() => {
       return Test.use(mockExternal);
     });
-  
+
     const { foobar } = hook.result.current;
-  
+
     expect(foobar).toBe(mockExternal.foobar);
-  })
-  
-  it("will not apply props over methods", () => {
+  });
+
+  it('will not apply props over methods', () => {
     class Test extends Model {
-      foobar(){
-        return "Hello world!";
-      };
+      foobar() {
+        return 'Hello world!';
+      }
     }
-  
+
     const mockProps = {
-      foobar: () => "Goodbye cruel world!"
-    }
-  
+      foobar: () => 'Goodbye cruel world!'
+    };
+
     const { result } = renderHook(() => {
       return Test.use(mockProps);
     });
-  
-    expect(result.current).not.toBe(mockProps.foobar);
-  })
-  
-  it("will not trigger updates it caused", async () => {
-    const didRender = jest.fn();
-    const hook = renderHook((props) => {
-      didRender();
-      return Test.use(props);
-    }, { initialProps: { foo: "foo" } });
 
-    hook.rerender({ foo: "bar" });
+    expect(result.current).not.toBe(mockProps.foobar);
+  });
+
+  it('will not trigger updates it caused', async () => {
+    const didRender = jest.fn();
+    const hook = renderHook(
+      (props) => {
+        didRender();
+        return Test.use(props);
+      },
+      { initialProps: { foo: 'foo' } }
+    );
+
+    hook.rerender({ foo: 'bar' });
 
     expect(didRender).toHaveBeenCalledTimes(2);
-  })
+  });
 
-  it("will trigger set instruction", () => {
+  it('will trigger set instruction', () => {
     const mock = jest.fn();
 
     class Test extends Model {
-      foo = set("foo", mock);
+      foo = set('foo', mock);
     }
 
     const { result } = renderHook(() => {
-      return Test.use({ foo: "bar" });
+      return Test.use({ foo: 'bar' });
     });
 
-    expect(result.current.foo).toBe("bar");
-    expect(mock).toHaveBeenCalledWith("bar", "foo");
-  })
-})
+    expect(result.current.foo).toBe('bar');
+    expect(mock).toHaveBeenCalledWith('bar', 'foo');
+  });
+});
 
-describe("context", () => {
-  it("will attach before model init", () => {
+describe('context', () => {
+  it('will attach before model init', () => {
     class Ambient extends Model {
-      foo = "foo";
+      foo = 'foo';
     }
 
     class Test extends Model {
       ambient = get(Ambient);
 
-      constructor(){
+      constructor() {
         super(() => {
           expect(this.ambient).toBeInstanceOf(Ambient);
         });
@@ -296,14 +302,14 @@ describe("context", () => {
 
     const Element = () => {
       const test = Test.use();
-      expect(test.ambient.foo).toBe("foo");
+      expect(test.ambient.foo).toBe('foo');
       return null;
-    }
+    };
 
     render(
       <Provider for={Ambient}>
         <Element />
       </Provider>
-    )
-  })
-})
+    );
+  });
+});

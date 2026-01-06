@@ -5,21 +5,23 @@ import { createProvider } from './context';
 
 declare module '@expressive/mvc' {
   namespace Model {
-    interface Component<T extends Model, P extends Model.Assign<T>> extends FunctionComponent<P & Model.Props<T>> {
+    interface Component<T extends Model, P extends Model.Assign<T>>
+      extends FunctionComponent<P & Model.Props<T>> {
       displayName?: string;
       Model: Model.Type<T>;
     }
 
-    function as <T extends Model, P extends Model.Assign<T>> (
-      this: Model.Init<T>, render: (props: P, self: T) => React.ReactNode
+    function as<T extends Model, P extends Model.Assign<T>>(
+      this: Model.Init<T>,
+      render: (props: P, self: T) => React.ReactNode
     ): Component<T, P>;
   }
 }
 
-Model.as = function <T extends Model.Compat, P extends Model.Assign<T>> (
+Model.as = function <T extends Model.Compat, P extends Model.Assign<T>>(
   this: Model.Init<T>,
   render: (props: P, self: T) => React.ReactNode
-){
+) {
   const Component: Model.Component<T, P> = (props) => {
     const local = this.use(props, props.is);
 
@@ -29,10 +31,10 @@ Model.as = function <T extends Model.Compat, P extends Model.Assign<T>> (
       props.fallback || local.fallback,
       String(local)
     );
-  }
+  };
 
   Component.Model = this;
   Component.displayName = this.name;
-  
+
   return Component;
-}
+};

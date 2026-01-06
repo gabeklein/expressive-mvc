@@ -29,6 +29,9 @@ importers:
       lerna:
         specifier: ^7.2.0
         version: 7.4.2(@swc/core@1.10.16)
+      prettier:
+        specifier: ^3.7.4
+        version: 3.7.4
       tsup:
         specifier: ^8.0.2
         version: 8.3.6(@swc/core@1.10.16)(typescript@5.7.3)
@@ -5823,6 +5826,12 @@ packages:
 
   /preact@10.26.0:
     resolution: {integrity: sha512-6ugi/Mb7lyV5RA6KlnijFyDLMU253i7L0RRiObIzDoqj59KT9iTeNJbA/YGw6M7jP4vxaab0DOA8DgodTOA6EQ==}
+    dev: true
+
+  /prettier@3.7.4:
+    resolution: {integrity: sha512-v6UNi1+3hSlVvv8fSaoUbggEM5VErKmmpGA7Pl3HF8V6uKY7rvClBOJlH6yNwQtfTueNkGVpOv/mtWL9L4bgRA==}
+    engines: {node: '>=14'}
+    hasBin: true
     dev: true
 
   /pretty-format@27.5.1:

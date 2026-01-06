@@ -5,8 +5,9 @@ import { use } from './use';
 const { defineProperty, defineProperties } = Object;
 
 declare namespace ref {
-  type Callback<T> = (argument: T) =>
-    ((next: T | null) => void) | Promise<void> | void | boolean;
+  type Callback<T> = (
+    argument: T
+  ) => ((next: T | null) => void) | Promise<void> | void | boolean;
 
   interface Object<T = any> {
     /** Current value held by this reference. */
@@ -18,9 +19,9 @@ declare namespace ref {
     /** Key of property on model this reference belongs to. */
     key: string;
 
-    /** 
+    /**
      * Subscribe to changes of this reference.
-     * 
+     *
      * @param callback - Callback to invoke with the current value when it changes.
      * @returns Unsubscribe function to stop listening to changes.
      */
@@ -33,13 +34,13 @@ declare namespace ref {
   /** Object with references to all managed values of `T`. */
 
   /** Object with references to all managed values of `T`. */
-  type Proxy<T extends Model> =
-    & { [P in Model.Field<T>]-?: Object<T[P]> }
-    & { get(): T };
+  type Proxy<T extends Model> = { [P in Model.Field<T>]-?: Object<T[P]> } & {
+    get(): T;
+  };
 
-  type CustomProxy<T extends Model, R> =
-    & { [P in Model.Field<T>]-?: R }
-    & { get(): T };
+  type CustomProxy<T extends Model, R> = { [P in Model.Field<T>]-?: R } & {
+    get(): T;
+  };
 }
 
 /**
@@ -50,7 +51,7 @@ declare namespace ref {
  *
  * @param target - Source model from which to reference values.
  */
-function ref <T extends Model> (target: T): ref.Proxy<T>;
+function ref<T extends Model>(target: T): ref.Proxy<T>;
 
 /**
  * Creates an object with values based on managed values.
@@ -60,8 +61,10 @@ function ref <T extends Model> (target: T): ref.Proxy<T>;
  * @param target - Source model from which to reference values.
  * @param mapper - Function producing the placeholder value for any given property.
  */
-function ref <O extends Model, R>
-  (target: O, mapper: (key: Model.Field<O>) => R): ref.CustomProxy<O, R>;
+function ref<O extends Model, R>(
+  target: O,
+  mapper: (key: Model.Field<O>) => R
+): ref.CustomProxy<O, R>;
 
 /**
  * Creates a ref-compatible property.
@@ -71,7 +74,7 @@ function ref <O extends Model, R>
  *
  * @param callback - Optional callback to synchronously fire when reference is first set or does update.
  */
-function ref <T> (callback?: ref.Callback<T>): ref.Object<T>;
+function ref<T>(callback?: ref.Callback<T>): ref.Object<T>;
 
 /**
  * Creates a ref-compatible property.
@@ -82,84 +85,94 @@ function ref <T> (callback?: ref.Callback<T>): ref.Object<T>;
  * @param callback - Optional callback to synchronously fire when reference is first set or does update.
  * @param ignoreNull - Default `true`. If `false`, will still callback with `null`.
  */
-function ref <T> (callback: ref.Callback<T | null>, ignoreNull: boolean): ref.Object<T>;
+function ref<T>(
+  callback: ref.Callback<T | null>,
+  ignoreNull: boolean
+): ref.Object<T>;
 
 function ref<T>(
   arg?: ref.Callback<T> | Model,
-  arg2?: ((key: string) => any) | boolean){
-
+  arg2?: ((key: string) => any) | boolean
+) {
   return use<T>((key, subject, state) => {
     let value = {};
-    const method = (key: string, from: Record<string, T>) =>
-      (callback?: (value: T) => void) => callback
-        ? addListener(subject, () => callback(from[key]), key)
-        : from[key];
+    const method =
+      (key: string, from: Record<string, T>) =>
+      (callback?: (value: T) => void) =>
+        callback
+          ? addListener(subject, () => callback(from[key]), key)
+          : from[key];
 
-    if(arg === subject)
-      addListener(subject, () => {
-        for(const key in subject)
-          if(typeof arg2 == "function")
-            defineProperty(value, key, {
-              configurable: true,
-              get(){
-                const out = arg2(key);
-                defineProperty(value, key, { value: out });
-                return out;
-              }
-            })
-          else {
-            const get = method(key, subject);
-            const set = (x: any) => subject[key] = x;
+    if (arg === subject)
+      addListener(
+        subject,
+        () => {
+          for (const key in subject)
+            if (typeof arg2 == 'function')
+              defineProperty(value, key, {
+                configurable: true,
+                get() {
+                  const out = arg2(key);
+                  defineProperty(value, key, { value: out });
+                  return out;
+                }
+              });
+            else {
+              const get = method(key, subject);
+              const set = (x: any) => (subject[key] = x);
 
-            defineProperties(set, {
-              current: { get, set },
-              get: { value: get },
-              is: { value: subject },
-              key: { value: key },
-            });
+              defineProperties(set, {
+                current: { get, set },
+                get: { value: get },
+                is: { value: subject },
+                key: { value: key }
+              });
 
-            defineProperty(value, key, { value: set });
-          }
+              defineProperty(value, key, { value: set });
+            }
 
-        return null;
-      }, true);
-
-    else if(typeof arg == "object")
-      throw new Error("ref instruction does not support object which is not 'this'");
-
+          return null;
+        },
+        true
+      );
+    else if (typeof arg == 'object')
+      throw new Error(
+        "ref instruction does not support object which is not 'this'"
+      );
     else {
       let unset: ((next: T) => void) | undefined;
       const get = method(key, state);
       const set = (value?: any) => {
-        if(!update(subject, key, value) || !arg)
-          return;
+        if (!update(subject, key, value) || !arg) return;
 
-        if(unset)
+        if (unset) {
           unset = void unset(value);
-    
-        if(value === null && arg2 !== false)
-          return;
+        }
+
+        if (value === null && arg2 !== false) return;
 
         const exit = enter();
         const out = arg.call(subject, value);
         const flush = exit();
 
-        unset = key => {
-          if(typeof out == "function")
-            out(key);
+        unset = (key) => {
+          if (typeof out == 'function') out(key);
 
           flush();
-        }
+        };
       };
-  
+
       state[key] = null;
-      value = defineProperties({ get, key, is: subject }, {
-        current: { get, set }
-      }) as ref.Object<T>;
+      value = defineProperties(
+        { get, key, is: subject },
+        {
+          current: { get, set }
+        }
+      ) as ref.Object<T>;
     }
 
     defineProperty(subject, key, { value });
-  })
+  });
 }
 
-export { ref }
+export { ref };

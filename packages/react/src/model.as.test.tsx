@@ -3,9 +3,9 @@ import { act, render, screen } from '@testing-library/react';
 import Model from '.';
 import { set } from '@expressive/mvc';
 
-it("will update component as values change", async () => {
+it('will update component as values change', async () => {
   class Test extends Model {
-    foo = "bar";
+    foo = 'bar';
     constructor() {
       super();
       test = this;
@@ -15,17 +15,17 @@ it("will update component as values change", async () => {
   const Component = Test.as((_, self) => <span>{self.foo}</span>);
 
   render(<Component />);
-  screen.getByText("bar");
+  screen.getByText('bar');
 
-  await act(async () => test.set({ foo: "baz" }));
+  await act(async () => test.set({ foo: 'baz' }));
 
-  screen.getByText("baz");
+  screen.getByText('baz');
 });
 
-it("will pass props to model", async () => {
+it('will pass props to model', async () => {
   const didUpdateFoo = jest.fn();
   class Test extends Model {
-    foo = "foo";
+    foo = 'foo';
     constructor(...args: Model.Args) {
       super(...args);
       this.set(didUpdateFoo);
@@ -34,23 +34,23 @@ it("will pass props to model", async () => {
   const Component = Test.as(({ foo }) => <span>{foo}</span>);
   const { rerender } = render(<Component foo="bar" />);
 
-  screen.getByText("bar");
+  screen.getByText('bar');
   expect(didUpdateFoo).not.toHaveBeenCalled();
 
   rerender(<Component foo="baz" />);
 
-  screen.getByText("baz");
+  screen.getByText('baz');
   expect(didUpdateFoo).toHaveBeenCalledTimes(1);
-  expect(didUpdateFoo).toHaveBeenCalledWith("foo", { foo: "baz" });
+  expect(didUpdateFoo).toHaveBeenCalledWith('foo', { foo: 'baz' });
 });
 
-it("will pass props before effects run", async () => {
+it('will pass props before effects run', async () => {
   class Test extends Model {
-    foo = "foo";
+    foo = 'foo';
 
     constructor(...args: Model.Args) {
-      super(...args, self => {
-        expect(self.foo).toBe("bar");
+      super(...args, (self) => {
+        expect(self.foo).toBe('bar');
       });
     }
   }
@@ -59,10 +59,10 @@ it("will pass props before effects run", async () => {
 
   render(<Component foo="bar" />);
 
-  screen.getByText("bar");
+  screen.getByText('bar');
 });
 
-it("will call is method on creation", () => {
+it('will call is method on creation', () => {
   class Control extends Model {}
 
   const Test = Control.as(() => null);
@@ -77,11 +77,11 @@ it("will call is method on creation", () => {
   expect(didCreate).toHaveBeenCalledTimes(1);
 
   act(screen.unmount);
-})
+});
 
-it("will pass untracked props to render", async () => {
+it('will pass untracked props to render', async () => {
   class Test extends Model {
-    foo = "foo";
+    foo = 'foo';
 
     constructor(...args: Model.Args) {
       super(args);
@@ -91,21 +91,19 @@ it("will pass untracked props to render", async () => {
 
   let test: Test;
   const Component = Test.as((props: { value: string }, self) => (
-    <span>
-      {self.foo + props.value}
-    </span>
+    <span>{self.foo + props.value}</span>
   ));
 
   render(<Component value="bar" />);
-  screen.getByText("foobar");
+  screen.getByText('foobar');
 
-  await act(async () => test.set({ foo: "baz" }));
-  screen.getByText("bazbar");
+  await act(async () => test.set({ foo: 'baz' }));
+  screen.getByText('bazbar');
 });
 
-it("will revert to value from prop", async () => {
+it('will revert to value from prop', async () => {
   class Test extends Model {
-    foo = "foo";
+    foo = 'foo';
 
     constructor(...args: Model.Args) {
       super(args);
@@ -124,30 +122,30 @@ it("will revert to value from prop", async () => {
 
   // Notice that foo is set to "bar" from prop
   // This will always override value on render
-  render(<Component foo='bar' />);
+  render(<Component foo="bar" />);
 
   // Expect initial render to be based on prop's value
-  screen.getByText("bar");
+  screen.getByText('bar');
 
   await act(async () => {
     // explicitly update foo; calls for new render
-    test.foo = "baz";
+    test.foo = 'baz';
     await test.set();
-    expect(test.foo).toBe("baz");
+    expect(test.foo).toBe('baz');
   });
 
   // Should re-render due to update however,
   // is reset to bar by prop before render completes
-  screen.getByText("bar");
+  screen.getByText('bar');
 
   expect(didSetFoo).toHaveBeenCalledTimes(2);
   expect(renderSpy).toHaveBeenCalledTimes(2);
 });
 
-it("will override method", async () => {
+it('will override method', async () => {
   class Test extends Model {
-    callback(){
-      return "foo";
+    callback() {
+      return 'foo';
     }
   }
 
@@ -155,16 +153,16 @@ it("will override method", async () => {
     return <span>{self.callback()}</span>;
   });
 
-  const element = render(<Component callback={() => "bar"} />);
-  screen.getByText("bar");
+  const element = render(<Component callback={() => 'bar'} />);
+  screen.getByText('bar');
 
-  element.rerender(<Component callback={() => "baz"} />);
-  screen.getByText("baz");
+  element.rerender(<Component callback={() => 'baz'} />);
+  screen.getByText('baz');
 });
 
-it("will trigger set instruction", () => {
+it('will trigger set instruction', () => {
   class Foo extends Model {
-    value = set("foobar", didSet);
+    value = set('foobar', didSet);
   }
 
   const Component = Foo.as((_, self) => null);
@@ -173,55 +171,51 @@ it("will trigger set instruction", () => {
   render(<Component value="barfoo" />);
 
   expect(didSet).toBeCalled();
-})
+});
 
-describe("suspense", () => {
-  it("will render fallback prop", async () => {
+describe('suspense', () => {
+  it('will render fallback prop', async () => {
     class Foo extends Model {
       value = set<string>();
     }
 
     let foo!: Foo;
-    const Provider = Foo.as(() => <Consumer />)
+    const Provider = Foo.as(() => <Consumer />);
 
     const Consumer = () => (foo = Foo.get()).value;
 
-    const element = render(
-      <Provider fallback={ <span>Loading...</span>} />
-    );
+    const element = render(<Provider fallback={<span>Loading...</span>} />);
 
-    expect(element.getByText("Loading...")).toBeInTheDocument();
+    expect(element.getByText('Loading...')).toBeInTheDocument();
 
-    await act(async () => foo.value = "Hello World");
-    
-    expect(element.getByText("Hello World")).toBeInTheDocument();
+    await act(async () => (foo.value = 'Hello World'));
+
+    expect(element.getByText('Hello World')).toBeInTheDocument();
   });
 
-  it("will use fallback property first", async () => {
+  it('will use fallback property first', async () => {
     class Foo extends Model {
       value = set<string>();
-      fallback = <span>Loading!</span>;
+      fallback = (<span>Loading!</span>);
     }
 
     let foo!: Foo;
-    const Provider = Foo.as(() => <Consumer />)
+    const Provider = Foo.as(() => <Consumer />);
 
     const Consumer = () => (foo = Foo.get()).value;
 
     const element = render(<Provider />);
 
-    expect(element.queryByText("Loading!")).toBeInTheDocument();
+    expect(element.queryByText('Loading!')).toBeInTheDocument();
 
-    element.rerender(
-      <Provider fallback={ <span>Loading...</span>} />
-    );
+    element.rerender(<Provider fallback={<span>Loading...</span>} />);
 
-    expect(element.getByText("Loading...")).toBeInTheDocument();
+    expect(element.getByText('Loading...')).toBeInTheDocument();
 
     await act(async () => {
-      foo.value = "Hello World";
+      foo.value = 'Hello World';
     });
-    
-    expect(element.getByText("Hello World")).toBeInTheDocument();
+
+    expect(element.getByText('Hello World')).toBeInTheDocument();
   });
-})
+});

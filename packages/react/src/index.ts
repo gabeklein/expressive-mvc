@@ -1,4 +1,13 @@
-import { Context, Observable, Model, get, use, ref, set, has } from '@expressive/mvc';
+import {
+  Context,
+  Observable,
+  Model,
+  get,
+  use,
+  ref,
+  set,
+  has
+} from '@expressive/mvc';
 import { useEffect, useState } from 'react';
 
 import { React } from './compat';

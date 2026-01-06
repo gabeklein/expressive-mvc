@@ -1,7 +1,13 @@
 import Model, { Context } from '@expressive/mvc';
-import { createContext, createComponent, JSXElement, onCleanup, useContext } from 'solid-js';
+import {
+  createContext,
+  createComponent,
+  JSXElement,
+  onCleanup,
+  useContext
+} from 'solid-js';
 
-const Lookup = createContext(new Context);
+const Lookup = createContext(new Context());
 
 declare namespace Provider {
   interface Props<T extends Model> {
@@ -11,7 +17,7 @@ declare namespace Provider {
   }
 }
 
-function Provider<T extends Model>(props: Provider.Props<T>){
+function Provider<T extends Model>(props: Provider.Props<T>) {
   const context = useContext(Lookup).push();
 
   context.include(props.for, props.set);
@@ -20,7 +26,7 @@ function Provider<T extends Model>(props: Provider.Props<T>){
 
   return createComponent(Lookup.Provider, {
     value: context,
-    get children(){
+    get children() {
       return props.children;
     }
   });

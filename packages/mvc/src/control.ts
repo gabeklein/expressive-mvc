@@ -1,8 +1,8 @@
-import type { Model } from "./model";
+import type { Model } from './model';
 
 /**
  * Update callback function.
- * 
+ *
  * @param key -
  *   - `string` - property which has updated.
  *   - `false` - a normal update has completed.
@@ -10,11 +10,15 @@ import type { Model } from "./model";
  *   - `null` - terminal event; instance is expired.
  * @param source - Instance of Model for which update has occured.
  */
-type OnUpdate<T extends Observable = any> = 
-  (this: T, key: Event, source: T) => (() => void) | null | void;
+type OnUpdate<T extends Observable = any> = (
+  this: T,
+  key: Event,
+  source: T
+) => (() => void) | null | void;
 
-type Effect<T extends Observable> = (proxy: T) =>
-  ((update: boolean | null) => void) | Promise<void> | null | void;
+type Effect<T extends Observable> = (
+  proxy: T
+) => ((update: boolean | null) => void) | Promise<void> | null | void;
 
 type Event = number | string | null | boolean | symbol;
 
@@ -28,12 +32,15 @@ interface Observable {
   [Observable](callback: Observable.Callback, required?: boolean): this | void;
 }
 
-const Observable = Symbol("observe");
+const Observable = Symbol('observe');
 
 /** Placeholder event determines if model is initialized or not. */
 const onReady = () => null;
 
-const LISTENERS = new WeakMap<Observable, Map<OnUpdate, Set<Event> | undefined>>();
+const LISTENERS = new WeakMap<
+  Observable,
+  Map<OnUpdate, Set<Event> | undefined>
+>();
 
 /** Events pending for a given object. */
 const PENDING = new WeakMap<Observable, Set<Event>>();
@@ -45,18 +52,21 @@ const PENDING_KEYS = new WeakMap<Observable, Set<string | number | symbol>>();
 const DISPATCH = new Set<() => void>();
 
 function addListener<T extends Observable>(
-  subject: T, callback: OnUpdate<T>, select?: Event | Set<Event>){
-
+  subject: T,
+  callback: OnUpdate<T>,
+  select?: Event | Set<Event>
+) {
   let listeners = LISTENERS.get(subject)!;
 
-  if(!listeners)
-    LISTENERS.set(subject, listeners = new Map([[onReady, undefined]]));
+  if (!listeners)
+    LISTENERS.set(subject, (listeners = new Map([[onReady, undefined]])));
 
-  if(select !== undefined && !(select instanceof Set))
+  if (select !== undefined && !(select instanceof Set))
     select = new Set([select]);
 
-  if(!listeners.has(onReady) && !select)
+  if (!listeners.has(onReady) && !select) {
     callback.call(subject, true, subject);
+  }
 
   listeners.set(callback, select);
 
@@ -67,73 +77,67 @@ function emit(model: Observable, key: Event): void {
   const listeners = LISTENERS.get(model)!;
   const notReady = listeners.has(onReady);
 
-  if(key === true && !notReady)
-    return;
+  if (key === true && !notReady) return;
 
   let pending = PENDING.get(model);
 
-  if(pending){
+  if (pending) {
     pending.add(key);
     return;
   }
 
-  PENDING.set(model, pending = new Set(notReady ? [true, key] : [key]));
+  PENDING.set(model, (pending = new Set(notReady ? [true, key] : [key])));
 
-  for(const key of pending)
-    for(const [callback, filter] of listeners)
-      if(!filter || filter.has(key)){
+  for (const key of pending)
+    for (const [callback, filter] of listeners)
+      if (!filter || filter.has(key)) {
         const after = callback.call(model, key, model);
 
-        if(after)
+        if (after) {
           enqueue(after);
-
-        else if(after === null)
+        } else if (after === null) {
           listeners.delete(callback);
+        }
       }
 
-  if(key === null)
-    listeners.clear();
-  
+  if (key === null) listeners.clear();
+
   PENDING.delete(model);
 }
 
 function event(
   subject: Observable,
   key?: string | number | symbol | null,
-  silent?: boolean){
+  silent?: boolean
+) {
+  if (key === null) return emit(subject, key);
 
-  if(key === null)
-    return emit(subject, key);
-
-  if(!key)
-    return emit(subject, true);
+  if (!key) return emit(subject, true);
 
   let pending = PENDING_KEYS.get(subject);
 
-  if(!pending){
-    PENDING_KEYS.set(subject, pending = new Set());
+  if (!pending) {
+    PENDING_KEYS.set(subject, (pending = new Set()));
 
-    if(!silent)
+    if (!silent)
       enqueue(() => {
         emit(subject, false);
-        PENDING_KEYS.delete(subject)
-      })
+        PENDING_KEYS.delete(subject);
+      });
   }
 
   pending.add(key);
 
-  if(!silent)
-    emit(subject, key);
+  if (!silent) emit(subject, key);
 }
 
-function enqueue(eventHandler: (() => void)){
-  if(!DISPATCH.size)
+function enqueue(eventHandler: () => void) {
+  if (!DISPATCH.size)
     setTimeout(() => {
-      DISPATCH.forEach(event => {
+      DISPATCH.forEach((event) => {
         try {
           event();
-        }
-        catch(err){
+        } catch (err) {
           console.error(err);
         }
       });
@@ -146,14 +150,26 @@ function enqueue(eventHandler: (() => void)){
 /**
  * Create a side-effect which will update whenever values accessed change.
  * Callback is called immediately and whenever values are stale.
- * 
+ *
  * @param target - Instance of Model to observe.
  * @param callback - Function to invoke when values change.
  * @param requireValues - If `true` will throw if accessing a value which is `undefined`.
  */
-function createEffect<T extends Model>(target: T, callback: Effect<Required<T>>, requireValues: true): () => void;
-function createEffect<T extends Model>(target: T, callback: Effect<T>, recursive?: boolean): () => void;
-function createEffect<T extends Model>(target: T, callback: Effect<T>, argument?: boolean){
+function createEffect<T extends Model>(
+  target: T,
+  callback: Effect<Required<T>>,
+  requireValues: true
+): () => void;
+function createEffect<T extends Model>(
+  target: T,
+  callback: Effect<T>,
+  recursive?: boolean
+): () => void;
+function createEffect<T extends Model>(
+  target: T,
+  callback: Effect<T>,
+  argument?: boolean
+) {
   let unset: ((update: boolean | null) => void) | undefined;
   let reset: (() => void) | null | undefined;
 
@@ -161,8 +177,7 @@ function createEffect<T extends Model>(target: T, callback: Effect<T>, argument?
     let ignore: boolean = true;
 
     function onUpdate(): void | PromiseLite<void> {
-      if (ignore || reset === null)
-        return;
+      if (ignore || reset === null) return;
 
       ignore = true;
 
@@ -172,77 +187,61 @@ function createEffect<T extends Model>(target: T, callback: Effect<T>, argument?
       }
 
       enqueue(invoke);
-      return { then: enqueue }
+      return { then: enqueue };
     }
 
     try {
       const exit = enter(argument === false);
       const output = callback(target[Observable](onUpdate, argument === true));
       const flush = exit();
-      
+
       ignore = false;
       reset = output === null ? null : invoke;
-      unset = key => {
-        if(typeof output == "function")
-          output(key);
+      unset = (key) => {
+        if (typeof output == 'function') output(key);
 
         flush();
-      }
-    }
-    catch(err){
-      if(err instanceof Promise){
+      };
+    } catch (err) {
+      if (err instanceof Promise) {
         reset = undefined;
         err.then(invoke);
-      }
-      else
+      } else {
         throw err;
+      }
     }
   }
 
-  function cleanup(){
-    if(unset)
-      unset(false);
+  function cleanup() {
+    if (unset) unset(false);
 
     reset = null;
-  };
+  }
 
-  if(EffectContext && argument !== false)
-    EffectContext.add(cleanup);
+  if (EffectContext && argument !== false) EffectContext.add(cleanup);
 
-  addListener(target, key => {
-    if(key === true)
-      invoke();
+  addListener(target, (key) => {
+    if (key === true) invoke();
+    else if (!reset) return reset;
 
-    else if(!reset)
-      return reset;
-
-    if(key === null && unset)
-      unset(null);
+    if (key === null && unset) unset(null);
   });
-  
+
   return cleanup;
 }
 
 let EffectContext: Set<() => void> | undefined;
 
-export function enter(ignore?: boolean){
-  if(ignore)
-    return () => () => {};
+export function enter(ignore?: boolean) {
+  if (ignore) return () => () => {};
 
   const last = EffectContext;
-  const context = EffectContext = new Set;
+  const context = (EffectContext = new Set());
 
   return () => {
     EffectContext = last;
-    return () => context.forEach(fn => fn());
-  }
+    return () => context.forEach((fn) => fn());
+  };
 }
 
-export {
-  addListener,
-  createEffect,
-  event,
-  OnUpdate,
-  PENDING_KEYS,
-  Observable
-}
+export { addListener, createEffect, event, OnUpdate, PENDING_KEYS, Observable };

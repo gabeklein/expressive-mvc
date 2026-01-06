@@ -4,7 +4,7 @@ import { React } from './compat';
 
 declare module '@expressive/mvc' {
   namespace Model {
-    function use <T extends Model> (this: Init<T>, ...args: Argument<T>[]): T;
+    function use<T extends Model>(this: Init<T>, ...args: Argument<T>[]): T;
   }
 }
 
@@ -13,10 +13,10 @@ interface Compat extends Model {
   fallback?: React.ReactNode;
 }
 
-Model.use = function <T extends Compat> (
+Model.use = function <T extends Compat>(
   this: Model.Init<T>,
-  ...args: Model.Argument<T>[]){
-
+  ...args: Model.Argument<T>[]
+) {
   const context = Context.use(true);
   const state = React.useState(() => {
     let ready: boolean | undefined;
@@ -25,37 +25,37 @@ Model.use = function <T extends Compat> (
     const instance = new this(...args);
 
     context.include(instance);
-  
-    const unwatch = createEffect(instance, current => {
+
+    const unwatch = createEffect(instance, (current) => {
       local = current;
 
-      if(ready) 
-        state[1](x => x.bind(null));
+      if (ready) state[1]((x) => x.bind(null));
     });
 
-    function didMount(){
+    function didMount() {
       ready = true;
       return () => {
         unwatch();
-        context.pop()
+        context.pop();
         instance.set(null);
-      }
+      };
     }
 
     return (...args: Model.Argument<T>[]) => {
       ready = false;
 
       React.useEffect(didMount, []);
-      Promise
-        .all(args.map(arg => typeof arg == "object" && instance.set(arg)))
-        .finally(() => ready = true);
+      Promise.all(
+        args.map((arg) => typeof arg == 'object' && instance.set(arg))
+      ).finally(() => {
+        ready = true;
+      });
 
-      if(instance.render)
-        instance.render(...args);
+      if (instance.render) instance.render(...args);
 
-      return local; 
+      return local;
     };
   });
 
   return state[0](...args);
-}
+};

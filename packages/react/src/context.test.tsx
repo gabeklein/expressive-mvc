@@ -1,13 +1,11 @@
-import "@testing-library/jest-dom";
+import '@testing-library/jest-dom';
 
 import { act, render, screen } from '@testing-library/react';
 import React, { Suspense } from 'react';
 
 import Model, { Consumer, get, has, Provider, set, use } from '.';
 
-const error = jest
-  .spyOn(console, "error")
-  .mockImplementation(() => {});
+const error = jest.spyOn(console, 'error').mockImplementation(() => {});
 
 afterAll(() => {
   error.mockReset();
@@ -19,147 +17,136 @@ class Foo extends Model {
 class Bar extends Model {}
 class Baz extends Bar {}
 
-describe("Provider", () => {
-  it("will create instance of given model", () => {
+describe('Provider', () => {
+  it('will create instance of given model', () => {
     render(
       <Provider for={Foo}>
-        <Consumer for={Foo}>
-          {i => expect(i).toBeInstanceOf(Foo)}
-        </Consumer>
+        <Consumer for={Foo}>{(i) => expect(i).toBeInstanceOf(Foo)}</Consumer>
       </Provider>
     );
-  })
-  
-  it("will create all models in given object", () => {
+  });
+
+  it('will create all models in given object', () => {
     render(
       <Provider for={{ Foo, Bar }}>
-        <Consumer for={Foo}>
-          {i => expect(i).toBeInstanceOf(Foo)}
-        </Consumer>
-        <Consumer for={Bar}>
-          {i => expect(i).toBeInstanceOf(Bar)}
-        </Consumer>
+        <Consumer for={Foo}>{(i) => expect(i).toBeInstanceOf(Foo)}</Consumer>
+        <Consumer for={Bar}>{(i) => expect(i).toBeInstanceOf(Bar)}</Consumer>
       </Provider>
-    )
-  })
-  
-  it("will provide a mix of state and models", () => {
+    );
+  });
+
+  it('will provide a mix of state and models', () => {
     const foo = Foo.new();
-  
+
     render(
       <Provider for={{ foo, Bar }}>
-        <Consumer for={Foo}>
-          {({ is }) => expect(is).toBe(foo)}
-        </Consumer>
-        <Consumer for={Bar}>
-          {i => expect(i).toBeInstanceOf(Bar)}
-        </Consumer>
+        <Consumer for={Foo}>{({ is }) => expect(is).toBe(foo)}</Consumer>
+        <Consumer for={Bar}>{(i) => expect(i).toBeInstanceOf(Bar)}</Consumer>
       </Provider>
-    )
-  })
-  
-  it("will provide children of given model", () => {
+    );
+  });
+
+  it('will provide children of given model', () => {
     class Foo extends Model {
       value?: string = undefined;
     }
     class Bar extends Model {
       foo = use(Foo);
     }
-  
+
     render(
       <Provider for={Bar}>
-        <Consumer for={Foo}>
-          {i => expect(i).toBeInstanceOf(Foo)}
-        </Consumer>
+        <Consumer for={Foo}>{(i) => expect(i).toBeInstanceOf(Foo)}</Consumer>
       </Provider>
-    )
-  })
-  
-  it("will destroy created model on unmount", () => {
+    );
+  });
+
+  it('will destroy created model on unmount', () => {
     const willDestroy = jest.fn();
-  
+
     class Test extends Model {}
-  
+
     const element = render(
       <Provider for={{ Test }}>
         <Consumer for={Test}>
-          {i => {
-            expect(i).toBeInstanceOf(Test)
+          {(i) => {
+            expect(i).toBeInstanceOf(Test);
             i.get(() => willDestroy);
           }}
         </Consumer>
       </Provider>
     );
-  
+
     act(() => element.unmount());
     expect(willDestroy).toBeCalled();
-  })
-  
-  it("will destroy multiple created on unmount", async () => {
+  });
+
+  it('will destroy multiple created on unmount', async () => {
     const willDestroy = jest.fn();
-  
+
     class Foo extends Model {}
     class Bar extends Model {}
-  
+
     const element = render(
       <Provider for={{ Foo, Bar }}>
         <Consumer for={Foo}>
-          {i => { i.get(() => willDestroy) }}
+          {(i) => {
+            i.get(() => willDestroy);
+          }}
         </Consumer>
         <Consumer for={Bar}>
-          {i => { i.get(() => willDestroy) }}
+          {(i) => {
+            i.get(() => willDestroy);
+          }}
         </Consumer>
       </Provider>
     );
-  
-    
+
     act(() => element.unmount());
     expect(willDestroy).toBeCalledTimes(2);
-  })
-  
-  it("will not destroy given instance on unmount", async () => {
+  });
+
+  it('will not destroy given instance on unmount', async () => {
     const didUnmount = jest.fn();
-  
+
     class Test extends Model {}
-  
+
     const instance = Test.new();
-  
+
     const element = render(
       <Provider for={{ instance }}>
-        <Consumer for={Test}>
-          {i => void i.get(() => didUnmount)}
-        </Consumer>
+        <Consumer for={Test}>{(i) => void i.get(() => didUnmount)}</Consumer>
       </Provider>
     );
-  
+
     act(() => element.unmount());
     expect(didUnmount).not.toBeCalled();
-  })
-  
-  it("will conflict colliding Model types", () => {
+  });
+
+  it('will conflict colliding Model types', () => {
     const foo = Foo.new();
-  
+
     const Consumer: React.FC = jest.fn(() => {
       expect(() => Foo.get()).toThrowError(
-        "Did find Foo in context, but multiple were defined."
+        'Did find Foo in context, but multiple were defined.'
       );
       return null;
     });
-  
+
     render(
       <Provider for={{ Foo, foo }}>
         <Consumer />
       </Provider>
-    )
-  
-    expect(Consumer).toHaveBeenCalled();
-  })
+    );
 
-  it("will destroy from bottom-up", async () => {
+    expect(Consumer).toHaveBeenCalled();
+  });
+
+  it('will destroy from bottom-up', async () => {
     const didDestroy = jest.fn();
-    
+
     class Test extends Model {
-      constructor(...args: Model.Args){
+      constructor(...args: Model.Args) {
         super(...args);
         this.set(() => {
           didDestroy(this.constructor.name);
@@ -169,41 +156,39 @@ describe("Provider", () => {
 
     class Parent extends Test {}
     class Child extends Test {}
-    
+
     const Example = () => (
       <Provider for={Parent}>
         <Provider for={Child} />
       </Provider>
-    )
+    );
 
     const element = render(<Example />);
 
     act(() => element.unmount());
-    
-    expect(didDestroy.mock.calls).toEqual([["Child"], ["Parent"]]);
-  })
 
-  describe("forEach prop", () => {
-    it("will call function for each model", () => {
+    expect(didDestroy.mock.calls).toEqual([['Child'], ['Parent']]);
+  });
+
+  describe('forEach prop', () => {
+    it('will call function for each model', () => {
       const forEach = jest.fn();
-  
-      render(
-        <Provider for={{ Foo, Bar }} forEach={forEach} />
-      );
-  
+
+      render(<Provider for={{ Foo, Bar }} forEach={forEach} />);
+
       expect(forEach).toBeCalledTimes(2);
       expect(forEach).toBeCalledWith(expect.any(Foo));
       expect(forEach).toBeCalledWith(expect.any(Bar));
     });
 
-    it("will cleanup on unmount", () => {
+    it('will cleanup on unmount', () => {
       const forEach = jest.fn(() => cleanup);
       const cleanup = jest.fn();
 
       const rendered = render(
         <Provider for={{ Foo, Bar }} forEach={forEach} />
       );
-  
+
       expect(forEach).toBeCalledTimes(2);
       expect(forEach).toBeCalledWith(expect.any(Foo));
       expect(forEach).toBeCalledWith(expect.any(Bar));
@@ -212,10 +197,10 @@ describe("Provider", () => {
       act(() => rendered.unmount());
       expect(cleanup).toBeCalledTimes(2);
     });
-  })
+  });
 
-  describe("suspense", () => {
-    it("will render fallback prop", async () => {
+  describe('suspense', () => {
+    it('will render fallback prop', async () => {
       class Foo extends Model {
         value = set<string>();
       }
@@ -229,17 +214,17 @@ describe("Provider", () => {
         </Provider>
       );
 
-      expect(element.getByText("Loading...")).toBeInTheDocument();
+      expect(element.getByText('Loading...')).toBeInTheDocument();
 
       await act(async () => {
-        foo.value = "Hello World";
+        foo.value = 'Hello World';
       });
-      
-      expect(element.getByText("Hello World")).toBeInTheDocument();
-      expect(element.queryByText("Loading...")).not.toBeInTheDocument();
+
+      expect(element.getByText('Hello World')).toBeInTheDocument();
+      expect(element.queryByText('Loading...')).not.toBeInTheDocument();
     });
 
-    it("will ignore suspense if undefined", () => {
+    it('will ignore suspense if undefined', () => {
       class Foo extends Model {
         value = set<string>();
       }
@@ -255,7 +240,7 @@ describe("Provider", () => {
         </Suspense>
       );
 
-      expect(element.queryByText("Foo")).toBeInTheDocument();
+      expect(element.queryByText('Foo')).toBeInTheDocument();
 
       element.rerender(
         <Suspense fallback={<span>Foo</span>}>
@@ -265,22 +250,22 @@ describe("Provider", () => {
         </Suspense>
       );
 
-      expect(element.getByText("Bar")).toBeInTheDocument();
-      expect(element.queryByText("Foo")).not.toBeInTheDocument();
-    })
-  })
+      expect(element.getByText('Bar')).toBeInTheDocument();
+      expect(element.queryByText('Foo')).not.toBeInTheDocument();
+    });
+  });
 });
 
-describe("Consumer", () => {
-  it("will render with instance for child-function", async () => {
+describe('Consumer', () => {
+  it('will render with instance for child-function', async () => {
     class Test extends Model {
-      value = "foo";
+      value = 'foo';
     }
 
     const instance = Test.new();
     const didRender = jest.fn();
 
-    function onRender(instance: Test){
+    function onRender(instance: Test) {
       const { value } = instance;
       didRender(value);
       return <span>{value}</span>;
@@ -288,72 +273,68 @@ describe("Consumer", () => {
 
     render(
       <Provider for={instance}>
-        <Consumer for={Test}>
-          {onRender}
-        </Consumer>
+        <Consumer for={Test}>{onRender}</Consumer>
       </Provider>
-    )
+    );
 
-    expect(didRender).toBeCalledWith("foo");
+    expect(didRender).toBeCalledWith('foo');
 
-    screen.getByText("foo");
+    screen.getByText('foo');
 
     await act(async () => {
-      return instance.set({ value: "bar" });
+      return instance.set({ value: 'bar' });
     });
 
-    expect(didRender).toBeCalledWith("bar");
-    
-    screen.getByText("bar");
-  })
+    expect(didRender).toBeCalledWith('bar');
 
-  it("will throw if not found", () => {
-    const test = () => render(
-      <Consumer for={Bar}>
-        {i => void i}
-      </Consumer>
-    )
-  
-    expect(test).toThrowError("Could not find Bar in context.");
-  })
-
-  it("will select extended class", () => {
-    render(
-      <Provider for={Baz}>
-        <Consumer for={Bar}>
-          {i => expect(i).toBeInstanceOf(Baz)}
-        </Consumer>
-      </Provider>
-    )
-  })
-
-  it("will select closest instance of same type", () => {
-    render(
-      <Provider for={Foo} forEach={x => { x.value = "outer" }}>
-        <Provider for={Foo} forEach={x => { x.value = "inner" }}>
-          <Consumer for={Foo}>
-            {i => expect(i.value).toBe("inner")}
-          </Consumer>
-        </Provider>
-      </Provider>
-    )
+    screen.getByText('bar');
   });
 
-  it("will select closest match over best match", () => {
+  it('will throw if not found', () => {
+    const test = () => render(<Consumer for={Bar}>{(i) => void i}</Consumer>);
+
+    expect(test).toThrowError('Could not find Bar in context.');
+  });
+
+  it('will select extended class', () => {
+    render(
+      <Provider for={Baz}>
+        <Consumer for={Bar}>{(i) => expect(i).toBeInstanceOf(Baz)}</Consumer>
+      </Provider>
+    );
+  });
+
+  it('will select closest instance of same type', () => {
+    render(
+      <Provider
+        for={Foo}
+        forEach={(x) => {
+          x.value = 'outer';
+        }}>
+        <Provider
+          for={Foo}
+          forEach={(x) => {
+            x.value = 'inner';
+          }}>
+          <Consumer for={Foo}>{(i) => expect(i.value).toBe('inner')}</Consumer>
+        </Provider>
+      </Provider>
+    );
+  });
+
+  it('will select closest match over best match', () => {
     render(
       <Provider for={Bar}>
         <Provider for={Baz}>
-          <Consumer for={Bar}>
-            {i => expect(i).toBeInstanceOf(Baz)}
-          </Consumer>
+          <Consumer for={Bar}>{(i) => expect(i).toBeInstanceOf(Baz)}</Consumer>
         </Provider>
       </Provider>
-    )
-  })
+    );
+  });
 
-  it("will handle complex arrangement", () => {
+  it('will handle complex arrangement', () => {
     const instance = Foo.new();
-  
+
     render(
       <Provider for={instance}>
         <Provider for={Baz}>
@@ -362,40 +343,40 @@ describe("Consumer", () => {
               {({ is }) => expect(is).toBe(instance)}
             </Consumer>
             <Consumer for={Bar}>
-              {i => expect(i).toBeInstanceOf(Bar)}
+              {(i) => expect(i).toBeInstanceOf(Bar)}
             </Consumer>
             <Consumer for={Baz}>
-              {i => expect(i).toBeInstanceOf(Baz)}
+              {(i) => expect(i).toBeInstanceOf(Baz)}
             </Consumer>
           </Provider>
         </Provider>
       </Provider>
-    )
-  })
-})
+    );
+  });
+});
 
-describe("get instruction", () => {
+describe('get instruction', () => {
   class Foo extends Model {
     bar = get(Bar);
   }
 
   class Bar extends Model {
-    value = "bar";
+    value = 'bar';
   }
 
-  it("will attach where created by provider", () => {
+  it('will attach where created by provider', () => {
     render(
       <Provider for={Bar}>
         <Provider for={Foo}>
           <Consumer for={Foo}>
-            {i => expect(i.bar).toBeInstanceOf(Bar)}
+            {(i) => expect(i.bar).toBeInstanceOf(Bar)}
           </Consumer>
         </Provider>
       </Provider>
     );
-  })
+  });
 
-  it("will see peers sharing same provider", () => {
+  it('will see peers sharing same provider', () => {
     class Foo extends Model {
       bar = get(Bar);
     }
@@ -405,22 +386,18 @@ describe("get instruction", () => {
 
     render(
       <Provider for={{ Foo, Bar }}>
-        <Consumer for={Bar}>
-          {({ is }) => expect(is.foo.bar).toBe(is)}
-        </Consumer>
-        <Consumer for={Foo}>
-          {({ is }) => expect(is.bar.foo).toBe(is)}
-        </Consumer>
+        <Consumer for={Bar}>{({ is }) => expect(is.foo.bar).toBe(is)}</Consumer>
+        <Consumer for={Foo}>{({ is }) => expect(is.bar.foo).toBe(is)}</Consumer>
       </Provider>
     );
   });
 
-  it("will see multiple peers provided", async () => {
-    class Foo extends Model {};
+  it('will see multiple peers provided', async () => {
+    class Foo extends Model {}
     class Baz extends Model {
       bar = get(Bar);
       foo = get(Foo);
-    };
+    }
 
     const Inner = () => {
       const { bar, foo } = Baz.use();
@@ -429,20 +406,20 @@ describe("get instruction", () => {
       expect(foo).toBeInstanceOf(Foo);
 
       return null;
-    }
+    };
 
     render(
       <Provider for={{ Foo, Bar }}>
         <Inner />
       </Provider>
     );
-  })
+  });
 
-  it("will maintain hook", async () => {
+  it('will maintain hook', async () => {
     const Inner: React.FC = jest.fn(() => {
       Foo.use();
       return null;
-    })
+    });
 
     const x = render(
       <Provider for={Bar}>
@@ -457,17 +434,17 @@ describe("get instruction", () => {
     );
 
     expect(Inner).toBeCalledTimes(2);
-  })
+  });
 
-  it("will attach before model init", () => {
+  it('will attach before model init', () => {
     class Parent extends Model {
-      foo = "foo";
+      foo = 'foo';
     }
 
     class Child extends Model {
       parent = get(Parent);
 
-      constructor(){
+      constructor() {
         super(() => {
           expect(this.parent).toBeInstanceOf(Parent);
         });
@@ -478,17 +455,17 @@ describe("get instruction", () => {
       <Provider for={Parent}>
         <Provider for={Child} />
       </Provider>
-    )
-  })
+    );
+  });
 
-  it("will throw if not resolved", () => {
+  it('will throw if not resolved', () => {
     class Foo extends Model {}
     class Bar extends Model {
       foo = get(Foo);
     }
 
     const bar = Bar.new();
-    
+
     expect(() => bar.foo).toThrow(expect.any(Promise));
 
     render(
@@ -500,7 +477,7 @@ describe("get instruction", () => {
     expect(bar.foo).toBeInstanceOf(Foo);
   });
 
-  it("will resolve when assigned to", async () => {
+  it('will resolve when assigned to', async () => {
     class Foo extends Model {}
     class Bar extends Model {
       foo = get(Foo);
@@ -511,12 +488,10 @@ describe("get instruction", () => {
 
     try {
       void bar.foo;
+    } catch (err: unknown) {
+      if (err instanceof Promise) pending = err;
     }
-    catch(err: unknown){
-      if(err instanceof Promise)
-        pending = err;
-    }
-    
+
     expect(pending).toBeInstanceOf(Promise);
 
     render(
@@ -526,9 +501,9 @@ describe("get instruction", () => {
     );
 
     await expect(pending).resolves.toBeInstanceOf(Foo);
-  })
+  });
 
-  it("will resolve multiple", async () => {
+  it('will resolve multiple', async () => {
     class Foo extends Model {}
     class Bar extends Model {
       foo = get(Foo, false);
@@ -549,16 +524,16 @@ describe("get instruction", () => {
 
     expect(bar.foo).toBe(foo);
     expect(bar.bar).toBe(foo);
-  })
+  });
 
-  it("will refresh an effect when assigned to", async () => {
+  it('will refresh an effect when assigned to', async () => {
     class Foo extends Model {}
     class Bar extends Model {
       foo = get(Foo);
     }
 
     const bar = Bar.new();
-    const effect = jest.fn(bar => void bar.foo);
+    const effect = jest.fn((bar) => void bar.foo);
 
     bar.get(effect);
 
@@ -572,21 +547,21 @@ describe("get instruction", () => {
     );
 
     await expect(bar).toHaveUpdated();
-    
+
     expect(effect).toHaveBeenCalledTimes(2);
     expect(effect).toHaveReturnedTimes(1);
-  })
+  });
 
-  it("will prevent compute if not yet resolved", () => {
+  it('will prevent compute if not yet resolved', () => {
     class Foo extends Model {
-      value = "foobar";
+      value = 'foobar';
     }
     class Bar extends Model {
       foo = get(Foo);
     }
 
     const bar = Bar.new();
-    
+
     expect(() => bar.foo.value).toThrow(expect.any(Promise));
 
     render(
@@ -595,20 +570,20 @@ describe("get instruction", () => {
       </Provider>
     );
 
-    expect(bar.foo.value).toBe("foobar");
-  })
+    expect(bar.foo.value).toBe('foobar');
+  });
 
-  it("will compute immediately in context", () => {
+  it('will compute immediately in context', () => {
     class Foo extends Model {
-      value = "foobar";
+      value = 'foobar';
     }
     class Bar extends Model {
       foo = get(Foo);
     }
 
     const FooBar = () => {
-      return <>{Bar.use().foo.value}</>
-    }
+      return <>{Bar.use().foo.value}</>;
+    };
 
     render(
       <Provider for={Foo}>
@@ -616,12 +591,12 @@ describe("get instruction", () => {
       </Provider>
     );
 
-    screen.getByText("foobar");
-  })
-})
+    screen.getByText('foobar');
+  });
+});
 
-describe("has instruction", () => {
-  it("will notify parent", () => {
+describe('has instruction', () => {
+  it('will notify parent', () => {
     class Foo extends Model {
       value = has(Bar, didGetBar);
     }
@@ -643,10 +618,10 @@ describe("has instruction", () => {
 
     expect(didGetBar).toBeCalledTimes(2);
     expect(foo.value).toEqual([expect.any(Bar), expect.any(Bar)]);
-    expect(foo.value.map(i => i.foo)).toEqual([foo, foo]);
+    expect(foo.value.map((i) => i.foo)).toEqual([foo, foo]);
   });
 
-  it.skip("will notify parent of instance", () => {
+  it.skip('will notify parent of instance', () => {
     class Foo extends Model {
       value = has(Bar, didGetBar);
     }
@@ -665,20 +640,20 @@ describe("has instruction", () => {
         <Provider for={foo}>
           <FooBar />
         </Provider>
-      )
-    }
+      );
+    };
 
     render(<Component />);
     expect(didGetBar).toBeCalled();
   });
-})
+});
 
-describe("suspense", () => {
-  it("will apply fallback and resolve", async () => {
+describe('suspense', () => {
+  it('will apply fallback and resolve', async () => {
     let resolve!: (value: string) => void;
 
     class Test extends Model {
-      value = set<string>(() => new Promise(res => resolve = res), true);
+      value = set<string>(() => new Promise((res) => (resolve = res)), true);
     }
 
     const GetValue = () => {
@@ -696,50 +671,46 @@ describe("suspense", () => {
 
     render(<TestComponent />);
 
-    screen.getByText("Loading...")
+    screen.getByText('Loading...');
 
     await act(async () => {
-      resolve("hello!");
+      resolve('hello!');
     });
 
-    await screen.findByText("hello!")
+    await screen.findByText('hello!');
   });
-})
+});
 
-describe("HMR", () => {
-  it("will replace model", () => {
+describe('HMR', () => {
+  it('will replace model', () => {
     let Control = class Control extends Model {
-      value = "foo";
-    }
+      value = 'foo';
+    };
 
-    const Child = () => (
-      <>
-        {Control.get().value}
-      </>
-    )
+    const Child = () => <>{Control.get().value}</>;
 
     const element = render(
       <Provider for={Control}>
         <Child />
       </Provider>
-    )
+    );
 
     // expect(element.toJSON()).toBe("foo");
 
-    screen.getByText("foo");
+    screen.getByText('foo');
 
     Control = class Control extends Model {
-      value = "bar";
-    }
+      value = 'bar';
+    };
 
     element.rerender(
       <Provider for={Control}>
         <Child />
       </Provider>
-    )
+    );
 
-    screen.getByText("bar");
+    screen.getByText('bar');
 
     element.unmount();
-  })
-})
+  });
+});

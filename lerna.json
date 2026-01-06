@@ -1,6 +1,4 @@
 {
   "version": "0.71.0",
-  "ignoreChanges": [
-    "examples/**"
-  ]
+  "ignoreChanges": ["examples/**"]
 }

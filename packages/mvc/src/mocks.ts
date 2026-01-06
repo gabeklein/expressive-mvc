@@ -3,7 +3,7 @@ export interface MockPromise<T> extends Promise<T> {
   reject: (reason?: any) => void;
 }
 
-export function mockPromise<T = void>(){
+export function mockPromise<T = void>() {
   const methods = {} as MockPromise<T>;
   const promise = new Promise((res, rej) => {
     methods.resolve = res;
@@ -13,8 +13,8 @@ export function mockPromise<T = void>(){
   return Object.assign(promise, methods);
 }
 
-export function mockWarn(){
-  const warn = jest.spyOn(console, "warn");
+export function mockWarn() {
+  const warn = jest.spyOn(console, 'warn');
 
   afterEach(() => warn.mockReset());
   afterAll(() => warn.mockRestore());
@@ -22,8 +22,8 @@ export function mockWarn(){
   return warn;
 }
 
-export function mockError(){
-  const error = jest.spyOn(console, "error");
+export function mockError() {
+  const error = jest.spyOn(console, 'error');
 
   afterEach(() => error.mockReset());
   afterAll(() => error.mockRestore());

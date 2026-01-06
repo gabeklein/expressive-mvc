@@ -1,6 +1,3 @@
 {
-  "projects": [
-    "<rootDir>/packages/mvc",
-    "<rootDir>/packages/react"
-  ]
+  "projects": ["<rootDir>/packages/mvc", "<rootDir>/packages/react"]
 }
