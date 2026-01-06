@@ -239,15 +239,15 @@ describe("props argument", () => {
       };
     }
   
-    const mockExternal = {
+    const mockProps = {
       foobar: () => "Goodbye cruel world!"
     }
   
     const { result } = renderHook(() => {
-      return Test.use(mockExternal);
+      return Test.use(mockProps);
     });
   
-    expect(result.current).not.toBe(mockExternal.foobar);
+    expect(result.current).not.toBe(mockProps.foobar);
   })
   
   it("will not trigger updates it caused", async () => {
