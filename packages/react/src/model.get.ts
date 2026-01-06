@@ -49,7 +49,7 @@ declare module '@expressive/mvc' {
   
     function get <T extends Model, R> (this: Model.Type<T>, factory: GetFactory<T, Promise<R> | R>): NoVoid<R>;
   
-    // TODO: eagerly metch this so any nulls are caught - would prevent updates.
+    // TODO: eagerly match this so any nulls are caught - would prevent updates.
     function get <T extends Model> (this: Model.Type<T>, factory: GetEffect<T>): null;
   }
 }
