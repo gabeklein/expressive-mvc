@@ -6,7 +6,7 @@ import { createProvider } from './context';
 
 export declare namespace JSX {
   type ElementType =
-    | Model.Type<Model.Compat>
+    | Model.Type<Model.ReactCompat>
     | React.JSX.ElementType
     | ((props: {}, ref?: any) => void);
 
@@ -33,7 +33,7 @@ export declare namespace JSX {
   interface IntrinsicElements extends React.JSX.IntrinsicElements {}
 }
 
-function Component<T extends Model.Compat>(
+function Component<T extends Model.ReactCompat>(
   this: Model.Init<T>,
   { is, ...props }: Model.Props<T>
 ) {

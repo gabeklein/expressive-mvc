@@ -20,7 +20,7 @@ declare module '@expressive/mvc' {
   }
 }
 
-Model.as = function <T extends Model.Compat, P extends Model.Assign<T>>(
+Model.as = function <T extends Model.ReactCompat, P extends Model.Assign<T>>(
   this: Model.Init<T>,
   render: (props: P, self: T) => ReactNode
 ) {

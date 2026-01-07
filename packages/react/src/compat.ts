@@ -15,12 +15,6 @@ declare module '@expressive/mvc' {
       set?: undefined;
     };
 
-    /** Model which is not incompatable as Component in React. */
-    interface Compat extends Model {
-      render?(props: RenderProps<this>): React.ReactNode;
-      fallback?: React.ReactNode;
-    }
-
     interface BaseProps<T extends Model> {
       /**
        * Callback for newly created instance. Only called once.
@@ -40,6 +34,12 @@ declare module '@expressive/mvc' {
     }
       ? BaseProps<T> & HasProps<T> & Omit<P, keyof Model>
       : BaseProps<T> & HasProps<T> & { children?: React.ReactNode };
+
+    /** Model which is not incompatable as Component in React. */
+    interface ReactCompat extends Model {
+      render?(props: RenderProps<this>): React.ReactNode;
+      fallback?: React.ReactNode;
+    }
   }
 }
 
