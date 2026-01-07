@@ -1,28 +1,30 @@
 import { Model } from '@expressive/mvc';
-import React, { FunctionComponent } from 'react';
+import { FunctionComponent, ReactNode } from 'react';
 
 import { createProvider } from './context';
 
 declare module '@expressive/mvc' {
   namespace Model {
-    interface Component<T extends Model, P extends Model.Assign<T>>
-      extends FunctionComponent<P & Model.Props<T>> {
+    interface FC<
+      T extends Model,
+      P extends Model.Assign<T>
+    > extends FunctionComponent<P & Model.Props<T>> {
       displayName?: string;
       Model: Model.Type<T>;
     }
 
     function as<T extends Model, P extends Model.Assign<T>>(
       this: Model.Init<T>,
-      render: (props: P, self: T) => React.ReactNode
-    ): Component<T, P>;
+      render: (props: P, self: T) => ReactNode
+    ): FC<T, P>;
   }
 }
 
 Model.as = function <T extends Model.Compat, P extends Model.Assign<T>>(
   this: Model.Init<T>,
-  render: (props: P, self: T) => React.ReactNode
+  render: (props: P, self: T) => ReactNode
 ) {
-  const Component: Model.Component<T, P> = (props) => {
+  const FC: Model.FC<T, P> = (props) => {
     const local = this.use(props, props.is);
 
     return createProvider(
@@ -33,8 +35,8 @@ Model.as = function <T extends Model.Compat, P extends Model.Assign<T>>(
     );
   };
 
-  Component.Model = this;
-  Component.displayName = this.name;
+  FC.Model = this;
+  FC.displayName = this.name;
 
-  return Component;
+  return FC;
 };
