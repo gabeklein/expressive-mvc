@@ -4,17 +4,6 @@ declare module '@expressive/mvc' {
       [K in Exclude<keyof T, keyof Model>]?: T[K];
     };
 
-    /**
-     * Props which will not conflict with a Model's use as a Component.
-     *
-     * Built-in properties must be optional, as they will always be omitted.
-     */
-    type RenderProps<T extends Model> = HasProps<T> & {
-      is?: undefined;
-      get?: undefined;
-      set?: undefined;
-    };
-
     interface BaseProps<T extends Model> {
       /**
        * Callback for newly created instance. Only called once.
@@ -34,6 +23,17 @@ declare module '@expressive/mvc' {
     }
       ? BaseProps<T> & HasProps<T> & Omit<P, keyof Model>
       : BaseProps<T> & HasProps<T> & { children?: React.ReactNode };
+
+    /**
+     * Props which will not conflict with a Model's use as a Component.
+     *
+     * Built-in properties must be optional, as they will always be omitted.
+     */
+    type RenderProps<T extends Model> = HasProps<T> & {
+      is?: never;
+      get?: never;
+      set?: never;
+    };
 
     /** Model which is not incompatable as Component in React. */
     interface ReactCompat extends Model {
