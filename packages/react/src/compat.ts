@@ -4,7 +4,7 @@ declare module '@expressive/mvc' {
       [K in Exclude<keyof T, keyof Model>]?: T[K];
     };
 
-    interface BaseProps<T extends Model> {
+    type ComponentProps<T extends Model> = HasProps<T> & {
       /**
        * Callback for newly created instance. Only called once.
        * @returns Callback to run when instance is destroyed.
@@ -16,13 +16,13 @@ declare module '@expressive/mvc' {
        * If not provided, `fallback` property of the Model will be used.
        */
       fallback?: React.ReactNode;
-    }
+    };
 
     type Props<T extends Model> = T extends {
       render(props: infer P, self: any): any;
     }
-      ? BaseProps<T> & HasProps<T> & Omit<P, keyof Model>
-      : BaseProps<T> & HasProps<T> & { children?: React.ReactNode };
+      ? ComponentProps<T> & Omit<P, keyof Model>
+      : ComponentProps<T> & { children?: React.ReactNode };
 
     /**
      * Props which will not conflict with a Model's use as a Component.
