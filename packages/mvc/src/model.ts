@@ -27,6 +27,31 @@ const METHODS = new WeakMap<Model.Type, Map<string, (value: any) => void>>();
 /** Reference bound instance methods to real ones. */
 const METHOD = new WeakMap<any, any>();
 
+/**
+ * Property initializer, will run upon instance creation.
+ * Optional returned callback will run when once upon first access.
+ */
+type Instruction<T = any, M extends Model = any> =
+  // TODO: Should this allow for numbers/symbol properties?
+  (
+    this: M,
+    key: Extract<Model.Field<M>, string>,
+    thisArg: M,
+    state: Model.State<M>
+  ) => Instruction.Descriptor<T> | ((source: M) => T) | void;
+
+declare namespace Instruction {
+  type Getter<T> = (source: Model) => T;
+  type Setter<T> = (value: T, previous: T) => boolean | void | (() => T);
+
+  type Descriptor<T = any> = {
+    get?: Getter<T> | boolean;
+    set?: Setter<T> | boolean;
+    enumerable?: boolean;
+    value?: T;
+  };
+}
+
 declare namespace Model {
   /** Any type of Model, using own class constructor as its identifier. */
   type Type<T extends Model = Model> = (abstract new (...args: any[]) => T) &
@@ -126,31 +151,6 @@ declare namespace Model {
    * @param update - `true` if update is pending, `false` effect has been cancelled, `null` if model is destroyed.
    */
   type EffectCallback = (update: boolean | null) => void;
-}
-
-/**
- * Property initializer, will run upon instance creation.
- * Optional returned callback will run when once upon first access.
- */
-type Instruction<T = any, M extends Model = any> =
-  // TODO: Should this allow for numbers/symbol properties?
-  (
-    this: M,
-    key: Extract<Model.Field<M>, string>,
-    thisArg: M,
-    state: Model.State<M>
-  ) => Instruction.Descriptor<T> | ((source: M) => T) | void;
-
-declare namespace Instruction {
-  type Getter<T> = (source: Model) => T;
-  type Setter<T> = (value: T, previous: T) => boolean | void | (() => T);
-
-  type Descriptor<T = any> = {
-    get?: Getter<T> | boolean;
-    set?: Setter<T> | boolean;
-    enumerable?: boolean;
-    value?: T;
-  };
 }
 
 interface Model {
