@@ -4,11 +4,17 @@ import Runtime from 'react/jsx-runtime';
 
 import { createProvider } from './context';
 
+export class Compat extends Model {
+  fallback?: React.ReactNode;
+  children?: React.ReactNode;
+
+  render?(props: {}): React.ReactNode {
+    return this.children || null;
+  }
+}
+
 export declare namespace JSX {
-  type ElementType =
-    | Model.Type<Model.ReactCompat>
-    | React.JSX.ElementType
-    | ((props: {}, ref?: any) => void);
+  type ElementType = Model.Type<Compat> | React.JSX.ElementType;
 
   type LibraryManagedAttributes<C, P> =
     // For normal class components, pull from props property explicitly because we dorked up ElementAttributesProperty.
@@ -37,7 +43,7 @@ function Component<T extends Model.ReactCompat>(
   this: Model.Init<T>,
   { is, ...props }: Model.Props<T>
 ) {
-  const model = this.use(props as any, is);
+  const model = this.use(props, is);
   const render = METHOD.get(model.render) || props.render || model.render;
   const children = render
     ? render.call(model, props as Model.HasProps<T>, model)
