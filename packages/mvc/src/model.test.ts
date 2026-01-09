@@ -850,7 +850,7 @@ describe('get method', () => {
       expect(testEffect).toBeCalled();
     });
 
-    it('will only when ready', async () => {
+    it('will call only when ready', async () => {
       class Test2 extends Test {
         constructor() {
           super();
