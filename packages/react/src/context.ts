@@ -87,15 +87,16 @@ export function createProvider(
 ) {
   if (context instanceof Model) context = Context.get(context)!;
 
-  const element = createElement(Lookup.Provider, {
+  const element =
+    fallback !== undefined
+      ? createElement(Suspense, { fallback, name }, children)
+      : children;
+
+  return createElement(Lookup.Provider, {
     key: context.id,
     value: context,
-    children
+    children: element
   });
-
-  return fallback !== undefined
-    ? createElement(Suspense, { fallback, name }, element)
-    : element;
 }
 
 export { Consumer, Provider };
