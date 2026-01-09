@@ -273,10 +273,10 @@ abstract class Model implements Observable {
     return arg1 === undefined
       ? snapshot(self)
       : typeof arg2 == 'function'
-      ? addListener(self, arg2, arg1)
-      : arg1 === null
-      ? Object.isFrozen(STATE.get(self))
-      : fetch(self, arg1, arg2);
+        ? addListener(self, arg2, arg1)
+        : arg1 === null
+          ? Object.isFrozen(STATE.get(self))
+          : fetch(self, arg1, arg2);
   }
 
   /**
