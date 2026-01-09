@@ -145,9 +145,7 @@ function ref<T>(
       const set = (value?: any) => {
         if (!update(subject, key, value) || !arg) return;
 
-        if (unset) {
-          unset = void unset(value);
-        }
+        if (unset) unset = void unset(value);
 
         if (value === null && arg2 !== false) return;
 
@@ -163,12 +161,10 @@ function ref<T>(
       };
 
       state[key] = null;
-      value = defineProperties(
-        { get, key, is: subject },
-        {
-          current: { get, set }
-        }
-      ) as ref.Object<T>;
+      value = defineProperty({ get, key, is: subject }, 'current', {
+        get,
+        set
+      });
     }
 
     defineProperty(subject, key, { value });
