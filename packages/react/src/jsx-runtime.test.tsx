@@ -283,22 +283,20 @@ describe('render method', () => {
     class Control extends Model {
       value = 'bar';
 
-      constructor(...args: Model.Args) {
-        super(args);
-        control = this;
-      }
-
       render() {
         return <span>{this.value}</span>;
       }
     }
 
     let control: Control;
-    const screen = render(<Control />);
+    const screen = render(<Control is={(x) => (control = x)} />);
 
     screen.getByText('bar');
 
-    await act(async () => control.set({ value: 'foo' }));
+    await act(async () => {
+      control.value = 'foo';
+      await control.set();
+    });
 
     screen.getByText('foo');
   });
