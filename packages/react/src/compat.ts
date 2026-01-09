@@ -37,7 +37,7 @@ declare module '@expressive/mvc' {
 
     /** Model which is not incompatable as Component in React. */
     interface ReactCompat extends Model {
-      render?(props: RenderProps<this>): React.ReactNode;
+      render?(props: RenderProps<this>, self: this): React.ReactNode;
       fallback?: React.ReactNode;
     }
   }
