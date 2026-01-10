@@ -1,7 +1,7 @@
 import { Context, createEffect, METHOD, Model } from '@expressive/mvc';
 import { createElement, FunctionComponent, ReactNode } from 'react';
 
-import { createProvider } from './context';
+import { provide } from './context';
 import { React } from './compat';
 
 declare module '@expressive/mvc' {
@@ -75,7 +75,7 @@ export function Component<T extends Model.ReactCompat>(
 
       React.useEffect(didMount, []);
 
-      return createProvider(
+      return provide(
         context,
         createElement(Render, props as any),
         props.fallback || current.fallback,
