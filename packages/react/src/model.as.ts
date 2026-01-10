@@ -42,10 +42,10 @@ export function Component<T extends Model.ReactCompat>(
 
   const context = Context.use(true);
   const state = React.useState<(props: any) => any>(() => {
+    const instance = new this(rest as {}, is && ((x) => void is(x)));
+
     let ready: boolean | undefined;
     let current: T;
-
-    const instance = new this(rest as {}, is && ((x) => void is(x)));
 
     context.include(instance);
 
@@ -68,22 +68,14 @@ export function Component<T extends Model.ReactCompat>(
       const render =
         METHOD.get(current.render) || props.render || current.render;
 
-      try {
-        const result = render
-          ? render.call(current, props as Model.HasProps<T>, current)
-          : props.children;
-
-        return result as ReactNode;
-      } catch (e) {
-        throw e;
-      }
+      return render
+        ? render.call(current, props as Model.HasProps<T>, current)
+        : props.children;
     }
 
-    return (props: Model.Props<T>) => {
+    return (props: Model.RenderProps<T>) => {
       ready = false;
-      Promise.resolve(instance.set(props as {})).finally(() => {
-        ready = true;
-      });
+      Promise.resolve(instance.set(props as {})).finally(() => (ready = true));
 
       React.useEffect(didMount, []);
 
