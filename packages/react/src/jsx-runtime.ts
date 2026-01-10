@@ -53,7 +53,7 @@ function Component<T extends Model.ReactCompat>(
 
 const RENDER = new WeakMap<Function, React.ComponentType>();
 
-export function createElement(
+export function patch(
   this: (type: React.ElementType, ...args: any[]) => React.ReactElement,
   type: React.ElementType | Model.Init,
   ...args: any[]
@@ -65,7 +65,7 @@ export function createElement(
   return this(type, ...args);
 }
 
-export const jsx = createElement.bind(Runtime.jsx);
-export const jsxs = createElement.bind(Runtime.jsxs);
+export const jsx = patch.bind(Runtime.jsx);
+export const jsxs = patch.bind(Runtime.jsxs);
 
 export { Fragment } from 'react';
