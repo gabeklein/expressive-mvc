@@ -49,10 +49,17 @@ declare namespace Provider {
     /** Model or group of Models to provide to descendant Consumers. */
     for: Context.Accept<T>;
 
+    /**
+     * Callback to run for each provided Model.
+     */
     forEach?: Context.Expect<T>;
+
+    /**
+     * Children to render within this Provider.
+     */
     children?: ReactNode;
 
-    /** A fallback react tree to show when suspended. */
+    /** A fallback tree to show when suspended. */
     fallback?: ReactNode;
 
     /**
