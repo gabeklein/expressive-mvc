@@ -79,24 +79,20 @@ function Provider<T extends Model>(props: Provider.Props<T>) {
   return createProvider(context, props.children, props.fallback, props.name);
 }
 
-export function createProvider(
-  context: Context | Model,
+function createProvider(
+  context: Context,
   children: ReactNode,
   fallback?: ReactNode,
   name?: string | undefined
 ) {
-  if (context instanceof Model) context = Context.get(context)!;
-
-  const element =
-    fallback !== undefined
-      ? createElement(Suspense, { fallback, name }, children)
-      : children;
+  if (fallback !== undefined)
+    children = createElement(Suspense, { fallback, name }, children);
 
   return createElement(Lookup.Provider, {
     key: context.id,
     value: context,
-    children: element
+    children
   });
 }
 
-export { Consumer, Provider };
+export { Consumer, Provider, createProvider };

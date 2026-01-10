@@ -1,8 +1,8 @@
-import { METHOD, Model } from '@expressive/mvc';
+import { Model } from '@expressive/mvc';
 import React from 'react';
 import Runtime from 'react/jsx-runtime';
 
-import { createProvider } from './context';
+import { Component } from './model.as';
 
 export declare namespace JSX {
   type ElementType =
@@ -31,24 +31,6 @@ export declare namespace JSX {
   interface IntrinsicClassAttributes<T> extends React.JSX
     .IntrinsicClassAttributes<T> {}
   interface IntrinsicElements extends React.JSX.IntrinsicElements {}
-}
-
-function Component<T extends Model.ReactCompat>(
-  this: Model.Init<T>,
-  { is, ...props }: Model.Props<T>
-) {
-  const model = this.use(props as any, is);
-  const render = METHOD.get(model.render) || props.render || model.render;
-  const children = render
-    ? render.call(model, props as Model.HasProps<T>, model)
-    : props.children;
-
-  return createProvider(
-    model,
-    children,
-    props.fallback || model.fallback,
-    String(model)
-  );
 }
 
 const RENDER = new WeakMap<Function, React.ComponentType>();

@@ -1,7 +1,7 @@
 /** @jsxImportSource . */
 
 import { act, render, screen } from '@testing-library/react';
-import { Children, Component, isValidElement } from 'react';
+import React, { Children, Component, isValidElement } from 'react';
 import { Consumer, get, has, Model, set } from '.';
 
 describe('has instruction', () => {
@@ -371,6 +371,28 @@ describe('suspense', () => {
     expect(element.getByText('Hello World')).toBeInTheDocument();
   });
 
+  it('will fallback when own render suspends', async () => {
+    class Foo extends Model {
+      value = set<string>();
+      fallback = (<span>Loading!</span>);
+      render() {
+        return this.value;
+      }
+    }
+
+    let foo!: Foo;
+
+    const element = render(<Foo is={(x) => (foo = x)} />);
+
+    expect(element.getByText('Loading!')).toBeInTheDocument();
+
+    await act(async () => {
+      foo.value = 'Hello World';
+    });
+
+    expect(element.getByText('Hello World')).toBeInTheDocument();
+  });
+
   it('will use fallback property first', async () => {
     class Foo extends Model {
       value = set<string>();
@@ -378,13 +400,10 @@ describe('suspense', () => {
     }
 
     let foo!: Foo;
-    const Consumer = () => {
-      foo = Foo.get();
-      return foo.value;
-    };
+    const Consumer = () => Foo.get().value;
 
     const element = render(
-      <Foo>
+      <Foo is={(x) => (foo = x)}>
         <Consumer />
       </Foo>
     );
@@ -413,13 +432,10 @@ describe('suspense', () => {
     }
 
     let foo!: Foo;
-    const Consumer = () => {
-      foo = Foo.get();
-      return foo.value;
-    };
+    const Consumer = () => Foo.get().value;
 
     const element = render(
-      <Foo>
+      <Foo is={(x) => (foo = x)}>
         <Consumer />
       </Foo>
     );
