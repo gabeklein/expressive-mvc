@@ -8,12 +8,13 @@ import {
   set,
   has
 } from '@expressive/mvc';
-import { useEffect, useState } from 'react';
+import { createElement, useEffect, useState } from 'react';
 
-import { React } from './compat';
+import { Pragma } from './compat';
 
-React.useEffect = useEffect;
-React.useState = useState;
+Pragma.useEffect = useEffect;
+Pragma.useState = useState;
+Pragma.createElement = createElement;
 
 export default Model;
 export { Context, get, has, Model, Observable, ref, set, use };

@@ -1,8 +1,8 @@
 import { Context, createEffect, METHOD, Model } from '@expressive/mvc';
-import { createElement, FunctionComponent, ReactNode } from 'react';
+import { FunctionComponent, ReactNode } from 'react';
 
 import { provide } from './context';
-import { React } from './compat';
+import { Pragma } from './compat';
 
 declare module '@expressive/mvc' {
   namespace Model {
@@ -41,7 +41,7 @@ export function Component<T extends Model.ReactCompat>(
   const { is, ...rest } = { ...props, ...props2 };
 
   const context = Context.use(true);
-  const state = React.useState<(props: any) => any>(() => {
+  const state = Pragma.useState<(props: any) => any>(() => {
     const instance = new this(rest as {}, is && ((x) => void is(x)));
 
     let ready: boolean | undefined;
@@ -77,11 +77,11 @@ export function Component<T extends Model.ReactCompat>(
       ready = false;
       Promise.resolve(instance.set(props as {})).finally(() => (ready = true));
 
-      React.useEffect(didMount, []);
+      Pragma.useEffect(didMount, []);
 
       return provide(
         context,
-        createElement(Render, props as any),
+        Pragma.createElement(Render, props as any),
         props.fallback || current.fallback,
         String(instance)
       );

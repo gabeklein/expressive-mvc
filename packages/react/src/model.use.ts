@@ -1,6 +1,6 @@
 import { Model, Context, createEffect } from '@expressive/mvc';
 
-import { React } from './compat';
+import { Pragma } from './compat';
 
 declare module '@expressive/mvc' {
   namespace Model {
@@ -17,7 +17,7 @@ Model.use = function <T extends Compat>(
   ...args: Model.Argument<T>[]
 ) {
   const context = Context.use(true);
-  const state = React.useState(() => {
+  const state = Pragma.useState(() => {
     let ready: boolean | undefined;
     let local: T;
 
@@ -43,7 +43,7 @@ Model.use = function <T extends Compat>(
     return (...args: Model.Argument<T>[]) => {
       ready = false;
 
-      React.useEffect(didMount, []);
+      Pragma.useEffect(didMount, []);
       Promise.all(
         args.map((arg) => typeof arg == 'object' && instance.set(arg))
       ).finally(() => {
