@@ -1772,6 +1772,20 @@ describe('new method (static)', () => {
     expect(state.foo).toBe('bar');
   });
 
+  it('will apply arguments returned by callback', () => {
+    class Test extends Model {
+      foo = 0;
+      bar = 1;
+    }
+
+    const willCreate = jest.fn(() => [{ foo: 2 }, { bar: 3 }]);
+
+    const test = Test.new(willCreate);
+
+    expect(test.foo).toBe(2);
+    expect(test.bar).toBe(3);
+  });
+
   it('will apply all arguments', () => {
     class Test extends Model {
       foo = 0;

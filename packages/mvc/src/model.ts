@@ -68,7 +68,7 @@ declare namespace Model {
   type Callback<T extends Model = Model> = (
     this: T,
     thisArg: T
-  ) => Promise<void> | (() => void) | Assign<T> | void;
+  ) => Promise<void> | (() => void) | Assign<T> | Args<T> | void;
 
   /** Model constructor argument */
   type Argument<T extends Model = Model> =
@@ -581,6 +581,7 @@ function init(model: Model, args: Model.Args) {
           console.error(`Async error in constructor for ${model}:`);
           console.error(err);
         });
+      else if (Array.isArray(use)) args.push(...use);
       else if (typeof use == 'function') addListener(model, use, null);
       else if (typeof use == 'object') assign(model, use, true);
     }
