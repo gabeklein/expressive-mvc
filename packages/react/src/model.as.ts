@@ -21,6 +21,18 @@ declare module '@expressive/mvc' {
   }
 }
 
+Model.as = function <T extends Model.ReactCompat, P extends Model.Assign<T>>(
+  this: Model.Init<T>,
+  render: (props: P, self: T) => ReactNode
+): Model.FC<T, P> {
+  const FC = Component.bind(this as Model.Init, { render } as {});
+
+  return Object.assign(FC, {
+    displayName: this.name,
+    Model: this
+  });
+};
+
 export function Component<T extends Model.ReactCompat>(
   this: Model.Init<T>,
   props: Model.Props<T>,
@@ -86,15 +98,3 @@ export function Component<T extends Model.ReactCompat>(
 
   return state[0](rest);
 }
-
-Model.as = function <T extends Model.ReactCompat, P extends Model.Assign<T>>(
-  this: Model.Init<T>,
-  render: (props: P, self: T) => ReactNode
-): Model.FC<T, P> {
-  const FC = Component.bind(this as Model.Init, { render } as {});
-
-  return Object.assign(FC, {
-    displayName: this.name,
-    Model: this
-  });
-};
