@@ -12,12 +12,17 @@ it('will update component as values change', async () => {
     }
   }
   let test: Test;
-  const Component = Test.as((_, self) => <span>{self.foo}</span>);
+  const Component = Test.as((_, self) => {
+    return <span>{self.foo}</span>;
+  });
 
   render(<Component />);
   screen.getByText('bar');
 
-  await act(async () => test.set({ foo: 'baz' }));
+  await act(async () => {
+    test.foo = 'baz';
+    await test.set();
+  });
 
   screen.getByText('baz');
 });
