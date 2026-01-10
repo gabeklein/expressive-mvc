@@ -9,8 +9,7 @@ declare module '@expressive/mvc' {
 }
 
 interface Compat extends Model {
-  render?(...props: Model.Argument<this>[]): React.ReactNode;
-  fallback?: React.ReactNode;
+  render?(...props: Model.Argument<this>[]): void;
 }
 
 Model.use = function <T extends Compat>(
