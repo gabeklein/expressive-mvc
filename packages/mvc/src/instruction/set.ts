@@ -149,7 +149,8 @@ function set<T>(
 }
 
 function attempt(fn: () => any): any {
-  async function retry(err: unknown) {
+  // Ignore TS80006: Function must be synchronous.
+  function retry(err: unknown) {
     if (err instanceof Promise) return err.then(compute);
     else throw err;
   }
