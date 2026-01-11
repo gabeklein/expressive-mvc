@@ -50,7 +50,7 @@ function Provider<T extends Model>(props: Provider.Props<T>) {
 
   useEffect(() => () => context.pop(), [context]);
 
-  context.include(props.for, (model) => {
+  context.use(props.for, (model) => {
     if (props.forEach) {
       const cleanup = props.forEach(model);
 
