@@ -47,7 +47,7 @@ export function Component<T extends Model.ReactCompat>(
     let ready: boolean | undefined;
     let current: T;
 
-    context.include(instance);
+    context.use(instance);
 
     const unwatch = createEffect(instance, (watch) => {
       current = watch;

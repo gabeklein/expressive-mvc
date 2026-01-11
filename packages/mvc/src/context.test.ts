@@ -8,7 +8,7 @@ it('will add instance to context', () => {
   const example = Example.new();
   const context = new Context();
 
-  context.include(example);
+  context.use(example);
 
   expect(context.get(Example)).toBe(example);
 });
@@ -165,19 +165,19 @@ describe('include', () => {
 
     const context = new Context();
 
-    context.include({ foo, bar }, cb);
+    context.use({ foo, bar }, cb);
 
     expect(cb).toBeCalledWith(foo);
     expect(cb).toBeCalledWith(bar);
     expect(cb).toBeCalledTimes(2);
 
-    context.include({ foo, bar }, cb);
+    context.use({ foo, bar }, cb);
 
     expect(cb).toBeCalledTimes(2);
 
     const foo2 = Foo.new();
 
-    context.include({ foo, bar, foo2 }, cb);
+    context.use({ foo, bar, foo2 }, cb);
 
     expect(cb).toBeCalledWith(foo2);
     expect(cb).toBeCalledTimes(3);
@@ -189,8 +189,8 @@ describe('include', () => {
 
     const context = new Context();
 
-    context.include(foo);
-    context.include(bar);
+    context.use(foo);
+    context.use(bar);
 
     expect(context.get(Foo)).toBe(foo);
     expect(context.get(Bar)).toBe(bar);
@@ -200,8 +200,8 @@ describe('include', () => {
     const cb = jest.fn();
     const context = new Context();
 
-    context.include(Foo, cb);
-    context.include(Foo, cb);
+    context.use(Foo, cb);
+    context.use(Foo, cb);
 
     expect(context.get(Foo)).toBeInstanceOf(Foo);
 
@@ -212,8 +212,8 @@ describe('include', () => {
     const context = new Context();
     const fetch = () => context.get(Foo);
 
-    context.include(Foo);
-    context.include(Foo);
+    context.use(Foo);
+    context.use(Foo);
 
     expect(fetch).toThrowError(
       `Did find Foo in context, but multiple were defined.`
@@ -238,7 +238,7 @@ describe('include', () => {
     const idPriorToUpdate = context.id;
     const baz = context.get(Baz);
 
-    context.include({ foo, bar: Bar.new(), Baz });
+    context.use({ foo, bar: Bar.new(), Baz });
 
     // key should change despite technically same layer.
     expect(context.id).not.toBe(idPriorToUpdate);
@@ -301,14 +301,14 @@ it('will pop child context', () => {
 it('will throw on bad include', () => {
   const context = new Context();
 
-  expect(() => context.include(undefined as any)).toThrowError();
+  expect(() => context.use(undefined as any)).toThrowError();
 });
 
 it('will throw on base Model include', () => {
   const context = new Context();
 
   // @ts-ignore
-  expect(() => context.include({ Model })).toThrowError(
+  expect(() => context.use({ Model })).toThrowError(
     'Cannot create base Model.'
   );
 });
@@ -317,7 +317,7 @@ it('will throw on bad include property', () => {
   const context = new Context();
 
   // @ts-ignore
-  expect(() => context.include({ Thing: undefined })).toThrowError(
+  expect(() => context.use({ Thing: undefined })).toThrowError(
     "Context may only include instance or class `extends Model` but got undefined (as 'Thing')."
   );
 });
@@ -326,7 +326,7 @@ it('will throw on bad include property (no alias)', () => {
   const context = new Context();
 
   // @ts-ignore
-  expect(() => context.include({ [0]: undefined })).toThrowError(
+  expect(() => context.use({ [0]: undefined })).toThrowError(
     'Context may only include instance or class `extends Model` but got undefined.'
   );
 });

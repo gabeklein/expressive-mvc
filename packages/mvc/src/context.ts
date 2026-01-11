@@ -41,21 +41,30 @@ interface Context {
 }
 
 class Context {
+  /**
+   * Get the context for a specified Model. If a callback is provided, it will be run when
+   * the context becomes available.
+   */
   static get<T extends Model>(
     on: Model,
     callback: (got: Context) => void
   ): void;
-  static get<T extends Model>(on: Model): Context | undefined;
-  static get({ is }: Model, callback?: (got: Context) => void) {
-    const waiting = LOOKUP.get(is);
 
-    if (waiting instanceof Context) {
-      if (callback) callback(waiting);
-      return waiting;
+  /**
+   * Get the context for a specified Model. Returns undefined if none are found.
+   */
+  static get<T extends Model>(on: Model): Context | undefined;
+
+  static get({ is }: Model, callback?: (got: Context) => void) {
+    const context = LOOKUP.get(is);
+
+    if (context instanceof Context) {
+      if (callback) callback(context);
+      return context;
     }
 
     if (callback)
-      if (waiting) waiting.push(callback);
+      if (context) context.push(callback);
       else LOOKUP.set(is, [callback]);
   }
 
@@ -65,7 +74,7 @@ class Context {
   protected cleanup = new Set<() => void>();
 
   constructor(inputs?: Context.Accept) {
-    if (inputs) this.include(inputs);
+    if (inputs) this.use(inputs);
   }
 
   /** Run callback when a specified type is registered to a **child** context. */
@@ -98,77 +107,9 @@ class Context {
     if (require) throw new Error(`Could not find ${Type} in context.`);
   }
 
-  public push(inputs?: Context.Accept) {
-    const next = Object.create(this) as this;
-
-    this.cleanup = new Set([() => next.pop(), ...this.cleanup]);
-
-    next.layer = new Map();
-    next.cleanup = new Set();
-
-    if (inputs) next.include(inputs);
-
-    return next;
-  }
-
-  public pop() {
-    for (const key of Object.getOwnPropertySymbols(this))
-      delete (this as any)[key];
-
-    this.cleanup.forEach((cb) => cb());
-    this.cleanup.clear();
-    this.layer.clear();
-  }
-
-  public include<T extends Model>(
-    inputs: Context.Accept<T>,
-    forEach?: Context.Expect<T>
-  ) {
-    const init = new Map<Model, boolean>();
-
-    if (typeof inputs == 'function' || inputs instanceof Model)
-      inputs = { [forEach ? 0 : this.layer.size]: inputs };
-
-    for (const [K, V] of Object.entries(inputs)) {
-      if (Model.is(V) || V instanceof Model) {
-        const exists = this.layer.get(K);
-
-        if (!exists) {
-          const instance = this.add(V);
-
-          this.layer.set(K, V);
-          init.set(instance, true);
-        }
-        // Context must force-reset because inputs are no longer safe.
-        else if (exists !== V) {
-          this.pop();
-          this.id = uid();
-          this.include(inputs);
-        }
-
-        continue;
-      }
-
-      throw new Error(
-        `Context may only include instance or class \`extends Model\` but got ${
-          K == '0' || K == String(V) ? V : `${V} (as '${K}')`
-        }.`
-      );
-    }
-
-    for (const [model, explicit] of init) {
-      model.set();
-
-      if (explicit && forEach) forEach(model as T);
-
-      for (const [_key, value] of model)
-        if (PARENT.get(value as Model) === model) {
-          this.add(value as Model, true);
-          init.set(value as Model, false);
-        }
-    }
-  }
-
+  /**
+   * Adds a Model to this context.
+   */
   protected add<T extends Model>(input: T | Model.Init<T>, implicit?: boolean) {
     const cleanup = new Set<() => void>();
     let T: Model.Type<T>;
@@ -219,6 +160,95 @@ class Context {
     LOOKUP.set(I, this);
 
     return I;
+  }
+
+  /**
+   * Register one or more Models to this context.
+   *
+   * Context will add or remove Models as needed to keep with provided input.
+   *
+   * @param inputs Model, Model class, or map of Models / Model classes to register.
+   * @param forEach Optional callback to run for each Model registered.
+   */
+  public use<T extends Model>(
+    inputs: Context.Accept<T>,
+    forEach?: Context.Expect<T>
+  ) {
+    const init = new Map<Model, boolean>();
+
+    if (typeof inputs == 'function' || inputs instanceof Model)
+      inputs = { [forEach ? 0 : this.layer.size]: inputs };
+
+    for (const [K, V] of Object.entries(inputs)) {
+      if (Model.is(V) || V instanceof Model) {
+        const exists = this.layer.get(K);
+
+        if (!exists) {
+          const instance = this.add(V);
+
+          this.layer.set(K, V);
+          init.set(instance, true);
+        }
+        // Context must force-reset because inputs are no longer safe.
+        else if (exists !== V) {
+          this.pop();
+          this.id = uid();
+          this.use(inputs);
+        }
+
+        continue;
+      }
+
+      throw new Error(
+        `Context may only include instance or class \`extends Model\` but got ${
+          K == '0' || K == String(V) ? V : `${V} (as '${K}')`
+        }.`
+      );
+    }
+
+    for (const [model, explicit] of init) {
+      model.set();
+
+      if (explicit && forEach) forEach(model as T);
+
+      for (const [_key, value] of model)
+        if (PARENT.get(value as Model) === model) {
+          this.add(value as Model, true);
+          init.set(value as Model, false);
+        }
+    }
+  }
+
+  /**
+   * Create a child context, optionally registering one or more Models to it.
+   *
+   * @param inputs Model, Model class, or map of Models / Model classes to register.
+   */
+  public push(inputs?: Context.Accept) {
+    const next = Object.create(this) as this;
+
+    this.cleanup = new Set([() => next.pop(), ...this.cleanup]);
+
+    next.layer = new Map();
+    next.cleanup = new Set();
+
+    if (inputs) next.use(inputs);
+
+    return next;
+  }
+
+  /**
+   * Remove all Models from this context.
+   *
+   * Will also run any cleanup callbacks registered when Models were added.
+   */
+  public pop() {
+    for (const key of Object.getOwnPropertySymbols(this))
+      delete (this as any)[key];
+
+    this.cleanup.forEach((cb) => cb());
+    this.cleanup.clear();
+    this.layer.clear();
   }
 }
 

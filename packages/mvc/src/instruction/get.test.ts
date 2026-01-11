@@ -685,7 +685,7 @@ describe.skip('replaced source', () => {
 
     const newSource = Source.new('Bar');
 
-    context.include({ source: newSource });
+    context.use({ source: newSource });
 
     await expect(test).toHaveUpdated();
     expect(test.source).toBe(newSource);
@@ -701,7 +701,7 @@ describe.skip('replaced source', () => {
 
     expect(test.source).toBe('Hello Foo!');
 
-    context.include({
+    context.use({
       source: Source.new('Bar')
     });
 
@@ -738,7 +738,7 @@ describe.skip('replaced source', () => {
 
     // TODO: Instruction does not seem to be notified of change.
     remote = Remote.new();
-    context.include({ remote });
+    context.use({ remote });
 
     await test.set();
     expect(remoteEffect).toBeCalledTimes(3);

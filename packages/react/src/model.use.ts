@@ -31,7 +31,7 @@ Model.use = function <T extends Model.Usable>(
       x.use ? Promise.resolve(x.use(...args)) : args
     );
 
-    context.include(instance);
+    context.use(instance);
 
     const unwatch = createEffect(instance, (current) => {
       local = current;
