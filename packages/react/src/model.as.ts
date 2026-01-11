@@ -93,7 +93,7 @@ export function Component<T extends Model.ReactCompat>(
     const unwatch = createEffect(instance, (watch) => {
       current = watch;
 
-      if (ready) state[1]((x: any) => x.bind(null));
+      if (ready) state[1]((x) => x.bind(null));
     });
 
     function didMount() {
