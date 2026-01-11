@@ -90,7 +90,7 @@ export function Render<T extends Model.ReactCompat>(
 
     context.use(instance);
 
-    const unwatch = watch(instance, (current) => {
+    watch(instance, (current) => {
       active = current;
 
       if (ready) state[1]((x) => x.bind(null));
@@ -99,7 +99,6 @@ export function Render<T extends Model.ReactCompat>(
     function didMount() {
       ready = true;
       return () => {
-        unwatch();
         context.pop();
         instance.set(null);
       };

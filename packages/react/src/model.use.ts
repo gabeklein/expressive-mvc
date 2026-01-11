@@ -33,7 +33,7 @@ Model.use = function <T extends Model.Usable>(
 
     context.use(instance);
 
-    const unwatch = watch(instance, (current) => {
+    watch(instance, (current) => {
       active = current;
 
       if (ready) state[1]((x) => x.bind(null));
@@ -42,7 +42,6 @@ Model.use = function <T extends Model.Usable>(
     function didMount() {
       ready = true;
       return () => {
-        unwatch();
         context.pop();
         instance.set(null);
       };
