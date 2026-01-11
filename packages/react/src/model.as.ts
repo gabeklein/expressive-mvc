@@ -81,14 +81,13 @@ export function Render<T extends Model.ReactCompat>(
 ) {
   const { is, ...rest } = { ...props, ...props2 };
 
-  const context = Context.use(true);
+  const ambient = Context.use();
   const state = Pragma.useState<(props: any) => any>(() => {
     const instance = new this(rest as {}, is && ((x) => void is(x)));
+    const context = ambient.push(instance);
 
     let ready: boolean | undefined;
     let active: T;
-
-    context.use(instance);
 
     watch(instance, (current) => {
       active = current;

@@ -22,7 +22,7 @@ Model.use = function <T extends Model.Usable>(
   this: Model.Init<T>,
   ...args: any[]
 ) {
-  const context = Context.use(true);
+  const ambient = Context.use();
   const state = Pragma.useState(() => {
     let ready: boolean | undefined;
     let active: T;
@@ -30,8 +30,7 @@ Model.use = function <T extends Model.Usable>(
     const instance = new this((x) =>
       x.use ? Promise.resolve(x.use(...args)) : args
     );
-
-    context.use(instance);
+    const context = ambient.push(instance);
 
     watch(instance, (current) => {
       active = current;
