@@ -13,8 +13,7 @@ const Lookup = createContext(new Context());
 
 declare module '@expressive/mvc' {
   namespace Context {
-    function use(create?: true): Context;
-    function use(create: boolean): Context | null | undefined;
+    function use(): Context;
   }
 }
 
