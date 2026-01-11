@@ -52,13 +52,29 @@ declare namespace Instruction {
   };
 }
 
+interface NewModel extends Model {
+  new?(...args: any[]): void | Promise<void>;
+}
+
+interface HasNewMethod extends NewModel {
+  new(first: any, ...rest: any[]): any;
+}
+
+type HasRequiredNew<T> = T extends HasNewMethod
+  ? 'new' extends keyof T
+    ? undefined extends T['new']
+      ? false
+      : true
+    : false
+  : false;
+
 declare namespace Model {
   /** Any type of Model, using own class constructor as its identifier. */
   type Type<T extends Model = Model> = (abstract new (...args: any[]) => T) &
     typeof Model;
 
   /** A Model constructor, but which is not abstract. */
-  type Init<T extends Model = Model> = (new (...args: Model.Args<T>) => T) &
+  type Init<T extends NewModel = Model> = (new (...args: Model.Args<T>) => T) &
     Omit<typeof Model, never>;
 
   /**
@@ -420,12 +436,35 @@ abstract class Model implements Observable {
   /**
    * Create and activate a new instance of this model.
    *
-   * **Important** - Unlike `new this(...)` - this method also activates state.
+   * **Note**: Use instead of `new this(...)` where able - this method also activates state.
+   *
+   * Arguments are passed to the `new` method.
+   *
+   * @param args - arguments sent to `new` method
+   */
+  static new<T extends HasNewMethod>(
+    this: HasRequiredNew<T> extends true ? Model.Init<T> : never,
+    ...args: Parameters<NonNullable<T['new']>>
+  ): T;
+
+  /**
+   * Create and activate a new instance of this model.
+   *
+   * **Note**: Use instead of `new this(...)` where able - this method also activates state.
+   *
+   * Arguments are passed to the constructor.
    *
    * @param args - arguments sent to constructor
    */
-  static new<T extends Model>(this: Model.Init<T>, ...args: Model.Args<T>) {
-    const instance = new this(...args);
+  static new<T extends NewModel>(
+    this: Model.Init<T>,
+    ...args: Model.Args<T>
+  ): T;
+
+  static new<T extends NewModel>(this: Model.Init<T>, ...args: any[]) {
+    const instance = new this(({ new: init, is: self }) =>
+      init && init.length ? init.apply(self, args) : args
+    );
     event(instance);
     return instance;
   }
@@ -458,6 +497,21 @@ abstract class Model implements Observable {
     return () => notify.delete(listener);
   }
 }
+
+class Test extends Model {
+  foo?: number = undefined;
+  bar?: string = undefined;
+}
+
+class Test2 extends Test {
+  new(foo: number, bar: string) {
+    this.foo = foo;
+    this.bar = bar;
+  }
+}
+
+const test = Test.new();
+const test2 = Test2.new(42, 'hello');
 
 define(Model.prototype, 'toString', {
   value() {

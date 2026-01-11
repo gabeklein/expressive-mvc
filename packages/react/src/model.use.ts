@@ -2,26 +2,23 @@ import { Model, Context, watch } from '@expressive/mvc';
 
 import { Pragma } from './adapter';
 
+interface UseModel extends Model {
+  use?(...args: any[]): Promise<void> | void;
+}
+
 declare module '@expressive/mvc' {
   namespace Model {
-    interface Usable extends Model {
-      use?(...props: any[]): Promise<void> | void;
-    }
-
-    type UseArgs<T extends Usable> = T extends {
-      use(...props: infer P): any;
-    }
-      ? P
-      : Model.Argument<T>[];
+    type UseArgs<T extends UseModel> = T['use'] extends (
+      ...args: infer A
+    ) => any
+      ? A
+      : Args<T>;
 
     function use<T extends Model>(this: Init<T>, ...args: UseArgs<T>): T;
   }
 }
 
-Model.use = function <T extends Model.Usable>(
-  this: Model.Init<T>,
-  ...args: any[]
-) {
+Model.use = function <T extends UseModel>(this: Model.Init<T>, ...args: any[]) {
   const context = Context.use(true);
   const state = Pragma.useState(() => {
     let ready: boolean | undefined;
