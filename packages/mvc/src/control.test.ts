@@ -1,4 +1,4 @@
-import { createEffect, Observable } from './control';
+import { watch, Observable } from './control';
 import { set } from './instruction/set';
 import { use } from './instruction/use';
 import { mockError } from './mocks';
@@ -29,7 +29,7 @@ describe('effect', () => {
 
     const test = Test.new('ID');
     const attempt = () => {
-      createEffect(
+      watch(
         test,
         ($) => {
           expect<string>($.property);
@@ -74,8 +74,8 @@ describe('effect', () => {
     const test = Test.new();
     const didInvoke = jest.fn();
 
-    const done = createEffect(test, ({ foo }) => {
-      createEffect(test, ({ bar }) => {
+    const done = watch(test, ({ foo }) => {
+      watch(test, ({ bar }) => {
         didInvoke({ foo, bar });
       });
     });
@@ -113,7 +113,7 @@ describe('effect', () => {
     const didUpdate = jest.fn();
     const test = Test.new();
 
-    createEffect(test, ({ foo, bar }) => {
+    watch(test, ({ foo, bar }) => {
       didUpdate(foo, bar);
       test.bar = foo;
     });
@@ -151,7 +151,7 @@ describe('effect', () => {
     const didUpdate = jest.fn();
     const test = Test.new();
 
-    createEffect(test, ({ foo, bar }) => {
+    watch(test, ({ foo, bar }) => {
       didUpdate(foo, bar);
       test.bar = foo;
     });
@@ -188,7 +188,7 @@ describe('effect', () => {
 
     const test = Test.new();
 
-    createEffect(test, ({ foo, bar = 0 }) => {
+    watch(test, ({ foo, bar = 0 }) => {
       test.bar = foo + bar;
     });
 

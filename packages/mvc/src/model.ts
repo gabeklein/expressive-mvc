@@ -1,6 +1,6 @@
 import {
   addListener,
-  createEffect,
+  watch,
   event,
   Observable,
   OnUpdate,
@@ -258,7 +258,7 @@ abstract class Model implements Observable {
       const effect = METHOD.get(arg1) || arg1;
       let pending = new Set<Model.Event<this>>();
 
-      return createEffect(self, (proxy) => {
+      return watch(self, (proxy) => {
         const cb = effect.call(proxy, proxy, pending);
 
         return cb === null
@@ -611,7 +611,7 @@ function manage(
   const state = STATE.get(target)!;
 
   function get(this: Model) {
-    return watch(this, key, state[key]);
+    return observe(this, key, state[key]);
   }
 
   function set(value: unknown, silent?: boolean) {
@@ -630,7 +630,7 @@ type Proxy<T = any> = (key: string | number, value: T) => T;
 
 const OBSERVER = new WeakMap<Model, Proxy>();
 
-function watch(from: Model, key: string | number, value?: any) {
+function observe(from: Model, key: string | number, value?: any) {
   const access = OBSERVER.get(from);
   return access ? access(key, value) : value;
 }
@@ -749,5 +749,5 @@ export {
   STATE,
   uid,
   update,
-  watch
+  observe as watch
 };

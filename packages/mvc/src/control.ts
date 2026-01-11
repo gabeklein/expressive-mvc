@@ -155,17 +155,17 @@ function enqueue(eventHandler: () => void) {
  * @param callback - Function to invoke when values change.
  * @param requireValues - If `true` will throw if accessing a value which is `undefined`.
  */
-function createEffect<T extends Model>(
+function watch<T extends Model>(
   target: T,
   callback: Effect<Required<T>>,
   requireValues: true
 ): () => void;
-function createEffect<T extends Model>(
+function watch<T extends Model>(
   target: T,
   callback: Effect<T>,
   recursive?: boolean
 ): () => void;
-function createEffect<T extends Model>(
+function watch<T extends Model>(
   target: T,
   callback: Effect<T>,
   argument?: boolean
@@ -244,4 +244,4 @@ export function enter(ignore?: boolean) {
   };
 }
 
-export { addListener, createEffect, event, OnUpdate, PENDING_KEYS, Observable };
+export { addListener, watch, event, OnUpdate, PENDING_KEYS, Observable };

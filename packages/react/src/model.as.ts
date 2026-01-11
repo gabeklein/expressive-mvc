@@ -1,4 +1,4 @@
-import { Context, createEffect, METHOD, Model } from '@expressive/mvc';
+import { Context, watch, METHOD, Model } from '@expressive/mvc';
 import { FunctionComponent, ReactNode } from 'react';
 
 import { provide } from './context';
@@ -86,12 +86,12 @@ export function Component<T extends Model.ReactCompat>(
     const instance = new this(rest as {}, is && ((x) => void is(x)));
 
     let ready: boolean | undefined;
-    let current: T;
+    let active: T;
 
     context.use(instance);
 
-    const unwatch = createEffect(instance, (watch) => {
-      current = watch;
+    const unwatch = watch(instance, (current) => {
+      active = current;
 
       if (ready) state[1]((x) => x.bind(null));
     });
@@ -106,11 +106,10 @@ export function Component<T extends Model.ReactCompat>(
     }
 
     function Render(props: Model.Props<T>) {
-      const render =
-        METHOD.get(current.render) || props.render || current.render;
+      const render = METHOD.get(active.render) || props.render || active.render;
 
       return render
-        ? render.call(current, props as Model.HasProps<T>, current)
+        ? render.call(active, props as Model.HasProps<T>, active)
         : props.children;
     }
 
@@ -123,7 +122,7 @@ export function Component<T extends Model.ReactCompat>(
       return provide(
         context,
         Pragma.createElement(Render, props as any),
-        props.fallback || current.fallback,
+        props.fallback || active.fallback,
         String(instance)
       );
     };

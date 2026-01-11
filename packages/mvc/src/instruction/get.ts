@@ -1,5 +1,5 @@
 import { Context } from '../context';
-import { createEffect } from '../control';
+import { watch } from '../control';
 import { fetch, METHOD, Model, PARENT, event, update } from '../model';
 import { use } from './use';
 
@@ -133,7 +133,7 @@ function get<R, T extends Model>(
     let proxy: any;
 
     function connect(model: Model) {
-      reset = createEffect(
+      reset = watch(
         model,
         (current) => {
           proxy = current;

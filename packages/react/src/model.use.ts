@@ -1,4 +1,4 @@
-import { Model, Context, createEffect } from '@expressive/mvc';
+import { Model, Context, watch } from '@expressive/mvc';
 
 import { Pragma } from './adapter';
 
@@ -25,7 +25,7 @@ Model.use = function <T extends Model.Usable>(
   const context = Context.use(true);
   const state = Pragma.useState(() => {
     let ready: boolean | undefined;
-    let local: T;
+    let active: T;
 
     const instance = new this((x) =>
       x.use ? Promise.resolve(x.use(...args)) : args
@@ -33,8 +33,8 @@ Model.use = function <T extends Model.Usable>(
 
     context.use(instance);
 
-    const unwatch = createEffect(instance, (current) => {
-      local = current;
+    const unwatch = watch(instance, (current) => {
+      active = current;
 
       if (ready) state[1]((x) => x.bind(null));
     });
@@ -63,7 +63,7 @@ Model.use = function <T extends Model.Usable>(
         ready = true;
       });
 
-      return local;
+      return active;
     };
   });
 
