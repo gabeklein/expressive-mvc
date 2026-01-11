@@ -352,7 +352,7 @@ abstract class Model implements Observable {
 
   /**
    * Call a function when a property is updated.
-   * Unlike `get`, this calsl synchronously and will fire as many times as the property is updated.
+   * Unlike `get`, this calls synchronously and will fire as many times as the property is updated.
    *
    * @param callback - Function to call when property is updated.
    * @param event - Property to watch for updates.
@@ -556,9 +556,8 @@ function init(model: Model, args: Model.Args) {
   STATE.set(model, state);
 
   args = args.flat().filter((arg) => {
-    if (typeof arg != 'string') return true;
-
-    ID.set(model, arg);
+    if (typeof arg == 'string') ID.set(model, arg);
+    else return true;
   });
 
   addListener(model, () => {
