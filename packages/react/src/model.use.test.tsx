@@ -119,6 +119,58 @@ describe('hook', () => {
   });
 });
 
+describe('use method', () => {
+  it('will call if present', () => {
+    const didUse = jest.fn();
+
+    class Test extends Model {
+      use() {
+        didUse();
+      }
+    }
+
+    renderHook(() => Test.use());
+
+    expect(didUse).toHaveBeenCalled();
+  });
+
+  it('will receive arguments', () => {
+    const didUse = jest.fn();
+
+    class Test extends Model {
+      use(foo: string, bar: number) {
+        didUse(foo, bar);
+      }
+    }
+
+    renderHook(() => Test.use('hello', 123));
+
+    expect(didUse).toHaveBeenCalledWith('hello', 123);
+  });
+
+  it('will divert arguments from constructor', () => {
+    const didUse = jest.fn();
+
+    class Test extends Model {
+      value = 0;
+    }
+
+    class Test2 extends Test {
+      use(props: { value: number }) {
+        didUse(props);
+        expect(this.value).not.toBe(props.value);
+      }
+    }
+
+    const test = renderHook(() => Test.use({ value: 42 }));
+    const test2 = renderHook(() => Test2.use({ value: 42 }));
+
+    expect(test.result.current.value).toBe(42);
+    expect(test2.result.current.value).not.toBe(42);
+    expect(didUse).toHaveBeenCalledWith({ value: 42 });
+  });
+});
+
 describe('callback argument', () => {
   class Test extends Model {
     foo?: string = undefined;
