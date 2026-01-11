@@ -50,7 +50,6 @@ Model.use = function <T extends Model.Usable>(
       ready = false;
 
       Pragma.useEffect(didMount, []);
-
       Promise.resolve(
         instance.use
           ? instance.use(...args)

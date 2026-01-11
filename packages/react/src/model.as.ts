@@ -113,9 +113,11 @@ export function Render<T extends Model.ReactCompat>(
 
     return (props: Model.RenderProps<T>) => {
       ready = false;
-      Promise.resolve(instance.set(props as {})).finally(() => (ready = true));
 
       Pragma.useEffect(didMount, []);
+      Promise.resolve(instance.set(props as {})).finally(() => {
+        ready = true;
+      });
 
       return provide(
         context,
