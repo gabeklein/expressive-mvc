@@ -57,7 +57,7 @@ declare module '@expressive/mvc' {
 
     function as<T extends Model, P extends Model.Assign<T>>(
       this: Model.Init<T>,
-      render: (props: P, self: T) => ReactNode
+      render: (self: T, props: P) => ReactNode
     ): FC<T, P>;
   }
 }
@@ -66,7 +66,8 @@ Model.as = function <T extends Model.ReactCompat, P extends Model.Assign<T>>(
   this: Model.Init<T>,
   render: (props: P, self: T) => ReactNode
 ): Model.FC<T, P> {
-  const FC = Render.bind(this as Model.Init, { render } as {});
+  const FC = (props: Model.Props<T>) =>
+    Render.call(this as Model.Init, props, render);
 
   return Object.assign(FC, {
     displayName: this.name,
@@ -77,18 +78,16 @@ Model.as = function <T extends Model.ReactCompat, P extends Model.Assign<T>>(
 export function Render<T extends Model.ReactCompat>(
   this: Model.Init<T>,
   props: Model.Props<T>,
-  props2?: Model.Props<T>
+  render?: (props: Model.RenderProps<T>, self: T) => ReactNode
 ) {
-  const { is, ...rest } = { ...props, ...props2 };
-
-  const context = Context.use(true);
-  const state = Pragma.useState<(props: any) => any>(() => {
+  const ambient = Context.use();
+  const state = Pragma.useState(() => {
+    const { is, ...rest } = props;
     const instance = new this(rest as {}, is && ((x) => void is(x)));
+    const context = ambient.push(instance);
 
     let ready: boolean | undefined;
     let active: T;
-
-    context.use(instance);
 
     const unwatch = watch(instance, (current) => {
       active = current;
@@ -106,14 +105,16 @@ export function Render<T extends Model.ReactCompat>(
     }
 
     function Render(props: Model.Props<T>) {
-      const render = METHOD.get(active.render) || props.render || active.render;
+      if (render) return render(props, active);
 
-      return render
-        ? render.call(active, props as Model.HasProps<T>, active)
+      const method = METHOD.get(active.render) || active.render;
+
+      return method
+        ? method.call(active, props as Model.HasProps<T>, active)
         : props.children;
     }
 
-    return (props: Model.RenderProps<T>) => {
+    return (props: Model.Props<T>) => {
       ready = false;
       Promise.resolve(instance.set(props as {})).finally(() => (ready = true));
 
@@ -128,5 +129,5 @@ export function Render<T extends Model.ReactCompat>(
     };
   });
 
-  return state[0](rest);
+  return state[0](props);
 }
