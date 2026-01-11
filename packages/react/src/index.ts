@@ -10,7 +10,7 @@ import {
 } from '@expressive/mvc';
 import { createElement, useEffect, useState } from 'react';
 
-import { Pragma } from './compat';
+import { Pragma } from './adapter';
 
 Pragma.useEffect = useEffect;
 Pragma.useState = useState;

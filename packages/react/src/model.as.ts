@@ -2,7 +2,7 @@ import { Context, createEffect, METHOD, Model } from '@expressive/mvc';
 import { FunctionComponent, ReactNode } from 'react';
 
 import { provide } from './context';
-import { Pragma } from './compat';
+import { Pragma } from './adapter';
 
 declare module '@expressive/mvc' {
   namespace Model {

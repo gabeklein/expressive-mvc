@@ -1,6 +1,6 @@
 import { Model, Context, createEffect } from '@expressive/mvc';
 
-import { Pragma } from './compat';
+import { Pragma } from './adapter';
 
 declare module '@expressive/mvc' {
   namespace Model {

@@ -4,15 +4,25 @@
     "target": "es2020",
     "esModuleInterop": true,
     "jsx": "react",
-    "lib": ["ES2020", "DOM"],
+    "lib": [
+      "ES2020",
+      "DOM"
+    ],
     "moduleResolution": "node",
     "noUnusedLocals": true,
     "sourceMap": true,
     "strict": true,
     "paths": {
-      "@expressive/*": ["../*/src"],
-      "@expressive/react/compat": ["../react/src/compat"]
+      "@expressive/*": [
+        "../*/src"
+      ],
+      "@expressive/react/adapter": [
+        "../react/src/adapter"
+      ]
     }
   },
-  "exclude": ["node_modules", "dist"]
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
 }
