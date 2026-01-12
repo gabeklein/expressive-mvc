@@ -5,8 +5,6 @@ import { set } from './instruction/set';
 import { mockError, mockPromise } from './mocks';
 import { Model } from './model';
 
-class Generic extends Model {}
-
 it('will extend custom class', () => {
   class Subject extends Model {
     value = 1;
@@ -286,9 +284,11 @@ describe('subscriber', () => {
 });
 
 describe('string coercion', () => {
+  class Test extends Model {}
+
   it('will output a unique ID', () => {
-    const foo = String(Generic.new());
-    const bar = String(Generic.new());
+    const foo = String(Test.new());
+    const bar = String(Test.new());
 
     expect(foo).not.toBe(bar);
   });
@@ -302,7 +302,7 @@ describe('string coercion', () => {
   });
 
   it('will be class name and supplied ID', () => {
-    const a = Generic.new('ID');
+    const a = Test.new('ID');
 
     expect(String(a)).toBe('ID');
   });
@@ -572,8 +572,10 @@ describe('get method', () => {
   });
 
   describe('null', () => {
+    class Test extends Model {}
+
     it('will return true if model is not destroyed', () => {
-      const test = Generic.new();
+      const test = Test.new();
 
       expect(test.get(null)).toBe(false);
 
@@ -583,7 +585,7 @@ describe('get method', () => {
     });
 
     it('will callback when model is destroyed', () => {
-      const test = Generic.new();
+      const test = Test.new();
       const mock = jest.fn();
 
       test.get(null, mock);
@@ -1738,8 +1740,10 @@ describe('set method', () => {
 });
 
 describe('new method (static)', () => {
+  class Test extends Model {}
+
   it('will use string argument as ID', () => {
-    const state = Generic.new('ID');
+    const state = Test.new('ID');
 
     expect(String(state)).toBe('ID');
   });
@@ -1748,7 +1752,7 @@ describe('new method (static)', () => {
     const didDestroy = jest.fn();
     const didCreate = jest.fn(() => didDestroy);
 
-    const state = Generic.new(didCreate);
+    const state = Test.new(didCreate);
 
     expect(didCreate).toBeCalledTimes(1);
     expect(didDestroy).not.toBeCalled();
@@ -1830,7 +1834,7 @@ describe('new method (static)', () => {
   });
 
   it('will prefer last ID provided', () => {
-    const test = Generic.new('ID', 'ID2');
+    const test = Test.new('ID', 'ID2');
 
     expect(String(test)).toBe('ID2');
   });
@@ -1859,7 +1863,7 @@ describe('new method (static)', () => {
       return willDestroy1;
     });
 
-    const test = Generic.new(willCreate1, willCreate2);
+    const test = Test.new(willCreate1, willCreate2);
 
     expect(willCreate1).toBeCalledTimes(1);
     expect(willCreate2).toBeCalledTimes(1);
@@ -1873,7 +1877,7 @@ describe('new method (static)', () => {
   it('will ingore promise from callback', () => {
     const didCreate = jest.fn(() => Promise.resolve());
 
-    Generic.new(didCreate);
+    Test.new(didCreate);
 
     expect(didCreate).toBeCalledTimes(1);
   });
@@ -1884,7 +1888,7 @@ describe('new method (static)', () => {
     const expects = new Error('Model callback rejected.');
 
     const init = jest.fn(() => Promise.reject(expects));
-    const test = Generic.new('ID', init);
+    const test = Test.new('ID', init);
 
     expect(init).toBeCalledTimes(1);
 
