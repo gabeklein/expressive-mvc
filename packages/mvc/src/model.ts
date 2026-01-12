@@ -27,6 +27,9 @@ const METHODS = new WeakMap<Function, Map<string, (value: any) => void>>();
 /** Reference bound instance methods to real ones. */
 const METHOD = new WeakMap<any, any>();
 
+/** Currently accumulating export. Stores real values of placeholder properties such as ref() or child models. */
+let EXPORT: Map<any, any> | undefined;
+
 /**
  * Property initializer, will run upon instance creation.
  * Optional returned callback will run when once upon first access.
@@ -261,6 +264,33 @@ abstract class Model implements Observable {
   ) {
     const self = this.is;
 
+    if (arg1 === undefined) {
+      const values = {} as any;
+      let isNotRecursive;
+
+      if (!EXPORT) {
+        isNotRecursive = true;
+        EXPORT = new Map([[self, values]]);
+      }
+
+      for (let [key, value] of self) {
+        if (EXPORT.has(value)) value = EXPORT.get(value);
+        else if (
+          value &&
+          typeof value == 'object' &&
+          'get' in value &&
+          typeof value.get === 'function'
+        )
+          EXPORT.set(value, (value = value.get()));
+
+        values[key] = value;
+      }
+
+      if (isNotRecursive) EXPORT = undefined;
+
+      return Object.freeze(values);
+    }
+
     if (typeof arg1 == 'function') {
       const effect = METHOD.get(arg1) || arg1;
       let pending = new Set<Model.Event<this>>();
@@ -277,13 +307,11 @@ abstract class Model implements Observable {
       });
     }
 
-    return arg1 === undefined
-      ? snapshot(self)
-      : typeof arg2 == 'function'
-        ? addListener(self, arg2, arg1)
-        : arg1 === null
-          ? Object.isFrozen(STATE.get(self))
-          : fetch(self, arg1, arg2);
+    return typeof arg2 == 'function'
+      ? addListener(self, arg2, arg1)
+      : arg1 === null
+        ? Object.isFrozen(STATE.get(self))
+        : fetch(self, arg1, arg2);
   }
 
   /**
@@ -677,36 +705,6 @@ function fetch(subject: Model, property: string, required?: boolean) {
     message: error.message,
     stack: error.stack
   });
-}
-
-/** Currently accumulating export. Stores real values of placeholder properties such as ref() or child models. */
-let EXPORT: Map<any, any> | undefined;
-
-function snapshot<T extends Model>(model: T): Model.State<T> {
-  const values = {} as any;
-  let isNotRecursive;
-
-  if (!EXPORT) {
-    isNotRecursive = true;
-    EXPORT = new Map([[model, values]]);
-  }
-
-  for (let [key, value] of model) {
-    if (EXPORT.has(value)) value = EXPORT.get(value);
-    else if (
-      value &&
-      typeof value == 'object' &&
-      'get' in value &&
-      typeof value.get === 'function'
-    )
-      EXPORT.set(value, (value = value.get()));
-
-    values[key] = value;
-  }
-
-  if (isNotRecursive) EXPORT = undefined;
-
-  return Object.freeze(values);
 }
 
 function update<T>(
