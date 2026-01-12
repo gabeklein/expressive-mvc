@@ -49,24 +49,28 @@ declare module '@expressive/mvc' {
 
     interface FC<
       T extends Model,
-      P extends Model.Assign<T>
+      P extends Model.RenderProps<T>
     > extends FunctionComponent<P & Model.Props<T>> {
       displayName?: string;
       Model: Model.Type<T>;
     }
 
-    function as<T extends Model, P extends Model.Assign<T>>(
+    function as<T extends Model, P extends Model.RenderProps<T>>(
       this: Model.Init<T>,
       render: (props: P, self: T) => ReactNode
     ): FC<T, P>;
   }
 }
 
-Model.as = function <T extends Model.ReactCompat, P extends Model.Assign<T>>(
+Model.as = function <
+  T extends Model.ReactCompat,
+  P extends Model.RenderProps<T>
+>(
   this: Model.Init<T>,
   render: (props: P, self: T) => ReactNode
 ): Model.FC<T, P> {
-  const FC = Render.bind(this as Model.Init, { render } as {});
+  const FC = (props: Model.Props<T>) =>
+    Render.call(this as any, props as Model.Props<T>, render as any);
 
   return Object.assign(FC, {
     displayName: this.name,
@@ -77,12 +81,11 @@ Model.as = function <T extends Model.ReactCompat, P extends Model.Assign<T>>(
 export function Render<T extends Model.ReactCompat>(
   this: Model.Init<T>,
   props: Model.Props<T>,
-  props2?: Model.Props<T>
+  render?: (props: Model.Props<T>, self: T) => ReactNode
 ) {
-  const { is, ...rest } = { ...props, ...props2 };
-
   const ambient = Context.use();
-  const state = Pragma.useState<(props: any) => any>(() => {
+  const state = Pragma.useState(() => {
+    const { is, ...rest } = props;
     const instance = new this(rest as {}, is && ((x) => void is(x)));
     const context = ambient.push(instance);
 
@@ -103,15 +106,15 @@ export function Render<T extends Model.ReactCompat>(
       };
     }
 
-    function Render(props: Model.Props<T>) {
-      const render = METHOD.get(active.render) || props.render || active.render;
+    function Render({ is, ...props }: Model.Props<T>) {
+      const method = render || METHOD.get(active.render) || active.render;
 
-      return render
-        ? render.call(active, props as Model.HasProps<T>, active)
+      return method
+        ? method.call(active, props as Model.HasProps<T>, active)
         : props.children;
     }
 
-    return (props: Model.RenderProps<T>) => {
+    return (props: Model.HasProps<T>) => {
       ready = false;
 
       Pragma.useEffect(didMount, []);
@@ -128,5 +131,5 @@ export function Render<T extends Model.ReactCompat>(
     };
   });
 
-  return state[0](rest);
+  return state[0](props);
 }
