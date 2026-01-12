@@ -1,4 +1,4 @@
-import { fetch, Model, PARENT, STATE, uid, update, watch } from '../model';
+import { access, follow, Model, PARENT, STATE, uid, update } from '../model';
 
 /**
  * Property initializer, will run upon instance creation.
@@ -101,12 +101,12 @@ function init(this: Model) {
     Object.defineProperty(model, key, {
       enumerable: desc.enumerable !== false,
       get(this: Model) {
-        return watch(
+        return follow(
           this,
           key,
           typeof desc.get == 'function'
             ? desc.get(this)
-            : fetch(model, key, desc.get)
+            : access(model, key, desc.get)
         );
       },
       set(next) {

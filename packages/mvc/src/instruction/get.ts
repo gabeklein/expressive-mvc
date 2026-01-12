@@ -1,6 +1,6 @@
 import { Context } from '../context';
 import { watch } from '../control';
-import { fetch, METHOD, Model, PARENT, event, update } from '../model';
+import { access, METHOD, Model, PARENT, event, update } from '../model';
 import { use } from './use';
 
 type Type<T extends Model> = Model.Type<T> & typeof Model;
@@ -179,7 +179,7 @@ function get<R, T extends Model>(
 
       if (STALE.delete(compute)) compute();
 
-      return fetch(subject, key, !proxy) as T;
+      return access(subject, key, !proxy) as T;
     };
   });
 }

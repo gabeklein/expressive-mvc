@@ -288,7 +288,7 @@ abstract class Model implements Observable {
       ? addListener(self, arg2, arg1)
       : arg1 === null
         ? Object.isFrozen(STATE.get(self))
-        : fetch(self, arg1, arg2);
+        : access(self, arg1, arg2);
   }
 
   /**
@@ -626,7 +626,7 @@ function manage(
   const state = STATE.get(target)!;
 
   function get(this: Model) {
-    return observe(this, key, state[key]);
+    return follow(this, key, state[key]);
   }
 
   function set(value: unknown, silent?: boolean) {
@@ -645,12 +645,12 @@ type Proxy<T = any> = (key: string | number, value: T) => T;
 
 const OBSERVER = new WeakMap<Model, Proxy>();
 
-function observe(from: Model, key: string | number, value?: any) {
-  const access = OBSERVER.get(from);
-  return access ? access(key, value) : value;
+function follow(from: Model, key: string | number, value?: any) {
+  const observe = OBSERVER.get(from);
+  return observe ? observe(key, value) : value;
 }
 
-function fetch(subject: Model, property: string, required?: boolean) {
+function access(subject: Model, property: string, required?: boolean) {
   const state = STATE.get(subject)!;
 
   if (property in state || required === false) {
@@ -724,14 +724,4 @@ function uid() {
     .toUpperCase();
 }
 
-export {
-  event,
-  fetch,
-  METHOD,
-  Model,
-  PARENT,
-  STATE,
-  uid,
-  update,
-  observe as watch
-};
+export { event, METHOD, Model, PARENT, STATE, uid, access, update, follow };
