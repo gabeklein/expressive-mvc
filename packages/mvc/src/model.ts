@@ -68,23 +68,22 @@ declare namespace Model {
   type Callback<T extends Model = Model> = (
     this: T,
     thisArg: T
-  ) => Promise<void> | (() => void) | Assign<T> | Args<T> | void;
+  ) => Promise<void> | (() => void) | Args<T> | Assign<T> | void;
 
-  /** Model constructor argument */
-  type Argument<T extends Model = Model> =
+  /** Model constructor arguments */
+  type Args<T extends Model = any> = (
+    | Args<T>
     | Assign<T>
     | Callback<T>
     | string
-    | void;
-
-  /** Model constructor arguments */
-  type Args<T extends Model = any> = (Argument<T> | Args<T>)[];
+    | void
+  )[];
 
   /** Subset of `keyof T` which are not methods or defined by base Model U. **/
   type Field<T> = Exclude<keyof T, keyof Model>;
 
   /** Any valid key for model, including but not limited to Field<T>. */
-  type Event<T> = Field<T> | (string & {}) | number | symbol;
+  type Event<T> = Field<T> | number | symbol | (string & {});
 
   /** Object overlay to override values and methods on a model. */
   type Assign<T> = Record<string, unknown> & {
@@ -105,7 +104,7 @@ declare namespace Model {
     this: T,
     key: unknown,
     source: T
-  ) => (() => void) | void | null;
+  ) => void | (() => void) | null;
 
   type OnUpdate<T extends Model, K extends Event<T>> = (
     this: T,

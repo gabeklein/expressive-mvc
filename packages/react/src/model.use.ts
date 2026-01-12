@@ -12,7 +12,7 @@ declare module '@expressive/mvc' {
       use(...props: infer P): any;
     }
       ? P
-      : Model.Argument<T>[];
+      : Model.Args<T>;
 
     function use<T extends Model>(this: Init<T>, ...args: UseArgs<T>): T;
   }
@@ -46,7 +46,7 @@ Model.use = function <T extends Model.Usable>(
       };
     }
 
-    return (...args: Model.Argument<T>[]) => {
+    return (...args: Model.Args<T>) => {
       ready = false;
 
       Pragma.useEffect(didMount, []);
@@ -54,7 +54,13 @@ Model.use = function <T extends Model.Usable>(
         instance.use
           ? instance.use(...args)
           : Promise.all(
-              args.map((arg) => typeof arg == 'object' && instance.set(arg))
+              args
+                .flat()
+                .map(
+                  (arg) =>
+                    typeof arg == 'object' &&
+                    instance.set(arg as Model.Assign<T>)
+                )
             )
       ).finally(() => {
         ready = true;
