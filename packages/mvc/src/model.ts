@@ -22,7 +22,7 @@ const NOTIFY = new WeakMap<Model.Type, Set<OnUpdate>>();
 const PARENT = new WeakMap<Model, Model | null>();
 
 /** List of methods defined by a given type. */
-const METHODS = new WeakMap<Model.Type, Map<string, (value: any) => void>>();
+const METHODS = new WeakMap<Function, Map<string, (value: any) => void>>();
 
 /** Reference bound instance methods to real ones. */
 const METHOD = new WeakMap<any, any>();
@@ -472,7 +472,7 @@ define(Model, 'toString', {
 });
 
 function assign(subject: Model, data: Model.Assign<Model>, silent?: boolean) {
-  const methods = METHODS.get(subject.constructor as Model.Type)!;
+  const methods = METHODS.get(subject.constructor)!;
 
   for (const key in data) {
     const bind = methods.get(key);
@@ -643,7 +643,7 @@ function fetch(subject: Model, property: string, required?: boolean) {
     if (value !== undefined || !required) return value;
   }
 
-  if (METHODS.get(subject.constructor as Model.Init)!.has(property))
+  if (METHODS.get(subject.constructor)!.has(property))
     return METHOD.get((subject as any)[property]);
 
   const error = new Error(`${subject}.${property} is not yet available.`);
