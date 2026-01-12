@@ -1,13 +1,28 @@
-import {
-  fetch,
-  Model,
-  PARENT,
-  STATE,
-  uid,
-  update,
-  watch,
-  Instruction
-} from '../model';
+import { fetch, Model, PARENT, STATE, uid, update, watch } from '../model';
+
+/**
+ * Property initializer, will run upon instance creation.
+ * Optional returned callback will run when once upon first access.
+ */
+type Instruction<T = any, M extends Model = any> =
+  // TODO: Should this allow for numbers/symbol properties?
+  (
+    this: M,
+    key: Extract<Model.Field<M>, string>,
+    thisArg: M,
+    state: Model.State<M>
+  ) => Instruction.Descriptor<T> | ((source: M) => T) | void;
+
+declare namespace Instruction {
+  type Getter<T> = (source: Model) => T;
+
+  type Descriptor<T = any> = {
+    get?: Getter<T> | boolean;
+    set?: Model.Setter<T> | boolean;
+    enumerable?: boolean;
+    value?: T;
+  };
+}
 
 const INSTRUCTION = new Map<symbol, Instruction>();
 
@@ -108,4 +123,4 @@ function init(this: Model) {
 
 Model.on(init);
 
-export { use };
+export { use, Instruction };

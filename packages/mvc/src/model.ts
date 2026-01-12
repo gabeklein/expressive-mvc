@@ -30,31 +30,6 @@ const METHOD = new WeakMap<any, any>();
 /** Currently accumulating export. Stores real values of placeholder properties such as ref() or child models. */
 let EXPORT: Map<any, any> | undefined;
 
-/**
- * Property initializer, will run upon instance creation.
- * Optional returned callback will run when once upon first access.
- */
-type Instruction<T = any, M extends Model = any> =
-  // TODO: Should this allow for numbers/symbol properties?
-  (
-    this: M,
-    key: Extract<Model.Field<M>, string>,
-    thisArg: M,
-    state: Model.State<M>
-  ) => Instruction.Descriptor<T> | ((source: M) => T) | void;
-
-declare namespace Instruction {
-  type Getter<T> = (source: Model) => T;
-  type Setter<T> = (value: T, previous: T) => boolean | void | (() => T);
-
-  type Descriptor<T = any> = {
-    get?: Getter<T> | boolean;
-    set?: Setter<T> | boolean;
-    enumerable?: boolean;
-    value?: T;
-  };
-}
-
 declare namespace Model {
   /**
    * Model which is valid to create.
@@ -110,6 +85,8 @@ declare namespace Model {
   type Value<T extends Model, K extends Event<T>> = K extends keyof T
     ? Export<T[K]>
     : unknown;
+
+  type Setter<T> = (value: T, previous: T) => boolean | void | (() => T);
 
   type OnEvent<T extends Model> = (
     this: T,
@@ -711,7 +688,7 @@ function update<T>(
   subject: Model,
   key: string | number | symbol,
   value: T,
-  arg?: boolean | Instruction.Setter<T>
+  arg?: boolean | Model.Setter<T>
 ) {
   const state = STATE.get(subject)!;
 
@@ -750,7 +727,6 @@ function uid() {
 export {
   event,
   fetch,
-  Instruction,
   METHOD,
   Model,
   PARENT,

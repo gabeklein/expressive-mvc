@@ -1,6 +1,6 @@
 import { addListener, enter } from '../control';
-import { Instruction, event, update } from '../model';
-import { use } from './use';
+import { event, update } from '../model';
+import { Instruction, use } from './use';
 
 declare namespace set {
   type Callback<T, S = any> = (
