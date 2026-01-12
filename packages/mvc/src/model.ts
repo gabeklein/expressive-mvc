@@ -448,9 +448,7 @@ abstract class Model implements Observable {
   static on<T extends Model>(this: Model.Type<T>, listener: Model.OnEvent<T>) {
     let notify = NOTIFY.get(this);
 
-    if (!notify) {
-      NOTIFY.set(this, (notify = new Set()));
-    }
+    if (!notify) NOTIFY.set(this, (notify = new Set()));
 
     notify.add(listener);
 
