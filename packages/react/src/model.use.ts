@@ -47,24 +47,27 @@ Model.use = function <T extends Model.Usable>(
     }
 
     return (...args: Model.Args<T>) => {
-      ready = false;
-
       Pragma.useEffect(didMount, []);
-      Promise.resolve(
-        instance.use
-          ? instance.use(...args)
-          : Promise.all(
-              args
-                .flat()
-                .map(
-                  (arg) =>
-                    typeof arg == 'object' &&
-                    instance.set(arg as Model.Assign<T>)
-                )
-            )
-      ).finally(() => {
-        ready = true;
-      });
+
+      if (ready) {
+        ready = false;
+
+        Promise.resolve(
+          instance.use
+            ? instance.use(...args)
+            : Promise.all(
+                args
+                  .flat()
+                  .map(
+                    (arg) =>
+                      typeof arg == 'object' &&
+                      instance.set(arg as Model.Assign<T>)
+                  )
+              )
+        ).finally(() => {
+          ready = true;
+        });
+      }
 
       return active;
     };
