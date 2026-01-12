@@ -53,12 +53,20 @@ declare namespace Instruction {
 }
 
 declare namespace Model {
+  /**
+   * Model which is valid to create.
+   * If implements new method, it must have correct signature.
+   **/
+  interface New extends Model {
+    'new'?(): void | (() => void);
+  }
+
   /** Any type of Model, using own class constructor as its identifier. */
-  type Type<T extends Model = Model> = (abstract new (...args: any[]) => T) &
+  type Type<T extends New = Model> = (abstract new (...args: any[]) => T) &
     typeof Model;
 
   /** A Model constructor, but which is not abstract. */
-  type Init<T extends Model = Model> = (new (...args: Model.Args<T>) => T) &
+  type Init<T extends New = Model> = (new (...args: Model.Args<T>) => T) &
     Omit<typeof Model, never>;
 
   /**
@@ -423,8 +431,14 @@ abstract class Model implements Observable {
    *
    * @param args - arguments sent to constructor
    */
-  static new<T extends Model>(this: Model.Init<T>, ...args: Model.Args<T>) {
-    const instance = new this(...args);
+  static new<T extends Model>(
+    this: Model.Init<T & Model.New>,
+    ...args: Model.Args<T>
+  ) {
+    const instance = new this(...args, (x) => {
+      const cb = x.new && x.new();
+      if (cb) x.set(cb, null);
+    });
     event(instance);
     return instance;
   }

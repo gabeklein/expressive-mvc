@@ -119,8 +119,41 @@ describe('hook', () => {
   });
 });
 
+describe('new method', () => {
+  it('will call if exists', () => {
+    const didCreate = jest.fn();
+
+    class Test extends Model {
+      value = 0;
+
+      new() {
+        didCreate();
+      }
+    }
+
+    const element = renderHook(() => Test.use());
+
+    expect(didCreate).toHaveBeenCalled();
+
+    element.rerender();
+
+    expect(didCreate).toHaveBeenCalledTimes(1);
+  });
+
+  it('will enforce signature', () => {
+    class Test extends Model {
+      new(foo: string) {}
+    }
+
+    void function test() {
+      // @ts-expect-error
+      Test.use();
+    };
+  });
+});
+
 describe('use method', () => {
-  it('will call if present', () => {
+  it('will call every render if present', () => {
     const didUse = jest.fn();
 
     class Test extends Model {
@@ -129,9 +162,13 @@ describe('use method', () => {
       }
     }
 
-    renderHook(() => Test.use());
+    const element = renderHook(() => Test.use());
 
-    expect(didUse).toHaveBeenCalled();
+    expect(didUse).toHaveBeenCalledTimes(1);
+
+    element.rerender();
+
+    expect(didUse).toHaveBeenCalledTimes(2);
   });
 
   it('will receive arguments', () => {

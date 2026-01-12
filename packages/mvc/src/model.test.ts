@@ -1739,6 +1739,55 @@ describe('set method', () => {
   });
 });
 
+describe('new method', () => {
+  it('will call if exists', () => {
+    const didCreate = jest.fn();
+
+    class Test extends Model {
+      new() {
+        didCreate();
+      }
+    }
+
+    Test.new();
+
+    expect(didCreate).toBeCalledTimes(1);
+  });
+
+  it('will cleanup if returns function', () => {
+    const didDestroy = jest.fn();
+    const didCreate = jest.fn(() => didDestroy);
+
+    class Test extends Model {
+      new() {
+        return didCreate();
+      }
+    }
+
+    const state = Test.new();
+
+    expect(didCreate).toBeCalledTimes(1);
+    expect(didDestroy).not.toBeCalled();
+
+    state.set(null);
+
+    expect(didDestroy).toBeCalledTimes(1);
+  });
+
+  it('will enforce signature', () => {
+    class Test extends Model {
+      new(foo: string) {
+        return foo;
+      }
+    }
+
+    void function test() {
+      // @ts-expect-error
+      Test.new();
+    };
+  });
+});
+
 describe('new method (static)', () => {
   class Test extends Model {}
 

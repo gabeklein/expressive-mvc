@@ -4,21 +4,24 @@ import { Pragma } from './adapter';
 
 declare module '@expressive/mvc' {
   namespace Model {
-    interface Usable extends Model {
+    interface Use extends New {
       use?(...props: any[]): Promise<void> | void;
     }
 
-    type UseArgs<T extends Usable> = T extends {
+    type UseArgs<T extends Use> = T extends {
       use(...props: infer P): any;
     }
       ? P
       : Model.Args<T>;
 
-    function use<T extends Model>(this: Init<T>, ...args: UseArgs<T>): T;
+    function use<T extends Model>(
+      this: Init<T & Model.Use>,
+      ...args: UseArgs<T>
+    ): T;
   }
 }
 
-Model.use = function <T extends Model.Usable>(
+Model.use = function <T extends Model.Use>(
   this: Model.Init<T>,
   ...args: any[]
 ) {
@@ -27,7 +30,7 @@ Model.use = function <T extends Model.Usable>(
     let ready: boolean | undefined;
     let active: T;
 
-    const instance = new this((x) =>
+    const instance = this.new((x) =>
       x.use ? Promise.resolve(x.use(...args)) : args
     );
     const context = ambient.push(instance);
