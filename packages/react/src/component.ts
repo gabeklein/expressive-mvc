@@ -6,7 +6,23 @@ import { Model, Context } from '.';
 
 const OUTER = new WeakMap<Component, Context>();
 
-export class Component extends Model {
+type Pure<T extends Component> = Omit<T, keyof ReactLike>;
+
+interface ReactLike extends Model {
+  props: Model.ComponentProps<this>;
+  state: Model.State<this>;
+  context: Context;
+  setState(state: any, callback?: () => void): void;
+  forceUpdate(callback?: () => void): void;
+  children?: ReactNode;
+  fallback?: ReactNode;
+}
+
+declare namespace Component {
+  export { Pure, ReactLike as Base };
+}
+
+class Component extends Model implements ReactLike {
   static contextType = Layers;
 
   private _props!: Model.ComponentProps<this>;
