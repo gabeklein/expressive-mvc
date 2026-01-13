@@ -28,7 +28,7 @@ it('will render MockComponent', async () => {
   expect(element.getByText('Hello Everyone')).toBeInTheDocument();
 });
 
-it('will render children by default', () => {
+it('will pass children by default', () => {
   class MockComponent extends Component {}
 
   const element = render(
@@ -38,6 +38,28 @@ it('will render children by default', () => {
   );
 
   expect(element.getByText('Child Content')).toBeInTheDocument();
+});
+
+it('will render children function', async () => {
+  class MockComponent extends Component {
+    name = 'Tester';
+  }
+
+  let test!: MockComponent;
+  const element = render(
+    <MockComponent is={(x) => (test = x)}>
+      {({ name }) => <p>Hello {name}</p>}
+    </MockComponent>
+  );
+
+  expect(element.getByText('Hello Tester')).toBeInTheDocument();
+
+  await act(async () => {
+    test.name = 'Everyone';
+    await test.set();
+  });
+
+  expect(element.getByText('Hello Everyone')).toBeInTheDocument();
 });
 
 it('will provide context to descendants', () => {

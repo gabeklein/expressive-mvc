@@ -32,7 +32,7 @@ export class Component extends Model {
   }
 
   state!: Model.State<this>;
-  children!: ReactNode;
+  children!: ReactNode | ((self: this) => ReactNode);
   fallback?: ReactNode;
 
   constructor({ is, ...props }: any) {
@@ -43,7 +43,9 @@ export class Component extends Model {
   }
 
   render(): ReactNode {
-    return this.children;
+    return typeof this.children === 'function'
+      ? this.children(this)
+      : this.children;
   }
 
   /** @deprecated This is purely for React JSX compatibility in typescript. */
