@@ -10,9 +10,9 @@ import type { Model } from './model';
  *   - `null` - terminal event; instance is expired.
  * @param source - Instance of Model for which update has occured.
  */
-type OnUpdate<T extends Observable = any> = (
+type OnUpdate<T extends Observable = any, K extends Event = Event> = (
   this: T,
-  key: Event,
+  key: K,
   source: T
 ) => (() => void) | null | void;
 
