@@ -82,6 +82,37 @@ it('will call is method on creation', () => {
   act(screen.unmount);
 });
 
+describe('new method', () => {
+  it('will call if exists', () => {
+    const didCreate = jest.fn();
+
+    class Test extends Model {
+      new() {
+        didCreate();
+      }
+    }
+
+    const element = render(<Test />);
+
+    expect(didCreate).toHaveBeenCalled();
+
+    element.rerender(<Test />);
+
+    expect(didCreate).toHaveBeenCalledTimes(1);
+  });
+
+  it('will enforce signature', () => {
+    class Test extends Model {
+      new(foo: string) {}
+    }
+
+    void function test() {
+      // @ts-expect-error
+      void (<Test />);
+    };
+  });
+});
+
 describe('element props', () => {
   class Foo extends Model {
     /** Hover over this prop to see description. */

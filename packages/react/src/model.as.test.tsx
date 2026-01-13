@@ -178,6 +178,37 @@ it('will trigger set instruction', () => {
   expect(didSet).toBeCalled();
 });
 
+describe('new method', () => {
+  it('will call if exists', () => {
+    const didCreate = jest.fn();
+
+    class Test extends Model {
+      value = 0;
+
+      new() {
+        didCreate();
+      }
+    }
+
+    const Component = Test.as(() => null);
+
+    render(<Component />);
+
+    expect(didCreate).toHaveBeenCalled();
+  });
+
+  it('will enforce signature', () => {
+    class Test extends Model {
+      new(foo: string) {}
+    }
+
+    void function test() {
+      // @ts-expect-error
+      Test.as(() => null);
+    };
+  });
+});
+
 describe('suspense', () => {
   it('will render fallback prop', async () => {
     class Foo extends Model {

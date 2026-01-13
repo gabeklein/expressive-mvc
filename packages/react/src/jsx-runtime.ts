@@ -6,7 +6,7 @@ import { Render } from './model.as';
 
 export declare namespace JSX {
   type ElementType =
-    | Model.Type<Model.ReactCompat>
+    | Model.Type<Model.AsComponent>
     | React.JSX.ElementType
     | ((props: {}, ref?: any) => void);
 

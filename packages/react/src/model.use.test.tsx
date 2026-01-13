@@ -124,8 +124,6 @@ describe('new method', () => {
     const didCreate = jest.fn();
 
     class Test extends Model {
-      value = 0;
-
       new() {
         didCreate();
       }

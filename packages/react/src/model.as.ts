@@ -27,7 +27,7 @@ declare module '@expressive/mvc' {
     type Props<T extends Model> = T extends {
       render(props: infer P, self: any): any;
     }
-      ? ComponentProps<T> & Omit<P, keyof ReactCompat>
+      ? ComponentProps<T> & Omit<P, keyof AsComponent>
       : ComponentProps<T> & { children?: React.ReactNode };
 
     /**
@@ -42,7 +42,7 @@ declare module '@expressive/mvc' {
     };
 
     /** Model which is not incompatable as Component in React. */
-    interface ReactCompat extends Model {
+    interface AsComponent extends Model.New {
       render?(props: RenderProps<this>, self: this): React.ReactNode;
       fallback?: React.ReactNode;
     }
@@ -56,13 +56,13 @@ declare module '@expressive/mvc' {
     }
 
     function as<T extends Model, P extends Model.Assign<T>>(
-      this: Model.Init<T>,
+      this: Model.Init<T & Model.New>,
       render: (props: P, self: T) => ReactNode
     ): FC<T, P>;
   }
 }
 
-Model.as = function <T extends Model.ReactCompat, P extends Model.Assign<T>>(
+Model.as = function <T extends Model.AsComponent, P extends Model.Assign<T>>(
   this: Model.Init<T>,
   render: (props: P, self: T) => ReactNode
 ): Model.FC<T, P> {
@@ -74,7 +74,7 @@ Model.as = function <T extends Model.ReactCompat, P extends Model.Assign<T>>(
   });
 };
 
-export function Render<T extends Model.ReactCompat>(
+export function Render<T extends Model.AsComponent>(
   this: Model.Init<T>,
   props: Model.Props<T>,
   props2?: Model.Props<T>
@@ -83,7 +83,7 @@ export function Render<T extends Model.ReactCompat>(
 
   const ambient = Context.use();
   const state = Pragma.useState<(props: any) => any>(() => {
-    const instance = new this(rest as {}, is && ((x) => void is(x)));
+    const instance = this.new(rest as {}, is && ((x) => void is(x)));
     const context = ambient.push(instance);
 
     let ready: boolean | undefined;
