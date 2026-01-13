@@ -3,7 +3,7 @@ import {
   watch,
   event,
   Observable,
-  OnUpdate,
+  Notify,
   PENDING_KEYS
 } from './control';
 
@@ -16,7 +16,7 @@ const ID = new WeakMap<Model, string>();
 const STATE = new WeakMap<Model, Record<string | number | symbol, unknown>>();
 
 /** External listeners for any given Model. */
-const NOTIFY = new WeakMap<Model.Type, Set<OnUpdate>>();
+const NOTIFY = new WeakMap<Type, Set<Notify>>();
 
 /** Parent-child relationships. */
 const PARENT = new WeakMap<Model, Model | null>();

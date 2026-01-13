@@ -10,7 +10,7 @@ import type { Model } from './model';
  *   - `null` - terminal event; instance is expired.
  * @param source - Instance of Model for which update has occured.
  */
-type OnUpdate<T extends Observable = any> = (
+type Notify<T extends Observable = any> = (
   this: T,
   key: Event,
   source: T
@@ -39,7 +39,7 @@ const onReady = () => null;
 
 const LISTENERS = new WeakMap<
   Observable,
-  Map<OnUpdate, Set<Event> | undefined>
+  Map<Notify, Set<Event> | undefined>
 >();
 
 /** Events pending for a given object. */
@@ -53,7 +53,7 @@ const DISPATCH = new Set<() => void>();
 
 function addListener<T extends Observable>(
   subject: T,
-  callback: OnUpdate<T>,
+  callback: Notify<T>,
   select?: Event | Set<Event>
 ) {
   let listeners = LISTENERS.get(subject)!;
@@ -244,4 +244,4 @@ export function enter(ignore?: boolean) {
   };
 }
 
-export { addListener, watch, event, OnUpdate, PENDING_KEYS, Observable };
+export { addListener, watch, event, Notify, PENDING_KEYS, Observable };
