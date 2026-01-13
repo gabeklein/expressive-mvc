@@ -30,114 +30,133 @@ const METHOD = new WeakMap<any, any>();
 /** Currently accumulating export. Stores real values of placeholder properties such as ref() or child models. */
 let EXPORT: Map<any, any> | undefined;
 
+/**
+ * Model which is valid to create.
+ * If implements new method, it must have correct signature.
+ **/
+interface New extends Model {
+  'new'?(): void | (() => void);
+}
+
+/** Any type of Model, using own class constructor as its identifier. */
+type Type<T extends New = Model> = (abstract new (...args: any[]) => T) &
+  typeof Model;
+
+/** A Model constructor, but which is not abstract. */
+type Init<T extends New = Model> = (new (...args: Args<T>) => T) &
+  Omit<typeof Model, never>;
+
+/**
+ * Called as Model is intializing.
+ * Returned function will run when model is destroyed.
+ */
+type Setup<T extends Model = Model> = (
+  this: T,
+  thisArg: T
+) => Promise<void> | (() => void) | Args<T> | Assign<T> | void;
+
+/** Model constructor arguments */
+type Args<T extends Model = any> = (
+  | Args<T>
+  | Assign<T>
+  | Setup<T>
+  | string
+  | void
+)[];
+
+/** Subset of `keyof T` which are not methods or defined by base Model U. **/
+type Field<T> = Exclude<keyof T, keyof Model>;
+
+/** Object overlay to override values and methods on a model. */
+type Assign<T> = Record<string, unknown> & {
+  [K in Field<T>]?: T[K] extends (...args: infer A) => infer R
+    ? (this: T, ...args: A) => R
+    : T[K];
+};
+
+/** Any valid key for model, including but not limited to Field<T>. */
+type Event<T> = Field<T> | number | symbol | (string & {});
+
+/** Export/Import compatible value for a given property in a Model. */
+type Export<R> = R extends { get(): infer T } ? T : R;
+
+/** Value for a property managed by a model. */
+type Value<T extends Model, K extends Event<T>> = K extends keyof T
+  ? Export<T[K]>
+  : unknown;
+
+type Setter<T> = (value: T, previous: T) => boolean | void | (() => T);
+
+type OnEvent<T extends Model> = (
+  this: T,
+  key: unknown,
+  source: T
+) => void | (() => void) | null;
+
+type OnUpdate<T extends Model, K extends Event<T>> = (
+  this: T,
+  key: K,
+  thisArg: K
+) => void;
+
+/**
+ * Values from current state of given model.
+ * Differs from `Values` as values here will drill
+ * into "real" values held by exotics like ref.Object.
+ */
+type State<T> = { [P in Field<T>]: Export<T[P]> };
+
+/** Object comperable to data found in T. */
+type Values<T> = { [P in Field<T>]?: Export<T[P]> };
+
+/** Exotic value, where actual value is contained within. */
+type Ref<T = any> = {
+  (next: T): void;
+  current: T | null;
+};
+
+/**
+ * A callback function which is subscribed to parent and updates when accessed properties change.
+ *
+ * @param current - Current state of this model. This is a proxy which detects properties which
+ * where accessed, and thus depended upon to stay current.
+ *
+ * @param update - Set of properties which have changed, and events fired, since last update.
+ *
+ * @returns A callback function which will be called when this effect is stale.
+ */
+type Effect<T> = (
+  this: T,
+  current: T,
+  update: Set<Event<T>>
+) => EffectCallback | Promise<void> | null | void;
+
+/**
+ * A callback function returned by effect. Will be called when effect is stale.
+ *
+ * @param update - `true` if update is pending, `false` effect has been cancelled, `null` if model is destroyed.
+ */
+type EffectCallback = (update: boolean | null) => void;
+
 declare namespace Model {
-  /**
-   * Model which is valid to create.
-   * If implements new method, it must have correct signature.
-   **/
-  interface New extends Model {
-    'new'?(): void | (() => void);
-  }
-
-  /** Any type of Model, using own class constructor as its identifier. */
-  type Type<T extends New = Model> = (abstract new (...args: any[]) => T) &
-    typeof Model;
-
-  /** A Model constructor, but which is not abstract. */
-  type Init<T extends New = Model> = (new (...args: Model.Args<T>) => T) &
-    Omit<typeof Model, never>;
-
-  /**
-   * Model constructor callback - is called when Model finishes intializing.
-   * Returned function will run when model is destroyed.
-   */
-  type Callback<T extends Model = Model> = (
-    this: T,
-    thisArg: T
-  ) => Promise<void> | (() => void) | Args<T> | Assign<T> | void;
-
-  /** Model constructor arguments */
-  type Args<T extends Model = any> = (
-    | Args<T>
-    | Assign<T>
-    | Callback<T>
-    | string
-    | void
-  )[];
-
-  /** Subset of `keyof T` which are not methods or defined by base Model U. **/
-  type Field<T> = Exclude<keyof T, keyof Model>;
-
-  /** Any valid key for model, including but not limited to Field<T>. */
-  type Event<T> = Field<T> | number | symbol | (string & {});
-
-  /** Object overlay to override values and methods on a model. */
-  type Assign<T> = Record<string, unknown> & {
-    [K in Field<T>]?: T[K] extends (...args: infer A) => infer R
-      ? (this: T, ...args: A) => R
-      : T[K];
+  export {
+    Args,
+    Assign,
+    Effect,
+    Event,
+    Field,
+    Init,
+    New,
+    OnEvent,
+    OnUpdate,
+    Ref,
+    Setter,
+    Setup,
+    State,
+    Type,
+    Value,
+    Values
   };
-
-  /** Export/Import compatible value for a given property in a Model. */
-  type Export<R> = R extends { get(): infer T } ? T : R;
-
-  /** Value for a property managed by a model. */
-  type Value<T extends Model, K extends Event<T>> = K extends keyof T
-    ? Export<T[K]>
-    : unknown;
-
-  type Setter<T> = (value: T, previous: T) => boolean | void | (() => T);
-
-  type OnEvent<T extends Model> = (
-    this: T,
-    key: unknown,
-    source: T
-  ) => void | (() => void) | null;
-
-  type OnUpdate<T extends Model, K extends Event<T>> = (
-    this: T,
-    key: K,
-    thisArg: K
-  ) => void;
-
-  /**
-   * Values from current state of given model.
-   * Differs from `Values` as values here will drill
-   * into "real" values held by exotics like ref.Object.
-   */
-  type State<T> = { [P in Field<T>]: Export<T[P]> };
-
-  /** Object comperable to data found in T. */
-  type Values<T> = { [P in Field<T>]?: Export<T[P]> };
-
-  /** Exotic value, where actual value is contained within. */
-  type Ref<T = any> = {
-    (next: T): void;
-    current: T | null;
-  };
-
-  /**
-   * A callback function which is subscribed to parent and updates when accessed properties change.
-   *
-   * @param current - Current state of this model. This is a proxy which detects properties which
-   * where accessed, and thus depended upon to stay current.
-   *
-   * @param update - Set of properties which have changed, and events fired, since last update.
-   *
-   * @returns A callback function which will be called when this effect is stale.
-   */
-  type Effect<T> = (
-    this: T,
-    current: T,
-    update: Set<Event<T>>
-  ) => EffectCallback | Promise<void> | null | void;
-
-  /**
-   * A callback function returned by effect. Will be called when effect is stale.
-   *
-   * @param update - `true` if update is pending, `false` effect has been cancelled, `null` if model is destroyed.
-   */
-  type EffectCallback = (update: boolean | null) => void;
 }
 
 interface Model {
@@ -149,7 +168,7 @@ interface Model {
 }
 
 abstract class Model implements Observable {
-  constructor(...args: Model.Args) {
+  constructor(...args: Args) {
     prepare(this);
     define(this, 'is', { value: this });
     init(this, args);
@@ -183,7 +202,7 @@ abstract class Model implements Observable {
    *
    * @returns Object with all values from this model.
    **/
-  get(): Model.State<this>;
+  get(): State<this>;
 
   /**
    * Run a function which will run automatically when accessed values change.
@@ -193,7 +212,7 @@ abstract class Model implements Observable {
    *               effect is cancelled, or parent model is destroyed.
    * @returns Function to cancel listener.
    */
-  get(effect: Model.Effect<this>): () => void;
+  get(effect: Effect<this>): () => void;
 
   /**
    * Get value of a property.
@@ -202,10 +221,7 @@ abstract class Model implements Observable {
    * @param required - If true, will throw an error if property is not available.
    * @returns Value of property.
    */
-  get<T extends Model.Event<this>>(
-    key: T,
-    required?: boolean
-  ): Model.Value<this, T>;
+  get<T extends Event<this>>(key: T, required?: boolean): Value<this, T>;
 
   /**
    * Run a function when a property is updated.
@@ -214,10 +230,7 @@ abstract class Model implements Observable {
    * @param callback - Function to call when property is updated.
    * @returns Function to cancel listener.
    */
-  get<T extends Model.Event<this>>(
-    key: T,
-    callback: Model.OnUpdate<this, T>
-  ): () => void;
+  get<T extends Event<this>>(key: T, callback: OnUpdate<this, T>): () => void;
 
   /**
    * Check if model is expired.
@@ -236,8 +249,8 @@ abstract class Model implements Observable {
   get(status: null, callback: () => void): () => void;
 
   get(
-    arg1?: Model.Effect<this> | string | null,
-    arg2?: boolean | Model.OnUpdate<this, any>
+    arg1?: Effect<this> | string | null,
+    arg2?: boolean | OnUpdate<this, any>
   ) {
     const self = this.is;
 
@@ -270,7 +283,7 @@ abstract class Model implements Observable {
 
     if (typeof arg1 == 'function') {
       const effect = METHOD.get(arg1) || arg1;
-      let pending = new Set<Model.Event<this>>();
+      let pending = new Set<Event<this>>();
 
       return watch(self, (proxy) => {
         const cb = effect.call(proxy, proxy, pending);
@@ -296,7 +309,7 @@ abstract class Model implements Observable {
    *
    * @returns Promise which resolves object with updated values, `undefined` if there no update is pending.
    **/
-  set(): PromiseLike<Model.Event<this>[]> | undefined;
+  set(): PromiseLike<Event<this>[]> | undefined;
 
   /**
    * Update mulitple properties at once. Merges argument with current state.
@@ -307,9 +320,9 @@ abstract class Model implements Observable {
    * @returns Promise resolving an array of keys updated, `undefined` (immediately) if a noop.
    */
   set(
-    assign?: Model.Assign<this>,
+    assign?: Assign<this>,
     silent?: boolean
-  ): PromiseLike<Model.Event<this>[]> | undefined;
+  ): PromiseLike<Event<this>[]> | undefined;
 
   /**
    * Push an update. This will not change the value of associated property.
@@ -325,7 +338,7 @@ abstract class Model implements Observable {
    * @param key - Property or event to dispatch.
    * @returns Promise resolves an array of keys updated.
    */
-  set(key: Model.Event<this>): PromiseLike<Model.Event<this>[]>;
+  set(key: Event<this>): PromiseLike<Event<this>[]>;
 
   /**
    * Set a value for a property. This will update the value and notify listeners.
@@ -343,10 +356,10 @@ abstract class Model implements Observable {
    * @returns Promise resolves an array of keys updated.
    */
   set(
-    key: Model.Event<this>,
+    key: Event<this>,
     value: unknown,
     init?: boolean
-  ): PromiseLike<Model.Event<this>[]>;
+  ): PromiseLike<Event<this>[]>;
 
   /**
    * Call a function when update occurs.
@@ -360,7 +373,7 @@ abstract class Model implements Observable {
    * @returns Function to remove listener. Will return `true` if removed, `false` if inactive already.
    *
    */
-  set(callback: Model.OnEvent<this>): () => boolean;
+  set(callback: OnEvent<this>): () => boolean;
 
   /**
    * Call a function when a property is updated.
@@ -369,10 +382,7 @@ abstract class Model implements Observable {
    * @param callback - Function to call when property is updated.
    * @param event - Property to watch for updates.
    */
-  set(
-    callback: Model.OnEvent<this>,
-    event: Model.Event<this> | null
-  ): () => boolean;
+  set(callback: OnEvent<this>, event: Event<this> | null): () => boolean;
 
   /**
    * Declare an end to updates. This event is final and will freeze state.
@@ -383,7 +393,7 @@ abstract class Model implements Observable {
   set(status: null): void;
 
   set(
-    arg1?: Model.OnEvent<this> | Model.Assign<this> | Model.Event<this> | null,
+    arg1?: OnEvent<this> | Assign<this> | Event<this> | null,
     arg2?: unknown,
     arg3?: boolean
   ) {
@@ -408,7 +418,7 @@ abstract class Model implements Observable {
     const pending = PENDING_KEYS.get(this);
 
     if (pending)
-      return <PromiseLike<Model.Event<this>[]>>{
+      return <PromiseLike<Event<this>[]>>{
         then: (res) =>
           new Promise<any>((res) => {
             const remove = addListener(this, (key) => {
@@ -436,10 +446,7 @@ abstract class Model implements Observable {
    *
    * @param args - arguments sent to constructor
    */
-  static new<T extends Model>(
-    this: Model.Init<T & Model.New>,
-    ...args: Model.Args<T>
-  ) {
+  static new<T extends Model>(this: Init<T & New>, ...args: Args<T>) {
     const instance = new this(...args, (x) => {
       const cb = x.new && x.new();
       if (cb) x.set(cb, null);
@@ -454,7 +461,7 @@ abstract class Model implements Observable {
    * If so, language server will make available all static
    * methods and properties of this class.
    */
-  static is<T extends Model.Type>(this: T, maybe: unknown): maybe is T {
+  static is<T extends Type>(this: T, maybe: unknown): maybe is T {
     return (
       maybe === this ||
       (typeof maybe == 'function' && maybe.prototype instanceof this)
@@ -464,7 +471,7 @@ abstract class Model implements Observable {
   /**
    * Register a callback to run when any instance of this Model is updated.
    */
-  static on<T extends Model>(this: Model.Type<T>, listener: Model.OnEvent<T>) {
+  static on<T extends Model>(this: Type<T>, listener: OnEvent<T>) {
     let notify = NOTIFY.get(this);
 
     if (!notify) NOTIFY.set(this, (notify = new Set()));
@@ -487,7 +494,7 @@ define(Model, 'toString', {
   }
 });
 
-function assign(subject: Model, data: Model.Assign<Model>, silent?: boolean) {
+function assign(subject: Model, data: Assign<Model>, silent?: boolean) {
   const methods = METHODS.get(subject.constructor)!;
 
   for (const key in data) {
@@ -509,11 +516,11 @@ function assign(subject: Model, data: Model.Assign<Model>, silent?: boolean) {
 
 /** Apply instructions and inherited event listeners. Ensure class metadata is ready. */
 function prepare(model: Model) {
-  let T = model.constructor as Model.Type;
+  let T = model.constructor as Type;
 
   if (T === Model) throw new Error('Cannot create base Model.');
 
-  const chain = [] as Model.Type[];
+  const chain = [] as Type[];
   let keys = new Map<string, (value: any) => void>();
 
   ID.set(model, `${T}-${uid()}`);
@@ -566,7 +573,7 @@ function prepare(model: Model) {
  * Apply model arguemnts, run callbacks and observe properties.
  * Accumulate and handle cleanup events.
  **/
-function init(model: Model, args: Model.Args) {
+function init(model: Model, args: Args) {
   const state = {} as Record<string | number | symbol, unknown>;
 
   STATE.set(model, state);
@@ -589,7 +596,7 @@ function init(model: Model, args: Model.Args) {
       const use =
         typeof arg == 'function'
           ? arg.call(model, model)
-          : (arg as Model.Assign<Model>);
+          : (arg as Assign<Model>);
 
       if (use instanceof Promise)
         use.catch((err) => {
@@ -688,7 +695,7 @@ function update<T>(
   subject: Model,
   key: string | number | symbol,
   value: T,
-  arg?: boolean | Model.Setter<T>
+  arg?: boolean | Setter<T>
 ) {
   const state = STATE.get(subject)!;
 

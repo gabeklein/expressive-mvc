@@ -4,7 +4,7 @@ import { Pragma } from './adapter';
 
 declare module '@expressive/mvc' {
   namespace Model {
-    interface Use extends New {
+    interface Use extends Model.New {
       use?(...props: any[]): Promise<void> | void;
     }
 
@@ -15,7 +15,7 @@ declare module '@expressive/mvc' {
       : Model.Args<T>;
 
     function use<T extends Model>(
-      this: Init<T & Model.Use>,
+      this: Model.Init<T & Model.Use>,
       ...args: UseArgs<T>
     ): T;
   }
