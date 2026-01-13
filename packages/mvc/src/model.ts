@@ -30,114 +30,135 @@ const METHOD = new WeakMap<any, any>();
 /** Currently accumulating export. Stores real values of placeholder properties such as ref() or child models. */
 let EXPORT: Map<any, any> | undefined;
 
+/**
+ * Model which is valid to create.
+ * If implements new method, it must have correct signature.
+ **/
+interface New extends Model {
+  'new'?(): void | (() => void);
+}
+
+/** Any type of Model, using own class constructor as its identifier. */
+type Type<T extends Model.New = Model> = (abstract new (...args: any[]) => T) &
+  typeof Model;
+
+/** A Model constructor, but which is not abstract. */
+type Init<T extends New = Model> = (new (...args: Model.Args<T>) => T) &
+  Omit<typeof Model, never>;
+
+/**
+ * Model constructor callback - is called when Model finishes intializing.
+ * Returned function will run when model is destroyed.
+ */
+type Callback<T extends Model = Model> = (
+  this: T,
+  thisArg: T
+) => Promise<void> | (() => void) | Args<T> | Assign<T> | void;
+
+/** Model constructor arguments */
+type Args<T extends Model = any> = (
+  | Args<T>
+  | Assign<T>
+  | Callback<T>
+  | string
+  | void
+)[];
+
+/** Subset of `keyof T` which are not methods or defined by base Model U. **/
+type Field<T> = Exclude<keyof T, keyof Model>;
+
+/** Any valid key for model, including but not limited to Field<T>. */
+type Event<T> = Field<T> | number | symbol | (string & {});
+
+/** Object overlay to override values and methods on a model. */
+type Assign<T> = Record<string, unknown> & {
+  [K in Field<T>]?: T[K] extends (...args: infer A) => infer R
+    ? (this: T, ...args: A) => R
+    : T[K];
+};
+
+/** Export/Import compatible value for a given property in a Model. */
+type Export<R> = R extends { get(): infer T } ? T : R;
+
+/** Value for a property managed by a model. */
+type Value<T extends Model, K extends Event<T>> = K extends keyof T
+  ? Export<T[K]>
+  : unknown;
+
+type Setter<T> = (value: T, previous: T) => boolean | void | (() => T);
+
+type OnEvent<T extends Model> = (
+  this: T,
+  key: unknown,
+  source: T
+) => void | (() => void) | null;
+
+// type OnUpdate<T extends Model, K extends Event<T>> = (
+//   this: T,
+//   key: K,
+//   thisArg: K
+// ) => void;
+
+/**
+ * Values from current state of given model.
+ * Differs from `Values` as values here will drill
+ * into "real" values held by exotics like ref.Object.
+ */
+type State<T> = { [P in Field<T>]: Export<T[P]> };
+
+/** Object comperable to data found in T. */
+type Values<T> = { [P in Field<T>]?: Export<T[P]> };
+
+/** Exotic value, where actual value is contained within. */
+type Ref<T = any> = {
+  (next: T): void;
+  current: T | null;
+};
+
+/**
+ * A callback function which is subscribed to parent and updates when accessed properties change.
+ *
+ * @param current - Current state of this model. This is a proxy which detects properties which
+ * where accessed, and thus depended upon to stay current.
+ *
+ * @param update - Set of properties which have changed, and events fired, since last update.
+ *
+ * @returns A callback function which will be called when this effect is stale.
+ */
+type Effect<T> = (
+  this: T,
+  current: T,
+  update: Set<Event<T>>
+) => EffectCallback | Promise<void> | null | void;
+
+/**
+ * A callback function returned by effect. Will be called when effect is stale.
+ *
+ * @param update - `true` if update is pending, `false` effect has been cancelled, `null` if model is destroyed.
+ */
+type EffectCallback = (update: boolean | null) => void;
+
 declare namespace Model {
-  /**
-   * Model which is valid to create.
-   * If implements new method, it must have correct signature.
-   **/
-  interface New extends Model {
-    'new'?(): void | (() => void);
-  }
-
-  /** Any type of Model, using own class constructor as its identifier. */
-  type Type<T extends New = Model> = (abstract new (...args: any[]) => T) &
-    typeof Model;
-
-  /** A Model constructor, but which is not abstract. */
-  type Init<T extends New = Model> = (new (...args: Model.Args<T>) => T) &
-    Omit<typeof Model, never>;
-
-  /**
-   * Model constructor callback - is called when Model finishes intializing.
-   * Returned function will run when model is destroyed.
-   */
-  type Callback<T extends Model = Model> = (
-    this: T,
-    thisArg: T
-  ) => Promise<void> | (() => void) | Args<T> | Assign<T> | void;
-
-  /** Model constructor arguments */
-  type Args<T extends Model = any> = (
-    | Args<T>
-    | Assign<T>
-    | Callback<T>
-    | string
-    | void
-  )[];
-
-  /** Subset of `keyof T` which are not methods or defined by base Model U. **/
-  type Field<T> = Exclude<keyof T, keyof Model>;
-
-  /** Any valid key for model, including but not limited to Field<T>. */
-  type Event<T> = Field<T> | number | symbol | (string & {});
-
-  /** Object overlay to override values and methods on a model. */
-  type Assign<T> = Record<string, unknown> & {
-    [K in Field<T>]?: T[K] extends (...args: infer A) => infer R
-      ? (this: T, ...args: A) => R
-      : T[K];
+  export {
+    New,
+    Type,
+    Init,
+    Callback,
+    Args,
+    Field,
+    Event,
+    Assign,
+    Export,
+    Value,
+    Setter,
+    OnEvent,
+    OnUpdate,
+    State,
+    Values,
+    Ref,
+    Effect,
+    EffectCallback
   };
-
-  /** Export/Import compatible value for a given property in a Model. */
-  type Export<R> = R extends { get(): infer T } ? T : R;
-
-  /** Value for a property managed by a model. */
-  type Value<T extends Model, K extends Event<T>> = K extends keyof T
-    ? Export<T[K]>
-    : unknown;
-
-  type Setter<T> = (value: T, previous: T) => boolean | void | (() => T);
-
-  type OnEvent<T extends Model> = (
-    this: T,
-    key: unknown,
-    source: T
-  ) => void | (() => void) | null;
-
-  type OnUpdate<T extends Model, K extends Event<T>> = (
-    this: T,
-    key: K,
-    thisArg: K
-  ) => void;
-
-  /**
-   * Values from current state of given model.
-   * Differs from `Values` as values here will drill
-   * into "real" values held by exotics like ref.Object.
-   */
-  type State<T> = { [P in Field<T>]: Export<T[P]> };
-
-  /** Object comperable to data found in T. */
-  type Values<T> = { [P in Field<T>]?: Export<T[P]> };
-
-  /** Exotic value, where actual value is contained within. */
-  type Ref<T = any> = {
-    (next: T): void;
-    current: T | null;
-  };
-
-  /**
-   * A callback function which is subscribed to parent and updates when accessed properties change.
-   *
-   * @param current - Current state of this model. This is a proxy which detects properties which
-   * where accessed, and thus depended upon to stay current.
-   *
-   * @param update - Set of properties which have changed, and events fired, since last update.
-   *
-   * @returns A callback function which will be called when this effect is stale.
-   */
-  type Effect<T> = (
-    this: T,
-    current: T,
-    update: Set<Event<T>>
-  ) => EffectCallback | Promise<void> | null | void;
-
-  /**
-   * A callback function returned by effect. Will be called when effect is stale.
-   *
-   * @param update - `true` if update is pending, `false` effect has been cancelled, `null` if model is destroyed.
-   */
-  type EffectCallback = (update: boolean | null) => void;
 }
 
 interface Model {
@@ -703,7 +724,6 @@ function update<T>(
     const out = arg.call(subject, value, previous);
 
     if (out === false) return false;
-
     if (typeof out == 'function') value = out();
   }
 
