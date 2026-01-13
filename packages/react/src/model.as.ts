@@ -66,7 +66,7 @@ Model.as = function <T extends Model.AsComponent, P extends Model.Assign<T>>(
   this: Model.Init<T>,
   render: (props: P, self: T) => ReactNode
 ): Model.FC<T, P> {
-  const FC = Render.bind(this as Model.Init, { render } as {});
+  const FC = Component.bind(this as Model.Init, { render } as {});
 
   return Object.assign(FC, {
     displayName: this.name,
@@ -74,7 +74,7 @@ Model.as = function <T extends Model.AsComponent, P extends Model.Assign<T>>(
   });
 };
 
-export function Render<T extends Model.AsComponent>(
+export function Component<T extends Model.AsComponent>(
   this: Model.Init<T>,
   props: Model.Props<T>,
   props2?: Model.Props<T>

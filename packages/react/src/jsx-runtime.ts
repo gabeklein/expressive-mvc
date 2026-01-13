@@ -2,7 +2,7 @@ import { Model } from '@expressive/mvc';
 import React from 'react';
 import Runtime from 'react/jsx-runtime';
 
-import { Render } from './model.as';
+import { Component } from './model.as';
 
 export declare namespace JSX {
   type ElementType =
@@ -42,7 +42,7 @@ export function patch(
 ): React.ReactElement {
   if (Model.is(type))
     if (RENDER.has(type)) type = RENDER.get(type)!;
-    else RENDER.set(type, (type = Render.bind(type)));
+    else RENDER.set(type, (type = Component.bind(type)));
 
   return this(type, ...args);
 }
