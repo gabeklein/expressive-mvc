@@ -9,7 +9,7 @@ import {
   useMemo
 } from 'react';
 
-const Lookup = createContext(new Context());
+export const Layers = createContext(new Context());
 
 declare module '@expressive/mvc' {
   namespace Context {
@@ -19,7 +19,7 @@ declare module '@expressive/mvc' {
 }
 
 Context.use = (create?: boolean) => {
-  const ambient = useContext(Lookup);
+  const ambient = useContext(Layers);
 
   return create ? useMemo(() => ambient.push(), [ambient]) : ambient;
 };
@@ -95,7 +95,7 @@ function provide(
   if (fallback !== undefined)
     children = createElement(Suspense, { fallback, name }, children);
 
-  return createElement(Lookup.Provider, {
+  return createElement(Layers.Provider, {
     key: context.id,
     value: context,
     children
