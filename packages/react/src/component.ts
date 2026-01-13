@@ -4,6 +4,8 @@ import React, { ReactNode } from 'react';
 import { provide, Layers } from './context';
 import { Model, Context } from '.';
 
+const OUTER = new WeakMap<Component, Context>();
+
 export class Component extends Model {
   static contextType = Layers;
 
@@ -18,15 +20,26 @@ export class Component extends Model {
     this.set(props as {});
   }
 
+  get context(): Context {
+    return Context.get(this)!;
+  }
+
+  set context(context: Context) {
+    if (OUTER.get(this) === context) return;
+
+    OUTER.set(this, context);
+    context.push(this);
+  }
+
   state!: Model.State<this>;
-  context!: Context;
   children!: ReactNode;
   fallback?: ReactNode;
 
   constructor({ is, ...props }: any) {
     super(props, is);
-    const Bridge = Render.bind(this, METHOD.get(this.render) || this.render);
-    this.render = () => React.createElement(Bridge);
+    const render = METHOD.get(this.render) || this.render;
+    const Self = Render.bind(this, render);
+    this.render = () => React.createElement(Self);
   }
 
   render(): ReactNode {
@@ -45,10 +58,10 @@ Object.defineProperty(Component.prototype, 'isReactComponent', {
 });
 
 function Render<T extends Component>(this: T, render: () => React.ReactNode) {
-  const ambient = React.useContext(Layers);
   const state = React.useState(() => {
     event(this);
-    const context = ambient.push(this);
+
+    const { context } = this;
 
     let ready: boolean | undefined;
     let active: T;
