@@ -37,7 +37,7 @@ export class Component extends Model {
 
   constructor({ is, ...props }: any) {
     super(props, is);
-    const render = METHOD.get(this.render) || this.render;
+    const render = METHOD.get(this.render);
     const Self = Render.bind(this, render);
     this.render = () => React.createElement(Self);
   }
@@ -81,7 +81,7 @@ function Render<T extends Component>(this: T, render: () => React.ReactNode) {
     };
 
     function Render() {
-      return render ? render.call(active) : active.children;
+      return render.call(active);
     }
 
     return () => {
