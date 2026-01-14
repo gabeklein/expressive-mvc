@@ -188,23 +188,22 @@ class Context {
     const init = new Map<Model, boolean>();
 
     if (typeof inputs == 'function' || inputs instanceof Model)
-      inputs = { [forEach ? 0 : this.layer.size]: inputs };
+      inputs = { [0]: inputs };
 
     for (const [K, V] of Object.entries(inputs)) {
       if (Model.is(V) || V instanceof Model) {
         const exists = this.layer.get(K);
 
         if (!exists) {
-          const instance = this.add(V);
-
           this.layer.set(K, V);
-          init.set(instance, true);
+          init.set(this.add(V), true);
         }
         // Context must force-reset because inputs are no longer safe.
         else if (exists !== V) {
           this.pop();
-          this.id = uid();
           this.use(inputs);
+          this.id = uid();
+          return;
         }
 
         continue;
@@ -254,8 +253,7 @@ class Context {
    * Will also run any cleanup callbacks registered when Models were added.
    */
   public pop() {
-    for (const key of Object.getOwnPropertySymbols(this))
-      delete (this as any)[key];
+    for (const key of Object.getOwnPropertySymbols(this)) delete this[key];
 
     this.cleanup.forEach((cb) => cb());
     this.cleanup.clear();
