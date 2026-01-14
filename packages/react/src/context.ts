@@ -75,13 +75,14 @@ function Provider<T extends Model>(props: Provider.Props<T>) {
 
   useEffect(() => () => context.pop(), [context]);
 
-  context.use(props.for, (model) => {
-    if (props.forEach) {
-      const cleanup = props.forEach(model);
+  const init = context.use(props.for);
+  const { forEach } = props;
 
+  if (forEach)
+    init.forEach((explicit, model) => {
+      const cleanup = explicit && forEach(model as T);
       if (cleanup) model.set(cleanup, null);
-    }
-  });
+    });
 
   return provide(context, props.children, props.fallback, props.name);
 }

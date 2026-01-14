@@ -165,7 +165,7 @@ describe('include', () => {
 
     const context = new Context();
 
-    context.use({ foo, bar }, cb);
+    context.use({ foo, bar }).forEach((_, model) => cb(model));
 
     expect(cb).toBeCalledWith(foo);
     expect(cb).toBeCalledWith(bar);

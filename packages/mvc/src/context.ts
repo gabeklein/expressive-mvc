@@ -181,14 +181,11 @@ class Context {
    * @param inputs Model, Model class, or map of Models / Model classes to register.
    * @param forEach Optional callback to run for each Model registered.
    */
-  public use<T extends Model>(
-    inputs: Context.Accept<T>,
-    forEach?: Context.Expect<T>
-  ) {
+  public use<T extends Model>(inputs: Context.Accept<T>) {
     const init = new Map<Model, boolean>();
 
     if (typeof inputs == 'function' || inputs instanceof Model)
-      inputs = { [forEach ? 0 : this.layer.size]: inputs };
+      inputs = { [0]: inputs };
 
     for (const [K, V] of Object.entries(inputs)) {
       if (Model.is(V) || V instanceof Model) {
@@ -217,10 +214,8 @@ class Context {
       );
     }
 
-    for (const [model, explicit] of init) {
+    for (const [model] of init) {
       model.set();
-
-      if (explicit && forEach) forEach(model as T);
 
       for (const [_key, value] of model)
         if (PARENT.get(value as Model) === model) {
@@ -228,6 +223,8 @@ class Context {
           init.set(value as Model, false);
         }
     }
+
+    return init;
   }
 
   /**
