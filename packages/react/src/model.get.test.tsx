@@ -5,11 +5,13 @@ import { get, Model, Provider, set } from '.';
 
 export function renderWith<T>(Type: Model.Init | Model, hook: () => T) {
   return renderHook(hook, {
-    wrapper: ({ children }) => (
-      <Provider for={Type}>
-        <Suspense fallback={null}>{children}</Suspense>
-      </Provider>
-    )
+    wrapper(props) {
+      return (
+        <Provider for={Type}>
+          <Suspense fallback={null}>{props.children}</Suspense>
+        </Provider>
+      );
+    }
   });
 }
 
