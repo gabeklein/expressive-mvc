@@ -32,8 +32,8 @@ function has<T extends Model>(
     };
 
     if (Model.is(arg1))
-      Context.get(subject, (ctx) => {
-        ctx.has(arg1, (model) => {
+      Context.get(subject, (context) => {
+        context.get(arg1, (model) => {
           let remove: (() => void) | undefined;
           let disconnect: (() => void) | undefined;
           let flush: (() => void) | undefined;

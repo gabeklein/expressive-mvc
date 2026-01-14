@@ -77,24 +77,36 @@ class Context {
     if (inputs) this.use(inputs);
   }
 
-  /** Run callback when a specified type is registered to a **child** context. */
-  public has<T extends Model>(
-    Type: Model.Type<T>,
-    callback: (model: T) => void
-  ) {
-    Object.defineProperty(this, key(Type, true), {
-      value: callback,
-      configurable: true
-    });
-  }
+  /** Find specified type registered to a parent context. Throws if none are found. */
+  public get<T extends Model>(Type: Model.Type<T>, require: true): T;
 
   /** Find specified type registered to a parent context. Returns undefined if none are found. */
-  public get<T extends Model>(Type: Model.Type<T>, require: true): T;
   public get<T extends Model>(
     Type: Model.Type<T>,
     require?: boolean
   ): T | undefined;
-  public get<T extends Model>(Type: Model.Type<T>, require?: boolean) {
+
+  /** Run callback when a specified type is registered in context downstream. */
+  public get<T extends Model>(
+    Type: Model.Type<T>,
+    callback: (model: T) => void
+  ): () => void;
+
+  public get<T extends Model>(
+    Type: Model.Type<T>,
+    arg2?: boolean | ((model: T) => void)
+  ) {
+    if (typeof arg2 == 'function') {
+      const k = key(Type, true);
+      Object.defineProperty(this, k, {
+        value: arg2,
+        configurable: true
+      });
+      return () => {
+        delete this[k];
+      };
+    }
+
     const result = this[key(Type)];
 
     if (result === null)
@@ -104,7 +116,7 @@ class Context {
 
     if (result) return result as T;
 
-    if (require) throw new Error(`Could not find ${Type} in context.`);
+    if (arg2) throw new Error(`Could not find ${Type} in context.`);
   }
 
   /**
@@ -126,16 +138,15 @@ class Context {
     keys(T, true).forEach((K) => {
       const expects = this[K] as Context.Expect | undefined;
 
-      if (!expects) return;
+      if (expects)
+        addListener(I, (event) => {
+          if (event === true) {
+            const cb = expects(I);
+            if (cb) cleanup.add(cb);
+          }
 
-      addListener(I, (event) => {
-        if (event === true) {
-          const callback = expects(I);
-          if (callback) cleanup.add(callback);
-        }
-
-        return null;
-      });
+          return null;
+        });
     });
 
     keys(T).forEach((K) => {

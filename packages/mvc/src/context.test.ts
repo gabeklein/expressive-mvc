@@ -330,3 +330,65 @@ it('will throw on bad include property (no alias)', () => {
     'Context may only include instance or class `extends Model` but got undefined.'
   );
 });
+
+describe('Context.get callback overload (downstream registration)', () => {
+  class DownstreamModel extends Model {}
+
+  it('should call callback when type is added downstream', () => {
+    const context = new Context();
+    const cb = jest.fn();
+
+    // Register callback for DownstreamModel
+    context.get(DownstreamModel, cb);
+
+    // Add DownstreamModel after callback registration
+    context.push(DownstreamModel);
+
+    // Callback should be called with the instance
+    expect(cb).toBeCalledTimes(1);
+    expect(cb.mock.calls[0][0]).toBeInstanceOf(DownstreamModel);
+  });
+
+  it('should clean up callback when context is popped', () => {
+    const context = new Context();
+    const cb = jest.fn();
+
+    // Register callback for DownstreamModel
+    const cancel = context.get(DownstreamModel, cb);
+
+    // Add DownstreamModel after callback registration
+    context.push(DownstreamModel);
+
+    // Callback should be called
+    expect(cb).toBeCalledTimes(1);
+
+    // Remove callback
+    cancel();
+
+    // Add another DownstreamModel (simulate re-adding)
+    context.push(DownstreamModel);
+
+    // Callback should not be called again
+    expect(cb).toBeCalledTimes(1);
+
+    context.pop();
+  });
+
+  it('should call callback when inner is popped', () => {
+    const context = new Context();
+    const cleanup = jest.fn();
+    const cb = jest.fn(() => cleanup);
+
+    context.get(DownstreamModel, cb);
+
+    // Create a child context and register callback there
+    const child = context.push(DownstreamModel);
+
+    expect(cb).toBeCalledTimes(1);
+
+    // Pop child context
+    child.pop();
+
+    expect(cleanup).toBeCalledTimes(1);
+  });
+});
