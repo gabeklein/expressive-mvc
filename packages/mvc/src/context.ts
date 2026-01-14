@@ -70,7 +70,7 @@ class Context {
 
   public id = uid();
 
-  protected layer = new Map<string | number, Model | Model.Type>();
+  protected inputs = {} as Record<string | number, Model | Model.Type>;
   protected cleanup = new Set<() => void>();
 
   constructor(inputs?: Context.Accept) {
@@ -191,29 +191,26 @@ class Context {
       inputs = { [0]: inputs };
 
     for (const [K, V] of Object.entries(inputs)) {
-      if (Model.is(V) || V instanceof Model) {
-        const exists = this.layer.get(K);
+      if (!(Model.is(V) || V instanceof Model))
+        throw new Error(
+          `Context may only include instance or class \`extends Model\` but got ${
+            K == '0' || K == String(V) ? V : `${V} (as '${K}')`
+          }.`
+        );
 
-        if (!exists) {
-          this.layer.set(K, V);
-          init.set(this.add(V), true);
-        }
-        // Context must force-reset because inputs are no longer safe.
-        else if (exists !== V) {
-          this.pop();
-          this.use(inputs);
-          this.id = uid();
-          return;
-        }
+      const exists = this.inputs[K];
 
-        continue;
+      if (!exists) {
+        init.set(this.add(V), true);
       }
-
-      throw new Error(
-        `Context may only include instance or class \`extends Model\` but got ${
-          K == '0' || K == String(V) ? V : `${V} (as '${K}')`
-        }.`
-      );
+      // Context must force-reset because inputs are no longer safe,
+      // however probably should do that on a per-model basis.
+      else if (exists !== V) {
+        this.pop();
+        this.use(inputs);
+        this.id = uid();
+        return;
+      }
     }
 
     for (const [model, explicit] of init) {
@@ -227,6 +224,8 @@ class Context {
           init.set(value as Model, false);
         }
     }
+
+    this.inputs = inputs;
   }
 
   /**
@@ -239,7 +238,7 @@ class Context {
 
     this.cleanup = new Set([() => next.pop(), ...this.cleanup]);
 
-    next.layer = new Map();
+    next.inputs = {};
     next.cleanup = new Set();
 
     if (inputs) next.use(inputs);
@@ -257,7 +256,7 @@ class Context {
 
     this.cleanup.forEach((cb) => cb());
     this.cleanup.clear();
-    this.layer.clear();
+    this.inputs = {};
   }
 }
 
