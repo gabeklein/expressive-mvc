@@ -2,9 +2,9 @@ import { addListener } from './control';
 import { event, Model, PARENT, uid } from './model';
 
 const LOOKUP = new WeakMap<Model, Context | ((got: Context) => void)[]>();
-const KEYS = new Map<symbol | Model.Type, symbol>();
+const KEYS = new Map<symbol | Model.Extends, symbol>();
 
-function key(T: Model.Type | symbol, upstream?: boolean): symbol {
+function key(T: Model.Extends | symbol, upstream?: boolean): symbol {
   let K = KEYS.get(T);
 
   if (!K) {
@@ -15,7 +15,7 @@ function key(T: Model.Type | symbol, upstream?: boolean): symbol {
   return upstream ? key(K) : K;
 }
 
-function keys(from: Model.Type, upstream?: boolean) {
+function keys(from: Model.Extends, upstream?: boolean) {
   const keys = new Set<symbol>();
 
   do {
@@ -28,10 +28,10 @@ function keys(from: Model.Type, upstream?: boolean) {
 
 declare namespace Context {
   type Multiple<T extends Model> = {
-    [key: string | number]: Model.Init<T> | T;
+    [key: string | number]: Model.Type<T> | T;
   };
 
-  type Accept<T extends Model = Model> = T | Model.Init<T> | Multiple<T>;
+  type Accept<T extends Model = Model> = T | Model.Type<T> | Multiple<T>;
 
   type Expect<T extends Model = Model> = (model: T) => (() => void) | void;
 }
@@ -70,7 +70,7 @@ class Context {
 
   public id = uid();
 
-  protected inputs = {} as Record<string | number, Model | Model.Type>;
+  protected inputs = {} as Record<string | number, Model | Model.Extends>;
   protected cleanup = new Set<() => void>();
 
   constructor(inputs?: Context.Accept) {
@@ -78,26 +78,26 @@ class Context {
   }
 
   /** Find specified type registered to a parent context. Throws if none are found. */
-  public get<T extends Model>(Type: Model.Type<T>, require: true): T;
+  public get<T extends Model>(type: Model.Extends<T>, require: true): T;
 
   /** Find specified type registered to a parent context. Returns undefined if none are found. */
   public get<T extends Model>(
-    Type: Model.Type<T>,
+    type: Model.Extends<T>,
     require?: boolean
   ): T | undefined;
 
   /** Run callback when a specified type is registered in context downstream. */
   public get<T extends Model>(
-    Type: Model.Type<T>,
+    type: Model.Extends<T>,
     callback: (model: T) => void
   ): () => void;
 
   public get<T extends Model>(
-    Type: Model.Type<T>,
+    type: Model.Extends<T>,
     arg2?: boolean | ((model: T) => void)
   ) {
     if (typeof arg2 == 'function') {
-      const k = key(Type, true);
+      const k = key(type, true);
       Object.defineProperty(this, k, {
         value: arg2,
         configurable: true
@@ -107,31 +107,31 @@ class Context {
       };
     }
 
-    const result = this[key(Type)];
+    const result = this[key(type)];
 
     if (result === null)
       throw new Error(
-        `Did find ${Type} in context, but multiple were defined.`
+        `Did find ${type} in context, but multiple were defined.`
       );
 
     if (result) return result as T;
 
-    if (arg2) throw new Error(`Could not find ${Type} in context.`);
+    if (arg2) throw new Error(`Could not find ${type} in context.`);
   }
 
   /**
    * Adds a Model to this context.
    */
-  protected add<T extends Model>(input: T | Model.Init<T>, implicit?: boolean) {
+  protected add<T extends Model>(input: T | Model.Type<T>, implicit?: boolean) {
     const cleanup = new Set<() => void>();
-    let T: Model.Type<T>;
+    let T: Model.Extends<T>;
     let I: T;
 
     if (typeof input == 'function') {
       T = input;
       I = new input() as T;
     } else {
-      T = input.constructor as Model.Type<T>;
+      T = input.constructor as Model.Extends<T>;
       I = input;
     }
 

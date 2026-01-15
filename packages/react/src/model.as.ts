@@ -52,21 +52,21 @@ declare module '@expressive/mvc' {
       P extends Model.Assign<T>
     > extends FunctionComponent<P & Model.Props<T>> {
       displayName?: string;
-      Model: Model.Type<T>;
+      Model: Model.Extends<T>;
     }
 
     function as<T extends Model, P extends Model.Assign<T>>(
-      this: Model.Init<T & Model.New>,
+      this: Model.Type<T & Model.New>,
       render: (props: P, self: T) => ReactNode
     ): FC<T, P>;
   }
 }
 
 Model.as = function <T extends Model.AsComponent, P extends Model.Assign<T>>(
-  this: Model.Init<T>,
+  this: Model.Type<T>,
   render: (props: P, self: T) => ReactNode
 ): Model.FC<T, P> {
-  const FC = Render.bind(this as Model.Init, { render } as {});
+  const FC = Render.bind(this as Model.Type, { render } as {});
 
   return Object.assign(FC, {
     displayName: this.name,
@@ -75,7 +75,7 @@ Model.as = function <T extends Model.AsComponent, P extends Model.Assign<T>>(
 };
 
 export function Render<T extends Model.AsComponent>(
-  this: Model.Init<T>,
+  this: Model.Type<T>,
   props: Model.Props<T>,
   props2?: Model.Props<T>
 ) {
