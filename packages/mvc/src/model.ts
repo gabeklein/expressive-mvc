@@ -47,15 +47,6 @@ declare namespace Model {
   type Class<T extends New = Model> = (new (...args: Model.Args<T>) => T) &
     Omit<typeof Model, never>;
 
-  /**
-   * Model constructor callback - is called when Model finishes intializing.
-   * Returned function will run when model is destroyed.
-   */
-  type Init<T extends Model = Model> = (
-    this: T,
-    thisArg: T
-  ) => Promise<void> | (() => void) | Args<T> | Assign<T> | void;
-
   /** Model constructor arguments */
   type Args<T extends Model = any> = (
     | Args<T>
@@ -65,11 +56,14 @@ declare namespace Model {
     | void
   )[];
 
-  /** Subset of `keyof T` which are not methods or defined by base Model U. **/
-  type Field<T> = Exclude<keyof T, keyof Model>;
-
-  /** Any valid key for model, including but not limited to Field<T>. */
-  type Event<T> = Field<T> | number | symbol | (string & {});
+  /**
+   * Model constructor callback - is called when Model finishes intializing.
+   * Returned function will run when model is destroyed.
+   */
+  type Init<T extends Model = Model> = (
+    this: T,
+    thisArg: T
+  ) => Promise<void> | (() => void) | Args<T> | Assign<T> | void;
 
   /** Object overlay to override values and methods on a model. */
   type Assign<T> = Record<string, unknown> & {
@@ -77,6 +71,12 @@ declare namespace Model {
       ? (this: T, ...args: A) => R
       : T[K];
   };
+
+  /** Subset of `keyof T` which are not methods or defined by base Model U. **/
+  type Field<T> = Exclude<keyof T, keyof Model>;
+
+  /** Any valid key for model, including but not limited to Field<T>. */
+  type Event<T> = Field<T> | number | symbol | (string & {});
 
   /** Export/Import compatible value for a given property in a Model. */
   type Export<R> = R extends { get(): infer T } ? T : R;
