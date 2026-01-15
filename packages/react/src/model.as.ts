@@ -42,7 +42,7 @@ declare module '@expressive/mvc' {
     };
 
     /** Model which is not incompatable as Component in React. */
-    interface AsComponent extends Model.New {
+    interface AsComponent extends Model.Valid {
       render?(props: RenderProps<this>, self: this): React.ReactNode;
       fallback?: React.ReactNode;
     }
@@ -56,7 +56,7 @@ declare module '@expressive/mvc' {
     }
 
     function as<T extends Model, P extends Model.Assign<T>>(
-      this: Model.Class<T & Model.New>,
+      this: Model.New<T>,
       render: (props: P, self: T) => ReactNode
     ): FC<T, P>;
   }

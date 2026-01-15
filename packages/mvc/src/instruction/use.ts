@@ -29,11 +29,11 @@ const INSTRUCTION = new Map<symbol, Instruction>();
 function use<T>(instruction: Instruction<T>): T extends void ? unknown : T;
 
 function use<T extends Model>(
-  Type: Model.Class<T>,
+  Type: Model.New<T>,
   required: false
 ): T | undefined;
 
-function use<T extends Model>(Type: Model.Class<T>, ready?: (i: T) => void): T;
+function use<T extends Model>(Type: Model.New<T>, ready?: (i: T) => void): T;
 
 function use(
   arg1: Model.Class | Instruction,

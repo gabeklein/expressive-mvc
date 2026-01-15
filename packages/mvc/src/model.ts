@@ -33,18 +33,26 @@ let EXPORT: Map<any, any> | undefined;
 declare namespace Model {
   /**
    * Model which is valid to create.
-   * If implements new method, it must have correct signature.
+   *
+   * This interface may be augmented to add dditional
+   * constraints on models, such as special hooks or properties,
+   * to interact with environment or helper frameworks.
    **/
-  interface New extends Model {
+  interface Valid extends Model {
     'new'?(): void | (() => void);
   }
 
+  /**
+   * A Model class which is valid and may be instantiated.
+   */
+  type New<T extends Model> = Model.Class<T & Valid>;
+
   /** Any type of Model, using own class constructor as its identifier. */
-  type Extends<T extends New = Model> = (abstract new (...args: any[]) => T) &
+  type Extends<T extends Model = Model> = (abstract new (...args: any[]) => T) &
     typeof Model;
 
-  /** A Model constructor, but which is not abstract. */
-  type Class<T extends New = Model> = (new (...args: Model.Args<T>) => T) &
+  /** A Model constructor which is not abstract. */
+  type Class<T extends Model = Model> = (new (...args: Model.Args<T>) => T) &
     Omit<typeof Model, never>;
 
   /** Model constructor arguments */
@@ -436,10 +444,7 @@ abstract class Model implements Observable {
    *
    * @param args - arguments sent to constructor
    */
-  static new<T extends Model>(
-    this: Model.Class<T & Model.New>,
-    ...args: Model.Args<T>
-  ) {
+  static new<T extends Model>(this: Model.New<T>, ...args: Model.Args<T>): T {
     const instance = new this(...args, (x) => {
       const cb = x.new && x.new();
       if (cb) x.set(cb, null);

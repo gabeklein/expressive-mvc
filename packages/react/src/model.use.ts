@@ -4,22 +4,22 @@ import { Pragma } from './adapter';
 
 declare module '@expressive/mvc' {
   namespace Model {
-    interface Use extends New {
+    interface Valid {
       use?(...props: any[]): Promise<void> | void;
     }
 
-    type UseArgs<T extends Use> = T extends {
+    type UseArgs<T extends Model> = T extends {
       use(...props: infer P): any;
     }
       ? P
       : Model.Args<T>;
 
-    function use<T extends Model>(this: Class<T & Use>, ...args: UseArgs<T>): T;
+    function use<T extends Model>(this: New<T>, ...args: UseArgs<T>): T;
   }
 }
 
-Model.use = function <T extends Model.Use>(
-  this: Model.Class<T>,
+Model.use = function <T extends Model.Valid>(
+  this: Model.New<T>,
   ...args: any[]
 ) {
   const ambient = Context.use();
