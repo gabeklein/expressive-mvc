@@ -31,7 +31,7 @@ export class Component extends Model {
     context.push(this);
   }
 
-  state!: Model.State<this>;
+  state!: Model.Values<this>;
   children!: ReactNode | ((self: this) => ReactNode);
   fallback?: ReactNode;
 

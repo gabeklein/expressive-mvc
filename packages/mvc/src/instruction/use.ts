@@ -10,7 +10,7 @@ type Instruction<T = any, M extends Model = any> =
     this: M,
     key: Extract<Model.Field<M>, string>,
     thisArg: M,
-    state: Model.State<M>
+    state: Model.Values<M>
   ) => Instruction.Descriptor<T> | ((source: M) => T) | void;
 
 declare namespace Instruction {

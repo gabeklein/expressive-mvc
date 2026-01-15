@@ -105,10 +105,10 @@ declare namespace Model {
    * Differs from `Values` as values here will drill
    * into "real" values held by exotics like ref.Object.
    */
-  type State<T> = { [P in Field<T>]: Export<T[P]> };
+  type Values<T> = { [P in Field<T>]: Export<T[P]> };
 
   /** Object comperable to data found in T. */
-  type Values<T> = { [P in Field<T>]?: Export<T[P]> };
+  type Partial<T> = { [P in Field<T>]?: Export<T[P]> };
 
   /** Exotic value, where actual value is contained within. */
   type Ref<T = any> = {
@@ -183,7 +183,7 @@ abstract class Model implements Observable {
    *
    * @returns Object with all values from this model.
    **/
-  get(): Model.State<this>;
+  get(): Model.Values<this>;
 
   /**
    * Run a function which will run automatically when accessed values change.
