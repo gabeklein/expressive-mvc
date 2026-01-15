@@ -51,7 +51,7 @@ declare namespace Model {
    * Model constructor callback - is called when Model finishes intializing.
    * Returned function will run when model is destroyed.
    */
-  type Callback<T extends Model = Model> = (
+  type Init<T extends Model = Model> = (
     this: T,
     thisArg: T
   ) => Promise<void> | (() => void) | Args<T> | Assign<T> | void;
@@ -59,8 +59,8 @@ declare namespace Model {
   /** Model constructor arguments */
   type Args<T extends Model = any> = (
     | Args<T>
+    | Init<T>
     | Assign<T>
-    | Callback<T>
     | string
     | void
   )[];
