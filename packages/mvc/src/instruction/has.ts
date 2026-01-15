@@ -16,13 +16,13 @@ declare namespace has {
 }
 
 function has<T extends Model>(
-  type: Model.Type<T>,
+  type: Model.Extends<T>,
   callback?: has.Callback<T>
 ): readonly T[];
 function has(callback?: has.Callback): readonly Model[];
 
 function has<T extends Model>(
-  arg1?: Model.Type<T> | has.Callback<Model>,
+  arg1?: Model.Extends<T> | has.Callback<Model>,
   arg2?: has.Callback<T>
 ) {
   return use<T[]>((key, subject) => {

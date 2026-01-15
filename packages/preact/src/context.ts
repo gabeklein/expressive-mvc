@@ -20,7 +20,7 @@ Context.use = (create?: boolean) => {
 declare namespace Consumer {
   type Props<T extends Model> = {
     /** Type of controller to fetch from context. */
-    for: Model.Type<T>;
+    for: Model.Extends<T>;
 
     /**
      * Render function, will receive instance of desired controller.

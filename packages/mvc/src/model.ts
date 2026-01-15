@@ -16,7 +16,7 @@ const ID = new WeakMap<Model, string>();
 const STATE = new WeakMap<Model, Record<string | number | symbol, unknown>>();
 
 /** External listeners for any given Model. */
-const NOTIFY = new WeakMap<Model.Type, Set<Notify>>();
+const NOTIFY = new WeakMap<Model.Extends, Set<Notify>>();
 
 /** Parent-child relationships. */
 const PARENT = new WeakMap<Model, Model | null>();
@@ -40,7 +40,7 @@ declare namespace Model {
   }
 
   /** Any type of Model, using own class constructor as its identifier. */
-  type Type<T extends New = Model> = (abstract new (...args: any[]) => T) &
+  type Extends<T extends New = Model> = (abstract new (...args: any[]) => T) &
     typeof Model;
 
   /** A Model constructor, but which is not abstract. */
@@ -454,7 +454,7 @@ abstract class Model implements Observable {
    * If so, language server will make available all static
    * methods and properties of this class.
    */
-  static is<T extends Model.Type>(this: T, maybe: unknown): maybe is T {
+  static is<T extends Model.Extends>(this: T, maybe: unknown): maybe is T {
     return (
       maybe === this ||
       (typeof maybe == 'function' && maybe.prototype instanceof this)
@@ -464,7 +464,10 @@ abstract class Model implements Observable {
   /**
    * Register a callback to run when any instance of this Model is updated.
    */
-  static on<T extends Model>(this: Model.Type<T>, listener: Model.OnEvent<T>) {
+  static on<T extends Model>(
+    this: Model.Extends<T>,
+    listener: Model.OnEvent<T>
+  ) {
     let notify = NOTIFY.get(this);
 
     if (!notify) NOTIFY.set(this, (notify = new Set()));
@@ -509,11 +512,11 @@ function assign(subject: Model, data: Model.Assign<Model>, silent?: boolean) {
 
 /** Apply instructions and inherited event listeners. Ensure class metadata is ready. */
 function prepare(model: Model) {
-  let T = model.constructor as Model.Type;
+  let T = model.constructor as Model.Extends;
 
   if (T === Model) throw new Error('Cannot create base Model.');
 
-  const chain = [] as Model.Type[];
+  const chain = [] as Model.Extends[];
   let keys = new Map<string, (value: any) => void>();
 
   ID.set(model, `${T}-${uid()}`);

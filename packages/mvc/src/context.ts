@@ -2,9 +2,9 @@ import { addListener } from './control';
 import { event, Model, PARENT, uid } from './model';
 
 const LOOKUP = new WeakMap<Model, Context | ((got: Context) => void)[]>();
-const KEYS = new Map<symbol | Model.Type, symbol>();
+const KEYS = new Map<symbol | Model.Extends, symbol>();
 
-function key(T: Model.Type | symbol, upstream?: boolean): symbol {
+function key(T: Model.Extends | symbol, upstream?: boolean): symbol {
   let K = KEYS.get(T);
 
   if (!K) {
@@ -15,7 +15,7 @@ function key(T: Model.Type | symbol, upstream?: boolean): symbol {
   return upstream ? key(K) : K;
 }
 
-function keys(from: Model.Type, upstream?: boolean) {
+function keys(from: Model.Extends, upstream?: boolean) {
   const keys = new Set<symbol>();
 
   do {
@@ -70,7 +70,7 @@ class Context {
 
   public id = uid();
 
-  protected inputs = {} as Record<string | number, Model | Model.Type>;
+  protected inputs = {} as Record<string | number, Model | Model.Extends>;
   protected cleanup = new Set<() => void>();
 
   constructor(inputs?: Context.Accept) {
@@ -78,22 +78,22 @@ class Context {
   }
 
   /** Find specified type registered to a parent context. Throws if none are found. */
-  public get<T extends Model>(Type: Model.Type<T>, require: true): T;
+  public get<T extends Model>(Type: Model.Extends<T>, require: true): T;
 
   /** Find specified type registered to a parent context. Returns undefined if none are found. */
   public get<T extends Model>(
-    Type: Model.Type<T>,
+    Type: Model.Extends<T>,
     require?: boolean
   ): T | undefined;
 
   /** Run callback when a specified type is registered in context downstream. */
   public get<T extends Model>(
-    Type: Model.Type<T>,
+    Type: Model.Extends<T>,
     callback: (model: T) => void
   ): () => void;
 
   public get<T extends Model>(
-    Type: Model.Type<T>,
+    Type: Model.Extends<T>,
     arg2?: boolean | ((model: T) => void)
   ) {
     if (typeof arg2 == 'function') {
@@ -124,14 +124,14 @@ class Context {
    */
   protected add<T extends Model>(input: T | Model.Init<T>, implicit?: boolean) {
     const cleanup = new Set<() => void>();
-    let T: Model.Type<T>;
+    let T: Model.Extends<T>;
     let I: T;
 
     if (typeof input == 'function') {
       T = input;
       I = new input() as T;
     } else {
-      T = input.constructor as Model.Type<T>;
+      T = input.constructor as Model.Extends<T>;
       I = input;
     }
 

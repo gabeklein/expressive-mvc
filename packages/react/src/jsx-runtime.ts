@@ -6,7 +6,7 @@ import { Render } from './model.as';
 
 export declare namespace JSX {
   type ElementType =
-    | Model.Type<Model.AsComponent>
+    | Model.Extends<Model.AsComponent>
     | React.JSX.ElementType
     | ((props: {}, ref?: any) => void);
 
@@ -14,7 +14,7 @@ export declare namespace JSX {
     // For normal class components, pull from props property explicitly because we dorked up ElementAttributesProperty.
     C extends new (...args: any[]) => { props: infer U }
       ? U
-      : C extends Model.Type<infer U>
+      : C extends Model.Extends<infer U>
         ? Model.Props<U>
         : React.JSX.LibraryManagedAttributes<C, P>;
 

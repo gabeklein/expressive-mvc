@@ -52,7 +52,7 @@ declare module '@expressive/mvc' {
       P extends Model.Assign<T>
     > extends FunctionComponent<P & Model.Props<T>> {
       displayName?: string;
-      Model: Model.Type<T>;
+      Model: Model.Extends<T>;
     }
 
     function as<T extends Model, P extends Model.Assign<T>>(
