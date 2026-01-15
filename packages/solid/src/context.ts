@@ -20,7 +20,7 @@ declare namespace Provider {
 function Provider<T extends Model>(props: Provider.Props<T>) {
   const context = useContext(Lookup).push();
 
-  context.include(props.for, props.set);
+  context.use(props.for, props.set && ((x) => void x.set(props.set!)));
 
   onCleanup(() => context.pop());
 

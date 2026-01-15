@@ -28,10 +28,10 @@ function keys(from: Model.Extends, upstream?: boolean) {
 
 declare namespace Context {
   type Multiple<T extends Model> = {
-    [key: string | number]: Model.Init<T> | T;
+    [key: string | number]: Model.Class<T> | T;
   };
 
-  type Accept<T extends Model = Model> = T | Model.Init<T> | Multiple<T>;
+  type Accept<T extends Model = Model> = T | Model.Class<T> | Multiple<T>;
 
   type Expect<T extends Model = Model> = (model: T) => (() => void) | void;
 }
@@ -122,7 +122,10 @@ class Context {
   /**
    * Adds a Model to this context.
    */
-  protected add<T extends Model>(input: T | Model.Init<T>, implicit?: boolean) {
+  protected add<T extends Model>(
+    input: T | Model.Class<T>,
+    implicit?: boolean
+  ) {
     const cleanup = new Set<() => void>();
     let T: Model.Extends<T>;
     let I: T;

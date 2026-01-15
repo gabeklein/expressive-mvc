@@ -44,7 +44,7 @@ declare namespace Model {
     typeof Model;
 
   /** A Model constructor, but which is not abstract. */
-  type Init<T extends New = Model> = (new (...args: Model.Args<T>) => T) &
+  type Class<T extends New = Model> = (new (...args: Model.Args<T>) => T) &
     Omit<typeof Model, never>;
 
   /**
@@ -437,7 +437,7 @@ abstract class Model implements Observable {
    * @param args - arguments sent to constructor
    */
   static new<T extends Model>(
-    this: Model.Init<T & Model.New>,
+    this: Model.Class<T & Model.New>,
     ...args: Model.Args<T>
   ) {
     const instance = new this(...args, (x) => {

@@ -3,7 +3,7 @@ import { Suspense } from 'react';
 
 import { get, Model, Provider, set } from '.';
 
-export function renderWith<T>(Type: Model.Init | Model, hook: () => T) {
+export function renderWith<T>(Type: Model.Class | Model, hook: () => T) {
   return renderHook(hook, {
     wrapper(props) {
       return (

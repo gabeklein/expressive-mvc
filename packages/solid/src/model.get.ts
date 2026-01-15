@@ -6,11 +6,11 @@ import { signalProxy } from './signals';
 
 declare module '@expressive/mvc' {
   namespace Model {
-    function get<T extends Model>(this: Model.Init<T>): Model.Reactive<T>;
+    function get<T extends Model>(this: Model.Class<T>): Model.Reactive<T>;
   }
 }
 
-Model.get = function <T extends Model>(this: Model.Init<T>) {
+Model.get = function <T extends Model>(this: Model.Class<T>) {
   const instance = useContext(Lookup).get(this);
 
   if (!instance) throw new Error(`Model not found in context: ${this.name}`);

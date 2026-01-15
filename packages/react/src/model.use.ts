@@ -14,15 +14,12 @@ declare module '@expressive/mvc' {
       ? P
       : Model.Args<T>;
 
-    function use<T extends Model>(
-      this: Init<T & Model.Use>,
-      ...args: UseArgs<T>
-    ): T;
+    function use<T extends Model>(this: Class<T & Use>, ...args: UseArgs<T>): T;
   }
 }
 
 Model.use = function <T extends Model.Use>(
-  this: Model.Init<T>,
+  this: Model.Class<T>,
   ...args: any[]
 ) {
   const ambient = Context.use();

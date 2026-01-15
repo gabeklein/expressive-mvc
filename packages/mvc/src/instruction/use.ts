@@ -29,14 +29,14 @@ const INSTRUCTION = new Map<symbol, Instruction>();
 function use<T>(instruction: Instruction<T>): T extends void ? unknown : T;
 
 function use<T extends Model>(
-  Type: Model.Init<T>,
+  Type: Model.Class<T>,
   required: false
 ): T | undefined;
 
-function use<T extends Model>(Type: Model.Init<T>, ready?: (i: T) => void): T;
+function use<T extends Model>(Type: Model.Class<T>, ready?: (i: T) => void): T;
 
 function use(
-  arg1: Model.Init | Instruction,
+  arg1: Model.Class | Instruction,
   arg2?: ((i: Model) => void) | boolean
 ) {
   if (Model.is(arg1)) arg1 = childInstruction(arg1, arg2);
@@ -47,7 +47,7 @@ function use(
 }
 
 function childInstruction(
-  type: Model.Init<Model>,
+  type: Model.Class<Model>,
   arg2?: ((i: Model) => void) | boolean
 ): Instruction<any, any> {
   return (key, subject) => {
