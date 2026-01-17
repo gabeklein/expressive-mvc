@@ -8,6 +8,6 @@ const Pragma = {} as {
 
 export { Pragma };
 
-import './model.as';
-import './model.use';
-import './model.get';
+import './state.as';
+import './state.use';
+import './state.get';

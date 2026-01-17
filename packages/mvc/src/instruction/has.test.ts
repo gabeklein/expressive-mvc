@@ -483,7 +483,7 @@ describe('target', () => {
     }
 
     expect(() => Child.new()).toThrowError(
-      `'has' callback can only be used once per model.`
+      `'has' callback can only be used once per state.`
     );
   });
 });

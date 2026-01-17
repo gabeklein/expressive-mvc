@@ -34,7 +34,7 @@ interface Observable {
 
 const Observable = Symbol('observe');
 
-/** Placeholder event determines if model is initialized or not. */
+/** Placeholder event determines if state is initialized or not. */
 const onReady = () => null;
 
 const LISTENERS = new WeakMap<
@@ -73,25 +73,25 @@ function addListener<T extends Observable>(
   return () => listeners.delete(callback);
 }
 
-function emit(model: Observable, key: Event): void {
-  const listeners = LISTENERS.get(model)!;
+function emit(state: Observable, key: Event): void {
+  const listeners = LISTENERS.get(state)!;
   const notReady = listeners.has(onReady);
 
   if (key === true && !notReady) return;
 
-  let pending = PENDING.get(model);
+  let pending = PENDING.get(state);
 
   if (pending) {
     pending.add(key);
     return;
   }
 
-  PENDING.set(model, (pending = new Set(notReady ? [true, key] : [key])));
+  PENDING.set(state, (pending = new Set(notReady ? [true, key] : [key])));
 
   for (const key of pending)
     for (const [callback, filter] of listeners)
       if (!filter || filter.has(key)) {
-        const after = callback.call(model, key, model);
+        const after = callback.call(state, key, state);
 
         if (after) {
           enqueue(after);
@@ -102,7 +102,7 @@ function emit(model: Observable, key: Event): void {
 
   if (key === null) listeners.clear();
 
-  PENDING.delete(model);
+  PENDING.delete(state);
 }
 
 function event(

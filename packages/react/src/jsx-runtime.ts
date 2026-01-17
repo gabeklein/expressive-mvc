@@ -2,7 +2,7 @@ import { State } from '@expressive/mvc';
 import React from 'react';
 import Runtime from 'react/jsx-runtime';
 
-import { Render } from './model.as';
+import { Render } from './state.as';
 
 export declare namespace JSX {
   type ElementType =

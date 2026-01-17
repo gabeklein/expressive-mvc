@@ -9,7 +9,7 @@ describe('effect', () => {
     const mock = jest.fn();
 
     class Test extends State {
-      property = use((_key, _model, state) => {
+      property = use((_key, _state, state) => {
         this.get(() => mock(state));
       });
 
@@ -222,7 +222,7 @@ describe('suspense', () => {
     );
   });
 
-  it('will reject if model destroyed before resolved', async () => {
+  it('will reject if state destroyed before resolved', async () => {
     class Test extends State {
       value = set<never>();
     }

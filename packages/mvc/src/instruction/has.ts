@@ -5,12 +5,12 @@ import { use } from './use';
 
 const APPLY = new WeakMap<
   State,
-  (model: State) => (() => void) | boolean | void
+  (state: State) => (() => void) | boolean | void
 >();
 
 declare namespace has {
   type Callback<T = any> = (
-    model: T,
+    state: T,
     recipient: State
   ) => void | boolean | (() => void);
 }
@@ -33,17 +33,17 @@ function has<T extends State>(
 
     if (State.is(arg1))
       Context.get(subject, (context) => {
-        context.get(arg1, (model) => {
+        context.get(arg1, (state) => {
           let remove: (() => void) | undefined;
           let disconnect: (() => void) | undefined;
           let flush: (() => void) | undefined;
 
-          if (applied.has(model)) return;
+          if (applied.has(state)) return;
 
           const exit = enter();
 
           try {
-            const notify = APPLY.get(model);
+            const notify = APPLY.get(state);
 
             if (notify) {
               const after = notify(subject);
@@ -53,7 +53,7 @@ function has<T extends State>(
             }
 
             if (typeof arg2 == 'function') {
-              const done = arg2(model, subject);
+              const done = arg2(state, subject);
 
               if (done === false) return false;
               if (typeof done == 'function') remove = done;
@@ -62,14 +62,14 @@ function has<T extends State>(
             flush = exit();
           }
 
-          applied.add(model);
+          applied.add(state);
           reset();
 
           const done = () => {
             flush();
             ignore();
 
-            applied.delete(model);
+            applied.delete(state);
             reset();
 
             if (disconnect) disconnect();
@@ -78,14 +78,14 @@ function has<T extends State>(
             remove = undefined;
           };
 
-          const ignore = model.set(done, null);
+          const ignore = state.set(done, null);
 
           return done;
         });
       });
     else {
       if (APPLY.has(subject))
-        throw new Error(`'has' callback can only be used once per model.`);
+        throw new Error(`'has' callback can only be used once per state.`);
 
       APPLY.set(subject, (recipient) => {
         let remove: (() => void) | boolean | void;

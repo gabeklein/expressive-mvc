@@ -50,11 +50,11 @@ function Provider<T extends State>(props: Provider.Props<T>) {
 
   useEffect(() => () => context.pop(), [context]);
 
-  context.use(props.for, (model) => {
+  context.use(props.for, (state) => {
     if (props.forEach) {
-      const cleanup = props.forEach(model);
+      const cleanup = props.forEach(state);
 
-      if (cleanup) model.set(cleanup, null);
+      if (cleanup) state.set(cleanup, null);
     }
   });
 

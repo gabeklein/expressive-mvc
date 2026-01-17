@@ -33,7 +33,7 @@ declare namespace Context {
 
   type Accept<T extends State = State> = T | State.Class<T> | Multiple<T>;
 
-  type Expect<T extends State = State> = (model: T) => (() => void) | void;
+  type Expect<T extends State = State> = (state: T) => (() => void) | void;
 }
 
 interface Context {
@@ -89,12 +89,12 @@ class Context {
   /** Run callback when a specified type is registered in context downstream. */
   public get<T extends State>(
     Type: State.Extends<T>,
-    callback: (model: T) => void
+    callback: (state: T) => void
   ): () => void;
 
   public get<T extends State>(
     Type: State.Extends<T>,
-    arg2?: boolean | ((model: T) => void)
+    arg2?: boolean | ((state: T) => void)
   ) {
     if (typeof arg2 == 'function') {
       const k = key(Type, true);
@@ -207,7 +207,7 @@ class Context {
         init.set(this.add(V), true);
       }
       // Context must force-reset because inputs are no longer safe,
-      // however probably should do that on a per-model basis.
+      // however probably should do that on a per-state basis.
       else if (exists !== V) {
         this.pop();
         this.use(inputs);
@@ -216,13 +216,13 @@ class Context {
       }
     }
 
-    for (const [model, explicit] of init) {
-      model.set();
+    for (const [state, explicit] of init) {
+      state.set();
 
-      if (explicit && forEach) forEach(model as T);
+      if (explicit && forEach) forEach(state as T);
 
-      for (const [_key, value] of model)
-        if (PARENT.get(value as State) === model) {
+      for (const [_key, value] of state)
+        if (PARENT.get(value as State) === state) {
           this.add(value as State, true);
           init.set(value as State, false);
         }

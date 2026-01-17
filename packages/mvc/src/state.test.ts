@@ -574,7 +574,7 @@ describe('get method', () => {
   describe('null', () => {
     class Test extends State {}
 
-    it('will return true if model is not destroyed', () => {
+    it('will return true if state is not destroyed', () => {
       const test = Test.new();
 
       expect(test.get(null)).toBe(false);
@@ -584,7 +584,7 @@ describe('get method', () => {
       expect(test.get(null)).toBe(true);
     });
 
-    it('will callback when model is destroyed', () => {
+    it('will callback when state is destroyed', () => {
       const test = Test.new();
       const mock = jest.fn();
 
@@ -879,7 +879,7 @@ describe('get method', () => {
       expect(mock).toBeCalledTimes(3);
     });
 
-    it('will bind to model called upon', () => {
+    it('will bind to state called upon', () => {
       class Test extends State {}
 
       function testEffect(this: Test) {
@@ -1332,7 +1332,7 @@ describe('set method', () => {
       await expect(test).not.toHaveUpdated('bar');
       expect(mock).not.toBeCalledWith('bar', 'bob');
 
-      // assign bar formally adding to model
+      // assign bar formally adding to state
       test.set('bar', 'baz', true);
 
       // bar is redefined
@@ -1585,7 +1585,7 @@ describe('set method', () => {
       expect(callback).toBeCalledWith('bar', test);
     });
 
-    it('will disallow update if model is destroyed', () => {
+    it('will disallow update if state is destroyed', () => {
       class Test extends State {
         foo = 0;
       }
@@ -1599,7 +1599,7 @@ describe('set method', () => {
       test.set(null);
 
       expect(() => test.foo++).toThrowError(
-        'Tried to update ID.foo but model is destroyed.'
+        'Tried to update ID.foo but state is destroyed.'
       );
       expect(callback).toBeCalledTimes(1);
     });
@@ -1608,7 +1608,7 @@ describe('set method', () => {
   });
 
   describe('assign', () => {
-    it('will merge object into model', async () => {
+    it('will merge object into state', async () => {
       class Test extends State {
         foo = 'foo';
         bar = 'bar';
@@ -1640,7 +1640,7 @@ describe('set method', () => {
       expect(test.bar).toBe('bar');
     });
 
-    it('will merge methods into model', async () => {
+    it('will merge methods into state', async () => {
       class Test extends State {
         foo = 'foo';
 
@@ -1668,7 +1668,7 @@ describe('set method', () => {
       expect(test.foo).toBe('bar');
     });
 
-    it('will ignore properties not on model', async () => {
+    it('will ignore properties not on state', async () => {
       class Test extends State {
         foo = 'foo';
       }

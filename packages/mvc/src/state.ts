@@ -9,10 +9,10 @@ import {
 
 const define = Object.defineProperty;
 
-/** Register for all active models via string identifiers (usually unique). */
+/** Register for all active states via string identifiers (usually unique). */
 const ID = new WeakMap<State, string>();
 
-/** Internal state assigned to models. */
+/** Internal state assigned to states. */
 const STATE = new WeakMap<State, Record<string | number | symbol, unknown>>();
 
 /** External listeners for any given State. */
@@ -27,7 +27,7 @@ const METHODS = new WeakMap<Function, Map<string, (value: any) => void>>();
 /** Reference bound instance methods to real ones. */
 const METHOD = new WeakMap<any, any>();
 
-/** Currently accumulating export. Stores real values of placeholder properties such as ref() or child models. */
+/** Currently accumulating export. Stores real values of placeholder properties such as ref() or child states. */
 let EXPORT: Map<any, any> | undefined;
 
 declare namespace State {
@@ -35,7 +35,7 @@ declare namespace State {
    * State which is valid to create.
    *
    * This interface may be augmented to add dditional
-   * constraints on models, such as special hooks or properties,
+   * constraints on states, such as special hooks or properties,
    * to interact with environment or helper frameworks.
    **/
   interface Valid extends State {
@@ -66,14 +66,14 @@ declare namespace State {
 
   /**
    * State constructor callback - is called when State finishes intializing.
-   * Returned function will run when model is destroyed.
+   * Returned function will run when state is destroyed.
    */
   type Init<T extends State = State> = (
     this: T,
     thisArg: T
   ) => Promise<void> | (() => void) | Args<T> | Assign<T> | void;
 
-  /** Object overlay to override values and methods on a model. */
+  /** Object overlay to override values and methods on a state. */
   type Assign<T> = Record<string, unknown> & {
     [K in Field<T>]?: T[K] extends (...args: infer A) => infer R
       ? (this: T, ...args: A) => R
@@ -83,13 +83,13 @@ declare namespace State {
   /** Subset of `keyof T` which are not methods or defined by base State U. **/
   type Field<T> = Exclude<keyof T, keyof State>;
 
-  /** Any valid key for model, including but not limited to Field<T>. */
+  /** Any valid key for state, including but not limited to Field<T>. */
   type Event<T> = Field<T> | number | symbol | (string & {});
 
   /** Export/Import compatible value for a given property in a State. */
   type Export<R> = R extends { get(): infer T } ? T : R;
 
-  /** Value for a property managed by a model. */
+  /** Value for a property managed by a state. */
   type Value<T extends State, K extends Event<T>> = K extends keyof T
     ? Export<T[K]>
     : unknown;
@@ -109,7 +109,7 @@ declare namespace State {
   ) => void;
 
   /**
-   * Values from current state of given model.
+   * Values from current state of given state.
    * Differs from `Values` as values here will drill
    * into "real" values held by exotics like ref.Object.
    */
@@ -127,7 +127,7 @@ declare namespace State {
   /**
    * A callback function which is subscribed to parent and updates when accessed properties change.
    *
-   * @param current - Current state of this model. This is a proxy which detects properties which
+   * @param current - Current state of this state. This is a proxy which detects properties which
    * where accessed, and thus depended upon to stay current.
    *
    * @param update - Set of properties which have changed, and events fired, since last update.
@@ -143,14 +143,14 @@ declare namespace State {
   /**
    * A callback function returned by effect. Will be called when effect is stale.
    *
-   * @param update - `true` if update is pending, `false` effect has been cancelled, `null` if model is destroyed.
+   * @param update - `true` if update is pending, `false` effect has been cancelled, `null` if state is destroyed.
    */
   type EffectCallback = (update: boolean | null) => void;
 }
 
 interface State {
   /**
-   * Loopback to instance of this model. This is useful when in a subscribed context,
+   * Loopback to instance of this state. This is useful when in a subscribed context,
    * to keep write access to `this` after a destructure. You can use it to read variables silently as well.
    **/
   is: this;
@@ -187,9 +187,9 @@ abstract class State implements Observable {
   }
 
   /**
-   * Pull current values from state. Flattens all models and exotic values recursively.
+   * Pull current values from state. Flattens all states and exotic values recursively.
    *
-   * @returns Object with all values from this model.
+   * @returns Object with all values from this state.
    **/
   get(): State.Values<this>;
 
@@ -198,7 +198,7 @@ abstract class State implements Observable {
    *
    * @param effect Function to run, and again whenever accessed values change.
    *               If effect returns a function, it will be called when a change occurs (syncronously),
-   *               effect is cancelled, or parent model is destroyed.
+   *               effect is cancelled, or parent state is destroyed.
    * @returns Function to cancel listener.
    */
   get(effect: State.Effect<this>): () => void;
@@ -228,17 +228,17 @@ abstract class State implements Observable {
   ): () => void;
 
   /**
-   * Check if model is expired.
+   * Check if state is expired.
    *
-   * @param status - `null` to check if model is expired.
-   * @returns `true` if model is expired, `false` otherwise.
+   * @param status - `null` to check if state is expired.
+   * @returns `true` if state is expired, `false` otherwise.
    */
   get(status: null): boolean;
 
   /**
-   * Callback when model is to be destroyed.
+   * Callback when state is to be destroyed.
    *
-   * @param callback - Function to call when model is destroyed.
+   * @param callback - Function to call when state is destroyed.
    * @returns Function to cancel listener.
    */
   get(status: null, callback: () => void): () => void;
@@ -308,7 +308,7 @@ abstract class State implements Observable {
 
   /**
    * Update mulitple properties at once. Merges argument with current state.
-   * Properties which are not managed by this model will be ignored.
+   * Properties which are not managed by this state will be ignored.
    *
    * @param assign - Object with properties to update.
    * @param silent - If an update does occur, listeners will not be refreshed automatically.
@@ -347,7 +347,7 @@ abstract class State implements Observable {
    *
    * @param key - Property to set value for.
    * @param value - Value to set for property.
-   * @param init - If true, model will begin to manage the property if it is not already.
+   * @param init - If true, state will begin to manage the property if it is not already.
    * @returns Promise resolves an array of keys updated.
    */
   set(
@@ -438,7 +438,7 @@ abstract class State implements Observable {
   }
 
   /**
-   * Create and activate a new instance of this model.
+   * Create and activate a new instance of this state.
    *
    * **Important** - Unlike `new this(...)` - this method also activates state.
    *
@@ -516,19 +516,19 @@ function assign(subject: State, data: State.Assign<State>, silent?: boolean) {
 }
 
 /** Apply instructions and inherited event listeners. Ensure class metadata is ready. */
-function prepare(model: State) {
-  let T = model.constructor as State.Extends;
+function prepare(state: State) {
+  let T = state.constructor as State.Extends;
 
   if (T === State) throw new Error('Cannot create base State.');
 
   const chain = [] as State.Extends[];
   let keys = new Map<string, (value: any) => void>();
 
-  ID.set(model, `${T}-${uid()}`);
+  ID.set(state, `${T}-${uid()}`);
 
   while (T.name) {
     for (const cb of NOTIFY.get(T) || []) {
-      addListener(model, cb);
+      addListener(state, cb);
     }
 
     if (T === State) break;
@@ -571,49 +571,49 @@ function prepare(model: State) {
 }
 
 /**
- * Apply model arguemnts, run callbacks and observe properties.
+ * Apply state arguemnts, run callbacks and observe properties.
  * Accumulate and handle cleanup events.
  **/
-function init(model: State, args: State.Args) {
+function init(state: State, args: State.Args) {
   const state = {} as Record<string | number | symbol, unknown>;
 
-  STATE.set(model, state);
+  STATE.set(state, state);
 
   args = args.flat().filter((arg) => {
-    if (typeof arg == 'string') ID.set(model, arg);
+    if (typeof arg == 'string') ID.set(state, arg);
     else return true;
   });
 
-  addListener(model, () => {
-    if (!PARENT.has(model)) PARENT.set(model, null);
+  addListener(state, () => {
+    if (!PARENT.has(state)) PARENT.set(state, null);
 
-    for (const key in model) {
-      const desc = Object.getOwnPropertyDescriptor(model, key)!;
+    for (const key in state) {
+      const desc = Object.getOwnPropertyDescriptor(state, key)!;
 
-      if ('value' in desc) manage(model, key, desc.value, true);
+      if ('value' in desc) manage(state, key, desc.value, true);
     }
 
     for (const arg of args) {
       const use =
         typeof arg == 'function'
-          ? arg.call(model, model)
+          ? arg.call(state, state)
           : (arg as State.Assign<State>);
 
       if (use instanceof Promise)
         use.catch((err) => {
-          console.error(`Async error in constructor for ${model}:`);
+          console.error(`Async error in constructor for ${state}:`);
           console.error(err);
         });
       else if (Array.isArray(use)) args.push(...use);
-      else if (typeof use == 'function') addListener(model, use, null);
-      else if (typeof use == 'object') assign(model, use, true);
+      else if (typeof use == 'function') addListener(state, use, null);
+      else if (typeof use == 'object') assign(state, use, true);
     }
 
     addListener(
-      model,
+      state,
       () => {
-        for (const [_, value] of model)
-          if (value instanceof State && PARENT.get(value) === model)
+        for (const [_, value] of state)
+          if (value instanceof State && PARENT.get(value) === state)
             value.set(null);
 
         Object.freeze(state);
@@ -702,7 +702,7 @@ function update<T>(
 
   if (Object.isFrozen(state))
     throw new Error(
-      `Tried to update ${subject}.${String(key)} but model is destroyed.`
+      `Tried to update ${subject}.${String(key)} but state is destroyed.`
     );
 
   const previous = state[key] as T;

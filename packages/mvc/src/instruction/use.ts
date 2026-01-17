@@ -96,9 +96,9 @@ function init(this: State) {
 
     if ('value' in desc) state[key] = desc.value;
 
-    const model = this;
+    const state = this;
 
-    Object.defineProperty(model, key, {
+    Object.defineProperty(state, key, {
       enumerable: desc.enumerable !== false,
       get(this: State) {
         return follow(
@@ -106,14 +106,14 @@ function init(this: State) {
           key,
           typeof desc.get == 'function'
             ? desc.get(this)
-            : access(model, key, desc.get)
+            : access(state, key, desc.get)
         );
       },
       set(next) {
         if (desc.set === false)
-          throw new Error(`${model}.${key} is read-only.`);
+          throw new Error(`${state}.${key} is read-only.`);
 
-        update(model, key, next, desc.set);
+        update(state, key, next, desc.set);
       }
     });
   }
