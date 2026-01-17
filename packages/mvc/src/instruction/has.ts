@@ -1,37 +1,37 @@
 import { enter } from '../control';
 import { Context } from '../context';
-import { Model, update } from '../model';
+import { State, update } from '../state';
 import { use } from './use';
 
 const APPLY = new WeakMap<
-  Model,
-  (model: Model) => (() => void) | boolean | void
+  State,
+  (model: State) => (() => void) | boolean | void
 >();
 
 declare namespace has {
   type Callback<T = any> = (
     model: T,
-    recipient: Model
+    recipient: State
   ) => void | boolean | (() => void);
 }
 
-function has<T extends Model>(
-  type: Model.Extends<T>,
+function has<T extends State>(
+  type: State.Extends<T>,
   callback?: has.Callback<T>
 ): readonly T[];
-function has(callback?: has.Callback): readonly Model[];
+function has(callback?: has.Callback): readonly State[];
 
-function has<T extends Model>(
-  arg1?: Model.Extends<T> | has.Callback<Model>,
+function has<T extends State>(
+  arg1?: State.Extends<T> | has.Callback<State>,
   arg2?: has.Callback<T>
 ) {
   return use<T[]>((key, subject) => {
-    const applied = new Set<Model>();
+    const applied = new Set<State>();
     const reset = () => {
       update(subject, key, Object.freeze(Array.from(applied)));
     };
 
-    if (Model.is(arg1))
+    if (State.is(arg1))
       Context.get(subject, (context) => {
         context.get(arg1, (model) => {
           let remove: (() => void) | undefined;

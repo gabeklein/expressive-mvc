@@ -1,4 +1,4 @@
-import Model, { Context } from '@expressive/mvc';
+import State, { Context } from '@expressive/mvc';
 import {
   createContext,
   createComponent,
@@ -10,14 +10,14 @@ import {
 const Lookup = createContext(new Context());
 
 declare namespace Provider {
-  interface Props<T extends Model> {
+  interface Props<T extends State> {
     for: Context.Accept<T>;
-    set?: Model.Assign<T>;
+    set?: State.Assign<T>;
     children?: JSXElement;
   }
 }
 
-function Provider<T extends Model>(props: Provider.Props<T>) {
+function Provider<T extends State>(props: Provider.Props<T>) {
   const context = useContext(Lookup).push();
 
   context.use(props.for, props.set && ((x) => void x.set(props.set!)));

@@ -3,7 +3,7 @@ import '@testing-library/jest-dom';
 import { act, render, screen } from '@testing-library/react';
 import React, { Suspense } from 'react';
 
-import Model, { Consumer, get, has, Provider, set, use } from '.';
+import State, { Consumer, get, has, Provider, set, use } from '.';
 
 const error = jest.spyOn(console, 'error').mockImplementation(() => {});
 
@@ -11,10 +11,10 @@ afterAll(() => {
   error.mockReset();
 });
 
-class Foo extends Model {
+class Foo extends State {
   value?: string = undefined;
 }
-class Bar extends Model {}
+class Bar extends State {}
 class Baz extends Bar {}
 
 describe('Provider', () => {
@@ -47,10 +47,10 @@ describe('Provider', () => {
   });
 
   it('will provide children of given model', () => {
-    class Foo extends Model {
+    class Foo extends State {
       value?: string = undefined;
     }
-    class Bar extends Model {
+    class Bar extends State {
       foo = use(Foo);
     }
 
@@ -64,7 +64,7 @@ describe('Provider', () => {
   it('will destroy created model on unmount', () => {
     const willDestroy = jest.fn();
 
-    class Test extends Model {}
+    class Test extends State {}
 
     const element = render(
       <Provider for={{ Test }}>
@@ -84,8 +84,8 @@ describe('Provider', () => {
   it('will destroy multiple created on unmount', async () => {
     const willDestroy = jest.fn();
 
-    class Foo extends Model {}
-    class Bar extends Model {}
+    class Foo extends State {}
+    class Bar extends State {}
 
     const element = render(
       <Provider for={{ Foo, Bar }}>
@@ -109,7 +109,7 @@ describe('Provider', () => {
   it('will not destroy given instance on unmount', async () => {
     const didUnmount = jest.fn();
 
-    class Test extends Model {}
+    class Test extends State {}
 
     const instance = Test.new();
 
@@ -145,8 +145,8 @@ describe('Provider', () => {
   it('will destroy from bottom-up', async () => {
     const didDestroy = jest.fn();
 
-    class Test extends Model {
-      constructor(...args: Model.Args) {
+    class Test extends State {
+      constructor(...args: State.Args) {
         super(...args);
         this.set(() => {
           didDestroy(this.constructor.name);
@@ -201,7 +201,7 @@ describe('Provider', () => {
 
   describe('suspense', () => {
     it('will render fallback prop', async () => {
-      class Foo extends Model {
+      class Foo extends State {
         value = set<string>();
       }
 
@@ -225,7 +225,7 @@ describe('Provider', () => {
     });
 
     it('will ignore suspense if undefined', () => {
-      class Foo extends Model {
+      class Foo extends State {
         value = set<string>();
       }
 
@@ -258,7 +258,7 @@ describe('Provider', () => {
 
 describe('Consumer', () => {
   it('will render with instance for child-function', async () => {
-    class Test extends Model {
+    class Test extends State {
       value = 'foo';
     }
 
@@ -356,11 +356,11 @@ describe('Consumer', () => {
 });
 
 describe('get instruction', () => {
-  class Foo extends Model {
+  class Foo extends State {
     bar = get(Bar);
   }
 
-  class Bar extends Model {
+  class Bar extends State {
     value = 'bar';
   }
 
@@ -377,10 +377,10 @@ describe('get instruction', () => {
   });
 
   it('will see peers sharing same provider', () => {
-    class Foo extends Model {
+    class Foo extends State {
       bar = get(Bar);
     }
-    class Bar extends Model {
+    class Bar extends State {
       foo = get(Foo);
     }
 
@@ -393,8 +393,8 @@ describe('get instruction', () => {
   });
 
   it('will see multiple peers provided', async () => {
-    class Foo extends Model {}
-    class Baz extends Model {
+    class Foo extends State {}
+    class Baz extends State {
       bar = get(Bar);
       foo = get(Foo);
     }
@@ -437,11 +437,11 @@ describe('get instruction', () => {
   });
 
   it('will attach before model init', () => {
-    class Parent extends Model {
+    class Parent extends State {
       foo = 'foo';
     }
 
-    class Child extends Model {
+    class Child extends State {
       parent = get(Parent);
 
       constructor() {
@@ -459,8 +459,8 @@ describe('get instruction', () => {
   });
 
   it('will throw if not resolved', () => {
-    class Foo extends Model {}
-    class Bar extends Model {
+    class Foo extends State {}
+    class Bar extends State {
       foo = get(Foo);
     }
 
@@ -478,8 +478,8 @@ describe('get instruction', () => {
   });
 
   it('will resolve when assigned to', async () => {
-    class Foo extends Model {}
-    class Bar extends Model {
+    class Foo extends State {}
+    class Bar extends State {
       foo = get(Foo);
     }
 
@@ -504,8 +504,8 @@ describe('get instruction', () => {
   });
 
   it('will resolve multiple', async () => {
-    class Foo extends Model {}
-    class Bar extends Model {
+    class Foo extends State {}
+    class Bar extends State {
       foo = get(Foo, false);
       bar = get(Foo, false);
     }
@@ -527,8 +527,8 @@ describe('get instruction', () => {
   });
 
   it('will refresh an effect when assigned to', async () => {
-    class Foo extends Model {}
-    class Bar extends Model {
+    class Foo extends State {}
+    class Bar extends State {
       foo = get(Foo);
     }
 
@@ -553,10 +553,10 @@ describe('get instruction', () => {
   });
 
   it('will prevent compute if not yet resolved', () => {
-    class Foo extends Model {
+    class Foo extends State {
       value = 'foobar';
     }
-    class Bar extends Model {
+    class Bar extends State {
       foo = get(Foo);
     }
 
@@ -574,10 +574,10 @@ describe('get instruction', () => {
   });
 
   it('will compute immediately in context', () => {
-    class Foo extends Model {
+    class Foo extends State {
       value = 'foobar';
     }
-    class Bar extends Model {
+    class Bar extends State {
       foo = get(Foo);
     }
 
@@ -597,11 +597,11 @@ describe('get instruction', () => {
 
 describe('has instruction', () => {
   it('will notify parent', () => {
-    class Foo extends Model {
+    class Foo extends State {
       value = has(Bar, didGetBar);
     }
 
-    class Bar extends Model {
+    class Bar extends State {
       foo = get(Foo);
     }
 
@@ -622,11 +622,11 @@ describe('has instruction', () => {
   });
 
   it.skip('will notify parent of instance', () => {
-    class Foo extends Model {
+    class Foo extends State {
       value = has(Bar, didGetBar);
     }
 
-    class Bar extends Model {
+    class Bar extends State {
       foo = get(Foo);
     }
 
@@ -652,7 +652,7 @@ describe('suspense', () => {
   it('will apply fallback and resolve', async () => {
     let resolve!: (value: string) => void;
 
-    class Test extends Model {
+    class Test extends State {
       value = set<string>(() => new Promise((res) => (resolve = res)), true);
     }
 
@@ -683,7 +683,7 @@ describe('suspense', () => {
 
 describe('HMR', () => {
   it('will replace model', () => {
-    let Control = class Control extends Model {
+    let Control = class Control extends State {
       value = 'foo';
     };
 
@@ -699,7 +699,7 @@ describe('HMR', () => {
 
     screen.getByText('foo');
 
-    Control = class Control extends Model {
+    Control = class Control extends State {
       value = 'bar';
     };
 

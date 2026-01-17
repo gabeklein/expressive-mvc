@@ -1,4 +1,4 @@
-import Model, { Context } from '@expressive/mvc';
+import State, { Context } from '@expressive/mvc';
 import { ComponentChildren, createContext, createElement } from 'preact';
 import { useContext, useEffect, useMemo } from 'preact/hooks';
 
@@ -18,34 +18,34 @@ Context.use = (create?: boolean) => {
 };
 
 declare namespace Consumer {
-  type Props<T extends Model> = {
+  type Props<T extends State> = {
     /** Type of controller to fetch from context. */
-    for: Model.Extends<T>;
+    for: State.Extends<T>;
 
     /**
      * Render function, will receive instance of desired controller.
      *
      * Called every render of parent component.
-     * Similar to `Model.get()`, updates to properties accessed in
+     * Similar to `State.get()`, updates to properties accessed in
      * this function will cause a refresh when they change.
      */
     children: (value: T) => ComponentChildren | void;
   };
 }
 
-function Consumer<T extends Model>(props: Consumer.Props<T>) {
+function Consumer<T extends State>(props: Consumer.Props<T>) {
   return props.for.get((i) => props.children(i));
 }
 
 declare namespace Provider {
-  interface Props<T extends Model> {
+  interface Props<T extends State> {
     for: Context.Accept<T>;
     forEach?: Context.Expect<T>;
     children?: ComponentChildren;
   }
 }
 
-function Provider<T extends Model>(props: Provider.Props<T>) {
+function Provider<T extends State>(props: Provider.Props<T>) {
   const context = Context.use(true);
 
   useEffect(() => () => context.pop(), [context]);

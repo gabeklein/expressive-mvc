@@ -10,16 +10,16 @@ import {
 const define = Object.defineProperty;
 
 /** Register for all active models via string identifiers (usually unique). */
-const ID = new WeakMap<Model, string>();
+const ID = new WeakMap<State, string>();
 
 /** Internal state assigned to models. */
-const STATE = new WeakMap<Model, Record<string | number | symbol, unknown>>();
+const STATE = new WeakMap<State, Record<string | number | symbol, unknown>>();
 
-/** External listeners for any given Model. */
-const NOTIFY = new WeakMap<Model.Extends, Set<Notify>>();
+/** External listeners for any given State. */
+const NOTIFY = new WeakMap<State.Extends, Set<Notify>>();
 
 /** Parent-child relationships. */
-const PARENT = new WeakMap<Model, Model | null>();
+const PARENT = new WeakMap<State, State | null>();
 
 /** List of methods defined by a given type. */
 const METHODS = new WeakMap<Function, Map<string, (value: any) => void>>();
@@ -30,33 +30,33 @@ const METHOD = new WeakMap<any, any>();
 /** Currently accumulating export. Stores real values of placeholder properties such as ref() or child models. */
 let EXPORT: Map<any, any> | undefined;
 
-declare namespace Model {
+declare namespace State {
   /**
-   * Model which is valid to create.
+   * State which is valid to create.
    *
    * This interface may be augmented to add dditional
    * constraints on models, such as special hooks or properties,
    * to interact with environment or helper frameworks.
    **/
-  interface Valid extends Model {
+  interface Valid extends State {
     'new'?(): void | (() => void);
   }
 
   /**
-   * A Model class which is valid and may be instantiated.
+   * A State class which is valid and may be instantiated.
    */
-  type New<T extends Model> = Model.Class<T & Valid>;
+  type New<T extends State> = State.Class<T & Valid>;
 
-  /** Any type of Model, using own class constructor as its identifier. */
-  type Extends<T extends Model = Model> = (abstract new (...args: any[]) => T) &
-    typeof Model;
+  /** Any type of State, using own class constructor as its identifier. */
+  type Extends<T extends State = State> = (abstract new (...args: any[]) => T) &
+    typeof State;
 
-  /** A Model constructor which is not abstract. */
-  type Class<T extends Model = Model> = (new (...args: Model.Args<T>) => T) &
-    Omit<typeof Model, never>;
+  /** A State constructor which is not abstract. */
+  type Class<T extends State = State> = (new (...args: State.Args<T>) => T) &
+    Omit<typeof State, never>;
 
-  /** Model constructor arguments */
-  type Args<T extends Model = any> = (
+  /** State constructor arguments */
+  type Args<T extends State = any> = (
     | Args<T>
     | Init<T>
     | Assign<T>
@@ -65,10 +65,10 @@ declare namespace Model {
   )[];
 
   /**
-   * Model constructor callback - is called when Model finishes intializing.
+   * State constructor callback - is called when State finishes intializing.
    * Returned function will run when model is destroyed.
    */
-  type Init<T extends Model = Model> = (
+  type Init<T extends State = State> = (
     this: T,
     thisArg: T
   ) => Promise<void> | (() => void) | Args<T> | Assign<T> | void;
@@ -80,29 +80,29 @@ declare namespace Model {
       : T[K];
   };
 
-  /** Subset of `keyof T` which are not methods or defined by base Model U. **/
-  type Field<T> = Exclude<keyof T, keyof Model>;
+  /** Subset of `keyof T` which are not methods or defined by base State U. **/
+  type Field<T> = Exclude<keyof T, keyof State>;
 
   /** Any valid key for model, including but not limited to Field<T>. */
   type Event<T> = Field<T> | number | symbol | (string & {});
 
-  /** Export/Import compatible value for a given property in a Model. */
+  /** Export/Import compatible value for a given property in a State. */
   type Export<R> = R extends { get(): infer T } ? T : R;
 
   /** Value for a property managed by a model. */
-  type Value<T extends Model, K extends Event<T>> = K extends keyof T
+  type Value<T extends State, K extends Event<T>> = K extends keyof T
     ? Export<T[K]>
     : unknown;
 
   type Setter<T> = (value: T, previous: T) => boolean | void | (() => T);
 
-  type OnEvent<T extends Model> = (
+  type OnEvent<T extends State> = (
     this: T,
     key: unknown,
     source: T
   ) => void | (() => void) | null;
 
-  type OnUpdate<T extends Model, K extends Event<T>> = (
+  type OnUpdate<T extends State, K extends Event<T>> = (
     this: T,
     key: K,
     thisArg: K
@@ -148,7 +148,7 @@ declare namespace Model {
   type EffectCallback = (update: boolean | null) => void;
 }
 
-interface Model {
+interface State {
   /**
    * Loopback to instance of this model. This is useful when in a subscribed context,
    * to keep write access to `this` after a destructure. You can use it to read variables silently as well.
@@ -156,8 +156,8 @@ interface Model {
   is: this;
 }
 
-abstract class Model implements Observable {
-  constructor(...args: Model.Args) {
+abstract class State implements Observable {
+  constructor(...args: State.Args) {
     prepare(this);
     define(this, 'is', { value: this });
     init(this, args);
@@ -191,7 +191,7 @@ abstract class Model implements Observable {
    *
    * @returns Object with all values from this model.
    **/
-  get(): Model.Values<this>;
+  get(): State.Values<this>;
 
   /**
    * Run a function which will run automatically when accessed values change.
@@ -201,7 +201,7 @@ abstract class Model implements Observable {
    *               effect is cancelled, or parent model is destroyed.
    * @returns Function to cancel listener.
    */
-  get(effect: Model.Effect<this>): () => void;
+  get(effect: State.Effect<this>): () => void;
 
   /**
    * Get value of a property.
@@ -210,10 +210,10 @@ abstract class Model implements Observable {
    * @param required - If true, will throw an error if property is not available.
    * @returns Value of property.
    */
-  get<T extends Model.Event<this>>(
+  get<T extends State.Event<this>>(
     key: T,
     required?: boolean
-  ): Model.Value<this, T>;
+  ): State.Value<this, T>;
 
   /**
    * Run a function when a property is updated.
@@ -222,9 +222,9 @@ abstract class Model implements Observable {
    * @param callback - Function to call when property is updated.
    * @returns Function to cancel listener.
    */
-  get<T extends Model.Event<this>>(
+  get<T extends State.Event<this>>(
     key: T,
-    callback: Model.OnUpdate<this, T>
+    callback: State.OnUpdate<this, T>
   ): () => void;
 
   /**
@@ -244,8 +244,8 @@ abstract class Model implements Observable {
   get(status: null, callback: () => void): () => void;
 
   get(
-    arg1?: Model.Effect<this> | string | null,
-    arg2?: boolean | Model.OnUpdate<this, any>
+    arg1?: State.Effect<this> | string | null,
+    arg2?: boolean | State.OnUpdate<this, any>
   ) {
     const self = this.is;
 
@@ -278,7 +278,7 @@ abstract class Model implements Observable {
 
     if (typeof arg1 == 'function') {
       const effect = METHOD.get(arg1) || arg1;
-      let pending = new Set<Model.Event<this>>();
+      let pending = new Set<State.Event<this>>();
 
       return watch(self, (proxy) => {
         const cb = effect.call(proxy, proxy, pending);
@@ -304,7 +304,7 @@ abstract class Model implements Observable {
    *
    * @returns Promise which resolves object with updated values, `undefined` if there no update is pending.
    **/
-  set(): PromiseLike<Model.Event<this>[]> | undefined;
+  set(): PromiseLike<State.Event<this>[]> | undefined;
 
   /**
    * Update mulitple properties at once. Merges argument with current state.
@@ -315,9 +315,9 @@ abstract class Model implements Observable {
    * @returns Promise resolving an array of keys updated, `undefined` (immediately) if a noop.
    */
   set(
-    assign?: Model.Assign<this>,
+    assign?: State.Assign<this>,
     silent?: boolean
-  ): PromiseLike<Model.Event<this>[]> | undefined;
+  ): PromiseLike<State.Event<this>[]> | undefined;
 
   /**
    * Push an update. This will not change the value of associated property.
@@ -333,7 +333,7 @@ abstract class Model implements Observable {
    * @param key - Property or event to dispatch.
    * @returns Promise resolves an array of keys updated.
    */
-  set(key: Model.Event<this>): PromiseLike<Model.Event<this>[]>;
+  set(key: State.Event<this>): PromiseLike<State.Event<this>[]>;
 
   /**
    * Set a value for a property. This will update the value and notify listeners.
@@ -351,10 +351,10 @@ abstract class Model implements Observable {
    * @returns Promise resolves an array of keys updated.
    */
   set(
-    key: Model.Event<this>,
+    key: State.Event<this>,
     value: unknown,
     init?: boolean
-  ): PromiseLike<Model.Event<this>[]>;
+  ): PromiseLike<State.Event<this>[]>;
 
   /**
    * Call a function when update occurs.
@@ -368,7 +368,7 @@ abstract class Model implements Observable {
    * @returns Function to remove listener. Will return `true` if removed, `false` if inactive already.
    *
    */
-  set(callback: Model.OnEvent<this>): () => boolean;
+  set(callback: State.OnEvent<this>): () => boolean;
 
   /**
    * Call a function when a property is updated.
@@ -378,8 +378,8 @@ abstract class Model implements Observable {
    * @param event - Property to watch for updates.
    */
   set(
-    callback: Model.OnEvent<this>,
-    event: Model.Event<this> | null
+    callback: State.OnEvent<this>,
+    event: State.Event<this> | null
   ): () => boolean;
 
   /**
@@ -391,7 +391,7 @@ abstract class Model implements Observable {
   set(status: null): void;
 
   set(
-    arg1?: Model.OnEvent<this> | Model.Assign<this> | Model.Event<this> | null,
+    arg1?: State.OnEvent<this> | State.Assign<this> | State.Event<this> | null,
     arg2?: unknown,
     arg3?: boolean
   ) {
@@ -416,7 +416,7 @@ abstract class Model implements Observable {
     const pending = PENDING_KEYS.get(this);
 
     if (pending)
-      return <PromiseLike<Model.Event<this>[]>>{
+      return <PromiseLike<State.Event<this>[]>>{
         then: (res) =>
           new Promise<any>((res) => {
             const remove = addListener(this, (key) => {
@@ -430,7 +430,7 @@ abstract class Model implements Observable {
   }
 
   /**
-   * Iterate over managed properties in this instance of Model.
+   * Iterate over managed properties in this instance of State.
    * Yeilds the key and current value for each property.
    */
   [Symbol.iterator](): Iterator<[string, unknown]> {
@@ -444,7 +444,7 @@ abstract class Model implements Observable {
    *
    * @param args - arguments sent to constructor
    */
-  static new<T extends Model>(this: Model.New<T>, ...args: Model.Args<T>): T {
+  static new<T extends State>(this: State.New<T>, ...args: State.Args<T>): T {
     const instance = new this(...args, (x) => {
       const cb = x.new && x.new();
       if (cb) x.set(cb, null);
@@ -459,7 +459,7 @@ abstract class Model implements Observable {
    * If so, language server will make available all static
    * methods and properties of this class.
    */
-  static is<T extends Model.Extends>(this: T, maybe: unknown): maybe is T {
+  static is<T extends State.Extends>(this: T, maybe: unknown): maybe is T {
     return (
       maybe === this ||
       (typeof maybe == 'function' && maybe.prototype instanceof this)
@@ -467,11 +467,11 @@ abstract class Model implements Observable {
   }
 
   /**
-   * Register a callback to run when any instance of this Model is updated.
+   * Register a callback to run when any instance of this State is updated.
    */
-  static on<T extends Model>(
-    this: Model.Extends<T>,
-    listener: Model.OnEvent<T>
+  static on<T extends State>(
+    this: State.Extends<T>,
+    listener: State.OnEvent<T>
   ) {
     let notify = NOTIFY.get(this);
 
@@ -483,19 +483,19 @@ abstract class Model implements Observable {
   }
 }
 
-define(Model.prototype, 'toString', {
+define(State.prototype, 'toString', {
   value() {
     return ID.get(this.is);
   }
 });
 
-define(Model, 'toString', {
+define(State, 'toString', {
   value() {
     return this.name;
   }
 });
 
-function assign(subject: Model, data: Model.Assign<Model>, silent?: boolean) {
+function assign(subject: State, data: State.Assign<State>, silent?: boolean) {
   const methods = METHODS.get(subject.constructor)!;
 
   for (const key in data) {
@@ -516,12 +516,12 @@ function assign(subject: Model, data: Model.Assign<Model>, silent?: boolean) {
 }
 
 /** Apply instructions and inherited event listeners. Ensure class metadata is ready. */
-function prepare(model: Model) {
-  let T = model.constructor as Model.Extends;
+function prepare(model: State) {
+  let T = model.constructor as State.Extends;
 
-  if (T === Model) throw new Error('Cannot create base Model.');
+  if (T === State) throw new Error('Cannot create base State.');
 
-  const chain = [] as Model.Extends[];
+  const chain = [] as State.Extends[];
   let keys = new Map<string, (value: any) => void>();
 
   ID.set(model, `${T}-${uid()}`);
@@ -531,7 +531,7 @@ function prepare(model: Model) {
       addListener(model, cb);
     }
 
-    if (T === Model) break;
+    if (T === State) break;
     else chain.unshift(T);
 
     T = Object.getPrototypeOf(T);
@@ -550,7 +550,7 @@ function prepare(model: Model) {
     )) {
       if (!value || key == 'constructor') continue;
 
-      function bind(this: Model, original?: Function) {
+      function bind(this: State, original?: Function) {
         const { is } = this;
 
         if (is.hasOwnProperty(key) && !original) return value as Function;
@@ -574,7 +574,7 @@ function prepare(model: Model) {
  * Apply model arguemnts, run callbacks and observe properties.
  * Accumulate and handle cleanup events.
  **/
-function init(model: Model, args: Model.Args) {
+function init(model: State, args: State.Args) {
   const state = {} as Record<string | number | symbol, unknown>;
 
   STATE.set(model, state);
@@ -597,7 +597,7 @@ function init(model: Model, args: Model.Args) {
       const use =
         typeof arg == 'function'
           ? arg.call(model, model)
-          : (arg as Model.Assign<Model>);
+          : (arg as State.Assign<State>);
 
       if (use instanceof Promise)
         use.catch((err) => {
@@ -613,7 +613,7 @@ function init(model: Model, args: Model.Args) {
       model,
       () => {
         for (const [_, value] of model)
-          if (value instanceof Model && PARENT.get(value) === model)
+          if (value instanceof State && PARENT.get(value) === model)
             value.set(null);
 
         Object.freeze(state);
@@ -626,20 +626,20 @@ function init(model: Model, args: Model.Args) {
 }
 
 function manage(
-  target: Model,
+  target: State,
   key: string | number,
   value: any,
   silent?: boolean
 ) {
   const state = STATE.get(target)!;
 
-  function get(this: Model) {
+  function get(this: State) {
     return follow(this, key, state[key]);
   }
 
   function set(value: unknown, silent?: boolean) {
     update(target, key, value, silent);
-    if (value instanceof Model && !PARENT.has(value)) {
+    if (value instanceof State && !PARENT.has(value)) {
       PARENT.set(value, target);
       event(value);
     }
@@ -651,14 +651,14 @@ function manage(
 
 type Proxy<T = any> = (key: string | number, value: T) => T;
 
-const OBSERVER = new WeakMap<Model, Proxy>();
+const OBSERVER = new WeakMap<State, Proxy>();
 
-function follow(from: Model, key: string | number, value?: any) {
+function follow(from: State, key: string | number, value?: any) {
   const observe = OBSERVER.get(from);
   return observe ? observe(key, value) : value;
 }
 
-function access(subject: Model, property: string, required?: boolean) {
+function access(subject: State, property: string, required?: boolean) {
   const state = STATE.get(subject)!;
 
   if (property in state || required === false) {
@@ -693,10 +693,10 @@ function access(subject: Model, property: string, required?: boolean) {
 }
 
 function update<T>(
-  subject: Model,
+  subject: State,
   key: string | number | symbol,
   value: T,
-  arg?: boolean | Model.Setter<T>
+  arg?: boolean | State.Setter<T>
 ) {
   const state = STATE.get(subject)!;
 
@@ -732,4 +732,4 @@ function uid() {
     .toUpperCase();
 }
 
-export { event, METHOD, Model, PARENT, STATE, uid, access, update, follow };
+export { event, METHOD, State, PARENT, STATE, uid, access, update, follow };

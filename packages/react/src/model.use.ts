@@ -1,25 +1,25 @@
-import { Model, Context, watch } from '@expressive/mvc';
+import { State, Context, watch } from '@expressive/mvc';
 
 import { Pragma } from './adapter';
 
 declare module '@expressive/mvc' {
-  namespace Model {
+  namespace State {
     interface Valid {
       use?(...props: any[]): Promise<void> | void;
     }
 
-    type UseArgs<T extends Model> = T extends {
+    type UseArgs<T extends State> = T extends {
       use(...props: infer P): any;
     }
       ? P
-      : Model.Args<T>;
+      : State.Args<T>;
 
-    function use<T extends Model>(this: New<T>, ...args: UseArgs<T>): T;
+    function use<T extends State>(this: New<T>, ...args: UseArgs<T>): T;
   }
 }
 
-Model.use = function <T extends Model.Valid>(
-  this: Model.New<T>,
+State.use = function <T extends State.Valid>(
+  this: State.New<T>,
   ...args: any[]
 ) {
   const ambient = Context.use();
@@ -46,7 +46,7 @@ Model.use = function <T extends Model.Valid>(
       };
     }
 
-    return (...args: Model.Args<T>) => {
+    return (...args: State.Args<T>) => {
       Pragma.useEffect(didMount, []);
 
       if (ready) {
@@ -61,7 +61,7 @@ Model.use = function <T extends Model.Valid>(
                   .map(
                     (arg) =>
                       typeof arg == 'object' &&
-                      instance.set(arg as Model.Assign<T>)
+                      instance.set(arg as State.Assign<T>)
                   )
               )
         ).finally(() => {

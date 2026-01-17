@@ -2,20 +2,20 @@ import { event, METHOD, watch } from '@expressive/mvc';
 import React, { ReactNode } from 'react';
 
 import { provide, Layers } from './context';
-import { Model, Context } from '.';
+import { State, Context } from '.';
 
 const OUTER = new WeakMap<Component, Context>();
 
-export class Component extends Model {
+export class Component extends State {
   static contextType = Layers;
 
-  private _props!: Model.ComponentProps<this>;
+  private _props!: State.ComponentProps<this>;
 
-  get props(): Model.ComponentProps<this> {
+  get props(): State.ComponentProps<this> {
     return this._props;
   }
 
-  set props(props: Model.ComponentProps<this>) {
+  set props(props: State.ComponentProps<this>) {
     this._props = props;
     this.set(props as {});
   }
@@ -31,7 +31,7 @@ export class Component extends Model {
     context.push(this);
   }
 
-  state!: Model.Values<this>;
+  state!: State.Values<this>;
   children!: ReactNode | ((self: this) => ReactNode);
   fallback?: ReactNode;
 

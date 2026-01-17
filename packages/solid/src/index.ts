@@ -2,8 +2,8 @@ import './model.get';
 import './model.use';
 
 export {
-  Model,
-  Model as default,
+  State,
+  State as default,
   get,
   use,
   ref,
