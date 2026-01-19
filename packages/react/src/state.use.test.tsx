@@ -251,7 +251,7 @@ describe('props argument', () => {
     bar?: string = undefined;
   }
 
-  it('will apply props to model', async () => {
+  it('will apply props to state', async () => {
     const mockExternal = {
       foo: 'foo',
       bar: 'bar'

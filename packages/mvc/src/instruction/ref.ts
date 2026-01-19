@@ -16,7 +16,7 @@ declare namespace ref {
     /** State instance this reference belongs to. */
     is: State;
 
-    /** Key of property on model this reference belongs to. */
+    /** Key of property on state this reference belongs to. */
     key: string;
 
     /**
@@ -49,7 +49,7 @@ declare namespace ref {
  *
  * *Properties are simultaneously a ref-function and ref-object, use as needed.*
  *
- * @param target - Source model from which to reference values.
+ * @param target - Source state from which to reference values.
  */
 function ref<T extends State>(target: T): ref.Proxy<T>;
 
@@ -58,7 +58,7 @@ function ref<T extends State>(target: T): ref.Proxy<T>;
  * Each property will invoke mapper function on first access supply
  * the its return value going forward.
  *
- * @param target - Source model from which to reference values.
+ * @param target - Source state from which to reference values.
  * @param mapper - Function producing the placeholder value for any given property.
  */
 function ref<O extends State, R>(

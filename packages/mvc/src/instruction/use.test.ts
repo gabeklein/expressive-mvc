@@ -220,7 +220,7 @@ describe('instruction', () => {
   });
 });
 
-describe('model', () => {
+describe('state', () => {
   it('will init upon access', () => {
     class Child extends State {
       value = 'foo';
@@ -268,7 +268,7 @@ describe('model', () => {
   it.todo('will run callback after assign completes');
   it.todo('will run cleanup on reassign');
 
-  it('will only reassign a matching model', () => {
+  it('will only reassign a matching state', () => {
     class Child extends State {}
     class Unrelated extends State {}
     class Parent extends State {

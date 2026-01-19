@@ -1,5 +1,5 @@
-import './model.get';
-import './model.use';
+import './state.get';
+import './state.use';
 
 export {
   State,
