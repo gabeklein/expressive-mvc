@@ -2,6 +2,7 @@ import { Context } from '../context';
 import { mockError, mockPromise, mockWarn } from '../mocks';
 import { State } from '../state';
 import { get } from './get';
+import { set } from './set';
 import { use } from './use';
 
 const error = mockError();
@@ -258,7 +259,7 @@ describe('compute mode', () => {
     class Subject extends State {
       seconds = 0;
 
-      minutes = get(this, (state) => {
+      minutes = set(this, (state) => {
         return Math.floor(state.seconds / 60);
       });
     }
@@ -283,9 +284,7 @@ describe('compute mode', () => {
   it('will trigger when nested inputs change', async () => {
     class Subject extends State {
       child = new Child();
-      nested = get(this, (state) => {
-        return state.child.value;
-      });
+      nested = set(this, ({ child }) => child.value);
     }
 
     class Child extends State {
@@ -311,7 +310,7 @@ describe('compute mode', () => {
   it('will compute early if value is accessed', async () => {
     class Test extends State {
       number = 0;
-      plusOne = get(this, (state) => {
+      plusOne = set(this, (state) => {
         const value = state.number + 1;
         didCompute(value);
         return value;
@@ -358,7 +357,7 @@ describe('compute mode', () => {
       a = 1;
       b = 1;
 
-      c = get(this, (state) => {
+      c = set(this, (state) => {
         exec();
         return state.a + state.b + state.x.value;
       });
@@ -397,25 +396,25 @@ describe('compute mode', () => {
     class Ordered extends State {
       X = 1;
 
-      A = get(this, (state) => {
+      A = set(this, (state) => {
         const value = state.X;
         didCompute.push('A');
         return value;
       });
 
-      B = get(this, (state) => {
+      B = set(this, (state) => {
         const value = state.A + 1;
         didCompute.push('B');
         return value;
       });
 
-      C = get(this, (state) => {
+      C = set(this, (state) => {
         const value = state.X + state.B + 1;
         didCompute.push('C');
         return value;
       });
 
-      D = get(this, (state) => {
+      D = set(this, (state) => {
         const value = state.A + state.C + 1;
         didCompute.push('D');
         return value;
@@ -444,7 +443,7 @@ describe('compute mode', () => {
 
   describe('failures', () => {
     class Subject extends State {
-      never = get(this, () => {
+      never = set(this, () => {
         throw new Error();
       });
     }
@@ -463,7 +462,7 @@ describe('compute mode', () => {
       class Test extends State {
         shouldFail = false;
 
-        value = get(this, (state) => {
+        value = set(this, (state) => {
           if (state.shouldFail) throw new Error();
           else return undefined;
         });
@@ -484,10 +483,10 @@ describe('compute mode', () => {
 
     it('will throw if source is another instruction', () => {
       class Test extends State {
-        peer = get(this, () => 'foobar');
+        peer = set(this, () => 'foobar');
 
         // @ts-expect-error
-        value = get(this.peer, () => {});
+        value = set(this.peer, () => {});
       }
 
       expect(() => Test.new('ID')).toThrowError(
@@ -502,7 +501,7 @@ describe('compute mode', () => {
         multiplier = 0;
         previous: number | undefined | null = null;
 
-        value = get(this, (state) => {
+        value = set(this, (state) => {
           const { value, multiplier } = state;
 
           // use set to bypass subscriber
@@ -541,7 +540,7 @@ describe('compute mode', () => {
 
       class Test extends State {
         input = 1;
-        value = get(this, (state) => {
+        value = set(this, (state) => {
           const { input, value } = state;
 
           didGetOldValue(value);
@@ -575,7 +574,7 @@ describe('compute mode', () => {
     it('will create computed via factory', async () => {
       class Test extends State {
         foo = 1;
-        bar = get(this.getBar);
+        bar = set(true, this.getBar);
 
         getBar() {
           return 1 + this.foo;
@@ -596,7 +595,7 @@ describe('compute mode', () => {
       class Hello extends State {
         friend = 'World';
 
-        greeting = get(this.generateGreeting);
+        greeting = set(true, this.generateGreeting);
 
         generateGreeting() {
           return `Hello ${this.friend}!`;
@@ -616,7 +615,7 @@ describe('compute mode', () => {
     it('will use top-most method of class', () => {
       class Test extends State {
         foo = 1;
-        bar = get(this.getBar);
+        bar = set(true, this.getBar);
 
         getBar() {
           return 1 + this.foo;
@@ -638,7 +637,7 @@ describe('compute mode', () => {
       const factory = jest.fn<'foo', [string, Test]>(() => 'foo');
 
       class Test extends State {
-        fooBar = get(factory);
+        fooBar = set(true, factory);
       }
 
       const test = Test.new();
@@ -651,7 +650,7 @@ describe('compute mode', () => {
       class Test extends State {
         foo = 'foo';
 
-        fooBar = get((key: string, self: Test) => {
+        fooBar = set(true, (key: string, self: Test) => {
           return self.foo;
         });
       }
