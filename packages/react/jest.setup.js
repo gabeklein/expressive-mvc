@@ -1,20 +1,20 @@
 import '@testing-library/jest-dom';
 
-import { Model } from '@expressive/mvc';
+import { State } from '@expressive/mvc';
 
 expect.extend({
   toHaveUpdated
 });
 
 /**
- * @param {Model} received
+ * @param {State} received
  * @param {string[]} keys
  */
 async function toHaveUpdated(received, ...keys) {
-  if (!(received instanceof Model))
+  if (!(received instanceof State))
     return {
       pass: false,
-      message: () => `Expected Model but got ${received}.`
+      message: () => `Expected State but got ${received}.`
     };
 
   const didUpdate = await received.set();

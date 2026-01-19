@@ -27,7 +27,7 @@ it('will update component as values change', async () => {
   screen.getByText('baz');
 });
 
-it('will pass props to model', async () => {
+it('will pass props to state', async () => {
   const didUpdateFoo = jest.fn();
   class Test extends State {
     foo = 'foo';

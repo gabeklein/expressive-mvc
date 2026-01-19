@@ -1,4 +1,4 @@
-import { Model } from '@expressive/mvc';
+import { State } from '@expressive/mvc';
 
 expect.extend({
   toUpdate,
@@ -6,14 +6,14 @@ expect.extend({
 });
 
 /**
- * @param {Model} received
+ * @param {State} received
  * @param {number} timeout
  */
 async function toUpdate(received, timeout = 0) {
-  if (!(received instanceof Model))
+  if (!(received instanceof State))
     return {
       pass: false,
-      message: () => `Expected Model but got ${received}.`
+      message: () => `Expected State but got ${received}.`
     };
 
   return new Promise((resolve) => {
@@ -39,14 +39,14 @@ async function toUpdate(received, timeout = 0) {
 }
 
 /**
- * @param {Model} received
+ * @param {State} received
  * @param {string[]} keys
  */
 async function toHaveUpdated(received, ...keys) {
-  if (!(received instanceof Model))
+  if (!(received instanceof State))
     return {
       pass: false,
-      message: () => `Expected Model but got ${received}.`
+      message: () => `Expected State but got ${received}.`
     };
 
   const didUpdate = await received.set();
