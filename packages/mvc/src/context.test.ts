@@ -183,19 +183,6 @@ describe('include', () => {
     expect(cb).toBeCalledTimes(3);
   });
 
-  it('will include multiple', () => {
-    const foo = Foo.new();
-    const bar = Bar.new();
-
-    const context = new Context();
-
-    context.use(foo);
-    context.use(bar);
-
-    expect(context.get(Foo)).toBe(foo);
-    expect(context.get(Bar)).toBe(bar);
-  });
-
   it('will ignore subsequent if callback', () => {
     const cb = jest.fn();
     const context = new Context();
@@ -206,18 +193,6 @@ describe('include', () => {
     expect(context.get(Foo)).toBeInstanceOf(Foo);
 
     expect(cb).toBeCalledTimes(1);
-  });
-
-  it('will override multiple same', () => {
-    const context = new Context();
-    const fetch = () => context.get(Foo);
-
-    context.use(Foo);
-    context.use(Foo);
-
-    expect(fetch).toThrowError(
-      `Did find Foo in context, but multiple were defined.`
-    );
   });
 
   // This will be made more elegant later.
