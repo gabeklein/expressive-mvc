@@ -1,10 +1,10 @@
 import { act, render, screen } from '@testing-library/react';
 
-import Model from '.';
+import State from '.';
 import { set } from '@expressive/mvc';
 
 it('will update component as values change', async () => {
-  class Test extends Model {
+  class Test extends State {
     foo = 'bar';
     constructor() {
       super();
@@ -29,9 +29,9 @@ it('will update component as values change', async () => {
 
 it('will pass props to model', async () => {
   const didUpdateFoo = jest.fn();
-  class Test extends Model {
+  class Test extends State {
     foo = 'foo';
-    constructor(...args: Model.Args) {
+    constructor(...args: State.Args) {
       super(...args);
       this.set(didUpdateFoo);
     }
@@ -50,10 +50,10 @@ it('will pass props to model', async () => {
 });
 
 it('will pass props before effects run', async () => {
-  class Test extends Model {
+  class Test extends State {
     foo = 'foo';
 
-    constructor(...args: Model.Args) {
+    constructor(...args: State.Args) {
       super(...args, (self) => {
         expect(self.foo).toBe('bar');
       });
@@ -68,7 +68,7 @@ it('will pass props before effects run', async () => {
 });
 
 it('will call is method on creation', () => {
-  class Control extends Model {}
+  class Control extends State {}
 
   const Test = Control.as(() => null);
 
@@ -85,10 +85,10 @@ it('will call is method on creation', () => {
 });
 
 it('will pass untracked props to render', async () => {
-  class Test extends Model {
+  class Test extends State {
     foo = 'foo';
 
-    constructor(...args: Model.Args) {
+    constructor(...args: State.Args) {
       super(args);
       test = this;
     }
@@ -107,10 +107,10 @@ it('will pass untracked props to render', async () => {
 });
 
 it('will revert to value from prop', async () => {
-  class Test extends Model {
+  class Test extends State {
     foo = 'foo';
 
-    constructor(...args: Model.Args) {
+    constructor(...args: State.Args) {
       super(args);
       test = this;
       this.set(didSetFoo);
@@ -148,7 +148,7 @@ it('will revert to value from prop', async () => {
 });
 
 it('will override method', async () => {
-  class Test extends Model {
+  class Test extends State {
     callback() {
       return 'foo';
     }
@@ -166,7 +166,7 @@ it('will override method', async () => {
 });
 
 it('will trigger set instruction', () => {
-  class Foo extends Model {
+  class Foo extends State {
     value = set('foobar', didSet);
   }
 
@@ -182,7 +182,7 @@ describe('new method', () => {
   it('will call if exists', () => {
     const didCreate = jest.fn();
 
-    class Test extends Model {
+    class Test extends State {
       value = 0;
 
       new() {
@@ -198,7 +198,7 @@ describe('new method', () => {
   });
 
   it('will enforce signature', () => {
-    class Test extends Model {
+    class Test extends State {
       new(foo: string) {}
     }
 
@@ -211,7 +211,7 @@ describe('new method', () => {
 
 describe('suspense', () => {
   it('will render fallback prop', async () => {
-    class Foo extends Model {
+    class Foo extends State {
       value = set<string>();
     }
 
@@ -230,7 +230,7 @@ describe('suspense', () => {
   });
 
   it('will use fallback property first', async () => {
-    class Foo extends Model {
+    class Foo extends State {
       value = set<string>();
       fallback = (<span>Loading!</span>);
     }

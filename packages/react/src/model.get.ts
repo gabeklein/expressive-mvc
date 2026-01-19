@@ -1,4 +1,4 @@
-import { Context, watch, Model } from '@expressive/mvc';
+import { Context, watch, State } from '@expressive/mvc';
 
 import { Pragma } from './adapter';
 
@@ -30,50 +30,50 @@ type ForceRefresh = {
 };
 
 declare module '@expressive/mvc' {
-  namespace Model {
-    type GetFactory<T extends Model, R> = (
+  namespace State {
+    type GetFactory<T extends State, R> = (
       this: T,
       current: T,
       refresh: ForceRefresh
     ) => R;
 
-    type GetEffect<T extends Model> = (
+    type GetEffect<T extends State> = (
       this: T,
       current: T,
       refresh: ForceRefresh
     ) => null;
 
     /** Fetch instance of this class from context. */
-    function get<T extends Model>(this: Extends<T>): T;
+    function get<T extends State>(this: Extends<T>): T;
 
     /** Fetch instance of this class optionally. */
-    function get<T extends Model>(
+    function get<T extends State>(
       this: Extends<T>,
       required: false
     ): T | undefined;
 
     /** Fetch instance of this class from context. */
-    function get<T extends Model>(
+    function get<T extends State>(
       this: Extends<T>,
       requireValues: true
     ): Required<T>;
 
-    function get<T extends Model, R>(
+    function get<T extends State, R>(
       this: Extends<T>,
       factory: GetFactory<T, Promise<R> | R>
     ): NoVoid<R>;
 
     // TODO: eagerly match this so any nulls are caught - would prevent updates.
-    function get<T extends Model>(
+    function get<T extends State>(
       this: Extends<T>,
       factory: GetEffect<T>
     ): null;
   }
 }
 
-Model.get = function <T extends Model, R>(
-  this: Model.Extends<T>,
-  argument?: boolean | Model.GetFactory<T, unknown>
+State.get = function <T extends State, R>(
+  this: State.Extends<T>,
+  argument?: boolean | State.GetFactory<T, unknown>
 ) {
   const context = Context.use();
   const state = Pragma.useState(() => {

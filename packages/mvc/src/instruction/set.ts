@@ -1,5 +1,5 @@
 import { addListener, enter } from '../control';
-import { event, update } from '../model';
+import { event, update } from '../state';
 import { Instruction, use } from './use';
 
 declare namespace set {
