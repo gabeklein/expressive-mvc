@@ -70,7 +70,7 @@ function get<R, T extends State>(
   arg0: T | get.Factory<R, T> | Type<T>,
   arg1?: Function | boolean
 ) {
-  return use((key, subject, state) => {
+  return use((key, subject) => {
     if (typeof arg0 == 'symbol')
       throw new Error(
         `Attempted to use an instruction result (probably use or get) as computed source for ${subject}.${key}. This is not allowed.`
