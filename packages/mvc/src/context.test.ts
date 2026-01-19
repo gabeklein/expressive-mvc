@@ -1,7 +1,7 @@
 import { Context } from './context';
-import { Model } from './model';
+import { State } from './state';
 
-class Example extends Model {}
+class Example extends State {}
 class Example2 extends Example {}
 
 it('will add instance to context', () => {
@@ -35,15 +35,15 @@ it("will throw if context doesn't exist if required", () => {
   expect(attempt).toThrowError('Could not find Example in context.');
 });
 
-it('will not create base Model', () => {
+it('will not create base State', () => {
   // @ts-expect-error
-  const attempt = () => new Context({ Model });
+  const attempt = () => new Context({ State });
 
-  expect(attempt).toThrowError('Cannot create base Model.');
+  expect(attempt).toThrowError('Cannot create base State.');
 });
 
-it('will include children of Model', () => {
-  class Test extends Model {
+it('will include children of State', () => {
+  class Test extends State {
     example = new Example();
   }
 
@@ -53,7 +53,7 @@ it('will include children of Model', () => {
 });
 
 it('will not include initialized child', () => {
-  class Test extends Model {
+  class Test extends State {
     // this will be initialized before parent is
     example = Example.new();
   }
@@ -113,7 +113,7 @@ it('will ignore if multiple but same', () => {
 });
 
 it('will destroy modules created by layer', () => {
-  class Test extends Model {
+  class Test extends State {
     destroyed = jest.fn();
 
     constructor() {
@@ -142,9 +142,9 @@ it('will destroy modules created by layer', () => {
 });
 
 describe('include', () => {
-  class Foo extends Model {}
-  class Bar extends Model {}
-  class FooBar extends Model {
+  class Foo extends State {}
+  class Bar extends State {}
+  class FooBar extends State {
     foo = new Foo();
   }
 
@@ -199,7 +199,7 @@ describe('include', () => {
   it('will hard-reset if inputs differ', () => {
     const bazDidDie = jest.fn();
 
-    class Baz extends Model {
+    class Baz extends State {
       constructor() {
         super();
         this.get(() => bazDidDie);
@@ -250,8 +250,8 @@ describe('include', () => {
 });
 
 it('will pop child context', () => {
-  class Test extends Model {
-    constructor(...args: Model.Args) {
+  class Test extends State {
+    constructor(...args: State.Args) {
       super(args);
       this.set(() => {
         didDestroy(this.constructor.name);
@@ -279,12 +279,12 @@ it('will throw on bad include', () => {
   expect(() => context.use(undefined as any)).toThrowError();
 });
 
-it('will throw on base Model include', () => {
+it('will throw on base State include', () => {
   const context = new Context();
 
   // @ts-ignore
-  expect(() => context.use({ Model })).toThrowError(
-    'Cannot create base Model.'
+  expect(() => context.use({ State })).toThrowError(
+    'Cannot create base State.'
   );
 });
 
@@ -293,7 +293,7 @@ it('will throw on bad include property', () => {
 
   // @ts-ignore
   expect(() => context.use({ Thing: undefined })).toThrowError(
-    "Context may only include instance or class `extends Model` but got undefined (as 'Thing')."
+    "Context may only include instance or class `extends State` but got undefined (as 'Thing')."
   );
 });
 
@@ -302,37 +302,37 @@ it('will throw on bad include property (no alias)', () => {
 
   // @ts-ignore
   expect(() => context.use({ [0]: undefined })).toThrowError(
-    'Context may only include instance or class `extends Model` but got undefined.'
+    'Context may only include instance or class `extends State` but got undefined.'
   );
 });
 
 describe('Context.get callback overload (downstream registration)', () => {
-  class DownstreamModel extends Model {}
+  class DownstreamState extends State {}
 
   it('should call callback when type is added downstream', () => {
     const context = new Context();
     const cb = jest.fn();
 
-    // Register callback for DownstreamModel
-    context.get(DownstreamModel, cb);
+    // Register callback for DownstreamState
+    context.get(DownstreamState, cb);
 
-    // Add DownstreamModel after callback registration
-    context.push(DownstreamModel);
+    // Add DownstreamState after callback registration
+    context.push(DownstreamState);
 
     // Callback should be called with the instance
     expect(cb).toBeCalledTimes(1);
-    expect(cb.mock.calls[0][0]).toBeInstanceOf(DownstreamModel);
+    expect(cb.mock.calls[0][0]).toBeInstanceOf(DownstreamState);
   });
 
   it('should clean up callback when context is popped', () => {
     const context = new Context();
     const cb = jest.fn();
 
-    // Register callback for DownstreamModel
-    const cancel = context.get(DownstreamModel, cb);
+    // Register callback for DownstreamState
+    const cancel = context.get(DownstreamState, cb);
 
-    // Add DownstreamModel after callback registration
-    context.push(DownstreamModel);
+    // Add DownstreamState after callback registration
+    context.push(DownstreamState);
 
     // Callback should be called
     expect(cb).toBeCalledTimes(1);
@@ -340,8 +340,8 @@ describe('Context.get callback overload (downstream registration)', () => {
     // Remove callback
     cancel();
 
-    // Add another DownstreamModel (simulate re-adding)
-    context.push(DownstreamModel);
+    // Add another DownstreamState (simulate re-adding)
+    context.push(DownstreamState);
 
     // Callback should not be called again
     expect(cb).toBeCalledTimes(1);
@@ -354,10 +354,10 @@ describe('Context.get callback overload (downstream registration)', () => {
     const cleanup = jest.fn();
     const cb = jest.fn(() => cleanup);
 
-    context.get(DownstreamModel, cb);
+    context.get(DownstreamState, cb);
 
     // Create a child context and register callback there
-    const child = context.push(DownstreamModel);
+    const child = context.push(DownstreamState);
 
     expect(cb).toBeCalledTimes(1);
 

@@ -1,5 +1,5 @@
-import React from "react";
-import Model, { Provider } from "@expressive/react";
+import React from 'react';
+import State, { Provider } from '@expressive/react';
 
 /*
   When using context the first step is to make some model
@@ -7,7 +7,7 @@ import Model, { Provider } from "@expressive/react";
   components may read and others may write. Shared state
   is de-facto, easy communication between components!
 */
-class FooBar extends Model {
+class FooBar extends State {
   foo = 0;
   bar = 0;
 }
@@ -15,7 +15,7 @@ class FooBar extends Model {
 const Demo = () => {
   /*
     Unlike React's own Provider, Expressive provider accepts a `for` prop,
-    which can be a Model class, instance, or a collection of either.
+    which can be a State class, instance, or a collection of either.
   */
   return (
     <Provider for={FooBar}>
@@ -34,7 +34,12 @@ const Foo = () => {
 
   return (
     <div className="card">
-      <button onClick={() => { foobar.foo++ }}>Foo</button>
+      <button
+        onClick={() => {
+          foobar.foo++;
+        }}>
+        Foo
+      </button>
       <small>(Bar was clicked {bar} times)</small>
     </div>
   );
@@ -49,12 +54,15 @@ const Bar = () => {
 
   return (
     <div className="card">
-      <button onClick={() => { foobar.bar++ }}>Bar</button>
+      <button
+        onClick={() => {
+          foobar.bar++;
+        }}>
+        Bar
+      </button>
       <small>(Foo was clicked {foo} times)</small>
     </div>
   );
 };
 
 export default Demo;
-
-

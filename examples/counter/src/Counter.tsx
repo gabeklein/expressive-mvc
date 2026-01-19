@@ -1,10 +1,10 @@
-import Model from '@expressive/react';
+import State from '@expressive/react';
 import React from 'react';
 
-// When we create a Model, we're defining a set of values to be tracked.
-// It is recommended any Model specific to a component is called 'Control'.
+// When we create a State, we're defining a set of values to be tracked.
+// It is recommended any State specific to a component is called 'Control'.
 
-class Control extends Model {
+class Control extends State {
   // Here we only need one property, `current` whose initial value will be 1.
   // All properties are tracked by a controller, so any changes to a value
   // used by a component, will intelligently re-render that component.
@@ -25,9 +25,9 @@ const Counter = () => {
 
   return (
     <div className="counter">
-      <button onClick={decrement}>{"-"}</button>
+      <button onClick={decrement}>{'-'}</button>
       <pre>{current}</pre>
-      <button onClick={increment}>{"+"}</button>
+      <button onClick={increment}>{'+'}</button>
     </div>
   );
 };

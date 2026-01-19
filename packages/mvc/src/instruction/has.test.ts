@@ -1,12 +1,12 @@
 import { Context } from '../context';
-import { Model } from '../model';
+import { State } from '../state';
 import { has } from './has';
 import { set } from './set';
 
 describe('recipient', () => {
   it('will register child', () => {
-    class Child extends Model {}
-    class Parent extends Model {
+    class Child extends State {}
+    class Parent extends State {
       children = has(Child);
     }
 
@@ -19,8 +19,8 @@ describe('recipient', () => {
   });
 
   it('will not be enumerable', () => {
-    class Child extends Model {}
-    class Parent extends Model {
+    class Child extends State {}
+    class Parent extends State {
       children = has(Child);
     }
 
@@ -33,10 +33,10 @@ describe('recipient', () => {
   });
 
   it('will register a subclass', () => {
-    abstract class Child extends Model {}
+    abstract class Child extends State {}
 
     class Child2 extends Child {}
-    class Parent extends Model {
+    class Parent extends State {
       children = has(Child);
     }
 
@@ -49,9 +49,9 @@ describe('recipient', () => {
   });
 
   it('will not register superclass', () => {
-    class Child extends Model {}
+    class Child extends State {}
     class Child2 extends Child {}
-    class Parent extends Model {
+    class Parent extends State {
       children = has(Child2);
     }
 
@@ -63,9 +63,9 @@ describe('recipient', () => {
   });
 
   it('will not register subclass', () => {
-    class Child extends Model {}
+    class Child extends State {}
     class Child2 extends Child {}
-    class Parent extends Model {
+    class Parent extends State {
       children = has(Child);
     }
 
@@ -77,8 +77,8 @@ describe('recipient', () => {
   });
 
   it('will regsiter for superclass', () => {
-    class Child extends Model {}
-    class Parent extends Model {
+    class Child extends State {}
+    class Parent extends State {
       children = has(Child);
     }
     class Parent2 extends Parent {}
@@ -91,8 +91,8 @@ describe('recipient', () => {
   });
 
   it('will run callback on register', () => {
-    class Child extends Model {}
-    class Parent extends Model {
+    class Child extends State {}
+    class Parent extends State {
       children = has(Child, gotChild);
     }
 
@@ -106,8 +106,8 @@ describe('recipient', () => {
   });
 
   it('will register multiple children', () => {
-    class Child extends Model {}
-    class Parent extends Model {
+    class Child extends State {}
+    class Parent extends State {
       children = has(Child, hasChild);
     }
 
@@ -126,10 +126,10 @@ describe('recipient', () => {
     const didRemove = jest.fn();
     const didAdd = jest.fn(() => didRemove);
 
-    class Child extends Model {
+    class Child extends State {
       value = 0;
     }
-    class Parent extends Model {
+    class Parent extends State {
       children = has(Child, didAdd);
     }
 
@@ -162,8 +162,8 @@ describe('recipient', () => {
   });
 
   it('will not register if returns false', async () => {
-    class Child extends Model {}
-    class Parent extends Model {
+    class Child extends State {}
+    class Parent extends State {
       children = has(Child, hasChild);
     }
 
@@ -187,8 +187,8 @@ describe('recipient', () => {
   });
 
   it('will ignore redundant child', async () => {
-    class Child extends Model {}
-    class Parent extends Model {
+    class Child extends State {}
+    class Parent extends State {
       child = has(Child, gotChild);
     }
 
@@ -202,7 +202,7 @@ describe('recipient', () => {
   });
 
   it('will register own type', async () => {
-    class Test extends Model {
+    class Test extends State {
       tests = has(Test, (got, self) => {
         gotTest(got.toString(), self.toString());
       });
@@ -221,11 +221,11 @@ describe('recipient', () => {
   });
 
   it('will register implicit', () => {
-    class Baz extends Model {}
-    class Foo extends Model {
+    class Baz extends State {}
+    class Foo extends State {
       bar = new Bar();
     }
-    class Bar extends Model {
+    class Bar extends State {
       baz = has(Baz, gotBaz);
     }
 
@@ -239,11 +239,11 @@ describe('recipient', () => {
   });
 
   it('will register for implicit', () => {
-    class Baz extends Model {}
-    class Foo extends Model {
+    class Baz extends State {}
+    class Foo extends State {
       baz = has(Baz);
     }
-    class Bar extends Model {
+    class Bar extends State {
       baz = new Baz();
     }
 
@@ -258,11 +258,11 @@ describe('recipient', () => {
   it('will recieve ready instance', async () => {
     const didSet = jest.fn();
 
-    class Child extends Model {
+    class Child extends State {
       value = set(undefined, didSet);
     }
 
-    class Parent extends Model {
+    class Parent extends State {
       child = has(Child, (child) => {
         child.value = 'Hello';
       });
@@ -276,8 +276,8 @@ describe('recipient', () => {
   });
 
   it('will cleanup before destroying', async () => {
-    class Child extends Model {}
-    class Parent extends Model {
+    class Child extends State {}
+    class Parent extends State {
       children = has(Child, (child) => {
         didNotify();
         return () => {
@@ -307,8 +307,8 @@ describe('recipient', () => {
   });
 
   it('will cleanup effects before destroying', async () => {
-    class Child extends Model {}
-    class Parent extends Model {
+    class Child extends State {}
+    class Parent extends State {
       children = has(Child, () => {
         didNotify();
         this.get(() => {
@@ -333,8 +333,8 @@ describe('recipient', () => {
   });
 
   it.skip('will not self conflict', () => {
-    class Child extends Model {}
-    class Parent extends Model {
+    class Child extends State {}
+    class Parent extends State {
       children = has(Child, didNotify);
     }
 
@@ -357,10 +357,10 @@ describe('recipient', () => {
 
 describe('target', () => {
   it('will register recipients', () => {
-    class Child extends Model {
+    class Child extends State {
       parents = has();
     }
-    class Parent extends Model {
+    class Parent extends State {
       child = has(Child);
     }
 
@@ -374,10 +374,10 @@ describe('target', () => {
   });
 
   it('will register multiple', () => {
-    class Child extends Model {
+    class Child extends State {
       parents = has();
     }
-    class Parent extends Model {
+    class Parent extends State {
       child = has(Child);
     }
 
@@ -395,10 +395,10 @@ describe('target', () => {
   });
 
   it('will callback on register', () => {
-    class Child extends Model {
+    class Child extends State {
       parents = has(gotParent);
     }
-    class Parent extends Model {
+    class Parent extends State {
       child = has(Child);
     }
 
@@ -413,10 +413,10 @@ describe('target', () => {
   });
 
   it('will callback before recipient does', () => {
-    class Child extends Model {
+    class Child extends State {
       parents = has(gotParent);
     }
-    class Parent extends Model {
+    class Parent extends State {
       children = has(Child, gotChild);
     }
 
@@ -435,10 +435,10 @@ describe('target', () => {
   });
 
   it('will prevent register', () => {
-    class Child extends Model {
+    class Child extends State {
       parents = has(gotParent);
     }
-    class Parent extends Model {
+    class Parent extends State {
       children = has(Child, gotChild);
     }
 
@@ -455,12 +455,12 @@ describe('target', () => {
   });
 
   it('will callback on removal', async () => {
-    class Child extends Model {
+    class Child extends State {
       parents = has(() => {
         return removedParent;
       });
     }
-    class Parent extends Model {
+    class Parent extends State {
       children = has(Child);
     }
 
@@ -477,13 +477,13 @@ describe('target', () => {
   });
 
   it('will complain if used more than once', () => {
-    class Child extends Model {
+    class Child extends State {
       parents = has();
       parents2 = has();
     }
 
     expect(() => Child.new()).toThrowError(
-      `'has' callback can only be used once per model.`
+      `'has' callback can only be used once per state.`
     );
   });
 });

@@ -1,49 +1,49 @@
 import { enter } from '../control';
 import { Context } from '../context';
-import { Model, update } from '../model';
+import { State, update } from '../state';
 import { use } from './use';
 
 const APPLY = new WeakMap<
-  Model,
-  (model: Model) => (() => void) | boolean | void
+  State,
+  (state: State) => (() => void) | boolean | void
 >();
 
 declare namespace has {
   type Callback<T = any> = (
-    model: T,
-    recipient: Model
+    state: T,
+    recipient: State
   ) => void | boolean | (() => void);
 }
 
-function has<T extends Model>(
-  type: Model.Extends<T>,
+function has<T extends State>(
+  type: State.Extends<T>,
   callback?: has.Callback<T>
 ): readonly T[];
-function has(callback?: has.Callback): readonly Model[];
+function has(callback?: has.Callback): readonly State[];
 
-function has<T extends Model>(
-  arg1?: Model.Extends<T> | has.Callback<Model>,
+function has<T extends State>(
+  arg1?: State.Extends<T> | has.Callback<State>,
   arg2?: has.Callback<T>
 ) {
   return use<T[]>((key, subject) => {
-    const applied = new Set<Model>();
+    const applied = new Set<State>();
     const reset = () => {
       update(subject, key, Object.freeze(Array.from(applied)));
     };
 
-    if (Model.is(arg1))
+    if (State.is(arg1))
       Context.get(subject, (context) => {
-        context.get(arg1, (model) => {
+        context.get(arg1, (state) => {
           let remove: (() => void) | undefined;
           let disconnect: (() => void) | undefined;
           let flush: (() => void) | undefined;
 
-          if (applied.has(model)) return;
+          if (applied.has(state)) return;
 
           const exit = enter();
 
           try {
-            const notify = APPLY.get(model);
+            const notify = APPLY.get(state);
 
             if (notify) {
               const after = notify(subject);
@@ -53,7 +53,7 @@ function has<T extends Model>(
             }
 
             if (typeof arg2 == 'function') {
-              const done = arg2(model, subject);
+              const done = arg2(state, subject);
 
               if (done === false) return false;
               if (typeof done == 'function') remove = done;
@@ -62,14 +62,14 @@ function has<T extends Model>(
             flush = exit();
           }
 
-          applied.add(model);
+          applied.add(state);
           reset();
 
           const done = () => {
             flush();
             ignore();
 
-            applied.delete(model);
+            applied.delete(state);
             reset();
 
             if (disconnect) disconnect();
@@ -78,14 +78,14 @@ function has<T extends Model>(
             remove = undefined;
           };
 
-          const ignore = model.set(done, null);
+          const ignore = state.set(done, null);
 
           return done;
         });
       });
     else {
       if (APPLY.has(subject))
-        throw new Error(`'has' callback can only be used once per model.`);
+        throw new Error(`'has' callback can only be used once per state.`);
 
       APPLY.set(subject, (recipient) => {
         let remove: (() => void) | boolean | void;

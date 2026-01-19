@@ -1,16 +1,16 @@
-import { Model, createProxy } from '@expressive/mvc';
+import { State, createProxy } from '@expressive/mvc';
 import { Signal, createSignal } from 'solid-js';
 
-export const SIGNALS = new WeakMap<Model, Map<string, Signal<unknown>>>();
+export const SIGNALS = new WeakMap<State, Map<string, Signal<unknown>>>();
 
 declare module '@expressive/mvc' {
-  namespace Model {
+  namespace State {
     /**
      * Replaces all values which are not functions into signal getters,
      * usable within a SolidJS root, such as a component.
      */
-    type Reactive<T extends Model> = {
-      [P in keyof T]: P extends keyof Model
+    type Reactive<T extends State> = {
+      [P in keyof T]: P extends keyof State
         ? T[P]
         : T[P] extends (...args: unknown[]) => unknown
         ? T[P]
@@ -19,7 +19,7 @@ declare module '@expressive/mvc' {
   }
 }
 
-export function signalProxy<T extends Model>(instance: T) {
+export function signalProxy<T extends State>(instance: T) {
   let signals = SIGNALS.get(instance);
 
   if (!signals) SIGNALS.set(instance, (signals = new Map()));
@@ -44,5 +44,5 @@ export function signalProxy<T extends Model>(instance: T) {
     }
   });
 
-  return proxy as Model.Reactive<T>;
+  return proxy as State.Reactive<T>;
 }

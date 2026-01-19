@@ -1,9 +1,9 @@
-import './model.get';
-import './model.use';
+import './state.get';
+import './state.use';
 
 export {
-  Model,
-  Model as default,
+  State,
+  State as default,
   get,
   use,
   ref,

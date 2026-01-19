@@ -1,10 +1,10 @@
 import { Context } from '../context';
-import { Model } from '../model';
+import { State } from '../state';
 import { use } from './use';
 
 describe('instruction', () => {
   it('will run on create', () => {
-    class Test extends Model {
+    class Test extends State {
       property = use((key) => {
         didRunInstruction(key);
       });
@@ -19,7 +19,7 @@ describe('instruction', () => {
 
   describe('symbol', () => {
     it('will use unique symbol as placeholder', async () => {
-      class Test extends Model {
+      class Test extends State {
         value = use(() => ({ value: 1 })) as unknown;
       }
 
@@ -35,7 +35,7 @@ describe('instruction', () => {
     });
 
     it('will be deleted prior to instruction', () => {
-      class Test extends Model {
+      class Test extends State {
         value = use(() => {
           expect('value' in this).toBe(false);
         });
@@ -45,7 +45,7 @@ describe('instruction', () => {
     });
 
     it('will ignore normal symbol', () => {
-      class Test extends Model {
+      class Test extends State {
         value = Symbol('hello');
       }
 
@@ -60,7 +60,7 @@ describe('instruction', () => {
       const mockAccess = jest.fn((_subscriber) => 'foobar');
       const mockApply = jest.fn((_key) => mockAccess);
 
-      class Test extends Model {
+      class Test extends State {
         property = use(mockApply);
       }
 
@@ -76,7 +76,7 @@ describe('instruction', () => {
     it('will pass subscriber if within one', () => {
       const didGetValue = jest.fn();
 
-      class Test extends Model {
+      class Test extends State {
         property = use(() => didGetValue);
       }
 
@@ -90,7 +90,7 @@ describe('instruction', () => {
     });
 
     it('will not throw suspense if get (required) is false', async () => {
-      class Test extends Model {
+      class Test extends State {
         value = use(() => ({ get: false }));
       }
 
@@ -107,7 +107,7 @@ describe('instruction', () => {
 
   describe('setter', () => {
     it('will reject update if false', () => {
-      class Test extends Model {
+      class Test extends State {
         value = use(() => ({ set: false }));
       }
 
@@ -122,7 +122,7 @@ describe('instruction', () => {
         if (newValue == 'ignore') return false;
       });
 
-      class Test extends Model {
+      class Test extends State {
         property = use(() => {
           return {
             value: 'foobar',
@@ -150,7 +150,7 @@ describe('instruction', () => {
     it('will revert update if returns false', async () => {
       let ignore = false;
 
-      class Test extends Model {
+      class Test extends State {
         property = use(() => {
           return {
             value: 0,
@@ -175,7 +175,7 @@ describe('instruction', () => {
     });
 
     it('will not duplicate explicit update', () => {
-      class Test extends Model {
+      class Test extends State {
         property = use<string>(() => ({
           value: 'foobar',
           set: (value) => () => value + '!'
@@ -196,7 +196,7 @@ describe('instruction', () => {
     });
 
     it('will not update on reassignment', () => {
-      class Test extends Model {
+      class Test extends State {
         property = use<string>((key) => ({
           value: 'foobar',
           set: (value: any) => {
@@ -220,12 +220,12 @@ describe('instruction', () => {
   });
 });
 
-describe('model', () => {
+describe('state', () => {
   it('will init upon access', () => {
-    class Child extends Model {
+    class Child extends State {
       value = 'foo';
     }
-    class Test extends Model {
+    class Test extends State {
       child = use(Child, mockInit);
     }
 
@@ -236,22 +236,22 @@ describe('model', () => {
     expect(mockInit).toBeCalledTimes(1);
   });
 
-  it('will not create base Model', () => {
-    class Test extends Model {
+  it('will not create base State', () => {
+    class Test extends State {
       // @ts-expect-error
-      child = use(Model);
+      child = use(State);
     }
 
     const attempt = () => Test.new();
 
-    expect(attempt).toThrowError('Cannot create base Model.');
+    expect(attempt).toThrowError('Cannot create base State.');
   });
 
   it('will run callback on every assign', () => {
-    class Child extends Model {
+    class Child extends State {
       value = 'foo';
     }
-    class Parent extends Model {
+    class Parent extends State {
       child = use(Child, callback);
     }
 
@@ -268,10 +268,10 @@ describe('model', () => {
   it.todo('will run callback after assign completes');
   it.todo('will run cleanup on reassign');
 
-  it('will only reassign a matching model', () => {
-    class Child extends Model {}
-    class Unrelated extends Model {}
-    class Parent extends Model {
+  it('will only reassign a matching state', () => {
+    class Child extends State {}
+    class Unrelated extends State {}
+    class Parent extends State {
       child = use(Child);
     }
 
@@ -279,17 +279,17 @@ describe('model', () => {
 
     expect(() => {
       parent.child = Unrelated.new('ID');
-    }).toThrowError(`ID.child expected Model of type Child but got Unrelated.`);
+    }).toThrowError(`ID.child expected State of type Child but got Unrelated.`);
 
     expect(() => {
       // @ts-expect-error
       parent.child = undefined;
-    }).toThrowError(`ID.child expected Model of type Child but got undefined.`);
+    }).toThrowError(`ID.child expected State of type Child but got undefined.`);
   });
 
   it('will allow undefined', () => {
-    class Child extends Model {}
-    class Parent extends Model {
+    class Child extends State {}
+    class Parent extends State {
       child = use(Child, false);
     }
 
@@ -303,8 +303,8 @@ describe('model', () => {
   });
 
   it('will be provided by parent', () => {
-    class Child extends Model {}
-    class Test extends Model {
+    class Child extends State {}
+    class Test extends State {
       child = use(Child);
     }
 

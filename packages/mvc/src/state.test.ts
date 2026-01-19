@@ -3,10 +3,10 @@ import { get } from './instruction/get';
 import { ref } from './instruction/ref';
 import { set } from './instruction/set';
 import { mockError, mockPromise } from './mocks';
-import { Model } from './model';
+import { State } from './state';
 
 it('will extend custom class', () => {
-  class Subject extends Model {
+  class Subject extends State {
     value = 1;
   }
 
@@ -15,15 +15,15 @@ it('will extend custom class', () => {
   expect(state.value).toBe(1);
 });
 
-it('will not create base Model', () => {
+it('will not create base State', () => {
   // @ts-expect-error
-  const create = () => Model.new();
+  const create = () => State.new();
 
-  expect(create).toThrowError('Cannot create base Model.');
+  expect(create).toThrowError('Cannot create base State.');
 });
 
-it('will not create abstract Model', () => {
-  abstract class Subject extends Model {}
+it('will not create abstract State', () => {
+  abstract class Subject extends State {}
 
   void function create() {
     // No runtime error but typescript should complain.
@@ -33,7 +33,7 @@ it('will not create abstract Model', () => {
 });
 
 it('will update on assignment', async () => {
-  class Subject extends Model {
+  class Subject extends State {
     value = 1;
   }
 
@@ -50,7 +50,7 @@ it('will update on assignment', async () => {
 });
 
 it('will ignore assignment with same value', async () => {
-  class Subject extends Model {
+  class Subject extends State {
     value = 1;
   }
 
@@ -66,7 +66,7 @@ it('will ignore assignment with same value', async () => {
 });
 
 it('will update from within a method', async () => {
-  class Subject extends Model {
+  class Subject extends State {
     value = 1;
 
     setValue(to: number) {
@@ -88,7 +88,7 @@ it('will not ignore function properties', async () => {
   const mockFunction = jest.fn();
   const mockFunction2 = jest.fn();
 
-  class Test extends Model {
+  class Test extends State {
     fn = mockFunction;
   }
 
@@ -109,7 +109,7 @@ it('will not ignore function properties', async () => {
 });
 
 it('will iterate over properties', () => {
-  class Test extends Model {
+  class Test extends State {
     foo = 1;
     bar = 2;
     baz = 3;
@@ -126,8 +126,8 @@ it('will iterate over properties', () => {
 });
 
 it('will destroy children before self', () => {
-  class Nested extends Model {}
-  class Test extends Model {
+  class Nested extends State {}
+  class Test extends State {
     nested = new Nested();
   }
 
@@ -142,7 +142,7 @@ it('will destroy children before self', () => {
 
 describe('methods', () => {
   it('will auto bind', async () => {
-    class FooBar extends Model {
+    class FooBar extends State {
       method() {
         return String(this);
       }
@@ -155,7 +155,7 @@ describe('methods', () => {
   });
 
   it('will allow overwrite', () => {
-    class Test extends Model {
+    class Test extends State {
       foo = 'foo';
 
       method() {
@@ -175,7 +175,7 @@ describe('methods', () => {
   });
 
   it('will not break super calls', () => {
-    class Test extends Model {
+    class Test extends State {
       action() {
         return 'Foo ';
       }
@@ -199,7 +199,7 @@ describe('methods', () => {
   });
 
   it('will not bind a super method', () => {
-    class Test extends Model {
+    class Test extends State {
       action() {
         return 'Foo';
       }
@@ -219,7 +219,7 @@ describe('methods', () => {
 });
 
 describe('subscriber', () => {
-  class Subject extends Model {
+  class Subject extends State {
     value = 1;
     value2 = 2;
   }
@@ -265,7 +265,7 @@ describe('subscriber', () => {
   });
 
   it('will not obstruct set-behavior', () => {
-    class Test extends Model {
+    class Test extends State {
       didSet = jest.fn();
       value = set('foo', this.didSet);
     }
@@ -284,7 +284,7 @@ describe('subscriber', () => {
 });
 
 describe('string coercion', () => {
-  class Test extends Model {}
+  class Test extends State {}
 
   it('will output a unique ID', () => {
     const foo = String(Test.new());
@@ -294,7 +294,7 @@ describe('string coercion', () => {
   });
 
   it('will be class name and 6 random characters', () => {
-    class FooBar extends Model {}
+    class FooBar extends State {}
 
     const foobar = String(FooBar.new());
 
@@ -308,7 +308,7 @@ describe('string coercion', () => {
   });
 
   it('will work inside subscriber', () => {
-    class Test extends Model {
+    class Test extends State {
       foo = 'foo';
     }
 
@@ -325,7 +325,7 @@ describe('string coercion', () => {
 
 describe('get method', () => {
   describe('export', () => {
-    class Test extends Model {
+    class Test extends State {
       foo = 'foo';
       bar = 'bar';
       baz = 'baz';
@@ -350,7 +350,7 @@ describe('get method', () => {
     });
 
     it('will ignore getters', () => {
-      class Test extends Model {
+      class Test extends State {
         foo = 'foo';
 
         get bar() {
@@ -369,13 +369,13 @@ describe('get method', () => {
     });
 
     it('will export values recursively', () => {
-      class Nested extends Model {
+      class Nested extends State {
         foo = 1;
         bar = 2;
         baz = 3;
       }
 
-      class Test extends Model {
+      class Test extends State {
         foo = 'foo';
         bar = 'bar';
         baz = 'baz';
@@ -402,11 +402,11 @@ describe('get method', () => {
     });
 
     it('will defer to get method exporting properties', () => {
-      class Bar extends Model {
+      class Bar extends State {
         foo = 'foo';
       }
 
-      class Test extends Model {
+      class Test extends State {
         foo = { get: () => 3 };
         bar = ref<boolean>();
         baz = new Bar();
@@ -429,12 +429,12 @@ describe('get method', () => {
     });
 
     it('will export infinite loop', () => {
-      class Parent extends Model {
+      class Parent extends State {
         child = new Child();
         foo = 'foo';
       }
 
-      class Child extends Model {
+      class Child extends State {
         parent = get(Parent);
         bar = 'bar';
       }
@@ -448,7 +448,7 @@ describe('get method', () => {
 
   describe('fetch', () => {
     it('will get value', () => {
-      class Test extends Model {
+      class Test extends State {
         foo = 'foo';
       }
 
@@ -458,7 +458,7 @@ describe('get method', () => {
     });
 
     it('will get ref value', () => {
-      class Test extends Model {
+      class Test extends State {
         foo = ref<string>();
       }
 
@@ -472,7 +472,7 @@ describe('get method', () => {
     });
 
     it('will throw suspense if not yet available', async () => {
-      class Test extends Model {
+      class Test extends State {
         foo = set<string>();
       }
 
@@ -493,7 +493,7 @@ describe('get method', () => {
     });
 
     it('will suspend if undefined in strict mode', async () => {
-      class Test extends Model {
+      class Test extends State {
         foo?: string = undefined;
       }
 
@@ -514,7 +514,7 @@ describe('get method', () => {
     });
 
     it('will get unbound method', () => {
-      class Test extends Model {
+      class Test extends State {
         value = 'foo';
 
         method() {
@@ -532,7 +532,7 @@ describe('get method', () => {
   });
 
   describe('callback', () => {
-    class Test extends Model {
+    class Test extends State {
       foo = 'foo';
     }
 
@@ -572,9 +572,9 @@ describe('get method', () => {
   });
 
   describe('null', () => {
-    class Test extends Model {}
+    class Test extends State {}
 
-    it('will return true if model is not destroyed', () => {
+    it('will return true if state is not destroyed', () => {
       const test = Test.new();
 
       expect(test.get(null)).toBe(false);
@@ -584,7 +584,7 @@ describe('get method', () => {
       expect(test.get(null)).toBe(true);
     });
 
-    it('will callback when model is destroyed', () => {
+    it('will callback when state is destroyed', () => {
       const test = Test.new();
       const mock = jest.fn();
 
@@ -599,7 +599,7 @@ describe('get method', () => {
   });
 
   describe('effect', () => {
-    class Test extends Model {
+    class Test extends State {
       value1 = 1;
       value2 = 2;
       value3 = 3;
@@ -679,11 +679,11 @@ describe('get method', () => {
     });
 
     it('will update for nested values', async () => {
-      class Child extends Model {
+      class Child extends State {
         value = 'foo';
       }
 
-      class Test extends Model {
+      class Test extends State {
         child = new Child();
       }
 
@@ -703,18 +703,18 @@ describe('get method', () => {
     });
 
     it('will subscribe deeply', async () => {
-      class Parent extends Model {
+      class Parent extends State {
         value = 'foo';
         empty = undefined;
         child = new Child();
       }
 
-      class Child extends Model {
+      class Child extends State {
         value = 'foo';
         grandchild = new GrandChild();
       }
 
-      class GrandChild extends Model {
+      class GrandChild extends State {
         value = 'bar';
       }
 
@@ -763,11 +763,11 @@ describe('get method', () => {
     });
 
     it('will subscribe if value starts undefined', async () => {
-      class Child extends Model {
+      class Child extends State {
         value = 'foo';
       }
 
-      class Parent extends Model {
+      class Parent extends State {
         value = 'foo';
         child?: Child = undefined;
       }
@@ -808,11 +808,11 @@ describe('get method', () => {
     });
 
     it('will not update for removed children', async () => {
-      class Nested extends Model {
+      class Nested extends State {
         value = 1;
       }
 
-      class Test extends Model {
+      class Test extends State {
         nested = new Nested();
       }
 
@@ -879,8 +879,8 @@ describe('get method', () => {
       expect(mock).toBeCalledTimes(3);
     });
 
-    it('will bind to model called upon', () => {
-      class Test extends Model {}
+    it('will bind to state called upon', () => {
+      class Test extends State {}
 
       function testEffect(this: Test) {
         didCreate(this);
@@ -894,7 +894,7 @@ describe('get method', () => {
       expect(didCreate).toBeCalledWith(test);
     });
 
-    it('will work without Model.new', async () => {
+    it('will work without State.new', async () => {
       const test = new Test();
       const mock = jest.fn();
 
@@ -908,7 +908,7 @@ describe('get method', () => {
     });
 
     it('will not subscribe from method', async () => {
-      class Test extends Model {
+      class Test extends State {
         foo = 1;
         bar = 2;
 
@@ -939,10 +939,10 @@ describe('get method', () => {
     it('will subscribe method passed directly', async () => {
       const didInvoke = jest.fn();
 
-      class Test extends Model {
+      class Test extends State {
         foo = 1;
 
-        constructor(...args: Model.Args) {
+        constructor(...args: State.Args) {
           super(args, () => {
             this.get(this.action);
           });
@@ -964,7 +964,7 @@ describe('get method', () => {
 
     describe('return value', () => {
       it('will callback on next update', async () => {
-        class Test extends Model {
+        class Test extends State {
           value1 = 1;
         }
 
@@ -1085,7 +1085,7 @@ describe('get method', () => {
     });
 
     describe('suspense', () => {
-      class Test extends Model {
+      class Test extends State {
         value = set<string>();
         other = 'foo';
       }
@@ -1160,7 +1160,7 @@ describe('get method', () => {
 
     describe('before ready', () => {
       it('will watch value', async () => {
-        class Test extends Model {
+        class Test extends State {
           value1 = 1;
 
           constructor() {
@@ -1179,7 +1179,7 @@ describe('get method', () => {
       });
 
       it('will watch computed value', async () => {
-        class Test extends Model {
+        class Test extends State {
           value1 = 2;
 
           value2 = get(this, ($) => {
@@ -1202,7 +1202,7 @@ describe('get method', () => {
       });
 
       it('will remove listener on callback', async () => {
-        class Test extends Model {
+        class Test extends State {
           value = 1;
 
           // assigned during constructor phase.
@@ -1232,7 +1232,7 @@ describe('get method', () => {
 
 describe('set method', () => {
   describe('event', () => {
-    class Test extends Model {
+    class Test extends State {
       foo = 'foo';
     }
 
@@ -1276,7 +1276,7 @@ describe('set method', () => {
 
   describe('update', () => {
     it('will assign a value', async () => {
-      class Test extends Model {
+      class Test extends State {
         foo = 'foo';
       }
 
@@ -1290,7 +1290,7 @@ describe('set method', () => {
     });
 
     it('will assign a value to ref', async () => {
-      class Test extends Model {
+      class Test extends State {
         foo = ref<string>();
       }
 
@@ -1304,7 +1304,7 @@ describe('set method', () => {
     });
 
     it('will add property to tracking', async () => {
-      class Test extends Model {
+      class Test extends State {
         foo = 'foo';
       }
 
@@ -1332,7 +1332,7 @@ describe('set method', () => {
       await expect(test).not.toHaveUpdated('bar');
       expect(mock).not.toBeCalledWith('bar', 'bob');
 
-      // assign bar formally adding to model
+      // assign bar formally adding to state
       test.set('bar', 'baz', true);
 
       // bar is redefined
@@ -1358,7 +1358,7 @@ describe('set method', () => {
 
   describe('promise-like', () => {
     it('will resolve update frame', async () => {
-      class Test extends Model {
+      class Test extends State {
         foo = 'foo';
       }
 
@@ -1372,7 +1372,7 @@ describe('set method', () => {
     });
 
     it('will resolve with symbols', async () => {
-      class Test extends Model {}
+      class Test extends State {}
 
       const test = Test.new();
       const event = Symbol('event');
@@ -1385,7 +1385,7 @@ describe('set method', () => {
     });
 
     it('will be undefined if no update', async () => {
-      class Test extends Model {
+      class Test extends State {
         foo = 'foo';
       }
 
@@ -1396,7 +1396,7 @@ describe('set method', () => {
     });
 
     it('will force initial update', async () => {
-      class Test extends Model {
+      class Test extends State {
         foo = 'foo';
       }
 
@@ -1413,7 +1413,7 @@ describe('set method', () => {
 
   describe('callback', () => {
     it('will call callback on update', async () => {
-      class Test extends Model {
+      class Test extends State {
         foo = 'foo';
       }
 
@@ -1430,7 +1430,7 @@ describe('set method', () => {
     });
 
     it('will not self-update', () => {
-      class Test extends Model {
+      class Test extends State {
         foo = 'foo';
       }
 
@@ -1449,7 +1449,7 @@ describe('set method', () => {
 
   describe('listener', () => {
     it('will call listener on update', async () => {
-      class Test extends Model {
+      class Test extends State {
         foo = 'foo';
         bar = 'bar';
       }
@@ -1469,7 +1469,7 @@ describe('set method', () => {
     });
 
     it('will self-unsubscribe', async () => {
-      class Test extends Model {
+      class Test extends State {
         foo = 'foo';
       }
 
@@ -1485,7 +1485,7 @@ describe('set method', () => {
     });
 
     it('will call synconously on destroy', async () => {
-      class Test extends Model {
+      class Test extends State {
         foo = 'foo';
       }
 
@@ -1502,7 +1502,7 @@ describe('set method', () => {
   describe('effect', () => {
     const error = mockError();
 
-    class Test extends Model {
+    class Test extends State {
       foo = 0;
       bar = 1;
       baz = 2;
@@ -1563,8 +1563,8 @@ describe('set method', () => {
       done();
     });
 
-    it('will not activate Model prematurely', () => {
-      class Test extends Model {
+    it('will not activate State prematurely', () => {
+      class Test extends State {
         foo = 0;
 
         constructor() {
@@ -1585,8 +1585,8 @@ describe('set method', () => {
       expect(callback).toBeCalledWith('bar', test);
     });
 
-    it('will disallow update if model is destroyed', () => {
-      class Test extends Model {
+    it('will disallow update if state is destroyed', () => {
+      class Test extends State {
         foo = 0;
       }
 
@@ -1599,7 +1599,7 @@ describe('set method', () => {
       test.set(null);
 
       expect(() => test.foo++).toThrowError(
-        'Tried to update ID.foo but model is destroyed.'
+        'Tried to update ID.foo but state is destroyed.'
       );
       expect(callback).toBeCalledTimes(1);
     });
@@ -1608,8 +1608,8 @@ describe('set method', () => {
   });
 
   describe('assign', () => {
-    it('will merge object into model', async () => {
-      class Test extends Model {
+    it('will merge object into state', async () => {
+      class Test extends State {
         foo = 'foo';
         bar = 'bar';
       }
@@ -1625,7 +1625,7 @@ describe('set method', () => {
     });
 
     it('will merge object silently', async () => {
-      class Test extends Model {
+      class Test extends State {
         foo = 'foo';
         bar = 'bar';
       }
@@ -1640,8 +1640,8 @@ describe('set method', () => {
       expect(test.bar).toBe('bar');
     });
 
-    it('will merge methods into model', async () => {
-      class Test extends Model {
+    it('will merge methods into state', async () => {
+      class Test extends State {
         foo = 'foo';
 
         method() {
@@ -1668,8 +1668,8 @@ describe('set method', () => {
       expect(test.foo).toBe('bar');
     });
 
-    it('will ignore properties not on model', async () => {
-      class Test extends Model {
+    it('will ignore properties not on state', async () => {
+      class Test extends State {
         foo = 'foo';
       }
 
@@ -1683,7 +1683,7 @@ describe('set method', () => {
     });
 
     it('will ignore built-in properties', async () => {
-      class Test extends Model {
+      class Test extends State {
         foo = 'foo';
       }
       const test = Test.new();
@@ -1694,7 +1694,7 @@ describe('set method', () => {
     });
 
     it('will assign from inside method', () => {
-      class Test extends Model {
+      class Test extends State {
         foo = 'foo';
 
         method() {
@@ -1715,7 +1715,7 @@ describe('set method', () => {
   it('will trigger normal setters', async () => {
     let observed: string | null = null;
 
-    class Test extends Model {
+    class Test extends State {
       _foo = 'foo';
 
       get foo() {
@@ -1743,7 +1743,7 @@ describe('new method', () => {
   it('will call if exists', () => {
     const didCreate = jest.fn();
 
-    class Test extends Model {
+    class Test extends State {
       new() {
         didCreate();
       }
@@ -1758,7 +1758,7 @@ describe('new method', () => {
     const didDestroy = jest.fn();
     const didCreate = jest.fn(() => didDestroy);
 
-    class Test extends Model {
+    class Test extends State {
       new() {
         return didCreate();
       }
@@ -1775,7 +1775,7 @@ describe('new method', () => {
   });
 
   it('will enforce signature', () => {
-    class Test extends Model {
+    class Test extends State {
       new(foo: string) {
         return foo;
       }
@@ -1789,7 +1789,7 @@ describe('new method', () => {
 });
 
 describe('new method (static)', () => {
-  class Test extends Model {}
+  class Test extends State {}
 
   it('will use string argument as ID', () => {
     const state = Test.new('ID');
@@ -1812,7 +1812,7 @@ describe('new method (static)', () => {
   });
 
   it('will apply object returned by callback', () => {
-    class Test extends Model {
+    class Test extends State {
       foo = 'foo';
     }
 
@@ -1826,7 +1826,7 @@ describe('new method (static)', () => {
   });
 
   it('will apply arguments returned by callback', () => {
-    class Test extends Model {
+    class Test extends State {
       foo = 0;
       bar = 1;
     }
@@ -1840,7 +1840,7 @@ describe('new method (static)', () => {
   });
 
   it('will apply all arguments', () => {
-    class Test extends Model {
+    class Test extends State {
       foo = 0;
       bar = 1;
     }
@@ -1862,14 +1862,14 @@ describe('new method (static)', () => {
   });
 
   it('will flatten inherited arguments', () => {
-    class Test extends Model {
+    class Test extends State {
       foo = 0;
       bar = 1;
       baz = 2;
     }
 
     class Test2 extends Test {
-      constructor(...args: Model.Args) {
+      constructor(...args: State.Args) {
         super(args, { baz: 3 });
       }
     }
@@ -1889,7 +1889,7 @@ describe('new method (static)', () => {
   });
 
   it('will prefer later assignments', () => {
-    class Test extends Model {
+    class Test extends State {
       foo = 1;
       bar = 2;
     }
@@ -1934,7 +1934,7 @@ describe('new method (static)', () => {
   // TODO: fix. This fails despite error intercept.
   it('will log error from rejected initializer', async () => {
     const error = jest.spyOn(console, 'error').mockImplementation(() => {});
-    const expects = new Error('Model callback rejected.');
+    const expects = new Error('State callback rejected.');
 
     const init = jest.fn(() => Promise.reject(expects));
     const test = Test.new('ID', init);
@@ -1950,7 +1950,7 @@ describe('new method (static)', () => {
   });
 
   it('will inject both properties and methods', () => {
-    class Test extends Model {
+    class Test extends State {
       value = 1;
 
       method() {
@@ -1985,7 +1985,7 @@ describe('new method (static)', () => {
   });
 
   it('will ignore non-applicable properties', () => {
-    class Test extends Model {
+    class Test extends State {
       value = 1;
 
       method() {
@@ -2012,18 +2012,18 @@ describe('new method (static)', () => {
 });
 
 describe('is method (static)', () => {
-  class Test extends Model {}
+  class Test extends State {}
 
-  it('will assert if Model extends another', () => {
+  it('will assert if State extends another', () => {
     class Test2 extends Test {}
 
     expect(Test.is(Test2)).toBe(true);
   });
 
   it('will be falsy if not super', () => {
-    class NotATest extends Model {}
+    class NotATest extends State {}
 
-    expect(Model.is(NotATest)).toBe(true);
+    expect(State.is(NotATest)).toBe(true);
     expect(Test.is(NotATest)).toBe(false);
   });
 
@@ -2033,7 +2033,7 @@ describe('is method (static)', () => {
 });
 
 describe('on method (static)', () => {
-  class Test extends Model {
+  class Test extends State {
     foo = 'bar';
   }
 
@@ -2070,19 +2070,19 @@ describe('on method (static)', () => {
   it('will run callback for inherited classes', () => {
     class Test2 extends Test {}
 
-    const createModel = jest.fn();
+    const createState = jest.fn();
     const createTest = jest.fn();
     const createTest2 = jest.fn();
 
     const done = [
       Test.on(createTest),
       Test2.on(createTest2),
-      Model.on(createModel)
+      State.on(createState)
     ];
 
     const test = Test2.new();
 
-    expect(createModel).toBeCalledWith(true, test);
+    expect(createState).toBeCalledWith(true, test);
     expect(createTest).toBeCalledWith(true, test);
     expect(createTest2).toBeCalledWith(true, test);
 
@@ -2093,7 +2093,7 @@ describe('on method (static)', () => {
     class Test2 extends Test {}
 
     const didCreate = jest.fn();
-    const done = [Test.on(didCreate), Test2.on(didCreate), Model.on(didCreate)];
+    const done = [Test.on(didCreate), Test2.on(didCreate), State.on(didCreate)];
 
     Test2.new();
 
@@ -2135,7 +2135,7 @@ describe('on method (static)', () => {
 
 describe('context method (static)', () => {
   it('will get context', () => {
-    class Test extends Model {}
+    class Test extends State {}
 
     const test = Test.new();
 
@@ -2147,7 +2147,7 @@ describe('context method (static)', () => {
   });
 
   it('will callback when attached', () => {
-    class Test extends Model {}
+    class Test extends State {}
 
     const test = Test.new();
     const mock = jest.fn();

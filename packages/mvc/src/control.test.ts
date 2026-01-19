@@ -2,14 +2,14 @@ import { watch, Observable } from './control';
 import { set } from './instruction/set';
 import { use } from './instruction/use';
 import { mockError } from './mocks';
-import { Model } from './model';
+import { State } from './state';
 
 describe('effect', () => {
   it('will run after properties', () => {
     const mock = jest.fn();
 
-    class Test extends Model {
-      property = use((_key, _model, state) => {
+    class Test extends State {
+      property = use((_key, _state, state) => {
         this.get(() => mock(state));
       });
 
@@ -23,7 +23,7 @@ describe('effect', () => {
   });
 
   it('will enforce values if required', () => {
-    class Test extends Model {
+    class Test extends State {
       property?: string = undefined;
     }
 
@@ -42,7 +42,7 @@ describe('effect', () => {
   });
 
   it('will still get events after silent ones', async () => {
-    class Test extends Model {
+    class Test extends State {
       value1 = 1;
       value2 = 2;
     }
@@ -66,7 +66,7 @@ describe('effect', () => {
   });
 
   it('will cleanup nested effects', async () => {
-    class Test extends Model {
+    class Test extends State {
       foo = 1;
       bar = 2;
     }
@@ -105,7 +105,7 @@ describe('effect', () => {
   });
 
   it('will ignore circular update', async () => {
-    class Test extends Model {
+    class Test extends State {
       foo = 1;
       bar?: number = undefined;
     }
@@ -143,7 +143,7 @@ describe('effect', () => {
   });
 
   it('will ignore circular update', async () => {
-    class Test extends Model {
+    class Test extends State {
       foo = 1;
       bar?: number = undefined;
     }
@@ -181,7 +181,7 @@ describe('effect', () => {
   });
 
   it('will override circular update', async () => {
-    class Test extends Model {
+    class Test extends State {
       foo = 1;
       bar?: number = undefined;
     }
@@ -204,7 +204,7 @@ describe('effect', () => {
 
 describe('suspense', () => {
   it('will seem to throw error outside react', () => {
-    class Test extends Model {
+    class Test extends State {
       value = set<never>();
     }
 
@@ -222,8 +222,8 @@ describe('suspense', () => {
     );
   });
 
-  it('will reject if model destroyed before resolved', async () => {
-    class Test extends Model {
+  it('will reject if state destroyed before resolved', async () => {
+    class Test extends State {
       value = set<never>();
     }
 
@@ -246,7 +246,7 @@ describe('errors', () => {
   const error = mockError();
 
   it('will throw sync error to the console', async () => {
-    class Test extends Model {
+    class Test extends State {
       value = 1;
     }
 
@@ -262,7 +262,7 @@ describe('errors', () => {
   });
 
   it('will log async error to the console', async () => {
-    class Test extends Model {
+    class Test extends State {
       value = 1;
     }
 
@@ -298,7 +298,7 @@ describe('observable', () => {
       }
     }
 
-    class Test extends Model {
+    class Test extends State {
       observable = new MyObservable();
     }
 

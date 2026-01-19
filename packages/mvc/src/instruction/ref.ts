@@ -1,5 +1,5 @@
 import { addListener, enter } from '../control';
-import { Model, update } from '../model';
+import { State, update } from '../state';
 import { use } from './use';
 
 const { defineProperty, defineProperties } = Object;
@@ -13,10 +13,10 @@ declare namespace ref {
     /** Current value held by this reference. */
     current: T;
 
-    /** Model instance this reference belongs to. */
-    is: Model;
+    /** State instance this reference belongs to. */
+    is: State;
 
-    /** Key of property on model this reference belongs to. */
+    /** Key of property on state this reference belongs to. */
     key: string;
 
     /**
@@ -34,11 +34,11 @@ declare namespace ref {
   /** Object with references to all managed values of `T`. */
 
   /** Object with references to all managed values of `T`. */
-  type Proxy<T extends Model> = { [P in Model.Field<T>]-?: Object<T[P]> } & {
+  type Proxy<T extends State> = { [P in State.Field<T>]-?: Object<T[P]> } & {
     get(): T;
   };
 
-  type CustomProxy<T extends Model, R> = { [P in Model.Field<T>]-?: R } & {
+  type CustomProxy<T extends State, R> = { [P in State.Field<T>]-?: R } & {
     get(): T;
   };
 }
@@ -49,21 +49,21 @@ declare namespace ref {
  *
  * *Properties are simultaneously a ref-function and ref-object, use as needed.*
  *
- * @param target - Source model from which to reference values.
+ * @param target - Source state from which to reference values.
  */
-function ref<T extends Model>(target: T): ref.Proxy<T>;
+function ref<T extends State>(target: T): ref.Proxy<T>;
 
 /**
  * Creates an object with values based on managed values.
  * Each property will invoke mapper function on first access supply
  * the its return value going forward.
  *
- * @param target - Source model from which to reference values.
+ * @param target - Source state from which to reference values.
  * @param mapper - Function producing the placeholder value for any given property.
  */
-function ref<O extends Model, R>(
+function ref<O extends State, R>(
   target: O,
-  mapper: (key: Model.Field<O>) => R
+  mapper: (key: State.Field<O>) => R
 ): ref.CustomProxy<O, R>;
 
 /**
@@ -91,7 +91,7 @@ function ref<T>(
 ): ref.Object<T>;
 
 function ref<T>(
-  arg?: ref.Callback<T> | Model,
+  arg?: ref.Callback<T> | State,
   arg2?: ((key: string) => any) | boolean
 ) {
   return use<T>((key, subject, state) => {

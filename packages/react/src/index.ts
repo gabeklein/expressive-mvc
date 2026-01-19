@@ -1,7 +1,7 @@
 import {
   Context,
   Observable,
-  Model,
+  State,
   get,
   use,
   ref,
@@ -16,7 +16,7 @@ Pragma.useEffect = useEffect;
 Pragma.useState = useState;
 Pragma.createElement = createElement;
 
-export default Model;
-export { Context, get, has, Model, Observable, ref, set, use };
+export default State;
+export { Context, get, has, State, Observable, ref, set, use };
 export { Consumer, Provider } from './context';
 export { Fragment, createElement } from 'react';

@@ -2,15 +2,15 @@
 
 import { act, render, screen } from '@testing-library/react';
 import React, { Children, Component, isValidElement } from 'react';
-import { Consumer, get, has, Model, set } from '.';
+import { Consumer, get, has, State, set } from '.';
 
 describe('has instruction', () => {
   it('will callback on register', () => {
-    class Parent extends Model {
+    class Parent extends State {
       child = has(Child, gotChild);
     }
 
-    class Child extends Model {
+    class Child extends State {
       parents = has(gotParent);
     }
 
@@ -36,7 +36,7 @@ describe('has instruction', () => {
 });
 
 it('will create and provide instance', () => {
-  class Control extends Model {
+  class Control extends State {
     foo = 'bar';
   }
 
@@ -50,8 +50,8 @@ it('will create and provide instance', () => {
 });
 
 it('will create instance only once', () => {
-  class Control extends Model {
-    constructor(...args: Model.Args) {
+  class Control extends State {
+    constructor(...args: State.Args) {
       super(args);
       didConstruct(this);
     }
@@ -68,7 +68,7 @@ it('will create instance only once', () => {
 });
 
 it('will call is method on creation', () => {
-  class Control extends Model {}
+  class Control extends State {}
 
   const didCreate = jest.fn();
 
@@ -86,7 +86,7 @@ describe('new method', () => {
   it('will call if exists', () => {
     const didCreate = jest.fn();
 
-    class Test extends Model {
+    class Test extends State {
       new() {
         didCreate();
       }
@@ -102,7 +102,7 @@ describe('new method', () => {
   });
 
   it('will enforce signature', () => {
-    class Test extends Model {
+    class Test extends State {
       new(foo: string) {}
     }
 
@@ -114,7 +114,7 @@ describe('new method', () => {
 });
 
 describe('element props', () => {
-  class Foo extends Model {
+  class Foo extends State {
     /** Hover over this prop to see description. */
     value?: string = undefined;
   }
@@ -136,7 +136,7 @@ describe('element props', () => {
   });
 
   it('will trigger set instruction', () => {
-    class Foo extends Model {
+    class Foo extends State {
       value = set('foobar', didSet);
     }
 
@@ -148,7 +148,7 @@ describe('element props', () => {
   });
 
   it('will override method', async () => {
-    class Test extends Model {
+    class Test extends State {
       callback() {
         return 'foo';
       }
@@ -182,7 +182,7 @@ describe('element props', () => {
 
 describe('element children', () => {
   it('will handle multiple elements', () => {
-    class Control extends Model {
+    class Control extends State {
       foo = 'bar';
     }
 
@@ -198,7 +198,7 @@ describe('element children', () => {
   });
 
   it('will notify parent', async () => {
-    class Control extends Model {
+    class Control extends State {
       children = set<React.ReactNode>(undefined, didUpdate);
     }
 
@@ -212,7 +212,7 @@ describe('element children', () => {
   it('will accept arbitrary children with render', () => {
     const symbol = Symbol('foo');
 
-    class Control extends Model {
+    class Control extends State {
       render(props: { children: symbol }) {
         expect(props.children).toBe(symbol);
         return 'Hello';
@@ -227,7 +227,7 @@ describe('element children', () => {
 
 describe('render method', () => {
   it('will be element output', () => {
-    class Control extends Model {
+    class Control extends State {
       foo = 'bar';
 
       render(props: { bar: string }) {
@@ -255,7 +255,7 @@ describe('render method', () => {
       );
     }
 
-    class ClassComponent extends Model {
+    class ClassComponent extends State {
       salutation = 'Hello';
       render = FunctionComponent;
     }
@@ -270,7 +270,7 @@ describe('render method', () => {
   });
 
   it('will ignore children not handled', () => {
-    class Control extends Model {
+    class Control extends State {
       render(props: { value: string }) {
         return <>{props.value}</>;
       }
@@ -290,7 +290,7 @@ describe('render method', () => {
   });
 
   it('will handle children if managed by this', () => {
-    class Control extends Model {
+    class Control extends State {
       children = set<React.ReactNode>();
 
       render(props: { value: string }) {
@@ -311,7 +311,7 @@ describe('render method', () => {
   });
 
   it('will refresh on update', async () => {
-    class Control extends Model {
+    class Control extends State {
       value = 'bar';
 
       render() {
@@ -333,7 +333,7 @@ describe('render method', () => {
   });
 
   it('will not pass is prop', () => {
-    class Invalid extends Model {
+    class Invalid extends State {
       render(props: { is: 'hello' }) {
         return null;
       }
@@ -342,7 +342,7 @@ describe('render method', () => {
     // @ts-expect-error
     void (<Invalid />);
 
-    class Test extends Model {
+    class Test extends State {
       render(props: { is?: 'hello' }) {
         expect('is' in props).toBeFalsy();
         return null;
@@ -357,9 +357,9 @@ describe('render method', () => {
   });
 });
 
-describe('Model.FC', () => {
+describe('State.FC', () => {
   it('will have correct types', () => {
-    class Control extends Model {
+    class Control extends State {
       foo = 'bar';
       bar = 'baz';
     }
@@ -382,7 +382,7 @@ describe('Model.FC', () => {
 
 describe('suspense', () => {
   it('will render fallback prop', async () => {
-    class Foo extends Model {
+    class Foo extends State {
       value = set<string>();
     }
 
@@ -403,7 +403,7 @@ describe('suspense', () => {
   });
 
   it('will fallback when own render suspends', async () => {
-    class Foo extends Model {
+    class Foo extends State {
       value = set<string>();
       fallback = (<span>Loading!</span>);
       render() {
@@ -425,7 +425,7 @@ describe('suspense', () => {
   });
 
   it('will use fallback property first', async () => {
-    class Foo extends Model {
+    class Foo extends State {
       value = set<string>();
       fallback = (<span>Loading!</span>);
     }
@@ -457,7 +457,7 @@ describe('suspense', () => {
   });
 
   it('will update with new fallback', async () => {
-    class Foo extends Model {
+    class Foo extends State {
       value = set<string>();
       fallback = (<span>Loading!</span>);
     }
@@ -521,10 +521,10 @@ describe('types', () => {
 
 describe.skip('implicit context', () => {
   it('will provide automatically', async () => {
-    class Parent extends Model {
+    class Parent extends State {
       value = 'foobar';
     }
-    class Child extends Model {
+    class Child extends State {
       parent = get(Parent);
     }
 
@@ -552,13 +552,13 @@ describe.skip('implicit context', () => {
   });
 
   it('will recycle context', () => {
-    class Foo extends Model {}
-    class Bar extends Model {}
-    class Baz extends Model {
+    class Foo extends State {}
+    class Bar extends State {}
+    class Baz extends State {
       foo = get(Foo);
       bar = get(Bar);
 
-      constructor(...args: Model.Args) {
+      constructor(...args: State.Args) {
         super(args);
         baz = this;
       }

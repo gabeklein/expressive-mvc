@@ -5,119 +5,79 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 # [0.71.0](https://github.com/gabeklein/expressive-mvc/compare/v0.70.0...v0.71.0) (2025-10-05)
 
-
-* feat!: simplify 'is' callback handling in Model interface and tests ([f77e413](https://github.com/gabeklein/expressive-mvc/commit/f77e413d5a049037b77a3cd1aedf29e2f835d1c3))
-
+- feat!: simplify 'is' callback handling in State interface and tests ([f77e413](https://github.com/gabeklein/expressive-mvc/commit/f77e413d5a049037b77a3cd1aedf29e2f835d1c3))
 
 ### Features
 
-* refactor input handling in Context.include ([f4823a2](https://github.com/gabeklein/expressive-mvc/commit/f4823a29dc3590b04c4027c382b5715731df590b))
-
+- refactor input handling in Context.include ([f4823a2](https://github.com/gabeklein/expressive-mvc/commit/f4823a29dc3590b04c4027c382b5715731df590b))
 
 ### BREAKING CHANGES
 
-* is prop no longer accepts destroy callback
-
-
-
-
+- is prop no longer accepts destroy callback
 
 # [0.70.0](https://github.com/gabeklein/expressive-mvc/compare/v0.69.2...v0.70.0) (2025-09-15)
 
-
 ### Bug Fixes
 
-* update RenderProps type to prevent passing 'is' prop to Model components ([26ec4a3](https://github.com/gabeklein/expressive-mvc/commit/26ec4a3c190fde350f409537ee9869ab54df6869))
-
+- update RenderProps type to prevent passing 'is' prop to State components ([26ec4a3](https://github.com/gabeklein/expressive-mvc/commit/26ec4a3c190fde350f409537ee9869ab54df6869))
 
 ### Features
 
-* add subscription for methods passed to get() ([67edf28](https://github.com/gabeklein/expressive-mvc/commit/67edf28f0b596398dfa31cc7518e8aacd8d958a2))
-* enhance Model interfaces and props for better compatibility and fallback support ([849f282](https://github.com/gabeklein/expressive-mvc/commit/849f28273291605e2c49950c8e6cc3e5b5638050))
-* enhance provider and consumer functionality with fallback support ([6de2ba9](https://github.com/gabeklein/expressive-mvc/commit/6de2ba940de5769bcd745f88cef0103d9a629393))
-* implement fallback prop ([d7402ca](https://github.com/gabeklein/expressive-mvc/commit/d7402ca4aa789c257f3c66ff94247cff8e6fbd89))
-
-
-
-
+- add subscription for methods passed to get() ([67edf28](https://github.com/gabeklein/expressive-mvc/commit/67edf28f0b596398dfa31cc7518e8aacd8d958a2))
+- enhance State interfaces and props for better compatibility and fallback support ([849f282](https://github.com/gabeklein/expressive-mvc/commit/849f28273291605e2c49950c8e6cc3e5b5638050))
+- enhance provider and consumer functionality with fallback support ([6de2ba9](https://github.com/gabeklein/expressive-mvc/commit/6de2ba940de5769bcd745f88cef0103d9a629393))
+- implement fallback prop ([d7402ca](https://github.com/gabeklein/expressive-mvc/commit/d7402ca4aa789c257f3c66ff94247cff8e6fbd89))
 
 ## [0.69.2](https://github.com/gabeklein/expressive-mvc/compare/v0.69.1...v0.69.2) (2025-09-11)
 
-
 ### Bug Fixes
 
-* update Props type to omit Model keys for better compatibility ([77a1cbe](https://github.com/gabeklein/expressive-mvc/commit/77a1cbef3faddeebab5f57e034ad798556a8325f))
-
-
+- update Props type to omit State keys for better compatibility ([77a1cbe](https://github.com/gabeklein/expressive-mvc/commit/77a1cbef3faddeebab5f57e034ad798556a8325f))
 
 ## [0.63.6](https://github.com/gabeklein/expressive-mvc/compare/v0.63.5...v0.63.6) (2025-06-26)
 
-
-
-
-
 ## [0.69.1](https://github.com/gabeklein/expressive-mvc/compare/v0.69.0...v0.69.1) (2025-09-10)
-
 
 ### Bug Fixes
 
-* add coverage for Observable method ([b7a7d9e](https://github.com/gabeklein/expressive-mvc/commit/b7a7d9e06731df3a628303266f42cf33f78e192d))
-* correct signature of createEffect ([1174916](https://github.com/gabeklein/expressive-mvc/commit/11749166f9eb573fef07308b3f542d05ef9317bf))
-* enhance setter handling in assign function to prevent errors ([86fa3b8](https://github.com/gabeklein/expressive-mvc/commit/86fa3b8677659ae0c95ee25ad46c9f8886ff5a6c))
-* update Observable interface to allow void, returning `this` ([41fbca8](https://github.com/gabeklein/expressive-mvc/commit/41fbca881e323b249925a07fb7e51108e4ab29d3))
-
-
-
-
+- add coverage for Observable method ([b7a7d9e](https://github.com/gabeklein/expressive-mvc/commit/b7a7d9e06731df3a628303266f42cf33f78e192d))
+- correct signature of createEffect ([1174916](https://github.com/gabeklein/expressive-mvc/commit/11749166f9eb573fef07308b3f542d05ef9317bf))
+- enhance setter handling in assign function to prevent errors ([86fa3b8](https://github.com/gabeklein/expressive-mvc/commit/86fa3b8677659ae0c95ee25ad46c9f8886ff5a6c))
+- update Observable interface to allow void, returning `this` ([41fbca8](https://github.com/gabeklein/expressive-mvc/commit/41fbca881e323b249925a07fb7e51108e4ab29d3))
 
 # [0.69.0](https://github.com/gabeklein/expressive-mvc/compare/v0.68.0...v0.69.0) (2025-09-05)
 
-
 ### Bug Fixes
 
-* support assigning function components as render method ([fade81e](https://github.com/gabeklein/expressive-mvc/commit/fade81eba5a049cc1aa30366823516142bc449dc))
-* update foo method assignment to use current property ([2b6b960](https://github.com/gabeklein/expressive-mvc/commit/2b6b9606709181b374f8ad79db39a00a624de356))
+- support assigning function components as render method ([fade81e](https://github.com/gabeklein/expressive-mvc/commit/fade81eba5a049cc1aa30366823516142bc449dc))
+- update foo method assignment to use current property ([2b6b960](https://github.com/gabeklein/expressive-mvc/commit/2b6b9606709181b374f8ad79db39a00a624de356))
 
-
-* feat!: removed ref-function from object ([6b2db41](https://github.com/gabeklein/expressive-mvc/commit/6b2db41b7047304821ff39dcd186017da1207b13))
-* fix(ref)!: update ref type to not implicitly allow null ([77cdb48](https://github.com/gabeklein/expressive-mvc/commit/77cdb48746eea281162df8d740fcb4633bb6cc12))
-
+- feat!: removed ref-function from object ([6b2db41](https://github.com/gabeklein/expressive-mvc/commit/6b2db41b7047304821ff39dcd186017da1207b13))
+- fix(ref)!: update ref type to not implicitly allow null ([77cdb48](https://github.com/gabeklein/expressive-mvc/commit/77cdb48746eea281162df8d740fcb4633bb6cc12))
 
 ### Features
 
-* **ref:** add 'is' and 'key' properties to reference objects ([1aa7cd8](https://github.com/gabeklein/expressive-mvc/commit/1aa7cd8cf4f62bc6507ef1afa3e47e99832e3cd1))
-
+- **ref:** add 'is' and 'key' properties to reference objects ([1aa7cd8](https://github.com/gabeklein/expressive-mvc/commit/1aa7cd8cf4f62bc6507ef1afa3e47e99832e3cd1))
 
 ### BREAKING CHANGES
 
-* ref properties no longer callable
-* ref properties no longer implicitly expect null in typescript
-
-
-
-
+- ref properties no longer callable
+- ref properties no longer implicitly expect null in typescript
 
 # [0.68.0](https://github.com/gabeklein/expressive-mvc/compare/v0.67.0...v0.68.0) (2025-08-21)
 
-
 ### Bug Fixes
 
-* add conventional commits flag to lerna publish script ([6d25716](https://github.com/gabeklein/expressive-mvc/commit/6d257165050b28c6b00be5a3ddd1f8734722b21a))
-* improve error messages for destroyed model updates ([0393f3c](https://github.com/gabeklein/expressive-mvc/commit/0393f3ca8ee73a41c35a9789a2eee12bef376eca))
-
+- add conventional commits flag to lerna publish script ([6d25716](https://github.com/gabeklein/expressive-mvc/commit/6d257165050b28c6b00be5a3ddd1f8734722b21a))
+- improve error messages for destroyed model updates ([0393f3c](https://github.com/gabeklein/expressive-mvc/commit/0393f3ca8ee73a41c35a9789a2eee12bef376eca))
 
 ### Features
 
-* fetch original methods using model.get ([013c082](https://github.com/gabeklein/expressive-mvc/commit/013c08293a4d0d9e3845950b16e4024ddcfbb7a1))
-* **react:** add suspense fallback to Provider ([c334366](https://github.com/gabeklein/expressive-mvc/commit/c33436628c0bcdcec1c4b161feca225c8c248dd0))
-
-
-
-
+- fetch original methods using model.get ([013c082](https://github.com/gabeklein/expressive-mvc/commit/013c08293a4d0d9e3845950b16e4024ddcfbb7a1))
+- **react:** add suspense fallback to Provider ([c334366](https://github.com/gabeklein/expressive-mvc/commit/c33436628c0bcdcec1c4b161feca225c8c248dd0))
 
 # [0.67.0](https://github.com/gabeklein/expressive-mvc/compare/v0.66.2...v0.67.0) (2025-07-28)
 
-
 ### Features
 
-* **ref:** trigger set instructions on assignment ([3be9fdf](https://github.com/gabeklein/expressive-mvc/commit/3be9fdf870f36e69717f2034141ac1ad5c09e772))
+- **ref:** trigger set instructions on assignment ([3be9fdf](https://github.com/gabeklein/expressive-mvc/commit/3be9fdf870f36e69717f2034141ac1ad5c09e772))

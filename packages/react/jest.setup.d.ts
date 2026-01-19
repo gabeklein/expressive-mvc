@@ -6,7 +6,7 @@
  */
 declare namespace jest {
   interface Matchers<R> {
-    /** Assert model did update with keys specified. */
+    /** Assert state did update with keys specified. */
     toHaveUpdated<R>(...keys: (string | symbol | number)[]): Promise<R>;
   }
 }

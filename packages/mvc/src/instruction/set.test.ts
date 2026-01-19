@@ -1,11 +1,11 @@
 import { mockPromise, mockWarn } from '../mocks';
-import { Model } from '../model';
+import { State } from '../state';
 import { set } from './set';
 
 const warn = mockWarn();
 
 it('will be enumerable', () => {
-  class Test extends Model {
+  class Test extends State {
     value = set('foo');
   }
 
@@ -15,7 +15,7 @@ it('will be enumerable', () => {
 });
 
 describe('placeholder', () => {
-  class Test extends Model {
+  class Test extends State {
     foobar = set<string>();
   }
 
@@ -76,7 +76,7 @@ describe('placeholder', () => {
 
 describe('callback', () => {
   it('will invoke callback on property assign', async () => {
-    class Subject extends Model {
+    class Subject extends State {
       test = set<number>(1, (value) => {
         didAssign(value + 1);
       });
@@ -99,7 +99,7 @@ describe('callback', () => {
   it.skip('will invoke callback on set assignment', async () => {
     const didAssign = jest.fn();
 
-    class Subject extends Model {
+    class Subject extends State {
       test = set<number>(1, didAssign);
     }
 
@@ -111,7 +111,7 @@ describe('callback', () => {
   });
 
   it('will invoke return-callback on overwrite', async () => {
-    class Subject extends Model {
+    class Subject extends State {
       test = set<number>(1, () => {
         return () => {
           callback(true);
@@ -133,7 +133,7 @@ describe('callback', () => {
   });
 
   it('will assign a default value', async () => {
-    class Subject extends Model {
+    class Subject extends State {
       test = set('foo', (value) => {
         callback(value);
       });
@@ -150,7 +150,7 @@ describe('callback', () => {
   });
 
   it('will ignore effect promise', () => {
-    class Subject extends Model {
+    class Subject extends State {
       property = set<any>(undefined, async () => {});
     }
 
@@ -160,7 +160,7 @@ describe('callback', () => {
   });
 
   it('will not suspend own property access', () => {
-    class Subject extends Model {
+    class Subject extends State {
       property = set<string>(undefined, (_, previous) => {
         propertyWas = previous;
       });
@@ -177,7 +177,7 @@ describe('callback', () => {
   });
 
   it('will reset nested effects', async () => {
-    class Subject extends Model {
+    class Subject extends State {
       name = 'World';
 
       hello = set('Hello', async (value) => {
@@ -210,7 +210,7 @@ describe('callback', () => {
 
 describe('intercept', () => {
   it('will prevent update if callback returns false', async () => {
-    class Subject extends Model {
+    class Subject extends State {
       test = set('foo', (value) => {
         callback(value);
         return false;
@@ -234,7 +234,7 @@ describe('intercept', () => {
       return value === 3 ? false : cleanup;
     });
 
-    class Test extends Model {
+    class Test extends State {
       value = set(1, setter);
     }
 
@@ -265,7 +265,7 @@ describe('factory', () => {
   it('will ignore setter if assigned', () => {
     const getValue = jest.fn(() => 'foo');
 
-    class Test extends Model {
+    class Test extends State {
       value = set(getValue);
     }
 
@@ -281,7 +281,7 @@ describe('factory', () => {
   it('will compute when accessed', () => {
     const factory = jest.fn(() => 'Hello World');
 
-    class Test extends Model {
+    class Test extends State {
       value = set(factory);
     }
 
@@ -297,7 +297,7 @@ describe('factory', () => {
   it('will compute lazily', () => {
     const factory = jest.fn(() => 'Hello World');
 
-    class Test extends Model {
+    class Test extends State {
       value = set(factory, false);
     }
 
@@ -309,7 +309,7 @@ describe('factory', () => {
   });
 
   it('will bind factory function to self', async () => {
-    class Test extends Model {
+    class Test extends State {
       // methods lose implicit this
       value = set(this.method);
 
@@ -322,7 +322,7 @@ describe('factory', () => {
   });
 
   it('will warn and rethrow error from factory', () => {
-    class Test extends Model {
+    class Test extends State {
       memoized = set(this.failToGetSomething, true);
 
       failToGetSomething() {
@@ -345,7 +345,7 @@ describe('suspense', () => {
   it('will throw suspense-promise resembling an error', () => {
     const promise = mockPromise();
 
-    class Test extends Model {
+    class Test extends State {
       value = set(promise, true);
     }
 
@@ -360,7 +360,7 @@ describe('suspense', () => {
       return this.value + ' world!';
     });
 
-    class Test extends Model {
+    class Test extends State {
       value = set<string>();
       greet = set(didEvaluate);
     }
@@ -381,7 +381,7 @@ describe('suspense', () => {
       return this.value + ' world!';
     });
 
-    class Test extends Model {
+    class Test extends State {
       value = set(promise);
       greet = set(didEvaluate);
     }
@@ -398,7 +398,7 @@ describe('suspense', () => {
   });
 
   it('will resolve when factory does', async () => {
-    class Test extends Model {
+    class Test extends State {
       value = set(async () => 'foobar', true);
     }
 
@@ -412,7 +412,7 @@ describe('suspense', () => {
   });
 
   it('will not suspend where already resolved', async () => {
-    class Test extends Model {
+    class Test extends State {
       greet = set(async () => 'Hello', true);
       name = set(async () => 'World', true);
 
@@ -434,7 +434,7 @@ describe('suspense', () => {
   it('will suspend if required while still pending', () => {
     const promise = mockPromise();
 
-    class Test extends Model {
+    class Test extends State {
       value = set(promise, true);
     }
 
@@ -448,7 +448,7 @@ describe('suspense', () => {
     const promise = mockPromise<string>();
     const mock = jest.fn();
 
-    class Test extends Model {
+    class Test extends State {
       value = set(promise, false);
     }
 
@@ -471,7 +471,7 @@ describe('suspense', () => {
       return this.greet + ' ' + this.name;
     });
 
-    class Test extends Model {
+    class Test extends State {
       greet = set(greet, true);
       name = set(name, true);
 
@@ -500,7 +500,7 @@ describe('suspense', () => {
       return this.greet + ' ' + this.name;
     });
 
-    class Test extends Model {
+    class Test extends State {
       greet = set(() => greet, true);
       name = set(() => name, true);
       value = set(didEvaluate, true);
@@ -524,11 +524,11 @@ describe('suspense', () => {
     const promise = mockPromise<string>();
     const didUpdate = mockPromise<string>();
 
-    class Child extends Model {
+    class Child extends State {
       value = set(promise, true);
     }
 
-    class Test extends Model {
+    class Test extends State {
       child = new Child();
 
       childValue = set(() => {
@@ -555,7 +555,7 @@ describe('suspense', () => {
   it('will return undefined on nested suspense', async () => {
     const promise = mockPromise<string>();
 
-    class Test extends Model {
+    class Test extends State {
       asyncValue = set(() => promise, true);
 
       value = set(() => `Hello ${this.asyncValue}`, false);
@@ -581,7 +581,7 @@ describe('suspense', () => {
       return `OK I'm unblocked.`;
     });
 
-    class Test extends Model {
+    class Test extends State {
       message = set(compute, true);
     }
 
@@ -621,7 +621,7 @@ describe('suspense', () => {
     const promise = mockPromise<number>();
     const promise2 = mockPromise<number>();
 
-    class Test extends Model {
+    class Test extends State {
       a = set(promise, true);
       b = set(promise2, true);
 
@@ -657,7 +657,7 @@ describe('suspense', () => {
   it('will refresh and throw if async rejects', async () => {
     const promise = mockPromise();
 
-    class Test extends Model {
+    class Test extends State {
       value = set(promise, true);
     }
 
@@ -686,7 +686,7 @@ describe('suspense', () => {
 describe('factory with callback overload', () => {
   it('calls callback after factory resolves', async () => {
     const callback = jest.fn();
-    class Test extends Model {
+    class Test extends State {
       value = set(() => 'computed', callback);
     }
     const test = Test.new();
@@ -696,7 +696,7 @@ describe('factory with callback overload', () => {
 
   it('calls callback after async factory resolves', async () => {
     const callback = jest.fn();
-    class Test extends Model {
+    class Test extends State {
       value = set(async () => {
         await new Promise((res) => setTimeout(res, 10));
         return 'asyncValue';
@@ -719,7 +719,7 @@ describe('factory with callback overload', () => {
 
   it('will callback if set before factory run', () => {
     const callback = jest.fn();
-    class Test extends Model {
+    class Test extends State {
       value = set(async () => 'something', callback);
     }
     const test = Test.new();
@@ -749,7 +749,7 @@ it('supports custom PromiseLike objects as factory return', async () => {
     }
   };
 
-  class Test extends Model {
+  class Test extends State {
     value = set(() => resolve);
   }
 

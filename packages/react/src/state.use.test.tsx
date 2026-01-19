@@ -1,8 +1,8 @@
 import { act, render, renderHook } from '@testing-library/react';
 
-import { get, Model, Provider, set } from '.';
+import { get, State, Provider, set } from '.';
 
-class Test extends Model {
+class Test extends State {
   value = 'foo';
 }
 
@@ -16,7 +16,7 @@ describe('hook', () => {
   it('will not create abstract class', () => {
     const Test = () => {
       // @ts-expect-error
-      expect(() => Model.use()).toThrowError();
+      expect(() => State.use()).toThrowError();
       return null;
     };
 
@@ -58,7 +58,7 @@ describe('hook', () => {
   it('will destroy instance of given class', async () => {
     const didDestroy = jest.fn();
 
-    class Test extends Model {
+    class Test extends State {
       constructor() {
         super();
         this.get(null, didDestroy);
@@ -93,7 +93,7 @@ describe('hook', () => {
   });
 
   it('will bind methods to instance', async () => {
-    class Test extends Model {
+    class Test extends State {
       current = 0;
 
       action() {
@@ -123,7 +123,7 @@ describe('new method', () => {
   it('will call if exists', () => {
     const didCreate = jest.fn();
 
-    class Test extends Model {
+    class Test extends State {
       new() {
         didCreate();
       }
@@ -139,7 +139,7 @@ describe('new method', () => {
   });
 
   it('will enforce signature', () => {
-    class Test extends Model {
+    class Test extends State {
       new(foo: string) {}
     }
 
@@ -154,7 +154,7 @@ describe('use method', () => {
   it('will call every render if present', () => {
     const didUse = jest.fn();
 
-    class Test extends Model {
+    class Test extends State {
       use() {
         didUse();
       }
@@ -172,7 +172,7 @@ describe('use method', () => {
   it('will receive arguments', () => {
     const didUse = jest.fn();
 
-    class Test extends Model {
+    class Test extends State {
       use(foo: string, bar: number) {
         didUse(foo, bar);
       }
@@ -186,7 +186,7 @@ describe('use method', () => {
   it('will divert arguments from constructor', () => {
     const didUse = jest.fn();
 
-    class Test extends Model {
+    class Test extends State {
       value = 0;
     }
 
@@ -207,7 +207,7 @@ describe('use method', () => {
 });
 
 describe('callback argument', () => {
-  class Test extends Model {
+  class Test extends State {
     foo?: string = undefined;
     bar?: string = undefined;
   }
@@ -229,8 +229,8 @@ describe('callback argument', () => {
       expect(effect).not.toHaveBeenCalled();
     });
 
-    class Test extends Model {
-      constructor(...args: Model.Args) {
+    class Test extends State {
+      constructor(...args: State.Args) {
         super(args);
         this.get(effect);
       }
@@ -246,12 +246,12 @@ describe('callback argument', () => {
 });
 
 describe('props argument', () => {
-  class Test extends Model {
+  class Test extends State {
     foo?: string = undefined;
     bar?: string = undefined;
   }
 
-  it('will apply props to model', async () => {
+  it('will apply props to state', async () => {
     const mockExternal = {
       foo: 'foo',
       bar: 'bar'
@@ -305,7 +305,7 @@ describe('props argument', () => {
   });
 
   it('will apply props over (untracked) arrow functions', () => {
-    class Test extends Model {
+    class Test extends State {
       foobar = () => 'Hello world!';
     }
 
@@ -323,7 +323,7 @@ describe('props argument', () => {
   });
 
   it('will not apply props over methods', () => {
-    class Test extends Model {
+    class Test extends State {
       foobar() {
         return 'Hello world!';
       }
@@ -358,7 +358,7 @@ describe('props argument', () => {
   it('will trigger set instruction', () => {
     const mock = jest.fn();
 
-    class Test extends Model {
+    class Test extends State {
       foo = set('foo', mock);
     }
 
@@ -373,11 +373,11 @@ describe('props argument', () => {
 
 describe('context', () => {
   it('will attach before model init', () => {
-    class Ambient extends Model {
+    class Ambient extends State {
       foo = 'foo';
     }
 
-    class Test extends Model {
+    class Test extends State {
       ambient = get(Ambient);
 
       constructor() {
