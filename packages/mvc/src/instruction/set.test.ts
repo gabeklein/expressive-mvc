@@ -1,4 +1,4 @@
-import { mockPromise, mockWarn } from '../mocks';
+import { mockError, mockPromise, mockWarn } from '../mocks';
 import { State } from '../state';
 import { set } from './set';
 
@@ -230,7 +230,7 @@ describe('intercept', () => {
 
   it('will not call prior cleanup if supressed', async () => {
     const cleanup = jest.fn();
-    const setter = jest.fn((value) => {
+    const setter = jest.fn((value: number) => {
       return value === 3 ? false : cleanup;
     });
 
@@ -754,4 +754,421 @@ it('supports Promise objects as factory return', async () => {
 
   await expect(threw).resolves.toBe('foobar');
   expect(test.value).toBe('foobar');
+});
+
+describe('compute mode', () => {
+  it('will reevaluate when inputs change', async () => {
+    class Subject extends State {
+      seconds = 0;
+
+      minutes = set(this, (state) => {
+        return Math.floor(state.seconds / 60);
+      });
+    }
+
+    const subject = Subject.new();
+
+    subject.seconds = 30;
+
+    await expect(subject).toHaveUpdated();
+
+    expect(subject.seconds).toEqual(30);
+    expect(subject.minutes).toEqual(0);
+
+    subject.seconds = 60;
+
+    await expect(subject).toHaveUpdated();
+
+    expect(subject.seconds).toEqual(60);
+    expect(subject.minutes).toEqual(1);
+  });
+
+  it('will trigger when nested inputs change', async () => {
+    class Subject extends State {
+      child = new Child();
+      nested = set(this, (state) => {
+        return state.child.value;
+      });
+    }
+
+    class Child extends State {
+      value = 'foo';
+    }
+
+    const subject = Subject.new();
+
+    expect(subject.nested).toBe('foo');
+
+    subject.child.value = 'bar';
+
+    await expect(subject).toHaveUpdated();
+    expect(subject.nested).toBe('bar');
+
+    subject.child = new Child();
+
+    await expect(subject).toHaveUpdated();
+    expect(subject.child.value).toBe('foo');
+    expect(subject.nested).toBe('foo');
+  });
+
+  it('will compute early if value is accessed', async () => {
+    class Test extends State {
+      number = 0;
+      plusOne = set(this, (state) => {
+        const value = state.number + 1;
+        didCompute(value);
+        return value;
+      });
+    }
+
+    const didCompute = jest.fn();
+    const test = Test.new();
+
+    expect(test.plusOne).toBe(1);
+
+    test.number++;
+
+    // not accessed; compute will wait for frame
+    expect(didCompute).not.toBeCalledWith(2);
+
+    // does compute eventually
+    await expect(test).toHaveUpdated();
+    expect(didCompute).toBeCalledWith(2);
+    expect(test.plusOne).toBe(2);
+
+    test.number++;
+
+    // sanity check
+    expect(didCompute).not.toBeCalledWith(3);
+
+    // accessing value now will force compute
+    expect(test.plusOne).toBe(3);
+    expect(didCompute).toBeCalledWith(3);
+
+    // update should still occur
+    await expect(test).toHaveUpdated();
+  });
+
+  it('will be squashed with regular updates', async () => {
+    const exec = jest.fn();
+    const emit = jest.fn();
+
+    class Inner extends State {
+      value = 1;
+    }
+
+    class Test extends State {
+      a = 1;
+      b = 1;
+
+      c = set(this, (state) => {
+        exec();
+        return state.a + state.b + state.x.value;
+      });
+
+      // sanity check; multi-source updates do work
+      x = new Inner();
+    }
+
+    const test = Test.new();
+
+    expect(test.c).toBe(3);
+    expect(exec).toBeCalledTimes(1);
+
+    test.set(emit);
+
+    test.a++;
+    expect(emit).toBeCalledTimes(1);
+    expect(emit).toBeCalledWith('a', test);
+
+    test.b++;
+    expect(emit).toBeCalledTimes(2);
+    expect(emit).toBeCalledWith('b', test);
+
+    test.x.value++;
+
+    await expect(test).toHaveUpdated();
+
+    expect(exec).toBeCalledTimes(2);
+    expect(emit).toBeCalledTimes(3);
+    expect(emit).toBeCalledWith('c', test);
+  });
+
+  it('will be evaluated in order', async () => {
+    let didCompute: string[] = [];
+
+    class Ordered extends State {
+      X = 1;
+
+      A = set(this, (state) => {
+        const value = state.X;
+        didCompute.push('A');
+        return value;
+      });
+
+      B = set(this, (state) => {
+        const value = state.A + 1;
+        didCompute.push('B');
+        return value;
+      });
+
+      C = set(this, (state) => {
+        const value = state.X + state.B + 1;
+        didCompute.push('C');
+        return value;
+      });
+
+      D = set(this, (state) => {
+        const value = state.A + state.C + 1;
+        didCompute.push('D');
+        return value;
+      });
+    }
+
+    const test = Ordered.new();
+
+    // initialize D, should cascade to dependancies
+    expect(test.D).toBe(6);
+
+    // should evaluate in order, by use
+    expect(didCompute).toMatchObject(['A', 'B', 'C', 'D']);
+
+    // empty computed
+    didCompute = [];
+
+    // change value of X, will trigger A & C;
+    test.X = 2;
+
+    await expect(test).toHaveUpdated();
+
+    // should evaluate by prioritiy
+    expect(didCompute).toMatchObject(['A', 'B', 'C', 'D']);
+  });
+
+  describe('failures', () => {
+    const error = mockError();
+    const warn = mockWarn();
+
+    class Subject extends State {
+      never = set(this, () => {
+        throw new Error();
+      });
+    }
+
+    it('will warn if throws', () => {
+      const state = Subject.new();
+      const attempt = () => state.never;
+
+      expect(attempt).toThrowError();
+      expect(warn).toBeCalledWith(
+        `An exception was thrown while initializing ${state}.never.`
+      );
+    });
+
+    it('will warn if throws on update', async () => {
+      class Test extends State {
+        shouldFail = false;
+
+        value = set(this, (state) => {
+          if (state.shouldFail) throw new Error();
+          else return undefined;
+        });
+      }
+
+      const state = Test.new();
+
+      void state.value;
+      state.shouldFail = true;
+
+      await expect(state).toHaveUpdated();
+
+      expect(warn).toBeCalledWith(
+        `An exception was thrown while refreshing ${state}.value.`
+      );
+      expect(error).toBeCalled();
+    });
+
+    it('will throw if source is another instruction', () => {
+      class Test extends State {
+        peer = set(this, () => 'foobar');
+
+        value = set(this.peer, () => {});
+      }
+
+      expect(() => Test.new('ID')).toThrowError(
+        `Attempted to use an instruction result (probably use or get) as computed source for ID.value. This is not allowed.`
+      );
+    });
+  });
+
+  describe('circular', () => {
+    it('will access own previous value', async () => {
+      class Test extends State {
+        multiplier = 0;
+        previous: number | undefined | null = null;
+
+        value = set(this, (state) => {
+          const { value, multiplier } = state;
+
+          // use set to bypass subscriber
+          this.previous = value;
+
+          return Math.ceil(Math.random() * 10) * multiplier;
+        });
+      }
+
+      const test = Test.new();
+
+      // shouldn't exist until getter's side-effect
+      expect(test.previous).toBe(null);
+
+      const initial = test.value;
+
+      // will start at 0 because of multiple
+      expect(initial).toBe(0);
+
+      // should now exist but be undefined (initial get)
+      expect('previous' in test).toBe(true);
+      expect(test.previous).toBe(undefined);
+
+      // change upstream value to trigger re-compute
+      test.multiplier = 1;
+      await expect(test).toHaveUpdated();
+
+      // getter should see current value while producing new one
+      expect(test.previous).toBe(initial);
+      expect(test.value).not.toBe(initial);
+    });
+
+    it('will not trigger itself', async () => {
+      const didGetOldValue = jest.fn();
+      const didGetNewValue = jest.fn();
+
+      class Test extends State {
+        input = 1;
+        value = set(this, (state) => {
+          const { input, value } = state;
+
+          didGetOldValue(value);
+
+          return input + 1;
+        });
+      }
+
+      const test = Test.new();
+
+      test.get((state) => {
+        didGetNewValue(state.value);
+      });
+
+      expect(test.value).toBe(2);
+      expect(didGetNewValue).toBeCalledWith(2);
+      expect(didGetOldValue).toBeCalledWith(undefined);
+
+      test.input = 2;
+
+      expect(test.value).toBe(3);
+      expect(didGetOldValue).toBeCalledWith(2);
+
+      await expect(test).toHaveUpdated();
+      expect(didGetNewValue).toBeCalledWith(3);
+      expect(didGetOldValue).toBeCalledTimes(2);
+    });
+  });
+
+  describe('method', () => {
+    it('will create computed via factory', async () => {
+      class Test extends State {
+        foo = 1;
+        bar = set(true, this.getBar);
+
+        getBar() {
+          return 1 + this.foo;
+        }
+      }
+
+      const test = Test.new();
+
+      expect(test.bar).toBe(2);
+
+      test.foo++;
+
+      await expect(test).toHaveUpdated();
+      expect(test.bar).toBe(3);
+    });
+
+    it('will run a method bound to instance', async () => {
+      class Hello extends State {
+        friend = 'World';
+
+        greeting = set(true, this.generateGreeting);
+
+        generateGreeting() {
+          return `Hello ${this.friend}!`;
+        }
+      }
+
+      const test = Hello.new();
+
+      expect(test.greeting).toBe('Hello World!');
+
+      test.friend = 'Foo';
+      await expect(test).toHaveUpdated();
+
+      expect(test.greeting).toBe('Hello Foo!');
+    });
+
+    it('will use top-most method of class', () => {
+      class Test extends State {
+        foo = 1;
+        bar = set(true, this.getBar);
+
+        getBar() {
+          return 1 + this.foo;
+        }
+      }
+
+      class Test2 extends Test {
+        getBar() {
+          return 2 + this.foo;
+        }
+      }
+
+      const test = Test2.new();
+
+      expect(test.bar).toBe(3);
+    });
+
+    it('will provide key and self to factory', () => {
+      const factory = jest.fn<'foo', [string, Test]>(() => 'foo');
+
+      class Test extends State {
+        fooBar = set(true, factory);
+      }
+
+      const test = Test.new();
+
+      expect(test.fooBar).toBe('foo');
+      expect(factory).toBeCalledWith('fooBar', test);
+    });
+
+    it('will subscribe from self argument', async () => {
+      class Test extends State {
+        foo = 'foo';
+
+        fooBar = set(true, (key: string, self: Test) => {
+          return self.foo;
+        });
+      }
+
+      const test = Test.new();
+
+      expect(test.fooBar).toBe('foo');
+
+      test.foo = 'bar';
+      await expect(test).toHaveUpdated();
+
+      expect(test.foo).toBe('bar');
+    });
+  });
 });

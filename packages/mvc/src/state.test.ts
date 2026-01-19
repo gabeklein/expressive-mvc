@@ -603,7 +603,7 @@ describe('get method', () => {
       value1 = 1;
       value2 = 2;
       value3 = 3;
-      value4 = get(this, ($) => $.value3 + 1);
+      value4 = set(this, ($) => $.value3 + 1);
     }
 
     it('will watch values', async () => {
@@ -1182,7 +1182,7 @@ describe('get method', () => {
         class Test extends State {
           value1 = 2;
 
-          value2 = get(this, ($) => {
+          value2 = set(this, ($) => {
             return $.value1 + 1;
           });
 
