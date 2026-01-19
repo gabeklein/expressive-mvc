@@ -586,7 +586,7 @@ describe('set instruction', () => {
       const promise = mockPromise();
 
       class Test extends State {
-        value = set(promise, true);
+        value = set(() => promise, true);
       }
 
       const hook = renderWith(Test, () => {

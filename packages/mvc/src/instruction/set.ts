@@ -9,14 +9,7 @@ declare namespace set {
     previous: T
   ) => ((next: T) => void) | Promise<any> | void | boolean;
 
-  type Factory<T, S = any> = (this: S, key: string) => Thenable<T> | T;
-
-  type Thenable<T> = {
-    then: (
-      onFulfilled?: (value: T) => any,
-      onRejected?: (reason: any) => any
-    ) => any;
-  };
+  type Factory<T, S = any> = (this: S, key: string) => Promise<T> | T;
 }
 
 /**
@@ -33,10 +26,7 @@ function set<T = any>(): T;
  * **Note** Factory is lazy! It will only run if/when property is accessed.
  * Value will be undefined until factory resolves, which will also dispatch an update for the property.
  */
-function set<T>(
-  factory: set.Factory<T> | set.Thenable<T>,
-  required: false
-): T | undefined;
+function set<T>(factory: set.Factory<T>, required: false): T | undefined;
 
 /**
  * Set property with a factory function.
@@ -47,10 +37,7 @@ function set<T>(
  * @param factory - Callback run to derrive property value.
  * @param required - If true run factory immediately on creation, otherwise on access.
  */
-function set<T>(
-  factory: set.Factory<T> | set.Thenable<T>,
-  required?: boolean
-): T;
+function set<T>(factory: set.Factory<T>, required?: boolean): T;
 
 /**
  * Set property with a factory function.
@@ -61,10 +48,7 @@ function set<T>(
  * @param factory - Callback run to derrive property value.
  * @param onUpdate - Callback run when property is finished computing or is set.
  */
-function set<T>(
-  factory: set.Factory<T> | set.Thenable<T>,
-  onUpdate?: set.Callback<T>
-): T;
+function set<T>(factory: set.Factory<T>, onUpdate?: set.Callback<T>): T;
 
 /**
  * Set a property with empty placeholder and/or update callback.
@@ -75,13 +59,13 @@ function set<T>(
 function set<T>(value: T | undefined, onUpdate?: set.Callback<T>): T;
 
 function set<T>(
-  value?: set.Factory<T> | set.Thenable<T> | T,
+  value?: set.Factory<T> | T,
   argument?: set.Callback<any> | boolean
 ) {
   return use<T>((key, subject) => {
     const property: Instruction.Descriptor = {};
 
-    if (typeof value == 'function' || isThenable(value)) {
+    if (typeof value == 'function') {
       function init() {
         if (typeof value == 'function')
           try {
@@ -97,7 +81,7 @@ function set<T>(
 
         const set = (value: any) => (subject[key] = value);
 
-        if (isThenable(value))
+        if (value instanceof Promise)
           value.then(set, (error) => {
             event(subject, key);
             property.get = () => {
@@ -166,10 +150,6 @@ function attempt(fn: () => any): any {
   }
 
   return compute();
-}
-
-function isThenable(value: any): value is set.Thenable<any> {
-  return value && typeof value == 'object' && typeof value.then == 'function';
 }
 
 export { set };

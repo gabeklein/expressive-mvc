@@ -340,13 +340,11 @@ describe('factory', () => {
 });
 
 describe('suspense', () => {
-  it.todo('will suspend for promise-like values');
-
   it('will throw suspense-promise resembling an error', () => {
     const promise = mockPromise();
 
     class Test extends State {
-      value = set(promise, true);
+      value = set(() => promise, true);
     }
 
     const instance = Test.new('ID');
@@ -382,7 +380,7 @@ describe('suspense', () => {
     });
 
     class Test extends State {
-      value = set(promise);
+      value = set(() => promise);
       greet = set(didEvaluate);
     }
 
@@ -435,7 +433,7 @@ describe('suspense', () => {
     const promise = mockPromise();
 
     class Test extends State {
-      value = set(promise, true);
+      value = set(() => promise, true);
     }
 
     const instance = Test.new();
@@ -449,7 +447,7 @@ describe('suspense', () => {
     const mock = jest.fn();
 
     class Test extends State {
-      value = set(promise, false);
+      value = set(() => promise, false);
     }
 
     const test = Test.new();
@@ -464,7 +462,7 @@ describe('suspense', () => {
   });
 
   it('will suspend another factory', async () => {
-    const greet = mockPromise<string>();
+    const salute = mockPromise<string>();
     const name = mockPromise<string>();
 
     const didEvaluate = jest.fn(function (this: Test) {
@@ -472,8 +470,8 @@ describe('suspense', () => {
     });
 
     class Test extends State {
-      greet = set(greet, true);
-      name = set(name, true);
+      greet = set(() => salute, true);
+      name = set(() => name, true);
 
       value = set(didEvaluate, true);
     }
@@ -482,7 +480,7 @@ describe('suspense', () => {
 
     test.get(($) => void $.value);
 
-    greet.resolve('Hello');
+    salute.resolve('Hello');
     await expect(test).toUpdate(0);
 
     name.resolve('World');
@@ -525,7 +523,7 @@ describe('suspense', () => {
     const didUpdate = mockPromise<string>();
 
     class Child extends State {
-      value = set(promise, true);
+      value = set(() => promise, true);
     }
 
     class Test extends State {
@@ -622,8 +620,8 @@ describe('suspense', () => {
     const promise2 = mockPromise<number>();
 
     class Test extends State {
-      a = set(promise, true);
-      b = set(promise2, true);
+      a = set(() => promise, true);
+      b = set(() => promise2, true);
 
       sum = set(this.getSum);
 
@@ -658,7 +656,7 @@ describe('suspense', () => {
     const promise = mockPromise();
 
     class Test extends State {
-      value = set(promise, true);
+      value = set(() => promise, true);
     }
 
     const instance = Test.new();
@@ -734,20 +732,12 @@ describe('factory with callback overload', () => {
   });
 });
 
-it('supports custom PromiseLike objects as factory return', async () => {
-  type Thenable<T> = {
-    then: (onFulfilled?: (value: T) => any) => any;
-  };
-
-  const resolve: Thenable<string> = {
-    then: (onFulfilled) => {
-      setTimeout(() => {
-        if (onFulfilled) onFulfilled('foobar');
-      }, 0);
-
-      return resolve;
-    }
-  };
+it('supports Promise objects as factory return', async () => {
+  const resolve = new Promise<string>((resolve) => {
+    setTimeout(() => {
+      resolve('foobar');
+    }, 0);
+  });
 
   class Test extends State {
     value = set(() => resolve);
