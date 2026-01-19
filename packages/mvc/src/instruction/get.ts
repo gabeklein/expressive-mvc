@@ -77,101 +77,116 @@ function get<R, T extends State>(
       );
 
     if (State.is(arg0)) {
-      const hasParent = PARENT.get(subject) as T;
-
-      // TODO: notify on discovered context
-      function assign(value: T) {
-        if (typeof arg1 == 'function')
-          value.get((x) => (arg1 as Function)(x, key));
-
-        update(subject, key, value);
-      }
-
-      if (!hasParent && arg1 === true)
-        throw new Error(
-          `${subject} may only exist as a child of type ${arg0}.`
-        );
-      else if (hasParent)
-        if (hasParent instanceof arg0) {
-          assign(hasParent);
-          return {};
-        } else if (arg1 === true)
-          throw new Error(
-            `New ${subject} created as child of ${hasParent}, but must be instanceof ${arg0}.`
-          );
-
-      Context.get(subject, (context) => {
-        const state = context.get(arg0);
-
-        if (state) assign(state);
-        else if (arg1 !== false)
-          throw new Error(
-            `Required ${arg0} not found in context for ${subject}.`
-          );
-      });
-
-      return {
-        get: arg1 !== false,
-        enumerable: false
-      };
+      return getState(arg0, arg1, key, subject);
     }
 
-    let from = subject;
+    return getComputed(arg0, arg1, key, subject);
+  });
+}
 
-    if (arg0 instanceof State) {
-      from = arg0;
-    } else {
-      const fn = METHOD.get(arg0) || arg0;
-      arg1 = ((p, k) => fn.call(p, k, p)) as get.Effect<T>;
-    }
+function getState<T extends State>(
+  arg0: Type<T>,
+  arg1: Function | boolean | undefined,
+  key: string,
+  subject: State
+) {
+  const hasParent = PARENT.get(subject) as T;
 
-    const source: get.Source<T> = (resolve) => resolve(from);
-    const getter = arg1 as get.Compute<R, T>;
+  // TODO: notify on discovered context
+  function assign(value: T) {
+    if (typeof arg1 == 'function') value.get((x) => (arg1 as Function)(x, key));
 
-    let reset: (() => void) | undefined;
-    let isAsync: boolean;
-    let proxy: any;
+    update(subject, key, value);
+  }
 
-    function connect(state: State) {
-      reset = watch(
-        state,
-        (current) => {
-          proxy = current;
-
-          if (!(key in state) || STALE.delete(compute)) compute(!reset);
-
-          return (didUpdate) => {
-            if (didUpdate) {
-              STALE.add(compute);
-              event(subject, key, true);
-            }
-          };
-        },
-        false
+  if (!hasParent && arg1 === true)
+    throw new Error(`${subject} may only exist as a child of type ${arg0}.`);
+  else if (hasParent)
+    if (hasParent instanceof arg0) {
+      assign(hasParent);
+      return {};
+    } else if (arg1 === true)
+      throw new Error(
+        `New ${subject} created as child of ${hasParent}, but must be instanceof ${arg0}.`
       );
+
+  Context.get(subject, (context) => {
+    const state = context.get(arg0);
+
+    if (state) assign(state);
+    else if (arg1 !== false)
+      throw new Error(`Required ${arg0} not found in context for ${subject}.`);
+  });
+
+  return {
+    get: arg1 !== false,
+    enumerable: false
+  };
+}
+
+function getComputed<R, T extends State>(
+  arg0: T | get.Factory<R, T>,
+  arg1: Function | boolean | undefined,
+  key: string,
+  subject: State
+) {
+  let from = subject;
+
+  if (arg0 instanceof State) {
+    from = arg0;
+  } else {
+    const fn = METHOD.get(arg0) || arg0;
+    arg1 = ((p, k) => fn.call(p, k, p)) as get.Effect<T>;
+  }
+
+  const source: get.Source<T> = (resolve) => resolve(from as T);
+  const getter = arg1 as get.Compute<R, T>;
+
+  let reset: (() => void) | undefined;
+  let isAsync: boolean;
+  let proxy: any;
+
+  function connect(state: State) {
+    reset = watch(
+      state,
+      (current) => {
+        proxy = current;
+
+        if (!(key in state) || STALE.delete(compute)) compute(!reset);
+
+        return (didUpdate) => {
+          if (didUpdate) {
+            STALE.add(compute);
+            event(subject, key, true);
+          }
+        };
+      },
+      false
+    );
+  }
+
+  function compute(initial?: boolean) {
+    let next: R | undefined;
+
+    try {
+      next = getter.call(proxy, proxy, key);
+    } catch (err) {
+      console.warn(
+        `An exception was thrown while ${
+          initial ? 'initializing' : 'refreshing'
+        } ${subject}.${key}.`
+      );
+
+      if (initial) throw err;
+
+      console.error(err);
     }
 
-    function compute(initial?: boolean) {
-      let next: R | undefined;
+    update(subject, key, next, !isAsync);
+  }
 
-      try {
-        next = getter.call(proxy, proxy, key);
-      } catch (err) {
-        console.warn(
-          `An exception was thrown while ${
-            initial ? 'initializing' : 'refreshing'
-          } ${subject}.${key}.`
-        );
-
-        if (initial) throw err;
-
-        console.error(err);
-      }
-
-      update(subject, key, next, !isAsync);
-    }
-
-    return () => {
+  return {
+    get() {
       if (!proxy) {
         source(connect);
         isAsync = true;
@@ -180,8 +195,8 @@ function get<R, T extends State>(
       if (STALE.delete(compute)) compute();
 
       return access(subject, key, !proxy) as T;
-    };
-  });
+    }
+  };
 }
 
 export { get };
