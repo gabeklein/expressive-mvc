@@ -1,10 +1,10 @@
 import { addListener } from './control';
-import { event, Model, PARENT, uid } from './model';
+import { event, State, PARENT, uid } from './state';
 
-const LOOKUP = new WeakMap<Model, Context | ((got: Context) => void)[]>();
-const KEYS = new Map<symbol | Model.Extends, symbol>();
+const LOOKUP = new WeakMap<State, Context | ((got: Context) => void)[]>();
+const KEYS = new Map<symbol | State.Extends, symbol>();
 
-function key(T: Model.Extends | symbol, upstream?: boolean): symbol {
+function key(T: State.Extends | symbol, upstream?: boolean): symbol {
   let K = KEYS.get(T);
 
   if (!K) {
@@ -15,47 +15,47 @@ function key(T: Model.Extends | symbol, upstream?: boolean): symbol {
   return upstream ? key(K) : K;
 }
 
-function keys(from: Model.Extends, upstream?: boolean) {
+function keys(from: State.Extends, upstream?: boolean) {
   const keys = new Set<symbol>();
 
   do {
     keys.add(key(from, upstream));
     from = Object.getPrototypeOf(from);
-  } while (from !== Model);
+  } while (from !== State);
 
   return keys;
 }
 
 declare namespace Context {
-  type Multiple<T extends Model> = {
-    [key: string | number]: Model.Class<T> | T;
+  type Multiple<T extends State> = {
+    [key: string | number]: State.Class<T> | T;
   };
 
-  type Accept<T extends Model = Model> = T | Model.Class<T> | Multiple<T>;
+  type Accept<T extends State = State> = T | State.Class<T> | Multiple<T>;
 
-  type Expect<T extends Model = Model> = (model: T) => (() => void) | void;
+  type Expect<T extends State = State> = (model: T) => (() => void) | void;
 }
 
 interface Context {
-  [key: symbol]: Model | Context.Expect | null | undefined;
+  [key: symbol]: State | Context.Expect | null | undefined;
 }
 
 class Context {
   /**
-   * Get the context for a specified Model. If a callback is provided, it will be run when
+   * Get the context for a specified State. If a callback is provided, it will be run when
    * the context becomes available.
    */
-  static get<T extends Model>(
-    on: Model,
+  static get<T extends State>(
+    on: State,
     callback: (got: Context) => void
   ): void;
 
   /**
-   * Get the context for a specified Model. Returns undefined if none are found.
+   * Get the context for a specified State. Returns undefined if none are found.
    */
-  static get<T extends Model>(on: Model): Context | undefined;
+  static get<T extends State>(on: State): Context | undefined;
 
-  static get({ is }: Model, callback?: (got: Context) => void) {
+  static get({ is }: State, callback?: (got: Context) => void) {
     const context = LOOKUP.get(is);
 
     if (context instanceof Context) {
@@ -70,7 +70,7 @@ class Context {
 
   public id = uid();
 
-  protected inputs = {} as Record<string | number, Model | Model.Extends>;
+  protected inputs = {} as Record<string | number, State | State.Extends>;
   protected cleanup = new Set<() => void>();
 
   constructor(inputs?: Context.Accept) {
@@ -78,22 +78,22 @@ class Context {
   }
 
   /** Find specified type registered to a parent context. Throws if none are found. */
-  public get<T extends Model>(Type: Model.Extends<T>, require: true): T;
+  public get<T extends State>(Type: State.Extends<T>, require: true): T;
 
   /** Find specified type registered to a parent context. Returns undefined if none are found. */
-  public get<T extends Model>(
-    Type: Model.Extends<T>,
+  public get<T extends State>(
+    Type: State.Extends<T>,
     require?: boolean
   ): T | undefined;
 
   /** Run callback when a specified type is registered in context downstream. */
-  public get<T extends Model>(
-    Type: Model.Extends<T>,
+  public get<T extends State>(
+    Type: State.Extends<T>,
     callback: (model: T) => void
   ): () => void;
 
-  public get<T extends Model>(
-    Type: Model.Extends<T>,
+  public get<T extends State>(
+    Type: State.Extends<T>,
     arg2?: boolean | ((model: T) => void)
   ) {
     if (typeof arg2 == 'function') {
@@ -120,21 +120,21 @@ class Context {
   }
 
   /**
-   * Adds a Model to this context.
+   * Adds a State to this context.
    */
-  protected add<T extends Model>(
-    input: T | Model.Class<T>,
+  protected add<T extends State>(
+    input: T | State.Class<T>,
     implicit?: boolean
   ) {
     const cleanup = new Set<() => void>();
-    let T: Model.Extends<T>;
+    let T: State.Extends<T>;
     let I: T;
 
     if (typeof input == 'function') {
       T = input;
       I = new input() as T;
     } else {
-      T = input.constructor as Model.Extends<T>;
+      T = input.constructor as State.Extends<T>;
       I = input;
     }
 
@@ -177,26 +177,26 @@ class Context {
   }
 
   /**
-   * Register one or more Models to this context.
+   * Register one or more States to this context.
    *
-   * Context will add or remove Models as needed to keep with provided input.
+   * Context will add or remove States as needed to keep with provided input.
    *
-   * @param inputs Model, Model class, or map of Models / Model classes to register.
-   * @param forEach Optional callback to run for each Model registered.
+   * @param inputs State, State class, or map of States / State classes to register.
+   * @param forEach Optional callback to run for each State registered.
    */
-  public use<T extends Model>(
+  public use<T extends State>(
     inputs: Context.Accept<T>,
     forEach?: Context.Expect<T>
   ) {
-    const init = new Map<Model, boolean>();
+    const init = new Map<State, boolean>();
 
-    if (typeof inputs == 'function' || inputs instanceof Model)
+    if (typeof inputs == 'function' || inputs instanceof State)
       inputs = { [0]: inputs };
 
     for (const [K, V] of Object.entries(inputs)) {
-      if (!(Model.is(V) || V instanceof Model))
+      if (!(State.is(V) || V instanceof State))
         throw new Error(
-          `Context may only include instance or class \`extends Model\` but got ${
+          `Context may only include instance or class \`extends State\` but got ${
             K == '0' || K == String(V) ? V : `${V} (as '${K}')`
           }.`
         );
@@ -222,9 +222,9 @@ class Context {
       if (explicit && forEach) forEach(model as T);
 
       for (const [_key, value] of model)
-        if (PARENT.get(value as Model) === model) {
-          this.add(value as Model, true);
-          init.set(value as Model, false);
+        if (PARENT.get(value as State) === model) {
+          this.add(value as State, true);
+          init.set(value as State, false);
         }
     }
 
@@ -232,9 +232,9 @@ class Context {
   }
 
   /**
-   * Create a child context, optionally registering one or more Models to it.
+   * Create a child context, optionally registering one or more States to it.
    *
-   * @param inputs Model, Model class, or map of Models / Model classes to register.
+   * @param inputs State, State class, or map of States / State classes to register.
    */
   public push(inputs?: Context.Accept) {
     const next = Object.create(this) as this;
@@ -250,9 +250,9 @@ class Context {
   }
 
   /**
-   * Remove all Models from this context.
+   * Remove all States from this context.
    *
-   * Will also run any cleanup callbacks registered when Models were added.
+   * Will also run any cleanup callbacks registered when States were added.
    */
   public pop() {
     for (const key of Object.getOwnPropertySymbols(this)) delete this[key];

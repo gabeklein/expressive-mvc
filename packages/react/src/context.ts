@@ -1,4 +1,4 @@
-import Model, { Context } from '@expressive/mvc';
+import State, { Context } from '@expressive/mvc';
 import {
   createContext,
   createElement,
@@ -25,32 +25,32 @@ Context.use = (create?: boolean) => {
 };
 
 declare namespace Consumer {
-  type Props<T extends Model> = {
+  type Props<T extends State> = {
     /** Type of controller to fetch from context. */
-    for: Model.Extends<T>;
+    for: State.Extends<T>;
 
     /**
      * Render function, will receive instance of desired controller.
      *
      * Called every render of parent component.
-     * Similar to `Model.get()`, updates to properties accessed in
+     * Similar to `State.get()`, updates to properties accessed in
      * this function will cause a refresh when they change.
      */
     children: (value: T) => ReactNode | void;
   };
 }
 
-function Consumer<T extends Model>(props: Consumer.Props<T>) {
+function Consumer<T extends State>(props: Consumer.Props<T>) {
   return props.for.get((i) => props.children(i));
 }
 
 declare namespace Provider {
-  interface Props<T extends Model> {
-    /** Model or group of Models to provide to descendant Consumers. */
+  interface Props<T extends State> {
+    /** State or group of States to provide to descendant Consumers. */
     for: Context.Accept<T>;
 
     /**
-     * Callback to run for each provided Model.
+     * Callback to run for each provided State.
      */
     forEach?: Context.Expect<T>;
 
@@ -70,7 +70,7 @@ declare namespace Provider {
   }
 }
 
-function Provider<T extends Model>(props: Provider.Props<T>) {
+function Provider<T extends State>(props: Provider.Props<T>) {
   const context = Context.use(true);
 
   useEffect(() => () => context.pop(), [context]);

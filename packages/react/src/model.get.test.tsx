@@ -1,9 +1,9 @@
 import { act, render, renderHook } from '@testing-library/react';
 import { Suspense } from 'react';
 
-import { get, Model, Provider, set } from '.';
+import { get, State, Provider, set } from '.';
 
-export function renderWith<T>(Type: Model.Class | Model, hook: () => T) {
+export function renderWith<T>(Type: State.Class | State, hook: () => T) {
   return renderHook(hook, {
     wrapper(props) {
       return (
@@ -40,7 +40,7 @@ afterEach(() => {
 afterAll(() => error.mockRestore());
 
 it('will fetch model', () => {
-  class Test extends Model {}
+  class Test extends State {}
 
   const test = Test.new();
   const hook = renderWith(test, () => Test.get());
@@ -49,7 +49,7 @@ it('will fetch model', () => {
 });
 
 it('will refresh for values accessed', async () => {
-  class Test extends Model {
+  class Test extends State {
     foo = 'foo';
   }
 
@@ -69,7 +69,7 @@ it('will refresh for values accessed', async () => {
 });
 
 it('will not update on death event', async () => {
-  class Test extends Model {
+  class Test extends State {
     foo = 'foo';
   }
 
@@ -87,7 +87,7 @@ it('will not update on death event', async () => {
 });
 
 it('will throw if not found', () => {
-  class Test extends Model {
+  class Test extends State {
     value = 1;
   }
 
@@ -100,7 +100,7 @@ it('will throw if not found', () => {
 });
 
 it('will not throw if optional', () => {
-  class Test extends Model {
+  class Test extends State {
     value = 1;
   }
 
@@ -113,7 +113,7 @@ it('will not throw if optional', () => {
 });
 
 it('will throw if expected value undefined', () => {
-  class Test extends Model {
+  class Test extends State {
     constructor() {
       super('ID');
     }
@@ -128,7 +128,7 @@ it('will throw if expected value undefined', () => {
 });
 
 describe('computed', () => {
-  class Test extends Model {
+  class Test extends State {
     foo = 1;
     bar = 2;
   }
@@ -149,7 +149,7 @@ describe('computed', () => {
   });
 
   it('will throw if instance not found', () => {
-    class Test extends Model {
+    class Test extends State {
       value = 1;
     }
 
@@ -205,7 +205,7 @@ describe('computed', () => {
   });
 
   it('will return null', () => {
-    class Test extends Model {}
+    class Test extends State {}
 
     const test = Test.new();
     const rendered = renderWith(test, () => Test.get(() => null));
@@ -246,7 +246,7 @@ describe('computed', () => {
   });
 
   it('will run initial callback syncronously', async () => {
-    class Parent extends Model {
+    class Parent extends State {
       values = [] as string[];
     }
 
@@ -288,7 +288,7 @@ describe('computed', () => {
 });
 
 describe('force update', () => {
-  class Test extends Model {
+  class Test extends State {
     foo = 'bar';
   }
 
@@ -401,7 +401,7 @@ describe('force update', () => {
 });
 
 describe('async', () => {
-  class Test extends Model {
+  class Test extends State {
     foo = 'bar';
   }
 
@@ -447,7 +447,7 @@ describe('async', () => {
   });
 
   it('will refresh and throw if async rejects', async () => {
-    class Test extends Model {}
+    class Test extends State {}
 
     const promise = mockPromise();
     const hook = renderWith(Test, () => {
@@ -472,11 +472,11 @@ describe('async', () => {
 });
 
 describe('get instruction', () => {
-  class Foo extends Model {
+  class Foo extends State {
     bar = get(Bar);
   }
 
-  class Bar extends Model {
+  class Bar extends State {
     value = 'bar';
   }
 
@@ -506,7 +506,7 @@ describe('get instruction', () => {
   });
 
   it('will return undefined if instance not found', () => {
-    class Foo extends Model {
+    class Foo extends State {
       bar = get(Bar, false);
     }
 
@@ -516,7 +516,7 @@ describe('get instruction', () => {
   });
 
   it('will throw if instance not found', () => {
-    class Foo extends Model {
+    class Foo extends State {
       bar = get(Bar);
 
       constructor() {
@@ -532,12 +532,12 @@ describe('get instruction', () => {
   });
 
   it('will prefer parent over context', () => {
-    class Parent extends Model {
+    class Parent extends State {
       child = new Child();
       value = 'foo';
     }
 
-    class Child extends Model {
+    class Child extends State {
       parent = get(Parent);
     }
 
@@ -547,8 +547,8 @@ describe('get instruction', () => {
   });
 
   it('will throw if parent required in-context', () => {
-    class Ambient extends Model {}
-    class Child extends Model {
+    class Ambient extends State {}
+    class Child extends State {
       expects = get(Ambient, true);
     }
 
@@ -565,7 +565,7 @@ describe('set instruction', () => {
     it('will suspend if function is async', async () => {
       const promise = mockPromise<string>();
 
-      class Test extends Model {
+      class Test extends State {
         value = set(() => promise, true);
       }
 
@@ -585,7 +585,7 @@ describe('set instruction', () => {
     it('will refresh and throw if async rejects', async () => {
       const promise = mockPromise();
 
-      class Test extends Model {
+      class Test extends State {
         value = set(promise, true);
       }
 
@@ -610,7 +610,7 @@ describe('set instruction', () => {
 
   describe('placeholder', () => {
     it('will suspend if value not yet assigned', async () => {
-      class Test extends Model {
+      class Test extends State {
         foobar = set<string>();
       }
 
@@ -630,7 +630,7 @@ describe('set instruction', () => {
     });
 
     it('will not suspend if already defined', async () => {
-      class Test extends Model {
+      class Test extends State {
         foobar = set<string>();
       }
 

@@ -1,4 +1,4 @@
-import { Model } from '.';
+import { State } from '.';
 import { Fragment, jsxDEV } from './jsx-dev-runtime';
 
 it('exports jsxDEV', () => {
@@ -10,7 +10,7 @@ it('exports Fragment', () => {
 });
 
 it('will convert Model to element', () => {
-  class Test extends Model {}
+  class Test extends State {}
 
   const element = jsxDEV(Test, { children: 'Hello' }, 'key', false);
 

@@ -1,10 +1,10 @@
-import { Model } from '../model';
+import { State } from '../state';
 import { ref } from './ref';
 import { set } from './set';
 
 describe('property', () => {
   it('will contain value from ref-object', async () => {
-    class Subject extends Model {
+    class Subject extends State {
       ref = ref<string>();
     }
 
@@ -17,7 +17,7 @@ describe('property', () => {
   });
 
   it('will reference parent', () => {
-    class Subject extends Model {
+    class Subject extends State {
       ref = ref<string>();
     }
 
@@ -28,7 +28,7 @@ describe('property', () => {
   });
 
   it('will get value from ref-object', async () => {
-    class Subject extends Model {
+    class Subject extends State {
       ref = ref<string>();
     }
 
@@ -42,7 +42,7 @@ describe('property', () => {
   });
 
   it('will subscribe from ref-object', async () => {
-    class Subject extends Model {
+    class Subject extends State {
       ref = ref<string>();
     }
 
@@ -60,7 +60,7 @@ describe('property', () => {
   });
 
   it('will watch "current" of property', async () => {
-    class Subject extends Model {
+    class Subject extends State {
       ref = ref<string>();
     }
 
@@ -81,7 +81,7 @@ describe('property', () => {
     const didTrigger = jest.fn();
     const didUpdate = jest.fn();
 
-    class Subject extends Model {
+    class Subject extends State {
       ref = ref<string>(didTrigger);
     }
 
@@ -101,7 +101,7 @@ describe('property', () => {
   });
 
   it('will invoke return-callback on overwrite', async () => {
-    class Subject extends Model {
+    class Subject extends State {
       ref = ref<number>(() => didTrigger);
     }
 
@@ -121,7 +121,7 @@ describe('property', () => {
   it('will not callback when set to null', async () => {
     const callback = jest.fn();
 
-    class Subject extends Model {
+    class Subject extends State {
       ref = ref<string | null>(callback);
     }
 
@@ -137,7 +137,7 @@ describe('property', () => {
   it('will callback when on null if ignore false', async () => {
     const callback = jest.fn();
 
-    class Subject extends Model {
+    class Subject extends State {
       ref = ref<string | null>(callback, false);
     }
 
@@ -151,7 +151,7 @@ describe('property', () => {
   });
 
   it('will reset nested effects', async () => {
-    class Subject extends Model {
+    class Subject extends State {
       name = 'World';
 
       hello = ref((value) => {
@@ -182,7 +182,7 @@ describe('property', () => {
   });
 
   it('will export value of ref-properties', () => {
-    class Subject extends Model {
+    class Subject extends State {
       ref = ref<string>();
     }
 
@@ -195,7 +195,7 @@ describe('property', () => {
   });
 
   it('will be accessible from a proxy', () => {
-    class Subject extends Model {
+    class Subject extends State {
       ref = ref<string>();
     }
 
@@ -207,7 +207,7 @@ describe('property', () => {
   });
 
   it.skip('will subscribe if current accessed', async () => {
-    class Subject extends Model {
+    class Subject extends State {
       ref = ref<string>();
     }
 
@@ -228,7 +228,7 @@ describe('property', () => {
 });
 
 describe('proxy', () => {
-  class Subject extends Model {
+  class Subject extends State {
     foo = 'foo';
     bar = 'bar';
 
@@ -288,7 +288,7 @@ describe('proxy', () => {
   });
 
   it('will reference parent', () => {
-    class Subject extends Model {
+    class Subject extends State {
       refs = ref(this);
       foo = 'foo';
       bar = 'bar';
@@ -306,7 +306,7 @@ describe('proxy', () => {
 
 describe('set instruction', () => {
   it('will include computed properties', () => {
-    class Subject extends Model {
+    class Subject extends State {
       ref = ref(this);
       foo = set(() => 'foo');
     }
@@ -320,7 +320,7 @@ describe('set instruction', () => {
   it('will trigger callback', () => {
     const callback = jest.fn();
 
-    class Subject extends Model {
+    class Subject extends State {
       ref = ref(this);
       foo = set(() => 'foo', callback);
     }
@@ -335,7 +335,7 @@ describe('set instruction', () => {
 describe('mapped', () => {
   const generateRef = jest.fn((key: any) => key as string);
 
-  class Test extends Model {
+  class Test extends State {
     foo = 'foo';
     bar = 'bar';
 
@@ -375,7 +375,7 @@ describe('mapped', () => {
   });
 
   it('will throw if object is not this', () => {
-    class Test extends Model {
+    class Test extends State {
       foo = 'foo';
       bar = 'bar';
 
@@ -389,7 +389,7 @@ describe('mapped', () => {
   });
 
   it('will include undefined properties', () => {
-    class Test extends Model {
+    class Test extends State {
       foo = undefined;
       fields = ref(this);
     }
@@ -400,7 +400,7 @@ describe('mapped', () => {
   });
 
   it.skip('will not break on recursive', () => {
-    class Test extends Model {
+    class Test extends State {
       foo = ref<boolean>();
       bar = ref(this);
     }

@@ -1,6 +1,6 @@
 import { Context } from '../context';
 import { mockError, mockPromise, mockWarn } from '../mocks';
-import { Model } from '../model';
+import { State } from '../state';
 import { get } from './get';
 import { use } from './use';
 
@@ -13,8 +13,8 @@ it.todo('will suspend if necessary');
 
 describe('fetch mode', () => {
   it.skip('will fetch sibling', () => {
-    class Ambient extends Model {}
-    class Test extends Model {
+    class Ambient extends State {}
+    class Test extends State {
       sibling = get(Test);
     }
 
@@ -26,8 +26,8 @@ describe('fetch mode', () => {
   });
 
   it('will not be enumerable', () => {
-    class Ambient extends Model {}
-    class Test extends Model {
+    class Ambient extends State {}
+    class Test extends State {
       ambient = get(Ambient);
       foo = 'bar';
     }
@@ -41,8 +41,8 @@ describe('fetch mode', () => {
   });
 
   it('will fetch multiple', () => {
-    class Ambient extends Model {}
-    class Test extends Model {
+    class Ambient extends State {}
+    class Test extends State {
       ambient1 = get(Ambient);
       ambient2 = get(Ambient);
     }
@@ -57,12 +57,12 @@ describe('fetch mode', () => {
   });
 
   it('will allow overwrite', async () => {
-    class Foo extends Model {
+    class Foo extends State {
       bar = new Bar();
       value = 'foo';
     }
 
-    class Bar extends Model {
+    class Bar extends State {
       value = 'foo';
       foo = get(Foo);
     }
@@ -93,10 +93,10 @@ describe('fetch mode', () => {
   });
 
   it('creates parent-child relationship', () => {
-    class Foo extends Model {
+    class Foo extends State {
       child = new Bar();
     }
-    class Bar extends Model {
+    class Bar extends State {
       parent = get(Foo);
     }
 
@@ -108,8 +108,8 @@ describe('fetch mode', () => {
   });
 
   it('throws when standalone but expects parent', () => {
-    class Parent extends Model {}
-    class Child extends Model {
+    class Parent extends State {}
+    class Child extends State {
       expects = get(Parent, true);
     }
 
@@ -121,8 +121,8 @@ describe('fetch mode', () => {
   });
 
   it('will throw if not found in context', () => {
-    class Parent extends Model {}
-    class Child extends Model {
+    class Parent extends State {}
+    class Child extends State {
       expects = get(Parent);
       constructor() {
         super('ID');
@@ -138,8 +138,8 @@ describe('fetch mode', () => {
   });
 
   it('will return undefined if required is false', () => {
-    class MaybeParent extends Model {}
-    class StandAlone extends Model {
+    class MaybeParent extends State {}
+    class StandAlone extends State {
       maybe = get(MaybeParent, false);
     }
 
@@ -151,11 +151,11 @@ describe('fetch mode', () => {
   });
 
   it('will throw if parent is of incorrect type', () => {
-    class Expected extends Model {}
-    class Unexpected extends Model {
+    class Expected extends State {}
+    class Unexpected extends State {
       child = new Adopted('ID');
     }
-    class Adopted extends Model {
+    class Adopted extends State {
       expects = get(Expected, true);
     }
 
@@ -167,11 +167,11 @@ describe('fetch mode', () => {
   });
 
   it('will not throw if has parent but not type-required', () => {
-    class Expected extends Model {}
-    class Unexpected extends Model {
+    class Expected extends State {}
+    class Unexpected extends State {
       child = new Adopted('ID');
     }
-    class Adopted extends Model {
+    class Adopted extends State {
       expects = get(Expected);
     }
 
@@ -181,12 +181,12 @@ describe('fetch mode', () => {
   });
 
   it('will track recursively', async () => {
-    class Child extends Model {
+    class Child extends State {
       value = 'foo';
       parent = get(Parent);
     }
 
-    class Parent extends Model {
+    class Parent extends State {
       child = new Child();
       value = 'foo';
     }
@@ -209,12 +209,12 @@ describe('fetch mode', () => {
   });
 
   it('will inherit parent context', () => {
-    class Foo extends Model {}
-    class Bar extends Model {
+    class Foo extends State {}
+    class Bar extends State {
       baz = use(Baz);
     }
 
-    class Baz extends Model {
+    class Baz extends State {
       foo = get(Foo);
     }
 
@@ -227,7 +227,7 @@ describe('fetch mode', () => {
 
 describe('callback', () => {
   it('will subscribe to found instance', async () => {
-    class Remote extends Model {
+    class Remote extends State {
       value = 'foo';
     }
 
@@ -235,7 +235,7 @@ describe('callback', () => {
       void remote.value;
     });
 
-    class Test extends Model {
+    class Test extends State {
       remote = get(Remote, remoteEffect);
     }
 
@@ -255,7 +255,7 @@ describe('callback', () => {
 
 describe('compute mode', () => {
   it('will reevaluate when inputs change', async () => {
-    class Subject extends Model {
+    class Subject extends State {
       seconds = 0;
 
       minutes = get(this, (state) => {
@@ -281,14 +281,14 @@ describe('compute mode', () => {
   });
 
   it('will trigger when nested inputs change', async () => {
-    class Subject extends Model {
+    class Subject extends State {
       child = new Child();
       nested = get(this, (state) => {
         return state.child.value;
       });
     }
 
-    class Child extends Model {
+    class Child extends State {
       value = 'foo';
     }
 
@@ -309,7 +309,7 @@ describe('compute mode', () => {
   });
 
   it('will compute early if value is accessed', async () => {
-    class Test extends Model {
+    class Test extends State {
       number = 0;
       plusOne = get(this, (state) => {
         const value = state.number + 1;
@@ -350,11 +350,11 @@ describe('compute mode', () => {
     const exec = jest.fn();
     const emit = jest.fn();
 
-    class Inner extends Model {
+    class Inner extends State {
       value = 1;
     }
 
-    class Test extends Model {
+    class Test extends State {
       a = 1;
       b = 1;
 
@@ -394,7 +394,7 @@ describe('compute mode', () => {
   it('will be evaluated in order', async () => {
     let didCompute: string[] = [];
 
-    class Ordered extends Model {
+    class Ordered extends State {
       X = 1;
 
       A = get(this, (state) => {
@@ -443,7 +443,7 @@ describe('compute mode', () => {
   });
 
   describe('failures', () => {
-    class Subject extends Model {
+    class Subject extends State {
       never = get(this, () => {
         throw new Error();
       });
@@ -460,7 +460,7 @@ describe('compute mode', () => {
     });
 
     it('will warn if throws on update', async () => {
-      class Test extends Model {
+      class Test extends State {
         shouldFail = false;
 
         value = get(this, (state) => {
@@ -483,7 +483,7 @@ describe('compute mode', () => {
     });
 
     it('will throw if source is another instruction', () => {
-      class Test extends Model {
+      class Test extends State {
         peer = get(this, () => 'foobar');
 
         // @ts-expect-error
@@ -498,7 +498,7 @@ describe('compute mode', () => {
 
   describe('circular', () => {
     it('will access own previous value', async () => {
-      class Test extends Model {
+      class Test extends State {
         multiplier = 0;
         previous: number | undefined | null = null;
 
@@ -539,7 +539,7 @@ describe('compute mode', () => {
       const didGetOldValue = jest.fn();
       const didGetNewValue = jest.fn();
 
-      class Test extends Model {
+      class Test extends State {
         input = 1;
         value = get(this, (state) => {
           const { input, value } = state;
@@ -573,7 +573,7 @@ describe('compute mode', () => {
 
   describe('method', () => {
     it('will create computed via factory', async () => {
-      class Test extends Model {
+      class Test extends State {
         foo = 1;
         bar = get(this.getBar);
 
@@ -593,7 +593,7 @@ describe('compute mode', () => {
     });
 
     it('will run a method bound to instance', async () => {
-      class Hello extends Model {
+      class Hello extends State {
         friend = 'World';
 
         greeting = get(this.generateGreeting);
@@ -614,7 +614,7 @@ describe('compute mode', () => {
     });
 
     it('will use top-most method of class', () => {
-      class Test extends Model {
+      class Test extends State {
         foo = 1;
         bar = get(this.getBar);
 
@@ -637,7 +637,7 @@ describe('compute mode', () => {
     it('will provide key and self to factory', () => {
       const factory = jest.fn<'foo', [string, Test]>(() => 'foo');
 
-      class Test extends Model {
+      class Test extends State {
         fooBar = get(factory);
       }
 
@@ -648,7 +648,7 @@ describe('compute mode', () => {
     });
 
     it('will subscribe from thisArg', async () => {
-      class Test extends Model {
+      class Test extends State {
         foo = 'foo';
 
         fooBar = get((key: string, self: Test) => {
@@ -670,9 +670,9 @@ describe('compute mode', () => {
 
 // TODO: not yet implemented by Context yet; this is a hack.
 describe.skip('replaced source', () => {
-  class Source extends Model {}
+  class Source extends State {}
 
-  class Test extends Model {
+  class Test extends State {
     source = get(Source);
   }
 
@@ -713,7 +713,7 @@ describe.skip('replaced source', () => {
   });
 
   it('will maintain subscription', async () => {
-    class Remote extends Model {
+    class Remote extends State {
       value = 'foo';
     }
 
@@ -721,7 +721,7 @@ describe.skip('replaced source', () => {
       void remote.value;
     });
 
-    class Test extends Model {
+    class Test extends State {
       remote = get(Remote, remoteEffect);
     }
 
@@ -749,12 +749,12 @@ describe.skip('replaced source', () => {
 });
 
 describe('async', () => {
-  class Foo extends Model {
+  class Foo extends State {
     value = 'foobar';
   }
 
   it('will suspend if not ready', async () => {
-    class Bar extends Model {
+    class Bar extends State {
       foo = get(Foo);
     }
 

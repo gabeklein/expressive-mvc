@@ -1,24 +1,24 @@
-import { access, follow, Model, PARENT, STATE, uid, update } from '../model';
+import { access, follow, State, PARENT, STATE, uid, update } from '../state';
 
 /**
  * Property initializer, will run upon instance creation.
  * Optional returned callback will run when once upon first access.
  */
-type Instruction<T = any, M extends Model = any> =
+type Instruction<T = any, M extends State = any> =
   // TODO: Should this allow for numbers/symbol properties?
   (
     this: M,
-    key: Extract<Model.Field<M>, string>,
+    key: Extract<State.Field<M>, string>,
     thisArg: M,
-    state: Model.Values<M>
+    state: State.Values<M>
   ) => Instruction.Descriptor<T> | ((source: M) => T) | void;
 
 declare namespace Instruction {
-  type Getter<T> = (source: Model) => T;
+  type Getter<T> = (source: State) => T;
 
   type Descriptor<T = any> = {
     get?: Getter<T> | boolean;
-    set?: Model.Setter<T> | boolean;
+    set?: State.Setter<T> | boolean;
     enumerable?: boolean;
     value?: T;
   };
@@ -28,18 +28,18 @@ const INSTRUCTION = new Map<symbol, Instruction>();
 
 function use<T>(instruction: Instruction<T>): T extends void ? unknown : T;
 
-function use<T extends Model>(
-  Type: Model.New<T>,
+function use<T extends State>(
+  Type: State.New<T>,
   required: false
 ): T | undefined;
 
-function use<T extends Model>(Type: Model.New<T>, ready?: (i: T) => void): T;
+function use<T extends State>(Type: State.New<T>, ready?: (i: T) => void): T;
 
 function use(
-  arg1: Model.Class | Instruction,
-  arg2?: ((i: Model) => void) | boolean
+  arg1: State.Class | Instruction,
+  arg2?: ((i: State) => void) | boolean
 ) {
-  if (Model.is(arg1)) arg1 = childInstruction(arg1, arg2);
+  if (State.is(arg1)) arg1 = childInstruction(arg1, arg2);
 
   const token = Symbol('instruction-' + uid());
   INSTRUCTION.set(token, arg1);
@@ -47,14 +47,14 @@ function use(
 }
 
 function childInstruction(
-  type: Model.Class<Model>,
-  arg2?: ((i: Model) => void) | boolean
+  type: State.Class<State>,
+  arg2?: ((i: State) => void) | boolean
 ): Instruction<any, any> {
   return (key, subject) => {
-    function set(next: Model | undefined) {
+    function set(next: State | undefined) {
       if (next ? !(next instanceof type) : arg2 !== false)
         throw new Error(
-          `${subject}.${key} expected Model of type ${type} but got ${
+          `${subject}.${key} expected State of type ${type} but got ${
             next && next.constructor
           }.`
         );
@@ -76,7 +76,7 @@ function childInstruction(
   };
 }
 
-function init(this: Model) {
+function init(this: State) {
   const state = STATE.get(this)!;
 
   for (const key in this) {
@@ -100,7 +100,7 @@ function init(this: Model) {
 
     Object.defineProperty(model, key, {
       enumerable: desc.enumerable !== false,
-      get(this: Model) {
+      get(this: State) {
         return follow(
           this,
           key,
@@ -121,6 +121,6 @@ function init(this: Model) {
   return null;
 }
 
-Model.on(init);
+State.on(init);
 
 export { use, Instruction };
