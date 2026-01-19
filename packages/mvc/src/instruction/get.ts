@@ -5,12 +5,6 @@ import { use } from './use';
 type Type<T extends State> = State.Extends<T> & typeof State;
 
 declare namespace get {
-  type Compute<T, S = any> = (on: S, key: string) => T;
-
-  type Factory<T, S = any> = (this: S, key: string, thisArg: S) => T;
-
-  type Source<T extends State = State> = (resolve: (x: T) => void) => void;
-
   type Effect<T> = (state: T, key: string) => (() => void) | void;
 }
 
