@@ -160,11 +160,13 @@ function watch<T extends State>(
   callback: Effect<Required<T>>,
   requireValues: true
 ): () => void;
+
 function watch<T extends State>(
   target: T,
   callback: Effect<T>,
   recursive?: boolean
 ): () => void;
+
 function watch<T extends State>(
   target: T,
   callback: Effect<T>,
