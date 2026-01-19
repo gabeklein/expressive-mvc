@@ -2,6 +2,7 @@ import { Context } from '../context';
 import { mockError, mockPromise, mockWarn } from '../mocks';
 import { State } from '../state';
 import { get } from './get';
+import { foo, set } from './set';
 import { use } from './use';
 
 const error = mockError();
@@ -311,7 +312,7 @@ describe('compute mode', () => {
   it('will compute early if value is accessed', async () => {
     class Test extends State {
       number = 0;
-      plusOne = get(this, (state) => {
+      plusOne = foo(this, (state) => {
         const value = state.number + 1;
         didCompute(value);
         return value;

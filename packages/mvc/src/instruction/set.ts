@@ -17,7 +17,19 @@ declare namespace set {
       onRejected?: (reason: any) => any
     ) => any;
   };
+
+  type Compute<T, S = any> = (on: S, key: string) => T;
 }
+
+function foo<T = any>(): T;
+function foo<R, T>(source: T, compute: set.Compute<R, T>): R;
+function foo<T>(factory: set.Factory<T>, required?: boolean): T;
+function foo<T>(factory: set.Factory<T>, required: false): T | undefined;
+function foo<T>(factory: set.Factory<T>, required?: boolean): T;
+function foo<T>(factory: set.Factory<T>, onUpdate?: set.Callback<T>): T;
+function foo(x?: any, y?: any) {}
+
+export { foo };
 
 /**
  * Set property as `undefined` but required.
@@ -34,7 +46,7 @@ function set<T = any>(): T;
  * Value will be undefined until factory resolves, which will also dispatch an update for the property.
  */
 function set<T>(
-  factory: set.Factory<T> | set.Thenable<T>,
+  factory: set.Factory<T> | Promise<T>,
   required: false
 ): T | undefined;
 
