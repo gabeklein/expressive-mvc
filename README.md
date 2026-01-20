@@ -215,7 +215,7 @@ class Greetings extends State {
   waiting = false;
   error = false;
 
-  sayHello = async () => {
+  async sayHello() {
     this.waiting = true;
 
     try {
@@ -224,7 +224,7 @@ class Greetings extends State {
     } catch (e) {
       this.error = true;
     }
-  };
+  }
 }
 
 const MyComponent = () => {
@@ -249,27 +249,43 @@ const MyComponent = () => {
 Define a `new()` method to run logic when a controller is created. Return a cleanup function to run when it's destroyed.
 
 ```jsx
+import { useNavigate } from 'react-router-dom';
+
 class Timer extends State {
   elapsed = 0;
   interval: any;
 
+  // Called once when the controller is created
   new() {
     this.interval = setInterval(() => {
       this.elapsed++;
     }, 1000);
 
+    // Cleanup function runs when component unmounts
     return () => clearInterval(this.interval);
+  }
+
+  // Called every render - use this to interface with external hooks
+  use() {
+    const navigate = useNavigate();
+
+    // Navigate when timer completes
+    if (this.elapsed >= 10) {
+      navigate('/completed');
+    }
   }
 }
 
 const MyTimer = () => {
   const { elapsed } = Timer.use();
 
-  return <p>I've existed for {elapsed} seconds!</p>;
+  return <p>Redirecting in {10 - elapsed} seconds...</p>;
 };
 ```
 
 > The `new()` method is called once when the instance is created. Returning a function from `new()` provides cleanup logic that runs when the component unmounts.
+
+> The `use()` method is called on **every render**, making it perfect for interfacing with external hooks from libraries like `react-router`, `react-query`, or custom hooks. This lets you integrate third-party hooks inside your State class while keeping your components clean.
 
 </br>
 
