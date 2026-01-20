@@ -5,10 +5,11 @@
   "module": "src/Situation.tsx",
   "dependencies": {
     "@expressive/react": "latest",
-    "react": "^18",
-    "react-dom": "^18"
+    "react": "^19",
+    "react-dom": "^19"
   },
   "devDependencies": {
-    "@types/react": "^18"
+    "@types/react": "^19",
+    "@types/react-dom": "^19"
   }
 }
