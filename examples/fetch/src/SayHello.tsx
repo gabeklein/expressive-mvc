@@ -1,5 +1,4 @@
 import State from '@expressive/react';
-import React from 'react';
 
 // Here we want just an MVP which fetches a name from `randomuser.me`.
 // We don't need anything fancy, so let instead of installing a library,
@@ -29,7 +28,7 @@ class Query extends State {
 
       this.response = `Hello ${first} ${last}`;
     } catch (error) {
-      this.error = error;
+      if (error instanceof Error) this.error = error;
     } finally {
       this.waiting = false;
     }

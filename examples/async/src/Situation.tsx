@@ -1,15 +1,15 @@
-import React from 'react';
-
 import Control from './Control';
 
 const Situation = () => {
   const { agent, dead, getNewAgent, remaining } = Control.use();
 
-  if (dead === true)
+  if (dead === true) {
     return <h2>🙀💥 Unforunately, the cat exploded.</h2>;
+  }
 
-  if (dead === false)
+  if (dead === false) {
     return <h2>😸👍 Oh, the cat did not explode.</h2>;
+  }
 
   return (
     <div className="timer">
@@ -23,9 +23,7 @@ const Situation = () => {
       </p>
       <p>
         But there's still time!
-        <button onClick={getNewAgent}>
-          Tap another agent
-        </button>
+        <button onClick={getNewAgent}>Tap another agent</button>
         if you think they can do it.
       </p>
     </div>

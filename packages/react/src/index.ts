@@ -20,3 +20,4 @@ export default State;
 export { Context, get, has, State, Observable, ref, set, use };
 export { Consumer, Provider } from './context';
 export { Fragment, createElement } from 'react';
+export { Pragma };

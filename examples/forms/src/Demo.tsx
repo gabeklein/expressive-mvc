@@ -1,5 +1,4 @@
 import { Provider } from '@expressive/react';
-import React from 'react';
 
 import { Form, Input } from './Form';
 
@@ -9,9 +8,9 @@ import { Form, Input } from './Form';
   we actually care about.
 */
 class Control extends Form {
-  firstname = "";
-  lastname = "";
-  email = "";
+  firstname = '';
+  lastname = '';
+  email = '';
 }
 
 const Demo = () => {
@@ -38,20 +37,15 @@ const Demo = () => {
   access to the nearest instance of Form via closure.
 */
 const Alert = () => {
-  const alertValues = Form.get(form => () => {
-    const values = JSON
-      .stringify(form.get(), null, 2)
-      .replace(/[",]/g, "")
+  const alertValues = Form.get((form) => () => {
+    const values = JSON.stringify(form.get(), null, 2)
+      .replace(/[",]/g, '')
       .slice(2, -2);
 
     alert(`Current values in form are:\n\n` + values);
-  })
+  });
 
-  return (
-    <button onClick={alertValues}>
-      Show Values
-    </button>
-  );
-}
+  return <button onClick={alertValues}>Show Values</button>;
+};
 
 export default Demo;

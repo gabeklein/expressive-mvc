@@ -1,5 +1,5 @@
 import { State } from '@expressive/react';
-import React, { InputHTMLAttributes, Ref } from 'react';
+import { InputHTMLAttributes, Ref } from 'react';
 
 /*
   Form here will be a State which may be used to control

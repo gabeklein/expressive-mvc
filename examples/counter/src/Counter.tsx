@@ -1,5 +1,4 @@
 import State from '@expressive/react';
-import React from 'react';
 
 // When we create a State, we're defining a set of values to be tracked.
 // It is recommended any State specific to a component is called 'Control'.

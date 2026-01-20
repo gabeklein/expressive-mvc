@@ -91,7 +91,7 @@ function provide(
   children: ReactNode,
   fallback?: ReactNode,
   name?: string | undefined
-) {
+): ReactNode {
   if (fallback !== undefined)
     children = createElement(Suspense, { fallback, name }, children);
 
