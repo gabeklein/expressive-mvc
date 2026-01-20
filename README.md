@@ -116,7 +116,7 @@ States use property access to know what needs an update when something changes. 
 
 ```jsx
 class Info extends State {
-  info = use(Extra);
+  info = new Extra();
   foo = 1;
   bar = 2;
   baz = 3;
@@ -308,17 +308,15 @@ Providing and consuming models is dead simple using `Provider` and `get` methods
 ```jsx
 import State, { Provider } from '@expressive/react';
 
-class State extends State {
+class Control extends Control {
   foo = 1;
   bar = 2;
 }
 
 const Parent = () => {
-  const state = State.use();
-
-  // Instance `state` is now available as its own class `State`
+  // Instance of `state` is now available as its own class `Control`
   return (
-    <Provider for={state}>
+    <Provider for={Control}>
       <AboutFoo />
       <AboutBar />
     </Provider>
@@ -327,7 +325,7 @@ const Parent = () => {
 
 const AboutFoo = () => {
   // Like with `use` we retain types and autocomplete!
-  const { is: state, foo } = State.get();
+  const { is: state, foo } = Control.get();
 
   return (
     <p>
@@ -338,7 +336,7 @@ const AboutFoo = () => {
 };
 
 const AboutBar = () => {
-  const { is: state, bar } = State.get();
+  const { is: state, bar } = Control.get();
 
   return (
     <p>
