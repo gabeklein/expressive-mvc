@@ -72,12 +72,12 @@ import State from '@expressive/react';
 class Counter extends State {
   current = 1;
 
-  increment = () => {
+  increment() {
     this.current += 1;
-  };
-  decrement = () => {
+  }
+  decrement() {
     this.current -= 1;
-  };
+  }
 }
 ```
 
@@ -161,9 +161,9 @@ class State extends State {
   bar = 2;
   baz = 3;
 
-  barPlusOne = () => {
+  barPlusOne() {
     this.bar++;
-  };
+  }
 }
 
 const MyComponent = () => {
@@ -451,9 +451,9 @@ class AppState extends State {
   user = new UserProfile();
   darkMode = false;
 
-  toggleTheme = () => {
+  toggleTheme() {
     this.darkMode = !this.darkMode;
-  };
+  }
 }
 
 const App = () => {
