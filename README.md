@@ -189,7 +189,19 @@ const MyComponent = () => {
 
 <sup><a href="https://codesandbox.io/s/example-async-inmk4">View in CodeSandbox</a></sup>
 
-> Reserved property `is` loops back to the instance, helpful to update values after having destructured.
+<br />
+
+Reserved property `is` loops back to the instance, helpful to update values after having destructured.
+
+```jsx
+const MyComponent = () => {
+  const { value, is } = Test.use();
+
+  return <p onClick={() => (is.value = 'Updated')}>Value is {value}!</p>;
+};
+```
+
+This is cleaner than keeping a reference to the full state object when you only need a few properties.
 
 <br/>
 
@@ -229,6 +241,35 @@ const MyComponent = () => {
 ```
 
 <sup><a href="https://codesandbox.io/s/example-fetch-wh4ppg">View in CodeSandbox</a></sup>
+
+</br>
+
+### Respond to lifecycle:
+
+Define a `new()` method to run logic when a controller is created. Return a cleanup function to run when it's destroyed.
+
+```jsx
+class Timer extends State {
+  elapsed = 0;
+  interval: any;
+
+  new() {
+    this.interval = setInterval(() => {
+      this.elapsed++;
+    }, 1000);
+
+    return () => clearInterval(this.interval);
+  }
+}
+
+const MyTimer = () => {
+  const { elapsed } = Timer.use();
+
+  return <p>I've existed for {elapsed} seconds!</p>;
+};
+```
+
+> The `new()` method is called once when the instance is created. Returning a function from `new()` provides cleanup logic that runs when the component unmounts.
 
 </br>
 
@@ -348,6 +389,99 @@ const AboutBar = () => {
 ```
 
 <sup><a href="https://codesandbox.io/s/example-shared-state-5vvtr">View in CodeSandbox</a></sup>
+<br/>
+<br/>
+
+### Use Consumer for render props:
+
+Instead of hooks, you can use the `Consumer` component with a render function.
+
+```jsx
+import State, { Consumer } from '@expressive/react';
+
+class Control extends State {
+  count = 0;
+}
+
+const Parent = () => (
+  <Provider for={Control}>
+    <Consumer for={Control}>
+      {(state) => (
+        <div>
+          <p>Count: {state.count}</p>
+          <button onClick={() => state.count++}>Increment</button>
+        </div>
+      )}
+    </Consumer>
+  </Provider>
+);
+```
+
+> `Consumer` is useful when you need fine-grained control over what triggers a re-render, or when working with class components.
+
+<br/>
+
+### Compose with child states:
+
+States can contain other states, creating a clean compositional hierarchy.
+
+```jsx
+class UserProfile extends State {
+  name = 'John';
+  email = 'john@example.com';
+}
+
+class AppState extends State {
+  user = new UserProfile();
+  darkMode = false;
+
+  toggleTheme = () => {
+    this.darkMode = !this.darkMode;
+  };
+}
+
+const App = () => {
+  const { user, darkMode, toggleTheme } = AppState.use();
+
+  return (
+    <div className={darkMode ? 'dark' : 'light'}>
+      <h1>Welcome, {user.name}!</h1>
+      <p>Email: {user.email}</p>
+      <button onClick={toggleTheme}>Toggle Theme</button>
+    </div>
+  );
+};
+```
+
+> Child states automatically trigger updates in parent components when they change.
+
+<br/>
+
+### Use forEach with Provider:
+
+The `forEach` callback lets you run logic for each state being provided, useful for setup or side effects.
+
+```jsx
+class Logger extends State {
+  log(message: string) {
+    console.log(`[${new Date().toISOString()}] ${message}`);
+  }
+}
+
+const App = () => (
+  <Provider
+    for={Logger}
+    forEach={(logger) => {
+      logger.log('Logger initialized');
+      return () => logger.log('Logger destroyed');
+    }}>
+    <MyApp />
+  </Provider>
+);
+```
+
+> The `forEach` callback can return a cleanup function that runs when the Provider unmounts.
+
 <br/>
 <br/>
 
