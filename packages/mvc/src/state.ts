@@ -1,3 +1,4 @@
+import { Context } from './context';
 import {
   addListener,
   watch,
@@ -194,6 +195,23 @@ abstract class State implements Observable {
   get(): State.Values<this>;
 
   /**
+   * Get instance of State which is in context of this one.
+   * Will throw an error if cannot be found.
+   * Will fetch either immediate parent from ancestor context.
+   */
+  get<T extends State>(fromContext: State.Extends<T>, required?: true): T;
+
+  /**
+   * Get instance of State which is in context of this one, if it exists.
+   * Will return `undefined` if cannot be found.
+   * Will fetch either immediate parent from ancestor context.
+   */
+  get<T extends State>(
+    fromContext: State.Extends<T>,
+    required?: boolean
+  ): T | undefined;
+
+  /**
    * Run a function which will run automatically when accessed values change.
    *
    * @param effect Function to run, and again whenever accessed values change.
@@ -244,7 +262,7 @@ abstract class State implements Observable {
   get(status: null, callback: () => void): () => void;
 
   get(
-    arg1?: State.Effect<this> | string | null,
+    arg1?: State.Extends | State.Effect<this> | string | null,
     arg2?: boolean | State.OnUpdate<this, any>
   ) {
     const self = this.is;
@@ -274,6 +292,14 @@ abstract class State implements Observable {
       if (isNotRecursive) EXPORT = undefined;
 
       return Object.freeze(values);
+    }
+
+    if (State.is(arg1)) {
+      const hasParent = PARENT.get(this);
+
+      return hasParent instanceof arg1
+        ? hasParent
+        : Context.get(this)?.get(arg1);
     }
 
     if (typeof arg1 == 'function') {
