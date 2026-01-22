@@ -60,12 +60,12 @@ function get<R, T extends State>(
   const isDownstream = arg1 === true;
   const isOptional = arg1 === false;
 
-  // Downstream collection mode
-  if (isDownstream) {
-    const callback =
-      typeof arg2 === 'function' ? (arg2 as get.Callback<T>) : undefined;
+  return use<T[] | T>((key, subject) => {
+    // Downstream collection mode
+    if (isDownstream) {
+      const callback =
+        typeof arg2 === 'function' ? (arg2 as get.Callback<T>) : undefined;
 
-    return use<T[]>((key, subject) => {
       const applied = new Set<State>();
       const reset = () => {
         update(subject, key, Object.freeze(Array.from(applied)));
@@ -116,11 +116,9 @@ function get<R, T extends State>(
         value: [],
         enumerable: false
       };
-    });
-  }
+    }
 
-  // Upstream mode
-  return use((key, subject) => {
+    // Upstream mode
     const hasParent = PARENT.get(subject) as T;
 
     function assign(value: T) {
