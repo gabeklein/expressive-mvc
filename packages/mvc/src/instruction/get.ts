@@ -13,13 +13,16 @@ declare namespace get {
 }
 
 /**
- * Fetches and assigns the controller which spawned this host.
- * When parent assigns an instance via `use()` directive, it
- * will be made available to child upon this request.
+ * Fetches upstream State from context with optional lifecycle callback.
+ * Callback runs on mount and can return cleanup function for unmount.
  *
- * @param Type - Type of controller compatible with this class.
+ * @param Type - Type of State to fetch.
+ * @param callback - Optional lifecycle callback, receives (state, subject). Can return cleanup function.
  */
-function get<T extends State>(Type: State.Extends<T>): T;
+function get<T extends State>(
+  Type: State.Extends<T>,
+  callback?: get.Callback<T>
+): T;
 
 /**
  * Fetches and assigns the controller which spawned this host.
@@ -35,42 +38,18 @@ function get<T extends State>(
 ): T | undefined;
 
 /**
- * Collects all downstream States of the specified type.
+ * Collects downstream States, this will accumulate all instances of specified type for which this is an ancestor.
  * Returns a frozen array that updates as States are added or removed.
- *
- * @param Type - Type of State to collect.
- * @param downstream - Must be true to enable downstream collection mode.
- */
-function get<T extends State>(
-  Type: State.Extends<T>,
-  downstream: true
-): readonly T[];
-
-/**
- * Fetches upstream State with lifecycle callback.
- * Callback runs on mount and can return cleanup function for unmount.
- *
- * @param Type - Type of State to fetch.
- * @param callback - Lifecycle callback, receives (state, subject). Can return cleanup function.
- * @param upstream - Must be true for upstream mode.
- */
-function get<T extends State>(
-  Type: State.Extends<T>,
-  callback: get.Callback<T>
-): T;
-
-/**
- * Collects downstream States with lifecycle callback.
  * Callback runs on each State registration and can return cleanup or false to prevent registration.
  *
  * @param Type - Type of State to collect.
- * @param downstream - Must be true for downstream mode.
- * @param callback - Lifecycle callback, receives (state, subject). May return false to prevent registration.
+ * @param downstream - Must be true to enable downstream mode.
+ * @param callback - Optional lifecycle callback, receives (state, subject). May return false to prevent registration.
  */
 function get<T extends State>(
   Type: State.Extends<T>,
   downstream: true,
-  callback: get.Callback<T>
+  callback?: get.Callback<T>
 ): readonly T[];
 
 function get<R, T extends State>(
