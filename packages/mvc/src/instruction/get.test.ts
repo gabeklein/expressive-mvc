@@ -321,7 +321,7 @@ describe('downstream collection', () => {
   it('will ignore redundant child', async () => {
     class Child extends State {}
     class Parent extends State {
-      children = get(Child, gotChild, true);
+      children = get(Child, true, gotChild);
     }
 
     const gotChild = jest.fn();
@@ -339,7 +339,7 @@ describe('downstream collection', () => {
       bar = new Bar();
     }
     class Bar extends State {
-      baz = get(Baz, gotBaz, true);
+      baz = get(Baz, true, gotBaz);
     }
 
     const gotBaz = jest.fn();
@@ -393,7 +393,7 @@ describe('lifecycle callbacks', () => {
   it('will run callback on downstream mount', () => {
     class Child extends State {}
     class Parent extends State {
-      children = get(Child, gotChild, true);
+      children = get(Child, true, gotChild);
     }
 
     const gotChild = jest.fn();
@@ -413,7 +413,7 @@ describe('lifecycle callbacks', () => {
       value = 0;
     }
     class Parent extends State {
-      children = get(Child, didAdd, true);
+      children = get(Child, true, didAdd);
     }
 
     const parent = Parent.new();
@@ -436,7 +436,7 @@ describe('lifecycle callbacks', () => {
   it('will not register if callback returns false', async () => {
     class Child extends State {}
     class Parent extends State {
-      children = get(Child, hasChild, true);
+      children = get(Child, true, hasChild);
     }
 
     const hasChild = jest.fn(() => false);
@@ -517,9 +517,9 @@ describe('lifecycle callbacks', () => {
     }
 
     class Parent extends State {
-      children = get(Child, (child) => {
+      children = get(Child, true, (child) => {
         child.value = 'Hello';
-      }, true);
+      });
     }
 
     const context = new Context();
@@ -532,7 +532,7 @@ describe('lifecycle callbacks', () => {
   it('will cleanup before destroying', async () => {
     class Child extends State {}
     class Parent extends State {
-      children = get(Child, (child) => {
+      children = get(Child, true, (child) => {
         didNotify();
         return () => {
           // this should occur before both
@@ -541,7 +541,7 @@ describe('lifecycle callbacks', () => {
           expect(child.get(null)).toBe(false);
           didRemove();
         };
-      }, true);
+      });
     }
 
     const didNotify = jest.fn();
@@ -563,12 +563,12 @@ describe('lifecycle callbacks', () => {
   it('will cleanup effects before destroying', async () => {
     class Child extends State {}
     class Parent extends State {
-      children = get(Child, () => {
+      children = get(Child, true, () => {
         didNotify();
         this.get(() => {
           return didRemove;
         });
-      }, true);
+      });
     }
 
     const didNotify = jest.fn();

@@ -64,27 +64,28 @@ function get<T extends State>(
  * Callback runs on each State registration and can return cleanup or false to prevent registration.
  *
  * @param Type - Type of State to collect.
- * @param callback - Lifecycle callback, receives (state, subject). May return false to prevent registration.
  * @param downstream - Must be true for downstream mode.
+ * @param callback - Lifecycle callback, receives (state, subject). May return false to prevent registration.
  */
 function get<T extends State>(
   Type: State.Extends<T>,
-  callback: get.Callback<T>,
-  downstream: true
+  downstream: true,
+  callback: get.Callback<T>
 ): readonly T[];
 
 function get<R, T extends State>(
   Type: Type<T>,
   arg1?: Function | boolean,
-  arg2?: boolean
+  arg2?: Function
 ) {
-  const isDownstream = arg1 === true || arg2 === true;
+  const isDownstream = arg1 === true;
   const isOptional = arg1 === false;
-  const hasCallback = typeof arg1 === 'function';
+  const hasCallback = typeof arg1 === 'function' || typeof arg2 === 'function';
 
   // Downstream collection mode
   if (isDownstream) {
-    const callback = hasCallback ? (arg1 as get.Callback<T>) : undefined;
+    const callback =
+      typeof arg2 === 'function' ? (arg2 as get.Callback<T>) : undefined;
 
     return use<T[]>((key, subject) => {
       const applied = new Set<State>();

@@ -53,7 +53,7 @@ The `packages/mvc/src/instruction/` directory contains "exotic values" - special
   - `get(Type, false)` - Fetch upstream State (optional, may be undefined)
   - `get(Type, true)` - Collect downstream States (returns frozen array)
   - `get(Type, callback)` - Upstream with lifecycle callback (non-reactive)
-  - `get(Type, callback, true)` - Downstream with lifecycle callback
+  - `get(Type, true, callback)` - Downstream with lifecycle callback
 - **`set`** - Custom setters with validation/transformation
 
 These are used as property initializers in State classes and get special handling during export/import.
