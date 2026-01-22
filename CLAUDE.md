@@ -48,9 +48,13 @@ The `packages/mvc/src/instruction/` directory contains "exotic values" - special
 
 - **`ref`** - Mutable references (like React refs) with `.current` property
 - **`use`** - Instanciates instructions, creates child State
-- **`get`** - Computed/derived values
+- **`get`** - Dependency injection for context.
+  - `get(Type)` - Fetch upstream State from context (required)
+  - `get(Type, false)` - Fetch upstream State (optional, may be undefined)
+  - `get(Type, true)` - Collect downstream States (returns frozen array)
+  - `get(Type, callback)` - Upstream with lifecycle callback (non-reactive)
+  - `get(Type, callback, true)` - Downstream with lifecycle callback
 - **`set`** - Custom setters with validation/transformation
-- **`has`** - Captures children State of specified type
 
 These are used as property initializers in State classes and get special handling during export/import.
 
@@ -114,6 +118,7 @@ pnpm push
 ```
 
 This runs `lerna publish --conventional-commits --no-private` which:
+
 - Versions packages based on conventional commits
 - Creates git tags
 - Publishes to npm
@@ -124,6 +129,7 @@ This runs `lerna publish --conventional-commits --no-private` which:
 ### State Lifecycle
 
 States follow this lifecycle:
+
 1. Constructor calls `prepare()` to set up method binding
 2. Constructor calls `init()` to process args and call user's `new()` method
 3. Optional `new()` method runs - can return cleanup function
@@ -133,6 +139,7 @@ States follow this lifecycle:
 ### Update Batching
 
 All updates are batched via `event()` in `control.ts`:
+
 - Property changes queue keys in `PENDING_KEYS`
 - Single setTimeout(0) processes all pending updates
 - Listeners receive both individual property events and a final `false` event
@@ -140,6 +147,7 @@ All updates are batched via `event()` in `control.ts`:
 ### Method Binding
 
 State methods are auto-bound to their instance via `METHOD` WeakMap:
+
 - First access creates and caches a bound version
 - Destructured methods maintain correct `this` context
 - Essential for passing methods as event handlers
@@ -147,6 +155,7 @@ State methods are auto-bound to their instance via `METHOD` WeakMap:
 ### The `is` Property
 
 Every State has a non-enumerable `is` property that references itself:
+
 - Allows write access after destructuring
 - Can read properties "silently" (without subscribing)
 - Example: `const { value, is } = MyState.use(); is.value = 'new'`
@@ -154,6 +163,7 @@ Every State has a non-enumerable `is` property that references itself:
 ### React Integration
 
 The React adapter uses:
+
 - `Layers` context for Context propagation
 - `Pragma` object to abstract React hooks (useState, useEffect)
 - `watch()` from core to detect accessed properties and trigger re-renders
