@@ -2,6 +2,7 @@ import { Context } from '../context';
 import { mockPromise } from '../mocks';
 import { State } from '../state';
 import { get } from './get';
+import { set } from './set';
 import { use } from './use';
 
 // is this desirable?
@@ -506,6 +507,83 @@ describe('lifecycle callbacks', () => {
     test.set(null);
 
     expect(cleanup).toHaveBeenCalledTimes(1);
+  });
+
+  it('will receive ready instance', async () => {
+    const didSet = jest.fn();
+
+    class Child extends State {
+      value = set(undefined, didSet);
+    }
+
+    class Parent extends State {
+      children = get(Child, (child) => {
+        child.value = 'Hello';
+      }, true);
+    }
+
+    const context = new Context();
+
+    context.push({ Parent }).push({ Child });
+
+    expect(didSet).toHaveBeenCalledWith('Hello', undefined);
+  });
+
+  it('will cleanup before destroying', async () => {
+    class Child extends State {}
+    class Parent extends State {
+      children = get(Child, (child) => {
+        didNotify();
+        return () => {
+          // this should occur before both
+          // target and recipient are destroyed.
+          expect(this.get(null)).toBe(false);
+          expect(child.get(null)).toBe(false);
+          didRemove();
+        };
+      }, true);
+    }
+
+    const didNotify = jest.fn();
+    const didRemove = jest.fn();
+
+    const context = new Context();
+
+    context.push({ Parent }).push({ Child });
+
+    expect(didNotify).toHaveBeenCalledTimes(1);
+    expect(didRemove).not.toHaveBeenCalled();
+
+    context.pop();
+
+    expect(didRemove).toHaveBeenCalledTimes(1);
+    expect(didNotify).toHaveBeenCalledTimes(1);
+  });
+
+  it('will cleanup effects before destroying', async () => {
+    class Child extends State {}
+    class Parent extends State {
+      children = get(Child, () => {
+        didNotify();
+        this.get(() => {
+          return didRemove;
+        });
+      }, true);
+    }
+
+    const didNotify = jest.fn();
+    const didRemove = jest.fn();
+
+    const context = new Context({ Parent });
+    const inner = context.push({ Child });
+
+    expect(didNotify).toHaveBeenCalledTimes(1);
+    expect(didRemove).not.toHaveBeenCalled();
+
+    inner.pop();
+
+    expect(didRemove).toHaveBeenCalledTimes(1);
+    expect(didNotify).toHaveBeenCalledTimes(1);
   });
 });
 
