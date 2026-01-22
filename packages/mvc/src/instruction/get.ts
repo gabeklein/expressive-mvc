@@ -59,7 +59,6 @@ function get<R, T extends State>(
 ) {
   const isDownstream = arg1 === true;
   const isOptional = arg1 === false;
-  const hasCallback = typeof arg1 === 'function' || typeof arg2 === 'function';
 
   // Downstream collection mode
   if (isDownstream) {
@@ -126,7 +125,7 @@ function get<R, T extends State>(
 
     function assign(value: T) {
       // If callback provided, run it as lifecycle hook
-      if (hasCallback) {
+      if (typeof arg1 === 'function') {
         const callback = arg1 as get.Callback<T>;
         const result = callback(value, subject);
 
