@@ -9,7 +9,7 @@ it.todo('will add pending compute to frame immediately');
 it.todo('will suspend if necessary');
 
 describe('fetch mode', () => {
-  it.skip('will fetch sibling', () => {
+  it('will fetch sibling', () => {
     class Ambient extends State {}
     class Test extends State {
       sibling = get(Test);
@@ -20,21 +20,6 @@ describe('fetch mode', () => {
     new Context({ Ambient, test });
 
     expect(test.sibling).toBe(test);
-  });
-
-  it('will not be enumerable', () => {
-    class Ambient extends State {}
-    class Test extends State {
-      ambient = get(Ambient);
-      foo = 'bar';
-    }
-    const test = Test.new();
-    const ambient = Ambient.new();
-
-    new Context({ ambient, test });
-
-    expect(test.ambient).toBe(ambient);
-    expect(Object.keys(test)).toMatchObject(['foo']);
   });
 
   it('will fetch multiple', () => {
@@ -60,8 +45,8 @@ describe('fetch mode', () => {
     }
 
     class Bar extends State {
-      value = 'foo';
       foo = get(Foo);
+      value = 'foo';
     }
 
     const foo = Foo.new();
@@ -104,19 +89,6 @@ describe('fetch mode', () => {
     expect(bar.parent).toBe(foo);
   });
 
-  it('throws when standalone but expects parent', () => {
-    class Parent extends State {}
-    class Child extends State {
-      expects = get(Parent, true);
-    }
-
-    const attempt = () => Child.new('ID');
-
-    expect(attempt).toThrowError(
-      `ID may only exist as a child of type Parent.`
-    );
-  });
-
   it('will throw if not found in context', () => {
     class Parent extends State {}
     class Child extends State {
@@ -129,9 +101,7 @@ describe('fetch mode', () => {
     const attempt = () => new Context({ Child });
 
     // should this throw immediately, or only on access?
-    expect(attempt).toThrowError(
-      `Required Parent not found in context for ID.`
-    );
+    expect(attempt).toThrowError(`Required Parent not found in context of ID.`);
   });
 
   it('will return undefined if required is false', () => {
@@ -145,22 +115,6 @@ describe('fetch mode', () => {
     new Context({ instance });
 
     expect(instance.maybe).toBeUndefined();
-  });
-
-  it('will throw if parent is of incorrect type', () => {
-    class Expected extends State {}
-    class Unexpected extends State {
-      child = new Adopted('ID');
-    }
-    class Adopted extends State {
-      expects = get(Expected, true);
-    }
-
-    const attempt = () => Unexpected.new('ID');
-
-    expect(attempt).toThrowError(
-      `New ID created as child of ID, but must be instanceof Expected.`
-    );
   });
 
   it('will not throw if has parent but not type-required', () => {
@@ -220,20 +174,210 @@ describe('fetch mode', () => {
 
     expect(bar.baz.foo).toBeInstanceOf(Foo);
   });
+
+  it('will not be enumerable', () => {
+    class Ambient extends State {}
+    class Test extends State {
+      ambient = get(Ambient);
+      foo = 'bar';
+    }
+    const test = Test.new();
+    const ambient = Ambient.new();
+
+    new Context({ ambient, test });
+
+    expect(test.ambient).toBe(ambient);
+    expect(Object.keys(test)).toMatchObject(['foo']);
+  });
 });
 
-describe('callback', () => {
-  it('will subscribe to found instance', async () => {
+describe('downstream collection', () => {
+  it('will collect children', () => {
+    class Child extends State {}
+    class Parent extends State {
+      children = get(Child, true);
+    }
+
+    const parent = Parent.new();
+    const child = Child.new();
+
+    new Context({ parent }).push({ child });
+
+    expect(parent.children).toEqual([child]);
+  });
+
+  it('will collect multiple children', () => {
+    class Child extends State {}
+    class Parent extends State {
+      children = get(Child, true);
+    }
+
+    const parent = Parent.new();
+    const child1 = Child.new();
+    const child2 = Child.new();
+
+    new Context({ parent }).push({ child1, child2 });
+
+    expect(parent.children).toEqual([child1, child2]);
+  });
+
+  it('will not be enumerable', () => {
+    class Child extends State {}
+    class Parent extends State {
+      children = get(Child, true);
+    }
+
+    const parent = Parent.new();
+
+    new Context({ parent }).push({ Child });
+
+    expect(Object.keys(parent)).not.toContain('children');
+    expect(parent.children).toEqual([expect.any(Child)]);
+  });
+
+  it('will collect a subclass', () => {
+    abstract class Child extends State {}
+
+    class Child2 extends Child {}
+    class Parent extends State {
+      children = get(Child, true);
+    }
+
+    const parent = Parent.new();
+    const child = Child2.new();
+
+    new Context({ parent }).push({ child });
+
+    expect(parent.children).toEqual([child]);
+  });
+
+  it('will not register superclass', () => {
+    class Child extends State {}
+    class Child2 extends Child {}
+    class Parent extends State {
+      children = get(Child2, true);
+    }
+
+    const parent = Parent.new();
+
+    new Context({ parent }).push({ Child });
+
+    expect(parent.children.length).toBe(0);
+  });
+
+  it('will regsiter for superclass', () => {
+    class Child extends State {}
+    class Parent extends State {
+      children = get(Child, true);
+    }
+    class Parent2 extends Parent {}
+
+    const parent = Parent2.new();
+
+    new Context({ parent }).push({ Child });
+
+    expect(parent.children.length).toBe(1);
+  });
+
+  it('will remove children which unmount', async () => {
+    class Child extends State {
+      value = 0;
+    }
+    class Parent extends State {
+      children = get(Child, true);
+    }
+
+    const parent = Parent.new();
+    const child1 = Child.new();
+    const child2 = Child.new();
+
+    const context = new Context({ parent });
+    const context2 = context.push({ child1, child2 });
+
+    expect(parent.children).toEqual([child1, child2]);
+
+    context2.pop();
+
+    await expect(parent).toHaveUpdated();
+    expect(parent.children.length).toBe(0);
+  });
+
+  it('will collect own type', async () => {
+    class Test extends State {
+      tests = get(Test, true);
+    }
+
+    const test = Test.new('1');
+    const test2 = Test.new('2');
+    const test3 = Test.new('3');
+
+    new Context({ test }).push({ test2 }).push({ test3 });
+
+    expect(test.tests).toEqual([test2]);
+    expect(test2.tests).toEqual([test3]);
+  });
+
+  it('will ignore redundant child', async () => {
+    class Child extends State {}
+    class Parent extends State {
+      children = get(Child, gotChild, true);
+    }
+
+    const gotChild = jest.fn();
+    const parent = Parent.new();
+    const child = Child.new();
+
+    new Context({ parent }).push({ child }).push({ child });
+
+    expect(gotChild).toHaveBeenCalledTimes(1);
+  });
+
+  it('will register implicit', () => {
+    class Baz extends State {}
+    class Foo extends State {
+      bar = new Bar();
+    }
+    class Bar extends State {
+      baz = get(Baz, gotBaz, true);
+    }
+
+    const gotBaz = jest.fn();
+    const foo = Foo.new();
+    const baz = Baz.new();
+
+    new Context({ foo }).push({ baz });
+
+    expect(gotBaz).toBeCalledWith(baz, foo.bar);
+  });
+
+  it('will register for implicit', () => {
+    class Baz extends State {}
+    class Foo extends State {
+      baz = get(Baz, true);
+    }
+    class Bar extends State {
+      baz = new Baz();
+    }
+
+    const foo = Foo.new();
+    const bar = Bar.new();
+
+    new Context({ foo }).push({ bar });
+
+    expect(foo.baz).toEqual([bar.baz]);
+  });
+});
+
+describe('lifecycle callbacks', () => {
+  it('will run callback on upstream mount', () => {
     class Remote extends State {
       value = 'foo';
     }
 
-    const remoteEffect = jest.fn((remote: Remote) => {
-      void remote.value;
-    });
+    const remoteCallback = jest.fn();
 
     class Test extends State {
-      remote = get(Remote, remoteEffect);
+      remote = get(Remote, remoteCallback);
     }
 
     const remote = Remote.new();
@@ -241,92 +385,127 @@ describe('callback', () => {
 
     new Context({ remote, test });
 
-    expect(remoteEffect).toBeCalledTimes(1);
-
-    remote.value = 'bar';
-    await remote.set();
-
-    expect(remoteEffect).toBeCalledTimes(2);
-  });
-});
-
-// TODO: not yet implemented by Context yet; this is a hack.
-describe.skip('replaced source', () => {
-  class Source extends State {}
-
-  class Test extends State {
-    source = get(Source);
-  }
-
-  it('will update', async () => {
-    const test = Test.new();
-    const oldSource = Source.new('Foo');
-    const context = new Context({ test, source: oldSource });
-
-    expect(test.source).toBe(oldSource);
-
-    const newSource = Source.new('Bar');
-
-    context.use({ source: newSource });
-
-    await expect(test).toHaveUpdated();
-    expect(test.source).toBe(newSource);
-
-    await expect(test).toHaveUpdated();
-    expect(test.source).toBe('Hello Baz!');
+    expect(remoteCallback).toBeCalledTimes(1);
+    expect(remoteCallback).toBeCalledWith(remote, test);
   });
 
-  it('will not update from previous source', async () => {
-    const test = Test.new();
-    const oldSource = Source.new('Foo');
-    const context = new Context({ test, source: oldSource });
+  it('will run callback on downstream mount', () => {
+    class Child extends State {}
+    class Parent extends State {
+      children = get(Child, gotChild, true);
+    }
 
-    expect(test.source).toBe('Hello Foo!');
+    const gotChild = jest.fn();
+    const parent = Parent.new();
+    const child = Child.new();
 
-    context.use({
-      source: Source.new('Bar')
+    new Context({ parent }).push({ child });
+
+    expect(gotChild).toHaveBeenCalledWith(child, parent);
+  });
+
+  it('will run cleanup on downstream unmount', async () => {
+    const didRemove = jest.fn();
+    const didAdd = jest.fn(() => didRemove);
+
+    class Child extends State {
+      value = 0;
+    }
+    class Parent extends State {
+      children = get(Child, didAdd, true);
+    }
+
+    const parent = Parent.new();
+    const child1 = Child.new();
+    const child2 = Child.new();
+
+    const context = new Context({ parent });
+    const context2 = context.push({ child1, child2 });
+
+    expect(didAdd).toHaveBeenCalledTimes(2);
+    expect(parent.children).toEqual([child1, child2]);
+
+    context2.pop();
+
+    await expect(parent).toHaveUpdated();
+    expect(didRemove).toHaveBeenCalledTimes(2);
+    expect(parent.children.length).toBe(0);
+  });
+
+  it('will not register if callback returns false', async () => {
+    class Child extends State {}
+    class Parent extends State {
+      children = get(Child, hasChild, true);
+    }
+
+    const hasChild = jest.fn(() => false);
+    const parent = Parent.new();
+    const context = new Context({ parent });
+
+    context.push({
+      child: Child.new(),
+      child2: Child.new()
     });
 
-    await expect(test).toHaveUpdated();
-    expect(test.source).toBe('Hello Bar!');
+    expect(hasChild).toHaveBeenCalledTimes(2);
+    expect(parent.children.length).toBe(0);
 
-    // oldSource.value = "Baz";
-    // await expect(test).not.toHaveUpdated();
+    context.push({ child: Child.new() });
+
+    await expect(parent).not.toUpdate();
+    expect(hasChild).toHaveBeenCalledTimes(3);
+    expect(parent.children.length).toBe(0);
   });
 
-  it('will maintain subscription', async () => {
+  it('upstream callback is not reactive', async () => {
     class Remote extends State {
       value = 'foo';
     }
 
-    const remoteEffect = jest.fn((remote: Remote) => {
+    const remoteCallback = jest.fn((remote: Remote) => {
+      // Access value but should not subscribe
       void remote.value;
     });
 
     class Test extends State {
-      remote = get(Remote, remoteEffect);
+      remote = get(Remote, remoteCallback);
     }
 
-    let remote = Remote.new();
+    const remote = Remote.new();
     const test = Test.new();
-    const context = new Context({ remote, test });
 
-    expect(remoteEffect).toBeCalledTimes(1);
+    new Context({ remote, test });
 
+    expect(remoteCallback).toBeCalledTimes(1);
+
+    // Change should NOT trigger callback again
     remote.value = 'bar';
     await remote.set();
 
-    expect(remoteEffect).toBeCalledTimes(2);
+    expect(remoteCallback).toBeCalledTimes(1);
+  });
 
-    // TODO: Instruction does not seem to be notified of change.
-    remote = Remote.new();
-    context.use({ remote });
+  it('will run cleanup on state destruction', async () => {
+    class Remote extends State {}
 
-    await test.set();
-    expect(remoteEffect).toBeCalledTimes(3);
+    const cleanup = jest.fn();
+    const remoteCallback = jest.fn(() => cleanup);
 
-    remote.value = 'boo';
-    expect(remoteEffect).toBeCalledTimes(4);
+    class Test extends State {
+      remote = get(Remote, remoteCallback);
+    }
+
+    const remote = Remote.new();
+    const test = Test.new();
+
+    new Context({ remote, test });
+
+    expect(remoteCallback).toBeCalledTimes(1);
+    expect(cleanup).not.toHaveBeenCalled();
+
+    test.set(null);
+
+    expect(cleanup).toHaveBeenCalledTimes(1);
   });
 });
 
