@@ -72,19 +72,14 @@ class Context {
 
   protected inputs = {} as Record<string | number, State | State.Extends>;
   protected cleanup = new Set<() => void>();
+  protected children = new Set<Context>();
 
   constructor(inputs?: Context.Accept) {
     if (inputs) this.use(inputs);
   }
 
-  /** Find specified type registered to a parent context. Throws if none are found. */
-  public get<T extends State>(Type: State.Extends<T>, require: true): T;
-
   /** Find specified type registered to a parent context. Returns undefined if none are found. */
-  public get<T extends State>(
-    Type: State.Extends<T>,
-    require?: boolean
-  ): T | undefined;
+  public get<T extends State>(Type: State.Extends<T>): T | undefined;
 
   /** Run callback when a specified type is registered in context downstream. */
   public get<T extends State>(
@@ -92,10 +87,25 @@ class Context {
     callback: (state: T) => void
   ): () => void;
 
+  /** Collect all downstream States of specified type. Returns array snapshot. */
   public get<T extends State>(
     Type: State.Extends<T>,
-    arg2?: boolean | ((state: T) => void)
+    downstream: true
+  ): T[];
+
+  /** Collect all downstream States of specified type with optional callback for each. */
+  public get<T extends State>(
+    Type: State.Extends<T>,
+    downstream: true,
+    callback: (state: T) => void
+  ): T[];
+
+  public get<T extends State>(
+    Type: State.Extends<T>,
+    arg2?: boolean | ((state: T) => void),
+    arg3?: (state: T) => void
   ) {
+    // Callback-based downstream registration
     if (typeof arg2 == 'function') {
       const k = key(Type, true);
       Object.defineProperty(this, k, {
@@ -107,6 +117,34 @@ class Context {
       };
     }
 
+    // Downstream collection (snapshot)
+    if (arg2 === true) {
+      const callback = typeof arg3 === 'function' ? arg3 : undefined;
+      const collected: T[] = [];
+      const k = key(Type);
+
+      // Recursively collect from this context and all children
+      const collect = (ctx: Context) => {
+        // Check if this context has the type (only own properties, not inherited)
+        if (ctx.hasOwnProperty(k)) {
+          const state = ctx[k];
+          if (state && state !== null) {
+            collected.push(state as T);
+            if (callback) callback(state as T);
+          }
+        }
+
+        // Recurse into children
+        for (const child of ctx.children) {
+          collect(child);
+        }
+      };
+
+      collect(this);
+      return collected;
+    }
+
+    // Upstream lookup
     const result = this[key(Type)];
 
     if (result === null)
@@ -115,8 +153,6 @@ class Context {
       );
 
     if (result) return result as T;
-
-    if (arg2) throw new Error(`Could not find ${Type} in context.`);
   }
 
   /**
@@ -239,10 +275,19 @@ class Context {
   public push(inputs?: Context.Accept) {
     const next = Object.create(this) as this;
 
-    this.cleanup = new Set([() => next.pop(), ...this.cleanup]);
+    this.children.add(next);
+
+    this.cleanup = new Set([
+      () => {
+        this.children.delete(next);
+        next.pop();
+      },
+      ...this.cleanup
+    ]);
 
     next.inputs = {};
     next.cleanup = new Set();
+    next.children = new Set();
 
     if (inputs) next.use(inputs);
 

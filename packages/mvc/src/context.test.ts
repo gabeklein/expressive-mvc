@@ -367,3 +367,120 @@ describe('Context.get callback overload (downstream registration)', () => {
     expect(cleanup).toBeCalledTimes(1);
   });
 });
+
+describe('Context.get downstream collection', () => {
+  class ChildState extends State {}
+  class AnotherState extends State {}
+
+  it('should collect downstream states from direct children', () => {
+    const parent = new Context();
+    const child = parent.push(ChildState);
+
+    const collected = parent.get(ChildState, true);
+
+    expect(collected).toHaveLength(1);
+    expect(collected[0]).toBeInstanceOf(ChildState);
+    expect(collected[0]).toBe(child.get(ChildState));
+  });
+
+  it('should collect downstream states from nested children', () => {
+    const parent = new Context();
+    const child1 = parent.push(ChildState);
+    const child2 = child1.push(ChildState);
+    const child3 = child2.push(ChildState);
+
+    const collected = parent.get(ChildState, true);
+
+    expect(collected).toHaveLength(3);
+    expect(collected[0]).toBe(child1.get(ChildState));
+    expect(collected[1]).toBe(child2.get(ChildState));
+    expect(collected[2]).toBe(child3.get(ChildState));
+  });
+
+  it('should return empty array if no downstream states exist', () => {
+    const parent = new Context();
+    parent.push(AnotherState);
+
+    const collected = parent.get(ChildState, true);
+
+    expect(collected).toHaveLength(0);
+    expect(collected).toEqual([]);
+  });
+
+  it('should collect multiple states of same type from siblings', () => {
+    const parent = new Context();
+    const child1 = parent.push(ChildState);
+    const child2 = parent.push(ChildState);
+    const child3 = parent.push(ChildState);
+
+    const collected = parent.get(ChildState, true);
+
+    expect(collected).toHaveLength(3);
+    expect(collected).toContain(child1.get(ChildState));
+    expect(collected).toContain(child2.get(ChildState));
+    expect(collected).toContain(child3.get(ChildState));
+  });
+
+  it('should call callback for each collected state', () => {
+    const parent = new Context();
+    const child1 = parent.push(ChildState);
+    const child2 = parent.push(ChildState);
+    const cb = jest.fn();
+
+    const collected = parent.get(ChildState, true, cb);
+
+    expect(cb).toBeCalledTimes(2);
+    expect(cb).toHaveBeenNthCalledWith(1, child1.get(ChildState));
+    expect(cb).toHaveBeenNthCalledWith(2, child2.get(ChildState));
+    expect(collected).toHaveLength(2);
+  });
+
+  it('should not include parent context states', () => {
+    const grandparent = new Context(ChildState);
+    const parent = grandparent.push(AnotherState);
+    const child = parent.push(ChildState);
+
+    const collected = parent.get(ChildState, true);
+
+    // Should only collect from child, not from grandparent
+    expect(collected).toHaveLength(1);
+    expect(collected[0]).toBe(child.get(ChildState));
+    expect(collected[0]).not.toBe(grandparent.get(ChildState));
+  });
+
+  it('should return snapshot that does not update', () => {
+    const parent = new Context();
+    parent.push(ChildState);
+
+    const collected1 = parent.get(ChildState, true);
+    expect(collected1).toHaveLength(1);
+
+    // Add more children
+    parent.push(ChildState);
+    parent.push(ChildState);
+
+    // Original snapshot should not change
+    expect(collected1).toHaveLength(1);
+
+    // New snapshot should reflect current state
+    const collected2 = parent.get(ChildState, true);
+    expect(collected2).toHaveLength(3);
+  });
+
+  it('should handle subtypes correctly', () => {
+    class ChildSubtype extends ChildState {}
+
+    const parent = new Context();
+    parent.push(ChildState);
+    const child2 = parent.push(ChildSubtype);
+
+    // Should collect both ChildState and its subtype
+    const collectedBase = parent.get(ChildState, true);
+    expect(collectedBase).toHaveLength(2);
+
+    // Should only collect the specific subtype
+    const collectedSub = parent.get(ChildSubtype, true);
+    expect(collectedSub).toHaveLength(1);
+    expect(collectedSub[0]).toBe(child2.get(ChildSubtype));
+  });
+});
