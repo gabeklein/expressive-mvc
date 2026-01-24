@@ -3,7 +3,7 @@ import '@testing-library/jest-dom';
 import { act, render, screen } from '@testing-library/react';
 import React, { Suspense } from 'react';
 
-import State, { Consumer, get, has, Provider, set, use } from '.';
+import State, { Consumer, get, Provider, set, use } from '.';
 
 const error = jest.spyOn(console, 'error').mockImplementation(() => {});
 
@@ -598,7 +598,7 @@ describe('get instruction', () => {
 describe('has instruction', () => {
   it('will notify parent', () => {
     class Foo extends State {
-      value = has(Bar, didGetBar);
+      value = get(Bar, true, didGetBar);
     }
 
     class Bar extends State {
@@ -623,7 +623,7 @@ describe('has instruction', () => {
 
   it.skip('will notify parent of instance', () => {
     class Foo extends State {
-      value = has(Bar, didGetBar);
+      value = get(Bar, true, didGetBar);
     }
 
     class Bar extends State {

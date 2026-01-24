@@ -604,7 +604,7 @@ function values<T extends State>(target: T): State.Values<T> {
 
   if (!EXPORT) {
     isNotRecursive = true;
-    EXPORT = new Map([[self, values]]);
+    EXPORT = new Map([[target, values]]);
   }
 
   for (let [key, value] of target) {

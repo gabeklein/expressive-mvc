@@ -102,7 +102,9 @@ describe('fetch mode', () => {
     const attempt = () => new Context({ Child });
 
     // should this throw immediately, or only on access?
-    expect(attempt).toThrowError(`Required Parent not found in context of ID.`);
+    expect(attempt).toThrowError(
+      `Required Parent not found in context for ID.`
+    );
   });
 
   it('will return undefined if required is false', () => {

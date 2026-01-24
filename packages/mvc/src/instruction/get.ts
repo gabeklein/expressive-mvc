@@ -148,7 +148,9 @@ function get<R, T extends State>(
 
       if (self) assign(self);
       else if (!isOptional)
-        throw new Error(`Required ${Type} not found in context of ${subject}.`);
+        throw new Error(
+          `Required ${Type} not found in context for ${subject}.`
+        );
     });
 
     return {

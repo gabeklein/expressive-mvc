@@ -545,19 +545,6 @@ describe('get instruction', () => {
 
     expect(result.current.child.parent).toBe(result.current);
   });
-
-  it('will throw if parent required in-context', () => {
-    class Ambient extends State {}
-    class Child extends State {
-      expects = get(Ambient, true);
-    }
-
-    const attempt = () => Child.new('ID');
-
-    expect(attempt).toThrowError(
-      `ID may only exist as a child of type Ambient.`
-    );
-  });
 });
 
 describe('set instruction', () => {

@@ -5,8 +5,7 @@ import {
   get,
   use,
   ref,
-  set,
-  has
+  set
 } from '@expressive/mvc';
 import { createElement, useEffect, useState } from 'react';
 
@@ -17,7 +16,7 @@ Pragma.useState = useState;
 Pragma.createElement = createElement;
 
 export default State;
-export { Context, get, has, State, Observable, ref, set, use };
+export { Context, get, State, Observable, ref, set, use };
 export { Consumer, Provider } from './context';
 export { Fragment, createElement } from 'react';
 export { Pragma };

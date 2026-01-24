@@ -2,38 +2,7 @@
 
 import { act, render, screen } from '@testing-library/react';
 import React, { Children, Component, isValidElement } from 'react';
-import { Consumer, get, has, State, set } from '.';
-
-describe('has instruction', () => {
-  it('will callback on register', () => {
-    class Parent extends State {
-      child = has(Child, gotChild);
-    }
-
-    class Child extends State {
-      parents = has(gotParent);
-    }
-
-    const didCallback = jest.fn();
-    const gotParent = jest.fn(() => didCallback.bind(null, 'parent'));
-    const gotChild = jest.fn(() => didCallback.bind(null, 'child'));
-
-    const { unmount } = render(
-      <Parent>
-        <Child />
-      </Parent>
-    );
-
-    expect(gotParent).toHaveBeenCalledTimes(1);
-    expect(gotChild).toHaveBeenCalledTimes(1);
-
-    unmount();
-
-    expect(didCallback).toHaveBeenCalledTimes(2);
-    expect(didCallback.mock.calls[0][0]).toBe('parent');
-    expect(didCallback.mock.calls[1][0]).toBe('child');
-  });
-});
+import { Consumer, get, State, set } from '.';
 
 it('will create and provide instance', () => {
   class Control extends State {
