@@ -249,54 +249,11 @@ abstract class State implements Observable {
   ) {
     const self = this.is;
 
-    if (arg1 === undefined) {
-      const values = {} as any;
-      let isNotRecursive;
-
-      if (!EXPORT) {
-        isNotRecursive = true;
-        EXPORT = new Map([[self, values]]);
-      }
-
-      for (let [key, value] of self) {
-        if (EXPORT.has(value)) value = EXPORT.get(value);
-        else if (
-          value &&
-          typeof value == 'object' &&
-          'get' in value &&
-          typeof value.get === 'function'
-        )
-          EXPORT.set(value, (value = value.get()));
-
-        values[key] = value;
-      }
-
-      if (isNotRecursive) EXPORT = undefined;
-
-      return Object.freeze(values);
-    }
-
-    if (typeof arg1 == 'function') {
-      const effect = METHOD.get(arg1) || arg1;
-      let pending = new Set<State.Event<this>>();
-
-      return watch(self, (proxy) => {
-        const cb = effect.call(proxy, proxy, pending);
-
-        return cb === null
-          ? null
-          : (update) => {
-              pending = PENDING_KEYS.get(self)!;
-              if (typeof cb == 'function') cb(update);
-            };
-      });
-    }
-
-    return typeof arg2 == 'function'
-      ? addListener(self, arg2, arg1)
-      : arg1 === null
-        ? Object.isFrozen(STATE.get(self))
-        : access(self, arg1, arg2);
+    if (arg1 === undefined) return values(self);
+    if (typeof arg1 == 'function') return effect(self, arg1);
+    if (typeof arg2 == 'function') return addListener(self, arg2, arg1);
+    if (arg1 === null) return Object.isFrozen(STATE.get(self));
+    return access(self, arg1, arg2);
   }
 
   /**
@@ -623,6 +580,49 @@ function init(self: State, args: State.Args) {
 
     return null;
   });
+}
+
+function effect<T extends State>(target: T, fn: State.Effect<T>) {
+  const effect = METHOD.get(fn) || fn;
+  let pending = new Set<State.Event<T>>();
+
+  return watch(target, (proxy) => {
+    const cb = effect.call(proxy, proxy, pending);
+
+    if (cb === null) return cb;
+
+    return (update) => {
+      pending = PENDING_KEYS.get(target)!;
+      if (typeof cb == 'function') cb(update);
+    };
+  });
+}
+
+function values<T extends State>(target: T): State.Values<T> {
+  const values = {} as any;
+  let isNotRecursive;
+
+  if (!EXPORT) {
+    isNotRecursive = true;
+    EXPORT = new Map([[self, values]]);
+  }
+
+  for (let [key, value] of target) {
+    if (EXPORT.has(value)) value = EXPORT.get(value);
+    else if (
+      value &&
+      typeof value == 'object' &&
+      'get' in value &&
+      typeof value.get === 'function'
+    )
+      EXPORT.set(value, (value = value.get()));
+
+    values[key] = value;
+  }
+
+  if (isNotRecursive) EXPORT = undefined;
+
+  return Object.freeze(values);
 }
 
 function manage(
