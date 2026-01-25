@@ -82,10 +82,13 @@ import State from '@expressive/react';
 3. **Destructure properties** you need - this automatically subscribes to them
 4. **Update via assignment** - components re-render automatically
 
+<br />
+
+Just define a custom State
+
 ```tsx
 import State from '@expressive/react';
 
-// 1. Define your State
 class Counter extends State {
   count = 0;
 
@@ -97,8 +100,11 @@ class Counter extends State {
     this.count--;
   }
 }
+```
 
-// 2. Use it in a component
+And use it in a component!
+
+```tsx
 function CounterWidget() {
   const { count, increment, decrement } = Counter.use();
 
@@ -112,7 +118,7 @@ function CounterWidget() {
 }
 ```
 
-[Try it live →](https://codesandbox.io/s/github/gabeklein/expressive-mvc/tree/main/examples/counter)
+That simple! [Try it in sandbox →](https://codesandbox.io/s/github/gabeklein/expressive-mvc/tree/main/examples/counter)
 
 <br />
 
@@ -133,7 +139,9 @@ class App extends State {
     this.count++;
   }
 }
+```
 
+```tsx
 function MyComponent() {
   const { count, message, is, increment } = App.use();
 
@@ -186,7 +194,9 @@ class Control extends State {
     this.agent = recruit.name.last;
   }
 }
+```
 
+```tsx
 function Situation() {
   const { agent, dead, remaining, getNewAgent } = Control.use();
 
@@ -250,8 +260,6 @@ function Bar() {
 }
 ```
 
-<sup>[View in CodeSandbox](https://codesandbox.io/s/github/gabeklein/expressive-mvc/tree/main/examples/context)</sup>
-
 **Use `Consumer` for render props:**
 
 ```tsx
@@ -270,6 +278,8 @@ function UserDisplay() {
   );
 }
 ```
+
+<sup>[View in CodeSandbox](https://codesandbox.io/s/github/gabeklein/expressive-mvc/tree/main/examples/context)</sup>
 
 <br/>
 
@@ -333,7 +343,9 @@ class Profile extends State {
 class Settings extends State {
   theme: 'light' | 'dark' = 'light';
 }
+```
 
+```tsx
 function UserProfile() {
   const {
     profile: { name, is: profile },
@@ -402,7 +414,9 @@ class Timer extends State {
     }
   }
 }
+```
 
+```tsx
 function RedirectTimer() {
   const { elapsed } = Timer.use();
 
@@ -439,13 +453,19 @@ abstract class Query<T> extends State {
     }
   }
 }
+```
 
-// Extend it for specific use cases
+Extend it for specific use cases
+
+```tsx
 class UserQuery extends Query<User> {
   url = '/api/user';
 }
+```
 
-// Or use it directly with initialization
+Or use it directly with initialization
+
+```tsx
 function UserProfile({ userId }: { userId: string }) {
   const query = Query.use<User>({
     url: `/api/users/${userId}`
