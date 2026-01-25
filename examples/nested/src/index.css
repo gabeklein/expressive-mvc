@@ -1,54 +1,142 @@
+* {
+  box-sizing: border-box;
+}
+
 body {
-  font-family: system-ui, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
-
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  line-height: 1.6;
   margin: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  place-items: center;
-  min-width: 320px;
+  padding: 0;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   min-height: 100vh;
-  font-size: 20px;
 }
 
 .container {
-  font-size: 16px;
+  padding: 2rem;
+}
+
+.description {
   max-width: 600px;
+  margin-bottom: 2rem;
+  line-height: 1.6;
+  color: white;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
 }
 
 .card {
-  padding: 2em;
-  background-color: #1a1a1a;
-  border-radius: 8px;
-  border: 1px solid #333;
+  padding: 1.5rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.08);
+  position: relative;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  background: white;
+}
+
+.theme-card {
+  transition: all 0.3s ease;
+}
+
+.theme-card.dark {
+  background: #333;
+  color: #fff;
+}
+
+.theme-card.dark .render-count {
+  opacity: 0.6;
+}
+
+.theme-card.light {
+  background: #fff;
+  color: #000;
+}
+
+.render-count {
+  float: right;
+  font-size: 12px;
+  color: #666;
 }
 
 h1 {
-  font-size: 1.5em;
-  line-height: 1.1;
+  color: white;
   text-align: center;
+  margin-bottom: 0.5rem;
+  font-size: 2rem;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 h2 {
-  font-size: 1.2em;
-  margin: 0 0 0.5em;
+  margin-top: 0;
+  margin-bottom: 1rem;
+  font-size: 1.5rem;
 }
 
-p {
-  margin: 0.5em 0;
-  color: rgba(255, 255, 255, 0.6);
+.field {
+  margin-bottom: 1rem;
 }
 
-span {
+.notification-panel {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: #f5f5f5;
+  border-radius: 4px;
+}
+
+.button-group {
+  margin-top: 0.5rem;
+}
+
+button {
+  background: #646cff;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.button-group button {
+  margin-right: 0.5rem;
+}
+
+button:hover {
+  background: #535bf2;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(100, 108, 255, 0.3);
+}
+
+button:active {
+  transform: translateY(0);
+}
+
+input[type="text"],
+input[type="email"],
+select {
+  padding: 0.5rem;
+  border: 2px solid #e0e0e0;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  transition: border-color 0.2s ease;
+  font-family: inherit;
+  margin-left: 0.5rem;
+}
+
+input[type="text"]:focus,
+input[type="email"]:focus,
+select:focus {
+  outline: none;
+  border-color: #646cff;
+}
+
+label {
   display: block;
-  margin-top: 1em;
-  color: #646cff;
-  font-size: 0.9em;
+  font-weight: 500;
 }

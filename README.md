@@ -122,7 +122,7 @@ function CounterWidget() {
 
 ### Fine-Grained Reactivity
 
-States use property access to know what needs an update when something changes. This optimization prevents properties you do not "import" from causing a refresh.
+Components only re-render when properties they access change. Nested states enable precise subscriptions.
 
 ```tsx
 class UserData extends State {
@@ -137,24 +137,30 @@ class Profile extends State {
 }
 
 class Settings extends State {
-  theme = 'light';
-  language = 'en';
+  theme: 'light' | 'dark' = 'light';
 }
 
 function UserProfile() {
-  const {
-    profile: { name, email },
-    notifications
-  } = UserData.use();
+  const { profile: { name, is: profile }, notifications, is } = UserData.use();
 
-  // Only re-renders when name, email, or notifications change
-  // Changes to settings.theme won't affect this component!
+  // Only re-renders when name or notifications change
   return (
     <div>
-      <h1>{name}</h1>
-      <p>{email}</p>
+      <input value={name} onChange={(e) => (profile.name = e.target.value)} />
       <span>{notifications} notifications</span>
+      <button onClick={() => is.notifications++}>+1</button>
     </div>
+  );
+}
+
+function ThemeToggle() {
+  const { settings: { theme, is: settings } } = UserData.use();
+
+  // Only re-renders when theme changes - profile/notifications don't affect this!
+  return (
+    <button onClick={() => (settings.theme = theme === 'light' ? 'dark' : 'light')}>
+      {theme} mode
+    </button>
   );
 }
 ```
@@ -238,7 +244,9 @@ function Situation() {
 
   return (
     <div>
-      <p>Agent {agent}, you have {remaining} seconds!</p>
+      <p>
+        Agent {agent}, you have {remaining} seconds!
+      </p>
       <button onClick={getNewAgent}>Get another agent</button>
     </div>
   );
