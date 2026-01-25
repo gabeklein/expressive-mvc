@@ -120,55 +120,6 @@ function CounterWidget() {
 
 <br/>
 
-### Fine-Grained Reactivity
-
-Components only re-render when properties they access change. Nested states enable precise subscriptions.
-
-```tsx
-class UserData extends State {
-  profile = new Profile();
-  settings = new Settings();
-  notifications = 0;
-}
-
-class Profile extends State {
-  name = 'John';
-  email = 'john@example.com';
-}
-
-class Settings extends State {
-  theme: 'light' | 'dark' = 'light';
-}
-
-function UserProfile() {
-  const { profile: { name, is: profile }, notifications, is } = UserData.use();
-
-  // Only re-renders when name or notifications change
-  return (
-    <div>
-      <input value={name} onChange={(e) => (profile.name = e.target.value)} />
-      <span>{notifications} notifications</span>
-      <button onClick={() => is.notifications++}>+1</button>
-    </div>
-  );
-}
-
-function ThemeToggle() {
-  const { settings: { theme, is: settings } } = UserData.use();
-
-  // Only re-renders when theme changes - profile/notifications don't affect this!
-  return (
-    <button onClick={() => (settings.theme = theme === 'light' ? 'dark' : 'light')}>
-      {theme} mode
-    </button>
-  );
-}
-```
-
-<sup>[View in CodeSandbox](https://codesandbox.io/s/github/gabeklein/expressive-mvc/tree/main/examples/nested)</sup>
-
-<br/>
-
 ### Simple Updates
 
 State management is portable because values are held in an object. Updates may originate from anywhere with a reference to the model.
@@ -257,48 +208,6 @@ function Situation() {
 
 <br/>
 
-### Lifecycle Hooks
-
-Define a `new()` method to run logic when a controller is created. Return a cleanup function to run when it's destroyed.
-
-The `use()` method is called on **every render**, perfect for interfacing with external hooks.
-
-```tsx
-import { useNavigate } from 'react-router-dom';
-
-class Timer extends State {
-  elapsed = 0;
-  interval: any;
-
-  // Called once when the controller is created
-  new() {
-    this.interval = setInterval(() => {
-      this.elapsed++;
-    }, 1000);
-
-    // Cleanup function runs when component unmounts
-    return () => clearInterval(this.interval);
-  }
-
-  // Called every render - use this to interface with external hooks
-  use() {
-    const navigate = useNavigate();
-
-    if (this.elapsed >= 10) {
-      navigate('/completed');
-    }
-  }
-}
-
-function RedirectTimer() {
-  const { elapsed } = Timer.use();
-
-  return <p>Redirecting in {10 - elapsed} seconds...</p>;
-}
-```
-
-<br/>
-
 ### Shared State via Context
 
 Share state between components using `Provider` and `get()`. Classes act as their own key!
@@ -362,19 +271,6 @@ function UserDisplay() {
 }
 ```
 
-**Use `forEach` for side effects:**
-
-```tsx
-<Provider
-  for={Logger}
-  forEach={(logger) => {
-    logger.log('App mounted');
-    return () => logger.log('App unmounted');
-  }}>
-  <App />
-</Provider>
-```
-
 <br/>
 
 ### Composable States
@@ -415,6 +311,104 @@ function ProfileEditor() {
 ```
 
 > Child states automatically trigger updates in parent components when they change.
+
+<br/>
+
+### Fine-Grained Reactivity
+
+Components only re-render when properties they access change. Nested states enable precise subscriptions.
+
+```tsx
+class UserData extends State {
+  profile = new Profile();
+  settings = new Settings();
+  notifications = 0;
+}
+
+class Profile extends State {
+  name = 'John';
+  email = 'john@example.com';
+}
+
+class Settings extends State {
+  theme: 'light' | 'dark' = 'light';
+}
+
+function UserProfile() {
+  const {
+    profile: { name, is: profile },
+    notifications,
+    is
+  } = UserData.use();
+
+  // Only re-renders when name or notifications change
+  return (
+    <div>
+      <input value={name} onChange={(e) => (profile.name = e.target.value)} />
+      <span>{notifications} notifications</span>
+      <button onClick={() => is.notifications++}>+1</button>
+    </div>
+  );
+}
+
+function ThemeToggle() {
+  const {
+    settings: { theme, is: settings }
+  } = UserData.use();
+
+  // Only re-renders when theme changes - profile/notifications don't affect this!
+  return (
+    <button
+      onClick={() => (settings.theme = theme === 'light' ? 'dark' : 'light')}>
+      {theme} mode
+    </button>
+  );
+}
+```
+
+<sup>[View in CodeSandbox](https://codesandbox.io/s/github/gabeklein/expressive-mvc/tree/main/examples/nested)</sup>
+
+<br/>
+
+### Lifecycle Hooks
+
+Define a `new()` method to run logic when a controller is created. Return a cleanup function to run when it's destroyed.
+
+The `use()` method is called on **every render**, perfect for interfacing with external hooks.
+
+```tsx
+import { useNavigate } from 'react-router-dom';
+
+class Timer extends State {
+  elapsed = 0;
+  interval: any;
+
+  // Called once when the controller is created
+  new() {
+    this.interval = setInterval(() => {
+      this.elapsed++;
+    }, 1000);
+
+    // Cleanup function runs when component unmounts
+    return () => clearInterval(this.interval);
+  }
+
+  // Called every render - use this to interface with external hooks
+  use() {
+    const navigate = useNavigate();
+
+    if (this.elapsed >= 10) {
+      navigate('/completed');
+    }
+  }
+}
+
+function RedirectTimer() {
+  const { elapsed } = Timer.use();
+
+  return <p>Redirecting in {10 - elapsed} seconds...</p>;
+}
+```
 
 <br/>
 
