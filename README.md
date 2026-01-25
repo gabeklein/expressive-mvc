@@ -168,7 +168,7 @@ function UserProfile() {
 State management is portable because values are held in an object. Updates may originate from anywhere with a reference to the model.
 
 ```tsx
-class AppState extends State {
+class App extends State {
   count = 0;
   message = 'Hello';
 
@@ -178,7 +178,7 @@ class AppState extends State {
 }
 
 function MyComponent() {
-  const { count, message, is, increment } = AppState.use();
+  const { count, message, is, increment } = App.use();
 
   return (
     <div>
@@ -289,42 +289,36 @@ Share state between components using `Provider` and `get()`. Classes act as thei
 ```tsx
 import State, { Provider } from '@expressive/react';
 
-class CounterState extends State {
-  count = 0;
-  increment() {
-    this.count++;
-  }
-  decrement() {
-    this.count--;
-  }
+class SharedData extends State {
+  foo = 0;
+  bar = 0;
 }
 
 function App() {
   return (
-    <Provider for={CounterState}>
-      <DisplayA />
-      <DisplayB />
-      <Controls />
+    <Provider for={SharedData}>
+      <Foo />
+      <Bar />
     </Provider>
   );
 }
 
-function DisplayA() {
-  const { count } = CounterState.get();
-  return <div>Display A: {count}</div>;
-}
-
-function DisplayB() {
-  const { count } = CounterState.get();
-  return <div>Display B: {count}</div>;
-}
-
-function Controls() {
-  const { increment, decrement } = CounterState.get();
+function Foo() {
+  const { foo, is } = SharedData.get();
   return (
     <div>
-      <button onClick={decrement}>-</button>
-      <button onClick={increment}>+</button>
+      <p>Foo: {foo}</p>
+      <button onClick={() => is.bar++}>Increment Bar</button>
+    </div>
+  );
+}
+
+function Bar() {
+  const { bar, is } = SharedData.get();
+  return (
+    <div>
+      <p>Bar: {bar}</p>
+      <button onClick={() => is.foo++}>Increment Foo</button>
     </div>
   );
 }
@@ -339,7 +333,7 @@ import { Consumer } from '@expressive/react';
 
 function UserDisplay() {
   return (
-    <Consumer for={UserState}>
+    <Consumer for={User}>
       {(user) => (
         <div>
           <h2>{user.name}</h2>
@@ -467,7 +461,7 @@ function UserProfile({ userId }: { userId: string }) {
 `State` is the base class you extend to create reactive state. All properties become reactive - assigning new values automatically triggers updates.
 
 ```ts
-class AppState extends State {
+class Session extends State {
   username = '';
   isLoggedIn = false;
 
@@ -482,20 +476,20 @@ class AppState extends State {
 
 ```ts
   // In React components, use the hook
-function MyComponent() {
-  const state = AppState.use();
+function App() {
+  const state = Session.use();
 
   return <div>{state.username}</div>;
 }
 
 // Outside React, use State.new()
-const state = AppState.new();
+const state = Session.new();
 ```
 
 **Methods are auto-bound**, so destructuring works safely:
 
 ```tsx
-const { login, logout } = AppState.use();
+const { login, logout } = Session.use();
 <button onClick={logout}>Logout</button>; // ✅ `this` is correct
 ```
 
@@ -506,7 +500,7 @@ const { login, logout } = AppState.use();
 Every State has a non-enumerable `is` property that references itself. Useful for write access after destructuring:
 
 ```tsx
-const { name, is } = ProfileState.use();
+const { name, is } = Profile.use();
 <input value={name} onChange={(e) => (is.name = e.target.value)} />;
 ```
 
@@ -592,7 +586,7 @@ Runs on every render - perfect for integrating external hooks:
 ```ts
 import { useNavigate } from 'react-router-dom';
 
-class NavigationState extends State {
+class Navigation extends State {
   use() {
     const navigate = useNavigate();
     if (this.shouldRedirect) {
@@ -691,7 +685,7 @@ class UserProfile extends State {
 **Lazy Factories:**
 
 ```ts
-class ExpensiveState extends State {
+class Expensive extends State {
   // Computed on first access
   data = set(() => expensiveComputation());
 
@@ -798,10 +792,10 @@ Create child State instances:
 ```ts
 import { use } from '@expressive/react';
 
-class AppState extends State {
-  theme = use(ThemeState);
+class App extends State {
+  theme = use(Theme);
 
-  auth = use(AuthState, (auth) => {
+  auth = use(Auth, (auth) => {
     auth.initialize();
   });
 }
@@ -822,7 +816,7 @@ Primary hook for using States in React:
 const counter = Counter.use();
 
 // Pass initial values
-const form = FormState.use({
+const form = Form.use({
   username: 'john',
   email: 'john@example.com'
 });
@@ -865,7 +859,7 @@ import { Provider } from '@expressive/react';
 </Provider>
 
 // Provide instances
-<Provider for={ThemeState.new({ mode: 'dark' })}>
+<Provider for={Theme.new({ mode: 'dark' })}>
   <App />
 </Provider>
 
@@ -957,13 +951,13 @@ user.address.city = 'New York'; // Triggers effect
 Extract and restore state values:
 
 ```tsx
-class FormState extends State {
+class Form extends State {
   username = '';
   email = '';
   password = '';
 }
 
-const form = FormState.new();
+const form = Form.new();
 
 // Export to plain object
 const values = form.get();
@@ -980,7 +974,7 @@ form.set(draft);
 **Export handles exotic values:**
 
 ```ts
-class ComplexState extends State {
+class Complex extends State {
   normalValue = 'foo';
   refValue = ref<string>();
   computedValue = set(this, (s) => s.normalValue.toUpperCase());
@@ -1047,7 +1041,7 @@ watch(state, (current) => {
 ### Form Management
 
 ```tsx
-class FormState<T extends Record<string, any>> extends State {
+class Form<T extends Record<string, any>> extends State {
   values: T;
   errors: Partial<Record<keyof T, string>> = {};
   touched: Partial<Record<keyof T, boolean>> = {};
@@ -1075,7 +1069,7 @@ class FormState<T extends Record<string, any>> extends State {
 }
 
 function SignupForm() {
-  const form = FormState.use({
+  const form = Form.use({
     username: '',
     email: '',
     password: ''
@@ -1179,7 +1173,7 @@ function TodoItemView({
 ### Multi-Step Wizard
 
 ```tsx
-class WizardState extends State {
+class Wizard extends State {
   currentStep = 0;
   steps = ['Account', 'Profile', 'Preferences', 'Review'];
 
@@ -1221,7 +1215,7 @@ class WizardState extends State {
 }
 
 function Wizard() {
-  const wizard = WizardState.use();
+  const wizard = Wizard.use();
   const CurrentStepComponent = getStepComponent(wizard.currentStep);
 
   return (
