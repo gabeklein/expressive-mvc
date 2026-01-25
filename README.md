@@ -112,7 +112,7 @@ function CounterWidget() {
 }
 ```
 
-[Try it live →](https://codesandbox.io/s/example-counter-th8xl)
+[Try it live →](https://codesandbox.io/s/github/gabeklein/expressive-mvc/tree/main/examples/counter)
 
 <br />
 
@@ -159,7 +159,7 @@ function UserProfile() {
 }
 ```
 
-<sup>[View in CodeSandbox](https://codesandbox.io/s/example-nested-ow9opy)</sup>
+<sup>[View in CodeSandbox](https://codesandbox.io/s/github/gabeklein/expressive-mvc/tree/main/examples/nested)</sup>
 
 <br/>
 
@@ -190,7 +190,7 @@ function MyComponent() {
 }
 ```
 
-<sup>[View in CodeSandbox](https://codesandbox.io/s/example-async-inmk4)</sup>
+<sup>[View in CodeSandbox](https://codesandbox.io/s/github/gabeklein/expressive-mvc/tree/main/examples/simple)</sup>
 
 > The reserved property `is` loops back to the instance, helpful to update values after destructuring.
 
@@ -201,42 +201,51 @@ function MyComponent() {
 With no additional libraries, Expressive makes async operations simple. Just use regular async functions!
 
 ```tsx
-class UserAPI extends State {
-  user: User | null = null;
-  loading = false;
-  error: Error | null = null;
+class Control extends State {
+  agent = 'Bond';
+  remaining = 30;
+  dead?: boolean = undefined;
 
-  async fetchUser(id: string) {
-    this.loading = true;
-    this.error = null;
+  // Called when State is created - returns cleanup function
+  new() {
+    const timer = setInterval(() => {
+      const remains = this.remaining--;
 
-    try {
-      const res = await fetch(`/api/users/${id}`);
-      this.user = await res.json();
-    } catch (e) {
-      this.error = e as Error;
-    } finally {
-      this.loading = false;
-    }
+      if (remains === 0) {
+        this.dead = Math.random() > 0.5;
+        clearInterval(timer);
+      }
+    }, 1000);
+
+    // Cleanup runs when State is destroyed
+    return () => clearInterval(timer);
+  }
+
+  async getNewAgent() {
+    const res = await fetch('https://randomuser.me/api?nat=gb&results=1');
+    const data = await res.json();
+    const recruit = data.results[0];
+
+    this.agent = recruit.name.last;
   }
 }
 
-function UserProfile({ userId }: { userId: string }) {
-  const api = UserAPI.use();
+function Situation() {
+  const { agent, dead, remaining, getNewAgent } = Control.use();
 
-  useEffect(() => {
-    api.fetchUser(userId);
-  }, [userId]);
+  if (dead === true) return <h2>Mission failed!</h2>;
+  if (dead === false) return <h2>Mission successful!</h2>;
 
-  if (api.loading) return <Spinner />;
-  if (api.error) return <ErrorMessage error={api.error} />;
-  if (!api.user) return null;
-
-  return <UserCard user={api.user} />;
+  return (
+    <div>
+      <p>Agent {agent}, you have {remaining} seconds!</p>
+      <button onClick={getNewAgent}>Get another agent</button>
+    </div>
+  );
 }
 ```
 
-<sup>[View in CodeSandbox](https://codesandbox.io/s/example-fetch-wh4ppg)</sup>
+<sup>[View in CodeSandbox](https://codesandbox.io/s/github/gabeklein/expressive-mvc/tree/main/examples/async)</sup>
 
 <br/>
 
@@ -324,7 +333,7 @@ function Bar() {
 }
 ```
 
-<sup>[View in CodeSandbox](https://codesandbox.io/s/example-shared-state-5vvtr)</sup>
+<sup>[View in CodeSandbox](https://codesandbox.io/s/github/gabeklein/expressive-mvc/tree/main/examples/context)</sup>
 
 **Use `Consumer` for render props:**
 

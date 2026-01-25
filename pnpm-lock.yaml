@@ -62,7 +62,7 @@ importers:
     dependencies:
       '@expressive/react':
         specifier: ^0.71.0
-        version: link:../../packages/react
+        version: 0.71.0(react@19.2.3)
       react:
         specifier: ^19
         version: 19.2.3
@@ -81,7 +81,7 @@ importers:
     dependencies:
       '@expressive/react':
         specifier: ^0.71.0
-        version: link:../../packages/react
+        version: 0.71.0(react@19.2.3)
       react:
         specifier: ^19
         version: 19.2.3
@@ -100,7 +100,7 @@ importers:
     dependencies:
       '@expressive/react':
         specifier: ^0.71.0
-        version: link:../../packages/react
+        version: 0.71.0(react@19.2.3)
       react:
         specifier: ^19
         version: 19.2.3
@@ -119,7 +119,45 @@ importers:
     dependencies:
       '@expressive/react':
         specifier: ^0.71.0
-        version: link:../../packages/react
+        version: 0.71.0(react@19.2.3)
+      react:
+        specifier: ^19
+        version: 19.2.3
+      react-dom:
+        specifier: ^19
+        version: 19.2.3(react@19.2.3)
+    devDependencies:
+      '@types/react':
+        specifier: ^19
+        version: 19.2.9
+      '@types/react-dom':
+        specifier: ^19
+        version: 19.2.3(@types/react@19.2.9)
+
+  examples/nested:
+    dependencies:
+      '@expressive/react':
+        specifier: ^0.71.0
+        version: 0.71.0(react@19.2.3)
+      react:
+        specifier: ^19
+        version: 19.2.3
+      react-dom:
+        specifier: ^19
+        version: 19.2.3(react@19.2.3)
+    devDependencies:
+      '@types/react':
+        specifier: ^19
+        version: 19.2.9
+      '@types/react-dom':
+        specifier: ^19
+        version: 19.2.3(@types/react@19.2.9)
+
+  examples/simple:
+    dependencies:
+      '@expressive/react':
+        specifier: ^0.71.0
+        version: 0.71.0(react@19.2.3)
       react:
         specifier: ^19
         version: 19.2.3
@@ -150,10 +188,10 @@ importers:
     dependencies:
       '@expressive/mvc':
         specifier: ^0.71.0
-        version: link:../mvc
+        version: 0.71.0
       '@expressive/react':
         specifier: ^0.71.0
-        version: link:../react
+        version: 0.71.0(react@19.2.3)
     devDependencies:
       preact:
         specifier: ^10.0.0
@@ -165,7 +203,7 @@ importers:
   packages/react:
     dependencies:
       '@expressive/mvc':
-        specifier: ^0.71.0
+        specifier: ^0.72.0
         version: link:../mvc
     devDependencies:
       '@testing-library/jest-dom':
@@ -197,7 +235,7 @@ importers:
     dependencies:
       '@expressive/mvc':
         specifier: ^0.71.0
-        version: link:../mvc
+        version: 0.71.0
     devDependencies:
       '@solidjs/testing-library':
         specifier: ^0.8.8
@@ -758,6 +796,22 @@ packages:
     requiresBuild: true
     dev: true
     optional: true
+
+  /@expressive/mvc@0.71.0:
+    resolution: {integrity: sha512-8P5K/CHJOLDsJYuFM4pue+WM9G6P3ngzPI4sJGle36dC/e1HK0KiDmxk6m/tVWfUpsBlGg2xialTBE9ut0Bexw==}
+    dev: false
+
+  /@expressive/react@0.71.0(react@19.2.3):
+    resolution: {integrity: sha512-wIrvwc0PSkZpSX5dzac4h45P0RhsuFjPZHPmwD7/kmFJVl43TsyJzpcvqo/HkACMDO6IUOJggAdjqZ30jJyZIA==}
+    peerDependencies:
+      react: '>=16.8.0 <20.0.0'
+    peerDependenciesMeta:
+      react:
+        optional: true
+    dependencies:
+      '@expressive/mvc': 0.71.0
+      react: 19.2.3
+    dev: false
 
   /@gar/promisify@1.1.3:
     resolution: {integrity: sha512-k2Ty1JcVojjJFwrg/ThKi2ujJ7XNLYaFGNB/bWT9wGR+oSMJHMa5w+CUq6p/pVrKeNNgA7pCqEcjSnHVoqJQFw==}
