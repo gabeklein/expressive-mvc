@@ -1,5 +1,3 @@
-<br/>
-
 <p align="center">
   <img height="90" src=".github/logo.svg" alt="Expressive Logo"/>
   <h1 align="center">
@@ -8,247 +6,247 @@
 </p>
 
 <h4 align="center">
-  Accessible control for anywhere and everywhere in React apps
+  Class-based reactive state management for modern UI frameworks
 </h4>
- 
+
 <p align="center">
   <a href="https://www.npmjs.com/package/@expressive/mvc"><img alt="NPM" src="https://badge.fury.io/js/%40expressive%2Fmvc.svg"></a>
-  <!-- <a href=""><img alt="Build" src="https://shields-staging.herokuapp.com/npm/types/@expressive/mvc.svg"></a> -->
   <img src="https://img.shields.io/badge/Coverage-100%25-brightgreen.svg">
   <a href="https://join.slack.com/t/expressivejs/shared_invite/zt-s2j5cdhz-gffKn3bTATMbXf~iq4pvHg" alt="Join Slack">
-    <img src="https://img.shields.io/badge/Slack-Come%20say%20hi!-blueviolet" />  
+    <img src="https://img.shields.io/badge/Slack-Come%20say%20hi!-blueviolet" />
   </a>
 </p>
 
 <p align="center">
   Define classes to power UI by extending <code>State</code>.<br/>
-  Builtin hooks will manage renders, as needed, for any data.<br/>
-  When properties change, your components will too.<br/>
+  Built-in hooks manage renders automatically for any data.<br/>
+  When properties change, your components update too.<br/>
 </p>
 
-<br/>
-<h1 id="overview-section">Overview</h1>
+<br />
 
-Classes which extend `State` can manage behavior for components. States are easy to extend, use and even provide via context. While hooks are great, state and logic are not a part of well-formed JSX. States help wrap that stuff in robust, typescript controllers instead.
+## Table of Contents
 
-<br/>
+- [Overview](#overview)
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [Key Features](#key-features)
+  - [Fine-Grained Reactivity](#fine-grained-reactivity)
+  - [Simple Updates](#simple-updates)
+  - [Async Operations](#async-operations)
+  - [Lifecycle Hooks](#lifecycle-hooks)
+  - [Shared State via Context](#shared-state-via-context)
+  - [Composable States](#composable-states)
+  - [Reusable Classes](#reusable-classes)
+- [Core Concepts](#core-concepts)
+- [Instructions](#instructions)
+- [React Integration](#react-integration)
+- [Advanced Features](#advanced-features)
+- [Framework Support](#framework-support)
+- [Complete Examples](#complete-examples)
 
-<h1 id="install-section">Installation</h1>
+<br />
 
-Install with your preferred package manager
+## Overview
+
+Expressive MVC is a reactive state management library built around classes. It provides framework-agnostic reactive primitives with dedicated adapters for React, Preact, and Solid.
+
+**Why Expressive?**
+
+- **Class-based**: Leverage TypeScript's class features for type-safe, self-documenting state
+- **Reactive**: Automatic fine-grained subscriptions - components only re-render when accessed properties change
+- **Portable**: State logic lives in classes, not components - easy to test and reuse
+- **Context-aware**: Built-in dependency injection via hierarchical contexts
+- **Framework-agnostic**: Core primitives work anywhere; framework adapters provide integration
+
+<br />
+
+## Installation
 
 ```bash
-npm install --save @expressive/react
+npm install @expressive/react
 ```
 
-Import and use in your react apps
-
-```js
+```ts
 import State from '@expressive/react';
 ```
 
-<br/>
-<h1 id="started-section">Getting Started</h1>
+> For other frameworks, use `@expressive/preact`, `@expressive/solid`, or the core `@expressive/mvc` package.
 
-Ultimately, the workflow is simple.
+<br />
 
-1. Create a class. Fill it with the values, getters, and methods you'll need.
-2. Extend `State` (or any derivative, for that matter), making it reactive.
-3. Within a component, use built-in methods as you would normal hooks.
-4. Destructure out the values used by a component, to then subscribe.
-5. Update those values on demand. Component will sync automagically. ✨
+## Quick Start
 
-<br/>
+1. **Create a State class** with your values and methods
+2. **Use `State.use()`** in a component to create an instance
+3. **Destructure properties** you need - this automatically subscribes to them
+4. **Update via assignment** - components re-render automatically
 
-## A basic example
-
-### Step 1
-
-Create a class to extend `State` and fill it with values of any kind.
-
-```js
+```tsx
 import State from '@expressive/react';
 
+// 1. Define your State
 class Counter extends State {
-  current = 1;
+  count = 0;
 
   increment() {
-    this.current += 1;
+    this.count++;
   }
+
   decrement() {
-    this.current -= 1;
+    this.count--;
   }
 }
-```
 
-### Step 2
-
-Pick a built-in hook, such as `use()`, inside a component to make it stateful.
-
-```jsx
-const KitchenCounter = () => {
-  const { current, increment, decrement } = Counter.use();
+// 2. Use it in a component
+function CounterWidget() {
+  const { count, increment, decrement } = Counter.use();
 
   return (
     <div>
-      <button onClick={decrement}>{'-'}</button>
-      <pre>{current}</pre>
-      <button onClick={increment}>{'+'}</button>
+      <button onClick={decrement}>-</button>
+      <span>{count}</span>
+      <button onClick={increment}>+</button>
     </div>
   );
-};
+}
 ```
 
-### Step 3
+[Try it live →](https://codesandbox.io/s/example-counter-th8xl)
 
-[See it in action](https://codesandbox.io/s/example-counter-th8xl) 🚀 — You've already got something usable!
+<br />
+
+## Key Features
 
 <br/>
-<h1 id="good-start">Things you can do</h1>
 
-Expressive leverages the advantages of classes to make state management simpler. State's fascilitate binding between components and the values held by a given instance. Here are some of the things which are possible.
-<br />
-<br />
+### Fine-Grained Reactivity
 
-### Track any number, even nested values:
+States use property access to know what needs an update when something changes. This optimization prevents properties you do not "import" from causing a refresh.
 
-States use property access to know what needs an update when something changes. This optimization prevents properties you do not "import" to cause a refresh. Plus, it makes clear what's being used!
-
-```jsx
-class Info extends State {
-  info = new Extra();
-  foo = 1;
-  bar = 2;
-  baz = 3;
+```tsx
+class UserData extends State {
+  profile = new Profile();
+  settings = new Settings();
+  notifications = 0;
 }
 
-class Extra extends State {
-  value1 = 1;
-  value2 = 2;
+class Profile extends State {
+  name = 'John';
+  email = 'john@example.com';
 }
 
-const MyComponent = () => {
+class Settings extends State {
+  theme = 'light';
+  language = 'en';
+}
+
+function UserProfile() {
   const {
-    foo,
-    bar,
-    info: { value1 }
-  } = Info.use();
+    profile: { name, email },
+    notifications
+  } = UserData.use();
 
+  // Only re-renders when name, email, or notifications change
+  // Changes to settings.theme won't affect this component!
   return (
-    <ul>
-      <li>Foo is {foo}</li>
-      <li>Bar is {bar}</li>
-      <li>Info 1 is {value1}</li>
-    </ul>
+    <div>
+      <h1>{name}</h1>
+      <p>{email}</p>
+      <span>{notifications} notifications</span>
+    </div>
   );
-};
+}
 ```
 
-<sup><a href="https://codesandbox.io/s/example-nested-ow9opy">View in CodeSandbox</a></sup>
-
-> Here, **MyComponent** will subscribe to `foo` and `bar` from a new instance of **Test**. You'll note `baz` is not being used however - and so it's ignored.
+<sup>[View in CodeSandbox](https://codesandbox.io/s/example-nested-ow9opy)</sup>
 
 <br/>
 
-### Update using simple assignment:
+### Simple Updates
 
-State management is portable because values are held in an object.
-Updates may originate from anywhere with a reference to the model. Logic can live in the class too, having strict types and easy introspection.
+State management is portable because values are held in an object. Updates may originate from anywhere with a reference to the model.
 
-```jsx
-class State extends State {
-  foo = 1;
-  bar = 2;
-  baz = 3;
+```tsx
+class AppState extends State {
+  count = 0;
+  message = 'Hello';
 
-  barPlusOne() {
-    this.bar++;
+  increment() {
+    this.count++;
   }
 }
 
-const MyComponent = () => {
-  const { is: state, foo, bar, baz } = State.use();
-
-  useEffect(() => {
-    const ticker = setInterval(() => {
-      state.baz += 1;
-    }, 1000);
-
-    return () => clearInterval(ticker);
-  }, []);
+function MyComponent() {
+  const { count, message, is, increment } = AppState.use();
 
   return (
-    <ul>
-      <li onClick={() => state.foo++}>Foo is {foo}!</li>
-      <li onClick={state.barPlusOne}>Bar is {bar}!</li>
-      <li>Bar is {baz}!</li>
-    </ul>
+    <div>
+      <p onClick={() => (is.count += 10)}>Count: {count}</p>
+      <p onClick={() => (is.message = 'Updated!')}>Message: {message}</p>
+      <button onClick={increment}>Increment</button>
+    </div>
   );
-};
+}
 ```
 
-<sup><a href="https://codesandbox.io/s/example-async-inmk4">View in CodeSandbox</a></sup>
+<sup>[View in CodeSandbox](https://codesandbox.io/s/example-async-inmk4)</sup>
 
-<br />
-
-Reserved property `is` loops back to the instance, helpful to update values after having destructured.
-
-```jsx
-const MyComponent = () => {
-  const { value, is } = Test.use();
-
-  return <p onClick={() => (is.value = 'Updated')}>Value is {value}!</p>;
-};
-```
-
-This is cleaner than keeping a reference to the full state object when you only need a few properties.
+> The reserved property `is` loops back to the instance, helpful to update values after destructuring.
 
 <br/>
 
-### Control components with `async` functions:
+### Async Operations
 
-With no additional libraries, expressive makes it possible to do things like queries quickly and simply. Sometimes, less is more, and async functions are great for this.
+With no additional libraries, Expressive makes async operations simple. Just use regular async functions!
 
-```jsx
-class Greetings extends State {
-  response = undefined;
-  waiting = false;
-  error = false;
+```tsx
+class UserAPI extends State {
+  user: User | null = null;
+  loading = false;
+  error: Error | null = null;
 
-  async sayHello() {
-    this.waiting = true;
+  async fetchUser(id: string) {
+    this.loading = true;
+    this.error = null;
 
     try {
-      const res = await fetch('http://my.api/hello');
-      this.response = await res.text();
+      const res = await fetch(`/api/users/${id}`);
+      this.user = await res.json();
     } catch (e) {
-      this.error = true;
+      this.error = e as Error;
+    } finally {
+      this.loading = false;
     }
   }
 }
 
-const MyComponent = () => {
-  const { error, response, waiting, sayHello } = Greetings.use();
+function UserProfile({ userId }: { userId: string }) {
+  const api = UserAPI.use();
 
-  if (response) return <p>Server said: {response}</p>;
+  useEffect(() => {
+    api.fetchUser(userId);
+  }, [userId]);
 
-  if (error) return <p>There was an error saying hello.</p>;
+  if (api.loading) return <Spinner />;
+  if (api.error) return <ErrorMessage error={api.error} />;
+  if (!api.user) return null;
 
-  if (waiting) return <p>Sent! Waiting on response...</p>;
-
-  return <a onClick={sayHello}>Say hello to server!</a>;
-};
+  return <UserCard user={api.user} />;
+}
 ```
 
-<sup><a href="https://codesandbox.io/s/example-fetch-wh4ppg">View in CodeSandbox</a></sup>
+<sup>[View in CodeSandbox](https://codesandbox.io/s/example-fetch-wh4ppg)</sup>
 
-</br>
+<br/>
 
-### Respond to lifecycle:
+### Lifecycle Hooks
 
 Define a `new()` method to run logic when a controller is created. Return a cleanup function to run when it's destroyed.
 
-```jsx
+The `use()` method is called on **every render**, perfect for interfacing with external hooks.
+
+```tsx
 import { useNavigate } from 'react-router-dom';
 
 class Timer extends State {
@@ -269,237 +267,994 @@ class Timer extends State {
   use() {
     const navigate = useNavigate();
 
-    // Navigate when timer completes
     if (this.elapsed >= 10) {
       navigate('/completed');
     }
   }
 }
 
-const MyTimer = () => {
+function RedirectTimer() {
   const { elapsed } = Timer.use();
 
   return <p>Redirecting in {10 - elapsed} seconds...</p>;
-};
-```
-
-> The `new()` method is called once when the instance is created. Returning a function from `new()` provides cleanup logic that runs when the component unmounts.
-
-> The `use()` method is called on **every render**, making it perfect for interfacing with external hooks from libraries like `react-router`, `react-query`, or custom hooks. This lets you integrate third-party hooks inside your State class while keeping your components clean.
-
-</br>
-
-### Extend to configure:
-
-Capture shared behavior as reusable classes and extend them as needed. This makes logic reusable and easy to document and share!
-
-```ts
-import { toQueryString } from 'helpers';
-
-abstract class Query extends State {
-  /** This is where you will get the data */
-  url: string;
-
-  /** Any query data you want to add. */
-  query?: { [param: string]: string | number };
-
-  response = undefined;
-  waiting = false;
-  error = false;
-
-  sayHello = async () => {
-    this.waiting = true;
-
-    try {
-      let { url, query } = this;
-
-      if (query) url += toQueryString(query);
-
-      const res = await fetch(url);
-      this.response = await res.text();
-    } catch (e) {
-      this.error = true;
-    }
-  };
 }
 ```
-
-Now you can extend it in order to use!
-
-```jsx
-class Greetings extends Query {
-  url = 'http://my.api/hello';
-  params = {
-    name: 'John Doe'
-  };
-}
-
-const Greetings = () => {
-  const { error, response, waiting, sayHello } = Greetings.use();
-
-  return <div />;
-};
-```
-
-Or you can just use it directly...
-
-```jsx
-const Greetings = () => {
-  const { error, response, waiting, sayHello } = Query.use({
-    url: 'http://my.api/hello',
-    params: { name: 'John Doe' }
-  });
-
-  return <div />;
-};
-```
-
-> It works either way!
 
 <br/>
 
-### Share state between components using context:
+### Shared State via Context
 
-Providing and consuming models is dead simple using `Provider` and `get` methods. Classes act as their own key!
+Share state between components using `Provider` and `get()`. Classes act as their own key!
 
-```jsx
+```tsx
 import State, { Provider } from '@expressive/react';
 
-class Control extends Control {
-  foo = 1;
-  bar = 2;
+class CounterState extends State {
+  count = 0;
+  increment() {
+    this.count++;
+  }
+  decrement() {
+    this.count--;
+  }
 }
 
-const Parent = () => {
-  // Instance of `state` is now available as its own class `Control`
+function App() {
   return (
-    <Provider for={Control}>
-      <AboutFoo />
-      <AboutBar />
+    <Provider for={CounterState}>
+      <DisplayA />
+      <DisplayB />
+      <Controls />
     </Provider>
   );
-};
-
-const AboutFoo = () => {
-  // Like with `use` we retain types and autocomplete!
-  const { is: state, foo } = Control.get();
-
-  return (
-    <p>
-      Shared value foo is: {foo}!
-      <button onClick={() => state.bar++}>Plus one to bar</button>
-    </p>
-  );
-};
-
-const AboutBar = () => {
-  const { is: state, bar } = Control.get();
-
-  return (
-    <p>
-      Shared value bar is: {bar}!
-      <button onClick={() => state.foo++}>Plus one to foo</button>
-    </p>
-  );
-};
-```
-
-<sup><a href="https://codesandbox.io/s/example-shared-state-5vvtr">View in CodeSandbox</a></sup>
-<br/>
-<br/>
-
-### Use Consumer for render props:
-
-Instead of hooks, you can use the `Consumer` component with a render function.
-
-```jsx
-import State, { Consumer } from '@expressive/react';
-
-class Control extends State {
-  count = 0;
 }
 
-const Parent = () => (
-  <Provider for={Control}>
-    <Consumer for={Control}>
-      {(state) => (
+function DisplayA() {
+  const { count } = CounterState.get();
+  return <div>Display A: {count}</div>;
+}
+
+function DisplayB() {
+  const { count } = CounterState.get();
+  return <div>Display B: {count}</div>;
+}
+
+function Controls() {
+  const { increment, decrement } = CounterState.get();
+  return (
+    <div>
+      <button onClick={decrement}>-</button>
+      <button onClick={increment}>+</button>
+    </div>
+  );
+}
+```
+
+<sup>[View in CodeSandbox](https://codesandbox.io/s/example-shared-state-5vvtr)</sup>
+
+**Use `Consumer` for render props:**
+
+```tsx
+import { Consumer } from '@expressive/react';
+
+function UserDisplay() {
+  return (
+    <Consumer for={UserState}>
+      {(user) => (
         <div>
-          <p>Count: {state.count}</p>
-          <button onClick={() => state.count++}>Increment</button>
+          <h2>{user.name}</h2>
+          <p>{user.email}</p>
         </div>
       )}
     </Consumer>
-  </Provider>
-);
+  );
+}
 ```
 
-> `Consumer` is useful when you need fine-grained control over what triggers a re-render, or when working with class components.
+**Use `forEach` for side effects:**
+
+```tsx
+<Provider
+  for={Logger}
+  forEach={(logger) => {
+    logger.log('App mounted');
+    return () => logger.log('App unmounted');
+  }}>
+  <App />
+</Provider>
+```
 
 <br/>
 
-### Compose with child states:
+### Composable States
 
-States can contain other states, creating a clean compositional hierarchy.
+States can contain other states, creating clean compositional hierarchies.
 
-```jsx
+```tsx
+class Address extends State {
+  street = '';
+  city = '';
+  zip = '';
+}
+
 class UserProfile extends State {
   name = 'John';
   email = 'john@example.com';
-}
-
-class AppState extends State {
-  user = new UserProfile();
-  darkMode = false;
+  address = new Address();
 
   toggleTheme() {
     this.darkMode = !this.darkMode;
   }
 }
 
-const App = () => {
-  const { user, darkMode, toggleTheme } = AppState.use();
+function ProfileEditor() {
+  const { name, email, address, is } = UserProfile.use();
 
   return (
-    <div className={darkMode ? 'dark' : 'light'}>
-      <h1>Welcome, {user.name}!</h1>
-      <p>Email: {user.email}</p>
-      <button onClick={toggleTheme}>Toggle Theme</button>
+    <div>
+      <input value={name} onChange={(e) => (is.name = e.target.value)} />
+      <input value={email} onChange={(e) => (is.email = e.target.value)} />
+      <input
+        value={address.street}
+        onChange={(e) => (address.is.street = e.target.value)}
+      />
     </div>
   );
-};
+}
 ```
 
 > Child states automatically trigger updates in parent components when they change.
 
 <br/>
 
-### Use forEach with Provider:
+### Reusable Classes
 
-The `forEach` callback lets you run logic for each state being provided, useful for setup or side effects.
+Capture shared behavior as reusable classes and extend them as needed. This makes logic reusable, easy to document and share!
 
-```jsx
-class Logger extends State {
-  log(message: string) {
-    console.log(`[${new Date().toISOString()}] ${message}`);
+```tsx
+// Define a reusable query pattern
+abstract class Query<T> extends State {
+  abstract url: string;
+
+  data: T | null = null;
+  loading = false;
+  error: Error | null = null;
+
+  async fetch() {
+    this.loading = true;
+    this.error = null;
+
+    try {
+      const res = await fetch(this.url);
+      this.data = await res.json();
+    } catch (e) {
+      this.error = e as Error;
+    } finally {
+      this.loading = false;
+    }
   }
 }
 
-const App = () => (
-  <Provider
-    for={Logger}
-    forEach={(logger) => {
-      logger.log('Logger initialized');
-      return () => logger.log('Logger destroyed');
-    }}>
-    <MyApp />
-  </Provider>
-);
+// Extend it for specific use cases
+class UserQuery extends Query<User> {
+  url = '/api/user';
+}
+
+// Or use it directly with initialization
+function UserProfile({ userId }: { userId: string }) {
+  const query = Query.use<User>({
+    url: `/api/users/${userId}`
+  });
+
+  useEffect(() => {
+    query.fetch();
+  }, [userId]);
+
+  if (query.loading) return <Spinner />;
+  if (query.error) return <ErrorDisplay />;
+  return <UserCard user={query.data!} />;
+}
 ```
 
-> The `forEach` callback can return a cleanup function that runs when the Provider unmounts.
+<br />
+
+## Core Concepts
 
 <br/>
+
+### State Class
+
+`State` is the base class you extend to create reactive state. All properties become reactive - assigning new values automatically triggers updates.
+
+```ts
+class AppState extends State {
+  username = '';
+  isLoggedIn = false;
+
+  login(name: string) {
+    this.username = name;
+    this.isLoggedIn = true;
+  }
+}
+```
+
+**Creating instances:**
+
+```ts
+  // In React components, use the hook
+function MyComponent() {
+  const state = AppState.use();
+
+  return <div>{state.username}</div>;
+}
+
+// Outside React, use State.new()
+const state = AppState.new();
+```
+
+**Methods are auto-bound**, so destructuring works safely:
+
+```tsx
+const { login, logout } = AppState.use();
+<button onClick={logout}>Logout</button>; // ✅ `this` is correct
+```
+
 <br/>
 
-<h2 align="center"> 🚧 More Docs are on the way! 🏗 </h2>
-<p align="center">Documenation is actively being built out - stay tuned!</p>
+### The `is` Property
+
+Every State has a non-enumerable `is` property that references itself. Useful for write access after destructuring:
+
+```tsx
+const { name, is } = ProfileState.use();
+<input value={name} onChange={(e) => (is.name = e.target.value)} />;
+```
+
+**Silent reads** - access properties through `is` without subscribing:
+
+```ts
+state.get((proxy) => {
+  console.log(proxy.value); // Subscribes to updates
+  console.log(proxy.is.value); // Does NOT subscribe - "silent" read
+});
+```
+
+<br/>
+
+### Subscriptions & Effects
+
+The `get()` method creates reactive effects that automatically re-run when accessed properties change:
+
+```ts
+const state = MyState.new();
+
+state.get((current) => {
+  console.log('Values:', current.foo, current.bar);
+  // Only re-runs when foo or bar change (fine-grained)
+});
+```
+
+**Effect cleanup:**
+
+```ts
+state.get((current) => {
+  const interval = setInterval(() => {
+    console.log(current.value);
+  }, 1000);
+
+  return () => clearInterval(interval);
+});
+```
+
+**Subscribe to specific properties:**
+
+```ts
+// Watch a single property
+state.get('username', (key, thisArg) => {
+  console.log('Username changed:', thisArg.username);
+});
+
+// Get current value
+const username = state.get('username');
+
+// Subscribe to destruction
+state.get(null, () => {
+  console.log('State destroyed');
+});
+```
+
+<br/>
+
+### Lifecycle Methods
+
+#### `new()` - Initialization
+
+Runs once when your State is created:
+
+```ts
+class Timer extends State {
+  elapsed = 0;
+
+  new() {
+    const interval = setInterval(() => {
+      this.elapsed++;
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }
+}
+```
+
+#### `use()` - Render-time Hook (React only)
+
+Runs on every render - perfect for integrating external hooks:
+
+```ts
+import { useNavigate } from 'react-router-dom';
+
+class NavigationState extends State {
+  use() {
+    const navigate = useNavigate();
+    if (this.shouldRedirect) {
+      navigate('/dashboard');
+    }
+  }
+}
+```
+
+<br />
+
+## Instructions
+
+Instructions are special property initializers that provide advanced functionality. They run during State construction and define custom getters/setters.
+
+<br/>
+
+### `ref` - Mutable References
+
+Create ref-compatible properties similar to React's `useRef`:
+
+```ts
+import { ref } from '@expressive/react';
+
+class VideoPlayer extends State {
+  videoElement = ref<HTMLVideoElement>();
+
+  play() {
+    this.videoElement.current?.play();
+  }
+}
+
+// In component:
+<video ref={player.videoElement}>
+  <source src="movie.mp4" />
+</video>;
+```
+
+**With callbacks:**
+
+```ts
+class AutoFocus extends State {
+  input = ref<HTMLInputElement>((element) => {
+    element.focus();
+    return () => element.blur();
+  });
+}
+```
+
+**Ref proxies** - create refs for all properties:
+
+```ts
+class Form extends State {
+  name = '';
+  email = '';
+  fields = ref(this);
+}
+
+// Usage:
+form.fields.name.current = 'John';
+form.fields.email.get((email) => console.log(email));
+```
+
+<br/>
+
+### `set` - Smart Setters & Computed Values
+
+Provides validation, transformation, computed values, and async initialization.
+
+**Validation & Callbacks:**
+
+```ts
+import { set } from '@expressive/react';
+
+class SignupForm extends State {
+  username = set('', (newValue, oldValue) => {
+    console.log('Changed:', oldValue, '->', newValue);
+    // Return false to reject the update
+    if (newValue.length < 3) return false;
+  });
+}
+```
+
+**Required Values (Suspense):**
+
+```ts
+class UserProfile extends State {
+  // Throws Suspense if accessed before set
+  userId = set<string>();
+
+  // Optional - returns undefined
+  avatar = set<string>(() => fetchAvatar(), false);
+}
+```
+
+**Lazy Factories:**
+
+```ts
+class ExpensiveState extends State {
+  // Computed on first access
+  data = set(() => expensiveComputation());
+
+  // Async - suspends until resolved
+  remoteData = set(async () => {
+    const res = await fetch('/api/data');
+    return res.json();
+  });
+}
+```
+
+**Computed Values:**
+
+Reactive properties that update automatically:
+
+```ts
+class Cart extends State {
+  items = [
+    { price: 10, quantity: 2 },
+    { price: 15, quantity: 1 }
+  ];
+
+  // Recomputes when items change
+  total = set(this, (state) =>
+    state.items.reduce((sum, item) => sum + item.price * item.quantity, 0)
+  );
+
+  // Or use method reference
+  tax = set(true, this.calculateTax);
+
+  calculateTax() {
+    return this.total * 0.08;
+  }
+}
+```
+
+**Access previous value:**
+
+```ts
+class Accumulator extends State {
+  input = 0;
+
+  sum = set(this, function (state) {
+    const previous = this.sum; // Current value
+    return previous + state.input;
+  });
+}
+```
+
+<br/>
+
+### `get` - Dependency Injection
+
+Fetch States from context hierarchy:
+
+```ts
+import { get } from '@expressive/react';
+
+class Dashboard extends State {
+  // Required - throws if not found
+  userService = get(UserService);
+
+  // Optional - may be undefined
+  analytics = get(AnalyticsService, false);
+
+  // Collect all downstream instances
+  widgets = get(Widget, true);
+}
+```
+
+**Lifecycle callbacks:**
+
+```ts
+class Child extends State {
+  parent = get(Parent, (parent, thisChild) => {
+    console.log('Parent available:', parent);
+    return () => console.log('Cleanup');
+  });
+}
+```
+
+**Downstream collection with callbacks:**
+
+```ts
+class ParentList extends State {
+  items = get(ListItem, true, (item, thisList) => {
+    console.log('Item registered:', item);
+
+    // Return false to prevent registration
+    if (!item.isValid) return false;
+
+    // Or return cleanup
+    return () => console.log('Item removed:', item);
+  });
+}
+```
+
+<br/>
+
+### `use` - Child State Instances
+
+Create child State instances:
+
+```ts
+import { use } from '@expressive/react';
+
+class AppState extends State {
+  theme = use(ThemeState);
+
+  auth = use(AuthState, (auth) => {
+    auth.initialize();
+  });
+}
+```
+
+<br />
+
+## React Integration
+
+<br/>
+
+### State.use()
+
+Primary hook for using States in React:
+
+```tsx
+// Create new instance
+const counter = Counter.use();
+
+// Pass initial values
+const form = FormState.use({
+  username: 'john',
+  email: 'john@example.com'
+});
+
+// Pass initialization callback
+const timer = Timer.use((t) => {
+  t.startAt(Date.now());
+});
+```
+
+<br/>
+
+### State.get()
+
+Consume States from context:
+
+```tsx
+function ProfileEditor() {
+  const user = UserService.get();
+  return <input value={user.name} />;
+}
+```
+
+<br/>
+
+### Provider & Consumer
+
+**Provider** - provide States to descendants:
+
+```tsx
+import { Provider } from '@expressive/react';
+
+<Provider for={UserService}>
+  <Dashboard />
+</Provider>
+
+// Multiple States
+<Provider for={{ UserService, ThemeService, AuthService }}>
+  <App />
+</Provider>
+
+// Provide instances
+<Provider for={ThemeState.new({ mode: 'dark' })}>
+  <App />
+</Provider>
+
+// With forEach callback
+<Provider
+  for={Logger}
+  forEach={(logger) => {
+    logger.log('Mounted');
+    return () => logger.log('Unmounted');
+  }}>
+  <App />
+</Provider>
+
+// With Suspense
+<Provider
+  for={AsyncDataService}
+  fallback={<LoadingSpinner />}
+  name="Data Boundary">
+  <DataDisplay />
+</Provider>
+```
+
+**Consumer** - alternative using render props:
+
+```tsx
+import { Consumer } from '@expressive/react';
+
+<Consumer for={UserService}>
+  {(user) => (
+    <div>
+      <h2>{user.name}</h2>
+      <p>{user.email}</p>
+    </div>
+  )}
+</Consumer>;
+```
+
+<br />
+
+## Advanced Features
+
+<br/>
+
+### Suspense Integration
+
+States integrate seamlessly with React Suspense:
+
+```tsx
+class SuspendingResource extends State {
+  // Throws Suspense until resolved
+  data = set(async () => {
+    const res = await fetch('/api/data');
+    return res.json();
+  }, true);
+}
+
+function DataDisplay() {
+  const { data } = SuspendingResource.use();
+  return <div>{data.value}</div>;
+}
+
+// Wrap with Suspense:
+<Suspense fallback={<Loading />}>
+  <DataDisplay />
+</Suspense>;
+```
+
+<br/>
+
+### Nested State Reactivity
+
+Child updates trigger parent subscriptions:
+
+```tsx
+const user = UserProfile.new();
+
+user.get((current) => {
+  // Re-runs when user.address.city changes!
+  console.log('City:', current.address.city);
+});
+
+user.address.city = 'New York'; // Triggers effect
+```
+
+<br/>
+
+### State Export/Import
+
+Extract and restore state values:
+
+```tsx
+class FormState extends State {
+  username = '';
+  email = '';
+  password = '';
+}
+
+const form = FormState.new();
+
+// Export to plain object
+const values = form.get();
+// { username: '', email: '', password: '' }
+
+// Save to localStorage
+localStorage.setItem('draft', JSON.stringify(values));
+
+// Restore later
+const draft = JSON.parse(localStorage.getItem('draft')!);
+form.set(draft);
+```
+
+**Export handles exotic values:**
+
+```ts
+class ComplexState extends State {
+  normalValue = 'foo';
+  refValue = ref<string>();
+  computedValue = set(this, (s) => s.normalValue.toUpperCase());
+}
+
+const exported = state.get();
+// {
+//   normalValue: 'foo',
+//   refValue: null,        // Ref extracts .current
+//   computedValue: 'FOO'   // Computed provides result
+// }
+```
+
+<br />
+
+## Framework Support
+
+Expressive provides first-class support for multiple frameworks:
+
+**React**
+
+```bash
+npm install @expressive/react
+```
+
+```tsx
+import State from '@expressive/react';
+import { Provider, Consumer } from '@expressive/react';
+```
+
+**Preact**
+
+```bash
+npm install @expressive/preact
+```
+
+**Solid**
+
+```bash
+npm install @expressive/solid
+```
+
+**Framework-Agnostic Core**
+
+```bash
+npm install @expressive/mvc
+```
+
+```ts
+import { State, watch, Context } from '@expressive/mvc';
+
+const state = State.new();
+watch(state, (current) => {
+  console.log('Value:', current.value);
+});
+```
+
+<br />
+
+## Complete Examples
+
+<br/>
+
+### Form Management
+
+```tsx
+class FormState<T extends Record<string, any>> extends State {
+  values: T;
+  errors: Partial<Record<keyof T, string>> = {};
+  touched: Partial<Record<keyof T, boolean>> = {};
+
+  constructor(initial: T) {
+    super();
+    this.values = initial;
+  }
+
+  setValue<K extends keyof T>(key: K, value: T[K]) {
+    this.values = { ...this.values, [key]: value };
+    this.touched[key] = true;
+  }
+
+  setError<K extends keyof T>(key: K, error: string) {
+    this.errors = { ...this.errors, [key]: error };
+  }
+
+  validate(rules: Partial<Record<keyof T, (val: any) => string | null>>) {
+    for (const key in rules) {
+      const error = rules[key]!(this.values[key]);
+      if (error) this.setError(key, error);
+    }
+  }
+}
+
+function SignupForm() {
+  const form = FormState.use({
+    username: '',
+    email: '',
+    password: ''
+  });
+
+  const handleSubmit = () => {
+    form.validate({
+      username: (val) => (val.length < 3 ? 'Too short' : null),
+      email: (val) => (!val.includes('@') ? 'Invalid email' : null),
+      password: (val) => (val.length < 8 ? 'Too weak' : null)
+    });
+
+    if (Object.keys(form.errors).length === 0) {
+      // Submit form
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <input
+        value={form.values.username}
+        onChange={(e) => form.setValue('username', e.target.value)}
+      />
+      {form.errors.username && <span>{form.errors.username}</span>}
+    </form>
+  );
+}
+```
+
+<br/>
+
+### Todo List with Nested States
+
+```tsx
+class TodoItem extends State {
+  text = '';
+  completed = false;
+
+  toggle() {
+    this.completed = !this.completed;
+  }
+}
+
+class TodoList extends State {
+  items: TodoItem[] = [];
+
+  addTodo(text: string) {
+    const todo = TodoItem.new({ text });
+    this.items = [...this.items, todo];
+  }
+
+  removeTodo(todo: TodoItem) {
+    this.items = this.items.filter((t) => t !== todo);
+  }
+
+  // Computed value
+  remaining = set(
+    this,
+    (state) => state.items.filter((t) => !t.completed).length
+  );
+}
+
+function TodoApp() {
+  const list = TodoList.use();
+
+  return (
+    <div>
+      <p>{list.remaining} items left</p>
+      {list.items.map((item) => (
+        <TodoItemView
+          key={String(item)}
+          item={item}
+          onRemove={() => list.removeTodo(item)}
+        />
+      ))}
+    </div>
+  );
+}
+
+function TodoItemView({
+  item,
+  onRemove
+}: {
+  item: TodoItem;
+  onRemove: () => void;
+}) {
+  const { text, completed, toggle } = item;
+
+  return (
+    <div>
+      <input type="checkbox" checked={completed} onChange={toggle} />
+      <span>{text}</span>
+      <button onClick={onRemove}>×</button>
+    </div>
+  );
+}
+```
+
+<br/>
+
+### Multi-Step Wizard
+
+```tsx
+class WizardState extends State {
+  currentStep = 0;
+  steps = ['Account', 'Profile', 'Preferences', 'Review'];
+
+  data = {
+    username: '',
+    email: '',
+    displayName: '',
+    theme: 'light'
+  };
+
+  // Computed
+  isFirstStep = set(this, (state) => state.currentStep === 0);
+  isLastStep = set(
+    this,
+    (state) => state.currentStep === state.steps.length - 1
+  );
+  canProceed = set(this, (state) => {
+    // Add validation logic
+    return true;
+  });
+
+  next() {
+    if (!this.isLastStep && this.canProceed) {
+      this.currentStep++;
+    }
+  }
+
+  previous() {
+    if (!this.isFirstStep) {
+      this.currentStep--;
+    }
+  }
+
+  submit() {
+    if (this.isLastStep && this.canProceed) {
+      console.log('Submitting:', this.data);
+    }
+  }
+}
+
+function Wizard() {
+  const wizard = WizardState.use();
+  const CurrentStepComponent = getStepComponent(wizard.currentStep);
+
+  return (
+    <div>
+      <h2>{wizard.steps[wizard.currentStep]}</h2>
+      <CurrentStepComponent data={wizard.data} />
+      <div>
+        {!wizard.isFirstStep && <button onClick={wizard.previous}>Back</button>}
+        {!wizard.isLastStep ? (
+          <button onClick={wizard.next} disabled={!wizard.canProceed}>
+            Next
+          </button>
+        ) : (
+          <button onClick={wizard.submit} disabled={!wizard.canProceed}>
+            Submit
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+```
+
+---
+
+<h2 align="center">Community & Support</h2>
+
+<p align="center">
+  <a href="https://join.slack.com/t/expressivejs/shared_invite/zt-s2j5cdhz-gffKn3bTATMbXf~iq4pvHg">Join our Slack</a> •
+  <a href="https://github.com/gabeklein/expressive-mvc/issues">Report Issues</a> •
+  <a href="https://github.com/gabeklein/expressive-mvc">GitHub</a>
+</p>
+
+<p align="center">
+  <sub>Built with ❤️ by the Expressive team</sub>
+</p>
