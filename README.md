@@ -31,12 +31,12 @@
 - [Installation](#installation)
 - [Quick Start](#quick-start)
 - [Key Features](#key-features)
-  - [Fine-Grained Reactivity](#fine-grained-reactivity)
   - [Simple Updates](#simple-updates)
   - [Async Operations](#async-operations)
-  - [Lifecycle Hooks](#lifecycle-hooks)
   - [Shared State via Context](#shared-state-via-context)
   - [Composable States](#composable-states)
+  - [Fine-Grained Reactivity](#fine-grained-reactivity)
+  - [Lifecycle Hooks](#lifecycle-hooks)
   - [Reusable Classes](#reusable-classes)
 - [Core Concepts](#core-concepts)
 - [Instructions](#instructions)
@@ -388,7 +388,7 @@ function ThemeToggle() {
 
 Define a `new()` method to run logic when a controller is created. Return a cleanup function to run when it's destroyed.
 
-The `use()` method is called on **every render**, perfect for interfacing with external hooks.
+_In React Only_ the `use()` method is called on **every render**, perfect for interfacing with external hooks.
 
 ```tsx
 import { useNavigate } from 'react-router-dom';
