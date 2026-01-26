@@ -115,6 +115,25 @@ importers:
         specifier: ^19
         version: 19.2.3(@types/react@19.2.9)
 
+  examples/form-management:
+    dependencies:
+      '@expressive/react':
+        specifier: ^0.71.0
+        version: 0.71.0(react@19.2.3)
+      react:
+        specifier: ^19
+        version: 19.2.3
+      react-dom:
+        specifier: ^19
+        version: 19.2.3(react@19.2.3)
+    devDependencies:
+      '@types/react':
+        specifier: ^19
+        version: 19.2.9
+      '@types/react-dom':
+        specifier: ^19
+        version: 19.2.3(@types/react@19.2.9)
+
   examples/forms:
     dependencies:
       '@expressive/react':
@@ -154,6 +173,44 @@ importers:
         version: 19.2.3(@types/react@19.2.9)
 
   examples/simple:
+    dependencies:
+      '@expressive/react':
+        specifier: ^0.71.0
+        version: 0.71.0(react@19.2.3)
+      react:
+        specifier: ^19
+        version: 19.2.3
+      react-dom:
+        specifier: ^19
+        version: 19.2.3(react@19.2.3)
+    devDependencies:
+      '@types/react':
+        specifier: ^19
+        version: 19.2.9
+      '@types/react-dom':
+        specifier: ^19
+        version: 19.2.3(@types/react@19.2.9)
+
+  examples/todo-list:
+    dependencies:
+      '@expressive/react':
+        specifier: ^0.71.0
+        version: 0.71.0(react@19.2.3)
+      react:
+        specifier: ^19
+        version: 19.2.3
+      react-dom:
+        specifier: ^19
+        version: 19.2.3(react@19.2.3)
+    devDependencies:
+      '@types/react':
+        specifier: ^19
+        version: 19.2.9
+      '@types/react-dom':
+        specifier: ^19
+        version: 19.2.3(@types/react@19.2.9)
+
+  examples/wizard:
     dependencies:
       '@expressive/react':
         specifier: ^0.71.0
