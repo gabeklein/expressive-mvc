@@ -118,7 +118,7 @@ function CounterWidget() {
 }
 ```
 
-It's that simple! [Try it in a sandbox →](https://codesandbox.io/s/github/gabeklein/expressive-mvc/tree/main/examples/counter)
+It's that simple! <a href="https://codesandbox.io/s/github/gabeklein/expressive-mvc/tree/main/examples/counter?file=/src/Counter.tsx" target="_blank">Try it in a sandbox →</a>
 
 <br />
 
@@ -153,7 +153,7 @@ function MyComponent() {
 }
 ```
 
-<sup>[View in CodeSandbox](https://codesandbox.io/s/github/gabeklein/expressive-mvc/tree/main/examples/simple)</sup>
+<sup><a href="https://codesandbox.io/s/github/gabeklein/expressive-mvc/tree/main/examples/simple?file=/src/Demo.tsx" target="_blank">View in CodeSandbox</a></sup>
 
 > The reserved property `is` loops back to the instance, helpful to update values after destructuring.
 
@@ -212,7 +212,7 @@ function Situation() {
 }
 ```
 
-<sup>[View in CodeSandbox](https://codesandbox.io/s/github/gabeklein/expressive-mvc/tree/main/examples/async)</sup>
+<sup><a href="https://codesandbox.io/s/github/gabeklein/expressive-mvc/tree/main/examples/async?file=/src/Control.tsx" target="_blank">View in CodeSandbox</a></sup>
 
 <br/>
 
@@ -277,7 +277,7 @@ function UserDisplay() {
 }
 ```
 
-<sup>[View in CodeSandbox](https://codesandbox.io/s/github/gabeklein/expressive-mvc/tree/main/examples/context)</sup>
+<sup><a href="https://codesandbox.io/s/github/gabeklein/expressive-mvc/tree/main/examples/context?file=/src/Demo.tsx" target="_blank">View in CodeSandbox</a></sup>
 
 <br/>
 
@@ -376,7 +376,7 @@ function ThemeToggle() {
 }
 ```
 
-<sup>[View in CodeSandbox](https://codesandbox.io/s/github/gabeklein/expressive-mvc/tree/main/examples/nested)</sup>
+<sup><a href="https://codesandbox.io/s/github/gabeklein/expressive-mvc/tree/main/examples/nested?file=/src/Demo.tsx" target="_blank">View in CodeSandbox</a></sup>
 
 <br/>
 
