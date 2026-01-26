@@ -84,7 +84,7 @@ import State from '@expressive/react';
 
 <br />
 
-Just define a custom State
+Simply define a custom State -
 
 ```tsx
 import State from '@expressive/react';
@@ -102,7 +102,7 @@ class Counter extends State {
 }
 ```
 
-And use it in a component!
+\- and use it in a component!
 
 ```tsx
 function CounterWidget() {
@@ -118,20 +118,18 @@ function CounterWidget() {
 }
 ```
 
-That simple! [Try it in sandbox →](https://codesandbox.io/s/github/gabeklein/expressive-mvc/tree/main/examples/counter)
+It's that simple! [Try it in a sandbox →](https://codesandbox.io/s/github/gabeklein/expressive-mvc/tree/main/examples/counter)
 
 <br />
 
 ## Key Features
-
-<br/>
 
 ### Simple Updates
 
 State management is portable because values are held in an object. Updates may originate from anywhere with a reference to the model.
 
 ```tsx
-class App extends State {
+class Control extends State {
   count = 0;
   message = 'Hello';
 
@@ -143,7 +141,7 @@ class App extends State {
 
 ```tsx
 function MyComponent() {
-  const { count, message, is, increment } = App.use();
+  const { is: control, count, message, increment } = Control.use();
 
   return (
     <div>
@@ -171,7 +169,7 @@ class Control extends State {
   remaining = 30;
   dead?: boolean = undefined;
 
-  // Called when State is created - returns cleanup function
+  // Called when State is created.
   new() {
     const timer = setInterval(() => {
       const remains = this.remaining--;
@@ -220,7 +218,7 @@ function Situation() {
 
 ### Shared State via Context
 
-Share state between components using `Provider` and `get()`. Classes act as their own key!
+React adapter exports `Provider` and adds static `get()` to all State. Your classes act as their own key and confer full types.
 
 ```tsx
 import State, { Provider } from '@expressive/react';
@@ -285,7 +283,7 @@ function UserDisplay() {
 
 ### Composable States
 
-States can contain other states, creating clean compositional hierarchies.
+States can contain other states, for clean composition.
 
 ```tsx
 class Address extends State {
@@ -383,6 +381,10 @@ function ThemeToggle() {
 <br/>
 
 ### Lifecycle Hooks
+
+> [!IMPORTANT]
+> These methods are _not_ defined on the State prototype.
+> Instead, they are picked up by .new() and .use() when present in your class.
 
 Define a `new()` method to run logic when a controller is created. Return a cleanup function to run when it's destroyed.
 
@@ -836,8 +838,6 @@ class App extends State {
 
 ## React Integration
 
-<br/>
-
 ### State.use()
 
 Primary hook for using States in React:
@@ -931,8 +931,6 @@ import { Consumer } from '@expressive/react';
 <br />
 
 ## Advanced Features
-
-<br/>
 
 ### Suspense Integration
 
@@ -1066,8 +1064,6 @@ watch(state, (current) => {
 <br />
 
 ## Complete Examples
-
-<br/>
 
 ### Form Management
 
