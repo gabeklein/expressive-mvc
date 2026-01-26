@@ -45,7 +45,7 @@
   ],
   "scripts": {
     "build": "tsup",
-    "test": "tsc --noEmit && jest --collectCoverage",
+    "test": "tsc --noEmit && vitest run --coverage",
     "preversion": "npm run test && npm run build"
   },
   "dependencies": {
@@ -60,14 +60,15 @@
     }
   },
   "devDependencies": {
-    "@testing-library/jest-dom": "^6.8.0",
     "@testing-library/react": "^16.3.0",
+    "@testing-library/jest-dom": "^6.0.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "jest": "^27.5.1",
+    "@vitest/browser": "^2.1.8",
     "react": "^19",
     "react-dom": "^19",
-    "tsup": "^8.0.2"
+    "tsup": "^8.0.2",
+    "vitest": "^2.1.8"
   },
   "version": "0.72.0"
 }

@@ -1,5 +1,11 @@
-import { State } from '@expressive/mvc';
+import { expect } from 'vitest';
+import * as matchers from '@vitest/browser/matchers';
+import { State } from './packages/mvc';
 
+// Add @testing-library matchers for React tests
+expect.extend(matchers);
+
+// Add custom State matchers
 expect.extend({
   toUpdate,
   toHaveUpdated

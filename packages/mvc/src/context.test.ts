@@ -1,3 +1,4 @@
+import { vi, describe, it, expect } from 'vitest';
 import { Context } from './context';
 import { State } from './state';
 
@@ -114,7 +115,7 @@ it('will ignore if multiple but same', () => {
 
 it('will destroy modules created by layer', () => {
   class Test extends State {
-    destroyed = jest.fn();
+    destroyed = vi.fn();
 
     constructor() {
       super();
@@ -161,7 +162,7 @@ describe('include', () => {
   it('will callback once per unique added', () => {
     const foo = Foo.new();
     const bar = Bar.new();
-    const cb = jest.fn();
+    const cb = vi.fn();
 
     const context = new Context();
 
@@ -184,7 +185,7 @@ describe('include', () => {
   });
 
   it('will ignore subsequent if callback', () => {
-    const cb = jest.fn();
+    const cb = vi.fn();
     const context = new Context();
 
     context.use(Foo, cb);
@@ -197,7 +198,7 @@ describe('include', () => {
 
   // This will be made more elegant later.
   it('will hard-reset if inputs differ', () => {
-    const bazDidDie = jest.fn();
+    const bazDidDie = vi.fn();
 
     class Baz extends State {
       constructor() {
@@ -262,7 +263,7 @@ it('will pop child context', () => {
   class Test2 extends Test {}
   class Test3 extends Test {}
 
-  const didDestroy = jest.fn();
+  const didDestroy = vi.fn();
   const context = new Context({ Test });
 
   context.push({ Test2 }).push({ Test3 });
@@ -311,7 +312,7 @@ describe('Context.get callback overload (downstream registration)', () => {
 
   it('should call callback when type is added downstream', () => {
     const context = new Context();
-    const cb = jest.fn();
+    const cb = vi.fn();
 
     // Register callback for DownstreamState
     context.get(DownstreamState, cb);
@@ -326,7 +327,7 @@ describe('Context.get callback overload (downstream registration)', () => {
 
   it('should clean up callback when context is popped', () => {
     const context = new Context();
-    const cb = jest.fn();
+    const cb = vi.fn();
 
     // Register callback for DownstreamState
     const cancel = context.get(DownstreamState, cb);
@@ -351,8 +352,8 @@ describe('Context.get callback overload (downstream registration)', () => {
 
   it('should call callback when inner is popped', () => {
     const context = new Context();
-    const cleanup = jest.fn();
-    const cb = jest.fn(() => cleanup);
+    const cleanup = vi.fn();
+    const cb = vi.fn(() => cleanup);
 
     context.get(DownstreamState, cb);
 

@@ -1,4 +1,4 @@
-import { act, render, renderHook } from '@testing-library/react';
+import { act, vi, expect, it, describe, render, renderHook } from '../vitest';
 
 import { get, State, Provider, set } from '.';
 
@@ -48,7 +48,7 @@ describe('hook', () => {
   });
 
   it('will run callback', () => {
-    const callback = jest.fn();
+    const callback = vi.fn();
 
     renderHook(() => Test.use(callback));
 
@@ -56,7 +56,7 @@ describe('hook', () => {
   });
 
   it('will destroy instance of given class', async () => {
-    const didDestroy = jest.fn();
+    const didDestroy = vi.fn();
 
     class Test extends State {
       constructor() {
@@ -121,7 +121,7 @@ describe('hook', () => {
 
 describe('new method', () => {
   it('will call if exists', () => {
-    const didCreate = jest.fn();
+    const didCreate = vi.fn();
 
     class Test extends State {
       new() {
@@ -152,7 +152,7 @@ describe('new method', () => {
 
 describe('use method', () => {
   it('will call every render if present', () => {
-    const didUse = jest.fn();
+    const didUse = vi.fn();
 
     class Test extends State {
       use() {
@@ -170,7 +170,7 @@ describe('use method', () => {
   });
 
   it('will receive arguments', () => {
-    const didUse = jest.fn();
+    const didUse = vi.fn();
 
     class Test extends State {
       use(foo: string, bar: number) {
@@ -184,7 +184,7 @@ describe('use method', () => {
   });
 
   it('will divert arguments from constructor', () => {
-    const didUse = jest.fn();
+    const didUse = vi.fn();
 
     class Test extends State {
       value = 0;
@@ -213,7 +213,7 @@ describe('callback argument', () => {
   }
 
   it('will run callback once', async () => {
-    const callback = jest.fn();
+    const callback = vi.fn();
     const hook = renderHook(() => Test.use(callback));
 
     expect(callback).toHaveBeenCalledTimes(1);
@@ -224,8 +224,8 @@ describe('callback argument', () => {
   });
 
   it('will run argument before effects', () => {
-    const effect = jest.fn();
-    const argument = jest.fn(() => {
+    const effect = vi.fn();
+    const argument = vi.fn(() => {
       expect(effect).not.toHaveBeenCalled();
     });
 
@@ -257,7 +257,7 @@ describe('props argument', () => {
       bar: 'bar'
     };
 
-    const didRender = jest.fn();
+    const didRender = vi.fn();
 
     const hook = renderHook(() => {
       didRender();
@@ -341,7 +341,7 @@ describe('props argument', () => {
   });
 
   it('will not trigger updates it caused', async () => {
-    const didRender = jest.fn();
+    const didRender = vi.fn();
     const hook = renderHook(
       (props) => {
         didRender();
@@ -356,7 +356,7 @@ describe('props argument', () => {
   });
 
   it('will trigger set instruction', () => {
-    const mock = jest.fn();
+    const mock = vi.fn();
 
     class Test extends State {
       foo = set('foo', mock);

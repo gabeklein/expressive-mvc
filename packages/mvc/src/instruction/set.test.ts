@@ -1,4 +1,12 @@
-import { mockError, mockPromise, mockWarn } from '../mocks';
+import {
+  vi,
+  describe,
+  it,
+  expect,
+  mockWarn,
+  mockPromise,
+  mockError
+} from '../../vitest';
 import { State } from '../state';
 import { set } from './set';
 
@@ -22,7 +30,7 @@ describe('placeholder', () => {
   it('will suspend if value is accessed before assign', async () => {
     const instance = Test.new();
     const promise = mockPromise<string>();
-    const mockEffect = jest.fn((state: Test) => {
+    const mockEffect = vi.fn((state: Test) => {
       promise.resolve(state.foobar);
     });
 
@@ -40,8 +48,8 @@ describe('placeholder', () => {
 
   it('will resolve suspense after latest value', async () => {
     const test = Test.new();
-    const foobar = jest.fn();
-    const effect = jest.fn((state: Test) => {
+    const foobar = vi.fn();
+    const effect = vi.fn((state: Test) => {
       foobar(state.foobar);
     });
 
@@ -65,7 +73,7 @@ describe('placeholder', () => {
 
     instance.foobar = 'bar!';
 
-    const mockEffect = jest.fn((state: Test) => {
+    const mockEffect = vi.fn((state: Test) => {
       expect(state.foobar).toBe('bar!');
     });
 
@@ -83,8 +91,8 @@ describe('callback', () => {
     }
 
     const state = Subject.new();
-    const didAssign = jest.fn();
-    const didUpdate = jest.fn();
+    const didAssign = vi.fn();
+    const didUpdate = vi.fn();
 
     expect(didAssign).not.toBeCalled();
 
@@ -97,7 +105,7 @@ describe('callback', () => {
 
   // TODO: this is not implemented yet
   it.skip('will invoke callback on set assignment', async () => {
-    const didAssign = jest.fn();
+    const didAssign = vi.fn();
 
     class Subject extends State {
       test = set<number>(1, didAssign);
@@ -119,7 +127,7 @@ describe('callback', () => {
       });
     }
 
-    const callback = jest.fn();
+    const callback = vi.fn();
     const state = Subject.new();
 
     state.test = 2;
@@ -139,7 +147,7 @@ describe('callback', () => {
       });
     }
 
-    const callback = jest.fn();
+    const callback = vi.fn();
     const state = Subject.new();
 
     expect(state.test).toBe('foo');
@@ -187,7 +195,7 @@ describe('callback', () => {
       });
     }
 
-    const effect = jest.fn();
+    const effect = vi.fn();
     const state = Subject.new();
 
     state.hello = 'Hola';
@@ -217,7 +225,7 @@ describe('intercept', () => {
       });
     }
 
-    const callback = jest.fn();
+    const callback = vi.fn();
     const state = Subject.new();
 
     expect(state.test).toBe('foo');
@@ -229,8 +237,8 @@ describe('intercept', () => {
   });
 
   it('will not call prior cleanup if supressed', async () => {
-    const cleanup = jest.fn();
-    const setter = jest.fn((value: number) => {
+    const cleanup = vi.fn();
+    const setter = vi.fn((value: number) => {
       return value === 3 ? false : cleanup;
     });
 
@@ -263,7 +271,7 @@ describe('intercept', () => {
 
 describe('factory', () => {
   it('will ignore setter if assigned', () => {
-    const getValue = jest.fn(() => 'foo');
+    const getValue = vi.fn(() => 'foo');
 
     class Test extends State {
       value = set(getValue);
@@ -279,7 +287,7 @@ describe('factory', () => {
   });
 
   it('will compute when accessed', () => {
-    const factory = jest.fn(() => 'Hello World');
+    const factory = vi.fn(() => 'Hello World');
 
     class Test extends State {
       value = set(factory);
@@ -295,7 +303,7 @@ describe('factory', () => {
   });
 
   it('will compute lazily', () => {
-    const factory = jest.fn(() => 'Hello World');
+    const factory = vi.fn(() => 'Hello World');
 
     class Test extends State {
       value = set(factory, false);
@@ -354,7 +362,7 @@ describe('suspense', () => {
   });
 
   it('will suspend on another pending set', async () => {
-    const didEvaluate = jest.fn(function (this: Test) {
+    const didEvaluate = vi.fn(function (this: Test) {
       return this.value + ' world!';
     });
 
@@ -375,7 +383,7 @@ describe('suspense', () => {
 
   it('will suspend other set factories', async () => {
     const promise = mockPromise<string>();
-    const didEvaluate = jest.fn(function (this: Test) {
+    const didEvaluate = vi.fn(function (this: Test) {
       return this.value + ' world!';
     });
 
@@ -444,7 +452,7 @@ describe('suspense', () => {
 
   it('will be undefined if not required', async () => {
     const promise = mockPromise<string>();
-    const mock = jest.fn();
+    const mock = vi.fn();
 
     class Test extends State {
       value = set(() => promise, false);
@@ -465,7 +473,7 @@ describe('suspense', () => {
     const salute = mockPromise<string>();
     const name = mockPromise<string>();
 
-    const didEvaluate = jest.fn(function (this: Test) {
+    const didEvaluate = vi.fn(function (this: Test) {
       return this.greet + ' ' + this.name;
     });
 
@@ -494,7 +502,7 @@ describe('suspense', () => {
     const greet = mockPromise<string>();
     const name = mockPromise<string>();
 
-    const didEvaluate = jest.fn(async function (this: Test) {
+    const didEvaluate = vi.fn(async function (this: Test) {
       return this.greet + ' ' + this.name;
     });
 
@@ -535,7 +543,7 @@ describe('suspense', () => {
     }
 
     const test = Test.new();
-    const effect = jest.fn((state: Test) => {
+    const effect = vi.fn((state: Test) => {
       didUpdate.resolve(state.childValue);
     });
 
@@ -573,7 +581,7 @@ describe('suspense', () => {
     let pending = mockPromise();
     let suspend = true;
 
-    const compute = jest.fn(() => {
+    const compute = vi.fn(() => {
       if (suspend) throw pending;
 
       return `OK I'm unblocked.`;
@@ -586,7 +594,7 @@ describe('suspense', () => {
     const test = Test.new();
     const didEvaluate = mockPromise<string>();
 
-    const effect = jest.fn((state: Test) => {
+    const effect = vi.fn((state: Test) => {
       didEvaluate.resolve(state.message);
     });
 
@@ -634,7 +642,7 @@ describe('suspense', () => {
 
     const test = Test.new();
 
-    const effect = jest.fn((state: Test) => void state.sum);
+    const effect = vi.fn((state: Test) => void state.sum);
 
     test.get(effect);
 
@@ -683,7 +691,7 @@ describe('suspense', () => {
 
 describe('factory with callback overload', () => {
   it('calls callback after factory resolves', async () => {
-    const callback = jest.fn();
+    const callback = vi.fn();
     class Test extends State {
       value = set(() => 'computed', callback);
     }
@@ -693,7 +701,7 @@ describe('factory with callback overload', () => {
   });
 
   it('calls callback after async factory resolves', async () => {
-    const callback = jest.fn();
+    const callback = vi.fn();
     class Test extends State {
       value = set(async () => {
         await new Promise((res) => setTimeout(res, 10));
@@ -716,7 +724,7 @@ describe('factory with callback overload', () => {
   });
 
   it('will callback if set before factory run', () => {
-    const callback = jest.fn();
+    const callback = vi.fn();
     class Test extends State {
       value = set(async () => 'something', callback);
     }
@@ -821,7 +829,7 @@ describe('compute mode', () => {
       });
     }
 
-    const didCompute = jest.fn();
+    const didCompute = vi.fn();
     const test = Test.new();
 
     expect(test.plusOne).toBe(1);
@@ -850,8 +858,8 @@ describe('compute mode', () => {
   });
 
   it('will be squashed with regular updates', async () => {
-    const exec = jest.fn();
-    const emit = jest.fn();
+    const exec = vi.fn();
+    const emit = vi.fn();
 
     class Inner extends State {
       value = 1;
@@ -1041,8 +1049,8 @@ describe('compute mode', () => {
     });
 
     it('will not trigger itself', async () => {
-      const didGetOldValue = jest.fn();
-      const didGetNewValue = jest.fn();
+      const didGetOldValue = vi.fn();
+      const didGetNewValue = vi.fn();
 
       class Test extends State {
         input = 1;
@@ -1140,7 +1148,7 @@ describe('compute mode', () => {
     });
 
     it('will provide key and self to factory', () => {
-      const factory = jest.fn<'foo', [string, Test]>(() => 'foo');
+      const factory = vi.fn<(key: string, test: Test) => 'foo'>(() => 'foo');
 
       class Test extends State {
         fooBar = set(true, factory);

@@ -1,3 +1,4 @@
+import { vi, describe, it, expect, afterEach } from '../../vitest';
 import { State } from '../state';
 import { ref } from './ref';
 import { set } from './set';
@@ -47,7 +48,7 @@ describe('property', () => {
     }
 
     const state = Subject.new();
-    const callback = jest.fn();
+    const callback = vi.fn();
 
     state.ref.get(callback);
 
@@ -65,7 +66,7 @@ describe('property', () => {
     }
 
     const state = Subject.new();
-    const didCallback = jest.fn();
+    const didCallback = vi.fn();
 
     state.set((key) => {
       if (key == 'ref') didCallback();
@@ -78,8 +79,8 @@ describe('property', () => {
   });
 
   it('will invoke callback', async () => {
-    const didTrigger = jest.fn();
-    const didUpdate = jest.fn();
+    const didTrigger = vi.fn();
+    const didUpdate = vi.fn();
 
     class Subject extends State {
       ref = ref<string>(didTrigger);
@@ -106,7 +107,7 @@ describe('property', () => {
     }
 
     const state = Subject.new();
-    const didTrigger = jest.fn();
+    const didTrigger = vi.fn();
 
     state.ref.current = 1;
 
@@ -119,7 +120,7 @@ describe('property', () => {
   });
 
   it('will not callback when set to null', async () => {
-    const callback = jest.fn();
+    const callback = vi.fn();
 
     class Subject extends State {
       ref = ref<string | null>(callback);
@@ -135,7 +136,7 @@ describe('property', () => {
   });
 
   it('will callback when on null if ignore false', async () => {
-    const callback = jest.fn();
+    const callback = vi.fn();
 
     class Subject extends State {
       ref = ref<string | null>(callback, false);
@@ -161,7 +162,7 @@ describe('property', () => {
       });
     }
 
-    const effect = jest.fn();
+    const effect = vi.fn();
     const state = Subject.new();
 
     state.hello.current = 'Hola';
@@ -212,7 +213,7 @@ describe('property', () => {
     }
 
     const test = Subject.new();
-    const effect = jest.fn(($: Subject) => {
+    const effect = vi.fn(($: Subject) => {
       void $.ref.current;
     });
 
@@ -270,7 +271,7 @@ describe('proxy', () => {
 
   it('will subscribe from property', async () => {
     const test = Subject.new();
-    const callback = jest.fn();
+    const callback = vi.fn();
     const { refs } = test;
 
     const done = refs.foo.get(callback);
@@ -318,7 +319,7 @@ describe('set instruction', () => {
   });
 
   it('will trigger callback', () => {
-    const callback = jest.fn();
+    const callback = vi.fn();
 
     class Subject extends State {
       ref = ref(this);
@@ -333,7 +334,7 @@ describe('set instruction', () => {
 });
 
 describe('mapped', () => {
-  const generateRef = jest.fn((key: any) => key as string);
+  const generateRef = vi.fn((key: any) => key as string);
 
   class Test extends State {
     foo = 'foo';

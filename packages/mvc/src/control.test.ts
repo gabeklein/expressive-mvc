@@ -1,12 +1,12 @@
 import { watch, Observable } from './control';
 import { set } from './instruction/set';
 import { use } from './instruction/use';
-import { mockError } from './mocks';
+import { mockError, vi, describe, it, expect } from '../vitest';
 import { State } from './state';
 
 describe('effect', () => {
   it('will run after properties', () => {
-    const mock = jest.fn();
+    const mock = vi.fn();
 
     class Test extends State {
       property = use((_key, _state, state) => {
@@ -48,7 +48,7 @@ describe('effect', () => {
     }
 
     const test = Test.new();
-    const didGetValue = jest.fn();
+    const didGetValue = vi.fn();
 
     test.get(($) => {
       didGetValue($.value1, $.value2);
@@ -72,7 +72,7 @@ describe('effect', () => {
     }
 
     const test = Test.new();
-    const didInvoke = jest.fn();
+    const didInvoke = vi.fn();
 
     const done = watch(test, ({ foo }) => {
       watch(test, ({ bar }) => {
@@ -110,7 +110,7 @@ describe('effect', () => {
       bar?: number = undefined;
     }
 
-    const didUpdate = jest.fn();
+    const didUpdate = vi.fn();
     const test = Test.new();
 
     watch(test, ({ foo, bar }) => {
@@ -148,7 +148,7 @@ describe('effect', () => {
       bar?: number = undefined;
     }
 
-    const didUpdate = jest.fn();
+    const didUpdate = vi.fn();
     const test = Test.new();
 
     watch(test, ({ foo, bar }) => {
@@ -302,7 +302,7 @@ describe('observable', () => {
       observable = new MyObservable();
     }
 
-    const mock = jest.fn();
+    const mock = vi.fn();
     const test = Test.new();
 
     test.get(($) => {

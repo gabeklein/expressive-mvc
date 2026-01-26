@@ -1,5 +1,5 @@
 import { Context } from '../context';
-import { mockPromise } from '../mocks';
+import { vi, describe, it, expect, mockPromise } from '../../vitest';
 import { State } from '../state';
 import { get } from './get';
 import { set } from './set';
@@ -51,7 +51,7 @@ describe('fetch mode', () => {
     }
 
     const foo = Foo.new();
-    const mockEffect = jest.fn();
+    const mockEffect = vi.fn();
     let promise = mockPromise();
 
     expect(foo.bar.foo).toBe(foo);
@@ -146,7 +146,7 @@ describe('fetch mode', () => {
     }
 
     const { child } = Parent.new();
-    const effect = jest.fn((it: Child) => {
+    const effect = vi.fn((it: Child) => {
       void it.value;
       void it.parent.value;
     });
@@ -326,7 +326,7 @@ describe('downstream collection', () => {
       children = get(Child, true, gotChild);
     }
 
-    const gotChild = jest.fn();
+    const gotChild = vi.fn();
     const parent = Parent.new();
     const child = Child.new();
 
@@ -344,7 +344,7 @@ describe('downstream collection', () => {
       baz = get(Baz, true, gotBaz);
     }
 
-    const gotBaz = jest.fn();
+    const gotBaz = vi.fn();
     const foo = Foo.new();
     const baz = Baz.new();
 
@@ -377,7 +377,7 @@ describe('lifecycle callbacks', () => {
       value = 'foo';
     }
 
-    const remoteCallback = jest.fn();
+    const remoteCallback = vi.fn();
 
     class Test extends State {
       remote = get(Remote, remoteCallback);
@@ -398,7 +398,7 @@ describe('lifecycle callbacks', () => {
       children = get(Child, true, gotChild);
     }
 
-    const gotChild = jest.fn();
+    const gotChild = vi.fn();
     const parent = Parent.new();
     const child = Child.new();
 
@@ -408,8 +408,8 @@ describe('lifecycle callbacks', () => {
   });
 
   it('will run cleanup on downstream unmount', async () => {
-    const didRemove = jest.fn();
-    const didAdd = jest.fn(() => didRemove);
+    const didRemove = vi.fn();
+    const didAdd = vi.fn(() => didRemove);
 
     class Child extends State {
       value = 0;
@@ -441,7 +441,7 @@ describe('lifecycle callbacks', () => {
       children = get(Child, true, hasChild);
     }
 
-    const hasChild = jest.fn(() => false);
+    const hasChild = vi.fn(() => false);
     const parent = Parent.new();
     const context = new Context({ parent });
 
@@ -465,7 +465,7 @@ describe('lifecycle callbacks', () => {
       value = 'foo';
     }
 
-    const remoteCallback = jest.fn((remote: Remote) => {
+    const remoteCallback = vi.fn((remote: Remote) => {
       // Access value but should not subscribe
       void remote.value;
     });
@@ -491,8 +491,8 @@ describe('lifecycle callbacks', () => {
   it('will run cleanup on state destruction', async () => {
     class Remote extends State {}
 
-    const cleanup = jest.fn();
-    const remoteCallback = jest.fn(() => cleanup);
+    const cleanup = vi.fn();
+    const remoteCallback = vi.fn(() => cleanup);
 
     class Test extends State {
       remote = get(Remote, remoteCallback);
@@ -512,7 +512,7 @@ describe('lifecycle callbacks', () => {
   });
 
   it('will receive ready instance', async () => {
-    const didSet = jest.fn();
+    const didSet = vi.fn();
 
     class Child extends State {
       value = set(undefined, didSet);
@@ -546,8 +546,8 @@ describe('lifecycle callbacks', () => {
       });
     }
 
-    const didNotify = jest.fn();
-    const didRemove = jest.fn();
+    const didNotify = vi.fn();
+    const didRemove = vi.fn();
 
     const context = new Context();
 
@@ -573,8 +573,8 @@ describe('lifecycle callbacks', () => {
       });
     }
 
-    const didNotify = jest.fn();
-    const didRemove = jest.fn();
+    const didNotify = vi.fn();
+    const didRemove = vi.fn();
 
     const context = new Context({ Parent });
     const inner = context.push({ Child });

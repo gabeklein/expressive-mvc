@@ -1,6 +1,7 @@
 /** @jsxImportSource . */
 
-import { act, render, screen } from '@testing-library/react';
+import { vi, expect, it, describe, act, render, screen } from '../vitest';
+
 import React, { Children, Component, isValidElement } from 'react';
 import { Consumer, get, State, set } from '.';
 
@@ -26,7 +27,7 @@ it('will create instance only once', () => {
     }
   }
 
-  const didConstruct = jest.fn();
+  const didConstruct = vi.fn();
   const { rerender } = render(<Control />);
 
   expect(didConstruct).toHaveBeenCalledTimes(1);
@@ -39,7 +40,7 @@ it('will create instance only once', () => {
 it('will call is method on creation', () => {
   class Control extends State {}
 
-  const didCreate = jest.fn();
+  const didCreate = vi.fn();
 
   const screen = render(<Control is={didCreate} />);
 
@@ -53,7 +54,7 @@ it('will call is method on creation', () => {
 
 describe('new method', () => {
   it('will call if exists', () => {
-    const didCreate = jest.fn();
+    const didCreate = vi.fn();
 
     class Test extends State {
       new() {
@@ -109,7 +110,7 @@ describe('element props', () => {
       value = set('foobar', didSet);
     }
 
-    const didSet = jest.fn();
+    const didSet = vi.fn();
 
     render(<Foo value="barfoo" />);
 
@@ -171,7 +172,7 @@ describe('element children', () => {
       children = set<React.ReactNode>(undefined, didUpdate);
     }
 
-    const didUpdate = jest.fn();
+    const didUpdate = vi.fn();
     const screen = render(<Control>Hello</Control>);
 
     screen.getByText('Hello');
@@ -318,7 +319,7 @@ describe('render method', () => {
       }
     }
 
-    const callback = jest.fn();
+    const callback = vi.fn();
 
     render(<Test is={callback} />);
 

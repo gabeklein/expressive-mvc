@@ -43,7 +43,6 @@
 - [React Integration](#react-integration)
 - [Advanced Features](#advanced-features)
 - [Framework Support](#framework-support)
-- [Complete Examples](#complete-examples)
 
 <br />
 
@@ -145,8 +144,8 @@ function MyComponent() {
 
   return (
     <div>
-      <p onClick={() => (is.count += 10)}>Count: {count}</p>
-      <p onClick={() => (is.message = 'Updated!')}>Message: {message}</p>
+      <p onClick={() => (control.count += 10)}>Count: {count}</p>
+      <p onClick={() => (control.message = 'Updated!')}>Message: {message}</p>
       <button onClick={increment}>Increment</button>
     </div>
   );

@@ -1,7 +1,7 @@
-import { act, render, screen } from '@testing-library/react';
-
-import State from '.';
 import { set } from '@expressive/mvc';
+
+import { vi, expect, it, describe, act, render, screen } from '../vitest';
+import State from '.';
 
 it('will update component as values change', async () => {
   class Test extends State {
@@ -28,7 +28,7 @@ it('will update component as values change', async () => {
 });
 
 it('will pass props to state', async () => {
-  const didUpdateFoo = jest.fn();
+  const didUpdateFoo = vi.fn();
   class Test extends State {
     foo = 'foo';
     constructor(...args: State.Args) {
@@ -72,7 +72,7 @@ it('will call is method on creation', () => {
 
   const Test = Control.as(() => null);
 
-  const didCreate = jest.fn();
+  const didCreate = vi.fn();
 
   const screen = render(<Test is={didCreate} />);
 
@@ -118,8 +118,8 @@ it('will revert to value from prop', async () => {
   }
 
   let test: Test;
-  const didSetFoo = jest.fn();
-  const renderSpy = jest.fn((_, { foo }) => {
+  const didSetFoo = vi.fn();
+  const renderSpy = vi.fn((_, { foo }) => {
     return <span>{foo}</span>;
   });
 
@@ -171,7 +171,7 @@ it('will trigger set instruction', () => {
   }
 
   const Component = Foo.as((_, self) => null);
-  const didSet = jest.fn();
+  const didSet = vi.fn();
 
   render(<Component value="barfoo" />);
 
@@ -180,7 +180,7 @@ it('will trigger set instruction', () => {
 
 describe('new method', () => {
   it('will call if exists', () => {
-    const didCreate = jest.fn();
+    const didCreate = vi.fn();
 
     class Test extends State {
       value = 0;

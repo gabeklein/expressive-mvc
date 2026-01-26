@@ -1,11 +1,11 @@
-import '@testing-library/jest-dom';
+import { vi, afterAll, expect, it, describe } from '../vitest';
 
 import { act, render, screen } from '@testing-library/react';
 import React, { Suspense } from 'react';
 
 import State, { Consumer, get, Provider, set, use } from '.';
 
-const error = jest.spyOn(console, 'error').mockImplementation(() => {});
+const error = vi.spyOn(console, 'error').mockImplementation(() => {});
 
 afterAll(() => {
   error.mockReset();
@@ -62,7 +62,7 @@ describe('Provider', () => {
   });
 
   it('will destroy created model on unmount', () => {
-    const willDestroy = jest.fn();
+    const willDestroy = vi.fn();
 
     class Test extends State {}
 
@@ -82,7 +82,7 @@ describe('Provider', () => {
   });
 
   it('will destroy multiple created on unmount', async () => {
-    const willDestroy = jest.fn();
+    const willDestroy = vi.fn();
 
     class Foo extends State {}
     class Bar extends State {}
@@ -107,7 +107,7 @@ describe('Provider', () => {
   });
 
   it('will not destroy given instance on unmount', async () => {
-    const didUnmount = jest.fn();
+    const didUnmount = vi.fn();
 
     class Test extends State {}
 
@@ -126,7 +126,7 @@ describe('Provider', () => {
   it('will conflict colliding State types', () => {
     const foo = Foo.new();
 
-    const Consumer: React.FC = jest.fn(() => {
+    const Consumer: React.FC = vi.fn(() => {
       expect(() => Foo.get()).toThrowError(
         'Did find Foo in context, but multiple were defined.'
       );
@@ -143,7 +143,7 @@ describe('Provider', () => {
   });
 
   it('will destroy from bottom-up', async () => {
-    const didDestroy = jest.fn();
+    const didDestroy = vi.fn();
 
     class Test extends State {
       constructor(...args: State.Args) {
@@ -172,7 +172,7 @@ describe('Provider', () => {
 
   describe('forEach prop', () => {
     it('will call function for each model', () => {
-      const forEach = jest.fn();
+      const forEach = vi.fn();
 
       render(<Provider for={{ Foo, Bar }} forEach={forEach} />);
 
@@ -182,8 +182,8 @@ describe('Provider', () => {
     });
 
     it('will cleanup on unmount', () => {
-      const forEach = jest.fn(() => cleanup);
-      const cleanup = jest.fn();
+      const forEach = vi.fn(() => cleanup);
+      const cleanup = vi.fn();
 
       const rendered = render(
         <Provider for={{ Foo, Bar }} forEach={forEach} />
@@ -263,7 +263,7 @@ describe('Consumer', () => {
     }
 
     const instance = Test.new();
-    const didRender = jest.fn();
+    const didRender = vi.fn();
 
     function onRender(instance: Test) {
       const { value } = instance;
@@ -416,7 +416,7 @@ describe('get instruction', () => {
   });
 
   it('will maintain hook', async () => {
-    const Inner: React.FC = jest.fn(() => {
+    const Inner: React.FC = vi.fn(() => {
       Foo.use();
       return null;
     });
@@ -533,7 +533,7 @@ describe('get instruction', () => {
     }
 
     const bar = Bar.new();
-    const effect = jest.fn((bar) => void bar.foo);
+    const effect = vi.fn((bar) => void bar.foo);
 
     bar.get(effect);
 
@@ -605,7 +605,7 @@ describe('has instruction', () => {
       foo = get(Foo);
     }
 
-    const didGetBar = jest.fn();
+    const didGetBar = vi.fn();
     const FooBar = () => void Bar.use();
     const foo = Foo.new();
 
@@ -630,7 +630,7 @@ describe('has instruction', () => {
       foo = get(Foo);
     }
 
-    const didGetBar = jest.fn();
+    const didGetBar = vi.fn();
     const FooBar = () => void Bar.use();
 
     const Component = () => {

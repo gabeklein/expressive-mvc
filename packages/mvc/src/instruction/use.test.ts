@@ -1,3 +1,4 @@
+import { vi, describe, it, expect } from '../../vitest';
 import { Context } from '../context';
 import { State } from '../state';
 import { use } from './use';
@@ -10,7 +11,7 @@ describe('instruction', () => {
       });
     }
 
-    const didRunInstruction = jest.fn();
+    const didRunInstruction = vi.fn();
 
     Test.new();
 
@@ -57,8 +58,8 @@ describe('instruction', () => {
 
   describe('getter', () => {
     it('will run upon access', () => {
-      const mockAccess = jest.fn((_subscriber) => 'foobar');
-      const mockApply = jest.fn((_key) => mockAccess);
+      const mockAccess = vi.fn((_subscriber) => 'foobar');
+      const mockApply = vi.fn((_key) => mockAccess);
 
       class Test extends State {
         property = use(mockApply);
@@ -74,7 +75,7 @@ describe('instruction', () => {
     });
 
     it('will pass subscriber if within one', () => {
-      const didGetValue = jest.fn();
+      const didGetValue = vi.fn();
 
       class Test extends State {
         property = use(() => didGetValue);
@@ -95,7 +96,7 @@ describe('instruction', () => {
       }
 
       const test = Test.new('ID');
-      const effect = jest.fn((test: Test) => void test.value);
+      const effect = vi.fn((test: Test) => void test.value);
 
       test.get(effect);
       test.value = 'foo';
@@ -118,7 +119,7 @@ describe('instruction', () => {
     });
 
     it('will prevent update if returns false', async () => {
-      const didSetValue = jest.fn((newValue) => {
+      const didSetValue = vi.fn((newValue) => {
         if (newValue == 'ignore') return false;
       });
 
@@ -183,7 +184,7 @@ describe('instruction', () => {
       }
 
       const test = Test.new();
-      const didUpdate = jest.fn();
+      const didUpdate = vi.fn();
 
       test.set(didUpdate);
 
@@ -206,7 +207,7 @@ describe('instruction', () => {
       }
 
       const test = Test.new();
-      const didUpdate = jest.fn();
+      const didUpdate = vi.fn();
 
       test.set(didUpdate);
 
@@ -229,7 +230,7 @@ describe('state', () => {
       child = use(Child, mockInit);
     }
 
-    const mockInit = jest.fn();
+    const mockInit = vi.fn();
 
     Test.new();
 
@@ -255,7 +256,7 @@ describe('state', () => {
       child = use(Child, callback);
     }
 
-    const callback = jest.fn();
+    const callback = vi.fn();
     const parent = Parent.new();
 
     // Initial assignment

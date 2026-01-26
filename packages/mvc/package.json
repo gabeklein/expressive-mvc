@@ -22,14 +22,15 @@
   ],
   "scripts": {
     "build": "tsup",
-    "test": "tsc --noEmit && jest --collectCoverage",
+    "test": "tsc --noEmit && vitest run --coverage",
     "prebuild": "rm -rf dist",
     "preversion": "npm run test && npm run build"
   },
   "devDependencies": {
     "@types/node": "^18.19.0",
-    "jest": "^27.5.1",
-    "tsup": "^8.0.2"
+    "@vitest/coverage-v8": "2.1.9",
+    "tsup": "^8.0.2",
+    "vitest": "^2.1.8"
   },
   "version": "0.72.0"
 }

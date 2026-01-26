@@ -1,4 +1,4 @@
-import { render, act } from '@testing-library/react';
+import { expect, it, act, render } from '../vitest';
 import { ReactNode } from 'react';
 import { Component } from './component';
 

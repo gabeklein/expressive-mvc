@@ -1,3 +1,4 @@
+import { vi, afterEach, afterAll, expect, it, describe } from '../vitest';
 import { act, render, renderHook } from '@testing-library/react';
 import { Suspense } from 'react';
 
@@ -30,7 +31,7 @@ function mockPromise<T = void>() {
   return Object.assign(promise, methods);
 }
 
-const error = jest.spyOn(console, 'error').mockImplementation(() => {});
+const error = vi.spyOn(console, 'error').mockImplementation(() => {});
 
 afterEach(() => {
   // expect(error).not.toBeCalled();
@@ -54,7 +55,7 @@ it('will refresh for values accessed', async () => {
   }
 
   const test = Test.new();
-  const didRender = jest.fn();
+  const didRender = vi.fn();
   const hook = renderWith(test, () => {
     didRender();
     return Test.get().foo;
@@ -74,7 +75,7 @@ it('will not update on death event', async () => {
   }
 
   const test = Test.new();
-  const didRender = jest.fn();
+  const didRender = vi.fn();
   const hook = renderWith(test, () => {
     didRender();
     return Test.get().foo;
@@ -91,7 +92,7 @@ it('will throw if not found', () => {
     value = 1;
   }
 
-  const useTest = jest.fn(() => {
+  const useTest = vi.fn(() => {
     expect(() => Test.get()).toThrow('Could not find Test in context.');
   });
 
@@ -104,7 +105,7 @@ it('will not throw if optional', () => {
     value = 1;
   }
 
-  const useTest = jest.fn(() => {
+  const useTest = vi.fn(() => {
     expect(Test.get(false)).toBeUndefined();
   });
 
@@ -153,7 +154,7 @@ describe('computed', () => {
       value = 1;
     }
 
-    const useTest = jest.fn(() => {
+    const useTest = vi.fn(() => {
       expect(() => Test.get((x) => x)).toThrow(
         'Could not find Test in context.'
       );
@@ -178,8 +179,8 @@ describe('computed', () => {
 
   it('will ignore updates with same result', async () => {
     const test = Test.new();
-    const compute = jest.fn();
-    const didRender = jest.fn();
+    const compute = vi.fn();
+    const didRender = vi.fn();
 
     const hook = renderWith(test, () => {
       didRender();
@@ -222,12 +223,12 @@ describe('computed', () => {
   });
 
   it('will disable updates if null returned', async () => {
-    const factory = jest.fn(($: Test) => {
+    const factory = vi.fn(($: Test) => {
       void $.foo;
       return null;
     });
 
-    const didRender = jest.fn(() => {
+    const didRender = vi.fn(() => {
       return Test.get(factory);
     });
 
@@ -262,8 +263,8 @@ describe('computed', () => {
       });
 
     const parent = Parent.new();
-    const didUpdateValues = jest.fn();
-    const didPushToValues = jest.fn();
+    const didUpdateValues = vi.fn();
+    const didPushToValues = vi.fn();
 
     parent.get((state) => {
       didUpdateValues(state.values.length);
@@ -293,8 +294,8 @@ describe('force update', () => {
   }
 
   it('will force a refresh', async () => {
-    const didRender = jest.fn();
-    const didEvaluate = jest.fn();
+    const didRender = vi.fn();
+    const didEvaluate = vi.fn();
     let forceUpdate!: () => void;
 
     renderWith(Test, () => {
@@ -317,8 +318,8 @@ describe('force update', () => {
   });
 
   it('will refresh without reevaluating', async () => {
-    const didEvaluate = jest.fn();
-    const didRender = jest.fn();
+    const didEvaluate = vi.fn();
+    const didRender = vi.fn();
     let forceUpdate!: () => void;
 
     renderWith(Test, () => {
@@ -342,7 +343,7 @@ describe('force update', () => {
 
   it('will refresh again after promise', async () => {
     const promise = mockPromise();
-    const didRender = jest.fn();
+    const didRender = vi.fn();
 
     let forceUpdate!: <T>(after: Promise<T>) => Promise<T>;
 
@@ -372,7 +373,7 @@ describe('force update', () => {
 
   it('will invoke async function', async () => {
     const promise = mockPromise();
-    const didRender = jest.fn();
+    const didRender = vi.fn();
 
     let forceUpdate!: <T>(after: () => Promise<T>) => Promise<T>;
 
@@ -421,7 +422,7 @@ describe('async', () => {
     const promise = mockPromise<string>();
 
     const test = Test.new();
-    const didRender = jest.fn();
+    const didRender = vi.fn();
     const hook = renderWith(test, () => {
       didRender();
       return Test.get(async ($) => {
@@ -489,7 +490,7 @@ describe('get instruction', () => {
 
   it('will subscribe peer from context', async () => {
     const bar = Bar.new();
-    const didRender = jest.fn();
+    const didRender = vi.fn();
     const hook = renderWith(bar, () => {
       didRender();
       return Foo.use().bar.value;
