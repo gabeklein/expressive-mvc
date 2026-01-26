@@ -16,6 +16,7 @@ body {
 }
 
 .description {
+  min-width: 300px;
   max-width: 600px;
   margin-bottom: 2rem;
   line-height: 1.6;

@@ -20,6 +20,7 @@ body {
 
 .container {
   font-size: 16px;
+  min-width: 400px;
   max-width: 600px;
 }
 
