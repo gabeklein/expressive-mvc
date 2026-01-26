@@ -5,6 +5,30 @@ expect.extend({
   toHaveUpdated
 });
 
+// Add custom mock utilities to jest namespace
+jest.mockPromise = () => {
+  const methods = {};
+  const promise = new Promise((res, rej) => {
+    methods.resolve = res;
+    methods.reject = rej;
+  });
+  return Object.assign(promise, methods);
+};
+
+jest.mockWarn = () => {
+  const warn = jest.spyOn(console, 'warn');
+  afterEach(() => warn.mockReset());
+  afterAll(() => warn.mockRestore());
+  return warn;
+};
+
+jest.mockError = () => {
+  const error = jest.spyOn(console, 'error');
+  afterEach(() => error.mockReset());
+  afterAll(() => error.mockRestore());
+  return error;
+};
+
 /**
  * @param {State} received
  * @param {number} timeout

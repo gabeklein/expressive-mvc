@@ -1,7 +1,6 @@
 import { watch, Observable } from './control';
 import { set } from './instruction/set';
 import { use } from './instruction/use';
-import { mockError } from './mocks';
 import { State } from './state';
 
 describe('effect', () => {

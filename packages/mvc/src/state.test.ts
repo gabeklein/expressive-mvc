@@ -2,7 +2,6 @@ import { Context } from './context';
 import { get } from './instruction/get';
 import { ref } from './instruction/ref';
 import { set } from './instruction/set';
-import { mockError, mockPromise } from './mocks';
 import { State } from './state';
 
 it('will extend custom class', () => {
