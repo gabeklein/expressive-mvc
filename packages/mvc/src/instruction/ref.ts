@@ -1,4 +1,4 @@
-import { addListener, enter } from '../observable';
+import { addListener, scope } from '../observable';
 import { State, update } from '../state';
 import { use } from './use';
 
@@ -149,7 +149,7 @@ function ref<T>(
 
         if (value === null && arg2 !== false) return;
 
-        const exit = enter();
+        const exit = scope();
         const out = arg.call(subject, value);
         const flush = exit();
 

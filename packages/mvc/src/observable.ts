@@ -191,11 +191,11 @@ function watch<T extends Observable>(
     }
 
     try {
-      const exit = enter(argument === false);
+      const exit = argument === false ? undefined : scope();
       const output = callback(
         target[Observable](onUpdate, argument === true) as T
       );
-      const flush = exit();
+      const flush = exit ? exit() : () => {};
 
       ignore = false;
       reset = output === null ? null : invoke;
@@ -234,9 +234,7 @@ function watch<T extends Observable>(
 
 let EffectContext: Set<() => void> | undefined;
 
-export function enter(ignore?: boolean) {
-  if (ignore) return () => () => {};
-
+export function scope() {
   const last = EffectContext;
   const context = (EffectContext = new Set());
 

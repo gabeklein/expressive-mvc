@@ -582,6 +582,30 @@ function init(self: State, args: State.Args) {
   });
 }
 
+function manage(
+  target: State,
+  key: string | number,
+  value: any,
+  silent?: boolean
+) {
+  const state = STATE.get(target)!;
+
+  function get(this: State) {
+    return follow(this, key, state[key]);
+  }
+
+  function set(value: unknown, silent?: boolean) {
+    update(target, key, value, silent);
+    if (value instanceof State && !PARENT.has(value)) {
+      PARENT.set(value, target);
+      event(value);
+    }
+  }
+
+  define(target, key, { set, get });
+  set(value, silent);
+}
+
 function effect<T extends State>(target: T, fn: State.Effect<T>) {
   const effect = METHOD.get(fn) || fn;
   let pending = new Set<State.Event<T>>();
@@ -623,30 +647,6 @@ function values<T extends State>(target: T): State.Values<T> {
   if (isNotRecursive) EXPORT = undefined;
 
   return Object.freeze(values);
-}
-
-function manage(
-  target: State,
-  key: string | number,
-  value: any,
-  silent?: boolean
-) {
-  const state = STATE.get(target)!;
-
-  function get(this: State) {
-    return follow(this, key, state[key]);
-  }
-
-  function set(value: unknown, silent?: boolean) {
-    update(target, key, value, silent);
-    if (value instanceof State && !PARENT.has(value)) {
-      PARENT.set(value, target);
-      event(value);
-    }
-  }
-
-  define(target, key, { set, get });
-  set(value, silent);
 }
 
 type Proxy<T = any> = (key: string | number, value: T) => T;

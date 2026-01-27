@@ -1,4 +1,4 @@
-import { enter } from '../observable';
+import { scope } from '../observable';
 import { Context } from '../context';
 import { State, PARENT, update } from '../state';
 import { use } from './use';
@@ -79,7 +79,7 @@ function get<R, T extends State>(
           if (applied.has(state)) return;
 
           if (callback) {
-            const exit = enter();
+            const exit = scope();
 
             try {
               const done = callback(state, subject);
