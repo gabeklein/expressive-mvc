@@ -1,4 +1,4 @@
-import { addListener, enter } from '../control';
+import { addListener, enter } from '../observable';
 import { State, update } from '../state';
 import { use } from './use';
 

@@ -1,4 +1,4 @@
-import { enter } from '../control';
+import { enter } from '../observable';
 import { Context } from '../context';
 import { State, PARENT, update } from '../state';
 import { use } from './use';

@@ -5,7 +5,7 @@ import {
   Observable,
   Notify,
   PENDING_KEYS
-} from './control';
+} from './observable';
 
 const define = Object.defineProperty;
 

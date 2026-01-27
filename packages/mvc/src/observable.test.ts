@@ -1,4 +1,4 @@
-import { watch, Observable } from './control';
+import { watch, Observable } from './observable';
 import { set } from './instruction/set';
 import { use } from './instruction/use';
 import { mockError } from './mocks';

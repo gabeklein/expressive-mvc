@@ -1,4 +1,4 @@
-import { addListener } from './control';
+import { addListener } from './observable';
 import { event, State, PARENT, uid } from './state';
 
 const LOOKUP = new WeakMap<State, Context | ((got: Context) => void)[]>();
