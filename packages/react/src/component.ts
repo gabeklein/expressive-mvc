@@ -38,9 +38,8 @@ export class Component extends State {
 
   constructor({ is, ...props }: any) {
     super(props, is);
-    const render = METHOD.get(this.render);
-    const Self = Render.bind(this, render);
-    this.render = () => Pragma.createElement(Self);
+    const self = Render.bind(this, METHOD.get(this.render));
+    this.render = () => Pragma.createElement(self);
   }
 
   render(): ReactNode {
@@ -83,17 +82,13 @@ function Render<T extends Component>(this: T, render: () => ReactNode) {
       };
     };
 
-    function Render() {
-      return render.call(active);
-    }
+    const Render = () => render.call(active);
 
     return () => {
       ready = false;
 
       Pragma.useEffect(didMount, []);
-      Promise.resolve(this.set()).finally(() => {
-        ready = true;
-      });
+      setTimeout(() => (ready = true), 0);
 
       return provide(
         context,
