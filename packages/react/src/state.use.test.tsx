@@ -137,17 +137,6 @@ describe('new method', () => {
 
     expect(didCreate).toHaveBeenCalledTimes(1);
   });
-
-  it('will enforce signature', () => {
-    class Test extends State {
-      new(foo: string) {}
-    }
-
-    void function test() {
-      // @ts-expect-error
-      Test.use();
-    };
-  });
 });
 
 describe('use method', () => {
@@ -203,6 +192,17 @@ describe('use method', () => {
     expect(test.result.current.value).toBe(42);
     expect(test2.result.current.value).not.toBe(42);
     expect(didUse).toHaveBeenCalledWith({ value: 42 });
+  });
+
+  it('will enforce signature', () => {
+    class Test extends State {
+      use(foo: string, bar: number) {}
+    }
+
+    void function test() {
+      // @ts-expect-error
+      Test.use();
+    };
   });
 });
 

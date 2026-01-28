@@ -196,17 +196,6 @@ describe('new method', () => {
 
     expect(didCreate).toHaveBeenCalled();
   });
-
-  it('will enforce signature', () => {
-    class Test extends State {
-      new(foo: string) {}
-    }
-
-    void function test() {
-      // @ts-expect-error
-      Test.as(() => null);
-    };
-  });
 });
 
 describe('suspense', () => {

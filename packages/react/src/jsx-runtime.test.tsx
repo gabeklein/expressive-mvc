@@ -69,17 +69,6 @@ describe('new method', () => {
 
     expect(didCreate).toHaveBeenCalledTimes(1);
   });
-
-  it('will enforce signature', () => {
-    class Test extends State {
-      new(foo: string) {}
-    }
-
-    void function test() {
-      // @ts-expect-error
-      void (<Test />);
-    };
-  });
 });
 
 describe('element props', () => {

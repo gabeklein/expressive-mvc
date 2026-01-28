@@ -4,7 +4,7 @@ import { Pragma } from './adapter';
 
 declare module '@expressive/mvc' {
   namespace State {
-    interface Valid {
+    interface Usable extends State {
       use?(...props: any[]): Promise<void> | void;
     }
 
@@ -18,7 +18,7 @@ declare module '@expressive/mvc' {
   }
 }
 
-State.use = function <T extends State.Valid>(
+State.use = function <T extends State.Usable>(
   this: State.New<T>,
   ...args: any[]
 ) {

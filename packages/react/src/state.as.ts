@@ -42,7 +42,7 @@ declare module '@expressive/mvc' {
     };
 
     /** State which is not incompatable as Component in React. */
-    interface AsComponent extends State.Valid {
+    interface AsComponent extends State.Usable {
       render?(props: RenderProps<this>, self: this): React.ReactNode;
       fallback?: React.ReactNode;
     }
