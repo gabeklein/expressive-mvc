@@ -1,6 +1,7 @@
 import { event, METHOD, watch } from '@expressive/mvc';
-import React, { ReactNode } from 'react';
+import { ReactNode } from 'react';
 
+import { Pragma } from './adapter';
 import { provide, Layers } from './context';
 import { State, Context } from '.';
 
@@ -39,7 +40,7 @@ export class Component extends State {
     super(props, is);
     const render = METHOD.get(this.render);
     const Self = Render.bind(this, render);
-    this.render = () => React.createElement(Self);
+    this.render = () => Pragma.createElement(Self);
   }
 
   render(): ReactNode {
@@ -59,8 +60,8 @@ Object.defineProperty(Component.prototype, 'isReactComponent', {
   get: () => true
 });
 
-function Render<T extends Component>(this: T, render: () => React.ReactNode) {
-  const state = React.useState(() => {
+function Render<T extends Component>(this: T, render: () => ReactNode) {
+  const state = Pragma.useState(() => {
     event(this);
 
     const { context } = this;
@@ -89,14 +90,14 @@ function Render<T extends Component>(this: T, render: () => React.ReactNode) {
     return () => {
       ready = false;
 
-      React.useEffect(didMount, []);
+      Pragma.useEffect(didMount, []);
       Promise.resolve(this.set()).finally(() => {
         ready = true;
       });
 
       return provide(
         context,
-        React.createElement(Render),
+        Pragma.createElement(Render),
         active.fallback,
         String(this)
       );
