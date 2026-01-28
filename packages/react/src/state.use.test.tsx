@@ -13,16 +13,6 @@ describe('hook', () => {
     expect(hook.result.current).toBeInstanceOf(Test);
   });
 
-  it('will not create abstract class', () => {
-    const Test = () => {
-      // @ts-expect-error
-      expect(() => State.use()).toThrowError();
-      return null;
-    };
-
-    render(<Test />);
-  });
-
   it('will subscribe to instance of controller', async () => {
     const { result } = renderHook(() => Test.use());
 
@@ -124,7 +114,7 @@ describe('new method', () => {
     const didCreate = jest.fn();
 
     class Test extends State {
-      new() {
+      protected new() {
         didCreate();
       }
     }

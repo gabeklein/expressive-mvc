@@ -1,7 +1,6 @@
 import { act, render, screen } from '@testing-library/react';
 
-import State from '.';
-import { set } from '@expressive/mvc';
+import { State, set } from '.';
 
 it('will update component as values change', async () => {
   class Test extends State {
@@ -185,7 +184,7 @@ describe('new method', () => {
     class Test extends State {
       value = 0;
 
-      new() {
+      protected new() {
         didCreate();
       }
     }
