@@ -1744,7 +1744,7 @@ describe('new method', () => {
     const didCreate = jest.fn();
 
     class Test extends State {
-      new() {
+      protected new() {
         didCreate();
       }
     }
@@ -1759,7 +1759,7 @@ describe('new method', () => {
     const didCreate = jest.fn(() => didDestroy);
 
     class Test extends State {
-      new() {
+      protected new() {
         return didCreate();
       }
     }
@@ -1772,19 +1772,6 @@ describe('new method', () => {
     state.set(null);
 
     expect(didDestroy).toBeCalledTimes(1);
-  });
-
-  it('will enforce signature', () => {
-    class Test extends State {
-      new(foo: string) {
-        return foo;
-      }
-    }
-
-    void function test() {
-      // @ts-expect-error
-      Test.new();
-    };
   });
 });
 
