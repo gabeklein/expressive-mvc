@@ -34,7 +34,7 @@ declare namespace State {
   /**
    * A State class which is valid and may be instantiated.
    */
-  type New<T extends State> = State.Class<T>;
+  type New<T extends State = State> = State.Class<T>;
 
   /** Any type of State, using own class constructor as its identifier. */
   type Extends<T extends State = State> = (abstract new (...args: any[]) => T) &
