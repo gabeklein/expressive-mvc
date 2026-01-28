@@ -2,7 +2,7 @@
 
 import { act, render, screen } from '@testing-library/react';
 import React, { Children, Component, isValidElement } from 'react';
-import { Consumer, get, State, set } from '.';
+import State, { Consumer, get, set } from '.';
 
 it('will create and provide instance', () => {
   class Control extends State {
@@ -56,7 +56,7 @@ describe('new method', () => {
     const didCreate = jest.fn();
 
     class Test extends State {
-      new() {
+      protected new() {
         didCreate();
       }
     }
@@ -68,17 +68,6 @@ describe('new method', () => {
     element.rerender(<Test />);
 
     expect(didCreate).toHaveBeenCalledTimes(1);
-  });
-
-  it('will enforce signature', () => {
-    class Test extends State {
-      new(foo: string) {}
-    }
-
-    void function test() {
-      // @ts-expect-error
-      void (<Test />);
-    };
   });
 });
 

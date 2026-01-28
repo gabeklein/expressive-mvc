@@ -2,7 +2,7 @@ import { event, METHOD, watch } from '@expressive/mvc';
 import React, { ReactNode } from 'react';
 
 import { provide, Layers } from './context';
-import { State, Context } from '.';
+import State, { Context } from '.';
 
 const OUTER = new WeakMap<Component, Context>();
 

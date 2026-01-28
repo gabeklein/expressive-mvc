@@ -1,4 +1,4 @@
-import { State } from '.';
+import { State } from './';
 import { Fragment, jsxDEV } from './jsx-dev-runtime';
 
 it('exports jsxDEV', () => {

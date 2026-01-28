@@ -7,7 +7,3 @@ const Pragma = {} as {
 };
 
 export { Pragma };
-
-import './state.as';
-import './state.use';
-import './state.get';

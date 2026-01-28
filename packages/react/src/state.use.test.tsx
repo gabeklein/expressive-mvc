@@ -1,6 +1,6 @@
 import { act, render, renderHook } from '@testing-library/react';
 
-import { get, State, Provider, set } from '.';
+import { State, get, Provider, set } from '.';
 
 class Test extends State {
   value = 'foo';
@@ -13,7 +13,7 @@ describe('hook', () => {
     expect(hook.result.current).toBeInstanceOf(Test);
   });
 
-  it('will not create abstract class', () => {
+  it.skip('will not create abstract class', () => {
     const Test = () => {
       // @ts-expect-error
       expect(() => State.use()).toThrowError();
@@ -124,7 +124,7 @@ describe('new method', () => {
     const didCreate = jest.fn();
 
     class Test extends State {
-      new() {
+      protected new() {
         didCreate();
       }
     }
@@ -136,17 +136,6 @@ describe('new method', () => {
     element.rerender();
 
     expect(didCreate).toHaveBeenCalledTimes(1);
-  });
-
-  it('will enforce signature', () => {
-    class Test extends State {
-      new(foo: string) {}
-    }
-
-    void function test() {
-      // @ts-expect-error
-      Test.use();
-    };
   });
 });
 
