@@ -32,20 +32,9 @@ let EXPORT: Map<any, any> | undefined;
 
 declare namespace State {
   /**
-   * State which is valid to create.
-   *
-   * This interface may be augmented to add dditional
-   * constraints on states, such as special hooks or properties,
-   * to interact with environment or helper frameworks.
-   **/
-  interface Valid extends State {
-    'new'?(): void | (() => void);
-  }
-
-  /**
    * A State class which is valid and may be instantiated.
    */
-  type New<T extends State> = State.Class<T & Valid>;
+  type New<T extends State> = State.Class<T>;
 
   /** Any type of State, using own class constructor as its identifier. */
   type Extends<T extends State = State> = (abstract new (...args: any[]) => T) &
@@ -160,7 +149,7 @@ abstract class State implements Observable {
   constructor(...args: State.Args) {
     prepare(this);
     define(this, 'is', { value: this });
-    init(this, args);
+    init(this, ...args, (x: this) => x.new && x.new());
   }
 
   [Observable](callback: Observable.Callback, required?: boolean) {
@@ -185,6 +174,12 @@ abstract class State implements Observable {
 
     return proxy as this;
   }
+
+  /**
+   * Optional lifecycle hook called during State initialization.
+   * Can return a cleanup function to run when state is destroyed.
+   */
+  protected new?(): void | (() => void);
 
   /**
    * Pull current values from state. Flattens all states and exotic values recursively.
@@ -402,10 +397,7 @@ abstract class State implements Observable {
    * @param args - arguments sent to constructor
    */
   static new<T extends State>(this: State.New<T>, ...args: State.Args<T>): T {
-    const instance = new this(...args, (x) => {
-      const cb = x.new && x.new();
-      if (cb) x.set(cb, null);
-    });
+    const instance = new this(...args);
     event(instance);
     return instance;
   }
@@ -531,7 +523,7 @@ function prepare(state: State) {
  * Apply state arguemnts, run callbacks and observe properties.
  * Accumulate and handle cleanup events.
  **/
-function init(self: State, args: State.Args) {
+function init(self: State, ...args: State.Args) {
   const state = {} as Record<string | number | symbol, unknown>;
 
   STATE.set(self, state);
