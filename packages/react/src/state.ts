@@ -131,18 +131,6 @@ declare namespace ReactState {
 }
 
 abstract class ReactState extends State {
-  static as<T extends AsComponent, P extends State.Assign<T>>(
-    this: State.Class<T>,
-    render: (props: P, self: T) => ReactNode
-  ): FC<T, P> {
-    const FC = Render.bind(this as State.Class, { render } as {});
-
-    return Object.assign(FC, {
-      displayName: this.name,
-      State: this
-    });
-  }
-
   /**
    * Optional hook is called when State.use() is invoked within a React component.
    *
@@ -324,6 +312,18 @@ abstract class ReactState extends State {
     });
 
     return state[0]() as R;
+  }
+
+  static as<T extends AsComponent, P extends State.Assign<T>>(
+    this: State.Class<T>,
+    render: (props: P, self: T) => ReactNode
+  ): FC<T, P> {
+    const FC = Render.bind(this as State.Class, { render } as {});
+
+    return Object.assign(FC, {
+      displayName: this.name,
+      State: this
+    });
   }
 }
 
