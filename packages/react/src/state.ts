@@ -193,9 +193,7 @@ abstract class ReactState extends State {
         if (ready) {
           ready = false;
 
-          Promise.resolve(use(...args)).finally(() => {
-            ready = true;
-          });
+          Promise.resolve(use(...args)).finally(() => (ready = true));
         }
 
         return active;
@@ -258,11 +256,6 @@ abstract class ReactState extends State {
         if (action) return action.finally(render);
       }
 
-      function onMount() {
-        ready = true;
-        return unwatch;
-      }
-
       const unwatch = watch(
         instance,
         (current) => {
@@ -303,6 +296,11 @@ abstract class ReactState extends State {
       if (value === null) {
         unwatch();
         return () => null;
+      }
+
+      function onMount() {
+        ready = true;
+        return unwatch;
       }
 
       return () => {
