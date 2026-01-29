@@ -1,7 +1,12 @@
 import { State, Context, watch, METHOD } from '@expressive/mvc';
 import { FunctionComponent, ReactNode } from 'react';
-import { Pragma } from './adapter';
 import { provide } from './context';
+
+export const Pragma = {} as {
+  useState<S>(initial: () => S): [S, (next: (previous: S) => S) => void];
+  useEffect(effect: () => () => void, deps?: any[]): void;
+  createElement(type: any, props?: any, ...children: any[]): any;
+};
 
 /** Type may not be undefined - instead will be null.  */
 type NoVoid<T> = T extends undefined | void ? null : T;

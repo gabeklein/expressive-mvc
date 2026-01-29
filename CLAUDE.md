@@ -62,7 +62,7 @@ These are used as property initializers in State classes and get special handlin
 
 Each adapter (`packages/react/`, etc.) provides:
 
-1. **Adapter pattern** (`adapter.ts`) - Abstract interface for framework hooks
+1. **Adapter pattern** (`state.ts`) - Abstract interface for framework hooks
 2. **State extensions**:
    - `State.use()` - Hook to create/subscribe to State instance
    - `State.get()` - Hook to consume State from context

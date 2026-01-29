@@ -16,8 +16,8 @@
       "@expressive/*": [
         "../*/src"
       ],
-      "@expressive/react/adapter": [
-        "../react/src/adapter"
+      "@expressive/react/state": [
+        "../react/src/state"
       ]
     }
   },

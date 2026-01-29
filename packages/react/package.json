@@ -24,10 +24,10 @@
       "require": "./dist/index.js",
       "import": "./dist/esm/index.js"
     },
-    "./adapter": {
-      "types": "./dist/adapter.d.ts",
-      "require": "./dist/adapter.js",
-      "import": "./dist/esm/adapter.js"
+    "./state": {
+      "types": "./dist/state.d.ts",
+      "require": "./dist/state.js",
+      "import": "./dist/esm/state.js"
     },
     "./jsx-runtime": {
       "types": "./dist/jsx-runtime.d.ts",

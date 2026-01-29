@@ -1,9 +1,9 @@
 import { event, METHOD, watch } from '@expressive/mvc';
 import { ReactNode } from 'react';
 
-import { Pragma } from './adapter';
+import { Pragma, ReactState as State } from './state';
 import { provide, Layers } from './context';
-import { State, Context } from '.';
+import { Context } from '.';
 
 const OUTER = new WeakMap<Component, Context>();
 

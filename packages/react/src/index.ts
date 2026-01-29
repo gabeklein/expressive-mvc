@@ -2,8 +2,7 @@ import { State as BaseState } from '@expressive/mvc';
 
 import { createElement, useEffect, useState } from 'react';
 
-import { Pragma } from './adapter';
-import { ReactState } from './state';
+import { ReactState, Pragma } from './state';
 
 Pragma.useEffect = useEffect;
 Pragma.useState = useState;
