@@ -31,17 +31,12 @@ const METHOD = new WeakMap<any, any>();
 let EXPORT: Map<any, any> | undefined;
 
 declare namespace State {
-  /**
-   * A State class which is valid and may be instantiated.
-   */
-  type New<T extends State = State> = State.Class<T>;
-
   /** Any type of State, using own class constructor as its identifier. */
   type Extends<T extends State = State> = (abstract new (...args: any[]) => T) &
     typeof State;
 
-  /** A State constructor which is not abstract. */
-  type Class<T extends State = State> = (new (...args: State.Args<T>) => T) &
+  /** A State constructor which may be instanciated. */
+  type Type<T extends State = State> = (new (...args: State.Args<T>) => T) &
     Omit<typeof State, never>;
 
   /** State constructor arguments */
@@ -396,7 +391,7 @@ abstract class State implements Observable {
    *
    * @param args - arguments sent to constructor
    */
-  static new<T extends State>(this: State.New<T>, ...args: State.Args<T>): T {
+  static new<T extends State>(this: State.Type<T>, ...args: State.Args<T>): T {
     const instance = new this(...args);
     event(instance);
     return instance;

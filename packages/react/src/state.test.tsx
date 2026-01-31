@@ -395,7 +395,7 @@ describe('State.use', () => {
 });
 
 describe('State.get', () => {
-  function renderWith<T>(Type: State.Class | State, hook: () => T) {
+  function renderWith<T>(Type: State.Type | State, hook: () => T) {
     return renderHook(hook, {
       wrapper(props) {
         return (

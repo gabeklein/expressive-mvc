@@ -28,10 +28,10 @@ function keys(from: State.Extends, upstream?: boolean) {
 
 declare namespace Context {
   type Multiple<T extends State> = {
-    [key: string | number]: State.Class<T> | T;
+    [key: string | number]: State.Type<T> | T;
   };
 
-  type Accept<T extends State = State> = T | State.Class<T> | Multiple<T>;
+  type Accept<T extends State = State> = T | State.Type<T> | Multiple<T>;
 
   type Expect<T extends State = State> = (state: T) => (() => void) | void;
 }
@@ -122,10 +122,7 @@ class Context {
   /**
    * Adds a State to this context.
    */
-  protected add<T extends State>(
-    input: T | State.Class<T>,
-    implicit?: boolean
-  ) {
+  protected add<T extends State>(input: T | State.Type<T>, implicit?: boolean) {
     const cleanup = new Set<() => void>();
     let T: State.Extends<T>;
     let I: T;

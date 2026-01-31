@@ -6,14 +6,14 @@ import { signalProxy } from './signals';
 declare module '@expressive/mvc' {
   namespace State {
     function use<T extends State>(
-      this: State.Class<T>,
+      this: State.Type<T>,
       apply?: State.Assign<T>
     ): State.Reactive<T>;
   }
 }
 
 State.use = function <T extends State>(
-  this: State.Class<T>,
+  this: State.Type<T>,
   argument?: State.Assign<T>
 ) {
   const instance = this.new(argument);

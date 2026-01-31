@@ -103,9 +103,8 @@ interface FC<
 }
 
 declare namespace ReactState {
-  export import New = State.New;
   export import Extends = State.Extends;
-  export import Class = State.Class;
+  export import Type = State.Type;
   export import Args = State.Args;
   export import Init = State.Init;
   export import Assign = State.Assign;
@@ -152,7 +151,10 @@ abstract class ReactState extends State {
    * @param args Arguments to pass to constructor or `use` method (if defined).
    * @returns Managed instance of this State.
    */
-  static use<T extends ReactState>(this: State.New<T>, ...args: UseArgs<T>): T {
+  static use<T extends ReactState>(
+    this: State.Type<T>,
+    ...args: UseArgs<T>
+  ): T {
     const ambient = Context.use();
     const state = Pragma.useState(() => {
       let ready: boolean | undefined;
@@ -318,10 +320,10 @@ abstract class ReactState extends State {
   }
 
   static as<T extends AsComponent, P extends State.Assign<T>>(
-    this: State.Class<T>,
+    this: State.Type<T>,
     render: (props: P, self: T) => ReactNode
   ): FC<T, P> {
-    const FC = Render.bind(this as State.Class, { render } as {});
+    const FC = Render.bind(this as State.Type, { render } as {});
 
     return Object.assign(FC, {
       displayName: this.name,
@@ -331,7 +333,7 @@ abstract class ReactState extends State {
 }
 
 export function Render<T extends AsComponent>(
-  this: State.Class<T>,
+  this: State.Type<T>,
   props: Props<T>,
   props2?: Props<T>
 ) {

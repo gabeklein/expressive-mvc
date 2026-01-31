@@ -37,7 +37,7 @@ const RENDER = new WeakMap<Function, React.ComponentType>();
 
 export function patch(
   this: (type: React.ElementType, ...args: any[]) => React.ReactElement,
-  type: React.ElementType | State.Class,
+  type: React.ElementType | State.Type,
   ...args: any[]
 ): React.ReactElement {
   if (State.is(type))
