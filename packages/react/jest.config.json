@@ -18,7 +18,9 @@
     ]
   },
   "coveragePathIgnorePatterns": ["index.ts"],
-  "setupFilesAfterEnv": ["./jest.setup.js"],
+  "setupFilesAfterEnv": [
+    "./jest.ts"
+  ],
   "coverageThreshold": {
     "global": {
       "branches": 100,
