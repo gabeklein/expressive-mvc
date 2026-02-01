@@ -3,8 +3,13 @@
   "transform": {
     "^.+\\.[tj]sx?$": "@swc/jest"
   },
-  "coveragePathIgnorePatterns": ["index.ts", "dist"],
-  "setupFilesAfterEnv": ["./jest.setup.js"],
+  "coveragePathIgnorePatterns": [
+    "index.ts",
+    "dist"
+  ],
+  "setupFilesAfterEnv": [
+    "./jest.ts"
+  ],
   "coverageThreshold": {
     "global": {
       "branches": 100,

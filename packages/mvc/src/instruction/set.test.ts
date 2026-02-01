@@ -1,4 +1,4 @@
-import { mockError, mockPromise, mockWarn } from '../mocks';
+import { mockError, mockPromise, mockWarn } from '../../jest';
 import { State } from '../state';
 import { set } from './set';
 

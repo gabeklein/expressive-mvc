@@ -1,5 +1,5 @@
+import { mockPromise } from '../../jest';
 import { Context } from '../context';
-import { mockPromise } from '../mocks';
 import { State } from '../state';
 import { get } from './get';
 import { set } from './set';

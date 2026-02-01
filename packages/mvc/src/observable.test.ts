@@ -1,7 +1,7 @@
+import { mockError } from '../jest';
 import { watch, Observable } from './observable';
 import { set } from './instruction/set';
 import { use } from './instruction/use';
-import { mockError } from './mocks';
 import { State } from './state';
 
 describe('effect', () => {
