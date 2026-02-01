@@ -1,4 +1,4 @@
-import { State as BaseState } from '@expressive/mvc';
+import { State } from '@expressive/mvc';
 
 import { createElement, useEffect, useState } from 'react';
 
@@ -11,7 +11,7 @@ Pragma.createElement = createElement;
 /**
  * Augmented State namespace to include ReactState hooks as static methods.
  *
- * This retroactively adds React to library-agnostic State defined
+ * This retroactively adds React support to agnostic State defined
  * by component libraries which import `@expressive/mvc` directly.
  */
 declare module '@expressive/mvc' {
@@ -22,9 +22,9 @@ declare module '@expressive/mvc' {
   }
 }
 
-BaseState.get = ReactState.get;
-BaseState.use = ReactState.use;
-BaseState.as = ReactState.as;
+State.get = ReactState.get;
+State.use = ReactState.use;
+State.as = ReactState.as;
 
 export { ReactState as State, ReactState as default };
 export { Context, Observable, get, use, ref, set } from '@expressive/mvc';
