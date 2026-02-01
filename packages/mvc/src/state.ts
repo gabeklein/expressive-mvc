@@ -364,15 +364,15 @@ abstract class State implements Observable {
 
     if (pending)
       return <PromiseLike<State.Event<this>[]>>{
-        then: (res) =>
+        then: (resolve) =>
           new Promise<any>((res) => {
             const remove = addListener(this, (key) => {
               if (key !== true) {
                 remove();
-                return res.bind(null, Array.from(pending));
+                return () => res(Array.from(pending));
               }
             });
-          }).then(res)
+          }).then(resolve)
       };
   }
 
