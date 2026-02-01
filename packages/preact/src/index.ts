@@ -1,5 +1,5 @@
-import { State, get, use, ref, set, Observable } from '@expressive/mvc';
-import { Pragma } from '@expressive/react/state';
+import { ReactState as State, Pragma } from '@expressive/react/state';
+import { get, use, ref, set, Observable } from '@expressive/mvc';
 
 import { useEffect, useState, createElement } from 'preact/compat';
 
