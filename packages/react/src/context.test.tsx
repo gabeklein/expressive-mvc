@@ -1,7 +1,7 @@
 import '@testing-library/jest-dom';
 
 import { act, render, screen } from '@testing-library/react';
-import React, { Suspense } from 'react';
+import { Suspense } from 'react';
 
 import State, { Consumer, get, Provider, set, use } from '.';
 
@@ -126,7 +126,7 @@ describe('Provider', () => {
   it('will conflict colliding State types', () => {
     const foo = Foo.new();
 
-    const Consumer: React.FC = jest.fn(() => {
+    const Consumer = jest.fn(() => {
       expect(() => Foo.get()).toThrowError(
         'Did find Foo in context, but multiple were defined.'
       );
@@ -416,7 +416,7 @@ describe('get instruction', () => {
   });
 
   it('will maintain hook', async () => {
-    const Inner: React.FC = jest.fn(() => {
+    const Inner = jest.fn(() => {
       Foo.use();
       return null;
     });
