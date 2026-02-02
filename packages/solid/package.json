@@ -21,7 +21,7 @@
   "devDependencies": {
     "@solidjs/testing-library": "^0.8.8",
     "solid-js": "^1.0.0",
-    "tsup": "^8.0.2"
+    "tsup": "^8.5.1"
   },
   "peerDependencies": {
     "solid-js": "^1.0.0"

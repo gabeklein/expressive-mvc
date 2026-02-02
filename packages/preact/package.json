@@ -30,7 +30,7 @@
     "jest": "^27.5.1",
     "jest-environment-jsdom": "^27.5.1",
     "preact": "^10.0.0",
-    "tsup": "^8.0.2"
+    "tsup": "^8.5.1"
   },
   "peerDependencies": {
     "preact": "^10.0.0"
