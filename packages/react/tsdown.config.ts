@@ -14,19 +14,27 @@ export default defineConfig([
       'jsx-runtime': 'src/jsx-runtime.ts',
       'jsx-dev-runtime': 'src/jsx-dev-runtime.ts'
     },
-    format: ['cjs']
+    format: ['cjs'],
+    outputOptions: {
+      exports: 'named'
+    }
   },
   {
     sourcemap: true,
+    unbundle: true,
     outDir: 'dist/esm',
     external: ['./state', './jsx-runtime'],
+    dts: false,
     outExtensions: () => ({ js: '.js' }),
+    format: ['esm'],
     entry: {
       index: 'src/index.ts',
       state: 'src/state.ts',
       'jsx-runtime': 'src/jsx-runtime.ts',
       'jsx-dev-runtime': 'src/jsx-dev-runtime.ts'
     },
-    format: ['esm']
+    outputOptions: {
+      exports: 'named'
+    }
   }
 ]);

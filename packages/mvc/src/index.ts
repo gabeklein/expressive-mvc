@@ -1,4 +1,4 @@
-export { use, Instruction } from './instruction/use';
+export { use, type Instruction } from './instruction/use';
 export { get } from './instruction/get';
 export { set } from './instruction/set';
 export { ref } from './instruction/ref';

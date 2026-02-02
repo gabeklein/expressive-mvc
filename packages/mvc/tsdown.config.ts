@@ -7,14 +7,21 @@ export default defineConfig([
     entry: ['src/index.ts'],
     format: ['cjs'],
     outDir: 'dist',
-    sourcemap: true
+    outExtensions: () => ({ js: '.js' }),
+    sourcemap: true,
+    outputOptions: {
+      exports: 'named'
+    }
   },
   {
-    bundle: false,
+    entry: ['src/**/*.ts', '!src/**/*.test.ts', '!src/**/mocks.ts'],
     format: ['esm'],
     outDir: 'dist/esm',
-    sourcemap: 'inline',
     outExtensions: () => ({ js: '.js' }),
-    entry: ['src/**/*.ts', '!src/**/*.test.ts', '!src/**/mocks.ts']
+    sourcemap: 'inline',
+    unbundle: true,
+    outputOptions: {
+      exports: 'named'
+    }
   }
 ]);
