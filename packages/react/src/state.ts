@@ -1,6 +1,7 @@
 import { State, Context, watch, METHOD } from '@expressive/mvc';
-import { FunctionComponent, ReactNode } from 'react';
+import { ReactNode } from 'react';
 import { provide } from './context';
+import { AsComponent, FC, HasProps, Props, RenderProps } from './component';
 
 export const Pragma = {} as {
   useState<S>(initial: () => S): [S, (next: (previous: S) => S) => void];
@@ -53,55 +54,6 @@ type UseArgs<T extends State> = T extends {
   ? P
   : State.Args<T>;
 
-type HasProps<T extends State> = {
-  [K in Exclude<keyof T, keyof State>]?: T[K];
-};
-
-type ComponentProps<T extends State> = HasProps<T> & {
-  /**
-   * Callback for newly created instance. Only called once.
-   * @returns Callback to run when instance is destroyed.
-   */
-  is?: (instance: T) => void;
-
-  /**
-   * A fallback react tree to show when suspended.
-   * If not provided, `fallback` property of the State will be used.
-   */
-  fallback?: React.ReactNode;
-};
-
-type Props<T extends State> = T extends {
-  render(props: infer P, self: any): any;
-}
-  ? ComponentProps<T> & Omit<P, keyof AsComponent>
-  : ComponentProps<T> & { children?: React.ReactNode };
-
-/**
- * Props which will not conflict with a State's use as a Component.
- *
- * Built-in properties must be optional, as they will always be omitted.
- */
-type RenderProps<T extends State> = HasProps<T> & {
-  is?: never;
-  get?: never;
-  set?: never;
-};
-
-/** State which is not incompatable as Component in React. */
-interface AsComponent extends State {
-  render?(props: RenderProps<this>, self: this): React.ReactNode;
-  fallback?: React.ReactNode;
-}
-
-interface FC<
-  T extends State,
-  P extends State.Assign<T>
-> extends FunctionComponent<P & Props<T>> {
-  displayName?: string;
-  State: State.Extends<T>;
-}
-
 declare namespace ReactState {
   export import Extends = State.Extends;
   export import Type = State.Type;
@@ -121,17 +73,7 @@ declare namespace ReactState {
   export import Effect = State.Effect;
   export import EffectCallback = State.EffectCallback;
 
-  export {
-    GetFactory,
-    GetEffect,
-    UseArgs,
-    HasProps,
-    ComponentProps,
-    Props,
-    RenderProps,
-    AsComponent,
-    FC
-  };
+  export { GetFactory, GetEffect, UseArgs, HasProps };
 }
 
 abstract class ReactState extends State {
