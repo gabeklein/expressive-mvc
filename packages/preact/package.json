@@ -15,7 +15,7 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "build": "tsup src/index.ts --dts",
+    "build": "tsdown",
     "test": "tsc --noEmit && jest --collectCoverage",
     "preversion": "npm run test && npm run build"
   },
@@ -30,7 +30,7 @@
     "jest": "^27.5.1",
     "jest-environment-jsdom": "^27.5.1",
     "preact": "^10.0.0",
-    "tsup": "^8.5.1"
+    "tsdown": "^0.20.1"
   },
   "peerDependencies": {
     "preact": "^10.0.0"

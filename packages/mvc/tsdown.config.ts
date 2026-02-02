@@ -1,4 +1,4 @@
-import { defineConfig } from 'tsup';
+import { defineConfig } from 'tsdown';
 
 export default defineConfig([
   {
@@ -14,7 +14,7 @@ export default defineConfig([
     format: ['esm'],
     outDir: 'dist/esm',
     sourcemap: 'inline',
-    outExtension: () => ({ js: '.js' }),
+    outExtensions: () => ({ js: '.js' }),
     entry: ['src/**/*.ts', '!src/**/*.test.ts', '!src/**/mocks.ts']
   }
 ]);

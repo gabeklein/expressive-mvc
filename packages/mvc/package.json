@@ -21,7 +21,7 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsup",
+    "build": "tsdown",
     "test": "tsc --noEmit && jest --collectCoverage",
     "prebuild": "rm -rf dist",
     "preversion": "npm run test && npm run build"
@@ -29,7 +29,7 @@
   "devDependencies": {
     "@types/node": "^18.19.0",
     "jest": "^27.5.1",
-    "tsup": "^8.5.1"
+    "tsdown": "^0.20.1"
   },
   "version": "0.72.0"
 }
