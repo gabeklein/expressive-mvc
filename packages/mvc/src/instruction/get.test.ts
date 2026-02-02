@@ -65,14 +65,14 @@ describe('fetch mode', () => {
     foo.value = 'bar';
     await promise;
 
-    expect(mockEffect).toBeCalledWith('bar');
+    expect(mockEffect).toHaveBeenCalledWith('bar');
 
     promise = mockPromise();
     foo.bar.foo = Foo.new();
     await promise;
 
-    expect(mockEffect).toBeCalledWith('foo');
-    expect(mockEffect).toBeCalledTimes(3);
+    expect(mockEffect).toHaveBeenCalledWith('foo');
+    expect(mockEffect).toHaveBeenCalledTimes(3);
   });
 
   it('creates parent-child relationship', () => {
@@ -102,7 +102,7 @@ describe('fetch mode', () => {
     const attempt = () => new Context({ Child });
 
     // should this throw immediately, or only on access?
-    expect(attempt).toThrowError(
+    expect(attempt).toThrow(
       `Required Parent not found in context for ID.`
     );
   });
@@ -350,7 +350,7 @@ describe('downstream collection', () => {
 
     new Context({ foo }).push({ baz });
 
-    expect(gotBaz).toBeCalledWith(baz, foo.bar);
+    expect(gotBaz).toHaveBeenCalledWith(baz, foo.bar);
   });
 
   it('will register for implicit', () => {
@@ -388,8 +388,8 @@ describe('lifecycle callbacks', () => {
 
     new Context({ remote, test });
 
-    expect(remoteCallback).toBeCalledTimes(1);
-    expect(remoteCallback).toBeCalledWith(remote, test);
+    expect(remoteCallback).toHaveBeenCalledTimes(1);
+    expect(remoteCallback).toHaveBeenCalledWith(remote, test);
   });
 
   it('will run callback on downstream mount', () => {
@@ -479,13 +479,13 @@ describe('lifecycle callbacks', () => {
 
     new Context({ remote, test });
 
-    expect(remoteCallback).toBeCalledTimes(1);
+    expect(remoteCallback).toHaveBeenCalledTimes(1);
 
     // Change should NOT trigger callback again
     remote.value = 'bar';
     await remote.set();
 
-    expect(remoteCallback).toBeCalledTimes(1);
+    expect(remoteCallback).toHaveBeenCalledTimes(1);
   });
 
   it('will run cleanup on state destruction', async () => {
@@ -503,7 +503,7 @@ describe('lifecycle callbacks', () => {
 
     new Context({ remote, test });
 
-    expect(remoteCallback).toBeCalledTimes(1);
+    expect(remoteCallback).toHaveBeenCalledTimes(1);
     expect(cleanup).not.toHaveBeenCalled();
 
     test.set(null);

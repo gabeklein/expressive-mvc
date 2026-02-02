@@ -425,7 +425,7 @@ describe('State.get', () => {
   const error = jest.spyOn(console, 'error').mockImplementation(() => {});
 
   afterEach(() => {
-    // expect(error).not.toBeCalled();
+    // expect(error).not.toHaveBeenCalled();
     error.mockReset();
   });
 
@@ -457,7 +457,7 @@ describe('State.get', () => {
     await act(async () => test.set({ foo: 'bar' }));
 
     expect(hook.result.current).toBe('bar');
-    expect(didRender).toBeCalledTimes(2);
+    expect(didRender).toHaveBeenCalledTimes(2);
   });
 
   it('will not update on death event', async () => {
@@ -475,7 +475,7 @@ describe('State.get', () => {
     expect(hook.result.current).toBe('foo');
     test.set(null);
 
-    expect(didRender).toBeCalledTimes(1);
+    expect(didRender).toHaveBeenCalledTimes(1);
   });
 
   it('will throw if not found', () => {
@@ -583,16 +583,16 @@ describe('State.get', () => {
       });
 
       expect(hook.result.current).toBe(2);
-      expect(compute).toBeCalled();
+      expect(compute).toHaveBeenCalled();
 
       test.foo = 2;
       await expect(test).toHaveUpdated();
 
       // did attempt a second compute
-      expect(compute).toBeCalledTimes(2);
+      expect(compute).toHaveBeenCalledTimes(2);
 
       // compute did not trigger a new render
-      expect(didRender).toBeCalledTimes(1);
+      expect(didRender).toHaveBeenCalledTimes(1);
       expect(hook.result.current).toBe(2);
     });
 
@@ -626,15 +626,15 @@ describe('State.get', () => {
       const test = Test.new();
       const hook = renderWith(test, didRender);
 
-      expect(didRender).toBeCalledTimes(1);
+      expect(didRender).toHaveBeenCalledTimes(1);
       expect(hook.result.current).toBe(null);
 
       test.foo = 2;
 
       await expect(test).toHaveUpdated();
 
-      expect(factory).toBeCalledTimes(1);
-      expect(didRender).toBeCalledTimes(1);
+      expect(factory).toHaveBeenCalledTimes(1);
+      expect(didRender).toHaveBeenCalledTimes(1);
     });
 
     it('will run initial callback syncronously', async () => {
@@ -669,13 +669,13 @@ describe('State.get', () => {
         </Provider>
       );
 
-      expect(didPushToValues).toBeCalledTimes(3);
+      expect(didPushToValues).toHaveBeenCalledTimes(3);
 
       await expect(parent).toHaveUpdated();
 
       // Expect updates to have bunched up before new frame.
-      expect(didUpdateValues).toBeCalledTimes(2);
-      expect(didUpdateValues).toBeCalledWith(3);
+      expect(didUpdateValues).toHaveBeenCalledTimes(2);
+      expect(didUpdateValues).toHaveBeenCalledWith(3);
     });
   });
 
@@ -822,20 +822,20 @@ describe('State.get', () => {
         });
       });
 
-      expect(didRender).toBeCalledTimes(1);
+      expect(didRender).toHaveBeenCalledTimes(1);
       expect(hook.result.current).toBe(null);
 
       await act(async () => {
         promise.resolve('foobar');
       });
 
-      expect(didRender).toBeCalledTimes(2);
+      expect(didRender).toHaveBeenCalledTimes(2);
       expect(hook.result.current).toBe('foobar');
 
       test.foo = 'foo';
       await expect(test).toHaveUpdated();
 
-      expect(didRender).toBeCalledTimes(2);
+      expect(didRender).toHaveBeenCalledTimes(2);
     });
 
     it('will refresh and throw if async rejects', async () => {
@@ -894,7 +894,7 @@ describe('State.get', () => {
       });
 
       expect(hook.result.current).toBe('foo');
-      expect(didRender).toBeCalledTimes(2);
+      expect(didRender).toHaveBeenCalledTimes(2);
     });
 
     it('will return undefined if instance not found', () => {
@@ -918,7 +918,7 @@ describe('State.get', () => {
 
       const tryToRender = () => renderHook(() => Foo.use());
 
-      expect(tryToRender).toThrowError(
+      expect(tryToRender).toThrow(
         `Required Bar not found in context for ID.`
       );
     });
@@ -1199,7 +1199,7 @@ describe('State.as', () => {
 
     render(<Component value="barfoo" />);
 
-    expect(didSet).toBeCalled();
+    expect(didSet).toHaveBeenCalled();
   });
 
   describe('new method', () => {

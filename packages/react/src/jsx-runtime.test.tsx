@@ -102,7 +102,7 @@ describe('element props', () => {
 
     render(<Foo value="barfoo" />);
 
-    expect(didSet).toBeCalled();
+    expect(didSet).toHaveBeenCalled();
   });
 
   it('will override method', async () => {

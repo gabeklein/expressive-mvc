@@ -233,7 +233,7 @@ describe('State.get', () => {
     });
 
     expect(hook.result.current).toBe('bar');
-    expect(didRender).toBeCalledTimes(2);
+    expect(didRender).toHaveBeenCalledTimes(2);
   });
 
   it('will throw if not found', () => {
@@ -294,7 +294,7 @@ describe('State.get', () => {
       });
 
       expect(hook.result.current).toBe('foo');
-      expect(didRender).toBeCalledTimes(2);
+      expect(didRender).toHaveBeenCalledTimes(2);
     });
 
     it('will return undefined if instance not found', () => {
@@ -318,7 +318,7 @@ describe('State.get', () => {
 
       const tryToRender = () => renderHook(() => Foo.use());
 
-      expect(tryToRender).toThrowError(
+      expect(tryToRender).toThrow(
         `Required Bar not found in context for ID.`
       );
     });
