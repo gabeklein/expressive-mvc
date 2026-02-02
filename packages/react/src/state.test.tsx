@@ -16,15 +16,23 @@ describe('State.use', () => {
     });
 
     it('will subscribe to instance of controller', async () => {
+      class Test extends State {
+        value = 'foo';
+        use = willRender;
+      }
+          
+      const willRender = jest.fn();
       const { result } = renderHook(() => Test.use());
 
       expect(result.current.value).toBe('foo');
+      expect(willRender).toHaveBeenCalledTimes(1);
 
       await act(async () => {
         result.current.value = 'bar';
       });
 
       expect(result.current.value).toBe('bar');
+      expect(willRender).toHaveBeenCalledTimes(2);
     });
 
     it('will assign `is` as a circular reference', async () => {
