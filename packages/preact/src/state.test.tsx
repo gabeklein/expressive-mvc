@@ -1,4 +1,4 @@
-import { act, render, renderHook } from '@testing-library/preact';
+import { act, render, renderHook, waitFor } from '@testing-library/preact';
 
 import { get, State, Provider, set } from '.';
 
@@ -24,12 +24,13 @@ describe('State.use', () => {
       expect(result.current.value).toBe('foo');
       expect(willRender).toHaveBeenCalledTimes(1);
 
-      await act(async () => {
-        result.current.value = 'bar';
+      result.current.value = 'bar';
+
+      await waitFor(() => {
+        expect(willRender).toHaveBeenCalledTimes(2);
       });
 
       expect(result.current.value).toBe('bar');
-      expect(willRender).toHaveBeenCalledTimes(2);
     });
 
     it('will assign `is` as a circular reference', async () => {
