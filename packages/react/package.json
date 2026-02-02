@@ -44,7 +44,7 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsup",
+    "build": "tsdown",
     "test": "tsc --noEmit && jest --collectCoverage",
     "preversion": "npm run test && npm run build"
   },
@@ -67,7 +67,7 @@
     "jest": "^27.5.1",
     "react": "^19",
     "react-dom": "^19",
-    "tsup": "^8.5.1"
+    "tsdown": "^0.20.1"
   },
   "version": "0.72.0"
 }

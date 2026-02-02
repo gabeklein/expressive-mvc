@@ -1,7 +1,7 @@
 import { State, Context, watch, METHOD } from '@expressive/mvc';
 import { ReactNode } from 'react';
 import { provide } from './context';
-import { AsComponent, FC, HasProps, Props, RenderProps } from './component';
+import type { AsComponent, FC, HasProps, Props, RenderProps } from './component';
 
 export const Pragma = {} as {
   useState<S>(initial: () => S): [S, (next: (previous: S) => S) => void];

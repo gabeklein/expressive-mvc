@@ -1,4 +1,4 @@
-import { defineConfig } from 'tsup';
+import { defineConfig } from 'tsdown';
 
 export default defineConfig([
   {
@@ -7,6 +7,7 @@ export default defineConfig([
     clean: true,
     outDir: 'dist',
     external: ['./state', './jsx-runtime'],
+    outExtensions: () => ({ js: '.js' }),
     entry: {
       index: 'src/index.ts',
       state: 'src/state.ts',
@@ -19,7 +20,7 @@ export default defineConfig([
     sourcemap: true,
     outDir: 'dist/esm',
     external: ['./state', './jsx-runtime'],
-    outExtension: () => ({ js: '.js' }),
+    outExtensions: () => ({ js: '.js' }),
     entry: {
       index: 'src/index.ts',
       state: 'src/state.ts',
