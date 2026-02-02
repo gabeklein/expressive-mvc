@@ -1,3 +1,5 @@
+import './state.as'
+
 import { State } from '@expressive/mvc';
 
 import { createElement, useEffect, useState } from 'react';

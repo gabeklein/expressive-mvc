@@ -1,12 +1,12 @@
-import State from '@expressive/mvc';
+import { ReactState as State } from './state';
 import Runtime from 'react/jsx-runtime';
 import React from 'react';
 
-import { Render, AsComponent, Props } from './state';
+import { AsRender } from './state.as';
 
 export declare namespace JSX {
   type ElementType =
-    | State.Extends<AsComponent>
+    | State.Extends<State.AsComponent>
     | React.JSX.ElementType
     | ((props: {}, ref?: any) => void);
 
@@ -15,7 +15,7 @@ export declare namespace JSX {
     C extends new (...args: any[]) => { props: infer U }
       ? U
       : C extends State.Extends<infer U>
-        ? Props<U>
+        ? State.Props<U>
         : React.JSX.LibraryManagedAttributes<C, P>;
 
   interface Element extends React.JSX.Element {}
@@ -42,7 +42,7 @@ export function patch(
 ): React.ReactElement {
   if (State.is(type))
     if (RENDER.has(type)) type = RENDER.get(type)!;
-    else RENDER.set(type, (type = Render.bind(type)));
+    else RENDER.set(type, (type = AsRender.bind(type)));
 
   return this(type, ...args);
 }

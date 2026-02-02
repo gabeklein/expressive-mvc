@@ -102,4 +102,4 @@ function provide(
   });
 }
 
-export { Consumer, Provider, provide };
+export { Consumer, Context, Provider, provide };
