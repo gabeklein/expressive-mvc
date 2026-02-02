@@ -250,11 +250,13 @@ describe('include', () => {
 });
 
 it('will pop child context', () => {
+  let order = 0;
+
   class Test extends State {
     constructor(...args: State.Args) {
       super(args);
       this.set(() => {
-        didDestroy(this.constructor.name);
+        didDestroy(++order, this.constructor.name);
       }, null);
     }
   }
