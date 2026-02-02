@@ -18,7 +18,9 @@
       }
     ]
   },
-  "coveragePathIgnorePatterns": ["index.ts"],
+  "coveragePathIgnorePatterns": [
+    "index.ts"
+  ],
   "setupFilesAfterEnv": [
     "./jest.ts"
   ],
@@ -31,6 +33,7 @@
     }
   },
   "moduleNameMapper": {
+    "@expressive/(.*)/(.*)$": "<rootDir>/../$1/src/$2",
     "@expressive/(.*)$": "<rootDir>/../$1/src",
     "^react$": "preact/compat",
     "^react-dom$": "preact/compat",

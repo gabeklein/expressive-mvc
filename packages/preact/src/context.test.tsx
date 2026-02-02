@@ -1,6 +1,13 @@
 import { act, render } from '@testing-library/preact';
 
 import { State, Provider, Consumer } from '.';
+import { Lookup } from './context';
+
+describe('Lookup', () => {
+  it('is exported', () => {
+    expect(Lookup).toBeDefined();
+  });
+});
 
 describe('Provider', () => {
   it('will provide instance to children', () => {
