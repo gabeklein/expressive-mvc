@@ -16,13 +16,11 @@ describe('State.use', () => {
     });
 
     it('will subscribe to instance of controller', async () => {
-      class Test extends State {
-        value = 'foo';
-        use = willRender;
-      }
-          
       const willRender = jest.fn();
-      const { result } = renderHook(() => Test.use());
+      const { result } = renderHook(() => {
+        willRender();
+        return Test.use();
+      });
 
       expect(result.current.value).toBe('foo');
       expect(willRender).toHaveBeenCalledTimes(1);
