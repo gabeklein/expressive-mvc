@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.73.1](https://github.com/gabeklein/expressive-mvc/compare/v0.73.0...v0.73.1) (2026-02-13)
+
+### Bug Fixes
+
+- improved test for sibling fetch ([54d29f3](https://github.com/gabeklein/expressive-mvc/commit/54d29f3b565c64039fa340b40228e30a811cc424))
+- prevent self-assignment in get function and add test for parent resolution ([cd43ba3](https://github.com/gabeklein/expressive-mvc/commit/cd43ba326356941364ed3e4170917b8f944149f9))
+
 # [0.73.0](https://github.com/gabeklein/expressive-mvc/compare/v0.72.0...v0.73.0) (2026-02-12)
 
 ### Bug Fixes
