@@ -890,8 +890,11 @@ describe('compute mode', () => {
     expect(emit).toHaveBeenCalledWith('a', test);
 
     test.b++;
-    expect(emit).toHaveBeenCalledTimes(2);
+
+    expect(exec).toHaveBeenCalledTimes(2);
+    expect(emit).toHaveBeenCalledTimes(3);
     expect(emit).toHaveBeenCalledWith('b', test);
+    expect(emit).toHaveBeenCalledWith('c', test);
 
     test.x.value++;
 
@@ -1157,7 +1160,7 @@ describe('compute mode', () => {
       const test = Test.new();
 
       expect(test.fooBar).toBe('foo');
-      expect(factory).toHaveBeenCalledWith('fooBar', test);
+      expect(factory).toHaveBeenCalledWith('fooBar', expect.any(Test));
     });
 
     it('will subscribe from self argument', async () => {

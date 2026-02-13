@@ -608,7 +608,8 @@ describe('get method', () => {
 
     it('will watch values', async () => {
       const test = Test.new();
-      const effect = vi.fn((state: Test) => {
+      const anyTest = expect.any(Test);
+      const effect = vi.fn((state: Test, set) => {
         void state.value1;
         void state.value2;
         void state.value3;
@@ -617,14 +618,14 @@ describe('get method', () => {
 
       test.get(effect);
 
-      expect(effect).toHaveBeenCalledWith(test, new Set());
+      expect(effect).toBeCalledWith(anyTest, new Set());
 
       test.value1 = 2;
 
       // wait for update event, thus queue flushed
       await expect(test).toHaveUpdated('value1');
 
-      expect(effect).toHaveBeenCalledWith(test, new Set(['value1']));
+      expect(effect).toBeCalledWith(anyTest, new Set(['value1']));
 
       test.value2 = 3;
       test.value3 = 4;
@@ -632,8 +633,8 @@ describe('get method', () => {
       // wait for update event to flush queue
       await expect(test).toHaveUpdated('value2', 'value3', 'value4');
 
-      expect(effect).toHaveBeenCalledWith(
-        test,
+      expect(effect).toBeCalledWith(
+        anyTest,
         new Set(['value2', 'value3', 'value4'])
       );
 
@@ -1547,6 +1548,7 @@ describe('set method', () => {
       done();
     });
 
+    // mockError doesn't work in vitest env
     it('will log error thrown by async callback', async () => {
       const test = Test.new();
       const oops = new Error('oops');

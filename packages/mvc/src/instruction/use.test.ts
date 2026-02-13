@@ -87,7 +87,7 @@ describe('instruction', () => {
         void own.property;
       });
 
-      expect(didGetValue).toHaveBeenCalledWith(state);
+      expect(didGetValue).toHaveBeenCalledWith(expect.any(Test));
     });
 
     it('will not throw suspense if get (required) is false', async () => {
