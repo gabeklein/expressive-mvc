@@ -22,12 +22,12 @@ describe('State.use', () => {
       });
 
       expect(result.current.value).toBe('foo');
-      expect(willRender).toHaveBeenCalledTimes(1);
+      expect(willRender).toBeCalledTimes(1);
 
       result.current.value = 'bar';
 
       await waitFor(() => {
-        expect(willRender).toHaveBeenCalledTimes(2);
+        expect(willRender).toBeCalledTimes(2);
       });
 
       expect(result.current.value).toBe('bar');
@@ -50,7 +50,7 @@ describe('State.use', () => {
 
       renderHook(() => Test.use(callback));
 
-      expect(callback).toHaveBeenCalledWith(expect.any(Test));
+      expect(callback).toBeCalledWith(expect.any(Test));
     });
 
     it('will destroy instance of given class', async () => {
@@ -69,7 +69,7 @@ describe('State.use', () => {
 
       rendered.unmount();
 
-      expect(didDestroy).toHaveBeenCalled();
+      expect(didDestroy).toBeCalled();
     });
 
     it('will bind methods to instance', async () => {
@@ -111,11 +111,11 @@ describe('State.use', () => {
 
       const element = renderHook(() => Test.use());
 
-      expect(didCreate).toHaveBeenCalled();
+      expect(didCreate).toBeCalled();
 
       element.rerender();
 
-      expect(didCreate).toHaveBeenCalledTimes(1);
+      expect(didCreate).toBeCalledTimes(1);
     });
   });
 
@@ -168,7 +168,7 @@ describe('State.use', () => {
       });
 
       expect(result.current.foo).toBe('bar');
-      expect(mock).toHaveBeenCalledWith('bar', 'foo');
+      expect(mock).toBeCalledWith('bar', 'foo');
     });
   });
 
@@ -240,7 +240,7 @@ describe('State.get', () => {
     });
 
     expect(hook.result.current).toBe('bar');
-    expect(didRender).toHaveBeenCalledTimes(2);
+    expect(didRender).toBeCalledTimes(2);
   });
 
   it('will throw if not found', () => {
@@ -301,7 +301,7 @@ describe('State.get', () => {
       });
 
       expect(hook.result.current).toBe('foo');
-      expect(didRender).toHaveBeenCalledTimes(2);
+      expect(didRender).toBeCalledTimes(2);
     });
 
     it('will return undefined if instance not found', () => {
@@ -325,9 +325,7 @@ describe('State.get', () => {
 
       const tryToRender = () => renderHook(() => Foo.use());
 
-      expect(tryToRender).toThrow(
-        `Required Bar not found in context for ID.`
-      );
+      expect(tryToRender).toThrow(`Required Bar not found in context for ID.`);
     });
   });
 });

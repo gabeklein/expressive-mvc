@@ -66,14 +66,14 @@ describe('fetch mode', () => {
     foo.value = 'bar';
     await promise;
 
-    expect(mockEffect).toHaveBeenCalledWith('bar');
+    expect(mockEffect).toBeCalledWith('bar');
 
     promise = mockPromise();
     foo.bar.foo = Foo.new();
     await promise;
 
-    expect(mockEffect).toHaveBeenCalledWith('foo');
-    expect(mockEffect).toHaveBeenCalledTimes(3);
+    expect(mockEffect).toBeCalledWith('foo');
+    expect(mockEffect).toBeCalledTimes(3);
   });
 
   it('creates parent-child relationship', () => {
@@ -154,11 +154,11 @@ describe('fetch mode', () => {
 
     child.value = 'bar';
     await expect(child).toHaveUpdated();
-    expect(effect).toHaveBeenCalledTimes(2);
+    expect(effect).toBeCalledTimes(2);
 
     child.parent.value = 'bar';
     await expect(child.parent).toHaveUpdated();
-    expect(effect).toHaveBeenCalledTimes(3);
+    expect(effect).toBeCalledTimes(3);
   });
 
   it('will inherit parent context', () => {
@@ -331,7 +331,7 @@ describe('downstream collection', () => {
 
     new Context({ parent }).push({ child }).push({ child });
 
-    expect(gotChild).toHaveBeenCalledTimes(1);
+    expect(gotChild).toBeCalledTimes(1);
   });
 
   it('will register implicit', () => {
@@ -349,7 +349,7 @@ describe('downstream collection', () => {
 
     new Context({ foo }).push({ baz });
 
-    expect(gotBaz).toHaveBeenCalledWith(baz, foo.bar);
+    expect(gotBaz).toBeCalledWith(baz, foo.bar);
   });
 
   it('will register for implicit', () => {
@@ -387,8 +387,8 @@ describe('lifecycle callbacks', () => {
 
     new Context({ remote, test });
 
-    expect(remoteCallback).toHaveBeenCalledTimes(1);
-    expect(remoteCallback).toHaveBeenCalledWith(remote, test);
+    expect(remoteCallback).toBeCalledTimes(1);
+    expect(remoteCallback).toBeCalledWith(remote, test);
   });
 
   it('will run callback on downstream mount', () => {
@@ -403,7 +403,7 @@ describe('lifecycle callbacks', () => {
 
     new Context({ parent }).push({ child });
 
-    expect(gotChild).toHaveBeenCalledWith(child, parent);
+    expect(gotChild).toBeCalledWith(child, parent);
   });
 
   it('will run cleanup on downstream unmount', async () => {
@@ -424,13 +424,13 @@ describe('lifecycle callbacks', () => {
     const context = new Context({ parent });
     const context2 = context.push({ child1, child2 });
 
-    expect(didAdd).toHaveBeenCalledTimes(2);
+    expect(didAdd).toBeCalledTimes(2);
     expect(parent.children).toEqual([child1, child2]);
 
     context2.pop();
 
     await expect(parent).toHaveUpdated();
-    expect(didRemove).toHaveBeenCalledTimes(2);
+    expect(didRemove).toBeCalledTimes(2);
     expect(parent.children.length).toBe(0);
   });
 
@@ -449,13 +449,13 @@ describe('lifecycle callbacks', () => {
       child2: Child.new()
     });
 
-    expect(hasChild).toHaveBeenCalledTimes(2);
+    expect(hasChild).toBeCalledTimes(2);
     expect(parent.children.length).toBe(0);
 
     context.push({ child: Child.new() });
 
     await expect(parent).not.toUpdate();
-    expect(hasChild).toHaveBeenCalledTimes(3);
+    expect(hasChild).toBeCalledTimes(3);
     expect(parent.children.length).toBe(0);
   });
 
@@ -478,13 +478,13 @@ describe('lifecycle callbacks', () => {
 
     new Context({ remote, test });
 
-    expect(remoteCallback).toHaveBeenCalledTimes(1);
+    expect(remoteCallback).toBeCalledTimes(1);
 
     // Change should NOT trigger callback again
     remote.value = 'bar';
     await remote.set();
 
-    expect(remoteCallback).toHaveBeenCalledTimes(1);
+    expect(remoteCallback).toBeCalledTimes(1);
   });
 
   it('will run cleanup on state destruction', async () => {
@@ -502,12 +502,12 @@ describe('lifecycle callbacks', () => {
 
     new Context({ remote, test });
 
-    expect(remoteCallback).toHaveBeenCalledTimes(1);
-    expect(cleanup).not.toHaveBeenCalled();
+    expect(remoteCallback).toBeCalledTimes(1);
+    expect(cleanup).not.toBeCalled();
 
     test.set(null);
 
-    expect(cleanup).toHaveBeenCalledTimes(1);
+    expect(cleanup).toBeCalledTimes(1);
   });
 
   it('will receive ready instance', async () => {
@@ -527,7 +527,7 @@ describe('lifecycle callbacks', () => {
 
     context.push({ Parent }).push({ Child });
 
-    expect(didSet).toHaveBeenCalledWith('Hello', undefined);
+    expect(didSet).toBeCalledWith('Hello', undefined);
   });
 
   it('will cleanup before destroying', async () => {
@@ -552,13 +552,13 @@ describe('lifecycle callbacks', () => {
 
     context.push({ Parent }).push({ Child });
 
-    expect(didNotify).toHaveBeenCalledTimes(1);
-    expect(didRemove).not.toHaveBeenCalled();
+    expect(didNotify).toBeCalledTimes(1);
+    expect(didRemove).not.toBeCalled();
 
     context.pop();
 
-    expect(didRemove).toHaveBeenCalledTimes(1);
-    expect(didNotify).toHaveBeenCalledTimes(1);
+    expect(didRemove).toBeCalledTimes(1);
+    expect(didNotify).toBeCalledTimes(1);
   });
 
   it('will cleanup effects before destroying', async () => {
@@ -578,13 +578,13 @@ describe('lifecycle callbacks', () => {
     const context = new Context({ Parent });
     const inner = context.push({ Child });
 
-    expect(didNotify).toHaveBeenCalledTimes(1);
-    expect(didRemove).not.toHaveBeenCalled();
+    expect(didNotify).toBeCalledTimes(1);
+    expect(didRemove).not.toBeCalled();
 
     inner.pop();
 
-    expect(didRemove).toHaveBeenCalledTimes(1);
-    expect(didNotify).toHaveBeenCalledTimes(1);
+    expect(didRemove).toBeCalledTimes(1);
+    expect(didNotify).toBeCalledTimes(1);
   });
 });
 

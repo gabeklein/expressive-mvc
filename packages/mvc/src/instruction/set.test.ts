@@ -36,13 +36,13 @@ describe('placeholder', () => {
 
     instance.get(mockEffect);
 
-    expect(mockEffect).toHaveBeenCalledTimes(1);
+    expect(mockEffect).toBeCalledTimes(1);
 
     instance.foobar = 'foo!';
 
     const result = await promise;
 
-    expect(mockEffect).toHaveBeenCalledTimes(2);
+    expect(mockEffect).toBeCalledTimes(2);
     expect(result).toBe('foo!');
   });
 
@@ -55,17 +55,17 @@ describe('placeholder', () => {
 
     test.get(effect);
 
-    expect(effect).toHaveBeenCalledTimes(1);
-    expect(foobar).not.toHaveBeenCalled();
+    expect(effect).toBeCalledTimes(1);
+    expect(foobar).not.toBeCalled();
 
     test.foobar = 'foo';
     test.foobar = 'bar';
 
     await expect(test).toHaveUpdated('foobar');
 
-    expect(effect).toHaveBeenCalledTimes(2);
-    expect(foobar).not.toHaveBeenCalledWith('foo');
-    expect(foobar).toHaveBeenCalledWith('bar');
+    expect(effect).toBeCalledTimes(2);
+    expect(foobar).not.toBeCalledWith('foo');
+    expect(foobar).toBeCalledWith('bar');
   });
 
   it('will not suspend if value is defined', async () => {
@@ -78,7 +78,7 @@ describe('placeholder', () => {
     });
 
     instance.get(mockEffect);
-    expect(mockEffect).toHaveBeenCalledTimes(1);
+    expect(mockEffect).toBeCalledTimes(1);
   });
 });
 
@@ -94,13 +94,13 @@ describe('callback', () => {
     const didAssign = vi.fn();
     const didUpdate = vi.fn();
 
-    expect(didAssign).not.toHaveBeenCalled();
+    expect(didAssign).not.toBeCalled();
 
     state.set(didUpdate, 'test');
     state.test = 2;
 
-    expect(didUpdate).toHaveBeenCalledTimes(1);
-    expect(didAssign).toHaveBeenCalledWith(3);
+    expect(didUpdate).toBeCalledTimes(1);
+    expect(didAssign).toBeCalledWith(3);
   });
 
   // TODO: this is not implemented yet
@@ -115,7 +115,7 @@ describe('callback', () => {
 
     state.set({ test: 2 });
 
-    expect(didAssign).toHaveBeenCalledWith(1);
+    expect(didAssign).toBeCalledWith(1);
   });
 
   it('will invoke return-callback on overwrite', async () => {
@@ -133,11 +133,11 @@ describe('callback', () => {
     state.test = 2;
 
     await expect(state).toHaveUpdated();
-    expect(callback).not.toHaveBeenCalled();
+    expect(callback).not.toBeCalled();
     state.test = 3;
 
     await expect(state).toHaveUpdated();
-    expect(callback).toHaveBeenCalledWith(true);
+    expect(callback).toBeCalledWith(true);
   });
 
   it('will assign a default value', async () => {
@@ -154,7 +154,7 @@ describe('callback', () => {
     state.test = 'bar';
 
     await expect(state).toHaveUpdated();
-    expect(callback).toHaveBeenCalledWith('bar');
+    expect(callback).toBeCalledWith('bar');
   });
 
   it('will ignore effect promise', () => {
@@ -201,18 +201,18 @@ describe('callback', () => {
     state.hello = 'Hola';
     await expect(state).toHaveUpdated();
 
-    expect(effect).toHaveBeenCalledWith('Hola World!');
+    expect(effect).toBeCalledWith('Hola World!');
 
     state.hello = 'Bonjour';
     await expect(state).toHaveUpdated();
 
-    expect(effect).toHaveBeenCalledWith('Bonjour World!');
+    expect(effect).toBeCalledWith('Bonjour World!');
 
     state.name = 'Earth';
     await expect(state).toHaveUpdated();
 
-    expect(effect).toHaveBeenCalledWith('Bonjour Earth!');
-    expect(effect).not.toHaveBeenCalledWith('Hola Earth!');
+    expect(effect).toBeCalledWith('Bonjour Earth!');
+    expect(effect).not.toBeCalledWith('Hola Earth!');
   });
 });
 
@@ -232,7 +232,7 @@ describe('intercept', () => {
     state.test = 'bar';
 
     await expect(state).not.toHaveUpdated();
-    expect(callback).toHaveBeenCalledWith('bar');
+    expect(callback).toBeCalledWith('bar');
     expect(state.test).toBe('foo');
   });
 
@@ -250,22 +250,22 @@ describe('intercept', () => {
 
     subject.value = 2;
 
-    expect(setter).toHaveBeenCalledWith(2, 1);
+    expect(setter).toBeCalledWith(2, 1);
     await expect(subject).toHaveUpdated();
     expect(subject.value).toBe(2);
 
     // this update will be supressed by setter
     subject.value = 3;
 
-    expect(setter).toHaveBeenCalledWith(3, 2);
+    expect(setter).toBeCalledWith(3, 2);
     await expect(subject).not.toHaveUpdated();
-    expect(cleanup).not.toHaveBeenCalled();
+    expect(cleanup).not.toBeCalled();
 
     subject.value = 4;
 
-    expect(setter).toHaveBeenCalledWith(4, 2);
-    expect(cleanup).toHaveBeenCalledTimes(1);
-    expect(cleanup).toHaveBeenCalledWith(4);
+    expect(setter).toBeCalledWith(4, 2);
+    expect(cleanup).toBeCalledTimes(1);
+    expect(cleanup).toBeCalledWith(4);
   });
 });
 
@@ -283,7 +283,7 @@ describe('factory', () => {
 
     expect(test).toHaveUpdated();
     expect(test.value).toBe('bar');
-    expect(getValue).not.toHaveBeenCalled();
+    expect(getValue).not.toBeCalled();
   });
 
   it('will compute when accessed', () => {
@@ -295,11 +295,11 @@ describe('factory', () => {
 
     const test = Test.new();
 
-    expect(factory).not.toHaveBeenCalled();
+    expect(factory).not.toBeCalled();
 
     void test.value;
 
-    expect(factory).toHaveBeenCalled();
+    expect(factory).toBeCalled();
   });
 
   it('will compute lazily', () => {
@@ -311,9 +311,9 @@ describe('factory', () => {
 
     const test = Test.new();
 
-    expect(factory).not.toHaveBeenCalled();
+    expect(factory).not.toBeCalled();
     expect(test.value).toBe('Hello World');
-    expect(factory).toHaveBeenCalledTimes(1);
+    expect(factory).toBeCalledTimes(1);
   });
 
   it('will bind factory function to self', async () => {
@@ -341,7 +341,7 @@ describe('factory', () => {
     const attempt = () => Test.new('ID');
 
     expect(attempt).toThrow('Foobar');
-    expect(warn).toHaveBeenCalledWith(
+    expect(warn).toBeCalledWith(
       `Generating initial value for ID.memoized failed.`
     );
   });
@@ -373,11 +373,11 @@ describe('suspense', () => {
 
     const test = Test.new();
     expect(() => test.greet).toThrow(expect.any(Promise));
-    expect(didEvaluate).toHaveBeenCalledTimes(1);
+    expect(didEvaluate).toBeCalledTimes(1);
 
     await test.set({ value: 'hello' });
 
-    expect(didEvaluate).toHaveBeenCalledTimes(2);
+    expect(didEvaluate).toBeCalledTimes(2);
     expect(test.greet).toBe('hello world!');
   });
 
@@ -394,12 +394,12 @@ describe('suspense', () => {
 
     const test = Test.new();
     expect(() => test.greet).toThrow(expect.any(Promise));
-    expect(didEvaluate).toHaveBeenCalledTimes(1);
+    expect(didEvaluate).toBeCalledTimes(1);
 
     promise.resolve('hello');
     await expect(test).toUpdate();
 
-    expect(didEvaluate).toHaveBeenCalledTimes(2);
+    expect(didEvaluate).toBeCalledTimes(2);
     expect(test.greet).toBe('hello world!');
   });
 
@@ -461,12 +461,12 @@ describe('suspense', () => {
     const test = Test.new();
 
     test.get(($) => mock($.value));
-    expect(mock).toHaveBeenCalledWith(undefined);
+    expect(mock).toBeCalledWith(undefined);
 
     promise.resolve('foobar');
     await expect(test).toUpdate(0);
 
-    expect(mock).toHaveBeenCalledWith('foobar');
+    expect(mock).toBeCalledWith('foobar');
   });
 
   it('will suspend another factory', async () => {
@@ -494,7 +494,7 @@ describe('suspense', () => {
     name.resolve('World');
     await expect(test).toUpdate(0);
 
-    expect(didEvaluate).toHaveBeenCalledTimes(3);
+    expect(didEvaluate).toBeCalledTimes(3);
     expect(test.value).toBe('Hello World');
   });
 
@@ -522,7 +522,7 @@ describe('suspense', () => {
     name.resolve('World');
     await expect(test).toUpdate(0);
 
-    expect(didEvaluate).toHaveBeenCalledTimes(3);
+    expect(didEvaluate).toBeCalledTimes(3);
     expect(test.value).toBe('Hello World');
   });
 
@@ -549,13 +549,13 @@ describe('suspense', () => {
 
     test.get(effect);
 
-    expect(effect).toHaveBeenCalledTimes(1);
+    expect(effect).toBeCalledTimes(1);
     expect(effect).not.toHaveReturned();
 
     promise.resolve('hello');
 
     await expect(didUpdate).resolves.toBe('hello world!');
-    expect(effect).toHaveBeenCalledTimes(2);
+    expect(effect).toBeCalledTimes(2);
   });
 
   it('will return undefined on nested suspense', async () => {
@@ -600,9 +600,9 @@ describe('suspense', () => {
 
     test.get(effect);
 
-    expect(effect).toHaveBeenCalled();
+    expect(effect).toBeCalled();
     expect(effect).not.toHaveReturned();
-    expect(compute).toHaveBeenCalledTimes(1);
+    expect(compute).toBeCalledTimes(1);
 
     pending.resolve();
     pending = mockPromise();
@@ -611,15 +611,15 @@ describe('suspense', () => {
     await test.set();
 
     // expect eval to run again because promise resolved.
-    expect(compute).toHaveBeenCalledTimes(2);
+    expect(compute).toBeCalledTimes(2);
 
     suspend = false;
     pending.resolve();
     await didEvaluate;
 
     expect(test.message).toBe("OK I'm unblocked.");
-    expect(compute).toHaveBeenCalledTimes(3);
-    expect(effect).toHaveBeenCalledTimes(2);
+    expect(compute).toBeCalledTimes(3);
+    expect(effect).toBeCalledTimes(2);
     expect(effect).toHaveReturnedTimes(1);
   });
 
@@ -646,18 +646,18 @@ describe('suspense', () => {
 
     test.get(effect);
 
-    expect(effect).toHaveBeenCalled();
+    expect(effect).toBeCalled();
 
     promise.resolve(10);
     await expect(test).toUpdate();
 
-    expect(effect).toHaveBeenCalledTimes(1);
+    expect(effect).toBeCalledTimes(1);
 
     promise2.resolve(20);
     await expect(test).toUpdate();
 
     expect(test.sum).toBe('Answer is 30.');
-    expect(effect).toHaveBeenCalledTimes(2);
+    expect(effect).toBeCalledTimes(2);
   });
 
   it('will refresh and throw if async rejects', async () => {
@@ -697,7 +697,7 @@ describe('factory with callback overload', () => {
     }
     const test = Test.new();
     expect(test.value).toBe('computed');
-    expect(callback).toHaveBeenCalledWith('computed', undefined);
+    expect(callback).toBeCalledWith('computed', undefined);
   });
 
   it('calls callback after async factory resolves', async () => {
@@ -720,7 +720,7 @@ describe('factory with callback overload', () => {
     // Wait for promise to resolve
     await threw;
     expect(test.value).toBe('asyncValue');
-    expect(callback).toHaveBeenCalledWith('asyncValue', undefined);
+    expect(callback).toBeCalledWith('asyncValue', undefined);
   });
 
   it('will callback if set before factory run', () => {
@@ -732,11 +732,11 @@ describe('factory with callback overload', () => {
 
     test.value = 'setBefore';
     expect(test.value).toBe('setBefore');
-    expect(callback).toHaveBeenCalledWith('setBefore', undefined);
+    expect(callback).toBeCalledWith('setBefore', undefined);
 
     test.value = 'setAfter';
     expect(test.value).toBe('setAfter');
-    expect(callback).toHaveBeenCalledWith('setAfter', 'setBefore');
+    expect(callback).toBeCalledWith('setAfter', 'setBefore');
   });
 });
 
@@ -837,21 +837,21 @@ describe('compute mode', () => {
     test.number++;
 
     // not accessed; compute will wait for frame
-    expect(didCompute).not.toHaveBeenCalledWith(2);
+    expect(didCompute).not.toBeCalledWith(2);
 
     // does compute eventually
     await expect(test).toHaveUpdated();
-    expect(didCompute).toHaveBeenCalledWith(2);
+    expect(didCompute).toBeCalledWith(2);
     expect(test.plusOne).toBe(2);
 
     test.number++;
 
     // sanity check
-    expect(didCompute).not.toHaveBeenCalledWith(3);
+    expect(didCompute).not.toBeCalledWith(3);
 
     // accessing value now will force compute
     expect(test.plusOne).toBe(3);
-    expect(didCompute).toHaveBeenCalledWith(3);
+    expect(didCompute).toBeCalledWith(3);
 
     // update should still occur
     await expect(test).toHaveUpdated();
@@ -881,28 +881,28 @@ describe('compute mode', () => {
     const test = Test.new();
 
     expect(test.c).toBe(3);
-    expect(exec).toHaveBeenCalledTimes(1);
+    expect(exec).toBeCalledTimes(1);
 
     test.set(emit);
 
     test.a++;
-    expect(emit).toHaveBeenCalledTimes(1);
-    expect(emit).toHaveBeenCalledWith('a', test);
+    expect(emit).toBeCalledTimes(1);
+    expect(emit).toBeCalledWith('a', test);
 
     test.b++;
 
-    expect(exec).toHaveBeenCalledTimes(2);
-    expect(emit).toHaveBeenCalledTimes(3);
-    expect(emit).toHaveBeenCalledWith('b', test);
-    expect(emit).toHaveBeenCalledWith('c', test);
+    expect(exec).toBeCalledTimes(2);
+    expect(emit).toBeCalledTimes(3);
+    expect(emit).toBeCalledWith('b', test);
+    expect(emit).toBeCalledWith('c', test);
 
     test.x.value++;
 
     await expect(test).toHaveUpdated();
 
-    expect(exec).toHaveBeenCalledTimes(2);
-    expect(emit).toHaveBeenCalledTimes(3);
-    expect(emit).toHaveBeenCalledWith('c', test);
+    expect(exec).toBeCalledTimes(2);
+    expect(emit).toBeCalledTimes(3);
+    expect(emit).toBeCalledWith('c', test);
   });
 
   it('will be evaluated in order', async () => {
@@ -971,7 +971,7 @@ describe('compute mode', () => {
       const attempt = () => state.never;
 
       expect(attempt).toThrow();
-      expect(warn).toHaveBeenCalledWith(
+      expect(warn).toBeCalledWith(
         `An exception was thrown while initializing ${state}.never.`
       );
     });
@@ -993,10 +993,10 @@ describe('compute mode', () => {
 
       await expect(state).toHaveUpdated();
 
-      expect(warn).toHaveBeenCalledWith(
+      expect(warn).toBeCalledWith(
         `An exception was thrown while refreshing ${state}.value.`
       );
-      expect(error).toHaveBeenCalled();
+      expect(error).toBeCalled();
     });
 
     it('will throw if source is another instruction', () => {
@@ -1073,17 +1073,17 @@ describe('compute mode', () => {
       });
 
       expect(test.value).toBe(2);
-      expect(didGetNewValue).toHaveBeenCalledWith(2);
-      expect(didGetOldValue).toHaveBeenCalledWith(undefined);
+      expect(didGetNewValue).toBeCalledWith(2);
+      expect(didGetOldValue).toBeCalledWith(undefined);
 
       test.input = 2;
 
       expect(test.value).toBe(3);
-      expect(didGetOldValue).toHaveBeenCalledWith(2);
+      expect(didGetOldValue).toBeCalledWith(2);
 
       await expect(test).toHaveUpdated();
-      expect(didGetNewValue).toHaveBeenCalledWith(3);
-      expect(didGetOldValue).toHaveBeenCalledTimes(2);
+      expect(didGetNewValue).toBeCalledWith(3);
+      expect(didGetOldValue).toBeCalledTimes(2);
     });
   });
 
@@ -1160,7 +1160,7 @@ describe('compute mode', () => {
       const test = Test.new();
 
       expect(test.fooBar).toBe('foo');
-      expect(factory).toHaveBeenCalledWith('fooBar', expect.any(Test));
+      expect(factory).toBeCalledWith('fooBar', expect.any(Test));
     });
 
     it('will subscribe from self argument', async () => {

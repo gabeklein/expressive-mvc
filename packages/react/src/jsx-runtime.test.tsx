@@ -30,11 +30,11 @@ it('will create instance only once', () => {
   const didConstruct = vi.fn();
   const { rerender } = render(<Control />);
 
-  expect(didConstruct).toHaveBeenCalledTimes(1);
+  expect(didConstruct).toBeCalledTimes(1);
 
   rerender(<Control />);
 
-  expect(didConstruct).toHaveBeenCalledTimes(1);
+  expect(didConstruct).toBeCalledTimes(1);
 });
 
 it('will call is method on creation', () => {
@@ -44,10 +44,10 @@ it('will call is method on creation', () => {
 
   const screen = render(<Control is={didCreate} />);
 
-  expect(didCreate).toHaveBeenCalledTimes(1);
+  expect(didCreate).toBeCalledTimes(1);
 
   screen.rerender(<Control is={didCreate} />);
-  expect(didCreate).toHaveBeenCalledTimes(1);
+  expect(didCreate).toBeCalledTimes(1);
 
   act(screen.unmount);
 });
@@ -64,11 +64,11 @@ describe('new method', () => {
 
     const element = render(<Test />);
 
-    expect(didCreate).toHaveBeenCalled();
+    expect(didCreate).toBeCalled();
 
     element.rerender(<Test />);
 
-    expect(didCreate).toHaveBeenCalledTimes(1);
+    expect(didCreate).toBeCalledTimes(1);
   });
 });
 
@@ -103,7 +103,7 @@ describe('element props', () => {
 
     render(<Foo value="barfoo" />);
 
-    expect(didSet).toHaveBeenCalled();
+    expect(didSet).toBeCalled();
   });
 
   it('will override method', async () => {
@@ -165,7 +165,7 @@ describe('element children', () => {
     const screen = render(<Control>Hello</Control>);
 
     screen.getByText('Hello');
-    expect(didUpdate).toHaveBeenCalled();
+    expect(didUpdate).toBeCalled();
   });
 
   it('will accept arbitrary children with render', () => {
@@ -312,7 +312,7 @@ describe('render method', () => {
 
     render(<Test is={callback} />);
 
-    expect(callback).toHaveBeenCalledTimes(1);
+    expect(callback).toBeCalledTimes(1);
   });
 });
 

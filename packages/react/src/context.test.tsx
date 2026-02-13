@@ -78,7 +78,7 @@ describe('Provider', () => {
     );
 
     act(() => element.unmount());
-    expect(willDestroy).toHaveBeenCalled();
+    expect(willDestroy).toBeCalled();
   });
 
   it('will destroy multiple created on unmount', async () => {
@@ -103,7 +103,7 @@ describe('Provider', () => {
     );
 
     act(() => element.unmount());
-    expect(willDestroy).toHaveBeenCalledTimes(2);
+    expect(willDestroy).toBeCalledTimes(2);
   });
 
   it('will not destroy given instance on unmount', async () => {
@@ -120,7 +120,7 @@ describe('Provider', () => {
     );
 
     act(() => element.unmount());
-    expect(didUnmount).not.toHaveBeenCalled();
+    expect(didUnmount).not.toBeCalled();
   });
 
   it('will conflict colliding State types', () => {
@@ -139,7 +139,7 @@ describe('Provider', () => {
       </Provider>
     );
 
-    expect(Consumer).toHaveBeenCalled();
+    expect(Consumer).toBeCalled();
   });
 
   it('will destroy from bottom-up', async () => {
@@ -176,9 +176,9 @@ describe('Provider', () => {
 
       render(<Provider for={{ Foo, Bar }} forEach={forEach} />);
 
-      expect(forEach).toHaveBeenCalledTimes(2);
-      expect(forEach).toHaveBeenCalledWith(expect.any(Foo));
-      expect(forEach).toHaveBeenCalledWith(expect.any(Bar));
+      expect(forEach).toBeCalledTimes(2);
+      expect(forEach).toBeCalledWith(expect.any(Foo));
+      expect(forEach).toBeCalledWith(expect.any(Bar));
     });
 
     it('will cleanup on unmount', () => {
@@ -189,13 +189,13 @@ describe('Provider', () => {
         <Provider for={{ Foo, Bar }} forEach={forEach} />
       );
 
-      expect(forEach).toHaveBeenCalledTimes(2);
-      expect(forEach).toHaveBeenCalledWith(expect.any(Foo));
-      expect(forEach).toHaveBeenCalledWith(expect.any(Bar));
-      expect(cleanup).not.toHaveBeenCalled();
+      expect(forEach).toBeCalledTimes(2);
+      expect(forEach).toBeCalledWith(expect.any(Foo));
+      expect(forEach).toBeCalledWith(expect.any(Bar));
+      expect(cleanup).not.toBeCalled();
 
       act(() => rendered.unmount());
-      expect(cleanup).toHaveBeenCalledTimes(2);
+      expect(cleanup).toBeCalledTimes(2);
     });
   });
 
@@ -277,7 +277,7 @@ describe('Consumer', () => {
       </Provider>
     );
 
-    expect(didRender).toHaveBeenCalledWith('foo');
+    expect(didRender).toBeCalledWith('foo');
 
     screen.getByText('foo');
 
@@ -285,7 +285,7 @@ describe('Consumer', () => {
       return instance.set({ value: 'bar' });
     });
 
-    expect(didRender).toHaveBeenCalledWith('bar');
+    expect(didRender).toBeCalledWith('bar');
 
     screen.getByText('bar');
   });
@@ -433,7 +433,7 @@ describe('get instruction', () => {
       </Provider>
     );
 
-    expect(Inner).toHaveBeenCalledTimes(2);
+    expect(Inner).toBeCalledTimes(2);
   });
 
   it('will attach before model init', () => {
@@ -550,7 +550,7 @@ describe('get instruction', () => {
 
     bar.get(effect);
 
-    expect(effect).toHaveBeenCalled();
+    expect(effect).toBeCalled();
     expect(effect).not.toHaveReturned();
 
     render(
@@ -561,7 +561,7 @@ describe('get instruction', () => {
 
     await expect(bar).toHaveUpdated();
 
-    expect(effect).toHaveBeenCalledTimes(2);
+    expect(effect).toBeCalledTimes(2);
     expect(effect).toHaveReturnedTimes(1);
   });
 
@@ -629,7 +629,7 @@ describe('has instruction', () => {
       </Provider>
     );
 
-    expect(didGetBar).toHaveBeenCalledTimes(2);
+    expect(didGetBar).toBeCalledTimes(2);
     expect(foo.value).toEqual([expect.any(Bar), expect.any(Bar)]);
     expect(foo.value.map((i) => i.foo)).toEqual([foo, foo]);
   });
@@ -657,7 +657,7 @@ describe('has instruction', () => {
     };
 
     render(<Component />);
-    expect(didGetBar).toHaveBeenCalled();
+    expect(didGetBar).toBeCalled();
   });
 });
 

@@ -1,4 +1,10 @@
-import { act, render, renderHook, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  render,
+  renderHook,
+  screen,
+  waitFor
+} from '@testing-library/react';
 import { Suspense } from 'react';
 
 import { get, State, Provider, set } from '.';
@@ -23,12 +29,12 @@ describe('State.use', () => {
       });
 
       expect(result.current.value).toBe('foo');
-      expect(willRender).toHaveBeenCalledTimes(1);
+      expect(willRender).toBeCalledTimes(1);
 
       result.current.value = 'bar';
 
       await waitFor(() => {
-        expect(willRender).toHaveBeenCalledTimes(2);
+        expect(willRender).toBeCalledTimes(2);
       });
 
       expect(result.current.value).toBe('bar');
@@ -51,7 +57,7 @@ describe('State.use', () => {
 
       renderHook(() => Test.use(callback));
 
-      expect(callback).toHaveBeenCalledWith(expect.any(Test));
+      expect(callback).toBeCalledWith(expect.any(Test));
     });
 
     it('will destroy instance of given class', async () => {
@@ -70,7 +76,7 @@ describe('State.use', () => {
 
       rendered.unmount();
 
-      expect(didDestroy).toHaveBeenCalled();
+      expect(didDestroy).toBeCalled();
     });
 
     it('will ignore updates after unmount', async () => {
@@ -130,11 +136,11 @@ describe('State.use', () => {
 
       const element = renderHook(() => Test.use());
 
-      expect(didCreate).toHaveBeenCalled();
+      expect(didCreate).toBeCalled();
 
       element.rerender();
 
-      expect(didCreate).toHaveBeenCalledTimes(1);
+      expect(didCreate).toBeCalledTimes(1);
     });
   });
 
@@ -150,11 +156,11 @@ describe('State.use', () => {
 
       const element = renderHook(() => Test.use());
 
-      expect(didUse).toHaveBeenCalledTimes(1);
+      expect(didUse).toBeCalledTimes(1);
 
       element.rerender();
 
-      expect(didUse).toHaveBeenCalledTimes(2);
+      expect(didUse).toBeCalledTimes(2);
     });
 
     it('will receive arguments', () => {
@@ -168,7 +174,7 @@ describe('State.use', () => {
 
       renderHook(() => Test.use('hello', 123));
 
-      expect(didUse).toHaveBeenCalledWith('hello', 123);
+      expect(didUse).toBeCalledWith('hello', 123);
     });
 
     it('will divert arguments from constructor', () => {
@@ -190,7 +196,7 @@ describe('State.use', () => {
 
       expect(test.result.current.value).toBe(42);
       expect(test2.result.current.value).not.toBe(42);
-      expect(didUse).toHaveBeenCalledWith({ value: 42 });
+      expect(didUse).toBeCalledWith({ value: 42 });
     });
 
     it('will enforce signature', () => {
@@ -215,17 +221,17 @@ describe('State.use', () => {
       const callback = jest.fn();
       const hook = renderHook(() => Test.use(callback));
 
-      expect(callback).toHaveBeenCalledTimes(1);
+      expect(callback).toBeCalledTimes(1);
 
       hook.rerender(() => Test.use(callback));
 
-      expect(callback).toHaveBeenCalledTimes(1);
+      expect(callback).toBeCalledTimes(1);
     });
 
     it('will run argument before effects', () => {
       const effect = jest.fn();
       const argument = jest.fn(() => {
-        expect(effect).not.toHaveBeenCalled();
+        expect(effect).not.toBeCalled();
       });
 
       class Test extends State {
@@ -239,8 +245,8 @@ describe('State.use', () => {
         Test.use(argument);
       });
 
-      expect(argument).toHaveBeenCalled();
-      expect(effect).toHaveBeenCalled();
+      expect(argument).toBeCalled();
+      expect(effect).toBeCalled();
     });
   });
 
@@ -351,7 +357,7 @@ describe('State.use', () => {
 
       hook.rerender({ foo: 'bar' });
 
-      expect(didRender).toHaveBeenCalledTimes(2);
+      expect(didRender).toBeCalledTimes(2);
     });
 
     it('will trigger set instruction', () => {
@@ -366,7 +372,7 @@ describe('State.use', () => {
       });
 
       expect(result.current.foo).toBe('bar');
-      expect(mock).toHaveBeenCalledWith('bar', 'foo');
+      expect(mock).toBeCalledWith('bar', 'foo');
     });
   });
 
@@ -432,7 +438,7 @@ describe('State.get', () => {
   const error = jest.spyOn(console, 'error').mockImplementation(() => {});
 
   afterEach(() => {
-    // expect(error).not.toHaveBeenCalled();
+    // expect(error).not.toBeCalled();
     error.mockReset();
   });
 
@@ -464,7 +470,7 @@ describe('State.get', () => {
     await act(async () => test.set({ foo: 'bar' }));
 
     expect(hook.result.current).toBe('bar');
-    expect(didRender).toHaveBeenCalledTimes(2);
+    expect(didRender).toBeCalledTimes(2);
   });
 
   it('will not update on death event', async () => {
@@ -482,7 +488,7 @@ describe('State.get', () => {
     expect(hook.result.current).toBe('foo');
     test.set(null);
 
-    expect(didRender).toHaveBeenCalledTimes(1);
+    expect(didRender).toBeCalledTimes(1);
   });
 
   it('will throw if not found', () => {
@@ -590,16 +596,16 @@ describe('State.get', () => {
       });
 
       expect(hook.result.current).toBe(2);
-      expect(compute).toHaveBeenCalled();
+      expect(compute).toBeCalled();
 
       test.foo = 2;
       await expect(test).toHaveUpdated();
 
       // did attempt a second compute
-      expect(compute).toHaveBeenCalledTimes(2);
+      expect(compute).toBeCalledTimes(2);
 
       // compute did not trigger a new render
-      expect(didRender).toHaveBeenCalledTimes(1);
+      expect(didRender).toBeCalledTimes(1);
       expect(hook.result.current).toBe(2);
     });
 
@@ -633,15 +639,15 @@ describe('State.get', () => {
       const test = Test.new();
       const hook = renderWith(test, didRender);
 
-      expect(didRender).toHaveBeenCalledTimes(1);
+      expect(didRender).toBeCalledTimes(1);
       expect(hook.result.current).toBe(null);
 
       test.foo = 2;
 
       await expect(test).toHaveUpdated();
 
-      expect(factory).toHaveBeenCalledTimes(1);
-      expect(didRender).toHaveBeenCalledTimes(1);
+      expect(factory).toBeCalledTimes(1);
+      expect(didRender).toBeCalledTimes(1);
     });
 
     it('will run initial callback syncronously', async () => {
@@ -676,13 +682,13 @@ describe('State.get', () => {
         </Provider>
       );
 
-      expect(didPushToValues).toHaveBeenCalledTimes(3);
+      expect(didPushToValues).toBeCalledTimes(3);
 
       await expect(parent).toHaveUpdated();
 
       // Expect updates to have bunched up before new frame.
-      expect(didUpdateValues).toHaveBeenCalledTimes(2);
-      expect(didUpdateValues).toHaveBeenCalledWith(3);
+      expect(didUpdateValues).toBeCalledTimes(2);
+      expect(didUpdateValues).toBeCalledWith(3);
     });
   });
 
@@ -704,15 +710,15 @@ describe('State.get', () => {
         });
       });
 
-      expect(didEvaluate).toHaveBeenCalledTimes(1);
-      expect(didRender).toHaveBeenCalledTimes(1);
+      expect(didEvaluate).toBeCalledTimes(1);
+      expect(didRender).toBeCalledTimes(1);
 
       await act(async () => {
         forceUpdate();
       });
 
-      expect(didEvaluate).toHaveBeenCalledTimes(1);
-      expect(didRender).toHaveBeenCalledTimes(2);
+      expect(didEvaluate).toBeCalledTimes(1);
+      expect(didRender).toBeCalledTimes(2);
     });
 
     it('will refresh without reevaluating', async () => {
@@ -730,13 +736,13 @@ describe('State.get', () => {
         });
       });
 
-      expect(didEvaluate).toHaveBeenCalledTimes(1);
-      expect(didRender).toHaveBeenCalledTimes(1);
+      expect(didEvaluate).toBeCalledTimes(1);
+      expect(didRender).toBeCalledTimes(1);
 
       act(forceUpdate);
 
-      expect(didEvaluate).toHaveBeenCalledTimes(1);
-      expect(didRender).toHaveBeenCalledTimes(2);
+      expect(didEvaluate).toBeCalledTimes(1);
+      expect(didRender).toBeCalledTimes(2);
     });
 
     it('will refresh again after promise', async () => {
@@ -754,19 +760,19 @@ describe('State.get', () => {
       });
 
       expect<null>(result.current).toBe(null);
-      expect(didRender).toHaveBeenCalledTimes(1);
+      expect(didRender).toBeCalledTimes(1);
 
       await act(async () => {
         forceUpdate(promise);
       });
 
-      expect(didRender).toHaveBeenCalledTimes(2);
+      expect(didRender).toBeCalledTimes(2);
 
       await act(async () => {
         promise.resolve();
       });
 
-      expect(didRender).toHaveBeenCalledTimes(3);
+      expect(didRender).toBeCalledTimes(3);
     });
 
     it('will invoke async function', async () => {
@@ -783,19 +789,19 @@ describe('State.get', () => {
         });
       });
 
-      expect(didRender).toHaveBeenCalledTimes(1);
+      expect(didRender).toBeCalledTimes(1);
 
       await act(async () => {
         forceUpdate(() => promise);
       });
 
-      expect(didRender).toHaveBeenCalledTimes(2);
+      expect(didRender).toBeCalledTimes(2);
 
       await act(async () => {
         promise.resolve();
       });
 
-      expect(didRender).toHaveBeenCalledTimes(3);
+      expect(didRender).toBeCalledTimes(3);
     });
   });
 
@@ -829,20 +835,20 @@ describe('State.get', () => {
         });
       });
 
-      expect(didRender).toHaveBeenCalledTimes(1);
+      expect(didRender).toBeCalledTimes(1);
       expect(hook.result.current).toBe(null);
 
       await act(async () => {
         promise.resolve('foobar');
       });
 
-      expect(didRender).toHaveBeenCalledTimes(2);
+      expect(didRender).toBeCalledTimes(2);
       expect(hook.result.current).toBe('foobar');
 
       test.foo = 'foo';
       await expect(test).toHaveUpdated();
 
-      expect(didRender).toHaveBeenCalledTimes(2);
+      expect(didRender).toBeCalledTimes(2);
     });
 
     it('will refresh and throw if async rejects', async () => {
@@ -901,7 +907,7 @@ describe('State.get', () => {
       });
 
       expect(hook.result.current).toBe('foo');
-      expect(didRender).toHaveBeenCalledTimes(2);
+      expect(didRender).toBeCalledTimes(2);
     });
 
     it('will return undefined if instance not found', () => {
@@ -925,9 +931,7 @@ describe('State.get', () => {
 
       const tryToRender = () => renderHook(() => Foo.use());
 
-      expect(tryToRender).toThrow(
-        `Required Bar not found in context for ID.`
-      );
+      expect(tryToRender).toThrow(`Required Bar not found in context for ID.`);
     });
 
     it('will prefer parent over context', () => {
@@ -1071,13 +1075,13 @@ describe('State.as', () => {
     const { rerender } = render(<Component foo="bar" />);
 
     screen.getByText('bar');
-    expect(didUpdateFoo).not.toHaveBeenCalled();
+    expect(didUpdateFoo).not.toBeCalled();
 
     rerender(<Component foo="baz" />);
 
     screen.getByText('baz');
-    expect(didUpdateFoo).toHaveBeenCalledTimes(1);
-    expect(didUpdateFoo).toHaveBeenCalledWith('foo', { foo: 'baz' });
+    expect(didUpdateFoo).toBeCalledTimes(1);
+    expect(didUpdateFoo).toBeCalledWith('foo', { foo: 'baz' });
   });
 
   it('will pass props before effects run', async () => {
@@ -1107,10 +1111,10 @@ describe('State.as', () => {
 
     const screen = render(<Test is={didCreate} />);
 
-    expect(didCreate).toHaveBeenCalledTimes(1);
+    expect(didCreate).toBeCalledTimes(1);
 
     screen.rerender(<Test is={didCreate} />);
-    expect(didCreate).toHaveBeenCalledTimes(1);
+    expect(didCreate).toBeCalledTimes(1);
 
     act(screen.unmount);
   });
@@ -1174,8 +1178,8 @@ describe('State.as', () => {
     // is reset to bar by prop before render completes
     screen.getByText('bar');
 
-    expect(didSetFoo).toHaveBeenCalledTimes(2);
-    expect(renderSpy).toHaveBeenCalledTimes(2);
+    expect(didSetFoo).toBeCalledTimes(2);
+    expect(renderSpy).toBeCalledTimes(2);
   });
 
   it('will override method', async () => {
@@ -1206,7 +1210,7 @@ describe('State.as', () => {
 
     render(<Component value="barfoo" />);
 
-    expect(didSet).toHaveBeenCalled();
+    expect(didSet).toBeCalled();
   });
 
   describe('new method', () => {
@@ -1225,7 +1229,7 @@ describe('State.as', () => {
 
       render(<Component />);
 
-      expect(didCreate).toHaveBeenCalled();
+      expect(didCreate).toBeCalled();
     });
   });
 

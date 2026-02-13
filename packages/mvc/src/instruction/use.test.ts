@@ -15,7 +15,7 @@ describe('instruction', () => {
 
     Test.new();
 
-    expect(didRunInstruction).toHaveBeenCalledWith('property');
+    expect(didRunInstruction).toBeCalledWith('property');
   });
 
   describe('symbol', () => {
@@ -67,11 +67,11 @@ describe('instruction', () => {
 
       const instance = Test.new();
 
-      expect(mockApply).toHaveBeenCalledWith('property', expect.any(Test), {});
-      expect(mockAccess).not.toHaveBeenCalled();
+      expect(mockApply).toBeCalledWith('property', expect.any(Test), {});
+      expect(mockAccess).not.toBeCalled();
 
       expect(instance.property).toBe('foobar');
-      expect(mockAccess).toHaveBeenCalledWith(instance);
+      expect(mockAccess).toBeCalledWith(instance);
     });
 
     it('will pass subscriber if within one', () => {
@@ -87,7 +87,7 @@ describe('instruction', () => {
         void own.property;
       });
 
-      expect(didGetValue).toHaveBeenCalledWith(expect.any(Test));
+      expect(didGetValue).toBeCalledWith(expect.any(Test));
     });
 
     it('will not throw suspense if get (required) is false', async () => {
@@ -102,7 +102,7 @@ describe('instruction', () => {
       test.value = 'foo';
 
       await expect(test).toHaveUpdated();
-      expect(effect).toHaveBeenCalledTimes(2);
+      expect(effect).toBeCalledTimes(2);
     });
   });
 
@@ -137,12 +137,12 @@ describe('instruction', () => {
       expect(test.property).toBe('foobar');
 
       test.property = 'test';
-      expect(didSetValue).toHaveBeenCalledWith('test', 'foobar');
+      expect(didSetValue).toBeCalledWith('test', 'foobar');
       expect(test.property).toBe('test');
       await expect(test).toHaveUpdated();
 
       test.property = 'ignore';
-      expect(didSetValue).toHaveBeenCalledWith('ignore', 'test');
+      expect(didSetValue).toBeCalledWith('ignore', 'test');
       expect(test.property).toBe('test');
       await expect(test).not.toHaveUpdated();
     });
@@ -193,7 +193,7 @@ describe('instruction', () => {
       test.property = 'test';
 
       expect(test.property).toBe('test!');
-      expect(didUpdate).toHaveBeenCalledTimes(1);
+      expect(didUpdate).toBeCalledTimes(1);
     });
 
     it('will not update on reassignment', () => {
@@ -216,7 +216,7 @@ describe('instruction', () => {
       test.property = 'test';
 
       expect(test.property).toBe('test!');
-      expect(didUpdate).toHaveBeenCalledTimes(1);
+      expect(didUpdate).toBeCalledTimes(1);
     });
   });
 });
@@ -234,7 +234,7 @@ describe('state', () => {
 
     Test.new();
 
-    expect(mockInit).toHaveBeenCalledTimes(1);
+    expect(mockInit).toBeCalledTimes(1);
   });
 
   it('will not create base State', () => {
@@ -260,10 +260,10 @@ describe('state', () => {
     const parent = Parent.new();
 
     // Initial assignment
-    expect(callback).toHaveBeenCalledTimes(1);
+    expect(callback).toBeCalledTimes(1);
 
     parent.child = new Child();
-    expect(callback).toHaveBeenCalledTimes(2);
+    expect(callback).toBeCalledTimes(2);
   });
 
   it.todo('will run callback after assign completes');

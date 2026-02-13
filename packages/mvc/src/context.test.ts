@@ -137,9 +137,9 @@ it('will destroy modules created by layer', () => {
 
   context2.pop();
 
-  expect(test1.destroyed).not.toHaveBeenCalled();
-  expect(test2.destroyed).not.toHaveBeenCalled();
-  expect(test3.destroyed).toHaveBeenCalled();
+  expect(test1.destroyed).not.toBeCalled();
+  expect(test2.destroyed).not.toBeCalled();
+  expect(test3.destroyed).toBeCalled();
 });
 
 describe('include', () => {
@@ -168,20 +168,20 @@ describe('include', () => {
 
     context.use({ foo, bar }, cb);
 
-    expect(cb).toHaveBeenCalledWith(foo);
-    expect(cb).toHaveBeenCalledWith(bar);
-    expect(cb).toHaveBeenCalledTimes(2);
+    expect(cb).toBeCalledWith(foo);
+    expect(cb).toBeCalledWith(bar);
+    expect(cb).toBeCalledTimes(2);
 
     context.use({ foo, bar }, cb);
 
-    expect(cb).toHaveBeenCalledTimes(2);
+    expect(cb).toBeCalledTimes(2);
 
     const foo2 = Foo.new();
 
     context.use({ foo, bar, foo2 }, cb);
 
-    expect(cb).toHaveBeenCalledWith(foo2);
-    expect(cb).toHaveBeenCalledTimes(3);
+    expect(cb).toBeCalledWith(foo2);
+    expect(cb).toBeCalledTimes(3);
   });
 
   it('will ignore subsequent if callback', () => {
@@ -193,7 +193,7 @@ describe('include', () => {
 
     expect(context.get(Foo)).toBeInstanceOf(Foo);
 
-    expect(cb).toHaveBeenCalledTimes(1);
+    expect(cb).toBeCalledTimes(1);
   });
 
   // This will be made more elegant later.
@@ -223,7 +223,7 @@ describe('include', () => {
     expect(context.get(Bar)).not.toBe(bar);
 
     // expect Baz will have been force-replaced.
-    expect(bazDidDie).toHaveBeenCalled();
+    expect(bazDidDie).toBeCalled();
 
     const newBaz = context.get(Baz);
 
@@ -271,9 +271,9 @@ it('will pop child context', () => {
   context.push({ Test2 }).push({ Test3 });
   context.pop();
 
-  expect(didDestroy).toHaveBeenCalledWith(1, 'Test3');
-  expect(didDestroy).toHaveBeenCalledWith(2, 'Test2');
-  expect(didDestroy).toHaveBeenCalledWith(3, 'Test');
+  expect(didDestroy).toBeCalledWith(1, 'Test3');
+  expect(didDestroy).toBeCalledWith(2, 'Test2');
+  expect(didDestroy).toBeCalledWith(3, 'Test');
 });
 
 it('will throw on bad include', () => {
@@ -286,9 +286,7 @@ it('will throw on base State include', () => {
   const context = new Context();
 
   // @ts-ignore
-  expect(() => context.use({ State })).toThrow(
-    'Cannot create base State.'
-  );
+  expect(() => context.use({ State })).toThrow('Cannot create base State.');
 });
 
 it('will throw on bad include property', () => {
@@ -323,7 +321,7 @@ describe('Context.get callback overload (downstream registration)', () => {
     context.push(DownstreamState);
 
     // Callback should be called with the instance
-    expect(cb).toHaveBeenCalledTimes(1);
+    expect(cb).toBeCalledTimes(1);
     expect(cb.mock.calls[0][0]).toBeInstanceOf(DownstreamState);
   });
 
@@ -338,7 +336,7 @@ describe('Context.get callback overload (downstream registration)', () => {
     context.push(DownstreamState);
 
     // Callback should be called
-    expect(cb).toHaveBeenCalledTimes(1);
+    expect(cb).toBeCalledTimes(1);
 
     // Remove callback
     cancel();
@@ -347,7 +345,7 @@ describe('Context.get callback overload (downstream registration)', () => {
     context.push(DownstreamState);
 
     // Callback should not be called again
-    expect(cb).toHaveBeenCalledTimes(1);
+    expect(cb).toBeCalledTimes(1);
 
     context.pop();
   });
@@ -362,11 +360,11 @@ describe('Context.get callback overload (downstream registration)', () => {
     // Create a child context and register callback there
     const child = context.push(DownstreamState);
 
-    expect(cb).toHaveBeenCalledTimes(1);
+    expect(cb).toBeCalledTimes(1);
 
     // Pop child context
     child.pop();
 
-    expect(cleanup).toHaveBeenCalledTimes(1);
+    expect(cleanup).toBeCalledTimes(1);
   });
 });

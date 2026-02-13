@@ -30,7 +30,7 @@ describe('Provider', () => {
       </Provider>
     );
 
-    expect(didRender).toHaveBeenCalledWith('foo');
+    expect(didRender).toBeCalledWith('foo');
   });
 
   it('will provide class to children', () => {
@@ -52,7 +52,7 @@ describe('Provider', () => {
       </Provider>
     );
 
-    expect(didRender).toHaveBeenCalledWith('foo');
+    expect(didRender).toBeCalledWith('foo');
   });
 
   it('will run forEach callback', () => {
@@ -68,7 +68,7 @@ describe('Provider', () => {
       </Provider>
     );
 
-    expect(forEach).toHaveBeenCalledWith(expect.any(Test));
+    expect(forEach).toBeCalledWith(expect.any(Test));
   });
 
   it('will handle forEach without cleanup', () => {
@@ -84,7 +84,7 @@ describe('Provider', () => {
       </Provider>
     );
 
-    expect(forEach).toHaveBeenCalledWith(expect.any(Test));
+    expect(forEach).toBeCalledWith(expect.any(Test));
   });
 
   it('will cleanup on unmount', () => {
@@ -100,11 +100,11 @@ describe('Provider', () => {
       </Provider>
     );
 
-    expect(cleanup).not.toHaveBeenCalled();
+    expect(cleanup).not.toBeCalled();
 
     rendered.unmount();
 
-    expect(cleanup).toHaveBeenCalled();
+    expect(cleanup).toBeCalled();
   });
 
   it('will nest contexts', () => {
@@ -133,7 +133,7 @@ describe('Provider', () => {
       </Provider>
     );
 
-    expect(didRender).toHaveBeenCalledWith('parent', 'child');
+    expect(didRender).toBeCalledWith('parent', 'child');
   });
 });
 
@@ -157,7 +157,7 @@ describe('Consumer', () => {
       </Provider>
     );
 
-    expect(didRender).toHaveBeenCalledWith('foo');
+    expect(didRender).toBeCalledWith('foo');
   });
 
   it('will update on value changes', async () => {
@@ -179,14 +179,14 @@ describe('Consumer', () => {
       </Provider>
     );
 
-    expect(didRender).toHaveBeenCalledWith('foo');
+    expect(didRender).toBeCalledWith('foo');
 
     await act(async () => {
       test.value = 'bar';
       await test.set();
     });
 
-    expect(didRender).toHaveBeenCalledWith('bar');
+    expect(didRender).toBeCalledWith('bar');
   });
 
   it('will throw if not found', () => {
@@ -208,6 +208,6 @@ describe('Consumer', () => {
       didThrow(error.message);
     }
 
-    expect(didThrow).toHaveBeenCalledWith('Could not find Test in context.');
+    expect(didThrow).toBeCalledWith('Could not find Test in context.');
   });
 });
