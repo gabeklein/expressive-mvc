@@ -1,21 +1,28 @@
 import { expect } from 'vitest';
-import * as matchers from '@vitest/browser/matchers';
-import { State } from './packages/mvc';
+import { State } from './packages/mvc/src';
 
 // Add @testing-library matchers for React tests
-expect.extend(matchers);
+// expect.extend(matchers);
 
-// Add custom State matchers
+interface CustomMatchers<R = unknown> {
+  /** Assert state does have one or more updates pending. */
+  toUpdate(timeout?: number): Promise<R>;
+
+  /** Assert state did update with keys specified. */
+  toHaveUpdated(...keys: (string | symbol | number)[]): Promise<R>;
+}
+
+declare module 'vitest' {
+  interface Assertion<T = any> extends CustomMatchers<T> {}
+  interface AsymmetricMatchersContaining extends CustomMatchers {}
+}
+
 expect.extend({
   toUpdate,
   toHaveUpdated
 });
 
-/**
- * @param {State} received
- * @param {number} timeout
- */
-async function toUpdate(received, timeout = 0) {
+async function toUpdate(received: State, timeout = 0): Promise<any> {
   if (!(received instanceof State))
     return {
       pass: false,
@@ -44,11 +51,7 @@ async function toUpdate(received, timeout = 0) {
   });
 }
 
-/**
- * @param {State} received
- * @param {string[]} keys
- */
-async function toHaveUpdated(received, ...keys) {
+async function toHaveUpdated(received: State, ...keys: string[]) {
   if (!(received instanceof State))
     return {
       pass: false,

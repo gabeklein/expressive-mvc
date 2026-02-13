@@ -28,18 +28,18 @@ export function mockPromise<T = void>() {
 }
 
 export function mockWarn() {
-  const warn = vi.spyOn(console, 'warn');
+  const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
-  afterEach(() => warn.mockReset());
+  afterEach(() => warn.mockClear());
   afterAll(() => warn.mockRestore());
 
   return warn;
 }
 
 export function mockError() {
-  const error = vi.spyOn(console, 'error');
+  const error = vi.spyOn(console, 'error').mockImplementation(() => {});
 
-  afterEach(() => error.mockReset());
+  afterEach(() => error.mockClear());
   afterAll(() => error.mockRestore());
 
   return error;
