@@ -526,6 +526,31 @@ describe('get instruction', () => {
     expect(bar.bar).toBe(foo);
   });
 
+  it('will resolve parent of same type when nested', () => {
+    class Control extends State {
+      parent = get(Control, false);
+      row = false;
+    }
+
+    const Inner = jest.fn(() => {
+      const inner = Control.get();
+      expect(inner.parent).toBeInstanceOf(Control);
+      expect(inner.parent).not.toBe(inner);
+      expect(inner.parent!.row).toBe(true);
+      return null;
+    });
+
+    render(
+      <Provider for={Control} forEach={x => { x.row = true }}>
+        <Provider for={Control}>
+          <Inner />
+        </Provider>
+      </Provider>
+    );
+
+    expect(Inner).toHaveBeenCalled();
+  });
+
   it('will not resolve as own parent', () => {
     class MaybeSelf extends State {
       parent = get(MaybeSelf, false);

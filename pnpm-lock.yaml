@@ -215,8 +215,8 @@ importers:
   packages/react:
     dependencies:
       '@expressive/mvc':
-        specifier: ^0.72.0
-        version: 0.72.0
+        specifier: ^0.73.1
+        version: 0.73.1
     devDependencies:
       '@testing-library/jest-dom':
         specifier: ^6.8.0
@@ -231,6 +231,9 @@ importers:
         specifier: ^19
         version: 19.2.3(@types/react@19.2.10)
       jest:
+        specifier: ^27.5.1
+        version: 27.5.1
+      jest-environment-jsdom:
         specifier: ^27.5.1
         version: 27.5.1
       react:
@@ -468,6 +471,9 @@ packages:
 
   '@expressive/mvc@0.72.0':
     resolution: {integrity: sha512-PnXg6y0LtpG6mGHlWEl2T3TKXixgZKCH1+KeHHJb40Jy2x51tcUdK5byKRxsnzkgLyVFIuwSnJQkPXNrDk83SA==}
+
+  '@expressive/mvc@0.73.1':
+    resolution: {integrity: sha512-GjILPXwkyyU12BxUo8KTLJrs0Nh9CTRj0QuTfN5IGBodeq4mmqKLvWVpNCeMZvIob9sC3dRfJIShCK6fsixNZw==}
 
   '@expressive/react@0.71.0':
     resolution: {integrity: sha512-wIrvwc0PSkZpSX5dzac4h45P0RhsuFjPZHPmwD7/kmFJVl43TsyJzpcvqo/HkACMDO6IUOJggAdjqZ30jJyZIA==}
@@ -4774,6 +4780,8 @@ snapshots:
   '@expressive/mvc@0.71.0': {}
 
   '@expressive/mvc@0.72.0': {}
+
+  '@expressive/mvc@0.73.1': {}
 
   '@expressive/react@0.71.0(react@19.2.4)':
     dependencies:
