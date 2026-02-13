@@ -146,7 +146,7 @@ function get<R, T extends State>(
     Context.get(subject, (context) => {
       const self = context.get(Type);
 
-      if (self) assign(self);
+      if (self && self !== subject) assign(self);
       else if (!isOptional)
         throw new Error(
           `Required ${Type} not found in context for ${subject}.`

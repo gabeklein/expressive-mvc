@@ -526,6 +526,19 @@ describe('get instruction', () => {
     expect(bar.bar).toBe(foo);
   });
 
+  it('will not resolve as own parent', () => {
+    class MaybeSelf extends State {
+      parent = get(MaybeSelf, false);
+    }
+
+    const test = MaybeSelf.new();
+
+    render(<Provider for={test} />);
+
+    expect(test.parent).not.toBe(test);
+    expect(test.parent).toBeUndefined();
+  });
+
   it('will refresh an effect when assigned to', async () => {
     class Foo extends State {}
     class Bar extends State {
