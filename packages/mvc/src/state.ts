@@ -5,7 +5,7 @@ import {
   Observable,
   Notify,
   PENDING_KEYS
-} from './control';
+} from './observable';
 
 const define = Object.defineProperty;
 
@@ -31,28 +31,12 @@ const METHOD = new WeakMap<any, any>();
 let EXPORT: Map<any, any> | undefined;
 
 declare namespace State {
-  /**
-   * State which is valid to create.
-   *
-   * This interface may be augmented to add dditional
-   * constraints on states, such as special hooks or properties,
-   * to interact with environment or helper frameworks.
-   **/
-  interface Valid extends State {
-    'new'?(): void | (() => void);
-  }
-
-  /**
-   * A State class which is valid and may be instantiated.
-   */
-  type New<T extends State> = State.Class<T & Valid>;
-
   /** Any type of State, using own class constructor as its identifier. */
   type Extends<T extends State = State> = (abstract new (...args: any[]) => T) &
     typeof State;
 
-  /** A State constructor which is not abstract. */
-  type Class<T extends State = State> = (new (...args: State.Args<T>) => T) &
+  /** A State constructor which may be instanciated. */
+  type Type<T extends State = State> = (new (...args: State.Args<T>) => T) &
     Omit<typeof State, never>;
 
   /** State constructor arguments */
@@ -90,7 +74,7 @@ declare namespace State {
   type Export<R> = R extends { get(): infer T } ? T : R;
 
   /** Value for a property managed by a state. */
-  type Value<T extends State, K extends Event<T>> = K extends keyof T
+  type Value<T extends State, K extends State.Event<T>> = K extends keyof T
     ? Export<T[K]>
     : unknown;
 
@@ -102,7 +86,7 @@ declare namespace State {
     source: T
   ) => void | (() => void) | null;
 
-  type OnUpdate<T extends State, K extends Event<T>> = (
+  type OnUpdate<T extends State, K extends State.Event<T>> = (
     this: T,
     key: K,
     thisArg: K
@@ -137,7 +121,7 @@ declare namespace State {
   type Effect<T> = (
     this: T,
     current: T,
-    update: Set<Event<T>>
+    update: Set<State.Event<T>>
   ) => EffectCallback | Promise<void> | null | void;
 
   /**
@@ -160,7 +144,7 @@ abstract class State implements Observable {
   constructor(...args: State.Args) {
     prepare(this);
     define(this, 'is', { value: this });
-    init(this, args);
+    init(this, ...args, (x: this) => x.new && x.new());
   }
 
   [Observable](callback: Observable.Callback, required?: boolean) {
@@ -185,6 +169,12 @@ abstract class State implements Observable {
 
     return proxy as this;
   }
+
+  /**
+   * Optional lifecycle hook called during State initialization.
+   * Can return a cleanup function to run when state is destroyed.
+   */
+  protected new?(): void | (() => void);
 
   /**
    * Pull current values from state. Flattens all states and exotic values recursively.
@@ -374,15 +364,15 @@ abstract class State implements Observable {
 
     if (pending)
       return <PromiseLike<State.Event<this>[]>>{
-        then: (res) =>
+        then: (resolve) =>
           new Promise<any>((res) => {
             const remove = addListener(this, (key) => {
               if (key !== true) {
                 remove();
-                return res.bind(null, Array.from(pending));
+                return () => res(Array.from(pending));
               }
             });
-          }).then(res)
+          }).then(resolve)
       };
   }
 
@@ -401,11 +391,8 @@ abstract class State implements Observable {
    *
    * @param args - arguments sent to constructor
    */
-  static new<T extends State>(this: State.New<T>, ...args: State.Args<T>): T {
-    const instance = new this(...args, (x) => {
-      const cb = x.new && x.new();
-      if (cb) x.set(cb, null);
-    });
+  static new<T extends State>(this: State.Type<T>, ...args: State.Args<T>): T {
+    const instance = new this(...args);
     event(instance);
     return instance;
   }
@@ -531,7 +518,7 @@ function prepare(state: State) {
  * Apply state arguemnts, run callbacks and observe properties.
  * Accumulate and handle cleanup events.
  **/
-function init(self: State, args: State.Args) {
+function init(self: State, ...args: State.Args) {
   const state = {} as Record<string | number | symbol, unknown>;
 
   STATE.set(self, state);
@@ -582,6 +569,30 @@ function init(self: State, args: State.Args) {
   });
 }
 
+function manage(
+  target: State,
+  key: string | number,
+  value: any,
+  silent?: boolean
+) {
+  const state = STATE.get(target)!;
+
+  function get(this: State) {
+    return follow(this, key, state[key]);
+  }
+
+  function set(value: unknown, silent?: boolean) {
+    update(target, key, value, silent);
+    if (value instanceof State && !PARENT.has(value)) {
+      PARENT.set(value, target);
+      event(value);
+    }
+  }
+
+  define(target, key, { set, get });
+  set(value, silent);
+}
+
 function effect<T extends State>(target: T, fn: State.Effect<T>) {
   const effect = METHOD.get(fn) || fn;
   let pending = new Set<State.Event<T>>();
@@ -623,30 +634,6 @@ function values<T extends State>(target: T): State.Values<T> {
   if (isNotRecursive) EXPORT = undefined;
 
   return Object.freeze(values);
-}
-
-function manage(
-  target: State,
-  key: string | number,
-  value: any,
-  silent?: boolean
-) {
-  const state = STATE.get(target)!;
-
-  function get(this: State) {
-    return follow(this, key, state[key]);
-  }
-
-  function set(value: unknown, silent?: boolean) {
-    update(target, key, value, silent);
-    if (value instanceof State && !PARENT.has(value)) {
-      PARENT.set(value, target);
-      event(value);
-    }
-  }
-
-  define(target, key, { set, get });
-  set(value, silent);
 }
 
 type Proxy<T = any> = (key: string | number, value: T) => T;

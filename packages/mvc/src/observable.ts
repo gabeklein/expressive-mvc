@@ -1,5 +1,3 @@
-import type { State } from './state';
-
 /**
  * Update callback function.
  *
@@ -155,19 +153,19 @@ function enqueue(eventHandler: () => void) {
  * @param callback - Function to invoke when values change.
  * @param requireValues - If `true` will throw if accessing a value which is `undefined`.
  */
-function watch<T extends State>(
+function watch<T extends Observable>(
   target: T,
   callback: Effect<Required<T>>,
   requireValues: true
 ): () => void;
 
-function watch<T extends State>(
+function watch<T extends Observable>(
   target: T,
   callback: Effect<T>,
   recursive?: boolean
 ): () => void;
 
-function watch<T extends State>(
+function watch<T extends Observable>(
   target: T,
   callback: Effect<T>,
   argument?: boolean
@@ -193,9 +191,11 @@ function watch<T extends State>(
     }
 
     try {
-      const exit = enter(argument === false);
-      const output = callback(target[Observable](onUpdate, argument === true));
-      const flush = exit();
+      const exit = argument === false ? undefined : scope();
+      const output = callback(
+        target[Observable](onUpdate, argument === true) as T
+      );
+      const flush = exit ? exit() : () => {};
 
       ignore = false;
       reset = output === null ? null : invoke;
@@ -234,9 +234,7 @@ function watch<T extends State>(
 
 let EffectContext: Set<() => void> | undefined;
 
-export function enter(ignore?: boolean) {
-  if (ignore) return () => () => {};
-
+export function scope() {
   const last = EffectContext;
   const context = (EffectContext = new Set());
 

@@ -1,12 +1,68 @@
 import { event, METHOD, watch } from '@expressive/mvc';
-import React, { ReactNode } from 'react';
+import React, { FunctionComponent, ReactNode } from 'react';
 
+import { Pragma, ReactState as State } from './state';
 import { provide, Layers } from './context';
-import { State, Context } from '.';
+import { Context } from '.';
 
 const OUTER = new WeakMap<Component, Context>();
 
-export class Component extends State {
+type HasProps<T extends State> = {
+  [K in Exclude<keyof T, keyof State>]?: T[K];
+};
+
+type ComponentProps<T extends State> = HasProps<T> & {
+  /**
+   * Callback for newly created instance. Only called once.
+   * @returns Callback to run when instance is destroyed.
+   */
+  is?: (instance: T) => void;
+
+  /**
+   * A fallback react tree to show when suspended.
+   * If not provided, `fallback` property of the State will be used.
+   */
+  fallback?: React.ReactNode;
+};
+
+type Props<T extends State> = T extends {
+  render(props: infer P, self: any): any;
+}
+  ? ComponentProps<T> & Omit<P, keyof AsComponent>
+  : ComponentProps<T> & { children?: React.ReactNode };
+
+/**
+ * Props which will not conflict with a State's use as a Component.
+ *
+ * Built-in properties must be optional, as they will always be omitted.
+ */
+type RenderProps<T extends State> = HasProps<T> & {
+  is?: never;
+  get?: never;
+  set?: never;
+};
+
+/** State which is not incompatable as Component in React. */
+interface AsComponent extends State {
+  render?(props: RenderProps<this>, self: this): React.ReactNode;
+  fallback?: React.ReactNode;
+}
+
+interface FC<
+  T extends State,
+  P extends State.Assign<T>
+> extends FunctionComponent<P & Props<T>> {
+  displayName?: string;
+  State: State.Extends<T>;
+}
+
+declare module './state' {
+  namespace ReactState {
+    export { ComponentProps, Props, RenderProps, AsComponent, FC };
+  }
+}
+
+class Component extends State {
   static contextType = Layers;
 
   private _props!: State.ComponentProps<this>;
@@ -37,9 +93,8 @@ export class Component extends State {
 
   constructor({ is, ...props }: any) {
     super(props, is);
-    const render = METHOD.get(this.render);
-    const Self = Render.bind(this, render);
-    this.render = () => React.createElement(Self);
+    const self = Render.bind(this, METHOD.get(this.render));
+    this.render = () => Pragma.createElement(self);
   }
 
   render(): ReactNode {
@@ -59,8 +114,8 @@ Object.defineProperty(Component.prototype, 'isReactComponent', {
   get: () => true
 });
 
-function Render<T extends Component>(this: T, render: () => React.ReactNode) {
-  const state = React.useState(() => {
+function Render<T extends Component>(this: T, render: () => ReactNode) {
+  const state = Pragma.useState(() => {
     event(this);
 
     const { context } = this;
@@ -82,21 +137,17 @@ function Render<T extends Component>(this: T, render: () => React.ReactNode) {
       };
     };
 
-    function Render() {
-      return render.call(active);
-    }
+    const Render = () => render.call(active);
 
     return () => {
       ready = false;
 
-      React.useEffect(didMount, []);
-      Promise.resolve(this.set()).finally(() => {
-        ready = true;
-      });
+      Pragma.useEffect(didMount, []);
+      setTimeout(() => (ready = true), 0);
 
       return provide(
         context,
-        React.createElement(Render),
+        Pragma.createElement(Render),
         active.fallback,
         String(this)
       );
@@ -105,3 +156,5 @@ function Render<T extends Component>(this: T, render: () => React.ReactNode) {
 
   return state[0]();
 }
+
+export { Component, FC, AsComponent, Props, RenderProps, HasProps };

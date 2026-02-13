@@ -1,4 +1,4 @@
-import { defineConfig } from 'tsup';
+import { defineConfig } from 'tsdown';
 
 export default defineConfig([
   {
@@ -6,26 +6,35 @@ export default defineConfig([
     sourcemap: true,
     clean: true,
     outDir: 'dist',
-    external: ['./adapter', './jsx-runtime'],
+    external: ['./state', './jsx-runtime'],
+    outExtensions: () => ({ js: '.js' }),
     entry: {
       index: 'src/index.ts',
-      adapter: 'src/adapter.ts',
+      state: 'src/state.ts',
       'jsx-runtime': 'src/jsx-runtime.ts',
       'jsx-dev-runtime': 'src/jsx-dev-runtime.ts'
     },
-    format: ['cjs']
+    format: ['cjs'],
+    outputOptions: {
+      exports: 'named'
+    }
   },
   {
     sourcemap: true,
+    unbundle: true,
     outDir: 'dist/esm',
-    external: ['./adapter', './jsx-runtime'],
-    outExtension: () => ({ js: '.js' }),
+    external: ['./state', './jsx-runtime'],
+    dts: false,
+    outExtensions: () => ({ js: '.js' }),
+    format: ['esm'],
     entry: {
       index: 'src/index.ts',
-      adapter: 'src/adapter.ts',
+      state: 'src/state.ts',
       'jsx-runtime': 'src/jsx-runtime.ts',
       'jsx-dev-runtime': 'src/jsx-dev-runtime.ts'
     },
-    format: ['esm']
+    outputOptions: {
+      exports: 'named'
+    }
   }
 ]);

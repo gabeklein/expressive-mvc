@@ -33,14 +33,14 @@ it("will throw if context doesn't exist if required", () => {
 
   const attempt = () => context.get(Example, true);
 
-  expect(attempt).toThrowError('Could not find Example in context.');
+  expect(attempt).toThrow('Could not find Example in context.');
 });
 
 it('will not create base State', () => {
   // @ts-expect-error
   const attempt = () => new Context({ State });
 
-  expect(attempt).toThrowError('Cannot create base State.');
+  expect(attempt).toThrow('Cannot create base State.');
 });
 
 it('will include children of State', () => {
@@ -96,7 +96,7 @@ it('will complain if multiple registered', () => {
 
   const fetch = () => context.get(Example);
 
-  expect(fetch).toThrowError(
+  expect(fetch).toThrow(
     `Did find Example in context, but multiple were defined.`
   );
 });
@@ -137,9 +137,9 @@ it('will destroy modules created by layer', () => {
 
   context2.pop();
 
-  expect(test1.destroyed).not.toBeCalled();
-  expect(test2.destroyed).not.toBeCalled();
-  expect(test3.destroyed).toBeCalled();
+  expect(test1.destroyed).not.toHaveBeenCalled();
+  expect(test2.destroyed).not.toHaveBeenCalled();
+  expect(test3.destroyed).toHaveBeenCalled();
 });
 
 describe('include', () => {
@@ -168,20 +168,20 @@ describe('include', () => {
 
     context.use({ foo, bar }, cb);
 
-    expect(cb).toBeCalledWith(foo);
-    expect(cb).toBeCalledWith(bar);
-    expect(cb).toBeCalledTimes(2);
+    expect(cb).toHaveBeenCalledWith(foo);
+    expect(cb).toHaveBeenCalledWith(bar);
+    expect(cb).toHaveBeenCalledTimes(2);
 
     context.use({ foo, bar }, cb);
 
-    expect(cb).toBeCalledTimes(2);
+    expect(cb).toHaveBeenCalledTimes(2);
 
     const foo2 = Foo.new();
 
     context.use({ foo, bar, foo2 }, cb);
 
-    expect(cb).toBeCalledWith(foo2);
-    expect(cb).toBeCalledTimes(3);
+    expect(cb).toHaveBeenCalledWith(foo2);
+    expect(cb).toHaveBeenCalledTimes(3);
   });
 
   it('will ignore subsequent if callback', () => {
@@ -193,7 +193,7 @@ describe('include', () => {
 
     expect(context.get(Foo)).toBeInstanceOf(Foo);
 
-    expect(cb).toBeCalledTimes(1);
+    expect(cb).toHaveBeenCalledTimes(1);
   });
 
   // This will be made more elegant later.
@@ -223,7 +223,7 @@ describe('include', () => {
     expect(context.get(Bar)).not.toBe(bar);
 
     // expect Baz will have been force-replaced.
-    expect(bazDidDie).toBeCalled();
+    expect(bazDidDie).toHaveBeenCalled();
 
     const newBaz = context.get(Baz);
 
@@ -251,11 +251,13 @@ describe('include', () => {
 });
 
 it('will pop child context', () => {
+  let order = 0;
+
   class Test extends State {
     constructor(...args: State.Args) {
       super(args);
       this.set(() => {
-        didDestroy(this.constructor.name);
+        didDestroy(++order, this.constructor.name);
       }, null);
     }
   }
@@ -269,22 +271,22 @@ it('will pop child context', () => {
   context.push({ Test2 }).push({ Test3 });
   context.pop();
 
-  expect(didDestroy).nthCalledWith(1, 'Test3');
-  expect(didDestroy).nthCalledWith(2, 'Test2');
-  expect(didDestroy).nthCalledWith(3, 'Test');
+  expect(didDestroy).toHaveBeenCalledWith(1, 'Test3');
+  expect(didDestroy).toHaveBeenCalledWith(2, 'Test2');
+  expect(didDestroy).toHaveBeenCalledWith(3, 'Test');
 });
 
 it('will throw on bad include', () => {
   const context = new Context();
 
-  expect(() => context.use(undefined as any)).toThrowError();
+  expect(() => context.use(undefined as any)).toThrow();
 });
 
 it('will throw on base State include', () => {
   const context = new Context();
 
   // @ts-ignore
-  expect(() => context.use({ State })).toThrowError(
+  expect(() => context.use({ State })).toThrow(
     'Cannot create base State.'
   );
 });
@@ -293,7 +295,7 @@ it('will throw on bad include property', () => {
   const context = new Context();
 
   // @ts-ignore
-  expect(() => context.use({ Thing: undefined })).toThrowError(
+  expect(() => context.use({ Thing: undefined })).toThrow(
     "Context may only include instance or class `extends State` but got undefined (as 'Thing')."
   );
 });
@@ -302,7 +304,7 @@ it('will throw on bad include property (no alias)', () => {
   const context = new Context();
 
   // @ts-ignore
-  expect(() => context.use({ [0]: undefined })).toThrowError(
+  expect(() => context.use({ [0]: undefined })).toThrow(
     'Context may only include instance or class `extends State` but got undefined.'
   );
 });
@@ -321,7 +323,7 @@ describe('Context.get callback overload (downstream registration)', () => {
     context.push(DownstreamState);
 
     // Callback should be called with the instance
-    expect(cb).toBeCalledTimes(1);
+    expect(cb).toHaveBeenCalledTimes(1);
     expect(cb.mock.calls[0][0]).toBeInstanceOf(DownstreamState);
   });
 
@@ -336,7 +338,7 @@ describe('Context.get callback overload (downstream registration)', () => {
     context.push(DownstreamState);
 
     // Callback should be called
-    expect(cb).toBeCalledTimes(1);
+    expect(cb).toHaveBeenCalledTimes(1);
 
     // Remove callback
     cancel();
@@ -345,7 +347,7 @@ describe('Context.get callback overload (downstream registration)', () => {
     context.push(DownstreamState);
 
     // Callback should not be called again
-    expect(cb).toBeCalledTimes(1);
+    expect(cb).toHaveBeenCalledTimes(1);
 
     context.pop();
   });
@@ -360,11 +362,11 @@ describe('Context.get callback overload (downstream registration)', () => {
     // Create a child context and register callback there
     const child = context.push(DownstreamState);
 
-    expect(cb).toBeCalledTimes(1);
+    expect(cb).toHaveBeenCalledTimes(1);
 
     // Pop child context
     child.pop();
 
-    expect(cleanup).toBeCalledTimes(1);
+    expect(cleanup).toHaveBeenCalledTimes(1);
   });
 });

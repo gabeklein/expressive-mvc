@@ -1,12 +1,12 @@
-import { State } from '@expressive/mvc';
-import React from 'react';
+import State from '@expressive/mvc';
 import Runtime from 'react/jsx-runtime';
+import React from 'react';
 
-import { Render } from './state.as';
+import { Render, AsComponent, Props } from './state';
 
 export declare namespace JSX {
   type ElementType =
-    | State.Extends<State.AsComponent>
+    | State.Extends<AsComponent>
     | React.JSX.ElementType
     | ((props: {}, ref?: any) => void);
 
@@ -15,7 +15,7 @@ export declare namespace JSX {
     C extends new (...args: any[]) => { props: infer U }
       ? U
       : C extends State.Extends<infer U>
-        ? State.Props<U>
+        ? Props<U>
         : React.JSX.LibraryManagedAttributes<C, P>;
 
   interface Element extends React.JSX.Element {}
@@ -37,7 +37,7 @@ const RENDER = new WeakMap<Function, React.ComponentType>();
 
 export function patch(
   this: (type: React.ElementType, ...args: any[]) => React.ReactElement,
-  type: React.ElementType | State.Class,
+  type: React.ElementType | State.Type,
   ...args: any[]
 ): React.ReactElement {
   if (State.is(type))

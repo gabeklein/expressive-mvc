@@ -15,15 +15,22 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "build": "tsup src/index.ts --dts"
+    "build": "tsdown",
+    "test": "tsc --noEmit && jest --collectCoverage",
+    "preversion": "npm run test && npm run build"
   },
   "dependencies": {
     "@expressive/mvc": "^0.71.0",
     "@expressive/react": "^0.71.0"
   },
   "devDependencies": {
+    "@swc/jest": "^0.2.24",
+    "@testing-library/jest-dom": "^6.8.0",
+    "@testing-library/preact": "^3.2.3",
+    "jest": "^27.5.1",
+    "jest-environment-jsdom": "^27.5.1",
     "preact": "^10.0.0",
-    "tsup": "^8.0.2"
+    "tsdown": "^0.20.1"
   },
   "peerDependencies": {
     "preact": "^10.0.0"

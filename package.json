@@ -14,13 +14,17 @@
 		"push": "lerna publish --conventional-commits --no-private"
 	},
 	"devDependencies": {
-		"@types/node": "^18.19.0",
-		"@types/react": "^19",
 		"jsdom": "^27.4.0",
-		"lerna": "^7.2.0",
-		"prettier": "^3.7.4",
 		"tsup": "^8.0.2",
-		"typescript": "^5.4.5",
-		"vitest": "^2.1.8"
+		"vitest": "^2.1.8",
+		"@swc/core": "^1.15.11",
+		"@swc/jest": "^0.2.39",
+		"@types/jest": "^30.0.0",
+		"@types/node": "^25.2.0",
+		"@types/react": "^19",
+		"jest": "^30.2.0",
+		"lerna": "^9.0.3",
+		"prettier": "^3.8.1",
+		"typescript": "^5.9.3"
 	}
 }

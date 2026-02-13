@@ -1,9 +1,8 @@
-import { vi, expect, it, describe } from '../vitest';
+import { vi, expect, it, describe, mockError, mockPromise } from '../vitest';
 import { Context } from './context';
 import { get } from './instruction/get';
 import { ref } from './instruction/ref';
 import { set } from './instruction/set';
-import { mockError, mockPromise } from '../vitest';
 import { State } from './state';
 
 it('will extend custom class', () => {
@@ -20,7 +19,7 @@ it('will not create base State', () => {
   // @ts-expect-error
   const create = () => State.new();
 
-  expect(create).toThrowError('Cannot create base State.');
+  expect(create).toThrow('Cannot create base State.');
 });
 
 it('will not create abstract State', () => {
@@ -99,14 +98,14 @@ it('will not ignore function properties', async () => {
     state.fn();
   });
 
-  expect(mockFunction).toBeCalled();
+  expect(mockFunction).toHaveBeenCalled();
 
   test.fn = mockFunction2;
 
   await expect(test).toHaveUpdated();
 
-  expect(mockFunction2).toBeCalled();
-  expect(mockFunction).toBeCalledTimes(1);
+  expect(mockFunction2).toHaveBeenCalled();
+  expect(mockFunction).toHaveBeenCalledTimes(1);
 });
 
 it('will iterate over properties', () => {
@@ -121,9 +120,9 @@ it('will iterate over properties', () => {
 
   for (const [key, value] of test) mock(key, value);
 
-  expect(mock).toBeCalledWith('foo', 1);
-  expect(mock).toBeCalledWith('bar', 2);
-  expect(mock).toBeCalledWith('baz', 3);
+  expect(mock).toHaveBeenCalledWith('foo', 1);
+  expect(mock).toHaveBeenCalledWith('bar', 2);
+  expect(mock).toHaveBeenCalledWith('baz', 3);
 });
 
 it('will destroy children before self', () => {
@@ -138,7 +137,7 @@ it('will destroy children before self', () => {
   test.nested.get(null, destroyed);
   test.set(null);
 
-  expect(destroyed).toBeCalled();
+  expect(destroyed).toHaveBeenCalled();
 });
 
 describe('methods', () => {
@@ -240,7 +239,7 @@ describe('subscriber', () => {
     state.value2 = 3;
     await expect(state).toHaveUpdated();
 
-    expect(effect).toBeCalledTimes(3);
+    expect(effect).toHaveBeenCalledTimes(3);
   });
 
   it('will ignore change to property not accessed', async () => {
@@ -262,7 +261,7 @@ describe('subscriber', () => {
      * subscriber assumes we don't care about updates
      * to this property, so it'l drop relevant events
      */
-    expect(effect).toBeCalledTimes(2);
+    expect(effect).toHaveBeenCalledTimes(2);
   });
 
   it('will not obstruct set-behavior', () => {
@@ -280,7 +279,7 @@ describe('subscriber', () => {
     });
 
     expect(test.value).toBe('bar');
-    expect(test.didSet).toBeCalledWith('bar', 'foo');
+    expect(test.didSet).toHaveBeenCalledWith('bar', 'foo');
   });
 });
 
@@ -320,7 +319,7 @@ describe('string coercion', () => {
       mock(String(state));
     });
 
-    expect(mock).toBeCalledWith('ID');
+    expect(mock).toHaveBeenCalledWith('ID');
   });
 });
 
@@ -544,17 +543,17 @@ describe('get method', () => {
 
       test.get('foo', mock);
 
-      expect(mock).toBeCalledTimes(0);
+      expect(mock).toHaveBeenCalledTimes(0);
 
       test.foo = 'bar';
       test.foo = 'baz';
 
-      expect(mock).toBeCalledTimes(2);
-      expect(mock).toBeCalledWith('foo', test);
+      expect(mock).toHaveBeenCalledTimes(2);
+      expect(mock).toHaveBeenCalledWith('foo', test);
 
       await expect(test).toHaveUpdated('foo');
 
-      expect(done).toBeCalledTimes(1);
+      expect(done).toHaveBeenCalledTimes(1);
     });
 
     it('will call on event', async () => {
@@ -563,12 +562,12 @@ describe('get method', () => {
 
       test.get('baz', mock);
 
-      expect(mock).not.toBeCalled();
+      expect(mock).not.toHaveBeenCalled();
 
       // dispatch explicit event
       test.set('baz');
 
-      expect(mock).toBeCalledWith('baz', test);
+      expect(mock).toHaveBeenCalledWith('baz', test);
     });
   });
 
@@ -591,11 +590,11 @@ describe('get method', () => {
 
       test.get(null, mock);
 
-      expect(mock).not.toBeCalled();
+      expect(mock).not.toHaveBeenCalled();
 
       test.set(null);
 
-      expect(mock).toBeCalled();
+      expect(mock).toHaveBeenCalled();
     });
   });
 
@@ -618,14 +617,14 @@ describe('get method', () => {
 
       test.get(effect);
 
-      expect(effect).toBeCalledWith(test, new Set());
+      expect(effect).toHaveBeenCalledWith(test, new Set());
 
       test.value1 = 2;
 
       // wait for update event, thus queue flushed
       await expect(test).toHaveUpdated('value1');
 
-      expect(effect).toBeCalledWith(test, new Set(['value1']));
+      expect(effect).toHaveBeenCalledWith(test, new Set(['value1']));
 
       test.value2 = 3;
       test.value3 = 4;
@@ -633,13 +632,13 @@ describe('get method', () => {
       // wait for update event to flush queue
       await expect(test).toHaveUpdated('value2', 'value3', 'value4');
 
-      expect(effect).toBeCalledWith(
+      expect(effect).toHaveBeenCalledWith(
         test,
         new Set(['value2', 'value3', 'value4'])
       );
 
       // expect two syncronous groups of updates.
-      expect(effect).toBeCalledTimes(3);
+      expect(effect).toHaveBeenCalledTimes(3);
     });
 
     it('will squash simultaneous updates', async () => {
@@ -658,7 +657,7 @@ describe('get method', () => {
       await expect(test).toHaveUpdated();
 
       // expect two syncronous groups of updates.
-      expect(mock).toBeCalledTimes(2);
+      expect(mock).toHaveBeenCalledTimes(2);
     });
 
     it('will squash computed updates', async () => {
@@ -676,7 +675,7 @@ describe('get method', () => {
       await expect(test).toHaveUpdated();
 
       // expect two syncronous groups of updates.
-      expect(mock).toBeCalledTimes(2);
+      expect(mock).toHaveBeenCalledTimes(2);
     });
 
     it('will update for nested values', async () => {
@@ -695,12 +694,12 @@ describe('get method', () => {
 
       test.get(effect);
 
-      expect(effect).toBeCalledTimes(1);
+      expect(effect).toHaveBeenCalledTimes(1);
       test.child.value = 'bar';
 
       await expect(test.child).toHaveUpdated();
 
-      expect(effect).toBeCalledTimes(2);
+      expect(effect).toHaveBeenCalledTimes(2);
     });
 
     it('will subscribe deeply', async () => {
@@ -731,35 +730,35 @@ describe('get method', () => {
         promise.resolve();
       });
 
-      expect(effect).toBeCalledWith('foo', 'bar');
+      expect(effect).toHaveBeenCalledWith('foo', 'bar');
       effect.mockClear();
 
       promise = mockPromise();
       parent.child.value = 'bar';
       await promise;
 
-      expect(effect).toBeCalledWith('bar', 'bar');
+      expect(effect).toHaveBeenCalledWith('bar', 'bar');
       effect.mockClear();
 
       promise = mockPromise();
       parent.child = new Child();
       await promise;
 
-      expect(effect).toBeCalledWith('foo', 'bar');
+      expect(effect).toHaveBeenCalledWith('foo', 'bar');
       effect.mockClear();
 
       promise = mockPromise();
       parent.child.value = 'bar';
       await promise;
 
-      expect(effect).toBeCalledWith('bar', 'bar');
+      expect(effect).toHaveBeenCalledWith('bar', 'bar');
       effect.mockClear();
 
       promise = mockPromise();
       parent.child.grandchild.value = 'foo';
       await promise;
 
-      expect(effect).toBeCalledWith('bar', 'foo');
+      expect(effect).toHaveBeenCalledWith('bar', 'foo');
       effect.mockClear();
     });
 
@@ -784,28 +783,28 @@ describe('get method', () => {
 
       state.child = new Child();
       await expect(state).toHaveUpdated();
-      expect(mock).toBeCalledTimes(2);
+      expect(mock).toHaveBeenCalledTimes(2);
 
       // Will refresh on sub-value change.
       state.child.value = 'bar';
       await expect(state.child).toHaveUpdated();
-      expect(mock).toBeCalledTimes(3);
+      expect(mock).toHaveBeenCalledTimes(3);
 
       // Will refresh on undefined.
       state.child = undefined;
       await expect(state).toHaveUpdated();
       expect(state.child).toBeUndefined();
-      expect(mock).toBeCalledTimes(4);
+      expect(mock).toHaveBeenCalledTimes(4);
 
       // Will refresh on repalcement.
       state.child = new Child();
       await expect(state).toHaveUpdated();
-      expect(mock).toBeCalledTimes(5);
+      expect(mock).toHaveBeenCalledTimes(5);
 
       // New subscription still works.
       state.child.value = 'bar';
       await expect(state.child).toHaveUpdated();
-      expect(mock).toBeCalledTimes(6);
+      expect(mock).toHaveBeenCalledTimes(6);
     });
 
     it('will not update for removed children', async () => {
@@ -823,11 +822,11 @@ describe('get method', () => {
       });
 
       test.get(effect);
-      expect(effect).toBeCalledTimes(1);
+      expect(effect).toHaveBeenCalledTimes(1);
 
       test.nested.value++;
       await expect(test.nested).toHaveUpdated();
-      expect(effect).toBeCalledTimes(2);
+      expect(effect).toHaveBeenCalledTimes(2);
 
       const old = test.nested;
 
@@ -835,13 +834,13 @@ describe('get method', () => {
       await expect(test).toHaveUpdated();
 
       // Updates because nested property is new.
-      expect(effect).toBeCalledTimes(3);
+      expect(effect).toHaveBeenCalledTimes(3);
 
       old.value++;
       await expect(old).toHaveUpdated();
 
       // Should not update on new event from previous.
-      expect(effect).toBeCalledTimes(3);
+      expect(effect).toHaveBeenCalledTimes(3);
     });
 
     it('will call immediately', async () => {
@@ -850,7 +849,7 @@ describe('get method', () => {
 
       test.get(testEffect);
 
-      expect(testEffect).toBeCalled();
+      expect(testEffect).toHaveBeenCalled();
     });
 
     it('will call only when ready', async () => {
@@ -871,13 +870,13 @@ describe('get method', () => {
       state.value1++;
       await expect(state).toHaveUpdated();
 
-      expect(mock).toBeCalled();
+      expect(mock).toHaveBeenCalled();
 
       state.value3++;
       await expect(state).toHaveUpdated();
 
       // expect pre-existing listener to hit
-      expect(mock).toBeCalledTimes(3);
+      expect(mock).toHaveBeenCalledTimes(3);
     });
 
     it('will bind to state called upon', () => {
@@ -892,7 +891,7 @@ describe('get method', () => {
 
       test.get(testEffect);
 
-      expect(didCreate).toBeCalledWith(test);
+      expect(didCreate).toHaveBeenCalledWith(test);
     });
 
     it('will work without State.new', async () => {
@@ -901,11 +900,11 @@ describe('get method', () => {
 
       test.get(mock);
 
-      expect(mock).not.toBeCalled();
+      expect(mock).not.toHaveBeenCalled();
 
       test.set('EVENT');
 
-      expect(mock).toBeCalled();
+      expect(mock).toHaveBeenCalled();
     });
 
     it('will not subscribe from method', async () => {
@@ -929,12 +928,12 @@ describe('get method', () => {
       test.foo++;
 
       await expect(test).toHaveUpdated();
-      expect(effect).toBeCalledTimes(2);
+      expect(effect).toHaveBeenCalledTimes(2);
 
       test.bar++;
 
       await expect(test).toHaveUpdated();
-      expect(effect).toBeCalledTimes(2);
+      expect(effect).toHaveBeenCalledTimes(2);
     });
 
     it('will subscribe method passed directly', async () => {
@@ -956,7 +955,7 @@ describe('get method', () => {
 
       const test = Test.new();
 
-      expect(didInvoke).toBeCalledWith(1);
+      expect(didInvoke).toHaveBeenCalledWith(1);
 
       test.foo = 2;
 
@@ -977,13 +976,13 @@ describe('get method', () => {
           return mock;
         });
 
-        expect(mock).not.toBeCalled();
+        expect(mock).not.toHaveBeenCalled();
 
         state.value1 = 2;
 
         await expect(state).toHaveUpdated();
 
-        expect(mock).toBeCalledWith(true);
+        expect(mock).toHaveBeenCalledWith(true);
       });
 
       it('will callback on null event', async () => {
@@ -993,7 +992,7 @@ describe('get method', () => {
         test.get(() => willDestroy);
         test.set(null);
 
-        expect(willDestroy).toBeCalledWith(null);
+        expect(willDestroy).toHaveBeenCalledWith(null);
       });
 
       it('will cancel effect on callback', async () => {
@@ -1009,18 +1008,18 @@ describe('get method', () => {
         test.value1 += 1;
 
         await expect(test).toHaveUpdated();
-        expect(didEffect).toBeCalledTimes(2);
+        expect(didEffect).toHaveBeenCalledTimes(2);
 
         mock.mockReset();
 
         done();
 
-        expect(mock).toBeCalledWith(false);
+        expect(mock).toHaveBeenCalledWith(false);
 
         test.value1 += 1;
         await expect(test).toHaveUpdated();
 
-        expect(didEffect).toBeCalledTimes(2);
+        expect(didEffect).toHaveBeenCalledTimes(2);
       });
 
       it('will cancel if null', async () => {
@@ -1035,7 +1034,7 @@ describe('get method', () => {
         test.value1 += 1;
         await expect(test).toHaveUpdated();
 
-        expect(didEffect).toBeCalledTimes(1);
+        expect(didEffect).toHaveBeenCalledTimes(1);
       });
 
       it('will cancel if null after callback', async () => {
@@ -1055,13 +1054,13 @@ describe('get method', () => {
         test.value1 += 1;
         await expect(test).toHaveUpdated();
 
-        expect(didEffect).toBeCalledTimes(2);
+        expect(didEffect).toHaveBeenCalledTimes(2);
 
         test.value1 += 1;
         await expect(test).toHaveUpdated();
 
-        expect(didEffect).toBeCalledTimes(2);
-        expect(cleanup).toBeCalledTimes(1);
+        expect(didEffect).toHaveBeenCalledTimes(2);
+        expect(cleanup).toHaveBeenCalledTimes(1);
       });
 
       // TODO: should this complain?
@@ -1072,7 +1071,7 @@ describe('get method', () => {
           state.get(() => 'foobar');
         };
 
-        expect(attempt).not.toThrowError();
+        expect(attempt).not.toThrow();
       });
 
       it('will ignore returned promise', () => {
@@ -1081,7 +1080,7 @@ describe('get method', () => {
           state.get(async () => {});
         };
 
-        expect(attempt).not.toThrowError();
+        expect(attempt).not.toThrow();
       });
     });
 
@@ -1101,13 +1100,13 @@ describe('get method', () => {
           didInvoke($.value);
         });
 
-        expect(didTry).toBeCalled();
-        expect(didInvoke).not.toBeCalled();
+        expect(didTry).toHaveBeenCalled();
+        expect(didInvoke).not.toHaveBeenCalled();
 
         test.value = 'foobar';
 
         await expect(test).toHaveUpdated();
-        expect(didInvoke).toBeCalledWith('foobar');
+        expect(didInvoke).toHaveBeenCalledWith('foobar');
       });
 
       it('will still subscribe', async () => {
@@ -1123,13 +1122,13 @@ describe('get method', () => {
         test.value = 'foo';
 
         await expect(test).toHaveUpdated();
-        expect(didInvoke).toBeCalledWith('foo');
+        expect(didInvoke).toHaveBeenCalledWith('foo');
 
         test.value = 'bar';
 
         await expect(test).toHaveUpdated();
-        expect(didInvoke).toBeCalledWith('bar');
-        expect(didTry).toBeCalledTimes(3);
+        expect(didInvoke).toHaveBeenCalledWith('bar');
+        expect(didTry).toHaveBeenCalledTimes(3);
       });
 
       it('will not update while pending', async () => {
@@ -1144,18 +1143,18 @@ describe('get method', () => {
           didUpdate(state.value);
         });
 
-        expect(willUpdate).toBeCalledTimes(1);
+        expect(willUpdate).toHaveBeenCalledTimes(1);
 
         test.other = 'bar';
 
         await expect(test).toHaveUpdated();
-        expect(willUpdate).toBeCalledTimes(1);
+        expect(willUpdate).toHaveBeenCalledTimes(1);
 
         test.value = 'foo';
 
         await expect(test).toHaveUpdated();
-        expect(didUpdate).toBeCalledWith('foo');
-        expect(willUpdate).toBeCalledTimes(2);
+        expect(didUpdate).toHaveBeenCalledWith('foo');
+        expect(willUpdate).toHaveBeenCalledTimes(2);
       });
     });
 
@@ -1176,7 +1175,7 @@ describe('get method', () => {
         state.value1++;
         await expect(state).toHaveUpdated();
 
-        expect(mock).toBeCalledTimes(2);
+        expect(mock).toHaveBeenCalledTimes(2);
       });
 
       it('will watch computed value', async () => {
@@ -1199,7 +1198,7 @@ describe('get method', () => {
         state.value1++;
         await expect(state).toHaveUpdated();
 
-        expect(mock).toBeCalled();
+        expect(mock).toHaveBeenCalled();
       });
 
       it('will remove listener on callback', async () => {
@@ -1215,17 +1214,17 @@ describe('get method', () => {
 
         test.value++;
         await expect(test).toHaveUpdated();
-        expect(mock).toBeCalledTimes(2);
+        expect(mock).toHaveBeenCalledTimes(2);
 
         test.value++;
         await expect(test).toHaveUpdated();
-        expect(mock).toBeCalledTimes(3);
+        expect(mock).toHaveBeenCalledTimes(3);
 
         test.done();
 
         test.value++;
         await expect(test).toHaveUpdated();
-        expect(mock).toBeCalledTimes(3);
+        expect(mock).toHaveBeenCalledTimes(3);
       });
     });
   });
@@ -1323,7 +1322,7 @@ describe('set method', () => {
       test.foo = 'bar';
 
       await expect(test).toHaveUpdated('foo');
-      expect(mock).toBeCalledWith('bar', undefined);
+      expect(mock).toHaveBeenCalledWith('bar', undefined);
 
       test.bar = 'bob';
 
@@ -1331,7 +1330,7 @@ describe('set method', () => {
 
       // bar assignment is ignored because it's not formally defined
       await expect(test).not.toHaveUpdated('bar');
-      expect(mock).not.toBeCalledWith('bar', 'bob');
+      expect(mock).not.toHaveBeenCalledWith('bar', 'bob');
 
       // assign bar formally adding to state
       test.set('bar', 'baz', true);
@@ -1341,19 +1340,19 @@ describe('set method', () => {
       expect(test).toHaveUpdated('bar');
 
       // The effect isn't observing bar yet
-      expect(mock).not.toBeCalledWith('bar', 'baz');
+      expect(mock).not.toHaveBeenCalledWith('bar', 'baz');
 
       // force refresh using foo instead
       test.set('foo');
       await expect(test).toHaveUpdated('foo');
-      expect(mock).toBeCalledWith('bar', 'baz');
+      expect(mock).toHaveBeenCalledWith('bar', 'baz');
 
       test.bar = 'qux';
 
       // updates no longer ignored
       await expect(test).toHaveUpdated('bar');
       expect(test.bar).toBe('qux');
-      expect(mock).toBeCalledWith('bar', 'qux');
+      expect(mock).toHaveBeenCalledWith('bar', 'qux');
     });
   });
 
@@ -1405,10 +1404,10 @@ describe('set method', () => {
       const effect = vi.fn();
 
       test.get(effect);
-      expect(effect).not.toBeCalled();
+      expect(effect).not.toHaveBeenCalled();
 
       test.set();
-      expect(effect).toBeCalled();
+      expect(effect).toHaveBeenCalled();
     });
   });
 
@@ -1426,8 +1425,8 @@ describe('set method', () => {
       test.foo = 'bar';
       test.foo = 'baz';
 
-      expect(mock).toBeCalledWith('foo', test);
-      expect(mock).toBeCalledTimes(2);
+      expect(mock).toHaveBeenCalledWith('foo', test);
+      expect(mock).toHaveBeenCalledTimes(2);
     });
 
     it('will not self-update', () => {
@@ -1443,7 +1442,7 @@ describe('set method', () => {
       test.set(mock);
       test.foo = 'bar';
 
-      expect(mock).toBeCalledTimes(1);
+      expect(mock).toHaveBeenCalledTimes(1);
       expect(test.foo).toBe('baz');
     });
   });
@@ -1462,11 +1461,11 @@ describe('set method', () => {
 
       test.foo = 'bar';
       test.foo = 'baz';
-      expect(didUpdateFoo).toBeCalledWith('foo', test);
-      expect(didUpdateFoo).toBeCalledTimes(2);
+      expect(didUpdateFoo).toHaveBeenCalledWith('foo', test);
+      expect(didUpdateFoo).toHaveBeenCalledTimes(2);
 
       test.bar = 'baz';
-      expect(didUpdateFoo).toBeCalledTimes(2);
+      expect(didUpdateFoo).toHaveBeenCalledTimes(2);
     });
 
     it('will self-unsubscribe', async () => {
@@ -1482,7 +1481,7 @@ describe('set method', () => {
       test.foo = 'bar';
       test.foo = 'baz';
 
-      expect(didUpdateFoo).toBeCalledTimes(1);
+      expect(didUpdateFoo).toHaveBeenCalledTimes(1);
     });
 
     it('will call synconously on destroy', async () => {
@@ -1496,7 +1495,7 @@ describe('set method', () => {
       test.set(didDestroy, null);
       test.set(null);
 
-      expect(didDestroy).toBeCalledWith(null, test);
+      expect(didDestroy).toHaveBeenCalledWith(null, test);
     });
   });
 
@@ -1521,9 +1520,9 @@ describe('set method', () => {
       test.foo = 2;
       test.bar = 2;
 
-      expect(mock).toBeCalledWith('foo', { foo: 1, bar: 1, baz: 2 });
-      expect(mock).toBeCalledWith('foo', { foo: 2, bar: 1, baz: 2 });
-      expect(mock).toBeCalledWith('bar', { foo: 2, bar: 2, baz: 2 });
+      expect(mock).toHaveBeenCalledWith('foo', { foo: 1, bar: 1, baz: 2 });
+      expect(mock).toHaveBeenCalledWith('foo', { foo: 2, bar: 1, baz: 2 });
+      expect(mock).toHaveBeenCalledWith('bar', { foo: 2, bar: 2, baz: 2 });
 
       done();
     });
@@ -1538,12 +1537,12 @@ describe('set method', () => {
       test.foo = 1;
       test.bar = 2;
 
-      expect(didUpdate).toBeCalledTimes(2);
-      expect(didUpdateAsync).not.toBeCalled();
+      expect(didUpdate).toHaveBeenCalledTimes(2);
+      expect(didUpdateAsync).not.toHaveBeenCalled();
 
       await expect(test).toHaveUpdated();
 
-      expect(didUpdateAsync).toBeCalledTimes(1);
+      expect(didUpdateAsync).toHaveBeenCalledTimes(1);
 
       done();
     });
@@ -1559,7 +1558,7 @@ describe('set method', () => {
       test.foo = 1;
 
       await expect(test).toHaveUpdated();
-      expect(error).toBeCalledWith(oops);
+      expect(error).toHaveBeenCalledWith(oops);
 
       done();
     });
@@ -1583,7 +1582,7 @@ describe('set method', () => {
 
       test.bar = 2;
 
-      expect(callback).toBeCalledWith('bar', test);
+      expect(callback).toHaveBeenCalledWith('bar', test);
     });
 
     it('will disallow update if state is destroyed', () => {
@@ -1599,10 +1598,10 @@ describe('set method', () => {
 
       test.set(null);
 
-      expect(() => test.foo++).toThrowError(
+      expect(() => test.foo++).toThrow(
         'Tried to update ID.foo but state is destroyed.'
       );
-      expect(callback).toBeCalledTimes(1);
+      expect(callback).toHaveBeenCalledTimes(1);
     });
 
     it.todo('will throw clear error on bad update');
@@ -1745,14 +1744,14 @@ describe('new method', () => {
     const didCreate = vi.fn();
 
     class Test extends State {
-      new() {
+      protected new() {
         didCreate();
       }
     }
 
     Test.new();
 
-    expect(didCreate).toBeCalledTimes(1);
+    expect(didCreate).toHaveBeenCalledTimes(1);
   });
 
   it('will cleanup if returns function', () => {
@@ -1760,32 +1759,19 @@ describe('new method', () => {
     const didCreate = vi.fn(() => didDestroy);
 
     class Test extends State {
-      new() {
+      protected new() {
         return didCreate();
       }
     }
 
     const state = Test.new();
 
-    expect(didCreate).toBeCalledTimes(1);
-    expect(didDestroy).not.toBeCalled();
+    expect(didCreate).toHaveBeenCalledTimes(1);
+    expect(didDestroy).not.toHaveBeenCalled();
 
     state.set(null);
 
-    expect(didDestroy).toBeCalledTimes(1);
-  });
-
-  it('will enforce signature', () => {
-    class Test extends State {
-      new(foo: string) {
-        return foo;
-      }
-    }
-
-    void function test() {
-      // @ts-expect-error
-      Test.new();
-    };
+    expect(didDestroy).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -1804,12 +1790,12 @@ describe('new method (static)', () => {
 
     const state = Test.new(didCreate);
 
-    expect(didCreate).toBeCalledTimes(1);
-    expect(didDestroy).not.toBeCalled();
+    expect(didCreate).toHaveBeenCalledTimes(1);
+    expect(didDestroy).not.toHaveBeenCalled();
 
     state.set(null);
 
-    expect(didDestroy).toBeCalledTimes(1);
+    expect(didDestroy).toHaveBeenCalledTimes(1);
   });
 
   it('will apply object returned by callback', () => {
@@ -1854,12 +1840,12 @@ describe('new method (static)', () => {
     expect(test.foo).toBe(2);
     expect(test.bar).toBe(3);
     expect(String(test)).toBe('Test-ID');
-    expect(willCreate).toBeCalledTimes(1);
-    expect(willDestroy).not.toBeCalled();
+    expect(willCreate).toHaveBeenCalledTimes(1);
+    expect(willDestroy).not.toHaveBeenCalled();
 
     test.set(null);
 
-    expect(willDestroy).toBeCalledTimes(1);
+    expect(willDestroy).toHaveBeenCalledTimes(1);
   });
 
   it('will flatten inherited arguments', () => {
@@ -1915,13 +1901,13 @@ describe('new method (static)', () => {
 
     const test = Test.new(willCreate1, willCreate2);
 
-    expect(willCreate1).toBeCalledTimes(1);
-    expect(willCreate2).toBeCalledTimes(1);
+    expect(willCreate1).toHaveBeenCalledTimes(1);
+    expect(willCreate2).toHaveBeenCalledTimes(1);
 
     test.set(null);
 
-    expect(willDestroy1).toBeCalledTimes(1);
-    expect(willDestroy2).toBeCalledTimes(1);
+    expect(willDestroy1).toHaveBeenCalledTimes(1);
+    expect(willDestroy2).toHaveBeenCalledTimes(1);
   });
 
   it('will ingore promise from callback', () => {
@@ -1929,7 +1915,7 @@ describe('new method (static)', () => {
 
     Test.new(didCreate);
 
-    expect(didCreate).toBeCalledTimes(1);
+    expect(didCreate).toHaveBeenCalledTimes(1);
   });
 
   // TODO: fix. This fails despite error intercept.
@@ -1940,12 +1926,12 @@ describe('new method (static)', () => {
     const init = vi.fn(() => Promise.reject(expects));
     const test = Test.new('ID', init);
 
-    expect(init).toBeCalledTimes(1);
+    expect(init).toHaveBeenCalledTimes(1);
 
     await expect(test).not.toHaveUpdated();
 
-    expect(error).toBeCalledWith('Async error in constructor for ID:');
-    expect(error).toBeCalledWith(expects);
+    expect(error).toHaveBeenCalledWith('Async error in constructor for ID:');
+    expect(error).toHaveBeenCalledWith(expects);
 
     error.mockRestore();
   });
@@ -2043,7 +2029,7 @@ describe('on method (static)', () => {
     const done = Test.on(mock);
     const test = Test.new();
 
-    expect(mock).toBeCalledWith(true, test);
+    expect(mock).toHaveBeenCalledWith(true, test);
 
     done();
   });
@@ -2056,14 +2042,14 @@ describe('on method (static)', () => {
     test.set('event');
     test.foo = 'baz';
 
-    expect(mock).toBeCalledWith('event', test);
-    expect(mock).toBeCalledWith('foo', test);
+    expect(mock).toHaveBeenCalledWith('event', test);
+    expect(mock).toHaveBeenCalledWith('foo', test);
 
     await test.set();
-    expect(mock).toBeCalledWith(false, test);
+    expect(mock).toHaveBeenCalledWith(false, test);
 
     test.set(null);
-    expect(mock).toBeCalledWith(null, test);
+    expect(mock).toHaveBeenCalledWith(null, test);
 
     done();
   });
@@ -2083,9 +2069,9 @@ describe('on method (static)', () => {
 
     const test = Test2.new();
 
-    expect(createState).toBeCalledWith(true, test);
-    expect(createTest).toBeCalledWith(true, test);
-    expect(createTest2).toBeCalledWith(true, test);
+    expect(createState).toHaveBeenCalledWith(true, test);
+    expect(createTest).toHaveBeenCalledWith(true, test);
+    expect(createTest2).toHaveBeenCalledWith(true, test);
 
     done.forEach((done) => done());
   });
@@ -2098,7 +2084,7 @@ describe('on method (static)', () => {
 
     Test2.new();
 
-    expect(didCreate).toBeCalledTimes(1);
+    expect(didCreate).toHaveBeenCalledTimes(1);
 
     done.forEach((done) => done());
   });
@@ -2108,12 +2094,12 @@ describe('on method (static)', () => {
     const done = Test.on(mock);
 
     Test.new();
-    expect(mock).toBeCalled();
+    expect(mock).toHaveBeenCalled();
 
     done();
 
     Test.new();
-    expect(mock).toBeCalledTimes(1);
+    expect(mock).toHaveBeenCalledTimes(1);
   });
 
   it('will run callback on event', () => {
@@ -2124,11 +2110,11 @@ describe('on method (static)', () => {
 
     const test = Test.new();
 
-    expect(mock).toBeCalledWith(true, undefined);
+    expect(mock).toHaveBeenCalledWith(true, undefined);
 
     test.foo = 'baz';
 
-    expect(mock).toBeCalledWith('foo', 'baz');
+    expect(mock).toHaveBeenCalledWith('foo', 'baz');
 
     done();
   });
@@ -2155,10 +2141,10 @@ describe('context method (static)', () => {
 
     Context.get(test, mock);
 
-    expect(mock).not.toBeCalled();
+    expect(mock).not.toHaveBeenCalled();
 
     const context = new Context({ test });
 
-    expect(mock).toBeCalledWith(context);
+    expect(mock).toHaveBeenCalledWith(context);
   });
 });

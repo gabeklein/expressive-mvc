@@ -14,6 +14,7 @@
     "expressive",
     "mvc"
   ],
+  "type": "module",
   "main": "dist/index.js",
   "module": "dist/esm/index.js",
   "types": "dist/index.d.ts",
@@ -21,16 +22,15 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsup",
+    "build": "tsdown",
     "test": "tsc --noEmit && vitest run --coverage",
     "prebuild": "rm -rf dist",
     "preversion": "npm run test && npm run build"
   },
   "devDependencies": {
     "@types/node": "^18.19.0",
-    "@vitest/coverage-v8": "2.1.9",
-    "tsup": "^8.0.2",
+    "tsdown": "^0.20.1",
     "vitest": "^2.1.8"
   },
-  "version": "0.72.0"
+  "version": "0.73.1"
 }

@@ -15,7 +15,7 @@ describe('instruction', () => {
 
     Test.new();
 
-    expect(didRunInstruction).toBeCalledWith('property');
+    expect(didRunInstruction).toHaveBeenCalledWith('property');
   });
 
   describe('symbol', () => {
@@ -67,11 +67,11 @@ describe('instruction', () => {
 
       const instance = Test.new();
 
-      expect(mockApply).toBeCalledWith('property', expect.any(Test), {});
-      expect(mockAccess).not.toBeCalled();
+      expect(mockApply).toHaveBeenCalledWith('property', expect.any(Test), {});
+      expect(mockAccess).not.toHaveBeenCalled();
 
       expect(instance.property).toBe('foobar');
-      expect(mockAccess).toBeCalledWith(instance);
+      expect(mockAccess).toHaveBeenCalledWith(instance);
     });
 
     it('will pass subscriber if within one', () => {
@@ -87,7 +87,7 @@ describe('instruction', () => {
         void own.property;
       });
 
-      expect(didGetValue).toBeCalledWith(state);
+      expect(didGetValue).toHaveBeenCalledWith(state);
     });
 
     it('will not throw suspense if get (required) is false', async () => {
@@ -102,7 +102,7 @@ describe('instruction', () => {
       test.value = 'foo';
 
       await expect(test).toHaveUpdated();
-      expect(effect).toBeCalledTimes(2);
+      expect(effect).toHaveBeenCalledTimes(2);
     });
   });
 
@@ -115,7 +115,7 @@ describe('instruction', () => {
       const test = Test.new('ID');
       const assign = () => (test.value = 'foo');
 
-      expect(assign).toThrowError(`ID.value is read-only.`);
+      expect(assign).toThrow(`ID.value is read-only.`);
     });
 
     it('will prevent update if returns false', async () => {
@@ -137,12 +137,12 @@ describe('instruction', () => {
       expect(test.property).toBe('foobar');
 
       test.property = 'test';
-      expect(didSetValue).toBeCalledWith('test', 'foobar');
+      expect(didSetValue).toHaveBeenCalledWith('test', 'foobar');
       expect(test.property).toBe('test');
       await expect(test).toHaveUpdated();
 
       test.property = 'ignore';
-      expect(didSetValue).toBeCalledWith('ignore', 'test');
+      expect(didSetValue).toHaveBeenCalledWith('ignore', 'test');
       expect(test.property).toBe('test');
       await expect(test).not.toHaveUpdated();
     });
@@ -193,7 +193,7 @@ describe('instruction', () => {
       test.property = 'test';
 
       expect(test.property).toBe('test!');
-      expect(didUpdate).toBeCalledTimes(1);
+      expect(didUpdate).toHaveBeenCalledTimes(1);
     });
 
     it('will not update on reassignment', () => {
@@ -216,7 +216,7 @@ describe('instruction', () => {
       test.property = 'test';
 
       expect(test.property).toBe('test!');
-      expect(didUpdate).toBeCalledTimes(1);
+      expect(didUpdate).toHaveBeenCalledTimes(1);
     });
   });
 });
@@ -234,7 +234,7 @@ describe('state', () => {
 
     Test.new();
 
-    expect(mockInit).toBeCalledTimes(1);
+    expect(mockInit).toHaveBeenCalledTimes(1);
   });
 
   it('will not create base State', () => {
@@ -245,7 +245,7 @@ describe('state', () => {
 
     const attempt = () => Test.new();
 
-    expect(attempt).toThrowError('Cannot create base State.');
+    expect(attempt).toThrow('Cannot create base State.');
   });
 
   it('will run callback on every assign', () => {
@@ -260,10 +260,10 @@ describe('state', () => {
     const parent = Parent.new();
 
     // Initial assignment
-    expect(callback).toBeCalledTimes(1);
+    expect(callback).toHaveBeenCalledTimes(1);
 
     parent.child = new Child();
-    expect(callback).toBeCalledTimes(2);
+    expect(callback).toHaveBeenCalledTimes(2);
   });
 
   it.todo('will run callback after assign completes');
@@ -280,12 +280,12 @@ describe('state', () => {
 
     expect(() => {
       parent.child = Unrelated.new('ID');
-    }).toThrowError(`ID.child expected State of type Child but got Unrelated.`);
+    }).toThrow(`ID.child expected State of type Child but got Unrelated.`);
 
     expect(() => {
       // @ts-expect-error
       parent.child = undefined;
-    }).toThrowError(`ID.child expected State of type Child but got undefined.`);
+    }).toThrow(`ID.child expected State of type Child but got undefined.`);
   });
 
   it('will allow undefined', () => {

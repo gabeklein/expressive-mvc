@@ -1,12 +1,11 @@
 import { expect, it, act, render } from '../vitest';
-import { ReactNode } from 'react';
 import { Component } from './component';
 
 it('will render MockComponent', async () => {
   class MockComponent extends Component {
     something = 'World';
 
-    render(): ReactNode {
+    render() {
       return <p>Hello {this.something}</p>;
     }
   }

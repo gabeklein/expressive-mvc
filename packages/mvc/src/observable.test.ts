@@ -1,4 +1,4 @@
-import { watch, Observable } from './control';
+import { watch, Observable } from './observable';
 import { set } from './instruction/set';
 import { use } from './instruction/use';
 import { mockError, vi, describe, it, expect } from '../vitest';
@@ -19,7 +19,7 @@ describe('effect', () => {
 
     Test.new();
 
-    expect(mock).toBeCalledWith({ foo: 1, bar: 2 });
+    expect(mock).toHaveBeenCalledWith({ foo: 1, bar: 2 });
   });
 
   it('will enforce values if required', () => {
@@ -38,7 +38,7 @@ describe('effect', () => {
       );
     };
 
-    expect(attempt).toThrowError(`ID.property is required in this context.`);
+    expect(attempt).toThrow(`ID.property is required in this context.`);
   });
 
   it('will still get events after silent ones', async () => {
@@ -54,15 +54,15 @@ describe('effect', () => {
       didGetValue($.value1, $.value2);
     });
 
-    expect(didGetValue).toBeCalledWith(1, 2);
+    expect(didGetValue).toHaveBeenCalledWith(1, 2);
 
     test.set({ value1: 10 }, true);
     test.set({ value2: 20 });
 
     await expect(test).toHaveUpdated();
 
-    expect(didGetValue).toBeCalledWith(10, 20);
-    expect(didGetValue).toBeCalledTimes(2);
+    expect(didGetValue).toHaveBeenCalledWith(10, 20);
+    expect(didGetValue).toHaveBeenCalledTimes(2);
   });
 
   it('will cleanup nested effects', async () => {
@@ -80,28 +80,28 @@ describe('effect', () => {
       });
     });
 
-    expect(didInvoke).toBeCalledTimes(1);
-    expect(didInvoke).toBeCalledWith({ foo: 1, bar: 2 });
+    expect(didInvoke).toHaveBeenCalledTimes(1);
+    expect(didInvoke).toHaveBeenCalledWith({ foo: 1, bar: 2 });
 
     await test.set({ bar: 3 });
 
-    expect(didInvoke).toBeCalledWith({ foo: 1, bar: 3 });
+    expect(didInvoke).toHaveBeenCalledWith({ foo: 1, bar: 3 });
 
     await test.set({ foo: 2, bar: 4 });
 
-    expect(didInvoke).toBeCalledWith({ foo: 2, bar: 4 });
-    expect(didInvoke).not.toBeCalledWith({ foo: 1, bar: 4 });
+    expect(didInvoke).toHaveBeenCalledWith({ foo: 2, bar: 4 });
+    expect(didInvoke).not.toHaveBeenCalledWith({ foo: 1, bar: 4 });
 
     await test.set({ bar: 2 });
 
-    expect(didInvoke).toBeCalledWith({ foo: 2, bar: 2 });
+    expect(didInvoke).toHaveBeenCalledWith({ foo: 2, bar: 2 });
 
     done();
 
     await test.set({ bar: 1 });
 
-    expect(didInvoke).not.toBeCalledWith({ foo: 2, bar: 1 });
-    expect(didInvoke).toBeCalledTimes(4);
+    expect(didInvoke).not.toHaveBeenCalledWith({ foo: 2, bar: 1 });
+    expect(didInvoke).toHaveBeenCalledTimes(4);
   });
 
   it('will ignore circular update', async () => {
@@ -118,7 +118,7 @@ describe('effect', () => {
       test.bar = foo;
     });
 
-    expect(didUpdate).toBeCalledTimes(1);
+    expect(didUpdate).toHaveBeenCalledTimes(1);
     expect(didUpdate).toHaveBeenCalledWith(1, undefined);
 
     // is syncronously 1 after effect did run.
@@ -132,13 +132,13 @@ describe('effect', () => {
     await expect(test).toHaveUpdated('foo');
     expect(didUpdate).toHaveBeenCalledWith(2, 1);
 
-    expect(didUpdate).toBeCalledTimes(2);
+    expect(didUpdate).toHaveBeenCalledTimes(2);
     expect(test.bar).toBe(2);
 
     test.foo = 3;
     await expect(test).toHaveUpdated('foo');
 
-    expect(didUpdate).toBeCalledTimes(3);
+    expect(didUpdate).toHaveBeenCalledTimes(3);
     expect(test.bar).toBe(3);
   });
 
@@ -156,7 +156,7 @@ describe('effect', () => {
       test.bar = foo;
     });
 
-    expect(didUpdate).toBeCalledTimes(1);
+    expect(didUpdate).toHaveBeenCalledTimes(1);
     expect(didUpdate).toHaveBeenCalledWith(1, undefined);
 
     // is syncronously 1 after effect did run.
@@ -170,13 +170,13 @@ describe('effect', () => {
     await expect(test).toHaveUpdated('foo');
     expect(didUpdate).toHaveBeenCalledWith(2, 1);
 
-    expect(didUpdate).toBeCalledTimes(2);
+    expect(didUpdate).toHaveBeenCalledTimes(2);
     expect(test.bar).toBe(2);
 
     test.foo = 3;
     await expect(test).toHaveUpdated('foo');
 
-    expect(didUpdate).toBeCalledTimes(3);
+    expect(didUpdate).toHaveBeenCalledTimes(3);
     expect(test.bar).toBe(3);
   });
 
@@ -238,7 +238,7 @@ describe('suspense', () => {
 
     instance.set(null);
 
-    await expect(didThrow).rejects.toThrowError(`ID is destroyed.`);
+    await expect(didThrow).rejects.toThrow(`ID is destroyed.`);
   });
 });
 
@@ -258,7 +258,7 @@ describe('errors', () => {
 
     const attempt = () => (test.value = 2);
 
-    expect(attempt).toThrowError(`sync error`);
+    expect(attempt).toThrow(`sync error`);
   });
 
   it('will log async error to the console', async () => {
@@ -277,7 +277,7 @@ describe('errors', () => {
 
     await expect(test).toHaveUpdated();
 
-    expect(error).toBeCalledWith(expected);
+    expect(error).toHaveBeenCalledWith(expected);
   });
 });
 
@@ -309,11 +309,11 @@ describe('observable', () => {
       mock($.observable.value);
     });
 
-    expect(mock).toBeCalledWith('foo');
+    expect(mock).toHaveBeenCalledWith('foo');
 
     await test.observable.update('bar');
 
-    expect(mock).toBeCalledWith('bar');
-    expect(mock).toBeCalledTimes(2);
+    expect(mock).toHaveBeenCalledWith('bar');
+    expect(mock).toHaveBeenCalledTimes(2);
   });
 });

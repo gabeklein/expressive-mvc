@@ -52,12 +52,12 @@ describe('property', () => {
 
     state.ref.get(callback);
 
-    expect(callback).not.toBeCalled();
+    expect(callback).not.toHaveBeenCalled();
 
     state.ref.current = 'foobar';
 
     await expect(state).toHaveUpdated();
-    expect(callback).toBeCalledWith('foobar');
+    expect(callback).toHaveBeenCalledWith('foobar');
   });
 
   it('will watch "current" of property', async () => {
@@ -75,7 +75,7 @@ describe('property', () => {
     state.ref.current = 'foobar';
 
     await expect(state).toHaveUpdated();
-    expect(didCallback).toBeCalledWith();
+    expect(didCallback).toHaveBeenCalledWith();
   });
 
   it('will invoke callback', async () => {
@@ -88,17 +88,17 @@ describe('property', () => {
 
     const state = Subject.new();
 
-    expect(didTrigger).not.toBeCalled();
+    expect(didTrigger).not.toHaveBeenCalled();
 
     state.set((key) => {
       if (key == 'ref') didUpdate();
     });
 
     state.ref.current = 'foobar';
-    expect(didTrigger).toBeCalledWith('foobar');
+    expect(didTrigger).toHaveBeenCalledWith('foobar');
 
     await expect(state).toHaveUpdated();
-    expect(didUpdate).toBeCalledWith();
+    expect(didUpdate).toHaveBeenCalledWith();
   });
 
   it('will invoke return-callback on overwrite', async () => {
@@ -112,11 +112,11 @@ describe('property', () => {
     state.ref.current = 1;
 
     await expect(state).toHaveUpdated();
-    expect(didTrigger).not.toBeCalled();
+    expect(didTrigger).not.toHaveBeenCalled();
     state.ref.current = 2;
 
     await expect(state).toHaveUpdated();
-    expect(didTrigger).toBeCalled();
+    expect(didTrigger).toHaveBeenCalled();
   });
 
   it('will not callback when set to null', async () => {
@@ -129,10 +129,10 @@ describe('property', () => {
     const state = Subject.new();
 
     state.ref.current = 'hello';
-    expect(callback).toBeCalledWith('hello');
+    expect(callback).toHaveBeenCalledWith('hello');
 
     state.ref.current = null;
-    expect(callback).not.toBeCalledWith(null);
+    expect(callback).not.toHaveBeenCalledWith(null);
   });
 
   it('will callback when on null if ignore false', async () => {
@@ -145,10 +145,10 @@ describe('property', () => {
     const state = Subject.new();
 
     state.ref.current = 'hello';
-    expect(callback).toBeCalledWith('hello');
+    expect(callback).toHaveBeenCalledWith('hello');
 
     state.ref.current = null;
-    expect(callback).toBeCalledWith(null);
+    expect(callback).toHaveBeenCalledWith(null);
   });
 
   it('will reset nested effects', async () => {
@@ -168,18 +168,18 @@ describe('property', () => {
     state.hello.current = 'Hola';
     await expect(state).toHaveUpdated();
 
-    expect(effect).toBeCalledWith('Hola World!');
+    expect(effect).toHaveBeenCalledWith('Hola World!');
 
     state.hello.current = 'Bonjour';
     await expect(state).toHaveUpdated();
 
-    expect(effect).toBeCalledWith('Bonjour World!');
+    expect(effect).toHaveBeenCalledWith('Bonjour World!');
 
     state.name = 'Earth';
     await expect(state).toHaveUpdated();
 
-    expect(effect).toBeCalledWith('Bonjour Earth!');
-    expect(effect).not.toBeCalledWith('Hola Earth!');
+    expect(effect).toHaveBeenCalledWith('Bonjour Earth!');
+    expect(effect).not.toHaveBeenCalledWith('Hola Earth!');
   });
 
   it('will export value of ref-properties', () => {
@@ -219,12 +219,12 @@ describe('property', () => {
 
     test.get(effect);
 
-    expect(effect).toBeCalledTimes(1);
+    expect(effect).toHaveBeenCalledTimes(1);
 
     test.ref.current = 'foobar';
 
     await expect(test).toHaveUpdated();
-    expect(effect).toBeCalledTimes(2);
+    expect(effect).toHaveBeenCalledTimes(2);
   });
 });
 
@@ -275,17 +275,17 @@ describe('proxy', () => {
     const { refs } = test;
 
     const done = refs.foo.get(callback);
-    expect(callback).not.toBeCalled();
+    expect(callback).not.toHaveBeenCalled();
 
     test.foo = 'bar';
     await expect(test).toHaveUpdated();
-    expect(callback).toBeCalledWith('bar');
+    expect(callback).toHaveBeenCalledWith('bar');
 
     done();
 
     test.foo = 'baz';
     await expect(test).toHaveUpdated();
-    expect(callback).toBeCalledTimes(1);
+    expect(callback).toHaveBeenCalledTimes(1);
   });
 
   it('will reference parent', () => {
@@ -329,7 +329,7 @@ describe('set instruction', () => {
     const test = Subject.new();
 
     test.ref.foo.current = 'bar';
-    expect(callback).toBeCalledWith('bar', 'foo');
+    expect(callback).toHaveBeenCalledWith('bar', 'foo');
   });
 });
 
@@ -353,8 +353,8 @@ describe('mapped', () => {
     expect(fields.foo).toBe('foo');
     expect(fields.bar).toBe('bar');
 
-    expect(generateRef).toBeCalledWith('foo');
-    expect(generateRef).toBeCalledWith('bar');
+    expect(generateRef).toHaveBeenCalledWith('foo');
+    expect(generateRef).toHaveBeenCalledWith('bar');
   });
 
   it('will run function only for accessed property', () => {
@@ -362,8 +362,8 @@ describe('mapped', () => {
 
     expect(fields.foo).toBe('foo');
 
-    expect(generateRef).toBeCalledWith('foo');
-    expect(generateRef).not.toBeCalledWith('bar');
+    expect(generateRef).toHaveBeenCalledWith('foo');
+    expect(generateRef).not.toHaveBeenCalledWith('bar');
   });
 
   it('will run function only once per property', () => {
@@ -372,7 +372,7 @@ describe('mapped', () => {
     expect(fields.foo).toBe('foo');
     expect(fields.foo).toBe('foo');
 
-    expect(generateRef).toBeCalledTimes(1);
+    expect(generateRef).toHaveBeenCalledTimes(1);
   });
 
   it('will throw if object is not this', () => {
@@ -384,7 +384,7 @@ describe('mapped', () => {
       fields = ref({});
     }
 
-    expect(() => Test.new()).toThrowError(
+    expect(() => Test.new()).toThrow(
       `ref instruction does not support object which is not 'this'`
     );
   });

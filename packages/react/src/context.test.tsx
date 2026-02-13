@@ -1,7 +1,7 @@
 import { vi, afterAll, expect, it, describe } from '../vitest';
 
 import { act, render, screen } from '@testing-library/react';
-import React, { Suspense } from 'react';
+import { Suspense } from 'react';
 
 import State, { Consumer, get, Provider, set, use } from '.';
 
@@ -78,7 +78,7 @@ describe('Provider', () => {
     );
 
     act(() => element.unmount());
-    expect(willDestroy).toBeCalled();
+    expect(willDestroy).toHaveBeenCalled();
   });
 
   it('will destroy multiple created on unmount', async () => {
@@ -103,7 +103,7 @@ describe('Provider', () => {
     );
 
     act(() => element.unmount());
-    expect(willDestroy).toBeCalledTimes(2);
+    expect(willDestroy).toHaveBeenCalledTimes(2);
   });
 
   it('will not destroy given instance on unmount', async () => {
@@ -120,14 +120,14 @@ describe('Provider', () => {
     );
 
     act(() => element.unmount());
-    expect(didUnmount).not.toBeCalled();
+    expect(didUnmount).not.toHaveBeenCalled();
   });
 
   it('will conflict colliding State types', () => {
     const foo = Foo.new();
 
     const Consumer: React.FC = vi.fn(() => {
-      expect(() => Foo.get()).toThrowError(
+      expect(() => Foo.get()).toThrow(
         'Did find Foo in context, but multiple were defined.'
       );
       return null;
@@ -176,9 +176,9 @@ describe('Provider', () => {
 
       render(<Provider for={{ Foo, Bar }} forEach={forEach} />);
 
-      expect(forEach).toBeCalledTimes(2);
-      expect(forEach).toBeCalledWith(expect.any(Foo));
-      expect(forEach).toBeCalledWith(expect.any(Bar));
+      expect(forEach).toHaveBeenCalledTimes(2);
+      expect(forEach).toHaveBeenCalledWith(expect.any(Foo));
+      expect(forEach).toHaveBeenCalledWith(expect.any(Bar));
     });
 
     it('will cleanup on unmount', () => {
@@ -189,13 +189,13 @@ describe('Provider', () => {
         <Provider for={{ Foo, Bar }} forEach={forEach} />
       );
 
-      expect(forEach).toBeCalledTimes(2);
-      expect(forEach).toBeCalledWith(expect.any(Foo));
-      expect(forEach).toBeCalledWith(expect.any(Bar));
-      expect(cleanup).not.toBeCalled();
+      expect(forEach).toHaveBeenCalledTimes(2);
+      expect(forEach).toHaveBeenCalledWith(expect.any(Foo));
+      expect(forEach).toHaveBeenCalledWith(expect.any(Bar));
+      expect(cleanup).not.toHaveBeenCalled();
 
       act(() => rendered.unmount());
-      expect(cleanup).toBeCalledTimes(2);
+      expect(cleanup).toHaveBeenCalledTimes(2);
     });
   });
 
@@ -277,7 +277,7 @@ describe('Consumer', () => {
       </Provider>
     );
 
-    expect(didRender).toBeCalledWith('foo');
+    expect(didRender).toHaveBeenCalledWith('foo');
 
     screen.getByText('foo');
 
@@ -285,7 +285,7 @@ describe('Consumer', () => {
       return instance.set({ value: 'bar' });
     });
 
-    expect(didRender).toBeCalledWith('bar');
+    expect(didRender).toHaveBeenCalledWith('bar');
 
     screen.getByText('bar');
   });
@@ -293,7 +293,7 @@ describe('Consumer', () => {
   it('will throw if not found', () => {
     const test = () => render(<Consumer for={Bar}>{(i) => void i}</Consumer>);
 
-    expect(test).toThrowError('Could not find Bar in context.');
+    expect(test).toThrow('Could not find Bar in context.');
   });
 
   it('will select extended class', () => {
@@ -433,7 +433,7 @@ describe('get instruction', () => {
       </Provider>
     );
 
-    expect(Inner).toBeCalledTimes(2);
+    expect(Inner).toHaveBeenCalledTimes(2);
   });
 
   it('will attach before model init', () => {
@@ -526,6 +526,19 @@ describe('get instruction', () => {
     expect(bar.bar).toBe(foo);
   });
 
+  it('will not resolve as own parent', () => {
+    class MaybeSelf extends State {
+      parent = get(MaybeSelf, false);
+    }
+
+    const test = MaybeSelf.new();
+
+    render(<Provider for={test} />);
+
+    expect(test.parent).not.toBe(test);
+    expect(test.parent).toBeUndefined();
+  });
+
   it('will refresh an effect when assigned to', async () => {
     class Foo extends State {}
     class Bar extends State {
@@ -616,7 +629,7 @@ describe('has instruction', () => {
       </Provider>
     );
 
-    expect(didGetBar).toBeCalledTimes(2);
+    expect(didGetBar).toHaveBeenCalledTimes(2);
     expect(foo.value).toEqual([expect.any(Bar), expect.any(Bar)]);
     expect(foo.value.map((i) => i.foo)).toEqual([foo, foo]);
   });
@@ -644,7 +657,7 @@ describe('has instruction', () => {
     };
 
     render(<Component />);
-    expect(didGetBar).toBeCalled();
+    expect(didGetBar).toHaveBeenCalled();
   });
 });
 

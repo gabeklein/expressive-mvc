@@ -1,4 +1,4 @@
-import { addListener, enter, watch } from '../control';
+import { addListener, scope, watch } from '../observable';
 import { access, event, METHOD, State, update } from '../state';
 import { Instruction, use } from './use';
 
@@ -209,7 +209,7 @@ function set<T = any>(value?: unknown, argument?: unknown): any {
       let unset: ((next: T) => void) | undefined;
 
       property.set = function (this: any, value: any, previous: any) {
-        const exit = enter();
+        const exit = scope();
         const returns = argument.call(this, value, previous);
         const flush = exit();
 

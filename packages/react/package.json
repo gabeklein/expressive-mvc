@@ -18,16 +18,17 @@
   ],
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "type": "module",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
       "require": "./dist/index.js",
       "import": "./dist/esm/index.js"
     },
-    "./adapter": {
-      "types": "./dist/adapter.d.ts",
-      "require": "./dist/adapter.js",
-      "import": "./dist/esm/adapter.js"
+    "./state": {
+      "types": "./dist/state.d.ts",
+      "require": "./dist/state.js",
+      "import": "./dist/esm/state.js"
     },
     "./jsx-runtime": {
       "types": "./dist/jsx-runtime.d.ts",
@@ -44,12 +45,12 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsup",
+    "build": "tsdown",
     "test": "tsc --noEmit && vitest run --coverage",
     "preversion": "npm run test && npm run build"
   },
   "dependencies": {
-    "@expressive/mvc": "^0.72.0"
+    "@expressive/mvc": "^0.73.1"
   },
   "peerDependencies": {
     "react": ">=16.8.0 <20.0.0"
@@ -67,8 +68,9 @@
     "@vitest/browser": "^2.1.8",
     "react": "^19",
     "react-dom": "^19",
+    "tsdown": "^0.20.1",
     "tsup": "^8.0.2",
     "vitest": "^2.1.8"
   },
-  "version": "0.72.0"
+  "version": "0.73.1"
 }
