@@ -11,16 +11,17 @@ it.todo('will suspend if necessary');
 
 describe('fetch mode', () => {
   it('will fetch sibling', () => {
-    class Ambient extends State {}
+    class Sibling extends State {}
     class Test extends State {
-      sibling = get(Test);
+      sibling = get(Sibling);
     }
 
-    const test = Test.new();
+    const context = new Context({ Sibling, Test });
 
-    new Context({ Ambient, test });
+    const test = context.get(Test, true);
+    const sibling = context.get(Sibling);
 
-    expect(test.sibling).toBe(test);
+    expect(test.sibling).toBe(sibling);
   });
 
   it('will fetch multiple', () => {
@@ -102,9 +103,7 @@ describe('fetch mode', () => {
     const attempt = () => new Context({ Child });
 
     // should this throw immediately, or only on access?
-    expect(attempt).toThrow(
-      `Required Parent not found in context for ID.`
-    );
+    expect(attempt).toThrow(`Required Parent not found in context for ID.`);
   });
 
   it('will return undefined if required is false', () => {
