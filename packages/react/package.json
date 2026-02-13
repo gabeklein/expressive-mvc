@@ -65,12 +65,12 @@
     "@testing-library/jest-dom": "^6.0.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "@vitest/browser": "^2.1.8",
+    "@vitest/browser": "^4.0.18",
     "react": "^19",
     "react-dom": "^19",
     "tsdown": "^0.20.1",
     "tsup": "^8.0.2",
-    "vitest": "^2.1.8"
+    "vitest": "^4.0.18"
   },
   "version": "0.73.1"
 }
