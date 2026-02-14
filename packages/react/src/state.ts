@@ -1,7 +1,16 @@
-import { State, Context, watch, METHOD } from '@expressive/mvc';
+import { State, Context, watch, METHOD, event } from '@expressive/mvc';
 import { ReactNode } from 'react';
-import { provide } from './context';
-import type { AsComponent, FC, HasProps, Props, RenderProps } from './component';
+import { provide, Layers } from './context';
+import type {
+  AsComponent,
+  FC,
+  HasProps,
+  Props,
+  RenderProps
+} from './component';
+
+const OUTER = new WeakMap<State, Context>();
+const PROPS = new WeakMap<State, ReactState.ComponentProps<any>>();
 
 export const Pragma = {} as {
   useState<S>(initial: () => S): [S, (next: (previous: S) => S) => void];
@@ -265,13 +274,117 @@ abstract class ReactState extends State {
     this: State.Type<T>,
     render: (props: P, self: T) => ReactNode
   ): FC<T, P> {
-    const FC = Render.bind(this as State.Type, { render } as {});
+    const Base = this as State.Type<State>;
 
-    return Object.assign(FC, {
+    const Type = class extends Base implements React.Component {
+      static contextType = Layers;
+
+      get props(): ReactState.ComponentProps<this> {
+        return PROPS.get(this) || {};
+      }
+
+      private set props(props: ReactState.ComponentProps<this>) {
+        PROPS.set(this, props);
+        this.set(props as {});
+      }
+
+      get context(): Context {
+        return Context.get(this)!;
+      }
+
+      set context(context: Context) {
+        if (OUTER.get(this) === context) return;
+
+        OUTER.set(this, context);
+        context.push(this);
+      }
+
+      state = {} as State.Values<this>;
+      children: ReactNode | ((self: this) => ReactNode) = null;
+      fallback?: ReactNode = undefined;
+
+      constructor(props: any = {}) {
+        const { is, ...rest } = props;
+
+        super(rest, is);
+        PROPS.set(this, props);
+
+        const self = ComponentRender.bind(this, METHOD.get(this.render));
+        this.render = () => Pragma.createElement(self);
+      }
+
+      render(): ReactNode {
+        return Pragma.createElement(ComponentRender.bind(this, render as any));
+      }
+
+      /** @deprecated Only for React JSX compatibility in typescript and nonfunctional. */
+      setState!: (state: any, callback?: () => void) => void;
+
+      /** @deprecated Only for React JSX compatibility in typescript and nonfunctional. */
+      forceUpdate!: (callback?: () => void) => void;
+    };
+
+    Object.defineProperty(Type.prototype, 'render', {
+      value: render,
+      writable: true,
+      configurable: true
+    });
+
+    Object.defineProperty(Type.prototype, 'isReactComponent', {
+      get: () => true
+    });
+
+    return Object.assign(Type, {
       displayName: this.name,
       State: this
-    });
+    }) as unknown as FC<T, P>;
   }
+}
+
+function ComponentRender<T extends AsComponent, P extends State.Assign<T>>(
+  this: T,
+  render: (props: P, self: T) => ReactNode
+) {
+  const state = Pragma.useState(() => {
+    event(this);
+
+    const { context } = this as T & { context: Context };
+
+    let ready: boolean | undefined;
+    let active: T;
+
+    watch(this, (current) => {
+      active = current;
+
+      if (ready) state[1]((x) => x.bind(null));
+    });
+
+    const didMount = () => {
+      ready = true;
+      return () => {
+        context.pop();
+        this.set(null);
+      };
+    };
+
+    const Render = () => render.call(active, this.props as P);
+
+    return () => {
+      ready = false;
+
+      Pragma.useEffect(didMount, []);
+      setTimeout(() => (ready = true), 0);
+
+      return provide(
+        context,
+        Pragma.createElement(Render),
+        (active as AsComponent).fallback,
+        String(this)
+      );
+    };
+  });
+
+  return state[0]();
 }
 
 export function Render<T extends AsComponent>(
