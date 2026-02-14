@@ -1043,6 +1043,24 @@ describe('State.get', () => {
 });
 
 describe('State.as', () => {
+  it('will create extensible component', () => {
+    class Test extends State {
+      something = 'World';
+    }
+
+    const TestComponent = Test.as2((_, self) => (
+      <span>Hello {self.something}</span>
+    ));
+
+    class Test2 extends TestComponent {
+      something = 'Tester';
+    }
+
+    const element = render(<Test2 />);
+
+    element.getByText('Hello Tester');
+  });
+
   it('will update component as values change', async () => {
     class Test extends State {
       foo = 'bar';
@@ -1194,7 +1212,7 @@ describe('State.as', () => {
       }
     }
 
-    const Component = Test.as((_, self) => {
+    const Component = Test.as2((_, self) => {
       return <span>{self.callback()}</span>;
     });
 
@@ -1210,7 +1228,7 @@ describe('State.as', () => {
       value = set('foobar', didSet);
     }
 
-    const Component = Foo.as((_, self) => null);
+    const Component = Foo.as2(() => null);
     const didSet = vi.fn();
 
     render(<Component value="barfoo" />);
@@ -1245,7 +1263,7 @@ describe('State.as', () => {
       }
 
       let foo!: Foo;
-      const Provider = Foo.as(() => <Consumer />);
+      const Provider = Foo.as2(() => <Consumer />);
 
       const Consumer = () => (foo = Foo.get()).value;
 
@@ -1265,7 +1283,7 @@ describe('State.as', () => {
       }
 
       let foo!: Foo;
-      const Provider = Foo.as(() => <Consumer />);
+      const Provider = Foo.as2(() => <Consumer />);
 
       const Consumer = () => (foo = Foo.get()).value;
 

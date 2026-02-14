@@ -17,6 +17,7 @@ Pragma.createElement = createElement;
 declare module '@expressive/mvc' {
   namespace State {
     export import as = ReactState.as;
+    export import as2 = ReactState.as2;
     export import get = ReactState.get;
     export import use = ReactState.use;
   }
@@ -25,6 +26,7 @@ declare module '@expressive/mvc' {
 State.get = ReactState.get;
 State.use = ReactState.use;
 State.as = ReactState.as;
+State.as2 = ReactState.as2;
 
 export { ReactState as State, ReactState as default };
 export { Context, Observable, get, use, ref, set } from '@expressive/mvc';
