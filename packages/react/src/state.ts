@@ -1,13 +1,7 @@
-import { State, Context, watch, METHOD, event } from '@expressive/mvc';
+import { State, Context, watch, event } from '@expressive/mvc';
 import { ReactNode } from 'react';
 import { provide, Layers } from './context';
-import type {
-  AsComponent,
-  FC,
-  HasProps,
-  Props,
-  RenderProps
-} from './component';
+import type { AsComponent, HasProps, Props } from './component';
 
 export const Pragma = {} as {
   useState<S>(initial: () => S): [S, (next: (previous: S) => S) => void];
@@ -285,19 +279,7 @@ abstract class ReactState extends State {
     return state[0]() as R;
   }
 
-  static as<T extends AsComponent, P extends State.Assign<T>>(
-    this: State.Type<T>,
-    render: (props: P, self: T) => ReactNode
-  ): FC<T, P> {
-    const FC = Render.bind(this as State.Type, { render } as {});
-
-    return Object.assign(FC, {
-      displayName: this.name,
-      State: this
-    });
-  }
-
-  static as2<T extends State, P extends State.Assign<T>>(
+  static as<T extends State, P extends State.Assign<T>>(
     this: State.Type<T>,
     render: (props: P, self: T) => ReactNode
   ): State.Type<T & Renderable> {
@@ -332,7 +314,7 @@ abstract class ReactState extends State {
 
       constructor({ is, ...props }: any) {
         super(props, is);
-        Self.set(this, RenderClass.bind(this, render as any));
+        Self.set(this, Render.bind(this, render as any));
       }
 
       render(): ReactNode {
@@ -357,7 +339,7 @@ abstract class ReactState extends State {
   }
 }
 
-function RenderClass<T extends Renderable, P extends State.Assign<T>>(
+function Render<T extends Renderable, P extends State.Assign<T>>(
   this: T,
   render: (props: P, self: T) => ReactNode
 ) {
@@ -383,7 +365,7 @@ function RenderClass<T extends Renderable, P extends State.Assign<T>>(
       };
     };
 
-    const Render = () => render.call(active, active.props as any, active);
+    const View = () => render.call(active, active.props as any, active);
 
     return () => {
       ready = false;
@@ -393,7 +375,7 @@ function RenderClass<T extends Renderable, P extends State.Assign<T>>(
 
       return provide(
         context,
-        Pragma.createElement(Render),
+        Pragma.createElement(View),
         active.fallback,
         String(this)
       );
@@ -401,63 +383,6 @@ function RenderClass<T extends Renderable, P extends State.Assign<T>>(
   });
 
   return state[0]();
-}
-
-export function Render<T extends AsComponent>(
-  this: State.Type<T>,
-  props: Props<T>,
-  props2?: Props<T>
-) {
-  const { is, ...rest } = { ...props, ...props2 };
-
-  const ambient = Context.use();
-  const state = Pragma.useState<(props: any) => any>(() => {
-    const instance = this.new(rest as {}, is && ((x) => void is(x)));
-    const context = ambient.push(instance);
-
-    let ready: boolean | undefined;
-    let active: T;
-
-    watch(instance, (current) => {
-      active = current;
-
-      if (ready) state[1]((x) => x.bind(null));
-    });
-
-    function didMount() {
-      ready = true;
-      return () => {
-        context.pop();
-        instance.set(null);
-      };
-    }
-
-    function Render(props: Props<T>) {
-      const render = METHOD.get(active.render) || props.render || active.render;
-
-      return render
-        ? render.call(active, props as HasProps<T>, active)
-        : props.children;
-    }
-
-    return (props: RenderProps<T>) => {
-      ready = false;
-
-      Pragma.useEffect(didMount, []);
-      Promise.resolve(instance.set(props as {})).finally(() => {
-        ready = true;
-      });
-
-      return provide(
-        context,
-        Pragma.createElement(Render, props as any),
-        props.fallback || active.fallback,
-        String(instance)
-      );
-    };
-  });
-
-  return state[0](rest);
 }
 
 export { ReactState };
