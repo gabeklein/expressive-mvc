@@ -87,9 +87,9 @@ class Component extends State {
     context.push(this);
   }
 
-  state!: State.Values<this>;
-  children!: ReactNode | ((self: this) => ReactNode);
-  fallback?: ReactNode;
+  state = {} as State.Values<this>;
+  children: ReactNode | ((self: this) => ReactNode) = null;
+  fallback?: ReactNode = undefined;
 
   constructor({ is, ...props }: any) {
     super(props, is);
