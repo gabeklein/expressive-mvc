@@ -1,13 +1,18 @@
-import {
-  act,
-  render,
-  renderHook,
-  screen,
-  waitFor
-} from '@testing-library/react';
+import { renderHook, waitFor } from '@testing-library/react';
 import { Suspense } from 'react';
 
 import { get, State, Provider, set } from '.';
+import {
+  vi,
+  expect,
+  it,
+  describe,
+  act,
+  render,
+  screen,
+  afterEach,
+  afterAll
+} from '../vitest';
 
 describe('State.use', () => {
   class Test extends State {
@@ -22,7 +27,7 @@ describe('State.use', () => {
     });
 
     it('will subscribe to instance of controller', async () => {
-      const willRender = jest.fn();
+      const willRender = vi.fn();
       const { result } = renderHook(() => {
         willRender();
         return Test.use();
@@ -53,7 +58,7 @@ describe('State.use', () => {
     });
 
     it('will run callback', () => {
-      const callback = jest.fn();
+      const callback = vi.fn();
 
       renderHook(() => Test.use(callback));
 
@@ -61,7 +66,7 @@ describe('State.use', () => {
     });
 
     it('will destroy instance of given class', async () => {
-      const didDestroy = jest.fn();
+      const didDestroy = vi.fn();
 
       class Test extends State {
         constructor() {
@@ -126,7 +131,7 @@ describe('State.use', () => {
 
   describe('new method', () => {
     it('will call if exists', () => {
-      const didCreate = jest.fn();
+      const didCreate = vi.fn();
 
       class Test extends State {
         protected new() {
@@ -146,7 +151,7 @@ describe('State.use', () => {
 
   describe('use method', () => {
     it('will call every render if present', () => {
-      const didUse = jest.fn();
+      const didUse = vi.fn();
 
       class Test extends State {
         use() {
@@ -164,7 +169,7 @@ describe('State.use', () => {
     });
 
     it('will receive arguments', () => {
-      const didUse = jest.fn();
+      const didUse = vi.fn();
 
       class Test extends State {
         use(foo: string, bar: number) {
@@ -178,7 +183,7 @@ describe('State.use', () => {
     });
 
     it('will divert arguments from constructor', () => {
-      const didUse = jest.fn();
+      const didUse = vi.fn();
 
       class Test extends State {
         value = 0;
@@ -218,7 +223,7 @@ describe('State.use', () => {
     }
 
     it('will run callback once', async () => {
-      const callback = jest.fn();
+      const callback = vi.fn();
       const hook = renderHook(() => Test.use(callback));
 
       expect(callback).toBeCalledTimes(1);
@@ -229,8 +234,8 @@ describe('State.use', () => {
     });
 
     it('will run argument before effects', () => {
-      const effect = jest.fn();
-      const argument = jest.fn(() => {
+      const effect = vi.fn();
+      const argument = vi.fn(() => {
         expect(effect).not.toBeCalled();
       });
 
@@ -262,7 +267,7 @@ describe('State.use', () => {
         bar: 'bar'
       };
 
-      const didRender = jest.fn();
+      const didRender = vi.fn();
 
       const hook = renderHook(() => {
         didRender();
@@ -346,7 +351,7 @@ describe('State.use', () => {
     });
 
     it('will not trigger updates it caused', async () => {
-      const didRender = jest.fn();
+      const didRender = vi.fn();
       const hook = renderHook(
         (props) => {
           didRender();
@@ -361,7 +366,7 @@ describe('State.use', () => {
     });
 
     it('will trigger set instruction', () => {
-      const mock = jest.fn();
+      const mock = vi.fn();
 
       class Test extends State {
         foo = set('foo', mock);
@@ -435,14 +440,14 @@ describe('State.get', () => {
     return Object.assign(promise, methods);
   }
 
-  const error = jest.spyOn(console, 'error').mockImplementation(() => {});
+  const error = vi.spyOn(console, 'error').mockImplementation(() => {});
 
   afterEach(() => {
     // expect(error).not.toBeCalled();
     error.mockReset();
   });
 
-  afterAll(() => error.mockRestore());
+  afterAll(() => error.mockClear());
 
   it('will fetch model', () => {
     class Test extends State {}
@@ -459,7 +464,7 @@ describe('State.get', () => {
     }
 
     const test = Test.new();
-    const didRender = jest.fn();
+    const didRender = vi.fn();
     const hook = renderWith(test, () => {
       didRender();
       return Test.get().foo;
@@ -479,7 +484,7 @@ describe('State.get', () => {
     }
 
     const test = Test.new();
-    const didRender = jest.fn();
+    const didRender = vi.fn();
     const hook = renderWith(test, () => {
       didRender();
       return Test.get().foo;
@@ -496,7 +501,7 @@ describe('State.get', () => {
       value = 1;
     }
 
-    const useTest = jest.fn(() => {
+    const useTest = vi.fn(() => {
       expect(() => Test.get()).toThrow('Could not find Test in context.');
     });
 
@@ -509,7 +514,7 @@ describe('State.get', () => {
       value = 1;
     }
 
-    const useTest = jest.fn(() => {
+    const useTest = vi.fn(() => {
       expect(Test.get(false)).toBeUndefined();
     });
 
@@ -558,9 +563,9 @@ describe('State.get', () => {
         value = 1;
       }
 
-      const useTest = jest.fn(() => {
+      const useTest = vi.fn(() => {
         expect(() => Test.get((x) => x)).toThrow(
-          'Could not find Test in context.'
+          `Could not find ${Test} in context.`
         );
       });
 
@@ -583,8 +588,8 @@ describe('State.get', () => {
 
     it('will ignore updates with same result', async () => {
       const test = Test.new();
-      const compute = jest.fn();
-      const didRender = jest.fn();
+      const compute = vi.fn();
+      const didRender = vi.fn();
 
       const hook = renderWith(test, () => {
         didRender();
@@ -627,12 +632,12 @@ describe('State.get', () => {
     });
 
     it('will disable updates if null returned', async () => {
-      const factory = jest.fn(($: Test) => {
+      const factory = vi.fn(($: Test) => {
         void $.foo;
         return null;
       });
 
-      const didRender = jest.fn(() => {
+      const didRender = vi.fn(() => {
         return Test.get(factory);
       });
 
@@ -667,8 +672,8 @@ describe('State.get', () => {
         });
 
       const parent = Parent.new();
-      const didUpdateValues = jest.fn();
-      const didPushToValues = jest.fn();
+      const didUpdateValues = vi.fn();
+      const didPushToValues = vi.fn();
 
       parent.get((state) => {
         didUpdateValues(state.values.length);
@@ -698,8 +703,8 @@ describe('State.get', () => {
     }
 
     it('will force a refresh', async () => {
-      const didRender = jest.fn();
-      const didEvaluate = jest.fn();
+      const didRender = vi.fn();
+      const didEvaluate = vi.fn();
       let forceUpdate!: () => void;
 
       renderWith(Test, () => {
@@ -722,8 +727,8 @@ describe('State.get', () => {
     });
 
     it('will refresh without reevaluating', async () => {
-      const didEvaluate = jest.fn();
-      const didRender = jest.fn();
+      const didEvaluate = vi.fn();
+      const didRender = vi.fn();
       let forceUpdate!: () => void;
 
       renderWith(Test, () => {
@@ -747,7 +752,7 @@ describe('State.get', () => {
 
     it('will refresh again after promise', async () => {
       const promise = mockPromise();
-      const didRender = jest.fn();
+      const didRender = vi.fn();
 
       let forceUpdate!: <T>(after: Promise<T>) => Promise<T>;
 
@@ -777,7 +782,7 @@ describe('State.get', () => {
 
     it('will invoke async function', async () => {
       const promise = mockPromise();
-      const didRender = jest.fn();
+      const didRender = vi.fn();
 
       let forceUpdate!: <T>(after: () => Promise<T>) => Promise<T>;
 
@@ -826,7 +831,7 @@ describe('State.get', () => {
       const promise = mockPromise<string>();
 
       const test = Test.new();
-      const didRender = jest.fn();
+      const didRender = vi.fn();
       const hook = renderWith(test, () => {
         didRender();
         return Test.get(async ($) => {
@@ -894,7 +899,7 @@ describe('State.get', () => {
 
     it('will subscribe peer from context', async () => {
       const bar = Bar.new();
-      const didRender = jest.fn();
+      const didRender = vi.fn();
       const hook = renderWith(bar, () => {
         didRender();
         return Foo.use().bar.value;
@@ -1063,7 +1068,7 @@ describe('State.as', () => {
   });
 
   it('will pass props to state', async () => {
-    const didUpdateFoo = jest.fn();
+    const didUpdateFoo = vi.fn();
     class Test extends State {
       foo = 'foo';
       constructor(...args: State.Args) {
@@ -1107,7 +1112,7 @@ describe('State.as', () => {
 
     const Test = Control.as(() => null);
 
-    const didCreate = jest.fn();
+    const didCreate = vi.fn();
 
     const screen = render(<Test is={didCreate} />);
 
@@ -1153,8 +1158,8 @@ describe('State.as', () => {
     }
 
     let test: Test;
-    const didSetFoo = jest.fn();
-    const renderSpy = jest.fn((_, { foo }) => {
+    const didSetFoo = vi.fn();
+    const renderSpy = vi.fn((_, { foo }) => {
       return <span>{foo}</span>;
     });
 
@@ -1206,7 +1211,7 @@ describe('State.as', () => {
     }
 
     const Component = Foo.as((_, self) => null);
-    const didSet = jest.fn();
+    const didSet = vi.fn();
 
     render(<Component value="barfoo" />);
 
@@ -1215,7 +1220,7 @@ describe('State.as', () => {
 
   describe('new method', () => {
     it('will call if exists', () => {
-      const didCreate = jest.fn();
+      const didCreate = vi.fn();
 
       class Test extends State {
         value = 0;
@@ -1246,11 +1251,11 @@ describe('State.as', () => {
 
       const element = render(<Provider fallback={<span>Loading...</span>} />);
 
-      expect(element.getByText('Loading...')).toBeInTheDocument();
+      element.getByText('Loading...');
 
       await act(async () => (foo.value = 'Hello World'));
 
-      expect(element.getByText('Hello World')).toBeInTheDocument();
+      element.getByText('Hello World');
     });
 
     it('will use fallback property first', async () => {
@@ -1266,17 +1271,17 @@ describe('State.as', () => {
 
       const element = render(<Provider />);
 
-      expect(element.queryByText('Loading!')).toBeInTheDocument();
+      element.queryByText('Loading!');
 
       element.rerender(<Provider fallback={<span>Loading...</span>} />);
 
-      expect(element.getByText('Loading...')).toBeInTheDocument();
+      element.getByText('Loading...');
 
       await act(async () => {
         foo.value = 'Hello World';
       });
 
-      expect(element.getByText('Hello World')).toBeInTheDocument();
+      element.getByText('Hello World');
     });
   });
 });

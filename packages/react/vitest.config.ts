@@ -18,7 +18,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@expressive/mvc': '../mvc/src'
+      '@expressive/mvc': '../../mvc/src'
     }
   }
 });

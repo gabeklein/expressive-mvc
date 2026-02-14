@@ -81,7 +81,11 @@ describe('element props', () => {
   it('will accept managed values', () => {
     render(
       <Foo value="baz">
-        <Consumer for={Foo}>{(c) => expect(c.value).toBe('baz')}</Consumer>
+        <Consumer for={Foo}>
+          {(c) => {
+            expect(c.value).toBe('baz');
+          }}
+        </Consumer>
       </Foo>
     );
   });
@@ -89,7 +93,11 @@ describe('element props', () => {
   it('will assign values to instance', () => {
     render(
       <Foo value="foobar">
-        <Consumer for={Foo}>{(i) => expect(i.value).toBe('foobar')}</Consumer>
+        <Consumer for={Foo}>
+          {(i) => {
+            expect(i.value).toBe('foobar');
+          }}
+        </Consumer>
       </Foo>
     );
   });
@@ -242,9 +250,7 @@ describe('render method', () => {
       <Control value="Goodbye">Hello</Control>
     );
 
-    // getByText throws if element not found, so this is sufficient
     screen.getByText('Goodbye');
-    // or use queryByText with null check for absence
     expect(screen.queryByText('Hello')).toBe(null);
   });
 
@@ -354,11 +360,11 @@ describe('suspense', () => {
       </Foo>
     );
 
-    expect(element.getByText('Loading...')).toBeInTheDocument();
+    element.getByText('Loading...');
 
     await act(async () => (foo.value = 'Hello World'));
 
-    expect(element.getByText('Hello World')).toBeInTheDocument();
+    element.getByText('Hello World');
   });
 
   it('will fallback when own render suspends', async () => {
@@ -374,13 +380,13 @@ describe('suspense', () => {
 
     const element = render(<Foo is={(x) => (foo = x)} />);
 
-    expect(element.getByText('Loading!')).toBeInTheDocument();
+    element.getByText('Loading!');
 
     await act(async () => {
       foo.value = 'Hello World';
     });
 
-    expect(element.getByText('Hello World')).toBeInTheDocument();
+    element.getByText('Hello World');
   });
 
   it('will use fallback property first', async () => {
@@ -398,7 +404,7 @@ describe('suspense', () => {
       </Foo>
     );
 
-    expect(element.getByText('Loading!')).toBeInTheDocument();
+    element.getByText('Loading!');
 
     element.rerender(
       <Foo fallback={<span>Loading...</span>}>
@@ -406,13 +412,13 @@ describe('suspense', () => {
       </Foo>
     );
 
-    expect(element.getByText('Loading...')).toBeInTheDocument();
+    element.getByText('Loading...');
 
     await act(async () => {
       foo.value = 'Hello World';
     });
 
-    expect(element.getByText('Hello World')).toBeInTheDocument();
+    element.getByText('Hello World');
   });
 
   it('will update with new fallback', async () => {
@@ -430,21 +436,21 @@ describe('suspense', () => {
       </Foo>
     );
 
-    expect(element.getByText('Loading!')).toBeInTheDocument();
+    element.getByText('Loading!');
 
     await act(async () => {
       foo.fallback = <span>Loading...</span>;
       await new Promise((r) => setTimeout(r, 0));
     });
 
-    expect(element.getByText('Loading...')).toBeInTheDocument();
+    element.getByText('Loading...');
 
     await act(async () => {
       foo.value = 'Hello World';
       await new Promise((r) => setTimeout(r, 0));
     });
 
-    expect(element.getByText('Hello World')).toBeInTheDocument();
+    element.getByText('Hello World');
   });
 });
 

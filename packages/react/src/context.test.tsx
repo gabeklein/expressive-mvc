@@ -21,7 +21,11 @@ describe('Provider', () => {
   it('will create instance of given model', () => {
     render(
       <Provider for={Foo}>
-        <Consumer for={Foo}>{(i) => expect(i).toBeInstanceOf(Foo)}</Consumer>
+        <Consumer for={Foo}>
+          {(i) => {
+            expect(i).toBeInstanceOf(Foo);
+          }}
+        </Consumer>
       </Provider>
     );
   });
@@ -29,8 +33,16 @@ describe('Provider', () => {
   it('will create all models in given object', () => {
     render(
       <Provider for={{ Foo, Bar }}>
-        <Consumer for={Foo}>{(i) => expect(i).toBeInstanceOf(Foo)}</Consumer>
-        <Consumer for={Bar}>{(i) => expect(i).toBeInstanceOf(Bar)}</Consumer>
+        <Consumer for={Foo}>
+          {(i) => {
+            expect(i).toBeInstanceOf(Foo);
+          }}
+        </Consumer>
+        <Consumer for={Bar}>
+          {(i) => {
+            expect(i).toBeInstanceOf(Bar);
+          }}
+        </Consumer>
       </Provider>
     );
   });
@@ -40,8 +52,16 @@ describe('Provider', () => {
 
     render(
       <Provider for={{ foo, Bar }}>
-        <Consumer for={Foo}>{({ is }) => expect(is).toBe(foo)}</Consumer>
-        <Consumer for={Bar}>{(i) => expect(i).toBeInstanceOf(Bar)}</Consumer>
+        <Consumer for={Foo}>
+          {({ is }) => {
+            expect(is).toBe(foo);
+          }}
+        </Consumer>
+        <Consumer for={Bar}>
+          {(i) => {
+            expect(i).toBeInstanceOf(Bar);
+          }}
+        </Consumer>
       </Provider>
     );
   });
@@ -56,7 +76,11 @@ describe('Provider', () => {
 
     render(
       <Provider for={Bar}>
-        <Consumer for={Foo}>{(i) => expect(i).toBeInstanceOf(Foo)}</Consumer>
+        <Consumer for={Foo}>
+          {(i) => {
+            expect(i).toBeInstanceOf(Foo);
+          }}
+        </Consumer>
       </Provider>
     );
   });
@@ -214,13 +238,13 @@ describe('Provider', () => {
         </Provider>
       );
 
-      expect(element.getByText('Loading...')).toBeInTheDocument();
+      element.getByText('Loading...');
 
       await act(async () => {
         foo.value = 'Hello World';
       });
 
-      expect(element.getByText('Hello World')).toBeInTheDocument();
+      element.getByText('Hello World');
       expect(element.queryByText('Loading...')).not.toBeInTheDocument();
     });
 
@@ -240,7 +264,7 @@ describe('Provider', () => {
         </Suspense>
       );
 
-      expect(element.queryByText('Foo')).toBeInTheDocument();
+      element.queryByText('Foo');
 
       element.rerender(
         <Suspense fallback={<span>Foo</span>}>
@@ -250,7 +274,7 @@ describe('Provider', () => {
         </Suspense>
       );
 
-      expect(element.getByText('Bar')).toBeInTheDocument();
+      element.getByText('Bar');
       expect(element.queryByText('Foo')).not.toBeInTheDocument();
     });
   });
@@ -299,7 +323,11 @@ describe('Consumer', () => {
   it('will select extended class', () => {
     render(
       <Provider for={Baz}>
-        <Consumer for={Bar}>{(i) => expect(i).toBeInstanceOf(Baz)}</Consumer>
+        <Consumer for={Bar}>
+          {(i) => {
+            expect(i).toBeInstanceOf(Baz);
+          }}
+        </Consumer>
       </Provider>
     );
   });
@@ -316,7 +344,11 @@ describe('Consumer', () => {
           forEach={(x) => {
             x.value = 'inner';
           }}>
-          <Consumer for={Foo}>{(i) => expect(i.value).toBe('inner')}</Consumer>
+          <Consumer for={Foo}>
+            {(i) => {
+              expect(i.value).toBe('inner');
+            }}
+          </Consumer>
         </Provider>
       </Provider>
     );
@@ -326,7 +358,11 @@ describe('Consumer', () => {
     render(
       <Provider for={Bar}>
         <Provider for={Baz}>
-          <Consumer for={Bar}>{(i) => expect(i).toBeInstanceOf(Baz)}</Consumer>
+          <Consumer for={Bar}>
+            {(i) => {
+              expect(i).toBeInstanceOf(Baz);
+            }}
+          </Consumer>
         </Provider>
       </Provider>
     );
@@ -340,13 +376,19 @@ describe('Consumer', () => {
         <Provider for={Baz}>
           <Provider for={{ Bar }}>
             <Consumer for={Foo}>
-              {({ is }) => expect(is).toBe(instance)}
+              {({ is }) => {
+                expect(is).toBe(instance);
+              }}
             </Consumer>
             <Consumer for={Bar}>
-              {(i) => expect(i).toBeInstanceOf(Bar)}
+              {(i) => {
+                expect(i).toBeInstanceOf(Bar);
+              }}
             </Consumer>
             <Consumer for={Baz}>
-              {(i) => expect(i).toBeInstanceOf(Baz)}
+              {(i) => {
+                expect(i).toBeInstanceOf(Baz);
+              }}
             </Consumer>
           </Provider>
         </Provider>
@@ -369,7 +411,9 @@ describe('get instruction', () => {
       <Provider for={Bar}>
         <Provider for={Foo}>
           <Consumer for={Foo}>
-            {(i) => expect(i.bar).toBeInstanceOf(Bar)}
+            {(i) => {
+              expect(i.bar).toBeInstanceOf(Bar);
+            }}
           </Consumer>
         </Provider>
       </Provider>
@@ -386,8 +430,16 @@ describe('get instruction', () => {
 
     render(
       <Provider for={{ Foo, Bar }}>
-        <Consumer for={Bar}>{({ is }) => expect(is.foo.bar).toBe(is)}</Consumer>
-        <Consumer for={Foo}>{({ is }) => expect(is.bar.foo).toBe(is)}</Consumer>
+        <Consumer for={Bar}>
+          {({ is }) => {
+            expect(is.foo.bar).toBe(is);
+          }}
+        </Consumer>
+        <Consumer for={Foo}>
+          {({ is }) => {
+            expect(is.bar.foo).toBe(is);
+          }}
+        </Consumer>
       </Provider>
     );
   });

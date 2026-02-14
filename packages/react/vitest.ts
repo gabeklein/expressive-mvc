@@ -1,6 +1,9 @@
 import '@testing-library/jest-dom/vitest';
+import { cleanup } from '@testing-library/react';
 
 import { afterEach, afterAll, vi } from 'vitest';
+
+afterEach(() => cleanup());
 
 interface CustomMatchers<R = unknown> {
   /** Assert state did update with keys specified. */

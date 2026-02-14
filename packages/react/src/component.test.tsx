@@ -1,4 +1,4 @@
-import { expect, it, act, render } from '../vitest';
+import { it, act, render } from '../vitest';
 import { Component } from './component';
 
 it('will render MockComponent', async () => {
@@ -14,17 +14,17 @@ it('will render MockComponent', async () => {
 
   const element = render(<MockComponent is={(x) => (test = x)} />);
 
-  expect(element.getByText('Hello World')).toBeInTheDocument();
+  element.getByText('Hello World');
 
   element.rerender(<MockComponent something="Tester" />);
-  expect(element.getByText('Hello Tester')).toBeInTheDocument();
+  element.getByText('Hello Tester');
 
   await act(async () => {
     test.something = 'Everyone';
     await test.set();
   });
 
-  expect(element.getByText('Hello Everyone')).toBeInTheDocument();
+  element.getByText('Hello Everyone');
 });
 
 it('will pass children by default', () => {
@@ -36,7 +36,7 @@ it('will pass children by default', () => {
     </MockComponent>
   );
 
-  expect(element.getByText('Child Content')).toBeInTheDocument();
+  element.getByText('Child Content');
 });
 
 it('will render children function', async () => {
@@ -51,14 +51,14 @@ it('will render children function', async () => {
     </MockComponent>
   );
 
-  expect(element.getByText('Hello Tester')).toBeInTheDocument();
+  element.getByText('Hello Tester');
 
   await act(async () => {
     test.name = 'Everyone';
     await test.set();
   });
 
-  expect(element.getByText('Hello Everyone')).toBeInTheDocument();
+  element.getByText('Hello Everyone');
 });
 
 it('will provide context to descendants', () => {
@@ -78,5 +78,5 @@ it('will provide context to descendants', () => {
     </ParentComponent>
   );
 
-  expect(element.getByText('Value is from parent')).toBeInTheDocument();
+  element.getByText('Value is from parent');
 });
