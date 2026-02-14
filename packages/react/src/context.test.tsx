@@ -245,7 +245,7 @@ describe('Provider', () => {
       });
 
       element.getByText('Hello World');
-      expect(element.queryByText('Loading...')).not.toBeInTheDocument();
+      expect(element.queryByText('Loading...')).toBeNull();
     });
 
     it('will ignore suspense if undefined', () => {
@@ -275,7 +275,7 @@ describe('Provider', () => {
       );
 
       element.getByText('Bar');
-      expect(element.queryByText('Foo')).not.toBeInTheDocument();
+      expect(element.queryByText('Foo')).toBeNull();
     });
   });
 });

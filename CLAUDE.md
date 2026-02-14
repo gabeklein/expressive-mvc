@@ -174,7 +174,7 @@ The React adapter uses:
 - Tests use Jest with SWC for TypeScript
 - Each source file has a corresponding `.test.ts` file
 - Coverage is tracked and should remain at 100%
-- React tests use `@testing-library/react` and `@testing-library/jest-dom`
+- React tests use `@testing-library/react`
 - Tests import from source directly (not built dist)
 
 ## Important Implementation Details
