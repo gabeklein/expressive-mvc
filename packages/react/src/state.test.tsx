@@ -1044,6 +1044,14 @@ describe('State.get', () => {
 });
 
 describe('State.as', () => {
+  it('will prefix generated component class name with React', () => {
+    class Test extends State {}
+
+    const Component = Test.as(() => null);
+
+    expect(Component.name).toBe('ReactTest');
+  });
+
   it('will create extensible component', () => {
     class Test extends State {
       something = 'World';

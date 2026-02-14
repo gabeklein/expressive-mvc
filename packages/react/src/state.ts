@@ -328,14 +328,12 @@ abstract class ReactState extends State {
       forceUpdate!: (callback?: () => void) => void;
     }
 
+    Object.defineProperty(Component, 'name', { value: 'React' + this.name });
     Object.defineProperty(Component.prototype, 'isReactComponent', {
       get: () => true
     });
 
-    return Object.assign(Component, {
-      displayName: this.name,
-      State: this
-    }) as unknown as State.Type<T & Renderable>;
+    return Component as unknown as State.Type<T & Renderable>;
   }
 }
 
