@@ -282,7 +282,7 @@ abstract class ReactState extends State {
   static as<T extends State, P extends State.Assign<T>>(
     this: State.Type<T>,
     render: (props: P, self: T) => ReactNode
-  ): State.Type<T & Renderable> {
+  ) {
     const Type = this as unknown as State.Type<State>;
     const Self = new WeakMap<Component, React.FC>();
 
@@ -314,6 +314,7 @@ abstract class ReactState extends State {
 
       constructor({ is, ...props }: any) {
         super(props, is);
+        // PROPS.set(this, props);
         Self.set(this, Render.bind(this, render as any));
       }
 
@@ -328,14 +329,16 @@ abstract class ReactState extends State {
       forceUpdate!: (callback?: () => void) => void;
     }
 
-    Object.defineProperty(Component.prototype, 'isReactComponent', {
-      get: () => true
+    Object.defineProperties(Component.prototype, {
+      isReactComponent: {
+        get: () => true
+      },
+      name: {
+        value: this.name
+      }
     });
 
-    return Object.assign(Component, {
-      displayName: this.name,
-      State: this
-    }) as unknown as State.Type<T & Renderable>;
+    return Component as unknown as State.Type<T & Renderable>;
   }
 }
 
@@ -352,7 +355,7 @@ function Render<T extends Renderable, P extends State.Assign<T>>(
     let active: T;
 
     watch(this, (current) => {
-      active = current as T;
+      active = current;
 
       if (ready) state[1]((x) => x.bind(null));
     });
