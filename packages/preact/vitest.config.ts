@@ -1,26 +1,11 @@
-import { defineConfig } from 'vitest/config';
+import { defineConfig, mergeConfig } from 'vitest/config';
+import { rootConfig } from '../../vitest.config';
 
-export default defineConfig({
-  test: {
-    environment: 'jsdom',
-    setupFiles: ['../../vitest.setup.ts'],
-    coverage: {
-      provider: 'v8',
-      include: ['src/**'],
-      exclude: ['src/index.ts', 'dist'],
-      thresholds: {
-        branches: 100,
-        functions: 100,
-        lines: 100,
-        statements: 100
-      }
+export default mergeConfig(
+  rootConfig,
+  defineConfig({
+    test: {
+      environment: 'jsdom'
     }
-  },
-  resolve: {
-    alias: {
-      '@expressive/mvc': '../../mvc/src',
-      '@expressive/react': '../../react/src',
-      '@expressive/react/state': '../../react/src/state'
-    }
-  }
-});
+  })
+);
