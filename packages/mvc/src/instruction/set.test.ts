@@ -270,6 +270,25 @@ describe('intercept', () => {
 });
 
 describe('factory', () => {
+  it('will accept a direct Promise initializer', async () => {
+    const pending = mockPromise<string>();
+
+    class Test extends State {
+      value = set(pending);
+    }
+
+    const test = Test.new();
+
+    try {
+      void test.value;
+    } catch (_err) {}
+
+    pending.resolve('foo');
+    await pending;
+
+    expect(test.value).toBe('foo');
+  });
+
   it('will ignore setter if assigned', () => {
     const getValue = vi.fn(() => 'foo');
 
@@ -765,6 +784,25 @@ it('supports Promise objects as factory return', async () => {
 });
 
 describe('compute mode', () => {
+  it('will cleanup source subscription when source is destroyed', async () => {
+    class Source extends State {
+      value = 1;
+    }
+
+    class Subject extends State {
+      source = new Source();
+
+      computed = set(this.source, (source) => source.value);
+    }
+
+    const subject = Subject.new();
+
+    expect(subject.computed).toBe(1);
+
+    expect(() => subject.source.set(null)).not.toThrow();
+    expect(subject.computed).toBe(1);
+  });
+
   it('will reevaluate when inputs change', async () => {
     class Subject extends State {
       seconds = 0;

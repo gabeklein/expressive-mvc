@@ -1,10 +1,34 @@
 import { watch, Observable } from './observable';
 import { set } from './instruction/set';
 import { use } from './instruction/use';
-import { mockError, vi, describe, it, expect } from '../vitest';
+import { mockError, vi, describe, it, expect, mockPromise } from '../vitest';
 import { State } from './state';
 
 describe('effect', () => {
+  it('will cleanup safely while suspended', async () => {
+    let shouldSuspend = true;
+    const pending = mockPromise();
+
+    class Test extends State {
+      value = 1;
+    }
+
+    const test = Test.new();
+    const done = watch(test, () => {
+      if (shouldSuspend) {
+        shouldSuspend = false;
+        throw pending;
+      }
+
+      return null;
+    });
+
+    expect(done).not.toThrow();
+
+    pending.resolve();
+    await pending;
+  });
+
   it('will run after properties', () => {
     const mock = vi.fn();
 
