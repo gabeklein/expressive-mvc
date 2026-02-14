@@ -1,6 +1,7 @@
 import { act, render, renderHook, waitFor } from '@testing-library/preact';
 
 import { get, State, Provider, set } from '.';
+import { expect, describe, it, vi } from '../vitest';
 
 describe('State.use', () => {
   class Test extends State {
@@ -15,7 +16,7 @@ describe('State.use', () => {
     });
 
     it('will subscribe to instance of controller', async () => {
-      const willRender = jest.fn();
+      const willRender = vi.fn();
       const { result } = renderHook(() => {
         willRender();
         return Test.use();
@@ -46,7 +47,7 @@ describe('State.use', () => {
     });
 
     it('will run callback', () => {
-      const callback = jest.fn();
+      const callback = vi.fn();
 
       renderHook(() => Test.use(callback));
 
@@ -54,7 +55,7 @@ describe('State.use', () => {
     });
 
     it('will destroy instance of given class', async () => {
-      const didDestroy = jest.fn();
+      const didDestroy = vi.fn();
 
       class Test extends State {
         constructor() {
@@ -101,7 +102,7 @@ describe('State.use', () => {
 
   describe('new method', () => {
     it('will call if exists', () => {
-      const didCreate = jest.fn();
+      const didCreate = vi.fn();
 
       class Test extends State {
         protected new() {
@@ -131,7 +132,7 @@ describe('State.use', () => {
         bar: 'bar'
       };
 
-      const didRender = jest.fn();
+      const didRender = vi.fn();
 
       const hook = renderHook(() => {
         didRender();
@@ -157,7 +158,7 @@ describe('State.use', () => {
     });
 
     it('will trigger set instruction', () => {
-      const mock = jest.fn();
+      const mock = vi.fn();
 
       class Test extends State {
         foo = set('foo', mock);
@@ -227,7 +228,7 @@ describe('State.get', () => {
     }
 
     const test = Test.new();
-    const didRender = jest.fn();
+    const didRender = vi.fn();
     const hook = renderWith(test, () => {
       didRender();
       return Test.get().foo;
@@ -248,7 +249,7 @@ describe('State.get', () => {
       value = 1;
     }
 
-    const useTest = jest.fn(() => {
+    const useTest = vi.fn(() => {
       expect(() => Test.get()).toThrow('Could not find Test in context.');
     });
 
@@ -261,7 +262,7 @@ describe('State.get', () => {
       value = 1;
     }
 
-    const useTest = jest.fn(() => {
+    const useTest = vi.fn(() => {
       expect(Test.get(false)).toBeUndefined();
     });
 
@@ -287,7 +288,7 @@ describe('State.get', () => {
 
     it('will subscribe peer from context', async () => {
       const bar = Bar.new();
-      const didRender = jest.fn();
+      const didRender = vi.fn();
       const hook = renderWith(bar, () => {
         didRender();
         return Foo.use().bar.value;

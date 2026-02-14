@@ -1,6 +1,5 @@
 {
   "compilerOptions": {
-    "baseUrl": ".",
     "target": "es2020",
     "esModuleInterop": true,
     "jsx": "react-jsx",
@@ -16,7 +15,6 @@
     "sourceMap": true,
     "strict": true,
     "types": [
-      "jest",
       "preact"
     ],
     "paths": {

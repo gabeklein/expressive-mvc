@@ -2,6 +2,7 @@ import { act, render } from '@testing-library/preact';
 
 import { State, Provider, Consumer } from '.';
 import { Lookup } from './context';
+import { describe, it, expect, vi } from '../vitest';
 
 describe('Lookup', () => {
   it('is exported', () => {
@@ -15,7 +16,7 @@ describe('Provider', () => {
       value = 'foo';
     }
 
-    const didRender = jest.fn();
+    const didRender = vi.fn();
     const test = Test.new();
 
     const Element = () => {
@@ -38,7 +39,7 @@ describe('Provider', () => {
       value = 'foo';
     }
 
-    const didRender = jest.fn();
+    const didRender = vi.fn();
 
     const Element = () => {
       const instance = Test.get();
@@ -60,7 +61,7 @@ describe('Provider', () => {
       value = 'foo';
     }
 
-    const forEach = jest.fn();
+    const forEach = vi.fn();
 
     render(
       <Provider for={Test} forEach={forEach}>
@@ -76,7 +77,7 @@ describe('Provider', () => {
       value = 'foo';
     }
 
-    const forEach = jest.fn(() => undefined);
+    const forEach = vi.fn(() => undefined);
 
     render(
       <Provider for={Test} forEach={forEach}>
@@ -92,7 +93,7 @@ describe('Provider', () => {
       value = 'foo';
     }
 
-    const cleanup = jest.fn();
+    const cleanup = vi.fn();
 
     const rendered = render(
       <Provider for={Test} forEach={() => cleanup}>
@@ -116,7 +117,7 @@ describe('Provider', () => {
       value = 'child';
     }
 
-    const didRender = jest.fn();
+    const didRender = vi.fn();
 
     const Element = () => {
       const parent = Parent.get();
@@ -144,7 +145,7 @@ describe('Consumer', () => {
     }
 
     const test = Test.new();
-    const didRender = jest.fn();
+    const didRender = vi.fn();
 
     render(
       <Provider for={test}>
@@ -166,7 +167,7 @@ describe('Consumer', () => {
     }
 
     const test = Test.new();
-    const didRender = jest.fn();
+    const didRender = vi.fn();
 
     render(
       <Provider for={test}>
@@ -194,7 +195,7 @@ describe('Consumer', () => {
       value = 'foo';
     }
 
-    const didThrow = jest.fn();
+    const didThrow = vi.fn();
 
     try {
       render(

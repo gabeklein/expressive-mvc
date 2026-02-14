@@ -1,11 +1,14 @@
 import '@testing-library/jest-dom/vitest';
 
-import { cleanup } from '@testing-library/react';
+import { cleanup } from '@testing-library/preact';
 import { afterEach, afterAll, vi } from 'vitest';
 
 afterEach(() => cleanup());
 
 interface CustomMatchers<R = unknown> {
+  /** Assert state does have one or more updates pending. */
+  toUpdate(timeout?: number): Promise<R>;
+
   /** Assert state did update with keys specified. */
   toHaveUpdated(...keys: (string | symbol | number)[]): Promise<R>;
 }
@@ -49,4 +52,3 @@ export function mockError() {
 }
 
 export * from 'vitest';
-export * from '@testing-library/react';

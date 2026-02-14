@@ -16,7 +16,7 @@
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsdown",
-    "test": "tsc --noEmit && jest --collectCoverage",
+    "test": "tsc --noEmit && vitest run --coverage",
     "preversion": "npm run test && npm run build"
   },
   "dependencies": {
@@ -24,13 +24,11 @@
     "@expressive/react": "^0.71.0"
   },
   "devDependencies": {
-    "@swc/jest": "^0.2.24",
-    "@testing-library/jest-dom": "^6.8.0",
     "@testing-library/preact": "^3.2.3",
-    "jest": "^27.5.1",
-    "jest-environment-jsdom": "^27.5.1",
+    "@testing-library/jest-dom": "^6.8.0",
     "preact": "^10.0.0",
-    "tsdown": "^0.20.1"
+    "tsdown": "^0.20.1",
+    "vitest": "^4.0.18"
   },
   "peerDependencies": {
     "preact": "^10.0.0"
