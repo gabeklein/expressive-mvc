@@ -6,24 +6,27 @@ import { provide, Layers } from './context';
 import { Context } from '.';
 
 const OUTER = new WeakMap<Component, Context>();
+const PROPS = new WeakMap<Component, State.ComponentProps<any>>();
 
 type HasProps<T extends State> = {
   [K in Exclude<keyof T, keyof State>]?: T[K];
 };
 
-type ComponentProps<T extends State> = HasProps<T> & {
-  /**
-   * Callback for newly created instance. Only called once.
-   * @returns Callback to run when instance is destroyed.
-   */
-  is?: (instance: T) => void;
+type ComponentProps<T extends State> = Readonly<
+  HasProps<T> & {
+    /**
+     * Callback for newly created instance. Only called once.
+     * @returns Callback to run when instance is destroyed.
+     */
+    is?: (instance: T) => void;
 
-  /**
-   * A fallback react tree to show when suspended.
-   * If not provided, `fallback` property of the State will be used.
-   */
-  fallback?: React.ReactNode;
-};
+    /**
+     * A fallback react tree to show when suspended.
+     * If not provided, `fallback` property of the State will be used.
+     */
+    fallback?: React.ReactNode;
+  }
+>;
 
 type Props<T extends State> = T extends {
   render(props: infer P, self: any): any;
@@ -62,17 +65,15 @@ declare module './state' {
   }
 }
 
-class Component extends State {
+class Component extends State implements React.Component {
   static contextType = Layers;
 
-  private _props!: State.ComponentProps<this>;
-
   get props(): State.ComponentProps<this> {
-    return this._props;
+    return PROPS.get(this) || {};
   }
 
-  set props(props: State.ComponentProps<this>) {
-    this._props = props;
+  private set props(props: State.ComponentProps<this>) {
+    PROPS.set(this, props);
     this.set(props as {});
   }
 
@@ -103,10 +104,10 @@ class Component extends State {
       : this.children;
   }
 
-  /** @deprecated This is purely for React JSX compatibility in typescript. */
+  /** @deprecated Only for React JSX compatibility in typescript and nonfunctional. */
   setState!: (state: any, callback?: () => void) => void;
 
-  /** @deprecated This is purely for React JSX compatibility in typescript. */
+  /** @deprecated Only for React JSX compatibility in typescript and nonfunctional. */
   forceUpdate!: (callback?: () => void) => void;
 }
 
