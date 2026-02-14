@@ -351,6 +351,7 @@ abstract class State implements Observable {
       });
 
     if (arg1 && typeof arg1 == 'object') {
+      event(self);
       assign(self, arg1, arg2 === true);
     } else if (!arg2) {
       event(self, arg1);

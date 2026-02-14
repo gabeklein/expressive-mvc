@@ -1410,6 +1410,21 @@ describe('set method', () => {
       test.set();
       expect(effect).toBeCalled();
     });
+
+    it('will initialize from set({}) when created with new', () => {
+      const didSetFoo = vi.fn();
+
+      class Test extends State {
+        foo = set<string>(undefined, didSetFoo);
+      }
+
+      const test = new Test();
+
+      test.set({ foo: 'foo' });
+
+      expect(didSetFoo).toBeCalled();
+      expect(test.foo).toBe('foo');
+    });
   });
 
   describe('callback', () => {
