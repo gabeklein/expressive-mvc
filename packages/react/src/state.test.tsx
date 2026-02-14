@@ -909,6 +909,7 @@ describe('State.get', () => {
 
       await act(async () => {
         bar.value = 'foo';
+        await bar.set();
       });
 
       expect(hook.result.current).toBe('foo');
