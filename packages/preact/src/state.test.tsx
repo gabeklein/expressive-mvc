@@ -1,4 +1,4 @@
-import { act, render, renderHook, waitFor } from '@testing-library/preact';
+import { act, render, renderHook, waitFor } from '../vitest';
 
 import { get, State, Provider, set } from '.';
 
@@ -15,19 +15,19 @@ describe('State.use', () => {
     });
 
     it('will subscribe to instance of controller', async () => {
-      const willRender = jest.fn();
+      const willRender = vi.fn();
       const { result } = renderHook(() => {
         willRender();
         return Test.use();
       });
 
       expect(result.current.value).toBe('foo');
-      expect(willRender).toBeCalledTimes(1);
+      expect(willRender).toHaveBeenCalledTimes(1);
 
       result.current.value = 'bar';
 
       await waitFor(() => {
-        expect(willRender).toBeCalledTimes(2);
+        expect(willRender).toHaveBeenCalledTimes(2);
       });
 
       expect(result.current.value).toBe('bar');
@@ -46,15 +46,15 @@ describe('State.use', () => {
     });
 
     it('will run callback', () => {
-      const callback = jest.fn();
+      const callback = vi.fn();
 
       renderHook(() => Test.use(callback));
 
-      expect(callback).toBeCalledWith(expect.any(Test));
+      expect(callback).toHaveBeenCalledWith(expect.any(Test));
     });
 
     it('will destroy instance of given class', async () => {
-      const didDestroy = jest.fn();
+      const didDestroy = vi.fn();
 
       class Test extends State {
         constructor() {
@@ -69,7 +69,7 @@ describe('State.use', () => {
 
       rendered.unmount();
 
-      expect(didDestroy).toBeCalled();
+      expect(didDestroy).toHaveBeenCalled();
     });
 
     it('will bind methods to instance', async () => {
@@ -101,7 +101,7 @@ describe('State.use', () => {
 
   describe('new method', () => {
     it('will call if exists', () => {
-      const didCreate = jest.fn();
+      const didCreate = vi.fn();
 
       class Test extends State {
         protected new() {
@@ -111,11 +111,11 @@ describe('State.use', () => {
 
       const element = renderHook(() => Test.use());
 
-      expect(didCreate).toBeCalled();
+      expect(didCreate).toHaveBeenCalled();
 
       element.rerender();
 
-      expect(didCreate).toBeCalledTimes(1);
+      expect(didCreate).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -131,7 +131,7 @@ describe('State.use', () => {
         bar: 'bar'
       };
 
-      const didRender = jest.fn();
+      const didRender = vi.fn();
 
       const hook = renderHook(() => {
         didRender();
@@ -157,7 +157,7 @@ describe('State.use', () => {
     });
 
     it('will trigger set instruction', () => {
-      const mock = jest.fn();
+      const mock = vi.fn();
 
       class Test extends State {
         foo = set('foo', mock);
@@ -168,7 +168,7 @@ describe('State.use', () => {
       });
 
       expect(result.current.foo).toBe('bar');
-      expect(mock).toBeCalledWith('bar', 'foo');
+      expect(mock).toHaveBeenCalledWith('bar', 'foo');
     });
   });
 
@@ -227,7 +227,7 @@ describe('State.get', () => {
     }
 
     const test = Test.new();
-    const didRender = jest.fn();
+    const didRender = vi.fn();
     const hook = renderWith(test, () => {
       didRender();
       return Test.get().foo;
@@ -240,7 +240,7 @@ describe('State.get', () => {
     });
 
     expect(hook.result.current).toBe('bar');
-    expect(didRender).toBeCalledTimes(2);
+    expect(didRender).toHaveBeenCalledTimes(2);
   });
 
   it('will throw if not found', () => {
@@ -248,7 +248,7 @@ describe('State.get', () => {
       value = 1;
     }
 
-    const useTest = jest.fn(() => {
+    const useTest = vi.fn(() => {
       expect(() => Test.get()).toThrow('Could not find Test in context.');
     });
 
@@ -261,7 +261,7 @@ describe('State.get', () => {
       value = 1;
     }
 
-    const useTest = jest.fn(() => {
+    const useTest = vi.fn(() => {
       expect(Test.get(false)).toBeUndefined();
     });
 
@@ -287,7 +287,7 @@ describe('State.get', () => {
 
     it('will subscribe peer from context', async () => {
       const bar = Bar.new();
-      const didRender = jest.fn();
+      const didRender = vi.fn();
       const hook = renderWith(bar, () => {
         didRender();
         return Foo.use().bar.value;
@@ -301,7 +301,7 @@ describe('State.get', () => {
       });
 
       expect(hook.result.current).toBe('foo');
-      expect(didRender).toBeCalledTimes(2);
+      expect(didRender).toHaveBeenCalledTimes(2);
     });
 
     it('will return undefined if instance not found', () => {

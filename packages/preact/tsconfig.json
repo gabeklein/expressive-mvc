@@ -16,7 +16,7 @@
     "sourceMap": true,
     "strict": true,
     "types": [
-      "jest",
+      "vitest/globals",
       "preact"
     ],
     "paths": {

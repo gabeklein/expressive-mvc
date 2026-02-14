@@ -1,4 +1,4 @@
-import { act, render } from '@testing-library/preact';
+import { act, render } from '../vitest';
 
 import { State, Provider, Consumer } from '.';
 import { Lookup } from './context';
@@ -15,7 +15,7 @@ describe('Provider', () => {
       value = 'foo';
     }
 
-    const didRender = jest.fn();
+    const didRender = vi.fn();
     const test = Test.new();
 
     const Element = () => {
@@ -30,7 +30,7 @@ describe('Provider', () => {
       </Provider>
     );
 
-    expect(didRender).toBeCalledWith('foo');
+    expect(didRender).toHaveBeenCalledWith('foo');
   });
 
   it('will provide class to children', () => {
@@ -38,7 +38,7 @@ describe('Provider', () => {
       value = 'foo';
     }
 
-    const didRender = jest.fn();
+    const didRender = vi.fn();
 
     const Element = () => {
       const instance = Test.get();
@@ -52,7 +52,7 @@ describe('Provider', () => {
       </Provider>
     );
 
-    expect(didRender).toBeCalledWith('foo');
+    expect(didRender).toHaveBeenCalledWith('foo');
   });
 
   it('will run forEach callback', () => {
@@ -60,7 +60,7 @@ describe('Provider', () => {
       value = 'foo';
     }
 
-    const forEach = jest.fn();
+    const forEach = vi.fn();
 
     render(
       <Provider for={Test} forEach={forEach}>
@@ -68,7 +68,7 @@ describe('Provider', () => {
       </Provider>
     );
 
-    expect(forEach).toBeCalledWith(expect.any(Test));
+    expect(forEach).toHaveBeenCalledWith(expect.any(Test));
   });
 
   it('will handle forEach without cleanup', () => {
@@ -76,7 +76,7 @@ describe('Provider', () => {
       value = 'foo';
     }
 
-    const forEach = jest.fn(() => undefined);
+    const forEach = vi.fn(() => undefined);
 
     render(
       <Provider for={Test} forEach={forEach}>
@@ -84,7 +84,7 @@ describe('Provider', () => {
       </Provider>
     );
 
-    expect(forEach).toBeCalledWith(expect.any(Test));
+    expect(forEach).toHaveBeenCalledWith(expect.any(Test));
   });
 
   it('will cleanup on unmount', () => {
@@ -92,7 +92,7 @@ describe('Provider', () => {
       value = 'foo';
     }
 
-    const cleanup = jest.fn();
+    const cleanup = vi.fn();
 
     const rendered = render(
       <Provider for={Test} forEach={() => cleanup}>
@@ -100,11 +100,11 @@ describe('Provider', () => {
       </Provider>
     );
 
-    expect(cleanup).not.toBeCalled();
+    expect(cleanup).not.toHaveBeenCalled();
 
     rendered.unmount();
 
-    expect(cleanup).toBeCalled();
+    expect(cleanup).toHaveBeenCalled();
   });
 
   it('will nest contexts', () => {
@@ -116,7 +116,7 @@ describe('Provider', () => {
       value = 'child';
     }
 
-    const didRender = jest.fn();
+    const didRender = vi.fn();
 
     const Element = () => {
       const parent = Parent.get();
@@ -133,7 +133,7 @@ describe('Provider', () => {
       </Provider>
     );
 
-    expect(didRender).toBeCalledWith('parent', 'child');
+    expect(didRender).toHaveBeenCalledWith('parent', 'child');
   });
 });
 
@@ -144,7 +144,7 @@ describe('Consumer', () => {
     }
 
     const test = Test.new();
-    const didRender = jest.fn();
+    const didRender = vi.fn();
 
     render(
       <Provider for={test}>
@@ -157,7 +157,7 @@ describe('Consumer', () => {
       </Provider>
     );
 
-    expect(didRender).toBeCalledWith('foo');
+    expect(didRender).toHaveBeenCalledWith('foo');
   });
 
   it('will update on value changes', async () => {
@@ -166,7 +166,7 @@ describe('Consumer', () => {
     }
 
     const test = Test.new();
-    const didRender = jest.fn();
+    const didRender = vi.fn();
 
     render(
       <Provider for={test}>
@@ -179,14 +179,14 @@ describe('Consumer', () => {
       </Provider>
     );
 
-    expect(didRender).toBeCalledWith('foo');
+    expect(didRender).toHaveBeenCalledWith('foo');
 
     await act(async () => {
       test.value = 'bar';
       await test.set();
     });
 
-    expect(didRender).toBeCalledWith('bar');
+    expect(didRender).toHaveBeenCalledWith('bar');
   });
 
   it('will throw if not found', () => {
@@ -194,7 +194,7 @@ describe('Consumer', () => {
       value = 'foo';
     }
 
-    const didThrow = jest.fn();
+    const didThrow = vi.fn();
 
     try {
       render(
@@ -208,6 +208,6 @@ describe('Consumer', () => {
       didThrow(error.message);
     }
 
-    expect(didThrow).toBeCalledWith('Could not find Test in context.');
+    expect(didThrow).toHaveBeenCalledWith('Could not find Test in context.');
   });
 });
