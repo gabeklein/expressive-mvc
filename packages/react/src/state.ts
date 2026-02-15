@@ -327,11 +327,10 @@ abstract class ReactState extends State {
   static as<T extends State, P extends State.Assign<T>>(
     this: State.Type<T>,
     render: (props: P, self: T) => ReactNode
-  ) {
+  ): State.Type<T & Renderable<T, P>> {
     const Type = this as unknown as State.Type<State>;
-    const Self = new WeakMap<Component, React.FC>();
 
-    class Component extends Type {
+    class ReactType extends Type {
       static contextType = Layers;
 
       get props() {
@@ -347,28 +346,30 @@ abstract class ReactState extends State {
         return Context.get(this)!;
       }
 
-      set context(context: Context) {
+      private set context(context: Context) {
         if (OUTER.get(this) === context) return;
 
         OUTER.set(this, context);
         context.push(this);
       }
 
-      state = {} as State.Values<this>;
+      get state() {
+        return this.get();
+      }
+
+      private set state(_state: State.Values<this>) {}
+
+      render: () => ReactNode;
       fallback?: ReactNode = undefined;
 
       constructor(nextProps: any) {
         const { is, ...props } = nextProps || {};
 
         super(props, is);
-        PROPS.set(this, nextProps);
-        Self.set(this, Render.bind(this, render as any));
-      }
 
-      render(): ReactNode {
-        return Pragma.createElement(Self.get(this)!);
+        const Component = Render.bind(this, render as any);
+        this.render = () => Pragma.createElement(Component);
       }
-
       /** @deprecated Only for React JSX compatibility in typescript and nonfunctional. */
       setState!: (state: any, callback?: () => void) => void;
 
@@ -376,12 +377,12 @@ abstract class ReactState extends State {
       forceUpdate!: (callback?: () => void) => void;
     }
 
-    Object.defineProperty(Component, 'name', { value: 'React' + this.name });
-    Object.defineProperty(Component.prototype, 'isReactComponent', {
+    Object.defineProperty(ReactType, 'name', { value: 'React' + this.name });
+    Object.defineProperty(ReactType.prototype, 'isReactComponent', {
       get: () => true
     });
 
-    return Component as unknown as State.Type<T & Renderable<T, P>>;
+    return ReactType as any;
   }
 }
 
@@ -422,7 +423,7 @@ function Render<T extends Renderable, P extends State.Assign<T>>(
       return provide(
         context,
         Pragma.createElement(View),
-        active.fallback,
+        this.fallback,
         String(this)
       );
     };
