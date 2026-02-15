@@ -3,8 +3,51 @@ import { State, Context, watch, METHOD } from '@expressive/mvc';
 import Runtime from 'react/jsx-runtime';
 import React from 'react';
 
-import { AsComponent, Pragma, Props, HasProps, RenderProps } from './state';
+import { Pragma } from './state';
 import { provide } from './context';
+
+type Reserved = keyof State | 'render' | 'fallback';
+
+type StateProps<T extends State> = {
+  [K in Exclude<keyof T, Reserved>]?: T[K];
+};
+
+type ManagedChildren<T extends State> = 'children' extends keyof T
+  ? { children?: T['children'] }
+  : {};
+
+type ComponentBaseProps<T extends State> = Readonly<
+  Omit<StateProps<T>, 'children'> &
+    ManagedChildren<T> & {
+      is?: (instance: T) => void;
+      fallback?: React.ReactNode;
+    }
+>;
+
+type RuntimeOptions<T extends State> = {
+  render?: T extends { render: infer R } ? R : never;
+  fallback?: React.ReactNode;
+};
+
+type AsRenderProps<T extends State> = StateProps<T> &
+  RuntimeOptions<T> & {
+    is?: never;
+    get?: never;
+    set?: never;
+  };
+
+interface AsComponent extends State {
+  render?(props: AsRenderProps<this>, self: this): React.ReactNode;
+  fallback?: React.ReactNode;
+}
+
+type Props<T extends State> = T extends {
+  render(props: infer P, self: any): any;
+}
+  ? ComponentBaseProps<T> & Omit<P, keyof AsComponent>
+  : ComponentBaseProps<T> & { children?: React.ReactNode };
+
+type RuntimeProps<T extends State> = Props<T> & RuntimeOptions<T>;
 
 export declare namespace JSX {
   type ElementType =
@@ -54,8 +97,8 @@ export const jsxs = patch.bind(Runtime.jsxs);
 
 function Render<T extends AsComponent>(
   this: State.Type<T>,
-  props: Props<T>,
-  props2?: Props<T>
+  props: RuntimeProps<T>,
+  props2?: RuntimeProps<T>
 ) {
   const { is, ...rest } = { ...props, ...props2 };
 
@@ -81,15 +124,15 @@ function Render<T extends AsComponent>(
       };
     }
 
-    function Render(props: Props<T>) {
+    function Render(props: RuntimeProps<T>) {
       const render = METHOD.get(active.render) || props.render || active.render;
 
       return render
-        ? render.call(active, props as HasProps<T>, active)
+        ? render.call(active, props as StateProps<T>, active)
         : props.children;
     }
 
-    return (props: RenderProps<T>) => {
+    return (props: RuntimeProps<T>) => {
       ready = false;
 
       Pragma.useEffect(didMount, []);

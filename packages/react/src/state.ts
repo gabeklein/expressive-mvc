@@ -56,12 +56,24 @@ type UseArgs<T extends State> = T extends {
   ? P
   : State.Args<T>;
 
-type HasProps<T extends State> = {
-  [K in Exclude<keyof T, keyof State>]?: T[K];
+type ValidProps<T extends State> = {
+  [K in Exclude<keyof T, keyof Component>]?: T[K];
 };
 
+type Overlap<P extends object, V extends object> = Extract<keyof P, keyof V>;
+
+type PropsConflicting<P extends object, V extends object> = {
+  [K in Overlap<P, V>]: [P[K]] extends [V[K]] ? never : K;
+}[Overlap<P, V>];
+
+type PropsValid<P extends object, T extends State> = [
+  PropsConflicting<P, ValidProps<T>>
+] extends [never]
+  ? unknown
+  : never;
+
 type ComponentProps<T extends State> = Readonly<
-  HasProps<T> & {
+  ValidProps<T> & {
     /**
      * Callback for newly created instance. Only called once.
      * @returns Callback to run when instance is destroyed.
@@ -73,37 +85,22 @@ type ComponentProps<T extends State> = Readonly<
      * If not provided, `fallback` property of the State will be used.
      */
     fallback?: React.ReactNode;
+
+    /**
+     * Children to render within component. Will be passed as `children` prop.
+     */
+    children?: React.ReactNode;
   }
 >;
 
-/**
- * Props which will not conflict with a State's use as a Component.
- *
- * Built-in properties must be optional, as they will always be omitted.
- */
-type RenderProps<T extends State> = HasProps<T> & {
-  is?: never;
-  get?: never;
-  set?: never;
-};
+type WithProps<T> = T extends State
+  ? T extends { props: infer P }
+    ? P
+    : {}
+  : T;
 
-type Props<T extends State> = T extends {
-  render(props: infer P, self: any): any;
-}
-  ? ComponentProps<T> & Omit<P, keyof AsComponent>
-  : ComponentProps<T> & { children?: React.ReactNode };
-
-/** State which is not incompatable as Component in React. */
-interface AsComponent extends State {
-  render?(props: RenderProps<this>, self: this): React.ReactNode;
-  fallback?: React.ReactNode;
-}
-
-interface Renderable<
-  T extends State = State,
-  P extends State.Assign<T> = {}
-> extends ReactState {
-  readonly props: ComponentProps<this> & P;
+interface Component<P = {}> extends ReactState {
+  readonly props: ComponentProps<this> & WithProps<P>;
   context: Context;
   state: State.Values<this>;
   fallback?: ReactNode;
@@ -116,6 +113,8 @@ interface Renderable<
   /** @deprecated Only for React JSX compatibility in typescript and nonfunctional. */
   forceUpdate: (callback?: () => void) => void;
 }
+
+type ComponentType<T, P = {}> = State.Type<T & Component<P>>;
 
 declare namespace ReactState {
   export import Extends = State.Extends;
@@ -136,7 +135,7 @@ declare namespace ReactState {
   export import Effect = State.Effect;
   export import EffectCallback = State.EffectCallback;
 
-  export { GetFactory, GetEffect, UseArgs, HasProps, Renderable };
+  export { GetFactory, GetEffect, UseArgs, ValidProps, Component };
 }
 
 abstract class ReactState extends State {
@@ -324,16 +323,28 @@ abstract class ReactState extends State {
     return state[0]() as R;
   }
 
-  static as<T extends State, P extends State.Assign<T>>(
+  static as<T extends State, P extends object>(
     this: State.Type<T>,
-    render: (props: P, self: T) => ReactNode
-  ): State.Type<T & Renderable<T, P>> {
+    render: ((props: P & ValidProps<T>, self: T) => ReactNode) &
+      PropsValid<P, T>
+  ): ComponentType<T, P>;
+
+  static as<T extends State>(
+    this: State.Type<T>,
+    withProps: ValidProps<T>
+  ): ComponentType<T, T>;
+
+  static as<T extends State, P>(
+    this: State.Type<T>,
+    argument: ((props: P & ValidProps<T>, self: T) => ReactNode) | ValidProps<T>
+  ) {
     const Type = this as unknown as State.Type<State>;
+    const render = typeof argument === 'function' ? argument : undefined;
 
     class ReactType extends Type {
       static contextType = Layers;
 
-      get props() {
+      get props(): ComponentProps<this> {
         return PROPS.get(this) || {};
       }
 
@@ -359,17 +370,32 @@ abstract class ReactState extends State {
 
       private set state(_state: State.Values<this>) {}
 
-      render: () => ReactNode;
+      render!: () => ReactNode;
       fallback?: ReactNode = undefined;
 
-      constructor(nextProps: any) {
-        const { is, ...props } = nextProps || {};
+      constructor(nextProps: any, ...rest: any[]) {
+        const { is } = nextProps || {};
+        const defaults = typeof argument === 'object' ? argument : {};
 
-        super(props, is);
+        if (rest[0] instanceof Context) rest.shift();
 
-        const Component = Render.bind(this, render as any);
-        this.render = () => Pragma.createElement(Component);
+        super(nextProps, defaults, is, rest);
+        PROPS.set(this, nextProps);
+
+        if (render) {
+          const Self = Render.bind(this, render as any);
+          this.render = () => Pragma.createElement(Self);
+        } else if (!this.render) {
+          this.render = () =>
+            provide(
+              this.context,
+              this.props.children || null,
+              this.props.fallback,
+              String(this)
+            );
+        }
       }
+
       /** @deprecated Only for React JSX compatibility in typescript and nonfunctional. */
       setState!: (state: any, callback?: () => void) => void;
 
@@ -382,11 +408,11 @@ abstract class ReactState extends State {
       get: () => true
     });
 
-    return ReactType as any;
+    return ReactType;
   }
 }
 
-function Render<T extends Renderable, P extends State.Assign<T>>(
+function Render<T extends Component, P extends State.Assign<T>>(
   this: T,
   render: (props: P, self: T) => ReactNode
 ) {
@@ -423,7 +449,7 @@ function Render<T extends Renderable, P extends State.Assign<T>>(
       return provide(
         context,
         Pragma.createElement(View),
-        this.fallback,
+        this.props.fallback,
         String(this)
       );
     };
@@ -433,4 +459,3 @@ function Render<T extends Renderable, P extends State.Assign<T>>(
 }
 
 export { ReactState };
-export { AsComponent, Props, RenderProps, HasProps };

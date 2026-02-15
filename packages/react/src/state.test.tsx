@@ -1070,6 +1070,50 @@ describe('State.as', () => {
     element.getByText('Hello Tester');
   });
 
+  it('will expect props based of callback signature', () => {
+    class Test extends State {
+      something = 'World';
+    }
+
+    interface InvalidProps {
+      value: string;
+      something?: number; // -> this shouldn't be allowed
+    }
+
+    if (0) {
+      // @ts-expect-error - overlap with state prop must be compatible
+      Test.as((props: InvalidProps, self) => (
+        <span>{props.value + self.something}</span>
+      ));
+    }
+
+    const Component = Test.as((props: { value: string }, self) => (
+      <span>{props.value + self.something}</span>
+    ));
+
+    if (0) {
+      // @ts-expect-error - value prop is required
+      <Component />;
+    }
+
+    const element = render(<Component value="Hello " />);
+
+    element.getByText('Hello World');
+  });
+
+  it('will create component with default values', () => {
+    class Test extends State {
+      foo = 'bar';
+    }
+
+    const Renderable = Test.as((_, i) => <span>{i.foo}</span>);
+    const WithDefault = Renderable.as({ foo: 'baz' });
+
+    const element = render(<WithDefault />);
+
+    element.getByText('baz');
+  });
+
   it('will update component as values change', async () => {
     class Test extends State {
       foo = 'bar';
