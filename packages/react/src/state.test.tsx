@@ -1154,7 +1154,7 @@ describe('State.as', () => {
     act(screen.unmount);
   });
 
-  it.skip('will pass untracked props to render', async () => {
+  it('will pass untracked props to render', async () => {
     class Test extends State {
       foo = 'foo';
 
@@ -1169,7 +1169,6 @@ describe('State.as', () => {
       <span>{self.foo + props.value}</span>
     ));
 
-    // @ts-expect-error
     render(<Component value="bar" />);
     screen.getByText('foobar');
 

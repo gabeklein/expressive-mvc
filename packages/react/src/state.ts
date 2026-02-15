@@ -57,8 +57,11 @@ type UseArgs<T extends State> = T extends {
   ? P
   : State.Args<T>;
 
-interface Renderable extends ReactState {
-  readonly props: ReactState.ComponentProps<this>;
+interface Renderable<
+  T extends State = State,
+  P extends State.Assign<T> = {}
+> extends ReactState {
+  readonly props: ReactState.ComponentProps<this> & P;
   context: Context;
   state: State.Values<this>;
   fallback?: ReactNode;
@@ -282,11 +285,11 @@ abstract class ReactState extends State {
   static as<T extends State, P extends State.Assign<T>>(
     this: State.Type<T>,
     render: (props: P, self: T) => ReactNode
-  ): State.Type<T & Renderable> {
+  ) {
     const Type = this as unknown as State.Type<State>;
     const Self = new WeakMap<Component, React.FC>();
 
-    class Component extends Type implements Renderable {
+    class Component extends Type {
       static contextType = Layers;
 
       get props() {
@@ -333,7 +336,7 @@ abstract class ReactState extends State {
       get: () => true
     });
 
-    return Component as unknown as State.Type<T & Renderable>;
+    return Component as unknown as State.Type<T & Renderable<T, P>>;
   }
 }
 
@@ -363,7 +366,7 @@ function Render<T extends Renderable, P extends State.Assign<T>>(
       };
     };
 
-    const View = () => render.call(active, active.props as any, active);
+    const View = () => render.call(active, this.props as any, active);
 
     return () => {
       ready = false;
