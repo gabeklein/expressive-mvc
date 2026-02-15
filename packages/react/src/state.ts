@@ -315,8 +315,11 @@ abstract class ReactState extends State {
       state = {} as State.Values<this>;
       fallback?: ReactNode = undefined;
 
-      constructor({ is, ...props }: any) {
+      constructor(nextProps: any) {
+        const { is, ...props } = nextProps || {};
+
         super(props, is);
+        PROPS.set(this, nextProps);
         Self.set(this, Render.bind(this, render as any));
       }
 
