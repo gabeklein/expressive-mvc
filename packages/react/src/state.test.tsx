@@ -1070,6 +1070,39 @@ describe('State.as', () => {
     element.getByText('Hello Tester');
   });
 
+  it('will create passthrough component with defaults', () => {
+    class Test extends State {
+      name = 'World';
+    }
+
+    const Component = Test.as({ name: 'Tester' });
+    const Consumer = () => {
+      const { name } = Test.get();
+
+      return <div>Hello {name}</div>;
+    };
+
+    const element = render(
+      <Component>
+        <Consumer />
+      </Component>
+    );
+
+    element.getByText('Hello Tester');
+  });
+
+  it('will create null component with no render', () => {
+    class Test extends State {
+      something = 'World';
+    }
+
+    const Component = Test.as({});
+
+    const element = render(<Component />);
+
+    expect(element.container.innerHTML).toBe('');
+  });
+
   it('will expect props based of callback signature', () => {
     class Test extends State {
       something = 'World';

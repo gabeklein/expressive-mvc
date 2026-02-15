@@ -56,9 +56,15 @@ type UseArgs<T extends State> = T extends {
   ? P
   : State.Args<T>;
 
-type ValidProps<T extends State> = {
+type Props<T extends State> = {
   [K in Exclude<keyof T, keyof Component>]?: T[K];
 };
+
+type Render<T extends State, P extends object> = ((
+  props: P & Props<T>,
+  self: T
+) => ReactNode) &
+  PropsValid<P, T>;
 
 type Overlap<P extends object, V extends object> = Extract<keyof P, keyof V>;
 
@@ -67,13 +73,13 @@ type PropsConflicting<P extends object, V extends object> = {
 }[Overlap<P, V>];
 
 type PropsValid<P extends object, T extends State> = [
-  PropsConflicting<P, ValidProps<T>>
+  PropsConflicting<P, Props<T>>
 ] extends [never]
   ? unknown
   : never;
 
 type ComponentProps<T extends State> = Readonly<
-  ValidProps<T> & {
+  Props<T> & {
     /**
      * Callback for newly created instance. Only called once.
      * @returns Callback to run when instance is destroyed.
@@ -93,14 +99,8 @@ type ComponentProps<T extends State> = Readonly<
   }
 >;
 
-type WithProps<T> = T extends State
-  ? T extends { props: infer P }
-    ? P
-    : {}
-  : T;
-
 interface Component<P = {}> extends ReactState {
-  readonly props: ComponentProps<this> & WithProps<P>;
+  readonly props: ComponentProps<this> & P;
   context: Context;
   state: State.Values<this>;
   fallback?: ReactNode;
@@ -135,7 +135,7 @@ declare namespace ReactState {
   export import Effect = State.Effect;
   export import EffectCallback = State.EffectCallback;
 
-  export { GetFactory, GetEffect, UseArgs, ValidProps, Component };
+  export { GetFactory, GetEffect, UseArgs, Props as ValidProps, Component };
 }
 
 abstract class ReactState extends State {
@@ -323,20 +323,24 @@ abstract class ReactState extends State {
     return state[0]() as R;
   }
 
-  static as<T extends State, P extends object>(
+  static as<T extends State, P extends object = {}>(
     this: State.Type<T>,
-    render: ((props: P & ValidProps<T>, self: T) => ReactNode) &
-      PropsValid<P, T>
+    render: Render<T, P>
+  ): ComponentType<T, P>;
+
+  static as<T extends State, P extends object = {}>(
+    this: ComponentType<T, P>,
+    withProps: Props<T>
   ): ComponentType<T, P>;
 
   static as<T extends State>(
     this: State.Type<T>,
-    withProps: ValidProps<T>
-  ): ComponentType<T, T>;
+    withProps: Props<T>
+  ): ComponentType<T, {}>;
 
   static as<T extends State, P>(
     this: State.Type<T>,
-    argument: ((props: P & ValidProps<T>, self: T) => ReactNode) | ValidProps<T>
+    argument: ((props: P, self: T) => ReactNode) | Props<T>
   ) {
     const Type = this as unknown as State.Type<State>;
     const render = typeof argument === 'function' ? argument : undefined;
@@ -345,7 +349,7 @@ abstract class ReactState extends State {
       static contextType = Layers;
 
       get props(): ComponentProps<this> {
-        return PROPS.get(this) || {};
+        return PROPS.get(this)!;
       }
 
       private set props(props: ComponentProps<this>) {
@@ -374,7 +378,7 @@ abstract class ReactState extends State {
       fallback?: ReactNode = undefined;
 
       constructor(nextProps: any, ...rest: any[]) {
-        const { is } = nextProps || {};
+        const { is } = nextProps;
         const defaults = typeof argument === 'object' ? argument : {};
 
         if (rest[0] instanceof Context) rest.shift();
