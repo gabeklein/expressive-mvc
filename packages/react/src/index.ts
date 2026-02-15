@@ -28,7 +28,6 @@ State.as = ReactState.as;
 
 export { ReactState as State, ReactState as default };
 export { Context, Observable, get, use, ref, set } from '@expressive/mvc';
-export { Component } from './component';
 export { Consumer, Provider } from './context';
 export { Fragment, createElement } from 'react';
 export { Pragma };

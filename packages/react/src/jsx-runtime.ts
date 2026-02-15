@@ -3,8 +3,7 @@ import { State, Context, watch, METHOD } from '@expressive/mvc';
 import Runtime from 'react/jsx-runtime';
 import React from 'react';
 
-import { AsComponent, Pragma, Props } from './state';
-import { HasProps, RenderProps } from './component';
+import { AsComponent, Pragma, Props, HasProps, RenderProps } from './state';
 import { provide } from './context';
 
 export declare namespace JSX {

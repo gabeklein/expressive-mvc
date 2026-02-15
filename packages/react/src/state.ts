@@ -1,7 +1,6 @@
 import { State, Context, watch, event } from '@expressive/mvc';
 import { ReactNode } from 'react';
 import { provide, Layers } from './context';
-import type { AsComponent, HasProps, Props } from './component';
 
 export const Pragma = {} as {
   useState<S>(initial: () => S): [S, (next: (previous: S) => S) => void];
@@ -13,7 +12,7 @@ export const Pragma = {} as {
 type NoVoid<T> = T extends undefined | void ? null : T;
 
 const OUTER = new WeakMap<object, Context>();
-const PROPS = new WeakMap<object, ReactState.ComponentProps<any>>();
+const PROPS = new WeakMap<object, ComponentProps<any>>();
 
 type ForceRefresh = {
   /** Request a refresh for current component. */
@@ -57,11 +56,54 @@ type UseArgs<T extends State> = T extends {
   ? P
   : State.Args<T>;
 
+type HasProps<T extends State> = {
+  [K in Exclude<keyof T, keyof State>]?: T[K];
+};
+
+type ComponentProps<T extends State> = Readonly<
+  HasProps<T> & {
+    /**
+     * Callback for newly created instance. Only called once.
+     * @returns Callback to run when instance is destroyed.
+     */
+    is?: (instance: T) => void;
+
+    /**
+     * A fallback react tree to show when suspended.
+     * If not provided, `fallback` property of the State will be used.
+     */
+    fallback?: React.ReactNode;
+  }
+>;
+
+/**
+ * Props which will not conflict with a State's use as a Component.
+ *
+ * Built-in properties must be optional, as they will always be omitted.
+ */
+type RenderProps<T extends State> = HasProps<T> & {
+  is?: never;
+  get?: never;
+  set?: never;
+};
+
+type Props<T extends State> = T extends {
+  render(props: infer P, self: any): any;
+}
+  ? ComponentProps<T> & Omit<P, keyof AsComponent>
+  : ComponentProps<T> & { children?: React.ReactNode };
+
+/** State which is not incompatable as Component in React. */
+interface AsComponent extends State {
+  render?(props: RenderProps<this>, self: this): React.ReactNode;
+  fallback?: React.ReactNode;
+}
+
 interface Renderable<
   T extends State = State,
   P extends State.Assign<T> = {}
 > extends ReactState {
-  readonly props: ReactState.ComponentProps<this> & P;
+  readonly props: ComponentProps<this> & P;
   context: Context;
   state: State.Values<this>;
   fallback?: ReactNode;
@@ -296,7 +338,7 @@ abstract class ReactState extends State {
         return PROPS.get(this) || {};
       }
 
-      private set props(props: ReactState.ComponentProps<this>) {
+      private set props(props: ComponentProps<this>) {
         PROPS.set(this, props);
         this.set(props as {});
       }
@@ -390,4 +432,4 @@ function Render<T extends Renderable, P extends State.Assign<T>>(
 }
 
 export { ReactState };
-export { AsComponent, Props };
+export { AsComponent, Props, RenderProps, HasProps };
