@@ -18,7 +18,9 @@ type Effect<T extends Observable> = (
   proxy: T
 ) => ((update: boolean | null) => void) | Promise<void> | null | void;
 
-type Event = number | string | null | boolean | symbol;
+type Meta = boolean | null;
+
+type Event = Meta | string | number | symbol;
 
 type PromiseLite<T = void> = { then: (callback: () => T) => T };
 
@@ -85,26 +87,52 @@ function observing(from: Observable, key: string | number, value?: any) {
   return observe ? observe(key, value) : value;
 }
 
+/**
+ * Create a listener for a meta event which will trigger whenever the specified event(s) occur.
+ *
+ * If `true` is passed, the callback will be triggered when the instance is ready.
+ * If `null` is passed, the callback will be triggered when the instance is expired.
+ * if `false` is passed, the callback will be triggered on the next update.
+ *
+ * For any of these events, the
+ */
 function addListener<T extends Observable>(
   subject: T,
   callback: Notify<T>,
-  select?: Event | Set<Event>
+  onceOn?: boolean | null
+): () => boolean;
+
+function addListener<T extends Observable>(
+  subject: T,
+  callback: Notify<T>,
+  on?: Event | Set<Event>
+): () => boolean;
+
+function addListener<T extends Observable>(
+  subject: T,
+  callback: Notify<T>,
+  on?: Event | Set<Event>
 ) {
-  let listeners = LISTENERS.get(subject)!;
+  let listener = LISTENERS.get(subject)!;
 
-  if (!listeners)
-    LISTENERS.set(subject, (listeners = new Map([[onReady, undefined]])));
+  if (!listener)
+    LISTENERS.set(subject, (listener = new Map([[onReady, undefined]])));
 
-  if (select !== undefined && !(select instanceof Set))
-    select = new Set([select]);
+  if (on !== undefined && !(on instanceof Set)) on = new Set([on]);
 
-  if (!listeners.has(onReady) && !select) {
+  if ((!listener.has(onReady) && on === true) || on === undefined) {
     callback.call(subject, true, subject);
   }
 
-  listeners.set(callback, select);
+  listener.set(callback, on);
 
-  return () => listeners.delete(callback);
+  if (typeof on == 'boolean')
+    listener.set(() => {
+      listener.delete(callback);
+      return null;
+    }, undefined);
+
+  return () => listener.delete(callback);
 }
 
 function pending(subject: Observable) {
