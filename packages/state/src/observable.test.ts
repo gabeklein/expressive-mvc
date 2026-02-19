@@ -1,4 +1,4 @@
-import { watch, Observable } from './observable';
+import { watch, listener, Observable } from './observable';
 import { set } from './instruction/set';
 import { use } from './instruction/use';
 import { mockError, vi, describe, it, expect, mockPromise } from '../vitest';
@@ -370,5 +370,28 @@ describe('observable', () => {
 
     expect(mock).toBeCalledWith('bar');
     expect(mock).toBeCalledTimes(2);
+  });
+
+  it('supports promise-based listener for ready event', async () => {
+    class Test extends State {
+      value = 1;
+    }
+
+    const test = Test.new();
+
+    await expect(listener(test)).resolves.toBe(true);
+  });
+
+  it('supports promise-based listener for selected event', async () => {
+    class Test extends State {
+      value = 1;
+    }
+
+    const test = Test.new();
+    const wait = listener(test, 'value');
+
+    test.value = 2;
+
+    await expect(wait).resolves.toBe('value');
   });
 });

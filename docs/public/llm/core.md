@@ -9,16 +9,18 @@ import State from '@expressive/state';
 
 class Counter extends State {
   count = 0;
-  increment() { this.count++; }
+  increment() {
+    this.count++;
+  }
 }
 ```
 
 ### Instantiation
 
 ```ts
-const counter = Counter.new();           // creates AND activates
+const counter = Counter.new(); // creates AND activates
 const counter = Counter.new({ count: 10 }); // with initial values
-const counter = Counter.new('my-counter');  // with ID
+const counter = Counter.new('my-counter'); // with ID
 ```
 
 > `new Counter()` constructs but does NOT activate. Always prefer `Counter.new()`.
@@ -35,15 +37,15 @@ class App extends State {
 
 const app = App.new();
 app.name = 'Alice'; // queues update
-app.count = 1;      // queues another — both flush via setTimeout(0)
+app.count = 1; // queues another — both flush via setTimeout(0)
 ```
 
 ## get() — Read & Subscribe
 
 ```ts
-state.get();                    // export all values as plain object
-state.get('count');             // get single property
-state.get(null);                // check if destroyed (boolean)
+state.get(); // export all values as plain object
+state.get('count'); // get single property
+state.get(null); // check if destroyed (boolean)
 
 // Tracked effect — re-runs when accessed properties change
 const stop = state.get((current) => {
@@ -78,11 +80,11 @@ state.get(function (current, update) {
 ## set() — Write & Listen
 
 ```ts
-state.set({ count: 5 });       // merge values
-await state.set();              // await pending flush
-state.set('customEvent');       // dispatch named event
-state.set('count', 42);        // set single property (unchecked)
-state.set(null);                // destroy
+state.set({ count: 5 }); // merge values
+await state.set(); // await pending flush
+state.set('customEvent'); // dispatch named event
+state.set('count', 42); // set single property (unchecked)
+state.set(null); // destroy
 
 // Listen to all updates
 const stop = state.set((key, source) => {
@@ -117,21 +119,25 @@ class App extends State {
 State extends Observable. Also usable standalone:
 
 ```ts
-import { addListener, watch, event } from '@expressive/state';
+import { listener, watch, event } from '@expressive/state';
 
-const stop = addListener(state, (key, source) => { /* event */ });
-const stop = watch(state, (current) => { /* tracked effect */ });
+const stop = listener(state, (key, source) => {
+  /* event */
+});
+const stop = watch(state, (current) => {
+  /* tracked effect */
+});
 event(state, 'myEvent'); // manual dispatch
 ```
 
 ### Event Semantics
 
-| Value | Meaning |
-|-------|---------|
-| `true` | Ready / initial activation |
-| `false` | Update flush completed |
-| `null` | Destroyed (terminal) |
-| `string \| symbol \| number` | Property or custom event |
+| Value                        | Meaning                    |
+| ---------------------------- | -------------------------- |
+| `true`                       | Ready / initial activation |
+| `false`                      | Update flush completed     |
+| `null`                       | Destroyed (terminal)       |
+| `string \| symbol \| number` | Property or custom event   |
 
 All events batched and flushed via `setTimeout(0)`.
 
@@ -153,8 +159,10 @@ Primarily used via `get()` instruction (see instructions.md) and React `Provider
 ## Static Methods
 
 ```ts
-Counter.is(unknown);              // type guard => boolean
-const stop = Counter.on((key, source) => { /* any instance */ });
+Counter.is(unknown); // type guard => boolean
+const stop = Counter.on((key, source) => {
+  /* any instance */
+});
 ```
 
 ## The `is` Property
@@ -167,7 +175,7 @@ counter.increment(); // write access after destructuring
 
 // Silent read — access via `is` bypasses proxy tracking
 state.get((current) => {
-  console.log(current.value);    // subscribes to 'value'
+  console.log(current.value); // subscribes to 'value'
   console.log(current.is.other); // does NOT subscribe — silent read
 });
 ```

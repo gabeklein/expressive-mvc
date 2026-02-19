@@ -68,7 +68,7 @@ function observe<T extends Observable>(
   const watching = new Set<unknown>();
   const proxy = Object.create(object);
 
-  addListener(object, (key) => {
+  listener(object, (key) => {
     if (watching.has(key)) callback();
   });
 
@@ -92,9 +92,20 @@ function observing(from: Observable, key: string | number, value?: any) {
   return observe ? observe(key, value) : value;
 }
 
-function addListener<T extends Observable>(
+function listener<T extends Observable>(
   subject: T,
   callback: Notify<T>,
+  select?: Signal | Set<Signal>
+): () => boolean;
+
+function listener<T extends Observable>(
+  subject: T,
+  select?: Signal | Set<Signal>
+): Promise<Signal>;
+
+function listener<T extends Observable>(
+  subject: T,
+  callbackOrSelect?: Notify<T> | Signal | Set<Signal>,
   select?: Signal | Set<Signal>
 ) {
   let listeners = LISTENERS.get(subject)!;
@@ -102,16 +113,37 @@ function addListener<T extends Observable>(
   if (!listeners)
     LISTENERS.set(subject, (listeners = new Map([[onReady, undefined]])));
 
-  if (select !== undefined && !(select instanceof Set))
-    select = new Set([select]);
+  const notReady = listeners.has(onReady);
 
-  if (!listeners.has(onReady) && !select) {
-    callback.call(subject, true, subject);
+  if (typeof callbackOrSelect == 'function') {
+    if (select !== undefined && !(select instanceof Set))
+      select = new Set([select]);
+
+    if (!notReady && !select) {
+      callbackOrSelect.call(subject, true, subject);
+    }
+
+    listeners.set(callbackOrSelect, select);
+
+    return () => listeners.delete(callbackOrSelect);
   }
 
-  listeners.set(callback, select);
+  let filter = callbackOrSelect;
 
-  return () => listeners.delete(callback);
+  if (filter !== undefined && !(filter instanceof Set))
+    filter = new Set([filter]);
+
+  if (!notReady && filter?.has(true)) return Promise.resolve(true);
+
+  return new Promise((resolve) => {
+    const callback: Notify<T> = (key) => {
+      listeners.delete(callback);
+      resolve(key);
+      return null;
+    };
+
+    listeners.set(callback, filter);
+  });
 }
 
 function pending<K extends Event>(state: Observable) {
@@ -120,7 +152,7 @@ function pending<K extends Event>(state: Observable) {
     then: (onFulfilled) =>
       new Promise<K[]>((res) => {
         if (current) {
-          const remove = addListener(state, (key) => {
+          const remove = listener(state, (key) => {
             if (key !== true) {
               remove();
               return () => {
@@ -289,7 +321,7 @@ function watch<T extends Observable>(
 
   if (EffectContext && argument !== false) EffectContext.add(cleanup);
 
-  addListener(target, (key) => {
+  listener(target, (key) => {
     if (key === true) invoke();
     else if (!reset) return reset;
 
@@ -311,4 +343,4 @@ export function scope() {
   };
 }
 
-export { addListener, event, Observable, observe, observing, pending, watch };
+export { listener, event, Observable, observe, observing, pending, watch };
