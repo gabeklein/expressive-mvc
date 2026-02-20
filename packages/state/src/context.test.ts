@@ -196,38 +196,22 @@ describe('include', () => {
     expect(cb).toBeCalledTimes(1);
   });
 
-  // This will be made more elegant later.
-  it('will hard-reset if inputs differ', () => {
-    const bazDidDie = vi.fn();
+  it('will remove and delete state of type absent', () => {
+    class Bar extends State {
+      didDie = vi.fn();
 
-    class Baz extends State {
       protected new() {
-        return bazDidDie;
+        return this.didDie;
       }
     }
 
-    const foo = Foo.new();
-    const bar = Bar.new();
-    const context = new Context({ foo, bar, Baz });
+    const context = new Context({ Bar });
+    const bar = context.get(Bar, true);
 
-    const idPriorToUpdate = context.id;
-    const baz = context.get(Baz);
+    context.set({});
 
-    context.set({ foo, bar: Bar.new(), Baz });
-
-    // key should change despite technically same layer.
-    expect(context.id).not.toBe(idPriorToUpdate);
-
-    // expect all instances did get replaced.
-    expect(context.get(Bar)).not.toBe(bar);
-
-    // expect Baz will have been force-replaced.
-    expect(bazDidDie).toBeCalled();
-
-    const newBaz = context.get(Baz);
-
-    expect(newBaz).toBeInstanceOf(Baz);
-    expect(newBaz).not.toBe(baz);
+    expect(bar.didDie).toBeCalled();
+    expect(context.get(Bar)).toBeUndefined();
   });
 
   it('will register children implicitly', () => {
