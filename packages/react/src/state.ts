@@ -11,7 +11,6 @@ export const Pragma = {} as {
 /** Type may not be undefined - instead will be null.  */
 type NoVoid<T> = T extends undefined | void ? null : T;
 
-const OUTER = new WeakMap<object, Context>();
 const PROPS = new WeakMap<object, ComponentProps<any>>();
 
 type ForceRefresh = {
@@ -174,15 +173,13 @@ abstract class ReactState extends State {
             )
         );
 
-      // Create instance - pass args to constructor if no use method
-      const instance = new this((x) => {
+      const context = ambient.push();
+      const instance = this.new(context, (x) => {
         if (x instanceof ReactState && x.use) {
           use = x.use?.bind(x);
           use(...args);
         } else return args;
       });
-
-      const context = ambient.push(instance);
 
       watch(instance, (current) => {
         active = current;
@@ -362,10 +359,7 @@ abstract class ReactState extends State {
       }
 
       private set context(context: Context) {
-        if (OUTER.get(this) === context) return;
-
-        OUTER.set(this, context);
-        context.push(this);
+        return;
       }
 
       get state() {
@@ -380,8 +374,6 @@ abstract class ReactState extends State {
       constructor(nextProps: any, ...rest: any[]) {
         const { is } = nextProps;
         const defaults = typeof argument === 'object' ? argument : {};
-
-        if (rest[0] instanceof Context) rest.shift();
 
         super(nextProps, defaults, is, rest);
         PROPS.set(this, nextProps);
