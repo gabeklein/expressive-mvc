@@ -128,7 +128,6 @@ it('will destroy modules created by layer', () => {
   class Test3 extends Test {}
 
   const test2 = Test2.new();
-
   const context1 = new Context({ Test1 });
   const context2 = context1.push({ test2, Test3 });
 

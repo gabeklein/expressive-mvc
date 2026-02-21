@@ -89,8 +89,8 @@ function Render<T extends AsComponent>(
 
   const ambient = Context.use();
   const state = Pragma.useState<(props: any) => any>(() => {
-    const instance = this.new(rest as {}, is && ((x) => void is(x)));
-    const context = ambient.push(instance);
+    const context = ambient.push();
+    const instance = this.new(context, rest as {}, is && ((x) => void is(x)));
 
     let ready: boolean | undefined;
     let active: T;

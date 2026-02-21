@@ -41,6 +41,8 @@ interface Context {
 }
 
 class Context {
+  static root = new Context();
+
   /**
    * Get the context for a specified State. If a callback is provided, it will be run when
    * the context becomes available.
@@ -174,19 +176,15 @@ class Context {
   /**
    * Adds a State to this context.
    */
-  protected add<T extends State>(input: T | State.Type<T>, implicit?: boolean) {
-    const cleanup = [] as (() => void)[];
-    let T: State.Extends<T>;
-    let I: T;
-
-    if (typeof input == 'function') {
-      T = input;
-      I = new input() as T;
-      cleanup.push(() => event(I, null));
-    } else {
-      T = input.constructor as State.Extends<T>;
-      I = input;
+  add<T extends State>(I: T | State.Type<T>, implicit?: boolean) {
+    if (typeof I == 'function') {
+      const i = new I(this) as T;
+      OWNED.add(i);
+      return i;
     }
+
+    const cleanup = [] as (() => void)[];
+    const T = I.constructor as State.Extends<T>;
 
     keys(T, true).forEach((K) => {
       const expects = this[K] as Context.Expect | undefined;
@@ -215,6 +213,10 @@ class Context {
     this.cleanup.set(I, cleanup);
 
     const waiting = LOOKUP.get(I);
+
+    if (!(waiting instanceof Context)) {
+      this.cleanup.push(() => event(I, null));
+    }
 
     if (waiting instanceof Array) {
       waiting.forEach((cb) => cb(this));

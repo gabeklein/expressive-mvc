@@ -1,3 +1,4 @@
+import { Context } from './context';
 import {
   listener,
   watch,
@@ -45,6 +46,7 @@ declare namespace State {
     | Args<T>
     | Init<T>
     | Assign<T>
+    | Context
     | string
     | void
   )[];
@@ -493,13 +495,17 @@ function prepare(state: State) {
  **/
 function init(state: State, ...args: State.Args) {
   const store = {} as Record<string | number | symbol, unknown>;
+  let context = Context.root;
 
   STATE.set(state, store);
 
   args = args.flat().filter((arg) => {
     if (typeof arg == 'string') ID.set(state, arg);
+    else if (arg instanceof Context) context = arg;
     else return true;
   });
+
+  context.add(state);
 
   listener(state, () => {
     if (!PARENT.has(state)) PARENT.set(state, null);
@@ -529,6 +535,8 @@ function init(state: State, ...args: State.Args) {
     listener(
       state,
       () => {
+        context.delete(state);
+
         for (const [_, value] of state)
           if (value instanceof State && PARENT.get(value) === state)
             value.set(null);
