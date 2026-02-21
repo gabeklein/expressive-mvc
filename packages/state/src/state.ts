@@ -228,7 +228,7 @@ abstract class State implements Observable {
     const { is } = this;
 
     if (arg1 === undefined) return values(is);
-    if (typeof arg1 == 'function') return effect(is, arg1);
+    if (typeof arg1 == 'function') return watch(is, METHOD.get(arg1) || arg1);
     if (typeof arg2 == 'function') return listener(is, arg2, arg1);
     if (arg1 === null) return Object.isFrozen(STATE.get(is));
     return access(is, arg1, arg2);
@@ -550,30 +550,20 @@ function manage(
 ) {
   const store = STATE.get(state)!;
 
-  function get(this: State) {
-    return observing(this, key, store[key]);
-  }
-
-  function set(value: unknown, silent?: boolean) {
-    update(state, key, value, silent);
-    if (value instanceof State && !PARENT.has(value)) {
-      PARENT.set(value, state);
-      event(value);
+  define(state, key, {
+    set(value: unknown, silent?: boolean) {
+      update(state, key, value, silent);
+      if (value instanceof State && !PARENT.has(value)) {
+        PARENT.set(value, state);
+        event(value);
+      }
+    },
+    get(this: State) {
+      return observing(this, key, store[key]);
     }
-  }
-
-  define(state, key, { set, get });
-  set(value, silent);
-}
-
-function effect<T extends State>(state: T, fn: State.Effect<T>) {
-  const effect: State.Effect<T> = METHOD.get(fn) || fn;
-
-  return watch(state, (proxy, changed) => {
-    const cb = effect.call(proxy, proxy, changed || []);
-
-    if (typeof cb == 'function' || cb === null) return cb;
   });
+
+  state.set(value, silent);
 }
 
 function values<T extends State>(state: T): State.Values<T> {
