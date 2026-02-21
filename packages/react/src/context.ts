@@ -9,7 +9,7 @@ import {
   useMemo
 } from 'react';
 
-export const Layers = createContext(new Context());
+export const Layers = createContext(Context.root);
 
 declare module '@expressive/state' {
   namespace Context {

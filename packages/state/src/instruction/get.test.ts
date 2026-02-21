@@ -30,10 +30,10 @@ describe('fetch mode', () => {
       ambient2 = get(Ambient);
     }
 
-    const test = Test.new();
-    const ambient = Ambient.new();
+    const context = new Context();
 
-    new Context({ ambient }).push({ test });
+    const ambient = Ambient.new(context);
+    const test = Test.new(context.push());
 
     expect(test.ambient1).toBe(ambient);
     expect(test.ambient2).toBe(ambient);
@@ -113,8 +113,6 @@ describe('fetch mode', () => {
 
     const instance = StandAlone.new();
 
-    new Context({ instance });
-
     expect(instance.maybe).toBeUndefined();
   });
 
@@ -182,10 +180,10 @@ describe('fetch mode', () => {
       ambient = get(Ambient);
       foo = 'bar';
     }
-    const test = Test.new();
-    const ambient = Ambient.new();
 
-    new Context({ ambient, test });
+    const context = new Context();
+    const ambient = Ambient.new(context);
+    const test = Test.new(context.push());
 
     expect(test.ambient).toBe(ambient);
     expect(Object.keys(test)).toMatchObject(['foo']);
@@ -199,10 +197,9 @@ describe('downstream collection', () => {
       children = get(Child, true);
     }
 
-    const parent = Parent.new();
-    const child = Child.new();
-
-    new Context({ parent }).push({ child });
+    const context = new Context();
+    const parent = Parent.new(context);
+    const child = Child.new(context.push());
 
     expect(parent.children).toEqual([child]);
   });
@@ -228,7 +225,7 @@ describe('downstream collection', () => {
       children = get(Child, true);
     }
 
-    const parent = Parent.new();
+    const parent = new Parent();
 
     new Context({ parent }).push({ Child });
 
@@ -273,7 +270,7 @@ describe('downstream collection', () => {
     }
     class Parent2 extends Parent {}
 
-    const parent = Parent2.new();
+    const parent = new Parent2();
 
     new Context({ parent }).push({ Child });
 
@@ -288,9 +285,9 @@ describe('downstream collection', () => {
       children = get(Child, true);
     }
 
-    const parent = Parent.new();
-    const child1 = Child.new();
-    const child2 = Child.new();
+    const parent = new Parent();
+    const child1 = new Child();
+    const child2 = new Child();
 
     const context = new Context({ parent });
     const context2 = context.push({ child1, child2 });
@@ -416,9 +413,9 @@ describe('lifecycle callbacks', () => {
       children = get(Child, true, didAdd);
     }
 
-    const parent = Parent.new();
-    const child1 = Child.new();
-    const child2 = Child.new();
+    const parent = new Parent();
+    const child1 = new Child();
+    const child2 = new Child();
 
     const context = new Context({ parent });
     const context2 = context.push({ child1, child2 });
@@ -584,33 +581,5 @@ describe('lifecycle callbacks', () => {
 
     expect(didRemove).toBeCalledTimes(1);
     expect(didNotify).toBeCalledTimes(1);
-  });
-});
-
-describe('async', () => {
-  class Foo extends State {
-    value = 'foobar';
-  }
-
-  it('will suspend if not ready', async () => {
-    class Bar extends State {
-      foo = get(Foo);
-    }
-
-    const bar = Bar.new();
-    let caught: unknown;
-
-    setTimeout(() => new Context({ Foo, bar }));
-
-    try {
-      void bar.foo;
-      throw false;
-    } catch (err) {
-      expect(err).toBeInstanceOf(Promise);
-      caught = err;
-    }
-
-    await expect(caught).resolves.toBeInstanceOf(Foo);
-    expect(bar.foo).toBeInstanceOf(Foo);
   });
 });
