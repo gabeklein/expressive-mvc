@@ -1,11 +1,12 @@
 import { listener } from './observable';
 import { event, State, PARENT, uid } from './state';
+import { Extends, Type } from './types';
 
 const LOOKUP = new WeakMap<State, Context | ((got: Context) => void)[]>();
 const OWNED = new WeakSet<State>();
-const KEYS = new Map<symbol | State.Extends, symbol>();
+const KEYS = new Map<symbol | Extends, symbol>();
 
-function key(T: State.Extends | symbol, upstream?: boolean): symbol {
+function key(T: Extends | symbol, upstream?: boolean): symbol {
   let K = KEYS.get(T);
 
   if (!K) {
@@ -16,7 +17,7 @@ function key(T: State.Extends | symbol, upstream?: boolean): symbol {
   return upstream ? key(K) : K;
 }
 
-function keys(from: State.Extends, upstream?: boolean) {
+function keys(from: Extends, upstream?: boolean) {
   const keys = new Set<symbol>();
 
   do {
@@ -30,8 +31,8 @@ function keys(from: State.Extends, upstream?: boolean) {
 declare namespace Context {
   type Accept<T extends State = State> =
     | T
-    | State.Type<T>
-    | Record<string | number, T | State.Type<T>>;
+    | Type<T>
+    | Record<string | number, T | Type<T>>;
 
   type Expect<T extends State = State> = (state: T) => (() => void) | void;
 }
@@ -41,6 +42,8 @@ interface Context {
 }
 
 class Context {
+  static root = new Context();
+
   /**
    * Get the context for a specified State. If a callback is provided, it will be run when
    * the context becomes available.
@@ -70,7 +73,7 @@ class Context {
 
   public id = uid();
 
-  protected inputs = {} as Record<string | number, State | State.Extends>;
+  protected inputs = {} as Record<string | number, State | Extends>;
   protected cleanup = new Map<State | Context, (() => void)[]>();
 
   constructor(inputs?: Context.Accept) {
@@ -78,22 +81,22 @@ class Context {
   }
 
   /** Find specified type registered to a parent context. Throws if none are found. */
-  public get<T extends State>(Type: State.Extends<T>, require: true): T;
+  public get<T extends State>(Type: Extends<T>, require: true): T;
 
   /** Find specified type registered to a parent context. Returns undefined if none are found. */
   public get<T extends State>(
-    Type: State.Extends<T>,
+    Type: Extends<T>,
     require?: boolean
   ): T | undefined;
 
   /** Run callback when a specified type is registered in context downstream. */
   public get<T extends State>(
-    Type: State.Extends<T>,
+    Type: Extends<T>,
     callback: (state: T) => void
   ): () => void;
 
   public get<T extends State>(
-    Type: State.Extends<T>,
+    Type: Extends<T>,
     arg2?: boolean | ((state: T) => void)
   ) {
     if (typeof arg2 == 'function') {
@@ -174,19 +177,15 @@ class Context {
   /**
    * Adds a State to this context.
    */
-  protected add<T extends State>(input: T | State.Type<T>, implicit?: boolean) {
-    const cleanup = [] as (() => void)[];
-    let T: State.Extends<T>;
-    let I: T;
-
-    if (typeof input == 'function') {
-      T = input;
-      I = new input() as T;
-      cleanup.push(() => event(I, null));
-    } else {
-      T = input.constructor as State.Extends<T>;
-      I = input;
+  add<T extends State>(I: T | Type<T>, implicit?: boolean) {
+    if (typeof I == 'function') {
+      const i = new I(this) as T;
+      OWNED.add(i);
+      return i;
     }
+
+    const cleanup = [] as (() => void)[];
+    const T = I.constructor as Extends<T>;
 
     keys(T, true).forEach((K) => {
       const expects = this[K] as Context.Expect | undefined;
@@ -216,6 +215,10 @@ class Context {
 
     const waiting = LOOKUP.get(I);
 
+    if (!(waiting instanceof Context)) {
+      this.cleanup.push(() => event(I, null));
+    }
+
     if (waiting instanceof Array) {
       waiting.forEach((cb) => cb(this));
     }
@@ -225,11 +228,11 @@ class Context {
     return I;
   }
 
-  public delete(state: State | State.Extends, keep?: boolean) {
+  public delete(state: State | Extends, keep?: boolean) {
     let K = new Set<symbol>();
 
     if (state instanceof State) {
-      K = keys(state.constructor as State.Extends);
+      K = keys(state.constructor as Extends);
     } else {
       const [k] = (K = keys(state));
       state = this[k] as State;
