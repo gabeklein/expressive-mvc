@@ -164,6 +164,8 @@ abstract class State implements Observable {
    */
   protected new?(): void | (() => void);
 
+  set!: typeof set;
+
   /**
    * Pull current values from state. Flattens all states and exotic values recursively.
    *
@@ -235,121 +237,6 @@ abstract class State implements Observable {
   }
 
   /**
-   * Get update in progress.
-   *
-   * @returns Promise which resolves object with updated values, `undefined` if there no update is pending.
-   **/
-  set(): State.Pending<this>;
-
-  /**
-   * Update mulitple properties at once. Merges argument with current state.
-   * Properties which are not managed by this state will be ignored.
-   *
-   * @param assign - Object with properties to update.
-   * @param silent - If an update does occur, listeners will not be refreshed automatically.
-   * @returns Promise resolving an array of keys updated, `undefined` (immediately) if a noop.
-   */
-  set(assign?: State.Assign<this>, silent?: boolean): State.Pending<this>;
-
-  /**
-   * Push an update. This will not change the value of associated property.
-   *
-   * Useful where a property value internally has changed, but the object is the same.
-   * For example: An array has pushed a new value, or a nested property is updated.
-   *
-   * You can also use this to dispatch arbitrary events.
-   * Symbols are recommended as non-property events, however you can use any string.
-   * If doing so, be sure to avoid collisions with property names! An easy way to do this is
-   * to prefix an event with "!" and/or use dash-case. e.g. `set("!event")` or `set("my-event")`.
-   *
-   * @param key - Property or event to dispatch.
-   * @returns Promise resolves an array of keys updated.
-   */
-  set(key: State.Event<this>): State.Pending<this>;
-
-  /**
-   * Set a value for a property. This will update the value and notify listeners.
-   *
-   * **Use with caution!** Key nor value are checked for validity.
-   *
-   * This is meant for assigning values programmatically,
-   * where simple assignment is not practicable.
-   *
-   * For example: `(this as any)[myProperty] = value;`
-   *
-   * @param key - Property to set value for.
-   * @param value - Value to set for property.
-   * @param init - If true, state will begin to manage the property if it is not already.
-   * @returns Promise resolves an array of keys updated.
-   */
-  set(
-    key: State.Event<this>,
-    value: unknown,
-    init?: boolean
-  ): State.Pending<this>;
-
-  /**
-   * Call a function when update occurs.
-   *
-   * Given function is called for every assignment (which changes value) or explicit `set`.
-   *
-   * To run logic on final value only, callback may return a function. Using the same
-   * function for one or more events will ensure it is called only when events are settled.
-   *
-   * @param callback - Function to call when update occurs.
-   * @returns Function to remove listener. Will return `true` if removed, `false` if inactive already.
-   *
-   */
-  set(callback: State.OnEvent<this>): () => boolean;
-
-  /**
-   * Call a function when a property is updated.
-   * Unlike `get`, this calls synchronously and will fire as many times as the property is updated.
-   *
-   * @param callback - Function to call when property is updated.
-   * @param event - Property to watch for updates.
-   */
-  set(
-    callback: State.OnEvent<this>,
-    event: State.Event<this> | null
-  ): () => boolean;
-
-  /**
-   * Declare an end to updates. This event is final and will freeze state.
-   * This event can be watched for as well, to run cleanup logic and internally will remove all listeners.
-   *
-   * @param status - `null` to end updates.
-   */
-  set(status: null): void;
-
-  set(
-    arg1?: State.OnEvent<this> | State.Assign<this> | State.Event<this> | null,
-    arg2?: unknown,
-    arg3?: boolean
-  ) {
-    const { is } = this;
-
-    if (typeof arg1 == 'function')
-      return listener(is, (key) => {
-        if (arg2 === key || (arg2 === undefined && typeof key == 'string'))
-          return arg1.call(is, key, is);
-      });
-
-    if (arg1 && typeof arg1 == 'object') {
-      event(is);
-      assign(is, arg1, arg2 === true);
-    } else if (!arg2) {
-      event(is, arg1);
-    } else if (arg3) {
-      manage(is, arg1 as string | number, arg2);
-    } else {
-      update(is, arg1 as string | number, arg2);
-    }
-
-    return pending(is) as State.Pending<this>;
-  }
-
-  /**
    * Iterate over managed properties in this instance of State.
    * Yeilds the key and current value for each property.
    */
@@ -400,11 +287,138 @@ abstract class State implements Observable {
   }
 }
 
+/**
+ * Get update in progress.
+ *
+ * @returns Promise which resolves object with updated values, `undefined` if there no update is pending.
+ **/
+function set<T extends State>(this: T): State.Pending<T>;
+
+/**
+ * Update mulitple properties at once. Merges argument with current state.
+ * Properties which are not managed by this state will be ignored.
+ *
+ * @param assign - Object with properties to update.
+ * @param silent - If an update does occur, listeners will not be refreshed automatically.
+ * @returns Promise resolving an array of keys updated, `undefined` (immediately) if a noop.
+ */
+function set<T extends State>(
+  this: T,
+  assign?: State.Assign<T>,
+  silent?: boolean
+): State.Pending<T>;
+
+/**
+ * Push an update. This will not change the value of associated property.
+ *
+ * Useful where a property value internally has changed, but the object is the same.
+ * For example: An array has pushed a new value, or a nested property is updated.
+ *
+ * You can also use this to dispatch arbitrary events.
+ * Symbols are recommended as non-property events, however you can use any string.
+ * If doing so, be sure to avoid collisions with property names! An easy way to do this is
+ * to prefix an event with "!" and/or use dash-case. e.g. `set("!event")` or `set("my-event")`.
+ *
+ * @param key - Property or event to dispatch.
+ * @returns Promise resolves an array of keys updated.
+ */
+function set<T extends State>(this: T, key: State.Event<T>): State.Pending<T>;
+
+/**
+ * Set a value for a property. This will update the value and notify listeners.
+ *
+ * **Use with caution!** Key nor value are checked for validity.
+ *
+ * This is meant for assigning values programmatically,
+ * where simple assignment is not practicable.
+ *
+ * For example: `(this as any)[myProperty] = value;`
+ *
+ * @param key - Property to set value for.
+ * @param value - Value to set for property.
+ * @param init - If true, state will begin to manage the property if it is not already.
+ * @returns Promise resolves an array of keys updated.
+ */
+function set<T extends State>(
+  this: T,
+  key: State.Event<T>,
+  value: unknown,
+  init?: boolean
+): State.Pending<T>;
+
+/**
+ * Call a function when update occurs.
+ *
+ * Given function is called for every assignment (which changes value) or explicit `set`.
+ *
+ * To run logic on final value only, callback may return a function. Using the same
+ * function for one or more events will ensure it is called only when events are settled.
+ *
+ * @param callback - Function to call when update occurs.
+ * @returns Function to remove listener. Will return `true` if removed, `false` if inactive already.
+ *
+ */
+function set<T extends State>(
+  this: T,
+  callback: State.OnEvent<T>
+): () => boolean;
+
+/**
+ * Call a function when a property is updated.
+ * Unlike `get`, this calls synchronously and will fire as many times as the property is updated.
+ *
+ * @param callback - Function to call when property is updated.
+ * @param event - Property to watch for updates.
+ */
+function set<T extends State>(
+  this: T,
+  callback: State.OnEvent<T>,
+  event: State.Event<T> | null
+): () => boolean;
+
+/**
+ * Declare an end to updates. This event is final and will freeze state.
+ * This event can be watched for as well, to run cleanup logic and internally will remove all listeners.
+ *
+ * @param status - `null` to end updates.
+ */
+function set<T extends State>(this: T, status: null): void;
+
+function set<T extends State>(
+  this: T,
+  arg1?: State.OnEvent<T> | State.Assign<T> | State.Event<T> | null,
+  arg2?: unknown,
+  arg3?: boolean
+) {
+  const { is } = this;
+
+  if (typeof arg1 == 'function')
+    return listener(is, (key) => {
+      if (arg2 === key || (arg2 === undefined && typeof key == 'string'))
+        return arg1.call(is, key, is);
+    });
+
+  if (arg1 && typeof arg1 == 'object') {
+    event(is);
+    assign(is, arg1, arg2 === true);
+  } else if (!arg2) {
+    event(is, arg1);
+  } else if (arg3) {
+    manage(is, arg1 as string | number, arg2);
+  } else {
+    update(is, arg1 as string | number, arg2);
+  }
+
+  return pending(is) as State.Pending<T>;
+}
+
 define(State.prototype, 'toString', {
   value() {
     return ID.get(this.is);
   }
 });
+
+define(State, 'set', { value: set });
 
 define(State, 'toString', {
   value() {
