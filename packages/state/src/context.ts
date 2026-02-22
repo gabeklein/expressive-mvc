@@ -181,27 +181,27 @@ class Context {
     let T: State.Extends<T>;
     let I: T;
 
-    if (typeof input == 'function') {
-      T = input;
-      I = new input() as T;
-    } else {
+    if (input instanceof State) {
       T = input.constructor as State.Extends<T>;
       I = input;
+    } else {
+      T = input;
+      I = new input() as T;
+
+      keys(T, true).forEach((K) => {
+        const expects = this[K] as Context.Expect | undefined;
+
+        if (expects)
+          listener(I, (event) => {
+            if (event === true) {
+              const cb = expects(I);
+              if (cb) cleanup.add(cb);
+            }
+
+            return null;
+          });
+      });
     }
-
-    keys(T, true).forEach((K) => {
-      const expects = this[K] as Context.Expect | undefined;
-
-      if (expects)
-        listener(I, (event) => {
-          if (event === true) {
-            const cb = expects(I);
-            if (cb) cleanup.add(cb);
-          }
-
-          return null;
-        });
-    });
 
     keys(T).forEach((K) => {
       const value = this.hasOwnProperty(K) ? null : I;
