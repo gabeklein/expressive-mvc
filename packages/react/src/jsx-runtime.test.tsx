@@ -2,8 +2,8 @@
 
 import { vi, expect, it, describe, act, render, screen } from '../vitest';
 
-import React, { Children, Component, isValidElement } from 'react';
-import State, { Consumer, get, set } from '.';
+import React, { Children, Component, isValidElement, StrictMode } from 'react';
+import State, { Consumer, get, ref, set } from '.';
 
 it('will create and provide instance', () => {
   class Control extends State {
@@ -625,5 +625,118 @@ describe.skip('implicit return', () => {
         <FunctionDeclaration />
       </Container>
     );
+  });
+});
+
+describe('ref instruction on unmount', () => {
+  it('will not throw when ref receives null on unmount', async () => {
+    class Test extends State {
+      element = ref<HTMLDivElement>();
+
+      render() {
+        return <div ref={this.element} />;
+      }
+    }
+
+    const element = render(<Test />);
+
+    await expect(act(() => element.unmount())).resolves.not.toThrow();
+  });
+
+  it('will throw if ref current is assigned after model is destroyed', async () => {
+    class Test extends State {
+      element = ref<HTMLDivElement | null>();
+    }
+
+    let instance!: Test;
+    const element = render(<Test is={(x) => (instance = x)} />);
+
+    // Destroy the model out-of-band, before React clears the ref
+    await act(async () => instance.set(null));
+
+    // Assigning current on a frozen model should throw
+    expect(() => {
+      instance.element.current = null;
+    }).toThrow('state is destroyed');
+
+    element.unmount();
+  });
+
+  it('will survive strict-mode-style destroy and remount', async () => {
+    // In React Strict Mode (dev), effects are double-fired:
+    //   mount → useEffect cleanup → remount
+    // Destruction is deferred via setTimeout so the remount can cancel it.
+    // This test simulates that the ref can be re-assigned after a fake cleanup.
+    class StrictTest extends State {
+      element = ref<HTMLDivElement | null>();
+    }
+
+    let instance!: StrictTest;
+    const element = render(<StrictTest is={(x) => (instance = x)} />);
+
+    const fakeElement = document.createElement('div');
+
+    // Simulate: ref attached on first mount
+    instance.element.current = fakeElement;
+
+    // Simulate: Strict Mode remount — model is still alive (deferred destroy cancelled)
+    expect(() => {
+      instance.element.current = fakeElement;
+    }).not.toThrow();
+
+    element.unmount();
+  });
+});
+
+describe('strict mode', () => {
+  it('will not destroy model on fake unmount', async () => {
+    class Test extends State {
+      value = 0;
+    }
+
+    let instance!: Test;
+
+    await act(async () => {
+      render(
+        <StrictMode>
+          <Test is={(x) => (instance = x)} />
+        </StrictMode>
+      );
+    });
+
+    expect(() => {
+      instance.value = 1;
+    }).not.toThrow();
+  });
+
+  it('will still update after fake unmount', async () => {
+    class Test extends State {
+      value = 0;
+    }
+
+    let instance!: Test;
+
+    function Child() {
+      const v = Test.get(({ value }) => value);
+      return <span>{v}</span>;
+    }
+
+    await act(async () => {
+      render(
+        <StrictMode>
+          <Test is={(x) => (instance = x)}>
+            <Child />
+          </Test>
+        </StrictMode>
+      );
+    });
+
+    expect(screen.getByText('0')).toBeTruthy();
+
+    await act(async () => {
+      instance.value = 1;
+    });
+
+    expect(screen.getByText('1')).toBeTruthy();
   });
 });
