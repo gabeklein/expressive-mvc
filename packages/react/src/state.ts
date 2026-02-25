@@ -190,11 +190,16 @@ abstract class ReactState extends State {
         if (ready) state[1]((x) => x.bind(null));
       });
 
+      let destroy: ReturnType<typeof setTimeout> | undefined;
+
       function didMount() {
+        clearTimeout(destroy);
         ready = true;
         return () => {
-          context.pop();
-          instance.set(null);
+          destroy = setTimeout(() => {
+            context.pop();
+            instance.set(null);
+          }, 0);
         };
       }
 
@@ -309,9 +314,14 @@ abstract class ReactState extends State {
         return () => null;
       }
 
+      let unwatchTimer: ReturnType<typeof setTimeout> | undefined;
+
       function onMount() {
+        clearTimeout(unwatchTimer);
         ready = true;
-        return unwatch;
+        return () => {
+          unwatchTimer = setTimeout(unwatch, 0);
+        };
       }
 
       return () => {
@@ -434,11 +444,14 @@ function Render<T extends Component, P extends State.Assign<T>>(
       if (ready) state[1]((x) => x.bind(null));
     });
 
+    let destroyTimer: ReturnType<typeof setTimeout> | undefined;
+
     const didMount = () => {
+      clearTimeout(destroyTimer);
       ready = true;
       return () => {
         context.pop();
-        this.set(null);
+        destroyTimer = setTimeout(() => this.set(null), 0);
       };
     };
 

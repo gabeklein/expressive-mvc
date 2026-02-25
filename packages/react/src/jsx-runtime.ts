@@ -101,11 +101,14 @@ function Render<T extends AsComponent>(
       if (ready) state[1]((x) => x.bind(null));
     });
 
+    let destroy: ReturnType<typeof setTimeout> | undefined;
+
     function didMount() {
+      clearTimeout(destroy);
       ready = true;
       return () => {
         context.pop();
-        instance.set(null);
+        destroy = setTimeout(() => instance.set(null), 0);
       };
     }
 

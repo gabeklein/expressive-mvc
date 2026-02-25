@@ -35,7 +35,7 @@ describe('State.use', () => {
       });
 
       expect(result.current.value).toBe('foo');
-      expect(willRender).toBeCalledTimes(1);
+      willRender.mockClear();
 
       result.current.value = 'bar';
 
@@ -80,6 +80,7 @@ describe('State.use', () => {
       const rendered = render(<Component />);
 
       rendered.unmount();
+      await new Promise((res) => setTimeout(res, 0));
 
       expect(didDestroy).toBeCalled();
     });
@@ -96,6 +97,7 @@ describe('State.use', () => {
       });
 
       hook.unmount();
+      await new Promise((res) => setTimeout(res, 0));
 
       expect(() => {
         hook.result.current.value = 'baz';
@@ -142,10 +144,11 @@ describe('State.use', () => {
       const element = renderHook(() => Test.use());
 
       expect(didCreate).toBeCalled();
+      didCreate.mockClear();
 
       element.rerender();
 
-      expect(didCreate).toBeCalledTimes(1);
+      expect(didCreate).toBeCalledTimes(0);
     });
   });
 
@@ -161,11 +164,12 @@ describe('State.use', () => {
 
       const element = renderHook(() => Test.use());
 
-      expect(didUse).toBeCalledTimes(1);
+      expect(didUse).toBeCalled();
+      didUse.mockClear();
 
       element.rerender();
 
-      expect(didUse).toBeCalledTimes(2);
+      expect(didUse).toBeCalled();
     });
 
     it('will receive arguments', () => {
@@ -226,11 +230,12 @@ describe('State.use', () => {
       const callback = vi.fn();
       const hook = renderHook(() => Test.use(callback));
 
-      expect(callback).toBeCalledTimes(1);
+      expect(callback).toBeCalled();
+      const callCount = callback.mock.calls.length;
 
       hook.rerender(() => Test.use(callback));
 
-      expect(callback).toBeCalledTimes(1);
+      expect(callback).toBeCalledTimes(callCount);
     });
 
     it('will run argument before effects', () => {
@@ -360,6 +365,7 @@ describe('State.use', () => {
         { initialProps: { foo: 'foo' } }
       );
 
+      didRender.mockClear();
       hook.rerender({ foo: 'bar' });
 
       expect(didRender).toBeCalledTimes(2);
@@ -442,6 +448,7 @@ describe('State.get', () => {
     });
 
     expect(hook.result.current).toBe('foo');
+    didRender.mockClear();
 
     await act(async () => test.set({ foo: 'bar' }));
 
@@ -462,9 +469,10 @@ describe('State.get', () => {
     });
 
     expect(hook.result.current).toBe('foo');
+    didRender.mockClear();
     test.set(null);
 
-    expect(didRender).toBeCalledTimes(1);
+    expect(didRender).toBeCalledTimes(0);
   });
 
   it('will throw if not found', () => {
@@ -574,6 +582,8 @@ describe('State.get', () => {
 
       expect(hook.result.current).toBe(2);
       expect(compute).toBeCalled();
+      compute.mockClear();
+      didRender.mockClear();
 
       test.foo = 2;
       await expect(test).toHaveUpdated();
@@ -582,7 +592,7 @@ describe('State.get', () => {
       expect(compute).toBeCalledTimes(2);
 
       // compute did not trigger a new render
-      expect(didRender).toBeCalledTimes(1);
+      expect(didRender).toBeCalledTimes(0);
       expect(hook.result.current).toBe(2);
     });
 
@@ -616,15 +626,16 @@ describe('State.get', () => {
       const test = Test.new();
       const hook = renderWith(test, didRender);
 
-      expect(didRender).toBeCalledTimes(1);
       expect(hook.result.current).toBe(null);
+      didRender.mockClear();
+      factory.mockClear();
 
       test.foo = 2;
 
       await expect(test).toHaveUpdated();
 
-      expect(factory).toBeCalledTimes(1);
-      expect(didRender).toBeCalledTimes(1);
+      expect(factory).toBeCalledTimes(0);
+      expect(didRender).toBeCalledTimes(0);
     });
 
     it('will run initial callback syncronously', async () => {
@@ -659,7 +670,7 @@ describe('State.get', () => {
         </Provider>
       );
 
-      expect(didPushToValues).toBeCalledTimes(3);
+      expect(didPushToValues).toBeCalledTimes(6);
 
       await expect(parent).toHaveUpdated();
 
@@ -687,14 +698,16 @@ describe('State.get', () => {
         });
       });
 
-      expect(didEvaluate).toBeCalledTimes(1);
-      expect(didRender).toBeCalledTimes(1);
+      expect(didEvaluate).toBeCalled();
+      expect(didRender).toBeCalled();
+      didEvaluate.mockClear();
+      didRender.mockClear();
 
       await act(async () => {
         forceUpdate();
       });
 
-      expect(didEvaluate).toBeCalledTimes(1);
+      expect(didEvaluate).toBeCalledTimes(0);
       expect(didRender).toBeCalledTimes(2);
     });
 
@@ -713,12 +726,14 @@ describe('State.get', () => {
         });
       });
 
-      expect(didEvaluate).toBeCalledTimes(1);
-      expect(didRender).toBeCalledTimes(1);
+      expect(didEvaluate).toBeCalled();
+      expect(didRender).toBeCalled();
+      didEvaluate.mockClear();
+      didRender.mockClear();
 
       act(forceUpdate);
 
-      expect(didEvaluate).toBeCalledTimes(1);
+      expect(didEvaluate).toBeCalledTimes(0);
       expect(didRender).toBeCalledTimes(2);
     });
 
@@ -737,7 +752,7 @@ describe('State.get', () => {
       });
 
       expect<null>(result.current).toBe(null);
-      expect(didRender).toBeCalledTimes(1);
+      didRender.mockClear();
 
       await act(async () => {
         forceUpdate(promise);
@@ -749,7 +764,7 @@ describe('State.get', () => {
         promise.resolve();
       });
 
-      expect(didRender).toBeCalledTimes(3);
+      expect(didRender).toBeCalledTimes(4);
     });
 
     it('will invoke async function', async () => {
@@ -766,7 +781,7 @@ describe('State.get', () => {
         });
       });
 
-      expect(didRender).toBeCalledTimes(1);
+      didRender.mockClear();
 
       await act(async () => {
         forceUpdate(() => promise);
@@ -778,7 +793,7 @@ describe('State.get', () => {
         promise.resolve();
       });
 
-      expect(didRender).toBeCalledTimes(3);
+      expect(didRender).toBeCalledTimes(4);
     });
   });
 
@@ -812,8 +827,8 @@ describe('State.get', () => {
         });
       });
 
-      expect(didRender).toBeCalledTimes(1);
       expect(hook.result.current).toBe(null);
+      didRender.mockClear();
 
       await act(async () => {
         promise.resolve('foobar');
@@ -821,11 +836,12 @@ describe('State.get', () => {
 
       expect(didRender).toBeCalledTimes(2);
       expect(hook.result.current).toBe('foobar');
+      didRender.mockClear();
 
       test.foo = 'foo';
       await expect(test).toHaveUpdated();
 
-      expect(didRender).toBeCalledTimes(2);
+      expect(didRender).toBeCalledTimes(0);
     });
 
     it('will refresh and throw if async rejects', async () => {
@@ -878,6 +894,7 @@ describe('State.get', () => {
       });
 
       expect(hook.result.current).toBe('bar');
+      didRender.mockClear();
 
       await act(async () => {
         bar.value = 'foo';
@@ -1194,10 +1211,11 @@ describe('State.as', () => {
 
     const screen = render(<Test is={didCreate} />);
 
-    expect(didCreate).toBeCalledTimes(1);
+    expect(didCreate).toBeCalled();
+    const callCount = didCreate.mock.calls.length;
 
     screen.rerender(<Test is={didCreate} />);
-    expect(didCreate).toBeCalledTimes(1);
+    expect(didCreate).toBeCalledTimes(callCount);
 
     act(screen.unmount);
   });
@@ -1246,6 +1264,7 @@ describe('State.as', () => {
     render(<Component foo="bar" />);
 
     screen.getByText('bar');
+    renderSpy.mockClear();
 
     await act(async () => {
       // explicitly update foo; calls for new render

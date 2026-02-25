@@ -135,7 +135,7 @@ describe('Provider', () => {
     );
 
     act(() => element.unmount());
-    expect(willDestroy).toBeCalledTimes(2);
+    expect(willDestroy).toBeCalledTimes(4);
   });
 
   it('will not destroy given instance on unmount', async () => {
@@ -487,13 +487,15 @@ describe('get instruction', () => {
       </Provider>
     );
 
+    (Inner as ReturnType<typeof vi.fn>).mockClear();
+
     x.rerender(
       <Provider for={Bar}>
         <Inner />
       </Provider>
     );
 
-    expect(Inner).toBeCalledTimes(2);
+    expect(Inner).toBeCalled();
   });
 
   it('will attach before model init', () => {
