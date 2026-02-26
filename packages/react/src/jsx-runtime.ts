@@ -3,41 +3,7 @@ import { State } from '@expressive/state';
 import Runtime from 'react/jsx-runtime';
 import React from 'react';
 
-import { toComponent } from './component';
-
-type Reserved = keyof State | 'props' | 'render' | 'fallback';
-
-type StateProps<T extends State> = {
-  [K in Exclude<keyof T, Reserved>]?: T[K];
-};
-
-interface AsComponent extends State {
-  props?: Record<string, any>;
-  render?(): React.ReactNode;
-  fallback?: React.ReactNode;
-}
-
-type BaseProps<T extends State> = {
-  is?: (instance: T) => void;
-  fallback?: React.ReactNode;
-};
-
-type DefaultProps<T extends State> = T extends {
-  render: (...args: any[]) => any;
-}
-  ? {}
-  : { children?: React.ReactNode };
-
-type ExplicitProps<T extends State> = T extends {
-  props?: infer P;
-}
-  ? NonNullable<P>
-  : {};
-
-type Props<T extends State> = StateProps<T> &
-  ExplicitProps<T> &
-  DefaultProps<T> &
-  BaseProps<T>;
+import { toComponent, AsComponent, ComponentProps } from './component';
 
 type NormalComponent<P> = new (...args: any[]) => { props: P };
 
@@ -48,8 +14,10 @@ export declare namespace JSX {
     | ((props: {}, ref?: any) => void);
 
   type LibraryManagedAttributes<C, P> =
-    C extends State.Extends<infer U>
-      ? Props<U>
+    C extends State.Extends<infer T>
+      ? T extends { render(...args: any[]): any }
+        ? Omit<ComponentProps<T>, 'children'>
+        : ComponentProps<T>
       : C extends NormalComponent<infer U>
         ? U
         : React.JSX.LibraryManagedAttributes<C, P>;

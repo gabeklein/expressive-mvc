@@ -3,7 +3,7 @@ import { ReactNode } from 'react';
 import {
   Props,
   Render,
-  Component,
+  AsComponent,
   ComponentType,
   toComponent
 } from './component';
@@ -78,7 +78,7 @@ declare namespace ReactState {
   export import Effect = State.Effect;
   export import EffectCallback = State.EffectCallback;
 
-  export { GetFactory, GetEffect, UseArgs, Props, Component };
+  export { GetFactory, GetEffect, UseArgs, Props, AsComponent };
 }
 
 abstract class ReactState extends State {

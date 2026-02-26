@@ -6,7 +6,7 @@ import { Pragma } from './state';
 const PROPS = new WeakMap<object, ComponentProps<any>>();
 
 export type Props<T extends State> = {
-  [K in Exclude<keyof T, keyof Component>]?: T[K];
+  [K in Exclude<keyof T, keyof AsComponent>]?: T[K];
 };
 
 export type Render<T extends State, P extends object> = ((
@@ -27,7 +27,7 @@ type PropsValid<P extends object, T extends State> = [
   ? unknown
   : never;
 
-type ComponentProps<T extends State> = Readonly<
+export type ComponentProps<T extends State> = Readonly<
   Props<T> & {
     /**
      * Callback for newly created instance. Only called once.
@@ -48,7 +48,7 @@ type ComponentProps<T extends State> = Readonly<
   }
 >;
 
-export interface Component<P = {}> extends State {
+export interface AsComponent<P = {}> extends State {
   readonly props: ComponentProps<this> & P;
   context: Context;
   state: State.Values<this>;
@@ -63,7 +63,7 @@ export interface Component<P = {}> extends State {
   forceUpdate: (callback?: () => void) => void;
 }
 
-export type ComponentType<T, P = {}> = State.Type<T & Component<P>>;
+export type ComponentType<T, P = {}> = State.Type<T & AsComponent<P>>;
 
 export function toComponent<T extends State, P>(
   Type: State.Type<T>,
@@ -135,7 +135,7 @@ export function toComponent<T extends State, P>(
   return ReactType;
 }
 
-function Render<T extends Component, P extends State.Assign<T>>(
+function Render<T extends AsComponent, P extends State.Assign<T>>(
   this: T,
   render: (props: P, self: T) => ReactNode
 ) {
