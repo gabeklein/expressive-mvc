@@ -3,21 +3,25 @@ import { State } from '@expressive/state';
 import Runtime from 'react/jsx-runtime';
 import React from 'react';
 
-import { toComponent, AsComponent, ComponentProps } from './component';
+import { toComponent, Props, ComponentProps } from './component';
+
+type ExplicitProps<T extends State> = T extends { props?: infer P }
+  ? NonNullable<P>
+  : {};
 
 type NormalComponent<P> = new (...args: any[]) => { props: P };
 
 export declare namespace JSX {
   type ElementType =
-    | State.Extends<AsComponent>
+    | State.Extends<State>
     | React.JSX.ElementType
     | ((props: {}, ref?: any) => void);
 
   type LibraryManagedAttributes<C, P> =
     C extends State.Extends<infer T>
       ? T extends { render(...args: any[]): any }
-        ? Omit<ComponentProps<T>, 'children'>
-        : ComponentProps<T>
+        ? Omit<ComponentProps<T>, 'children'> & ExplicitProps<T> & Pick<Props<T>, Extract<'children', keyof Props<T>>>
+        : ComponentProps<T> & ExplicitProps<T>
       : C extends NormalComponent<infer U>
         ? U
         : React.JSX.LibraryManagedAttributes<C, P>;
