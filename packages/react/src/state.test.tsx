@@ -14,6 +14,19 @@ import {
   renderWith
 } from '../vitest';
 
+it('will tested in strict mode', () => {
+  const didRender = vi.fn();
+
+  const Component = () => {
+    didRender();
+    return null;
+  };
+
+  render(<Component />);
+
+  expect(didRender).toBeCalledTimes(2);
+});
+
 describe('State.use', () => {
   class Test extends State {
     value = 'foo';
@@ -34,12 +47,12 @@ describe('State.use', () => {
       });
 
       expect(result.current.value).toBe('foo');
-      expect(willRender).toBeCalledTimes(1);
+      expect(willRender).toBeCalledTimes(2);
 
       result.current.value = 'bar';
 
       await waitFor(() => {
-        expect(willRender).toBeCalledTimes(2);
+        expect(willRender).toBeCalledTimes(4);
       });
 
       expect(result.current.value).toBe('bar');
