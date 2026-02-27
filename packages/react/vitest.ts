@@ -1,7 +1,7 @@
 import { createElement, Suspense } from 'react';
 export { mockError, mockPromise, mockWarn } from '../../vitest.setup';
 
-import { cleanup, renderHook } from '@testing-library/react';
+import { cleanup, render, renderHook } from '@testing-library/react';
 import { afterEach } from 'vitest';
 import { Provider, State } from './src';
 
@@ -12,6 +12,7 @@ export * from '@testing-library/react';
 
 function renderWith<T>(Type: State.Type | State, hook: () => T) {
   return renderHook(hook, {
+    // reactStrictMode: true,
     wrapper(props) {
       return createElement(
         Provider,
@@ -22,4 +23,14 @@ function renderWith<T>(Type: State.Type | State, hook: () => T) {
   });
 }
 
-export { renderWith };
+const renderHookStrictly: typeof renderHook = (hook, options) =>
+  renderHook(hook, { ...options, reactStrictMode: true });
+
+const renderStrictly: typeof render = (ui: any, options: any): any =>
+  render(ui, { ...options, reactStrictMode: true });
+
+export {
+  renderWith
+  // renderHookStrictly as renderHook,
+  // renderStrictly as render
+};
