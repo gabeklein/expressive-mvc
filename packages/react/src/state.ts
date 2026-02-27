@@ -140,13 +140,13 @@ State.use = function <T extends State>(
       if (ready) state[1]((x) => x.bind(null));
     });
 
-    function didMount() {
+    const didMount = strict(() => {
       ready = true;
       return () => {
         context.pop();
         instance.set(null);
       };
-    }
+    });
 
     return (...args: State.Args<T>) => {
       Pragma.useEffect(didMount, []);
@@ -233,10 +233,10 @@ State.get = function <T extends State, R>(
       return () => null;
     }
 
-    function onMount() {
+    const onMount = strict(() => {
       ready = true;
       return unwatch;
-    }
+    });
 
     return () => {
       Pragma.useEffect(onMount, []);
@@ -246,5 +246,19 @@ State.get = function <T extends State, R>(
 
   return state[0]() as R;
 };
+
+/** Makes useEffect callback resist <StrictMode /> remount mechanics. */
+function strict(effect: () => () => void) {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let teardown: () => void;
+
+  return () => {
+    clearTimeout(timer);
+    if (!teardown) teardown = effect();
+    return () => {
+      timer = setTimeout(teardown);
+    };
+  };
+}
 
 export { State };
