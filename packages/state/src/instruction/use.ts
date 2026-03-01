@@ -1,5 +1,5 @@
 import { observing } from '../observable';
-import { access, State, STATE, uid, update } from '../state';
+import { access, State, uid, update } from '../state';
 
 /**
  * Property initializer, will run upon instance creation.
@@ -10,8 +10,7 @@ type Instruction<T = any, M extends State = any> =
   (
     this: M,
     key: Extract<State.Field<M>, string>,
-    thisArg: M,
-    state: State.Values<M>
+    thisArg: M
   ) => Instruction.Descriptor<T> | ((source: M) => T) | void;
 
 declare namespace Instruction {
@@ -36,8 +35,6 @@ function use(arg1: Instruction) {
 }
 
 function init(this: State) {
-  const state = STATE.get(this)!;
-
   for (const key in this) {
     const { value } = Object.getOwnPropertyDescriptor(this, key)!;
     const instruction = INSTRUCTION.get(value);
@@ -47,13 +44,13 @@ function init(this: State) {
     INSTRUCTION.delete(value);
     delete (this as any)[key];
 
-    const output = instruction.call(this, key, this, state);
+    const output = instruction.call(this, key, this);
 
     if (!output) continue;
 
     const desc = typeof output == 'object' ? output : { get: output };
 
-    if ('value' in desc) state[key] = desc.value;
+    if ('value' in desc) update(this, key, desc.value, false);
 
     const self = this;
 
