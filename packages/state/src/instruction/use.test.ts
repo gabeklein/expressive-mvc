@@ -66,7 +66,7 @@ describe('instruction', () => {
 
       const instance = Test.new();
 
-      expect(mockApply).toBeCalledWith('property', expect.any(Test), {});
+      expect(mockApply).toBeCalledWith('property', expect.any(Test));
       expect(mockAccess).not.toBeCalled();
 
       expect(instance.property).toBe('foobar');
@@ -219,4 +219,3 @@ describe('instruction', () => {
     });
   });
 });
-

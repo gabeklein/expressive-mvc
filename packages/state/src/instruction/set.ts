@@ -1,5 +1,5 @@
 import { listener, scope, watch } from '../observable';
-import { access, event, unbind, State, update } from '../state';
+import { access, event, unbind, State, update, STATE } from '../state';
 import { Instruction, use } from './use';
 
 const STALE = new WeakSet<() => void>();
@@ -85,7 +85,7 @@ function set<R, T = any>(
 function set<R, T extends State>(reactiveTo: T, compute: set.Compute<R, T>): R;
 
 function set<T = any>(value?: unknown, argument?: unknown): any {
-  return use<T>((key, subject, state) => {
+  return use<T>((key, subject) => {
     if (typeof value == 'symbol')
       throw new Error(
         `Attempted to use an instruction result (probably use or get) as computed source for ${subject}.${key}. This is not allowed.`
@@ -120,7 +120,7 @@ function set<T = any>(value?: unknown, argument?: unknown): any {
           (current) => {
             proxy = current;
 
-            if (!(key in state) || STALE.delete(compute)) compute(!reset);
+            if (!(key in STATE.get(subject)!) || STALE.delete(compute)) compute(!reset);
 
             return (didUpdate) => {
               if (didUpdate) {

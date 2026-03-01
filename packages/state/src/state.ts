@@ -694,4 +694,4 @@ function unbind(fn?: Function) {
   return METHOD.get(fn) || fn;
 }
 
-export { event, unbind, State, PARENT, STATE, uid, access, update };
+export { event, unbind, State, PARENT, uid, access, update, STATE };
