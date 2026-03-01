@@ -36,6 +36,8 @@ declare namespace Context {
 }
 
 class Context {
+  static root = Object.assign(new Context(), { name: '__ROOT__' });
+
   /**
    * Get the context for a specified State. If a callback is provided, it will be run when
    * the context becomes available.

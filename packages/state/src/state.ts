@@ -505,6 +505,8 @@ function init(state: State, ...args: State.Args) {
   });
 
   listener(state, () => {
+    if (!Context.for(state, false)) Context.root.add(state);
+
     if (!PARENT.has(state)) PARENT.set(state, null);
 
     for (const key in state) {
