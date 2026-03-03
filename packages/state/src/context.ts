@@ -127,6 +127,9 @@ class Context {
   /** Get all entries of a type registered downstream. */
   public has<T extends State>(Type: State.Extends<T>): T[];
 
+  /** Get single entry of a type registered downstream. Throws if ambiguous. */
+  public has<T extends State>(Type: State.Extends<T>, single: true): T | undefined;
+
   /** Subscribe to a type being registered downstream. */
   public has<T extends State>(
     Type: State.Extends<T>,
@@ -136,7 +139,7 @@ class Context {
 
   public has<T extends State>(
     Type: State.Extends<T>,
-    cb?: Context.Expect<T>,
+    cb?: Context.Expect<T> | true,
     current?: boolean
   ) {
     const K = key(Type);
@@ -150,8 +153,17 @@ class Context {
       return out;
     };
 
-    if (!cb)
-      return collect(this, []);
+    if (!cb || cb === true) {
+      const entries = collect(this, []);
+
+      if (cb !== true)
+        return entries;
+
+      if (entries.length > 1)
+        throw new Error(`Did find ${Type} in context, but multiple were defined.`);
+
+      return entries[0];
+    }
 
     const context = this.upstream;
     const arr = context.hasOwnProperty(K) ? context[K] : (context[K] = []);
