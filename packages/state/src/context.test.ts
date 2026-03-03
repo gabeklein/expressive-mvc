@@ -611,6 +611,31 @@ describe('has method', () => {
     expect(entries).toHaveLength(1);
     expect(entries[0]).toBeInstanceOf(DownstreamState);
   });
+
+  it('will return single entry when true', () => {
+    const context = new Context();
+    context.push(DownstreamState);
+
+    const entry = context.has(DownstreamState, true);
+
+    expect(entry).toBeInstanceOf(DownstreamState);
+  });
+
+  it('will return undefined when none found with true', () => {
+    const context = new Context();
+
+    expect(context.has(DownstreamState, true)).toBeUndefined();
+  });
+
+  it('will throw on ambiguous with true', () => {
+    const context = new Context();
+    context.push(DownstreamState);
+    context.push(DownstreamState);
+
+    expect(() => context.has(DownstreamState, true)).toThrow(
+      'Did find DownstreamState in context, but multiple were defined.'
+    );
+  });
 });
 
 describe('with existing context', () => {
