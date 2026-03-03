@@ -85,15 +85,13 @@ function get<R, T extends State>(
     }
 
     // Check context
-    Context.for(subject, (context) => {
-      const self = context.get(Type, false);
+    const context = Context.for(subject);
 
-      if (self && self !== subject) assign(self);
-      else if (arg1 !== false)
-        throw new Error(
-          `Required ${Type} not found in context for ${subject}.`
-        );
-    });
+    const self = context.get(Type, false);
+
+    if (self && self !== subject) assign(self);
+    else if (arg1 !== false)
+      throw new Error(`Required ${Type} not found in context for ${subject}.`);
 
     return {
       get: arg1 !== false,
