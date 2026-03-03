@@ -95,6 +95,13 @@ function get<R, T extends State>(
         );
     });
 
+    // TODO: this should be possible becasue I'd expect context to be established already.
+    // const self = Context.for(subject).get(Type, false);
+
+    // if (self && self !== subject) assign(self);
+    // else if (arg1 !== false)
+    //   throw new Error(`Required ${Type} not found in context for ${subject}.`);
+
     return {
       get: arg1 !== false,
       enumerable: false

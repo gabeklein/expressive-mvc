@@ -661,9 +661,9 @@ function update<T>(
 
   if (arg !== true) event(state, key);
 
-  if (value instanceof State) {
+  if (value instanceof State && !observable(value)) {
     if (!PARENT.has(value)) PARENT.set(value, state);
-    event(value);
+    listener(value, () => (event(value), null));
   }
 
   return true;
