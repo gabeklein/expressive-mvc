@@ -56,6 +56,8 @@ declare namespace Context {
 }
 
 class Context {
+  static default = new Context();
+
   /**
    * Get the context for a specified State. If a callback is provided, it will be run when
    * the context becomes available.
@@ -86,8 +88,10 @@ class Context {
     if (typeof arg == 'function')
       if (context) context.push(arg);
       else LOOKUP.set(is, [arg]);
-    else if (arg !== false)
-      throw new Error(`Could not find context for ${is}.`);
+    else if (arg !== false) {
+      this.default.add(is, true);
+      return this.default;
+    }
   }
 
   public id = uid();
@@ -281,8 +285,7 @@ class Context {
 
     let obj = this.upstream;
     while (obj && obj !== Object.prototype) {
-      for (const K of IK)
-        if (obj.hasOwnProperty(K)) expects.push(...obj[K]);
+      for (const K of IK) if (obj.hasOwnProperty(K)) expects.push(...obj[K]);
       obj = Object.getPrototypeOf(obj);
     }
 
