@@ -333,6 +333,51 @@ describe('downstream collection', () => {
     expect(gotChild).toBeCalledTimes(1);
   });
 
+  it('will collect children added later', async () => {
+    class Child extends State {}
+    class Parent extends State {
+      children = get(Child, true);
+    }
+
+    const parent = new Parent();
+    const context = new Context({ parent });
+
+    expect(parent.children).toEqual([]);
+
+    const child1 = new Child();
+    context.push({ child1 });
+
+    await expect(parent).toHaveUpdated();
+    expect(parent.children).toEqual([child1]);
+
+    const child2 = new Child();
+    context.push({ child2 });
+
+    await expect(parent).toHaveUpdated();
+    expect(parent.children).toEqual([child1, child2]);
+  });
+
+  it('will collect implicit child added later', async () => {
+    class Child extends State {}
+    class Wrapper extends State {
+      child = new Child();
+    }
+    class Parent extends State {
+      children = get(Child, true);
+    }
+
+    const parent = new Parent();
+    const context = new Context({ parent });
+
+    expect(parent.children).toEqual([]);
+
+    context.push({ Wrapper });
+
+    await expect(parent).toHaveUpdated();
+    expect(parent.children.length).toBe(1);
+    expect(parent.children[0]).toBeInstanceOf(Child);
+  });
+
   it('will register implicit', () => {
     class Baz extends State {}
     class Foo extends State {
@@ -602,14 +647,19 @@ describe('upstream subscription', () => {
 
     new Context({ parent }).push({ child });
 
+    const effect = vi.fn();
     const first = parent.peer;
+
     expect(child.peer).toBe(first);
 
-    parent.peer = new Peer();
-    await expect(parent).toHaveUpdated();
+    child.get(it => effect(it.peer));
 
-    expect(child.peer).toBe(parent.peer);
-    expect(child.peer).not.toBe(first);
+    parent.peer = new Peer();
+    await expect(child).toHaveUpdated();
+
+    expect(effect).toBeCalledTimes(2);
+    expect(effect).nthCalledWith(1, first);
+    expect(effect).nthCalledWith(2, parent.peer);
   });
 
   it('will update when upstream is added to ancestor context', async () => {
@@ -620,46 +670,56 @@ describe('upstream subscription', () => {
 
     const child = new Child();
     const context = new Context();
+    const effect = vi.fn();
+
     context.push({ child });
 
     expect(child.ambient).toBeUndefined();
 
+    child.get(it => effect(it.ambient));
     context.set({ Ambient });
     await expect(child).toHaveUpdated();
 
-    expect(child.ambient).toBeInstanceOf(Ambient);
+    expect(effect).toBeCalledTimes(2);
+    expect(effect).nthCalledWith(1, undefined);
+    expect(effect).nthCalledWith(2, expect.any(Ambient));
   });
 
   it('will run callback when upstream is replaced', async () => {
-    class Peer extends State {
+    class Remote extends State {
       value = 'initial';
     }
 
     const callback = vi.fn();
 
-    class Parent extends State {
-      peer = new Peer();
+    class Owner extends State {
+      remote = new Remote();
     }
-    class Child extends State {
-      peer = get(Peer, callback);
+    class Consumer extends State {
+      remote = get(Remote, callback);
     }
 
-    const parent = new Parent();
-    const child = new Child();
+    const owner = new Owner();
+    const consumer = new Consumer();
 
-    new Context({ parent }).push({ child });
+    new Context({ owner }).push({ consumer });
+
+    const first = consumer.remote;
+    const effect = vi.fn();
 
     expect(callback).toBeCalledTimes(1);
-    expect(callback).toBeCalledWith(parent.peer, child);
+    expect(callback).toBeCalledWith(first, consumer);
 
-    const replacement = new Peer();
-    replacement.value = 'replaced';
-    parent.peer = replacement;
-    await expect(parent).toHaveUpdated();
+    consumer.get(it => effect(it.remote));
 
+    owner.remote = new Remote();
+    await expect(consumer).toHaveUpdated();
+
+    expect(effect).toBeCalledTimes(2);
+    expect(effect).nthCalledWith(1, first);
+    expect(effect).nthCalledWith(2, consumer.remote);
     expect(callback).toBeCalledTimes(2);
-    expect(callback).toBeCalledWith(replacement, child);
-    expect(child.peer).toBe(replacement);
+    expect(callback).toBeCalledWith(consumer.remote, consumer);
   });
 });
 
