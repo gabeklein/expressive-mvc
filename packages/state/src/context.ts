@@ -79,6 +79,8 @@ declare namespace Context {
     | State.Type<T>
     | Record<string | number, T | State.Type<T>>;
 
+  type Include = State | State.Type | (State | State.Type)[];
+
   type Expect<T extends State = State> = (
     state: T,
     existing?: true
@@ -96,13 +98,13 @@ class Context {
   private upstream: Record<symbol, Context.Expect[]> = {};
   private downstream: Record<symbol, Context.Expect[]> = {};
 
-  constructor(arg?: Context | Context.Accept) {
+  constructor(arg?: Context | Context.Include) {
     if (arg instanceof Context) {
       this.registry = Object.create(arg.registry);
       this.upstream = Object.create(arg.upstream);
       arg.children.add(this);
     } else if (arg) {
-      this.set(arg);
+      this.add(arg);
     }
   }
 
@@ -236,7 +238,14 @@ class Context {
     this.inputs = inputs;
   }
 
-  add<T extends State>(I: T, implicit?: boolean) {
+  add(I: Context.Include, implicit?: boolean) {
+    if (Array.isArray(I)) {
+      const clean = I.map((I) => this.add(I, implicit));
+      return () => void clean.forEach((c) => c());
+    }
+
+    if (State.is(I)) I = new I();
+
     const cleanup = new Map<string | Function, () => void>();
 
     const observe = (I: State, explicit: boolean, key = '') => {
@@ -275,7 +284,7 @@ class Context {
     observe(I, !implicit);
 
     const IK = keys(I);
-    const expects = [] as Context.Expect<T>[];
+    const expects = [] as Context.Expect[];
 
     let obj = this.upstream;
     while (obj && obj !== Object.prototype) {
@@ -327,6 +336,8 @@ class Context {
 
     LOOKUP.set(I, this);
 
+    event(I);
+
     return () => {
       reset();
       LOOKUP.delete(I);
@@ -336,11 +347,13 @@ class Context {
   /**
    * Create a child context, optionally registering one or more States to it.
    *
-   * @param inputs State, State class, or map of States / State classes to register.
+   * @param include State, State class, or map of States / State classes to register.
    */
-  public push(inputs?: Context.Accept) {
+  public push(include?: Context.Include) {
     const next = new Context(this);
-    if (inputs) next.set(inputs);
+
+    if (include) next.add(include);
+
     return next;
   }
 

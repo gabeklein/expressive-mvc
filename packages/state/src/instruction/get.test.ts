@@ -217,7 +217,7 @@ describe('downstream collection', () => {
     const child1 = new Child();
     const child2 = new Child();
 
-    new Context(parent).push({ child1, child2 });
+    new Context(parent).push([child1, child2]);
 
     expect(parent.children).toEqual([child1, child2]);
   });
@@ -293,7 +293,7 @@ describe('downstream collection', () => {
     const child2 = new Child();
 
     const context = new Context(parent);
-    const context2 = context.push({ child1, child2 });
+    const context2 = context.push([child1, child2]);
 
     expect(parent.children).toEqual([child1, child2]);
 
@@ -466,7 +466,7 @@ describe('lifecycle callbacks', () => {
     const child2 = new Child();
 
     const context = new Context(parent);
-    const context2 = context.push({ child1, child2 });
+    const context2 = context.push([child1, child2]);
 
     expect(didAdd).toBeCalledTimes(2);
     expect(parent.children).toEqual([child1, child2]);
@@ -488,15 +488,12 @@ describe('lifecycle callbacks', () => {
     const parent = new Parent();
     const context = new Context(parent);
 
-    context.push({
-      child: Child,
-      child2: Child
-    });
+    context.push([Child, Child]);
 
     expect(hasChild).toBeCalledTimes(2);
     expect(parent.children.length).toBe(0);
 
-    context.push({ child: Child });
+    context.push([Child]);
 
     await expect(parent).not.toUpdate();
     expect(hasChild).toBeCalledTimes(3);

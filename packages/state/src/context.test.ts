@@ -90,10 +90,7 @@ it('will return undefined if not required', () => {
 });
 
 it('will complain if multiple registered', () => {
-  const context = new Context({
-    e1: Example,
-    e2: Example
-  });
+  const context = new Context([Example, Example]);
 
   const fetch = () => context.get(Example);
 
@@ -104,10 +101,7 @@ it('will complain if multiple registered', () => {
 
 it('will ignore if multiple but same', () => {
   const example = Example.new();
-  const context = new Context({
-    e1: example,
-    e2: example
-  });
+  const context = new Context([example, example]);
 
   const got = context.get(Example);
 
@@ -214,7 +208,7 @@ it('will destroy modules created by layer', () => {
   const test2 = Test2.new();
 
   const context1 = new Context(Test1);
-  const context2 = context1.push({ test2, Test3 });
+  const context2 = context1.push([test2, Test3]);
 
   const test1 = context2.get(Test1)!;
   const test3 = context2.get(Test3)!;
@@ -237,7 +231,9 @@ describe('include', () => {
     const foo = Foo.new();
     const bar = Bar.new();
 
-    const context = new Context({ foo, bar });
+    const context = new Context();
+
+    context.set({ foo, bar });
 
     expect(context.get(Foo)).toBe(foo);
     expect(context.get(Bar)).toBe(bar);
@@ -436,7 +432,7 @@ describe('include', () => {
       child = shared;
     }
 
-    const ctx = new Context({ ParentA, ParentB });
+    const ctx = new Context([ParentA, ParentB]);
 
     expect(ctx.get(Foo)).toBe(shared);
 
@@ -448,7 +444,7 @@ describe('include', () => {
   it('will prefer explicit over implicit', () => {
     const foo = new Foo();
     const foobar = new FooBar();
-    const context = new Context({ foobar, foo });
+    const context = new Context([foobar, foo]);
 
     expect(context.get(FooBar)).toBe(foobar);
     expect(context.get(Foo)).not.toBe(foobar.foo);
