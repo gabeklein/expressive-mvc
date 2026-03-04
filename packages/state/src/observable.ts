@@ -28,7 +28,7 @@ type Signal = Event | true | false | null;
 
 type PromiseLite<T = void> = { then: (callback: () => T) => T };
 
-type Observer<T = any> = (key: string | number, value: T) => T;
+type Observer<T = any> = (key: string | number | symbol, value: T) => T;
 
 type Callback = () => void | PromiseLite;
 
@@ -82,7 +82,7 @@ function observe<T extends Observable>(
 
   OBSERVER.set(proxy, (key, value) => {
     if (value === undefined && required)
-      throw new Error(`${object}.${key} is required in this context.`);
+      throw new Error(`${object}.${String(key)} is required in this context.`);
 
     watching.add(key);
 
@@ -95,7 +95,7 @@ function observe<T extends Observable>(
   return proxy as T;
 }
 
-function observing(from: Observable, key: string | number, value?: any) {
+function observing(from: Observable, key: string | number | symbol, value?: any) {
   const observe = OBSERVER.get(from);
   return observe ? observe(key, value) : value;
 }

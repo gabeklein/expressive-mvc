@@ -13,6 +13,9 @@ import {
 
 const define = Object.defineProperty;
 
+/** Tracks per-state upstream context subscriptions keyed by Type. */
+const UPSTREAM = new WeakMap<State, Map<State.Extends, symbol>>();
+
 /** Register for all active states via string identifiers (usually unique). */
 const ID = new WeakMap<State, string>();
 
@@ -237,7 +240,7 @@ abstract class State implements Observable {
     const self = this.is;
 
     if (arg1 === undefined) return values(self);
-    if (State.is(arg1)) return Context.for(self).get(arg1, arg2 !== false);
+    if (State.is(arg1)) return getUpstream(self, this, arg1, arg2 !== false);
     if (typeof arg1 == 'function') return watch(self, unbind(arg1));
     if (typeof arg2 == 'function') return listener(self, arg2, arg1);
     if (arg1 === null) return observable(self) === null;
@@ -667,6 +670,46 @@ function update<T>(
   }
 
   return true;
+}
+
+function getUpstream(self: State, proxy: State, Type: State.Extends, required: boolean) {
+  let tracked = UPSTREAM.get(self);
+  if (!tracked) UPSTREAM.set(self, (tracked = new Map()));
+
+  const store = STATE.get(self)!;
+  const sym = tracked.get(Type) || setupUpstream(self, tracked, store, Type, required);
+
+  return sym && observing(proxy, sym, store[sym]);
+}
+
+function setupUpstream(
+  self: State,
+  tracked: Map<State.Extends, symbol>,
+  store: Record<string | number | symbol, unknown>,
+  Type: State.Extends,
+  required: boolean
+) {
+  const sym = Symbol(String(Type));
+  tracked.set(Type, sym);
+
+  const context = Context.for(self, required);
+  if (!context) return;
+
+  let found = false;
+
+  const unsub = context.get(Type, (state, existing) => {
+    if (state === self) return;
+    found = true;
+    if (existing) store[sym] = state;
+    else update(self, sym, state);
+  });
+
+  listener(self, () => { unsub(); return null; }, null);
+
+  if (!found && required)
+    throw new Error(`Could not find ${Type} in context.`);
+
+  return sym;
 }
 
 /** Random alphanumberic of length 6; always starts with a letter. */
