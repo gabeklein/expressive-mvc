@@ -1,4 +1,4 @@
-import { watch, Observable } from './observable';
+import { watch, Observable, event, listener, emit } from './observable';
 import { set } from './instruction/set';
 import { use } from './instruction/use';
 import { mockError, vi, describe, it, expect, mockPromise } from '../vitest';
@@ -333,6 +333,86 @@ describe('errors', () => {
     await expect(test).toHaveUpdated();
 
     expect(error).toBeCalledWith(expected);
+  });
+});
+
+describe('dispatch', () => {
+  it('will batch multiple enqueues into one flush', async () => {
+    class Test extends State {
+      a = 1;
+      b = 2;
+    }
+
+    const test = Test.new();
+    const mock = vi.fn();
+
+    test.get(($) => {
+      mock($.a, $.b);
+    });
+
+    test.a = 10;
+    test.b = 20;
+
+    await expect(test).toHaveUpdated('a', 'b');
+    expect(mock).toBeCalledTimes(2);
+    expect(mock).toBeCalledWith(10, 20);
+  });
+
+  it('will not duplicate a handler enqueued twice', async () => {
+    class Test extends State {
+      value = 1;
+    }
+
+    const test = Test.new();
+    const mock = vi.fn();
+
+    test.get(($) => {
+      mock($.value);
+    });
+
+    // two rapid assignments, effect should still only fire once
+    test.value = 2;
+    test.value = 3;
+
+    await expect(test).toHaveUpdated('value');
+
+    // initial + one batched update
+    expect(mock).toBeCalledTimes(2);
+    expect(mock).toBeCalledWith(3);
+  });
+
+  it('will continue flushing after a handler throws', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    class A extends State {
+      value = 1;
+    }
+
+    class B extends State {
+      value = 1;
+    }
+
+    const a = A.new();
+    const b = B.new();
+
+    // effect on a throws during flush
+    a.get(($) => {
+      if ($.value === 2) throw new Error('boom');
+    });
+
+    const mock = vi.fn();
+    b.get(($) => mock($.value));
+
+    // trigger both in same tick
+    a.value = 2;
+    b.value = 2;
+
+    await expect(b).toHaveUpdated('value');
+
+    expect(mock).toBeCalledWith(2);
+    expect(error).toBeCalled();
+
+    error.mockRestore();
   });
 });
 

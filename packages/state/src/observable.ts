@@ -121,26 +121,22 @@ function listener<T extends Observable>(
   return () => listeners.delete(callback);
 }
 
-function pending<K extends Event>(state: Observable) {
+function pending<K extends Event>(state: Observable): K[] & PromiseLike<K[]> {
   const current = PENDING_KEYS.get(state) as Set<K> | undefined;
-  const resolver: PromiseLike<K[]> = {
-    then: (onFulfilled) =>
-      new Promise<K[]>((res) => {
-        if (current) {
-          const remove = listener(state, (key) => {
-            if (key !== true) {
-              remove();
-              return () => {
-                const result = [...current];
-                return res(result);
-              };
-            }
-          });
-        } else res([]);
-      }).then(onFulfilled)
-  };
+  const promise: Promise<K[]> = current
+    ? new Promise((res) => {
+        const remove = listener(state, (key) => {
+          if (key !== true) {
+            remove();
+            return () => res([...current]);
+          }
+        });
+      })
+    : Promise.resolve([]);
 
-  return Object.assign(Array.from(current || []), resolver);
+  return Object.assign(Array.from(current || []), {
+    then: promise.then.bind(promise)
+  });
 }
 
 function emit(state: Observable, key: Signal): void {
@@ -201,7 +197,7 @@ function event(state: Observable, key?: Event | null, silent?: boolean) {
 
 function enqueue(eventHandler: () => void) {
   if (!DISPATCH.size)
-    setTimeout(() => {
+    queueMicrotask(() => {
       DISPATCH.forEach((event) => {
         try {
           event();
@@ -210,7 +206,7 @@ function enqueue(eventHandler: () => void) {
         }
       });
       DISPATCH.clear();
-    }, 0);
+    });
 
   DISPATCH.add(eventHandler);
 }
@@ -260,7 +256,6 @@ function watch<T extends Observable>(
       }
 
       enqueue(invoke);
-      return { then: enqueue };
     }
 
     try {
