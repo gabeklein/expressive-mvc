@@ -84,6 +84,8 @@ declare namespace Context {
     state: T,
     existing?: true
   ) => (() => void) | false | void;
+
+  type Input = State | State.Type | (State | State.Type)[];
 }
 
 class Context {
@@ -93,7 +95,7 @@ class Context {
 
   protected inputs: Record<string | number, State | State.Extends> = {};
 
-  private cleanup = new Map<string | number, () => void>();
+  private cleanup = new Map<any, () => void>();
   private registry = new Map<State.Extends, [State, boolean][]>();
   private upstream = new Map<State.Extends, Set<Context.Expect>>();
   private downstream = new Map<State.Extends, Set<Context.Expect>>();
@@ -103,7 +105,10 @@ class Context {
       this.parent = arg;
       arg.children.add(this);
     } else if (arg) {
-      this.set(arg);
+      if (State.is(arg) || arg instanceof State || Array.isArray(arg))
+        this.add(arg as Context.Input);
+      else
+        this.set(arg);
     }
   }
 
@@ -222,10 +227,10 @@ class Context {
       const I = V instanceof State ? V : new (V as State.Type<T>)();
 
       const clear = this.add(I);
-      cleanup.set(K, () => {
-        clear();
-        if (I !== V) event(I, null);
-      });
+      cleanup.set(K, I !== V
+        ? () => { clear(); event(I, null); }
+        : clear
+      );
       init.push(I);
     }
 
@@ -237,9 +242,16 @@ class Context {
     this.inputs = inputs;
   }
 
-  add<T extends State>(I: T, implicit?: boolean) {
+  add(input: Context.Input, implicit?: boolean) {
+    if (Array.isArray(input)) {
+      const clean = input.map((i) => this.add(i, implicit));
+      return () => void clean.forEach((c) => c());
+    }
+
     const { registry } = this;
     const cleanup = new Map<string | Function, () => void>();
+
+    const I = input instanceof State ? input : new (input as State.Type)();
 
     const observe = (I: State, explicit: boolean, key: string) => {
       for (const T of types(I)) {
@@ -276,7 +288,7 @@ class Context {
     observe(I, !implicit, '');
 
     const IT = types(I);
-    const expects = [] as Context.Expect<T>[];
+    const expects = [] as Context.Expect[];
 
     for (const ctx of above(this))
       for (const T of IT) {
@@ -315,22 +327,33 @@ class Context {
           }
       }
 
-    if (!release) return reset;
+    event(I);
+
+    if (I !== input)
+      cleanup.set('', () => event(I, null));
+
+    const remove = release
+      ? () => { reset(); release(); }
+      : reset;
+
+    this.cleanup.set(remove, remove);
 
     return () => {
-      reset();
-      release();
+      this.cleanup.delete(remove);
+      remove();
     };
   }
 
-  /**
-   * Create a child context, optionally registering one or more States to it.
-   *
-   * @param inputs State, State class, or map of States / State classes to register.
-   */
-  public push(inputs?: Context.Accept) {
+  /** Create a child context, optionally registering States to it. */
+  public push(input?: Context.Input | Context.Accept) {
     const next = new Context(this);
-    if (inputs) next.set(inputs);
+    if (!input) return next;
+
+    if (State.is(input) || input instanceof State || Array.isArray(input))
+      next.add(input as Context.Input);
+    else
+      next.set(input as Context.Accept);
+
     return next;
   }
 

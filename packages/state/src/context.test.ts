@@ -23,7 +23,8 @@ it('will UID context', () => {
 });
 
 it('will create instance in context', () => {
-  const context = new Context(Example);
+  const context = new Context();
+  context.add(Example);
 
   expect(context.get(Example)).toBeInstanceOf(Example);
 });
@@ -37,8 +38,9 @@ it("will throw if context doesn't exist", () => {
 });
 
 it('will not create base State', () => {
+  const context = new Context();
   // @ts-expect-error
-  const attempt = () => new Context(State);
+  const attempt = () => context.add(State);
 
   expect(attempt).toThrow('Cannot create base State.');
 });
@@ -48,7 +50,8 @@ it('will include children of State', () => {
     example = new Example();
   }
 
-  const context = new Context(Test);
+  const context = new Context();
+  context.add(Test);
 
   expect(context.get(Example)).toBeInstanceOf(Example);
 });
@@ -84,7 +87,8 @@ it('will remove implicit children on pop', () => {
     child = new Example();
   }
 
-  const ctx = new Context(Parent);
+  const ctx = new Context();
+  ctx.add(Parent);
   const { child } = ctx.get(Parent);
 
   expect(context(child)).toBe(ctx);
@@ -122,8 +126,9 @@ it('will register children implicitly', () => {
     foo = new Foo();
   }
 
-  const bar = new Bar();
-  const context = new Context(bar);
+  const bar = Bar.new();
+  const context = new Context();
+  context.add(bar);
 
   expect(context.get(Bar)).toBe(bar);
   expect(context.get(Foo)).toBe(bar.foo);
@@ -139,7 +144,8 @@ it('will drop implicit child when property is overwritten', () => {
     child: Foo = foo1;
   }
 
-  const ctx = new Context(Parent);
+  const ctx = new Context();
+  ctx.add(Parent);
   const parent = ctx.get(Parent);
 
   expect(ctx.get(Foo)).toBe(foo1);
@@ -159,8 +165,9 @@ it('will notify downstream subscriber when implicit child is replaced', () => {
     child: Foo = foo1;
   }
 
-  const parent = new Parent();
-  const ctx = new Context(parent);
+  const parent = Parent.new();
+  const ctx = new Context();
+  ctx.add(parent);
   const cb = vi.fn();
 
   ctx.get(Foo, cb);
@@ -187,12 +194,13 @@ it('will not add stale implicit if property changes before context attaches', ()
   }
 
   // State.new initializes the state (runs manage) but doesn't attach a context yet
-  const parent = new Parent();
+  const parent = Parent.new();
 
   // overwrite child before context attaches - queues second context callback
   parent.child = foo2;
 
-  const ctx = new Context(parent);
+  const ctx = new Context();
+  ctx.add(parent);
 
   // only foo2 should be in context; stale foo1 callback was skipped
   expect(ctx.get(Foo)).toBe(foo2);
@@ -207,7 +215,8 @@ it('will collide implicit children with shared ancestor', () => {
     bar = new Bar();
   }
 
-  const ctx = new Context(Parent);
+  const ctx = new Context();
+  ctx.add(Parent);
 
   expect(ctx.get(Bar)).toBeInstanceOf(Bar);
   expect(ctx.get(Foo)).toBeNull();
@@ -222,7 +231,8 @@ it('will uncollide when one implicit child is removed', () => {
     bar = new Bar();
   }
 
-  const ctx = new Context(Parent);
+  const ctx = new Context();
+  ctx.add(Parent);
   const parent = ctx.get(Parent);
 
   expect(ctx.get(Foo)).toBeNull();
@@ -248,7 +258,8 @@ it('will pop child context', () => {
   class Test3 extends Test {}
 
   const didDestroy = vi.fn();
-  const context = new Context(Test);
+  const context = new Context();
+  context.add(Test);
 
   context.push(Test2).push(Test3);
   context.pop();
@@ -403,7 +414,7 @@ describe('get callback (upstream subscription)', () => {
     const cb = vi.fn();
 
     child.get(Upstream, cb);
-    parent.set(Upstream);
+    parent.add(Upstream);
 
     expect(cb).toBeCalledTimes(1);
     expect(cb.mock.calls[0][0]).toBeInstanceOf(Upstream);
@@ -416,7 +427,7 @@ describe('get callback (upstream subscription)', () => {
 
     const cancel = child.get(Upstream, cb);
     cancel();
-    parent.set(Upstream);
+    parent.add(Upstream);
 
     expect(cb).not.toBeCalled();
   });
@@ -428,7 +439,7 @@ describe('get callback (upstream subscription)', () => {
     const cb = vi.fn(() => cleanup);
 
     child.get(Upstream, cb);
-    parent.set(Upstream);
+    parent.add(Upstream);
 
     expect(cb).toBeCalledTimes(1);
 
@@ -455,7 +466,8 @@ describe('get callback (upstream subscription)', () => {
   });
 
   it('will call callback for already-registered upstream state', () => {
-    const parent = new Context(Upstream);
+    const parent = new Context();
+    parent.add(Upstream);
     const child = parent.push();
     const cb = vi.fn();
 
@@ -476,7 +488,7 @@ describe('get callback (upstream subscription)', () => {
     expect(cb).not.toBeCalled();
 
     // new addition has no flag
-    parent.set(Upstream);
+    parent.add(Upstream);
 
     expect(cb).toBeCalledTimes(1);
     expect(cb.mock.calls[0][1]).toBeUndefined();
@@ -488,7 +500,8 @@ describe('with existing context', () => {
 
   it('will not reassign context if state already has one', () => {
     const foo = Foo.new();
-    const original = new Context(foo);
+    const original = new Context();
+    original.add(foo);
     const other = new Context();
 
     other.add(foo);
@@ -499,7 +512,8 @@ describe('with existing context', () => {
 
   it('will keep original context after second context pops', () => {
     const foo = Foo.new();
-    const original = new Context(foo);
+    const original = new Context();
+    original.add(foo);
     const other = new Context();
 
     other.add(foo);
@@ -514,7 +528,8 @@ describe('with existing context', () => {
 
     context(foo, mock);
 
-    const first = new Context(foo);
+    const first = new Context();
+    first.add(foo);
     expect(mock).toBeCalledWith(first);
 
     const second = new Context();
@@ -592,14 +607,16 @@ describe('set method', () => {
     const foo = Foo.new();
     const bar = Bar.new();
 
-    const context = new Context({ foo, bar });
+    const context = new Context();
+    context.set({ foo, bar });
 
     expect(context.get(Foo)).toBe(foo);
     expect(context.get(Bar)).toBe(bar);
   });
 
   it('will complain if multiple of same type', () => {
-    const context = new Context({
+    const context = new Context();
+    context.set({
       e1: Example,
       e2: Example
     });
@@ -613,7 +630,8 @@ describe('set method', () => {
 
   it('will ignore if multiple of same instance', () => {
     const example = Example.new();
-    const context = new Context({
+    const context = new Context();
+    context.set({
       e1: example,
       e2: example
     });
@@ -653,7 +671,8 @@ describe('set method', () => {
       child: Foo | undefined = shared;
     }
 
-    const ctx = new Context({ ParentA, ParentB });
+    const ctx = new Context();
+    ctx.set({ ParentA, ParentB });
 
     expect(ctx.get(Foo)).toBe(shared);
 
@@ -681,8 +700,10 @@ describe('set method', () => {
 
     const test2 = Test2.new();
 
-    const context1 = new Context(Test1);
-    const context2 = context1.push({ test2, Test3 });
+    const context1 = new Context();
+    context1.set(Test1);
+    const context2 = context1.push();
+    context2.set({ test2, Test3 });
 
     const test1 = context2.get(Test1)!;
     const test3 = context2.get(Test3)!;
@@ -736,7 +757,8 @@ describe('set method', () => {
       child = new Example();
     }
 
-    const ctx = new Context(Parent);
+    const ctx = new Context();
+    ctx.set(Parent);
     const { child } = ctx.get(Parent);
 
     ctx.set({});
@@ -750,7 +772,8 @@ describe('set method', () => {
       child = new Example();
     }
 
-    const context = new Context(Parent);
+    const context = new Context();
+    context.set(Parent);
     const parent = context.get(Parent);
     expect(context.get(Example)).toBe(parent.child);
 
@@ -765,7 +788,8 @@ describe('set method', () => {
       b = new Example2();
     }
 
-    const context = new Context(Parent);
+    const context = new Context();
+    context.set(Parent);
     // Example2 extends Example, so both a and b register under Example key
     // This creates an implicit collision on Example — returns null
     expect(context.get(Example)).toBeNull();
@@ -828,7 +852,8 @@ describe('set method', () => {
       }
     }
 
-    const context = new Context(Bar);
+    const context = new Context();
+    context.set(Bar);
     const bar = context.get(Bar);
 
     context.set({});
@@ -848,7 +873,8 @@ describe('set method', () => {
 
     class Baz2 extends State {}
 
-    const context = new Context(Baz);
+    const context = new Context();
+    context.set(Baz);
     const baz = context.get(Baz);
 
     context.set({ Baz: Baz2 });
@@ -862,7 +888,8 @@ describe('set method', () => {
     class Bar extends State {}
 
     const bar = Bar.new();
-    const context = new Context(bar);
+    const context = new Context();
+    context.set(bar);
 
     expect(context.get(Bar)).toBe(bar);
 
@@ -877,7 +904,8 @@ describe('set method', () => {
     class Base extends State {}
     class Child extends Base {}
 
-    const context = new Context(Child);
+    const context = new Context();
+    context.set(Child);
 
     expect(context.get(Child)).toBeInstanceOf(Child);
     expect(context.get(Base)).toBeInstanceOf(Child);
