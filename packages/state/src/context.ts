@@ -47,22 +47,34 @@ function above(from: Context) {
   return out;
 }
 
-function below(from: Context) {
-  const queue = new Set(from.children);
+function below(from: Context, include?: boolean) {
+  const queue = new Set(include ? [from] : from.children);
   for (const q of queue) for (const c of q.children) queue.add(c);
   return queue;
 }
 
+function collect(from: Context, IT: State.Extends[], direction: boolean) {
+  const contexts = direction ? above(from) : below(from, true);
+  const out = new Set<Context.Expect>();
+  for (const { listeners } of contexts)
+    for (const T of IT) {
+      const map = listeners.get(T);
+      if (map) for (const [cb, dir] of map) if (dir === direction) out.add(cb);
+    }
+  return out;
+}
+
 function subscribe(
-  record: Map<State.Extends, Set<Function>>,
+  from: Context,
   T: State.Extends,
-  cb: Context.Expect<any>
+  cb: Context.Expect<any>,
+  direction: boolean
 ) {
-  let set = record.get(T);
-  if (!set) record.set(T, (set = new Set()));
-  set.add(cb);
+  let map = from.listeners.get(T);
+  if (!map) from.listeners.set(T, (map = new Map()));
+  map.set(cb, direction);
   return () => {
-    set.delete(cb);
+    map.delete(cb);
   };
 }
 
@@ -97,8 +109,7 @@ class Context {
 
   private cleanup = new Map<string | number | Function, () => void>();
   private registry = new Map<State.Extends, [State, boolean][]>();
-  private upstream = new Map<State.Extends, Set<Context.Expect>>();
-  private downstream = new Map<State.Extends, Set<Context.Expect>>();
+  public listeners = new Map<State.Extends, Map<Context.Expect, boolean>>();
 
   constructor(arg?: Context | Context.Accept) {
     if (arg instanceof Context) {
@@ -152,7 +163,7 @@ class Context {
 
     if (typeof arg2 == 'function') {
       if (found) arg2(found, true);
-      return subscribe(this.downstream, Type, arg2);
+      return subscribe(this, Type, arg2, false);
     }
 
     if (found) return found;
@@ -177,7 +188,7 @@ class Context {
 
     if (cb) {
       for (const state of out) cb(state, true);
-      return subscribe(this.upstream, Type, cb);
+      return subscribe(this, Type, cb, true);
     }
 
     return out;
@@ -288,20 +299,14 @@ class Context {
     observe(I, !implicit, '');
 
     const IT = types(I);
-    const expects = [] as Context.Expect[];
-
-    for (const ctx of above(this))
-      for (const T of IT) {
-        const set = ctx.upstream.get(T);
-        if (set) expects.push(...set);
-      }
+    const expects = collect(this, IT, true);
 
     const unwatch = listener(I, (key) => {
       if (typeof key === 'string') adopt(key, access(I, key, false));
       else if (key === true) {
-        for (const cb of new Set(expects)) {
+        for (const cb of expects) {
           const r = cb(I);
-          if (r) cleanup.set(r, r);
+          if (typeof r == 'function') cleanup.set(r, r);
         }
         for (const [k, v] of I) {
           if (v instanceof State) adopt(k, v);
@@ -317,15 +322,10 @@ class Context {
 
     const release = assign(I, this);
 
-    for (const { downstream } of [this, ...below(this)])
-      for (const T of IT) {
-        const set = downstream.get(T);
-        if (set)
-          for (const cb of set) {
-            const r = cb(I);
-            if (typeof r == 'function') cleanup.set(r, r);
-          }
-      }
+    collect(this, IT, false).forEach((cb) => {
+      const r = cb(I);
+      if (typeof r == 'function') cleanup.set(r, r);
+    });
 
     init(I);
 
