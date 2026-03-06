@@ -20,7 +20,7 @@ const ID = new WeakMap<State, string>();
 const STATE = new WeakMap<State, Record<string | number | symbol, unknown>>();
 
 /** External listeners for any given State. */
-const NOTIFY = new WeakMap<State.Extends, Set<Observable.Notify>>();
+const NOTIFY = new WeakMap<Extends, Set<Observable.Notify>>();
 
 /** Parent-child relationships. */
 const PARENT = new WeakMap<State, State | null>();
@@ -34,116 +34,136 @@ const METHODS = new WeakMap<Function, Map<string, (value: any) => void>>();
 /** Currently accumulating export. Stores real values of placeholder properties such as ref() or child states. */
 let EXPORT: Map<any, any> | undefined;
 
+/** Any type of State, using own class constructor as its identifier. */
+type Extends<T extends State = State> = (abstract new (...args: any[]) => T) &
+  typeof State;
+
+/** A State constructor which may be instanciated. */
+type Type<T extends State = State> = (new (...args: Args<T>) => T) &
+  Omit<typeof State, never>;
+
+/** State constructor arguments */
+type Args<T extends State = any> = (
+  | Args<T>
+  | Init<T>
+  | Assign<T>
+  | string
+  | void
+)[];
+
+/**
+ * State constructor callback - is called when State finishes intializing.
+ * Returned function will run when state is destroyed.
+ */
+type Init<T extends State = State> = (
+  this: T,
+  thisArg: T
+) => Promise<void> | (() => void) | Args<T> | Assign<T> | void;
+
+/** Object overlay to override values and methods on a state. */
+type Assign<T> = Record<string, unknown> & {
+  [K in Field<T>]?: T[K] extends (...args: infer A) => infer R
+    ? (this: T, ...args: A) => R
+    : T[K];
+};
+
+/** Subset of `keyof T` which are not methods or defined by base State U. **/
+type Field<T> = Exclude<keyof T, keyof State>;
+
+/** Any valid key for state, including but not limited to Field<T>. */
+type Event<T = State> = Field<T> | number | symbol | (string & {});
+
+/** Any event signal dispatched to listeners, including lifecycle meta events. */
+type Signal<T = State> = Event<T> | true | false | null;
+
+/** Export/Import compatible value for a given property in a State. */
+type Export<R> = R extends { get(): infer T } ? T : R;
+
+/**
+ * Values from current state of given state.
+ * Differs from `Values` as values here will drill
+ * into "real" values held by exotics like ref.Object.
+ */
+type Values<T> = { [P in Field<T>]: Export<T[P]> };
+
+/** Object comperable to data found in T. */
+type Partial<T> = { [P in Field<T>]?: Export<T[P]> };
+
+/** Value for a property managed by a state. */
+type Value<T extends State, K extends Event<T>> = K extends keyof T
+  ? Export<T[K]>
+  : unknown;
+
+type Setter<T> = (value: T, previous: T) => boolean | void | (() => T);
+
+type OnEvent<T extends State> = (
+  this: T,
+  key: Signal<T>,
+  source: T
+) => void | (() => void) | null;
+
+type OnUpdate<T extends State, K extends Event<T>> = (
+  this: T,
+  key: K,
+  thisArg: K
+) => void;
+
+/** Exotic value, where actual value is contained within. */
+type Ref<T = any> = {
+  (next: T): void;
+  current: T | null;
+};
+
+/**
+ * A callback function which is subscribed to parent and updates when accessed properties change.
+ *
+ * @param current - Current state of this state. This is a proxy which detects properties which
+ * where accessed, and thus depended upon to stay current.
+ *
+ * @param update - Set of properties which have changed, and events fired, since last update.
+ *
+ * @returns A callback function which will be called when this effect is stale.
+ */
+type Effect<T> = (
+  this: T,
+  current: T,
+  update: readonly Event<T>[] | undefined
+) => EffectCallback | Promise<void> | null | void;
+
+/**
+ * A callback function returned by effect. Will be called when effect is stale.
+ *
+ * @param update - `true` if update is pending, `false` effect has been cancelled, `null` if state is destroyed.
+ */
+type EffectCallback = (update: boolean | null) => void;
+
+/**
+ * A list of keys updated, or events fired, since last update.
+ * This may be awaited to get full list (same array) when update is settled.
+ */
+type Updated<T extends State> = readonly Event<T>[] &
+  PromiseLike<readonly Event<T>[]>;
+
 declare namespace State {
-  /** Any type of State, using own class constructor as its identifier. */
-  type Extends<T extends State = State> = (abstract new (...args: any[]) => T) &
-    typeof State;
-
-  /** A State constructor which may be instanciated. */
-  type Type<T extends State = State> = (new (...args: State.Args<T>) => T) &
-    Omit<typeof State, never>;
-
-  /** State constructor arguments */
-  type Args<T extends State = any> = (
-    | Args<T>
-    | Init<T>
-    | Assign<T>
-    | string
-    | void
-  )[];
-
-  /**
-   * State constructor callback - is called when State finishes intializing.
-   * Returned function will run when state is destroyed.
-   */
-  type Init<T extends State = State> = (
-    this: T,
-    thisArg: T
-  ) => Promise<void> | (() => void) | Args<T> | Assign<T> | void;
-
-  /** Object overlay to override values and methods on a state. */
-  type Assign<T> = Record<string, unknown> & {
-    [K in Field<T>]?: T[K] extends (...args: infer A) => infer R
-      ? (this: T, ...args: A) => R
-      : T[K];
+  export type {
+    Args,
+    Assign,
+    Effect,
+    EffectCallback,
+    Event,
+    Export,
+    Extends,
+    Field,
+    OnEvent,
+    OnUpdate,
+    Partial,
+    Ref,
+    Setter,
+    Signal,
+    Type,
+    Updated,
+    Values
   };
-
-  /** Subset of `keyof T` which are not methods or defined by base State U. **/
-  type Field<T> = Exclude<keyof T, keyof State>;
-
-  /** Any valid key for state, including but not limited to Field<T>. */
-  type Event<T = State> = Field<T> | number | symbol | (string & {});
-
-  /** Any event signal dispatched to listeners, including lifecycle meta events. */
-  type Signal<T = State> = Event<T> | true | false | null;
-
-  /** Export/Import compatible value for a given property in a State. */
-  type Export<R> = R extends { get(): infer T } ? T : R;
-
-  /**
-   * Values from current state of given state.
-   * Differs from `Values` as values here will drill
-   * into "real" values held by exotics like ref.Object.
-   */
-  type Values<T> = { [P in Field<T>]: Export<T[P]> };
-
-  /** Object comperable to data found in T. */
-  type Partial<T> = { [P in Field<T>]?: Export<T[P]> };
-
-  /** Value for a property managed by a state. */
-  type Value<T extends State, K extends State.Event<T>> = K extends keyof T
-    ? Export<T[K]>
-    : unknown;
-
-  type Setter<T> = (value: T, previous: T) => boolean | void | (() => T);
-
-  type OnEvent<T extends State> = (
-    this: T,
-    key: Signal<T>,
-    source: T
-  ) => void | (() => void) | null;
-
-  type OnUpdate<T extends State, K extends State.Event<T>> = (
-    this: T,
-    key: K,
-    thisArg: K
-  ) => void;
-
-  /** Exotic value, where actual value is contained within. */
-  type Ref<T = any> = {
-    (next: T): void;
-    current: T | null;
-  };
-
-  /**
-   * A callback function which is subscribed to parent and updates when accessed properties change.
-   *
-   * @param current - Current state of this state. This is a proxy which detects properties which
-   * where accessed, and thus depended upon to stay current.
-   *
-   * @param update - Set of properties which have changed, and events fired, since last update.
-   *
-   * @returns A callback function which will be called when this effect is stale.
-   */
-  type Effect<T> = (
-    this: T,
-    current: T,
-    update: readonly State.Event<T>[] | undefined
-  ) => EffectCallback | Promise<void> | null | void;
-
-  /**
-   * A callback function returned by effect. Will be called when effect is stale.
-   *
-   * @param update - `true` if update is pending, `false` effect has been cancelled, `null` if state is destroyed.
-   */
-  type EffectCallback = (update: boolean | null) => void;
-
-  /**
-   * A list of keys updated, or events fired, since last update.
-   * This may be awaited to get full list (same array) when update is settled.
-   */
-  type Updated<T extends State> = readonly Event<T>[] &
-    PromiseLike<readonly Event<T>[]>;
 }
 
 abstract class State implements Observable {
@@ -153,7 +173,7 @@ abstract class State implements Observable {
    **/
   declare is: this;
 
-  constructor(...args: State.Args) {
+  constructor(...args: Args) {
     prepare(this);
     define(this, 'is', { value: this });
     init(this, ...args, this.new);
@@ -174,11 +194,11 @@ abstract class State implements Observable {
    *
    * @returns Object with all values from this state.
    **/
-  get(): State.Values<this>;
+  get(): Values<this>;
 
-  get<T extends State>(type: State.Type<T>, arg?: true): T;
+  get<T extends State>(type: Type<T>, arg?: true): T;
 
-  get<T extends State>(type: State.Type<T>, arg: boolean): T | undefined;
+  get<T extends State>(type: Type<T>, arg: boolean): T | undefined;
 
   /**
    * Run a function which will run automatically when accessed values change.
@@ -188,7 +208,7 @@ abstract class State implements Observable {
    *               effect is cancelled, or parent state is destroyed.
    * @returns Function to cancel listener.
    */
-  get(effect: State.Effect<this>): () => void;
+  get(effect: Effect<this>): () => void;
 
   /**
    * Get value of a property.
@@ -197,10 +217,7 @@ abstract class State implements Observable {
    * @param required - If true, will throw an error if property is not available.
    * @returns Value of property.
    */
-  get<T extends State.Event<this>>(
-    key: T,
-    required?: boolean
-  ): State.Value<this, T>;
+  get<T extends Event<this>>(key: T, required?: boolean): Value<this, T>;
 
   /**
    * Run a function when a property is updated.
@@ -209,10 +226,7 @@ abstract class State implements Observable {
    * @param callback - Function to call when property is updated.
    * @returns Function to cancel listener.
    */
-  get<T extends State.Event<this>>(
-    key: T,
-    callback: State.OnUpdate<this, T>
-  ): () => void;
+  get<T extends Event<this>>(key: T, callback: OnUpdate<this, T>): () => void;
 
   /**
    * Check if state is expired.
@@ -231,8 +245,8 @@ abstract class State implements Observable {
   get(status: null, callback: () => void): () => void;
 
   get(
-    arg1?: State.Effect<this> | State.Type | string | null,
-    arg2?: boolean | State.OnUpdate<this, any>
+    arg1?: Effect<this> | Type | string | null,
+    arg2?: boolean | OnUpdate<this, any>
   ) {
     const self = this.is;
 
@@ -249,7 +263,7 @@ abstract class State implements Observable {
    *
    * @returns Promise which resolves object with updated values, `undefined` if there no update is pending.
    **/
-  set(): State.Updated<this>;
+  set(): Updated<this>;
 
   /**
    * Update mulitple properties at once. Merges argument with current state.
@@ -259,7 +273,7 @@ abstract class State implements Observable {
    * @param silent - If an update does occur, listeners will not be refreshed automatically.
    * @returns Promise resolving an array of keys updated, `undefined` (immediately) if a noop.
    */
-  set(assign?: State.Assign<this>, silent?: boolean): State.Updated<this>;
+  set(assign?: Assign<this>, silent?: boolean): Updated<this>;
 
   /**
    * Push an update. This will not change the value of associated property.
@@ -275,7 +289,7 @@ abstract class State implements Observable {
    * @param key - Property or event to dispatch.
    * @returns Promise resolves an array of keys updated.
    */
-  set(key: State.Event<this>): State.Updated<this>;
+  set(key: Event<this>): Updated<this>;
 
   /**
    * Set a value for a property. This will update the value and notify listeners.
@@ -292,11 +306,7 @@ abstract class State implements Observable {
    * @param init - If true, state will begin to manage the property if it is not already.
    * @returns Promise resolves an array of keys updated.
    */
-  set(
-    key: State.Event<this>,
-    value: unknown,
-    init?: boolean
-  ): State.Updated<this>;
+  set(key: Event<this>, value: unknown, init?: boolean): Updated<this>;
 
   /**
    * Call a function when update occurs.
@@ -310,7 +320,7 @@ abstract class State implements Observable {
    * @returns Function to remove listener. Will return `true` if removed, `false` if inactive already.
    *
    */
-  set(callback: State.OnEvent<this>): () => boolean;
+  set(callback: OnEvent<this>): () => boolean;
 
   /**
    * Call a function when a property is updated.
@@ -319,10 +329,7 @@ abstract class State implements Observable {
    * @param callback - Function to call when property is updated.
    * @param event - Property to watch for updates.
    */
-  set(
-    callback: State.OnEvent<this>,
-    event: State.Event<this> | null
-  ): () => boolean;
+  set(callback: OnEvent<this>, event: Event<this> | null): () => boolean;
 
   /**
    * Declare an end to updates. This event is final and will freeze state.
@@ -333,7 +340,7 @@ abstract class State implements Observable {
   set(status: null): void;
 
   set(
-    arg1?: State.OnEvent<this> | State.Assign<this> | State.Event<this> | null,
+    arg1?: OnEvent<this> | Assign<this> | Event<this> | null,
     arg2?: unknown,
     arg3?: boolean
   ) {
@@ -355,7 +362,7 @@ abstract class State implements Observable {
       update(self, arg1 as string | number, arg2);
     }
 
-    return pending(self) as State.Updated<this>;
+    return pending(self) as Updated<this>;
   }
 
   /**
@@ -373,7 +380,7 @@ abstract class State implements Observable {
    *
    * @param args - arguments sent to constructor
    */
-  static new<T extends State>(this: State.Type<T>, ...args: State.Args<T>): T {
+  static new<T extends State>(this: Type<T>, ...args: Args<T>): T {
     const instance = new this(...args);
     event(instance);
     return instance;
@@ -385,7 +392,7 @@ abstract class State implements Observable {
    * If so, language server will make available all static
    * methods and properties of this class.
    */
-  static is<T extends State.Extends>(this: T, maybe: unknown): maybe is T {
+  static is<T extends Extends>(this: T, maybe: unknown): maybe is T {
     return (
       maybe === this ||
       (typeof maybe == 'function' && maybe.prototype instanceof this)
@@ -395,10 +402,7 @@ abstract class State implements Observable {
   /**
    * Register a callback to run when any instance of this State is updated.
    */
-  static on<T extends State>(
-    this: State.Extends<T>,
-    listener: State.OnEvent<T>
-  ) {
+  static on<T extends State>(this: Extends<T>, listener: OnEvent<T>) {
     let notify = NOTIFY.get(this);
 
     if (!notify) NOTIFY.set(this, (notify = new Set()));
@@ -421,7 +425,7 @@ define(State, 'toString', {
   }
 });
 
-function assign(state: State, data: State.Assign<State>, silent?: boolean) {
+function assign(state: State, data: Assign<State>, silent?: boolean) {
   emit(state, true);
 
   const methods = METHODS.get(state.constructor)!;
@@ -445,11 +449,11 @@ function assign(state: State, data: State.Assign<State>, silent?: boolean) {
 
 /** Apply instructions and inherited event listeners. Ensure class metadata is ready. */
 function prepare(state: State) {
-  let T = state.constructor as State.Extends;
+  let T = state.constructor as Extends;
 
   if (T === State) throw new Error('Cannot create base State.');
 
-  const chain = [] as State.Extends[];
+  const chain = [] as Extends[];
   let keys = new Map<string, (value: any) => void>();
 
   ID.set(state, `${T}-${uid()}`);
@@ -502,7 +506,7 @@ function prepare(state: State) {
  * Apply state arguemnts, run callbacks and observe properties.
  * Accumulate and handle cleanup events.
  **/
-function init(state: State, ...args: State.Args) {
+function init(state: State, ...args: Args) {
   const store = {} as Record<string | number | symbol, unknown>;
 
   STATE.set(state, store);
@@ -525,7 +529,7 @@ function init(state: State, ...args: State.Args) {
       const use =
         typeof arg == 'function'
           ? arg.call(state, state)
-          : (arg as State.Assign<State>);
+          : (arg as Assign<State>);
 
       if (use instanceof Promise)
         use.catch((err) => {
@@ -571,7 +575,7 @@ function manage(
   update(state, key, value, silent);
 }
 
-function values<T extends State>(state: T): State.Values<T> {
+function values<T extends State>(state: T): Values<T> {
   const values = {} as any;
   let isNotRecursive;
 
@@ -636,7 +640,7 @@ function update<T>(
   state: State,
   key: string | number | symbol,
   value: T,
-  arg?: boolean | State.Setter<T>
+  arg?: boolean | Setter<T>
 ) {
   const store = STATE.get(state)!;
 
