@@ -54,12 +54,12 @@ function below(from: Context) {
 }
 
 function subscribe(
-  record: Map<State.Extends, Set<Function>>,
+  from: Context,
   T: State.Extends,
   cb: Context.Expect<any>
 ) {
-  let set = record.get(T);
-  if (!set) record.set(T, (set = new Set()));
+  let set = from.listeners.get(T);
+  if (!set) from.listeners.set(T, (set = new Map()));
   set.add(cb);
   return () => {
     set.delete(cb);
@@ -152,7 +152,7 @@ class Context {
 
     if (typeof arg2 == 'function') {
       if (found) arg2(found, true);
-      return subscribe(this.downstream, Type, arg2);
+      return subscribe(this, Type, arg2, false);
     }
 
     if (found) return found;
@@ -177,7 +177,7 @@ class Context {
 
     if (cb) {
       for (const state of out) cb(state, true);
-      return subscribe(this.upstream, Type, cb);
+      return subscribe(this, Type, cb, true);
     }
 
     return out;
@@ -288,20 +288,20 @@ class Context {
     observe(I, !implicit, '');
 
     const IT = types(I);
-    const expects = [] as Context.Expect[];
+    const expects = new Set<Context.Expect>();
 
     for (const ctx of above(this))
       for (const T of IT) {
         const set = ctx.upstream.get(T);
-        if (set) expects.push(...set);
+        if (set) for(const cb of set) expects.add(cb);
       }
 
     const unwatch = listener(I, (key) => {
       if (typeof key === 'string') adopt(key, access(I, key, false));
       else if (key === true) {
-        for (const cb of new Set(expects)) {
+        for (const cb of expects) {
           const r = cb(I);
-          if (r) cleanup.set(r, r);
+          if (typeof r == 'function') cleanup.set(r, r);
         }
         for (const [k, v] of I) {
           if (v instanceof State) adopt(k, v);
