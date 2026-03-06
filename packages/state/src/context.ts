@@ -94,7 +94,7 @@ class Context {
   protected inputs: Record<string | number, State | State.Extends> = {};
 
   private cleanup = new Map<string | number | Function, () => void>();
-  private registry = new Map<State.Extends, [State, boolean][]>();
+  private registry = new Map<State.Extends, [State, number][]>();
   private upstream = new Map<State.Extends, Set<Context.Expect>>();
   private downstream = new Map<State.Extends, Set<Context.Expect>>();
 
@@ -127,7 +127,7 @@ class Context {
     arg2?: boolean | Context.Expect<T>
   ) {
     let found: T | undefined;
-    let priority = false;
+    let priority = 0;
 
     for (const ctx of above(this)) {
       const entries = ctx.registry.get(Type);
@@ -249,13 +249,13 @@ class Context {
     const { registry } = this;
     const cleanup = new Map<string | Function, () => void>();
 
-    const observe = (I: State, explicit: boolean, key?: string) => {
+    const observe = (I: State, priority: number, key?: string) => {
       const TT = types(I);
 
       for (const T of TT) {
         let arr = registry.get(T);
         if (!arr) registry.set(T, (arr = []));
-        arr.push([I, explicit]);
+        arr.push([I, priority]);
       }
 
       /* v8 ignore next 9 -- @preserve */
@@ -277,14 +277,14 @@ class Context {
 
       if (v instanceof State)
         if (LOOKUP.get(v) instanceof Context) {
-          observe(v, false, k);
+          observe(v, 0, k);
         } else {
           cleanup.set(k, this.add(v, true));
           event(v);
         }
     };
 
-    observe(I, !implicit);
+    observe(I, implicit ? 0 : 1);
 
     const IT = types(I);
     const expects = [] as Context.Expect[];
