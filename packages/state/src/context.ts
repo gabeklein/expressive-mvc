@@ -1,33 +1,31 @@
 import { listener } from './observable';
-import { access, event, State, uid } from './state';
+import { access, event, State, PARENT } from './state';
 
-const LOOKUP = new WeakMap<State, Context | ((got: Context) => void)[]>();
+type Expect<T extends State = State> = (
+  state: T,
+  existing?: true
+) => (() => void) | false | void;
 
-/**
- * Get the context for a specified State. If a callback is provided, it will be run when
- * the context becomes available.
- */
-function context(on: State, callback: (got: Context) => void): void;
+type Accept<T extends State = State> =
+  | T
+  | State.Type<T>
+  | Record<string | number, T | State.Type<T>>;
 
-/** Get the context for a specified State. Returns undefined if none are found. */
-function context(on: State, required?: true): Context;
+type Input = State | State.Type | (State | State.Type)[];
 
-function context(on: State, required: boolean): Context | undefined;
+const REGISTRY = new WeakMap<State, Map<State.Extends, [State, boolean][]>>();
+const UPSTREAM = new WeakMap<State, Map<State.Extends, Set<Expect>>>();
+const DOWNSTREAM = new WeakMap<State, Map<State.Extends, Set<Expect>>>();
+const CHILDREN = new WeakMap<State, Set<State>>();
+const CLEANUP = new WeakMap<State, Set<() => void>>();
 
-function context({ is }: State, arg?: ((got: Context) => void) | boolean) {
-  const found = LOOKUP.get(is);
+let ScopeClass: State.Type;
 
-  if (found instanceof Context) {
-    if (typeof arg == 'function') arg(found);
-    return found;
+function Scope(): State.Type {
+  if (!ScopeClass) {
+    ScopeClass = class extends State {} as unknown as State.Type;
   }
-
-  if (typeof arg == 'function')
-    if (found) found.push(arg);
-    else LOOKUP.set(is, [arg]);
-  else if (arg !== false) {
-    throw new Error(`Could not find context for ${is}.`);
-  }
+  return ScopeClass;
 }
 
 function types(state: State) {
@@ -40,24 +38,47 @@ function types(state: State) {
   return out;
 }
 
-function above(from: Context) {
-  const out: Context[] = [];
-  do out.push(from);
-  while ((from = from.parent!));
+function above(from: State): State[] {
+  const out: State[] = [from];
+  let p = PARENT.get(from);
+  while (p) {
+    out.push(p);
+    p = PARENT.get(p);
+  }
   return out;
 }
 
-function below(from: Context) {
-  const queue = new Set(from.children);
-  for (const q of queue) for (const c of q.children) queue.add(c);
+function below(from: State): Set<State> {
+  const kids = CHILDREN.get(from);
+  if (!kids) return new Set();
+  const queue = new Set(kids);
+  for (const q of queue) {
+    const c = CHILDREN.get(q);
+    if (c) for (const x of c) queue.add(x);
+  }
   return queue;
 }
 
-function subscribe(
-  record: Map<State.Extends, Set<Function>>,
+function addChild(parent: State, child: State) {
+  let kids = CHILDREN.get(parent);
+  if (!kids) CHILDREN.set(parent, (kids = new Set()));
+  kids.add(child);
+}
+
+function getRegistry(state: State) {
+  let reg = REGISTRY.get(state);
+  if (!reg) REGISTRY.set(state, (reg = new Map()));
+  return reg;
+}
+
+function subscribeTo(
+  map: WeakMap<State, Map<State.Extends, Set<Expect>>>,
+  on: State,
   T: State.Extends,
-  cb: Context.Expect<any>
+  cb: Expect
 ) {
+  let record = map.get(on);
+  if (!record) map.set(on, (record = new Map()));
   let set = record.get(T);
   if (!set) record.set(T, (set = new Set()));
   set.add(cb);
@@ -66,311 +87,296 @@ function subscribe(
   };
 }
 
-function assign(state: State, context: Context) {
-  const waiting = LOOKUP.get(state);
-  if (waiting instanceof Context) return;
-  if (waiting instanceof Array) waiting.forEach((cb) => cb(context));
-  LOOKUP.set(state, context);
-  return () => LOOKUP.delete(state);
+const WAITING = new WeakMap<State, ((scope: State) => void)[]>();
+
+/** Get context parent for a state, with optional wait callback. */
+function context(state: State): State;
+function context(state: State, callback: (scope: State) => void): void;
+function context(state: State, required: false): State | undefined;
+function context(state: State, required: boolean): State | undefined;
+function context({ is }: State, arg?: ((scope: State) => void) | boolean) {
+  const parent = PARENT.get(is);
+
+  if (parent) {
+    if (typeof arg == 'function') arg(parent);
+    return parent;
+  }
+
+  if (typeof arg == 'function') {
+    const waiting = WAITING.get(is);
+    if (waiting) waiting.push(arg);
+    else WAITING.set(is, [arg]);
+    return;
+  }
+
+  if (arg !== false)
+    throw new Error(`Could not find context for ${is}.`);
 }
 
-declare namespace Context {
-  type Accept<T extends State = State> =
-    | T
-    | State.Type<T>
-    | Record<string | number, T | State.Type<T>>;
+/** Find Type registered upstream from a state. */
+function get<T extends State>(from: State, Type: State.Extends<T>, require?: true): T;
+function get<T extends State>(from: State, Type: State.Extends<T>, require: boolean): T | undefined;
+function get<T extends State>(from: State, Type: State.Extends<T>, callback: Expect<T>): () => void;
+function get<T extends State>(
+  from: State,
+  Type: State.Extends<T>,
+  arg?: boolean | Expect<T>
+) {
+  let found: T | undefined;
+  let priority = false;
 
-  type Expect<T extends State = State> = (
-    state: T,
-    existing?: true
-  ) => (() => void) | false | void;
-
-  type Input = State | State.Type | (State | State.Type)[];
-}
-
-class Context {
-  public id = uid();
-  public parent?: Context;
-  public children = new Set<Context>();
-
-  protected inputs: Record<string | number, State | State.Extends> = {};
-
-  private cleanup = new Map<string | number | Function, () => void>();
-  private registry = new Map<State.Extends, [State, boolean][]>();
-  private upstream = new Map<State.Extends, Set<Context.Expect>>();
-  private downstream = new Map<State.Extends, Set<Context.Expect>>();
-
-  constructor(arg?: Context | Context.Input) {
-    if (arg instanceof Context) {
-      this.parent = arg;
-      arg.children.add(this);
-    } else if (arg) {
-      this.add(arg);
-    }
-  }
-
-  /** Find specified type registered to a parent context. Throws if none are found. */
-  public get<T extends State>(Type: State.Extends<T>, require?: true): T;
-
-  /** Find specified type registered to a parent context. Returns undefined if none are found. */
-  public get<T extends State>(
-    Type: State.Extends<T>,
-    require: boolean
-  ): T | undefined;
-
-  /** Subscribe to a type becoming available upstream. */
-  public get<T extends State>(
-    Type: State.Extends<T>,
-    callback: Context.Expect<T>
-  ): () => void;
-
-  public get<T extends State>(
-    Type: State.Extends<T>,
-    arg2?: boolean | Context.Expect<T>
-  ) {
-    let found: T | undefined;
-    let priority = false;
-
-    for (const ctx of above(this)) {
-      const entries = ctx.registry.get(Type);
-      if (!entries) continue;
-      for (const [state, explicit] of entries) {
-        if (found === state) continue;
-        if (!found || (!priority && explicit)) {
-          found = state as T;
-          priority = explicit;
-          continue;
-        }
-        if (!priority) return null;
-        if (explicit)
-          throw new Error(
-            `Did find ${Type} in context, but multiple were defined.`
-          );
+  for (const s of above(from)) {
+    const entries = REGISTRY.get(s)?.get(Type);
+    if (!entries) continue;
+    for (const [state, explicit] of entries) {
+      if (found === state) continue;
+      if (!found || (!priority && explicit)) {
+        found = state as T;
+        priority = explicit;
+        continue;
       }
-      break;
-    }
-
-    if (typeof arg2 == 'function') {
-      if (found) arg2(found, true);
-      return subscribe(this.downstream, Type, arg2);
-    }
-
-    if (found) return found;
-    if (arg2 !== false) throw new Error(`Could not find ${Type} in context.`);
-  }
-
-  /** Get all entries of a type registered downstream. */
-  public has<T extends State>(Type: State.Extends<T>): T[];
-
-  /** Subscribe to a type being registered downstream. */
-  public has<T extends State>(
-    Type: State.Extends<T>,
-    callback: Context.Expect<T>
-  ): () => void;
-
-  public has<T extends State>(Type: State.Extends<T>, cb?: Context.Expect<T>) {
-    const out: T[] = [];
-
-    for (const { registry } of below(this))
-      if (registry.get(Type))
-        for (const [state] of registry.get(Type)!) out.push(state as T);
-
-    if (cb) {
-      for (const state of out) cb(state, true);
-      return subscribe(this.upstream, Type, cb);
-    }
-
-    return out;
-  }
-
-  /**
-   * Register one or more States to this context.
-   *
-   * Context will add or remove States as needed to keep with provided input.
-   *
-   * @param inputs State, State class, or map of States / State classes to register.
-   * @param forEach Optional callback to run for each State registered.
-   */
-  public set<T extends State>(
-    inputs: Context.Accept<T>,
-    forEach?: Context.Expect<T>
-  ) {
-    const { cleanup } = this;
-    const init: State[] = [];
-
-    if (typeof inputs == 'function' || inputs instanceof State)
-      inputs = { [0]: inputs };
-
-    for (const K of Object.keys({ ...this.inputs, ...inputs })) {
-      const V = inputs[K];
-      const E = this.inputs[K];
-
-      if (E === V) continue;
-
-      if (E) {
-        cleanup.get(K)?.();
-        cleanup.delete(K);
-      }
-
-      if (!V) continue;
-
-      if (!(State.is(V) || V instanceof State))
+      if (!priority) return null;
+      if (explicit)
         throw new Error(
-          `Context can only include an instance or class of State but got ${
-            K == '0' || K == String(V) ? V : `${V} (as '${K}')`
-          }.`
+          `Did find ${Type} in context, but multiple were defined.`
         );
-
-      cleanup.set(
-        K,
-        this.add(V, false, (I) => init.push(I))
-      );
     }
-
-    for (const state of init) {
-      state.set();
-      if (forEach) forEach(state as T);
-    }
-
-    this.inputs = inputs;
-
-    return this;
+    break;
   }
 
-  add(
-    input: Context.Input,
-    implicit?: boolean,
-    init: (I: State) => void = event
-  ) {
-    if (Array.isArray(input)) {
-      const clean = input.map((i) => this.add(i, implicit, init));
-      return () => void clean.forEach((c) => c());
+  if (typeof arg == 'function') {
+    if (found) arg(found, true);
+    return subscribeTo(DOWNSTREAM, from, Type, arg);
+  }
+
+  if (found) return found;
+  if (arg !== false) throw new Error(`Could not find ${Type} in context.`);
+}
+
+/** Find Type registered downstream from a state. */
+function has<T extends State>(from: State, Type: State.Extends<T>): T[];
+function has<T extends State>(from: State, Type: State.Extends<T>, callback: Expect<T>): () => void;
+function has<T extends State>(
+  from: State,
+  Type: State.Extends<T>,
+  cb?: Expect<T>
+) {
+  const out: T[] = [];
+
+  for (const child of below(from))
+    if (REGISTRY.get(child)?.get(Type))
+      for (const [state] of REGISTRY.get(child)!.get(Type)!)
+        out.push(state as T);
+
+  if (cb) {
+    for (const state of out) cb(state, true);
+    return subscribeTo(UPSTREAM, from, Type, cb);
+  }
+
+  return out;
+}
+
+/**
+ * Register a state (or class) into a scope. Returns cleanup function.
+ */
+function register(
+  input: Input,
+  into: State,
+  implicit?: boolean,
+  init: (I: State) => void = event
+): () => void {
+  if (Array.isArray(input)) {
+    const clean = input.map((i) => register(i, into, implicit, init));
+    return () => clean.forEach((c) => c());
+  }
+
+  const I = input instanceof State ? input : new (input as State.Type)();
+  const reg = getRegistry(into);
+  const cleanup = new Map<string | Function, () => void>();
+
+  const observe = (target: State, explicit: boolean, key: string) => {
+    for (const T of types(target)) {
+      let arr = reg.get(T);
+      if (!arr) reg.set(T, (arr = []));
+      arr.push([target, explicit]);
     }
 
-    const { registry } = this;
-    const cleanup = new Map<string | Function, () => void>();
-
-    const I = input instanceof State ? input : new (input as State.Type)();
-
-    const observe = (I: State, explicit: boolean, key: string) => {
-      for (const T of types(I)) {
-        let arr = registry.get(T);
-        if (!arr) registry.set(T, (arr = []));
-        arr.push([I, explicit]);
-      }
-
-      /* v8 ignore next 9 -- @preserve */
-      cleanup.set(key, () => {
-        for (const T of types(I)) {
-          const arr = registry.get(T);
-          if (arr) {
-            const idx = arr.findIndex((e) => e[0] === I);
-            if (idx >= 0) arr.splice(idx, 1);
-            if (!arr.length) registry.delete(T);
-          }
-        }
-      });
-    };
-
-    const adopt = (k: string, v: unknown) => {
-      cleanup.get(k)?.();
-      cleanup.delete(k);
-
-      if (v instanceof State)
-        if (LOOKUP.get(v) instanceof Context) {
-          observe(v, false, k);
-        } else {
-          cleanup.set(k, this.add(v, true));
-          event(v);
-        }
-    };
-
-    observe(I, !implicit, '');
-
-    const IT = types(I);
-    const expects = [] as Context.Expect[];
-
-    for (const ctx of above(this))
-      for (const T of IT) {
-        const set = ctx.upstream.get(T);
-        if (set) expects.push(...set);
-      }
-
-    const unwatch = listener(I, (key) => {
-      if (typeof key === 'string') adopt(key, access(I, key, false));
-      else if (key === true) {
-        for (const cb of new Set(expects)) {
-          const r = cb(I);
-          if (r) cleanup.set(r, r);
-        }
-        for (const [k, v] of I) {
-          if (v instanceof State) adopt(k, v);
+    cleanup.set(key, () => {
+      for (const T of types(target)) {
+        const arr = reg.get(T);
+        if (arr) {
+          const idx = arr.findIndex((e) => e[0] === target);
+          if (idx >= 0) arr.splice(idx, 1);
+          if (!arr.length) reg.delete(T);
         }
       }
     });
+  };
 
-    const reset = () => {
-      unwatch();
-      cleanup.forEach((cb) => cb());
-      cleanup.clear();
-    };
+  const adopt = (k: string, v: unknown) => {
+    cleanup.get(k)?.();
+    cleanup.delete(k);
 
-    const release = assign(I, this);
+    if (v instanceof State)
+      if (PARENT.get(v)) {
+        observe(v, false, k);
+      } else {
+        cleanup.set(k, register(v, into, true));
+        event(v);
+      }
+  };
 
-    for (const { downstream } of [this, ...below(this)])
-      for (const T of IT) {
-        const set = downstream.get(T);
+  observe(I, !implicit, '');
+
+  addChild(into, I);
+  const didSetParent = !PARENT.get(I);
+  if (didSetParent) PARENT.set(I, into);
+
+  const IT = types(I);
+  const expects: Expect[] = [];
+
+  for (const s of above(into))
+    for (const T of IT) {
+      const subs = UPSTREAM.get(s);
+      if (subs) {
+        const set = subs.get(T);
+        if (set) expects.push(...set);
+      }
+    }
+
+  const unwatch = listener(I, (key) => {
+    if (typeof key === 'string') adopt(key, access(I, key, false));
+    else if (key === true) {
+      for (const cb of new Set(expects)) {
+        const r = cb(I);
+        if (r) cleanup.set(r, r);
+      }
+      for (const [k, v] of I) if (v instanceof State) adopt(k, v);
+    }
+  });
+
+  for (const target of [into, ...below(into)])
+    for (const T of IT) {
+      const subs = DOWNSTREAM.get(target);
+      if (subs) {
+        const set = subs.get(T);
         if (set)
           for (const cb of set) {
             const r = cb(I);
             if (typeof r == 'function') cleanup.set(r, r);
           }
       }
+    }
 
-    init(I);
+  init(I);
 
-    const remove = () => {
-      this.cleanup.delete(remove);
-      reset();
-      if (I !== input) event(I, null);
-      if (release) release();
-    };
-
-    this.cleanup.set(remove, remove);
-
-    return remove;
+  if (didSetParent) {
+    const waiting = WAITING.get(I);
+    if (waiting) {
+      WAITING.delete(I);
+      waiting.forEach((cb) => cb(into));
+    }
   }
 
-  /**
-   * Create a child context, optionally registering one or more States to it.
-   *
-   * @param inputs State, State class, or map of States / State classes to register.
-   */
-  public push(inputs?: Context.Input) {
-    const next = new Context(this);
-    if (inputs) next.add(inputs);
-    return next;
-  }
+  const remove = () => {
+    const scoped = CLEANUP.get(into);
+    if (scoped) scoped.delete(remove);
+    unwatch();
+    cleanup.forEach((cb) => cb());
+    cleanup.clear();
+    CHILDREN.get(into)?.delete(I);
+    if (I !== input) event(I, null);
+  };
 
-  /**
-   * Remove all States from this context.
-   *
-   * Will also run any cleanup callbacks registered when States were added.
-   */
-  public pop() {
-    this.inputs = {};
-    this.children.forEach((x) => x.pop());
-    this.children.clear();
-    this.cleanup.forEach((cb) => cb());
-    this.cleanup.clear();
-    if (this.parent) this.parent.children.delete(this);
-  }
+  let scoped = CLEANUP.get(into);
+  if (!scoped) CLEANUP.set(into, (scoped = new Set()));
+  scoped.add(remove);
+
+  return remove;
 }
 
-Object.defineProperty(Context.prototype, 'toString', {
-  value() {
-    return `Context-${this.id}`;
-  }
-});
+/** Create a child scope linked to a parent. */
+function push(parent: State, input?: Input) {
+  const child = new (Scope())();
+  PARENT.set(child, parent);
+  addChild(parent, child);
+  event(child);
+  if (input) register(input, child);
+  return child;
+}
 
-export { Context, context };
+/** Clean up a scope and all its children. */
+function pop(scope: State) {
+  const kids = CHILDREN.get(scope);
+  if (kids) {
+    for (const child of kids) pop(child);
+    kids.clear();
+  }
+
+  const cleanups = CLEANUP.get(scope);
+  if (cleanups) {
+    for (const fn of cleanups) fn();
+    cleanups.clear();
+  }
+
+  const parent = PARENT.get(scope);
+  if (parent) CHILDREN.get(parent)?.delete(scope);
+}
+
+/**
+ * Diff-based set for use in framework adapters.
+ * Registers/unregisters states to match provided inputs.
+ */
+function set<T extends State>(
+  scope: State,
+  inputs: Accept<T>,
+  forEach?: Expect<T>,
+  prev?: Record<string | number, State | State.Extends>
+) {
+  const localCleanup = new Map<string | number, () => void>();
+  const init: State[] = [];
+
+  if (typeof inputs == 'function' || inputs instanceof State)
+    inputs = { [0]: inputs } as Record<string | number, T | State.Type<T>>;
+
+  const prevInputs = prev || {};
+
+  for (const K of Object.keys({ ...prevInputs, ...inputs })) {
+    const V = (inputs as Record<string, any>)[K];
+    const E = prevInputs[K];
+
+    if (E === V) continue;
+
+    if (E) {
+      localCleanup.get(K)?.();
+      localCleanup.delete(K);
+    }
+
+    if (!V) continue;
+
+    if (!(State.is(V) || V instanceof State))
+      throw new Error(
+        `Context can only include an instance or class of State but got ${
+          K == '0' || K == String(V) ? V : `${V} (as '${K}')`
+        }.`
+      );
+
+    localCleanup.set(
+      K,
+      register(V, scope, false, (I) => init.push(I))
+    );
+  }
+
+  for (const state of init) {
+    state.set();
+    if (forEach) forEach(state as T);
+  }
+
+  return {
+    inputs: inputs as Record<string | number, State | State.Extends>,
+    cleanup: localCleanup
+  };
+}
+
+export { context, get, has, register, push, pop, set, Scope as createScope };
+export type { Expect, Accept, Input };

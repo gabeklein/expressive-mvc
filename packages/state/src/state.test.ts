@@ -1,5 +1,5 @@
 import { vi, expect, it, describe, mockError, mockPromise } from '../vitest';
-import { Context } from './context';
+import { register, push } from './context';
 import { get } from './instruction/get';
 import { ref } from './instruction/ref';
 import { set } from './instruction/set';
@@ -539,7 +539,9 @@ describe('get method', () => {
       const foo = new Foo();
       const bar = new Bar();
 
-      new Context([foo, bar]);
+      const scope = push(Foo.new());
+      register(foo, scope);
+      register(bar, scope);
 
       expect(foo.get(Bar)).toBe(bar);
     });
@@ -547,7 +549,8 @@ describe('get method', () => {
     it('will return undefined if not found', () => {
       const foo = new Foo();
 
-      new Context(foo);
+      const scope = push(Foo.new());
+      register(foo, scope);
 
       expect(foo.get(Bar, false)).toBeUndefined();
     });
@@ -555,7 +558,8 @@ describe('get method', () => {
     it('will throw if required and not found', () => {
       const foo = new Foo();
 
-      new Context(foo);
+      const scope = push(Foo.new());
+      register(foo, scope);
 
       expect(() => foo.get(Bar)).toThrow('Could not find Bar in context.');
     });
@@ -564,7 +568,10 @@ describe('get method', () => {
       const bar = new Bar();
       const foo = new Foo();
 
-      new Context(bar).push(foo);
+      const parent = push(Foo.new());
+      register(bar, parent);
+      const child = push(parent);
+      register(foo, child);
 
       expect(foo.get(Bar)).toBe(bar);
     });

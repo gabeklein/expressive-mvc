@@ -1,5 +1,5 @@
-import { scope } from '../observable';
-import { context } from '../context';
+import { scope as effectScope } from '../observable';
+import { context, get as ctxGet, has as ctxHas } from '../context';
 import { State, PARENT, update } from '../state';
 import { use } from './use';
 
@@ -85,10 +85,10 @@ function get<R, T extends State>(
     }
 
     // Subscribe to context
-    context(subject, (ctx) => {
+    context(subject, (scope) => {
       let found = false;
 
-      ctx.get(Type, (state) => {
+      ctxGet(scope, Type, (state) => {
         if (state !== subject) {
           found = true;
           assign(state);
@@ -118,15 +118,15 @@ function getDownstream<T extends State>(
       update(subject, key, Object.freeze(Array.from(applied)));
     };
 
-    context(subject, (ctx) => {
-      ctx.has(Type, (state) => {
+    context(subject, (scope) => {
+      ctxHas(scope, Type, (state) => {
         let remove: (() => void) | undefined;
         let flush: (() => void) | undefined;
 
         if (applied.has(state)) return;
 
         if (callback) {
-          const exit = scope();
+          const exit = effectScope();
 
           try {
             const done = callback(state, subject);
