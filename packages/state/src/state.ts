@@ -558,17 +558,59 @@ function manage(
   silent?: boolean
 ) {
   const store = STATE.get(state)!;
+  const set =
+    value instanceof State
+      ? child(state, key)
+      : (value: any, silent?: boolean) => update(state, key, value, silent);
 
   define(state, key, {
+    set,
     get(this: State) {
       return observing(this, key, store[key]);
-    },
-    set(value: unknown, silent?: boolean) {
-      update(state, key, value, silent);
     }
   });
 
-  update(state, key, value, silent);
+  set(value, silent);
+}
+
+function child(state: State, key: string | number) {
+  const store = STATE.get(state)!;
+  let reset: (() => void) | undefined;
+
+  listener(
+    state,
+    () => {
+      if (reset) reset();
+      reset = undefined;
+    },
+    null
+  );
+
+  return (value: any, silent?: boolean) => {
+    if (value === store[key]) return;
+    if (reset) reset();
+    reset = undefined;
+
+    if (value instanceof State) {
+      const ctx = context(state, false);
+
+      if (ctx) {
+        const remove = ctx.add(value, true);
+
+        if (observable(value)) reset = remove;
+        else {
+          listener(value, () => event(value, null), null);
+          event(value);
+          reset = () => {
+            remove();
+            event(value, null);
+          };
+        }
+      }
+    }
+
+    update(state, key, value, silent);
+  };
 }
 
 function values<T extends State>(state: T): State.Values<T> {

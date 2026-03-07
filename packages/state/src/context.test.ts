@@ -79,13 +79,13 @@ it('will remove implicit children on pop', () => {
   }
 
   const context = new Context(Parent);
-  const { child } = context.get(Parent);
+  const x = context.get(Parent);
 
-  expect(getContext(child)).toBe(context);
+  expect(getContext(x.child)).toBe(context);
 
   context.pop();
 
-  expect(getContext(child, false)).toBeUndefined();
+  expect(getContext(x.child, false)).toBeUndefined();
 });
 
 it('child pop is safe to call before parent pop', () => {
