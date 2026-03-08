@@ -807,8 +807,6 @@ describe('async', () => {
     const bar = Bar.new();
     let caught: unknown;
 
-    setTimeout(() => new Context({ Foo, bar }));
-
     try {
       void bar.foo;
       throw false;
@@ -816,6 +814,8 @@ describe('async', () => {
       expect(err).toBeInstanceOf(Promise);
       caught = err;
     }
+
+    setTimeout(() => new Context({ Foo, bar }));
 
     await expect(caught).resolves.toBeInstanceOf(Foo);
     expect(bar.foo).toBeInstanceOf(Foo);

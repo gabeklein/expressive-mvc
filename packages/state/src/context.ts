@@ -103,7 +103,7 @@ class Context {
       this.parent = arg;
       arg.children.add(this);
     } else if (arg) {
-      this.set(arg);
+      this.for(arg);
     }
   }
 
@@ -208,7 +208,7 @@ class Context {
    * @param inputs State, State class, or map of States / State classes to register.
    * @param forEach Optional callback to run for each State registered.
    */
-  public set<T extends State>(
+  public for<T extends State>(
     inputs: Context.Accept<T>,
     forEach?: Context.Expect<T>
   ) {
@@ -347,7 +347,7 @@ class Context {
    */
   public push(inputs?: Context.Accept) {
     const next = new Context(this);
-    if (inputs) next.set(inputs);
+    if (inputs) next.for(inputs);
     return next;
   }
 

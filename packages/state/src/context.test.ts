@@ -401,7 +401,7 @@ describe('has method', () => {
     getContext(state, () => {});
 
     // adding to context should still notify parent's has-subscriber
-    child.set(state);
+    child.for(state);
 
     expect(cb).toBeCalledTimes(1);
     expect(cb.mock.calls[0][0]).toBe(state);
@@ -417,7 +417,7 @@ describe('get callback (upstream subscription)', () => {
     const cb = vi.fn();
 
     child.get(Upstream, cb);
-    parent.set(Upstream);
+    parent.for(Upstream);
 
     expect(cb).toBeCalledTimes(1);
     expect(cb.mock.calls[0][0]).toBeInstanceOf(Upstream);
@@ -430,7 +430,7 @@ describe('get callback (upstream subscription)', () => {
 
     const cancel = child.get(Upstream, cb);
     cancel();
-    parent.set(Upstream);
+    parent.for(Upstream);
 
     expect(cb).not.toBeCalled();
   });
@@ -442,7 +442,7 @@ describe('get callback (upstream subscription)', () => {
     const cb = vi.fn(() => cleanup);
 
     child.get(Upstream, cb);
-    parent.set(Upstream);
+    parent.for(Upstream);
 
     expect(cb).toBeCalledTimes(1);
 
@@ -460,7 +460,7 @@ describe('get callback (upstream subscription)', () => {
     const cb = vi.fn();
 
     child.get(Upstream, cb);
-    parent.set(shared);
+    parent.for(shared);
 
     expect(cb).toBeCalledTimes(1);
     expect(cb).toBeCalledWith(shared, false, false);
@@ -489,7 +489,7 @@ describe('get callback (upstream subscription)', () => {
     expect(cb).not.toBeCalled();
 
     // new addition has child=false, no existing flag
-    parent.set(Upstream);
+    parent.for(Upstream);
 
     expect(cb).toBeCalledTimes(1);
     expect(cb).toBeCalledWith(expect.any(Upstream), false, false);
@@ -636,7 +636,7 @@ describe('set method', () => {
     const foobar = new Bar();
     const context = new Context();
 
-    context.set({ foo, Bar: foobar });
+    context.for({ foo, Bar: foobar });
 
     expect(context.get(Bar)).toBe(foobar);
     expect(context.get(Foo)).not.toBe(foobar.foo);
@@ -702,7 +702,7 @@ describe('set method', () => {
     const context = new Context();
 
     // @ts-ignore
-    expect(() => context.set({ Thing })).toThrow(
+    expect(() => context.for({ Thing })).toThrow(
       'Context can only include an instance or class of State but got'
     );
   });
@@ -711,7 +711,7 @@ describe('set method', () => {
     const context = new Context();
 
     // @ts-ignore
-    expect(() => context.set({ State })).toThrow('Cannot create base State.');
+    expect(() => context.for({ State })).toThrow('Cannot create base State.');
   });
 
   it('will throw on bad include property', () => {
@@ -719,7 +719,7 @@ describe('set method', () => {
     const context = new Context();
 
     // @ts-ignore
-    expect(() => context.set({ Thing })).toThrow(
+    expect(() => context.for({ Thing })).toThrow(
       "Context can only include an instance or class of State but got Foobar (as 'Thing')."
     );
   });
@@ -729,7 +729,7 @@ describe('set method', () => {
     const context = new Context();
 
     // @ts-ignore
-    expect(() => context.set({ [0]: Thing })).toThrow(
+    expect(() => context.for({ [0]: Thing })).toThrow(
       'Context can only include an instance or class of State but got Thing.'
     );
   });
@@ -742,7 +742,7 @@ describe('set method', () => {
     const context = new Context({ Parent });
     const { child } = context.get(Parent);
 
-    context.set({});
+    context.for({});
 
     expect(getContext(child, false)).toBeUndefined();
     expect(context.get(Example, false)).toBeUndefined();
@@ -757,7 +757,7 @@ describe('set method', () => {
     const parent = context.get(Parent);
     expect(context.get(Example)).toBe(parent.child);
 
-    context.set({});
+    context.for({});
 
     expect(context.get(Example, false)).toBeUndefined();
   });
@@ -774,7 +774,7 @@ describe('set method', () => {
     expect(context.get(Example)).toBeNull();
     expect(context.get(Example2)).toBeInstanceOf(Example2);
 
-    context.set({});
+    context.for({});
 
     expect(context.get(Example, false)).toBeUndefined();
     expect(context.get(Example2, false)).toBeUndefined();
@@ -790,19 +790,19 @@ describe('set method', () => {
 
     const context = new Context();
 
-    context.set({ foo, bar }, cb);
+    context.for({ foo, bar }, cb);
 
     expect(cb).toBeCalledWith(foo, false, false);
     expect(cb).toBeCalledWith(bar, false, false);
     expect(cb).toBeCalledTimes(2);
 
-    context.set({ foo, bar }, cb);
+    context.for({ foo, bar }, cb);
 
     expect(cb).toBeCalledTimes(2);
 
     const foo2 = Foo.new();
 
-    context.set({ foo, bar, foo2 }, cb);
+    context.for({ foo, bar, foo2 }, cb);
 
     expect(cb).toBeCalledWith(foo2, false, false);
     expect(cb).toBeCalledTimes(3);
@@ -814,8 +814,8 @@ describe('set method', () => {
     const cb = vi.fn();
     const context = new Context();
 
-    context.set(Foo, cb);
-    context.set(Foo, cb);
+    context.for(Foo, cb);
+    context.for(Foo, cb);
 
     expect(context.get(Foo)).toBeInstanceOf(Foo);
 
@@ -834,7 +834,7 @@ describe('set method', () => {
     const context = new Context({ Bar });
     const bar = context.get(Bar);
 
-    context.set({});
+    context.for({});
 
     expect(bar.didDie).toBeCalled();
     expect(context.get(Bar, false)).toBeUndefined();
@@ -854,7 +854,7 @@ describe('set method', () => {
     const context = new Context({ Baz });
     const baz = context.get(Baz);
 
-    context.set({ Baz: Baz2 });
+    context.for({ Baz: Baz2 });
 
     expect(baz.didDie).toBeCalled();
     expect(context.get(Baz, false)).toBeUndefined();
@@ -869,7 +869,7 @@ describe('set method', () => {
 
     expect(context.get(Bar)).toBe(bar);
 
-    context.set({});
+    context.for({});
 
     expect(context.get(Bar, false)).toBeUndefined();
     // bar should still be alive (not owned by context)
@@ -912,7 +912,7 @@ describe('set method', () => {
     expect(context.get(Child)).toBeInstanceOf(Child);
     expect(context.get(Base)).toBeInstanceOf(Child);
 
-    context.set({});
+    context.for({});
 
     expect(context.get(Child, false)).toBeUndefined();
     expect(context.get(Base, false)).toBeUndefined();
@@ -1009,7 +1009,7 @@ describe('add method listener lookup', () => {
     child.get(Foo, cb);
 
     // Set state on parent — this is upstream from child
-    parent.set(Foo);
+    parent.for(Foo);
 
     // Callback fires from parent (upstream), child=false
     expect(cb).toBeCalledTimes(1);
@@ -1059,7 +1059,7 @@ describe('add method listener lookup', () => {
     parent.get(Foo, cb);
 
     // Add to child — above includes parent and grandparent, both have cb
-    child.set(Foo);
+    child.for(Foo);
 
     // Should only call cb once due to dedup in above path
     expect(cb).toBeCalledTimes(1);
@@ -1076,7 +1076,7 @@ describe('add method listener lookup', () => {
     child.get(Bar, vi.fn());
 
     // Add Foo to parent — below path visits child but finds no Foo listener
-    parent.set(Foo);
+    parent.for(Foo);
 
     // No error, just works
     expect(parent.get(Foo)).toBeInstanceOf(Foo);
@@ -1095,7 +1095,7 @@ describe('add method listener lookup', () => {
     child.get(Foo, cb);
 
     // Set on middle — above has parent listener, below has child listener (same cb)
-    middle.set(Foo);
+    middle.for(Foo);
 
     // Should only call cb once due to dedup
     expect(cb).toBeCalledTimes(1);
