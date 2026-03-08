@@ -72,9 +72,9 @@ function Provider<T extends State>(props: Provider.Props<T>) {
 
   useEffect(() => () => context.pop(), [context]);
 
-  context.set(props.for, (state) => {
+  context.use(props.for, (state, child, existing) => {
     if (props.forEach) {
-      const cleanup = props.forEach(state);
+      const cleanup = props.forEach(state, child, existing);
 
       if (cleanup) state.set(cleanup, null);
     }
@@ -97,7 +97,7 @@ function Provide(props: ProvideProps) {
     children = createElement(Suspense, { fallback, name }, children);
 
   return createElement(Layers.Provider, {
-    key: context.id,
+    key: String(context),
     value: context,
     children
   });
