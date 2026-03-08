@@ -34,10 +34,7 @@ const METHODS = new WeakMap<Function, Map<string, (value: any) => void>>();
 const REGISTRY = new WeakMap<State, Map<State.Extends, [State, boolean][]>>();
 
 /** Context listeners: maps context node → type → subscriber callbacks. */
-const CTX_LISTENERS = new WeakMap<
-  State,
-  Map<State.Extends, Set<Context.Expect>>
->();
+const CTX_LISTENERS = new WeakMap<State, Map<State.Extends, Set<Expect>>>();
 
 /** Context children: maps context node → child context nodes. */
 const CHILDREN = new WeakMap<State, Set<State>>();
@@ -54,11 +51,17 @@ const INPUTS = new WeakMap<
   Record<string | number, State | State.Extends>
 >();
 
-/** Maps a State to its owning Context (or pending callbacks). */
-const LOOKUP = new WeakMap<State, Context | ((got: Context) => void)[]>();
+/** Maps a State to its owning REGISTRY ancestor (or pending callbacks). */
+const LOOKUP = new WeakMap<State, State | ((got: State) => void)[]>();
 
 /** Currently accumulating export. Stores real values of placeholder properties such as ref() or child states. */
 let EXPORT: Map<any, any> | undefined;
+
+type Expect<T extends State = State> = (
+  state: T,
+  child: boolean,
+  existing: boolean
+) => (() => void) | false | void;
 
 declare namespace State {
   /** Any type of State, using own class constructor as its identifier. */
@@ -179,6 +182,8 @@ abstract class State implements Observable {
    **/
   declare is: this;
 
+  static root: State;
+
   constructor(...args: State.Args) {
     prepare(this);
     define(this, 'is', { value: this });
@@ -256,10 +261,7 @@ abstract class State implements Observable {
   ): T | undefined;
 
   /** Subscribe to a type becoming available in context. */
-  get<T extends State>(
-    type: State.Extends<T>,
-    callback: Context.Expect<T>
-  ): () => void;
+  get<T extends State>(type: State.Extends<T>, callback: Expect<T>): () => void;
 
   /**
    * Check if state is expired.
@@ -279,7 +281,7 @@ abstract class State implements Observable {
 
   get(
     arg1?: State.Effect<this> | State.Extends | string | null,
-    arg2?: boolean | Context.Expect | State.OnUpdate<this, any>,
+    arg2?: boolean | Expect | State.OnUpdate<this, any>,
     arg3?: boolean
   ) {
     const self = this.is;
@@ -469,6 +471,12 @@ define(State, 'toString', {
   }
 });
 
+// Initialize State.root — a minimal sentinel with REGISTRY for context boundary
+State.root = Object.create(State.prototype) as State;
+REGISTRY.set(State.root, new Map());
+CTX_CLEANUP.set(State.root, new Map());
+PARENT.set(State.root, null);
+
 function assign(state: State, data: State.Assign<State>, silent?: boolean) {
   emit(state, true);
 
@@ -561,7 +569,7 @@ function init(state: State, ...args: State.Args) {
   });
 
   listener(state, () => {
-    if (!PARENT.has(state)) PARENT.set(state, null);
+    if (!PARENT.has(state)) PARENT.set(state, State.root);
 
     for (const key in state) {
       const desc = Object.getOwnPropertyDescriptor(state, key)!;
@@ -611,7 +619,6 @@ function manage(
 
 function child(state: State, key: string | number) {
   let reset: (() => void) | undefined;
-  const ctx = context(state);
 
   listener(
     state,
@@ -629,7 +636,11 @@ function child(state: State, key: string | number) {
       if (prev) reset = undefined;
 
       if (value instanceof State) {
-        const remove = ctx.add(value, true);
+        let ctx: State | null | undefined = state;
+        while (ctx && !REGISTRY.has(ctx)) ctx = PARENT.get(ctx);
+        if (!ctx) ctx = State.root;
+
+        const remove = include(ctx, value, true);
 
         if (!PARENT.has(value)) {
           PARENT.set(value, state);
@@ -675,11 +686,10 @@ function values<T extends State>(state: T): State.Values<T> {
 function lookup(
   self: State,
   Type: State.Extends,
-  arg2?: Context.Expect | boolean,
+  arg2?: Expect | boolean,
   arg3?: boolean
 ) {
-  const ctx = context(self);
-  const result = find(ctx, Type, arg2 as any);
+  const result = find(self, Type, arg2 as any);
   if (arg3 === undefined) return result;
   const [found] = result;
   if (found || arg3 !== true) return found;
@@ -766,126 +776,7 @@ function unbind(fn?: Function) {
   return METHOD.get(fn) || fn;
 }
 
-// --- Context ---
-
-declare namespace Context {
-  type Accept<T extends State = State> =
-    | T
-    | State.Type<T>
-    | Record<string | number, T | State.Type<T>>;
-
-  type Expect<T extends State = State> = (
-    state: T,
-    child: boolean,
-    existing: boolean
-  ) => (() => void) | false | void;
-}
-
-class Context extends State {
-  static root: Context;
-
-  constructor(arg?: Context | Context.Accept) {
-    super();
-    REGISTRY.set(this, new Map());
-    CTX_CLEANUP.set(this, new Map());
-    LOOKUP.set(this, this);
-
-    if (arg instanceof Context) {
-      PARENT.set(this, arg);
-      let children = CHILDREN.get(arg);
-      if (!children) CHILDREN.set(arg, (children = new Set()));
-      children.add(this);
-    }
-
-    event(this);
-
-    if (arg && !(arg instanceof Context)) this.use(arg);
-  }
-
-  public use<T extends State>(
-    inputs: Context.Accept<T>,
-    forEach?: Context.Expect<T>
-  ) {
-    const cleanup = CTX_CLEANUP.get(this)!;
-    const prevInputs = INPUTS.get(this) || {};
-    const init = new Set<State>();
-
-    if (typeof inputs == 'function' || inputs instanceof State)
-      inputs = { [0]: inputs };
-
-    for (const K of Object.keys({ ...prevInputs, ...inputs })) {
-      const V = (inputs as any)[K];
-      const E = prevInputs[K];
-
-      if (E === V) continue;
-
-      if (E) {
-        cleanup.get(K)?.();
-        cleanup.delete(K);
-      }
-
-      if (!V) continue;
-
-      if (!(State.is(V) || V instanceof State))
-        throw new Error(
-          `Context can only include an instance or class of State but got ${
-            K == '0' || K == String(V) ? V : `${V} (as '${K}')`
-          }.`
-        );
-
-      const state = State.is(V) ? new (V as State.Type)() : V;
-      const remove = this.add(state, false);
-
-      init.add(state);
-      cleanup.set(
-        K,
-        state === V
-          ? remove
-          : () => {
-              remove();
-              event(state, null);
-            }
-      );
-    }
-
-    for (const state of init) {
-      event(state);
-      if (forEach) forEach(state as T, false, false);
-    }
-
-    INPUTS.set(this, inputs as Record<string | number, State | State.Extends>);
-
-    return this;
-  }
-
-  add(I: State, implicit?: boolean) {
-    return include(this, I, implicit);
-  }
-
-  public push(inputs?: Context.Accept) {
-    const next = new Context(this);
-    if (inputs) next.use(inputs);
-    return next;
-  }
-
-  public pop() {
-    INPUTS.set(this, {});
-    const children = CHILDREN.get(this);
-    if (children) {
-      for (const child of [...children]) (child as Context).pop();
-      children.clear();
-    }
-    const cleanup = CTX_CLEANUP.get(this);
-    if (cleanup) {
-      cleanup.forEach((cb) => cb());
-      cleanup.clear();
-    }
-    const parent = PARENT.get(this);
-    if (parent) CHILDREN.get(parent)?.delete(this);
-  }
-}
-
-Context.root = new Context();
+// --- Context free functions ---
 
 function ctxTypes(state: State) {
   let T = state.constructor as State.Extends;
@@ -897,31 +788,28 @@ function ctxTypes(state: State) {
   return out;
 }
 
-function above(from: Context) {
-  const out: Context[] = [];
+function above(from: State) {
+  const out: State[] = [];
   let current: State | null | undefined = from;
   while (current) {
-    if (REGISTRY.has(current)) out.push(current as Context);
+    if (REGISTRY.has(current)) out.push(current);
     current = PARENT.get(current);
   }
   return out;
 }
 
-function below(from: Context) {
-  const children = CHILDREN.get(from);
-  if (!children) return new Set<Context>();
-  const queue = new Set<Context>();
-  for (const c of children) queue.add(c as Context);
+function below(from: State) {
+  const queue = new Set<State>([from]);
   for (const q of queue) {
     const ch = CHILDREN.get(q);
-    if (ch) for (const c of ch) queue.add(c as Context);
+    if (ch) for (const c of ch) queue.add(c);
   }
   return queue;
 }
 
-function subscribe(ctx: Context, T: State.Extends, cb: Context.Expect<any>) {
-  let map = CTX_LISTENERS.get(ctx);
-  if (!map) CTX_LISTENERS.set(ctx, (map = new Map()));
+function subscribe(on: State, T: State.Extends, cb: Expect) {
+  let map = CTX_LISTENERS.get(on);
+  if (!map) CTX_LISTENERS.set(on, (map = new Map()));
   let set = map.get(T);
   if (!set) map.set(T, (set = new Set()));
   set.add(cb);
@@ -930,21 +818,35 @@ function subscribe(ctx: Context, T: State.Extends, cb: Context.Expect<any>) {
   };
 }
 
-function attach(state: State, ctx: Context) {
-  const waiting = LOOKUP.get(state);
-  if (waiting instanceof Context) return;
-  if (waiting instanceof Array) waiting.forEach((cb) => cb(ctx));
-  LOOKUP.set(state, ctx);
-  return () => LOOKUP.delete(state);
-}
-
 function find<T extends State>(
-  from: Context,
+  from: State,
   Type: State.Extends<T>,
-  arg2?: boolean | Context.Expect<T>
+  arg2?: boolean | Expect<T>,
+  onReady?: () => void
 ): any {
+  const ancestors = above(from);
+
   if (typeof arg2 == 'function') {
-    for (const ctx of above(from)) {
+    // If from has no real REGISTRY ancestor (only State.root),
+    // defer until include() assigns one via LOOKUP.
+    if (
+      !ancestors.length ||
+      (ancestors.length === 1 && ancestors[0] === State.root)
+    ) {
+      let unsub: (() => void) | undefined;
+      const pending = LOOKUP.get(from);
+      const deferred = (ctx: State) => {
+        unsub = find(ctx, Type, arg2, onReady);
+      };
+
+      if (Array.isArray(pending)) pending.push(deferred);
+      else if (!pending) LOOKUP.set(from, [deferred]);
+      else deferred(pending);
+
+      return () => unsub && unsub();
+    }
+
+    for (const ctx of ancestors) {
       const entries = REGISTRY.get(ctx)!.get(Type);
       if (entries) {
         let found: T | undefined;
@@ -969,27 +871,35 @@ function find<T extends State>(
       }
     }
 
-    for (const ctx of below(from)) {
-      const entries = REGISTRY.get(ctx)!.get(Type);
-      if (entries) for (const [state] of entries) arg2(state as T, true, true);
-    }
+    const origin = ancestors[0];
 
-    return subscribe(from, Type, arg2);
+    if (origin)
+      for (const ctx of below(origin)) {
+        const entries = REGISTRY.get(ctx)!.get(Type);
+        if (entries)
+          for (const [state] of entries) arg2(state as T, true, true);
+      }
+
+    if (onReady) onReady();
+
+    return subscribe(origin || State.root, Type, arg2 as Expect);
   }
 
   if (arg2 === true) {
     const out: T[] = [];
-    for (const ctx of below(from)) {
-      const entries = REGISTRY.get(ctx)?.get(Type) || [];
-      for (const [state] of entries) out.push(state as T);
-    }
+    const origin = ancestors[0];
+    if (origin)
+      for (const ctx of below(origin)) {
+        const entries = REGISTRY.get(ctx)?.get(Type) || [];
+        for (const [state] of entries) out.push(state as T);
+      }
     return out;
   }
 
   let found: T | undefined;
   let priority = false;
 
-  for (const ctx of above(from)) {
+  for (const ctx of ancestors) {
     const entries = REGISTRY.get(ctx)!.get(Type);
     if (entries) {
       for (const [state, explicit] of entries) {
@@ -1013,8 +923,13 @@ function find<T extends State>(
   if (arg2 !== false) throw new Error(`Could not find ${Type} in context.`);
 }
 
-function include(ctx: Context, I: State, implicit?: boolean) {
-  const registry = REGISTRY.get(ctx)!;
+function include(on: State, I: State, implicit?: boolean) {
+  if (!implicit) {
+    const p = PARENT.get(I);
+    if (!p || p === State.root) PARENT.set(I, on);
+  }
+
+  const registry = REGISTRY.get(on)!;
   const cleanup = new Map<string | Function, () => void>();
   const TT = ctxTypes(I);
 
@@ -1037,10 +952,10 @@ function include(ctx: Context, I: State, implicit?: boolean) {
   });
 
   const IT = ctxTypes(I);
-  const expects = [] as [Context.Expect, boolean][];
-  const seen = new Set<Context.Expect>();
+  const expects = [] as [Expect<any>, boolean][];
+  const seen = new Set<Expect<any>>();
 
-  for (const actx of above(ctx))
+  for (const actx of above(on))
     for (const T of IT) {
       const listeners = CTX_LISTENERS.get(actx);
       if (!listeners) continue;
@@ -1049,11 +964,11 @@ function include(ctx: Context, I: State, implicit?: boolean) {
         for (const cb of set)
           if (!seen.has(cb)) {
             seen.add(cb);
-            expects.push([cb, actx !== ctx]);
+            expects.push([cb, actx !== on]);
           }
     }
 
-  for (const bctx of below(ctx))
+  for (const bctx of below(on))
     for (const T of IT) {
       const listeners = CTX_LISTENERS.get(bctx);
       if (!listeners) continue;
@@ -1080,14 +995,18 @@ function include(ctx: Context, I: State, implicit?: boolean) {
     cleanup.clear();
   };
 
-  const release = attach(I, ctx);
+  const waiting = LOOKUP.get(I);
+  if (!(waiting instanceof Object && !Array.isArray(waiting))) {
+    if (Array.isArray(waiting)) waiting.forEach((cb) => cb(on));
+    LOOKUP.set(I, on);
+  }
 
-  const ctxCleanup = CTX_CLEANUP.get(ctx)!;
+  const ctxCleanup = CTX_CLEANUP.get(on)!;
 
   const remove = () => {
     ctxCleanup.delete(remove);
     reset();
-    if (release) release();
+    if (LOOKUP.get(I) === on) LOOKUP.delete(I);
   };
 
   ctxCleanup.set(remove, remove);
@@ -1095,44 +1014,33 @@ function include(ctx: Context, I: State, implicit?: boolean) {
   return remove;
 }
 
-/**
- * Get the context for a specified State. If a callback is provided, it will be run when
- * the context becomes available.
- */
-function context(on: State, callback: (got: Context) => void): void;
-
-/** Get the context for a specified State. Returns undefined if none are found. */
-function context(on: State, required?: true): Context;
-
-function context(on: State, required: boolean): Context | undefined;
-
-function context({ is }: State, arg?: ((got: Context) => void) | boolean) {
+/** Get the REGISTRY-bearing ancestor that owns this state. */
+function context({ is }: State) {
   const found = LOOKUP.get(is);
-
-  if (found instanceof Context) {
-    if (typeof arg == 'function') arg(found);
-    return found;
-  }
-
-  if (typeof arg == 'function')
-    if (found) found.push(arg);
-    else LOOKUP.set(is, [arg]);
-  else if (arg !== false) {
-    attach(is, Context.root);
-    return Context.root;
-  }
+  if (found && !Array.isArray(found)) return found;
+  return State.root;
 }
 
 export {
   event,
   unbind,
   State,
+  context,
   PARENT,
   STATE,
   uid,
   access,
   update,
-  Context,
-  context,
-  find
+  find,
+  include,
+  above,
+  below,
+  REGISTRY,
+  CTX_LISTENERS,
+  CHILDREN,
+  CTX_CLEANUP,
+  INPUTS,
+  LOOKUP
 };
+
+export type { Expect };

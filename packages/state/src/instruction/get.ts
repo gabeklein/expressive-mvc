@@ -1,6 +1,5 @@
 import { scope } from '../observable';
-import { context } from '../context';
-import { State, PARENT, update } from '../state';
+import { State, PARENT, update, find } from '../state';
 import { use } from './use';
 
 type Type<T extends State> = State.Extends<T> & typeof State;
@@ -111,15 +110,13 @@ function get<T extends State>(
       return {};
     }
 
-    context(subject, (ctx) => {
-      let found = false;
+    let found = false;
 
-      ctx.get(Type, (state, child) => {
-        if (child || state === subject) return;
-        found = true;
-        assign(state);
-      });
-
+    find(subject, Type, (state, child) => {
+      if (child || state === subject) return;
+      found = true;
+      assign(state);
+    }, () => {
       if (!found && arg1 !== false)
         throw new Error(
           `Required ${Type} not found in context for ${subject}.`
@@ -143,45 +140,43 @@ function getDownstream<T extends State>(
       update(subject, key, Array.from(applied));
     };
 
-    context(subject, (ctx) => {
-      ctx.get(Type, (state, child) => {
-        if (!child) return;
+    find(subject, Type, (state, child) => {
+      if (!child) return;
 
-        let remove: (() => void) | undefined;
-        let flush: (() => void) | undefined;
+      let remove: (() => void) | undefined;
+      let flush: (() => void) | undefined;
 
-        if (applied.has(state)) return;
+      if (applied.has(state)) return;
 
-        if (callback) {
-          const exit = scope();
+      if (callback) {
+        const exit = scope();
 
-          try {
-            const done = callback(state, subject);
+        try {
+          const done = callback(state, subject);
 
-            if (done === false) return false;
-            if (typeof done == 'function') remove = done;
-          } finally {
-            flush = exit();
-          }
+          if (done === false) return false;
+          if (typeof done == 'function') remove = done;
+        } finally {
+          flush = exit();
         }
+      }
 
-        applied.add(state);
+      applied.add(state);
+      reset();
+
+      const done = () => {
+        if (flush) flush();
+        ignore();
+
+        applied.delete(state);
         reset();
 
-        const done = () => {
-          if (flush) flush();
-          ignore();
+        if (typeof remove == 'function') remove();
+      };
 
-          applied.delete(state);
-          reset();
+      const ignore = state.set(done, null);
 
-          if (typeof remove == 'function') remove();
-        };
-
-        const ignore = state.set(done, null);
-
-        return done;
-      });
+      return done;
     });
 
     return {
@@ -193,16 +188,14 @@ function getDownstream<T extends State>(
 
 function getOneDownstream<T extends State>(Type: Type<T>, required: boolean) {
   return use<T | undefined>((key, subject) => {
-    context(subject, (ctx) => {
-      ctx.get(Type, (state, child) => {
-        if (!child) return;
-        update(subject, key, state);
-        const ignore = state.set(() => {
-          ignore();
-          update(subject, key, undefined);
-        }, null);
-        return ignore;
-      });
+    find(subject, Type, (state, child) => {
+      if (!child) return;
+      update(subject, key, state);
+      const ignore = state.set(() => {
+        ignore();
+        update(subject, key, undefined);
+      }, null);
+      return ignore;
     });
 
     return {
