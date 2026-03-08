@@ -910,7 +910,7 @@ function above(from: Context) {
 function below(from: Context) {
   const children = CHILDREN.get(from);
   if (!children) return new Set<Context>();
-  const queue = new Set<Context>();
+  const queue = new Set<Context>([from]);
   for (const c of children) queue.add(c as Context);
   for (const q of queue) {
     const ch = CHILDREN.get(q);

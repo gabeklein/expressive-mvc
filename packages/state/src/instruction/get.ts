@@ -1,6 +1,6 @@
 import { scope } from '../observable';
 import { context } from '../context';
-import { State, PARENT, update } from '../state';
+import { State, PARENT, update, find } from '../state';
 import { use } from './use';
 
 type Type<T extends State> = State.Extends<T> & typeof State;
@@ -93,7 +93,7 @@ function get<T extends State>(
       ? getOneDownstream(Type, arg2)
       : getDownstream(Type, arg2 as get.Callback<T>);
 
-  return use<T>((key, subject) => {
+  return use<T>((key, subject, store) => {
     const hasParent = PARENT.get(subject) as T;
     const callback =
       typeof arg1 === 'function' ? (arg1 as get.Callback<T>) : undefined;
@@ -111,23 +111,24 @@ function get<T extends State>(
       return {};
     }
 
-    context(subject, (ctx) => {
-      let found = false;
-
-      ctx.get(Type, (state, child) => {
-        if (child || state === subject) return;
-        found = true;
-        assign(state);
-      });
-
-      if (!found && arg1 !== false)
-        throw new Error(
-          `Required ${Type} not found in context for ${subject}.`
-        );
+    find(subject, Type, (got, asChild) => {
+      if (!asChild) {
+        assign(got);
+        return () => assign(undefined as any);
+      }
     });
 
     return {
-      get: arg1 !== false,
+      get() {
+        const current = store[key];
+
+        if (!current && arg1 !== false)
+          throw new Error(
+            `Required ${Type} not found in context for ${subject}.`
+          );
+
+        return current;
+      },
       enumerable: false
     };
   });
