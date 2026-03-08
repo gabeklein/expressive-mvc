@@ -1,4 +1,4 @@
-import { context, Context } from './context';
+import { context, type Context, find } from './context';
 import {
   listener,
   watch,
@@ -211,27 +211,27 @@ abstract class State implements Observable {
   ): () => void;
 
   /** Fetch upstream State from context. Throws if not found. */
-  get<T extends State>(type: State.Type<T>): T;
+  get<T extends State>(type: State.Extends<T>): T;
 
   /** Fetch a State from context. Returns undefined if not found. */
-  get<T extends State>(type: State.Type<T>, required: false): T | undefined;
+  get<T extends State>(type: State.Extends<T>, required: false): T | undefined;
 
   /** Collect all State of type which belong to children in context. */
-  get<T extends State>(type: State.Type<T>, children: true): T[];
+  get<T extends State>(type: State.Extends<T>, children: true): T[];
 
   /** Fetch a single state of type amongst children in context. Throws if not found. */
-  get<T extends State>(type: State.Type<T>, children: true, single: true): T;
+  get<T extends State>(type: State.Extends<T>, children: true, single: true): T;
 
   /** Fetch a single state of type amongst children in context. Returns undefined if not found. */
   get<T extends State>(
-    type: State.Type<T>,
+    type: State.Extends<T>,
     downstream: true,
     required: false
   ): T | undefined;
 
   /** Subscribe to a type becoming available in context. */
   get<T extends State>(
-    type: State.Type<T>,
+    type: State.Extends<T>,
     callback: Context.Expect<T>
   ): () => void;
 
@@ -252,7 +252,7 @@ abstract class State implements Observable {
   get(status: null, callback: () => void): () => void;
 
   get(
-    arg1?: State.Effect<this> | State.Type | string | null,
+    arg1?: State.Effect<this> | State.Extends | string | null,
     arg2?: boolean | Context.Expect | State.OnUpdate<this, any>,
     arg3?: boolean
   ) {
@@ -648,11 +648,12 @@ function values<T extends State>(state: T): State.Values<T> {
 
 function lookup(
   self: State,
-  Type: State.Type,
+  Type: State.Extends,
   arg2?: Context.Expect | boolean,
   arg3?: boolean
 ) {
-  const result = context(self).get(Type, arg2 as any);
+  const ctx = context(self);
+  const result = find(ctx, Type, arg2 as any);
   if (arg3 === undefined) return result;
   const [found] = result;
   if (found || arg3 !== true) return found;
