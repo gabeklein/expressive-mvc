@@ -209,8 +209,8 @@ describe('Provider', () => {
       render(<Provider for={{ Foo, Bar }} forEach={forEach} />);
 
       expect(forEach).toBeCalledTimes(2);
-      expect(forEach).toBeCalledWith(expect.any(Foo));
-      expect(forEach).toBeCalledWith(expect.any(Bar));
+      expect(forEach).toBeCalledWith(expect.any(Foo), false, false);
+      expect(forEach).toBeCalledWith(expect.any(Bar), false, false);
     });
 
     it('will cleanup on unmount', () => {
@@ -222,8 +222,8 @@ describe('Provider', () => {
       );
 
       expect(forEach).toBeCalledTimes(2);
-      expect(forEach).toBeCalledWith(expect.any(Foo));
-      expect(forEach).toBeCalledWith(expect.any(Bar));
+      expect(forEach).toBeCalledWith(expect.any(Foo), false, false);
+      expect(forEach).toBeCalledWith(expect.any(Bar), false, false);
       expect(cleanup).not.toBeCalled();
 
       act(() => rendered.unmount());

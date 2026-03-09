@@ -1,4 +1,5 @@
-import { State, Context } from '@expressive/state';
+import { State, apply, detach, link } from '@expressive/state';
+import type { Accept, Expect } from '@expressive/state';
 import {
   createContext,
   createElement,
@@ -9,16 +10,13 @@ import {
   useMemo
 } from 'react';
 
-export const Layers = createContext(new Context());
+class Boundary extends State {}
 
-declare module '@expressive/state' {
-  namespace Context {
-    function use(create?: true): Context;
-    function use(create: boolean): Context | null | undefined;
-  }
+export const Layers = createContext<State>(Boundary.new());
+
+export function useBoundary(): State {
+  return useContext(Layers);
 }
-
-Context.use = () => useContext(Layers);
 
 declare namespace Consumer {
   type Props<T extends State> = {
@@ -43,12 +41,12 @@ function Consumer<T extends State>(props: Consumer.Props<T>) {
 declare namespace Provider {
   interface Props<T extends State> {
     /** State or group of States to provide to descendant Consumers. */
-    for: Context.Accept<T>;
+    for: Accept<T>;
 
     /**
      * Callback to run for each provided State.
      */
-    forEach?: Context.Expect<T>;
+    forEach?: Expect<T>;
 
     /**
      * Children to render within this Provider.
@@ -68,23 +66,24 @@ declare namespace Provider {
 
 function Provider<T extends State>(props: Provider.Props<T>) {
   const ambient = useContext(Layers);
-  const context = useMemo(() => ambient.push(), [ambient]);
+  const context = useMemo(() => {
+    const b = Boundary.new();
+    link(ambient, b);
+    return b;
+  }, [ambient]);
 
-  useEffect(() => () => context.pop(), [context]);
+  useEffect(() => () => detach(context), [context]);
 
-  context.set(props.for, (state) => {
-    if (props.forEach) {
-      const cleanup = props.forEach(state);
-
-      if (cleanup) state.set(cleanup, null);
-    }
-  });
+  apply(context, props.for, props.forEach && ((state, child, existing) => {
+    const cleanup = props.forEach!(state, child, existing);
+    if (cleanup) state.set(cleanup, null);
+  }));
 
   return createElement(Provide, { context, ...props });
 }
 
 interface ProvideProps {
-  context: Context;
+  context: State;
   children?: ReactNode;
   fallback?: ReactNode;
   name?: string | undefined;
@@ -97,7 +96,7 @@ function Provide(props: ProvideProps) {
     children = createElement(Suspense, { fallback, name }, children);
 
   return createElement(Layers.Provider, {
-    key: context.id,
+    key: String(context),
     value: context,
     children
   });

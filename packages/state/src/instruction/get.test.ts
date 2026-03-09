@@ -1,8 +1,17 @@
-import { Context } from '../context';
+import { find, include, apply, detach, link, PROVIDE } from '../context';
+import { event } from '../observable';
 import { vi, describe, it, expect, mockPromise } from '../../vitest';
 import { State } from '../state';
 import { get } from './get';
 import { set } from './set';
+
+/** Create a host state with PROVIDE initialized. */
+function host() {
+  class Host extends State {}
+  const h = Host.new();
+  PROVIDE.set(h, new Map());
+  return h;
+}
 
 // is this desirable?
 it.todo('will add pending compute to frame immediately');
@@ -15,10 +24,11 @@ describe('fetch mode', () => {
       sibling = get(Sibling);
     }
 
-    const context = new Context({ Sibling, Test });
+    const h = host();
+    apply(h, { Sibling, Test });
 
-    const test = context.get(Test);
-    const sibling = context.get(Sibling);
+    const test = find(h, Test);
+    const sibling = find(h, Sibling);
 
     expect(test.sibling).toBe(sibling);
   });
@@ -30,10 +40,14 @@ describe('fetch mode', () => {
       ambient2 = get(Ambient);
     }
 
+    const h = host();
     const test = new Test();
     const ambient = new Ambient();
 
-    new Context(ambient).push(test);
+    include(h, ambient);
+    event(ambient);
+    include(h, test);
+    event(test);
 
     expect(test.ambient1).toBe(ambient);
     expect(test.ambient2).toBe(ambient);
@@ -99,7 +113,8 @@ describe('fetch mode', () => {
       }
     }
 
-    const attempt = () => new Context(Child);
+    const h = host();
+    const attempt = () => apply(h, Child);
 
     // should this throw immediately, or only on access?
     expect(attempt).toThrow(`Required Parent not found in context for ID.`);
@@ -111,9 +126,11 @@ describe('fetch mode', () => {
       maybe = get(MaybeParent, false);
     }
 
+    const h = host();
     const instance = new StandAlone();
 
-    new Context(instance);
+    include(h, instance);
+    event(instance);
 
     expect(instance.maybe).toBeUndefined();
   });
@@ -170,8 +187,9 @@ describe('fetch mode', () => {
       foo = get(Foo);
     }
 
-    const context = new Context({ Foo, Bar });
-    const bar = context.get(Bar);
+    const h = host();
+    apply(h, { Foo, Bar });
+    const bar = find(h, Bar);
 
     expect(bar.baz.foo).toBeInstanceOf(Foo);
   });
@@ -182,10 +200,12 @@ describe('fetch mode', () => {
       ambient = get(Ambient);
       foo = 'bar';
     }
+
+    const h = host();
     const test = new Test();
     const ambient = new Ambient();
 
-    new Context({ ambient, test });
+    apply(h, { ambient, test });
 
     expect(test.ambient).toBe(ambient);
     expect(Object.keys(test)).toMatchObject(['foo']);
@@ -201,10 +221,14 @@ describe('fetch mode', () => {
         peer = get(Peer);
       }
 
+      const h = host();
       const parent = new Parent();
       const child = new Child();
 
-      new Context(parent).push(child);
+      include(h, parent);
+      event(parent);
+      include(h, child);
+      event(child);
 
       const effect = vi.fn();
       const first = parent.peer;
@@ -227,17 +251,19 @@ describe('fetch mode', () => {
         ambient = get(Ambient, false);
       }
 
+      const h = host();
       const child = new Child();
       const ambient = Ambient.new();
-      const context = new Context();
-      const effect = vi.fn();
 
-      context.push(child);
+      include(h, child);
+      event(child);
+
+      const effect = vi.fn();
 
       expect(child.ambient).toBeUndefined();
 
       child.get((it) => effect(it.ambient));
-      context.add(ambient);
+      include(h, ambient);
       await expect(child).toHaveUpdated();
 
       expect(effect).toBeCalledTimes(2);
@@ -259,10 +285,14 @@ describe('fetch mode', () => {
         remote = get(Remote, callback);
       }
 
+      const h = host();
       const owner = new Owner();
       const consumer = new Consumer();
 
-      new Context(owner).push(consumer);
+      include(h, owner);
+      event(owner);
+      include(h, consumer);
+      event(consumer);
 
       const first = consumer.remote;
       const effect = vi.fn();
@@ -293,10 +323,17 @@ describe('fetch mode', () => {
           children = get(Child, true);
         }
 
+        const h = host();
         const parent = new Parent();
         const child = new Child();
 
-        new Context(parent).push(child);
+        include(h, parent);
+        event(parent);
+
+        const ch = host();
+        link(h, ch);
+        include(ch, child);
+        event(child);
 
         expect(parent.children).toEqual([child]);
       });
@@ -307,11 +344,17 @@ describe('fetch mode', () => {
           children = get(Child, true);
         }
 
+        const h = host();
         const parent = new Parent();
         const child1 = new Child();
         const child2 = new Child();
 
-        new Context(parent).push({ child1, child2 });
+        include(h, parent);
+        event(parent);
+
+        const ch = host();
+        link(h, ch);
+        apply(ch, { child1, child2 });
 
         expect(parent.children).toEqual([child1, child2]);
       });
@@ -322,9 +365,15 @@ describe('fetch mode', () => {
           children = get(Child, true);
         }
 
+        const h = host();
         const parent = new Parent();
 
-        new Context(parent).push(Child);
+        include(h, parent);
+        event(parent);
+
+        const ch = host();
+        link(h, ch);
+        apply(ch, Child);
 
         expect(Object.keys(parent)).not.toContain('children');
         expect(parent.children).toEqual([expect.any(Child)]);
@@ -338,10 +387,17 @@ describe('fetch mode', () => {
           children = get(Child, true);
         }
 
+        const h = host();
         const parent = new Parent();
         const child = new Child2();
 
-        new Context(parent).push(child);
+        include(h, parent);
+        event(parent);
+
+        const ch = host();
+        link(h, ch);
+        include(ch, child);
+        event(child);
 
         expect(parent.children).toEqual([child]);
       });
@@ -353,9 +409,15 @@ describe('fetch mode', () => {
           children = get(Child2, true);
         }
 
+        const h = host();
         const parent = new Parent();
 
-        new Context(parent).push(Child);
+        include(h, parent);
+        event(parent);
+
+        const ch = host();
+        link(h, ch);
+        apply(ch, Child);
 
         expect(parent.children.length).toBe(0);
       });
@@ -367,9 +429,15 @@ describe('fetch mode', () => {
         }
         class Parent2 extends Parent {}
 
+        const h = host();
         const parent = new Parent2();
 
-        new Context(parent).push(Child);
+        include(h, parent);
+        event(parent);
+
+        const ch = host();
+        link(h, ch);
+        apply(ch, Child);
 
         expect(parent.children.length).toBe(1);
       });
@@ -382,16 +450,21 @@ describe('fetch mode', () => {
           children = get(Child, true);
         }
 
+        const h = host();
         const parent = new Parent();
         const child1 = new Child();
         const child2 = new Child();
 
-        const context = new Context(parent);
-        const context2 = context.push({ child1, child2 });
+        include(h, parent);
+        event(parent);
+
+        const ch = host();
+        link(h, ch);
+        apply(ch, { child1, child2 });
 
         expect(parent.children).toEqual([child1, child2]);
 
-        context2.pop();
+        detach(ch);
 
         await expect(parent).toHaveUpdated();
         expect(parent.children.length).toBe(0);
@@ -402,11 +475,23 @@ describe('fetch mode', () => {
           tests = get(Test, true);
         }
 
+        const h = host();
         const test = new Test();
         const test2 = new Test();
         const test3 = new Test();
 
-        new Context(test).push(test2).push(test3);
+        include(h, test);
+        event(test);
+
+        const ch = host();
+        link(h, ch);
+        include(ch, test2);
+        event(test2);
+
+        const ch2 = host();
+        link(ch, ch2);
+        include(ch2, test3);
+        event(test3);
 
         expect(test.tests).toEqual([test2, test3]);
         expect(test2.tests).toEqual([test3]);
@@ -419,10 +504,21 @@ describe('fetch mode', () => {
         }
 
         const gotChild = vi.fn();
+        const h = host();
         const parent = new Parent();
         const child = new Child();
 
-        new Context(parent).push(child).push(child);
+        include(h, parent);
+        event(parent);
+
+        const ch = host();
+        link(h, ch);
+        include(ch, child);
+        event(child);
+
+        const ch2 = host();
+        link(ch, ch2);
+        include(ch2, child);
 
         expect(gotChild).toBeCalledTimes(1);
       });
@@ -433,19 +529,27 @@ describe('fetch mode', () => {
           children = get(Child, true);
         }
 
+        const h = host();
         const parent = new Parent();
-        const context = new Context(parent);
+        include(h, parent);
+        event(parent);
 
         expect(parent.children).toEqual([]);
 
         const child1 = new Child();
-        context.push(child1);
+        const ch = host();
+        link(h, ch);
+        include(ch, child1);
+        event(child1);
 
         await expect(parent).toHaveUpdated();
         expect(parent.children).toEqual([child1]);
 
         const child2 = new Child();
-        context.push(child2);
+        const ch2 = host();
+        include(h, ch2);
+        include(ch2, child2);
+        event(child2);
 
         await expect(parent).toHaveUpdated();
         expect(parent.children).toEqual([child1, child2]);
@@ -460,12 +564,16 @@ describe('fetch mode', () => {
           children = get(Child, true);
         }
 
+        const h = host();
         const parent = new Parent();
-        const context = new Context(parent);
+        include(h, parent);
+        event(parent);
 
         expect(parent.children).toEqual([]);
 
-        context.push(Wrapper);
+        const ch = host();
+        link(h, ch);
+        apply(ch, Wrapper);
 
         await expect(parent).toHaveUpdated();
         expect(parent.children.length).toBe(1);
@@ -482,10 +590,17 @@ describe('fetch mode', () => {
         }
 
         const gotBaz = vi.fn();
+        const h = host();
         const foo = new Foo();
         const baz = new Baz();
 
-        new Context(foo).push(baz);
+        include(h, foo);
+        event(foo);
+
+        const ch = host();
+        link(h, ch);
+        include(ch, baz);
+        event(baz);
 
         expect(gotBaz).toBeCalledWith(baz, foo.bar);
       });
@@ -499,10 +614,17 @@ describe('fetch mode', () => {
           baz = new Baz();
         }
 
+        const h = host();
         const foo = new Foo();
         const bar = new Bar();
 
-        new Context(foo).push(bar);
+        include(h, foo);
+        event(foo);
+
+        const ch = host();
+        link(h, ch);
+        include(ch, bar);
+        event(bar);
 
         expect(foo.baz).toEqual([bar.baz]);
       });
@@ -515,13 +637,18 @@ describe('fetch mode', () => {
           child = get(Child, true, false);
         }
 
+        const h = host();
         const parent = new Parent();
-        const child = new Child();
-        const ctx = new Context(parent);
+        include(h, parent);
+        event(parent);
 
         expect(parent.child).toBeUndefined();
 
-        ctx.push(child);
+        const ch = host();
+        link(h, ch);
+        const child = new Child();
+        include(ch, child);
+        event(child);
 
         expect(parent.child).toBe(child);
       });
@@ -532,10 +659,17 @@ describe('fetch mode', () => {
           child = get(Child, true, false);
         }
 
+        const h = host();
         const parent = new Parent();
         const child = new Child();
 
-        new Context(parent).push(child);
+        include(h, parent);
+        event(parent);
+
+        const ch = host();
+        link(h, ch);
+        include(ch, child);
+        event(child);
 
         expect(parent.child).toBe(child);
 
@@ -550,16 +684,22 @@ describe('fetch mode', () => {
           child = get(Foo, true, false);
         }
 
-        const parent = new Bar();
+        const h = host();
         const upstream = new Foo();
-        const ctx = new Context(upstream).push(parent);
+        const parent = new Bar();
 
-        // Upstream Foo should be ignored
+        include(h, upstream);
+        event(upstream);
+        include(h, parent);
+        event(parent);
+
         expect(parent.child).toBeUndefined();
 
-        // Downstream child should work
+        const ch = host();
+        link(h, ch);
         const downstream = new Foo();
-        ctx.push(downstream);
+        include(ch, downstream);
+        event(downstream);
 
         expect(parent.child).toBe(downstream);
       });
@@ -570,8 +710,9 @@ describe('fetch mode', () => {
           child = get(Child, true, false);
         }
 
+        const h = host();
         const parent = Parent.new();
-        new Context(parent);
+        include(h, parent);
 
         expect(parent.child).toBeUndefined();
       });
@@ -591,10 +732,11 @@ describe('lifecycle callbacks', () => {
       remote = get(Remote, remoteCallback);
     }
 
+    const h = host();
     const remote = new Remote();
     const test = new Test();
 
-    new Context({ remote, test });
+    apply(h, { remote, test });
 
     expect(remoteCallback).toBeCalledTimes(1);
     expect(remoteCallback).toBeCalledWith(remote, test);
@@ -607,10 +749,17 @@ describe('lifecycle callbacks', () => {
     }
 
     const gotChild = vi.fn();
+    const h = host();
     const parent = new Parent();
     const child = new Child();
 
-    new Context(parent).push(child);
+    include(h, parent);
+    event(parent);
+
+    const ch = host();
+    link(h, ch);
+    include(ch, child);
+    event(child);
 
     expect(gotChild).toBeCalledWith(child, parent);
   });
@@ -626,17 +775,22 @@ describe('lifecycle callbacks', () => {
       children = get(Child, true, didAdd);
     }
 
+    const h = host();
     const parent = new Parent();
     const child1 = new Child();
     const child2 = new Child();
 
-    const context = new Context(parent);
-    const context2 = context.push({ child1, child2 });
+    include(h, parent);
+    event(parent);
+
+    const ch = host();
+    link(h, ch);
+    apply(ch, { child1, child2 });
 
     expect(didAdd).toBeCalledTimes(2);
     expect(parent.children).toEqual([child1, child2]);
 
-    context2.pop();
+    detach(ch);
 
     await expect(parent).toHaveUpdated();
     expect(didRemove).toBeCalledTimes(2);
@@ -650,15 +804,21 @@ describe('lifecycle callbacks', () => {
     }
 
     const hasChild = vi.fn(() => false);
+    const h = host();
     const parent = new Parent();
-    const context = new Context(parent);
+    include(h, parent);
+    event(parent);
 
-    context.push({ 1: Child, 2: Child });
+    const ch = host();
+    link(h, ch);
+    apply(ch, { 1: Child, 2: Child });
 
     expect(hasChild).toBeCalledTimes(2);
     expect(parent.children.length).toBe(0);
 
-    context.push({ Child });
+    const ch2 = host();
+    include(h, ch2);
+    apply(ch2, { Child });
 
     await expect(parent).not.toHaveUpdated();
     expect(hasChild).toBeCalledTimes(3);
@@ -671,7 +831,6 @@ describe('lifecycle callbacks', () => {
     }
 
     const remoteCallback = vi.fn((remote: Remote) => {
-      // Access value but should not subscribe
       void remote.value;
     });
 
@@ -679,14 +838,14 @@ describe('lifecycle callbacks', () => {
       remote = get(Remote, remoteCallback);
     }
 
+    const h = host();
     const remote = new Remote();
     const test = new Test();
 
-    new Context({ remote, test });
+    apply(h, { remote, test });
 
     expect(remoteCallback).toBeCalledTimes(1);
 
-    // Change should NOT trigger callback again
     remote.value = 'bar';
     await remote.set();
 
@@ -703,10 +862,11 @@ describe('lifecycle callbacks', () => {
       remote = get(Remote, remoteCallback);
     }
 
+    const h = host();
     const remote = new Remote();
     const test = new Test();
 
-    new Context({ remote, test });
+    apply(h, { remote, test });
 
     expect(remoteCallback).toBeCalledTimes(1);
     expect(cleanup).not.toBeCalled();
@@ -729,9 +889,15 @@ describe('lifecycle callbacks', () => {
       });
     }
 
-    const context = new Context();
+    const h = host();
+    const ch = host();
 
-    context.push(Parent).push(Child);
+    link(h, ch);
+    apply(ch, Parent);
+
+    const ch2 = host();
+    link(ch, ch2);
+    apply(ch2, Child);
 
     expect(didSet).toBeCalledWith('Hello', undefined);
   });
@@ -742,8 +908,6 @@ describe('lifecycle callbacks', () => {
       children = get(Child, true, (child) => {
         didNotify();
         return () => {
-          // this should occur before both
-          // target and recipient are destroyed.
           expect(this.get(null)).toBe(false);
           expect(child.get(null)).toBe(false);
           didRemove();
@@ -754,14 +918,19 @@ describe('lifecycle callbacks', () => {
     const didNotify = vi.fn();
     const didRemove = vi.fn();
 
-    const context = new Context();
+    const h = host();
+    const ch = host();
+    link(h, ch);
+    apply(ch, Parent);
 
-    context.push(Parent).push(Child);
+    const ch2 = host();
+    link(ch, ch2);
+    apply(ch2, Child);
 
     expect(didNotify).toBeCalledTimes(1);
     expect(didRemove).not.toBeCalled();
 
-    context.pop();
+    detach(h);
 
     expect(didRemove).toBeCalledTimes(1);
     expect(didNotify).toBeCalledTimes(1);
@@ -781,16 +950,19 @@ describe('lifecycle callbacks', () => {
     const didNotify = vi.fn();
     const didRemove = vi.fn();
 
-    const context = new Context(Parent);
-    const inner = context.push(Child);
+    const h = host();
+    apply(h, Parent);
+
+    const ch = host();
+    link(h, ch);
+    apply(ch, Child);
 
     expect(didNotify).toBeCalledTimes(1);
     expect(didRemove).not.toBeCalled();
 
-    inner.pop();
+    detach(ch);
 
     expect(didRemove).toBeCalledTimes(1);
     expect(didNotify).toBeCalledTimes(1);
   });
 });
-
