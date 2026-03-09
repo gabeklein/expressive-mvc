@@ -69,7 +69,7 @@ describe('Provider', () => {
       </Provider>
     );
 
-    expect(forEach).toBeCalledWith(expect.any(Test));
+    expect(forEach).toBeCalledWith(expect.any(Test), false, false);
   });
 
   it('will handle forEach without cleanup', () => {
@@ -85,7 +85,7 @@ describe('Provider', () => {
       </Provider>
     );
 
-    expect(forEach).toBeCalledWith(expect.any(Test));
+    expect(forEach).toBeCalledWith(expect.any(Test), false, false);
   });
 
   it('will cleanup on unmount', () => {
