@@ -1,7 +1,7 @@
-export { use, type Instruction } from './instruction/use';
-export { get } from './instruction/get';
-export { set } from './instruction/set';
-export { ref } from './instruction/ref';
+export { apply, type Apply } from './property/apply';
+export { get } from './property/get';
+export { set } from './property/set';
+export { ref } from './property/ref';
 
 export { State, State as default, unbind } from './state';
 export { watch, listener, event, Observable } from './observable';

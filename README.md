@@ -39,7 +39,8 @@
   - [Lifecycle Hooks](#lifecycle-hooks)
   - [Reusable Classes](#reusable-classes)
 - [Core Concepts](#core-concepts)
-- [Instructions](#instructions)
+- [Applied Properties](#applied-properties)
+- [Child State Instances](#child-state-instances)
 - [React Integration](#react-integration)
 - [Advanced Features](#advanced-features)
 - [Framework Support](#framework-support)
@@ -631,9 +632,9 @@ class Navigation extends State {
 
 <br />
 
-## Instructions
+## Applied Properties
 
-Instructions are special property initializers that provide advanced functionality. They run during State construction and define custom getters/setters.
+Applied properties are special property initializers that provide advanced functionality. They run during State construction and define custom getters/setters.
 
 <br/>
 
@@ -816,11 +817,11 @@ class ParentList extends State {
 }
 ```
 
-<br/>
+<br />
 
-### Child State Instances
+## Child State Instances
 
-Nest states by direct assignment — no instruction needed. Children are auto-parented and destroyed with parent.
+Nest states by direct assignment — use `new State()` instead of `State.new()`. Children are auto-parented and destroyed with parent.
 
 ```ts
 class App extends State {

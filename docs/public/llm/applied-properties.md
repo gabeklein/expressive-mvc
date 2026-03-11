@@ -3,7 +3,7 @@
 Applied properties are special initializers for State class fields. They wire up behavior declaratively — refs, child state, context lookups, computed values, and validation.
 
 ```ts
-import State, { apply, ref, get, set } from '@expressive/state';
+import State, { ref, apply, get, set } from '@expressive/state';
 ```
 
 ---
@@ -17,9 +17,9 @@ class MyState extends State {
   element = ref<HTMLDivElement>();
 }
 
-state.element.current; // HTMLDivElement | null
+state.element.current;    // HTMLDivElement | null
 state.element.current = div; // set via .current
-state.element(div); // or call as function
+state.element(div);       // or call as function
 ```
 
 ### Ref with Callback
@@ -45,7 +45,7 @@ class Form extends State {
   refs = ref(this);
 }
 
-form.refs.name; // ref.Object<string>
+form.refs.name;  // ref.Object<string>
 form.refs.email; // ref.Object<string>
 ```
 
@@ -82,8 +82,8 @@ Fetches another state from ambient context hierarchy.
 
 ```ts
 class Child extends State {
-  parent = get(ParentState); // suspends if not found
-  maybe = get(ParentState, false); // optional (T | undefined)
+  parent = get(ParentState);          // suspends if not found
+  maybe  = get(ParentState, false);   // optional (T | undefined)
 }
 ```
 
@@ -104,7 +104,7 @@ Collect all instances of a type below in context tree:
 
 ```ts
 class Parent extends State {
-  children = get(ChildState, true); // readonly ChildState[]
+  children = get(ChildState, true);  // readonly ChildState[]
 }
 ```
 
@@ -129,9 +129,9 @@ The most versatile applied property.
 
 ```ts
 class MyState extends State {
-  data = set<string>(); // required placeholder (suspends until set)
-  config = set(() => loadConfig()); // factory (lazy init)
-  api = set(async () => fetch('/api').then((r) => r.json())); // async (suspends, integrates with Suspense)
+  data   = set<string>();                      // required placeholder (suspends until set)
+  config = set(() => loadConfig());            // factory (lazy init)
+  api    = set(async () => fetch('/api').then(r => r.json())); // async (suspends, integrates with Suspense)
 }
 ```
 
@@ -177,9 +177,9 @@ Pass `true` as first argument to react to `this`.
 
 ## Summary
 
-| Instruction | Purpose                       | Triggers Updates?     |
-| ----------- | ----------------------------- | --------------------- |
-| `ref()`     | Mutable reference holder      | No                    |
-| `use()`     | Custom property instruction   | Yes                   |
-| `get()`     | Context lookup (up or down)   | Yes (when found/lost) |
-| `set()`     | Computed, factory, validation | Yes                   |
+| Applied Property | Purpose | Triggers Updates? |
+|------------------|---------|-------------------|
+| `ref()` | Mutable reference holder | No |
+| `apply()` | Custom applied property | Yes |
+| `get()` | Context lookup (up or down) | Yes (when found/lost) |
+| `set()` | Computed, factory, validation | Yes |
