@@ -5,16 +5,16 @@ import { access, State, STATE, uid, update } from '../state';
  * Property initializer, will run upon instance creation.
  * Optional returned callback will run when once upon first access.
  */
-type Instruction<T = any, M extends State = any> =
+type Apply<T = any, M extends State = any> =
   // TODO: Should this allow for numbers/symbol properties?
   (
     this: M,
     key: Extract<State.Field<M>, string>,
     thisArg: M,
     state: State.Values<M>
-  ) => Instruction.Config<T> | (() => void) | void;
+  ) => Apply.Config<T> | (() => void) | void;
 
-declare namespace Instruction {
+declare namespace Apply {
   type Config<T = any> = {
     get?: ((source: State) => T) | boolean;
     set?: State.Setter<T> | boolean;
@@ -24,11 +24,11 @@ declare namespace Instruction {
   };
 }
 
-const INSTRUCTION = new Map<symbol, Instruction>();
+const INSTRUCTION = new Map<symbol, Apply>();
 
-function use<T>(instruction: Instruction<T>): T extends void ? unknown : T;
+function apply<T>(instruction: Apply<T>): T extends void ? unknown : T;
 
-function use(arg1: Instruction) {
+function apply(arg1: Apply) {
   const token = Symbol('instruction-' + uid());
   INSTRUCTION.set(token, arg1);
   return token;
@@ -84,4 +84,4 @@ function init(this: State) {
 
 State.on(init);
 
-export { use, Instruction };
+export { apply, Apply };

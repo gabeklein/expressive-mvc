@@ -40,7 +40,7 @@ class MyState extends State {
 }
 ```
 
-## Instruction Typing
+## Applied Property Typing
 
 ### set() overloads
 
@@ -72,16 +72,16 @@ proxy = ref(this);                          // ref proxy for all properties
 proxy = ref(otherState, (key) => custom);   // custom property mapper
 ```
 
-### use()
+### apply()
 
 ```ts
-child = use(ChildType);                    // child state instance
-child = use(ChildType, (child) => { ... }); // with init callback
+child = apply(ChildType);                    // child state instance
+child = apply(ChildType, (child) => { ... }); // with init callback
 ```
 
-## Instruction return types
+## Applied property return types
 
-Instructions return symbols at definition time. The actual typed value is only available after initialization:
+Applied properties return symbols at definition time. The actual typed value is only available after initialization:
 
 ```ts
 class Test extends State {
