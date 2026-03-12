@@ -1,0 +1,30 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["dom", "dom.iterable", "ES2022"],
+    "types": ["vite", "vite/client"],
+    "jsx": "react-jsx",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "allowJs": true,
+    "checkJs": false,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "noUncheckedIndexedAccess": true,
+    "noEmit": true,
+    "plugins": [
+      {
+        "name": "@expressive/typescript-plugin-jsx"
+      }
+    ],
+    "paths": {
+      "@/*": ["./src/*"],
+      "fumadocs-mdx:collections/*": ["./.source/*"],
+      "@expressive/vite-plugin": ["../../packages/vite-plugin/src/index.ts"]
+    }
+  },
+  "exclude": ["node_modules", "dist"]
+}
