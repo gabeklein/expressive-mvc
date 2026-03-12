@@ -1,0 +1,150 @@
+---
+title: Introduction
+description: Build-time CSS-in-JS using upcycled JavaScript syntax
+icon: Rocket
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+# Introduction to Expressive JSX
+
+Expressive JSX is a build-time CSS-in-JS solution that **upcycles JavaScript syntax**—specifically labeled statements—into a powerful styling system.
+
+<Callout type="info">
+  **Zero Runtime Overhead** — All transformations happen at build time. CSS is generated and re-imported as modules for each file.
+</Callout>
+
+## What Makes It Different?
+
+Instead of inventing new syntax, Expressive JSX repurposes existing JavaScript features that are rarely used:
+
+- **Labels** (from `for`/`while` loops) → Style scopes
+- **Bare identifiers** → CSS properties and values; camelCase converts to kebab
+- **If statements** → Conditional styles and pseudo-selectors
+
+Key is that only **valid JavaScript but inert** gets new meaning at build time.
+
+## Quick Example
+
+```jsx
+const Button = ({ disabled }) => {
+  // Top-level styles auto-apply to the root element
+  background: 0x8150ce;
+  padding: 10, 20;
+  color: white;
+  borderRadius: 8;
+
+  // Conditional styling based on props
+  if (disabled) {
+    opacity: 0.4;
+    cursor: notAllowed;
+  }
+
+  // Pseudo-selectors
+  if (':hover') {
+    background: 0x9b6fd9;
+  }
+
+  return <button>Click me</button>;
+}
+```
+
+## Core Concepts
+
+### Self-Styling Pattern
+
+Styles defined at the top of a component function automatically apply to the outermost returned element(s):
+
+```jsx
+const Card = () => {
+  padding: 20;
+  background: white;
+  borderRadius: 12;
+
+  return <div>Content</div>;
+};
+```
+
+### Labels for Nested Styles
+
+Use labels to create named style blocks:
+
+```jsx
+const Container = () => {
+  outer: {
+    padding: 20;
+  }
+
+  inner: {
+    background: white;
+  }
+
+  return (
+    <div _outer>
+      <div _inner>Content</div>
+    </div>
+  );
+};
+```
+
+### Auto-Unit Conversion
+
+```jsx
+// Integers → px
+padding: 10;              // → padding: 10px
+
+// Decimals → em
+fontSize: 1.5;            // → font-size: 1.5em
+
+// Multi-value with commas
+margin: 10, 20;           // → margin: 10px 20px
+
+// Hex colors
+background: 0xff0000;     // → background: #ff0000
+```
+
+### CamelCase Values
+
+Use bare identifiers for CSS values; strings still can be used to not collide with keywords:
+
+```jsx
+cursor: pointer;          // → cursor: "pointer"
+textAlign: center;        // → text-align: "center"
+display: inlineFlex;      // → display: "inline-flex"
+```
+
+### Macros
+
+Built-in macros provide convenient shorthands:
+
+```jsx
+// Positioning
+absolute: fill;           // → position: absolute; top: 0; right: 0; bottom: 0; left: 0
+
+// Size
+size: 100, 200;           // → width: 100px; height: 200px
+
+// Border
+radius: round;            // → border-radius: 999px
+border: 0xddd, 2;         // → border: 2px solid #ddd
+
+// Layout
+flexAlign: center;        // → justify-content: center; align-items: center
+```
+
+## Getting Started
+
+Install Expressive JSX for your build tool:
+
+```bash
+# Vite
+npm install @expressive/vite-plugin
+
+# Next.js
+npm install @expressive/nextjs-plugin
+
+# Webpack
+npm install @expressive/webpack-plugin
+```
+
+Configure your build tool (see framework-specific guides) and start writing styles with zero runtime overhead!
