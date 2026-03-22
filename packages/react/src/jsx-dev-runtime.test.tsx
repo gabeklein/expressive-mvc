@@ -2,7 +2,7 @@
 
 import { expect, it } from '../vitest';
 
-import { State } from '.';
+import { Component } from '.';
 import { Fragment, jsxDEV } from './jsx-dev-runtime';
 
 it('exports jsxDEV', () => {
@@ -13,8 +13,12 @@ it('exports Fragment', () => {
   expect(Fragment).toBeDefined();
 });
 
-it('will convert State to element', () => {
-  class Test extends State {}
+it('will convert Component to element', () => {
+  class Test extends Component {
+    render() {
+      return null;
+    }
+  }
 
   const element = <Test>Hello</Test>;
 
