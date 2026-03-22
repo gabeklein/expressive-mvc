@@ -1,15 +1,9 @@
-import { State } from '.';
+import { State, Component } from '.';
 
 import React from 'react';
 
-interface AsComponent extends State {
-  props?: Record<string, any>;
-  render?(): React.ReactNode;
-  fallback?: React.ReactNode;
-}
-
 type StateProps<T extends State> = {
-  [K in Exclude<keyof T, keyof AsComponent>]?: T[K];
+  [K in Exclude<keyof T, keyof Component>]?: T[K];
 };
 
 type BaseProps<T extends State> = {
@@ -38,12 +32,12 @@ type NormalComponent<P> = new (...args: any[]) => { props: P };
 
 export declare namespace JSX {
   type ElementType =
-    | State.Extends<AsComponent>
+    | State.Extends<Component>
     | React.JSX.ElementType
     | ((props: {}, ref?: any) => void);
 
   type LibraryManagedAttributes<C, P> =
-    C extends State.Extends<infer U>
+    C extends State.Extends<infer U extends Component>
       ? Props<U>
       : C extends NormalComponent<infer U>
         ? U

@@ -8,24 +8,6 @@ export type StateProps<T extends State> = {
   [K in Exclude<keyof T, keyof Component>]?: T[K];
 };
 
-export type Render<T extends State, P extends object> = ((
-  props: P & StateProps<T>,
-  self: T
-) => ReactNode) &
-  PropsValid<P, T>;
-
-type Overlap<P extends object, V extends object> = Extract<keyof P, keyof V>;
-
-type PropsConflicting<P extends object, V extends object> = {
-  [K in Overlap<P, V>]: [P[K]] extends [V[K]] ? never : K;
-}[Overlap<P, V>];
-
-type PropsValid<P extends object, T extends State> = [
-  PropsConflicting<P, StateProps<T>>
-] extends [never]
-  ? unknown
-  : never;
-
 export type Props<T extends State> = Readonly<
   StateProps<T> & {
     /**
@@ -35,7 +17,7 @@ export type Props<T extends State> = Readonly<
 
     /**
      * A fallback react tree to show when suspended.
-     * If not provided, `fallback` property of the State will be used.
+     * If not provided, `fallback` property of the Component will be used.
      */
     fallback?: ReactNode;
 
@@ -46,122 +28,65 @@ export type Props<T extends State> = Readonly<
   }
 >;
 
-export interface Component<P = {}> extends State {
-  readonly props: Props<this> & P;
-  context: Context;
-  state: State.Values<this>;
-  fallback?: ReactNode;
-
-  render(): ReactNode;
-
-  /** @deprecated Only for React JSX compatibility in typescript and nonfunctional. */
-  setState: (state: any, callback?: () => void) => void;
-
-  /** @deprecated Only for React JSX compatibility in typescript and nonfunctional. */
-  forceUpdate: (callback?: () => void) => void;
-
-  componentWillUnmount(): void;
-}
-
-export type ComponentType<T, P = {}> = State.Type<T & Component<P>>;
-
 declare module '@expressive/state' {
-  namespace State {
-    function as<T extends State, P extends object = {}>(
-      this: State.Type<T>,
-      render?: Render<T, P>
-    ): ComponentType<T, P>;
-
-    function as<T extends State, P extends object = {}>(
-      this: ComponentType<T, P>,
-      withProps: StateProps<T>
-    ): ComponentType<T, P>;
-
-    function as<T extends State>(
-      this: State.Type<T>,
-      withProps: StateProps<T>
-    ): ComponentType<T, {}>;
-  }
-
   namespace State {
     export type { Component, Props };
   }
 }
 
-State.as = function <T extends State, P extends object = {}>(
-  this: State.Type<T>,
-  argument?: ((props: P, self: T) => ReactNode) | StateProps<T>
-) {
-  const render = typeof argument === 'function' ? argument : undefined;
+class Component<P = {}> extends State {
+  static contextType = Layers;
 
-  class ReactType extends (this as unknown as State.Type<State>) {
-    static contextType = Layers;
+  declare readonly props: Props<this> & P;
 
-    fallback?: ReactNode;
+  declare context: Context;
 
-    get props(): Props<any> {
-      return PROPS.get(this.is)!;
-    }
+  declare fallback: ReactNode | undefined;
 
-    private set props(props: Props<any>) {
-      PROPS.set(this.is, props);
-      this.set(props as {});
-    }
+  /** @deprecated Only for React JSX compatibility and nonfunctional. */
+  declare setState: (state: any, callback?: () => void) => void;
 
-    get state() {
-      return this.get();
-    }
+  /** @deprecated Only for React JSX compatibility and nonfunctional. */
+  declare forceUpdate: (callback?: () => void) => void;
 
-    private set state(_state: State.Values<this>) {}
+  readonly isReactComponent = true;
 
-    shouldComponentUpdate() {
-      return true;
-    }
-
-    constructor(nextProps: any, ...rest: any[]) {
-      const { is, ...props } = nextProps;
-      const defaults = typeof argument === 'object' ? argument : {};
-
-      if (rest[0] instanceof Context) rest.shift();
-
-      super(props, defaults, rest, is && ((x) => void is(x)));
-      PROPS.set(this, props);
-    }
+  get state() {
+    return this.get() as State.Values<this>;
   }
 
-  if (render)
-    Object.defineProperty(ReactType.prototype, 'render', {
-      configurable: true,
-      writable: true,
-      value: render
-    });
+  shouldComponentUpdate() {
+    return true;
+  }
 
-  Object.defineProperty(ReactType, 'name', { value: 'React' + this.name });
+  componentWillUnmount() {
+    this.context.pop();
+    this.set(null);
+  }
 
-  return ReactType as unknown as ComponentType<T, P>;
-};
+  render(): ReactNode {
+    return this.props.children || null;
+  }
 
-Object.defineProperty(State, 'contextType', {
-  configurable: true,
-  writable: true,
-  value: Layers
-});
+  constructor(nextProps: any, ...rest: any[]) {
+    const { is, ...props } = nextProps;
 
-Object.defineProperties(State.prototype, {
-  isReactComponent: { value: true },
-  shouldComponentUpdate: {
+    if (rest[0] instanceof Context) rest.shift();
+
+    super(props, {}, rest, is && ((x: any) => void is(x)));
+    PROPS.set(this, props);
+  }
+}
+
+Object.defineProperties(Component.prototype, {
+  props: {
     configurable: true,
-    value(this: Component, props: any) {
+    get(this: Component) {
+      return PROPS.get(this.is)!;
+    },
+    set(this: Component, props: Props<any>) {
       PROPS.set(this.is, props);
-      this.set(props);
-      return true;
-    }
-  },
-  componentWillUnmount: {
-    configurable: true,
-    value(this: Component) {
-      this.context.pop();
-      this.set(null);
+      this.set(props as {});
     }
   },
   context: {
@@ -190,10 +115,7 @@ Object.defineProperties(State.prototype, {
   }
 });
 
-function Render<T extends Component, P extends State.Assign<T>>(
-  this: T,
-  render?: (props: P, self: T) => ReactNode
-) {
+function Render<T extends Component>(this: T, render: (self: T) => ReactNode) {
   const state = useState(() => {
     let ready: boolean | undefined;
     let active: T;
@@ -204,9 +126,7 @@ function Render<T extends Component, P extends State.Assign<T>>(
       if (ready) state[1]((x) => x.bind(null));
     });
 
-    const View = render
-      ? () => render.call(active, this.props as any, active)
-      : () => this.props.children || null;
+    const View = () => render.call(active, active);
 
     return () => {
       ready = false;
@@ -226,3 +146,5 @@ function Render<T extends Component, P extends State.Assign<T>>(
 
   return state[0]();
 }
+
+export { Component };

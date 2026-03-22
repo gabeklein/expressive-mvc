@@ -1,63 +1,67 @@
-/** @jsxImportSource . */
-
 import { vi, expect, it, describe, act, render, screen } from '../vitest';
 
-import React, { Children, Component, isValidElement } from 'react';
-import State, { Consumer, get, set } from '.';
+import React, { Component as ReactComponent } from 'react';
+import State, { Component, Consumer, Provider, get, set } from '.';
 
-it('will create and provide instance', () => {
-  class Control extends State {
-    foo = 'bar';
-  }
-
-  render(
-    <Control>
-      <Consumer for={Control}>{(c) => c.foo}</Consumer>
-    </Control>
-  );
-
-  screen.getByText('bar');
-});
-
-it('will create instance only once', () => {
-  class Control extends State {
-    protected new() {
-      didConstruct(this);
+describe('Provider usage', () => {
+  it('will create and provide instance', () => {
+    class Control extends State {
+      foo = 'bar';
     }
-  }
 
-  const didConstruct = vi.fn();
-  const { rerender } = render(<Control />);
+    render(
+      <Provider for={Control}>
+        <Consumer for={Control}>{(c) => c.foo}</Consumer>
+      </Provider>
+    );
 
-  expect(didConstruct).toBeCalledTimes(1);
+    screen.getByText('bar');
+  });
 
-  rerender(<Control />);
+  it('will create instance only once', () => {
+    class Control extends State {
+      protected new() {
+        didConstruct(this);
+      }
+    }
 
-  expect(didConstruct).toBeCalledTimes(1);
-});
+    const didConstruct = vi.fn();
+    const { rerender } = render(<Provider for={Control} />);
 
-it('will call is method on creation', () => {
-  class Control extends State {}
+    expect(didConstruct).toBeCalledTimes(1);
 
-  const didCreate = vi.fn();
+    rerender(<Provider for={Control} />);
 
-  const screen = render(<Control is={didCreate} />);
+    expect(didConstruct).toBeCalledTimes(1);
+  });
 
-  expect(didCreate).toBeCalledTimes(1);
+  it('will call is method on creation', () => {
+    class Control extends State {}
 
-  screen.rerender(<Control is={didCreate} />);
-  expect(didCreate).toBeCalledTimes(1);
+    const didCreate = vi.fn();
 
-  act(screen.unmount);
+    const screen = render(<Provider for={Control} is={didCreate} />);
+
+    expect(didCreate).toBeCalledTimes(1);
+
+    screen.rerender(<Provider for={Control} is={didCreate} />);
+    expect(didCreate).toBeCalledTimes(1);
+
+    act(screen.unmount);
+  });
 });
 
 describe('new method', () => {
   it('will call if exists', () => {
     const didCreate = vi.fn();
 
-    class Test extends State {
+    class Test extends Component {
       protected new() {
         didCreate();
+      }
+
+      render() {
+        return null;
       }
     }
 
@@ -72,32 +76,35 @@ describe('new method', () => {
 });
 
 describe('element props', () => {
-  class Foo extends State {
-    /** Hover over this prop to see description. */
-    value?: string = undefined;
-  }
+  it('will accept managed values via Provider', () => {
+    class Foo extends State {
+      value?: string = undefined;
+    }
 
-  it('will accept managed values', () => {
     render(
-      <Foo value="baz">
+      <Provider for={Foo} value="baz">
         <Consumer for={Foo}>
           {(c) => {
             expect(c.value).toBe('baz');
           }}
         </Consumer>
-      </Foo>
+      </Provider>
     );
   });
 
-  it('will assign values to instance', () => {
+  it('will assign values to instance via Provider', () => {
+    class Foo extends State {
+      value?: string = undefined;
+    }
+
     render(
-      <Foo value="foobar">
+      <Provider for={Foo} value="foobar">
         <Consumer for={Foo}>
           {(i) => {
             expect(i.value).toBe('foobar');
           }}
         </Consumer>
-      </Foo>
+      </Provider>
     );
   });
 
@@ -108,13 +115,13 @@ describe('element props', () => {
 
     const didSet = vi.fn();
 
-    render(<Foo value="barfoo" />);
+    render(<Provider for={Foo} value="barfoo" />);
 
     expect(didSet).toBeCalled();
   });
 
-  it('will override method', async () => {
-    class Test extends State {
+  it('will override method on Component', async () => {
+    class Test extends Component {
       callback() {
         return 'foo';
       }
@@ -130,74 +137,42 @@ describe('element props', () => {
     element.rerender(<Test callback={() => 'baz'} />);
     screen.getByText('baz');
   });
-
-  it('will not assign foreign values', () => {
-    render(
-      // @ts-expect-error
-      <Foo nonValue="foobar">
-        <Consumer for={Foo}>
-          {(i) => {
-            // @ts-expect-error
-            expect(i.nonValue).toBeUndefined();
-          }}
-        </Consumer>
-      </Foo>
-    );
-  });
 });
 
 describe('element children', () => {
-  it('will handle multiple elements', () => {
+  it('will handle multiple elements via Provider', () => {
     class Control extends State {
       foo = 'bar';
     }
 
     const screen = render(
-      <Control foo="sd">
+      <Provider for={Control} foo="sd">
         <span>Hello</span>
         <span>World</span>
-      </Control>
+      </Provider>
     );
 
     screen.getByText('Hello');
     screen.getByText('World');
   });
 
-  it('will notify parent', async () => {
-    class Control extends State {
-      children = set<React.ReactNode>(undefined, didUpdate);
-    }
-
-    const didUpdate = vi.fn();
-    const screen = render(<Control>Hello</Control>);
-
-    screen.getByText('Hello');
-    expect(didUpdate).toBeCalled();
-  });
-
-  it('will accept arbitrary children with render', () => {
-    const symbol = Symbol('foo');
-
-    class Control extends State {
-      props!: { children: symbol };
-
+  it('will accept children with render', () => {
+    class Control extends Component {
       render() {
-        expect(this.props.children).toBe(symbol);
-        return 'Hello';
+        expect(this.props.children).toBe('Hello');
+        return 'Rendered';
       }
     }
 
-    const screen = render(<Control>{symbol}</Control>);
+    const screen = render(<Control>Hello</Control>);
 
-    screen.getByText('Hello');
+    screen.getByText('Rendered');
   });
 });
 
 describe('props property', () => {
   it('will update on rerender', () => {
-    class Control extends State {
-      props!: { value: string };
-
+    class Control extends Component<{ value: string }> {
       render() {
         return <>{this.props.value}</>;
       }
@@ -211,8 +186,10 @@ describe('props property', () => {
   });
 
   it('will be accessible on instance', () => {
-    class Control extends State {
-      props!: { value: string };
+    class Control extends Component<{ value: string }> {
+      render() {
+        return null;
+      }
     }
 
     let ctrl!: Control;
@@ -223,10 +200,8 @@ describe('props property', () => {
 
 describe('render method', () => {
   it('will be element output', () => {
-    class Control extends State {
+    class Control extends Component<{ bar: string }> {
       foo = 'bar';
-
-      props!: { bar: string };
 
       render() {
         return (
@@ -253,9 +228,8 @@ describe('render method', () => {
       );
     }
 
-    class ClassComponent extends State {
+    class ClassComponent extends Component<{ name: string }> {
       salutation = 'Hello';
-      props!: { name: string };
       render = FunctionComponent;
     }
 
@@ -269,28 +243,20 @@ describe('render method', () => {
   });
 
   it('will ignore children not handled', () => {
-    class Control extends State {
-      props!: { value: string };
-
+    class Control extends Component<{ value: string }> {
       render() {
         return <>{this.props.value}</>;
       }
     }
 
-    const screen = render(
-      // while by default children are passed through,
-      // we shouldn't accept props not defined in render
-      // @ts-expect-error
-      <Control value="Goodbye">Hello</Control>
-    );
+    const screen = render(<Control value="Goodbye">Hello</Control>);
 
     screen.getByText('Goodbye');
     expect(screen.queryByText('Hello')).toBe(null);
   });
 
   it('will handle children if managed by this', () => {
-    class Control extends State {
-      props!: { value: string };
+    class Control extends Component<{ value: string }> {
       children = set<React.ReactNode>();
 
       render() {
@@ -310,7 +276,7 @@ describe('render method', () => {
   });
 
   it('will refresh on update', async () => {
-    class Control extends State {
+    class Control extends Component {
       value = 'bar';
 
       render() {
@@ -319,7 +285,7 @@ describe('render method', () => {
     }
 
     let control: Control;
-    const screen = render(<Control is={(x) => (control = x)} />);
+    const screen = render(<Control is={(x: Control) => (control = x)} />);
 
     screen.getByText('bar');
 
@@ -332,42 +298,44 @@ describe('render method', () => {
   });
 });
 
-describe('State.FC', () => {
-  it('will have correct types', () => {
-    class Control extends State {
-      foo = 'bar';
-      bar = 'baz';
-    }
-
-    interface CorrectProps {
-      baz: string;
-      foo?: string | undefined;
-      bar?: string | undefined;
-      is?: (instance: Control) => void;
-    }
-
-    const Component = (props: { baz: string }) => {
-      expect<CorrectProps>(props);
-      return <div>{props.baz}</div>;
+describe('types', () => {
+  it('will not compromise existing Component props', () => {
+    const FunctionComponent = (props: {
+      /** this is foo */
+      foo: string;
+    }) => {
+      return <div>Hello {props.foo}</div>;
     };
 
-    expect<React.FC<CorrectProps>>(Component);
+    class ClassComponent extends ReactComponent<{ bar: string }> {
+      render() {
+        return <div>Hello {this.props.bar}</div>;
+      }
+    }
+
+    const screen = render(<FunctionComponent foo="bar" />);
+
+    screen.getByText('Hello bar');
+
+    screen.rerender(<ClassComponent bar="baz" />);
+
+    screen.getByText('Hello baz');
   });
 });
 
 describe('suspense', () => {
-  it('will render fallback prop', async () => {
+  it('will render fallback prop via Provider', async () => {
     class Foo extends State {
       value = set<string>();
     }
 
     let foo!: Foo;
-    const Consumer = () => (foo = Foo.get()).value;
+    const FooConsumer = () => (foo = Foo.get()).value;
 
     const element = render(
-      <Foo fallback={<span>Loading...</span>}>
-        <Consumer />
-      </Foo>
+      <Provider for={Foo} fallback={<span>Loading...</span>}>
+        <FooConsumer />
+      </Provider>
     );
 
     element.getByText('Loading...');
@@ -378,7 +346,7 @@ describe('suspense', () => {
   });
 
   it('will fallback when own render suspends', async () => {
-    class Foo extends State {
+    class Foo extends Component {
       value = set<string>();
       fallback = (<span>Loading!</span>);
       render() {
@@ -388,7 +356,7 @@ describe('suspense', () => {
 
     let foo!: Foo;
 
-    const element = render(<Foo is={(x) => (foo = x)} />);
+    const element = render(<Foo is={(x: Foo) => (foo = x)} />);
 
     element.getByText('Loading!');
 
@@ -400,27 +368,22 @@ describe('suspense', () => {
   });
 
   it('will use fallback property first', async () => {
-    class Foo extends State {
+    class Foo extends Component {
       value = set<string>();
       fallback = (<span>Loading!</span>);
+
+      render() {
+        return <Consumer for={Foo}>{(f) => f.value}</Consumer>;
+      }
     }
 
     let foo!: Foo;
-    const Consumer = () => Foo.get().value;
 
-    const element = render(
-      <Foo is={(x) => (foo = x)}>
-        <Consumer />
-      </Foo>
-    );
+    const element = render(<Foo is={(x: Foo) => (foo = x)} />);
 
     element.getByText('Loading!');
 
-    element.rerender(
-      <Foo fallback={<span>Loading...</span>}>
-        <Consumer />
-      </Foo>
-    );
+    element.rerender(<Foo fallback={<span>Loading...</span>} />);
 
     element.getByText('Loading...');
 
@@ -432,19 +395,18 @@ describe('suspense', () => {
   });
 
   it('will update with new fallback', async () => {
-    class Foo extends State {
+    class Foo extends Component {
       value = set<string>();
       fallback = (<span>Loading!</span>);
+
+      render() {
+        return <Consumer for={Foo}>{(f) => f.value}</Consumer>;
+      }
     }
 
     let foo!: Foo;
-    const Consumer = () => Foo.get().value;
 
-    const element = render(
-      <Foo is={(x) => (foo = x)}>
-        <Consumer />
-      </Foo>
-    );
+    const element = render(<Foo is={(x: Foo) => (foo = x)} />);
 
     element.getByText('Loading!');
 
@@ -461,36 +423,6 @@ describe('suspense', () => {
     });
 
     element.getByText('Hello World');
-  });
-});
-
-describe('types', () => {
-  it('will not compromise existing Component props', () => {
-    const FunctionComponent = (props: {
-      /** this is foo */
-      foo: string;
-    }) => {
-      return <div>Hello {props.foo}</div>;
-    };
-
-    class ClassComponent extends Component {
-      readonly props!: {
-        /** this is bar */
-        bar: string;
-      };
-
-      render() {
-        return <div>Hello {this.props.bar}</div>;
-      }
-    }
-
-    const screen = render(<FunctionComponent foo="bar" />);
-
-    screen.getByText('Hello bar');
-
-    screen.rerender(<ClassComponent bar="baz" />);
-
-    screen.getByText('Hello baz');
   });
 });
 
@@ -524,116 +456,5 @@ describe.skip('implicit context', () => {
     await act(async () => parent.set({ value: 'barfoo' }));
 
     screen.getByText('barfoo');
-  });
-
-  it('will recycle context', () => {
-    class Foo extends State {}
-    class Bar extends State {}
-    class Baz extends State {
-      foo = get(Foo);
-      bar = get(Bar);
-
-      protected new() {
-        baz = this;
-      }
-    }
-
-    let baz!: Baz;
-    const Outer = (props: React.PropsWithChildren) => {
-      Foo.use();
-      Bar.use();
-
-      return props.children;
-    };
-
-    render(
-      <Outer>
-        <Baz />
-      </Outer>
-    );
-
-    expect(baz.foo).toBeInstanceOf(Foo);
-    expect(baz.bar).toBeInstanceOf(Bar);
-  });
-});
-
-describe.skip('implicit return', () => {
-  it('will return element', () => {
-    const Test = (props: { name?: string }) => {
-      <div>Hello {props.name || 'World'}</div>;
-    };
-
-    const element = render(<Test />);
-    screen.getByText('Hello World');
-
-    element.rerender(<Test name="Foo" />);
-    screen.getByText('Hello Foo');
-  });
-
-  it('will select last element', () => {
-    const Test = (props: { hi?: boolean }) => {
-      if (props.hi)
-        <div>
-          <span>Hello</span>
-          <span>World</span>
-        </div>;
-      else <div>Goodbye World</div>;
-    };
-
-    const element = render(<Test />);
-    screen.getByText('Goodbye World');
-
-    element.rerender(<Test hi />);
-    screen.getByText('Hello');
-    screen.getByText('World');
-  });
-
-  it('will always select returned', () => {
-    const Test = (props: { hi?: boolean }) => {
-      const hi = <span>Hello World</span>;
-      const bye = <div>Goodbye World</div>;
-
-      return props.hi ? hi : bye;
-    };
-
-    render(<Test hi />);
-    screen.getByText('Hello World');
-  });
-
-  it('will ignore non-arrow functions', () => {
-    const Container = (props: { children: React.ReactNode }) => {
-      const [child1, child2, child3] = Children.toArray(props.children);
-
-      // Runtime wraps arrow functions in an HOC so should be different.
-      expect(isValidElement(child1) && child1.type !== ArrowFunction).toBe(
-        true
-      );
-
-      // function expressions and declarations are not wrapped.
-      expect(isValidElement(child2) && child2.type === FunctionExpression).toBe(
-        true
-      );
-      expect(
-        isValidElement(child3) && child3.type === FunctionDeclaration
-      ).toBe(true);
-
-      return null;
-    };
-
-    const ArrowFunction = () => null;
-    const FunctionExpression = function () {
-      return null;
-    };
-    function FunctionDeclaration() {
-      return null;
-    }
-
-    render(
-      <Container>
-        <ArrowFunction />
-        <FunctionExpression />
-        <FunctionDeclaration />
-      </Container>
-    );
   });
 });
