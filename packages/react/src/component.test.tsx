@@ -203,6 +203,7 @@ describe('State.as()', () => {
   it('will render fallback with external render', async () => {
     class Foo extends State {
       value = set<string>();
+      fallback = (<span>Loading...</span>);
     }
 
     let foo!: Foo;
@@ -210,7 +211,7 @@ describe('State.as()', () => {
 
     const Consumer = () => (foo = Foo.get()).value;
 
-    const element = render(<Provider fallback={<span>Loading...</span>} />);
+    const element = render(<Provider />);
 
     element.getByText('Loading...');
 

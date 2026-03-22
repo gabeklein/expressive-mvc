@@ -5,6 +5,7 @@ import { Pragma } from './state';
 import { Consumer, Provider } from './context';
 
 import './component';
+export { BaseComponent as Component } from './component';
 
 Pragma.useEffect = useEffect;
 Pragma.useState = useState;
