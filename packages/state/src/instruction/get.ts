@@ -40,8 +40,13 @@ function get<T extends State>(
 /**
  * Collects downstream States, accumulating all instances of specified type
  * for which this is an ancestor. Returns an array that updates as States
- * are added or removed. Callback runs on each registration and can return
- * cleanup or false to prevent registration.
+ * are added or removed.
+ *
+ * By default, collection is shallow - stops at contexts which themselves
+ * provide the same type. Use `recursive` to collect through all nested scopes.
+ *
+ * Callback runs on each registration and can return cleanup or false to
+ * prevent registration.
  *
  * @param Type - Type of State to collect.
  * @param downstream - Must be true to enable downstream mode.
@@ -83,12 +88,29 @@ function get<T extends State>(
   required: false
 ): T | undefined;
 
+/**
+ * Recursively collects all downstream States of specified type,
+ * including those nested within intermediate providers of the same type.
+ *
+ * @param Type - Type of State to collect.
+ * @param downstream - Must be true to enable downstream mode.
+ * @param callback - Optional lifecycle callback.
+ * @param recursive - Collect through all nested scopes.
+ */
+function get<T extends State>(
+  Type: State.Extends<T>,
+  downstream: true,
+  callback: get.Callback<T> | undefined,
+  recursive: true
+): T[];
+
 function get<T extends State>(
   Type: Type<T>,
   arg1?: get.Callback<T> | boolean,
-  arg2?: get.Callback<T> | boolean
+  arg2?: get.Callback<T> | boolean,
+  arg3?: boolean
 ) {
-  if (arg1 === true) return getDownstream(Type, arg2);
+  if (arg1 === true) return getDownstream(Type, arg2, arg3);
 
   return apply<T>((key, subject) => {
     const hasParent = PARENT.get(subject) as T;
@@ -130,7 +152,8 @@ function get<T extends State>(
 
 function getDownstream<T extends State>(
   Type: Type<T>,
-  arg: get.Callback<T> | boolean | undefined
+  arg: get.Callback<T> | boolean | undefined,
+  recursive?: boolean
 ) {
   return apply<T[]>((key, subject) => {
     const context = Context.get(subject);
@@ -143,7 +166,7 @@ function getDownstream<T extends State>(
           update(subject, key, undefined);
         }, null);
         return ignore;
-      });
+      }, recursive);
 
       return {
         get: arg,
@@ -191,7 +214,7 @@ function getDownstream<T extends State>(
       const ignore = state.set(done, null);
 
       return done;
-    });
+    }, recursive);
 
     return {
       value: [],

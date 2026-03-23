@@ -334,6 +334,22 @@ describe('has method', () => {
     expect(entries[0]).toBeInstanceOf(DownstreamState);
   });
 
+  it('will stop at intermediate provider by default', () => {
+    const root = new Context();
+    const child = root.push(DownstreamState);
+    child.push(DownstreamState);
+
+    expect(root.all(DownstreamState)).toHaveLength(1);
+  });
+
+  it('will collect through intermediate providers with recursive', () => {
+    const root = new Context();
+    const child = root.push(DownstreamState);
+    child.push(DownstreamState);
+
+    expect(root.all(DownstreamState, true)).toHaveLength(2);
+  });
+
   it('will skip contexts without matching type', () => {
     class Unrelated extends State {}
     const root = new Context();
