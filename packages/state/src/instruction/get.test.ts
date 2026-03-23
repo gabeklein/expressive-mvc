@@ -176,6 +176,18 @@ describe('fetch mode', () => {
     expect(bar.baz.foo).toBeInstanceOf(Foo);
   });
 
+  it('will not resolve as own instance', () => {
+    class MaybeSelf extends State {
+      parent = get(MaybeSelf, false);
+    }
+
+    const instance = new MaybeSelf();
+
+    new Context(instance);
+
+    expect(instance.parent).toBeUndefined();
+  });
+
   it('will not be enumerable', () => {
     class Ambient extends State {}
     class Test extends State {
@@ -397,7 +409,7 @@ describe('fetch mode', () => {
         expect(parent.children.length).toBe(0);
       });
 
-      it('will collect own type', async () => {
+      it('will collect own type (shallow)', async () => {
         class Test extends State {
           tests = get(Test, true);
         }
@@ -408,8 +420,81 @@ describe('fetch mode', () => {
 
         new Context(test).push(test2).push(test3);
 
-        expect(test.tests).toEqual([test2, test3]);
+        expect(test.tests).toEqual([test2]);
         expect(test2.tests).toEqual([test3]);
+      });
+
+      it('will not collect past intermediate provider', async () => {
+        class Route extends State {
+          children = get(Route, true);
+        }
+
+        const root = new Route();
+        const child = new Route();
+        const grandchild = new Route();
+
+        new Context(root).push(child).push(grandchild);
+
+        expect(root.children).toEqual([child]);
+        expect(child.children).toEqual([grandchild]);
+
+        // grandchild should not appear in root
+        expect(root.children).not.toContain(grandchild);
+      });
+
+      it('will collect recursively when specified', async () => {
+        class Route extends State {
+          all = get(Route, true, undefined, true);
+        }
+
+        const root = new Route();
+        const child = new Route();
+        const grandchild = new Route();
+
+        const ctx = new Context(root);
+        const inner = ctx.push(child);
+        inner.push(grandchild);
+
+        expect(root.all).toEqual([child, grandchild]);
+      });
+
+      it('will collect recursive late additions', async () => {
+        class Route extends State {
+          all = get(Route, true, undefined, true);
+        }
+
+        const root = new Route();
+        const child = new Route();
+        const ctx = new Context(root);
+        const inner = ctx.push(child);
+
+        expect(root.all).toEqual([child]);
+
+        const grandchild = new Route();
+        inner.push(grandchild);
+
+        await expect(root).toHaveUpdated();
+        expect(root.all).toEqual([child, grandchild]);
+      });
+
+      it('will not collect late additions past intermediate provider', async () => {
+        class Route extends State {
+          children = get(Route, true);
+        }
+
+        const root = new Route();
+        const child = new Route();
+        const outer = new Context(root);
+        const inner = outer.push(child);
+
+        expect(root.children).toEqual([child]);
+
+        const grandchild = new Route();
+        inner.push(grandchild);
+
+        await expect(child).toHaveUpdated();
+        expect(child.children).toEqual([grandchild]);
+        expect(root.children).not.toContain(grandchild);
       });
 
       it('will ignore redundant child', async () => {
@@ -793,4 +878,3 @@ describe('lifecycle callbacks', () => {
     expect(didNotify).toBeCalledTimes(1);
   });
 });
-
