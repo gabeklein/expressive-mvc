@@ -11,7 +11,7 @@ import {
 
 import { Suspense } from 'react';
 
-import { State, Consumer, get, Provider, set } from '.';
+import { State, Consumer, Context, get, Provider, set } from '.';
 
 const error = vi.spyOn(console, 'error').mockImplementation(() => {});
 
@@ -454,6 +454,10 @@ describe('Consumer', () => {
         </Provider>
       </Provider>
     );
+  });
+
+  it('will return root context if called outside render', () => {
+    expect(Context.get()).toBe(Context.root);
   });
 
   it('will handle complex arrangement', () => {
