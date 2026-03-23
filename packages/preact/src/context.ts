@@ -10,8 +10,11 @@ const _get = Context.get;
 
 Context.get = (state?) => {
   if (state) return _get(state);
-  try { return useContext(Lookup); }
-  catch { return Context.root; }
+  try {
+    return useContext(Lookup);
+  } catch {
+    return Context.root;
+  }
 };
 
 declare namespace Consumer {
@@ -68,4 +71,4 @@ function Provider<T extends State>(props: Provider.Props<T>) {
   );
 }
 
-export { Consumer, Provider, Lookup };
+export { Consumer, Provider, Lookup, Context };
