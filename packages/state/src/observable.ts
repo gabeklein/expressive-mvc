@@ -166,8 +166,6 @@ function emit(state: Observable, key: Signal): void {
 
   PENDING.set(state, (pending = new Set(isReady ? [key] : [true, key])));
 
-  if (key === true || key === null) READY.set(state, key);
-
   const listeners = LISTENERS.get(state)!;
 
   for (const key of pending)
@@ -183,6 +181,8 @@ function emit(state: Observable, key: Signal): void {
       }
 
   if (key === null) listeners.clear();
+
+  if (key === true || key === null) READY.set(state, key);
 
   PENDING.delete(state);
 }

@@ -865,6 +865,25 @@ describe('get method', () => {
       expect(effect).toBeCalledTimes(3);
     });
 
+    it('will not call twice if set up during init', () => {
+      const didUpdate = vi.fn();
+
+      class Control extends State {
+        value = 'foo';
+
+        protected new() {
+          this.get(({ value }) => {
+            didUpdate(value);
+          });
+        }
+      }
+
+      Control.new();
+
+      expect(didUpdate).toBeCalledTimes(1);
+      expect(didUpdate).toBeCalledWith('foo');
+    });
+
     it('will squash simultaneous updates', async () => {
       const test = Test.new();
       const mock = vi.fn();
