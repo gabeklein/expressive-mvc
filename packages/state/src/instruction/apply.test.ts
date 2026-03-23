@@ -172,6 +172,23 @@ describe('instruction', () => {
         await expect(instance).not.toHaveUpdated();
       });
 
+      it('will update silently if callback throws true', async () => {
+        class Test extends State {
+          property = apply(() => ({
+            value: 'foo',
+            set: () => { throw true; }
+          }));
+        }
+
+        const test = Test.new();
+
+        expect(test.property).toBe('foo');
+
+        test.property = 'bar';
+        expect(test.property).toBe('bar');
+        await expect(test).not.toHaveUpdated();
+      });
+
       it('will not update twice on reassignment', () => {
         class Test extends State {
           property = apply<string>(() => ({
