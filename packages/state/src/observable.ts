@@ -264,10 +264,8 @@ function watch<T extends Observable>(
 
       ignore = true;
 
-      if (reset && unset) {
-        unset(true);
-        unset = undefined;
-      }
+      unset!(true);
+      unset = undefined;
 
       enqueue(invoke);
     }
