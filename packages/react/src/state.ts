@@ -115,9 +115,7 @@ State.use = function <T extends State>(
     const add = (arg: unknown) =>
       typeof arg == 'object' && instance.set(arg as State.Assign<T>);
 
-    let use = (...args: State.Args<T>) => {
-      return Promise.all(args.flat().map(add));
-    };
+    let use = (...args: State.Args<T>) => Promise.all(args.flat().map(add));
 
     const instance = new this((x) => {
       if (x instanceof State && 'use' in x && typeof x.use == 'function') {
