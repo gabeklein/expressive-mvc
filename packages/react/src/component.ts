@@ -8,36 +8,18 @@ export type StateProps<T extends State> = {
   [K in Exclude<keyof T, keyof Component>]?: T[K];
 };
 
-export type Render<T extends State, P extends object> = ((
-  props: P & StateProps<T>,
-  self: T
-) => ReactNode) &
-  PropsValid<P, T>;
+type AssertCompat<T extends State, P> = {
+  [K in keyof P]: K extends keyof StateProps<T>
+    ? StateProps<T>[K & keyof StateProps<T>]
+    : P[K]
+};
 
-type Overlap<P extends object, V extends object> = Extract<keyof P, keyof V>;
-
-type PropsConflicting<P extends object, V extends object> = {
-  [K in Overlap<P, V>]: [P[K]] extends [V[K]] ? never : K;
-}[Overlap<P, V>];
-
-type PropsValid<P extends object, T extends State> = [
-  PropsConflicting<P, StateProps<T>>
-] extends [never]
-  ? unknown
-  : never;
-
-export type Props<T extends State> = Readonly<
-  StateProps<T> & {
+export type Props<T extends State, P extends AssertCompat<T, P> = {}> = Readonly<
+  StateProps<T> & P & {
     /**
      * Callback for newly created instance. Only called once.
      */
     is?: (instance: T) => void;
-
-    /**
-     * A fallback react tree to show when suspended.
-     * If not provided, `fallback` property of the State will be used.
-     */
-    fallback?: ReactNode;
 
     /**
      * Children to render within component. Will be passed as `children` prop.
@@ -63,83 +45,11 @@ export interface Component<P = {}> extends State {
   componentWillUnmount(): void;
 }
 
-export type ComponentType<T, P = {}> = State.Type<T & Component<P>>;
-
 declare module '@expressive/state' {
-  namespace State {
-    function as<T extends State, P extends object = {}>(
-      this: State.Type<T>,
-      render?: Render<T, P>
-    ): ComponentType<T, P>;
-
-    function as<T extends State, P extends object = {}>(
-      this: ComponentType<T, P>,
-      withProps: StateProps<T>
-    ): ComponentType<T, P>;
-
-    function as<T extends State>(
-      this: State.Type<T>,
-      withProps: StateProps<T>
-    ): ComponentType<T, {}>;
-  }
-
   namespace State {
     export type { Component, Props };
   }
 }
-
-State.as = function <T extends State, P extends object = {}>(
-  this: State.Type<T>,
-  argument?: ((props: P, self: T) => ReactNode) | StateProps<T>
-) {
-  const render = typeof argument === 'function' ? argument : undefined;
-
-  class ReactType extends (this as unknown as State.Type<State>) {
-    static contextType = Layers;
-
-    fallback?: ReactNode;
-
-    get props(): Props<any> {
-      return PROPS.get(this.is)!;
-    }
-
-    private set props(props: Props<any>) {
-      PROPS.set(this.is, props);
-      this.set(props as {});
-    }
-
-    get state() {
-      return this.get();
-    }
-
-    private set state(_state: State.Values<this>) {}
-
-    shouldComponentUpdate() {
-      return true;
-    }
-
-    constructor(nextProps: any, ...rest: any[]) {
-      const { is, ...props } = nextProps;
-      const defaults = typeof argument === 'object' ? argument : {};
-
-      if (rest[0] instanceof Context) rest.shift();
-
-      super(props, defaults, rest, is && ((x) => void is(x)));
-      PROPS.set(this, props);
-    }
-  }
-
-  if (render)
-    Object.defineProperty(ReactType.prototype, 'render', {
-      configurable: true,
-      writable: true,
-      value: render
-    });
-
-  Object.defineProperty(ReactType, 'name', { value: 'React' + this.name });
-
-  return ReactType as unknown as ComponentType<T, P>;
-};
 
 Object.defineProperty(State, 'contextType', {
   configurable: true,
@@ -181,7 +91,7 @@ Object.defineProperties(State.prototype, {
       }
 
       const render = unbind(this.render);
-      const Wrapped = Render.bind(self, render);
+      const Wrapped = (Render as Function).bind(self, render);
       self.render = () => createElement(Wrapped);
     },
     get() {
@@ -190,9 +100,9 @@ Object.defineProperties(State.prototype, {
   }
 });
 
-function Render<T extends Component, P extends State.Assign<T>>(
+function Render<T extends Component>(
   this: T,
-  render?: (props: P, self: T) => ReactNode
+  render: (self: T) => ReactNode
 ) {
   const state = useState(() => {
     let ready: boolean | undefined;
@@ -204,9 +114,7 @@ function Render<T extends Component, P extends State.Assign<T>>(
       if (ready) state[1]((x) => x.bind(null));
     });
 
-    const View = render
-      ? () => render.call(active, this.props as any, active)
-      : () => this.props.children || null;
+    const View = () => render.call(active, active);
 
     return () => {
       ready = false;
@@ -218,7 +126,7 @@ function Render<T extends Component, P extends State.Assign<T>>(
       return createElement(Provide, {
         context: this.context,
         name: String(this),
-        fallback: this.props.fallback || active.fallback,
+        fallback: active.fallback,
         children: createElement(View)
       });
     };
