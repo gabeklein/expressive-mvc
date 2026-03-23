@@ -12,4 +12,5 @@ Pragma.createElement = createElement;
 
 export { State, State as default };
 export { Context, Observable, apply, get, ref, set } from '@expressive/state';
+export { Component } from './component';
 export { Consumer, Provider };
