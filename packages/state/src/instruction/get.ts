@@ -40,8 +40,13 @@ function get<T extends State>(
 /**
  * Collects downstream States, accumulating all instances of specified type
  * for which this is an ancestor. Returns an array that updates as States
- * are added or removed. Callback runs on each registration and can return
- * cleanup or false to prevent registration.
+ * are added or removed.
+ *
+ * By default, collection is shallow - stops at contexts which themselves
+ * provide the same type. Use `recursive` to collect through all nested scopes.
+ *
+ * Callback runs on each registration and can return cleanup or false to
+ * prevent registration.
  *
  * @param Type - Type of State to collect.
  * @param downstream - Must be true to enable downstream mode.

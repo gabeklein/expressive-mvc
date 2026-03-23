@@ -2,6 +2,8 @@ import { listener } from './observable';
 import { event, State, uid } from './state';
 
 const LOOKUP = new WeakMap<State, Context>();
+const SHALLOW = new WeakMap<Function, Function>();
+
 
 type Accept<T extends State = State> =
   | T
@@ -150,10 +152,20 @@ class Context {
       throw new Error(`Could not find ${Type} in context.`);
   }
 
-  /** Get all downstream States of a type. */
+  /**
+   * Get all downstream States of a type.
+   *
+   * Collection is shallow - stops at contexts which
+   * themselves provide the same type.
+   */
   public all<T extends State>(Type: State.Extends<T>): T[];
 
-  /** Subscribe to downstream States of a type. */
+  /**
+   * Subscribe to downstream States of a type.
+   *
+   * Collection is shallow - stops at contexts which
+   * themselves provide the same type.
+   */
   public all<T extends State>(
     Type: State.Extends<T>,
     callback: Expect<T>
@@ -168,12 +180,24 @@ class Context {
     this.traverse((ctx) => {
       const has = ctx.provide.get(Type);
       if (has) for (const x of has) results.push(x[0] as T);
-      return has !== undefined;
+      return has === null;
     });
 
     if (!callback) return results;
     for (const state of results) callback(state, true);
-    return this.register(Type, [callback, true], true);
+
+    const self = this;
+    const shallow: Expect<T> = (state, existing) => {
+      const ctx = LOOKUP.get(state.is)!;
+      for (let c = ctx.parent; c && c !== self; c = c.parent)
+        if (c.provide.get(Type) instanceof Set) return;
+
+      return callback(state, existing);
+    };
+
+    SHALLOW.set(shallow, callback);
+
+    return this.register(Type, [shallow, true], true);
   }
 
   /**
@@ -247,7 +271,7 @@ class Context {
         if (list)
           for (const [cb, filter] of list)
             if (filter === downstream)
-              expects.set(cb, () => {
+              expects.set((SHALLOW.get(cb) || cb) as Expect, () => {
                 const r = cb(I, false);
                 if (r) onDone.add(r);
               });
@@ -258,7 +282,8 @@ class Context {
     for (const T of TT) onDone.add(this.register(T, [I, !implicit]));
 
     queue(this, false);
-    for (let ctx = this.parent; ctx; ctx = ctx.parent) queue(ctx, true);
+    for (let ctx = this.parent; ctx; ctx = ctx.parent)
+      queue(ctx, true);
     this.traverse((ctx) => queue(ctx, false));
 
     if (!LOOKUP.has(I)) LOOKUP.set(I, this);
