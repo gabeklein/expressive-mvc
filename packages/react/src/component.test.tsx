@@ -203,6 +203,59 @@ describe('props property', () => {
     rerender(<Control value="bar" />);
     screen.getByText('bar');
   });
+
+  it('will be observable', async () => {
+    const didUpdate = vi.fn();
+
+    class Control extends Component {
+      protected new() {
+        this.get(({ props }, keys) => {
+          didUpdate(props);
+        });
+      }
+
+      render(props = {} as { value: string }) {
+        return <>{props.value}</>;
+      }
+    }
+
+    const { rerender } = render(<Control value="foo" />);
+
+    expect(didUpdate).toBeCalledWith({ value: 'foo' });
+
+    await act(async () => {
+      rerender(<Control value="bar" />);
+    });
+
+    expect(didUpdate).toBeCalledWith({ value: 'bar' });
+    expect(didUpdate).toBeCalledTimes(2);
+  });
+
+  it('will not cause redundant render', async () => {
+    const didRender = vi.fn();
+    let control: Control;
+
+    class Control extends Component {
+      new() {
+        control = this;
+      }
+
+      render(props = {} as { value: string }) {
+        didRender();
+        return <>{props.value}</>;
+      }
+    }
+
+    const { rerender } = render(<Control value="foo" />);
+
+    expect(didRender).toBeCalledTimes(1);
+
+    rerender(<Control value="bar" />);
+
+    await expect(control!).toHaveUpdated();
+
+    expect(didRender).toBeCalledTimes(2);
+  });
 });
 
 describe('render method', () => {

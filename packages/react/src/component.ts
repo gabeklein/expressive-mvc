@@ -2,8 +2,6 @@ import { State, Context, watch, unbind } from '@expressive/state';
 import { ReactNode, createElement, useState, useEffect } from 'react';
 import { Layers, Provide } from './context';
 
-const PROPS = new WeakMap<object, Props<any>>();
-
 export type StateProps<T extends State> = {
   [K in Exclude<keyof T, keyof Component>]?: T[K];
 };
@@ -38,8 +36,10 @@ class Component extends State {
   /**
    * All JSX attributes passed to this component.
    * Includes state-derived props, render props, and built-in props like `is` and `fallback`.
+   *
+   * Will incorperate extra props you declare as props parameter in `render` method.
    */
-  declare readonly props: Props<this>;
+  readonly props: Props<this>;
 
   /** @deprecated Only to satisfy React JSX. Use `this.get(State)` instead. */
   declare readonly context: Context;
@@ -63,7 +63,10 @@ class Component extends State {
     const { is, ...props } = nextProps;
     rest = rest.filter((x) => !(x instanceof Context));
     super(props, rest, is && ((x: any) => void is(x)));
-    PROPS.set(this, nextProps);
+    this.props = nextProps;
+    this.set(() => {
+      this.set(this.props as {});
+    }, 'props');
   }
 
   /**
@@ -108,15 +111,6 @@ Object.defineProperties(Component.prototype, {
       return this.get();
     },
     set() {}
-  },
-  props: {
-    get(this: Component) {
-      return PROPS.get(this.is)!;
-    },
-    set(this: Component, props: Props<any>) {
-      PROPS.set(this.is, props);
-      this.set(props as {});
-    }
   },
   context: {
     configurable: true,
