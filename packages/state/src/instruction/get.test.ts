@@ -176,6 +176,18 @@ describe('fetch mode', () => {
     expect(bar.baz.foo).toBeInstanceOf(Foo);
   });
 
+  it('will not resolve as own instance', () => {
+    class MaybeSelf extends State {
+      parent = get(MaybeSelf, false);
+    }
+
+    const instance = new MaybeSelf();
+
+    new Context(instance);
+
+    expect(instance.parent).toBeUndefined();
+  });
+
   it('will not be enumerable', () => {
     class Ambient extends State {}
     class Test extends State {
