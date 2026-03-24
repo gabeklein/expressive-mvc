@@ -17,6 +17,26 @@ it('will create and provide instance', () => {
   screen.getByText('bar');
 });
 
+it('will tolerate react strict mode', () => {
+  const didCreate = vi.fn();
+
+  class Control extends Component {
+    foo = 'bar';
+
+    new() {
+      didCreate();
+    }
+  }
+
+  render(
+    <React.StrictMode>
+      <Control />
+    </React.StrictMode>
+  );
+
+  expect(didCreate).toBeCalledTimes(1);
+});
+
 it('will create instance only once', () => {
   class Control extends Component {
     protected new() {
