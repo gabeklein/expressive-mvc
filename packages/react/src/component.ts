@@ -153,9 +153,14 @@ function bootstrap(this: Component, context: Context) {
   }
 
   function Component() {
-    refresh = useState(0)[1];
+    const ready = useState(0)[1];
 
-    useEffect(() => unmount, []);
+    refresh = ready;
+
+    useEffect(() => {
+      refresh = ready;
+      return unmount;
+    }, []);
 
     return createElement(Provide, {
       context,

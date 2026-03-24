@@ -231,43 +231,6 @@ describe('props property', () => {
     expect(didUpdate).toBeCalledTimes(2);
   });
 
-  it.todo('will not refresh from side-effect during render', async () => {
-    const didRender = vi.fn();
-    let instance!: Control;
-
-    class Control extends Component {
-      label?: string = 'foo';
-
-      new() {
-        instance = this;
-      }
-
-      render() {
-        didRender();
-        if (!this.label) this.label = 'baz';
-        return <span>{this.label}</span>;
-      }
-    }
-
-    render(<Control />);
-    screen.getByText('foo');
-    expect(didRender).toBeCalledTimes(1);
-
-    await act(async () => {
-      instance.label = 'bar';
-    });
-
-    screen.getByText('bar');
-    expect(didRender).toBeCalledTimes(2);
-
-    await act(async () => {
-      instance.label = undefined;
-    });
-
-    screen.getByText('baz');
-    expect(didRender).toBeCalledTimes(3);
-  });
-
   it('will not cause redundant render', async () => {
     const didRender = vi.fn();
     let control: Control;
