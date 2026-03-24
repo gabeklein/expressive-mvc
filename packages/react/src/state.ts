@@ -1,8 +1,9 @@
 import { State, Context, watch } from '@expressive/state';
 
 export const Pragma = {} as {
-  useState<S>(initial: () => S): [S, (next: (previous: S) => S) => void];
+  useState<S>(initial: S): [S, (next: (previous: S) => S) => void];
   useEffect(effect: () => (() => void) | void, deps?: any[]): void;
+  useRef<T>(initial: T): { current: T };
   createElement(type: any, props?: any, ...children: any[]): any;
 };
 
@@ -108,12 +109,13 @@ State.use = function <T extends State>(
   ...args: State.UseArgs<T>
 ) {
   const outer = Context.get();
-  const state = Pragma.useState(() => {
-    let ready: boolean | undefined;
-    let active: T;
+  const ref = Pragma.useRef<((args: State.Args<T>) => T) | null>(null);
+  const next = Pragma.useState(0)[1];
 
-    const add = (arg: unknown) =>
-      typeof arg == 'object' && instance.set(arg as State.Assign<T>);
+  if (!ref.current) {
+    function add(arg: unknown) {
+      return typeof arg == 'object' && instance.set(arg as State.Assign<T>);
+    }
 
     let use = (...args: State.Args<T>) => Promise.all(args.flat().map(add));
 
@@ -128,57 +130,72 @@ State.use = function <T extends State>(
 
     const context = outer.push(instance);
 
+    let first = true;
+    let mounted = false;
+    let active: T;
+
     watch(instance, (current) => {
       active = current;
 
-      if (ready) state[1]((x) => x.bind(null));
+      if (first) first = false;
+      else next((x) => x + 1);
     });
 
-    function didMount() {
-      ready = true;
-      return () => {
-        context.pop();
-        instance.set(null);
-      };
-    }
+    ref.current = (args) => {
+      Pragma.useEffect(() => {
+        mounted = true;
+        return () => {
+          mounted = false;
+          queueMicrotask(() => {
+            if (!mounted) {
+              context.pop();
+              instance.set(null);
+            }
+          });
+        };
+      }, []);
 
-    return (...args: State.Args<T>) => {
-      Pragma.useEffect(didMount, []);
-
-      if (ready) {
-        ready = false;
+      if (mounted) {
+        mounted = false;
 
         Promise.resolve(use(...args)).finally(() => {
-          ready = true;
+          mounted = true;
         });
       }
 
       return active;
     };
-  });
+  }
 
-  return state[0](...args);
+  return ref.current(args);
 };
 
 State.get = function <T extends State, R>(
   this: State.Extends<T>,
   argument?: boolean | State.GetFactory<T, unknown>
 ) {
+  const ref = Pragma.useRef<(() => any) | null>(null);
+  const next = Pragma.useState(0)[1];
   const context = Context.get();
-  const state = Pragma.useState(() => {
+
+  if (!ref.current) ref.current = init(this);
+
+  return ref.current();
+
+  function init(Type: State.Extends<T>) {
     let instance: T | undefined;
     let unwatch: (() => void) | undefined;
     let mounted = false;
     let value: any;
 
-    function render() {
-      state[1]((x) => x.bind(null));
+    function update() {
+      next((x) => x + 1);
     }
 
     function refresh<T>(action?: Promise<T> | (() => Promise<T>)): any {
       if (typeof action == 'function') action = action();
-      render();
-      if (action instanceof Promise) return action.finally(render);
+      update();
+      if (action instanceof Promise) return action.finally(update);
     }
 
     function bind(target: State) {
@@ -196,15 +213,20 @@ State.get = function <T extends State, R>(
           } else value = current;
 
           if (first) first = false;
-          else render();
+          else update();
         },
         argument === true
       );
     }
 
+    function release() {
+      unwatch?.();
+      unsubscribe();
+    }
+
     let pending = false;
 
-    const unsubscribe = context.get(this, (next) => {
+    const unsubscribe = context.get(Type, (next) => {
       bind((instance = next));
 
       if (mounted) {
@@ -212,7 +234,7 @@ State.get = function <T extends State, R>(
         queueMicrotask(() => {
           if (pending) {
             pending = false;
-            render();
+            update();
           }
         });
       }
@@ -227,38 +249,31 @@ State.get = function <T extends State, R>(
     if (!instance) {
       unsubscribe();
       if (argument === false) return () => undefined;
-      else throw new Error(`Could not find ${this} in context.`);
+      throw new Error(`Could not find ${Type} in context.`);
     }
 
     if (value instanceof Promise) {
       let error: Error | undefined;
 
-      unwatch?.();
-      unsubscribe();
+      release();
 
       value
         .then(
           (x) => (value = x),
           (e) => (error = e)
         )
-        .finally(render);
+        .finally(update);
 
       value = null;
 
       return () => {
         if (error) throw error;
-
         return value === undefined ? null : value;
       };
     }
 
-    const done = () => {
-      unwatch?.();
-      unsubscribe();
-    };
-
     if (value === null) {
-      done();
+      release();
       return () => null;
     }
 
@@ -269,15 +284,13 @@ State.get = function <T extends State, R>(
         return () => {
           mounted = false;
           queueMicrotask(() => {
-            if (!mounted) done();
+            if (!mounted) release();
           });
         };
       }, []);
       return value === undefined ? null : value;
     };
-  });
-
-  return state[0]() as R;
+  }
 };
 
 export { State };

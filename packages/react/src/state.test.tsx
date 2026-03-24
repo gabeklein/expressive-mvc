@@ -79,7 +79,7 @@ describe('State.use', () => {
 
       const rendered = render(<Component />);
 
-      rendered.unmount();
+      await act(async () => rendered.unmount());
 
       expect(didDestroy).toBeCalled();
     });
@@ -95,7 +95,7 @@ describe('State.use', () => {
         hook.result.current.value = 'bar';
       });
 
-      hook.unmount();
+      await act(async () => hook.unmount());
 
       expect(() => {
         hook.result.current.value = 'baz';
@@ -406,6 +406,78 @@ describe('State.use', () => {
           <Element />
         </Provider>
       );
+    });
+  });
+
+  describe('strict mode', () => {
+    it('will create once and destroy on unmount', async () => {
+      const didCreate = vi.fn();
+      const didDestroy = vi.fn();
+
+      class Test extends State {
+        protected new() {
+          didCreate();
+          return didDestroy;
+        }
+      }
+
+      const Component = () => {
+        Test.use();
+        return null;
+      };
+
+      const element = render(
+        <React.StrictMode>
+          <Component />
+        </React.StrictMode>
+      );
+
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(didCreate).toBeCalledTimes(1);
+      expect(didDestroy).not.toBeCalled();
+
+      await act(async () => element.unmount());
+
+      expect(didDestroy).toBeCalledTimes(1);
+    });
+
+    it('will refresh via property update', async () => {
+      let instance!: Test;
+
+      class Test extends State {
+        value = 'foo';
+
+        new() {
+          instance = this;
+        }
+      }
+
+      const didRender = vi.fn();
+
+      const Component = () => {
+        const test = Test.use();
+        didRender(test.value);
+        return test.value;
+      };
+
+      const element = render(
+        <React.StrictMode>
+          <Component />
+        </React.StrictMode>
+      );
+
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(didRender).toBeCalledWith('foo');
+
+      await act(async () => {
+        instance.value = 'bar';
+      });
+
+      expect(didRender).toBeCalledWith('bar');
+
+      await act(async () => element.unmount());
     });
   });
 });
