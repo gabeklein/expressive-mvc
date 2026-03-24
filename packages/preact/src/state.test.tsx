@@ -73,7 +73,9 @@ describe('State.use', () => {
 
       const rendered = render(<Component />);
 
-      rendered.unmount();
+      await act(async () => {
+        rendered.unmount();
+      });
 
       expect(didDestroy).toBeCalled();
     });
