@@ -467,14 +467,12 @@ function prepare(state: State) {
   if (T === State) throw new Error('Cannot create base State.');
 
   const chain = [] as State.Extends[];
-  let keys = new Map<string, (value: any) => void>();
+  let methods: Map<string, (value: any) => void> | undefined;
 
   ID.set(state, `${T}-${uid()}`);
 
   while (T.name) {
-    for (const cb of NOTIFY.get(T) || []) {
-      listener(state, cb);
-    }
+    NOTIFY.get(T)?.forEach((cb) => listener(state, cb));
 
     if (T === State) break;
     else chain.unshift(T);
@@ -484,11 +482,11 @@ function prepare(state: State) {
 
   for (const type of chain) {
     if (METHODS.has(type)) {
-      keys = METHODS.get(type)!;
+      methods = METHODS.get(type)!;
       continue;
     }
 
-    METHODS.set(type, (keys = new Map(keys)));
+    METHODS.set(type, (methods = new Map(methods)));
 
     for (const [key, { value }] of Object.entries(
       Object.getOwnPropertyDescriptors(type.prototype)
@@ -509,7 +507,7 @@ function prepare(state: State) {
         return bound;
       }
 
-      keys.set(key, bind);
+      methods.set(key, bind);
       define(type.prototype, key, { get: bind, set: bind });
     }
   }

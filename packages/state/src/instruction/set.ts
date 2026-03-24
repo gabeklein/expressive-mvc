@@ -92,6 +92,7 @@ function set<T, S extends State>(
  * @param onUpdate - Optional callback run when property is set.
  */
 // TODO: if onUpdate is not defined, should this have behavior unique to simple assignment?
+// TODO: must not accept bare promise because that can lead to unhandled side effects if the instance is thrown away (e.g. react strict mode)
 // I'm thinking default behavior should be to assign value directly to property, without triggering any additional updates.
 // All this requires is a default callback which throws true, silent updates are already implemented.
 function set<T>(value: T | Promise<T>, onUpdate?: set.Callback<T>): T;
