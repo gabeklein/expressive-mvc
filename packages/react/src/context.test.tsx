@@ -9,7 +9,7 @@ import {
   screen
 } from '../vitest';
 
-import { Suspense } from 'react';
+import React, { Suspense } from 'react';
 
 import { State, Consumer, Context, get, Provider, set } from '.';
 
@@ -176,7 +176,7 @@ describe('Provider', () => {
     );
   });
 
-  it('will destroy created model on unmount', () => {
+  it('will destroy created model on unmount', async () => {
     const willDestroy = vi.fn();
 
     class Test extends State {}
@@ -192,7 +192,7 @@ describe('Provider', () => {
       </Provider>
     );
 
-    act(() => element.unmount());
+    await act(async () => element.unmount());
     expect(willDestroy).toBeCalled();
   });
 
@@ -217,7 +217,7 @@ describe('Provider', () => {
       </Provider>
     );
 
-    act(() => element.unmount());
+    await act(async () => element.unmount());
     expect(willDestroy).toBeCalledTimes(2);
   });
 
@@ -277,7 +277,7 @@ describe('Provider', () => {
 
     const element = render(<Example />);
 
-    act(() => element.unmount());
+    await act(async () => element.unmount());
 
     expect(didDestroy.mock.calls).toEqual([['Child'], ['Parent']]);
   });
@@ -293,7 +293,7 @@ describe('Provider', () => {
       expect(forEach).toBeCalledWith(expect.any(Bar));
     });
 
-    it('will cleanup on unmount', () => {
+    it('will cleanup on unmount', async () => {
       const forEach = vi.fn(() => cleanup);
       const cleanup = vi.fn();
 
@@ -306,7 +306,7 @@ describe('Provider', () => {
       expect(forEach).toBeCalledWith(expect.any(Bar));
       expect(cleanup).not.toBeCalled();
 
-      act(() => rendered.unmount());
+      await act(async () => rendered.unmount());
       expect(cleanup).toBeCalledTimes(2);
     });
   });
@@ -364,6 +364,57 @@ describe('Provider', () => {
 
       element.getByText('Bar');
       expect(element.queryByText('Foo')).toBeNull();
+    });
+  });
+
+  describe('strict mode', () => {
+    it('will create once and destroy on unmount', async () => {
+      const didCreate = vi.fn();
+      const didDestroy = vi.fn();
+
+      class Test extends State {
+        protected new() {
+          didCreate();
+          return didDestroy;
+        }
+      }
+
+      const element = render(
+        <React.StrictMode>
+          <Provider for={Test} />
+        </React.StrictMode>
+      );
+
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(didCreate).toBeCalledTimes(1);
+      expect(didDestroy).not.toBeCalled();
+
+      await act(async () => element.unmount());
+
+      expect(didDestroy).toBeCalledTimes(1);
+    });
+
+    it('will provide instance to children', async () => {
+      class Test extends State {
+        value = 'hello';
+      }
+
+      const Child = () => Test.get().value;
+
+      const element = render(
+        <React.StrictMode>
+          <Provider for={Test}>
+            <Child />
+          </Provider>
+        </React.StrictMode>
+      );
+
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(element.container.textContent).toBe('hello');
+
+      await act(async () => element.unmount());
     });
   });
 });

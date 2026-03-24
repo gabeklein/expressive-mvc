@@ -6,7 +6,7 @@ import {
   Suspense,
   useContext,
   useEffect,
-  useMemo
+  useRef
 } from 'react';
 
 export const Layers = createContext(new Context());
@@ -75,7 +75,7 @@ declare namespace Provider {
 }
 
 function Provider<T extends State>(props: Provider.Props<T>) {
-  const {
+  let {
     for: input,
     children,
     fallback,
@@ -84,18 +84,28 @@ function Provider<T extends State>(props: Provider.Props<T>) {
   } = props as Provider.ForSingleProps<T> & Provider.ForEachProps<T>;
 
   const ambient = useContext(Layers);
-  const context = useMemo(() => ambient.push(), []);
+  const ref = useRef<Context | undefined>(null);
+  const context = ref.current || (ref.current = ambient.push());
 
   context.set(input, (added) => {
     const cb = rest.forEach || rest.is;
     return cb && cb(added);
   });
 
-  if (Object.keys(rest).length)
-    if (State.is(input)) context.get(input).set(rest as State.Assign<T>);
-    else if (input instanceof State) input.set(rest as State.Assign<T>);
+  if (Object.keys(rest).length) {
+    if (State.is(input)) input = context.get(input) as T;
+    if (input instanceof State) input.set(rest as State.Assign<T>);
+  }
 
-  useEffect(() => () => context.pop(), []);
+  useEffect(() => {
+    ref.current = context;
+    return () => {
+      ref.current = null;
+      queueMicrotask(() => {
+        if (!ref.current) context.pop();
+      });
+    };
+  }, []);
 
   return createElement(Provide, { context, children, fallback, name });
 }
