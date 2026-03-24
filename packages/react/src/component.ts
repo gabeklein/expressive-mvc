@@ -2,6 +2,8 @@ import { State, Context, watch, unbind } from '@expressive/state';
 import { ReactNode, createElement, useState, useEffect } from 'react';
 import { Layers, Provide } from './context';
 
+const PENDING = new WeakMap<object, Component>();
+
 export type StateProps<T extends State> = {
   [K in Exclude<keyof T, keyof Component>]?: T[K];
 };
@@ -39,7 +41,7 @@ class Component extends State {
    *
    * Will incorperate extra props you declare as props parameter in `render` method.
    */
-  readonly props: Props<this>;
+  readonly props!: Props<this>;
 
   /** @deprecated Only to satisfy React JSX. Use `this.get(State)` instead. */
   declare readonly context: Context;
@@ -63,6 +65,11 @@ class Component extends State {
     const { is, ...props } = nextProps;
     rest = rest.filter((x) => !(x instanceof Context));
     super(props, rest, is && ((x: any) => void is(x)));
+
+    const existing = PENDING.get(nextProps);
+    if (existing) return existing;
+    PENDING.set(nextProps, this);
+
     this.props = nextProps;
     this.set(() => {
       this.set(this.props as {});
@@ -95,7 +102,7 @@ class Component extends State {
    *
    * Without a parameter, children are accepted by default and passed through provider.
    */
-  render(): ReactNode {
+  render(props?: {}): ReactNode {
     return this.props.children || null;
   }
 }
@@ -114,62 +121,59 @@ Object.defineProperties(Component.prototype, {
   },
   context: {
     configurable: true,
-    set(this: Component, parent: Context) {
-      const self = this.is;
-      const context = parent.push(self);
-
-      Object.defineProperty(self, 'context', {
-        get: () => context,
-        set() {}
-      });
-
-      const Compat = Render.bind(self, unbind(this.render));
-      self.render = () => createElement(Compat);
-    }
+    set: bootstrap
   }
 });
 
-function Render(
-  this: Component,
-  render: (props: Component['props']) => ReactNode
-) {
-  const state = useState(() => {
-    let ready: boolean | undefined;
-    let active: Component;
+function bootstrap(this: Component, context: Context) {
+  const self = this.is;
+  const render = unbind(this.render);
 
-    watch(this, (current) => {
-      active = current;
+  context = context.push(self);
 
-      if (ready) state[1]((x) => x.bind(null));
-    });
+  let refresh: ((next: (x: number) => number) => void) | undefined;
+  let active: Component;
 
-    const View = () => render.call(active, this.props);
-
-    return () => {
-      ready = false;
-
-      useEffect(() => {
-        ready = true;
-      });
-
-      useEffect(
-        () => () => {
-          Context.get(this).pop();
-          this.set(null);
-        },
-        []
-      );
-
-      return createElement(Provide, {
-        context: this.context,
-        name: String(this),
-        fallback: active.fallback,
-        children: createElement(View)
-      });
-    };
+  watch(self, (current) => {
+    active = current;
+    if (refresh) refresh((x) => x + 1);
   });
 
-  return state[0]();
+  function unmount() {
+    refresh = undefined;
+    queueMicrotask(() => {
+      if (refresh) return;
+      self.set(null);
+      context.pop();
+    });
+  }
+
+  function Render() {
+    return render.call(active, self.props);
+  }
+
+  function Component() {
+    refresh = useState(0)[1];
+
+    useEffect(() => unmount, []);
+
+    return createElement(Provide, {
+      context,
+      name: String(self),
+      fallback: active.fallback,
+      children: createElement(Render)
+    });
+  }
+
+  Object.defineProperties(self, {
+    context: {
+      get: () => context,
+      set() {}
+    },
+    render: {
+      value: () => createElement(Component)
+    }
+  });
 }
 
 export { Component };

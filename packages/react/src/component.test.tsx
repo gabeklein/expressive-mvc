@@ -231,6 +231,43 @@ describe('props property', () => {
     expect(didUpdate).toBeCalledTimes(2);
   });
 
+  it.todo('will not refresh from side-effect during render', async () => {
+    const didRender = vi.fn();
+    let instance!: Control;
+
+    class Control extends Component {
+      label?: string = 'foo';
+
+      new() {
+        instance = this;
+      }
+
+      render() {
+        didRender();
+        if (!this.label) this.label = 'baz';
+        return <span>{this.label}</span>;
+      }
+    }
+
+    render(<Control />);
+    screen.getByText('foo');
+    expect(didRender).toBeCalledTimes(1);
+
+    await act(async () => {
+      instance.label = 'bar';
+    });
+
+    screen.getByText('bar');
+    expect(didRender).toBeCalledTimes(2);
+
+    await act(async () => {
+      instance.label = undefined;
+    });
+
+    screen.getByText('baz');
+    expect(didRender).toBeCalledTimes(3);
+  });
+
   it('will not cause redundant render', async () => {
     const didRender = vi.fn();
     let control: Control;
@@ -476,7 +513,7 @@ describe('suspense', () => {
 });
 
 describe('unmount', () => {
-  it('will dispose instance', () => {
+  it('will dispose instance', async () => {
     const didDispose = vi.fn();
 
     class Control extends Component {
@@ -489,7 +526,7 @@ describe('unmount', () => {
 
     expect(didDispose).not.toBeCalled();
 
-    act(element.unmount);
+    await act(async () => element.unmount());
 
     expect(didDispose).toBeCalled();
   });
@@ -541,5 +578,115 @@ describe('default render', () => {
     );
 
     element.getByText('foobar');
+  });
+});
+
+describe('strict mode', () => {
+  it('will not create two instances', async () => {
+    const didCreate = vi.fn();
+    const didDestroy = vi.fn();
+
+    class Control extends Component {
+      foo = 'bar';
+
+      new() {
+        didCreate();
+        return didDestroy;
+      }
+    }
+
+    const element = render(
+      <React.StrictMode>
+        <Control />
+      </React.StrictMode>
+    );
+
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect(didCreate).toBeCalledTimes(1);
+    expect(didDestroy).not.toBeCalled();
+
+    await act(async () => element.unmount());
+
+    expect(didDestroy).toBeCalledTimes(1);
+  });
+
+  it('will refresh via property update', async () => {
+    const didRender = vi.fn();
+    let instance!: Control;
+
+    class Control extends Component {
+      foo = 'bar';
+
+      new() {
+        instance = this;
+      }
+
+      render() {
+        didRender(this.foo);
+        return <span>{this.foo}</span>;
+      }
+    }
+
+    const element = render(
+      <React.StrictMode>
+        <Control />
+      </React.StrictMode>
+    );
+
+    await new Promise((r) => setTimeout(r, 0));
+
+    screen.getByText('bar');
+
+    await act(async () => {
+      instance.foo = 'baz';
+    });
+
+    screen.getByText('baz');
+    expect(didRender).toBeCalledWith('baz');
+
+    await act(async () => {
+      instance.foo = 'qux';
+    });
+
+    screen.getByText('qux');
+    expect(didRender).toBeCalledWith('qux');
+
+    await act(async () => element.unmount());
+  });
+
+  it('will refresh via props update', async () => {
+    const didRender = vi.fn();
+
+    class Control extends Component {
+      foo = 'bar';
+
+      render() {
+        didRender(this.foo);
+        return <span>{this.foo}</span>;
+      }
+    }
+
+    const { rerender } = render(
+      <React.StrictMode>
+        <Control />
+      </React.StrictMode>
+    );
+
+    await new Promise((r) => setTimeout(r, 0));
+
+    screen.getByText('bar');
+    didRender.mockClear();
+
+    rerender(
+      <React.StrictMode>
+        <Control foo="baz" />
+      </React.StrictMode>
+    );
+
+    await new Promise((r) => setTimeout(r, 0));
+
+    screen.getByText('baz');
+    expect(didRender).toBeCalledWith('baz');
   });
 });
