@@ -1,3 +1,4 @@
+import React from 'react';
 import { get, State, Provider, set } from '.';
 import {
   vi,
@@ -1218,6 +1219,40 @@ describe('State.get', () => {
       const { result } = renderWith(Parent, () => Parent.use().is);
 
       expect(result.current.child.parent).toBe(result.current);
+    });
+  });
+
+  describe('strict mode', () => {
+    it('will survive effect remount', async () => {
+      class Test extends State {
+        value = 'foo';
+      }
+
+      const test = Test.new();
+      const didRender = vi.fn();
+
+      const Inner = () => {
+        didRender();
+        return Test.get().value;
+      };
+
+      const element = render(
+        <React.StrictMode>
+          <Provider for={test}>
+            <Inner />
+          </Provider>
+        </React.StrictMode>
+      );
+
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(element.container.textContent).toBe('foo');
+
+      await act(async () => {
+        test.value = 'bar';
+      });
+
+      expect(element.container.textContent).toBe('bar');
     });
   });
 

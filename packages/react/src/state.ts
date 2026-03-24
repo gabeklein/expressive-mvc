@@ -168,7 +168,7 @@ State.get = function <T extends State, R>(
   const state = Pragma.useState(() => {
     let instance: T | undefined;
     let unwatch: (() => void) | undefined;
-    let ready: boolean | undefined;
+    let mounted = false;
     let value: any;
 
     function render() {
@@ -183,7 +183,7 @@ State.get = function <T extends State, R>(
 
     function bind(target: State) {
       unwatch?.();
-      let first = ready;
+      let first = true;
       unwatch = watch(
         target as T,
         (current) => {
@@ -196,7 +196,7 @@ State.get = function <T extends State, R>(
           } else value = current;
 
           if (first) first = false;
-          else if (ready) render();
+          else render();
         },
         argument === true
       );
@@ -207,7 +207,7 @@ State.get = function <T extends State, R>(
     const unsubscribe = context.get(this, (next) => {
       bind((instance = next));
 
-      if (ready) {
+      if (mounted) {
         pending = true;
         queueMicrotask(() => {
           if (pending) {
@@ -234,6 +234,7 @@ State.get = function <T extends State, R>(
       let error: Error | undefined;
 
       unwatch?.();
+      unsubscribe();
 
       value
         .then(
@@ -264,8 +265,13 @@ State.get = function <T extends State, R>(
     return () => {
       pending = false;
       Pragma.useEffect(() => {
-        ready = true;
-        return done;
+        mounted = true;
+        return () => {
+          mounted = false;
+          queueMicrotask(() => {
+            if (!mounted) done();
+          });
+        };
       }, []);
       return value === undefined ? null : value;
     };
