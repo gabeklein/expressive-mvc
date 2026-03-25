@@ -132,25 +132,7 @@ class Context {
     if (arg !== false) throw new Error(`Could not find ${Type} in context.`);
   }
 
-  /** Find single downstream State. Throws if not found. */
-  public one<T extends State>(Type: State.Extends<T>, required?: true): T;
-
-  /** Find single downstream State. Returns undefined if not found. */
-  public one<T extends State>(
-    Type: State.Extends<T>,
-    required: boolean
-  ): T | undefined;
-
-  public one<T extends State>(Type: State.Extends<T>, required?: boolean) {
-    const results = this.all(Type);
-    if (results.length > 1)
-      throw new Error(`Ambiguous: found multiple ${Type} in scope.`);
-    if (results[0]) return results[0];
-    if (required !== false)
-      throw new Error(`Could not find ${Type} in context.`);
-  }
-
-  /** Get all downstream States of a type. */
+/** Get all downstream States of a type. */
   public all<T extends State>(Type: State.Extends<T>): T[];
 
   /** Subscribe to downstream States of a type. */

@@ -715,31 +715,7 @@ describe('get method', () => {
       expect(result).toEqual([a, b]);
     });
 
-    it('will fetch single downstream required', () => {
-      const parent = Foo.new();
-      const context = new Context(parent);
-
-      const child = Bar.new();
-      context.push(child);
-
-      expect(parent.get(Bar, true, true)).toBe(child);
-    });
-
-    it('will throw if single downstream required not found', () => {
-      const parent = Foo.new();
-      new Context(parent);
-
-      expect(() => parent.get(Bar, true, true)).toThrow();
-    });
-
-    it('will return undefined if single downstream optional', () => {
-      const parent = Foo.new();
-      new Context(parent);
-
-      expect(parent.get(Bar, true, false)).toBeUndefined();
-    });
-
-    it('will subscribe with callback', () => {
+it('will subscribe with callback', () => {
       const parent = Foo.new();
       const ctx = new Context(parent);
 

@@ -219,17 +219,7 @@ abstract class State implements Observable {
   ): T | undefined;
 
   /** Collect all downstream State of type in context. */
-  get<T extends State>(type: State.Type<T>, children: true): T[];
-
-  /** Fetch a single downstream State. Throws if not found. */
-  get<T extends State>(type: State.Type<T>, children: true, single: true): T;
-
-  /** Fetch a single downstream State. Returns undefined if not found. */
-  get<T extends State>(
-    type: State.Type<T>,
-    downstream: true,
-    required: false
-  ): T | undefined;
+  get<T extends State>(type: State.Type<T>, downstream: true): T[];
 
   /** Subscribe to upstream State becoming available in context. */
   get<T extends State>(
@@ -255,13 +245,12 @@ abstract class State implements Observable {
 
   get(
     arg1?: State.Effect<this> | State.Type | string | null,
-    arg2?: boolean | Context.Expect | State.OnUpdate<this, any>,
-    arg3?: boolean
+    arg2?: boolean | Context.Expect | State.OnUpdate<this, any>
   ) {
     const self = this.is;
 
     if (arg1 === undefined) return values(self);
-    if (State.is(arg1)) return lookup(self, arg1, arg2 as any, arg3);
+    if (State.is(arg1)) return lookup(self, arg1, arg2 as any);
     if (typeof arg1 == 'function') return watch(self, unbind(arg1));
     if (typeof arg2 == 'function') return listener(self, arg2 as any, arg1);
     if (arg1 === null) return observable(self) === null;
@@ -643,16 +632,11 @@ function values<T extends State>(state: T): State.Values<T> {
 function lookup(
   self: State,
   Type: State.Type,
-  arg2?: Context.Expect | boolean,
-  arg3?: boolean
+  arg2?: Context.Expect | boolean
 ) {
   const ctx = Context.get(self);
 
-  return arg2 === true
-    ? arg3 === undefined
-      ? ctx.all(Type)
-      : ctx.one(Type, arg3)
-    : ctx.get(Type, arg2 as any);
+  return arg2 === true ? ctx.all(Type) : ctx.get(Type, arg2 as any);
 }
 
 function access(state: State, property: string, required?: boolean) {
