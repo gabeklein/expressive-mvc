@@ -68,7 +68,7 @@ declare namespace Provider {
 
   type ForEachProps<T extends State> = SharedProps & {
     for: Context.Accept<T>;
-    forEach?: ForEach<T>;
+    is?: ForEach<T>;
   };
 
   type Props<T extends State = State> = ForSingleProps<T> | ForEachProps<T>;
@@ -92,10 +92,7 @@ function Provider<T extends State>(props: Provider.Props<T>) {
         ...rest
       } = props as Provider.ForSingleProps<T> & Provider.ForEachProps<T>;
 
-      context.set(input, (added) => {
-        const cb = rest.forEach || rest.is;
-        return cb && cb(added);
-      });
+      context.set(input, (added) => rest.is?.(added));
 
       if (Object.keys(rest).length) {
         if (State.is(input)) input = context.get(input) as T;

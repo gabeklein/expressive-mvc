@@ -286,7 +286,7 @@ describe('Provider', () => {
     it('will call function for each model', () => {
       const forEach = vi.fn();
 
-      render(<Provider for={{ Foo, Bar }} forEach={forEach} />);
+      render(<Provider for={{ Foo, Bar }} is={forEach} />);
 
       expect(forEach).toBeCalledTimes(2);
       expect(forEach).toBeCalledWith(expect.any(Foo));
@@ -297,9 +297,7 @@ describe('Provider', () => {
       const forEach = vi.fn(() => cleanup);
       const cleanup = vi.fn();
 
-      const rendered = render(
-        <Provider for={{ Foo, Bar }} forEach={forEach} />
-      );
+      const rendered = render(<Provider for={{ Foo, Bar }} is={forEach} />);
 
       expect(forEach).toBeCalledTimes(2);
       expect(forEach).toBeCalledWith(expect.any(Foo));
@@ -473,16 +471,8 @@ describe('Consumer', () => {
 
   it('will select closest instance of same type', () => {
     render(
-      <Provider
-        for={Foo}
-        forEach={(x) => {
-          x.value = 'outer';
-        }}>
-        <Provider
-          for={Foo}
-          forEach={(x) => {
-            x.value = 'inner';
-          }}>
+      <Provider for={Foo} value="outer">
+        <Provider for={Foo} value="inner">
           <Consumer for={Foo}>
             {(i) => {
               expect(i.value).toBe('inner');
