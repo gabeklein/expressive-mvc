@@ -234,23 +234,22 @@ abstract class State implements Observable {
     required: false | undefined
   ): T | undefined;
 
-  /** Collect all downstream State of type in context. */
-  get<T extends State>(type: State.Type<T>, children: true): T[];
-
-  /** Subscribe to upstream State becoming available in context. */
+  /** Subscribe to State becoming available in context. */
   get<T extends State>(
     type: State.Type<T>,
-    callback: Context.Expect<T>
+    callback: Context.Expect<T>,
+    downstream?: boolean
   ): () => void;
 
   get(
     arg1?: State.Effect<this> | State.Type | string | null,
-    arg2?: boolean | Context.Expect | State.OnUpdate<this, any>
+    arg2?: boolean | Context.Expect | State.OnUpdate<this, any>,
+    arg3?: boolean
   ) {
     const self = this.is;
 
     if (arg1 === undefined) return values(self);
-    if (State.is(arg1)) return lookup(self, arg1, arg2 as any);
+    if (State.is(arg1)) return Context.get(self).get(arg1, arg2 as any, arg3);
     if (typeof arg1 == 'function') return watch(self, unbind(arg1));
     if (typeof arg2 == 'function') return listener(self, arg2 as any, arg1);
     if (arg1 === null) return observable(self) === null;
@@ -627,16 +626,6 @@ function values<T extends State>(state: T): State.Values<T> {
   if (isNotRecursive) EXPORT = undefined;
 
   return Object.freeze(values);
-}
-
-function lookup(
-  self: State,
-  Type: State.Type,
-  arg2?: Context.Expect | boolean
-) {
-  const ctx = Context.get(self);
-
-  return arg2 === true ? ctx.all(Type) : ctx.get(Type, arg2 as any);
 }
 
 function access(state: State, property: string, required?: boolean) {

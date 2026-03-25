@@ -162,7 +162,7 @@ it('will notify downstream subscriber when implicit child is replaced', () => {
 
   // called immediately with existing instance
   expect(cb).toBeCalledTimes(1);
-  expect(cb).toBeCalledWith(foo1, true);
+  expect(cb).toBeCalledWith(foo1, false);
 
   parent.child = foo2;
 
@@ -257,7 +257,7 @@ describe('has method', () => {
     const context = new Context();
     const cb = vi.fn();
 
-    context.all(DownstreamState, cb);
+    context.get(DownstreamState, cb, true);
     context.push(DownstreamState);
 
     expect(cb).toBeCalledTimes(1);
@@ -268,7 +268,7 @@ describe('has method', () => {
     const context = new Context();
     const cb = vi.fn();
 
-    const cancel = context.all(DownstreamState, cb);
+    const cancel = context.get(DownstreamState, cb, true);
     context.push(DownstreamState);
 
     expect(cb).toBeCalledTimes(1);
@@ -285,7 +285,7 @@ describe('has method', () => {
     const cleanup = vi.fn();
     const cb = vi.fn(() => cleanup);
 
-    context.all(DownstreamState, cb);
+    context.get(DownstreamState, cb, true);
 
     const child = context.push(DownstreamState);
 
@@ -301,7 +301,7 @@ describe('has method', () => {
     const context = new Context();
     const cb = vi.fn();
 
-    const cancel = context.all(DownstreamState, cb);
+    const cancel = context.get(DownstreamState, cb, true);
     context.push(DownstreamState);
 
     expect(cb).toBeCalledTimes(1);
@@ -313,64 +313,34 @@ describe('has method', () => {
     context.pop();
   });
 
-  it('will return entries registered downstream', () => {
-    const context = new Context();
-    context.push(DownstreamState);
-
-    const entries = context.all(DownstreamState);
-
-    expect(entries).toHaveLength(1);
-    expect(entries[0]).toBeInstanceOf(DownstreamState);
-  });
-
-  it('will return entries from deeply nested children', () => {
-    const root = new Context();
-
-    root.push().push(DownstreamState);
-
-    const entries = root.all(DownstreamState);
-
-    expect(entries).toHaveLength(1);
-    expect(entries[0]).toBeInstanceOf(DownstreamState);
-  });
-
-  it('will skip contexts without matching type', () => {
-    class Unrelated extends State {}
-    const root = new Context();
-
-    root.push(Unrelated);
-
-    expect(root.all(DownstreamState)).toHaveLength(0);
-  });
-
   it('will call callback for already-registered downstream states', () => {
     const context = new Context();
     const child = context.push(DownstreamState);
     const existing = child.get(DownstreamState);
     const cb = vi.fn();
 
-    context.all(DownstreamState, cb);
+    context.get(DownstreamState, cb, true);
 
     expect(cb).toBeCalledTimes(1);
     expect(cb).toBeCalledWith(existing, true);
   });
 
-  it('will flag existing vs new in callback', () => {
+  it('will flag direction in callback', () => {
     const context = new Context();
     context.push(DownstreamState);
     const cb = vi.fn();
 
-    context.all(DownstreamState, cb);
+    context.get(DownstreamState, cb, true);
 
-    // existing
+    // existing downstream
     expect(cb).toBeCalledTimes(1);
     expect(cb).toBeCalledWith(expect.any(DownstreamState), true);
 
-    // new addition
+    // new downstream addition
     context.push(DownstreamState);
 
     expect(cb).toBeCalledTimes(2);
-    expect(cb).toBeCalledWith(expect.any(DownstreamState), false);
+    expect(cb).toBeCalledWith(expect.any(DownstreamState), true);
   });
 
   it('will call callback for multiple existing downstream states', () => {
@@ -379,7 +349,7 @@ describe('has method', () => {
     context.push(DownstreamState);
     const cb = vi.fn();
 
-    context.all(DownstreamState, cb);
+    context.get(DownstreamState, cb, true);
 
     expect(cb).toBeCalledTimes(2);
     expect(cb.mock.calls[0][1]).toBe(true);
@@ -391,7 +361,7 @@ describe('has method', () => {
     const child = parent.push();
     const cb = vi.fn();
 
-    parent.all(DownstreamState, cb);
+    parent.get(DownstreamState, cb, true);
 
     const state = DownstreamState.new();
 
@@ -399,7 +369,7 @@ describe('has method', () => {
     child.set(state);
 
     expect(cb).toBeCalledTimes(1);
-    expect(cb).toBeCalledWith(state, false);
+    expect(cb).toBeCalledWith(state, true);
   });
 });
 
@@ -470,10 +440,10 @@ describe('get callback (upstream subscription)', () => {
 
     expect(cb).toBeCalledTimes(1);
 
-    expect(cb).toBeCalledWith(expect.any(Upstream), true);
+    expect(cb).toBeCalledWith(expect.any(Upstream), false);
   });
 
-  it('will flag existing vs new upstream in callback', () => {
+  it('will flag direction in upstream callback', () => {
     const parent = new Context();
     const child = parent.push();
     const cb = vi.fn();
@@ -483,7 +453,7 @@ describe('get callback (upstream subscription)', () => {
 
     expect(cb).not.toBeCalled();
 
-    // new addition
+    // new addition upstream
     parent.set(Upstream);
 
     expect(cb).toBeCalledTimes(1);
@@ -738,8 +708,8 @@ describe('set method', () => {
 
     context.set({ foo, bar }, cb);
 
-    expect(cb).toBeCalledWith(foo, false);
-    expect(cb).toBeCalledWith(bar, false);
+    expect(cb).toBeCalledWith(foo);
+    expect(cb).toBeCalledWith(bar);
     expect(cb).toBeCalledTimes(2);
 
     context.set({ foo, bar }, cb);
@@ -750,7 +720,7 @@ describe('set method', () => {
 
     context.set({ foo, bar, foo2 }, cb);
 
-    expect(cb).toBeCalledWith(foo2, false);
+    expect(cb).toBeCalledWith(foo2);
     expect(cb).toBeCalledTimes(3);
   });
 
@@ -984,7 +954,7 @@ describe('ambiguous implicit entries', () => {
 
     // Should only get the explicit one
     expect(cb).toBeCalledTimes(1);
-    expect(cb).toBeCalledWith(explicit, true);
+    expect(cb).toBeCalledWith(explicit, false);
   });
 
   it('will deduplicate same state in callback get entries', () => {
@@ -1001,7 +971,7 @@ describe('ambiguous implicit entries', () => {
     ctx.get(Base, cb);
 
     expect(cb).toBeCalledTimes(1);
-    expect(cb).toBeCalledWith(a, true);
+    expect(cb).toBeCalledWith(a, false);
   });
 });
 
@@ -1029,7 +999,7 @@ describe('add method listener lookup', () => {
     const parent = new Context();
     const cb = vi.fn();
 
-    parent.all(Foo, cb);
+    parent.get(Foo, cb, true);
 
     // Push child with Foo — this is downstream
     parent.push(Foo);
@@ -1045,7 +1015,7 @@ describe('add method listener lookup', () => {
     const cb = vi.fn();
 
     // Subscribe for both Foo and Bar — but cb is same ref
-    parent.all(Foo, cb);
+    parent.get(Foo, cb, true);
 
     // Push child with Bar — parent listener for Foo should match
     parent.push(Bar);
@@ -1063,8 +1033,8 @@ describe('add method listener lookup', () => {
     const cb = vi.fn();
 
     // Register same cb on both grandparent and parent
-    grandparent.all(Foo, cb);
-    parent.all(Foo, cb);
+    grandparent.get(Foo, cb, true);
+    parent.get(Foo, cb, true);
 
     // Add to child — both grandparent and parent have cb
     child.set(Foo);

@@ -700,32 +700,17 @@ describe('get method', () => {
       expect(child.get(Foo, false)).toBeUndefined();
     });
 
-    it('will collect downstream state', () => {
-      const parent = Foo.new();
-      const context = new Context(parent);
-
-      const a = Bar.new();
-      const b = Bar.new();
-
-      context.push(a);
-      context.push(b);
-
-      const result = parent.get(Bar, true);
-
-      expect(result).toEqual([a, b]);
-    });
-
 it('will subscribe with callback', () => {
       const parent = Foo.new();
       const ctx = new Context(parent);
 
       const callback = vi.fn();
-      const unsub = ctx.all(Bar, callback);
+      const unsub = ctx.get(Bar, callback, true);
 
       const child = Bar.new();
       const sub = ctx.push(child);
 
-      expect(callback).toHaveBeenCalledWith(child, false);
+      expect(callback).toHaveBeenCalledWith(child, true);
       expect(typeof unsub).toBe('function');
 
       unsub();

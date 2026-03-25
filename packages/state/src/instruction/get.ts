@@ -136,14 +136,14 @@ function getDownstream<T extends State>(
     const context = Context.get(subject);
 
     if (typeof arg == 'boolean') {
-      context.all(Type, (state) => {
+      context.get(Type, (state) => {
         update(subject, key, state);
         const ignore = state.set(() => {
           ignore();
           update(subject, key, undefined);
         }, null);
         return ignore;
-      });
+      }, true);
 
       return {
         get: arg,
@@ -154,7 +154,7 @@ function getDownstream<T extends State>(
 
     const applied = new Set<State>();
 
-    context.all(Type, (state) => {
+    context.get(Type, (state) => {
       let remove: (() => void) | undefined;
       let release: (() => void) | undefined;
 
@@ -191,7 +191,7 @@ function getDownstream<T extends State>(
       const ignore = state.set(done, null);
 
       return done;
-    });
+    }, true);
 
     return {
       value: [],
