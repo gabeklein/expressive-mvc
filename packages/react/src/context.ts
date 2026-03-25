@@ -138,4 +138,4 @@ function Provide(props: ProvideProps) {
   });
 }
 
-export { Consumer, Provider, Provide };
+export { Consumer, Provider, Provide, Context };

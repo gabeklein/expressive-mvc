@@ -1,6 +1,7 @@
-import { State, Context, watch, unbind } from '@expressive/state';
-import { ReactNode, createElement, useState, useEffect } from 'react';
-import { Layers, Provide } from './context';
+import { watch, unbind } from '@expressive/state';
+import { createElement, useEffect, useState, type ReactNode } from 'react';
+import { Context, Layers, Provide } from './context';
+import { State } from './state';
 
 const PENDING = new WeakMap<object, Component>();
 

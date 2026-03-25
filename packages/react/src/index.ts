@@ -4,8 +4,6 @@ import { createElement, useEffect, useRef, useState } from 'react';
 import { Pragma } from './state';
 import { Consumer, Provider } from './context';
 
-import './component';
-
 Pragma.useEffect = useEffect;
 Pragma.useState = useState;
 Pragma.createElement = createElement;
