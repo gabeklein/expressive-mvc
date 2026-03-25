@@ -79,7 +79,7 @@ describe('State.use', () => {
 
       const rendered = render(<Component />);
 
-      await act(async () => rendered.unmount());
+      rendered.unmount();
 
       expect(didDestroy).toBeCalled();
     });
@@ -95,7 +95,7 @@ describe('State.use', () => {
         hook.result.current.value = 'bar';
       });
 
-      await act(async () => hook.unmount());
+      hook.unmount();
 
       expect(() => {
         hook.result.current.value = 'baz';
@@ -437,7 +437,7 @@ describe('State.use', () => {
       expect(didCreate).toBeCalledTimes(1);
       expect(didDestroy).not.toBeCalled();
 
-      await act(async () => element.unmount());
+      element.unmount();
 
       expect(didDestroy).toBeCalledTimes(1);
     });
@@ -477,7 +477,7 @@ describe('State.use', () => {
 
       expect(didRender).toBeCalledWith('bar');
 
-      await act(async () => element.unmount());
+      element.unmount();
     });
   });
 });

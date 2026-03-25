@@ -192,7 +192,7 @@ describe('Provider', () => {
       </Provider>
     );
 
-    await act(async () => element.unmount());
+    element.unmount();
     expect(willDestroy).toBeCalled();
   });
 
@@ -217,7 +217,7 @@ describe('Provider', () => {
       </Provider>
     );
 
-    await act(async () => element.unmount());
+    element.unmount();
     expect(willDestroy).toBeCalledTimes(2);
   });
 
@@ -277,7 +277,7 @@ describe('Provider', () => {
 
     const element = render(<Example />);
 
-    await act(async () => element.unmount());
+    element.unmount();
 
     expect(didDestroy.mock.calls).toEqual([['Child'], ['Parent']]);
   });
@@ -306,7 +306,7 @@ describe('Provider', () => {
       expect(forEach).toBeCalledWith(expect.any(Bar));
       expect(cleanup).not.toBeCalled();
 
-      await act(async () => rendered.unmount());
+      rendered.unmount();
       expect(cleanup).toBeCalledTimes(2);
     });
   });
@@ -390,7 +390,7 @@ describe('Provider', () => {
       expect(didCreate).toBeCalledTimes(1);
       expect(didDestroy).not.toBeCalled();
 
-      await act(async () => element.unmount());
+      element.unmount();
 
       expect(didDestroy).toBeCalledTimes(1);
     });
@@ -414,7 +414,7 @@ describe('Provider', () => {
 
       expect(element.container.textContent).toBe('hello');
 
-      await act(async () => element.unmount());
+      element.unmount();
     });
   });
 });

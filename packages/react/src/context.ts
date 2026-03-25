@@ -75,39 +75,47 @@ declare namespace Provider {
 }
 
 function Provider<T extends State>(props: Provider.Props<T>) {
-  let {
-    for: input,
-    children,
-    fallback,
-    name,
-    ...rest
-  } = props as Provider.ForSingleProps<T> & Provider.ForEachProps<T>;
-
   const ambient = useContext(Layers);
-  const ref = useRef<Context | undefined>(null);
-  const context = ref.current || (ref.current = ambient.push());
+  const ref = useRef<((props: Provider.Props<T>) => ReactNode) | null>(null);
 
-  context.set(input, (added) => {
-    const cb = rest.forEach || rest.is;
-    return cb && cb(added);
-  });
+  if (!ref.current) {
+    const context = ambient.push();
+    let mounted = false;
+    let mounts = 0;
 
-  if (Object.keys(rest).length) {
-    if (State.is(input)) input = context.get(input) as T;
-    if (input instanceof State) input.set(rest as State.Assign<T>);
+    ref.current = (props) => {
+      let {
+        for: input,
+        children,
+        fallback,
+        name,
+        ...rest
+      } = props as Provider.ForSingleProps<T> & Provider.ForEachProps<T>;
+
+      context.set(input, (added) => {
+        const cb = rest.forEach || rest.is;
+        return cb && cb(added);
+      });
+
+      if (Object.keys(rest).length) {
+        if (State.is(input)) input = context.get(input) as T;
+        if (input instanceof State) input.set(rest as State.Assign<T>);
+      }
+
+      if (!mounted) mounts++;
+
+      useEffect(() => {
+        mounted = true;
+        return () => {
+          if (--mounts == 0) context.pop();
+        };
+      }, []);
+
+      return createElement(Provide, { context, children, fallback, name });
+    };
   }
 
-  useEffect(() => {
-    ref.current = context;
-    return () => {
-      ref.current = null;
-      queueMicrotask(() => {
-        if (!ref.current) context.pop();
-      });
-    };
-  }, []);
-
-  return createElement(Provide, { context, children, fallback, name });
+  return ref.current(props);
 }
 
 interface ProvideProps {

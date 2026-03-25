@@ -130,28 +130,25 @@ State.use = function <T extends State>(
 
     const context = outer.push(instance);
 
-    let first = true;
+    let mounts = 0;
     let mounted = false;
     let active: T;
 
     watch(instance, (current) => {
       active = current;
 
-      if (first) first = false;
-      else next((x) => x + 1);
+      if (mounted) next((x) => x + 1);
     });
 
     ref.current = (args) => {
+      if (!mounted) mounts++;
+
       Pragma.useEffect(() => {
         mounted = true;
         return () => {
-          mounted = false;
-          queueMicrotask(() => {
-            if (!mounted) {
-              context.pop();
-              instance.set(null);
-            }
-          });
+          if (--mounts) return;
+          context.pop();
+          instance.set(null);
         };
       }, []);
 
@@ -277,15 +274,16 @@ State.get = function <T extends State, R>(
       return () => null;
     }
 
+    let mounts = 0;
+
     return () => {
+      if (!mounted) mounts++;
       pending = false;
       Pragma.useEffect(() => {
         mounted = true;
         return () => {
-          mounted = false;
-          queueMicrotask(() => {
-            if (!mounted) release();
-          });
+          if (--mounts) return;
+          release();
         };
       }, []);
       return value === undefined ? null : value;

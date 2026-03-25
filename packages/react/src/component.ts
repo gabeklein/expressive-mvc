@@ -131,6 +131,8 @@ function bootstrap(this: Component, context: Context) {
 
   context = context.push(self);
 
+  let mounts = 0;
+  let mounted = false;
   let refresh: ((next: (x: number) => number) => void) | undefined;
   let active: Component;
 
@@ -139,27 +141,23 @@ function bootstrap(this: Component, context: Context) {
     if (refresh) refresh((x) => x + 1);
   });
 
-  function unmount() {
-    refresh = undefined;
-    queueMicrotask(() => {
-      if (refresh) return;
-      self.set(null);
-      context.pop();
-    });
-  }
-
   function Render() {
     return render.call(active, self.props);
   }
 
   function Component() {
-    const ready = useState(0)[1];
+    refresh = useState(0)[1];
 
-    refresh = ready;
+    if (!mounted) mounts++;
 
     useEffect(() => {
-      refresh = ready;
-      return unmount;
+      mounted = true;
+      return () => {
+        if (--mounts) return;
+        refresh = undefined;
+        self.set(null);
+        context.pop();
+      };
     }, []);
 
     return createElement(Provide, {

@@ -476,7 +476,7 @@ describe('suspense', () => {
 });
 
 describe('unmount', () => {
-  it('will dispose instance', async () => {
+  it('will dispose instance', () => {
     const didDispose = vi.fn();
 
     class Control extends Component {
@@ -489,7 +489,7 @@ describe('unmount', () => {
 
     expect(didDispose).not.toBeCalled();
 
-    await act(async () => element.unmount());
+    element.unmount();
 
     expect(didDispose).toBeCalled();
   });
@@ -569,7 +569,7 @@ describe('strict mode', () => {
     expect(didCreate).toBeCalledTimes(1);
     expect(didDestroy).not.toBeCalled();
 
-    await act(async () => element.unmount());
+    element.unmount();
 
     expect(didDestroy).toBeCalledTimes(1);
   });
@@ -615,7 +615,7 @@ describe('strict mode', () => {
     screen.getByText('qux');
     expect(didRender).toBeCalledWith('qux');
 
-    await act(async () => element.unmount());
+    element.unmount();
   });
 
   it('will refresh via props update', async () => {
