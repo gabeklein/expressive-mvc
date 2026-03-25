@@ -461,14 +461,12 @@ describe('suspense', () => {
 
     await act(async () => {
       foo.fallback = <span>Loading...</span>;
-      await new Promise((r) => setTimeout(r, 0));
     });
 
     element.getByText('Loading...');
 
     await act(async () => {
       foo.value = 'Hello World';
-      await new Promise((r) => setTimeout(r, 0));
     });
 
     element.getByText('Hello World');
