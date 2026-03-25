@@ -167,7 +167,7 @@ State.use = function <T extends State>(
   return ref.current(args);
 };
 
-State.get = function <T extends State, R>(
+State.get = function <T extends State>(
   this: State.Extends<T>,
   argument?: boolean | State.GetFactory<T, unknown>
 ) {
@@ -183,9 +183,11 @@ State.get = function <T extends State, R>(
     let instance: T | undefined;
     let unwatch: (() => void) | undefined;
     let mounted = false;
+    let pending = false;
     let value: any;
 
     function update() {
+      pending = false;
       next((x) => x + 1);
     }
 
@@ -195,45 +197,27 @@ State.get = function <T extends State, R>(
       if (action instanceof Promise) return action.finally(update);
     }
 
-    function bind(target: State) {
+    const unsubscribe = context.get(Type, (next) => {
       unwatch?.();
-      let first = true;
       unwatch = watch(
-        target as T,
-        (current) => {
+        (instance = next),
+        (current, changed) => {
           if (typeof argument === 'function') {
             const next = argument.call(current, current, refresh);
-
             if (next === value) return;
-
             value = next;
-          } else value = current;
+          } else {
+            value = current;
+          }
 
-          if (first) first = false;
-          else update();
+          if (changed.length) update();
         },
         argument === true
       );
-    }
-
-    function release() {
-      unwatch?.();
-      unsubscribe();
-    }
-
-    let pending = false;
-
-    const unsubscribe = context.get(Type, (next) => {
-      bind((instance = next));
 
       if (mounted) {
         pending = true;
-        queueMicrotask(() => {
-          if (pending) {
-            pending = false;
-            update();
-          }
-        });
+        queueMicrotask(() => pending && update());
       }
 
       return () => {
@@ -247,6 +231,11 @@ State.get = function <T extends State, R>(
       unsubscribe();
       if (argument === false) return () => undefined;
       throw new Error(`Could not find ${Type} in context.`);
+    }
+
+    function release() {
+      unwatch?.();
+      unsubscribe();
     }
 
     if (value instanceof Promise) {
@@ -282,8 +271,7 @@ State.get = function <T extends State, R>(
       Pragma.useEffect(() => {
         mounted = true;
         return () => {
-          if (--mounts) return;
-          release();
+          if (--mounts == 0) release();
         };
       }, []);
       return value === undefined ? null : value;
