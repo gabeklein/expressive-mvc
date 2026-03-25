@@ -1,10 +1,10 @@
 import { State, Context, watch } from '@expressive/state';
 
 export const Pragma = {} as {
+  createElement(type: any, props?: any, ...children: any[]): any;
   useState<S>(initial: S): [S, (next: (previous: S) => S) => void];
   useEffect(effect: () => (() => void) | void, deps?: any[]): void;
   useRef<T>(initial: T): { current: T };
-  createElement(type: any, props?: any, ...children: any[]): any;
 };
 
 /** Type may not be undefined - instead will be null.  */
