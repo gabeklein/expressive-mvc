@@ -209,24 +209,6 @@ abstract class State implements Observable {
     callback: State.OnUpdate<this, T>
   ): () => void;
 
-  /** Fetch upstream State from context. Throws if not found. */
-  get<T extends State>(type: State.Type<T>): T;
-
-  /** Fetch a State from context. Returns undefined if not found. */
-  get<T extends State>(
-    type: State.Type<T>,
-    required: false | undefined
-  ): T | undefined;
-
-  /** Collect all downstream State of type in context. */
-  get<T extends State>(type: State.Type<T>, downstream: true): T[];
-
-  /** Subscribe to upstream State becoming available in context. */
-  get<T extends State>(
-    type: State.Type<T>,
-    callback: Context.Expect<T>
-  ): () => void;
-
   /**
    * Check if state is expired.
    *
@@ -242,6 +224,24 @@ abstract class State implements Observable {
    * @returns Function to cancel listener.
    */
   get(status: null, callback: () => void): () => void;
+
+  /** Fetch upstream State from context. Throws if not found. */
+  get<T extends State>(type: State.Type<T>): T;
+
+  /** Fetch a State from context. Returns undefined if not found. */
+  get<T extends State>(
+    type: State.Type<T>,
+    required: false | undefined
+  ): T | undefined;
+
+  /** Collect all downstream State of type in context. */
+  get<T extends State>(type: State.Type<T>, children: true): T[];
+
+  /** Subscribe to upstream State becoming available in context. */
+  get<T extends State>(
+    type: State.Type<T>,
+    callback: Context.Expect<T>
+  ): () => void;
 
   get(
     arg1?: State.Effect<this> | State.Type | string | null,
