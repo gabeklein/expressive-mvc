@@ -48,9 +48,9 @@ class Component extends State {
   declare readonly context: Context;
   /** @deprecated Only to satisfy React JSX. Use `this.get()` instead. */
   declare readonly state: State.Values<this>;
-  /** @deprecated Only to satisfy React JSX; does not exist. */
+  /** @deprecated Only to satisfy React JSX. Not implemented. */
   declare setState: (state: any, callback?: () => void) => void;
-  /** @deprecated Only to satisfy React JSX; does not exist. */
+  /** @deprecated Only to satisfy React JSX. Not implemented. */
   declare forceUpdate: (callback?: () => void) => void;
 
   /**
