@@ -112,10 +112,9 @@ function get<T extends State>(
     let found = false;
 
     ctx.get(Type, (state) => {
-      if (state !== subject) {
-        found = true;
-        assign(state);
-      }
+      if (state === subject) return;
+      found = true;
+      assign(state);
     });
 
     if (!found && arg1 !== false)
@@ -136,14 +135,18 @@ function getDownstream<T extends State>(
     const context = Context.get(subject);
 
     if (typeof arg == 'boolean') {
-      context.get(Type, (state) => {
-        update(subject, key, state);
-        const ignore = state.set(() => {
-          ignore();
-          update(subject, key, undefined);
-        }, null);
-        return ignore;
-      }, true);
+      context.get(
+        Type,
+        (state) => {
+          update(subject, key, state);
+          const ignore = state.set(() => {
+            ignore();
+            update(subject, key, undefined);
+          }, null);
+          return ignore;
+        },
+        true
+      );
 
       return {
         get: arg,
@@ -154,44 +157,48 @@ function getDownstream<T extends State>(
 
     const applied = new Set<State>();
 
-    context.get(Type, (state) => {
-      let remove: (() => void) | undefined;
-      let release: (() => void) | undefined;
+    context.get(
+      Type,
+      (state) => {
+        let remove: (() => void) | undefined;
+        let release: (() => void) | undefined;
 
-      if (applied.has(state)) return;
+        if (applied.has(state)) return;
 
-      if (arg) {
-        let rejected = false;
+        if (arg) {
+          let rejected = false;
 
-        capture((fn) => {
-          const done = arg(state, subject);
+          capture((fn) => {
+            const done = arg(state, subject);
 
-          if (done === false) rejected = true;
-          else if (typeof done == 'function') remove = done;
+            if (done === false) rejected = true;
+            else if (typeof done == 'function') remove = done;
 
-          release = fn;
-        });
+            release = fn;
+          });
 
-        if (rejected) return false;
-      }
+          if (rejected) return false;
+        }
 
-      applied.add(state);
-      update(subject, key, [...applied]);
-
-      function done() {
-        if (release) release();
-        ignore();
-
-        applied.delete(state);
+        applied.add(state);
         update(subject, key, [...applied]);
 
-        if (typeof remove == 'function') remove();
-      }
+        function done() {
+          if (release) release();
+          ignore();
 
-      const ignore = state.set(done, null);
+          applied.delete(state);
+          update(subject, key, [...applied]);
 
-      return done;
-    }, true);
+          if (typeof remove == 'function') remove();
+        }
+
+        const ignore = state.set(done, null);
+
+        return done;
+      },
+      true
+    );
 
     return {
       value: [],
