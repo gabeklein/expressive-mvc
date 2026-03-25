@@ -274,6 +274,23 @@ abstract class State implements Observable {
   set(assign?: State.Assign<this>, silent?: boolean): State.Updated<this>;
 
   /**
+   * Call a function when update occurs.
+   *
+   * Given function is called for every assignment (which changes value) or explicit `set`.
+   *
+   * To run logic on final value only, callback may return a function. Using the same
+   * function for one or more events will ensure it is called only when events are settled.
+   *
+   * @param callback - Function to call when update occurs.
+   * @param event - Property or event to watch for updates. If `null`, will callback on destroy.
+   * @returns Function to remove listener. Will return `true` if removed, `false` if inactive already.
+   */
+  set(
+    callback: State.OnEvent<this>,
+    event?: State.Event<this> | null
+  ): () => boolean;
+
+  /**
    * Push an update. This will not change the value of associated property.
    *
    * Useful where a property value internally has changed, but the object is the same.
@@ -288,6 +305,14 @@ abstract class State implements Observable {
    * @returns Promise resolves an array of keys updated.
    */
   set(key: State.Event<this>): State.Updated<this>;
+
+  /**
+   * Declare an end to updates. This event is final and will freeze state.
+   * This event can be watched for as well, to run cleanup logic and internally will remove all listeners.
+   *
+   * @param status - `null` to end updates.
+   */
+  set(status: null): void;
 
   /**
    * Set a value for a property. This will update the value and notify listeners.
@@ -309,40 +334,6 @@ abstract class State implements Observable {
     value: unknown,
     init?: boolean
   ): State.Updated<this>;
-
-  /**
-   * Call a function when update occurs.
-   *
-   * Given function is called for every assignment (which changes value) or explicit `set`.
-   *
-   * To run logic on final value only, callback may return a function. Using the same
-   * function for one or more events will ensure it is called only when events are settled.
-   *
-   * @param callback - Function to call when update occurs.
-   * @returns Function to remove listener. Will return `true` if removed, `false` if inactive already.
-   *
-   */
-  set(callback: State.OnEvent<this>): () => boolean;
-
-  /**
-   * Call a function when a property is updated.
-   * Unlike `get`, this calls synchronously and will fire as many times as the property is updated.
-   *
-   * @param callback - Function to call when property is updated.
-   * @param event - Property to watch for updates.
-   */
-  set(
-    callback: State.OnEvent<this>,
-    event: State.Event<this> | null
-  ): () => boolean;
-
-  /**
-   * Declare an end to updates. This event is final and will freeze state.
-   * This event can be watched for as well, to run cleanup logic and internally will remove all listeners.
-   *
-   * @param status - `null` to end updates.
-   */
-  set(status: null): void;
 
   set(
     arg1?: State.OnEvent<this> | State.Assign<this> | State.Event<this> | null,
