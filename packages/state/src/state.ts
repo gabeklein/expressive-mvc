@@ -87,12 +87,24 @@ declare namespace State {
   /** Object comperable to data found in T. */
   type Partial<T> = { [P in Field<T>]?: Export<T[P]> };
 
-  /** Value for a property managed by a state. */
+  /** Value for a property applied by a state. */
   type Value<T extends State, K extends State.Event<T>> = K extends keyof T
     ? Export<T[K]>
     : unknown;
 
   type Setter<T> = (value: T, previous: T) => T | void;
+
+  /** Descriptor config for a managed property. */
+  type Apply<T = any> = {
+    value?: T;
+    get?: ((source: State) => T) | boolean;
+    set?: Setter<T> | boolean;
+    enumerable?: boolean;
+    // destroy?: () => void;
+  };
+
+  /** Descriptor config for set() overload - enforces type when key is a known field. */
+  type Define<T, K> = K extends Field<T> ? Apply<T[K] | Export<T[K]>> : Apply;
 
   type OnEvent<T extends State> = (
     this: T,
@@ -315,30 +327,22 @@ abstract class State implements Observable {
   set(status: null): void;
 
   /**
-   * Set a value for a property. This will update the value and notify listeners.
+   * Define or update a managed property using a descriptor config.
+   * If the property already exists, the config is merged with the existing one.
+   * If the property does not exist, it will be created and managed.
    *
-   * **Use with caution!** Key nor value are checked for validity.
-   *
-   * This is meant for assigning values programmatically,
-   * where simple assignment is not practicable.
-   *
-   * For example: `(this as any)[myProperty] = value;`
-   *
-   * @param key - Property to set value for.
-   * @param value - Value to set for property.
-   * @param init - If true, state will begin to manage the property if it is not already.
+   * @param key - Property to define or update.
+   * @param config - Descriptor config with value, get, set, enumerable, and/or destroy.
    * @returns Promise resolves an array of keys updated.
    */
-  set(
-    key: State.Event<this>,
-    value: unknown,
-    init?: boolean
+  set<K extends State.Event<this>>(
+    key: K,
+    config: State.Define<this, K>
   ): State.Updated<this>;
 
   set(
     arg1?: State.OnEvent<this> | State.Assign<this> | State.Event<this> | null,
-    arg2?: unknown,
-    arg3?: boolean
+    arg2?: unknown
   ) {
     const self = this.is;
 
@@ -350,12 +354,10 @@ abstract class State implements Observable {
 
     if (arg1 && typeof arg1 == 'object') {
       assign(self, arg1, arg2 === true);
-    } else if (!arg2) {
+    } else if (!arg2 || arg1 == null) {
       event(self, arg1);
-    } else if (arg3) {
-      manage(self, arg1 as string | number, arg2);
-    } else {
-      update(self, arg1 as string | number, arg2);
+    } else if (arg2) {
+      apply(self, arg1 as string | number, arg2);
     }
 
     return pending(self) as State.Updated<this>;
@@ -511,7 +513,7 @@ function init(state: State, ...args: State.Args) {
 
     for (const key in state) {
       const desc = Object.getOwnPropertyDescriptor(state, key)!;
-      if ('value' in desc) manage(state, key, desc.value, true);
+      if ('value' in desc) apply(state, key, desc, true);
     }
 
     for (const arg of args) {
@@ -534,58 +536,94 @@ function init(state: State, ...args: State.Args) {
   });
 }
 
-function manage(
+function apply(
   state: State,
   key: string | number,
-  value: any,
+  config: State.Apply,
   silent?: boolean
 ) {
-  const store = STORE.get(state)!;
-  const set =
-    value instanceof State ? child(state, key) : update.bind(null, state, key);
+  const desc = Object.getOwnPropertyDescriptor(state, key);
+
+  if (desc && 'get' in desc) {
+    if (Object.keys(config).some((k) => k != 'value'))
+      throw new Error(`Property ${key} on ${state} is already defined.`);
+    if ('value' in config) update(state, key, config.value, silent);
+    return;
+  }
+
+  const adopt = config.value instanceof State && child(state);
+
+  function set(value: unknown, silent?: boolean) {
+    if (!update(state, key, value, silent)) return;
+    if (adopt) adopt(value);
+  }
 
   define(state, key, {
+    configurable: true,
+    enumerable: config.enumerable !== false,
     get(this: State) {
-      return observing(this, key, store[key]);
+      return observing(
+        this,
+        key,
+        typeof config.get == 'function'
+          ? config.get(this)
+          : access(state, key as string, config.get)
+      );
     },
-    set
+    set(next: any, silent?: boolean) {
+      if (config.set === false)
+        throw new Error(`${state}.${String(key)} is read-only.`);
+
+      if (typeof config.set == 'function')
+        try {
+          const output = config.set(next, STORE.get(state)![key]);
+          if (output !== undefined) next = output;
+        } catch (err: unknown) {
+          if (err === false) return;
+          if (err === true) {
+            set(next, true);
+            return;
+          }
+          throw err;
+        }
+
+      set(next, silent);
+    }
   });
 
-  set(value, silent);
+  if ('value' in config) set(config.value, silent);
 }
 
-function child(state: State, key: string | number) {
-  let reset: (() => void) | undefined;
+function child(state: State) {
+  let cleanup: (() => void) | undefined;
   const ctx = Context.get(state);
 
-  listener(
-    state,
-    () => {
-      if (reset) reset();
-      reset = undefined;
-    },
-    null
-  );
+  function reset() {
+    if (cleanup) cleanup();
+    cleanup = undefined;
+  }
 
-  return (value: unknown, silent?: boolean) => {
-    if (!update(state, key, value, silent)) return;
+  listener(state, reset, null);
 
-    const prev = reset;
-    reset = undefined;
+  return (value: unknown) => {
+    reset();
 
     if (value instanceof State) {
       const remove = ctx.add(value, true);
 
-      if (!PARENT.has(value)) {
+      if (PARENT.has(value)) {
+        cleanup = remove;
+      } else {
         PARENT.set(value, state);
         listener(state, () => event(value, null), null);
-        reset = () => (remove(), event(value, null));
-      } else reset = remove;
+        cleanup = () => {
+          remove();
+          event(value, null);
+        };
+      }
 
       event(value);
     }
-
-    if (prev) prev();
   };
 }
 
@@ -678,7 +716,7 @@ function assign(state: State, data: State.Assign<State>, silent?: boolean) {
 /**
  * Update a property on a state instance and notify listeners.
  *
- * This is used internally to manage properties, but can also be used to update properties which are not managed by state, or to update values without triggering setters.
+ * This is used internally to update properties, but can also be used to update properties which are not managed by state, or to update values without triggering setters.
  */
 function update<T>(
   state: State,
@@ -716,4 +754,4 @@ function unbind(fn?: Function) {
   return METHOD.get(fn) || fn;
 }
 
-export { event, unbind, State, PARENT, STORE, uid, access, update };
+export { event, unbind, State, PARENT, STORE, uid, access, update, apply };

@@ -700,7 +700,7 @@ describe('get method', () => {
       expect(child.get(Foo, false)).toBeUndefined();
     });
 
-it('will subscribe with callback', () => {
+    it('will subscribe with callback', () => {
       const parent = Foo.new();
       const ctx = new Context(parent);
 
@@ -1472,7 +1472,7 @@ describe('set method', () => {
     });
   });
 
-  describe('update', () => {
+  describe('config', () => {
     it('will assign a value', async () => {
       class Test extends State {
         foo = 'foo';
@@ -1480,7 +1480,7 @@ describe('set method', () => {
 
       const test = Test.new();
 
-      test.set('foo', 'bar');
+      test.set('foo', { value: 'bar' });
 
       await expect(test).toHaveUpdated('foo');
 
@@ -1494,11 +1494,133 @@ describe('set method', () => {
 
       const test = Test.new();
 
-      test.set('foo', 'bar');
+      test.set('foo', { value: 'bar' });
 
       await expect(test).toHaveUpdated('foo');
 
       expect(test.foo.current).toBe('bar');
+    });
+
+    it('will bypass setter when updating value', async () => {
+      class Test extends State {
+        foo = set(1, () => {
+          throw Error('setter should not run');
+        });
+      }
+
+      const test = Test.new();
+
+      test.set('foo', { value: 2 });
+
+      await expect(test).toHaveUpdated('foo');
+      expect(test.foo).toBe(2);
+    });
+
+    it('will throw if redefining managed property', () => {
+      class Test extends State {
+        foo = 'foo';
+      }
+
+      const test = Test.new();
+
+      expect(() => {
+        test.set('foo', { value: 'bar', set: false });
+      }).toThrow('already defined');
+    });
+
+    it('will define a read-only property', () => {
+      class Test extends State {
+        foo = 'foo';
+      }
+
+      interface Test {
+        bar: string;
+      }
+
+      const test = Test.new();
+
+      test.set('bar', { value: 'hello', set: false });
+
+      expect(test.bar).toBe('hello');
+      expect(() => {
+        test.bar = 'nope';
+      }).toThrow('read-only');
+    });
+
+    it('will define a non-enumerable property', () => {
+      class Test extends State {
+        foo = 'foo';
+      }
+
+      interface Test {
+        bar: string;
+      }
+
+      const test = Test.new();
+
+      test.set('bar', { value: 'hidden', enumerable: false });
+
+      expect(test.bar).toBe('hidden');
+      expect(Object.keys(test)).not.toContain('bar');
+    });
+
+    it('will register child state via descriptor', async () => {
+      class Child extends State {
+        value = 'hello';
+      }
+
+      class Parent extends State {
+        foo = 'foo';
+      }
+
+      interface Parent {
+        child: Child;
+      }
+
+      const parent = Parent.new();
+      const child = new Child();
+
+      parent.set('child', { value: child });
+
+      await expect(parent).toHaveUpdated('child');
+      expect(parent.child).toBe(child);
+
+      // child was not yet activated, parent wires it up
+      expect(child.get(null)).toBe(false);
+
+      parent.set(null);
+
+      // destroying parent cascades to unactivated child
+      expect(child.get(null)).toBe(true);
+    });
+
+    it('will replace child state via descriptor', async () => {
+      class Child extends State {
+        value = 'hello';
+      }
+
+      class Parent extends State {
+        foo = 'foo';
+      }
+
+      interface Parent {
+        child: Child;
+      }
+
+      const parent = Parent.new();
+      const first = new Child();
+      const second = new Child();
+
+      parent.set('child', { value: first });
+
+      await expect(parent).toHaveUpdated('child');
+      expect(parent.child).toBe(first);
+
+      // reassign child
+      parent.child = second as any;
+
+      await expect(parent).toHaveUpdated('child');
+      expect(parent.child).toBe(second);
     });
 
     it('will add property to tracking', async () => {
@@ -1531,7 +1653,7 @@ describe('set method', () => {
       expect(mock).not.toBeCalledWith('bar', 'bob');
 
       // assign bar formally adding to state
-      test.set('bar', 'baz', true);
+      test.set('bar', { value: 'baz' });
 
       // bar is redefined
       expect(test.bar).toBe('baz');

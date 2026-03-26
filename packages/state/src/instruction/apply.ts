@@ -1,5 +1,5 @@
-import { listener, observing } from '../observable';
-import { access, State, STORE, uid, update } from '../state';
+import { listener } from '../observable';
+import { State, STORE, uid, apply as config } from '../state';
 
 /**
  * Property initializer, will run upon instance creation.
@@ -13,13 +13,9 @@ type Apply<T = any, M extends State = any> = (
 ) => Apply.Config<T> | (() => void) | void;
 
 declare namespace Apply {
-  type Config<T = any> = {
-    get?: ((source: State) => T) | boolean;
-    set?: State.Setter<T> | boolean;
-    enumerable?: boolean;
+  interface Config<T = any> extends State.Apply<T> {
     destroy?: () => void;
-    value?: T;
-  };
+  }
 }
 
 const APPLY = new Map<symbol, Apply>();
@@ -34,55 +30,23 @@ State.on((_key, self) => {
   const store = STORE.get(self)!;
 
   for (const key in self) {
-    const desc = Object.getOwnPropertyDescriptor(self, key)!;
-    const instruction = APPLY.get(desc.value);
+    const property = Object.getOwnPropertyDescriptor(self, key)!;
+    const instruction = APPLY.get(property.value);
 
     if (!instruction) continue;
 
-    APPLY.delete(desc.value);
+    APPLY.delete(property.value);
     delete (self as any)[key];
 
     const output = instruction.call(self, key, self, store);
 
     if (!output) continue;
 
-    const config = typeof output == 'function' ? { destroy: output } : output;
+    const desc = typeof output == 'function' ? { destroy: output } : output;
 
-    if ('value' in config) store[key] = config.value;
-    if (config.destroy) listener(self, config.destroy, null);
+    if (desc.destroy) listener(self, desc.destroy, null);
 
-    Object.defineProperty(self, key, {
-      enumerable: config.enumerable !== false,
-      get(this: State) {
-        return observing(
-          this,
-          key,
-          typeof config.get == 'function'
-            ? config.get(this)
-            : access(self, key, config.get)
-        );
-      },
-      set(next) {
-        if (config.set === false) {
-          throw new Error(`${self}.${key} is read-only.`);
-        }
-
-        if (typeof config.set === 'function')
-          try {
-            const output = config.set(next, store[key]);
-            if (output !== undefined) next = output;
-          } catch (err: unknown) {
-            if (err === false) return;
-            if (err === true) {
-              update(self, key, next, true);
-              return;
-            }
-            throw err;
-          }
-
-        update(self, key, next);
-      }
-    });
+    config(self, key, desc, true);
   }
 
   return null;

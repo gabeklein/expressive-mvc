@@ -1,6 +1,6 @@
 import { listener, capture, watch } from '../observable';
 import { access, event, unbind, State, update } from '../state';
-import { Apply, apply } from './apply';
+import { apply } from './apply';
 
 const STALE = new WeakSet<() => void>();
 
@@ -161,7 +161,7 @@ function set<T = any>(value?: unknown, argument?: unknown): any {
       };
     }
 
-    const config: Apply.Config = {
+    const config: State.Apply = {
       enumerable: false,
       set: false
     };

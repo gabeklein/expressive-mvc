@@ -94,7 +94,7 @@ function ref<T>(
   arg?: ref.Callback<T> | State,
   arg2?: ((key: string) => any) | boolean
 ) {
-  return apply<T>((key, subject, state) => {
+  return apply((key, subject, state) => {
     let value = {};
     const method =
       (key: string, from: Record<string, T>) =>
@@ -164,7 +164,9 @@ function ref<T>(
       });
     }
 
-    defineProperty(subject, key, { value });
+    return {
+      get: () => value
+    };
   });
 }
 

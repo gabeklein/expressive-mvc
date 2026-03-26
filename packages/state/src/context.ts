@@ -154,7 +154,10 @@ class Context {
    * @param inputs State, State class, or map of States / State classes to register.
    * @param forEach Optional callback to run for each State registered.
    */
-  public set<T extends State>(inputs: Accept<T>, forEach?: (state: T) => (() => void) | void) {
+  public set<T extends State>(
+    inputs: Accept<T>,
+    forEach?: (state: T) => (() => void) | void
+  ) {
     const init = new Set<() => void>();
     const { cleanup } = this;
 
