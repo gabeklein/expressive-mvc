@@ -19,9 +19,6 @@ const ID = new WeakMap<State, string>();
 /** Internal state assigned to states. */
 const STORE = new WeakMap<State, Record<string | number | symbol, unknown>>();
 
-/** External listeners for any given State. */
-const NOTIFY = new WeakMap<State.Extends, Set<Observable.Notify>>();
-
 /** Parent-child relationships. */
 const PARENT = new WeakMap<State, State | null>();
 
@@ -441,6 +438,33 @@ define(State, 'toString', {
   }
 });
 
+/** External listeners for any given State. */
+const NOTIFY = new WeakMap<State.Extends, Set<Observable.Notify>>();
+
+function notify<T extends State>(state: T, key: State.Signal<T>): void;
+function notify<T extends State>(
+  state: State.Extends<T>,
+  callback: State.OnEvent<T>
+): () => void;
+function notify<T extends State>(
+  arg1: T | State.Extends<T>,
+  arg2: State.Signal<T> | State.OnEvent<T>
+) {
+  if (typeof arg1 == 'function' && typeof arg2 == 'function') {
+    let notify = NOTIFY.get(arg1);
+
+    if (!notify) NOTIFY.set(arg1, (notify = new Set()));
+
+    notify.add(arg2);
+
+    return () => notify.delete(arg2);
+  }
+
+  for (const cb of NOTIFY.get(T) || []) {
+    listener(arg1, cb);
+  }
+}
+
 /** Apply instructions and inherited event listeners. Ensure class metadata is ready. */
 function prepare(state: State) {
   let T = state.constructor as State.Extends;
@@ -608,22 +632,23 @@ function child(state: State) {
   return (value: unknown) => {
     reset();
 
-    if (value instanceof State) {
-      const remove = ctx.add(value, true);
+    if (!(value instanceof State)) return;
 
-      if (PARENT.has(value)) {
-        cleanup = remove;
-      } else {
-        PARENT.set(value, state);
-        listener(state, () => event(value, null), null);
-        cleanup = () => {
-          remove();
-          event(value, null);
-        };
-      }
+    const remove = ctx.add(value, true);
 
-      event(value);
+    if (PARENT.has(value)) {
+      cleanup = remove;
+    } else {
+      PARENT.set(value, state);
+      cleanup = () => {
+        ignore();
+        remove();
+        event(value, null);
+      };
+      const ignore = listener(state, cleanup, null);
     }
+
+    event(value);
   };
 }
 
@@ -632,10 +657,10 @@ let EXPORT: Map<any, any> | undefined;
 
 function values<T extends State>(state: T): State.Values<T> {
   const values = {} as any;
-  let isNotRecursive;
+  let notRecursive;
 
   if (!EXPORT) {
-    isNotRecursive = true;
+    notRecursive = true;
     EXPORT = new Map([[state, values]]);
   }
 
@@ -652,7 +677,7 @@ function values<T extends State>(state: T): State.Values<T> {
     values[key] = value;
   }
 
-  if (isNotRecursive) EXPORT = undefined;
+  if (notRecursive) EXPORT = undefined;
 
   return Object.freeze(values);
 }
