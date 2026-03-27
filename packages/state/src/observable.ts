@@ -128,9 +128,9 @@ function listener<T extends Observable>(
   return () => listeners.delete(callback);
 }
 
-const EMPTY = Object.assign<never[], PromiseLike<never[]>>([], {
+const EMPTY = Object.assign([], {
   then: Promise.prototype.then.bind(Promise.resolve([]))
-});
+} as PromiseLike<never[]>);
 
 function pending<K extends Event>(state: Observable): K[] & PromiseLike<K[]> {
   const current = PENDING_KEYS.get(state) as Set<K> | undefined;
