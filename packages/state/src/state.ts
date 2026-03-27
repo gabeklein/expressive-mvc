@@ -165,7 +165,16 @@ abstract class State implements Observable {
   constructor(...args: State.Args) {
     prepare(this);
     define(this, 'is', { value: this });
-    init(this, ...args, this.new);
+    init(
+      this,
+      args
+        .flat()
+        .concat(this.new)
+        .filter((arg) => {
+          if (typeof arg == 'string') ID.set(this, arg);
+          else return !!arg;
+        })
+    );
   }
 
   [Observable](callback: Observable.Callback, required?: boolean) {
@@ -517,13 +526,8 @@ function prepare(state: State) {
  * Apply state arguemnts, run callbacks and observe properties.
  * Accumulate and handle cleanup events.
  **/
-function init(state: State, ...args: State.Args) {
+function init(state: State, args: State.Args) {
   STORE.set(state, {});
-
-  args = args.flat().filter((arg) => {
-    if (typeof arg == 'string') ID.set(state, arg);
-    else return true;
-  });
 
   listener(state, () => {
     if (!PARENT.has(state)) PARENT.set(state, null);
