@@ -1792,28 +1792,29 @@ describe('set method', () => {
       const test = Test.new();
       const didUpdateFoo = vi.fn();
 
-      test.set(didUpdateFoo, 'foo');
+      test.set('foo', didUpdateFoo);
 
       test.foo = 'bar';
       test.foo = 'baz';
-      expect(didUpdateFoo).toBeCalledWith('foo', test);
+      expect(didUpdateFoo).toBeCalledWith('foo', 'bar', test);
       expect(didUpdateFoo).toBeCalledTimes(2);
 
       test.bar = 'baz';
       expect(didUpdateFoo).toBeCalledTimes(2);
     });
 
-    it('will self-unsubscribe', async () => {
+    it('will unsubscribe via returned function', async () => {
       class Test extends State {
         foo = 'foo';
       }
 
       const test = Test.new();
-      const didUpdateFoo = vi.fn(() => null);
+      const didUpdateFoo = vi.fn();
 
-      test.set(didUpdateFoo, 'foo');
+      const unsub = test.set('foo', didUpdateFoo);
 
       test.foo = 'bar';
+      unsub();
       test.foo = 'baz';
 
       expect(didUpdateFoo).toBeCalledTimes(1);
@@ -1827,10 +1828,10 @@ describe('set method', () => {
       const test = Test.new();
       const didDestroy = vi.fn();
 
-      test.set(didDestroy, null);
+      test.set(null, didDestroy);
       test.set(null);
 
-      expect(didDestroy).toBeCalledWith(null, test);
+      expect(didDestroy).toBeCalledWith(null, undefined, test);
     });
   });
 

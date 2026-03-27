@@ -96,7 +96,7 @@ function get<T extends State>(
     function assign(value: T) {
       if (callback) {
         const result = callback(value, subject);
-        if (typeof result === 'function') subject.set(result, null);
+        if (typeof result === 'function') subject.set(null, result);
       }
       update(subject, key, value);
     }
@@ -137,10 +137,10 @@ function getDownstream<T extends State>(
         Type,
         (state) => {
           update(subject, key, state);
-          const ignore = state.set(() => {
+          const ignore = state.set(null, () => {
             ignore();
             update(subject, key, undefined);
-          }, null);
+          });
           return ignore;
         },
         true
@@ -191,7 +191,7 @@ function getDownstream<T extends State>(
           if (typeof remove == 'function') remove();
         }
 
-        const ignore = state.set(done, null);
+        const ignore = state.set(null, done);
 
         return done;
       },
