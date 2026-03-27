@@ -573,6 +573,16 @@ function init(state: State, args: State.Args) {
   });
 }
 
+/**
+ * Define or update a managed property using a descriptor config.
+ * If the property already is managed, config will only accept value.
+ * If the property does not exist, it will be created and made reactive.
+ *
+ * @param state - State to apply property to.
+ * @param key - Property to define or update.
+ * @param config - Descriptor config with value, get, set, enumerable, and/or destroy.
+ * @param silent - If an update does occur, listeners will not be refreshed automatically.
+ */
 function apply(
   state: State,
   key: string | number,
