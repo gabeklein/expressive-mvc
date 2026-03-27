@@ -20,7 +20,7 @@ const ID = new WeakMap<State, string>();
 const STORE = new WeakMap<State, Record<string | number | symbol, unknown>>();
 
 /** External listeners for any given State. */
-const NOTIFY = new WeakMap<State.Extends, Set<Observable.Notify>>();
+const NOTIFY = new WeakMap<State.Extends, Set<State.OnEvent<any>>>();
 
 /** Parent-child relationships. */
 const PARENT = new WeakMap<State, State | null>();
@@ -111,6 +111,13 @@ declare namespace State {
     key: Signal<T>,
     source: T
   ) => void | (() => void) | null;
+
+  type OnKeyEvent<T extends State, K extends Event<T> = Event<T>> = (
+    this: T,
+    key: K,
+    value: K extends Field<T> ? Export<T[K]> : unknown,
+    source: T
+  ) => void;
 
   type OnUpdate<T extends State, K extends State.Event<T>> = (
     this: T,
@@ -286,7 +293,7 @@ abstract class State implements Observable {
   set(assign?: State.Assign<this>, silent?: boolean): State.Updated<this>;
 
   /**
-   * Call a function when update occurs.
+   * Call a function when any update occurs.
    *
    * Given function is called for every assignment (which changes value) or explicit `set`.
    *
@@ -294,13 +301,9 @@ abstract class State implements Observable {
    * function for one or more events will ensure it is called only when events are settled.
    *
    * @param callback - Function to call when update occurs.
-   * @param event - Property or event to watch for updates. If `null`, will callback on destroy.
    * @returns Function to remove listener. Will return `true` if removed, `false` if inactive already.
    */
-  set(
-    callback: State.OnEvent<this>,
-    event?: State.Event<this> | null
-  ): () => boolean;
+  set(callback: State.OnEvent<this>): () => boolean;
 
   /**
    * Push an update. This will not change the value of associated property.
@@ -340,6 +343,20 @@ abstract class State implements Observable {
     config: State.Define<this, K>
   ): State.Updated<this>;
 
+  /**
+   * Register a callback for a specific property or event.
+   *
+   * Callback receives the key, current value, and source instance.
+   *
+   * @param event - Property or event to watch. If `null`, will callback on destroy.
+   * @param callback - Function to call when event occurs.
+   * @returns Function to remove listener.
+   */
+  set<K extends State.Event<this>>(
+    event: K | null,
+    callback: State.OnKeyEvent<this, K>
+  ): () => boolean;
+
   set(
     arg1?: State.OnEvent<this> | State.Assign<this> | State.Event<this> | null,
     arg2?: unknown
@@ -348,9 +365,20 @@ abstract class State implements Observable {
 
     if (typeof arg1 == 'function')
       return listener(self, (key) => {
-        if (arg2 === key || (arg2 === undefined && typeof key == 'string'))
-          return arg1.call(self, key, self);
+        if (key && typeof key != 'object') return arg1.call(self, key, self);
       });
+
+    if (typeof arg2 == 'function') {
+      return listener(self, (key) => {
+        if (key === arg1)
+          arg2.call(
+            self,
+            key as State.Event<this>,
+            key !== null ? (self as any)[key] : undefined,
+            self
+          );
+      });
+    }
 
     if (arg1 && typeof arg1 == 'object') {
       assign(self, arg1, arg2 === true);
@@ -454,7 +482,7 @@ function prepare(state: State) {
 
   while (T.name) {
     for (const cb of NOTIFY.get(T) || []) {
-      listener(state, cb);
+      listener(state, cb as Observable.Notify);
     }
 
     if (T === State) break;
@@ -508,7 +536,7 @@ function init(state: State, ...args: State.Args) {
     else return true;
   });
 
-  listener(state, () => {
+  observable(state, () => {
     if (!PARENT.has(state)) PARENT.set(state, null);
 
     for (const key in state) {
@@ -531,8 +559,6 @@ function init(state: State, ...args: State.Args) {
       else if (typeof use == 'function') listener(state, use, null);
       else if (typeof use == 'object') assign(state, use, true);
     }
-
-    return null;
   });
 }
 
@@ -677,11 +703,14 @@ function access(state: State, property: string, required?: boolean) {
         resolve(store[key]);
         return null;
       }
-
-      if (key === null) {
-        reject(new Error(`${state} is destroyed.`));
-      }
     });
+    listener(
+      state,
+      () => {
+        reject(new Error(`${state} is destroyed.`));
+      },
+      null
+    );
   });
 
   throw Object.assign(promise, {

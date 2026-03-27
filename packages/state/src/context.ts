@@ -1,4 +1,4 @@
-import { listener } from './observable';
+import { observable } from './observable';
 import { event, State, uid } from './state';
 
 const LOOKUP = new WeakMap<State, Context>();
@@ -236,10 +236,9 @@ class Context {
 
     if (!LOOKUP.has(I)) LOOKUP.set(I, this);
 
-    listener(I, () => {
+    observable(I, () => {
       expects.forEach((f) => f());
       expects.clear();
-      return null;
     });
 
     function flush() {

@@ -68,7 +68,18 @@ const OBSERVER = new WeakMap<object, Observer>();
  * - `null` if expired
  * - `undefined` if not observable.
  */
-function observable(state: object): boolean | null | undefined {
+function observable(state: object, callback: () => void): () => boolean;
+function observable(state: object): boolean | null | undefined;
+function observable(state: object, callback?: () => void) {
+  if (callback) {
+    if (READY.has(state as Observable)) {
+      callback();
+      return () => false;
+    }
+
+    return listener(state as Observable, callback as Notify, true);
+  }
+
   if (Observable in state) {
     const status = READY.get(state as Observable);
     return status === undefined ? false : status;
@@ -116,21 +127,32 @@ function listener<T extends Observable>(
 
   if (!listeners) LISTENERS.set(subject, (listeners = new Map()));
 
+  if (select === true) {
+    if (READY.has(subject)) {
+      callback.call(subject, true, subject);
+      return () => false;
+    }
+
+    const once: Notify<T> = (key, source) => {
+      listeners.delete(once);
+      return callback.call(source, key, source);
+    };
+
+    listeners.set(once, new Set([true]));
+    return () => listeners.delete(once);
+  }
+
   if (select !== undefined && !(select instanceof Set))
     select = new Set([select]);
-
-  if (READY.has(subject) && !select) {
-    callback.call(subject, true, subject);
-  }
 
   listeners.set(callback, select);
 
   return () => listeners.delete(callback);
 }
 
-const EMPTY = Object.assign<never[], PromiseLike<never[]>>([], {
+const EMPTY = Object.assign([], {
   then: Promise.prototype.then.bind(Promise.resolve([]))
-});
+} as PromiseLike<never[]>);
 
 function pending<K extends Event>(state: Observable): K[] & PromiseLike<K[]> {
   const current = PENDING_KEYS.get(state) as Set<K> | undefined;
@@ -170,7 +192,7 @@ function emit(state: Observable, key: Signal): void {
 
   for (const key of pending)
     for (const [callback, filter] of listeners)
-      if (!filter || filter.has(key)) {
+      if (filter ? filter.has(key) : true) {
         const after = callback.call(state, key, state);
 
         if (after) {
@@ -305,12 +327,12 @@ function watch<T extends Observable>(
 
   if (EffectContext && argument !== false) EffectContext.add(cleanup);
 
-  listener(target, (key) => {
-    if (key === true) invoke();
-    else if (!reset) return reset;
-
-    if (key === null && unset) unset(null);
+  listener(target, () => {
+    if (!reset) return reset;
   });
+
+  observable(target, invoke);
+  listener(target, () => unset && unset(null), null);
 
   return cleanup;
 }
