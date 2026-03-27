@@ -197,9 +197,9 @@ abstract class State implements Observable {
   get(): State.Values<this>;
 
   /**
-   * Run a function which will run automatically when accessed values change.
+   * Run a function to run automatically when accessed values change.
    *
-   * @param effect Function to run, and again whenever accessed values change.
+   * @param effect Function to run, and whenever accessed values change.
    *               If effect returns a function, it will be called when a change occurs (syncronously),
    *               effect is cancelled, or parent state is destroyed.
    * @returns Function to cancel listener.
@@ -207,7 +207,9 @@ abstract class State implements Observable {
   get(effect: State.Effect<this>): () => void;
 
   /**
-   * Get value of a property.
+   * Get value of a property. Will fetch underlying value from exotic values like ref.Object.
+   *
+   * Any value which implements `get()` (with no arguments) will be treated as such.
    *
    * @param key - Property to get value of.
    * @param required - If true, will throw an error if property is not available.
@@ -219,7 +221,10 @@ abstract class State implements Observable {
   ): State.Value<this, T>;
 
   /**
-   * Run a function when a property is updated.
+   * Run a function when a property is updated and has settled.
+   *
+   * Not to be confused with `set(event, callback)`, which runs on every update,
+   * even if value is the same, and before updates are settled.
    *
    * @param key - Property to watch for updates.
    * @param callback - Function to call when property is updated.
@@ -231,10 +236,10 @@ abstract class State implements Observable {
   ): () => void;
 
   /**
-   * Check if state is expired.
+   * Check if state is destroyed.
    *
-   * @param status - `null` to check if state is expired.
-   * @returns `true` if state is expired, `false` otherwise.
+   * @param status - `null` to check if state is destroyed.
+   * @returns `true` if state is destroyed, `false` otherwise.
    */
   get(status: null): boolean;
 
@@ -246,16 +251,25 @@ abstract class State implements Observable {
    */
   get(status: null, callback: () => void): () => void;
 
-  /** Fetch upstream State from context. Throws if not found. */
-  get<T extends State>(type: State.Type<T>): T;
+  /** Fetch State of type from context. Throws if not found. */
+  get<T extends State>(type: State.Type<T>, required?: true): T;
 
-  /** Fetch a State from context. Returns undefined if not found. */
-  get<T extends State>(
-    type: State.Type<T>,
-    required: false | undefined
-  ): T | undefined;
+  /** Fetch a State from context. Undefined if not found. */
+  get<T extends State>(type: State.Type<T>, required: boolean): T | undefined;
 
-  /** Subscribe to State becoming available in context. */
+  /**
+   * Subscribe to State becoming available in context.
+   *
+   * Will search both up and downstream by default.
+   * Normally you can ignore this because State you expect is rarely both.
+   *
+   * Specify downstream if you only want to watch for State in children, which can be useful if you expect multiple of the same State in different branches of the tree.
+   *
+   * @param type - Type of State to watch for.
+   * @param callback - Function to call when State is found. Will be called immediately if State is already available.
+   * @param downstream - If true, will only watch for State in children, if false will only for parents.
+   * @returns Function to cancel listener.
+   */
   get<T extends State>(
     type: State.Type<T>,
     callback: Context.Expect<T>,
@@ -285,22 +299,24 @@ abstract class State implements Observable {
   set(): State.Updated<this>;
 
   /**
-   * Update mulitple properties at once. Merges argument with current state.
+   * Merge argument with current state, updating one or more properties at once.
    * Properties which are not managed by this state will be ignored.
    *
    * @param assign - Object with properties to update.
    * @param silent - If an update does occur, listeners will not be refreshed automatically.
-   * @returns Promise resolving an array of keys updated, `undefined` (immediately) if a noop.
+   * @returns Array of keys updated, syncronously contains keys updated immediately and may be resolved (to itself) when all updates are settled.
    */
   set(assign?: State.Assign<this>, silent?: boolean): State.Updated<this>;
 
   /**
-   * Call a function when any update occurs.
+   * Call a function when update occurs.
    *
    * Given function is called for every assignment (which changes value) or explicit `set`.
    *
-   * To run logic on final value only, callback may return a function. Using the same
-   * function for one or more events will ensure it is called only when events are settled.
+   * To run logic on final value only, callback may return a function. The same
+   * function for one or more events will be called only once when update is settled.
+   *
+   * Return `null` from callback to stop listening.
    *
    * @param callback - Function to call when update occurs.
    * @returns Function to remove listener. Will return `true` if removed, `false` if inactive already.
@@ -315,7 +331,7 @@ abstract class State implements Observable {
    *
    * You can also use this to dispatch arbitrary events.
    * Symbols are recommended as non-property events, however you can use any string.
-   * If doing so, be sure to avoid collisions with property names! An easy way to do this is
+   * If doing so, be sure to avoid collisions using property names. An easy way to do this is
    * to prefix an event with "!" and/or use dash-case. e.g. `set("!event")` or `set("my-event")`.
    *
    * @param key - Property or event to dispatch.
@@ -332,20 +348,6 @@ abstract class State implements Observable {
   set(status: null): void;
 
   /**
-   * Define or update a managed property using a descriptor config.
-   * If the property already exists, the config is merged with the existing one.
-   * If the property does not exist, it will be created and managed.
-   *
-   * @param key - Property to define or update.
-   * @param config - Descriptor config with value, get, set, enumerable, and/or destroy.
-   * @returns Promise resolves an array of keys updated.
-   */
-  set<K extends State.Event<this>>(
-    key: K,
-    config: State.Define<this, K>
-  ): State.Updated<this>;
-
-  /**
    * Register a callback for a specific property or event.
    *
    * Callback receives the key, current value, and source instance.
@@ -358,6 +360,20 @@ abstract class State implements Observable {
     event: K | null,
     callback: State.OnEvent<this>
   ): () => boolean;
+
+  /**
+   * Define or update a managed property using a descriptor config.
+   * If the property already is managed, config will only accept value.
+   * If the property does not exist, it will be created and made reactive.
+   *
+   * @param key - Property to define or update.
+   * @param config - Descriptor config with value, get, set, enumerable, and/or destroy.
+   * @returns Promise resolves an array of keys updated.
+   */
+  set<K extends State.Event<this>>(
+    key: K,
+    config: State.Define<this, K>
+  ): State.Updated<this>;
 
   set(
     arg1?: State.OnEvent<this> | State.Assign<this> | State.Event<this> | null,
