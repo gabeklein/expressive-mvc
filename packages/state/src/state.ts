@@ -632,10 +632,10 @@ let EXPORT: Map<any, any> | undefined;
 
 function values<T extends State>(state: T): State.Values<T> {
   const values = {} as any;
-  let isNotRecursive;
+  let notRecursive;
 
   if (!EXPORT) {
-    isNotRecursive = true;
+    notRecursive = true;
     EXPORT = new Map([[state, values]]);
   }
 
@@ -652,7 +652,7 @@ function values<T extends State>(state: T): State.Values<T> {
     values[key] = value;
   }
 
-  if (isNotRecursive) EXPORT = undefined;
+  if (notRecursive) EXPORT = undefined;
 
   return Object.freeze(values);
 }
