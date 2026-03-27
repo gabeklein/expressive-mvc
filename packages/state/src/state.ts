@@ -286,7 +286,7 @@ abstract class State implements Observable {
   set(assign?: State.Assign<this>, silent?: boolean): State.Updated<this>;
 
   /**
-   * Call a function when update occurs.
+   * Call a function when any update occurs.
    *
    * Given function is called for every assignment (which changes value) or explicit `set`.
    *
@@ -294,13 +294,9 @@ abstract class State implements Observable {
    * function for one or more events will ensure it is called only when events are settled.
    *
    * @param callback - Function to call when update occurs.
-   * @param event - Property or event to watch for updates. If `null`, will callback on destroy.
    * @returns Function to remove listener. Will return `true` if removed, `false` if inactive already.
    */
-  set(
-    callback: State.OnEvent<this>,
-    event?: State.Event<this> | null
-  ): () => boolean;
+  set(callback: State.OnEvent<this>): () => boolean;
 
   /**
    * Push an update. This will not change the value of associated property.
@@ -340,6 +336,20 @@ abstract class State implements Observable {
     config: State.Define<this, K>
   ): State.Updated<this>;
 
+  /**
+   * Register a callback for a specific property or event.
+   *
+   * Callback receives the key, current value, and source instance.
+   *
+   * @param event - Property or event to watch. If `null`, will callback on destroy.
+   * @param callback - Function to call when event occurs.
+   * @returns Function to remove listener.
+   */
+  set<K extends State.Event<this>>(
+    event: K | null,
+    callback: State.OnEvent<this>
+  ): () => boolean;
+
   set(
     arg1?: State.OnEvent<this> | State.Assign<this> | State.Event<this> | null,
     arg2?: unknown
@@ -348,9 +358,16 @@ abstract class State implements Observable {
 
     if (typeof arg1 == 'function')
       return listener(self, (key) => {
-        if (arg2 === key || (arg2 === undefined && typeof key == 'string'))
+        if (
+          typeof key == 'string' ||
+          typeof key == 'number' ||
+          typeof key == 'symbol'
+        )
           return arg1.call(self, key, self);
       });
+
+    if (typeof arg2 == 'function')
+      return listener(self, arg2 as State.OnEvent<this>, arg1 as State.Signal);
 
     if (arg1 && typeof arg1 == 'object') {
       assign(self, arg1, arg2 === true);

@@ -72,9 +72,9 @@ class Component extends State {
     PENDING.set(nextProps, this);
 
     this.props = nextProps;
-    this.set(() => {
+    this.set('props', () => {
       this.set(this.props as {});
-    }, 'props');
+    });
   }
 
   /**

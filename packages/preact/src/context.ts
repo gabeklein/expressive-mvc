@@ -56,8 +56,7 @@ function Provider<T extends State>(props: Provider.Props<T>) {
   context.set(props.for, (state) => {
     if (props.forEach) {
       const cleanup = props.forEach(state);
-
-      if (cleanup) state.set(cleanup, null);
+      if (cleanup) state.set(null, cleanup);
     }
   });
 

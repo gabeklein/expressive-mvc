@@ -188,7 +188,7 @@ describe('callback', () => {
 
     expect(didAssign).not.toBeCalled();
 
-    state.set(didUpdate, 'test');
+    state.set('test', didUpdate);
     state.test = 2;
 
     expect(didUpdate).toBeCalledTimes(1);
