@@ -3,8 +3,6 @@ import { Context } from '../context';
 import { State, PARENT, update } from '../state';
 import { def } from './def';
 
-type Type<T extends State> = State.Extends<T> & typeof State;
-
 declare namespace get {
   type Callback<T = any> = (
     state: T,
@@ -84,7 +82,7 @@ function get<T extends State>(
 ): T | undefined;
 
 function get<T extends State>(
-  Type: Type<T>,
+  Type: State.Extends<T>,
   arg1?: get.Callback<T> | boolean,
   arg2?: get.Callback<T> | boolean
 ) {
@@ -128,7 +126,7 @@ function get<T extends State>(
 }
 
 function getDownstream<T extends State>(
-  Type: Type<T>,
+  Type: State.Extends<T>,
   arg: get.Callback<T> | boolean | undefined
 ) {
   return def<T[]>((key, subject) => {
