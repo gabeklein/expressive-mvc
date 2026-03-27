@@ -608,22 +608,23 @@ function child(state: State) {
   return (value: unknown) => {
     reset();
 
-    if (value instanceof State) {
-      const remove = ctx.add(value, true);
+    if (!(value instanceof State)) return;
 
-      if (PARENT.has(value)) {
-        cleanup = remove;
-      } else {
-        PARENT.set(value, state);
-        listener(state, () => event(value, null), null);
-        cleanup = () => {
-          remove();
-          event(value, null);
-        };
-      }
+    const remove = ctx.add(value, true);
 
-      event(value);
+    if (PARENT.has(value)) {
+      cleanup = remove;
+    } else {
+      PARENT.set(value, state);
+      cleanup = () => {
+        ignore();
+        remove();
+        event(value, null);
+      };
+      const ignore = listener(state, cleanup, null);
     }
+
+    event(value);
   };
 }
 
