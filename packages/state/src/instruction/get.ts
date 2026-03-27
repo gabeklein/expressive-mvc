@@ -1,7 +1,7 @@
 import { capture } from '../observable';
 import { Context } from '../context';
 import { State, PARENT, update } from '../state';
-import { apply } from './apply';
+import { def } from './def';
 
 type Type<T extends State> = State.Extends<T> & typeof State;
 
@@ -90,7 +90,7 @@ function get<T extends State>(
 ) {
   if (arg1 === true) return getDownstream(Type, arg2);
 
-  return apply<T>((key, subject) => {
+  return def<T>((key, subject) => {
     const hasParent = PARENT.get(subject) as T;
     const callback =
       typeof arg1 === 'function' ? (arg1 as get.Callback<T>) : undefined;
@@ -131,7 +131,7 @@ function getDownstream<T extends State>(
   Type: Type<T>,
   arg: get.Callback<T> | boolean | undefined
 ) {
-  return apply<T[]>((key, subject) => {
+  return def<T[]>((key, subject) => {
     const context = Context.get(subject);
 
     if (typeof arg == 'boolean') {

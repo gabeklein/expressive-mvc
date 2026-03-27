@@ -1,26 +1,26 @@
 import { listener } from '../observable';
-import { State, STORE, uid, apply as config } from '../state';
+import { State, STORE, uid, apply } from '../state';
 
-/**
- * Property initializer, will run upon instance creation.
- * Optional returned callback will run when once upon first access.
- */
-type Apply<T = any, M extends State = any> = (
-  this: M,
-  key: Extract<State.Field<M>, string>,
-  thisArg: M,
-  state: State.Values<M>
-) => Apply.Config<T> | (() => void) | void;
+declare namespace def {
+  /**
+   * Property initializer, will run upon instance creation.
+   * Optional returned callback will run when once upon first access.
+   */
+  type Factory<T = any, M extends State = any> = (
+    this: M,
+    key: Extract<State.Field<M>, string>,
+    thisArg: M,
+    state: State.Values<M>
+  ) => def.Config<T> | (() => void) | void;
 
-declare namespace Apply {
   interface Config<T = any> extends State.Apply<T> {
     destroy?: () => void;
   }
 }
 
-const APPLY = new Map<symbol, Apply>();
+const APPLY = new Map<symbol, def.Factory>();
 
-function apply<T>(arg1: Apply<T>) {
+function def<T>(arg1: def.Factory<T>) {
   const token = Symbol('instruction-' + uid());
   APPLY.set(token, arg1);
   return token as T extends void ? unknown : T;
@@ -46,10 +46,10 @@ State.on((_key, self) => {
 
     if (desc.destroy) listener(self, desc.destroy, null);
 
-    config(self, key, desc, true);
+    apply(self, key, desc, true);
   }
 
   return null;
 });
 
-export { apply, Apply };
+export { def };
