@@ -159,7 +159,7 @@ abstract class State implements Observable {
   constructor(...args: State.Args) {
     prepare(this);
     define(this, 'is', { value: this });
-    init(this, args.flat().concat(this.new).filter(Boolean));
+    setup(this, args, this.new);
   }
 
   [Observable](callback: Observable.Callback, required?: boolean) {
@@ -532,7 +532,7 @@ function prepare(state: State) {
  * Apply state arguemnts, run callbacks and observe properties.
  * Accumulate and handle cleanup events.
  **/
-function init(state: State, args: State.Args) {
+function setup(state: State, ...args: State.Args) {
   STORE.set(state, {});
 
   listener(state, () => {
@@ -543,18 +543,21 @@ function init(state: State, args: State.Args) {
       if ('value' in desc) apply(state, key, desc, true);
     }
 
-    for (const arg of args) {
-      const use =
-        typeof arg == 'function'
-          ? arg.call(state, state)
-          : (arg as State.Assign<State>);
+    const queue = Array.from(args);
+
+    for (let i = 0; i < queue.length; i++) {
+      const arg = queue[i];
+
+      if (!arg) continue;
+
+      const use = typeof arg == 'function' ? arg.call(state, state) : arg;
 
       if (use instanceof Promise)
         use.catch((err) => {
           console.error(`Async error in constructor for ${state}:`);
           console.error(err);
         });
-      else if (Array.isArray(use)) args.push(...use);
+      else if (Array.isArray(use)) queue.splice(i + 1, 0, ...use);
       else if (typeof use == 'function') listener(state, use, null);
       else if (typeof use == 'object') assign(state, use, true);
     }

@@ -2203,6 +2203,47 @@ describe('new method (static)', () => {
     expect(test.baz).toBe(3);
   });
 
+  it('will flatten deeply nested arguments', () => {
+    class Test extends State {
+      foo = 0;
+      bar = 0;
+      baz = 0;
+    }
+
+    const test = Test.new([{ foo: 1 }], [[{ bar: 2 }, [{ baz: 3 }]]]);
+
+    expect(test.foo).toBe(1);
+    expect(test.bar).toBe(2);
+    expect(test.baz).toBe(3);
+  });
+
+  it('will process init-returned arrays in order', () => {
+    const order: number[] = [];
+    const invoke = (n: number) => () => void order.push(n);
+
+    class Test extends State {
+      value = 0;
+    }
+
+    Test.new(
+      () => [invoke(1), [invoke(2)]],
+      invoke(3),
+      () => [invoke(4)]
+    );
+
+    expect(order).toEqual([1, 2, 3, 4]);
+  });
+
+  it('will process nested arrays from init before later args', () => {
+    class Test extends State {
+      foo = 0;
+    }
+
+    const test = Test.new(() => [{ foo: 1 }], { foo: 2 });
+
+    expect(test.foo).toBe(2);
+  });
+
   it('will prefer later assignments', () => {
     class Test extends State {
       foo = 1;
@@ -2258,7 +2299,9 @@ describe('new method (static)', () => {
 
     await expect(test).not.toHaveUpdated();
 
-    expect(error).toBeCalledWith(expect.stringMatching(/Async error in constructor for [\w-]+:/));
+    expect(error).toBeCalledWith(
+      expect.stringMatching(/Async error in constructor for [\w-]+:/)
+    );
     expect(error).toBeCalledWith(expects);
 
     error.mockRestore();
@@ -2419,7 +2462,11 @@ describe('on method (static)', () => {
     class Test2 extends Test {}
 
     const didCreate = vi.fn();
-    const remove = [Test.on(didCreate), Test2.on(didCreate), State.on(didCreate)];
+    const remove = [
+      Test.on(didCreate),
+      Test2.on(didCreate),
+      State.on(didCreate)
+    ];
 
     Test2.new();
 
