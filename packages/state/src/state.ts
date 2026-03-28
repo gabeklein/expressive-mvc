@@ -494,8 +494,6 @@ function init(state: State, ...args: State.Args) {
     for (let i = 0; i < queue.length; i++) {
       const arg = queue[i];
 
-      if (!arg) continue;
-
       const use = typeof arg == 'function' ? arg.call(state, state) : arg;
 
       if (use instanceof Promise)
