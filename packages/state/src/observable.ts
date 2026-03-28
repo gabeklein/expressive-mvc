@@ -119,7 +119,7 @@ function listener<T extends Observable>(
   if (select !== undefined && !(select instanceof Set))
     select = new Set([select]);
 
-  if (READY.has(subject) && !select) {
+  if (READY.has(subject) && select && select.has(true)) {
     callback.call(subject, true, subject);
   }
 
@@ -170,7 +170,7 @@ function emit(state: Observable, key: Signal): void {
 
   for (const key of pending)
     for (const [callback, filter] of listeners)
-      if (!filter || filter.has(key)) {
+      if (filter ? filter.has(key) : key !== true && key !== null) {
         const after = callback.call(state, key, state);
 
         if (after) {
@@ -310,7 +310,7 @@ function watch<T extends Observable>(
     else if (!reset) return reset;
 
     if (key === null && unset) unset(null);
-  });
+  }, new Set([true, null]));
 
   return cleanup;
 }

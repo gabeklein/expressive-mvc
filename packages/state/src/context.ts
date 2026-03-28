@@ -240,7 +240,7 @@ class Context {
       expects.forEach((f) => f());
       expects.clear();
       return null;
-    });
+    }, true);
 
     function flush() {
       onDone.forEach((r) => r());

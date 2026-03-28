@@ -130,7 +130,7 @@ function ref<T>(
           }
 
         return null;
-      });
+      }, true);
     else if (typeof arg == 'object')
       throw new Error(
         "ref instruction does not support object which is not 'this'"

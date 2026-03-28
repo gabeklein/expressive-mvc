@@ -210,7 +210,7 @@ function set<T = any>(value?: unknown, argument?: unknown): any {
         listener(subject, () => {
           init();
           return null;
-        });
+        }, true);
       } else {
         config.get = init;
       }

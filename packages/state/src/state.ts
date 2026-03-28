@@ -507,7 +507,7 @@ function prepare(state: State) {
   } while (T.name);
 
   for (const type of chain) {
-    NOTIFY.get(type)?.forEach((cb) => listener(state, cb));
+    NOTIFY.get(type)?.forEach((cb) => listener(state, cb, true));
 
     if (type === State) continue;
 
@@ -575,7 +575,7 @@ function init(state: State, args: State.Args) {
     }
 
     return null;
-  });
+  }, true);
 }
 
 /**
@@ -733,7 +733,7 @@ function access(state: State, property: string, required?: boolean) {
       if (key === null) {
         reject(new Error(`${state} is destroyed.`));
       }
-    });
+    }, new Set([property, null]));
   });
 
   throw Object.assign(promise, {
