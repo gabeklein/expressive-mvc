@@ -165,16 +165,7 @@ abstract class State implements Observable {
   constructor(...args: State.Args) {
     prepare(this);
     define(this, 'is', { value: this });
-    init(
-      this,
-      args
-        .flat()
-        .concat(this.new)
-        .filter((arg) => {
-          if (typeof arg == 'string') ID.set(this, arg);
-          else return !!arg;
-        })
-    );
+    init(this, args, this.new);
   }
 
   [Observable](callback: Observable.Callback, required?: boolean) {
@@ -547,7 +538,13 @@ function prepare(state: State) {
  * Apply state arguemnts, run callbacks and observe properties.
  * Accumulate and handle cleanup events.
  **/
-function init(state: State, args: State.Args) {
+function init(state: State, ...args: State.Args) {
+  args = (<any>args).flat(Infinity);
+  args = args.filter((arg) => {
+    if (typeof arg == 'string') ID.set(state, arg);
+    else return !!arg;
+  });
+
   STORE.set(state, {});
 
   listener(state, () => {
@@ -569,7 +566,7 @@ function init(state: State, args: State.Args) {
           console.error(`Async error in constructor for ${state}:`);
           console.error(err);
         });
-      else if (Array.isArray(use)) args.push(...use);
+      else if (Array.isArray(use)) args.unshift(...use);
       else if (typeof use == 'function') listener(state, use, null);
       else if (typeof use == 'object') assign(state, use, true);
     }
