@@ -2424,6 +2424,24 @@ describe('on method (static)', () => {
     done.forEach((done) => done());
   });
 
+  it('will run callbacks in ancestor-first order', () => {
+    class A extends State {
+      value = 1;
+    }
+    class B extends A {}
+    class C extends B {}
+
+    const order: string[] = [];
+
+    A.on(() => void order.push('A'));
+    B.on(() => void order.push('B'));
+    C.on(() => void order.push('C'));
+
+    C.new();
+
+    expect(order).toEqual(['A', 'B', 'C']);
+  });
+
   it('will squash same callback for multiple classes', () => {
     class Test2 extends Test {}
 

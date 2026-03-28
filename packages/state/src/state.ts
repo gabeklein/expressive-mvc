@@ -489,23 +489,21 @@ function prepare(state: State) {
 
   if (T === State) throw new Error('Cannot create base State.');
 
+  ID.set(state, `${T}-${uid()}`);
+
   const chain = [] as State.Extends[];
   let keys = new Map<string, (value: any) => void>();
 
-  ID.set(state, `${T}-${uid()}`);
-
-  while (T.name) {
-    for (const cb of NOTIFY.get(T) || []) {
-      listener(state, cb);
-    }
-
-    if (T === State) break;
-    else chain.unshift(T);
-
+  do {
+    chain.unshift(T);
     T = Object.getPrototypeOf(T);
-  }
+  } while (T.name);
 
   for (const type of chain) {
+    NOTIFY.get(type)?.forEach((cb) => listener(state, cb));
+
+    if (type === State) continue;
+
     if (METHODS.has(type)) {
       keys = METHODS.get(type)!;
       continue;
