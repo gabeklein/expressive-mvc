@@ -104,37 +104,33 @@ function ref<T>(
           : from[key];
 
     if (arg === subject)
-      listener(
-        subject,
-        () => {
-          for (const key in subject)
-            if (typeof arg2 == 'function')
-              defineProperty(value, key, {
-                configurable: true,
-                get() {
-                  const out = arg2(key);
-                  defineProperty(value, key, { value: out });
-                  return out;
-                }
-              });
-            else {
-              const get = method(key, subject);
-              const set = (x: any) => (subject[key] = x);
+      listener(subject, () => {
+        for (const key in subject)
+          if (typeof arg2 == 'function')
+            defineProperty(value, key, {
+              configurable: true,
+              get() {
+                const out = arg2(key);
+                defineProperty(value, key, { value: out });
+                return out;
+              }
+            });
+          else {
+            const get = method(key, subject);
+            const set = (x: any) => (subject[key] = x);
 
-              defineProperties(set, {
-                current: { get, set },
-                get: { value: get },
-                is: { value: subject },
-                key: { value: key }
-              });
+            defineProperties(set, {
+              current: { get, set },
+              get: { value: get },
+              is: { value: subject },
+              key: { value: key }
+            });
 
-              defineProperty(value, key, { value: set });
-            }
+            defineProperty(value, key, { value: set });
+          }
 
-          return null;
-        },
-        true
-      );
+        return null;
+      });
     else if (typeof arg == 'object')
       throw new Error(
         "ref instruction does not support object which is not 'this'"
