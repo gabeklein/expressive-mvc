@@ -163,6 +163,8 @@ abstract class State implements Observable {
   declare is: this;
 
   constructor(...args: State.Args) {
+    let name;
+
     prepare(this);
     define(this, 'is', { value: this });
     init(
@@ -171,10 +173,12 @@ abstract class State implements Observable {
         .flat()
         .concat(this.new)
         .filter((arg) => {
-          if (typeof arg == 'string') ID.set(this, arg);
+          if (typeof arg == 'string') name = arg;
           else return !!arg;
         })
     );
+
+    ID.set(this, name || `${this.constructor}-${uid()}`);
   }
 
   [Observable](callback: Observable.Callback, required?: boolean) {
@@ -495,8 +499,6 @@ function prepare(state: State) {
   let T = state.constructor as State.Extends;
 
   if (T === State) throw new Error('Cannot create base State.');
-
-  ID.set(state, `${T}-${uid()}`);
 
   const chain = [] as State.Extends[];
   let keys = new Map<string, (value: any) => void>();
