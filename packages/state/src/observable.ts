@@ -32,12 +32,17 @@ type Observer<T = any> = (key: string | number, value: T) => T;
 
 type Callback = () => void | PromiseLite;
 
+type Init<T extends Observable = Observable> = (
+  this: T,
+  state: T
+) => (() => void) | void;
+
 declare namespace Observable {
-  export { Callback, Effect, Event, Notify, Observer, Signal };
+  export { Callback, Effect, Event, Notify, Observer, Signal, Init };
 }
 
 interface Observable {
-  [Observable](callback: Observable.Callback, required?: boolean): this | void;
+  [Observable](callback: Callback, required?: boolean): this | void;
 }
 
 const Observable = Symbol('Observable');
@@ -68,16 +73,43 @@ const OBSERVER = new WeakMap<object, Observer>();
  * - `null` if expired
  * - `undefined` if not observable.
  */
-function observable(state: object): boolean | null | undefined {
-  if (Observable in state) {
-    const status = READY.get(state as Observable);
-    return status === undefined ? false : status;
+function observable(state: object): boolean | null | undefined;
+
+/**
+ * Register a lifecycle callback for an observable.
+ * Runs on ready (or immediately if already ready).
+ * If callback returns a function, it will run on destroy.
+ */
+function observable<T extends Observable>(
+  state: T,
+  callback: Init<T>
+): boolean | null | undefined;
+
+function observable(
+  state: any,
+  callback?: (state: any) => (() => void) | void
+): boolean | null | undefined | void {
+  if (!(Observable in state)) return;
+
+  const status = READY.get(state as Observable);
+
+  if (callback) {
+    function init() {
+      const cleanup = callback!.call(state, state);
+      if (typeof cleanup == 'function')
+        listener(state, cleanup as Notify, null);
+    }
+
+    if (status !== undefined) init();
+    else listener(state, () => (init(), null));
   }
+
+  return status === undefined ? false : status;
 }
 
 function observe<T extends Observable>(
   object: T,
-  callback: Observable.Callback,
+  callback: Callback,
   required?: boolean
 ): T {
   const watching = new Set<unknown>();

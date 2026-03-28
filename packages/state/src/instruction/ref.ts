@@ -1,4 +1,4 @@
-import { listener, capture } from '../observable';
+import { listener, capture, observable } from '../observable';
 import { State, update } from '../state';
 import { def } from './def';
 
@@ -104,7 +104,7 @@ function ref<T>(
           : from[key];
 
     if (arg === subject)
-      listener(subject, () => {
+      observable(subject, () => {
         for (const key in subject)
           if (typeof arg2 == 'function')
             defineProperty(value, key, {
@@ -128,8 +128,6 @@ function ref<T>(
 
             defineProperty(value, key, { value: set });
           }
-
-        return null;
       });
     else if (typeof arg == 'object')
       throw new Error(

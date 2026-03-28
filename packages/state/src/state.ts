@@ -20,7 +20,7 @@ const ID = new WeakMap<State, string>();
 const STORE = new WeakMap<State, Record<string | number | symbol, unknown>>();
 
 /** External lifecycle listeners for any given State class. */
-const NOTIFY = new WeakMap<State.Extends, Set<Observable.Notify>>();
+const NOTIFY = new WeakMap<State.Extends, Set<Observable.Init>>();
 
 /** Parent-child relationships. */
 const PARENT = new WeakMap<State, State | null>();
@@ -466,11 +466,8 @@ abstract class State implements Observable {
 
     if (!notify) NOTIFY.set(this, (notify = new Set()));
 
-    const ready = (_key: State.Signal, subject: T) => {
-      const cb = init.call(subject, subject, this);
-      if (typeof cb == 'function') listener(subject, cb, null);
-      return null;
-    };
+    const ready = (subject: Observable) =>
+      init.call(subject as T, subject as T, this);
 
     notify.add(ready);
 
@@ -507,7 +504,7 @@ function prepare(state: State) {
   } while (T.name);
 
   for (const type of chain) {
-    NOTIFY.get(type)?.forEach((cb) => listener(state, cb));
+    NOTIFY.get(type)?.forEach((cb) => observable(state, cb));
 
     if (type === State) continue;
 
@@ -550,7 +547,7 @@ function prepare(state: State) {
 function init(state: State, args: State.Args) {
   STORE.set(state, {});
 
-  listener(state, () => {
+  observable(state, () => {
     if (!PARENT.has(state)) PARENT.set(state, null);
 
     for (const key in state) {
@@ -573,8 +570,6 @@ function init(state: State, args: State.Args) {
       else if (typeof use == 'function') listener(state, use, null);
       else if (typeof use == 'object') assign(state, use, true);
     }
-
-    return null;
   });
 }
 

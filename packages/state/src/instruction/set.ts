@@ -1,4 +1,4 @@
-import { listener, capture, watch } from '../observable';
+import { capture, watch, observable } from '../observable';
 import { access, event, unbind, State, update } from '../state';
 import { def } from './def';
 
@@ -207,10 +207,7 @@ function set<T = any>(value?: unknown, argument?: unknown): any {
       }
 
       if (argument) {
-        listener(subject, () => {
-          init();
-          return null;
-        });
+        observable(subject, init);
       } else {
         config.get = init;
       }
