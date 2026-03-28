@@ -1,6 +1,6 @@
 import { capture } from '../observable';
 import { Context } from '../context';
-import { State, PARENT, update } from '../state';
+import { State, parent, update } from '../state';
 import { def } from './def';
 
 declare namespace get {
@@ -89,7 +89,7 @@ function get<T extends State>(
   if (arg1 === true) return getDownstream(Type, arg2);
 
   return def<T>((key, subject) => {
-    const hasParent = PARENT.get(subject) as T;
+    const hasParent = parent(subject);
     const callback =
       typeof arg1 === 'function' ? (arg1 as get.Callback<T>) : undefined;
 
@@ -102,7 +102,7 @@ function get<T extends State>(
     }
 
     if (hasParent && hasParent instanceof Type) {
-      assign(hasParent);
+      assign(hasParent as T);
       return {};
     }
 

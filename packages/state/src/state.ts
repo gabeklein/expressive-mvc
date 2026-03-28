@@ -551,7 +551,7 @@ function init(state: State, args: State.Args) {
   STORE.set(state, {});
 
   listener(state, () => {
-    if (!PARENT.has(state)) PARENT.set(state, null);
+    parent(state, null);
 
     for (const key in state) {
       const desc = Object.getOwnPropertyDescriptor(state, key)!;
@@ -664,16 +664,16 @@ function child(state: State) {
 
     const remove = ctx.add(value, true);
 
-    if (PARENT.has(value)) {
-      cleanup = remove;
-    } else {
-      PARENT.set(value, state);
+    if (parent(value) === undefined) {
+      parent(value, state);
       cleanup = () => {
         ignore();
         remove();
         event(value, null);
       };
       const ignore = listener(state, cleanup, null);
+    } else {
+      cleanup = remove;
     }
 
     event(value);
@@ -807,4 +807,13 @@ function unbind(fn?: Function) {
   return METHOD.get(fn) || fn;
 }
 
-export { event, unbind, State, PARENT, STORE, uid, access, update, apply };
+/**
+ * Get or set a parent on given state. May only be assigned once; ignores new value.
+ * Returns parent of child, or `undefined` if not assigned yet.
+ */
+function parent(child: State, value?: State | null) {
+  if (arguments.length > 1 && !PARENT.has(child)) PARENT.set(child, value!);
+  return PARENT.get(child);
+}
+
+export { event, unbind, State, parent, STORE, uid, access, update, apply };
