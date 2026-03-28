@@ -569,15 +569,12 @@ describe('State.get', () => {
     class Test extends State {
       value?: number = undefined;
 
-      constructor(...args: State.Args) {
-        super(args, 'ID');
-      }
     }
 
     renderWith(Test, () => {
       expect(() => {
         void Test.get(true).value;
-      }).toThrow('ID.value is required in this context.');
+      }).toThrow(/[\w-]+\.value is required in this context\./);
     });
   });
 
@@ -1268,14 +1265,11 @@ describe('State.get', () => {
       class Foo extends State {
         bar = get(Bar);
 
-        constructor(...args: State.Args) {
-          super(args, 'ID');
-        }
       }
 
       const tryToRender = () => renderHook(() => Foo.use());
 
-      expect(tryToRender).toThrow(`Required Bar not found in context for ID.`);
+      expect(tryToRender).toThrow(/Required Bar not found in context for [\w-]+\./);
     });
 
     it('will prefer parent over context', () => {

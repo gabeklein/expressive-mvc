@@ -427,11 +427,11 @@ describe('factory', () => {
       }
     }
 
-    const test = Test.new('ID');
+    const test = Test.new();
 
     expect(() => test.memoized).toThrow('Foobar');
     expect(warn).toBeCalledWith(
-      `Generating initial value for ID.memoized failed.`
+      expect.stringMatching(/Generating initial value for [\w-]+\.memoized failed\./)
     );
   });
 });
@@ -444,9 +444,9 @@ describe('suspense', () => {
       value = set(promise);
     }
 
-    const instance = Test.new('ID');
+    const instance = Test.new();
 
-    expect(() => instance.value).toThrow(`ID.value is not yet available.`);
+    expect(() => instance.value).toThrow(/[\w-]+\.value is not yet available\./);
     promise.resolve();
   });
 

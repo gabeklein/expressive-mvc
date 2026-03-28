@@ -41,13 +41,7 @@ declare namespace State {
     Omit<typeof State, never>;
 
   /** State constructor arguments */
-  type Args<T extends State = any> = (
-    | Args<T>
-    | Init<T>
-    | Assign<T>
-    | string
-    | void
-  )[];
+  type Args<T extends State = any> = (Args<T> | Init<T> | Assign<T> | void)[];
 
   /**
    * State constructor callback - is called when State finishes intializing.
@@ -165,16 +159,7 @@ abstract class State implements Observable {
   constructor(...args: State.Args) {
     prepare(this);
     define(this, 'is', { value: this });
-    init(
-      this,
-      args
-        .flat()
-        .concat(this.new)
-        .filter((arg) => {
-          if (typeof arg == 'string') ID.set(this, arg);
-          else return !!arg;
-        })
-    );
+    init(this, args.flat().concat(this.new).filter(Boolean));
   }
 
   [Observable](callback: Observable.Callback, required?: boolean) {
@@ -667,11 +652,11 @@ function child(state: State) {
     if (parent(value) === undefined) {
       parent(value, state);
       cleanup = () => {
-        ignore();
+        cancel();
         remove();
         event(value, null);
       };
-      const ignore = listener(state, cleanup, null);
+      const cancel = listener(state, cleanup, null);
     } else {
       cleanup = remove;
     }

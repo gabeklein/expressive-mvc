@@ -91,7 +91,7 @@ describe('instruction', () => {
         value = def(() => ({ get: false }));
       }
 
-      const test = Test.new('ID');
+      const test = Test.new();
       const effect = vi.fn((test: Test) => void test.value);
 
       test.get(effect);
@@ -109,10 +109,10 @@ describe('instruction', () => {
           value = def(() => ({ set: false }));
         }
 
-        const test = Test.new('ID');
+        const test = Test.new();
         const assign = () => (test.value = 'foo');
 
-        expect(assign).toThrow(`ID.value is read-only.`);
+        expect(assign).toThrow(/[\w-]+\.value is read-only\./);
       });
     });
 

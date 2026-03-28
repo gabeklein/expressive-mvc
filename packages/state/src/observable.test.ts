@@ -51,7 +51,7 @@ describe('effect', () => {
       property?: string = undefined;
     }
 
-    const test = Test.new('ID');
+    const test = Test.new();
     const attempt = () => {
       watch(
         test,
@@ -62,7 +62,7 @@ describe('effect', () => {
       );
     };
 
-    expect(attempt).toThrow(`ID.property is required in this context.`);
+    expect(attempt).toThrow(/[\w-]+\.property is required in this context\./);
   });
 
   it('will still get events after silent ones', async () => {
@@ -289,7 +289,7 @@ describe('suspense', () => {
       value = set<never>();
     }
 
-    const instance = Test.new('ID');
+    const instance = Test.new();
     let didThrow: Error | undefined;
 
     try {
@@ -298,9 +298,7 @@ describe('suspense', () => {
       didThrow = err;
     }
 
-    expect(String(didThrow)).toMatchInlineSnapshot(
-      `"Error: ID.value is not yet available."`
-    );
+    expect(String(didThrow)).toMatch(/[\w-]+\.value is not yet available\./);
   });
 
   it('will reject if state destroyed before resolved', async () => {
@@ -308,7 +306,7 @@ describe('suspense', () => {
       value = set<never>();
     }
 
-    const instance = Test.new('ID');
+    const instance = Test.new();
     let didThrow: Promise<any> | undefined;
 
     try {
@@ -319,7 +317,7 @@ describe('suspense', () => {
 
     instance.set(null);
 
-    await expect(didThrow).rejects.toThrow(`ID is destroyed.`);
+    await expect(didThrow).rejects.toThrow(/[\w-]+ is destroyed\./);
   });
 });
 

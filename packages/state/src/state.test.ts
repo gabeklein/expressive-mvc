@@ -414,25 +414,19 @@ describe('string coercion', () => {
     expect(foobar).toMatch(/^FooBar-\w{6}/);
   });
 
-  it('will be class name and supplied ID', () => {
-    const a = Test.new('ID');
-
-    expect(String(a)).toBe('ID');
-  });
-
   it('will work inside subscriber', () => {
     class Test extends State {
       foo = 'foo';
     }
 
-    const test = Test.new('ID');
+    const test = Test.new();
     const mock = vi.fn();
 
     test.get((state) => {
       mock(String(state));
     });
 
-    expect(mock).toBeCalledWith('ID');
+    expect(mock).toBeCalledWith(String(test));
   });
 });
 
@@ -589,14 +583,14 @@ describe('get method', () => {
         foo = set<string>();
       }
 
-      const test = Test.new('ID');
+      const test = Test.new();
       let suspense;
 
       try {
         void test.get('foo');
       } catch (error) {
         expect(error).toBeInstanceOf(Promise);
-        expect(String(error)).toMatch('Error: ID.foo is not yet available.');
+        expect(String(error)).toMatch(/[\w-]+\.foo is not yet available\./);
         suspense = error;
       }
 
@@ -610,14 +604,14 @@ describe('get method', () => {
         foo?: string = undefined;
       }
 
-      const test = Test.new('ID');
+      const test = Test.new();
       let suspense;
 
       try {
         void test.get('foo', true);
       } catch (error) {
         expect(error).toBeInstanceOf(Promise);
-        expect(String(error)).toMatch('Error: ID.foo is not yet available.');
+        expect(String(error)).toMatch(/[\w-]+\.foo is not yet available\./);
         suspense = error;
       }
 
@@ -1927,7 +1921,7 @@ describe('set method', () => {
       }
 
       const callback = vi.fn();
-      const test = Test.new('ID');
+      const test = Test.new();
 
       test.set(callback);
       test.foo++;
@@ -1935,7 +1929,7 @@ describe('set method', () => {
       test.set(null);
 
       expect(() => test.foo++).toThrow(
-        'Tried to update ID.foo but state is destroyed.'
+        /Tried to update [\w-]+\.foo but state is destroyed\./
       );
       expect(callback).toBeCalledTimes(1);
     });
@@ -2126,12 +2120,6 @@ describe('new method', () => {
 describe('new method (static)', () => {
   class Test extends State {}
 
-  it('will use string argument as ID', () => {
-    const state = Test.new('ID');
-
-    expect(String(state)).toBe('ID');
-  });
-
   it('will call argument as lifecycle', () => {
     const didDestroy = vi.fn();
     const didCreate = vi.fn(() => didDestroy);
@@ -2183,11 +2171,10 @@ describe('new method (static)', () => {
     const willCreate = vi.fn(() => ({ foo: 2 }));
     const willDestroy = vi.fn();
 
-    const test = Test.new('Test-ID', willCreate, () => willDestroy, { bar: 3 });
+    const test = Test.new(willCreate, () => willDestroy, { bar: 3 });
 
     expect(test.foo).toBe(2);
     expect(test.bar).toBe(3);
-    expect(String(test)).toBe('Test-ID');
     expect(willCreate).toBeCalledTimes(1);
     expect(willDestroy).not.toBeCalled();
 
@@ -2209,18 +2196,11 @@ describe('new method (static)', () => {
       }
     }
 
-    const test = Test2.new('Test-ID', { foo: 1 }, { bar: 2 });
+    const test = Test2.new({ foo: 1 }, { bar: 2 });
 
-    expect(String(test)).toBe('Test-ID');
     expect(test.foo).toBe(1);
     expect(test.bar).toBe(2);
     expect(test.baz).toBe(3);
-  });
-
-  it('will prefer last ID provided', () => {
-    const test = Test.new('ID', 'ID2');
-
-    expect(String(test)).toBe('ID2');
   });
 
   it('will prefer later assignments', () => {
@@ -2272,13 +2252,13 @@ describe('new method (static)', () => {
     const expects = new Error('State callback rejected.');
 
     const init = vi.fn(() => Promise.reject(expects));
-    const test = Test.new('ID', init);
+    const test = Test.new(init);
 
     expect(init).toBeCalledTimes(1);
 
     await expect(test).not.toHaveUpdated();
 
-    expect(error).toBeCalledWith('Async error in constructor for ID:');
+    expect(error).toBeCalledWith(expect.stringMatching(/Async error in constructor for [\w-]+:/));
     expect(error).toBeCalledWith(expects);
 
     error.mockRestore();
