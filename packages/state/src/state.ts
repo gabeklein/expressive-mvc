@@ -466,6 +466,53 @@ define(State, 'toString', {
 });
 
 /**
+ * Apply state arguemnts, run callbacks and observe properties.
+ * Accumulate and handle cleanup events.
+ **/
+function init(state: State, ...args: State.Args) {
+  const T = state.constructor as State.Extends;
+
+  if (T === State) throw new Error('Cannot create base State.');
+
+  const setup = bootstrap(T);
+
+  ID.set(state, `${T}-${uid()}`);
+  STORE.set(state, {});
+
+  function properties() {
+    for (const key in state) {
+      const desc = Object.getOwnPropertyDescriptor(state, key)!;
+      if ('value' in desc) apply(state, key, desc, true);
+    }
+  }
+
+  listener(state, () => {
+    parent(state, null);
+
+    const queue = [...setup, properties, ...args];
+
+    for (let i = 0; i < queue.length; i++) {
+      const arg = queue[i];
+
+      if (!arg) continue;
+
+      const use = typeof arg == 'function' ? arg.call(state, state) : arg;
+
+      if (use instanceof Promise)
+        use.catch((err) => {
+          console.error(`Async error in constructor for ${state}:`);
+          console.error(err);
+        });
+      else if (Array.isArray(use)) queue.splice(i + 1, 0, ...use);
+      else if (typeof use == 'function') listener(state, use, null);
+      else if (typeof use == 'object') assign(state, use, true);
+    }
+
+    return null;
+  });
+}
+
+/**
  * Apply instructions and inherited event listeners. Ensure class metadata is ready.
  *
  * @param T - State class to bootstrap.
@@ -518,53 +565,6 @@ function bootstrap(T: State.Extends) {
   }
 
   return new Set(setup);
-}
-
-/**
- * Apply state arguemnts, run callbacks and observe properties.
- * Accumulate and handle cleanup events.
- **/
-function init(state: State, ...args: State.Args) {
-  const T = state.constructor as State.Extends;
-
-  if (T === State) throw new Error('Cannot create base State.');
-
-  const setup = bootstrap(T);
-
-  ID.set(state, `${T}-${uid()}`);
-  STORE.set(state, {});
-
-  function properties() {
-    for (const key in state) {
-      const desc = Object.getOwnPropertyDescriptor(state, key)!;
-      if ('value' in desc) apply(state, key, desc, true);
-    }
-  }
-
-  listener(state, () => {
-    parent(state, null);
-
-    const queue = [...setup, properties, ...args];
-
-    for (let i = 0; i < queue.length; i++) {
-      const arg = queue[i];
-
-      if (!arg) continue;
-
-      const use = typeof arg == 'function' ? arg.call(state, state) : arg;
-
-      if (use instanceof Promise)
-        use.catch((err) => {
-          console.error(`Async error in constructor for ${state}:`);
-          console.error(err);
-        });
-      else if (Array.isArray(use)) queue.splice(i + 1, 0, ...use);
-      else if (typeof use == 'function') listener(state, use, null);
-      else if (typeof use == 'object') assign(state, use, true);
-    }
-
-    return null;
-  });
 }
 
 /**
