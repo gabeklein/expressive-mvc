@@ -2391,21 +2391,21 @@ describe('is method (static)', () => {
 });
 
 describe('on method (static)', () => {
-  class Test extends State {
-    foo = 'bar';
-  }
-
   it('will run callback on create', () => {
+    class Test extends State {}
+
     const mock = vi.fn();
     const done = Test.on(mock);
     const test = Test.new();
 
-    expect(mock).toBeCalledWith(test, Test);
+    expect(mock).toBeCalledWith(test);
 
     done();
   });
 
   it('will run cleanup on destroy', () => {
+    class Test extends State {}
+
     const cleanup = vi.fn();
     const done = Test.on(() => cleanup);
     const test = Test.new();
@@ -2419,25 +2419,19 @@ describe('on method (static)', () => {
   });
 
   it('will run callback for inherited classes', () => {
+    class Test extends State {}
     class Test2 extends Test {}
 
-    const createState = vi.fn();
     const createTest = vi.fn();
     const createTest2 = vi.fn();
 
-    const done = [
-      Test.on(createTest),
-      Test2.on(createTest2),
-      State.on(createState)
-    ];
+    Test.on(createTest);
+    Test2.on(createTest2);
 
     const test = Test2.new();
 
-    expect(createState).toBeCalledWith(test, State);
-    expect(createTest).toBeCalledWith(test, Test);
-    expect(createTest2).toBeCalledWith(test, Test2);
-
-    done.forEach((done) => done());
+    expect(createTest).toBeCalledWith(test);
+    expect(createTest2).toBeCalledWith(test);
   });
 
   it('will run callbacks in ancestor-first order', () => {
@@ -2459,23 +2453,22 @@ describe('on method (static)', () => {
   });
 
   it('will squash same callback for multiple classes', () => {
+    class Test extends State {}
     class Test2 extends Test {}
 
     const didCreate = vi.fn();
-    const remove = [
-      Test.on(didCreate),
-      Test2.on(didCreate),
-      State.on(didCreate)
-    ];
+
+    Test.on(didCreate);
+    Test2.on(didCreate);
 
     Test2.new();
 
-    expect(didCreate).toBeCalledTimes(3);
-
-    remove.forEach((drop) => drop());
+    expect(didCreate).toBeCalledTimes(1);
   });
 
   it('will remove callback', () => {
+    class Test extends State {}
+
     const mock = vi.fn();
     const done = Test.on(mock);
 

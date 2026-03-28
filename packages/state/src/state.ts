@@ -20,7 +20,7 @@ const ID = new WeakMap<State, string>();
 const STORE = new WeakMap<State, Record<string | number | symbol, unknown>>();
 
 /** External lifecycle listeners for any given State class. */
-const NOTIFY = new WeakMap<State.Extends, Set<Observable.Notify>>();
+const SETUP = new WeakMap<State.Extends, Set<State.Init<any>>>();
 
 /** Parent-child relationships. */
 const PARENT = new WeakMap<State, State | null>();
@@ -157,9 +157,8 @@ abstract class State implements Observable {
   declare is: this;
 
   constructor(...args: State.Args) {
-    prepare(this);
     define(this, 'is', { value: this });
-    setup(this, args, this.new);
+    init(this, args, this.new);
   }
 
   [Observable](callback: Observable.Callback, required?: boolean) {
@@ -443,23 +442,14 @@ abstract class State implements Observable {
    * Register a callback to run when any instance of this State is created.
    * If callback returns a function, it will be called when the instance is destroyed.
    */
-  static on<T extends State>(
-    this: State.Extends<T>,
-    init: (this: T, instance: T, type: State.Extends<T>) => (() => void) | void
-  ) {
-    let notify = NOTIFY.get(this);
+  static on<T extends State>(this: State.Extends<T>, init: State.Init<T>) {
+    let setup = SETUP.get(this);
 
-    if (!notify) NOTIFY.set(this, (notify = new Set()));
+    if (!setup) SETUP.set(this, (setup = new Set()));
 
-    const ready = (_key: State.Signal, subject: T) => {
-      const cb = init.call(subject, subject, this);
-      if (typeof cb == 'function') listener(subject, cb, null);
-      return null;
-    };
+    setup.add(init);
 
-    notify.add(ready);
-
-    return () => notify.delete(ready);
+    return () => setup.delete(init);
   }
 }
 
@@ -475,15 +465,15 @@ define(State, 'toString', {
   }
 });
 
-/** Apply instructions and inherited event listeners. Ensure class metadata is ready. */
-function prepare(state: State) {
-  let T = state.constructor as State.Extends;
-
-  if (T === State) throw new Error('Cannot create base State.');
-
-  ID.set(state, `${T}-${uid()}`);
-
+/**
+ * Apply instructions and inherited event listeners. Ensure class metadata is ready.
+ *
+ * @param T - State class to bootstrap.
+ * @return Array of init functions to run on instance, in order of class hierarchy.
+ */
+function bootstrap(T: State.Extends) {
   const chain = [] as State.Extends[];
+  const setup = [] as State.Init[];
   let keys = new Map<string, (value: any) => void>();
 
   do {
@@ -492,7 +482,7 @@ function prepare(state: State) {
   } while (T.name);
 
   for (const type of chain) {
-    NOTIFY.get(type)?.forEach((cb) => listener(state, cb));
+    setup.push(...(SETUP.get(type) || []));
 
     if (type === State) continue;
 
@@ -526,24 +516,35 @@ function prepare(state: State) {
       define(type.prototype, key, { get: bind, set: bind });
     }
   }
+
+  return new Set(setup);
 }
 
 /**
  * Apply state arguemnts, run callbacks and observe properties.
  * Accumulate and handle cleanup events.
  **/
-function setup(state: State, ...args: State.Args) {
+function init(state: State, ...args: State.Args) {
+  const T = state.constructor as State.Extends;
+
+  if (T === State) throw new Error('Cannot create base State.');
+
+  const setup = bootstrap(T);
+
+  ID.set(state, `${T}-${uid()}`);
   STORE.set(state, {});
 
-  listener(state, () => {
-    parent(state, null);
-
+  function properties() {
     for (const key in state) {
       const desc = Object.getOwnPropertyDescriptor(state, key)!;
       if ('value' in desc) apply(state, key, desc, true);
     }
+  }
 
-    const queue = Array.from(args);
+  listener(state, () => {
+    parent(state, null);
+
+    const queue = [...setup, properties, ...args];
 
     for (let i = 0; i < queue.length; i++) {
       const arg = queue[i];
