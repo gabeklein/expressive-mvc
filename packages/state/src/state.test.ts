@@ -2377,27 +2377,20 @@ describe('on method (static)', () => {
     const done = Test.on(mock);
     const test = Test.new();
 
-    expect(mock).toBeCalledWith(true, test);
+    expect(mock).toBeCalledWith(test, Test);
 
     done();
   });
 
-  it('will run on various events', async () => {
-    const mock = vi.fn();
-    const done = Test.on(mock);
+  it('will run cleanup on destroy', () => {
+    const cleanup = vi.fn();
+    const done = Test.on(() => cleanup);
     const test = Test.new();
 
-    test.set('event');
-    test.foo = 'baz';
-
-    expect(mock).toBeCalledWith('event', test);
-    expect(mock).toBeCalledWith('foo', test);
-
-    await test.set();
-    expect(mock).toBeCalledWith(false, test);
+    expect(cleanup).not.toBeCalled();
 
     test.set(null);
-    expect(mock).toBeCalledWith(null, test);
+    expect(cleanup).toBeCalled();
 
     done();
   });
@@ -2417,9 +2410,9 @@ describe('on method (static)', () => {
 
     const test = Test2.new();
 
-    expect(createState).toBeCalledWith(true, test);
-    expect(createTest).toBeCalledWith(true, test);
-    expect(createTest2).toBeCalledWith(true, test);
+    expect(createState).toBeCalledWith(test, State);
+    expect(createTest).toBeCalledWith(test, Test);
+    expect(createTest2).toBeCalledWith(test, Test2);
 
     done.forEach((done) => done());
   });
@@ -2446,13 +2439,13 @@ describe('on method (static)', () => {
     class Test2 extends Test {}
 
     const didCreate = vi.fn();
-    const done = [Test.on(didCreate), Test2.on(didCreate), State.on(didCreate)];
+    const remove = [Test.on(didCreate), Test2.on(didCreate), State.on(didCreate)];
 
     Test2.new();
 
-    expect(didCreate).toBeCalledTimes(1);
+    expect(didCreate).toBeCalledTimes(3);
 
-    done.forEach((done) => done());
+    remove.forEach((drop) => drop());
   });
 
   it('will remove callback', () => {
@@ -2466,22 +2459,5 @@ describe('on method (static)', () => {
 
     Test.new();
     expect(mock).toBeCalledTimes(1);
-  });
-
-  it('will run callback on event', () => {
-    const mock = vi.fn();
-    const done = Test.on((key: any, state: any) => {
-      mock(key, state[key]);
-    });
-
-    const test = Test.new();
-
-    expect(mock).toBeCalledWith(true, undefined);
-
-    test.foo = 'baz';
-
-    expect(mock).toBeCalledWith('foo', 'baz');
-
-    done();
   });
 });

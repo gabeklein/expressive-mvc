@@ -19,7 +19,7 @@ const ID = new WeakMap<State, string>();
 /** Internal state assigned to states. */
 const STORE = new WeakMap<State, Record<string | number | symbol, unknown>>();
 
-/** External listeners for any given State. */
+/** External lifecycle listeners for any given State class. */
 const NOTIFY = new WeakMap<State.Extends, Set<Observable.Notify>>();
 
 /** Parent-child relationships. */
@@ -455,19 +455,26 @@ abstract class State implements Observable {
   }
 
   /**
-   * Register a callback to run when any instance of this State is updated.
+   * Register a callback to run when any instance of this State is created.
+   * If callback returns a function, it will be called when the instance is destroyed.
    */
   static on<T extends State>(
     this: State.Extends<T>,
-    listener: State.OnEvent<T>
+    init: (this: T, instance: T, type: State.Extends<T>) => (() => void) | void
   ) {
     let notify = NOTIFY.get(this);
 
     if (!notify) NOTIFY.set(this, (notify = new Set()));
 
-    notify.add(listener);
+    const ready = (_key: State.Signal, subject: T) => {
+      const cb = init.call(subject, subject, this);
+      if (typeof cb == 'function') listener(subject, cb, null);
+      return null;
+    };
 
-    return () => notify.delete(listener);
+    notify.add(ready);
+
+    return () => notify.delete(ready);
   }
 }
 

@@ -26,7 +26,7 @@ function def<T>(arg1: def.Factory<T>) {
   return token as T extends void ? unknown : T;
 }
 
-State.on((_key, self) => {
+State.on((self) => {
   const store = STORE.get(self)!;
 
   for (const key in self) {
@@ -48,8 +48,6 @@ State.on((_key, self) => {
 
     apply(self, key, desc, true);
   }
-
-  return null;
 });
 
 export { def };
