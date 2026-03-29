@@ -493,6 +493,28 @@ describe('unmount', () => {
 
     expect(didDispose).toBeCalled();
   });
+
+  it('will dispose instance in strict mode', () => {
+    const didDispose = vi.fn();
+
+    class Control extends Component {
+      protected new() {
+        return didDispose;
+      }
+    }
+
+    const element = render(
+      <React.StrictMode>
+        <Control />
+      </React.StrictMode>
+    );
+
+    expect(didDispose).not.toBeCalled();
+
+    element.unmount();
+
+    expect(didDispose).toBeCalled();
+  });
 });
 
 describe('state props on rerender', () => {
