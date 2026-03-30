@@ -1,5 +1,10 @@
 import { watch, unbind } from '@expressive/state';
-import { createElement, useEffect, useState, type ReactNode } from 'react';
+import React, {
+  createElement,
+  useEffect,
+  useState,
+  type ReactNode
+} from 'react';
 import { Context, Layers, Provide } from './context';
 import { State } from './state';
 
@@ -106,6 +111,17 @@ class Component extends State {
   render(props?: {}): ReactNode {
     return this.props.children || null;
   }
+
+  /**
+   * Called when a child component throws during render.
+   * While this is pending, `fallback` is displayed.
+   * When resolved, the error boundary resets and `render` is called again.
+   *
+   * Override to handle errors - set `this.fallback` for error-specific UI,
+   * await async recovery, or await user interaction before retrying. If you
+   * assign a fallback within catch, it will be reverted after resolved.
+   */
+  catch?(error: Error): Promise<void> | void;
 }
 
 Object.defineProperties(Component.prototype, {
@@ -146,7 +162,7 @@ function bootstrap(this: Component, context: Context) {
     return render.call(active, self.props);
   }
 
-  function Component() {
+  function AsComponent() {
     refresh = useState(0)[1];
 
     if (!mounted) mounts++;
@@ -161,12 +177,32 @@ function bootstrap(this: Component, context: Context) {
       };
     }, []);
 
-    return createElement(Provide, {
+    const children = createElement(Provide, {
       context,
       name: String(self),
       fallback: active.fallback,
       children: createElement(Render)
     });
+
+    if (active.catch)
+      return createElement(ErrorBoundary, {
+        fallback() {
+          return active.fallback;
+        },
+        async onError(error: Error, reset: () => void) {
+          mounts /= 2;
+          const suspense = active.fallback;
+          try { await active.catch!(error) }
+          catch { return }
+          if (mounts) {
+            reset();
+            active.fallback = suspense;
+          }
+        },
+        children
+      });
+
+    return children;
   }
 
   Object.defineProperties(self, {
@@ -175,9 +211,31 @@ function bootstrap(this: Component, context: Context) {
       set() {}
     },
     render: {
-      value: () => createElement(Component)
+      value: () => createElement(AsComponent)
     }
   });
+}
+
+interface BoundaryProps {
+  children: ReactNode;
+  fallback: () => ReactNode;
+  onError: (error: Error, reset: () => void) => void;
+}
+
+class ErrorBoundary extends React.Component<BoundaryProps, { error: boolean }> {
+  state = { error: false };
+
+  static getDerivedStateFromError() {
+    return { error: true };
+  }
+
+  componentDidCatch(error: Error) {
+    this.props.onError(error, () => this.setState({ error: false }));
+  }
+
+  render() {
+    return this.state.error ? this.props.fallback() : this.props.children;
+  }
 }
 
 export { Component };

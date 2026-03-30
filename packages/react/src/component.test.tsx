@@ -1,4 +1,13 @@
-import { vi, expect, it, describe, act, render, screen } from '../vitest';
+import {
+  vi,
+  expect,
+  it,
+  describe,
+  act,
+  render,
+  screen,
+  mockPromise
+} from '../vitest';
 
 import React from 'react';
 import { Component, Consumer, set } from '.';
@@ -475,7 +484,11 @@ describe('suspense', () => {
   });
 });
 
-describe('unmount', () => {
+describe.each([false, true])('unmount (strict: %s)', (strict) => {
+  function wrap(jsx: React.ReactNode) {
+    return strict ? <React.StrictMode>{jsx}</React.StrictMode> : jsx;
+  }
+
   it('will dispose instance', () => {
     const didDispose = vi.fn();
 
@@ -485,7 +498,7 @@ describe('unmount', () => {
       }
     }
 
-    const element = render(<Control />);
+    const element = render(wrap(<Control />));
 
     expect(didDispose).not.toBeCalled();
 
@@ -494,21 +507,31 @@ describe('unmount', () => {
     expect(didDispose).toBeCalled();
   });
 
-  it('will dispose instance in strict mode', () => {
+  it('will dispose instance if unmounted in error state', async () => {
     const didDispose = vi.fn();
+    const Throws = () => {
+      throw new Error('boom');
+    };
 
     class Control extends Component {
-      protected new() {
+      fallback = (<span>Oops</span>);
+
+      new() {
         return didDispose;
+      }
+
+      async catch() {
+        await new Promise(() => {});
+      }
+
+      render() {
+        return <Throws />;
       }
     }
 
-    const element = render(
-      <React.StrictMode>
-        <Control />
-      </React.StrictMode>
-    );
+    const element = render(wrap(<Control />));
 
+    screen.getByText('Oops');
     expect(didDispose).not.toBeCalled();
 
     element.unmount();
@@ -563,6 +586,189 @@ describe('default render', () => {
     );
 
     element.getByText('foobar');
+  });
+});
+
+describe('error boundary', () => {
+  it('will show fallback when child throws', async () => {
+    const Throws = () => {
+      throw new Error('boom');
+    };
+
+    class Boundary extends Component {
+      fallback = (<span>Oops</span>);
+
+      async catch(_error: Error) {
+        // never resolves - stays in fallback
+        await new Promise(() => {});
+      }
+
+      render() {
+        return <Throws />;
+      }
+    }
+
+    render(<Boundary />);
+
+    screen.getByText('Oops');
+  });
+
+  it('will recover when catch resolves', async () => {
+    let shouldThrow = true;
+    let resolve!: () => void;
+
+    const MaybeThrows = () => {
+      if (shouldThrow) throw new Error('boom');
+      return <span>Recovered</span>;
+    };
+
+    class Boundary extends Component {
+      fallback = (<span>Oops</span>);
+
+      async catch(_error: Error) {
+        await new Promise<void>((r) => {
+          resolve = r;
+        });
+        shouldThrow = false;
+      }
+
+      render() {
+        return <MaybeThrows />;
+      }
+    }
+
+    render(<Boundary />);
+
+    screen.getByText('Oops');
+
+    await act(async () => resolve());
+
+    screen.getByText('Recovered');
+  });
+
+  it('will restore fallback after catch resolves', async () => {
+    let throwing: any = new Error('boom');
+    let resolve!: () => void;
+    let instance!: Boundary;
+
+    class Boundary extends Component {
+      value = 'initial';
+      fallback = (<span>Default Loading</span>);
+
+      new() {
+        instance = this;
+      }
+
+      async catch(_error: Error) {
+        this.fallback = <span>Error Fallback</span>;
+        await new Promise<void>((r) => {
+          resolve = r;
+        });
+        throwing = null;
+      }
+
+      render() {
+        if (throwing) throw throwing;
+        return <span>{this.value}</span>;
+      }
+    }
+
+    render(<Boundary />);
+    await act(async () => {});
+
+    // error boundary shows error-specific fallback
+    screen.getByText('Error Fallback');
+
+    await act(async () => resolve());
+
+    // error recovered, render works again
+    screen.getByText('initial');
+
+    // suspend from render - fallback was restored so suspense uses default
+    await act(async () => {
+      throwing = new Promise(() => {});
+      instance.value = 'trigger';
+    });
+
+    screen.getByText('Default Loading');
+  });
+
+  it('will call catch again on repeated failure', async () => {
+    let catchCount = 0;
+    let resolve!: () => void;
+
+    const Throws = () => {
+      throw new Error('boom');
+    };
+
+    class Boundary extends Component {
+      fallback = (<span>Oops</span>);
+
+      async catch(_error: Error) {
+        catchCount++;
+        await new Promise<void>((r) => {
+          resolve = r;
+        });
+      }
+
+      render() {
+        return <Throws />;
+      }
+    }
+
+    render(<Boundary />);
+
+    expect(catchCount).toBe(1);
+
+    // resolve but it will throw again
+    await act(async () => resolve());
+
+    expect(catchCount).toBe(2);
+  });
+
+  it('will not error if unmounted during catch', async () => {
+    const Throws = () => {
+      throw new Error('boom');
+    };
+    const promise = mockPromise();
+    let boundary!: Boundary;
+
+    class Boundary extends Component {
+      fallback = (<span>Oops</span>);
+
+      new() {
+        boundary = this;
+      }
+
+      async catch(_error: Error) {
+        await promise;
+      }
+
+      render() {
+        return <Throws />;
+      }
+    }
+
+    const element = render(<Boundary />);
+
+    screen.getByText('Oops');
+
+    await act(async () => element.unmount());
+
+    expect(boundary.get(null)).toBe(true);
+
+    // resolving after unmount should not throw
+    const errors: Error[] = [];
+
+    function trap(_: unknown, reason: Error) {
+      errors.push(reason);
+    }
+
+    process.on('unhandledRejection', trap);
+    promise.resolve();
+
+    process.off('unhandledRejection', trap);
+    expect(errors).toHaveLength(0);
   });
 });
 
