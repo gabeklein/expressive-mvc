@@ -158,7 +158,12 @@ function bootstrap(this: Component, context: Context) {
     if (refresh) refresh((x) => x + 1);
   });
 
+  let recovering = false;
+
   function Render() {
+    useEffect(() => {
+      recovering = false;
+    });
     return render.call(active, self.props);
   }
 
@@ -189,15 +194,21 @@ function bootstrap(this: Component, context: Context) {
         fallback() {
           return active.fallback;
         },
-        async onError(error: Error, reset: () => void) {
+        onError(error: Error, reset: (failed?: Error) => void) {
           mounts /= 2;
+          if (recovering) return reset(error);
           const suspense = active.fallback;
-          try { await active.catch!(error) }
-          catch { return }
-          if (mounts) {
-            reset();
-            active.fallback = suspense;
-          }
+          Promise.resolve(active.catch!(error)).then(
+            () => {
+              if (!mounts) return;
+              recovering = true;
+              reset();
+              active.fallback = suspense;
+            },
+            (e) => {
+              if (mounts) reset(e);
+            }
+          );
         },
         children
       });
@@ -219,22 +230,26 @@ function bootstrap(this: Component, context: Context) {
 interface BoundaryProps {
   children: ReactNode;
   fallback: () => ReactNode;
-  onError: (error: Error, reset: () => void) => void;
+  onError: (error: Error, reset: (failed?: Error) => void) => void;
 }
 
-class ErrorBoundary extends React.Component<BoundaryProps, { error: boolean }> {
-  state = { error: false };
+class ErrorBoundary extends React.Component<BoundaryProps> {
+  state = {} as { suspend?: boolean; failed?: Error };
 
   static getDerivedStateFromError() {
-    return { error: true };
+    return { suspend: true };
   }
 
   componentDidCatch(error: Error) {
-    this.props.onError(error, () => this.setState({ error: false }));
+    this.props.onError(error, (failed) => {
+      this.setState(failed ? { failed } : { suspend: false });
+    });
   }
 
   render() {
-    return this.state.error ? this.props.fallback() : this.props.children;
+    const { state, props } = this;
+    if (state.failed) throw state.failed;
+    return state.suspend ? props.fallback() : props.children;
   }
 }
 

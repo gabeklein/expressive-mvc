@@ -693,8 +693,8 @@ describe('error boundary', () => {
     screen.getByText('Default Loading');
   });
 
-  it('will call catch again on repeated failure', async () => {
-    let catchCount = 0;
+  it('will propagate if render throws after recovery', async () => {
+    const parentCatch = vi.fn();
     let resolve!: () => void;
 
     const Throws = () => {
@@ -704,11 +704,8 @@ describe('error boundary', () => {
     class Boundary extends Component {
       fallback = (<span>Oops</span>);
 
-      async catch(_error: Error) {
-        catchCount++;
-        await new Promise<void>((r) => {
-          resolve = r;
-        });
+      async catch() {
+        await new Promise<void>((r) => (resolve = r));
       }
 
       render() {
@@ -716,14 +713,121 @@ describe('error boundary', () => {
       }
     }
 
-    render(<Boundary />);
+    class Parent extends Component {
+      fallback = (<span>Parent Caught</span>);
 
-    expect(catchCount).toBe(1);
+      async catch(error: Error) {
+        parentCatch(error.message);
+        await new Promise(() => {});
+      }
 
-    // resolve but it will throw again
+      render() {
+        return <Boundary />;
+      }
+    }
+
+    render(<Parent />);
+
+    screen.getByText('Oops');
+
+    // resolve catch but render will throw again
     await act(async () => resolve());
 
+    // error propagated to parent boundary
+    screen.getByText('Parent Caught');
+    expect(parentCatch).toBeCalledWith('boom');
+  });
+
+  it('will propagate catch rejection to parent boundary', async () => {
+    const parentCatch = vi.fn();
+
+    const Throws = () => {
+      throw new Error('boom');
+    };
+
+    class Boundary extends Component {
+      fallback = (<span>Oops</span>);
+
+      async catch() {
+        throw new Error('recovery failed');
+      }
+
+      render() {
+        return <Throws />;
+      }
+    }
+
+    class Parent extends Component {
+      fallback = (<span>Parent Caught</span>);
+
+      catch(error: Error) {
+        parentCatch(error.message);
+      }
+
+      render() {
+        return <Boundary />;
+      }
+    }
+
+    render(<Parent />);
+
+    await act(async () => {});
+
+    screen.getByText('Parent Caught');
+    expect(parentCatch).toBeCalledWith('recovery failed');
+  });
+
+  it('will catch new error after successful recovery', async () => {
+    let catchCount = 0;
+    let shouldThrow = true;
+    let resolve!: () => void;
+    let instance!: Boundary;
+
+    const MaybeThrows = () => {
+      if (shouldThrow) throw new Error('boom');
+      return <span>Recovered</span>;
+    };
+
+    class Boundary extends Component {
+      value = 0;
+      fallback = (<span>Oops</span>);
+
+      new() {
+        instance = this;
+      }
+
+      async catch() {
+        catchCount++;
+        await new Promise<void>((r) => (resolve = r));
+      }
+
+      render() {
+        void this.value;
+        return <MaybeThrows />;
+      }
+    }
+
+    render(<Boundary />);
+
+    screen.getByText('Oops');
+    expect(catchCount).toBe(1);
+
+    // fix the error, then resolve catch
+    shouldThrow = false;
+    await act(async () => resolve());
+
+    // successful recovery
+    screen.getByText('Recovered');
+
+    // new error occurs later
+    await act(async () => {
+      shouldThrow = true;
+      instance.value++;
+    });
+
+    // catch runs again for the new error
     expect(catchCount).toBe(2);
+    screen.getByText('Oops');
   });
 
   it('will not error if unmounted during catch', async () => {
