@@ -830,6 +830,87 @@ describe('error boundary', () => {
     screen.getByText('Oops');
   });
 
+  it('will pass error to catch', async () => {
+    const caught = vi.fn();
+
+    const Throws = () => {
+      throw new Error('specific error');
+    };
+
+    class Boundary extends Component {
+      fallback = (<span>Oops</span>);
+
+      async catch(error: Error) {
+        caught(error);
+      }
+
+      render() {
+        return <Throws />;
+      }
+    }
+
+    render(<Boundary />);
+
+    expect(caught).toBeCalledTimes(1);
+    expect(caught.mock.calls[0][0]).toBeInstanceOf(Error);
+    expect(caught.mock.calls[0][0].message).toBe('specific error');
+  });
+
+  it('will recover immediately with sync catch', async () => {
+    let shouldThrow = true;
+
+    const MaybeThrows = () => {
+      if (shouldThrow) throw new Error('boom');
+      return <span>Recovered</span>;
+    };
+
+    class Boundary extends Component {
+      fallback = (<span>Oops</span>);
+
+      catch() {
+        shouldThrow = false;
+      }
+
+      render() {
+        return <MaybeThrows />;
+      }
+    }
+
+    render(<Boundary />);
+
+    await act(async () => {});
+
+    screen.getByText('Recovered');
+  });
+
+  it('will propagate without catch defined', () => {
+    const Throws = () => {
+      throw new Error('boom');
+    };
+
+    class Inner extends Component {
+      render() {
+        return <Throws />;
+      }
+    }
+
+    class Outer extends Component {
+      fallback = (<span>Caught by outer</span>);
+
+      async catch() {
+        await new Promise(() => {});
+      }
+
+      render() {
+        return <Inner />;
+      }
+    }
+
+    render(<Outer />);
+
+    screen.getByText('Caught by outer');
+  });
+
   it('will not error if unmounted during catch', async () => {
     const Throws = () => {
       throw new Error('boom');
