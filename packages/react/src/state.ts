@@ -112,14 +112,18 @@ State.use = function <T extends State>(
   const ref = Pragma.useRef<((args: State.Args<T>) => T) | null>(null);
   const next = Pragma.useState(0)[1];
 
-  if (!ref.current) {
+  if (!ref.current) ref.current = init(this);
+
+  return ref.current(args);
+
+  function init(Type: State.Type<T>) {
     function add(arg: unknown) {
       return typeof arg == 'object' && instance.set(arg as State.Assign<T>);
     }
 
     let use = (...args: State.Args<T>) => Promise.all(args.flat().map(add));
 
-    const instance = new this((x) => {
+    const instance = new Type((x) => {
       if (x instanceof State && 'use' in x && typeof x.use == 'function') {
         use = x.use.bind(x);
         use(...args);
@@ -140,7 +144,7 @@ State.use = function <T extends State>(
       if (mounted) next((x) => x + 1);
     });
 
-    ref.current = (args) => {
+    return (args: State.Args<T>) => {
       if (!mounted) mounts++;
 
       Pragma.useEffect(() => {
@@ -163,8 +167,6 @@ State.use = function <T extends State>(
       return active;
     };
   }
-
-  return ref.current(args);
 };
 
 State.get = function <T extends State>(
