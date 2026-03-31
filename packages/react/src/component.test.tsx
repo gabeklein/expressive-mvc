@@ -664,9 +664,7 @@ describe('error boundary', () => {
 
       async catch(_error: Error) {
         this.fallback = <span>Error Fallback</span>;
-        await new Promise<void>((r) => {
-          resolve = r;
-        });
+        await new Promise<void>((r) => (resolve = r));
         throwing = null;
       }
 

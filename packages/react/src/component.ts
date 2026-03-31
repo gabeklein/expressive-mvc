@@ -193,10 +193,11 @@ function bootstrap(this: Component, context: Context) {
         onError(error: Error, reset: () => void) {
           mounts /= 2;
           const { fallback } = active;
-          Promise.resolve(active.catch!(error)).then(() => {
-            active.set({ fallback }, true);
-            if (mounts) reset();
-          }, reset);
+          Promise.resolve(active.catch!(error))
+            .then(() => mounts && reset(), reset)
+            .finally(() => {
+              active.set({ fallback }, true);
+            });
         },
         children
       });
