@@ -199,17 +199,11 @@ function bootstrap(this: Component, context: Context) {
           mounts /= 2;
           if (recovering) return reset(error);
           const suspense = active.fallback;
-          Promise.resolve(active.catch!(error)).then(
-            () => {
-              if (!mounts) return;
-              recovering = true;
-              reset();
-              active.fallback = suspense;
-            },
-            (e) => {
-              if (mounts) reset(e);
-            }
-          );
+          Promise.resolve(active.catch!(error)).then(() => {
+            recovering = true;
+            reset();
+            if (!active.get(null)) active.fallback = suspense;
+          }, reset);
         },
         children
       });
@@ -257,45 +251,36 @@ class ErrorBoundary extends React.Component<BoundaryProps> {
 const SEEN = new WeakSet<Function>();
 
 function subcomponents(Type: State.Extends) {
-  const proto = Type.prototype as any;
+  const { prototype } = Type;
 
   if (SEEN.has(Type)) return true;
   SEEN.add(Type);
 
-  for (const key of Object.getOwnPropertyNames(proto)) {
+  for (const key of Object.getOwnPropertyNames(prototype)) {
     if (!/^[A-Z]/.test(key)) continue;
 
-    const { get, value } = Object.getOwnPropertyDescriptor(proto, key)!;
+    const { get } = Object.getOwnPropertyDescriptor(prototype, key)!;
 
-    // state bootstrap replaces methods with get/set bind pair
-    // if still a plain value, it's not a method
-    if (!get && typeof value !== 'function') continue;
+    if (!get) continue;
 
-    const original = value || get;
-
-    Object.defineProperty(proto, key, {
+    Object.defineProperty(prototype, key, {
       configurable: true,
       get(this: Component) {
         const self = this.is;
+        let render = unbind(get());
 
-        // preempt auto-bind defining non-configurable property
         Object.defineProperty(self, key, {
           configurable: true,
           writable: true
         });
 
-        let render = get ? unbind(get.call(this)) : original;
-
         function Sub(props: any) {
           const ref = useRef<((props: any) => any) | null>(null);
           const next = useState(0)[1];
 
-          if (!ref.current) ref.current = init();
-
-          return ref.current(props);
-
-          function init() {
+          if (!ref.current) {
             let active: Component;
+            let mounted = false;
             let mounts = 0;
 
             const release = watch(self, (current) => {
@@ -303,21 +288,21 @@ function subcomponents(Type: State.Extends) {
               next((x) => x + 1);
             });
 
-            return (props: any) => {
-              mounts++;
+            ref.current = (props: any) => {
+              if (!mounted) mounts++;
 
-              useEffect(
-                () => () => {
-                  if (--mounts) return;
-                  release();
-                  ref.current = null;
-                },
-                []
-              );
+              useEffect(() => {
+                mounted = true;
+                return () => {
+                  if (--mounts == 0) release();
+                };
+              }, []);
 
               return render.call(active, props);
             };
           }
+
+          return ref.current(props);
         }
 
         Object.defineProperty(self, key, {
