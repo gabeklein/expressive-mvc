@@ -6,6 +6,7 @@ import {
   act,
   render,
   screen,
+  mockError,
   mockPromise
 } from '../vitest';
 
@@ -590,6 +591,8 @@ describe('default render', () => {
 });
 
 describe('error boundary', () => {
+  mockError();
+
   it('will show fallback when child throws', async () => {
     const Throws = () => {
       throw new Error('boom');
