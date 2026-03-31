@@ -664,9 +664,7 @@ describe('error boundary', () => {
 
       async catch(_error: Error) {
         this.fallback = <span>Error Fallback</span>;
-        await new Promise<void>((r) => {
-          resolve = r;
-        });
+        await new Promise<void>((r) => (resolve = r));
         throwing = null;
       }
 
@@ -697,7 +695,25 @@ describe('error boundary', () => {
   });
 
   it('will propagate if render throws after recovery', async () => {
-    const parentCatch = vi.fn();
+    const testDidCatch = vi.fn();
+
+    class TestBoundary extends React.Component<React.PropsWithChildren> {
+      state = {} as { error?: Error };
+
+      static getDerivedStateFromError(error: Error) {
+        return { error };
+      }
+
+      componentDidCatch(error: Error) {
+        testDidCatch(error);
+      }
+
+      render() {
+        if (!this.state.error) return this.props.children;
+        return <span>Outer Caught "{this.state.error.message}"</span>;
+      }
+    }
+
     let resolve!: () => void;
 
     const Throws = () => {
@@ -716,20 +732,11 @@ describe('error boundary', () => {
       }
     }
 
-    class Parent extends Component {
-      fallback = (<span>Parent Caught</span>);
-
-      async catch(error: Error) {
-        parentCatch(error.message);
-        await new Promise(() => {});
-      }
-
-      render() {
-        return <Boundary />;
-      }
-    }
-
-    render(<Parent />);
+    render(
+      <TestBoundary>
+        <Boundary />
+      </TestBoundary>
+    );
 
     screen.getByText('Oops');
 
@@ -737,8 +744,7 @@ describe('error boundary', () => {
     await act(async () => resolve());
 
     // error propagated to parent boundary
-    screen.getByText('Parent Caught');
-    expect(parentCatch).toBeCalledWith('boom');
+    screen.getByText('Outer Caught "boom"');
   });
 
   it('will propagate catch rejection to parent boundary', async () => {
