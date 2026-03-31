@@ -159,12 +159,7 @@ function bootstrap(this: Component, context: Context) {
     if (refresh) refresh((x) => x + 1);
   });
 
-  let recovering = false;
-
   function Render() {
-    useEffect(() => {
-      recovering = false;
-    });
     return render.call(active, self.props);
   }
 
@@ -195,21 +190,13 @@ function bootstrap(this: Component, context: Context) {
         fallback() {
           return active.fallback;
         },
-        onError(error: Error, reset: (failed?: Error) => void) {
+        onError(error: Error, reset: () => void) {
           mounts /= 2;
-          if (recovering) return reset(error);
-          const suspense = active.fallback;
-          Promise.resolve(active.catch!(error)).then(
-            () => {
-              if (!mounts) return;
-              recovering = true;
-              reset();
-              active.fallback = suspense;
-            },
-            (e) => {
-              if (mounts) reset(e);
-            }
-          );
+          const { fallback } = active;
+          Promise.resolve(active.catch!(error)).then(() => {
+            active.set({ fallback }, true);
+            if (mounts) reset();
+          }, reset);
         },
         children
       });
@@ -235,22 +222,28 @@ interface BoundaryProps {
 }
 
 class ErrorBoundary extends React.Component<BoundaryProps> {
-  state = {} as { suspend?: boolean; failed?: Error };
+  state = {} as { error?: Error };
+  recovering = false;
 
-  static getDerivedStateFromError() {
-    return { suspend: true };
+  static getDerivedStateFromError(error: Error) {
+    return { error };
   }
 
   componentDidCatch(error: Error) {
-    this.props.onError(error, (failed) => {
-      this.setState(failed ? { failed } : { suspend: false });
+    this.props.onError(error, (error) => {
+      this.recovering = true;
+      this.setState({ error });
     });
   }
 
+  componentDidUpdate() {
+    this.recovering = false;
+  }
+
   render() {
-    const { state, props } = this;
-    if (state.failed) throw state.failed;
-    return state.suspend ? props.fallback() : props.children;
+    if (!this.state.error) return this.props.children;
+    if (this.recovering) throw this.state.error;
+    return this.props.fallback();
   }
 }
 
