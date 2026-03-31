@@ -25,7 +25,7 @@ interface ComponentProps<T extends Component> {
   /** Callback for newly created instance. Only called once. */
   is?: (instance: T) => void;
 
-  /** Fallback to show when suspended. Overrides the instance property. */
+  /** Fallback to show when suspended or in error recovery. */
   fallback?: ReactNode;
 }
 
@@ -300,17 +300,20 @@ function subcomponents(Type: State.Extends) {
 
             const release = watch(self, (current) => {
               active = current;
-              next(x => x + 1);
+              next((x) => x + 1);
             });
 
             return (props: any) => {
               mounts++;
 
-              useEffect(() => () => {
-                if (--mounts) return;
-                release();
-                ref.current = null;
-              }, []);
+              useEffect(
+                () => () => {
+                  if (--mounts) return;
+                  release();
+                  ref.current = null;
+                },
+                []
+              );
 
               return render.call(active, props);
             };
