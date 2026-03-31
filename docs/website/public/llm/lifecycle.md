@@ -94,8 +94,9 @@ Child states assigned as properties are automatically parented and activated.
 5. **State frozen** — `Object.freeze(state)` prevents further updates
 
 ```ts
-// Post-destruction, any update throws:
+// Post-destruction, updates throw by default:
 // "Tried to update {state}.{key} but state is destroyed."
+// Silent updates skip instead: state.set({ key: value }, true) returns without throwing.
 ```
 
 ### Ordering guarantee
@@ -207,7 +208,7 @@ constructor() {
 
 ### Accessing destroyed state
 
-Throws synchronously after `set(null)`.
+Throws synchronously after `set(null)`. However, silent updates (`update(state, key, value, true)` or `state.set(assign, true)`) return `false` instead of throwing, allowing best-effort writes during teardown.
 
 ### Accessing uninitialized required values
 

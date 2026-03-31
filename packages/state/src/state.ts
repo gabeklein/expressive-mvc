@@ -287,7 +287,7 @@ abstract class State implements Observable {
    * Properties which are not managed by this state will be ignored.
    *
    * @param assign - Object with properties to update.
-   * @param silent - If an update does occur, listeners will not be refreshed automatically.
+   * @param silent - If true, listeners will not be notified. If state is destroyed, will squash update without throwing.
    * @returns Array of keys updated, syncronously contains keys updated immediately and may be resolved (to itself) when all updates are settled.
    */
   set(assign?: State.Assign<this>, silent?: boolean): State.Updated<this>;
@@ -757,6 +757,8 @@ function assign(state: State, data: State.Assign<State>, silent?: boolean) {
  * Update a property on a state instance and notify listeners.
  *
  * This is used internally to update properties, but can also be used to update properties which are not managed by state, or to update values without triggering setters.
+ *
+ * If `silent` is true, the update will not dispatch events and will return `false` instead of throwing if state is destroyed.
  */
 function update<T>(
   state: State,
@@ -764,10 +766,12 @@ function update<T>(
   value: T,
   silent?: boolean
 ) {
-  if (observable(state) === null)
+  if (observable(state) === null) {
+    if (silent) return false;
     throw new Error(
       `Tried to update ${state}.${String(key)} but state is destroyed.`
     );
+  }
 
   const store = STORE.get(state)!;
 
@@ -775,7 +779,7 @@ function update<T>(
 
   store[key] = value;
 
-  if (silent !== true) event(state, key);
+  if (!silent) event(state, key);
 
   return true;
 }

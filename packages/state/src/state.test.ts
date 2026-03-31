@@ -3,7 +3,7 @@ import { Context } from './context';
 import { get } from './instruction/get';
 import { ref } from './instruction/ref';
 import { set } from './instruction/set';
-import { State } from './state';
+import { State, update } from './state';
 
 it('will extend custom class', () => {
   class Subject extends State {
@@ -1932,6 +1932,35 @@ describe('set method', () => {
         /Tried to update [\w-]+\.foo but state is destroyed\./
       );
       expect(callback).toBeCalledTimes(1);
+    });
+
+    it('will silently skip update after destroyed', () => {
+      class Test extends State {
+        foo = 0;
+      }
+
+      const test = Test.new();
+      test.set(null);
+
+      expect(update(test, "foo", 1, true)).toBe(false);
+      expect(test.foo).toBe(0);
+    });
+
+    it('will silently skip set after destroyed', () => {
+      class Test extends State {
+        foo = 0;
+      }
+
+      const callback = vi.fn();
+      const test = Test.new();
+
+      test.set(callback);
+      test.set(null);
+
+      test.set({ foo: 1 }, true);
+
+      expect(callback).not.toBeCalled();
+      expect(test.foo).toBe(0);
     });
 
     it.todo('will throw clear error on bad update');
