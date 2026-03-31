@@ -1,5 +1,6 @@
 import { watch, unbind } from '@expressive/state';
 import React, {
+  Suspense,
   createElement,
   useEffect,
   useRef,
@@ -150,7 +151,7 @@ function bootstrap(this: Component, context: Context) {
   context = context.push(self);
 
   let mounts = 0;
-  let mounted = false;
+  let pending = false;
   let refresh: ((next: (x: number) => number) => void) | undefined;
   let active: Component;
 
@@ -159,22 +160,20 @@ function bootstrap(this: Component, context: Context) {
     if (refresh) refresh((x) => x + 1);
   });
 
-  let recovering = false;
-
   function Render() {
-    useEffect(() => {
-      recovering = false;
-    });
     return render.call(active, self.props);
   }
 
   function AsComponent() {
     refresh = useState(0)[1];
 
-    if (!mounted) mounts++;
+    if (!pending) {
+      pending = true;
+      mounts++;
+    }
 
     useEffect(() => {
-      mounted = true;
+      pending = false;
       return () => {
         if (--mounts) return;
         refresh = undefined;
@@ -183,38 +182,31 @@ function bootstrap(this: Component, context: Context) {
       };
     }, []);
 
-    const children = createElement(Provide, {
-      context,
-      name: String(self),
+    let children: ReactNode = createElement(Suspense, {
       fallback: active.fallback,
       children: createElement(Render)
     });
 
     if (active.catch)
-      return createElement(ErrorBoundary, {
+      children = createElement(ErrorBoundary, {
         fallback() {
           return active.fallback;
         },
-        onError(error: Error, reset: (failed?: Error) => void) {
-          mounts /= 2;
-          if (recovering) return reset(error);
-          const suspense = active.fallback;
-          Promise.resolve(active.catch!(error)).then(
-            () => {
-              if (!mounts) return;
-              recovering = true;
-              reset();
-              active.fallback = suspense;
-            },
-            (e) => {
-              if (mounts) reset(e);
-            }
-          );
+        onError(error: Error, reset: () => void) {
+          const { fallback } = active;
+          Promise.resolve(active.catch!(error)).then(() => {
+            active.set({ fallback }, true);
+            if (mounts) reset();
+          }, reset);
         },
         children
       });
 
-    return children;
+    return createElement(Provide, {
+      context,
+      name: String(self),
+      children
+    });
   }
 
   Object.defineProperties(self, {
@@ -235,22 +227,28 @@ interface BoundaryProps {
 }
 
 class ErrorBoundary extends React.Component<BoundaryProps> {
-  state = {} as { suspend?: boolean; failed?: Error };
+  state = {} as { error?: Error };
+  recovering = false;
 
-  static getDerivedStateFromError() {
-    return { suspend: true };
+  static getDerivedStateFromError(error: Error) {
+    return { error };
   }
 
   componentDidCatch(error: Error) {
-    this.props.onError(error, (failed) => {
-      this.setState(failed ? { failed } : { suspend: false });
+    this.props.onError(error, (error) => {
+      this.recovering = true;
+      this.setState({ error });
     });
   }
 
+  componentDidUpdate() {
+    this.recovering = false;
+  }
+
   render() {
-    const { state, props } = this;
-    if (state.failed) throw state.failed;
-    return state.suspend ? props.fallback() : props.children;
+    if (!this.state.error) return this.props.children;
+    if (this.recovering) throw this.state.error;
+    return this.props.fallback();
   }
 }
 
