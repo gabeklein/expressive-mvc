@@ -134,7 +134,6 @@ State.use = function <T extends State>(
 
     const context = outer.push(instance);
 
-    let mounts = 0;
     let mounted = false;
     let active: T;
 
@@ -145,16 +144,13 @@ State.use = function <T extends State>(
     });
 
     return (args: State.Args<T>) => {
-      if (!mounted) mounts++;
-
-      Pragma.useEffect(() => {
+      useMount(() => {
         mounted = true;
         return () => {
-          if (--mounts) return;
           context.pop();
           instance.set(null);
         };
-      }, []);
+      });
 
       if (mounted) {
         mounted = false;
@@ -265,20 +261,31 @@ State.get = function <T extends State>(
       return () => null;
     }
 
-    let mounts = 0;
-
     return () => {
-      if (!mounted) mounts++;
       pending = false;
-      Pragma.useEffect(() => {
+      useMount(() => {
         mounted = true;
-        return () => {
-          if (--mounts == 0) release();
-        };
-      }, []);
+        return release;
+      });
       return value === undefined ? null : value;
     };
   }
 };
 
-export { State };
+function useMount(effect: () => (() => void) | void) {
+  const { current } = Pragma.useRef({
+    mounts: 0,
+    unmount: undefined as undefined | (() => void)
+  });
+
+  if (!current.unmount) current.mounts++;
+
+  Pragma.useEffect(() => {
+    if (!current.unmount) current.unmount = effect() || undefined;
+    return () => {
+      if (--current.mounts == 0 && current.unmount) current.unmount();
+    };
+  }, []);
+}
+
+export { State, useMount };

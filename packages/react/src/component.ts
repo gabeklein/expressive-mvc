@@ -7,7 +7,7 @@ import React, {
   type ReactNode
 } from 'react';
 import { Context, Layers, Provide } from './context';
-import { State } from './state';
+import { State, useMount } from './state';
 
 const PENDING = new WeakMap<object, Component>();
 
@@ -150,7 +150,6 @@ function bootstrap(this: Component, context: Context) {
   context = context.push(self);
 
   let mounts = 0;
-  let mounted = false;
   let refresh: ((next: (x: number) => number) => void) | undefined;
   let active: Component;
 
@@ -170,18 +169,14 @@ function bootstrap(this: Component, context: Context) {
 
   function AsComponent() {
     refresh = useState(0)[1];
+    mounts++;
 
-    if (!mounted) mounts++;
-
-    useEffect(() => {
-      mounted = true;
-      return () => {
-        if (--mounts) return;
-        refresh = undefined;
-        self.set(null);
-        context.pop();
-      };
-    }, []);
+    useMount(() => () => {
+      mounts = 0;
+      refresh = undefined;
+      self.set(null);
+      context.pop();
+    });
 
     const children = createElement(Provide, {
       context,
@@ -296,7 +291,6 @@ function subcomponents(Type: State.Extends) {
 
           function init() {
             let active: Component;
-            let mounts = 0;
 
             const release = watch(self, (current) => {
               active = current;
@@ -304,16 +298,10 @@ function subcomponents(Type: State.Extends) {
             });
 
             return (props: any) => {
-              mounts++;
-
-              useEffect(
-                () => () => {
-                  if (--mounts) return;
-                  release();
-                  ref.current = null;
-                },
-                []
-              );
+              useMount(() => () => {
+                release();
+                ref.current = null;
+              });
 
               return render.call(active, props);
             };
