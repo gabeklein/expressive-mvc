@@ -957,6 +957,274 @@ describe('error boundary', () => {
   });
 });
 
+describe('subcomponents', () => {
+  it('will wrap PascalCase method as reactive component', async () => {
+    class Dashboard extends Component {
+      label = 'Hello';
+
+      Sidebar() {
+        return <span>{this.label}</span>;
+      }
+
+      render() {
+        return <this.Sidebar />;
+      }
+    }
+
+    let instance!: Dashboard;
+    render(<Dashboard is={(x) => (instance = x)} />);
+
+    screen.getByText('Hello');
+
+    await act(async () => {
+      instance.label = 'Updated';
+    });
+
+    screen.getByText('Updated');
+  });
+
+  it('will be accessible via context get', () => {
+    class Dashboard extends Component {
+      Sidebar() {
+        return <span>Sidebar Content</span>;
+      }
+
+      render() {
+        return this.props.children;
+      }
+    }
+
+    const Child = () => {
+      const { Sidebar } = Dashboard.get();
+      return <Sidebar />;
+    };
+
+    render(
+      <Dashboard>
+        <Child />
+      </Dashboard>
+    );
+
+    screen.getByText('Sidebar Content');
+  });
+
+  it('will allow override via setter', async () => {
+    class Dashboard extends Component {
+      value = 'Original';
+
+      Sidebar() {
+        return <span>{this.value}</span>;
+      }
+
+      render() {
+        return <this.Sidebar />;
+      }
+    }
+
+    let instance!: Dashboard;
+    render(<Dashboard is={(x) => (instance = x)} />);
+
+    screen.getByText('Original');
+
+    await act(async () => {
+      instance.Sidebar = function (this: Dashboard) {
+        return <span>Replaced: {this.value}</span>;
+      } as any;
+      instance.value = 'yes';
+    });
+
+    screen.getByText('Replaced: yes');
+  });
+
+  it('will inherit from parent class', () => {
+    class Base extends Component {
+      Header() {
+        return <span>Header</span>;
+      }
+    }
+
+    class Page extends Base {
+      render() {
+        return <this.Header />;
+      }
+    }
+
+    render(<Page />);
+
+    screen.getByText('Header');
+  });
+
+  it('will compose elements from subclass', () => {
+    class Base extends Component {
+      Before(): React.ReactNode {
+        return null;
+      }
+
+      After(): React.ReactNode {
+        return null;
+      }
+
+      render() {
+        return (
+          <>
+            <this.Before />
+            <span>Main</span>
+            <this.After />
+          </>
+        );
+      }
+    }
+
+    class Page extends Base {
+      Before() {
+        return <span>Header</span>;
+      }
+
+      After() {
+        return <span>Footer</span>;
+      }
+    }
+
+    const element = render(<Page />);
+
+    element.getByText('Header');
+    element.getByText('Main');
+    element.getByText('Footer');
+  });
+
+  it('will accept props', () => {
+    class Dashboard extends Component {
+      Sidebar(props: { label: string }) {
+        return <span>{props.label}</span>;
+      }
+
+      render() {
+        return <this.Sidebar label="Dynamic Label" />;
+      }
+    }
+
+    render(<Dashboard />);
+
+    screen.getByText('Dynamic Label');
+  });
+
+  it('will work in strict mode', async () => {
+    class Dashboard extends Component {
+      label = 'Hello';
+
+      Sidebar() {
+        return <span>{this.label}</span>;
+      }
+
+      render() {
+        return <this.Sidebar />;
+      }
+    }
+
+    let instance!: Dashboard;
+    const element = render(
+      <React.StrictMode>
+        <Dashboard is={(x) => (instance = x)} />
+      </React.StrictMode>
+    );
+
+    await new Promise((r) => setTimeout(r, 0));
+
+    screen.getByText('Hello');
+
+    await act(async () => {
+      instance.label = 'Updated';
+    });
+
+    screen.getByText('Updated');
+
+    element.unmount();
+  });
+
+  it('will render usages independently', async () => {
+    const renders = { a: 0, b: 0 };
+
+    class Dashboard extends Component {
+      label = 'Hello';
+
+      Sidebar(props: { id: 'a' | 'b' }) {
+        renders[props.id]++;
+        return (
+          <span>
+            {props.id}: {this.label}
+          </span>
+        );
+      }
+
+      render() {
+        return (
+          <>
+            <this.Sidebar id="a" />
+            <this.Sidebar id="b" />
+          </>
+        );
+      }
+    }
+
+    let instance!: Dashboard;
+    render(<Dashboard is={(x) => (instance = x)} />);
+
+    screen.getByText('a: Hello');
+    screen.getByText('b: Hello');
+
+    await act(async () => {
+      instance.label = 'World';
+    });
+
+    screen.getByText('a: World');
+    screen.getByText('b: World');
+    expect(renders.a).toBeGreaterThan(1);
+    expect(renders.b).toBeGreaterThan(1);
+  });
+
+  it('will refresh independently based on subscriptions', async () => {
+    const renders = { a: 0, b: 0 };
+
+    class Dashboard extends Component {
+      x = 'x';
+      y = 'y';
+
+      Display(props: { which: 'a' | 'b' }) {
+        renders[props.which]++;
+        return <span>{props.which === 'a' ? this.x : this.y}</span>;
+      }
+
+      render() {
+        return (
+          <>
+            <this.Display which="a" />
+            <this.Display which="b" />
+          </>
+        );
+      }
+    }
+
+    let instance!: Dashboard;
+    render(<Dashboard is={(x) => (instance = x)} />);
+
+    screen.getByText('x');
+    screen.getByText('y');
+
+    const before = { ...renders };
+
+    await act(async () => {
+      instance.x = 'x2';
+    });
+
+    screen.getByText('x2');
+    screen.getByText('y');
+
+    // only the "a" instance should have re-rendered
+    expect(renders.a).toBe(before.a + 1);
+    expect(renders.b).toBe(before.b);
+  });
+});
+
 describe('strict mode', () => {
   it('will not create two instances', async () => {
     const didCreate = vi.fn();
