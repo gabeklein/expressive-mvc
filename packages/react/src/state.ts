@@ -124,8 +124,7 @@ State.use = function <T extends State>(
 
     const instance = new Type((x) => {
       if (x instanceof State && 'use' in x && typeof x.use == 'function') {
-        use = x.use.bind(x);
-        use(...args);
+        (use = x.use.bind(x))(...args);
       } else {
         return args;
       }
