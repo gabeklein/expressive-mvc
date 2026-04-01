@@ -127,9 +127,7 @@ class Component extends State {
 
 Object.defineProperties(Component.prototype, {
   isReactComponent: {
-    get() {
-      return true;
-    }
+    get: () => true
   },
   state: {
     get(this: Component) {
