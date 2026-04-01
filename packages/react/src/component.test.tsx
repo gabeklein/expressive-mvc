@@ -763,6 +763,7 @@ describe('error boundary', () => {
 
       catch(error: Error) {
         parentCatch(error.message);
+        return new Promise<void>(() => {});
       }
 
       render() {
