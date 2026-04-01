@@ -10,14 +10,12 @@ import {
   observable,
   emit
 } from './observable';
+import { Stateful, STORE, update } from './stateful';
 
 const define = Object.defineProperty;
 
 /** Register for all active states via string identifiers (usually unique). */
 const ID = new WeakMap<State, string>();
-
-/** Internal state assigned to states. */
-const STORE = new WeakMap<State, Record<string | number | symbol, unknown>>();
 
 /** External lifecycle listeners for any given State class. */
 const SETUP = new WeakMap<State.Extends, Set<State.Init<any>>>();
@@ -158,7 +156,59 @@ abstract class State implements Observable {
 
   constructor(...args: State.Args) {
     define(this, 'is', { value: this });
-    init(this, args, this.new);
+
+    const store: Record<string | number | symbol, unknown> = {};
+    STORE.set(this, store);
+
+    const activate = this[Stateful](store, args);
+
+    listener(this, () => {
+      if (activate) activate();
+      return null;
+    });
+  }
+
+  [Stateful](
+    _store: Record<string, unknown>,
+    args: State.Args
+  ): (() => void) | void {
+    const state = this;
+    const T = state.constructor as State.Extends;
+
+    if (T === State) throw new Error('Cannot create base State.');
+
+    const setup = bootstrap(T);
+    const lifecycle = state.new;
+
+    ID.set(state, `${T}-${uid()}`);
+
+    return () => {
+      parent(state, null);
+
+      function properties() {
+        for (const key in state) {
+          const desc = Object.getOwnPropertyDescriptor(state, key)!;
+          if ('value' in desc) apply(state, key, desc, true);
+        }
+      }
+
+      const queue = [...setup, properties, lifecycle, ...args];
+
+      for (let i = 0; i < queue.length; i++) {
+        const arg = queue[i];
+
+        const use = typeof arg == 'function' ? arg.call(state, state) : arg;
+
+        if (use instanceof Promise)
+          use.catch((err) => {
+            console.error(`Async error in constructor for ${state}:`);
+            console.error(err);
+          });
+        else if (Array.isArray(use)) queue.splice(i + 1, 0, ...use);
+        else if (typeof use == 'function') listener(state, use, null);
+        else if (typeof use == 'object') assign(state, use, true);
+      }
+    };
   }
 
   [Observable](callback: Observable.Callback, required?: boolean) {
@@ -466,51 +516,6 @@ define(State, 'toString', {
 });
 
 /**
- * Apply state arguemnts, run callbacks and observe properties.
- * Accumulate and handle cleanup events.
- **/
-function init(state: State, ...args: State.Args) {
-  const T = state.constructor as State.Extends;
-
-  if (T === State) throw new Error('Cannot create base State.');
-
-  const setup = bootstrap(T);
-
-  ID.set(state, `${T}-${uid()}`);
-  STORE.set(state, {});
-
-  function properties() {
-    for (const key in state) {
-      const desc = Object.getOwnPropertyDescriptor(state, key)!;
-      if ('value' in desc) apply(state, key, desc, true);
-    }
-  }
-
-  listener(state, () => {
-    parent(state, null);
-
-    const queue = [...setup, properties, ...args];
-
-    for (let i = 0; i < queue.length; i++) {
-      const arg = queue[i];
-
-      const use = typeof arg == 'function' ? arg.call(state, state) : arg;
-
-      if (use instanceof Promise)
-        use.catch((err) => {
-          console.error(`Async error in constructor for ${state}:`);
-          console.error(err);
-        });
-      else if (Array.isArray(use)) queue.splice(i + 1, 0, ...use);
-      else if (typeof use == 'function') listener(state, use, null);
-      else if (typeof use == 'object') assign(state, use, true);
-    }
-
-    return null;
-  });
-}
-
-/**
  * Apply instructions and inherited event listeners. Ensure class metadata is ready.
  *
  * @param T - State class to bootstrap.
@@ -751,37 +756,6 @@ function assign(state: State, data: State.Assign<State>, silent?: boolean) {
       }
     }
   }
-}
-
-/**
- * Update a property on a state instance and notify listeners.
- *
- * This is used internally to update properties, but can also be used to update properties which are not managed by state, or to update values without triggering setters.
- *
- * If `silent` is true, the update will not dispatch events and will return `false` instead of throwing if state is destroyed.
- */
-function update<T>(
-  state: State,
-  key: State.Event<T>,
-  value: T,
-  silent?: boolean
-) {
-  if (observable(state) === null) {
-    if (silent) return false;
-    throw new Error(
-      `Tried to update ${state}.${String(key)} but state is destroyed.`
-    );
-  }
-
-  const store = STORE.get(state)!;
-
-  if (key in store && value === store[key]) return false;
-
-  store[key] = value;
-
-  if (!silent) event(state, key);
-
-  return true;
 }
 
 /** Random alphanumberic of length 6; always starts with a letter. */
