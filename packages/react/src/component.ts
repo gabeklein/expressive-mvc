@@ -188,15 +188,15 @@ function bootstrap(this: Component, context: Context) {
     if (active.catch)
       return createElement(ErrorBoundary, {
         fallback() {
-          return active.fallback;
+          return self.fallback;
         },
         onError(error: Error, reset: () => void) {
           mounts /= 2;
-          const { fallback } = active;
-          Promise.resolve(active.catch!(error))
+          const { fallback } = self;
+          Promise.resolve(self.catch!(error))
             .then(() => mounts && reset(), reset)
             .finally(() => {
-              active.set({ fallback }, true);
+              self.set({ fallback }, true);
             });
         },
         children
