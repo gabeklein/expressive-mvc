@@ -5,64 +5,73 @@ import {
   SandpackProvider
 } from '@codesandbox/sandpack-react';
 import EXAMPLES from 'virtual:examples';
-import State, { set } from '@expressive/react';
+import { Navigate, NavLink, Route, Routes } from 'react-router';
 import './App.css';
 
-class Control extends State {
-  names = Object.keys(EXAMPLES);
-  active = this.names[0];
+const NAMES = Object.keys(EXAMPLES);
+const INDEX = `
+import './index.css';
+import { createRoot } from 'react-dom/client';
+import App from './App';
+createRoot(document.getElementById('root')!).render(<App />);
+`;
 
-  files = set((is: this) => {
-    const source = EXAMPLES[is.active];
-    const files: Record<string, any> = {
-      '/index.tsx': {
-        hidden: true,
-        code: [
-          `import './index.css';`,
-          `import { createRoot } from 'react-dom/client';`,
-          `import App from './App';`,
-          `createRoot(document.getElementById('root')!).render(<App />);`
-        ].join('\n')
-      }
-    };
+function getFiles(name: string) {
+  const source = EXAMPLES[name];
+  const files: Record<string, any> = {
+    '/index.tsx': {
+      hidden: true,
+      code: INDEX
+    }
+  };
 
-    for (const [path, code] of Object.entries(source)) files[path] = code;
+  for (const [path, code] of Object.entries(source)) {
+    files[path] = code;
+  }
 
-    return files;
-  });
+  return files;
+}
+
+function Example({ name }: { name: string }) {
+  return (
+    <SandpackProvider
+      key={name}
+      template="vite-react-ts"
+      files={getFiles(name)}
+      customSetup={{
+        dependencies: {
+          '@expressive/react': 'latest'
+        }
+      }}>
+      <SandpackLayout>
+        <SandpackCodeEditor style={{ height: '100%' }} />
+        <SandpackPreview style={{ height: '100%' }} />
+      </SandpackLayout>
+    </SandpackProvider>
+  );
 }
 
 export default function App() {
-  const { is, files, names, active } = Control.use();
-
   return (
     <div className="container">
       <h1>Expressive MVC</h1>
       <nav>
-        {names.map((name) => (
-          <button
-            key={name}
-            className={name === active ? 'active' : ''}
-            onClick={() => (is.active = name)}>
+        {NAMES.map((name) => (
+          <NavLink key={name} to={`/${name}`}>
             {name}
-          </button>
+          </NavLink>
         ))}
       </nav>
-      <SandpackProvider
-        key={active}
-        template="react-ts"
-        files={files}
-        customSetup={{
-          dependencies: {
-            '@expressive/react': 'latest'
-          }
-        }}>
-        <SandpackLayout>
-          <SandpackCodeEditor style={{ height: '100%' }} />
-          <SandpackPreview style={{ height: '100%' }} />
-        </SandpackLayout>
-      </SandpackProvider>
+      <Routes>
+        <Route path="/" element={<Navigate to={`/${NAMES[0]}`} replace />} />
+        {NAMES.map((name) => (
+          <Route
+            key={name}
+            path={`/${name}`}
+            element={<Example name={name} />}
+          />
+        ))}
+      </Routes>
     </div>
   );
 }
-

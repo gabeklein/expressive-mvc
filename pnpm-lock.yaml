@@ -47,6 +47,9 @@ importers:
       react-dom:
         specifier: ^19
         version: 19.2.4(react@19.2.4)
+      react-router:
+        specifier: ^7.13.1
+        version: 7.13.1(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
     devDependencies:
       '@expressive/react':
         specifier: workspace:*
@@ -136,139 +139,6 @@ importers:
       vite-tsconfig-paths:
         specifier: ^6.1.1
         version: 6.1.1(typescript@5.9.3)(vite@7.3.1(@types/node@25.2.3)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.46.0)(yaml@2.8.2))
-
-  examples/async:
-    dependencies:
-      '@expressive/react':
-        specifier: '*'
-        version: 0.74.1(react@19.2.4)
-      react:
-        specifier: ^19
-        version: 19.2.4
-      react-dom:
-        specifier: ^19
-        version: 19.2.4(react@19.2.4)
-    devDependencies:
-      '@types/react':
-        specifier: ^19
-        version: 19.2.14
-      '@types/react-dom':
-        specifier: ^19
-        version: 19.2.3(@types/react@19.2.14)
-
-  examples/context:
-    dependencies:
-      '@expressive/react':
-        specifier: '*'
-        version: 0.74.1(react@19.2.4)
-      react:
-        specifier: ^19
-        version: 19.2.4
-      react-dom:
-        specifier: ^19
-        version: 19.2.4(react@19.2.4)
-    devDependencies:
-      '@types/react':
-        specifier: ^19
-        version: 19.2.14
-      '@types/react-dom':
-        specifier: ^19
-        version: 19.2.3(@types/react@19.2.14)
-
-  examples/counter:
-    dependencies:
-      '@expressive/react':
-        specifier: '*'
-        version: 0.74.1(react@19.2.4)
-      react:
-        specifier: ^19
-        version: 19.2.4
-      react-dom:
-        specifier: ^19
-        version: 19.2.4(react@19.2.4)
-    devDependencies:
-      '@types/react':
-        specifier: ^19
-        version: 19.2.14
-      '@types/react-dom':
-        specifier: ^19
-        version: 19.2.3(@types/react@19.2.14)
-
-  examples/fetch:
-    dependencies:
-      '@expressive/react':
-        specifier: '*'
-        version: 0.74.1(react@19.2.4)
-      react:
-        specifier: ^19
-        version: 19.2.4
-      react-dom:
-        specifier: ^19
-        version: 19.2.4(react@19.2.4)
-    devDependencies:
-      '@types/react':
-        specifier: ^19
-        version: 19.2.14
-      '@types/react-dom':
-        specifier: ^19
-        version: 19.2.3(@types/react@19.2.14)
-
-  examples/forms:
-    dependencies:
-      '@expressive/react':
-        specifier: '*'
-        version: 0.74.1(react@19.2.4)
-      react:
-        specifier: ^19
-        version: 19.2.4
-      react-dom:
-        specifier: ^19
-        version: 19.2.4(react@19.2.4)
-    devDependencies:
-      '@types/react':
-        specifier: ^19
-        version: 19.2.14
-      '@types/react-dom':
-        specifier: ^19
-        version: 19.2.3(@types/react@19.2.14)
-
-  examples/nested:
-    dependencies:
-      '@expressive/react':
-        specifier: '*'
-        version: 0.74.1(react@19.2.4)
-      react:
-        specifier: ^19
-        version: 19.2.4
-      react-dom:
-        specifier: ^19
-        version: 19.2.4(react@19.2.4)
-    devDependencies:
-      '@types/react':
-        specifier: ^19
-        version: 19.2.14
-      '@types/react-dom':
-        specifier: ^19
-        version: 19.2.3(@types/react@19.2.14)
-
-  examples/simple:
-    dependencies:
-      '@expressive/react':
-        specifier: '*'
-        version: 0.74.1(react@19.2.4)
-      react:
-        specifier: ^19
-        version: 19.2.4
-      react-dom:
-        specifier: ^19
-        version: 19.2.4(react@19.2.4)
-    devDependencies:
-      '@types/react':
-        specifier: ^19
-        version: 19.2.14
-      '@types/react-dom':
-        specifier: ^19
-        version: 19.2.3(@types/react@19.2.14)
 
   packages/preact:
     dependencies:
