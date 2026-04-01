@@ -149,8 +149,6 @@ function bootstrap(this: Component, context: Context) {
 
   context = context.push(self);
 
-  let mounts = 0;
-  let mounted = false;
   let refresh: ((next: (x: number) => number) => void) | undefined;
   let active: Component;
 
@@ -164,19 +162,19 @@ function bootstrap(this: Component, context: Context) {
   }
 
   function AsComponent() {
-    refresh = useState(0)[1];
+    const ref = useRef(0);
 
-    if (!mounted) mounts++;
+    refresh = useState(() => (ref.current++, 0))[1];
 
-    useEffect(() => {
-      mounted = true;
-      return () => {
-        if (--mounts) return;
+    useEffect(
+      () => () => {
+        if (--ref.current) return;
         refresh = undefined;
         self.set(null);
         context.pop();
-      };
-    }, []);
+      },
+      []
+    );
 
     const children = createElement(Provide, {
       context,
@@ -190,11 +188,10 @@ function bootstrap(this: Component, context: Context) {
         fallback() {
           return self.fallback;
         },
-        onError(error: Error, reset: () => void) {
-          mounts /= 2;
+        onError(error: Error, reset: (failed?: Error) => void) {
           const { fallback } = self;
           Promise.resolve(self.catch!(error))
-            .then(() => mounts && reset(), reset)
+            .then(() => refresh && reset(), reset)
             .finally(() => {
               self.set({ fallback }, true);
             });

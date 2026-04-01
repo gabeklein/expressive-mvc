@@ -117,9 +117,8 @@ State.use = function <T extends State>(
   return ref.current(args);
 
   function init(Type: State.Type<T>) {
-    function add(arg: unknown) {
-      return typeof arg == 'object' && instance.set(arg as State.Assign<T>);
-    }
+    const add = (arg: unknown) =>
+      typeof arg == 'object' && instance.set(arg as State.Assign<T>);
 
     let use = (...args: State.Args<T>) => Promise.all(args.flat().map(add));
 
@@ -145,8 +144,7 @@ State.use = function <T extends State>(
     });
 
     return (args: State.Args<T>) => {
-      if (!mounted) mounts++;
-
+      Pragma.useState(() => mounts++);
       Pragma.useEffect(() => {
         mounted = true;
         return () => {
@@ -159,9 +157,7 @@ State.use = function <T extends State>(
       if (mounted) {
         mounted = false;
 
-        Promise.resolve(use(...args)).finally(() => {
-          mounted = true;
-        });
+        Promise.resolve(use(...args)).finally(() => (mounted = true));
       }
 
       return active;
@@ -199,6 +195,13 @@ State.get = function <T extends State>(
       if (action instanceof Promise) return action.finally(update);
     }
 
+    function release() {
+      unwatch?.();
+      unsubscribe();
+      unwatch = undefined;
+      instance = undefined;
+    }
+
     const unsubscribe = context.get(Type, (next) => {
       unwatch?.();
       unwatch = watch(
@@ -222,22 +225,13 @@ State.get = function <T extends State>(
         queueMicrotask(() => pending && update());
       }
 
-      return () => {
-        unwatch?.();
-        unwatch = undefined;
-        instance = undefined;
-      };
+      return release;
     });
 
     if (!instance) {
-      unsubscribe();
+      release();
       if (argument === false) return () => undefined;
       throw new Error(`Could not find ${Type} in context.`);
-    }
-
-    function release() {
-      unwatch?.();
-      unsubscribe();
     }
 
     if (value instanceof Promise) {
@@ -268,12 +262,13 @@ State.get = function <T extends State>(
     let mounts = 0;
 
     return () => {
-      if (!mounted) mounts++;
+      Pragma.useState(() => mounts++);
+
       pending = false;
       Pragma.useEffect(() => {
         mounted = true;
         return () => {
-          if (--mounts == 0) release();
+          if (!--mounts) release();
         };
       }, []);
       return value === undefined ? null : value;

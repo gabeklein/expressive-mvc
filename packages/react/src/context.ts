@@ -6,7 +6,8 @@ import {
   Suspense,
   useContext,
   useEffect,
-  useRef
+  useRef,
+  useState
 } from 'react';
 
 export const Layers = createContext(new Context());
@@ -80,7 +81,6 @@ function Provider<T extends State>(props: Provider.Props<T>) {
 
   if (!ref.current) {
     const context = ambient.push();
-    let mounted = false;
     let mounts = 0;
 
     ref.current = (props) => {
@@ -99,16 +99,21 @@ function Provider<T extends State>(props: Provider.Props<T>) {
         if (input instanceof State) input.set(rest as State.Assign<T>);
       }
 
-      if (!mounted) mounts++;
+      useState(() => mounts++);
 
-      useEffect(() => {
-        mounted = true;
-        return () => {
-          if (--mounts == 0) context.pop();
-        };
-      }, []);
+      useEffect(
+        () => () => {
+          if (!--mounts) context.pop();
+        },
+        []
+      );
 
-      return createElement(Provide, { context, children, fallback, name });
+      return createElement(Provide, {
+        context,
+        children,
+        fallback,
+        name
+      });
     };
   }
 
