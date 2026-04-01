@@ -11,7 +11,7 @@ type Accept<T extends State = State> =
 type Expect<T extends State = State> = (
   state: T,
   downstream: boolean
-) => (() => void) | false | void;
+) => (() => void) | void;
 
 declare namespace Context {
   export { Accept, Expect };
