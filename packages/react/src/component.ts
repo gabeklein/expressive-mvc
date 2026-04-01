@@ -1,6 +1,7 @@
 import { watch, unbind } from '@expressive/state';
 import React, {
   createElement,
+  Suspense,
   useEffect,
   useRef,
   useState,
@@ -174,12 +175,17 @@ function bootstrap(this: Component, context: Context) {
       []
     );
 
-    const children = createElement(Provide, {
-      context,
-      name: String(self),
-      fallback: active.fallback,
-      children: createElement(Render)
-    });
+    const children = createElement(
+      Provide,
+      {
+        context
+      },
+      createElement(
+        Suspense,
+        { fallback: active.fallback, name: String(self) },
+        createElement(Render)
+      )
+    );
 
     if (active.catch)
       return createElement(ErrorBoundary, {
@@ -254,8 +260,6 @@ function subcomponents(Type: State.Extends) {
 
     const { get, value } = Object.getOwnPropertyDescriptor(proto, key)!;
 
-    // state bootstrap replaces methods with get/set bind pair
-    // if still a plain value, it's not a method
     if (!get && typeof value !== 'function') continue;
 
     const original = value || get;
@@ -265,7 +269,6 @@ function subcomponents(Type: State.Extends) {
       get(this: Component) {
         const self = this.is;
 
-        // preempt auto-bind defining non-configurable property
         Object.defineProperty(self, key, {
           configurable: true,
           writable: true

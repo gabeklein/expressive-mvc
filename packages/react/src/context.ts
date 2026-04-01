@@ -108,11 +108,9 @@ function Provider<T extends State>(props: Provider.Props<T>) {
         []
       );
 
-      return createElement(Provide, {
-        context,
-        children,
-        fallback,
-        name
+      return createElement(Layers.Provider, {
+        value: context,
+        children: createElement(Suspense, { fallback, name }, children)
       });
     };
   }
@@ -123,20 +121,13 @@ function Provider<T extends State>(props: Provider.Props<T>) {
 interface ProvideProps {
   context: Context;
   children?: ReactNode;
-  fallback?: ReactNode;
-  name?: string | undefined;
 }
 
 function Provide(props: ProvideProps) {
-  let { context, children, fallback, name } = props;
-
-  if (fallback !== undefined)
-    children = createElement(Suspense, { fallback, name }, children);
-
   return createElement(Layers.Provider, {
-    key: context.id,
-    value: context,
-    children
+    key: props.context.id,
+    value: props.context,
+    children: props.children
   });
 }
 
