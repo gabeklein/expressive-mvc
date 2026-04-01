@@ -958,6 +958,64 @@ describe('error boundary', () => {
   });
 });
 
+it('useState factory - strict mode', async () => {
+  let inits = 0;
+
+  function Probe() {
+    React.useState(() => {
+      inits++;
+      console.log(`[Probe] useState init #${inits}`);
+    });
+    return null;
+  }
+
+  render(<React.StrictMode><Probe /></React.StrictMode>);
+  console.log(`[strict] inits: ${inits}`);
+});
+
+it('useState factory - non-strict', async () => {
+  let inits = 0;
+
+  function Probe() {
+    React.useState(() => {
+      inits++;
+      console.log(`[Probe] useState init #${inits}`);
+    });
+    return null;
+  }
+
+  render(<Probe />);
+  console.log(`[non-strict] inits: ${inits}`);
+});
+
+it('will not re-render parent when child boundary catches', async () => {
+  const Throws = () => {
+    throw new Error('boom');
+  };
+
+  class Child extends Component {
+    fallback = (<span>Child Caught</span>);
+
+    async catch() {
+      await new Promise(() => {});
+    }
+
+    render() {
+      return <Throws />;
+    }
+  }
+
+  class Parent extends Component {
+    render() {
+      return <Child />;
+    }
+  }
+
+  render(<Parent />);
+
+  screen.getByText('Child Caught');
+});
+
 describe('subcomponents', () => {
   it('will wrap PascalCase method as reactive component', async () => {
     class Dashboard extends Component {

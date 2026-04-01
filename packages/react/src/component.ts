@@ -149,7 +149,7 @@ function bootstrap(this: Component, context: Context) {
 
   context = context.push(self);
 
-  let mounts = 0;
+  let strict = false;
   let mounted = false;
   let refresh: ((next: (x: number) => number) => void) | undefined;
   let active: Component;
@@ -164,14 +164,13 @@ function bootstrap(this: Component, context: Context) {
   }
 
   function AsComponent() {
-    refresh = useState(0)[1];
-
-    if (!mounted) mounts++;
+    let inits = 0;
+    refresh = useState(() => { if (inits++) strict = true; return 0; })[1];
 
     useEffect(() => {
       mounted = true;
       return () => {
-        if (--mounts) return;
+        if (strict) { strict = false; return; }
         refresh = undefined;
         self.set(null);
         context.pop();
@@ -191,11 +190,15 @@ function bootstrap(this: Component, context: Context) {
           return self.fallback;
         },
         onError(error: Error, reset: () => void) {
-          mounts /= 2;
+          console.log(`[onError:${self}] mounted: ${mounted}, strict: ${strict}`);
           const { fallback } = self;
           Promise.resolve(self.catch!(error))
-            .then(() => mounts && reset(), reset)
+            .then(
+              () => { console.log(`[onError:${self}] resolved, mounted: ${mounted}`); mounted && reset(); },
+              (e) => { console.log(`[onError:${self}] rejected:`, e); (reset as any)(e); }
+            )
             .finally(() => {
+              console.log(`[onError:${self}] finally`);
               self.set({ fallback }, true);
             });
         },
