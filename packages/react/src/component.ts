@@ -190,9 +190,7 @@ function bootstrap(this: Component, context: Context) {
           const { fallback } = self;
           Promise.resolve(self.catch!(error))
             .then(() => refresh && reset(), reset)
-            .finally(() => {
-              self.set({ fallback }, true);
-            });
+            .finally(() => self.set({ fallback }, true));
         },
         children
       });
