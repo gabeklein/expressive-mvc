@@ -3,7 +3,7 @@ import { Context } from './context';
 import { get } from './instruction/get';
 import { ref } from './instruction/ref';
 import { set } from './instruction/set';
-import { State } from './state';
+import { State, update } from './state';
 
 it('will extend custom class', () => {
   class Subject extends State {
@@ -414,25 +414,19 @@ describe('string coercion', () => {
     expect(foobar).toMatch(/^FooBar-\w{6}/);
   });
 
-  it('will be class name and supplied ID', () => {
-    const a = Test.new('ID');
-
-    expect(String(a)).toBe('ID');
-  });
-
   it('will work inside subscriber', () => {
     class Test extends State {
       foo = 'foo';
     }
 
-    const test = Test.new('ID');
+    const test = Test.new();
     const mock = vi.fn();
 
     test.get((state) => {
       mock(String(state));
     });
 
-    expect(mock).toBeCalledWith('ID');
+    expect(mock).toBeCalledWith(String(test));
   });
 });
 
@@ -589,14 +583,14 @@ describe('get method', () => {
         foo = set<string>();
       }
 
-      const test = Test.new('ID');
+      const test = Test.new();
       let suspense;
 
       try {
         void test.get('foo');
       } catch (error) {
         expect(error).toBeInstanceOf(Promise);
-        expect(String(error)).toMatch('Error: ID.foo is not yet available.');
+        expect(String(error)).toMatch(/[\w-]+\.foo is not yet available\./);
         suspense = error;
       }
 
@@ -610,14 +604,14 @@ describe('get method', () => {
         foo?: string = undefined;
       }
 
-      const test = Test.new('ID');
+      const test = Test.new();
       let suspense;
 
       try {
         void test.get('foo', true);
       } catch (error) {
         expect(error).toBeInstanceOf(Promise);
-        expect(String(error)).toMatch('Error: ID.foo is not yet available.');
+        expect(String(error)).toMatch(/[\w-]+\.foo is not yet available\./);
         suspense = error;
       }
 
@@ -700,56 +694,17 @@ describe('get method', () => {
       expect(child.get(Foo, false)).toBeUndefined();
     });
 
-    it('will collect downstream state', () => {
-      const parent = Foo.new();
-      const context = new Context(parent);
-
-      const a = Bar.new();
-      const b = Bar.new();
-
-      context.push(a);
-      context.push(b);
-
-      const result = parent.get(Bar, true);
-
-      expect(result).toEqual([a, b]);
-    });
-
-    it('will fetch single downstream required', () => {
-      const parent = Foo.new();
-      const context = new Context(parent);
-
-      const child = Bar.new();
-      context.push(child);
-
-      expect(parent.get(Bar, true, true)).toBe(child);
-    });
-
-    it('will throw if single downstream required not found', () => {
-      const parent = Foo.new();
-      new Context(parent);
-
-      expect(() => parent.get(Bar, true, true)).toThrow();
-    });
-
-    it('will return undefined if single downstream optional', () => {
-      const parent = Foo.new();
-      new Context(parent);
-
-      expect(parent.get(Bar, true, false)).toBeUndefined();
-    });
-
     it('will subscribe with callback', () => {
       const parent = Foo.new();
       const ctx = new Context(parent);
 
       const callback = vi.fn();
-      const unsub = ctx.all(Bar, callback);
+      const unsub = ctx.get(Bar, callback, true);
 
       const child = Bar.new();
       const sub = ctx.push(child);
 
-      expect(callback).toHaveBeenCalledWith(child, false);
+      expect(callback).toHaveBeenCalledWith(child, true);
       expect(typeof unsub).toBe('function');
 
       unsub();
@@ -863,6 +818,25 @@ describe('get method', () => {
 
       // expect two syncronous groups of updates.
       expect(effect).toBeCalledTimes(3);
+    });
+
+    it('will not call twice if set up during init', () => {
+      const didUpdate = vi.fn();
+
+      class Control extends State {
+        value = 'foo';
+
+        protected new() {
+          this.get(({ value }) => {
+            didUpdate(value);
+          });
+        }
+      }
+
+      Control.new();
+
+      expect(didUpdate).toBeCalledTimes(1);
+      expect(didUpdate).toBeCalledWith('foo');
     });
 
     it('will squash simultaneous updates', async () => {
@@ -1492,7 +1466,7 @@ describe('set method', () => {
     });
   });
 
-  describe('update', () => {
+  describe('config', () => {
     it('will assign a value', async () => {
       class Test extends State {
         foo = 'foo';
@@ -1500,7 +1474,7 @@ describe('set method', () => {
 
       const test = Test.new();
 
-      test.set('foo', 'bar');
+      test.set('foo', { value: 'bar' });
 
       await expect(test).toHaveUpdated('foo');
 
@@ -1514,11 +1488,133 @@ describe('set method', () => {
 
       const test = Test.new();
 
-      test.set('foo', 'bar');
+      test.set('foo', { value: 'bar' });
 
       await expect(test).toHaveUpdated('foo');
 
       expect(test.foo.current).toBe('bar');
+    });
+
+    it('will bypass setter when updating value', async () => {
+      class Test extends State {
+        foo = set(1, () => {
+          throw Error('setter should not run');
+        });
+      }
+
+      const test = Test.new();
+
+      test.set('foo', { value: 2 });
+
+      await expect(test).toHaveUpdated('foo');
+      expect(test.foo).toBe(2);
+    });
+
+    it('will throw if redefining managed property', () => {
+      class Test extends State {
+        foo = 'foo';
+      }
+
+      const test = Test.new();
+
+      expect(() => {
+        test.set('foo', { value: 'bar', set: false });
+      }).toThrow('already defined');
+    });
+
+    it('will define a read-only property', () => {
+      class Test extends State {
+        foo = 'foo';
+      }
+
+      interface Test {
+        bar: string;
+      }
+
+      const test = Test.new();
+
+      test.set('bar', { value: 'hello', set: false });
+
+      expect(test.bar).toBe('hello');
+      expect(() => {
+        test.bar = 'nope';
+      }).toThrow('read-only');
+    });
+
+    it('will define a non-enumerable property', () => {
+      class Test extends State {
+        foo = 'foo';
+      }
+
+      interface Test {
+        bar: string;
+      }
+
+      const test = Test.new();
+
+      test.set('bar', { value: 'hidden', enumerable: false });
+
+      expect(test.bar).toBe('hidden');
+      expect(Object.keys(test)).not.toContain('bar');
+    });
+
+    it('will register child state via descriptor', async () => {
+      class Child extends State {
+        value = 'hello';
+      }
+
+      class Parent extends State {
+        foo = 'foo';
+      }
+
+      interface Parent {
+        child: Child;
+      }
+
+      const parent = Parent.new();
+      const child = new Child();
+
+      parent.set('child', { value: child });
+
+      await expect(parent).toHaveUpdated('child');
+      expect(parent.child).toBe(child);
+
+      // child was not yet activated, parent wires it up
+      expect(child.get(null)).toBe(false);
+
+      parent.set(null);
+
+      // destroying parent cascades to unactivated child
+      expect(child.get(null)).toBe(true);
+    });
+
+    it('will replace child state via descriptor', async () => {
+      class Child extends State {
+        value = 'hello';
+      }
+
+      class Parent extends State {
+        foo = 'foo';
+      }
+
+      interface Parent {
+        child: Child;
+      }
+
+      const parent = Parent.new();
+      const first = new Child();
+      const second = new Child();
+
+      parent.set('child', { value: first });
+
+      await expect(parent).toHaveUpdated('child');
+      expect(parent.child).toBe(first);
+
+      // reassign child
+      parent.child = second as any;
+
+      await expect(parent).toHaveUpdated('child');
+      expect(parent.child).toBe(second);
     });
 
     it('will add property to tracking', async () => {
@@ -1551,7 +1647,7 @@ describe('set method', () => {
       expect(mock).not.toBeCalledWith('bar', 'bob');
 
       // assign bar formally adding to state
-      test.set('bar', 'baz', true);
+      test.set('bar', { value: 'baz' });
 
       // bar is redefined
       expect(test.bar).toBe('baz');
@@ -1690,7 +1786,7 @@ describe('set method', () => {
       const test = Test.new();
       const didUpdateFoo = vi.fn();
 
-      test.set(didUpdateFoo, 'foo');
+      test.set('foo', didUpdateFoo);
 
       test.foo = 'bar';
       test.foo = 'baz';
@@ -1701,7 +1797,7 @@ describe('set method', () => {
       expect(didUpdateFoo).toBeCalledTimes(2);
     });
 
-    it('will self-unsubscribe', async () => {
+    it('will unsubscribe if returns null', async () => {
       class Test extends State {
         foo = 'foo';
       }
@@ -1709,7 +1805,7 @@ describe('set method', () => {
       const test = Test.new();
       const didUpdateFoo = vi.fn(() => null);
 
-      test.set(didUpdateFoo, 'foo');
+      test.set('foo', didUpdateFoo);
 
       test.foo = 'bar';
       test.foo = 'baz';
@@ -1725,7 +1821,7 @@ describe('set method', () => {
       const test = Test.new();
       const didDestroy = vi.fn();
 
-      test.set(didDestroy, null);
+      test.set(null, didDestroy);
       test.set(null);
 
       expect(didDestroy).toBeCalledWith(null, test);
@@ -1825,7 +1921,7 @@ describe('set method', () => {
       }
 
       const callback = vi.fn();
-      const test = Test.new('ID');
+      const test = Test.new();
 
       test.set(callback);
       test.foo++;
@@ -1833,9 +1929,38 @@ describe('set method', () => {
       test.set(null);
 
       expect(() => test.foo++).toThrow(
-        'Tried to update ID.foo but state is destroyed.'
+        /Tried to update [\w-]+\.foo but state is destroyed\./
       );
       expect(callback).toBeCalledTimes(1);
+    });
+
+    it('will silently skip update after destroyed', () => {
+      class Test extends State {
+        foo = 0;
+      }
+
+      const test = Test.new();
+      test.set(null);
+
+      expect(update(test, "foo", 1, true)).toBe(false);
+      expect(test.foo).toBe(0);
+    });
+
+    it('will silently skip set after destroyed', () => {
+      class Test extends State {
+        foo = 0;
+      }
+
+      const callback = vi.fn();
+      const test = Test.new();
+
+      test.set(callback);
+      test.set(null);
+
+      test.set({ foo: 1 }, true);
+
+      expect(callback).not.toBeCalled();
+      expect(test.foo).toBe(0);
     });
 
     it.todo('will throw clear error on bad update');
@@ -2024,12 +2149,6 @@ describe('new method', () => {
 describe('new method (static)', () => {
   class Test extends State {}
 
-  it('will use string argument as ID', () => {
-    const state = Test.new('ID');
-
-    expect(String(state)).toBe('ID');
-  });
-
   it('will call argument as lifecycle', () => {
     const didDestroy = vi.fn();
     const didCreate = vi.fn(() => didDestroy);
@@ -2081,11 +2200,10 @@ describe('new method (static)', () => {
     const willCreate = vi.fn(() => ({ foo: 2 }));
     const willDestroy = vi.fn();
 
-    const test = Test.new('Test-ID', willCreate, () => willDestroy, { bar: 3 });
+    const test = Test.new(willCreate, () => willDestroy, { bar: 3 });
 
     expect(test.foo).toBe(2);
     expect(test.bar).toBe(3);
-    expect(String(test)).toBe('Test-ID');
     expect(willCreate).toBeCalledTimes(1);
     expect(willDestroy).not.toBeCalled();
 
@@ -2107,18 +2225,52 @@ describe('new method (static)', () => {
       }
     }
 
-    const test = Test2.new('Test-ID', { foo: 1 }, { bar: 2 });
+    const test = Test2.new({ foo: 1 }, { bar: 2 });
 
-    expect(String(test)).toBe('Test-ID');
     expect(test.foo).toBe(1);
     expect(test.bar).toBe(2);
     expect(test.baz).toBe(3);
   });
 
-  it('will prefer last ID provided', () => {
-    const test = Test.new('ID', 'ID2');
+  it('will flatten deeply nested arguments', () => {
+    class Test extends State {
+      foo = 0;
+      bar = 0;
+      baz = 0;
+    }
 
-    expect(String(test)).toBe('ID2');
+    const test = Test.new([{ foo: 1 }], [[{ bar: 2 }, [{ baz: 3 }]]]);
+
+    expect(test.foo).toBe(1);
+    expect(test.bar).toBe(2);
+    expect(test.baz).toBe(3);
+  });
+
+  it('will process init-returned arrays in order', () => {
+    const order: number[] = [];
+    const invoke = (n: number) => () => void order.push(n);
+
+    class Test extends State {
+      value = 0;
+    }
+
+    Test.new(
+      () => [invoke(1), [invoke(2)]],
+      invoke(3),
+      () => [invoke(4)]
+    );
+
+    expect(order).toEqual([1, 2, 3, 4]);
+  });
+
+  it('will process nested arrays from init before later args', () => {
+    class Test extends State {
+      foo = 0;
+    }
+
+    const test = Test.new(() => [{ foo: 1 }], { foo: 2 });
+
+    expect(test.foo).toBe(2);
   });
 
   it('will prefer later assignments', () => {
@@ -2170,13 +2322,15 @@ describe('new method (static)', () => {
     const expects = new Error('State callback rejected.');
 
     const init = vi.fn(() => Promise.reject(expects));
-    const test = Test.new('ID', init);
+    const test = Test.new(init);
 
     expect(init).toBeCalledTimes(1);
 
     await expect(test).not.toHaveUpdated();
 
-    expect(error).toBeCalledWith('Async error in constructor for ID:');
+    expect(error).toBeCalledWith(
+      expect.stringMatching(/Async error in constructor for [\w-]+:/)
+    );
     expect(error).toBeCalledWith(expects);
 
     error.mockRestore();
@@ -2266,76 +2420,84 @@ describe('is method (static)', () => {
 });
 
 describe('on method (static)', () => {
-  class Test extends State {
-    foo = 'bar';
-  }
-
   it('will run callback on create', () => {
+    class Test extends State {}
+
     const mock = vi.fn();
     const done = Test.on(mock);
     const test = Test.new();
 
-    expect(mock).toBeCalledWith(true, test);
+    expect(mock).toBeCalledWith(test);
 
     done();
   });
 
-  it('will run on various events', async () => {
-    const mock = vi.fn();
-    const done = Test.on(mock);
+  it('will run cleanup on destroy', () => {
+    class Test extends State {}
+
+    const cleanup = vi.fn();
+    const done = Test.on(() => cleanup);
     const test = Test.new();
 
-    test.set('event');
-    test.foo = 'baz';
-
-    expect(mock).toBeCalledWith('event', test);
-    expect(mock).toBeCalledWith('foo', test);
-
-    await test.set();
-    expect(mock).toBeCalledWith(false, test);
+    expect(cleanup).not.toBeCalled();
 
     test.set(null);
-    expect(mock).toBeCalledWith(null, test);
+    expect(cleanup).toBeCalled();
 
     done();
   });
 
   it('will run callback for inherited classes', () => {
+    class Test extends State {}
     class Test2 extends Test {}
 
-    const createState = vi.fn();
     const createTest = vi.fn();
     const createTest2 = vi.fn();
 
-    const done = [
-      Test.on(createTest),
-      Test2.on(createTest2),
-      State.on(createState)
-    ];
+    Test.on(createTest);
+    Test2.on(createTest2);
 
     const test = Test2.new();
 
-    expect(createState).toBeCalledWith(true, test);
-    expect(createTest).toBeCalledWith(true, test);
-    expect(createTest2).toBeCalledWith(true, test);
+    expect(createTest).toBeCalledWith(test);
+    expect(createTest2).toBeCalledWith(test);
+  });
 
-    done.forEach((done) => done());
+  it('will run callbacks in ancestor-first order', () => {
+    class A extends State {
+      value = 1;
+    }
+    class B extends A {}
+    class C extends B {}
+
+    const order: string[] = [];
+
+    A.on(() => void order.push('A'));
+    B.on(() => void order.push('B'));
+    C.on(() => void order.push('C'));
+
+    C.new();
+
+    expect(order).toEqual(['A', 'B', 'C']);
   });
 
   it('will squash same callback for multiple classes', () => {
+    class Test extends State {}
     class Test2 extends Test {}
 
     const didCreate = vi.fn();
-    const done = [Test.on(didCreate), Test2.on(didCreate), State.on(didCreate)];
+
+    Test.on(didCreate);
+    Test2.on(didCreate);
 
     Test2.new();
 
     expect(didCreate).toBeCalledTimes(1);
-
-    done.forEach((done) => done());
   });
 
   it('will remove callback', () => {
+    class Test extends State {}
+
     const mock = vi.fn();
     const done = Test.on(mock);
 
@@ -2346,22 +2508,5 @@ describe('on method (static)', () => {
 
     Test.new();
     expect(mock).toBeCalledTimes(1);
-  });
-
-  it('will run callback on event', () => {
-    const mock = vi.fn();
-    const done = Test.on((key: any, state: any) => {
-      mock(key, state[key]);
-    });
-
-    const test = Test.new();
-
-    expect(mock).toBeCalledWith(true, undefined);
-
-    test.foo = 'baz';
-
-    expect(mock).toBeCalledWith('foo', 'baz');
-
-    done();
   });
 });

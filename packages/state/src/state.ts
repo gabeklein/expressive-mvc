@@ -19,8 +19,8 @@ const ID = new WeakMap<State, string>();
 /** Internal state assigned to states. */
 const STORE = new WeakMap<State, Record<string | number | symbol, unknown>>();
 
-/** External listeners for any given State. */
-const NOTIFY = new WeakMap<State.Extends, Set<Observable.Notify>>();
+/** External lifecycle listeners for any given State class. */
+const SETUP = new WeakMap<State.Extends, Set<State.Init<any>>>();
 
 /** Parent-child relationships. */
 const PARENT = new WeakMap<State, State | null>();
@@ -41,13 +41,7 @@ declare namespace State {
     Omit<typeof State, never>;
 
   /** State constructor arguments */
-  type Args<T extends State = any> = (
-    | Args<T>
-    | Init<T>
-    | Assign<T>
-    | string
-    | void
-  )[];
+  type Args<T extends State = any> = (Args<T> | Init<T> | Assign<T> | void)[];
 
   /**
    * State constructor callback - is called when State finishes intializing.
@@ -87,12 +81,24 @@ declare namespace State {
   /** Object comperable to data found in T. */
   type Partial<T> = { [P in Field<T>]?: Export<T[P]> };
 
-  /** Value for a property managed by a state. */
+  /** Value for a property applied by a state. */
   type Value<T extends State, K extends State.Event<T>> = K extends keyof T
     ? Export<T[K]>
     : unknown;
 
   type Setter<T> = (value: T, previous: T) => T | void;
+
+  /** Descriptor config for a managed property. */
+  type Apply<T = any> = {
+    value?: T;
+    get?: ((source: State) => T) | boolean;
+    set?: Setter<T> | boolean;
+    enumerable?: boolean;
+    // destroy?: () => void;
+  };
+
+  /** Descriptor config for set() overload - enforces type when key is a known field. */
+  type Define<T, K> = K extends Field<T> ? Apply<T[K] | Export<T[K]>> : Apply;
 
   type OnEvent<T extends State> = (
     this: T,
@@ -151,9 +157,8 @@ abstract class State implements Observable {
   declare is: this;
 
   constructor(...args: State.Args) {
-    prepare(this);
     define(this, 'is', { value: this });
-    init(this, ...args, this.new);
+    init(this, args, this.new);
   }
 
   [Observable](callback: Observable.Callback, required?: boolean) {
@@ -176,9 +181,9 @@ abstract class State implements Observable {
   get(): State.Values<this>;
 
   /**
-   * Run a function which will run automatically when accessed values change.
+   * Run a function to run automatically when accessed values change.
    *
-   * @param effect Function to run, and again whenever accessed values change.
+   * @param effect Function to run, and whenever accessed values change.
    *               If effect returns a function, it will be called when a change occurs (syncronously),
    *               effect is cancelled, or parent state is destroyed.
    * @returns Function to cancel listener.
@@ -186,7 +191,9 @@ abstract class State implements Observable {
   get(effect: State.Effect<this>): () => void;
 
   /**
-   * Get value of a property.
+   * Get value of a property. Will fetch underlying value from exotic values like ref.Object.
+   *
+   * Any value which implements `get()` (with no arguments) will be treated as such.
    *
    * @param key - Property to get value of.
    * @param required - If true, will throw an error if property is not available.
@@ -198,7 +205,10 @@ abstract class State implements Observable {
   ): State.Value<this, T>;
 
   /**
-   * Run a function when a property is updated.
+   * Run a function when a property is updated and has settled.
+   *
+   * Not to be confused with `set(event, callback)`, which runs on every update,
+   * even if value is the same, and before updates are settled.
    *
    * @param key - Property to watch for updates.
    * @param callback - Function to call when property is updated.
@@ -209,39 +219,11 @@ abstract class State implements Observable {
     callback: State.OnUpdate<this, T>
   ): () => void;
 
-  /** Fetch upstream State from context. Throws if not found. */
-  get<T extends State>(type: State.Type<T>): T;
-
-  /** Fetch a State from context. Returns undefined if not found. */
-  get<T extends State>(
-    type: State.Type<T>,
-    required: false | undefined
-  ): T | undefined;
-
-  /** Collect all downstream State of type in context. */
-  get<T extends State>(type: State.Type<T>, children: true): T[];
-
-  /** Fetch a single downstream State. Throws if not found. */
-  get<T extends State>(type: State.Type<T>, children: true, single: true): T;
-
-  /** Fetch a single downstream State. Returns undefined if not found. */
-  get<T extends State>(
-    type: State.Type<T>,
-    downstream: true,
-    required: false
-  ): T | undefined;
-
-  /** Subscribe to upstream State becoming available in context. */
-  get<T extends State>(
-    type: State.Type<T>,
-    callback: Context.Expect<T>
-  ): () => void;
-
   /**
-   * Check if state is expired.
+   * Check if state is destroyed.
    *
-   * @param status - `null` to check if state is expired.
-   * @returns `true` if state is expired, `false` otherwise.
+   * @param status - `null` to check if state is destroyed.
+   * @returns `true` if state is destroyed, `false` otherwise.
    */
   get(status: null): boolean;
 
@@ -253,6 +235,31 @@ abstract class State implements Observable {
    */
   get(status: null, callback: () => void): () => void;
 
+  /** Fetch State of type from context. Throws if not found. */
+  get<T extends State>(type: State.Type<T>, required?: true): T;
+
+  /** Fetch a State from context. Undefined if not found. */
+  get<T extends State>(type: State.Type<T>, required: boolean): T | undefined;
+
+  /**
+   * Subscribe to State becoming available in context.
+   *
+   * Will search both up and downstream by default.
+   * Normally you can ignore this because State you expect is rarely both.
+   *
+   * Specify downstream if you only want to watch for State in children, which can be useful if you expect multiple of the same State in different branches of the tree.
+   *
+   * @param type - Type of State to watch for.
+   * @param callback - Function to call when State is found. Will be called immediately if State is already available.
+   * @param downstream - If true, will only watch for State in children, if false will only for parents.
+   * @returns Function to cancel listener.
+   */
+  get<T extends State>(
+    type: State.Type<T>,
+    callback: Context.Expect<T>,
+    downstream?: boolean
+  ): () => void;
+
   get(
     arg1?: State.Effect<this> | State.Type | string | null,
     arg2?: boolean | Context.Expect | State.OnUpdate<this, any>,
@@ -261,7 +268,7 @@ abstract class State implements Observable {
     const self = this.is;
 
     if (arg1 === undefined) return values(self);
-    if (State.is(arg1)) return lookup(self, arg1, arg2 as any, arg3);
+    if (State.is(arg1)) return Context.get(self).get(arg1, arg2 as any, arg3);
     if (typeof arg1 == 'function') return watch(self, unbind(arg1));
     if (typeof arg2 == 'function') return listener(self, arg2 as any, arg1);
     if (arg1 === null) return observable(self) === null;
@@ -276,14 +283,29 @@ abstract class State implements Observable {
   set(): State.Updated<this>;
 
   /**
-   * Update mulitple properties at once. Merges argument with current state.
+   * Merge argument with current state, updating one or more properties at once.
    * Properties which are not managed by this state will be ignored.
    *
    * @param assign - Object with properties to update.
-   * @param silent - If an update does occur, listeners will not be refreshed automatically.
-   * @returns Promise resolving an array of keys updated, `undefined` (immediately) if a noop.
+   * @param silent - If true, listeners will not be notified. If state is destroyed, will squash update without throwing.
+   * @returns Array of keys updated, syncronously contains keys updated immediately and may be resolved (to itself) when all updates are settled.
    */
   set(assign?: State.Assign<this>, silent?: boolean): State.Updated<this>;
+
+  /**
+   * Call a function when update occurs.
+   *
+   * Given function is called for every assignment (which changes value) or explicit `set`.
+   *
+   * To run logic on final value only, callback may return a function. The same
+   * function for one or more events will be called only once when update is settled.
+   *
+   * Return `null` from callback to stop listening.
+   *
+   * @param callback - Function to call when update occurs.
+   * @returns Function to remove listener. Will return `true` if removed, `false` if inactive already.
+   */
+  set(callback: State.OnEvent<this>): () => boolean;
 
   /**
    * Push an update. This will not change the value of associated property.
@@ -293,60 +315,13 @@ abstract class State implements Observable {
    *
    * You can also use this to dispatch arbitrary events.
    * Symbols are recommended as non-property events, however you can use any string.
-   * If doing so, be sure to avoid collisions with property names! An easy way to do this is
+   * If doing so, be sure to avoid collisions using property names. An easy way to do this is
    * to prefix an event with "!" and/or use dash-case. e.g. `set("!event")` or `set("my-event")`.
    *
    * @param key - Property or event to dispatch.
    * @returns Promise resolves an array of keys updated.
    */
   set(key: State.Event<this>): State.Updated<this>;
-
-  /**
-   * Set a value for a property. This will update the value and notify listeners.
-   *
-   * **Use with caution!** Key nor value are checked for validity.
-   *
-   * This is meant for assigning values programmatically,
-   * where simple assignment is not practicable.
-   *
-   * For example: `(this as any)[myProperty] = value;`
-   *
-   * @param key - Property to set value for.
-   * @param value - Value to set for property.
-   * @param init - If true, state will begin to manage the property if it is not already.
-   * @returns Promise resolves an array of keys updated.
-   */
-  set(
-    key: State.Event<this>,
-    value: unknown,
-    init?: boolean
-  ): State.Updated<this>;
-
-  /**
-   * Call a function when update occurs.
-   *
-   * Given function is called for every assignment (which changes value) or explicit `set`.
-   *
-   * To run logic on final value only, callback may return a function. Using the same
-   * function for one or more events will ensure it is called only when events are settled.
-   *
-   * @param callback - Function to call when update occurs.
-   * @returns Function to remove listener. Will return `true` if removed, `false` if inactive already.
-   *
-   */
-  set(callback: State.OnEvent<this>): () => boolean;
-
-  /**
-   * Call a function when a property is updated.
-   * Unlike `get`, this calls synchronously and will fire as many times as the property is updated.
-   *
-   * @param callback - Function to call when property is updated.
-   * @param event - Property to watch for updates.
-   */
-  set(
-    callback: State.OnEvent<this>,
-    event: State.Event<this> | null
-  ): () => boolean;
 
   /**
    * Declare an end to updates. This event is final and will freeze state.
@@ -356,27 +331,59 @@ abstract class State implements Observable {
    */
   set(status: null): void;
 
+  /**
+   * Register a callback for a specific property or event.
+   *
+   * Callback receives the key, current value, and source instance.
+   *
+   * @param event - Property or event to watch. If `null`, will callback on destroy.
+   * @param callback - Function to call when event occurs.
+   * @returns Function to remove listener.
+   */
+  set<K extends State.Event<this>>(
+    event: K | null,
+    callback: State.OnEvent<this>
+  ): () => boolean;
+
+  /**
+   * Define or update a managed property using a descriptor config.
+   * If the property already is managed, config will only accept value.
+   * If the property does not exist, it will be created and made reactive.
+   *
+   * @param key - Property to define or update.
+   * @param config - Descriptor config with value, get, set, enumerable, and/or destroy.
+   * @returns Promise resolves an array of keys updated.
+   */
+  set<K extends State.Event<this>>(
+    key: K,
+    config: State.Define<this, K>
+  ): State.Updated<this>;
+
   set(
     arg1?: State.OnEvent<this> | State.Assign<this> | State.Event<this> | null,
-    arg2?: unknown,
-    arg3?: boolean
+    arg2?: unknown
   ) {
     const self = this.is;
 
     if (typeof arg1 == 'function')
       return listener(self, (key) => {
-        if (arg2 === key || (arg2 === undefined && typeof key == 'string'))
+        if (
+          typeof key == 'string' ||
+          typeof key == 'number' ||
+          typeof key == 'symbol'
+        )
           return arg1.call(self, key, self);
       });
 
+    if (typeof arg2 == 'function')
+      return listener(self, arg2 as State.OnEvent<this>, arg1 as State.Signal);
+
     if (arg1 && typeof arg1 == 'object') {
       assign(self, arg1, arg2 === true);
-    } else if (!arg2) {
+    } else if (!arg2 || arg1 == null) {
       event(self, arg1);
-    } else if (arg3) {
-      manage(self, arg1 as string | number, arg2);
-    } else {
-      update(self, arg1 as string | number, arg2);
+    } else if (arg2) {
+      apply(self, arg1 as string | number, arg2);
     }
 
     return pending(self) as State.Updated<this>;
@@ -432,19 +439,17 @@ abstract class State implements Observable {
   }
 
   /**
-   * Register a callback to run when any instance of this State is updated.
+   * Register a callback to run when any instance of this State is created.
+   * If callback returns a function, it will be called when the instance is destroyed.
    */
-  static on<T extends State>(
-    this: State.Extends<T>,
-    listener: State.OnEvent<T>
-  ) {
-    let notify = NOTIFY.get(this);
+  static on<T extends State>(this: State.Extends<T>, init: State.Init<T>) {
+    let setup = SETUP.get(this);
 
-    if (!notify) NOTIFY.set(this, (notify = new Set()));
+    if (!setup) SETUP.set(this, (setup = new Set()));
 
-    notify.add(listener);
+    setup.add(init);
 
-    return () => notify.delete(listener);
+    return () => setup.delete(init);
   }
 }
 
@@ -460,29 +465,72 @@ define(State, 'toString', {
   }
 });
 
-/** Apply instructions and inherited event listeners. Ensure class metadata is ready. */
-function prepare(state: State) {
-  let T = state.constructor as State.Extends;
+/**
+ * Apply state arguemnts, run callbacks and observe properties.
+ * Accumulate and handle cleanup events.
+ **/
+function init(state: State, ...args: State.Args) {
+  const T = state.constructor as State.Extends;
 
   if (T === State) throw new Error('Cannot create base State.');
 
-  const chain = [] as State.Extends[];
-  let keys = new Map<string, (value: any) => void>();
+  const setup = bootstrap(T);
 
   ID.set(state, `${T}-${uid()}`);
+  STORE.set(state, {});
 
-  while (T.name) {
-    for (const cb of NOTIFY.get(T) || []) {
-      listener(state, cb);
+  function properties() {
+    for (const key in state) {
+      const desc = Object.getOwnPropertyDescriptor(state, key)!;
+      if ('value' in desc) apply(state, key, desc, true);
     }
-
-    if (T === State) break;
-    else chain.unshift(T);
-
-    T = Object.getPrototypeOf(T);
   }
 
+  listener(state, () => {
+    parent(state, null);
+
+    const queue = [...setup, properties, ...args];
+
+    for (let i = 0; i < queue.length; i++) {
+      const arg = queue[i];
+
+      const use = typeof arg == 'function' ? arg.call(state, state) : arg;
+
+      if (use instanceof Promise)
+        use.catch((err) => {
+          console.error(`Async error in constructor for ${state}:`);
+          console.error(err);
+        });
+      else if (Array.isArray(use)) queue.splice(i + 1, 0, ...use);
+      else if (typeof use == 'function') listener(state, use, null);
+      else if (typeof use == 'object') assign(state, use, true);
+    }
+
+    return null;
+  });
+}
+
+/**
+ * Apply instructions and inherited event listeners. Ensure class metadata is ready.
+ *
+ * @param T - State class to bootstrap.
+ * @return Array of init functions to run on instance, in order of class hierarchy.
+ */
+function bootstrap(T: State.Extends) {
+  const chain = [] as State.Extends[];
+  const setup = [] as State.Init[];
+  let keys = new Map<string, (value: any) => void>();
+
+  do {
+    chain.unshift(T);
+    T = Object.getPrototypeOf(T);
+  } while (T.name);
+
   for (const type of chain) {
+    setup.push(...(SETUP.get(type) || []));
+
+    if (type === State) continue;
+
     if (METHODS.has(type)) {
       keys = METHODS.get(type)!;
       continue;
@@ -513,100 +561,109 @@ function prepare(state: State) {
       define(type.prototype, key, { get: bind, set: bind });
     }
   }
+
+  return new Set(setup);
 }
 
 /**
- * Apply state arguemnts, run callbacks and observe properties.
- * Accumulate and handle cleanup events.
- **/
-function init(state: State, ...args: State.Args) {
-  STORE.set(state, {});
-
-  args = args.flat().filter((arg) => {
-    if (typeof arg == 'string') ID.set(state, arg);
-    else return true;
-  });
-
-  listener(state, () => {
-    if (!PARENT.has(state)) PARENT.set(state, null);
-
-    for (const key in state) {
-      const desc = Object.getOwnPropertyDescriptor(state, key)!;
-      if ('value' in desc) manage(state, key, desc.value, true);
-    }
-
-    for (const arg of args) {
-      const use =
-        typeof arg == 'function'
-          ? arg.call(state, state)
-          : (arg as State.Assign<State>);
-
-      if (use instanceof Promise)
-        use.catch((err) => {
-          console.error(`Async error in constructor for ${state}:`);
-          console.error(err);
-        });
-      else if (Array.isArray(use)) args.push(...use);
-      else if (typeof use == 'function') listener(state, use, null);
-      else if (typeof use == 'object') assign(state, use, true);
-    }
-
-    return null;
-  });
-}
-
-function manage(
+ * Define or update a managed property using a descriptor config.
+ * If the property already is managed, config will only accept value.
+ * If the property does not exist, it will be created and made reactive.
+ *
+ * @param state - State to apply property to.
+ * @param key - Property to define or update.
+ * @param config - Descriptor config with value, get, set, enumerable, and/or destroy.
+ * @param silent - If an update does occur, listeners will not be refreshed automatically.
+ */
+function apply(
   state: State,
   key: string | number,
-  value: any,
+  config: State.Apply,
   silent?: boolean
 ) {
-  const store = STORE.get(state)!;
-  const set =
-    value instanceof State ? child(state, key) : update.bind(null, state, key);
+  const desc = Object.getOwnPropertyDescriptor(state, key);
+
+  if (desc && 'get' in desc) {
+    if (Object.keys(config).some((k) => k != 'value'))
+      throw new Error(`Property ${key} on ${state} is already defined.`);
+    if ('value' in config) update(state, key, config.value, silent);
+    return;
+  }
+
+  const adopt = config.value instanceof State && child(state);
+
+  function set(value: unknown, silent?: boolean) {
+    if (!update(state, key, value, silent)) return;
+    if (adopt) adopt(value);
+  }
 
   define(state, key, {
+    configurable: true,
+    enumerable: config.enumerable !== false,
     get(this: State) {
-      return observing(this, key, store[key]);
+      return observing(
+        this,
+        key,
+        typeof config.get == 'function'
+          ? config.get(this)
+          : access(state, key as string, config.get)
+      );
     },
-    set
+    set(next: any, silent?: boolean) {
+      if (config.set === false)
+        throw new Error(`${state}.${String(key)} is read-only.`);
+
+      if (typeof config.set == 'function')
+        try {
+          const output = config.set(next, STORE.get(state)![key]);
+          if (output !== undefined) next = output;
+        } catch (err: unknown) {
+          if (err === false) return;
+          if (err === true) {
+            set(next, true);
+            return;
+          }
+          throw err;
+        }
+
+      set(next, silent);
+    }
   });
 
-  set(value, silent);
+  if ('value' in config) set(config.value, silent);
 }
 
-function child(state: State, key: string | number) {
-  let reset: (() => void) | undefined;
+function child(state: State) {
+  let cleanup: (() => void) | undefined;
   const ctx = Context.get(state);
 
-  listener(
-    state,
-    () => {
-      if (reset) reset();
-      reset = undefined;
-    },
-    null
-  );
+  function reset() {
+    if (cleanup) cleanup();
+    cleanup = undefined;
+  }
 
-  return (value: unknown, silent?: boolean) => {
-    if (!update(state, key, value, silent)) return;
+  listener(state, reset, null);
 
-    const prev = reset;
-    reset = undefined;
+  return (value: unknown) => {
+    reset();
 
-    if (value instanceof State) {
-      const remove = ctx.add(value, true);
+    if (!(value instanceof State)) return;
 
-      if (!PARENT.has(value)) {
-        PARENT.set(value, state);
-        listener(state, () => event(value, null), null);
-        reset = () => (remove(), event(value, null));
-      } else reset = remove;
+    const remove = ctx.add(value, true);
 
-      event(value);
+    if (parent(value) === undefined) {
+      parent(value, state);
+      cleanup = () => {
+        cancel();
+        remove();
+        event(value, null);
+      };
+      const cancel = listener(state, cleanup, null);
+    } else {
+      cleanup = remove;
     }
 
-    if (prev) prev();
+    event(value);
   };
 }
 
@@ -615,10 +672,10 @@ let EXPORT: Map<any, any> | undefined;
 
 function values<T extends State>(state: T): State.Values<T> {
   const values = {} as any;
-  let isNotRecursive;
+  let notRecursive;
 
   if (!EXPORT) {
-    isNotRecursive = true;
+    notRecursive = true;
     EXPORT = new Map([[state, values]]);
   }
 
@@ -635,24 +692,9 @@ function values<T extends State>(state: T): State.Values<T> {
     values[key] = value;
   }
 
-  if (isNotRecursive) EXPORT = undefined;
+  if (notRecursive) EXPORT = undefined;
 
   return Object.freeze(values);
-}
-
-function lookup(
-  self: State,
-  Type: State.Type,
-  arg2?: Context.Expect | boolean,
-  arg3?: boolean
-) {
-  const ctx = Context.get(self);
-
-  return arg2 === true
-    ? arg3 === undefined
-      ? ctx.all(Type)
-      : ctx.one(Type, arg3)
-    : ctx.get(Type, arg2 as any);
 }
 
 function access(state: State, property: string, required?: boolean) {
@@ -714,7 +756,9 @@ function assign(state: State, data: State.Assign<State>, silent?: boolean) {
 /**
  * Update a property on a state instance and notify listeners.
  *
- * This is used internally to manage properties, but can also be used to update properties which are not managed by state, or to update values without triggering setters.
+ * This is used internally to update properties, but can also be used to update properties which are not managed by state, or to update values without triggering setters.
+ *
+ * If `silent` is true, the update will not dispatch events and will return `false` instead of throwing if state is destroyed.
  */
 function update<T>(
   state: State,
@@ -722,10 +766,12 @@ function update<T>(
   value: T,
   silent?: boolean
 ) {
-  if (observable(state) === null)
+  if (observable(state) === null) {
+    if (silent) return false;
     throw new Error(
       `Tried to update ${state}.${String(key)} but state is destroyed.`
     );
+  }
 
   const store = STORE.get(state)!;
 
@@ -733,7 +779,7 @@ function update<T>(
 
   store[key] = value;
 
-  if (silent !== true) event(state, key);
+  if (!silent) event(state, key);
 
   return true;
 }
@@ -752,4 +798,13 @@ function unbind(fn?: Function) {
   return METHOD.get(fn) || fn;
 }
 
-export { event, unbind, State, PARENT, STORE, uid, access, update };
+/**
+ * Get or set a parent on given state. May only be assigned once; ignores new value.
+ * Returns parent of child, or `undefined` if not assigned yet.
+ */
+function parent(child: State, value?: State | null) {
+  if (arguments.length > 1 && !PARENT.has(child)) PARENT.set(child, value!);
+  return PARENT.get(child);
+}
+
+export { event, unbind, State, parent, STORE, uid, access, update, apply };

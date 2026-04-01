@@ -6,7 +6,8 @@ import {
   Suspense,
   useContext,
   useEffect,
-  useMemo
+  useRef,
+  useState
 } from 'react';
 
 export const Layers = createContext(new Context());
@@ -68,36 +69,55 @@ declare namespace Provider {
 
   type ForEachProps<T extends State> = SharedProps & {
     for: Context.Accept<T>;
-    forEach?: ForEach<T>;
+    is?: ForEach<T>;
   };
 
   type Props<T extends State = State> = ForSingleProps<T> | ForEachProps<T>;
 }
 
 function Provider<T extends State>(props: Provider.Props<T>) {
-  const {
-    for: input,
-    children,
-    fallback,
-    name,
-    ...rest
-  } = props as Provider.ForSingleProps<T> & Provider.ForEachProps<T>;
-
   const ambient = useContext(Layers);
-  const context = useMemo(() => ambient.push(), []);
+  const ref = useRef<((props: Provider.Props<T>) => ReactNode) | null>(null);
 
-  context.set(input, (added) => {
-    const cb = rest.forEach || rest.is;
-    return cb && cb(added);
-  });
+  if (!ref.current) {
+    const context = ambient.push();
+    let mounts = 0;
 
-  if (Object.keys(rest).length)
-    if (State.is(input)) context.get(input).set(rest as State.Assign<T>);
-    else if (input instanceof State) input.set(rest as State.Assign<T>);
+    ref.current = (props) => {
+      let {
+        for: input,
+        children,
+        fallback,
+        name,
+        ...rest
+      } = props as Provider.ForSingleProps<T> & Provider.ForEachProps<T>;
 
-  useEffect(() => () => context.pop(), []);
+      context.set(input, (added) => rest.is?.(added));
 
-  return createElement(Provide, { context, children, fallback, name });
+      if (Object.keys(rest).length) {
+        if (State.is(input)) input = context.get(input) as T;
+        if (input instanceof State) input.set(rest as State.Assign<T>);
+      }
+
+      useState(() => mounts++);
+
+      useEffect(
+        () => () => {
+          if (!--mounts) context.pop();
+        },
+        []
+      );
+
+      return createElement(Provide, {
+        context,
+        children,
+        fallback,
+        name
+      });
+    };
+  }
+
+  return ref.current(props);
 }
 
 interface ProvideProps {
@@ -120,4 +140,4 @@ function Provide(props: ProvideProps) {
   });
 }
 
-export { Consumer, Provider, Provide };
+export { Consumer, Provider, Provide, Context };

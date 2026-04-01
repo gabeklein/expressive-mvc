@@ -1,6 +1,6 @@
 import { listener, capture, watch } from '../observable';
 import { access, event, unbind, State, update } from '../state';
-import { Apply, apply } from './apply';
+import { def } from './def';
 
 const STALE = new WeakSet<() => void>();
 
@@ -97,7 +97,7 @@ function set<T, S extends State>(
 function set<T>(value: T | Promise<T>, onUpdate?: set.Callback<T>): T;
 
 function set<T = any>(value?: unknown, argument?: unknown): any {
-  return apply<T>((key, subject, state) => {
+  return def<T>((key, subject, state) => {
     // Reactive compute: function with declared args
     if (typeof value === 'function' && value.length >= 1) {
       const getter = unbind(value) as set.Reactive<T, any>;
@@ -161,7 +161,7 @@ function set<T = any>(value?: unknown, argument?: unknown): any {
       };
     }
 
-    const config: Apply.Config = {
+    const config: State.Apply = {
       enumerable: false,
       set: false
     };
@@ -207,7 +207,10 @@ function set<T = any>(value?: unknown, argument?: unknown): any {
       }
 
       if (argument) {
-        listener(subject, init, true);
+        listener(subject, () => {
+          init();
+          return null;
+        });
       } else {
         config.get = init;
       }

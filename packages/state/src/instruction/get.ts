@@ -1,9 +1,7 @@
 import { capture } from '../observable';
 import { Context } from '../context';
-import { State, PARENT, update } from '../state';
-import { apply } from './apply';
-
-type Type<T extends State> = State.Extends<T> & typeof State;
+import { State, parent, update } from '../state';
+import { def } from './def';
 
 declare namespace get {
   type Callback<T = any> = (
@@ -84,27 +82,27 @@ function get<T extends State>(
 ): T | undefined;
 
 function get<T extends State>(
-  Type: Type<T>,
+  Type: State.Extends<T>,
   arg1?: get.Callback<T> | boolean,
   arg2?: get.Callback<T> | boolean
 ) {
   if (arg1 === true) return getDownstream(Type, arg2);
 
-  return apply<T>((key, subject) => {
-    const hasParent = PARENT.get(subject) as T;
+  return def<T>((key, subject) => {
+    const hasParent = parent(subject);
     const callback =
       typeof arg1 === 'function' ? (arg1 as get.Callback<T>) : undefined;
 
     function assign(value: T) {
       if (callback) {
         const result = callback(value, subject);
-        if (typeof result === 'function') subject.set(result, null);
+        if (typeof result === 'function') subject.set(null, result);
       }
       update(subject, key, value);
     }
 
     if (hasParent && hasParent instanceof Type) {
-      assign(hasParent);
+      assign(hasParent as T);
       return {};
     }
 
@@ -112,10 +110,9 @@ function get<T extends State>(
     let found = false;
 
     ctx.get(Type, (state) => {
-      if (state !== subject) {
-        found = true;
-        assign(state);
-      }
+      if (state === subject) return;
+      found = true;
+      assign(state);
     });
 
     if (!found && arg1 !== false)
@@ -129,21 +126,23 @@ function get<T extends State>(
 }
 
 function getDownstream<T extends State>(
-  Type: Type<T>,
+  Type: State.Extends<T>,
   arg: get.Callback<T> | boolean | undefined
 ) {
-  return apply<T[]>((key, subject) => {
+  return def<T[]>((key, subject) => {
     const context = Context.get(subject);
 
     if (typeof arg == 'boolean') {
-      context.all(Type, (state) => {
-        update(subject, key, state);
-        const ignore = state.set(() => {
-          ignore();
-          update(subject, key, undefined);
-        }, null);
-        return ignore;
-      });
+      context.get(
+        Type,
+        (state) => {
+          update(subject, key, state);
+          return state.set(null, () => {
+            update(subject, key, undefined);
+          });
+        },
+        true
+      );
 
       return {
         get: arg,
@@ -154,44 +153,48 @@ function getDownstream<T extends State>(
 
     const applied = new Set<State>();
 
-    context.all(Type, (state) => {
-      let remove: (() => void) | undefined;
-      let release: (() => void) | undefined;
+    context.get(
+      Type,
+      (state) => {
+        let remove: (() => void) | undefined;
+        let release: (() => void) | undefined;
 
-      if (applied.has(state)) return;
+        if (applied.has(state)) return;
 
-      if (arg) {
-        let rejected = false;
+        if (arg) {
+          let rejected = false;
 
-        capture((fn) => {
-          const done = arg(state, subject);
+          capture((fn) => {
+            const done = arg(state, subject);
 
-          if (done === false) rejected = true;
-          else if (typeof done == 'function') remove = done;
+            if (done === false) rejected = true;
+            else if (typeof done == 'function') remove = done;
 
-          release = fn;
-        });
+            release = fn;
+          });
 
-        if (rejected) return false;
-      }
+          if (rejected) return false;
+        }
 
-      applied.add(state);
-      update(subject, key, [...applied]);
-
-      function done() {
-        if (release) release();
-        ignore();
-
-        applied.delete(state);
+        applied.add(state);
         update(subject, key, [...applied]);
 
-        if (typeof remove == 'function') remove();
-      }
+        function done() {
+          if (release) release();
+          ignore();
 
-      const ignore = state.set(done, null);
+          applied.delete(state);
+          update(subject, key, [...applied]);
 
-      return done;
-    });
+          if (typeof remove == 'function') remove();
+        }
+
+        const ignore = state.set(null, done);
+
+        return done;
+      },
+      true
+    );
 
     return {
       value: [],

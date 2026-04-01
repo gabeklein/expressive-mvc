@@ -1,12 +1,29 @@
 ---
 title: Instructions
-description: Property initializers — ref, apply, get, set — all overloads
+description: Property initializers — ref, def, get, set — all overloads
 ---
 
 Instructions are special initializers for class fields. They wire up reactive behavior declaratively.
 
 ```ts
-import { ref, apply, get, set } from '@expressive/react';
+import { def, ref, get, set } from '@expressive/react';
+```
+
+---
+
+## def()
+
+Base instruction defining custom property behavior during initialization.
+
+### `def(factory)`
+
+Custom instruction — receives the property key, instance, and state store:
+
+```ts
+custom = def((key, subject, state) => {
+  // key = property name, subject = instance, state = store
+  return { value: computedValue };
+});
 ```
 
 ---
@@ -43,23 +60,6 @@ Ref proxy — creates ref objects for all properties:
 fields = ref(this);
 // fields.name: ref.Object<string>
 // fields.email: ref.Object<string>
-```
-
----
-
-## apply()
-
-Low-level primitive for defining custom property behavior during initialization.
-
-### `apply(factory)`
-
-Custom instruction — receives the property key, instance, and state store:
-
-```ts
-custom = apply((key, subject, state) => {
-  // key = property name, subject = instance, state = store
-  return { value: computedValue };
-});
 ```
 
 ---

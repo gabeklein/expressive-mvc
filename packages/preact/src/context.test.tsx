@@ -1,4 +1,5 @@
 import { act, render } from '@testing-library/preact';
+import { Context } from '@expressive/state';
 
 import { State, Provider, Consumer } from '.';
 import { Lookup } from './context';
@@ -7,6 +8,12 @@ import { describe, it, expect, vi } from '../vitest';
 describe('Lookup', () => {
   it('is exported', () => {
     expect(Lookup).toBeDefined();
+  });
+});
+
+describe('Context', () => {
+  it('will return root context if called outside render', () => {
+    expect(Context.get()).toBe(Context.root);
   });
 });
 

@@ -3,7 +3,7 @@
 Instructions are special initializers for State class fields. They wire up behavior declaratively — refs, child state, context lookups, computed values, and validation.
 
 ```ts
-import State, { apply, ref, get, set } from '@expressive/state';
+import State, { def, ref, get, set } from '@expressive/state';
 ```
 
 ---
@@ -51,13 +51,13 @@ form.refs.email; // ref.Object<string>
 
 ---
 
-## apply — Custom Instruction
+## def — Custom Instruction
 
 Low-level primitive for defining custom property behavior during initialization.
 
 ```ts
 class MyState extends State {
-  custom = apply((key, subject, state) => {
+  custom = def((key, subject, state) => {
     // key = property name, subject = instance, state = store
     return { value: computedValue };
   });
@@ -205,6 +205,6 @@ class MyState extends State {
 | Instruction | Purpose                       | Triggers Updates?     |
 | ----------- | ----------------------------- | --------------------- |
 | `ref()`     | Mutable reference holder      | No                    |
-| `apply()`   | Custom instruction            | Yes                   |
+| `def()`     | Custom instruction            | Yes                   |
 | `get()`     | Context lookup (up or down)   | Yes (when found/lost) |
 | `set()`     | Computed, factory, validation | Yes                   |

@@ -79,6 +79,7 @@ state.get(function (current, update) {
 
 ```ts
 state.set({ count: 5 });       // merge values
+state.set({ count: 5 }, true); // merge silently (no events, no throw if destroyed)
 await state.set();              // await pending flush
 state.set('customEvent');       // dispatch named event
 state.set('count', 42);        // set single property (unchecked)

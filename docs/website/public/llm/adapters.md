@@ -186,4 +186,5 @@ state.c = 3;
 ```ts
 state.set(assign, true); // silent = true — accumulates in PENDING_KEYS
 // Next non-silent update flushes everything
+// Also safe on destroyed state — returns without throwing
 ```

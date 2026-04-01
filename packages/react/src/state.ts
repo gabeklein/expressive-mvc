@@ -1,9 +1,10 @@
 import { State, Context, watch } from '@expressive/state';
 
 export const Pragma = {} as {
-  useState<S>(initial: () => S): [S, (next: (previous: S) => S) => void];
-  useEffect(effect: () => (() => void) | void, deps?: any[]): void;
   createElement(type: any, props?: any, ...children: any[]): any;
+  useState<S>(initial: S): [S, (next: (previous: S) => S) => void];
+  useEffect(effect: () => (() => void) | void, deps?: any[]): void;
+  useRef<T>(initial: T): { current: T };
 };
 
 /** Type may not be undefined - instead will be null.  */
@@ -108,21 +109,22 @@ State.use = function <T extends State>(
   ...args: State.UseArgs<T>
 ) {
   const outer = Context.get();
-  const state = Pragma.useState(() => {
-    let ready: boolean | undefined;
-    let active: T;
+  const ref = Pragma.useRef<((args: State.Args<T>) => T) | null>(null);
+  const next = Pragma.useState(0)[1];
 
+  if (!ref.current) ref.current = init(this);
+
+  return ref.current(args);
+
+  function init(Type: State.Type<T>) {
     const add = (arg: unknown) =>
       typeof arg == 'object' && instance.set(arg as State.Assign<T>);
 
-    let use = (...args: State.Args<T>) => {
-      return Promise.all(args.flat().map(add));
-    };
+    let use = (...args: State.Args<T>) => Promise.all(args.flat().map(add));
 
-    const instance = new this((x) => {
+    const instance = new Type((x) => {
       if (x instanceof State && 'use' in x && typeof x.use == 'function') {
-        use = x.use.bind(x);
-        use(...args);
+        (use = x.use.bind(x))(...args);
       } else {
         return args;
       }
@@ -130,150 +132,147 @@ State.use = function <T extends State>(
 
     const context = outer.push(instance);
 
+    let mounts = 0;
+    let mounted = false;
+    let active: T;
+
     watch(instance, (current) => {
       active = current;
 
-      if (ready) state[1]((x) => x.bind(null));
+      if (mounted) next((x) => x + 1);
     });
 
-    function didMount() {
-      ready = true;
-      return () => {
-        context.pop();
-        instance.set(null);
-      };
-    }
+    return (args: State.Args<T>) => {
+      Pragma.useState(() => mounts++);
+      Pragma.useEffect(() => {
+        mounted = true;
+        return () => {
+          if (--mounts) return;
+          context.pop();
+          instance.set(null);
+        };
+      }, []);
 
-    return (...args: State.Args<T>) => {
-      Pragma.useEffect(didMount, []);
+      if (mounted) {
+        mounted = false;
 
-      if (ready) {
-        ready = false;
-
-        Promise.resolve(use(...args)).finally(() => {
-          ready = true;
-        });
+        Promise.resolve(use(...args)).finally(() => (mounted = true));
       }
 
       return active;
     };
-  });
-
-  return state[0](...args);
+  }
 };
 
-State.get = function <T extends State, R>(
+State.get = function <T extends State>(
   this: State.Extends<T>,
   argument?: boolean | State.GetFactory<T, unknown>
 ) {
+  const ref = Pragma.useRef<(() => any) | null>(null);
+  const next = Pragma.useState(0)[1];
   const context = Context.get();
-  const state = Pragma.useState(() => {
+
+  if (!ref.current) ref.current = init(this);
+
+  return ref.current();
+
+  function init(Type: State.Extends<T>) {
     let instance: T | undefined;
     let unwatch: (() => void) | undefined;
-    let ready: boolean | undefined;
+    let mounted = false;
+    let pending = false;
     let value: any;
 
-    function render() {
-      state[1]((x) => x.bind(null));
+    function update() {
+      pending = false;
+      next((x) => x + 1);
     }
 
     function refresh<T>(action?: Promise<T> | (() => Promise<T>)): any {
       if (typeof action == 'function') action = action();
-      render();
-      if (action instanceof Promise) return action.finally(render);
+      update();
+      if (action instanceof Promise) return action.finally(update);
     }
 
-    function bind(target: State) {
+    function release() {
       unwatch?.();
-      let first = ready;
+      unsubscribe();
+      unwatch = undefined;
+      instance = undefined;
+    }
+
+    const unsubscribe = context.get(Type, (next) => {
+      unwatch?.();
       unwatch = watch(
-        target as T,
-        (current) => {
+        (instance = next),
+        (current, changed) => {
           if (typeof argument === 'function') {
             const next = argument.call(current, current, refresh);
-
             if (next === value) return;
-
             value = next;
-          } else value = current;
+          } else {
+            value = current;
+          }
 
-          if (first) first = false;
-          else if (ready) render();
+          if (changed.length) update();
         },
         argument === true
       );
-    }
 
-    let pending = false;
-
-    const unsubscribe = context.get(this, (next) => {
-      bind((instance = next));
-
-      if (ready) {
+      if (mounted) {
         pending = true;
-        queueMicrotask(() => {
-          if (pending) {
-            pending = false;
-            render();
-          }
-        });
+        queueMicrotask(() => pending && update());
       }
 
-      return () => {
-        unwatch?.();
-        unwatch = undefined;
-        instance = undefined;
-      };
+      return release;
     });
 
     if (!instance) {
-      unsubscribe();
+      release();
       if (argument === false) return () => undefined;
-      else throw new Error(`Could not find ${this} in context.`);
+      throw new Error(`Could not find ${Type} in context.`);
     }
 
     if (value instanceof Promise) {
       let error: Error | undefined;
 
-      unwatch?.();
+      release();
 
       value
         .then(
           (x) => (value = x),
           (e) => (error = e)
         )
-        .finally(render);
+        .finally(update);
 
       value = null;
 
       return () => {
         if (error) throw error;
-
         return value === undefined ? null : value;
       };
     }
 
-    const done = () => {
-      unwatch?.();
-      unsubscribe();
-    };
-
     if (value === null) {
-      done();
+      release();
       return () => null;
     }
 
+    let mounts = 0;
+
     return () => {
+      Pragma.useState(() => mounts++);
+
       pending = false;
       Pragma.useEffect(() => {
-        ready = true;
-        return done;
+        mounted = true;
+        return () => {
+          if (!--mounts) release();
+        };
       }, []);
       return value === undefined ? null : value;
     };
-  });
-
-  return state[0]() as R;
+  }
 };
 
 export { State };

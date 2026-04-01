@@ -94,15 +94,12 @@ describe('fetch mode', () => {
     class Parent extends State {}
     class Child extends State {
       expects = get(Parent);
-      constructor(...args: State.Args) {
-        super(args, 'ID');
-      }
     }
 
     const attempt = () => new Context(Child);
 
     // should this throw immediately, or only on access?
-    expect(attempt).toThrow(`Required Parent not found in context for ID.`);
+    expect(attempt).toThrow(/Required Parent not found in context for [\w-]+\./);
   });
 
   it('will return undefined if required is false', () => {
@@ -121,13 +118,13 @@ describe('fetch mode', () => {
   it('will not throw if has parent but not type-required', () => {
     class Expected extends State {}
     class Unexpected extends State {
-      child = new Adopted('ID');
+      child = new Adopted();
     }
     class Adopted extends State {
       expects = get(Expected, false);
     }
 
-    const attempt = () => Unexpected.new('ID');
+    const attempt = () => Unexpected.new();
 
     expect(attempt).not.toThrow();
   });
@@ -174,6 +171,18 @@ describe('fetch mode', () => {
     const bar = context.get(Bar);
 
     expect(bar.baz.foo).toBeInstanceOf(Foo);
+  });
+
+  it('will not resolve as own instance', () => {
+    class MaybeSelf extends State {
+      parent = get(MaybeSelf, false);
+    }
+
+    const instance = new MaybeSelf();
+
+    new Context(instance);
+
+    expect(instance.parent).toBeUndefined();
   });
 
   it('will not be enumerable', () => {

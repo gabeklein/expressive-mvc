@@ -1,3 +1,4 @@
+import React from 'react';
 import { get, State, Provider, set } from '.';
 import {
   vi,
@@ -407,6 +408,78 @@ describe('State.use', () => {
       );
     });
   });
+
+  describe('strict mode', () => {
+    it('will create once and destroy on unmount', async () => {
+      const didCreate = vi.fn();
+      const didDestroy = vi.fn();
+
+      class Test extends State {
+        protected new() {
+          didCreate();
+          return didDestroy;
+        }
+      }
+
+      const Component = () => {
+        Test.use();
+        return null;
+      };
+
+      const element = render(
+        <React.StrictMode>
+          <Component />
+        </React.StrictMode>
+      );
+
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(didCreate).toBeCalledTimes(1);
+      expect(didDestroy).not.toBeCalled();
+
+      element.unmount();
+
+      expect(didDestroy).toBeCalledTimes(1);
+    });
+
+    it('will refresh via property update', async () => {
+      let instance!: Test;
+
+      class Test extends State {
+        value = 'foo';
+
+        new() {
+          instance = this;
+        }
+      }
+
+      const didRender = vi.fn();
+
+      const Component = () => {
+        const test = Test.use();
+        didRender(test.value);
+        return test.value;
+      };
+
+      const element = render(
+        <React.StrictMode>
+          <Component />
+        </React.StrictMode>
+      );
+
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(didRender).toBeCalledWith('foo');
+
+      await act(async () => {
+        instance.value = 'bar';
+      });
+
+      expect(didRender).toBeCalledWith('bar');
+
+      element.unmount();
+    });
+  });
 });
 
 describe('State.get', () => {
@@ -496,15 +569,12 @@ describe('State.get', () => {
     class Test extends State {
       value?: number = undefined;
 
-      constructor(...args: State.Args) {
-        super(args, 'ID');
-      }
     }
 
     renderWith(Test, () => {
       expect(() => {
         void Test.get(true).value;
-      }).toThrow('ID.value is required in this context.');
+      }).toThrow(/[\w-]+\.value is required in this context\./);
     });
   });
 
@@ -1195,14 +1265,11 @@ describe('State.get', () => {
       class Foo extends State {
         bar = get(Bar);
 
-        constructor(...args: State.Args) {
-          super(args, 'ID');
-        }
       }
 
       const tryToRender = () => renderHook(() => Foo.use());
 
-      expect(tryToRender).toThrow(`Required Bar not found in context for ID.`);
+      expect(tryToRender).toThrow(/Required Bar not found in context for [\w-]+\./);
     });
 
     it('will prefer parent over context', () => {
@@ -1218,6 +1285,40 @@ describe('State.get', () => {
       const { result } = renderWith(Parent, () => Parent.use().is);
 
       expect(result.current.child.parent).toBe(result.current);
+    });
+  });
+
+  describe('strict mode', () => {
+    it('will survive effect remount', async () => {
+      class Test extends State {
+        value = 'foo';
+      }
+
+      const test = Test.new();
+      const didRender = vi.fn();
+
+      const Inner = () => {
+        didRender();
+        return Test.get().value;
+      };
+
+      const element = render(
+        <React.StrictMode>
+          <Provider for={test}>
+            <Inner />
+          </Provider>
+        </React.StrictMode>
+      );
+
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(element.container.textContent).toBe('foo');
+
+      await act(async () => {
+        test.value = 'bar';
+      });
+
+      expect(element.container.textContent).toBe('bar');
     });
   });
 

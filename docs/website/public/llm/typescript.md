@@ -72,11 +72,11 @@ proxy = ref(this);                          // ref proxy for all properties
 proxy = ref(otherState, (key) => custom);   // custom property mapper
 ```
 
-### apply()
+### def()
 
 ```ts
-child = apply(ChildType);                    // child state instance
-child = apply(ChildType, (child) => { ... }); // with init callback
+child = def(ChildType);                    // child state instance
+child = def(ChildType, (child) => { ... }); // with init callback
 ```
 
 ## Instruction return types

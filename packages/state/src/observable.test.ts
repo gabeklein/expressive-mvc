@@ -1,6 +1,6 @@
 import { watch, Observable, observable } from './observable';
 import { set } from './instruction/set';
-import { apply } from './instruction/apply';
+import { def } from './instruction/def';
 import { mockError, vi, describe, it, expect, mockPromise } from '../vitest';
 import { State } from './state';
 
@@ -33,7 +33,7 @@ describe('effect', () => {
     const mock = vi.fn();
 
     class Test extends State {
-      property = apply((_key, _state, state) => {
+      property = def((_key, _state, state) => {
         this.get(() => mock(state));
       });
 
@@ -51,7 +51,7 @@ describe('effect', () => {
       property?: string = undefined;
     }
 
-    const test = Test.new('ID');
+    const test = Test.new();
     const attempt = () => {
       watch(
         test,
@@ -62,7 +62,7 @@ describe('effect', () => {
       );
     };
 
-    expect(attempt).toThrow(`ID.property is required in this context.`);
+    expect(attempt).toThrow(/[\w-]+\.property is required in this context\./);
   });
 
   it('will still get events after silent ones', async () => {
@@ -157,6 +157,32 @@ describe('effect', () => {
 
     expect(didInvoke).not.toBeCalledWith({ foo: 2, bar: 1 });
     expect(didInvoke).toBeCalledTimes(4);
+  });
+
+  it('will call cleanup before re-running effect', async () => {
+    class Test extends State {
+      value = 1;
+    }
+
+    const effect = vi.fn();
+    const cleanup = vi.fn();
+    const test = Test.new();
+
+    watch(test, ($) => {
+      effect($.value);
+      return cleanup;
+    });
+
+    expect(effect).toBeCalledWith(1);
+    expect(cleanup).not.toBeCalled();
+
+    await test.set({ value: 2 });
+
+    expect(effect).toBeCalledWith(2);
+    expect(effect).toBeCalledWith(2);
+
+    expect(cleanup).toBeCalledTimes(1);
+    expect(cleanup).toBeCalledWith(true);
   });
 
   it('will ignore circular update', async () => {
@@ -263,7 +289,7 @@ describe('suspense', () => {
       value = set<never>();
     }
 
-    const instance = Test.new('ID');
+    const instance = Test.new();
     let didThrow: Error | undefined;
 
     try {
@@ -272,9 +298,7 @@ describe('suspense', () => {
       didThrow = err;
     }
 
-    expect(String(didThrow)).toMatchInlineSnapshot(
-      `"Error: ID.value is not yet available."`
-    );
+    expect(String(didThrow)).toMatch(/[\w-]+\.value is not yet available\./);
   });
 
   it('will reject if state destroyed before resolved', async () => {
@@ -282,7 +306,7 @@ describe('suspense', () => {
       value = set<never>();
     }
 
-    const instance = Test.new('ID');
+    const instance = Test.new();
     let didThrow: Promise<any> | undefined;
 
     try {
@@ -293,7 +317,7 @@ describe('suspense', () => {
 
     instance.set(null);
 
-    await expect(didThrow).rejects.toThrow(`ID is destroyed.`);
+    await expect(didThrow).rejects.toThrow(/[\w-]+ is destroyed\./);
   });
 });
 

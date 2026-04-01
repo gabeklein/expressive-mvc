@@ -128,9 +128,9 @@ function listener<T extends Observable>(
   return () => listeners.delete(callback);
 }
 
-const EMPTY = Object.assign<never[], PromiseLike<never[]>>([], {
+const EMPTY = Object.assign([], {
   then: Promise.prototype.then.bind(Promise.resolve([]))
-});
+} as PromiseLike<never[]>);
 
 function pending<K extends Event>(state: Observable): K[] & PromiseLike<K[]> {
   const current = PENDING_KEYS.get(state) as Set<K> | undefined;
@@ -166,8 +166,6 @@ function emit(state: Observable, key: Signal): void {
 
   PENDING.set(state, (pending = new Set(isReady ? [key] : [true, key])));
 
-  if (key === true || key === null) READY.set(state, key);
-
   const listeners = LISTENERS.get(state)!;
 
   for (const key of pending)
@@ -183,6 +181,8 @@ function emit(state: Observable, key: Signal): void {
       }
 
   if (key === null) listeners.clear();
+
+  if (key === true || key === null) READY.set(state, key);
 
   PENDING.delete(state);
 }
@@ -264,10 +264,8 @@ function watch<T extends Observable>(
 
       ignore = true;
 
-      if (reset && unset) {
-        unset(true);
-        unset = undefined;
-      }
+      unset!(true);
+      unset = undefined;
 
       enqueue(invoke);
     }
