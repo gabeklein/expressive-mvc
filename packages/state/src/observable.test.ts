@@ -361,19 +361,19 @@ describe('errors', () => {
 });
 
 describe('observable', () => {
-  it.each(['', ' (returning)'])('will update effect%s', async (returns) => {
+  it('will update effect', async () => {
     class MyObservable implements Observable {
       value = 'foo';
       watch?: Observable.Callback = undefined;
 
-      [Observable](onUpdate: Observable.Callback) {
+      [Observable](onUpdate: Observable.Callback): Observable.Observer {
         this.watch = onUpdate;
-        if (returns) return this;
+        return () => {};
       }
 
       async update(value: string) {
         this.value = value;
-        if (this.watch) return this.watch();
+        if (this.watch) this.watch();
       }
     }
 
