@@ -86,12 +86,19 @@ function get<T extends State>(
   arg1?: get.Callback<T> | boolean,
   arg2?: get.Callback<T> | boolean
 ) {
-  if (arg1 === true) return getDownstream(Type, arg2);
+  return arg1 === true ? below(Type, arg2) : above(Type, arg1);
+}
 
+function above<T extends State>(
+  Type: State.Extends<T>,
+  argument: get.Callback<T> | boolean | undefined
+) {
   return def<T>((key, subject) => {
     const hasParent = parent(subject);
     const callback =
-      typeof arg1 === 'function' ? (arg1 as get.Callback<T>) : undefined;
+      typeof argument === 'function'
+        ? (argument as get.Callback<T>)
+        : undefined;
 
     function assign(value: T) {
       if (callback) {
@@ -115,17 +122,17 @@ function get<T extends State>(
       assign(state);
     });
 
-    if (!found && arg1 !== false)
+    if (!found && argument !== false)
       throw new Error(`Required ${Type} not found in context for ${subject}.`);
 
     return {
-      get: arg1 !== false,
+      get: argument !== false,
       enumerable: false
     };
   });
 }
 
-function getDownstream<T extends State>(
+function below<T extends State>(
   Type: State.Extends<T>,
   arg: get.Callback<T> | boolean | undefined
 ) {
@@ -173,7 +180,7 @@ function getDownstream<T extends State>(
             release = fn;
           });
 
-          if (rejected) return false;
+          if (rejected) return;
         }
 
         applied.add(state);
