@@ -387,10 +387,10 @@ abstract class State implements Observable {
 
     if (arg1 && typeof arg1 == 'object') {
       assign(self, arg1, arg2 === true);
-    } else if (!arg2 || arg1 == null) {
-      event(self, arg1);
     } else if (arg2) {
       apply(self, arg1 as string, arg2);
+    } else {
+      event(self, arg1);
     }
 
     return pending(self) as State.Updated<this>;
