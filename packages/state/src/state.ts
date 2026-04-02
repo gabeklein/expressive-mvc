@@ -486,15 +486,15 @@ function init(state: State, ...args: State.Args) {
   ID.set(state, `${T}-${uid()}`);
   STORE.set(state, {});
 
-  function properties() {
-    for (const key in state) {
-      const desc = Object.getOwnPropertyDescriptor(state, key)!;
-      if ('value' in desc) apply(state, key, desc, true);
-    }
-  }
-
   listener(state, () => {
     parent(state, null);
+
+    function properties() {
+      for (const key in state) {
+        const desc = Object.getOwnPropertyDescriptor(state, key)!;
+        if ('value' in desc) apply(state, key, desc, true);
+      }
+    }
 
     const queue = [...setup, properties, ...args];
 
