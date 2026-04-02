@@ -12,7 +12,7 @@
     "react-router": "^7.13.1"
   },
   "devDependencies": {
-    "@expressive/react": "workspace:*",
+    "@expressive/react": "0.74.2-canary.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^4",

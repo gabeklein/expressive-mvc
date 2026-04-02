@@ -52,8 +52,8 @@ importers:
         version: 7.13.1(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
     devDependencies:
       '@expressive/react':
-        specifier: workspace:*
-        version: link:../../packages/react
+        specifier: 0.74.2-canary.0
+        version: 0.74.2-canary.0(react@19.2.4)
       '@types/react':
         specifier: ^19
         version: 19.2.14
@@ -672,11 +672,22 @@ packages:
       react:
         optional: true
 
+  '@expressive/react@0.74.2-canary.0':
+    resolution: {integrity: sha512-lRMmU8rI15zlZU6Sfi5ow5oytYxhVQhWSkrgoI1UMnYbIgpzuO9w7vFrKVtkIqNtAUp66Xft/cAOlGYn2sKL+A==}
+    peerDependencies:
+      react: '>=16.8.0 <20.0.0'
+    peerDependenciesMeta:
+      react:
+        optional: true
+
   '@expressive/state@0.73.1':
     resolution: {integrity: sha512-xc0yRUVEQr0Q9lT7nggUbSBSOSpW2EkOfFoawxCPbHn0fy3+r3NZJhMRNmtLo7BpOWpEWXJTQyTGLZ1UZxIYkw==}
 
   '@expressive/state@0.74.0':
     resolution: {integrity: sha512-IjSfg8dbnX1NlHm+ZrimLnzBis4o87wPH0+IpZYFFbYGzLNArIFRLDeKDSu8j2NAl94Z/YEaivUgopjTRl7e7w==}
+
+  '@expressive/state@0.74.2-canary.0':
+    resolution: {integrity: sha512-F1Di8EBCeoqirTlwiaKwAojFHIT67UcHoDqwKeMCx1BrZrGlsmupJuXn8CNz3axYguW5haMa0CQMxZCtA6BCgg==}
 
   '@floating-ui/core@1.7.5':
     resolution: {integrity: sha512-1Ih4WTWyw0+lKyFMcBHGbb5U5FtuHJuujoyyr5zTaWS5EYMeT6Jb2AuDeftsCsEuchO+mM2ij5+q9crhydzLhQ==}
@@ -6513,9 +6524,17 @@ snapshots:
     optionalDependencies:
       react: 19.2.4
 
+  '@expressive/react@0.74.2-canary.0(react@19.2.4)':
+    dependencies:
+      '@expressive/state': 0.74.2-canary.0
+    optionalDependencies:
+      react: 19.2.4
+
   '@expressive/state@0.73.1': {}
 
   '@expressive/state@0.74.0': {}
+
+  '@expressive/state@0.74.2-canary.0': {}
 
   '@floating-ui/core@1.7.5':
     dependencies:

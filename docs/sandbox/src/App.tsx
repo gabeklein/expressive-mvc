@@ -51,7 +51,8 @@ function Example({ name }: { name: string }) {
       files={getFiles(name)}
       customSetup={{
         dependencies: {
-          '@expressive/react': 'latest'
+          '@expressive/react': '0.74.2-canary.0+50f98d7',
+          '@expressive/state': '0.74.2-canary.0+50f98d7'
         }
       }}>
       <ExampleLayout />
