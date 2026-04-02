@@ -5,7 +5,6 @@ import {
   event,
   Observable,
   observing,
-  observe,
   pending,
   observable,
   emit
@@ -161,8 +160,17 @@ abstract class State implements Observable {
     init(this, args, this.new);
   }
 
-  [Observable](callback: Observable.Callback, required?: boolean) {
-    return observe(this, callback, required);
+  [Observable](callback: Observable.Callback) {
+    const watching = new Set<unknown>();
+
+    listener(this, (key) => {
+      if (watching.has(key)) callback();
+    });
+
+    return (key: string | number, value: unknown) => {
+      watching.add(key);
+      return value;
+    };
   }
 
   /**

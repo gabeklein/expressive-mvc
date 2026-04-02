@@ -28,7 +28,7 @@ type Signal = Event | true | false | null;
 
 type PromiseLite<T = void> = { then: (callback: () => T) => T };
 
-type Observer<T = any> = (key: string | number, value: T) => T;
+type Observer<T = any> = (key: any, value: T) => T;
 
 type Callback = () => void | PromiseLite;
 
@@ -37,7 +37,10 @@ declare namespace Observable {
 }
 
 interface Observable {
-  [Observable](callback: Observable.Callback, required?: boolean): this | void;
+  [Observable](
+    callback: Observable.Callback,
+    required?: boolean
+  ): Observable.Observer;
 }
 
 const Observable = Symbol('Observable');
@@ -80,21 +83,17 @@ function observe<T extends Observable>(
   callback: Observable.Callback,
   required?: boolean
 ): T {
-  const watching = new Set<unknown>();
+  const intercept = object[Observable](callback, required);
   const proxy = Object.create(object);
-
-  listener(object, (key) => {
-    if (watching.has(key)) callback();
-  });
 
   OBSERVER.set(proxy, (key, value) => {
     if (value === undefined && required)
       throw new Error(`${object}.${key} is required in this context.`);
 
-    watching.add(key);
+    value = intercept(key, value);
 
     if (value instanceof Object && Observable in value)
-      return value[Observable](callback, required) || value;
+      return observe(value, callback, required);
 
     return value;
   });
@@ -102,7 +101,7 @@ function observe<T extends Observable>(
   return proxy as T;
 }
 
-function observing(from: Observable, key: string | number, value?: any) {
+function observing(from: Observable, key: any, value?: any) {
   const observe = OBSERVER.get(from);
   return observe ? observe(key, value) : value;
 }
@@ -271,7 +270,7 @@ function watch<T extends Observable>(
     }
 
     function run(release?: () => void) {
-      const proxy = target[Observable](onUpdate, argument === true) as T;
+      const proxy = observe(target, onUpdate, argument === true);
       const output = callback.call(proxy, proxy, cause);
 
       ignore = false;
