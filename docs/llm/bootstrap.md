@@ -10,8 +10,12 @@ This project uses [Expressive State](https://github.com/gabeklein/expressive-mvc
 
 **Packages:**
 
-- `@expressive/react` - React adapter. Import `State` (default), `Component`, plus `ref`, `def`, `get`, `set` instructions.
-- `@expressive/state` - Framework-agnostic core (rarely imported directly in React projects).
+| Package              | Status    | Description                                    |
+| -------------------- | --------- | ---------------------------------------------- |
+| `@expressive/react`  | Published | React adapter. Import `State`, `Component`, instructions. |
+| `@expressive/state`  | Published | Framework-agnostic core (rarely imported directly). |
+| `@expressive/preact` | Private   | Thin wrapper over React adapter using preact/hooks. Same API, own Provider/Consumer. No Component support yet. |
+| `@expressive/solid`  | Private   | Standalone implementation. Experimental. See `solid.md`. |
 
 **Quick Reference:**
 
@@ -60,4 +64,4 @@ class CounterView extends Component {
 }
 ```
 
-**Full docs** (fetch when needed): react/react.md, state/state.md, state/get.md, state/set.md, state/lifecycle.md, instructions/get.md, instructions/set.md, instructions/ref.md, instructions/def.md, react/component.md, react/patterns.md, state/types.md, testing.md, adapters.md
+**Full docs** (fetch when needed): react/react.md, state/state.md, state/get.md, state/set.md, state/lifecycle.md, instructions/get.md, instructions/set.md, instructions/ref.md, instructions/def.md, react/component.md, react/patterns.md, state/types.md
