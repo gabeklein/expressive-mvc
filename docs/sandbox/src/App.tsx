@@ -2,7 +2,8 @@ import {
   SandpackCodeEditor,
   SandpackLayout,
   SandpackPreview,
-  SandpackProvider
+  SandpackProvider,
+  useSandpack
 } from '@codesandbox/sandpack-react';
 import State from '@expressive/react';
 import EXAMPLES from 'virtual:examples';
@@ -53,11 +54,31 @@ function Example({ name }: { name: string }) {
           '@expressive/react': 'latest'
         }
       }}>
-      <SandpackLayout>
-        <SandpackCodeEditor style={{ height: '100%' }} />
-        <SandpackPreview style={{ height: '100%' }} />
-      </SandpackLayout>
+      <ExampleLayout />
     </SandpackProvider>
+  );
+}
+
+function ExampleLayout() {
+  const { dispatch } = useSandpack();
+
+  return (
+    <SandpackLayout>
+      <SandpackCodeEditor
+        style={{ height: '100%' }}
+        extensionsKeymap={[
+          {
+            key: 'Mod-s',
+            preventDefault: true,
+            run() {
+              dispatch({ type: 'refresh' });
+              return true;
+            }
+          }
+        ]}
+      />
+      <SandpackPreview style={{ height: '100%' }} />
+    </SandpackLayout>
   );
 }
 
