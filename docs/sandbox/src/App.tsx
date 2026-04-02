@@ -4,28 +4,35 @@ import {
   SandpackPreview,
   SandpackProvider
 } from '@codesandbox/sandpack-react';
+import State from '@expressive/react';
 import EXAMPLES from 'virtual:examples';
 import { Navigate, NavLink, Route, Routes } from 'react-router';
+import BASE_INDEX from './base/index.tsx?raw';
+import BASE_CSS from './base/styles.css?raw';
 import './App.css';
 
 const NAMES = Object.keys(EXAMPLES);
-const INDEX = `
-import './index.css';
-import { createRoot } from 'react-dom/client';
-import App from './App';
-createRoot(document.getElementById('root')!).render(<App />);
-`;
+const DARK = matchMedia('(prefers-color-scheme: dark)');
+
+class Theme extends State {
+  dark = DARK.matches;
+
+  protected new() {
+    const onChange = () => this.dark = DARK.matches;
+    DARK.addEventListener('change', onChange);
+    return () => DARK.removeEventListener('change', onChange);
+  }
+}
 
 function getFiles(name: string) {
   const source = EXAMPLES[name];
   const files: Record<string, any> = {
-    '/index.tsx': {
-      hidden: true,
-      code: INDEX
-    }
+    '/index.tsx': { hidden: true, code: BASE_INDEX },
+    '/styles.css': { hidden: true, code: BASE_CSS }
   };
 
   for (const [path, code] of Object.entries(source)) {
+    if (path === '/index.css') continue;
     files[path] = code;
   }
 
@@ -33,9 +40,12 @@ function getFiles(name: string) {
 }
 
 function Example({ name }: { name: string }) {
+  const { dark } = Theme.use();
+
   return (
     <SandpackProvider
       key={name}
+      theme={dark ? 'dark' : 'light'}
       template="vite-react-ts"
       files={getFiles(name)}
       customSetup={{
