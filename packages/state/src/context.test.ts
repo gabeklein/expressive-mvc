@@ -1079,3 +1079,53 @@ describe('add method listener lookup', () => {
     expect(cb).toBeCalledTimes(1);
   });
 });
+
+it('will not traverse downstream when downstream is false', () => {
+  const parent = new Context();
+  const child = parent.push();
+
+  const foo = Example.new();
+  child.add(foo);
+
+  const cb = vi.fn();
+  parent.get(Example, cb, false);
+
+  expect(cb).not.toBeCalled();
+});
+
+it('will traverse deeply nested contexts', () => {
+  const root = new Context();
+  const child = root.push();
+  const grandchild = child.push();
+
+  const foo = Example.new();
+  grandchild.add(foo);
+
+  const cb = vi.fn();
+  root.get(Example, cb);
+
+  expect(cb).toBeCalledWith(foo, true);
+});
+
+it('will skip consumer if filter does not match downstream', () => {
+  const parent = new Context();
+  const child = parent.push();
+  const grandchild = child.push();
+
+  // Register consumer that only wants downstream (filter=true)
+  const cb = vi.fn();
+  child.get(Example, cb, true);
+
+  // Add a provider to parent - traverse reaches child with downstream=false
+  // but filter is true, so callback should not fire via traverse
+  const foo = Example.new();
+  parent.add(foo);
+
+  expect(cb).not.toBeCalled();
+
+  // Add to grandchild - now child's consumer sees downstream=true matching filter
+  const bar = Example.new();
+  grandchild.add(bar);
+
+  expect(cb).toBeCalledWith(bar, true);
+});

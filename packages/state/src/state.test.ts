@@ -1942,7 +1942,7 @@ describe('set method', () => {
       const test = Test.new();
       test.set(null);
 
-      expect(update(test, "foo", 1, true)).toBe(false);
+      expect(update(test, 'foo', 1, true)).toBe(false);
       expect(test.foo).toBe(0);
     });
 
@@ -2509,4 +2509,50 @@ describe('on method (static)', () => {
     Test.new();
     expect(mock).toBeCalledTimes(1);
   });
+});
+
+it('will apply config to a key via set()', async () => {
+  class Subject extends State {
+    value = 1;
+  }
+
+  const state = Subject.new();
+
+  state.set('value', { value: 42 });
+
+  await expect(state).toHaveUpdated();
+  expect(state.value).toBe(42);
+});
+
+it('will register multiple State.on callbacks', () => {
+  class Fresh extends State {}
+
+  const cb1 = vi.fn();
+  const cb2 = vi.fn();
+
+  // First .on() creates the setup Set (line 455)
+  Fresh.on(cb1);
+  // Second .on() reuses existing Set
+  Fresh.on(cb2);
+
+  Fresh.new();
+  expect(cb1).toBeCalledTimes(1);
+  expect(cb2).toBeCalledTimes(1);
+});
+
+it('will no-op when applying empty config to already-defined property', async () => {
+  class Subject extends State {
+    foo = 'bar';
+  }
+
+  const state = Subject.new();
+
+  // First apply defines the getter
+  state.set('foo', { value: 'baz' });
+  await expect(state).toHaveUpdated();
+
+  // Second apply with empty config hits the getter branch but has no value
+  state.set('foo', {});
+
+  expect(state.foo).toBe('baz');
 });
