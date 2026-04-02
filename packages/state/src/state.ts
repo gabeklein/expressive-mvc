@@ -390,7 +390,7 @@ abstract class State implements Observable {
     } else if (!arg2 || arg1 == null) {
       event(self, arg1);
     } else if (arg2) {
-      apply(self, arg1 as string | number, arg2);
+      apply(self, arg1 as string, arg2);
     }
 
     return pending(self) as State.Updated<this>;
@@ -584,7 +584,7 @@ function bootstrap(T: State.Extends) {
  */
 function apply(
   state: State,
-  key: string | number,
+  key: string,
   config: State.Apply,
   silent?: boolean
 ) {
@@ -611,7 +611,7 @@ function apply(
       const value =
         typeof config.get == 'function'
           ? config.get(this)
-          : access(state, key as string, config.get);
+          : access(state, key, config.get);
 
       return touch(this, key, value);
     },
