@@ -6,7 +6,7 @@
       "type": "chrome",
       "request": "launch",
       "port": 9222,
-      "url": "http://localhost:3000/",
+      "url": "http://localhost:5173/",
       "webRoot": "${workspaceFolder}/",
       "sourceMaps": true
     },
