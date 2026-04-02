@@ -164,7 +164,7 @@ abstract class State implements Observable {
     const watching = new Set<unknown>();
 
     listener(this, (key) => {
-      if (watching.has(key)) callback();
+      if (watching.has(key)) return callback();
     });
 
     return (key: string | number, value: unknown) => {

@@ -26,11 +26,9 @@ type Event = number | string | symbol;
 
 type Signal = Event | true | false | null;
 
-type PromiseLite<T = void> = { then: (callback: () => T) => T };
-
 type Observer<T = any> = (key: any, value: T) => T;
 
-type Callback = () => void | PromiseLite;
+type Callback = () => void | null;
 
 declare namespace Observable {
   export { Callback, Effect, Event, Notify, Observer, Signal };
@@ -38,7 +36,7 @@ declare namespace Observable {
 
 interface Observable {
   [Observable](
-    callback: Observable.Callback,
+    callback: () => void | null,
     required?: boolean
   ): Observable.Observer;
 }
@@ -256,10 +254,11 @@ function watch<T extends Observable>(
   function invoke() {
     let ignore: boolean = true;
 
-    function onUpdate(): void | PromiseLite<void> {
+    function onUpdate() {
       cause = [...(PENDING_KEYS.get(target) || [])];
 
-      if (reset === null || ignore) return;
+      if (reset === null) return null;
+      if (ignore) return;
 
       ignore = true;
 
