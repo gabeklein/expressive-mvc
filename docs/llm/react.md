@@ -1,32 +1,105 @@
-# Expressive State — React Adapter
+# Expressive State - React
 
-`@expressive/react` — connects State to React with hooks, components, and custom JSX runtime.
+`@expressive/react` connects State to React with hooks, components, and context.
 
-## State.use() — Local Component State
+For core State API (properties, reactivity, lifecycle, events) see `core.md`.
+For instructions (`get`, `set`, `ref`, `def`) see `instructions.md`.
 
-Creates a state instance scoped to component lifecycle. Auto-subscribes to updates.
+## Exports
 
 ```ts
-import State from '@expressive/react';
+export { State, State as default }; // Reexported after agumentation with React features
+export { Context, Observable, def, get, ref, set }; // re-exported from @expressive/state
+export { Component }; // React Component class
+export { Provider, Consumer }; // Explicit context components
+```
 
+## Quick Start
+
+```tsx
+import State, { Component, get, set, ref, Provider } from '@expressive/react';
+
+class Counter extends Component {
+  count = 0;
+  increment() {
+    this.count++;
+  }
+
+  render() {
+    return <button onClick={this.increment}>{this.count}</button>;
+  }
+}
+
+// Use as JSX directly
+<Counter count={5} />;
+```
+
+---
+
+## State.use() - Local Component State
+
+Creates a state instance scoped to component lifecycle. Subscribes to updates automatically. Retroactively on all State by the React adapter.
+
+```tsx
 class Counter extends State {
   count = 0;
-  increment() { this.count++; }
+  increment() {
+    this.count++;
+  }
 }
 
 function App() {
-  const counter = Counter.use();
-  return <button onClick={counter.increment}>{counter.count}</button>;
+  // methods bound automatically, always prefer destructure
+  const { increment, count } = Counter.use();
+  return <button onClick={increment}>{count}</button>;
 }
 ```
 
-### Accepting Props via `use()` Method
+- Instance is created once and reused across renders.
+- Component re-renders when any accessed property changes.
+- Instance is destroyed on unmount (context is popped, `set(null)` called).
+- Safe in React strict mode (handles double-mount correctly).
 
-Define `use()` on your class to receive arguments (called every render):
+### Constructor arguments
 
-```ts
+Accepts same arguments as `State.new()` - strings, objects, callbacks:
+
+```tsx
+const state = MyState.use({ count: 10 });
+const state = MyState.use('my-id');
+```
+
+### use() method
+
+Define `use()` on your class to intercept arguments. Called every render, so also useful for encapsulating hooks.
+
+```tsx
+class Search extends State {
+  query = '';
+  results: string[] = [];
+
+  use() {
+    const { search } = useLocation();
+    this.query = new URLSearchParams(search).get('q') || '';
+  }
+}
+
+function SearchPage() {
+  const { query, results } = Search.use();
+  return (
+    <div>
+      <h1>Results for: {query}</h1>
+    </div>
+  );
+}
+```
+
+When `use()` is defined, its parameter types become the static .use() argument types. They are passed to method instead of the constructor.
+
+```tsx
 class Greeter extends State {
-  greeting = "";
+  greeting = '';
+
   use(props: { name: string }) {
     this.greeting = `Hello, ${props.name}`;
   }
@@ -38,95 +111,122 @@ function App({ name }: { name: string }) {
 }
 ```
 
-## State.get() — Context Hook
+---
 
-Fetches state from context (via `Provider` or Component).
+## State.get() - Context Hook
 
-```ts
+Fetches a state instance from context (provided by `Provider` or `Component`).
+Independently subscribes to updates on accessed properties. Also added by React adapter to all State.
+
+```tsx
 function Profile() {
   const app = AppState.get();
   return <p>{app.user}</p>;
 }
 ```
 
-### Computed Values
+### Optional lookup
 
-Pass a factory to derive values — only re-renders when accessed properties change:
-
-```ts
-const name = AppState.get(($) => $.user);
+```tsx
+const app = AppState.get(false); // undefined if not in context
 ```
 
-### Optional Lookup
+### Required values
 
-```ts
-const app = AppState.get(false); // undefined if not provided
+```tsx
+const app = AppState.get(true); // Required<T>, suspends if any value undefined
 ```
 
-### Effect (No Re-render)
+### Computed selector
 
-Return `null` from factory to run side effect without subscribing:
+Pass a factory to derive a value. Only re-renders when the computed result changes:
 
-```ts
-AppState.get(($) => { console.log($.user); return null; });
+```tsx
+const name = AppState.get(($) => $.user.name);
 ```
 
-### Manual Refresh
+Factory receives `(current, refresh)` where:
 
-Second argument is a refresh trigger for async flows:
+- `current` is a tracking proxy (reads create subscriptions)
+- `refresh` is a `ForceRefresh` function (see below)
 
-```ts
+Return value is the component's render value. `undefined`/`void` is converted to `null`.
+
+### Effect (no re-render)
+
+Return `null` to run a side effect without subscribing to updates:
+
+```tsx
+AppState.get(($) => {
+  console.log($.user);
+  return null;
+});
+```
+
+### ForceRefresh
+
+The second argument to `State.get()` factories triggers component refresh:
+
+```tsx
 const data = AppState.get(($, refresh) => {
+  // refresh() - force re-render now
+  // refresh(promise) - re-render now and again after promise settles
+  // refresh(asyncFn) - re-render before and after async function
   const reload = () => refresh(fetch('/api/data'));
   return { user: $.user, reload };
 });
 ```
 
+### Reactive context
+
+If the upstream instance is replaced in context (e.g., Provider re-created), the hook automatically resubscribes to the new instance and refreshes.
+
+---
+
 ## Component Class
 
-For full component behavior (render method, error boundaries, subcomponents), use the `Component` class from `@expressive/react`. See `component.md` for details.
+`Component` extends `State` and works directly as a React component. See `component.md` for full details.
 
 ```tsx
 import { Component } from '@expressive/react';
 
-class CounterView extends Component {
+class Counter extends Component {
   count = 0;
-  increment() { this.count++; }
+  increment() {
+    this.count++;
+  }
 
   render() {
-    return (
-      <div>
-        <p>{this.count}</p>
-        <button onClick={this.increment}>+1</button>
-      </div>
-    );
+    return <button onClick={this.increment}>{this.count}</button>;
   }
 }
 
-<CounterView count={5} /> // state fields accepted as props
+<Counter count={5} />;
 ```
 
-### Special Component Props
+Key features:
+- State fields become optional JSX props, applied every render.
+- `render()` controls output; without it, children pass through a context provider.
+- Instances are automatically provided to context for child access via `State.get()`.
+- Built-in suspense (`fallback` property/prop) and error boundaries (`catch()` method).
+- PascalCase methods become reactive subcomponents.
+- Special props: `is` (creation callback), `fallback` (suspense UI).
+- Strict mode safe.
 
-All Component-based elements accept:
-- `is` - callback receiving state instance on creation
-- `fallback` - React node shown during Suspense
-- `children` - standard React children
-
-```tsx
-<CounterView
-  is={(counter) => console.log("created", counter)}
-  fallback={<Loading />}
-/>
-```
+---
 
 ## Provider & Consumer
 
 ```tsx
+import { Provider, Consumer } from '@expressive/react';
+
 <Provider for={AppState}><App /></Provider>
 
 // Multiple states
 <Provider for={{ app: AppState, user: UserState }}><App /></Provider>
+
+// With instance
+<Provider for={existingInstance}><App /></Provider>
 
 // With init callback
 <Provider for={AppState} is={(instance) => { instance.user = "Bob"; }}>
@@ -137,78 +237,46 @@ All Component-based elements accept:
 <Provider for={AppState} fallback={<Loading />}>
   <App />
 </Provider>
-
-<Consumer for={AppState}>
-  {(app) => <p>{app.user}</p>}
-</Consumer>
 ```
 
-Provider accepts state fields as direct props (merged into the instance):
+### Provider props
+
+| Prop       | Type                                    | Description                                        |
+| ---------- | --------------------------------------- | -------------------------------------------------- |
+| `for`      | `State \| State.Type \| Context.Accept` | State instance, class, or map to provide           |
+| `is`       | `(instance) => void`                    | Called for each created instance                   |
+| `fallback` | `ReactNode`                             | Wraps children in Suspense boundary                |
+| `children` | `ReactNode`                             | Content rendered within provider                   |
+| `[field]`  | varies                                  | State fields passed as props, merged into instance |
+
+State fields can be passed directly as JSX attributes:
 
 ```tsx
-<Provider for={AppState} user="Bob"><App /></Provider>
+<Provider for={AppState} user="Bob">
+  <App />
+</Provider>
 ```
 
-## Custom JSX Runtime
+Provider creates instances from classes, or uses given instances directly.
+Created instances are destroyed on unmount. Given instances are not.
 
-Use State classes directly as JSX elements:
+### Consumer
 
-```json
-// tsconfig.json
-{
-  "compilerOptions": {
-    "jsx": "react-jsx",
-    "jsxImportSource": "@expressive/react"
-  }
-}
+```tsx
+<Consumer for={AppState}>{(app) => <p>{app.user}</p>}</Consumer>
 ```
+
+Consumer uses `State.get()` internally - child function receives a tracking proxy.
+
+---
+
+## Internals: Pragma
+
+React adapter injects framework hooks via a `Pragma` object, allowing the same core logic to work across React and Preact:
 
 ```ts
-class Card extends State {
-  title = "";
-  children?: ReactNode;
-}
-
-<Card title="Hello"><p>Content</p></Card>  // no .as() needed
-```
-
-### render() method
-
-Define a `render()` method to control output. When present, `children` is suppressed from the props type. Access state via `this`.
-
-```ts
-class Greeting extends State {
-  name = "World";
-
-  render() {
-    return <h1>Hello, {this.name}!</h1>;
-  }
-}
-
-<Greeting name="React" />
-```
-
-### Explicit props via `props!:`
-
-Declare `props!: {}` to accept arbitrary props not managed as state fields. Available as `this.props` in `render()`.
-
-```ts
-class Article extends State {
-  props!: { children: ReactNode; className?: string };
-
-  render() {
-    return <article className={this.props.className}>{this.props.children}</article>;
-  }
-}
-```
-
-The JSX runtime auto-wraps State classes, providing them to context and rendering children.
-
-## Exports
-
-```ts
-export { State, State as default };
-export { Context, Observable, def, get, ref, set }; // re-exported from @expressive/state
-export { Component };                                // React Component class
-export { Provider, Consumer };                       // React-specific
+Pragma.useEffect = React.useEffect;
+Pragma.useState = React.useState;
+Pragma.createElement = React.createElement;
+Pragma.useRef = React.useRef;
 ```

@@ -17,7 +17,7 @@ Monorepo: pnpm workspaces + lerna.
 
 ```
 packages/state  - Core primitives
-packages/react  - React adapter (.use, .get, .as, Provider, JSX runtime)
+packages/react  - React adapter (.use, .get, Component, Provider)
 packages/preact - Preact adapter
 packages/solid  - Solid adapter
 examples        - Framework usage examples
@@ -63,7 +63,7 @@ Per-package: `tsc --noEmit && vitest run --coverage`
 ## Conventions
 
 - Framework-agnostic logic belongs in `packages/state`.
-- React changes must stay aligned across `packages/react/src/{state,jsx-runtime}.{ts,test.tsx}`.
+- React changes must stay aligned across `packages/react/src/{state,component,context}.{ts,test.tsx}`.
 - Update tests alongside behavioral/type changes — tests must fail without the change.
 - New major features need `docs/public/llm/` docs and `examples/`.
 - Update changelog before release for user-facing changes.

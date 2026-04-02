@@ -1,6 +1,6 @@
 # Expressive State - Component
 
-`Component` extends `State` and is used directly as a React class component. It provides reactive rendering, context injection, error boundaries, and subcomponents.
+`Component` extends `State` and works directly as a React component. It provides reactive rendering, context injection, error boundaries, and subcomponents.
 
 ## Basic Usage
 
@@ -27,7 +27,7 @@ Properties accessed via `this` in `render()` are reactive - changes trigger re-r
 
 ## Props
 
-State fields can be set via JSX attributes:
+State fields can be initialized and updated via JSX attributes (all optional):
 
 ```tsx
 class Greeting extends Component {
@@ -41,14 +41,17 @@ class Greeting extends Component {
 <Greeting name="React" />;
 ```
 
+Props are applied to the instance every render. The type is derived from state fields.
+
 ### Render Props
 
-Accept extra props (not state fields) via a parameter on `render()`:
+Accept extra props (beyond state fields) via a parameter on `render()`:
 
 ```tsx
 class Card extends Component {
   title = '';
 
+  // `{} as T` required for compatibility with React's intrinsic attributes
   render(props = {} as { className: string }) {
     return <div className={props.className}>{this.title}</div>;
   }
@@ -57,12 +60,13 @@ class Card extends Component {
 <Card title="Hello" className="card" />;
 ```
 
-Props declared as non-optional will be required in JSX. All props are available on `this.props`.
+Non-optional props in the parameter become required JSX attributes.
+All props (state + render + special) are available on `this.props`.
 
 ### Special Props
 
 - `is` - callback receiving the instance on creation: `<Counter is={(c) => console.log(c)} />`
-- `fallback` - ReactNode shown during suspense and error recovery
+- `fallback` - ReactNode shown during suspense and error recovery, overrides instance property
 
 ## Children
 
@@ -136,6 +140,8 @@ class SafeView extends Component {
 - Setting `this.fallback` inside `catch()` shows error-specific UI, reverted after recovery.
 - If `catch()` rejects, the error propagates to the nearest parent boundary.
 - Without `catch()`, errors propagate automatically.
+- Sync `catch()` triggers immediate retry.
+- If child throws again after recovery, the error propagates out of boundary.
 
 ## Subcomponents
 
@@ -173,38 +179,28 @@ class Dashboard extends Component {
 
 ### Key behaviors
 
-- Each usage has its own reactive scope - only re-renders when its accessed properties change.
-- Multiple usages of the same subcomponent are independent:
+- Each usage subscribes to the parent instance and re-renders on any change.
+- Multiple usages of the same subcomponent are independent.
+- Accept props like any React component.
+- Accessible from context: `Dashboard.get()` then use `<dashboard.Sidebar />`.
+- Overridable at runtime via assignment.
+- Subclasses can override subcomponents for plug-and-play composition.
+
+### Props on subcomponents
 
 ```tsx
-render() {
-  return (
-    <>
-      <this.Display which="a" /> {/* subscribes to this.x */}
-      <this.Display which="b" /> {/* subscribes to this.y */}
-    </>
-  );
+class Dashboard extends Component {
+  Sidebar(props: { label: string }) {
+    return <span>{props.label}</span>;
+  }
+
+  render() {
+    return <this.Sidebar label="Navigation" />;
+  }
 }
 ```
 
-- Accessible from context via `get()`:
-
-```tsx
-function Child() {
-  const { Sidebar } = Dashboard.get();
-  return <Sidebar />;
-}
-```
-
-- Overridable at runtime via assignment:
-
-```tsx
-instance.Sidebar = function () {
-  return <span>Custom sidebar</span>;
-};
-```
-
-- Subclasses can override subcomponents for plug-and-play composition:
+### Subclass composition
 
 ```tsx
 class Base extends Component {
@@ -236,25 +232,10 @@ class Page extends Base {
 }
 ```
 
-### Props on subcomponents
-
-Subcomponents accept props like any React component:
-
-```tsx
-class Dashboard extends Component {
-  Sidebar(props: { label: string }) {
-    return <span>{props.label}</span>;
-  }
-
-  render() {
-    return <this.Sidebar label="Navigation" />;
-  }
-}
-```
-
 ## Lifecycle
 
-- `new()` - called once during construction. Return a cleanup function for teardown.
+- `new()` - called once after initialization. Return a cleanup function for teardown.
+- `use()` - called on every render with props (same as State, see react.md).
 - `catch(error)` - error boundary handler.
 - Destruction occurs on unmount (or when `this.set(null)` is called).
 
@@ -272,3 +253,7 @@ class Timer extends Component {
   }
 }
 ```
+
+## Strict Mode
+
+Component handles React strict mode correctly - only one instance is created despite double-mount.

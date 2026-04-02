@@ -11,69 +11,7 @@
 
 ## React (`@expressive/react`)
 
-Full-featured adapter. Supports React 16.8+ through 19.x.
-
-### Static hooks added to State
-
-```ts
-// Create instance in component, auto-subscribe to updates
-const state = MyState.use(...args);
-
-// Consume from context
-const state = MyState.get();
-
-// Consume with computed selector
-const value = MyState.get((current) => current.x + current.y);
-
-// Component class with render method
-class MyComponent extends Component {
-  value = '';
-  render() { return <div>{this.value}</div>; }
-}
-```
-
-This allows the same core logic to work across React/Preact.
-
-### Suspense
-
-Async `set()` factories integrate with React Suspense automatically:
-
-```tsx
-class Data extends State {
-  result = set(async () => fetch('/api').then((r) => r.json()));
-}
-
-// Accessing result before resolved throws Suspense
-<Suspense fallback={<Loading />}>
-  <DataConsumer />
-</Suspense>;
-```
-
-### Provider / Consumer
-
-```tsx
-import { Provider, Consumer } from '@expressive/react';
-
-// Provide state to descendants
-<Provider for={MyState}>
-  <App />
-</Provider>
-
-// Multiple states
-<Provider for={{ Auth, Theme, Router }}>
-  <App />
-</Provider>
-
-// With instance
-<Provider for={existingState}>
-  <App />
-</Provider>
-
-// With suspense fallback
-<Provider for={AsyncState} fallback={<Loading />}>
-  <App />
-</Provider>
-```
+Full-featured adapter. See `react.md` for complete API documentation.
 
 ## Preact (`@expressive/preact`)
 
@@ -94,7 +32,7 @@ Has its own Provider/Consumer using Preact's context API.
 
 ## Solid (`@expressive/solid`)
 
-Standalone implementation — does NOT depend on React adapter.
+Standalone implementation - does NOT depend on React adapter.
 
 ### Key difference: signal getters
 
@@ -129,46 +67,4 @@ type Reactive<T extends State> = {
       ? T[P] // Functions unchanged
       : () => T[P]; // Properties become getters
 };
-```
-
-## Performance Characteristics
-
-### Subscription tracking
-
-Effects receive a **proxy**, not the real state. Property accesses on the proxy are tracked:
-
-```ts
-state.get((current) => {
-  console.log(current.foo); // tracked — subscribes to 'foo'
-  console.log(current.is.bar); // NOT tracked — 'is' bypasses proxy
-});
-
-state.foo = 1; // re-runs effect
-state.bar = 2; // does NOT re-run (not tracked)
-```
-
-### Update batching
-
-All updates in the same tick are batched into a single flush:
-
-```ts
-state.a = 1;
-state.b = 2;
-state.c = 3;
-// → single microtask fires once, emitting batch event with all 3 keys
-```
-
-### Deduplication
-
-- **Value equality**: `state.x = state.x` is a no-op
-- **Listener filtering**: listeners with key filters only fire for matching keys
-- **Computed caching**: `set((from: this) => ...)` computeds only rerun when accessed dependencies change
-- **React render skipping**: `State.get(factory)` compares computed output — same result means no re-render
-
-### Silent updates
-
-```ts
-state.set(assign, true); // silent = true — accumulates in PENDING
-// Next non-silent update flushes everything
-// Also safe on destroyed state — returns without throwing
 ```

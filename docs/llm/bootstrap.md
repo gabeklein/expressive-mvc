@@ -1,4 +1,4 @@
-# Expressive State — Bootstrap for Consumer Projects
+# Expressive State - Bootstrap for Consumer Projects
 
 Copy this into your project's `CLAUDE.md` or `AGENTS.md`.
 
@@ -10,22 +10,20 @@ This project uses [Expressive State](https://github.com/gabeklein/expressive-mvc
 
 **Packages:**
 
-- `@expressive/react` — React adapter. Import `State` (default), plus `ref`, `def`, `get`, `set` instructions.
-- `@expressive/state` — Framework-agnostic core (rarely imported directly in React projects).
+- `@expressive/react` - React adapter. Import `State` (default), `Component`, plus `ref`, `def`, `get`, `set` instructions.
+- `@expressive/state` - Framework-agnostic core (rarely imported directly in React projects).
 
 **Quick Reference:**
 
 ```tsx
-import State, { Component, ref, def, get, set } from '@expressive/react';
+import State, { Component, ref, def, get, set, Provider } from '@expressive/react';
 
 class MyState extends State {
   count = 0; // reactive property
   data = set(async () => fetchData()); // async with Suspense
   parent = get(ParentState); // context lookup
   element = ref<HTMLElement>(); // mutable ref
-  increment() {
-    this.count++;
-  }
+  increment() { this.count++; }
 }
 
 // Hook - local state
@@ -40,12 +38,12 @@ function Child() {
   return <div>{state.count}</div>;
 }
 
-// Component class
+// Component class - reactive, provides context, supports suspense & error boundaries
 class CounterView extends Component {
   count = 0;
   increment() { this.count++; }
-  render() { return <div onClick={this.increment}>{this.count}</div>; }
+  render() { return <button onClick={this.increment}>{this.count}</button>; }
 }
 ```
 
-**Full docs** (fetch when needed): core.md, react.md, instructions.md, patterns.md, lifecycle.md, typescript.md, testing.md, adapters.md
+**Full docs** (fetch when needed): react.md, core.md, instructions.md, component.md, patterns.md, lifecycle.md, typescript.md, testing.md, adapters.md
