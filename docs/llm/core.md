@@ -9,16 +9,18 @@ import State from '@expressive/state';
 
 class Counter extends State {
   count = 0;
-  increment() { this.count++; }
+  increment() {
+    this.count++;
+  }
 }
 ```
 
 ### Instantiation
 
 ```ts
-const counter = Counter.new();           // creates AND activates
+const counter = Counter.new(); // creates AND activates
 const counter = Counter.new({ count: 10 }); // with initial values
-const counter = Counter.new('my-counter');  // with ID
+const counter = Counter.new('my-counter'); // with ID
 ```
 
 > `new Counter()` constructs but does NOT activate. Always prefer `Counter.new()`.
@@ -35,17 +37,17 @@ class App extends State {
 
 const app = App.new();
 app.name = 'Alice'; // queues update
-app.count = 1;      // queues another — both flush via queueMicrotask
+app.count = 1; // queues another - both flush via microtask
 ```
 
 ## get() — Read & Subscribe
 
 ```ts
-state.get();                    // export all values as plain object
-state.get('count');             // get single property
-state.get(null);                // check if destroyed (boolean)
+state.get(); // export all values as plain object
+state.get('count'); // get single property
+state.get(null); // check if destroyed (boolean)
 
-// Tracked effect — re-runs when accessed properties change
+// Tracked effect - re-runs when accessed properties change
 const stop = state.get((current) => {
   console.log(current.count);
 });
@@ -78,12 +80,12 @@ state.get(function (current, update) {
 ## set() — Write & Listen
 
 ```ts
-state.set({ count: 5 });       // merge values
+state.set({ count: 5 }); // merge values
 state.set({ count: 5 }, true); // merge silently (no events, no throw if destroyed)
-await state.set();              // await pending flush
-state.set('customEvent');       // dispatch named event
-state.set('count', 42);        // set single property (unchecked)
-state.set(null);                // destroy
+await state.set(); // await pending flush
+state.set('customEvent'); // dispatch named event
+state.set('count', 42); // set single property (unchecked)
+state.set(null); // destroy
 
 // Listen to all updates
 const stop = state.set((key, source) => {
@@ -102,7 +104,7 @@ class App extends State {
 }
 ```
 
-Constructor args (`State.Args`) accept strings (ID), objects (initial values), and callbacks:
+Constructor args (`State.Args`) accepts objects (initial values), and init callbacks:
 
 ```ts
 class App extends State {
@@ -120,19 +122,23 @@ State extends Observable. Also usable standalone:
 ```ts
 import { listener, watch, event } from '@expressive/state';
 
-const stop = listener(state, (key, source) => { /* event */ });
-const stop = watch(state, (current) => { /* tracked effect */ });
+const stop = listener(state, (key, source) => {
+  /* event */
+});
+const stop = watch(state, (current) => {
+  /* tracked effect */
+});
 event(state, 'myEvent'); // manual dispatch
 ```
 
 ### Event Semantics
 
-| Value | Meaning |
-|-------|---------|
-| `true` | Ready / initial activation |
-| `false` | Update flush completed |
-| `null` | Destroyed (terminal) |
-| `string \| symbol \| number` | Property or custom event |
+| Value                        | Means                      |
+| ---------------------------- | -------------------------- |
+| `true`                       | Ready / initial activation |
+| `false`                      | Update flush completed     |
+| `null`                       | Destroyed (terminal)       |
+| `string \| symbol \| number` | Property or custom event   |
 
 All events batched and flushed via `queueMicrotask()`.
 
@@ -154,21 +160,24 @@ Primarily used via `get()` instruction (see instructions.md) and React `Provider
 ## Static Methods
 
 ```ts
-Counter.is(unknown);              // type guard => boolean
-const stop = Counter.on(function (this: Counter) { /* any instance, on init */ });
+Counter.is(unknown); // type guard => boolean
+const stop = Counter.on(function (this: Counter) {
+  /* any instance, on init */
+});
 ```
 
 ## The `is` Property
 
-Circular self-reference, useful after destructuring and for silent reads:
+Circular self-reference. Destructure first to retain instance access alongside values.
+Also use for silent reads inside effects, or when you want to guarantee you have unwrapped instance. `state.is` always the instance, whether or not `state` is a proxy; `state.is.is` is safe.
 
 ```ts
-const { count, is: counter } = Counter.new();
+const { is: counter, count } = Counter.new();
 counter.increment(); // write access after destructuring
 
 // Silent read — access via `is` bypasses proxy tracking
 state.get((current) => {
-  console.log(current.value);    // subscribes to 'value'
+  console.log(current.value); // subscribes to 'value'
   console.log(current.is.other); // does NOT subscribe — silent read
 });
 ```
