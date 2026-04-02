@@ -67,12 +67,12 @@ declare namespace Provider {
     is: (instance: T) => void;
   } & { [K in State.Field<T>]?: T[K] };
 
-  type ForEachProps<T extends State> = SharedProps & {
+  type ForMultipleProps<T extends State> = SharedProps & {
     for: Context.Accept<T>;
     is?: ForEach<T>;
   };
 
-  type Props<T extends State = State> = ForSingleProps<T> | ForEachProps<T>;
+  type Props<T extends State = State> = ForSingleProps<T> | ForMultipleProps<T>;
 }
 
 function Provider<T extends State>(props: Provider.Props<T>) {
@@ -90,7 +90,7 @@ function Provider<T extends State>(props: Provider.Props<T>) {
         fallback,
         name,
         ...rest
-      } = props as Provider.ForSingleProps<T> & Provider.ForEachProps<T>;
+      } = props as Provider.ForSingleProps<T> & Provider.ForMultipleProps<T>;
 
       context.set(input, (added) => rest.is?.(added));
 
