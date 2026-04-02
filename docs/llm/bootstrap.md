@@ -46,4 +46,4 @@ class CounterView extends Component {
 }
 ```
 
-**Full docs** (fetch when needed): react.md, core.md, instructions.md, component.md, patterns.md, lifecycle.md, typescript.md, testing.md, adapters.md
+**Full docs** (fetch when needed): react/react.md, core.md, instructions.md, react/component.md, react/patterns.md, lifecycle.md, typescript.md, testing.md, adapters.md

@@ -155,7 +155,7 @@ const child = ctx.push({ ChildState });
 child.pop(); // destroy child context
 ```
 
-Primarily used via `get()` instruction (see instructions.md) and React `Provider` (see react.md).
+Primarily used via `get()` instruction (see instructions.md) and React `Provider` (see react/react.md).
 
 ## Static Methods
 

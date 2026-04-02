@@ -2,8 +2,9 @@
 
 `@expressive/react` connects State to React with hooks, components, and context.
 
-For core State API (properties, reactivity, lifecycle, events) see `core.md`.
-For instructions (`get`, `set`, `ref`, `def`) see `instructions.md`.
+For core State API (properties, reactivity, lifecycle, events) see `../core.md`.
+For instructions (`get`, `set`, `ref`, `def`) see `../instructions.md`.
+For examples and patterns see `patterns.md`.
 
 ## Exports
 
@@ -185,7 +186,7 @@ If the upstream instance is replaced in context (e.g., Provider re-created), the
 
 ## Component Class
 
-`Component` extends `State` and works directly as a React component. See `component.md` for full details.
+`Component` extends `State` and works directly as a React component. See `./component.md` for full details.
 
 ```tsx
 import { Component } from '@expressive/react';
@@ -205,6 +206,7 @@ class Counter extends Component {
 ```
 
 Key features:
+
 - State fields become optional JSX props, applied every render.
 - `render()` controls output; without it, children pass through a context provider.
 - Instances are automatically provided to context for child access via `State.get()`.

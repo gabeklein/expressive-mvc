@@ -1,6 +1,6 @@
 # Expressive State — Patterns
 
-Copy-paste recipes. All examples use `@expressive/react`.
+Recipies and examples for common patterns and use cases with Expressive State in React.
 
 ## Counter
 
@@ -9,8 +9,12 @@ import { Component } from '@expressive/react';
 
 class Counter extends Component {
   count = 0;
-  increment() { this.count++; }
-  decrement() { this.count--; }
+  increment() {
+    this.count++;
+  }
+  decrement() {
+    this.count--;
+  }
 
   render() {
     return (
@@ -30,9 +34,15 @@ class Counter extends Component {
 import { Component, set } from '@expressive/react';
 
 class LoginForm extends Component {
-  email = set("", (v) => { if (!v.includes("@")) return false; });
-  password = set("", (v) => { if (v.length < 8) return false; });
-  get valid() { return !!this.email && !!this.password; }
+  email = set('', (v) => {
+    if (!v.includes('@')) return false;
+  });
+  password = set('', (v) => {
+    if (v.length < 8) return false;
+  });
+  get valid() {
+    return !!this.email && !!this.password;
+  }
 
   submit() {
     if (this.valid) postLogin(this.email, this.password);
@@ -40,10 +50,20 @@ class LoginForm extends Component {
 
   render() {
     return (
-      <form onSubmit={(e) => { e.preventDefault(); this.submit(); }}>
-        <input value={this.email} onChange={e => this.email = e.target.value} />
-        <input type="password" value={this.password}
-               onChange={e => this.password = e.target.value} />
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          this.submit();
+        }}>
+        <input
+          value={this.email}
+          onChange={(e) => (this.email = e.target.value)}
+        />
+        <input
+          type="password"
+          value={this.password}
+          onChange={(e) => (this.password = e.target.value)}
+        />
         <button disabled={!this.valid}>Log In</button>
       </form>
     );
@@ -57,9 +77,9 @@ class LoginForm extends Component {
 import { Component, set } from '@expressive/react';
 
 class Profile extends Component {
-  fallback = <p>Loading...</p>;
+  fallback = (<p>Loading...</p>);
   data = set(async () => {
-    const res = await fetch("/api/user");
+    const res = await fetch('/api/user');
     return res.json();
   });
 
@@ -80,9 +100,11 @@ class Profile extends Component {
 import State, { Component } from '@expressive/react';
 
 class TodoItem extends State {
-  text = "";
+  text = '';
   done = false;
-  toggle() { this.done = !this.done; }
+  toggle() {
+    this.done = !this.done;
+  }
 }
 
 class TodoList extends Component {
@@ -98,12 +120,14 @@ class TodoList extends Component {
     return (
       <ul>
         {this.items.map((item) => (
-          <li key={item.text} onClick={item.toggle}
-              style={{ textDecoration: item.done ? 'line-through' : 'none' }}>
+          <li
+            key={item.text}
+            onClick={item.toggle}
+            style={{ textDecoration: item.done ? 'line-through' : 'none' }}>
             {item.text}
           </li>
         ))}
-        <button onClick={() => this.add("New item")}>Add</button>
+        <button onClick={() => this.add('New item')}>Add</button>
       </ul>
     );
   }
@@ -116,8 +140,10 @@ class TodoList extends Component {
 import State, { Component, get, Provider } from '@expressive/react';
 
 class Theme extends State {
-  color = "blue";
-  toggle() { this.color = this.color === "blue" ? "red" : "blue"; }
+  color = 'blue';
+  toggle() {
+    this.color = this.color === 'blue' ? 'red' : 'blue';
+  }
 }
 
 class ThemedWidget extends Component {
@@ -149,7 +175,9 @@ import { Component, set } from '@expressive/react';
 
 class Cart extends Component {
   items: { name: string; price: number; qty: number }[] = [];
-  total = set((from: this) => from.items.reduce((sum, i) => sum + i.price * i.qty, 0));
+  total = set((from: this) =>
+    from.items.reduce((sum, i) => sum + i.price * i.qty, 0)
+  );
   count = set((from: this) => from.items.reduce((sum, i) => sum + i.qty, 0));
 
   add(name: string, price: number) {
@@ -159,7 +187,9 @@ class Cart extends Component {
   render() {
     return (
       <div>
-        <p>{this.count} items - ${this.total}</p>
+        <p>
+          {this.count} items - ${this.total}
+        </p>
       </div>
     );
   }
@@ -193,7 +223,7 @@ class Search extends State {
 import State, { Component, get } from '@expressive/react';
 
 class Tab extends State {
-  label = "";
+  label = '';
   group = get(TabGroup);
 }
 
@@ -205,9 +235,10 @@ class TabGroup extends Component {
     return (
       <div>
         {this.tabs.map((tab, i) => (
-          <button key={tab.label}
-                  onClick={() => this.active = i}
-                  style={{ fontWeight: this.active === i ? 'bold' : 'normal' }}>
+          <button
+            key={tab.label}
+            onClick={() => (this.active = i)}
+            style={{ fontWeight: this.active === i ? 'bold' : 'normal' }}>
             {tab.label}
           </button>
         ))}
@@ -238,7 +269,7 @@ function OrderSummary() {
   const summary = Cart.get(($) => ({
     total: $.total,
     count: $.count,
-    empty: $.items.length === 0,
+    empty: $.items.length === 0
   }));
 
   if (summary.empty) return <p>Cart is empty</p>;
