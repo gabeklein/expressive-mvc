@@ -42,42 +42,7 @@ class MyState extends State {
 
 ## Instruction Typing
 
-### set() overloads
-
-```ts
-value = set<string>();                           // placeholder, suspends until assigned
-value = set('default');                           // initial value, type inferred
-value = set(() => compute(), false);              // optional async factory
-value = set('initial', (next, prev) => { ... }); // with update callback (throw false to reject, return value to transform)
-value = set((from: this) => from.x + from.y);     // computed from self (reactive)
-```
-
-### get() overloads
-
-```ts
-peer = get(PeerType);                // required upstream lookup
-peer = get(PeerType, false);         // optional (T | undefined)
-items = get(ItemType, true);         // downstream collection (readonly T[])
-peer = get(PeerType, callback);      // with lifecycle callback
-```
-
-### ref() overloads
-
-```ts
-el = ref<HTMLElement>();                    // basic ref, ref.Object<T>
-el = ref<HTMLElement>((el) => { ... });     // with mount callback
-proxy = ref(this);                          // ref proxy for all properties
-proxy = ref(otherState, (key) => custom);   // custom property mapper
-```
-
-### def()
-
-```ts
-child = def(ChildType);                    // child state instance
-child = def(ChildType, (child) => { ... }); // with init callback
-```
-
-## Instruction return types
+Instruction type signatures are documented in their respective files under `instructions/`.
 
 Instructions return symbols at definition time. The actual typed value is only available after initialization:
 
