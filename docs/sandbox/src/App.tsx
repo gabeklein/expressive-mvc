@@ -18,7 +18,7 @@ class Theme extends State {
   dark = DARK.matches;
 
   protected new() {
-    const onChange = () => this.dark = DARK.matches;
+    const onChange = () => (this.dark = DARK.matches);
     DARK.addEventListener('change', onChange);
     return () => DARK.removeEventListener('change', onChange);
   }
@@ -46,7 +46,7 @@ function Example({ name }: { name: string }) {
     <SandpackProvider
       key={name}
       theme={dark ? 'dark' : 'light'}
-      template="vite-react-ts"
+      template="react-ts"
       files={getFiles(name)}
       customSetup={{
         dependencies: {
