@@ -18,9 +18,6 @@ import { render, renderHook, act, waitFor, screen } from '../../vitest';
 Defined in `vitest.setup.ts`, available globally:
 
 ```ts
-// Assert state has pending updates (async)
-await expect(state).toUpdate(timeout?);
-
 // Assert state did update, optionally with specific keys
 await expect(state).toHaveUpdated();
 await expect(state).toHaveUpdated('foo', 'bar');
@@ -147,26 +144,19 @@ function renderWith<T>(Type: State.Type | State, hook: () => T) {
 const hook = renderWith(Test, () => Test.get((x) => x.foo));
 ```
 
-### Testing components via State.as()
+### Testing Component classes
 
-```ts
-class Test extends State {
+```tsx
+class Test extends Component {
   something = 'World';
+
+  render() {
+    return <span>Hello {this.something}</span>;
+  }
 }
 
-const TestComponent = Test.as((_, self) => (
-  <span>Hello {self.something}</span>
-));
-
-const element = render(<TestComponent />);
-element.getByText('Hello World');
-
-// Update and verify
-await act(async () => {
-  test.foo = 'baz';
-  await test.set();
-});
-screen.getByText('baz');
+const { getByText } = render(<Test />);
+getByText('Hello World');
 ```
 
 ### Testing props merge

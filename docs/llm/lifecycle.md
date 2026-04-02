@@ -8,7 +8,7 @@ Deep reference for State lifecycle, teardown, error handling, and effect schedul
 |-------|---------|--------------|:---:|
 | Construction | `new MyState()` | `prepare()` + `init()` — listeners registered, nothing activated | NO |
 | Activation | `State.new()` calls `event(instance)` | Properties managed, constructor args executed, `new()` hook called | YES |
-| Operation | Property assignment | Batched updates via `setTimeout(0)`, effects re-run | YES |
+| Operation | Property assignment | Batched updates via `queueMicrotask()`, effects re-run | YES |
 | Destruction | `state.set(null)` | Children destroyed first, listeners called, state frozen | DESTROYED |
 
 > **Always use `State.new()` not `new State()`.** The `new` keyword alone does not activate — properties aren't managed until the ready event fires.
@@ -119,13 +119,13 @@ Children are always destroyed before parents. In nested contexts, destruction ha
 All property updates in the same tick are batched:
 
 ```ts
-state.foo = 1;  // enqueue: setTimeout(() => flush(), 0)
+state.foo = 1;  // enqueue: queueMicrotask(() => flush())
 state.bar = 2;  // just add to pending keys
 state.baz = 3;  // just add to pending keys
 // → single flush with all 3 keys
 ```
 
-Implementation: `DISPATCH` Set + `PENDING_KEYS` WeakMap. First update schedules `setTimeout(0)`. Subsequent updates add to pending set. Single flush emits `key = false` with accumulated keys.
+Implementation: `DISPATCH` Set + `PENDING` WeakMap. First update schedules `queueMicrotask()`. Subsequent updates add to pending set. Single flush emits `key = false` with accumulated keys.
 
 ### Value equality
 
@@ -170,7 +170,7 @@ The Promise resolution re-invokes the effect.
 
 ## Context Hierarchy
 
-Contexts use prototype chains for inheritance:
+Contexts use a parent-reference chain for inheritance:
 
 ```ts
 const parent = new Context({ stateA });
@@ -178,10 +178,9 @@ const child = parent.push({ stateB });
 // child inherits stateA, adds stateB
 ```
 
-- `Context.get(Type)` walks the prototype chain
-- `push()` creates child via `Object.create(parent)`
-- `pop()` deletes symbol keys, runs cleanup, destroys owned states
-- States are registered with symbol keys derived from their class hierarchy
+- `Context.get(Type)` walks the parent chain
+- `push()` creates child context with `new Context(parent)`
+- `pop()` clears inputs, recursively pops child scopes, runs cleanup callbacks
 
 ### Implicit child registration
 

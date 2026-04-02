@@ -4,28 +4,32 @@ Copy-paste recipes. All examples use `@expressive/react`.
 
 ## Counter
 
-```ts
-import State, { ref, get, set, Provider, Consumer } from '@expressive/react';
+```tsx
+import { Component } from '@expressive/react';
 
-class Counter extends State {
+class Counter extends Component {
   count = 0;
   increment() { this.count++; }
   decrement() { this.count--; }
-}
 
-const CounterView = Counter.as((_, self) => (
-  <div>
-    <button onClick={self.decrement}>-</button>
-    <span>{self.count}</span>
-    <button onClick={self.increment}>+</button>
-  </div>
-));
+  render() {
+    return (
+      <div>
+        <button onClick={this.decrement}>-</button>
+        <span>{this.count}</span>
+        <button onClick={this.increment}>+</button>
+      </div>
+    );
+  }
+}
 ```
 
 ## Form with Validation
 
-```ts
-class LoginForm extends State {
+```tsx
+import { Component, set } from '@expressive/react';
+
+class LoginForm extends Component {
   email = set("", (v) => { if (!v.includes("@")) return false; });
   password = set("", (v) => { if (v.length < 8) return false; });
   get valid() { return !!this.email && !!this.password; }
@@ -33,93 +37,106 @@ class LoginForm extends State {
   submit() {
     if (this.valid) postLogin(this.email, this.password);
   }
-}
 
-const Login = LoginForm.as((_, self) => (
-  <form onSubmit={(e) => { e.preventDefault(); self.submit(); }}>
-    <input value={self.email} onChange={e => self.email = e.target.value} />
-    <input type="password" value={self.password}
-           onChange={e => self.password = e.target.value} />
-    <button disabled={!self.valid}>Log In</button>
-  </form>
-));
+  render() {
+    return (
+      <form onSubmit={(e) => { e.preventDefault(); this.submit(); }}>
+        <input value={this.email} onChange={e => this.email = e.target.value} />
+        <input type="password" value={this.password}
+               onChange={e => this.password = e.target.value} />
+        <button disabled={!this.valid}>Log In</button>
+      </form>
+    );
+  }
+}
 ```
 
 ## Async Data Fetching
 
-```ts
-class UserProfile extends State {
+```tsx
+import { Component, set } from '@expressive/react';
+
+class Profile extends Component {
+  fallback = <p>Loading...</p>;
   data = set(async () => {
     const res = await fetch("/api/user");
     return res.json();
   });
+
+  render() {
+    return (
+      <div>
+        <h1>{this.data.name}</h1>
+        <p>{this.data.email}</p>
+      </div>
+    );
+  }
 }
-
-const Profile = UserProfile.as((_, self) => (
-  <div>
-    <h1>{self.data.name}</h1>
-    <p>{self.data.email}</p>
-  </div>
-));
-
-<Profile fallback={<p>Loading...</p>} />
 ```
 
 ## Nested / Child State
 
-```ts
+```tsx
+import State, { Component } from '@expressive/react';
+
 class TodoItem extends State {
   text = "";
   done = false;
   toggle() { this.done = !this.done; }
 }
 
-class TodoList extends State {
+class TodoList extends Component {
   items: TodoItem[] = [];
 
   add(text: string) {
-    const item = new TodoItem();
+    const item = TodoItem.new();
     item.text = text;
     this.items = [...this.items, item];
   }
-}
 
-const Todos = TodoList.as((_, self) => (
-  <ul>
-    {self.items.map((item) => (
-      <li key={item.text} onClick={item.toggle}
-          style={{ textDecoration: item.done ? 'line-through' : 'none' }}>
-        {item.text}
-      </li>
-    ))}
-    <button onClick={() => self.add("New item")}>Add</button>
-  </ul>
-));
+  render() {
+    return (
+      <ul>
+        {this.items.map((item) => (
+          <li key={item.text} onClick={item.toggle}
+              style={{ textDecoration: item.done ? 'line-through' : 'none' }}>
+            {item.text}
+          </li>
+        ))}
+        <button onClick={() => this.add("New item")}>Add</button>
+      </ul>
+    );
+  }
+}
 ```
 
 ## Context Sharing
 
-```ts
+```tsx
+import State, { Component, get, Provider } from '@expressive/react';
+
 class Theme extends State {
   color = "blue";
   toggle() { this.color = this.color === "blue" ? "red" : "blue"; }
 }
 
-class ThemedWidget extends State {
+class ThemedWidget extends Component {
   theme = get(Theme);
-}
 
-const Widget = ThemedWidget.as((_, self) => (
-  <div style={{ color: self.theme.color }}>
-    Themed content
-    <button onClick={self.theme.toggle}>Toggle</button>
-  </div>
-));
+  render() {
+    return (
+      <div style={{ color: this.theme.color }}>
+        Themed content
+        <button onClick={this.theme.toggle}>Toggle</button>
+      </div>
+    );
+  }
+}
 
 function App() {
   return (
     <Provider for={Theme}>
-      <Widget />
+      <ThemedWidget />
     </Provider>
   );
 }
@@ -127,14 +144,24 @@ function App() {
 
 ## Computed Values
 
-```ts
-class Cart extends State {
+```tsx
+import { Component, set } from '@expressive/react';
+
+class Cart extends Component {
   items: { name: string; price: number; qty: number }[] = [];
-  total = set(this, ($) => $.items.reduce((sum, i) => sum + i.price * i.qty, 0));
-  count = set(this, ($) => $.items.reduce((sum, i) => sum + i.qty, 0));
+  total = set((from: this) => from.items.reduce((sum, i) => sum + i.price * i.qty, 0));
+  count = set((from: this) => from.items.reduce((sum, i) => sum + i.qty, 0));
 
   add(name: string, price: number) {
     this.items = [...this.items, { name, price, qty: 1 }];
+  }
+
+  render() {
+    return (
+      <div>
+        <p>{this.count} items - ${this.total}</p>
+      </div>
+    );
   }
 }
 ```
@@ -142,6 +169,8 @@ class Cart extends State {
 ## Debounced Search
 
 ```ts
+import State, { set } from '@expressive/react';
+
 class Search extends State {
   query = '';
   results: string[] = [];
@@ -160,33 +189,39 @@ class Search extends State {
 
 ## Downstream Collection
 
-```ts
-class TabGroup extends State {
-  tabs = get(Tab, true); // collects all Tab instances below
-  active = 0;
-}
+```tsx
+import State, { Component, get } from '@expressive/react';
 
 class Tab extends State {
   label = "";
   group = get(TabGroup);
 }
 
-const TabBar = TabGroup.as((_, self) => (
-  <div>
-    {self.tabs.map((tab, i) => (
-      <button key={tab.label}
-              onClick={() => self.active = i}
-              style={{ fontWeight: self.active === i ? 'bold' : 'normal' }}>
-        {tab.label}
-      </button>
-    ))}
-  </div>
-));
+class TabGroup extends Component {
+  tabs = get(Tab, true); // collects all Tab instances below
+  active = 0;
+
+  render() {
+    return (
+      <div>
+        {this.tabs.map((tab, i) => (
+          <button key={tab.label}
+                  onClick={() => this.active = i}
+                  style={{ fontWeight: this.active === i ? 'bold' : 'normal' }}>
+            {tab.label}
+          </button>
+        ))}
+      </div>
+    );
+  }
+}
 ```
 
 ## Effects & Cleanup
 
 ```ts
+import State from '@expressive/react';
+
 class Timer extends State {
   elapsed = 0;
   protected new() {
@@ -198,7 +233,7 @@ class Timer extends State {
 
 ## Using State.get() with Computed Hook
 
-```ts
+```tsx
 function OrderSummary() {
   const summary = Cart.get(($) => ({
     total: $.total,

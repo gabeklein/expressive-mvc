@@ -35,7 +35,7 @@ class App extends State {
 
 const app = App.new();
 app.name = 'Alice'; // queues update
-app.count = 1;      // queues another — both flush via setTimeout(0)
+app.count = 1;      // queues another — both flush via queueMicrotask
 ```
 
 ## get() — Read & Subscribe
@@ -65,7 +65,7 @@ const stop = state.get(null, () => console.log('destroyed'));
 state.get(function (current, update) {
   // `this` = state instance
   // `current` = tracking proxy — reads create subscriptions
-  // `update` = Set of changed keys (empty on first run)
+  // `update` = readonly array of changed keys (undefined on first run)
   console.log(current.count);
 
   // Optional: return callback for fine-grained control
@@ -118,9 +118,9 @@ class App extends State {
 State extends Observable. Also usable standalone:
 
 ```ts
-import { addListener, watch, event } from '@expressive/state';
+import { listener, watch, event } from '@expressive/state';
 
-const stop = addListener(state, (key, source) => { /* event */ });
+const stop = listener(state, (key, source) => { /* event */ });
 const stop = watch(state, (current) => { /* tracked effect */ });
 event(state, 'myEvent'); // manual dispatch
 ```
@@ -134,7 +134,7 @@ event(state, 'myEvent'); // manual dispatch
 | `null` | Destroyed (terminal) |
 | `string \| symbol \| number` | Property or custom event |
 
-All events batched and flushed via `setTimeout(0)`.
+All events batched and flushed via `queueMicrotask()`.
 
 ## Context
 
@@ -155,7 +155,7 @@ Primarily used via `get()` instruction (see instructions.md) and React `Provider
 
 ```ts
 Counter.is(unknown);              // type guard => boolean
-const stop = Counter.on((key, source) => { /* any instance */ });
+const stop = Counter.on(function (this: Counter) { /* any instance, on init */ });
 ```
 
 ## The `is` Property

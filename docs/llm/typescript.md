@@ -49,9 +49,7 @@ value = set<string>();                           // placeholder, suspends until 
 value = set('default');                           // initial value, type inferred
 value = set(() => compute(), false);              // optional async factory
 value = set('initial', (next, prev) => { ... }); // with update callback (throw false to reject, return value to transform)
-value = set(this, (state) => state.x + state.y); // computed from self
-value = set(otherState, (s) => s.value);          // computed from other state
-value = set(true, this.method);                   // reactive method reference
+value = set((from: this) => from.x + from.y);     // computed from self (reactive)
 ```
 
 ### get() overloads
@@ -101,21 +99,18 @@ type Props<T extends State> = {
 
 Props are derived from State fields, all optional.
 
-### State.as() — component factory
+### Component props inference
+
+Component classes derive JSX props from their state fields:
 
 ```ts
-// With render function — infers props + state fields
-const Comp = MyState.as((props, self) => <div>{self.value}</div>);
+class MyComp extends Component {
+  value = '';
+  render() { return <div>{this.value}</div>; }
+}
 
-// With default props
-const Comp = MyState.as({ value: 'default' });
-```
-
-Type checking prevents conflicting prop types:
-
-```ts
-// PropsConflicting<P, V> detects type mismatches between external props and state props.
-// PropsValid<P, T> resolves to `never` if conflicts exist, causing a type error.
+// All state fields are optional props
+<MyComp value="hello" />
 ```
 
 ### State.use() argument inference

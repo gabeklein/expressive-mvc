@@ -70,7 +70,7 @@ Nest states by direct assignment. Children are auto-parented and destroyed with 
 
 ```ts
 class Parent extends State {
-  child = new ChildState();
+  child = new ChildState(); // auto-parented and activated when Parent initializes
 }
 ```
 

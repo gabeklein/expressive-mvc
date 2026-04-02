@@ -40,7 +40,7 @@ function App({ name }: { name: string }) {
 
 ## State.get() — Context Hook
 
-Fetches state from context (via `Provider` or `State.as()`).
+Fetches state from context (via `Provider` or Component).
 
 ```ts
 function Profile() {
@@ -82,62 +82,38 @@ const data = AppState.get(($, refresh) => {
 });
 ```
 
-## State.as() — Component Factory
+## Component Class
 
-Converts a State class into a React component.
+For full component behavior (render method, error boundaries, subcomponents), use the `Component` class from `@expressive/react`. See `component.md` for details.
 
-### With Render Function
+```tsx
+import { Component } from '@expressive/react';
 
-```ts
-const CounterView = Counter.as((props, self) => (
-  <div>
-    <p>{self.count}</p>
-    <button onClick={self.increment}>+1</button>
-  </div>
-));
+class CounterView extends Component {
+  count = 0;
+  increment() { this.count++; }
+
+  render() {
+    return (
+      <div>
+        <p>{this.count}</p>
+        <button onClick={this.increment}>+1</button>
+      </div>
+    );
+  }
+}
 
 <CounterView count={5} /> // state fields accepted as props
 ```
 
-### With Custom Props
-
-```ts
-interface LabelProps { label: string; }
-
-const LabeledCounter = Counter.as((props: LabelProps, self) => (
-  <div>
-    <label>{props.label}</label>
-    <span>{self.count}</span>
-  </div>
-));
-
-<LabeledCounter label="Score" count={0} />
-```
-
-### With Default Props (Provider Pattern)
-
-```ts
-const CounterProvider = Counter.as({ count: 0 });
-
-<CounterProvider>
-  <ChildComponent />  {/* provides state to context */}
-</CounterProvider>
-```
-
-### Chaining Defaults
-
-```ts
-const WithDefaults = LabeledCounter.as({ label: 'Default' });
-```
-
 ### Special Component Props
 
-All `.as()` components accept:
-- `is` — callback receiving state instance on creation
-- `fallback` — React node shown during Suspense
-- `children` — standard React children
+All Component-based elements accept:
+- `is` - callback receiving state instance on creation
+- `fallback` - React node shown during Suspense
+- `children` - standard React children
 
-```ts
+```tsx
 <CounterView
   is={(counter) => console.log("created", counter)}
   fallback={<Loading />}
@@ -146,20 +122,31 @@ All `.as()` components accept:
 
 ## Provider & Consumer
 
-```ts
+```tsx
 <Provider for={AppState}><App /></Provider>
 
 // Multiple states
 <Provider for={{ app: AppState, user: UserState }}><App /></Provider>
 
 // With init callback
-<Provider for={AppState} forEach={(instance) => { instance.user = "Bob"; }}>
+<Provider for={AppState} is={(instance) => { instance.user = "Bob"; }}>
+  <App />
+</Provider>
+
+// With suspense fallback
+<Provider for={AppState} fallback={<Loading />}>
   <App />
 </Provider>
 
 <Consumer for={AppState}>
   {(app) => <p>{app.user}</p>}
 </Consumer>
+```
+
+Provider accepts state fields as direct props (merged into the instance):
+
+```tsx
+<Provider for={AppState} user="Bob"><App /></Provider>
 ```
 
 ## Custom JSX Runtime
@@ -220,7 +207,8 @@ The JSX runtime auto-wraps State classes, providing them to context and renderin
 ## Exports
 
 ```ts
-export { State as default } from '@expressive/react';
-export { Context, Observable, get, use, ref, set }; // re-exported from @expressive/state
+export { State, State as default };
+export { Context, Observable, def, get, ref, set }; // re-exported from @expressive/state
+export { Component };                                // React Component class
 export { Provider, Consumer };                       // React-specific
 ```
