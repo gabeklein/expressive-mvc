@@ -53,7 +53,7 @@ const LISTENERS = new WeakMap<
 const PENDING = new WeakMap<Observable, Set<Observable.Signal>>();
 
 /** Update register. */
-const PENDING_KEYS = new WeakMap<Observable, Set<string | number | symbol>>();
+const EMITING = new WeakMap<Observable, Set<string | number | symbol>>();
 
 /** Central event dispatch. Bunches all updates to occur at same time. */
 const DISPATCH = new Set<() => void>();
@@ -130,7 +130,7 @@ const EMPTY = Object.assign([], {
 function pending<K extends Observable.Event>(
   state: Observable
 ): K[] & PromiseLike<K[]> {
-  const current = PENDING_KEYS.get(state) as Set<K> | undefined;
+  const current = EMITING.get(state) as Set<K> | undefined;
 
   if (!current) return EMPTY;
 
@@ -147,6 +147,32 @@ function pending<K extends Observable.Event>(
   return Object.assign([...current], {
     then: promise.then.bind(promise)
   });
+}
+
+function event(
+  state: Observable,
+  key?: Observable.Event | null,
+  silent?: boolean
+) {
+  if (key === null) return emit(state, key);
+
+  if (!key) return emit(state, true);
+
+  let pending = EMITING.get(state);
+
+  if (!pending) {
+    EMITING.set(state, (pending = new Set()));
+
+    if (!silent)
+      enqueue(() => {
+        emit(state, false);
+        EMITING.delete(state);
+      });
+  }
+
+  pending.add(key);
+
+  if (!silent) emit(state, key);
 }
 
 function emit(state: Observable, key: Observable.Signal): void {
@@ -182,32 +208,6 @@ function emit(state: Observable, key: Observable.Signal): void {
   if (key === true || key === null) READY.set(state, key);
 
   PENDING.delete(state);
-}
-
-function event(
-  state: Observable,
-  key?: Observable.Event | null,
-  silent?: boolean
-) {
-  if (key === null) return emit(state, key);
-
-  if (!key) return emit(state, true);
-
-  let pending = PENDING_KEYS.get(state);
-
-  if (!pending) {
-    PENDING_KEYS.set(state, (pending = new Set()));
-
-    if (!silent)
-      enqueue(() => {
-        emit(state, false);
-        PENDING_KEYS.delete(state);
-      });
-  }
-
-  pending.add(key);
-
-  if (!silent) emit(state, key);
 }
 
 function enqueue(eventHandler: () => void) {
@@ -259,7 +259,7 @@ function watch<T extends Observable>(
     let ignore: boolean = true;
 
     function onUpdate() {
-      cause = [...(PENDING_KEYS.get(target) || [])];
+      cause = [...(EMITING.get(target) || [])];
 
       if (reset === null) return null;
       if (ignore) return;
@@ -319,14 +319,14 @@ function watch<T extends Observable>(
 
 let EffectContext: Set<() => void> | undefined;
 
-function capture(fn: (release: () => void) => void) {
-  const last = EffectContext;
+function capture(scope: (release: () => void) => void) {
+  const parent = EffectContext;
   const context = (EffectContext = new Set());
 
   try {
-    fn(() => context.forEach((fn) => fn()));
+    scope(() => context.forEach((fn) => fn()));
   } finally {
-    EffectContext = last;
+    EffectContext = parent;
   }
 }
 
