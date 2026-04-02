@@ -1,13 +1,13 @@
 import { Context } from './context';
 import {
-  listener,
-  watch,
+  emit,
   event,
-  Observable,
-  observing,
-  pending,
+  listener,
   observable,
-  emit
+  Observable,
+  pending,
+  touch,
+  watch
 } from './observable';
 
 const define = Object.defineProperty;
@@ -161,15 +161,14 @@ abstract class State implements Observable {
   }
 
   [Observable](callback: Observable.Callback) {
-    const watching = new Set<unknown>();
+    const watching = new Set<State.Signal>();
 
     listener(this, (key) => {
       if (watching.has(key)) return callback();
     });
 
-    return (key: string | number, value: unknown) => {
+    return (key: State.Signal) => {
       watching.add(key);
-      return value;
     };
   }
 
@@ -609,13 +608,12 @@ function apply(
     configurable: true,
     enumerable: config.enumerable !== false,
     get(this: State) {
-      return observing(
-        this,
-        key,
+      const value =
         typeof config.get == 'function'
           ? config.get(this)
-          : access(state, key as string, config.get)
-      );
+          : access(state, key as string, config.get);
+
+      return touch(this, key, value);
     },
     set(next: any, silent?: boolean) {
       if (config.set === false)

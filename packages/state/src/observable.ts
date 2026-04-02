@@ -26,7 +26,7 @@ type Event = number | string | symbol;
 
 type Signal = Event | true | false | null;
 
-type Observer<T = any> = (key: any, value: T) => T;
+type Observer<T = any> = (key: any, value: T) => void;
 
 type Callback = () => void | null;
 
@@ -60,7 +60,7 @@ const PENDING_KEYS = new WeakMap<Observable, Set<string | number | symbol>>();
 /** Central event dispatch. Bunches all updates to occur at same time. */
 const DISPATCH = new Set<() => void>();
 
-const OBSERVER = new WeakMap<object, Observer>();
+const OBSERVER = new WeakMap<object, (key: any, value: any) => any>();
 
 /**
  * Check if an object is observable and return its status.
@@ -81,14 +81,14 @@ function observe<T extends Observable>(
   callback: Observable.Callback,
   required?: boolean
 ): T {
-  const intercept = object[Observable](callback, required);
+  const notify = object[Observable](callback, required);
   const proxy = Object.create(object);
 
   OBSERVER.set(proxy, (key, value) => {
     if (value === undefined && required)
       throw new Error(`${object}.${key} is required in this context.`);
 
-    value = intercept(key, value);
+    notify(key, value);
 
     if (value instanceof Object && Observable in value)
       return observe(value, callback, required);
@@ -99,7 +99,7 @@ function observe<T extends Observable>(
   return proxy as T;
 }
 
-function observing(from: Observable, key: any, value?: any) {
+function touch(from: Observable, key: any, value?: any) {
   const observe = OBSERVER.get(from);
   return observe ? observe(key, value) : value;
 }
@@ -332,7 +332,7 @@ export {
   event,
   Observable,
   observe,
-  observing,
+  touch,
   pending,
   observable,
   watch,
