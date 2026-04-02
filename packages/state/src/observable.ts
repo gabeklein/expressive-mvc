@@ -1,37 +1,35 @@
-/**
- * Update callback function.
- *
- * @param key -
- *   - `string` - property which has updated.
- *   - `false` - a normal update has completed.
- *   - `true` - initial event; instance is ready.
- *   - `null` - terminal event; instance is expired.
- * @param source - Instance of State for which update has occured.
- */
-type Notify<T extends Observable = any> = (
-  this: T,
-  key: Signal,
-  source: T
-) => (() => void) | null | void;
-
-type EffectCleanup = (update: boolean | null) => void;
-
-type Effect<T extends Observable> = (
-  this: T,
-  proxy: T,
-  changed: readonly Event[]
-) => EffectCleanup | Promise<void> | null | void;
-
-type Event = number | string | symbol;
-
-type Signal = Event | true | false | null;
-
-type Observer<T = any> = (key: any, value: T) => void;
-
-type Callback = () => void | null;
-
 declare namespace Observable {
-  export { Callback, Effect, Event, Notify, Observer, Signal };
+  /**
+   * Update callback function.
+   *
+   * @param key -
+   *   - `string` - property which has updated.
+   *   - `false` - a normal update has completed.
+   *   - `true` - initial event; instance is ready.
+   *   - `null` - terminal event; instance is expired.
+   * @param source - Instance of State for which update has occured.
+   */
+  type Notify<T extends Observable = any> = (
+    this: T,
+    key: Signal,
+    source: T
+  ) => (() => void) | null | void;
+
+  type EffectCleanup = (update: boolean | null) => void;
+
+  type Effect<T extends Observable> = (
+    this: T,
+    proxy: T,
+    changed: readonly Event[]
+  ) => EffectCleanup | Promise<void> | null | void;
+
+  type Event = number | string | symbol;
+
+  type Signal = Event | true | false | null;
+
+  type Observer<T = any> = (key: any, value: T) => void;
+
+  type Callback = () => void | null;
 }
 
 interface Observable {
@@ -48,11 +46,11 @@ const READY = new WeakMap<Observable, true | null>();
 
 const LISTENERS = new WeakMap<
   Observable,
-  Map<Notify, Set<Signal> | undefined>
+  Map<Observable.Notify, Set<Observable.Signal> | undefined>
 >();
 
 /** Events pending for a given object. */
-const PENDING = new WeakMap<Observable, Set<Signal>>();
+const PENDING = new WeakMap<Observable, Set<Observable.Signal>>();
 
 /** Update register. */
 const PENDING_KEYS = new WeakMap<Observable, Set<string | number | symbol>>();
@@ -106,8 +104,8 @@ function touch(from: Observable, key: any, value?: any) {
 
 function listener<T extends Observable>(
   subject: T,
-  callback: Notify<T>,
-  select?: Signal | Set<Signal>
+  callback: Observable.Notify<T>,
+  select?: Observable.Signal | Set<Observable.Signal>
 ) {
   let listeners = LISTENERS.get(subject)!;
 
@@ -129,14 +127,16 @@ const EMPTY = Object.assign([], {
   then: Promise.prototype.then.bind(Promise.resolve([]))
 } as PromiseLike<never[]>);
 
-function pending<K extends Event>(state: Observable): K[] & PromiseLike<K[]> {
+function pending<K extends Observable.Event>(
+  state: Observable
+): K[] & PromiseLike<K[]> {
   const current = PENDING_KEYS.get(state) as Set<K> | undefined;
 
   if (!current) return EMPTY;
 
   const listeners = LISTENERS.get(state)!;
   const promise = new Promise<K[]>((res) => {
-    const callback: Notify = (key) => {
+    const callback: Observable.Notify = (key) => {
       listeners.delete(callback);
       return () => res([...current]);
     };
@@ -149,7 +149,7 @@ function pending<K extends Event>(state: Observable): K[] & PromiseLike<K[]> {
   });
 }
 
-function emit(state: Observable, key: Signal): void {
+function emit(state: Observable, key: Observable.Signal): void {
   const isReady = READY.has(state);
 
   if (key === true && isReady) return;
@@ -184,7 +184,11 @@ function emit(state: Observable, key: Signal): void {
   PENDING.delete(state);
 }
 
-function event(state: Observable, key?: Event | null, silent?: boolean) {
+function event(
+  state: Observable,
+  key?: Observable.Event | null,
+  silent?: boolean
+) {
   if (key === null) return emit(state, key);
 
   if (!key) return emit(state, true);
@@ -232,22 +236,22 @@ function enqueue(eventHandler: () => void) {
  */
 function watch<T extends Observable>(
   target: T,
-  callback: Effect<Required<T>>,
+  callback: Observable.Effect<Required<T>>,
   requireValues: true
 ): () => void;
 
 function watch<T extends Observable>(
   target: T,
-  callback: Effect<T>,
+  callback: Observable.Effect<T>,
   recursive?: boolean
 ): () => void;
 
 function watch<T extends Observable>(
   target: T,
-  callback: Effect<T>,
+  callback: Observable.Effect<T>,
   argument?: boolean
 ) {
-  let cause: readonly Event[] = [];
+  let cause: readonly Observable.Event[] = [];
   let unset: ((update: boolean | null) => void) | undefined;
   let reset: (() => void) | null | undefined;
 
