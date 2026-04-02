@@ -33,7 +33,12 @@ body {
   min-height: 100vh;
 }
 
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
   margin: 0 0 0.5em;
   line-height: 1.2;
 }
@@ -51,7 +56,10 @@ a:hover {
   text-decoration: underline;
 }
 
-button, input, select, textarea {
+button,
+input,
+select,
+textarea {
   font: inherit;
   color: inherit;
   border-radius: var(--radius);
@@ -63,19 +71,24 @@ button {
   padding: 0.4em 0.8em;
   cursor: pointer;
   transition: border-color 0.2s;
+  margin: 0 0.5em;
 }
 
 button:hover {
   border-color: var(--accent);
 }
 
-input, select, textarea {
+input,
+select,
+textarea {
   background: var(--bg);
   border: 1px solid var(--border);
   padding: 0.4em 0.6em;
 }
 
-input:focus, select:focus, textarea:focus {
+input:focus,
+select:focus,
+textarea:focus {
   outline: 2px solid var(--accent);
   outline-offset: -1px;
 }
@@ -85,13 +98,15 @@ table {
   border-collapse: collapse;
 }
 
-th, td {
+th,
+td {
   text-align: left;
   padding: 0.5em 0.75em;
   border-bottom: 1px solid var(--border);
 }
 
-pre, code {
+pre,
+code {
   font-family: ui-monospace, 'SF Mono', monospace;
   font-size: 0.9em;
 }
