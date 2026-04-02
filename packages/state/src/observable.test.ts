@@ -368,7 +368,10 @@ describe('observable', () => {
 
       [Observable](onUpdate: Observable.Callback) {
         this.watch = onUpdate;
-        if (returns) return this;
+        return [
+          () => {},
+          () => { this.watch = undefined }
+        ] as const;
       }
 
       async update(value: string) {

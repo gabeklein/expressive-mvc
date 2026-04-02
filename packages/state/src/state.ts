@@ -162,15 +162,14 @@ abstract class State implements Observable {
 
   [Observable](callback: Observable.Callback) {
     const watching = new Set<unknown>();
-
-    listener(this, (key) => {
+    const cancel = listener(this, (key) => {
       if (watching.has(key)) callback();
     });
 
-    return (key: string | number, value: unknown) => {
-      watching.add(key);
-      return value;
-    };
+    return [
+      (key: any) => { watching.add(key) },
+      cancel
+    ] as const;
   }
 
   /**

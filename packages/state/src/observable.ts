@@ -28,7 +28,7 @@ type Signal = Event | true | false | null;
 
 type PromiseLite<T = void> = { then: (callback: () => T) => T };
 
-type Observer<T = any> = (key: any, value: T) => T;
+type Observer = (key: any) => void;
 
 type Callback = () => void | PromiseLite;
 
@@ -40,7 +40,7 @@ interface Observable {
   [Observable](
     callback: Observable.Callback,
     required?: boolean
-  ): Observable.Observer;
+  ): readonly [Observable.Observer, () => void];
 }
 
 const Observable = Symbol('Observable');
@@ -62,7 +62,7 @@ const PENDING_KEYS = new WeakMap<Observable, Set<string | number | symbol>>();
 /** Central event dispatch. Bunches all updates to occur at same time. */
 const DISPATCH = new Set<() => void>();
 
-const OBSERVER = new WeakMap<object, Observer>();
+const OBSERVER = new WeakMap<object, (key: any, value: any) => any>();
 
 /**
  * Check if an object is observable and return its status.
@@ -82,23 +82,23 @@ function observe<T extends Observable>(
   object: T,
   callback: Observable.Callback,
   required?: boolean
-): T {
-  const intercept = object[Observable](callback, required);
-  const proxy = Object.create(object);
+): readonly [T, () => void] {
+  const [notify, cancel] = object[Observable](callback, required);
+  const proxy = Object.create(object) as T;
 
-  OBSERVER.set(proxy, (key, value) => {
+  OBSERVER.set(proxy, (key: any, value: any) => {
     if (value === undefined && required)
       throw new Error(`${object}.${key} is required in this context.`);
 
-    value = intercept(key, value);
+    notify(key);
 
     if (value instanceof Object && Observable in value)
-      return observe(value, callback, required);
+      return observe(value, callback, required)[0];
 
     return value;
   });
 
-  return proxy as T;
+  return [proxy, cancel] as const;
 }
 
 function observing(from: Observable, key: any, value?: any) {
@@ -270,13 +270,14 @@ function watch<T extends Observable>(
     }
 
     function run(release?: () => void) {
-      const proxy = observe(target, onUpdate, argument === true);
+      const [proxy, dispose] = observe(target, onUpdate, argument === true);
       const output = callback.call(proxy, proxy, cause);
 
       ignore = false;
       reset = output === null ? null : invoke;
       unset = (key) => {
         if (typeof output == 'function') output(key);
+        if (key === false || key === null) dispose();
         if (release) release();
       };
 
@@ -307,8 +308,7 @@ function watch<T extends Observable>(
   listener(target, (key) => {
     if (key === true) invoke();
     else if (!reset) return reset;
-
-    if (key === null && unset) unset(null);
+    if (unset && key === null) unset(null);
   });
 
   return cleanup;
