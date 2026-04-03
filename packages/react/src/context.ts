@@ -10,7 +10,7 @@ import {
   useState
 } from 'react';
 
-export const Layers = createContext(new Context());
+const Layers = createContext(new Context());
 
 const _get = Context.get;
 
@@ -100,7 +100,6 @@ function Provider<T extends State>(props: Provider.Props<T>) {
       }
 
       useState(() => mounts++);
-
       useEffect(
         () => () => {
           if (!--mounts) context.pop();
@@ -108,36 +107,14 @@ function Provider<T extends State>(props: Provider.Props<T>) {
         []
       );
 
-      return createElement(Provide, {
-        context,
-        children,
-        fallback,
-        name
-      });
+      if (fallback !== undefined)
+        children = createElement(Suspense, { fallback, name }, children);
+
+      return createElement(Layers.Provider, { value: context, children });
     };
   }
 
   return ref.current(props);
 }
 
-interface ProvideProps {
-  context: Context;
-  children?: ReactNode;
-  fallback?: ReactNode;
-  name?: string | undefined;
-}
-
-function Provide(props: ProvideProps) {
-  let { context, children, fallback, name } = props;
-
-  if (fallback !== undefined)
-    children = createElement(Suspense, { fallback, name }, children);
-
-  return createElement(Layers.Provider, {
-    key: context.id,
-    value: context,
-    children
-  });
-}
-
-export { Consumer, Provider, Provide, Context };
+export { Consumer, Provider, Context, Layers };

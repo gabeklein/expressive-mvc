@@ -1,12 +1,13 @@
 import { watch, unbind } from '@expressive/state';
 import React, {
   createElement,
+  Suspense,
   useEffect,
   useRef,
   useState,
   type ReactNode
 } from 'react';
-import { Context, Layers, Provide } from './context';
+import { Context, Layers } from './context';
 import { State } from './state';
 
 const PENDING = new WeakMap<object, Component>();
@@ -174,18 +175,18 @@ function bootstrap(this: Component, context: Context) {
       []
     );
 
-    const children = createElement(Provide, {
-      context,
-      name: String(self),
-      fallback: active.fallback,
-      children: createElement(Render)
+    const children = createElement(Layers.Provider, {
+      value: context,
+      children: createElement(
+        Suspense,
+        { fallback: active.fallback, name: String(self) },
+        createElement(Render)
+      )
     });
 
     if (active.catch)
       return createElement(ErrorBoundary, {
-        fallback() {
-          return self.fallback;
-        },
+        fallback: () => self.fallback,
         onError(error: Error, reset: (failed?: Error) => void) {
           const { fallback } = self;
           Promise.resolve(self.catch!(error))
