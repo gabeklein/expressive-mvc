@@ -1010,6 +1010,46 @@ describe('subcomponents', () => {
     screen.getByText('Sidebar Content');
   });
 
+  it('will work with assigned function', async () => {
+    class Dashboard extends Component {
+      Sidebar(): React.ReactNode {
+        return null;
+      }
+
+      // for coverage
+      Ignore = 3;
+
+      render() {
+        return <this.Sidebar />;
+      }
+    }
+
+    class MyDashboard extends Dashboard {
+      content = 'value';
+      Sidebar = Sidebar;
+
+      new() {
+        dashboard = this;
+      }
+    }
+
+    function Sidebar(this: MyDashboard) {
+      return <span>Sidebar {this.content}</span>;
+    }
+
+    let dashboard!: MyDashboard;
+
+    render(<MyDashboard />);
+
+    screen.getByText('Sidebar value');
+
+    await act(async () => {
+      dashboard.content = 'updated';
+    });
+
+    screen.getByText('Sidebar updated');
+  });
+
   it('will allow override via setter', async () => {
     class Dashboard extends Component {
       value = 'Original';

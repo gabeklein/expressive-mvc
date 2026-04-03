@@ -559,7 +559,7 @@ function bootstrap(T: State.Extends) {
         const bound = fn.bind(is);
 
         METHOD.set(bound, fn);
-        define(is, key, { value: bound, writable: true });
+        define(is, key, { value: bound, writable: true, configurable: true });
 
         return bound;
       }
