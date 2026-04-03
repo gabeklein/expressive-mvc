@@ -1,13 +1,7 @@
 import { watch, unbind } from '@expressive/state';
-import React, {
-  createElement,
-  Suspense,
-  useRef,
-  useState,
-  type ReactNode
-} from 'react';
+import React, { createElement, Suspense, type ReactNode } from 'react';
 import { Context, Layers } from './context';
-import { State, useMount } from './state';
+import { State, useFactory } from './state';
 
 const PENDING = new WeakMap<object, Component>();
 
@@ -147,24 +141,24 @@ function bootstrap(this: Component, context: Context) {
 
   context = context.push(self);
 
-  let refresh: ((next: (x: number) => number) => void) | undefined;
+  let ready = false;
   let active: Component;
-
-  watch(self, (current) => {
-    active = current;
-    if (refresh) refresh((x) => x + 1);
-  });
 
   function Render() {
     return render.call(active, self.props);
   }
 
   function AsComponent() {
-    refresh = useState(() => 0)[1];
+    useFactory((ref) => {
+      watch(self, (current) => {
+        active = current;
+        ref.refresh();
+      });
 
-    useMount(() => () => {
-      self.set(null);
-      context.pop();
+      ref.unmount = () => {
+        self.set(null);
+        context.pop();
+      };
     });
 
     const children = createElement(Layers.Provider, {
@@ -182,7 +176,7 @@ function bootstrap(this: Component, context: Context) {
         onError(error: Error, reset: (failed?: Error) => void) {
           const { fallback } = self;
           Promise.resolve(self.catch!(error))
-            .then(() => refresh && reset(), reset)
+            .then(() => ready && reset(), reset)
             .finally(() => self.set({ fallback }, true));
         },
         children
@@ -260,20 +254,14 @@ function subcomponents(proto: State) {
         let render = unbind(get ? get.call(this) : value);
 
         function Sub(props: any) {
-          const ref = useRef<State | null>(null);
-          const next = useState(0)[1];
-
-          if (ref.current) useMount(() => {});
-          else {
-            const release = watch(self, (current) => {
-              ref.current = current;
-              next((x) => x + 1);
+          const active = useFactory((ref) => {
+            ref.unmount = watch(self, (current) => {
+              ref.returns = current;
+              ref.refresh();
             });
+          });
 
-            useMount(() => () => release);
-          }
-
-          return render.call(ref.current, props);
+          return render.call(active, props);
         }
 
         Object.defineProperty(self, key, {

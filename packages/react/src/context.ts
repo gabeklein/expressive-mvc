@@ -7,7 +7,7 @@ import {
   useContext,
   useRef
 } from 'react';
-import { useMount } from './state';
+import { useFactory } from './state';
 
 const Layers = createContext(new Context());
 
@@ -76,8 +76,12 @@ declare namespace Provider {
 
 function Provider<T extends State>(props: Provider.Props<T>) {
   const ambient = useContext(Layers);
-  const ref = useRef<Context | null>(null);
-  const context = ref.current || (ref.current = new Context(ambient));
+
+  const context = useFactory((ref) => {
+    const context = new Context(ambient);
+    ref.unmount = () => context.pop();
+    return context;
+  });
 
   let {
     for: input,
@@ -94,7 +98,7 @@ function Provider<T extends State>(props: Provider.Props<T>) {
     if (input instanceof State) input.set(rest as State.Assign<T>);
   }
 
-  useMount(() => () => context.pop());
+  useFactory(() => () => context.pop());
 
   if (fallback !== undefined)
     children = createElement(Suspense, { fallback, name }, children);
