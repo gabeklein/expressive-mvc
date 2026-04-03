@@ -243,12 +243,7 @@ class ErrorBoundary extends React.Component<BoundaryProps> {
 
 const SEEN = new WeakSet<Function>();
 
-function subcomponents(Type: State.Extends) {
-  const proto = Type.prototype as any;
-
-  if (SEEN.has(Type)) return true;
-  SEEN.add(Type);
-
+function subcomponents(proto: State) {
   for (const key of Object.getOwnPropertyNames(proto)) {
     if (!/^[A-Z]/.test(key)) continue;
 
@@ -258,12 +253,12 @@ function subcomponents(Type: State.Extends) {
     // if still a plain value, it's not a method
     if (!get && typeof value !== 'function') continue;
 
-    const original = value || get;
-
     Object.defineProperty(proto, key, {
       configurable: true,
       get(this: Component) {
         const self = this.is;
+
+        let render = value && unbind((self as any)[key]);
 
         // preempt auto-bind defining non-configurable property
         Object.defineProperty(self, key, {
@@ -271,27 +266,23 @@ function subcomponents(Type: State.Extends) {
           writable: true
         });
 
-        let render = get ? unbind(get.call(this)) : original;
+        // let render = get ? unbind(get.call(this)) : original;
 
         function Sub(props: any) {
           const ref = useRef<((props: any) => any) | null>(null);
-          const next = useState(0)[1];
 
-          if (!ref.current) ref.current = init();
-
-          return ref.current(props);
-
-          function init() {
+          if (!ref.current) {
+            let next: (dispatch: (x: number) => number) => void;
             let active: Component;
             let mounts = 0;
 
             const release = watch(self, (current) => {
               active = current;
-              next((x) => x + 1);
+              if (next) next((x) => x + 1);
             });
 
-            return (props: any) => {
-              mounts++;
+            ref.current = (props: any) => {
+              next = useState(() => (mounts++, 0))[1];
 
               useEffect(
                 () => () => {
@@ -305,6 +296,8 @@ function subcomponents(Type: State.Extends) {
               return render.call(active, props);
             };
           }
+
+          return ref.current(props);
         }
 
         Object.defineProperty(self, key, {
@@ -322,10 +315,14 @@ function subcomponents(Type: State.Extends) {
 }
 
 Component.on((self) => {
+  subcomponents(self);
+
   let Type = self.constructor as State.Extends;
 
   while (Type !== Component) {
-    if (subcomponents(Type)) break;
+    if (SEEN.has(Type)) break;
+    SEEN.add(Type);
+    subcomponents(Type.prototype as State);
     Type = Object.getPrototypeOf(Type);
   }
 });
