@@ -110,9 +110,9 @@ State.use = function <T extends State>(
 ) {
   const outer = Context.get();
   const ref = Pragma.useRef<((args: State.Args<T>) => T) | null>(null);
-  const next = Pragma.useState(0)[1];
+  const render = ref.current || (ref.current = init(this));
 
-  return (ref.current || (ref.current = init(this)))(args);
+  return render(args);
 
   function init(Type: State.Type<T>) {
     const add = (arg: unknown) =>
@@ -133,20 +133,22 @@ State.use = function <T extends State>(
     let ready = false;
     let active: T;
 
-    watch(instance, (current) => {
-      active = current;
-
-      if (ready) next((x) => x + 1);
-    });
-
     return (args: State.Args<T>) => {
       Pragma.useEffect(() => {
         ready = true;
       }, []);
 
-      useMount(() => () => {
-        context.pop();
-        instance.set(null);
+      useMount((refresh) => {
+        watch(instance, (current) => {
+          active = current;
+
+          if (ready) refresh();
+        });
+
+        return () => {
+          context.pop();
+          instance.set(null);
+        };
       });
 
       if (ready) {
@@ -168,8 +170,9 @@ State.get = function <T extends State>(
   const ref = Pragma.useRef<(() => any) | null>(null);
   const next = Pragma.useState(0)[1];
   const context = Context.get();
+  const render = ref.current || (ref.current = init(this));
 
-  return (ref.current || (ref.current = init(this)))();
+  return render();
 
   function init(Type: State.Extends<T>) {
     let instance: T | undefined;
