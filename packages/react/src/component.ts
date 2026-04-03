@@ -2,8 +2,8 @@ import { watch, unbind } from '@expressive/state';
 import React, {
   createElement,
   Suspense,
+  useEffect,
   useRef,
-  useState,
   type ReactNode
 } from 'react';
 import { Context, Layers } from './context';
@@ -147,24 +147,28 @@ function bootstrap(this: Component, context: Context) {
 
   context = context.push(self);
 
-  let refresh: ((next: (x: number) => number) => void) | undefined;
+  let ready = false;
   let active: Component;
-
-  watch(self, (current) => {
-    active = current;
-    if (refresh) refresh((x) => x + 1);
-  });
 
   function Render() {
     return render.call(active, self.props);
   }
 
   function AsComponent() {
-    refresh = useState(() => 0)[1];
+    useEffect(() => {
+      ready = true;
+    }, []);
 
-    useMount(() => () => {
-      self.set(null);
-      context.pop();
+    useMount((refresh) => {
+      watch(self, (current) => {
+        active = current;
+        if (ready) refresh();
+      });
+
+      return () => {
+        self.set(null);
+        context.pop();
+      };
     });
 
     const children = createElement(Layers.Provider, {
@@ -182,7 +186,7 @@ function bootstrap(this: Component, context: Context) {
         onError(error: Error, reset: (failed?: Error) => void) {
           const { fallback } = self;
           Promise.resolve(self.catch!(error))
-            .then(() => refresh && reset(), reset)
+            .then(() => ready && reset(), reset)
             .finally(() => self.set({ fallback }, true));
         },
         children
@@ -261,17 +265,13 @@ function subcomponents(proto: State) {
 
         function Sub(props: any) {
           const ref = useRef<State | null>(null);
-          const next = useState(0)[1];
 
-          if (ref.current) useMount(() => {});
-          else {
-            const release = watch(self, (current) => {
+          useMount((refresh) => {
+            return watch(self, (current) => {
               ref.current = current;
-              next((x) => x + 1);
+              refresh();
             });
-
-            useMount(() => () => release);
-          }
+          });
 
           return render.call(ref.current, props);
         }
