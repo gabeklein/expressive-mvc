@@ -485,60 +485,25 @@ describe('suspense', () => {
   });
 });
 
-describe.each([false, true])('unmount (strict: %s)', (strict) => {
-  function wrap(jsx: React.ReactNode) {
-    return strict ? <React.StrictMode>{jsx}</React.StrictMode> : jsx;
-  }
+describe('unmount', () => {
+  for (const reactStrictMode of [false, true])
+    it('will dispose instance' + (reactStrictMode ? ' (strict)' : ''), () => {
+      const didDispose = vi.fn();
 
-  it('will dispose instance', () => {
-    const didDispose = vi.fn();
-
-    class Control extends Component {
-      protected new() {
-        return didDispose;
-      }
-    }
-
-    const element = render(wrap(<Control />));
-
-    expect(didDispose).not.toBeCalled();
-
-    element.unmount();
-
-    expect(didDispose).toBeCalled();
-  });
-
-  it('will dispose instance if unmounted in error state', async () => {
-    const didDispose = vi.fn();
-    const Throws = () => {
-      throw new Error('boom');
-    };
-
-    class Control extends Component {
-      fallback = (<span>Oops</span>);
-
-      new() {
-        return didDispose;
+      class Control extends Component {
+        protected new() {
+          return didDispose;
+        }
       }
 
-      async catch() {
-        await new Promise(() => {});
-      }
+      const element = render(<Control />, { reactStrictMode });
 
-      render() {
-        return <Throws />;
-      }
-    }
+      expect(didDispose).not.toBeCalled();
 
-    const element = render(wrap(<Control />));
+      element.unmount();
 
-    screen.getByText('Oops');
-    expect(didDispose).not.toBeCalled();
-
-    element.unmount();
-
-    expect(didDispose).toBeCalled();
-  });
+      expect(didDispose).toBeCalled();
+    });
 });
 
 describe('state props on rerender', () => {
@@ -957,6 +922,39 @@ describe('error boundary', () => {
     process.off('unhandledRejection', trap);
     expect(errors).toHaveLength(0);
   });
+
+  for (const reactStrictMode of [false, true])
+    it('will dispose instance if unmounted in error state' + (reactStrictMode ? ' (strict)' : ''), async () => {
+      const didDispose = vi.fn();
+      const Throws = () => {
+        throw new Error('boom');
+      };
+
+      class Control extends Component {
+        fallback = (<span>Oops</span>);
+
+        new() {
+          return didDispose;
+        }
+
+        async catch() {
+          await new Promise(() => {});
+        }
+
+        render() {
+          return <Throws />;
+        }
+      }
+
+      const element = render(<Control />, { reactStrictMode });
+
+      screen.getByText('Oops');
+      expect(didDispose).not.toBeCalled();
+
+      element.unmount();
+
+      expect(didDispose).toBeCalled();
+    });
 });
 
 describe('subcomponents', () => {
