@@ -545,27 +545,31 @@ function bootstrap(T: State.Extends) {
 
     METHODS.set(type, (keys = new Map(keys)));
 
-    for (const [key, { value }] of Object.entries(
+    for (let [key, { value }] of Object.entries(
       Object.getOwnPropertyDescriptors(type.prototype)
     )) {
       if (!value || key == 'constructor') continue;
 
-      function bind(this: State, original?: Function) {
+      function bind(this: State) {
         const { is } = this;
 
-        if (is.hasOwnProperty(key) && !original) return value as Function;
+        if (is.hasOwnProperty(key)) return value as Function;
 
-        const fn = original || value;
-        const bound = fn.bind(is);
+        const bound = value.bind(is);
 
-        METHOD.set(bound, fn);
+        METHOD.set(bound, value);
         define(is, key, { value: bound, writable: true });
 
         return bound;
       }
 
       keys.set(key, bind);
-      define(type.prototype, key, { get: bind, set: bind });
+      define(type.prototype, key, {
+        get: bind,
+        set(x) {
+          value = x;
+        }
+      });
     }
   }
 
