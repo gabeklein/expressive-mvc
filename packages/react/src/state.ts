@@ -121,7 +121,7 @@ State.use = function <T extends State>(
     let use = (...args: State.Args<T>) => Promise.all(args.flat().map(add));
 
     const instance = new Type((x) => {
-      if (x instanceof State && 'use' in x && typeof x.use == 'function') {
+      if ('use' in x && typeof x.use == 'function') {
         (use = x.use.bind(x))(...args);
       } else {
         return args;
@@ -130,30 +130,29 @@ State.use = function <T extends State>(
 
     const context = outer.push(instance);
 
-    let stable = false;
+    let ready = false;
     let active: T;
 
     watch(instance, (current) => {
       active = current;
 
-      if (stable) next((x) => x + 1);
+      if (ready) next((x) => x + 1);
     });
 
     return (args: State.Args<T>) => {
       Pragma.useEffect(() => {
-        stable = true;
-      });
-      useMount(() => {
-        return () => {
-          context.pop();
-          instance.set(null);
-        };
+        ready = true;
+      }, []);
+
+      useMount(() => () => {
+        context.pop();
+        instance.set(null);
       });
 
-      if (stable) {
-        stable = false;
+      if (ready) {
+        ready = false;
         Promise.resolve(use(...args)).finally(() => {
-          stable = true;
+          ready = true;
         });
       }
 
