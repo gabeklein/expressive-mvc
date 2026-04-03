@@ -2,7 +2,7 @@ import { State, Context, watch } from '@expressive/state';
 
 export const Pragma = {} as {
   createElement(type: any, props?: any, ...children: any[]): any;
-  useState<S>(initial: S): [S, (next: (previous: S) => S) => void];
+  useState<S>(initial: S | (() => S)): [S, (next: (previous: S) => S) => void];
   useEffect(effect: () => (() => void) | void, deps?: any[]): void;
   useRef<T>(initial: T): { current: T };
 };
@@ -112,9 +112,7 @@ State.use = function <T extends State>(
   const ref = Pragma.useRef<((args: State.Args<T>) => T) | null>(null);
   const next = Pragma.useState(0)[1];
 
-  if (!ref.current) ref.current = init(this);
-
-  return ref.current(args);
+  return (ref.current || (ref.current = init(this)))(args);
 
   function init(Type: State.Type<T>) {
     const add = (arg: unknown) =>
@@ -142,8 +140,10 @@ State.use = function <T extends State>(
     });
 
     return (args: State.Args<T>) => {
-      useMount(() => {
+      Pragma.useEffect(() => {
         stable = true;
+      });
+      useMount(() => {
         return () => {
           context.pop();
           instance.set(null);
@@ -170,9 +170,7 @@ State.get = function <T extends State>(
   const next = Pragma.useState(0)[1];
   const context = Context.get();
 
-  if (!ref.current) ref.current = init(this);
-
-  return ref.current();
+  return (ref.current || (ref.current = init(this)))();
 
   function init(Type: State.Extends<T>) {
     let instance: T | undefined;
@@ -270,19 +268,33 @@ State.get = function <T extends State>(
 /**
  * useEffect which tolerates react StrictMode double-invoking effects on mount.
  */
-export function useMount(callback: () => void | (() => void)) {
-  const ref = Pragma.useRef(0);
-
-  Pragma.useState(() => ref.current++);
-  Pragma.useEffect(() => {
-    if (ref.current === 1) {
-      const unmount = callback();
-      if (unmount)
-        return () => {
-          if (!--ref.current) unmount();
-        };
+export function useMount(
+  callback: (refresh: () => void) => (() => void) | void
+) {
+  const { current } = Pragma.useRef(
+    {} as {
+      ready?: boolean;
+      mounts: number;
+      unmount: (() => void) | void;
+      update: (next: (previous: number) => number) => void;
     }
-    return () => --ref.current;
+  );
+
+  current.update = Pragma.useState(() => {
+    if (!current.mounts) {
+      current.mounts = 0;
+      current.unmount = callback(() => {
+        if (current.ready) current.update((x) => x + 1);
+      });
+    }
+    return current.mounts++;
+  })[1];
+
+  Pragma.useEffect(() => {
+    current.ready = true;
+    return () => {
+      if (!--current.mounts) current.unmount?.();
+    };
   }, []);
 }
 

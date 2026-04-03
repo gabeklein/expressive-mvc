@@ -2,8 +2,8 @@ import { watch, unbind } from '@expressive/state';
 import React, {
   createElement,
   Suspense,
+  useEffect,
   useRef,
-  useState,
   type ReactNode
 } from 'react';
 import { Context, Layers } from './context';
@@ -147,25 +147,29 @@ function bootstrap(this: Component, context: Context) {
 
   context = context.push(self);
 
-  let refresh: ((next: (x: number) => number) => void) | undefined;
+  let ready = false;
   let active: Component;
-
-  watch(self, (current) => {
-    active = current;
-    if (refresh) refresh((x) => x + 1);
-  });
 
   function Render() {
     return render.call(active, self.props);
   }
 
   function AsComponent() {
-    refresh = useState(() => 0)[1];
+    useMount((refresh) => {
+      watch(self, (current) => {
+        active = current;
+        if (ready) refresh();
+      });
 
-    useMount(() => () => {
-      self.set(null);
-      context.pop();
+      return () => {
+        self.set(null);
+        context.pop();
+      };
     });
+
+    useEffect(() => {
+      ready = true;
+    }, []);
 
     const children = createElement(Layers.Provider, {
       value: context,
@@ -182,7 +186,7 @@ function bootstrap(this: Component, context: Context) {
         onError(error: Error, reset: (failed?: Error) => void) {
           const { fallback } = self;
           Promise.resolve(self.catch!(error))
-            .then(() => refresh && reset(), reset)
+            .then(() => ready && reset(), reset)
             .finally(() => self.set({ fallback }, true));
         },
         children
@@ -242,8 +246,6 @@ function subcomponents(proto: State) {
 
     const { get, value } = Object.getOwnPropertyDescriptor(proto, key)!;
 
-    // state bootstrap replaces methods with get/set bind pair
-    // if still a plain value, it's not a method
     if (!get && typeof value !== 'function') continue;
 
     Object.defineProperty(proto, key, {
@@ -251,27 +253,17 @@ function subcomponents(proto: State) {
       get(this: Component) {
         const self = this.is;
 
-        // preempt auto-bind defining non-configurable property
-        Object.defineProperty(self, key, {
-          configurable: true,
-          writable: true
-        });
-
         let render = unbind(get ? get.call(this) : value);
 
         function Sub(props: any) {
-          const ref = useRef<State | null>(null);
-          const next = useState(0)[1];
+          const ref = useRef<State>(null);
 
-          if (ref.current) useMount(() => {});
-          else {
-            const release = watch(self, (current) => {
+          useMount((refresh) =>
+            watch(self, (current) => {
               ref.current = current;
-              next((x) => x + 1);
-            });
-
-            useMount(() => () => release);
-          }
+              refresh();
+            })
+          );
 
           return render.call(ref.current, props);
         }
