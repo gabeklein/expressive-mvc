@@ -132,31 +132,29 @@ State.use = function <T extends State>(
 
     const context = outer.push(instance);
 
-    let mounts = 0;
-    let mounted = false;
+    let stable = false;
     let active: T;
 
     watch(instance, (current) => {
       active = current;
 
-      if (mounted) next((x) => x + 1);
+      if (stable) next((x) => x + 1);
     });
 
     return (args: State.Args<T>) => {
-      Pragma.useState(() => mounts++);
-      Pragma.useEffect(() => {
-        mounted = true;
+      useMount(() => {
+        stable = true;
         return () => {
-          if (--mounts) return;
           context.pop();
           instance.set(null);
         };
-      }, []);
+      });
 
-      if (mounted) {
-        mounted = false;
-
-        Promise.resolve(use(...args)).finally(() => (mounted = true));
+      if (stable) {
+        stable = false;
+        Promise.resolve(use(...args)).finally(() => {
+          stable = true;
+        });
       }
 
       return active;
@@ -258,21 +256,34 @@ State.get = function <T extends State>(
       return () => null;
     }
 
-    let mounts = 0;
-
     return () => {
-      Pragma.useState(() => mounts++);
-
       pending = false;
       Pragma.useEffect(() => {
         mounted = true;
-        return () => {
-          if (!--mounts) release();
-        };
       }, []);
+      useMount(() => release);
       return value === undefined ? null : value;
     };
   }
 };
+
+/**
+ * useEffect which tolerates react StrictMode double-invoking effects on mount.
+ */
+export function useMount(callback: () => void | (() => void)) {
+  const ref = Pragma.useRef(0);
+
+  Pragma.useState(() => ref.current++);
+  Pragma.useEffect(() => {
+    if (ref.current === 1) {
+      const unmount = callback();
+      if (unmount)
+        return () => {
+          if (!--ref.current) unmount();
+        };
+    }
+    return () => --ref.current;
+  }, []);
+}
 
 export { State };

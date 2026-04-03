@@ -2,13 +2,12 @@ import { watch, unbind } from '@expressive/state';
 import React, {
   createElement,
   Suspense,
-  useEffect,
   useRef,
   useState,
   type ReactNode
 } from 'react';
 import { Context, Layers } from './context';
-import { State } from './state';
+import { State, useMount } from './state';
 
 const PENDING = new WeakMap<object, Component>();
 
@@ -161,19 +160,12 @@ function bootstrap(this: Component, context: Context) {
   }
 
   function AsComponent() {
-    const ref = useRef(0);
+    refresh = useState(() => 0)[1];
 
-    refresh = useState(() => (ref.current++, 0))[1];
-
-    useEffect(
-      () => () => {
-        if (--ref.current) return;
-        refresh = undefined;
-        self.set(null);
-        context.pop();
-      },
-      []
-    );
+    useMount(() => () => {
+      self.set(null);
+      context.pop();
+    });
 
     const children = createElement(Layers.Provider, {
       value: context,
@@ -268,35 +260,20 @@ function subcomponents(proto: State) {
         let render = unbind(get ? get.call(this) : value);
 
         function Sub(props: any) {
-          const ref = useRef<((props: any) => any) | null>(null);
-          let next: ((dispatch: (x: number) => number) => void) | undefined;
+          const ref = useRef<State | null>(null);
+          const next = useState(0)[1];
 
-          if (!ref.current) {
-            let active: Component;
-            let mounts = 0;
-
+          if (ref.current) useMount(() => {});
+          else {
             const release = watch(self, (current) => {
-              active = current;
-              if (next) next((x) => x + 1);
+              ref.current = current;
+              next((x) => x + 1);
             });
 
-            ref.current = (props: any) => {
-              next = useState(() => (mounts++, 0))[1];
-
-              useEffect(
-                () => () => {
-                  if (--mounts) return;
-                  release();
-                  ref.current = null;
-                },
-                []
-              );
-
-              return render.call(active, props);
-            };
+            useMount(() => () => release);
           }
 
-          return ref.current(props);
+          return render.call(ref.current, props);
         }
 
         Object.defineProperty(self, key, {

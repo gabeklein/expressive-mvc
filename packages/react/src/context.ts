@@ -5,10 +5,9 @@ import {
   ReactNode,
   Suspense,
   useContext,
-  useEffect,
-  useRef,
-  useState
+  useRef
 } from 'react';
+import { useMount } from './state';
 
 const Layers = createContext(new Context());
 
@@ -77,44 +76,30 @@ declare namespace Provider {
 
 function Provider<T extends State>(props: Provider.Props<T>) {
   const ambient = useContext(Layers);
-  const ref = useRef<((props: Provider.Props<T>) => ReactNode) | null>(null);
+  const ref = useRef<Context | null>(null);
+  const context = ref.current || (ref.current = new Context(ambient));
 
-  if (!ref.current) {
-    const context = ambient.push();
-    let mounts = 0;
+  let {
+    for: input,
+    children,
+    fallback,
+    name,
+    ...rest
+  } = props as Provider.ForSingleProps<T> & Provider.ForMultipleProps<T>;
 
-    ref.current = (props) => {
-      let {
-        for: input,
-        children,
-        fallback,
-        name,
-        ...rest
-      } = props as Provider.ForSingleProps<T> & Provider.ForMultipleProps<T>;
+  context.set(input, (added) => rest.is?.(added));
 
-      context.set(input, (added) => rest.is?.(added));
-
-      if (Object.keys(rest).length) {
-        if (State.is(input)) input = context.get(input) as T;
-        if (input instanceof State) input.set(rest as State.Assign<T>);
-      }
-
-      useState(() => mounts++);
-      useEffect(
-        () => () => {
-          if (!--mounts) context.pop();
-        },
-        []
-      );
-
-      if (fallback !== undefined)
-        children = createElement(Suspense, { fallback, name }, children);
-
-      return createElement(Layers.Provider, { value: context, children });
-    };
+  if (Object.keys(rest).length) {
+    if (State.is(input)) input = context.get(input) as T;
+    if (input instanceof State) input.set(rest as State.Assign<T>);
   }
 
-  return ref.current(props);
+  useMount(() => () => context.pop());
+
+  if (fallback !== undefined)
+    children = createElement(Suspense, { fallback, name }, children);
+
+  return createElement(Layers.Provider, { value: context, children });
 }
 
 export { Consumer, Provider, Context, Layers };
