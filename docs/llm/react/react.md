@@ -39,7 +39,7 @@ class Counter extends Component {
 
 ## State.use() - Local Component State
 
-Creates a state instance scoped to component lifecycle. Subscribes to updates automatically. Retroactively on all State by the React adapter.
+Creates a state instance scoped to component lifecycle. Subscribes to updates automatically. Retroactively on base State with React adapter.
 
 ```tsx
 class Counter extends State {
@@ -63,11 +63,13 @@ function App() {
 
 ### Constructor arguments
 
-Accepts same arguments as `State.new()` - strings, objects, callbacks:
+Accepts same arguments as `State.new()` - objects, callbacks:
 
 ```tsx
 const state = MyState.use({ count: 10 });
-const state = MyState.use('my-id');
+const state = MyState.use((self) => {
+  /* init, runs once */
+});
 ```
 
 ### use() method
@@ -90,6 +92,9 @@ function SearchPage() {
   return (
     <div>
       <h1>Results for: {query}</h1>
+      {results.map((r) => {
+        /* ... */
+      })}
     </div>
   );
 }
@@ -117,7 +122,7 @@ function App({ name }: { name: string }) {
 ## State.get() - Context Hook
 
 Fetches a state instance from context (provided by `Provider` or `Component`).
-Independently subscribes to updates on accessed properties. Also added by React adapter to all State.
+Independently subscribes to updates on accessed properties. Also on all State.
 
 ```tsx
 function Profile() {
@@ -140,7 +145,7 @@ const app = AppState.get(true); // Required<T>, suspends if any value undefined
 
 ### Computed selector
 
-Pass a factory to derive a value. Only re-renders when the computed result changes:
+Pass a factory to derive a value. Reruns when deps change, and only re-renders on new result:
 
 ```tsx
 const name = AppState.get(($) => $.user.name);
