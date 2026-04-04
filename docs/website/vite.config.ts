@@ -8,7 +8,7 @@ import { resolve, join } from 'path';
 import { cp, readFile } from 'fs/promises';
 
 function serveLlm(): Plugin {
-  const dir = resolve(__dirname, '../llm');
+  const dir = resolve(__dirname, '../../skills');
   return {
     name: 'serve-llm',
     configureServer(server) {

@@ -4,56 +4,19 @@ Contributor guide for AI agents working in this repository.
 
 ## Overview
 
-Expressive State - class-based reactive state management library.
-
-- `@expressive/state` - framework-agnostic core
-- `@expressive/react` - React adapter (primary)
-- `@expressive/preact` - Preact adapter
-- `@expressive/solid` - Solid adapter (not published yet)
+Expressive State - class-based reactive state management library. For API reference, read [skills/SKILL.md](skills/SKILL.md) and linked sub-files first. Consult source only when docs are insufficient.
 
 Monorepo: pnpm workspaces + lerna.
 
 ## Structure
 
 ```
-packages/state  - Core primitives
-packages/react  - React adapter (.use, .get, Component, Provider)
-packages/preact - Preact adapter
-packages/solid  - Solid adapter
-docs/llm/       - Topic-specific reference docs (see below)
+packages/state  - Core primitives (@expressive/state)
+packages/react  - React adapter (@expressive/react)
+packages/preact - Preact adapter (@expressive/preact)
+packages/solid  - Solid adapter (@expressive/solid)
+skills/         - API reference docs (also published as skills.sh skill)
 ```
-
-## Reference Docs
-
-Detailed API docs in `docs/llm/`. Each file is self-contained - fetch only what you need.
-
-> **Read these first.** These docs cover API surface, types, lifecycle, and patterns comprehensively. Consult the relevant file before reading source.
-
-### State (core)
-
-- `state/state.md` - State class, reactivity, child states, methods, statics, context
-- `state/get.md` - `state.get()` method overloads
-- `state/set.md` - `state.set()` method overloads
-- `state/lifecycle.md` - Lifecycle phases, teardown, effects, error handling
-- `state/types.md` - Type aliases (`State.Extends`, `State.Field`, etc.)
-
-### Instructions
-
-- `instructions/get.md` - Context lookup instruction
-- `instructions/set.md` - Computed, factory, validation instruction
-- `instructions/ref.md` - Mutable references instruction
-- `instructions/def.md` - Custom instruction primitive
-
-### React
-
-- `react/react.md` - React adapter: State.use(), .get(), Provider, JSX
-- `react/component.md` - Component class, subcomponents, error boundaries
-- `react/patterns.md` - Common recipes and examples
-
-### Other
-
-- `bootstrap.md` - Drop-in snippet for consumer CLAUDE.md/AGENTS.md
-- `solid.md` - Solid adapter docs
 
 ## Commands
 
@@ -104,7 +67,7 @@ await expect(state).not.toHaveUpdated();
 - Framework-agnostic logic belongs in `packages/state`.
 - React changes must stay aligned across `packages/react/src/{state,component,context}.{ts,test.tsx}`.
 - Update tests alongside behavioral/type changes - tests must fail without the change.
-- New major features need `docs/llm/` docs.
+- New major features need `skills/` docs.
 
 ## Guardrails
 
