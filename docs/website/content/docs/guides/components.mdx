@@ -1,0 +1,286 @@
+---
+title: Components
+description: The Component class - state that renders itself
+---
+
+`Component` extends `State` and works directly as a React component. It's the most expressive form Expressive offers: a single class that holds state, behavior, lifecycle, and rendering. Properties accessed in `render()` are reactive - any change triggers a re-render automatically.
+
+```tsx
+import { Component } from '@expressive/react';
+
+class Counter extends Component {
+  count = 0;
+
+  increment() {
+    this.count++;
+  }
+
+  render() {
+    return <button onClick={this.increment}>{this.count}</button>;
+  }
+}
+
+// Use directly as JSX
+<Counter />;
+```
+
+Behind the scenes, `Component` is a real React class component, so it plays nicely with error boundaries, devtools, and anything else that inspects the tree.
+
+<br/>
+
+## When to use Component vs `State.use()`
+
+- Use **`State` + `.use()`** when you want to keep state logic and rendering in separate files. The component is a function, the class is a module. This is the most common pattern.
+- Use **`Component`** when the state is tightly bound to how it renders - when the "feature" and the "UI" are the same thing. Dashboards, self-contained widgets, and configurable panels are typical cases.
+
+There's no performance difference. It's an organizational choice.
+
+<br/>
+
+## Props
+
+State fields become optional JSX props automatically:
+
+```tsx
+class Greeting extends Component {
+  name = 'World';
+
+  render() {
+    return <h1>Hello, {this.name}!</h1>;
+  }
+}
+
+<Greeting name="React" />;
+```
+
+Props are applied to the instance on every render. TypeScript infers the prop type from the class fields - no separate interface needed.
+
+### Extra render props
+
+If you need props that aren't state fields, declare them via the `render()` parameter:
+
+```tsx
+class Card extends Component {
+  title = '';
+
+  render(props = {} as { className: string }) {
+    return <div className={props.className}>{this.title}</div>;
+  }
+}
+
+<Card title="Hello" className="card" />;
+```
+
+The `= {} as T` default is required to satisfy TypeScript's JSX attribute inference, and it's safely ignored at runtime. Required fields in the parameter become required JSX attributes.
+
+All props (state-derived, render-declared, and special) are available via `this.props`.
+
+### Special props
+
+Every `Component` accepts these regardless of state fields:
+
+| Prop       | Type                    | Description                                           |
+| ---------- | ----------------------- | ----------------------------------------------------- |
+| `is`       | `(instance: T) => void` | Called once with the created instance                 |
+| `fallback` | `ReactNode`             | Shown while suspended or during error recovery        |
+
+```tsx
+<Counter is={(c) => console.log('created', c)} fallback={<Loading />} />
+```
+
+<br/>
+
+## Children
+
+If `render()` takes no parameter (or is omitted entirely), children pass through a context provider. The component becomes a data provider:
+
+```tsx
+class Layout extends Component {
+  theme = 'light';
+}
+
+<Layout theme="dark">
+  <Header />
+  <Main />
+</Layout>
+```
+
+Descendants can reach the layout via `Layout.get()`:
+
+```tsx
+function Header() {
+  const { theme } = Layout.get();
+  return <header className={theme}>...</header>;
+}
+```
+
+<br/>
+
+## Context
+
+Component instances are automatically provided to context. Any descendant in the tree can look them up with `State.get()`. This is why the `Component` pattern is a natural fit for layouts, shells, and feature containers - the container *is* the context.
+
+```tsx
+class App extends Component {
+  user = 'Alice';
+}
+
+function Profile() {
+  const { user } = App.get();
+  return <p>{user}</p>;
+}
+
+<App>
+  <Profile />
+</App>
+```
+
+<br/>
+
+## Suspense
+
+Set `fallback` on the class or via JSX to render a placeholder while children or `render()` are suspended:
+
+```tsx
+class DataView extends Component {
+  fallback = <span>Loading...</span>;
+  data = set(async () => fetch('/api/data').then((r) => r.json()));
+
+  render() {
+    return <pre>{JSON.stringify(this.data, null, 2)}</pre>;
+  }
+}
+```
+
+The JSX `fallback` prop overrides the class property for that instance.
+
+<br/>
+
+## Error boundaries
+
+Override `catch()` to handle errors thrown by children during render:
+
+```tsx
+class SafeView extends Component {
+  async catch(error: Error) {
+    this.fallback = <span>Something went wrong</span>;
+    await reportError(error);
+  }
+
+  render() {
+    return <RiskyComponent />;
+  }
+}
+```
+
+- If `catch()` sets `this.fallback`, the fallback is shown while `catch()` runs. After it resolves, `render()` is retried.
+- If `catch()` returns a rejected promise (or throws), the error propagates to the nearest parent boundary.
+- Without an overridden `catch()`, errors propagate normally.
+- If a child throws *again* after recovery, the error escapes the boundary.
+
+This gives you a declarative way to build per-feature error handling without nesting `<ErrorBoundary>` components.
+
+<br/>
+
+## Subcomponents
+
+Any method whose name starts with a capital letter becomes a React component scoped to `this`:
+
+```tsx
+class Dashboard extends Component {
+  items = ['alpha', 'beta', 'gamma'];
+  title = 'My Dashboard';
+
+  Header() {
+    return <h1>{this.title}</h1>;
+  }
+
+  Sidebar() {
+    return (
+      <ul>
+        {this.items.map((i) => <li key={i}>{i}</li>)}
+      </ul>
+    );
+  }
+
+  render() {
+    return (
+      <div>
+        <this.Header />
+        <this.Sidebar />
+      </div>
+    );
+  }
+}
+```
+
+Key behaviors:
+
+- Each subcomponent subscribes independently to the parent instance. A change to `title` re-renders only `Header`, not `Sidebar`.
+- Multiple usages of the same subcomponent are independent.
+- Subcomponents accept props like any React component.
+- They're reachable through context: `Dashboard.get()` then `<dashboard.Sidebar />`.
+- They're overridable at runtime and in subclasses.
+
+### Subclass composition
+
+Subcomponents make subclassing usable as a composition model:
+
+```tsx
+class Base extends Component {
+  Header(): ReactNode { return null; }
+  Footer(): ReactNode { return null; }
+
+  render() {
+    return (
+      <>
+        <this.Header />
+        <main>{this.props.children}</main>
+        <this.Footer />
+      </>
+    );
+  }
+}
+
+class AdminPage extends Base {
+  Header() { return <nav>Admin Nav</nav>; }
+  Footer() { return <small>Admin Footer</small>; }
+}
+```
+
+This gives you plug-and-play layout templates without render props or higher-order components.
+
+<br/>
+
+## Lifecycle on Components
+
+Components inherit the full State lifecycle:
+
+- `new()` - called once after initialization. Return a cleanup function for unmount teardown.
+- `use()` - called on every render. Use for bridging external React hooks.
+- `catch(error)` - error boundary handler.
+- Destruction happens on unmount or explicit `this.set(null)`.
+
+```tsx
+class Timer extends Component {
+  elapsed = 0;
+
+  new() {
+    const id = setInterval(() => this.elapsed++, 1000);
+    return () => clearInterval(id);
+  }
+
+  render() {
+    return <span>{this.elapsed}s</span>;
+  }
+}
+```
+
+Component handles React strict mode correctly - only one instance is created despite double-mounts.
+
+<br/>
+
+## Next
+
+- [Context](/docs/guides/context) - Provider, `get` instruction, and downstream collection.
+- [API: Component](/docs/api/component) - every Component method and prop.

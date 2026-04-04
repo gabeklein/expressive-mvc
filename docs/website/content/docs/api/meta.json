@@ -1,4 +1,11 @@
 {
   "title": "API Reference",
-  "pages": ["react", "state", "instructions", "utilities"]
+  "pages": [
+    "state",
+    "component",
+    "instructions",
+    "hooks",
+    "utilities",
+    "types"
+  ]
 }

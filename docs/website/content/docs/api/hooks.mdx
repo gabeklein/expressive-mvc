@@ -1,0 +1,234 @@
+---
+title: React Hooks
+description: State.use, State.get, Provider, and Consumer
+---
+
+The React adapter augments the `State` class with two static methods (`use` and `get`) and provides two components (`Provider` and `Consumer`). These are the React-specific entry points to Expressive.
+
+```tsx
+import State, { Provider, Consumer } from '@expressive/react';
+```
+
+<br/>
+
+## `State.use(...args)`
+
+Creates a state instance scoped to a React component.
+
+```tsx
+function CounterView() {
+  const { count, increment } = Counter.use();
+  return <button onClick={increment}>{count}</button>;
+}
+```
+
+- Instance is created on mount and destroyed on unmount.
+- Reading properties subscribes the component - it re-renders when those properties change.
+- Methods are auto-bound; safe to destructure and pass as event handlers.
+- Strict mode safe (handles double-mount correctly).
+
+### With initial values
+
+```tsx
+const form = Form.use({ name: 'Alice', email: 'a@b.c' });
+```
+
+### With a lifecycle callback
+
+```tsx
+const timer = Timer.use((self) => {
+  self.start();
+  return () => self.stop();
+});
+```
+
+### With a `use()` method
+
+If your class defines a `use()` method, its parameters define the arguments to `State.use()`:
+
+```tsx
+class Search extends State {
+  query = '';
+
+  use(props: { initialQuery: string }) {
+    this.query = props.initialQuery;
+  }
+}
+
+const state = Search.use({ initialQuery: 'react' });
+```
+
+`use()` runs on every render - use it to bridge React hooks:
+
+```tsx
+class Nav extends State {
+  use() {
+    const navigate = useNavigate();
+    if (this.shouldRedirect) navigate('/home');
+  }
+}
+```
+
+<br/>
+
+## `State.get()`
+
+Fetches a state instance from context and subscribes to accessed properties.
+
+```tsx
+function Profile() {
+  const { user } = UserProfile.get();
+  return <h1>{user.name}</h1>;
+}
+```
+
+- Throws if the state is not provided above.
+- Re-subscribes if the upstream instance is replaced.
+
+### Optional lookup
+
+```tsx
+const maybe = Theme.get(false); // Theme | undefined
+```
+
+### Required values
+
+```tsx
+const user = User.get(true); // Required<User> - suspends on undefined fields
+```
+
+### Computed selector
+
+Pass a factory to derive a value. The component re-renders only when the derived result changes by `===`:
+
+```tsx
+const summary = Cart.get((cart) => ({
+  total: cart.total,
+  count: cart.count,
+}));
+```
+
+The factory receives:
+
+- A tracking proxy (reads subscribe).
+- A `ForceRefresh` function.
+
+### Effect mode
+
+Return `null` from the factory to run a side effect without subscribing:
+
+```tsx
+AppState.get((app) => {
+  console.log('user changed:', app.user);
+  return null;
+});
+```
+
+### `ForceRefresh`
+
+The second argument is a function that forces the component to re-render:
+
+```ts
+type ForceRefresh = {
+  (): void;
+  <T>(promise: Promise<T>): Promise<T>;
+  <T>(fn: () => Promise<T>): Promise<T>;
+};
+```
+
+```tsx
+const data = DataService.get((svc, refresh) => {
+  const reload = () => refresh(svc.fetch());
+  return { items: svc.items, reload };
+});
+```
+
+<br/>
+
+## `Provider`
+
+Puts a state instance (or several) into React context for its descendants.
+
+```tsx
+<Provider for={Theme}>
+  <App />
+</Provider>
+```
+
+### Props
+
+| Prop       | Type                                                   | Description                                          |
+| ---------- | ------------------------------------------------------ | ---------------------------------------------------- |
+| `for`      | `State \| State.Type \| Record<string, State.Type>`    | State instance, class, or map of classes to provide  |
+| `is`       | `(instance) => void \| (() => void)`                   | Called per created instance; optional cleanup        |
+| `fallback` | `ReactNode`                                            | Wraps children in a Suspense boundary                |
+| `name`     | `string`                                               | Debug label for the boundary                         |
+| `children` | `ReactNode`                                            | Content rendered within the provider                 |
+| `[field]`  | varies                                                 | State fields passed as JSX props, merged to instance |
+
+### Providing a class
+
+```tsx
+<Provider for={Theme} color="dark">
+  <App />
+</Provider>
+```
+
+The provider creates an instance on mount and destroys it on unmount.
+
+### Providing an instance
+
+```tsx
+const theme = Theme.new();
+<Provider for={theme}><App /></Provider>
+```
+
+Externally-owned instances are not destroyed when the provider unmounts.
+
+### Providing multiple
+
+```tsx
+<Provider for={{ theme: Theme, auth: AuthService }}>
+  <App />
+</Provider>
+```
+
+### With a creation callback
+
+```tsx
+<Provider for={Theme} is={(theme) => theme.load()}>
+  <App />
+</Provider>
+```
+
+For multi-state providers, the `is` callback runs once per created instance and can return a cleanup function.
+
+### With Suspense
+
+```tsx
+<Provider for={UserProfile} fallback={<Spinner />}>
+  <ProfileView />
+</Provider>
+```
+
+<br/>
+
+## `Consumer`
+
+Render-prop access to context state.
+
+```tsx
+<Consumer for={Theme}>
+  {(theme) => <p style={{ color: theme.color }}>Themed</p>}
+</Consumer>
+```
+
+The child function receives a tracking proxy, so property reads subscribe just like `State.get()`.
+
+<br/>
+
+## See also
+
+- [Context guide](/docs/guides/context) - `Provider` patterns and the `get` instruction.
+- [Components](/docs/api/component) - the `Component` class as an alternative to `Provider` + `use()`.
+- [State](/docs/api/state) - the base class and its methods.

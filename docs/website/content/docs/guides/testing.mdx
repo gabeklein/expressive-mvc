@@ -1,0 +1,257 @@
+---
+title: Testing
+description: Test state logic without a renderer, a DOM, or act()
+---
+
+One of the biggest organizational wins of moving state into classes is that the state becomes testable on its own terms. No `@testing-library/react`, no `render()`, no `act()`, no mocking a DOM - just create an instance, call methods, assert properties.
+
+```ts
+import { test, expect } from 'vitest';
+import { Counter } from './counter';
+
+test('increments count', () => {
+  const counter = Counter.new();
+  expect(counter.count).toBe(0);
+  counter.increment();
+  expect(counter.count).toBe(1);
+});
+```
+
+This section covers the patterns you'll use most.
+
+<br/>
+
+## Create with `State.new()`
+
+Always use `State.new()` in tests, never `new State()`. `.new()` activates the instance so properties are reactive and lifecycle hooks run.
+
+```ts
+const user = UserForm.new();              // empty state
+const user = UserForm.new({ name: 'A' }); // with initial values
+const user = UserForm.new({ name: 'A' }, (self) => {
+  self.touch(); // lifecycle callback
+});
+```
+
+<br/>
+
+## Testing actions
+
+Method tests are the cleanest form - arrange, act, assert:
+
+```ts
+test('adds an item to the cart', () => {
+  const cart = Cart.new();
+  cart.add({ id: '1', price: 10, qty: 2 });
+  expect(cart.items).toHaveLength(1);
+  expect(cart.total).toBe(20);
+});
+```
+
+Because computed values update synchronously (on read), assertions against them are straightforward.
+
+<br/>
+
+## Testing async methods
+
+Async methods are just async methods:
+
+```ts
+test('saves the form', async () => {
+  const form = UserForm.new({ name: 'Alice', email: 'a@b.c' });
+  await form.save();
+  expect(form.saving).toBe(false);
+  expect(form.error).toBeNull();
+});
+```
+
+Mock `fetch` or the service the method calls - the class has no React-specific entry points to stub out.
+
+<br/>
+
+## Testing async factories
+
+For `set(async () => ...)` properties, you can either await the value directly or wait for the flush:
+
+```ts
+test('loads user data', async () => {
+  const profile = UserProfile.new({ userId: 'u1' });
+  const data = await profile.user; // async set - awaiting the property works
+  expect(data.name).toBe('Alice');
+});
+```
+
+If the factory depends on a `set<T>()` placeholder, the await chains through automatically:
+
+```ts
+test('suspends until userId is set', async () => {
+  const profile = UserProfile.new();
+  const pending = profile.user.catch?.(() => 'pending'); // suspense throw
+  profile.userId = 'u1';
+  const data = await profile.user;
+  expect(data).toBeDefined();
+});
+```
+
+<br/>
+
+## Testing subscriptions and updates
+
+To assert that an update fires, attach a listener with `state.get('key', cb)`:
+
+```ts
+test('notifies on count change', () => {
+  const counter = Counter.new();
+  const seen: number[] = [];
+  counter.get('count', () => seen.push(counter.count));
+
+  counter.increment();
+  counter.increment();
+  expect(seen).toEqual([1, 2]);
+});
+```
+
+To assert the shape of a batched update, await `state.set()`:
+
+```ts
+test('batches writes', async () => {
+  const form = Form.new();
+  form.name = 'Alice';
+  form.email = 'a@b.c';
+  const updated = await form.set(); // array of keys
+  expect(updated).toEqual(['name', 'email']);
+});
+```
+
+<br/>
+
+## Testing effects
+
+Effects registered via `state.get(effect)` run immediately and return an unsubscribe function:
+
+```ts
+test('effect re-runs on change', () => {
+  const state = App.new();
+  const snapshots: string[] = [];
+
+  const stop = state.get((current) => {
+    snapshots.push(current.title);
+  });
+
+  state.title = 'A';
+  state.title = 'B';
+
+  return new Promise((r) => queueMicrotask(() => {
+    expect(snapshots).toEqual(['', 'A', 'B']);
+    stop();
+    r(undefined);
+  }));
+});
+```
+
+Because effect re-runs are batched via microtask, flush once with `queueMicrotask` (or `await state.set()`) before asserting.
+
+<br/>
+
+## Snapshot and restore
+
+`state.get()` (no arguments) returns a frozen snapshot of all enumerable fields. `state.set(obj)` merges values back:
+
+```ts
+test('round-trips a form', () => {
+  const form = Form.new({ name: 'Alice', email: 'a@b.c' });
+  const snapshot = form.get();
+
+  const restored = Form.new();
+  restored.set(snapshot);
+  expect(restored.name).toBe('Alice');
+  expect(restored.email).toBe('a@b.c');
+});
+```
+
+Useful for fixtures, serialization tests, and undo/redo logic.
+
+<br/>
+
+## Testing computed values
+
+Computed values are pure functions of their inputs - trivial to test:
+
+```ts
+test('total recomputes from items', () => {
+  const cart = Cart.new();
+  expect(cart.total).toBe(0);
+
+  cart.items = [{ price: 10, qty: 2 }];
+  expect(cart.total).toBe(20);
+
+  cart.items = [];
+  expect(cart.total).toBe(0);
+});
+```
+
+<br/>
+
+## Testing context dependencies
+
+For classes that declare `get(OtherState)`, the cleanest test is to construct the dependency and provide it via `State.new()` with a context arg, or compose them as children:
+
+```ts
+class Theme extends State {
+  color = 'blue';
+}
+
+class Panel extends State {
+  theme = get(Theme);
+}
+
+test('panel reads theme from parent', () => {
+  class App extends State {
+    theme = new Theme();
+    panel = new Panel();
+  }
+
+  const app = App.new();
+  expect(app.panel.theme.color).toBe('blue');
+});
+```
+
+When the relationship is parent-child, the child finds the parent's dependency through the owned-child context automatically.
+
+<br/>
+
+## Testing destruction
+
+```ts
+test('cleans up on destroy', () => {
+  let cleaned = false;
+  class Timer extends State {
+    new() {
+      return () => { cleaned = true; };
+    }
+  }
+
+  const t = Timer.new();
+  t.set(null);
+  expect(cleaned).toBe(true);
+  expect(t.get(null)).toBe(true); // isDestroyed
+});
+```
+
+<br/>
+
+## What you don't need
+
+- **`act()`** - there's no renderer to flush.
+- **`@testing-library/react`** - you're not rendering anything.
+- **`jsdom`** - unless you're testing a `Component` subclass that actually mounts.
+- **Mocks for hooks** - State classes don't call hooks unless you define `use()`, which you can opt out of in tests by calling `.new()` instead of `.use()`.
+
+For tests that *do* exercise rendering (a `Component` subclass, for example), use your normal React testing setup - Expressive does nothing special there.
+
+<br/>
+
+## Next
+
+- [API: State](/docs/api/state) - every method on the State base class.
+- [API: Instructions](/docs/api/instructions) - the full surface of `get`, `set`, `ref`, and `def`.

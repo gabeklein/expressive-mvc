@@ -1,0 +1,235 @@
+---
+title: Types
+description: TypeScript type aliases on the State namespace
+---
+
+All public types are namespaced on `State`. Import from `@expressive/state` or `@expressive/react`:
+
+```ts
+import type { State } from '@expressive/react';
+```
+
+<br/>
+
+## Class shape
+
+### `State.Extends<T>`
+
+Abstract or concrete constructor of a State. Use for parameters that accept any class in the hierarchy.
+
+```ts
+function lookup<T extends State>(Type: State.Extends<T>): T | undefined;
+```
+
+### `State.Type<T>`
+
+Concrete (instantiable) constructor. Use when `new` is required.
+
+```ts
+function create<T extends State>(Type: State.Type<T>): T;
+```
+
+<br/>
+
+## Field introspection
+
+### `State.Field<T>`
+
+Keys of `T` excluding inherited `State` members (`get`, `set`, `is`, etc.).
+
+```ts
+class MyState extends State {
+  foo = 1;
+  bar = 'hello';
+}
+
+type Fields = State.Field<MyState>; // 'foo' | 'bar'
+```
+
+### `State.Event<T>`
+
+Any valid event key - includes fields, numbers, symbols, and arbitrary strings for custom events.
+
+```ts
+type Event<T> = Field<T> | number | symbol | (string & {});
+```
+
+### `State.Signal<T>`
+
+All event signals dispatched to listeners, including lifecycle meta events.
+
+```ts
+type Signal<T> = Event<T> | true | false | null;
+```
+
+Meaning of special values:
+
+- `true` - initial activation (ready)
+- `false` - a normal update flush completed
+- `null` - destruction
+
+<br/>
+
+## Values and snapshots
+
+### `State.Values<T>`
+
+All fields with exotic values (refs, etc.) unwrapped to their inner type.
+
+```ts
+type Values<T> = { [P in Field<T>]: Export<T[P]> };
+```
+
+### `State.Partial<T>`
+
+Object compatible with `Values<T>` but all keys optional. Used by `set(assign)`.
+
+### `State.Value<T, K>`
+
+Single-property lookup type with `Export<>` unwrapping.
+
+### `State.Export<R>`
+
+If `R` has a `.get(): T` method, extracts `T`. Otherwise returns `R`. Drives ref unwrapping in snapshots.
+
+<br/>
+
+## Constructor args
+
+### `State.Args<T>`
+
+Union type accepted by `State.new()` and `State.use()`:
+
+```ts
+type Args<T> = (Args<T> | Init<T> | Assign<T> | void)[];
+```
+
+Arrays are flattened recursively at runtime.
+
+### `State.Init<T>`
+
+A lifecycle callback passed to `State.new()`. Can return cleanup, object (assign), or array (recurse).
+
+```ts
+type Init<T> = (this: T, thisArg: T) =>
+  Promise<void> | (() => void) | Args<T> | Assign<T> | void;
+```
+
+### `State.Assign<T>`
+
+Object overlay type. Maps each field to its value type, preserving method `this`.
+
+```ts
+type Assign<T> = Record<string, unknown> & {
+  [K in Field<T>]?: T[K] extends (...args: infer A) => infer R
+    ? (this: T, ...args: A) => R
+    : T[K];
+};
+```
+
+<br/>
+
+## Callbacks
+
+### `State.OnEvent<T>`
+
+```ts
+type OnEvent<T> = (this: T, key: Signal<T>, source: T) =>
+  void | (() => void) | null;
+```
+
+Return a function for a deduped settle callback. Return `null` to auto-unsubscribe.
+
+### `State.OnUpdate<T, K>`
+
+```ts
+type OnUpdate<T, K> = (this: T, key: K, thisArg: T) => void;
+```
+
+### `State.Effect<T>`
+
+```ts
+type Effect<T> = (this: T, current: T, update: readonly Event<T>[] | undefined) =>
+  EffectCallback | Promise<void> | null | void;
+
+type EffectCallback = (update: boolean | null) => void;
+```
+
+### `State.Setter<T>`
+
+```ts
+type Setter<T> = (value: T, previous: T) => T | void;
+```
+
+<br/>
+
+## Descriptors
+
+### `State.Apply<T>`
+
+Property descriptor config for `set(key, config)` and `def` factories:
+
+```ts
+type Apply<T> = {
+  value?: T;
+  get?: ((source: State) => T) | boolean;
+  set?: Setter<T> | boolean;
+  enumerable?: boolean;
+};
+```
+
+### `State.Define<T, K>`
+
+Type-safe variant of `Apply` used by `set(key, config)` - enforces `T[K]` when `K` is a known field.
+
+<br/>
+
+## Updated
+
+### `State.Updated<T>`
+
+```ts
+type Updated<T> = readonly Event<T>[] & PromiseLike<readonly Event<T>[]>;
+```
+
+Returned by `set()` - a synchronously readable array of keys updated, awaitable to wait for batch settlement.
+
+<br/>
+
+## Refs
+
+### `ref.Object<T>`
+
+```ts
+interface ref.Object<T> {
+  current: T;
+  is: State;
+  key: string;
+  get(): T | null;
+  get(callback: (v: T) => void): () => void;
+}
+```
+
+### `ref.Proxy<T>` and `ref.CustomProxy<T, R>`
+
+Produced by `ref(this)` and `ref(this, mapFn)` respectively.
+
+```ts
+type ref.Proxy<T extends State> =
+  { [P in State.Field<T>]-?: ref.Object<T[P]> } & { get(): T };
+
+type ref.CustomProxy<T extends State, R> =
+  { [P in State.Field<T>]-?: R } & { get(): T };
+```
+
+<br/>
+
+## Component
+
+### `Component.Props<T>`
+
+The full JSX prop type for a `Component` subclass. Combines:
+
+- State fields (optional)
+- `render(props)` declared props (optional or required as declared)
+- `is` and `fallback` special props

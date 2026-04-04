@@ -1,11 +1,12 @@
 {
   "title": "Documentation",
   "pages": [
+    "index",
     "getting-started",
-    "features",
+    "why-classes",
+    "migrating-from-hooks",
     "comparisons",
-    "---API Reference---",
-    "api",
-    "advanced"
+    "guides",
+    "api"
   ]
 }

@@ -1,9 +1,9 @@
 ---
 title: Expressive State
-description: Class-based reactive state management for modern UI frameworks
+description: A class-based state backbone for modern UI applications
 ---
 
-Define classes to power your UI. Properties become reactive automatically — when they change, your components update too.
+Expressive State is a reactive state library built around **plain classes**. It's designed to be the backbone of your application - the place where data, behavior, and lifecycle live - so that components can go back to doing what components are best at: describing UI.
 
 ```tsx
 import State from '@expressive/react';
@@ -33,25 +33,35 @@ function CounterWidget() {
 }
 ```
 
-That's it. No reducers, no selectors, no boilerplate. Just a class and a hook.
+No reducers. No selectors. No dependency arrays. No extra libraries for async, context, or computed values. Just a class and a hook.
 
 <br/>
 
-## What you get
+## Why it exists
 
-- **One import** — `State` is all you need. No extra packages for async, context, computed values, or validation.
-- **Type safety for free** — classes give you autocompletion, refactoring, and type inference out of the box.
-- **Fine-grained reactivity** — components only re-render when the properties they actually read change.
-- **Portable logic** — state lives in classes, not components. Easy to test, reuse, and reason about.
-- **AI-friendly** — explicit classes with clear properties and methods are easy for both humans and AI to navigate.
+Most React apps outgrow their state. What starts as `useState` sprawls into `useEffect` chains, `useCallback` memoization, custom hooks that return objects of hooks, then a store library, then middleware for async, then a query client. By the time a feature is "done", its logic is scattered across five different primitives - none of which are easy to test, reuse, or understand in isolation.
+
+Expressive takes a different approach: **put the logic back in one place**. A State class holds everything a feature knows and does. Components subscribe to what they need and render it. The two concerns - data and presentation - stop fighting each other.
 
 <br/>
 
-## Quick links
+## What you get from a single import
+
+- **Reactive properties** - plain class fields that components subscribe to automatically.
+- **Computed values** - derived properties that update when their inputs change.
+- **Async + Suspense** - declarative data loading with built-in Suspense integration.
+- **Context** - type-safe dependency injection; the class *is* the context key.
+- **Lifecycle** - one `new()` hook for setup and teardown. No dependency arrays.
+- **Components** - the `Component` class lets state render itself, with built-in error boundaries and subcomponents.
+- **Testability** - state classes are plain objects. Test them without a renderer, without `act()`, without a DOM.
+
+<br/>
+
+## Where to go next
 
 <Cards>
-  <Card title="Getting Started" href="/docs/getting-started" />
-  <Card title="Features" href="/docs/features/updates-and-methods" />
-  <Card title="React Integration" href="/docs/react/hooks" />
-  <Card title="API Reference" href="/docs/api/state" />
+  <Card title="Getting Started" href="/docs/getting-started" description="Install, build your first class, learn the mental model." />
+  <Card title="Why Classes?" href="/docs/why-classes" description="The organizational argument for moving state out of components." />
+  <Card title="Migrating from Hooks" href="/docs/migrating-from-hooks" description="A step-by-step playbook for adopting Expressive in an existing codebase." />
+  <Card title="API Reference" href="/docs/api/state" description="Every method, instruction, and hook." />
 </Cards>
