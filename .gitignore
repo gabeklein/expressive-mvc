@@ -2,6 +2,7 @@
 .next
 .nx
 .vercel
+.playwright-mcp
 coverage
 dist
 node_modules
