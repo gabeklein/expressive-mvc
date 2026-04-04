@@ -10,16 +10,16 @@ import State from '@expressive/react';
 class Counter extends State {
   count = 0;
 
-  increment(){
+  increment() {
     this.count++;
   }
 
-  decrement(){
+  decrement() {
     this.count--;
   }
 }
 
-function CounterApp(){
+function CounterApp() {
   const { count, increment, decrement } = Counter.use();
 
   return (
@@ -45,44 +45,48 @@ interface TodoItem {
 
 class TodoState extends State {
   items = set<TodoItem[]>([]);
-  input = "";
+  input = '';
   nextId = 1;
 
   remaining = set((from) => {
-    return from.items.filter(i => !i.done).length;
+    return from.items.filter((i) => !i.done).length;
   });
 
-  add(){
+  add() {
     if (!this.input.trim()) return;
     this.items = [
       ...this.items,
       { id: this.nextId++, text: this.input, done: false }
     ];
-    this.input = "";
+    this.input = '';
   }
 
-  toggle(id: number){
-    this.items = this.items.map(i =>
+  toggle(id: number) {
+    this.items = this.items.map((i) =>
       i.id === id ? { ...i, done: !i.done } : i
     );
   }
 }
 
-function TodoApp(){
+function TodoApp() {
   const state = TodoState.use();
 
   return (
     <div>
-      <form onSubmit={e => { e.preventDefault(); state.add(); }}>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          state.add();
+        }}>
         <input
           value={state.input}
-          onChange={e => state.input = e.target.value}
+          onChange={(e) => (state.input = e.target.value)}
         />
         <button type="submit">Add</button>
       </form>
       <p>{state.remaining} remaining</p>
       <ul>
-        {state.items.map(item => (
+        {state.items.map((item) => (
           <li key={item.id} onClick={() => state.toggle(item.id)}>
             {item.done ? <s>{item.text}</s> : item.text}
           </li>
@@ -113,7 +117,7 @@ class UserProfile extends State {
   });
 }
 
-function Profile(){
+function Profile() {
   const { user } = UserProfile.get();
   return (
     <div>
@@ -123,7 +127,7 @@ function Profile(){
   );
 }
 
-function App(){
+function App() {
   const profile = UserProfile.use({ userId: 1 });
 
   return (
@@ -142,10 +146,10 @@ function App(){
 import State, { get, Provider } from '@expressive/react';
 
 class Theme extends State {
-  mode: "light" | "dark" = "light";
+  mode: 'light' | 'dark' = 'light';
 
-  toggle(){
-    this.mode = this.mode === "light" ? "dark" : "light";
+  toggle() {
+    this.mode = this.mode === 'light' ? 'dark' : 'light';
   }
 }
 
@@ -153,16 +157,16 @@ class Panel extends State {
   theme = get(Theme);
   expanded = false;
 
-  toggle(){
+  toggle() {
     this.expanded = !this.expanded;
   }
 
-  get isDark(){
-    return this.theme.mode === "dark";
+  get isDark() {
+    return this.theme.mode === 'dark';
   }
 }
 
-function App(){
+function App() {
   const theme = Theme.use();
 
   return (
@@ -173,14 +177,12 @@ function App(){
   );
 }
 
-function PanelView(){
+function PanelView() {
   const { expanded, toggle, isDark } = Panel.use();
 
   return (
-    <div style={{ background: isDark ? "#333" : "#fff" }}>
-      <button onClick={toggle}>
-        {expanded ? "Collapse" : "Expand"}
-      </button>
+    <div style={{ background: isDark ? '#333' : '#fff' }}>
+      <button onClick={toggle}>{expanded ? 'Collapse' : 'Expand'}</button>
       {expanded && <p>Panel content</p>}
     </div>
   );
@@ -192,41 +194,46 @@ function PanelView(){
 ```tsx
 import { Component, set } from '@expressive/react';
 
-class SearchBox extends Component {
-  query = "";
-  results = set<string[]>([]);
+class Search extends Component {
+  query = '';
+  results = [];
+  loading = false;
 
-  search(){
-    // reactive computed - re-runs when query changes
-    this.results = set((from) => {
-      const q = from.query.toLowerCase();
-      return ALL_ITEMS.filter(i => i.toLowerCase().includes(q));
-    });
+  async search() {
+    if (!this.query.trim()) return;
+    this.loading = true;
+    await fetch(`/api/search?q=${encodeURIComponent(this.query)}`)
+      .then((res) => res.json())
+      .then((data) => (this.results = data.results));
+    this.loading = false;
   }
 
-  render(){
-    const { query, results } = this;
+  render() {
+    const { loading, query, results, search } = this;
 
     return (
       <div>
         <input
           value={query}
-          onChange={e => this.query = e.target.value}
+          onChange={(e) => (this.query = e.target.value)}
           placeholder="Search..."
         />
-        <ul>
-          {results.map(r => <li key={r}>{r}</li>)}
+        <ul className={loading ? 'dim' : ''}>
+          {results.map((r) => (
+            <li key={r}>{r}</li>
+          ))}
         </ul>
+        <button onClick={search} disabled={loading}>
+          Search
+        </button>
       </div>
     );
   }
 }
 
-const ALL_ITEMS = ["Apple", "Banana", "Cherry", "Date", "Elderberry"];
-
 // Use directly in JSX
-function App(){
-  return <SearchBox />;
+function App() {
+  return <Search />;
 }
 ```
 
@@ -236,48 +243,52 @@ function App(){
 import State, { set } from '@expressive/react';
 
 class SignupForm extends State {
-  name = "";
-  email = set("", (value) => {
-    if (value && !value.includes("@"))
-      throw false; // reject - value stays unchanged
+  name = '';
+  email = set('', (value) => {
+    if (value && !value.includes('@')) throw false; // reject - value stays unchanged
   });
-  password = set("", (value) => {
-    if (value.length > 0 && value.length < 8)
-      throw false; // reject short passwords
+  password = set('', (value) => {
+    if (value.length > 0 && value.length < 8) throw false; // reject short passwords
   });
 
   valid = set((from) => {
-    return from.name.length > 0
-      && from.email.includes("@")
-      && from.password.length >= 8;
+    return (
+      from.name.length > 0 &&
+      from.email.includes('@') &&
+      from.password.length >= 8
+    );
   });
 
-  submit(){
+  submit() {
     if (!this.valid) return;
-    console.log("Submitting:", this.get());
+    console.log('Submitting:', this.get());
   }
 }
 
-function Signup(){
+function Signup() {
   const form = SignupForm.use();
 
   return (
-    <form onSubmit={e => { e.preventDefault(); form.submit(); }}>
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        form.submit();
+      }}>
       <input
         placeholder="Name"
         value={form.name}
-        onChange={e => form.name = e.target.value}
+        onChange={(e) => (form.name = e.target.value)}
       />
       <input
         placeholder="Email"
         value={form.email}
-        onChange={e => form.email = e.target.value}
+        onChange={(e) => (form.email = e.target.value)}
       />
       <input
         type="password"
         placeholder="Password (8+ chars)"
         value={form.password}
-        onChange={e => form.password = e.target.value}
+        onChange={(e) => (form.password = e.target.value)}
       />
       <button disabled={!form.valid}>Sign Up</button>
     </form>
