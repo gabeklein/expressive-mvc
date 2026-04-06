@@ -1,3 +1,20 @@
 @import 'tailwindcss';
 @import 'fumadocs-ui/css/neutral.css';
 @import 'fumadocs-ui/css/preset.css';
+
+/* Code blocks: expand to content, never scroll. */
+.fd-scroll-container,
+figure[data-rehype-pretty-code-figure] pre,
+.shiki,
+pre:has(code) {
+  max-height: none !important;
+  overflow-x: visible !important;
+  white-space: pre-wrap !important;
+  word-break: break-word !important;
+}
+
+figure[data-rehype-pretty-code-figure] pre code,
+.shiki code {
+  white-space: pre-wrap !important;
+  word-break: break-word !important;
+}
