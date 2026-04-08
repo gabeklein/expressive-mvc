@@ -17,6 +17,7 @@
     ],
     "target": "esnext",
     "module": "esnext",
+    "allowJs": true,
     "moduleResolution": "bundler",
     "jsx": "react-jsx",
     "rootDirs": [
