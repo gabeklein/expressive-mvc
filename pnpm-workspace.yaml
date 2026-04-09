@@ -1,5 +1,8 @@
 packages:
-  - 'packages/*'
-  - 'examples/*'
-  - 'docs/*'
-  - 'website/*'
+  - packages/*
+  - examples/*
+  - docs/*
+  - website/*
+
+overrides:
+  '@expressive/vite-plugin': link:../jsx/packages/vite-plugin
