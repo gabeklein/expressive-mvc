@@ -1,5 +1,5 @@
 import { reactRouter } from '@react-router/dev/vite';
-import style from '@expressive/vite-plugin';
+import expressive from '@expressive/vite-plugin';
 import tailwindcss from '@tailwindcss/vite';
 import { defineConfig, type Plugin } from 'vite';
 import tsconfigPaths from 'vite-tsconfig-paths';
@@ -8,7 +8,19 @@ import * as MdxConfig from './source.config';
 import { resolve, join } from 'path';
 import { cp, readFile, readdir } from 'fs/promises';
 
-function serveLlm(): Plugin {
+export default defineConfig({
+  plugins: [
+    expressive(),
+    mdx(MdxConfig),
+    tailwindcss(),
+    reactRouter(),
+    tsconfigPaths(),
+    serveSkills(),
+    examplesManifest()
+  ]
+});
+
+function serveSkills(): Plugin {
   const dir = resolve(__dirname, '../../skills');
   return {
     name: 'serve-llm',
@@ -76,15 +88,3 @@ function examplesManifest(): Plugin {
     }
   };
 }
-
-export default defineConfig({
-  plugins: [
-    style(),
-    mdx(MdxConfig),
-    tailwindcss(),
-    reactRouter(),
-    tsconfigPaths(),
-    serveLlm(),
-    examplesManifest()
-  ]
-});
