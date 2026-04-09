@@ -12,7 +12,7 @@
   "dependencies": {
     "@codesandbox/sandpack-react": "^2",
     "@expressive/react": "workspace:*",
-    "@expressive/vite-plugin": "^0.6.0",
+    "@expressive/vite-plugin": "^0.6.1",
     "@orama/orama": "^3.1.18",
     "@react-router/node": "^7.13.0",
     "fumadocs-core": "16.6.3",
