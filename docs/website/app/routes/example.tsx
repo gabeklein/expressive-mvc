@@ -42,9 +42,11 @@ export default function ExampleRoute() {
     textDecoration: none;
     color: inherit;
 
-    $hover: { borderColor: $colorFdPrimary; }
+    $hover: {
+      borderColor: $colorFdPrimary;
+    }
 
-    if ('.active') {
+    $active: {
       background: $colorFdPrimary;
       color: $colorFdPrimaryForeground;
       borderColor: $colorFdPrimary;

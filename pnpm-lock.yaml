@@ -78,6 +78,15 @@ importers:
         specifier: ^3.4.1
         version: 3.5.0
     devDependencies:
+      '@expressive/css':
+        specifier: ^0.7.0
+        version: 0.7.0
+      '@expressive/typescript-plugin-jsx':
+        specifier: ^0.7.0
+        version: 0.7.0
+      '@expressive/vite-plugin':
+        specifier: ^0.7.0
+        version: 0.7.0(vite@7.3.1(@types/node@25.2.3)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.46.0)(yaml@2.8.2))
       '@react-router/dev':
         specifier: ^7.13.0
         version: 7.13.1(@types/node@25.2.3)(jiti@2.6.1)(lightningcss@1.31.1)(react-router@7.13.1(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(terser@5.46.0)(typescript@5.9.3)(vite@7.3.1(@types/node@25.2.3)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.46.0)(yaml@2.8.2))(yaml@2.8.2)
@@ -627,6 +636,14 @@ packages:
       '@noble/hashes':
         optional: true
 
+  '@expressive/babel-preset@0.7.0':
+    resolution: {integrity: sha512-5eSxb/YTxOP5n831uI45khbZJ11of3hFo1wq6PkA+9i/Iq90/ig9bfkCw3C9SA+29oItCZYokXbOOzC4OyEGYw==}
+    peerDependencies:
+      '@babel/core': ^7.0.0
+
+  '@expressive/css@0.7.0':
+    resolution: {integrity: sha512-wbZAX1vHHkpZy9IueG2DLPicvoys9RRs/YQzvBhbZrdeNjjdyWsM/KI0OS1odfwN+FvDA+zZTzdhNnnT1UkbQg==}
+
   '@expressive/react@0.74.1':
     resolution: {integrity: sha512-q7Ma9rAjUAEmTZ5cKz2SNmrQuUKPMcvhFtygjvnGOE3gX4yUbdJcws4CWK+zomtE0AMv4V9q+6akOzNHcRW0iA==}
     peerDependencies:
@@ -640,6 +657,14 @@ packages:
 
   '@expressive/state@0.74.0':
     resolution: {integrity: sha512-IjSfg8dbnX1NlHm+ZrimLnzBis4o87wPH0+IpZYFFbYGzLNArIFRLDeKDSu8j2NAl94Z/YEaivUgopjTRl7e7w==}
+
+  '@expressive/typescript-plugin-jsx@0.7.0':
+    resolution: {integrity: sha512-ej2c6lDz5cKnl7QPcl+vACPJWmIHIphHRI8Fe8SRuntXFlHoxz/9DL22ySsjP4jkV13Y2rS/zejgBSJF9NHTPQ==}
+
+  '@expressive/vite-plugin@0.7.0':
+    resolution: {integrity: sha512-HHO0pdXXXyJqPeJcX2uzuyZ5sVIW7yL1OJz5OFsXSQli9u2Fv4KkGhVRTE7HgndGhf82BtvOXYwMsxkqPB4cAw==}
+    peerDependencies:
+      vite: '>=5.0.0'
 
   '@floating-ui/core@1.7.5':
     resolution: {integrity: sha512-1Ih4WTWyw0+lKyFMcBHGbb5U5FtuHJuujoyyr5zTaWS5EYMeT6Jb2AuDeftsCsEuchO+mM2ij5+q9crhydzLhQ==}
@@ -2479,6 +2504,9 @@ packages:
     resolution: {integrity: sha512-+IxzY9BZOQd/XuYPRmrvEVjF/nqj5kgT4kEq7VofrDoM1MxoRjEWkrCC3EtLi59TVawxTAn+orJwFQcrqEN1+g==}
     engines: {node: '>=18'}
 
+  chroma-js@2.6.0:
+    resolution: {integrity: sha512-BLHvCB9s8Z1EV4ethr6xnkl/P2YRFOGqfgvuMG/MyCbZPrTA+NeiByY6XvgF0zP4/2deU2CXnWyMa3zu1LqQ3A==}
+
   ci-info@3.9.0:
     resolution: {integrity: sha512-NIxF55hv4nSqQswkAeiOi1r83xy8JldOFDTWiug55KBu9Jnblncd2U6ViHmYgHf01TPZS77NJBhBMKdWj9HQMQ==}
     engines: {node: '>=8'}
@@ -2878,6 +2906,9 @@ packages:
   dunder-proto@1.0.1:
     resolution: {integrity: sha512-KIN/nDJBQRcXw0MLVhZE9iQHmG68qAVIBg9CqmUYjmQIhgij9U5MFvrqkUL5FbtyyzZuOeOt0zdeRe4UY7ct+A==}
     engines: {node: '>= 0.4'}
+
+  easing-coordinates@2.0.2:
+    resolution: {integrity: sha512-uQpJaLQX2CKVnN27YvN4sL4pXyEFGAv00y4zgrC46H0EBHrDhJc/8OsT2CQ5/6yz6+d+u8ACGd9bo4v83FNVlg==}
 
   eastasianwidth@0.2.0:
     resolution: {integrity: sha512-I88TYZWc9XiYHRQ4/3c5rjjfgkjhLyW2luGIheGERbNQ6OY7yTybanSpDXZa8y7VUP9YmDcYa+eyq4ca7iLqWA==}
@@ -3299,6 +3330,7 @@ packages:
   git-raw-commits@3.0.0:
     resolution: {integrity: sha512-b5OHmZ3vAgGrDn/X0kS+9qCfNKWe4K/jFnhwzVWWg0/k5eLa3060tZShrRg8Dja5kPc+YjS0Gc6y7cRr44Lpjw==}
     engines: {node: '>=14'}
+    deprecated: This package is no longer maintained. For the JavaScript API, please use @conventional-changelog/git-client instead.
     hasBin: true
 
   git-remote-origin-url@2.0.0:
@@ -3308,6 +3340,7 @@ packages:
   git-semver-tags@5.0.1:
     resolution: {integrity: sha512-hIvOeZwRbQ+7YEUmCkHqo8FOLQZCEn18yevLHADlFPZY02KJGsu5FZt9YW/lybfK2uhWFI7Qg/07LekJiTv7iA==}
     engines: {node: '>=14'}
+    deprecated: This package is no longer maintained. For the JavaScript API, please use @conventional-changelog/git-client instead.
     hasBin: true
 
   git-up@7.0.0:
@@ -6435,6 +6468,18 @@ snapshots:
 
   '@exodus/bytes@1.14.1': {}
 
+  '@expressive/babel-preset@0.7.0(@babel/core@7.29.0)':
+    dependencies:
+      '@babel/core': 7.29.0
+      '@babel/preset-typescript': 7.28.5(@babel/core@7.29.0)
+    transitivePeerDependencies:
+      - supports-color
+
+  '@expressive/css@0.7.0':
+    dependencies:
+      chroma-js: 2.6.0
+      easing-coordinates: 2.0.2
+
   '@expressive/react@0.74.1(react@19.2.4)':
     dependencies:
       '@expressive/state': 0.74.0
@@ -6444,6 +6489,19 @@ snapshots:
   '@expressive/state@0.73.1': {}
 
   '@expressive/state@0.74.0': {}
+
+  '@expressive/typescript-plugin-jsx@0.7.0':
+    dependencies:
+      typescript: 5.9.3
+
+  '@expressive/vite-plugin@0.7.0(vite@7.3.1(@types/node@25.2.3)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.46.0)(yaml@2.8.2))':
+    dependencies:
+      '@babel/core': 7.29.0
+      '@expressive/babel-preset': 0.7.0(@babel/core@7.29.0)
+      '@expressive/css': 0.7.0
+      vite: 7.3.1(@types/node@25.2.3)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.46.0)(yaml@2.8.2)
+    transitivePeerDependencies:
+      - supports-color
 
   '@floating-ui/core@1.7.5':
     dependencies:
@@ -6845,7 +6903,7 @@ snapshots:
       proggy: 3.0.0
       promise-all-reject-late: 1.0.1
       promise-call-limit: 3.0.2
-      semver: 7.7.2
+      semver: 7.7.4
       ssri: 12.0.0
       treeverse: 3.0.0
       walk-up-path: 4.0.0
@@ -6854,7 +6912,7 @@ snapshots:
 
   '@npmcli/fs@4.0.0':
     dependencies:
-      semver: 7.7.2
+      semver: 7.7.4
 
   '@npmcli/fs@5.0.0':
     dependencies:
@@ -6868,7 +6926,7 @@ snapshots:
       npm-pick-manifest: 10.0.0
       proc-log: 5.0.0
       promise-retry: 2.0.1
-      semver: 7.7.2
+      semver: 7.7.4
       which: 5.0.0
 
   '@npmcli/git@7.0.1':
@@ -6879,7 +6937,7 @@ snapshots:
       npm-pick-manifest: 11.0.3
       proc-log: 6.1.0
       promise-retry: 2.0.1
-      semver: 7.7.2
+      semver: 7.7.4
       which: 6.0.1
 
   '@npmcli/installed-package-contents@3.0.0':
@@ -6905,7 +6963,7 @@ snapshots:
       json-parse-even-better-errors: 5.0.0
       pacote: 21.3.1
       proc-log: 6.1.0
-      semver: 7.7.2
+      semver: 7.7.4
     transitivePeerDependencies:
       - supports-color
 
@@ -6924,7 +6982,7 @@ snapshots:
       hosted-git-info: 9.0.2
       json-parse-even-better-errors: 5.0.0
       proc-log: 6.1.0
-      semver: 7.7.2
+      semver: 7.7.4
       validate-npm-package-license: 3.0.4
 
   '@npmcli/promise-spawn@8.0.3':
@@ -6959,7 +7017,7 @@ snapshots:
       enquirer: 2.3.6
       minimatch: 10.1.1
       nx: 22.5.1
-      semver: 7.7.2
+      semver: 7.7.4
       tslib: 2.8.1
       yargs-parser: 21.1.1
 
@@ -8258,7 +8316,7 @@ snapshots:
     dependencies:
       ansi-align: 3.0.1
       camelcase: 7.0.1
-      chalk: 5.0.1
+      chalk: 5.6.2
       cli-boxes: 3.0.0
       string-width: 5.1.2
       type-fest: 2.19.0
@@ -8399,6 +8457,8 @@ snapshots:
       readdirp: 5.0.0
 
   chownr@3.0.0: {}
+
+  chroma-js@2.6.0: {}
 
   ci-info@3.9.0: {}
 
@@ -8549,7 +8609,7 @@ snapshots:
       handlebars: 4.7.8
       json-stringify-safe: 5.0.1
       meow: 8.1.2
-      semver: 7.7.2
+      semver: 7.7.4
       split: 1.0.1
 
   conventional-commits-filter@3.0.0:
@@ -8778,6 +8838,8 @@ snapshots:
       call-bind-apply-helpers: 1.0.2
       es-errors: 1.3.0
       gopd: 1.2.0
+
+  easing-coordinates@2.0.2: {}
 
   eastasianwidth@0.2.0: {}
 
@@ -9251,7 +9313,7 @@ snapshots:
   git-semver-tags@5.0.1:
     dependencies:
       meow: 8.1.2
-      semver: 7.7.2
+      semver: 7.7.4
 
   git-up@7.0.0:
     dependencies:
@@ -9533,7 +9595,7 @@ snapshots:
       npm-package-arg: 13.0.1
       promzard: 2.0.0
       read: 4.1.0
-      semver: 7.7.2
+      semver: 7.7.4
       validate-npm-package-license: 3.0.4
       validate-npm-package-name: 6.0.2
 
@@ -9914,7 +9976,7 @@ snapshots:
       npm-package-arg: 13.0.1
       npm-registry-fetch: 19.1.0
       proc-log: 5.0.0
-      semver: 7.7.2
+      semver: 7.7.4
       sigstore: 4.1.0
       ssri: 12.0.0
     transitivePeerDependencies:
@@ -10050,7 +10112,7 @@ snapshots:
 
   make-dir@4.0.0:
     dependencies:
-      semver: 7.7.2
+      semver: 7.7.4
 
   make-fetch-happen@15.0.2:
     dependencies:
@@ -10664,7 +10726,7 @@ snapshots:
       array-differ: 3.0.0
       array-union: 2.1.0
       arrify: 2.0.1
-      minimatch: 3.0.5
+      minimatch: 3.1.5
 
   mute-stream@2.0.0: {}
 
@@ -10694,12 +10756,12 @@ snapshots:
       env-paths: 2.2.1
       exponential-backoff: 3.1.3
       graceful-fs: 4.2.11
-      make-fetch-happen: 15.0.2
+      make-fetch-happen: 15.0.3
       nopt: 9.0.0
       proc-log: 6.1.0
-      semver: 7.7.2
+      semver: 7.7.4
       tar: 7.5.7
-      tinyglobby: 0.2.12
+      tinyglobby: 0.2.15
       which: 6.0.1
     transitivePeerDependencies:
       - supports-color
@@ -10727,7 +10789,7 @@ snapshots:
     dependencies:
       hosted-git-info: 4.1.0
       is-core-module: 2.16.1
-      semver: 7.7.2
+      semver: 7.7.4
       validate-npm-package-license: 3.0.4
 
   npm-bundled@4.0.0:
@@ -10740,7 +10802,7 @@ snapshots:
 
   npm-install-checks@7.1.2:
     dependencies:
-      semver: 7.7.2
+      semver: 7.7.4
 
   npm-install-checks@8.0.0:
     dependencies:
@@ -10761,7 +10823,7 @@ snapshots:
     dependencies:
       hosted-git-info: 9.0.2
       proc-log: 5.0.0
-      semver: 7.7.2
+      semver: 7.7.4
       validate-npm-package-name: 6.0.2
 
   npm-packlist@10.0.3:
@@ -10774,20 +10836,20 @@ snapshots:
       npm-install-checks: 7.1.2
       npm-normalize-package-bin: 4.0.0
       npm-package-arg: 12.0.2
-      semver: 7.7.2
+      semver: 7.7.4
 
   npm-pick-manifest@11.0.3:
     dependencies:
       npm-install-checks: 8.0.0
       npm-normalize-package-bin: 5.0.0
       npm-package-arg: 13.0.1
-      semver: 7.7.2
+      semver: 7.7.4
 
   npm-registry-fetch@19.1.0:
     dependencies:
       '@npmcli/redact': 3.2.2
       jsonparse: 1.3.1
-      make-fetch-happen: 15.0.2
+      make-fetch-happen: 15.0.3
       minipass: 7.1.2
       minipass-fetch: 4.0.1
       minizlib: 3.1.0
@@ -10830,7 +10892,7 @@ snapshots:
       ora: 5.3.0
       picocolors: 1.1.1
       resolve.exports: 2.0.3
-      semver: 7.7.2
+      semver: 7.7.4
       string-width: 4.2.3
       tar-stream: 2.2.0
       tmp: 0.2.5
@@ -12095,7 +12157,7 @@ snapshots:
     dependencies:
       '@tufjs/models': 4.1.0
       debug: 4.4.3
-      make-fetch-happen: 15.0.2
+      make-fetch-happen: 15.0.3
     transitivePeerDependencies:
       - supports-color
 

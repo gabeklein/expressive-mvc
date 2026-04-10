@@ -377,7 +377,12 @@ function Benefits() {
   );
 }
 
-function Benefit({ title, children }) {
+interface BenefitProps {
+  title: string;
+  children: React.ReactNode;
+}
+
+function Benefit({ title, children }: BenefitProps) {
   borderLeft: $colorFdPrimary, 2;
   paddingLeft: 20;
 

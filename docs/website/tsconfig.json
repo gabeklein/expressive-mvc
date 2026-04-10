@@ -13,13 +13,18 @@
     ],
     "types": [
       "node",
-      "vite/client"
+      "vite/client",
+      "@expressive/css"
     ],
     "target": "esnext",
     "module": "esnext",
-    "allowJs": true,
     "moduleResolution": "bundler",
     "jsx": "react-jsx",
+    "plugins": [
+      {
+        "name": "@expressive/typescript-plugin-jsx"
+      }
+    ],
     "rootDirs": [
       ".",
       "./.react-router/types"
