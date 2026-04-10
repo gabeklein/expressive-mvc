@@ -14,7 +14,7 @@ export function meta() {
 }
 
 export default function Home() {
-  $contentWidth: "1152px";
+  $contentWidth: "1080px";
   
   return (
     <HomeLayout nav={{ title: 'Expressive' }}>
