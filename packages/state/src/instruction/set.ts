@@ -1,5 +1,5 @@
 import { listener, capture, watch } from '../observable';
-import { access, event, unbind, State, update } from '../state';
+import { access, attempt, event, unbind, State, update } from '../state';
 import { def } from './def';
 
 const STALE = new WeakSet<() => void>();
@@ -241,25 +241,6 @@ function set<T = any>(value?: unknown, argument?: unknown): any {
 
     return config;
   });
-}
-
-function attempt(fn: () => any): any {
-  function retry(err: unknown) {
-    if (err instanceof Promise) return err.then(compute);
-    else throw err;
-  }
-
-  function compute(): any {
-    try {
-      const output = fn();
-
-      return output instanceof Promise ? output.catch(retry) : output;
-    } catch (err) {
-      return retry(err);
-    }
-  }
-
-  return compute();
 }
 
 export { set };
