@@ -8,12 +8,13 @@ import {
   DocsTitle
 } from 'fumadocs-ui/layouts/docs/page';
 import { source } from '@/lib/source';
+import { Logo } from '@/components/Logo';
 import defaultMdxComponents from 'fumadocs-ui/mdx';
 import browserCollections from 'fumadocs-mdx:collections/browser';
 import { useFumadocsLoader } from 'fumadocs-core/source/client';
 
 export const layoutOptions: BaseLayoutProps = {
-  nav: { title: 'Expressive' },
+  nav: { title: <Logo /> },
   githubUrl: 'https://github.com/gabeklein/expressive-state'
 };
 

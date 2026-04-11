@@ -2,6 +2,7 @@ import { HomeLayout } from 'fumadocs-ui/layouts/home';
 import { DynamicCodeBlock } from 'fumadocs-ui/components/dynamic-codeblock';
 import { Link } from 'react-router';
 import React from 'react';
+import { Logo } from '@/components/Logo';
 
 export function meta() {
   return [
@@ -17,7 +18,7 @@ export default function Home() {
   $contentWidth: "1080px";
   
   return (
-    <HomeLayout nav={{ title: 'Expressive' }}>
+    <HomeLayout nav={{ title: <Logo /> }}>
       <Hero />
       <Problem />
       <Solution />
