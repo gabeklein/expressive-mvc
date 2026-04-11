@@ -1,6 +1,6 @@
 # Expressive JSX - Build-Time CSS-in-JS
 
-When writing or editing `.jsx` files that use Expressive JSX syntax, follow these rules. Expressive styles only work in `.jsx` files, not `.tsx`.
+When writing or editing files that use Expressive JSX syntax, follow these rules.
 
 ## How It Works
 
@@ -239,11 +239,10 @@ When unsure of a macro's signature, default to template literals rather than quo
 
 ## Gotchas
 
-1. `.jsx` only - never `.tsx`
-2. Use `0x` for colors, not `#`
-3. Commas for multi-values, not arrays
-4. Label names cannot match the component name
-5. `_` attributes are build-time only, removed from HTML output
-6. String if-tests are CSS selectors, not runtime logic
-7. className forwarding is automatic
-8. Fragments get auto-wrapped in a `<div>`
+1. Use `0x` for colors, not `#`
+2. Commas for multi-values, not arrays
+3. Label names cannot match the component name
+4. `_` attributes are build-time only, removed from HTML output
+5. String if-tests are CSS selectors, not runtime logic
+6. className forwarding is automatic
+7. Fragments get auto-wrapped in a `<div>`
