@@ -813,12 +813,9 @@ function access(state: State, property: string, required?: boolean) {
 
 function awaitable(state: State, key: string) {
   function peek(): unknown {
-    const store = STORE.get(state)!;
+    const value = STORE.get(state)![key];
 
-    if (key in store) {
-      const value = store[key];
-      if (value !== undefined) return value;
-    }
+    if (value !== undefined) return value;
 
     if (METHODS.get(state.constructor)!.has(key))
       return unbind((state as any)[key]);

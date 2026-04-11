@@ -721,6 +721,35 @@ describe('get method', () => {
         expect(rejected).toBeCalledWith(expect.any(Error));
         expect(rejected.mock.calls[0][0].message).toMatch(/destroyed/);
       });
+
+      it('will not throw on destroy without reject handler', () => {
+        class Test extends State {
+          foo = set<string>();
+        }
+
+        const test = Test.new();
+
+        test.get('foo').then(() => {});
+
+        expect(() => test.set(null)).not.toThrow();
+      });
+
+      it('will not resolve on event dispatch without value change', () => {
+        class Test extends State {
+          foo = set<string>();
+        }
+
+        const test = Test.new();
+        const resolved = vi.fn();
+
+        test.get('foo').then(resolved);
+
+        test.set('foo');
+        expect(resolved).not.toBeCalled();
+
+        test.foo = 'foobar';
+        expect(resolved).toBeCalledWith('foobar');
+      });
     });
   });
 
