@@ -146,6 +146,50 @@ declare namespace State {
    */
   type Updated<T extends State> = readonly Event<T>[] &
     PromiseLike<readonly Event<T>[]>;
+
+  /**
+   * Awaitable handle to a managed property.
+   *
+   * Returned by `get(key)` with no second argument. Provides an explicit
+   * async-friendly alternative to the suspense-throwing `get(key, true)` form.
+   *
+   * A `Pending<T>` is a plain thenable - it works with `await`, with
+   * `.then(callback)` for callback-style resolution, and exposes a
+   * synchronous `.current` peek. It never throws on access.
+   *
+   * Resolution semantics:
+   * - If the property is currently set (non-undefined), resolves immediately.
+   * - Otherwise, waits for the first assignment and resolves with that value.
+   * - If the state is destroyed before assignment, rejects with an error.
+   *
+   * @example
+   * ```ts
+   * // Sync peek - undefined if not set
+   * const now = state.get('foo').current;
+   *
+   * // Await first assignment
+   * const value = await state.get('foo');
+   *
+   * // Callback style (no cleanup needed - one-shot)
+   * state.get('foo').then(value => { ... });
+   * ```
+   */
+  interface Pending<T> {
+    /**
+     * Current value of property. Returns `undefined` if the property has
+     * never been set. For state methods, returns the unbound function.
+     */
+    current: T | undefined;
+
+    /**
+     * Resolves with value if set now, otherwise on first assignment.
+     * Rejects if the state is destroyed before assignment.
+     */
+    then(
+      resolve: (value: T) => void,
+      reject?: (reason: unknown) => void
+    ): void;
+  }
 }
 
 abstract class State implements Observable {
@@ -198,17 +242,46 @@ abstract class State implements Observable {
   get(effect: State.Effect<this>): () => void;
 
   /**
+   * Get an awaitable handle to a managed property.
+   *
+   * Returns a `Pending<T>` with a synchronous `.current` peek and a
+   * thenable `.then` method. Use this to read a property without
+   * triggering suspense, or to await a value that may not be set yet.
+   *
+   * For suspense-throwing access (React render path), use `get(key, true)`.
+   *
+   * @example
+   * ```ts
+   * // Sync peek - undefined if not set
+   * const now = state.get('foo').current;
+   *
+   * // Await first assignment
+   * const value = await state.get('foo');
+   *
+   * // Callback style
+   * state.get('foo').then(value => { ... });
+   * ```
+   *
+   * @param key - Property to get handle for.
+   * @returns Pending handle with `current` and `then`.
+   */
+  get<K extends State.Event<this>>(
+    key: K
+  ): State.Pending<State.Value<this, K>>;
+
+  /**
    * Get value of a property. Will fetch underlying value from exotic values like ref.Object.
    *
    * Any value which implements `get()` (with no arguments) will be treated as such.
    *
    * @param key - Property to get value of.
-   * @param required - If true, will throw an error if property is not available.
+   * @param required - If true, throws suspense if property is not available.
+   *                   If false, returns value even if undefined.
    * @returns Value of property.
    */
   get<T extends State.Event<this>>(
     key: T,
-    required?: boolean
+    required: boolean
   ): State.Value<this, T>;
 
   /**
@@ -279,6 +352,7 @@ abstract class State implements Observable {
     if (typeof arg1 == 'function') return watch(self, unbind(arg1));
     if (typeof arg2 == 'function') return listener(self, arg2 as any, arg1);
     if (arg1 === null) return observable(self) === null;
+    if (arg2 === undefined) return awaitable(self, arg1 as string);
     return access(self, arg1, arg2);
   }
 
@@ -735,6 +809,52 @@ function access(state: State, property: string, required?: boolean) {
     message: error.message,
     stack: error.stack
   });
+}
+
+function awaitable(state: State, key: string) {
+  function peek(): unknown {
+    const store = STORE.get(state)!;
+
+    if (key in store) {
+      const value = store[key];
+      if (value !== undefined) return value;
+    }
+
+    if (METHODS.get(state.constructor)!.has(key))
+      return unbind((state as any)[key]);
+
+    return undefined;
+  }
+
+  return {
+    get current() {
+      return peek();
+    },
+    then(
+      resolve: (value: unknown) => void,
+      reject?: (reason: unknown) => void
+    ) {
+      const value = peek();
+
+      if (value !== undefined) {
+        resolve(value);
+        return;
+      }
+
+      listener(state, (event) => {
+        if (event === key) {
+          const next = STORE.get(state)![key];
+          if (next !== undefined) {
+            resolve(next);
+            return null;
+          }
+        } else if (event === null) {
+          if (reject) reject(new Error(`${state} is destroyed.`));
+          return null;
+        }
+      });
+    }
+  };
 }
 
 function assign(state: State, data: State.Assign<State>, silent?: boolean) {

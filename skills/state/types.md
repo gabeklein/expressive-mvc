@@ -15,6 +15,7 @@ Namespace types on `State` used throughout the API.
 | `State.Values<T>` | All fields with ref objects unwrapped via `Export<R>` |
 | `State.Export<R>` | If R has `.get()`, extracts return type; otherwise R |
 | `State.Value<T, K>` | Single property value lookup with Export unwrapping |
+| `State.Pending<T>` | Awaitable handle returned by `get(key)` - has `.current` peek and thenable `.then` |
 
 ## Extends vs Type
 

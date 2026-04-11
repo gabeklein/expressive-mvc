@@ -17,22 +17,48 @@ const values = state.get();
 // { count: 0, name: 'World', child: { value: 'foo' } }
 ```
 
-### Get single property
+### Get property (async handle)
 
 ```ts
-get<T extends State.Event<this>>(key: T, required?: boolean): State.Value<this, T>
+get<K extends State.Event<this>>(key: K): State.Pending<State.Value<this, K>>
 ```
 
-Returns the underlying value for a property. For exotic values like `ref.Object`, returns the unwrapped value (calls `.get()`).
-
-- If value is undefined and `required` is not `false`, throws a suspense-compatible `Promise`/`Error`.
-- If value is a method name, returns the unbound (original) method rather than the auto-bound version.
+With no second argument, returns a `Pending<T>` handle - a lightweight thenable with a synchronous `.current` peek. Use this to read a property without triggering suspense, or to await a value that may not be set yet.
 
 ```ts
-state.get('count');        // get value
-state.get('foo', true);   // throws suspense if undefined
-state.get('foo', false);  // returns undefined without suspense
-state.get('method');       // returns unbound method
+// Sync peek - undefined if not set
+const now = state.get('foo').current;
+
+// Await first assignment
+const value = await state.get('foo');
+
+// Callback style (one-shot, no cleanup needed)
+state.get('foo').then(value => { ... });
+```
+
+**Resolution semantics:**
+- `.current` returns the value if set (non-undefined), or the unbound method for method keys, otherwise `undefined`. Never throws.
+- `.then(resolve, reject?)` resolves immediately if the value is set, otherwise waits for the first assignment. Rejects if the state is destroyed before assignment.
+- The thenable works with `await` directly - no wrapper needed.
+- `.then` is one-shot - registers a listener that self-removes after first resolution.
+
+Use this when ergonomic async access matters - e.g. in a `new()` lifecycle hook that needs to wait for a deferred value.
+
+### Get property (sync)
+
+```ts
+get<T extends State.Event<this>>(key: T, required: boolean): State.Value<this, T>
+```
+
+With an explicit boolean second argument, returns the raw stored value synchronously. For exotic values like `ref.Object`, returns the unwrapped stored value (not the ref object).
+
+- `required: true` - throws a suspense-compatible `Promise`/`Error` if the value is undefined. For method names, returns the unbound (original) method.
+- `required: false` - returns the raw value even if `undefined`. Never throws.
+
+```ts
+state.get('foo', true);    // throws suspense if undefined
+state.get('foo', false);   // value or undefined, never throws
+state.get('method', true); // returns unbound method
 ```
 
 ### Tracked effect
@@ -165,4 +191,15 @@ type Effect<T> = (
 type EffectCallback = (update: boolean | null) => void;
 
 type OnUpdate<T, K> = (this: T, key: K, thisArg: K) => void;
+
+interface Pending<T> {
+  /** Sync peek - `undefined` if unset. Unbound method for method keys. */
+  current: T | undefined;
+
+  /** Resolves with current if set, else on first assignment. Rejects on destroy. */
+  then(
+    resolve: (value: T) => void,
+    reject?: (reason: unknown) => void
+  ): void;
+}
 ```

@@ -561,7 +561,7 @@ describe('get method', () => {
 
       const test = Test.new();
 
-      expect(test.get('foo')).toBe('foo');
+      expect(test.get('foo', false)).toBe('foo');
     });
 
     it('will get ref value', () => {
@@ -571,11 +571,11 @@ describe('get method', () => {
 
       const test = Test.new();
 
-      expect(test.get('foo')).toBe(null);
+      expect(test.get('foo', false)).toBe(null);
 
       test.foo.current = 'foobar';
 
-      expect<string | null>(test.get('foo')).toBe('foobar');
+      expect<string | null | undefined>(test.get('foo', false)).toBe('foobar');
     });
 
     it('will throw suspense if not yet available', async () => {
@@ -587,7 +587,7 @@ describe('get method', () => {
       let suspense;
 
       try {
-        void test.get('foo');
+        void test.get('foo', true);
       } catch (error) {
         expect(error).toBeInstanceOf(Promise);
         expect(String(error)).toMatch(/[\w-]+\.foo is not yet available\./);
@@ -634,7 +634,93 @@ describe('get method', () => {
       const test2 = Test.new({ value: 'bar' });
 
       expect(method.call(test2)).toBe('foo');
-      expect(test.get('method').call(test2)).toBe('bar');
+      expect(test.get('method', true).call(test2)).toBe('bar');
+    });
+
+    describe('pending', () => {
+      it('will return undefined from current if unset', () => {
+        class Test extends State {
+          foo = set<string>();
+        }
+
+        const test = Test.new();
+
+        expect(test.get('foo').current).toBeUndefined();
+      });
+
+      it('will return unbound method from current', () => {
+        class Test extends State {
+          value = 'foo';
+
+          method() {
+            return this.value;
+          }
+        }
+
+        const { is: test } = Test.new();
+        const test2 = Test.new({ value: 'bar' });
+
+        expect(test.get('method').current!.call(test2)).toBe('bar');
+      });
+
+      it('will resolve then with current value if set', () => {
+        class Test extends State {
+          foo = 'foo';
+        }
+
+        const test = Test.new();
+        const resolved = vi.fn();
+
+        test.get('foo').then(resolved);
+
+        expect(resolved).toBeCalledWith('foo');
+      });
+
+      it('will resolve then on first assignment if unset', () => {
+        class Test extends State {
+          foo = set<string>();
+        }
+
+        const test = Test.new();
+        const resolved = vi.fn();
+
+        test.get('foo').then(resolved);
+
+        expect(resolved).not.toBeCalled();
+
+        test.foo = 'foobar';
+
+        expect(resolved).toBeCalledWith('foobar');
+      });
+
+      it('will resolve await on first assignment', async () => {
+        class Test extends State {
+          foo = set<string>();
+        }
+
+        const test = Test.new();
+        const pending = Promise.resolve(test.get('foo'));
+
+        test.foo = 'foobar';
+
+        await expect(pending).resolves.toBe('foobar');
+      });
+
+      it('will reject then if state is destroyed before assignment', () => {
+        class Test extends State {
+          foo = set<string>();
+        }
+
+        const test = Test.new();
+        const rejected = vi.fn();
+
+        test.get('foo').then(() => {}, rejected);
+
+        test.set(null);
+
+        expect(rejected).toBeCalledWith(expect.any(Error));
+        expect(rejected.mock.calls[0][0].message).toMatch(/destroyed/);
+      });
     });
   });
 
