@@ -148,48 +148,12 @@ declare namespace State {
     PromiseLike<readonly Event<T>[]>;
 
   /**
-   * Awaitable handle to a managed property.
-   *
-   * Returned by `get(key)` with no second argument. Provides an explicit
-   * async-friendly alternative to the suspense-throwing `get(key, true)` form.
-   *
-   * A `Pending<T>` is a plain thenable - it works with `await`, with
-   * `.then(callback)` for callback-style resolution, and exposes a
-   * synchronous `.current` peek. It never throws on access.
-   *
-   * Resolution semantics:
-   * - If the property is currently set (non-undefined), resolves immediately.
-   * - Otherwise, waits for the first assignment and resolves with that value.
-   * - If the state is destroyed before assignment, rejects with an error.
-   *
-   * @example
-   * ```ts
-   * // Sync peek - undefined if not set
-   * const now = state.get('foo').current;
-   *
-   * // Await first assignment
-   * const value = await state.get('foo');
-   *
-   * // Callback style (no cleanup needed - one-shot)
-   * state.get('foo').then(value => { ... });
-   * ```
+   * A one-shot fetch callback passed to `get()`. Runs once after the state is
+   * ready, transparently awaiting any suspended property access via the
+   * `attempt` helper. Useful in `new()` lifecycle hooks that need a value
+   * which may not be available at construction time.
    */
-  interface Pending<T> {
-    /**
-     * Current value of property. Returns `undefined` if the property has
-     * never been set. For state methods, returns the unbound function.
-     */
-    current: T | undefined;
-
-    /**
-     * Resolves with value if set now, otherwise on first assignment.
-     * Rejects if the state is destroyed before assignment.
-     */
-    then(
-      resolve: (value: T) => void,
-      reject?: (reason: unknown) => void
-    ): void;
-  }
+  type Fetch<T extends State, R> = (this: T) => R;
 }
 
 abstract class State implements Observable {
@@ -242,32 +206,27 @@ abstract class State implements Observable {
   get(effect: State.Effect<this>): () => void;
 
   /**
-   * Get an awaitable handle to a managed property.
+   * Run a one-shot callback and return its value as a Promise. Transparently
+   * awaits any suspended property access inside the callback via `attempt`.
    *
-   * Returns a `Pending<T>` with a synchronous `.current` peek and a
-   * thenable `.then` method. Use this to read a property without
-   * triggering suspense, or to await a value that may not be set yet.
-   *
-   * For suspense-throwing access (React render path), use `get(key, true)`.
+   * The callback must be zero-arity (distinguishes it from the reactive
+   * effect overload). It runs once after the state is ready. If a property
+   * read inside the callback throws suspense, `attempt` awaits the
+   * resolution and retries the callback from the top.
    *
    * @example
    * ```ts
-   * // Sync peek - undefined if not set
-   * const now = state.get('foo').current;
-   *
-   * // Await first assignment
-   * const value = await state.get('foo');
-   *
-   * // Callback style
-   * state.get('foo').then(value => { ... });
+   * // Inside an async new() hook
+   * async new() {
+   *   const ctx = await this.get(() => this.canvas);
+   *   ctx.fillStyle = '#fff';
+   * }
    * ```
    *
-   * @param key - Property to get handle for.
-   * @returns Pending handle with `current` and `then`.
+   * **Caveat:** because `attempt` retries on suspense, side effects inside
+   * the callback may run more than once. Keep the callback to a read.
    */
-  get<K extends State.Event<this>>(
-    key: K
-  ): State.Pending<State.Value<this, K>>;
+  get<R>(fetch: State.Fetch<this, R>): Promise<Awaited<R>>;
 
   /**
    * Get value of a property. Will fetch underlying value from exotic values like ref.Object.
@@ -349,10 +308,12 @@ abstract class State implements Observable {
 
     if (arg1 === undefined) return values(self);
     if (State.is(arg1)) return Context.get(self).get(arg1, arg2 as any, arg3);
-    if (typeof arg1 == 'function') return watch(self, unbind(arg1));
+    if (typeof arg1 == 'function') {
+      if (arg1.length === 0) return fetch(self, arg1 as () => unknown);
+      return watch(self, unbind(arg1));
+    }
     if (typeof arg2 == 'function') return listener(self, arg2 as any, arg1);
     if (arg1 === null) return observable(self) === null;
-    if (arg2 === undefined) return awaitable(self, arg1 as string);
     return access(self, arg1, arg2);
   }
 
@@ -811,47 +772,36 @@ function access(state: State, property: string, required?: boolean) {
   });
 }
 
-function awaitable(state: State, key: string) {
-  function peek(): unknown {
-    const value = STORE.get(state)![key];
-
-    if (value !== undefined) return value;
-
-    if (METHODS.get(state.constructor)!.has(key))
-      return unbind((state as any)[key]);
-
-    return undefined;
+/**
+ * Run a function, transparently awaiting any thrown suspense `Promise` and
+ * retrying. Returns the value synchronously if no suspense fires, otherwise
+ * returns a `Promise` resolving to the eventual value. Non-Promise errors
+ * propagate normally.
+ */
+function attempt<T>(fn: () => T): T | Promise<T> {
+  function retry(err: unknown): any {
+    if (err instanceof Promise) return err.then(compute);
+    else throw err;
   }
 
-  return {
-    get current() {
-      return peek();
-    },
-    then(
-      resolve: (value: unknown) => void,
-      reject?: (reason: unknown) => void
-    ) {
-      const value = peek();
-
-      if (value !== undefined) {
-        resolve(value);
-        return;
-      }
-
-      listener(state, (event) => {
-        if (event === key) {
-          const next = STORE.get(state)![key];
-          if (next !== undefined) {
-            resolve(next);
-            return null;
-          }
-        } else if (event === null) {
-          if (reject) reject(new Error(`${state} is destroyed.`));
-          return null;
-        }
-      });
+  function compute(): any {
+    try {
+      const output = fn();
+      return output instanceof Promise ? output.catch(retry) : output;
+    } catch (err) {
+      return retry(err);
     }
-  };
+  }
+
+  return compute();
+}
+
+function fetch<T>(state: State, fn: () => T): Promise<T> {
+  return Promise.resolve().then(() => {
+    if (observable(state) === null)
+      throw new Error(`${state} is destroyed.`);
+    return attempt(() => fn.call(state));
+  });
 }
 
 function assign(state: State, data: State.Assign<State>, silent?: boolean) {
@@ -930,4 +880,4 @@ function parent(child: State, value?: State | null) {
   return PARENT.get(child);
 }
 
-export { event, unbind, State, parent, STORE, uid, access, update, apply };
+export { event, unbind, State, parent, STORE, uid, access, update, apply, attempt };

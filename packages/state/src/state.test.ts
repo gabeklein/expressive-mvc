@@ -637,118 +637,55 @@ describe('get method', () => {
       expect(test.get('method', true).call(test2)).toBe('bar');
     });
 
-    describe('pending', () => {
-      it('will return undefined from current if unset', () => {
-        class Test extends State {
-          foo = set<string>();
-        }
-
-        const test = Test.new();
-
-        expect(test.get('foo').current).toBeUndefined();
-      });
-
-      it('will return unbound method from current', () => {
-        class Test extends State {
-          value = 'foo';
-
-          method() {
-            return this.value;
-          }
-        }
-
-        const { is: test } = Test.new();
-        const test2 = Test.new({ value: 'bar' });
-
-        expect(test.get('method').current!.call(test2)).toBe('bar');
-      });
-
-      it('will resolve then with current value if set', () => {
+    describe('fetch', () => {
+      it('will resolve with value from callback', async () => {
         class Test extends State {
           foo = 'foo';
         }
 
         const test = Test.new();
-        const resolved = vi.fn();
 
-        test.get('foo').then(resolved);
-
-        expect(resolved).toBeCalledWith('foo');
+        await expect(test.get(() => test.foo)).resolves.toBe('foo');
       });
 
-      it('will resolve then on first assignment if unset', () => {
+      it('will await suspended property', async () => {
         class Test extends State {
           foo = set<string>();
         }
 
         const test = Test.new();
-        const resolved = vi.fn();
-
-        test.get('foo').then(resolved);
-
-        expect(resolved).not.toBeCalled();
-
-        test.foo = 'foobar';
-
-        expect(resolved).toBeCalledWith('foobar');
-      });
-
-      it('will resolve await on first assignment', async () => {
-        class Test extends State {
-          foo = set<string>();
-        }
-
-        const test = Test.new();
-        const pending = Promise.resolve(test.get('foo'));
+        const pending = test.get(() => test.foo);
 
         test.foo = 'foobar';
 
         await expect(pending).resolves.toBe('foobar');
       });
 
-      it('will reject then if state is destroyed before assignment', () => {
+      it('will reject if state is destroyed before value is set', async () => {
         class Test extends State {
           foo = set<string>();
         }
 
         const test = Test.new();
-        const rejected = vi.fn();
-
-        test.get('foo').then(() => {}, rejected);
+        const pending = test.get(() => test.foo);
 
         test.set(null);
 
-        expect(rejected).toBeCalledWith(expect.any(Error));
-        expect(rejected.mock.calls[0][0].message).toMatch(/destroyed/);
+        await expect(pending).rejects.toThrow(/destroyed/);
       });
 
-      it('will not throw on destroy without reject handler', () => {
+      it('will bind this to the state', async () => {
         class Test extends State {
-          foo = set<string>();
+          foo = 'bar';
         }
 
         const test = Test.new();
 
-        test.get('foo').then(() => {});
-
-        expect(() => test.set(null)).not.toThrow();
-      });
-
-      it('will not resolve on event dispatch without value change', () => {
-        class Test extends State {
-          foo = set<string>();
-        }
-
-        const test = Test.new();
-        const resolved = vi.fn();
-
-        test.get('foo').then(resolved);
-
-        test.set('foo');
-        expect(resolved).not.toBeCalled();
-
-        test.foo = 'foobar';
-        expect(resolved).toBeCalledWith('foobar');
+        await expect(
+          test.get(function (this: Test) {
+            return this.foo;
+          })
+        ).resolves.toBe('bar');
       });
     });
   });
@@ -1373,11 +1310,9 @@ describe('get method', () => {
         expect(cleanup).toBeCalledTimes(1);
       });
 
-      // TODO: should this complain?
       it('will void return value', () => {
         const state = Test.new();
         const attempt = () => {
-          // @ts-expect-error
           state.get(() => 'foobar');
         };
 
@@ -1513,7 +1448,7 @@ describe('get method', () => {
           value = 1;
 
           // assigned during constructor phase.
-          done = this.get((state) => mock(state.value));
+          done: () => void = this.get((state) => mock(state.value));
         }
 
         const mock = vi.fn();
