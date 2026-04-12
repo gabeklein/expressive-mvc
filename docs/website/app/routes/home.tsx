@@ -2,6 +2,7 @@ import { HomeLayout } from 'fumadocs-ui/layouts/home';
 import { DynamicCodeBlock } from 'fumadocs-ui/components/dynamic-codeblock';
 import { Link } from 'react-router';
 import React from 'react';
+import { Background } from '@/components/AnimateBG';
 import { Logo } from '@/components/Logo';
 
 export function meta() {
@@ -19,6 +20,7 @@ export default function Home() {
   
   return (
     <HomeLayout nav={{ title: <Logo /> }}>
+      <Background />
       <Hero />
       <Problem />
       <Solution />
@@ -31,6 +33,11 @@ export default function Home() {
 function Hero() {
   borderBottom: `1px solid`;
   borderColor: $colorFdBorder;
+  boxSizing: borderBox;
+  height: `calc(100vh - 56px)`;
+  display: flex;
+  alignItems: center;
+  justifyContent: center;
 
   inner: {
     margin: 0, auto;
