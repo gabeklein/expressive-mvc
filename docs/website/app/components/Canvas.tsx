@@ -7,14 +7,14 @@ interface CanvasProps {
 
 export abstract class Canvas2D extends Component {
   element = ref<HTMLCanvasElement>((element) => {
-    this.context2d = element.getContext('2d')!;
+    this.canvas = element.getContext('2d')!;
     const removed = this.ready();
     this.active = true;
 
     return removed;
   });
 
-  context2d = set<CanvasRenderingContext2D>();
+  canvas = set<CanvasRenderingContext2D>();
 
   /**
    * Starts the animation loop when true, and stops it when false.
