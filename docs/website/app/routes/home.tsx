@@ -71,37 +71,6 @@ function Hero() {
     $md: { fontSize: 1.25; }
   }
 
-  actions: {
-    display: flex;
-    flexDirection: column;
-    gap: 12;
-    justifyContent: center;
-    $sm: { flexDirection: row; }
-
-    Link: {
-      display: "inline-flex";
-      alignItems: center;
-      justifyContent: center;
-      radius: round;
-      fontWeight: 500;
-      padding: 12, 24;
-      textDecoration: none;
-      transition: `opacity 0.2s, background-color 0.2s`;
-    }
-
-    primary: {
-      background: $colorFdPrimary;
-      color: $colorFdPrimaryForeground;
-      $hover: { opacity: 0.9; }
-    }
-
-    secondary: {
-      border: $colorFdBorder;
-      color: inherit;
-      $hover: { background: $colorFdMuted; }
-    }
-  }
-
   install: {
     marginTop: 48;
     display: "inline-block";
@@ -127,17 +96,52 @@ function Hero() {
           data, behavior, and lifecycle in one place - the way JavaScript was
           built for.
         </p>
-        <div _actions>
-          <Link _primary to="/docs/getting-started">
-            Get Started
-          </Link>
-          <Link _secondary to="/docs/why-classes">
-            Why Classes?
-          </Link>
-        </div>
+        <NavigateButtons />
         <div _install>npm install @expressive/react</div>
       </div>
     </section>
+  );
+}
+
+function NavigateButtons  (){
+  display: flex;
+  flexDirection: column;
+  gap: 12;
+  justifyContent: center;
+  $sm: { flexDirection: row; }
+
+  Link: {
+    display: "inline-flex";
+    alignItems: center;
+    justifyContent: center;
+    radius: round;
+    fontWeight: 500;
+    padding: 12, 24;
+    textDecoration: none;
+    transition: `opacity 0.2s, background-color 0.2s`;
+  }
+
+  primary: {
+    background: $colorFdPrimary;
+    color: $colorFdPrimaryForeground;
+    $hover: { opacity: 0.9; }
+  }
+
+  secondary: {
+    border: $colorFdBorder;
+    color: inherit;
+    $hover: { background: $colorFdMuted; }
+  }
+
+  return (
+    <div>
+      <Link _primary to="/docs/getting-started">
+        Get Started
+      </Link>
+      <Link _secondary to="/docs/why-classes">
+        Why Classes?
+      </Link>
+    </div>
   );
 }
 
