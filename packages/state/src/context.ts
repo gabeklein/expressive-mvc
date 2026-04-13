@@ -208,7 +208,8 @@ class Context {
   add(I: State, implicit?: boolean) {
     const { cleanup } = this;
 
-    const TT = Array.from(I.constructor as typeof State);
+    // TODO: should State constructors actually be iterable?
+    const TT = Array.from(I.constructor as unknown as Iterable<State.Extends>);
     const expects = new Map<Expect, () => void>();
     const onDone = new Set<() => void>();
 
