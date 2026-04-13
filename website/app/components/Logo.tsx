@@ -1,6 +1,6 @@
 export const Logo = () => {
   fontWeight: bold;
-  fontFamily: "Rubik";
+  fontFamily: "Nunito";
   whiteSpace: nowrap;
   alignItems: center;
   display: flex;
