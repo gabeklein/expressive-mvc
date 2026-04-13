@@ -23,8 +23,8 @@
     "preversion": "npm run test && npm run build"
   },
   "dependencies": {
-    "@expressive/state": "^0.73.1",
-    "@expressive/react": "0.74.1"
+    "@expressive/react": "^0.75.0",
+    "@expressive/state": "^0.73.1"
   },
   "devDependencies": {
     "@testing-library/preact": "^3.2.3",
@@ -35,5 +35,5 @@
   "peerDependencies": {
     "preact": "^10.0.0"
   },
-  "version": "0.71.0"
+  "version": "0.75.0"
 }
