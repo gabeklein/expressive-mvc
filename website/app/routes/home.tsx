@@ -252,7 +252,7 @@ function Solution() {
   }
 
   header: {
-    maxWidth: 672;
+    maxWidth: 800;
     marginBottom: 48;
   }
 
@@ -288,9 +288,9 @@ function Solution() {
       <div _inner>
         <div _header>
           <div _label>The solution</div>
-          <h2 _title>One class. One place. One truth.</h2>
+          <h2 _title>One hook. Any amount of logic.</h2>
           <p _desc>
-            Expressive puts the entire feature in a single class. Fields are
+            Expressive helps contain even entire features in a single class. Fields are
             reactive. Computed values track their own dependencies. Async is
             declarative. The component becomes a pure projection of the class.
           </p>
