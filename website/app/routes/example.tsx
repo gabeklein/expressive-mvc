@@ -5,7 +5,7 @@ import { examples } from 'virtual:examples';
 import { layoutOptions } from './home';
 
 const NAMES = Object.keys(examples);
-const Sandbox = lazy(() => import('@/components/sandbox'));
+const Sandbox = lazy(() => import('@/components/Sandbox'));
 
 export function meta() {
   return [{ title: 'Examples - Expressive' }];

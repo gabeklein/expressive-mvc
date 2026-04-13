@@ -4,7 +4,7 @@ import { DynamicCodeBlock } from 'fumadocs-ui/components/dynamic-codeblock';
 import { Link } from 'react-router';
 import React from 'react';
 import { Background } from '@/components/AnimateBG';
-import { Logo } from '@/components/Logo';
+import Logo from '@/components/Logo';
 
 export const layoutOptions: BaseLayoutProps = {
   nav: { title: <Logo /> },
