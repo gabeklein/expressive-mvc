@@ -50,6 +50,10 @@ function Page() {
 }
 ```
 
+## Ordering
+
+Place style statements **after** any variable declarations and logic, **just above** the return. Styles often reference local variables or props, so they belong below the code they depend on.
+
 ```jsx
 const Card = ({ active }) => {
   padding: 20;              // 20px (integers -> px)
