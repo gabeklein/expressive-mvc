@@ -21,7 +21,7 @@ export default defineConfig({
 });
 
 function serveSkills(): Plugin {
-  const dir = resolve(__dirname, '../../skills');
+  const dir = resolve(__dirname, '../skills');
   return {
     name: 'serve-llm',
     configureServer(server) {
