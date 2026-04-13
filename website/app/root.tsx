@@ -26,6 +26,12 @@ export const links: Route.LinksFunction = () => [
 ];
 
 export function Layout({ children }: { children: React.ReactNode }) {
+  body: {
+    display: flex;
+    flexDirection: column;
+    minHeight: `100vh`;
+  }
+
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -34,7 +40,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <Meta />
         <Links />
       </head>
-      <body className="flex flex-col min-h-screen">
+      <body>
         <RootProvider search={{ SearchDialog }}>{children}</RootProvider>
         <ScrollRestoration />
         <Scripts />
@@ -52,6 +58,18 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
   let details = 'An unexpected error occurred.';
   let stack: string | undefined;
 
+  paddingTop: 64;
+  padding: 16;
+  width: fill;
+  maxWidth: 1400;
+  margin: 0, auto;
+
+  pre: {
+    width: fill;
+    padding: 16;
+    overflowX: auto;
+  }
+
   if (isRouteErrorResponse(error)) {
     if (error.status === 404) return <NotFound />;
     message = 'Error';
@@ -62,11 +80,11 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
   }
 
   return (
-    <main className="pt-16 p-4 w-full max-w-[1400px] mx-auto">
+    <main>
       <h1>{message}</h1>
       <p>{details}</p>
       {stack && (
-        <pre className="w-full p-4 overflow-x-auto">
+        <pre>
           <code>{stack}</code>
         </pre>
       )}
