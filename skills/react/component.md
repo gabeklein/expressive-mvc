@@ -1,6 +1,14 @@
 # Expressive State - Component
 
-`Component` extends `State` and works directly as a React component. It provides reactive rendering, context injection, error boundaries, and subcomponents.
+`Component` extends `State` to create **smart, reusable React components** - persistent class instances that own their rendering, lifecycle, and behavior.
+
+## When to use Component vs State vs function components
+
+- **Function components** are dumb - they receive data, render UI. Keep them simple.
+- **State** is display-agnostic - pure data and logic, no render method. Use with `State.use()` in function components to separate concerns.
+- **Component** is for **custom components/primitives** that own their display logic. They're _meant_ to render. Use when you need a reusable, extensible unit combining behavior + UI: form controls, media players, data grids, modals, layout shells.
+
+Components are scaffolding. You build one once with lifecycle, reactivity, context, suspense, and error handling baked in - then you or your team extend/configure it. What would be a complicated arrangement of hooks to accomplish one purpose becomes a class you subclass and fill in.
 
 ## Basic Usage
 
@@ -19,20 +27,109 @@ class Counter extends Component {
   }
 }
 
-// Use directly as JSX
 <Counter />;
 ```
 
 Properties accessed via `this` in `render()` are reactive - changes trigger re-renders automatically.
 
+## Inheritance and Custom Primitives
+
+The primary power of Component: build reusable base classes, extend to specialize.
+
+```tsx
+abstract class Toggle extends Component {
+  active = false;
+
+  toggle() {
+    this.active = !this.active;
+  }
+
+  // Subclasses override to customize each state
+  Active(): ReactNode {
+    return null;
+  }
+  Inactive(): ReactNode {
+    return null;
+  }
+
+  render() {
+    return (
+      <div onClick={this.toggle}>
+        {this.active ? <this.Active /> : <this.Inactive />}
+      </div>
+    );
+  }
+}
+
+// Team members extend without reimplementing toggle logic
+class DarkModeSwitch extends Toggle {
+  Active() {
+    return <span>Dark</span>;
+  }
+  Inactive() {
+    return <span>Light</span>;
+  }
+}
+
+class Accordion extends Toggle {
+  title = 'Details';
+
+  Inactive() {
+    return <h3>{this.title}</h3>;
+  }
+  Active() {
+    return (
+      <>
+        <h3>{this.title}</h3>
+        <div>{this.props.children}</div>
+      </>
+    );
+  }
+}
+```
+
+Key pattern: base class owns behavior + structure, subclass fills in rendering. Subclasses work immediately as `<DarkModeSwitch />` or `<Accordion title="FAQ">...</Accordion>`.
+
+## Persistent Instance
+
+Component instances survive across renders. `this` is stable - you can store references, pass `this` to external objects, hold imperative state (Sets, Maps, DOM refs) without losing it.
+
+```tsx
+class ChatRoom extends Component {
+  messages: Message[] = [];
+  socket: WebSocket | null = null;
+
+  url = '';
+
+  new() {
+    this.socket = new WebSocket(this.url);
+    this.socket.onmessage = (e) => {
+      this.messages = [...this.messages, JSON.parse(e.data)];
+    };
+    return () => this.socket?.close();
+  }
+
+  render() {
+    return (
+      <ul>
+        {this.messages.map((m) => (
+          <li key={m.id}>{m.text}</li>
+        ))}
+      </ul>
+    );
+  }
+}
+```
+
+External code can hold a reference via `is` prop: `<ChatRoom is={c => controller = c} />`.
+
 ## Props
 
-State fields can be initialized and updated via JSX attributes (all optional):
+State fields become optional JSX props. Applied to instance every render.
 
 ```tsx
 class Greeting extends Component {
   name = 'World';
-
   render() {
     return <h1>Hello, {this.name}!</h1>;
   }
@@ -41,17 +138,14 @@ class Greeting extends Component {
 <Greeting name="React" />;
 ```
 
-Props are applied to the instance every render. The type is derived from state fields.
-
 ### Render Props
 
-Accept extra props (beyond state fields) via a parameter on `render()`:
+Extra props (beyond state fields) via parameter on `render()`:
 
 ```tsx
 class Card extends Component {
   title = '';
 
-  // `{} as T` required for compatibility with React's intrinsic attributes
   render(props = {} as { className: string }) {
     return <div className={props.className}>{this.title}</div>;
   }
@@ -60,31 +154,17 @@ class Card extends Component {
 <Card title="Hello" className="card" />;
 ```
 
-Non-optional props in the parameter become required JSX attributes.
-All props (state + render + special) are available on `this.props`.
+Non-optional render props become required JSX attributes.
+All props (state + render + special) available on `this.props`.
 
 ### Special Props
 
-- `is` - callback receiving the instance on creation: `<Counter is={(c) => console.log(c)} />`
-- `fallback` - ReactNode shown during suspense and error recovery, overrides instance property
+- `is` - callback receiving instance on creation: `<Counter is={c => ref = c} />`
+- `fallback` - ReactNode for suspense/error UI, overrides instance property
 
-## Children
+## Children and Context
 
-Without a `render()` method (or when `render()` has no parameter), children are passed through a context provider:
-
-```tsx
-class Layout extends Component {
-  theme = 'light';
-}
-
-<Layout>
-  <ChildComponent /> {/* can access Layout via Layout.get() */}
-</Layout>;
-```
-
-## Context
-
-Component instances are automatically provided to context. Children can access them:
+Component instances auto-provide to React context. Without explicit `render()`, children simply pass through provider:
 
 ```tsx
 class App extends Component {
@@ -103,31 +183,29 @@ function Profile() {
 
 ## Suspense
 
-Set `fallback` to display content while children or `render()` are suspended:
+`fallback` displays while render or children are suspended:
 
 ```tsx
 class DataView extends Component {
+  data = set<string>(); // undefined until set - suspends render
+
   fallback = (<span>Loading...</span>);
-  data = set<string>(); // undefined until set
 
   render() {
-    return <span>{this.data}</span>; // suspends until data is set
+    return <span>{this.data}</span>;
   }
 }
 ```
 
-The `fallback` prop on the JSX element overrides the instance property.
-
 ## Error Boundaries
 
-Override `catch()` to handle errors thrown by children during render:
+Override `catch()` to handle child render errors:
 
 ```tsx
 class SafeView extends Component {
   async catch(error: Error) {
     this.fallback = <span>Something went wrong</span>;
-    // While this is pending, fallback is displayed.
-    // When resolved, render is retried.
+    // Fallback shown while pending. On resolve, render retries.
     await reportError(error);
   }
 
@@ -137,15 +215,14 @@ class SafeView extends Component {
 }
 ```
 
-- Setting `this.fallback` inside `catch()` shows error-specific UI, reverted after recovery.
-- If `catch()` rejects, the error propagates to the nearest parent boundary.
-- Without `catch()`, errors propagate automatically.
+- `this.fallback` in `catch()` shows error UI, reverted after recovery.
+- Rejected `catch()` propagates to parent boundary.
 - Sync `catch()` triggers immediate retry.
-- If child throws again after recovery, the error propagates out of boundary.
+- Repeated throw after recovery propagates out.
 
 ## Subcomponents
 
-Methods starting with a capital letter become reactive React components, scoped to `this`:
+PascalCase methods become reactive React components scoped to `this`:
 
 ```tsx
 class Dashboard extends Component {
@@ -177,67 +254,17 @@ class Dashboard extends Component {
 }
 ```
 
-### Key behaviors
-
-- Each usage subscribes to the parent instance and re-renders on any change.
-- Multiple usages of the same subcomponent are independent.
-- Accept props like any React component.
-- Accessible from context: `Dashboard.get()` then use `<dashboard.Sidebar />`.
-- Overridable at runtime via assignment.
-- Subclasses can override subcomponents for plug-and-play composition.
-
-### Props on subcomponents
-
-```tsx
-class Dashboard extends Component {
-  Sidebar(props: { label: string }) {
-    return <span>{props.label}</span>;
-  }
-
-  render() {
-    return <this.Sidebar label="Navigation" />;
-  }
-}
-```
-
-### Subclass composition
-
-```tsx
-class Base extends Component {
-  Before(): ReactNode {
-    return null;
-  }
-  After(): ReactNode {
-    return null;
-  }
-
-  render() {
-    return (
-      <>
-        <this.Before />
-        <span>Main</span>
-        <this.After />
-      </>
-    );
-  }
-}
-
-class Page extends Base {
-  Before() {
-    return <span>Header</span>;
-  }
-  After() {
-    return <span>Footer</span>;
-  }
-}
-```
+- Each usage subscribes to parent, re-renders on change.
+- Accept props like any component.
+- Accessible from context: `Dashboard.get()` then `<dashboard.Sidebar />`.
+- **Overridable by subclasses** for plug-and-play composition.
 
 ## Lifecycle
 
-- `new()` - called once after initialization. Return a cleanup function for teardown.
-- `use()` - called on every render with props (same as State, see react.md).
-- `catch(error)` - error boundary handler.
-- Destruction occurs on unmount (or when `this.set(null)` is called).
+- `new()` - once after init. Return cleanup function for teardown.
+- `use()` - every render (same as State).
+- `catch(error)` - error boundary.
+- Destruction on unmount or `this.set(null)`.
 
 ```tsx
 class Timer extends Component {
@@ -254,6 +281,25 @@ class Timer extends Component {
 }
 ```
 
+## ref() for DOM Access
+
+`ref()` returns a ref callback that triggers imperative setup. Return a cleanup function.
+
+```tsx
+class VideoPlayer extends Component {
+  element = ref<HTMLVideoElement>((el) => {
+    el.play();
+    return () => el.pause();
+  });
+
+  render() {
+    return <video ref={this.element} src={this.src} />;
+  }
+
+  src = '';
+}
+```
+
 ## Strict Mode
 
-Component handles React strict mode correctly - only one instance is created despite double-mount.
+Handles React strict mode correctly - one instance despite double-mount.
