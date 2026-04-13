@@ -15,6 +15,9 @@ import { useFumadocsLoader } from 'fumadocs-core/source/client';
 
 export const layoutOptions: BaseLayoutProps = {
   nav: { title: <Logo /> },
+  links: [
+    { text: 'Live Examples', url: '/examples' }
+  ],
   githubUrl: 'https://github.com/gabeklein/expressive-state'
 };
 

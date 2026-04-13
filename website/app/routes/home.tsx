@@ -3,7 +3,7 @@ import { DynamicCodeBlock } from 'fumadocs-ui/components/dynamic-codeblock';
 import { Link } from 'react-router';
 import React from 'react';
 import { Background } from '@/components/AnimateBG';
-import { Logo } from '@/components/Logo';
+import { layoutOptions } from './docs';
 
 export function meta() {
   return [
@@ -19,7 +19,7 @@ export default function Home() {
   $contentWidth: "1080px";
   
   return (
-    <HomeLayout nav={{ title: <Logo /> }}>
+    <HomeLayout {...layoutOptions}>
       <Background />
       <Hero />
       <Problem />
