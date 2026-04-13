@@ -13,7 +13,7 @@ import defaultMdxComponents from 'fumadocs-ui/mdx';
 import browserCollections from 'fumadocs-mdx:collections/browser';
 import { useFumadocsLoader } from 'fumadocs-core/source/client';
 
-export const layoutOptions: BaseLayoutProps = {
+const layoutOptions: BaseLayoutProps = {
   nav: { title: <Logo /> },
   links: [
     { text: 'Live Examples', url: '/examples' }

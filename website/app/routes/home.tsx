@@ -1,9 +1,19 @@
+import type { BaseLayoutProps } from 'fumadocs-ui/layouts/shared';
 import { HomeLayout } from 'fumadocs-ui/layouts/home';
 import { DynamicCodeBlock } from 'fumadocs-ui/components/dynamic-codeblock';
 import { Link } from 'react-router';
 import React from 'react';
 import { Background } from '@/components/AnimateBG';
-import { layoutOptions } from './docs';
+import { Logo } from '@/components/Logo';
+
+export const layoutOptions: BaseLayoutProps = {
+  nav: { title: <Logo /> },
+  links: [
+    { text: 'Docs', url: '/docs' },
+    { text: 'Playground', url: '/examples' }
+  ],
+  githubUrl: 'https://github.com/gabeklein/expressive-state'
+};
 
 export function meta() {
   return [

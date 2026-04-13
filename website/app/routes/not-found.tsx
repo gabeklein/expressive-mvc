@@ -1,6 +1,6 @@
 import { HomeLayout } from 'fumadocs-ui/layouts/home';
 import { Link } from 'react-router';
-import { layoutOptions } from './docs';
+import { layoutOptions } from './home';
 
 export function meta() {
   return [{ title: 'Not Found' }];

@@ -2,7 +2,7 @@ import { lazy, Suspense } from 'react';
 import { HomeLayout } from 'fumadocs-ui/layouts/home';
 import { NavLink, Navigate, useParams } from 'react-router';
 import { examples } from 'virtual:examples';
-import { layoutOptions } from './docs';
+import { layoutOptions } from './home';
 
 const NAMES = Object.keys(examples);
 const Sandbox = lazy(() => import('@/components/sandbox'));
