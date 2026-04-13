@@ -110,7 +110,7 @@ function Hero() {
       <div _inner>
         <div _badge>State management, reorganized</div>
         <h1 _heading>
-          What if state had it's own Component?
+          What if state had it's own Components?
         </h1>
         <p _subtitle>
           Expressive State consolidates your application state into
@@ -124,7 +124,7 @@ function Hero() {
   );
 }
 
-function NavigateButtons  (){
+function NavigateButtons(){
   display: flex;
   flexDirection: column;
   gap: 12;
