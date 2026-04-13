@@ -54,7 +54,9 @@ function Hero() {
     maxWidth: 1024;
     padding: 96, 24;
     textAlign: center;
-    $md: { padding: 128, 24; }
+    $md: {
+      padding: 128, 24;
+    }
   }
 
   badge: {
@@ -68,6 +70,10 @@ function Hero() {
 
   heading: {
     fontSize: 3.0;
+    fontFamily: Rubik;
+    fontWeight: 300;
+    maxWidth: 10.0;
+    margin: 0, auto;
     fontWeight: bold;
     letterSpacing: '-0.025em';
     lineHeight: 1.2;
@@ -104,14 +110,12 @@ function Hero() {
       <div _inner>
         <div _badge>State management, reorganized</div>
         <h1 _heading>
-          State that lives
-          <div _accent>where it belongs.</div>
+          What if state had it's own Component?
         </h1>
         <p _subtitle>
-          Expressive State moves your app's logic out of components and into
+          Expressive State consolidates your application state into
           plain classes. No reducers, no selectors, no dependency arrays. Just
-          data, behavior, and lifecycle in one place - the way JavaScript was
-          built for.
+          data, behavior, and lifecycle in one place.
         </p>
         <NavigateButtons />
         <div _install>npm install @expressive/react</div>
@@ -229,7 +233,7 @@ function Problem() {
         <DynamicCodeBlock lang="tsx" code={HOOKS_EXAMPLE} />
         <p _caption>
           Seven hooks. Two dependency arrays. A race condition waiting to
-          happen. And none of this is testable without a renderer.
+          happen. And none of it testable without full UI.
         </p>
       </div>
     </section>
@@ -544,13 +548,20 @@ function UserSettings({ userId }) {
 }`;
 
 const CLASS_EXAMPLE = `
+import { State, set } from '@expressive/react';
+
 class UserSettings extends State {
-  userId = set<string>();
+  // simple values tracked automatically
   name = '';
   email = '';
   saving = false;
-  error = set<string | null>(null);
+  error: string | null = null;
 
+  // \`set\` instruction are factories for special behaviors
+  // This suspends until defined, if accessed early. Never undefined.
+  userId = set<string>();
+
+  // Async factory runs on access, suspends until ready.
   initial = set(async () => {
     const res = await fetch(\`/api/users/\${this.userId}\`);
     const data = await res.json();
@@ -559,11 +570,13 @@ class UserSettings extends State {
     return { name: data.name, email: data.email };
   });
 
+  // Computed values track access, always up to date.
   dirty = set((from) =>
     from.name !== from.initial.name ||
     from.email !== from.initial.email
   );
 
+  // Simply async manipulate state, no middleware or thunks required.
   async save() {
     this.saving = true;
     try {
