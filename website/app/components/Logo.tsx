@@ -9,7 +9,7 @@ export const Logo = () => {
   return (
     <div>
       <Icon />
-      <span>Expressive JSX</span>
+      <span>Expressive State</span>
     </div>
   );
 };
