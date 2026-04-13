@@ -1,28 +1,28 @@
 {
-	"name": "expressive-state",
-	"license": "MIT",
-	"private": true,
-	"packageManager": "pnpm@10.28.2",
-	"workspaces": [
-		"packages/*",
-		"examples/*"
-	],
-	"scripts": {
-		"test": "vitest run --coverage",
-		"build": "lerna run build",
-		"canary": "bash .github/scripts/canary.sh",
-		"pr": "bash .github/scripts/pr.sh",
-		"nuke": "find . -name 'node_modules' -type d -prune -exec rm -rf '{}' +"
-	},
-	"devDependencies": {
-		"@types/node": "^25.2.0",
-		"@types/react": "^19",
-		"@vitest/coverage-v8": "^4.0.18",
-		"jsdom": "^27.4.0",
-		"lerna": "^9.0.3",
-		"prettier": "^3.8.1",
-		"tsup": "^8.0.2",
-		"typescript": "^5.9.3",
-		"vitest": "^4.0.18"
-	}
+  "name": "expressive-state",
+  "private": true,
+  "license": "MIT",
+  "workspaces": [
+    "packages/*",
+    "examples/*"
+  ],
+  "scripts": {
+    "test": "vitest run --coverage",
+    "build": "lerna run build",
+    "canary": "bash .github/scripts/canary.sh",
+    "pr": "bash .github/scripts/pr.sh",
+    "nuke": "find . -name 'node_modules' -type d -prune -exec rm -rf '{}' +"
+  },
+  "devDependencies": {
+    "@types/node": "^25.2.0",
+    "@types/react": "^19",
+    "@vitest/coverage-v8": "^4.0.18",
+    "jsdom": "^27.4.0",
+    "lerna": "^9.0.3",
+    "oxfmt": "^0.45.0",
+    "tsup": "^8.0.2",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18"
+  },
+  "packageManager": "pnpm@10.28.2"
 }
