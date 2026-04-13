@@ -6,7 +6,35 @@ When writing or editing files that use Expressive JSX syntax, follow these rules
 
 Labeled statements inside component functions are CSS properties extracted at build time. Top-level styles auto-apply to the **outermost returned element**. Named labels create scopes applied via `_name` attributes.
 
-**Important:** Top-level styles attach to whatever element is returned first. If the return wraps content in a third-party component (e.g. `<HomeLayout>`), top-level styles apply to *that* component's root - not an inner `<div>`. Use a named label for inner elements:
+**Important:** Top-level styles attach to whatever element is returned first - the outermost JSX tag. This means styles intended for a child element must use a named label instead. This applies equally to wrapper components and nested HTML elements:
+
+```jsx
+// Wrong - styles apply to <html>, not <body>
+function Layout({ children }) {
+  display: flex;
+  minHeight: `100vh`;
+  return (
+    <html>
+      <head>...</head>
+      <body>{children}</body>
+    </html>
+  );
+}
+
+// Correct - label targets <body> by element name
+function Layout({ children }) {
+  body: {
+    display: flex;
+    minHeight: `100vh`;
+  }
+  return (
+    <html>
+      <head>...</head>
+      <body>{children}</body>
+    </html>
+  );
+}
+```
 
 ```jsx
 // Wrong - styles apply to HomeLayout's root, not the div
