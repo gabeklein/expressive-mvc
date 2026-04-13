@@ -1,0 +1,309 @@
+---
+title: Migrating from Hooks
+description: A pragmatic playbook for adopting Expressive State in an existing React codebase
+---
+
+Expressive is designed to coexist with hooks. You do not need to rewrite anything to start using it - every State class is fully optional, and every component you don't touch continues to work. This guide walks through the migration path that teams typically take when adopting Expressive as a state backbone.
+
+<br/>
+
+## The guiding principle
+
+Don't migrate components. **Migrate features.**
+
+A "feature" is a unit of behavior - a form, a wizard, a search page, a shopping cart, a chat thread. When you identify one, you extract its state and logic into a class and leave the component as a thin projection. Components that happen to participate in the feature update to consume the class; components that don't, don't change at all.
+
+This is deliberately bottom-up. You don't need buy-in from the whole team before you start. You don't need a migration epic. You don't need to touch routing, build config, or tests. You just rewrite the next feature you're already working on.
+
+<br/>
+
+## Step 1 - Install and import
+
+```bash
+npm install @expressive/react
+```
+
+Expressive has zero peer dependencies beyond React. It doesn't touch your existing state libraries - Redux, Zustand, React Query, Jotai, Recoil, and friends all continue to work.
+
+```ts
+import State, { Component, Provider, get, set, ref } from '@expressive/react';
+```
+
+<br/>
+
+## Step 2 - Find a good first target
+
+The best first migration target is a component that scores high on this checklist:
+
+- Uses **3 or more related `useState` calls**.
+- Has **1 or more `useEffect`** that syncs state values or fetches data.
+- Has **1 or more `useCallback`** whose dependency array is non-trivial.
+- Contains **business logic in the render body** (validation, transformation, coordination).
+- Would benefit from **testing** without rendering.
+
+You're looking for friction - a component you've already been annoyed by. Forms, wizards, and data-heavy dashboards are classic sweet spots. Skip components that use one or two `useState` calls for simple UI state; they'd be more code to migrate than they're worth.
+
+<br/>
+
+## Step 3 - Extract state, one pass at a time
+
+Work in small, verifiable steps. The migration is reversible at every step.
+
+### 3a. Move fields
+
+Start by copying each `useState` into a class field:
+
+```tsx
+// Before
+const [name, setName] = useState('');
+const [email, setEmail] = useState('');
+const [saving, setSaving] = useState(false);
+```
+
+```tsx
+class UserForm extends State {
+  name = '';
+  email = '';
+  saving = false;
+}
+```
+
+Replace the hooks in the component with `UserForm.use()`:
+
+```tsx
+const { name, email, saving, is } = UserForm.use();
+```
+
+Writes change from `setName(x)` to `is.name = x`. Everything else still works - you haven't moved any logic yet.
+
+### 3b. Move effects
+
+For a `useEffect` that performs setup/teardown, move it into the `new()` hook:
+
+```tsx
+new() {
+  const id = setInterval(() => this.poll(), 5000);
+  return () => clearInterval(id);
+}
+```
+
+For a `useEffect` that syncs two values, delete it - replace the target with a computed property:
+
+```tsx
+// Before
+const [dirty, setDirty] = useState(false);
+useEffect(() => {
+  setDirty(name !== initial.name || email !== initial.email);
+}, [name, email]);
+```
+
+```tsx
+// After
+dirty = set((from) => from.name !== initial.name || from.email !== initial.email);
+```
+
+For a `useEffect` that fetches, consider an async `set()`:
+
+```tsx
+user = set(async () => {
+  const res = await fetch(`/api/users/${this.userId}`);
+  return res.json();
+});
+```
+
+### 3c. Move handlers to methods
+
+```tsx
+// Before
+const save = useCallback(async () => {
+  setSaving(true);
+  await api.save({ name, email });
+  setSaving(false);
+}, [name, email]);
+```
+
+```tsx
+// After
+async save() {
+  this.saving = true;
+  await api.save({ name: this.name, email: this.email });
+  this.saving = false;
+}
+```
+
+Methods are automatically bound - you can destructure `save` and pass it as a handler directly, no `useCallback` needed.
+
+### 3d. Verify and delete
+
+Run the component, test the behavior, and delete the old hook calls. If something breaks, the migration is trivially reversible - the class lives in its own file.
+
+<br/>
+
+## Step 4 - Share state via Provider instead of prop-drilling
+
+Once you have a class, sharing is free. Wherever you had prop drilling or a manual `createContext` + `useContext`, replace it with `Provider`:
+
+```tsx
+// Before
+const ThemeContext = createContext<{ color: string; toggle: () => void }>(null!);
+
+function App() {
+  const [color, setColor] = useState('blue');
+  const toggle = useCallback(() => setColor((c) => c === 'blue' ? 'red' : 'blue'), []);
+  return (
+    <ThemeContext.Provider value={{ color, toggle }}>
+      <Header />
+      <Main />
+    </ThemeContext.Provider>
+  );
+}
+```
+
+```tsx
+// After
+class Theme extends State {
+  color = 'blue';
+  toggle() {
+    this.color = this.color === 'blue' ? 'red' : 'blue';
+  }
+}
+
+function App() {
+  return (
+    <Provider for={Theme}>
+      <Header />
+      <Main />
+    </Provider>
+  );
+}
+
+function Header() {
+  const { color, toggle } = Theme.get();
+  return <button style={{ color }} onClick={toggle}>{color}</button>;
+}
+```
+
+The class *is* the context key. No manual `createContext`, no default values, no `Provider.Consumer` render props.
+
+<br/>
+
+## Step 5 - Collapse custom hooks into classes
+
+Custom hooks that return objects are the easiest migration wins. A hook like this:
+
+```ts
+function useCart() {
+  const [items, setItems] = useState<Item[]>([]);
+  const total = useMemo(() => items.reduce((s, i) => s + i.price * i.qty, 0), [items]);
+  const add = useCallback((item: Item) => setItems((xs) => [...xs, item]), []);
+  const remove = useCallback((id: string) => setItems((xs) => xs.filter((x) => x.id !== id)), []);
+  return { items, total, add, remove };
+}
+```
+
+Becomes:
+
+```ts
+class Cart extends State {
+  items: Item[] = [];
+  total = set((from) => from.items.reduce((s, i) => s + i.price * i.qty, 0));
+
+  add(item: Item) {
+    this.items = [...this.items, item];
+  }
+
+  remove(id: string) {
+    this.items = this.items.filter((x) => x.id !== id);
+  }
+}
+```
+
+The class version is shorter, testable without rendering, and shareable across components via `Provider`.
+
+<br/>
+
+## Step 6 - Bridge to existing hooks with `use()`
+
+Some hooks cannot be replaced - `useNavigate`, `useLocation`, `useTranslation`, `useQuery` from a library. To use them inside a State class, define a `use()` method. It runs on every render of the consumer:
+
+```tsx
+class Nav extends State {
+  shouldRedirect = false;
+
+  use() {
+    const navigate = useNavigate();
+    if (this.shouldRedirect) {
+      this.shouldRedirect = false;
+      navigate('/dashboard');
+    }
+  }
+}
+
+function SomeComponent() {
+  const { shouldRedirect, is } = Nav.use();
+  // ... trigger is.shouldRedirect = true somewhere
+}
+```
+
+This is the escape hatch - any hook you need can be bridged through `use()`. Use it sparingly; it runs every render. For one-shot setup, prefer `new()`.
+
+<br/>
+
+## Step 7 - Leave the rest alone
+
+You don't need to migrate every component. Leaf components with a single `useState`, pure presentational components, components that consume a store library you're not ready to replace - leave them all alone. The goal is to reduce friction, not to hit 100% coverage.
+
+Teams that adopt Expressive successfully usually end up in a hybrid state: a handful of State classes at the feature boundaries, and many unchanged presentational components beneath them.
+
+<br/>
+
+## Common pitfalls
+
+### Mutating arrays and objects
+
+State tracks equality via `===`. Pushing onto an array will not trigger an update:
+
+```ts
+this.items.push(item); // no update
+this.items = [...this.items, item]; // works
+```
+
+If you *need* to dispatch an update without replacing the value, use `this.set('items')` to manually signal the change.
+
+### Forgetting `State.new()` when constructing outside React
+
+```ts
+const counter = new Counter();    // constructs but does NOT activate
+const counter = Counter.new();    // constructs AND activates - always use this
+```
+
+Inside React, `Counter.use()` handles activation for you.
+
+### Assuming `use()` replaces `useEffect`
+
+The class `use()` method runs on every render - it is a bridge for calling React hooks, not a lifecycle effect. For setup/teardown, use `new()`. For reactive side effects, use `this.get(effect)` inside `new()`.
+
+### Expecting state to survive destructured variables
+
+```tsx
+const { count } = Counter.use();
+count = 5; // just rebinds the local - doesn't update state
+```
+
+Use `is.count = 5` for writes after destructuring, or don't destructure the fields you write to.
+
+<br/>
+
+## When to stop
+
+A good rule of thumb: if a component has 0-2 `useState` calls, no effects, and no computed values, leave it. Expressive has value where state has *behavior*. Below that threshold, classes are just more code.
+
+The goal isn't uniformity - it's clarity. Migrate the messes. Keep the clean stuff clean.
+
+<br/>
+
+## Next
+
+- [State Classes](/docs/guides/state-classes) - defining fields, methods, and lifecycle.
+- [Reactivity](/docs/guides/reactivity) - how tracking and computed values work.
+- [Components](/docs/guides/components) - the `Component` class for self-rendering state.

@@ -1,9 +1,17 @@
-import { vi, afterAll, expect, it, describe } from '../vitest';
+import {
+  vi,
+  afterAll,
+  expect,
+  it,
+  describe,
+  act,
+  render,
+  screen
+} from '../vitest';
 
-import { act, render, screen } from '@testing-library/react';
-import { Suspense } from 'react';
+import React, { Suspense } from 'react';
 
-import { State, Consumer, get, Provider, set } from '.';
+import { State, Consumer, Context, get, Provider, set } from '.';
 
 const error = vi.spyOn(console, 'error').mockImplementation(() => {});
 
@@ -66,6 +74,89 @@ describe('Provider', () => {
     );
   });
 
+  it('will pass props to created instance', () => {
+    class Test extends State {
+      foo = 'default';
+      bar = 0;
+    }
+
+    render(
+      <Provider for={Test} foo="hello" bar={42}>
+        <Consumer for={Test}>
+          {(i) => {
+            expect(i.foo).toBe('hello');
+            expect(i.bar).toBe(42);
+          }}
+        </Consumer>
+      </Provider>
+    );
+  });
+
+  it('will call is callback with created instance', () => {
+    class Test extends State {
+      value = 'hello';
+    }
+
+    const is = vi.fn();
+
+    render(
+      <Provider for={Test} is={is}>
+        <Consumer for={Test}>
+          {(i) => {
+            expect(i).toBeInstanceOf(Test);
+          }}
+        </Consumer>
+      </Provider>
+    );
+
+    expect(is).toBeCalledTimes(1);
+    expect(is).toBeCalledWith(expect.any(Test));
+  });
+
+  it('will update instance when props change', async () => {
+    class Test extends State {
+      value = 'initial';
+    }
+
+    const Child = vi.fn(() => {
+      const { value } = Test.get();
+      return <span>{value}</span>;
+    });
+
+    const element = render(
+      <Provider for={Test} value="first">
+        <Child />
+      </Provider>
+    );
+
+    screen.getByText('first');
+
+    act(() => {
+      element.rerender(
+        <Provider for={Test} value="second">
+          <Child />
+        </Provider>
+      );
+    });
+
+    screen.getByText('second');
+  });
+
+  it('will pass props to instance', () => {
+    const test = Foo.new();
+
+    render(
+      <Provider for={test} value="hello">
+        <Consumer for={Foo}>
+          {({ is }) => {
+            expect(is).toBe(test);
+            expect(is.value).toBe('hello');
+          }}
+        </Consumer>
+      </Provider>
+    );
+  });
+
   it('will provide children of given model', () => {
     class Foo extends State {
       value?: string = undefined;
@@ -85,7 +176,7 @@ describe('Provider', () => {
     );
   });
 
-  it('will destroy created model on unmount', () => {
+  it('will destroy created model on unmount', async () => {
     const willDestroy = vi.fn();
 
     class Test extends State {}
@@ -101,7 +192,7 @@ describe('Provider', () => {
       </Provider>
     );
 
-    act(() => element.unmount());
+    element.unmount();
     expect(willDestroy).toBeCalled();
   });
 
@@ -126,7 +217,7 @@ describe('Provider', () => {
       </Provider>
     );
 
-    act(() => element.unmount());
+    element.unmount();
     expect(willDestroy).toBeCalledTimes(2);
   });
 
@@ -170,11 +261,8 @@ describe('Provider', () => {
     const didDestroy = vi.fn();
 
     class Test extends State {
-      constructor(...args: State.Args) {
-        super(...args);
-        this.set(() => {
-          didDestroy(this.constructor.name);
-        }, null);
+      protected new() {
+        return () => didDestroy(this.constructor.name);
       }
     }
 
@@ -189,7 +277,7 @@ describe('Provider', () => {
 
     const element = render(<Example />);
 
-    act(() => element.unmount());
+    element.unmount();
 
     expect(didDestroy.mock.calls).toEqual([['Child'], ['Parent']]);
   });
@@ -198,27 +286,25 @@ describe('Provider', () => {
     it('will call function for each model', () => {
       const forEach = vi.fn();
 
-      render(<Provider for={{ Foo, Bar }} forEach={forEach} />);
+      render(<Provider for={{ Foo, Bar }} is={forEach} />);
 
       expect(forEach).toBeCalledTimes(2);
       expect(forEach).toBeCalledWith(expect.any(Foo));
       expect(forEach).toBeCalledWith(expect.any(Bar));
     });
 
-    it('will cleanup on unmount', () => {
+    it('will cleanup on unmount', async () => {
       const forEach = vi.fn(() => cleanup);
       const cleanup = vi.fn();
 
-      const rendered = render(
-        <Provider for={{ Foo, Bar }} forEach={forEach} />
-      );
+      const rendered = render(<Provider for={{ Foo, Bar }} is={forEach} />);
 
       expect(forEach).toBeCalledTimes(2);
       expect(forEach).toBeCalledWith(expect.any(Foo));
       expect(forEach).toBeCalledWith(expect.any(Bar));
       expect(cleanup).not.toBeCalled();
 
-      act(() => rendered.unmount());
+      rendered.unmount();
       expect(cleanup).toBeCalledTimes(2);
     });
   });
@@ -278,6 +364,57 @@ describe('Provider', () => {
       expect(element.queryByText('Foo')).toBeNull();
     });
   });
+
+  describe('strict mode', () => {
+    it('will create once and destroy on unmount', async () => {
+      const didCreate = vi.fn();
+      const didDestroy = vi.fn();
+
+      class Test extends State {
+        protected new() {
+          didCreate();
+          return didDestroy;
+        }
+      }
+
+      const element = render(
+        <React.StrictMode>
+          <Provider for={Test} />
+        </React.StrictMode>
+      );
+
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(didCreate).toBeCalledTimes(1);
+      expect(didDestroy).not.toBeCalled();
+
+      element.unmount();
+
+      expect(didDestroy).toBeCalledTimes(1);
+    });
+
+    it('will provide instance to children', async () => {
+      class Test extends State {
+        value = 'hello';
+      }
+
+      const Child = () => Test.get().value;
+
+      const element = render(
+        <React.StrictMode>
+          <Provider for={Test}>
+            <Child />
+          </Provider>
+        </React.StrictMode>
+      );
+
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(element.container.textContent).toBe('hello');
+
+      element.unmount();
+    });
+  });
 });
 
 describe('Consumer', () => {
@@ -334,16 +471,8 @@ describe('Consumer', () => {
 
   it('will select closest instance of same type', () => {
     render(
-      <Provider
-        for={Foo}
-        forEach={(x) => {
-          x.value = 'outer';
-        }}>
-        <Provider
-          for={Foo}
-          forEach={(x) => {
-            x.value = 'inner';
-          }}>
+      <Provider for={Foo} value="outer">
+        <Provider for={Foo} value="inner">
           <Consumer for={Foo}>
             {(i) => {
               expect(i.value).toBe('inner');
@@ -366,6 +495,10 @@ describe('Consumer', () => {
         </Provider>
       </Provider>
     );
+  });
+
+  it('will return root context if called outside render', () => {
+    expect(Context.get()).toBe(Context.root);
   });
 
   it('will handle complex arrangement', () => {
@@ -508,74 +641,6 @@ describe('get instruction', () => {
     );
   });
 
-  it('will throw if not resolved', () => {
-    class Foo extends State {}
-    class Bar extends State {
-      foo = get(Foo);
-    }
-
-    const bar = Bar.new();
-
-    expect(() => bar.foo).toThrow(expect.any(Promise));
-
-    render(
-      <Provider for={Foo}>
-        <Provider for={bar} />
-      </Provider>
-    );
-
-    expect(bar.foo).toBeInstanceOf(Foo);
-  });
-
-  it('will resolve when assigned to', async () => {
-    class Foo extends State {}
-    class Bar extends State {
-      foo = get(Foo);
-    }
-
-    const bar = Bar.new();
-    let pending!: Promise<any>;
-
-    try {
-      void bar.foo;
-    } catch (err: unknown) {
-      if (err instanceof Promise) pending = err;
-    }
-
-    expect(pending).toBeInstanceOf(Promise);
-
-    render(
-      <Provider for={Foo}>
-        <Provider for={bar} />
-      </Provider>
-    );
-
-    await expect(pending).resolves.toBeInstanceOf(Foo);
-  });
-
-  it('will resolve multiple', async () => {
-    class Foo extends State {}
-    class Bar extends State {
-      foo = get(Foo, false);
-      bar = get(Foo, false);
-    }
-
-    const foo = Foo.new();
-    const bar = Bar.new();
-
-    expect(bar.foo).toBeUndefined();
-    expect(bar.bar).toBeUndefined();
-
-    render(
-      <Provider for={foo}>
-        <Provider for={bar} />
-      </Provider>
-    );
-
-    expect(bar.foo).toBe(foo);
-    expect(bar.bar).toBe(foo);
-  });
-
   it('will not resolve as own parent', () => {
     class MaybeSelf extends State {
       parent = get(MaybeSelf, false);
@@ -587,53 +652,6 @@ describe('get instruction', () => {
 
     expect(test.parent).not.toBe(test);
     expect(test.parent).toBeUndefined();
-  });
-
-  it('will refresh an effect when assigned to', async () => {
-    class Foo extends State {}
-    class Bar extends State {
-      foo = get(Foo);
-    }
-
-    const bar = Bar.new();
-    const effect = vi.fn((bar) => void bar.foo);
-
-    bar.get(effect);
-
-    expect(effect).toBeCalled();
-    expect(effect).not.toHaveReturned();
-
-    render(
-      <Provider for={Foo}>
-        <Provider for={bar} />
-      </Provider>
-    );
-
-    await expect(bar).toHaveUpdated();
-
-    expect(effect).toBeCalledTimes(2);
-    expect(effect).toHaveReturnedTimes(1);
-  });
-
-  it('will prevent compute if not yet resolved', () => {
-    class Foo extends State {
-      value = 'foobar';
-    }
-    class Bar extends State {
-      foo = get(Foo);
-    }
-
-    const bar = Bar.new();
-
-    expect(() => bar.foo.value).toThrow(expect.any(Promise));
-
-    render(
-      <Provider for={Foo}>
-        <Provider for={bar} />
-      </Provider>
-    );
-
-    expect(bar.foo.value).toBe('foobar');
   });
 
   it('will compute immediately in context', () => {
@@ -670,7 +688,7 @@ describe('has instruction', () => {
 
     const didGetBar = vi.fn();
     const FooBar = () => void Bar.use();
-    const foo = Foo.new();
+    const foo = new Foo();
 
     render(
       <Provider for={foo}>
@@ -716,7 +734,7 @@ describe('suspense', () => {
     let resolve!: (value: string) => void;
 
     class Test extends State {
-      value = set<string>(() => new Promise((res) => (resolve = res)), true);
+      value = set(() => new Promise<string>((res) => (resolve = res)));
     }
 
     const GetValue = () => {
@@ -745,12 +763,19 @@ describe('suspense', () => {
 });
 
 describe('HMR', () => {
-  it('will replace model', () => {
-    let Control = class Control extends State {
+  it('will remount context if item removed or replaced', () => {
+    class Test extends State {
       value = 'foo';
+    }
+
+    let Control = class Control1 extends Test {
+      value = 'bar';
     };
 
-    const Child = () => <>{Control.get().value}</>;
+    const Child = () => {
+      const { value } = Test.get();
+      return <div>{value}</div>;
+    };
 
     const element = render(
       <Provider for={Control}>
@@ -758,12 +783,10 @@ describe('HMR', () => {
       </Provider>
     );
 
-    // expect(element.toJSON()).toBe("foo");
+    screen.getByText('bar');
 
-    screen.getByText('foo');
-
-    Control = class Control extends State {
-      value = 'bar';
+    Control = class Control2 extends Test {
+      value = 'baz';
     };
 
     element.rerender(
@@ -772,8 +795,10 @@ describe('HMR', () => {
       </Provider>
     );
 
-    screen.getByText('bar');
+    screen.getByText('baz');
 
     element.unmount();
   });
+
+  it.todo("will updated consumer if context's instance is replaced");
 });

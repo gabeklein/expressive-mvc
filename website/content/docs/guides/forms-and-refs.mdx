@@ -1,0 +1,271 @@
+---
+title: Forms and Refs
+description: Validation callbacks, debouncing, and mutable references
+---
+
+Forms are where state management tends to accumulate the most complexity - fields, validation, touched/dirty tracking, submission state, error messages. Expressive handles all of it with two tools: the `set` callback form for validation, and the `ref` instruction for DOM handles.
+
+<br/>
+
+## The set callback
+
+`set(initial, callback)` creates a writable property with a callback that runs on every assignment. The callback can reject the update, transform it, or schedule follow-up work.
+
+```tsx
+class LoginForm extends State {
+  email = set('', (value, previous) => {
+    if (!value.includes('@')) throw false; // reject
+  });
+}
+```
+
+### Callback behaviors
+
+| Action                  | Effect                                                              |
+| ----------------------- | ------------------------------------------------------------------- |
+| `throw false`           | Reject the update. Value does not change. No event fires.           |
+| `throw true`            | Accept the update silently. Value changes, but no event is emitted. |
+| Return a function       | Cleanup - runs before the next update (useful for cancellation).    |
+| Throw a regular `Error` | Rethrows to the caller.                                             |
+| Return `void`           | Accept normally.                                                    |
+
+<br/>
+
+## Validation
+
+Validation is just rejecting invalid values. The callback sees the candidate before it's applied:
+
+```tsx
+class SignupForm extends State {
+  name = set('', (value) => {
+    if (value.length > 50) throw false;
+  });
+
+  email = set('', (value) => {
+    if (value && !/^.+@.+\..+$/.test(value)) throw false;
+  });
+
+  password = set('', (value) => {
+    if (value.length > 0 && value.length < 8) throw false;
+  });
+
+  valid = set((from) =>
+    from.name.length > 0 &&
+    from.email.length > 0 &&
+    from.password.length >= 8
+  );
+
+  submit() {
+    if (this.valid) createAccount(this.get());
+  }
+}
+```
+
+The `valid` computed auto-updates when any dependency changes. The `submit` method reads `this.valid` - no stale closures, no dependency arrays.
+
+<br/>
+
+## Debouncing
+
+Return a cleanup function to cancel in-flight work when the value changes again:
+
+```tsx
+class Search extends State {
+  query = set('', (value) => {
+    const timer = setTimeout(() => this.performSearch(value), 300);
+    return () => clearTimeout(timer);
+  });
+  results: string[] = [];
+
+  async performSearch(q: string) {
+    const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
+    this.results = await res.json();
+  }
+}
+```
+
+The same pattern works for abort controllers, observer subscriptions, or any resource that needs to be disposed when a new value arrives.
+
+<br/>
+
+## Change tracking
+
+Because the callback receives the previous value, you can detect transitions:
+
+```tsx
+class Field extends State {
+  value = set('', (next, prev) => {
+    if (next === '' && prev !== '') throw false; // prevent clearing
+  });
+}
+```
+
+<br/>
+
+## Refs
+
+The `ref` instruction creates a mutable holder that does **not** trigger re-renders on change. It's the equivalent of React's `useRef`, but declared on the class and integrated with the state event stream.
+
+```tsx
+import State, { ref } from '@expressive/react';
+
+class VideoPlayer extends State {
+  video = ref<HTMLVideoElement>();
+
+  play() {
+    this.video.current?.play();
+  }
+
+  pause() {
+    this.video.current?.pause();
+  }
+}
+
+function Player() {
+  const { video, play, pause } = VideoPlayer.use();
+
+  return (
+    <div>
+      <video ref={video}>
+        <source src="movie.mp4" />
+      </video>
+      <button onClick={play}>Play</button>
+      <button onClick={pause}>Pause</button>
+    </div>
+  );
+}
+```
+
+Each `ref` object has:
+
+- `.current` - the held value (get/set)
+- `.get()` - read the current value or subscribe to changes
+- `.is` - the parent state instance
+- `.key` - the property name on the state
+
+### Ref with callback
+
+```tsx
+class AutoFocus extends State {
+  input = ref<HTMLInputElement>((el) => {
+    el.focus();
+    return () => el.blur(); // runs when replaced or destroyed
+  });
+}
+```
+
+The callback fires when the value is set. By default it's skipped for `null` - pass `false` as the second argument to fire on null too:
+
+```tsx
+node = ref<HTMLElement>((el) => {
+  console.log('value is:', el); // fires for null
+}, false);
+```
+
+### Ref proxy
+
+Pass `this` to create ref objects for every enumerable property on the state at once:
+
+```tsx
+class Form extends State {
+  name = '';
+  email = '';
+  refs = ref(this);
+}
+
+const form = Form.new();
+form.refs.name.current = 'Alice'; // updates form.name
+form.refs.email;                  // ref.Object<string>
+```
+
+Useful when you want to hand ref objects to uncontrolled form inputs, or any API that expects `{ current: T }` shapes.
+
+### Custom ref proxy
+
+```tsx
+class Form extends State {
+  name = '';
+  email = '';
+  inputs = ref(this, (key) => createInput(key));
+}
+```
+
+The map function runs lazily once per key and its return value is cached. This is the hook for building custom controlled-input abstractions.
+
+<br/>
+
+## Complete form example
+
+```tsx
+import State, { set, ref } from '@expressive/react';
+
+class ContactForm extends State {
+  name = set('', (v) => { if (v.length > 50) throw false; });
+  email = set('', (v) => { if (v && !v.includes('@')) throw false; });
+  message = '';
+  submitting = false;
+  submitted = false;
+  error = set<string | null>(null);
+
+  firstField = ref<HTMLInputElement>((el) => {
+    el.focus();
+  });
+
+  valid = set((from) =>
+    from.name.length > 0 &&
+    from.email.includes('@') &&
+    from.message.length > 0
+  );
+
+  async submit() {
+    if (!this.valid) return;
+    this.submitting = true;
+    this.error = null;
+    try {
+      await api.submitContact(this.get());
+      this.submitted = true;
+    } catch (e) {
+      this.error = (e as Error).message;
+    } finally {
+      this.submitting = false;
+    }
+  }
+}
+
+function Contact() {
+  const form = ContactForm.use();
+
+  if (form.submitted) return <p>Thanks for reaching out.</p>;
+
+  return (
+    <form onSubmit={(e) => { e.preventDefault(); form.submit(); }}>
+      <input
+        ref={form.firstField}
+        value={form.name}
+        onChange={(e) => (form.name = e.target.value)}
+      />
+      <input
+        value={form.email}
+        onChange={(e) => (form.email = e.target.value)}
+      />
+      <textarea
+        value={form.message}
+        onChange={(e) => (form.message = e.target.value)}
+      />
+      {form.error && <p className="error">{form.error}</p>}
+      <button disabled={!form.valid || form.submitting}>
+        {form.submitting ? 'Sending...' : 'Send'}
+      </button>
+    </form>
+  );
+}
+```
+
+Every concern - validation, submission state, focus, error display - lives in one class. The component just renders it.
+
+<br/>
+
+## Next
+
+- [Testing](/docs/guides/testing) - test state classes without rendering.
+- [API: Instructions](/docs/api/instructions) - every `set` and `ref` overload.

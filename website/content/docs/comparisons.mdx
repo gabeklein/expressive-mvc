@@ -1,0 +1,255 @@
+---
+title: Comparisons
+description: How Expressive State relates to hooks, Zustand, Redux, and MobX
+---
+
+## vs React Hooks
+
+Hooks are great for small components. They scale poorly because they organize code around *when it runs* rather than *what it means*. As features grow, related state gets smeared across multiple `useState` calls, effects, callbacks, and dependency arrays.
+
+### A typical hook-heavy component
+
+```tsx
+function UserProfile({ userId }) {
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    setLoading(true);
+    fetch(`/api/users/${userId}`)
+      .then((res) => res.json())
+      .then((data) => {
+        setName(data.name);
+        setEmail(data.email);
+      })
+      .catch(setError)
+      .finally(() => setLoading(false));
+  }, [userId]);
+
+  const save = useCallback(async () => {
+    await fetch(`/api/users/${userId}`, {
+      method: 'PUT',
+      body: JSON.stringify({ name, email }),
+    });
+  }, [userId, name, email]);
+
+  // ... render
+}
+```
+
+### The same feature with Expressive
+
+```tsx
+class UserProfile extends State {
+  userId = set<string>();
+  name = '';
+  email = '';
+  loading = false;
+  error = set<Error | null>(null);
+
+  data = set(async () => {
+    this.loading = true;
+    try {
+      const res = await fetch(`/api/users/${this.userId}`);
+      const data = await res.json();
+      this.name = data.name;
+      this.email = data.email;
+      return data;
+    } catch (e) {
+      this.error = e as Error;
+      throw e;
+    } finally {
+      this.loading = false;
+    }
+  });
+
+  async save() {
+    await fetch(`/api/users/${this.userId}`, {
+      method: 'PUT',
+      body: JSON.stringify({ name: this.name, email: this.email }),
+    });
+  }
+}
+
+function UserProfileView({ userId }) {
+  const { name, email, loading, save, is } = UserProfile.use({ userId });
+  if (loading) return <Spinner />;
+
+  return (
+    <form>
+      <input value={name} onChange={(e) => (is.name = e.target.value)} />
+      <input value={email} onChange={(e) => (is.email = e.target.value)} />
+      <button onClick={save}>Save</button>
+    </form>
+  );
+}
+```
+
+|                | React Hooks                        | Expressive State                  |
+| -------------- | ---------------------------------- | --------------------------------- |
+| State          | Multiple `useState` calls          | Class fields                      |
+| Logic          | Spread across hooks                | Methods on the class              |
+| Reuse          | Custom hooks (still React-bound)   | Plain classes (testable anywhere) |
+| Dependencies   | Manual arrays, error-prone         | Automatic tracking                |
+| Async          | `useEffect` + cleanup flags        | Regular async methods             |
+| Sharing        | Prop drilling or context + hooks   | `Provider` + `State.get()`        |
+
+<br/>
+
+---
+
+<br/>
+
+## vs Zustand
+
+Zustand is a great lightweight store library. The main differences:
+
+```ts
+// Zustand
+const useStore = create((set) => ({
+  count: 0,
+  name: '',
+  increment: () => set((s) => ({ count: s.count + 1 })),
+  setName: (name) => set({ name }),
+}));
+
+function Counter() {
+  const count = useStore((s) => s.count);
+  const increment = useStore((s) => s.increment);
+  return <button onClick={increment}>{count}</button>;
+}
+```
+
+```tsx
+// Expressive
+class Counter extends State {
+  count = 0;
+  name = '';
+  increment() { this.count++; }
+}
+
+function CounterView() {
+  const { count, increment } = Counter.use();
+  return <button onClick={increment}>{count}</button>;
+}
+```
+
+- **Destructuring is the selector** - no need for per-access selector functions or shallow comparisons.
+- **Classes are the organizational unit** - no factory functions, no spread-based updates.
+- **Instances are scoped** - a class can back a global store, a per-component instance, or a provider tree. One API.
+- **Lifecycle is built in** - `new()` and automatic destruction replace manual subscribe/teardown.
+
+<br/>
+
+---
+
+<br/>
+
+## vs Redux (and RTK)
+
+```ts
+const counterSlice = createSlice({
+  name: 'counter',
+  initialState: { count: 0 },
+  reducers: {
+    increment: (state) => { state.count++; },
+  },
+});
+
+const count = useSelector((state) => state.counter.count);
+const dispatch = useDispatch();
+dispatch(counterSlice.actions.increment());
+```
+
+Redux (even with RTK) introduces actions, reducers, selectors, and a dispatch indirection. Expressive collapses all of these into methods:
+
+```tsx
+class Counter extends State {
+  count = 0;
+  increment() { this.count++; }
+}
+```
+
+|              | Redux / RTK                 | Expressive State        |
+| ------------ | --------------------------- | ----------------------- |
+| Updates      | `dispatch(action)`          | Direct assignment       |
+| Subscription | `useSelector`               | Destructure             |
+| Organization | Slices + store              | Classes                 |
+| Types        | Inferred from factory shape | Declared on class       |
+| Async        | Middleware (thunks, sagas)  | Regular async methods   |
+| Composition  | Store merging               | Class inheritance       |
+| DevTools     | Time-travel debugger        | Standard browser debug  |
+
+Redux's time-travel devtools are real value - if you rely on them, factor that into your choice.
+
+<br/>
+
+---
+
+<br/>
+
+## vs MobX
+
+MobX is the closest relative to Expressive. Both use observable classes with automatic dependency tracking. The differences are mostly about ergonomics and integration:
+
+```ts
+// MobX
+import { makeAutoObservable } from 'mobx';
+import { observer } from 'mobx-react-lite';
+
+class Counter {
+  count = 0;
+  constructor() { makeAutoObservable(this); }
+  increment() { this.count++; }
+}
+
+const counter = new Counter();
+
+const CounterView = observer(() => (
+  <button onClick={() => counter.increment()}>{counter.count}</button>
+));
+```
+
+```tsx
+// Expressive
+class Counter extends State {
+  count = 0;
+  increment() { this.count++; }
+}
+
+function CounterView() {
+  const { count, increment } = Counter.use();
+  return <button onClick={increment}>{count}</button>;
+}
+```
+
+- **No `observer()` wrapper** - miss one in MobX and you get stale renders. Expressive tracks through `use()`/`get()`.
+- **No `makeAutoObservable`** - extending `State` is enough.
+- **Methods are auto-bound** without special configuration.
+- **Lifecycle is built in** - `new()` and destruction semantics.
+- **Context is built in** - `Provider`, `State.get()`, `get` instruction.
+- **Suspense is built in** - async `set()` works with React Suspense out of the box.
+
+If you like MobX, you'll feel at home. Expressive is more opinionated: lifecycle, context, and framework integration are part of the library rather than pieces you wire together.
+
+|               | MobX                       | Expressive State            |
+| ------------- | -------------------------- | --------------------------- |
+| Setup         | `makeAutoObservable(this)` | Extend `State`              |
+| Components    | `observer(...)` wrapper    | `State.use()` / `State.get()` |
+| Binding       | Manual / configured        | Auto-bound                  |
+| Lifecycle     | DIY                        | Built-in `new()`            |
+| Context       | External library           | Built-in `Provider` + `get` |
+| Suspense      | Not included               | Built-in async `set()`      |
+
+<br/>
+
+## When not to use Expressive
+
+- Your team has a strict "functional only" code style.
+- Your app is mostly server-rendered with minimal client state.
+- You already have a state solution that works and causes no pain.
+- You rely heavily on Redux devtools' time-travel debugging.
+
+Expressive is a tool for specific kinds of complexity. If you don't have that complexity, you don't need it.

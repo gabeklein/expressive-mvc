@@ -1,6 +1,6 @@
-import { watch, Observable } from './observable';
+import { watch, Observable, observable } from './observable';
 import { set } from './instruction/set';
-import { use } from './instruction/use';
+import { def } from './instruction/def';
 import { mockError, vi, describe, it, expect, mockPromise } from '../vitest';
 import { State } from './state';
 
@@ -33,7 +33,7 @@ describe('effect', () => {
     const mock = vi.fn();
 
     class Test extends State {
-      property = use((_key, _state, state) => {
+      property = def((_key, _state, state) => {
         this.get(() => mock(state));
       });
 
@@ -51,7 +51,7 @@ describe('effect', () => {
       property?: string = undefined;
     }
 
-    const test = Test.new('ID');
+    const test = Test.new();
     const attempt = () => {
       watch(
         test,
@@ -62,7 +62,7 @@ describe('effect', () => {
       );
     };
 
-    expect(attempt).toThrow(`ID.property is required in this context.`);
+    expect(attempt).toThrow(/[\w-]+\.property is required in this context\./);
   });
 
   it('will still get events after silent ones', async () => {
@@ -104,7 +104,7 @@ describe('effect', () => {
       void $.bar;
     });
 
-    expect(calls[0]).toBeUndefined();
+    expect(calls[0]).toEqual([]);
 
     test.foo = 3;
     await expect(test).toHaveUpdated('foo');
@@ -157,6 +157,32 @@ describe('effect', () => {
 
     expect(didInvoke).not.toBeCalledWith({ foo: 2, bar: 1 });
     expect(didInvoke).toBeCalledTimes(4);
+  });
+
+  it('will call cleanup before re-running effect', async () => {
+    class Test extends State {
+      value = 1;
+    }
+
+    const effect = vi.fn();
+    const cleanup = vi.fn();
+    const test = Test.new();
+
+    watch(test, ($) => {
+      effect($.value);
+      return cleanup;
+    });
+
+    expect(effect).toBeCalledWith(1);
+    expect(cleanup).not.toBeCalled();
+
+    await test.set({ value: 2 });
+
+    expect(effect).toBeCalledWith(2);
+    expect(effect).toBeCalledWith(2);
+
+    expect(cleanup).toBeCalledTimes(1);
+    expect(cleanup).toBeCalledWith(true);
   });
 
   it('will ignore circular update', async () => {
@@ -263,7 +289,7 @@ describe('suspense', () => {
       value = set<never>();
     }
 
-    const instance = Test.new('ID');
+    const instance = Test.new();
     let didThrow: Error | undefined;
 
     try {
@@ -272,9 +298,7 @@ describe('suspense', () => {
       didThrow = err;
     }
 
-    expect(String(didThrow)).toMatchInlineSnapshot(
-      `"Error: ID.value is not yet available."`
-    );
+    expect(String(didThrow)).toMatch(/[\w-]+\.value is not yet available\./);
   });
 
   it('will reject if state destroyed before resolved', async () => {
@@ -282,7 +306,7 @@ describe('suspense', () => {
       value = set<never>();
     }
 
-    const instance = Test.new('ID');
+    const instance = Test.new();
     let didThrow: Promise<any> | undefined;
 
     try {
@@ -293,7 +317,7 @@ describe('suspense', () => {
 
     instance.set(null);
 
-    await expect(didThrow).rejects.toThrow(`ID is destroyed.`);
+    await expect(didThrow).rejects.toThrow(/[\w-]+ is destroyed\./);
   });
 });
 
@@ -337,19 +361,19 @@ describe('errors', () => {
 });
 
 describe('observable', () => {
-  it.each(['', ' (returning)'])('will update effect%s', async (returns) => {
+  it('will update effect', async () => {
     class MyObservable implements Observable {
       value = 'foo';
       watch?: Observable.Callback = undefined;
 
-      [Observable](onUpdate: Observable.Callback) {
+      [Observable](onUpdate: Observable.Callback): Observable.Observer {
         this.watch = onUpdate;
-        if (returns) return this;
+        return () => {};
       }
 
       async update(value: string) {
         this.value = value;
-        if (this.watch) return this.watch();
+        if (this.watch) this.watch();
       }
     }
 
@@ -370,5 +394,35 @@ describe('observable', () => {
 
     expect(mock).toBeCalledWith('bar');
     expect(mock).toBeCalledTimes(2);
+  });
+
+  describe('function', () => {
+    it("will return undefined for object which doesn't implement observable", () => {
+      expect(observable({})).toBeUndefined();
+    });
+
+    it('will return false for observable not ready', () => {
+      class Test extends State {}
+
+      expect(observable(new Test())).toBe(false);
+    });
+
+    it('will return true for observable ready', async () => {
+      class Test extends State {}
+
+      expect(observable(Test.new())).toBe(true);
+    });
+
+    it('will return null for observable destroyed', async () => {
+      class Test extends State {}
+
+      const instance = Test.new();
+
+      expect(observable(instance)).toBe(true);
+
+      instance.set(null);
+
+      expect(observable(instance)).toBeNull();
+    });
   });
 });

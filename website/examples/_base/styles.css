@@ -1,0 +1,125 @@
+:root {
+  color-scheme: light dark;
+  --bg: #fff;
+  --fg: #1a1a2e;
+  --muted: #6b7280;
+  --border: #e5e7eb;
+  --surface: #f3f4f6;
+  --accent: #646cff;
+  --radius: 6px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1a1a2e;
+    --fg: rgba(255, 255, 255, 0.87);
+    --muted: #9ca3af;
+    --border: #374151;
+    --surface: #242442;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: system-ui, -apple-system, sans-serif;
+  line-height: 1.5;
+  color: var(--fg);
+  background: var(--bg);
+  margin: 0;
+  padding: 2rem;
+  min-height: 100vh;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  margin: 0 0 0.5em;
+  line-height: 1.2;
+}
+
+p {
+  margin: 0 0 1em;
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+  border-radius: var(--radius);
+}
+
+button {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 0.4em 0.8em;
+  cursor: pointer;
+  transition: border-color 0.2s;
+  margin: 0 0.5em;
+}
+
+button:hover {
+  border-color: var(--accent);
+}
+
+input,
+select,
+textarea {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  padding: 0.4em 0.6em;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  text-align: left;
+  padding: 0.5em 0.75em;
+  border-bottom: 1px solid var(--border);
+}
+
+pre,
+code {
+  font-family: ui-monospace, 'SF Mono', monospace;
+  font-size: 0.9em;
+}
+
+pre {
+  background: var(--surface);
+  padding: 1em;
+  border-radius: var(--radius);
+  overflow-x: auto;
+}
+
+hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 1.5em 0;
+}

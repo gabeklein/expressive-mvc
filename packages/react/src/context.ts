@@ -5,23 +5,21 @@ import {
   ReactNode,
   Suspense,
   useContext,
-  useEffect,
-  useMemo
+  useRef
 } from 'react';
+import { useMount } from './state';
 
-export const Layers = createContext(new Context());
+const Layers = createContext(new Context());
 
-declare module '@expressive/state' {
-  namespace Context {
-    function use(create?: true): Context;
-    function use(create: boolean): Context | null | undefined;
+const _get = Context.get;
+
+Context.get = (state?: State) => {
+  if (state) return _get(state);
+  try {
+    return useContext(Layers);
+  } catch {
+    return Context.root;
   }
-}
-
-Context.use = (create?: boolean) => {
-  const ambient = useContext(Layers);
-
-  return create ? useMemo(() => ambient.push(), [ambient]) : ambient;
 };
 
 declare namespace Consumer {
@@ -45,15 +43,9 @@ function Consumer<T extends State>(props: Consumer.Props<T>) {
 }
 
 declare namespace Provider {
-  interface Props<T extends State> {
-    /** State or group of States to provide to descendant Consumers. */
-    for: Context.Accept<T>;
+  type ForEach<T> = (state: T) => void | (() => void);
 
-    /**
-     * Callback to run for each provided State.
-     */
-    forEach?: Context.Expect<T>;
-
+  interface SharedProps {
     /**
      * Children to render within this Provider.
      */
@@ -68,38 +60,46 @@ declare namespace Provider {
      */
     name?: string | undefined;
   }
+
+  type ForSingleProps<T extends State> = SharedProps & {
+    for: T | State.Type<T>;
+    is: (instance: T) => void;
+  } & { [K in State.Field<T>]?: T[K] };
+
+  type ForMultipleProps<T extends State> = SharedProps & {
+    for: Context.Accept<T>;
+    is?: ForEach<T>;
+  };
+
+  type Props<T extends State = State> = ForSingleProps<T> | ForMultipleProps<T>;
 }
 
 function Provider<T extends State>(props: Provider.Props<T>) {
-  const context = Context.use(true);
+  const ambient = useContext(Layers);
+  const ref = useRef<Context | null>(null);
+  const context = ref.current || (ref.current = new Context(ambient));
 
-  useEffect(() => () => context.pop(), [context]);
+  let {
+    for: input,
+    children,
+    fallback,
+    name,
+    ...rest
+  } = props as Provider.ForSingleProps<T> & Provider.ForMultipleProps<T>;
 
-  context.set(props.for, (state) => {
-    if (props.forEach) {
-      const cleanup = props.forEach(state);
+  context.set(input, (added) => rest.is?.(added));
 
-      if (cleanup) state.set(cleanup, null);
-    }
-  });
+  if (Object.keys(rest).length) {
+    if (State.is(input)) input = context.get(input) as T;
+    if (input instanceof State) input.set(rest as State.Assign<T>);
+  }
 
-  return provide(context, props.children, props.fallback, props.name);
-}
+  useMount(() => () => context.pop());
 
-function provide(
-  context: Context,
-  children: ReactNode,
-  fallback?: ReactNode,
-  name?: string | undefined
-): ReactNode {
   if (fallback !== undefined)
     children = createElement(Suspense, { fallback, name }, children);
 
-  return createElement(Layers.Provider, {
-    key: context.id,
-    value: context,
-    children
-  });
+  return createElement(Layers.Provider, { value: context, children });
 }
 
-export { Consumer, Provider, provide };
+export { Consumer, Provider, Context, Layers };

@@ -1,9 +1,7 @@
-import { scope } from '../observable';
+import { capture } from '../observable';
 import { Context } from '../context';
-import { State, PARENT, update } from '../state';
-import { use } from './use';
-
-type Type<T extends State> = State.Extends<T> & typeof State;
+import { State, parent, update } from '../state';
+import { def } from './def';
 
 declare namespace get {
   type Callback<T = any> = (
@@ -30,7 +28,7 @@ function get<T extends State>(
  * will be made available to child upon this request.
  *
  * @param Type - Type of controller compatible with this class.
- * @param required - If false, property may be undefined. Otherwise will throw suspense.
+ * @param required - If false, property may be undefined. Otherwise will throw.
  */
 function get<T extends State>(
   Type: State.Extends<T>,
@@ -38,9 +36,10 @@ function get<T extends State>(
 ): T | undefined;
 
 /**
- * Collects downstream States, this will accumulate all instances of specified type for which this is an ancestor.
- * Returns a frozen array that updates as States are added or removed.
- * Callback runs on each State registration and can return cleanup or false to prevent registration.
+ * Collects downstream States, accumulating all instances of specified type
+ * for which this is an ancestor. Returns an array that updates as States
+ * are added or removed. Callback runs on each registration and can return
+ * cleanup or false to prevent registration.
  *
  * @param Type - Type of State to collect.
  * @param downstream - Must be true to enable downstream mode.
@@ -50,111 +49,162 @@ function get<T extends State>(
   Type: State.Extends<T>,
   downstream: true,
   callback?: get.Callback<T>
-): readonly T[];
+): T[];
 
-function get<R, T extends State>(
-  Type: Type<T>,
-  arg1?: Function | boolean,
-  arg2?: Function
+/**
+ * Fetches a single downstream State of specified type.
+ * Updates when a matching child appears or is removed.
+ * Throws if not found.
+ *
+ * @param Type - Type of State to fetch.
+ * @param downstream - Must be true to enable downstream mode.
+ * @param required - Throw if no match found.
+ */
+function get<T extends State>(
+  Type: State.Extends<T>,
+  downstream: true,
+  single: true
+): T;
+
+/**
+ * Fetches a single downstream State of specified type.
+ * Updates when a matching child appears or is removed.
+ * Returns undefined if not found.
+ *
+ * @param Type - Type of State to fetch.
+ * @param downstream - Must be true to enable downstream mode.
+ * @param required - If false, returns undefined if no match found.
+ */
+function get<T extends State>(
+  Type: State.Extends<T>,
+  downstream: true,
+  required: false
+): T | undefined;
+
+function get<T extends State>(
+  Type: State.Extends<T>,
+  arg1?: get.Callback<T> | boolean,
+  arg2?: get.Callback<T> | boolean
 ) {
-  const isDownstream = arg1 === true;
-  const isOptional = arg1 === false;
+  return arg1 === true ? below(Type, arg2) : above(Type, arg1);
+}
 
-  return use<T[] | T>((key, subject) => {
-    // Downstream collection mode
-    if (isDownstream) {
-      const callback =
-        typeof arg2 === 'function' ? (arg2 as get.Callback<T>) : undefined;
+function above<T extends State>(
+  Type: State.Extends<T>,
+  argument: get.Callback<T> | boolean | undefined
+) {
+  return def<T>((key, subject) => {
+    const hasParent = parent(subject);
+    const callback =
+      typeof argument === 'function'
+        ? (argument as get.Callback<T>)
+        : undefined;
 
-      const applied = new Set<State>();
-      const reset = () => {
-        update(subject, key, Object.freeze(Array.from(applied)));
-      };
+    function assign(value: T) {
+      if (callback) {
+        const result = callback(value, subject);
+        if (typeof result === 'function') subject.set(null, result);
+      }
+      update(subject, key, value);
+    }
 
-      Context.get(subject, (context) => {
-        context.get(Type, (state) => {
-          let remove: (() => void) | undefined;
-          let flush: (() => void) | undefined;
+    if (hasParent && hasParent instanceof Type) {
+      assign(hasParent as T);
+      return {};
+    }
 
-          if (applied.has(state)) return;
+    const ctx = Context.get(subject);
+    let found = false;
 
-          if (callback) {
-            const exit = scope();
+    ctx.get(Type, (state) => {
+      if (state === subject) return;
+      found = true;
+      assign(state);
+    });
 
-            try {
-              const done = callback(state, subject);
+    if (!found && argument !== false)
+      throw new Error(`Required ${Type} not found in context for ${subject}.`);
 
-              if (done === false) return false;
-              if (typeof done == 'function') remove = done;
-            } finally {
-              flush = exit();
-            }
-          }
+    return {
+      get: argument !== false,
+      enumerable: false
+    };
+  });
+}
 
-          applied.add(state);
-          reset();
+function below<T extends State>(
+  Type: State.Extends<T>,
+  arg: get.Callback<T> | boolean | undefined
+) {
+  return def<T[]>((key, subject) => {
+    const context = Context.get(subject);
 
-          const done = () => {
-            if (flush) flush();
-            ignore();
-
-            applied.delete(state);
-            reset();
-
-            if (typeof remove == 'function') remove();
-
-            remove = undefined;
-          };
-
-          const ignore = state.set(done, null);
-
-          return done;
-        });
-      });
+    if (typeof arg == 'boolean') {
+      context.get(
+        Type,
+        (state) => {
+          update(subject, key, state);
+          return state.set(null, () => {
+            update(subject, key, undefined);
+          });
+        },
+        true
+      );
 
       return {
-        value: [],
+        get: arg,
+        value: undefined,
         enumerable: false
       };
     }
 
-    // Upstream mode
-    const hasParent = PARENT.get(subject) as T;
+    const applied = new Set<State>();
 
-    function assign(value: T) {
-      // If callback provided, run it as lifecycle hook
-      if (typeof arg1 === 'function') {
-        const callback = arg1 as get.Callback<T>;
-        const result = callback(value, subject);
+    context.get(
+      Type,
+      (state) => {
+        let remove: (() => void) | undefined;
+        let release: (() => void) | undefined;
 
-        // Register cleanup if returned
-        if (typeof result === 'function') {
-          subject.set(result, null);
+        if (applied.has(state)) return;
+
+        if (arg) {
+          let rejected = false;
+
+          capture((fn) => {
+            const done = arg(state, subject);
+
+            if (done === false) rejected = true;
+            else if (typeof done == 'function') remove = done;
+
+            release = fn;
+          });
+
+          if (rejected) return;
         }
-      }
 
-      update(subject, key, value);
-    }
+        applied.add(state);
+        update(subject, key, [...applied]);
 
-    // Check parent
-    if (hasParent && hasParent instanceof Type) {
-      assign(hasParent);
-      return {};
-    }
+        function done() {
+          if (release) release();
+          ignore();
 
-    // Check context
-    Context.get(subject, (context) => {
-      const self = context.get(Type);
+          applied.delete(state);
+          update(subject, key, [...applied]);
 
-      if (self && self !== subject) assign(self);
-      else if (!isOptional)
-        throw new Error(
-          `Required ${Type} not found in context for ${subject}.`
-        );
-    });
+          if (typeof remove == 'function') remove();
+        }
+
+        const ignore = state.set(null, done);
+
+        return done;
+      },
+      true
+    );
 
     return {
-      get: !isOptional,
+      value: [],
       enumerable: false
     };
   });

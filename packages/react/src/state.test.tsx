@@ -1,6 +1,4 @@
-import { renderHook, waitFor } from '@testing-library/react';
-import { Suspense } from 'react';
-
+import React from 'react';
 import { get, State, Provider, set } from '.';
 import {
   vi,
@@ -9,9 +7,12 @@ import {
   describe,
   act,
   render,
-  screen,
   afterEach,
-  afterAll
+  afterAll,
+  renderHook,
+  waitFor,
+  mockPromise,
+  renderWith
 } from '../vitest';
 
 describe('State.use', () => {
@@ -407,36 +408,81 @@ describe('State.use', () => {
       );
     });
   });
+
+  describe('strict mode', () => {
+    it('will create once and destroy on unmount', async () => {
+      const didCreate = vi.fn();
+      const didDestroy = vi.fn();
+
+      class Test extends State {
+        protected new() {
+          didCreate();
+          return didDestroy;
+        }
+      }
+
+      const Component = () => {
+        Test.use();
+        return null;
+      };
+
+      const element = render(
+        <React.StrictMode>
+          <Component />
+        </React.StrictMode>
+      );
+
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(didCreate).toBeCalledTimes(1);
+      expect(didDestroy).not.toBeCalled();
+
+      element.unmount();
+
+      expect(didDestroy).toBeCalledTimes(1);
+    });
+
+    it('will refresh via property update', async () => {
+      let instance!: Test;
+
+      class Test extends State {
+        value = 'foo';
+
+        new() {
+          instance = this;
+        }
+      }
+
+      const didRender = vi.fn();
+
+      const Component = () => {
+        const test = Test.use();
+        didRender(test.value);
+        return test.value;
+      };
+
+      const element = render(
+        <React.StrictMode>
+          <Component />
+        </React.StrictMode>
+      );
+
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(didRender).toBeCalledWith('foo');
+
+      await act(async () => {
+        instance.value = 'bar';
+      });
+
+      expect(didRender).toBeCalledWith('bar');
+
+      element.unmount();
+    });
+  });
 });
 
 describe('State.get', () => {
-  function renderWith<T>(Type: State.Type | State, hook: () => T) {
-    return renderHook(hook, {
-      wrapper(props) {
-        return (
-          <Provider for={Type}>
-            <Suspense fallback={null}>{props.children}</Suspense>
-          </Provider>
-        );
-      }
-    });
-  }
-
-  interface MockPromise<T> extends Promise<T> {
-    resolve: (value: T) => void;
-    reject: (reason?: any) => void;
-  }
-
-  function mockPromise<T = void>() {
-    const methods = {} as MockPromise<T>;
-    const promise = new Promise((res, rej) => {
-      methods.resolve = res;
-      methods.reject = rej;
-    }) as MockPromise<T>;
-
-    return Object.assign(promise, methods);
-  }
-
   const error = vi.spyOn(console, 'error').mockImplementation(() => {});
 
   afterEach(() => {
@@ -523,15 +569,12 @@ describe('State.get', () => {
     class Test extends State {
       value?: number = undefined;
 
-      constructor(...args: State.Args) {
-        super(args, 'ID');
-      }
     }
 
     renderWith(Test, () => {
       expect(() => {
         void Test.get(true).value;
-      }).toThrow('ID.value is required in this context.');
+      }).toThrow(/[\w-]+\.value is required in this context\./);
     });
   });
 
@@ -879,6 +922,300 @@ describe('State.get', () => {
     });
   });
 
+  describe('reactive context', () => {
+    class Test extends State {
+      value = 'foo';
+    }
+
+    it('will refresh when upstream instance is replaced', async () => {
+      const test1 = Test.new();
+      const test2 = Test.new();
+
+      test1.value = 'first';
+      test2.value = 'second';
+
+      let current: State | State.Type | Record<string, any> = test1;
+      const didRender = vi.fn();
+
+      const Inner = () => {
+        didRender();
+        return Test.get().value;
+      };
+
+      const element = render(
+        <Provider for={current}>
+          <Inner />
+        </Provider>
+      );
+
+      expect(didRender).toBeCalledTimes(1);
+      expect(element.container.textContent).toBe('first');
+
+      current = test2;
+
+      await act(async () => {
+        element.rerender(
+          <Provider for={current}>
+            <Inner />
+          </Provider>
+        );
+      });
+
+      expect(element.container.textContent).toBe('second');
+      expect(didRender).toBeCalledTimes(2);
+    });
+
+    it('will track new instance after replacement', async () => {
+      const test1 = Test.new();
+      const test2 = Test.new();
+
+      test1.value = 'first';
+      test2.value = 'second';
+
+      let current: any = test1;
+      const didRender = vi.fn();
+
+      const Inner = () => {
+        didRender();
+        const { value } = Test.get();
+        return value;
+      };
+
+      const element = render(
+        <Provider for={current}>
+          <Inner />
+        </Provider>
+      );
+
+      expect(didRender).toBeCalledTimes(1);
+      expect(element.container.textContent).toBe('first');
+
+      current = test2;
+
+      await act(async () => {
+        element.rerender(
+          <Provider for={current}>
+            <Inner />
+          </Provider>
+        );
+      });
+
+      expect(didRender).toBeCalledTimes(2);
+
+      // update new instance - should trigger render
+      await act(async () => {
+        test2.value = 'updated';
+      });
+
+      await waitFor(() => {
+        expect(didRender).toBeCalledTimes(3);
+      });
+
+      expect(element.container.textContent).toBe('updated');
+    });
+
+    it('will not track old instance after replacement', async () => {
+      const test1 = Test.new();
+      const test2 = Test.new();
+
+      test1.value = 'first';
+      test2.value = 'second';
+
+      let current: any = test1;
+      const didRender = vi.fn();
+
+      const Inner = () => {
+        didRender();
+        const { value } = Test.get();
+        return value;
+      };
+
+      const { rerender } = render(
+        <Provider for={current}>
+          <Inner />
+        </Provider>
+      );
+
+      current = test2;
+
+      await act(async () => {
+        rerender(
+          <Provider for={current}>
+            <Inner />
+          </Provider>
+        );
+      });
+
+      expect(didRender).toBeCalledTimes(2);
+
+      // update old instance - should NOT trigger render
+      test1.value = 'stale';
+      await expect(test1).toHaveUpdated();
+
+      expect(didRender).toBeCalledTimes(2);
+    });
+
+    it('will render null when instance is removed', async () => {
+      class Other extends State {
+        label = 'other';
+      }
+
+      const test = Test.new();
+      const other = Other.new();
+
+      let current: any = { test, other };
+      const didRender = vi.fn();
+
+      const Inner = () => {
+        didRender();
+        return Test.get(false)?.value ?? null;
+      };
+
+      const { rerender } = render(
+        <Provider for={current}>
+          <Inner />
+        </Provider>
+      );
+
+      expect(didRender).toBeCalledTimes(1);
+
+      // remove Test from context, keep Other
+      current = { other };
+
+      await act(async () => {
+        rerender(
+          <Provider for={current}>
+            <Inner />
+          </Provider>
+        );
+      });
+
+      await waitFor(() => {
+        expect(didRender).toBeCalledTimes(2);
+      });
+    });
+
+    it('will refresh when implicit instance is replaced', async () => {
+      class Child extends State {
+        value = 'original';
+      }
+
+      class Parent extends State {
+        child = new Child();
+      }
+
+      const parent = new Parent();
+      const didRender = vi.fn();
+
+      const Inner = () => {
+        didRender();
+        return Child.get().value;
+      };
+
+      render(
+        <Provider for={parent}>
+          <Inner />
+        </Provider>
+      );
+
+      expect(didRender).toBeCalledTimes(1);
+
+      await act(async () => {
+        parent.child = new Child({ value: 'replaced' });
+      });
+
+      expect(didRender).toBeCalledTimes(2);
+
+      parent.child.value = 'updated';
+
+      await waitFor(() => {
+        expect(didRender).toBeCalledTimes(3);
+      });
+    });
+
+    it('will track implicit replacement instance', async () => {
+      class Child extends State {
+        value = 'original';
+      }
+
+      class Parent extends State {
+        child = new Child();
+      }
+
+      const parent = new Parent();
+      const didRender = vi.fn();
+
+      const Inner = () => {
+        didRender();
+        return Child.get().value;
+      };
+
+      const element = render(
+        <Provider for={parent}>
+          <Inner />
+        </Provider>
+      );
+
+      expect(element.container.textContent).toBe('original');
+      expect(didRender).toBeCalledTimes(1);
+
+      // replace child implicitly
+      await act(async () => {
+        parent.child = new Child({ value: 'replaced' });
+      });
+
+      expect(element.container.textContent).toBe('replaced');
+      expect(didRender).toBeCalledTimes(2);
+
+      // update the new child - should still trigger render
+      await act(async () => {
+        parent.child.value = 'updated';
+        await expect(parent.child).toHaveUpdated();
+      });
+
+      expect(element.container.textContent).toBe('updated');
+      expect(didRender).toBeCalledTimes(3);
+    });
+
+    it('will use factory with replaced instance', async () => {
+      const test1 = Test.new();
+      const test2 = Test.new();
+
+      test1.value = 'first';
+      test2.value = 'second';
+
+      let current: any = test1;
+      const didCompute = vi.fn();
+
+      const Inner = () => {
+        return Test.get(($) => {
+          didCompute();
+          return $.value;
+        });
+      };
+
+      const { rerender } = render(
+        <Provider for={current}>
+          <Inner />
+        </Provider>
+      );
+
+      expect(didCompute).toBeCalledTimes(1);
+
+      current = test2;
+
+      await act(async () => {
+        rerender(
+          <Provider for={current}>
+            <Inner />
+          </Provider>
+        );
+      });
+
+      expect(didCompute).toBeCalledTimes(2);
+    });
+  });
+
   describe('get instruction', () => {
     class Foo extends State {
       bar = get(Bar);
@@ -928,14 +1265,11 @@ describe('State.get', () => {
       class Foo extends State {
         bar = get(Bar);
 
-        constructor(...args: State.Args) {
-          super(args, 'ID');
-        }
       }
 
       const tryToRender = () => renderHook(() => Foo.use());
 
-      expect(tryToRender).toThrow(`Required Bar not found in context for ID.`);
+      expect(tryToRender).toThrow(/Required Bar not found in context for [\w-]+\./);
     });
 
     it('will prefer parent over context', () => {
@@ -954,13 +1288,47 @@ describe('State.get', () => {
     });
   });
 
+  describe('strict mode', () => {
+    it('will survive effect remount', async () => {
+      class Test extends State {
+        value = 'foo';
+      }
+
+      const test = Test.new();
+      const didRender = vi.fn();
+
+      const Inner = () => {
+        didRender();
+        return Test.get().value;
+      };
+
+      const element = render(
+        <React.StrictMode>
+          <Provider for={test}>
+            <Inner />
+          </Provider>
+        </React.StrictMode>
+      );
+
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(element.container.textContent).toBe('foo');
+
+      await act(async () => {
+        test.value = 'bar';
+      });
+
+      expect(element.container.textContent).toBe('bar');
+    });
+  });
+
   describe('set instruction', () => {
     describe('factory', () => {
       it('will suspend if function is async', async () => {
         const promise = mockPromise<string>();
 
         class Test extends State {
-          value = set(() => promise, true);
+          value = set(() => promise);
         }
 
         const hook = renderWith(Test, () => {
@@ -980,7 +1348,7 @@ describe('State.get', () => {
         const promise = mockPromise();
 
         class Test extends State {
-          value = set(() => promise, true);
+          value = set(() => promise);
         }
 
         const hook = renderWith(Test, () => {
@@ -1037,350 +1405,6 @@ describe('State.get', () => {
         });
         expect(hook.result.current).toBe('foo!');
       });
-    });
-  });
-});
-
-describe('State.as', () => {
-  it('will prefix generated component class name with React', () => {
-    class Test extends State {}
-
-    const Component = Test.as(() => null);
-
-    expect(Component.name).toBe('ReactTest');
-  });
-
-  it('will create extensible component', () => {
-    class Test extends State {
-      something = 'World';
-    }
-
-    const TestComponent = Test.as((_, self) => (
-      <span>Hello {self.something}</span>
-    ));
-
-    class Test2 extends TestComponent {
-      something = 'Tester';
-    }
-
-    const element = render(<Test2 />);
-
-    element.getByText('Hello Tester');
-  });
-
-  it('will create passthrough component with defaults', () => {
-    class Test extends State {
-      name = 'World';
-    }
-
-    const Component = Test.as({ name: 'Tester' });
-    const Consumer = () => {
-      const { name } = Test.get();
-
-      return <div>Hello {name}</div>;
-    };
-
-    const element = render(
-      <Component>
-        <Consumer />
-      </Component>
-    );
-
-    element.getByText('Hello Tester');
-  });
-
-  it('will create null component with no render', () => {
-    class Test extends State {
-      something = 'World';
-    }
-
-    const Component = Test.as({});
-
-    const element = render(<Component />);
-
-    expect(element.container.innerHTML).toBe('');
-  });
-
-  it('will expect props based of callback signature', () => {
-    class Test extends State {
-      something = 'World';
-    }
-
-    interface InvalidProps {
-      value: string;
-      something?: number; // -> this shouldn't be allowed
-    }
-
-    if (0) {
-      // @ts-expect-error - overlap with state prop must be compatible
-      Test.as((props: InvalidProps, self) => (
-        <span>{props.value + self.something}</span>
-      ));
-    }
-
-    const Component = Test.as((props: { value: string }, self) => (
-      <span>{props.value + self.something}</span>
-    ));
-
-    if (0) {
-      // @ts-expect-error - value prop is required
-      <Component />;
-    }
-
-    const element = render(<Component value="Hello " />);
-
-    element.getByText('Hello World');
-  });
-
-  it('will create component with default values', () => {
-    class Test extends State {
-      foo = 'bar';
-    }
-
-    const Renderable = Test.as((_, i) => <span>{i.foo}</span>);
-    const WithDefault = Renderable.as({ foo: 'baz' });
-
-    const element = render(<WithDefault />);
-
-    element.getByText('baz');
-  });
-
-  it('will update component as values change', async () => {
-    class Test extends State {
-      foo = 'bar';
-      protected new() {
-        test = this;
-      }
-    }
-    let test: Test;
-    const Component = Test.as((_, self) => {
-      return <span>{self.foo}</span>;
-    });
-
-    render(<Component />);
-    screen.getByText('bar');
-
-    await act(async () => {
-      test.foo = 'baz';
-      await test.set();
-    });
-
-    screen.getByText('baz');
-  });
-
-  it('will merge props into state', async () => {
-    const didUpdateFoo = vi.fn();
-    class Test extends State {
-      foo = 'foo';
-      constructor(...args: State.Args) {
-        super(...args);
-        this.set(didUpdateFoo);
-      }
-    }
-    const Component = Test.as((_, self) => <span>{self.foo}</span>);
-    const { rerender } = render(<Component foo="bar" />);
-
-    screen.getByText('bar');
-    expect(didUpdateFoo).not.toBeCalled();
-
-    rerender(<Component foo="baz" />);
-
-    screen.getByText('baz');
-    expect(didUpdateFoo).toBeCalledTimes(1);
-    expect(didUpdateFoo).toBeCalledWith(
-      'foo',
-      expect.objectContaining({ foo: 'baz' })
-    );
-  });
-
-  it('will pass initial props before effects run', async () => {
-    class Test extends State {
-      foo = 'foo';
-
-      constructor(...args: State.Args) {
-        super(...args, (self) => {
-          expect(self.foo).toBe('bar');
-        });
-      }
-    }
-
-    const Component = Test.as((_, self) => <span>{self.foo}</span>);
-
-    render(<Component foo="bar" />);
-
-    screen.getByText('bar');
-  });
-
-  it('will call is method on creation', () => {
-    class Control extends State {}
-
-    const Test = Control.as(() => null);
-
-    const didCreate = vi.fn();
-
-    const screen = render(<Test is={didCreate} />);
-
-    expect(didCreate).toBeCalledTimes(1);
-
-    screen.rerender(<Test is={didCreate} />);
-    expect(didCreate).toBeCalledTimes(1);
-
-    act(screen.unmount);
-  });
-
-  it('will pass untracked props to render', async () => {
-    class Test extends State {
-      foo = 'foo';
-
-      constructor(...args: State.Args) {
-        super(args);
-        test = this;
-      }
-    }
-
-    let test: Test;
-    const Component = Test.as((props: { value: string }, self) => (
-      <span>{self.foo + props.value}</span>
-    ));
-
-    render(<Component value="bar" />);
-    screen.getByText('foobar');
-
-    await act(async () => test.set({ foo: 'baz' }));
-    screen.getByText('bazbar');
-  });
-
-  it('will retain local updates over initial props', async () => {
-    class Test extends State {
-      foo = 'foo';
-
-      constructor(...args: State.Args) {
-        super(args);
-        test = this;
-        this.set(didSetFoo);
-      }
-    }
-
-    let test: Test;
-    const didSetFoo = vi.fn();
-    const renderSpy = vi.fn((_, { foo }) => {
-      return <span>{foo}</span>;
-    });
-
-    const Component = Test.as(renderSpy);
-
-    render(<Component foo="bar" />);
-
-    screen.getByText('bar');
-
-    await act(async () => {
-      // explicitly update foo; calls for new render
-      test.foo = 'baz';
-      await test.set();
-      expect(test.foo).toBe('baz');
-    });
-
-    screen.getByText('baz');
-
-    expect(didSetFoo).toBeCalledTimes(1);
-    expect(renderSpy).toBeCalledTimes(2);
-  });
-
-  it('will override method', async () => {
-    class Test extends State {
-      callback() {
-        return 'foo';
-      }
-    }
-
-    const Component = Test.as((_, self) => {
-      return <span>{self.callback()}</span>;
-    });
-
-    const element = render(<Component callback={() => 'bar'} />);
-    screen.getByText('bar');
-
-    element.rerender(<Component callback={() => 'baz'} />);
-    screen.getByText('baz');
-  });
-
-  it('will trigger set instruction', () => {
-    class Foo extends State {
-      value = set('foobar', didSet);
-    }
-
-    const Component = Foo.as(() => null);
-    const didSet = vi.fn();
-
-    render(<Component value="barfoo" />);
-
-    expect(didSet).toBeCalled();
-  });
-
-  describe('new method', () => {
-    it('will call if exists', () => {
-      const didCreate = vi.fn();
-
-      class Test extends State {
-        value = 0;
-
-        protected new() {
-          didCreate();
-        }
-      }
-
-      const Component = Test.as(() => null);
-
-      render(<Component />);
-
-      expect(didCreate).toBeCalled();
-    });
-  });
-
-  describe('suspense', () => {
-    it('will render fallback prop', async () => {
-      class Foo extends State {
-        value = set<string>();
-      }
-
-      let foo!: Foo;
-      const Provider = Foo.as(() => <Consumer />);
-
-      const Consumer = () => (foo = Foo.get()).value;
-
-      const element = render(<Provider fallback={<span>Loading...</span>} />);
-
-      element.getByText('Loading...');
-
-      await act(async () => (foo.value = 'Hello World'));
-
-      element.getByText('Hello World');
-    });
-
-    it('will use fallback property first', async () => {
-      class Foo extends State {
-        value = set<string>();
-        fallback = (<span>Loading!</span>);
-      }
-
-      let foo!: Foo;
-      const Provider = Foo.as(() => <Consumer />);
-
-      const Consumer = () => (foo = Foo.get()).value;
-
-      const element = render(<Provider />);
-
-      element.queryByText('Loading!');
-
-      element.rerender(<Provider fallback={<span>Loading...</span>} />);
-
-      element.getByText('Loading...');
-
-      await act(async () => {
-        foo.value = 'Hello World';
-      });
-
-      element.getByText('Hello World');
     });
   });
 });

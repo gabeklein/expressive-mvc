@@ -1,0 +1,336 @@
+---
+title: Context and Sharing
+description: Provider, the get instruction, and upstream/downstream lookup
+---
+
+Expressive has a built-in, type-safe context system. The class itself is the key - no `createContext<T>()`, no default values, no prop drilling. Any State provided in an ancestor can be looked up anywhere below it.
+
+```tsx
+import State, { Provider } from '@expressive/react';
+
+class Theme extends State {
+  color = 'blue';
+  toggle() {
+    this.color = this.color === 'blue' ? 'red' : 'blue';
+  }
+}
+
+function App() {
+  return (
+    <Provider for={Theme}>
+      <Header />
+      <Main />
+    </Provider>
+  );
+}
+
+function Header() {
+  const { color, toggle } = Theme.get();
+  return <button style={{ color }} onClick={toggle}>{color}</button>;
+}
+```
+
+<br/>
+
+## Provider
+
+`Provider` puts a State instance (or several) into context for its descendants.
+
+### Providing a class
+
+```tsx
+<Provider for={Theme}>
+  <App />
+</Provider>
+```
+
+The provider creates an instance on mount and destroys it on unmount. Pass state fields as JSX attributes to set initial values:
+
+```tsx
+<Provider for={Theme} color="red">
+  <App />
+</Provider>
+```
+
+### Providing an existing instance
+
+```tsx
+const theme = Theme.new();
+
+<Provider for={theme}>
+  <App />
+</Provider>
+```
+
+Instances passed in from outside are **not** destroyed when the provider unmounts - you manage their lifetime.
+
+### Providing multiple states
+
+Pass a record to provide several at once:
+
+```tsx
+<Provider for={{ theme: Theme, auth: AuthService, cart: Cart }}>
+  <App />
+</Provider>
+```
+
+### Creation callback
+
+```tsx
+<Provider for={Theme} is={(theme) => theme.loadFromStorage()}>
+  <App />
+</Provider>
+```
+
+The `is` callback runs once per instance on creation. For multi-state providers, it runs once per instance created.
+
+### Suspense
+
+```tsx
+<Provider for={UserProfile} fallback={<Spinner />}>
+  <ProfileView />
+</Provider>
+```
+
+The `fallback` prop wraps children in a `Suspense` boundary, so any async `set()` in the provided state triggers the fallback.
+
+<br/>
+
+## Consuming from context
+
+### `State.get()`
+
+Inside a component, `State.get()` looks up an instance from context and subscribes to accessed properties:
+
+```tsx
+function ThemeToggle() {
+  const { color, toggle } = Theme.get();
+  return <button style={{ color }} onClick={toggle}>Toggle</button>;
+}
+```
+
+- Throws if the state isn't provided above.
+- Re-renders only when accessed properties change.
+- Returns a new hook subscription if the provider is replaced upstream.
+
+### Optional lookup
+
+```tsx
+const theme = Theme.get(false); // Theme | undefined
+```
+
+### Required values
+
+```tsx
+const profile = UserProfile.get(true); // Required<UserProfile>
+```
+
+With `true`, any accessed property that's currently undefined triggers Suspense. Use this when you want the rendering code to assume all data is present.
+
+### Computed selector
+
+Pass a factory to derive a value from context. The component only re-renders when the derived value changes (compared by `===`):
+
+```tsx
+function CartSummary() {
+  const summary = Cart.get((cart) => ({
+    total: cart.total,
+    count: cart.count,
+    empty: cart.items.length === 0,
+  }));
+
+  if (summary.empty) return <p>Cart is empty</p>;
+  return <p>{summary.count} items - ${summary.total}</p>;
+}
+```
+
+The factory receives a tracking proxy and a `refresh` function (see below).
+
+### Effect mode
+
+Return `null` from the factory to run a side effect without subscribing to re-renders:
+
+```tsx
+AppState.get((app) => {
+  console.log('user changed:', app.user);
+  return null;
+});
+```
+
+### ForceRefresh
+
+The second argument to a factory is a `refresh` function. Call it to force the component to re-render, pass it a promise to re-render after resolution, or pass it an async function to re-render before and after:
+
+```tsx
+function DataView() {
+  const data = DataService.get((svc, refresh) => {
+    const reload = () => refresh(svc.fetch());
+    return { items: svc.items, reload };
+  });
+
+  return <button onClick={data.reload}>Reload</button>;
+}
+```
+
+<br/>
+
+## The `get` instruction
+
+Inside a State class, the `get` instruction declares a context dependency as a field:
+
+```tsx
+import State, { get } from '@expressive/react';
+
+class Panel extends State {
+  theme = get(Theme);           // required - throws if not in context
+  maybe = get(OptionalSvc, false); // optional - T | undefined
+}
+```
+
+This is **dependency injection**: a class declares what it needs, and whoever provides it supplies it. When an instance is created inside a Provider tree (or a Component), `get` fields are resolved automatically.
+
+### Upstream with callback
+
+```tsx
+class Panel extends State {
+  theme = get(Theme, (theme, self) => {
+    console.log('found theme:', theme);
+    return () => console.log('detached');
+  });
+}
+```
+
+The callback runs once when the upstream is resolved. The optional returned function runs on destruction.
+
+### Downstream collection
+
+```tsx
+class TabGroup extends State {
+  tabs = get(Tab, true); // readonly Tab[]
+  active = 0;
+}
+
+class Tab extends State {
+  label = '';
+  group = get(TabGroup);
+}
+```
+
+Pass `true` as the second argument to collect **downstream** instances of a type. The array updates as children are added or removed. Subclasses match; superclasses do not.
+
+```tsx
+<Provider for={TabGroup}>
+  <Provider for={Tab} label="Home" />
+  <Provider for={Tab} label="Profile" />
+  <Provider for={Tab} label="Settings" />
+</Provider>
+```
+
+### Downstream with callback
+
+```tsx
+class Registry extends State {
+  items = get(Item, true, (item, self) => {
+    console.log('registered:', item);
+    return () => console.log('unregistered');
+  });
+}
+```
+
+Return `false` from the callback to prevent registration. Return a function for cleanup.
+
+### Downstream single
+
+Sometimes you want a single child of a type, not an array:
+
+```tsx
+class Container extends State {
+  form = get(FormState, true, true);   // required, single
+  form = get(FormState, true, false);  // optional, single
+}
+```
+
+<br/>
+
+## Consumer (render prop)
+
+For cases where you want to read context inline without a new component:
+
+```tsx
+import { Consumer } from '@expressive/react';
+
+<Consumer for={Theme}>
+  {(theme) => <p style={{ color: theme.color }}>Themed text</p>}
+</Consumer>
+```
+
+The child function receives a tracking proxy, so property reads subscribe just like `State.get()`.
+
+<br/>
+
+## Composition patterns
+
+### Services tree
+
+Classes can compose by owning each other:
+
+```tsx
+class Auth extends State { /* ... */ }
+class Api extends State {
+  auth = get(Auth);
+  // ...
+}
+class App extends State {
+  auth = new Auth();
+  api = new Api();
+}
+
+<Provider for={App}>
+  <View />
+</Provider>
+```
+
+When `App` is constructed, `auth` and `api` activate together. `Api` looks up `Auth` from the shared context automatically.
+
+### Scoped overrides
+
+Nested providers override inner lookups:
+
+```tsx
+<Provider for={Theme} color="light">
+  <Section />
+  <Provider for={Theme} color="dark">
+    <Section /> {/* resolves the inner Theme */}
+  </Provider>
+</Provider>
+```
+
+### Feature boundaries
+
+A `Component` subclass is both a React component and a context container. This makes it the natural unit for a feature:
+
+```tsx
+class Dashboard extends Component {
+  filter = '';
+  items = set(async () => loadItems());
+  // Dashboard is now in context for any descendant.
+}
+
+function FilterBar() {
+  const { filter, is } = Dashboard.get();
+  return <input value={filter} onChange={e => is.filter = e.target.value} />;
+}
+
+<Dashboard>
+  <FilterBar />
+  <ItemList />
+</Dashboard>
+```
+
+<br/>
+
+## Next
+
+- [Async](/docs/guides/async) - async factories, Suspense, and error recovery.
+- [API: Hooks](/docs/api/hooks) - `State.use`, `State.get`, `Provider`, `Consumer`.
+- [API: Instructions](/docs/api/instructions) - every overload of `get`, `set`, `ref`, and `def`.

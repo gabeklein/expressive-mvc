@@ -1,0 +1,144 @@
+---
+title: Utilities
+description: Framework-agnostic helpers - watch, listener, event, Context, Observable
+---
+
+These exports are framework-agnostic. They're available from both `@expressive/state` and `@expressive/react`.
+
+```ts
+import { watch, listener, event, Context, Observable, unbind } from '@expressive/state';
+```
+
+<br/>
+
+## `watch(target, callback)`
+
+Subscribe to a State's tracked values from outside a framework. Equivalent to `state.get(effect)` but as a free function.
+
+```ts
+import { watch } from '@expressive/state';
+
+const state = Counter.new();
+
+const stop = watch(state, (current) => {
+  console.log('count:', current.count);
+});
+
+state.count++;
+stop();
+```
+
+Signature:
+
+```ts
+function watch<T>(target: T, callback: Effect<T>, recursive?: boolean): () => void;
+function watch<T>(target: T, callback: Effect<Required<T>>, requireValues: true): () => void;
+```
+
+Pass `requireValues: true` to throw on undefined tracked values - useful when the effect assumes all data is present.
+
+<br/>
+
+## `listener(target, callback, select?)`
+
+Low-level listener for an observable's event stream. Receives every signal (property updates, lifecycle events, custom events).
+
+```ts
+import { listener } from '@expressive/state';
+
+const stop = listener(state, (key, source) => {
+  if (key === true) console.log('ready');
+  else if (key === false) console.log('batch settled');
+  else if (key === null) console.log('destroyed');
+  else console.log('event:', key);
+});
+```
+
+Optionally filter by a specific signal or a set of signals.
+
+<br/>
+
+## `event(target, key?, silent?)`
+
+Dispatch an event on a State manually. Equivalent to `state.set(key)` but available as a free function.
+
+```ts
+event(state, 'my-event');
+event(state, Symbol.for('refresh'));
+```
+
+<br/>
+
+## `Context`
+
+The context system that backs `Provider` and the `get` instruction.
+
+```ts
+import { Context } from '@expressive/state';
+
+const ctx = new Context({ AppState, UserState });
+const app = ctx.get(AppState);
+const child = ctx.push({ ChildState });
+child.pop();
+```
+
+| Method            | Description                                           |
+| ----------------- | ----------------------------------------------------- |
+| `Context.root`    | Root context - global fallback                        |
+| `Context.get(s?)` | Get the context for a given state                     |
+| `ctx.get(Type)`   | Look up a state by type (upstream)                    |
+| `ctx.set(input, forEach?)` | Register states in the context               |
+| `ctx.push(input?)` | Create a child context                               |
+| `ctx.pop()`       | Destroy this context and its registered states        |
+
+Adapters can override `Context.get` to provide framework-specific context (as the React adapter does).
+
+<br/>
+
+## `Observable`
+
+Base type that `State` extends. You rarely need to interact with `Observable` directly - it's exposed mainly for tooling and advanced use cases.
+
+```ts
+import { Observable } from '@expressive/state';
+```
+
+`Observable` is also a unique symbol used as a protocol key on objects that participate in the event system.
+
+<br/>
+
+## `unbind(fn)`
+
+Return the original, unbound version of a method. Expressive auto-binds methods on first access; `unbind` gives you the raw function if you need it (for e.g. composing with other function wrappers).
+
+```ts
+import { unbind } from '@expressive/state';
+
+const raw = unbind(state.someMethod);
+```
+
+<br/>
+
+## Re-exports
+
+`@expressive/react` re-exports everything from `@expressive/state`:
+
+```ts
+import State, {
+  Component,
+  Provider,
+  Consumer,
+  Context,
+  Observable,
+  def,
+  event,
+  get,
+  listener,
+  ref,
+  set,
+  unbind,
+  watch,
+} from '@expressive/react';
+```
+
+So a React project never needs to import from `@expressive/state` directly.

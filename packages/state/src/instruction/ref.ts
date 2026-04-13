@@ -1,6 +1,6 @@
-import { listener, scope } from '../observable';
+import { listener, capture } from '../observable';
 import { State, update } from '../state';
-import { use } from './use';
+import { def } from './def';
 
 const { defineProperty, defineProperties } = Object;
 
@@ -55,15 +55,15 @@ function ref<T extends State>(state: T): ref.Proxy<T>;
 
 /**
  * Creates an object with values based on managed values.
- * Each property will invoke mapper function on first access supply
+ * Each property will invoke map function on first access supply
  * the its return value going forward.
  *
  * @param state - Source state from which to reference values.
- * @param mapper - Function producing the placeholder value for any given property.
+ * @param map - Function producing the placeholder value for any given property.
  */
 function ref<T extends State, R>(
   state: T,
-  mapper: (key: State.Field<T>) => R
+  map: (key: State.Field<T>) => R
 ): ref.CustomProxy<T, R>;
 
 /**
@@ -94,7 +94,7 @@ function ref<T>(
   arg?: ref.Callback<T> | State,
   arg2?: ((key: string) => any) | boolean
 ) {
-  return use<T>((key, subject, state) => {
+  return def((key, subject, state) => {
     let value = {};
     const method =
       (key: string, from: Record<string, T>) =>
@@ -104,37 +104,33 @@ function ref<T>(
           : from[key];
 
     if (arg === subject)
-      listener(
-        subject,
-        () => {
-          for (const key in subject)
-            if (typeof arg2 == 'function')
-              defineProperty(value, key, {
-                configurable: true,
-                get() {
-                  const out = arg2(key);
-                  defineProperty(value, key, { value: out });
-                  return out;
-                }
-              });
-            else {
-              const get = method(key, subject);
-              const set = (x: any) => (subject[key] = x);
+      listener(subject, () => {
+        for (const key in subject)
+          if (typeof arg2 == 'function')
+            defineProperty(value, key, {
+              configurable: true,
+              get() {
+                const out = arg2(key);
+                defineProperty(value, key, { value: out });
+                return out;
+              }
+            });
+          else {
+            const get = method(key, subject);
+            const set = (x: any) => (subject[key] = x);
 
-              defineProperties(set, {
-                current: { get, set },
-                get: { value: get },
-                is: { value: subject },
-                key: { value: key }
-              });
+            defineProperties(set, {
+              current: { get, set },
+              get: { value: get },
+              is: { value: subject },
+              key: { value: key }
+            });
 
-              defineProperty(value, key, { value: set });
-            }
+            defineProperty(value, key, { value: set });
+          }
 
-          return null;
-        },
-        true
-      );
+        return null;
+      });
     else if (typeof arg == 'object')
       throw new Error(
         "ref instruction does not support object which is not 'this'"
@@ -144,20 +140,17 @@ function ref<T>(
       const get = method(key, state);
       const set = (value?: any) => {
         if (!update(subject, key, value) || !arg) return;
-
         if (unset) unset = void unset(value);
-
         if (value === null && arg2 !== false) return;
 
-        const exit = scope();
-        const out = arg.call(subject, value);
-        const flush = exit();
+        capture((release) => {
+          const out = arg.call(subject, value);
 
-        unset = (key) => {
-          if (typeof out == 'function') out(key);
-
-          flush();
-        };
+          unset = (key) => {
+            if (typeof out == 'function') out(key);
+            release();
+          };
+        });
       };
 
       state[key] = null;
@@ -167,7 +160,9 @@ function ref<T>(
       });
     }
 
-    defineProperty(subject, key, { value });
+    return {
+      get: () => value
+    };
   });
 }
 

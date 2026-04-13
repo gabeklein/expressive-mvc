@@ -1,22 +1,20 @@
 import { Context } from '@expressive/state';
-import { ComponentChildren, createContext, createElement } from 'preact';
-import { useContext, useEffect, useMemo } from 'preact/hooks';
+import { State, useMount } from '@expressive/react/state';
 
-import { ReactState as State } from '@expressive/react/state';
+import { ComponentChildren, createContext, createElement } from 'preact';
+import { useContext, useMemo } from 'preact/hooks';
 
 const Lookup = createContext(new Context());
 
-declare module '@expressive/state' {
-  namespace Context {
-    function use(create?: true): Context;
-    function use(create: boolean): Context | null | undefined;
+const _get = Context.get;
+
+Context.get = (state?) => {
+  if (state) return _get(state);
+  try {
+    return useContext(Lookup);
+  } catch {
+    return Context.root;
   }
-}
-
-Context.use = (create?: boolean) => {
-  const ambient = useContext(Lookup);
-
-  return create ? useMemo(() => ambient.push(), [ambient]) : ambient;
 };
 
 declare namespace Consumer {
@@ -40,23 +38,25 @@ function Consumer<T extends State>(props: Consumer.Props<T>) {
 }
 
 declare namespace Provider {
+  type ForEach<T> = (state: T) => void | (() => void);
+
   interface Props<T extends State> {
     for: Context.Accept<T>;
-    forEach?: Context.Expect<T>;
+    forEach?: ForEach<T>;
     children?: ComponentChildren;
   }
 }
 
 function Provider<T extends State>(props: Provider.Props<T>) {
-  const context = Context.use(true);
+  const ambient = Context.get();
+  const context = useMemo(() => ambient.push(), [ambient]);
 
-  useEffect(() => () => context.pop(), [context]);
+  useMount(() => () => context.pop());
 
   context.set(props.for, (state) => {
     if (props.forEach) {
       const cleanup = props.forEach(state);
-
-      if (cleanup) state.set(cleanup, null);
+      if (cleanup) state.set(null, cleanup);
     }
   });
 
@@ -70,4 +70,4 @@ function Provider<T extends State>(props: Provider.Props<T>) {
   );
 }
 
-export { Consumer, Provider, Lookup };
+export { Consumer, Provider, Lookup, Context };

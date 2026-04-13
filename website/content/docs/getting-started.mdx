@@ -1,0 +1,228 @@
+---
+title: Getting Started
+description: Install, write your first state class, and learn how the pieces fit together
+---
+
+## Install
+
+```bash
+npm install @expressive/react
+```
+
+That's the only package you need for a React app - it includes the framework-agnostic core and the React adapter.
+
+```ts
+import State from '@expressive/react';
+```
+
+`State` is the default export. Instructions and utilities are named exports:
+
+```ts
+import State, { Component, Provider, get, set, ref } from '@expressive/react';
+```
+
+<br/>
+
+## Your first state
+
+A State class is just a class that extends `State`. Fields become reactive, methods become auto-bound actions.
+
+```tsx
+class Counter extends State {
+  count = 0;
+
+  increment() {
+    this.count++;
+  }
+
+  decrement() {
+    this.count--;
+  }
+}
+```
+
+To use it inside a React component:
+
+```tsx
+function CounterView() {
+  const { count, increment, decrement } = Counter.use();
+
+  return (
+    <div>
+      <button onClick={decrement}>-</button>
+      <span>{count}</span>
+      <button onClick={increment}>+</button>
+    </div>
+  );
+}
+```
+
+Three things are happening here:
+
+1. **`Counter.use()`** creates an instance scoped to the component - it's constructed on mount and destroyed on unmount.
+2. **Destructuring** subscribes the component to `count`. When `count` changes, this component (and only this component) re-renders.
+3. **Methods are auto-bound**. `increment` and `decrement` can be destructured and passed as event handlers - `this` is always correct.
+
+No `useState`. No `useCallback`. No dependency arrays.
+
+<br/>
+
+## A more complete example
+
+Here's a todo list with a computed value, local persistence, and validation - all in one class.
+
+```tsx
+import State, { set } from '@expressive/react';
+
+interface Todo {
+  id: number;
+  text: string;
+  done: boolean;
+}
+
+class TodoApp extends State {
+  items: Todo[] = [];
+  draft = '';
+  nextId = 1;
+
+  remaining = set((from) => from.items.filter((i) => !i.done).length);
+
+  new() {
+    const saved = localStorage.getItem('todos');
+    if (saved) this.items = JSON.parse(saved);
+
+    return this.get('items', () => {
+      localStorage.setItem('todos', JSON.stringify(this.items));
+    });
+  }
+
+  add() {
+    const text = this.draft.trim();
+    if (!text) return;
+    this.items = [...this.items, { id: this.nextId++, text, done: false }];
+    this.draft = '';
+  }
+
+  toggle(id: number) {
+    this.items = this.items.map((i) =>
+      i.id === id ? { ...i, done: !i.done } : i
+    );
+  }
+}
+```
+
+Then the view:
+
+```tsx
+function TodoList() {
+  const { items, draft, remaining, add, toggle, is } = TodoApp.use();
+
+  return (
+    <div>
+      <form onSubmit={(e) => { e.preventDefault(); add(); }}>
+        <input
+          value={draft}
+          onChange={(e) => (is.draft = e.target.value)}
+          placeholder="What needs doing?"
+        />
+        <button type="submit">Add</button>
+      </form>
+      <p>{remaining} remaining</p>
+      <ul>
+        {items.map((item) => (
+          <li key={item.id} onClick={() => toggle(item.id)}>
+            {item.done ? <s>{item.text}</s> : item.text}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+```
+
+Notice what the component *doesn't* have: no effects, no memoization, no derived state calculation in the render body, no refs, no setup. The component is a pure projection of the state.
+
+<br/>
+
+## The `is` property
+
+After destructuring, you lose write access to the instance - `count = 5` just rebinds a local variable. Every State exposes an `is` property that loops back to the instance, giving you write access post-destructure:
+
+```tsx
+const { draft, is } = TodoApp.use();
+is.draft = 'hello'; // updates state and re-renders
+```
+
+`is` has a second purpose: **silent reads**. Reading through `is` inside a tracking context does not create a subscription - useful when you need a value but don't want the component to re-render when it changes. See [Reactivity](/docs/guides/reactivity) for details.
+
+<br/>
+
+## The mental model
+
+If you've used React hooks, you're used to state living *inside* components. Expressive flips this: state lives in a class, and components are thin projections of it.
+
+```tsx
+// The brain - data, derived values, and behavior
+class SearchPage extends State {
+  query = '';
+  results = set<string[]>([]);
+  loading = false;
+
+  async search() {
+    this.loading = true;
+    const res = await fetch(`/api/search?q=${this.query}`);
+    this.results = await res.json();
+    this.loading = false;
+  }
+}
+
+// The face - just renders what the brain knows
+function SearchView() {
+  const { query, results, loading, search, is } = SearchPage.use();
+
+  return (
+    <div>
+      <input
+        value={query}
+        onChange={(e) => (is.query = e.target.value)}
+        onKeyDown={(e) => e.key === 'Enter' && search()}
+      />
+      {loading ? <p>Searching...</p> : (
+        <ul>{results.map((r) => <li key={r}>{r}</li>)}</ul>
+      )}
+    </div>
+  );
+}
+```
+
+This separation gives you:
+
+- **Testability** - `SearchPage.new()` outside of React, call methods, assert results. No rendering required.
+- **Reusability** - one State can power multiple views (sidebar, modal, full page).
+- **TypeScript** - the class *is* the type. Every destructure is fully inferred.
+- **Navigability** - every feature's data and behavior lives in one file instead of being smeared across several hook calls.
+
+<br/>
+
+## When to create a State class
+
+You don't need a class for every component. Good signals that you should reach for one:
+
+- You have three or more related pieces of state.
+- You have an effect that syncs two or more state values.
+- You have a handler that touches more than one state value.
+- You need to share state between components.
+- You're writing a custom hook that returns an object.
+- You have async logic (fetching, polling, websockets).
+- You're passing a lot of props down just to support state sharing.
+
+For single booleans, form field focus, or throwaway UI state, `useState` is still the right tool. Expressive is for the cases where state has *behavior*.
+
+<br/>
+
+## Next steps
+
+- [Why Classes?](/docs/why-classes) - the organizational case for moving state out of components.
+- [State Classes](/docs/guides/state-classes) - defining properties, methods, and lifecycle.
+- [Reactivity](/docs/guides/reactivity) - how tracking, computed values, and batching work.
+- [Components](/docs/guides/components) - the `Component` class, which lets state render itself.

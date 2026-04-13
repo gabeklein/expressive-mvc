@@ -1,0 +1,156 @@
+---
+title: Component
+description: The Component class - every method, prop, and lifecycle hook
+---
+
+`Component` extends `State` and works directly as a React component. It's a real React class component under the hood, so it integrates with error boundaries, devtools, and the React tree.
+
+```tsx
+import { Component } from '@expressive/react';
+
+class Counter extends Component {
+  count = 0;
+
+  render() {
+    return <button onClick={() => this.count++}>{this.count}</button>;
+  }
+}
+
+<Counter />;
+```
+
+<br/>
+
+## Instance properties
+
+### `this.props`
+
+Readonly. Every prop passed to the JSX element - state-derived props, render-declared props, and special props (`is`, `fallback`, `children`).
+
+### `this.fallback`
+
+`ReactNode`. Content displayed while the component or its children are suspended, and during error recovery. Can be set as a class field, updated inside `catch()`, or overridden by the JSX `fallback` prop.
+
+Defaults to `null`.
+
+<br/>
+
+## Instance methods
+
+### `render(props?)`
+
+Override to define output. Properties accessed via `this` in the render body are reactive - changes trigger a re-render.
+
+Accept an optional parameter to declare extra props beyond state fields:
+
+```tsx
+class Card extends Component {
+  title = '';
+
+  render(props = {} as { className: string }) {
+    return <div className={props.className}>{this.title}</div>;
+  }
+}
+```
+
+- The `= {} as T` default satisfies TypeScript's JSX inference and is safely ignored at runtime.
+- Non-optional parameter fields become required JSX attributes.
+- Without a parameter (or without `render()` altogether), children pass through a context provider.
+
+### `catch(error)` <small>optional</small>
+
+```tsx
+class SafeView extends Component {
+  async catch(error: Error) {
+    this.fallback = <p>Recovering...</p>;
+    await reportError(error);
+  }
+
+  render() {
+    return <Risky />;
+  }
+}
+```
+
+Error boundary handler. Called when a child throws during render. While `catch()` is pending, `this.fallback` is displayed; when it resolves, `render()` is retried.
+
+- Setting `this.fallback` inside `catch()` gives error-specific UI (reverted after recovery).
+- Rejecting from `catch()` propagates the error to the next parent boundary.
+- Without `catch()`, errors propagate automatically.
+- Sync `catch()` triggers immediate retry.
+
+<br/>
+
+## Lifecycle hooks
+
+Component inherits the full State lifecycle. See [State](/docs/api/state) for details.
+
+- `new()` - one-shot setup, return cleanup.
+- `use(...props)` - called on every render, for bridging React hooks.
+- Destruction runs on unmount or `this.set(null)`.
+
+<br/>
+
+## Special JSX props
+
+Every `Component` accepts these, regardless of state fields:
+
+| Prop       | Type                    | Description                                           |
+| ---------- | ----------------------- | ----------------------------------------------------- |
+| `is`       | `(instance: T) => void` | Called once with the created instance                 |
+| `fallback` | `ReactNode`             | Overrides `this.fallback` for this instance           |
+| `children` | `ReactNode`             | Passed through unless `render()` is declared without param |
+
+<br/>
+
+## Subcomponents
+
+Any method whose name starts with a capital letter becomes a React component scoped to `this`:
+
+```tsx
+class Dashboard extends Component {
+  items: string[] = [];
+
+  Sidebar(props: { label: string }) {
+    return (
+      <aside>
+        <h2>{props.label}</h2>
+        <ul>{this.items.map((i) => <li key={i}>{i}</li>)}</ul>
+      </aside>
+    );
+  }
+
+  render() {
+    return <this.Sidebar label="Items" />;
+  }
+}
+```
+
+- Each usage subscribes independently to the parent instance.
+- Accept props like any React component.
+- Accessible via `Dashboard.get()` then `<dashboard.Sidebar />`.
+- Overridable at runtime and in subclasses.
+
+<br/>
+
+## TypeScript shape
+
+```ts
+declare class Component extends State {
+  readonly props: Props<this>;
+  fallback: ReactNode;
+
+  render(props?: {}): ReactNode;
+  catch?(error: Error): Promise<void> | void;
+}
+```
+
+Props are inferred automatically from state fields plus any `render(props)` declaration.
+
+<br/>
+
+## See also
+
+- [Components guide](/docs/guides/components) - patterns, subclass composition, children, context.
+- [State](/docs/api/state) - the base class.
+- [Hooks](/docs/api/hooks) - `State.use`, `State.get`, `Provider`, `Consumer`.

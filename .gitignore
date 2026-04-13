@@ -1,10 +1,12 @@
 .DS_Store
 .next
+.nx
 .vercel
+.playwright-mcp
+build
 coverage
 dist
 node_modules
 package-lock.json
-README_OLD.md
 yarn-error.log
 yarn.lock

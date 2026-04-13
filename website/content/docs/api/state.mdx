@@ -1,0 +1,303 @@
+---
+title: State
+description: The base State class - every method, static, and lifecycle hook
+---
+
+`State` is the base class you extend to create reactive state.
+
+```ts
+import State from '@expressive/react';
+// or
+import { State } from '@expressive/state';
+```
+
+<br/>
+
+## Static methods
+
+### `State.new(...args)`
+
+Create and activate an instance. Accepts `State.Args` - a mixture of initial-value objects, lifecycle callbacks, and nested arrays, all processed in order during activation.
+
+```ts
+const counter = Counter.new();
+const counter = Counter.new({ count: 10 });
+const counter = Counter.new(
+  { count: 10 },
+  (self) => {
+    // lifecycle callback
+    return () => { /* cleanup on destroy */ };
+  }
+);
+```
+
+> Always use `.new()` instead of `new Counter()`. The latter constructs but does not activate - properties aren't managed until activation.
+
+Callbacks can return:
+
+- `() => void` - cleanup function, called on destroy.
+- `object` - merged as initial values.
+- `array` - flattened and re-processed.
+- `Promise` - caught and logged if rejected.
+
+### `State.is(maybe)`
+
+Type guard. Returns true if `maybe` is an instance of this class or a subclass.
+
+```ts
+Counter.is(subCounter); // true if subCounter extends Counter
+```
+
+### `State.on(callback)`
+
+Register a callback to run for every newly created instance of this class (or any subclass). Returns an unsubscribe function.
+
+```ts
+const stop = Counter.on(function (this: Counter) {
+  // runs for every Counter constructed
+  return () => { /* per-instance cleanup */ };
+});
+```
+
+Callbacks run ancestor-first. The same callback registered on a parent and child only runs once.
+
+### `State.use(...args)` <small>(React)</small>
+
+Create an instance scoped to a React component. Covered in [Hooks](/docs/api/hooks).
+
+### `State.get(...)` <small>(React)</small>
+
+Look up an instance from React context. Covered in [Hooks](/docs/api/hooks).
+
+<br/>
+
+## Instance methods
+
+### `get()` - export all values
+
+```ts
+const values = state.get();
+```
+
+Returns a frozen plain object with all enumerable property values. Exotic values (refs, computed) are unwrapped via their internal `.get()`. Recursive - exports child states too. Handles circular references.
+
+### `get(key, required?)` - single property
+
+```ts
+state.get('count');        // returns the value
+state.get('foo', true);    // suspends if undefined
+state.get('foo', false);   // returns undefined without suspense
+state.get('method');       // returns the unbound method
+```
+
+For exotic values like `ref.Object`, returns the unwrapped value.
+
+### `get(effect)` - tracked effect
+
+```ts
+const stop = state.get((current, changed) => {
+  console.log(current.count);
+  return () => { /* cleanup */ };
+});
+```
+
+- `current` - tracking proxy. Reads create subscriptions.
+- `changed` - readonly array of keys changed since last run (empty on first run, `undefined` if state wasn't ready).
+- Return a cleanup function, `null` (cancel), or `void`.
+- Cleanup receives `true` (about to re-run), `false` (cancelled), or `null` (state destroyed).
+- Suspense throws inside an effect pause the effect until resolved.
+
+### `get(key, callback)` - watch a single key
+
+```ts
+const stop = state.get('count', (key, self) => {
+  console.log('count is now', self.count);
+});
+```
+
+Fires on every assignment that changes the value, and on explicit `set(key)` dispatches. Synchronous - before the flush settles.
+
+### `get(null)` / `get(null, callback)` - destruction
+
+```ts
+state.get(null);                                 // true if destroyed
+state.get(null, () => console.log('destroyed')); // register callback
+```
+
+### `get(Type, required?)` - context lookup
+
+```ts
+const parent = child.get(ParentState);        // throws if not found
+const maybe = child.get(ParentState, false);  // undefined if not found
+```
+
+### `get(Type, callback, downstream?)` - subscribe to context availability
+
+```ts
+state.get(ParentState, (parent, downstream) => {
+  return () => { /* cleanup */ };
+});
+```
+
+Fires immediately if available; otherwise fires when the type becomes available. Pass `downstream: true` to only watch children.
+
+<br/>
+
+### `set()` - await pending flush
+
+```ts
+const updated = await state.set();
+// updated: readonly string[] - keys that changed in the batch
+```
+
+Resolves when the current flush completes. Empty if no update is pending. Also activates the state if it was created with `new` instead of `.new()`.
+
+### `set(assign, silent?)` - merge values
+
+```ts
+state.set({ count: 5, name: 'Alice' });
+state.set(saved, true); // silent - no events, no throw if destroyed
+```
+
+Only known properties and methods are applied. Unknown keys are ignored. `is` is always ignored. Silent mode is useful during teardown.
+
+Methods can be replaced:
+
+```ts
+state.set({
+  compute() { return this.value + 1; }
+});
+```
+
+### `set(callback)` - listen to all updates
+
+```ts
+const stop = state.set((key, self) => {
+  console.log('updated:', key);
+});
+```
+
+Fires for every property assignment that changes a value, plus explicit dispatches. The callback can return:
+
+- A function - called once when the batch settles (deduped per tick).
+- `null` - auto-unsubscribe after this invocation.
+
+### `set(key)` - dispatch an event
+
+```ts
+state.set('count');      // force an update event without changing value
+state.set('my-event');   // custom string event
+state.set(Symbol('x'));  // symbol event
+```
+
+Useful for signaling internal mutations (e.g. an array pushed) or custom events.
+
+### `set(null)` - destroy
+
+```ts
+state.set(null);
+```
+
+Destroys the instance. Children are destroyed first, listeners are notified, cleanup runs, the instance is frozen.
+
+### `set(event, callback)` - watch a specific event
+
+```ts
+const stop = state.set('count', (key, self) => { /* ... */ });
+state.set(null, () => console.log('destroyed'));
+```
+
+Return `null` from the callback to auto-unsubscribe after one invocation.
+
+### `set(key, descriptor)` - define a property
+
+```ts
+state.set('foo', { value: 'bar' });
+state.set('bar', { value: 'x', set: false });           // read-only
+state.set('baz', { value: 'y', enumerable: false });     // non-enumerable
+state.set('child', { value: new ChildState() });         // registers child
+```
+
+Creates or updates a managed property. If it already exists with a reactive getter/setter, only `value` is accepted.
+
+Descriptor fields:
+
+- `value` - initial value.
+- `get` - custom getter, `true` (required/suspense), or `false` (optional).
+- `set` - custom setter function or `false` (read-only).
+- `enumerable` - default `true`.
+
+<br/>
+
+## Instance properties
+
+### `.is`
+
+Non-enumerable self-reference. Two purposes:
+
+1. **Write access after destructuring** - `const { count, is } = state; is.count = 5;`
+2. **Silent reads inside tracking contexts** - `current.is.value` reads without subscribing.
+
+`state.is === state` always, and `state.is.is === state.is`.
+
+<br/>
+
+## Lifecycle hooks
+
+These are *not* on the `State` prototype. Define them on your class to opt in.
+
+### `new()`
+
+```ts
+class Timer extends State {
+  elapsed = 0;
+
+  protected new() {
+    const id = setInterval(() => this.elapsed++, 1000);
+    return () => clearInterval(id);
+  }
+}
+```
+
+Runs once after activation. Return a cleanup function to run on destruction, or `void`.
+
+### `use(...props)` <small>(React)</small>
+
+```ts
+class SearchState extends State {
+  query = '';
+
+  use(props: { initialQuery: string }) {
+    const { pathname } = useLocation();
+    this.query = props.initialQuery;
+  }
+}
+```
+
+Runs on every render when used via `State.use()`. Parameter types define the argument types of `State.use()` itself. Use for bridging external React hooks.
+
+<br/>
+
+## Iteration
+
+### Instance iteration
+
+```ts
+for (const [key, value] of state) {
+  // yields managed enumerable properties
+}
+```
+
+### Class iteration
+
+```ts
+for (const Ctor of MyState) {
+  // yields this class and its ancestors, stopping before base State
+}
+```
+
+<br/>
+
+## Types
+
+See [Types](/docs/api/types) for `State.Extends`, `State.Type`, `State.Field`, `State.Args`, `State.Values`, and friends.

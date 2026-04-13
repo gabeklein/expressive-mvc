@@ -15,12 +15,6 @@ describe('State.use', () => {
       expect(hook.result.current).toBeInstanceOf(Test);
     });
 
-    it.todo('will pass instance name as argument', () => {
-      const hook = renderHook(() => Test.use('ID'));
-
-      expect(hook.result.current.toString()).toBe('ID');
-    });
-
     it('will subscribe to instance of controller', async () => {
       const willRender = vi.fn();
       const { result } = renderHook(() => {
@@ -321,15 +315,13 @@ describe('State.get', () => {
     it('will throw if instance not found', () => {
       class Foo extends State {
         bar = get(Bar);
-
-        constructor(...args: State.Args) {
-          super(args, 'ID');
-        }
       }
 
       const tryToRender = () => renderHook(() => Foo.use());
 
-      expect(tryToRender).toThrow(`Required Bar not found in context for ID.`);
+      expect(tryToRender).toThrow(
+        /Required Bar not found in context for [\w-]+\./
+      );
     });
   });
 });

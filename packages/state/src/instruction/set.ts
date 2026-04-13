@@ -1,6 +1,6 @@
-import { listener, scope, watch } from '../observable';
-import { access, event, METHOD, State, update } from '../state';
-import { Instruction, use } from './use';
+import { listener, capture, watch } from '../observable';
+import { access, event, unbind, State, update } from '../state';
+import { def } from './def';
 
 const STALE = new WeakSet<() => void>();
 
@@ -11,104 +11,96 @@ declare namespace set {
     previous: T
   ) => ((next: T) => void) | Promise<any> | void | boolean;
 
-  type Compute<T, S = any> = (on: S, key: string) => T;
+  type Reactive<T, S = any> = (self: S, property: string) => T;
 
-  type Factory<T, S = any> = (this: S, key: string) => Promise<T> | T;
+  type Factory<T, S = any> = (this: S, property: string) => Promise<T> | T;
 }
 
 /**
- * Set property as `undefined` but required.
+ * Set a property as a placeholder, initially `undefined` but required.
  *
  * Property cannot be accessed until it is defined. If accessed while undefined, a hybrid
  * `Promise`/`Error` (aka: [Suspense](https://reactjs.org/docs/concurrent-mode-suspense.html)) will be thrown.
+ *
+ * Non-enumerable; writable only if `onUpdate` callback is provided.
+ *
+ * @param value - Starting value (undefined for suspense placeholder).
+ * @param onUpdate - Callback run when property is set.
  */
-function set<T = any>(): T;
+function set<T>(value?: undefined, onUpdate?: set.Callback<T>): T;
 
 /**
- * Set property with a factory function.
+ * Set property with an async factory function.
+ * If required is not defined, factory runs lazily on first access.
+ * If async, or returns a promise, suspense is thrown upon access until resolved.
  *
- * **Note** Factory is lazy! It will only run if/when property is accessed.
- * Value will be undefined until factory resolves, which will also dispatch an update for the property.
+ * Non-enumerable and read-only.
+ *
+ * @param factory - Zero-arg async callback to produce property value.
+ * @param required - Pass `true` to run factory immediately and require value.
  */
-function set<T>(factory: set.Factory<T>, required: false): T | undefined;
+function set<T>(factory: () => T | Promise<T>, required?: true): T;
 
 /**
- * Set property with a factory function.
+ * Set property with a lazy factory, no suspense.
  *
- * If async, property cannot be accessed until resolves, yeilding a result.
- * If accessed while still processing, React Suspense will be thrown.
+ * Non-enumerable and read-only.
  *
- * @param factory - Callback run to derrive property value.
- * @param required - If true run factory immediately on creation, otherwise on access.
+ * @param factory - Zero-arg callback to produce property value.
+ * @param required - Pass `false` to allow undefined while pending.
  */
-function set<T>(factory: set.Factory<T>, required?: boolean): T;
+function set<T>(
+  factory: () => T | Promise<T>,
+  required: boolean
+): T | undefined;
 
 /**
- * Set property with a factory function.
+ * Set property with a factory and update callback.
  *
- * If async, property cannot be accessed until resolves, yeilding a result.
- * If accessed while still processing, React Suspense will be thrown.
+ * Non-enumerable but writable via the callback.
  *
- * @param factory - Callback run to derrive property value.
- * @param onUpdate - Callback run when property is finished computing or is set.
+ * @param factory - Callback to produce initial value.
+ * @param onUpdate - Callback run when property is updated.
  */
-function set<T>(factory: set.Factory<T>, onUpdate?: set.Callback<T>): T;
+function set<T>(factory: () => T | Promise<T>, onUpdate: set.Callback<T>): T;
 
 /**
- * Set a property with empty placeholder and/or update callback.
+ * Set a reactive computed property.
  *
- * @param value - Starting value for property. If undefined, suspense will be thrown on access, until value is set and accepted by callback.
- * @param onUpdate - Callback run when property is set. If returns false, update is not accepted and property will keep previous value.
+ * Factory receives a watched proxy `self` and re-runs when accessed properties change.
+ *
+ * Enumerable (considered data) and read-only. Included in snapshots, serialization, and `ref(this)`.
+ *
+ * @param factory - Callback receiving self proxy, returns computed value.
  */
-function set<T>(value: T | undefined, onUpdate?: set.Callback<T>): T;
+// TODO: add optional onUpdate callback for reactive computed (observation-only)
+// Normally is treated as readonly, but if a callback is provided, it can be assigned.
+// Callback would run for both direct updates and reactive updates, and would receive the next value and previous value as arguments.
+// Return value of callback would be unset function. This would be good to know especially for async updates.
+// You can cancel pending updates if a new update comes in before the previous one finishes.
+function set<T, S extends State>(
+  factory: (self: S, key: string) => T | Promise<T>
+): T;
 
 /**
- * Implement a reactive computed value using a method reference.
+ * Set a property with a non-function value.
  *
- * The method will automatically re-run when any accessed properties change.
- * Use `true` to indicate reactive mode with implicit `this` as the source.
+ * Non-enumerable but writable. Unlike plain assignment (`= value`), this
+ * property is excluded from snapshots and `ref(this)`.
  *
- * @param reactiveToThis - Pass `true` to enable reactive mode with implicit this
- * @param method - Method reference or compute function to use
+ * @param value - Starting value for property.
+ * @param onUpdate - Optional callback run when property is set.
  */
-function set<R, T = any>(
-  reactiveToThis: true,
-  method: set.Compute<R, T> | Function
-): R;
-
-/**
- * Implement a computed value; output will be generated by provided function.
- *
- * @param reactiveTo - Source state from which computed value will be a subscriber.
- * @param compute - Compute function. Bound to a subscriber-proxy of source, returns output value. Will update automatically as input values change.
- */
-function set<R, T extends State>(reactiveTo: T, compute: set.Compute<R, T>): R;
+// TODO: if onUpdate is not defined, should this have behavior unique to simple assignment?
+// I'm thinking default behavior should be to assign value directly to property, without triggering any additional updates.
+// All this requires is a default callback which throws true, silent updates are already implemented.
+function set<T>(value: T | Promise<T>, onUpdate?: set.Callback<T>): T;
 
 function set<T = any>(value?: unknown, argument?: unknown): any {
-  return use<T>((key, subject, state) => {
-    if (typeof value == 'symbol')
-      throw new Error(
-        `Attempted to use an instruction result (probably use or get) as computed source for ${subject}.${key}. This is not allowed.`
-      );
-
-    const property: Instruction.Descriptor = {};
-
-    // Handle reactive compute modes
-    if (value instanceof State || value === true) {
-      let from = subject;
-      let getter: set.Compute<T, any>;
-
-      if (value instanceof State) {
-        from = value;
-        getter = argument as set.Compute<T, any>;
-      } else {
-        // value === true, implicit this with method reference
-        const fn = METHOD.get(argument) || argument;
-        getter = ((p, k) => fn.call(p, k, p)) as set.Compute<T, any>;
-      }
-
-      type Source<T extends State = State> = (resolve: (x: T) => void) => void;
-      const source: Source = (resolve) => resolve(from);
+  return def<T>((key, subject, state) => {
+    // Reactive compute: function with declared args
+    if (typeof value === 'function' && value.length >= 1) {
+      const getter = unbind(value) as set.Reactive<T, any>;
 
       let reset: (() => void) | undefined;
       let isAsync: boolean;
@@ -137,7 +129,7 @@ function set<T = any>(value?: unknown, argument?: unknown): any {
         let next: T | undefined;
 
         try {
-          next = getter.call(proxy, proxy, key);
+          next = getter.call(subject, proxy, key);
         } catch (err) {
           console.warn(
             `An exception was thrown while ${
@@ -153,20 +145,32 @@ function set<T = any>(value?: unknown, argument?: unknown): any {
         update(subject, key, next, !isAsync);
       }
 
-      return () => {
-        if (!proxy) {
-          source(connect);
-          isAsync = true;
+      return {
+        enumerable: true,
+        set: false,
+        get() {
+          if (!proxy) {
+            connect(subject);
+            isAsync = true;
+          }
+
+          if (STALE.delete(compute)) compute();
+
+          return access(subject, key, !proxy) as T;
         }
-
-        if (STALE.delete(compute)) compute();
-
-        return access(subject, key, !proxy) as T;
       };
     }
 
-    // Handle factory/value modes (existing logic)
+    const config: State.Apply = {
+      enumerable: false,
+      set: false
+    };
+
+    let computed = false;
+
+    // One-shot factory or Promise
     if (typeof value == 'function' || value instanceof Promise) {
+      computed = true;
       function init() {
         if (typeof value == 'function')
           try {
@@ -178,63 +182,68 @@ function set<T = any>(value?: unknown, argument?: unknown): any {
             throw err;
           }
 
-        property.get = argument !== false;
+        config.get = argument !== false;
 
-        const set = (value: any) => (subject[key] = value);
+        function assign(next: any, silent?: boolean) {
+          if (typeof argument == 'function') subject[key] = next;
+          else update(subject, key, next, silent);
+        }
 
         if (value instanceof Promise)
-          value.then(set, (error) => {
+          value.then(assign, (error) => {
             event(subject, key);
-            property.get = () => {
+            config.get = () => {
               throw error;
             };
           });
-        else set(value);
+        else assign(value, true);
 
         if (argument) return null;
+
+        if (value instanceof Promise && argument !== false)
+          return access(subject, key, true);
 
         return subject[key];
       }
 
       if (argument) {
-        listener(subject, init, true);
+        listener(subject, () => {
+          init();
+          return null;
+        });
       } else {
-        property.get = init;
+        config.get = init;
       }
     } else if (value !== undefined) {
-      property.value = value;
+      config.value = value;
     }
 
     if (typeof argument == 'function') {
       let unset: ((next: T) => void) | undefined;
 
-      property.set = function (this: any, value: any, previous: any) {
-        const exit = scope();
-        const returns = argument.call(this, value, previous);
-        const flush = exit();
+      config.set = function (this: any, value: any, previous: any) {
+        capture((release) => {
+          const returns = argument.call(this, value, previous);
 
-        if (returns === false) return false;
+          if (unset) unset(value);
 
-        if (typeof unset == 'function') unset(value);
-
-        unset = (next: T) => {
-          if (typeof returns == 'function') returns(next);
-
-          flush();
-        };
+          unset = (next: T) => {
+            if (typeof returns == 'function') returns(next);
+            release();
+          };
+        });
       };
-    } else
-      property.set = (value) => {
-        property.get = undefined;
-        update(subject, key, value);
+    } else if (!computed)
+      config.set = () => {
+        config.get = undefined;
+        config.set = undefined;
       };
 
-    return property;
+    return config;
   });
 }
 
 function attempt(fn: () => any): any {
-  // Ignore TS80006: Function must be synchronous.
   function retry(err: unknown) {
     if (err instanceof Promise) return err.then(compute);
     else throw err;

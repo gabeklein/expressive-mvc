@@ -1,0 +1,227 @@
+---
+title: Reactivity
+description: How tracking, computed values, effects, and batching work
+---
+
+Expressive is reactive by default. You don't call `setState`, you don't dispatch actions, and you don't declare dependencies. You just assign to properties, and anything that read those properties updates.
+
+This guide explains how that works, so you can trust it.
+
+<br/>
+
+## Tracking
+
+Whenever you read a property inside a **tracking context**, you subscribe to it. A tracking context is one of:
+
+- A React component calling `State.use()` or `State.get()`.
+- An effect passed to `state.get(effect)`.
+- A reactive computed: `set((from) => ...)`.
+
+Reads through a **tracking proxy** subscribe. Reads through the plain instance do not.
+
+```ts
+state.get((current) => {
+  console.log(current.value); // subscribes to `value`
+  console.log(state.value);   // does NOT subscribe (outside proxy)
+  console.log(current.is.other); // does NOT subscribe (silent read)
+});
+```
+
+The rule is simple: if the read goes through the proxy, it's tracked. Method calls do not create subscriptions for the properties they touch - methods are "actions", not "observations". If you want an effect to depend on what a method reads, read those values directly through the proxy.
+
+### React components
+
+A component's tracking context is created by `State.use()` or `State.get()`. Destructuring is the most common way to read tracked values:
+
+```tsx
+function CartView() {
+  const { total, count } = Cart.use();
+  // Subscribes to `total` and `count`. Re-renders when either changes.
+  return <p>{count} items - ${total}</p>;
+}
+```
+
+The component re-renders when any tracked property changes, and *only* when a tracked property changes. A sibling changing `items` when you only read `total` does not re-render this component unless `total` actually changed value.
+
+<br/>
+
+## Computed values
+
+A reactive computed is a property whose value is derived from other properties. It re-runs when any of its tracked inputs change:
+
+```ts
+class Cart extends State {
+  items: Item[] = [];
+  total = set((from) => from.items.reduce((s, i) => s + i.price * i.qty, 0));
+  count = set((from) => from.items.reduce((s, i) => s + i.qty, 0));
+}
+```
+
+The single-argument form of `set` distinguishes a computed from a factory: **if the callback declares at least one parameter, it is a reactive computed**. The parameter is a tracking proxy of the instance.
+
+- Computed values are **enumerable and read-only** - they're considered data.
+- They're evaluated **lazily** - deferred until something reads them or until the next flush.
+- They track dependencies automatically - `from.items` creates a subscription; `this.items` (inside the function) would not.
+- Chained computed values (one computed referencing another) evaluate in declaration order.
+- A computed can reference its own previous value via `from.ownProp` without infinite looping.
+
+```ts
+class Stats extends State {
+  values: number[] = [];
+  count = set((from) => from.values.length);
+  sum = set((from) => from.values.reduce((a, b) => a + b, 0));
+  average = set((from) => (from.count === 0 ? 0 : from.sum / from.count));
+}
+```
+
+<br/>
+
+## Effects
+
+For side effects (logging, integrations, manual work), use `state.get(effect)`:
+
+```ts
+const stop = state.get((current, changed) => {
+  console.log('value is now:', current.value);
+  return () => console.log('about to re-run or be destroyed');
+});
+```
+
+The effect runs immediately, then re-runs whenever a tracked property changes. It returns an unsubscribe function.
+
+### What the effect callback receives
+
+- `current` - a tracking proxy of the state. Reads subscribe.
+- `changed` - a readonly array of keys that changed since the last run. Empty on the first run; `undefined` if the state wasn't ready when the effect was registered.
+
+### What the effect can return
+
+- **`() => void`** - a cleanup function. Called on re-run, unsubscribe, or destruction. Its argument distinguishes the cause:
+  - `true` - about to re-run (a dependency changed)
+  - `false` - manually cancelled (someone called the returned `stop`)
+  - `null` - state destroyed
+- **`null`** - cancel the effect after one run.
+- **`Promise<void>`** - ignored.
+- **`void`** - no cleanup.
+
+### Effects in `new()`
+
+A common pattern is to register an effect during initialization:
+
+```ts
+class Session extends State {
+  userId = set<string>();
+  activity: string[] = [];
+
+  new() {
+    return this.get((current) => {
+      log(`user ${current.userId} activity:`, current.activity);
+    });
+  }
+}
+```
+
+Returning the unsubscribe function from `new()` ties the effect's lifetime to the state's lifetime.
+
+<br/>
+
+## Watching a single key
+
+If you only care about one property, pass the key:
+
+```ts
+state.get('count', (key, self) => {
+  console.log('count is now', self.count);
+});
+```
+
+This fires on every assignment that changes the value, and on explicit `state.set('count')` dispatches. It does not receive a tracking proxy - it's a plain listener, not an effect.
+
+<br/>
+
+## Batching
+
+All writes in a synchronous block are coalesced into a single flush:
+
+```ts
+submit() {
+  this.name = this.name.trim();
+  this.email = this.email.toLowerCase();
+  this.submitted = true;
+  // One flush at the end of the current tick.
+  // Effects re-run once, components re-render once.
+}
+```
+
+The flush happens via `queueMicrotask`. If you need to wait for it:
+
+```ts
+await state.set();
+// All pending updates have flushed.
+// The resolved value is an array of keys that changed.
+```
+
+Equal values are discarded. Writing `this.count = this.count` does nothing.
+
+<br/>
+
+## Suspense
+
+When a tracked read accesses a property that hasn't resolved yet (an unset `set<T>()` placeholder, a pending async factory), it throws a **suspense-compatible Promise**. React catches it and shows the nearest `<Suspense>` fallback. When the value resolves, the read retries.
+
+```ts
+class UserProfile extends State {
+  userId = set<string>(); // required - throws until assigned
+  user = set(async () => {
+    const res = await fetch(`/api/users/${this.userId}`);
+    return res.json();
+  });
+}
+
+function Profile() {
+  const { user } = UserProfile.get(); // suspends until loaded
+  return <h1>{user.name}</h1>;
+}
+```
+
+Inside an effect, a suspense throw **pauses** the effect. It retries when the promise resolves. This works the same way whether the consumer is React or a plain effect.
+
+See [Async](/docs/guides/async) for the full story.
+
+<br/>
+
+## Silent reads
+
+Sometimes you need a value but don't want a re-render or re-run when it changes. Read through `is`:
+
+```ts
+state.get((current) => {
+  const v = current.trackedValue;  // subscribes
+  const t = current.is.timestamp;  // silent - does not subscribe
+});
+```
+
+A common use: reading a value you're about to overwrite, without re-triggering the effect that overwrote it.
+
+<br/>
+
+## A word on closures
+
+The React hook model forces you to think about closures constantly - stale references, dependency arrays, `useCallback`, `useMemo`. Expressive avoids this by reading from `this` at the time of access:
+
+```ts
+async save() {
+  // `this.name` and `this.email` are read NOW, not when save was created.
+  await api.update({ name: this.name, email: this.email });
+}
+```
+
+There are no stale closures because there are no closures. Every method call reads from the live instance.
+
+<br/>
+
+## Next
+
+- [Async](/docs/guides/async) - async factories, Suspense, error handling.
+- [Components](/docs/guides/components) - the `Component` class, where state renders itself.
+- [Forms and Refs](/docs/guides/forms-and-refs) - validation callbacks and mutable handles.

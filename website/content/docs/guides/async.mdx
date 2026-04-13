@@ -1,0 +1,239 @@
+---
+title: Async and Suspense
+description: Loading data, handling errors, and working with Suspense
+---
+
+Async data is a first-class citizen in Expressive. You don't need a query library, middleware, or thunks - async factories and Suspense integration are built into the `set` instruction.
+
+<br/>
+
+## Async factories
+
+Pass an async function to `set()` and the property becomes a promise-backed value. Accessing it before resolution throws a Suspense-compatible promise; accessing it after resolution returns the value.
+
+```tsx
+class UserProfile extends State {
+  user = set(async () => {
+    const res = await fetch('/api/user');
+    return res.json();
+  });
+}
+
+function Profile() {
+  const { user } = UserProfile.use();
+  return <h1>{user.name}</h1>; // guaranteed defined
+}
+
+// Wrap with Suspense:
+<Suspense fallback={<Spinner />}>
+  <Profile />
+</Suspense>
+```
+
+By default, the factory is **lazy** - it runs the first time something reads the property. Pass `true` as the second argument to run it eagerly on activation:
+
+```tsx
+data = set(async () => fetchData(), true); // runs immediately
+```
+
+Pass `false` to make it non-blocking - the property returns `undefined` while pending instead of suspending:
+
+```tsx
+avatar = set(async () => fetchAvatar(), false); // User['avatar'] | undefined
+```
+
+<br/>
+
+## Required placeholders
+
+A `set<T>()` with no argument is a **required** property - it's initially undefined, and reading it throws Suspense until something assigns a value:
+
+```tsx
+class Session extends State {
+  userId = set<string>(); // suspends until set
+  user = set(async () => {
+    const res = await fetch(`/api/users/${this.userId}`);
+    return res.json();
+  });
+}
+```
+
+The async `user` factory reads `this.userId`. If `userId` hasn't been assigned, the factory itself suspends - and the cascade resolves automatically when `userId` is set.
+
+This pattern is powerful: you describe a dependency graph ("user depends on userId"), and the library handles the timing.
+
+<br/>
+
+## Direct promises
+
+You can also pass a raw promise. Reads suspend until it resolves:
+
+```tsx
+class Config extends State {
+  data = set(fetchConfig()); // promise constructed eagerly
+}
+```
+
+The promise is constructed when the field is initialized, so it starts fetching immediately.
+
+<br/>
+
+## Async methods
+
+For mutations, async methods work exactly as you'd expect:
+
+```tsx
+class LoginForm extends State {
+  email = '';
+  password = '';
+  submitting = false;
+  error = set<string | null>(null);
+
+  async submit() {
+    this.submitting = true;
+    this.error = null;
+    try {
+      await api.login(this.email, this.password);
+    } catch (e) {
+      this.error = (e as Error).message;
+    } finally {
+      this.submitting = false;
+    }
+  }
+}
+```
+
+No `useCallback`, no dependency arrays, no stale closures. The method reads live state via `this` every time it runs.
+
+<br/>
+
+## Refreshing async data
+
+Because async `set()` is just a property, refreshing it means reassigning:
+
+```tsx
+class Feed extends State {
+  posts = set(async () => fetch('/api/posts').then(r => r.json()));
+
+  async refresh() {
+    this.posts = await fetch('/api/posts').then(r => r.json());
+  }
+}
+```
+
+Or, using the `set('posts', { value: ... })` descriptor form to bypass the factory entirely:
+
+```tsx
+async refresh() {
+  const data = await fetch('/api/posts').then(r => r.json());
+  this.set('posts', { value: data });
+}
+```
+
+If you want the factory to re-run from scratch, destroy and recreate the state - or build the refresh semantic into a regular async method.
+
+<br/>
+
+## Error handling
+
+An async factory that throws propagates the error to the nearest React error boundary (or `Component.catch()`):
+
+```tsx
+class UserProfile extends State {
+  data = set(async () => {
+    const res = await fetch('/api/user');
+    if (!res.ok) throw new Error('Failed to load user');
+    return res.json();
+  });
+}
+```
+
+Inside a `Component`, you can handle this with `catch()`:
+
+```tsx
+class Profile extends Component {
+  data = set(async () => loadUser());
+
+  async catch(error: Error) {
+    this.fallback = <p>Failed to load. Retrying...</p>;
+    await new Promise((r) => setTimeout(r, 1000));
+    // When catch resolves, render is retried.
+  }
+
+  render() {
+    return <h1>{this.data.name}</h1>;
+  }
+}
+```
+
+<br/>
+
+## Reusable async patterns
+
+A base class can encapsulate a loading pattern that subclasses specialize:
+
+```tsx
+abstract class Query<T> extends State {
+  abstract load(): Promise<T>;
+
+  data = set(() => this.load());
+
+  async refresh() {
+    this.set('data', { value: await this.load() });
+  }
+}
+
+class UserQuery extends Query<User> {
+  userId = set<string>();
+  load() {
+    return fetch(`/api/users/${this.userId}`).then((r) => r.json());
+  }
+}
+```
+
+The library ships no query abstraction because you don't need one. You can build the shape that fits your app in a dozen lines of class code.
+
+<br/>
+
+## Suspense in effects
+
+Effects registered via `state.get(effect)` also participate in Suspense. If an effect accesses a pending value, it pauses and retries when the value resolves:
+
+```ts
+state.get((current) => {
+  const { user } = current; // suspends the effect if unresolved
+  console.log('got user:', user);
+});
+```
+
+This is the same mechanism React uses for components - you get it everywhere for free.
+
+<br/>
+
+## Debounced async via setter callbacks
+
+The `set` callback form can manage async work that needs to cancel on re-triggering:
+
+```tsx
+class Search extends State {
+  query = set('', (value) => {
+    const timer = setTimeout(() => this.run(value), 300);
+    return () => clearTimeout(timer); // runs before next update
+  });
+  results: string[] = [];
+
+  async run(q: string) {
+    const res = await fetch(`/api/search?q=${q}`);
+    this.results = await res.json();
+  }
+}
+```
+
+The callback returns a cleanup function, which is called before the next update (or on destruction). This gives you debouncing, abort controllers, or any other "cancel the previous thing when a new thing arrives" pattern.
+
+<br/>
+
+## Next
+
+- [Forms and Refs](/docs/guides/forms-and-refs) - validation callbacks and mutable handles.
+- [API: Instructions](/docs/api/instructions) - every `set` overload in detail.

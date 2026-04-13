@@ -1,0 +1,13 @@
+{
+  "title": "Guides",
+  "defaultOpen": true,
+  "pages": [
+    "state-classes",
+    "reactivity",
+    "components",
+    "context",
+    "async",
+    "forms-and-refs",
+    "testing"
+  ]
+}

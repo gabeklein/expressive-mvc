@@ -12,14 +12,106 @@ import { set } from './set';
 
 const warn = mockWarn();
 
-it('will be enumerable', () => {
-  class Test extends State {
-    value = set('foo');
-  }
+describe('property descriptors', () => {
+  it('will not be enumerable with value', () => {
+    class Test extends State {
+      value = set('foo');
+    }
 
-  const test = Test.new();
+    const test = Test.new();
 
-  expect(Object.keys(test)).toContain('value');
+    expect(Object.keys(test)).not.toContain('value');
+  });
+
+  it('will not be enumerable with factory', () => {
+    class Test extends State {
+      value = set(() => 'foo');
+    }
+
+    const test = Test.new();
+
+    expect(Object.keys(test)).not.toContain('value');
+  });
+
+  it('will be enumerable with reactive computed', () => {
+    class Test extends State {
+      source = 'hello';
+      value = set((from: this) => from.source);
+    }
+
+    const test = Test.new();
+
+    expect(Object.keys(test)).toContain('value');
+  });
+
+  it('will be writable with value', () => {
+    class Test extends State {
+      value = set('foo');
+    }
+
+    const test = Test.new();
+
+    test.value = 'bar';
+    expect(test.value).toBe('bar');
+  });
+
+  it('will be read-only with factory', () => {
+    class Test extends State {
+      value = set(() => 'foo');
+    }
+
+    const test = Test.new();
+
+    expect(() => { test.value = 'bar' }).toThrow(/read-only/);
+  });
+
+  it('will be read-only with required factory', () => {
+    class Test extends State {
+      value = set(() => 'foo', true);
+    }
+
+    const test = Test.new();
+
+    expect(() => { test.value = 'bar' }).toThrow(/read-only/);
+  });
+
+  it('will be writable with factory and callback', () => {
+    const callback = vi.fn();
+
+    class Test extends State {
+      value = set(() => 'foo', callback);
+    }
+
+    const test = Test.new();
+
+    test.value = 'bar';
+    expect(test.value).toBe('bar');
+    expect(callback).toBeCalledWith('bar', 'foo');
+  });
+
+  it('will be read-only with reactive computed', () => {
+    class Test extends State {
+      source = 'foo';
+      value = set((from: this) => from.source);
+    }
+
+    const test = Test.new();
+
+    expect(() => { test.value = 'bar' }).toThrow(/read-only/);
+  });
+
+  it('will be writable with placeholder and callback', () => {
+    const callback = vi.fn();
+
+    class Test extends State {
+      value = set<string>(undefined, callback);
+    }
+
+    const test = Test.new();
+
+    test.value = 'hello';
+    expect(callback).toBeCalledWith('hello', undefined);
+  });
 });
 
 describe('placeholder', () => {
@@ -96,7 +188,7 @@ describe('callback', () => {
 
     expect(didAssign).not.toBeCalled();
 
-    state.set(didUpdate, 'test');
+    state.set('test', didUpdate);
     state.test = 2;
 
     expect(didUpdate).toBeCalledTimes(1);
@@ -221,7 +313,7 @@ describe('intercept', () => {
     class Subject extends State {
       test = set('foo', (value) => {
         callback(value);
-        return false;
+        throw false;
       });
     }
 
@@ -236,36 +328,19 @@ describe('intercept', () => {
     expect(state.test).toBe('foo');
   });
 
-  it('will not call prior cleanup if supressed', async () => {
-    const cleanup = vi.fn();
-    const setter = vi.fn((value: number) => {
-      return value === 3 ? false : cleanup;
-    });
-
-    class Test extends State {
-      value = set(1, setter);
+  it('will rethrow real errors from callback', () => {
+    class Subject extends State {
+      test = set('foo', () => {
+        throw new Error('bad value');
+      });
     }
 
-    const subject = Test.new();
+    const state = Subject.new();
 
-    subject.value = 2;
-
-    expect(setter).toBeCalledWith(2, 1);
-    await expect(subject).toHaveUpdated();
-    expect(subject.value).toBe(2);
-
-    // this update will be supressed by setter
-    subject.value = 3;
-
-    expect(setter).toBeCalledWith(3, 2);
-    await expect(subject).not.toHaveUpdated();
-    expect(cleanup).not.toBeCalled();
-
-    subject.value = 4;
-
-    expect(setter).toBeCalledWith(4, 2);
-    expect(cleanup).toBeCalledTimes(1);
-    expect(cleanup).toBeCalledWith(4);
+    expect(() => {
+      state.test = 'bar';
+    }).toThrow('bad value');
+    expect(state.test).toBe('foo');
   });
 });
 
@@ -289,20 +364,15 @@ describe('factory', () => {
     expect(test.value).toBe('foo');
   });
 
-  it('will ignore setter if assigned', () => {
-    const getValue = vi.fn(() => 'foo');
-
+  it('will be read-only', () => {
     class Test extends State {
-      value = set(getValue);
+      value = set(() => 'foo');
     }
 
     const test = Test.new();
 
-    test.value = 'bar';
-
-    expect(test).toHaveUpdated();
-    expect(test.value).toBe('bar');
-    expect(getValue).not.toBeCalled();
+    expect(() => { test.value = 'bar' }).toThrow(/read-only/);
+    expect(test.value).toBe('foo');
   });
 
   it('will compute when accessed', () => {
@@ -350,18 +420,18 @@ describe('factory', () => {
 
   it('will warn and rethrow error from factory', () => {
     class Test extends State {
-      memoized = set(this.failToGetSomething, true);
+      memoized = set(this.failToGetSomething);
 
       failToGetSomething() {
         throw new Error('Foobar');
       }
     }
 
-    const attempt = () => Test.new('ID');
+    const test = Test.new();
 
-    expect(attempt).toThrow('Foobar');
+    expect(() => test.memoized).toThrow('Foobar');
     expect(warn).toBeCalledWith(
-      `Generating initial value for ID.memoized failed.`
+      expect.stringMatching(/Generating initial value for [\w-]+\.memoized failed\./)
     );
   });
 });
@@ -371,12 +441,12 @@ describe('suspense', () => {
     const promise = mockPromise();
 
     class Test extends State {
-      value = set(() => promise, true);
+      value = set(promise);
     }
 
-    const instance = Test.new('ID');
+    const instance = Test.new();
 
-    expect(() => instance.value).toThrow(`ID.value is not yet available.`);
+    expect(() => instance.value).toThrow(/[\w-]+\.value is not yet available\./);
     promise.resolve();
   });
 
@@ -416,7 +486,7 @@ describe('suspense', () => {
     expect(didEvaluate).toBeCalledTimes(1);
 
     promise.resolve('hello');
-    await expect(test).toUpdate();
+    await expect(test).toHaveUpdated();
 
     expect(didEvaluate).toBeCalledTimes(2);
     expect(test.greet).toBe('hello world!');
@@ -424,22 +494,22 @@ describe('suspense', () => {
 
   it('will resolve when factory does', async () => {
     class Test extends State {
-      value = set(async () => 'foobar', true);
+      value = set(async () => 'foobar');
     }
 
     const test = Test.new();
 
     expect(() => test.value).toThrow(expect.any(Promise));
 
-    await expect(test).toUpdate(0);
+    await expect(test).toHaveUpdated();
 
     expect(test.value).toBe('foobar');
   });
 
   it('will not suspend where already resolved', async () => {
     class Test extends State {
-      greet = set(async () => 'Hello', true);
-      name = set(async () => 'World', true);
+      greet = set(async () => 'Hello');
+      name = set(async () => 'World');
 
       value = set(() => this.greet + ' ' + this.name);
     }
@@ -460,7 +530,7 @@ describe('suspense', () => {
     const promise = mockPromise();
 
     class Test extends State {
-      value = set(() => promise, true);
+      value = set(promise);
     }
 
     const instance = Test.new();
@@ -483,7 +553,7 @@ describe('suspense', () => {
     expect(mock).toBeCalledWith(undefined);
 
     promise.resolve('foobar');
-    await expect(test).toUpdate(0);
+    await expect(test).toHaveUpdated();
 
     expect(mock).toBeCalledWith('foobar');
   });
@@ -497,10 +567,10 @@ describe('suspense', () => {
     });
 
     class Test extends State {
-      greet = set(() => salute, true);
-      name = set(() => name, true);
+      greet = set(salute);
+      name = set(name);
 
-      value = set(didEvaluate, true);
+      value = set(didEvaluate);
     }
 
     const test = Test.new();
@@ -508,10 +578,10 @@ describe('suspense', () => {
     test.get(($) => void $.value);
 
     salute.resolve('Hello');
-    await expect(test).toUpdate(0);
+    await expect(test).toHaveUpdated();
 
     name.resolve('World');
-    await expect(test).toUpdate(0);
+    await expect(test).toHaveUpdated();
 
     expect(didEvaluate).toBeCalledTimes(3);
     expect(test.value).toBe('Hello World');
@@ -521,14 +591,15 @@ describe('suspense', () => {
     const greet = mockPromise<string>();
     const name = mockPromise<string>();
 
-    const didEvaluate = vi.fn(async function (this: Test) {
-      return this.greet + ' ' + this.name;
-    });
+    const didEvaluate = vi.fn();
 
     class Test extends State {
-      greet = set(() => greet, true);
-      name = set(() => name, true);
-      value = set(didEvaluate, true);
+      greet = set(async () => greet);
+      name = set(() => name);
+      value = set(() => {
+        didEvaluate();
+        return this.greet + ' ' + this.name;
+      });
     }
 
     const test = Test.new();
@@ -536,10 +607,10 @@ describe('suspense', () => {
     test.get(($) => void $.value);
 
     greet.resolve('Hello');
-    await expect(test).toUpdate(0);
+    await expect(test).toHaveUpdated();
 
     name.resolve('World');
-    await expect(test).toUpdate(0);
+    await expect(test).toHaveUpdated();
 
     expect(didEvaluate).toBeCalledTimes(3);
     expect(test.value).toBe('Hello World');
@@ -550,7 +621,7 @@ describe('suspense', () => {
     const didUpdate = mockPromise<string>();
 
     class Child extends State {
-      value = set(() => promise, true);
+      value = set(promise);
     }
 
     class Test extends State {
@@ -558,7 +629,7 @@ describe('suspense', () => {
 
       childValue = set(() => {
         return this.child.value + ' world!';
-      }, true);
+      });
     }
 
     const test = Test.new();
@@ -581,7 +652,7 @@ describe('suspense', () => {
     const promise = mockPromise<string>();
 
     class Test extends State {
-      asyncValue = set(() => promise, true);
+      asyncValue = set(() => promise);
 
       value = set(() => `Hello ${this.asyncValue}`, false);
     }
@@ -591,7 +662,7 @@ describe('suspense', () => {
     expect(test.value).toBeUndefined();
 
     promise.resolve('World');
-    await expect(test).toUpdate();
+    await expect(test).toHaveUpdated();
 
     expect(test.value).toBe('Hello World');
   });
@@ -607,7 +678,7 @@ describe('suspense', () => {
     });
 
     class Test extends State {
-      message = set(compute, true);
+      message = set(compute);
     }
 
     const test = Test.new();
@@ -647,12 +718,13 @@ describe('suspense', () => {
     const promise2 = mockPromise<number>();
 
     class Test extends State {
-      a = set(() => promise, true);
-      b = set(() => promise2, true);
+      a = set(() => promise);
+      b = set(() => promise2);
 
       sum = set(this.getSum);
 
       getSum() {
+        didAttemptSum();
         const { a, b } = this;
 
         return `Answer is ${a + b}.`;
@@ -661,29 +733,41 @@ describe('suspense', () => {
 
     const test = Test.new();
 
-    const effect = vi.fn((state: Test) => void state.sum);
+    const didAttemptSum = vi.fn();
+    const didAttemptEffect = vi.fn();
+    const didCompleteEffect = vi.fn();
 
-    test.get(effect);
+    test.get((self) => {
+      didAttemptEffect();
+      didCompleteEffect(self.sum);
+    });
 
-    expect(effect).toBeCalled();
+    expect(didAttemptSum).toBeCalled();
+    expect(didAttemptEffect).toBeCalled();
 
     promise.resolve(10);
-    await expect(test).toUpdate();
+    await expect(test).toHaveUpdated();
 
-    expect(effect).toBeCalledTimes(1);
+    expect(didAttemptSum).toBeCalledTimes(2);
+    expect(didAttemptEffect).toBeCalledTimes(1);
+    expect(didCompleteEffect).not.toBeCalled();
 
     promise2.resolve(20);
-    await expect(test).toUpdate();
+    await expect(test).toHaveUpdated();
 
+    expect(didAttemptSum).toBeCalledTimes(3);
     expect(test.sum).toBe('Answer is 30.');
-    expect(effect).toBeCalledTimes(2);
+
+    await expect(test).toHaveUpdated();
+    expect(didAttemptEffect).toBeCalledTimes(2);
+    expect(didCompleteEffect).toBeCalledWith('Answer is 30.');
   });
 
   it('will refresh and throw if async rejects', async () => {
     const promise = mockPromise();
 
     class Test extends State {
-      value = set(() => promise, true);
+      value = set(promise);
     }
 
     const instance = Test.new();
@@ -785,21 +869,17 @@ it('supports Promise objects as factory return', async () => {
 
 describe('compute mode', () => {
   it('will cleanup source subscription when source is destroyed', async () => {
-    class Source extends State {
-      value = 1;
-    }
-
     class Subject extends State {
-      source = new Source();
+      value = 1;
 
-      computed = set(this.source, (source) => source.value);
+      computed = set((from: this) => from.value);
     }
 
     const subject = Subject.new();
 
     expect(subject.computed).toBe(1);
 
-    expect(() => subject.source.set(null)).not.toThrow();
+    expect(() => subject.set(null)).not.toThrow();
     expect(subject.computed).toBe(1);
   });
 
@@ -807,8 +887,8 @@ describe('compute mode', () => {
     class Subject extends State {
       seconds = 0;
 
-      minutes = set(this, (state) => {
-        return Math.floor(state.seconds / 60);
+      minutes = set((from: this) => {
+        return Math.floor(from.seconds / 60);
       });
     }
 
@@ -832,8 +912,8 @@ describe('compute mode', () => {
   it('will trigger when nested inputs change', async () => {
     class Subject extends State {
       child = new Child();
-      nested = set(this, (state) => {
-        return state.child.value;
+      nested = set((from: this) => {
+        return from.child.value;
       });
     }
 
@@ -860,8 +940,8 @@ describe('compute mode', () => {
   it('will compute early if value is accessed', async () => {
     class Test extends State {
       number = 0;
-      plusOne = set(this, (state) => {
-        const value = state.number + 1;
+      plusOne = set((from: this) => {
+        const value = from.number + 1;
         didCompute(value);
         return value;
       });
@@ -907,9 +987,9 @@ describe('compute mode', () => {
       a = 1;
       b = 1;
 
-      c = set(this, (state) => {
+      c = set((from: this) => {
         exec();
-        return state.a + state.b + state.x.value;
+        return from.a + from.b + from.x.value;
       });
 
       // sanity check; multi-source updates do work
@@ -949,26 +1029,26 @@ describe('compute mode', () => {
     class Ordered extends State {
       X = 1;
 
-      A = set(this, (state) => {
-        const value = state.X;
+      A = set((from: this) => {
+        const value = from.X;
         didCompute.push('A');
         return value;
       });
 
-      B = set(this, (state) => {
-        const value = state.A + 1;
+      B = set((from: this) => {
+        const value = from.A + 1;
         didCompute.push('B');
         return value;
       });
 
-      C = set(this, (state) => {
-        const value = state.X + state.B + 1;
+      C = set((from: this) => {
+        const value = from.X + from.B + 1;
         didCompute.push('C');
         return value;
       });
 
-      D = set(this, (state) => {
-        const value = state.A + state.C + 1;
+      D = set((from: this) => {
+        const value = from.A + from.C + 1;
         didCompute.push('D');
         return value;
       });
@@ -999,7 +1079,7 @@ describe('compute mode', () => {
     const warn = mockWarn();
 
     class Subject extends State {
-      never = set(this, () => {
+      never = set((_from: this) => {
         throw new Error();
       });
     }
@@ -1018,8 +1098,8 @@ describe('compute mode', () => {
       class Test extends State {
         shouldFail = false;
 
-        value = set(this, (state) => {
-          if (state.shouldFail) throw new Error();
+        value = set((from: this) => {
+          if (from.shouldFail) throw new Error();
           else return undefined;
         });
       }
@@ -1036,18 +1116,6 @@ describe('compute mode', () => {
       );
       expect(error).toBeCalled();
     });
-
-    it('will throw if source is another instruction', () => {
-      class Test extends State {
-        peer = set(this, () => 'foobar');
-
-        value = set(this.peer, () => {});
-      }
-
-      expect(() => Test.new('ID')).toThrow(
-        `Attempted to use an instruction result (probably use or get) as computed source for ID.value. This is not allowed.`
-      );
-    });
   });
 
   describe('circular', () => {
@@ -1056,8 +1124,8 @@ describe('compute mode', () => {
         multiplier = 0;
         previous: number | undefined | null = null;
 
-        value = set(this, (state) => {
-          const { value, multiplier } = state;
+        value = set((from: this) => {
+          const { value, multiplier } = from;
 
           // use set to bypass subscriber
           this.previous = value;
@@ -1095,8 +1163,8 @@ describe('compute mode', () => {
 
       class Test extends State {
         input = 1;
-        value = set(this, (state) => {
-          const { input, value } = state;
+        value = set((from: this) => {
+          const { input, value } = from;
 
           didGetOldValue(value);
 
@@ -1126,13 +1194,13 @@ describe('compute mode', () => {
   });
 
   describe('method', () => {
-    it('will create computed via factory', async () => {
+    it('will create computed', async () => {
       class Test extends State {
         foo = 1;
-        bar = set(true, this.getBar);
+        bar = set(this.getBar);
 
-        getBar() {
-          return 1 + this.foo;
+        getBar(from: Test) {
+          return 1 + from.foo;
         }
       }
 
@@ -1150,10 +1218,10 @@ describe('compute mode', () => {
       class Hello extends State {
         friend = 'World';
 
-        greeting = set(true, this.generateGreeting);
+        greeting = set(this.generateGreeting);
 
-        generateGreeting() {
-          return `Hello ${this.friend}!`;
+        generateGreeting(from: Hello) {
+          return `Hello ${from.friend}!`;
         }
       }
 
@@ -1170,16 +1238,16 @@ describe('compute mode', () => {
     it('will use top-most method of class', () => {
       class Test extends State {
         foo = 1;
-        bar = set(true, this.getBar);
+        bar = set(this.getBar);
 
-        getBar() {
-          return 1 + this.foo;
+        getBar(from: Test) {
+          return 1 + from.foo;
         }
       }
 
       class Test2 extends Test {
-        getBar() {
-          return 2 + this.foo;
+        getBar(from: Test) {
+          return 2 + from.foo;
         }
       }
 
@@ -1188,25 +1256,25 @@ describe('compute mode', () => {
       expect(test.bar).toBe(3);
     });
 
-    it('will provide key and self to factory', () => {
-      const factory = vi.fn<(key: string, test: Test) => 'foo'>(() => 'foo');
+    it('will provide self and key to factory', () => {
+      const factory = vi.fn((_self: Test, _key: string) => 'foo' as const);
 
       class Test extends State {
-        fooBar = set(true, factory);
+        fooBar = set(factory);
       }
 
       const test = Test.new();
 
       expect(test.fooBar).toBe('foo');
-      expect(factory).toBeCalledWith('fooBar', expect.any(Test));
+      expect(factory).toBeCalledWith(expect.any(Test), 'fooBar');
     });
 
     it('will subscribe from self argument', async () => {
       class Test extends State {
         foo = 'foo';
 
-        fooBar = set(true, (key: string, self: Test) => {
-          return self.foo;
+        fooBar = set((from: this) => {
+          return from.foo;
         });
       }
 
@@ -1218,6 +1286,45 @@ describe('compute mode', () => {
       await expect(test).toHaveUpdated();
 
       expect(test.foo).toBe('bar');
+    });
+
+    it('will not subscribe to values accessed via this', async () => {
+      const didCompute = vi.fn();
+
+      class Test extends State {
+        tracked = 'A';
+        untracked = 'X';
+
+        value = set(this.compute);
+
+        compute(from: Test) {
+          didCompute();
+          // only from.tracked should subscribe
+          // this.untracked should NOT subscribe
+          return from.tracked + this.untracked;
+        }
+      }
+
+      const test = Test.new();
+
+      expect(test.value).toBe('AX');
+      expect(didCompute).toBeCalledTimes(1);
+
+      // changing tracked value should recompute
+      test.tracked = 'B';
+      await expect(test).toHaveUpdated();
+
+      expect(test.value).toBe('BX');
+      expect(didCompute).toBeCalledTimes(2);
+
+      // changing untracked value should NOT recompute
+      test.untracked = 'Y';
+      await expect(test).toHaveUpdated();
+
+      // compute should not have run again
+      expect(didCompute).toBeCalledTimes(2);
+      // stale: still reads old untracked since no recompute
+      expect(test.value).toBe('BX');
     });
   });
 });
