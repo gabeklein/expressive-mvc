@@ -26,11 +26,15 @@ function App() {
 
 function Header() {
   const { color, toggle } = Theme.get();
-  return <button style={{ color }} onClick={toggle}>{color}</button>;
+  return (
+    <button style={{ color }} onClick={toggle}>
+      {color}
+    </button>
+  );
 }
 ```
 
-<br/>
+<br />
 
 ## Provider
 
@@ -59,7 +63,7 @@ const theme = Theme.new();
 
 <Provider for={theme}>
   <App />
-</Provider>
+</Provider>;
 ```
 
 Instances passed in from outside are **not** destroyed when the provider unmounts - you manage their lifetime.
@@ -94,7 +98,7 @@ The `is` callback runs once per instance on creation. For multi-state providers,
 
 The `fallback` prop wraps children in a `Suspense` boundary, so any async `set()` in the provided state triggers the fallback.
 
-<br/>
+<br />
 
 ## Consuming from context
 
@@ -105,7 +109,11 @@ Inside a component, `State.get()` looks up an instance from context and subscrib
 ```tsx
 function ThemeToggle() {
   const { color, toggle } = Theme.get();
-  return <button style={{ color }} onClick={toggle}>Toggle</button>;
+  return (
+    <button style={{ color }} onClick={toggle}>
+      Toggle
+    </button>
+  );
 }
 ```
 
@@ -136,11 +144,15 @@ function CartSummary() {
   const summary = Cart.get((cart) => ({
     total: cart.total,
     count: cart.count,
-    empty: cart.items.length === 0,
+    empty: cart.items.length === 0
   }));
 
   if (summary.empty) return <p>Cart is empty</p>;
-  return <p>{summary.count} items - ${summary.total}</p>;
+  return (
+    <p>
+      {summary.count} items - ${summary.total}
+    </p>
+  );
 }
 ```
 
@@ -172,7 +184,7 @@ function DataView() {
 }
 ```
 
-<br/>
+<br />
 
 ## The `get` instruction
 
@@ -182,7 +194,7 @@ Inside a State class, the `get` instruction declares a context dependency as a f
 import State, { get } from '@expressive/react';
 
 class Panel extends State {
-  theme = get(Theme);           // required - throws if not in context
+  theme = get(Theme); // required - throws if not in context
   maybe = get(OptionalSvc, false); // optional - T | undefined
 }
 ```
@@ -245,12 +257,12 @@ Sometimes you want a single child of a type, not an array:
 
 ```tsx
 class Container extends State {
-  form = get(FormState, true, true);   // required, single
-  form = get(FormState, true, false);  // optional, single
+  form = get(FormState, true, true); // required, single
+  form = get(FormState, true, false); // optional, single
 }
 ```
 
-<br/>
+<br />
 
 ## Consumer (render prop)
 
@@ -261,12 +273,12 @@ import { Consumer } from '@expressive/react';
 
 <Consumer for={Theme}>
   {(theme) => <p style={{ color: theme.color }}>Themed text</p>}
-</Consumer>
+</Consumer>;
 ```
 
 The child function receives a tracking proxy, so property reads subscribe just like `State.get()`.
 
-<br/>
+<br />
 
 ## Composition patterns
 
@@ -275,7 +287,9 @@ The child function receives a tracking proxy, so property reads subscribe just l
 Classes can compose by owning each other:
 
 ```tsx
-class Auth extends State { /* ... */ }
+class Auth extends State {
+  /* ... */
+}
 class Api extends State {
   auth = get(Auth);
   // ...
@@ -287,7 +301,7 @@ class App extends State {
 
 <Provider for={App}>
   <View />
-</Provider>
+</Provider>;
 ```
 
 When `App` is constructed, `auth` and `api` activate together. `Api` looks up `Auth` from the shared context automatically.
@@ -318,16 +332,18 @@ class Dashboard extends Component {
 
 function FilterBar() {
   const { filter, is } = Dashboard.get();
-  return <input value={filter} onChange={e => is.filter = e.target.value} />;
+  return (
+    <input value={filter} onChange={(e) => (is.filter = e.target.value)} />
+  );
 }
 
 <Dashboard>
   <FilterBar />
   <ItemList />
-</Dashboard>
+</Dashboard>;
 ```
 
-<br/>
+<br />
 
 ## Next
 

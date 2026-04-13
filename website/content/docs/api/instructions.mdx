@@ -11,7 +11,7 @@ import { set, get, ref, def } from '@expressive/react';
 
 All instructions return a symbol at definition time that the library resolves into a real typed value during activation. TypeScript sees the declared type; the runtime sees the symbol until init.
 
-<br/>
+<br />
 
 ## `set`
 
@@ -19,16 +19,16 @@ The most versatile instruction. Handles default values, placeholders, lazy/async
 
 ### Property descriptor policy
 
-| Form                        | Enumerable | Writable | Notes                                        |
-| --------------------------- | ---------- | -------- | -------------------------------------------- |
-| `= "foo"` (plain)           | yes        | yes      | Normal data property                         |
-| `= set("foo")`              | no         | yes      | Managed default, excluded from snapshots     |
-| `= set("foo", cb)`          | no         | yes      | Managed with setter callback                 |
-| `= set(() => "foo")`        | no         | no       | Factory, read-only                           |
-| `= set(() => "foo", cb)`    | no         | yes      | Factory made writable by callback            |
-| `= set((from) => ...)`      | yes        | no       | Reactive computed, included in snapshots     |
-| `= set<T>()`                | no         | yes      | Placeholder, suspends on access              |
-| `= set(promise)`            | no         | no       | Direct promise, suspends until resolved      |
+| Form                     | Enumerable | Writable | Notes                                    |
+| ------------------------ | ---------- | -------- | ---------------------------------------- |
+| `= "foo"` (plain)        | yes        | yes      | Normal data property                     |
+| `= set("foo")`           | no         | yes      | Managed default, excluded from snapshots |
+| `= set("foo", cb)`       | no         | yes      | Managed with setter callback             |
+| `= set(() => "foo")`     | no         | no       | Factory, read-only                       |
+| `= set(() => "foo", cb)` | no         | yes      | Factory made writable by callback        |
+| `= set((from) => ...)`   | yes        | no       | Reactive computed, included in snapshots |
+| `= set<T>()`             | no         | yes      | Placeholder, suspends on access          |
+| `= set(promise)`         | no         | no       | Direct promise, suspends until resolved  |
 
 The key distinction between a factory (`set(() => v)`) and a reactive computed (`set((from) => v)`) is **parameter count**. A callback with no declared parameters is a lazy factory. A callback with at least one declared parameter is a reactive computed whose argument is a tracking proxy.
 
@@ -43,7 +43,9 @@ Required. Throws Suspense on read until assigned. Writable. Non-enumerable.
 Optional setter callback:
 
 ```ts
-userId = set<string>(undefined, (next, prev) => { /* ... */ });
+userId = set<string>(undefined, (next, prev) => {
+  /* ... */
+});
 ```
 
 ### `set(value)` - default value
@@ -100,7 +102,9 @@ Returns `undefined` while pending instead of suspending.
 ```ts
 config = set(
   () => loadDefaults(),
-  (next, prev) => { /* ... */ }
+  (next, prev) => {
+    /* ... */
+  }
 );
 ```
 
@@ -132,7 +136,7 @@ config = set(fetchConfig());
 
 Promise is constructed eagerly. Reads suspend until resolved.
 
-<br/>
+<br />
 
 ## `get`
 
@@ -201,7 +205,7 @@ form = get(FormState, true, false); // T | undefined
 - A state does not resolve itself.
 - Upstream callbacks are not reactive - they fire once per mount.
 
-<br/>
+<br />
 
 ## `ref`
 
@@ -245,8 +249,8 @@ class Form extends State {
   refs = ref(this);
 }
 
-form.refs.name;          // ref.Object<string>
-form.refs.name.current;  // current value of form.name
+form.refs.name; // ref.Object<string>
+form.refs.name.current; // current value of form.name
 form.refs.name.current = 'new'; // updates form.name
 ```
 
@@ -278,7 +282,7 @@ interface ref.Object<T> {
 }
 ```
 
-<br/>
+<br />
 
 ## `def`
 
@@ -289,8 +293,12 @@ custom = def((key, subject, state) => ({
   value: 'initial',
   enumerable: true,
   get: (source) => computedValue,
-  set: (next, prev) => { /* ... */ },
-  destroy: () => { /* cleanup */ },
+  set: (next, prev) => {
+    /* ... */
+  },
+  destroy: () => {
+    /* cleanup */
+  }
 }));
 ```
 
@@ -302,12 +310,12 @@ The factory runs during activation and can return:
 
 ### Config fields
 
-| Field        | Type                                         | Description                                     |
-| ------------ | -------------------------------------------- | ----------------------------------------------- |
-| `value`      | `T`                                          | Initial value                                   |
-| `enumerable` | `boolean`                                    | Appear in `Object.keys()` (default `true`)      |
-| `get`        | `(source: State) => T \| true \| false`      | Custom getter, or suspense/optional flag        |
-| `set`        | `(next: T, prev: T) => void \| T \| false`   | Custom setter, or `false` for read-only         |
-| `destroy`    | `() => void`                                 | Cleanup on destruction                          |
+| Field        | Type                                       | Description                                |
+| ------------ | ------------------------------------------ | ------------------------------------------ |
+| `value`      | `T`                                        | Initial value                              |
+| `enumerable` | `boolean`                                  | Appear in `Object.keys()` (default `true`) |
+| `get`        | `(source: State) => T \| true \| false`    | Custom getter, or suspense/optional flag   |
+| `set`        | `(next: T, prev: T) => void \| T \| false` | Custom setter, or `false` for read-only    |
+| `destroy`    | `() => void`                               | Cleanup on destruction                     |
 
 Setter callbacks behave like `set()` callbacks: throw `false` to reject, throw `true` to accept silently, return a value to transform.

@@ -17,7 +17,7 @@ class MyState extends State {
 
 const { is: state } = MyState.use();
 
-state.element.current;       // HTMLDivElement | null
+state.element.current; // HTMLDivElement | null
 state.element.current = div; // set via .current
 ```
 
@@ -59,10 +59,10 @@ class Form extends State {
 
 const { is: form } = Form.use();
 
-form.refs.name;          // ref.Object<string>
-form.refs.name.current;  // current value of form.name
+form.refs.name; // ref.Object<string>
+form.refs.name.current; // current value of form.name
 form.refs.name.current = 'new'; // updates form.name
-form.refs.email;         // ref.Object<string>
+form.refs.email; // ref.Object<string>
 ```
 
 Creates ref objects for every enumerable property on the state. Each ref has `.current` (get/set), `.get()` (value or subscribe), `.is` (parent state), and `.key` (property name).

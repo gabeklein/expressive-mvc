@@ -62,7 +62,9 @@ describe('property descriptors', () => {
 
     const test = Test.new();
 
-    expect(() => { test.value = 'bar' }).toThrow(/read-only/);
+    expect(() => {
+      test.value = 'bar';
+    }).toThrow(/read-only/);
   });
 
   it('will be read-only with required factory', () => {
@@ -72,7 +74,9 @@ describe('property descriptors', () => {
 
     const test = Test.new();
 
-    expect(() => { test.value = 'bar' }).toThrow(/read-only/);
+    expect(() => {
+      test.value = 'bar';
+    }).toThrow(/read-only/);
   });
 
   it('will be writable with factory and callback', () => {
@@ -97,7 +101,9 @@ describe('property descriptors', () => {
 
     const test = Test.new();
 
-    expect(() => { test.value = 'bar' }).toThrow(/read-only/);
+    expect(() => {
+      test.value = 'bar';
+    }).toThrow(/read-only/);
   });
 
   it('will be writable with placeholder and callback', () => {
@@ -371,7 +377,9 @@ describe('factory', () => {
 
     const test = Test.new();
 
-    expect(() => { test.value = 'bar' }).toThrow(/read-only/);
+    expect(() => {
+      test.value = 'bar';
+    }).toThrow(/read-only/);
     expect(test.value).toBe('foo');
   });
 
@@ -431,7 +439,9 @@ describe('factory', () => {
 
     expect(() => test.memoized).toThrow('Foobar');
     expect(warn).toBeCalledWith(
-      expect.stringMatching(/Generating initial value for [\w-]+\.memoized failed\./)
+      expect.stringMatching(
+        /Generating initial value for [\w-]+\.memoized failed\./
+      )
     );
   });
 });
@@ -446,7 +456,9 @@ describe('suspense', () => {
 
     const instance = Test.new();
 
-    expect(() => instance.value).toThrow(/[\w-]+\.value is not yet available\./);
+    expect(() => instance.value).toThrow(
+      /[\w-]+\.value is not yet available\./
+    );
     promise.resolve();
   });
 

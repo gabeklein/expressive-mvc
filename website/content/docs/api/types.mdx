@@ -9,7 +9,7 @@ All public types are namespaced on `State`. Import from `@expressive/state` or `
 import type { State } from '@expressive/react';
 ```
 
-<br/>
+<br />
 
 ## Class shape
 
@@ -29,7 +29,7 @@ Concrete (instantiable) constructor. Use when `new` is required.
 function create<T extends State>(Type: State.Type<T>): T;
 ```
 
-<br/>
+<br />
 
 ## Field introspection
 
@@ -68,7 +68,7 @@ Meaning of special values:
 - `false` - a normal update flush completed
 - `null` - destruction
 
-<br/>
+<br />
 
 ## Values and snapshots
 
@@ -92,7 +92,7 @@ Single-property lookup type with `Export<>` unwrapping.
 
 If `R` has a `.get(): T` method, extracts `T`. Otherwise returns `R`. Drives ref unwrapping in snapshots.
 
-<br/>
+<br />
 
 ## Constructor args
 
@@ -111,8 +111,10 @@ Arrays are flattened recursively at runtime.
 A lifecycle callback passed to `State.new()`. Can return cleanup, object (assign), or array (recurse).
 
 ```ts
-type Init<T> = (this: T, thisArg: T) =>
-  Promise<void> | (() => void) | Args<T> | Assign<T> | void;
+type Init<T> = (
+  this: T,
+  thisArg: T
+) => Promise<void> | (() => void) | Args<T> | Assign<T> | void;
 ```
 
 ### `State.Assign<T>`
@@ -127,15 +129,18 @@ type Assign<T> = Record<string, unknown> & {
 };
 ```
 
-<br/>
+<br />
 
 ## Callbacks
 
 ### `State.OnEvent<T>`
 
 ```ts
-type OnEvent<T> = (this: T, key: Signal<T>, source: T) =>
-  void | (() => void) | null;
+type OnEvent<T> = (
+  this: T,
+  key: Signal<T>,
+  source: T
+) => void | (() => void) | null;
 ```
 
 Return a function for a deduped settle callback. Return `null` to auto-unsubscribe.
@@ -149,8 +154,11 @@ type OnUpdate<T, K> = (this: T, key: K, thisArg: T) => void;
 ### `State.Effect<T>`
 
 ```ts
-type Effect<T> = (this: T, current: T, update: readonly Event<T>[] | undefined) =>
-  EffectCallback | Promise<void> | null | void;
+type Effect<T> = (
+  this: T,
+  current: T,
+  update: readonly Event<T>[] | undefined
+) => EffectCallback | Promise<void> | null | void;
 
 type EffectCallback = (update: boolean | null) => void;
 ```
@@ -161,7 +169,7 @@ type EffectCallback = (update: boolean | null) => void;
 type Setter<T> = (value: T, previous: T) => T | void;
 ```
 
-<br/>
+<br />
 
 ## Descriptors
 
@@ -182,7 +190,7 @@ type Apply<T> = {
 
 Type-safe variant of `Apply` used by `set(key, config)` - enforces `T[K]` when `K` is a known field.
 
-<br/>
+<br />
 
 ## Updated
 
@@ -194,7 +202,7 @@ type Updated<T> = readonly Event<T>[] & PromiseLike<readonly Event<T>[]>;
 
 Returned by `set()` - a synchronously readable array of keys updated, awaitable to wait for batch settlement.
 
-<br/>
+<br />
 
 ## Refs
 
@@ -222,7 +230,7 @@ type ref.CustomProxy<T extends State, R> =
   { [P in State.Field<T>]-?: R } & { get(): T };
 ```
 
-<br/>
+<br />
 
 ## Component
 

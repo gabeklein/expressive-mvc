@@ -6,10 +6,17 @@ description: Framework-agnostic helpers - watch, listener, event, Context, Obser
 These exports are framework-agnostic. They're available from both `@expressive/state` and `@expressive/react`.
 
 ```ts
-import { watch, listener, event, Context, Observable, unbind } from '@expressive/state';
+import {
+  watch,
+  listener,
+  event,
+  Context,
+  Observable,
+  unbind
+} from '@expressive/state';
 ```
 
-<br/>
+<br />
 
 ## `watch(target, callback)`
 
@@ -31,13 +38,21 @@ stop();
 Signature:
 
 ```ts
-function watch<T>(target: T, callback: Effect<T>, recursive?: boolean): () => void;
-function watch<T>(target: T, callback: Effect<Required<T>>, requireValues: true): () => void;
+function watch<T>(
+  target: T,
+  callback: Effect<T>,
+  recursive?: boolean
+): () => void;
+function watch<T>(
+  target: T,
+  callback: Effect<Required<T>>,
+  requireValues: true
+): () => void;
 ```
 
 Pass `requireValues: true` to throw on undefined tracked values - useful when the effect assumes all data is present.
 
-<br/>
+<br />
 
 ## `listener(target, callback, select?)`
 
@@ -56,7 +71,7 @@ const stop = listener(state, (key, source) => {
 
 Optionally filter by a specific signal or a set of signals.
 
-<br/>
+<br />
 
 ## `event(target, key?, silent?)`
 
@@ -67,7 +82,7 @@ event(state, 'my-event');
 event(state, Symbol.for('refresh'));
 ```
 
-<br/>
+<br />
 
 ## `Context`
 
@@ -82,18 +97,18 @@ const child = ctx.push({ ChildState });
 child.pop();
 ```
 
-| Method            | Description                                           |
-| ----------------- | ----------------------------------------------------- |
-| `Context.root`    | Root context - global fallback                        |
-| `Context.get(s?)` | Get the context for a given state                     |
-| `ctx.get(Type)`   | Look up a state by type (upstream)                    |
-| `ctx.set(input, forEach?)` | Register states in the context               |
-| `ctx.push(input?)` | Create a child context                               |
-| `ctx.pop()`       | Destroy this context and its registered states        |
+| Method                     | Description                                    |
+| -------------------------- | ---------------------------------------------- |
+| `Context.root`             | Root context - global fallback                 |
+| `Context.get(s?)`          | Get the context for a given state              |
+| `ctx.get(Type)`            | Look up a state by type (upstream)             |
+| `ctx.set(input, forEach?)` | Register states in the context                 |
+| `ctx.push(input?)`         | Create a child context                         |
+| `ctx.pop()`                | Destroy this context and its registered states |
 
 Adapters can override `Context.get` to provide framework-specific context (as the React adapter does).
 
-<br/>
+<br />
 
 ## `Observable`
 
@@ -105,7 +120,7 @@ import { Observable } from '@expressive/state';
 
 `Observable` is also a unique symbol used as a protocol key on objects that participate in the event system.
 
-<br/>
+<br />
 
 ## `unbind(fn)`
 
@@ -117,7 +132,7 @@ import { unbind } from '@expressive/state';
 const raw = unbind(state.someMethod);
 ```
 
-<br/>
+<br />
 
 ## Re-exports
 
@@ -137,7 +152,7 @@ import State, {
   ref,
   set,
   unbind,
-  watch,
+  watch
 } from '@expressive/react';
 ```
 

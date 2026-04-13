@@ -1,22 +1,23 @@
 {
   "name": "@expressive/preact",
-  "description": "Use classes to define state in Preact!",
+  "version": "0.75.0",
   "private": true,
+  "description": "Use classes to define state in Preact!",
+  "license": "MIT",
   "author": {
     "name": "Gabe Klein",
     "email": "gabe@expressive.dev",
     "url": "https://github.com/gabeklein"
   },
-  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/gabeklein/expressive-state.git"
   },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "publishConfig": {
     "access": "public"
   },
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsdown",
     "test": "tsc --noEmit && vitest run --coverage",
@@ -34,6 +35,5 @@
   },
   "peerDependencies": {
     "preact": "^10.0.0"
-  },
-  "version": "0.75.0"
+  }
 }

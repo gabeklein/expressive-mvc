@@ -15,12 +15,14 @@
 ## Workflows
 
 ### `pr.yml`
+
 Trigger: PRs to `main`.
 
 - **Build** (`validate`): runs tests and build. Required check for branch protection.
 - **Version preview** (`version-preview`): computes the next version from conventional commits and posts/updates a PR comment. Shows "No package changes" if nothing releasable.
 
 ### `publish.yml`
+
 Trigger: push to `main`, or manual dispatch.
 
 - **Check for changes** (`check`): runs `lerna changed` — if nothing changed, skips publish entirely.
@@ -30,6 +32,7 @@ Trigger: push to `main`, or manual dispatch.
 ## Manual dispatch options
 
 `publish.yml` → Run workflow:
+
 - `channel`: `stable` or `canary`
 - `ref`: optional branch/SHA to publish from
 - `force_publish`: skip changed-package check for canary

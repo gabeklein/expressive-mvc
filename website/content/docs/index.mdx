@@ -35,7 +35,7 @@ function CounterWidget() {
 
 No reducers. No selectors. No dependency arrays. No extra libraries for async, context, or computed values. Just a class and a hook.
 
-<br/>
+<br />
 
 ## Why it exists
 
@@ -43,25 +43,41 @@ Most React apps outgrow their state. What starts as `useState` sprawls into `use
 
 Expressive takes a different approach: **put the logic back in one place**. A State class holds everything a feature knows and does. Components subscribe to what they need and render it. The two concerns - data and presentation - stop fighting each other.
 
-<br/>
+<br />
 
 ## What you get from a single import
 
 - **Reactive properties** - plain class fields that components subscribe to automatically.
 - **Computed values** - derived properties that update when their inputs change.
 - **Async + Suspense** - declarative data loading with built-in Suspense integration.
-- **Context** - type-safe dependency injection; the class *is* the context key.
+- **Context** - type-safe dependency injection; the class _is_ the context key.
 - **Lifecycle** - one `new()` hook for setup and teardown. No dependency arrays.
 - **Components** - the `Component` class lets state render itself, with built-in error boundaries and subcomponents.
 - **Testability** - state classes are plain objects. Test them without a renderer, without `act()`, without a DOM.
 
-<br/>
+<br />
 
 ## Where to go next
 
 <Cards>
-  <Card title="Getting Started" href="/docs/getting-started" description="Install, build your first class, learn the mental model." />
-  <Card title="Why Classes?" href="/docs/why-classes" description="The organizational argument for moving state out of components." />
-  <Card title="Migrating from Hooks" href="/docs/migrating-from-hooks" description="A step-by-step playbook for adopting Expressive in an existing codebase." />
-  <Card title="API Reference" href="/docs/api/state" description="Every method, instruction, and hook." />
+  <Card
+    title="Getting Started"
+    href="/docs/getting-started"
+    description="Install, build your first class, learn the mental model."
+  />
+  <Card
+    title="Why Classes?"
+    href="/docs/why-classes"
+    description="The organizational argument for moving state out of components."
+  />
+  <Card
+    title="Migrating from Hooks"
+    href="/docs/migrating-from-hooks"
+    description="A step-by-step playbook for adopting Expressive in an existing codebase."
+  />
+  <Card
+    title="API Reference"
+    href="/docs/api/state"
+    description="Every method, instruction, and hook."
+  />
 </Cards>

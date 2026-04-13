@@ -3,11 +3,11 @@ title: Why Classes?
 description: The organizational case for moving state out of components
 ---
 
-React's hook model made a bold trade-off: instead of organizing code around data, organize it around *when code runs*. `useState` for mounts, `useEffect` for side effects, `useMemo` for derivations, `useCallback` for stable references. Every piece of state logic gets spread across these primitives, keyed by execution timing rather than by what it means.
+React's hook model made a bold trade-off: instead of organizing code around data, organize it around _when code runs_. `useState` for mounts, `useEffect` for side effects, `useMemo` for derivations, `useCallback` for stable references. Every piece of state logic gets spread across these primitives, keyed by execution timing rather than by what it means.
 
 That trade-off works beautifully for small components. It falls apart as features grow.
 
-<br/>
+<br />
 
 ## The fragmentation problem
 
@@ -20,7 +20,10 @@ function UserSettings({ userId }: { userId: string }) {
   const [avatar, setAvatar] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [initial, setInitial] = useState<{ name: string; email: string } | null>(null);
+  const [initial, setInitial] = useState<{
+    name: string;
+    email: string;
+  } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -32,7 +35,9 @@ function UserSettings({ userId }: { userId: string }) {
         setEmail(data.email);
         setInitial({ name: data.name, email: data.email });
       });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [userId]);
 
   const dirty = useMemo(() => {
@@ -70,7 +75,7 @@ Count what's in this component:
 
 And all the logic - what "dirty" means, how saving works, how the initial state loads - is tangled into the component body. If someone asks "how does saving work?", the answer is "read this whole file".
 
-<br/>
+<br />
 
 ## The same feature as a class
 
@@ -118,11 +123,16 @@ And the component:
 
 ```tsx
 function UserSettingsView({ userId }: { userId: string }) {
-  const { name, email, dirty, saving, error, save, is } =
-    UserSettings.use({ userId });
+  const { name, email, dirty, saving, error, save, is } = UserSettings.use({
+    userId
+  });
 
   return (
-    <form onSubmit={(e) => { e.preventDefault(); save(); }}>
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        save();
+      }}>
       <input value={name} onChange={(e) => (is.name = e.target.value)} />
       <input value={email} onChange={(e) => (is.email = e.target.value)} />
       <button disabled={!dirty || saving}>Save</button>
@@ -140,7 +150,7 @@ Look at what moved:
 - **`save` became a regular async method.** No `useCallback`, no stale closures, no dependency array.
 - **The component is pure presentation.** It knows how to render, nothing more.
 
-<br/>
+<br />
 
 ## What this buys you
 
@@ -173,9 +183,9 @@ The same class can power a sidebar, a modal, a mobile layout, and a full page. C
 
 ### Type safety as a side effect
 
-The class *is* the type. Destructures are inferred. Refactors propagate. Context lookups are type-keyed (no `createContext<T>()` boilerplate). You don't write types for Expressive - you write classes, and TypeScript does the rest.
+The class _is_ the type. Destructures are inferred. Refactors propagate. Context lookups are type-keyed (no `createContext<T>()` boilerplate). You don't write types for Expressive - you write classes, and TypeScript does the rest.
 
-<br/>
+<br />
 
 ## The real argument: navigability
 
@@ -187,7 +197,7 @@ In a class-heavy codebase, a feature is one class. Open it, read it, understand 
 
 This is also why classes are unusually friendly to LLMs and agents. A State class is a self-contained unit with an explicit shape. An AI reading a hook-based component has to reconstruct the data model from execution order. An AI reading a State class just reads the class.
 
-<br/>
+<br />
 
 ## What you give up
 
@@ -199,7 +209,7 @@ To be honest about the trade-off:
 
 Expressive does not try to replace hooks wholesale. It coexists. Use `useState` where it's fine; reach for a class where the complexity justifies it.
 
-<br/>
+<br />
 
 ## Next
 

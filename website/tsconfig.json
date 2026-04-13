@@ -6,16 +6,8 @@
     ".react-router/types/**/*"
   ],
   "compilerOptions": {
-    "lib": [
-      "DOM",
-      "DOM.Iterable",
-      "ES2022"
-    ],
-    "types": [
-      "node",
-      "vite/client",
-      "@expressive/css"
-    ],
+    "lib": ["DOM", "DOM.Iterable", "ES2022"],
+    "types": ["node", "vite/client", "@expressive/css"],
     "target": "esnext",
     "module": "esnext",
     "moduleResolution": "bundler",
@@ -25,17 +17,10 @@
         "name": "@expressive/typescript-plugin-jsx"
       }
     ],
-    "rootDirs": [
-      ".",
-      "./.react-router/types"
-    ],
+    "rootDirs": [".", "./.react-router/types"],
     "paths": {
-      "@/*": [
-        "./app/*"
-      ],
-      "fumadocs-mdx:collections/*": [
-        "./.source/*"
-      ]
+      "@/*": ["./app/*"],
+      "fumadocs-mdx:collections/*": ["./.source/*"]
     },
     "esModuleInterop": true,
     "verbatimModuleSyntax": true,

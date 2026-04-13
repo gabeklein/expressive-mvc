@@ -5,7 +5,7 @@ inputs:
   registry-url:
     description: npm registry URL (only needed for publish jobs)
     required: false
-    default: ""
+    default: ''
 
 runs:
   using: composite

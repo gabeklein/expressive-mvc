@@ -99,7 +99,9 @@ describe('fetch mode', () => {
     const attempt = () => new Context(Child);
 
     // should this throw immediately, or only on access?
-    expect(attempt).toThrow(/Required Parent not found in context for [\w-]+\./);
+    expect(attempt).toThrow(
+      /Required Parent not found in context for [\w-]+\./
+    );
   });
 
   it('will return undefined if required is false', () => {
@@ -802,4 +804,3 @@ describe('lifecycle callbacks', () => {
     expect(didNotify).toBeCalledTimes(1);
   });
 });
-

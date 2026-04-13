@@ -5,7 +5,7 @@ description: Loading data, handling errors, and working with Suspense
 
 Async data is a first-class citizen in Expressive. You don't need a query library, middleware, or thunks - async factories and Suspense integration are built into the `set` instruction.
 
-<br/>
+<br />
 
 ## Async factories
 
@@ -27,7 +27,7 @@ function Profile() {
 // Wrap with Suspense:
 <Suspense fallback={<Spinner />}>
   <Profile />
-</Suspense>
+</Suspense>;
 ```
 
 By default, the factory is **lazy** - it runs the first time something reads the property. Pass `true` as the second argument to run it eagerly on activation:
@@ -42,7 +42,7 @@ Pass `false` to make it non-blocking - the property returns `undefined` while pe
 avatar = set(async () => fetchAvatar(), false); // User['avatar'] | undefined
 ```
 
-<br/>
+<br />
 
 ## Required placeholders
 
@@ -62,7 +62,7 @@ The async `user` factory reads `this.userId`. If `userId` hasn't been assigned, 
 
 This pattern is powerful: you describe a dependency graph ("user depends on userId"), and the library handles the timing.
 
-<br/>
+<br />
 
 ## Direct promises
 
@@ -76,7 +76,7 @@ class Config extends State {
 
 The promise is constructed when the field is initialized, so it starts fetching immediately.
 
-<br/>
+<br />
 
 ## Async methods
 
@@ -105,7 +105,7 @@ class LoginForm extends State {
 
 No `useCallback`, no dependency arrays, no stale closures. The method reads live state via `this` every time it runs.
 
-<br/>
+<br />
 
 ## Refreshing async data
 
@@ -113,10 +113,10 @@ Because async `set()` is just a property, refreshing it means reassigning:
 
 ```tsx
 class Feed extends State {
-  posts = set(async () => fetch('/api/posts').then(r => r.json()));
+  posts = set(async () => fetch('/api/posts').then((r) => r.json()));
 
   async refresh() {
-    this.posts = await fetch('/api/posts').then(r => r.json());
+    this.posts = await fetch('/api/posts').then((r) => r.json());
   }
 }
 ```
@@ -132,7 +132,7 @@ async refresh() {
 
 If you want the factory to re-run from scratch, destroy and recreate the state - or build the refresh semantic into a regular async method.
 
-<br/>
+<br />
 
 ## Error handling
 
@@ -166,7 +166,7 @@ class Profile extends Component {
 }
 ```
 
-<br/>
+<br />
 
 ## Reusable async patterns
 
@@ -193,7 +193,7 @@ class UserQuery extends Query<User> {
 
 The library ships no query abstraction because you don't need one. You can build the shape that fits your app in a dozen lines of class code.
 
-<br/>
+<br />
 
 ## Suspense in effects
 
@@ -208,7 +208,7 @@ state.get((current) => {
 
 This is the same mechanism React uses for components - you get it everywhere for free.
 
-<br/>
+<br />
 
 ## Debounced async via setter callbacks
 
@@ -231,7 +231,7 @@ class Search extends State {
 
 The callback returns a cleanup function, which is called before the next update (or on destruction). This gives you debouncing, abort controllers, or any other "cancel the previous thing when a new thing arrives" pattern.
 
-<br/>
+<br />
 
 ## Next
 

@@ -7,7 +7,7 @@ Expressive is reactive by default. You don't call `setState`, you don't dispatch
 
 This guide explains how that works, so you can trust it.
 
-<br/>
+<br />
 
 ## Tracking
 
@@ -22,7 +22,7 @@ Reads through a **tracking proxy** subscribe. Reads through the plain instance d
 ```ts
 state.get((current) => {
   console.log(current.value); // subscribes to `value`
-  console.log(state.value);   // does NOT subscribe (outside proxy)
+  console.log(state.value); // does NOT subscribe (outside proxy)
   console.log(current.is.other); // does NOT subscribe (silent read)
 });
 ```
@@ -37,13 +37,17 @@ A component's tracking context is created by `State.use()` or `State.get()`. Des
 function CartView() {
   const { total, count } = Cart.use();
   // Subscribes to `total` and `count`. Re-renders when either changes.
-  return <p>{count} items - ${total}</p>;
+  return (
+    <p>
+      {count} items - ${total}
+    </p>
+  );
 }
 ```
 
-The component re-renders when any tracked property changes, and *only* when a tracked property changes. A sibling changing `items` when you only read `total` does not re-render this component unless `total` actually changed value.
+The component re-renders when any tracked property changes, and _only_ when a tracked property changes. A sibling changing `items` when you only read `total` does not re-render this component unless `total` actually changed value.
 
-<br/>
+<br />
 
 ## Computed values
 
@@ -74,7 +78,7 @@ class Stats extends State {
 }
 ```
 
-<br/>
+<br />
 
 ## Effects
 
@@ -123,7 +127,7 @@ class Session extends State {
 
 Returning the unsubscribe function from `new()` ties the effect's lifetime to the state's lifetime.
 
-<br/>
+<br />
 
 ## Watching a single key
 
@@ -137,7 +141,7 @@ state.get('count', (key, self) => {
 
 This fires on every assignment that changes the value, and on explicit `state.set('count')` dispatches. It does not receive a tracking proxy - it's a plain listener, not an effect.
 
-<br/>
+<br />
 
 ## Batching
 
@@ -163,7 +167,7 @@ await state.set();
 
 Equal values are discarded. Writing `this.count = this.count` does nothing.
 
-<br/>
+<br />
 
 ## Suspense
 
@@ -188,7 +192,7 @@ Inside an effect, a suspense throw **pauses** the effect. It retries when the pr
 
 See [Async](/docs/guides/async) for the full story.
 
-<br/>
+<br />
 
 ## Silent reads
 
@@ -196,14 +200,14 @@ Sometimes you need a value but don't want a re-render or re-run when it changes.
 
 ```ts
 state.get((current) => {
-  const v = current.trackedValue;  // subscribes
-  const t = current.is.timestamp;  // silent - does not subscribe
+  const v = current.trackedValue; // subscribes
+  const t = current.is.timestamp; // silent - does not subscribe
 });
 ```
 
 A common use: reading a value you're about to overwrite, without re-triggering the effect that overwrote it.
 
-<br/>
+<br />
 
 ## A word on closures
 
@@ -218,7 +222,7 @@ async save() {
 
 There are no stale closures because there are no closures. Every method call reads from the live instance.
 
-<br/>
+<br />
 
 ## Next
 

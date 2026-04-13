@@ -2,22 +2,14 @@
   "compilerOptions": {
     "target": "es2020",
     "esModuleInterop": true,
-    "lib": [
-      "ES2020",
-      "DOM"
-    ],
+    "lib": ["ES2020", "DOM"],
     "moduleResolution": "bundler",
     "noUnusedLocals": true,
     "sourceMap": true,
     "strict": true,
     "paths": {
-      "@expressive/*": [
-        "../*/src"
-      ]
+      "@expressive/*": ["../*/src"]
     }
   },
-  "exclude": [
-    "node_modules",
-    "dist"
-  ]
+  "exclude": ["node_modules", "dist"]
 }

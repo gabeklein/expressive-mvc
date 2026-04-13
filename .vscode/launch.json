@@ -15,11 +15,7 @@
       "request": "launch",
       "name": "Vitest Tests",
       "program": "${workspaceFolder}/node_modules/vitest/vitest.mjs",
-      "args": [
-        "run",
-        "--watch",
-        "${relativeFile}"
-      ],
+      "args": ["run", "--watch", "${relativeFile}"],
       "console": "integratedTerminal",
       "internalConsoleOptions": "neverOpen",
       "cwd": "${workspaceFolder}"

@@ -2,11 +2,11 @@
 
 ## Lifecycle Phases
 
-| Phase        | Trigger             | What Happens                                                    | State Ready? |
-| ------------ | ------------------- | --------------------------------------------------------------- | :----------: |
-| Construction | `new MyState()`     | Listeners registered, nothing activated                         |      NO      |
+| Phase        | Trigger             | What Happens                                                     | State Ready? |
+| ------------ | ------------------- | ---------------------------------------------------------------- | :----------: |
+| Construction | `new MyState()`     | Listeners registered, nothing activated                          |      NO      |
 | Activation   | `State.new()`       | Properties managed, constructor args executed, `new()` hook runs |     YES      |
-| Operation    | Property assignment | Batched updates via `queueMicrotask()`, effects re-run          |     YES      |
+| Operation    | Property assignment | Batched updates via `queueMicrotask()`, effects re-run           |     YES      |
 | Destruction  | `state.set(null)`   | Children destroyed first, listeners called, state frozen         |  DESTROYED   |
 
 > **Always use `State.new()` not `new State()`.** The `new` keyword alone does not activate - properties aren't managed until the ready event fires.
@@ -60,6 +60,7 @@ const test = Test.new(
 Children are always destroyed before parents. In nested contexts, destruction happens inner-to-outer.
 
 Post-destruction:
+
 - Property assignment throws: `"Tried to update {state}.{key} but state is destroyed."`
 - Silent updates (`state.set(assign, true)`) return without throwing.
 

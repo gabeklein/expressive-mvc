@@ -10,7 +10,7 @@ export default defineConfig([
     outExtensions: () => ({ js: '.js' }),
     entry: {
       index: 'src/index.ts',
-      state: 'src/state.ts',
+      state: 'src/state.ts'
     },
     format: ['cjs'],
     outputOptions: {
@@ -27,7 +27,7 @@ export default defineConfig([
     format: ['esm'],
     entry: {
       index: 'src/index.ts',
-      state: 'src/state.ts',
+      state: 'src/state.ts'
     },
     outputOptions: {
       exports: 'named'

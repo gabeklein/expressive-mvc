@@ -7,7 +7,7 @@ const getUrl = createGetUrl('/docs');
 export default {
   ssr: false,
   future: {
-    v8_middleware: true,
+    v8_middleware: true
   },
   async prerender({ getStaticPaths }) {
     const paths: string[] = [];
@@ -19,9 +19,12 @@ export default {
 
     for await (const entry of glob('**/*.mdx', { cwd: 'content/docs' })) {
       const slugs = getSlugs(entry);
-      paths.push(getUrl(slugs), `/llms.mdx/docs/${[...slugs, 'index.mdx'].join('/')}`);
+      paths.push(
+        getUrl(slugs),
+        `/llms.mdx/docs/${[...slugs, 'index.mdx'].join('/')}`
+      );
     }
 
     return paths;
-  },
+  }
 } satisfies Config;

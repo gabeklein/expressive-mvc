@@ -28,10 +28,13 @@ async function toHaveUpdated(received: State, ...keys: string[]) {
   let didFlush = false;
 
   const remove = listener(received.is, (key) => {
-    if (typeof key == 'string' || typeof key == 'number' || typeof key == 'symbol')
+    if (
+      typeof key == 'string' ||
+      typeof key == 'number' ||
+      typeof key == 'symbol'
+    )
       updated.push(key as string);
-    else if (key === false)
-      didFlush = true;
+    else if (key === false) didFlush = true;
   });
 
   // Check if already pending.
@@ -43,8 +46,7 @@ async function toHaveUpdated(received: State, ...keys: string[]) {
 
   remove();
 
-  if (!didUpdate.length)
-    didUpdate = updated;
+  if (!didUpdate.length) didUpdate = updated;
 
   if (!didUpdate.length)
     return {

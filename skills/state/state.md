@@ -104,15 +104,17 @@ Creates and activates a new instance. Accepts `State.Args` - objects (initial va
 
 ```ts
 const test = Test.new(
-  { foo: 1 },           // initial values
-  (self) => {            // lifecycle callback
-    return () => {};     // cleanup on destroy
+  { foo: 1 }, // initial values
+  (self) => {
+    // lifecycle callback
+    return () => {}; // cleanup on destroy
   },
-  { bar: 2 }            // more initial values
+  { bar: 2 } // more initial values
 );
 ```
 
 Arguments are processed in order. Callbacks can return:
+
 - `() => void` - cleanup function, called on destroy
 - `object` - merged as initial values
 - `array` - flattened and re-processed
@@ -134,7 +136,9 @@ Register a callback for any instance creation of this class (or subclasses).
 ```ts
 const stop = Counter.on(function (this: Counter) {
   // runs for every Counter instance on init
-  return () => { /* cleanup on destroy */ };
+  return () => {
+    /* cleanup on destroy */
+  };
 });
 ```
 
@@ -157,8 +161,12 @@ State extends Observable. Also usable standalone:
 ```ts
 import { listener, watch, event } from '@expressive/state';
 
-const stop = listener(state, (key, source) => { /* event */ });
-const stop = watch(state, (current) => { /* tracked effect */ });
+const stop = listener(state, (key, source) => {
+  /* event */
+});
+const stop = watch(state, (current) => {
+  /* tracked effect */
+});
 event(state, 'myEvent'); // manual dispatch
 ```
 

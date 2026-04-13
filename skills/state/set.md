@@ -28,8 +28,8 @@ set(assign?: State.Assign<this>, silent?: boolean): State.Updated<this>
 Merges properties from object into state. Only known properties and methods are applied; unknown keys are ignored. The `is` property is always ignored.
 
 ```ts
-state.set({ count: 5 });        // merge, triggers events
-state.set({ count: 5 }, true);  // merge silently (no events, no throw if destroyed)
+state.set({ count: 5 }); // merge, triggers events
+state.set({ count: 5 }, true); // merge silently (no events, no throw if destroyed)
 ```
 
 Silent mode is useful during teardown - returns without throwing if state is destroyed.
@@ -73,10 +73,10 @@ set(key: State.Event<this>): State.Updated<this>
 Dispatches a named event without changing any value. Useful for signaling internal changes (e.g., array mutation) or custom events.
 
 ```ts
-state.set('count');       // force update event for 'count'
-state.set('myEvent');     // dispatch custom string event
-state.set(Symbol('ev'));  // dispatch symbol event
-state.set(42);            // dispatch number event
+state.set('count'); // force update event for 'count'
+state.set('myEvent'); // dispatch custom string event
+state.set(Symbol('ev')); // dispatch symbol event
+state.set(42); // dispatch number event
 ```
 
 ### Destroy
@@ -92,6 +92,7 @@ state.set(null);
 ```
 
 After destruction:
+
 - Property assignment throws: `"Tried to update {state}.{key} but state is destroyed."`
 - Silent updates (`state.set(assign, true)`) return without throwing.
 
@@ -124,13 +125,14 @@ set<K extends State.Event<this>>(key: K, config: State.Define<this, K>): State.U
 Define or update a managed property using a descriptor config. If the property already has a reactive getter/setter, only `value` is accepted (other fields throw). If the property does not exist, it is created as a new reactive property.
 
 ```ts
-state.set('foo', { value: 'bar' });                          // update value (bypasses setter)
-state.set('bar', { value: 'hello', set: false });             // define read-only property
-state.set('baz', { value: 'hidden', enumerable: false });     // define non-enumerable property
-state.set('child', { value: new ChildState() });              // registers child state
+state.set('foo', { value: 'bar' }); // update value (bypasses setter)
+state.set('bar', { value: 'hello', set: false }); // define read-only property
+state.set('baz', { value: 'hidden', enumerable: false }); // define non-enumerable property
+state.set('child', { value: new ChildState() }); // registers child state
 ```
 
 Config fields:
+
 - `value` - initial or updated value
 - `get` - custom getter function, `true` (required/suspense), or `false` (optional)
 - `set` - custom setter function or `false` (read-only)
@@ -153,7 +155,8 @@ type Assign<T> = Record<string, unknown> & {
     : T[K];
 };
 
-type Updated<T extends State> = readonly Event<T>[] & PromiseLike<readonly Event<T>[]>;
+type Updated<T extends State> = readonly Event<T>[] &
+  PromiseLike<readonly Event<T>[]>;
 
 type Apply<T = any> = {
   value?: T;

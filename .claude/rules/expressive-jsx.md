@@ -40,13 +40,23 @@ function Layout({ children }) {
 // Wrong - styles apply to HomeLayout's root, not the div
 function Page() {
   padding: 20;
-  return <HomeLayout><div>...</div></HomeLayout>;
+  return (
+    <HomeLayout>
+      <div>...</div>
+    </HomeLayout>
+  );
 }
 
 // Correct - label targets the inner div
 function Page() {
-  content: { padding: 20; }
-  return <HomeLayout><div _content>...</div></HomeLayout>;
+  content: {
+    padding: 20;
+  }
+  return (
+    <HomeLayout>
+      <div _content>...</div>
+    </HomeLayout>
+  );
 }
 ```
 
@@ -56,14 +66,18 @@ Place style statements **after** any variable declarations and logic, **just abo
 
 ```jsx
 const Card = ({ active }) => {
-  padding: 20;              // 20px (integers -> px)
-  fontSize: 1.2;            // 1.2em (decimals -> em)
-  color: 0x333;             // #333 (0x -> hex color)
-  width: fill;              // 100% (keyword)
-  cursor: pointer;          // "pointer" (camelCase -> kebab-case)
+  padding: 20; // 20px (integers -> px)
+  fontSize: 1.2; // 1.2em (decimals -> em)
+  color: 0x333; // #333 (0x -> hex color)
+  width: fill; // 100% (keyword)
+  cursor: pointer; // "pointer" (camelCase -> kebab-case)
 
-  if (active) { color: 0x007bff; }     // conditional className
-  if (':hover') { opacity: 0.8; }      // CSS pseudo-selector
+  if (active) {
+    color: 0x007bff;
+  } // conditional className
+  if (':hover') {
+    opacity: 0.8;
+  } // CSS pseudo-selector
 
   title: {
     fontWeight: bold;
@@ -97,27 +111,35 @@ function Nav() {
       alignItems: center;
       borderRadius: round;
       fontWeight: 500;
-      padding: 12, 24;
+      padding: (12, 24);
       textDecoration: none;
     }
 
     primary: {
       background: $colorFdPrimary;
       color: $colorFdPrimaryForeground;
-      if (':hover') { opacity: 0.9; }
+      if (':hover') {
+        opacity: 0.9;
+      }
     }
 
     secondary: {
       border: $colorFdBorder;
       color: inherit;
-      if (':hover') { background: $colorFdMuted; }
+      if (':hover') {
+        background: $colorFdMuted;
+      }
     }
   }
 
   return (
     <div _actions>
-      <Link _primary to="/start">Start</Link>
-      <Link _secondary to="/docs">Docs</Link>
+      <Link _primary to="/start">
+        Start
+      </Link>
+      <Link _secondary to="/docs">
+        Docs
+      </Link>
     </div>
   );
 }
@@ -138,7 +160,7 @@ desc: {
   code: {
     fontSize: 0.875;
     background: $colorFdMuted;
-    padding: 2, 6;
+    padding: (2, 6);
     borderRadius: 4;
   }
 }
@@ -146,7 +168,7 @@ desc: {
 // JSX - no _code needed, tag name matching handles it
 <p _desc>
   Use <code>useState</code> and <code>useEffect</code>
-</p>
+</p>;
 ```
 
 Only use `_` attributes when the label name doesn't match the tag, or when a longer name is needed to avoid conflicts.
@@ -162,15 +184,15 @@ Only use `_` attributes when the label name doesn't match the tag, or when a lon
 
 ## Built-In Macros
 
-| Macro | Example | Output |
-|-------|---------|--------|
-| `absolute` | `absolute: fill` | position: absolute + all edges 0 |
-| `size` | `size: 100, 200` | width: 100px; height: 200px |
-| `border` | `border: 0xddd` | border: 1px solid #ddd |
-| `radius` | `radius: 8` | border-radius: 8px |
-| `shadow` | `shadow: 0xccc` | box-shadow: #ccc 0 0 10px |
-| `flexAlign` | `flexAlign: center` | display: flex + centering |
-| `marginV`/`marginH` | `marginV: 20` | margin-top + margin-bottom |
+| Macro               | Example             | Output                           |
+| ------------------- | ------------------- | -------------------------------- |
+| `absolute`          | `absolute: fill`    | position: absolute + all edges 0 |
+| `size`              | `size: 100, 200`    | width: 100px; height: 200px      |
+| `border`            | `border: 0xddd`     | border: 1px solid #ddd           |
+| `radius`            | `radius: 8`         | border-radius: 8px               |
+| `shadow`            | `shadow: 0xccc`     | box-shadow: #ccc 0 0 10px        |
+| `flexAlign`         | `flexAlign: center` | display: flex + centering        |
+| `marginV`/`marginH` | `marginV: 20`       | margin-top + margin-bottom       |
 
 ## Instructions (`$` prefix blocks)
 
@@ -179,17 +201,39 @@ Instructions apply a context (pseudo-selector or media query) to a block of styl
 ### Pseudo-selectors
 
 ```jsx
-$hover: { color: red; }          // :hover
-$focus: { outline: '2px solid blue'; }
-$active: { opacity: 0.8; }
-$disabled: { cursor: notAllowed; }
-$focusVisible: { outline: '2px solid'; }
-$focusWithin: { background: 0xf5f5f5; }
-$firstChild: { marginTop: 0; }
-$lastChild: { marginBottom: 0; }
-$before: { content: '""'; }      // ::before (auto :: for pseudo-elements)
-$after: { content: '""'; }       // ::after
-$placeholder: { color: 0x999; }  // ::placeholder
+$hover: {
+  color: red;
+} // :hover
+$focus: {
+  outline: '2px solid blue';
+}
+$active: {
+  opacity: 0.8;
+}
+$disabled: {
+  cursor: notAllowed;
+}
+$focusVisible: {
+  outline: '2px solid';
+}
+$focusWithin: {
+  background: 0xf5f5f5;
+}
+$firstChild: {
+  marginTop: 0;
+}
+$lastChild: {
+  marginBottom: 0;
+}
+$before: {
+  content: '""';
+} // ::before (auto :: for pseudo-elements)
+$after: {
+  content: '""';
+} // ::after
+$placeholder: {
+  color: 0x999;
+} // ::placeholder
 ```
 
 ### Responsive breakpoints (Tailwind defaults)
@@ -207,7 +251,9 @@ $xl: { ... }   // @media (min-width: 1280px)
 fontSize: 24;
 $md: {
   fontSize: 36;
-  $hover: { color: blue; }
+  $hover: {
+    color: blue;
+  }
 }
 ```
 
@@ -216,12 +262,16 @@ $md: {
 ```jsx
 if (active) {
   color: blue;
-  $md: { color: navy; }
+  $md: {
+    color: navy;
+  }
 }
 
 title: {
   fontSize: 24;
-  $md: { fontSize: 36; }
+  $md: {
+    fontSize: 36;
+  }
 }
 ```
 

@@ -19,21 +19,21 @@ test('increments count', () => {
 
 This section covers the patterns you'll use most.
 
-<br/>
+<br />
 
 ## Create with `State.new()`
 
 Always use `State.new()` in tests, never `new State()`. `.new()` activates the instance so properties are reactive and lifecycle hooks run.
 
 ```ts
-const user = UserForm.new();              // empty state
+const user = UserForm.new(); // empty state
 const user = UserForm.new({ name: 'A' }); // with initial values
 const user = UserForm.new({ name: 'A' }, (self) => {
   self.touch(); // lifecycle callback
 });
 ```
 
-<br/>
+<br />
 
 ## Testing actions
 
@@ -50,7 +50,7 @@ test('adds an item to the cart', () => {
 
 Because computed values update synchronously (on read), assertions against them are straightforward.
 
-<br/>
+<br />
 
 ## Testing async methods
 
@@ -67,7 +67,7 @@ test('saves the form', async () => {
 
 Mock `fetch` or the service the method calls - the class has no React-specific entry points to stub out.
 
-<br/>
+<br />
 
 ## Testing async factories
 
@@ -93,7 +93,7 @@ test('suspends until userId is set', async () => {
 });
 ```
 
-<br/>
+<br />
 
 ## Testing subscriptions and updates
 
@@ -123,7 +123,7 @@ test('batches writes', async () => {
 });
 ```
 
-<br/>
+<br />
 
 ## Testing effects
 
@@ -141,17 +141,19 @@ test('effect re-runs on change', () => {
   state.title = 'A';
   state.title = 'B';
 
-  return new Promise((r) => queueMicrotask(() => {
-    expect(snapshots).toEqual(['', 'A', 'B']);
-    stop();
-    r(undefined);
-  }));
+  return new Promise((r) =>
+    queueMicrotask(() => {
+      expect(snapshots).toEqual(['', 'A', 'B']);
+      stop();
+      r(undefined);
+    })
+  );
 });
 ```
 
 Because effect re-runs are batched via microtask, flush once with `queueMicrotask` (or `await state.set()`) before asserting.
 
-<br/>
+<br />
 
 ## Snapshot and restore
 
@@ -171,7 +173,7 @@ test('round-trips a form', () => {
 
 Useful for fixtures, serialization tests, and undo/redo logic.
 
-<br/>
+<br />
 
 ## Testing computed values
 
@@ -190,7 +192,7 @@ test('total recomputes from items', () => {
 });
 ```
 
-<br/>
+<br />
 
 ## Testing context dependencies
 
@@ -218,7 +220,7 @@ test('panel reads theme from parent', () => {
 
 When the relationship is parent-child, the child finds the parent's dependency through the owned-child context automatically.
 
-<br/>
+<br />
 
 ## Testing destruction
 
@@ -227,7 +229,9 @@ test('cleans up on destroy', () => {
   let cleaned = false;
   class Timer extends State {
     new() {
-      return () => { cleaned = true; };
+      return () => {
+        cleaned = true;
+      };
     }
   }
 
@@ -238,7 +242,7 @@ test('cleans up on destroy', () => {
 });
 ```
 
-<br/>
+<br />
 
 ## What you don't need
 
@@ -247,9 +251,9 @@ test('cleans up on destroy', () => {
 - **`jsdom`** - unless you're testing a `Component` subclass that actually mounts.
 - **Mocks for hooks** - State classes don't call hooks unless you define `use()`, which you can opt out of in tests by calling `.new()` instead of `.use()`.
 
-For tests that *do* exercise rendering (a `Component` subclass, for example), use your normal React testing setup - Expressive does nothing special there.
+For tests that _do_ exercise rendering (a `Component` subclass, for example), use your normal React testing setup - Expressive does nothing special there.
 
-<br/>
+<br />
 
 ## Next
 

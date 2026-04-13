@@ -27,8 +27,8 @@
   },
   "devDependencies": {
     "@expressive/css": "^0.7.0",
-    "@expressive/vite-plugin": "^0.7.0",
     "@expressive/typescript-plugin-jsx": "^0.7.0",
+    "@expressive/vite-plugin": "^0.7.0",
     "@react-router/dev": "^7.13.0",
     "@tailwindcss/vite": "^4.1.18",
     "@types/mdx": "^2.0.13",

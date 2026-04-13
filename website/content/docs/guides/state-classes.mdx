@@ -17,7 +17,7 @@ class Counter extends State {
 }
 ```
 
-<br/>
+<br />
 
 ## Instantiation
 
@@ -36,18 +36,15 @@ Inside React, `Counter.use()` handles activation automatically. Outside React, a
 `.new()` accepts objects (initial values), functions (lifecycle callbacks), and arrays (nested):
 
 ```ts
-const counter = Counter.new(
-  { count: 10 },
-  (self) => {
-    console.log('ready');
-    return () => console.log('destroyed');
-  }
-);
+const counter = Counter.new({ count: 10 }, (self) => {
+  console.log('ready');
+  return () => console.log('destroyed');
+});
 ```
 
 The same signature works for `Counter.use()`.
 
-<br/>
+<br />
 
 ## Properties
 
@@ -61,7 +58,7 @@ class App extends State {
 
 const app = App.new();
 app.name = 'Alice'; // notifies subscribers
-app.count += 1;     // notifies subscribers
+app.count += 1; // notifies subscribers
 ```
 
 All writes to the same state in the same tick are batched into one flush (via `queueMicrotask`). If the new value is `===` to the previous value, no event is emitted.
@@ -83,7 +80,7 @@ class Thing extends State {
 
 For the common case - holding a DOM element or a mutable handle - use [`ref`](/docs/guides/forms-and-refs).
 
-<br/>
+<br />
 
 ## Methods
 
@@ -100,7 +97,7 @@ increment(); // `this` is correct
 
 Methods called inside a tracked effect do **not** create subscriptions for the properties they read. This is a deliberate rule: methods are "actions", not "observations". If you want an effect to re-run when a method's inputs change, read those properties via the tracking proxy directly.
 
-<br/>
+<br />
 
 ## The `is` property
 
@@ -121,25 +118,25 @@ Inside a tracking context (an effect, a computed, a component render), reading a
 
 ```ts
 state.get((current) => {
-  console.log(current.value);   // subscribes to `value`
+  console.log(current.value); // subscribes to `value`
   console.log(current.is.other); // does NOT subscribe
 });
 ```
 
 Silent reads are useful when you need a value at a point in time but don't want a change to that value to trigger a re-run.
 
-<br/>
+<br />
 
 ## Lifecycle
 
 A State class has four phases:
 
-| Phase        | Trigger             | What happens                                                         |
-| ------------ | ------------------- | -------------------------------------------------------------------- |
-| Construction | `new MyState()`     | Fields are set to their initial values, no reactivity yet            |
-| Activation   | `State.new()`       | Properties become managed, constructor args run, `new()` hook fires  |
-| Operation    | Property assignment | Batched updates flush via microtask, effects re-run                  |
-| Destruction  | `state.set(null)`   | Children destroyed first, listeners notified, state frozen           |
+| Phase        | Trigger             | What happens                                                        |
+| ------------ | ------------------- | ------------------------------------------------------------------- |
+| Construction | `new MyState()`     | Fields are set to their initial values, no reactivity yet           |
+| Activation   | `State.new()`       | Properties become managed, constructor args run, `new()` hook fires |
+| Operation    | Property assignment | Batched updates flush via microtask, effects re-run                 |
+| Destruction  | `state.set(null)`   | Children destroyed first, listeners notified, state frozen          |
 
 ### The `new()` hook
 
@@ -208,7 +205,7 @@ This is automatic in React - `State.use()` destroys on unmount, `Provider` destr
 4. **The `new()` hook's returned cleanup** is called.
 5. **The state is frozen** - further writes throw.
 
-<br/>
+<br />
 
 ## Child states
 
@@ -229,18 +226,20 @@ class User extends State {
 - Owned children activate with the parent and destroy with the parent.
 - Replacing a child property (`this.address = new Address()`) destroys the old one.
 - Setting an owned child to `null` destroys it.
-- A state passed in from outside is *not* owned - replacing it does not destroy it.
+- A state passed in from outside is _not_ owned - replacing it does not destroy it.
 
 Child state changes propagate through nested subscriptions:
 
 ```tsx
 function UserStreet() {
-  const { address: { street } } = User.use();
+  const {
+    address: { street }
+  } = User.use();
   // Re-renders only when user.address.street changes.
 }
 ```
 
-<br/>
+<br />
 
 ## Constructor arguments
 
@@ -251,7 +250,9 @@ const t = Test.new(
   { foo: 1 },
   (self) => {
     // lifecycle callback
-    return () => { /* cleanup */ };
+    return () => {
+      /* cleanup */
+    };
   },
   { bar: 2 }
 );
@@ -259,7 +260,7 @@ const t = Test.new(
 
 For framework code accepting arbitrary args, see `State.Args` in the [API reference](/docs/api/state).
 
-<br/>
+<br />
 
 ## Inheritance
 
@@ -293,7 +294,7 @@ class UserQuery extends Query<User> {
 
 Subclasses can override methods and add fields. Instructions defined on the base class are inherited and re-initialized per instance.
 
-<br/>
+<br />
 
 ## Iteration
 
@@ -313,7 +314,7 @@ for (const Ctor of MyState) {
 }
 ```
 
-<br/>
+<br />
 
 ## Next
 

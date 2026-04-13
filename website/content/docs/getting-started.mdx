@@ -21,7 +21,7 @@ import State from '@expressive/react';
 import State, { Component, Provider, get, set, ref } from '@expressive/react';
 ```
 
-<br/>
+<br />
 
 ## Your first state
 
@@ -65,7 +65,7 @@ Three things are happening here:
 
 No `useState`. No `useCallback`. No dependency arrays.
 
-<br/>
+<br />
 
 ## A more complete example
 
@@ -119,7 +119,11 @@ function TodoList() {
 
   return (
     <div>
-      <form onSubmit={(e) => { e.preventDefault(); add(); }}>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          add();
+        }}>
         <input
           value={draft}
           onChange={(e) => (is.draft = e.target.value)}
@@ -140,9 +144,9 @@ function TodoList() {
 }
 ```
 
-Notice what the component *doesn't* have: no effects, no memoization, no derived state calculation in the render body, no refs, no setup. The component is a pure projection of the state.
+Notice what the component _doesn't_ have: no effects, no memoization, no derived state calculation in the render body, no refs, no setup. The component is a pure projection of the state.
 
-<br/>
+<br />
 
 ## The `is` property
 
@@ -155,11 +159,11 @@ is.draft = 'hello'; // updates state and re-renders
 
 `is` has a second purpose: **silent reads**. Reading through `is` inside a tracking context does not create a subscription - useful when you need a value but don't want the component to re-render when it changes. See [Reactivity](/docs/guides/reactivity) for details.
 
-<br/>
+<br />
 
 ## The mental model
 
-If you've used React hooks, you're used to state living *inside* components. Expressive flips this: state lives in a class, and components are thin projections of it.
+If you've used React hooks, you're used to state living _inside_ components. Expressive flips this: state lives in a class, and components are thin projections of it.
 
 ```tsx
 // The brain - data, derived values, and behavior
@@ -187,8 +191,14 @@ function SearchView() {
         onChange={(e) => (is.query = e.target.value)}
         onKeyDown={(e) => e.key === 'Enter' && search()}
       />
-      {loading ? <p>Searching...</p> : (
-        <ul>{results.map((r) => <li key={r}>{r}</li>)}</ul>
+      {loading ? (
+        <p>Searching...</p>
+      ) : (
+        <ul>
+          {results.map((r) => (
+            <li key={r}>{r}</li>
+          ))}
+        </ul>
       )}
     </div>
   );
@@ -199,10 +209,10 @@ This separation gives you:
 
 - **Testability** - `SearchPage.new()` outside of React, call methods, assert results. No rendering required.
 - **Reusability** - one State can power multiple views (sidebar, modal, full page).
-- **TypeScript** - the class *is* the type. Every destructure is fully inferred.
+- **TypeScript** - the class _is_ the type. Every destructure is fully inferred.
 - **Navigability** - every feature's data and behavior lives in one file instead of being smeared across several hook calls.
 
-<br/>
+<br />
 
 ## When to create a State class
 
@@ -216,9 +226,9 @@ You don't need a class for every component. Good signals that you should reach f
 - You have async logic (fetching, polling, websockets).
 - You're passing a lot of props down just to support state sharing.
 
-For single booleans, form field focus, or throwaway UI state, `useState` is still the right tool. Expressive is for the cases where state has *behavior*.
+For single booleans, form field focus, or throwaway UI state, `useState` is still the right tool. Expressive is for the cases where state has _behavior_.
 
-<br/>
+<br />
 
 ## Next steps
 

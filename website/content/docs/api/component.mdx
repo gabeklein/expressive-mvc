@@ -19,7 +19,7 @@ class Counter extends Component {
 <Counter />;
 ```
 
-<br/>
+<br />
 
 ## Instance properties
 
@@ -33,7 +33,7 @@ Readonly. Every prop passed to the JSX element - state-derived props, render-dec
 
 Defaults to `null`.
 
-<br/>
+<br />
 
 ## Instance methods
 
@@ -79,7 +79,7 @@ Error boundary handler. Called when a child throws during render. While `catch()
 - Without `catch()`, errors propagate automatically.
 - Sync `catch()` triggers immediate retry.
 
-<br/>
+<br />
 
 ## Lifecycle hooks
 
@@ -89,19 +89,19 @@ Component inherits the full State lifecycle. See [State](/docs/api/state) for de
 - `use(...props)` - called on every render, for bridging React hooks.
 - Destruction runs on unmount or `this.set(null)`.
 
-<br/>
+<br />
 
 ## Special JSX props
 
 Every `Component` accepts these, regardless of state fields:
 
-| Prop       | Type                    | Description                                           |
-| ---------- | ----------------------- | ----------------------------------------------------- |
-| `is`       | `(instance: T) => void` | Called once with the created instance                 |
-| `fallback` | `ReactNode`             | Overrides `this.fallback` for this instance           |
+| Prop       | Type                    | Description                                                |
+| ---------- | ----------------------- | ---------------------------------------------------------- |
+| `is`       | `(instance: T) => void` | Called once with the created instance                      |
+| `fallback` | `ReactNode`             | Overrides `this.fallback` for this instance                |
 | `children` | `ReactNode`             | Passed through unless `render()` is declared without param |
 
-<br/>
+<br />
 
 ## Subcomponents
 
@@ -115,7 +115,11 @@ class Dashboard extends Component {
     return (
       <aside>
         <h2>{props.label}</h2>
-        <ul>{this.items.map((i) => <li key={i}>{i}</li>)}</ul>
+        <ul>
+          {this.items.map((i) => (
+            <li key={i}>{i}</li>
+          ))}
+        </ul>
       </aside>
     );
   }
@@ -131,7 +135,7 @@ class Dashboard extends Component {
 - Accessible via `Dashboard.get()` then `<dashboard.Sidebar />`.
 - Overridable at runtime and in subclasses.
 
-<br/>
+<br />
 
 ## TypeScript shape
 
@@ -147,7 +151,7 @@ declare class Component extends State {
 
 Props are inferred automatically from state fields plus any `render(props)` declaration.
 
-<br/>
+<br />
 
 ## See also
 

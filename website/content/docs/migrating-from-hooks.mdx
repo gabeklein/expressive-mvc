@@ -5,7 +5,7 @@ description: A pragmatic playbook for adopting Expressive State in an existing R
 
 Expressive is designed to coexist with hooks. You do not need to rewrite anything to start using it - every State class is fully optional, and every component you don't touch continues to work. This guide walks through the migration path that teams typically take when adopting Expressive as a state backbone.
 
-<br/>
+<br />
 
 ## The guiding principle
 
@@ -15,7 +15,7 @@ A "feature" is a unit of behavior - a form, a wizard, a search page, a shopping 
 
 This is deliberately bottom-up. You don't need buy-in from the whole team before you start. You don't need a migration epic. You don't need to touch routing, build config, or tests. You just rewrite the next feature you're already working on.
 
-<br/>
+<br />
 
 ## Step 1 - Install and import
 
@@ -29,7 +29,7 @@ Expressive has zero peer dependencies beyond React. It doesn't touch your existi
 import State, { Component, Provider, get, set, ref } from '@expressive/react';
 ```
 
-<br/>
+<br />
 
 ## Step 2 - Find a good first target
 
@@ -43,7 +43,7 @@ The best first migration target is a component that scores high on this checklis
 
 You're looking for friction - a component you've already been annoyed by. Forms, wizards, and data-heavy dashboards are classic sweet spots. Skip components that use one or two `useState` calls for simple UI state; they'd be more code to migrate than they're worth.
 
-<br/>
+<br />
 
 ## Step 3 - Extract state, one pass at a time
 
@@ -99,7 +99,9 @@ useEffect(() => {
 
 ```tsx
 // After
-dirty = set((from) => from.name !== initial.name || from.email !== initial.email);
+dirty = set(
+  (from) => from.name !== initial.name || from.email !== initial.email
+);
 ```
 
 For a `useEffect` that fetches, consider an async `set()`:
@@ -137,7 +139,7 @@ Methods are automatically bound - you can destructure `save` and pass it as a ha
 
 Run the component, test the behavior, and delete the old hook calls. If something breaks, the migration is trivially reversible - the class lives in its own file.
 
-<br/>
+<br />
 
 ## Step 4 - Share state via Provider instead of prop-drilling
 
@@ -145,11 +147,16 @@ Once you have a class, sharing is free. Wherever you had prop drilling or a manu
 
 ```tsx
 // Before
-const ThemeContext = createContext<{ color: string; toggle: () => void }>(null!);
+const ThemeContext = createContext<{ color: string; toggle: () => void }>(
+  null!
+);
 
 function App() {
   const [color, setColor] = useState('blue');
-  const toggle = useCallback(() => setColor((c) => c === 'blue' ? 'red' : 'blue'), []);
+  const toggle = useCallback(
+    () => setColor((c) => (c === 'blue' ? 'red' : 'blue')),
+    []
+  );
   return (
     <ThemeContext.Provider value={{ color, toggle }}>
       <Header />
@@ -179,13 +186,17 @@ function App() {
 
 function Header() {
   const { color, toggle } = Theme.get();
-  return <button style={{ color }} onClick={toggle}>{color}</button>;
+  return (
+    <button style={{ color }} onClick={toggle}>
+      {color}
+    </button>
+  );
 }
 ```
 
-The class *is* the context key. No manual `createContext`, no default values, no `Provider.Consumer` render props.
+The class _is_ the context key. No manual `createContext`, no default values, no `Provider.Consumer` render props.
 
-<br/>
+<br />
 
 ## Step 5 - Collapse custom hooks into classes
 
@@ -194,9 +205,15 @@ Custom hooks that return objects are the easiest migration wins. A hook like thi
 ```ts
 function useCart() {
   const [items, setItems] = useState<Item[]>([]);
-  const total = useMemo(() => items.reduce((s, i) => s + i.price * i.qty, 0), [items]);
+  const total = useMemo(
+    () => items.reduce((s, i) => s + i.price * i.qty, 0),
+    [items]
+  );
   const add = useCallback((item: Item) => setItems((xs) => [...xs, item]), []);
-  const remove = useCallback((id: string) => setItems((xs) => xs.filter((x) => x.id !== id)), []);
+  const remove = useCallback(
+    (id: string) => setItems((xs) => xs.filter((x) => x.id !== id)),
+    []
+  );
   return { items, total, add, remove };
 }
 ```
@@ -220,7 +237,7 @@ class Cart extends State {
 
 The class version is shorter, testable without rendering, and shareable across components via `Provider`.
 
-<br/>
+<br />
 
 ## Step 6 - Bridge to existing hooks with `use()`
 
@@ -247,7 +264,7 @@ function SomeComponent() {
 
 This is the escape hatch - any hook you need can be bridged through `use()`. Use it sparingly; it runs every render. For one-shot setup, prefer `new()`.
 
-<br/>
+<br />
 
 ## Step 7 - Leave the rest alone
 
@@ -255,7 +272,7 @@ You don't need to migrate every component. Leaf components with a single `useSta
 
 Teams that adopt Expressive successfully usually end up in a hybrid state: a handful of State classes at the feature boundaries, and many unchanged presentational components beneath them.
 
-<br/>
+<br />
 
 ## Common pitfalls
 
@@ -268,13 +285,13 @@ this.items.push(item); // no update
 this.items = [...this.items, item]; // works
 ```
 
-If you *need* to dispatch an update without replacing the value, use `this.set('items')` to manually signal the change.
+If you _need_ to dispatch an update without replacing the value, use `this.set('items')` to manually signal the change.
 
 ### Forgetting `State.new()` when constructing outside React
 
 ```ts
-const counter = new Counter();    // constructs but does NOT activate
-const counter = Counter.new();    // constructs AND activates - always use this
+const counter = new Counter(); // constructs but does NOT activate
+const counter = Counter.new(); // constructs AND activates - always use this
 ```
 
 Inside React, `Counter.use()` handles activation for you.
@@ -292,15 +309,15 @@ count = 5; // just rebinds the local - doesn't update state
 
 Use `is.count = 5` for writes after destructuring, or don't destructure the fields you write to.
 
-<br/>
+<br />
 
 ## When to stop
 
-A good rule of thumb: if a component has 0-2 `useState` calls, no effects, and no computed values, leave it. Expressive has value where state has *behavior*. Below that threshold, classes are just more code.
+A good rule of thumb: if a component has 0-2 `useState` calls, no effects, and no computed values, leave it. Expressive has value where state has _behavior_. Below that threshold, classes are just more code.
 
 The goal isn't uniformity - it's clarity. Migrate the messes. Keep the clean stuff clean.
 
-<br/>
+<br />
 
 ## Next
 

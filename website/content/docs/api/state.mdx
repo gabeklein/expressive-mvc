@@ -11,7 +11,7 @@ import State from '@expressive/react';
 import { State } from '@expressive/state';
 ```
 
-<br/>
+<br />
 
 ## Static methods
 
@@ -22,13 +22,12 @@ Create and activate an instance. Accepts `State.Args` - a mixture of initial-val
 ```ts
 const counter = Counter.new();
 const counter = Counter.new({ count: 10 });
-const counter = Counter.new(
-  { count: 10 },
-  (self) => {
-    // lifecycle callback
-    return () => { /* cleanup on destroy */ };
-  }
-);
+const counter = Counter.new({ count: 10 }, (self) => {
+  // lifecycle callback
+  return () => {
+    /* cleanup on destroy */
+  };
+});
 ```
 
 > Always use `.new()` instead of `new Counter()`. The latter constructs but does not activate - properties aren't managed until activation.
@@ -55,7 +54,9 @@ Register a callback to run for every newly created instance of this class (or an
 ```ts
 const stop = Counter.on(function (this: Counter) {
   // runs for every Counter constructed
-  return () => { /* per-instance cleanup */ };
+  return () => {
+    /* per-instance cleanup */
+  };
 });
 ```
 
@@ -69,7 +70,7 @@ Create an instance scoped to a React component. Covered in [Hooks](/docs/api/hoo
 
 Look up an instance from React context. Covered in [Hooks](/docs/api/hooks).
 
-<br/>
+<br />
 
 ## Instance methods
 
@@ -84,10 +85,10 @@ Returns a frozen plain object with all enumerable property values. Exotic values
 ### `get(key, required?)` - single property
 
 ```ts
-state.get('count');        // returns the value
-state.get('foo', true);    // suspends if undefined
-state.get('foo', false);   // returns undefined without suspense
-state.get('method');       // returns the unbound method
+state.get('count'); // returns the value
+state.get('foo', true); // suspends if undefined
+state.get('foo', false); // returns undefined without suspense
+state.get('method'); // returns the unbound method
 ```
 
 For exotic values like `ref.Object`, returns the unwrapped value.
@@ -97,7 +98,9 @@ For exotic values like `ref.Object`, returns the unwrapped value.
 ```ts
 const stop = state.get((current, changed) => {
   console.log(current.count);
-  return () => { /* cleanup */ };
+  return () => {
+    /* cleanup */
+  };
 });
 ```
 
@@ -120,28 +123,30 @@ Fires on every assignment that changes the value, and on explicit `set(key)` dis
 ### `get(null)` / `get(null, callback)` - destruction
 
 ```ts
-state.get(null);                                 // true if destroyed
+state.get(null); // true if destroyed
 state.get(null, () => console.log('destroyed')); // register callback
 ```
 
 ### `get(Type, required?)` - context lookup
 
 ```ts
-const parent = child.get(ParentState);        // throws if not found
-const maybe = child.get(ParentState, false);  // undefined if not found
+const parent = child.get(ParentState); // throws if not found
+const maybe = child.get(ParentState, false); // undefined if not found
 ```
 
 ### `get(Type, callback, downstream?)` - subscribe to context availability
 
 ```ts
 state.get(ParentState, (parent, downstream) => {
-  return () => { /* cleanup */ };
+  return () => {
+    /* cleanup */
+  };
 });
 ```
 
 Fires immediately if available; otherwise fires when the type becomes available. Pass `downstream: true` to only watch children.
 
-<br/>
+<br />
 
 ### `set()` - await pending flush
 
@@ -165,7 +170,9 @@ Methods can be replaced:
 
 ```ts
 state.set({
-  compute() { return this.value + 1; }
+  compute() {
+    return this.value + 1;
+  }
 });
 ```
 
@@ -185,9 +192,9 @@ Fires for every property assignment that changes a value, plus explicit dispatch
 ### `set(key)` - dispatch an event
 
 ```ts
-state.set('count');      // force an update event without changing value
-state.set('my-event');   // custom string event
-state.set(Symbol('x'));  // symbol event
+state.set('count'); // force an update event without changing value
+state.set('my-event'); // custom string event
+state.set(Symbol('x')); // symbol event
 ```
 
 Useful for signaling internal mutations (e.g. an array pushed) or custom events.
@@ -203,7 +210,9 @@ Destroys the instance. Children are destroyed first, listeners are notified, cle
 ### `set(event, callback)` - watch a specific event
 
 ```ts
-const stop = state.set('count', (key, self) => { /* ... */ });
+const stop = state.set('count', (key, self) => {
+  /* ... */
+});
 state.set(null, () => console.log('destroyed'));
 ```
 
@@ -213,9 +222,9 @@ Return `null` from the callback to auto-unsubscribe after one invocation.
 
 ```ts
 state.set('foo', { value: 'bar' });
-state.set('bar', { value: 'x', set: false });           // read-only
-state.set('baz', { value: 'y', enumerable: false });     // non-enumerable
-state.set('child', { value: new ChildState() });         // registers child
+state.set('bar', { value: 'x', set: false }); // read-only
+state.set('baz', { value: 'y', enumerable: false }); // non-enumerable
+state.set('child', { value: new ChildState() }); // registers child
 ```
 
 Creates or updates a managed property. If it already exists with a reactive getter/setter, only `value` is accepted.
@@ -227,7 +236,7 @@ Descriptor fields:
 - `set` - custom setter function or `false` (read-only).
 - `enumerable` - default `true`.
 
-<br/>
+<br />
 
 ## Instance properties
 
@@ -240,11 +249,11 @@ Non-enumerable self-reference. Two purposes:
 
 `state.is === state` always, and `state.is.is === state.is`.
 
-<br/>
+<br />
 
 ## Lifecycle hooks
 
-These are *not* on the `State` prototype. Define them on your class to opt in.
+These are _not_ on the `State` prototype. Define them on your class to opt in.
 
 ### `new()`
 
@@ -276,7 +285,7 @@ class SearchState extends State {
 
 Runs on every render when used via `State.use()`. Parameter types define the argument types of `State.use()` itself. Use for bridging external React hooks.
 
-<br/>
+<br />
 
 ## Iteration
 
@@ -296,7 +305,7 @@ for (const Ctor of MyState) {
 }
 ```
 
-<br/>
+<br />
 
 ## Types
 

@@ -37,7 +37,15 @@ Runner: **Vitest** with `jsdom` environment. Coverage target: 100%.
 
 ```ts
 // packages/state tests import from local vitest re-export
-import { vi, describe, it, expect, mockPromise, mockWarn, mockError } from '../../vitest';
+import {
+  vi,
+  describe,
+  it,
+  expect,
+  mockPromise,
+  mockWarn,
+  mockError
+} from '../../vitest';
 
 // packages/react tests also get @testing-library/react
 import { render, renderHook, act, waitFor, screen } from '../../vitest';

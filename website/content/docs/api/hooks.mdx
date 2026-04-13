@@ -9,7 +9,7 @@ The React adapter augments the `State` class with two static methods (`use` and 
 import State, { Provider, Consumer } from '@expressive/react';
 ```
 
-<br/>
+<br />
 
 ## `State.use(...args)`
 
@@ -69,7 +69,7 @@ class Nav extends State {
 }
 ```
 
-<br/>
+<br />
 
 ## `State.get()`
 
@@ -104,7 +104,7 @@ Pass a factory to derive a value. The component re-renders only when the derived
 ```tsx
 const summary = Cart.get((cart) => ({
   total: cart.total,
-  count: cart.count,
+  count: cart.count
 }));
 ```
 
@@ -143,7 +143,7 @@ const data = DataService.get((svc, refresh) => {
 });
 ```
 
-<br/>
+<br />
 
 ## `Provider`
 
@@ -157,14 +157,14 @@ Puts a state instance (or several) into React context for its descendants.
 
 ### Props
 
-| Prop       | Type                                                   | Description                                          |
-| ---------- | ------------------------------------------------------ | ---------------------------------------------------- |
-| `for`      | `State \| State.Type \| Record<string, State.Type>`    | State instance, class, or map of classes to provide  |
-| `is`       | `(instance) => void \| (() => void)`                   | Called per created instance; optional cleanup        |
-| `fallback` | `ReactNode`                                            | Wraps children in a Suspense boundary                |
-| `name`     | `string`                                               | Debug label for the boundary                         |
-| `children` | `ReactNode`                                            | Content rendered within the provider                 |
-| `[field]`  | varies                                                 | State fields passed as JSX props, merged to instance |
+| Prop       | Type                                                | Description                                          |
+| ---------- | --------------------------------------------------- | ---------------------------------------------------- |
+| `for`      | `State \| State.Type \| Record<string, State.Type>` | State instance, class, or map of classes to provide  |
+| `is`       | `(instance) => void \| (() => void)`                | Called per created instance; optional cleanup        |
+| `fallback` | `ReactNode`                                         | Wraps children in a Suspense boundary                |
+| `name`     | `string`                                            | Debug label for the boundary                         |
+| `children` | `ReactNode`                                         | Content rendered within the provider                 |
+| `[field]`  | varies                                              | State fields passed as JSX props, merged to instance |
 
 ### Providing a class
 
@@ -180,7 +180,9 @@ The provider creates an instance on mount and destroys it on unmount.
 
 ```tsx
 const theme = Theme.new();
-<Provider for={theme}><App /></Provider>
+<Provider for={theme}>
+  <App />
+</Provider>;
 ```
 
 Externally-owned instances are not destroyed when the provider unmounts.
@@ -211,7 +213,7 @@ For multi-state providers, the `is` callback runs once per created instance and 
 </Provider>
 ```
 
-<br/>
+<br />
 
 ## `Consumer`
 
@@ -225,7 +227,7 @@ Render-prop access to context state.
 
 The child function receives a tracking proxy, so property reads subscribe just like `State.get()`.
 
-<br/>
+<br />
 
 ## See also
 

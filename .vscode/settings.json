@@ -5,7 +5,7 @@
     "**/dist": true,
     "**/node_modules": true,
     "**/coverage": true,
-    "CHANGELOG.md": true,
+    "CHANGELOG.md": true
   },
   "editor.formatOnSave": true
 }

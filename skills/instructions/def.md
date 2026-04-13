@@ -46,11 +46,11 @@ custom = def((key, subject) => {
 
 ```ts
 custom = def<string>((key, subject) => ({
-  value: 'initial',        // initial property value
-  enumerable: true,        // appear in Object.keys()
-  get: (subscriber) => v,  // custom getter (receives subscriber if in tracked context)
+  value: 'initial', // initial property value
+  enumerable: true, // appear in Object.keys()
+  get: (subscriber) => v, // custom getter (receives subscriber if in tracked context)
   set: (next, prev) => {}, // custom setter
-  destroy: () => {},       // cleanup on destruction
+  destroy: () => {} // cleanup on destruction
 }));
 ```
 

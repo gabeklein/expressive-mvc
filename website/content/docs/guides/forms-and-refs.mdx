@@ -5,7 +5,7 @@ description: Validation callbacks, debouncing, and mutable references
 
 Forms are where state management tends to accumulate the most complexity - fields, validation, touched/dirty tracking, submission state, error messages. Expressive handles all of it with two tools: the `set` callback form for validation, and the `ref` instruction for DOM handles.
 
-<br/>
+<br />
 
 ## The set callback
 
@@ -29,7 +29,7 @@ class LoginForm extends State {
 | Throw a regular `Error` | Rethrows to the caller.                                             |
 | Return `void`           | Accept normally.                                                    |
 
-<br/>
+<br />
 
 ## Validation
 
@@ -49,10 +49,9 @@ class SignupForm extends State {
     if (value.length > 0 && value.length < 8) throw false;
   });
 
-  valid = set((from) =>
-    from.name.length > 0 &&
-    from.email.length > 0 &&
-    from.password.length >= 8
+  valid = set(
+    (from) =>
+      from.name.length > 0 && from.email.length > 0 && from.password.length >= 8
   );
 
   submit() {
@@ -63,7 +62,7 @@ class SignupForm extends State {
 
 The `valid` computed auto-updates when any dependency changes. The `submit` method reads `this.valid` - no stale closures, no dependency arrays.
 
-<br/>
+<br />
 
 ## Debouncing
 
@@ -86,7 +85,7 @@ class Search extends State {
 
 The same pattern works for abort controllers, observer subscriptions, or any resource that needs to be disposed when a new value arrives.
 
-<br/>
+<br />
 
 ## Change tracking
 
@@ -100,7 +99,7 @@ class Field extends State {
 }
 ```
 
-<br/>
+<br />
 
 ## Refs
 
@@ -175,7 +174,7 @@ class Form extends State {
 
 const form = Form.new();
 form.refs.name.current = 'Alice'; // updates form.name
-form.refs.email;                  // ref.Object<string>
+form.refs.email; // ref.Object<string>
 ```
 
 Useful when you want to hand ref objects to uncontrolled form inputs, or any API that expects `{ current: T }` shapes.
@@ -192,7 +191,7 @@ class Form extends State {
 
 The map function runs lazily once per key and its return value is cached. This is the hook for building custom controlled-input abstractions.
 
-<br/>
+<br />
 
 ## Complete form example
 
@@ -200,8 +199,12 @@ The map function runs lazily once per key and its return value is cached. This i
 import State, { set, ref } from '@expressive/react';
 
 class ContactForm extends State {
-  name = set('', (v) => { if (v.length > 50) throw false; });
-  email = set('', (v) => { if (v && !v.includes('@')) throw false; });
+  name = set('', (v) => {
+    if (v.length > 50) throw false;
+  });
+  email = set('', (v) => {
+    if (v && !v.includes('@')) throw false;
+  });
   message = '';
   submitting = false;
   submitted = false;
@@ -211,10 +214,11 @@ class ContactForm extends State {
     el.focus();
   });
 
-  valid = set((from) =>
-    from.name.length > 0 &&
-    from.email.includes('@') &&
-    from.message.length > 0
+  valid = set(
+    (from) =>
+      from.name.length > 0 &&
+      from.email.includes('@') &&
+      from.message.length > 0
   );
 
   async submit() {
@@ -238,7 +242,11 @@ function Contact() {
   if (form.submitted) return <p>Thanks for reaching out.</p>;
 
   return (
-    <form onSubmit={(e) => { e.preventDefault(); form.submit(); }}>
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        form.submit();
+      }}>
       <input
         ref={form.firstField}
         value={form.name}
@@ -263,7 +271,7 @@ function Contact() {
 
 Every concern - validation, submission state, focus, error display - lives in one class. The component just renders it.
 
-<br/>
+<br />
 
 ## Next
 

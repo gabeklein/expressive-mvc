@@ -1,23 +1,24 @@
 {
   "name": "@expressive/solid",
-  "description": "Use classes to define state in SolidJS!",
+  "version": "0.75.0",
   "private": true,
+  "description": "Use classes to define state in SolidJS!",
+  "license": "MIT",
   "author": {
     "name": "Gabe Klein",
     "email": "gabe@expressive.dev",
     "url": "https://github.com/gabeklein"
   },
-  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/gabeklein/expressive-state.git"
   },
-  "publishConfig": {
-    "access": "public"
-  },
   "main": "dist/index.js",
   "module": "src",
   "types": "src",
+  "publishConfig": {
+    "access": "public"
+  },
   "dependencies": {
     "@expressive/state": "^0.73.1"
   },
@@ -28,6 +29,5 @@
   },
   "peerDependencies": {
     "solid-js": "^1.0.0"
-  },
-  "version": "0.75.0"
+  }
 }

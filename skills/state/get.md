@@ -29,10 +29,10 @@ Returns the underlying value for a property. For exotic values like `ref.Object`
 - If value is a method name, returns the unbound (original) method rather than the auto-bound version.
 
 ```ts
-state.get('count');        // get value
-state.get('foo', true);   // throws suspense if undefined
-state.get('foo', false);  // returns undefined without suspense
-state.get('method');       // returns unbound method
+state.get('count'); // get value
+state.get('foo', true); // throws suspense if undefined
+state.get('foo', false); // returns undefined without suspense
+state.get('method'); // returns unbound method
 ```
 
 ### Tracked effect
@@ -53,6 +53,7 @@ const stop = state.get((current, update) => {
 ```
 
 **Tracking behavior:**
+
 - Only properties accessed via `current` proxy are tracked.
 - Properties accessed via `this` or method calls do NOT create subscriptions.
 - Nested child state properties are tracked deeply (e.g., `current.child.value`).
@@ -60,6 +61,7 @@ const stop = state.get((current, update) => {
 - Simultaneous updates to multiple tracked properties produce a single re-run.
 
 **Return value from effect:**
+
 - `(event) => void` - cleanup callback. Called with:
   - `true` - effect is about to re-run (dependency changed)
   - `false` - effect was manually cancelled (via `stop()`)

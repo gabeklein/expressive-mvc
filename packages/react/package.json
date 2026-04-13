@@ -1,27 +1,28 @@
 {
   "name": "@expressive/react",
+  "version": "0.75.0",
   "description": "Use classes to define state in React!",
-  "author": {
-    "name": "Gabe Klein",
-    "email": "gabe@termtm.com",
-    "url": "https://github.com/gabeklein"
-  },
-  "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/gabeklein/expressive-state.git"
-  },
-  "publishConfig": {
-    "access": "public"
-  },
   "keywords": [
     "expressive",
     "react",
     "state"
   ],
+  "license": "MIT",
+  "author": {
+    "name": "Gabe Klein",
+    "email": "gabe@termtm.com",
+    "url": "https://github.com/gabeklein"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gabeklein/expressive-state.git"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "type": "module",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -34,9 +35,9 @@
       "import": "./dist/esm/state.js"
     }
   },
-  "files": [
-    "dist"
-  ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsdown",
     "test": "tsc --noEmit && vitest run --coverage",
@@ -44,14 +45,6 @@
   },
   "dependencies": {
     "@expressive/state": "workspace:^"
-  },
-  "peerDependencies": {
-    "react": ">=16.8.0 <20.0.0"
-  },
-  "peerDependenciesMeta": {
-    "react": {
-      "optional": true
-    }
   },
   "devDependencies": {
     "@testing-library/react": "^16.3.0",
@@ -64,5 +57,12 @@
     "tsup": "^8.0.2",
     "vitest": "^4.0.18"
   },
-  "version": "0.75.0"
+  "peerDependencies": {
+    "react": ">=16.8.0 <20.0.0"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    }
+  }
 }
