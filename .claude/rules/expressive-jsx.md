@@ -1,323 +1,172 @@
 # Expressive JSX - Build-Time CSS-in-JS
 
-When writing or editing files that use Expressive JSX syntax, follow these rules.
-
-## How It Works
-
 Labeled statements inside component functions are CSS properties extracted at build time. Top-level styles auto-apply to the **outermost returned element**. Named labels create scopes applied via `_name` attributes.
 
-**Important:** Top-level styles attach to whatever element is returned first - the outermost JSX tag. This means styles intended for a child element must use a named label instead. This applies equally to wrapper components and nested HTML elements:
+See also:
+- [expressive-jsx-macros.md](expressive-jsx-macros.md) - All built-in macros and signatures
+- [expressive-jsx-instructions.md](expressive-jsx-instructions.md) - Pseudo-selectors, breakpoints, media queries
+
+## Targeting Elements
+
+Top-level styles attach to the outermost JSX tag. Named labels target children via `_name` attributes. Labels matching a tag/component name auto-select those elements (no `_` needed).
 
 ```jsx
-// Wrong - styles apply to <html>, not <body>
-function Layout({ children }) {
-  display: flex;
-  minHeight: `100vh`;
-  return (
-    <html>
-      <head>...</head>
-      <body>{children}</body>
-    </html>
-  );
-}
-
-// Correct - label targets <body> by element name
-function Layout({ children }) {
-  body: {
-    display: flex;
-    minHeight: `100vh`;
-  }
-  return (
-    <html>
-      <head>...</head>
-      <body>{children}</body>
-    </html>
-  );
-}
-```
-
-```jsx
-// Wrong - styles apply to HomeLayout's root, not the div
-function Page() {
+function Card({ active }) {
   padding: 20;
-  return (
-    <HomeLayout>
-      <div>...</div>
-    </HomeLayout>
-  );
-}
-
-// Correct - label targets the inner div
-function Page() {
-  content: {
-    padding: 20;
-  }
-  return (
-    <HomeLayout>
-      <div _content>...</div>
-    </HomeLayout>
-  );
-}
-```
-
-## Ordering
-
-Place style statements **after** any variable declarations and logic, **just above** the return. Styles often reference local variables or props, so they belong below the code they depend on.
-
-```jsx
-const Card = ({ active }) => {
-  padding: 20; // 20px (integers -> px)
-  fontSize: 1.2; // 1.2em (decimals -> em)
-  color: 0x333; // #333 (0x -> hex color)
-  width: fill; // 100% (keyword)
-  cursor: pointer; // "pointer" (camelCase -> kebab-case)
-
+  border: 0xddd;
   if (active) {
-    color: 0x007bff;
-  } // conditional className
-  if (':hover') {
-    opacity: 0.8;
-  } // CSS pseudo-selector
+    borderColor: 0x007bff;
+  }
 
   title: {
+    fontSize: 1.2;
     fontWeight: bold;
-    marginBottom: 8;
+  }
+  body: {
+    color: 0x666;
+    lineHeight: 1.6;
   }
 
   return (
     <div>
       <h2 _title>Hello</h2>
+      <p _body>Content here</p>
     </div>
   );
-};
+}
+```
+
+Top-level `padding`/`border` apply to the outer `<div>`. `title:` and `body:` are scoped labels applied via `_title`/`_body`. Labels can nest to mirror DOM hierarchy:
+
+```jsx
+sidebar: {
+  width: 250;
+  nav: {
+    display: flex;
+    flexDirection: column;
+  }
+  a: {
+    padding: (8, 16);
+    $hover: {
+      background: 0xf0f0f0;
+    }
+  }
+}
+```
+
+Here `nav` and `a` auto-select those tags inside `_sidebar` - no `_` attributes needed.
+
+**Note:** Nested labels also match siblings sharing both names. `sidebar: { foo: { ... } }` selects both `<div _foo />` inside `_sidebar` and `<div _sidebar _foo />` on the same element. Use non-colliding names to avoid unintended matches.
+
+## Ordering
+
+Place styles **after** variable declarations and logic, **just above** the return.
+
+## Value Rules
+
+- Integers -> px, decimals -> em, `0` -> no unit
+- `0x` prefix for hex colors: `0xff0000` -> `#ff0000`, `0xff000022` -> rgba with alpha
+- String values pass through as-is: `fontSize: "2rem"` -> `font-size: 2rem`
+- CamelCase values -> kebab-case: `notAllowed` -> `not-allowed`
+- Commas for multi-values: `padding: 10, 20` (NOT arrays)
+- `$varName` -> `var(--var-name)` (CSS variables)
+- Backtick template literals bypass all processing, pass raw CSS through
+
+## Instructions (`$` prefix)
+
+`$name: { ... }` applies pseudo-selectors, media queries, or combinators to a block. See [expressive-jsx-instructions.md](expressive-jsx-instructions.md) for the full list.
+
+Common ones: `$hover`, `$focus`, `$active`, `$disabled`, `$focusVisible`, `$before`, `$after`, `$placeholder`, `$dark`, `$light`, `$sm`, `$md`, `$lg`, `$xl`, `$children`, `$even`, `$odd`.
+
+Nesting works naturally - `$md: { $hover: { ... } }`.
+
+## Conditionals
+
+- `if (expr) { ... }` -> conditional className (runtime toggle)
+- `if (expr) { ... } else { ... }` -> else branch supported
+- `if (':hover') { ... }` -> CSS pseudo-selector (prefer `$hover` syntax)
+- `if ('.active') { ... }` -> class selector
+- `if ('& > span') { ... }` -> parent/child selector (`&` references parent)
+
+## className Forwarding
+
+Components automatically accept and forward `className` from props. The generated code concatenates incoming `className` with generated classes using a `_concat` helper.
+
+```jsx
+// Input
+const Button = ({ label }) => {
+  padding: (8, 16);
+  return <button>{label}</button>
+}
+
+// Output (className auto-injected into destructuring and forwarded)
+const Button = ({ className, label }) => {
+  return <button className={_concat(className, 'Button_a3f')}>{label}</button>
+}
+```
+
+If the component uses positional params (`props`), it forwards `props.className` instead.
+
+## CSS Variables
+
+Define on a parent to share values across children without prop drilling:
+
+```jsx
+function Page() {
+  $contentWidth: "1152px";
+  $md: { $contentWidth: "1400px"; }
+  return <div><Section /><Section /></div>;
+}
+
+function Section() {
+  inner: { maxWidth: $contentWidth; margin: 0, auto; }
+  ...
+}
 ```
 
 ## Style Patterns
 
-Prefer nesting labels to reduce total style properties. Group related styles under a parent label to mirror the DOM hierarchy.
-
-### Element-name labels for shared base styles
-
-Use the element or component name as a label to define shared styles, then add sibling variant labels for differences:
+Nest labels to mirror DOM hierarchy. Use element/component names as labels for shared base styles, sibling labels for variants:
 
 ```jsx
-function Nav() {
-  actions: {
-    display: flex;
-    gap: 12;
+function Actions() {
+  display: flex;
+  gap: 12;
 
-    Link: {
-      display: inlineFlex;
-      alignItems: center;
-      borderRadius: round;
-      fontWeight: 500;
-      padding: (12, 24);
-      textDecoration: none;
+  button: {
+    padding: (8, 16);
+    borderRadius: 4;
+    cursor: pointer;
+    confirm: {
+      background: $accent;
+      color: white;
     }
-
-    primary: {
-      background: $colorFdPrimary;
-      color: $colorFdPrimaryForeground;
-      if (':hover') {
-        opacity: 0.9;
-      }
-    }
-
-    secondary: {
-      border: $colorFdBorder;
-      color: inherit;
-      if (':hover') {
-        background: $colorFdMuted;
+    cancel: {
+      border: $border;
+      $hover: {
+        background: $muted;
       }
     }
   }
 
   return (
-    <div _actions>
-      <Link _primary to="/start">
-        Start
-      </Link>
-      <Link _secondary to="/docs">
-        Docs
-      </Link>
+    <div>
+      <button _confirm>OK</button>
+      <button _cancel>Cancel</button>
     </div>
   );
 }
 ```
 
-### Nest scoped selectors and minimize names
+## Configuration Options
 
-If a style only appears within another scope, nest it inside that parent. Use short names - prefer tag names (`code`, `span`) when unambiguous over descriptive labels (`inlineCode`).
-
-Labels matching a tag name automatically select those elements - no `_` attribute needed:
-
-```jsx
-// Good - code label auto-selects <code> elements inside desc
-desc: {
-  color: $colorFdMutedForeground;
-  fontSize: 1.125;
-
-  code: {
-    fontSize: 0.875;
-    background: $colorFdMuted;
-    padding: (2, 6);
-    borderRadius: 4;
-  }
-}
-
-// JSX - no _code needed, tag name matching handles it
-<p _desc>
-  Use <code>useState</code> and <code>useEffect</code>
-</p>;
-```
-
-Only use `_` attributes when the label name doesn't match the tag, or when a longer name is needed to avoid conflicts.
-
-## Value Rules
-
-- Integers -> px, decimals -> em, `0` -> no unit
-- `0x` prefix for hex colors: `0xff0000` -> `#ff0000`
-- CamelCase values -> kebab-case: `notAllowed` -> `not-allowed`
-- `fill` -> `100%`, `round` -> `999px`
-- Commas for multi-values: `padding: 10, 20` (NOT arrays)
-- `$varName` -> `var(--var-name)` (CSS variables)
-
-## Built-In Macros
-
-| Macro               | Example             | Output                           |
-| ------------------- | ------------------- | -------------------------------- |
-| `absolute`          | `absolute: fill`    | position: absolute + all edges 0 |
-| `size`              | `size: 100, 200`    | width: 100px; height: 200px      |
-| `border`            | `border: 0xddd`     | border: 1px solid #ddd           |
-| `radius`            | `radius: 8`         | border-radius: 8px               |
-| `shadow`            | `shadow: 0xccc`     | box-shadow: #ccc 0 0 10px        |
-| `flexAlign`         | `flexAlign: center` | display: flex + centering        |
-| `marginV`/`marginH` | `marginV: 20`       | margin-top + margin-bottom       |
-
-## Instructions (`$` prefix blocks)
-
-Instructions apply a context (pseudo-selector or media query) to a block of styles using `$name: { ... }` syntax.
-
-### Pseudo-selectors
-
-```jsx
-$hover: {
-  color: red;
-} // :hover
-$focus: {
-  outline: '2px solid blue';
-}
-$active: {
-  opacity: 0.8;
-}
-$disabled: {
-  cursor: notAllowed;
-}
-$focusVisible: {
-  outline: '2px solid';
-}
-$focusWithin: {
-  background: 0xf5f5f5;
-}
-$firstChild: {
-  marginTop: 0;
-}
-$lastChild: {
-  marginBottom: 0;
-}
-$before: {
-  content: '""';
-} // ::before (auto :: for pseudo-elements)
-$after: {
-  content: '""';
-} // ::after
-$placeholder: {
-  color: 0x999;
-} // ::placeholder
-```
-
-### Responsive breakpoints (Tailwind defaults)
-
-```jsx
-$sm: { ... }   // @media (min-width: 640px)
-$md: { ... }   // @media (min-width: 768px)
-$lg: { ... }   // @media (min-width: 1024px)
-$xl: { ... }   // @media (min-width: 1280px)
-```
-
-### Nesting works naturally
-
-```jsx
-fontSize: 24;
-$md: {
-  fontSize: 36;
-  $hover: {
-    color: blue;
-  }
+```typescript
+interface Options {
+  cssModule?: string;    // CSS module import path (for CSS module output)
+  macros?: Record<string, Macro>[];       // Custom macro definitions
+  instructions?: Record<string, Instruction>[];  // Custom instructions
 }
 ```
-
-### Works with conditionals and named scopes
-
-```jsx
-if (active) {
-  color: blue;
-  $md: {
-    color: navy;
-  }
-}
-
-title: {
-  fontSize: 24;
-  $md: {
-    fontSize: 36;
-  }
-}
-```
-
-Prefer `$hover: { ... }` over `if (':hover') { ... }` - they are equivalent but `$` syntax is cleaner.
-
-## Conditionals
-
-- `if (expr)` -> conditional className (runtime)
-- `if (':hover')` / `if (':focus')` -> CSS pseudo-selector (prefer `$hover` instead)
-- `if ('.active')` -> class selector
-- `if ('& > span')` -> parent/child selector
-- Else branches and nesting supported
-
-## CSS Variables for Shared Values
-
-Define CSS variables on a parent component to share values (widths, colors, breakpoint-varying properties) across children without prop drilling:
-
-```jsx
-export default function Page() {
-  $contentWidth: "1152px";
-  $md: { $contentWidth: "1400px"; }
-
-  return <div><Section /><Section /></div>;
-}
-
-function Section() {
-  inner: {
-    maxWidth: $contentWidth;
-    margin: 0, auto;
-  }
-  ...
-}
-```
-
-Prefer this over hardcoding repeated values across sibling components.
-
-## Template Literals for Raw CSS
-
-Use backtick template literals to bypass macro processing and pass values through as raw CSS:
-
-```jsx
-background: `color-mix(in srgb, var(--color-fd-muted) 30%, transparent)`;
-borderBottom: `1px solid red`;
-```
-
-When unsure of a macro's signature, default to template literals rather than quoted strings.
 
 ## Gotchas
 
@@ -326,5 +175,4 @@ When unsure of a macro's signature, default to template literals rather than quo
 3. Label names cannot match the component name
 4. `_` attributes are build-time only, removed from HTML output
 5. String if-tests are CSS selectors, not runtime logic
-6. className forwarding is automatic
-7. Fragments get auto-wrapped in a `<div>`
+6. Fragments get auto-wrapped in a `<div>` when component has styles
