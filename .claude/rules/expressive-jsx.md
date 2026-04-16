@@ -58,6 +58,8 @@ Here `nav` and `a` auto-select those tags inside `_sidebar` - no `_` attributes 
 
 **Note:** Nested labels also match siblings sharing both names. `sidebar: { foo: { ... } }` selects both `<div _foo />` inside `_sidebar` and `<div _sidebar _foo />` on the same element. Use non-colliding names to avoid unintended matches.
 
+**Lexical scope only:** Label rules are computed statically against the JSX in the same component function. They do **not** transfer to elements passed as `children` from a parent. If a wrapper component renders `<p _desc>{children}</p>`, a `desc: { code: { ... } }` rule in that wrapper has no `<code>` to attach to - the `<code>` tags live in the calling component's JSX. Put rules for those elements in the component that contains them lexically.
+
 ## Ordering
 
 Place styles **after** variable declarations and logic, **just above** the return.
