@@ -21,7 +21,7 @@ export function meta() {
     { title: 'Expressive State' },
     {
       name: 'description',
-      content: 'A class-based state backbone for modern UI applications'
+      content: 'Class-based state for modern React applications'
     }
   ];
 }

@@ -29,18 +29,14 @@ export function Problem() {
   return (
     <section>
       <div _inner>
-        <Header label="The problem" title="Hooks don't scale with your features.">
-          React hooks organize code around <em>when it runs</em>, not what it
-          means. As features grow, related logic gets smeared across{' '}
-          <code>useState</code>,{' '}
-          <code>useEffect</code>,{' '}
-          <code>useCallback</code>, and{' '}
-          <code>useMemo</code> calls.
+        <Header label="The problem" title="Hooks split state from the logic that owns it.">
+          A single async request needs three pieces of state to track its
+          phases, plus a memoized callback to keep them in sync. Each one is
+          its own hook, its own dependency, its own way to fall out of sync.
         </Header>
         <HooksExample />
         <p _caption>
-          Seven hooks. Two dependency arrays. A race condition waiting to
-          happen. And none of it testable without full UI.
+          Three <code>useState</code> and a <code>useCallback</code> to coordinate one request.
         </p>
       </div>
     </section>
@@ -68,16 +64,14 @@ export function Solution() {
   return (
     <section>
       <div _inner>
-        <Header accent label="The solution" title="One hook. Any amount of logic.">
-          Expressive helps contain even entire features in a single class. Fields are
-          reactive. Computed values track their own dependencies. Async is
-          declarative. The component becomes a pure projection of the class.
+        <Header accent label="The solution" title="A class keeps them together.">
+          Fields hold state. Methods mutate them directly. The component reads
+          what it needs, and renders only when those values change. Same
+          flow, no orchestration. Components go back to being stateless.
         </Header>
         <ClassExample />
         <p _caption>
-          No dependency arrays. No stale closures. No race conditions. Testable
-          without rendering. And every tool you already have for reading code
-          just works.
+          Reactive fields. Plain methods. The component just reads.
         </p>
       </div>
     </section>
@@ -125,87 +119,63 @@ function Header({ label, title, accent, children }: {
 }
 
 const HooksExample = code /*tsx*/ `
-  function UserSettings({ userId }) {
-    const [name, setName] = useState('');
-    const [email, setEmail] = useState('');
-    const [saving, setSaving] = useState(false);
+  import { getUser } from './api';
+
+  function App() {
+    const [response, setResponse] = useState(null);
     const [error, setError] = useState(null);
-    const [initial, setInitial] = useState(null);
+    const [waiting, setWaiting] = useState(false);
 
-    useEffect(() => {
-      let cancelled = false;
-      fetch("/api/users/" + userId)
-        .then(r => r.json())
-        .then(data => {
-          if (cancelled) return;
-          setName(data.name);
-          setEmail(data.email);
-          setInitial({ name: data.name, email: data.email });
-        });
-      return () => { cancelled = true; };
-    }, [userId]);
-
-    const dirty = useMemo(() =>
-      initial && (name !== initial.name || email !== initial.email),
-      [name, email, initial]
-    );
-
-    const save = useCallback(async () => {
-      setSaving(true);
+    const run = useCallback(async () => {
+      setWaiting(true);
+      setError(null);
       try {
-        await api.update({ name, email });
-        setInitial({ name, email });
+        const { name } = await getUser();
+        setResponse('Hello ' + name);
       } catch (e) {
-        setError(e.message);
+        if (e instanceof Error) setError(e);
       } finally {
-        setSaving(false);
+        setWaiting(false);
       }
-    }, [name, email]);
+    }, []);
 
-    // ...and now the render
+    if (response) return <p>Server said: {response}</p>;
+    if (error) return <p>Error: {error.message}</p>;
+    if (waiting) return <p>Waiting...</p>;
+
+    return <button onClick={run}>Say hello</button>;
   }
 `;
 
 const ClassExample = code /*tsx*/ `
-  import { State, set } from '@expressive/react';
+  import State from '@expressive/react';
+  import { getUser } from './api';
 
-  class UserSettings extends State {
-    // simple values tracked automatically
-    name = '';
-    email = '';
-    saving = false;
-    error: string | null = null;
+  class Query extends State {
+    response?: string = undefined;
+    error?: Error = undefined;
+    waiting = false;
 
-    // \`set\` instruction are factories for special behaviors
-    // This suspends until defined, if accessed early. Never undefined.
-    userId = set<string>();
-
-    // Async factory runs on access, suspends until ready.
-    initial = set(async () => {
-      const res = await fetch("/api/users/" + this.userId);
-      const data = await res.json();
-      this.name = data.name;
-      this.email = data.email;
-      return { name: data.name, email: data.email };
-    });
-
-    // Computed values track access, always up to date.
-    dirty = set((from) =>
-      from.name !== from.initial.name ||
-      from.email !== from.initial.email
-    );
-
-    // Simply async manipulate state, no middleware or thunks required.
-    async save() {
-      this.saving = true;
+    async run() {
+      this.waiting = true;
       try {
-        await api.update({ name: this.name, email: this.email });
-        this.initial = { name: this.name, email: this.email };
+        const { name } = await getUser();
+        this.response = 'Hello ' + name;
       } catch (e) {
-        this.error = e.message;
+        if (e instanceof Error) this.error = e;
       } finally {
-        this.saving = false;
+        this.waiting = false;
       }
     }
   }
+
+  const App = () => {
+    const { error, response, waiting, run } = Query.use();
+
+    if (response) return <p>Server said: {response}</p>;
+    if (error) return <p>Error: {error.message}</p>;
+    if (waiting) return <p>Waiting...</p>;
+
+    return <button onClick={run}>Say hello</button>;
+  };
 `;
