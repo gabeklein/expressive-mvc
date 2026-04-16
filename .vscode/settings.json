@@ -7,5 +7,6 @@
     "**/coverage": true,
     "CHANGELOG.md": true
   },
-  "editor.formatOnSave": true
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "oxc.oxc-vscode",
 }
