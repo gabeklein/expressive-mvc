@@ -1,6 +1,6 @@
 {
   "name": "@expressive/solid",
-  "version": "0.75.0",
+  "version": "0.75.1",
   "private": true,
   "description": "Use classes to define state in SolidJS!",
   "license": "MIT",

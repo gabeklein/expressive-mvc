@@ -1,6 +1,6 @@
 {
   "name": "@expressive/preact",
-  "version": "0.75.0",
+  "version": "0.75.1",
   "private": true,
   "description": "Use classes to define state in Preact!",
   "license": "MIT",
@@ -24,7 +24,7 @@
     "preversion": "npm run test && npm run build"
   },
   "dependencies": {
-    "@expressive/react": "^0.75.0",
+    "@expressive/react": "^0.75.1",
     "@expressive/state": "^0.73.1"
   },
   "devDependencies": {
