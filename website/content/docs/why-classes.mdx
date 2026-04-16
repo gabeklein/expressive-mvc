@@ -81,13 +81,16 @@ And all the logic - what "dirty" means, how saving works, how the initial state 
 
 ```tsx
 class UserSettings extends State {
-  userId = set<string>();
   name = '';
   email = '';
-  avatar = ref<File | null>();
   saving = false;
-  error = set<string | null>(null);
+  error?: string = undefined;
 
+  // set-instruction are factories for special behaviors (lots of overloads)
+  // This suspends until defined, if accessed early. Never undefined.
+  userId = set<string>();
+
+  // Async factory runs on access, suspends unless/until ready.
   initial = set(async () => {
     const res = await fetch(`/api/users/${this.userId}`);
     const data = await res.json();
@@ -96,18 +99,19 @@ class UserSettings extends State {
     return { name: data.name, email: data.email };
   });
 
+  // Computed values track access, always up to date.
   dirty = set((from) => {
     return from.name !== from.initial.name || from.email !== from.initial.email;
   });
 
+  // async methods write to `this` as-needed, no middleware or thunks required.
   async save() {
     this.saving = true;
-    this.error = null;
+    this.error = undefined;
     try {
       const body = new FormData();
       body.append('name', this.name);
       body.append('email', this.email);
-      if (this.avatar.current) body.append('avatar', this.avatar.current);
       await fetch(`/api/users/${this.userId}`, { method: 'PUT', body });
       this.initial = { name: this.name, email: this.email };
     } catch (e) {
@@ -122,10 +126,9 @@ class UserSettings extends State {
 And the component:
 
 ```tsx
-function UserSettingsView({ userId }: { userId: string }) {
-  const { name, email, dirty, saving, error, save, is } = UserSettings.use({
-    userId
-  });
+function UserSettingsView(props: { userId: string }) {
+  const { is, name, email, dirty, saving, error, save } =
+    UserSettings.use(props);
 
   return (
     <form
@@ -133,8 +136,18 @@ function UserSettingsView({ userId }: { userId: string }) {
         e.preventDefault();
         save();
       }}>
-      <input value={name} onChange={(e) => (is.name = e.target.value)} />
-      <input value={email} onChange={(e) => (is.email = e.target.value)} />
+      <input
+        value={name}
+        onChange={(e) => {
+          is.name = e.target.value;
+        }}
+      />
+      <input
+        value={email}
+        onChange={(e) => {
+          is.email = e.target.value;
+        }}
+      />
       <button disabled={!dirty || saving}>Save</button>
       {error && <p className="error">{error}</p>}
     </form>
