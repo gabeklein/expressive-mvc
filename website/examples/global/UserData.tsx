@@ -1,4 +1,4 @@
-import State from '@expressive/react';
+import { Component, State } from '@expressive/react';
 
 class Profile extends State {
   name = 'John';
@@ -10,15 +10,15 @@ class Settings extends State {
   language = 'en';
 }
 
-class UserData extends State {
-  // child states can be created with new keyword (rather than method)
-  // this allows for composition, where this state "owns" these children.
+// Extending Component makes UserData self-providing - rendering <UserData>
+// puts it in context for any descendant calling UserData.get().
+class UserData extends Component {
+  // Children created with `new` are owned by this state and provided
+  // to descendants automatically - Settings.get() works anywhere below.
   profile = new Profile();
   settings = new Settings();
 
   notifications = 0;
 }
 
-// Exporting will allow us to fetch this state in other files.
-// Any component can access it via `UserData.get()`.
 export { UserData, Settings, Profile };

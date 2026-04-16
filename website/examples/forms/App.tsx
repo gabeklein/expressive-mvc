@@ -1,42 +1,28 @@
-import { Provider } from '@expressive/react';
-
 import { Form, Input } from './Form';
 
-/*
-  Form here facilitates logic and context for any given form.
-  By extending it, we can inherit features and focus on values
-  we actually care about.
-*/
+// Extending Form inherits its bind logic; we just declare the fields.
+// Rendering <Control> both instantiates and provides it to children.
 class Control extends Form {
   firstname = '';
   lastname = '';
   email = '';
 }
 
-const Demo = () => {
-  /*
-    In order to for this to work, we will need to provide a
-    controller downstream. Here that's pretty easy as <Provider />
-    will both create and add a new Control instance to context.
-  */
+export default function Demo() {
   return (
-    <Provider for={Control}>
+    <Control>
       <h1>Example Form</h1>
       <Input name="firstname" placeholder="Firstname" />
       <Input name="lastname" placeholder="Lastname" />
       <Input name="email" placeholder="Email Address" />
       <Alert />
-    </Provider>
+    </Control>
   );
-};
+}
 
-/*
-  For CTA we create a button to respond to a click, alerting current
-  values in the form. This is a one-off so we'll use Form.get directly.
-  Returned value will be the callback function itself, memoized with
-  access to the nearest instance of Form via closure.
-*/
-const Alert = () => {
+// Form.get(fn) resolves the nearest instance and memoizes the returned
+// callback, closing over it - no re-subscription per render.
+function Alert() {
   const alertValues = Form.get((form) => () => {
     const values = JSON.stringify(form.get(), null, 2)
       .replace(/[",]/g, '')
@@ -46,6 +32,4 @@ const Alert = () => {
   });
 
   return <button onClick={alertValues}>Show Values</button>;
-};
-
-export default Demo;
+}

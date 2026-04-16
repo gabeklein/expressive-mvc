@@ -6,5 +6,5 @@
   "tabWidth": 2,
   "semi": true,
   "useTabs": false,
-  "organizeImports": true
+  "organizeImports": true,
 }

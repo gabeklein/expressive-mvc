@@ -3,6 +3,7 @@
 Labeled statements inside component functions are CSS properties extracted at build time. Top-level styles auto-apply to the **outermost returned element**. Named labels create scopes applied via `_name` attributes.
 
 See also:
+
 - [expressive-jsx-macros.md](expressive-jsx-macros.md) - All built-in macros and signatures
 - [expressive-jsx-instructions.md](expressive-jsx-instructions.md) - Pseudo-selectors, breakpoints, media queries
 
@@ -17,7 +18,6 @@ function Card({ active }) {
   if (active) {
     borderColor: 0x007bff;
   }
-
   title: {
     fontSize: 1.2;
     fontWeight: bold;
@@ -96,13 +96,13 @@ Components automatically accept and forward `className` from props. The generate
 // Input
 const Button = ({ label }) => {
   padding: (8, 16);
-  return <button>{label}</button>
-}
+  return <button>{label}</button>;
+};
 
 // Output (className auto-injected into destructuring and forwarded)
 const Button = ({ className, label }) => {
-  return <button className={_concat(className, 'Button_a3f')}>{label}</button>
-}
+  return <button className={_concat(className, "Button_a3f")}>{label}</button>;
+};
 ```
 
 If the component uses positional params (`props`), it forwards `props.className` instead.
@@ -162,9 +162,9 @@ function Actions() {
 
 ```typescript
 interface Options {
-  cssModule?: string;    // CSS module import path (for CSS module output)
-  macros?: Record<string, Macro>[];       // Custom macro definitions
-  instructions?: Record<string, Instruction>[];  // Custom instructions
+  cssModule?: string; // CSS module import path (for CSS module output)
+  macros?: Record<string, Macro>[]; // Custom macro definitions
+  instructions?: Record<string, Instruction>[]; // Custom instructions
 }
 ```
 
