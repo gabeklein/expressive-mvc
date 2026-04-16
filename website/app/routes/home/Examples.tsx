@@ -1,3 +1,5 @@
+import React from 'react';
+
 import code from '@/components/Snippet';
 
 export function Problem() {
@@ -10,36 +12,11 @@ export function Problem() {
     padding: 96, 24;
   }
 
-  header: {
-    maxWidth: 672;
-    marginBottom: 48;
-  }
-
-  label: {
-    fontSize: 0.75;
-    textTransform: uppercase;
-    letterSpacing: '0.1em';
-    color: $colorFdMutedForeground;
-    marginBottom: 12;
-  }
-
-  title: {
-    fontSize: 1.875;
-    fontWeight: bold;
-    marginBottom: 16;
-    $md: { fontSize: 2.25; }
-  }
-
-  desc: {
-    color: $colorFdMutedForeground;
-    fontSize: 1.125;
-
-    code: {
-      fontSize: 0.875;
-      background: $colorFdMuted;
-      padding: 2, 6;
-      borderRadius: 4;
-    }
+  code: {
+    fontSize: 0.875;
+    background: $colorFdMuted;
+    padding: 2, 6;
+    borderRadius: 4;
   }
 
   caption: {
@@ -52,18 +29,14 @@ export function Problem() {
   return (
     <section>
       <div _inner>
-        <div _header>
-          <div _label>The problem</div>
-          <h2 _title>Hooks don't scale with your features.</h2>
-          <p _desc>
-            React hooks organize code around <em>when it runs</em>, not what it
-            means. As features grow, related logic gets smeared across{' '}
-            <code>useState</code>,{' '}
-            <code>useEffect</code>,{' '}
-            <code>useCallback</code>, and{' '}
-            <code>useMemo</code> calls.
-          </p>
-        </div>
+        <Header label="The problem" title="Hooks don't scale with your features.">
+          React hooks organize code around <em>when it runs</em>, not what it
+          means. As features grow, related logic gets smeared across{' '}
+          <code>useState</code>,{' '}
+          <code>useEffect</code>,{' '}
+          <code>useCallback</code>, and{' '}
+          <code>useMemo</code> calls.
+        </Header>
         <HooksExample />
         <p _caption>
           Seven hooks. Two dependency arrays. A race condition waiting to
@@ -85,17 +58,49 @@ export function Solution() {
     padding: 96, 24;
   }
 
-  header: {
-    maxWidth: 800;
-    marginBottom: 48;
+  caption: {
+    color: $colorFdMutedForeground;
+    marginTop: 24;
+    textAlign: center;
+    fontStyle: italic;
   }
+
+  return (
+    <section>
+      <div _inner>
+        <Header accent label="The solution" title="One hook. Any amount of logic.">
+          Expressive helps contain even entire features in a single class. Fields are
+          reactive. Computed values track their own dependencies. Async is
+          declarative. The component becomes a pure projection of the class.
+        </Header>
+        <ClassExample />
+        <p _caption>
+          No dependency arrays. No stale closures. No race conditions. Testable
+          without rendering. And every tool you already have for reading code
+          just works.
+        </p>
+      </div>
+    </section>
+  );
+}
+
+function Header({ label, title, accent, children }: {
+  label: string;
+  title: string;
+  accent?: boolean;
+  children: React.ReactNode;
+}) {
+  maxWidth: 672;
+  marginBottom: 48;
+  if (accent) { maxWidth: 800; }
 
   label: {
     fontSize: 0.75;
     textTransform: uppercase;
     letterSpacing: '0.1em';
-    color: $colorFdPrimary;
+    color: $colorFdMutedForeground;
     marginBottom: 12;
+    if (accent) color: $colorFdPrimary;
   }
 
   title: {
@@ -110,33 +115,12 @@ export function Solution() {
     fontSize: 1.125;
   }
 
-  caption: {
-    color: $colorFdMutedForeground;
-    marginTop: 24;
-    textAlign: center;
-    fontStyle: italic;
-  }
-
   return (
-    <section>
-      <div _inner>
-        <div _header>
-          <div _label>The solution</div>
-          <h2 _title>One hook. Any amount of logic.</h2>
-          <p _desc>
-            Expressive helps contain even entire features in a single class. Fields are
-            reactive. Computed values track their own dependencies. Async is
-            declarative. The component becomes a pure projection of the class.
-          </p>
-        </div>
-        <ClassExample />
-        <p _caption>
-          No dependency arrays. No stale closures. No race conditions. Testable
-          without rendering. And every tool you already have for reading code
-          just works.
-        </p>
-      </div>
-    </section>
+    <div>
+      <div _label>{label}</div>
+      <h2 _title>{title}</h2>
+      <p _desc>{children}</p>
+    </div>
   );
 }
 
