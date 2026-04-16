@@ -1,35 +1,30 @@
-import { Component } from '@expressive/react';
+import State, { Provider } from '@expressive/react';
 
 /*
   When using context the first step is to make some State
-  as you normally would. Just extend Component instead, it
-  is renderable and will provide to children automatically.
-  It can contain the values which function components may
-  read and others may write. Shared state s de-facto,
-  easy communication between components.
+  as you normally would.  It can contain the values which
+  function components may read and others may write. 
 */
-class FooBar extends Component {
+class FooBar extends State {
   foo = 0;
   bar = 0;
 }
 
-export default function Demo() {
-  return (
-    <Component>
-      <Foo />
-      <Bar />
-    </Component>
-  );
-}
+const App = () => (
+  <Provider for={FooBar}>
+    <Foo />
+    <Bar />
+  </Provider>
+);
 
 function Foo() {
   // Built-in get() static method is a hook, it returns nearest of
   // same type and syncs component to any values you access.
-  // `is` property loops back to instance so you can update values.
+  // `is` property loops back to instance so you can edit `foo`.
   const { is: foobar, bar } = FooBar.get();
 
   return (
-    <div className="card">
+    <div>
       <button
         onClick={() => {
           foobar.foo++;
@@ -47,7 +42,7 @@ function Bar() {
   const { is: foobar, foo } = FooBar.get();
 
   return (
-    <div className="card">
+    <div>
       <button
         onClick={() => {
           foobar.bar++;
@@ -58,3 +53,5 @@ function Bar() {
     </div>
   );
 }
+
+export default App;
