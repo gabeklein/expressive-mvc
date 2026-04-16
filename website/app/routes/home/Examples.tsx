@@ -1,17 +1,9 @@
 import React from 'react';
 
 import code from '@/components/Snippet';
+import Section from '@/components/Section';
 
 export function Problem() {
-  borderBottom: 1, solid;
-  borderColor: $colorFdBorder;
-
-  inner: {
-    margin: 0, auto;
-    maxWidth: $contentWidth;
-    padding: 96, 24;
-  }
-
   code: {
     fontSize: 0.875;
     background: $colorFdMuted;
@@ -27,33 +19,21 @@ export function Problem() {
   }
 
   return (
-    <section>
-      <div _inner>
-        <Header label="The problem" title="Hooks split state from the logic that owns it.">
-          A single async request needs three pieces of state to track its
-          phases, plus a memoized callback to keep them in sync. Each one is
-          its own hook, its own dependency, its own way to fall out of sync.
-        </Header>
-        <HooksExample />
-        <p _caption>
-          Three <code>useState</code> and a <code>useCallback</code> to coordinate one request.
-        </p>
-      </div>
-    </section>
+    <Section>
+      <Header label="The problem" title="Hooks split state from the logic that owns it.">
+        A single async request needs three pieces of state to track its
+        phases, plus a memoized callback to keep them in sync. Each one is
+        its own hook, its own dependency, its own way to fall out of sync.
+      </Header>
+      <HooksExample />
+      <p _caption>
+        Three <code>useState</code> and a <code>useCallback</code> to coordinate one request.
+      </p>
+    </Section>
   );
 }
 
 export function Solution() {
-  borderBottom: `1px solid`;
-  borderColor: $colorFdBorder;
-  background: `color-mix(in srgb, var(--color-fd-muted) 30%, transparent)`;
-
-  inner: {
-    margin: 0, auto;
-    maxWidth: $contentWidth;
-    padding: 96, 24;
-  }
-
   caption: {
     color: $colorFdMutedForeground;
     marginTop: 24;
@@ -62,19 +42,17 @@ export function Solution() {
   }
 
   return (
-    <section>
-      <div _inner>
-        <Header accent label="The solution" title="A class keeps them together.">
-          Fields hold state. Methods mutate them directly. The component reads
-          what it needs, and renders only when those values change. Same
-          flow, no orchestration. Components go back to being stateless.
-        </Header>
-        <ClassExample />
-        <p _caption>
-          Reactive fields. Plain methods. The component just reads.
-        </p>
-      </div>
-    </section>
+    <Section tint>
+      <Header accent label="The solution" title="A class keeps them together.">
+        Fields hold state. Methods mutate them directly. The component reads
+        what it needs, and renders only when those values change. Same
+        flow, no orchestration. Components go back to being stateless.
+      </Header>
+      <ClassExample />
+      <p _caption>
+        Reactive fields. Plain methods. The component just reads.
+      </p>
+    </Section>
   );
 }
 
