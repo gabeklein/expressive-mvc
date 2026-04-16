@@ -1,5 +1,5 @@
-import { listener } from './observable';
-import { event, State, uid } from './state';
+import { listener } from "./observable";
+import { event, State, uid } from "./state";
 
 const LOOKUP = new WeakMap<State, Context>();
 
@@ -10,7 +10,7 @@ type Accept<T extends State = State> =
 
 type Expect<T extends State = State> = (
   state: T,
-  downstream: boolean
+  downstream: boolean,
 ) => (() => void) | void;
 
 declare namespace Context {
@@ -56,13 +56,13 @@ class Context {
   private register<T extends State>(
     type: State.Extends<T>,
     value: [Expect<T>, boolean | undefined],
-    asConsumer: true
+    asConsumer: true,
   ): () => void;
 
   private register<T extends State>(
     type: State.Extends<T>,
     value: [T, boolean],
-    asConsumer?: false
+    asConsumer?: false,
   ): () => void;
 
   private register(type: State.Extends, value: any, asConsumer?: boolean) {
@@ -86,20 +86,20 @@ class Context {
   /** Find specified type upstream. Returns undefined if not found. */
   public get<T extends State>(
     Type: State.Extends<T>,
-    required?: boolean
+    required?: boolean,
   ): T | undefined;
 
   /** Subscribe to a type becoming available in context. */
   public get<T extends State>(
     Type: State.Extends<T>,
     callback: Expect<T>,
-    downstream?: boolean
+    downstream?: boolean,
   ): () => void;
 
   public get<T extends State>(
     Type: State.Extends<T>,
     arg?: boolean | Expect<T>,
-    downstream?: boolean
+    downstream?: boolean,
   ) {
     let found: T | null | undefined;
     let priority = false;
@@ -121,13 +121,13 @@ class Context {
         }
         if (explicit)
           throw new Error(
-            `Did find ${Type} in context, but multiple were defined.`
+            `Did find ${Type} in context, but multiple were defined.`,
           );
       }
       break;
     }
 
-    if (typeof arg === 'function') {
+    if (typeof arg === "function") {
       if (found && !downstream) arg(found, false);
 
       if (downstream !== false) {
@@ -156,12 +156,12 @@ class Context {
    */
   public set<T extends State>(
     inputs: Accept<T>,
-    forEach?: (state: T) => (() => void) | void
+    forEach?: (state: T) => (() => void) | void,
   ) {
     const init = new Set<() => void>();
     const { cleanup } = this;
 
-    if (typeof inputs == 'function' || inputs instanceof State)
+    if (typeof inputs == "function" || inputs instanceof State)
       inputs = { [0]: inputs };
 
     for (const K of Object.keys({ ...this.inputs, ...inputs })) {
@@ -180,8 +180,8 @@ class Context {
       if (!(State.is(V) || V instanceof State))
         throw new Error(
           `Context can only include an instance or class of State but got ${
-            K == '0' || K == String(V) ? V : `${V} (as '${K}')`
-          }.`
+            K == "0" || K == String(V) ? V : `${V} (as '${K}')`
+          }.`,
         );
 
       const state = State.is(V) ? new (V as State.Type)() : V.is;
@@ -208,8 +208,15 @@ class Context {
   add(I: State, implicit?: boolean) {
     const { cleanup } = this;
 
-    // TODO: should State constructors actually be iterable?
-    const TT = Array.from(I.constructor as unknown as Iterable<State.Extends>);
+    const TT: State.Extends[] = [];
+
+    for (
+      let T = I.constructor as State.Extends;
+      T !== State;
+      T = Object.getPrototypeOf(T)
+    )
+      TT.push(T);
+
     const expects = new Map<Expect, () => void>();
     const onDone = new Set<() => void>();
 
@@ -286,10 +293,10 @@ class Context {
   }
 }
 
-Object.defineProperty(Context.prototype, 'toString', {
+Object.defineProperty(Context.prototype, "toString", {
   value() {
     return `Context-${this.id}`;
-  }
+  },
 });
 
 export { Context };

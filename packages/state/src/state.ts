@@ -405,21 +405,6 @@ abstract class State implements Observable {
   }
 
   /**
-   * Iterate over all super classes of this State, starting with self, not including base State. Yeilds the class constructor
-   */
-  static [Symbol.iterator](): Iterator<State.Extends> {
-    let T = this;
-    return {
-      next() {
-        if (T === State) return { done: true, value: 0 };
-        const value = T;
-        T = Object.getPrototypeOf(T);
-        return { value };
-      }
-    };
-  }
-
-  /**
    * Create and activate a new instance of this state.
    *
    * **Important** - Unlike `new this(...)` - this method also activates state.

@@ -306,14 +306,6 @@ for (const [key, value] of state) {
 }
 ```
 
-The static class is also iterable - it yields its own constructor and its ancestors, stopping before the base `State`:
-
-```ts
-for (const Ctor of MyState) {
-  console.log(Ctor.name);
-}
-```
-
 <br />
 
 ## Next
