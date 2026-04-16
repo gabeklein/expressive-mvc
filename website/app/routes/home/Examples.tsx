@@ -1,4 +1,4 @@
-import { DynamicCodeBlock } from 'fumadocs-ui/components/dynamic-codeblock';
+import code from '@/components/Snippet';
 
 export function Problem() {
   borderBottom: 1, solid;
@@ -64,7 +64,7 @@ export function Problem() {
             <code>useMemo</code> calls.
           </p>
         </div>
-        <DynamicCodeBlock lang="tsx" code={HOOKS_EXAMPLE} />
+        <HooksExample />
         <p _caption>
           Seven hooks. Two dependency arrays. A race condition waiting to
           happen. And none of it testable without full UI.
@@ -129,7 +129,7 @@ export function Solution() {
             declarative. The component becomes a pure projection of the class.
           </p>
         </div>
-        <DynamicCodeBlock lang="tsx" code={CLASS_EXAMPLE} />
+        <ClassExample />
         <p _caption>
           No dependency arrays. No stale closures. No race conditions. Testable
           without rendering. And every tool you already have for reading code
@@ -140,86 +140,88 @@ export function Solution() {
   );
 }
 
-const HOOKS_EXAMPLE = `
-function UserSettings({ userId }) {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState(null);
-  const [initial, setInitial] = useState(null);
+const HooksExample = code /*tsx*/ `
+  function UserSettings({ userId }) {
+    const [name, setName] = useState('');
+    const [email, setEmail] = useState('');
+    const [saving, setSaving] = useState(false);
+    const [error, setError] = useState(null);
+    const [initial, setInitial] = useState(null);
 
-  useEffect(() => {
-    let cancelled = false;
-    fetch(\`/api/users/\${userId}\`)
-      .then(r => r.json())
-      .then(data => {
-        if (cancelled) return;
-        setName(data.name);
-        setEmail(data.email);
-        setInitial({ name: data.name, email: data.email });
-      });
-    return () => { cancelled = true; };
-  }, [userId]);
+    useEffect(() => {
+      let cancelled = false;
+      fetch("/api/users/" + userId)
+        .then(r => r.json())
+        .then(data => {
+          if (cancelled) return;
+          setName(data.name);
+          setEmail(data.email);
+          setInitial({ name: data.name, email: data.email });
+        });
+      return () => { cancelled = true; };
+    }, [userId]);
 
-  const dirty = useMemo(() =>
-    initial && (name !== initial.name || email !== initial.email),
-    [name, email, initial]
-  );
+    const dirty = useMemo(() =>
+      initial && (name !== initial.name || email !== initial.email),
+      [name, email, initial]
+    );
 
-  const save = useCallback(async () => {
-    setSaving(true);
-    try {
-      await api.update({ name, email });
-      setInitial({ name, email });
-    } catch (e) {
-      setError(e.message);
-    } finally {
-      setSaving(false);
-    }
-  }, [name, email]);
+    const save = useCallback(async () => {
+      setSaving(true);
+      try {
+        await api.update({ name, email });
+        setInitial({ name, email });
+      } catch (e) {
+        setError(e.message);
+      } finally {
+        setSaving(false);
+      }
+    }, [name, email]);
 
-  // ...and now the render
-}`;
+    // ...and now the render
+  }
+`;
 
-const CLASS_EXAMPLE = `
-import { State, set } from '@expressive/react';
+const ClassExample = code /*tsx*/ `
+  import { State, set } from '@expressive/react';
 
-class UserSettings extends State {
-  // simple values tracked automatically
-  name = '';
-  email = '';
-  saving = false;
-  error: string | null = null;
+  class UserSettings extends State {
+    // simple values tracked automatically
+    name = '';
+    email = '';
+    saving = false;
+    error: string | null = null;
 
-  // \`set\` instruction are factories for special behaviors
-  // This suspends until defined, if accessed early. Never undefined.
-  userId = set<string>();
+    // \`set\` instruction are factories for special behaviors
+    // This suspends until defined, if accessed early. Never undefined.
+    userId = set<string>();
 
-  // Async factory runs on access, suspends until ready.
-  initial = set(async () => {
-    const res = await fetch(\`/api/users/\${this.userId}\`);
-    const data = await res.json();
-    this.name = data.name;
-    this.email = data.email;
-    return { name: data.name, email: data.email };
-  });
+    // Async factory runs on access, suspends until ready.
+    initial = set(async () => {
+      const res = await fetch("/api/users/" + this.userId);
+      const data = await res.json();
+      this.name = data.name;
+      this.email = data.email;
+      return { name: data.name, email: data.email };
+    });
 
-  // Computed values track access, always up to date.
-  dirty = set((from) =>
-    from.name !== from.initial.name ||
-    from.email !== from.initial.email
-  );
+    // Computed values track access, always up to date.
+    dirty = set((from) =>
+      from.name !== from.initial.name ||
+      from.email !== from.initial.email
+    );
 
-  // Simply async manipulate state, no middleware or thunks required.
-  async save() {
-    this.saving = true;
-    try {
-      await api.update({ name: this.name, email: this.email });
-      this.initial = { name: this.name, email: this.email };
-    } catch (e) {
-      this.error = e.message;
-    } finally {
-      this.saving = false;
+    // Simply async manipulate state, no middleware or thunks required.
+    async save() {
+      this.saving = true;
+      try {
+        await api.update({ name: this.name, email: this.email });
+        this.initial = { name: this.name, email: this.email };
+      } catch (e) {
+        this.error = e.message;
+      } finally {
+        this.saving = false;
+      }
     }
   }
-}`;
+`;
