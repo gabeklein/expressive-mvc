@@ -17,6 +17,37 @@ describe('property', () => {
     expect(state.ref.current).toBe('foobar');
   });
 
+  it('will be callable to set value', async () => {
+    class Subject extends State {
+      ref = ref<string>();
+    }
+
+    const state = Subject.new();
+
+    state.ref('foobar');
+
+    await expect(state).toHaveUpdated();
+    expect(state.ref.current).toBe('foobar');
+
+    state.ref(null);
+
+    await expect(state).toHaveUpdated();
+    expect(state.ref.current).toBeNull();
+  });
+
+  it('will invoke callback when called as function', async () => {
+    const didTrigger = vi.fn();
+
+    class Subject extends State {
+      ref = ref<string>(didTrigger);
+    }
+
+    const state = Subject.new();
+
+    state.ref('foobar');
+    expect(didTrigger).toBeCalledWith('foobar');
+  });
+
   it('will reference parent', () => {
     class Subject extends State {
       ref = ref<string>();

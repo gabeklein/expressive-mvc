@@ -9,7 +9,11 @@ declare namespace ref {
     argument: T
   ) => ((next: T | null) => void) | Promise<void> | void | boolean;
 
+  /** Callable ref that also exposes ref-object properties. */
   interface Object<T = any> {
+    /** Set the current value of this reference. */
+    (value: T | null): void;
+
     /** Current value held by this reference. */
     current: T;
 
@@ -30,8 +34,6 @@ declare namespace ref {
     /** Retrieve current value. */
     get(): T | null;
   }
-
-  /** Object with references to all managed values of `T`. */
 
   /** Object with references to all managed values of `T`. */
   type Proxy<T extends State> = { [P in State.Field<T>]-?: Object<T[P]> } & {
@@ -68,9 +70,7 @@ function ref<T extends State, R>(
 
 /**
  * Creates a ref-compatible property.
- * Will persist value, and updates to this are made part of controller event-stream.
- *
- * *Output is simultaneously a ref-function and ref-object, use as needed.*
+ * Callable to set the value, with ref-object properties for reading and subscribing.
  *
  * @param callback - Optional callback to synchronously fire when reference is first set or does update.
  */
@@ -78,9 +78,7 @@ function ref<T>(callback?: ref.Callback<T>): ref.Object<T>;
 
 /**
  * Creates a ref-compatible property.
- * Will persist value, and updates to this are made part of controller event-stream.
- *
- * *Output is simultaneously a ref-function and ref-object, use as needed.*
+ * Callable to set the value, with ref-object properties for reading and subscribing.
  *
  * @param callback - Optional callback to synchronously fire when reference is first set or does update.
  * @param ignoreNull - Default `true`. If `false`, will still callback with `null`.
@@ -178,12 +176,15 @@ function property<T>(
 
     state[key] = null;
 
-    const ref = { get, key, is: subject };
-
-    defineProperty(ref, 'current', { get, set });
+    defineProperties(set, {
+      current: { get, set },
+      get: { value: get },
+      is: { value: subject },
+      key: { value: key }
+    });
 
     return {
-      get: () => ref
+      get: () => set
     };
   });
 }
