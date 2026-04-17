@@ -387,7 +387,7 @@ describe('mapped', () => {
     expect(generateRef).toBeCalledTimes(1);
   });
 
-  it('will throw if object is not this', () => {
+  it('will throw if object is not a State', () => {
     class Test extends State {
       foo = 'foo';
       bar = 'bar';
@@ -397,7 +397,7 @@ describe('mapped', () => {
     }
 
     expect(() => Test.new()).toThrow(
-      `ref instruction does not support object which is not 'this'`
+      `ref instruction requires a State instance, got a plain object`
     );
   });
 

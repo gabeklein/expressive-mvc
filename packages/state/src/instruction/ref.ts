@@ -94,74 +94,94 @@ function ref<T>(
   arg?: ref.Callback<T> | State,
   arg2?: ((key: string) => any) | boolean
 ) {
-  return def((key, subject, state) => {
-    let value = {};
-    const method =
-      (key: string, from: Record<string, T>) =>
-      (callback?: (value: T) => void) =>
-        callback
-          ? listener(subject, () => callback(from[key]), key)
-          : from[key];
+  if (arg instanceof State)
+    return customProxy(arg, arg2 as ((key: string) => any) | undefined);
 
-    if (arg === subject)
-      listener(subject, () => {
-        for (const key in subject)
-          if (typeof arg2 == 'function')
-            defineProperty(value, key, {
-              configurable: true,
-              get() {
-                const out = arg2(key);
-                defineProperty(value, key, { value: out });
-                return out;
-              }
-            });
-          else {
-            const get = method(key, subject);
-            const set = (x: any) => (subject[key] = x);
+  if (typeof arg == 'object')
+    throw new Error('ref instruction requires a State instance, got a plain object');
 
-            defineProperties(set, {
-              current: { get, set },
-              get: { value: get },
-              is: { value: subject },
-              key: { value: key }
-            });
+  return property(arg, arg2 as boolean | undefined);
+}
 
-            defineProperty(value, key, { value: set });
-          }
+function customProxy(
+  target: State,
+  map?: (key: string) => any
+) {
+  return def((_key, subject) => {
+    const value = {} as Record<string, any>;
+    const source = target as any as Record<string, any>;
 
-        return null;
-      });
-    else if (typeof arg == 'object')
-      throw new Error(
-        "ref instruction does not support object which is not 'this'"
-      );
-    else {
-      let unset: ((next: T) => void) | undefined;
-      const get = method(key, state);
-      const set = (value?: any) => {
-        if (!update(subject, key, value) || !arg) return;
-        if (unset) unset = void unset(value);
-        if (value === null && arg2 !== false) return;
+    listener(target, () => {
+      for (const key in source)
+        if (map)
+          defineProperty(value, key, {
+            configurable: true,
+            get() {
+              const out = map(key);
+              defineProperty(value, key, { value: out });
+              return out;
+            }
+          });
+        else {
+          const set = (x: any) => (source[key] = x);
+          const get = (cb?: (value: any) => void) =>
+            cb ? listener(subject, () => cb(source[key]), key) : source[key];
 
-        capture((release) => {
-          const out = arg.call(subject, value);
+          defineProperties(set, {
+            current: { get, set },
+            get: { value: get },
+            is: { value: target },
+            key: { value: key }
+          });
 
-          unset = (key) => {
-            if (typeof out == 'function') out(key);
-            release();
-          };
-        });
-      };
+          defineProperty(value, key, { value: set });
+        }
 
-      state[key] = null;
-      value = defineProperty({ get, key, is: subject }, 'current', {
-        get,
-        set
-      });
-    }
+      return null;
+    });
 
     return {
       get: () => value
+    };
+  });
+}
+
+function property<T>(
+  callback?: ref.Callback<T>,
+  ignoreNull?: boolean
+) {
+  return def((key, subject, state) => {
+    let unset: ((next: T) => void) | undefined;
+
+    function get(cb?: (value: T) => void) {
+      return cb
+        ? listener(subject, () => cb(state[key]), key)
+        : state[key];
+    }
+
+    function set(value?: any) {
+      if (!update(subject, key, value) || !callback) return;
+      if (unset) unset = void unset(value);
+      if (value === null && ignoreNull !== false) return;
+
+      capture((release) => {
+        const out = callback.call(subject, value);
+
+        unset = (next) => {
+          if (typeof out == 'function') out(next);
+          release();
+        };
+      });
+    }
+
+    state[key] = null;
+
+    const ref = { get, key, is: subject };
+
+    defineProperty(ref, 'current', { get, set });
+
+    return {
+      get: () => ref
     };
   });
 }
