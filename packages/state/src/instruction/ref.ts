@@ -63,7 +63,7 @@ function ref<T extends State>(state: T): ref.Proxy<T>;
  */
 function ref<T extends State, R>(
   state: T,
-  map: (key: State.Field<T>) => R
+  map: (this: T, key: State.Field<T>, state: T) => R
 ): ref.CustomProxy<T, R>;
 
 /**
@@ -92,10 +92,10 @@ function ref<T>(
 
 function ref<T>(
   arg?: ref.Callback<T> | State,
-  arg2?: ((key: string) => any) | boolean
+  arg2?: ((this: any, key: string, state: any) => any) | boolean
 ) {
   if (arg instanceof State)
-    return customProxy(arg, arg2 as ((key: string) => any) | undefined);
+    return proxy(arg, arg2 as ((this: any, key: string, state: any) => any) | undefined);
 
   if (typeof arg == 'object')
     throw new Error('ref instruction requires a State instance, got a plain object');
@@ -103,39 +103,41 @@ function ref<T>(
   return property(arg, arg2 as boolean | undefined);
 }
 
-function customProxy(
+function defaultMap(this: State, key: string) {
+  const source = this as any as Record<string, any>;
+  const set = (x: any) => (source[key] = x);
+  const get = (cb?: (value: any) => void) =>
+    cb ? listener(this, () => cb(source[key]), key) : source[key];
+
+  defineProperties(set, {
+    current: { get, set },
+    get: { value: get },
+    is: { value: this },
+    key: { value: key }
+  });
+
+  return set;
+}
+
+function proxy(
   target: State,
-  map?: (key: string) => any
+  map?: (this: State, key: string, state: State) => any
 ) {
-  return def((_key, subject) => {
+  return def((_key, _subject) => {
     const value = {} as Record<string, any>;
     const source = target as any as Record<string, any>;
+    const apply = map || defaultMap;
 
     listener(target, () => {
       for (const key in source)
-        if (map)
-          defineProperty(value, key, {
-            configurable: true,
-            get() {
-              const out = map(key);
-              defineProperty(value, key, { value: out });
-              return out;
-            }
-          });
-        else {
-          const set = (x: any) => (source[key] = x);
-          const get = (cb?: (value: any) => void) =>
-            cb ? listener(subject, () => cb(source[key]), key) : source[key];
-
-          defineProperties(set, {
-            current: { get, set },
-            get: { value: get },
-            is: { value: target },
-            key: { value: key }
-          });
-
-          defineProperty(value, key, { value: set });
-        }
+        defineProperty(value, key, {
+          configurable: true,
+          get() {
+            const out = apply.call(target, key, target);
+            defineProperty(value, key, { value: out });
+            return out;
+          }
+        });
 
       return null;
     });

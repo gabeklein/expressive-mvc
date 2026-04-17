@@ -360,22 +360,24 @@ describe('mapped', () => {
   });
 
   it('will run function for accessed keys', () => {
-    const { fields } = Test.new();
+    const test = Test.new();
+    const { fields } = test;
 
     expect(fields.foo).toBe('foo');
     expect(fields.bar).toBe('bar');
 
-    expect(generateRef).toBeCalledWith('foo');
-    expect(generateRef).toBeCalledWith('bar');
+    expect(generateRef).toBeCalledWith('foo', test);
+    expect(generateRef).toBeCalledWith('bar', test);
   });
 
   it('will run function only for accessed property', () => {
-    const { fields } = Test.new();
+    const test = Test.new();
+    const { fields } = test;
 
     expect(fields.foo).toBe('foo');
 
-    expect(generateRef).toBeCalledWith('foo');
-    expect(generateRef).not.toBeCalledWith('bar');
+    expect(generateRef).toBeCalledWith('foo', test);
+    expect(generateRef).not.toBeCalledWith('bar', test);
   });
 
   it('will run function only once per property', () => {
@@ -410,6 +412,72 @@ describe('mapped', () => {
     const { fields } = Test.new();
 
     expect(fields.foo).toBeDefined();
+  });
+
+  it('will bind this to target state', () => {
+    const spy = vi.fn(function (this: any) { return this; });
+
+    class Test extends State {
+      foo = 'foo';
+      fields = ref(this, spy);
+    }
+
+    const test = Test.new();
+
+    test.fields.foo;
+    expect(spy.mock.instances[0]).toBe(test);
+  });
+
+  it('will pass state as second argument', () => {
+    const spy = vi.fn((_key: any, state: any) => state);
+
+    class Test extends State {
+      foo = 'foo';
+      fields = ref(this, spy);
+    }
+
+    const test = Test.new();
+
+    expect(test.fields.foo).toBe(test);
+    expect(spy).toBeCalledWith('foo', test);
+  });
+
+  it('will proxy a different state instance', async () => {
+    class Source extends State {
+      value = 'hello';
+    }
+
+    class Consumer extends State {
+      source = new Source();
+      refs = ref(this.source);
+    }
+
+    const consumer = Consumer.new();
+
+    expect(consumer.refs.value.current).toBe('hello');
+
+    consumer.source.value = 'world';
+    await expect(consumer.source).toHaveUpdated();
+
+    expect(consumer.refs.value.current).toBe('world');
+  });
+
+  it('will map a different state instance', () => {
+    class Source extends State {
+      foo = 'bar';
+    }
+
+    const spy = vi.fn((key: string) => `mapped-${key}`);
+
+    class Consumer extends State {
+      source = new Source();
+      mapped = ref(this.source, spy);
+    }
+
+    const consumer = Consumer.new();
+
+    expect(consumer.mapped.foo).toBe('mapped-foo');
+    expect(spy).toBeCalledWith('foo', consumer.source);
   });
 
   it.skip('will not break on recursive', () => {
