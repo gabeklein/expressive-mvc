@@ -5,7 +5,7 @@ import { Form } from "./Form";
 import { Preview } from "./Preview";
 
 // Here, "extends Form" supplies the contract and logic.
-// We can focus only on the logic and values care about.
+// We can focus only on the logic and values we care about.
 // And just like that, we have a self contained form!
 class MyForm extends Form {
   firstname = '';

@@ -7,17 +7,17 @@ import { Component, ref } from '@expressive/react';
 // to properties, and providing context for any nested components.
 export class Form extends Component {
 
-  // The ref instruction is a  way to map over the known
+  // The ref instruction is a way to map over the known
   // keys of `this` instance and run a factory for each.
   // Whatever we return is assigned to `this.input[key]` so we
   // can make a ref-function to two-way bind input elements.
   input = ref(this, (key) => {
     let reset: (() => void) | undefined;
 
-    return (input: HTMLInputElement | null) => {
+    return (el: HTMLInputElement | null) => {
       if (reset) reset();
-      if (!input) return;
-      reset = this.bind(input, key);
+      if (!el) return;
+      reset = this.bind(el, key);
     }
   })
   
@@ -29,7 +29,7 @@ export class Form extends Component {
     if (!(key in this) || typeof key !== "string")
       throw new Error(`${this} has no property "${String(key)}"`);
 
-    input.name = key;
+    if(!input.name) input.name = key;
 
     const onInput = () => {
       (this as any)[key] = input.value;
