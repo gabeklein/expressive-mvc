@@ -5,6 +5,8 @@ import { def } from './def';
 const { defineProperty, defineProperties } = Object;
 
 declare namespace ref {
+  type Map<T extends State, R> = (this: T, key: State.Field<T> & string, state: T) => R;
+
   type Callback<T> = (
     argument: T
   ) => ((next: T | null) => void) | Promise<void> | void | boolean;
@@ -65,7 +67,7 @@ function ref<T extends State>(state: T): ref.Proxy<T>;
  */
 function ref<T extends State, R>(
   state: T,
-  map: (this: T, key: State.Field<T>, state: T) => R
+  map: ref.Map<T, R>
 ): ref.CustomProxy<T, R>;
 
 /**
@@ -88,12 +90,12 @@ function ref<T>(
   ignoreNull: boolean
 ): ref.Object<T>;
 
-function ref<T>(
-  arg?: ref.Callback<T> | State,
-  arg2?: ((this: any, key: string, state: any) => any) | boolean
+function ref<T extends State>(
+  arg?: ref.Callback<T> | T,
+  arg2?: ref.Map<T, any> | boolean
 ) {
   if (arg instanceof State)
-    return proxy(arg, arg2 as ((this: any, key: string, state: any) => any) | undefined);
+    return proxy(arg, arg2 as ref.Map<T, any> | undefined);
 
   if (typeof arg == 'object')
     throw new Error('ref instruction requires a State instance, got a plain object');
@@ -119,19 +121,18 @@ function defaultMap(this: State, key: string) {
 
 function proxy(
   target: State,
-  map?: (this: State, key: string, state: State) => any
+  map: ref.Map<any, any> = defaultMap
 ) {
   return def((_key, _subject) => {
     const value = {} as Record<string, any>;
     const source = target as any as Record<string, any>;
-    const apply = map || defaultMap;
 
     listener(target, () => {
       for (const key in source)
         defineProperty(value, key, {
           configurable: true,
           get() {
-            const out = apply.call(target, key, target);
+            const out = map.call(target, key, target);
             defineProperty(value, key, { value: out });
             return out;
           }
