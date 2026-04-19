@@ -70,7 +70,7 @@ export function Hero() {
       <div _inner>
         <div _badge>State management, reorganized</div>
         <h1 _heading>
-          What if state had it's own Components?
+          What if state had it's own Component?
         </h1>
         <p _subtitle>
           Expressive State consolidates your application state into
