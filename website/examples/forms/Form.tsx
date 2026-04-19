@@ -1,65 +1,48 @@
-import { State } from '@expressive/react';
-import { InputHTMLAttributes, Ref } from 'react';
+import { Component, ref } from '@expressive/react';
 
-/*
-  Form here will be a State which may be used to control
-  *any* form in a hypothetical application. It will be used to
-  demonstrate how to extend the State.get static method to make a
-  custom State usable in different ways.
+// When creating something potentially reusable, it's
+// often better to start with a base class to build from.
+// 
+// Form extends Component class to handle the logic of binding inputs
+// to properties, and providing context for any nested components.
+export class Form extends Component {
 
-  How this works can be completely up to you.
-  Mainly we want to show there's no need to delegate
-  for simple features as you build an app.
-*/
-class Form extends State {
-  /*
-    For reusability, create a static method to wrap process
-    for binding an <input> (or textarea) to a property on a model.
+  // The ref instruction is a  way to map over the known
+  // keys of `this` instance and run a factory for each.
+  // Whatever we return is assigned to `this.input[key]` so we
+  // can make a ref-function to two-way bind input elements.
+  input = ref(this, (key) => {
+    let reset: (() => void) | undefined;
 
-    Here `this.get()` [read: Form.get static method]
-    will create a ref-function that will be used by React.
+    return (input: HTMLInputElement | null) => {
+      if (reset) reset();
+      if (!input) return;
+      reset = this.bind(input, key);
+    }
+  })
+  
+  // For convenience, extending Form, you may want to do something
+  // extra to bound inputs, so we'll put this in a separate method. 
+  // For now, each input, will get name attribute from key, 
+  // listen for input events and sync with value of property.
+  public bind(input: HTMLInputElement, key: keyof this) {
+    if (!(key in this) || typeof key !== "string")
+      throw new Error(`${this} has no property "${String(key)}"`);
 
-    Not only will `.get()` fetch the nearest instance of Form,
-    it will pass that instance to a function, which will then
-    return a result and be memoized by component going forward.
-  */
-  static bind(property: string): Ref<HTMLInputElement> {
-    return this.get((self) => {
-      let reset: (() => void) | undefined;
+    input.name = key;
 
-      return (input) => {
-        if (reset) reset();
-
-        if (!input) return;
-
-        if (!(property in self))
-          throw new Error(`${self} has no property "${property}"`);
-
-        const unfollow = self.get(property, (x) => (input.value = x as string));
-        const onInput = () => self.set(property, input.value);
-
-        input.addEventListener('input', onInput);
-
-        reset = () => {
-          input.removeEventListener('input', onInput);
-          unfollow();
-        };
-      };
+    const onInput = () => {
+      (this as any)[key] = input.value;
+    };
+    const unwatch = this.get(key, () => {
+      input.value = this[key] as string;
     });
+
+    input.addEventListener('input', onInput);
+
+    return () => {
+      input.removeEventListener('input', onInput);
+      unwatch();
+    };
   }
 }
-
-/*
-  Next, we create a reusable Input component to used
-  in conjunction with Form. This allows us to create a
-  styled component which can communicate with any State
-  to extend (or contains) the Form class. This way, there's
-  no need to pass any props for controlling the input.
-*/
-const Input = (props: InputHTMLAttributes<HTMLInputElement>) => {
-  const ref = Form.bind(props.name!);
-
-  return <input {...props} ref={ref} />;
-};
-
-export { Input, Form };

@@ -66,6 +66,7 @@ textarea {
   font: inherit;
   color: inherit;
   border-radius: var(--radius);
+  margin: 0.3em;
 }
 
 button {
