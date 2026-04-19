@@ -466,36 +466,35 @@ function init(state: State, ...args: State.Args) {
 
   if (T === State) throw new Error('Cannot create base State.');
 
-  const setup = bootstrap(T);
+  const prepare = bootstrap(T);
 
   ID.set(state, `${T}-${uid()}`);
   STORE.set(state, {});
 
+  function track() {
+    for (const key in state) {
+      const desc = Object.getOwnPropertyDescriptor(state, key)!;
+      if ('value' in desc) apply(state, key, desc, true);
+    }
+  }
+
   listener(state, () => {
     parent(state, null);
 
-    function properties() {
-      for (const key in state) {
-        const desc = Object.getOwnPropertyDescriptor(state, key)!;
-        if ('value' in desc) apply(state, key, desc, true);
-      }
-    }
-
-    const queue = [...setup, properties, ...args];
+    const queue = [...prepare, track, ...args];
 
     for (let i = 0; i < queue.length; i++) {
       const arg = queue[i];
+      const out = typeof arg == 'function' ? arg.call(state, state) : arg;
 
-      const use = typeof arg == 'function' ? arg.call(state, state) : arg;
-
-      if (use instanceof Promise)
-        use.catch((err) => {
+      if (out instanceof Promise)
+        out.catch((err) => {
           console.error(`Async error in constructor for ${state}:`);
           console.error(err);
         });
-      else if (Array.isArray(use)) queue.splice(i + 1, 0, ...use);
-      else if (typeof use == 'function') listener(state, use, null);
-      else if (typeof use == 'object') assign(state, use, true);
+      else if (Array.isArray(out)) queue.splice(i + 1, 0, ...out);
+      else if (typeof out == 'function') listener(state, out, null);
+      else if (typeof out == 'object') assign(state, out, true);
     }
 
     return null;
