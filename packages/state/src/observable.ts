@@ -335,7 +335,6 @@ export {
   emit,
   event,
   Observable,
-  observe,
   touch,
   pending,
   observable,
