@@ -191,19 +191,9 @@ function bootstrap(this: Component, context: Context) {
       )
     });
 
-    if (active.catch)
-      return createElement(ErrorBoundary, {
-        fallback: () => self.fallback,
-        onError(error: Error, reset: (failed?: Error) => void) {
-          const { fallback } = self;
-          Promise.resolve(self.catch!(error))
-            .then(() => ready && reset(), reset)
-            .finally(() => self.set({ fallback }, true));
-        },
-        children
-      });
-
-    return children;
+    return active.catch
+      ? createElement(ErrorBoundary, { self, children })
+      : children;
   }
 
   Object.defineProperties(self, {
@@ -218,9 +208,8 @@ function bootstrap(this: Component, context: Context) {
 }
 
 interface BoundaryProps {
+  self: Component;
   children: ReactNode;
-  fallback: () => ReactNode;
-  onError: (error: Error, reset: (failed?: Error) => void) => void;
 }
 
 class ErrorBoundary extends React.Component<BoundaryProps> {
@@ -232,10 +221,16 @@ class ErrorBoundary extends React.Component<BoundaryProps> {
   }
 
   componentDidCatch(error: Error) {
-    this.props.onError(error, (error) => {
+    const { self } = this.props;
+    const { fallback } = self;
+    const reset = (error?: Error) => {
       this.recovering = true;
       this.setState({ error });
-    });
+    };
+
+    Promise.resolve(self.catch!(error))
+      .then(() => reset(), reset)
+      .finally(() => self.set({ fallback }, true));
   }
 
   componentDidUpdate() {
@@ -245,7 +240,7 @@ class ErrorBoundary extends React.Component<BoundaryProps> {
   render() {
     if (!this.state.error) return this.props.children;
     if (this.recovering) throw this.state.error;
-    return this.props.fallback();
+    return this.props.self.fallback;
   }
 }
 
