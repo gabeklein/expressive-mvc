@@ -27,6 +27,18 @@ it('will create and provide instance', () => {
   screen.getByText('bar');
 });
 
+it('will not enumerate react internals on instance', () => {
+  class Control extends Component {
+    foo = 'bar';
+    baz = 123;
+  }
+
+  let instance!: Control;
+  render(<Control is={(c) => (instance = c)} />);
+
+  expect(Object.keys(instance).sort()).toEqual(['baz', 'foo']);
+});
+
 it('will create instance only once', () => {
   class Control extends Component {
     protected new() {

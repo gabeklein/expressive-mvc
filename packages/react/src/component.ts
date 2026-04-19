@@ -1,4 +1,4 @@
-import { watch, unbind } from '@expressive/state';
+import { watch, unbind, set } from '@expressive/state';
 import React, {
   createElement,
   Suspense,
@@ -10,6 +10,12 @@ import { Context, Layers } from './context';
 import { State, useMount } from './state';
 
 const PENDING = new WeakMap<object, Component>();
+const INTERNAL = [
+  'updater',
+  'refs',
+  '_reactInternals',
+  '_reactInternalInstance'
+];
 
 export type StateProps<T extends State> = {
   [K in Exclude<keyof T, keyof Component>]?: T[K];
@@ -48,7 +54,7 @@ class Component extends State {
    *
    * Will incorperate extra props you declare as props parameter in `render` method.
    */
-  readonly props!: Props<this>;
+  declare readonly props: Props<this>;
 
   /** @deprecated Only to satisfy React JSX. Use `this.get(State)` instead. */
   declare readonly context: Context;
@@ -66,16 +72,21 @@ class Component extends State {
    *
    * Defaults to null - nothing will be rendered.
    */
-  fallback: ReactNode = null;
+  fallback: ReactNode = set(null);
 
   constructor(nextProps: any, ...rest: any[]) {
     const { is, ...props } = nextProps;
     rest = rest.filter((x) => !(x instanceof Context));
-    super(props, rest, is && ((x: any) => void is(x)));
+    super(props, rest, is && ((x) => void is(x)), () => {
+      Object.defineProperty(this, 'props', { enumerable: false });
+    });
 
     const existing = PENDING.get(nextProps);
     if (existing) return existing;
     PENDING.set(nextProps, this);
+
+    for (const key of INTERNAL)
+      Object.defineProperty(this, key, { configurable: true, writable: true });
 
     this.props = nextProps;
     this.set('props', () => {
