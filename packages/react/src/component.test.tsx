@@ -862,6 +862,68 @@ describe('error boundary', () => {
     screen.getByText('Recovered');
   });
 
+  it('will restore fallback after sync catch', async () => {
+    let throwing: any = new Error('boom');
+    let instance!: Boundary;
+
+    class Boundary extends Component {
+      value = 'initial';
+      fallback = (<span>Default Loading</span>);
+
+      new() {
+        instance = this;
+      }
+
+      catch() {
+        this.fallback = <span>Error Fallback</span>;
+        throwing = null;
+      }
+
+      render() {
+        if (throwing) throw throwing;
+        return <span>{this.value}</span>;
+      }
+    }
+
+    render(<Boundary />);
+    await act(async () => {});
+
+    screen.getByText('initial');
+
+    await act(async () => {
+      throwing = new Promise(() => {});
+      instance.value = 'trigger';
+    });
+
+    screen.getByText('Default Loading');
+  });
+
+  it('will call catch exactly once per thrown error', async () => {
+    const catchSpy = vi.fn();
+
+    const Throws = () => {
+      throw new Error('boom');
+    };
+
+    class Boundary extends Component {
+      fallback = (<span>Oops</span>);
+
+      async catch(error: Error) {
+        catchSpy(error);
+        await new Promise(() => {});
+      }
+
+      render() {
+        return <Throws />;
+      }
+    }
+
+    render(<Boundary />);
+    await act(async () => {});
+
+    expect(catchSpy).toBeCalledTimes(1);
+  });
+
   it('will propagate without catch defined', () => {
     const Throws = () => {
       throw new Error('boom');
