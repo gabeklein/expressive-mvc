@@ -5,7 +5,11 @@ import { def } from './def';
 const { defineProperty, defineProperties } = Object;
 
 declare namespace ref {
-  type Map<T extends State, R> = (this: T, key: State.Field<T> & string, state: T) => R;
+  type Map<T extends State, R> = (
+    this: T,
+    key: State.Field<T> & string,
+    state: T
+  ) => R;
 
   type Callback<T> = (
     argument: T
@@ -106,7 +110,9 @@ function ref<T extends State>(
     return proxy(arg, arg2 as ref.Map<T, any> | undefined);
 
   if (typeof arg == 'object')
-    throw new Error('ref instruction requires a State instance, got a plain object');
+    throw new Error(
+      'ref instruction requires a State instance, got a plain object'
+    );
 
   return property(arg, arg2 as boolean | undefined);
 }
@@ -127,10 +133,7 @@ function defaultMap(this: State, key: string) {
   return set;
 }
 
-function proxy(
-  target: State,
-  map: ref.Map<any, any> = defaultMap
-) {
+function proxy(target: State, map: ref.Map<any, any> = defaultMap) {
   return def((_key, _subject) => {
     const value = {} as Record<string, any>;
     const source = target as any as Record<string, any>;
@@ -156,17 +159,12 @@ function proxy(
   });
 }
 
-function property<T>(
-  callback?: ref.Callback<T>,
-  ignoreNull?: boolean
-) {
+function property<T>(callback?: ref.Callback<T>, ignoreNull?: boolean) {
   return def((key, subject, state) => {
     let unset: ((next: T) => void) | undefined;
 
     function get(cb?: (value: T) => void) {
-      return cb
-        ? listener(subject, () => cb(state[key]), key)
-        : state[key];
+      return cb ? listener(subject, () => cb(state[key]), key) : state[key];
     }
 
     function set(value?: any) {
