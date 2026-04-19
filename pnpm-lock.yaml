@@ -4,9 +4,16 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+overrides:
+  '@expressive/typescript-plugin-jsx': link:../jsx/packages/typescript-plugin-jsx
+
 importers:
 
   .:
+    dependencies:
+      '@expressive/typescript-plugin-jsx':
+        specifier: link:../jsx/packages/typescript-plugin-jsx
+        version: link:../jsx/packages/typescript-plugin-jsx
     devDependencies:
       '@types/node':
         specifier: ^25.2.0
@@ -39,8 +46,8 @@ importers:
   packages/preact:
     dependencies:
       '@expressive/react':
-        specifier: ^0.75.0
-        version: 0.75.0(react@19.2.4)
+        specifier: ^0.75.1
+        version: 0.75.1(react@19.2.4)
       '@expressive/state':
         specifier: ^0.73.1
         version: 0.73.1
@@ -166,8 +173,8 @@ importers:
         specifier: ^0.7.0
         version: 0.7.0
       '@expressive/typescript-plugin-jsx':
-        specifier: ^0.7.0
-        version: 0.7.0
+        specifier: link:../../jsx/packages/typescript-plugin-jsx
+        version: link:../../jsx/packages/typescript-plugin-jsx
       '@expressive/vite-plugin':
         specifier: ^0.7.0
         version: 0.7.0(vite@7.3.1(@types/node@25.2.3)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.46.0)(yaml@2.8.2))
@@ -644,8 +651,8 @@ packages:
   '@expressive/css@0.7.0':
     resolution: {integrity: sha512-wbZAX1vHHkpZy9IueG2DLPicvoys9RRs/YQzvBhbZrdeNjjdyWsM/KI0OS1odfwN+FvDA+zZTzdhNnnT1UkbQg==}
 
-  '@expressive/react@0.75.0':
-    resolution: {integrity: sha512-vS8ygTvzsZ7ioXJlughKyCMnPoi0EaIt5jtZJX/UuU92dkPStCITBt3q79YWa6eNJ3jsua1vG0n4B+YanUBRRQ==}
+  '@expressive/react@0.75.1':
+    resolution: {integrity: sha512-V7xjSyyctXoo66Srfl4qGzO5pbBXr8T9lFKL8Su+PMkLbHKTa1shRtBo+lCdRwIZg2CME09RBNHYKbo8JN41ag==}
     peerDependencies:
       react: '>=16.8.0 <20.0.0'
     peerDependenciesMeta:
@@ -655,11 +662,8 @@ packages:
   '@expressive/state@0.73.1':
     resolution: {integrity: sha512-xc0yRUVEQr0Q9lT7nggUbSBSOSpW2EkOfFoawxCPbHn0fy3+r3NZJhMRNmtLo7BpOWpEWXJTQyTGLZ1UZxIYkw==}
 
-  '@expressive/state@0.75.0':
-    resolution: {integrity: sha512-IWYQ1exdXM+NXuRasYChI2Dlp0Smz7u2J80U3l832C2a/s2nrYsGgrxJ1/pyVTlGgmsOWOt7NhIyg31uQ7ALCA==}
-
-  '@expressive/typescript-plugin-jsx@0.7.0':
-    resolution: {integrity: sha512-ej2c6lDz5cKnl7QPcl+vACPJWmIHIphHRI8Fe8SRuntXFlHoxz/9DL22ySsjP4jkV13Y2rS/zejgBSJF9NHTPQ==}
+  '@expressive/state@0.75.1':
+    resolution: {integrity: sha512-XInlc4diN6mq9Bd1iDquNRjPdZXr3NZEYnM/6ikzRYyixWdotOVrmJVBr6yLbKTRQEgqyqKmfzsbq1M7Xaib2w==}
 
   '@expressive/vite-plugin@0.7.0':
     resolution: {integrity: sha512-HHO0pdXXXyJqPeJcX2uzuyZ5sVIW7yL1OJz5OFsXSQli9u2Fv4KkGhVRTE7HgndGhf82BtvOXYwMsxkqPB4cAw==}
@@ -6611,19 +6615,15 @@ snapshots:
       chroma-js: 2.6.0
       easing-coordinates: 2.0.2
 
-  '@expressive/react@0.75.0(react@19.2.4)':
+  '@expressive/react@0.75.1(react@19.2.4)':
     dependencies:
-      '@expressive/state': 0.75.0
+      '@expressive/state': 0.75.1
     optionalDependencies:
       react: 19.2.4
 
   '@expressive/state@0.73.1': {}
 
-  '@expressive/state@0.75.0': {}
-
-  '@expressive/typescript-plugin-jsx@0.7.0':
-    dependencies:
-      typescript: 5.9.3
+  '@expressive/state@0.75.1': {}
 
   '@expressive/vite-plugin@0.7.0(vite@7.3.1(@types/node@25.2.3)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.46.0)(yaml@2.8.2))':
     dependencies:
@@ -8287,6 +8287,14 @@ snapshots:
       '@vitest/utils': 4.0.18
       chai: 6.2.2
       tinyrainbow: 3.0.3
+
+  '@vitest/mocker@4.0.18(vite@7.3.1(@types/node@18.19.130)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.46.0)(yaml@2.8.2))':
+    dependencies:
+      '@vitest/spy': 4.0.18
+      estree-walker: 3.0.3
+      magic-string: 0.30.21
+    optionalDependencies:
+      vite: 7.3.1(@types/node@18.19.130)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.46.0)(yaml@2.8.2)
 
   '@vitest/mocker@4.0.18(vite@7.3.1(@types/node@25.2.3)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.46.0)(yaml@2.8.2))':
     dependencies:
@@ -12591,7 +12599,7 @@ snapshots:
   vitest@4.0.18(@types/node@18.19.130)(jiti@2.6.1)(jsdom@27.4.0)(lightningcss@1.31.1)(terser@5.46.0)(yaml@2.8.2):
     dependencies:
       '@vitest/expect': 4.0.18
-      '@vitest/mocker': 4.0.18(vite@7.3.1(@types/node@25.2.3)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.46.0)(yaml@2.8.2))
+      '@vitest/mocker': 4.0.18(vite@7.3.1(@types/node@18.19.130)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.46.0)(yaml@2.8.2))
       '@vitest/pretty-format': 4.0.18
       '@vitest/runner': 4.0.18
       '@vitest/snapshot': 4.0.18

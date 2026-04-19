@@ -1,3 +1,6 @@
 packages:
-  - 'packages/*'
-  - 'website'
+  - packages/*
+  - website
+
+overrides:
+  '@expressive/typescript-plugin-jsx': link:../jsx/packages/typescript-plugin-jsx
