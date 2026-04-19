@@ -52,10 +52,12 @@ declare namespace State {
   ) => Promise<void> | (() => void) | Args<T> | Assign<T> | void;
 
   /** Object overlay to override values and methods on a state. */
-  type Assign<T> = Record<string, unknown> & {
-    [K in Field<T>]?: T[K] extends (...args: infer A) => infer R
-      ? (this: T, ...args: A) => R
-      : T[K];
+  type Assign<T> = {
+    [K in Field<T> | (string & {})]?: K extends Field<T>
+      ? T[K] extends (...args: infer A) => infer R
+        ? (this: T, ...args: A) => R
+        : T[K]
+      : unknown;
   };
 
   /** Subset of `keyof T` which are not methods or defined by base State U. **/
