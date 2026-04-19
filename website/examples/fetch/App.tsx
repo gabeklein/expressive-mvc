@@ -1,53 +1,35 @@
-import State from '@expressive/react';
+import { Query } from './Query';
 
-// Here we want just an MVP which fetches a name from `randomuser.me`.
-// We don't need anything fancy, so let instead of installing a library,
-// we'll just do it ourselves. We'll use a State to track the state of
-// the request and then render the result of the request to the page.
+// Extending Query gives us all the request bookkeeping for free.
+// We just supply `request()` - the actual endpoint-specific work -
+// and inherit waiting/error tracking, run, and reset.
 
-class Query extends State {
-  // All we need to track are response, error and whether request is pending.
-
-  response?: string = undefined;
-  error?: Error = undefined;
-  waiting = false;
-
-  // To activate the flow, just call an async method as normal.
-  // Assignments to `this` will refresh a component at the appropriate times.
-
-  async run() {
-    this.waiting = true;
-
-    try {
-      const res = await fetch('https://randomuser.me/api?nat=us&results=1');
-      const data = await res.json();
-      const { first, last } = data.results[0].name;
-
-      // let's pretend it took a second or two
-      await new Promise((res) => setTimeout(res, 500));
-
-      this.response = `Hello ${first} ${last}`;
-    } catch (error) {
-      if (error instanceof Error) this.error = error;
-    } finally {
-      this.waiting = false;
-    }
+class HelloQuery extends Query {
+  async request() {
+    const res = await fetch('https://randomuser.me/api?nat=us&results=1');
+    const { first, last } = (await res.json()).results[0].name;
+    return `Hello ${first} ${last}`;
   }
 }
 
+// `.use()` creates an instance scoped to App and subscribes us to
+// anything we destructure off it. The container/heading wrap whichever
+// branch the inner `body()` returns - so the heading stays put no
+// matter which state we're in.
 const App = () => {
-  const { error, response, waiting, run } = Query.use();
+  const { response, error, waiting, reset, run } = HelloQuery.use();
 
-  if (response) return <p>Server said: {response}</p>;
-
-  if (error) return <p>Error was: {error.message}</p>;
-
-  if (waiting) return <p>Sent! Waiting on response...</p>;
+  function body() {
+    if (response) return <p>Server said: {response} <button onClick={reset}>Reset</button></p>;
+    else if (error) return <p>Error: {error.message} <button onClick={reset}>Reset</button></p>;
+    else if (waiting) return <p>Sent! Waiting on response...</p>;
+    else return <button onClick={run}>Say hello to server!</button>;
+  }
 
   return (
     <div className="container">
       <h1>Fetch Example</h1>
-      <button onClick={run}>Say hello to server!</button>
+      {body()}
     </div>
   );
 };
