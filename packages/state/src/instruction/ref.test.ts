@@ -4,6 +4,16 @@ import { ref } from './ref';
 import { set } from './set';
 
 describe('property', () => {
+  it('will not be enumerable', () => {
+    class Test extends State {
+      value = ref<string>();
+    }
+
+    const test = Test.new();
+
+    expect(Object.keys(test)).not.toContain('value');
+  });
+
   it('will contain value from ref-object', async () => {
     class Subject extends State {
       ref = ref<string>();
@@ -273,6 +283,31 @@ describe('proxy', () => {
     for (const key in test) expect(test.refs).toHaveProperty(key);
   });
 
+  it('will not be enumerable', () => {
+    class Test extends State {
+      foo = 'foo';
+      refs = ref(this);
+    }
+
+    const test = Test.new();
+
+    expect(Object.keys(test)).not.toContain('refs');
+    expect(Object.keys(test)).toContain('foo');
+  });
+
+  it('will not contain other refs', () => {
+    class Test extends State {
+      foo = 'foo';
+      refs = ref(this);
+      other = ref(this);
+    }
+
+    const test = Test.new();
+
+    expect(test.refs).not.toHaveProperty('refs');
+    expect(test.refs).not.toHaveProperty('other');
+  });
+
   it('will match values via current', () => {
     const test = Subject.new();
     const { refs } = test;
@@ -446,7 +481,9 @@ describe('mapped', () => {
   });
 
   it('will bind this to target state', () => {
-    const spy = vi.fn(function (this: any) { return this; });
+    const spy = vi.fn(function (this: any) {
+      return this;
+    });
 
     class Test extends State {
       foo = 'foo';

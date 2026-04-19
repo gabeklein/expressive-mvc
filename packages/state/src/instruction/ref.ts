@@ -53,6 +53,8 @@ declare namespace ref {
  *
  * *Properties are simultaneously a ref-function and ref-object, use as needed.*
  *
+ * Non-enumerable; excluded from snapshots and `ref(this)`.
+ *
  * @param state - Source state from which to reference values.
  */
 function ref<T extends State>(state: T): ref.Proxy<T>;
@@ -61,6 +63,8 @@ function ref<T extends State>(state: T): ref.Proxy<T>;
  * Creates an object with values based on managed values.
  * Each property will invoke map function on first access supply
  * the its return value going forward.
+ *
+ * Non-enumerable; excluded from snapshots and `ref(this)`.
  *
  * @param state - Source state from which to reference values.
  * @param map - Function producing the placeholder value for any given property.
@@ -74,6 +78,8 @@ function ref<T extends State, R>(
  * Creates a ref-compatible property.
  * Callable to set the value, with ref-object properties for reading and subscribing.
  *
+ * Non-enumerable; excluded from snapshots and `ref(this)`.
+ *
  * @param callback - Optional callback to synchronously fire when reference is first set or does update.
  */
 function ref<T>(callback?: ref.Callback<T>): ref.Object<T>;
@@ -81,6 +87,8 @@ function ref<T>(callback?: ref.Callback<T>): ref.Object<T>;
 /**
  * Creates a ref-compatible property.
  * Callable to set the value, with ref-object properties for reading and subscribing.
+ *
+ * Non-enumerable; excluded from snapshots and `ref(this)`.
  *
  * @param callback - Optional callback to synchronously fire when reference is first set or does update.
  * @param ignoreNull - Default `true`. If `false`, will still callback with `null`.
@@ -142,7 +150,8 @@ function proxy(
     });
 
     return {
-      get: () => value
+      get: () => value,
+      enumerable: false
     };
   });
 }
@@ -185,7 +194,8 @@ function property<T>(
     });
 
     return {
-      get: () => set
+      get: () => set,
+      enumerable: false
     };
   });
 }
