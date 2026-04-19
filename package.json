@@ -24,5 +24,8 @@
     "typescript": "^5.9.3",
     "vitest": "^4.0.18"
   },
-  "packageManager": "pnpm@10.28.2"
+  "packageManager": "pnpm@10.28.2",
+  "dependencies": {
+    "@expressive/typescript-plugin-jsx": "link:../jsx/packages/typescript-plugin-jsx"
+  }
 }
