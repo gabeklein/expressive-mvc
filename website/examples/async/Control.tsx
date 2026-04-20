@@ -1,16 +1,13 @@
 import State from '@expressive/react';
 
 export class Control extends State {
-  // Properties both set starting values and track updates.
-  // Anything with a reference to instance has source of truth
-  // and an ability to dispatch updates - just assign values.
+  // Properties set starting values; assignments dispatch updates.
   agent = 'Bond';
   remaining = 30;
   dead?: boolean = undefined;
 
-  // new() runs once when the instance becomes ready.
-  // The function it returns runs on teardown - good for
-  // cleaning up side effects like timers or subscriptions.
+  // new() runs once when ready. The returned function runs on
+  // teardown - handy for clearing timers or subscriptions.
   protected new() {
     const timer = setInterval(() => {
       if (--this.remaining > 0) return;
@@ -22,8 +19,7 @@ export class Control extends State {
     return () => clearInterval(timer);
   }
 
-  // Simple async methods can control state.
-  // No thunks or actions necessary - just code.
+  // Async methods assign to `this` - no thunks needed.
   async getNewAgent() {
     const res = await fetch('https://randomuser.me/api?nat=gb&results=1');
     const data = await res.json();

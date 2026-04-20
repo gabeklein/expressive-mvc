@@ -12,10 +12,8 @@ class HelloQuery extends Query {
   }
 }
 
-// `.use()` creates an instance scoped to App and subscribes us to
-// anything we destructure off it. The container/heading wrap whichever
-// branch the inner `body()` returns - so the heading stays put no
-// matter which state we're in.
+// `.use()` creates an instance scoped to App.
+// Destructuring subscribes us to those fields.
 const App = () => {
   const { response, error, waiting, reset, run } = HelloQuery.use();
 

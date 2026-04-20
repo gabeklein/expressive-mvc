@@ -1,23 +1,15 @@
 import State from '@expressive/react';
 
-// When we create a State, we're defining a set of values to be tracked.
-// Recommend any State specific to one component is called 'Control'.
-
+// A State tracks values; `Control` is convention for component-scoped state.
 class Control extends State {
-  // Here only one property needed, `current` whose initial value will be 1.
-  // All properties are tracked by a controller, so any changes to a value
-  // used by a component, will intelligently re-render that component.
   current = 1;
 
-  // For convenience, we define two methods to increment and decrement the
-  // value of `current`. Methods can be used by component to decouple logic.
   decrement = () => this.current--;
   increment = () => this.current++;
 }
 
 const App = () => {
-  // Control.use() is a hook to create, memoize and observe Control.
-  // Destructured values tell the component what to refresh for.
+  // `.use()` creates and subscribes. Destructured fields trigger re-renders.
   const { is, current, increment, decrement } = Control.use();
 
   return (
