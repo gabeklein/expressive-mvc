@@ -28,11 +28,26 @@ export default function ExampleRoute() {
     margin: 0, auto;
   }
 
-  nav: {
+  loading: {
+    color: $colorFdMutedForeground;
+  }
+
+  return (
+    <HomeLayout {...layoutOptions}>
+      <div _content>
+        <SelectExample />
+        <Suspense fallback={<div _loading>Loading sandbox...</div>}>
+          <Sandbox name={name} />
+        </Suspense>
+      </div>
+    </HomeLayout>
+  );
+}
+
+function SelectExample(){
     display: flex;
     flexWrap: wrap;
     gap: 8;
-  }
 
   NavLink: {
     padding: 6, 12;
@@ -53,19 +68,8 @@ export default function ExampleRoute() {
     }
   }
 
-  sandbox: {
-    display: flex;
-    flexDirection: column;
-    height: `calc(100vh - 12rem)`;
-  }
-
-  fallback: {
-    color: $colorFdMutedForeground;
-  }
-
   return (
-    <HomeLayout {...layoutOptions}>
-      <div _content>
+
         <nav>
           {NAMES.map((n) => (
             <NavLink
@@ -76,12 +80,5 @@ export default function ExampleRoute() {
             </NavLink>
           ))}
         </nav>
-        <div _sandbox>
-          <Suspense fallback={<div _fallback>Loading sandbox...</div>}>
-            <Sandbox name={name} />
-          </Suspense>
-        </div>
-      </div>
-    </HomeLayout>
-  );
+  )
 }

@@ -1,33 +1,28 @@
 import {
+  Sandpack,
   SandpackCodeEditor,
-  SandpackLayout,
-  SandpackPreview,
-  SandpackProvider,
   useSandpack
 } from '@codesandbox/sandpack-react';
 import { useTheme } from 'next-themes';
 import { examples, base } from 'virtual:examples';
+import { Panel } from './layout/Layout';
 
 function Sandbox({ name }: { name: string }) {
-  const { theme } = useTheme();
+  const theme = useTheme().theme as "dark" | "light";
 
-  height: '100%';
-  $spLayoutHeight: "100%";
+  Sandpack: {
+    height: 600;
+  }
 
   return (
-    <SandpackProvider
-      key={name}
-      theme={theme === 'dark' ? 'dark' : 'light'}
+    <Sandpack
+      theme={theme}
       template="react-ts"
       files={getFiles(name)}
       customSetup={{
         dependencies: { '@expressive/react': 'latest' }
-      }}>
-      <SandpackLayout>
-        <Editor />
-        <SandpackPreview />
-      </SandpackLayout> 
-    </SandpackProvider>
+      }}
+    />
   );
 }
 
