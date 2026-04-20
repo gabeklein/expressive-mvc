@@ -1,4 +1,5 @@
 import {
+  Sandpack,
   SandpackCodeEditor,
   SandpackLayout,
   SandpackPreview,
@@ -7,6 +8,7 @@ import {
 } from '@codesandbox/sandpack-react';
 import { useTheme } from 'next-themes';
 import { examples, base } from 'virtual:examples';
+import { Panel } from './layout/Layout';
 
 export default function Sandbox({ name }: { name: string }) {
   const { theme } = useTheme();
