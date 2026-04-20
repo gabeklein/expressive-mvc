@@ -1,9 +1,5 @@
 import State, { Component, get, Provider } from '@expressive/react';
 
-// Provider makes one State instance available to descendants.
-// Each consumer subscribes only to the properties it actually reads -
-// click "Foo" and only Bar refreshes (it's the one displaying foo).
-
 class FooBar extends State {
   foo = 0;
   bar = 0;
