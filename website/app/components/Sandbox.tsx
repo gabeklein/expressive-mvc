@@ -5,29 +5,16 @@ import {
   SandpackProvider,
   useSandpack
 } from '@codesandbox/sandpack-react';
-import State from '@expressive/react';
+import { useTheme } from 'next-themes';
 import { examples, base } from 'virtual:examples';
 
-const DARK = typeof matchMedia !== 'undefined' ? matchMedia('(prefers-color-scheme: dark)') : null;
-
-class Theme extends State {
-  dark = DARK?.matches ?? false;
-
-  protected new() {
-    if (!DARK) return;
-    const onChange = () => (this.dark = DARK.matches);
-    DARK.addEventListener('change', onChange);
-    return () => DARK.removeEventListener('change', onChange);
-  }
-}
-
 export default function Sandbox({ name }: { name: string }) {
-  const { dark } = Theme.use();
+  const { theme } = useTheme();
 
   return (
     <SandpackProvider
       key={name}
-      theme={dark ? 'dark' : 'light'}
+      theme={theme === "dark" ? 'dark' : 'light'}
       template="react-ts"
       files={getFiles(name)}
       customSetup={{
