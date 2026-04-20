@@ -68,9 +68,15 @@ function getFiles(name: string) {
   for (const [path, code] of Object.entries(base))
     files[path] = { hidden: true, code };
 
-  for (const [path, code] of Object.entries(source)) {
+  // Insertion order drives Sandpack's tab order; push CSS to the end.
+  const sorted = Object.entries(source).sort(
+    ([a], [b]) => Number(a.endsWith('.css')) - Number(b.endsWith('.css'))
+  );
+
+  for (const [path, code] of sorted) {
     if (path === '/index.css') continue;
-    files[path] = code;
+    // /index.tsx is generated boilerplate from the sandbox plugin.
+    files[path] = path === '/index.tsx' ? { hidden: true, code } : code;
   }
 
   return files;

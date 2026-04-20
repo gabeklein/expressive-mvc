@@ -127,3 +127,8 @@ hr {
   border-top: 1px solid var(--border);
   margin: 1.5em 0;
 }
+
+.container {
+  max-width: 36rem;
+  margin: 0 auto;
+}
