@@ -20,3 +20,9 @@ figure[data-rehype-pretty-code-figure] pre code,
   white-space: pre-wrap !important;
   word-break: break-word !important;
 }
+
+:root {
+  --purple: #7864f7;
+  --accent: var(--purple);
+  --accent-light: #7864f799;
+}
