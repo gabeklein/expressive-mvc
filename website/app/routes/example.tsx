@@ -28,11 +28,34 @@ export default function ExampleRoute() {
     margin: 0, auto;
   }
 
-  nav: {
+  sandbox: {
     display: flex;
-    flexWrap: wrap;
-    gap: 8;
+    flexDirection: column;
+    height: `calc(100vh - 12rem)`;
   }
+
+  loading: {
+    color: $colorFdMutedForeground;
+  }
+
+  return (
+    <HomeLayout {...layoutOptions}>
+      <div _content>
+        <Navigation />
+        <div _sandbox>
+          <Suspense fallback={<div _loading>Loading sandbox...</div>}>
+            <Sandbox name={name} />
+          </Suspense>
+        </div>
+      </div>
+    </HomeLayout>
+  );
+}
+
+function Navigation() {
+  display: flex;
+  flexWrap: wrap;
+  gap: 8;
 
   NavLink: {
     padding: 6, 12;
@@ -41,47 +64,26 @@ export default function ExampleRoute() {
     fontSize: 0.875;
     textDecoration: none;
     color: inherit;
+    userSelect: none;
 
     $hover: {
       borderColor: $colorFdPrimary;
     }
 
-    $active: {
+    if("[aria-current='page']") {
       background: $colorFdPrimary;
       color: $colorFdPrimaryForeground;
       borderColor: $colorFdPrimary;
     }
   }
 
-  sandbox: {
-    display: flex;
-    flexDirection: column;
-    height: `calc(100vh - 12rem)`;
-  }
-
-  fallback: {
-    color: $colorFdMutedForeground;
-  }
-
   return (
-    <HomeLayout {...layoutOptions}>
-      <div _content>
-        <nav>
-          {NAMES.map((n) => (
-            <NavLink
-              key={n}
-              to={`/examples/${n}`}
-              className={({ isActive }) => isActive ? 'active' : ''}>
-              {n}
-            </NavLink>
-          ))}
-        </nav>
-        <div _sandbox>
-          <Suspense fallback={<div _fallback>Loading sandbox...</div>}>
-            <Sandbox name={name} />
-          </Suspense>
-        </div>
-      </div>
-    </HomeLayout>
-  );
+    <nav>
+      {NAMES.map((name) => (
+        <NavLink key={name} to={`/examples/${name}`}>
+          {name}
+        </NavLink>
+      ))}
+    </nav>
+  )
 }
