@@ -8,7 +8,7 @@ class FooBar extends State {
 // A Component is a renderable State - it both reads upstream
 // context and provides itself to descendants.
 class BarBaz extends Component {
-  // The `get` **instruction** lets in-context State/Components
+  // The `get` instruction lets in-context State/Components
   // find each other for direct access to state and methods.
   foobar = get(FooBar);
 
@@ -21,7 +21,7 @@ export default function App() {
   return (
     // Provider adds any State to context for descendants to access.
     <Provider for={FooBar}>
-      {/* Components directly add themselves to context. */}
+      {/* Components add themselves to context. */}
       <BarBaz>
         <Foo />
         <Bar />

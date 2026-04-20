@@ -8,8 +8,7 @@ export function Preview() {
   const values = {} as Record<string, any>;
 
   for (const key in form)
-    // By directly accessing properties, we subscribe to changes.
-    // Now, values will keep up with values set by inputs.
+    // Accessing properties subscribes to changes.
     values[key] = (form as any)[key];
 
   return (

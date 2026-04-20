@@ -4,16 +4,14 @@
 import { Form } from "./Form";
 import { Preview } from "./Preview";
 
-// Here, "extends Form" supplies the contract and logic.
-// We can focus only on the logic and values we care about.
-// And just like that, we have a self contained form!
+// Here "extends Form" supplies the contract and logic.
+// We can focus on business logic and the look.
 class MyForm extends Form {
   firstname = '';
   lastname = '';
   email = '';
 
   // We can toss in a submit method to handle button.
-  // All form-data is just properties on this class.
   // Method names and behavior are fully up to you!
   submit(){
     if(!this.firstname || !this.lastname || !this.email){
@@ -24,8 +22,8 @@ class MyForm extends Form {
     alert(`Submitting ${this.firstname} ${this.lastname} with email ${this.email}`);
   }
 
-  // We add a render method because this form is simple and self-contained.
-  // If we didn't, children could still define the content, having context.
+  // Optional: render makes this self-contained.
+  // Without it, children render with this form in context.
   render(){
     const { input, submit } = this;
 
@@ -42,4 +40,5 @@ class MyForm extends Form {
   }
 }
 
+// And just like that, we have a self-contained form!
 export default MyForm;
