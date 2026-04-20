@@ -1,0 +1,88 @@
+import type { MouseEventHandler } from "react";
+import { Control, type HandleProps } from "./Control";
+
+export class Panel extends Control {
+  Handle = Handle;
+
+  render(){
+    const { output, container, parent } = this;
+
+    grid: {
+      display: grid;
+    }
+
+    return (
+      <div _grid ref={container}>
+        {output}
+        {!parent && <Overlay />}
+      </div>
+    );
+  }
+}
+
+function Overlay() {
+  return Control.get(({ dragging }) => {
+    if (!dragging) return null;
+
+    overlay: {
+      fixed: fill;
+      zIndex: "9999";
+    }
+
+    return <div _overlay style={{ cursor: dragging }} />;
+  });
+}
+
+function Handle(props: HandleProps) {
+  const { grab, pull, push, vertical, width } = props;
+
+  position: relative;
+  cursor: "row-resize";
+
+  bar: {
+    absolute: 3, 10;
+    radius: round;
+    transition: "background 0.1s ease-out";
+    background: 0xFFFFFF03;
+
+    $hover: {
+      background: $accentLight;
+    } 
+  }
+
+  if (vertical) {
+    cursor: "col-resize";
+    bar: {
+      absolute: 10, 3;
+    }
+  }
+
+  return (
+    <div onMouseDown={grab}>
+      <div _bar />
+      {pull && <Corner onMouseDown={pull} style={{ left: -(width || 0), top: 0 }} />}
+      {push && <Corner onMouseDown={push} style={{ right: -(width || 0), bottom: 0 }} />}
+    </div>
+  );
+}
+
+interface CornerProps {
+  onMouseDown?: MouseEventHandler;
+  style?: React.CSSProperties;
+}
+
+const Corner = (props: CornerProps) => {
+  position: absolute;
+  cursor: move;
+  radius: round;
+  size: 9;
+  borderColor: transparent;
+  borderStyle: solid;
+  zIndex: 10;
+
+  $hover: {
+    borderColor: $accentLight;
+  }
+
+  return <div {...props} />;
+};

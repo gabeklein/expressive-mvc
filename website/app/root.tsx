@@ -11,6 +11,8 @@ import type { Route } from './+types/root';
 import './app.css';
 import SearchDialog from '@/components/Search';
 import NotFound from './routes/not-found';
+import { Theme } from './components/Theme';
+import { Provider } from '@expressive/react';
 
 export const links: Route.LinksFunction = () => [
   { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
@@ -41,7 +43,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <Links />
       </head>
       <body>
-        <RootProvider search={{ SearchDialog }}>{children}</RootProvider>
+        <RootProvider search={{ SearchDialog }}>
+          <Provider for={Theme}>
+            {children}
+          </Provider>
+        </RootProvider>
         <ScrollRestoration />
         <Scripts />
       </body>
