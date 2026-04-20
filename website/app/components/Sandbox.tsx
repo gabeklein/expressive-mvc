@@ -29,8 +29,11 @@ export default function Sandbox({ name }: { name: string }) {
 function Layout() {
   const { dispatch } = useSandpack();
 
+  $spLayoutHeight: '100%';
+  height: '100%';
+
   return (
-    <SandpackLayout style={{ height: '100%', ['--sp-layout-height' as any]: '100%' }}>
+    <SandpackLayout>
       <SandpackCodeEditor
         extensionsKeymap={[
           {
