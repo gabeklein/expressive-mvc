@@ -8,44 +8,48 @@ import {
 import { useTheme } from 'next-themes';
 import { examples, base } from 'virtual:examples';
 
-export default function Sandbox({ name }: { name: string }) {
+function Sandbox({ name }: { name: string }) {
   const { theme } = useTheme();
+
+  height: '100%';
+  $spLayoutHeight: "100%";
 
   return (
     <SandpackProvider
       key={name}
-      theme={theme === "dark" ? 'dark' : 'light'}
+      theme={theme === 'dark' ? 'dark' : 'light'}
       template="react-ts"
       files={getFiles(name)}
       customSetup={{
         dependencies: { '@expressive/react': 'latest' }
-      }}
-      style={{ height: '100%' }}>
-      <Layout />
+      }}>
+      <SandpackLayout>
+        <Editor />
+        <SandpackPreview />
+      </SandpackLayout> 
     </SandpackProvider>
   );
 }
 
-function Layout() {
+export default Sandbox;
+
+function Editor(){
   const { dispatch } = useSandpack();
 
   return (
-    <SandpackLayout style={{ height: '100%', ['--sp-layout-height' as any]: '100%' }}>
-      <SandpackCodeEditor
-        extensionsKeymap={[
-          {
-            key: 'Mod-s',
-            preventDefault: true,
-            run() {
-              dispatch({ type: 'refresh' });
-              return true;
-            }
+    <SandpackCodeEditor
+      extensionsKeymap={[
+        {
+          key: 'Mod-s',
+          preventDefault: true,
+          run() {
+            dispatch({ type: 'refresh' });
+            return true;
           }
-        ]}
-      />
-      <SandpackPreview />
-    </SandpackLayout>
-  );
+        }
+      ]}
+    />
+  )
 }
 
 function getFiles(name: string) {
