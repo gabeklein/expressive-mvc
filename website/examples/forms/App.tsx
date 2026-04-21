@@ -1,18 +1,14 @@
-// Check out form component for plumbing.
-// We keep it separate because it's perfectly reusable.
-// Might like more than one form so nice to have a base class.
+// Form is kept separate as a reusable base class.
 import { Form } from "./Form";
 import { Preview } from "./Preview";
 
-// Here "extends Form" supplies the contract and logic.
-// We can focus on business logic and the look.
+// Extending Form inherits the plumbing; can focus on values and layout.
 class MyForm extends Form {
   firstname = '';
   lastname = '';
   email = '';
 
-  // We can toss in a submit method to handle button.
-  // Method names and behavior are fully up to you!
+  // Methods and behavior are entirely up to you.
   submit(){
     if(!this.firstname || !this.lastname || !this.email){
       alert('Please fill out all fields');
@@ -23,7 +19,7 @@ class MyForm extends Form {
   }
 
   // Optional: render makes this self-contained.
-  // Without it, children render with this form in context.
+  // Without it, children render in context of the form.
   render(){
     const { input, submit } = this;
 
@@ -40,5 +36,5 @@ class MyForm extends Form {
   }
 }
 
-// And just like that, we have a self-contained form!
+// And just like that, we have a form component!
 export default MyForm;

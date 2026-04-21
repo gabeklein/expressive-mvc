@@ -3,10 +3,9 @@ import { Component, ref } from '@expressive/react';
 // Base class: binds inputs and provides context to children.
 export class Form extends Component {
 
-  // The `ref` instruction is a way to map over the known
-  // keys of `this` instance and run a factory for each.
-  // Whatever we return is assigned to `this.input[key]` so we
-  // can make a ref-function to two-way bind input elements.
+  // Use `ref` instruction to map over known keys of `this`,
+  // running a factory per key. Returns land at `this.input[key]`
+  // - here, ref-functions that two-way bind each input.
   input = ref(this, (key) => {
     let reset: (() => void) | undefined;
 
@@ -17,8 +16,8 @@ export class Form extends Component {
     }
   })
   
-  // Separate method so subclasses can override. Binds each input
-  // to the property matching its key; sets name attribute as well.
+  // Bind input to its matching property; set name from key.
+  // Separate method so subclasses could override.
   public bind(input: HTMLInputElement, key: keyof this) {
     if (!(key in this) || typeof key !== "string")
       throw new Error(`${this} has no property "${String(key)}"`);
