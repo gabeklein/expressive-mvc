@@ -385,13 +385,9 @@ abstract class State implements Observable {
     if (typeof arg2 == 'function')
       return listener(self, arg2 as State.OnEvent<this>, arg1 as State.Signal);
 
-    if (arg1 && typeof arg1 == 'object') {
-      assign(self, arg1, arg2 === true);
-    } else if (arg2) {
-      apply(self, arg1 as string, arg2);
-    } else {
-      event(self, arg1);
-    }
+    if (arg1 && typeof arg1 == 'object') assign(self, arg1, arg2 === true);
+    else if (arg2) apply(self, arg1 as string, arg2);
+    else event(self, arg1);
 
     return pending(self) as State.Updated<this>;
   }
