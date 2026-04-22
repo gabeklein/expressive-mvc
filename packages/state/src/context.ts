@@ -66,15 +66,14 @@ class Context {
   ): () => void;
 
   private register(type: State.Extends, value: any, asConsumer?: boolean) {
-    const map = asConsumer ? this.consume : this.provide;
-    let set = map.get(type) as Set<any>;
-    if (!set) map.set(type, (set = new Set()));
+    const mode = asConsumer ? "consume" : "provide";
+    let set = this[mode].get(type) as Set<any>;
+    if (!set) this[mode].set(type, (set = new Set()));
     set.add(value);
 
-    for (let ctx = this.parent; ctx; ctx = ctx!.parent) {
-      const map = asConsumer ? ctx.consume : ctx.provide;
-      if (map.has(type)) break;
-      map.set(type, null);
+    for (let ctx = this.parent; ctx; ctx = ctx.parent) {
+      if (ctx[mode].has(type)) break;
+      ctx[mode].set(type, null);
     }
 
     return () => set.delete(value);
@@ -110,12 +109,12 @@ class Context {
 
       for (const [state, explicit] of entries) {
         if (found === state) continue;
-        if (!found || explicit > priority) {
+        if (!found || (explicit && !priority)) {
           found = state as T;
           priority = explicit;
           continue;
         }
-        if (!priority && !explicit) {
+        if (!priority) {
           found = null;
           break;
         }
