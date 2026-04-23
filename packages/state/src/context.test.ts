@@ -907,8 +907,8 @@ describe('ambiguous implicit entries', () => {
     const ctx = parent.push();
 
     // Add two implicit children of same base type
-    ctx.add(ChildA.new(), true);
-    ctx.add(ChildB.new(), true);
+    ctx.add(ChildA.new());
+    ctx.add(ChildB.new());
 
     const cb = vi.fn();
 
@@ -928,8 +928,8 @@ describe('ambiguous implicit entries', () => {
     const b = Base.new();
 
     // Add two explicit entries of the same type
-    ctx.add(a);
-    ctx.add(b);
+    ctx.add(a, true);
+    ctx.add(b, true);
 
     const cb = vi.fn();
 
@@ -946,8 +946,8 @@ describe('ambiguous implicit entries', () => {
     const implicit = Base.new();
 
     // Add one explicit, one implicit
-    ctx.add(explicit);
-    ctx.add(implicit, true);
+    ctx.add(explicit, true);
+    ctx.add(implicit);
 
     const cb = vi.fn();
     ctx.get(Base, cb);
@@ -964,8 +964,8 @@ describe('ambiguous implicit entries', () => {
     const a = Base.new();
 
     // Add the same instance twice (e.g. via inheritance)
-    ctx.add(a);
-    ctx.add(a);
+    ctx.add(a, true);
+    ctx.add(a, true);
 
     const cb = vi.fn();
     ctx.get(Base, cb);

@@ -635,7 +635,7 @@ function child(state: State) {
 
     if (!(value instanceof State)) return;
 
-    const remove = ctx.add(value, true);
+    const remove = ctx.add(value);
 
     if (parent(value) === undefined) {
       parent(value, state);

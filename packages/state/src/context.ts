@@ -184,7 +184,7 @@ class Context {
         );
 
       const state = State.is(V) ? new (V as State.Type)() : V.is;
-      const remove = this.add(state, false);
+      const remove = this.add(state, true);
 
       init.add(() => {
         event(state);
@@ -204,7 +204,7 @@ class Context {
     return this;
   }
 
-  add(I: State, implicit?: boolean) {
+  add(I: State, explicit = false) {
     const { cleanup } = this;
 
     const TT: State.Extends[] = [];
@@ -235,7 +235,7 @@ class Context {
       return found;
     }
 
-    for (const T of TT) onDone.add(this.register(T, [I, !implicit]));
+    for (const T of TT) onDone.add(this.register(T, [I, explicit]));
 
     queue(this, true);
     for (let ctx = this.parent; ctx; ctx = ctx.parent) queue(ctx, true);
