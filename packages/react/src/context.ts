@@ -14,12 +14,12 @@ const Layers = createContext(new Context());
 const _get = Context.get;
 
 Context.get = (state?: State) => {
-  if (state) return _get(state);
-  try {
-    return useContext(Layers);
-  } catch {
-    return Context.root;
-  }
+  if (!state)
+    try {
+      return useContext(Layers);
+    } catch {}
+
+  return _get(state);
 };
 
 declare namespace Consumer {
