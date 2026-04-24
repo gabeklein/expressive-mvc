@@ -12,24 +12,38 @@ class HelloQuery extends Query {
   }
 }
 
-// `.use()` creates an instance scoped to App.
-// Destructuring subscribes us to those fields.
-const App = () => {
+const Example = () => {
+  // `.use()` creates an instance scoped to App.
+  // Destructuring subscribes us to those fields.
   const { response, error, waiting, reset, run } = HelloQuery.use();
 
-  function body() {
-    if (response) return <p>Server said: {response} <button onClick={reset}>Reset</button></p>;
-    else if (error) return <p>Error: {error.message} <button onClick={reset}>Reset</button></p>;
-    else if (waiting) return <p>Sent! Waiting on response...</p>;
-    else return <button onClick={run}>Say hello to server!</button>;
-  }
+  if (response) 
+    return (
+      <p>
+        Server said: {response} 
+        <button onClick={reset}>Reset</button>
+      </p>
+    )
+
+  if (error) 
+    return (
+      <p>
+        Error: {error.message} 
+        <button onClick={reset}>Reset</button>
+      </p>
+    )
+
+  if (waiting) 
+    return <p>Sent! Waiting on response...</p>
 
   return (
-    <div className="container">
-      <h1>Fetch Example</h1>
-      {body()}
-    </div>
-  );
+    <button onClick={run}>Say hello to server!</button>
+  )
 };
 
-export default App;
+export default () => (
+  <div className="container">
+    <h1>Fetch Example</h1>
+    <Example />
+  </div>
+);
