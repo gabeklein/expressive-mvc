@@ -183,18 +183,11 @@ All events batched and flushed via `queueMicrotask()`.
 
 ## Context
 
-Hierarchical state lookup - states find each other through shared context.
+Every active State has a "home context" that determines where its `state.get(Type)` lookups originate. `State.new()` registers to `Context.root` (the global singleton) when not already claimed; `new Context(StateClass)` registers to particular context. Home is locked once assigned. Largely advanced/internal.
 
-```ts
-import { Context } from '@expressive/state';
+See [context.md](context.md) for the full Context API, root singleton semantics, and the `new State()` escape hatch for pre-init context placement.
 
-const ctx = new Context({ AppState, UserState });
-const app = ctx.get(AppState);
-const child = ctx.push({ ChildState });
-child.pop(); // destroy child context
-```
-
-Primarily used via `get()` instruction (see ../instructions/get.md) and React `Provider` (see ../react/react.md).
+Primarily consumed via the [`get` instruction](../instructions/get.md) and React [`Provider`](../react/react.md).
 
 ## String Representation
 

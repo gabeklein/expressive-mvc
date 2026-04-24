@@ -1,15 +1,8 @@
-import { State, Context } from '@expressive/state';
-import {
-  createContext,
-  createElement,
-  ReactNode,
-  Suspense,
-  useContext,
-  useRef
-} from 'react';
-import { useMount } from './state';
+import { State, Context } from "@expressive/state";
+import { createContext, createElement, ReactNode, Suspense, useContext, useRef } from "react";
+import { useMount } from "./state";
 
-const Layers = createContext(new Context());
+const Layers = createContext(Context.root);
 
 const _get = Context.get;
 

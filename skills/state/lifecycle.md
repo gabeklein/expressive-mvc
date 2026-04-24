@@ -2,14 +2,14 @@
 
 ## Lifecycle Phases
 
-| Phase        | Trigger             | What Happens                                                     | State Ready? |
-| ------------ | ------------------- | ---------------------------------------------------------------- | :----------: |
-| Construction | `new MyState()`     | Listeners registered, nothing activated                          |      NO      |
-| Activation   | `State.new()`       | Properties managed, constructor args executed, `new()` hook runs |     YES      |
-| Operation    | Property assignment | Batched updates via `queueMicrotask()`, effects re-run           |     YES      |
-| Destruction  | `state.set(null)`   | Children destroyed first, listeners called, state frozen         |  DESTROYED   |
+| Phase        | Trigger             | What Happens                                                                            | State Ready? |
+| ------------ | ------------------- | --------------------------------------------------------------------------------------- | :----------: |
+| Construction | `new MyState()`     | Listeners registered, nothing activated. Home context still claimable.                  |      NO      |
+| Activation   | `State.new()`       | Properties managed, constructor args run, `new()` hook runs, home context locked        |     YES      |
+| Operation    | Property assignment | Batched updates via `queueMicrotask()`, effects re-run                                  |     YES      |
+| Destruction  | `state.set(null)`   | Children destroyed first, listeners called, state frozen                                |  DESTROYED   |
 
-> **Always use `State.new()` not `new State()`.** The `new` keyword alone does not activate - properties aren't managed until the ready event fires.
+> **Always use `State.new()` not `new State()`** unless you need to defer activation. `new State()` constructs without firing the ready event - useful as an escape hatch when you want to wrap an instance in a `new Context(state)` *before* it activates (otherwise activation locks the home to `Context.root`). See [context.md](context.md).
 
 ## The `new()` Hook
 

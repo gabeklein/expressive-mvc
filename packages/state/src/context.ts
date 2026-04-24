@@ -22,7 +22,7 @@ class Context {
 
   /** Get the context for a State. Adapters may override to provide framework context. */
   static get(state?: State): Context {
-    return (state && LOOKUP.get(state.is)) || Context.root;
+    return state && LOOKUP.get(state.is) || Context.root;
   }
 
   public id = uid();
@@ -205,19 +205,29 @@ class Context {
   }
 
   add(I: State, explicit = false) {
-    const { cleanup } = this;
-
+    const { cleanup, provide } = this;
+    const root = this === Context.root;
     const TT: State.Extends[] = [];
+
+    function conflict(T: State.Extends) {
+      const entries = provide.get(T);
+      if (entries)
+        for (const entry of entries)
+          if (!entry[1] && entry[0] !== I)
+            return entries.delete(entry);
+    }
 
     for (
       let T = I.constructor as State.Extends;
       T !== State;
       T = Object.getPrototypeOf(T)
     )
-      TT.push(T);
+      if (explicit || !root || !conflict(T)) TT.push(T);
 
     const expects = new Map<Expect, () => void>();
     const onDone = new Set<() => void>();
+
+    for (const T of TT) onDone.add(this.register(T, [I, explicit]));
 
     function queue(ctx: Context, downstream: boolean) {
       let found = false;
@@ -235,10 +245,7 @@ class Context {
       return found;
     }
 
-    for (const T of TT) onDone.add(this.register(T, [I, explicit]));
-
-    queue(this, true);
-    for (let ctx = this.parent; ctx; ctx = ctx.parent) queue(ctx, true);
+    for (let ctx: Context | undefined = this; ctx; ctx = ctx.parent) queue(ctx, true);
     this.traverse((ctx) => queue(ctx, false));
 
     if (!LOOKUP.has(I)) LOOKUP.set(I, this);

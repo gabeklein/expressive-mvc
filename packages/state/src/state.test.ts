@@ -653,7 +653,7 @@ describe('get method', () => {
     });
 
     it('will return undefined if not found', () => {
-      const foo = Foo.new();
+      const foo = new Foo();
 
       new Context(foo);
 
@@ -661,7 +661,7 @@ describe('get method', () => {
     });
 
     it('will throw if required and not found', () => {
-      const foo = Foo.new();
+      const foo = new Foo();
 
       new Context(foo);
 
@@ -670,7 +670,7 @@ describe('get method', () => {
 
     it('will throw if upstream not found', () => {
       const context = new Context();
-      const child = Bar.new();
+      const child = new Bar();
 
       context.push(child);
 
@@ -679,7 +679,7 @@ describe('get method', () => {
 
     it('will return undefined if upstream optional', () => {
       const context = new Context();
-      const child = Bar.new();
+      const child = new Bar();
 
       context.push(child);
 
@@ -687,13 +687,13 @@ describe('get method', () => {
     });
 
     it('will subscribe with callback', () => {
-      const parent = Foo.new();
+      const parent = new Foo();
       const ctx = new Context(parent);
 
       const callback = vi.fn();
       const unsub = ctx.get(Bar, callback, true);
 
-      const child = Bar.new();
+      const child = new Bar();
       const sub = ctx.push(child);
 
       expect(callback).toHaveBeenCalledWith(child, true);

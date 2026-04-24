@@ -465,7 +465,7 @@ describe('with existing context', () => {
   class Foo extends State {}
 
   it('will not reassign context if state already has one', () => {
-    const foo = Foo.new();
+    const foo = new Foo();
     const original = new Context(foo);
 
     new Context(foo);
@@ -1128,4 +1128,149 @@ it('will skip consumer if filter does not match downstream', () => {
   grandchild.add(bar);
 
   expect(cb).toBeCalledWith(bar, true);
+});
+
+describe('root singleton', () => {
+  const { root } = Context;
+
+  class Singleton extends State {}
+
+  it('will register .new() instance as implicit in root', () => {
+    const instance = Singleton.new();
+
+    expect(root.get(Singleton)).toBe(instance);
+
+    instance.set(null);
+
+    expect(root.get(Singleton, false)).toBeUndefined();
+  });
+
+  it('will lock state ownership to root after init', () => {
+    const instance = Singleton.new();
+
+    // Root claims LOOKUP at registration; ownership is fixed post-init.
+    expect(Context.get(instance)).toBe(root);
+
+    const ctx = new Context(instance);
+
+    expect(ctx.get(Singleton)).toBe(instance); // resolvable via provide
+    expect(Context.get(instance)).toBe(root); // ownership stays with root
+
+    instance.set(null);
+  });
+
+  it('will evict prior and reject new on implicit collision', () => {
+    class Multi extends State {}
+
+    const first = Multi.new();
+
+    expect(root.get(Multi)).toBe(first);
+
+    const second = Multi.new();
+
+    // Both are released - collision is an implicit opt-out from singleton
+    expect(root.get(Multi, false)).toBeUndefined();
+
+    first.set(null);
+    second.set(null);
+  });
+
+  it('will preserve subtype entries on eviction', () => {
+    class Base extends State {}
+    class SubA extends Base {}
+    class SubB extends Base {}
+
+    const a = SubA.new();
+
+    expect(root.get(Base)).toBe(a);
+    expect(root.get(SubA)).toBe(a);
+
+    const b = SubB.new();
+
+    // Collision is only at Base - subtype lookups remain unambiguous
+    expect(root.get(Base, false)).toBeUndefined();
+    expect(root.get(SubA)).toBe(a);
+    expect(root.get(SubB)).toBe(b);
+
+    a.set(null);
+    b.set(null);
+  });
+
+  it('will register fresh sibling cleanly after ancestor eviction', () => {
+    class Base extends State {}
+    class SubA extends Base {}
+    class SubB extends Base {}
+    class SubC extends Base {}
+
+    const a = SubA.new();
+    const b = SubB.new();
+
+    // Base set is now empty (both evicted) but still present in provide map
+    expect(root.get(Base, false)).toBeUndefined();
+
+    const c = SubC.new();
+
+    // Empty Base set should not block fresh registration
+    expect(root.get(Base)).toBe(c);
+    expect(root.get(SubA)).toBe(a);
+    expect(root.get(SubB)).toBe(b);
+    expect(root.get(SubC)).toBe(c);
+
+    a.set(null);
+    b.set(null);
+    c.set(null);
+  });
+
+  it('will not auto-register state created under an explicit context', () => {
+    class Scoped extends State {}
+
+    const ctx = new Context(Scoped);
+
+    expect(ctx.get(Scoped)).toBeInstanceOf(Scoped);
+    expect(root.get(Scoped, false)).toBeUndefined();
+
+    ctx.pop();
+  });
+
+  it('will not apply singleton eviction to explicit add', () => {
+    class Base extends State {}
+    class SubA extends Base {}
+    class SubB extends Base {}
+
+    const a = SubA.new();
+
+    expect(root.get(Base)).toBe(a);
+
+    // Explicit add bypasses the implicit opt-out - "I know what I'm doing".
+    const b = new SubB();
+    const removeB = root.add(b, true);
+
+    expect(root.get(SubA)).toBe(a); // implicit preserved at subtype
+    expect(root.get(SubB)).toBe(b); // explicit registered at subtype
+    expect(root.get(Base)).toBe(b); // explicit wins priority at shared ancestor
+
+    removeB();
+
+    // With explicit gone, implicit a is unambiguously at Base again
+    expect(root.get(Base)).toBe(a);
+
+    a.set(null);
+  });
+
+  it('will not evict explicit entries on implicit add', () => {
+    class Base extends State {}
+    class Sub extends Base {}
+
+    const a = new Sub();
+    const removeA = root.add(a, true);
+
+    // Implicit add of sibling triggers squash; explicit a must not be evicted
+    const b = Sub.new();
+
+    expect(root.get(Sub)).toBe(a); // explicit still wins priority
+    expect(root.get(Base)).toBe(a);
+
+    removeA();
+    b.set(null);
+  });
 });

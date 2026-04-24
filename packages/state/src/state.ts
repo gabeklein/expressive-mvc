@@ -467,17 +467,21 @@ function init(state: State, ...args: State.Args) {
   ID.set(state, `${T}-${uid()}`);
   STORE.set(state, {});
 
-  function track() {
+  function observe() {
     for (const key in state) {
       const desc = Object.getOwnPropertyDescriptor(state, key)!;
       if ('value' in desc) apply(state, key, desc, true);
     }
   }
 
+  function register(){
+    if (Context.get(state) === Context.root) return Context.root.add(state);
+  }
+
   listener(state, () => {
     parent(state, null);
 
-    const queue = [...prepare, track, ...args];
+    const queue = [...prepare, observe, ...args, register];
 
     for (let i = 0; i < queue.length; i++) {
       const arg = queue[i];

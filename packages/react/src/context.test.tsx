@@ -802,3 +802,40 @@ describe('HMR', () => {
 
   it.todo("will updated consumer if context's instance is replaced");
 });
+
+describe('root singleton', () => {
+  class Singleton extends State {
+    value = 'root';
+  }
+
+  it('will get from root if not found in context', () => {
+    const instance = Singleton.new();
+
+    render(
+      <Consumer for={Singleton}>
+        {({ is }) => {
+          expect(is).toBe(instance);
+        }}
+      </Consumer>
+    );
+
+    instance.set(null);
+  });
+
+  it('will prefer Provider instance over root singleton', () => {
+    const instance = Singleton.new();
+
+    render(
+      <Provider for={Singleton}>
+        <Consumer for={Singleton}>
+          {(i) => {
+            expect(i).not.toBe(instance);
+            expect(i).toBeInstanceOf(Singleton);
+          }}
+        </Consumer>
+      </Provider>
+    );
+
+    instance.set(null);
+  });
+});
