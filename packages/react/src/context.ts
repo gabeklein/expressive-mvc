@@ -1,6 +1,6 @@
 import { State, Context } from "@expressive/state";
 import { createContext, createElement, ReactNode, Suspense, useContext, useRef } from "react";
-import { useMount } from "./state";
+import { useStrict } from "./runtime";
 
 const Layers = createContext(Context.root);
 
@@ -10,7 +10,7 @@ Context.get = (state?: State) => {
   if (!state)
     try {
       return useContext(Layers);
-    } catch {}
+    } catch { }
 
   return _get(state);
 };
@@ -87,7 +87,7 @@ function Provider<T extends State>(props: Provider.Props<T>) {
     if (input instanceof State) input.set(rest as State.Assign<T>);
   }
 
-  useMount(() => () => context.pop());
+  useStrict(() => () => context.pop());
 
   if (fallback !== undefined)
     children = createElement(Suspense, { fallback, name }, children);

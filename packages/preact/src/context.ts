@@ -1,8 +1,8 @@
 import { Context } from '@expressive/state';
-import { State, useMount } from '@expressive/react/state';
+import { State } from '@expressive/react/state';
 
 import { ComponentChildren, createContext, createElement } from 'preact';
-import { useContext, useMemo } from 'preact/hooks';
+import { useContext, useEffect, useMemo } from 'preact/hooks';
 
 const Lookup = createContext(new Context());
 
@@ -51,7 +51,7 @@ function Provider<T extends State>(props: Provider.Props<T>) {
   const ambient = Context.get();
   const context = useMemo(() => ambient.push(), [ambient]);
 
-  useMount(() => () => context.pop());
+  useEffect(() => () => context.pop(), []);
 
   context.set(props.for, (state) => {
     if (props.forEach) {

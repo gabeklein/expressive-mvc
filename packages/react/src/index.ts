@@ -1,7 +1,8 @@
 import { createElement, useEffect, useRef, useState } from 'react';
 
-import { Pragma, State } from './state';
 import { Consumer, Provider } from './context';
+import { State } from './state';
+import { Pragma } from './runtime';
 
 Pragma.useEffect = useEffect;
 Pragma.useState = useState;

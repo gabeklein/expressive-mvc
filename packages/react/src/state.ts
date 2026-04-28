@@ -1,11 +1,7 @@
 import { State, Context, watch } from '@expressive/state';
+import { Pragma, useFactory, useStrict } from './runtime';
 
-export const Pragma = {} as {
-  createElement(type: any, props?: any, ...children: any[]): any;
-  useState<S>(initial: S | (() => S)): [S, (next: (previous: S) => S) => void];
-  useEffect(effect: () => (() => void) | void, deps?: any[]): void;
-  useRef<T>(initial: T): { current: T };
-};
+export { Pragma };
 
 /** Type may not be undefined - instead will be null.  */
 type NoVoid<T> = T extends undefined | void ? null : T;
@@ -126,26 +122,8 @@ State.use = function use<T extends State>(
     const context = outer.push(instance);
 
     let ready = false;
-    let active: T;
 
     return (args: State.Args<T>) => {
-      Pragma.useEffect(() => {
-        ready = true;
-      }, []);
-
-      useMount((refresh) => {
-        watch(instance, (current) => {
-          active = current;
-
-          if (ready) refresh();
-        });
-
-        return () => {
-          context.pop();
-          instance.set(null);
-        };
-      });
-
       if (ready) {
         ready = false;
         Promise.resolve(use(...args)).finally(() => {
@@ -153,7 +131,18 @@ State.use = function use<T extends State>(
         });
       }
 
-      return active;
+      Pragma.useEffect(() => {
+        ready = true;
+      }, []);
+
+      return useStrict<T>((update) => {
+        watch(instance, update);
+
+        return () => {
+          context.pop();
+          instance.set(null);
+        };
+      });
     };
   });
 
@@ -253,45 +242,12 @@ State.get = function get<T extends State>(
       Pragma.useEffect(() => {
         mounted = true;
       }, []);
-      useMount(() => release);
+      useStrict(() => release);
       return value === undefined ? null : value;
     };
   });
 
   return render();
 };
-
-function useFactory<T extends Function>(factory: () => T) {
-  const ref = Pragma.useRef<T | null>(null);
-  return ref.current || (ref.current = factory());
-}
-
-/**
- * useEffect which tolerates react StrictMode double-invoking effects on mount.
- */
-export function useMount(
-  callback: (refresh: () => void) => () => void
-) {
-  const { current } = Pragma.useRef(
-    { mounted: 0 } as {
-      mounted: number;
-      unmount: () => void;
-      update: (next: (previous: number) => number) => void;
-    }
-  );
-
-  current.update = Pragma.useState(() => {
-    if (!current.mounted)
-      current.unmount = callback(() => {
-        current.update?.((x) => x + 1);
-      });
-
-    return current.mounted++;
-  })[1];
-
-  Pragma.useEffect(() => () => {
-    if (--current.mounted < 1) current.unmount();
-  }, []);
-}
 
 export { State };

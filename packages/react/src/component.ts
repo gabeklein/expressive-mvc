@@ -1,13 +1,8 @@
 import { watch, unbind, set } from '@expressive/state';
-import React, {
-  createElement,
-  Suspense,
-  useEffect,
-  useRef,
-  type ReactNode
-} from 'react';
+import React, { createElement, Suspense, useEffect } from 'react';
 import { Context, Layers } from './context';
-import { State, useMount } from './state';
+import { State } from './state';
+import { useStrict } from './runtime';
 
 const PENDING = new WeakMap<object, Component>();
 const INTERNAL = [
@@ -23,16 +18,16 @@ export type StateProps<T extends State> = {
 
 type RenderProps<T> = T extends { render(props: infer P): any }
   ? {} extends P
-  ? { children?: ReactNode }
+  ? { children?: React.ReactNode }
   : P
-  : { children?: ReactNode };
+  : { children?: React.ReactNode };
 
 interface ComponentProps<T extends Component> {
   /** Callback for newly created instance. Only called once. */
   is?: (instance: T) => void;
 
   /** Fallback to show when suspended or in error recovery. */
-  fallback?: ReactNode;
+  fallback?: React.ReactNode;
 }
 
 export type Props<T extends Component> = StateProps<T> &
@@ -72,7 +67,7 @@ class Component extends State {
    *
    * Defaults to null - nothing will be rendered.
    */
-  fallback: ReactNode = set(null);
+  fallback: React.ReactNode = set(null);
 
   constructor(nextProps: any, ...rest: any[]) {
     const { is, ...props } = nextProps;
@@ -120,7 +115,7 @@ class Component extends State {
    *
    * Without a parameter, children are accepted by default and passed through provider.
    */
-  render(props?: {}): ReactNode {
+  render(props?: {}): React.ReactNode {
     return this.props.children || null;
   }
 
@@ -166,7 +161,7 @@ function bootstrap(this: Component, context: Context) {
   }
 
   function AsComponent() {
-    useMount((refresh) => {
+    useStrict((refresh) => {
       watch(self, (current) => {
         active = current;
         if (ready) refresh();
@@ -209,7 +204,7 @@ function bootstrap(this: Component, context: Context) {
 
 interface BoundaryProps {
   self: Component;
-  children: ReactNode;
+  children: React.ReactNode;
 }
 
 class ErrorBoundary extends React.Component<BoundaryProps> {
@@ -273,16 +268,10 @@ function subcomponents(self: State) {
       let render = unbind(get ? get.call(self) : value);
 
       function Component(props: any) {
-        const ref = useRef<State>(null);
-
-        useMount((refresh) =>
-          watch(self, (current) => {
-            ref.current = current;
-            refresh();
-          })
+        return render.call(
+          useStrict<Component>((up) => watch(self, up)),
+          props
         );
-
-        return render.call(ref.current, props);
       }
 
       Object.defineProperty(self, key, {
