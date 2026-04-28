@@ -23,8 +23,8 @@ export type StateProps<T extends State> = {
 
 type RenderProps<T> = T extends { render(props: infer P): any }
   ? {} extends P
-    ? { children?: ReactNode }
-    : P
+  ? { children?: ReactNode }
+  : P
   : { children?: ReactNode };
 
 interface ComponentProps<T extends Component> {
@@ -144,7 +144,7 @@ Object.defineProperties(Component.prototype, {
     get(this: Component) {
       return this.get();
     },
-    set() {}
+    set() { }
   },
   context: {
     configurable: true,
@@ -199,7 +199,7 @@ function bootstrap(this: Component, context: Context) {
   Object.defineProperties(self, {
     context: {
       get: () => context,
-      set() {}
+      set() { }
     },
     render: {
       value: () => createElement(AsComponent)
@@ -246,61 +246,61 @@ class ErrorBoundary extends React.Component<BoundaryProps> {
 
 const SEEN = new WeakSet<Function>();
 
-function subcomponents(proto: State) {
-  for (const key of Object.getOwnPropertyNames(proto)) {
-    if (!/^[A-Z]/.test(key)) continue;
-
-    const { get, value } = Object.getOwnPropertyDescriptor(proto, key)!;
-
-    if (!get && typeof value !== 'function') continue;
-
-    Object.defineProperty(proto, key, {
-      configurable: true,
-      get(this: Component) {
-        const self = this.is;
-
-        let render = unbind(get ? get.call(this) : value);
-
-        function Sub(props: any) {
-          const ref = useRef<State>(null);
-
-          useMount((refresh) =>
-            watch(self, (current) => {
-              ref.current = current;
-              refresh();
-            })
-          );
-
-          return render.call(ref.current, props);
-        }
-
-        Object.defineProperty(self, key, {
-          configurable: true,
-          get: () => Sub,
-          set(fn: Function) {
-            render = fn;
-          }
-        });
-
-        return Sub;
-      }
-    });
-  }
-}
-
 Component.on((self) => {
   let Type = self.constructor as State.Extends;
 
   while (Type !== Component) {
-    const proto = Type.prototype as any;
-
     if (SEEN.has(Type)) break;
     SEEN.add(Type);
-    subcomponents(proto);
+    subcomponents(Type.prototype);
     Type = Object.getPrototypeOf(Type);
   }
 
   subcomponents(self);
 });
+
+function subcomponents(self: State) {
+  for (const key of Object.getOwnPropertyNames(self)) {
+    if (!/^[A-Z]/.test(key)) continue;
+
+    const { get, value } = Object.getOwnPropertyDescriptor(self, key)!;
+
+    if (!get && typeof value !== 'function') continue;
+
+    function subcomponent(this: Component) {
+      const self = this.is;
+
+      let render = unbind(get ? get.call(self) : value);
+
+      function Component(props: any) {
+        const ref = useRef<State>(null);
+
+        useMount((refresh) =>
+          watch(self, (current) => {
+            ref.current = current;
+            refresh();
+          })
+        );
+
+        return render.call(ref.current, props);
+      }
+
+      Object.defineProperty(self, key, {
+        configurable: true,
+        get: () => Component,
+        set(fn: Function) {
+          render = fn;
+        }
+      });
+
+      return Component;
+    }
+
+    Object.defineProperty(self, key, {
+      configurable: true,
+      get: subcomponent
+    });
+  }
+}
 
 export { Component };
