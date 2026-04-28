@@ -104,28 +104,23 @@ declare module '@expressive/state' {
   }
 }
 
-State.use = function <T extends State>(
+State.use = function use<T extends State>(
   this: State.Type<T>,
   ...args: State.UseArgs<T>
 ) {
   const outer = Context.get();
-  const ref = Pragma.useRef<((args: State.Args<T>) => T) | null>(null);
-  const render = ref.current || (ref.current = init(this));
-
-  return render(args);
-
-  function init(Type: State.Type<T>) {
+  const render = useFactory(() => {
     const add = (arg: unknown) =>
       typeof arg == 'object' && instance.set(arg as State.Assign<T>);
 
     let use = (...args: State.Args<T>) => Promise.all(args.flat().map(add));
 
-    const instance = new Type((x) => {
+    const instance = new this((x) => {
       if ('use' in x && typeof x.use == 'function') {
-        (use = x.use.bind(x))(...args);
-      } else {
-        return args;
+        use = x.use.bind(x);
+        use(...args);
       }
+      else return args;
     });
 
     const context = outer.push(instance);
@@ -160,22 +155,18 @@ State.use = function <T extends State>(
 
       return active;
     };
-  }
+  });
+
+  return render(args);
 };
 
-State.get = function <T extends State>(
+State.get = function get<T extends State>(
   this: State.Extends<T>,
   argument?: boolean | State.GetFactory<T, unknown>
 ) {
-  const ref = Pragma.useRef<(() => any) | null>(null);
   const next = Pragma.useState(0)[1];
   const local = Context.get();
-  const render = ref.current || (ref.current = init(this));
-
-  return render();
-
-  function init(Type: State.Extends<T>) {
-    let instance: T | undefined;
+  const render = useFactory(() => {
     let unwatch: (() => void) | undefined;
     let mounted = false;
     let pending = false;
@@ -193,16 +184,15 @@ State.get = function <T extends State>(
     }
 
     function release() {
-      unwatch?.();
       unsubscribe();
+      unwatch?.();
       unwatch = undefined;
-      instance = undefined;
     }
 
-    const unsubscribe = local.get(Type, (next) => {
+    function attach(next: T) {
       unwatch?.();
       unwatch = watch(
-        (instance = next),
+        next,
         (current, changed) => {
           if (typeof argument === 'function') {
             const next = argument.call(current, current, refresh);
@@ -223,12 +213,19 @@ State.get = function <T extends State>(
       }
 
       return release;
-    });
+    }
 
-    if (!instance) {
-      release();
+    const unsubscribe = local.get(this, attach);
+
+    if (!unwatch) {
+      unsubscribe();
       if (argument === false) return () => undefined;
-      throw new Error(`Could not find ${Type} in context.`);
+      throw new Error(`Could not find ${this} in context.`);
+    }
+
+    if (value === null) {
+      release();
+      return () => null;
     }
 
     if (value instanceof Promise) {
@@ -251,11 +248,6 @@ State.get = function <T extends State>(
       };
     }
 
-    if (value === null) {
-      release();
-      return () => null;
-    }
-
     return () => {
       pending = false;
       Pragma.useEffect(() => {
@@ -264,39 +256,41 @@ State.get = function <T extends State>(
       useMount(() => release);
       return value === undefined ? null : value;
     };
-  }
+  });
+
+  return render();
 };
+
+function useFactory<T extends Function>(factory: () => T) {
+  const ref = Pragma.useRef<T | null>(null);
+  return ref.current || (ref.current = factory());
+}
 
 /**
  * useEffect which tolerates react StrictMode double-invoking effects on mount.
  */
 export function useMount(
-  callback: (refresh: () => void) => (() => void) | void
+  callback: (refresh: () => void) => () => void
 ) {
   const { current } = Pragma.useRef(
-    {} as {
-      ready?: boolean;
-      mounts: number;
-      unmount: (() => void) | void;
+    { mounted: 0 } as {
+      mounted: number;
+      unmount: () => void;
       update: (next: (previous: number) => number) => void;
     }
   );
 
   current.update = Pragma.useState(() => {
-    if (!current.mounts) {
-      current.mounts = 0;
+    if (!current.mounted)
       current.unmount = callback(() => {
-        if (current.ready) current.update((x) => x + 1);
+        current.update?.((x) => x + 1);
       });
-    }
-    return current.mounts++;
+
+    return current.mounted++;
   })[1];
 
-  Pragma.useEffect(() => {
-    current.ready = true;
-    return () => {
-      if (!--current.mounts) current.unmount?.();
-    };
+  Pragma.useEffect(() => () => {
+    if (--current.mounted < 1) current.unmount();
   }, []);
 }
 
