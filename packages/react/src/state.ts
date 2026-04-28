@@ -10,19 +10,19 @@ export const Pragma = {} as {
 /** Type may not be undefined - instead will be null.  */
 type NoVoid<T> = T extends undefined | void ? null : T;
 
-declare module '@expressive/state' {
-  interface UseState extends State {
-    /**
-     * Optional hook called when State.use() is invoked within a React component.
-     *
-     * This is called *every render* of the component, and will intercept
-     * arguments which would otherwise be passed into the State constructor.
-     *
-     * @param props Arguments passed to State.use().
-     */
-    use?(...props: any[]): Promise<void> | void;
-  }
+interface UseState extends State {
+  /**
+   * Optional hook called when State.use() is invoked within a React component.
+   *
+   * This is called *every render* of the component, and will intercept
+   * arguments which would otherwise be passed into the State constructor.
+   *
+   * @param props Arguments passed to State.use().
+   */
+  use?(...props: any[]): Promise<void> | void;
+}
 
+declare module '@expressive/state' {
   namespace State {
     type ForceRefresh = {
       /** Request a refresh for current component. */
@@ -104,7 +104,7 @@ declare module '@expressive/state' {
   }
 }
 
-State.use = function use<T extends State>(
+State.use = function use<T extends UseState>(
   this: State.Type<T>,
   ...args: State.UseArgs<T>
 ) {
@@ -113,14 +113,15 @@ State.use = function use<T extends State>(
     const add = (arg: unknown) =>
       typeof arg == 'object' && instance.set(arg as State.Assign<T>);
 
-    let use = (...args: State.Args<T>) => Promise.all(args.flat().map(add));
+    let use: (args: State.UseArgs<T>) => Promise<any>;
 
     const instance = new this((x) => {
-      if ('use' in x && typeof x.use == 'function') {
-        use = x.use.bind(x);
-        use(...args);
+      if (x.use) {
+        use = async (a) => x.use!(...a);
+        x.use(args);
       }
-      else return args;
+      use = (a) => Promise.all(a.flat().map(add))
+      return args as State.Args<T>;
     });
 
     const context = outer.push(instance);
@@ -128,7 +129,12 @@ State.use = function use<T extends State>(
     let ready = false;
     let active: T;
 
-    return (args: State.Args<T>) => {
+    return (args: State.UseArgs<T>) => {
+      if (ready) {
+        ready = false;
+        use(args).finally(() => ready = true);
+      }
+
       Pragma.useEffect(() => {
         ready = true;
       }, []);
@@ -136,7 +142,6 @@ State.use = function use<T extends State>(
       useMount((refresh) => {
         watch(instance, (current) => {
           active = current;
-
           if (ready) refresh();
         });
 
@@ -145,13 +150,6 @@ State.use = function use<T extends State>(
           instance.set(null);
         };
       });
-
-      if (ready) {
-        ready = false;
-        Promise.resolve(use(...args)).finally(() => {
-          ready = true;
-        });
-      }
 
       return active;
     };
