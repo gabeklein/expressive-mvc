@@ -1,7 +1,7 @@
 import { watch, unbind, set } from '@expressive/state';
 import React, { createElement, Suspense } from 'react';
 import { Context, Layers } from './context';
-import { useHook, useReady } from './runtime';
+import { useHook } from './runtime';
 import { State } from './state';
 
 const PENDING = new WeakMap<object, Component>();
@@ -153,7 +153,6 @@ function bootstrap(this: Component, context: Context) {
 
   context = context.push(self);
 
-  let ready = false;
   let active: Component;
 
   function Render() {
@@ -164,7 +163,7 @@ function bootstrap(this: Component, context: Context) {
     useHook((refresh) => {
       watch(self, (current) => {
         active = current;
-        if (ready) refresh();
+        refresh();
       });
 
       return () => {
@@ -172,8 +171,6 @@ function bootstrap(this: Component, context: Context) {
         context.pop();
       };
     });
-
-    useReady(() => ready = true);
 
     const children = createElement(Layers.Provider, {
       value: context,
