@@ -40,7 +40,7 @@ declare module '@expressive/state' {
   }
 }
 
-class Component extends State {
+export class Component extends State {
   static contextType = Layers;
 
   /**
@@ -285,5 +285,3 @@ function subcomponents(self: State) {
     });
   }
 }
-
-export { Component };
