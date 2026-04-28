@@ -104,28 +104,26 @@ declare module '@expressive/state' {
   }
 }
 
-State.use = function <T extends State>(
+State.use = use;
+State.get = get;
+
+function use<T extends State>(
   this: State.Type<T>,
   ...args: State.UseArgs<T>
 ) {
   const outer = Context.get();
-  const ref = Pragma.useRef<((args: State.Args<T>) => T) | null>(null);
-  const render = ref.current || (ref.current = init(this));
-
-  return render(args);
-
-  function init(Type: State.Type<T>) {
+  const render = useFactory(() => {
     const add = (arg: unknown) =>
       typeof arg == 'object' && instance.set(arg as State.Assign<T>);
 
     let use = (...args: State.Args<T>) => Promise.all(args.flat().map(add));
 
-    const instance = new Type((x) => {
+    const instance = new this((x) => {
       if ('use' in x && typeof x.use == 'function') {
-        (use = x.use.bind(x))(...args);
-      } else {
-        return args;
+        use = x.use.bind(x);
+        use(...args);
       }
+      else return args;
     });
 
     const context = outer.push(instance);
@@ -160,21 +158,18 @@ State.use = function <T extends State>(
 
       return active;
     };
-  }
+  });
+
+  return render(args);
 };
 
-State.get = function <T extends State>(
+function get<T extends State>(
   this: State.Extends<T>,
   argument?: boolean | State.GetFactory<T, unknown>
 ) {
-  const ref = Pragma.useRef<(() => any) | null>(null);
   const next = Pragma.useState(0)[1];
   const local = Context.get();
-  const render = ref.current || (ref.current = init(this));
-
-  return render();
-
-  function init(Type: State.Extends<T>) {
+  const render = useFactory(() => {
     let instance: T | undefined;
     let unwatch: (() => void) | undefined;
     let mounted = false;
@@ -199,7 +194,7 @@ State.get = function <T extends State>(
       instance = undefined;
     }
 
-    const unsubscribe = local.get(Type, (next) => {
+    const unsubscribe = local.get(this, (next) => {
       unwatch?.();
       unwatch = watch(
         (instance = next),
@@ -228,7 +223,7 @@ State.get = function <T extends State>(
     if (!instance) {
       release();
       if (argument === false) return () => undefined;
-      throw new Error(`Could not find ${Type} in context.`);
+      throw new Error(`Could not find ${this} in context.`);
     }
 
     if (value instanceof Promise) {
@@ -264,8 +259,15 @@ State.get = function <T extends State>(
       useMount(() => release);
       return value === undefined ? null : value;
     };
-  }
+  });
+
+  return render();
 };
+
+export function useFactory<T>(factory: () => T) {
+  const ref = Pragma.useRef<T | null>(null);
+  return ref.current || (ref.current = factory());
+}
 
 /**
  * useEffect which tolerates react StrictMode double-invoking effects on mount.
