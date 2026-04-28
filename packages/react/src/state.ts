@@ -169,7 +169,7 @@ State.get = function <T extends State>(
 ) {
   const ref = Pragma.useRef<(() => any) | null>(null);
   const next = Pragma.useState(0)[1];
-  const context = Context.get();
+  const local = Context.get();
   const render = ref.current || (ref.current = init(this));
 
   return render();
@@ -199,7 +199,7 @@ State.get = function <T extends State>(
       instance = undefined;
     }
 
-    const unsubscribe = context.get(Type, (next) => {
+    const unsubscribe = local.get(Type, (next) => {
       unwatch?.();
       unwatch = watch(
         (instance = next),
