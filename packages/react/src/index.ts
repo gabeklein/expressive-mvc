@@ -1,12 +1,13 @@
 import { createElement, useEffect, useRef, useState } from 'react';
 
-import { Pragma, State } from './state';
+import { State } from './state';
+import { Runtime } from './runtime';
 import { Consumer, Provider } from './context';
 
-Pragma.useEffect = useEffect;
-Pragma.useState = useState;
-Pragma.createElement = createElement;
-Pragma.useRef = useRef;
+Runtime.createElement = createElement;
+Runtime.useEffect = useEffect;
+Runtime.useState = useState;
+Runtime.useRef = useRef;
 
 export { State, State as default };
 export { Context, Observable, def, get, ref, set } from '@expressive/state';

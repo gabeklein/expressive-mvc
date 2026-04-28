@@ -1,12 +1,12 @@
-import { State, Pragma } from '@expressive/react/state';
+import { State, Runtime } from '@expressive/react/state';
 import { get, def, ref, set, Observable } from '@expressive/state';
 
 import { useEffect, useState, createElement, useRef } from 'preact/compat';
 
-Pragma.useEffect = useEffect;
-Pragma.useState = useState;
-Pragma.createElement = createElement;
-Pragma.useRef = useRef;
+Runtime.createElement = createElement;
+Runtime.useEffect = useEffect;
+Runtime.useState = useState;
+Runtime.useRef = useRef;
 
 export default State;
 export { get, State, Observable, ref, set, def };

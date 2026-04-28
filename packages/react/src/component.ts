@@ -1,11 +1,8 @@
 import { watch, unbind, set } from '@expressive/state';
-import React, {
-  createElement,
-  Suspense,
-  useEffect
-} from 'react';
+import React, { createElement, Suspense } from 'react';
 import { Context, Layers } from './context';
-import { State, useHook } from './state';
+import { useHook, useReady } from './runtime';
+import { State } from './state';
 
 const PENDING = new WeakMap<object, Component>();
 const INTERNAL = [
@@ -176,9 +173,7 @@ function bootstrap(this: Component, context: Context) {
       };
     });
 
-    useEffect(() => {
-      ready = true;
-    }, []);
+    useReady(() => ready = true);
 
     const children = createElement(Layers.Provider, {
       value: context,
@@ -270,10 +265,11 @@ function subcomponents(self: State) {
 
       let render = unbind(get ? get.call(self) : value);
 
-      const Component = (props: unknown) => render.call(
-        useHook<Component>((refresh) => watch(self, refresh)),
-        props
-      );
+      const Component = (props: unknown) =>
+        render.call(
+          useHook<Component>((set) => watch(self, set)),
+          props
+        );
 
       Object.defineProperty(self, key, {
         configurable: true,

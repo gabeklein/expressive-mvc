@@ -6,7 +6,7 @@ import {
   Suspense,
   useContext
 } from 'react';
-import { useHook } from './state';
+import { useHook } from './runtime';
 
 const Layers = createContext(Context.root);
 

@@ -1,11 +1,7 @@
 import { State, Context, watch } from '@expressive/state';
+import { Runtime, useFactory, useHook, useReady } from './runtime';
 
-export const Pragma = {} as {
-  createElement(type: any, props?: any, ...children: any[]): any;
-  useState<S>(initial: S | (() => S)): [S, (next: (previous: S) => S) => void];
-  useEffect(effect: () => (() => void) | void, deps?: any[]): void;
-  useRef<T>(initial: T): { current: T };
-};
+export { Runtime };
 
 /** Type may not be undefined - instead will be null.  */
 type NoVoid<T> = T extends undefined | void ? null : T;
@@ -135,9 +131,7 @@ State.use = function use<T extends State>(
         });
       }
 
-      Pragma.useEffect(() => {
-        ready = true;
-      }, []);
+      useReady(() => ready = true);
 
       return useHook<T>((update) => {
         watch(instance, update);
@@ -156,7 +150,7 @@ State.get = function get<T extends State>(
   this: State.Extends<T>,
   argument?: boolean | State.GetFactory<T, unknown>
 ) {
-  const next = Pragma.useState(0)[1];
+  const next = Runtime.useState(0)[1];
   const local = Context.get();
   const render = useFactory(() => {
     let unwatch: (() => void) | undefined;
@@ -242,9 +236,7 @@ State.get = function get<T extends State>(
 
     return () => {
       pending = false;
-      Pragma.useEffect(() => {
-        mounted = true;
-      }, []);
+      useReady(() => mounted = true);
       useHook(() => release);
       return value === undefined ? null : value;
     };
@@ -252,45 +244,5 @@ State.get = function get<T extends State>(
 
   return render();
 };
-
-function useFactory<T extends Function>(factory: () => T) {
-  const ref = Pragma.useRef<T | null>(null);
-  return ref.current || (ref.current = factory());
-}
-
-/**
- * Mount-effect with a refreshable return value, safe under React StrictMode.
- *
- * @param callback Setup handler; receives a setter, must return a cleanup.
- * @returns Latest value published via the setter (`undefined` until set).
- */
-export function useHook<T = void>(
-  callback: (refresh: (next: T) => void) => () => void
-) {
-  const { current } = Pragma.useRef(
-    { mounted: 0 } as {
-      mounted: number;
-      unmount: () => void;
-      update: (next: (previous: number) => number) => void;
-      output: T;
-    }
-  );
-
-  current.update = Pragma.useState(() => {
-    if (!current.mounted)
-      current.unmount = callback((next) => {
-        current.output = next;
-        current.update?.((x) => x + 1);
-      });
-
-    return current.mounted++;
-  })[1];
-
-  Pragma.useEffect(() => () => {
-    if (--current.mounted < 1) current.unmount();
-  }, []);
-
-  return current.output;
-}
 
 export { State };
