@@ -1,5 +1,5 @@
 import { Context } from '@expressive/state';
-import { State, useMount } from '@expressive/react/state';
+import { State, useHook } from '@expressive/react/state';
 
 import { ComponentChildren, createContext, createElement } from 'preact';
 import { useContext, useMemo } from 'preact/hooks';
@@ -51,7 +51,7 @@ function Provider<T extends State>(props: Provider.Props<T>) {
   const ambient = Context.get();
   const context = useMemo(() => ambient.push(), [ambient]);
 
-  useMount(() => () => context.pop());
+  useHook(() => () => context.pop());
 
   context.set(props.for, (state) => {
     if (props.forEach) {

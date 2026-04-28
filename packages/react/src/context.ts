@@ -1,6 +1,12 @@
-import { State, Context } from "@expressive/state";
-import { createContext, createElement, ReactNode, Suspense, useContext, useRef } from "react";
-import { useMount } from "./state";
+import { State, Context } from '@expressive/state';
+import {
+  createContext,
+  createElement,
+  ReactNode,
+  Suspense,
+  useContext
+} from 'react';
+import { useHook } from './state';
 
 const Layers = createContext(Context.root);
 
@@ -10,7 +16,7 @@ Context.get = (state?: State) => {
   if (!state)
     try {
       return useContext(Layers);
-    } catch {}
+    } catch { }
 
   return _get(state);
 };
@@ -68,31 +74,35 @@ declare namespace Provider {
 }
 
 function Provider<T extends State>(props: Provider.Props<T>) {
-  const ambient = useContext(Layers);
-  const ref = useRef<Context | null>(null);
-  const context = ref.current || (ref.current = new Context(ambient));
-
-  let {
+  const {
     for: input,
     children,
     fallback,
     name,
+    is,
     ...rest
   } = props as Provider.ForSingleProps<T> & Provider.ForMultipleProps<T>;
 
-  context.set(input, (added) => rest.is?.(added));
+  const ambient = useContext(Layers);
+  const context = useHook<Context>((set) => {
+    set(new Context(ambient));
+    return () => context.pop();
+  });
+
+  context.set(input, is);
 
   if (Object.keys(rest).length) {
-    if (State.is(input)) input = context.get(input) as T;
-    if (input instanceof State) input.set(rest as State.Assign<T>);
+    const i = State.is(input) ? context.get(input) : input;
+    if (i instanceof State) i.set(rest);
   }
 
-  useMount(() => () => context.pop());
-
-  if (fallback !== undefined)
-    children = createElement(Suspense, { fallback, name }, children);
-
-  return createElement(Layers.Provider, { value: context, children });
+  return createElement(Layers.Provider, {
+    value: context,
+    children:
+      fallback !== undefined
+        ? createElement(Suspense, { fallback, name }, children)
+        : children
+  });
 }
 
 export { Consumer, Provider, Context, Layers };

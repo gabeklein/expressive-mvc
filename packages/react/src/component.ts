@@ -2,11 +2,10 @@ import { watch, unbind, set } from '@expressive/state';
 import React, {
   createElement,
   Suspense,
-  useEffect,
-  useRef
+  useEffect
 } from 'react';
 import { Context, Layers } from './context';
-import { State, useMount } from './state';
+import { State, useHook } from './state';
 
 const PENDING = new WeakMap<object, Component>();
 const INTERNAL = [
@@ -165,7 +164,7 @@ function bootstrap(this: Component, context: Context) {
   }
 
   function AsComponent() {
-    useMount((refresh) => {
+    useHook((refresh) => {
       watch(self, (current) => {
         active = current;
         if (ready) refresh();
@@ -271,18 +270,10 @@ function subcomponents(self: State) {
 
       let render = unbind(get ? get.call(self) : value);
 
-      function Component(props: any) {
-        const ref = useRef<State>(null);
-
-        useMount((refresh) =>
-          watch(self, (current) => {
-            ref.current = current;
-            refresh();
-          })
-        );
-
-        return render.call(ref.current, props);
-      }
+      const Component = (props: unknown) => render.call(
+        useHook<Component>((refresh) => watch(self, refresh)),
+        props
+      );
 
       Object.defineProperty(self, key, {
         configurable: true,

@@ -126,7 +126,6 @@ State.use = function use<T extends State>(
     const context = outer.push(instance);
 
     let ready = false;
-    let active: T;
 
     return (args: State.Args<T>) => {
       if (ready) {
@@ -140,19 +139,13 @@ State.use = function use<T extends State>(
         ready = true;
       }, []);
 
-      useMount((refresh) => {
-        watch(instance, (current) => {
-          active = current;
-          if (ready) refresh();
-        });
-
+      return useHook<T>((update) => {
+        watch(instance, update);
         return () => {
           context.pop();
           instance.set(null);
         };
       });
-
-      return active;
     };
   });
 
@@ -252,7 +245,7 @@ State.get = function get<T extends State>(
       Pragma.useEffect(() => {
         mounted = true;
       }, []);
-      useMount(() => release);
+      useHook(() => release);
       return value === undefined ? null : value;
     };
   });
@@ -266,22 +259,27 @@ function useFactory<T extends Function>(factory: () => T) {
 }
 
 /**
- * useEffect which tolerates react StrictMode double-invoking effects on mount.
+ * Mount-effect with a refreshable return value, safe under React StrictMode.
+ *
+ * @param callback Setup handler; receives a setter, must return a cleanup.
+ * @returns Latest value published via the setter (`undefined` until set).
  */
-export function useMount(
-  callback: (refresh: () => void) => () => void
+export function useHook<T = void>(
+  callback: (refresh: (next: T) => void) => () => void
 ) {
   const { current } = Pragma.useRef(
     { mounted: 0 } as {
       mounted: number;
       unmount: () => void;
       update: (next: (previous: number) => number) => void;
+      output: T;
     }
   );
 
   current.update = Pragma.useState(() => {
     if (!current.mounted)
-      current.unmount = callback(() => {
+      current.unmount = callback((next) => {
+        current.output = next;
         current.update?.((x) => x + 1);
       });
 
@@ -291,6 +289,8 @@ export function useMount(
   Pragma.useEffect(() => () => {
     if (--current.mounted < 1) current.unmount();
   }, []);
+
+  return current.output;
 }
 
 export { State };
