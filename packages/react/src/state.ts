@@ -129,6 +129,13 @@ State.use = function use<T extends State>(
     let active: T;
 
     return (args: State.Args<T>) => {
+      if (ready) {
+        ready = false;
+        Promise.resolve(use(...args)).finally(() => {
+          ready = true;
+        });
+      }
+
       Pragma.useEffect(() => {
         ready = true;
       }, []);
@@ -136,7 +143,6 @@ State.use = function use<T extends State>(
       useMount((refresh) => {
         watch(instance, (current) => {
           active = current;
-
           if (ready) refresh();
         });
 
@@ -145,13 +151,6 @@ State.use = function use<T extends State>(
           instance.set(null);
         };
       });
-
-      if (ready) {
-        ready = false;
-        Promise.resolve(use(...args)).finally(() => {
-          ready = true;
-        });
-      }
 
       return active;
     };
