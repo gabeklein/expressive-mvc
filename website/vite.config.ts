@@ -7,7 +7,6 @@ import mdx from 'fumadocs-mdx/vite';
 import * as MdxConfig from './source.config';
 import { resolve, join } from 'path';
 import { cp, readFile } from 'fs/promises';
-import sandboxManifest from './vite.sandbox';
 
 export default defineConfig({
   plugins: [
@@ -16,8 +15,7 @@ export default defineConfig({
     tailwindcss(),
     reactRouter(),
     tsconfigPaths(),
-    serveSkills(),
-    sandboxManifest()
+    serveSkills()
   ]
 });
 

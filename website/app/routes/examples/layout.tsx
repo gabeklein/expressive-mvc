@@ -1,22 +1,13 @@
-import { lazy, Suspense } from 'react';
 import { HomeLayout } from 'fumadocs-ui/layouts/home';
-import { NavLink, Navigate, useParams } from 'react-router';
-import { examples } from 'virtual:examples';
-import { layoutOptions } from './home';
-
-const NAMES = Object.keys(examples);
-const Sandbox = lazy(() => import('@/components/Sandbox'));
+import { NavLink, Outlet } from 'react-router';
+import { NAMES } from '@/lib/examples';
+import { layoutOptions } from '../home';
 
 export function meta() {
   return [{ title: 'Examples - Expressive' }];
 }
 
-export default function ExampleRoute() {
-  const { name } = useParams();
-
-  if (!name || !examples[name])
-    return <Navigate to={`/examples/${NAMES[0]}`} replace />;
-
+export default function ExamplesLayout() {
   content: {
     display: flex;
     flexDirection: column;
@@ -28,25 +19,11 @@ export default function ExampleRoute() {
     margin: 0, auto;
   }
 
-  sandbox: {
-    display: flex;
-    flexDirection: column;
-    height: `calc(100vh - 12rem)`;
-  }
-
-  loading: {
-    color: $colorFdMutedForeground;
-  }
-
   return (
     <HomeLayout {...layoutOptions}>
       <div _content>
         <Navigation />
-        <div _sandbox>
-          <Suspense fallback={<div _loading>Loading sandbox...</div>}>
-            <Sandbox name={name} />
-          </Suspense>
-        </div>
+        <Outlet />
       </div>
     </HomeLayout>
   );
@@ -85,5 +62,5 @@ function Navigation() {
         </NavLink>
       ))}
     </nav>
-  )
+  );
 }
