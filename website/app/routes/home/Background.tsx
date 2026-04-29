@@ -1,4 +1,4 @@
-import { Canvas2D } from './Canvas';
+import { Canvas2D } from '@/components/Canvas';
 
 export function Background() {
   position: fixed;

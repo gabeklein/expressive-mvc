@@ -1,8 +1,9 @@
 import type { BaseLayoutProps } from 'fumadocs-ui/layouts/shared';
 import { HomeLayout } from 'fumadocs-ui/layouts/home';
-import { Background } from '@/components/AnimateBG';
 import Logo from '@/components/Logo';
+
 import { Hero } from './Hero';
+import { Background } from './Background';
 import { Problem, Solution } from './Examples';
 import { Benefits } from './Benefits';
 import { CTA } from './CTA';
