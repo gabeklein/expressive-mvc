@@ -13,26 +13,26 @@ export function Benefits() {
   header: {
     maxWidth: 672;
     marginBottom: 64;
-  }
 
-  label: {
-    fontSize: 0.75;
-    textTransform: uppercase;
-    letterSpacing: '0.1em';
-    color: $colorFdMutedForeground;
-    marginBottom: 12;
-  }
+    label: {
+      fontSize: 0.75;
+      textTransform: uppercase;
+      letterSpacing: '0.1em';
+      color: $colorFdMutedForeground;
+      marginBottom: 12;
+    }
 
-  title: {
-    fontSize: 1.875;
-    fontWeight: bold;
-    marginBottom: 16;
-    $md: { fontSize: 2.25; }
-  }
+    title: {
+      fontSize: 1.875;
+      fontWeight: bold;
+      marginBottom: 16;
+      $md: { fontSize: 2.25; }
+    }
 
-  desc: {
-    color: $colorFdMutedForeground;
-    fontSize: 1.125;
+    desc: {
+      color: $colorFdMutedForeground;
+      fontSize: 1.125;
+    }
   }
 
   grid: {
