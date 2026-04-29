@@ -30,4 +30,26 @@ for (const folder of Object.values(examples)) {
   folder['/index.tsx'] = cssImports + ENTRY;
 }
 
+export function getFiles(name: string) {
+  const source = examples[name];
+  const files: Record<string, any> = {};
+
+  for (const [path, code] of Object.entries(base))
+    files[path] = { hidden: true, code };
+
+  // Insertion order drives Sandpack's tab order; push CSS to the end.
+  const sorted = Object.entries(source).sort(
+    ([a], [b]) => Number(a.endsWith('.css')) - Number(b.endsWith('.css'))
+  );
+
+  for (const [path, code] of sorted) {
+    if (path === '/index.css') continue;
+    // /index.tsx is generated boilerplate from the sandbox plugin.
+    files[path] = path === '/index.tsx' ? { hidden: true, code } : code;
+  }
+
+  return files;
+}
+
+
 export const NAMES = Object.keys(examples);

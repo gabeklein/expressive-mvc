@@ -1,7 +1,8 @@
 import { HomeLayout } from 'fumadocs-ui/layouts/home';
 import { NavLink, Outlet } from 'react-router';
-import { NAMES } from '@/lib/examples';
+
 import { layoutOptions } from '../home';
+import { NAMES } from './loader';
 
 export function meta() {
   return [{ title: 'Examples - Expressive' }];

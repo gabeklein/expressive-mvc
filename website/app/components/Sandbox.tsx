@@ -6,17 +6,22 @@ import {
   useSandpack
 } from '@codesandbox/sandpack-react';
 import { useTheme } from 'next-themes';
-import { examples, base } from '@/lib/examples';
 
-export default function Sandbox({ name }: { name: string }) {
+export default function Sandbox({
+  name,
+  files
+}: {
+  name: string;
+  files: Record<string, string>;
+}) {
   const { theme } = useTheme();
 
   return (
     <SandpackProvider
       key={name}
-      theme={theme === "dark" ? 'dark' : 'light'}
+      theme={theme === 'dark' ? 'dark' : 'light'}
       template="react-ts"
-      files={getFiles(name)}
+      files={files}
       customSetup={{
         dependencies: { '@expressive/react': 'latest' }
       }}
@@ -49,25 +54,4 @@ function Layout() {
       <SandpackPreview />
     </SandpackLayout>
   );
-}
-
-function getFiles(name: string) {
-  const source = examples[name];
-  const files: Record<string, any> = {};
-
-  for (const [path, code] of Object.entries(base))
-    files[path] = { hidden: true, code };
-
-  // Insertion order drives Sandpack's tab order; push CSS to the end.
-  const sorted = Object.entries(source).sort(
-    ([a], [b]) => Number(a.endsWith('.css')) - Number(b.endsWith('.css'))
-  );
-
-  for (const [path, code] of sorted) {
-    if (path === '/index.css') continue;
-    // /index.tsx is generated boilerplate from the sandbox plugin.
-    files[path] = path === '/index.tsx' ? { hidden: true, code } : code;
-  }
-
-  return files;
 }

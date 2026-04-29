@@ -1,6 +1,6 @@
 import { lazy, Suspense } from 'react';
 import { Navigate, useParams } from 'react-router';
-import { examples, NAMES } from '@/lib/examples';
+import { examples, getFiles, NAMES } from './loader';
 
 const Sandbox = lazy(() => import('@/components/Sandbox'));
 
@@ -23,7 +23,7 @@ export default function CodeSample() {
   return (
     <div _sandbox>
       <Suspense fallback={<div _loading>Loading sandbox...</div>}>
-        <Sandbox name={name} />
+        <Sandbox name={name} files={getFiles(name)} />
       </Suspense>
     </div>
   );
