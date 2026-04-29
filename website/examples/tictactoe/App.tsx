@@ -12,13 +12,13 @@ const LINES = [
 ];
 
 class Game extends Component {
-  board: ('X' | 'O' | null)[] = Array(9).fill(null);
+  board: string[] = Array(9).fill("");
   turn: 'X' | 'O' = 'X';
 
   winner = set((from: this) => {
-    for (const [a, b, c] of LINES) {
-      const v = from.board[a];
-      if (v && v === from.board[b] && v === from.board[c]) return v;
+    for (const line of LINES) {
+      const [a, b, c] = line.map(i => from.board[i]);
+      if (a === b && b === c) return a;
     }
   });
 
