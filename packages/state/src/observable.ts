@@ -7,9 +7,9 @@ declare namespace Observable {
    *   - `false` - a normal update has completed.
    *   - `true` - initial event; instance is ready.
    *   - `null` - terminal event; instance is expired.
-   * @param source - Instance of State for which update has occured.
+   * @param source - Instance for which update has occured.
    */
-  type Notify<T extends Observable = any> = (
+  type Notify<T extends object = any> = (
     this: T,
     key: Signal,
     source: T
@@ -17,7 +17,7 @@ declare namespace Observable {
 
   type EffectCleanup = (update: boolean | null) => void;
 
-  type Effect<T extends Observable> = (
+  type Effect<T extends object> = (
     this: T,
     proxy: T,
     changed: readonly Event[]
@@ -27,38 +27,38 @@ declare namespace Observable {
 
   type Signal = Event | true | false | null;
 
-  type Observer<T = any> = (key: any, value: T) => void;
-
   type Callback = () => void | null;
 }
 
-interface Observable {
-  [Observable](
-    callback: () => void | null,
-    required?: boolean
-  ): Observable.Observer;
-}
-
-const Observable = Symbol('Observable');
-
 /** Lifecycle status for any observable: false = pending, true = ready, null = terminated. */
-const READY = new WeakMap<Observable, true | null>();
+const READY = new WeakMap<object, true | null>();
 
 const LISTENERS = new WeakMap<
-  Observable,
+  object,
   Map<Observable.Notify, Set<Observable.Signal> | undefined>
 >();
 
 /** Events pending for a given object. */
-const PENDING = new WeakMap<Observable, Set<Observable.Signal>>();
+const PENDING = new WeakMap<object, Set<Observable.Signal>>();
 
 /** Update register. */
-const EMITING = new WeakMap<Observable, Set<string | number | symbol>>();
+const EMITING = new WeakMap<object, Set<string | number | symbol>>();
 
 /** Central event dispatch. Bunches all updates to occur at same time. */
 const DISPATCH = new Set<() => void>();
 
 const OBSERVER = new WeakMap<object, (key: any, value: any) => any>();
+
+/**
+ * Resolve to the real instance behind a watch-proxy.
+ * Proxies created by `observe` sit one `Object.create` hop above the real subject;
+ * if the input itself isn't registered, look one prototype up.
+ */
+function resolve<T extends object>(state: T): T {
+  if (LISTENERS.has(state)) return state;
+  const proto = Object.getPrototypeOf(state);
+  return proto && LISTENERS.has(proto) ? proto : state;
+}
 
 /**
  * Check if an object is observable and return its status.
@@ -68,27 +68,33 @@ const OBSERVER = new WeakMap<object, (key: any, value: any) => any>();
  * - `undefined` if not observable.
  */
 function observable(state: object): boolean | null | undefined {
-  if (Observable in state) {
-    const status = READY.get(state as Observable);
+  state = resolve(state);
+  if (LISTENERS.has(state)) {
+    const status = READY.get(state);
     return status === undefined ? false : status;
   }
 }
 
-function observe<T extends Observable>(
+function observe<T extends object>(
   object: T,
   callback: Observable.Callback,
   required?: boolean
 ): T {
-  const notify = object[Observable](callback, required);
+  const watching = new Set<Observable.Signal>();
+
+  listener(object, (key) => {
+    if (watching.has(key)) return callback();
+  });
+
   const proxy = Object.create(object);
 
   OBSERVER.set(proxy, (key, value) => {
     if (value === undefined && required)
       throw new Error(`${object}.${key} is required in this context.`);
 
-    notify(key, value);
+    watching.add(key);
 
-    if (value instanceof Object && Observable in value)
+    if (value instanceof Object && LISTENERS.has(resolve(value)))
       return observe(value, callback, required);
 
     return value;
@@ -97,16 +103,18 @@ function observe<T extends Observable>(
   return proxy as T;
 }
 
-function touch(from: Observable, key: any, value?: any) {
+function touch(from: object, key: any, value?: any) {
   const observe = OBSERVER.get(from);
   return observe ? observe(key, value) : value;
 }
 
-function listener<T extends Observable>(
+function listener<T extends object>(
   subject: T,
   callback: Observable.Notify<T>,
   select?: Observable.Signal | Set<Observable.Signal>
 ) {
+  subject = resolve(subject);
+
   let listeners = LISTENERS.get(subject)!;
 
   if (!listeners) LISTENERS.set(subject, (listeners = new Map()));
@@ -128,8 +136,9 @@ const EMPTY = Object.assign([], {
 } as PromiseLike<never[]>);
 
 function pending<K extends Observable.Event>(
-  state: Observable
+  state: object
 ): K[] & PromiseLike<K[]> {
+  state = resolve(state);
   const current = EMITING.get(state) as Set<K> | undefined;
 
   if (!current) return EMPTY;
@@ -150,13 +159,15 @@ function pending<K extends Observable.Event>(
 }
 
 function event(
-  state: Observable,
+  state: object,
   key?: Observable.Event | null,
   silent?: boolean
 ) {
+  state = resolve(state);
+
   if (key === null) return emit(state, key);
 
-  if (!key) return emit(state, true);
+  if (key === undefined) return emit(state, true);
 
   let pending = EMITING.get(state);
 
@@ -175,7 +186,7 @@ function event(
   if (!silent) emit(state, key);
 }
 
-function emit(state: Observable, key: Observable.Signal): void {
+function emit(state: object, key: Observable.Signal): void {
   const isReady = READY.has(state);
 
   if (key === true && isReady) return;
@@ -234,19 +245,19 @@ function enqueue(eventHandler: () => void) {
  * @param callback - Function to invoke when values change.
  * @param requireValues - If `true` will throw if accessing a value which is `undefined`.
  */
-function watch<T extends Observable>(
+function watch<T extends object>(
   target: T,
   callback: Observable.Effect<Required<T>>,
   requireValues: true
 ): () => void;
 
-function watch<T extends Observable>(
+function watch<T extends object>(
   target: T,
   callback: Observable.Effect<T>,
   recursive?: boolean
 ): () => void;
 
-function watch<T extends Observable>(
+function watch<T extends object>(
   target: T,
   callback: Observable.Effect<T>,
   argument?: boolean
@@ -332,7 +343,6 @@ function capture(scope: (release: () => void) => void) {
 
 export {
   listener,
-  emit,
   event,
   Observable,
   touch,

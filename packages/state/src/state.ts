@@ -1,10 +1,8 @@
 import { Context } from './context';
 import {
-  emit,
   event,
   listener,
   observable,
-  Observable,
   pending,
   touch,
   watch
@@ -54,8 +52,8 @@ declare namespace State {
   /** Object overlay to override values and methods on a state. */
   type Assign<T> = Record<string, unknown> & {
     [K in Field<T>]?: T[K] extends (...args: infer A) => infer R
-      ? (this: T, ...args: A) => R
-      : T[K];
+    ? (this: T, ...args: A) => R
+    : T[K];
   };
 
   /** Subset of `keyof T` which are not methods or defined by base State U. **/
@@ -148,7 +146,7 @@ declare namespace State {
     PromiseLike<readonly Event<T>[]>;
 }
 
-abstract class State implements Observable {
+abstract class State {
   /**
    * Loopback to instance of this state. This is useful when in a subscribed context,
    * to keep write access to `this` after a destructure. You can use it to read variables silently as well.
@@ -158,18 +156,6 @@ abstract class State implements Observable {
   constructor(...args: State.Args) {
     define(this, 'is', { value: this });
     init(this, args, this.new);
-  }
-
-  [Observable](callback: Observable.Callback) {
-    const watching = new Set<State.Signal>();
-
-    listener(this, (key) => {
-      if (watching.has(key)) return callback();
-    });
-
-    return (key: State.Signal) => {
-      watching.add(key);
-    };
   }
 
   /**
@@ -474,7 +460,7 @@ function init(state: State, ...args: State.Args) {
     }
   }
 
-  function register(){
+  function register() {
     if (Context.get(state) === Context.root) return Context.root.add(state);
   }
 
@@ -722,7 +708,7 @@ function access(state: State, property: string, required?: boolean) {
 }
 
 function assign(state: State, data: State.Assign<State>, silent?: boolean) {
-  emit(state, true);
+  event(state);
 
   const methods = METHODS.get(state.constructor)!;
 

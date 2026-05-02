@@ -1,4 +1,4 @@
-import { watch, Observable, observable } from './observable';
+import { event, listener, touch, watch, observable } from './observable';
 import { set } from './instruction/set';
 import { def } from './instruction/def';
 import { mockError, vi, describe, it, expect, mockPromise } from '../vitest';
@@ -361,39 +361,42 @@ describe('errors', () => {
 });
 
 describe('observable', () => {
-  it('will update effect', async () => {
-    class MyObservable implements Observable {
-      value = 'foo';
-      watch?: Observable.Callback = undefined;
+  it('will dispatch from a plain class using touch and event', async () => {
+    class Counter {
+      private state = { count: 0 };
 
-      [Observable](onUpdate: Observable.Callback): Observable.Observer {
-        this.watch = onUpdate;
-        return () => {};
+      constructor() {
+        listener(this, () => { });
+        event(this);
       }
 
-      async update(value: string) {
-        this.value = value;
-        if (this.watch) this.watch();
+      read() {
+        return touch(this, 'count', this.state.count);
+      }
+
+      bump() {
+        this.state.count++;
+        event(this, 'count');
       }
     }
 
-    class Test extends State {
-      observable = new MyObservable();
-    }
+    const counter = new Counter();
+    const fn = vi.fn();
+    let proxy!: Counter;
 
-    const mock = vi.fn();
-    const test = Test.new();
-
-    test.get(($) => {
-      mock($.observable.value);
+    watch(counter, ($) => {
+      proxy = $;
+      fn($.read());
     });
 
-    expect(mock).toBeCalledWith('foo');
+    expect(fn).toBeCalledWith(0);
+    expect(fn).toBeCalledTimes(1);
 
-    await test.observable.update('bar');
+    proxy.bump();
+    await new Promise((r) => setTimeout(r, 5));
 
-    expect(mock).toBeCalledWith('bar');
-    expect(mock).toBeCalledTimes(2);
+    expect(fn).toBeCalledWith(1);
+    expect(fn).toBeCalledTimes(2);
   });
 
   describe('function', () => {
@@ -402,19 +405,19 @@ describe('observable', () => {
     });
 
     it('will return false for observable not ready', () => {
-      class Test extends State {}
+      class Test extends State { }
 
       expect(observable(new Test())).toBe(false);
     });
 
     it('will return true for observable ready', async () => {
-      class Test extends State {}
+      class Test extends State { }
 
       expect(observable(Test.new())).toBe(true);
     });
 
     it('will return null for observable destroyed', async () => {
-      class Test extends State {}
+      class Test extends State { }
 
       const instance = Test.new();
 
