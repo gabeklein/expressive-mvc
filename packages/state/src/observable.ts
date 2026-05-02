@@ -154,9 +154,12 @@ function event(
   key?: Observable.Event | null,
   silent?: boolean
 ) {
+  while (state && !LISTENERS.has(state))
+    state = Object.getPrototypeOf(state);
+
   if (key === null) return emit(state, key);
 
-  if (!key) return emit(state, true);
+  if (key === undefined) return emit(state, true);
 
   let pending = EMITING.get(state);
 

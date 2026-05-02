@@ -1,17 +1,40 @@
 import { event, listener, Observable, touch } from './observable';
 
-const LENGTH = Symbol('length');
+const ITEMS = Symbol('items');
+const ALL = Symbol('all');
 
 declare namespace List {
   type Predicate<T> = (value: T, index: number, list: List<T>) => boolean;
   type Mapper<T, U> = (value: T, index: number, list: List<T>) => U;
 }
 
+type AllMemo = {
+  key: symbol;
+  failing: Set<number>;
+};
+
 class List<T> implements Observable {
-  #items: T[];
+  declare [ITEMS]: T[];
+  declare [ALL]: Map<List.Predicate<T>, AllMemo>;
 
   constructor(initial: Iterable<T> = []) {
-    this.#items = [...initial];
+    const items = (this[ITEMS] = [...initial]);
+    const memos = (this[ALL] = new Map());
+
+    listener(this, (k) => {
+      if (typeof k !== 'number') return;
+
+      for (const [pred, { failing, key }] of memos) {
+        const wasOk = failing.size === 0;
+
+        if (k < items.length && !pred(items[k], k, this)) failing.add(k);
+        else failing.delete(k);
+
+        if (!failing.size !== wasOk) event(this, key);
+      }
+    });
+
+    event(this);
   }
 
   [Observable](callback: Observable.Callback) {
@@ -27,7 +50,7 @@ class List<T> implements Observable {
   }
 
   get size(): number {
-    return touch(this, LENGTH, this.#items.length);
+    return touch(this, "size", this[ITEMS].length);
   }
 
   get(): T[];
@@ -36,16 +59,14 @@ class List<T> implements Observable {
   get(predicate: List.Predicate<T>): T | undefined;
   get(predicate: List.Predicate<T>, all: true): T[];
   get(arg?: number | List.Predicate<T>, second?: number | boolean) {
-    if (arg === undefined)
-      return this.#items.map(exportValue);
+    const items = this[ITEMS];
+
+    if (arg === undefined) return items.map(exportValue);
 
     if (typeof arg === 'number') {
-      const items = this.#items;
+      if (typeof second !== 'number') return touch(this, arg, items[arg]);
 
-      if (typeof second !== 'number')
-        return touch(this, arg, items[arg]);
-
-      touch(this, LENGTH, items.length);
+      touch(this, "size", items.length);
 
       const stop = Math.min(second, items.length);
       const out: T[] = [];
@@ -64,62 +85,62 @@ class List<T> implements Observable {
   }
 
   set(index: number, value: T) {
-    const items = this.#items;
+    const items = this[ITEMS];
 
     if (items[index] === value) return;
 
     const grew = index >= items.length;
     items[index] = value;
     event(this, index);
-    if (grew) event(this, LENGTH);
+    if (grew) event(this, "size");
   }
 
   put(index: number, ...items: T[]) {
-    if (!items.length) return;
+    const arr = this[ITEMS];
+    if (items.length) {
+      const at =
+        index < 0
+          ? Math.max(arr.length + index, 0)
+          : Math.min(index, arr.length);
 
-    const arr = this.#items;
-    const at = index < 0
-      ? Math.max(arr.length + index, 0)
-      : Math.min(index, arr.length);
+      arr.splice(at, 0, ...items);
 
-    arr.splice(at, 0, ...items);
-
-    for (let i = at; i < arr.length; i++) event(this, i);
-    event(this, LENGTH);
+      for (let i = at; i < arr.length; i++) event(this, i);
+      event(this, "size");
+    }
+    return arr.length;
   }
 
   push(...values: T[]): number {
-    this.put(this.#items.length, ...values);
-    return this.#items.length;
+    return this.put(this[ITEMS].length, ...values);
   }
 
   pop(): T | undefined;
   pop(index: number): T | undefined;
   pop(index: number, count: number): T[];
   pop(index = -1, count?: number): T | T[] | undefined {
-    const items = this.#items;
+    const items = this[ITEMS];
     const before = items.length;
-    const start = index < 0
-      ? Math.max(before + index, 0)
-      : Math.min(index, before);
+    const start =
+      index < 0 ? Math.max(before + index, 0) : Math.min(index, before);
     const removed = items.splice(start, count ?? 1);
 
     if (removed.length) {
       const end = Math.max(before, items.length);
       for (let i = start; i < end; i++) event(this, i);
-      event(this, LENGTH);
+      event(this, "size");
     }
 
     return count === undefined ? removed[0] : removed;
   }
 
   clear() {
-    this.pop(0, this.#items.length);
+    this.pop(0, this[ITEMS].length);
   }
 
   *[Symbol.iterator](): IterableIterator<T> {
-    const items = this.#items;
-    touch(this, LENGTH, items.length);
+    const items = this[ITEMS];
+    touch(this, "size", items.length);
 
     for (let i = 0; i < items.length; i++) yield touch(this, i, items[i]);
   }
@@ -147,10 +168,25 @@ class List<T> implements Observable {
     return out;
   }
 
-  all(fn: List.Predicate<T>): boolean {
-    let i = 0;
-    for (const v of this) if (!fn(v, i++, this)) return false;
-    return true;
+  all(pred: List.Predicate<T>): boolean {
+    const memos = this[ALL];
+    let memo = memos.get(pred);
+
+    if (!memo) {
+      memos.set(
+        pred,
+        (memo = {
+          key: Symbol("all"),
+          failing: new Set()
+        })
+      );
+
+      const items = this[ITEMS];
+      for (let i = 0; i < items.length; i++)
+        if (!pred(items[i], i, this)) memo.failing.add(i);
+    }
+
+    return touch(this, memo.key, memo.failing.size === 0);
   }
 
   static from<T>(iterable: Iterable<T>): List<T> {
