@@ -3,6 +3,7 @@ import { NavLink, Outlet } from 'react-router';
 
 import { layoutOptions } from '../home';
 import { NAMES } from './loader';
+import { useState } from 'react';
 
 export function meta() {
   return [{ title: 'Examples - Expressive' }];
@@ -55,6 +56,21 @@ function Navigation() {
     }
   }
 
+  const [active, setActive] = useState<boolean>(false);
+
+  Button: {
+    color: red;
+
+    $hover: {
+      color: green;
+    }
+
+    if(active)
+      color: purple;
+      
+      fontWeight: bold;
+  }
+
   return (
     <nav>
       {NAMES.map((name) => (
@@ -62,6 +78,27 @@ function Navigation() {
           {name}
         </NavLink>
       ))}
+      <Button onClick={() => {
+        setActive(true)
+      }} />
     </nav>
   );
+}
+
+const Button = ({ onClick }: {
+  onClick: () => void;
+}) => {
+  padding: 6, 12;
+  borderRadius: 6;
+  border: $colorFdBorder;
+  fontSize: 0.875;
+  textDecoration: none;
+  color: inherit;
+  userSelect: none;
+
+  $hover: {
+    borderColor: $colorFdPrimary;
+  }
+
+  return <button onClick={onClick}>Example</button>;
 }
