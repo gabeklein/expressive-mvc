@@ -1,4 +1,4 @@
-declare namespace Observable {
+declare namespace Observer {
   /**
    * Update callback function.
    *
@@ -7,13 +7,8 @@ declare namespace Observable {
    *   - `false` - a normal update has completed.
    *   - `true` - initial event; instance is ready.
    *   - `null` - terminal event; instance is expired.
-   * @param source - Instance for which update has occured.
    */
-  type Notify<T extends object = any> = (
-    this: T,
-    key: Signal,
-    source: T
-  ) => (() => void) | null | void;
+  type Notify = (key: Signal) => (() => void) | null | void;
 
   type EffectCleanup = (update: boolean | null) => void;
 
@@ -30,34 +25,33 @@ declare namespace Observable {
   type Callback = () => void | null;
 }
 
-/** Lifecycle status for any observable: false = pending, true = ready, null = terminated. */
-const READY = new WeakMap<object, true | null>();
+interface Observer {
+  /** Lifecycle status: undefined = pending, true = ready, null = terminated. */
+  ready?: true | null;
+  listeners: Map<Observer.Notify, Set<Observer.Signal> | undefined>;
+  /** Recursion guard for an in-progress emit pass. */
+  pending: Set<Observer.Signal>;
+  /** Accumulator drained by the next microtask. */
+  emitting: Set<Observer.Event>;
+}
 
-const LISTENERS = new WeakMap<
-  object,
-  Map<Observable.Notify, Set<Observable.Signal> | undefined>
->();
+interface Observing {
+  callback: Observer.Callback;
+  watching: Set<Observer.Signal>;
+  required?: boolean;
+}
 
-/** Events pending for a given object. */
-const PENDING = new WeakMap<object, Set<Observable.Signal>>();
-
-/** Update register. */
-const EMITING = new WeakMap<object, Set<string | number | symbol>>();
+const Observer: unique symbol = Symbol('Observer');
+const Observing: unique symbol = Symbol('Observing');
 
 /** Central event dispatch. Bunches all updates to occur at same time. */
 const DISPATCH = new Set<() => void>();
 
-const OBSERVER = new WeakMap<object, (key: any, value: any) => any>();
+interface Observable { [Observer]?: Observer };
+interface Observed { [Observing]?: Observing };
 
-/**
- * Resolve to the real instance behind a watch-proxy.
- * Proxies created by `observe` sit one `Object.create` hop above the real subject;
- * if the input itself isn't registered, look one prototype up.
- */
-function resolve<T extends object>(state: T): T {
-  if (LISTENERS.has(state)) return state;
-  const proto = Object.getPrototypeOf(state);
-  return proto && LISTENERS.has(proto) ? proto : state;
+function obs(state: object): Observer | undefined {
+  return (state as Observable)[Observer];
 }
 
 /**
@@ -68,19 +62,16 @@ function resolve<T extends object>(state: T): T {
  * - `undefined` if not observable.
  */
 function observable(state: object): boolean | null | undefined {
-  state = resolve(state);
-  if (LISTENERS.has(state)) {
-    const status = READY.get(state);
-    return status === undefined ? false : status;
-  }
+  const o = obs(state);
+  if (o) return o.ready === undefined ? false : o.ready;
 }
 
 function observe<T extends object>(
   object: T,
-  callback: Observable.Callback,
+  callback: Observer.Callback,
   required?: boolean
 ): T {
-  const watching = new Set<Observable.Signal>();
+  const watching = new Set<Observer.Signal>();
 
   listener(object, (key) => {
     if (watching.has(key)) return callback();
@@ -88,69 +79,72 @@ function observe<T extends object>(
 
   const proxy = Object.create(object);
 
-  OBSERVER.set(proxy, (key, value) => {
-    if (value === undefined && required)
-      throw new Error(`${object}.${key} is required in this context.`);
-
-    watching.add(key);
-
-    if (value instanceof Object && LISTENERS.has(resolve(value)))
-      return observe(value, callback, required);
-
-    return value;
+  return Object.defineProperty<T>(proxy, Observing, {
+    value: { callback, watching, required } as Observing
   });
-
-  return proxy as T;
 }
 
 function touch(from: object, key: any, value?: any) {
-  const observe = OBSERVER.get(from);
-  return observe ? observe(key, value) : value;
+  const active = (from as Observed)[Observing];
+
+  if (active) {
+    if (value === undefined && active.required)
+      throw new Error(
+        `${Object.getPrototypeOf(from)}.${key} is required in this context.`
+      );
+
+    active.watching.add(key);
+
+    if (value instanceof Object && obs(value))
+      return observe(value, active.callback, active.required);
+  }
+
+  return value;
 }
 
 function listener<T extends object>(
   subject: T,
-  callback: Observable.Notify<T>,
-  select?: Observable.Signal | Set<Observable.Signal>
+  callback: Observer.Notify,
+  select?: Observer.Signal | Set<Observer.Signal>
 ) {
-  subject = resolve(subject);
+  let o = obs(subject);
 
-  let listeners = LISTENERS.get(subject)!;
-
-  if (!listeners) LISTENERS.set(subject, (listeners = new Map()));
+  if (!o)
+    Object.defineProperty(subject, Observer, {
+      value: (o = {
+        pending: new Set(),
+        emitting: new Set(),
+        listeners: new Map()
+      })
+    });
 
   if (select !== undefined && !(select instanceof Set))
     select = new Set([select]);
 
-  if (READY.has(subject) && !select) {
-    callback.call(subject, true, subject);
-  }
+  if (o.ready !== undefined && !select) callback(true);
 
-  listeners.set(callback, select);
+  o.listeners.set(callback, select);
 
-  return () => listeners.delete(callback);
+  return () => o.listeners.delete(callback);
 }
 
 const EMPTY = Object.assign([], {
   then: Promise.prototype.then.bind(Promise.resolve([]))
 } as PromiseLike<never[]>);
 
-function pending<K extends Observable.Event>(
+function pending<K extends Observer.Event>(
   state: object
 ): K[] & PromiseLike<K[]> {
-  state = resolve(state);
-  const current = EMITING.get(state) as Set<K> | undefined;
+  const o = obs(state);
+  if (!o?.emitting.size) return EMPTY;
 
-  if (!current) return EMPTY;
-
-  const listeners = LISTENERS.get(state)!;
+  const current = o.emitting as Set<K>;
   const promise = new Promise<K[]>((res) => {
-    const callback: Observable.Notify = (key) => {
-      listeners.delete(callback);
+    const callback: Observer.Notify = () => {
+      o.listeners.delete(callback);
       return () => res([...current]);
     };
-
-    listeners.set(callback, undefined);
+    o.listeners.set(callback, undefined);
   });
 
   return Object.assign([...current], {
@@ -158,67 +152,49 @@ function pending<K extends Observable.Event>(
   });
 }
 
-function event(
-  state: object,
-  key?: Observable.Event | null,
-  silent?: boolean
-) {
-  state = resolve(state);
+function event(state: object, key?: Observer.Event | null, silent?: boolean) {
+  const o = obs(state);
 
-  if (key === null) return emit(state, key);
+  if (!o) return;
+  if (key === null) return emit(o, key);
+  if (key === undefined) return emit(o, true);
 
-  if (key === undefined) return emit(state, true);
+  if (!o.emitting.size && !silent)
+    enqueue(() => {
+      emit(o, false);
+      o.emitting = new Set();
+    });
 
-  let pending = EMITING.get(state);
+  o.emitting.add(key);
 
-  if (!pending) {
-    EMITING.set(state, (pending = new Set()));
-
-    if (!silent)
-      enqueue(() => {
-        emit(state, false);
-        EMITING.delete(state);
-      });
-  }
-
-  pending.add(key);
-
-  if (!silent) emit(state, key);
+  if (!silent) emit(o, key);
 }
 
-function emit(state: object, key: Observable.Signal): void {
-  const isReady = READY.has(state);
+function emit(o: Observer, key: Observer.Signal): void {
+  const { listeners, pending, ready } = o;
 
-  if (key === true && isReady) return;
+  if (key === true && ready !== undefined) return;
 
-  let pending = PENDING.get(state);
-
-  if (pending) {
+  if (pending.size) {
     pending.add(key);
     return;
   }
+  if (ready === undefined) pending.add(true);
+  pending.add(key);
 
-  PENDING.set(state, (pending = new Set(isReady ? [key] : [true, key])));
-
-  const listeners = LISTENERS.get(state)!;
-
-  for (const key of pending)
+  for (const k of pending)
     for (const [callback, filter] of listeners)
-      if (!filter || filter.has(key)) {
-        const after = callback.call(state, key, state);
+      if (!filter || filter.has(k)) {
+        const after = callback(k);
 
-        if (after) {
-          enqueue(after);
-        } else if (after === null) {
-          listeners.delete(callback);
-        }
+        if (after) enqueue(after);
+        else if (after === null) listeners.delete(callback);
       }
 
   if (key === null) listeners.clear();
+  if (key === true || key === null) o.ready = key;
 
-  if (key === true || key === null) READY.set(state, key);
-
-  PENDING.delete(state);
+  pending.clear();
 }
 
 function enqueue(eventHandler: () => void) {
@@ -247,22 +223,22 @@ function enqueue(eventHandler: () => void) {
  */
 function watch<T extends object>(
   target: T,
-  callback: Observable.Effect<Required<T>>,
+  callback: Observer.Effect<Required<T>>,
   requireValues: true
 ): () => void;
 
 function watch<T extends object>(
   target: T,
-  callback: Observable.Effect<T>,
+  callback: Observer.Effect<T>,
   recursive?: boolean
 ): () => void;
 
 function watch<T extends object>(
   target: T,
-  callback: Observable.Effect<T>,
+  callback: Observer.Effect<T>,
   argument?: boolean
 ) {
-  let cause: readonly Observable.Event[] = [];
+  let cause: readonly Observer.Event[] = [];
   let unset: ((update: boolean | null) => void) | undefined;
   let reset: (() => void) | null | undefined;
 
@@ -270,7 +246,7 @@ function watch<T extends object>(
     let ignore: boolean = true;
 
     function onUpdate() {
-      cause = [...(EMITING.get(target) || [])];
+      cause = [...obs(target)!.emitting];
 
       if (reset === null) return null;
       if (ignore) return;
@@ -344,7 +320,7 @@ function capture(scope: (release: () => void) => void) {
 export {
   listener,
   event,
-  Observable,
+  Observer as Observable,
   touch,
   pending,
   observable,

@@ -2,6 +2,7 @@ import { Context } from './context';
 import {
   event,
   listener,
+  Observable,
   observable,
   pending,
   touch,
@@ -263,7 +264,7 @@ abstract class State {
     if (arg1 === undefined) return values(self);
     if (State.is(arg1)) return Context.get(self).get(arg1, arg2 as any, arg3);
     if (typeof arg1 == 'function') return watch(self, unbind(arg1));
-    if (typeof arg2 == 'function') return listener(self, arg2 as any, arg1);
+    if (typeof arg2 == 'function') return callback(self, arg2, arg1);
     if (arg1 === null) return observable(self) === null;
     return access(self, arg1, arg2);
   }
@@ -369,7 +370,7 @@ abstract class State {
       });
 
     if (typeof arg2 == 'function')
-      return listener(self, arg2 as State.OnEvent<this>, arg1 as State.Signal);
+      return callback(self, arg2, arg1 as State.Signal);
 
     if (arg1 && typeof arg1 == 'object') assign(self, arg1, arg2 === true);
     else if (arg2) apply(self, arg1 as string, arg2);
@@ -438,6 +439,15 @@ define(State, 'toString', {
     return this.name;
   }
 });
+
+/** Register a user OnEvent/OnUpdate callback, preserving `this` and `source`. */
+function callback<T extends State>(
+  self: T,
+  cb: Function,
+  select?: Observable.Signal | Set<Observable.Signal>
+) {
+  return listener(self, (key) => cb.call(self, key, self), select);
+}
 
 /**
  * Apply state arguemnts, run callbacks and observe properties.

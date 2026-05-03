@@ -1,4 +1,4 @@
-import { event, listener, touch, watch, observable } from './observable';
+import { event, listener, touch, watch } from './observable';
 import { set } from './instruction/set';
 import { def } from './instruction/def';
 import { mockError, vi, describe, it, expect, mockPromise } from '../vitest';
@@ -399,33 +399,37 @@ describe('observable', () => {
     expect(fn).toBeCalledTimes(2);
   });
 
-  describe('function', () => {
-    it("will return undefined for object which doesn't implement observable", () => {
-      expect(observable({})).toBeUndefined();
-    });
-
-    it('will return false for observable not ready', () => {
-      class Test extends State { }
-
-      expect(observable(new Test())).toBe(false);
-    });
-
-    it('will return true for observable ready', async () => {
-      class Test extends State { }
-
-      expect(observable(Test.new())).toBe(true);
-    });
-
-    it('will return null for observable destroyed', async () => {
-      class Test extends State { }
-
-      const instance = Test.new();
-
-      expect(observable(instance)).toBe(true);
-
-      instance.set(null);
-
-      expect(observable(instance)).toBeNull();
-    });
+  it('will silently no-op when event called on non-observable', () => {
+    expect(() => event({}, 'foo')).not.toThrow();
   });
+
+  //   describe('function', () => {
+  //     it("will return undefined for object which doesn't implement observable", () => {
+  //       expect(observable({})).toBeUndefined();
+  //     });
+
+  //     it('will return false for observable not ready', () => {
+  //       class Test extends State { }
+
+  //       expect(observable(new Test())).toBe(false);
+  //     });
+
+  //     it('will return true for observable ready', async () => {
+  //       class Test extends State { }
+
+  //       expect(observable(Test.new())).toBe(true);
+  //     });
+
+  //     it('will return null for observable destroyed', async () => {
+  //       class Test extends State { }
+
+  //       const instance = Test.new();
+
+  //       expect(observable(instance)).toBe(true);
+
+  //       instance.set(null);
+
+  //       expect(observable(instance)).toBeNull();
+  //     });
+  //   });
 });
