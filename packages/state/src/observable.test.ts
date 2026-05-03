@@ -1,4 +1,4 @@
-import { watch, Observable, observable } from './observable';
+import { event, listener, touch, watch, observer } from './observable';
 import { set } from './instruction/set';
 import { def } from './instruction/def';
 import { mockError, vi, describe, it, expect, mockPromise } from '../vitest';
@@ -361,68 +361,90 @@ describe('errors', () => {
 });
 
 describe('observable', () => {
-  it('will update effect', async () => {
-    class MyObservable implements Observable {
-      value = 'foo';
-      watch?: Observable.Callback = undefined;
+  it('will dispatch from a plain class using touch and event', async () => {
+    class Counter {
+      private state = { count: 0 };
 
-      [Observable](onUpdate: Observable.Callback): Observable.Observer {
-        this.watch = onUpdate;
-        return () => {};
+      constructor() {
+        listener(this, () => { });
+        event(this);
       }
 
-      async update(value: string) {
-        this.value = value;
-        if (this.watch) this.watch();
+      read() {
+        return touch(this, 'count', this.state.count);
+      }
+
+      bump() {
+        this.state.count++;
+        event(this, 'count');
       }
     }
 
-    class Test extends State {
-      observable = new MyObservable();
-    }
+    const counter = new Counter();
+    const fn = vi.fn();
+    let proxy!: Counter;
 
-    const mock = vi.fn();
-    const test = Test.new();
-
-    test.get(($) => {
-      mock($.observable.value);
+    watch(counter, ($) => {
+      proxy = $;
+      fn($.read());
     });
 
-    expect(mock).toBeCalledWith('foo');
+    expect(fn).toBeCalledWith(0);
+    expect(fn).toBeCalledTimes(1);
 
-    await test.observable.update('bar');
+    proxy.bump();
+    await new Promise((r) => setTimeout(r, 5));
 
-    expect(mock).toBeCalledWith('bar');
-    expect(mock).toBeCalledTimes(2);
+    expect(fn).toBeCalledWith(1);
+    expect(fn).toBeCalledTimes(2);
   });
 
-  describe('function', () => {
-    it("will return undefined for object which doesn't implement observable", () => {
-      expect(observable({})).toBeUndefined();
+  it('will silently no-op when event called on non-observable', () => {
+    expect(() => event({}, 'foo')).not.toThrow();
+  });
+
+  describe('observer', () => {
+    it("will return undefined for object which isn't observed", () => {
+      expect(observer({})).toBeUndefined();
     });
 
-    it('will return false for observable not ready', () => {
-      class Test extends State {}
+    it('will return bundle without ready for observable not ready', () => {
+      const test = {};
 
-      expect(observable(new Test())).toBe(false);
+      listener(test, () => { });
+
+      expect("ready" in observer(test, true)).toBe(false);
     });
 
-    it('will return true for observable ready', async () => {
-      class Test extends State {}
+    it('will return with ready=true for ready observable', () => {
+      const test = {};
+      const didInit = vi.fn();
 
-      expect(observable(Test.new())).toBe(true);
+      listener(test, didInit);
+      event(test);
+
+      expect(didInit).toBeCalledWith(true);
+      expect(observer(test, true).ready).toBe(true);
     });
 
-    it('will return null for observable destroyed', async () => {
-      class Test extends State {}
+    it('will return null for terminated observable', () => {
+      const test = {};
+      const onEvent = vi.fn();
 
-      const instance = Test.new();
+      listener(test, onEvent);
+      event(test, null);
 
-      expect(observable(instance)).toBe(true);
+      expect(observer(test)).toBe(null);
+      expect(onEvent).toBeCalledWith(null);
+    });
 
-      instance.set(null);
+    it('will throw when registering a listener on a terminated state', () => {
+      const test = {};
 
-      expect(observable(instance)).toBeNull();
+      listener(test, () => { });
+      event(test, null);
+
+      expect(() => listener(test, () => { })).toThrow(/terminated/);
     });
   });
 });

@@ -1,10 +1,9 @@
 import { Context } from './context';
 import {
-  emit,
   event,
   listener,
-  observable,
   Observable,
+  observer,
   pending,
   touch,
   watch
@@ -54,8 +53,8 @@ declare namespace State {
   /** Object overlay to override values and methods on a state. */
   type Assign<T> = Record<string, unknown> & {
     [K in Field<T>]?: T[K] extends (...args: infer A) => infer R
-      ? (this: T, ...args: A) => R
-      : T[K];
+    ? (this: T, ...args: A) => R
+    : T[K];
   };
 
   /** Subset of `keyof T` which are not methods or defined by base State U. **/
@@ -148,7 +147,7 @@ declare namespace State {
     PromiseLike<readonly Event<T>[]>;
 }
 
-abstract class State implements Observable {
+abstract class State {
   /**
    * Loopback to instance of this state. This is useful when in a subscribed context,
    * to keep write access to `this` after a destructure. You can use it to read variables silently as well.
@@ -158,18 +157,6 @@ abstract class State implements Observable {
   constructor(...args: State.Args) {
     define(this, 'is', { value: this });
     init(this, args, this.new);
-  }
-
-  [Observable](callback: Observable.Callback) {
-    const watching = new Set<State.Signal>();
-
-    listener(this, (key) => {
-      if (watching.has(key)) return callback();
-    });
-
-    return (key: State.Signal) => {
-      watching.add(key);
-    };
   }
 
   /**
@@ -277,8 +264,8 @@ abstract class State implements Observable {
     if (arg1 === undefined) return values(self);
     if (State.is(arg1)) return Context.get(self).get(arg1, arg2 as any, arg3);
     if (typeof arg1 == 'function') return watch(self, unbind(arg1));
-    if (typeof arg2 == 'function') return listener(self, arg2 as any, arg1);
-    if (arg1 === null) return observable(self) === null;
+    if (typeof arg2 == 'function') return callback(self, arg2, arg1);
+    if (arg1 === null) return observer(self) === null;
     return access(self, arg1, arg2);
   }
 
@@ -383,7 +370,7 @@ abstract class State implements Observable {
       });
 
     if (typeof arg2 == 'function')
-      return listener(self, arg2 as State.OnEvent<this>, arg1 as State.Signal);
+      return callback(self, arg2, arg1 as State.Signal);
 
     if (arg1 && typeof arg1 == 'object') assign(self, arg1, arg2 === true);
     else if (arg2) apply(self, arg1 as string, arg2);
@@ -453,6 +440,15 @@ define(State, 'toString', {
   }
 });
 
+/** Register a user OnEvent/OnUpdate callback, preserving `this` and `source`. */
+function callback<T extends State>(
+  self: T,
+  cb: Function,
+  select?: Observable.Signal | Set<Observable.Signal>
+) {
+  return listener(self, (key) => cb.call(self, key, self), select);
+}
+
 /**
  * Apply state arguemnts, run callbacks and observe properties.
  * Accumulate and handle cleanup events.
@@ -474,7 +470,7 @@ function init(state: State, ...args: State.Args) {
     }
   }
 
-  function register(){
+  function register() {
     if (Context.get(state) === Context.root) return Context.root.add(state);
   }
 
@@ -722,7 +718,7 @@ function access(state: State, property: string, required?: boolean) {
 }
 
 function assign(state: State, data: State.Assign<State>, silent?: boolean) {
-  emit(state, true);
+  event(state);
 
   const methods = METHODS.get(state.constructor)!;
 
@@ -756,7 +752,7 @@ function update<T>(
   value: T,
   silent?: boolean
 ) {
-  if (observable(state) === null) {
+  if (observer(state) === null) {
     if (silent) return false;
     throw new Error(
       `Tried to update ${state}.${String(key)} but state is destroyed.`
