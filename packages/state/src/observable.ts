@@ -50,8 +50,21 @@ const DISPATCH = new Set<() => void>();
 interface Observable { [Observer]?: Observer };
 interface Observed { [Observing]?: Observing };
 
-function obs(state: object): Observer | undefined {
-  return (state as Observable)[Observer];
+function obs(state: object): Observer | undefined;
+function obs(state: object, create: true): Observer;
+function obs(state: object, create?: boolean) {
+  const o = (state as Observable)[Observer];
+  if (o) return o;
+
+  if (create) {
+    const fresh: Observer = {
+      listeners: new Map(),
+      pending: new Set(),
+      emitting: new Set()
+    };
+    Object.defineProperty(state, Observer, { value: fresh });
+    return fresh;
+  }
 }
 
 /**
@@ -107,16 +120,7 @@ function listener<T extends object>(
   callback: Observer.Notify,
   select?: Observer.Signal | Set<Observer.Signal>
 ) {
-  let o = obs(subject);
-
-  if (!o)
-    Object.defineProperty(subject, Observer, {
-      value: (o = {
-        pending: new Set(),
-        emitting: new Set(),
-        listeners: new Map()
-      })
-    });
+  const o = obs(subject, true);
 
   if (select !== undefined && !(select instanceof Set))
     select = new Set([select]);
