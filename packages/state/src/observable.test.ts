@@ -399,6 +399,10 @@ describe('observable', () => {
     expect(fn).toBeCalledTimes(2);
   });
 
+  it('will silently no-op when event called on non-observable', () => {
+    expect(() => event({}, 'foo')).not.toThrow();
+  });
+
   describe('function', () => {
     it("will return undefined for object which doesn't implement observable", () => {
       expect(observable({})).toBeUndefined();
