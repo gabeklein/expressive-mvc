@@ -3,7 +3,7 @@ import {
   event,
   listener,
   Observable,
-  observable,
+  observer,
   pending,
   touch,
   watch
@@ -265,7 +265,7 @@ abstract class State {
     if (State.is(arg1)) return Context.get(self).get(arg1, arg2 as any, arg3);
     if (typeof arg1 == 'function') return watch(self, unbind(arg1));
     if (typeof arg2 == 'function') return callback(self, arg2, arg1);
-    if (arg1 === null) return observable(self) === null;
+    if (arg1 === null) return observer(self) === null;
     return access(self, arg1, arg2);
   }
 
@@ -752,7 +752,7 @@ function update<T>(
   value: T,
   silent?: boolean
 ) {
-  if (observable(state) === null) {
+  if (observer(state) === null) {
     if (silent) return false;
     throw new Error(
       `Tried to update ${state}.${String(key)} but state is destroyed.`

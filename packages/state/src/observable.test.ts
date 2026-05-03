@@ -1,4 +1,4 @@
-import { event, listener, touch, watch, observable } from './observable';
+import { event, listener, touch, watch, observer } from './observable';
 import { set } from './instruction/set';
 import { def } from './instruction/def';
 import { mockError, vi, describe, it, expect, mockPromise } from '../vitest';
@@ -403,33 +403,48 @@ describe('observable', () => {
     expect(() => event({}, 'foo')).not.toThrow();
   });
 
-  describe('function', () => {
-    it("will return undefined for object which doesn't implement observable", () => {
-      expect(observable({})).toBeUndefined();
+  describe('observer', () => {
+    it("will return undefined for object which isn't observed", () => {
+      expect(observer({})).toBeUndefined();
     });
 
-    it('will return false for observable not ready', () => {
-      class Test extends State { }
+    it('will return bundle without ready for observable not ready', () => {
+      const test = {};
 
-      expect(observable(new Test())).toBe(false);
+      listener(test, () => { });
+
+      expect("ready" in observer(test, true)).toBe(false);
     });
 
-    it('will return true for observable ready', async () => {
-      class Test extends State { }
+    it('will return with ready=true for ready observable', () => {
+      const test = {};
+      const didInit = vi.fn();
 
-      expect(observable(Test.new())).toBe(true);
+      listener(test, didInit);
+      event(test);
+
+      expect(didInit).toBeCalledWith(true);
+      expect(observer(test, true).ready).toBe(true);
     });
 
-    it('will return null for observable destroyed', async () => {
-      class Test extends State { }
+    it('will return null for terminated observable', () => {
+      const test = {};
+      const onEvent = vi.fn();
 
-      const instance = Test.new();
+      listener(test, onEvent);
+      event(test, null);
 
-      expect(observable(instance)).toBe(true);
+      expect(observer(test)).toBe(null);
+      expect(onEvent).toBeCalledWith(null);
+    });
 
-      instance.set(null);
+    it('will throw when registering a listener on a terminated state', () => {
+      const test = {};
 
-      expect(observable(instance)).toBeNull();
+      listener(test, () => { });
+      event(test, null);
+
+      expect(() => listener(test, () => { })).toThrow(/terminated/);
     });
   });
 });

@@ -26,13 +26,13 @@ declare namespace Observer {
 }
 
 interface Observer {
-  /** Lifecycle status: undefined = pending, true = ready, null = terminated. */
-  ready?: true | null;
+  /** Becomes `true` once the subject has emitted its initial event. */
+  ready?: true;
   listeners: Map<Observer.Notify, Set<Observer.Signal> | undefined>;
   /** Recursion guard for an in-progress emit pass. */
   pending: Set<Observer.Signal>;
   /** Accumulator drained by the next microtask. */
-  emitting: Set<Observer.Event>;
+  events: Set<Observer.Event>;
 }
 
 interface Observing {
@@ -47,36 +47,37 @@ const Observing: unique symbol = Symbol('Observing');
 /** Central event dispatch. Bunches all updates to occur at same time. */
 const DISPATCH = new Set<() => void>();
 
-interface Observable { [Observer]?: Observer };
-interface Observed { [Observing]?: Observing };
-
-function obs(state: object): Observer | undefined;
-function obs(state: object, create: true): Observer;
-function obs(state: object, create?: boolean) {
-  const o = (state as Observable)[Observer];
-  if (o) return o;
-
-  if (create) {
-    const fresh: Observer = {
-      listeners: new Map(),
-      pending: new Set(),
-      emitting: new Set()
-    };
-    Object.defineProperty(state, Observer, { value: fresh });
-    return fresh;
-  }
-}
+interface Observable { [Observer]?: Observer | null }
+interface Observed { [Observing]?: Observing }
 
 /**
- * Check if an object is observable and return its status.
- * - `true` if ready
- * - `false` if pending
- * - `null` if expired
- * - `undefined` if not observable.
+ * Fetch the dispatch bundle attached to an object.
+ * - returns the bundle if active
+ * - returns `null` if the subject has been terminated
+ * - returns `undefined` if the subject was never observable
+ *
+ * With `create: true`, attaches a fresh bundle iff the slot is undefined.
+ * A terminated (null) slot is not resurrected.
  */
-function observable(state: object): boolean | null | undefined {
-  const o = obs(state);
-  if (o) return o.ready === undefined ? false : o.ready;
+function observer(state: object, create: true): Observer;
+function observer(state: object, create?: boolean): Observer | undefined | null;
+function observer(state: object, create?: boolean) {
+  const o = (state as Observable)[Observer];
+
+  if (!o && create) {
+    if (o === null)
+      throw new Error('Object is not observable (terminated).');
+
+    const value: Observer = {
+      listeners: new Map(),
+      pending: new Set(),
+      events: new Set()
+    };
+    Object.defineProperty(state, Observer, { value, writable: true });
+    return value;
+  }
+
+  return o;
 }
 
 function observe<T extends object>(
@@ -90,9 +91,9 @@ function observe<T extends object>(
     if (watching.has(key)) return callback();
   });
 
-  const proxy = Object.create(object);
+  const proxy = Object.create(object) as T;
 
-  return Object.defineProperty<T>(proxy, Observing, {
+  return Object.defineProperty(proxy, Observing, {
     value: { callback, watching, required } as Observing
   });
 }
@@ -108,7 +109,7 @@ function touch(from: object, key: any, value?: any) {
 
     active.watching.add(key);
 
-    if (value instanceof Object && obs(value))
+    if (value instanceof Object && observer(value))
       return observe(value, active.callback, active.required);
   }
 
@@ -120,12 +121,12 @@ function listener<T extends object>(
   callback: Observer.Notify,
   select?: Observer.Signal | Set<Observer.Signal>
 ) {
-  const o = obs(subject, true);
+  const o = observer(subject, true);
 
   if (select !== undefined && !(select instanceof Set))
     select = new Set([select]);
 
-  if (o.ready !== undefined && !select) callback(true);
+  if (o.ready && !select) callback(true);
 
   o.listeners.set(callback, select);
 
@@ -139,10 +140,10 @@ const EMPTY = Object.assign([], {
 function pending<K extends Observer.Event>(
   state: object
 ): K[] & PromiseLike<K[]> {
-  const o = obs(state);
-  if (!o?.emitting.size) return EMPTY;
+  const o = observer(state);
+  if (!o?.events.size) return EMPTY;
 
-  const current = o.emitting as Set<K>;
+  const current = o.events as Set<K>;
   const promise = new Promise<K[]>((res) => {
     const callback: Observer.Notify = () => {
       o.listeners.delete(callback);
@@ -157,19 +158,24 @@ function pending<K extends Observer.Event>(
 }
 
 function event(state: object, key?: Observer.Event | null, silent?: boolean) {
-  const o = obs(state);
+  const o = observer(state);
 
   if (!o) return;
-  if (key === null) return emit(o, key);
+
+  if (key === null) {
+    (state as Observable)[Observer] = null;
+    return emit(o, key);
+  }
+
   if (key === undefined) return emit(o, true);
 
-  if (!o.emitting.size && !silent)
+  if (!o.events.size && !silent)
     enqueue(() => {
       emit(o, false);
-      o.emitting = new Set();
+      o.events = new Set();
     });
 
-  o.emitting.add(key);
+  o.events.add(key);
 
   if (!silent) emit(o, key);
 }
@@ -177,26 +183,27 @@ function event(state: object, key?: Observer.Event | null, silent?: boolean) {
 function emit(o: Observer, key: Observer.Signal): void {
   const { listeners, pending, ready } = o;
 
-  if (key === true && ready !== undefined) return;
+  if (key === ready) return;
 
   if (pending.size) {
     pending.add(key);
     return;
   }
-  if (ready === undefined) pending.add(true);
+
+  if (!ready) pending.add(true);
+
   pending.add(key);
 
   for (const k of pending)
     for (const [callback, filter] of listeners)
       if (!filter || filter.has(k)) {
         const after = callback(k);
-
-        if (after) enqueue(after);
-        else if (after === null) listeners.delete(callback);
+        if (after === null) listeners.delete(callback);
+        else if (after) enqueue(after);
       }
 
   if (key === null) listeners.clear();
-  if (key === true || key === null) o.ready = key;
+  else if (key === true) o.ready = true;
 
   pending.clear();
 }
@@ -242,7 +249,8 @@ function watch<T extends object>(
   callback: Observer.Effect<T>,
   argument?: boolean
 ) {
-  let cause: readonly Observer.Event[] = [];
+  const o = observer(target, true);
+  let events: readonly Observer.Event[] = [];
   let unset: ((update: boolean | null) => void) | undefined;
   let reset: (() => void) | null | undefined;
 
@@ -250,7 +258,7 @@ function watch<T extends object>(
     let ignore: boolean = true;
 
     function onUpdate() {
-      cause = [...obs(target)!.emitting];
+      events = [...o.events];
 
       if (reset === null) return null;
       if (ignore) return;
@@ -265,7 +273,7 @@ function watch<T extends object>(
 
     function run(release?: () => void) {
       const proxy = observe(target, onUpdate, argument === true);
-      const output = callback.call(proxy, proxy, cause);
+      const output = callback.call(proxy, proxy, events);
 
       ignore = false;
       reset = output === null ? null : invoke;
@@ -274,7 +282,7 @@ function watch<T extends object>(
         if (release) release();
       };
 
-      cause = [];
+      events = [];
     }
 
     try {
@@ -327,7 +335,7 @@ export {
   Observer as Observable,
   touch,
   pending,
-  observable,
+  observer,
   watch,
   capture
 };
