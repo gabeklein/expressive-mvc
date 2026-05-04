@@ -65,6 +65,35 @@ describe('effect', () => {
     expect(attempt).toThrow(/[\w-]+\.property is required in this context\./);
   });
 
+  it('will not enforce required for value-less touch', () => {
+    class Test extends State {
+      property = 'value';
+    }
+
+    const test = Test.new();
+
+    expect(() =>
+      watch(
+        test,
+        ($) => {
+          touch($, 'signal');
+          void $.property;
+        },
+        true
+      )
+    ).not.toThrow();
+
+    expect(() =>
+      watch(
+        test,
+        ($) => {
+          touch($, 'signal', undefined);
+        },
+        true
+      )
+    ).toThrow(/\.signal is required in this context\./);
+  });
+
   it('will still get events after silent ones', async () => {
     class Test extends State {
       value1 = 1;
