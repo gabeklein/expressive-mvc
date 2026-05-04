@@ -102,9 +102,9 @@ function touch(from: object, key: any, value?: any) {
   const active = (from as Observed)[Observing];
 
   if (active) {
-    if (value === undefined && active.required)
+    if (value === undefined && arguments.length === 3 && active.required)
       throw new Error(
-        `${Object.getPrototypeOf(from)}.${key} is required in this context.`
+        `${Object.getPrototypeOf(from)}.${String(key)} is required in this context.`
       );
 
     active.watching.add(key);
