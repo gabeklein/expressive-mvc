@@ -1,86 +1,74 @@
-import { event, listener, Observable, touch } from './observable';
+import { event, touch } from './observable';
 
 const LENGTH = Symbol('length');
+const ITEMS = Symbol('items');
 
 declare namespace List {
   type Predicate<T> = (value: T, index: number, list: List<T>) => boolean;
   type Mapper<T, U> = (value: T, index: number, list: List<T>) => U;
 }
 
-class List<T> implements Observable {
-  #items: T[];
+class List<T> {
+  declare readonly [ITEMS]: T[];
 
   constructor(initial: Iterable<T> = []) {
-    this.#items = [...initial];
-  }
-
-  [Observable](callback: Observable.Callback) {
-    const watching = new Set<Observable.Signal>();
-
-    listener(this, (key) => {
-      if (watching.has(key)) return callback();
+    Object.defineProperty(this, ITEMS, {
+      value: Array.from(initial)
     });
-
-    return (key: Observable.Signal) => {
-      watching.add(key);
-    };
+    event(this);
   }
 
   get size(): number {
-    return touch(this, LENGTH, this.#items.length);
+    return touch(this, LENGTH, this[ITEMS].length);
   }
 
   get(): T[];
   get(index: number): T | undefined;
   get(start: number, end: number): T[];
   get(predicate: List.Predicate<T>): T | undefined;
-  get(predicate: List.Predicate<T>, all: true): T[];
-  get(arg?: number | List.Predicate<T>, second?: number | boolean) {
-    if (arg === undefined)
-      return this.#items.map(exportValue);
+  get(arg?: number | List.Predicate<T>, second?: number) {
+    const items = this[ITEMS];
 
-    if (typeof arg === 'number') {
-      const items = this.#items;
+    if (arg === undefined) return items.map(exportValue);
 
-      if (typeof second !== 'number')
-        return touch(this, arg, items[arg]);
-
-      touch(this, LENGTH, items.length);
-
-      const stop = Math.min(second, items.length);
-      const out: T[] = [];
-
-      for (let i = arg; i < stop; i++) {
-        out.push(touch(this, i, items[i]));
-      }
-
-      return out;
+    if (typeof arg === 'function') {
+      touch(this, LENGTH);
+      return items.find((v, i) => arg(touch(this, i, v), i, this));
     }
 
-    if (second) return this.filter(arg);
+    if (typeof second !== 'number') {
+      const at = arg < 0 ? items.length + arg : arg;
 
-    let i = 0;
-    for (const v of this) if (arg(v, i++, this)) return v;
+      return at < 0 || at >= items.length
+        ? touch(this, LENGTH)
+        : touch(this, at, items[at]);
+    }
+
+    touch(this, LENGTH);
+
+    const start = arg < 0 ? Math.max(items.length + arg, 0) : arg;
+
+    return items
+      .slice(start, Math.min(second, items.length))
+      .map((v, i) => touch(this, start + i, v));
   }
 
   set(index: number, value: T) {
-    const items = this.#items;
+    const items = this[ITEMS];
+    const at = index < 0 ? items.length + index : index;
 
-    if (items[index] === value) return;
+    if (at < 0 || at >= items.length || items[at] === value) return;
 
-    const grew = index >= items.length;
-    items[index] = value;
-    event(this, index);
-    if (grew) event(this, LENGTH);
+    items[at] = value;
+    event(this, at);
   }
 
   put(index: number, ...items: T[]) {
     if (!items.length) return;
 
-    const arr = this.#items;
-    const at = index < 0
-      ? Math.max(arr.length + index, 0)
-      : Math.min(index, arr.length);
+    const arr = this[ITEMS];
+    const at =
+      index < 0 ? Math.max(arr.length + index, 0) : Math.min(index, arr.length);
 
     arr.splice(at, 0, ...items);
 
@@ -89,19 +77,18 @@ class List<T> implements Observable {
   }
 
   push(...values: T[]): number {
-    this.put(this.#items.length, ...values);
-    return this.#items.length;
+    this.put(this[ITEMS].length, ...values);
+    return this[ITEMS].length;
   }
 
   pop(): T | undefined;
   pop(index: number): T | undefined;
   pop(index: number, count: number): T[];
   pop(index = -1, count?: number): T | T[] | undefined {
-    const items = this.#items;
+    const items = this[ITEMS];
     const before = items.length;
-    const start = index < 0
-      ? Math.max(before + index, 0)
-      : Math.min(index, before);
+    const start =
+      index < 0 ? Math.max(before + index, 0) : Math.min(index, before);
     const removed = items.splice(start, count ?? 1);
 
     if (removed.length) {
@@ -114,12 +101,12 @@ class List<T> implements Observable {
   }
 
   clear() {
-    this.pop(0, this.#items.length);
+    this.pop(0, this[ITEMS].length);
   }
 
   *[Symbol.iterator](): IterableIterator<T> {
-    const items = this.#items;
-    touch(this, LENGTH, items.length);
+    const items = this[ITEMS];
+    touch(this, LENGTH);
 
     for (let i = 0; i < items.length; i++) yield touch(this, i, items[i]);
   }
@@ -147,10 +134,16 @@ class List<T> implements Observable {
     return out;
   }
 
+  any(fn: List.Predicate<T>): boolean {
+    const items = this[ITEMS];
+    touch(this, LENGTH);
+    return items.some((v, i) => fn(touch(this, i, v), i, this));
+  }
+
   all(fn: List.Predicate<T>): boolean {
-    let i = 0;
-    for (const v of this) if (!fn(v, i++, this)) return false;
-    return true;
+    const items = this[ITEMS];
+    touch(this, LENGTH);
+    return items.every((v, i) => fn(touch(this, i, v), i, this));
   }
 
   static from<T>(iterable: Iterable<T>): List<T> {
