@@ -98,6 +98,8 @@ function observe<T extends object>(
   });
 }
 
+function touch(from: object, key: any): void;
+function touch<T>(from: object, key: any, value?: T): T;
 function touch(from: object, key: any, value?: any) {
   const active = (from as Observed)[Observing];
 
@@ -158,7 +160,7 @@ function pending<K extends Observer.Event>(
 }
 
 function event(state: object, key?: Observer.Event | null, silent?: boolean) {
-  const o = observer(state);
+  const o = observer(state, key === undefined);
 
   if (!o) return;
 

@@ -718,7 +718,7 @@ function access(state: State, property: string, required?: boolean) {
 }
 
 function assign(state: State, data: State.Assign<State>, silent?: boolean) {
-  event(state);
+  if (!silent) event(state);
 
   const methods = METHODS.get(state.constructor)!;
 
