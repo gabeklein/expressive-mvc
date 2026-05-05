@@ -1,0 +1,274 @@
+import { vi, describe, it, expect } from '../../vitest';
+import { observer, watch } from '../observable';
+import { State } from '../state';
+import { hot } from './hot';
+
+const flush = () => new Promise<void>((r) => setTimeout(r, 0));
+
+describe('factory', () => {
+  it('wraps an array', () => {
+    const arr = hot([1, 2, 3]);
+    expect(Array.from(arr)).toEqual([1, 2, 3]);
+    expect(arr.length).toBe(3);
+  });
+
+  it('wraps a plain object', () => {
+    const obj = hot({ a: 1, b: 2 });
+    expect(obj.a).toBe(1);
+    expect(obj.b).toBe(2);
+  });
+
+  it('shares storage with input', () => {
+    const source = [1, 2, 3];
+    const arr = hot(source);
+    arr.push(4);
+    expect(source).toEqual([1, 2, 3, 4]);
+  });
+
+  it('throws on non-object input', () => {
+    // @ts-ignore
+    expect(() => hot('str')).toThrow();
+    // @ts-ignore
+    expect(() => hot(42)).toThrow();
+    // @ts-ignore
+    expect(() => hot(null)).toThrow();
+  });
+
+  it('makes the proxy observable and ready', () => {
+    const arr = hot([] as number[]);
+    const o = observer(arr);
+    expect(o).toBeDefined();
+    expect(o!.ready).toBe(true);
+  });
+});
+
+describe('array', () => {
+  it('fires on indexed write subscribers track', async () => {
+    const arr = hot([1, 2, 3]);
+    const fn = vi.fn();
+    watch(arr, ($) => {
+      void $[1];
+      fn();
+    });
+    fn.mockClear();
+
+    arr[1] = 99;
+    await flush();
+    expect(fn).toHaveBeenCalled();
+  });
+
+  it('does not fire when an unrelated index changes', async () => {
+    const arr = hot([1, 2, 3]);
+    const fn = vi.fn();
+    watch(arr, ($) => {
+      void $[0];
+      fn();
+    });
+    fn.mockClear();
+
+    arr[2] = 99;
+    await flush();
+    expect(fn).not.toBeCalled();
+  });
+
+  it('does not fire when value is unchanged', async () => {
+    const arr = hot([1, 2, 3]);
+    const fn = vi.fn();
+    watch(arr, ($) => {
+      void $[0];
+      fn();
+    });
+    fn.mockClear();
+
+    arr[0] = 1;
+    await flush();
+    expect(fn).not.toBeCalled();
+  });
+
+  it('fires on length when push grows the array', async () => {
+    const arr = hot([1, 2]);
+    const fn = vi.fn();
+    watch(arr, ($) => {
+      void $.length;
+      fn();
+    });
+    fn.mockClear();
+
+    arr.push(3);
+    await flush();
+    expect(fn).toHaveBeenCalled();
+  });
+
+  it('iteration subscribes to length and visited indices', async () => {
+    const arr = hot([1, 2, 3]);
+    const fn = vi.fn();
+    watch(arr, ($) => {
+      for (const _ of $) void _;
+      fn();
+    });
+    fn.mockClear();
+
+    arr[1] = 99;
+    await flush();
+    expect(fn).toHaveBeenCalled();
+  });
+
+  it('find subscribes only to indices visited up to match', async () => {
+    const arr = hot([1, 2, 3, 4, 5]);
+    const fn = vi.fn();
+    watch(arr, ($) => {
+      $.find((v) => v === 3);
+      fn();
+    });
+    fn.mockClear();
+
+    arr[4] = 99;
+    await flush();
+    expect(fn).not.toBeCalled();
+
+    arr[1] = 99;
+    await flush();
+    expect(fn).toHaveBeenCalled();
+  });
+
+  it('push fires events for new index and length', async () => {
+    const arr = hot([1, 2]);
+    const onIndex = vi.fn();
+    const onLength = vi.fn();
+    watch(arr, ($) => {
+      void $[2];
+      onIndex();
+    });
+    watch(arr, ($) => {
+      void $.length;
+      onLength();
+    });
+    onIndex.mockClear();
+    onLength.mockClear();
+
+    arr.push(3);
+    await flush();
+    expect(onIndex).toHaveBeenCalled();
+    expect(onLength).toHaveBeenCalled();
+  });
+
+  it('pop fires for removed index and length', async () => {
+    const arr = hot([1, 2, 3]);
+    const fn = vi.fn();
+    watch(arr, ($) => {
+      void $[2];
+      fn();
+    });
+    fn.mockClear();
+
+    arr.pop();
+    await flush();
+    expect(fn).toHaveBeenCalled();
+  });
+});
+
+describe('object', () => {
+  it('fires event on key write', async () => {
+    const obj = hot({ a: 1, b: 2 });
+    const fn = vi.fn();
+    watch(obj, ($) => {
+      void $.a;
+      fn();
+    });
+    fn.mockClear();
+
+    obj.a = 99;
+    await flush();
+    expect(fn).toHaveBeenCalled();
+  });
+
+  it('does not fire on unrelated key', async () => {
+    const obj = hot({ a: 1, b: 2 });
+    const fn = vi.fn();
+    watch(obj, ($) => {
+      void $.a;
+      fn();
+    });
+    fn.mockClear();
+
+    obj.b = 99;
+    await flush();
+    expect(fn).not.toBeCalled();
+  });
+
+  it('fires when a tracked key is added', async () => {
+    const obj = hot({ a: 1 } as Record<string, number>);
+    const fn = vi.fn();
+    watch(obj, ($) => {
+      void $.b;
+      fn();
+    });
+    fn.mockClear();
+
+    obj.b = 2;
+    await flush();
+    expect(fn).toHaveBeenCalled();
+  });
+
+  it('fires on delete of a tracked key', async () => {
+    const obj = hot({ a: 1, b: 2 } as Record<string, number>);
+    const fn = vi.fn();
+    watch(obj, ($) => {
+      void $.a;
+      fn();
+    });
+    fn.mockClear();
+
+    delete obj.a;
+    await flush();
+    expect(fn).toHaveBeenCalled();
+  });
+
+  it('does not recurse into nested objects', () => {
+    const obj = hot({ inner: { x: 1 } });
+    expect(observer(obj.inner)).toBeUndefined();
+  });
+});
+
+describe('as State field', () => {
+  it('reactivity works end-to-end (tic-tac-toe-style)', async () => {
+    class Game extends State {
+      board = hot(Array(9).fill(''));
+      turn: 'X' | 'O' = 'X';
+    }
+
+    const game = Game.new();
+    const fn = vi.fn();
+
+    game.get(($) => {
+      fn($.board[0]);
+    });
+
+    expect(fn).toBeCalledWith('');
+
+    game.board[0] = 'X';
+    await new Promise<void>((r) => setTimeout(r, 0));
+
+    expect(fn).toBeCalledWith('X');
+    expect(fn).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not fire effect when an unrelated index changes', async () => {
+    class Game extends State {
+      board = hot(Array(9).fill(''));
+    }
+
+    const game = Game.new();
+    const fn = vi.fn();
+
+    game.get(($) => {
+      fn($.board[0]);
+    });
+
+    fn.mockClear();
+    game.board[5] = 'X';
+    await new Promise<void>((r) => setTimeout(r, 0));
+
+    expect(fn).not.toBeCalled();
+  });
+});
