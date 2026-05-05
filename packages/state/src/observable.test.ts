@@ -432,6 +432,51 @@ describe('observable', () => {
     expect(() => event({}, 'foo')).not.toThrow();
   });
 
+  describe('event', () => {
+    it('will auto-create bundle and fire ready on no-key call', () => {
+      const test = {};
+
+      expect(observer(test)).toBeUndefined();
+
+      event(test);
+
+      const o = observer(test);
+      expect(o).toBeDefined();
+      expect(o!.ready).toBe(true);
+    });
+
+    it('will not re-fire ready on observable', () => {
+      const test = {};
+      const fn = vi.fn();
+
+      event(test);
+      listener(test, fn);
+      fn.mockClear();
+
+      event(test);
+
+      expect(fn).not.toBeCalled();
+    });
+
+    it('will not auto-init for keyed event', () => {
+      const test = {};
+
+      event(test, 'foo');
+
+      expect(observer(test)).toBeUndefined();
+    });
+
+    it('will fire watch effect immediately on ready', () => {
+      const test = {};
+      const fn = vi.fn();
+
+      event(test);
+      watch(test, () => fn());
+
+      expect(fn).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe('observer', () => {
     it("will return undefined for object which isn't observed", () => {
       expect(observer({})).toBeUndefined();
