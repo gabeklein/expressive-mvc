@@ -30,6 +30,12 @@ const METHOD = new WeakMap<any, any>();
 /** List of methods defined by a given type. */
 const METHODS = new WeakMap<Function, Map<string, (value: any) => void>>();
 
+/** List of reactive getters defined by a given type. */
+const GETTERS = new WeakMap<Function, Map<string, () => unknown>>();
+
+/** Stale flags for compute closures awaiting refresh on next access. */
+const STALE = new WeakSet<() => void>();
+
 declare namespace State {
   /** Any type of State, using own class constructor as its identifier. */
   type Extends<T extends State = State> = (abstract new (...args: any[]) => T) &
@@ -511,6 +517,7 @@ function bootstrap(T: State.Extends) {
   const chain = [] as State.Extends[];
   const setup = [] as State.Init[];
   let keys = new Map<string, (value: any) => void>();
+  let getters = new Map<string, () => unknown>();
 
   do {
     chain.unshift(T);
@@ -524,15 +531,27 @@ function bootstrap(T: State.Extends) {
 
     if (METHODS.has(type)) {
       keys = METHODS.get(type)!;
+      getters = GETTERS.get(type)!;
       continue;
     }
 
     METHODS.set(type, (keys = new Map(keys)));
+    GETTERS.set(type, (getters = new Map(getters)));
 
-    for (const [key, { value }] of Object.entries(
+    for (const [key, desc] of Object.entries(
       Object.getOwnPropertyDescriptors(type.prototype)
     )) {
-      if (!value || key == 'constructor') continue;
+      if (key == 'constructor') continue;
+
+      if (typeof desc.get == 'function') {
+        if (desc.configurable && typeof desc.set != 'function')
+          getters.set(key, desc.get);
+        continue;
+      }
+
+      const { value } = desc;
+
+      if (typeof value !== 'function') continue;
 
       function bind(this: State, original?: Function) {
         const { is } = this;
@@ -553,7 +572,81 @@ function bootstrap(T: State.Extends) {
     }
   }
 
+  if (getters.size)
+    setup.push((self) => {
+      for (const [key, getter] of getters) compute(self, key, getter);
+    });
+
   return new Set(setup);
+}
+
+/**
+ * Install a reactive computed property on a state instance, derived from a prototype getter.
+ *
+ * The getter is invoked with the tracking proxy as `this`; reads of managed properties
+ * through it create subscriptions. Result is cached and emits a keyed event when stale.
+ */
+function compute(subject: State, key: string, getter: () => unknown) {
+  const store = STORE.get(subject)!;
+  let reset: (() => void) | undefined;
+  let isAsync: boolean;
+  let proxy: any;
+
+  function connect() {
+    reset = watch(
+      subject,
+      (current) => {
+        proxy = current;
+
+        if (!(key in store) || STALE.delete(run)) run(!reset);
+
+        return (didUpdate) => {
+          if (didUpdate) STALE.add(run);
+        };
+      },
+      false
+    );
+  }
+
+  function run(initial?: boolean) {
+    let next: unknown;
+
+    try {
+      next = getter.call(proxy);
+    } catch (err) {
+      console.warn(
+        `An exception was thrown while ${
+          initial ? 'initializing' : 'refreshing'
+        } ${subject}.${key}.`
+      );
+
+      if (initial) throw err;
+
+      console.error(err);
+    }
+
+    update(subject, key, next, !isAsync);
+  }
+
+  apply(
+    subject,
+    key,
+    {
+      enumerable: true,
+      set: false,
+      get() {
+        if (!proxy) {
+          connect();
+          isAsync = true;
+        }
+
+        if (STALE.delete(run)) run();
+
+        return access(subject, key, !proxy);
+      }
+    },
+    true
+  );
 }
 
 /**

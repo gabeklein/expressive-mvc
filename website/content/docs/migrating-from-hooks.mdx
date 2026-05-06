@@ -223,7 +223,10 @@ Becomes:
 ```ts
 class Cart extends State {
   items: Item[] = [];
-  total = set((from) => from.items.reduce((s, i) => s + i.price * i.qty, 0));
+
+  get total() {
+    return this.items.reduce((s, i) => s + i.price * i.qty, 0);
+  }
 
   add(item: Item) {
     this.items = [...this.items, item];

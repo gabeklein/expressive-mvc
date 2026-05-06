@@ -48,9 +48,9 @@ class TodoState extends State {
   input = '';
   nextId = 1;
 
-  remaining = set((from) => {
-    return from.items.filter((i) => !i.done).length;
-  });
+  get remaining() {
+    return this.items.filter((i) => !i.done).length;
+  }
 
   add() {
     if (!this.input.trim()) return;
@@ -251,13 +251,13 @@ class SignupForm extends State {
     if (value.length > 0 && value.length < 8) throw false; // reject short passwords
   });
 
-  valid = set((from) => {
+  get valid() {
     return (
-      from.name.length > 0 &&
-      from.email.includes('@') &&
-      from.password.length >= 8
+      this.name.length > 0 &&
+      this.email.includes('@') &&
+      this.password.length >= 8
     );
-  });
+  }
 
   submit() {
     if (!this.valid) return;

@@ -1,4 +1,4 @@
-import { vi, expect, it, describe, mockError, mockPromise } from '../vitest';
+import { vi, expect, it, describe, mockError, mockPromise, mockWarn } from '../vitest';
 import { Context } from './context';
 import { get } from './instruction/get';
 import { ref } from './instruction/ref';
@@ -776,7 +776,9 @@ describe('get method', () => {
       value1 = 1;
       value2 = 2;
       value3 = 3;
-      value4 = set((from: this) => from.value3 + 1);
+      get value4() {
+        return this.value3 + 1;
+      }
     }
 
     it('will watch values', async () => {
@@ -806,10 +808,11 @@ describe('get method', () => {
       // wait for update event to flush queue
       await expect(test).toHaveUpdated('value2', 'value3', 'value4');
 
-      expect(effect).toBeCalledWith(anyTest, ['value2', 'value3', 'value4']);
-
-      // expect two syncronous groups of updates.
-      expect(effect).toBeCalledTimes(3);
+      // The effect runs once with the initial pair; value4 fires its real
+      // event after the compute settles, prompting a follow-up run.
+      expect(effect).toBeCalledWith(anyTest, ['value2', 'value3']);
+      expect(effect).toBeCalledWith(anyTest, ['value4']);
+      expect(effect).toBeCalledTimes(4);
     });
 
     it('will not call twice if set up during init', () => {
@@ -1369,7 +1372,9 @@ describe('get method', () => {
         class Test extends State {
           value1 = 2;
 
-          value2 = set((from: this) => from.value1 + 1);
+          get value2() {
+            return this.value1 + 1;
+          }
 
           protected new() {
             this.get((state) => mock(state.value2));
@@ -2338,7 +2343,7 @@ describe('new method (static)', () => {
 
   // TODO: fix. This fails despite error intercept.
   it('will log error from rejected initializer', async () => {
-    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const error = mockError();
     const expects = new Error('State callback rejected.');
 
     const init = vi.fn(() => Promise.reject(expects));
@@ -2352,8 +2357,6 @@ describe('new method (static)', () => {
       expect.stringMatching(/Async error in constructor for [\w-]+:/)
     );
     expect(error).toBeCalledWith(expects);
-
-    error.mockRestore();
   });
 
   it('will inject both properties and methods', () => {
@@ -2547,3 +2550,465 @@ describe('on method (static)', () => {
   });
 });
 
+describe('computed (getters)', () => {
+  describe('property descriptors', () => {
+    it('will be enumerable', () => {
+      class Test extends State {
+        source = 'hello';
+        get value() {
+          return this.source;
+        }
+      }
+
+      const test = Test.new();
+
+      expect(Object.keys(test)).toContain('value');
+    });
+
+    it('will be read-only', () => {
+      class Test extends State {
+        source = 'foo';
+        get value() {
+          return this.source;
+        }
+      }
+
+      const test = Test.new();
+
+      expect(() => {
+        (test as any).value = 'bar';
+      }).toThrow(/read-only/);
+    });
+  });
+
+  it('will cleanup source subscription when source is destroyed', async () => {
+    class Subject extends State {
+      value = 1;
+
+      get computed() {
+        return this.value;
+      }
+    }
+
+    const subject = Subject.new();
+
+    expect(subject.computed).toBe(1);
+
+    expect(() => subject.set(null)).not.toThrow();
+    expect(subject.computed).toBe(1);
+  });
+
+  it('will reevaluate when inputs change', async () => {
+    class Subject extends State {
+      seconds = 0;
+
+      get minutes() {
+        return Math.floor(this.seconds / 60);
+      }
+    }
+
+    const subject = Subject.new();
+
+    subject.seconds = 30;
+
+    await expect(subject).toHaveUpdated();
+
+    expect(subject.seconds).toEqual(30);
+    expect(subject.minutes).toEqual(0);
+
+    subject.seconds = 60;
+
+    await expect(subject).toHaveUpdated();
+
+    expect(subject.seconds).toEqual(60);
+    expect(subject.minutes).toEqual(1);
+  });
+
+  it("will not update if output doesn't change", async () => {
+    class Subject extends State {
+      value = 1;
+
+      get computed() {
+        return this.value > 0;
+      }
+    }
+
+    const subject = Subject.new();
+
+    expect(subject.computed).toBe(true);
+
+    // value changes but the computed output stays `true` - no event fires.
+    subject.value = 2;
+    await expect(subject).not.toHaveUpdated('computed');
+
+    // crossing zero flips the output - event fires.
+    subject.value = -1;
+    await expect(subject).toHaveUpdated('computed');
+    expect(subject.computed).toBe(false);
+  });
+
+  it('will trigger when nested inputs change', async () => {
+    class Child extends State {
+      value = 'foo';
+    }
+
+    class Subject extends State {
+      child = new Child();
+      get nested() {
+        return this.child.value;
+      }
+    }
+
+    const subject = Subject.new();
+
+    expect(subject.nested).toBe('foo');
+
+    subject.child.value = 'bar';
+
+    await expect(subject).toHaveUpdated();
+    expect(subject.nested).toBe('bar');
+
+    subject.child = new Child();
+
+    await expect(subject).toHaveUpdated();
+    expect(subject.child.value).toBe('foo');
+    expect(subject.nested).toBe('foo');
+  });
+
+  it('will compute early if value is accessed', async () => {
+    const didCompute = vi.fn();
+
+    class Test extends State {
+      number = 0;
+      get plusOne() {
+        const value = this.number + 1;
+        didCompute(value);
+        return value;
+      }
+    }
+
+    const test = Test.new();
+
+    expect(test.plusOne).toBe(1);
+
+    test.number++;
+
+    expect(didCompute).not.toBeCalledWith(2);
+
+    await expect(test).toHaveUpdated();
+    expect(didCompute).toBeCalledWith(2);
+    expect(test.plusOne).toBe(2);
+
+    test.number++;
+
+    expect(didCompute).not.toBeCalledWith(3);
+
+    expect(test.plusOne).toBe(3);
+    expect(didCompute).toBeCalledWith(3);
+
+    await expect(test).toHaveUpdated();
+  });
+
+  it('will be squashed with regular updates', async () => {
+    const exec = vi.fn();
+    const emit = vi.fn();
+
+    class Inner extends State {
+      value = 1;
+    }
+
+    class Test extends State {
+      a = 1;
+      b = 1;
+
+      get c() {
+        exec();
+        return this.a + this.b + this.x.value;
+      }
+
+      x = new Inner();
+    }
+
+    const test = Test.new();
+
+    expect(test.c).toBe(3);
+    expect(exec).toBeCalledTimes(1);
+
+    test.set(emit);
+
+    test.a++;
+    expect(emit).toBeCalledTimes(1);
+    expect(emit).toBeCalledWith('a', test);
+
+    test.b++;
+
+    expect(exec).toBeCalledTimes(2);
+    expect(emit).toBeCalledTimes(3);
+    expect(emit).toBeCalledWith('b', test);
+    expect(emit).toBeCalledWith('c', test);
+
+    test.x.value++;
+
+    await expect(test).toHaveUpdated();
+
+    expect(exec).toBeCalledTimes(2);
+    expect(emit).toBeCalledTimes(3);
+    expect(emit).toBeCalledWith('c', test);
+  });
+
+  it('will be evaluated in order', async () => {
+    let didCompute: string[] = [];
+
+    class Ordered extends State {
+      X = 1;
+
+      get A() {
+        const value = this.X;
+        didCompute.push('A');
+        return value;
+      }
+
+      get B() {
+        const value = this.A + 1;
+        didCompute.push('B');
+        return value;
+      }
+
+      get C() {
+        const value = this.X + this.B + 1;
+        didCompute.push('C');
+        return value;
+      }
+
+      get D() {
+        const value = this.A + this.C + 1;
+        didCompute.push('D');
+        return value;
+      }
+    }
+
+    const test = Ordered.new();
+
+    expect(test.D).toBe(6);
+
+    expect(didCompute).toMatchObject(['A', 'B', 'C', 'D']);
+
+    didCompute = [];
+
+    test.X = 2;
+
+    await expect(test).toHaveUpdated();
+
+    expect(didCompute).toMatchObject(['A', 'B', 'C', 'D']);
+  });
+
+  it('will provide tracking proxy via this', async () => {
+    class Test extends State {
+      foo = 'foo';
+
+      get fooBar() {
+        return this.foo;
+      }
+    }
+
+    const test = Test.new();
+
+    expect(test.fooBar).toBe('foo');
+
+    test.foo = 'bar';
+    await expect(test).toHaveUpdated();
+
+    expect(test.fooBar).toBe('bar');
+  });
+
+  describe('inheritance', () => {
+    it('will use overridden getter from subclass', () => {
+      class Test extends State {
+        foo = 1;
+        get bar() {
+          return 1 + this.foo;
+        }
+      }
+
+      class Test2 extends Test {
+        get bar() {
+          return 2 + this.foo;
+        }
+      }
+
+      const test = Test2.new();
+
+      expect(test.bar).toBe(3);
+    });
+
+    it('will compose with super', async () => {
+      class Test extends State {
+        foo = 1;
+        get bar() {
+          return 1 + this.foo;
+        }
+      }
+
+      class Test2 extends Test {
+        get bar() {
+          return super.bar + 10;
+        }
+      }
+
+      const test = Test2.new();
+
+      expect(test.bar).toBe(12);
+
+      test.foo = 5;
+      await expect(test).toHaveUpdated();
+
+      expect(test.bar).toBe(16);
+    });
+  });
+
+  describe('opt-out tracking', () => {
+    it('will not subscribe to values accessed via this.is', async () => {
+      const didCompute = vi.fn();
+
+      class Test extends State {
+        tracked = 'A';
+        untracked = 'X';
+
+        get value() {
+          didCompute();
+          return this.tracked + this.is.untracked;
+        }
+      }
+
+      const test = Test.new();
+
+      expect(test.value).toBe('AX');
+      expect(didCompute).toBeCalledTimes(1);
+
+      test.tracked = 'B';
+      await expect(test).toHaveUpdated();
+
+      expect(test.value).toBe('BX');
+      expect(didCompute).toBeCalledTimes(2);
+
+      test.untracked = 'Y';
+      await expect(test).toHaveUpdated();
+
+      expect(didCompute).toBeCalledTimes(2);
+      expect(test.value).toBe('BX');
+    });
+  });
+
+  describe('failures', () => {
+    const error = mockError();
+    const warn = mockWarn();
+
+    it('will warn if throws', () => {
+      class Subject extends State {
+        get never() {
+          throw new Error();
+        }
+      }
+
+      const state = Subject.new();
+      const attempt = () => state.never;
+
+      expect(attempt).toThrow();
+      expect(warn).toBeCalledWith(
+        `An exception was thrown while initializing ${state}.never.`
+      );
+    });
+
+    it('will warn if throws on update', async () => {
+      class Test extends State {
+        shouldFail = false;
+
+        get value(): undefined {
+          if (this.shouldFail) throw new Error();
+          return undefined;
+        }
+      }
+
+      const state = Test.new();
+
+      void state.value;
+      state.shouldFail = true;
+
+      await expect(state).toHaveUpdated();
+
+      expect(warn).toBeCalledWith(
+        `An exception was thrown while refreshing ${state}.value.`
+      );
+      expect(error).toBeCalled();
+    });
+  });
+
+  describe('circular', () => {
+    it('will access own previous value', async () => {
+      class Test extends State {
+        multiplier = 0;
+        previous: number | undefined | null = null;
+
+        get value(): number {
+          const { value, multiplier } = this;
+
+          this.previous = value;
+
+          return Math.ceil(Math.random() * 10) * multiplier;
+        }
+      }
+
+      const test = Test.new();
+
+      expect(test.previous).toBe(null);
+
+      const initial = test.value;
+
+      expect(initial).toBe(0);
+
+      expect('previous' in test).toBe(true);
+      expect(test.previous).toBe(undefined);
+
+      test.multiplier = 1;
+      await expect(test).toHaveUpdated();
+
+      expect(test.previous).toBe(initial);
+      expect(test.value).not.toBe(initial);
+    });
+
+    it('will not trigger itself', async () => {
+      const didGetOldValue = vi.fn();
+      const didGetNewValue = vi.fn();
+
+      class Test extends State {
+        input = 1;
+        get value(): number {
+          const { input, value } = this;
+
+          didGetOldValue(value);
+
+          return input + 1;
+        }
+      }
+
+      const test = Test.new();
+
+      test.get((state) => {
+        didGetNewValue(state.value);
+      });
+
+      expect(test.value).toBe(2);
+      expect(didGetNewValue).toBeCalledWith(2);
+      expect(didGetOldValue).toBeCalledWith(undefined);
+
+      test.input = 2;
+
+      expect(test.value).toBe(3);
+      expect(didGetOldValue).toBeCalledWith(2);
+
+      await expect(test).toHaveUpdated();
+      expect(didGetNewValue).toBeCalledWith(3);
+      expect(didGetOldValue).toBeCalledTimes(2);
+    });
+  });
+});
