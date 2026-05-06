@@ -46,7 +46,9 @@ async function toHaveUpdated(received: State, ...keys: string[]) {
 
   remove();
 
-  if (!didUpdate.length) didUpdate = updated;
+  // Merge listener-collected events so cascaded updates (e.g. a computed firing
+  // during a downstream effect re-run) are visible.
+  didUpdate = [...new Set([...didUpdate, ...updated])];
 
   if (!didUpdate.length)
     return {
@@ -95,20 +97,31 @@ function mockPromise<T = void>() {
   return Object.assign(promise, methods);
 }
 
+type ConsoleSpy = ReturnType<typeof vi.spyOn>;
+
+const SPIES = new Map<'warn' | 'error', ConsoleSpy>();
+
+afterEach(() => SPIES.forEach((spy) => spy.mockClear()));
+afterAll(() => {
+  SPIES.forEach((spy) => spy.mockRestore());
+  SPIES.clear();
+});
+
+function spyOnce(method: 'warn' | 'error') {
+  let spy = SPIES.get(method);
+
+  if (!spy) {
+    spy = vi.spyOn(console, method).mockImplementation(() => {});
+    SPIES.set(method, spy);
+  }
+
+  return spy;
+}
+
 function mockWarn() {
-  const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-
-  afterEach(() => warn.mockClear());
-  afterAll(() => warn.mockRestore());
-
-  return warn;
+  return spyOnce('warn');
 }
 
 function mockError() {
-  const error = vi.spyOn(console, 'error').mockImplementation(() => {});
-
-  afterEach(() => error.mockClear());
-  afterAll(() => error.mockRestore());
-
-  return error;
+  return spyOnce('error');
 }
