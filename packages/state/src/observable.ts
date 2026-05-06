@@ -274,7 +274,10 @@ function watch<T extends Observable>(
 
     function run(release?: () => void) {
       const proxy = observe(target, onUpdate, argument === true);
-      const output = callback.call(proxy, proxy, cause);
+      const causeSnap = cause;
+      cause = [];
+
+      const output = callback.call(proxy, proxy, causeSnap);
 
       ignore = false;
       reset = output === null ? null : invoke;
@@ -283,7 +286,9 @@ function watch<T extends Observable>(
         if (release) release();
       };
 
-      cause = [];
+      // If onUpdate fired during the callback (e.g. a cascaded compute event)
+      // cause picked up new keys; schedule a follow-up run.
+      if (cause.length) enqueue(() => invoke());
     }
 
     try {

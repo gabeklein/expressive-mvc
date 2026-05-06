@@ -733,7 +733,7 @@ class Expensive extends State {
 
 **Computed Values:**
 
-Reactive properties that update automatically:
+Reactive properties that update automatically. Just use a class getter:
 
 ```ts
 class Cart extends State {
@@ -743,18 +743,18 @@ class Cart extends State {
   ];
 
   // Recomputes when items change
-  total = set(this, (state) =>
-    state.items.reduce((sum, item) => sum + item.price * item.quantity, 0)
-  );
+  get total() {
+    return this.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  }
 
-  // Or use method reference
-  tax = set(true, this.calculateTax);
-
-  calculateTax() {
+  // Composes with other computed values
+  get tax() {
     return this.total * 0.08;
   }
 }
 ```
+
+Getters on a State subclass are auto-promoted to memoized, reactive computed properties. `this` inside the getter is a tracking proxy; reads create subscriptions.
 
 **Access previous value:**
 
@@ -762,10 +762,10 @@ class Cart extends State {
 class Accumulator extends State {
   input = 0;
 
-  sum = set(this, function (state) {
-    const previous = this.sum; // Current value
-    return previous + state.input;
-  });
+  get sum(): number {
+    const previous = this.sum; // current value
+    return (previous ?? 0) + this.input;
+  }
 }
 ```
 

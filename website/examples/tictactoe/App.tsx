@@ -1,4 +1,4 @@
-import { Component, set } from '@expressive/react';
+import { Component } from '@expressive/react';
 
 const LINES = [
   [0, 1, 2],
@@ -15,14 +15,17 @@ class Game extends Component {
   board: string[] = Array(9).fill("");
   turn: 'X' | 'O' = 'X';
 
-  winner = set((from: this) => {
+  get winner() {
+    const { board } = this;
     for (const line of LINES) {
-      const [a, b, c] = line.map(i => from.board[i]);
+      const [a, b, c] = line.map(i => board[i]);
       if (a === b && b === c) return a;
     }
-  });
+  }
 
-  full = set((from: this) => from.board.every(Boolean));
+  get full() {
+    return this.board.every(Boolean);
+  }
 
   play(i: number) {
     if (this.board[i] || this.winner) return;

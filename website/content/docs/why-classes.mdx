@@ -100,9 +100,9 @@ class UserSettings extends State {
   });
 
   // Computed values track access, always up to date.
-  dirty = set((from) => {
-    return from.name !== from.initial.name || from.email !== from.initial.email;
-  });
+  get dirty() {
+    return this.name !== this.initial.name || this.email !== this.initial.email;
+  }
 
   // async methods write to `this` as-needed, no middleware or thunks required.
   async save() {

@@ -376,7 +376,9 @@ describe('set instruction', () => {
     class Subject extends State {
       source = 'foo';
       ref = ref(this);
-      foo = set((from: this) => from.source);
+      get foo() {
+        return this.source;
+      }
     }
 
     const test = Subject.new();
@@ -400,7 +402,9 @@ describe('set instruction', () => {
     class Subject extends State {
       source = 'foo';
       ref = ref(this);
-      foo = set((from: this) => from.source);
+      get foo() {
+        return this.source;
+      }
     }
 
     const test = Subject.new();

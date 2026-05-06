@@ -58,9 +58,9 @@ class UserSettings extends State {
   saving = false;
   error = set<string | null>(null);
 
-  dirty = set((from) => {
-    return from.name !== original.name || from.email !== original.email;
-  });
+  get dirty() {
+    return this.name !== original.name || this.email !== original.email;
+  }
 
   async save() {
     this.saving = true;
