@@ -72,7 +72,7 @@ No `useState`. No `useCallback`. No dependency arrays.
 Here's a todo list with a computed value, local persistence, and validation - all in one class.
 
 ```tsx
-import State, { set } from '@expressive/react';
+import State from '@expressive/react';
 
 interface Todo {
   id: number;
@@ -85,7 +85,9 @@ class TodoApp extends State {
   draft = '';
   nextId = 1;
 
-  remaining = set((from) => from.items.filter((i) => !i.done).length);
+  get remaining() {
+    return this.items.filter((i) => !i.done).length;
+  }
 
   new() {
     const saved = localStorage.getItem('todos');
