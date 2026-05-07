@@ -9,6 +9,11 @@ import { resolve, join } from 'path';
 import { cp, readFile } from 'fs/promises';
 
 export default defineConfig({
+  resolve: {
+    alias: {
+      '@examples': resolve(__dirname, '../examples')
+    }
+  },
   plugins: [
     expressive(),
     mdx(MdxConfig),

@@ -1,4 +1,4 @@
-import { Component, set } from '@expressive/react';
+import { Component } from '@expressive/react';
 
 const LINES = [
   [0, 1, 2],
@@ -15,14 +15,20 @@ class Game extends Component {
   board: string[] = Array(9).fill("");
   turn: 'X' | 'O' = 'X';
 
-  winner = set((from: this) => {
+  get winner() {
+    const { board } = this;
     for (const line of LINES) {
-      const [a, b, c] = line.map(i => from.board[i]);
-      if (a === b && b === c) return a;
+      const [a, b, c] = line.map(i => board[i]);
+      if (a && a === b && b === c)  {
+        line.forEach(i => board[i] += ' win');
+        return a;
+      }
     }
-  });
+  }
 
-  full = set((from: this) => from.board.every(Boolean));
+  get full() {
+    return this.board.every(Boolean);
+  }
 
   play(i: number) {
     if (this.board[i] || this.winner) return;
@@ -45,10 +51,10 @@ class Game extends Component {
         <p className="status">
           {winner ? `${winner} wins!` : full ? 'Draw!' : `${turn}'s turn`}
         </p>
-        <div className={`board ${winner ? winner + "-wins" : ''}`}>
+        <div className='board'>
           {board.map((cell, i) => (
-            <button key={i} className="cell" onClick={() => play(i)} data-value={cell}>
-              {cell}
+            <button key={i} onClick={() => play(i)} className={`cell ${cell.slice(2)}`}>
+              {cell[0]}
             </button>
           ))}
         </div>

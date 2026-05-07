@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Expressive Examples</title>
+</head>
+
+<body>
+  <div id="root"></div>
+  <script type="module" src="/main.tsx"></script>
+  <style>
+    .dev-nav {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.25rem;
+      padding: 0.75rem 1rem;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .dev-nav a {
+      padding: 0.35em 0.8em;
+      border-radius: var(--radius);
+      color: var(--fg);
+      text-decoration: none;
+      font-size: 0.9em;
+    }
+
+    .dev-nav a:hover {
+      background: var(--bg);
+      text-decoration: none;
+    }
+
+    .dev-nav a[aria-current='page'] {
+      background: var(--accent);
+      color: white;
+    }
+
+    .dev-content {
+      padding: 2rem;
+    }
+  </style>
+</body>
+
+</html>

@@ -21,7 +21,6 @@
   transition: background-color 0.3s;
 }
 
-.X-wins .cell[data-value="X"],
-.O-wins .cell[data-value="O"] {
+.cell.win {
   background-color: #25cf58;
 }

@@ -15,7 +15,7 @@ Whenever you read a property inside a **tracking context**, you subscribe to it.
 
 - A React component calling `State.use()` or `State.get()`.
 - An effect passed to `state.get(effect)`.
-- A reactive computed: `set((from) => ...)`.
+- A reactive computed: a class getter on a State subclass.
 
 Reads through a **tracking proxy** subscribe. Reads through the plain instance do not.
 
@@ -51,30 +51,31 @@ The component re-renders when any tracked property changes, and _only_ when a tr
 
 ## Computed values
 
-A reactive computed is a property whose value is derived from other properties. It re-runs when any of its tracked inputs change:
+A reactive computed is a property whose value is derived from other properties. It re-runs when any of its tracked inputs change. Use a normal class getter:
 
 ```ts
 class Cart extends State {
   items: Item[] = [];
-  total = set((from) => from.items.reduce((s, i) => s + i.price * i.qty, 0));
-  count = set((from) => from.items.reduce((s, i) => s + i.qty, 0));
+  get total() { return this.items.reduce((s, i) => s + i.price * i.qty, 0); }
+  get count() { return this.items.reduce((s, i) => s + i.qty, 0); }
 }
 ```
 
-The single-argument form of `set` distinguishes a computed from a factory: **if the callback declares at least one parameter, it is a reactive computed**. The parameter is a tracking proxy of the instance.
+A getter on a State subclass is automatically reactive. `this` inside the getter is a tracking proxy, so any managed property you read subscribes the computed value to it.
 
 - Computed values are **enumerable and read-only** - they're considered data.
 - They're evaluated **lazily** - deferred until something reads them or until the next flush.
-- They track dependencies automatically - `from.items` creates a subscription; `this.items` (inside the function) would not.
+- They track dependencies automatically - any property read through `this` creates a subscription. To opt out, read through `this.is` instead.
 - Chained computed values (one computed referencing another) evaluate in declaration order.
-- A computed can reference its own previous value via `from.ownProp` without infinite looping.
+- A computed can reference its own previous value via `this.ownProp` without infinite looping.
+- Subclasses can override a getter; `super.foo` composes with the parent.
 
 ```ts
 class Stats extends State {
   values: number[] = [];
-  count = set((from) => from.values.length);
-  sum = set((from) => from.values.reduce((a, b) => a + b, 0));
-  average = set((from) => (from.count === 0 ? 0 : from.sum / from.count));
+  get count() { return this.values.length; }
+  get sum() { return this.values.reduce((a, b) => a + b, 0); }
+  get average() { return this.count === 0 ? 0 : this.sum / this.count; }
 }
 ```
 

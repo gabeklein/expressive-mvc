@@ -4,6 +4,8 @@ import { resolve } from 'path';
 export const rootConfig = defineConfig({
   test: {
     setupFiles: [resolve(__dirname, 'vitest.setup.ts')],
+    testTimeout: 5000,
+    hookTimeout: 5000,
     coverage: {
       provider: 'v8',
       include: ['src/**'],

@@ -54,7 +54,7 @@ Properties assigned in the class body are reactive - updates notify subscribers.
 
 Field initializers that configure reactive behavior. Each has multiple overloads - see linked docs for full details.
 
-#### `set()` - Values, Factories & Computed
+#### `set()` - Values, Factories & Validation
 
 | Form                  | Behavior                                                                    |
 | --------------------- | --------------------------------------------------------------------------- |
@@ -66,8 +66,9 @@ Field initializers that configure reactive behavior. Each has multiple overloads
 | `set(() => v, true)`  | Eager factory. Runs immediately on init.                                    |
 | `set(() => v, false)` | Lazy factory. Returns `undefined` while pending (no suspense).              |
 | `set(() => v, cb)`    | Factory with setter callback. Makes writable.                               |
-| `set((from) => v)`    | Reactive computed. Re-runs when tracked deps change. Enumerable, read-only. |
 | `set(promise)`        | Direct promise. Suspends until resolved.                                    |
+
+For **reactive computed values**, declare a normal class getter (e.g. `get total() { ... }`). Getters on a State subclass are auto-promoted to memoized, dependency-tracked properties.
 
 #### `get()` - Context Lookup
 
@@ -165,9 +166,9 @@ class UserProfile extends State {
 // Computed values (reactive - auto-tracks dependencies)
 class Cart extends State {
   items = set<Item[]>([]);
-  total = set((from) => {
-    return from.items.reduce((sum, i) => sum + i.price, 0);
-  });
+  get total() {
+    return this.items.reduce((sum, i) => sum + i.price, 0);
+  }
 }
 
 // Setter callback (validation)
@@ -187,13 +188,14 @@ Fetch these for detailed API documentation when the task requires deeper knowled
 - [state/state.md](state/state.md) - State class, instantiation, properties, methods, events, context
 - [state/get.md](state/get.md) - Instance `.get()` method: read values, run effects, context lookup
 - [state/set.md](state/set.md) - Instance `.set()` method: write values, listen to updates, events, destroy
+- [state/computed.md](state/computed.md) - Reactive class getters: tracking, caching, inheritance, suspense
 - [state/lifecycle.md](state/lifecycle.md) - Construction, activation, operation, destruction phases
 - [state/context.md](state/context.md) - Context system, root singleton, home context, ownership rules
 - [state/types.md](state/types.md) - TypeScript type aliases and utility types
 
 ### Instructions (field initializers)
 
-- [instructions/set.md](instructions/set.md) - Property descriptors, async/lazy/computed, setter callbacks
+- [instructions/set.md](instructions/set.md) - Property descriptors, defaults, factories, setter callbacks
 - [instructions/get.md](instructions/get.md) - Context lookup: upstream, downstream, callbacks
 - [instructions/ref.md](instructions/ref.md) - Mutable refs, ref proxy, callbacks
 - [instructions/def.md](instructions/def.md) - Low-level custom property behavior
