@@ -21,6 +21,6 @@
   transition: background-color 0.3s;
 }
 
-.cell.win {
+.cell.wins {
   background-color: #25cf58;
 }
