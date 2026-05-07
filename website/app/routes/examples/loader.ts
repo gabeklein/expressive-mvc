@@ -1,4 +1,6 @@
-const FILES = import.meta.glob('/examples/*/*', {
+// `*/**/*` requires at least one folder under examples/ - skips top-level
+// SPA scaffolding (package.json, vite.config.ts, main.tsx, etc.).
+const FILES = import.meta.glob('@examples/*/**/*', {
   query: '?raw',
   import: 'default',
   eager: true
@@ -12,12 +14,26 @@ import App from './App';
 createRoot(document.getElementById('root')!).render(<App />);
 `;
 
+// Strips a leading `NN-` ordering prefix from each path segment.
+const STRIP = /^\d+-/;
+const slugify = (segments: string[]) => segments.map((s) => s.replace(STRIP, '')).join('/');
+
 export const examples: Record<string, Record<string, string>> = {};
 export const base: Record<string, string> = {};
 
 for (const [path, code] of Object.entries(FILES)) {
-  const [folder, file] = path.split('/').slice(2);
-  const target = folder === '_base' ? base : (examples[folder] ??= {});
+  // Vite resolves the @examples alias; key may be '@examples/...' (literal)
+  // or '/.../examples/...' (resolved). Split on either boundary.
+  const segments = path.split(/[/@]examples\//).pop()!.split('/');
+  const file = segments.pop()!;
+
+  if (segments.includes('_base')) {
+    base[`/${file}`] = code;
+    continue;
+  }
+
+  const slug = slugify(segments);
+  const target = examples[slug] ??= {};
   target[`/${file}`] = code;
 }
 
@@ -50,6 +66,5 @@ export function getFiles(name: string) {
 
   return files;
 }
-
 
 export const NAMES = Object.keys(examples);
