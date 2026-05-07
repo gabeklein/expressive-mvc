@@ -67,7 +67,7 @@ form.refs.email; // ref.Object<string>
 
 Creates ref objects for every enumerable property on the state. Each ref has `.current` (get/set), `.get()` (value or subscribe), `.is` (parent state), and `.key` (property name).
 
-- Reactive computed properties (`set((from) => ...)`) are included but read-only.
+- Reactive computed getters (e.g. `get foo() { ... }`) are included but read-only.
 - Factory-based properties (`set(() => ...)`) are excluded (non-enumerable).
 - Must pass `this` - any other object throws.
 

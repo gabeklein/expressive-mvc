@@ -171,14 +171,18 @@ function App() {
 ## Computed Values
 
 ```tsx
-import { Component, set } from '@expressive/react';
+import { Component } from '@expressive/react';
 
 class Cart extends Component {
   items: { name: string; price: number; qty: number }[] = [];
-  total = set((from: this) =>
-    from.items.reduce((sum, i) => sum + i.price * i.qty, 0)
-  );
-  count = set((from: this) => from.items.reduce((sum, i) => sum + i.qty, 0));
+
+  get total() {
+    return this.items.reduce((sum, i) => sum + i.price * i.qty, 0);
+  }
+
+  get count() {
+    return this.items.reduce((sum, i) => sum + i.qty, 0);
+  }
 
   add(name: string, price: number) {
     this.items = [...this.items, { name, price, qty: 1 }];

@@ -1,8 +1,6 @@
-import { listener, capture, watch } from '../observable';
-import { access, event, unbind, State, update } from '../state';
+import { listener, capture } from '../observable';
+import { access, event, State, update } from '../state';
 import { def } from './def';
-
-const STALE = new WeakSet<() => void>();
 
 declare namespace set {
   type Callback<T, S = any> = (
@@ -10,8 +8,6 @@ declare namespace set {
     next: T,
     previous: T
   ) => ((next: T) => void) | Promise<any> | void | boolean;
-
-  type Reactive<T, S = any> = (self: S, property: string) => T;
 
   type Factory<T, S = any> = (this: S, property: string) => Promise<T> | T;
 }
@@ -65,24 +61,6 @@ function set<T>(
 function set<T>(factory: () => T | Promise<T>, onUpdate: set.Callback<T>): T;
 
 /**
- * Set a reactive computed property.
- *
- * Factory receives a watched proxy `self` and re-runs when accessed properties change.
- *
- * Enumerable (considered data) and read-only. Included in snapshots, serialization, and `ref(this)`.
- *
- * @param factory - Callback receiving self proxy, returns computed value.
- */
-// TODO: add optional onUpdate callback for reactive computed (observation-only)
-// Normally is treated as readonly, but if a callback is provided, it can be assigned.
-// Callback would run for both direct updates and reactive updates, and would receive the next value and previous value as arguments.
-// Return value of callback would be unset function. This would be good to know especially for async updates.
-// You can cancel pending updates if a new update comes in before the previous one finishes.
-function set<T, S extends State>(
-  factory: (self: S, key: string) => T | Promise<T>
-): T;
-
-/**
  * Set a property with a non-function value.
  *
  * Non-enumerable but writable. Unlike plain assignment (`= value`), this
@@ -97,70 +75,7 @@ function set<T, S extends State>(
 function set<T>(value: T | Promise<T>, onUpdate?: set.Callback<T>): T;
 
 function set<T = any>(value?: unknown, argument?: unknown): any {
-  return def<T>((key, subject, state) => {
-    // Reactive compute: function with declared args
-    if (typeof value === 'function' && value.length >= 1) {
-      const getter = unbind(value) as set.Reactive<T, any>;
-
-      let reset: (() => void) | undefined;
-      let isAsync: boolean;
-      let proxy: any;
-
-      function connect(source: State) {
-        reset = watch(
-          source,
-          (current) => {
-            proxy = current;
-
-            if (!(key in state) || STALE.delete(compute)) compute(!reset);
-
-            return (didUpdate) => {
-              if (didUpdate) {
-                STALE.add(compute);
-                event(subject, key, true);
-              }
-            };
-          },
-          false
-        );
-      }
-
-      function compute(initial?: boolean) {
-        let next: T | undefined;
-
-        try {
-          next = getter.call(subject, proxy, key);
-        } catch (err) {
-          console.warn(
-            `An exception was thrown while ${
-              initial ? 'initializing' : 'refreshing'
-            } ${subject}.${key}.`
-          );
-
-          if (initial) throw err;
-
-          console.error(err);
-        }
-
-        update(subject, key, next, !isAsync);
-      }
-
-      return {
-        enumerable: true,
-        set: false,
-        get() {
-          if (!proxy) {
-            connect(subject);
-            isAsync = true;
-          }
-
-          if (STALE.delete(compute)) compute();
-
-          return access(subject, key, !proxy) as T;
-        }
-      };
-    }
-
+  return def<T>((key, subject) => {
     const config: State.Apply = {
       enumerable: false,
       set: false

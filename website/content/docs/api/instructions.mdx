@@ -15,7 +15,9 @@ All instructions return a symbol at definition time that the library resolves in
 
 ## `set`
 
-The most versatile instruction. Handles default values, placeholders, lazy/async factories, reactive computed values, and validation callbacks.
+The most versatile instruction. Handles default values, placeholders, lazy/async factories, and validation callbacks.
+
+For reactive computed values, use a normal class getter - getters on a State subclass are auto-promoted to memoized, dependency-tracked properties. See [Reactive computed (getters)](#reactive-computed-getters) below.
 
 ### Property descriptor policy
 
@@ -26,11 +28,9 @@ The most versatile instruction. Handles default values, placeholders, lazy/async
 | `= set("foo", cb)`       | no         | yes      | Managed with setter callback             |
 | `= set(() => "foo")`     | no         | no       | Factory, read-only                       |
 | `= set(() => "foo", cb)` | no         | yes      | Factory made writable by callback        |
-| `= set((from) => ...)`   | yes        | no       | Reactive computed, included in snapshots |
+| `get foo() { ... }`      | yes        | no       | Reactive computed, included in snapshots |
 | `= set<T>()`             | no         | yes      | Placeholder, suspends on access          |
 | `= set(promise)`         | no         | no       | Direct promise, suspends until resolved  |
-
-The key distinction between a factory (`set(() => v)`) and a reactive computed (`set((from) => v)`) is **parameter count**. A callback with no declared parameters is a lazy factory. A callback with at least one declared parameter is a reactive computed whose argument is a tracking proxy.
 
 ### `set<T>()` - placeholder
 
@@ -110,22 +110,25 @@ config = set(
 
 Makes the property writable. Callback runs on factory resolution and subsequent assignments.
 
-### `set((from) => ...)` - reactive computed
+### Reactive computed (getters)
 
 ```ts
 class Cart extends State {
   items = set<Item[]>([]);
-  total = set((from) => from.items.reduce((s, i) => s + i.price, 0));
+  get total() {
+    return this.items.reduce((s, i) => s + i.price, 0);
+  }
 }
 ```
 
-Enumerable, read-only. Re-runs when tracked dependencies change.
+A getter declared on a State subclass is auto-promoted to a reactive computed property. Enumerable, read-only. Re-runs when tracked dependencies change.
 
-- `from` is a tracking proxy - reads create subscriptions.
-- `this` (inside the function) does not create subscriptions - use `from` for tracked reads.
+- `this` is a tracking proxy when the getter runs in a subscriber context - reads create subscriptions.
+- To opt out of tracking for a single read, use `this.is.ownProp`.
 - Chained computed values evaluate in declaration order.
-- Can reference its own previous value via `from.ownProp` without looping.
-- Can be a method reference: `doubled = set(this.computeDoubled);`
+- Can reference its own previous value via `this.ownProp` without looping.
+- Subclasses can override a getter; `super.foo` composes with the parent.
+- Getters declared with a paired setter (`get foo() {} set foo(v) {}`) are NOT promoted - they remain plain JS accessors.
 - Included in snapshots and `ref(this)`.
 
 ### `set(promise)` - direct promise
@@ -256,7 +259,7 @@ form.refs.name.current = 'new'; // updates form.name
 
 Creates ref objects for every enumerable property. Must pass `this` - any other argument throws.
 
-- Reactive computed properties are included (read-only).
+- Reactive computed getters are included (read-only).
 - Factory-based properties (`set(() => ...)`) are excluded (non-enumerable).
 
 ### `ref(this, mapFn)` - custom ref proxy
