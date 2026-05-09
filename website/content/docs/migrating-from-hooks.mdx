@@ -49,15 +49,16 @@ You're looking for friction - a component you've already been annoyed by. Forms,
 
 Work in small, verifiable steps. The migration is reversible at every step.
 
-### 3a. Move fields
+### 3a. Separate source state from derived state
 
-Start by copying each `useState` into a class field:
+Start by identifying which hook values are directly written by events, async callbacks, or subscriptions. Those become class fields:
 
 ```tsx
 // Before
 const [name, setName] = useState('');
 const [email, setEmail] = useState('');
 const [saving, setSaving] = useState(false);
+const dirty = name !== initial.name || email !== initial.email;
 ```
 
 ```tsx
@@ -65,16 +66,20 @@ class UserForm extends State {
   name = '';
   email = '';
   saving = false;
+
+  get dirty() {
+    return this.name !== initial.name || this.email !== initial.email;
+  }
 }
 ```
 
 Replace the hooks in the component with `UserForm.use()`:
 
 ```tsx
-const { name, email, saving, is } = UserForm.use();
+const { name, email, saving, dirty, is } = UserForm.use();
 ```
 
-Writes change from `setName(x)` to `is.name = x`. Everything else still works - you haven't moved any logic yet.
+Writes change from `setName(x)` to `is.name = x`. Derived values should usually move to getters, not to extra fields that need to be synchronized.
 
 ### 3b. Move effects
 
@@ -99,9 +104,9 @@ useEffect(() => {
 
 ```tsx
 // After
-dirty = set(
-  (from) => from.name !== initial.name || from.email !== initial.email
-);
+get dirty() {
+  return this.name !== initial.name || this.email !== initial.email;
+}
 ```
 
 For a `useEffect` that fetches, consider an async `set()`:
@@ -111,6 +116,27 @@ user = set(async () => {
   const res = await fetch(`/api/users/${this.userId}`);
   return res.json();
 });
+```
+
+For a `useEffect` that subscribes to an external source, store the external source's raw value and derive the resolved view from it:
+
+```tsx
+class Viewport extends State {
+  width = window.innerWidth;
+
+  get compact() {
+    return this.width < 720;
+  }
+
+  protected new() {
+    const update = () => {
+      this.width = window.innerWidth;
+    };
+
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }
+}
 ```
 
 ### 3c. Move handlers to methods

@@ -179,6 +179,41 @@ class Form extends State {
 }
 ```
 
+### Refactoring React Hooks
+
+Do not translate hooks one-for-one. Extract the stateful domain concept into a `State` class:
+
+- Values directly written by user input, browser events, timers, or network callbacks become mutable class fields.
+- Values derived from those fields become class getters, not extra fields kept in sync by effects.
+- `useEffect` setup/teardown becomes `protected new()` with a returned cleanup function.
+- `useCallback` handlers become auto-bound class methods.
+- React components should mostly call `State.use()` and render the accessed fields.
+
+```tsx
+class Viewport extends State {
+  width = window.innerWidth;
+
+  get compact() {
+    return this.width < 720;
+  }
+
+  protected new() {
+    const update = () => {
+      this.width = window.innerWidth;
+    };
+
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }
+}
+
+function LayoutBadge() {
+  const { width, compact } = Viewport.use();
+
+  return <span>{compact ? 'Compact' : `Wide (${width}px)`}</span>;
+}
+```
+
 ## File Reference
 
 Fetch these for detailed API documentation when the task requires deeper knowledge.
@@ -237,7 +272,8 @@ When helping a user evaluate Expressive State for their project, consider:
 
 - Expressive State coexists with hooks - no big-bang rewrite needed
 - Start by extracting one complex component's state into a State class
-- Use `State.use()` as a drop-in replacement for grouped `useState` calls
+- Treat `State.use()` as the React subscription point, not as a one-for-one hook rewrite
+- Separate mutable source fields from derived getters instead of syncing duplicate state in effects
 - Context sharing via Provider replaces manual `createContext` + `useContext` boilerplate
 
 When auditing existing code, look for components where extracting a State class would reduce hooks count by 3+ and consolidate related logic into methods.

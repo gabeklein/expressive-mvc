@@ -125,6 +125,50 @@ function ThemeToggle() {
 3. **Bottom-up** - migrate leaf components first, then work up to shared state
 4. **Test independently** - state classes can be tested without React, use this to improve coverage
 
+## Refactor Heuristic
+
+For a one-shot hook migration, do not mirror React hooks mechanically. First identify the stateful concept the component is managing, then model that concept:
+
+- `useState` values written directly by inputs, timers, subscriptions, or network callbacks become class fields.
+- `useMemo` values and `useEffect` values that only keep state in sync become class getters.
+- `useEffect` setup/teardown subscriptions become `protected new()` with a returned cleanup.
+- `useCallback` handlers become class methods; methods are auto-bound.
+- The React component should become a thin projection over `State.use()` or `State.get()`.
+
+Prefer this:
+
+```tsx
+class FormState extends State {
+  name = '';
+  email = '';
+  saving = false;
+
+  get dirty() {
+    return this.name !== original.name || this.email !== original.email;
+  }
+
+  async save() {
+    this.saving = true;
+    await api.updateUser({ name: this.name, email: this.email });
+    this.saving = false;
+  }
+}
+```
+
+Over this:
+
+```tsx
+class FormState extends State {
+  name = '';
+  email = '';
+  dirty = false;
+
+  syncDirty() {
+    this.dirty = this.name !== original.name || this.email !== original.email;
+  }
+}
+```
+
 ## Red Flags (when NOT to recommend)
 
 - Team has strong preference for functional-only code
