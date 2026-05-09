@@ -244,10 +244,10 @@ Descriptor fields:
 
 Non-enumerable self-reference. Two purposes:
 
-1. **Write access after destructuring** - `const { count, is } = state; is.count = 5;`
+1. **Write access after destructuring** - `const { is: counter, count } = state; counter.count = 5;`
 2. **Silent reads inside tracking contexts** - `current.is.value` reads without subscribing.
 
-`state.is === state` always, and `state.is.is === state.is`.
+`state.is === state` always, likewise `state.is.is === state.is`.
 
 <br />
 

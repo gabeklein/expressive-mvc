@@ -35,11 +35,11 @@ function Foo() {
   // `.get()` finds the nearest provided instance (unlike `.use()`
   // which creates one). Destructured fields subscribe either way.
   // `is` loops back to `this` for writes and silent reads.
-  const { is, bar } = FooBar.get();
+  const { is: foobar, bar } = FooBar.get();
 
   return (
     <div>
-      <button onClick={() => is.foo++}>Foo</button>
+      <button onClick={() => foobar.foo++}>Foo</button>
       <small>(Bar was clicked {bar} times)</small>
     </div>
   );
@@ -48,11 +48,11 @@ function Foo() {
 function Bar() {
   // Dependencies are per-component, so this only
   // refreshes when `foo` changes, not when `bar` does.
-  const { is, foo } = FooBar.get();
+  const { is: foobar, foo } = FooBar.get();
 
   return (
     <div>
-      <button onClick={() => is.bar++}>Bar</button>
+      <button onClick={() => foobar.bar++}>Bar</button>
       <small>(Foo was clicked {foo} times)</small>
     </div>
   );

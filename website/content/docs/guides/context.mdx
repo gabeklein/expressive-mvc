@@ -331,9 +331,12 @@ class Dashboard extends Component {
 }
 
 function FilterBar() {
-  const { filter, is } = Dashboard.get();
+  const { is: dashboard, filter } = Dashboard.get();
   return (
-    <input value={filter} onChange={(e) => (is.filter = e.target.value)} />
+    <input
+      value={filter}
+      onChange={(e) => (dashboard.filter = e.target.value)}
+    />
   );
 }
 

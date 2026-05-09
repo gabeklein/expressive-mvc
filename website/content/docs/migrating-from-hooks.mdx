@@ -76,10 +76,10 @@ class UserForm extends State {
 Replace the hooks in the component with `UserForm.use()`:
 
 ```tsx
-const { name, email, saving, dirty, is } = UserForm.use();
+const { is: form, name, email, saving, dirty } = UserForm.use();
 ```
 
-Writes change from `setName(x)` to `is.name = x`. Derived values should usually move to getters, not to extra fields that need to be synchronized.
+Writes change from `setName(x)` to `form.name = x`. Derived values should usually move to getters, not to extra fields that need to be synchronized.
 
 ### 3b. Move effects
 
@@ -286,8 +286,8 @@ class Nav extends State {
 }
 
 function SomeComponent() {
-  const { shouldRedirect, is } = Nav.use();
-  // ... trigger is.shouldRedirect = true somewhere
+  const { is: nav, shouldRedirect } = Nav.use();
+  // ... trigger nav.shouldRedirect = true somewhere
 }
 ```
 
@@ -336,7 +336,7 @@ const { count } = Counter.use();
 count = 5; // just rebinds the local - doesn't update state
 ```
 
-Use `is.count = 5` for writes after destructuring, or don't destructure the fields you write to.
+Prefer destructuring `is` first and aliasing it to the state concept, like `const { is: counter, count } = Counter.use();`. Use `counter.count = 5` for writes after destructuring, or don't destructure the fields you write to.
 
 <br />
 

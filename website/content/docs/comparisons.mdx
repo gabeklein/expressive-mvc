@@ -74,13 +74,13 @@ class UserProfile extends State {
 }
 
 function UserProfileView({ userId }) {
-  const { name, email, loading, save, is } = UserProfile.use({ userId });
+  const { is: profile, name, email, loading, save } = UserProfile.use({ userId });
   if (loading) return <Spinner />;
 
   return (
     <form>
-      <input value={name} onChange={(e) => (is.name = e.target.value)} />
-      <input value={email} onChange={(e) => (is.email = e.target.value)} />
+      <input value={name} onChange={(e) => (profile.name = e.target.value)} />
+      <input value={email} onChange={(e) => (profile.email = e.target.value)} />
       <button onClick={save}>Save</button>
     </form>
   );

@@ -10,15 +10,15 @@ class Control extends State {
 
 const App = () => {
   // `.use()` creates and subscribes. Destructured fields trigger re-renders.
-  const { is, current, increment, decrement } = Control.use();
+  const { is: control, current, increment, decrement } = Control.use();
 
   return (
     <div className="container">
       <h1>Counter Example</h1>
       <div className="counter">
         <button onClick={decrement}>{'-'}</button>
-        {/* `is` points to the instance we can assign to directly. */}
-        <pre onClick={() => (is.current = 1)}>{current}</pre>
+        {/* `control` is the instance we can assign to directly. */}
+        <pre onClick={() => (control.current = 1)}>{current}</pre>
         <button onClick={increment}>{'+'}</button>
       </div>
     </div>

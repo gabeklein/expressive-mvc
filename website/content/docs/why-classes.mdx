@@ -127,7 +127,7 @@ And the component:
 
 ```tsx
 function UserSettingsView(props: { userId: string }) {
-  const { is, name, email, dirty, saving, error, save } =
+  const { is: settings, name, email, dirty, saving, error, save } =
     UserSettings.use(props);
 
   return (
@@ -139,13 +139,13 @@ function UserSettingsView(props: { userId: string }) {
       <input
         value={name}
         onChange={(e) => {
-          is.name = e.target.value;
+          settings.name = e.target.value;
         }}
       />
       <input
         value={email}
         onChange={(e) => {
-          is.email = e.target.value;
+          settings.email = e.target.value;
         }}
       />
       <button disabled={!dirty || saving}>Save</button>

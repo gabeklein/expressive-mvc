@@ -117,7 +117,7 @@ Then the view:
 
 ```tsx
 function TodoList() {
-  const { items, draft, remaining, add, toggle, is } = TodoApp.use();
+  const { is: todo, items, draft, remaining, add, toggle } = TodoApp.use();
 
   return (
     <div>
@@ -128,7 +128,7 @@ function TodoList() {
         }}>
         <input
           value={draft}
-          onChange={(e) => (is.draft = e.target.value)}
+          onChange={(e) => (todo.draft = e.target.value)}
           placeholder="What needs doing?"
         />
         <button type="submit">Add</button>
@@ -152,11 +152,11 @@ Notice what the component _doesn't_ have: no effects, no memoization, no derived
 
 ## The `is` property
 
-After destructuring, you lose write access to the instance - `count = 5` just rebinds a local variable. Every State exposes an `is` property that loops back to the instance, giving you write access post-destructure:
+After destructuring, you lose write access to the instance - `count = 5` just rebinds a local variable. Every State exposes an `is` property that loops back to the instance, giving you write access post-destructure. Prefer destructuring it first, and usually alias it to the state concept:
 
 ```tsx
-const { draft, is } = TodoApp.use();
-is.draft = 'hello'; // updates state and re-renders
+const { is: todo, draft } = TodoApp.use();
+todo.draft = 'hello'; // updates state and re-renders
 ```
 
 `is` has a second purpose: **silent reads**. Reading through `is` inside a tracking context does not create a subscription - useful when you need a value but don't want the component to re-render when it changes. See [Reactivity](/docs/guides/reactivity) for details.
@@ -184,13 +184,13 @@ class SearchPage extends State {
 
 // The face - just renders what the brain knows
 function SearchView() {
-  const { query, results, loading, search, is } = SearchPage.use();
+  const { is: page, query, results, loading, search } = SearchPage.use();
 
   return (
     <div>
       <input
         value={query}
-        onChange={(e) => (is.query = e.target.value)}
+        onChange={(e) => (page.query = e.target.value)}
         onKeyDown={(e) => e.key === 'Enter' && search()}
       />
       {loading ? (
