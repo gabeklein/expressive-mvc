@@ -239,21 +239,21 @@ function App() {
 }
 
 function Foo() {
-  const { foo, is } = SharedData.get();
+  const { is: shared, foo } = SharedData.get();
   return (
     <div>
       <p>Foo: {foo}</p>
-      <button onClick={() => is.bar++}>Increment Bar</button>
+      <button onClick={() => shared.bar++}>Increment Bar</button>
     </div>
   );
 }
 
 function Bar() {
-  const { bar, is } = SharedData.get();
+  const { is: shared, bar } = SharedData.get();
   return (
     <div>
       <p>Bar: {bar}</p>
-      <button onClick={() => is.foo++}>Increment Foo</button>
+      <button onClick={() => shared.foo++}>Increment Foo</button>
     </div>
   );
 }
@@ -304,12 +304,12 @@ class UserProfile extends State {
 }
 
 function ProfileEditor() {
-  const { name, email, address, is } = UserProfile.use();
+  const { is: profile, name, email, address } = UserProfile.use();
 
   return (
     <div>
-      <input value={name} onChange={(e) => (is.name = e.target.value)} />
-      <input value={email} onChange={(e) => (is.email = e.target.value)} />
+      <input value={name} onChange={(e) => (profile.name = e.target.value)} />
+      <input value={email} onChange={(e) => (profile.email = e.target.value)} />
       <input
         value={address.street}
         onChange={(e) => (address.is.street = e.target.value)}
@@ -347,9 +347,9 @@ class Settings extends State {
 ```tsx
 function UserProfile() {
   const {
+    is: userData,
     profile: { name, is: profile },
-    notifications,
-    is
+    notifications
   } = UserData.use();
 
   // Only re-renders when name or notifications change
@@ -357,7 +357,7 @@ function UserProfile() {
     <div>
       <input value={name} onChange={(e) => (profile.name = e.target.value)} />
       <span>{notifications} notifications</span>
-      <button onClick={() => is.notifications++}>+1</button>
+      <button onClick={() => userData.notifications++}>+1</button>
     </div>
   );
 }
@@ -531,11 +531,11 @@ const { login, logout } = Session.use();
 
 ### The `is` Property
 
-Every State has a non-enumerable `is` property that references itself. Useful for write access after destructuring:
+Every State has a non-enumerable `is` property that references itself. Useful for write access after destructuring. Prefer destructuring it first and aliasing it to the state concept:
 
 ```tsx
-const { name, is } = Profile.use();
-<input value={name} onChange={(e) => (is.name = e.target.value)} />;
+const { is: profile, name } = Profile.use();
+<input value={name} onChange={(e) => (profile.name = e.target.value)} />;
 ```
 
 **Silent reads** - access properties through `is` without subscribing:

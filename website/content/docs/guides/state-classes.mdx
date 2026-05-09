@@ -106,11 +106,11 @@ Every instance has a non-enumerable `is` property that loops back to the instanc
 ### Write access after destructuring
 
 ```tsx
-const { count, is } = Counter.use();
-is.count = 5; // works
+const { is: counter, count } = Counter.use();
+counter.count = 5; // works
 ```
 
-Destructuring breaks the binding between a local variable and the property, so `count = 5` just reassigns the local. `is` gives you back a reference to the live instance.
+Destructuring breaks the binding between a local variable and the property, so `count = 5` just reassigns the local. `is` gives you back a reference to the live instance. Destructure it first so the instance handle is easy to spot, and usually alias it to the state concept (`counter`, `form`, `dashboard`) instead of using `is` directly.
 
 ### Silent reads
 

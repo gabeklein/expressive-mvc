@@ -55,13 +55,19 @@ for (const [key, value] of state) {
 
 ## The `is` Property
 
-Circular self-reference. Destructure first to retain instance access alongside values.
-Also use for silent reads inside effects, or when you want to guarantee you have the unwrapped instance. `state.is` is always the instance whether or not `state` is a proxy; `state.is.is` is safe.
+Circular self-reference. Destructure first to retain instance access alongside values, and usually alias it to the state concept (`is: counter`, `is: form`) rather than keeping a local named `is`.
+
+```tsx
+const Component = () => {
+  const { is: counter, count } = Counter.use();
+
+  return <button onClick={() => counter.count++}>{count}</button>;
+};
+```
+
+Also use for silent reads inside effects, or when you want to guarantee the unwrapped instance. `state.is` is always the instance whether or not `state` is a proxy. Idempotent, so `state.is.is` is safe.
 
 ```ts
-const { is: counter, count } = Counter.new();
-counter.increment(); // write access after destructuring
-
 // Silent read - access via `is` bypasses proxy tracking
 state.get((current) => {
   console.log(current.value); // subscribes to 'value'
