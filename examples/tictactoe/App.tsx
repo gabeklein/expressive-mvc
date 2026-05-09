@@ -18,9 +18,9 @@ class Game extends Component {
   get winner() {
     const { board } = this;
     for (const line of LINES) {
-      const [a, b, c] = line.map(i => board[i]);
-      if (a && a === b && b === c)  {
-        line.forEach(i => board[i] += ' win');
+      const [a, b, c] = line.map((i) => board[i]);
+      if (a && a === b && b === c) {
+        for (const i of line) board[i] += '-wins';
         return a;
       }
     }
@@ -51,9 +51,12 @@ class Game extends Component {
         <p className="status">
           {winner ? `${winner} wins!` : full ? 'Draw!' : `${turn}'s turn`}
         </p>
-        <div className='board'>
+        <div className={`board ${winner && 'done'}`}>
           {board.map((cell, i) => (
-            <button key={i} onClick={() => play(i)} className={`cell ${cell.slice(2)}`}>
+            <button
+              key={i}
+              onClick={() => play(i)}
+              className={cell || ""}>
               {cell[0]}
             </button>
           ))}
