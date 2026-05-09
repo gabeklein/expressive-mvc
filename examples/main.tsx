@@ -1,6 +1,6 @@
 import './_base/styles.css';
 
-import State from '@expressive/react';
+import { Component } from '@expressive/react';
 import { type ComponentType } from 'react';
 import { createRoot } from 'react-dom/client';
 
@@ -21,7 +21,7 @@ const styles = import.meta.glob<string>('./*/**/App.css', {
   eager: true
 });
 
-class Router extends State {
+class Examples extends Component {
   hash = '';
 
   examples = Object.entries(modules)
@@ -37,38 +37,39 @@ class Router extends State {
   }
 
   protected new() {
+    const pageDefault = this.examples[0].slug;
     const update = () => {
-      this.hash = window.location.hash.replace(/^#\/?/, '') || this.examples[0].slug;
+      this.hash = window.location.hash.replace(/^#\/?/, '') || pageDefault;
     };
 
     update();
     window.addEventListener('hashchange', update);
     return () => window.removeEventListener('hashchange', update);
   }
+
+  render(){
+    const { current, examples } = this;
+    const { App, css } = current;
+
+    return (
+      <>
+        <nav className="dev-nav">
+          {examples.map((e) => (
+            <a
+              key={e.slug}
+              href={`#/${e.slug}`}
+              aria-current={e === current ? 'page' : undefined}>
+              {e.title}
+            </a>
+          ))}
+        </nav>
+        <main className="dev-content">
+          {css && <style>{css}</style>}
+          <App />
+        </main>
+      </>
+    );
+  }
 }
 
-const Shell = () => {
-  const { current, examples } = Router.use();
-  const { App, css } = current;
-
-  return (
-    <>
-      <nav className="dev-nav">
-        {examples.map((e) => (
-          <a
-            key={e.slug}
-            href={`#/${e.slug}`}
-            aria-current={e === current ? 'page' : undefined}>
-            {e.title}
-          </a>
-        ))}
-      </nav>
-      <main className="dev-content">
-        {css && <style>{css}</style>}
-        <App />
-      </main>
-    </>
-  );
-};
-
-createRoot(document.getElementById('root')!).render(<Shell />);
+createRoot(document.getElementById('root')!).render(<Examples />);
