@@ -11,7 +11,7 @@
   margin-bottom: 1rem;
 }
 
-.board .cell {
+.board>button {
   margin: 0;
   padding: 0;
   width: 4rem;
@@ -19,8 +19,20 @@
   font-size: 1.75rem;
   font-weight: bold;
   transition: background-color 0.3s;
+  cursor: pointer;
 }
 
-.cell.wins {
-  background-color: #25cf58;
+.board>button:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.X,
+.O {
+  cursor: default !important;
+}
+
+.X-wins,
+.O-wins {
+  background-color: #25cf58 !important;
+  cursor: default !important;
 }
