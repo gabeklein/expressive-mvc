@@ -252,6 +252,58 @@ class TabGroup extends Component {
 }
 ```
 
+## Refactoring Hooks Into State
+
+When converting React hooks, avoid a literal hook-for-field rewrite. Put mutable inputs in fields, derived values in getters, setup/cleanup in `new()`, and event handlers in methods.
+
+```tsx
+// Before: width is source state, compact is derived state kept in sync.
+function LayoutBadge() {
+  const [width, setWidth] = useState(window.innerWidth);
+  const [compact, setCompact] = useState(width < 720);
+
+  useEffect(() => {
+    const update = () => setWidth(window.innerWidth);
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }, []);
+
+  useEffect(() => {
+    setCompact(width < 720);
+  }, [width]);
+
+  return <span>{compact ? 'Compact' : `Wide (${width}px)`}</span>;
+}
+```
+
+```tsx
+// After: width is the source field, compact is a getter, and resize belongs to Viewport.
+import State from '@expressive/react';
+
+class Viewport extends State {
+  width = window.innerWidth;
+
+  get compact() {
+    return this.width < 720;
+  }
+
+  protected new() {
+    const update = () => {
+      this.width = window.innerWidth;
+    };
+
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }
+}
+
+function LayoutBadge() {
+  const { width, compact } = Viewport.use();
+
+  return <span>{compact ? 'Compact' : `Wide (${width}px)`}</span>;
+}
+```
+
 ## Effects & Cleanup
 
 ```ts
