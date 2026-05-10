@@ -5,21 +5,32 @@ import { type ComponentType } from 'react';
 import { createRoot } from 'react-dom/client';
 
 type AppModule = { default: ComponentType };
-type Example = { path: string; title: string; load: () => Promise<AppModule> };
+type Example = {
+  path: string;
+  order: number
+  title: string;
+  load: () => Promise<AppModule>;
+};
 
 const here = () => window.location.pathname.replace(/\/+$/, '') || '/';
 
 const modules = import.meta.glob<AppModule>('./*/**/App.tsx');
 const examples: Example[] = Object.entries(modules)
   .map(([file, load]): Example => {
-    const segments = file.split('/').slice(1, -1).map((p) => p.replace(/^\d+-/, ''));
+    let order = 0;
+    const segments = file.split('/').slice(1, -1).map((p) => {
+      const match = p.match(/^(\d+)-/);
+      if (match) order = parseInt(match[1], 10);
+      return p.replace(/^\d+-/, '')
+    });
     return {
+      order,
       path: '/' + segments.join('/'),
       title: segments.map((p) => p.split('-').map((w) => w[0].toUpperCase() + w.slice(1)).join(' ')).join(' / '),
       load
     };
   })
-  .sort((a, b) => a.path.localeCompare(b.path));
+  .sort((a, b) => a.order - b.order);
 
 class Examples extends Component {
   url = here();
