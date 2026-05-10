@@ -41,7 +41,7 @@ No reducers. No selectors. No dependency arrays. No extra libraries for async, c
 
 Most React apps outgrow their state. What starts as `useState` sprawls into `useEffect` chains, `useCallback` memoization, custom hooks that return objects of hooks, then a store library, then middleware for async, then a query client. By the time a feature is "done", its logic is scattered across five different primitives - none of which are easy to test, reuse, or understand in isolation.
 
-Expressive takes a different approach: **put the logic back in one place**. A State class holds everything a feature knows and does. Components subscribe to what they need and render it. The two concerns - data and presentation - stop fighting each other.
+Expressive takes a different approach: **put the logic back in one place**. Display-agnostic models live in `State` classes. Behavior that only exists for one rendered unit can live directly in a `Component` class. Either way, the values, methods, lifecycle, and rendering boundary are explicit instead of scattered across hooks.
 
 <br />
 

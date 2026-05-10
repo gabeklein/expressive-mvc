@@ -54,21 +54,27 @@ Properties assigned in the class body are reactive - updates notify subscribers.
 
 Field initializers that configure reactive behavior. Each has multiple overloads - see linked docs for full details.
 
+#### `def()` - Custom Property
+
+| Form           | Behavior                                                                                                    |
+| -------------- | ----------------------------------------------------------------------------------------------------------- |
+| `def(factory)` | Primitive instruction. Factory receives `(key, subject, state)`. Return config object, cleanup fn, or void. |
+
 #### `set()` - Values, Factories & Validation
 
-| Form                  | Behavior                                                                    |
-| --------------------- | --------------------------------------------------------------------------- |
-| `set<T>()`            | Placeholder. Suspends on access until assigned.                             |
-| `set(value)`          | Default value. Non-enumerable, writable.                                    |
-| `set(value, cb)`      | Default with setter callback. `throw false` to reject.                      |
-| `set(() => v)`        | Lazy factory. Read-only. Async suspends.                                    |
-| `set(async () => v)`  | Async factory. Suspends until resolved.                                     |
-| `set(() => v, true)`  | Eager factory. Runs immediately on init.                                    |
-| `set(() => v, false)` | Lazy factory. Returns `undefined` while pending (no suspense).              |
-| `set(() => v, cb)`    | Factory with setter callback. Makes writable.                               |
-| `set(promise)`        | Direct promise. Suspends until resolved.                                    |
+| Form                  | Behavior                                                       |
+| --------------------- | -------------------------------------------------------------- |
+| `set<T>()`            | Placeholder. Suspends on access until assigned.                |
+| `set(value)`          | Default value. Non-enumerable, writable.                       |
+| `set(() => v)`        | Lazy factory. Read-only. If async, suspends.                   |
+| `set(() => v, false)` | Lazy factory. Returns `undefined` while pending (no suspense). |
+| `set(() => v, true)`  | Eager factory. Runs immediately on init.                       |
+| `set(value, cb)`      | Default with setter callback. `throw false` to reject.         |
+| `set(() => v, cb)`    | Factory with setter callback. Makes writable.                  |
 
 For **reactive computed values**, declare a normal class getter (e.g. `get total() { ... }`). Getters on a State subclass are auto-promoted to memoized, dependency-tracked properties.
+
+Do not pass a direct promise to `set()`. Use `set(() => promise)` or `set(async () => value)` so work starts during activation/access instead of construction, which avoids leaked work from abandoned instances.
 
 #### `get()` - Context Lookup
 
@@ -91,12 +97,6 @@ For **reactive computed values**, declare a normal class getter (e.g. `get total
 | `ref<T>(cb, false)` | Ref callback also fires for `null`.                     |
 | `ref(this)`         | Ref proxy - creates refs for all enumerable properties. |
 | `ref(this, mapFn)`  | Custom ref proxy with transform per key.                |
-
-#### `def()` - Custom Property
-
-| Form           | Behavior                                                                                        |
-| -------------- | ----------------------------------------------------------------------------------------------- |
-| `def(factory)` | Low-level. Factory receives `(key, subject, state)`. Return config object, cleanup fn, or void. |
 
 ### React Hooks
 
@@ -179,15 +179,29 @@ class Form extends State {
 }
 ```
 
+### Choosing State vs Component
+
+Before extracting state, decide who owns the behavior:
+
+- Use `Component` when state is intrinsic to display logic: controls, shells, panels, editors, canvases, toasts. Usually that means defining `render()`.
+- A `Component` without `render()` passes children through while still providing itself to context and acting as Suspense/ErrorBoundary placement. Use that only when React tree placement matters: route controllers, progressive `Boundary` wrappers, or repeated contextual owners.
+- Use `State` for headless models/controllers, even if they are only useful in context. A provided State or Component implicitly provides its child States, so prefer `public theme = new Theme()` over stacking Providers for every small controller.
+- Avoid `Component` when a provided `State` would suffice; Components carry React instance surface (`props`, `state`, `context`, `setState`, `forceUpdate`) that can make `.get()` IntelliSense noisier.
+- Keep plain function components for simple presentation or trivial local UI state.
+
+Do not create a separate `FooState` plus `FooView` just because hooks were present. If the behavior and rendering are one unit, `class Foo extends Component` is the better refactor.
+
 ### Refactoring React Hooks
 
-Do not translate hooks one-for-one. Extract the stateful domain concept into a `State` class:
+Do not translate hooks one-for-one. First identify the owner, then model it as either a `Component` or a display-agnostic `State`:
 
 - Values directly written by user input, browser events, timers, or network callbacks become mutable class fields.
 - Values derived from those fields become class getters, not extra fields kept in sync by effects.
 - `useEffect` setup/teardown becomes `protected new()` with a returned cleanup function.
 - `useCallback` handlers become auto-bound class methods.
-- React components should mostly call `State.use()` and render the accessed fields.
+- If the state is only meaningful for that component's own UI, put those fields and methods directly on a `Component` subclass.
+- If the state is a headless model, keep it in a `State` subclass and have React components call `State.use()` / `State.get()` or attach it to component's controller.
+- If tree placement, rendering, boundaries, or subcomponents are the point, make it a `Component`.
 
 ```tsx
 class Viewport extends State {
@@ -271,9 +285,9 @@ When helping a user evaluate Expressive State for their project, consider:
 **Migration approach:**
 
 - Expressive State coexists with hooks - no big-bang rewrite needed
-- Start by extracting one complex component's state into a State class
-- Treat `State.use()` as the React subscription point, not as a one-for-one hook rewrite
+- Start by deciding whether the behavior belongs to one view (`Component`) or to reusable/display-agnostic state (`State`)
+- Treat `State.use()` as the React subscription point for `State` classes, not as a one-for-one hook rewrite
 - Separate mutable source fields from derived getters instead of syncing duplicate state in effects
 - Context sharing via Provider replaces manual `createContext` + `useContext` boilerplate
 
-When auditing existing code, look for components where extracting a State class would reduce hooks count by 3+ and consolidate related logic into methods.
+When auditing existing code, look for components where extracting behavior into a class would reduce hooks count by 3+ and consolidate related logic into methods. Prefer `Component` for display-intrinsic state; prefer `State` for headless controllers.

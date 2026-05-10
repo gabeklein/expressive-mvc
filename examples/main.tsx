@@ -1,74 +1,104 @@
 import './_base/styles.css';
 
-import State from '@expressive/react';
+import { Component } from '@expressive/react';
 import { type ComponentType } from 'react';
 import { createRoot } from 'react-dom/client';
 
-const toSlug = (path: string) => path.split('/').slice(1, -1).map((p) => p.replace(/^\d+-/, '')).join('/');
-const totitle = (slug: string) =>
-  slug
-    .split('/')
-    .map((p) => p.split('-').map((w) => w[0].toUpperCase() + w.slice(1)).join(' '))
-    .join(' / ');
-
 type AppModule = { default: ComponentType };
-type Example = { App: ComponentType; css?: string; slug: string; title: string };
+type Example = {
+  path: string;
+  order: number
+  title: string;
+  load: () => Promise<AppModule>;
+};
 
-const modules = import.meta.glob<AppModule>('./*/**/App.tsx', { eager: true });
-const styles = import.meta.glob<string>('./*/**/App.css', {
-  query: '?raw',
-  import: 'default',
-  eager: true
-});
+const here = () => window.location.pathname.replace(/\/+$/, '') || '/';
 
-class Router extends State {
-  hash = '';
+const modules = import.meta.glob<AppModule>('./*/**/App.tsx');
+const examples: Example[] = Object.entries(modules)
+  .map(([file, load]): Example => {
+    let order = 0;
+    const segments = file.split('/').slice(1, -1).map((p) => {
+      const match = p.match(/^(\d+)-/);
+      if (match) order = parseInt(match[1], 10);
+      return p.replace(/^\d+-/, '')
+    });
+    return {
+      order,
+      path: '/' + segments.join('/'),
+      title: segments.map((p) => p.split('-').map((w) => w[0].toUpperCase() + w.slice(1)).join(' ')).join(' / '),
+      load
+    };
+  })
+  .sort((a, b) => a.order - b.order);
 
-  examples = Object.entries(modules)
-    .map(([path, mod]): Example => {
-      const slug = toSlug(path);
-      const css = styles[path.replace(/App\.tsx$/, 'App.css')];
-      return { App: mod.default, css, slug, title: totitle(slug) };
-    })
-    .sort((a, b) => a.slug.localeCompare(b.slug));
+class Examples extends Component {
+  url = here();
 
-  get current() {
-    return this.examples.find((e) => e.slug === this.hash) ?? this.examples[0];
+  get current(): Example | undefined {
+    return examples.find((e) => e.path === this.url);
   }
 
   protected new() {
-    const update = () => {
-      this.hash = window.location.hash.replace(/^#\/?/, '') || this.examples[0].slug;
-    };
+    const update = () => this.url = here();
 
-    update();
-    window.addEventListener('hashchange', update);
-    return () => window.removeEventListener('hashchange', update);
+    window.addEventListener('popstate', update);
+    return () => window.removeEventListener('popstate', update);
+  }
+
+  navigate(e: React.MouseEvent<HTMLAnchorElement>){
+    e.preventDefault();
+    this.url = e.currentTarget.getAttribute('href')!;
+    window.history.pushState(null, '', this.url);
+  };
+
+  render(){
+    const { current, navigate, url } = this;
+
+    return (
+      <>
+        <nav className="dev-nav">
+          {examples.map((e) => (
+            <a
+              key={e.path}
+              href={e.path}
+              onClick={navigate}
+              aria-current={e === current ? 'page' : undefined}>
+              {e.title}
+            </a>
+          ))}
+        </nav>
+        {current ? (
+          <iframe
+            key={current.path}
+            className="dev-frame"
+            src={current.path}
+            title={current.title}
+          />
+        ) : (
+          <NotFound path={url} />
+        )}
+      </>
+    );
   }
 }
 
-const Shell = () => {
-  const { current, examples } = Router.use();
-  const { App, css } = current;
+const root = createRoot(document.getElementById('root')!);
 
+if (window.self === window.top) {
+  root.render(<Examples />);
+} else {
+  const entry = examples.find((e) => e.path === here());
+
+  if (entry)
+    entry.load().then((mod) => root.render(<mod.default />));
+}
+
+function NotFound({ path }: { path: string }){
   return (
-    <>
-      <nav className="dev-nav">
-        {examples.map((e) => (
-          <a
-            key={e.slug}
-            href={`#/${e.slug}`}
-            aria-current={e === current ? 'page' : undefined}>
-            {e.title}
-          </a>
-        ))}
-      </nav>
-      <main className="dev-content">
-        {css && <style>{css}</style>}
-        <App />
-      </main>
-    </>
+    <div style={{ padding: '4rem 2rem', textAlign: 'center' }}>
+      <h1>404</h1>
+      <p>No example matches <code>{path}</code>.</p>
+    </div>
   );
-};
-
-createRoot(document.getElementById('root')!).render(<Shell />);
+}

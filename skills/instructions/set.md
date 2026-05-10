@@ -97,24 +97,24 @@ class MyState extends State {
 
 Makes the property writable. Callback runs on both factory resolution and manual assignment.
 
-### Direct Promise
+### Direct Promises Are Not Supported
 
 ```ts
 class MyState extends State {
-  data = set(somePromise);
+  data = set(() => somePromise);
 }
 ```
 
-Accepts a raw Promise. Suspends on access until resolved. On rejection, throws the rejection value.
+Do not pass a raw Promise to `set()`. Use a factory instead (`set(() => promise)` or `set(async () => value)`) so async work starts during activation/access. A promise constructed in a field initializer can keep running for instances React abandons, especially under StrictMode.
 
 ## Type Signatures
 
 ```ts
 function set<T>(value?: undefined, onUpdate?: set.Callback<T>): T;
+function set<T>(value: T, onUpdate?: set.Callback<T>): T;
 function set<T>(factory: () => T | Promise<T>, required?: true): T;
 function set<T>(factory: () => T | Promise<T>, required: boolean): T | undefined;
 function set<T>(factory: () => T | Promise<T>, onUpdate: set.Callback<T>): T;
-function set<T>(value: T | Promise<T>, onUpdate?: set.Callback<T>): T;
 
 type set.Callback<T> = (this: State, next: T, previous: T) => ((next: T) => void) | Promise<any> | void | boolean;
 type set.Factory<T, S> = (this: S, property: string) => Promise<T> | T;

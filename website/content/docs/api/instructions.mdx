@@ -30,7 +30,6 @@ For reactive computed values, use a normal class getter - getters on a State sub
 | `= set(() => "foo", cb)` | no         | yes      | Factory made writable by callback        |
 | `get foo() { ... }`      | yes        | no       | Reactive computed, included in snapshots |
 | `= set<T>()`             | no         | yes      | Placeholder, suspends on access          |
-| `= set(promise)`         | no         | no       | Direct promise, suspends until resolved  |
 
 ### `set<T>()` - placeholder
 
@@ -131,13 +130,13 @@ A getter declared on a State subclass is auto-promoted to a reactive computed pr
 - Getters declared with a paired setter (`get foo() {} set foo(v) {}`) are NOT promoted - they remain plain JS accessors.
 - Included in snapshots and `ref(this)`.
 
-### `set(promise)` - direct promise
+### Direct promises are not supported
 
 ```ts
-config = set(fetchConfig());
+config = set(() => fetchConfig());
 ```
 
-Promise is constructed eagerly. Reads suspend until resolved.
+Do not pass a raw Promise to `set()`. Use a factory instead (`set(() => promise)` or `set(async () => value)`) so async work starts during activation/access. A promise constructed in a field initializer can keep running for instances React abandons, especially under StrictMode.
 
 <br />
 

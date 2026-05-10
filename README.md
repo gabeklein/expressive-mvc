@@ -79,7 +79,7 @@ import State from '@expressive/react';
 ## Quick Start
 
 1. **Create a State class** with your values and methods
-2. **Use `State.use()`** in a component to create an instance
+2. **Use `State.use()`** in a component to create an instance, or extend `Component` when the state belongs to one rendered unit
 3. **Destructure properties** you need - this automatically subscribes to them
 4. **Update via assignment** - components re-render automatically
 
@@ -120,6 +120,28 @@ function CounterWidget() {
 ```
 
 It's that simple! <a href="https://codesandbox.io/s/github/gabeklein/expressive-state/tree/main/examples/counter?file=/src/Counter.tsx" target="_blank">Try it in a sandbox →</a>
+
+When the state is intrinsic to one rendered unit, use `Component` instead of splitting the view from its state:
+
+```tsx
+import { Component } from '@expressive/react';
+
+class Counter extends Component {
+  count = 0;
+
+  increment() {
+    this.count++;
+  }
+
+  render() {
+    return <button onClick={this.increment}>{this.count}</button>;
+  }
+}
+
+<Counter />;
+```
+
+Use `State` for headless models that are shared, contextual, or useful to test without rendering. Use `Component` for smart controls, shells, panels, toast hosts, boundaries, and other view primitives whose behavior belongs in the React tree.
 
 <br />
 

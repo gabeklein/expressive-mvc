@@ -9,9 +9,11 @@ Expressive is designed to coexist with hooks. You do not need to rewrite anythin
 
 ## The guiding principle
 
-Don't migrate components. **Migrate features.**
+Don't migrate hooks. **Migrate ownership.**
 
-A "feature" is a unit of behavior - a form, a wizard, a search page, a shopping cart, a chat thread. When you identify one, you extract its state and logic into a class and leave the component as a thin projection. Components that happen to participate in the feature update to consume the class; components that don't, don't change at all.
+A "feature" is a unit of behavior - a form, a wizard, a search page, a shopping cart, a chat thread. When you identify one, ask whether that behavior is a model or a component.
+
+If the state is headless, testable without rendering, or useful as a model, extract it into a `State` class. If the state is intrinsic to display logic - a shell, local router, tab panel, menu, editor surface, media player, form control, or toast host - put it directly on a `Component`.
 
 This is deliberately bottom-up. You don't need buy-in from the whole team before you start. You don't need a migration epic. You don't need to touch routing, build config, or tests. You just rewrite the next feature you're already working on.
 
@@ -45,11 +47,24 @@ You're looking for friction - a component you've already been annoyed by. Forms,
 
 <br />
 
-## Step 3 - Extract state, one pass at a time
+## Step 3 - Choose the class shape
+
+Before moving code, choose the destination:
+
+- **`Component`** for state intrinsic to display logic. Usually that means defining `render()`.
+- **`Component` without `render()`** when React tree placement is the point. It passes children through while still providing context and Suspense/ErrorBoundary placement.
+- **`State`** for headless models/controllers, even when they are contextual.
+- **Hooks** for trivial local UI state.
+
+Don't create `UserFormState` plus `UserFormView` just because hooks were present. If the form's state, handlers, validation, lifecycle, and JSX are a single reusable control, `class UserForm extends Component` may be the cleanest migration.
+
+<br />
+
+## Step 4 - Extract state, one pass at a time
 
 Work in small, verifiable steps. The migration is reversible at every step.
 
-### 3a. Separate source state from derived state
+### 4a. Separate source state from derived state
 
 Start by identifying which hook values are directly written by events, async callbacks, or subscriptions. Those become class fields:
 
@@ -73,15 +88,15 @@ class UserForm extends State {
 }
 ```
 
-Replace the hooks in the component with `UserForm.use()`:
+If `UserForm` is a display-agnostic `State`, replace the hooks in the component with `UserForm.use()`:
 
 ```tsx
 const { is: form, name, email, saving, dirty } = UserForm.use();
 ```
 
-Writes change from `setName(x)` to `form.name = x`. Derived values should usually move to getters, not to extra fields that need to be synchronized.
+Writes change from `setName(x)` to `form.name = x`. If `UserForm` is a `Component`, read and write the same fields through `this` inside `render()` and methods. Derived values should usually move to getters, not to extra fields that need to be synchronized.
 
-### 3b. Move effects
+### 4b. Move effects
 
 For a `useEffect` that performs setup/teardown, move it into the `new()` hook:
 
@@ -139,7 +154,7 @@ class Viewport extends State {
 }
 ```
 
-### 3c. Move handlers to methods
+### 4c. Move handlers to methods
 
 ```tsx
 // Before
@@ -161,15 +176,15 @@ async save() {
 
 Methods are automatically bound - you can destructure `save` and pass it as a handler directly, no `useCallback` needed.
 
-### 3d. Verify and delete
+### 4d. Verify and delete
 
 Run the component, test the behavior, and delete the old hook calls. If something breaks, the migration is trivially reversible - the class lives in its own file.
 
 <br />
 
-## Step 4 - Share state via Provider instead of prop-drilling
+## Step 5 - Share without Provider stacks
 
-Once you have a class, sharing is free. Wherever you had prop drilling or a manual `createContext` + `useContext`, replace it with `Provider`:
+Use `Provider` to introduce a headless model or an app/root state at a boundary:
 
 ```tsx
 // Before
@@ -222,9 +237,29 @@ function Header() {
 
 The class _is_ the context key. No manual `createContext`, no default values, no `Provider.Consumer` render props.
 
+Child States of one provided are too. You do not need a Provider for every small controller:
+
+```tsx
+class Control extends State {
+  theme = new Theme();
+  auth = new Auth();
+}
+
+<Provider for={Control}>
+  <App />
+</Provider>;
+
+function Header() {
+  const { color } = Theme.get();
+  // Theme resolves from AppState.theme
+}
+```
+
+Use `Component` instead when the owner needs to exist in the React tree. A `Boundary` may have little UI, but its Suspense/ErrorBoundary placement is the point. A `Toasts` root also belongs in the tree, but it should justify `render()` by injecting toast subcomponents beside the wrapped app.
+
 <br />
 
-## Step 5 - Collapse custom hooks into classes
+## Step 6 - Collapse custom hooks into classes
 
 Custom hooks that return objects are the easiest migration wins. A hook like this:
 
@@ -268,7 +303,7 @@ The class version is shorter, testable without rendering, and shareable across c
 
 <br />
 
-## Step 6 - Bridge to existing hooks with `use()`
+## Step 7 - Bridge to existing hooks with `use()`
 
 Some hooks cannot be replaced - `useNavigate`, `useLocation`, `useTranslation`, `useQuery` from a library. To use them inside a State class, define a `use()` method. It runs on every render of the consumer:
 
@@ -295,11 +330,11 @@ This is the escape hatch - any hook you need can be bridged through `use()`. Use
 
 <br />
 
-## Step 7 - Leave the rest alone
+## Step 8 - Leave the rest alone
 
 You don't need to migrate every component. Leaf components with a single `useState`, pure presentational components, components that consume a store library you're not ready to replace - leave them all alone. The goal is to reduce friction, not to hit 100% coverage.
 
-Teams that adopt Expressive successfully usually end up in a hybrid state: a handful of State classes at the feature boundaries, and many unchanged presentational components beneath them.
+Teams that adopt Expressive successfully usually end up in a hybrid state: a handful of State classes at the feature boundaries, smart Components where behavior is intrinsic to a view, and many unchanged presentational components beneath them.
 
 <br />
 

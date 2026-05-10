@@ -64,17 +64,17 @@ This pattern is powerful: you describe a dependency graph ("user depends on user
 
 <br />
 
-## Direct promises
+## Avoid direct promises
 
-You can also pass a raw promise. Reads suspend until it resolves:
+Pass a factory, not a raw Promise:
 
 ```tsx
 class Config extends State {
-  data = set(fetchConfig()); // promise constructed eagerly
+  data = set(() => fetchConfig());
 }
 ```
 
-The promise is constructed when the field is initialized, so it starts fetching immediately.
+A promise constructed in a field initializer starts before the state is activated. In React StrictMode or other abandoned constructions, that work can continue without a live instance to receive it.
 
 <br />
 

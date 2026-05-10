@@ -232,7 +232,7 @@ describe('callback', () => {
 
   it('will ignore effect promise', () => {
     class Subject extends State {
-      property = set<any>(undefined, async () => {});
+      property = set<any>(undefined, async () => { });
     }
 
     const state = Subject.new();
@@ -326,23 +326,17 @@ describe('intercept', () => {
 });
 
 describe('factory', () => {
-  it('will accept a direct Promise initializer', async () => {
+  it('will throw for a direct Promise initializer', () => {
     const pending = mockPromise<string>();
 
     class Test extends State {
+      // @ts-expect-error
       value = set(pending);
     }
 
-    const test = Test.new();
-
-    try {
-      void test.value;
-    } catch (_err) {}
-
-    pending.resolve('foo');
-    await pending;
-
-    expect(test.value).toBe('foo');
+    expect(() => Test.new()).toThrow(
+      /Direct promises are not supported in set\([\w-]+\.value\)\. Use set\(\(\) => promise\) instead\./
+    );
   });
 
   it('will be read-only', () => {
@@ -355,6 +349,7 @@ describe('factory', () => {
     expect(() => {
       test.value = 'bar';
     }).toThrow(/read-only/);
+    expect(test.value).toBe('foo');
     expect(test.value).toBe('foo');
   });
 
@@ -426,7 +421,7 @@ describe('suspense', () => {
     const promise = mockPromise();
 
     class Test extends State {
-      value = set(promise);
+      value = set(() => promise);
     }
 
     const instance = Test.new();
@@ -434,6 +429,7 @@ describe('suspense', () => {
     expect(() => instance.value).toThrow(
       /[\w-]+\.value is not yet available\./
     );
+    expect(() => instance.value).toThrow(expect.any(Promise));
     promise.resolve();
   });
 
@@ -517,7 +513,7 @@ describe('suspense', () => {
     const promise = mockPromise();
 
     class Test extends State {
-      value = set(promise);
+      value = set(() => promise);
     }
 
     const instance = Test.new();
@@ -554,8 +550,8 @@ describe('suspense', () => {
     });
 
     class Test extends State {
-      greet = set(salute);
-      name = set(name);
+      greet = set(() => salute);
+      name = set(() => name);
 
       value = set(didEvaluate);
     }
@@ -608,7 +604,7 @@ describe('suspense', () => {
     const didUpdate = mockPromise<string>();
 
     class Child extends State {
-      value = set(promise);
+      value = set(() => promise);
     }
 
     class Test extends State {
@@ -754,7 +750,7 @@ describe('suspense', () => {
     const promise = mockPromise();
 
     class Test extends State {
-      value = set(promise);
+      value = set(() => promise);
     }
 
     const instance = Test.new();
@@ -782,12 +778,15 @@ describe('suspense', () => {
 describe('factory with callback overload', () => {
   it('calls callback after factory resolves', async () => {
     const callback = vi.fn();
+    const factory = vi.fn(() => 'computed');
     class Test extends State {
-      value = set(() => 'computed', callback);
+      value = set(factory, callback);
     }
     const test = Test.new();
     expect(test.value).toBe('computed');
+    test.value = 'manual';
     expect(callback).toBeCalledWith('computed', undefined);
+    expect(factory).toBeCalledTimes(1);
   });
 
   it('calls callback after async factory resolves', async () => {
@@ -853,4 +852,3 @@ it('supports Promise objects as factory return', async () => {
   await expect(threw).resolves.toBe('foobar');
   expect(test.value).toBe('foobar');
 });
-

@@ -8,6 +8,14 @@
 - **State** is display-agnostic - pure data and logic, no render method. Use with `State.use()` in function components to separate concerns.
 - **Component** is for **custom components/primitives** that own their display logic. They're _meant_ to render. Use when you need a reusable, extensible unit combining behavior + UI: form controls, media players, data grids, modals, layout shells.
 
+Rule of thumb: use `Component` when state is intrinsic to display logic. Usually that means defining `render()`.
+
+A Component does not have to define `render()`: without one, it passes children through while still providing itself to context and acting as Suspense/ErrorBoundary placement. Use that headless form only when React tree placement is the feature: route controllers inserted throughout an app, progressive `Boundary` wrappers, or Suspense/ErrorBoundary placement.
+
+Use `State` for headless models/controllers, even if they are only meaningful in context. A `Component` carries React instance properties (`props`, `state`, `context`, `setState`, `forceUpdate`), so using it where `State` would suffice makes `.get()` noisier.
+
+For one-shot feature builds and hook refactors, avoid creating `FooState` plus `FooView` by reflex. A route shell, local router, tab panel, menu, editor surface, media player, or custom form control is often clearer as `class Foo extends Component` because the state is intrinsic to the rendered unit.
+
 Components are scaffolding. You build one once with lifecycle, reactivity, context, suspense, and error handling baked in - then you or your team extend/configure it. What would be a complicated arrangement of hooks to accomplish one purpose becomes a class you subclass and fill in.
 
 ## Basic Usage
