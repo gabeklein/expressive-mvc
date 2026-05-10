@@ -54,21 +54,27 @@ Properties assigned in the class body are reactive - updates notify subscribers.
 
 Field initializers that configure reactive behavior. Each has multiple overloads - see linked docs for full details.
 
+#### `def()` - Custom Property
+
+| Form           | Behavior                                                                                                    |
+| -------------- | ----------------------------------------------------------------------------------------------------------- |
+| `def(factory)` | Primitive instruction. Factory receives `(key, subject, state)`. Return config object, cleanup fn, or void. |
+
 #### `set()` - Values, Factories & Validation
 
-| Form                  | Behavior                                                                    |
-| --------------------- | --------------------------------------------------------------------------- |
-| `set<T>()`            | Placeholder. Suspends on access until assigned.                             |
-| `set(value)`          | Default value. Non-enumerable, writable.                                    |
-| `set(value, cb)`      | Default with setter callback. `throw false` to reject.                      |
-| `set(() => v)`        | Lazy factory. Read-only. Async suspends.                                    |
-| `set(async () => v)`  | Async factory. Suspends until resolved.                                     |
-| `set(() => v, true)`  | Eager factory. Runs immediately on init.                                    |
-| `set(() => v, false)` | Lazy factory. Returns `undefined` while pending (no suspense).              |
-| `set(() => v, cb)`    | Factory with setter callback. Makes writable.                               |
-| `set(promise)`        | Direct promise. Suspends until resolved.                                    |
+| Form                  | Behavior                                                       |
+| --------------------- | -------------------------------------------------------------- |
+| `set<T>()`            | Placeholder. Suspends on access until assigned.                |
+| `set(value)`          | Default value. Non-enumerable, writable.                       |
+| `set(() => v)`        | Lazy factory. Read-only. If async, suspends.                   |
+| `set(() => v, false)` | Lazy factory. Returns `undefined` while pending (no suspense). |
+| `set(() => v, true)`  | Eager factory. Runs immediately on init.                       |
+| `set(value, cb)`      | Default with setter callback. `throw false` to reject.         |
+| `set(() => v, cb)`    | Factory with setter callback. Makes writable.                  |
 
 For **reactive computed values**, declare a normal class getter (e.g. `get total() { ... }`). Getters on a State subclass are auto-promoted to memoized, dependency-tracked properties.
+
+Do not pass a direct promise to `set()`. Use `set(() => promise)` or `set(async () => value)` so work starts during activation/access instead of construction, which avoids leaked work from abandoned instances.
 
 #### `get()` - Context Lookup
 
@@ -91,12 +97,6 @@ For **reactive computed values**, declare a normal class getter (e.g. `get total
 | `ref<T>(cb, false)` | Ref callback also fires for `null`.                     |
 | `ref(this)`         | Ref proxy - creates refs for all enumerable properties. |
 | `ref(this, mapFn)`  | Custom ref proxy with transform per key.                |
-
-#### `def()` - Custom Property
-
-| Form           | Behavior                                                                                        |
-| -------------- | ----------------------------------------------------------------------------------------------- |
-| `def(factory)` | Low-level. Factory receives `(key, subject, state)`. Return config object, cleanup fn, or void. |
 
 ### React Hooks
 

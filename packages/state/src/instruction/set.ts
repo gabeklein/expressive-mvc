@@ -61,7 +61,7 @@ function set<T>(
 function set<T>(factory: () => T | Promise<T>, onUpdate: set.Callback<T>): T;
 
 /**
- * Set a property with a non-function value.
+ * Set a property with a non-function, non-Promise value.
  *
  * Non-enumerable but writable. Unlike plain assignment (`= value`), this
  * property is excluded from snapshots and `ref(this)`.
@@ -72,10 +72,18 @@ function set<T>(factory: () => T | Promise<T>, onUpdate: set.Callback<T>): T;
 // TODO: if onUpdate is not defined, should this have behavior unique to simple assignment?
 // I'm thinking default behavior should be to assign value directly to property, without triggering any additional updates.
 // All this requires is a default callback which throws true, silent updates are already implemented.
-function set<T>(value: T | Promise<T>, onUpdate?: set.Callback<T>): T;
+function set<T>(
+  value: T extends Promise<any> ? never : T,
+  onUpdate?: set.Callback<T>
+): T;
 
 function set<T = any>(value?: unknown, argument?: unknown): any {
   return def<T>((key, subject) => {
+    if (value instanceof Promise)
+      throw new TypeError(
+        `Direct promises are not supported in set(${subject}.${key}). Use set(() => promise) instead.`
+      );
+
     const config: State.Apply = {
       enumerable: false,
       set: false
@@ -83,19 +91,22 @@ function set<T = any>(value?: unknown, argument?: unknown): any {
 
     let computed = false;
 
-    // One-shot factory or Promise
-    if (typeof value == 'function' || value instanceof Promise) {
+    // One-shot factory
+    if (typeof value == 'function') {
+      const factory = value.bind(subject, key)
       computed = true;
+
       function init() {
-        if (typeof value == 'function')
-          try {
-            value = attempt(value.bind(subject, key));
-          } catch (err) {
-            console.warn(
-              `Generating initial value for ${subject}.${key} failed.`
-            );
-            throw err;
-          }
+        let output: unknown;
+
+        try {
+          output = attempt(factory);
+        } catch (err) {
+          console.warn(
+            `Generating initial value for ${subject}.${key} failed.`
+          );
+          throw err;
+        }
 
         config.get = argument !== false;
 
@@ -104,18 +115,18 @@ function set<T = any>(value?: unknown, argument?: unknown): any {
           else update(subject, key, next, silent);
         }
 
-        if (value instanceof Promise)
-          value.then(assign, (error) => {
+        if (output instanceof Promise)
+          output.then(assign, (error) => {
             event(subject, key);
             config.get = () => {
               throw error;
             };
           });
-        else assign(value, true);
+        else assign(output, true);
 
         if (argument) return null;
 
-        if (value instanceof Promise && argument !== false)
+        if (output instanceof Promise && argument !== false)
           return access(subject, key, true);
 
         return subject[key];
