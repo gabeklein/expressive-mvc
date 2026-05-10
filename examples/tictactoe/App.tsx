@@ -1,3 +1,5 @@
+import './App.css';
+
 import { Component } from '@expressive/react';
 
 const LINES = [

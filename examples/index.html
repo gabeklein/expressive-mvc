@@ -11,6 +11,17 @@
   <div id="root"></div>
   <script type="module" src="/main.tsx"></script>
   <style>
+    body {
+      margin: 0;
+    }
+
+    .dev-frame {
+      display: block;
+      width: 100%;
+      height: calc(100vh - 3.5rem);
+      border: 0;
+    }
+
     .dev-nav {
       position: sticky;
       top: 0;
@@ -39,10 +50,6 @@
     .dev-nav a[aria-current='page'] {
       background: var(--accent);
       color: white;
-    }
-
-    .dev-content {
-      padding: 2rem;
     }
   </style>
 </body>

@@ -22,6 +22,8 @@ export const examples: Record<string, Record<string, string>> = {};
 export const base: Record<string, string> = {};
 
 for (const [path, code] of Object.entries(FILES)) {
+  if (path.includes('/dist/')) continue;
+
   // Vite resolves the @examples alias; key may be '@examples/...' (literal)
   // or '/.../examples/...' (resolved). Split on either boundary.
   const segments = path.split(/[/@]examples\//).pop()!.split('/');
