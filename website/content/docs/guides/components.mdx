@@ -31,9 +31,15 @@ Properties accessed via `this` in `render()` are reactive - changes trigger re-r
 
 ## When to reach for Component
 
-Use **`State` + `.use()`** when you want state logic separated from rendering - the most common pattern. The component stays dumb, the class handles the smarts.
+Use **`State` + `.use()`** when you want headless state logic separated from rendering - the most common pattern. The component stays dumb, the class handles the smarts.
 
-Use **`Component`** when the behavior and the UI are inseparable - when the thing you're building _is_ a component, not data that happens to be displayed. Think: form controls, media players, animated canvases, data grids, layout shells.
+Use **`Component`** when state is intrinsic to display logic - when the thing you're building _is_ a component, not data that happens to be displayed. Think: form controls, media players, animated canvases, data grids, layout shells.
+
+Usually a Component defines `render()`. Without one, children pass through while the instance provides context and Suspense/ErrorBoundary placement. Use that headless form only for route controllers, progressive `Boundary` wrappers, or other classes whose value comes from repeated placement in the React tree.
+
+Use `State` for headless models/controllers, even if they are only useful in context. A provided State or Component implicitly provides its child States, so root state can own `public theme = new Theme()` without another Provider.
+
+This matters during refactors. A hook-heavy route shell, local router, tab panel, menu, editor surface, or form control does not need to become `FooState` plus `FooView`. When the behavior and rendering move together, make the rendered thing the class.
 
 The real power is **reusability through inheritance**. You build a Component once - with all the lifecycle, reactivity, and error handling baked in - then your team extends and customizes it. No hook wiring, no boilerplate. Just subclass and fill in the blanks.
 
@@ -190,7 +196,7 @@ Every Component accepts these regardless of state fields:
 
 ## Children and context
 
-Component instances are automatically provided to React context. Without an explicit `render()`, children pass through a context provider - the component becomes a data container that descendants can reach into.
+Component instances are automatically provided to React context. Without an explicit `render()`, children pass through a context provider.
 
 ```tsx
 class Layout extends Component {
@@ -211,6 +217,8 @@ function Header() {
 ```
 
 This is why Component is a natural fit for layouts, shells, and feature containers - the container _is_ the context.
+
+Do not use Component only because something is contextual. Components inherit React-facing properties (`props`, `state`, `context`, `setState`, `forceUpdate`), which can make `.get()` IntelliSense noisier. If the class is just a headless model, use `State` and provide it directly or as a child of an already-provided owner.
 
 <br />
 

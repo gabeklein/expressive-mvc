@@ -14,6 +14,13 @@ Ask these questions about the codebase or component:
 
 **Score: 3+ yes answers = strong candidate for Expressive State.**
 
+Then decide the shape:
+
+- If state is intrinsic to display logic, use `Component`.
+- If it is headless model/controller state, use `State`, even when it is contextual.
+- If React tree placement is the feature (Boundary, Route), `Component` can be valid without much UI.
+- If the state is trivial and local, leave it as hooks.
+
 ## What to Look For
 
 ### High-value migration targets
@@ -120,20 +127,23 @@ function ThemeToggle() {
 
 ## Migration Strategy
 
-1. **Start small** - pick one complex component, extract its state into a class
+1. **Start small** - pick one complex component, then decide whether its behavior belongs in a `Component` or a display-agnostic `State`
 2. **Coexist** - Expressive State works alongside existing hooks, no need to migrate everything
 3. **Bottom-up** - migrate leaf components first, then work up to shared state
 4. **Test independently** - state classes can be tested without React, use this to improve coverage
 
 ## Refactor Heuristic
 
-For a one-shot hook migration, do not mirror React hooks mechanically. First identify the stateful concept the component is managing, then model that concept:
+For a one-shot hook migration, do not mirror React hooks mechanically. First identify the stateful concept the component is managing, then decide its owner:
+
+- Use `Component` when the concept is display-intrinsic or needs React tree placement.
+- Use `State` when the concept is headless, even if it is provided through context.
 
 - `useState` values written directly by inputs, timers, subscriptions, or network callbacks become class fields.
 - `useMemo` values and `useEffect` values that only keep state in sync become class getters.
 - `useEffect` setup/teardown subscriptions become `protected new()` with a returned cleanup.
 - `useCallback` handlers become class methods; methods are auto-bound.
-- The React component should become a thin projection over `State.use()` or `State.get()`.
+- A `Component` refactor should render with `this`; a `State` refactor should leave the React component as a thin projection over `State.use()` or `State.get()`.
 
 Prefer this:
 

@@ -230,6 +230,15 @@ You don't need a class for every component. Good signals that you should reach f
 
 For single booleans, form field focus, or throwaway UI state, `useState` is still the right tool. Expressive is for the cases where state has _behavior_.
 
+When state has behavior, choose the class shape by ownership:
+
+- Use **`Component`** when the state is intrinsic to one rendered unit, such as a shell, tab panel, form control, local router, media player, or editor surface.
+- Use **`State`** when the state is display-agnostic, shared across components, reusable by multiple views, or valuable to test as a model without rendering.
+
+For context, do not reach for `Component` only because a class is contextual. Use `State` for headless controllers; child States of a provided State or Component are available to descendants automatically.
+
+Avoid splitting a component into `FooState` and `FooView` by default. If the behavior only exists for `Foo`'s own UI, `class Foo extends Component` is usually clearer.
+
 <br />
 
 ## Next steps

@@ -305,6 +305,7 @@ class App extends State {
 ```
 
 When `App` is constructed, `auth` and `api` activate together. `Api` looks up `Auth` from the shared context automatically.
+Descendants can call `Auth.get()` or `Api.get()` without separate Providers for each child state, so small controllers can live on a provided root State or Component instead of in a Provider stack.
 
 ### Scoped overrides
 
@@ -321,7 +322,7 @@ Nested providers override inner lookups:
 
 ### Feature boundaries
 
-A `Component` subclass is both a React component and a context container. This makes it the natural unit for a feature:
+A `Component` subclass is both a React component and a context container. Use it when the feature's state is intrinsic to display logic or when React tree placement matters:
 
 ```tsx
 class Dashboard extends Component {
@@ -345,6 +346,8 @@ function FilterBar() {
   <ItemList />
 </Dashboard>;
 ```
+
+Use `State` for headless models such as auth, theme, or an API service. Use `Component` when the class should exist in the tree: layouts, route shells, dashboards, wizards, tab groups, toast hosts, or progressive boundaries.
 
 <br />
 
