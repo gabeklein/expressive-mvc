@@ -32,7 +32,6 @@ body {
   color: var(--fg);
   background: var(--bg);
   margin: 0;
-  padding: 2rem;
   min-height: 100vh;
 }
 
