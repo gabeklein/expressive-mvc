@@ -40,7 +40,7 @@ class Game extends Component {
   }
 
   reset() {
-    this.board = Array(9).fill('');
+    this.board = Array(9).fill("");
     this.turn = 'X';
   }
 

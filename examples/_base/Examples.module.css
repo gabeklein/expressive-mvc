@@ -1,0 +1,112 @@
+.shell {
+  display: grid;
+  grid-template-columns: 15rem minmax(0, 1fr);
+  gap: 0.75rem;
+  width: min(100% - 2rem, 1600px);
+  min-height: 100vh;
+  margin: 0 auto;
+  padding: 1rem 0;
+}
+
+.example {
+  min-width: 0;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--surface) 70%, var(--bg));
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) + 4px);
+}
+
+.frame {
+  display: block;
+  width: 100%;
+  padding: 2em;
+  height: calc(100vh - 2rem);
+  border: 0;
+}
+
+.nav {
+  position: sticky;
+  top: 1rem;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  align-self: stretch;
+  height: calc(100vh - 2rem);
+  max-height: calc(100vh - 2rem);
+  min-height: 0;
+  overflow: hidden;
+  padding: 0.75rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) + 4px);
+}
+
+.nav a,
+.links a {
+  padding: 0.3em 0.8em;
+  border-radius: var(--radius);
+  color: var(--fg);
+  text-decoration: none;
+  font-size: 0.9em;
+}
+
+.nav>a {
+  font-weight: 500;
+  padding-bottom: 1em;
+}
+
+.links {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+  gap: 0.25rem;
+  overflow-y: auto;
+}
+
+.logo {
+  margin-bottom: 0.5rem;
+  padding: 0.15rem 0.25rem 0.85rem;
+  border-bottom: 1px solid var(--border);
+  color: var(--fg);
+}
+
+.logo:hover {
+  background: transparent;
+}
+
+.nav a:hover,
+.links a:hover {
+  background: var(--bg);
+  text-decoration: none;
+}
+
+.links a[aria-current='page'] {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--fg);
+}
+
+@media (max-width: 760px) {
+  .shell {
+    display: flex;
+    flex-direction: column;
+    width: min(100% - 1rem, 1600px);
+    min-height: 100vh;
+    padding: 0.5rem 0;
+  }
+
+  .nav {
+    position: static;
+    height: auto;
+    max-height: none;
+  }
+
+  .links {
+    max-height: 16rem;
+  }
+
+  .frame {
+    height: 70vh;
+  }
+}

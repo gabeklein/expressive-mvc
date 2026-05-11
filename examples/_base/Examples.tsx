@@ -1,13 +1,15 @@
 import { Component } from '@expressive/react';
 import { NotFound } from './NotFound';
 import { type ComponentType } from 'react';
+import Logo from './Logo';
+import styles from './Examples.module.css';
 
 export type AppModule = { default: ComponentType };
 
 type Example = {
   path: string;
   file: string;
-  order: number
+  order: number;
   title: string;
   load: () => Promise<AppModule>;
 };
@@ -17,22 +19,31 @@ export const here = () => window.location.pathname.replace(/\/+$/, '') || '/';
 class Examples extends Component {
   modules: Record<string, () => Promise<AppModule>> = {};
   url = here();
-  
+
   get examples() {
-    return Object
-      .entries(this.modules)
+    return Object.entries(this.modules)
       .map(([file, load]): Example => {
         let order = 0;
-        const segments = file.split('/').slice(1, -1).map((p) => {
-          const match = p.match(/^(\d+)-/);
-          if (match) order = parseInt(match[1], 10);
-          return p.replace(/^\d+-/, '')
-        });
+        const segments = file
+          .split('/')
+          .slice(1, -1)
+          .map((p) => {
+            const match = p.match(/^(\d+)-/);
+            if (match) order = parseInt(match[1], 10);
+            return p.replace(/^\d+-/, '');
+          });
         return {
           order,
           file,
           path: '/' + segments.join('/'),
-          title: segments.map((p) => p.split('-').map((w) => w[0].toUpperCase() + w.slice(1)).join(' ')).join(' / '),
+          title: segments
+            .map((p) =>
+              p
+                .split('-')
+                .map((w) => w[0].toUpperCase() + w.slice(1))
+                .join(' ')
+            )
+            .join(' / '),
           load
         };
       })
@@ -44,47 +55,64 @@ class Examples extends Component {
   }
 
   protected new() {
-    const update = () => this.url = here();
+    const update = () => {
+      this.url = here();
+    };
 
     window.addEventListener('popstate', update);
     return () => window.removeEventListener('popstate', update);
   }
 
-  navigate(e: React.MouseEvent<HTMLAnchorElement>){
+  navigate(e: React.MouseEvent<HTMLAnchorElement>) {
     e.preventDefault();
     this.url = e.currentTarget.getAttribute('href')!;
     window.history.pushState(null, '', this.url);
-  };
+  }
 
-  render(){
-    const { current, navigate, url } = this;
+  render() {
+    const { current, url } = this;
 
     return (
-      <>
-        <nav className="dev-nav">
-          {this.examples.map((e) => (
-            <a
-              key={e.path}
-              href={e.path}
-              onClick={navigate}
-              aria-current={e === current ? 'page' : undefined}>
-              {e.title}
-            </a>
-          ))}
-        </nav>
-        {current ? (
-          <iframe
-            key={current.path}
-            className="dev-frame"
-            title={current.title}
-            src={`module#${encodeURIComponent(current.file)}`}
-          />
-        ) : (
-          <NotFound path={url} />
-        )}
-      </>
+      <main className={styles.shell}>
+        <Navigation />
+        <section className={styles.example}>
+          {current ? (
+            <iframe
+              key={current.path}
+              className={styles.frame}
+              title={current.title}
+              src={`module#${encodeURIComponent(current.file)}`}
+            />
+          ) : (
+            <NotFound path={url} />
+          )}
+        </section>
+      </main>
     );
   }
 }
+
+const Navigation = () => {
+  const { current, examples, navigate } = Examples.get();
+
+  return (
+    <nav className={styles.nav}>
+      <a className={styles.logo} href="/" onClick={navigate}>
+        <Logo />
+      </a>
+      <div className={styles.links}>
+        {examples.map((e) => (
+          <a
+            key={e.path}
+            href={e.path}
+            onClick={navigate}
+            aria-current={e === current ? 'page' : undefined}>
+            {e.title}
+          </a>
+        ))}
+      </div>
+    </nav>
+  );
+};
 
 export default Examples;

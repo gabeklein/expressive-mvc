@@ -4,7 +4,8 @@
   --fg: #1a1a2e;
   --muted: #6b7280;
   --border: #e5e7eb;
-  --surface: #f3f4f6;
+  --surface: #fbfbfb;
+  --surface-dark: #f0f0f0;
   --accent: #646cff;
   --radius: 6px;
 }
@@ -16,6 +17,7 @@
     --muted: #9ca3af;
     --border: #374151;
     --surface: #242442;
+    --surface-dark: #1a1a2e;
   }
 }
 
@@ -30,7 +32,6 @@ body {
     sans-serif;
   line-height: 1.5;
   color: var(--fg);
-  background: var(--bg);
   margin: 0;
   min-height: 100vh;
 }
@@ -115,9 +116,10 @@ code {
 }
 
 pre {
-  background: var(--surface);
+  background: var(--surface-dark);
   padding: 1em;
   border-radius: var(--radius);
+  border: 1px solid var(--border);
   overflow-x: auto;
 }
 
