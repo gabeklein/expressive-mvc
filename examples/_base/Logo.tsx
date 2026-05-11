@@ -4,7 +4,7 @@ export default function Logo() {
   return (
     <div className={styles.logo}>
       <Icon />
-      <span>Expressive State</span>
+      <span>Expressive Examples</span>
     </div>
   );
 }

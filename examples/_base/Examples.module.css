@@ -44,7 +44,7 @@
 
 .nav a,
 .links a {
-  padding: 0.5em 0.8em;
+  padding: 0.3em 0.8em;
   border-radius: var(--radius);
   color: var(--fg);
   text-decoration: none;
