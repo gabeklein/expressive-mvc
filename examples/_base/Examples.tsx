@@ -1,3 +1,5 @@
+import './Examples.css';
+
 import { Component } from '@expressive/react';
 import { NotFound } from './NotFound';
 import { type ComponentType } from 'react';
