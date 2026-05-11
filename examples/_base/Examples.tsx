@@ -100,15 +100,17 @@ const Navigation = () => {
       <a className={styles.logo} href="/" onClick={navigate}>
         <Logo />
       </a>
-      {examples.map((e) => (
-        <a
-          key={e.path}
-          href={e.path}
-          onClick={navigate}
-          aria-current={e === current ? 'page' : undefined}>
-          {e.title}
-        </a>
-      ))}
+      <div className={styles.links}>
+        {examples.map((e) => (
+          <a
+            key={e.path}
+            href={e.path}
+            onClick={navigate}
+            aria-current={e === current ? 'page' : undefined}>
+            {e.title}
+          </a>
+        ))}
+      </div>
     </nav>
   );
 };
