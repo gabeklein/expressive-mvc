@@ -31,8 +31,7 @@
   cursor: default !important;
 }
 
-.X-wins,
-.O-wins {
+.wins {
   background-color: #25cf58 !important;
   cursor: default !important;
 }
