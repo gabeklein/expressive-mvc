@@ -166,6 +166,52 @@ describe('array', () => {
     expect(fn).toHaveBeenCalled();
   });
 
+  it('slice subscribes only to targeted segment', async () => {
+    const arr = hot([1, 2, 3, 4, 5]);
+    const fn = vi.fn();
+    watch(arr, ($) => {
+      fn($.slice(1, 3));
+    });
+    expect(fn).toHaveBeenCalledWith([2, 3]);
+    fn.mockClear();
+
+    arr[4] = 99;
+    await flush();
+    expect(fn).not.toBeCalled();
+
+    arr[2] = 99;
+    await flush();
+    expect(fn).toHaveBeenCalledWith([2, 99]);
+  });
+
+  it('slice tracks holes in targeted segment', async () => {
+    const arr = hot([1, , 3] as number[]);
+    const fn = vi.fn();
+    watch(arr, ($) => {
+      fn($.slice(0, 3));
+    });
+    expect(fn).toHaveBeenCalledWith([1, , 3]);
+    fn.mockClear();
+
+    arr[1] = 2;
+    await flush();
+    expect(fn).toHaveBeenCalledWith([1, 2, 3]);
+  });
+
+  it('some tracks holes it checks', async () => {
+    const arr = hot([, , 3] as number[]);
+    const fn = vi.fn();
+    watch(arr, ($) => {
+      $.some((value) => value === 1);
+      fn();
+    });
+    fn.mockClear();
+
+    arr[0] = 1;
+    await flush();
+    expect(fn).toHaveBeenCalled();
+  });
+
   it('push fires events for new index and length', async () => {
     const arr = hot([1, 2]);
     const onIndex = vi.fn();
@@ -355,5 +401,47 @@ describe('as State field', () => {
     await new Promise<void>((r) => setTimeout(r, 0));
 
     expect(fn).not.toBeCalled();
+  });
+
+  it('tracks nested child State values', async () => {
+    class Cell extends State {
+      value = '';
+    }
+
+    class Game extends State {
+      board = hot([Cell.new()]);
+    }
+
+    const game = Game.new();
+    const fn = vi.fn();
+
+    game.get(($) => {
+      fn($.board[0].value);
+    });
+
+    fn.mockClear();
+    game.board[0].value = 'X';
+    await flush();
+
+    expect(fn).toHaveBeenCalledWith('X');
+  });
+
+  it('tracks nested hot child values', async () => {
+    class Game extends State {
+      board = hot([hot({ value: '' })]);
+    }
+
+    const game = Game.new();
+    const fn = vi.fn();
+
+    game.get(($) => {
+      fn($.board[0].value);
+    });
+
+    fn.mockClear();
+    game.board[0].value = 'X';
+    await flush();
+
+    expect(fn).toHaveBeenCalledWith('X');
   });
 });
