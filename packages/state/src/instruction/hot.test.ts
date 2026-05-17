@@ -233,6 +233,26 @@ describe('array', () => {
     expect(onLength).toHaveBeenCalled();
   });
 
+  it('unshift fires for shifted indices and length', async () => {
+    const arr = hot([2, 3]);
+    const onIndex = vi.fn();
+    const onLength = vi.fn();
+    watch(arr, ($) => {
+      onIndex($[0], $[2]);
+    });
+    watch(arr, ($) => {
+      void $.length;
+      onLength();
+    });
+    onIndex.mockClear();
+    onLength.mockClear();
+
+    arr.unshift(1);
+    await flush();
+    expect(onIndex).toHaveBeenCalledWith(1, 3);
+    expect(onLength).toHaveBeenCalled();
+  });
+
   it('pop fires for removed index and length', async () => {
     const arr = hot([1, 2, 3]);
     const fn = vi.fn();
@@ -245,6 +265,78 @@ describe('array', () => {
     arr.pop();
     await flush();
     expect(fn).toHaveBeenCalled();
+  });
+
+  it('shift fires for shifted indices and length', async () => {
+    const arr = hot([1, 2, 3]);
+    const onIndex = vi.fn();
+    const onLength = vi.fn();
+    watch(arr, ($) => {
+      onIndex($[0], $[2]);
+    });
+    watch(arr, ($) => {
+      void $.length;
+      onLength();
+    });
+    onIndex.mockClear();
+    onLength.mockClear();
+
+    arr.shift();
+    await flush();
+    expect(onIndex).toHaveBeenCalledWith(2, undefined);
+    expect(onLength).toHaveBeenCalled();
+  });
+
+  it('splice fires for removed and inserted indices', async () => {
+    const arr = hot([1, 2, 3]);
+    const fn = vi.fn();
+    watch(arr, ($) => {
+      fn($[1], $[2]);
+    });
+    fn.mockClear();
+
+    arr.splice(1, 1, 4, 5);
+    await flush();
+    expect(fn).toHaveBeenCalledWith(4, 5);
+  });
+
+  it('sort fires for reordered indices', async () => {
+    const arr = hot([3, 1, 2]);
+    const fn = vi.fn();
+    watch(arr, ($) => {
+      fn($[0], $[2]);
+    });
+    fn.mockClear();
+
+    arr.sort();
+    await flush();
+    expect(fn).toHaveBeenCalledWith(1, 3);
+  });
+
+  it('reverse fires for reordered indices', async () => {
+    const arr = hot([1, 2, 3]);
+    const fn = vi.fn();
+    watch(arr, ($) => {
+      fn($[0], $[2]);
+    });
+    fn.mockClear();
+
+    arr.reverse();
+    await flush();
+    expect(fn).toHaveBeenCalledWith(3, 1);
+  });
+
+  it('length truncation fires length event', async () => {
+    const arr = hot([1, 2, 3]);
+    const fn = vi.fn();
+    watch(arr, ($) => {
+      fn($.length);
+    });
+    fn.mockClear();
+
+    arr.length = 1;
+    await flush();
+    expect(fn).toHaveBeenCalledWith(1);
   });
 
   it('delete of a missing index does not fire', async () => {
