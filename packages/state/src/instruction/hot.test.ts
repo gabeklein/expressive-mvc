@@ -25,6 +25,12 @@ describe('factory', () => {
     expect(source).toEqual([1, 2, 3, 4]);
   });
 
+  it('does not override a user get property', () => {
+    const obj = hot({ get: 'value' });
+
+    expect(obj.get).toBe('value');
+  });
+
   it('throws on non-object input', () => {
     // @ts-ignore
     expect(() => hot('str')).toThrow();
@@ -85,6 +91,21 @@ describe('array', () => {
     expect(fn).not.toBeCalled();
   });
 
+  it('does not fire keyed events for symbol writes', async () => {
+    const key = Symbol('key');
+    const arr = hot([1, 2, 3] as (number[] & { [key]?: number }));
+    const fn = vi.fn();
+    watch(arr, ($) => {
+      void $[0];
+      fn();
+    });
+    fn.mockClear();
+
+    (arr as any)[key] = 4;
+    await flush();
+    expect(fn).not.toBeCalled();
+  });
+
   it('fires on length when push grows the array', async () => {
     const arr = hot([1, 2]);
     const fn = vi.fn();
@@ -95,6 +116,20 @@ describe('array', () => {
     fn.mockClear();
 
     arr.push(3);
+    await flush();
+    expect(fn).toHaveBeenCalled();
+  });
+
+  it('fires on length when writing beyond the current array end', async () => {
+    const arr = hot([1, 2]);
+    const fn = vi.fn();
+    watch(arr, ($) => {
+      void $.length;
+      fn();
+    });
+    fn.mockClear();
+
+    arr[3] = 4;
     await flush();
     expect(fn).toHaveBeenCalled();
   });
@@ -165,6 +200,37 @@ describe('array', () => {
     await flush();
     expect(fn).toHaveBeenCalled();
   });
+
+  it('delete of a missing index does not fire', async () => {
+    const arr = hot([1, 2, 3]);
+    const fn = vi.fn();
+    watch(arr, ($) => {
+      void $[2];
+      fn();
+    });
+    fn.mockClear();
+
+    delete arr[5];
+    await flush();
+    expect(fn).not.toBeCalled();
+  });
+
+  it('does not fire keyed events for symbol deletes', async () => {
+    const key = Symbol('key');
+    const arr = hot([1, 2, 3] as (number[] & { [key]?: number }));
+    (arr as any)[key] = 4;
+
+    const fn = vi.fn();
+    watch(arr, ($) => {
+      void $[0];
+      fn();
+    });
+    fn.mockClear();
+
+    delete (arr as any)[key];
+    await flush();
+    expect(fn).not.toBeCalled();
+  });
 });
 
 describe('object', () => {
@@ -227,6 +293,25 @@ describe('object', () => {
   it('does not recurse into nested objects', () => {
     const obj = hot({ inner: { x: 1 } });
     expect(observer(obj.inner)).toBeUndefined();
+  });
+
+  it('supports State export', () => {
+    class Test extends State {
+      arr = hot([1, 2, 3]);
+      obj = hot({ a: 1, b: 2 });
+    }
+
+    const test = Test.new();
+    const values = test.get();
+
+    expect(values).toEqual({
+      arr: [1, 2, 3],
+      obj: { a: 1, b: 2 }
+    });
+    expect(values.arr).not.toBe(test.arr);
+    expect(values.obj).not.toBe(test.obj);
+    expect(Object.isFrozen(values.arr)).toBe(true);
+    expect(Object.isFrozen(values.obj)).toBe(true);
   });
 });
 

@@ -1,5 +1,12 @@
 import { event, touch } from '../observable';
 
+const MAX_INDEX = 2 ** 32 - 2;
+
+function index(key: string | symbol) {
+  const value = typeof key == 'symbol' ? -1 : +key;
+  return String(value) === key && value >= 0 && value <= MAX_INDEX ? value : -1;
+}
+
 /**
  * Wrap an array or object as a reactive Proxy.
  *
@@ -16,21 +23,25 @@ function hot(value: any) {
   if (value === null || typeof value !== 'object')
     throw new Error('hot() requires an array or object');
 
+  const get = () => Object.freeze(Array.isArray(value) ? value.slice() : { ...value });
+
   const proxy: any = new Proxy(value, {
     get(target, key, receiver) {
+      if (key === 'get' && !(key in target)) return get;
       const result = Reflect.get(target, key, receiver);
       if (typeof key === 'symbol' || typeof result === 'function') return result;
       return touch(receiver, key, result);
     },
+    has(target, key) {
+      return key === 'get' || key in target;
+    },
     set(target, key, value) {
-      const isArray = Array.isArray(target);
-      const oldLength = isArray ? (target as any[]).length : undefined;
+      const grows = Array.isArray(target) && index(key) >= target.length;
       const old = (target as any)[key];
       const ok = Reflect.set(target, key, value);
       if (ok && typeof key !== 'symbol') {
         if (old !== value) event(proxy, key);
-        if (isArray && (target as any[]).length !== oldLength)
-          event(proxy, 'length');
+        if (grows) event(proxy, 'length');
       }
       return ok;
     },
