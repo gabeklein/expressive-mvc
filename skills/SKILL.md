@@ -24,6 +24,7 @@ import State, {
   ref,
   def,
   get,
+  hot,
   set,
   Provider
 } from '@expressive/react';
@@ -50,9 +51,9 @@ counter.count; // 1
 
 Properties assigned in the class body are reactive - updates notify subscribers. Methods are auto-bound.
 
-### Instructions
+### Instructions & Helpers
 
-Field initializers that configure reactive behavior. Each has multiple overloads - see linked docs for full details.
+Field initializers and helper values that configure reactive behavior. Each has multiple overloads - see linked docs for full details.
 
 #### `def()` - Custom Property
 
@@ -97,6 +98,15 @@ Do not pass a direct promise to `set()`. Use `set(() => promise)` or `set(async 
 | `ref<T>(cb, false)` | Ref callback also fires for `null`.                     |
 | `ref(this)`         | Ref proxy - creates refs for all enumerable properties. |
 | `ref(this, mapFn)`  | Custom ref proxy with transform per key.                |
+
+#### `hot()` - Reactive Arrays & Objects
+
+| Form          | Behavior                                                             |
+| ------------- | -------------------------------------------------------------------- |
+| `hot(array)`  | Wraps a dense array so index, length, and method reads are reactive. |
+| `hot(object)` | Wraps an object so property reads are reactive.                      |
+
+`hot()` is a reactive helper, not a field instruction. Maybe be used without attaching a state, or in conjunction with instructions (such as set). Use it when an object or array needs keyed reactivity without extracting a dedicated `State` class.
 
 ### React Hooks
 
@@ -242,11 +252,12 @@ Fetch these for detailed API documentation when the task requires deeper knowled
 - [state/context.md](state/context.md) - Context system, root singleton, home context, ownership rules
 - [state/types.md](state/types.md) - TypeScript type aliases and utility types
 
-### Instructions (field initializers)
+### Instructions & Reactive Helpers
 
 - [instructions/set.md](instructions/set.md) - Property descriptors, defaults, factories, setter callbacks
 - [instructions/get.md](instructions/get.md) - Context lookup: upstream, downstream, callbacks
 - [instructions/ref.md](instructions/ref.md) - Mutable refs, ref proxy, callbacks
+- [instructions/hot.md](instructions/hot.md) - Reactive arrays and objects
 - [instructions/def.md](instructions/def.md) - Low-level custom property behavior
 
 ### React
