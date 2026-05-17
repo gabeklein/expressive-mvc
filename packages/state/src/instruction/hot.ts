@@ -20,22 +20,19 @@ function hot(value: any) {
 }
 
 const MAX_INDEX = 2 ** 32 - 2;
+const DELETES = new Set(['pop', 'shift', 'splice']);
 
 function index(key: string | symbol) {
   const value = typeof key == 'symbol' ? -1 : +key;
   return String(value) === key && value >= 0 && value <= MAX_INDEX ? value : -1;
 }
 
-function offset(value: number | undefined, fallback: number, length: number) {
-  if (value === undefined) return fallback;
-  const number = Number(value);
-  value = !number ? 0 : Number.isFinite(number) ? Math.trunc(number) : number;
-
-  return Math.min(Math.max(value < 0 ? length + value : value, 0), length);
-}
-
 function array<T>(value: T[]) {
+  for (let i = 0; i < value.length; i++)
+    if (!(i in value)) deny();
+
   const get = () => Object.freeze(value.slice());
+  let internal = false;
 
   const proxy: any = new Proxy(value, {
     has,
@@ -45,51 +42,49 @@ function array<T>(value: T[]) {
       const result = Reflect.get(target, key, receiver);
 
       if (typeof key === 'symbol') return result;
-      if (typeof result !== 'function') return touch(receiver, key, result);
+      if (typeof result === 'function')
+        return DELETES.has(key) ? (...args: unknown[]) => {
+          internal = true;
 
-      if (key === 'slice')
-        return function slice(this: unknown, start?: number, end?: number) {
-          const length = touch(receiver, 'length', target.length);
-          const from = offset(start, 0, length);
-          const to = offset(end, length, length);
-
-          for (let i = from; i < to; i++) touch(receiver, String(i));
-
-          return result.call(receiver, start, end);
-        };
-
-      if (key === 'some')
-        return function some(
-          this: unknown,
-          callback: (value: unknown, index: number, array: unknown[]) => unknown,
-          thisArg?: unknown
-        ) {
-          const length = touch(receiver, 'length', target.length);
-
-          for (let i = 0; i < length; i++) {
-            touch(receiver, String(i));
-            if (i in target && callback.call(thisArg, receiver[i], i, receiver))
-              return true;
+          try {
+            return result.apply(receiver, args);
+          } finally {
+            internal = false;
           }
+        } : result;
 
-          return false;
-        };
-
-      return result;
+      return touch(receiver, key, result);
     },
     set(target: T[], key, value) {
+      const oldLength = target.length;
+      if (key === 'length' && value > oldLength) deny();
+
       const grows = index(key) >= target.length;
+      if (grows && index(key) > target.length) deny();
+
       const ok = assign(proxy, target, key, value);
       if (ok && grows && typeof key !== 'symbol') event(proxy, 'length');
+      if (ok && key === 'length')
+        for (let i = target.length; i < oldLength; i++) event(proxy, String(i));
+
       return ok;
     },
     deleteProperty(target, key) {
+      if (!(key in target)) return true;
+      if (index(key) >= 0 && !internal) deny();
+
       return remove(proxy, target, key);
     }
   });
 
   event(proxy);
   return proxy;
+}
+
+function deny() {
+  throw new Error(
+    'hot() arrays must be dense. Use undefined/null placeholders or splice().'
+  );
 }
 
 function object<T extends object>(value: T) {

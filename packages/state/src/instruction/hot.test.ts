@@ -12,6 +12,13 @@ describe('factory', () => {
     expect(arr.length).toBe(3);
   });
 
+  it('throws on sparse array input', () => {
+    expect(() => hot(Array(3))).toThrow('hot() arrays must be dense');
+    expect(() => hot([1, , 3] as number[])).toThrow(
+      'hot() arrays must be dense'
+    );
+  });
+
   it('wraps a plain object', () => {
     const obj = hot({ a: 1, b: 2 });
     expect(obj.a).toBe(1);
@@ -120,7 +127,7 @@ describe('array', () => {
     expect(fn).toHaveBeenCalled();
   });
 
-  it('fires on length when writing beyond the current array end', async () => {
+  it('fires on length when assigning next array index', async () => {
     const arr = hot([1, 2]);
     const fn = vi.fn();
     watch(arr, ($) => {
@@ -129,9 +136,25 @@ describe('array', () => {
     });
     fn.mockClear();
 
-    arr[3] = 4;
+    arr[2] = 3;
     await flush();
     expect(fn).toHaveBeenCalled();
+  });
+
+  it('throws when assigning beyond the next array index', () => {
+    const arr = hot([1, 2]);
+
+    expect(() => {
+      arr[3] = 4;
+    }).toThrow('hot() arrays must be dense');
+  });
+
+  it('throws when growing array length', () => {
+    const arr = hot([1, 2]);
+
+    expect(() => {
+      arr.length = 3;
+    }).toThrow('hot() arrays must be dense');
   });
 
   it('iteration subscribes to length and visited indices', async () => {
@@ -184,22 +207,8 @@ describe('array', () => {
     expect(fn).toHaveBeenCalledWith([2, 99]);
   });
 
-  it('slice tracks holes in targeted segment', async () => {
-    const arr = hot([1, , 3] as number[]);
-    const fn = vi.fn();
-    watch(arr, ($) => {
-      fn($.slice(0, 3));
-    });
-    expect(fn).toHaveBeenCalledWith([1, , 3]);
-    fn.mockClear();
-
-    arr[1] = 2;
-    await flush();
-    expect(fn).toHaveBeenCalledWith([1, 2, 3]);
-  });
-
-  it('some tracks holes it checks', async () => {
-    const arr = hot([, , 3] as number[]);
+  it('some tracks checked indices', async () => {
+    const arr = hot([0, 0, 3]);
     const fn = vi.fn();
     watch(arr, ($) => {
       $.some((value) => value === 1);
@@ -328,15 +337,29 @@ describe('array', () => {
 
   it('length truncation fires length event', async () => {
     const arr = hot([1, 2, 3]);
-    const fn = vi.fn();
+    const onIndex = vi.fn();
+    const onLength = vi.fn();
     watch(arr, ($) => {
-      fn($.length);
+      onIndex($[2]);
     });
-    fn.mockClear();
+    watch(arr, ($) => {
+      onLength($.length);
+    });
+    onIndex.mockClear();
+    onLength.mockClear();
 
     arr.length = 1;
     await flush();
-    expect(fn).toHaveBeenCalledWith(1);
+    expect(onIndex).toHaveBeenCalledWith(undefined);
+    expect(onLength).toHaveBeenCalledWith(1);
+  });
+
+  it('throws when deleting an array index', () => {
+    const arr = hot([1, 2, 3]);
+
+    expect(() => {
+      delete arr[1];
+    }).toThrow('hot() arrays must be dense');
   });
 
   it('delete of a missing index does not fire', async () => {
