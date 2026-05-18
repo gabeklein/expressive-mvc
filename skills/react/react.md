@@ -10,6 +10,7 @@ For examples and patterns see `patterns.md`.
 
 ```ts
 export { State, State as default }; // Reexported after agumentation with React features
+export { use }; // Observe a State/Observable instance by reference
 export { Context, Observable, def, get, ref, set }; // re-exported from @expressive/state
 export { Component }; // React Component class
 export { Provider, Consumer }; // Explicit context components
@@ -116,6 +117,50 @@ function App({ name }: { name: string }) {
   return <p>{state.greeting}</p>;
 }
 ```
+
+---
+
+## use() - Observe By Reference
+
+Subscribes to an existing `State` or `Observable` object. Use this when a component
+receives state by prop instead of reading it from context.
+
+```tsx
+import { use } from '@expressive/react';
+
+function CounterButton({ counter }: { counter: Counter }) {
+  const { count, increment } = use(counter);
+  return <button onClick={increment}>{count}</button>;
+}
+```
+
+- Returns a tracking proxy. Values accessed during render trigger refresh when changed.
+- Does not create, destroy, or provide the instance.
+- Does not fall back to React's built-in `use()`.
+
+### Optional reference
+
+```tsx
+const counter = use(props.counter);
+return counter ? <span>{counter.count}</span> : null;
+```
+
+`null` and `undefined` inputs return `undefined`.
+
+### Required values
+
+```tsx
+const counter = use(props.counter, true); // Required<Counter>
+```
+
+### Computed selector
+
+```tsx
+const count = use(counter, ($) => $.count);
+```
+
+The selector behaves like `State.get(selector)`: it tracks accessed values and
+only refreshes the component when the selected result changes.
 
 ---
 

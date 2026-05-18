@@ -246,3 +246,4 @@ State.get = function get<T extends State>(
 };
 
 export { State };
+export { use } from './use';

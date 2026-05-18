@@ -157,6 +157,18 @@ describe('Provider', () => {
     );
   });
 
+  it('will ignore field props for mapped providers', () => {
+    render(
+      <Provider for={{ Foo }} value="hello">
+        <Consumer for={Foo}>
+          {(i) => {
+            expect(i.value).toBeUndefined();
+          }}
+        </Consumer>
+      </Provider>
+    );
+  });
+
   it('will provide children of given model', () => {
     class Foo extends State {
       value?: string = undefined;

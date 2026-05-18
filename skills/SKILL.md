@@ -25,6 +25,7 @@ import State, {
   def,
   get,
   set,
+  use,
   Provider
 } from '@expressive/react';
 ```
@@ -110,6 +111,12 @@ function MyComponent() {
 // Context state - reads nearest Provider, subscribes reactively
 function Child() {
   const { count } = Counter.get();
+  return <span>{count}</span>;
+}
+
+// Prop/reference state - subscribes to the given observable instance
+function Child({ counter }: { counter: Counter }) {
+  const { count } = use(counter);
   return <span>{count}</span>;
 }
 ```

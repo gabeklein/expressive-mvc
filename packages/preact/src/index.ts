@@ -1,4 +1,4 @@
-import { State, Runtime } from '@expressive/react/state';
+import { State, Runtime, use } from '@expressive/react/state';
 import { get, def, ref, set, Observable } from '@expressive/state';
 
 import { useEffect, useState, createElement, useRef } from 'preact/compat';
@@ -9,5 +9,5 @@ Runtime.useState = useState;
 Runtime.useRef = useRef;
 
 export default State;
-export { get, State, Observable, ref, set, def };
+export { get, State, Observable, ref, set, def, use };
 export { Consumer, Provider, Context } from './context';
