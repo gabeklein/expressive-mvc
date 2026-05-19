@@ -1,13 +1,38 @@
 ---
 title: React Hooks
-description: State.use, State.get, Provider, and Consumer
+description: use, State.use, State.get, Provider, and Consumer
 ---
 
-The React adapter augments the `State` class with two static methods (`use` and `get`) and provides two components (`Provider` and `Consumer`). These are the React-specific entry points to Expressive.
+The React adapter exports a `use` hook, augments the `State` class with two static methods (`use` and `get`), and provides two components (`Provider` and `Consumer`). These are the React-specific entry points to Expressive.
 
 ```tsx
-import State, { Provider, Consumer } from '@expressive/react';
+import State, { use, Provider, Consumer } from '@expressive/react';
 ```
+
+<br />
+
+## `use(subject)`
+
+Subscribes a React component to an existing observable object or `State` instance.
+
+```tsx
+import { use } from '@expressive/react';
+
+function CounterView({ counter }: { counter: Counter }) {
+  const { count, increment } = use(counter);
+  return <button onClick={increment}>{count}</button>;
+}
+```
+
+- Returns a tracking proxy on the initial render; reading properties subscribes the component.
+- Re-renders only when accessed properties change.
+- Re-subscribes if `subject` is replaced.
+- Activates an unready observable instance, but does not destroy it on unmount.
+- Throws if `subject` is not observable or has already been destroyed.
+
+Use this when state or observable object comes from somewhere else.
+`State.use()` is for when the component should create and own instance.
+`State.get()` is for finding from context.
 
 <br />
 
