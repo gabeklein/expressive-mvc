@@ -1,5 +1,5 @@
 import React from 'react';
-import { get, State, Provider, set } from '.';
+import { get, State, Provider, set, use as useObservable } from '.';
 import {
   vi,
   expect,
@@ -479,6 +479,74 @@ describe('State.use', () => {
 
       element.unmount();
     });
+  });
+});
+
+describe('use', () => {
+  class Test extends State {
+    foo = 'foo';
+    bar = 'bar';
+  }
+
+  it('will subscribe to observable instance', async () => {
+    const test = Test.new();
+    const didRender = vi.fn();
+    const hook = renderHook(() => {
+      didRender();
+      return useObservable(test).foo;
+    });
+
+    expect(hook.result.current).toBe('foo');
+
+    await act(async () => test.set({ foo: 'next' }));
+
+    expect(hook.result.current).toBe('next');
+    expect(didRender).toBeCalledTimes(2);
+  });
+
+  it('will compute output', async () => {
+    const test = Test.new();
+    const hook = renderHook(() => {
+      return useObservable(test, (x) => x.foo + x.bar);
+    });
+
+    expect(hook.result.current).toBe('foobar');
+
+    await act(async () => test.set({ foo: 'hello' }));
+
+    expect(hook.result.current).toBe('hellobar');
+  });
+
+  it('will track replacement instance', async () => {
+    const first = Test.new();
+    const second = Test.new();
+    let current = first;
+    const didRender = vi.fn();
+
+    first.foo = 'first';
+    second.foo = 'second';
+
+    const hook = renderHook(() => {
+      didRender();
+      return useObservable(current).foo;
+    });
+
+    expect(hook.result.current).toBe('first');
+
+    current = second;
+
+    await act(async () => hook.rerender());
+
+    expect(hook.result.current).toBe('second');
+
+    await act(async () => first.set({ foo: 'stale' }));
+
+    expect(hook.result.current).toBe('second');
+
+    await act(async () => second.set({ foo: 'current' }));
+
+    expect(hook.result.current).toBe('current');
+    expect(didRender).toBeCalledTimes(3);
   });
 });
 

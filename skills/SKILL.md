@@ -112,6 +112,12 @@ function Child() {
   const { count } = Counter.get();
   return <span>{count}</span>;
 }
+
+// Concrete observable - subscribes without context lookup
+function CounterLabel({ counter }: { counter: Counter }) {
+  const { count } = use(counter);
+  return <span>{count}</span>;
+}
 ```
 
 ### Component Class

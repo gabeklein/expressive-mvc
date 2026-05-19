@@ -119,6 +119,38 @@ function App({ name }: { name: string }) {
 
 ---
 
+## use() - Observable Hook
+
+Subscribes to a concrete observable object without looking it up from context.
+Use this when you already have a `State` instance or another object wired into Expressive's observable system.
+
+```tsx
+import { use } from '@expressive/react';
+
+function Profile({ user }: { user: UserState }) {
+  const current = use(user);
+  return <p>{current.name}</p>;
+}
+```
+
+### Computed selector
+
+Pass a factory to derive a value. It tracks accessed observable properties and only refreshes when the computed result changes:
+
+```tsx
+const name = use(user, ($) => $.name);
+```
+
+Factory receives `(current, refresh)`, matching `State.get()` factories.
+
+### Required values
+
+```tsx
+const user = use(userState, true); // Required<UserState>
+```
+
+---
+
 ## State.get() - Context Hook
 
 Fetches a state instance from context (provided by `Provider` or `Component`).

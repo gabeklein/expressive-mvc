@@ -1,6 +1,6 @@
 import { createElement, useEffect, useRef, useState } from 'react';
 
-import { State } from './state';
+import { State, use } from './state';
 import { Runtime } from './runtime';
 import { Consumer, Provider } from './context';
 
@@ -9,7 +9,7 @@ Runtime.useEffect = useEffect;
 Runtime.useState = useState;
 Runtime.useRef = useRef;
 
-export { State, State as default };
+export { State, State as default, use };
 export { Context, Observable, def, get, ref, set } from '@expressive/state';
 export { Component } from './component';
 export { Consumer, Provider };
