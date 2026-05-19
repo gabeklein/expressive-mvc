@@ -5,6 +5,20 @@ import { mockError, vi, describe, it, expect, mockPromise } from '../vitest';
 import { State } from './state';
 
 describe('effect', () => {
+  it('will remove listener on cleanup', () => {
+    const test = {};
+
+    event(test);
+
+    const done = watch(test, () => { });
+
+    expect(observer(test)?.listeners.size).toBeGreaterThan(0);
+
+    done();
+
+    expect(observer(test)?.listeners.size).toBe(0);
+  });
+
   it('will cleanup safely while suspended', async () => {
     let shouldSuspend = true;
     const pending = mockPromise();

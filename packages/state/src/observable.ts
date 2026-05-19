@@ -87,9 +87,14 @@ function observe<T extends object>(
 ): T {
   const watching = new Set<Observer.Signal>();
 
-  listener(object, (key) => {
+  const release = listener(object, (key) => {
     if (watching.has(key)) return callback();
   });
+
+  if (EffectContext)
+    EffectContext.add((update) => {
+      if (update !== true) release();
+    });
 
   const proxy = Object.create(object) as T;
 
@@ -273,7 +278,7 @@ function watch<T extends object>(
       enqueue(invoke);
     }
 
-    function run(release?: () => void) {
+    function run(release?: (update?: boolean | null) => void) {
       const proxy = observe(target, onUpdate, argument === true);
       const output = callback.call(proxy, proxy, events);
 
@@ -281,7 +286,7 @@ function watch<T extends object>(
       reset = output === null ? null : invoke;
       unset = (key) => {
         if (typeof output == 'function') output(key);
-        if (release) release();
+        if (release) release(key);
       };
 
       events = [];
@@ -300,32 +305,33 @@ function watch<T extends object>(
     }
   }
 
-  function cleanup() {
-    if (unset) unset(false);
-
-    reset = null;
-  }
-
-  if (EffectContext && argument !== false) EffectContext.add(cleanup);
-
-  listener(target, (key) => {
+  const unlisten = listener(target, (key) => {
     if (key === true) invoke();
     else if (!reset) return reset;
 
     if (key === null && unset) unset(null);
   });
 
+  function cleanup(update?: boolean | null) {
+    if (unset) unset(false);
+
+    reset = null;
+    unlisten();
+  }
+
+  if (EffectContext && argument !== false) EffectContext.add(cleanup);
+
   return cleanup;
 }
 
-let EffectContext: Set<() => void> | undefined;
+let EffectContext: Set<(update?: boolean | null) => void> | undefined;
 
-function capture(scope: (release: () => void) => void) {
+function capture(scope: (release: (update?: boolean | null) => void) => void) {
   const parent = EffectContext;
   const context = (EffectContext = new Set());
 
   try {
-    scope(() => context.forEach((fn) => fn()));
+    scope((update) => context.forEach((fn) => fn(update)));
   } finally {
     EffectContext = parent;
   }
