@@ -1,3 +1,4 @@
+import { StrictMode } from 'react';
 import { observer } from '@expressive/state';
 import { use as useObservable, State } from '.';
 import {
@@ -25,16 +26,43 @@ describe('use', () => {
     });
 
     expect(hook.result.current).toBe('foo');
-
-    await waitFor(() => {
-      expect(didRender.mock.calls.length).toBeGreaterThanOrEqual(2);
-    });
+    expect(didRender).toBeCalledTimes(1);
 
     await act(async () => test.set({ foo: 'next' }));
 
     await waitFor(() => {
       expect(hook.result.current).toBe('next');
     });
+  });
+
+  it('will return observed proxy on initial render', () => {
+    const test = Test.new();
+    let first: Test | undefined;
+
+    renderHook(() => {
+      const current = useObservable(test);
+      first ??= current;
+      void current.foo;
+      return current;
+    });
+
+    expect(first).not.toBe(test);
+  });
+
+  it('will not leak subscription under StrictMode', () => {
+    const test = Test.new();
+    const initial = observer(test)!.listeners.size;
+    const hook = renderHook(() => {
+      useObservable(test).foo;
+    }, {
+      wrapper: StrictMode
+    });
+
+    expect(observer(test)?.listeners.size).toBe(initial + 2);
+
+    hook.unmount();
+
+    expect(observer(test)?.listeners.size).toBe(initial);
   });
 
   it('will only refresh for accessed values', async () => {
@@ -46,9 +74,7 @@ describe('use', () => {
       return useObservable(test).foo;
     });
 
-    await waitFor(() => {
-      expect(didRender.mock.calls.length).toBeGreaterThanOrEqual(2);
-    });
+    expect(didRender).toBeCalledTimes(1);
 
     const before = didRender.mock.calls.length;
 
@@ -94,24 +120,19 @@ describe('use', () => {
     });
 
     expect(hook.result.current).toBe('first');
-
-    await waitFor(() => {
-      expect(didRender.mock.calls.length).toBeGreaterThanOrEqual(2);
-    });
+    expect(didRender).toBeCalledTimes(1);
 
     current = second;
 
     await act(async () => hook.rerender());
 
     expect(hook.result.current).toBe('second');
-
-    await waitFor(() => {
-      expect(didRender.mock.calls.length).toBeGreaterThanOrEqual(4);
-    });
+    expect(didRender).toBeCalledTimes(2);
 
     await act(async () => first.set({ foo: 'stale' }));
 
     expect(hook.result.current).toBe('second');
+    expect(didRender).toBeCalledTimes(2);
 
     await act(async () => second.set({ foo: 'current' }));
 
