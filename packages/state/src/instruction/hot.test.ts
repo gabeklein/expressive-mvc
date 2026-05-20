@@ -451,6 +451,20 @@ describe('object', () => {
     expect(fn).toHaveBeenCalled();
   });
 
+  it('delete of a missing key is a no-op', async () => {
+    const obj = hot({ a: 1 } as Record<string, number>);
+    const fn = vi.fn();
+    watch(obj, ($) => {
+      void $.a;
+      fn();
+    });
+    fn.mockClear();
+
+    expect(delete (obj as any).missing).toBe(true);
+    await flush();
+    expect(fn).not.toHaveBeenCalled();
+  });
+
   it('does not recurse into nested objects', () => {
     const obj = hot({ inner: { x: 1 } });
     expect(observer(obj.inner)).toBeUndefined();
