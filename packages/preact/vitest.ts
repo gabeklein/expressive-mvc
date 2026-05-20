@@ -6,4 +6,11 @@ import { afterEach } from 'vitest';
 afterEach(cleanup);
 
 export * from 'vitest';
-export * from '@testing-library/preact';
+export {
+  act,
+  fireEvent,
+  render,
+  renderHook,
+  screen,
+  waitFor
+} from '@testing-library/preact';
