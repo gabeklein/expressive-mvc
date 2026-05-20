@@ -1,5 +1,5 @@
 import { StrictMode } from 'react';
-import { observer } from '@expressive/state';
+import { event, observer, touch } from '@expressive/state';
 import { use, State } from '.';
 import {
   act,
@@ -32,6 +32,42 @@ describe('use', () => {
 
     await waitFor(() => {
       expect(hook.result.current).toBe('next');
+    });
+  });
+
+  it('will subscribe to custom observable object', async () => {
+    class Counter {
+      private value = 0;
+
+      get count() {
+        return touch(this, 'count', this.value);
+      }
+
+      set count(value: number) {
+        this.value = value;
+        event(this, 'count');
+      }
+
+      increment = () => {
+        this.count++;
+      };
+    }
+
+    const counter = new Counter();
+
+    observer(counter, true);
+
+    const hook = renderHook(() => {
+      const { count } = use(counter);
+      return count;
+    });
+
+    expect(hook.result.current).toBe(0);
+
+    await act(async () => counter.increment());
+
+    await waitFor(() => {
+      expect(hook.result.current).toBe(1);
     });
   });
 
