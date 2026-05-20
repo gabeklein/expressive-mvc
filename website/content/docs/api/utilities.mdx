@@ -1,6 +1,6 @@
 ---
 title: Utilities
-description: Framework-agnostic helpers - watch, listener, event, Context, Observable
+description: Framework-agnostic helpers - watch, listener, event, touch, Context, Observable
 ---
 
 These exports are framework-agnostic. They're available from both `@expressive/state` and `@expressive/react`.
@@ -10,6 +10,8 @@ import {
   watch,
   listener,
   event,
+  observer,
+  touch,
   Context,
   Observable,
   unbind
@@ -80,6 +82,32 @@ Dispatch an event on a State manually. Equivalent to `state.set(key)` but availa
 ```ts
 event(state, 'my-event');
 event(state, Symbol.for('refresh'));
+```
+
+<br />
+
+## `touch(target, key, value?)`
+
+Mark a property as read while an observable is being watched. This is the low-level helper used by State properties and custom observable objects to support field-level subscriptions.
+
+```ts
+import { event, observer, touch } from '@expressive/state';
+
+class Counter {
+  private value = 0;
+
+  get count() {
+    return touch(this, 'count', this.value);
+  }
+
+  set count(value: number) {
+    this.value = value;
+    event(this, 'count');
+  }
+}
+
+const counter = new Counter();
+observer(counter, true);
 ```
 
 <br />

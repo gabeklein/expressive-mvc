@@ -14,8 +14,6 @@ type Example = {
   load: () => Promise<AppModule>;
 };
 
-export const here = () => window.location.pathname.replace(/\/+$/, '') || '/';
-
 class Examples extends Component {
   modules: Record<string, () => Promise<AppModule>> = {};
   url = here();
@@ -32,18 +30,12 @@ class Examples extends Component {
             if (match) order = parseInt(match[1], 10);
             return p.replace(/^\d+-/, '');
           });
+
         return {
           order,
           file,
           path: '/' + segments.join('/'),
-          title: segments
-            .map((p) =>
-              p
-                .split('-')
-                .map((w) => w[0].toUpperCase() + w.slice(1))
-                .join(' ')
-            )
-            .join(' / '),
+          title: segments.map(titleCase).join(' / '),
           load
         };
       })
@@ -55,10 +47,7 @@ class Examples extends Component {
   }
 
   protected new() {
-    const update = () => {
-      this.url = here();
-    };
-
+    const update = () => this.url = here();
     window.addEventListener('popstate', update);
     return () => window.removeEventListener('popstate', update);
   }
@@ -70,34 +59,40 @@ class Examples extends Component {
   }
 
   render() {
-    const { current, url } = this;
-
     return (
       <main className={styles.shell}>
         <Navigation />
-        <section className={styles.example}>
-          {current ? (
-            <iframe
-              key={current.path}
-              className={styles.frame}
-              title={current.title}
-              src={`module#${encodeURIComponent(current.file)}`}
-            />
-          ) : (
-            <NotFound path={url} />
-          )}
-        </section>
+        <Frame />
       </main>
     );
   }
 }
 
+const Frame = () => {
+  const { current, url } = Examples.get();
+
+  return (
+    <section className={styles.example}>
+      {current ? (
+        <iframe
+          key={current.path}
+          className={styles.frame}
+          title={current.title}
+          src={`module#${encodeURIComponent(current.file)}`}
+        />
+      ) : (
+        <NotFound path={url} />
+      )}
+    </section>
+  );
+};
+
 const Navigation = () => {
-  const { current, examples, navigate } = Examples.get();
+  const { is: control, current, examples } = Examples.get();
 
   return (
     <nav className={styles.nav}>
-      <a className={styles.logo} href="/" onClick={navigate}>
+      <a className={styles.logo} href="/">
         <Logo />
       </a>
       <div className={styles.links}>
@@ -105,7 +100,11 @@ const Navigation = () => {
           <a
             key={e.path}
             href={e.path}
-            onClick={navigate}
+            onClick={(evt) => {
+              evt.preventDefault();
+              control.url = e.path;
+              window.history.pushState(null, '', e.path);
+            }}
             aria-current={e === current ? 'page' : undefined}>
             {e.title}
           </a>
@@ -114,5 +113,16 @@ const Navigation = () => {
     </nav>
   );
 };
+
+function here() {
+  return window.location.pathname.replace(/\/+$/, '') || '/';
+}
+
+function titleCase(str: string) {
+  return str
+    .split(' ')
+    .map((w) => w[0].toUpperCase() + w.slice(1))
+    .join(' ');
+}
 
 export default Examples;

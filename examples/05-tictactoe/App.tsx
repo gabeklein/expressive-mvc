@@ -22,7 +22,7 @@ class Game extends Component {
     for (const line of LINES) {
       const [a, b, c] = line.map((i) => board[i]);
       if (a && a === b && b === c) {
-        for (const i of line) board[i] += '-wins';
+        for (const i of line) board[i] += ' wins';
         return a;
       }
     }

@@ -1,3 +1,19 @@
+body {
+  margin: 0;
+  box-sizing: border-box;
+  font-family:
+    system-ui,
+    -apple-system,
+    sans-serif;
+
+  --bg: #fff;
+  --fg: #1a1a2e;
+  --border: #e5e7eb;
+  --surface: #fbfbfb;
+  --accent: #646cff;
+  --radius: 6px;
+}
+
 .shell {
   display: grid;
   grid-template-columns: 15rem minmax(0, 1fr);

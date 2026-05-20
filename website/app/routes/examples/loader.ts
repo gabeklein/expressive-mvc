@@ -30,7 +30,8 @@ for (const [path, code] of Object.entries(FILES)) {
   const file = segments.pop()!;
 
   if (segments.includes('_base')) {
-    base[`/${file}`] = code;
+    if (file.includes('styles.css'))
+      base[`/${file}`] = code;
     continue;
   }
 
