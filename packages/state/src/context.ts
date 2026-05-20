@@ -2,6 +2,7 @@ import { listener } from "./observable";
 import { event, State, uid } from "./state";
 
 const LOOKUP = new WeakMap<State, Context>();
+let ROOT: Context;
 
 type Accept<T extends State = State> =
   | T
@@ -18,7 +19,9 @@ declare namespace Context {
 }
 
 class Context {
-  static root = new Context();
+  static get root(): Context {
+    return ROOT ??= new Context();
+  }
 
   /** Get the context for a State. Adapters may override to provide framework context. */
   static get(state?: State): Context {
@@ -176,12 +179,12 @@ class Context {
 
       if (!V) continue;
 
-      if (!(State.is(V) || V instanceof State))
+      if (!(State.is(V) || V instanceof State)) {
+        const as = K == "0" || K == String(V) ? V : `${V} (as '${K}')`;
         throw new Error(
-          `Context can only include an instance or class of State but got ${
-            K == "0" || K == String(V) ? V : `${V} (as '${K}')`
-          }.`,
+          `Context can only include an instance or class of State but got ${as}.`,
         );
+      }
 
       const state = State.is(V) ? new (V as State.Type)() : V.is;
       const remove = this.add(state, true);
