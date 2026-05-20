@@ -113,6 +113,22 @@ describe('Provider', () => {
     expect(is).toBeCalledWith(expect.any(Test));
   });
 
+  it('will ignore rest props on multi-form for', () => {
+    class Test extends State {
+      foo = 'default';
+    }
+
+    render(
+      <Provider for={{ Test }} foo="hello">
+        <Consumer for={Test}>
+          {(i) => {
+            expect(i.foo).toBe('default');
+          }}
+        </Consumer>
+      </Provider>
+    );
+  });
+
   it('will update instance when props change', async () => {
     class Test extends State {
       value = 'initial';
