@@ -165,7 +165,7 @@ Accepts nested arrays (flattened at runtime), objects (assigned), and callbacks 
 State extends Observable. Also usable standalone:
 
 ```ts
-import { listener, watch, event } from '@expressive/state';
+import { listener, watch, event, observer, touch } from '@expressive/state';
 
 const stop = listener(state, (key, source) => {
   /* event */
@@ -175,6 +175,8 @@ const stop = watch(state, (current) => {
 });
 event(state, 'myEvent'); // manual dispatch
 ```
+
+Use `observer(target, true)` to opt a custom object into the observable protocol, then use `touch(this, key, value)` in getters so `watch()` and adapter hooks can subscribe to accessed fields.
 
 ### Event Semantics
 
