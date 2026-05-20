@@ -2,6 +2,7 @@ import { State, Context, watch } from '@expressive/state';
 import { Runtime, useFactory, useHook, useReady } from './runtime';
 
 export { Runtime };
+export { use } from './use';
 
 /** Type may not be undefined - instead will be null.  */
 type NoVoid<T> = T extends undefined | void ? null : T;

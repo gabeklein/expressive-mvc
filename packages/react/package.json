@@ -26,14 +26,15 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "require": "./dist/index.js",
-      "import": "./dist/esm/index.js"
+      "default": "./dist/index.js"
     },
     "./state": {
       "types": "./dist/state.d.ts",
-      "require": "./dist/state.js",
-      "import": "./dist/esm/state.js"
+      "default": "./dist/state.js"
     }
+  },
+  "engines": {
+    "node": ">=20"
   },
   "publishConfig": {
     "access": "public"
@@ -54,7 +55,6 @@
     "react": "^19",
     "react-dom": "^19",
     "tsdown": "^0.20.1",
-    "tsup": "^8.0.2",
     "vitest": "^4.0.18"
   },
   "peerDependencies": {

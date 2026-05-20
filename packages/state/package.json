@@ -21,15 +21,22 @@
   ],
   "type": "module",
   "main": "dist/index.js",
-  "module": "dist/esm/index.js",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "engines": {
+    "node": ">=20"
+  },
   "publishConfig": {
     "access": "public"
   },
   "scripts": {
     "build": "tsdown",
     "test": "tsc --noEmit && vitest run --coverage",
-    "prebuild": "rm -rf dist",
     "preversion": "npm run test && npm run build"
   },
   "devDependencies": {

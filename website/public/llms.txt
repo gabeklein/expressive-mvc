@@ -18,7 +18,7 @@
 - [def()](/llm/instructions/def.md): Low-level custom property behavior
 
 ## React
-- [React Adapter](/llm/react/react.md): State.use(), State.get(), Provider, Consumer, ForceRefresh
+- [React Adapter](/llm/react/react.md): use(), State.use(), State.get(), Provider, Consumer, ForceRefresh
 - [Component](/llm/react/component.md): Component class, props, children, subcomponents, error boundaries
 - [Patterns](/llm/react/patterns.md): Recipes - forms, async, nested state, debounce, effects
 

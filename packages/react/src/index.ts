@@ -12,4 +12,5 @@ Runtime.useRef = useRef;
 export { State, State as default };
 export { Context, Observable, def, get, ref, set, hot } from '@expressive/state';
 export { Component } from './component';
+export { use } from './use';
 export { Consumer, Provider };

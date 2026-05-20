@@ -11,6 +11,7 @@ For examples and patterns see `patterns.md`.
 ```ts
 export { State, State as default }; // Reexported after agumentation with React features
 export { Context, Observable, def, get, hot, ref, set }; // re-exported from @expressive/state
+export { use }; // Hook for existing observable instances
 export { Component }; // React Component class
 export { Provider, Consumer }; // Explicit context components
 ```
@@ -34,6 +35,30 @@ class Counter extends Component {
 // Use as JSX directly
 <Counter count={5} />;
 ```
+
+---
+
+## use() - Existing Observable Hook
+
+Subscribes a React component to an existing observable object or State instance. Import with an alias when needed to avoid confusion with React's own `use`.
+
+```tsx
+import { use as useObservable } from '@expressive/react';
+
+function CounterView({ counter }: { counter: Counter }) {
+  const { count, increment } = useObservable(counter);
+  return <button onClick={increment}>{count}</button>;
+}
+```
+
+- Returns a tracking proxy during the initial render; property reads subscribe immediately.
+- Re-renders only when accessed properties change.
+- Re-subscribes if the passed observable instance is replaced.
+- Activates an unready observable, but does not own lifecycle or destroy it on unmount.
+- Throws for plain objects and destroyed observables.
+- Safe in React strict mode.
+
+Use this for externally-owned observables. Use `State.use()` when the component should create and own a State instance. Use `State.get()` when the instance should come from context.
 
 ---
 
