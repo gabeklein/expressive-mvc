@@ -1,6 +1,6 @@
 import { StrictMode } from 'react';
 import { observer } from '@expressive/state';
-import { use as useObservable, State } from '.';
+import { use, State } from '.';
 import {
   act,
   describe,
@@ -22,11 +22,11 @@ describe('use', () => {
     const didRender = vi.fn();
     const hook = renderHook(() => {
       didRender();
-      return useObservable(test).foo;
+      return use(test).foo;
     });
 
     expect(hook.result.current).toBe('foo');
-    expect(didRender).toBeCalledTimes(1);
+    expect(didRender).toHaveBeenCalledTimes(1);
 
     await act(async () => test.set({ foo: 'next' }));
 
@@ -40,7 +40,7 @@ describe('use', () => {
     let first: Test | undefined;
 
     renderHook(() => {
-      const current = useObservable(test);
+      const current = use(test);
       first ??= current;
       void current.foo;
       return current;
@@ -53,7 +53,7 @@ describe('use', () => {
     const test = Test.new();
     const initial = observer(test)!.listeners.size;
     const hook = renderHook(() => {
-      useObservable(test).foo;
+      use(test).foo;
     }, {
       wrapper: StrictMode
     });
@@ -71,17 +71,17 @@ describe('use', () => {
 
     renderHook(() => {
       didRender();
-      return useObservable(test).foo;
+      return use(test).foo;
     });
 
-    expect(didRender).toBeCalledTimes(1);
+    expect(didRender).toHaveBeenCalledTimes(1);
 
     const before = didRender.mock.calls.length;
 
     test.bar = 'next';
 
     await expect(test).toHaveUpdated();
-    expect(didRender).toBeCalledTimes(before);
+    expect(didRender).toHaveBeenCalledTimes(before);
   });
 
   it('will activate unready State instance', async () => {
@@ -89,7 +89,7 @@ describe('use', () => {
 
     expect(observer(test)?.ready).toBeUndefined();
 
-    const hook = renderHook(() => useObservable(test).foo);
+    const hook = renderHook(() => use(test).foo);
 
     expect(observer(test)?.ready).toBe(true);
     expect(hook.result.current).toBe('foo');
@@ -116,23 +116,23 @@ describe('use', () => {
 
     const hook = renderHook(() => {
       didRender();
-      return useObservable(current).foo;
+      return use(current).foo;
     });
 
     expect(hook.result.current).toBe('first');
-    expect(didRender).toBeCalledTimes(1);
+    expect(didRender).toHaveBeenCalledTimes(1);
 
     current = second;
 
     await act(async () => hook.rerender());
 
     expect(hook.result.current).toBe('second');
-    expect(didRender).toBeCalledTimes(2);
+    expect(didRender).toHaveBeenCalledTimes(2);
 
     await act(async () => first.set({ foo: 'stale' }));
 
     expect(hook.result.current).toBe('second');
-    expect(didRender).toBeCalledTimes(2);
+    expect(didRender).toHaveBeenCalledTimes(2);
 
     await act(async () => second.set({ foo: 'current' }));
 
@@ -143,7 +143,7 @@ describe('use', () => {
 
   it('will not destroy subject on unmount', async () => {
     const test = Test.new();
-    const hook = renderHook(() => useObservable(test).foo);
+    const hook = renderHook(() => use(test).foo);
 
     await waitFor(() => {
       expect(hook.result.current).toBe('foo');
@@ -156,7 +156,7 @@ describe('use', () => {
   });
 
   it('will throw for plain object', () => {
-    expect(() => renderHook(() => useObservable({}))).toThrow(
+    expect(() => renderHook(() => use({}))).toThrow(
       'Provided object is not observable.'
     );
   });
@@ -166,7 +166,7 @@ describe('use', () => {
 
     test.set(null);
 
-    expect(() => renderHook(() => useObservable(test))).toThrow(
+    expect(() => renderHook(() => use(test))).toThrow(
       'Provided object is no longer observable.'
     );
   });
