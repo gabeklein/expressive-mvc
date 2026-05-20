@@ -12,6 +12,11 @@ it('will add instance to context', () => {
   expect(context.get(Example)).toBe(example);
 });
 
+it('will lazily initialize root', () => {
+  expect(Context.root).toBeInstanceOf(Context);
+  expect(typeof Context.root.id).toBe('string');
+});
+
 it('will UID context', () => {
   const contextA = new Context();
   const contextB = new Context();
