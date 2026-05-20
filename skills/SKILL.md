@@ -21,6 +21,7 @@ Class-based reactive state for React, Preact, and Solid. State classes define re
 ```tsx
 import State, {
   Component,
+  use,
   ref,
   def,
   get,
@@ -101,6 +102,12 @@ Do not pass a direct promise to `set()`. Use `set(() => promise)` or `set(async 
 ### React Hooks
 
 ```tsx
+// Existing observable - subscribes to accessed fields, does not own lifecycle
+function Existing({ counter }: { counter: Counter }) {
+  const { count, increment } = use(counter);
+  return <button onClick={increment}>{count}</button>;
+}
+
 // Local state - creates instance, subscribes to accessed fields
 function MyComponent() {
   const { count, increment } = Counter.use();
@@ -113,6 +120,8 @@ function Child() {
   return <span>{count}</span>;
 }
 ```
+
+Use `use(subject)` for externally-owned observables or State instances. It returns a tracking proxy on the initial render, re-subscribes when `subject` is replaced, activates an unready observable, and does not destroy the subject on unmount.
 
 ### Component Class
 
@@ -251,7 +260,7 @@ Fetch these for detailed API documentation when the task requires deeper knowled
 
 ### React
 
-- [react/react.md](react/react.md) - State.use(), State.get(), Provider, Consumer, ForceRefresh
+- [react/react.md](react/react.md) - use(), State.use(), State.get(), Provider, Consumer, ForceRefresh
 - [react/component.md](react/component.md) - Component class, props, children, subcomponents, error boundaries
 - [react/patterns.md](react/patterns.md) - Recipes: forms, async, nested state, debounce, effects
 
