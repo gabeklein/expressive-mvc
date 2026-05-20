@@ -22,12 +22,18 @@ function hot(value: any) {
 const MAX_INDEX = 2 ** 32 - 2;
 const DELETES = new Set(['pop', 'shift', 'splice']);
 
-function index(key: string | symbol) {
-  const value = typeof key == 'symbol' ? -1 : +key;
-  return String(value) === key && value >= 0 && value <= MAX_INDEX ? value : -1;
-}
-
 function array<T>(value: T[]) {
+  function index(key: string | symbol) {
+    const value = typeof key == 'symbol' ? -1 : +key;
+    return String(value) === key && value >= 0 && value <= MAX_INDEX ? value : -1;
+  }
+
+  function deny() {
+    throw new Error(
+      'hot() arrays must be dense. Use undefined/null placeholders or splice().'
+    );
+  }
+
   for (let i = 0; i < value.length; i++)
     if (!(i in value)) deny();
 
@@ -79,12 +85,6 @@ function array<T>(value: T[]) {
 
   event(proxy);
   return proxy;
-}
-
-function deny() {
-  throw new Error(
-    'hot() arrays must be dense. Use undefined/null placeholders or splice().'
-  );
 }
 
 function object<T extends object>(value: T) {
