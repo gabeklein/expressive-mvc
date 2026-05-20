@@ -1,5 +1,6 @@
 export { def } from './instruction/def';
 export { get } from './instruction/get';
+export { hot } from './instruction/hot';
 export { set } from './instruction/set';
 export { ref } from './instruction/ref';
 

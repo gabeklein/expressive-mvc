@@ -1,6 +1,6 @@
 import './App.css';
 
-import { Component } from '@expressive/react';
+import { Component, hot } from '@expressive/react';
 
 const LINES = [
   [0, 1, 2],
@@ -14,7 +14,7 @@ const LINES = [
 ];
 
 class Game extends Component {
-  board: string[] = Array(9).fill("");
+  board: string[] = hot(Array(9).fill(''));
   turn: 'X' | 'O' = 'X';
 
   get winner() {
@@ -35,7 +35,7 @@ class Game extends Component {
   play(i: number) {
     if (this.board[i] || this.winner) return;
 
-    this.board = this.board.map((c, j) => j === i ? this.turn : c);
+    this.board[i] = this.turn;
     this.turn = this.turn === 'X' ? 'O' : 'X';
   }
 
