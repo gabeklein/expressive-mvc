@@ -312,7 +312,7 @@ function watch<T extends object>(
     if (key === null && unset) unset(null);
   });
 
-  function cleanup(update?: boolean | null) {
+  function cleanup() {
     if (unset) unset(false);
 
     reset = null;
