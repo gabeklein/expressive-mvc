@@ -1,0 +1,57 @@
+{
+  "name": "@expressive/router",
+  "version": "0.0.0",
+  "description": "Client-side router built on @expressive/state Components.",
+  "keywords": [
+    "expressive",
+    "router",
+    "react",
+    "state"
+  ],
+  "license": "MIT",
+  "author": {
+    "name": "Gabe Klein",
+    "email": "gabe@termtm.com",
+    "url": "https://github.com/gabeklein"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gabeklein/expressive-state.git"
+  },
+  "private": true,
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "test": "tsc --noEmit && vitest run --coverage"
+  },
+  "dependencies": {
+    "@expressive/react": "workspace:^",
+    "@expressive/state": "workspace:^"
+  },
+  "devDependencies": {
+    "@testing-library/react": "^16.3.0",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "react": "^19",
+    "react-dom": "^19",
+    "tsdown": "^0.20.1",
+    "vitest": "^4.0.18"
+  },
+  "peerDependencies": {
+    "react": ">=16.8.0 <20.0.0"
+  }
+}
