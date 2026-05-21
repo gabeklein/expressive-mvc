@@ -1,2 +1,2 @@
-// Implementation TBD. See ../PLAN.md.
-export {};
+export { matchPattern } from './matcher';
+export type { Match } from './matcher';
