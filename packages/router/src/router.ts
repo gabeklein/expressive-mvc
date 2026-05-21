@@ -16,6 +16,10 @@ export class Router extends Component {
   }
 
   goto(to: string, replace = false) {
+    if (!to.startsWith('/'))
+      throw new Error(
+        `Router.goto requires an absolute path; got "${to}". Relative paths must be resolved via a Route (e.g. Route.get().goto).`
+      );
     const url = new URL(to, window.location.origin);
     history[replace ? 'replaceState' : 'pushState'](null, '', url);
     this.path = url.pathname;
