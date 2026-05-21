@@ -135,6 +135,26 @@ describe('Route', () => {
     expect(view.container.textContent).toBe('Home');
   });
 
+  it('params returns empty when match invalidated by navigation', async () => {
+    window.history.replaceState(null, '', '/posts/foo');
+    let leaf!: Route;
+    let router!: Router;
+    const Page = () => (
+      <Consumer for={Route}>{(r) => void (leaf = r)}</Consumer>
+    );
+    render(
+      <Router is={(r) => (router = r)}>
+        <Route to="/posts/:id" as={Page} />
+      </Router>
+    );
+    expect(leaf.params).toEqual({ id: 'foo' });
+
+    // Navigate to a path the Route does not match. The Route instance
+    // briefly evaluates with a null match before unmounting.
+    await act(async () => router.goto('/elsewhere'));
+    expect(leaf.params).toEqual({});
+  });
+
   it('anchor handles patterns that already end with /', async () => {
     window.history.replaceState(null, '', '/');
     let leaf!: Route;

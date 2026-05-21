@@ -15,9 +15,12 @@ export class Route extends Component {
     return matchPattern(this.to, this.router.path);
   }
 
-  // Route only mounts when matched, so match is guaranteed non-null here.
+  /**
+   * Captured params from the current match. Empty during the transient frame
+   * a navigation invalidates this Route's match before the Route unmounts.
+   */
   get params(): Record<string, string> {
-    return this.match!.params;
+    return this.match?.params ?? {};
   }
 
   /**
