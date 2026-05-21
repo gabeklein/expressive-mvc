@@ -20,6 +20,24 @@ export class Route extends Component {
     return this.match!.params;
   }
 
+  /**
+   * Directory-style anchor for relative navigation. Strips trailing `/*` (catch-all,
+   * which belongs to children) and substitutes `:params`. Always ends with `/`.
+   */
+  get anchor(): string {
+    const own = this.to.replace(/\/?\*$/, '');
+    const filled = own.replace(/:(\w+)/g, (_, name) => this.params[name]);
+    return filled.endsWith('/') ? filled : filled + '/';
+  }
+
+  goto(to: string, replace = false) {
+    if (to === '' || to === '.') return;
+    const resolved = to.startsWith('/')
+      ? to
+      : new URL(to, window.location.origin + this.anchor).pathname;
+    this.router.goto(resolved, replace);
+  }
+
   render(props: { children?: ReactNode } = {}) {
     return createElement(
       this.as,
