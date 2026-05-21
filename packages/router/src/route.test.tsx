@@ -135,6 +135,73 @@ describe('Route', () => {
     expect(view.container.textContent).toBe('Home');
   });
 
+  it('anchor handles patterns that already end with /', async () => {
+    window.history.replaceState(null, '', '/');
+    let leaf!: Route;
+    const Page = () => (
+      <Consumer for={Route}>{(r) => void (leaf = r)}</Consumer>
+    );
+    render(
+      <Router>
+        <Route to="/" as={Page} />
+      </Router>
+    );
+    expect(leaf.anchor).toBe('/');
+  });
+
+  it('Route.goto resolves relative paths via anchor', async () => {
+    window.history.replaceState(null, '', '/posts/foo');
+    let leaf!: Route;
+    const Page = () => (
+      <Consumer for={Route}>{(r) => void (leaf = r)}</Consumer>
+    );
+    render(
+      <Router>
+        <Route to="/posts/:id" as={Page} />
+      </Router>
+    );
+    await act(async () => leaf.goto('./edit'));
+    expect(window.location.pathname).toBe('/posts/foo/edit');
+  });
+
+  it('Route.goto treats empty string and "." as no-op', async () => {
+    window.history.replaceState(null, '', '/posts/foo');
+    let leaf!: Route;
+    const Page = () => (
+      <Consumer for={Route}>{(r) => void (leaf = r)}</Consumer>
+    );
+    render(
+      <Router>
+        <Route to="/posts/:id" as={Page} />
+      </Router>
+    );
+    await act(async () => leaf.goto(''));
+    await act(async () => leaf.goto('.'));
+    expect(window.location.pathname).toBe('/posts/foo');
+  });
+
+  it('Route.goto passes through absolute paths to Router', async () => {
+    window.history.replaceState(null, '', '/posts/foo');
+    let leaf!: Route;
+    const Page = () => (
+      <Consumer for={Route}>{(r) => void (leaf = r)}</Consumer>
+    );
+    render(
+      <Router>
+        <Route to="/posts/:id" as={Page} />
+        <Route to="/about" as={() => <div>about</div>} />
+      </Router>
+    );
+    await act(async () => leaf.goto('/about'));
+    expect(window.location.pathname).toBe('/about');
+  });
+
+  it('Router.goto throws on relative paths', () => {
+    let router!: Router;
+    render(<Router is={(r) => (router = r)} />);
+    expect(() => router.goto('./x')).toThrow(/absolute path/);
+  });
+
   it('default `as` renders nothing when given no children', () => {
     window.history.replaceState(null, '', '/blank');
     const view = render(
