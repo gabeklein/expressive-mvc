@@ -1,5 +1,3 @@
-import { Consumer } from '@expressive/react';
-
 import { act, beforeEach, describe, expect, it, render, vi } from '../vitest';
 
 import { Router } from './router';
@@ -10,12 +8,8 @@ beforeEach(() => {
 
 function capture() {
   let router!: Router;
-  const view = render(
-    <Router>
-      <Consumer for={Router}>{(r) => void (router = r)}</Consumer>
-    </Router>
-  );
-  return { router, view };
+  const view = render(<Router is={(r) => (router = r)} />);
+  return { router: router!, view };
 }
 
 describe('Router', () => {
