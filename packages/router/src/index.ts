@@ -1,4 +1,4 @@
-export { matchPattern, fullPattern, patternSegment, specificity } from './url';
+export { matchPattern, fullPattern, patternSegment } from './url';
 export type { Match } from './url';
 export { Router } from './router';
 export { Route } from './route';

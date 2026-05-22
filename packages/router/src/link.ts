@@ -11,8 +11,7 @@ export class Link extends Component {
 
   /** Absolute resolved path for the rendered `<a href>`. */
   get href(): string {
-    if (this.to.startsWith('/')) return this.to;
-    return new URL(this.to, window.location.origin + this.route.anchor).pathname;
+    return this.route.resolve(this.to);
   }
 
   private go = (e: MouseEvent<HTMLAnchorElement>) => {
