@@ -60,6 +60,7 @@ Each step independent, ships green tests before the next begins.
 6. **`NavLink`** - subclass with active-class support.
 7. **Scroll restoration** - one Component subclass listening for navigation.
 8. **Hash / memory Router** - alternate `Router` subclasses.
+9. **`Link.onClick`** - user-supplied click handler that runs before navigation. Can be async; awaited result of `false` (or `e.preventDefault()`) cancels. Link exposes `pending: boolean` for the duration. See "Nice-to-haves" for shape.
 
 ## Why Component is the substrate
 
@@ -486,7 +487,55 @@ class PostRoute extends Route {
 
 This trades JSX brevity for class-as-destination typing. Defer until either (a) the type story actively pays off in real apps built on the declarative form, or (b) a meaningful behavior difference between leaf and layout Routes emerges that needs a class to express.
 
-## Rejected designs
+## Nice-to-haves
+
+Documented shapes for post-MVP features. Captured here so they don't get re-litigated later.
+
+### `Link.onClick` (async pre-navigation hook)
+
+User-supplied click handler that runs before the router takes over. Can be async; if it resolves to `false` or calls `e.preventDefault()`, navigation is cancelled. While awaiting, Link exposes `pending: boolean` (mirrored on the rendered `<a>` via `aria-busy`) so styles or content can reflect the in-flight state.
+
+```tsx
+<Link
+  to="/checkout"
+  onClick={async (e) => {
+    if (cart.isEmpty) {
+      e.preventDefault();
+      return;
+    }
+    await analytics.track('begin-checkout');
+  }}
+>
+  Checkout
+</Link>
+```
+
+Sketch of implementation inside Link's existing click handler:
+
+```ts
+private go = async (e: MouseEvent<HTMLAnchorElement>) => {
+  if (this.pending) return;                                    // ignore re-entry
+  if (e.defaultPrevented || e.button !== 0) return;
+  if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+  e.preventDefault();
+  if (this.onClick) {
+    this.pending = true;
+    try {
+      const result = await this.onClick(e);
+      if (result === false || e.defaultPrevented) return;
+    } catch {
+      return;                                                  // thrown = cancel
+    } finally {
+      this.pending = false;
+    }
+  }
+  this.route.goto(this.to, this.replace);
+};
+```
+
+Subclass-friendly: a `ConfirmLink` overriding `onClick` (or composing it from a class field) is straightforward. Pairs naturally with a future Router-level navigation blocker (intercepts all nav, not just clicks) - same problem space, different surface.
+
+
 
 Decisions worth recording so they don't get relitigated:
 
