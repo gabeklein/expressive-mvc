@@ -16,10 +16,10 @@ export type StateProps<T extends State> = {
   [K in Exclude<keyof T, keyof Component>]?: T[K];
 };
 
-type RenderProps<T> = T extends { render(props: infer P): any }
-  ? {} extends P
-  ? { children?: React.ReactNode }
-  : P
+type RenderProps<T> = [T] extends [(props: infer P) => any]
+  ? [keyof NonNullable<P>] extends [never]
+    ? { children?: React.ReactNode }
+    : NonNullable<P>
   : { children?: React.ReactNode };
 
 interface ComponentProps<T extends Component> {
@@ -32,7 +32,7 @@ interface ComponentProps<T extends Component> {
 
 export type Props<T extends Component> = StateProps<T> &
   ComponentProps<T> &
-  RenderProps<T>;
+  RenderProps<T['render']>;
 
 declare module '@expressive/state' {
   namespace State {
