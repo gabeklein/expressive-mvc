@@ -10,8 +10,6 @@ import {
 } from 'react';
 
 import { Router } from './router';
-import { Match, fullPattern, patternSegment, specificity } from './url';
-
 interface RouteProps {
   children?: ReactNode;
   /** Base path injected by parent resolver. Empty for top-level Routes. */
@@ -34,48 +32,32 @@ export class Route extends Component {
 
   to: string = '';
 
-  /** Own portion of `to` that descendants compose against (catch-all stripped). */
-  get segment(): string {
-    return patternSegment(this.to);
-  }
-
-  get match(): Match | null {
-    const { base = "" } = this.props as RouteProps;
-    return this.router.match(fullPattern(base, this.to));
-  }
-
   /**
    * Captured params from the current match. Empty during the transient frame
    * a navigation invalidates this Route's match before the Route unmounts.
    */
   get params(): Record<string, string> {
-    return this.match?.params ?? {};
+    const { base = '' } = this.props as RouteProps;
+    return this.router.match(base, this.to)?.params ?? {};
   }
 
-  /**
-   * Directory-style anchor for relative navigation. Strips trailing `/*` (catch-all,
-   * which belongs to children) and substitutes `:params`. Always ends with `/`.
-   */
+  /** Directory-style anchor for relative navigation. */
   get anchor(): string {
-    const own = this.to
-      .replace(/\/?\*$/, '')
-      .replace(/:(\w+)/g, (_, name) => this.params[name]);
-
-    return own.endsWith('/') ? own : own + '/';
+    return this.router.anchor(this.to, this.params);
   }
 
-  goto(to: string, replace = false) {
-    if (to === '' || to === '.') return;
+  resolve(url: string): string {
+    return this.router.resolve(url, this.anchor);
+  }
 
-    if (!to.startsWith('/'))
-      to = new URL(to, window.location.origin + this.anchor).pathname;
-
-    this.router.goto(to, replace);
+  goto(url: string, replace = false) {
+    if (url === '' || url === '.') return;
+    this.router.goto(this.resolve(url), replace);
   }
 
   render(props = {} as RouteProps) {
     const { router, as } = this;
-    const childBase = (props.base ?? '') + this.segment;
+    const childBase = router.childBase(props.base ?? '', this.to);
 
     let winner: ReactElement<RouteElementProps> | null = null;
     let hasRoute = false;
@@ -85,13 +67,10 @@ export class Route extends Component {
       if (!isValidElement(child) || child.type !== Route) return;
       hasRoute = true;
       const el = child as ReactElement<RouteElementProps>;
-      const pattern = fullPattern(childBase, el.props.to ?? '');
-      if (router.match(pattern)) {
-        const score = specificity(pattern);
-        if (score > best) {
-          winner = el;
-          best = score;
-        }
+      const m = router.match(childBase, el.props.to ?? '');
+      if (m && m.score > best) {
+        winner = el;
+        best = m.score;
       }
     });
 

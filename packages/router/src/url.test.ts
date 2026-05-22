@@ -1,100 +1,93 @@
 import { describe, expect, it } from '../vitest';
 
-import { fullPattern, matchPattern, patternSegment, specificity } from './url';
+import { fullPattern, matchPattern, patternSegment } from './url';
+
+const match = (pattern: string, path: string) => matchPattern(pattern, path)?.params;
+const score = (pattern: string, path: string) => matchPattern(pattern, path)!.score;
 
 describe('matchPattern', () => {
   it('matches root', () => {
-    expect(matchPattern('/', '/')).toEqual({ params: {} });
+    expect(match('/', '/')).toEqual({});
   });
 
   it('matches literal segments', () => {
-    expect(matchPattern('/foo/bar', '/foo/bar')).toEqual({ params: {} });
+    expect(match('/foo/bar', '/foo/bar')).toEqual({});
   });
 
   it('returns null for non-matching literals', () => {
-    expect(matchPattern('/foo/bar', '/foo/baz')).toBeNull();
+    expect(match('/foo/bar', '/foo/baz')).toBeUndefined();
   });
 
   it('returns null when segment counts differ', () => {
-    expect(matchPattern('/foo', '/foo/bar')).toBeNull();
-    expect(matchPattern('/foo/bar', '/foo')).toBeNull();
+    expect(match('/foo', '/foo/bar')).toBeUndefined();
+    expect(match('/foo/bar', '/foo')).toBeUndefined();
   });
 
   it('captures :param', () => {
-    expect(matchPattern('/posts/:id', '/posts/foo')).toEqual({
-      params: { id: 'foo' }
-    });
+    expect(match('/posts/:id', '/posts/foo')).toEqual({ id: 'foo' });
   });
 
   it('captures multiple :params', () => {
-    expect(
-      matchPattern('/users/:userId/posts/:postId', '/users/u1/posts/p1')
-    ).toEqual({ params: { userId: 'u1', postId: 'p1' } });
+    expect(match('/users/:userId/posts/:postId', '/users/u1/posts/p1')).toEqual({
+      userId: 'u1',
+      postId: 'p1'
+    });
   });
 
   it('normalizes trailing slashes', () => {
-    expect(matchPattern('/foo', '/foo/')).toEqual({ params: {} });
-    expect(matchPattern('/foo/', '/foo')).toEqual({ params: {} });
-    expect(matchPattern('/posts/:id/', '/posts/foo')).toEqual({
-      params: { id: 'foo' }
-    });
+    expect(match('/foo', '/foo/')).toEqual({});
+    expect(match('/foo/', '/foo')).toEqual({});
+    expect(match('/posts/:id/', '/posts/foo')).toEqual({ id: 'foo' });
   });
 
   it('matches case-insensitively on literal segments', () => {
-    expect(matchPattern('/Foo/Bar', '/foo/bar')).toEqual({ params: {} });
+    expect(match('/Foo/Bar', '/foo/bar')).toEqual({});
   });
 
   it('preserves case in captured params', () => {
-    expect(matchPattern('/posts/:id', '/posts/FOO')).toEqual({
-      params: { id: 'FOO' }
-    });
+    expect(match('/posts/:id', '/posts/FOO')).toEqual({ id: 'FOO' });
   });
 
   it('handles empty path against root pattern', () => {
-    expect(matchPattern('/', '')).toEqual({ params: {} });
+    expect(match('/', '')).toEqual({});
   });
 
   it('returns null for no-match with params', () => {
-    expect(matchPattern('/posts/:id/edit', '/posts/foo')).toBeNull();
+    expect(match('/posts/:id/edit', '/posts/foo')).toBeUndefined();
   });
 
   describe('catch-all *', () => {
     it('matches any path with empty capture at root', () => {
-      expect(matchPattern('*', '/')).toEqual({ params: { '*': '' } });
+      expect(match('*', '/')).toEqual({ '*': '' });
     });
 
     it('captures a single-segment remainder', () => {
-      expect(matchPattern('*', '/foo')).toEqual({ params: { '*': 'foo' } });
+      expect(match('*', '/foo')).toEqual({ '*': 'foo' });
     });
 
     it('captures multi-segment remainder', () => {
-      expect(matchPattern('*', '/foo/bar/baz')).toEqual({
-        params: { '*': 'foo/bar/baz' }
-      });
+      expect(match('*', '/foo/bar/baz')).toEqual({ '*': 'foo/bar/baz' });
     });
 
     it('matches a prefixed pattern exactly (empty capture)', () => {
-      expect(matchPattern('/blog/*', '/blog')).toEqual({
-        params: { '*': '' }
-      });
+      expect(match('/blog/*', '/blog')).toEqual({ '*': '' });
     });
 
     it('matches a prefixed pattern with remainder', () => {
-      expect(matchPattern('/blog/*', '/blog/hello-world')).toEqual({
-        params: { '*': 'hello-world' }
+      expect(match('/blog/*', '/blog/hello-world')).toEqual({
+        '*': 'hello-world'
       });
-      expect(matchPattern('/blog/*', '/blog/a/b/c')).toEqual({
-        params: { '*': 'a/b/c' }
-      });
+      expect(match('/blog/*', '/blog/a/b/c')).toEqual({ '*': 'a/b/c' });
     });
 
     it('returns null when prefix does not match', () => {
-      expect(matchPattern('/blog/*', '/posts/foo')).toBeNull();
+      expect(match('/blog/*', '/posts/foo')).toBeUndefined();
     });
 
     it('coexists with :param captures', () => {
-      expect(matchPattern('/users/:id/*', '/users/alice/posts/42')).toEqual({
-        params: { id: 'alice', '*': 'posts/42' }
+      expect(match('/users/:id/*', '/users/alice/posts/42')).toEqual({
+        id: 'alice',
+        '*': 'posts/42'
       });
     });
   });
@@ -146,27 +139,31 @@ describe('patternSegment', () => {
   });
 });
 
-describe('specificity', () => {
+describe('match score (specificity)', () => {
   it('ranks more literal segments higher', () => {
-    expect(specificity('/posts/new')).toBeGreaterThan(specificity('/posts/:id'));
+    expect(score('/posts/new', '/posts/new')).toBeGreaterThan(
+      score('/posts/:id', '/posts/new')
+    );
   });
 
   it('ranks :param higher than catch-all', () => {
-    expect(specificity('/posts/:id')).toBeGreaterThan(specificity('/posts/*'));
+    expect(score('/posts/:id', '/posts/foo')).toBeGreaterThan(
+      score('/posts/*', '/posts/foo')
+    );
   });
 
   it('ranks empty pattern (exact root) higher than catch-all', () => {
-    expect(specificity('')).toBeGreaterThan(specificity('*'));
+    expect(score('', '')).toBeGreaterThan(score('*', ''));
   });
 
   it('catch-all alone is the least specific', () => {
-    expect(specificity('*')).toBeLessThan(specificity('/foo'));
-    expect(specificity('*')).toBeLessThan(specificity(':id'));
+    expect(score('*', '/foo')).toBeLessThan(score('/foo', '/foo'));
+    expect(score('*', '/id')).toBeLessThan(score(':id', '/id'));
   });
 
   it('longer pattern with literals beats shorter pattern', () => {
-    expect(specificity('/posts/:id/edit')).toBeGreaterThan(
-      specificity('/posts/:id')
+    expect(score('/posts/:id/edit', '/posts/x/edit')).toBeGreaterThan(
+      score('/posts/:id', '/posts/x')
     );
   });
 });
