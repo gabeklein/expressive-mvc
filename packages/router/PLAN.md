@@ -429,6 +429,72 @@ Each test should fail without the relevant implementation - per mvc policy, don'
 - Inline JSX siblings of nested Routes (e.g. headers/footers between Route children of a layout). Layout chrome lives in the `as` Component instead.
 - Distribution from this repo - this router exists for feedback-driven dev work on `@expressive/state`.
 
+## Pending design shifts
+
+Two structural changes scoped out of the current iteration but planned as next work. The independent-render shift is the immediate next task; the State conversion follows.
+
+### Independent rendering (drop cloneElement, drop lexical-only resolution)
+
+Today Route uses a lexical-children resolver: parent inspects its `props.children` for Route elements, picks the most-specific match, injects `base` via `cloneElement` (cached in a WeakMap). This forces all Routes that participate in resolution to be direct JSX children of their parent Route. Routes inside a rendered component (the parent's `as`) are invisible to the resolver and resolve against `base=""`, which is wrong.
+
+The peeve this addresses: in libraries that traverse JSX upfront, you can't structure a layout like
+
+```tsx
+<Route to="/admin" as={AdminPage} />
+
+const AdminPage = () => (
+  <div className="container">
+    <Route to="edit" as={EditAdmin} />
+  </div>
+);
+```
+
+without losing either the `<div>` container or the routing.
+
+**New model: Routes render in place, independently.** Each Route:
+- Reads URL from Router and computes `base` lazily from `get(Route, false)` (nearest mounted Route ancestor). No `base` prop, no cloneElement, no CLONES cache.
+- Matches `fullPattern(base, to)` against URL. If match: render `as`/children. If not: render null.
+- Multiple Routes matching the same URL all render (in their own DOM locations). This is the "fork" case - sidebar / header / main responding independently to the URL.
+
+**Lexical outlets remain as opt-in.** A Route whose `props.children` contains Route elements still resolves a single winner among those children (current sibling-tiebreak behavior with specificity scoring + document order). The outlet pattern is for "pick exactly one of these sibling pages."
+
+**Contextual `to` default carries forward** (already landed): leaf Route (no Route children) defaults to `to=""` (exact); wrapping Route defaults to `to="*"` (catch-all layout). Author writes the natural shape, system picks the natural default.
+
+**Implications:**
+- Route's `params`, `anchor`, `goto`, `resolve` all work the same - they just derive `base` from context instead of props.
+- Container/wrapping JSX (divs, fragments, intermediate components) preserved naturally - no hoisting.
+- Mount/unmount: when URL changes and a previously-matching Route stops matching, it returns null - React unmounts the `as` subtree. Standard behavior.
+- Outlet vs independent is a *use-site* decision, not an API surface. Group lexically when you want tiebreaking; don't when you want independent matching.
+
+**Open question:** when a lexical outlet exists, does it suppress descendant Routes (in a rendered `as` component) from independent matching? Or do both run? Probably both - lexical outlet picks among its own JSX children only; deeper Routes self-resolve. Worth a test once implemented.
+
+**Files affected:** `route.ts` (drop cloneElement+CLONES, `base` becomes context-derived getter), `router.ts` (no longer needs to wrap children in a Route - Routes self-mount under Router context).
+
+### Router as State (drop Component substrate)
+
+Router is currently a Component because it renders a wrapper `<Route>`. Once independent rendering lands, Router no longer needs to render anything - it's just URL state + match/resolve/anchor primitives. Convert to `extends State`. Consumers do `router = get(Router, false)! || Router.new()`, which is idempotent: first Route creates and registers as root singleton; subsequent Routes find it via `get(Router, false)`.
+
+User can still provide explicitly via `<Provider for={Router}>` when they want a custom variant - the motivating use case being:
+- `HashRouter` / `MemoryRouter` subclasses (read URL from different sources)
+- `baseUrl` field for apps mounted under a path prefix
+- Test-time control over initial URL
+
+**Test cleanup:** existing tests use `<Router is={(r) => (router = r)}>` to capture the instance. After conversion, tests would:
+```ts
+beforeEach(() => {
+  Context.root.get(Router, false)?.set(null);  // evict singleton
+  window.history.replaceState(null, '', '/');
+});
+
+// in test:
+const router = Router.new();
+const view = render(<Route to="/foo" as={...} />);
+```
+
+Pattern is established in `state/src/context.test.ts:1138-1181` (`root singleton` describe block) - `set(null)` releases ownership from `Context.root`.
+
+**Scope:** ~30 tests across `router.test.tsx`, `acceptance.test.tsx`, `route.test.tsx`, `link.test.tsx`, `redirect.test.tsx` need updating to drop the `<Router>...</Router>` JSX wrapper. Independent rendering work above should land first so the cleanup is a smaller delta.
+
 ## Future shape: Route subclassing for typed identity
 
 `<Route to="" as={X} />` covers the common case but loses some typing leverage that subclassing would provide. A possible later extension:
