@@ -1,29 +1,19 @@
-import { Component, get } from '@expressive/react';
+import { Component, Context, get } from '@expressive/react';
 import {
   Children,
   ComponentType,
+  Fragment,
   ReactElement,
   ReactNode,
-  cloneElement,
   createElement,
   isValidElement
 } from 'react';
 
 import { Router } from './router';
-interface RouteProps {
-  children?: ReactNode;
-  /** Base path injected by parent resolver. Empty for top-level Routes. */
-  base?: string;
-}
 
 interface RouteElementProps {
   to?: string;
-  base?: string;
 }
-
-// Cache cloned elements so React sees stable identity across re-renders.
-// Keyed on (original element, base) so same (winner, base) yields the same clone.
-const CLONES = new WeakMap<ReactElement, Map<string, ReactElement>>();
 
 export class Route extends Component {
   router = get(Router);
@@ -32,13 +22,23 @@ export class Route extends Component {
 
   to: string = '*';
 
+  /** Nearest mounted Route ancestor, if any. Resolved via React context. */
+  get parent(): Route | undefined {
+    return Context.get(this).parent?.get(Route, false);
+  }
+
+  /** Base path inherited from parent Route (empty at the root). */
+  get base(): string {
+    const { parent } = this;
+    return parent ? parent.base + this.router.segment(parent.to) : '';
+  }
+
   /**
    * Captured params from the current match. Empty during the transient frame
    * a navigation invalidates this Route's match before the Route unmounts.
    */
   get params(): Record<string, string> {
-    const { base = '' } = this.props as RouteProps;
-    return this.router.match(base, this.to)?.params ?? {};
+    return this.router.match(this.base, this.to)?.params ?? {};
   }
 
   /** Directory-style anchor for relative navigation. */
@@ -55,43 +55,38 @@ export class Route extends Component {
     this.router.goto(this.resolve(url), replace);
   }
 
-  render({ base = "", children } = {} as RouteProps) {
-    const { router, as } = this;
+  render({ children } = {} as { children?: ReactNode }) {
+    const { router, as, base, to } = this;
 
     let winner: ReactElement<RouteElementProps> | null = null;
     let hasRoute = false;
     let best = -Infinity;
+    const childBase = base + router.segment(to);
 
-    base += router.segment(this.to);
-
-    Children.forEach(children, (child) => {
-      if (!isValidElement(child) || child.type !== Route) return;
+    forEachRouteChild(children, (el) => {
       hasRoute = true;
-      const el = child as ReactElement<RouteElementProps>;
-      const m = router.match(base, el.props.to ?? '*');
+      const m = router.match(childBase, el.props.to ?? '*');
       if (m && m.score > best) {
         winner = el;
         best = m.score;
       }
     });
 
-    if (hasRoute) children = resolved(winner, base);
+    if (hasRoute) children = winner;
 
     return as ? createElement(as, {}, children) : children;
   }
 }
 
-function resolved(
-  winner: ReactElement<RouteElementProps> | null,
-  base: string
-): ReactElement | null {
-  if (!winner) return null;
-  if (!base) return winner;
-
-  let byBase = CLONES.get(winner);
-  if (!byBase) CLONES.set(winner, (byBase = new Map()));
-
-  let clone = byBase.get(base);
-  if (!clone) byBase.set(base, (clone = cloneElement(winner, { base })));
-  return clone;
+function forEachRouteChild(
+  children: ReactNode,
+  fn: (el: ReactElement<RouteElementProps>) => void
+) {
+  Children.forEach(children, (child) => {
+    if (!isValidElement(child)) return;
+    if (child.type === Fragment)
+      forEachRouteChild((child.props as { children?: ReactNode }).children, fn);
+    else if (child.type === Route)
+      fn(child as ReactElement<RouteElementProps>);
+  });
 }
