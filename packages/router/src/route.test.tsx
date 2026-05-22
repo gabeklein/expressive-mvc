@@ -241,6 +241,19 @@ describe('Route', () => {
     expect(view.container.textContent).toBe('');
   });
 
+  it('resolves Routes through a Fragment in lexical children', () => {
+    window.history.replaceState(null, '', '/about');
+    const view = render(
+      <Router>
+        <>
+          <Route to="/about" as={() => <span>About</span>} />
+          <Route to="/contact" as={() => <span>Contact</span>} />
+        </>
+      </Router>
+    );
+    expect(view.container.textContent).toBe('About');
+  });
+
   describe('specificity', () => {
     it('literal beats :param at the same path', () => {
       window.history.replaceState(null, '', '/posts/new');
