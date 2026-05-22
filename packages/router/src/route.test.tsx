@@ -257,6 +257,37 @@ describe('Route', () => {
     expect(view.container.textContent).toBe('About');
   });
 
+  it('lexical container re-resolves winner on navigation', async () => {
+    window.history.replaceState(null, '', '/a');
+    let router!: Router;
+    const view = render(
+      <Router is={(r) => (router = r)}>
+        <Route to="/a" as={() => <span>A</span>} />
+        <Route to="/b" as={() => <span>B</span>} />
+      </Router>
+    );
+    expect(view.container.textContent).toBe('A');
+    await act(async () => router.goto('/b'));
+    expect(view.container.textContent).toBe('B');
+  });
+
+  // Blocked on https://github.com/gabeklein/expressive-state/issues/85 -
+  // Expressive does not reset omitted props to defaults on prop update, so
+  // a winner-swap to a bare Route inherits the prior `to`.
+  it.skip('lexical container switches between specific and bare-default on navigation', async () => {
+    window.history.replaceState(null, '', '/a');
+    let router!: Router;
+    const view = render(
+      <Router is={(r) => (router = r)}>
+        <Route to="/a" as={() => <span>A</span>} />
+        <Route as={() => <span>Other</span>} />
+      </Router>
+    );
+    expect(view.container.textContent).toBe('A');
+    await act(async () => router.goto('/b'));
+    expect(view.container.textContent).toBe('Other');
+  });
+
   it('parallel Route groups under one parent resolve independently', () => {
     window.history.replaceState(null, '', '/admin/users');
     const Admin = () => (
