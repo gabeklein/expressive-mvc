@@ -65,7 +65,7 @@ export function resolveChild(
   path: string
 ): ReactElement | null {
   let best: ReactElement<RouteProps> | null = null;
-  let bestScore = -1;
+  let bestScore = -Infinity;
 
   Children.forEach(children, (child) => {
     if (!isRouteElement(child)) return;
@@ -79,7 +79,7 @@ export function resolveChild(
   });
 
   if (!best) return null;
-  return base ? cloneElement(best, { base }) : best;
+  return base ? injectBase(best, base) : best;
 }
 
 interface RouteProps {
@@ -87,16 +87,29 @@ interface RouteProps {
   base?: string;
 }
 
-/** Higher score = more specific. literal=4, :param=2, *=1 per segment. */
+// Cache cloned elements so React sees stable identity across re-renders.
+// Keyed on (original element, base) so same (winner, base) yields the same clone.
+const CLONES = new WeakMap<ReactElement, Map<string, ReactElement>>();
+
+function injectBase(el: ReactElement<RouteProps>, base: string): ReactElement {
+  let byBase = CLONES.get(el);
+  if (!byBase) CLONES.set(el, (byBase = new Map()));
+  let clone = byBase.get(base);
+  if (!clone) byBase.set(base, (clone = cloneElement(el, { base })));
+  return clone;
+}
+
+/**
+ * Higher score = more specific. Per fixed segment: literal=100, :param=10.
+ * Patterns without catch-all get +1 (exact-length match); catch-all gets -1.
+ */
 function specificity(pattern: string): number {
   const trimmed = pattern.replace(/^\/+|\/+$/g, '');
-  if (trimmed === '') return 0;
-  let score = 0;
-  for (const p of trimmed.split('/')) {
-    if (p === '*') score += 1;
-    else if (p.startsWith(':')) score += 2;
-    else score += 4;
-  }
+  const parts = trimmed === '' ? [] : trimmed.split('/');
+  const hasCatchAll = parts[parts.length - 1] === '*';
+  const fixed = hasCatchAll ? parts.slice(0, -1) : parts;
+  let score = hasCatchAll ? -1 : 1;
+  for (const p of fixed) score += p.startsWith(':') ? 10 : 100;
   return score;
 }
 

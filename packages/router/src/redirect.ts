@@ -8,13 +8,12 @@ export class Redirect extends Component {
   when: boolean = true;
 
   private route = get(Route);
-  private fired = false;
+
+  protected new() {
+    if (this.when) this.route.goto(this.to, this.replace);
+  }
 
   render() {
-    if (!this.fired && this.when) {
-      this.fired = true;
-      this.route.goto(this.to, this.replace);
-    }
     return null;
   }
 }
