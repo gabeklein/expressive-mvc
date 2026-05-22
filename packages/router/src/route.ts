@@ -1,10 +1,16 @@
 import { Component, get } from '@expressive/react';
-import { ComponentType, ReactNode, createElement } from 'react';
+import {
+  Children,
+  ComponentType,
+  ReactElement,
+  ReactNode,
+  cloneElement,
+  createElement,
+  isValidElement
+} from 'react';
 
-import { Children, isValidElement } from 'react';
-
-import { Router, resolveChild } from './router';
-import { Match, fullPattern, matchPattern, patternSegment } from './url';
+import { Router } from './router';
+import { Match, fullPattern, patternSegment, specificity } from './url';
 
 export class Route extends Component {
   to = '';
@@ -20,7 +26,7 @@ export class Route extends Component {
   }
 
   get match(): Match | null {
-    return matchPattern(fullPattern(this.base, this.to), this.router.path);
+    return this.router.match(fullPattern(this.base, this.to));
   }
 
   /**
@@ -54,10 +60,61 @@ export class Route extends Component {
 
   render(props: { children?: ReactNode } = {}) {
     const children = hasRouteChild(props.children)
-      ? resolveChild(props.children, this.base + this.segment, this.router.path)
+      ? resolveChild(props.children, this.base + this.segment, this.router)
       : props.children;
     return this.as ? createElement(this.as, {}, children) : children;
   }
+}
+
+interface RouteProps {
+  to?: string;
+  base?: string;
+}
+
+// Cache cloned elements so React sees stable identity across re-renders.
+// Keyed on (original element, base) so same (winner, base) yields the same clone.
+const CLONES = new WeakMap<ReactElement, Map<string, ReactElement>>();
+
+/**
+ * Pick the most-specific matching Route child for the router's current
+ * location, treating each child's `to` as relative to `base`. Returns the
+ * React element (or null if none match). Specificity: literal > :param > *.
+ * Document order breaks ties.
+ */
+export function resolveChild(
+  children: ReactNode,
+  base: string,
+  router: Router
+): ReactElement | null {
+  let match: ReactElement<RouteProps> | null = null;
+  let best = -Infinity;
+
+  Children.forEach(children, (child) => {
+    if (!isRouteElement(child)) return;
+    const pattern = fullPattern(base, child.props.to ?? '');
+    if (!router.match(pattern)) return;
+    const score = specificity(pattern);
+    if (score > best) {
+      match = child;
+      best = score;
+    }
+  });
+
+  if (!match) return null;
+
+  if (base) {
+    let byBase = CLONES.get(match);
+    if (!byBase) CLONES.set(match, (byBase = new Map()));
+    let clone = byBase.get(base);
+    if (!clone) byBase.set(base, (clone = cloneElement(match, { base })));
+    return clone;
+  }
+
+  return match;
+}
+
+function isRouteElement(child: unknown): child is ReactElement<RouteProps> {
+  return isValidElement(child) && child.type === Route;
 }
 
 function hasRouteChild(children: ReactNode): boolean {
