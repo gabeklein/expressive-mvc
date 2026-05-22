@@ -109,4 +109,45 @@ describe('matchPattern', () => {
   it('returns null for no-match with params', () => {
     expect(matchPattern('/posts/:id/edit', '/posts/foo')).toBeNull();
   });
+
+  describe('catch-all *', () => {
+    it('matches any path with empty capture at root', () => {
+      expect(matchPattern('*', '/')).toEqual({ params: { '*': '' } });
+    });
+
+    it('captures a single-segment remainder', () => {
+      expect(matchPattern('*', '/foo')).toEqual({ params: { '*': 'foo' } });
+    });
+
+    it('captures multi-segment remainder', () => {
+      expect(matchPattern('*', '/foo/bar/baz')).toEqual({
+        params: { '*': 'foo/bar/baz' }
+      });
+    });
+
+    it('matches a prefixed pattern exactly (empty capture)', () => {
+      expect(matchPattern('/blog/*', '/blog')).toEqual({
+        params: { '*': '' }
+      });
+    });
+
+    it('matches a prefixed pattern with remainder', () => {
+      expect(matchPattern('/blog/*', '/blog/hello-world')).toEqual({
+        params: { '*': 'hello-world' }
+      });
+      expect(matchPattern('/blog/*', '/blog/a/b/c')).toEqual({
+        params: { '*': 'a/b/c' }
+      });
+    });
+
+    it('returns null when prefix does not match', () => {
+      expect(matchPattern('/blog/*', '/posts/foo')).toBeNull();
+    });
+
+    it('coexists with :param captures', () => {
+      expect(matchPattern('/users/:id/*', '/users/alice/posts/42')).toEqual({
+        params: { id: 'alice', '*': 'posts/42' }
+      });
+    });
+  });
 });

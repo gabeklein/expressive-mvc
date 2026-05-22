@@ -40,17 +40,22 @@ export class Router extends Component {
 export function matchPattern(pattern: string, path: string): Match | null {
   const patternParts = split(pattern);
   const pathParts = split(path);
+  const catchAll = patternParts[patternParts.length - 1] === '*';
+  const fixed = catchAll ? patternParts.length - 1 : patternParts.length;
 
-  if (patternParts.length !== pathParts.length) return null;
+  if (catchAll ? pathParts.length < fixed : pathParts.length !== fixed)
+    return null;
 
   const params: Record<string, string> = {};
 
-  for (let i = 0; i < patternParts.length; i++) {
+  for (let i = 0; i < fixed; i++) {
     const p = patternParts[i];
     const v = pathParts[i];
     if (p.startsWith(':')) params[p.slice(1)] = v;
     else if (p.toLowerCase() !== v.toLowerCase()) return null;
   }
+
+  if (catchAll) params['*'] = pathParts.slice(fixed).join('/');
 
   return { params };
 }
