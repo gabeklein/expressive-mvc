@@ -15,6 +15,18 @@ export class Router extends Component {
     return () => window.removeEventListener('popstate', sync);
   }
 
+  /**
+   * Returns a function that tests a (base, to) pair against the current location.
+   *
+   * Exposed as a getter so consumers track `path` reactively: reading
+   * `router.match(...)` establishes a dependency on the current URL via this
+   * getter, which is what reactive consumers (Routes, resolvers) rely on.
+   */
+  get match(): (base: string, to: string) => Match | null {
+    const { path } = this;
+    return (base, to) => matchPattern(fullPattern(base, to), path);
+  }
+
   goto(to: string, replace = false) {
     if (!to.startsWith('/'))
       throw new Error(
@@ -26,20 +38,8 @@ export class Router extends Component {
     this.path = url.pathname;
   }
 
-  /**
-   * Returns a function that tests a (base, to) pair against the current location.
-   *
-   * Exposed as a getter so consumers track `path` reactively: reading
-   * `router.match(...)` establishes a dependency on the current URL via this
-   * getter, which is what reactive consumers (Routes, resolvers) rely on.
-   */
-  get match(): (base: string, to: string) => Match | null {
-    const path = this.path;
-    return (base, to) => matchPattern(fullPattern(base, to), path);
-  }
-
-  childBase(base: string, to: string): string {
-    return base + patternSegment(to);
+  segment(to: string): string {
+    return patternSegment(to);
   }
 
   /**
@@ -47,18 +47,18 @@ export class Router extends Component {
    * `/*` (catch-all, which belongs to children) and substitutes `:params`.
    * Always ends with `/`.
    */
-  anchor(to: string, params: Record<string, string>): string {
-    const own = to
+  anchor(route: Route): string {
+    const own = route.to
       .replace(/\/?\*$/, '')
-      .replace(/:(\w+)/g, (_, name) => params[name]);
+      .replace(/:(\w+)/g, (_, name) => route.params[name]);
 
     return own.endsWith('/') ? own : own + '/';
   }
 
-  /** Resolve a (possibly relative) `to` against an anchor; returns absolute pathname. */
-  resolve(to: string, anchor: string): string {
-    if (to.startsWith('/')) return to;
-    return new URL(to, window.location.origin + anchor).pathname;
+  /** Resolve a (possibly relative) url against a Route's anchor; returns absolute pathname. */
+  resolve(route: Route, url: string): string {
+    if (url.startsWith('/')) return url;
+    return new URL(url, 'x://_' + this.anchor(route)).pathname;
   }
 
   render(props: { children?: ReactNode } = {}) {
