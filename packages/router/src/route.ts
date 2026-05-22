@@ -43,11 +43,11 @@ export class Route extends Component {
 
   /** Directory-style anchor for relative navigation. */
   get anchor(): string {
-    return this.router.anchor(this.to, this.params);
+    return this.router.anchor(this);
   }
 
   resolve(url: string): string {
-    return this.router.resolve(url, this.anchor);
+    return this.router.resolve(this, url);
   }
 
   goto(url: string, replace = false) {
@@ -55,26 +55,28 @@ export class Route extends Component {
     this.router.goto(this.resolve(url), replace);
   }
 
-  render(props = {} as RouteProps) {
+  render({ base = "", children } = {} as RouteProps) {
     const { router, as } = this;
-    const childBase = router.childBase(props.base ?? '', this.to);
 
     let winner: ReactElement<RouteElementProps> | null = null;
     let hasRoute = false;
     let best = -Infinity;
 
-    Children.forEach(props.children, (child) => {
+    base += router.segment(this.to);
+
+    Children.forEach(children, (child) => {
       if (!isValidElement(child) || child.type !== Route) return;
       hasRoute = true;
       const el = child as ReactElement<RouteElementProps>;
-      const m = router.match(childBase, el.props.to ?? '');
+      const m = router.match(base, el.props.to ?? '');
       if (m && m.score > best) {
         winner = el;
         best = m.score;
       }
     });
 
-    const children = hasRoute ? resolved(winner, childBase) : props.children;
+    if (hasRoute) children = resolved(winner, base);
+
     return as ? createElement(as, {}, children) : children;
   }
 }
