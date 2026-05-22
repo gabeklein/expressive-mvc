@@ -1,10 +1,31 @@
 import { Component } from '@expressive/react';
-import { Children, ReactElement, ReactNode, isValidElement } from 'react';
+import { Children, ReactElement, ReactNode, cloneElement, isValidElement } from 'react';
 
 import { Route } from './route';
 
 export interface Match {
   params: Record<string, string>;
+}
+
+/**
+ * Compose a parent base with a relative or absolute `to` pattern, producing
+ * the full pattern used for matching. Absolute `to` (leading `/`) ignores base.
+ */
+export function fullPattern(base: string, to: string): string {
+  if (to.startsWith('/')) return to;
+  if (!to) return base;
+  return base + '/' + to;
+}
+
+/**
+ * The "own" portion of a `to` pattern that children compose against as their
+ * base. Strips trailing catch-all (`/*` or `*`) since catch-all is for
+ * matching, not nesting. Empty / pure catch-all yields ''.
+ */
+export function patternSegment(to: string): string {
+  if (!to || to === '*') return '';
+  const slashed = to.startsWith('/') ? to : '/' + to;
+  return slashed.replace(/\/?\*$/, '');
 }
 
 export class Router extends Component {
@@ -29,12 +50,54 @@ export class Router extends Component {
   }
 
   render(props: { children?: ReactNode } = {}) {
-    for (const child of Children.toArray(props.children)) {
-      if (!isRouteElement(child)) continue;
-      if (matchPattern(child.props.to ?? '', this.path)) return child;
-    }
-    return null;
+    return resolveChild(props.children, '', this.path);
   }
+}
+
+/**
+ * Pick the most-specific matching Route child for `path`, treating each
+ * child's `to` as relative to `base`. Returns the React element (or null if
+ * none match). Specificity: literal > :param > *. Document order breaks ties.
+ */
+export function resolveChild(
+  children: ReactNode,
+  base: string,
+  path: string
+): ReactElement | null {
+  let best: ReactElement<RouteProps> | null = null;
+  let bestScore = -1;
+
+  Children.forEach(children, (child) => {
+    if (!isRouteElement(child)) return;
+    const pattern = fullPattern(base, child.props.to ?? '');
+    if (!matchPattern(pattern, path)) return;
+    const score = specificity(pattern);
+    if (score > bestScore) {
+      best = child;
+      bestScore = score;
+    }
+  });
+
+  if (!best) return null;
+  return base ? cloneElement(best, { base }) : best;
+}
+
+interface RouteProps {
+  to?: string;
+  base?: string;
+}
+
+/** Higher score = more specific. literal=4, :param=2, *=1 per segment. */
+function specificity(pattern: string): number {
+  const trimmed = pattern.replace(/^\/+|\/+$/g, '');
+  if (trimmed === '') return 0;
+  let score = 0;
+  for (const p of trimmed.split('/')) {
+    if (p === '*') score += 1;
+    else if (p.startsWith(':')) score += 2;
+    else score += 4;
+  }
+  return score;
 }
 
 export function matchPattern(pattern: string, path: string): Match | null {
@@ -60,7 +123,7 @@ export function matchPattern(pattern: string, path: string): Match | null {
   return { params };
 }
 
-function isRouteElement(child: unknown): child is ReactElement<{ to?: string }> {
+function isRouteElement(child: unknown): child is ReactElement<RouteProps> {
   return isValidElement(child) && child.type === Route;
 }
 
