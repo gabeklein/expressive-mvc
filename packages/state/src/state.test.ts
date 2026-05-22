@@ -686,6 +686,67 @@ describe('get method', () => {
       expect(child.get(Foo, false)).toBeUndefined();
     });
 
+    it('will not resolve as own instance', () => {
+      const foo = new Foo();
+
+      new Context(foo);
+
+      expect(foo.get(Foo, false)).toBeUndefined();
+      expect(() => foo.get(Foo)).toThrow('Could not find Foo in context.');
+    });
+
+    it('will get same type from parent context', () => {
+      const parent = new Foo();
+      const child = new Foo();
+
+      new Context(parent).push(child);
+
+      expect(child.get(Foo)).toBe(parent);
+    });
+
+    it('will get same type peer without resolving self', () => {
+      const foo = new Foo();
+      const peer = new Foo();
+
+      new Context({ foo, peer });
+
+      expect(foo.get(Foo)).toBe(peer);
+    });
+
+    it('will not call callback with own instance', () => {
+      const foo = new Foo();
+      const callback = vi.fn();
+
+      new Context(foo);
+      foo.get(Foo, callback);
+
+      expect(callback).not.toBeCalled();
+    });
+
+    it('will call callback for downstream same type child', () => {
+      const parent = new Foo();
+      const callback = vi.fn();
+      const context = new Context(parent);
+
+      parent.get(Foo, callback);
+
+      const child = new Foo();
+      context.push(child);
+
+      expect(callback).toBeCalledWith(child, true);
+    });
+
+    it('will not call callback for own instance downstream', () => {
+      const foo = new Foo();
+      const callback = vi.fn();
+      const context = new Context(foo);
+
+      context.push(foo);
+      foo.get(Foo, callback);
+
+      expect(callback).not.toBeCalled();
+    });
+
     it('will subscribe with callback', () => {
       const parent = new Foo();
       const ctx = new Context(parent);

@@ -33,7 +33,7 @@ class Context {
   public scope = new Set<Context>();
   public consume = new Map<
     State.Extends,
-    Set<[Expect, boolean | undefined]> | null
+    Set<[Expect, boolean | undefined, State | undefined]> | null
   >();
   public provide = new Map<State.Extends, Set<[State, boolean]> | null>();
 
@@ -58,7 +58,7 @@ class Context {
 
   private register<T extends State>(
     type: State.Extends<T>,
-    value: [Expect<T>, boolean | undefined],
+    value: [Expect<T>, boolean | undefined, State | undefined],
     asConsumer: true,
   ): () => void;
 
@@ -102,6 +102,7 @@ class Context {
     Type: State.Extends<T>,
     arg?: boolean | Expect<T>,
     downstream?: boolean,
+    exclude?: State,
   ) {
     let found: T | null | undefined;
     let priority = false;
@@ -111,6 +112,7 @@ class Context {
       if (!entries) continue;
 
       for (const [state, explicit] of entries) {
+        if (state === exclude) continue;
         if (found === state) continue;
         if (!found || (explicit && !priority)) {
           found = state as T;
@@ -126,7 +128,7 @@ class Context {
             `Did find ${Type} in context, but multiple were defined.`,
           );
       }
-      break;
+      if (found !== undefined) break;
     }
 
     if (typeof arg === "function") {
@@ -135,12 +137,14 @@ class Context {
       if (downstream !== false) {
         this.traverse((ctx) => {
           const has = ctx.provide.get(Type);
-          if (has) for (const x of has) arg(x[0] as T, true);
+          if (has)
+            for (const x of has)
+              if (x[0] !== exclude) arg(x[0] as T, true);
           return has !== undefined;
         });
       }
 
-      return this.register(Type, [arg as Expect, downstream], true);
+      return this.register(Type, [arg as Expect, downstream, exclude], true);
     }
 
     if (found) return found;
@@ -238,8 +242,8 @@ class Context {
         const list = ctx.consume.get(T);
         if (list !== undefined) found = true;
         if (list)
-          for (const [cb, filter] of list)
-            if (filter === downstream || filter == null)
+          for (const [cb, filter, exclude] of list)
+            if (I !== exclude && (filter === downstream || filter == null))
               expects.set(cb, () => {
                 const r = cb(I, downstream);
                 if (r) onDone.add(r);

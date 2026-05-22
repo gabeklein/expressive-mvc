@@ -268,7 +268,8 @@ abstract class State {
     const self = this.is;
 
     if (arg1 === undefined) return values(self);
-    if (State.is(arg1)) return Context.get(self).get(arg1, arg2 as any, arg3);
+    if (State.is(arg1))
+      return (Context.get(self).get as any)(arg1, arg2, arg3, self);
     if (typeof arg1 == 'function') return watch(self, unbind(arg1));
     if (typeof arg2 == 'function') return callback(self, arg2, arg1);
     if (arg1 === null) return observer(self) === null;
