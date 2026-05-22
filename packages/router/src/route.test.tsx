@@ -241,7 +241,45 @@ describe('Route', () => {
     expect(view.container.textContent).toBe('');
   });
 
-  it('resolves Routes through a Fragment in lexical children', () => {
+  it('resolves Routes rendered through an intermediate component', () => {
+    window.history.replaceState(null, '', '/about');
+    const Pages = () => (
+      <>
+        <Route to="/about" as={() => <span>About</span>} />
+        <Route to="/contact" as={() => <span>Contact</span>} />
+      </>
+    );
+    const view = render(
+      <Router>
+        <Pages />
+      </Router>
+    );
+    expect(view.container.textContent).toBe('About');
+  });
+
+  it('parallel Route groups under one parent resolve independently', () => {
+    window.history.replaceState(null, '', '/admin/users');
+    const Admin = () => (
+      <div>
+        <Route>
+          <Route to="users" as={() => <header>User Header + </header>} />
+          <Route as={() => <header>Admin Header + </header>} />
+        </Route>
+        <Route>
+          <Route to="users" as={() => <main>Users Page</main>} />
+          <Route to="settings" as={() => <main>Settings Page</main>} />
+        </Route>
+      </div>
+    );
+    const view = render(
+      <Router>
+        <Route to="admin/*" as={Admin} />
+      </Router>
+    );
+    expect(view.container.textContent).toBe('User Header + Users Page');
+  });
+
+it('resolves Routes through a Fragment in lexical children', () => {
     window.history.replaceState(null, '', '/about');
     const view = render(
       <Router>

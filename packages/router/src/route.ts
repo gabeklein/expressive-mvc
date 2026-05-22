@@ -37,6 +37,10 @@ export class Route extends Component {
    * Captured params from the current match. Empty during the transient frame
    * a navigation invalidates this Route's match before the Route unmounts.
    */
+  get matched(): boolean {
+    return !!this.router.match(this.base, this.to);
+  }
+
   get params(): Record<string, string> {
     return this.router.match(this.base, this.to)?.params ?? {};
   }
@@ -57,6 +61,8 @@ export class Route extends Component {
 
   render({ children } = {} as { children?: ReactNode }) {
     const { router, as, base, to } = this;
+
+    if (!this.matched) return null;
 
     let winner: ReactElement<RouteElementProps> | null = null;
     let hasRoute = false;
