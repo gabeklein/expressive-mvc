@@ -71,8 +71,14 @@ export class Component extends State {
 
   constructor(nextProps: any, ...rest: any[]) {
     const { is, ...props } = nextProps;
+    const seen = {} as Record<string, undefined>;
+    const merge = (props: {}) => {
+      for (const key in props) seen[key] = undefined;
+      return { ...seen, ...props };
+    };
+
     rest = rest.filter((x) => !(x instanceof Context));
-    super(props, rest, is && ((x) => void is(x)), () => {
+    super(merge(props), rest, is && ((x) => void is(x)), () => {
       Object.defineProperty(this, 'props', { enumerable: false });
     });
 
@@ -85,7 +91,7 @@ export class Component extends State {
 
     this.props = nextProps;
     this.set('props', () => {
-      this.set(this.props as {});
+      this.set(merge(this.props) as {});
     });
   }
 

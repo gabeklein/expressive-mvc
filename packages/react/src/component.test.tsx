@@ -553,6 +553,24 @@ describe('state props on rerender', () => {
 
     screen.getByText('second');
   });
+
+  it('will clear omitted instance value', () => {
+    class Control extends Component {
+      value?: string = 'initial';
+
+      render() {
+        return <span>{this.value || 'empty'}</span>;
+      }
+    }
+
+    const element = render(<Control value="first" />);
+
+    screen.getByText('first');
+
+    element.rerender(<Control />);
+
+    screen.getByText('empty');
+  });
 });
 
 describe('default render', () => {
