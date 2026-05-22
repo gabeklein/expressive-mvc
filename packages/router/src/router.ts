@@ -29,7 +29,11 @@ export class Router extends Component {
   }
 
   render(props: { children?: ReactNode } = {}) {
-    return resolve(props.children, this.path);
+    for (const child of Children.toArray(props.children)) {
+      if (!isRouteElement(child)) continue;
+      if (matchPattern(child.props.to ?? '', this.path)) return child;
+    }
+    return null;
   }
 }
 
@@ -51,16 +55,8 @@ export function matchPattern(pattern: string, path: string): Match | null {
   return { params };
 }
 
-export function resolve(children: ReactNode, path: string): ReactNode {
-  for (const child of Children.toArray(children)) {
-    if (!isRouteElement(child)) continue;
-    if (matchPattern(child.props.to ?? '', path)) return child;
-  }
-  return null;
-}
-
-function isRouteElement(node: unknown): node is ReactElement<{ to?: string }> {
-  return isValidElement(node) && node.type === Route;
+function isRouteElement(child: unknown): child is ReactElement<{ to?: string }> {
+  return isValidElement(child) && child.type === Route;
 }
 
 function split(path: string) {
