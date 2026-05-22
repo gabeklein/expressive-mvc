@@ -12,7 +12,17 @@ export class Router extends Component {
       this.path = window.location.pathname;
     };
     window.addEventListener('popstate', sync);
-    return () => window.removeEventListener('popstate', sync);
+
+    const origPush = history.pushState.bind(history);
+    const origReplace = history.replaceState.bind(history);
+    history.pushState = (...args) => { origPush(...args); sync(); };
+    history.replaceState = (...args) => { origReplace(...args); sync(); };
+
+    return () => {
+      window.removeEventListener('popstate', sync);
+      history.pushState = origPush;
+      history.replaceState = origReplace;
+    };
   }
 
   /**
@@ -35,7 +45,6 @@ export class Router extends Component {
 
     const url = new URL(to, window.location.origin);
     history[replace ? 'replaceState' : 'pushState'](null, '', url);
-    this.path = url.pathname;
   }
 
   segment(to: string): string {
