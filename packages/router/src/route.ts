@@ -1,8 +1,7 @@
 import { Component, get } from '@expressive/react';
 import { ComponentType, ReactNode, createElement } from 'react';
 
-import { matchPattern, Match } from './matcher';
-import { Router } from './router';
+import { Match, Router, matchPattern } from './router';
 
 export class Route extends Component {
   to = '';
