@@ -3,7 +3,8 @@ import { ComponentType, ReactNode, createElement } from 'react';
 
 import { Children, isValidElement } from 'react';
 
-import { Match, Router, fullPattern, matchPattern, patternSegment, resolveChild } from './router';
+import { Router, resolveChild } from './router';
+import { Match, fullPattern, matchPattern, patternSegment } from './url';
 
 export class Route extends Component {
   to = '';
