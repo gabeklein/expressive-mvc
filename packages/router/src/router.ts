@@ -2,31 +2,7 @@ import { Component } from '@expressive/react';
 import { Children, ReactElement, ReactNode, cloneElement, isValidElement } from 'react';
 
 import { Route } from './route';
-
-export interface Match {
-  params: Record<string, string>;
-}
-
-/**
- * Compose a parent base with a relative or absolute `to` pattern, producing
- * the full pattern used for matching. Absolute `to` (leading `/`) ignores base.
- */
-export function fullPattern(base: string, to: string): string {
-  if (to.startsWith('/')) return to;
-  if (!to) return base;
-  return base + '/' + to;
-}
-
-/**
- * The "own" portion of a `to` pattern that children compose against as their
- * base. Strips trailing catch-all (`/*` or `*`) since catch-all is for
- * matching, not nesting. Empty / pure catch-all yields ''.
- */
-export function patternSegment(to: string): string {
-  if (!to || to === '*') return '';
-  const slashed = to.startsWith('/') ? to : '/' + to;
-  return slashed.replace(/\/?\*$/, '');
-}
+import { fullPattern, matchPattern, specificity } from './url';
 
 export class Router extends Component {
   path = window.location.pathname;
@@ -99,48 +75,6 @@ function injectBase(el: ReactElement<RouteProps>, base: string): ReactElement {
   return clone;
 }
 
-/**
- * Higher score = more specific. Per fixed segment: literal=100, :param=10.
- * Patterns without catch-all get +1 (exact-length match); catch-all gets -1.
- */
-function specificity(pattern: string): number {
-  const trimmed = pattern.replace(/^\/+|\/+$/g, '');
-  const parts = trimmed === '' ? [] : trimmed.split('/');
-  const hasCatchAll = parts[parts.length - 1] === '*';
-  const fixed = hasCatchAll ? parts.slice(0, -1) : parts;
-  let score = hasCatchAll ? -1 : 1;
-  for (const p of fixed) score += p.startsWith(':') ? 10 : 100;
-  return score;
-}
-
-export function matchPattern(pattern: string, path: string): Match | null {
-  const patternParts = split(pattern);
-  const pathParts = split(path);
-  const catchAll = patternParts[patternParts.length - 1] === '*';
-  const fixed = catchAll ? patternParts.length - 1 : patternParts.length;
-
-  if (catchAll ? pathParts.length < fixed : pathParts.length !== fixed)
-    return null;
-
-  const params: Record<string, string> = {};
-
-  for (let i = 0; i < fixed; i++) {
-    const p = patternParts[i];
-    const v = pathParts[i];
-    if (p.startsWith(':')) params[p.slice(1)] = v;
-    else if (p.toLowerCase() !== v.toLowerCase()) return null;
-  }
-
-  if (catchAll) params['*'] = pathParts.slice(fixed).join('/');
-
-  return { params };
-}
-
 function isRouteElement(child: unknown): child is ReactElement<RouteProps> {
   return isValidElement(child) && child.type === Route;
-}
-
-function split(path: string) {
-  const trimmed = path.replace(/^\/+|\/+$/g, '');
-  return trimmed === '' ? [] : trimmed.split('/');
 }
