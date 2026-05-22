@@ -472,7 +472,9 @@ without losing either the `<div>` container or the routing.
 
 ### Router as State (drop Component substrate)
 
-Router is currently a Component because it renders a wrapper `<Route>`. Once independent rendering lands, Router no longer needs to render anything - it's just URL state + match/resolve/anchor primitives. Convert to `extends State`. Consumers do `router = get(Router, false)! || Router.new()`, which is idempotent: first Route creates and registers as root singleton; subsequent Routes find it via `get(Router, false)`.
+Router is currently a Component because it renders a wrapper `<Route>`. Independent rendering has landed, so Router no longer needs to render anything - it's just URL state + match/resolve/anchor primitives. Convert to `extends State`. Consumers do `router = get(Router, false)! || Router.new()`, which is idempotent: first Route creates and registers as root singleton; subsequent Routes find it via `get(Router, false)`.
+
+**Caveat:** the field-initializer form above does not actually work today - `get(Router, false)` is an instruction (deferred resolution), so `||`/`??` operates on the instruction sentinel, not the lookup result. The auto-spawn fallback needs either a getter (`get router() { ... }` - costs context traversal per read) or a lifecycle hook that resolves once and caches. Probably worth confirming `Router.new()` registers correctly as a root singleton from outside a React-mounted context first.
 
 User can still provide explicitly via `<Provider for={Router}>` when they want a custom variant - the motivating use case being:
 - `HashRouter` / `MemoryRouter` subclasses (read URL from different sources)
