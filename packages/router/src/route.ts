@@ -37,12 +37,16 @@ export class Route extends Component {
    * Captured params from the current match. Empty during the transient frame
    * a navigation invalidates this Route's match before the Route unmounts.
    */
+  get match() {
+    return this.router.match(this.base, this.to);
+  }
+
   get matched(): boolean {
-    return !!this.router.match(this.base, this.to);
+    return !!this.match;
   }
 
   get params(): Record<string, string> {
-    return this.router.match(this.base, this.to)?.params ?? {};
+    return this.match?.params ?? {};
   }
 
   /** Directory-style anchor for relative navigation. */
