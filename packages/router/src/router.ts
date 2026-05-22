@@ -62,6 +62,6 @@ export class Router extends Component {
   }
 
   render(props: { children?: ReactNode } = {}) {
-    return createElement(Route, { to: '*' }, props.children);
+    return createElement(Route, {}, props.children);
   }
 }
