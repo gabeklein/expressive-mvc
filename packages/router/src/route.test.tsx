@@ -102,7 +102,7 @@ describe('Route', () => {
     expect(view.container.textContent).toBe('inline');
   });
 
-  it('matches when `to` is omitted (treated as empty pattern)', () => {
+  it('matches when `to` is omitted (defaults to catch-all)', () => {
     window.history.replaceState(null, '', '/');
     const view = render(
       <Router>
@@ -110,6 +110,38 @@ describe('Route', () => {
       </Router>
     );
     expect(view.container.textContent).toBe('Home');
+  });
+
+  it('bare Route matches non-root paths (catch-all default)', () => {
+    window.history.replaceState(null, '', '/anything/at/all');
+    const view = render(
+      <Router>
+        <Route as={Home} />
+      </Router>
+    );
+    expect(view.container.textContent).toBe('Home');
+  });
+
+  it('specific sibling beats bare-default Route on specificity', () => {
+    window.history.replaceState(null, '', '/about');
+    const view = render(
+      <Router>
+        <Route to="/about" as={() => <span>About</span>} />
+        <Route as={() => <span>Fallback</span>} />
+      </Router>
+    );
+    expect(view.container.textContent).toBe('About');
+  });
+
+  it('bare-default Route renders when no sibling matches', () => {
+    window.history.replaceState(null, '', '/nope');
+    const view = render(
+      <Router>
+        <Route to="/about" as={() => <span>About</span>} />
+        <Route as={() => <span>Fallback</span>} />
+      </Router>
+    );
+    expect(view.container.textContent).toBe('Fallback');
   });
 
   it('params returns empty when match invalidated by navigation', async () => {

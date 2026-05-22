@@ -26,12 +26,12 @@ function Tree() {
   return (
     <Router>
       <Route to="/*" as={RootLayout}>
-        <Route as={HomePage} />
+        <Route to="" as={HomePage} />
         <Route to="blog/*" as={BlogLayout}>
-          <Route as={BlogIndex} />
+          <Route to="" as={BlogIndex} />
           <Route to=":slug" as={BlogPost} />
         </Route>
-        <Route to="*" as={NotFound} />
+        <Route as={NotFound} />
       </Route>
     </Router>
   );

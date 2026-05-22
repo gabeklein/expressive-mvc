@@ -30,7 +30,7 @@ export class Route extends Component {
 
   as?: ComponentType<{ children?: ReactNode }> = undefined;
 
-  to: string = '';
+  to: string = '*';
 
   /**
    * Captured params from the current match. Empty during the transient frame
@@ -68,7 +68,7 @@ export class Route extends Component {
       if (!isValidElement(child) || child.type !== Route) return;
       hasRoute = true;
       const el = child as ReactElement<RouteElementProps>;
-      const m = router.match(base, el.props.to ?? '');
+      const m = router.match(base, el.props.to ?? '*');
       if (m && m.score > best) {
         winner = el;
         best = m.score;
