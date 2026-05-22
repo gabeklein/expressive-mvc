@@ -13,6 +13,12 @@ import { Router } from './router';
 import { Match, fullPattern, patternSegment, specificity } from './url';
 
 interface RouteProps {
+  children?: ReactNode;
+  /** Base path injected by parent resolver. Empty for top-level Routes. */
+  base?: string;
+}
+
+interface RouteElementProps {
   to?: string;
   base?: string;
 }
@@ -22,12 +28,11 @@ interface RouteProps {
 const CLONES = new WeakMap<ReactElement, Map<string, ReactElement>>();
 
 export class Route extends Component {
-  to = '';
-  /** Base path injected by parent resolver. Empty for top-level Routes. */
-  base = '';
+  router = get(Router);
+
   as?: ComponentType<{ children?: ReactNode }> = undefined;
 
-  router = get(Router);
+  to: string = '';
 
   /** Own portion of `to` that descendants compose against (catch-all stripped). */
   get segment(): string {
@@ -35,7 +40,8 @@ export class Route extends Component {
   }
 
   get match(): Match | null {
-    return this.router.match(fullPattern(this.base, this.to));
+    const { base = "" } = this.props as RouteProps;
+    return this.router.match(fullPattern(base, this.to));
   }
 
   /**
@@ -67,18 +73,18 @@ export class Route extends Component {
     this.router.goto(to, replace);
   }
 
-  render(props: { children?: ReactNode } = {}) {
+  render(props = {} as RouteProps) {
     const { router, as } = this;
-    const childBase = this.base + this.segment;
+    const childBase = (props.base ?? '') + this.segment;
 
-    let winner: ReactElement<RouteProps> | null = null;
+    let winner: ReactElement<RouteElementProps> | null = null;
     let hasRoute = false;
     let best = -Infinity;
 
     Children.forEach(props.children, (child) => {
       if (!isValidElement(child) || child.type !== Route) return;
       hasRoute = true;
-      const el = child as ReactElement<RouteProps>;
+      const el = child as ReactElement<RouteElementProps>;
       const pattern = fullPattern(childBase, el.props.to ?? '');
       if (router.match(pattern)) {
         const score = specificity(pattern);
@@ -95,7 +101,7 @@ export class Route extends Component {
 }
 
 function resolved(
-  winner: ReactElement<RouteProps> | null,
+  winner: ReactElement<RouteElementProps> | null,
   base: string
 ): ReactElement | null {
   if (!winner) return null;
