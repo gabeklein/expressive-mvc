@@ -44,7 +44,7 @@ Floor required to render two pages and navigate between them. Everything else is
 3. `Route extends Component` - `to` + `as` props, `match` getter, parent-driven resolution picks one winner to mount. No nesting, no layouts. ~25 lines.
 4. `Link extends Component` - click -> `goto`, respect modifiers + middle-click. Relative paths (`./x`, `../x`) resolve against the nearest Route. ~25 lines.
 5. `Redirect extends Component` - mounts, calls `goto`, renders null. Optional `if` prop. ~10 lines.
-6. **Default update-in-place, opt-in remount via `fresh`** - Routes reconcile their mounted page across same-pattern navigations by default. `<Route ... fresh />` keys the page by pathname for "fresh instance per URL" semantics. See "Lifecycle and data loading" below.
+6. **Default update-in-place** - Routes reconcile their mounted page across same-pattern navigations. Pages read `route.params` reactively. See "Lifecycle and data loading" below. (An opt-in remount mode is documented in "Nice-to-haves".)
 
 Roughly 150 LOC. Build an app on it, then iterate.
 
@@ -72,7 +72,7 @@ Each step independent, ships green tests before the next begins.
 | Access current route from anywhere | `get(Router)` / `get(Route)`                                               |
 | Per-route loading state            | `fallback` field + Suspense placement                                      |
 | Per-route error UI                 | `catch()`                                                                  |
-| Per-route data fetching            | page's choice: `set(async)` once + `<Route fresh />` for per-URL, or in-place updates reacting to `params`         |
+| Per-route data fetching            | page's choice: `set(async)` once on mount, or in-place updates reacting to `params`                              |
 | Downstream child collection        | `get(Route, true)` for resolver                                            |
 
 The router is therefore very small: a `Router` Component that owns location, a `Route` Component that matches a pattern and mounts a page Component, a `Link` Component for navigation. No external router runtime to write. No bespoke Suspense/error machinery.
@@ -101,37 +101,7 @@ class Post extends Component {
 
 **Route is data-loading-agnostic.** It only owns match + lifecycle + optional `fallback`. Async behavior, caching, prefetching, refetch-on-param-change, websocket subscriptions - all page concerns. The Expressive Component context makes prefetching and caches very ergonomic, so any async behavior in a page deserves deliberate authorship rather than implicit "remount-resets-everything" magic.
 
-### Opt-in remount via `fresh`
-
-For pages that *want* "fresh instance per URL" semantics - typically because they use one-shot `set(async)` for URL-scoped data - opt into remount on the Route:
-
-```tsx
-<Route to="/posts/:id" as={Post} fresh />
-```
-
-`fresh` adds `key={pathname}` to the mounted page, so any URL change within the matching pattern unmounts + remounts. `set(async)` re-resolves, `new()` re-runs, instance state starts fresh.
-
-```tsx
-class Post extends Component {
-  route = get(Route);
-  fallback = <Skeleton />;
-
-  // Runs once per mount. With `fresh`, that's once per URL.
-  post = set(async () =>
-    fetch(`/api/posts/${this.route.params.id}`).then(r => r.json())
-  );
-
-  catch(err: Error) {
-    this.fallback = <ErrorView error={err} />;
-  }
-
-  render() {
-    return <article>{this.post.body}</article>;
-  }
-}
-```
-
-Different-pattern navigations (e.g. `/posts/1` -> `/users/2`) always change the matched Route, so `as` is a different Component type and React mounts the new one. The `fresh` flag only affects same-pattern, different-params transitions.
+Different-pattern navigations (e.g. `/posts/1` -> `/users/2`) always change the matched Route, so `as` is a different Component type and React mounts the new one. Same-pattern navigations keep the instance. An opt-in to force per-URL remount is documented in "Nice-to-haves".
 
 ### Reactive params
 
@@ -141,7 +111,7 @@ Different-pattern navigations (e.g. `/posts/1` -> `/users/2`) always change the 
 
 **Render contract:** Routes never gate themselves on `this.match`. Gating is structural - the parent (Router, or a layout Route) selects the matching child via downstream resolution and mounts only the winner. A Route's render is only ever invoked when it matched.
 
-Implementation note: `Route.render` returns `<Page>{children}</Page>` by default. With `fresh`, it returns `<Page key={pathname}>{children}</Page>`. Tests should cover both modes: default update-in-place preserves the instance across same-pattern navigation; `fresh` produces a new instance per URL.
+Implementation note: `Route.render` returns `<Page>{children}</Page>` - no `key`, so React reconciles in place across same-pattern navigation. Tests cover that the instance persists across param changes and that `route.params` updates reactively.
 
 ## Public API
 
@@ -224,16 +194,9 @@ export class Route extends Component {
     this.router.goto(resolved, replace);
   }
 
-  fresh = false; // opt-in: remount on every URL change within the matching pattern
-
   // Only invoked when this Route is the winner.
-  render(props: { children?: ReactNode }) {
-    const Page = this.as;
-    return (
-      <Page key={this.fresh ? this.router.path : undefined}>
-        {props.children}
-      </Page>
-    );
+  render(props: { children?: ReactNode } = {}) {
+    return this.as ? createElement(this.as, {}, props.children) : props.children;
   }
 }
 ```
@@ -446,7 +409,6 @@ Cases to cover:
 - Index route: `<Route as={X} />` matches parent base exactly, not sub-paths.
 - Catch-all: `to="*"` mounts when no sibling matches.
 - Update-in-place default: navigating to a new param value within the same pattern preserves the page instance; `route.params` reflects new values reactively.
-- `fresh` opt-in: with `<Route fresh />`, same-pattern param change unmounts and remounts the page; `set(async)` re-resolves.
 - Layout: `to="/x/*"` matches prefix, mounts `as` with `children` set to the resolved child Route mount; doesn't mount when out of prefix.
 - Link: pushes history, prevents default, respects modifier keys, respects middle-click.
 - Redirect: fires `goto` on mount, renders null, respects `replace`, `if={false}` suppresses navigation, relative paths resolve through nearest Route.
@@ -490,6 +452,27 @@ This trades JSX brevity for class-as-destination typing. Defer until either (a) 
 ## Nice-to-haves
 
 Documented shapes for post-MVP features. Captured here so they don't get re-litigated later.
+
+### `Route` per-URL remount opt-in
+
+Default is update-in-place (instance persists across same-pattern navigation). For pages that need "fresh instance per URL" semantics - typically because they use one-shot `set(async)` for URL-scoped data, or want side-effects (`new()`) to re-run per URL - an opt-in flag would force remount:
+
+```tsx
+<Route to="/posts/:id" as={Post} fresh />
+```
+
+Implementation: `Route.render` keys the mounted page on `this.router.path` when the flag is set, so React unmounts + remounts on every URL change within the matching pattern.
+
+```ts
+fresh = false;
+
+render(props: { children?: ReactNode } = {}) {
+  if (!this.as) return props.children;
+  return createElement(this.as, { key: this.fresh ? this.router.path : undefined }, props.children);
+}
+```
+
+Only affects same-pattern, different-params transitions. Different-pattern navigations remount naturally (different `as` Component).
 
 ### `Link.onClick` (async pre-navigation hook)
 
@@ -554,9 +537,9 @@ Decisions worth recording so they don't get relitigated:
 
 3. **`Link` style API.** Just `className`, or also `activeClassName` via a `NavLink` subclass? Defer to v1.1.
 4. **Programmatic navigation outside Components.** Currently requires `Router.get()` from a Component context. Should there be a module-level `goto()` that finds the active Router? Probably no - keep router instance-scoped.
-5. **`fresh` keying granularity.** When `fresh` is set, key on full pathname vs only on the params relevant to this Route's pattern? Pathname is simpler and almost always equivalent; revisit if a use case needs finer control (e.g. ignoring query for keying purposes).
+5. **Remount keying granularity (if `fresh`-style opt-in lands).** When opting in, key on full pathname vs only on the params relevant to this Route's pattern? Pathname is simpler and almost always equivalent; revisit if a use case needs finer control (e.g. ignoring query for keying purposes).
 6. **Typed `to` strings.** `<Link to="/posts/:id" />` could grow a template-literal type extracting required params. Defer; nice-to-have, not blocking.
-7. **Structural remount-boundaries.** `fresh` covers leaf-level "remount per URL." If a use case appears for "this *subtree* is a remount unit, including ancestors" (e.g. resetting a whole nested layout on tab switch), a structural form - perhaps an anonymous Route layer or a `fresh` flag on a layout - could express it. Not needed today.
+7. **Structural remount-boundaries.** Once leaf-level "remount per URL" lands (see "Nice-to-haves"), a structural form may follow for "this *subtree* is a remount unit, including ancestors" (e.g. resetting a whole nested layout on tab switch). Could be expressed as an anonymous Route layer or as the same opt-in lifted onto a layout. Not needed today.
 
 ## Long-term home
 
