@@ -44,6 +44,18 @@ describe('Router', () => {
     expect(router.path).toBe('/elsewhere');
   });
 
+  it('notices external history.pushState', () => {
+    const { router } = capture();
+    act(() => window.history.pushState(null, '', '/external'));
+    expect(router.path).toBe('/external');
+  });
+
+  it('notices external history.replaceState', () => {
+    const { router } = capture();
+    act(() => window.history.replaceState(null, '', '/replaced-external'));
+    expect(router.path).toBe('/replaced-external');
+  });
+
   it('removes popstate listener on unmount', () => {
     const remove = vi.spyOn(window, 'removeEventListener');
     const { view } = capture();
