@@ -1,17 +1,25 @@
 import { Component, get } from '@expressive/react';
 import { ComponentType, ReactNode, createElement } from 'react';
 
-import { Match, Router, matchPattern } from './router';
+import { Children, isValidElement } from 'react';
+
+import { Match, Router, fullPattern, matchPattern, patternSegment, resolveChild } from './router';
 
 export class Route extends Component {
   to = '';
+  /** Base path injected by parent resolver. Empty for top-level Routes. */
+  base = '';
   as?: ComponentType<{ children?: ReactNode }> = undefined;
 
   router = get(Router);
-  parent = get(Route, false);
+
+  /** Own portion of `to` that descendants compose against (catch-all stripped). */
+  get segment(): string {
+    return patternSegment(this.to);
+  }
 
   get match(): Match | null {
-    return matchPattern(this.to, this.router.path);
+    return matchPattern(fullPattern(this.base, this.to), this.router.path);
   }
 
   /**
@@ -44,6 +52,17 @@ export class Route extends Component {
   }
 
   render(props: { children?: ReactNode } = {}) {
-    return this.as ? createElement(this.as, {}, props.children) : props.children;
+    const children = hasRouteChild(props.children)
+      ? resolveChild(props.children, this.base + this.segment, this.router.path)
+      : props.children;
+    return this.as ? createElement(this.as, {}, children) : children;
   }
+}
+
+function hasRouteChild(children: ReactNode): boolean {
+  let found = false;
+  Children.forEach(children, (c) => {
+    if (isValidElement(c) && c.type === Route) found = true;
+  });
+  return found;
 }
