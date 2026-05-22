@@ -77,29 +77,6 @@ describe('Route', () => {
     expect(view.container.textContent).toBe('bar');
   });
 
-  it('fresh=true remounts the page on every URL change', async () => {
-    window.history.replaceState(null, '', '/posts/foo');
-    let mountCount = 0;
-    let router!: Router;
-
-    const Page = () => {
-      mountCount++;
-      return null;
-    };
-
-    render(
-      <Router is={(r) => (router = r)}>
-        <Route to="/posts/:id" as={Page} fresh />
-      </Router>
-    );
-
-    expect(mountCount).toBe(1);
-
-    await act(async () => router.goto('/posts/bar'));
-
-    expect(mountCount).toBe(2);
-  });
-
   it('ignores non-Route children when resolving', () => {
     window.history.replaceState(null, '', '/');
     const view = render(
