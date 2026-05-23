@@ -16,10 +16,10 @@ export type StateProps<T extends State> = {
   [K in Exclude<keyof T, keyof Component>]?: T[K];
 };
 
-type RenderProps<T> = T extends { render(props: infer P): any }
-  ? {} extends P
-  ? { children?: React.ReactNode }
-  : P
+type RenderProps<T> = [T] extends [(props: infer P) => any]
+  ? [keyof NonNullable<P>] extends [never]
+    ? { children?: React.ReactNode }
+    : NonNullable<P>
   : { children?: React.ReactNode };
 
 interface ComponentProps<T extends Component> {
@@ -32,7 +32,7 @@ interface ComponentProps<T extends Component> {
 
 export type Props<T extends Component> = StateProps<T> &
   ComponentProps<T> &
-  RenderProps<T>;
+  RenderProps<T['render']>;
 
 declare module '@expressive/state' {
   namespace State {
@@ -71,10 +71,20 @@ export class Component extends State {
 
   constructor(nextProps: any, ...rest: any[]) {
     const { is, ...props } = nextProps;
-    rest = rest.filter((x) => !(x instanceof Context));
-    super(props, rest, is && ((x) => void is(x)), () => {
-      Object.defineProperty(this, 'props', { enumerable: false });
-    });
+    const seen = {} as Record<string, undefined>;
+    const merge = (props: {}) => {
+      for (const k in props) seen[k] = undefined;
+      return { ...seen, ...props };
+    };
+
+    super(
+      merge(props),
+      rest.filter((x) => !(x instanceof Context)),
+      is && ((x) => void is(x)),
+      () => {
+        Object.defineProperty(this, 'props', { enumerable: false });
+      }
+    );
 
     const existing = PENDING.get(nextProps);
     if (existing) return existing;
@@ -85,7 +95,7 @@ export class Component extends State {
 
     this.props = nextProps;
     this.set('props', () => {
-      this.set(this.props as {});
+      this.set(merge(this.props));
     });
   }
 

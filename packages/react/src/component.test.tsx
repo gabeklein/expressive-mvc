@@ -344,6 +344,23 @@ describe('render method', () => {
     expect(screen.queryByText('Hello')).toBe(null);
   });
 
+  it('will accept all-optional render props', () => {
+    type ControlProps = {
+      base?: string;
+      children?: React.ReactNode;
+    };
+
+    class Control extends Component {
+      render(props: ControlProps = {}) {
+        return <>{props.base || props.children}</>;
+      }
+    }
+
+    const screen = render(<Control base="home" />);
+
+    screen.getByText('home');
+  });
+
   it('will handle children if managed by this', () => {
     class Control extends Component {
       children = set<React.ReactNode>();
@@ -535,6 +552,24 @@ describe('state props on rerender', () => {
     element.rerender(<Control value="second" />);
 
     screen.getByText('second');
+  });
+
+  it('will clear omitted instance value', () => {
+    class Control extends Component {
+      value?: string = 'initial';
+
+      render() {
+        return <span>{this.value || 'empty'}</span>;
+      }
+    }
+
+    const element = render(<Control value="first" />);
+
+    screen.getByText('first');
+
+    element.rerender(<Control />);
+
+    screen.getByText('empty');
   });
 });
 
