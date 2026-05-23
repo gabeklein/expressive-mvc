@@ -73,14 +73,18 @@ export class Component extends State {
     const { is, ...props } = nextProps;
     const seen = {} as Record<string, undefined>;
     const merge = (props: {}) => {
-      for (const key in props) seen[key] = undefined;
+      for (const k in props) seen[k] = undefined;
       return { ...seen, ...props };
     };
 
-    rest = rest.filter((x) => !(x instanceof Context));
-    super(merge(props), rest, is && ((x) => void is(x)), () => {
-      Object.defineProperty(this, 'props', { enumerable: false });
-    });
+    super(
+      merge(props),
+      rest.filter((x) => !(x instanceof Context)),
+      is && ((x) => void is(x)),
+      () => {
+        Object.defineProperty(this, 'props', { enumerable: false });
+      }
+    );
 
     const existing = PENDING.get(nextProps);
     if (existing) return existing;
@@ -91,7 +95,7 @@ export class Component extends State {
 
     this.props = nextProps;
     this.set('props', () => {
-      this.set(merge(this.props) as {});
+      this.set(merge(this.props));
     });
   }
 
