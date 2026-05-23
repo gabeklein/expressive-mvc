@@ -226,6 +226,22 @@ describe('props property', () => {
     screen.getByText('bar');
   });
 
+  it('will seed init-only set value from props', () => {
+    class Control extends Component {
+      readonly value = set<string>('', false);
+
+      render() {
+        return <>{this.value}</>;
+      }
+    }
+
+    const { rerender } = render(<Control value="foo" />);
+    screen.getByText('foo');
+
+    expect(() => rerender(<Control value="foo" />)).not.toThrow();
+    expect(() => rerender(<Control value="bar" />)).toThrow();
+  });
+
   it('will be observable', async () => {
     const didUpdate = vi.fn();
 

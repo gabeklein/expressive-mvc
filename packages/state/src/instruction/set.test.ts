@@ -43,6 +43,53 @@ describe('property descriptors', () => {
     expect(test.value).toBe('bar');
   });
 
+  it('will be read-only after init with value', () => {
+    class Test extends State {
+      value = set('foo', false);
+    }
+
+    const test = Test.new({ value: 'bar' });
+
+    expect(test.value).toBe('bar');
+    expect(() => {
+      test.value = 'baz';
+    }).toThrow(/read-only/);
+  });
+
+  it('will allow same value after init with read-only value', () => {
+    class Test extends State {
+      value = set('foo', false);
+    }
+
+    const test = Test.new({ value: 'bar' });
+
+    expect(() => {
+      test.value = 'bar';
+    }).not.toThrow();
+    expect(test.value).toBe('bar');
+  });
+
+  it('will be read-only after init with placeholder', () => {
+    class Test extends State {
+      value = set<string>(undefined, false);
+    }
+
+    const test = Test.new({ value: 'foo' });
+
+    expect(test.value).toBe('foo');
+    expect(() => {
+      test.value = 'bar';
+    }).toThrow(/read-only/);
+  });
+
+  it('will throw if init-only placeholder is not assigned', () => {
+    class Test extends State {
+      value = set<string>(undefined, false);
+    }
+
+    expect(() => Test.new()).toThrow(/required/);
+  });
+
   it('will be read-only with factory', () => {
     class Test extends State {
       value = set(() => 'foo');

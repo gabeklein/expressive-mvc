@@ -1,4 +1,4 @@
-import { watch, unbind, set } from '@expressive/state';
+import { watch, unbind, set, observer, touch } from '@expressive/state';
 import React, { createElement, Suspense } from 'react';
 import { Context, Layers } from './context';
 import { useHook } from './runtime';
@@ -76,11 +76,10 @@ export class Component extends State {
       for (const key in props) seen[key] = undefined;
       return { ...seen, ...props };
     };
+    const values = ({ is, ...props }: any) => merge(props);
 
     rest = rest.filter((x) => !(x instanceof Context));
-    super(merge(props), rest, is && ((x) => void is(x)), () => {
-      Object.defineProperty(this, 'props', { enumerable: false });
-    });
+    super(merge(props), rest, is && ((x) => void is(x)));
 
     const existing = PENDING.get(nextProps);
     if (existing) return existing;
@@ -89,9 +88,22 @@ export class Component extends State {
     for (const key of INTERNAL)
       Object.defineProperty(this, key, { configurable: true, writable: true });
 
-    this.props = nextProps;
-    this.set('props', () => {
-      this.set(merge(this.props) as {});
+    let current = nextProps;
+
+    Object.defineProperty(this, 'props', {
+      configurable: true,
+      enumerable: false,
+      get(this: Component) {
+        return touch(this, 'props', current);
+      },
+      set(this: Component, next) {
+        current = next;
+
+        if (observer(this)?.ready) {
+          this.set(values(next) as {});
+          this.set('props');
+        }
+      }
     });
   }
 

@@ -40,6 +40,28 @@ class MyState extends State {
 
 Non-enumerable but writable. Unlike `name = 'default'`, excluded from snapshots and `ref(this)`.
 
+Pass `false` as the second argument for init-only assignment:
+
+```ts
+class Route extends Component {
+  readonly to = set<string>('', false);
+}
+```
+
+The property starts with the default value and may be overridden by constructor/JSX init data. After activation, changes throw read-only. Assigning the same value is allowed as a no-op so framework prop refreshes can replay stable values.
+
+Use an explicit generic when a literal default should widen, e.g. `set<string>('', false)`.
+
+### Init-Only Placeholder
+
+```ts
+class MyState extends State {
+  token = set<string>(undefined, false);
+}
+```
+
+Non-enumerable. Must be assigned by constructor/init data before activation completes; otherwise activation throws. After activation, changes throw read-only.
+
 ### Default Value with Callback
 
 ```ts
@@ -111,7 +133,9 @@ Do not pass a raw Promise to `set()`. Use a factory instead (`set(() => promise)
 
 ```ts
 function set<T>(value?: undefined, onUpdate?: set.Callback<T>): T;
+function set<T>(value: undefined, writable: false): T;
 function set<T>(value: T, onUpdate?: set.Callback<T>): T;
+function set<T>(value: T, writable: false): T;
 function set<T>(factory: () => T | Promise<T>, required?: true): T;
 function set<T>(factory: () => T | Promise<T>, required: boolean): T | undefined;
 function set<T>(factory: () => T | Promise<T>, onUpdate: set.Callback<T>): T;

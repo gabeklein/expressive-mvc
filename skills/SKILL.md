@@ -68,6 +68,8 @@ Field initializers and helper values that configure reactive behavior. Each has 
 | --------------------- | -------------------------------------------------------------- |
 | `set<T>()`            | Placeholder. Suspends on access until assigned.                |
 | `set(value)`          | Default value. Non-enumerable, writable.                       |
+| `set(value, false)`   | Default value. Init-overridable, then read-only.                |
+| `set<T>(undefined, false)` | Required init-only placeholder. Read-only after init.    |
 | `set(() => v)`        | Lazy factory. Read-only. If async, suspends.                   |
 | `set(() => v, false)` | Lazy factory. Returns `undefined` while pending (no suspense). |
 | `set(() => v, true)`  | Eager factory. Runs immediately on init.                       |

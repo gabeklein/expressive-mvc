@@ -26,6 +26,19 @@ declare namespace set {
 function set<T>(value?: undefined, onUpdate?: set.Callback<T>): T;
 
 /**
+ * Set a property as an init-only placeholder.
+ *
+ * Property must be assigned before activation completes. Runtime assignment
+ * after activation throws read-only.
+ *
+ * Non-enumerable.
+ *
+ * @param value - Undefined placeholder.
+ * @param writable - Pass `false` to disallow runtime writes.
+ */
+function set<T>(value: undefined, writable: false): T;
+
+/**
  * Set property with an async factory function.
  * If required is not defined, factory runs lazily on first access.
  * If async, or returns a promise, suspense is thrown upon access until resolved.
@@ -69,6 +82,17 @@ function set<T>(factory: () => T | Promise<T>, onUpdate: set.Callback<T>): T;
  * @param value - Starting value for property.
  * @param onUpdate - Optional callback run when property is set.
  */
+function set<T>(value: T extends Promise<any> ? never : T, writable: false): T;
+
+/**
+ * Set a property with a non-function, non-Promise value.
+ *
+ * Non-enumerable but writable. Unlike plain assignment (`= value`), this
+ * property is excluded from snapshots and `ref(this)`.
+ *
+ * @param value - Starting value for property.
+ * @param onUpdate - Optional callback run when property is set.
+ */
 // TODO: if onUpdate is not defined, should this have behavior unique to simple assignment?
 // I'm thinking default behavior should be to assign value directly to property, without triggering any additional updates.
 // All this requires is a default callback which throws true, silent updates are already implemented.
@@ -90,6 +114,8 @@ function set<T = any>(value?: unknown, argument?: unknown): any {
     };
 
     let computed = false;
+    const initOnly = argument === false && typeof value != 'function';
+    let assigned = value !== undefined;
 
     // One-shot factory
     if (typeof value == 'function') {
@@ -161,9 +187,26 @@ function set<T = any>(value?: unknown, argument?: unknown): any {
       };
     } else if (!computed)
       config.set = () => {
+        assigned = true;
+
+        if (initOnly) return;
+
         config.get = undefined;
         config.set = undefined;
       };
+
+    if (initOnly)
+      listener(subject, () => {
+        if (!assigned)
+          throw new Error(`${subject}.${key} is required.`);
+
+        config.set = (next, previous) => {
+          if (Object.is(next, previous)) return previous;
+          throw new Error(`${subject}.${key} is read-only.`);
+        };
+
+        return null;
+      });
 
     return config;
   });
