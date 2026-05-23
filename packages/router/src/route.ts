@@ -1,4 +1,4 @@
-import { Component, Context, get } from '@expressive/react';
+import { Component, get } from '@expressive/react';
 import {
   Children,
   ComponentType,
@@ -22,9 +22,9 @@ export class Route extends Component {
 
   to: string = '*';
 
-  /** Nearest mounted Route ancestor, if any. Resolved via React context. */
+  /** Nearest mounted Route ancestor, if any. */
   get parent(): Route | undefined {
-    return Context.get(this).parent?.get(Route, false);
+    return this.get(Route, false);
   }
 
   /** Base path inherited from parent Route (empty at the root). */
