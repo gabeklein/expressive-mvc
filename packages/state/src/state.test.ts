@@ -686,6 +686,38 @@ describe('get method', () => {
       expect(child.get(Foo, false)).toBeUndefined();
     });
 
+    it('will skip self when looking up own type', () => {
+      const outer = new Foo();
+      const inner = new Foo();
+
+      new Context(outer).push(inner);
+
+      expect(inner.get(Foo)).toBe(outer);
+      expect(inner.get(Foo, false)).toBe(outer);
+    });
+
+    it('will return undefined when no upstream of own type', () => {
+      const foo = new Foo();
+
+      new Context(foo);
+
+      expect(foo.get(Foo, false)).toBeUndefined();
+      expect(() => foo.get(Foo)).toThrow('Could not find Foo in context.');
+    });
+
+    it('will skip self in callback subscription for own type', () => {
+      const outer = new Foo();
+      const inner = new Foo();
+
+      new Context(outer).push(inner);
+
+      const callback = vi.fn();
+      inner.get(Foo, callback);
+
+      expect(callback).toHaveBeenCalledTimes(1);
+      expect(callback).toHaveBeenCalledWith(outer, false);
+    });
+
     it('will subscribe with callback', () => {
       const parent = new Foo();
       const ctx = new Context(parent);

@@ -98,10 +98,19 @@ class Context {
     downstream?: boolean,
   ): () => void;
 
+  /** Lookup excluding a specific instance (used by State.prototype.get for upstream-of-self semantics). */
+  public get<T extends State>(
+    Type: State.Extends<T>,
+    arg: boolean | Expect<T> | undefined,
+    downstream: boolean | undefined,
+    skip: State,
+  ): T | undefined | (() => void);
+
   public get<T extends State>(
     Type: State.Extends<T>,
     arg?: boolean | Expect<T>,
     downstream?: boolean,
+    skip?: State,
   ) {
     let found: T | null | undefined;
     let priority = false;
@@ -111,7 +120,7 @@ class Context {
       if (!entries) continue;
 
       for (const [state, explicit] of entries) {
-        if (found === state) continue;
+        if (state === skip || found === state) continue;
         if (!found || (explicit && !priority)) {
           found = state as T;
           priority = explicit;
@@ -126,7 +135,7 @@ class Context {
             `Did find ${Type} in context, but multiple were defined.`,
           );
       }
-      break;
+      if (found !== undefined) break;
     }
 
     if (typeof arg === "function") {
@@ -135,7 +144,7 @@ class Context {
       if (downstream !== false) {
         this.traverse((ctx) => {
           const has = ctx.provide.get(Type);
-          if (has) for (const x of has) arg(x[0] as T, true);
+          if (has) for (const x of has) if (x[0] !== skip) arg(x[0] as T, true);
           return has !== undefined;
         });
       }
