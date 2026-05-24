@@ -129,7 +129,9 @@ class ChatRoom extends Component {
 }
 ```
 
-External code can hold a reference via `is` prop: `<ChatRoom is={c => controller = c} />`.
+External code can hold a reference via `is` prop (construction-time, fires once): `<ChatRoom is={c => controller = c} />`.
+
+Standard React `ref` also works - Component is a real class component, so `ref` receives the instance after mount and clears to `null` on unmount: `<ChatRoom ref={chatRef} />`. Use `is` when you need the instance during construction; use `ref` for post-mount imperative access following React conventions.
 
 ## Props
 
@@ -168,6 +170,7 @@ All props (state + render + special) available on `this.props`.
 ### Special Props
 
 - `is` - callback receiving instance on creation: `<Counter is={c => ref = c} />`
+- `ref` - standard React ref (object or callback), attached after mount, cleared on unmount
 - `fallback` - ReactNode for suspense/error UI, overrides instance property
 
 ## Children and Context

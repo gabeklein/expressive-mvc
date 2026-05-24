@@ -63,6 +63,37 @@ it('will call is method on creation', () => {
   act(screen.unmount);
 });
 
+describe('ref prop', () => {
+  it('will populate ref object with instance', () => {
+    class Control extends Component {
+      foo = 'bar';
+    }
+
+    const ref = React.createRef<Control>();
+    const screen = render(<Control ref={ref} />);
+
+    expect(ref.current).toBeInstanceOf(Control);
+    expect(ref.current!.foo).toBe('bar');
+
+    act(screen.unmount);
+    expect(ref.current).toBe(null);
+  });
+
+  it('will invoke callback ref with instance', () => {
+    class Control extends Component {}
+
+    const cb = vi.fn();
+    const screen = render(<Control ref={cb} />);
+
+    expect(cb).toBeCalledTimes(1);
+    expect(cb.mock.calls[0][0]).toBeInstanceOf(Control);
+
+    act(screen.unmount);
+    expect(cb).toBeCalledTimes(2);
+    expect(cb.mock.calls[1][0]).toBe(null);
+  });
+});
+
 describe('new method', () => {
   it('will call if exists', () => {
     const didCreate = mock();
