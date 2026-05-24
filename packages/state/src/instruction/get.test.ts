@@ -104,6 +104,64 @@ describe('fetch mode', () => {
     );
   });
 
+  it('will skip self when looking up own type', () => {
+    class Node extends State {
+      parent = get(Node, false);
+    }
+
+    const outer = new Node();
+    const inner = new Node();
+
+    new Context(outer).push(inner);
+
+    expect(inner.parent).toBe(outer);
+    expect(outer.parent).toBeUndefined();
+  });
+
+  it('will not assign self to ancestor of same type', () => {
+    class Node extends State {
+      parent = get(Node, false);
+    }
+
+    const outer = new Node();
+    const inner = new Node();
+
+    new Context(outer).push(inner);
+
+    expect(outer.parent).toBeUndefined();
+  });
+
+  it('will not assign descendant of own type to parent field', () => {
+    class Node extends State {
+      parent = get(Node, false);
+    }
+
+    const root = new Node();
+    const ctx = new Context(root);
+    const child = new Node();
+    ctx.push(child);
+
+    expect(child.parent).toBe(root);
+    expect(root.parent).toBeUndefined();
+
+    const grandchild = new Node();
+    new Context(ctx).push(grandchild);
+
+    expect(grandchild.parent).toBe(root);
+    expect(child.parent).toBe(root);
+    expect(root.parent).toBeUndefined();
+  });
+
+  it('will throw on own type when required and no upstream', () => {
+    class Node extends State {
+      parent = get(Node);
+    }
+
+    const attempt = () => new Context(new Node());
+
+    expect(attempt).toThrow(/Required Node not found in context for [\w-]+\./);
+  });
+
   it('will return undefined if required is false', () => {
     class MaybeParent extends State {}
     class StandAlone extends State {
