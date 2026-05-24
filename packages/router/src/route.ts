@@ -16,7 +16,7 @@ interface RouteElementProps {
 }
 
 export class Route extends Component {
-  router: Router = set(() => this.get(Router, false) || Router.new());
+  router = set(() => this.get(Router, false) || new Router());
 
   as?: ComponentType<{ children?: ReactNode }> = undefined;
 
