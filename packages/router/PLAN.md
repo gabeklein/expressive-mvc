@@ -1,4 +1,4 @@
-# `@expressive/router` - Design & Implementation Plan
+# `@expressive/router` - Design & Status
 
 > Portable plan. Intended initial home: `expressive-state` (mvc) monorepo as `packages/router`. Long-term home: `expressive-ui` (alongside Form, Dialog, etc.). Nothing in the design assumes either location.
 
@@ -27,40 +27,47 @@ function App() {
         <Route as={BlogIndex} />
         <Route to=":slug" as={BlogPost} />
       </Route>
-      <Route to="*" as={NotFound} />
+      <Route as={NotFound} />
     </Router>
   );
 }
 ```
 
-Routes are declarative. Page Components (`Home`, `Post`, etc.) are plain Components defined separately - reusable, testable in isolation, no Route inheritance required. The Route tree is glanceable in one place.
+Routes are declarative. Page Components are plain Components defined separately - reusable, testable in isolation, no Route inheritance required. The Route tree is glanceable in one place.
 
-## MVP cut
+## Current status
 
-Floor required to render two pages and navigate between them. Everything else is incremental.
+The MVP and PLAN iteration steps 2-4 are implemented. The remaining work is the State-substrate conversion, the documented iteration steps 1 + 5-9, and a handful of nits.
 
-1. `matchPattern(pattern, path)` - literal segments + `:param` only. ~15 lines.
-2. `Router extends Component` - `path` field, popstate listener, `goto(to)`. No search yet. ~25 lines.
-3. `Route extends Component` - `to` + `as` props, `match` getter, parent-driven resolution picks one winner to mount. No nesting, no layouts. ~25 lines.
-4. `Link extends Component` - click -> `goto`, respect modifiers + middle-click. Relative paths (`./x`, `../x`) resolve against the nearest Route. ~25 lines.
-5. `Redirect extends Component` - mounts, calls `goto`, renders null. Optional `if` prop. ~10 lines.
-6. **Default update-in-place** - Routes reconcile their mounted page across same-pattern navigations. Pages read `route.params` reactively. See "Lifecycle and data loading" below. (An opt-in remount mode is documented in "Nice-to-haves".)
+### Landed
 
-Roughly 150 LOC. Build an app on it, then iterate.
+- **Matcher** (`url.ts`): literal segments, `:param`, trailing `*` catch-all, trailing-slash normalization, case-insensitive literals. Returns `{ params, score }` for specificity ordering.
+- **Specificity**: literal=100, `:param`=10, catch-all=-1, pure-literal bonus +1. Ties at same specificity break by document order (first matching wins in the inline resolver loop).
+- **Router** (`router.ts`, `extends Component`): `path` field, popstate listener, monkey-patches `history.pushState`/`replaceState` so programmatic navigation outside `goto` still syncs. Owns URL primitives: `match(base, to)` (reactive on `path`), `anchor(route)`, `resolve(route, url)`, `segment(to)`, `goto(to, replace?)` (absolute-only, throws on relative). Renders a default wrapping `<Route to="*">` so children always have a Route in context.
+- **Route** (`route.ts`): `to`, `as`, `parent = get(Route, false)`, derived `base`, `match`, `matched`, `params`, `anchor`, `resolve`, `goto`. Default `to='*'` (catch-all layout) - leaf-vs-layout default is contextual. Index routes are `to=''`. Independent rendering (no `cloneElement`, no `base` prop, no clones cache). Inline lexical-children outlet: when Route has `<Route>` children, the parent picks the most-specific match among them and passes it as `children` to `as`. Routes without lexical Route children mount independently in place.
+- **Link** (`link.ts`): `to`, `replace`, `href` getter (resolved absolute path), modifier/middle-click bailout. Requires Route in context (always available because Router provides one).
+- **Redirect** (`redirect.ts`): fires `goto` in `new()` (StrictMode-safe). `when` prop gates whether navigation fires on mount.
+- **Update-in-place**: Route renders `<Page>{children}</Page>` with no `key`, so same-pattern navigation reconciles in place; `params` updates reactively.
+- **Acceptance tests** (`acceptance.test.tsx`) cover the nested file-routing tree: nested layouts (index + dynamic + catch-all sibling), `params` capture, instance preservation across same-pattern navigation.
 
-## Iteration order toward parity
+### Pending - structural
 
-Each step independent, ships green tests before the next begins.
+- **Router as State** (drop Component substrate). Router no longer renders anything user-visible apart from the wrapping default Route. Once independent rendering landed, that wrapper exists only to ensure `get(Route)` succeeds for `Link`/`Redirect`. Converting Router to `extends State` removes the wrapper and lets Routes self-mount under Router context, with Router resolved via auto-spawn singleton. See "Router-as-State" below for the caveat about field-init `||`/`??` not working against `get(Router, false)`.
 
-1. **Search params** - `search` field on Router (raw string), `query` getter returns `URLSearchParams`. Consumers: `const { query } = Router.get()`.
-2. **Nested routes / layouts** - `parent = get(Route, false)`, `base` getter, layout pattern (`to="/x/*"` + children Routes resolved into `as`'s `children` prop).
-3. **Index route** - `<Route as={X} />` with no `to` matches parent's base path exactly.
-4. **404 / catch-all** - `to="*"` falls through when no sibling claims the path.
-5. **`redirect()` / `notFound()` sentinels** - throw, caught by nearest `Route.catch`.
-6. **`NavLink`** - subclass with active-class support.
-7. **Scroll restoration** - one Component subclass listening for navigation.
-8. **Hash / memory Router** - alternate `Router` subclasses.
-9. **`Link.onClick`** - user-supplied click handler that runs before navigation. Can be async; awaited result of `false` (or `e.preventDefault()`) cancels. Link exposes `pending: boolean` for the duration. See "Nice-to-haves" for shape.
+### Pending - iteration
+
+In rough order of priority:
+
+1. **Search params**: `search` field on Router (raw string), `query` getter returns `URLSearchParams`. Sync in the same listener that syncs `path`.
+2. **`redirect()` / `notFound()` sentinels**: throw, caught by nearest `Route.catch`. Sets fallback or calls `goto`.
+3. **`NavLink`**: subclass of `Link` with active-class support.
+4. **Scroll restoration**: one Component subclass listening for navigation events.
+5. **`HashRouter` / `MemoryRouter`**: alternate Router subclasses (read URL from different sources). The Router-as-State conversion makes these cleaner.
+6. **`Link.onClick`** (async pre-navigation hook): user-supplied handler that can cancel; exposes `pending: boolean` for in-flight state. Detailed sketch under "Nice-to-haves".
+
+### Pending - nits
+
+- **`Route.params` reactive identity**: current implementation returns a fresh `match?.params ?? {}` on every read; downstream `useEffect` deps or `===` checks will see false positives. Memoize per match.
 
 ## Why Component is the substrate
 
@@ -72,18 +79,16 @@ Each step independent, ships green tests before the next begins.
 | Access current route from anywhere | `get(Router)` / `get(Route)`                                               |
 | Per-route loading state            | `fallback` field + Suspense placement                                      |
 | Per-route error UI                 | `catch()`                                                                  |
-| Per-route data fetching            | page's choice: `set(async)` once on mount, or in-place updates reacting to `params`                              |
+| Per-route data fetching            | page's choice: `set(async)` once on mount, or in-place updates reacting to `params` |
 | Downstream child collection        | `get(Route, true)` for resolver                                            |
 
-The router is therefore very small: a `Router` Component that owns location, a `Route` Component that matches a pattern and mounts a page Component, a `Link` Component for navigation. No external router runtime to write. No bespoke Suspense/error machinery.
-
-Component is React-coupled (Suspense + ErrorBoundary integration). Making it renderer-agnostic is a separate, harder problem and not on the router's critical path. The router depends on Component as-is; if Component later becomes renderer-agnostic, the router inherits that for free.
+Component is React-coupled (Suspense + ErrorBoundary integration). Making it renderer-agnostic is a separate, harder problem and not on the router's critical path.
 
 ## Lifecycle and data loading
 
 **Default: update-in-place, React-idiomatic.**
 
-When the URL changes within the same matched Route (e.g. `/posts/foo` -> `/posts/bar`), the Route does **not** unmount its page Component. React reconciles in place: same Component type, new props, `params` reactive on access. Ephemeral UI state (scroll, expanded sections, partially-filled forms), running animations, and live subscriptions all survive. This matches React idioms and what React Router devs expect.
+When the URL changes within the same matched Route (e.g. `/posts/foo` -> `/posts/bar`), the Route does **not** unmount its page Component. React reconciles in place: same Component type, new props, `params` reactive on access. Ephemeral UI state (scroll, expanded sections, partially-filled forms), running animations, and live subscriptions all survive.
 
 Pages can read params reactively and decide for themselves how (or whether) to respond:
 
@@ -91,134 +96,61 @@ Pages can read params reactively and decide for themselves how (or whether) to r
 class Post extends Component {
   route = get(Route);
 
-  // Note: params is reactive. Reading route.params.id makes this Component
-  // re-render when the path changes, but the instance persists.
   render() {
     return <article>id: {this.route.params.id}</article>;
   }
 }
 ```
 
-**Route is data-loading-agnostic.** It only owns match + lifecycle + optional `fallback`. Async behavior, caching, prefetching, refetch-on-param-change, websocket subscriptions - all page concerns. The Expressive Component context makes prefetching and caches very ergonomic, so any async behavior in a page deserves deliberate authorship rather than implicit "remount-resets-everything" magic.
+**Route is data-loading-agnostic.** It owns match + lifecycle + optional `fallback`. Async behavior, caching, prefetching, refetch-on-param-change, websocket subscriptions - all page concerns.
 
 Different-pattern navigations (e.g. `/posts/1` -> `/users/2`) always change the matched Route, so `as` is a different Component type and React mounts the new one. Same-pattern navigations keep the instance. An opt-in to force per-URL remount is documented in "Nice-to-haves".
 
 ### Reactive params
 
-`params` is exposed as a getter on Route. Reading `route.params.x` makes the consumer reactive to `router.path` (and through it, to navigation). The getter memoizes per match so identity is stable across re-renders with unchanged params - safe to use in `useEffect` deps or `===` checks.
+`params` is a getter on Route. Reading `route.params.x` makes the consumer reactive to `router.path` through `match`. `params` returns *only* captures from this Route's own pattern. For ancestor captures, read them off the ancestor Route explicitly. (Stable identity per match is a pending nit; see "Pending - nits".)
 
-`params` returns *only* the captures from this Route's own pattern. For ancestor captures, read them off the ancestor Route explicitly (`SomeAncestorRoute.get().params`). This keeps ownership clean and avoids surprise unions; a convenience union getter can be added later if it proves common.
-
-**Render contract:** Routes never gate themselves on `this.match`. Gating is structural - the parent (Router, or a layout Route) selects the matching child via downstream resolution and mounts only the winner. A Route's render is only ever invoked when it matched.
-
-Implementation note: `Route.render` returns `<Page>{children}</Page>` - no `key`, so React reconciles in place across same-pattern navigation. Tests cover that the instance persists across param changes and that `route.params` updates reactively.
+**Render contract:** Routes never gate themselves on `this.match` *for outlet selection* - the parent does that via the inline resolver. But an independently-mounted Route (no lexical Route children, just renders `as`) does return `null` when not matched; that's how non-outlet Routes (sidebars, headers reacting to URL) mount/unmount in place.
 
 ## Public API
 
 ```ts
-import { Router, Route, Link, Redirect, redirect, notFound } from '@expressive/router';
+import { Router, Route, Link, Redirect } from '@expressive/router';
+// pending: redirect, notFound
 ```
 
 No freestanding hooks. `Router.get()` and `Route.get($ => ...)` from `@expressive/state` cover every access pattern hooks would wrap.
 
 ### `Router`
 
-Headless Component (no `render`). Owns `path` + `search` as reactive state. Listens to `popstate`. Exposes `goto(to, { replace })`. Provides itself to context. History API by default; `HashRouter` / `MemoryRouter` are future subclasses (no separate `BrowserRouter` rename).
+`extends Component`. Owns `path` reactively. Listens to `popstate`; monkey-patches `history.pushState`/`replaceState` so programmatic navigation outside of `goto` (e.g. third-party libs) still syncs `path`. Renders a default catch-all `<Route>` so descendants always have a Route in context.
 
-```ts
-export class Router extends Component {
-  path = window.location.pathname;
-  search = window.location.search;
+URL primitives live on Router rather than scattered across Route/Link/Redirect:
 
-  get query() {
-    return new URLSearchParams(this.search);
-  }
-
-  protected new() {
-    const sync = () => {
-      this.path = window.location.pathname;
-      this.search = window.location.search;
-    };
-    window.addEventListener('popstate', sync);
-    return () => window.removeEventListener('popstate', sync);
-  }
-
-  goto(to: string, replace = false) {
-    const url = new URL(to, location.origin);
-    history[replace ? 'replaceState' : 'pushState'](null, '', url);
-    this.path = url.pathname;
-    this.search = url.search;
-  }
-}
-```
-
-Children pass through; tree under `<Router>` is read by the resolver to find Routes.
+- `match(base, to)` - reactive on `path`; consumers track URL by calling this.
+- `anchor(route)` - directory-style anchor for the given Route (substitutes `:params`, drops trailing `/*`).
+- `resolve(route, url)` - resolves possibly-relative `url` against `route.anchor`.
+- `segment(to)` - the "own" portion of a `to` for composition into child bases.
+- `goto(to, replace?)` - absolute-only. Relative `to` throws (must go through a Route).
 
 ### `Route`
 
-Matches a pattern and mounts a page Component. Pages are plain Components passed via `as`. Layouts are Components that render `{children}` - the Route injects the resolved child mount as `children`.
+`extends Component`. Matches a pattern under its inherited base; mounts `as` when matched. Default `to='*'` (catch-all layout). Use `to=''` for index, `to='/abs/path'` for absolute, or relative segments to compose under a parent.
 
-```ts
-export class Route extends Component {
-  to = '';                       // omit for index route at parent base
-  as: ComponentType = null!;     // required: the Component to mount when matched
-
-  router = get(Router);
-  parent = get(Route, false);
-
-  get base(): string {
-    return this.parent ? this.parent.base + this.parent.segment : '';
-  }
-
-  get segment(): string {
-    return stripParams(this.to);
-  }
-
-  get match() {
-    return matchPattern(this.base + this.to, this.router.path);
-  }
-
-  get params(): Record<string, string> {
-    return this.match?.params ?? {};
-  }
-
-  // Anchor for relative navigation. Strips `:params` (substituted in) and `/*` (dropped).
-  get anchor(): string {
-    return resolveSegment(this.base + this.to, this.params) + '/';
-  }
-
-  goto(to: string, replace = false) {
-    const resolved = to.startsWith('/')
-      ? to
-      : new URL(to, location.origin + this.anchor).pathname;
-    this.router.goto(resolved, replace);
-  }
-
-  // Only invoked when this Route is the winner.
-  render(props: { children?: ReactNode } = {}) {
-    return this.as ? createElement(this.as, {}, props.children) : props.children;
-  }
-}
-```
-
-Usage:
+When Route has lexical `<Route>` children, it acts as an outlet: picks the most-specific matching child and passes it as `children` to `as`. Otherwise it renders `as`/`children` directly (or `null` when not matched).
 
 ```tsx
-// Leaf: no nested Routes, `as` is the page.
 <Route to="/posts/:id" as={Post} />
 
-// Layout: nested Routes, `as` is the chrome Component that renders {children}.
-// The Route resolves its child Routes and injects the winner as `as`'s children.
 <Route to="/blog/*" as={BlogLayout}>
   <Route as={BlogIndex} />
   <Route to=":slug" as={BlogPost} />
 </Route>
 
-// Index route (no `to`) - matches parent base exactly.
 <Route as={Dashboard} />
 ```
 
-The layout chrome:
+Layout chrome is a plain Component:
 
 ```tsx
 const BlogLayout = (props: { children: ReactNode }) => (
@@ -229,194 +161,136 @@ const BlogLayout = (props: { children: ReactNode }) => (
 );
 ```
 
-No subclassing of `Route` is required in normal use. The advanced escape hatch - subclassing for typed identity per route - is described in "Future shape" below.
-
 ### Navigation (`goto`)
 
-Both `Router` and `Route` expose `goto(to, replace?)`. They differ in how relative paths resolve:
-
-- `Router.get().goto(to)` - `to` must be absolute. Relative paths (`./x`, `../x`) currently rejected; there's no Route context to anchor against.
-- `Route.get().goto(to)` - absolute `to` passes through to the Router. Relative `to` resolves against the Route's `anchor` (its resolved path), then delegates to the Router.
+- `Router.get().goto(to)` - absolute only; throws on relative (no Route context to anchor against).
+- `Route.get().goto(to)` - absolute passes through; relative resolves against this Route's `anchor`, then delegates to Router.
 
 ```ts
-// Inside a page Component nested under <Route to="/posts/:id">:
+// Inside a page under <Route to="/posts/:id"> matched at /posts/foo:
 const { goto } = Route.get();
-goto('./edit'); // /posts/foo + './edit'  -> /posts/foo/edit
-goto('../'); // -> /posts/
-goto('/login'); // -> /login (absolute, pass-through)
+goto('./edit');   // /posts/foo/edit
+goto('../');      // /posts/
+goto('/login');   // /login
 ```
 
 Anchor rules:
 
-- Leaf Route `to="/posts/:id"` matched at `/posts/foo` -> anchor `/posts/foo/`.
-- Layout Route `to="/blog/*"` -> anchor `/blog/` (the `/*` is "matches my children," not part of the layout's own location; the layout doesn't claim the catch-all).
-- Index Route (no `to`) -> anchor inherits parent's anchor.
+- Leaf Route `to="/posts/:id"` at `/posts/foo` -> anchor `/posts/foo/`.
+- Layout Route `to="/blog/*"` -> anchor `/blog/`. The `/*` is "matches my children," not part of the layout's own location.
+- Index Route (no `to` / `to=""`) inherits parent anchor.
 
 Decided semantics (directory anchor):
 
-- `./x` and bare `x` are equivalent. Anything not starting with `/` is relative; resolved against the current Route's anchor as a directory.
-- Trailing slashes on user input are normalized (`./edit` and `./edit/` are equivalent), matching the matcher's behavior.
-- Empty path / `.` is a no-op (stays at current path, no remount). Use explicit `goto(current)` if you want a remount.
-- Query string and hash from the current URL are _not_ preserved across navigation. To carry them forward, include them explicitly in the `to`.
+- `./x` and bare `x` are equivalent. Anything not starting with `/` is relative.
+- Trailing slashes normalized.
+- Empty path / `.` is a no-op.
+- Query string and hash from the current URL are *not* preserved across navigation - include them explicitly in `to`.
 
-`<Link>` reads `goto` from the nearest Route (or Router at the top level), so its `to` follows the same relative-resolution rules. Its rendered `<a href>` carries the _resolved absolute_ path so right-click / cmd-click / SEO work correctly.
+`<Link>` uses the nearest Route's `goto` and renders `<a href>` with the resolved absolute path so right-click / cmd-click / SEO work.
 
 ### `Link`
-
-Component handling pushState navigation while preserving native semantics (meta/ctrl click, middle click).
 
 ```ts
 export class Link extends Component {
   to = '';
   replace = false;
-  private route = get(Route, false);
-  private router = get(Router);
-
-  private go = (e: MouseEvent) => {
-    if (e.defaultPrevented || e.button !== 0) return;
-    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-    e.preventDefault();
-    (this.route ?? this.router).goto(this.to, this.replace);
-  };
-
-  render(props = {} as { children: ReactNode; className?: string }) {
-    return (
-      <a href={this.to} onClick={this.go} className={props.className}>
-        {props.children}
-      </a>
-    );
-  }
+  // requires Route ancestor; Router provides a default one
 }
 ```
 
-Subclassable for `NavLink` (active-state class), `PrefetchLink`, etc.
+Subclassable for `NavLink`, `PrefetchLink`, etc. (`NavLink` is pending.)
 
 ### `Redirect`
 
-Declarative navigation. Mounts, calls `goto`, renders nothing. Optional `if` prop gates whether the redirect fires at all.
-
-```ts
-export class Redirect extends Component {
-  to = '';
-  replace = false;
-  if?: boolean;   // when defined, redirect only fires if truthy
-  private route = get(Route, false);
-  private router = get(Router);
-
-  protected new() {
-    if (this.if === false) return;
-    (this.route ?? this.router).goto(this.to, this.replace);
-  }
-
-  render() {
-    return null;
-  }
-}
-```
-
-Usage:
+Fires `goto` in `new()` (StrictMode-safe). `when` gates whether navigation fires at mount; reactive flips of `when` after mount are *not* expected to fire (matches the "fires on mount" mental model).
 
 ```tsx
-// Unconditional redirect (e.g. legacy URL alias)
 <Redirect to="/new-home" />
-
-// Conditional - reads naturally as a render-time guard
+<Redirect to="/login" when={!user} />
 if (!user) return <Redirect to="/login" />;
-
-// Or inline conditional via the if prop
-<Redirect to="/login" if={!user} />
 ```
 
-Relative paths follow the same anchor rules as `goto`/`Link` (resolved against the nearest Route).
-
-### Imperative helpers
+### Imperative helpers (pending)
 
 ```ts
 export function redirect(to: string, replace?: boolean): never;
 export function notFound(): never;
 ```
 
-Throw sentinel errors caught by the nearest `Route.catch()`, which sets fallback or calls `goto`. Detail TBD during implementation; keep behavior unsurprising.
+Throw sentinels caught by the nearest `Route.catch()`. Detail TBD during implementation.
 
 ## Pattern matching
 
-Hand-rolled. Rules:
+Hand-rolled, lives in `url.ts`. Rules:
 
-- `/foo/bar` - literal segments
+- `/foo/bar` - literal segments (case-insensitive)
 - `/blog/:slug` - named param, single segment
-- `/files/*` - catch-all, matches remainder (empty string allowed), always captured as `params['*']`
-- `''` (empty `to`) - matches parent base exactly (index route)
-- `'*'` - matches anything; useful as the not-found catch-all
-- Trailing slashes are normalized (treated as equivalent)
-- Case-insensitive matching of literal segments (configurable later if needed)
-- Match returns `{ params: Record<string, string> } | null`
+- `/files/*` - catch-all, matches zero or more remaining segments, captured as `params['*']`
+- `''` - matches parent base exactly (index)
+- `'*'` - matches anything (default for Routes with children; useful as not-found)
+- Trailing slashes normalized
 
-Implementation: split both pattern and path on `/`, walk in lockstep, collect params. `*` consumes the rest into `params['*']`. Roughly 30 lines.
-
-`(group)` segments in patterns are stripped during normalization - they exist only in route nesting (file-based codegen concern), not in URL space.
+Match returns `{ params, score } | null`. Score drives specificity ordering inside the resolver.
 
 ## Resolution
 
-Routes don't gate themselves. The parent decides who mounts:
+Inline in `Route.render`. When a Route has lexical `<Route>` children, it iterates them, calls `router.match(childBase, el.props.to ?? '*')`, picks the highest score (document order breaks ties), and passes the winner as `children` to `as`. Routes without lexical children self-mount when matched, render `null` when not.
 
-- The `Router` collects its top-level child Routes via `get(Route, true)` (limited to direct Route descendants - not transitive across layouts).
-- On every location change, the Router runs one resolver pass: of its child Routes, which matches? The most-specific match wins (more literal segments > catch-all). Only the winner is mounted.
-- A layout Route does the same for its own children: when _it_ mounts, it resolves its child Routes against the current path and passes the winner to `as` as `children`.
-
-This is also the 404 strategy: a `<Route to="*" as={NotFound} />` is just the catch-all the resolver falls back to when no specific sibling matches.
+This is also the 404 strategy: a `<Route as={NotFound} />` (default `to='*'`) at the end of a layout's children loses to any more-specific sibling and catches everything else.
 
 Specificity ordering (most-specific first):
 
-1. Exact literal match
-2. `:param` segments
-3. `*` (catch-all)
+1. Exact literal match (100/segment)
+2. `:param` segments (10/segment)
+3. `*` (catch-all; -1)
 
-Ties at the same level break by document order (first-declared wins). Decide during implementation if this should warn on ambiguity.
+## Router-as-State (planned)
 
-## Package layout (in mvc)
+Router currently extends Component because it renders a wrapping default `<Route>`. Once that wrapper goes away (Routes can locate Router via context-derived `get(Router)` without a wrapping element), Router converts to `extends State`. Consumers do an auto-spawn:
+
+```ts
+router = get(Router, false) ?? Router.new();
+```
+
+**Caveat:** the field-initializer form above does *not* work today - `get(Router, false)` returns an instruction sentinel during initialization, not the lookup result. The fallback needs either a getter (costs context traversal per read) or a lifecycle hook that resolves once and caches. Confirm `Router.new()` registers as a root singleton from outside a React-mounted context before committing.
+
+Users still provide explicitly via `<Provider for={Router}>` when they want a variant - the motivating use cases being `HashRouter` / `MemoryRouter`, `baseUrl` for apps mounted under a path prefix, and test-time control over initial URL.
+
+**Test cleanup when this lands:** existing tests use `<Router is={(r) => (router = r)}>` to capture the instance. After conversion:
+
+```ts
+beforeEach(() => {
+  Context.root.get(Router, false)?.set(null);  // evict singleton
+  window.history.replaceState(null, '', '/');
+});
+
+const router = Router.new();
+const view = render(<Route to="/foo" as={...} />);
+```
+
+Pattern is established in `state/src/context.test.ts` (`root singleton` describe block).
+
+## Package layout
 
 ```
 packages/router/
   src/
     index.ts          # public exports
-    matcher.ts        # matchPattern + helpers, pure, no JSX
+    url.ts            # matchPattern + fullPattern + patternSegment, pure
     router.ts         # Router Component
-    route.ts          # Route Component + resolver
+    route.ts          # Route Component + inline resolver
     link.ts           # Link Component
-    redirect.ts       # Redirect Component + redirect / notFound sentinels
-    matcher.test.ts
+    redirect.ts       # Redirect Component
+    url.test.ts
     router.test.tsx
     route.test.tsx
     link.test.tsx
-  package.json
-  tsconfig.json
-  vitest.config.ts    # if needed beyond root
+    redirect.test.tsx
+    acceptance.test.tsx
 ```
 
-Match mvc's existing package conventions (pnpm workspace entry, root tsconfig extension, `tsc --noEmit && vitest run --coverage`, 100% coverage target). Tests use the shared `vitest` re-export and custom matchers (`toHaveUpdated`).
-
-## Testing
-
-Vitest + jsdom (same as mvc react package). Coverage target 100% per mvc policy.
-
-Cases to cover:
-
-- Matcher: literal, params, catch-all, multi-segment, trailing-slash normalization, no-match, empty path, root pattern.
-- Router: initial path, `goto` push, `goto` replace, popstate, search query reactivity.
-- Route `goto`: absolute paths pass through; `./x` resolves against the Route's anchor; `../x` walks up; non-Route context (called on Router directly) rejects relative paths.
-- Route resolution: most-specific wins; document order breaks ties; only the winner mounts.
-- Route props: `to` + `as` mount the page when matched; `params` reactive on access; nested `base` composition.
-- Index route: `<Route as={X} />` matches parent base exactly, not sub-paths.
-- Catch-all: `to="*"` mounts when no sibling matches.
-- Update-in-place default: navigating to a new param value within the same pattern preserves the page instance; `route.params` reflects new values reactively.
-- Layout: `to="/x/*"` matches prefix, mounts `as` with `children` set to the resolved child Route mount; doesn't mount when out of prefix.
-- Link: pushes history, prevents default, respects modifier keys, respects middle-click.
-- Redirect: fires `goto` on mount, renders null, respects `replace`, `if={false}` suppresses navigation, relative paths resolve through nearest Route.
-- Suspense: page with `set(async ...)` shows fallback then content.
-- Error: page `catch()` shows fallback, retries on resolve.
-- StrictMode: double-mount produces single Router instance, listeners cleaned up.
-
-Each test should fail without the relevant implementation - per mvc policy, don't write tests that pass for the wrong reason.
+Match mvc's existing conventions (pnpm workspace entry, root tsconfig extension, `tsc --noEmit && vitest run --coverage`, 100% coverage target). Tests use the shared `vitest` re-export.
 
 ## Out of scope (explicit)
 
@@ -425,81 +299,14 @@ Each test should fail without the relevant implementation - per mvc policy, don'
 - File-based routing codegen (lives in `expressive-dev`).
 - Server-side route definitions.
 - View transitions API.
-- Route-level metadata / `<head>` management (separate concern; may live in expressive-ui).
-- Inline JSX siblings of nested Routes (e.g. headers/footers between Route children of a layout). Layout chrome lives in the `as` Component instead.
-- Distribution from this repo - this router exists for feedback-driven dev work on `@expressive/state`.
-
-## Pending design shifts
-
-Two structural changes scoped out of the current iteration but planned as next work. The independent-render shift is the immediate next task; the State conversion follows.
-
-### Independent rendering (drop cloneElement, drop lexical-only resolution)
-
-Today Route uses a lexical-children resolver: parent inspects its `props.children` for Route elements, picks the most-specific match, injects `base` via `cloneElement` (cached in a WeakMap). This forces all Routes that participate in resolution to be direct JSX children of their parent Route. Routes inside a rendered component (the parent's `as`) are invisible to the resolver and resolve against `base=""`, which is wrong.
-
-The peeve this addresses: in libraries that traverse JSX upfront, you can't structure a layout like
-
-```tsx
-<Route to="/admin" as={AdminPage} />
-
-const AdminPage = () => (
-  <div className="container">
-    <Route to="edit" as={EditAdmin} />
-  </div>
-);
-```
-
-without losing either the `<div>` container or the routing.
-
-**New model: Routes render in place, independently.** Each Route:
-- Reads URL from Router and computes `base` lazily from `get(Route, false)` (nearest mounted Route ancestor). No `base` prop, no cloneElement, no CLONES cache.
-- Matches `fullPattern(base, to)` against URL. If match: render `as`/children. If not: render null.
-- Multiple Routes matching the same URL all render (in their own DOM locations). This is the "fork" case - sidebar / header / main responding independently to the URL.
-
-**Lexical outlets remain as opt-in.** A Route whose `props.children` contains Route elements still resolves a single winner among those children (current sibling-tiebreak behavior with specificity scoring + document order). The outlet pattern is for "pick exactly one of these sibling pages."
-
-**Contextual `to` default carries forward** (already landed): leaf Route (no Route children) defaults to `to=""` (exact); wrapping Route defaults to `to="*"` (catch-all layout). Author writes the natural shape, system picks the natural default.
-
-**Implications:**
-- Route's `params`, `anchor`, `goto`, `resolve` all work the same - they just derive `base` from context instead of props.
-- Container/wrapping JSX (divs, fragments, intermediate components) preserved naturally - no hoisting.
-- Mount/unmount: when URL changes and a previously-matching Route stops matching, it returns null - React unmounts the `as` subtree. Standard behavior.
-- Outlet vs independent is a *use-site* decision, not an API surface. Group lexically when you want tiebreaking; don't when you want independent matching.
-
-**Open question:** when a lexical outlet exists, does it suppress descendant Routes (in a rendered `as` component) from independent matching? Or do both run? Probably both - lexical outlet picks among its own JSX children only; deeper Routes self-resolve. Worth a test once implemented.
-
-**Files affected:** `route.ts` (drop cloneElement+CLONES, `base` becomes context-derived getter), `router.ts` (no longer needs to wrap children in a Route - Routes self-mount under Router context).
-
-### Router as State (drop Component substrate)
-
-Router is currently a Component because it renders a wrapper `<Route>`. Independent rendering has landed, so Router no longer needs to render anything - it's just URL state + match/resolve/anchor primitives. Convert to `extends State`. Consumers do `router = get(Router, false)! || Router.new()`, which is idempotent: first Route creates and registers as root singleton; subsequent Routes find it via `get(Router, false)`.
-
-**Caveat:** the field-initializer form above does not actually work today - `get(Router, false)` is an instruction (deferred resolution), so `||`/`??` operates on the instruction sentinel, not the lookup result. The auto-spawn fallback needs either a getter (`get router() { ... }` - costs context traversal per read) or a lifecycle hook that resolves once and caches. Probably worth confirming `Router.new()` registers correctly as a root singleton from outside a React-mounted context first.
-
-User can still provide explicitly via `<Provider for={Router}>` when they want a custom variant - the motivating use case being:
-- `HashRouter` / `MemoryRouter` subclasses (read URL from different sources)
-- `baseUrl` field for apps mounted under a path prefix
-- Test-time control over initial URL
-
-**Test cleanup:** existing tests use `<Router is={(r) => (router = r)}>` to capture the instance. After conversion, tests would:
-```ts
-beforeEach(() => {
-  Context.root.get(Router, false)?.set(null);  // evict singleton
-  window.history.replaceState(null, '', '/');
-});
-
-// in test:
-const router = Router.new();
-const view = render(<Route to="/foo" as={...} />);
-```
-
-Pattern is established in `state/src/context.test.ts:1138-1181` (`root singleton` describe block) - `set(null)` releases ownership from `Context.root`.
-
-**Scope:** ~30 tests across `router.test.tsx`, `acceptance.test.tsx`, `route.test.tsx`, `link.test.tsx`, `redirect.test.tsx` need updating to drop the `<Router>...</Router>` JSX wrapper. Independent rendering work above should land first so the cleanup is a smaller delta.
+- Route-level metadata / `<head>` management.
+- Inline JSX siblings of nested Routes inside a layout's `props.children`. Layout chrome lives in the `as` Component instead.
+- Multi-match across siblings at the same level. Single-winner-per-level stands.
+- Distribution from this repo.
 
 ## Future shape: Route subclassing for typed identity
 
-`<Route to="" as={X} />` covers the common case but loses some typing leverage that subclassing would provide. A possible later extension:
+`<Route to="" as={X} />` covers the common case but loses typing leverage a subclass would provide:
 
 ```ts
 class PostRoute extends Route {
@@ -508,52 +315,33 @@ class PostRoute extends Route {
   declare params: { id: string };
 }
 
-// Then in the tree:
 <PostRoute />
-
-// And a typed Link:
 <Link to={PostRoute} params={{ id: '1' }} />
 ```
 
-This trades JSX brevity for class-as-destination typing. Defer until either (a) the type story actively pays off in real apps built on the declarative form, or (b) a meaningful behavior difference between leaf and layout Routes emerges that needs a class to express.
+Defer until (a) the type story actively pays off in real apps built on the declarative form, or (b) a meaningful behavior difference between leaf and layout Routes emerges that needs a class to express.
 
 ## Nice-to-haves
 
-Documented shapes for post-MVP features. Captured here so they don't get re-litigated later.
-
 ### `Route` per-URL remount opt-in
 
-Default is update-in-place (instance persists across same-pattern navigation). For pages that need "fresh instance per URL" semantics - typically because they use one-shot `set(async)` for URL-scoped data, or want side-effects (`new()`) to re-run per URL - an opt-in flag would force remount:
+Default is update-in-place. For pages that need "fresh instance per URL" semantics (one-shot `set(async)` for URL-scoped data, or side-effects in `new()` re-running per URL):
 
 ```tsx
 <Route to="/posts/:id" as={Post} fresh />
 ```
 
-Implementation: `Route.render` keys the mounted page on `this.router.path` when the flag is set, so React unmounts + remounts on every URL change within the matching pattern.
-
-```ts
-fresh = false;
-
-render(props: { children?: ReactNode } = {}) {
-  if (!this.as) return props.children;
-  return createElement(this.as, { key: this.fresh ? this.router.path : undefined }, props.children);
-}
-```
-
-Only affects same-pattern, different-params transitions. Different-pattern navigations remount naturally (different `as` Component).
+Implementation: key the mounted `as` on `this.router.path` when `fresh` is set. Only affects same-pattern, different-params transitions.
 
 ### `Link.onClick` (async pre-navigation hook)
 
-User-supplied click handler that runs before the router takes over. Can be async; if it resolves to `false` or calls `e.preventDefault()`, navigation is cancelled. While awaiting, Link exposes `pending: boolean` (mirrored on the rendered `<a>` via `aria-busy`) so styles or content can reflect the in-flight state.
+User-supplied click handler that runs before navigation. Can be async; resolving to `false` or calling `e.preventDefault()` cancels. Link exposes `pending: boolean` (mirrored as `aria-busy`) during the in-flight window.
 
 ```tsx
 <Link
   to="/checkout"
   onClick={async (e) => {
-    if (cart.isEmpty) {
-      e.preventDefault();
-      return;
-    }
+    if (cart.isEmpty) { e.preventDefault(); return; }
     await analytics.track('begin-checkout');
   }}
 >
@@ -561,11 +349,11 @@ User-supplied click handler that runs before the router takes over. Can be async
 </Link>
 ```
 
-Sketch of implementation inside Link's existing click handler:
+Sketch:
 
 ```ts
 private go = async (e: MouseEvent<HTMLAnchorElement>) => {
-  if (this.pending) return;                                    // ignore re-entry
+  if (this.pending) return;
   if (e.defaultPrevented || e.button !== 0) return;
   if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
   e.preventDefault();
@@ -575,7 +363,7 @@ private go = async (e: MouseEvent<HTMLAnchorElement>) => {
       const result = await this.onClick(e);
       if (result === false || e.defaultPrevented) return;
     } catch {
-      return;                                                  // thrown = cancel
+      return;
     } finally {
       this.pending = false;
     }
@@ -584,31 +372,25 @@ private go = async (e: MouseEvent<HTMLAnchorElement>) => {
 };
 ```
 
-Subclass-friendly: a `ConfirmLink` overriding `onClick` (or composing it from a class field) is straightforward. Pairs naturally with a future Router-level navigation blocker (intercepts all nav, not just clicks) - same problem space, different surface.
+Subclass-friendly. Pairs with a future Router-level navigation blocker.
 
+## Decisions worth recording
 
+- **URL-spec relative-path anchor.** `./x` from `/blog/post-1` resolving to `/blog/x` (browser/HTML semantics) was rejected. The most common routing pattern - "edit/comments/settings of the current resource" - has no clean expression. Directory anchor wins.
+- **Multi-match resolution.** Allowing multiple sibling Routes to match the same URL simultaneously was rejected: same outputs are reachable via a layout's `as`, multi-match complicates resolution, and the orthogonal patterns (modals, palettes, drawers) are state-not-routing concerns. Single-winner-per-level.
+- **`exact` prop on `Route`.** Redundant with index-route syntax (no `to` / `to=''`) under single-winner resolution. Skipped.
+- **Link/Redirect Route ancestor.** Required, but satisfied automatically: Router renders a wrapping default Route, so top-level `<Link>`/`<Redirect>` work without manual wrapping. (Will need revisiting alongside the Router-as-State conversion.)
 
-Decisions worth recording so they don't get relitigated:
+## Open questions
 
-- **URL-spec relative-path anchor.** `./x` from `/blog/post-1` resolving to `/blog/x` (browser/HTML semantics, where `post-1` is treated as a "file") was considered. Rejected because the most common routing pattern - "edit / comments / settings views of the current resource" - has no clean expression: you'd need `goto(\`./${slug}/edit\`)`, `goto('post-1/edit')` (caller knows the slug), or `goto(\`/blog/${slug}/edit\`)` (verbose absolute). Directory anchor wins.
-- **Multi-match resolution.** Allowing multiple sibling Routes to match the same URL simultaneously (parallel routing / compositional UI from route declarations) was considered. Rejected because (a) the same outputs are reachable via a layout's `as` Component, which is the natural home for shared chrome in a Component-based system, (b) multi-match complicates resolution and requires either positional rendering or an explicit Outlet primitive, both of which hurt predictability, (c) the orthogonal patterns it'd enable (persistent modals, command palettes, drawers) are state-not-routing concerns and belong in Components reading `get(Router)`. Single-winner-per-level stands.
-- **`exact` prop on `Route`.** Redundant with index-route syntax (no `to`) under single-winner resolution. Skipped.
-- **Magic `true` as preserve-flag in a query-params arg to `goto`.** E.g. `goto('./edit', { ref: true, page: '2' })` meaning "preserve current `ref`, set `page` to 2." Rejected because `true` is itself a legitimate query value (`?admin=true` is real), making `{ admin: true }` ambiguous: preserve current `admin` or set it to the string `"true"`? Any sugar in this space should use an explicit sentinel or function form (`goto(to, q => ({ ...q, page: '2' }))`). Left as Open Question instead of committed API.
-
-1. **Relative paths at the Router level.** `Router.get().goto('./x')` currently rejected (no Route to anchor against). Wary of the gap but holding for now; if a real use case shows up (a global handler wanting "this page's neighborhood" semantics from outside any Route), revisit - could resolve against `router.path` as a directory.
-2. **`goto` second-arg expansion.** Currently `goto(to, replace?: boolean)` - tight, matches `<Link replace />`. Deferred opts that might warrant migrating to `goto(to, opts: { replace, ... })`:
-   - **Query sugar** - preserve-all flag, replace-with-object, or transform-fn. Tepidly wanted; not blocking. Build strings yourself for now.
-   - **`history.state` payload.** Open question whether this is even needed. With update-in-place as default, instance state persists across same-pattern navigations naturally - reducing the need for `history.state` as a workaround. For state that should survive back/forward across *different* patterns (scroll restoration, modal stack), a Router-scoped Component that snapshots per-pathname and restores on `popstate` would handle it in user-space. Revisit if a use case shows the Component approach is insufficient.
-   - **Scroll control** (`preventScrollReset`, etc.) and **view transitions** - speculative; tied to features not yet on the roadmap.
-
-   Migration when needed: `goto(x, true)` -> `goto(x, { replace: true })`. Mechanical, IDE-friendly, JSX `<Link>` props unchanged.
-
-3. **`Link` style API.** Just `className`, or also `activeClassName` via a `NavLink` subclass? Defer to v1.1.
-4. **Programmatic navigation outside Components.** Currently requires `Router.get()` from a Component context. Should there be a module-level `goto()` that finds the active Router? Probably no - keep router instance-scoped.
-5. **Remount keying granularity (if `fresh`-style opt-in lands).** When opting in, key on full pathname vs only on the params relevant to this Route's pattern? Pathname is simpler and almost always equivalent; revisit if a use case needs finer control (e.g. ignoring query for keying purposes).
-6. **Typed `to` strings.** `<Link to="/posts/:id" />` could grow a template-literal type extracting required params. Defer; nice-to-have, not blocking.
-7. **Structural remount-boundaries.** Once leaf-level "remount per URL" lands (see "Nice-to-haves"), a structural form may follow for "this *subtree* is a remount unit, including ancestors" (e.g. resetting a whole nested layout on tab switch). Could be expressed as an anonymous Route layer or as the same opt-in lifted onto a layout. Not needed today.
+1. **Relative paths at the Router level.** `Router.get().goto('./x')` currently throws. Could resolve against `router.path` as a directory if a real use case shows up.
+2. **`goto` second-arg expansion.** Currently `goto(to, replace?: boolean)`. Deferred opts (query sugar, `history.state`, scroll control, view transitions) may eventually justify migrating to `goto(to, opts)`. Migration is mechanical when needed.
+3. **`Link` style API.** Just `className`, or also `activeClassName` via `NavLink`? Defer to v1.1.
+4. **Programmatic navigation outside Components.** Module-level `goto()` that finds the active Router? Probably no - keep instance-scoped.
+5. **Remount keying granularity (if `fresh` lands).** Key on full pathname vs only the Route's own captures? Pathname is simpler; revisit if needed.
+6. **Typed `to` strings.** Template-literal type extracting required params. Nice-to-have.
+7. **Structural remount-boundaries.** Once leaf `fresh` lands, a layout-level "this subtree is a remount unit" form may follow.
 
 ## Long-term home
 
-When `expressive-ui` is established, `packages/router/` lifts directly out of mvc with no changes. Its only mvc dependency is `@expressive/state` (and its renderer adapters), which it would depend on from expressive-ui as a published package anyway.
+When `expressive-ui` is established, `packages/router/` lifts directly out of mvc unchanged. Its only mvc dependency is `@expressive/state` (and its renderer adapters), which would be a published dep from expressive-ui anyway.
