@@ -1,4 +1,4 @@
-import { Consumer } from '@expressive/react';
+import { Consumer, Context } from '@expressive/react';
 
 import { act, beforeEach, describe, expect, it, render } from '../vitest';
 
@@ -6,6 +6,7 @@ import { Route } from './route';
 import { Router } from './router';
 
 beforeEach(() => {
+  Context.root.get(Router, false)?.set(null);
   window.history.replaceState(null, '', '/');
 });
 
@@ -22,38 +23,29 @@ describe('Route', () => {
   it('mounts the page when its pattern matches', () => {
     window.history.replaceState(null, '', '/');
     const view = render(
-      <Router>
+      <>
         <Route to="/" as={Home} />
         <Route to="/posts/:id" as={Post} />
-      </Router>
+      </>
     );
     expect(view.container.textContent).toBe('Home');
   });
 
   it('does not mount any page when nothing matches', () => {
     window.history.replaceState(null, '', '/unknown');
-    const view = render(
-      <Router>
-        <Route to="/" as={Home} />
-      </Router>
-    );
+    const view = render(<Route to="/" as={Home} />);
     expect(view.container.textContent).toBe('');
   });
 
   it('exposes params from the matched pattern', () => {
     window.history.replaceState(null, '', '/posts/foo');
-    const view = render(
-      <Router>
-        <Route to="/posts/:id" as={Post} />
-      </Router>
-    );
+    const view = render(<Route to="/posts/:id" as={Post} />);
     expect(view.container.textContent).toBe('id: foo');
   });
 
   it('updates in place on same-pattern navigation (instance persists)', async () => {
     window.history.replaceState(null, '', '/posts/foo');
     let mountCount = 0;
-    let router!: Router;
 
     const Page = () => {
       mountCount++;
@@ -62,11 +54,8 @@ describe('Route', () => {
       );
     };
 
-    const view = render(
-      <Router is={(r) => (router = r)}>
-        <Route to="/posts/:id" as={Page} />
-      </Router>
-    );
+    const router = Router.new();
+    const view = render(<Route to="/posts/:id" as={Page} />);
 
     expect(mountCount).toBe(1);
     expect(view.container.textContent).toBe('foo');
@@ -77,69 +66,74 @@ describe('Route', () => {
     expect(view.container.textContent).toBe('bar');
   });
 
-  it('ignores non-Route children when resolving', () => {
+  it('ignores non-Route siblings when resolving', () => {
+    // Top-level non-Route content renders alongside; only Route children of
+    // a Route participate in outlet resolution. Sanity check that bare
+    // sibling JSX coexists with Routes.
     window.history.replaceState(null, '', '/');
     const view = render(
-      <Router>
+      <>
+        <div>chrome</div>
+        <Route to="/" as={Home} />
+      </>
+    );
+    expect(view.container.textContent).toContain('Home');
+  });
+
+  it('outlet resolution skips non-Route children inside a layout', () => {
+    // Non-element children (text nodes) and non-Route elements in a layout's
+    // lexical children are ignored by the outlet resolver.
+    window.history.replaceState(null, '', '/');
+    const view = render(
+      <Route to="/*">
         <div>chrome</div>
         {'text node'}
-        <Route to="/" as={Home} />
-      </Router>
+        <Route to="" as={Home} />
+      </Route>
     );
-    // Only the matched Route's page renders; non-Route children are dropped.
     expect(view.container.textContent).toBe('Home');
   });
 
   it('defaults `as` to a children-passthrough', () => {
     window.history.replaceState(null, '', '/anything');
     const view = render(
-      <Router>
-        <Route to="/anything">
-          <span>inline</span>
-        </Route>
-      </Router>
+      <Route to="/anything">
+        <span>inline</span>
+      </Route>
     );
     expect(view.container.textContent).toBe('inline');
   });
 
   it('matches when `to` is omitted (defaults to catch-all)', () => {
     window.history.replaceState(null, '', '/');
-    const view = render(
-      <Router>
-        <Route as={Home} />
-      </Router>
-    );
+    const view = render(<Route as={Home} />);
     expect(view.container.textContent).toBe('Home');
   });
 
   it('bare Route matches non-root paths (catch-all default)', () => {
     window.history.replaceState(null, '', '/anything/at/all');
-    const view = render(
-      <Router>
-        <Route as={Home} />
-      </Router>
-    );
+    const view = render(<Route as={Home} />);
     expect(view.container.textContent).toBe('Home');
   });
 
-  it('specific sibling beats bare-default Route on specificity', () => {
+  it('specific sibling beats bare-default Route on specificity (lexical outlet)', () => {
     window.history.replaceState(null, '', '/about');
     const view = render(
-      <Router>
+      <Route>
         <Route to="/about" as={() => <span>About</span>} />
         <Route as={() => <span>Fallback</span>} />
-      </Router>
+      </Route>
     );
     expect(view.container.textContent).toBe('About');
   });
 
-  it('bare-default Route renders when no sibling matches', () => {
+  it('bare-default Route renders when no sibling matches (lexical outlet)', () => {
     window.history.replaceState(null, '', '/nope');
     const view = render(
-      <Router>
+      <Route>
         <Route to="/about" as={() => <span>About</span>} />
         <Route as={() => <span>Fallback</span>} />
-      </Router>
+      </Route>
     );
     expect(view.container.textContent).toBe('Fallback');
   });
@@ -147,19 +141,13 @@ describe('Route', () => {
   it('params returns empty when match invalidated by navigation', async () => {
     window.history.replaceState(null, '', '/posts/foo');
     let leaf!: Route;
-    let router!: Router;
     const Page = () => (
       <Consumer for={Route}>{(r) => void (leaf = r)}</Consumer>
     );
-    render(
-      <Router is={(r) => (router = r)}>
-        <Route to="/posts/:id" as={Page} />
-      </Router>
-    );
+    const router = Router.new();
+    render(<Route to="/posts/:id" as={Page} />);
     expect(leaf.params).toEqual({ id: 'foo' });
 
-    // Navigate to a path the Route does not match. The Route instance
-    // briefly evaluates with a null match before unmounting.
     await act(async () => router.goto('/elsewhere'));
     expect(leaf.params).toEqual({});
   });
@@ -170,11 +158,7 @@ describe('Route', () => {
     const Page = () => (
       <Consumer for={Route}>{(r) => void (leaf = r)}</Consumer>
     );
-    render(
-      <Router>
-        <Route to="/" as={Page} />
-      </Router>
-    );
+    render(<Route to="/" as={Page} />);
     expect(leaf.anchor).toBe('/');
   });
 
@@ -184,11 +168,7 @@ describe('Route', () => {
     const Page = () => (
       <Consumer for={Route}>{(r) => void (leaf = r)}</Consumer>
     );
-    render(
-      <Router>
-        <Route to="/posts/:id" as={Page} />
-      </Router>
-    );
+    render(<Route to="/posts/:id" as={Page} />);
     await act(async () => leaf.goto('./edit'));
     expect(window.location.pathname).toBe('/posts/foo/edit');
   });
@@ -199,11 +179,7 @@ describe('Route', () => {
     const Page = () => (
       <Consumer for={Route}>{(r) => void (leaf = r)}</Consumer>
     );
-    render(
-      <Router>
-        <Route to="/posts/:id" as={Page} />
-      </Router>
-    );
+    render(<Route to="/posts/:id" as={Page} />);
     await act(async () => leaf.goto(''));
     await act(async () => leaf.goto('.'));
     expect(window.location.pathname).toBe('/posts/foo');
@@ -216,32 +192,27 @@ describe('Route', () => {
       <Consumer for={Route}>{(r) => void (leaf = r)}</Consumer>
     );
     render(
-      <Router>
+      <>
         <Route to="/posts/:id" as={Page} />
         <Route to="/about" as={() => <div>about</div>} />
-      </Router>
+      </>
     );
     await act(async () => leaf.goto('/about'));
     expect(window.location.pathname).toBe('/about');
   });
 
   it('Router.goto throws on relative paths', () => {
-    let router!: Router;
-    render(<Router is={(r) => (router = r)} />);
+    const router = Router.new();
     expect(() => router.goto('./x')).toThrow(/absolute path/);
   });
 
   it('default `as` renders nothing when given no children', () => {
     window.history.replaceState(null, '', '/blank');
-    const view = render(
-      <Router>
-        <Route to="/blank" />
-      </Router>
-    );
+    const view = render(<Route to="/blank" />);
     expect(view.container.textContent).toBe('');
   });
 
-  it('resolves Routes rendered through an intermediate component', () => {
+  it('resolves Routes rendered through an intermediate component (lexical outlet)', () => {
     window.history.replaceState(null, '', '/about');
     const Pages = () => (
       <>
@@ -249,22 +220,26 @@ describe('Route', () => {
         <Route to="/contact" as={() => <span>Contact</span>} />
       </>
     );
+    // Wrap in a Route so the intermediate component is participating in an
+    // outlet (lexical) resolution. Without the wrapper, Routes mount
+    // independently and both would render in their respective locations
+    // (only the matching one renders, due to self-gating).
     const view = render(
-      <Router>
+      <Route>
         <Pages />
-      </Router>
+      </Route>
     );
     expect(view.container.textContent).toBe('About');
   });
 
   it('lexical container re-resolves winner on navigation', async () => {
     window.history.replaceState(null, '', '/a');
-    let router!: Router;
+    const router = Router.new();
     const view = render(
-      <Router is={(r) => (router = r)}>
+      <Route>
         <Route to="/a" as={() => <span>A</span>} />
         <Route to="/b" as={() => <span>B</span>} />
-      </Router>
+      </Route>
     );
     expect(view.container.textContent).toBe('A');
     await act(async () => router.goto('/b'));
@@ -276,12 +251,12 @@ describe('Route', () => {
   // a winner-swap to a bare Route inherits the prior `to`.
   it.skip('lexical container switches between specific and bare-default on navigation', async () => {
     window.history.replaceState(null, '', '/a');
-    let router!: Router;
+    const router = Router.new();
     const view = render(
-      <Router is={(r) => (router = r)}>
+      <Route>
         <Route to="/a" as={() => <span>A</span>} />
         <Route as={() => <span>Other</span>} />
-      </Router>
+      </Route>
     );
     expect(view.container.textContent).toBe('A');
     await act(async () => router.goto('/b'));
@@ -302,23 +277,19 @@ describe('Route', () => {
         </Route>
       </div>
     );
-    const view = render(
-      <Router>
-        <Route to="admin/*" as={Admin} />
-      </Router>
-    );
+    const view = render(<Route to="admin/*" as={Admin} />);
     expect(view.container.textContent).toBe('User Header + Users Page');
   });
 
-it('resolves Routes through a Fragment in lexical children', () => {
+  it('resolves Routes through a Fragment in lexical children', () => {
     window.history.replaceState(null, '', '/about');
     const view = render(
-      <Router>
+      <Route>
         <>
           <Route to="/about" as={() => <span>About</span>} />
           <Route to="/contact" as={() => <span>Contact</span>} />
         </>
-      </Router>
+      </Route>
     );
     expect(view.container.textContent).toBe('About');
   });
@@ -327,10 +298,10 @@ it('resolves Routes through a Fragment in lexical children', () => {
     it('literal beats :param at the same path', () => {
       window.history.replaceState(null, '', '/posts/new');
       const view = render(
-        <Router>
+        <Route>
           <Route to="/posts/:id" as={() => <span>dynamic</span>} />
           <Route to="/posts/new" as={() => <span>literal</span>} />
-        </Router>
+        </Route>
       );
       expect(view.container.textContent).toBe('literal');
     });
@@ -338,10 +309,10 @@ it('resolves Routes through a Fragment in lexical children', () => {
     it(':param beats *', () => {
       window.history.replaceState(null, '', '/posts/foo');
       const view = render(
-        <Router>
+        <Route>
           <Route to="*" as={() => <span>catch-all</span>} />
           <Route to="/posts/:id" as={() => <span>dynamic</span>} />
-        </Router>
+        </Route>
       );
       expect(view.container.textContent).toBe('dynamic');
     });
@@ -349,10 +320,10 @@ it('resolves Routes through a Fragment in lexical children', () => {
     it('catch-all matches when no sibling does', () => {
       window.history.replaceState(null, '', '/anything/at/all');
       const view = render(
-        <Router>
+        <Route>
           <Route to="/" as={() => <span>home</span>} />
           <Route to="*" as={() => <span>not-found</span>} />
-        </Router>
+        </Route>
       );
       expect(view.container.textContent).toBe('not-found');
     });
@@ -360,10 +331,10 @@ it('resolves Routes through a Fragment in lexical children', () => {
     it('first declared wins on a true tie', () => {
       window.history.replaceState(null, '', '/posts/foo');
       const view = render(
-        <Router>
+        <Route>
           <Route to="/posts/:a" as={() => <span>a</span>} />
           <Route to="/posts/:b" as={() => <span>b</span>} />
-        </Router>
+        </Route>
       );
       expect(view.container.textContent).toBe('a');
     });
@@ -381,12 +352,10 @@ it('resolves Routes through a Fragment in lexical children', () => {
     it('layout mounts its prefix-matched child', () => {
       window.history.replaceState(null, '', '/blog');
       const view = render(
-        <Router>
-          <Route to="/blog/*" as={Layout}>
-            <Route as={BlogIndex} />
-            <Route to=":slug" as={BlogPost} />
-          </Route>
-        </Router>
+        <Route to="/blog/*" as={Layout}>
+          <Route as={BlogIndex} />
+          <Route to=":slug" as={BlogPost} />
+        </Route>
       );
       expect(view.container.textContent).toBe('chromeblog-index');
     });
@@ -394,12 +363,10 @@ it('resolves Routes through a Fragment in lexical children', () => {
     it('layout resolves :param child', () => {
       window.history.replaceState(null, '', '/blog/hello');
       const view = render(
-        <Router>
-          <Route to="/blog/*" as={Layout}>
-            <Route as={BlogIndex} />
-            <Route to=":slug" as={BlogPost} />
-          </Route>
-        </Router>
+        <Route to="/blog/*" as={Layout}>
+          <Route as={BlogIndex} />
+          <Route to=":slug" as={BlogPost} />
+        </Route>
       );
       expect(view.container.textContent).toBe('chromepost hello');
     });
@@ -407,11 +374,9 @@ it('resolves Routes through a Fragment in lexical children', () => {
     it('layout does not mount when out of prefix', () => {
       window.history.replaceState(null, '', '/elsewhere');
       const view = render(
-        <Router>
-          <Route to="/blog/*" as={Layout}>
-            <Route as={BlogIndex} />
-          </Route>
-        </Router>
+        <Route to="/blog/*" as={Layout}>
+          <Route as={BlogIndex} />
+        </Route>
       );
       expect(view.container.textContent).toBe('');
     });
@@ -428,13 +393,11 @@ it('resolves Routes through a Fragment in lexical children', () => {
         <Consumer for={Route}>{(r) => <span>{r.params.id}</span>}</Consumer>
       );
       const view = render(
-        <Router>
-          <Route to="/admin/*" as={AdminChrome}>
-            <Route to="users/*" as={UsersChrome}>
-              <Route to=":id" as={UserDetail} />
-            </Route>
+        <Route to="/admin/*" as={AdminChrome}>
+          <Route to="users/*" as={UsersChrome}>
+            <Route to=":id" as={UserDetail} />
           </Route>
-        </Router>
+        </Route>
       );
       expect(view.container.textContent).toBe('admin/users/42');
     });
@@ -445,11 +408,9 @@ it('resolves Routes through a Fragment in lexical children', () => {
         <main>{props.children}</main>
       );
       const view = render(
-        <Router>
-          <Route to="*" as={Chrome}>
-            <Route to="/about" as={() => <span>about</span>} />
-          </Route>
-        </Router>
+        <Route to="*" as={Chrome}>
+          <Route to="/about" as={() => <span>about</span>} />
+        </Route>
       );
       expect(view.container.textContent).toBe('about');
     });
@@ -461,14 +422,10 @@ it('resolves Routes through a Fragment in lexical children', () => {
         <Consumer for={Route}>{(r) => void (inner = r)}</Consumer>
       );
       render(
-        <Router>
-          <Route to="/blog/*" as={Layout}>
-            <Route to=":slug" as={Capture} />
-          </Route>
-        </Router>
+        <Route to="/blog/*" as={Layout}>
+          <Route to=":slug" as={Capture} />
+        </Route>
       );
-      // The innermost Route's params are only its own pattern's captures.
-      // Parent's catch-all capture (`*`) is not folded in.
       expect(inner.params).toEqual({ slug: 'hello' });
     });
   });

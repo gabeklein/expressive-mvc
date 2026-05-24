@@ -1,4 +1,4 @@
-import { Consumer } from '@expressive/react';
+import { Consumer, Context } from '@expressive/react';
 
 import { act, beforeEach, describe, expect, it, render } from '../vitest';
 
@@ -6,6 +6,7 @@ import { Route } from './route';
 import { Router } from './router';
 
 beforeEach(() => {
+  Context.root.get(Router, false)?.set(null);
   window.history.replaceState(null, '', '/');
 });
 
@@ -24,16 +25,14 @@ const NotFound = () => <p>not-found</p>;
 
 function Tree() {
   return (
-    <Router>
-      <Route to="/*" as={RootLayout}>
-        <Route to="" as={HomePage} />
-        <Route to="blog/*" as={BlogLayout}>
-          <Route to="" as={BlogIndex} />
-          <Route to=":slug" as={BlogPost} />
-        </Route>
-        <Route as={NotFound} />
+    <Route as={RootLayout}>
+      <Route to="" as={HomePage} />
+      <Route to="blog/*" as={BlogLayout}>
+        <Route to="" as={BlogIndex} />
+        <Route to=":slug" as={BlogPost} />
       </Route>
-    </Router>
+      <Route as={NotFound} />
+    </Route>
   );
 }
 
@@ -71,19 +70,17 @@ describe('acceptance: nested file-routing tree', () => {
   it('navigating /blog/a -> /blog/b preserves the BlogPost instance', async () => {
     window.history.replaceState(null, '', '/blog/a');
     let mountCount = 0;
-    let router!: Router;
     const Tracked = () => {
       mountCount++;
       return (
         <Consumer for={Route}>{(r) => <span>{r.params.slug}</span>}</Consumer>
       );
     };
+    const router = Router.new();
     const view = render(
-      <Router is={(r) => (router = r)}>
-        <Route to="/blog/*" as={BlogLayout}>
-          <Route to=":slug" as={Tracked} />
-        </Route>
-      </Router>
+      <Route to="/blog/*" as={BlogLayout}>
+        <Route to=":slug" as={Tracked} />
+      </Route>
     );
     expect(mountCount).toBe(1);
     expect(view.container.textContent).toBe('a');

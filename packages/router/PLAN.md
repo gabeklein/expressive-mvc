@@ -43,16 +43,13 @@ The MVP and PLAN iteration steps 2-4 are implemented. The remaining work is the 
 
 - **Matcher** (`url.ts`): literal segments, `:param`, trailing `*` catch-all, trailing-slash normalization, case-insensitive literals. Returns `{ params, score }` for specificity ordering.
 - **Specificity**: literal=100, `:param`=10, catch-all=-1, pure-literal bonus +1. Ties at same specificity break by document order (first matching wins in the inline resolver loop).
-- **Router** (`router.ts`, `extends Component`): `path` field, popstate listener, monkey-patches `history.pushState`/`replaceState` so programmatic navigation outside `goto` still syncs. Owns URL primitives: `match(base, to)` (reactive on `path`), `anchor(route)`, `resolve(route, url)`, `segment(to)`, `goto(to, replace?)` (absolute-only, throws on relative). Renders a default wrapping `<Route to="*">` so children always have a Route in context.
-- **Route** (`route.ts`): `to`, `as`, `parent = get(Route, false)`, derived `base`, `match`, `matched`, `params`, `anchor`, `resolve`, `goto`. Default `to='*'` (catch-all layout) - leaf-vs-layout default is contextual. Index routes are `to=''`. Independent rendering (no `cloneElement`, no `base` prop, no clones cache). Inline lexical-children outlet: when Route has `<Route>` children, the parent picks the most-specific match among them and passes it as `children` to `as`. Routes without lexical Route children mount independently in place.
+- **Router** (`router.ts`, `extends State`): `path` field, popstate listener, monkey-patches `history.pushState`/`replaceState` so programmatic navigation outside `goto` still syncs. Owns URL primitives: `match(base, to)` (reactive on `path`), `anchor(route)`, `resolve(route, url)`, `segment(to)`, `goto(to, replace?)` (absolute-only, throws on relative). Auto-spawned as a `Context.root` singleton on first Route mount; users can also provide an explicit instance via `<Provider for={Router}>`.
+- **Route** (`route.ts`, `extends Component`): `to`, `as`, `parent = get(Route, false)`, derived `base`, `match`, `matched`, `params`, `anchor`, `resolve`, `goto`. Default `to='*'` (catch-all layout) - leaf-vs-layout default is contextual. Index routes are `to=''`. Independent rendering (no `cloneElement`, no `base` prop, no clones cache). Inline lexical-children outlet: when Route has `<Route>` children, the parent picks the most-specific match among them and passes it as `children` to `as`. Routes without lexical Route children mount independently in place.
+- **Router auto-spawn**: `router: Router = set(() => this.get(Router, false) || Router.new())` on Route. The `set()` factory runs lazily on first access (during Route's render), well after context wiring. Context lookup finds any explicitly-provided Router; otherwise `Router.new()` activates a fresh instance that lands in `Context.root` via the `register` fallback so subsequent Routes find it. `set()` is also load-bearing for reactivity - it makes `router` a managed Route property so cross-state reads (`router.path` from Route's render) wire subscriptions via the proxy machinery in [observable.ts:119-120](../state/src/observable.ts#L119-L120).
 - **Link** (`link.ts`): `to`, `replace`, `href` getter (resolved absolute path), modifier/middle-click bailout. Requires Route in context (always available because Router provides one).
 - **Redirect** (`redirect.ts`): fires `goto` in `new()` (StrictMode-safe). `when` prop gates whether navigation fires on mount.
 - **Update-in-place**: Route renders `<Page>{children}</Page>` with no `key`, so same-pattern navigation reconciles in place; `params` updates reactively.
 - **Acceptance tests** (`acceptance.test.tsx`) cover the nested file-routing tree: nested layouts (index + dynamic + catch-all sibling), `params` capture, instance preservation across same-pattern navigation.
-
-### Pending - structural
-
-- **Router as State** (drop Component substrate). Router no longer renders anything user-visible apart from the wrapping default Route. Once independent rendering landed, that wrapper exists only to ensure `get(Route)` succeeds for `Link`/`Redirect`. Converting Router to `extends State` removes the wrapper and lets Routes self-mount under Router context, with Router resolved via auto-spawn singleton. See "Router-as-State" below for the caveat about field-init `||`/`??` not working against `get(Router, false)`.
 
 ### Pending - iteration
 
@@ -244,32 +241,6 @@ Specificity ordering (most-specific first):
 1. Exact literal match (100/segment)
 2. `:param` segments (10/segment)
 3. `*` (catch-all; -1)
-
-## Router-as-State (planned)
-
-Router currently extends Component because it renders a wrapping default `<Route>`. Once that wrapper goes away (Routes can locate Router via context-derived `get(Router)` without a wrapping element), Router converts to `extends State`. Consumers do an auto-spawn:
-
-```ts
-router = get(Router, false) ?? Router.new();
-```
-
-**Caveat:** the field-initializer form above does *not* work today - `get(Router, false)` returns an instruction sentinel during initialization, not the lookup result. The fallback needs either a getter (costs context traversal per read) or a lifecycle hook that resolves once and caches. Confirm `Router.new()` registers as a root singleton from outside a React-mounted context before committing.
-
-Users still provide explicitly via `<Provider for={Router}>` when they want a variant - the motivating use cases being `HashRouter` / `MemoryRouter`, `baseUrl` for apps mounted under a path prefix, and test-time control over initial URL.
-
-**Test cleanup when this lands:** existing tests use `<Router is={(r) => (router = r)}>` to capture the instance. After conversion:
-
-```ts
-beforeEach(() => {
-  Context.root.get(Router, false)?.set(null);  // evict singleton
-  window.history.replaceState(null, '', '/');
-});
-
-const router = Router.new();
-const view = render(<Route to="/foo" as={...} />);
-```
-
-Pattern is established in `state/src/context.test.ts` (`root singleton` describe block).
 
 ## Package layout
 

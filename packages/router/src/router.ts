@@ -1,10 +1,9 @@
-import { Component } from '@expressive/react';
-import { ReactNode, createElement } from 'react';
+import { State } from '@expressive/react';
 
 import { Route } from './route';
 import { Match, fullPattern, matchPattern, patternSegment } from './url';
 
-export class Router extends Component {
+export class Router extends State {
   path = window.location.pathname;
 
   protected new() {
@@ -68,9 +67,5 @@ export class Router extends Component {
   resolve(route: Route, url: string): string {
     if (url.startsWith('/')) return url;
     return new URL(url, 'x://_' + this.anchor(route)).pathname;
-  }
-
-  render(props: { children?: ReactNode } = {}) {
-    return createElement(Route, {}, props.children);
   }
 }
