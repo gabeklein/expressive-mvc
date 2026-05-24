@@ -1,4 +1,4 @@
-import { Component, get } from '@expressive/react';
+import { Component, get, set } from '@expressive/react';
 import {
   Children,
   ComponentType,
@@ -16,7 +16,7 @@ interface RouteElementProps {
 }
 
 export class Route extends Component {
-  router = get(Router);
+  router: Router = set(() => this.get(Router, false) || Router.new());
 
   as?: ComponentType<{ children?: ReactNode }> = undefined;
 
