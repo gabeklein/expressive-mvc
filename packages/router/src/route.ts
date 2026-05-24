@@ -23,9 +23,7 @@ export class Route extends Component {
   to: string = '*';
 
   /** Nearest mounted Route ancestor, if any. */
-  get parent(): Route | undefined {
-    return this.get(Route, false);
-  }
+  parent = get(Route, false);
 
   /** Base path inherited from parent Route (empty at the root). */
   get base(): string {
