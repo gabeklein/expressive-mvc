@@ -117,10 +117,9 @@ function above<T extends State>(
     let found = false;
 
     ctx.get(Type, (state) => {
-      if (state === subject) return;
       found = true;
       assign(state);
-    });
+    }, false, subject);
 
     if (!found && argument !== false)
       throw new Error(`Required ${Type} not found in context for ${subject}.`);
