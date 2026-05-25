@@ -39,7 +39,7 @@ export class Route extends Component {
    * captures are unchanged.
    */
   get match(): Record<string, string> | undefined {
-    const next = this.router.match(this.base, this.to)?.params;
+    const next = this.router.match(this.base, this.to);
     const has = PARAMS.has(this);
     const prev = PARAMS.get(this);
 
@@ -69,39 +69,34 @@ export class Route extends Component {
   }
 
   render({ children } = {} as { children?: ReactNode }) {
-    const { router, as, base, to } = this;
+    const { router, as } = this;
 
     if (!this.match) return null;
 
-    let winner: ReactElement<RouteElementProps> | null = null;
-    let hasRoute = false;
-    let best = -Infinity;
-    const childBase = base + router.segment(to);
+    const candidates: Candidate[] = [];
+    collectRoutes(children, candidates);
 
-    forEachRouteChild(children, (el) => {
-      hasRoute = true;
-      const m = router.match(childBase, el.props.to ?? '*');
-      if (m && m.score > best) {
-        winner = el;
-        best = m.score;
-      }
-    });
-
-    if (hasRoute) children = winner;
+    if (candidates.length)
+      children = router.pick(this, candidates)?.el ?? null;
 
     return as ? createElement(as, {}, children) : children;
   }
 }
 
-function forEachRouteChild(
-  children: ReactNode,
-  fn: (el: ReactElement<RouteElementProps>) => void
-) {
+interface Candidate {
+  to: string;
+  el: ReactElement<RouteElementProps>;
+}
+
+function collectRoutes(children: ReactNode, into: Candidate[]) {
   Children.forEach(children, (child) => {
     if (!isValidElement(child)) return;
     if (child.type === Fragment)
-      forEachRouteChild((child.props as { children?: ReactNode }).children, fn);
+      collectRoutes((child.props as { children?: ReactNode }).children, into);
     else if (child.type === Route)
-      fn(child as ReactElement<RouteElementProps>);
+      into.push({
+        to: (child.props as RouteElementProps).to ?? '*',
+        el: child as ReactElement<RouteElementProps>
+      });
   });
 }

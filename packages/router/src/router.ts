@@ -1,7 +1,7 @@
 import { State } from '@expressive/react';
 
 import { Route } from './route';
-import { Match, fullPattern, matchPattern, patternSegment } from './url';
+import { fullPattern, matchPattern, patternSegment } from './url';
 
 export class Router extends State {
   path = window.location.pathname;
@@ -31,9 +31,33 @@ export class Router extends State {
    * `router.match(...)` establishes a dependency on the current URL via this
    * getter, which is what reactive consumers (Routes, resolvers) rely on.
    */
-  get match(): (base: string, to: string) => Match | null {
+  get match(): (base: string, to: string) => Record<string, string> | undefined {
     const { path } = this;
-    return (base, to) => matchPattern(fullPattern(base, to), path);
+    return (base, to) => matchPattern(fullPattern(base, to), path)?.params;
+  }
+
+  /**
+   * Pick the highest-scored matching candidate among `children` under `from`'s
+   * own base. Returns the winning candidate, or `null` if none match. Ties
+   * break by document order (first wins).
+   */
+  get pick() {
+    const { path } = this;
+    return <C extends { to: string }>(from: Route, children: C[]): C | null => {
+      const base = from.base + patternSegment(from.to);
+      let best = -Infinity;
+      let winner: C | null = null;
+
+      for (const c of children) {
+        const m = matchPattern(fullPattern(base, c.to), path);
+        if (m && m.score > best) {
+          best = m.score;
+          winner = c;
+        }
+      }
+
+      return winner;
+    };
   }
 
   goto(to: string, replace = false) {
