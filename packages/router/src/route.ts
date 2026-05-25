@@ -15,6 +15,8 @@ interface RouteElementProps {
   to?: string;
 }
 
+const PARAMS = new WeakMap<Route, Record<string, string>>();
+
 export class Route extends Component {
   router = set(() => this.get(Router, false) || new Router());
 
@@ -44,7 +46,16 @@ export class Route extends Component {
   }
 
   get params(): Record<string, string> {
-    return this.match?.params ?? {};
+    const next = this.match?.params ?? {};
+    const keys = Object.keys(next);
+    const params = PARAMS.get(this);
+
+    if (!params || keys.length !== Object.keys(params).length || keys.some(k => params![k] !== next[k])) {
+      PARAMS.set(this, next);
+      return next;
+    }
+
+    return params;
   }
 
   /** Directory-style anchor for relative navigation. */
