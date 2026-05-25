@@ -19,7 +19,7 @@ const BlogLayout = (props: { children?: React.ReactNode }) => (
 );
 const BlogIndex = () => <p>blog-index</p>;
 const BlogPost = () => (
-  <Consumer for={Route}>{(r) => <article>post:{r.params.slug}</article>}</Consumer>
+  <Consumer for={Route}>{(r) => <article>post:{r.match!.slug}</article>}</Consumer>
 );
 const NotFound = () => <p>not-found</p>;
 
@@ -73,7 +73,7 @@ describe('acceptance: nested file-routing tree', () => {
     const Tracked = () => {
       mountCount++;
       return (
-        <Consumer for={Route}>{(r) => <span>{r.params.slug}</span>}</Consumer>
+        <Consumer for={Route}>{(r) => <span>{r.match!.slug}</span>}</Consumer>
       );
     };
     const router = Router.new();
