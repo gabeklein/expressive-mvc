@@ -15,7 +15,7 @@ interface RouteElementProps {
   to?: string;
 }
 
-const PARAMS = new WeakMap<Route, Record<string, string>>();
+const PARAMS = new WeakMap<Route, Record<string, string> | undefined>();
 
 export class Route extends Component {
   router = set(() => this.get(Router, false) || new Router());
@@ -34,28 +34,24 @@ export class Route extends Component {
   }
 
   /**
-   * Captured params from the current match. Empty during the transient frame
-   * a navigation invalidates this Route's match before the Route unmounts.
+   * Captured params from the current match, or `undefined` when this Route's
+   * pattern does not match the current path. Stable identity across reads when
+   * captures are unchanged.
    */
-  get match() {
-    return this.router.match(this.base, this.to);
-  }
+  get match(): Record<string, string> | undefined {
+    const next = this.router.match(this.base, this.to)?.params;
+    const has = PARAMS.has(this);
+    const prev = PARAMS.get(this);
 
-  get matched(): boolean {
-    return !!this.match;
-  }
-
-  get params(): Record<string, string> {
-    const next = this.match?.params ?? {};
-    const keys = Object.keys(next);
-    const params = PARAMS.get(this);
-
-    if (!params || keys.length !== Object.keys(params).length || keys.some(k => params![k] !== next[k])) {
-      PARAMS.set(this, next);
-      return next;
+    if (has && !next === !prev) {
+      if (!next) return prev;
+      const keys = Object.keys(next);
+      if (keys.length === Object.keys(prev!).length && keys.every(k => prev![k] === next[k]))
+        return prev;
     }
 
-    return params;
+    PARAMS.set(this, next);
+    return next;
   }
 
   /** Directory-style anchor for relative navigation. */
@@ -75,7 +71,7 @@ export class Route extends Component {
   render({ children } = {} as { children?: ReactNode }) {
     const { router, as, base, to } = this;
 
-    if (!this.matched) return null;
+    if (!this.match) return null;
 
     let winner: ReactElement<RouteElementProps> | null = null;
     let hasRoute = false;
