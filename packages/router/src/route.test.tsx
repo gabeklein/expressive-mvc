@@ -14,7 +14,7 @@ const Home = () => <h1>Home</h1>;
 const Post = () => {
   return (
     <Consumer for={Route}>
-      {(r) => <article>id: {r.params.id}</article>}
+      {(r) => <article>id: {r.match!.id}</article>}
     </Consumer>
   );
 };
@@ -50,7 +50,7 @@ describe('Route', () => {
     const Page = () => {
       mountCount++;
       return (
-        <Consumer for={Route}>{(r) => <span>{r.params.id}</span>}</Consumer>
+        <Consumer for={Route}>{(r) => <span>{r.match!.id}</span>}</Consumer>
       );
     };
 
@@ -139,9 +139,13 @@ describe('Route', () => {
   });
 
   it('params returns stable identity when match recomputes to equal content', () => {
-    const getter = Object.getOwnPropertyDescriptor(Route.prototype, 'params')!.get!;
+    const getter = Object.getOwnPropertyDescriptor(Route.prototype, 'match')!.get!;
     let match: { params: Record<string, string>; score: number } | null = null;
-    const stub = { get match() { return match; } } as unknown as Route;
+    const stub = {
+      base: '',
+      to: '/x',
+      router: { match: () => match }
+    } as unknown as Route;
 
     match = { params: { id: 'foo' }, score: 110 };
     const first = getter.call(stub);
@@ -156,13 +160,11 @@ describe('Route', () => {
     expect(third).toEqual({ id: 'bar' });
 
     match = null;
-    const fourth = getter.call(stub);
-    expect(fourth).toEqual({});
-    match = null;
-    expect(getter.call(stub)).toBe(fourth);
+    expect(getter.call(stub)).toBeUndefined();
+    expect(getter.call(stub)).toBeUndefined();
   });
 
-  it('params returns empty when match invalidated by navigation', async () => {
+  it('params is undefined when match invalidated by navigation', async () => {
     window.history.replaceState(null, '', '/posts/foo');
     let leaf!: Route;
     const Page = () => (
@@ -170,10 +172,10 @@ describe('Route', () => {
     );
     const router = Router.new();
     render(<Route to="/posts/:id" as={Page} />);
-    expect(leaf.params).toEqual({ id: 'foo' });
+    expect(leaf.match).toEqual({ id: 'foo' });
 
     await act(async () => router.goto('/elsewhere'));
-    expect(leaf.params).toEqual({});
+    expect(leaf.match).toBeUndefined();
   });
 
   it('anchor handles patterns that already end with /', async () => {
@@ -370,7 +372,7 @@ describe('Route', () => {
     );
     const BlogIndex = () => <p>blog-index</p>;
     const BlogPost = () => (
-      <Consumer for={Route}>{(r) => <p>post {r.params.slug}</p>}</Consumer>
+      <Consumer for={Route}>{(r) => <p>post {r.match!.slug}</p>}</Consumer>
     );
 
     it('layout mounts its prefix-matched child', () => {
@@ -414,7 +416,7 @@ describe('Route', () => {
         <>users/{props.children}</>
       );
       const UserDetail = () => (
-        <Consumer for={Route}>{(r) => <span>{r.params.id}</span>}</Consumer>
+        <Consumer for={Route}>{(r) => <span>{r.match!.id}</span>}</Consumer>
       );
       const view = render(
         <Route to="/admin/*" as={AdminChrome}>
@@ -450,7 +452,7 @@ describe('Route', () => {
           <Route to=":slug" as={Capture} />
         </Route>
       );
-      expect(inner.params).toEqual({ slug: 'hello' });
+      expect(inner.match).toEqual({ slug: 'hello' });
     });
   });
 });

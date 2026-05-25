@@ -58,7 +58,7 @@ export class Router extends State {
   anchor(route: Route): string {
     const own = route.to
       .replace(/\/?\*$/, '')
-      .replace(/:(\w+)/g, (_, name) => route.params[name]);
+      .replace(/:(\w+)/g, (_, name) => route.match![name]);
 
     return own.endsWith('/') ? own : own + '/';
   }
