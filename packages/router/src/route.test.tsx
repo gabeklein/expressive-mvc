@@ -138,6 +138,30 @@ describe('Route', () => {
     expect(view.container.textContent).toBe('Fallback');
   });
 
+  it('params returns stable identity when match recomputes to equal content', () => {
+    const getter = Object.getOwnPropertyDescriptor(Route.prototype, 'params')!.get!;
+    let match: { params: Record<string, string>; score: number } | null = null;
+    const stub = { get match() { return match; } } as unknown as Route;
+
+    match = { params: { id: 'foo' }, score: 110 };
+    const first = getter.call(stub);
+    expect(first).toEqual({ id: 'foo' });
+
+    match = { params: { id: 'foo' }, score: 110 };
+    expect(getter.call(stub)).toBe(first);
+
+    match = { params: { id: 'bar' }, score: 110 };
+    const third = getter.call(stub);
+    expect(third).not.toBe(first);
+    expect(third).toEqual({ id: 'bar' });
+
+    match = null;
+    const fourth = getter.call(stub);
+    expect(fourth).toEqual({});
+    match = null;
+    expect(getter.call(stub)).toBe(fourth);
+  });
+
   it('params returns empty when match invalidated by navigation', async () => {
     window.history.replaceState(null, '', '/posts/foo');
     let leaf!: Route;
