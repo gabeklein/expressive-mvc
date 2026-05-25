@@ -1,11 +1,4 @@
-import {
-  vi,
-  describe,
-  it,
-  expect,
-  mockWarn,
-  mockPromise
-} from '../../vitest';
+import { vi, describe, it, expect, mockWarn, mockPromise } from '../../vitest';
 import { State } from '../state';
 import { set } from './set';
 
@@ -53,6 +46,17 @@ describe('property descriptors', () => {
     expect(() => {
       test.value = 'bar';
     }).toThrow(/read-only/);
+  });
+
+  it('will ignore symbol replay on read-only factory', () => {
+    class Test extends State {
+      value = set(() => 'foo');
+    }
+
+    const test = Test.new();
+
+    (test as any).value = Symbol('instruction-replay');
+    expect(test.value).toBe('foo');
   });
 
   it('will be read-only with required factory', () => {
@@ -232,7 +236,7 @@ describe('callback', () => {
 
   it('will ignore effect promise', () => {
     class Subject extends State {
-      property = set<any>(undefined, async () => { });
+      property = set<any>(undefined, async () => {});
     }
 
     const state = Subject.new();

@@ -690,8 +690,10 @@ function apply(
       return touch(this, key, value);
     },
     set(next: any, silent?: boolean) {
-      if (config.set === false)
+      if (config.set === false) {
+        if (typeof next == 'symbol') return;
         throw new Error(`${state}.${String(key)} is read-only.`);
+      }
 
       if (typeof config.set == 'function')
         try {

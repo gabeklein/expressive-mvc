@@ -10,6 +10,13 @@ beforeEach(() => {
   window.history.replaceState(null, '', '/');
 });
 
+async function settle() {
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+}
+
 const RootLayout = (props: { children?: React.ReactNode }) => (
   <div data-root>{props.children}</div>
 );
@@ -19,7 +26,9 @@ const BlogLayout = (props: { children?: React.ReactNode }) => (
 );
 const BlogIndex = () => <p>blog-index</p>;
 const BlogPost = () => (
-  <Consumer for={Route}>{(r) => <article>post:{r.match!.slug}</article>}</Consumer>
+  <Consumer for={Route}>
+    {(r) => <article>post:{r.match!.slug}</article>}
+  </Consumer>
 );
 const NotFound = () => <p>not-found</p>;
 
@@ -37,33 +46,40 @@ function Tree() {
 }
 
 describe('acceptance: nested file-routing tree', () => {
-  it('/ -> RootLayout > HomePage', () => {
+  it('/ -> RootLayout > HomePage', async () => {
     window.history.replaceState(null, '', '/');
     const view = render(<Tree />);
     expect(view.container.querySelector('[data-root]')).not.toBeNull();
+    await settle();
     expect(view.container.textContent).toBe('home');
   });
 
-  it('/blog -> RootLayout > BlogLayout > BlogIndex', () => {
+  it('/blog -> RootLayout > BlogLayout > BlogIndex', async () => {
     window.history.replaceState(null, '', '/blog');
     const view = render(<Tree />);
     expect(view.container.querySelector('[data-root]')).not.toBeNull();
+    await settle();
     expect(view.container.querySelector('[data-blog]')).not.toBeNull();
+    await settle();
     expect(view.container.textContent).toBe('blog-index');
   });
 
-  it('/blog/hello-world -> RootLayout > BlogLayout > BlogPost(slug)', () => {
+  it('/blog/hello-world -> RootLayout > BlogLayout > BlogPost(slug)', async () => {
     window.history.replaceState(null, '', '/blog/hello-world');
     const view = render(<Tree />);
+    await settle();
     expect(view.container.querySelector('[data-blog]')).not.toBeNull();
+    await settle();
     expect(view.container.textContent).toBe('post:hello-world');
   });
 
-  it('/anything-else -> RootLayout > NotFound', () => {
+  it('/anything-else -> RootLayout > NotFound', async () => {
     window.history.replaceState(null, '', '/anything-else');
     const view = render(<Tree />);
     expect(view.container.querySelector('[data-root]')).not.toBeNull();
+    await settle();
     expect(view.container.querySelector('[data-blog]')).toBeNull();
+    await settle();
     expect(view.container.textContent).toBe('not-found');
   });
 
@@ -82,12 +98,15 @@ describe('acceptance: nested file-routing tree', () => {
         <Route to=":slug" as={Tracked} />
       </Route>
     );
+    await settle();
     expect(mountCount).toBe(1);
+    await settle();
     expect(view.container.textContent).toBe('a');
 
     await act(async () => router.goto('/blog/b'));
 
     expect(mountCount).toBe(1);
+    await settle();
     expect(view.container.textContent).toBe('b');
   });
 });

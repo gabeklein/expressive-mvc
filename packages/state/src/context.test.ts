@@ -1112,6 +1112,18 @@ it('will traverse deeply nested contexts', () => {
   expect(cb).toBeCalledWith(foo, true);
 });
 
+it('will skip downstream callback for excluded instance', () => {
+  const root = new Context();
+  const child = root.push();
+  const foo = new Example();
+  const cb = vi.fn();
+
+  child.add(foo);
+  root.get(Example, cb, undefined, foo);
+
+  expect(cb).not.toBeCalled();
+});
+
 it('will skip consumer if filter does not match downstream', () => {
   const parent = new Context();
   const child = parent.push();

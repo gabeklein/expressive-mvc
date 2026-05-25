@@ -10,6 +10,13 @@ beforeEach(() => {
   window.history.replaceState(null, '', '/');
 });
 
+async function settle() {
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+}
+
 const Home = () => <h1>Home</h1>;
 const Post = () => {
   return (
@@ -67,9 +74,7 @@ describe('Route', () => {
   });
 
   it('ignores non-Route siblings when resolving', () => {
-    // Top-level non-Route content renders alongside; only Route children of
-    // a Route participate in outlet resolution. Sanity check that bare
-    // sibling JSX coexists with Routes.
+    // Top-level non-Route content renders alongside Route branches.
     window.history.replaceState(null, '', '/');
     const view = render(
       <>
@@ -80,9 +85,7 @@ describe('Route', () => {
     expect(view.container.textContent).toContain('Home');
   });
 
-  it('outlet resolution skips non-Route children inside a layout', () => {
-    // Non-element children (text nodes) and non-Route elements in a layout's
-    // lexical children are ignored by the outlet resolver.
+  it('renders non-Route children inside a layout', async () => {
     window.history.replaceState(null, '', '/');
     const view = render(
       <Route to="/*">
@@ -91,7 +94,8 @@ describe('Route', () => {
         <Route to="" as={Home} />
       </Route>
     );
-    expect(view.container.textContent).toBe('Home');
+    await settle();
+    expect(view.container.textContent).toBe('chrometext nodeHome');
   });
 
   it('defaults `as` to a children-passthrough', () => {
@@ -116,7 +120,7 @@ describe('Route', () => {
     expect(view.container.textContent).toBe('Home');
   });
 
-  it('specific sibling beats bare-default Route on specificity (lexical outlet)', () => {
+  it('specific sibling beats bare-default Route on specificity', async () => {
     window.history.replaceState(null, '', '/about');
     const view = render(
       <Route>
@@ -124,10 +128,11 @@ describe('Route', () => {
         <Route as={() => <span>Fallback</span>} />
       </Route>
     );
+    await settle();
     expect(view.container.textContent).toBe('About');
   });
 
-  it('bare-default Route renders when no sibling matches (lexical outlet)', () => {
+  it('bare-default Route renders when no sibling matches', async () => {
     window.history.replaceState(null, '', '/nope');
     const view = render(
       <Route>
@@ -135,11 +140,15 @@ describe('Route', () => {
         <Route as={() => <span>Fallback</span>} />
       </Route>
     );
+    await settle();
     expect(view.container.textContent).toBe('Fallback');
   });
 
   it('params returns stable identity when match recomputes to equal content', () => {
-    const getter = Object.getOwnPropertyDescriptor(Route.prototype, 'match')!.get!;
+    const getter = Object.getOwnPropertyDescriptor(
+      Route.prototype,
+      'match'
+    )!.get!;
     let match: { params: Record<string, string>; score: number } | null = null;
     const stub = {
       base: '',
@@ -238,7 +247,7 @@ describe('Route', () => {
     expect(view.container.textContent).toBe('');
   });
 
-  it('resolves Routes rendered through an intermediate component (lexical outlet)', () => {
+  it('resolves Routes rendered through an intermediate component', async () => {
     window.history.replaceState(null, '', '/about');
     const Pages = () => (
       <>
@@ -246,19 +255,19 @@ describe('Route', () => {
         <Route to="/contact" as={() => <span>Contact</span>} />
       </>
     );
-    // Wrap in a Route so the intermediate component is participating in an
-    // outlet (lexical) resolution. Without the wrapper, Routes mount
-    // independently and both would render in their respective locations
-    // (only the matching one renders, due to self-gating).
+    // Wrap in a Route so the intermediate component participates in sibling
+    // resolution. Without the wrapper, Routes mount independently and both
+    // render in their respective locations (only the matching one renders).
     const view = render(
       <Route>
         <Pages />
       </Route>
     );
+    await settle();
     expect(view.container.textContent).toBe('About');
   });
 
-  it('lexical container re-resolves winner on navigation', async () => {
+  it('Route container re-resolves winner on navigation', async () => {
     window.history.replaceState(null, '', '/a');
     const router = Router.new();
     const view = render(
@@ -267,15 +276,17 @@ describe('Route', () => {
         <Route to="/b" as={() => <span>B</span>} />
       </Route>
     );
+    await settle();
     expect(view.container.textContent).toBe('A');
     await act(async () => router.goto('/b'));
+    await settle();
     expect(view.container.textContent).toBe('B');
   });
 
   // Blocked on https://github.com/gabeklein/expressive-state/issues/85 -
   // Expressive does not reset omitted props to defaults on prop update, so
   // a winner-swap to a bare Route inherits the prior `to`.
-  it.skip('lexical container switches between specific and bare-default on navigation', async () => {
+  it.skip('Route container switches between specific and bare-default on navigation', async () => {
     window.history.replaceState(null, '', '/a');
     const router = Router.new();
     const view = render(
@@ -289,7 +300,7 @@ describe('Route', () => {
     expect(view.container.textContent).toBe('Other');
   });
 
-  it('parallel Route groups under one parent resolve independently', () => {
+  it('parallel Route groups under one parent resolve independently', async () => {
     window.history.replaceState(null, '', '/admin/users');
     const Admin = () => (
       <div>
@@ -304,10 +315,25 @@ describe('Route', () => {
       </div>
     );
     const view = render(<Route to="admin/*" as={Admin} />);
+    await settle();
     expect(view.container.textContent).toBe('User Header + Users Page');
   });
 
-  it('resolves Routes through a Fragment in lexical children', () => {
+  it('will not let passthrough Route groups block sibling selection', async () => {
+    window.history.replaceState(null, '', '/about');
+    const view = render(
+      <Route>
+        <Route>
+          <Route to="/about" as={() => <span>Grouped</span>} />
+        </Route>
+        <Route to="/about" as={() => <span>Sibling</span>} />
+      </Route>
+    );
+    await settle();
+    expect(view.container.textContent).toBe('GroupedSibling');
+  });
+
+  it('resolves Routes through a Fragment', async () => {
     window.history.replaceState(null, '', '/about');
     const view = render(
       <Route>
@@ -317,11 +343,12 @@ describe('Route', () => {
         </>
       </Route>
     );
+    await settle();
     expect(view.container.textContent).toBe('About');
   });
 
   describe('specificity', () => {
-    it('literal beats :param at the same path', () => {
+    it('literal beats :param at the same path', async () => {
       window.history.replaceState(null, '', '/posts/new');
       const view = render(
         <Route>
@@ -329,10 +356,11 @@ describe('Route', () => {
           <Route to="/posts/new" as={() => <span>literal</span>} />
         </Route>
       );
+      await settle();
       expect(view.container.textContent).toBe('literal');
     });
 
-    it(':param beats *', () => {
+    it(':param beats *', async () => {
       window.history.replaceState(null, '', '/posts/foo');
       const view = render(
         <Route>
@@ -340,10 +368,11 @@ describe('Route', () => {
           <Route to="/posts/:id" as={() => <span>dynamic</span>} />
         </Route>
       );
+      await settle();
       expect(view.container.textContent).toBe('dynamic');
     });
 
-    it('catch-all matches when no sibling does', () => {
+    it('catch-all matches when no sibling does', async () => {
       window.history.replaceState(null, '', '/anything/at/all');
       const view = render(
         <Route>
@@ -351,10 +380,11 @@ describe('Route', () => {
           <Route to="*" as={() => <span>not-found</span>} />
         </Route>
       );
+      await settle();
       expect(view.container.textContent).toBe('not-found');
     });
 
-    it('first declared wins on a true tie', () => {
+    it('first declared wins on a true tie', async () => {
       window.history.replaceState(null, '', '/posts/foo');
       const view = render(
         <Route>
@@ -362,20 +392,24 @@ describe('Route', () => {
           <Route to="/posts/:b" as={() => <span>b</span>} />
         </Route>
       );
+      await settle();
       expect(view.container.textContent).toBe('a');
     });
   });
 
   describe('nested routes', () => {
     const Layout = (props: { children?: React.ReactNode }) => (
-      <section><nav>chrome</nav>{props.children}</section>
+      <section>
+        <nav>chrome</nav>
+        {props.children}
+      </section>
     );
     const BlogIndex = () => <p>blog-index</p>;
     const BlogPost = () => (
       <Consumer for={Route}>{(r) => <p>post {r.match!.slug}</p>}</Consumer>
     );
 
-    it('layout mounts its prefix-matched child', () => {
+    it('layout mounts its prefix-matched child', async () => {
       window.history.replaceState(null, '', '/blog');
       const view = render(
         <Route to="/blog/*" as={Layout}>
@@ -383,10 +417,11 @@ describe('Route', () => {
           <Route to=":slug" as={BlogPost} />
         </Route>
       );
+      await settle();
       expect(view.container.textContent).toBe('chromeblog-index');
     });
 
-    it('layout resolves :param child', () => {
+    it('layout resolves :param child', async () => {
       window.history.replaceState(null, '', '/blog/hello');
       const view = render(
         <Route to="/blog/*" as={Layout}>
@@ -394,6 +429,7 @@ describe('Route', () => {
           <Route to=":slug" as={BlogPost} />
         </Route>
       );
+      await settle();
       expect(view.container.textContent).toBe('chromepost hello');
     });
 
@@ -407,7 +443,7 @@ describe('Route', () => {
       expect(view.container.textContent).toBe('');
     });
 
-    it('three-level nesting composes bases correctly', () => {
+    it('three-level nesting composes bases correctly', async () => {
       window.history.replaceState(null, '', '/admin/users/42');
       const AdminChrome = (props: { children?: React.ReactNode }) => (
         <main>admin/{props.children}</main>
@@ -425,10 +461,11 @@ describe('Route', () => {
           </Route>
         </Route>
       );
+      await settle();
       expect(view.container.textContent).toBe('admin/users/42');
     });
 
-    it('catch-all layout (to="*") nests children at root base', () => {
+    it('catch-all layout (to="*") nests children at root base', async () => {
       window.history.replaceState(null, '', '/about');
       const Chrome = (props: { children?: React.ReactNode }) => (
         <main>{props.children}</main>
@@ -438,10 +475,11 @@ describe('Route', () => {
           <Route to="/about" as={() => <span>about</span>} />
         </Route>
       );
+      await settle();
       expect(view.container.textContent).toBe('about');
     });
 
-    it('own captures only - parent params not in child', () => {
+    it('own captures only - parent params not in child', async () => {
       window.history.replaceState(null, '', '/blog/hello');
       let inner!: Route;
       const Capture = () => (
@@ -452,6 +490,7 @@ describe('Route', () => {
           <Route to=":slug" as={Capture} />
         </Route>
       );
+      await settle();
       expect(inner.match).toEqual({ slug: 'hello' });
     });
   });
