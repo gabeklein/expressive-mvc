@@ -73,7 +73,11 @@ declare namespace State {
   type Signal<T = State> = Event<T> | true | false | null;
 
   /** Export/Import compatible value for a given property in a State. */
-  type Export<R> = R extends { get(): infer T } ? T : R;
+  type Export<R> = R extends State
+    ? Values<R>
+    : R extends { get(): infer T }
+    ? T
+    : R;
 
   /**
    * Values from current state of given state.

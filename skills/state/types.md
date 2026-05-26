@@ -12,8 +12,8 @@ Namespace types on `State` used throughout the API.
 | `State.Event<T>`    | Valid event keys: `Field<T> \| number \| symbol \| (string & {})`       |
 | `State.Args<T>`     | Constructor argument union: `(Args \| Init \| Assign \| void)[]`        |
 | `State.Assign<T>`   | Object overlay - maps properties preserving function `this`             |
-| `State.Values<T>`   | All fields with ref objects unwrapped via `Export<R>`                   |
-| `State.Export<R>`   | If R has `.get()`, extracts return type; otherwise R                    |
+| `State.Values<T>`   | All fields with child states and ref objects unwrapped via `Export<R>`  |
+| `State.Export<R>`   | If R is a State, recursively exports `Values<R>`; otherwise if R has `.get()`, extracts return type; otherwise R |
 | `State.Value<T, K>` | Single property value lookup with Export unwrapping                     |
 
 ## Extends vs Type
