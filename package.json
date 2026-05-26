@@ -8,7 +8,7 @@
     "examples"
   ],
   "scripts": {
-    "test": "bun test --coverage",
+    "test": "lerna run test",
     "build": "lerna run build",
     "canary": "bash .github/scripts/canary.sh",
     "pr": "bash .github/scripts/pr.sh",
