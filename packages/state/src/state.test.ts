@@ -488,15 +488,19 @@ describe('get method', () => {
       // We want a copy, not the original.
       expect(exported.nested).not.toBeInstanceOf(Nested);
 
+      const nested: State.Values<Nested> = exported.nested;
+
       expect(exported).toEqual({
         foo: 'foo',
         bar: 'bar',
         baz: 'baz',
-        nested: {
-          foo: 1,
-          bar: 2,
-          baz: 3
-        }
+        nested
+      });
+
+      expect(nested).toEqual({
+        foo: 1,
+        bar: 2,
+        baz: 3
       });
     });
 
