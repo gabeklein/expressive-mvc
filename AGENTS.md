@@ -22,7 +22,7 @@ skills/         - API reference docs (also published as skills.sh skill)
 
 ```bash
 bun install              # Install deps
-bun test --coverage      # Run all tests (bun test runner)
+bun run test             # Run package test scripts (type check + bun test)
 node --run build         # Build all packages (lerna under node)
 ```
 
