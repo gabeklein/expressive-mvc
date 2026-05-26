@@ -43,7 +43,7 @@ jobs:
       - name: Check for changed packages
         id: changed
         run: |
-          if pnpm lerna changed > /dev/null 2>&1; then
+          if npx lerna changed > /dev/null 2>&1; then
             echo "has_changes=true" >> "$GITHUB_OUTPUT"
           else
             echo "has_changes=false" >> "$GITHUB_OUTPUT"
@@ -75,15 +75,15 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
       - name: Build packages
-        run: pnpm build
+        run: node --run build
 
       - name: Run tests
-        run: pnpm test
+        run: node --run test
 
       - name: Version and publish
         run: |
-          pnpm lerna version --conventional-commits --yes
-          pnpm lerna publish from-package --no-private --yes
+          npx lerna version --conventional-commits --yes
+          npx lerna publish from-package --no-private --yes
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -105,13 +105,13 @@ jobs:
       - name: Check for changed packages
         if: github.event.inputs.force_publish != 'true'
         run: |
-          if ! pnpm lerna changed > /dev/null 2>&1; then
+          if ! npx lerna changed > /dev/null 2>&1; then
             echo "::error::No changed packages to publish."
             exit 1
           fi
 
       - name: Build packages
-        run: pnpm build
+        run: node --run build
 
       - name: Publish canary
         run: |
@@ -123,4 +123,4 @@ jobs:
             echo "Force publish enabled."
           fi
 
-          pnpm lerna "${args[@]}"
+          npx lerna "${args[@]}"

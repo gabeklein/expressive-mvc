@@ -8,7 +8,7 @@
 
 ## Flow
 
-1. Feature branch → `pnpm pr` → opens PR to `main` (opens in browser for review)
+1. Feature branch → `node --run pr` → opens PR to `main` (opens in browser for review)
 2. CI runs build+test and posts a version preview comment on the PR
 3. Merge to `main` → publish checks for changed packages, versions, and publishes to npm
 

@@ -18,10 +18,10 @@ jobs:
       - uses: ./.github/actions/setup
 
       - name: Run tests
-        run: pnpm test
+        run: node --run test
 
       - name: Build packages
-        run: pnpm build
+        run: node --run build
 
   version-preview:
     name: Version preview
@@ -46,12 +46,12 @@ jobs:
       - name: Compute next versions
         id: preview
         run: |
-          if ! pnpm lerna changed > /dev/null 2>&1; then
+          if ! npx lerna changed > /dev/null 2>&1; then
             echo "body=No package changes — merge will not trigger a publish." >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
-          output=$(pnpm lerna version --conventional-commits --no-push --no-git-tag-version --yes 2>&1)
+          output=$(npx lerna version --conventional-commits --no-push --no-git-tag-version --yes 2>&1)
           versions=$(echo "$output" | grep -E '^\s+-' | sed 's/^ *//')
 
           body=$(printf "**Version preview**\n\`\`\`\n%s\n\`\`\`\nMerging will publish these versions to npm." "$versions")

@@ -48,7 +48,7 @@ env -u GITHUB_TOKEN gh run watch "$run_id" --exit-status
 
 echo ""
 echo "Published canary versions:"
-for pkg in $(pnpm lerna list --json --no-private 2>/dev/null | jq -r '.[].name'); do
+for pkg in $(npx lerna list --json --no-private 2>/dev/null | jq -r '.[].name'); do
   version="$(npm view "$pkg" dist-tags.canary 2>/dev/null || true)"
   if [[ -n "$version" ]]; then
     echo " - $pkg@$version"
