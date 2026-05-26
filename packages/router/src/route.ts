@@ -1,21 +1,10 @@
 import { Component, get, set } from '@expressive/react';
-import {
-  Children,
-  ComponentType,
-  Fragment,
-  ReactElement,
-  ReactNode,
-  createElement,
-  isValidElement
-} from 'react';
+import { ComponentType, ReactNode, createElement } from 'react';
 
 import { Router } from './router';
 
-interface RouteElementProps {
-  to?: string;
-}
-
 const PARAMS = new WeakMap<Route, Record<string, string> | undefined>();
+const CHILDREN = new WeakMap<Route, Route[]>();
 
 export class Route extends Component {
   router = set(() => this.get(Router, false) || new Router());
@@ -54,6 +43,17 @@ export class Route extends Component {
     return next;
   }
 
+  /**
+   * Boolean derivative of `match`. Reading this in render (instead of `match`)
+   * lets same-pattern navigations skip Route re-renders: the boolean stays
+   * `true` across `/posts/foo` -> `/posts/bar`, so Expressive's memoized
+   * computed property fires no event and the page Component reconciles in
+   * place with its Consumer picking up new params reactively.
+   */
+  get matched(): boolean {
+    return !!this.match;
+  }
+
   /** Directory-style anchor for relative navigation. */
   get anchor(): string {
     return this.router.anchor(this);
@@ -69,39 +69,39 @@ export class Route extends Component {
   }
 
   render({ children } = {} as { children?: ReactNode }) {
-    const { router, as, base, to } = this;
+    const self = this.is;
+    const { parent, as, matched } = this;
 
-    if (!this.match) return null;
+    if (parent) {
+      register(parent.is, self);
 
-    let winner: ReactElement<RouteElementProps> | null = null;
-    let hasRoute = false;
-    let best = -Infinity;
-    const childBase = base + router.segment(to);
+      if (as)
+        for (const sibling of CHILDREN.get(parent.is)!) {
+          if (sibling === self) break;
+          if (sibling.as && sibling.matched) return null;
+        }
+    }
 
-    forEachRouteChild(children, (el) => {
-      hasRoute = true;
-      const m = router.match(childBase, el.props.to ?? '*');
-      if (m && m.score > best) {
-        winner = el;
-        best = m.score;
-      }
-    });
-
-    if (hasRoute) children = winner;
-
+    if (!matched) return null;
     return as ? createElement(as, {}, children) : children;
   }
 }
 
-function forEachRouteChild(
-  children: ReactNode,
-  fn: (el: ReactElement<RouteElementProps>) => void
-) {
-  Children.forEach(children, (child) => {
-    if (!isValidElement(child)) return;
-    if (child.type === Fragment)
-      forEachRouteChild((child.props as { children?: ReactNode }).children, fn);
-    else if (child.type === Route)
-      fn(child as ReactElement<RouteElementProps>);
+function register(parent: Route, child: Route) {
+  let list = CHILDREN.get(parent);
+
+  if (list) {
+    if (list.includes(child)) return;
+  } else {
+    list = [];
+    CHILDREN.set(parent, list);
+  }
+
+  list.push(child);
+
+  child.set(null, () => {
+    const i = list!.indexOf(child);
+    if (i >= 0) list!.splice(i, 1);
+    if (!list!.length) CHILDREN.delete(parent);
   });
 }
