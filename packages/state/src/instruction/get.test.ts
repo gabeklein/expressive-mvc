@@ -1,5 +1,5 @@
 import { Context } from '../context';
-import { vi, describe, it, expect, mockPromise } from '../../test';
+import { fn, spyOn, describe, it, expect, mockPromise } from '../../test';
 import { State } from '../state';
 import { get } from './get';
 import { set } from './set';
@@ -51,7 +51,7 @@ describe('fetch mode', () => {
     }
 
     const foo = Foo.new();
-    const mockEffect = vi.fn();
+    const mockEffect = fn();
     let promise = mockPromise();
 
     expect(foo.bar.foo).toBe(foo);
@@ -201,7 +201,7 @@ describe('fetch mode', () => {
     }
 
     const { child } = Parent.new();
-    const effect = vi.fn((it: Child) => {
+    const effect = fn((it: Child) => {
       void it.value;
       void it.parent.value;
     });
@@ -275,7 +275,7 @@ describe('fetch mode', () => {
 
       new Context(parent).push(child);
 
-      const effect = vi.fn();
+      const effect = fn();
       const first = parent.peer;
 
       expect(child.peer).toBe(first);
@@ -299,7 +299,7 @@ describe('fetch mode', () => {
       const child = new Child();
       const ambient = Ambient.new();
       const context = new Context();
-      const effect = vi.fn();
+      const effect = fn();
 
       context.push(child);
 
@@ -319,7 +319,7 @@ describe('fetch mode', () => {
         value = 'initial';
       }
 
-      const callback = vi.fn();
+      const callback = fn();
 
       class Owner extends State {
         remote = new Remote();
@@ -334,7 +334,7 @@ describe('fetch mode', () => {
       new Context(owner).push(consumer);
 
       const first = consumer.remote;
-      const effect = vi.fn();
+      const effect = fn();
 
       expect(callback).toBeCalledTimes(1);
       expect(callback).toBeCalledWith(first, consumer);
@@ -487,7 +487,7 @@ describe('fetch mode', () => {
           children = get(Child, true, gotChild);
         }
 
-        const gotChild = vi.fn();
+        const gotChild = fn();
         const parent = new Parent();
         const child = new Child();
 
@@ -550,7 +550,7 @@ describe('fetch mode', () => {
           baz = get(Baz, true, gotBaz);
         }
 
-        const gotBaz = vi.fn();
+        const gotBaz = fn();
         const foo = new Foo();
         const baz = new Baz();
 
@@ -654,7 +654,7 @@ describe('lifecycle callbacks', () => {
       value = 'foo';
     }
 
-    const remoteCallback = vi.fn();
+    const remoteCallback = fn();
 
     class Test extends State {
       remote = get(Remote, remoteCallback);
@@ -675,7 +675,7 @@ describe('lifecycle callbacks', () => {
       children = get(Child, true, gotChild);
     }
 
-    const gotChild = vi.fn();
+    const gotChild = fn();
     const parent = new Parent();
     const child = new Child();
 
@@ -685,8 +685,8 @@ describe('lifecycle callbacks', () => {
   });
 
   it('will run cleanup on downstream unmount', async () => {
-    const didRemove = vi.fn();
-    const didAdd = vi.fn(() => didRemove);
+    const didRemove = fn();
+    const didAdd = fn(() => didRemove);
 
     class Child extends State {
       value = 0;
@@ -718,7 +718,7 @@ describe('lifecycle callbacks', () => {
       children = get(Child, true, hasChild);
     }
 
-    const hasChild = vi.fn(() => false);
+    const hasChild = fn(() => false);
     const parent = new Parent();
     const context = new Context(parent);
 
@@ -739,7 +739,7 @@ describe('lifecycle callbacks', () => {
       value = 'foo';
     }
 
-    const remoteCallback = vi.fn((remote: Remote) => {
+    const remoteCallback = fn((remote: Remote) => {
       // Access value but should not subscribe
       void remote.value;
     });
@@ -765,8 +765,8 @@ describe('lifecycle callbacks', () => {
   it('will run cleanup on state destruction', async () => {
     class Remote extends State {}
 
-    const cleanup = vi.fn();
-    const remoteCallback = vi.fn(() => cleanup);
+    const cleanup = fn();
+    const remoteCallback = fn(() => cleanup);
 
     class Test extends State {
       remote = get(Remote, remoteCallback);
@@ -786,7 +786,7 @@ describe('lifecycle callbacks', () => {
   });
 
   it('will receive ready instance', async () => {
-    const didSet = vi.fn();
+    const didSet = fn();
 
     class Child extends State {
       value = set(undefined, didSet);
@@ -820,8 +820,8 @@ describe('lifecycle callbacks', () => {
       });
     }
 
-    const didNotify = vi.fn();
-    const didRemove = vi.fn();
+    const didNotify = fn();
+    const didRemove = fn();
 
     const context = new Context();
 
@@ -847,8 +847,8 @@ describe('lifecycle callbacks', () => {
       });
     }
 
-    const didNotify = vi.fn();
-    const didRemove = vi.fn();
+    const didNotify = fn();
+    const didRemove = fn();
 
     const context = new Context(Parent);
     const inner = context.push(Child);
