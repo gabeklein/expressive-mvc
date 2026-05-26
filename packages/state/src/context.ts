@@ -305,6 +305,8 @@ class Context {
     this.scope.clear();
     this.cleanup.forEach((cb) => cb());
     this.cleanup.clear();
+    this.consume.clear();
+    this.provide.clear();
     if (this.parent) {
       this.parent.scope.delete(this);
     }
