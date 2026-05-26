@@ -1,11 +1,5 @@
-import {
-  mock, spyOn,
-  describe,
-  it,
-  expect,
-  mockWarn,
-  mockPromise
-} from '../../test';
+import { mock, describe, it, expect } from 'bun:test';
+import { mockPromise, mockWarn } from '../../test.setup';
 import { State } from '../state';
 import { set } from './set';
 
@@ -232,7 +226,7 @@ describe('callback', () => {
 
   it('will ignore effect promise', () => {
     class Subject extends State {
-      property = set<any>(undefined, async () => { });
+      property = set<any>(undefined, async () => {});
     }
 
     const state = Subject.new();
@@ -389,7 +383,7 @@ describe('factory', () => {
       value = set(this.method);
 
       async method() {
-        expect(this).toBe(instance);
+        expect(this as Test).toBe(instance);
       }
     }
 
@@ -771,7 +765,7 @@ describe('suspense', () => {
     promise.reject('oh no');
     await new Promise((res) => setTimeout(res, 10));
 
-    expect(didThrow).toBe('oh no');
+    expect(await didThrow).toBe('oh no');
   });
 });
 

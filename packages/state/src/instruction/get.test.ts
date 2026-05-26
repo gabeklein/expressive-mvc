@@ -1,5 +1,6 @@
+import { mock, describe, it, expect } from 'bun:test';
+import { mockPromise } from '../../test.setup';
 import { Context } from '../context';
-import { mock, spyOn, describe, it, expect, mockPromise } from '../../test';
 import { State } from '../state';
 import { get } from './get';
 import { set } from './set';

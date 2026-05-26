@@ -2,7 +2,7 @@
 import { act, render, renderHook, waitFor } from '@testing-library/preact';
 
 import { get, State, Provider, set } from '.';
-import { expect, describe, it, mock, spyOn } from '../test';
+import { expect, describe, it, mock, spyOn } from 'bun:test';
 
 describe('State.use', () => {
   class Test extends State {
