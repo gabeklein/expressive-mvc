@@ -7,7 +7,7 @@ import {
   expect,
   it,
   renderHook,
-  vi,
+  fn, spyOn,
   waitFor
 } from '../test';
 
@@ -19,7 +19,7 @@ describe('use', () => {
 
   it('will subscribe to observable instance', async () => {
     const test = Test.new();
-    const didRender = vi.fn();
+    const didRender = fn();
     const hook = renderHook(() => {
       didRender();
       return use(test).foo;
@@ -103,7 +103,7 @@ describe('use', () => {
 
   it('will only refresh for accessed values', async () => {
     const test = Test.new();
-    const didRender = vi.fn();
+    const didRender = fn();
 
     renderHook(() => {
       didRender();
@@ -144,7 +144,7 @@ describe('use', () => {
   it('will track replacement observable', async () => {
     const first = Test.new();
     const second = Test.new();
-    const didRender = vi.fn();
+    const didRender = fn();
     let current = first;
 
     first.foo = 'first';

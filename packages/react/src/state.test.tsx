@@ -1,7 +1,7 @@
 import React from 'react';
 import { get, State, Provider, set } from '.';
 import {
-  vi,
+  fn, spyOn,
   expect,
   it,
   describe,
@@ -28,7 +28,7 @@ describe('State.use', () => {
     });
 
     it('will subscribe to instance of controller', async () => {
-      const willRender = vi.fn();
+      const willRender = fn();
       const { result } = renderHook(() => {
         willRender();
         return Test.use();
@@ -59,7 +59,7 @@ describe('State.use', () => {
     });
 
     it('will run callback', () => {
-      const callback = vi.fn();
+      const callback = fn();
 
       renderHook(() => Test.use(callback));
 
@@ -67,7 +67,7 @@ describe('State.use', () => {
     });
 
     it('will destroy instance of given class', async () => {
-      const didDestroy = vi.fn();
+      const didDestroy = fn();
 
       class Test extends State {
         protected new() {
@@ -131,7 +131,7 @@ describe('State.use', () => {
 
   describe('new method', () => {
     it('will call if exists', () => {
-      const didCreate = vi.fn();
+      const didCreate = fn();
 
       class Test extends State {
         protected new() {
@@ -151,7 +151,7 @@ describe('State.use', () => {
 
   describe('use method', () => {
     it('will call every render if present', () => {
-      const didUse = vi.fn();
+      const didUse = fn();
 
       class Test extends State {
         use() {
@@ -169,7 +169,7 @@ describe('State.use', () => {
     });
 
     it('will receive arguments', () => {
-      const didUse = vi.fn();
+      const didUse = fn();
 
       class Test extends State {
         use(foo: string, bar: number) {
@@ -183,7 +183,7 @@ describe('State.use', () => {
     });
 
     it('will divert arguments from constructor', () => {
-      const didUse = vi.fn();
+      const didUse = fn();
 
       class Test extends State {
         value = 0;
@@ -223,7 +223,7 @@ describe('State.use', () => {
     }
 
     it('will run callback once', async () => {
-      const callback = vi.fn();
+      const callback = fn();
       const hook = renderHook(() => Test.use(callback));
 
       expect(callback).toBeCalledTimes(1);
@@ -234,8 +234,8 @@ describe('State.use', () => {
     });
 
     it('will run argument before effects', () => {
-      const effect = vi.fn();
-      const argument = vi.fn(() => {
+      const effect = fn();
+      const argument = fn(() => {
         expect(effect).not.toBeCalled();
       });
 
@@ -267,7 +267,7 @@ describe('State.use', () => {
         bar: 'bar'
       };
 
-      const didRender = vi.fn();
+      const didRender = fn();
 
       const hook = renderHook(() => {
         didRender();
@@ -351,7 +351,7 @@ describe('State.use', () => {
     });
 
     it('will not trigger updates it caused', async () => {
-      const didRender = vi.fn();
+      const didRender = fn();
       const hook = renderHook(
         (props) => {
           didRender();
@@ -366,7 +366,7 @@ describe('State.use', () => {
     });
 
     it('will trigger set instruction', () => {
-      const mock = vi.fn();
+      const mock = fn();
 
       class Test extends State {
         foo = set('foo', mock);
@@ -411,8 +411,8 @@ describe('State.use', () => {
 
   describe('strict mode', () => {
     it('will create once and destroy on unmount', async () => {
-      const didCreate = vi.fn();
-      const didDestroy = vi.fn();
+      const didCreate = fn();
+      const didDestroy = fn();
 
       class Test extends State {
         protected new() {
@@ -453,7 +453,7 @@ describe('State.use', () => {
         }
       }
 
-      const didRender = vi.fn();
+      const didRender = fn();
 
       const Component = () => {
         const test = Test.use();
@@ -483,7 +483,7 @@ describe('State.use', () => {
 });
 
 describe('State.get', () => {
-  const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+  const error = spyOn(console, 'error').mockImplementation(() => {});
 
   afterEach(() => {
     // expect(error).not.toBeCalled();
@@ -507,7 +507,7 @@ describe('State.get', () => {
     }
 
     const test = Test.new();
-    const didRender = vi.fn();
+    const didRender = fn();
     const hook = renderWith(test, () => {
       didRender();
       return Test.get().foo;
@@ -527,7 +527,7 @@ describe('State.get', () => {
     }
 
     const test = Test.new();
-    const didRender = vi.fn();
+    const didRender = fn();
     const hook = renderWith(test, () => {
       didRender();
       return Test.get().foo;
@@ -544,7 +544,7 @@ describe('State.get', () => {
       value = 1;
     }
 
-    const useTest = vi.fn(() => {
+    const useTest = fn(() => {
       expect(() => Test.get()).toThrow('Could not find Test in context.');
     });
 
@@ -557,7 +557,7 @@ describe('State.get', () => {
       value = 1;
     }
 
-    const useTest = vi.fn(() => {
+    const useTest = fn(() => {
       expect(Test.get(false)).toBeUndefined();
     });
 
@@ -604,7 +604,7 @@ describe('State.get', () => {
         value = 1;
       }
 
-      const useTest = vi.fn(() => {
+      const useTest = fn(() => {
         expect(() => Test.get((x) => x)).toThrow(
           `Could not find ${Test} in context.`
         );
@@ -629,8 +629,8 @@ describe('State.get', () => {
 
     it('will ignore updates with same result', async () => {
       const test = Test.new();
-      const compute = vi.fn();
-      const didRender = vi.fn();
+      const compute = fn();
+      const didRender = fn();
 
       const hook = renderWith(test, () => {
         didRender();
@@ -673,12 +673,12 @@ describe('State.get', () => {
     });
 
     it('will disable updates if null returned', async () => {
-      const factory = vi.fn(($: Test) => {
+      const factory = fn(($: Test) => {
         void $.foo;
         return null;
       });
 
-      const didRender = vi.fn(() => {
+      const didRender = fn(() => {
         return Test.get(factory);
       });
 
@@ -713,8 +713,8 @@ describe('State.get', () => {
         });
 
       const parent = Parent.new();
-      const didUpdateValues = vi.fn();
-      const didPushToValues = vi.fn();
+      const didUpdateValues = fn();
+      const didPushToValues = fn();
 
       parent.get((state) => {
         didUpdateValues(state.values.length);
@@ -744,8 +744,8 @@ describe('State.get', () => {
     }
 
     it('will force a refresh', async () => {
-      const didRender = vi.fn();
-      const didEvaluate = vi.fn();
+      const didRender = fn();
+      const didEvaluate = fn();
       let forceUpdate!: () => void;
 
       renderWith(Test, () => {
@@ -768,8 +768,8 @@ describe('State.get', () => {
     });
 
     it('will refresh without reevaluating', async () => {
-      const didEvaluate = vi.fn();
-      const didRender = vi.fn();
+      const didEvaluate = fn();
+      const didRender = fn();
       let forceUpdate!: () => void;
 
       renderWith(Test, () => {
@@ -793,7 +793,7 @@ describe('State.get', () => {
 
     it('will refresh again after promise', async () => {
       const promise = mockPromise();
-      const didRender = vi.fn();
+      const didRender = fn();
 
       let forceUpdate!: <T>(after: Promise<T>) => Promise<T>;
 
@@ -823,7 +823,7 @@ describe('State.get', () => {
 
     it('will invoke async function', async () => {
       const promise = mockPromise();
-      const didRender = vi.fn();
+      const didRender = fn();
 
       let forceUpdate!: <T>(after: () => Promise<T>) => Promise<T>;
 
@@ -872,7 +872,7 @@ describe('State.get', () => {
       const promise = mockPromise<string>();
 
       const test = Test.new();
-      const didRender = vi.fn();
+      const didRender = fn();
       const hook = renderWith(test, () => {
         didRender();
         return Test.get(async ($) => {
@@ -935,7 +935,7 @@ describe('State.get', () => {
       test2.value = 'second';
 
       let current: State | State.Type | Record<string, any> = test1;
-      const didRender = vi.fn();
+      const didRender = fn();
 
       const Inner = () => {
         didRender();
@@ -973,7 +973,7 @@ describe('State.get', () => {
       test2.value = 'second';
 
       let current: any = test1;
-      const didRender = vi.fn();
+      const didRender = fn();
 
       const Inner = () => {
         didRender();
@@ -1022,7 +1022,7 @@ describe('State.get', () => {
       test2.value = 'second';
 
       let current: any = test1;
-      const didRender = vi.fn();
+      const didRender = fn();
 
       const Inner = () => {
         didRender();
@@ -1064,7 +1064,7 @@ describe('State.get', () => {
       const other = Other.new();
 
       let current: any = { test, other };
-      const didRender = vi.fn();
+      const didRender = fn();
 
       const Inner = () => {
         didRender();
@@ -1105,7 +1105,7 @@ describe('State.get', () => {
       }
 
       const parent = new Parent();
-      const didRender = vi.fn();
+      const didRender = fn();
 
       const Inner = () => {
         didRender();
@@ -1143,7 +1143,7 @@ describe('State.get', () => {
       }
 
       const parent = new Parent();
-      const didRender = vi.fn();
+      const didRender = fn();
 
       const Inner = () => {
         didRender();
@@ -1185,7 +1185,7 @@ describe('State.get', () => {
       test2.value = 'second';
 
       let current: any = test1;
-      const didCompute = vi.fn();
+      const didCompute = fn();
 
       const Inner = () => {
         return Test.get(($) => {
@@ -1234,7 +1234,7 @@ describe('State.get', () => {
 
     it('will subscribe peer from context', async () => {
       const bar = Bar.new();
-      const didRender = vi.fn();
+      const didRender = fn();
       const hook = renderWith(bar, () => {
         didRender();
         return Foo.use().bar.value;
@@ -1295,7 +1295,7 @@ describe('State.get', () => {
       }
 
       const test = Test.new();
-      const didRender = vi.fn();
+      const didRender = fn();
 
       const Inner = () => {
         didRender();

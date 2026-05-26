@@ -1,4 +1,4 @@
-import { vi, describe, it, expect } from '../../test';
+import { fn, spyOn, describe, it, expect } from '../../test';
 import { State } from '../state';
 import { def } from './def';
 
@@ -10,7 +10,7 @@ describe('instruction', () => {
       });
     }
 
-    const didApply = vi.fn();
+    const didApply = fn();
 
     Test.new();
 
@@ -57,7 +57,7 @@ describe('instruction', () => {
 
   describe('getter', () => {
     it('will run upon access', () => {
-      const mockAccess = vi.fn((_subscriber: State) => 'foobar');
+      const mockAccess = fn((_subscriber: State) => 'foobar');
 
       class Test extends State {
         property = def(() => ({ get: mockAccess }));
@@ -71,7 +71,7 @@ describe('instruction', () => {
     });
 
     it('will pass subscriber if within one', () => {
-      const didGetValue = vi.fn();
+      const didGetValue = fn();
 
       class Test extends State {
         property = def(() => ({ get: didGetValue }));
@@ -92,7 +92,7 @@ describe('instruction', () => {
       }
 
       const test = Test.new();
-      const effect = vi.fn((test: Test) => void test.value);
+      const effect = fn((test: Test) => void test.value);
 
       test.get(effect);
       test.value = 'foo';
@@ -118,7 +118,7 @@ describe('instruction', () => {
 
     describe('function', () => {
       it('will ignore update if callback throws false', async () => {
-        const setValue = vi.fn((value) => {
+        const setValue = fn((value) => {
           if (value == 'ignore') throw false;
         });
 
@@ -200,7 +200,7 @@ describe('instruction', () => {
         }
 
         const test = Test.new();
-        const didUpdate = vi.fn();
+        const didUpdate = fn();
 
         test.set(didUpdate);
 
@@ -216,7 +216,7 @@ describe('instruction', () => {
 
   describe('cleanup', () => {
     it('will call cleanup function on destroy', () => {
-      const cleanup = vi.fn();
+      const cleanup = fn();
 
       class Test extends State {
         property = def(() => cleanup);
@@ -230,7 +230,7 @@ describe('instruction', () => {
     });
 
     it('will call config destroy on destroy', () => {
-      const destroy = vi.fn();
+      const destroy = fn();
 
       class Test extends State {
         property = def(() => ({

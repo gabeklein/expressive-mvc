@@ -2,7 +2,7 @@ import { GlobalRegistrator } from '@happy-dom/global-registrator';
 
 if (!GlobalRegistrator.isRegistered) GlobalRegistrator.register();
 
-import { afterEach, mock, spyOn } from 'bun:test';
+import { afterEach } from 'bun:test';
 import { cleanup } from '@testing-library/preact';
 
 afterEach(() => {
@@ -13,19 +13,12 @@ afterEach(() => {
 export {
   afterAll,
   afterEach,
-  beforeAll,
-  beforeEach,
   describe,
   expect,
   it,
-  mock,
+  mock as fn,
   spyOn
 } from 'bun:test';
-
-export const vi = {
-  fn: <T extends (...args: any[]) => any>(impl?: T) => mock(impl ?? (() => undefined)),
-  spyOn
-};
 
 export { mockError, mockPromise, mockWarn } from '../state/test.setup';
 export {
