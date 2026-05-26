@@ -1,20 +1,6 @@
 import { afterAll, afterEach, expect, spyOn } from 'bun:test';
-import { Context, State } from './packages/state/src';
-import { listener } from './packages/state/src/observable';
-
-// Resolved lazily so this setup can also run from packages that don't depend
-// on @testing-library/react (e.g. state-only tests).
-let CLEANUP: (() => void) | undefined;
-
-try {
-  CLEANUP = require('@testing-library/react').cleanup;
-} catch { }
-
-afterEach(() => {
-  if (CLEANUP) CLEANUP();
-  if (typeof document !== 'undefined') document.body.innerHTML = '';
-  Context.root.pop();
-});
+import { Context, State } from './src';
+import { listener } from './src/observable';
 
 interface CustomMatchers<R = unknown> {
   /** Flush pending updates, optionally asserting specific keys were updated. */
@@ -27,6 +13,8 @@ declare module 'bun:test' {
 }
 
 expect.extend({ toHaveUpdated });
+
+afterEach(() => Context.root.pop());
 
 export { mockError, mockPromise, mockWarn };
 export type { MockPromise };
