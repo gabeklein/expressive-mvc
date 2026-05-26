@@ -42,9 +42,9 @@ The MVP and PLAN iteration steps 2-4 are implemented. The remaining work is the 
 ### Landed
 
 - **Matcher** (`url.ts`): literal segments, `:param`, trailing `*` catch-all, trailing-slash normalization, case-insensitive literals. Returns `{ params, score }` for specificity ordering.
-- **Specificity**: literal=100, `:param`=10, catch-all=-1, pure-literal bonus +1. Ties at same specificity break by document order (first matching wins in the inline resolver loop).
+- **Specificity scoring** lives in `url.ts` (literal=100, `:param`=10, catch-all=-1, pure-literal bonus +1) but the resolver currently arbitrates by **declaration order only** - the first matching sibling with `as` wins. Specificity-based arbitration is a pending iteration; users must declare more-specific routes before less-specific ones.
 - **Router** (`router.ts`, `extends State`): `path` field, popstate listener, monkey-patches `history.pushState`/`replaceState` so programmatic navigation outside `goto` still syncs. Owns URL primitives: `match(base, to)` (reactive on `path`), `anchor(route)`, `resolve(route, url)`, `segment(to)`, `goto(to, replace?)` (absolute-only, throws on relative). Auto-spawned as a `Context.root` singleton on first Route mount; users can also provide an explicit instance via `<Provider for={Router}>`.
-- **Route** (`route.ts`, `extends Component`): `to`, `as`, `parent = get(Route, false)`, derived `base`, `match`, `matched`, `params`, `anchor`, `resolve`, `goto`. Default `to='*'` (catch-all layout) - leaf-vs-layout default is contextual. Index routes are `to=''`. Independent rendering (no `cloneElement`, no `base` prop, no clones cache). Inline lexical-children outlet: when Route has `<Route>` children, the parent picks the most-specific match among them and passes it as `children` to `as`. Routes without lexical Route children mount independently in place.
+- **Route** (`route.ts`, `extends Component`): `to`, `as`, `parent = get(Route, false)`, derived `base`, `match`, `matched`, `anchor`, `resolve`, `goto`. Default `to='*'` (catch-all layout) - leaf-vs-layout default is contextual. Index routes are `to=''`. Independent rendering (no `cloneElement`, no `base` prop, no clones cache, no lexical inspection of JSX children). Routes self-render `null` when their pattern does not match. Sibling arbitration is bottom-up: a Route with `as` registers with its nearest parent Route on first render and yields to any earlier-registered sibling that also has `as` and matches. Passthrough Routes (no `as`) are grouping containers - they pass children through and never compete. Render and the sibling walk read `matched` (boolean) instead of `match` so same-pattern navigations don't re-render the Route - Expressive's computed properties only fire when the cached value changes, and `matched` stays `true` across `/posts/foo` -> `/posts/bar` (Consumers inside pick up new params reactively).
 - **Router auto-spawn**: `router: Router = set(() => this.get(Router, false) || Router.new())` on Route. The `set()` factory runs lazily on first access (during Route's render), well after context wiring. Context lookup finds any explicitly-provided Router; otherwise `Router.new()` activates a fresh instance that lands in `Context.root` via the `register` fallback so subsequent Routes find it. `set()` is also load-bearing for reactivity - it makes `router` a managed Route property so cross-state reads (`router.path` from Route's render) wire subscriptions via the proxy machinery in [observable.ts:119-120](../state/src/observable.ts#L119-L120).
 - **Link** (`link.ts`): `to`, `replace`, `href` getter (resolved absolute path), modifier/middle-click bailout. Requires Route in context (always available because Router provides one).
 - **Redirect** (`redirect.ts`): fires `goto` in `new()` (StrictMode-safe). `when` prop gates whether navigation fires on mount.
@@ -61,6 +61,7 @@ In rough order of priority:
 4. **Scroll restoration**: one Component subclass listening for navigation events.
 5. **`HashRouter` / `MemoryRouter`**: alternate Router subclasses (read URL from different sources). The Router-as-State conversion makes these cleaner.
 6. **`Link.onClick`** (async pre-navigation hook): user-supplied handler that can cancel; exposes `pending: boolean` for in-flight state. Detailed sketch under "Nice-to-haves".
+7. **Specificity-based arbitration**: feed `match.score` into the sibling walk so literal beats `:param` beats `*` regardless of declaration order. Currently first-match-wins.
 
 ### Pending - nits
 
@@ -107,7 +108,7 @@ Different-pattern navigations (e.g. `/posts/1` -> `/users/2`) always change the 
 
 `params` is a getter on Route. Reading `route.params.x` makes the consumer reactive to `router.path` through `match`. `params` returns *only* captures from this Route's own pattern. For ancestor captures, read them off the ancestor Route explicitly. (Stable identity per match is a pending nit; see "Pending - nits".)
 
-**Render contract:** Routes never gate themselves on `this.match` *for outlet selection* - the parent does that via the inline resolver. But an independently-mounted Route (no lexical Route children, just renders `as`) does return `null` when not matched; that's how non-outlet Routes (sidebars, headers reacting to URL) mount/unmount in place.
+**Render contract:** Routes always render as normal Components. A Route returns `null` when its own pattern does not match. When it has both `as` and a parent Route, it also returns `null` if an earlier-declared sibling Route with `as` is currently matching. Passthrough Routes (no `as`) render their children when matched and never block siblings - structural elements (layouts, headers, sibling Routes) coexist freely under a passthrough container.
 
 ## Public API
 
@@ -134,7 +135,7 @@ URL primitives live on Router rather than scattered across Route/Link/Redirect:
 
 `extends Component`. Matches a pattern under its inherited base; mounts `as` when matched. Default `to='*'` (catch-all layout). Use `to=''` for index, `to='/abs/path'` for absolute, or relative segments to compose under a parent.
 
-When Route has lexical `<Route>` children, it acts as an outlet: picks the most-specific matching child and passes it as `children` to `as`. Otherwise it renders `as`/`children` directly (or `null` when not matched).
+Routes render `as`/`children` directly when active, `null` when not. Child Routes mount as normal components (via React's tree) and discover their nearest Route ancestor through context, so nested Routes work transparently across structural wrappers (layouts, intermediate components, fragments). A parent Route arbitrates among its child Routes that declare `as`: the first matching sibling wins; later siblings with `as` render `null`. Passthrough Routes (no `as`) are grouping containers - they pass children through and never compete, which enables parallel route groups under one parent.
 
 ```tsx
 <Route to="/posts/:id" as={Post} />
@@ -232,15 +233,19 @@ Match returns `{ params, score } | null`. Score drives specificity ordering insi
 
 ## Resolution
 
-Inline in `Route.render`. When a Route has lexical `<Route>` children, it iterates them, calls `router.match(childBase, el.props.to ?? '*')`, picks the highest score (document order breaks ties), and passes the winner as `children` to `as`. Routes without lexical children self-mount when matched, render `null` when not.
+Bottom-up, in `Route.render`. Each Route registers itself with its nearest parent Route on first render (stored in a `WeakMap<Route, Route[]>` keyed by parent, child order = mount order = JSX declaration order). On render:
 
-This is also the 404 strategy: a `<Route as={NotFound} />` (default `to='*'`) at the end of a layout's children loses to any more-specific sibling and catches everything else.
+1. If `this.match` is falsy -> `null`.
+2. If `this.as` is set and a parent Route exists, walk parent's children up to `this`. If any earlier sibling has both `.as` and `.match` truthy, return `null`.
+3. Otherwise render `as ? createElement(as, {}, children) : children`.
 
-Specificity ordering (most-specific first):
+Passthrough Routes (no `as`) skip step 2: they never block earlier or later siblings. This supports parallel route groups (sibling passthroughs each resolving their own competition) and structural-element preservation (a passthrough's children render verbatim, including non-Route JSX).
 
-1. Exact literal match (100/segment)
-2. `:param` segments (10/segment)
-3. `*` (catch-all; -1)
+Cleanup is via `child.set(null, () => ...)` - the WeakMap entry is removed on unmount, keeping the registry tight.
+
+This is also the 404 strategy: a `<Route as={NotFound} />` at the end of a parent's children matches everything else and renders only when no earlier sibling claimed the slot.
+
+Specificity scoring (literal=100, `:param`=10, `*`=-1) ships in the matcher but is **not** consulted for arbitration yet - declaration order wins. Specificity-based arbitration is a pending iteration; until then, declare more-specific routes before less-specific ones.
 
 ## Package layout
 
@@ -250,7 +255,7 @@ packages/router/
     index.ts          # public exports
     url.ts            # matchPattern + fullPattern + patternSegment, pure
     router.ts         # Router Component
-    route.ts          # Route Component + inline resolver
+    route.ts          # Route Component + bottom-up sibling resolver
     link.ts           # Link Component
     redirect.ts       # Redirect Component
     url.test.ts
@@ -271,8 +276,7 @@ Match mvc's existing conventions (pnpm workspace entry, root tsconfig extension,
 - Server-side route definitions.
 - View transitions API.
 - Route-level metadata / `<head>` management.
-- Inline JSX siblings of nested Routes inside a layout's `props.children`. Layout chrome lives in the `as` Component instead.
-- Multi-match across siblings at the same level. Single-winner-per-level stands.
+- Multi-match across sibling Routes with `as` at the same level. Single-winner-per-level stands; passthrough Routes (no `as`) may coexist freely.
 - Distribution from this repo.
 
 ## Future shape: Route subclassing for typed identity
