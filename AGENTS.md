@@ -6,7 +6,7 @@ Contributor guide for AI agents working in this repository.
 
 Expressive State - class-based reactive state management library. For API reference, read [skills/SKILL.md](skills/SKILL.md) and linked sub-files first. Consult source only when docs are insufficient.
 
-Monorepo: pnpm workspaces + lerna.
+Monorepo: bun workspaces + lerna. Tests and lerna run under node (vitest is not yet compatible with the bun runtime); install is via bun.
 
 ## Structure
 
@@ -21,12 +21,9 @@ skills/         - API reference docs (also published as skills.sh skill)
 ## Commands
 
 ```bash
-pnpm install        # Install deps
-pnpm test           # Run all tests
-pnpm test:watch     # Watch mode
-pnpm build          # Build all packages
-pnpm clean          # Clean artifacts
-pnpm push           # Publish packages
+bun install         # Install deps
+node --run test     # Run all tests (vitest under node)
+node --run build    # Build all packages (lerna under node)
 ```
 
 Per-package: `tsc --noEmit && vitest run --coverage`
