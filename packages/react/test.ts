@@ -20,7 +20,7 @@ export const vi = {
   spyOn
 };
 
-export { mockError, mockPromise, mockWarn } from '../../test.setup';
+export { mockError, mockPromise, mockWarn } from './test.setup';
 export { act, render, screen, renderHook, waitFor } from '@testing-library/react';
 
 function renderWith<T>(Type: State.Type | State, hook: () => T) {
