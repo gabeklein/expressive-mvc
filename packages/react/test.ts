@@ -8,7 +8,7 @@ export {
   describe,
   expect,
   it,
-  mock as fn,
+  mock,
   spyOn
 } from 'bun:test';
 

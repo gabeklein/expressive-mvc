@@ -1,5 +1,5 @@
 import { Context } from '../context';
-import { fn, spyOn, describe, it, expect, mockPromise } from '../../test';
+import { mock, spyOn, describe, it, expect, mockPromise } from '../../test';
 import { State } from '../state';
 import { get } from './get';
 import { set } from './set';
@@ -51,7 +51,7 @@ describe('fetch mode', () => {
     }
 
     const foo = Foo.new();
-    const mockEffect = fn();
+    const mockEffect = mock();
     let promise = mockPromise();
 
     expect(foo.bar.foo).toBe(foo);
@@ -201,7 +201,7 @@ describe('fetch mode', () => {
     }
 
     const { child } = Parent.new();
-    const effect = fn((it: Child) => {
+    const effect = mock((it: Child) => {
       void it.value;
       void it.parent.value;
     });
@@ -275,7 +275,7 @@ describe('fetch mode', () => {
 
       new Context(parent).push(child);
 
-      const effect = fn();
+      const effect = mock();
       const first = parent.peer;
 
       expect(child.peer).toBe(first);
@@ -299,7 +299,7 @@ describe('fetch mode', () => {
       const child = new Child();
       const ambient = Ambient.new();
       const context = new Context();
-      const effect = fn();
+      const effect = mock();
 
       context.push(child);
 
@@ -319,7 +319,7 @@ describe('fetch mode', () => {
         value = 'initial';
       }
 
-      const callback = fn();
+      const callback = mock();
 
       class Owner extends State {
         remote = new Remote();
@@ -334,7 +334,7 @@ describe('fetch mode', () => {
       new Context(owner).push(consumer);
 
       const first = consumer.remote;
-      const effect = fn();
+      const effect = mock();
 
       expect(callback).toBeCalledTimes(1);
       expect(callback).toBeCalledWith(first, consumer);
@@ -487,7 +487,7 @@ describe('fetch mode', () => {
           children = get(Child, true, gotChild);
         }
 
-        const gotChild = fn();
+        const gotChild = mock();
         const parent = new Parent();
         const child = new Child();
 
@@ -550,7 +550,7 @@ describe('fetch mode', () => {
           baz = get(Baz, true, gotBaz);
         }
 
-        const gotBaz = fn();
+        const gotBaz = mock();
         const foo = new Foo();
         const baz = new Baz();
 
@@ -654,7 +654,7 @@ describe('lifecycle callbacks', () => {
       value = 'foo';
     }
 
-    const remoteCallback = fn();
+    const remoteCallback = mock();
 
     class Test extends State {
       remote = get(Remote, remoteCallback);
@@ -675,7 +675,7 @@ describe('lifecycle callbacks', () => {
       children = get(Child, true, gotChild);
     }
 
-    const gotChild = fn();
+    const gotChild = mock();
     const parent = new Parent();
     const child = new Child();
 
@@ -685,8 +685,8 @@ describe('lifecycle callbacks', () => {
   });
 
   it('will run cleanup on downstream unmount', async () => {
-    const didRemove = fn();
-    const didAdd = fn(() => didRemove);
+    const didRemove = mock();
+    const didAdd = mock(() => didRemove);
 
     class Child extends State {
       value = 0;
@@ -718,7 +718,7 @@ describe('lifecycle callbacks', () => {
       children = get(Child, true, hasChild);
     }
 
-    const hasChild = fn(() => false);
+    const hasChild = mock(() => false);
     const parent = new Parent();
     const context = new Context(parent);
 
@@ -739,7 +739,7 @@ describe('lifecycle callbacks', () => {
       value = 'foo';
     }
 
-    const remoteCallback = fn((remote: Remote) => {
+    const remoteCallback = mock((remote: Remote) => {
       // Access value but should not subscribe
       void remote.value;
     });
@@ -765,8 +765,8 @@ describe('lifecycle callbacks', () => {
   it('will run cleanup on state destruction', async () => {
     class Remote extends State {}
 
-    const cleanup = fn();
-    const remoteCallback = fn(() => cleanup);
+    const cleanup = mock();
+    const remoteCallback = mock(() => cleanup);
 
     class Test extends State {
       remote = get(Remote, remoteCallback);
@@ -786,7 +786,7 @@ describe('lifecycle callbacks', () => {
   });
 
   it('will receive ready instance', async () => {
-    const didSet = fn();
+    const didSet = mock();
 
     class Child extends State {
       value = set(undefined, didSet);
@@ -820,8 +820,8 @@ describe('lifecycle callbacks', () => {
       });
     }
 
-    const didNotify = fn();
-    const didRemove = fn();
+    const didNotify = mock();
+    const didRemove = mock();
 
     const context = new Context();
 
@@ -847,8 +847,8 @@ describe('lifecycle callbacks', () => {
       });
     }
 
-    const didNotify = fn();
-    const didRemove = fn();
+    const didNotify = mock();
+    const didRemove = mock();
 
     const context = new Context(Parent);
     const inner = context.push(Child);

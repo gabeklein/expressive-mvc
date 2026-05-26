@@ -4,7 +4,7 @@ import { Context } from '@expressive/state';
 
 import { State, Provider, Consumer } from '.';
 import { Lookup } from './context';
-import { describe, it, expect, fn, spyOn } from '../test';
+import { describe, it, expect, mock, spyOn } from '../test';
 
 describe('Lookup', () => {
   it('is exported', () => {
@@ -24,7 +24,7 @@ describe('Provider', () => {
       value = 'foo';
     }
 
-    const didRender = fn();
+    const didRender = mock();
     const test = Test.new();
 
     const Element = () => {
@@ -47,7 +47,7 @@ describe('Provider', () => {
       value = 'foo';
     }
 
-    const didRender = fn();
+    const didRender = mock();
 
     const Element = () => {
       const instance = Test.get();
@@ -69,7 +69,7 @@ describe('Provider', () => {
       value = 'foo';
     }
 
-    const forEach = fn();
+    const forEach = mock();
 
     render(
       <Provider for={Test} forEach={forEach}>
@@ -85,7 +85,7 @@ describe('Provider', () => {
       value = 'foo';
     }
 
-    const forEach = fn(() => undefined);
+    const forEach = mock(() => undefined);
 
     render(
       <Provider for={Test} forEach={forEach}>
@@ -101,7 +101,7 @@ describe('Provider', () => {
       value = 'foo';
     }
 
-    const cleanup = fn();
+    const cleanup = mock();
 
     const rendered = render(
       <Provider for={Test} forEach={() => cleanup}>
@@ -125,7 +125,7 @@ describe('Provider', () => {
       value = 'child';
     }
 
-    const didRender = fn();
+    const didRender = mock();
 
     const Element = () => {
       const parent = Parent.get();
@@ -153,7 +153,7 @@ describe('Consumer', () => {
     }
 
     const test = Test.new();
-    const didRender = fn();
+    const didRender = mock();
 
     render(
       <Provider for={test}>
@@ -175,7 +175,7 @@ describe('Consumer', () => {
     }
 
     const test = Test.new();
-    const didRender = fn();
+    const didRender = mock();
 
     render(
       <Provider for={test}>
@@ -203,7 +203,7 @@ describe('Consumer', () => {
       value = 'foo';
     }
 
-    const didThrow = fn();
+    const didThrow = mock();
 
     try {
       render(
