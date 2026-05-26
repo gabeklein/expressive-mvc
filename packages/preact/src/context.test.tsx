@@ -4,7 +4,7 @@ import { Context } from '@expressive/state';
 
 import { State, Provider, Consumer } from '.';
 import { Lookup } from './context';
-import { describe, it, expect, mock, spyOn } from '../test';
+import { describe, it, expect, mock, spyOn } from 'bun:test';
 
 describe('Lookup', () => {
   it('is exported', () => {

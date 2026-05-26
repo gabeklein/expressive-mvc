@@ -1,19 +1,18 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import { get, State, Provider, set } from '.';
-import {
-  mock, spyOn,
-  expect,
-  it,
-  describe,
-  act,
-  render,
-  afterEach,
-  afterAll,
-  renderHook,
-  waitFor,
-  mockPromise,
-  renderWith
-} from '../test';
+import { mock, spyOn, expect, it, describe, afterEach, afterAll } from 'bun:test';
+import { act, render, renderHook, waitFor } from '@testing-library/react';
+import { mockPromise } from '../test.setup';
+
+function renderWith<T>(Type: State.Type | State, hook: () => T) {
+  return renderHook(hook, {
+    wrapper: (props) => (
+      <Provider for={Type}>
+        <Suspense fallback={null}>{props.children}</Suspense>
+      </Provider>
+    )
+  });
+}
 
 describe('State.use', () => {
   class Test extends State {

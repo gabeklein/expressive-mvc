@@ -1,4 +1,4 @@
-import { mock, spyOn, describe, it, expect } from '../../test';
+import { mock, describe, it, expect } from 'bun:test';
 import { observer, watch } from '../observable';
 import { State } from '../state';
 import { hot } from './hot';

@@ -1,4 +1,4 @@
-import { mock, spyOn, describe, it, expect, afterEach } from '../../test';
+import { mock, describe, it, expect, afterEach } from 'bun:test';
 import { State } from '../state';
 import { ref } from './ref';
 import { set } from './set';
