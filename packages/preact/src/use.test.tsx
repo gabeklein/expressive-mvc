@@ -1,7 +1,8 @@
+/** @jsxImportSource preact */
 import { act, renderHook, waitFor } from '@testing-library/preact';
 
 import { State, use as useObservable } from '.';
-import { describe, expect, it, vi } from '../vitest';
+import { describe, expect, it, vi } from '../test';
 
 describe('use', () => {
   class Test extends State {

@@ -78,7 +78,7 @@ jobs:
         run: node --run build
 
       - name: Run tests
-        run: node --run test
+        run: bun test --coverage
 
       - name: Version and publish
         run: |

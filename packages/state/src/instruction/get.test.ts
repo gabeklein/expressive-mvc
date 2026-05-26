@@ -1,5 +1,5 @@
 import { Context } from '../context';
-import { vi, describe, it, expect, mockPromise } from '../../vitest';
+import { vi, describe, it, expect, mockPromise } from '../../test';
 import { State } from '../state';
 import { get } from './get';
 import { set } from './set';

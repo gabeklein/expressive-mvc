@@ -18,7 +18,7 @@ jobs:
       - uses: ./.github/actions/setup
 
       - name: Run tests
-        run: node --run test
+        run: bun test --coverage
 
       - name: Build packages
         run: node --run build

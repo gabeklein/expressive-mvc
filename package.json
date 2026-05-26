@@ -8,21 +8,20 @@
     "examples"
   ],
   "scripts": {
-    "test": "vitest run --coverage",
+    "test": "bun test --coverage",
     "build": "lerna run build",
     "canary": "bash .github/scripts/canary.sh",
     "pr": "bash .github/scripts/pr.sh",
     "nuke": "find . -name 'node_modules' -type d -prune -exec rm -rf '{}' +"
   },
   "devDependencies": {
+    "@happy-dom/global-registrator": "^20.9.0",
+    "@types/bun": "^1.3.14",
     "@types/node": "^25.2.0",
     "@types/react": "^19",
-    "@vitest/coverage-v8": "^4.0.18",
-    "jsdom": "^27.4.0",
     "lerna": "^9.0.3",
     "prettier": "^3.8.1",
-    "typescript": "^5.9.3",
-    "vitest": "^4.0.18"
+    "typescript": "^5.9.3"
   },
   "engines": {
     "node": "^20.19.0 || ^22.12.0 || >=24.0.0"

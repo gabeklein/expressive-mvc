@@ -1,9 +1,10 @@
+/** @jsxImportSource preact */
 import { act, render } from '@testing-library/preact';
 import { Context } from '@expressive/state';
 
 import { State, Provider, Consumer } from '.';
 import { Lookup } from './context';
-import { describe, it, expect, vi } from '../vitest';
+import { describe, it, expect, vi } from '../test';
 
 describe('Lookup', () => {
   it('is exported', () => {
