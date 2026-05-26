@@ -1,15 +1,3 @@
-import { GlobalRegistrator } from '@happy-dom/global-registrator';
-
-if (!GlobalRegistrator.isRegistered) GlobalRegistrator.register();
-
-import { afterEach } from 'bun:test';
-import { cleanup } from '@testing-library/preact';
-
-afterEach(() => {
-  cleanup();
-  document.body.innerHTML = '';
-});
-
 export {
   afterAll,
   afterEach,
