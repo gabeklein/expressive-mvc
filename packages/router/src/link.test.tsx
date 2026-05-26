@@ -1,11 +1,36 @@
 import { fireEvent } from '@testing-library/react';
 import { Context } from '@expressive/react';
 
-import { act, beforeEach, describe, expect, it, render } from '../vitest';
+import { act, afterAll, beforeAll, beforeEach, describe, expect, it, render } from '../vitest';
 
 import { Link } from './link';
 import { Route } from './route';
 import { Router } from './router';
+
+// Tests for modifier-clicks and middle-clicks intentionally do not call
+// preventDefault (matching browser behavior - cmd-click opens a new tab),
+// so JSDOM's anchor default-action emits "Not implemented: navigation to
+// another Document". The behavior is expected; the log is noise. JSDOM's
+// virtualConsole captured the original console.error reference at init,
+// so spying on console.error doesn't intercept it - patch the
+// virtualConsole listener directly.
+let restoreJsdomErrorHandlers: (() => void) | undefined;
+beforeAll(() => {
+  const vc = (window as any)._virtualConsole;
+  if (!vc) return;
+  const originals = vc.listeners('jsdomError').slice();
+  vc.removeAllListeners('jsdomError');
+  const filter = (e: { message?: string }) => {
+    if (e.message && e.message.startsWith('Not implemented: navigation')) return;
+    originals.forEach((l: (e: unknown) => void) => l(e));
+  };
+  vc.on('jsdomError', filter);
+  restoreJsdomErrorHandlers = () => {
+    vc.removeListener('jsdomError', filter);
+    originals.forEach((l: (e: unknown) => void) => vc.on('jsdomError', l));
+  };
+});
+afterAll(() => restoreJsdomErrorHandlers && restoreJsdomErrorHandlers());
 
 beforeEach(() => {
   Context.root.get(Router, false)?.set(null);
