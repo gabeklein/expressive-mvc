@@ -1,4 +1,4 @@
-import { vi, describe, it, expect, afterEach } from '../../test';
+import { fn, spyOn, describe, it, expect, afterEach } from '../../test';
 import { State } from '../state';
 import { ref } from './ref';
 import { set } from './set';
@@ -46,7 +46,7 @@ describe('property', () => {
   });
 
   it('will invoke callback when called as function', async () => {
-    const didTrigger = vi.fn();
+    const didTrigger = fn();
 
     class Subject extends State {
       ref = ref<string>(didTrigger);
@@ -89,7 +89,7 @@ describe('property', () => {
     }
 
     const state = Subject.new();
-    const callback = vi.fn();
+    const callback = fn();
 
     state.ref.get(callback);
 
@@ -107,7 +107,7 @@ describe('property', () => {
     }
 
     const state = Subject.new();
-    const didCallback = vi.fn();
+    const didCallback = fn();
 
     state.set((key) => {
       if (key == 'ref') didCallback();
@@ -120,8 +120,8 @@ describe('property', () => {
   });
 
   it('will invoke callback', async () => {
-    const didTrigger = vi.fn();
-    const didUpdate = vi.fn();
+    const didTrigger = fn();
+    const didUpdate = fn();
 
     class Subject extends State {
       ref = ref<string>(didTrigger);
@@ -148,7 +148,7 @@ describe('property', () => {
     }
 
     const state = Subject.new();
-    const didTrigger = vi.fn();
+    const didTrigger = fn();
 
     state.ref.current = 1;
 
@@ -161,7 +161,7 @@ describe('property', () => {
   });
 
   it('will not callback when set to null', async () => {
-    const callback = vi.fn();
+    const callback = fn();
 
     class Subject extends State {
       ref = ref<string | null>(callback);
@@ -177,7 +177,7 @@ describe('property', () => {
   });
 
   it('will callback when on null if ignore false', async () => {
-    const callback = vi.fn();
+    const callback = fn();
 
     class Subject extends State {
       ref = ref<string | null>(callback, false);
@@ -203,7 +203,7 @@ describe('property', () => {
       });
     }
 
-    const effect = vi.fn();
+    const effect = fn();
     const state = Subject.new();
 
     state.hello.current = 'Hola';
@@ -254,7 +254,7 @@ describe('property', () => {
     }
 
     const test = Subject.new();
-    const effect = vi.fn(($: Subject) => {
+    const effect = fn(($: Subject) => {
       void $.ref.current;
     });
 
@@ -337,7 +337,7 @@ describe('proxy', () => {
 
   it('will subscribe from property', async () => {
     const test = Subject.new();
-    const callback = vi.fn();
+    const callback = fn();
     const { refs } = test;
 
     const done = refs.foo.get(callback);
@@ -416,7 +416,7 @@ describe('set instruction', () => {
 });
 
 describe('mapped', () => {
-  const generateRef = vi.fn((key: any) => key as string);
+  const generateRef = fn((key: any) => key as string);
 
   class Test extends State {
     foo = 'foo';
@@ -485,7 +485,7 @@ describe('mapped', () => {
   });
 
   it('will bind this to target state', () => {
-    const spy = vi.fn(function (this: any) {
+    const spy = fn(function (this: any) {
       return this;
     });
 
@@ -501,7 +501,7 @@ describe('mapped', () => {
   });
 
   it('will pass state as second argument', () => {
-    const spy = vi.fn((_key: any, state: any) => state);
+    const spy = fn((_key: any, state: any) => state);
 
     class Test extends State {
       foo = 'foo';
@@ -539,7 +539,7 @@ describe('mapped', () => {
       foo = 'bar';
     }
 
-    const spy = vi.fn((key: string) => `mapped-${key}`);
+    const spy = fn((key: string) => `mapped-${key}`);
 
     class Consumer extends State {
       source = new Source();
