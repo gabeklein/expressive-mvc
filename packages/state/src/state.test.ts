@@ -1,4 +1,4 @@
-import { fn, spyOn, expect, it, describe, mockError, mockPromise, mockWarn } from '../test';
+import { mock, spyOn, expect, it, describe, mockError, mockPromise, mockWarn } from '../test';
 import { Context } from './context';
 import { get } from './instruction/get';
 import { ref } from './instruction/ref';
@@ -85,8 +85,8 @@ it('will update from within a method', async () => {
 });
 
 it('will not ignore function properties', async () => {
-  const mockFunction = fn();
-  const mockFunction2 = fn();
+  const mockFunction = mock();
+  const mockFunction2 = mock();
 
   class Test extends State {
     fn = mockFunction;
@@ -116,13 +116,13 @@ it('will iterate over properties', () => {
   }
 
   const test = Test.new();
-  const mock = fn<(key: string, value: unknown) => void>();
+  const cb = mock<(key: string, value: unknown) => void>();
 
-  for (const [key, value] of test) mock(key, value);
+  for (const [key, value] of test) cb(key, value);
 
-  expect(mock).toBeCalledWith('foo', 1);
-  expect(mock).toBeCalledWith('bar', 2);
-  expect(mock).toBeCalledWith('baz', 3);
+  expect(cb).toBeCalledWith('foo', 1);
+  expect(cb).toBeCalledWith('bar', 2);
+  expect(cb).toBeCalledWith('baz', 3);
 });
 
 it('will destroy children before self', () => {
@@ -132,7 +132,7 @@ it('will destroy children before self', () => {
   }
 
   const test = Test.new();
-  const destroyed = fn();
+  const destroyed = mock();
 
   test.nested.get(null, destroyed);
   test.set(null);
@@ -223,7 +223,7 @@ it('will not update when assigning same child instance', () => {
 
   const parent = Parent.new();
   const child = parent.child;
-  const cb = fn();
+  const cb = mock();
 
   parent.set(cb);
   parent.child = child;
@@ -331,7 +331,7 @@ describe('subscriber', () => {
 
   it('will detect change to properties accessed', async () => {
     const state = Subject.new();
-    const effect = fn(($: Subject) => {
+    const effect = mock(($: Subject) => {
       void $.value;
       void $.value2;
     });
@@ -349,7 +349,7 @@ describe('subscriber', () => {
 
   it('will ignore change to property not accessed', async () => {
     const state = Subject.new();
-    const effect = fn(($: Subject) => {
+    const effect = mock(($: Subject) => {
       void $.value;
     });
 
@@ -371,7 +371,7 @@ describe('subscriber', () => {
 
   it('will not obstruct set-behavior', () => {
     class Test extends State {
-      didSet = fn();
+      didSet = mock();
       value = set('foo', this.didSet);
     }
 
@@ -412,13 +412,13 @@ describe('string coercion', () => {
     }
 
     const test = Test.new();
-    const mock = fn();
+    const cb = mock();
 
     test.get((state) => {
-      mock(String(state));
+      cb(String(state));
     });
 
-    expect(mock).toBeCalledWith(String(test));
+    expect(cb).toBeCalledWith(String(test));
   });
 });
 
@@ -719,7 +719,7 @@ describe('get method', () => {
 
       new Context(outer).push(inner);
 
-      const callback = fn();
+      const callback = mock();
       inner.get(Foo, callback);
 
       expect(callback).toHaveBeenCalledTimes(1);
@@ -730,7 +730,7 @@ describe('get method', () => {
       const parent = new Foo();
       const ctx = new Context(parent);
 
-      const callback = fn();
+      const callback = mock();
       const unsub = ctx.get(Bar, callback, true);
 
       const child = new Bar();
@@ -751,18 +751,18 @@ describe('get method', () => {
 
     it('will call callback on update', async () => {
       const test = Test.new();
-      const done = fn();
-      const mock = fn(() => done);
+      const done = mock();
+      const cb = mock(() => done);
 
-      test.get('foo', mock);
+      test.get('foo', cb);
 
-      expect(mock).toBeCalledTimes(0);
+      expect(cb).toBeCalledTimes(0);
 
       test.foo = 'bar';
       test.foo = 'baz';
 
-      expect(mock).toBeCalledTimes(2);
-      expect(mock).toBeCalledWith('foo', test);
+      expect(cb).toBeCalledTimes(2);
+      expect(cb).toBeCalledWith('foo', test);
 
       await expect(test).toHaveUpdated('foo');
 
@@ -771,16 +771,16 @@ describe('get method', () => {
 
     it('will call on event', async () => {
       const test = Test.new();
-      const mock = fn();
+      const cb = mock();
 
-      test.get('baz', mock);
+      test.get('baz', cb);
 
-      expect(mock).not.toBeCalled();
+      expect(cb).not.toBeCalled();
 
       // dispatch explicit event
       test.set('baz');
 
-      expect(mock).toBeCalledWith('baz', test);
+      expect(cb).toBeCalledWith('baz', test);
     });
   });
 
@@ -799,15 +799,15 @@ describe('get method', () => {
 
     it('will callback when state is destroyed', () => {
       const test = Test.new();
-      const mock = fn();
+      const cb = mock();
 
-      test.get(null, mock);
+      test.get(null, cb);
 
-      expect(mock).not.toBeCalled();
+      expect(cb).not.toBeCalled();
 
       test.set(null);
 
-      expect(mock).toBeCalled();
+      expect(cb).toBeCalled();
     });
   });
 
@@ -824,7 +824,7 @@ describe('get method', () => {
     it('will watch values', async () => {
       const test = Test.new();
       const anyTest = expect.any(Test);
-      const effect = fn((state: Test) => {
+      const effect = mock((state: Test) => {
         void state.value1;
         void state.value2;
         void state.value3;
@@ -855,7 +855,7 @@ describe('get method', () => {
     });
 
     it('will not call twice if set up during init', () => {
-      const didUpdate = fn();
+      const didUpdate = mock();
 
       class Control extends State {
         value = 'foo';
@@ -875,12 +875,12 @@ describe('get method', () => {
 
     it('will squash simultaneous updates', async () => {
       const test = Test.new();
-      const mock = fn();
+      const cb = mock();
 
       test.get((state) => {
         void state.value1;
         void state.value2;
-        mock();
+        cb();
       });
 
       test.value1 = 2;
@@ -889,17 +889,17 @@ describe('get method', () => {
       await expect(test).toHaveUpdated();
 
       // expect two syncronous groups of updates.
-      expect(mock).toBeCalledTimes(2);
+      expect(cb).toBeCalledTimes(2);
     });
 
     it('will squash computed updates', async () => {
       const test = Test.new();
-      const mock = fn();
+      const cb = mock();
 
       test.get((state) => {
         void state.value3;
         void state.value4;
-        mock();
+        cb();
       });
 
       test.value3 = 4;
@@ -907,7 +907,7 @@ describe('get method', () => {
       await expect(test).toHaveUpdated();
 
       // expect two syncronous groups of updates.
-      expect(mock).toBeCalledTimes(2);
+      expect(cb).toBeCalledTimes(2);
     });
 
     it('will update for nested values', async () => {
@@ -920,7 +920,7 @@ describe('get method', () => {
       }
 
       const test = Test.new();
-      const effect = fn((state: Test) => {
+      const effect = mock((state: Test) => {
         void state.child.value;
       });
 
@@ -951,7 +951,7 @@ describe('get method', () => {
       }
 
       const parent = Parent.new();
-      const effect = fn();
+      const effect = mock();
       let promise = mockPromise();
 
       parent.get((state) => {
@@ -1005,38 +1005,38 @@ describe('get method', () => {
       }
 
       const state = Parent.new();
-      const mock = fn((it: Parent) => {
+      const cb = mock((it: Parent) => {
         void it.value;
 
         if (it.child) void it.child.value;
       });
 
-      state.get(mock);
+      state.get(cb);
 
       state.child = Child.new();
       await expect(state).toHaveUpdated();
-      expect(mock).toBeCalledTimes(2);
+      expect(cb).toBeCalledTimes(2);
 
       // Will refresh on sub-value change.
       state.child.value = 'bar';
       await expect(state.child).toHaveUpdated();
-      expect(mock).toBeCalledTimes(3);
+      expect(cb).toBeCalledTimes(3);
 
       // Will refresh on undefined.
       state.child = undefined;
       await expect(state).toHaveUpdated();
       expect(state.child).toBeUndefined();
-      expect(mock).toBeCalledTimes(4);
+      expect(cb).toBeCalledTimes(4);
 
       // Will refresh on repalcement.
       state.child = Child.new();
       await expect(state).toHaveUpdated();
-      expect(mock).toBeCalledTimes(5);
+      expect(cb).toBeCalledTimes(5);
 
       // New subscription still works.
       state.child.value = 'bar';
       await expect(state.child).toHaveUpdated();
-      expect(mock).toBeCalledTimes(6);
+      expect(cb).toBeCalledTimes(6);
     });
 
     it('will not update for removed children', async () => {
@@ -1049,7 +1049,7 @@ describe('get method', () => {
       }
 
       const test = Test.new();
-      const effect = fn((state: Test) => {
+      const effect = mock((state: Test) => {
         void state.nested.value;
       });
 
@@ -1073,7 +1073,7 @@ describe('get method', () => {
     });
 
     it('will call immediately', async () => {
-      const testEffect = fn();
+      const testEffect = mock();
       const test = Test.new();
 
       test.get(testEffect);
@@ -1088,24 +1088,24 @@ describe('get method', () => {
           this.get((state) => {
             void state.value1;
             void state.value3;
-            mock();
+            cb();
           });
         }
       }
 
-      const mock = fn();
+      const cb = mock();
       const state = Test2.new();
 
       state.value1++;
       await expect(state).toHaveUpdated();
 
-      expect(mock).toBeCalled();
+      expect(cb).toBeCalled();
 
       state.value3++;
       await expect(state).toHaveUpdated();
 
       // expect pre-existing listener to hit
-      expect(mock).toBeCalledTimes(3);
+      expect(cb).toBeCalledTimes(3);
     });
 
     it('will bind to state called upon', () => {
@@ -1115,7 +1115,7 @@ describe('get method', () => {
         didCreate(this);
       }
 
-      const didCreate = fn();
+      const didCreate = mock();
       const test = Test.new();
 
       test.get(testEffect);
@@ -1125,15 +1125,15 @@ describe('get method', () => {
 
     it('will work without State.new', async () => {
       const test = new Test();
-      const mock = fn();
+      const cb = mock();
 
-      test.get(mock);
+      test.get(cb);
 
-      expect(mock).not.toBeCalled();
+      expect(cb).not.toBeCalled();
 
       test.set('EVENT');
 
-      expect(mock).toBeCalled();
+      expect(cb).toBeCalled();
     });
 
     it('will not subscribe from method', async () => {
@@ -1147,7 +1147,7 @@ describe('get method', () => {
       }
 
       const test = Test.new();
-      const effect = fn((self: Test) => {
+      const effect = mock((self: Test) => {
         self.action();
         void self.foo;
       });
@@ -1166,7 +1166,7 @@ describe('get method', () => {
     });
 
     it('will subscribe method passed directly', async () => {
-      const didInvoke = fn();
+      const didInvoke = mock();
 
       class Test extends State {
         foo = 1;
@@ -1198,24 +1198,24 @@ describe('get method', () => {
         }
 
         const state = Test.new();
-        const mock = fn();
+        const cb = mock();
 
         state.get((state) => {
           void state.value1;
-          return mock;
+          return cb;
         });
 
-        expect(mock).not.toBeCalled();
+        expect(cb).not.toBeCalled();
 
         state.value1 = 2;
 
         await expect(state).toHaveUpdated();
 
-        expect(mock).toBeCalledWith(true);
+        expect(cb).toBeCalledWith(true);
       });
 
       it('will callback on null event', async () => {
-        const willDestroy = fn();
+        const willDestroy = mock();
         const test = Test.new();
 
         test.get(() => willDestroy);
@@ -1226,10 +1226,10 @@ describe('get method', () => {
 
       it('will cancel effect on callback', async () => {
         const test = Test.new();
-        const mock = fn();
-        const didEffect = fn((test: Test) => {
+        const cb = mock();
+        const didEffect = mock((test: Test) => {
           void test.value1;
-          return mock;
+          return cb;
         });
 
         const done = test.get(didEffect);
@@ -1239,11 +1239,11 @@ describe('get method', () => {
         await expect(test).toHaveUpdated();
         expect(didEffect).toBeCalledTimes(2);
 
-        mock.mockReset();
+        cb.mockReset();
 
         done();
 
-        expect(mock).toBeCalledWith(false);
+        expect(cb).toBeCalledWith(false);
 
         test.value1 += 1;
         await expect(test).toHaveUpdated();
@@ -1253,7 +1253,7 @@ describe('get method', () => {
 
       it('will cancel if null', async () => {
         const test = Test.new();
-        const didEffect = fn((test: Test) => {
+        const didEffect = mock((test: Test) => {
           void test.value1;
           return null;
         });
@@ -1268,11 +1268,11 @@ describe('get method', () => {
 
       it('will cancel if null after callback', async () => {
         const test = Test.new();
-        const cleanup = fn();
+        const cleanup = mock();
 
         let callback: (() => void) | null = cleanup;
 
-        const didEffect = fn((test: Test) => {
+        const didEffect = mock((test: Test) => {
           void test.value1;
           return callback;
         });
@@ -1321,8 +1321,8 @@ describe('get method', () => {
 
       it('will retry', async () => {
         const test = Test.new();
-        const didTry = fn();
-        const didInvoke = fn();
+        const didTry = mock();
+        const didInvoke = mock();
 
         test.get(($) => {
           didTry();
@@ -1340,8 +1340,8 @@ describe('get method', () => {
 
       it('will still subscribe', async () => {
         const test = Test.new();
-        const didTry = fn();
-        const didInvoke = fn();
+        const didTry = mock();
+        const didInvoke = mock();
 
         test.get(($) => {
           didTry();
@@ -1362,8 +1362,8 @@ describe('get method', () => {
 
       it('will not update while pending', async () => {
         const test = Test.new();
-        const willUpdate = fn();
-        const didUpdate = fn();
+        const willUpdate = mock();
+        const didUpdate = mock();
 
         test.get((state) => {
           willUpdate();
@@ -1394,17 +1394,17 @@ describe('get method', () => {
 
           constructor(...args: State.Args) {
             super(args);
-            this.get((state) => mock(state.value1));
+            this.get((state) => cb(state.value1));
           }
         }
 
-        const mock = fn();
+        const cb = mock();
         const state = Test.new();
 
         state.value1++;
         await expect(state).toHaveUpdated();
 
-        expect(mock).toBeCalledTimes(2);
+        expect(cb).toBeCalledTimes(2);
       });
 
       it('will watch computed value', async () => {
@@ -1416,17 +1416,17 @@ describe('get method', () => {
           }
 
           protected new() {
-            this.get((state) => mock(state.value2));
+            this.get((state) => cb(state.value2));
           }
         }
 
-        const mock = fn();
+        const cb = mock();
         const state = Test.new();
 
         state.value1++;
         await expect(state).toHaveUpdated();
 
-        expect(mock).toBeCalled();
+        expect(cb).toBeCalled();
       });
 
       it('will remove listener on callback', async () => {
@@ -1434,25 +1434,25 @@ describe('get method', () => {
           value = 1;
 
           // assigned during constructor phase.
-          done = this.get((state) => mock(state.value));
+          done = this.get((state) => cb(state.value));
         }
 
-        const mock = fn();
+        const cb = mock();
         const test = Test.new();
 
         test.value++;
         await expect(test).toHaveUpdated();
-        expect(mock).toBeCalledTimes(2);
+        expect(cb).toBeCalledTimes(2);
 
         test.value++;
         await expect(test).toHaveUpdated();
-        expect(mock).toBeCalledTimes(3);
+        expect(cb).toBeCalledTimes(3);
 
         test.done();
 
         test.value++;
         await expect(test).toHaveUpdated();
-        expect(mock).toBeCalledTimes(3);
+        expect(cb).toBeCalledTimes(3);
       });
     });
   });
@@ -1663,16 +1663,16 @@ describe('set method', () => {
       }
 
       const test = Test.new();
-      const mock = fn();
+      const cb = mock();
 
       test.get(({ foo, bar }) => {
-        mock(foo, bar);
+        cb(foo, bar);
       });
 
       test.foo = 'bar';
 
       await expect(test).toHaveUpdated('foo');
-      expect(mock).toBeCalledWith('bar', undefined);
+      expect(cb).toBeCalledWith('bar', undefined);
 
       test.bar = 'bob';
 
@@ -1680,7 +1680,7 @@ describe('set method', () => {
 
       // bar assignment is ignored because it's not formally defined
       await expect(test).not.toHaveUpdated('bar');
-      expect(mock).not.toBeCalledWith('bar', 'bob');
+      expect(cb).not.toBeCalledWith('bar', 'bob');
 
       // assign bar formally adding to state
       test.set('bar', { value: 'baz' });
@@ -1690,19 +1690,19 @@ describe('set method', () => {
       expect(test).toHaveUpdated('bar');
 
       // The effect isn't observing bar yet
-      expect(mock).not.toBeCalledWith('bar', 'baz');
+      expect(cb).not.toBeCalledWith('bar', 'baz');
 
       // force refresh using foo instead
       test.set('foo');
       await expect(test).toHaveUpdated('foo');
-      expect(mock).toBeCalledWith('bar', 'baz');
+      expect(cb).toBeCalledWith('bar', 'baz');
 
       test.bar = 'qux';
 
       // updates no longer ignored
       await expect(test).toHaveUpdated('bar');
       expect(test.bar).toBe('qux');
-      expect(mock).toBeCalledWith('bar', 'qux');
+      expect(cb).toBeCalledWith('bar', 'qux');
     });
 
     it('will apply config to a key', async () => {
@@ -1776,7 +1776,7 @@ describe('set method', () => {
       }
 
       const test = new Test();
-      const effect = fn();
+      const effect = mock();
 
       test.get(effect);
       expect(effect).not.toBeCalled();
@@ -1786,7 +1786,7 @@ describe('set method', () => {
     });
 
     it('will initialize from set({}) when created with new', () => {
-      const didSetFoo = fn();
+      const didSetFoo = mock();
 
       class Test extends State {
         foo = set<string>(undefined, didSetFoo);
@@ -1808,15 +1808,15 @@ describe('set method', () => {
       }
 
       const test = Test.new();
-      const mock = fn();
+      const cb = mock();
 
-      test.set(mock);
+      test.set(cb);
 
       test.foo = 'bar';
       test.foo = 'baz';
 
-      expect(mock).toBeCalledWith('foo', test);
-      expect(mock).toBeCalledTimes(2);
+      expect(cb).toBeCalledWith('foo', test);
+      expect(cb).toBeCalledTimes(2);
     });
 
     it('will not self-update', () => {
@@ -1825,14 +1825,14 @@ describe('set method', () => {
       }
 
       const test = Test.new();
-      const mock = fn(() => {
+      const cb = mock(() => {
         test.foo = 'baz';
       });
 
-      test.set(mock);
+      test.set(cb);
       test.foo = 'bar';
 
-      expect(mock).toBeCalledTimes(1);
+      expect(cb).toBeCalledTimes(1);
       expect(test.foo).toBe('baz');
     });
   });
@@ -1845,7 +1845,7 @@ describe('set method', () => {
       }
 
       const test = Test.new();
-      const didUpdateFoo = fn();
+      const didUpdateFoo = mock();
 
       test.set('foo', didUpdateFoo);
 
@@ -1864,7 +1864,7 @@ describe('set method', () => {
       }
 
       const test = Test.new();
-      const didUpdateFoo = fn(() => null);
+      const didUpdateFoo = mock(() => null);
 
       test.set('foo', didUpdateFoo);
 
@@ -1880,7 +1880,7 @@ describe('set method', () => {
       }
 
       const test = Test.new();
-      const didDestroy = fn();
+      const didDestroy = mock();
 
       test.set(null, didDestroy);
       test.set(null);
@@ -1900,27 +1900,27 @@ describe('set method', () => {
 
     it('will call every update', async () => {
       const test = Test.new();
-      const mock = fn();
+      const cb = mock();
 
       const done = test.set((a, b) => {
-        mock(a, Object.assign({}, b));
+        cb(a, Object.assign({}, b));
       });
 
       test.foo = 1;
       test.foo = 2;
       test.bar = 2;
 
-      expect(mock).toBeCalledWith('foo', { foo: 1, bar: 1, baz: 2 });
-      expect(mock).toBeCalledWith('foo', { foo: 2, bar: 1, baz: 2 });
-      expect(mock).toBeCalledWith('bar', { foo: 2, bar: 2, baz: 2 });
+      expect(cb).toBeCalledWith('foo', { foo: 1, bar: 1, baz: 2 });
+      expect(cb).toBeCalledWith('foo', { foo: 2, bar: 1, baz: 2 });
+      expect(cb).toBeCalledWith('bar', { foo: 2, bar: 2, baz: 2 });
 
       done();
     });
 
     it('will callback after frame', async () => {
       const test = Test.new();
-      const didUpdate = fn(() => didUpdateAsync);
-      const didUpdateAsync = fn();
+      const didUpdate = mock(() => didUpdateAsync);
+      const didUpdateAsync = mock();
 
       const done = test.set(didUpdate);
 
@@ -1968,7 +1968,7 @@ describe('set method', () => {
         bar = 1;
       }
 
-      const callback = fn();
+      const callback = mock();
       const test = Subject.new();
 
       test.bar = 2;
@@ -1981,7 +1981,7 @@ describe('set method', () => {
         foo = 0;
       }
 
-      const callback = fn();
+      const callback = mock();
       const test = Test.new();
 
       test.set(callback);
@@ -2012,7 +2012,7 @@ describe('set method', () => {
         foo = 0;
       }
 
-      const callback = fn();
+      const callback = mock();
       const test = Test.new();
 
       test.set(callback);
@@ -2161,7 +2161,7 @@ describe('set method', () => {
 
 describe('new method', () => {
   it('will ignore instance-property new', () => {
-    const didCreate = fn();
+    const didCreate = mock();
 
     class Test extends State {
       new = didCreate;
@@ -2173,7 +2173,7 @@ describe('new method', () => {
   });
 
   it('will call if exists', () => {
-    const didCreate = fn();
+    const didCreate = mock();
 
     class Test extends State {
       protected new() {
@@ -2187,8 +2187,8 @@ describe('new method', () => {
   });
 
   it('will cleanup if returns function', () => {
-    const didDestroy = fn();
-    const didCreate = fn(() => didDestroy);
+    const didDestroy = mock();
+    const didCreate = mock(() => didDestroy);
 
     class Test extends State {
       protected new() {
@@ -2211,8 +2211,8 @@ describe('new method (static)', () => {
   class Test extends State {}
 
   it('will call argument as lifecycle', () => {
-    const didDestroy = fn();
-    const didCreate = fn(() => didDestroy);
+    const didDestroy = mock();
+    const didCreate = mock(() => didDestroy);
 
     const state = Test.new(didCreate);
 
@@ -2229,7 +2229,7 @@ describe('new method (static)', () => {
       foo = 'foo';
     }
 
-    const willCreate = fn(() => ({
+    const willCreate = mock(() => ({
       foo: 'bar'
     }));
 
@@ -2244,7 +2244,7 @@ describe('new method (static)', () => {
       bar = 1;
     }
 
-    const willCreate = fn(() => [{ foo: 2 }, { bar: 3 }]);
+    const willCreate = mock(() => [{ foo: 2 }, { bar: 3 }]);
 
     const test = Test.new(willCreate);
 
@@ -2258,8 +2258,8 @@ describe('new method (static)', () => {
       bar = 1;
     }
 
-    const willCreate = fn(() => ({ foo: 2 }));
-    const willDestroy = fn();
+    const willCreate = mock(() => ({ foo: 2 }));
+    const willDestroy = mock();
 
     const test = Test.new(willCreate, () => willDestroy, { bar: 3 });
 
@@ -2347,13 +2347,13 @@ describe('new method (static)', () => {
   });
 
   it('will run callbacks in order', () => {
-    const willDestroy2 = fn();
-    const willDestroy1 = fn(() => {
+    const willDestroy2 = mock();
+    const willDestroy1 = mock(() => {
       expect(willDestroy2).not.toBeCalled();
     });
 
-    const willCreate2 = fn(() => willDestroy2);
-    const willCreate1 = fn(() => {
+    const willCreate2 = mock(() => willDestroy2);
+    const willCreate1 = mock(() => {
       expect(willCreate2).not.toBeCalled();
       return willDestroy1;
     });
@@ -2370,7 +2370,7 @@ describe('new method (static)', () => {
   });
 
   it('will ingore promise from callback', () => {
-    const didCreate = fn(() => Promise.resolve());
+    const didCreate = mock(() => Promise.resolve());
 
     Test.new(didCreate);
 
@@ -2382,7 +2382,7 @@ describe('new method (static)', () => {
     const error = mockError();
     const expects = new Error('State callback rejected.');
 
-    const init = fn(() => Promise.reject(expects));
+    const init = mock(() => Promise.reject(expects));
     const test = Test.new(init);
 
     expect(init).toBeCalledTimes(1);
@@ -2482,11 +2482,11 @@ describe('on method (static)', () => {
   it('will run callback on create', () => {
     class Test extends State {}
 
-    const mock = fn();
-    const done = Test.on(mock);
+    const cb = mock();
+    const done = Test.on(cb);
     const test = Test.new();
 
-    expect(mock).toBeCalledWith(test);
+    expect(cb).toBeCalledWith(test);
 
     done();
   });
@@ -2494,7 +2494,7 @@ describe('on method (static)', () => {
   it('will run cleanup on destroy', () => {
     class Test extends State {}
 
-    const cleanup = fn();
+    const cleanup = mock();
     const done = Test.on(() => cleanup);
     const test = Test.new();
 
@@ -2510,8 +2510,8 @@ describe('on method (static)', () => {
     class Test extends State {}
     class Test2 extends Test {}
 
-    const createTest = fn();
-    const createTest2 = fn();
+    const createTest = mock();
+    const createTest2 = mock();
 
     Test.on(createTest);
     Test2.on(createTest2);
@@ -2544,7 +2544,7 @@ describe('on method (static)', () => {
     class Test extends State {}
     class Test2 extends Test {}
 
-    const didCreate = fn();
+    const didCreate = mock();
 
     Test.on(didCreate);
     Test2.on(didCreate);
@@ -2557,23 +2557,23 @@ describe('on method (static)', () => {
   it('will remove callback', () => {
     class Test extends State {}
 
-    const mock = fn();
-    const done = Test.on(mock);
+    const cb = mock();
+    const done = Test.on(cb);
 
     Test.new();
-    expect(mock).toBeCalled();
+    expect(cb).toBeCalled();
 
     done();
 
     Test.new();
-    expect(mock).toBeCalledTimes(1);
+    expect(cb).toBeCalledTimes(1);
   });
 
   it('will register multiple callbacks', () => {
     class Fresh extends State {}
 
-    const cb1 = fn();
-    const cb2 = fn();
+    const cb1 = mock();
+    const cb2 = mock();
 
     // First .on() creates the setup Set (line 455)
     Fresh.on(cb1);
@@ -2661,7 +2661,7 @@ describe('computed (getters)', () => {
   });
 
   it.todo("will not update if output doesn't change", async () => {
-    const didCompute = fn();
+    const didCompute = mock();
 
     class Subject extends State {
       value = 1;
@@ -2718,7 +2718,7 @@ describe('computed (getters)', () => {
   });
 
   it('will compute early if value is accessed', async () => {
-    const didCompute = fn();
+    const didCompute = mock();
 
     class Test extends State {
       number = 0;
@@ -2756,8 +2756,8 @@ describe('computed (getters)', () => {
   // assertions; getter re-evaluation actually happens via queueMicrotask. Skipped
   // pending a rewrite against the real reactive contract.
   it.skip('will be squashed with regular updates', async () => {
-    const exec = fn();
-    const emit = fn();
+    const exec = mock();
+    const emit = mock();
 
     class Inner extends State {
       value = 1;
@@ -2914,7 +2914,7 @@ describe('computed (getters)', () => {
 
   describe('opt-out tracking', () => {
     it('will not subscribe to values accessed via this.is', async () => {
-      const didCompute = fn();
+      const didCompute = mock();
 
       class Test extends State {
         tracked = 'A';
@@ -3023,8 +3023,8 @@ describe('computed (getters)', () => {
     });
 
     it('will not trigger itself', async () => {
-      const didGetOldValue = fn();
-      const didGetNewValue = fn();
+      const didGetOldValue = mock();
+      const didGetNewValue = mock();
 
       class Test extends State {
         input = 1;

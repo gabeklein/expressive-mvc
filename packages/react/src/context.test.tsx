@@ -1,5 +1,5 @@
 import {
-  fn, spyOn,
+  mock, spyOn,
   afterAll,
   expect,
   it,
@@ -97,7 +97,7 @@ describe('Provider', () => {
       value = 'hello';
     }
 
-    const is = fn();
+    const is = mock();
 
     render(
       <Provider for={Test} is={is}>
@@ -134,7 +134,7 @@ describe('Provider', () => {
       value = 'initial';
     }
 
-    const Child = fn(() => {
+    const Child = mock(() => {
       const { value } = Test.get();
       return <span>{value}</span>;
     });
@@ -193,7 +193,7 @@ describe('Provider', () => {
   });
 
   it('will destroy created model on unmount', async () => {
-    const willDestroy = fn();
+    const willDestroy = mock();
 
     class Test extends State {}
 
@@ -213,7 +213,7 @@ describe('Provider', () => {
   });
 
   it('will destroy multiple created on unmount', async () => {
-    const willDestroy = fn();
+    const willDestroy = mock();
 
     class Foo extends State {}
     class Bar extends State {}
@@ -238,7 +238,7 @@ describe('Provider', () => {
   });
 
   it('will not destroy given instance on unmount', async () => {
-    const didUnmount = fn();
+    const didUnmount = mock();
 
     class Test extends State {}
 
@@ -257,7 +257,7 @@ describe('Provider', () => {
   it('will conflict colliding State types', () => {
     const foo = Foo.new();
 
-    const Consumer: React.FC = fn(() => {
+    const Consumer: React.FC = mock(() => {
       expect(() => Foo.get()).toThrow(
         'Did find Foo in context, but multiple were defined.'
       );
@@ -274,7 +274,7 @@ describe('Provider', () => {
   });
 
   it('will destroy from bottom-up', async () => {
-    const didDestroy = fn();
+    const didDestroy = mock();
 
     class Test extends State {
       protected new() {
@@ -300,7 +300,7 @@ describe('Provider', () => {
 
   describe('forEach prop', () => {
     it('will call function for each model', () => {
-      const forEach = fn();
+      const forEach = mock();
 
       render(<Provider for={{ Foo, Bar }} is={forEach} />);
 
@@ -310,8 +310,8 @@ describe('Provider', () => {
     });
 
     it('will cleanup on unmount', async () => {
-      const forEach = fn(() => cleanup);
-      const cleanup = fn();
+      const forEach = mock(() => cleanup);
+      const cleanup = mock();
 
       const rendered = render(<Provider for={{ Foo, Bar }} is={forEach} />);
 
@@ -383,8 +383,8 @@ describe('Provider', () => {
 
   describe('strict mode', () => {
     it('will create once and destroy on unmount', async () => {
-      const didCreate = fn();
-      const didDestroy = fn();
+      const didCreate = mock();
+      const didDestroy = mock();
 
       class Test extends State {
         protected new() {
@@ -440,7 +440,7 @@ describe('Consumer', () => {
     }
 
     const instance = Test.new();
-    const didRender = fn();
+    const didRender = mock();
 
     function onRender(instance: Test) {
       const { value } = instance;
@@ -619,7 +619,7 @@ describe('get instruction', () => {
   });
 
   it('will maintain hook', async () => {
-    const Inner: React.FC = fn(() => {
+    const Inner: React.FC = mock(() => {
       Foo.use();
       return null;
     });
@@ -704,7 +704,7 @@ describe('has instruction', () => {
       foo = get(Foo);
     }
 
-    const didGetBar = fn();
+    const didGetBar = mock();
     const FooBar = () => void Bar.use();
     const foo = new Foo();
 
@@ -729,7 +729,7 @@ describe('has instruction', () => {
       foo = get(Foo);
     }
 
-    const didGetBar = fn();
+    const didGetBar = mock();
     const FooBar = () => void Bar.use();
 
     const Component = () => {
