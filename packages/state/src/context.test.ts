@@ -232,6 +232,26 @@ it('will uncollide when one implicit child is removed', () => {
   expect(context.get(Foo)).toBeInstanceOf(Bar);
 });
 
+it('will clear consume and provide on pop', () => {
+  class Foo extends State {}
+
+  const parent = new Context();
+  const child = parent.push();
+
+  // register() seeds null placeholders up the parent chain — these survive
+  // child cleanup callbacks and accumulate on long-lived roots without this.
+  child.get(Foo, vi.fn());
+  child.add(Foo.new());
+
+  expect(parent.consume.has(Foo)).toBe(true);
+  expect(parent.provide.has(Foo)).toBe(true);
+
+  parent.pop();
+
+  expect(parent.consume.size).toBe(0);
+  expect(parent.provide.size).toBe(0);
+});
+
 it('will pop child context', () => {
   let order = 0;
 
