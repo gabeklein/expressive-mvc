@@ -1,4 +1,4 @@
-import { fn, spyOn, describe, it, expect, afterEach } from '../../test';
+import { mock, spyOn, describe, it, expect, afterEach } from '../../test';
 import { State } from '../state';
 import { ref } from './ref';
 import { set } from './set';
@@ -46,7 +46,7 @@ describe('property', () => {
   });
 
   it('will invoke callback when called as function', async () => {
-    const didTrigger = fn();
+    const didTrigger = mock();
 
     class Subject extends State {
       ref = ref<string>(didTrigger);
@@ -89,7 +89,7 @@ describe('property', () => {
     }
 
     const state = Subject.new();
-    const callback = fn();
+    const callback = mock();
 
     state.ref.get(callback);
 
@@ -107,7 +107,7 @@ describe('property', () => {
     }
 
     const state = Subject.new();
-    const didCallback = fn();
+    const didCallback = mock();
 
     state.set((key) => {
       if (key == 'ref') didCallback();
@@ -120,8 +120,8 @@ describe('property', () => {
   });
 
   it('will invoke callback', async () => {
-    const didTrigger = fn();
-    const didUpdate = fn();
+    const didTrigger = mock();
+    const didUpdate = mock();
 
     class Subject extends State {
       ref = ref<string>(didTrigger);
@@ -148,7 +148,7 @@ describe('property', () => {
     }
 
     const state = Subject.new();
-    const didTrigger = fn();
+    const didTrigger = mock();
 
     state.ref.current = 1;
 
@@ -161,7 +161,7 @@ describe('property', () => {
   });
 
   it('will not callback when set to null', async () => {
-    const callback = fn();
+    const callback = mock();
 
     class Subject extends State {
       ref = ref<string | null>(callback);
@@ -177,7 +177,7 @@ describe('property', () => {
   });
 
   it('will callback when on null if ignore false', async () => {
-    const callback = fn();
+    const callback = mock();
 
     class Subject extends State {
       ref = ref<string | null>(callback, false);
@@ -203,7 +203,7 @@ describe('property', () => {
       });
     }
 
-    const effect = fn();
+    const effect = mock();
     const state = Subject.new();
 
     state.hello.current = 'Hola';
@@ -254,7 +254,7 @@ describe('property', () => {
     }
 
     const test = Subject.new();
-    const effect = fn(($: Subject) => {
+    const effect = mock(($: Subject) => {
       void $.ref.current;
     });
 
@@ -337,7 +337,7 @@ describe('proxy', () => {
 
   it('will subscribe from property', async () => {
     const test = Subject.new();
-    const callback = fn();
+    const callback = mock();
     const { refs } = test;
 
     const done = refs.foo.get(callback);
@@ -416,7 +416,7 @@ describe('set instruction', () => {
 });
 
 describe('mapped', () => {
-  const generateRef = fn((key: any) => key as string);
+  const generateRef = mock((key: any) => key as string);
 
   class Test extends State {
     foo = 'foo';
@@ -485,7 +485,7 @@ describe('mapped', () => {
   });
 
   it('will bind this to target state', () => {
-    const spy = fn(function (this: any) {
+    const spy = mock(function (this: any) {
       return this;
     });
 
@@ -501,7 +501,7 @@ describe('mapped', () => {
   });
 
   it('will pass state as second argument', () => {
-    const spy = fn((_key: any, state: any) => state);
+    const spy = mock((_key: any, state: any) => state);
 
     class Test extends State {
       foo = 'foo';
@@ -539,7 +539,7 @@ describe('mapped', () => {
       foo = 'bar';
     }
 
-    const spy = fn((key: string) => `mapped-${key}`);
+    const spy = mock((key: string) => `mapped-${key}`);
 
     class Consumer extends State {
       source = new Source();

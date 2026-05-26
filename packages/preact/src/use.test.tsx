@@ -2,7 +2,7 @@
 import { act, renderHook, waitFor } from '@testing-library/preact';
 
 import { State, use as useObservable } from '.';
-import { describe, expect, it, fn, spyOn } from '../test';
+import { describe, expect, it, mock, spyOn } from '../test';
 
 describe('use', () => {
   class Test extends State {
@@ -12,7 +12,7 @@ describe('use', () => {
 
   it('will subscribe to observable instance', async () => {
     const test = Test.new();
-    const didRender = fn();
+    const didRender = mock();
     const hook = renderHook(() => {
       didRender();
       return useObservable(test).foo;

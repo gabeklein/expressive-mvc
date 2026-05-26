@@ -1,7 +1,7 @@
 import { event, listener, touch, watch, observer } from './observable';
 import { set } from './instruction/set';
 import { def } from './instruction/def';
-import { mockError, fn, spyOn, describe, it, expect, mockPromise } from '../test';
+import { mockError, mock, spyOn, describe, it, expect, mockPromise } from '../test';
 import { State } from './state';
 
 describe('effect', () => {
@@ -44,11 +44,11 @@ describe('effect', () => {
   });
 
   it('will run after properties', () => {
-    const mock = fn();
+    const cb = mock();
 
     class Test extends State {
       property = def((_key, _state, state) => {
-        this.get(() => mock(state));
+        this.get(() => cb(state));
       });
 
       foo = 1;
@@ -57,7 +57,7 @@ describe('effect', () => {
 
     Test.new();
 
-    expect(mock).toBeCalledWith({ foo: 1, bar: 2 });
+    expect(cb).toBeCalledWith({ foo: 1, bar: 2 });
   });
 
   it('will enforce values if required', () => {
@@ -115,7 +115,7 @@ describe('effect', () => {
     }
 
     const test = Test.new();
-    const didGetValue = fn();
+    const didGetValue = mock();
 
     test.get(($) => {
       didGetValue($.value1, $.value2);
@@ -170,7 +170,7 @@ describe('effect', () => {
     }
 
     const test = Test.new();
-    const didInvoke = fn();
+    const didInvoke = mock();
 
     const done = watch(test, ({ foo }) => {
       watch(test, ({ bar }) => {
@@ -207,8 +207,8 @@ describe('effect', () => {
       value = 1;
     }
 
-    const effect = fn();
-    const cleanup = fn();
+    const effect = mock();
+    const cleanup = mock();
     const test = Test.new();
 
     watch(test, ($) => {
@@ -234,7 +234,7 @@ describe('effect', () => {
       bar?: number = undefined;
     }
 
-    const didUpdate = fn();
+    const didUpdate = mock();
     const test = Test.new();
 
     watch(test, ({ foo, bar }) => {
@@ -272,7 +272,7 @@ describe('effect', () => {
       bar?: number = undefined;
     }
 
-    const didUpdate = fn();
+    const didUpdate = mock();
     const test = Test.new();
 
     watch(test, ({ foo, bar }) => {
@@ -424,7 +424,7 @@ describe('observable', () => {
     }
 
     const counter = new Counter();
-    const cb = fn();
+    const cb = mock();
     let proxy!: Counter;
 
     watch(counter, ($) => {
@@ -461,7 +461,7 @@ describe('observable', () => {
 
     it('will not re-fire ready on observable', () => {
       const test = {};
-      const cb = fn();
+      const cb = mock();
 
       event(test);
       listener(test, cb);
@@ -482,7 +482,7 @@ describe('observable', () => {
 
     it('will fire watch effect immediately on ready', () => {
       const test = {};
-      const cb = fn();
+      const cb = mock();
 
       event(test);
       watch(test, () => cb());
@@ -506,7 +506,7 @@ describe('observable', () => {
 
     it('will return with ready=true for ready observable', () => {
       const test = {};
-      const didInit = fn();
+      const didInit = mock();
 
       listener(test, didInit);
       event(test);
@@ -517,7 +517,7 @@ describe('observable', () => {
 
     it('will return null for terminated observable', () => {
       const test = {};
-      const onEvent = fn();
+      const onEvent = mock();
 
       listener(test, onEvent);
       event(test, null);

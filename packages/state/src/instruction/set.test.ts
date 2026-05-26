@@ -1,5 +1,5 @@
 import {
-  fn, spyOn,
+  mock, spyOn,
   describe,
   it,
   expect,
@@ -68,7 +68,7 @@ describe('property descriptors', () => {
   });
 
   it('will be writable with factory and callback', () => {
-    const callback = fn();
+    const callback = mock();
 
     class Test extends State {
       value = set(() => 'foo', callback);
@@ -82,7 +82,7 @@ describe('property descriptors', () => {
   });
 
   it('will be writable with placeholder and callback', () => {
-    const callback = fn();
+    const callback = mock();
 
     class Test extends State {
       value = set<string>(undefined, callback);
@@ -103,7 +103,7 @@ describe('placeholder', () => {
   it('will suspend if value is accessed before assign', async () => {
     const instance = Test.new();
     const promise = mockPromise<string>();
-    const mockEffect = fn((state: Test) => {
+    const mockEffect = mock((state: Test) => {
       promise.resolve(state.foobar);
     });
 
@@ -121,8 +121,8 @@ describe('placeholder', () => {
 
   it('will resolve suspense after latest value', async () => {
     const test = Test.new();
-    const foobar = fn();
-    const effect = fn((state: Test) => {
+    const foobar = mock();
+    const effect = mock((state: Test) => {
       foobar(state.foobar);
     });
 
@@ -146,7 +146,7 @@ describe('placeholder', () => {
 
     instance.foobar = 'bar!';
 
-    const mockEffect = fn((state: Test) => {
+    const mockEffect = mock((state: Test) => {
       expect(state.foobar).toBe('bar!');
     });
 
@@ -164,8 +164,8 @@ describe('callback', () => {
     }
 
     const state = Subject.new();
-    const didAssign = fn();
-    const didUpdate = fn();
+    const didAssign = mock();
+    const didUpdate = mock();
 
     expect(didAssign).not.toBeCalled();
 
@@ -178,7 +178,7 @@ describe('callback', () => {
 
   // TODO: this is not implemented yet
   it.skip('will invoke callback on set assignment', async () => {
-    const didAssign = fn();
+    const didAssign = mock();
 
     class Subject extends State {
       test = set<number>(1, didAssign);
@@ -200,7 +200,7 @@ describe('callback', () => {
       });
     }
 
-    const callback = fn();
+    const callback = mock();
     const state = Subject.new();
 
     state.test = 2;
@@ -220,7 +220,7 @@ describe('callback', () => {
       });
     }
 
-    const callback = fn();
+    const callback = mock();
     const state = Subject.new();
 
     expect(state.test).toBe('foo');
@@ -268,7 +268,7 @@ describe('callback', () => {
       });
     }
 
-    const effect = fn();
+    const effect = mock();
     const state = Subject.new();
 
     state.hello = 'Hola';
@@ -298,7 +298,7 @@ describe('intercept', () => {
       });
     }
 
-    const callback = fn();
+    const callback = mock();
     const state = Subject.new();
 
     expect(state.test).toBe('foo');
@@ -354,7 +354,7 @@ describe('factory', () => {
   });
 
   it('will compute when accessed', () => {
-    const factory = fn(() => 'Hello World');
+    const factory = mock(() => 'Hello World');
 
     class Test extends State {
       value = set(factory);
@@ -370,7 +370,7 @@ describe('factory', () => {
   });
 
   it('will compute lazily', () => {
-    const factory = fn(() => 'Hello World');
+    const factory = mock(() => 'Hello World');
 
     class Test extends State {
       value = set(factory, false);
@@ -434,7 +434,7 @@ describe('suspense', () => {
   });
 
   it('will suspend on another pending set', async () => {
-    const didEvaluate = fn(function (this: Test) {
+    const didEvaluate = mock(function (this: Test) {
       return this.value + ' world!';
     });
 
@@ -455,7 +455,7 @@ describe('suspense', () => {
 
   it('will suspend other set factories', async () => {
     const promise = mockPromise<string>();
-    const didEvaluate = fn(function (this: Test) {
+    const didEvaluate = mock(function (this: Test) {
       return this.value + ' world!';
     });
 
@@ -524,7 +524,7 @@ describe('suspense', () => {
 
   it('will be undefined if not required', async () => {
     const promise = mockPromise<string>();
-    const mock = fn();
+    const cb = mock();
 
     class Test extends State {
       value = set(() => promise, false);
@@ -532,20 +532,20 @@ describe('suspense', () => {
 
     const test = Test.new();
 
-    test.get(($) => mock($.value));
-    expect(mock).toBeCalledWith(undefined);
+    test.get(($) => cb($.value));
+    expect(cb).toBeCalledWith(undefined);
 
     promise.resolve('foobar');
     await expect(test).toHaveUpdated();
 
-    expect(mock).toBeCalledWith('foobar');
+    expect(cb).toBeCalledWith('foobar');
   });
 
   it('will suspend another factory', async () => {
     const salute = mockPromise<string>();
     const name = mockPromise<string>();
 
-    const didEvaluate = fn(function (this: Test) {
+    const didEvaluate = mock(function (this: Test) {
       return this.greet + ' ' + this.name;
     });
 
@@ -574,7 +574,7 @@ describe('suspense', () => {
     const greet = mockPromise<string>();
     const name = mockPromise<string>();
 
-    const didEvaluate = fn();
+    const didEvaluate = mock();
 
     class Test extends State {
       greet = set(async () => greet);
@@ -616,7 +616,7 @@ describe('suspense', () => {
     }
 
     const test = Test.new();
-    const effect = fn((state: Test) => {
+    const effect = mock((state: Test) => {
       didUpdate.resolve(state.childValue);
     });
 
@@ -654,7 +654,7 @@ describe('suspense', () => {
     let pending = mockPromise();
     let suspend = true;
 
-    const compute = fn(() => {
+    const compute = mock(() => {
       if (suspend) throw pending;
 
       return `OK I'm unblocked.`;
@@ -667,7 +667,7 @@ describe('suspense', () => {
     const test = Test.new();
     const didEvaluate = mockPromise<string>();
 
-    const effect = fn((state: Test) => {
+    const effect = mock((state: Test) => {
       didEvaluate.resolve(state.message);
     });
 
@@ -716,9 +716,9 @@ describe('suspense', () => {
 
     const test = Test.new();
 
-    const didAttemptSum = fn();
-    const didAttemptEffect = fn();
-    const didCompleteEffect = fn();
+    const didAttemptSum = mock();
+    const didAttemptEffect = mock();
+    const didCompleteEffect = mock();
 
     test.get((self) => {
       didAttemptEffect();
@@ -777,8 +777,8 @@ describe('suspense', () => {
 
 describe('factory with callback overload', () => {
   it('calls callback after factory resolves', async () => {
-    const callback = fn();
-    const factory = fn(() => 'computed');
+    const callback = mock();
+    const factory = mock(() => 'computed');
     class Test extends State {
       value = set(factory, callback);
     }
@@ -790,7 +790,7 @@ describe('factory with callback overload', () => {
   });
 
   it('calls callback after async factory resolves', async () => {
-    const callback = fn();
+    const callback = mock();
     class Test extends State {
       value = set(async () => {
         await new Promise((res) => setTimeout(res, 10));
@@ -813,7 +813,7 @@ describe('factory with callback overload', () => {
   });
 
   it('will callback if set before factory run', () => {
-    const callback = fn();
+    const callback = mock();
     class Test extends State {
       value = set(async () => 'something', callback);
     }
