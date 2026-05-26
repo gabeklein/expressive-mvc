@@ -7,7 +7,7 @@
     "declaration": false,
     "noUnusedLocals": true,
     "strict": true,
-    "types": ["vitest", "node"],
+    "types": ["bun"],
     "lib": ["ES2020", "dom"]
   },
   "exclude": ["node_modules", "dist"]

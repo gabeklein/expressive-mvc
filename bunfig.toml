@@ -1,0 +1,16 @@
+[test]
+preload = ["./test.preload.ts", "./test.setup.ts"]
+coverage = true
+coverageReporter = ["text"]
+coveragePathIgnorePatterns = [
+  "node_modules",
+  "dist",
+  "test\\.",
+  "\\.test\\.",
+  "packages/[^/]+/src/index\\.ts$",
+  "examples",
+  "website",
+  "packages/router",
+  "packages/solid"
+]
+coverageThreshold = { lines = 1.0, functions = 1.0, statements = 1.0 }

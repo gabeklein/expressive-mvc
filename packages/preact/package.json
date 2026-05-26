@@ -21,7 +21,7 @@
   },
   "scripts": {
     "build": "tsdown",
-    "test": "tsc --noEmit && vitest run --coverage",
+    "test": "tsc --noEmit && bun test --coverage",
     "preversion": "npm run test && npm run build"
   },
   "dependencies": {
@@ -31,8 +31,7 @@
   "devDependencies": {
     "@testing-library/preact": "^3.2.3",
     "preact": "^10.0.0",
-    "tsdown": "^0.20.1",
-    "vitest": "^4.0.18"
+    "tsdown": "^0.20.1"
   },
   "peerDependencies": {
     "preact": "^10.0.0"

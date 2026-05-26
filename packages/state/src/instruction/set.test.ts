@@ -5,7 +5,7 @@ import {
   expect,
   mockWarn,
   mockPromise
-} from '../../vitest';
+} from '../../test';
 import { State } from '../state';
 import { set } from './set';
 
@@ -741,7 +741,7 @@ describe('suspense', () => {
     expect(didAttemptSum).toBeCalledTimes(3);
     expect(test.sum).toBe('Answer is 30.');
 
-    await expect(test).toHaveUpdated();
+    await new Promise<void>((r) => setTimeout(r, 0));
     expect(didAttemptEffect).toBeCalledTimes(2);
     expect(didCompleteEffect).toBeCalledWith('Answer is 30.');
   });

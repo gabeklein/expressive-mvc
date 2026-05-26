@@ -9,7 +9,7 @@ import {
   renderHook,
   vi,
   waitFor
-} from '../vitest';
+} from '../test';
 
 describe('use', () => {
   class Test extends State {

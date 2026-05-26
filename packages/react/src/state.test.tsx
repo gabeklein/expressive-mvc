@@ -13,7 +13,7 @@ import {
   waitFor,
   mockPromise,
   renderWith
-} from '../vitest';
+} from '../test';
 
 describe('State.use', () => {
   class Test extends State {

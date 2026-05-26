@@ -1,7 +1,7 @@
 import { event, listener, touch, watch, observer } from './observable';
 import { set } from './instruction/set';
 import { def } from './instruction/def';
-import { mockError, vi, describe, it, expect, mockPromise } from '../vitest';
+import { mockError, vi, describe, it, expect, mockPromise } from '../test';
 import { State } from './state';
 
 describe('effect', () => {

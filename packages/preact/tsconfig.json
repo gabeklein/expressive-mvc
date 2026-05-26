@@ -11,7 +11,7 @@
     "noUnusedLocals": true,
     "sourceMap": true,
     "strict": true,
-    "types": ["preact"],
+    "types": ["bun", "preact"],
     "paths": {
       "@expressive/*": ["../*/src"],
       "@expressive/react/state": ["../react/src/state"]

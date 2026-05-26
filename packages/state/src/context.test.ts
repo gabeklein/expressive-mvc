@@ -1,4 +1,4 @@
-import { vi, describe, it, expect } from 'vitest';
+import { vi, describe, it, expect } from '../test';
 import { Context } from './context';
 import { State } from './state';
 
