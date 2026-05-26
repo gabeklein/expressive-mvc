@@ -19,7 +19,10 @@ afterEach(() => Context.root.pop());
 export { mockError, mockPromise, mockWarn };
 export type { MockPromise };
 
-async function toHaveUpdated(received: State, ...keys: string[]) {
+async function toHaveUpdated(
+  received: unknown,
+  ...keys: (string | symbol | number)[]
+) {
   if (!(received instanceof State))
     return {
       pass: false,

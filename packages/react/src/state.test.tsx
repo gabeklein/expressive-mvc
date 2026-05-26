@@ -583,7 +583,7 @@ describe('State.get', () => {
       bar = 2;
     }
 
-    it.todo('will suspend if factory does');
+    it.todo('will suspend if factory does', () => {});
 
     it('will select and subscribe to subvalue', async () => {
       const test = Test.new();
@@ -668,7 +668,7 @@ describe('State.get', () => {
         return Test.get(() => {});
       });
 
-      expect(hook.result.current).toBe(null);
+      expect(hook.result.current).toBeNull();
     });
 
     it('will disable updates if null returned', async () => {
@@ -685,7 +685,7 @@ describe('State.get', () => {
       const hook = renderWith(test, didRender);
 
       expect(didRender).toBeCalledTimes(1);
-      expect(hook.result.current).toBe(null);
+      expect(hook.result.current).toBeNull();
 
       test.foo = 2;
 
@@ -881,7 +881,7 @@ describe('State.get', () => {
       });
 
       expect(didRender).toBeCalledTimes(1);
-      expect(hook.result.current).toBe(null);
+      expect(hook.result.current).toBeNull();
 
       await act(async () => {
         promise.resolve('foobar');
@@ -1334,7 +1334,7 @@ describe('State.get', () => {
           return Test.get().value;
         });
 
-        expect(hook.result.current).toBe(null);
+        expect(hook.result.current).toBeNull();
 
         await act(async () => {
           promise.resolve('hello');
@@ -1359,7 +1359,7 @@ describe('State.get', () => {
           }
         });
 
-        expect(hook.result.current).toBe(null);
+        expect(hook.result.current).toBeNull();
 
         await act(async () => {
           promise.reject('oh no');
@@ -1380,7 +1380,7 @@ describe('State.get', () => {
           return Test.get().foobar;
         });
 
-        expect(hook.result.current).toBe(null);
+        expect(hook.result.current).toBeNull();
 
         // expect refresh caused by update
         await act(async () => {

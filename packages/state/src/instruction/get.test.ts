@@ -6,8 +6,8 @@ import { get } from './get';
 import { set } from './set';
 
 // is this desirable?
-it.todo('will add pending compute to frame immediately');
-it.todo('will suspend if necessary');
+it.todo('will add pending compute to frame immediately', () => {});
+it.todo('will suspend if necessary', () => {});
 
 describe('fetch mode', () => {
   it('will fetch sibling', () => {

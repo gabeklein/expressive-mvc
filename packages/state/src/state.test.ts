@@ -529,7 +529,7 @@ describe('get method', () => {
         baz: { foo: string };
       };
 
-      expect<Expected>(exported).toEqual({
+      expect(exported as Expected).toEqual({
         foo: 3,
         bar: null,
         baz: { foo: 'foo' }
@@ -550,7 +550,7 @@ describe('get method', () => {
       const parent = Parent.new();
       const exported = parent.get();
 
-      expect(exported.child.parent).toBe(exported);
+      expect(exported.child.parent as unknown).toBe(exported);
     });
   });
 
@@ -2025,7 +2025,7 @@ describe('set method', () => {
       expect(test.foo).toBe(0);
     });
 
-    it.todo('will throw clear error on bad update');
+    it.todo('will throw clear error on bad update', () => {});
   });
 
   describe('assign', () => {
@@ -2156,7 +2156,7 @@ describe('set method', () => {
     await expect(test).toHaveUpdated('_foo');
 
     expect(test.foo).toBe('bar');
-    expect(observed).toBe('bar');
+    expect(observed as string | null).toBe('bar');
   });
 });
 

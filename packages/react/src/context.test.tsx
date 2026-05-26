@@ -809,7 +809,7 @@ describe('HMR', () => {
     element.unmount();
   });
 
-  it.todo("will updated consumer if context's instance is replaced");
+  it.todo("will updated consumer if context's instance is replaced", () => {});
 });
 
 describe('root singleton', () => {
