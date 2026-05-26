@@ -1,12 +1,7 @@
 import { createElement, Suspense } from 'react';
-import { afterEach, mock, spyOn } from 'bun:test';
-import { cleanup, renderHook } from '@testing-library/react';
+import { mock, spyOn } from 'bun:test';
+import { renderHook } from '@testing-library/react';
 import { Provider, State } from './src';
-
-afterEach(() => {
-  cleanup();
-  document.body.innerHTML = '';
-});
 
 export {
   afterAll,
