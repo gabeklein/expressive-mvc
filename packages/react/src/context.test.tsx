@@ -129,10 +129,7 @@ describe('Provider', () => {
     );
   });
 
-  // SKIP: bun:test inter-file pollution. Passes in isolation; fails when another
-  // react test file runs first (bun shares a process; vitest worked because each
-  // file got its own worker). Tracked separately.
-  it.skip('will update instance when props change', async () => {
+  it('will update instance when props change', async () => {
     class Test extends State {
       value = 'initial';
     }
@@ -257,8 +254,7 @@ describe('Provider', () => {
     expect(didUnmount).not.toBeCalled();
   });
 
-  // SKIP: bun:test inter-file pollution (see notes on 'will update instance when props change').
-  it.skip('will conflict colliding State types', () => {
+  it('will conflict colliding State types', () => {
     const foo = Foo.new();
 
     const Consumer: React.FC = vi.fn(() => {
@@ -438,8 +434,7 @@ describe('Provider', () => {
 });
 
 describe('Consumer', () => {
-  // SKIP: bun:test inter-file pollution.
-  it.skip('will render with instance for child-function', async () => {
+  it('will render with instance for child-function', async () => {
     class Test extends State {
       value = 'foo';
     }
@@ -786,8 +781,7 @@ describe('suspense', () => {
 });
 
 describe('HMR', () => {
-  // SKIP: bun:test inter-file pollution.
-  it.skip('will remount context if item removed or replaced', () => {
+  it('will remount context if item removed or replaced', () => {
     class Test extends State {
       value = 'foo';
     }
@@ -846,8 +840,7 @@ describe('root singleton', () => {
     instance.set(null);
   });
 
-  // SKIP: bun:test inter-file pollution.
-  it.skip('will prefer Provider instance over root singleton', () => {
+  it('will prefer Provider instance over root singleton', () => {
     const instance = Singleton.new();
 
     render(

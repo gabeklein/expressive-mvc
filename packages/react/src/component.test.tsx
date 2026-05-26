@@ -13,9 +13,7 @@ import {
 import React from 'react';
 import { Component, Consumer, set } from '.';
 
-// SKIP: bun:test inter-file pollution. Passes in isolation; fails when other
-// react test files run first (bun shares a process, unlike vitest workers).
-it.skip('will create and provide instance', () => {
+it('will create and provide instance', () => {
   class Control extends Component {
     foo = 'bar';
   }
