@@ -1,15 +1,9 @@
 import { StrictMode } from 'react';
 import { event, observer, touch } from '@expressive/state';
+import { describe, expect, it, mock } from 'bun:test';
+
 import { use, State } from '.';
-import {
-  act,
-  describe,
-  expect,
-  it,
-  renderHook,
-  mock, spyOn,
-  waitFor
-} from '../test';
+import { act, renderHook, waitFor } from '@testing-library/react';
 
 describe('use', () => {
   class Test extends State {

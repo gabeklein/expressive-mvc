@@ -1,4 +1,4 @@
-import { mock, spyOn, describe, it, expect } from '../../test';
+import { mock, describe, it, expect } from 'bun:test';
 import { State } from '../state';
 import { def } from './def';
 
@@ -31,7 +31,7 @@ describe('instruction', () => {
 
       await test.set();
 
-      expect(test.value).toBe(1);
+      expect(test.value as any).toBe(1);
     });
 
     it('will be deleted prior to instruction', () => {

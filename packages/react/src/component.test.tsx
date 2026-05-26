@@ -1,16 +1,8 @@
-import {
-  mock, spyOn,
-  expect,
-  it,
-  describe,
-  act,
-  render,
-  screen,
-  mockError,
-  mockPromise
-} from '../test';
-
+import { render, screen, act } from '@testing-library/react';
+import { mock, expect, it, describe } from 'bun:test';
 import React from 'react';
+
+import { mockError, mockPromise } from '../test.setup';
 import { Component, Consumer, set } from '.';
 
 it('will create and provide instance', () => {

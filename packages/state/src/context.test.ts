@@ -1,4 +1,4 @@
-import { mock, spyOn, describe, it, expect } from '../test';
+import { mock, describe, it, expect } from 'bun:test';
 import { Context } from './context';
 import { State } from './state';
 

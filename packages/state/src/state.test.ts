@@ -1,4 +1,5 @@
-import { mock, spyOn, expect, it, describe, mockError, mockPromise, mockWarn } from '../test';
+import { mock, expect, it, describe } from 'bun:test';
+import { mockError, mockPromise, mockWarn } from '../test.setup';
 import { Context } from './context';
 import { get } from './instruction/get';
 import { ref } from './instruction/ref';

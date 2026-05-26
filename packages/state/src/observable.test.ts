@@ -1,7 +1,8 @@
 import { event, listener, touch, watch, observer } from './observable';
 import { set } from './instruction/set';
 import { def } from './instruction/def';
-import { mockError, mock, spyOn, describe, it, expect, mockPromise } from '../test';
+import { mock, describe, it, expect } from 'bun:test';
+import { mockError, mockPromise } from '../test.setup';
 import { State } from './state';
 
 describe('effect', () => {
@@ -409,7 +410,7 @@ describe('observable', () => {
       private state = { count: 0 };
 
       constructor() {
-        listener(this, () => { });
+        listener(this, () => {});
         event(this);
       }
 
@@ -499,7 +500,7 @@ describe('observable', () => {
     it('will return bundle without ready for observable not ready', () => {
       const test = {};
 
-      listener(test, () => { });
+      listener(test, () => {});
 
       expect("ready" in observer(test, true)).toBe(false);
     });
@@ -529,10 +530,10 @@ describe('observable', () => {
     it('will throw when registering a listener on a terminated state', () => {
       const test = {};
 
-      listener(test, () => { });
+      listener(test, () => {});
       event(test, null);
 
-      expect(() => listener(test, () => { })).toThrow(/terminated/);
+      expect(() => listener(test, () => {})).toThrow(/terminated/);
     });
   });
 });

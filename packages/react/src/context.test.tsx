@@ -1,16 +1,7 @@
-import {
-  mock, spyOn,
-  afterAll,
-  expect,
-  it,
-  describe,
-  act,
-  render,
-  screen
-} from '../test';
-
 import React, { Suspense } from 'react';
+import { mock, spyOn, afterAll, expect, it, describe } from 'bun:test';
 
+import { act, render, screen } from '@testing-library/react';
 import { State, Consumer, Context, get, Provider, set } from '.';
 
 const error = spyOn(console, 'error').mockImplementation(() => {});
