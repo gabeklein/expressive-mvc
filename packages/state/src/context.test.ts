@@ -238,7 +238,7 @@ it('will clear consume and provide on pop', () => {
   const parent = new Context();
   const child = parent.push();
 
-  // register() seeds null placeholders up the parent chain — these survive
+  // register() seeds null placeholders up the parent chain - these survive
   // child cleanup callbacks and accumulate on long-lived roots without this.
   child.get(Foo, mock());
   child.add(Foo.new());
