@@ -36,12 +36,11 @@
   },
   "scripts": {
     "build": "tsdown",
-    "test": "tsc --noEmit && vitest run --coverage",
+    "test": "tsc --noEmit && bun test --coverage",
     "preversion": "npm run test && npm run build"
   },
   "devDependencies": {
     "@types/node": "^18.19.0",
-    "tsdown": "^0.20.1",
-    "vitest": "^4.0.18"
+    "tsdown": "^0.20.1"
   }
 }

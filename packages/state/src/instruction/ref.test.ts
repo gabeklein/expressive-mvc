@@ -1,4 +1,4 @@
-import { vi, describe, it, expect, afterEach } from '../../vitest';
+import { vi, describe, it, expect, afterEach } from '../../test';
 import { State } from '../state';
 import { ref } from './ref';
 import { set } from './set';
@@ -497,7 +497,7 @@ describe('mapped', () => {
     const test = Test.new();
 
     test.fields.foo;
-    expect(spy.mock.instances[0]).toBe(test);
+    expect(spy.mock.results[0].value).toBe(test);
   });
 
   it('will pass state as second argument', () => {
