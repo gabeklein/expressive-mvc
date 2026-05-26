@@ -17,4 +17,4 @@ export const vi = {
   spyOn
 };
 
-export { mockError, mockPromise, mockWarn } from '../../test.setup';
+export { mockError, mockPromise, mockWarn } from './test.setup';

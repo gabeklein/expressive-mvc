@@ -1,5 +1,8 @@
 [test]
-preload = ["./test.preload.ts", "./test.setup.ts"]
+# Convenience composer for `bun test` from the repo root. The canonical setup
+# now lives in each package's own test.setup.ts; this file just preloads them
+# in dependency order so the matchers/hooks register before any test file runs.
+preload = ["./packages/react/test.setup.ts"]
 coverage = true
 coverageReporter = ["text"]
 coveragePathIgnorePatterns = [
