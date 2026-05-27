@@ -13,6 +13,7 @@
     "type": "git",
     "url": "git+https://github.com/gabeklein/expressive-state.git"
   },
+  "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "publishConfig": {
