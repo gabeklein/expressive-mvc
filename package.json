@@ -9,7 +9,7 @@
   ],
   "scripts": {
     "test": "lerna run test",
-    "build": "lerna run build",
+    "build": "bun run --workspaces --if-present build",
     "canary": "bash .github/scripts/canary.sh",
     "pr": "bash .github/scripts/pr.sh",
     "nuke": "find . -name 'node_modules' -type d -prune -exec rm -rf '{}' +"

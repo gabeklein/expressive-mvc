@@ -35,12 +35,11 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsdown",
+    "build": "rm -rf dist && tsc -p tsconfig.build.json && bun build --outdir=dist --root=src --format=esm --target=browser --sourcemap=external --packages=external src/index.ts",
     "test": "tsc --noEmit && bun test --coverage",
     "preversion": "npm run test && npm run build"
   },
   "devDependencies": {
-    "@types/node": "^18.19.0",
-    "tsdown": "^0.20.1"
+    "@types/node": "^18.19.0"
   }
 }

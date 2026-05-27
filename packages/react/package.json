@@ -40,7 +40,7 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsdown",
+    "build": "rm -rf dist && tsc -p tsconfig.build.json && bun build --outdir=dist --root=src --format=esm --target=browser --sourcemap=external --packages=external src/index.ts src/state.ts",
     "test": "tsc --noEmit && bun test --coverage",
     "preversion": "npm run test && npm run build"
   },
@@ -52,8 +52,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "react": "^19",
-    "react-dom": "^19",
-    "tsdown": "^0.20.1"
+    "react-dom": "^19"
   },
   "peerDependencies": {
     "react": ">=16.8.0 <20.0.0"

@@ -13,13 +13,14 @@
     "type": "git",
     "url": "git+https://github.com/gabeklein/expressive-state.git"
   },
+  "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "publishConfig": {
     "access": "public"
   },
   "scripts": {
-    "build": "tsdown",
+    "build": "rm -rf dist && tsc -p tsconfig.build.json && bun build --outdir=dist --root=src --format=esm --target=browser --sourcemap=external --packages=external src/index.ts",
     "test": "tsc --noEmit && bun test --coverage",
     "preversion": "npm run test && npm run build"
   },
@@ -29,8 +30,7 @@
   },
   "devDependencies": {
     "@testing-library/preact": "^3.2.3",
-    "preact": "^10.0.0",
-    "tsdown": "^0.20.1"
+    "preact": "^10.0.0"
   },
   "peerDependencies": {
     "preact": "^10.0.0"
