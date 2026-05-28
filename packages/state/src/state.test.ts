@@ -449,7 +449,7 @@ describe('get method', () => {
       expect(Object.isFrozen(values)).toBe(true);
     });
 
-    // FIXME: vitest's .toContain silently iterates plain objects as empty,
+    // FIXME(#97): vitest's .toContain silently iterates plain objects as empty,
     // so the original `.not.toContain('bar')` was a no-op. `test.get()` actually
     // includes 'bar' after access (verified under raw node 22). Skipped pending
     // a decision: is this a latent lib bug or is the test obsolete?
@@ -2752,10 +2752,10 @@ describe('computed (getters)', () => {
     await expect(test).toHaveUpdated();
   });
 
-  // FIXME: passes in the full suite but fails in isolation under both vitest+node
-  // and bun (verified). Relies on test pollution to drain microtasks between sync
-  // assertions; getter re-evaluation actually happens via queueMicrotask. Skipped
-  // pending a rewrite against the real reactive contract.
+  // FIXME(#98): passes in the full suite but fails in isolation under both
+  // vitest+node and bun (verified). Relies on test pollution to drain microtasks
+  // between sync assertions; getter re-evaluation actually happens via
+  // queueMicrotask. Skipped pending a rewrite against the real reactive contract.
   it.skip('will be squashed with regular updates', async () => {
     const exec = mock();
     const emit = mock();
