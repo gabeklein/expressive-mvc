@@ -5,6 +5,7 @@ import { useHook } from './runtime';
 import { State } from './state';
 
 const PENDING = new WeakMap<object, Component>();
+const SNAPSHOT = new WeakMap<Component, PropertyDescriptorMap>();
 const INTERNAL = [
   'updater',
   'refs',
@@ -87,7 +88,15 @@ export class Component extends State {
     );
 
     const existing = PENDING.get(nextProps);
-    if (existing) return existing;
+    if (existing) {
+      const snap: PropertyDescriptorMap = {};
+      for (const [key] of existing) {
+        const desc = Object.getOwnPropertyDescriptor(existing, key);
+        if (desc && 'get' in desc) snap[key] = desc;
+      }
+      SNAPSHOT.set(existing, snap);
+      return existing;
+    }
     PENDING.set(nextProps, this);
 
     for (const key of INTERNAL)
@@ -199,7 +208,13 @@ function bootstrap(this: Component, context: Context) {
   Object.defineProperties(self, {
     context: {
       get: () => context,
-      set() { }
+      set(this: Component) {
+        const snap = SNAPSHOT.get(this);
+        if (snap) {
+          SNAPSHOT.delete(this);
+          Object.defineProperties(this, snap);
+        }
+      }
     },
     render: {
       value: () => createElement(AsComponent)
