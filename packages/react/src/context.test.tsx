@@ -458,8 +458,7 @@ describe('Consumer', () => {
     screen.getByText('bar');
   });
 
-  // SKIP: bun:test inter-file pollution.
-  it.skip('will throw if not found', () => {
+  it('will throw if not found', () => {
     const test = () => render(<Consumer for={Bar}>{(i) => void i}</Consumer>);
 
     expect(test).toThrow('Could not find Bar in context.');
@@ -509,8 +508,7 @@ describe('Consumer', () => {
     expect(Context.get()).toBe(Context.root);
   });
 
-  // SKIP: bun:test inter-file pollution.
-  it.skip('will handle complex arrangement', () => {
+  it('will handle complex arrangement', () => {
     const instance = Foo.new();
 
     render(
