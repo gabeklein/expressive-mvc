@@ -33,27 +33,17 @@ Per-package: `tsc --noEmit && bun test --coverage`
 Runner: **`bun test`** with happy-dom preloaded globally for DOM tests. Coverage target: 100% lines/functions/statements (branch threshold not enforced - bun coverage doesn't support per-branch gating).
 
 ```ts
-// packages/state tests import from local bun:test re-export
-import {
-  vi,
-  describe,
-  it,
-  expect,
-  mockPromise,
-  mockWarn,
-  mockError
-} from '../../test';
+// Test primitives come directly from bun:test
+import { mock, spyOn, describe, it, expect } from 'bun:test';
 
-// packages/react / packages/preact tests also get @testing-library/{react,preact}
-import { render, renderHook, act, waitFor, screen } from '../../test';
+// Per-package test.setup.ts exports custom matchers + helpers
+import { mockPromise, mockWarn, mockError } from '../test.setup';
+
+// packages/react / packages/preact tests use @testing-library directly
+import { render, screen, act } from '@testing-library/react';
 ```
 
-`vi.fn` / `vi.spyOn` are shimmed over `bun:test`'s `mock` / `spyOn` so existing test idioms continue to work. The per-package `test.ts` files are the single indirection point.
-
-### Known bun:test gaps (see SKIP comments in tests)
-
-- Inter-file pollution in `packages/react`: bun runs all test files in one process; vitest spawned a worker per file. ~7 tests pass in isolation but fail when other react files run first.
-- React 19 Suspense + happy-dom: 3 error-boundary tests in `component.test.tsx` don't render the suspended fallback under bun's scheduling.
+Use `mock()` for `vi.fn()` equivalents and `spyOn(...)` for spies. No compat shim - `bun:test`'s primitives are used directly.
 
 ### Custom Matchers
 
@@ -84,7 +74,7 @@ await expect(state).not.toHaveUpdated();
 ## Guardrails
 
 - Don't modify `packages/state` to fix React-only concerns - use adapter packages.
-- Don't lower coverage thresholds or skip tests (the existing `it.skip` entries are documented bun:test gaps - leave them).
+- Don't lower coverage thresholds or skip tests (remaining `it.skip` / `it.todo` entries predate the toolchain migration and document known gaps unrelated to the runner).
 - Don't introduce framework-specific imports in `packages/state`.
 - Instructions (`def`, `ref`, `get`, `set`) are re-exported from adapters - don't duplicate implementations.
 - `new()` lifecycle hook is optional; don't add it unnecessarily.
