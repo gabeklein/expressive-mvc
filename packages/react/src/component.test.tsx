@@ -653,10 +653,7 @@ describe('error boundary', () => {
     screen.getByText('Recovered');
   });
 
-  // SKIP: React 19 Suspense fallback never paints under bun + happy-dom even
-  // when running this file alone. The library's `catch()` flow triggers a
-  // Suspense throw that doesn't render the fallback under happy-dom scheduling.
-  it.skip('will restore fallback after catch resolves', async () => {
+  it('will restore fallback after catch resolves', async () => {
     let throwing: any = new Error('boom');
     let resolve!: () => void;
     let instance!: Boundary;
@@ -786,8 +783,7 @@ describe('error boundary', () => {
     expect(parentCatch).toBeCalledWith('recovery failed');
   });
 
-  // SKIP: React 19 Suspense fallback never paints under bun + happy-dom.
-  it.skip('will catch new error after successful recovery', async () => {
+  it('will catch new error after successful recovery', async () => {
     let catchCount = 0;
     let shouldThrow = true;
     let resolve!: () => void;
@@ -893,8 +889,7 @@ describe('error boundary', () => {
     screen.getByText('Recovered');
   });
 
-  // SKIP: React 19 Suspense fallback never paints under bun + happy-dom.
-  it.skip('will restore fallback after sync catch', async () => {
+  it('will restore fallback after sync catch', async () => {
     let throwing: any = new Error('boom');
     let instance!: Boundary;
 
