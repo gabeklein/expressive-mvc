@@ -28,6 +28,16 @@
         "vite": "^7.3.1",
       },
     },
+    "packages/component": {
+      "name": "@expressive/component",
+      "version": "0.77.0",
+      "dependencies": {
+        "@expressive/state": "workspace:^",
+      },
+      "devDependencies": {
+        "tsdown": "^0.20.1",
+      },
+    },
     "packages/preact": {
       "name": "@expressive/preact",
       "version": "0.77.0",
@@ -293,6 +303,8 @@
     "@esbuild/win32-x64": ["@esbuild/win32-x64@0.27.7", "", { "os": "win32", "cpu": "x64" }, "sha512-56hiAJPhwQ1R4i+21FVF7V8kSD5zZTdHcVuRFMW0hn753vVfQN8xlx4uOPT4xoGH0Z/oVATuR82AiqSTDIpaHg=="],
 
     "@expressive/babel-preset": ["@expressive/babel-preset@0.7.0", "", { "dependencies": { "@babel/preset-typescript": "^7.28.5" }, "peerDependencies": { "@babel/core": "^7.0.0" } }, "sha512-5eSxb/YTxOP5n831uI45khbZJ11of3hFo1wq6PkA+9i/Iq90/ig9bfkCw3C9SA+29oItCZYokXbOOzC4OyEGYw=="],
+
+    "@expressive/component": ["@expressive/component@workspace:packages/component"],
 
     "@expressive/css": ["@expressive/css@0.7.0", "", { "dependencies": { "chroma-js": "^2.0.3", "easing-coordinates": "^2.0.2" } }, "sha512-wbZAX1vHHkpZy9IueG2DLPicvoys9RRs/YQzvBhbZrdeNjjdyWsM/KI0OS1odfwN+FvDA+zZTzdhNnnT1UkbQg=="],
 
