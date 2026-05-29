@@ -71,6 +71,12 @@ await expect(state).not.toHaveUpdated();
 - Update tests alongside behavioral/type changes - tests must fail without the change.
 - New major features need `skills/` docs.
 
+## Change flow
+
+- New features and non-trivial refactors begin with a root `PLAN.md` as the branch's first commit, capturing agreed scope, key decisions, and approach before implementation.
+- Keep `PLAN.md` current as the plan evolves. Close to merge, delete it and migrate its content into the PR summary and changeset entries.
+- (Changesets adoption is under evaluation; once adopted, PLAN content feeds the changeset files.)
+
 ## Guardrails
 
 - Don't modify `packages/state` to fix React-only concerns - use adapter packages.
