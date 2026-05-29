@@ -9,7 +9,7 @@
     "noUnusedLocals": true,
     "sourceMap": true,
     "strict": true,
-    "types": ["vitest", "react"],
+    "types": ["bun", "react"],
     "paths": {
       "@expressive/*": ["../*/src"]
     }
