@@ -1,6 +1,6 @@
+import { render } from '@testing-library/react';
+import { beforeEach, describe, expect, it } from 'bun:test';
 import { Context } from '@expressive/react';
-
-import { beforeEach, describe, expect, it, render } from '../vitest';
 
 import { Redirect } from './redirect';
 import { Route } from './route';

@@ -1,7 +1,6 @@
-import { fireEvent } from '@testing-library/react';
+import { act, fireEvent, render } from '@testing-library/react';
+import { beforeEach, describe, expect, it } from 'bun:test';
 import { Context } from '@expressive/react';
-
-import { act, beforeEach, describe, expect, it, render } from '../vitest';
 
 import { Link } from './link';
 import { Route } from './route';
