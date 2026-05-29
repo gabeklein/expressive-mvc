@@ -1,4 +1,5 @@
-import { act, beforeEach, describe, expect, it, vi } from '../vitest';
+import { act } from '@testing-library/react';
+import { beforeEach, describe, expect, it, spyOn } from 'bun:test';
 
 import { Router } from './router';
 
@@ -51,7 +52,7 @@ describe('Router', () => {
   });
 
   it('removes popstate listener on destroy', () => {
-    const remove = vi.spyOn(window, 'removeEventListener');
+    const remove = spyOn(window, 'removeEventListener');
     const router = Router.new({});
     router.set(null);
     expect(remove).toHaveBeenCalledWith('popstate', expect.any(Function));

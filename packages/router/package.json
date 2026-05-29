@@ -36,7 +36,8 @@
   },
   "scripts": {
     "build": "tsdown",
-    "test": "tsc --noEmit && vitest run --coverage"
+    "test": "tsc --noEmit && bun test --coverage",
+    "preversion": "npm run test && npm run build"
   },
   "dependencies": {
     "@expressive/react": "workspace:^",
@@ -48,8 +49,7 @@
     "@types/react-dom": "^19",
     "react": "^19",
     "react-dom": "^19",
-    "tsdown": "^0.20.1",
-    "vitest": "^4.0.18"
+    "tsdown": "^0.20.1"
   },
   "peerDependencies": {
     "react": ">=16.8.0 <20.0.0"
