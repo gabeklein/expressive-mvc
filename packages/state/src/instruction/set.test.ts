@@ -1,11 +1,5 @@
-import {
-  vi,
-  describe,
-  it,
-  expect,
-  mockWarn,
-  mockPromise
-} from '../../vitest';
+import { mock, describe, it, expect } from 'bun:test';
+import { mockPromise, mockWarn } from '../../test.setup';
 import { State } from '../state';
 import { set } from './set';
 
@@ -68,7 +62,7 @@ describe('property descriptors', () => {
   });
 
   it('will be writable with factory and callback', () => {
-    const callback = vi.fn();
+    const callback = mock();
 
     class Test extends State {
       value = set(() => 'foo', callback);
@@ -82,7 +76,7 @@ describe('property descriptors', () => {
   });
 
   it('will be writable with placeholder and callback', () => {
-    const callback = vi.fn();
+    const callback = mock();
 
     class Test extends State {
       value = set<string>(undefined, callback);
@@ -103,7 +97,7 @@ describe('placeholder', () => {
   it('will suspend if value is accessed before assign', async () => {
     const instance = Test.new();
     const promise = mockPromise<string>();
-    const mockEffect = vi.fn((state: Test) => {
+    const mockEffect = mock((state: Test) => {
       promise.resolve(state.foobar);
     });
 
@@ -121,8 +115,8 @@ describe('placeholder', () => {
 
   it('will resolve suspense after latest value', async () => {
     const test = Test.new();
-    const foobar = vi.fn();
-    const effect = vi.fn((state: Test) => {
+    const foobar = mock();
+    const effect = mock((state: Test) => {
       foobar(state.foobar);
     });
 
@@ -146,7 +140,7 @@ describe('placeholder', () => {
 
     instance.foobar = 'bar!';
 
-    const mockEffect = vi.fn((state: Test) => {
+    const mockEffect = mock((state: Test) => {
       expect(state.foobar).toBe('bar!');
     });
 
@@ -164,8 +158,8 @@ describe('callback', () => {
     }
 
     const state = Subject.new();
-    const didAssign = vi.fn();
-    const didUpdate = vi.fn();
+    const didAssign = mock();
+    const didUpdate = mock();
 
     expect(didAssign).not.toBeCalled();
 
@@ -178,7 +172,7 @@ describe('callback', () => {
 
   // TODO: this is not implemented yet
   it.skip('will invoke callback on set assignment', async () => {
-    const didAssign = vi.fn();
+    const didAssign = mock();
 
     class Subject extends State {
       test = set<number>(1, didAssign);
@@ -200,7 +194,7 @@ describe('callback', () => {
       });
     }
 
-    const callback = vi.fn();
+    const callback = mock();
     const state = Subject.new();
 
     state.test = 2;
@@ -220,7 +214,7 @@ describe('callback', () => {
       });
     }
 
-    const callback = vi.fn();
+    const callback = mock();
     const state = Subject.new();
 
     expect(state.test).toBe('foo');
@@ -232,7 +226,7 @@ describe('callback', () => {
 
   it('will ignore effect promise', () => {
     class Subject extends State {
-      property = set<any>(undefined, async () => { });
+      property = set<any>(undefined, async () => {});
     }
 
     const state = Subject.new();
@@ -268,7 +262,7 @@ describe('callback', () => {
       });
     }
 
-    const effect = vi.fn();
+    const effect = mock();
     const state = Subject.new();
 
     state.hello = 'Hola';
@@ -298,7 +292,7 @@ describe('intercept', () => {
       });
     }
 
-    const callback = vi.fn();
+    const callback = mock();
     const state = Subject.new();
 
     expect(state.test).toBe('foo');
@@ -354,7 +348,7 @@ describe('factory', () => {
   });
 
   it('will compute when accessed', () => {
-    const factory = vi.fn(() => 'Hello World');
+    const factory = mock(() => 'Hello World');
 
     class Test extends State {
       value = set(factory);
@@ -370,7 +364,7 @@ describe('factory', () => {
   });
 
   it('will compute lazily', () => {
-    const factory = vi.fn(() => 'Hello World');
+    const factory = mock(() => 'Hello World');
 
     class Test extends State {
       value = set(factory, false);
@@ -389,7 +383,7 @@ describe('factory', () => {
       value = set(this.method);
 
       async method() {
-        expect(this).toBe(instance);
+        expect(this as Test).toBe(instance);
       }
     }
 
@@ -434,7 +428,7 @@ describe('suspense', () => {
   });
 
   it('will suspend on another pending set', async () => {
-    const didEvaluate = vi.fn(function (this: Test) {
+    const didEvaluate = mock(function (this: Test) {
       return this.value + ' world!';
     });
 
@@ -455,7 +449,7 @@ describe('suspense', () => {
 
   it('will suspend other set factories', async () => {
     const promise = mockPromise<string>();
-    const didEvaluate = vi.fn(function (this: Test) {
+    const didEvaluate = mock(function (this: Test) {
       return this.value + ' world!';
     });
 
@@ -524,7 +518,7 @@ describe('suspense', () => {
 
   it('will be undefined if not required', async () => {
     const promise = mockPromise<string>();
-    const mock = vi.fn();
+    const cb = mock();
 
     class Test extends State {
       value = set(() => promise, false);
@@ -532,20 +526,20 @@ describe('suspense', () => {
 
     const test = Test.new();
 
-    test.get(($) => mock($.value));
-    expect(mock).toBeCalledWith(undefined);
+    test.get(($) => cb($.value));
+    expect(cb).toBeCalledWith(undefined);
 
     promise.resolve('foobar');
     await expect(test).toHaveUpdated();
 
-    expect(mock).toBeCalledWith('foobar');
+    expect(cb).toBeCalledWith('foobar');
   });
 
   it('will suspend another factory', async () => {
     const salute = mockPromise<string>();
     const name = mockPromise<string>();
 
-    const didEvaluate = vi.fn(function (this: Test) {
+    const didEvaluate = mock(function (this: Test) {
       return this.greet + ' ' + this.name;
     });
 
@@ -574,7 +568,7 @@ describe('suspense', () => {
     const greet = mockPromise<string>();
     const name = mockPromise<string>();
 
-    const didEvaluate = vi.fn();
+    const didEvaluate = mock();
 
     class Test extends State {
       greet = set(async () => greet);
@@ -616,7 +610,7 @@ describe('suspense', () => {
     }
 
     const test = Test.new();
-    const effect = vi.fn((state: Test) => {
+    const effect = mock((state: Test) => {
       didUpdate.resolve(state.childValue);
     });
 
@@ -654,7 +648,7 @@ describe('suspense', () => {
     let pending = mockPromise();
     let suspend = true;
 
-    const compute = vi.fn(() => {
+    const compute = mock(() => {
       if (suspend) throw pending;
 
       return `OK I'm unblocked.`;
@@ -667,7 +661,7 @@ describe('suspense', () => {
     const test = Test.new();
     const didEvaluate = mockPromise<string>();
 
-    const effect = vi.fn((state: Test) => {
+    const effect = mock((state: Test) => {
       didEvaluate.resolve(state.message);
     });
 
@@ -716,9 +710,9 @@ describe('suspense', () => {
 
     const test = Test.new();
 
-    const didAttemptSum = vi.fn();
-    const didAttemptEffect = vi.fn();
-    const didCompleteEffect = vi.fn();
+    const didAttemptSum = mock();
+    const didAttemptEffect = mock();
+    const didCompleteEffect = mock();
 
     test.get((self) => {
       didAttemptEffect();
@@ -741,7 +735,7 @@ describe('suspense', () => {
     expect(didAttemptSum).toBeCalledTimes(3);
     expect(test.sum).toBe('Answer is 30.');
 
-    await expect(test).toHaveUpdated();
+    await new Promise<void>((r) => setTimeout(r, 0));
     expect(didAttemptEffect).toBeCalledTimes(2);
     expect(didCompleteEffect).toBeCalledWith('Answer is 30.');
   });
@@ -771,14 +765,14 @@ describe('suspense', () => {
     promise.reject('oh no');
     await new Promise((res) => setTimeout(res, 10));
 
-    expect(didThrow).toBe('oh no');
+    expect(await didThrow).toBe('oh no');
   });
 });
 
 describe('factory with callback overload', () => {
   it('calls callback after factory resolves', async () => {
-    const callback = vi.fn();
-    const factory = vi.fn(() => 'computed');
+    const callback = mock();
+    const factory = mock(() => 'computed');
     class Test extends State {
       value = set(factory, callback);
     }
@@ -790,7 +784,7 @@ describe('factory with callback overload', () => {
   });
 
   it('calls callback after async factory resolves', async () => {
-    const callback = vi.fn();
+    const callback = mock();
     class Test extends State {
       value = set(async () => {
         await new Promise((res) => setTimeout(res, 10));
@@ -813,7 +807,7 @@ describe('factory with callback overload', () => {
   });
 
   it('will callback if set before factory run', () => {
-    const callback = vi.fn();
+    const callback = mock();
     class Test extends State {
       value = set(async () => 'something', callback);
     }

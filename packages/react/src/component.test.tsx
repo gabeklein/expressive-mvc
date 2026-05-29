@@ -1,16 +1,8 @@
-import {
-  vi,
-  expect,
-  it,
-  describe,
-  act,
-  render,
-  screen,
-  mockError,
-  mockPromise
-} from '../vitest';
-
+import { render, screen, act } from '@testing-library/react';
+import { mock, expect, it, describe } from 'bun:test';
 import React from 'react';
+
+import { mockError, mockPromise } from '../test.setup';
 import { Component, Consumer, set } from '.';
 
 it('will create and provide instance', () => {
@@ -46,7 +38,7 @@ it('will create instance only once', () => {
     }
   }
 
-  const didConstruct = vi.fn();
+  const didConstruct = mock();
   const { rerender } = render(<Control />);
 
   expect(didConstruct).toBeCalledTimes(1);
@@ -59,7 +51,7 @@ it('will create instance only once', () => {
 it('will call is method on creation', () => {
   class Control extends Component {}
 
-  const didCreate = vi.fn();
+  const didCreate = mock();
 
   const screen = render(<Control is={didCreate} />);
 
@@ -73,7 +65,7 @@ it('will call is method on creation', () => {
 
 describe('new method', () => {
   it('will call if exists', () => {
-    const didCreate = vi.fn();
+    const didCreate = mock();
 
     class Test extends Component {
       protected new() {
@@ -126,7 +118,7 @@ describe('element props', () => {
       value = set('foobar', didSet);
     }
 
-    const didSet = vi.fn();
+    const didSet = mock();
 
     render(<Foo value="barfoo" />);
 
@@ -188,7 +180,7 @@ describe('element children', () => {
       children = set<React.ReactNode>(undefined, didUpdate);
     }
 
-    const didUpdate = vi.fn();
+    const didUpdate = mock();
     const screen = render(<Control>Hello</Control>);
 
     screen.getByText('Hello');
@@ -227,7 +219,7 @@ describe('props property', () => {
   });
 
   it('will be observable', async () => {
-    const didUpdate = vi.fn();
+    const didUpdate = mock();
 
     class Control extends Component {
       protected new() {
@@ -254,7 +246,7 @@ describe('props property', () => {
   });
 
   it('will not cause redundant render', async () => {
-    const didRender = vi.fn();
+    const didRender = mock();
     let control: Control;
 
     class Control extends Component {
@@ -517,7 +509,7 @@ describe('suspense', () => {
 describe('unmount', () => {
   for (const reactStrictMode of [false, true])
     it('will dispose instance' + (reactStrictMode ? ' (strict)' : ''), () => {
-      const didDispose = vi.fn();
+      const didDispose = mock();
 
       class Control extends Component {
         protected new() {
@@ -707,7 +699,7 @@ describe('error boundary', () => {
   });
 
   it('will propagate if render throws after recovery', async () => {
-    const parentCatch = vi.fn();
+    const parentCatch = mock();
     let resolve!: () => void;
 
     const Throws = () => {
@@ -752,7 +744,7 @@ describe('error boundary', () => {
   });
 
   it('will propagate catch rejection to parent boundary', async () => {
-    const parentCatch = vi.fn();
+    const parentCatch = mock();
 
     const Throws = () => {
       throw new Error('boom');
@@ -845,7 +837,7 @@ describe('error boundary', () => {
   });
 
   it('will pass error to catch', async () => {
-    const caught = vi.fn();
+    const caught = mock();
 
     const Throws = () => {
       throw new Error('specific error');
@@ -934,7 +926,7 @@ describe('error boundary', () => {
   });
 
   it('will call catch exactly once per thrown error', async () => {
-    const catchSpy = vi.fn();
+    const catchSpy = mock();
 
     const Throws = () => {
       throw new Error('boom');
@@ -1034,7 +1026,7 @@ describe('error boundary', () => {
 
   for (const reactStrictMode of [false, true])
     it('will dispose instance if unmounted in error state' + (reactStrictMode ? ' (strict)' : ''), async () => {
-      const didDispose = vi.fn();
+      const didDispose = mock();
       const Throws = () => {
         throw new Error('boom');
       };
@@ -1376,8 +1368,8 @@ describe('subcomponents', () => {
 
 describe('strict mode', () => {
   it('will not create two instances', async () => {
-    const didCreate = vi.fn();
-    const didDestroy = vi.fn();
+    const didCreate = mock();
+    const didDestroy = mock();
 
     class Control extends Component {
       foo = 'bar';
@@ -1405,7 +1397,7 @@ describe('strict mode', () => {
   });
 
   it('will refresh via property update', async () => {
-    const didRender = vi.fn();
+    const didRender = mock();
     let instance!: Control;
 
     class Control extends Component {
@@ -1449,7 +1441,7 @@ describe('strict mode', () => {
   });
 
   it('will refresh via props update', async () => {
-    const didRender = vi.fn();
+    const didRender = mock();
 
     class Control extends Component {
       foo = 'bar';

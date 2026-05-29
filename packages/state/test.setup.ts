@@ -1,22 +1,28 @@
-import { expect, afterEach, afterAll, vi } from 'vitest';
-import { State } from './packages/state/src';
-import { listener } from './packages/state/src/observable';
+import { afterAll, afterEach, expect, spyOn } from 'bun:test';
+import { Context, State } from './src';
+import { listener } from './src/observable';
 
 interface CustomMatchers<R = unknown> {
   /** Flush pending updates, optionally asserting specific keys were updated. */
   toHaveUpdated(...keys: (string | symbol | number)[]): Promise<R>;
 }
 
-declare module 'vitest' {
-  interface Assertion<T = any> extends CustomMatchers<T> {}
-  interface AsymmetricMatchersContaining extends CustomMatchers {}
+declare module 'bun:test' {
+  interface Matchers<T> extends CustomMatchers<T> { }
+  interface AsymmetricMatchers extends CustomMatchers { }
 }
 
 expect.extend({ toHaveUpdated });
 
-export { mockError, mockPromise, mockWarn, MockPromise };
+afterEach(() => Context.root.pop());
 
-async function toHaveUpdated(received: State, ...keys: string[]) {
+export { mockError, mockPromise, mockWarn };
+export type { MockPromise };
+
+async function toHaveUpdated(
+  received: unknown,
+  ...keys: (string | symbol | number)[]
+) {
   if (!(received instanceof State))
     return {
       pass: false,
@@ -95,7 +101,7 @@ function mockPromise<T = void>() {
   return Object.assign(promise, methods);
 }
 
-type ConsoleSpy = ReturnType<typeof vi.spyOn>;
+type ConsoleSpy = ReturnType<typeof spyOn<Console, 'warn' | 'error'>>;
 
 const SPIES = new Map<'warn' | 'error', ConsoleSpy>();
 
@@ -109,7 +115,7 @@ function spyOnce(method: 'warn' | 'error') {
   let spy = SPIES.get(method);
 
   if (!spy) {
-    spy = vi.spyOn(console, method).mockImplementation(() => {});
+    spy = spyOn(console, method).mockImplementation(() => { });
     SPIES.set(method, spy);
   }
 

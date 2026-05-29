@@ -6,7 +6,7 @@ Contributor guide for AI agents working in this repository.
 
 Expressive State - class-based reactive state management library. For API reference, read [skills/SKILL.md](skills/SKILL.md) and linked sub-files first. Consult source only when docs are insufficient.
 
-Monorepo: pnpm workspaces + lerna.
+Monorepo: bun workspaces + lerna. Install and tests run under bun (`bun install`, `bun test`); build runs under node (`node --run build`) because tsdown+lerna depend on node-specific behavior.
 
 ## Structure
 
@@ -21,35 +21,29 @@ skills/         - API reference docs (also published as skills.sh skill)
 ## Commands
 
 ```bash
-pnpm install        # Install deps
-pnpm test           # Run all tests
-pnpm test:watch     # Watch mode
-pnpm build          # Build all packages
-pnpm clean          # Clean artifacts
-pnpm push           # Publish packages
+bun install              # Install deps
+bun run test             # Run package test scripts (type check + bun test)
+node --run build         # Build all packages (lerna under node)
 ```
 
-Per-package: `tsc --noEmit && vitest run --coverage`
+Per-package: `tsc --noEmit && bun test --coverage`
 
 ## Testing
 
-Runner: **Vitest** with `jsdom` environment. Coverage target: 100%.
+Runner: **`bun test`** with happy-dom preloaded globally for DOM tests. Coverage target: 100% lines/functions/statements (branch threshold not enforced - bun coverage doesn't support per-branch gating).
 
 ```ts
-// packages/state tests import from local vitest re-export
-import {
-  vi,
-  describe,
-  it,
-  expect,
-  mockPromise,
-  mockWarn,
-  mockError
-} from '../../vitest';
+// Test primitives come directly from bun:test
+import { mock, spyOn, describe, it, expect } from 'bun:test';
 
-// packages/react tests also get @testing-library/react
-import { render, renderHook, act, waitFor, screen } from '../../vitest';
+// Per-package test.setup.ts exports custom matchers + helpers
+import { mockPromise, mockWarn, mockError } from '../test.setup';
+
+// packages/react / packages/preact tests use @testing-library directly
+import { render, screen, act } from '@testing-library/react';
 ```
+
+Use `mock()` for `vi.fn()` equivalents and `spyOn(...)` for spies. No compat shim - `bun:test`'s primitives are used directly.
 
 ### Custom Matchers
 
@@ -80,7 +74,7 @@ await expect(state).not.toHaveUpdated();
 ## Guardrails
 
 - Don't modify `packages/state` to fix React-only concerns - use adapter packages.
-- Don't lower coverage thresholds or skip tests.
+- Don't lower coverage thresholds or skip tests (remaining `it.skip` / `it.todo` entries predate the toolchain migration and document known gaps unrelated to the runner).
 - Don't introduce framework-specific imports in `packages/state`.
 - Instructions (`def`, `ref`, `get`, `set`) are re-exported from adapters - don't duplicate implementations.
 - `new()` lifecycle hook is optional; don't add it unnecessarily.

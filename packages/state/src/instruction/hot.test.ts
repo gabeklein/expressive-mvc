@@ -1,4 +1,4 @@
-import { vi, describe, it, expect } from '../../vitest';
+import { mock, describe, it, expect } from 'bun:test';
 import { observer, watch } from '../observable';
 import { State } from '../state';
 import { hot } from './hot';
@@ -58,87 +58,87 @@ describe('factory', () => {
 describe('array', () => {
   it('fires on indexed write subscribers track', async () => {
     const arr = hot([1, 2, 3]);
-    const fn = vi.fn();
+    const cb = mock();
     watch(arr, ($) => {
       void $[1];
-      fn();
+      cb();
     });
-    fn.mockClear();
+    cb.mockClear();
 
     arr[1] = 99;
     await flush();
-    expect(fn).toHaveBeenCalled();
+    expect(cb).toHaveBeenCalled();
   });
 
   it('does not fire when an unrelated index changes', async () => {
     const arr = hot([1, 2, 3]);
-    const fn = vi.fn();
+    const cb = mock();
     watch(arr, ($) => {
       void $[0];
-      fn();
+      cb();
     });
-    fn.mockClear();
+    cb.mockClear();
 
     arr[2] = 99;
     await flush();
-    expect(fn).not.toBeCalled();
+    expect(cb).not.toBeCalled();
   });
 
   it('does not fire when value is unchanged', async () => {
     const arr = hot([1, 2, 3]);
-    const fn = vi.fn();
+    const cb = mock();
     watch(arr, ($) => {
       void $[0];
-      fn();
+      cb();
     });
-    fn.mockClear();
+    cb.mockClear();
 
     arr[0] = 1;
     await flush();
-    expect(fn).not.toBeCalled();
+    expect(cb).not.toBeCalled();
   });
 
   it('does not fire keyed events for symbol writes', async () => {
     const key = Symbol('key');
     const arr = hot([1, 2, 3] as (number[] & { [key]?: number }));
-    const fn = vi.fn();
+    const cb = mock();
     watch(arr, ($) => {
       void $[0];
-      fn();
+      cb();
     });
-    fn.mockClear();
+    cb.mockClear();
 
     (arr as any)[key] = 4;
     await flush();
-    expect(fn).not.toBeCalled();
+    expect(cb).not.toBeCalled();
   });
 
   it('fires on length when push grows the array', async () => {
     const arr = hot([1, 2]);
-    const fn = vi.fn();
+    const cb = mock();
     watch(arr, ($) => {
       void $.length;
-      fn();
+      cb();
     });
-    fn.mockClear();
+    cb.mockClear();
 
     arr.push(3);
     await flush();
-    expect(fn).toHaveBeenCalled();
+    expect(cb).toHaveBeenCalled();
   });
 
   it('fires on length when assigning next array index', async () => {
     const arr = hot([1, 2]);
-    const fn = vi.fn();
+    const cb = mock();
     watch(arr, ($) => {
       void $.length;
-      fn();
+      cb();
     });
-    fn.mockClear();
+    cb.mockClear();
 
     arr[2] = 3;
     await flush();
-    expect(fn).toHaveBeenCalled();
+    expect(cb).toHaveBeenCalled();
   });
 
   it('throws when assigning beyond the next array index', () => {
@@ -159,72 +159,72 @@ describe('array', () => {
 
   it('iteration subscribes to length and visited indices', async () => {
     const arr = hot([1, 2, 3]);
-    const fn = vi.fn();
+    const cb = mock();
     watch(arr, ($) => {
       for (const _ of $) void _;
-      fn();
+      cb();
     });
-    fn.mockClear();
+    cb.mockClear();
 
     arr[1] = 99;
     await flush();
-    expect(fn).toHaveBeenCalled();
+    expect(cb).toHaveBeenCalled();
   });
 
   it('find subscribes only to indices visited up to match', async () => {
     const arr = hot([1, 2, 3, 4, 5]);
-    const fn = vi.fn();
+    const cb = mock();
     watch(arr, ($) => {
       $.find((v) => v === 3);
-      fn();
+      cb();
     });
-    fn.mockClear();
+    cb.mockClear();
 
     arr[4] = 99;
     await flush();
-    expect(fn).not.toBeCalled();
+    expect(cb).not.toBeCalled();
 
     arr[1] = 99;
     await flush();
-    expect(fn).toHaveBeenCalled();
+    expect(cb).toHaveBeenCalled();
   });
 
   it('slice subscribes only to targeted segment', async () => {
     const arr = hot([1, 2, 3, 4, 5]);
-    const fn = vi.fn();
+    const cb = mock();
     watch(arr, ($) => {
-      fn($.slice(1, 3));
+      cb($.slice(1, 3));
     });
-    expect(fn).toHaveBeenCalledWith([2, 3]);
-    fn.mockClear();
+    expect(cb).toHaveBeenCalledWith([2, 3]);
+    cb.mockClear();
 
     arr[4] = 99;
     await flush();
-    expect(fn).not.toBeCalled();
+    expect(cb).not.toBeCalled();
 
     arr[2] = 99;
     await flush();
-    expect(fn).toHaveBeenCalledWith([2, 99]);
+    expect(cb).toHaveBeenCalledWith([2, 99]);
   });
 
   it('some tracks checked indices', async () => {
     const arr = hot([0, 0, 3]);
-    const fn = vi.fn();
+    const cb = mock();
     watch(arr, ($) => {
       $.some((value) => value === 1);
-      fn();
+      cb();
     });
-    fn.mockClear();
+    cb.mockClear();
 
     arr[0] = 1;
     await flush();
-    expect(fn).toHaveBeenCalled();
+    expect(cb).toHaveBeenCalled();
   });
 
   it('push fires events for new index and length', async () => {
     const arr = hot([1, 2]);
-    const onIndex = vi.fn();
-    const onLength = vi.fn();
+    const onIndex = mock();
+    const onLength = mock();
     watch(arr, ($) => {
       void $[2];
       onIndex();
@@ -244,8 +244,8 @@ describe('array', () => {
 
   it('unshift fires for shifted indices and length', async () => {
     const arr = hot([2, 3]);
-    const onIndex = vi.fn();
-    const onLength = vi.fn();
+    const onIndex = mock();
+    const onLength = mock();
     watch(arr, ($) => {
       onIndex($[0], $[2]);
     });
@@ -264,22 +264,22 @@ describe('array', () => {
 
   it('pop fires for removed index and length', async () => {
     const arr = hot([1, 2, 3]);
-    const fn = vi.fn();
+    const cb = mock();
     watch(arr, ($) => {
       void $[2];
-      fn();
+      cb();
     });
-    fn.mockClear();
+    cb.mockClear();
 
     arr.pop();
     await flush();
-    expect(fn).toHaveBeenCalled();
+    expect(cb).toHaveBeenCalled();
   });
 
   it('shift fires for shifted indices and length', async () => {
     const arr = hot([1, 2, 3]);
-    const onIndex = vi.fn();
-    const onLength = vi.fn();
+    const onIndex = mock();
+    const onLength = mock();
     watch(arr, ($) => {
       onIndex($[0], $[2]);
     });
@@ -298,47 +298,47 @@ describe('array', () => {
 
   it('splice fires for removed and inserted indices', async () => {
     const arr = hot([1, 2, 3]);
-    const fn = vi.fn();
+    const cb = mock();
     watch(arr, ($) => {
-      fn($[1], $[2]);
+      cb($[1], $[2]);
     });
-    fn.mockClear();
+    cb.mockClear();
 
     arr.splice(1, 1, 4, 5);
     await flush();
-    expect(fn).toHaveBeenCalledWith(4, 5);
+    expect(cb).toHaveBeenCalledWith(4, 5);
   });
 
   it('sort fires for reordered indices', async () => {
     const arr = hot([3, 1, 2]);
-    const fn = vi.fn();
+    const cb = mock();
     watch(arr, ($) => {
-      fn($[0], $[2]);
+      cb($[0], $[2]);
     });
-    fn.mockClear();
+    cb.mockClear();
 
     arr.sort();
     await flush();
-    expect(fn).toHaveBeenCalledWith(1, 3);
+    expect(cb).toHaveBeenCalledWith(1, 3);
   });
 
   it('reverse fires for reordered indices', async () => {
     const arr = hot([1, 2, 3]);
-    const fn = vi.fn();
+    const cb = mock();
     watch(arr, ($) => {
-      fn($[0], $[2]);
+      cb($[0], $[2]);
     });
-    fn.mockClear();
+    cb.mockClear();
 
     arr.reverse();
     await flush();
-    expect(fn).toHaveBeenCalledWith(3, 1);
+    expect(cb).toHaveBeenCalledWith(3, 1);
   });
 
   it('length truncation fires length event', async () => {
     const arr = hot([1, 2, 3]);
-    const onIndex = vi.fn();
-    const onLength = vi.fn();
+    const onIndex = mock();
+    const onLength = mock();
     watch(arr, ($) => {
       onIndex($[2]);
     });
@@ -364,16 +364,16 @@ describe('array', () => {
 
   it('delete of a missing index does not fire', async () => {
     const arr = hot([1, 2, 3]);
-    const fn = vi.fn();
+    const cb = mock();
     watch(arr, ($) => {
       void $[2];
-      fn();
+      cb();
     });
-    fn.mockClear();
+    cb.mockClear();
 
     delete arr[5];
     await flush();
-    expect(fn).not.toBeCalled();
+    expect(cb).not.toBeCalled();
   });
 
   it('does not fire keyed events for symbol deletes', async () => {
@@ -381,88 +381,88 @@ describe('array', () => {
     const arr = hot([1, 2, 3] as (number[] & { [key]?: number }));
     (arr as any)[key] = 4;
 
-    const fn = vi.fn();
+    const cb = mock();
     watch(arr, ($) => {
       void $[0];
-      fn();
+      cb();
     });
-    fn.mockClear();
+    cb.mockClear();
 
     delete (arr as any)[key];
     await flush();
-    expect(fn).not.toBeCalled();
+    expect(cb).not.toBeCalled();
   });
 });
 
 describe('object', () => {
   it('fires event on key write', async () => {
     const obj = hot({ a: 1, b: 2 });
-    const fn = vi.fn();
+    const cb = mock();
     watch(obj, ($) => {
       void $.a;
-      fn();
+      cb();
     });
-    fn.mockClear();
+    cb.mockClear();
 
     obj.a = 99;
     await flush();
-    expect(fn).toHaveBeenCalled();
+    expect(cb).toHaveBeenCalled();
   });
 
   it('does not fire on unrelated key', async () => {
     const obj = hot({ a: 1, b: 2 });
-    const fn = vi.fn();
+    const cb = mock();
     watch(obj, ($) => {
       void $.a;
-      fn();
+      cb();
     });
-    fn.mockClear();
+    cb.mockClear();
 
     obj.b = 99;
     await flush();
-    expect(fn).not.toBeCalled();
+    expect(cb).not.toBeCalled();
   });
 
   it('fires when a tracked key is added', async () => {
     const obj = hot({ a: 1 } as Record<string, number>);
-    const fn = vi.fn();
+    const cb = mock();
     watch(obj, ($) => {
       void $.b;
-      fn();
+      cb();
     });
-    fn.mockClear();
+    cb.mockClear();
 
     obj.b = 2;
     await flush();
-    expect(fn).toHaveBeenCalled();
+    expect(cb).toHaveBeenCalled();
   });
 
   it('fires on delete of a tracked key', async () => {
     const obj = hot({ a: 1, b: 2 } as Record<string, number>);
-    const fn = vi.fn();
+    const cb = mock();
     watch(obj, ($) => {
       void $.a;
-      fn();
+      cb();
     });
-    fn.mockClear();
+    cb.mockClear();
 
     delete obj.a;
     await flush();
-    expect(fn).toHaveBeenCalled();
+    expect(cb).toHaveBeenCalled();
   });
 
   it('delete of a missing key is a no-op', async () => {
     const obj = hot({ a: 1 } as Record<string, number>);
-    const fn = vi.fn();
+    const cb = mock();
     watch(obj, ($) => {
       void $.a;
-      fn();
+      cb();
     });
-    fn.mockClear();
+    cb.mockClear();
 
     expect(delete (obj as any).missing).toBe(true);
     await flush();
-    expect(fn).not.toHaveBeenCalled();
+    expect(cb).not.toHaveBeenCalled();
   });
 
   it('does not recurse into nested objects', () => {
@@ -498,19 +498,19 @@ describe('as State field', () => {
     }
 
     const game = Game.new();
-    const fn = vi.fn();
+    const cb = mock();
 
     game.get(($) => {
-      fn($.board[0]);
+      cb($.board[0]);
     });
 
-    expect(fn).toBeCalledWith('');
+    expect(cb).toBeCalledWith('');
 
     game.board[0] = 'X';
     await new Promise<void>((r) => setTimeout(r, 0));
 
-    expect(fn).toBeCalledWith('X');
-    expect(fn).toHaveBeenCalledTimes(2);
+    expect(cb).toBeCalledWith('X');
+    expect(cb).toHaveBeenCalledTimes(2);
   });
 
   it('does not fire effect when an unrelated index changes', async () => {
@@ -519,17 +519,17 @@ describe('as State field', () => {
     }
 
     const game = Game.new();
-    const fn = vi.fn();
+    const cb = mock();
 
     game.get(($) => {
-      fn($.board[0]);
+      cb($.board[0]);
     });
 
-    fn.mockClear();
+    cb.mockClear();
     game.board[5] = 'X';
     await new Promise<void>((r) => setTimeout(r, 0));
 
-    expect(fn).not.toBeCalled();
+    expect(cb).not.toBeCalled();
   });
 
   it('tracks nested child State values', async () => {
@@ -542,17 +542,17 @@ describe('as State field', () => {
     }
 
     const game = Game.new();
-    const fn = vi.fn();
+    const cb = mock();
 
     game.get(($) => {
-      fn($.board[0].value);
+      cb($.board[0].value);
     });
 
-    fn.mockClear();
+    cb.mockClear();
     game.board[0].value = 'X';
     await flush();
 
-    expect(fn).toHaveBeenCalledWith('X');
+    expect(cb).toHaveBeenCalledWith('X');
   });
 
   it('tracks nested hot child values', async () => {
@@ -561,16 +561,16 @@ describe('as State field', () => {
     }
 
     const game = Game.new();
-    const fn = vi.fn();
+    const cb = mock();
 
     game.get(($) => {
-      fn($.board[0].value);
+      cb($.board[0].value);
     });
 
-    fn.mockClear();
+    cb.mockClear();
     game.board[0].value = 'X';
     await flush();
 
-    expect(fn).toHaveBeenCalledWith('X');
+    expect(cb).toHaveBeenCalledWith('X');
   });
 });

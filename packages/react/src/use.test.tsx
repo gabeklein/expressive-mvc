@@ -1,15 +1,9 @@
 import { StrictMode } from 'react';
 import { event, observer, touch } from '@expressive/state';
+import { describe, expect, it, mock } from 'bun:test';
+
 import { use, State } from '.';
-import {
-  act,
-  describe,
-  expect,
-  it,
-  renderHook,
-  vi,
-  waitFor
-} from '../vitest';
+import { act, renderHook, waitFor } from '@testing-library/react';
 
 describe('use', () => {
   class Test extends State {
@@ -19,7 +13,7 @@ describe('use', () => {
 
   it('will subscribe to observable instance', async () => {
     const test = Test.new();
-    const didRender = vi.fn();
+    const didRender = mock();
     const hook = renderHook(() => {
       didRender();
       return use(test).foo;
@@ -103,7 +97,7 @@ describe('use', () => {
 
   it('will only refresh for accessed values', async () => {
     const test = Test.new();
-    const didRender = vi.fn();
+    const didRender = mock();
 
     renderHook(() => {
       didRender();
@@ -144,7 +138,7 @@ describe('use', () => {
   it('will track replacement observable', async () => {
     const first = Test.new();
     const second = Test.new();
-    const didRender = vi.fn();
+    const didRender = mock();
     let current = first;
 
     first.foo = 'first';

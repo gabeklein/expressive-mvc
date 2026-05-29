@@ -1,7 +1,8 @@
 import { event, listener, touch, watch, observer } from './observable';
 import { set } from './instruction/set';
 import { def } from './instruction/def';
-import { mockError, vi, describe, it, expect, mockPromise } from '../vitest';
+import { mock, describe, it, expect } from 'bun:test';
+import { mockError, mockPromise } from '../test.setup';
 import { State } from './state';
 
 describe('effect', () => {
@@ -44,11 +45,11 @@ describe('effect', () => {
   });
 
   it('will run after properties', () => {
-    const mock = vi.fn();
+    const cb = mock();
 
     class Test extends State {
       property = def((_key, _state, state) => {
-        this.get(() => mock(state));
+        this.get(() => cb(state));
       });
 
       foo = 1;
@@ -57,7 +58,7 @@ describe('effect', () => {
 
     Test.new();
 
-    expect(mock).toBeCalledWith({ foo: 1, bar: 2 });
+    expect(cb).toBeCalledWith({ foo: 1, bar: 2 });
   });
 
   it('will enforce values if required', () => {
@@ -115,7 +116,7 @@ describe('effect', () => {
     }
 
     const test = Test.new();
-    const didGetValue = vi.fn();
+    const didGetValue = mock();
 
     test.get(($) => {
       didGetValue($.value1, $.value2);
@@ -170,7 +171,7 @@ describe('effect', () => {
     }
 
     const test = Test.new();
-    const didInvoke = vi.fn();
+    const didInvoke = mock();
 
     const done = watch(test, ({ foo }) => {
       watch(test, ({ bar }) => {
@@ -207,8 +208,8 @@ describe('effect', () => {
       value = 1;
     }
 
-    const effect = vi.fn();
-    const cleanup = vi.fn();
+    const effect = mock();
+    const cleanup = mock();
     const test = Test.new();
 
     watch(test, ($) => {
@@ -234,7 +235,7 @@ describe('effect', () => {
       bar?: number = undefined;
     }
 
-    const didUpdate = vi.fn();
+    const didUpdate = mock();
     const test = Test.new();
 
     watch(test, ({ foo, bar }) => {
@@ -272,7 +273,7 @@ describe('effect', () => {
       bar?: number = undefined;
     }
 
-    const didUpdate = vi.fn();
+    const didUpdate = mock();
     const test = Test.new();
 
     watch(test, ({ foo, bar }) => {
@@ -409,7 +410,7 @@ describe('observable', () => {
       private state = { count: 0 };
 
       constructor() {
-        listener(this, () => { });
+        listener(this, () => {});
         event(this);
       }
 
@@ -424,22 +425,22 @@ describe('observable', () => {
     }
 
     const counter = new Counter();
-    const fn = vi.fn();
+    const cb = mock();
     let proxy!: Counter;
 
     watch(counter, ($) => {
       proxy = $;
-      fn($.read());
+      cb($.read());
     });
 
-    expect(fn).toBeCalledWith(0);
-    expect(fn).toBeCalledTimes(1);
+    expect(cb).toBeCalledWith(0);
+    expect(cb).toBeCalledTimes(1);
 
     proxy.bump();
     await new Promise((r) => setTimeout(r, 5));
 
-    expect(fn).toBeCalledWith(1);
-    expect(fn).toBeCalledTimes(2);
+    expect(cb).toBeCalledWith(1);
+    expect(cb).toBeCalledTimes(2);
   });
 
   it('will silently no-op when event called on non-observable', () => {
@@ -461,15 +462,15 @@ describe('observable', () => {
 
     it('will not re-fire ready on observable', () => {
       const test = {};
-      const fn = vi.fn();
+      const cb = mock();
 
       event(test);
-      listener(test, fn);
-      fn.mockClear();
+      listener(test, cb);
+      cb.mockClear();
 
       event(test);
 
-      expect(fn).not.toBeCalled();
+      expect(cb).not.toBeCalled();
     });
 
     it('will not auto-init for keyed event', () => {
@@ -482,12 +483,12 @@ describe('observable', () => {
 
     it('will fire watch effect immediately on ready', () => {
       const test = {};
-      const fn = vi.fn();
+      const cb = mock();
 
       event(test);
-      watch(test, () => fn());
+      watch(test, () => cb());
 
-      expect(fn).toHaveBeenCalledTimes(1);
+      expect(cb).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -499,14 +500,14 @@ describe('observable', () => {
     it('will return bundle without ready for observable not ready', () => {
       const test = {};
 
-      listener(test, () => { });
+      listener(test, () => {});
 
       expect("ready" in observer(test, true)).toBe(false);
     });
 
     it('will return with ready=true for ready observable', () => {
       const test = {};
-      const didInit = vi.fn();
+      const didInit = mock();
 
       listener(test, didInit);
       event(test);
@@ -517,7 +518,7 @@ describe('observable', () => {
 
     it('will return null for terminated observable', () => {
       const test = {};
-      const onEvent = vi.fn();
+      const onEvent = mock();
 
       listener(test, onEvent);
       event(test, null);
@@ -529,10 +530,10 @@ describe('observable', () => {
     it('will throw when registering a listener on a terminated state', () => {
       const test = {};
 
-      listener(test, () => { });
+      listener(test, () => {});
       event(test, null);
 
-      expect(() => listener(test, () => { })).toThrow(/terminated/);
+      expect(() => listener(test, () => {})).toThrow(/terminated/);
     });
   });
 });

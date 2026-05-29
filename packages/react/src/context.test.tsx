@@ -1,19 +1,10 @@
-import {
-  vi,
-  afterAll,
-  expect,
-  it,
-  describe,
-  act,
-  render,
-  screen
-} from '../vitest';
-
 import React, { Suspense } from 'react';
+import { mock, spyOn, afterAll, expect, it, describe } from 'bun:test';
 
+import { act, render, screen } from '@testing-library/react';
 import { State, Consumer, Context, get, Provider, set } from '.';
 
-const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+const error = spyOn(console, 'error').mockImplementation(() => {});
 
 afterAll(() => {
   error.mockReset();
@@ -97,7 +88,7 @@ describe('Provider', () => {
       value = 'hello';
     }
 
-    const is = vi.fn();
+    const is = mock();
 
     render(
       <Provider for={Test} is={is}>
@@ -134,7 +125,7 @@ describe('Provider', () => {
       value = 'initial';
     }
 
-    const Child = vi.fn(() => {
+    const Child = mock(() => {
       const { value } = Test.get();
       return <span>{value}</span>;
     });
@@ -193,7 +184,7 @@ describe('Provider', () => {
   });
 
   it('will destroy created model on unmount', async () => {
-    const willDestroy = vi.fn();
+    const willDestroy = mock();
 
     class Test extends State {}
 
@@ -213,7 +204,7 @@ describe('Provider', () => {
   });
 
   it('will destroy multiple created on unmount', async () => {
-    const willDestroy = vi.fn();
+    const willDestroy = mock();
 
     class Foo extends State {}
     class Bar extends State {}
@@ -238,7 +229,7 @@ describe('Provider', () => {
   });
 
   it('will not destroy given instance on unmount', async () => {
-    const didUnmount = vi.fn();
+    const didUnmount = mock();
 
     class Test extends State {}
 
@@ -257,7 +248,7 @@ describe('Provider', () => {
   it('will conflict colliding State types', () => {
     const foo = Foo.new();
 
-    const Consumer: React.FC = vi.fn(() => {
+    const Consumer: React.FC = mock(() => {
       expect(() => Foo.get()).toThrow(
         'Did find Foo in context, but multiple were defined.'
       );
@@ -274,7 +265,7 @@ describe('Provider', () => {
   });
 
   it('will destroy from bottom-up', async () => {
-    const didDestroy = vi.fn();
+    const didDestroy = mock();
 
     class Test extends State {
       protected new() {
@@ -300,7 +291,7 @@ describe('Provider', () => {
 
   describe('forEach prop', () => {
     it('will call function for each model', () => {
-      const forEach = vi.fn();
+      const forEach = mock();
 
       render(<Provider for={{ Foo, Bar }} is={forEach} />);
 
@@ -310,8 +301,8 @@ describe('Provider', () => {
     });
 
     it('will cleanup on unmount', async () => {
-      const forEach = vi.fn(() => cleanup);
-      const cleanup = vi.fn();
+      const forEach = mock(() => cleanup);
+      const cleanup = mock();
 
       const rendered = render(<Provider for={{ Foo, Bar }} is={forEach} />);
 
@@ -383,8 +374,8 @@ describe('Provider', () => {
 
   describe('strict mode', () => {
     it('will create once and destroy on unmount', async () => {
-      const didCreate = vi.fn();
-      const didDestroy = vi.fn();
+      const didCreate = mock();
+      const didDestroy = mock();
 
       class Test extends State {
         protected new() {
@@ -440,7 +431,7 @@ describe('Consumer', () => {
     }
 
     const instance = Test.new();
-    const didRender = vi.fn();
+    const didRender = mock();
 
     function onRender(instance: Test) {
       const { value } = instance;
@@ -617,7 +608,7 @@ describe('get instruction', () => {
   });
 
   it('will maintain hook', async () => {
-    const Inner: React.FC = vi.fn(() => {
+    const Inner: React.FC = mock(() => {
       Foo.use();
       return null;
     });
@@ -702,7 +693,7 @@ describe('has instruction', () => {
       foo = get(Foo);
     }
 
-    const didGetBar = vi.fn();
+    const didGetBar = mock();
     const FooBar = () => void Bar.use();
     const foo = new Foo();
 
@@ -727,7 +718,7 @@ describe('has instruction', () => {
       foo = get(Foo);
     }
 
-    const didGetBar = vi.fn();
+    const didGetBar = mock();
     const FooBar = () => void Bar.use();
 
     const Component = () => {
@@ -816,7 +807,7 @@ describe('HMR', () => {
     element.unmount();
   });
 
-  it.todo("will updated consumer if context's instance is replaced");
+  it.todo("will updated consumer if context's instance is replaced", () => {});
 });
 
 describe('root singleton', () => {

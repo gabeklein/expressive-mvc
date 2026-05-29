@@ -1,9 +1,10 @@
+/** @jsxImportSource preact */
 import { act, render } from '@testing-library/preact';
 import { Context } from '@expressive/state';
 
 import { State, Provider, Consumer } from '.';
 import { Lookup } from './context';
-import { describe, it, expect, vi } from '../vitest';
+import { describe, it, expect, mock } from 'bun:test';
 
 describe('Lookup', () => {
   it('is exported', () => {
@@ -23,7 +24,7 @@ describe('Provider', () => {
       value = 'foo';
     }
 
-    const didRender = vi.fn();
+    const didRender = mock();
     const test = Test.new();
 
     const Element = () => {
@@ -46,7 +47,7 @@ describe('Provider', () => {
       value = 'foo';
     }
 
-    const didRender = vi.fn();
+    const didRender = mock();
 
     const Element = () => {
       const instance = Test.get();
@@ -68,7 +69,7 @@ describe('Provider', () => {
       value = 'foo';
     }
 
-    const forEach = vi.fn();
+    const forEach = mock();
 
     render(
       <Provider for={Test} forEach={forEach}>
@@ -84,7 +85,7 @@ describe('Provider', () => {
       value = 'foo';
     }
 
-    const forEach = vi.fn(() => undefined);
+    const forEach = mock(() => undefined);
 
     render(
       <Provider for={Test} forEach={forEach}>
@@ -100,7 +101,7 @@ describe('Provider', () => {
       value = 'foo';
     }
 
-    const cleanup = vi.fn();
+    const cleanup = mock();
 
     const rendered = render(
       <Provider for={Test} forEach={() => cleanup}>
@@ -124,7 +125,7 @@ describe('Provider', () => {
       value = 'child';
     }
 
-    const didRender = vi.fn();
+    const didRender = mock();
 
     const Element = () => {
       const parent = Parent.get();
@@ -152,7 +153,7 @@ describe('Consumer', () => {
     }
 
     const test = Test.new();
-    const didRender = vi.fn();
+    const didRender = mock();
 
     render(
       <Provider for={test}>
@@ -174,7 +175,7 @@ describe('Consumer', () => {
     }
 
     const test = Test.new();
-    const didRender = vi.fn();
+    const didRender = mock();
 
     render(
       <Provider for={test}>
@@ -202,7 +203,7 @@ describe('Consumer', () => {
       value = 'foo';
     }
 
-    const didThrow = vi.fn();
+    const didThrow = mock();
 
     try {
       render(

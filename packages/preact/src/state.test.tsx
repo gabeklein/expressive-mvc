@@ -1,7 +1,8 @@
+/** @jsxImportSource preact */
 import { act, render, renderHook, waitFor } from '@testing-library/preact';
 
 import { get, State, Provider, set } from '.';
-import { expect, describe, it, vi } from '../vitest';
+import { expect, describe, it, mock } from 'bun:test';
 
 describe('State.use', () => {
   class Test extends State {
@@ -16,7 +17,7 @@ describe('State.use', () => {
     });
 
     it('will subscribe to instance of controller', async () => {
-      const willRender = vi.fn();
+      const willRender = mock();
       const { result } = renderHook(() => {
         willRender();
         return Test.use();
@@ -47,7 +48,7 @@ describe('State.use', () => {
     });
 
     it('will run callback', () => {
-      const callback = vi.fn();
+      const callback = mock();
 
       renderHook(() => Test.use(callback));
 
@@ -55,7 +56,7 @@ describe('State.use', () => {
     });
 
     it('will destroy instance of given class', async () => {
-      const didDestroy = vi.fn();
+      const didDestroy = mock();
 
       class Test extends State {
         protected new() {
@@ -101,7 +102,7 @@ describe('State.use', () => {
 
   describe('new method', () => {
     it('will call if exists', () => {
-      const didCreate = vi.fn();
+      const didCreate = mock();
 
       class Test extends State {
         protected new() {
@@ -131,7 +132,7 @@ describe('State.use', () => {
         bar: 'bar'
       };
 
-      const didRender = vi.fn();
+      const didRender = mock();
 
       const hook = renderHook(() => {
         didRender();
@@ -157,10 +158,10 @@ describe('State.use', () => {
     });
 
     it('will trigger set instruction', () => {
-      const mock = vi.fn();
+      const cb = mock();
 
       class Test extends State {
-        foo = set('foo', mock);
+        foo = set('foo', cb);
       }
 
       const { result } = renderHook(() => {
@@ -168,7 +169,7 @@ describe('State.use', () => {
       });
 
       expect(result.current.foo).toBe('bar');
-      expect(mock).toBeCalledWith('bar', 'foo');
+      expect(cb).toBeCalledWith('bar', 'foo');
     });
   });
 
@@ -225,7 +226,7 @@ describe('State.get', () => {
     }
 
     const test = Test.new();
-    const didRender = vi.fn();
+    const didRender = mock();
     const hook = renderWith(test, () => {
       didRender();
       return Test.get().foo;
@@ -246,7 +247,7 @@ describe('State.get', () => {
       value = 1;
     }
 
-    const useTest = vi.fn(() => {
+    const useTest = mock(() => {
       expect(() => Test.get()).toThrow('Could not find Test in context.');
     });
 
@@ -259,7 +260,7 @@ describe('State.get', () => {
       value = 1;
     }
 
-    const useTest = vi.fn(() => {
+    const useTest = mock(() => {
       expect(Test.get(false)).toBeUndefined();
     });
 
@@ -285,7 +286,7 @@ describe('State.get', () => {
 
     it('will subscribe peer from context', async () => {
       const bar = Bar.new();
-      const didRender = vi.fn();
+      const didRender = mock();
       const hook = renderWith(bar, () => {
         didRender();
         return Foo.use().bar.value;
