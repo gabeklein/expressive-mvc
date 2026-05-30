@@ -1,11 +1,10 @@
-import { watch, unbind, set } from '@expressive/state';
+import { watch, unbind } from '@expressive/state';
+import { Component, discover } from '@expressive/component';
 import React, { createElement, Suspense } from 'react';
 import { Context, Layers } from './context';
+import type { State } from './state';
 import { useHook } from './runtime';
-import { State } from './state';
 
-const PENDING = new WeakMap<object, Component>();
-const SNAPSHOT = new WeakMap<Component, PropertyDescriptorMap>();
 const INTERNAL = [
   'updater',
   'refs',
@@ -13,142 +12,43 @@ const INTERNAL = [
   '_reactInternalInstance'
 ];
 
-export type StateProps<T extends State> = {
-  [K in Exclude<keyof T, keyof Component>]?: T[K];
-};
+const RESET = Symbol.for('React.StrictMode');
 
-type RenderProps<T> = [T] extends [(props: infer P) => any]
-  ? [keyof NonNullable<P>] extends [never]
-    ? { children?: React.ReactNode }
-    : NonNullable<P>
-  : { children?: React.ReactNode };
+declare module '@expressive/component' {
+  interface Host {
+    node: React.ReactNode;
+  }
 
-interface ComponentProps<T extends Component> {
-  /** Callback for newly created instance. Only called once. */
-  is?: (instance: T) => void;
+  interface Component {
+    /** @deprecated Only to satisfy React JSX. Use `this.get(State)` instead. */
+    readonly context: Context;
+    /** @deprecated Only to satisfy React JSX. Use `this.get()` instead. */
+    readonly state: State.Values<this>;
+    /** @deprecated Only to satisfy React JSX. Not implemented. */
+    setState: (state: any, callback?: () => void) => void;
+    /** @deprecated Only to satisfy React JSX. Not implemented. */
+    forceUpdate: (callback?: () => void) => void;
+  }
 
-  /** Fallback to show when suspended or in error recovery. */
-  fallback?: React.ReactNode;
-}
-
-export type Props<T extends Component> = StateProps<T> &
-  ComponentProps<T> &
-  RenderProps<T['render']>;
-
-declare module '@expressive/state' {
-  namespace State {
-    export type { Component, Props };
+  namespace Component {
+    let contextType: React.Context<Context>;
   }
 }
 
-export class Component extends State {
-  static contextType = Layers;
-
-  /**
-   * All JSX attributes passed to this component.
-   * Includes state-derived props, render props, and built-in props like `is` and `fallback`.
-   *
-   * Will incorperate extra props you declare as props parameter in `render` method.
-   */
-  declare readonly props: Props<this>;
-
-  /** @deprecated Only to satisfy React JSX. Use `this.get(State)` instead. */
-  declare readonly context: Context;
-  /** @deprecated Only to satisfy React JSX. Use `this.get()` instead. */
-  declare readonly state: State.Values<this>;
-  /** @deprecated Only to satisfy React JSX. Not implemented. */
-  declare setState: (state: any, callback?: () => void) => void;
-  /** @deprecated Only to satisfy React JSX. Not implemented. */
-  declare forceUpdate: (callback?: () => void) => void;
-
-  /**
-   * Content to display while this component or its children are suspended.
-   * Will cover suspense by pending properties in `this.render` as well.
-   * Can be set as a class property or overridden via the `fallback` JSX prop.
-   *
-   * Defaults to null - nothing will be rendered.
-   */
-  fallback: React.ReactNode = set(null);
-
-  constructor(nextProps: any, ...rest: any[]) {
-    const { is, ...props } = nextProps;
-    const seen = {} as Record<string, undefined>;
-    const merge = (props: {}) => {
-      for (const k in props) seen[k] = undefined;
-      return { ...seen, ...props };
-    };
-
-    super(
-      merge(props),
-      rest.filter((x) => !(x instanceof Context)),
-      is && ((x) => void is(x)),
-      () => {
-        Object.defineProperty(this, 'props', { enumerable: false });
-      }
-    );
-
-    const existing = PENDING.get(nextProps);
-    if (existing) {
-      const snap: PropertyDescriptorMap = {};
-      for (const [key] of existing) {
-        const desc = Object.getOwnPropertyDescriptor(existing, key);
-        if (desc && 'get' in desc) snap[key] = desc;
-      }
-      SNAPSHOT.set(existing, snap);
-      return existing;
-    }
-    PENDING.set(nextProps, this);
-
-    for (const key of INTERNAL)
-      Object.defineProperty(this, key, { configurable: true, writable: true });
-
-    this.props = nextProps;
-    this.set('props', () => {
-      this.set(merge(this.props));
+Component.on((self) => {
+  for (const key of INTERNAL)
+    Object.defineProperty(self, key, {
+      configurable: true,
+      writable: true,
+      enumerable: false
     });
-  }
 
-  /**
-   * Output for this component. Override to define custom JSX.
-   *
-   * Properties accessed via `this` are reactive and will trigger a render when , in addition to props.
-   *
-   * Accepts optional parameter to receive extra props
-   * from JSX, beyond those merged to state properties.
-   *
-   * To declare extra props use `props = {} as { ... }` with expected shape.
-   * A default is required to satisfy TypeScript but safely ignored.
-   *
-   * ```ts
-   * render(props = {} as { label: string }) {
-   *   return <span>{props.label}</span>;
-   * }
-   * ```
-   * Usable as:
-   * ```tsx
-   * <MyComponent label="Hello" />
-   * ```
-   *
-   * These must be compatible with State-derived properties, or be unused.
-   * Props you declare as not-optional will be required by the JSX element.
-   *
-   * Without a parameter, children are accepted by default and passed through provider.
-   */
-  render(props?: {}): React.ReactNode {
-    return this.props.children || null;
-  }
+  discover(self, (render, owner) =>
+    (props: unknown) =>
+      render(useHook<Component>((set) => watch(owner, set)), props));
+});
 
-  /**
-   * Called when a child component throws during render.
-   * While this is pending, `fallback` is displayed.
-   * When resolved, the error boundary resets and `render` is called again.
-   *
-   * Override to handle errors - set `this.fallback` for error-specific UI,
-   * await async recovery, or await user interaction before retrying. If you
-   * assign a fallback within catch, it will be reverted after resolved.
-   */
-  catch?(error: Error): Promise<void> | void;
-}
+Component.contextType = Layers;
 
 Object.defineProperties(Component.prototype, {
   isReactComponent: {
@@ -208,16 +108,14 @@ function bootstrap(this: Component, context: Context) {
   Object.defineProperties(self, {
     context: {
       get: () => context,
-      set(this: Component) {
-        const snap = SNAPSHOT.get(this);
-        if (snap) {
-          SNAPSHOT.delete(this);
-          Object.defineProperties(this, snap);
-        }
+      set(this: Component & { [RESET]?: () => void }) {
+        this[RESET]?.();
       }
     },
     render: {
-      value: () => createElement(AsComponent)
+      value() {
+        return createElement(AsComponent);
+      }
     }
   });
 }
@@ -259,54 +157,5 @@ class ErrorBoundary extends React.Component<BoundaryProps> {
   }
 }
 
-const SEEN = new WeakSet<Function>();
-
-Component.on((self) => {
-  let Type = self.constructor as State.Extends;
-
-  while (Type !== Component) {
-    if (SEEN.has(Type)) break;
-    SEEN.add(Type);
-    subcomponents(Type.prototype);
-    Type = Object.getPrototypeOf(Type);
-  }
-
-  subcomponents(self);
-});
-
-function subcomponents(self: State) {
-  for (const key of Object.getOwnPropertyNames(self)) {
-    if (!/^[A-Z]/.test(key)) continue;
-
-    const { get, value } = Object.getOwnPropertyDescriptor(self, key)!;
-
-    if (!get && typeof value !== 'function') continue;
-
-    function subcomponent(this: Component) {
-      const self = this.is;
-
-      let render = unbind(get ? get.call(self) : value);
-
-      const Component = (props: unknown) =>
-        render.call(
-          useHook<Component>((set) => watch(self, set)),
-          props
-        );
-
-      Object.defineProperty(self, key, {
-        configurable: true,
-        get: () => Component,
-        set(fn: Function) {
-          render = fn;
-        }
-      });
-
-      return Component;
-    }
-
-    Object.defineProperty(self, key, {
-      configurable: true,
-      get: subcomponent
-    });
-  }
-}
+export { Component };
+export type { Props, StateProps } from '@expressive/component';
