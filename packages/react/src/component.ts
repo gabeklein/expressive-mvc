@@ -1,14 +1,12 @@
-import { watch, unbind } from '@expressive/state';
-import { Component } from '@expressive/component';
+import { watch, unbind, Component } from '@expressive/state';
 import React, { createElement, Suspense } from 'react';
 import { Context, Layers } from './context';
-import type { State } from './state';
 import { useHook } from './runtime';
 
 const RESET = Symbol.for('React.StrictMode');
 const SEEN = new WeakSet<object>([Component.prototype]);
 
-declare module '@expressive/component' {
+declare module '@expressive/state' {
   interface Host {
     node: React.ReactNode;
   }
@@ -193,4 +191,4 @@ class ErrorBoundary extends React.Component<BoundaryProps> {
 }
 
 export { Component };
-export type { Props, StateProps } from '@expressive/component';
+export type { Props, StateProps } from '@expressive/state';

@@ -1,4 +1,6 @@
-import { Context, set, State } from '@expressive/state';
+import { Context } from './context';
+import { set } from './instruction/set';
+import { State } from './state';
 import { Node } from './host';
 
 const PENDING = new WeakMap<object, Component>();
@@ -25,12 +27,6 @@ interface ComponentProps<T extends Component> {
 export type Props<T extends Component> = StateProps<T> &
   ComponentProps<T> &
   RenderProps<T['render']>;
-
-declare module '@expressive/state' {
-  namespace State {
-    export type { Component, Props };
-  }
-}
 
 export class Component extends State {
   /**

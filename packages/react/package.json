@@ -45,7 +45,6 @@
     "preversion": "npm run test && npm run build"
   },
   "dependencies": {
-    "@expressive/component": "workspace:^",
     "@expressive/state": "workspace:^"
   },
   "devDependencies": {
