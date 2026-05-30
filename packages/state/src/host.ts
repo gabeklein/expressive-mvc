@@ -7,8 +7,7 @@
  * here later as additional members, via the same augmentation - no new seam.
  *
  * ```ts
- * // @expressive/react
- * declare module '@expressive/component' {
+ * declare module '@expressive/state' {
  *   interface Host { node: React.ReactNode }
  * }
  * ```
@@ -16,7 +15,7 @@
  * Note: only one adapter is expected per compilation. Two adapters augmenting
  * `node` with different types in the same build would conflict - by design.
  */
-export interface Host {}
+export interface Host { }
 
 /**
  * Host element type produced by `Component.render`.
