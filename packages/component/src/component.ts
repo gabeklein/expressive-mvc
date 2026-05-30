@@ -1,4 +1,4 @@
-import { Context, set, State, unbind } from '@expressive/state';
+import { Context, set, State } from '@expressive/state';
 import { Node } from './host';
 
 const PENDING = new WeakMap<object, Component>();
@@ -142,56 +142,4 @@ function dedupe(self: Component & { [RESET]?: () => void }) {
     Object.defineProperties(self, snap);
     delete self[RESET];
   }
-}
-
-/**
- * Turn a subcomponent's render fn into a live host component value. Host-specific
- * (e.g. React hooks subscription); supplied by the adapter to {@link subcomponents}.
- */
-export type Bind =
-  (this: Component, render: (owner: Component, props: any) => Node) => unknown;
-
-const SEEN = new WeakSet<object>([Component.prototype]);
-
-/**
- * Discover subcomponents (capitalized members) on an instance and, recursively,
- * its class chain - defining each as a lazily-realized host component. Each
- * prototype is decorated once (guarded by SEEN); the instance's own members are
- * processed on every call. Invoked by the adapter via `Component.on`, which
- * passes its host-specific {@link Bind}.
- */
-export function subcomponents(self: State, toComponent: Bind) {
-  do {
-    if (SEEN.has(self)) return;
-
-    SEEN.add(self);
-
-    for (const key of Object.getOwnPropertyNames(self)) {
-      if (!/^[A-Z]/.test(key)) continue;
-
-      const { get, value } = Object.getOwnPropertyDescriptor(self, key)!;
-
-      if (!get && typeof value !== 'function') continue;
-
-      Object.defineProperty(self, key, {
-        configurable: true,
-        get(this: Component) {
-          const owner = this.is;
-          let render = unbind(get ? get.call(owner) : value);
-          const made = toComponent.call(owner, (current, props) => render.call(current, props));
-
-          Object.defineProperty(owner, key, {
-            configurable: true,
-            get: () => made,
-            set(fn: Function) {
-              render = fn;
-            }
-          });
-
-          return made;
-        }
-      });
-    }
-  }
-  while (self = Object.getPrototypeOf(self));
 }

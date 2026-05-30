@@ -1,18 +1,12 @@
 import { watch, unbind } from '@expressive/state';
-import { Component, subcomponents } from '@expressive/component';
+import { Component } from '@expressive/component';
 import React, { createElement, Suspense } from 'react';
 import { Context, Layers } from './context';
 import type { State } from './state';
 import { useHook } from './runtime';
 
-const INTERNAL = [
-  'updater',
-  'refs',
-  '_reactInternals',
-  '_reactInternalInstance'
-];
-
 const RESET = Symbol.for('React.StrictMode');
+const SEEN = new WeakSet<object>([Component.prototype]);
 
 declare module '@expressive/component' {
   interface Host {
@@ -35,20 +29,59 @@ declare module '@expressive/component' {
   }
 }
 
-Component.on((self) => {
-  for (const key of INTERNAL)
-    Object.defineProperty(self, key, {
-      configurable: true,
-      writable: true,
-      enumerable: false
-    });
-
-  subcomponents(self, function (render) {
-    return (props: unknown) => {
-      return render(useHook((set) => watch(this, set)), props);
+for (const key of [
+  'updater',
+  'refs',
+  '_reactInternals',
+  '_reactInternalInstance'
+])
+  Object.defineProperty(Component.prototype, key, {
+    set(value) {
+      Object.defineProperty(this, key, {
+        writable: true,
+        value
+      });
     }
   });
-});
+
+Component.on(subcomponents);
+
+function subcomponents(self: Component) {
+  do {
+    if (SEEN.has(self)) return;
+
+    SEEN.add(self);
+
+    for (const key of Object.getOwnPropertyNames(self)) {
+      if (!/^[A-Z]/.test(key)) continue;
+
+      const { get, value } = Object.getOwnPropertyDescriptor(self, key)!;
+
+      if (!get && typeof value !== 'function') continue;
+
+      Object.defineProperty(self, key, {
+        configurable: true,
+        get(this: Component) {
+          const owner = this.is;
+          let render = unbind(get ? get.call(owner) : value);
+          const made = (props: unknown) =>
+            render.call(useHook<Component>((set) => watch(owner, set)), props);
+
+          Object.defineProperty(owner, key, {
+            configurable: true,
+            get: () => made,
+            set(fn: Function) {
+              render = fn;
+            }
+          });
+
+          return made;
+        }
+      });
+    }
+  }
+  while (self = Object.getPrototypeOf(self));
+}
 
 Component.contextType = Layers;
 
