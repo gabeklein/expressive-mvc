@@ -1,5 +1,5 @@
 import { watch, unbind } from '@expressive/state';
-import { Component, discover } from '@expressive/component';
+import { Component, subcomponents } from '@expressive/component';
 import React, { createElement, Suspense } from 'react';
 import { Context, Layers } from './context';
 import type { State } from './state';
@@ -43,9 +43,11 @@ Component.on((self) => {
       enumerable: false
     });
 
-  discover(self, (render, owner) =>
-    (props: unknown) =>
-      render(useHook<Component>((set) => watch(owner, set)), props));
+  subcomponents(self, function (render) {
+    return (props: unknown) => {
+      return render(useHook((set) => watch(this, set)), props);
+    }
+  });
 });
 
 Component.contextType = Layers;
