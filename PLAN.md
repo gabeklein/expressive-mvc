@@ -61,28 +61,33 @@ elements, giving Solid a real Component, router repo migration.
 
 ## Seams (how the adapter completes the class)
 
-Three channels, chosen by call direction:
+No module-singleton seams. The adapter completes the class through two channels:
 
 | Channel | Declared by | Called by | Examples |
 |---|---|---|---|
-| **Seam** (module singleton, mirror `Runtime`) | `/component` | `/component` calls adapter (IoC) | `realize`, `onConstruct` |
+| **`Component.on` hook** | adapter registers via state's public event API | state runs it per-instance at activation | claim React bookkeeping fields (`_reactInternals` etc.); wire subcomponent realization via `discover(self, realize)` |
 | **Prototype attach** | adapter mutates imported class | host runtime calls it | `bootstrap` (context-setter), `isReactComponent`, compat shims, `ErrorBoundary` |
 | **Type augmentation** | `/component` declares empty target | compiler only | `Host.node` |
 
 - `Host` = per-adapter interpretation manifest. `node` (render return type) is member
   one; canonical elements slot in later (will also need a value registry, not just
   types). `type Node = Host extends { node: infer T } ? T : unknown`.
-- `realize(render, owner)` - turn a subcomponent render fn into a live host component
-  (the one React line in subcomponent discovery).
-- `onConstruct(instance)` - let the host claim bookkeeping fields post-`super`
-  (React's `_reactInternals` etc.).
+- `discover(self, realize)` - agnostic subcomponent discovery (capitalized members,
+  class-chain walk) exported by `/component`; the adapter passes its host-specific
+  `Realize` closure (the one React line). Replaces the former `realize` seam.
+- The earlier `realize`/`onConstruct` module singletons were removed: both are now
+  adapter `Component.on` wiring, so `/component` no longer calls the adapter (no IoC
+  seam, no "no renderer loaded" throw). Note this moves the field-claim from inside
+  the constructor to activation, so the internals carve-out must set
+  `enumerable: false` explicitly (React may create the props first; `defineProperty`
+  leaves omitted attributes of an existing prop unchanged).
 
 ## Steps
 
 - [x] Scaffold `packages/component` (package.json/tsconfig/tsdown/bunfig/test.setup), private, no react dep
 - [x] `src/host.ts` - `Host` interface + `Node` type seam
-- [ ] `src/component.ts` - class skeleton + neutral types + `PENDING`/`SNAPSHOT` reconciliation + subcomponent **discovery** + `realize`/`onConstruct` seam declarations
-- [ ] Rewrite `packages/react/src/component.ts` - import `Component` + seams from `@expressive/component`; augment `Host.node = ReactNode`; fill `realize`/`onConstruct`; prototype-attach `bootstrap`/`isReactComponent`/compat shims/`ErrorBoundary`; re-export `Component`
+- [x] `src/component.ts` - class skeleton + neutral types + `PENDING`/`SNAPSHOT` reconciliation + subcomponent **discovery** (`discover`/`Realize` exports); no module-singleton seams
+- [x] Rewrite `packages/react/src/component.ts` - import `Component`/`discover`/`restore` from `@expressive/component`; augment `Host.node = ReactNode`; wire field-claim + realization via `Component.on`; prototype-attach `bootstrap`/`isReactComponent`/compat shims/`ErrorBoundary`; re-export `Component`
 - [ ] Add `@expressive/component` to `@expressive/react` deps
 - [ ] Move/port the relevant `component.test.tsx` neutral cases into `/component`; keep React realization cases in `/react`
 

@@ -58,6 +58,7 @@
       "name": "@expressive/react",
       "version": "0.77.0",
       "dependencies": {
+        "@expressive/component": "workspace:^",
         "@expressive/state": "workspace:^",
       },
       "devDependencies": {
