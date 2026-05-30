@@ -146,60 +146,52 @@ function dedupe(self: Component & { [RESET]?: () => void }) {
 
 /**
  * Turn a subcomponent's render fn into a live host component value. Host-specific
- * (e.g. React hooks subscription); supplied by the adapter to {@link discover}.
+ * (e.g. React hooks subscription); supplied by the adapter to {@link subcomponents}.
  */
-export type Realize =
-  (render: (owner: Component, props: any) => Node, owner: Component) => unknown;
+export type Bind =
+  (this: Component, render: (owner: Component, props: any) => Node) => unknown;
 
-const SEEN = new WeakSet<Function>();
+const SEEN = new WeakSet<object>([Component.prototype]);
 
 /**
- * Discover subcomponents (capitalized static members) on an instance and its
- * class chain, defining each as a lazily-realized host component. Invoked by the
- * adapter via `Component.on`, which passes its host-specific {@link Realize}.
+ * Discover subcomponents (capitalized members) on an instance and, recursively,
+ * its class chain - defining each as a lazily-realized host component. Each
+ * prototype is decorated once (guarded by SEEN); the instance's own members are
+ * processed on every call. Invoked by the adapter via `Component.on`, which
+ * passes its host-specific {@link Bind}.
  */
-export function discover(self: Component, realize: Realize) {
-  let Type = self.constructor as State.Extends;
+export function subcomponents(self: State, toComponent: Bind) {
+  do {
+    if (SEEN.has(self)) return;
 
-  while (Type !== Component) {
-    if (SEEN.has(Type)) break;
-    SEEN.add(Type);
-    subcomponents(Type.prototype, realize);
-    Type = Object.getPrototypeOf(Type);
-  }
+    SEEN.add(self);
 
-  subcomponents(self, realize);
-}
+    for (const key of Object.getOwnPropertyNames(self)) {
+      if (!/^[A-Z]/.test(key)) continue;
 
-function subcomponents(self: State, realize: Realize) {
-  for (const key of Object.getOwnPropertyNames(self)) {
-    if (!/^[A-Z]/.test(key)) continue;
+      const { get, value } = Object.getOwnPropertyDescriptor(self, key)!;
 
-    const { get, value } = Object.getOwnPropertyDescriptor(self, key)!;
+      if (!get && typeof value !== 'function') continue;
 
-    if (!get && typeof value !== 'function') continue;
-
-    function subcomponent(this: Component) {
-      const owner = this.is;
-
-      let render = unbind(get ? get.call(owner) : value);
-
-      const made = realize((current, props) => render.call(current, props), owner);
-
-      Object.defineProperty(owner, key, {
+      Object.defineProperty(self, key, {
         configurable: true,
-        get: () => made,
-        set(fn: Function) {
-          render = fn;
+        get(this: Component) {
+          const owner = this.is;
+          let render = unbind(get ? get.call(owner) : value);
+          const made = toComponent.call(owner, (current, props) => render.call(current, props));
+
+          Object.defineProperty(owner, key, {
+            configurable: true,
+            get: () => made,
+            set(fn: Function) {
+              render = fn;
+            }
+          });
+
+          return made;
         }
       });
-
-      return made;
     }
-
-    Object.defineProperty(self, key, {
-      configurable: true,
-      get: subcomponent
-    });
   }
+  while (self = Object.getPrototypeOf(self));
 }

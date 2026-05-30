@@ -9,6 +9,6 @@
 //
 // Guardrail: this package has no `react` dep and no `jsx` in tsconfig. Anything
 // that won't compile without React is, by definition, adapter realization.
-export { Component, discover } from './component';
-export type { Props, StateProps, Realize } from './component';
+export { Component, subcomponents } from './component';
+export type { Props, StateProps, Bind } from './component';
 export type { Host, Node } from './host';
