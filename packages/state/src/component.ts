@@ -46,33 +46,33 @@ export class Component extends State {
    */
   fallback: Node = set(null);
 
-  constructor(nextProps: any, ...rest: any[]) {
-    const { is, ...props } = nextProps;
+  constructor(props: any, ...rest: any[]) {
     const seen = {} as Record<string, undefined>;
-    const merge = (props: {}) => {
+    const copy = PENDING.get(props);
+
+    function merge(props: {}) {
       for (const k in props) seen[k] = undefined;
       return { ...seen, ...props };
-    };
-
-    const existing = PENDING.get(nextProps);
-
-    super(
-      merge(props),
-      rest.filter((x) => !(x instanceof Context)),
-      is && ((x) => { is(x) }),
-      () => {
-        Object.defineProperty(this, 'props', { enumerable: false });
-      }
-    );
-
-    if (existing) {
-      existing[DEDUPE]?.();
-      return existing;
     }
 
-    PENDING.set(nextProps, this);
+    super(copy ? [] : [
+      merge(props),
+      rest.filter((x) => !(x instanceof Context)),
+      () => {
+        props.is?.(this);
+        Object.defineProperty(this, 'props', { enumerable: false });
+        PENDING.delete(props);
+      }
+    ]);
 
-    this.props = nextProps;
+    if (copy) {
+      copy[DEDUPE]?.();
+      return copy;
+    }
+
+    PENDING.set(props, this);
+
+    this.props = props;
     this.set('props', () => {
       this.set(merge(this.props));
     });
