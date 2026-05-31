@@ -1,0 +1,6 @@
+# The VSCode bun test extension (oven.bun-vscode) always runs from the workspace
+# root, ignoring per-package bunfig.toml preloads. Mirror react's preload chain
+# here so the Testing sidebar gets happy-dom + the shared state/react setup.
+# Terminal runs from inside a package still use that package's own bunfig.toml.
+[test]
+preload = ["./packages/react/test.dom.ts", "./packages/react/test.setup.ts"]
