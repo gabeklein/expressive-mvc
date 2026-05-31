@@ -3,8 +3,7 @@ import { set } from './instruction/set';
 import { State } from './state';
 import { Node } from './host';
 
-const PENDING = new WeakMap<object, Component & { [DEDUPE]?: () => void }>();
-const DEDUPE = Symbol.for('@expressive/component.duplicate');
+const PENDING = new WeakMap<object, Component>();
 
 export type StateProps<T extends State> = {
   [K in Exclude<keyof T, keyof Component>]?: T[K];
@@ -65,10 +64,8 @@ export class Component extends State {
       }
     ]);
 
-    if (copy) {
-      copy[DEDUPE]?.();
+    if (copy)
       return copy;
-    }
 
     PENDING.set(props, this);
 
