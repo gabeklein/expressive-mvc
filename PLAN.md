@@ -66,9 +66,14 @@ giving Solid a real Component, router repo migration.
   a React-family assumption that doesn't port to fine-grained (Solid/Svelte) or
   retained-mode hosts. The walk now lives in `@expressive/react`, calling `useHook`/`watch`
   directly. No seam survives - the adapter imports only `Component`.
-- **StrictMode double-construct dedup** (`PENDING`/`RESET`) currently stays in core
-  `component.ts`. It is the one remaining React-family artifact in the agnostic class -
-  the next thing to evaluate for lifting (see below).
+- **StrictMode dedup is detection-only.** Core keeps `PENDING` + `return copy` (collapse
+  the double-construct onto one instance) - a host-agnostic identity check. The former
+  snapshot/restore handshake (re-applying accessors clobbered by a subclass class-field
+  replay) was **removed** as inert: it guarded a fix-era bun-runtime quirk where the
+  deduped instance was already reactive at the second construct. Under the current runtime
+  (and matching real React), both constructs complete *before* `State` init installs
+  accessors, so nothing live exists to clobber. Locked in by StrictMode construct/init
+  ordering tests in `@expressive/react`.
 
 ## Seams (how the adapter completes the class)
 
@@ -90,13 +95,13 @@ No module-singleton seams, no IoC. The adapter completes the class through:
 
 - [x] Scaffold transitional `packages/component`, private, no react dep
 - [x] `host.ts` - `Host` interface + `Node` type seam
-- [x] `component.ts` - class skeleton + neutral types + `PENDING`/`RESET` reconciliation
+- [x] `component.ts` - class skeleton + neutral types + `PENDING` dedup detection + props reconciliation
 - [x] Rewrite `packages/react/src/component.ts` as a pure adapter (augment `Host.node`,
       prototype-attach `bootstrap`/`isReactComponent`/compat/`ErrorBoundary`, re-export)
 - [x] Eliminate the `onConstruct`/`realize`/`restore` module-singleton seams
 - [x] Move subcomponent discovery into `@expressive/react` (adapter-family feature)
 - [x] Fold `@expressive/component` into `@expressive/state`; delete the package
-- [ ] Evaluate lifting the `PENDING`/`RESET` StrictMode dedup out of core into `/react`
+- [x] Remove the inert StrictMode dedup restore handshake; keep detection only, add construct/init ordering tests
 
 ## Validation
 
