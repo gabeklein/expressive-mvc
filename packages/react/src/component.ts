@@ -9,7 +9,7 @@ type ComponentType = typeof Component & typeof React.Component;
 
 declare module '@expressive/state' {
   namespace Component {
-    interface Host {
+    interface JSX {
       node: React.ReactNode;
     }
   }

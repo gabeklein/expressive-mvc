@@ -118,20 +118,20 @@ export namespace Component {
    * ```ts
    * // @expressive/react
    * declare module '@expressive/state' {
-   *   namespace Component { interface Host { node: React.ReactNode } }
+   *   namespace Component { interface JSX { node: React.ReactNode } }
    * }
    * ```
    *
    * Only one adapter is expected per compilation; two augmenting `node` with
    * different types in the same build would conflict - by design.
    */
-  export interface Host {}
+  export interface JSX {}
 
   /**
-   * Host element type produced by `Component.render`.
-   * Resolves to `unknown` until an adapter augments {@link Host} with `node`.
+   * Element type produced by `Component.render`.
+   * Resolves to `unknown` until an adapter augments {@link JSX} with `node`.
    */
-  export type Node = Host extends { node: infer T } ? T : unknown;
+  export type Node = JSX extends { node: infer T } ? T : unknown;
 
   export type StateProps<T extends State> = {
     [K in Exclude<keyof T, keyof Component>]?: T[K];
