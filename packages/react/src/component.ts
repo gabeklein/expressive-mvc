@@ -26,43 +26,6 @@ declare module '@expressive/state' {
   }
 }
 
-function subcomponents(proto: Component) {
-  do {
-    if (SEEN.has(proto)) return;
-
-    SEEN.add(proto);
-
-    for (const key of Object.getOwnPropertyNames(proto))
-      if (/^[A-Z]/.test(key)) {
-        const { get, value } = Object.getOwnPropertyDescriptor(proto, key)!;
-
-        if (get || typeof value == 'function')
-          Object.defineProperty(proto, key, {
-            configurable: true,
-            get(this: Component) {
-              const owner = this.is;
-              let render = unbind(get ? get.call(owner) : value);
-              const Component = (props: unknown) =>
-                render.call(
-                  useHook<Component>((set) => watch(owner, set)),
-                  props
-                );
-
-              Object.defineProperty(owner, key, {
-                configurable: true,
-                get: () => Component,
-                set(fn: Function) {
-                  render = fn;
-                }
-              });
-
-              return Component;
-            }
-          });
-      }
-  } while ((proto = Object.getPrototypeOf(proto)));
-}
-
 Component.on(subcomponents);
 (Component as ComponentType).contextType = Layers;
 
@@ -143,6 +106,43 @@ function bootstrap(this: Component, context: Context) {
       }
     }
   });
+}
+
+function subcomponents(proto: Component) {
+  do {
+    if (SEEN.has(proto)) return;
+
+    SEEN.add(proto);
+
+    for (const key of Object.getOwnPropertyNames(proto))
+      if (/^[A-Z]/.test(key)) {
+        const { get, value } = Object.getOwnPropertyDescriptor(proto, key)!;
+
+        if (get || typeof value == 'function')
+          Object.defineProperty(proto, key, {
+            configurable: true,
+            get(this: Component) {
+              const owner = this.is;
+              let render = unbind(get ? get.call(owner) : value);
+              const Component = (props: unknown) =>
+                render.call(
+                  useHook<Component>((set) => watch(owner, set)),
+                  props
+                );
+
+              Object.defineProperty(owner, key, {
+                configurable: true,
+                get: () => Component,
+                set(fn: Function) {
+                  render = fn;
+                }
+              });
+
+              return Component;
+            }
+          });
+      }
+  } while ((proto = Object.getPrototypeOf(proto)));
 }
 
 interface BoundaryProps {
