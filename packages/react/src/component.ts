@@ -30,43 +30,41 @@ declare module '@expressive/state' {
   }
 }
 
-function subcomponents(self: Component) {
+function subcomponents(methods: Component) {
   do {
-    if (SEEN.has(self)) return;
+    if (SEEN.has(methods)) return;
 
-    SEEN.add(self);
+    SEEN.add(methods);
 
-    for (const key of Object.getOwnPropertyNames(self)) {
-      if (!/^[A-Z]/.test(key)) continue;
+    for (const key of Object.getOwnPropertyNames(methods))
+      if (/^[A-Z]/.test(key)) {
+        const { get, value } = Object.getOwnPropertyDescriptor(methods, key)!;
 
-      const { get, value } = Object.getOwnPropertyDescriptor(self, key)!;
-
-      if (!get && typeof value !== 'function') continue;
-
-      Object.defineProperty(self, key, {
-        configurable: true,
-        get(this: Component) {
-          const owner = this.is;
-          let render = unbind(get ? get.call(owner) : value);
-          const made = (props: unknown) =>
-            render.call(
-              useHook<Component>((set) => watch(owner, set)),
-              props
-            );
-
-          Object.defineProperty(owner, key, {
+        if (get || typeof value == 'function')
+          Object.defineProperty(methods, key, {
             configurable: true,
-            get: () => made,
-            set(fn: Function) {
-              render = fn;
+            get(this: Component) {
+              const owner = this.is;
+              let render = unbind(get ? get.call(owner) : value);
+              const Component = (props: unknown) =>
+                render.call(
+                  useHook<Component>((set) => watch(owner, set)),
+                  props
+                );
+
+              Object.defineProperty(owner, key, {
+                configurable: true,
+                get: () => Component,
+                set(fn: Function) {
+                  render = fn;
+                }
+              });
+
+              return Component;
             }
           });
-
-          return made;
-        }
-      });
-    }
-  } while ((self = Object.getPrototypeOf(self)));
+      }
+  } while ((methods = Object.getPrototypeOf(methods)));
 }
 
 Component.on(subcomponents);
