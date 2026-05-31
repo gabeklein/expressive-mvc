@@ -3,8 +3,8 @@ import { set } from './instruction/set';
 import { State } from './state';
 import { Node } from './host';
 
-const PENDING = new WeakMap<object, Component>();
-const RESET = Symbol.for('React.StrictMode');
+const PENDING = new WeakMap<object, Component & { [DEDUPE]?: () => void }>();
+const DEDUPE = Symbol.for('@expressive/component.duplicate');
 
 export type StateProps<T extends State> = {
   [K in Exclude<keyof T, keyof Component>]?: T[K];
@@ -66,7 +66,7 @@ export class Component extends State {
     );
 
     if (existing) {
-      dedupe(existing);
+      existing[DEDUPE]?.();
       return existing;
     }
 
@@ -118,24 +118,4 @@ export class Component extends State {
    * assign a fallback within catch, it will be reverted after resolved.
    */
   catch?(error: Error): Promise<void> | void;
-}
-
-/**
- * On a host double-construct (e.g. React StrictMode hands us the same props
- * twice), capture the live instance's reactive accessors in a closure and stash
- * a one-shot restore callback under a well-known symbol. The adapter invokes it
- * if the instance re-mounts - the intervening freeze can clobber the getters.
- */
-function dedupe(self: Component & { [RESET]?: () => void }) {
-  const snap: PropertyDescriptorMap = {};
-
-  for (const [key] of self) {
-    const desc = Object.getOwnPropertyDescriptor(self, key);
-    if (desc && 'get' in desc) snap[key] = desc;
-  }
-
-  self[RESET] = () => {
-    Object.defineProperties(self, snap);
-    delete self[RESET];
-  }
 }
