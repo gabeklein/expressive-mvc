@@ -145,12 +145,10 @@ function subcomponents(proto: Component) {
   } while ((proto = Object.getPrototypeOf(proto)));
 }
 
-interface BoundaryProps {
+class ErrorBoundary extends React.Component<{
   self: Component;
   children: React.ReactNode;
-}
-
-class ErrorBoundary extends React.Component<BoundaryProps> {
+}> {
   state = {} as { error?: Error };
   recovering = false;
 
