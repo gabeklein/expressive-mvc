@@ -9,6 +9,10 @@ const DEDUPE = Symbol.for('@expressive/component.duplicate');
 const RESTORE = new WeakMap<Component, () => void>();
 const SEEN = new WeakSet<object>([Component.prototype]);
 
+type ComponentType = typeof Component & {
+  contextType: typeof Layers;
+};
+
 declare module '@expressive/state' {
   interface Host {
     node: React.ReactNode;
@@ -24,28 +28,7 @@ declare module '@expressive/state' {
     /** @deprecated Only to satisfy React JSX. Not implemented. */
     forceUpdate: (callback?: () => void) => void;
   }
-
-  namespace Component {
-    let contextType: React.Context<Context>;
-  }
 }
-
-for (const key of [
-  'updater',
-  'refs',
-  '_reactInternals',
-  '_reactInternalInstance'
-])
-  Object.defineProperty(Component.prototype, key, {
-    set(value) {
-      Object.defineProperty(this, key, {
-        writable: true,
-        value
-      });
-    }
-  });
-
-Component.on(subcomponents);
 
 function subcomponents(self: Component) {
   do {
@@ -66,7 +49,10 @@ function subcomponents(self: Component) {
           const owner = this.is;
           let render = unbind(get ? get.call(owner) : value);
           const made = (props: unknown) =>
-            render.call(useHook<Component>((set) => watch(owner, set)), props);
+            render.call(
+              useHook<Component>((set) => watch(owner, set)),
+              props
+            );
 
           Object.defineProperty(owner, key, {
             configurable: true,
@@ -80,24 +66,35 @@ function subcomponents(self: Component) {
         }
       });
     }
-  }
-  while (self = Object.getPrototypeOf(self));
+  } while ((self = Object.getPrototypeOf(self)));
 }
 
-Component.contextType = Layers;
+Component.on(subcomponents);
+(Component as ComponentType).contextType = Layers;
+
+for (const key of [
+  'updater',
+  'refs',
+  '_reactInternals',
+  '_reactInternalInstance'
+])
+  Object.defineProperty(Component.prototype, key, {
+    set(value) {
+      Object.defineProperty(this, key, { value, writable: true });
+    }
+  });
 
 Object.defineProperties(Component.prototype, {
   isReactComponent: {
     get: () => true
   },
   state: {
+    set() { },
     get(this: Component) {
       return this.get();
-    },
-    set() { }
+    }
   },
   context: {
-    configurable: true,
     set: bootstrap
   },
   [DEDUPE]: {
