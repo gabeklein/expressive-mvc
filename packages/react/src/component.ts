@@ -5,8 +5,6 @@ import { useHook } from './runtime';
 
 // Matches the core's notification symbol (Symbol.for shares the runtime value).
 // Core calls this on the prototype when a host re-constructs with the same props.
-// TODO(#99): when symbol keys dispatch as pure signals, core will emit an event
-// instead and this becomes a Component.on listener rather than a prototype method.
 const DEDUPE = Symbol.for('@expressive/component.duplicate');
 const RESTORE = new WeakMap<Component, () => void>();
 const SEEN = new WeakSet<object>([Component.prototype]);
