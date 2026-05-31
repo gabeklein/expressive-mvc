@@ -8,8 +8,10 @@ const SEEN = new WeakSet<object>([Component.prototype]);
 type ComponentType = typeof Component & typeof React.Component;
 
 declare module '@expressive/state' {
-  interface Host {
-    node: React.ReactNode;
+  namespace Component {
+    interface Host {
+      node: React.ReactNode;
+    }
   }
 
   interface Component {
@@ -181,4 +183,3 @@ class ErrorBoundary extends React.Component<BoundaryProps> {
 }
 
 export { Component };
-export type { Props, StateProps } from '@expressive/state';
