@@ -23,9 +23,9 @@ declare module '@expressive/state' {
     readonly context: Context;
     /** @deprecated Only to satisfy React JSX. Use `this.get()` instead. */
     readonly state: State.Values<this>;
-    /** @deprecated Only to satisfy React JSX. Not implemented. */
+    /** @deprecated Only to satisfy React JSX. Use `this.set({})` instead. */
     setState: (state: any, callback?: () => void) => void;
-    /** @deprecated Only to satisfy React JSX. Not implemented. */
+    /** @deprecated Only to satisfy React JSX. Use `this.set(key)` instead. */
     forceUpdate: (callback?: () => void) => void;
   }
 }
