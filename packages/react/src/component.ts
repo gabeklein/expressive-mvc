@@ -9,9 +9,7 @@ const DEDUPE = Symbol.for('@expressive/component.duplicate');
 const RESTORE = new WeakMap<Component, () => void>();
 const SEEN = new WeakSet<object>([Component.prototype]);
 
-type ComponentType = typeof Component & {
-  contextType: typeof Layers;
-};
+type ComponentType = typeof Component & typeof React.Component;
 
 declare module '@expressive/state' {
   interface Host {
@@ -30,18 +28,18 @@ declare module '@expressive/state' {
   }
 }
 
-function subcomponents(methods: Component) {
+function subcomponents(proto: Component) {
   do {
-    if (SEEN.has(methods)) return;
+    if (SEEN.has(proto)) return;
 
-    SEEN.add(methods);
+    SEEN.add(proto);
 
-    for (const key of Object.getOwnPropertyNames(methods))
+    for (const key of Object.getOwnPropertyNames(proto))
       if (/^[A-Z]/.test(key)) {
-        const { get, value } = Object.getOwnPropertyDescriptor(methods, key)!;
+        const { get, value } = Object.getOwnPropertyDescriptor(proto, key)!;
 
         if (get || typeof value == 'function')
-          Object.defineProperty(methods, key, {
+          Object.defineProperty(proto, key, {
             configurable: true,
             get(this: Component) {
               const owner = this.is;
@@ -64,7 +62,7 @@ function subcomponents(methods: Component) {
             }
           });
       }
-  } while ((methods = Object.getPrototypeOf(methods)));
+  } while ((proto = Object.getPrototypeOf(proto)));
 }
 
 Component.on(subcomponents);
