@@ -3,10 +3,6 @@ import React, { createElement, Suspense } from 'react';
 import { Context, Layers } from './context';
 import { useHook } from './runtime';
 
-// Matches the core's notification symbol (Symbol.for shares the runtime value).
-// Core calls this on the prototype when a host re-constructs with the same props.
-const DEDUPE = Symbol.for('@expressive/component.duplicate');
-const RESTORE = new WeakMap<Component, () => void>();
 const SEEN = new WeakSet<object>([Component.prototype]);
 
 type ComponentType = typeof Component & typeof React.Component;
@@ -92,21 +88,6 @@ Object.defineProperties(Component.prototype, {
   },
   context: {
     set: bootstrap
-  },
-  [DEDUPE]: {
-    value(this: Component) {
-      const snap: PropertyDescriptorMap = {};
-
-      for (const [key] of this) {
-        const desc = Object.getOwnPropertyDescriptor(this, key);
-        if (desc && 'get' in desc) snap[key] = desc;
-      }
-
-      RESTORE.set(this, () => {
-        Object.defineProperties(this, snap);
-        RESTORE.delete(this);
-      });
-    }
   }
 });
 
@@ -152,9 +133,7 @@ function bootstrap(this: Component, context: Context) {
   Object.defineProperties(self, {
     context: {
       get: () => context,
-      set(this: Component) {
-        RESTORE.get(this)?.();
-      }
+      set() { }
     },
     render: {
       value() {
