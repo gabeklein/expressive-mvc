@@ -8,4 +8,3 @@ export { State, State as default, unbind } from './state';
 export { watch, listener, event, Observable, observer, touch } from './observable';
 export { Context } from './context';
 export { Component } from './component';
-export type { Props, StateProps, Host, Node } from './component';

@@ -4,51 +4,19 @@ import { State } from './state';
 
 const PENDING = new WeakMap<object, Component>();
 
-/**
- * Per-adapter interpretation manifest. Each adapter augments this interface to
- * declare how it renders; the first member is `node` - the element type produced
- * by `Component.render`. Canonical elements slot in later as additional members
- * via the same augmentation - no new seam.
- *
- * ```ts
- * // @expressive/react
- * declare module '@expressive/state' {
- *   interface Host { node: React.ReactNode }
- * }
- * ```
- *
- * Only one adapter is expected per compilation; two augmenting `node` with
- * different types in the same build would conflict - by design.
- */
-export interface Host {}
-
-/**
- * Host element type produced by `Component.render`.
- * Resolves to `unknown` until an adapter augments {@link Host} with `node`.
- */
-export type Node = Host extends { node: infer T } ? T : unknown;
-
-export type StateProps<T extends State> = {
-  [K in Exclude<keyof T, keyof Component>]?: T[K];
-};
-
 type RenderProps<T> = [T] extends [(props: infer P) => any]
   ? [keyof NonNullable<P>] extends [never]
-  ? { children?: Node }
+  ? { children?: Component.Node }
   : NonNullable<P>
-  : { children?: Node };
+  : { children?: Component.Node };
 
 interface ComponentProps<T extends Component> {
   /** Callback for newly created instance. Only called once. */
   is?: (instance: T) => void;
 
   /** Fallback to show when suspended or in error recovery. */
-  fallback?: Node;
+  fallback?: Component.Node;
 }
-
-export type Props<T extends Component> = StateProps<T> &
-  ComponentProps<T> &
-  RenderProps<T['render']>;
 
 export class Component extends State {
   /**
@@ -57,7 +25,7 @@ export class Component extends State {
    *
    * Will incorperate extra props you declare as props parameter in `render` method.
    */
-  declare readonly props: Props<this>;
+  declare readonly props: Component.Props<this>;
 
   /**
    * Content to display while this component or its children are suspended.
@@ -66,7 +34,7 @@ export class Component extends State {
    *
    * Defaults to null - nothing will be rendered.
    */
-  fallback: Node = set(null);
+  fallback: Component.Node = set(null);
 
   constructor(props: any, ...rest: any[]) {
     const seen = {} as Record<string, undefined>;
@@ -124,8 +92,8 @@ export class Component extends State {
    *
    * Without a parameter, children are accepted by default and passed through provider.
    */
-  render(props?: {}): Node {
-    return (this.props as { children?: Node }).children || null;
+  render(props?: {}): Component.Node {
+    return (this.props as { children?: Component.Node }).children || null;
   }
 
   /**
@@ -138,4 +106,38 @@ export class Component extends State {
    * assign a fallback within catch, it will be reverted after resolved.
    */
   catch?(error: Error): Promise<void> | void;
+}
+
+export namespace Component {
+  /**
+   * Per-adapter interpretation manifest. Each adapter augments this interface to
+   * declare how it renders; the first member is `node` - the element type produced
+   * by `Component.render`. Canonical elements slot in later as additional members
+   * via the same augmentation - no new seam.
+   *
+   * ```ts
+   * // @expressive/react
+   * declare module '@expressive/state' {
+   *   namespace Component { interface Host { node: React.ReactNode } }
+   * }
+   * ```
+   *
+   * Only one adapter is expected per compilation; two augmenting `node` with
+   * different types in the same build would conflict - by design.
+   */
+  export interface Host {}
+
+  /**
+   * Host element type produced by `Component.render`.
+   * Resolves to `unknown` until an adapter augments {@link Host} with `node`.
+   */
+  export type Node = Host extends { node: infer T } ? T : unknown;
+
+  export type StateProps<T extends State> = {
+    [K in Exclude<keyof T, keyof Component>]?: T[K];
+  };
+
+  export type Props<T extends Component> = StateProps<T> &
+    ComponentProps<T> &
+    RenderProps<T['render']>;
 }
