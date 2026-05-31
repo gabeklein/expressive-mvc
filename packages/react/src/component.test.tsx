@@ -1474,4 +1474,67 @@ describe('strict mode', () => {
     screen.getByText('baz');
     expect(didRender).toBeCalledWith('baz');
   });
+
+  it('will survive define-semantics field clobber', async () => {
+    const didAttemptConstruct = mock();
+
+    class Control extends Component {
+      foo = 'foo';
+
+      constructor(props: any, ...rest: any[]) {
+        didAttemptConstruct();
+        super(props, ...rest);
+      }
+    }
+
+    let instance!: Control;
+    const element = render(
+      <React.StrictMode>
+        <Control is={(is) => (instance = is)} />
+      </React.StrictMode>
+    );
+
+    expect(didAttemptConstruct).toBeCalledTimes(2);
+
+    const effect = mock();
+    instance.get(($) => {
+      effect($.foo);
+    });
+
+    expect(effect).toBeCalledWith('foo');
+    instance.foo = 'bar';
+
+    await instance.set();
+
+    expect(effect).toBeCalledWith('bar');
+
+    element.unmount();
+  });
+
+  it('will construct twice then init once', async () => {
+    const order: string[] = [];
+
+    class Control extends Component {
+      constructor(props: any, ...rest: any[]) {
+        super(props, ...rest);
+        order.push('construct');
+      }
+    }
+
+    Control.on(() => {
+      order.push('init');
+    });
+
+    const element = render(
+      <React.StrictMode>
+        <Control />
+      </React.StrictMode>
+    );
+
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect(order).toEqual(['construct', 'construct', 'init']);
+
+    element.unmount();
+  });
 });
