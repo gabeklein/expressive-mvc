@@ -3,20 +3,14 @@
     "dockerComposeFile": ["docker-compose.yml"],
     "service": "dev",
     "workspaceFolder": "/workspace",
-    "remoteUser": "user",
+    "remoteUser": "bun",
     "userEnvProbe": "loginInteractiveShell",
     "postCreateCommand": "bun install",
     "customizations": {
         "vscode": {
             "settings": {
                 "editor.tabSize": 2,
-                "editor.detectIndentation": true,
-                "terminal.integrated.defaultProfile.linux": "zsh",
-                "terminal.integrated.profiles.linux": {
-                    "zsh": {
-                        "path": "zsh"
-                    }
-                }
+                "editor.detectIndentation": true
             },
             "extensions": [
                 "esbenp.prettier-vscode",
