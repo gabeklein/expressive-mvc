@@ -6,6 +6,10 @@
     "remoteUser": "bun",
     "userEnvProbe": "loginInteractiveShell",
     "postCreateCommand": "bun install",
+    "forwardPorts": [5173],
+    "portsAttributes": {
+        "5173": { "label": "dev server (vite)" }
+    },
     "customizations": {
         "vscode": {
             "settings": {
