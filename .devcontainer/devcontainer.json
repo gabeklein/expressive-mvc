@@ -20,11 +20,7 @@
                 "editor.detectIndentation": true
             },
             "extensions": [
-                "esbenp.prettier-vscode",
-                "oderwat.indent-rainbow",
-                "wix.vscode-import-cost",
-                "bierner.markdown-preview-github-styles",
-                "yzhang.markdown-all-in-one"
+                "esbenp.prettier-vscode"
             ]
         }
     }
