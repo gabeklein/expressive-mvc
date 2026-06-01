@@ -6,6 +6,9 @@
     "remoteUser": "bun",
     "userEnvProbe": "loginInteractiveShell",
     "postCreateCommand": "bun install",
+    "features": {
+        "ghcr.io/devcontainers/features/github-cli:1": {}
+    },
     "forwardPorts": [5173],
     "portsAttributes": {
         "5173": { "label": "dev server (vite)" }
@@ -20,7 +23,6 @@
                 "esbenp.prettier-vscode",
                 "oderwat.indent-rainbow",
                 "wix.vscode-import-cost",
-                "ms-azuretools.vscode-docker",
                 "bierner.markdown-preview-github-styles",
                 "yzhang.markdown-all-in-one"
             ]
