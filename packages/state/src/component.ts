@@ -4,21 +4,57 @@ import { State } from './state';
 
 const PENDING = new WeakMap<object, Component>();
 
-type RenderProps<T> = [T] extends [(props: infer P) => any]
-  ? [keyof NonNullable<P>] extends [never]
-  ? { children?: Component.Node }
-  : NonNullable<P>
-  : { children?: Component.Node };
+declare namespace Component {
+  /**
+   * Per-adapter interpretation manifest. Each adapter augments this interface to
+   * declare how it renders; the first member is `node` - the element type produced
+   * by `Component.render`. Canonical elements slot in later as additional members
+   * via the same augmentation - no new seam.
+   *
+   * ```ts
+   * // @expressive/react
+   * declare module '@expressive/state' {
+   *   namespace Component { interface Host { node: React.ReactNode } }
+   * }
+   * ```
+   *
+   * Only one adapter is expected per compilation; two augmenting `node` with
+   * different types in the same build would conflict - by design.
+   */
+  interface Host {}
 
-interface ComponentProps<T extends Component> {
-  /** Callback for newly created instance. Only called once. */
-  is?: (instance: T) => void;
+  /**
+   * Host element type produced by `Component.render`.
+   * Resolves to `unknown` until an adapter augments {@link Host} with `node`.
+   */
+  type Node = Host extends { node: infer T } ? T : unknown;
 
-  /** Fallback to show when suspended or in error recovery. */
-  fallback?: Component.Node;
+  interface BaseProps<T extends Component> {
+    /** Callback for newly created instance. Only called once. */
+    is?: (instance: T) => void;
+
+    /** Fallback to show when suspended or in error recovery. */
+    fallback?: Component.Node;
+  }
+
+  type StateProps<T extends State> = {
+    [K in Exclude<keyof T, keyof Component>]?: T[K];
+  };
+
+  type RenderProps<T> = [T] extends [(props: infer P) => any]
+    ? [keyof NonNullable<P>] extends [never]
+    ? { children?: Component.Node }
+    : NonNullable<P>
+    : { children?: Component.Node };
+
+  type Props<T extends Component> = 
+    & StateProps<T>
+    & BaseProps<T>
+    & RenderProps<T['render']>;
 }
 
-export class Component extends State {
+
+class Component extends State {
   /**
    * All JSX attributes passed to this component.
    * Includes state-derived props, render props, and built-in props like `is` and `fallback`.
@@ -55,8 +91,7 @@ export class Component extends State {
       }
     ]);
 
-    if (copy)
-      return copy;
+    if (copy) return copy;
 
     PENDING.set(props, this);
 
@@ -93,7 +128,7 @@ export class Component extends State {
    * Without a parameter, children are accepted by default and passed through provider.
    */
   render(props?: {}): Component.Node {
-    return (this.props as { children?: Component.Node }).children || null;
+    return this.props.children || null;
   }
 
   /**
@@ -108,36 +143,4 @@ export class Component extends State {
   catch?(error: Error): Promise<void> | void;
 }
 
-export namespace Component {
-  /**
-   * Per-adapter interpretation manifest. Each adapter augments this interface to
-   * declare how it renders; the first member is `node` - the element type produced
-   * by `Component.render`. Canonical elements slot in later as additional members
-   * via the same augmentation - no new seam.
-   *
-   * ```ts
-   * // @expressive/react
-   * declare module '@expressive/state' {
-   *   namespace Component { interface Host { node: React.ReactNode } }
-   * }
-   * ```
-   *
-   * Only one adapter is expected per compilation; two augmenting `node` with
-   * different types in the same build would conflict - by design.
-   */
-  export interface Host {}
-
-  /**
-   * Host element type produced by `Component.render`.
-   * Resolves to `unknown` until an adapter augments {@link Host} with `node`.
-   */
-  export type Node = Host extends { node: infer T } ? T : unknown;
-
-  export type StateProps<T extends State> = {
-    [K in Exclude<keyof T, keyof Component>]?: T[K];
-  };
-
-  export type Props<T extends Component> = StateProps<T> &
-    ComponentProps<T> &
-    RenderProps<T['render']>;
-}
+export { Component };
