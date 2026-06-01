@@ -1,57 +1,14 @@
-FROM ubuntu:noble
+FROM oven/bun:1
 
-ARG USER=user
-ARG USER_UID=1000
-ARG USER_GID=$USER_UID
 ENV DEBIAN_FRONTEND=noninteractive
-# Node 22.x satisfies package.json engines (^20.19 || ^22.12 || >=24)
-ENV NODE_VERSION=22.x
 
-## Create unprivileged user with passwordless sudo
-## ubuntu:noble ships a default "ubuntu" user at UID/GID 1000 - remove it so ours can claim 1000
-RUN userdel -r ubuntu 2>/dev/null; groupdel ubuntu 2>/dev/null; true \
-    && groupadd --gid $USER_GID $USER \
-    && useradd --uid $USER_UID --gid $USER_GID -m $USER \
-    && apt-get update \
-    && apt-get install -y sudo \
-    && echo "$USER ALL=(root) NOPASSWD:ALL" > /etc/sudoers.d/$USER \
-    && chmod 0440 /etc/sudoers.d/$USER
+## oven/bun already provides a "bun" user at UID/GID 1000 - just grant it passwordless sudo.
+## Node is intentionally absent: Bun's node-fallback shim satisfies lerna/Nx.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+       ca-certificates curl git sudo \
+    && rm -rf /var/lib/apt/lists/* \
+    && echo "bun ALL=(root) NOPASSWD:ALL" > /etc/sudoers.d/bun \
+    && chmod 0440 /etc/sudoers.d/bun
 
-## Base apt dependencies
-RUN apt-get update -y \
-    && apt-get upgrade -y \
-    && apt-get install -y \
-    build-essential \
-    ca-certificates \
-    curl \
-    git \
-    jq \
-    unzip \
-    wget \
-    zsh \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
-
-## Install Node.js (provides node + npm; the project itself runs on Bun)
-RUN curl -fsSL https://deb.nodesource.com/setup_${NODE_VERSION} | bash - \
-    && apt-get install -y nodejs \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
-
-## Everything below runs as the unprivileged user
-USER $USER
-
-## Install Bun - the project's package manager and test runner (`bun test`)
-ENV BUN_INSTALL=/home/$USER/.bun
-ENV PATH=$BUN_INSTALL/bin:$PATH
-RUN curl -fsSL https://bun.sh/install | bash
-
-## Install oh-my-zsh with the "Spaceship" prompt and a few plugins
-RUN sh -c "$(wget -O- https://github.com/deluan/zsh-in-docker/releases/download/v1.1.5/zsh-in-docker.sh)" -- \
-    -t https://github.com/denysdovhan/spaceship-prompt \
-    -a 'SPACESHIP_PROMPT_ADD_NEWLINE="false"' \
-    -a 'SPACESHIP_PROMPT_SEPARATE_LINE="false"' \
-    -p git \
-    -p ssh-agent \
-    -p https://github.com/zsh-users/zsh-autosuggestions \
-    -p https://github.com/zsh-users/zsh-completions
+USER bun
