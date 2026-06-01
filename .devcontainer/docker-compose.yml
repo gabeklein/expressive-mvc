@@ -1,10 +1,8 @@
-version: '3'
 services:
     dev:
         build:
             context: ..
             dockerfile: ./.devcontainer/Dockerfile.dev
-        network_mode: 'host'
         volumes:
-            - ..:/workspace:Z
-        command: 'sleep infinity'
+            - ..:/workspace:cached
+        command: sleep infinity

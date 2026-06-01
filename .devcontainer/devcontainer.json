@@ -1,60 +1,31 @@
 {
-    "name": "expressive-mvc",
+    "name": "expressive-state",
     "dockerComposeFile": ["docker-compose.yml"],
+    "service": "dev",
+    "workspaceFolder": "/workspace",
+    "remoteUser": "user",
+    "userEnvProbe": "loginInteractiveShell",
+    "postCreateCommand": "bun install",
     "customizations": {
         "vscode": {
             "settings": {
-                "eslint.format.enable": true,
-                "eslint.alwaysShowStatus": true,
-                "typescript.validate.enable": true,
-                "editor.tabSize": 4,
+                "editor.tabSize": 2,
                 "editor.detectIndentation": true,
-                "editor.formatOnSave": true,
-                "editor.codeActionsOnSave": {
-                    "source.organizeImports": true,
-                    "source.fixAll": true,
-                    "source.trimTrailingWhitespace": true,
-                    "source.trimAutoWhitespace": true
-                },
-                "[json][yaml]": {
-                    "editor.defaultFormatter": "esbenp.prettier-vscode"
-                },
-                "[typescript]": {
-                    "editor.defaultFormatter": "esbenp.prettier-vscode"
-                },
-                "[typescriptreact]": {
-                    "editor.defaultFormatter": "esbenp.prettier-vscode"
-                },
-                "[python]": {
-                    "editor.tabSize": 4,
-                    "editor.codeActionsOnSave": {
-                        "source.organizeImports": true,
-                        "source.fixAll": true
-                    },
-                    // "editor.defaultFormatter": "ms-python.black-formatter",
-                    "editor.formatOnSave": true
-                },
+                "terminal.integrated.defaultProfile.linux": "zsh",
                 "terminal.integrated.profiles.linux": {
                     "zsh": {
                         "path": "zsh"
                     }
-                },
-                "workbench.iconTheme": "vscode-icons"
+                }
             },
             "extensions": [
-                "dbaeumer.vscode-eslint",
-                "wix.vscode-import-cost",
+                "esbenp.prettier-vscode",
                 "oderwat.indent-rainbow",
+                "wix.vscode-import-cost",
                 "ms-azuretools.vscode-docker",
                 "bierner.markdown-preview-github-styles",
-                "yzhang.markdown-all-in-one",
-                "Orta.vscode-jest",
-                "GitHub.copilot",
+                "yzhang.markdown-all-in-one"
             ]
         }
-    },
-    "service": "dev",
-    "workspaceFolder": "/workspace",
-    "userEnvProbe": "loginInteractiveShell",
-    "remoteUser": "user"
+    }
 }
