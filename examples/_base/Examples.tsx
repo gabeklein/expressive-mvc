@@ -1,4 +1,5 @@
 import { Component } from '@expressive/react';
+import { Link, Route, Router } from '@expressive/router';
 import { NotFound } from './NotFound';
 import { type ComponentType } from 'react';
 import Logo from './Logo';
@@ -16,7 +17,7 @@ type Example = {
 
 class Examples extends Component {
   modules: Record<string, () => Promise<AppModule>> = {};
-  url = here();
+  router = new Router();
 
   get examples() {
     return Object.entries(this.modules)
@@ -43,33 +44,26 @@ class Examples extends Component {
   }
 
   get current(): Example | undefined {
-    return this.examples.find((e) => e.path === this.url);
-  }
-
-  protected new() {
-    const update = () => this.url = here();
-    window.addEventListener('popstate', update);
-    return () => window.removeEventListener('popstate', update);
-  }
-
-  navigate(e: React.MouseEvent<HTMLAnchorElement>) {
-    e.preventDefault();
-    this.url = e.currentTarget.getAttribute('href')!;
-    window.history.pushState(null, '', this.url);
+    const { match } = this.router;
+    return this.examples.find((e) => match('', e.path));
   }
 
   render() {
+    const [first] = this.examples;
     return (
-      <main className={styles.shell}>
-        <Navigation />
-        <Frame />
-      </main>
+      <Route>
+        {first && <Route to="" redirect={first.path} />}
+        <main className={styles.shell}>
+          <Navigation />
+          <Frame />
+        </main>
+      </Route>
     );
   }
 }
 
 const Frame = () => {
-  const { current, url } = Examples.get();
+  const { current, router } = Examples.get();
 
   return (
     <section className={styles.example}>
@@ -81,14 +75,14 @@ const Frame = () => {
           src={`module#${encodeURIComponent(current.file)}`}
         />
       ) : (
-        <NotFound path={url} />
+        <NotFound path={router.path} />
       )}
     </section>
   );
 };
 
 const Navigation = () => {
-  const { is: control, current, examples } = Examples.get();
+  const { current, examples } = Examples.get();
 
   return (
     <nav className={styles.nav}>
@@ -97,26 +91,17 @@ const Navigation = () => {
       </a>
       <div className={styles.links}>
         {examples.map((e) => (
-          <a
+          <Link
             key={e.path}
-            href={e.path}
-            onClick={(evt) => {
-              evt.preventDefault();
-              control.url = e.path;
-              window.history.pushState(null, '', e.path);
-            }}
+            to={e.path}
             aria-current={e === current ? 'page' : undefined}>
             {e.title}
-          </a>
+          </Link>
         ))}
       </div>
     </nav>
   );
 };
-
-function here() {
-  return window.location.pathname.replace(/\/+$/, '') || '/';
-}
 
 function titleCase(str: string) {
   return str
