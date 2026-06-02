@@ -1,7 +1,14 @@
 import { Component, get } from '@expressive/react';
-import { MouseEvent, ReactNode, createElement } from 'react';
+import { AnchorHTMLAttributes, MouseEvent, createElement } from 'react';
 
 import { Route } from './route';
+
+export namespace Link {
+  export type Props = AnchorHTMLAttributes<HTMLAnchorElement> & {
+    to?: string;
+    replace?: boolean;
+  };
+}
 
 export class Link extends Component {
   to = '';
@@ -21,11 +28,11 @@ export class Link extends Component {
     this.route.goto(this.to, this.replace);
   };
 
-  render(props = {} as { children?: ReactNode; className?: string }) {
+  render({ children, to, replace, ...rest } = {} as Link.Props) {
     return createElement(
       'a',
-      { href: this.href, onClick: this.go, className: props.className },
-      props.children
+      { ...rest, href: this.href, onClick: this.go },
+      children
     );
   }
 }
