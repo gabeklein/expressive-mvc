@@ -11,7 +11,7 @@ Monorepo: bun workspaces + lerna. Install, tests, and builds run under bun (`bun
 ## Structure
 
 ```
-packages/state  - Core primitives (@expressive/mvc)
+packages/mvc    - Core primitives (@expressive/mvc)
 packages/react  - React adapter (@expressive/react)
 packages/preact - Preact adapter (@expressive/preact)
 packages/solid  - Solid adapter (@expressive/solid)
@@ -66,7 +66,7 @@ await expect(state).not.toHaveUpdated();
 
 ## Conventions
 
-- Framework-agnostic logic belongs in `packages/state`.
+- Framework-agnostic logic belongs in `packages/mvc`.
 - React changes must stay aligned across `packages/react/src/{state,component,context}.{ts,test.tsx}`.
 - Update tests alongside behavioral/type changes - tests must fail without the change.
 - New major features need `skills/` docs.
@@ -79,9 +79,9 @@ await expect(state).not.toHaveUpdated();
 
 ## Guardrails
 
-- Don't modify `packages/state` to fix React-only concerns - use adapter packages.
+- Don't modify `packages/mvc` to fix React-only concerns - use adapter packages.
 - Don't lower coverage thresholds or skip tests (remaining `it.skip` / `it.todo` entries predate the toolchain migration and document known gaps unrelated to the runner).
-- Don't introduce framework-specific imports in `packages/state`.
+- Don't introduce framework-specific imports in `packages/mvc`.
 - Instructions (`def`, `ref`, `get`, `set`) are re-exported from adapters - don't duplicate implementations.
 - `new()` lifecycle hook is optional; don't add it unnecessarily.
 - Event dispatch is batched via `queueMicrotask()` - not synchronous.
