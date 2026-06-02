@@ -3,7 +3,8 @@ import React, { createElement, Suspense } from 'react';
 import { Context, Layers } from './context';
 import { useHook } from './runtime';
 
-const SEEN = new WeakSet<object>([Component.prototype]);
+const proto = Component.prototype;
+const SEEN = new WeakSet<object>([proto]);
 
 type ComponentType = typeof Component & typeof React.Component;
 
@@ -35,21 +36,19 @@ for (const key of [
   '_reactInternals',
   '_reactInternalInstance'
 ])
-  Object.defineProperty(Component.prototype, key, {
+  Object.defineProperty(proto, key, {
     set(value) {
       Object.defineProperty(this, key, { value, writable: true });
     }
   });
 
-Object.defineProperties(Component.prototype, {
+Object.defineProperties(proto, {
   isReactComponent: {
     get: () => true
   },
   state: {
     set() { },
-    get(this: Component) {
-      return this.get();
-    }
+    get: proto.get
   },
   context: {
     set: bootstrap
@@ -64,11 +63,8 @@ function bootstrap(this: Component, context: Context) {
 
   let active: Component;
 
-  function Render() {
-    return render.call(active, self.props);
-  }
-
-  function AsComponent() {
+  const Render = () => render.call(active, self.props);
+  const React = () => {
     useHook((refresh) => {
       watch(self, (current) => {
         active = current;
@@ -102,7 +98,7 @@ function bootstrap(this: Component, context: Context) {
     },
     render: {
       value() {
-        return createElement(AsComponent);
+        return createElement(React);
       }
     }
   });
