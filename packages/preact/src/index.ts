@@ -1,5 +1,5 @@
 import { State, Runtime, use } from '@expressive/react/state';
-import { get, def, ref, set, Observable } from '@expressive/state';
+import { get, def, ref, set, Observable } from '@expressive/mvc';
 
 import { useEffect, useState, createElement, useRef } from 'preact/compat';
 

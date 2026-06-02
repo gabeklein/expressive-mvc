@@ -1,7 +1,7 @@
 # `ref` - Mutable References
 
 ```ts
-import { ref } from '@expressive/state';
+import { ref } from '@expressive/mvc';
 ```
 
 Holds a mutable value (like React's `useRef`). Updates to ref values are part of the state event stream but do not make the property enumerable.

@@ -1,4 +1,4 @@
-# Expressive State
+# Expressive MVC
 > Class-based reactive state management for React, Preact, and Solid.
 
 ## Full Documentation
@@ -12,10 +12,10 @@
 - [Types](/llm/state/types.md): TypeScript type aliases and utility types
 
 ## Instructions (field initializers)
-- [set()](/llm/instructions/set.md): Async, lazy, computed values, setter callbacks
-- [get()](/llm/instructions/get.md): Context lookup - upstream, downstream, callbacks
-- [ref()](/llm/instructions/ref.md): Mutable refs, ref proxy, callbacks
-- [def()](/llm/instructions/def.md): Low-level custom property behavior
+- [set()](/llm/field/set.md): Async, lazy, computed values, setter callbacks
+- [get()](/llm/field/get.md): Context lookup - upstream, downstream, callbacks
+- [ref()](/llm/field/ref.md): Mutable refs, ref proxy, callbacks
+- [def()](/llm/field/def.md): Low-level custom property behavior
 
 ## React
 - [React Adapter](/llm/react/react.md): use(), State.use(), State.get(), Provider, Consumer, ForceRefresh
@@ -24,4 +24,4 @@
 
 ## Examples
 - [Basic Examples](/llm/examples/basic.md): Complete working examples from simple to intermediate
-- [Audit Guide](/llm/examples/audit.md): Evaluating whether Expressive State fits a codebase
+- [Audit Guide](/llm/examples/audit.md): Evaluating whether Expressive MVC fits a codebase

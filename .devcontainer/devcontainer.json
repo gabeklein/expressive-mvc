@@ -1,0 +1,29 @@
+{
+    "name": "expressive-mvc",
+    "build": {
+        "dockerfile": "Dockerfile.dev",
+        "context": ".."
+    },
+    "remoteUser": "bun",
+    "userEnvProbe": "loginInteractiveShell",
+    "postCreateCommand": "bun install",
+    "features": {
+        "ghcr.io/devcontainers/features/github-cli:1": {}
+    },
+    "forwardPorts": [5173],
+    "portsAttributes": {
+        "5173": { "label": "dev server (vite)" }
+    },
+    "customizations": {
+        "vscode": {
+            "settings": {
+                "editor.tabSize": 2,
+                "editor.detectIndentation": true
+            },
+            "extensions": [
+                "esbenp.prettier-vscode",
+                "Oven.bun-vscode"
+            ]
+        }
+    }
+}

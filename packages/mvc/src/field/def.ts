@@ -21,7 +21,7 @@ declare namespace def {
 const APPLY = new Map<symbol, def.Factory>();
 
 function def<T>(arg1: def.Factory<T>) {
-  const token = Symbol('instruction-' + uid());
+  const token = Symbol('field-' + uid());
   APPLY.set(token, arg1);
   return token as T extends void ? unknown : T;
 }

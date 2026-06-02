@@ -101,7 +101,7 @@ Context.root.get(Sub); // b - explicit wins
 ## Hierarchical Contexts
 
 ```ts
-import { Context } from '@expressive/state';
+import { Context } from '@expressive/mvc';
 
 const ctx = new Context({ AppState, UserState });
 const app = ctx.get(AppState);
@@ -151,4 +151,4 @@ Context.get(state);                    // static: state's home context
 Context.root;                          // global singleton registry
 ```
 
-Primarily consumed via the [`get` instruction](../instructions/get.md) and React [`Provider`](../react/react.md).
+Primarily consumed via the [`get` instruction](../field/get.md) and React [`Provider`](../react/react.md).

@@ -1,5 +1,5 @@
 {
-  "name": "@expressive/state",
+  "name": "@expressive/mvc",
   "version": "0.77.0",
   "keywords": [
     "expressive",
@@ -14,7 +14,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/gabeklein/expressive-state.git"
+    "url": "git+https://github.com/gabeklein/expressive-mvc.git"
   },
   "files": [
     "dist"
@@ -36,7 +36,7 @@
   },
   "scripts": {
     "build": "tsdown",
-    "test": "tsc --noEmit && bun test --coverage",
+    "test": "tsc --noEmit && bun test --coverage --only-failures",
     "preversion": "npm run test && npm run build"
   },
   "devDependencies": {

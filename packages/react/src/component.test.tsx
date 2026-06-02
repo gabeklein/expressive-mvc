@@ -63,6 +63,37 @@ it('will call is method on creation', () => {
   act(screen.unmount);
 });
 
+describe('ref prop', () => {
+  it('will populate ref object with instance', () => {
+    class Control extends Component {
+      foo = 'bar';
+    }
+
+    const ref = React.createRef<Control>();
+    const screen = render(<Control ref={ref} />);
+
+    expect(ref.current).toBeInstanceOf(Control);
+    expect(ref.current!.foo).toBe('bar');
+
+    act(screen.unmount);
+    expect(ref.current).toBe(null);
+  });
+
+  it('will invoke callback ref with instance', () => {
+    class Control extends Component {}
+
+    const cb = mock();
+    const screen = render(<Control ref={cb} />);
+
+    expect(cb).toBeCalledTimes(1);
+    expect(cb.mock.calls[0][0]).toBeInstanceOf(Control);
+
+    act(screen.unmount);
+    expect(cb).toBeCalledTimes(2);
+    expect(cb.mock.calls[1][0]).toBe(null);
+  });
+});
+
 describe('new method', () => {
   it('will call if exists', () => {
     const didCreate = mock();
@@ -1473,5 +1504,68 @@ describe('strict mode', () => {
 
     screen.getByText('baz');
     expect(didRender).toBeCalledWith('baz');
+  });
+
+  it('will survive define-semantics field clobber', async () => {
+    const didAttemptConstruct = mock();
+
+    class Control extends Component {
+      foo = 'foo';
+
+      constructor(props: any, ...rest: any[]) {
+        didAttemptConstruct();
+        super(props, ...rest);
+      }
+    }
+
+    let instance!: Control;
+    const element = render(
+      <React.StrictMode>
+        <Control is={(is) => (instance = is)} />
+      </React.StrictMode>
+    );
+
+    expect(didAttemptConstruct).toBeCalledTimes(2);
+
+    const effect = mock();
+    instance.get(($) => {
+      effect($.foo);
+    });
+
+    expect(effect).toBeCalledWith('foo');
+    instance.foo = 'bar';
+
+    await instance.set();
+
+    expect(effect).toBeCalledWith('bar');
+
+    element.unmount();
+  });
+
+  it('will construct twice then init once', async () => {
+    const order: string[] = [];
+
+    class Control extends Component {
+      constructor(props: any, ...rest: any[]) {
+        super(props, ...rest);
+        order.push('construct');
+      }
+    }
+
+    Control.on(() => {
+      order.push('init');
+    });
+
+    const element = render(
+      <React.StrictMode>
+        <Control />
+      </React.StrictMode>
+    );
+
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect(order).toEqual(['construct', 'construct', 'init']);
+
+    element.unmount();
   });
 });

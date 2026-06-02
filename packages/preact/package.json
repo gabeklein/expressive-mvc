@@ -11,7 +11,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/gabeklein/expressive-state.git"
+    "url": "git+https://github.com/gabeklein/expressive-mvc.git"
   },
   "type": "module",
   "main": "dist/index.js",
@@ -26,7 +26,7 @@
   },
   "dependencies": {
     "@expressive/react": "^0.77.0",
-    "@expressive/state": "^0.73.1"
+    "@expressive/mvc": "^0.73.1"
   },
   "devDependencies": {
     "@testing-library/preact": "^3.2.3",

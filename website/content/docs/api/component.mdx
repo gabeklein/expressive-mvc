@@ -141,7 +141,7 @@ class Dashboard extends Component {
 
 ```ts
 declare class Component extends State {
-  readonly props: Props<this>;
+  readonly props: Component.Props<this>;
   fallback: ReactNode;
 
   render(props?: {}): ReactNode;

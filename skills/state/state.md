@@ -1,10 +1,10 @@
 # State - Core Class
 
 ```ts
-import State from '@expressive/state';
+import State from '@expressive/mvc';
 ```
 
-`@expressive/state` - framework-agnostic reactive state management built on classes.
+`@expressive/mvc` - framework-agnostic reactive state management built on classes.
 
 ## Creating State
 
@@ -165,7 +165,7 @@ Accepts nested arrays (flattened at runtime), objects (assigned), and callbacks 
 State extends Observable. Also usable standalone:
 
 ```ts
-import { listener, watch, event, observer, touch } from '@expressive/state';
+import { listener, watch, event, observer, touch } from '@expressive/mvc';
 
 const stop = listener(state, (key, source) => {
   /* event */
@@ -195,7 +195,7 @@ Every active State has a "home context" that determines where its `state.get(Typ
 
 See [context.md](context.md) for the full Context API, root singleton semantics, and the `new State()` escape hatch for pre-init context placement.
 
-Primarily consumed via the [`get` instruction](../instructions/get.md) and React [`Provider`](../react/react.md).
+Primarily consumed via the [`get` instruction](../field/get.md) and React [`Provider`](../react/react.md).
 
 ## String Representation
 

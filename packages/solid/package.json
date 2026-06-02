@@ -11,7 +11,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/gabeklein/expressive-state.git"
+    "url": "git+https://github.com/gabeklein/expressive-mvc.git"
   },
   "main": "dist/index.js",
   "module": "src",
@@ -20,7 +20,7 @@
     "access": "public"
   },
   "dependencies": {
-    "@expressive/state": "^0.73.1"
+    "@expressive/mvc": "^0.73.1"
   },
   "devDependencies": {
     "@solidjs/testing-library": "^0.8.8",

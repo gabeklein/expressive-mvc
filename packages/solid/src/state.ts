@@ -1,4 +1,4 @@
-import { State } from '@expressive/state';
+import { State } from '@expressive/mvc';
 import { Signal, createSignal, onCleanup, useContext } from 'solid-js';
 
 import { Lookup } from './context';
@@ -29,7 +29,6 @@ declare namespace SolidState {
   export import Value = State.Value;
   export import Setter = State.Setter;
   export import OnEvent = State.OnEvent;
-  export import OnUpdate = State.OnUpdate;
   export import Values = State.Values;
   export import Partial = State.Partial;
   export import Ref = State.Ref;

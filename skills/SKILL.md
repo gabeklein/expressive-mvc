@@ -1,9 +1,9 @@
 ---
-name: expressive-state
+name: expressive-mvc
 description: Class-based reactive state management for React. Covers State API, instructions, Component class, lifecycle, patterns, and codebase auditing.
 ---
 
-# Expressive State
+# Expressive MVC
 
 Class-based reactive state for React, Preact, and Solid. State classes define reactive properties, computed values, async data, and context - all as plain class fields using instruction helpers.
 
@@ -12,7 +12,7 @@ Class-based reactive state for React, Preact, and Solid. State classes define re
 | Package              | Status    | Description                                                       |
 | -------------------- | --------- | ----------------------------------------------------------------- |
 | `@expressive/react`  | Published | React adapter. Primary import for State, Component, instructions. |
-| `@expressive/state`  | Published | Framework-agnostic core. Rarely imported directly.                |
+| `@expressive/mvc`  | Published | Framework-agnostic core. Rarely imported directly.                |
 | `@expressive/preact` | Private   | Thin wrapper over React adapter via preact/hooks. Prerelease.     |
 | `@expressive/solid`  | Private   | Standalone implementation. Experimental.                          |
 
@@ -263,11 +263,11 @@ Fetch these for detailed API documentation when the task requires deeper knowled
 
 ### Instructions & Reactive Helpers
 
-- [instructions/set.md](instructions/set.md) - Property descriptors, defaults, factories, setter callbacks
-- [instructions/get.md](instructions/get.md) - Context lookup: upstream, downstream, callbacks
-- [instructions/ref.md](instructions/ref.md) - Mutable refs, ref proxy, callbacks
-- [instructions/hot.md](instructions/hot.md) - Reactive arrays and objects
-- [instructions/def.md](instructions/def.md) - Low-level custom property behavior
+- [field/set.md](field/set.md) - Property descriptors, defaults, factories, setter callbacks
+- [field/get.md](field/get.md) - Context lookup: upstream, downstream, callbacks
+- [field/ref.md](field/ref.md) - Mutable refs, ref proxy, callbacks
+- [field/hot.md](field/hot.md) - Reactive arrays and objects
+- [field/def.md](field/def.md) - Low-level custom property behavior
 
 ### React
 
@@ -278,11 +278,11 @@ Fetch these for detailed API documentation when the task requires deeper knowled
 ### Examples
 
 - [examples/basic.md](examples/basic.md) - Complete working examples from simple to intermediate
-- [examples/audit.md](examples/audit.md) - Guide for evaluating whether Expressive State fits a codebase
+- [examples/audit.md](examples/audit.md) - Guide for evaluating whether Expressive MVC fits a codebase
 
 ## Auditing & Evaluation
 
-When helping a user evaluate Expressive State for their project, consider:
+When helping a user evaluate Expressive MVC for their project, consider:
 
 **Good fit signals:**
 
@@ -304,7 +304,7 @@ When helping a user evaluate Expressive State for their project, consider:
 
 **Migration approach:**
 
-- Expressive State coexists with hooks - no big-bang rewrite needed
+- Expressive MVC coexists with hooks - no big-bang rewrite needed
 - Start by deciding whether the behavior belongs to one view (`Component`) or to reusable/display-agnostic state (`State`)
 - Treat `State.use()` as the React subscription point for `State` classes, not as a one-for-one hook rewrite
 - Separate mutable source fields from derived getters instead of syncing duplicate state in effects

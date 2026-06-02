@@ -4,7 +4,7 @@
 
 ## Goal
 
-A client-side router built on `Component` from `@expressive/state`. Declarative route trees expressed in JSX, page Components defined separately. Iterates toward React Router parity for app-dev use; not intended for distribution from this repo.
+A client-side router built on `Component` from `@expressive/mvc`. Declarative route trees expressed in JSX, page Components defined separately. Iterates toward React Router parity for app-dev use; not intended for distribution from this repo.
 
 Non-goals (v1):
 
@@ -45,7 +45,7 @@ The MVP and PLAN iteration steps 2-4 are implemented. The remaining work is the 
 - **Specificity scoring** lives in `url.ts` (literal=100, `:param`=10, catch-all=-1, pure-literal bonus +1) but the resolver currently arbitrates by **declaration order only** - the first matching sibling with `as` wins. Specificity-based arbitration is a pending iteration; users must declare more-specific routes before less-specific ones.
 - **Router** (`router.ts`, `extends State`): `path` field, popstate listener, monkey-patches `history.pushState`/`replaceState` so programmatic navigation outside `goto` still syncs. Owns URL primitives: `match(base, to)` (reactive on `path`), `anchor(route)`, `resolve(route, url)`, `segment(to)`, `goto(to, replace?)` (absolute-only, throws on relative). Auto-spawned as a `Context.root` singleton on first Route mount; users can also provide an explicit instance via `<Provider for={Router}>`.
 - **Route** (`route.ts`, `extends Component`): `to`, `as`, `parent = get(Route, false)`, derived `base`, `match`, `matched`, `anchor`, `resolve`, `goto`. Default `to='*'` (catch-all layout) - leaf-vs-layout default is contextual. Index routes are `to=''`. Independent rendering (no `cloneElement`, no `base` prop, no clones cache, no lexical inspection of JSX children). Routes self-render `null` when their pattern does not match. Sibling arbitration is bottom-up: a Route with `as` registers with its nearest parent Route on first render and yields to any earlier-registered sibling that also has `as` and matches. Passthrough Routes (no `as`) are grouping containers - they pass children through and never compete. Render and the sibling walk read `matched` (boolean) instead of `match` so same-pattern navigations don't re-render the Route - Expressive's computed properties only fire when the cached value changes, and `matched` stays `true` across `/posts/foo` -> `/posts/bar` (Consumers inside pick up new params reactively).
-- **Router auto-spawn**: `router: Router = set(() => this.get(Router, false) || Router.new())` on Route. The `set()` factory runs lazily on first access (during Route's render), well after context wiring. Context lookup finds any explicitly-provided Router; otherwise `Router.new()` activates a fresh instance that lands in `Context.root` via the `register` fallback so subsequent Routes find it. `set()` is also load-bearing for reactivity - it makes `router` a managed Route property so cross-state reads (`router.path` from Route's render) wire subscriptions via the proxy machinery in [observable.ts:119-120](../state/src/observable.ts#L119-L120).
+- **Router auto-spawn**: `router: Router = set(() => this.get(Router, false) || Router.new())` on Route. The `set()` factory runs lazily on first access (during Route's render), well after context wiring. Context lookup finds any explicitly-provided Router; otherwise `Router.new()` activates a fresh instance that lands in `Context.root` via the `register` fallback so subsequent Routes find it. `set()` is also load-bearing for reactivity - it makes `router` a managed Route property so cross-state reads (`router.path` from Route's render) wire subscriptions via the proxy machinery in [observable.ts:119-120](../mvc/src/observable.ts#L119-L120).
 - **Link** (`link.ts`): `to`, `replace`, `href` getter (resolved absolute path), modifier/middle-click bailout. Requires Route in context (always available because Router provides one).
 - **Redirect** (`redirect.ts`): fires `goto` in `new()` (StrictMode-safe). `when` prop gates whether navigation fires on mount.
 - **Update-in-place**: Route renders `<Page>{children}</Page>` with no `key`, so same-pattern navigation reconciles in place; `params` updates reactively.
@@ -117,7 +117,7 @@ import { Router, Route, Link, Redirect } from '@expressive/router';
 // pending: redirect, notFound
 ```
 
-No freestanding hooks. `Router.get()` and `Route.get($ => ...)` from `@expressive/state` cover every access pattern hooks would wrap.
+No freestanding hooks. `Router.get()` and `Route.get($ => ...)` from `@expressive/mvc` cover every access pattern hooks would wrap.
 
 ### `Router`
 
@@ -368,4 +368,4 @@ Subclass-friendly. Pairs with a future Router-level navigation blocker.
 
 ## Long-term home
 
-When `expressive-ui` is established, `packages/router/` lifts directly out of mvc unchanged. Its only mvc dependency is `@expressive/state` (and its renderer adapters), which would be a published dep from expressive-ui anyway.
+When `expressive-ui` is established, `packages/router/` lifts directly out of mvc unchanged. Its only mvc dependency is `@expressive/mvc` (and its renderer adapters), which would be a published dep from expressive-ui anyway.

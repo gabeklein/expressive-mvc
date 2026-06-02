@@ -7,5 +7,5 @@
     "**/coverage": true,
     "CHANGELOG.md": true
   },
-  "editor.formatOnSave": true
+  "editor.formatOnSave": false
 }

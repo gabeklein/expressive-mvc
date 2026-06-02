@@ -1,7 +1,7 @@
 {
   "name": "@expressive/router",
   "version": "0.0.0",
-  "description": "Client-side router built on @expressive/state Components.",
+  "description": "Client-side router built on @expressive/mvc Components.",
   "keywords": [
     "expressive",
     "router",
@@ -41,7 +41,7 @@
   },
   "dependencies": {
     "@expressive/react": "workspace:^",
-    "@expressive/state": "workspace:^"
+    "@expressive/mvc": "workspace:^"
   },
   "devDependencies": {
     "@testing-library/react": "^16.3.0",

@@ -1,9 +1,9 @@
 import { mock, expect, it, describe } from 'bun:test';
 import { mockError, mockPromise, mockWarn } from '../test.setup';
 import { Context } from './context';
-import { get } from './instruction/get';
-import { ref } from './instruction/ref';
-import { set } from './instruction/set';
+import { get } from './field/get';
+import { ref } from './field/ref';
+import { set } from './field/set';
 import { State, update } from './state';
 
 it('will extend custom class', () => {
@@ -742,46 +742,6 @@ describe('get method', () => {
 
       unsub();
       sub.pop();
-    });
-  });
-
-  describe('callback', () => {
-    class Test extends State {
-      foo = 'foo';
-    }
-
-    it('will call callback on update', async () => {
-      const test = Test.new();
-      const done = mock();
-      const cb = mock(() => done);
-
-      test.get('foo', cb);
-
-      expect(cb).toBeCalledTimes(0);
-
-      test.foo = 'bar';
-      test.foo = 'baz';
-
-      expect(cb).toBeCalledTimes(2);
-      expect(cb).toBeCalledWith('foo', test);
-
-      await expect(test).toHaveUpdated('foo');
-
-      expect(done).toBeCalledTimes(1);
-    });
-
-    it('will call on event', async () => {
-      const test = Test.new();
-      const cb = mock();
-
-      test.get('baz', cb);
-
-      expect(cb).not.toBeCalled();
-
-      // dispatch explicit event
-      test.set('baz');
-
-      expect(cb).toBeCalledWith('baz', test);
     });
   });
 
@@ -1857,6 +1817,48 @@ describe('set method', () => {
 
       test.bar = 'baz';
       expect(didUpdateFoo).toBeCalledTimes(2);
+    });
+
+    it('will run returned function once on settle', async () => {
+      class Test extends State {
+        foo = 'foo';
+      }
+
+      const test = Test.new();
+      const done = mock();
+      const cb = mock(() => done);
+
+      test.set('foo', cb);
+
+      expect(cb).toBeCalledTimes(0);
+
+      test.foo = 'bar';
+      test.foo = 'baz';
+
+      expect(cb).toBeCalledTimes(2);
+      expect(cb).toBeCalledWith('foo', test);
+
+      await expect(test).toHaveUpdated('foo');
+
+      expect(done).toBeCalledTimes(1);
+    });
+
+    it('will call on explicit event', async () => {
+      class Test extends State {
+        foo = 'foo';
+      }
+
+      const test = Test.new();
+      const cb = mock();
+
+      test.set('baz', cb);
+
+      expect(cb).not.toBeCalled();
+
+      // dispatch explicit event
+      test.set('baz');
+
+      expect(cb).toBeCalledWith('baz', test);
     });
 
     it('will unsubscribe if returns null', async () => {

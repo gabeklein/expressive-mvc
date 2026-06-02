@@ -1,7 +1,7 @@
 # `set` - Default Values, Factories & Validation
 
 ```ts
-import { set } from '@expressive/state';
+import { set } from '@expressive/mvc';
 ```
 
 Versatile instruction for managed slots: defaults, placeholders, lazy/async factories, validation callbacks.

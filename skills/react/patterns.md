@@ -1,6 +1,6 @@
-# Expressive State — Patterns
+# Expressive MVC — Patterns
 
-Recipies and examples for common patterns and use cases with Expressive State in React.
+Recipies and examples for common patterns and use cases with Expressive MVC in React.
 
 ## Counter
 

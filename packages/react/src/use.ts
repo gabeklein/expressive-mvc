@@ -1,4 +1,4 @@
-import { event, observer, watch } from '@expressive/state';
+import { event, observer, watch } from '@expressive/mvc';
 import { Runtime } from './runtime';
 
 export function use<T extends object>(subject: T) {

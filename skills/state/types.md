@@ -48,4 +48,4 @@ class Test extends State {
 }
 ```
 
-Instruction-specific type signatures are documented in their respective files under `instructions/`.
+Instruction-specific type signatures are documented in their respective files under `field/`.

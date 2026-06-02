@@ -28,12 +28,20 @@
         "vite": "^7.3.1",
       },
     },
+    "packages/mvc": {
+      "name": "@expressive/mvc",
+      "version": "0.77.0",
+      "devDependencies": {
+        "@types/node": "^18.19.0",
+        "tsdown": "^0.20.1",
+      },
+    },
     "packages/preact": {
       "name": "@expressive/preact",
       "version": "0.77.0",
       "dependencies": {
+        "@expressive/mvc": "^0.73.1",
         "@expressive/react": "^0.77.0",
-        "@expressive/state": "^0.73.1",
       },
       "devDependencies": {
         "@testing-library/preact": "^3.2.3",
@@ -48,7 +56,7 @@
       "name": "@expressive/react",
       "version": "0.77.0",
       "dependencies": {
-        "@expressive/state": "workspace:^",
+        "@expressive/mvc": "workspace:^",
       },
       "devDependencies": {
         "@testing-library/react": "^16.3.0",
@@ -65,11 +73,30 @@
         "react",
       ],
     },
+    "packages/router": {
+      "name": "@expressive/router",
+      "version": "0.0.0",
+      "dependencies": {
+        "@expressive/mvc": "workspace:^",
+        "@expressive/react": "workspace:^",
+      },
+      "devDependencies": {
+        "@testing-library/react": "^16.3.0",
+        "@types/react": "^19",
+        "@types/react-dom": "^19",
+        "react": "^19",
+        "react-dom": "^19",
+        "tsdown": "^0.20.1",
+      },
+      "peerDependencies": {
+        "react": ">=16.8.0 <20.0.0",
+      },
+    },
     "packages/solid": {
       "name": "@expressive/solid",
       "version": "0.77.0",
       "dependencies": {
-        "@expressive/state": "^0.73.1",
+        "@expressive/mvc": "^0.73.1",
       },
       "devDependencies": {
         "@solidjs/testing-library": "^0.8.8",
@@ -78,14 +105,6 @@
       },
       "peerDependencies": {
         "solid-js": "^1.0.0",
-      },
-    },
-    "packages/state": {
-      "name": "@expressive/state",
-      "version": "0.77.0",
-      "devDependencies": {
-        "@types/node": "^18.19.0",
-        "tsdown": "^0.20.1",
       },
     },
     "website": {
@@ -298,13 +317,15 @@
 
     "@expressive/examples": ["@expressive/examples@workspace:examples"],
 
+    "@expressive/mvc": ["@expressive/mvc@workspace:packages/mvc"],
+
     "@expressive/preact": ["@expressive/preact@workspace:packages/preact"],
 
     "@expressive/react": ["@expressive/react@workspace:packages/react"],
 
-    "@expressive/solid": ["@expressive/solid@workspace:packages/solid"],
+    "@expressive/router": ["@expressive/router@workspace:packages/router"],
 
-    "@expressive/state": ["@expressive/state@workspace:packages/state"],
+    "@expressive/solid": ["@expressive/solid@workspace:packages/solid"],
 
     "@expressive/typescript-plugin-jsx": ["@expressive/typescript-plugin-jsx@0.8.0", "", { "dependencies": { "typescript": ">=4.0.0" } }, "sha512-TMX9B6Fk4JbFfrPl2nlkVWu84hivCTcj+W6Y8i77RcCAiiipz8xYMCXck2mWLyAdwcNDeJ0Nw+M8HhwZEBNQaw=="],
 
@@ -2378,11 +2399,11 @@
 
     "@cspotcode/source-map-support/@jridgewell/trace-mapping": ["@jridgewell/trace-mapping@0.3.9", "", { "dependencies": { "@jridgewell/resolve-uri": "^3.0.3", "@jridgewell/sourcemap-codec": "^1.4.10" } }, "sha512-3Belt6tdc8bPgAtbcmdtNJlirVoTmEb5e2gC94PnkwEW9jI6CAHUeoG85tjWP5WquqfavoMtMwiG4P926ZKKuQ=="],
 
-    "@expressive/preact/@expressive/state": ["@expressive/state@0.73.1", "", {}, "sha512-xc0yRUVEQr0Q9lT7nggUbSBSOSpW2EkOfFoawxCPbHn0fy3+r3NZJhMRNmtLo7BpOWpEWXJTQyTGLZ1UZxIYkw=="],
+    "@expressive/mvc/@types/node": ["@types/node@18.19.130", "", { "dependencies": { "undici-types": "~5.26.4" } }, "sha512-GRaXQx6jGfL8sKfaIDD6OupbIHBr9jv7Jnaml9tB7l4v068PAOXqfcujMMo5PhbIs6ggR1XODELqahT2R8v0fg=="],
 
-    "@expressive/solid/@expressive/state": ["@expressive/state@0.73.1", "", {}, "sha512-xc0yRUVEQr0Q9lT7nggUbSBSOSpW2EkOfFoawxCPbHn0fy3+r3NZJhMRNmtLo7BpOWpEWXJTQyTGLZ1UZxIYkw=="],
+    "@expressive/preact/@expressive/mvc": ["@expressive/mvc@0.73.1", "", {}, "sha512-GjILPXwkyyU12BxUo8KTLJrs0Nh9CTRj0QuTfN5IGBodeq4mmqKLvWVpNCeMZvIob9sC3dRfJIShCK6fsixNZw=="],
 
-    "@expressive/state/@types/node": ["@types/node@18.19.130", "", { "dependencies": { "undici-types": "~5.26.4" } }, "sha512-GRaXQx6jGfL8sKfaIDD6OupbIHBr9jv7Jnaml9tB7l4v068PAOXqfcujMMo5PhbIs6ggR1XODELqahT2R8v0fg=="],
+    "@expressive/solid/@expressive/mvc": ["@expressive/mvc@0.73.1", "", {}, "sha512-GjILPXwkyyU12BxUo8KTLJrs0Nh9CTRj0QuTfN5IGBodeq4mmqKLvWVpNCeMZvIob9sC3dRfJIShCK6fsixNZw=="],
 
     "@img/sharp-wasm32/@emnapi/runtime": ["@emnapi/runtime@1.10.0", "", { "dependencies": { "tslib": "^2.4.0" } }, "sha512-ewvYlk86xUoGI0zQRNq/mC+16R1QeDlKQy21Ki3oSYXNgLb45GV1P6A0M+/s6nyCuNDqe5VpaY84BzXGwVbwFA=="],
 
@@ -2736,7 +2757,7 @@
 
     "@babel/helper-compilation-targets/lru-cache/yallist": ["yallist@3.1.1", "", {}, "sha512-a4UGQaWPH59mOXUYnAG2ewncQS4i4F43Tv3JoAM+s2VDAmS9NsK8GpDMLrCHPksFT7h3K6TOoUNn2pb7RoXx4g=="],
 
-    "@expressive/state/@types/node/undici-types": ["undici-types@5.26.5", "", {}, "sha512-JlCMO+ehdEIKqlFxk6IfVoAUVmgz7cU7zD/h9XZ0qzeosSHmUJVOzSQvvYSYWXkFXC+IfLKSIffhv0sVZup6pA=="],
+    "@expressive/mvc/@types/node/undici-types": ["undici-types@5.26.5", "", {}, "sha512-JlCMO+ehdEIKqlFxk6IfVoAUVmgz7cU7zD/h9XZ0qzeosSHmUJVOzSQvvYSYWXkFXC+IfLKSIffhv0sVZup6pA=="],
 
     "@napi-rs/wasm-runtime/@emnapi/core/@emnapi/wasi-threads": ["@emnapi/wasi-threads@1.2.1", "", { "dependencies": { "tslib": "^2.4.0" } }, "sha512-uTII7OYF+/Mes/MrcIOYp5yOtSMLBWSIoLPpcgwipoiKbli6k322tcoFsxoIIxPDqW01SQGAgko4EzZi2BNv2w=="],
 
