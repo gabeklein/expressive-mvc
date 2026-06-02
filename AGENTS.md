@@ -11,7 +11,7 @@ Monorepo: bun workspaces + lerna. Install, tests, and builds run under bun (`bun
 ## Structure
 
 ```
-packages/state  - Core primitives (@expressive/state)
+packages/state  - Core primitives (@expressive/mvc)
 packages/react  - React adapter (@expressive/react)
 packages/preact - Preact adapter (@expressive/preact)
 packages/solid  - Solid adapter (@expressive/solid)

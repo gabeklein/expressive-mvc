@@ -13,7 +13,7 @@ declare namespace Component {
    *
    * ```ts
    * // @expressive/react
-   * declare module '@expressive/state' {
+   * declare module '@expressive/mvc' {
    *   namespace Component { interface Host { node: React.ReactNode } }
    * }
    * ```

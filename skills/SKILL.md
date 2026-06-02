@@ -1,5 +1,5 @@
 ---
-name: expressive-state
+name: expressive-mvc
 description: Class-based reactive state management for React. Covers State API, instructions, Component class, lifecycle, patterns, and codebase auditing.
 ---
 
@@ -12,7 +12,7 @@ Class-based reactive state for React, Preact, and Solid. State classes define re
 | Package              | Status    | Description                                                       |
 | -------------------- | --------- | ----------------------------------------------------------------- |
 | `@expressive/react`  | Published | React adapter. Primary import for State, Component, instructions. |
-| `@expressive/state`  | Published | Framework-agnostic core. Rarely imported directly.                |
+| `@expressive/mvc`  | Published | Framework-agnostic core. Rarely imported directly.                |
 | `@expressive/preact` | Private   | Thin wrapper over React adapter via preact/hooks. Prerelease.     |
 | `@expressive/solid`  | Private   | Standalone implementation. Experimental.                          |
 

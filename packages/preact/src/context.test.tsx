@@ -1,6 +1,6 @@
 /** @jsxImportSource preact */
 import { act, render } from '@testing-library/preact';
-import { Context } from '@expressive/state';
+import { Context } from '@expressive/mvc';
 
 import { State, Provider, Consumer } from '.';
 import { Lookup } from './context';

@@ -3,7 +3,7 @@ title: Utilities
 description: Framework-agnostic helpers - watch, listener, event, touch, Context, Observable
 ---
 
-These exports are framework-agnostic. They're available from both `@expressive/state` and `@expressive/react`.
+These exports are framework-agnostic. They're available from both `@expressive/mvc` and `@expressive/react`.
 
 ```ts
 import {
@@ -15,7 +15,7 @@ import {
   Context,
   Observable,
   unbind
-} from '@expressive/state';
+} from '@expressive/mvc';
 ```
 
 <br />
@@ -25,7 +25,7 @@ import {
 Subscribe to a State's tracked values from outside a framework. Equivalent to `state.get(effect)` but as a free function.
 
 ```ts
-import { watch } from '@expressive/state';
+import { watch } from '@expressive/mvc';
 
 const state = Counter.new();
 
@@ -61,7 +61,7 @@ Pass `requireValues: true` to throw on undefined tracked values - useful when th
 Low-level listener for an observable's event stream. Receives every signal (property updates, lifecycle events, custom events).
 
 ```ts
-import { listener } from '@expressive/state';
+import { listener } from '@expressive/mvc';
 
 const stop = listener(state, (key, source) => {
   if (key === true) console.log('ready');
@@ -91,7 +91,7 @@ event(state, Symbol.for('refresh'));
 Mark a property as read while an observable is being watched. This is the low-level helper used by State properties and custom observable objects to support field-level subscriptions.
 
 ```ts
-import { event, observer, touch } from '@expressive/state';
+import { event, observer, touch } from '@expressive/mvc';
 
 class Counter {
   private value = 0;
@@ -117,7 +117,7 @@ observer(counter, true);
 The context system that backs `Provider` and the `get` instruction.
 
 ```ts
-import { Context } from '@expressive/state';
+import { Context } from '@expressive/mvc';
 
 const ctx = new Context({ AppState, UserState });
 const app = ctx.get(AppState);
@@ -143,7 +143,7 @@ Adapters can override `Context.get` to provide framework-specific context (as th
 Base type that `State` extends. You rarely need to interact with `Observable` directly - it's exposed mainly for tooling and advanced use cases.
 
 ```ts
-import { Observable } from '@expressive/state';
+import { Observable } from '@expressive/mvc';
 ```
 
 `Observable` is also a unique symbol used as a protocol key on objects that participate in the event system.
@@ -155,7 +155,7 @@ import { Observable } from '@expressive/state';
 Return the original, unbound version of a method. Expressive auto-binds methods on first access; `unbind` gives you the raw function if you need it (for e.g. composing with other function wrappers).
 
 ```ts
-import { unbind } from '@expressive/state';
+import { unbind } from '@expressive/mvc';
 
 const raw = unbind(state.someMethod);
 ```
@@ -164,7 +164,7 @@ const raw = unbind(state.someMethod);
 
 ## Re-exports
 
-`@expressive/react` re-exports everything from `@expressive/state`:
+`@expressive/react` re-exports everything from `@expressive/mvc`:
 
 ```ts
 import State, {
@@ -184,4 +184,4 @@ import State, {
 } from '@expressive/react';
 ```
 
-So a React project never needs to import from `@expressive/state` directly.
+So a React project never needs to import from `@expressive/mvc` directly.

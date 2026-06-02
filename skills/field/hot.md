@@ -1,7 +1,7 @@
 # `hot` - Reactive Arrays & Objects
 
 ```ts
-import State, { hot, watch } from '@expressive/state';
+import State, { hot, watch } from '@expressive/mvc';
 ```
 
 Wraps an array or object in keyed reactivity. Reads register subscriptions in active `watch()` / `State.get()` effects, and writes notify only the keys that changed.

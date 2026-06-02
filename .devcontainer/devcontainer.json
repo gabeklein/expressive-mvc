@@ -1,5 +1,5 @@
 {
-    "name": "expressive-state",
+    "name": "expressive-mvc",
     "build": {
         "dockerfile": "Dockerfile.dev",
         "context": ".."

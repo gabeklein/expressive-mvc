@@ -1,7 +1,7 @@
 # `def` - Custom Instruction
 
 ```ts
-import { def } from '@expressive/state';
+import { def } from '@expressive/mvc';
 ```
 
 Low-level primitive for defining custom property behavior during initialization. All other instructions (`get`, `set`, `ref`) are built on `def`.
