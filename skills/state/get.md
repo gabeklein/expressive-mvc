@@ -75,27 +75,7 @@ If the effect throws a Promise (e.g., accessing an unset `set<T>()` property), t
 **Before ready:**
 Effects registered in constructors wait for activation before first run.
 
-### Watch single property
-
-```ts
-get<T extends State.Event<this>>(key: T, callback: State.OnUpdate<this, T>): () => void
-```
-
-Callback fires on every assignment to `key` that changes the value, and on explicit `set(key)` dispatches. Fires synchronously on each assignment (before flush). If callback returns a function, that function is called once when the batch settles.
-
-```ts
-const stop = state.get('count', (key, source) => {
-  console.log('count changed:', source.count);
-});
-```
-
-Also works for custom events:
-
-```ts
-state.get('myEvent', (key, source) => {
-  console.log('custom event fired');
-});
-```
+To watch a specific property or event, use [`set(event, callback)`](set.md).
 
 ### Check destroyed
 
@@ -165,6 +145,4 @@ type Effect<T> = (
 ) => EffectCallback | Promise<void> | null | void;
 
 type EffectCallback = (update: boolean | null) => void;
-
-type OnUpdate<T, K> = (this: T, key: K, thisArg: K) => void;
 ```

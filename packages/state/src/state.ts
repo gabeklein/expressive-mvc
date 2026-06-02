@@ -114,12 +114,6 @@ declare namespace State {
     source: T
   ) => void | (() => void) | null;
 
-  type OnUpdate<T extends State, K extends State.Event<T>> = (
-    this: T,
-    key: K,
-    thisArg: K
-  ) => void;
-
   /** Exotic value, where actual value is contained within. */
   type Ref<T = any> = {
     (next: T): void;
@@ -209,21 +203,6 @@ abstract class State {
   ): State.Value<this, T>;
 
   /**
-   * Run a function when a property is updated and has settled.
-   *
-   * Not to be confused with `set(event, callback)`, which runs on every update,
-   * even if value is the same, and before updates are settled.
-   *
-   * @param key - Property to watch for updates.
-   * @param callback - Function to call when property is updated.
-   * @returns Function to cancel listener.
-   */
-  get<T extends State.Event<this>>(
-    key: T,
-    callback: State.OnUpdate<this, T>
-  ): () => void;
-
-  /**
    * Check if state is destroyed.
    *
    * @param status - `null` to check if state is destroyed.
@@ -266,7 +245,7 @@ abstract class State {
 
   get(
     arg1?: State.Effect<this> | State.Type | string | null,
-    arg2?: boolean | Context.Expect | State.OnUpdate<this, any>,
+    arg2?: boolean | Context.Expect | (() => void),
     arg3?: boolean
   ) {
     const self = this.is;
@@ -450,7 +429,7 @@ define(State, 'toString', {
   }
 });
 
-/** Register a user OnEvent/OnUpdate callback, preserving `this` and `source`. */
+/** Register a user OnEvent callback, preserving `this` and `source`. */
 function callback<T extends State>(
   self: T,
   cb: Function,
