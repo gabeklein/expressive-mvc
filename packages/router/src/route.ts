@@ -1,6 +1,7 @@
 import { Component, get, set } from '@expressive/react';
 import { ComponentType, ReactNode, createElement } from 'react';
 
+import { Redirect } from './redirect';
 import { Router } from './router';
 
 const PARAMS = new WeakMap<Route, Record<string, string> | undefined>();
@@ -12,6 +13,13 @@ export class Route extends Component {
   as?: ComponentType<{ children?: ReactNode }> = undefined;
 
   to: string = '*';
+
+  /**
+   * When matched, redirect here instead of rendering. Always replaces history
+   * (a route that exists only to forward shouldn't leave a back-button trap);
+   * for a non-replacing redirect, navigate yourself via `goto`/`Redirect`.
+   */
+  redirect?: string = undefined;
 
   /** Nearest mounted Route ancestor, if any. */
   parent = get(Route, false);
@@ -83,6 +91,8 @@ export class Route extends Component {
     }
 
     if (!matched) return null;
+    if (this.redirect)
+      return createElement(Redirect, { to: this.redirect, replace: true });
     return as ? createElement(as, {}, children) : children;
   }
 }

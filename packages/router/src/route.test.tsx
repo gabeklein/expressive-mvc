@@ -490,4 +490,36 @@ describe('Route', () => {
       expect(inner.match).toEqual({ slug: 'hello' });
     });
   });
+
+  describe('redirect prop', () => {
+    it('redirects (replacing) when matched', () => {
+      window.history.replaceState(null, '', '/');
+      const before = window.history.length;
+      render(
+        <>
+          <Route to="" redirect="/home" />
+          <Route to="/home" as={Home} />
+        </>
+      );
+      expect(window.location.pathname).toBe('/home');
+      expect(window.history.length).toBe(before);
+    });
+
+    it('does not redirect when unmatched', () => {
+      window.history.replaceState(null, '', '/elsewhere');
+      render(<Route to="" redirect="/home" />);
+      expect(window.location.pathname).toBe('/elsewhere');
+    });
+
+    it('resolves a relative target against the Route anchor', () => {
+      window.history.replaceState(null, '', '/posts/foo');
+      render(
+        <>
+          <Route to="/posts/:id" redirect="./edit" />
+          <Route to="/posts/:id/edit" as={() => null} />
+        </>
+      );
+      expect(window.location.pathname).toBe('/posts/foo/edit');
+    });
+  });
 });
