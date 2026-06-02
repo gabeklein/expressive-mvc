@@ -1,6 +1,6 @@
 # `@expressive/router` - Design & Status
 
-> Portable plan. Intended initial home: `expressive-state` (mvc) monorepo as `packages/router`. Long-term home: `expressive-ui` (alongside Form, Dialog, etc.). Nothing in the design assumes either location.
+> Permanent home: the `expressive-mvc` monorepo as `packages/router`. Router is the **C** in MVC and, once #106 lands its host-agnostic JSX pragma, depends only on `@expressive/mvc` (no host imports) - so the core repo is its sole upstream and there is no host-specific or standalone repo it could belong to instead. Admission rule for this repo: host-agnostic, authored against the `/mvc` pragma, public-API only. (`@expressive/dev` is a downstream *consumer* of router, not its home; router targets plain SPAs and must work without dev's runtime.)
 
 ## Goal
 
@@ -366,6 +366,6 @@ Subclass-friendly. Pairs with a future Router-level navigation blocker.
 6. **Typed `to` strings.** Template-literal type extracting required params. Nice-to-have.
 7. **Structural remount-boundaries.** Once leaf `fresh` lands, a layout-level "this subtree is a remount unit" form may follow.
 
-## Long-term home
+## Home
 
-When `expressive-ui` is established, `packages/router/` lifts directly out of mvc unchanged. Its only mvc dependency is `@expressive/state` (and its renderer adapters), which would be a published dep from expressive-ui anyway.
+Router stays in this repo permanently (see header). Post-#100 the dependency is public-API only; post-#106 it drops host imports entirely and depends solely on `@expressive/mvc`'s agnostic pragma, with whatever adapter the app installs (react/preact/solid/web) completing it at the edge. That leaves no host-specific or standalone repo it could move to - this is the home, not a waypoint.
