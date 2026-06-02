@@ -263,11 +263,11 @@ Fetch these for detailed API documentation when the task requires deeper knowled
 
 ### Instructions & Reactive Helpers
 
-- [instructions/set.md](instructions/set.md) - Property descriptors, defaults, factories, setter callbacks
-- [instructions/get.md](instructions/get.md) - Context lookup: upstream, downstream, callbacks
-- [instructions/ref.md](instructions/ref.md) - Mutable refs, ref proxy, callbacks
-- [instructions/hot.md](instructions/hot.md) - Reactive arrays and objects
-- [instructions/def.md](instructions/def.md) - Low-level custom property behavior
+- [field/set.md](field/set.md) - Property descriptors, defaults, factories, setter callbacks
+- [field/get.md](field/get.md) - Context lookup: upstream, downstream, callbacks
+- [field/ref.md](field/ref.md) - Mutable refs, ref proxy, callbacks
+- [field/hot.md](field/hot.md) - Reactive arrays and objects
+- [field/def.md](field/def.md) - Low-level custom property behavior
 
 ### React
 

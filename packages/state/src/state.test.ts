@@ -1,9 +1,9 @@
 import { mock, expect, it, describe } from 'bun:test';
 import { mockError, mockPromise, mockWarn } from '../test.setup';
 import { Context } from './context';
-import { get } from './instruction/get';
-import { ref } from './instruction/ref';
-import { set } from './instruction/set';
+import { get } from './field/get';
+import { ref } from './field/ref';
+import { set } from './field/set';
 import { State, update } from './state';
 
 it('will extend custom class', () => {

@@ -1,5 +1,5 @@
 import { Context } from './context';
-import { set } from './instruction/set';
+import { set } from './field/set';
 import { State } from './state';
 
 const PENDING = new WeakMap<object, Component>();

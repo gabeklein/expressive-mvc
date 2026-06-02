@@ -27,7 +27,7 @@ describe('instruction', () => {
 
       if (typeof test.value !== 'symbol')
         throw new Error('value is not a symbol');
-      else expect(test.value.description).toMatch(/instruction-\w{6}/);
+      else expect(test.value.description).toMatch(/field-\w{6}/);
 
       await test.set();
 

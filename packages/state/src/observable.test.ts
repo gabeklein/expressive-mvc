@@ -1,6 +1,6 @@
 import { event, listener, touch, watch, observer } from './observable';
-import { set } from './instruction/set';
-import { def } from './instruction/def';
+import { set } from './field/set';
+import { def } from './field/def';
 import { mock, describe, it, expect } from 'bun:test';
 import { mockError, mockPromise } from '../test.setup';
 import { State } from './state';
