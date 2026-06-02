@@ -95,6 +95,22 @@ describe('Link', () => {
     expect(window.history.length).toBe(before);
   });
 
+  it('forwards extra anchor props (className, aria, data) but not to/replace', () => {
+    const view = render(
+      <Route to="/">
+        <Link to="/about" replace className="nav" aria-current="page" data-id="x">
+          about
+        </Link>
+      </Route>
+    );
+    const a = view.container.querySelector('a')!;
+    expect(a.getAttribute('class')).toBe('nav');
+    expect(a.getAttribute('aria-current')).toBe('page');
+    expect(a.getAttribute('data-id')).toBe('x');
+    expect(a.hasAttribute('to')).toBe(false);
+    expect(a.hasAttribute('replace')).toBe(false);
+  });
+
   it('resolves relative `to` against nearest Route (directory anchor)', async () => {
     window.history.replaceState(null, '', '/posts/foo');
     const router = Router.new();
