@@ -24,26 +24,36 @@ export function useHook<T = void>(
   callback: (refresh: (next: T) => void) => () => void
 ) {
   const { current } = Runtime.useRef(
-    { mounted: 0 } as {
-      mounted: number;
+    { rendered: 0 } as {
+      rendered: number;
+      mounted?: boolean;
+      pending?: boolean;
       unmount: () => void;
-      update: (next: (previous: number) => number) => void;
+      update?: (next: (previous: number) => number) => void;
       output: T;
     }
   );
 
   current.update = Runtime.useState(() => {
-    if (!current.mounted)
+    if (!current.rendered)
       current.unmount = callback((next) => {
         current.output = next;
-        current.update?.((x) => x + 1);
+        if (current.mounted) current.update?.((x) => x + 1);
+        else if (current.update) current.pending = true;
       });
 
-    return current.mounted++;
+    return current.rendered++;
   })[1];
 
-  Runtime.useEffect(() => () => {
-    if (--current.mounted < 1) current.unmount();
+  Runtime.useEffect(() => {
+    current.mounted = true;
+    if (current.pending) {
+      current.pending = false;
+      current.update!((x) => x + 1);
+    }
+    return () => {
+      if (--current.rendered < 1) current.unmount();
+    }
   }, []);
 
   return current.output;
