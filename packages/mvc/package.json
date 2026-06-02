@@ -1,6 +1,7 @@
 {
   "name": "@expressive/mvc",
   "version": "0.77.0",
+  "sideEffects": false,
   "keywords": [
     "expressive",
     "mvc",
