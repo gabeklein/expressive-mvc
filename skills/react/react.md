@@ -1,4 +1,4 @@
-# Expressive State - React
+# Expressive MVC - React
 
 `@expressive/react` connects State to React with hooks, components, and context.
 

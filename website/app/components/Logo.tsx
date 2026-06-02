@@ -9,7 +9,7 @@ export default function Logo() {
   return (
     <div>
       <Icon />
-      <span>Expressive State</span>
+      <span>Expressive MVC</span>
     </div>
   );
 }

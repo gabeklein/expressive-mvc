@@ -1,4 +1,4 @@
-# Expressive State
+# Expressive MVC
 > Class-based reactive state management for React, Preact, and Solid.
 
 ## Full Documentation
@@ -24,4 +24,4 @@
 
 ## Examples
 - [Basic Examples](/llm/examples/basic.md): Complete working examples from simple to intermediate
-- [Audit Guide](/llm/examples/audit.md): Evaluating whether Expressive State fits a codebase
+- [Audit Guide](/llm/examples/audit.md): Evaluating whether Expressive MVC fits a codebase

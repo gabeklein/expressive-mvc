@@ -1,6 +1,6 @@
 # Basic Examples
 
-Complete working examples demonstrating Expressive State fundamentals.
+Complete working examples demonstrating Expressive MVC fundamentals.
 
 ## Counter (minimal)
 

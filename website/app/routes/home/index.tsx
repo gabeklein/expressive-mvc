@@ -19,7 +19,7 @@ export const layoutOptions: BaseLayoutProps = {
 
 export function meta() {
   return [
-    { title: 'Expressive State' },
+    { title: 'Expressive MVC' },
     {
       name: 'description',
       content: 'Class-based state for modern React applications'

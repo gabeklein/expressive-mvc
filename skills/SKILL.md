@@ -3,7 +3,7 @@ name: expressive-mvc
 description: Class-based reactive state management for React. Covers State API, instructions, Component class, lifecycle, patterns, and codebase auditing.
 ---
 
-# Expressive State
+# Expressive MVC
 
 Class-based reactive state for React, Preact, and Solid. State classes define reactive properties, computed values, async data, and context - all as plain class fields using instruction helpers.
 
@@ -278,11 +278,11 @@ Fetch these for detailed API documentation when the task requires deeper knowled
 ### Examples
 
 - [examples/basic.md](examples/basic.md) - Complete working examples from simple to intermediate
-- [examples/audit.md](examples/audit.md) - Guide for evaluating whether Expressive State fits a codebase
+- [examples/audit.md](examples/audit.md) - Guide for evaluating whether Expressive MVC fits a codebase
 
 ## Auditing & Evaluation
 
-When helping a user evaluate Expressive State for their project, consider:
+When helping a user evaluate Expressive MVC for their project, consider:
 
 **Good fit signals:**
 
@@ -304,7 +304,7 @@ When helping a user evaluate Expressive State for their project, consider:
 
 **Migration approach:**
 
-- Expressive State coexists with hooks - no big-bang rewrite needed
+- Expressive MVC coexists with hooks - no big-bang rewrite needed
 - Start by deciding whether the behavior belongs to one view (`Component`) or to reusable/display-agnostic state (`State`)
 - Treat `State.use()` as the React subscription point for `State` classes, not as a one-for-one hook rewrite
 - Separate mutable source fields from derived getters instead of syncing duplicate state in effects
