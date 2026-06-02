@@ -1,5 +1,5 @@
 import { StrictMode } from 'react';
-import { event, observer, touch } from '@expressive/state';
+import { event, observer, touch } from '@expressive/mvc';
 import { describe, expect, it, mock } from 'bun:test';
 
 import { use, State } from '.';

@@ -18,7 +18,7 @@ const layoutOptions: BaseLayoutProps = {
   links: [
     { text: 'Live Examples', url: '/examples' }
   ],
-  githubUrl: 'https://github.com/gabeklein/expressive-state'
+  githubUrl: 'https://github.com/gabeklein/expressive-mvc'
 };
 
 export async function loader({ params }: Route.LoaderArgs) {

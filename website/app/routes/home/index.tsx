@@ -14,7 +14,7 @@ export const layoutOptions: BaseLayoutProps = {
     { text: 'Docs', url: '/docs' },
     { text: 'Playground', url: '/examples' }
   ],
-  githubUrl: 'https://github.com/gabeklein/expressive-state'
+  githubUrl: 'https://github.com/gabeklein/expressive-mvc'
 };
 
 export function meta() {

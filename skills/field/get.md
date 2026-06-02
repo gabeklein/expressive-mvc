@@ -1,7 +1,7 @@
 # `get` - Context Lookup Instruction
 
 ```ts
-import { get } from '@expressive/state';
+import { get } from '@expressive/mvc';
 ```
 
 Fetches another State from ambient context hierarchy (upstream or downstream).

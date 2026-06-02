@@ -1,4 +1,4 @@
-import { watch, unbind, Component } from '@expressive/state';
+import { watch, unbind, Component } from '@expressive/mvc';
 import React, { createElement, Suspense } from 'react';
 import { Context, Layers } from './context';
 import { useHook } from './runtime';
@@ -7,7 +7,7 @@ const SEEN = new WeakSet<object>([Component.prototype]);
 
 type ComponentType = typeof Component & typeof React.Component;
 
-declare module '@expressive/state' {
+declare module '@expressive/mvc' {
   namespace Component {
     interface Host {
       node: React.ReactNode;

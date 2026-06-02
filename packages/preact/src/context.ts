@@ -1,4 +1,4 @@
-import { Context } from '@expressive/state';
+import { Context } from '@expressive/mvc';
 import { State } from '@expressive/react/state';
 
 import { ComponentChildren, createContext, createElement } from 'preact';

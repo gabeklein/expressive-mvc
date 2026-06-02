@@ -101,7 +101,7 @@ Context.root.get(Sub); // b - explicit wins
 ## Hierarchical Contexts
 
 ```ts
-import { Context } from '@expressive/state';
+import { Context } from '@expressive/mvc';
 
 const ctx = new Context({ AppState, UserState });
 const app = ctx.get(AppState);
