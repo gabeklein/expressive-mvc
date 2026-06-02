@@ -26,8 +26,10 @@ export function useHook<T = void>(
   const { current } = Runtime.useRef(
     { mounted: 0 } as {
       mounted: number;
+      committed: boolean;
+      pending: boolean;
       unmount: () => void;
-      update: (next: (previous: number) => number) => void;
+      update?: (next: (previous: number) => number) => void;
       output: T;
     }
   );
@@ -36,14 +38,28 @@ export function useHook<T = void>(
     if (!current.mounted)
       current.unmount = callback((next) => {
         current.output = next;
-        current.update?.((x) => x + 1);
+        // A change arriving before this fiber has committed (e.g. a sibling
+        // mutating shared state during render) can't setState yet - defer the
+        // refresh to the commit effect below. `update` is undefined during this
+        // initializer, so the initial subscribe is ignored regardless.
+        if (current.committed) current.update?.((x) => x + 1);
+        else if (current.update) current.pending = true;
       });
 
     return current.mounted++;
   })[1];
 
-  Runtime.useEffect(() => () => {
-    if (--current.mounted < 1) current.unmount();
+  Runtime.useEffect(() => {
+    current.committed = true;
+    if (current.pending) {
+      current.pending = false;
+      current.update!((x) => x + 1);
+    }
+
+    return () => {
+      current.committed = false;
+      if (--current.mounted < 1) current.unmount();
+    };
   }, []);
 
   return current.output;
