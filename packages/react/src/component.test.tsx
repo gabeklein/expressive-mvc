@@ -82,7 +82,7 @@ describe('ref prop', () => {
   it('will invoke callback ref with instance', () => {
     class Control extends Component {}
 
-    const cb = vi.fn();
+    const cb = mock();
     const screen = render(<Control ref={cb} />);
 
     expect(cb).toBeCalledTimes(1);
