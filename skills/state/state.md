@@ -195,7 +195,7 @@ Every active State has a "home context" that determines where its `state.get(Typ
 
 See [context.md](context.md) for the full Context API, root singleton semantics, and the `new State()` escape hatch for pre-init context placement.
 
-Primarily consumed via the [`get` instruction](../instructions/get.md) and React [`Provider`](../react/react.md).
+Primarily consumed via the [`get` instruction](../field/get.md) and React [`Provider`](../react/react.md).
 
 ## String Representation
 

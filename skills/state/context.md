@@ -151,4 +151,4 @@ Context.get(state);                    // static: state's home context
 Context.root;                          // global singleton registry
 ```
 
-Primarily consumed via the [`get` instruction](../instructions/get.md) and React [`Provider`](../react/react.md).
+Primarily consumed via the [`get` instruction](../field/get.md) and React [`Provider`](../react/react.md).
