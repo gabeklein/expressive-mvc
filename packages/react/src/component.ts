@@ -152,6 +152,10 @@ class ErrorBoundary extends React.Component<{
   state = {} as { error?: Error };
   recovering = false;
 
+  constructor(props: ErrorBoundary['props']) {
+    super(props);
+  }
+
   static getDerivedStateFromError(error: Error) {
     return { error };
   }
