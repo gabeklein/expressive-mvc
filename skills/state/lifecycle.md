@@ -1,4 +1,4 @@
-# Lifecycle - Expressive State
+# Lifecycle - Expressive MVC
 
 ## Lifecycle Phases
 

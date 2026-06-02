@@ -1,6 +1,6 @@
-# Audit Guide: Evaluating Expressive State for a Codebase
+# Audit Guide: Evaluating Expressive MVC for a Codebase
 
-Use this guide when helping a user determine if Expressive State is a good fit for their project, or when reviewing components for migration candidates.
+Use this guide when helping a user determine if Expressive MVC is a good fit for their project, or when reviewing components for migration candidates.
 
 ## Quick Assessment
 
@@ -12,7 +12,7 @@ Ask these questions about the codebase or component:
 4. **Context boilerplate** - Is `createContext` + `useContext` + Provider pattern repeated for state sharing?
 5. **Logic in JSX** - Is business logic (validation, transformation, coordination) mixed into the render body?
 
-**Score: 3+ yes answers = strong candidate for Expressive State.**
+**Score: 3+ yes answers = strong candidate for Expressive MVC.**
 
 Then decide the shape:
 
@@ -128,7 +128,7 @@ function ThemeToggle() {
 ## Migration Strategy
 
 1. **Start small** - pick one complex component, then decide whether its behavior belongs in a `Component` or a display-agnostic `State`
-2. **Coexist** - Expressive State works alongside existing hooks, no need to migrate everything
+2. **Coexist** - Expressive MVC works alongside existing hooks, no need to migrate everything
 3. **Bottom-up** - migrate leaf components first, then work up to shared state
 4. **Test independently** - state classes can be tested without React, use this to improve coverage
 

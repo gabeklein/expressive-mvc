@@ -1,6 +1,6 @@
 ---
 title: Comparisons
-description: How Expressive State relates to hooks, Zustand, Redux, and MobX
+description: How Expressive MVC relates to hooks, Zustand, Redux, and MobX
 ---
 
 ## vs React Hooks
@@ -87,7 +87,7 @@ function UserProfileView({ userId }) {
 }
 ```
 
-|              | React Hooks                      | Expressive State                  |
+|              | React Hooks                      | Expressive MVC                  |
 | ------------ | -------------------------------- | --------------------------------- |
 | State        | Multiple `useState` calls        | Class fields                      |
 | Logic        | Spread across hooks              | Methods on the class              |
@@ -178,7 +178,7 @@ class Counter extends State {
 }
 ```
 
-|              | Redux / RTK                 | Expressive State       |
+|              | Redux / RTK                 | Expressive MVC       |
 | ------------ | --------------------------- | ---------------------- |
 | Updates      | `dispatch(action)`          | Direct assignment      |
 | Subscription | `useSelector`               | Destructure            |
@@ -242,7 +242,7 @@ function CounterView() {
 
 If you like MobX, you'll feel at home. Expressive is more opinionated: lifecycle, context, and framework integration are part of the library rather than pieces you wire together.
 
-|            | MobX                       | Expressive State              |
+|            | MobX                       | Expressive MVC              |
 | ---------- | -------------------------- | ----------------------------- |
 | Setup      | `makeAutoObservable(this)` | Extend `State`                |
 | Components | `observer(...)` wrapper    | `State.use()` / `State.get()` |

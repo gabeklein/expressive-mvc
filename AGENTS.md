@@ -4,7 +4,7 @@ Contributor guide for AI agents working in this repository.
 
 ## Overview
 
-Expressive State - class-based reactive state management library. For API reference, read [skills/SKILL.md](skills/SKILL.md) and linked sub-files first. Consult source only when docs are insufficient.
+Expressive MVC - class-based reactive state management library. For API reference, read [skills/SKILL.md](skills/SKILL.md) and linked sub-files first. Consult source only when docs are insufficient.
 
 Monorepo: bun workspaces + lerna. Install, tests, and builds run under bun (`bun install`, `bun test`, `bun run build`). Builds on CI run under node (`node --run build`).
 

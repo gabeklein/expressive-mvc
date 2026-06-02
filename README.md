@@ -1,7 +1,7 @@
 <p align="center">
   <img height="90" src=".github/logo.svg" alt="Expressive Logo"/>
   <h1 align="center">
-    Expressive State
+    Expressive MVC
   </h1>
 </p>
 
@@ -50,7 +50,7 @@
 
 ## Overview
 
-Expressive State is a reactive state management library built around classes. It provides framework-agnostic reactive primitives with dedicated adapters for React, Preact, and Solid.
+Expressive MVC is a reactive state management library built around classes. It provides framework-agnostic reactive primitives with dedicated adapters for React, Preact, and Solid.
 
 **Why Expressive?**
 

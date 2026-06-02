@@ -73,7 +73,7 @@ export function Hero() {
           What if state had it's own Component?
         </h1>
         <p _subtitle>
-          Expressive State consolidates your application state into
+          Expressive MVC consolidates your application state into
           plain classes. No reducers, no selectors, no dependency arrays. Just
           data, behavior, and lifecycle in one place.
         </p>

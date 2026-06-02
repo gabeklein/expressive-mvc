@@ -1,4 +1,4 @@
-# Expressive State - Component
+# Expressive MVC - Component
 
 `Component` extends `State` to create **smart, reusable React components** - persistent class instances that own their rendering, lifecycle, and behavior.
 
