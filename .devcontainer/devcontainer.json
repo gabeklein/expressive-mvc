@@ -1,8 +1,9 @@
 {
     "name": "expressive-state",
-    "dockerComposeFile": ["docker-compose.yml"],
-    "service": "dev",
-    "workspaceFolder": "/workspace",
+    "build": {
+        "dockerfile": "Dockerfile.dev",
+        "context": ".."
+    },
     "remoteUser": "bun",
     "userEnvProbe": "loginInteractiveShell",
     "postCreateCommand": "bun install",
@@ -20,7 +21,8 @@
                 "editor.detectIndentation": true
             },
             "extensions": [
-                "esbenp.prettier-vscode"
+                "esbenp.prettier-vscode",
+                "Oven.bun-vscode"
             ]
         }
     }

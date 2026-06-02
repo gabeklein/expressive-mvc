@@ -6,7 +6,7 @@ Contributor guide for AI agents working in this repository.
 
 Expressive State - class-based reactive state management library. For API reference, read [skills/SKILL.md](skills/SKILL.md) and linked sub-files first. Consult source only when docs are insufficient.
 
-Monorepo: bun workspaces + lerna. Install and tests run under bun (`bun install`, `bun test`); build runs under node (`node --run build`) because tsdown+lerna depend on node-specific behavior.
+Monorepo: bun workspaces + lerna. Install, tests, and builds run under bun (`bun install`, `bun test`, `bun run build`). Builds on CI run under node (`node --run build`).
 
 ## Structure
 
@@ -23,7 +23,7 @@ skills/         - API reference docs (also published as skills.sh skill)
 ```bash
 bun install              # Install deps
 bun run test             # Run package test scripts (type check + bun test)
-node --run build         # Build all packages (lerna under node)
+bun run build            # Build all packages (lerna under bun)
 ```
 
 Per-package: `tsc --noEmit && bun test --coverage`
