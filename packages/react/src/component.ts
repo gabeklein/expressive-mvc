@@ -57,13 +57,24 @@ Object.defineProperties(proto, {
 
 function bootstrap(this: Component, context: Context) {
   const self = this.is;
-  const render = unbind(this.render);
+  const chain = renderChain(self);
 
   context = context.push(self);
 
   let active: Component;
 
-  const Render = () => render.call(active, self.props);
+  const Render = () => {
+    const props = self.props;
+    let node: React.ReactNode;
+
+    // Compose inner -> outer: leaf gets real props, each super receives the
+    // derived output as its `children`. An intermediate render is a wrapper -
+    // it must place `props.children` or the derived content vanishes.
+    for (let i = 0; i < chain.length; i++)
+      node = chain[i].call(active, i ? { ...props, children: node } : props);
+
+    return node;
+  };
   const React = () => {
     useHook((refresh) => {
       watch(self, (current) => {
@@ -102,6 +113,39 @@ function bootstrap(this: Component, context: Context) {
       }
     }
   });
+}
+
+/**
+ * Collect the `render` defined at each level of the prototype chain, leaf-first
+ * up to and including `Component`. Composing these inner->outer turns the chain
+ * into a wrapper/shell stack: most-derived is the innermost content, base is the
+ * outermost wrapper. A single-level override composes with `Component`'s
+ * pass-through default and so is identity.
+ */
+function renderChain(self: Component) {
+  const chain: Function[] = [];
+
+  // Start at the instance itself - a `render` assigned as an instance field
+  // (e.g. `render = FunctionComponent`) shadows the prototype and is the leaf.
+  let level: object = self;
+
+  while (level) {
+    if (Object.prototype.hasOwnProperty.call(level, 'render')) {
+      const desc = Object.getOwnPropertyDescriptor(level, 'render')!;
+      const fn = unbind(desc.value || desc.get!.call(self));
+
+      // A render accessed before bootstrap (e.g. React's DEV-mode render check)
+      // leaves a bound copy on the instance that unbinds to the same prototype
+      // method - dedupe so each distinct render appears once, leaf-first.
+      if (!chain.includes(fn))
+        chain.push(fn);
+    }
+
+    if (level === proto) break;
+    level = Object.getPrototypeOf(level);
+  }
+
+  return chain;
 }
 
 function subcomponents(proto: Component) {

@@ -128,7 +128,8 @@ class Component extends State {
    * Without a parameter, children are accepted by default and passed through provider.
    */
   render(props?: {}): Component.Node {
-    return this.props.children || null;
+    const { children } = (props || this.props) as { children?: Component.Node };
+    return children || null;
   }
 
   /**
