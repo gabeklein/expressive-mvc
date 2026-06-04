@@ -4,8 +4,8 @@ import { State, unbind } from './state';
 
 const PENDING = new WeakMap<object, Component>();
 
-/** Per-class chain of `render` methods, leaf-first up to and including Component. */
-const CHAIN = new WeakMap<Function, Set<Function>>();
+/** Per-class composed content render. */
+const CHAIN = new WeakMap<Function, Function>();
 
 declare namespace Component {
   /**
@@ -56,6 +56,20 @@ declare namespace Component {
     & RenderProps<T['render']>;
 }
 
+interface Component {
+  /**
+   * Output for this component. Override to define custom JSX.
+   *
+   * Properties accessed via `this` are reactive and trigger a render when they
+   * change, in addition to props. Accepts an optional parameter to receive extra
+   * props from JSX, beyond those merged to state properties; declare its shape
+   * via `props = {} as { ... }`. Without a parameter, children pass through.
+   *
+   * Declared, not implemented - the constructor installs a composed `render`
+   * per instance (see `fold`); subclasses override with a method.
+   */
+  render(props?: {}): Component.Node;
+}
 
 class Component extends State {
   /**
@@ -103,64 +117,11 @@ class Component extends State {
       this.set(merge(this.props));
     });
 
-    const T = this.constructor;
-    let chain = CHAIN.get(T);
-
-    if (!chain) {
-      CHAIN.set(T, chain = new Set);
-
-      let proto = this;
-
-      while (proto = Object.getPrototypeOf(proto)) {
-        const desc = Object.getOwnPropertyDescriptor(proto, 'render');
-        if (desc) chain.add(unbind(desc.value || desc.get!.call(this)));
-        if (proto === Component.prototype) break;
-      }
-    }
-
     Object.defineProperty(this, 'render', {
       configurable: true,
       writable: true,
-      value(props?: {}): Component.Node {
-        let node: Component.Node;
-
-        for (const render of chain)
-          node = render.call(this, node ? { ...props, children: node } : props);
-
-        return node;
-      }
+      value: render(this)
     });
-  }
-
-  /**
-   * Output for this component. Override to define custom JSX.
-   *
-   * Properties accessed via `this` are reactive and will trigger a render when , in addition to props.
-   *
-   * Accepts optional parameter to receive extra props
-   * from JSX, beyond those merged to state properties.
-   *
-   * To declare extra props use `props = {} as { ... }` with expected shape.
-   * A default is required to satisfy TypeScript but safely ignored.
-   *
-   * ```ts
-   * render(props = {} as { label: string }) {
-   *   return <span>{props.label}</span>;
-   * }
-   * ```
-   * Usable as:
-   * ```tsx
-   * <MyComponent label="Hello" />
-   * ```
-   *
-   * These must be compatible with State-derived properties, or be unused.
-   * Props you declare as not-optional will be required by the JSX element.
-   *
-   * Without a parameter, children are accepted by default and passed through provider.
-   */
-  render(props?: {}): Component.Node {
-    const { children } = (props || this.props) as { children?: Component.Node };
-    return children || null;
   }
 
   /**
@@ -173,6 +134,57 @@ class Component extends State {
    * assign a fallback within catch, it will be reverted after resolved.
    */
   catch?(error: Error): Promise<void> | void;
+}
+
+/**
+ * Build (or fetch the cached) composed content render for an instance's class.
+ * Walks the prototype chain for content renders strictly below Component - the
+ * seam itself (Component.prototype.render) is excluded; an adapter owns that.
+ */
+function render(target: Component) {
+  const T = target.constructor;
+  let composed = CHAIN.get(T);
+
+  if (!composed) {
+    const chain = new Set<Function>();
+    let proto = target;
+
+    while ((proto = Object.getPrototypeOf(proto)) !== Component.prototype) {
+      const desc = Object.getOwnPropertyDescriptor(proto, 'render');
+      if (desc) chain.add(unbind(desc.value || desc.get!.call(target)));
+    }
+
+    CHAIN.set(T, composed = fold(Array.from(chain).reverse()));
+  }
+
+  return composed;
+}
+
+/**
+ * Fold a content chain (base-first) into one render. Lazy and top-down: the
+ * head (outermost) runs first and receives the recursively-composed tail as a
+ * `children` getter, so each layer is computed within the stack of its wrapper.
+ * An adapter's seam can thus establish context (hooks) that inner renders observe.
+ */
+function fold([fn, ...rest]: Function[]): Function {
+  if (!fn) return passthrough;
+  if (!rest.length) return fn;
+
+  const inner = fold(rest);
+
+  return function (this: Component, props?: {}): Component.Node {
+    const self = this;
+    return fn.call(self, {
+      ...props,
+      get children() { return inner.call(self, props) }
+    });
+  };
+}
+
+/** Default content when a component defines no `render` - pass children through. */
+function passthrough(this: Component, props?: {}): Component.Node {
+  const { children } = (props || this.props) as { children?: Component.Node };
+  return children || null;
 }
 
 export { Component };
