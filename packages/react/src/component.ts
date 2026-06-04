@@ -6,6 +6,12 @@ import { useHook } from './runtime';
 const proto = Component.prototype;
 const SEEN = new WeakSet<object>([proto]);
 
+/** Adapter seam - shared with core via the global symbol registry (no import). */
+const SEAM = Symbol.for('@expressive/mvc.adapter');
+
+/** Host renders we produced - lets the context setter tell a wrapped render from a field override. */
+const HOSTS = new WeakSet<Function>();
+
 type ComponentType = typeof Component & typeof React.Component;
 
 declare module '@expressive/mvc' {
@@ -53,45 +59,60 @@ Object.defineProperties(proto, {
   context: {
     set(this: Component, context: Context) {
       context = context.push(this);
-
-      Object.defineProperties(this, {
-        context: {
-          get: () => context,
-          set() { }
-        },
-        render: {
-          value: component(this, context)
-        }
+      Object.defineProperty(this, 'context', {
+        get: () => context,
+        set() { }
       });
+
+      // An instance-field render (`render = fn`) overwrites the host core
+      // installed in the constructor, after fields initialize. We run after
+      // fields but before React reads render - re-wrap the bare field render.
+      if (!HOSTS.has(this.render))
+        Object.defineProperty(this, 'render', {
+          configurable: true,
+          writable: true,
+          value: host(this, this.render)
+        });
     }
   }
 });
 
-function component(from: Component, context: Context) {
-  const { render } = from;
-  const Render = () => render.call(from, from.props);
-  const Component = () => {
-    from = useHook((refresh) => {
-      watch(from, refresh);
+// Adapter seam - core consults this factory per instance with the composed
+// content as `this` and installs the host render we return. The host reads
+// `this.context` (pushed by the context setter) lazily at render time.
+Object.defineProperty(proto, SEAM, {
+  value(this: Component, content: Function) {
+    return host(this, content);
+  }
+});
+
+function host(from: Component, content: Function) {
+  let self = from.is;
+  const Render = () => content.call(self, self.props);
+  const Host = () => {
+    self = useHook((refresh) => {
+      watch(self, refresh);
       return () => {
-        from.set(null);
-        context.pop();
+        self.set(null);
+        self.context.pop();
       };
     });
 
     const children = createElement(Layers.Provider, {
-      value: context,
+      value: self.context,
       children: createElement(Suspense,
-        { fallback: from.fallback, name: String(from) },
+        { fallback: self.fallback, name: String(self) },
         createElement(Render))
     });
 
-    return from.catch
-      ? createElement(ErrorBoundary, { self: from, children })
+    return self.catch
+      ? createElement(ErrorBoundary, { self, children })
       : children;
   };
 
-  return () => createElement(Component);
+  const render = () => createElement(Host);
+  HOSTS.add(render);
+  return render;
 }
 
 function subcomponents(proto: Component) {

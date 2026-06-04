@@ -7,6 +7,15 @@ const PENDING = new WeakMap<object, Component>();
 /** Per-class composed content render. */
 const CHAIN = new WeakMap<Function, Function>();
 
+/**
+ * Adapter seam. An adapter installs a factory at this key on `Component.prototype`;
+ * core consults it per instance, handing over the composed content and installing
+ * the host render returned. Shared via the global symbol registry - adapters use
+ * the same `Symbol.for(...)`, no import needed. A symbol (not the `render` slot)
+ * because State binds prototype *methods* into accessors, which would clobber it.
+ */
+const SEAM = Symbol.for('@expressive/mvc.adapter');
+
 declare namespace Component {
   /**
    * Per-adapter interpretation manifest. Each adapter augments this interface to
@@ -143,9 +152,9 @@ class Component extends State {
  */
 function render(target: Component) {
   const T = target.constructor;
-  let composed = CHAIN.get(T);
+  let content = CHAIN.get(T);
 
-  if (!composed) {
+  if (!content) {
     const chain = new Set<Function>();
     let proto = target;
 
@@ -154,10 +163,13 @@ function render(target: Component) {
       if (desc) chain.add(unbind(desc.value || desc.get!.call(target)));
     }
 
-    CHAIN.set(T, composed = fold(Array.from(chain).reverse()));
+    CHAIN.set(T, content = fold(Array.from(chain).reverse()));
   }
 
-  return composed;
+  // Hand content to the adapter (if any) to wrap as a host render; else use it
+  // directly. Consulted per instance - the wrap may close over the instance.
+  const adapt = (Component.prototype as any)[SEAM] as Function | undefined;
+  return adapt ? adapt.call(target, content) : content;
 }
 
 /**
