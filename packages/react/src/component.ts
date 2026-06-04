@@ -1,4 +1,4 @@
-import { watch, unbind, Component } from '@expressive/mvc';
+import { watch, unbind, Component, CONTENT } from '@expressive/mvc';
 import React, { createElement, Suspense } from 'react';
 import { Context, Layers } from './context';
 import { useHook } from './runtime';
@@ -42,6 +42,9 @@ for (const key of [
     }
   });
 
+/** Parent context React injects via `contextType`, kept off managed state. */
+const PARENT = new WeakMap<Component, Context>();
+
 Object.defineProperties(proto, {
   isReactComponent: {
     get: () => true
@@ -50,21 +53,26 @@ Object.defineProperties(proto, {
     set() { },
     get: proto.get
   },
+  // Keep `context` a non-data accessor so React's assignment isn't adopted as
+  // a managed field by State's `observe()`. Holds the parent until the seam
+  // pushes, then the pushed context for any JSX-facing reads.
   context: {
-    set: bootstrap
+    get(this: Component) { return PARENT.get(this.is) },
+    set(this: Component, value: Context) { PARENT.set(this.is, value) }
   }
 });
 
-function bootstrap(this: Component, context: Context) {
-  const self = this.is;
-  const render = self.render;
-
-  context = context.push(self);
-
+// React invokes the seam (with `this.context` already populated), so building
+// the host here is render-triggered. The host is created once per instance and
+// reconciled in place on re-renders.
+Component.adapt((self) => {
+  const context = PARENT.get(self)!.push(self);
+  PARENT.set(self, context);
   let current: Component;
 
-  const Render = () => render.call(current, self.props);
-  const Component = () => {
+  const Content = () => (self as any)[CONTENT].call(current, self.props);
+
+  const Host: React.FC = () => {
     current = useHook((refresh) => {
       watch(self, refresh);
       return () => {
@@ -77,7 +85,7 @@ function bootstrap(this: Component, context: Context) {
       value: context,
       children: createElement(Suspense,
         { fallback: current.fallback, name: String(self) },
-        createElement(Render))
+        createElement(Content))
     });
 
     return current.catch
@@ -85,16 +93,8 @@ function bootstrap(this: Component, context: Context) {
       : children;
   };
 
-  Object.defineProperties(self, {
-    context: {
-      get: () => context,
-      set() { }
-    },
-    render: {
-      value: () => createElement(Component)
-    }
-  });
-}
+  return () => createElement(Host);
+});
 
 function subcomponents(proto: Component) {
   do {

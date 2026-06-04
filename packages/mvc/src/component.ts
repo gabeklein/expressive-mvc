@@ -4,8 +4,19 @@ import { State, unbind } from './state';
 
 const PENDING = new WeakMap<object, Component>();
 
-/** Per-class chain of `render` methods, leaf-first up to and including Component. */
+/**
+ * Per-class chain of content `render` methods, leaf-first, *below* Component.
+ * Component's own `render` is the host seam (see {@link CONTENT}), not a link.
+ */
 const CHAIN = new WeakMap<Function, Set<Function>>();
+
+/**
+ * Per-instance composed content - the prototype chain threaded leaf-first, each
+ * level's output becoming its super's `children`. `Component.prototype.render`
+ * is the *seam*: by default it just invokes this, but an adapter overrides it to
+ * wrap the content in a host element. Both call `this[CONTENT]` to produce content.
+ */
+const CONTENT = Symbol('content');
 
 declare namespace Component {
   /**
@@ -111,25 +122,25 @@ class Component extends State {
 
       let proto = this;
 
-      while (proto = Object.getPrototypeOf(proto)) {
-        if (Object.prototype.hasOwnProperty.call(proto, 'render')) {
-          const desc = Object.getOwnPropertyDescriptor(proto, 'render')!;
-          chain.add(unbind(desc.value || desc.get!.call(this)));
-        }
-        if (proto === Component.prototype) break;
+      // Collect content renders defined *below* Component - the seam itself
+      // (Component.prototype.render) is excluded; an adapter owns that.
+      while ((proto = Object.getPrototypeOf(proto)) !== Component.prototype) {
+        const desc = Object.getOwnPropertyDescriptor(proto, 'render');
+        if (desc) chain.add(unbind(desc.value || desc.get!.call(this)));
       }
+
+      // No subclass render - default to passing children through.
+      if (!chain.size) chain.add(children);
     }
 
-    Object.defineProperty(this, 'render', {
-      configurable: true,
-      writable: true,
-      value(props?: {}): Component.Node {
-        let children: Component.Node;
+    Object.defineProperty(this, CONTENT, {
+      value(this: Component, props?: {}): Component.Node {
+        let node: Component.Node;
 
         for (const render of chain)
-          children = render.call(this, children != null ? { ...props, children } : props);
+          node = render.call(this, node != null ? { ...props, children: node } : props);
 
-        return children;
+        return node;
       }
     });
   }
@@ -161,8 +172,7 @@ class Component extends State {
    * Without a parameter, children are accepted by default and passed through provider.
    */
   render(props?: {}): Component.Node {
-    const { children } = (props || this.props) as { children?: Component.Node };
-    return children || null;
+    return (this as any)[CONTENT](props);
   }
 
   /**
@@ -177,4 +187,10 @@ class Component extends State {
   catch?(error: Error): Promise<void> | void;
 }
 
-export { Component };
+/** Default content for a Component with no own `render` - pass children through. */
+function children(this: Component, props?: {}): Component.Node {
+  const { children } = (props || this.props) as { children?: Component.Node };
+  return children || null;
+}
+
+export { Component, CONTENT };

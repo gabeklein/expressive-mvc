@@ -7,4 +7,4 @@ export { ref } from './field/ref';
 export { State, State as default, unbind } from './state';
 export { watch, listener, event, Observable, observer, touch } from './observable';
 export { Context } from './context';
-export { Component } from './component';
+export { Component, CONTENT } from './component';
