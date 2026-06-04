@@ -51,24 +51,30 @@ Object.defineProperties(proto, {
     get: proto.get
   },
   context: {
-    set: bootstrap
+    set(this: Component, context: Context) {
+      context = context.push(this);
+
+      Object.defineProperties(this, {
+        context: {
+          get: () => context,
+          set() { }
+        },
+        render: {
+          value: component(this, context)
+        }
+      });
+    }
   }
 });
 
-function bootstrap(this: Component, context: Context) {
-  const self = this.is;
-  const render = self.render;
-
-  context = context.push(self);
-
-  let current: Component;
-
-  const Render = () => render.call(current, self.props);
+function component(from: Component, context: Context) {
+  const { render } = from;
+  const Render = () => render.call(from, from.props);
   const Component = () => {
-    current = useHook((refresh) => {
-      watch(self, refresh);
+    from = useHook((refresh) => {
+      watch(from, refresh);
       return () => {
-        self.set(null);
+        from.set(null);
         context.pop();
       };
     });
@@ -76,24 +82,16 @@ function bootstrap(this: Component, context: Context) {
     const children = createElement(Layers.Provider, {
       value: context,
       children: createElement(Suspense,
-        { fallback: current.fallback, name: String(self) },
+        { fallback: from.fallback, name: String(from) },
         createElement(Render))
     });
 
-    return current.catch
-      ? createElement(ErrorBoundary, { self, children })
+    return from.catch
+      ? createElement(ErrorBoundary, { self: from, children })
       : children;
   };
 
-  Object.defineProperties(self, {
-    context: {
-      get: () => context,
-      set() { }
-    },
-    render: {
-      value: () => createElement(Component)
-    }
-  });
+  return () => createElement(Component);
 }
 
 function subcomponents(proto: Component) {
