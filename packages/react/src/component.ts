@@ -61,16 +61,12 @@ function bootstrap(this: Component, context: Context) {
 
   context = context.push(self);
 
-  let active: Component;
+  let current: Component;
 
-  const Render = () => render.call(active, self.props);
-  const React = () => {
-    useHook((refresh) => {
-      watch(self, (current) => {
-        active = current;
-        refresh();
-      });
-
+  const Render = () => render.call(current, self.props);
+  const Component = () => {
+    current = useHook((refresh) => {
+      watch(self, refresh);
       return () => {
         self.set(null);
         context.pop();
@@ -79,17 +75,15 @@ function bootstrap(this: Component, context: Context) {
 
     const children = createElement(Layers.Provider, {
       value: context,
-      children: createElement(
-        Suspense,
-        { fallback: active.fallback, name: String(self) },
-        createElement(Render)
-      )
+      children: createElement(Suspense,
+        { fallback: current.fallback, name: String(self) },
+        createElement(Render))
     });
 
-    return active.catch
+    return current.catch
       ? createElement(ErrorBoundary, { self, children })
       : children;
-  }
+  };
 
   Object.defineProperties(self, {
     context: {
@@ -97,9 +91,7 @@ function bootstrap(this: Component, context: Context) {
       set() { }
     },
     render: {
-      value() {
-        return createElement(React);
-      }
+      value: () => createElement(Component)
     }
   });
 }

@@ -5,7 +5,7 @@ import { State, unbind } from './state';
 const PENDING = new WeakMap<object, Component>();
 
 /** Per-class chain of `render` methods, leaf-first up to and including Component. */
-const CHAIN = new WeakMap<Function, Function[]>();
+const CHAIN = new WeakMap<Function, Set<Function>>();
 
 declare namespace Component {
   /**
@@ -24,7 +24,7 @@ declare namespace Component {
    * Only one adapter is expected per compilation; two augmenting `node` with
    * different types in the same build would conflict - by design.
    */
-  interface Host {}
+  interface Host { }
 
   /**
    * Host element type produced by `Component.render`.
@@ -50,7 +50,7 @@ declare namespace Component {
     : NonNullable<P>
     : { children?: Component.Node };
 
-  type Props<T extends Component> = 
+  type Props<T extends Component> =
     & StateProps<T>
     & BaseProps<T>
     & RenderProps<T['render']>;
@@ -103,17 +103,34 @@ class Component extends State {
       this.set(merge(this.props));
     });
 
-    // Resolve `render` as a composition up the prototype chain (leaf-first):
-    // each level's output becomes its super's `children`, so a base class
-    // wraps a subclass's content without the subclass calling super.render().
-    // Installed as an own property so `this.render` *is* the composed chain;
-    // adapters and direct callers invoke it like an ordinary render. (An
-    // instance-field `render = fn` initializes after this and shadows it -
-    // composition is bypassed; treat multi-level field render as unsupported.)
+    const T = this.constructor;
+    let chain = CHAIN.get(T);
+
+    if (!chain) {
+      CHAIN.set(T, chain = new Set);
+
+      let proto = this;
+
+      while (proto = Object.getPrototypeOf(proto)) {
+        if (Object.prototype.hasOwnProperty.call(proto, 'render')) {
+          const desc = Object.getOwnPropertyDescriptor(proto, 'render')!;
+          chain.add(unbind(desc.value || desc.get!.call(this)));
+        }
+        if (proto === Component.prototype) break;
+      }
+    }
+
     Object.defineProperty(this, 'render', {
       configurable: true,
       writable: true,
-      value: compose(this)
+      value(props?: {}): Component.Node {
+        let children: Component.Node;
+
+        for (const render of chain)
+          children = render.call(this, children != null ? { ...props, children } : props);
+
+        return children;
+      }
     });
   }
 
@@ -158,55 +175,6 @@ class Component extends State {
    * assign a fallback within catch, it will be reverted after resolved.
    */
   catch?(error: Error): Promise<void> | void;
-}
-
-/**
- * Build the composed render for an instance. Walks the prototype chain
- * (leaf-first, up to and including Component), collecting each level's own
- * `render`, then returns a function that threads each level's output into its
- * super as `children`. All levels are called with the receiver as `this`, so
- * an adapter's reactive proxy applies uniformly across the chain.
- */
-function compose(instance: Component) {
-  const type = instance.constructor;
-
-  let chain = CHAIN.get(type);
-
-  if (!chain) {
-    chain = [];
-
-    // Start at the prototype - an instance-field render is handled by shadowing.
-    let level: object = Object.getPrototypeOf(instance);
-
-    while (level) {
-      if (Object.prototype.hasOwnProperty.call(level, 'render')) {
-        const desc = Object.getOwnPropertyDescriptor(level, 'render')!;
-        const fn = unbind(desc.value || desc.get!.call(instance));
-
-        // A render touched before construction completes (e.g. a framework's
-        // render probe) can leave a bound copy that unbinds to the same
-        // prototype method - dedupe so each distinct render appears once.
-        if (!chain.includes(fn))
-          chain.push(fn);
-      }
-
-      if (level === Component.prototype) break;
-      level = Object.getPrototypeOf(level);
-    }
-
-    CHAIN.set(type, chain);
-  }
-
-  const renders = chain;
-
-  return function (this: Component, props?: {}): Component.Node {
-    let node: Component.Node;
-
-    for (let i = 0; i < renders.length; i++)
-      node = renders[i].call(this, i ? { ...props, children: node } : props);
-
-    return node;
-  };
 }
 
 export { Component };
