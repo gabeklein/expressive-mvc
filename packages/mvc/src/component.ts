@@ -112,10 +112,8 @@ class Component extends State {
       let proto = this;
 
       while (proto = Object.getPrototypeOf(proto)) {
-        if (Object.prototype.hasOwnProperty.call(proto, 'render')) {
-          const desc = Object.getOwnPropertyDescriptor(proto, 'render')!;
-          chain.add(unbind(desc.value || desc.get!.call(this)));
-        }
+        const desc = Object.getOwnPropertyDescriptor(proto, 'render');
+        if (desc) chain.add(unbind(desc.value || desc.get!.call(this)));
         if (proto === Component.prototype) break;
       }
     }
@@ -124,12 +122,12 @@ class Component extends State {
       configurable: true,
       writable: true,
       value(props?: {}): Component.Node {
-        let children: Component.Node;
+        let node: Component.Node;
 
         for (const render of chain)
-          children = render.call(this, children != null ? { ...props, children } : props);
+          node = render.call(this, node ? { ...props, children: node } : props);
 
-        return children;
+        return node;
       }
     });
   }
