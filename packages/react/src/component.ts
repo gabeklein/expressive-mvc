@@ -57,7 +57,7 @@ Object.defineProperties(proto, {
 
 function bootstrap(this: Component, context: Context) {
   const self = this.is;
-  const render = unbind(this.render);
+  const render = self.render;
 
   context = context.push(self);
 
