@@ -625,6 +625,139 @@ describe('default render', () => {
   });
 });
 
+describe('render chain', () => {
+  it('will compose subclass render as children of super', () => {
+    class Outer extends Component {
+      render(props = {} as { children?: React.ReactNode }) {
+        return (
+          <main>
+            <h1>Wrapper</h1>
+            {props.children}
+          </main>
+        );
+      }
+    }
+
+    class Inner extends Outer {
+      render() {
+        return <span>Content</span>;
+      }
+    }
+
+    const element = render(<Inner />);
+
+    // Inner authors content via render; Outer orchestration still wraps it,
+    // without Inner calling super.render().
+    const heading = element.getByText('Wrapper');
+    const content = element.getByText('Content');
+
+    expect(heading.tagName).toBe('H1');
+    expect(content.closest('main')).toBe(heading.closest('main'));
+  });
+
+  it('will compose three levels inner to outer', () => {
+    class A extends Component {
+      render(props = {} as { children?: React.ReactNode }) {
+        return <div data-a>{props.children}</div>;
+      }
+    }
+
+    class B extends A {
+      render(props = {} as { children?: React.ReactNode }) {
+        return <section data-b>{props.children}</section>;
+      }
+    }
+
+    class C extends B {
+      render() {
+        return <span data-c>Leaf</span>;
+      }
+    }
+
+    const { container } = render(<C />);
+
+    // A (outermost) > B > C (innermost content).
+    const a = container.querySelector('[data-a]')!;
+    const b = a.querySelector('[data-b]')!;
+    const c = b.querySelector('[data-c]')!;
+
+    expect(c.textContent).toBe('Leaf');
+  });
+
+  it('will stay reactive across composed levels', async () => {
+    class Frame extends Component {
+      title = 'Base';
+
+      render(props = {} as { children?: React.ReactNode }) {
+        return (
+          <article>
+            <h2>{this.title}</h2>
+            {props.children}
+          </article>
+        );
+      }
+    }
+
+    class Page extends Frame {
+      body = 'Hello';
+
+      render() {
+        return <p>{this.body}</p>;
+      }
+    }
+
+    let instance!: Page;
+    render(<Page is={(x) => (instance = x)} />);
+
+    screen.getByText('Base');
+    screen.getByText('Hello');
+
+    // Both the super's and the subclass's reactive reads drive updates.
+    await act(async () => {
+      instance.title = 'Updated';
+      instance.body = 'World';
+    });
+
+    screen.getByText('Updated');
+    screen.getByText('World');
+  });
+
+  it('will drop derived content if wrapper omits children', () => {
+    // Documented footgun: an intermediate render is a wrapper - if it does not
+    // place props.children, the derived (subclass) content vanishes.
+    class Shell extends Component {
+      render() {
+        return <div>Shell only</div>;
+      }
+    }
+
+    class Lost extends Shell {
+      render() {
+        return <span>Never seen</span>;
+      }
+    }
+
+    const element = render(<Lost />);
+
+    element.getByText('Shell only');
+    expect(element.queryByText('Never seen')).toBeNull();
+  });
+
+  it('will preserve identity for single-level override', () => {
+    // The universal case: a single override composes with Component's
+    // pass-through default, so output is exactly the subclass render.
+    class Solo extends Component {
+      render() {
+        return <span>Just me</span>;
+      }
+    }
+
+    const { container } = render(<Solo />);
+
+    expect(container.innerHTML).toBe('<span>Just me</span>');
+  });
+});
+
 describe('error boundary', () => {
   mockError();
 

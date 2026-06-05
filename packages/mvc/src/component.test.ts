@@ -1,6 +1,7 @@
 import { expect, it, mock } from 'bun:test';
 import { Component } from './component';
 import { Context } from './context';
+import { describe } from 'bun:test';
 
 it('will default fallback to null', () => {
   const foo = Component.new({});
@@ -93,4 +94,108 @@ it('will ignore Context passed as constructor argument', () => {
 
   expect(foo.value).toBe(5);
   expect(Object.keys(foo.get())).not.toContain('0');
+});
+
+describe('render chain', () => {
+  // Render layering: a subclass authors content; each super render up the
+  // prototype chain wraps it as `children`, base-outermost. Asserted directly
+  // on the composed `render` - no host needed.
+  it('will compose subclass render as children of super', () => {
+    class Outer extends Component {
+      render(props = {} as { children?: unknown }): Component.Node {
+        return ['outer', props.children];
+      }
+    }
+
+    class Inner extends Outer {
+      render(): Component.Node {
+        return 'content';
+      }
+    }
+
+    expect(Inner.new({}).render()).toEqual(['outer', 'content']);
+  });
+
+  it('will nest three levels inner to outer', () => {
+    class A extends Component {
+      render(props = {} as { children?: unknown }): Component.Node {
+        return { a: props.children };
+      }
+    }
+
+    class B extends A {
+      render(props = {} as { children?: unknown }): Component.Node {
+        return { b: props.children };
+      }
+    }
+
+    class C extends B {
+      render(): Component.Node {
+        return 'leaf';
+      }
+    }
+
+    // A (outermost) wraps B wraps C (innermost content).
+    expect(C.new({}).render()).toEqual({ a: { b: 'leaf' } });
+  });
+
+  it('will bind each composed layer to live instance state', () => {
+    class Frame extends Component {
+      title = 'Base';
+
+      render(props = {} as { children?: unknown }): Component.Node {
+        return [this.title, props.children];
+      }
+    }
+
+    class Page extends Frame {
+      body = 'Hello';
+
+      render(): Component.Node {
+        return this.body;
+      }
+    }
+
+    const page = Page.new({});
+
+    expect(page.render()).toEqual(['Base', 'Hello']);
+
+    // Both layers read `this` off the same instance - render reflects updates.
+    page.title = 'Updated';
+    page.body = 'World';
+
+    expect(page.render()).toEqual(['Updated', 'World']);
+  });
+
+  // Documented footgun: a wrapper that never reads `props.children` drops the
+  // derived content. The children getter is lazy, so inner never even runs.
+  it('will drop derived content if wrapper omits children', () => {
+    const inner = mock(() => 'never seen');
+
+    class Shell extends Component {
+      render(): Component.Node {
+        return 'shell only';
+      }
+    }
+
+    class Lost extends Shell {
+      render(): Component.Node {
+        return inner();
+      }
+    }
+
+    expect(Lost.new({}).render()).toBe('shell only');
+    expect(inner).not.toHaveBeenCalled();
+  });
+
+  it('will preserve identity for single-level override', () => {
+    class Solo extends Component {
+      render(): Component.Node {
+        return 'just me';
+      }
+    }
+
+    // One override composes with the pass-through default to exactly itself.
+    expect(Solo.new({}).render()).toBe('just me');
+  });
 });

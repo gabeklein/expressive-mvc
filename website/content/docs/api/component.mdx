@@ -57,6 +57,10 @@ class Card extends Component {
 - Non-optional parameter fields become required JSX attributes.
 - Without a parameter (or without `render()` altogether), children pass through a context provider.
 
+When a subclass overrides `render()`, it **composes** with the base rather than replacing it. Each render up the prototype chain wraps the one below as `props.children`, base-outermost - no `super.render()` call. A wrapper that omits `props.children` drops the inner content (the getter is lazy, so it never runs). See [Render composition](/docs/guides/components#render-composition).
+
+The whole composed chain runs in a single host render. Prefer `this` for reactivity over React hooks inside `render()`, and if you do use hooks, beware the sharp edge: a hook in a layer below a wrapper that *conditionally* renders `props.children` breaks the rules of hooks. For a scope isolated from that, use a [subcomponent](#subcomponents).
+
 ### `catch(error)` <small>optional</small>
 
 ```tsx

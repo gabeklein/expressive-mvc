@@ -109,6 +109,120 @@ This is how teams DRY up complex UI patterns into organizational primitives - bu
 
 <br />
 
+## Render composition
+
+When a subclass overrides `render()`, it does not replace the base render - the two **compose**. Each `render()` up the prototype chain wraps the one below it, base-outermost, with the inner output handed down as `props.children`. You never call `super.render()`.
+
+```tsx
+class Frame extends Component {
+  render(props = {} as { children?: ReactNode }) {
+    return (
+      <section className="frame">
+        <header>Frame</header>
+        {props.children}
+      </section>
+    );
+  }
+}
+
+class Page extends Frame {
+  body = 'Hello';
+
+  render() {
+    return <p>{this.body}</p>;
+  }
+}
+
+<Page />;
+```
+
+`<Page />` renders the `Frame` chrome with the `Page` content slotted in where `Frame` reads `props.children`:
+
+```html
+<section class="frame">
+  <header>Frame</header>
+  <p>Hello</p>
+</section>
+```
+
+`Frame` is the outer layer because it sits higher on the chain; `Page` is the inner content. Add a third level and it nests the same way - each subclass becomes the `children` of its parent:
+
+```tsx
+class Card extends Frame {
+  render(props = {} as { children?: ReactNode }) {
+    return <article className="card">{props.children}</article>;
+  }
+}
+
+class Note extends Card {
+  render() {
+    return <p>note body</p>;
+  }
+}
+// Frame > Card > <p>note body</p>
+```
+
+Every layer binds to the same live instance, so each render reads the same reactive `this`. A change to any field re-renders the whole composed output.
+
+### The base provides the default shell
+
+This is what makes a base primitive useful: it owns the surrounding structure once, and subclasses fill the middle without restating it. A `Boundary` base can wrap every subclass in shared chrome, suspense, or context - subclasses only author the content.
+
+<br />
+
+### Footgun: dropping children
+
+The inner content arrives as `props.children`. A wrapper render that never reads `props.children` silently discards everything below it:
+
+```tsx
+class Shell extends Component {
+  render() {
+    // No props.children - inner content is dropped.
+    return <div>shell only</div>;
+  }
+}
+
+class Lost extends Shell {
+  render() {
+    return <p>never rendered</p>; // discarded
+  }
+}
+```
+
+The `children` getter is lazy, so the dropped layer never even runs. If a base means to wrap subclasses, it must declare a `props` parameter and render `props.children`.
+
+<br />
+
+### Caution: React hooks in a render layer
+
+You normally won't reach for hooks here - reactivity comes from `this`, so read class fields, not `useState`/`useEffect`, inside `render()`. But hooks aren't forbidden, and there's a sharp edge worth knowing.
+
+The whole composed chain runs inside a **single** host render - every layer executes in the same component call, so all layers' hooks stack into one component. That's fine as long as the hooks obey the rules of hooks *for the chain as a whole*: same hooks, same order, every render.
+
+The trap is conditional children. A hook in a layer below a wrapper that conditionally renders `props.children` runs only sometimes - the inner layer mounts and unmounts across renders, and React throws:
+
+```tsx
+class Collapsible extends Component {
+  open = false;
+
+  render(props = {} as { children?: ReactNode }) {
+    // Conditionally rendering children is fine for content...
+    return this.open ? <div>{props.children}</div> : null;
+  }
+}
+
+class Panel extends Collapsible {
+  render() {
+    const [x] = useState(0); // ...but this hook now runs only when `open` - illegal
+    return <p>{x}</p>;
+  }
+}
+```
+
+If a layer needs its own isolated scope - its own hooks, subscription, and reconciliation boundary, immune to what wrappers above it do - make it a [subcomponent](#subcomponents) (a PascalCase method) and render `<this.Panel />`. Subcomponents are each wrapped in their own component; render layers are deliberately folded into one.
+
+<br />
+
 ## Persistent identity
 
 Component instances survive across renders. `this` is stable - you can store references, pass `this` to external objects, and hold imperative state (Sets, Maps, WebSocket connections) without losing it between renders.

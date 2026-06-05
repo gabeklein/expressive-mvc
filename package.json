@@ -11,6 +11,7 @@
     "test": "lerna run test",
     "build": "lerna run build",
     "pr": "bash .github/scripts/pr.sh",
+    "watch": "bun test --watch --only-failures",
     "nuke": "find . -name 'node_modules' -type d -prune -exec rm -rf '{}' +"
   },
   "devDependencies": {

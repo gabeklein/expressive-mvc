@@ -23,8 +23,8 @@ const SETUP = new WeakMap<State.Extends, Set<State.Init<any>>>();
 /** Parent-child relationships. */
 const PARENT = new WeakMap<State, State | null>();
 
-/** Reference bound instance methods to real ones. */
-const METHOD = new WeakMap<any, any>();
+/** Reference bound instance methods, or their getter, to real one. */
+const UNBIND = new WeakMap<any, any>();
 
 /** List of methods defined by a given type. */
 const METHODS = new WeakMap<Function, Map<string, (value: any) => void>>();
@@ -541,11 +541,13 @@ function bootstrap(T: State.Extends) {
         const fn = original || value;
         const bound = fn.bind(is);
 
-        METHOD.set(bound, fn);
+        UNBIND.set(bound, fn);
         define(is, key, { value: bound, writable: true, configurable: true });
 
         return bound;
       }
+
+      UNBIND.set(bind, value);
 
       keys.set(key, bind);
       define(type.prototype, key, { get: bind, set: bind });
@@ -858,7 +860,7 @@ function uid() {
 function unbind<T extends Function>(fn: T): T;
 function unbind<T extends Function>(fn?: T): T | undefined;
 function unbind(fn?: Function) {
-  return METHOD.get(fn) || fn;
+  return UNBIND.get(fn) || fn;
 }
 
 /**
