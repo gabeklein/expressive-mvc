@@ -76,7 +76,7 @@ export class Route extends Component {
     this.router.goto(this.resolve(url), replace);
   }
 
-  render({ children } = {} as { children?: ReactNode }) {
+  render(props = {} as { children?: ReactNode }) {
     const self = this.is;
     const { parent, as, matched } = this;
 
@@ -93,6 +93,8 @@ export class Route extends Component {
     if (!matched) return null;
     if (this.redirect)
       return createElement(Redirect, { to: this.redirect, replace: true });
+
+    const { children } = props;
     return as ? createElement(as, {}, children) : children;
   }
 }
