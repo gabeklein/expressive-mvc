@@ -596,4 +596,55 @@ describe('extends', () => {
     render(<Route><Profile /></Route>);
     expect(found).toBeInstanceOf(Profile);
   });
+
+  describe('structural children', () => {
+    it('mounts child Routes even when the parent is unmatched', () => {
+      window.history.replaceState(null, '', '/elsewhere');
+      let mounted = false;
+      const view = render(
+        <Route to="foo/*">
+          <Route to="bar" is={() => (mounted = true)} as={() => <span>bar</span>} />
+        </Route>
+      );
+      expect(mounted).toBe(true);            // structural child mounted/registered
+      expect(view.container.textContent).toBe(''); // ...but invisible (self-gated)
+    });
+
+    it('finds child Routes nested in a Fragment', () => {
+      window.history.replaceState(null, '', '/elsewhere');
+      let mounted = 0;
+      render(
+        <Route to="foo/*">
+          <>
+            <Route to="a" is={() => mounted++} />
+            <Route to="b" is={() => mounted++} />
+          </>
+        </Route>
+      );
+      expect(mounted).toBe(2);               // both mount despite parent unmatched
+    });
+
+    it('shows the matched child once the parent matches', () => {
+      window.history.replaceState(null, '', '/foo/bar');
+      const view = render(
+        <Route to="foo/*">
+          <Route to="bar" as={() => <span>bar</span>} />
+        </Route>
+      );
+      expect(view.container.textContent).toBe('bar');
+    });
+
+    it('treats non-Route content as a leaf (gated, not always-mounted)', () => {
+      window.history.replaceState(null, '', '/elsewhere');
+      let ran = false;
+      const Content = () => { ran = true; return <span>content</span>; };
+      const view = render(
+        <Route to="foo/*">
+          <Content />
+        </Route>
+      );
+      expect(ran).toBe(false);               // leaf content gated off while unmatched
+      expect(view.container.textContent).toBe('');
+    });
+  });
 });
