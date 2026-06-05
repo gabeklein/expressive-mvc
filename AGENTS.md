@@ -70,6 +70,7 @@ await expect(state).not.toHaveUpdated();
 - React changes must stay aligned across `packages/react/src/{state,component,context}.{ts,test.tsx}`.
 - Update tests alongside behavioral/type changes - tests must fail without the change.
 - New major features need `skills/` docs.
+- Merged code carries essentially no comments. Add explanatory comments freely while building a feature, but strip them before committing. Keep one only when the code is genuinely cryptic and would otherwise be misread - this should be rare. Never commit narration of what the code does or why a step exists; the code and commit message carry that.
 
 ## Change flow
 
