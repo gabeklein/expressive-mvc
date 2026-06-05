@@ -272,7 +272,7 @@ Fetch these for detailed API documentation when the task requires deeper knowled
 ### React
 
 - [react/react.md](react/react.md) - use(), State.use(), State.get(), Provider, Consumer, ForceRefresh
-- [react/component.md](react/component.md) - Component class, props, children, subcomponents, error boundaries
+- [react/component.md](react/component.md) - Component class, props, children, render composition (subclass renders wrap base as `props.children`), subcomponents, error boundaries
 - [react/patterns.md](react/patterns.md) - Recipes: forms, async, nested state, debounce, effects
 
 ### Examples

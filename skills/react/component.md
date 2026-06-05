@@ -98,6 +98,42 @@ class Accordion extends Toggle {
 
 Key pattern: base class owns behavior + structure, subclass fills in rendering. Subclasses work immediately as `<DarkModeSwitch />` or `<Accordion title="FAQ">...</Accordion>`.
 
+## Render Composition
+
+When a subclass overrides `render()`, it **composes** with the base instead of replacing it. Each `render()` up the prototype chain wraps the one below it, base-outermost, with the inner output passed down as `props.children`. No `super.render()` call.
+
+```tsx
+class Frame extends Component {
+  render(props = {} as { children?: ReactNode }) {
+    return (
+      <section className="frame">
+        <header>Frame</header>
+        {props.children}
+      </section>
+    );
+  }
+}
+
+class Page extends Frame {
+  body = 'Hello';
+
+  render() {
+    return <p>{this.body}</p>;
+  }
+}
+
+// <Page /> renders:
+// <section class="frame"><header>Frame</header><p>Hello</p></section>
+```
+
+`Frame` is the outer layer (higher on the chain); `Page` content slots in where `Frame` reads `props.children`. Levels nest the same way - each subclass becomes its parent's `children`. Every layer binds to the same live instance, so all read the same reactive `this`.
+
+This is how a base primitive owns shared chrome/suspense/context once while subclasses author only the content.
+
+**Footgun:** the inner content arrives as `props.children`. A wrapper render that never reads `props.children` silently drops everything below it - and because the `children` getter is lazy, the dropped layer never even runs. A base meant to wrap subclasses must declare a `props` parameter and render `props.children`.
+
+**Caution with React hooks in a render layer.** Reactivity comes from `this`, so you rarely need hooks here - but they aren't forbidden. The sharp edge: the whole composed chain runs in a single host render, so all layers' hooks stack into one component. Fine if they obey the rules of hooks for the chain as a whole, but a hook in a layer below a wrapper that *conditionally* renders `props.children` runs only sometimes (mounts/unmounts across renders) and breaks the rules of hooks. When a layer needs its own isolated hooks/subscription/boundary, make it a PascalCase subcomponent (`<this.Panel />`) - those each get their own component; render layers are folded into one.
+
 ## Persistent Instance
 
 Component instances survive across renders. `this` is stable - you can store references, pass `this` to external objects, hold imperative state (Sets, Maps, DOM refs) without losing it.
