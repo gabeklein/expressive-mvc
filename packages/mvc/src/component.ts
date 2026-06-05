@@ -1,8 +1,11 @@
 import { Context } from './context';
 import { set } from './field/set';
-import { State } from './state';
+import { State, unbind } from './state';
 
 const PENDING = new WeakMap<object, Component>();
+
+/** Per-class composed content render. */
+const CHAIN = new WeakMap<Function, Function>();
 
 declare namespace Component {
   /**
@@ -21,7 +24,7 @@ declare namespace Component {
    * Only one adapter is expected per compilation; two augmenting `node` with
    * different types in the same build would conflict - by design.
    */
-  interface Host {}
+  interface Host { }
 
   /**
    * Host element type produced by `Component.render`.
@@ -47,12 +50,26 @@ declare namespace Component {
     : NonNullable<P>
     : { children?: Component.Node };
 
-  type Props<T extends Component> = 
+  type Props<T extends Component> =
     & StateProps<T>
     & BaseProps<T>
     & RenderProps<T['render']>;
 }
 
+interface Component {
+  /**
+   * Output for this component. Override to define custom JSX.
+   *
+   * Properties accessed via `this` are reactive and trigger a render when they
+   * change, in addition to props. Accepts an optional parameter to receive extra
+   * props from JSX, beyond those merged to state properties; declare its shape
+   * via `props = {} as { ... }`. Without a parameter, children pass through.
+   *
+   * Declared, not implemented - the constructor installs a composed `render`
+   * per instance (see `render`); subclasses override with a method.
+   */
+  render(props?: {}): Component.Node;
+}
 
 class Component extends State {
   /**
@@ -99,36 +116,12 @@ class Component extends State {
     this.set('props', () => {
       this.set(merge(this.props));
     });
-  }
 
-  /**
-   * Output for this component. Override to define custom JSX.
-   *
-   * Properties accessed via `this` are reactive and will trigger a render when , in addition to props.
-   *
-   * Accepts optional parameter to receive extra props
-   * from JSX, beyond those merged to state properties.
-   *
-   * To declare extra props use `props = {} as { ... }` with expected shape.
-   * A default is required to satisfy TypeScript but safely ignored.
-   *
-   * ```ts
-   * render(props = {} as { label: string }) {
-   *   return <span>{props.label}</span>;
-   * }
-   * ```
-   * Usable as:
-   * ```tsx
-   * <MyComponent label="Hello" />
-   * ```
-   *
-   * These must be compatible with State-derived properties, or be unused.
-   * Props you declare as not-optional will be required by the JSX element.
-   *
-   * Without a parameter, children are accepted by default and passed through provider.
-   */
-  render(props?: {}): Component.Node {
-    return this.props.children || null;
+    Object.defineProperty(this, 'render', {
+      writable: true,
+      configurable: true,
+      value: render(this)
+    });
   }
 
   /**
@@ -141,6 +134,52 @@ class Component extends State {
    * assign a fallback within catch, it will be reverted after resolved.
    */
   catch?(error: Error): Promise<void> | void;
+}
+
+/**
+ * Build (or fetch the cached) composed content render for an instance's class.
+ * Walks the prototype chain for content renders strictly below Component - the
+ * seam itself (Component.prototype.render) is excluded; an adapter owns that.
+ */
+function render(target: Component) {
+  const cached = CHAIN.get(target.constructor);
+
+  if (cached) return cached;
+
+  let render: Function = children;
+  let proto = target;
+
+  while ((proto = Object.getPrototypeOf(proto)) !== Component.prototype) {
+    const desc = Object.getOwnPropertyDescriptor(proto, 'render');
+
+    if (desc) {
+      const layer = unbind(desc.get || desc.value);
+      render = render === children ? layer : compose(layer, render);
+    }
+  }
+
+  CHAIN.set(target.constructor, render);
+
+  return render;
+}
+
+/** Wrap an outer render so it receives `inner` as a lazy `children` getter. */
+function compose(outer: Function, inner: Function): Function {
+  return function (this: Component, props?: {}) {
+    const self = this;
+    return outer.call(self, {
+      ...props,
+      get children() {
+        return inner.call(self, props);
+      }
+    });
+  };
+}
+
+/** Default content when a component defines no `render` - pass children through. */
+function children(this: Component, props?: {}): Component.Node {
+  const { children } = (props || this.props) as { children?: Component.Node };
+  return children || null;
 }
 
 export { Component };
