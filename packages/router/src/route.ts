@@ -1,5 +1,12 @@
 import { Component, get, set } from '@expressive/react';
-import { ComponentType, ReactNode, createElement } from 'react';
+import {
+  Children,
+  ComponentType,
+  Fragment,
+  ReactNode,
+  createElement,
+  isValidElement
+} from 'react';
 
 import { Redirect } from './redirect';
 import { Router } from './router';
@@ -90,13 +97,37 @@ export class Route extends Component {
         }
     }
 
-    if (!matched) return null;
     if (this.redirect)
-      return createElement(Redirect, { to: this.redirect, replace: true });
+      return matched
+        ? createElement(Redirect, { to: this.redirect, replace: true })
+        : null;
+
+    if (Object.getOwnPropertyDescriptor(props, 'children')?.get)
+      return matched ? props.children : null;
 
     const { children } = props;
+
+    if (allRoutes(children))
+      return createElement(Fragment, null,
+        matched && as ? createElement(as) : null,
+        children
+      );
+
+    if (!matched) return null;
     return as ? createElement(as, {}, children) : children;
   }
+}
+
+function allRoutes(children: ReactNode): boolean {
+  const nodes = Children.toArray(children);
+
+  return nodes.length > 0 && nodes.every((node) => {
+    if (!isValidElement(node)) return false;
+    const { type } = node;
+    if (type === Fragment)
+      return allRoutes((node.props as { children?: ReactNode }).children);
+    return type === Route || (typeof type === 'function' && type.prototype instanceof Route);
+  });
 }
 
 function register(parent: Route, child: Route) {
