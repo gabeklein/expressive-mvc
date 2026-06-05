@@ -523,3 +523,77 @@ describe('Route', () => {
     });
   });
 });
+
+describe('extends', () => {
+  it('subclass authors content via render(); base gates on match', () => {
+    let ran = 0;
+    class Profile extends Route {
+      to = 'profile/*';
+      render() {
+        ran++;
+        return <span>profile</span> as any;
+      }
+    }
+
+    window.history.replaceState(null, '', '/profile');
+    const view = render(<Route><Profile /></Route>);
+    expect(view.container.textContent).toBe('profile');
+    expect(ran).toBe(1);
+  });
+
+  it('does not run subclass content when unmatched (lazy children gate)', () => {
+    let ran = 0;
+    class Profile extends Route {
+      to = 'profile/*';
+      render() {
+        ran++;
+        return <span>profile</span> as any;
+      }
+    }
+
+    window.history.replaceState(null, '', '/elsewhere');
+    const view = render(<Route><Profile /></Route>);
+    expect(view.container.textContent).toBe('');
+    expect(ran).toBe(0); // never invoked while unmatched
+  });
+
+  it('subclass owns nested routes that respect its mount path', () => {
+    class Profile extends Route {
+      to = 'profile/*';
+      render() {
+        return (
+          <>
+            <Route to="" as={() => <span>index</span>} />
+            <Route to="settings" as={() => <span>settings</span>} />
+          </>
+        ) as any;
+      }
+    }
+
+    window.history.replaceState(null, '', '/admin/profile/settings');
+    const view = render(
+      <Route>
+        <Route to="admin/*"><Profile /></Route>
+      </Route>
+    );
+    expect(view.container.textContent).toBe('settings');
+  });
+
+  it('is addressable in context by class identity from a descendant', () => {
+    let found: Route | undefined;
+    class Profile extends Route {
+      to = 'profile/*';
+      render() {
+        return <Inner /> as any;
+      }
+    }
+    const Inner = () => {
+      found = Profile.get();
+      return <span>ok</span>;
+    };
+
+    window.history.replaceState(null, '', '/profile');
+    render(<Route><Profile /></Route>);
+    expect(found).toBeInstanceOf(Profile);
+  });
+});
