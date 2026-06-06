@@ -1,5 +1,5 @@
 import React, { Suspense } from 'react';
-import { get, State, Provider, set } from '.';
+import { Component, get, State, Provider, set } from '.';
 import { mock, spyOn, expect, it, describe, afterEach, afterAll } from 'bun:test';
 import { act, render, renderHook, waitFor } from '@testing-library/react';
 import { mockPromise } from '../test.setup';
@@ -1212,6 +1212,65 @@ describe('State.get', () => {
       });
 
       expect(didCompute).toBeCalledTimes(2);
+    });
+
+    it('keeps a computed subscription alive after a mount-time redirect', async () => {
+      // #112: a computed returning a fresh value each read (~Router.match),
+      // whose source is mutated during a sibling's mount (redirect-on-mount),
+      // must stay subscribed so later updates still reach subscribers.
+      class Nav extends State {
+        path = '/';
+        get at() {
+          const { path } = this;
+          return () => path;
+        }
+      }
+
+      class Wrap extends Component {
+        nav = get(Nav);
+        render(props = {} as { children?: React.ReactNode }) {
+          void this.nav.at; // subscribe early, before the redirect
+          return <>{props.children}</> as any;
+        }
+      }
+
+      class Page extends Component {
+        nav = get(Nav);
+        to = '';
+        get matched() {
+          return this.nav.at() === this.to;
+        }
+        render() {
+          return (this.matched ? <span>{this.to}</span> : null) as any;
+        }
+      }
+
+      class Redirect extends Component {
+        nav = get(Nav);
+        protected new() {
+          this.nav.path = '/a';
+        }
+        render() {
+          return null;
+        }
+      }
+
+      let nav!: Nav;
+      const view = render(
+        <Provider for={Nav} is={(n: Nav) => void (nav = n)}>
+          <Wrap>
+            <Redirect />
+            <Page to="/a" />
+            <Page to="/b" />
+          </Wrap>
+        </Provider>
+      );
+
+      await act(async () => {});
+      expect(view.container.textContent).toBe('/a'); // redirect landed
+
+      await act(async () => void (nav.path = '/b'));
+      expect(view.container.textContent).toBe('/b'); // stalled before the fix
     });
   });
 
