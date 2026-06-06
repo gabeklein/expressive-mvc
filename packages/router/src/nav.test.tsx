@@ -6,6 +6,9 @@ import { NavLinks } from './nav';
 import { Route } from './route';
 import { Router } from './router';
 
+const current = (view: any) =>
+  view.container.querySelector('a[aria-current="page"]')?.getAttribute('href');
+
 beforeEach(() => {
   Context.root.get(Router, false)?.set(null);
   window.history.replaceState(null, '', '/');
@@ -39,6 +42,25 @@ it('nests links mirroring nested Routes', async () => {
     );
   });
   expect(links(view)).toEqual(['/posts', '/posts/recent']);
+});
+
+it('marks the active link and updates on navigation', async () => {
+  const router = Router.new();
+  router.goto('/a');
+
+  let view: any;
+  await act(async () => {
+    view = render(
+      <Route as={NavLinks}>
+        <Route to="a" />
+        <Route to="b" />
+      </Route>
+    );
+  });
+  expect(current(view)).toBe('/a');
+
+  await act(async () => router.goto('/b'));
+  expect(current(view)).toBe('/b');
 });
 
 it('Item is overridable via subclassing', async () => {
