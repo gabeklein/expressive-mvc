@@ -2992,6 +2992,40 @@ describe('computed (getters)', () => {
     });
   });
 
+  it('will stay subscribed after read during update', async () => {
+    // A dependency mutated while an update is pending, then read
+    // synchronously, recomputes against a proxy whose listener is already spent.
+    // The deferred re-invoke must re-arm the live proxy or all later updates stall.
+    class Test extends State {
+      input = 1;
+      get value() {
+        return this.input + 1;
+      }
+    }
+
+    const test = Test.new();
+    const seen: number[] = [];
+
+    test.get(({ value }) => {
+      seen.push(value)
+    });
+
+    expect(seen).toEqual([2]);
+
+    // mutate, then read synchronously before the update flushes
+    test.input = 2;
+    expect(test.value).toBe(3);
+
+    await expect(test).toHaveUpdated();
+    expect(seen).toEqual([2, 3]);
+
+    test.input = 3;
+
+    await expect(test).toHaveUpdated();
+    expect(test.value).toBe(4);
+    expect(seen).toEqual([2, 3, 4]);
+  });
+
   describe('circular', () => {
     it('will access own previous value', async () => {
       class Test extends State {

@@ -260,6 +260,7 @@ function watch<T extends object>(
   let events: readonly Observer.Event[] = [];
   let unset: ((update: boolean | null) => void) | undefined;
   let reset: (() => void) | null | undefined;
+  let previous: T | undefined;
 
   function invoke() {
     let ignore: boolean = true;
@@ -282,6 +283,13 @@ function watch<T extends object>(
       const proxy = observe(target, onUpdate, argument === true);
       const output = callback.call(proxy, proxy, events);
 
+      if (previous && argument === false) {
+        const { watching } = (proxy as Observed)[Observing]!;
+        if (!watching.size)
+          (previous as Observed)[Observing]!.watching.forEach((k) => watching.add(k));
+      }
+      
+      previous = proxy;
       ignore = false;
       reset = output === null ? null : invoke;
       unset = (key) => {
