@@ -306,6 +306,8 @@ class Dashboard extends Component {
 - Accessible from context: `Dashboard.get()` then `<dashboard.Sidebar />`.
 - **Overridable by subclasses** for plug-and-play composition.
 
+They also double as a decomposition tool: pulling a section (a list `.map`, a chunk of chrome) out of `render()` into its own method keeps `render()` a flat composition of named sections. Optional - a judgement call for readability, not a default - but worth reaching for when `render()` is getting busy.
+
 ## Lifecycle
 
 - `new()` - once after init. Return cleanup function for teardown.
