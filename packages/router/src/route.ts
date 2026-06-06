@@ -31,6 +31,9 @@ export class Route extends Component {
   /** Nearest mounted Route ancestor, if any. */
   parent = get(Route, false);
 
+  /** Registered child Routes, in declaration order. Reactive. */
+  inner: Route[] = [];
+
   /** Base path inherited from parent Route (empty at the root). */
   get base(): string {
     const { parent } = this;
@@ -67,6 +70,11 @@ export class Route extends Component {
    */
   get matched(): boolean {
     return !!this.match;
+  }
+
+  /** This Route's own absolute path (base joined with its segment). */
+  get path(): string {
+    return this.base + this.router.segment(this.to);
   }
 
   /** Directory-style anchor for relative navigation. */
@@ -141,10 +149,12 @@ function register(parent: Route, child: Route) {
   }
 
   list.push(child);
+  parent.inner = list.slice();
 
   child.set(null, () => {
     const i = list!.indexOf(child);
     if (i >= 0) list!.splice(i, 1);
     if (!list!.length) CHILDREN.delete(parent);
+    if (!parent.get(null)) parent.inner = list!.slice();
   });
 }
