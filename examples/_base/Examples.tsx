@@ -1,5 +1,5 @@
 import { Component } from '@expressive/react';
-import { Link, Route, Router } from '@expressive/router';
+import { Link, NavLinks, Route, Router } from '@expressive/router';
 import { NotFound } from './NotFound';
 import { type ComponentType } from 'react';
 import Logo from './Logo';
@@ -49,59 +49,65 @@ class Examples extends Component {
   }
 
   render() {
-    const [first] = this.examples;
+    const {
+      examples,
+      examples: [first]
+    } = this;
+
     return (
       <Route>
         {first && <Route to="" redirect={first.path} />}
         <main className={styles.shell}>
-          <Navigation />
-          <Frame />
+          <nav className={styles.nav}>
+            <a className={styles.logo} href="/">
+              <Logo />
+            </a>
+            <ExampleLinks />
+          </nav>
+          <section className={styles.example}>
+            {examples.map((e) => (
+              <ExampleRoute key={e.path} to={e.path} title={e.title} file={e.file} />
+            ))}
+            {!this.current && <NotFound path={this.router.path} />}
+          </section>
         </main>
       </Route>
     );
   }
 }
 
-const Frame = () => {
-  const { current, router } = Examples.get();
+class ExampleRoute extends Route {
+  title = '';
+  file = '';
 
-  return (
-    <section className={styles.example}>
-      {current ? (
-        <iframe
-          key={current.path}
-          className={styles.frame}
-          title={current.title}
-          src={`module#${encodeURIComponent(current.file)}`}
-        />
-      ) : (
-        <NotFound path={router.path} />
-      )}
-    </section>
-  );
-};
+  render() {
+    return (
+      <iframe
+        className={styles.frame}
+        title={this.title}
+        src={`module#${encodeURIComponent(this.file)}`}
+      />
+    );
+  }
+}
 
-const Navigation = () => {
-  const { current, examples } = Examples.get();
+class ExampleLinks extends NavLinks {
+  List(props: { children?: React.ReactNode }) {
+    return <div className={styles.links}>{props.children}</div>;
+  }
 
-  return (
-    <nav className={styles.nav}>
-      <a className={styles.logo} href="/">
-        <Logo />
-      </a>
-      <div className={styles.links}>
-        {examples.map((e) => (
-          <Link
-            key={e.path}
-            to={e.path}
-            aria-current={e === current ? 'page' : undefined}>
-            {e.title}
-          </Link>
-        ))}
-      </div>
-    </nav>
-  );
-};
+  Item({ route }: { route: Route }) {
+    const { current } = Examples.get();
+    const { path, title } = route as ExampleRoute;
+    return (
+      <Link
+        to={path}
+        aria-current={current?.path === path ? 'page' : undefined}>
+        {title}
+      </Link>
+    );
+  }
+}
 
 function titleCase(str: string) {
   return str
