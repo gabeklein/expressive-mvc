@@ -96,13 +96,10 @@ class ExampleLinks extends NavLinks {
     return <div className={styles.links}>{props.children}</div>;
   }
 
-  Item({ route }: { route: Route }) {
-    const { current } = Examples.get();
+  Item({ route, active }: { route: Route; active: boolean }) {
     const { path, title } = route as ExampleRoute;
     return (
-      <Link
-        to={path}
-        aria-current={current?.path === path ? 'page' : undefined}>
+      <Link to={path} aria-current={active ? 'page' : undefined}>
         {title}
       </Link>
     );
