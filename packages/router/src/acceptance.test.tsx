@@ -40,31 +40,28 @@ describe('acceptance: nested file-routing tree', () => {
   it('/ -> RootLayout > HomePage', () => {
     window.history.replaceState(null, '', '/');
     const view = render(<Tree />);
-    expect(view.container.querySelector('[data-root]')).not.toBeNull();
-    expect(view.container.textContent).toBe('home');
+    expect(view.container.querySelector('[data-root]')?.textContent).toBe('home');
   });
 
   it('/blog -> RootLayout > BlogLayout > BlogIndex', () => {
     window.history.replaceState(null, '', '/blog');
     const view = render(<Tree />);
-    expect(view.container.querySelector('[data-root]')).not.toBeNull();
-    expect(view.container.querySelector('[data-blog]')).not.toBeNull();
-    expect(view.container.textContent).toBe('blog-index');
+    const blog = view.container.querySelector('[data-root] [data-blog]');
+    expect(blog?.textContent).toBe('blog-index');
   });
 
   it('/blog/hello-world -> RootLayout > BlogLayout > BlogPost(slug)', () => {
     window.history.replaceState(null, '', '/blog/hello-world');
     const view = render(<Tree />);
-    expect(view.container.querySelector('[data-blog]')).not.toBeNull();
-    expect(view.container.textContent).toBe('post:hello-world');
+    const blog = view.container.querySelector('[data-root] [data-blog]');
+    expect(blog?.textContent).toBe('post:hello-world');
   });
 
   it('/anything-else -> RootLayout > NotFound', () => {
     window.history.replaceState(null, '', '/anything-else');
     const view = render(<Tree />);
-    expect(view.container.querySelector('[data-root]')).not.toBeNull();
     expect(view.container.querySelector('[data-blog]')).toBeNull();
-    expect(view.container.textContent).toBe('not-found');
+    expect(view.container.querySelector('[data-root]')?.textContent).toBe('not-found');
   });
 
   it('navigating /blog/a -> /blog/b preserves the BlogPost instance', async () => {
