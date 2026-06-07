@@ -17,11 +17,18 @@ beforeEach(() => {
 const links = (view: any) =>
   Array.from(view.container.querySelectorAll('a')).map((a: any) => a.getAttribute('href'));
 
+const Page = ({ children }: { children?: React.ReactNode }) => (
+  <div>
+    <NavLinks />
+    {children}
+  </div>
+)
+
 it('mirrors the registered route tree', async () => {
   let view: any;
   await act(async () => {
     view = render(
-      <Route as={NavLinks}>
+      <Route as={Page}>
         <Route to="a" />
         <Route to="b" />
       </Route>
@@ -34,7 +41,7 @@ it('nests links mirroring nested Routes', async () => {
   let view: any;
   await act(async () => {
     view = render(
-      <Route as={NavLinks}>
+      <Route as={Page}>
         <Route to="posts/*">
           <Route to="recent" />
         </Route>
@@ -51,7 +58,7 @@ it('marks the active link and updates on navigation', async () => {
   let view: any;
   await act(async () => {
     view = render(
-      <Route as={NavLinks}>
+      <Route as={Page}>
         <Route to="a" />
         <Route to="b" />
       </Route>
@@ -69,10 +76,17 @@ it('Item is overridable via subclassing', async () => {
       return <a href={route.path} data-custom>{route.path}</a>;
     }
   }
+  const Page = ({ children }: { children?: React.ReactNode }) => (
+    <div>
+      <MyNav />
+      {children}
+    </div>
+  );
+
   let view: any;
   await act(async () => {
     view = render(
-      <Route as={MyNav}>
+      <Route as={Page}>
         <Route to="a" />
       </Route>
     );

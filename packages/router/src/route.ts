@@ -157,11 +157,10 @@ export class Route extends Component {
 
     const { children } = props;
 
-    if (allRoutes(children))
-      return createElement(Fragment, null,
-        matched && as ? createElement(as) : null,
-        children
-      );
+    if (allRoutes(children)) {
+      if (!as) return createElement(Fragment, null, children);
+      return matched ? createElement(as, {}, children) : null;
+    }
 
     if (!matched) return null;
     return as ? createElement(as, {}, children) : children;
