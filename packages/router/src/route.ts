@@ -28,6 +28,14 @@ export class Route extends Component {
    */
   redirect?: string = undefined;
 
+  /**
+   * Match when nothing else in this Route's scope did - the `else` branch.
+   * Has no path of its own; its blast radius is its parent (where it is nested
+   * defines its scope), so a root-level fallback is the app 404 and a nested
+   * one is the section 404.
+   */
+  fallback = false;
+
   /** Nearest mounted Route ancestor, if any. */
   parent = get(Route, false);
 
@@ -69,12 +77,17 @@ export class Route extends Component {
    * place with its Consumer picking up new params reactively.
    */
   get matched(): boolean {
+    const { parent } = this;
+
+    if (this.fallback)
+      return parent ? parent.matched && !parent.matches.length : false;
+
     return !!this.match;
   }
 
   /** This Route's own absolute path (base joined with its segment). */
   get path(): string {
-    return this.base + this.router.segment(this.to);
+    return this.fallback ? this.base : this.base + this.router.segment(this.to);
   }
 
   /**
@@ -86,7 +99,7 @@ export class Route extends Component {
     let found: Route | undefined;
 
     for (const route of this.inner) {
-      if (route.redirect || !match(route.base, route.to)) continue;
+      if (route.redirect || route.fallback || !match(route.base, route.to)) continue;
       if (found) return null;
       found = route;
     }
@@ -102,7 +115,7 @@ export class Route extends Component {
   get matches(): string[] {
     const { match } = this.router;
     return this.inner
-      .filter((route) => !route.redirect && match(route.base, route.to))
+      .filter((route) => !route.redirect && !route.fallback && match(route.base, route.to))
       .map((route) => route.path);
   }
 

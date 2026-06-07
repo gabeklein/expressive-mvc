@@ -28,7 +28,7 @@ export class NavLinks extends Component {
 
     return createElement(List, null,
       routes.map((route, i) => {
-        if (route.redirect) return null;
+        if (route.redirect || route.fallback) return null;
 
         return createElement(Fragment, { key: i },
           createElement(Entry, { route, Item }),
