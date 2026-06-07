@@ -94,6 +94,18 @@ export class Route extends Component {
     return found;
   }
 
+  /**
+   * Paths of all currently-matched child routes, in declaration order.
+   * Redirect routes are excluded. A flat projection (no live Route refs), so
+   * it is safe to read reactively.
+   */
+  get matches(): string[] {
+    const { match } = this.router;
+    return this.inner
+      .filter((route) => !route.redirect && match(route.base, route.to))
+      .map((route) => route.path);
+  }
+
   /** Directory-style anchor for relative navigation. */
   get anchor(): string {
     return this.router.anchor(this);

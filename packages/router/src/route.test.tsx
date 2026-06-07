@@ -723,3 +723,77 @@ describe('active', () => {
     expect(root.active).toBe(content);
   });
 });
+
+describe('matches', () => {
+  it('is empty when no child matches', async () => {
+    Router.new();
+    let root!: Route;
+    render(
+      <Route is={(r) => (root = r)}>
+        <Route to="a" />
+        <Route to="b" />
+      </Route>
+    );
+    await act(async () => {});
+    expect(root.matches).toEqual([]);
+  });
+
+  it('lists the matched child path', async () => {
+    const router = Router.new();
+    router.goto('/a');
+    let root!: Route;
+    render(
+      <Route is={(r) => (root = r)}>
+        <Route to="a" />
+        <Route to="b" />
+      </Route>
+    );
+    await act(async () => {});
+    expect(root.matches).toEqual(['/a']);
+  });
+
+  it('lists every match when more than one applies', async () => {
+    const router = Router.new();
+    router.goto('/a');
+    let root!: Route;
+    render(
+      <Route is={(r) => (root = r)}>
+        <Route to="a" />
+        <Route to="a" />
+      </Route>
+    );
+    await act(async () => {});
+    expect(root.matches).toEqual(['/a', '/a']);
+  });
+
+  it('updates on navigation', async () => {
+    const router = Router.new();
+    router.goto('/a');
+    let root!: Route;
+    render(
+      <Route is={(r) => (root = r)}>
+        <Route to="a" />
+        <Route to="b" />
+      </Route>
+    );
+    await act(async () => {});
+    expect(root.matches).toEqual(['/a']);
+
+    await act(async () => router.goto('/b'));
+    expect(root.matches).toEqual(['/b']);
+  });
+
+  it('excludes redirect routes', async () => {
+    const router = Router.new();
+    router.goto('/a');
+    let root!: Route;
+    render(
+      <Route is={(r) => (root = r)}>
+        <Route to="a" redirect="/a" />
+        <Route to="a" />
+      </Route>
+    );
+    await act(async () => {});
+    expect(root.matches).toEqual(['/a']);
+  });
+});
