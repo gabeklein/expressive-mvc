@@ -52,23 +52,29 @@ class Examples extends Component {
     return (
       <Route>
         {first && <Route to="" redirect={first.path} />}
-        <main className={styles.shell}>
-          <nav className={styles.nav}>
-            <a className={styles.logo} href="/">
-              <Logo />
-            </a>
-            <Navigation />
-          </nav>
-          <section className={styles.example}>
-            {examples.map((e) => (
-              <ExampleRoute key={e.path} to={e.path} title={e.title} file={e.file} />
-            ))}
-            <Route fallback as={NotFound} />
-          </section>
-        </main>
+        <Shell>
+          {examples.map((e) => (
+            <ExampleRoute key={e.path} to={e.path} title={e.title} file={e.file} />
+          ))}
+          <Route fallback as={NotFound} />
+        </Shell>
       </Route>
     );
   }
+}
+
+function Shell(props: { children?: React.ReactNode }) {
+  return (
+    <main className={styles.shell}>
+      <nav className={styles.nav}>
+        <a className={styles.logo} href="/">
+          <Logo />
+        </a>
+        <Navigation />
+      </nav>
+      <section className={styles.example}>{props.children}</section>
+    </main>
+  );
 }
 
 class ExampleRoute extends Route {
