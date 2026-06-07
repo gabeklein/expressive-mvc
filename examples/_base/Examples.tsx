@@ -50,14 +50,17 @@ class Examples extends Component {
     } = this;
 
     return (
-      <Route>
+      <Route as={Shell}>
         {first && <Route to="" redirect={first.path} />}
-        <Shell>
-          {examples.map((e) => (
-            <ExampleRoute key={e.path} to={e.path} title={e.title} file={e.file} />
-          ))}
-          <Route fallback as={NotFound} />
-        </Shell>
+        {examples.map((e) => (
+          <ExampleRoute
+            key={e.path}
+            to={e.path}
+            title={e.title}
+            file={e.file}
+          />
+        ))}
+        <Route fallback as={NotFound} />
       </Route>
     );
   }
