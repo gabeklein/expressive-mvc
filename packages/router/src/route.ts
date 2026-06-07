@@ -77,6 +77,23 @@ export class Route extends Component {
     return this.base + this.router.segment(this.to);
   }
 
+  /**
+   * The matched child Route: `undefined` if none match, `null` if more than
+   * one does (ambiguous, non-discriminated). Redirect routes are not candidates.
+   */
+  get active(): Route | undefined | null {
+    const { match } = this.router;
+    let found: Route | undefined;
+
+    for (const route of this.inner) {
+      if (route.redirect || !match(route.base, route.to)) continue;
+      if (found) return null;
+      found = route;
+    }
+
+    return found;
+  }
+
   /** Directory-style anchor for relative navigation. */
   get anchor(): string {
     return this.router.anchor(this);
