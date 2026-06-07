@@ -1,4 +1,4 @@
-import { Component, get } from '@expressive/react';
+import { Component } from '@expressive/react';
 import { Link, NavLinks, Route, Router } from '@expressive/router';
 import { NotFound } from './NotFound';
 import { type ComponentType } from 'react';
@@ -63,7 +63,7 @@ class Examples extends Component {
             {examples.map((e) => (
               <ExampleRoute key={e.path} to={e.path} title={e.title} file={e.file} />
             ))}
-            <Fallback />
+            <NotFoundRoute />
           </section>
         </main>
       </Route>
@@ -71,12 +71,11 @@ class Examples extends Component {
   }
 }
 
-class Fallback extends Component {
-  route = get(Route);
+class NotFoundRoute extends Route {
+  fallback = true;
 
   render() {
-    const { route } = this;
-    return route.matches.length ? null : <NotFound path={route.router.path} />;
+    return <NotFound path={this.router.path} />;
   }
 }
 
