@@ -356,6 +356,42 @@ Subclass-friendly. Pairs with a future Router-level navigation blocker.
 - **`exact` prop on `Route`.** Redundant with index-route syntax (no `to` / `to=''`) under single-winner resolution. Skipped.
 - **Link/Redirect Route ancestor.** Required, but satisfied automatically: Router renders a wrapping default Route, so top-level `<Link>`/`<Redirect>` work without manual wrapping. (Will need revisiting alongside the Router-as-State conversion.)
 
+## Direction: lexical injection + anonymous Routes (converging, not yet built)
+
+Reconsidering the "independent rendering, no `cloneElement`, no lexical inspection" principle. `render()` already iterates children for `allRoutes()`, so a top-down clone/inject pass is marginal cost and unlocks two things the current bottom-up (context-registration) model can't:
+
+- **Eager, complete NavLinks.** Today a child only registers once it renders, so routes inside an out-of-scope layout never register and nav can't list them until you're already there. A parent enumerating its lexical children injects/registers them all eagerly.
+- **Real outlets.** A parent placing a matched child in a chosen slot requires it to hold that child lexically. Non-lexical-into-outlet is a non-starter (a parent can't pull in a Route it doesn't hold), so the injected prop is required for outlets (and is the "you aren't your own outlet -> render false in your lexical spot" signal).
+
+Under injection, **layout-vs-leaf becomes inferable**, so an explicit `layout` marker can likely be avoided. Discriminator is "has Route children," and an index/leaf only makes sense for a *bound* Route (the default page of a parent's base):
+
+| bound? | has Route children? | -> |
+|---|---|---|
+| bound | no (content/empty) | leaf (index, exact) |
+| bound | yes | layout (prefix) |
+| unbound (root) | either | layout (can't be an index) |
+
+The one case lexical inspection can't see: routes rendered through an intermediate component (`<Route><Pages/></Route>`). That's the same case injection/outlets rule out by construction, so it's excluded cleanly - supported only as a limited convenience (see anon Routes).
+
+> Context: an earlier spike added an explicit `index` prop (exact leaf) then an explicit `layout` prop (flip the default to exact), with a full test migration. Scrapped as DOA in favor of this inference model - the prop churn isn't worth it if injection makes leaf/layout derivable. The `fallback` role and exact-default thinking carry forward.
+
+### Anonymous Routes
+
+A **no-prop `<Route>`** (no `as`, no `to`) is anonymous: **transparent to matching** (contributes no segment, not a match candidate in `active`/`matches`) but **present in the registration tree (`inner`)**. Two jobs:
+
+- **Bifurcate the nav tree without an explicit navigation layer** - since automatic NavLinks is a top-line feature, groups must come for free from structure. Anon Routes are how you create nav groups.
+- **Re-anchor intermediate-component routes** - wrap the routes a `Pages` component renders in an anon Route; it injects into them lexically (one level down) while binding them to the nearest real ancestor scope. This is the "convenience with obvious limitation" path for the intermediate case (must wrap explicitly; unwrapped routes stay unbound - considered author error).
+
+Open: how aggressively to hide anon from the tree. Settled so far: hide from *matching*, keep in *nav tree*. Likely just the existing passthrough Route with transparency tightened (no new API) - verify nothing relies on a passthrough's current `inner`/`matches` presence.
+
+### NavLinks `Group` slot
+
+`branch()` renders an `Item` (Link) per route today. A path-less anon/group route has nothing to link to, so route it through a new `Group` slot instead: default wraps (labeled sublist / nested `<ul>`), override `return props.children` to **opt out and flatten** (reject the group, pass forward). ~5-line change to `branch()`.
+
+### `meta` prop (TODO)
+
+Arbitrary `meta` field on `Route`, surfaced to NavLink components. `Item`/`Group` already receive `route`, so this is just declaring the field - they read `route.meta` (labels, icons, ordering hints, badges) with no extra threading.
+
 ## Open questions
 
 1. **Relative paths at the Router level.** `Router.get().goto('./x')` currently throws. Could resolve against `router.path` as a directory if a real use case shows up.
