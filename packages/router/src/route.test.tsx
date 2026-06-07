@@ -797,3 +797,74 @@ describe('matches', () => {
     expect(root.matches).toEqual(['/a']);
   });
 });
+
+describe('fallback', () => {
+  it('matches when no sibling matches (app 404)', async () => {
+    const router = Router.new();
+    router.goto('/x');
+    const view = render(
+      <Route>
+        <Route to="a" as={() => <span>a</span>} />
+        <Route fallback as={() => <span>404</span>} />
+      </Route>
+    );
+    await act(async () => {});
+    expect(view.container.textContent).toBe('404');
+
+    await act(async () => router.goto('/a'));
+    expect(view.container.textContent).toBe('a');
+  });
+
+  it('yields once a sibling matches and restores on navigation away', async () => {
+    const router = Router.new();
+    router.goto('/a');
+    const view = render(
+      <Route>
+        <Route to="a" as={() => <span>a</span>} />
+        <Route fallback as={() => <span>404</span>} />
+      </Route>
+    );
+    await act(async () => {});
+    expect(view.container.textContent).toBe('a');
+
+    await act(async () => router.goto('/missing'));
+    expect(view.container.textContent).toBe('404');
+  });
+
+  it('is scoped to its parent (section 404 does not leak)', async () => {
+    const router = Router.new();
+    router.goto('/posts/recent');
+    const view = render(
+      <Route>
+        <Route to="posts/*">
+          <Route to="recent" as={() => <span>recent</span>} />
+          <Route fallback as={() => <span>posts404</span>} />
+        </Route>
+        <Route fallback as={() => <span>app404</span>} />
+      </Route>
+    );
+    await act(async () => {});
+    expect(view.container.textContent).toBe('recent');
+
+    await act(async () => router.goto('/posts/xyz'));
+    expect(view.container.textContent).toBe('posts404');
+
+    await act(async () => router.goto('/elsewhere'));
+    expect(view.container.textContent).toBe('app404');
+  });
+
+  it('is excluded from matches and active', async () => {
+    const router = Router.new();
+    router.goto('/missing');
+    let root!: Route;
+    render(
+      <Route is={(r) => (root = r)}>
+        <Route to="a" />
+        <Route fallback as={() => <span>404</span>} />
+      </Route>
+    );
+    await act(async () => {});
+    expect(root.matches).toEqual([]);
+    expect(root.active).toBeUndefined();
+  });
+});
