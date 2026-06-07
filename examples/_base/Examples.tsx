@@ -63,19 +63,11 @@ class Examples extends Component {
             {examples.map((e) => (
               <ExampleRoute key={e.path} to={e.path} title={e.title} file={e.file} />
             ))}
-            <NotFoundRoute />
+            <Route fallback as={NotFound} />
           </section>
         </main>
       </Route>
     );
-  }
-}
-
-class NotFoundRoute extends Route {
-  fallback = true;
-
-  render() {
-    return <NotFound path={this.router.path} />;
   }
 }
 
