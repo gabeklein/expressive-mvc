@@ -648,3 +648,78 @@ describe('extends', () => {
     });
   });
 });
+
+describe('active', () => {
+  it('is undefined when no child matches', async () => {
+    Router.new();
+    let root!: Route;
+    render(
+      <Route is={(r) => (root = r)}>
+        <Route to="a" />
+        <Route to="b" />
+      </Route>
+    );
+    await act(async () => {});
+    expect(root.active).toBeUndefined();
+  });
+
+  it('returns the single matched child', async () => {
+    const router = Router.new();
+    router.goto('/a');
+    let root!: Route;
+    render(
+      <Route is={(r) => (root = r)}>
+        <Route to="a" />
+        <Route to="b" />
+      </Route>
+    );
+    await act(async () => {});
+    expect(root.active?.to).toBe('a');
+  });
+
+  it('updates on navigation', async () => {
+    const router = Router.new();
+    router.goto('/a');
+    let root!: Route;
+    render(
+      <Route is={(r) => (root = r)}>
+        <Route to="a" />
+        <Route to="b" />
+      </Route>
+    );
+    await act(async () => {});
+    expect(root.active?.to).toBe('a');
+
+    await act(async () => router.goto('/b'));
+    expect(root.active?.to).toBe('b');
+  });
+
+  it('is null when more than one child matches', async () => {
+    const router = Router.new();
+    router.goto('/a');
+    let root!: Route;
+    render(
+      <Route is={(r) => (root = r)}>
+        <Route to="a" />
+        <Route to="a" />
+      </Route>
+    );
+    await act(async () => {});
+    expect(root.active).toBeNull();
+  });
+
+  it('ignores redirect routes as candidates', async () => {
+    const router = Router.new();
+    router.goto('/a');
+    let root!: Route;
+    let content!: Route;
+    render(
+      <Route is={(r) => (root = r)}>
+        <Route to="a" redirect="/a" />
+        <Route to="a" is={(r) => (content = r)} />
+      </Route>
+    );
+    await act(async () => {});
+    expect(root.active).toBe(content);
+  });
+});
