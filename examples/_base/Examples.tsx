@@ -1,4 +1,4 @@
-import { Component } from '@expressive/react';
+import { Component, get } from '@expressive/react';
 import { Link, NavLinks, Route, Router } from '@expressive/router';
 import { NotFound } from './NotFound';
 import { type ComponentType } from 'react';
@@ -43,11 +43,6 @@ class Examples extends Component {
       .sort((a, b) => a.order - b.order);
   }
 
-  get current(): Example | undefined {
-    const { match } = this.router;
-    return this.examples.find((e) => match('', e.path));
-  }
-
   render() {
     const {
       examples,
@@ -68,11 +63,20 @@ class Examples extends Component {
             {examples.map((e) => (
               <ExampleRoute key={e.path} to={e.path} title={e.title} file={e.file} />
             ))}
-            {!this.current && <NotFound path={this.router.path} />}
+            <Fallback />
           </section>
         </main>
       </Route>
     );
+  }
+}
+
+class Fallback extends Component {
+  route = get(Route);
+
+  render() {
+    const { route } = this;
+    return route.matches.length ? null : <NotFound path={route.router.path} />;
   }
 }
 
