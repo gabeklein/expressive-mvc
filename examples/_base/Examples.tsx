@@ -57,7 +57,7 @@ class Examples extends Component {
             <a className={styles.logo} href="/">
               <Logo />
             </a>
-            <ExampleLinks />
+            <Navigation />
           </nav>
           <section className={styles.example}>
             {examples.map((e) => (
@@ -86,7 +86,7 @@ class ExampleRoute extends Route {
   }
 }
 
-class ExampleLinks extends NavLinks {
+class Navigation extends NavLinks {
   List(props: { children?: React.ReactNode }) {
     return <div className={styles.links}>{props.children}</div>;
   }
