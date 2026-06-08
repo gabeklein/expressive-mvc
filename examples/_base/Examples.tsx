@@ -9,10 +9,17 @@ export type AppModule = { default: ComponentType };
 
 const order = (seg: string) => +(seg.match(/^(\d+)-/)?.[1] ?? 0);
 const slug = (seg: string) => seg.replace(/^\d+-/, '');
-const byOrder = (a: { order: number }, b: { order: number }) => a.order - b.order;
+const byOrder = (a: { order: number }, b: { order: number }) =>
+  a.order - b.order;
 
-type Example = { order: number; slug: string; label: string; path: string; file: string };
-type Group = { order: number; slug: string; label: string; items: Example[] };
+type Example = {
+  order: number;
+  to: string;
+  label: string;
+  path: string;
+  file: string;
+};
+type Group = { order: number; to: string; label: string; items: Example[] };
 
 class Examples extends Component {
   modules: Record<string, () => Promise<AppModule>> = {};
@@ -27,11 +34,19 @@ class Examples extends Component {
       let group = groups.get(g);
 
       if (!group)
-        groups.set(g, group = { order: order(g), slug: slug(g), label: titleCase(slug(g)), items: [] });
+        groups.set(
+          g,
+          (group = {
+            order: order(g),
+            to: slug(g) + "/*",
+            label: titleCase(slug(g)),
+            items: []
+          })
+        );
 
       group.items.push({
         order: order(l),
-        slug: slug(l),
+        to: slug(l),
         label: titleCase(slug(l)),
         path: `/${slug(g)}/${slug(l)}`,
         file
@@ -51,9 +66,9 @@ class Examples extends Component {
       <Route as={Shell}>
         {first && <Route to="" redirect={first.path} />}
         {groups.map((g) => (
-          <Route key={g.slug} to={`${g.slug}/*`} label={g.label}>
+          <Route key={g.to} to={g.to} label={g.label}>
             {g.items.map((e) => (
-              <ExampleRoute key={e.slug} to={e.slug} label={e.label} file={e.file} />
+              <ExampleRoute key={e.to} {...e} />
             ))}
           </Route>
         ))}
