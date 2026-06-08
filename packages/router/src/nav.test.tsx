@@ -52,7 +52,10 @@ it('default Item renders label, falling back to path', async () => {
   expect(view.container.textContent).toContain('/b');
 });
 
-it('nests links mirroring nested Routes', async () => {
+it('treats a headless scope as a section, not a link', async () => {
+  // `posts/*` has no `as` (no page), so the default Item renders no link for
+  // it - it routes through the Group slot, which by default flattens. Its
+  // child still links. (Override Group to surface a heading; see below.)
   let view: any;
   await act(async () => {
     view = render(
@@ -63,7 +66,7 @@ it('nests links mirroring nested Routes', async () => {
       </Route>
     );
   });
-  expect(links(view)).toEqual(['/posts', '/posts/recent']);
+  expect(links(view)).toEqual(['/posts/recent']);
 });
 
 it('marks the active link and updates on navigation', async () => {
