@@ -1,13 +1,20 @@
 import { act, render } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'bun:test';
-import { Consumer, Context } from '@expressive/react';
+import { Consumer } from '@expressive/react';
 
 import { Route } from './route';
-import { Router } from './router';
+import { BrowserRouter, Router } from './router';
+import { afterEach } from 'node:test';
+
+let router: BrowserRouter;
 
 beforeEach(() => {
-  Context.root.get(Router, false)?.set(null);
   window.history.replaceState(null, '', '/');
+  router = BrowserRouter.new();
+})
+
+afterEach(() => {
+  router!.set(null);
 });
 
 const Home = () => <h1>Home</h1>;
@@ -21,7 +28,6 @@ const Post = () => {
 
 describe('Route', () => {
   it('mounts the page when its pattern matches', () => {
-    window.history.replaceState(null, '', '/');
     const view = render(
       <>
         <Route to="/" as={Home} />
@@ -54,7 +60,6 @@ describe('Route', () => {
       );
     };
 
-    const router = Router.new();
     const view = render(<Route to="/posts/:id" as={Page} />);
 
     expect(mountCount).toBe(1);
@@ -67,7 +72,6 @@ describe('Route', () => {
   });
 
   it('renders alongside non-Route siblings', () => {
-    window.history.replaceState(null, '', '/');
     const view = render(
       <>
         <div>chrome</div>
@@ -80,7 +84,6 @@ describe('Route', () => {
   it('preserves non-Route children inside a passthrough Route', () => {
     // Non-Route children (elements, text nodes) pass through to the
     // rendered output - structural elements survive resolution.
-    window.history.replaceState(null, '', '/');
     const view = render(
       <Route to="/*">
         <div>chrome</div>
@@ -102,7 +105,6 @@ describe('Route', () => {
   });
 
   it('matches when `to` is omitted (defaults to catch-all)', () => {
-    window.history.replaceState(null, '', '/');
     const view = render(<Route as={Home} />);
     expect(view.container.textContent).toBe('Home');
   });
@@ -167,7 +169,6 @@ describe('Route', () => {
     const Page = () => (
       <Consumer for={Route}>{(r) => void (leaf = r)}</Consumer>
     );
-    const router = Router.new();
     render(<Route to="/posts/:id" as={Page} />);
     expect(leaf.match).toEqual({ id: 'foo' });
 
@@ -176,7 +177,6 @@ describe('Route', () => {
   });
 
   it('anchor handles patterns that already end with /', async () => {
-    window.history.replaceState(null, '', '/');
     let leaf!: Route;
     const Page = () => (
       <Consumer for={Route}>{(r) => void (leaf = r)}</Consumer>
@@ -225,7 +225,6 @@ describe('Route', () => {
   });
 
   it('Router.goto throws on relative paths', () => {
-    const router = Router.new();
     expect(() => router.goto('./x')).toThrow(/absolute path/);
   });
 
@@ -256,7 +255,6 @@ describe('Route', () => {
 
   it('sibling Routes re-resolve winner on navigation', async () => {
     window.history.replaceState(null, '', '/a');
-    const router = Router.new();
     const view = render(
       <Route>
         <Route to="/a" as={() => <span>A</span>} />
@@ -273,7 +271,6 @@ describe('Route', () => {
   // a winner-swap to a bare Route inherits the prior `to`.
   it.skip('switches between specific and bare-default on navigation', async () => {
     window.history.replaceState(null, '', '/a');
-    const router = Router.new();
     const view = render(
       <Route>
         <Route to="/a" as={() => <span>A</span>} />
@@ -492,15 +489,16 @@ describe('Route', () => {
   });
 
   describe('redirect prop', () => {
-    it('redirects (replacing) when matched', () => {
-      window.history.replaceState(null, '', '/');
+    it('redirects (replacing) when matched', async () => {
       const before = window.history.length;
-      render(
-        <>
-          <Route to="" redirect="/home" />
-          <Route to="/home" as={Home} />
-        </>
-      );
+      await act(async () => {
+        render(
+          <>
+            <Route to="" redirect="/home" />
+            <Route to="/home" as={Home} />
+          </>
+        );
+      });
       expect(window.location.pathname).toBe('/home');
       expect(window.history.length).toBe(before);
     });
@@ -511,14 +509,16 @@ describe('Route', () => {
       expect(window.location.pathname).toBe('/elsewhere');
     });
 
-    it('resolves a relative target against the Route anchor', () => {
+    it('resolves a relative target against the Route anchor', async () => {
       window.history.replaceState(null, '', '/posts/foo');
-      render(
-        <>
-          <Route to="/posts/:id" redirect="./edit" />
-          <Route to="/posts/:id/edit" as={() => null} />
-        </>
-      );
+      await act(async () => {
+        render(
+          <>
+            <Route to="/posts/:id" redirect="./edit" />
+            <Route to="/posts/:id/edit" as={() => null} />
+          </>
+        );
+      });
       expect(window.location.pathname).toBe('/posts/foo/edit');
     });
   });
@@ -664,7 +664,6 @@ describe('active', () => {
   });
 
   it('returns the single matched child', async () => {
-    const router = Router.new();
     router.goto('/a');
     let root!: Route;
     render(
@@ -678,7 +677,6 @@ describe('active', () => {
   });
 
   it('updates on navigation', async () => {
-    const router = Router.new();
     router.goto('/a');
     let root!: Route;
     render(
@@ -695,7 +693,6 @@ describe('active', () => {
   });
 
   it('is null when more than one child matches', async () => {
-    const router = Router.new();
     router.goto('/a');
     let root!: Route;
     render(
@@ -709,7 +706,6 @@ describe('active', () => {
   });
 
   it('ignores redirect routes as candidates', async () => {
-    const router = Router.new();
     router.goto('/a');
     let root!: Route;
     let content!: Route;
@@ -739,7 +735,6 @@ describe('matches', () => {
   });
 
   it('lists the matched child path', async () => {
-    const router = Router.new();
     router.goto('/a');
     let root!: Route;
     render(
@@ -753,7 +748,6 @@ describe('matches', () => {
   });
 
   it('lists every match when more than one applies', async () => {
-    const router = Router.new();
     router.goto('/a');
     let root!: Route;
     render(
@@ -767,7 +761,6 @@ describe('matches', () => {
   });
 
   it('updates on navigation', async () => {
-    const router = Router.new();
     router.goto('/a');
     let root!: Route;
     render(
@@ -784,7 +777,6 @@ describe('matches', () => {
   });
 
   it('excludes redirect routes', async () => {
-    const router = Router.new();
     router.goto('/a');
     let root!: Route;
     render(
@@ -800,7 +792,6 @@ describe('matches', () => {
 
 describe('fallback', () => {
   it('matches when no sibling matches (app 404)', async () => {
-    const router = Router.new();
     router.goto('/x');
     const view = render(
       <Route>
@@ -816,7 +807,6 @@ describe('fallback', () => {
   });
 
   it('yields once a sibling matches and restores on navigation away', async () => {
-    const router = Router.new();
     router.goto('/a');
     const view = render(
       <Route>
@@ -832,7 +822,6 @@ describe('fallback', () => {
   });
 
   it('is scoped to its parent (section 404 does not leak)', async () => {
-    const router = Router.new();
     router.goto('/posts/recent');
     const view = render(
       <Route>
@@ -854,7 +843,6 @@ describe('fallback', () => {
   });
 
   it('is excluded from matches and active', async () => {
-    const router = Router.new();
     router.goto('/missing');
     let root!: Route;
     render(
@@ -869,7 +857,6 @@ describe('fallback', () => {
   });
 
   it('sees through an anonymous group - nested match suppresses sibling fallback', async () => {
-    const router = Router.new();
     router.goto('/a');
     const view = render(
       <Route>

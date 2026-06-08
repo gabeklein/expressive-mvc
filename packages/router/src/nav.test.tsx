@@ -1,17 +1,22 @@
 import { render, act } from '@testing-library/react';
-import { beforeEach, expect, it } from 'bun:test';
-import { Context } from '@expressive/react';
+import { afterEach, beforeEach, expect, it } from 'bun:test';
 
 import { NavLinks } from './nav';
 import { Route } from './route';
-import { Router } from './router';
+import { BrowserRouter } from './router';
 
 const current = (view: any) =>
   view.container.querySelector('a[aria-current="page"]')?.getAttribute('href');
 
+let router: BrowserRouter;
+
 beforeEach(() => {
-  Context.root.get(Router, false)?.set(null);
   window.history.replaceState(null, '', '/');
+  router = BrowserRouter.new();
+})
+
+afterEach(() => {
+  router!.set(null);
 });
 
 const links = (view: any) =>
@@ -70,7 +75,6 @@ it('treats a headless scope as a section, not a link', async () => {
 });
 
 it('marks the active link and updates on navigation', async () => {
-  const router = Router.new();
   router.goto('/a');
 
   let view: any;

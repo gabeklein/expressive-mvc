@@ -7,6 +7,10 @@ import { Route } from './route';
 export class NavLinks extends Component {
   route = get(Route);
 
+  List(props: { children?: ReactNode }): ReactNode {
+    return <ul>{props.children}</ul>;
+  }
+
   Item(props: { route: Route; active: boolean; label?: string; meta: Route['meta'] }): ReactNode {
     const { route, active, label } = props;
     return (
@@ -14,10 +18,6 @@ export class NavLinks extends Component {
         {label ?? route.path}
       </Link>
     );
-  }
-
-  List(props: { children?: ReactNode }): ReactNode {
-    return <ul>{props.children}</ul>;
   }
 
   /**
@@ -44,17 +44,12 @@ export class NavLinks extends Component {
 
           const inner = route.inner.length ? this.branch(route.inner) : null;
 
-          // No `as` + children -> structural section (no page to link to): render
-          // via the Group slot. Covers both anonymous (`route.group`) and headless
-          // scopes (`to="x/*"`). A route with `as`, or a childless leaf, is a link.
-          if (!route.as && route.inner.length)
-            return <Group key={i} route={route}>{inner}</Group>;
-
-          return (
-            <Fragment key={i}>
-              <Entry route={route} Item={Item} />
+          return route.as || !inner ? (
+            <Entry key={i} route={route} Item={Item}>
               {inner}
-            </Fragment>
+            </Entry>
+          ) : (
+            <Group key={i} route={route}>{inner}</Group>
           );
         })}
       </List>
@@ -64,7 +59,13 @@ export class NavLinks extends Component {
 
 type ItemType = ComponentType<{ route: Route; active: boolean; label?: string; meta: Route['meta'] }>;
 
-function Entry(props: { route: Route; Item: ItemType }) {
+function Entry(props: { route: Route; Item: ItemType; children?: ReactNode }) {
   const route = use(props.route);
-  return <props.Item route={route} active={route.matched} label={route.label} meta={route.meta} />;
+
+  return (
+    <Fragment>
+      <props.Item route={route} active={route.matched} label={route.label} meta={route.meta} />
+      {props.children}
+    </Fragment>
+  )
 }
