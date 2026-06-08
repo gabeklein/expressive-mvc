@@ -1,9 +1,9 @@
 import { Component } from '@expressive/react';
 import { NavLinks, Route } from '@expressive/router';
-import { NotFound } from './NotFound';
 import { type ComponentType } from 'react';
 import Logo from './Logo';
 import styles from './Examples.module.css';
+import { Router } from '@expressive/router';
 
 export type AppModule = { default: ComponentType };
 
@@ -132,6 +132,17 @@ class Navigation extends NavLinks {
       </div>
     );
   }
+}
+
+function NotFound() {
+  const { path } = Router.get();
+
+  return (
+    <div style={{ padding: '4rem 2rem', textAlign: 'center' }}>
+      <h1>404</h1>
+      <p>No example matches <code>{path}</code>.</p>
+    </div>
+  );
 }
 
 function titleCase(str: string) {
