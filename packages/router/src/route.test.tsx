@@ -867,4 +867,22 @@ describe('fallback', () => {
     expect(root.matches).toEqual([]);
     expect(root.active).toBeUndefined();
   });
+
+  it('sees through an anonymous group - nested match suppresses sibling fallback', async () => {
+    const router = Router.new();
+    router.goto('/a');
+    const view = render(
+      <Route>
+        <Route>
+          <Route to="a" as={() => <span>A</span>} />
+        </Route>
+        <Route fallback as={() => <span>F</span>} />
+      </Route>
+    );
+    await act(async () => {});
+    expect(view.container.textContent).toBe('A');
+
+    await act(async () => router.goto('/missing'));
+    expect(view.container.textContent).toBe('F');
+  });
 });
