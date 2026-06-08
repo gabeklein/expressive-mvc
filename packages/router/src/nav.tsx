@@ -19,20 +19,35 @@ export class NavLinks extends Component {
     return createElement('ul', null, props.children);
   }
 
+  /**
+   * Renders an anonymous (group) node. Default is transparent - flattens by
+   * passing children through. Override to wrap a group in a heading/section
+   * (the node's `label`/`meta` describe it), turning tree structure into nav
+   * sections with no explicit navigation layer.
+   */
+  Group(props: { route: Route; children?: ReactNode }): ReactNode {
+    return props.children;
+  }
+
   render() {
     return this.branch(this.route.inner);
   }
 
   branch(routes: Route[]): ReactNode {
-    const { Item, List } = this;
+    const { Item, List, Group } = this;
 
     return createElement(List, null,
       routes.map((route, i) => {
         if (route.redirect || route.fallback) return null;
 
+        const inner = route.inner.length ? this.branch(route.inner) : null;
+
+        if (route.group)
+          return createElement(Group, { key: i, route, children: inner });
+
         return createElement(Fragment, { key: i },
           createElement(Entry, { route, Item }),
-          route.inner.length ? this.branch(route.inner) : null
+          inner
         );
       })
     );
