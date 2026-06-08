@@ -7,11 +7,11 @@ import { Route } from './route';
 export class NavLinks extends Component {
   route = get(Route);
 
-  Item(props: { route: Route; active: boolean }): ReactNode {
-    const { route, active } = props;
+  Item(props: { route: Route; active: boolean; label?: string; meta: Route['meta'] }): ReactNode {
+    const { route, active, label } = props;
     return createElement(Link,
       { to: route.path, 'aria-current': active ? 'page' : undefined },
-      route.path
+      label ?? route.path
     );
   }
 
@@ -39,9 +39,11 @@ export class NavLinks extends Component {
   }
 }
 
-type ItemType = ComponentType<{ route: Route; active: boolean }>;
+type ItemType = ComponentType<{ route: Route; active: boolean; label?: string; meta: Route['meta'] }>;
 
 function Entry(props: { route: Route; Item: ItemType }) {
   const route = use(props.route);
-  return createElement(props.Item, { route, active: route.matched });
+  return createElement(props.Item,
+    { route, active: route.matched, label: route.label, meta: route.meta }
+  );
 }

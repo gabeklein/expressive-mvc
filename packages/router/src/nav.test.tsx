@@ -37,6 +37,21 @@ it('mirrors the registered route tree', async () => {
   expect(links(view)).toEqual(['/a', '/b']);
 });
 
+it('default Item renders label, falling back to path', async () => {
+  let view: any;
+  await act(async () => {
+    view = render(
+      <Route as={Page}>
+        <Route to="a" label="Alpha" />
+        <Route to="b" />
+      </Route>
+    );
+  });
+  expect(links(view)).toEqual(['/a', '/b']);
+  expect(view.container.textContent).toContain('Alpha');
+  expect(view.container.textContent).toContain('/b');
+});
+
 it('nests links mirroring nested Routes', async () => {
   let view: any;
   await act(async () => {
@@ -92,4 +107,31 @@ it('Item is overridable via subclassing', async () => {
     );
   });
   expect(view.container.querySelector('a[data-custom]')?.getAttribute('href')).toBe('/a');
+});
+
+it('exposes route.meta to a custom Item', async () => {
+  class MyNav extends NavLinks {
+    Item({ route, meta }: { route: Route; meta: Route['meta'] }) {
+      return <a href={route.path}>{meta?.label ?? route.path}</a>;
+    }
+  }
+  const Page = ({ children }: { children?: React.ReactNode }) => (
+    <div>
+      <MyNav />
+      {children}
+    </div>
+  );
+
+  let view: any;
+  await act(async () => {
+    view = render(
+      <Route as={Page}>
+        <Route to="a" meta={{ label: 'Alpha' }} />
+        <Route to="b" />
+      </Route>
+    );
+  });
+  expect(links(view)).toEqual(['/a', '/b']);
+  expect(view.container.textContent).toContain('Alpha');
+  expect(view.container.textContent).toContain('/b');
 });
