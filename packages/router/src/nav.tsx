@@ -42,7 +42,10 @@ export class NavLinks extends Component {
 
         const inner = route.inner.length ? this.branch(route.inner) : null;
 
-        if (route.group)
+        // No `as` + children -> structural section (no page to link to): render
+        // via the Group slot. Covers both anonymous (`route.group`) and headless
+        // scopes (`to="x/*"`). A route with `as`, or a childless leaf, is a link.
+        if (!route.as && route.inner.length)
           return createElement(Group, { key: i, route, children: inner });
 
         return createElement(Fragment, { key: i },
