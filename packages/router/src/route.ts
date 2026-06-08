@@ -22,6 +22,20 @@ export class Route extends Component {
   to: string = '*';
 
   /**
+   * Universal, consumer-agnostic display name for this Route, ignored by
+   * matching. Plain text so *any* consumer can use it - NavLinks, breadcrumbs,
+   * a document-title effect, `aria-label`. Visual extras live in `meta`.
+   */
+  label?: string = undefined;
+
+  /**
+   * Free-form metadata for this Route, ignored by matching. Surfaced to
+   * NavLink components for the things `label` can't express - icon refs,
+   * ordering hints, badges - without forcing a Route subclass.
+   */
+  meta?: Record<string, any> = undefined;
+
+  /**
    * When matched, redirect here instead of rendering. Always replaces history
    * (a route that exists only to forward shouldn't leave a back-button trap);
    * for a non-replacing redirect, navigate yourself via `goto`/`Redirect`.
