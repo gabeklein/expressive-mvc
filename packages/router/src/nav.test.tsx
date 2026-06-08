@@ -135,3 +135,47 @@ it('exposes route.meta to a custom Item', async () => {
   expect(view.container.textContent).toContain('Alpha');
   expect(view.container.textContent).toContain('/b');
 });
+
+it('renders an anonymous group transparently (no stray link)', async () => {
+  let view: any;
+  await act(async () => {
+    view = render(
+      <Route as={Page}>
+        <Route>
+          <Route to="a" />
+          <Route to="b" />
+        </Route>
+      </Route>
+    );
+  });
+  expect(links(view)).toEqual(['/a', '/b']);
+});
+
+it('Group slot can wrap a group as a section (opt-in)', async () => {
+  class Sectioned extends NavLinks {
+    Group({ route, children }: { route: Route; children?: React.ReactNode }) {
+      return <section data-group>{route.label}{children}</section>;
+    }
+  }
+  const Page = ({ children }: { children?: React.ReactNode }) => (
+    <div>
+      <Sectioned />
+      {children}
+    </div>
+  );
+
+  let view: any;
+  await act(async () => {
+    view = render(
+      <Route as={Page}>
+        <Route label="Docs">
+          <Route to="a" />
+        </Route>
+      </Route>
+    );
+  });
+  const section = view.container.querySelector('section[data-group]');
+  expect(section).toBeTruthy();
+  expect(section!.textContent).toContain('Docs');
+  expect(links(view)).toEqual(['/a']);
+});

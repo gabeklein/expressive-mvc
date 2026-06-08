@@ -105,32 +105,61 @@ export class Route extends Component {
   }
 
   /**
+   * A no-`as`, no-`to` Route: a transparent grouping node. Contributes no path
+   * segment and is not itself a match candidate, but stays in the tree (`inner`)
+   * so NavLinks can render it as a group. Matching sees *through* it to its
+   * children, which compose against the nearest real ancestor's base.
+   *
+   * The `'to' in props` check is provisional: it exists only because the
+   * default `to` is `'*'`, so "no `to`" can't be read off the resolved value.
+   * Once the default flips to `''` (see PLAN Phase 5) this becomes the clean
+   * structural `!this.as && !this.to`, with no props introspection.
+   */
+  get group(): boolean {
+    return !this.as && !('to' in this.props);
+  }
+
+  /**
    * The matched child Route: `undefined` if none match, `null` if more than
-   * one does (ambiguous, non-discriminated). Redirect routes are not candidates.
+   * one does (ambiguous, non-discriminated). Redirect/fallback routes are not
+   * candidates; anonymous groups are seen through to their children.
    */
   get active(): Route | undefined | null {
     const { match } = this.router;
     let found: Route | undefined;
 
-    for (const route of this.inner) {
-      if (route.redirect || route.fallback || !match(route.base, route.to)) continue;
-      if (found) return null;
-      found = route;
-    }
+    const scan = (routes: Route[]): boolean => {
+      for (const route of routes) {
+        if (route.redirect || route.fallback) continue;
+        if (route.group) {
+          if (scan(route.inner)) return true;
+          continue;
+        }
+        if (!match(route.base, route.to)) continue;
+        if (found) return true;
+        found = route;
+      }
+      return false;
+    };
 
-    return found;
+    return scan(this.inner) ? null : found;
   }
 
   /**
    * Paths of all currently-matched child routes, in declaration order.
-   * Redirect routes are excluded. A flat projection (no live Route refs), so
-   * it is safe to read reactively.
+   * Redirect/fallback excluded; anonymous groups seen through to their children.
+   * A flat projection (no live Route refs), so it is safe to read reactively.
    */
   get matches(): string[] {
     const { match } = this.router;
-    return this.inner
-      .filter((route) => !route.redirect && !route.fallback && match(route.base, route.to))
-      .map((route) => route.path);
+    const collect = (routes: Route[]): string[] =>
+      routes.flatMap((route) =>
+        route.redirect || route.fallback ? []
+        : route.group ? collect(route.inner)
+        : match(route.base, route.to) ? [route.path] : []
+      );
+
+    return collect(this.inner);
   }
 
   /** Directory-style anchor for relative navigation. */
