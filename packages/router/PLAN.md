@@ -378,32 +378,44 @@ Ordered so early work survives regardless of how the injection/anon questions re
 1. **Presentation data (non-breaking, independent of the architecture).** `meta` (landed) + `label: string`; default `Item` renders `label ?? path`; retire `ExampleRoute.title` in favor of base `label`.
 2. **Anonymous Route (keystone, mildly breaking).** No-prop Route transparent to matching but present in the nav tree. Narrow behavioral delta: filter no-`as` routes out of `active`/`matches`, keep them in `inner`. Land behind the existing tests.
 3. **NavLinks grouping.** Needs anon Routes to exist first. Default-flatten so it's safe.
-4. **Matching model: prefix-default + remainder poison (next; spike behind green tests).** Supersedes the old "default flip + leaf/layout inference" item - see the dedicated section below. Notably **does not depend on injection (P4)**: matching is children-independent, so the deadlock that gated the old plan dissolves.
+4. **Matching model: A1 - exact-default + `*`-delegation (next).** Supersedes both the old "default flip + leaf/layout inference" item *and* the prefix-default + remainder-poison spike - see the dedicated section below. Pure-data, synchronous, no new runtime construct; **does not depend on injection (P4)**.
 5. **Top-down injection (architectural, breaking - spike behind green tests).** Clone/inject pass -> eager + complete nav registration (fixes out-of-scope routes never registering) + real outlets. Decoupled from matching now; wanted for outlets and complete nav, not for the default.
 
-### Matching model: prefix-default + remainder poison (next)
+### Matching model: A1 - exact-default + `*`-delegation (adopted)
 
-Replaces the whole `exact`/`index`/`catchAll`-attribute thread. The chain of reasoning that got here:
+Replaces the whole `exact`/`index`/`catchAll`-attribute thread *and* the prefix-default + remainder-poison spike. The chain of reasoning:
 
-1. **Lexical-children inference is unsound.** `<Route to="posts/:id" as={Post}/>` looks like a leaf, but `Post` can render `<Route>`s internally - so "no lexical child Routes" does not mean "no children." You cannot infer leaf-vs-layout from the JSX a Route lexically contains.
-2. **So prefix must be the default.** A prefix match degrades gracefully: if the page routes nothing deeper, prefix-matching `/posts/5` still just renders the page; if it *does* route deeper, the deeper Routes match. Exact-by-default would silently break any internally-routed component.
-3. **Prefix-default makes matching children-independent** - a Route decides its own (provisional) match from `base + to` vs the path, never needing to know whether children exist. **This dissolves the deadlock** that made the old leaf/layout inference depend on injection (P4).
+1. **Lexical-children inference is unsound.** `<Route to="posts/:id" as={Post}/>` looks like a leaf, but `Post` can render `<Route>`s internally - so "no lexical child Routes" does not mean "no children." You cannot infer leaf from the absence of lexical children.
+2. **But the *inverse* inference is sound.** Lexical child Routes *present* unambiguously means prefix. A1 uses only the sound direction and makes the unknowable case (`as` routes internally, no lexical children) explicit via `*`.
+3. **Prefix-default was a wrong turn.** It made every route swallow trailing garbage, which then needed remainder-poison (a render-phase reject + cascade) to recover exactness - a new runtime construct, render-phase registration rework, and a backtrack double-render. Exact-default makes the leak *structurally impossible* instead of recovering from it.
 
-The leak this creates - `<Route to="about" as={About}/>` swallowing `/about/garbage` - is closed by **remainder poison**:
+**Definition.** A Route matches in one of two modes:
 
-- A prefix match is **provisional**. It is **confirmed** only if the full remainder is consumed below: a descendant exact-matches the tail (its own remainder is empty), or a `*` Route explicitly claims the rest.
-- A provisional match whose remainder **dangles** (nothing below consumed it) **rejects**, and the rejection **cascades** to the next ancestor with an alternative (sibling / fallback); if none, it bottoms out as a 404. Cascade is mandatory: if a layout's only matching child rejects, the layout's own match was illusory.
+- **exact** - path equals the full pattern (`base` + own segments), no remainder.
+- **prefix** - path *begins with* the pattern; remainder delegated downward (to lexical child Routes, or to the `as` component which routes internally).
 
-What falls out - and why this kills the explicit-marker question:
+Mode is determined structurally, no flag in the common case:
 
-- `as={Post}` routes internally -> inner Route consumes the tail -> confirmed. (The case that killed lexical inference.)
-- `as={About}` true leaf, `/about/garbage` -> tail dangles -> reject -> 404. **Exactness is emergent; no `exact` keyword.**
-- `<Route as={Home}/>`, `/about` -> empty pattern prefix-matches, `about` dangles -> reject. Home survives only at `/`. **The index footgun evaporates; no `index` keyword.**
-- The *only* thing ever stated explicitly is the opposite intent - "I claim the remainder, suppress the poison" - which is exactly **`*`**, reborn with a precise meaning. 404 pages, file viewers, imperatively-routed sub-apps use it. One marker, well-named; `exact`/`index`/`catchAll`-attribute all retired. (`*` also absorbs the old prefix default: `to="blog/*"` ≡ `to="blog"` once prefix is the rule, so the syntax stops being *needed* except to mean "claim + suppress poison.")
+1. trailing `*` → **prefix**, route *owns the remainder* (delegates to `as`), captures it into `params['*']`;
+2. else lexical child `Route`s present → **prefix**;
+3. else → **exact**.
 
-`inner` (already reactive) is consulted only for confirmation + sibling-race tiebreaks - lazily, not eagerly. `as`-internal Routes *are* visible in `inner` because their `parent = get(Route)` resolves to the nearest Route context.
+Default `to` is exact of `base`; bare `<Route as={Home}/>` is the scope index (matches only `/`). Fallback is unchanged: a lexical `fallback` is the "nothing in this scope matched" branch; a 404 is just "no sibling matched, scope/root fallback renders."
 
-**The irreducible cost, to confirm in the spike:** matching now depends on what a component routes to internally, knowable only *after* it renders. So a would-be-404 path renders its candidate subtree once, then unwinds - a **double render** - and the reject must be a stable fixed point (flip to rejected, children deregister, stays rejected; must not oscillate). Spike shape: a `consumed` getter (leaf-empty-remainder OR `*` OR "a registered `inner` child is `consumed` and accounts for the tail"), proven on three acceptance tests - `/about/garbage` -> 404, `as`-internal routing -> match, cascade-through-a-layout -> 404. Fallback if it oscillates or the double-render bites: explicit `exact` with accepted leaks.
+What falls out:
+
+- `<Route to="posts/:id/*" as={Post}/>` routes internally → `*` transfers remainder ownership; below it routing is lexical again, `Post` owns its own fallback. (The case that killed lexical inference - handled by one explicit token.)
+- `<Route to="about" as={About}/>`, `/about/garbage` → exact, no match → falls to fallback → clean 404. **No leak, no sentinel.**
+- `<Route as={Home}/>`, `/about` → exact `/` only. No index footgun, no `index` keyword.
+- The single explicit marker is **`*`** = "my `as` component owns everything below" - the one boundary structure can't see into. Matches React Router's `path="x/*"` intuition. `exact`/`index`/`catchAll`-attribute all retired.
+
+**Why this over prefix-default + poison** (the ledger): equal ergonomics in the common case (exact leaves, lexical layouts, index, 404 all need zero annotation), but A1 has **no new runtime construct, no registration rework, no double-render, and a safer failure mode** - forgetting `*` is a loud dev-time 404, not a silent leak. Matching stays **pure data** (`(pattern, path)`), fully synchronous, no lean on Expressive's effect/async machinery. The poison model bought only "no `*` token in the delegation case" at the price of a control-flow mechanism - a bad trade.
+
+Concrete change: flip `to` default from `'*'` to exact (`''`/index), add "lexical child Routes → prefix," keep `*` meaning "own everything below." `url.ts` change is small and pure-data; no registration rework.
+
+#### Parked: remainder poison / sentinel bailout (not rejected)
+
+Still interesting - it's the path to *marker-free* prefix-default (exactness emergent, even `*` unnecessary), via a synchronous render-phase **sentinel throw** (not Suspense - a 404 is synchronously known, nothing to await) caught by a dedicated per-scope error boundary, so the dead-end subtree never commits (no effect/microtask, no committed double render; only sibling-backtrack forces a real re-render). Deferred, not killed: it needs more understanding of scope (render-phase registration would leak on unwound subtrees - must move to commit phase or be reconcilable) and of how other features shake out (outlets, P4 injection, nav registration) before its cost is worth paying. Revisit if marker-free prefix becomes a goal; until then A1's one token is cheaper than the mechanism.
 
 ### Anonymous Routes
 
@@ -448,11 +460,11 @@ Routing is URL-string-coupled end to end today: patterns are slash-strings (`"bl
 
 Direction: make the **canonical route representation structured** - a segment array with match modifiers as data/attributes, not embedded string syntax - and treat the slash-string `to` as a *convenience that desugars* to it. `window.location.pathname` becomes the web adapter's serialization; a native adapter maps its navigation state to the same structure with no string in the middle.
 
-- **`*` (catch-all)**: resolved by the matching-model section above, not here. `*` is *not* deprecated to an attribute - it survives as the single explicit marker meaning "claim the remainder, suppress the poison." This is orthogonal to the substrate rewrite: the prefix-default + poison model lands on today's string matcher and does not require structuring `url.ts` first.
+- **`*` (catch-all)**: resolved by the matching-model section above, not here. `*` is *not* deprecated to an attribute - it survives as the single explicit marker meaning "my `as` component owns everything below." This is orthogonal to the substrate rewrite: A1 lands on today's string matcher and does not require structuring `url.ts` first.
 - **`:param`** → structured segment (`{ param: 'id' }`); string `:id` stays as **web sugar**.
 - Keep string `to` + `:param` as ergonomic web sugar (don't drop `/`-routes wholesale); make the *core* structured.
 
-Cost: substrate rewrite - `url.ts` (match a structured location, not a string), `Router` (pluggable structured location source), `Route` (pattern as array). Specificity scoring, relative-path resolution, and anchors are all string-based today and need structured equivalents. 2.0-tier, post-P4/P5; interacts directly with P5 (the layout/leaf inference already erodes `*`).
+Cost: substrate rewrite - `url.ts` (match a structured location, not a string), `Router` (pluggable structured location source), `Route` (pattern as array). Specificity scoring, relative-path resolution, and anchors are all string-based today and need structured equivalents. 2.0-tier; independent of A1 (which lands on the string matcher) but a natural follow-on once A1's exact/prefix/`*` modes are settled as data.
 
 ## Open questions
 
