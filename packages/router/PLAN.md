@@ -375,6 +375,16 @@ The one case lexical inspection can't see: routes rendered through an intermedia
 
 > Context: an earlier spike added an explicit `index` prop (exact leaf) then an explicit `layout` prop (flip the default to exact), with a full test migration. Scrapped as DOA in favor of this inference model - the prop churn isn't worth it if injection makes leaf/layout derivable. The `fallback` role and exact-default thinking carry forward.
 
+### Roadmap (phasing - clear wins first)
+
+Ordered so early work survives regardless of how the injection/anon questions resolve:
+
+1. **Presentation data (non-breaking, independent of the architecture).** `meta` (landed) + `label: string`; default `Item` renders `label ?? path`; retire `ExampleRoute.title` in favor of base `label`.
+2. **Anonymous Route (keystone, mildly breaking).** No-prop Route transparent to matching but present in the nav tree. Narrow behavioral delta: filter no-`as` routes out of `active`/`matches`, keep them in `inner`. Land behind the existing tests.
+3. **NavLinks grouping.** Needs anon Routes to exist first. Default-flatten so it's safe.
+4. **Top-down injection (architectural, breaking - spike behind green tests).** Clone/inject pass -> eager + complete nav registration (fixes out-of-scope routes never registering) + real outlets.
+5. **Default flip + leaf/layout inference (mechanical, only after 4).** Infer leaf/layout, make default exact, retire explicit markers. Cheap once injection is in; the expensive-churn version is the scrapped spike.
+
 ### Anonymous Routes
 
 A **no-prop `<Route>`** (no `as`, no `to`) is anonymous: **transparent to matching** (contributes no segment, not a match candidate in `active`/`matches`) but **present in the registration tree (`inner`)**. Two jobs:
@@ -384,13 +394,22 @@ A **no-prop `<Route>`** (no `as`, no `to`) is anonymous: **transparent to matchi
 
 Open: how aggressively to hide anon from the tree. Settled so far: hide from *matching*, keep in *nav tree*. Likely just the existing passthrough Route with transparency tightened (no new API) - verify nothing relies on a passthrough's current `inner`/`matches` presence.
 
-### NavLinks `Group` slot
+### NavLinks grouping
 
-`branch()` renders an `Item` (Link) per route today. A path-less anon/group route has nothing to link to, so route it through a new `Group` slot instead: default wraps (labeled sublist / nested `<ul>`), override `return props.children` to **opt out and flatten** (reject the group, pass forward). ~5-line change to `branch()`.
+Groups are **structural** - they come from anon Routes in the tree, not a per-route prop. NavLinks' walk renders a wrapper for a group node and recurses; a path-less node flows through (default `Item` returns `children` when there's no path). Whether this is an explicit `Group` slot (override `return props.children` to flatten) or implicit walk behavior is a Phase-3 detail. (An earlier idea folded grouping into a per-route `nav` component that rendered its own children; dropped along with `nav` - see below.)
 
-### `meta` prop (TODO)
+### Route presentation: `label` + `meta`
 
-Arbitrary `meta` field on `Route`, surfaced to NavLink components. `Item`/`Group` already receive `route`, so this is just declaring the field - they read `route.meta` (labels, icons, ordering hints, badges) with no extra threading.
+Route carries display **data**; consumers (NavLinks, a future Breadcrumbs, a title effect) own **presentation**. Two fields, and deliberately no per-presentation props (`icon`/`shortLabel`/`tabLabel` sprawl into one-off variants):
+
+- **`label?: string`** - the route's universal, consumer-agnostic textual identity. Usable by *any* consumer including text-only ones (`document.title`, `aria-label`, breadcrumbs). Generalizes the `ExampleRoute.title` subclass field - retire that for base `label`.
+- **`meta?: Record<string, any>`** - catch-all data a *subclass-free* Route can attach (icon refs, order hints, badges) for consumers wanting more than text. Surfaced **directly** to NavLink entry components alongside `active` (not reached through `route`, mirroring how `active` is flattened). *Landed (Phase 1).*
+
+Presentation differences (sidebar shows an icon, breadcrumb shows only text) live in the **consumer component**, not the Route - the consumer *is* the "type". So no role/`context` param threaded into a route-level renderer; distinct consumers (NavLinks vs Breadcrumbs) are the differentiation. A role-param'd `label={(ctx) => ...}` was considered and parked - it leaks immediately (text-only consumers still need a plain string back). YAGNI.
+
+**Rejected: a `nav` prop** (element|component entry for NavLinks). It only held up while nav-*specific*; the moment the field must also serve breadcrumbs/title it demotes to agnostic data, and the only universal datum is text -> `label`. Per-route *visual* override, if ever truly needed, stays the consumer's `Item` subclass.
+
+**Breadcrumbs** then falls out as a sibling consumer: walk the matched-route chain, render each `label`. Same tree, same field - the payoff that validates `label` at the agnostic-string altitude.
 
 ## Open questions
 
