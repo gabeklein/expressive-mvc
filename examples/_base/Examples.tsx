@@ -34,9 +34,10 @@ class Examples extends Component {
 
   /** Group example modules by their first path segment (`group/example/App.tsx`). */
   get groups(): Group[] {
+    const files = Object.keys(this.modules);
     const groups = new Map<string, Group>();
 
-    for (const file of Object.keys(this.modules)) {
+    for (const file of files) {
       const [g, l] = file.split('/').slice(1, -1);
       let group = groups.get(g);
 
