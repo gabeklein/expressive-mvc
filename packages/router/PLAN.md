@@ -4,7 +4,7 @@
 
 ## Goal
 
-A client-side router built on `Component` from `@expressive/state`. Declarative route trees expressed in JSX, page Components defined separately. Iterates toward React Router parity for app-dev use; not intended for distribution from this repo.
+A client-side router built on `Component` from `@expressive/mvc`. Declarative route trees expressed in JSX, page Components defined separately. Iterates toward React Router parity for app-dev use; not intended for distribution from this repo.
 
 Non-goals (v1):
 
@@ -37,16 +37,19 @@ Routes are declarative. Page Components are plain Components defined separately 
 
 ## Current status
 
-The MVP and PLAN iteration steps 2-4 are implemented. The remaining work is the State-substrate conversion, the documented iteration steps 1 + 5-9, and a handful of nits.
+The MVP and PLAN iteration steps 2-4 are implemented, Router runs on `Component`, and the headless-core / `BrowserRouter` split has landed. The remaining work is the documented iteration steps 1 + 5-9 and a handful of nits.
 
 ### Landed
 
 - **Matcher** (`url.ts`): literal segments, `:param`, trailing `*` catch-all, trailing-slash normalization, case-insensitive literals. Returns `{ params, score }` for specificity ordering.
 - **Specificity scoring** lives in `url.ts` (literal=100, `:param`=10, catch-all=-1, pure-literal bonus +1) but the resolver currently arbitrates by **declaration order only** - the first matching sibling with `as` wins. Specificity-based arbitration is a pending iteration; users must declare more-specific routes before less-specific ones.
-- **Router** (`router.ts`, `extends State`): `path` field, popstate listener, monkey-patches `history.pushState`/`replaceState` so programmatic navigation outside `goto` still syncs. Owns URL primitives: `match(base, to)` (reactive on `path`), `anchor(route)`, `resolve(route, url)`, `segment(to)`, `goto(to, replace?)` (absolute-only, throws on relative). Auto-spawned as a `Context.root` singleton on first Route mount; users can also provide an explicit instance via `<Provider for={Router}>`.
-- **Route** (`route.ts`, `extends Component`): `to`, `as`, `parent = get(Route, false)`, derived `base`, `match`, `matched`, `anchor`, `resolve`, `goto`. Default `to='*'` (catch-all layout) - leaf-vs-layout default is contextual. Index routes are `to=''`. Independent rendering (no `cloneElement`, no `base` prop, no clones cache, no lexical inspection of JSX children). Routes self-render `null` when their pattern does not match. Sibling arbitration is bottom-up: a Route with `as` registers with its nearest parent Route on first render and yields to any earlier-registered sibling that also has `as` and matches. Passthrough Routes (no `as`) are grouping containers - they pass children through and never compete. Render and the sibling walk read `matched` (boolean) instead of `match` so same-pattern navigations don't re-render the Route - Expressive's computed properties only fire when the cached value changes, and `matched` stays `true` across `/posts/foo` -> `/posts/bar` (Consumers inside pick up new params reactively).
-- **Router auto-spawn**: `router: Router = set(() => this.get(Router, false) || Router.new())` on Route. The `set()` factory runs lazily on first access (during Route's render), well after context wiring. Context lookup finds any explicitly-provided Router; otherwise `Router.new()` activates a fresh instance that lands in `Context.root` via the `register` fallback so subsequent Routes find it. `set()` is also load-bearing for reactivity - it makes `router` a managed Route property so cross-state reads (`router.path` from Route's render) wire subscriptions via the proxy machinery in [observable.ts:119-120](../state/src/observable.ts#L119-L120).
-- **Link** (`link.ts`): `to`, `replace`, `href` getter (resolved absolute path), modifier/middle-click bailout. Requires Route in context (always available because Router provides one).
+- **Router** (`router.ts`, `extends Component`): split into a **headless core** and a **`BrowserRouter`** binding.
+  - **`Router` (headless core)**: host-agnostic. In-memory `path` (defaults to `'/'`) plus an in-memory history stack (`entries`/`index`, seeded from the initial `path`) with `back()`/`forward()` and `replace` semantics. `goto` validates absolute + normalizes + pushes/replaces the stack + mutates `path` state, **no `window`/`history` access**. Owns the URL primitives: `match(base, to)` (reactive on `path`), `anchor(route)`, `resolve(route, url)`, `segment(to)`, `goto(to, replace?)` (absolute-only, throws on relative). Runs and tests under any host; *is* the memory router (no separate class).
+  - **`BrowserRouter extends Router`**: binds the core to the DOM. `path` initializes from `window.location.pathname`; its own `goto` drives `history.pushState`/`replaceState`; `back`/`forward` delegate to `window.history` (the browser owns the stack, so the inherited in-memory `entries`/`index` go unused here); a `popstate` listener plus monkey-patched `history` methods make `sync()` the single writer of `path` so programmatic navigation outside `goto` still syncs. Shared absolute-path guard and DOM-free `normalize` are hoisted helpers.
+  - Auto-spawned as a `Context.root` singleton on first Route mount (Route's fallback spawns the headless `Router`; apps provide a `BrowserRouter` explicitly via `<Provider for={Router}>` or by rendering one).
+- **Route** (`route.tsx`, `extends Component`): `to`, `as`, `parent = get(Route, false)`, derived `base`, `match`, `matched`, `anchor`, `resolve`, `goto`. Default `to='*'` (catch-all layout) - leaf-vs-layout default is contextual. Index routes are `to=''`. Independent rendering (no `cloneElement`, no `base` prop, no clones cache, no lexical inspection of JSX children). Routes self-render `null` when their pattern does not match. Sibling arbitration is bottom-up: a Route with `as` registers with its nearest parent Route on first render and yields to any earlier-registered sibling that also has `as` and matches. Passthrough Routes (no `as`) are grouping containers - they pass children through and never compete. Render and the sibling walk read `matched` (boolean) instead of `match` so same-pattern navigations don't re-render the Route - Expressive's computed properties only fire when the cached value changes, and `matched` stays `true` across `/posts/foo` -> `/posts/bar` (Consumers inside pick up new params reactively).
+- **Router auto-spawn**: `router: Router = set(() => this.get(Router, false) || Router.new())` on Route. The `set()` factory runs lazily on first access (during Route's render), well after context wiring. Context lookup finds any explicitly-provided Router; otherwise `Router.new()` activates a fresh instance that lands in `Context.root` via the `register` fallback so subsequent Routes find it. `set()` is also load-bearing for reactivity - it makes `router` a managed Route property so cross-state reads (`router.path` from Route's render) wire subscriptions via the proxy machinery in [observable.ts:119-120](../mvc/src/observable.ts#L119-L120).
+- **Link** (`link.tsx`): `to`, `replace`, `href` getter (resolved absolute path), modifier/middle-click bailout. Requires Route in context (always available because Router provides one).
 - **Redirect** (`redirect.ts`): fires `goto` in `new()` (StrictMode-safe). `when` prop gates whether navigation fires on mount.
 - **Update-in-place**: Route renders `<Page>{children}</Page>` with no `key`, so same-pattern navigation reconciles in place; `params` updates reactively.
 - **Acceptance tests** (`acceptance.test.tsx`) cover the nested file-routing tree: nested layouts (index + dynamic + catch-all sibling), `params` capture, instance preservation across same-pattern navigation.
@@ -59,7 +62,7 @@ In rough order of priority:
 2. **`redirect()` / `notFound()` sentinels**: throw, caught by nearest `Route.catch`. Sets fallback or calls `goto`.
 3. **`NavLink`**: subclass of `Link` with active-class support.
 4. **Scroll restoration**: one Component subclass listening for navigation events.
-5. **`HashRouter` / `MemoryRouter`**: alternate Router subclasses (read URL from different sources). The Router-as-State conversion makes these cleaner.
+5. **`HashRouter`**: a `BrowserRouter`-shaped sibling reading/writing `location.hash`. (Memory routing needs no separate class - see below: the headless `Router` *is* the memory router, with an in-memory history stack + `back`/`forward` built in. `BrowserRouter` delegates `back`/`forward` to `window.history`.)
 6. **`Link.onClick`** (async pre-navigation hook): user-supplied handler that can cancel; exposes `pending: boolean` for in-flight state. Detailed sketch under "Nice-to-haves".
 7. **Specificity-based arbitration**: feed `match.score` into the sibling walk so literal beats `:param` beats `*` regardless of declaration order. Currently first-match-wins.
 
@@ -113,11 +116,11 @@ import { Router, Route, Link, Redirect } from '@expressive/router';
 // pending: redirect, notFound
 ```
 
-No freestanding hooks. `Router.get()` and `Route.get($ => ...)` from `@expressive/state` cover every access pattern hooks would wrap.
+No freestanding hooks. `Router.get()` and `Route.get($ => ...)` from `@expressive/mvc` cover every access pattern hooks would wrap.
 
 ### `Router`
 
-`extends Component`. Owns `path` reactively. Listens to `popstate`; monkey-patches `history.pushState`/`replaceState` so programmatic navigation outside of `goto` (e.g. third-party libs) still syncs `path`. Renders a default catch-all `<Route>` so descendants always have a Route in context.
+`extends Component`. The headless **`Router`** owns `path` reactively in memory (no DOM); **`BrowserRouter`** binds it to the browser - listens to `popstate` and monkey-patches `history.pushState`/`replaceState` so programmatic navigation outside of `goto` (e.g. third-party libs) still syncs `path`. Renders a default catch-all `<Route>` so descendants always have a Route in context.
 
 URL primitives live on Router rather than scattered across Route/Link/Redirect:
 
@@ -250,19 +253,20 @@ packages/router/
   src/
     index.ts          # public exports
     url.ts            # matchPattern + fullPattern + patternSegment, pure
-    router.ts         # Router Component
-    route.ts          # Route Component + bottom-up sibling resolver
-    link.ts           # Link Component
+    router.ts         # Router (headless core) + BrowserRouter binding
+    route.tsx         # Route Component + bottom-up sibling resolver
+    link.tsx          # Link Component
     redirect.ts       # Redirect Component
+    nav.tsx           # NavLinks Component
     url.test.ts
-    router.test.tsx
+    router.test.tsx   # headless Router suite + BrowserRouter suite
     route.test.tsx
     link.test.tsx
     redirect.test.tsx
     acceptance.test.tsx
 ```
 
-Match mvc's existing conventions (pnpm workspace entry, root tsconfig extension, `tsc --noEmit && vitest run --coverage`, 100% coverage target). Tests use the shared `vitest` re-export.
+Match mvc's existing conventions (pnpm workspace entry, root tsconfig extension, `tsc --noEmit && bun test --coverage`, 100% coverage target). Tests run under `bun test` (happy-dom + setup preloaded via `bunfig.toml`).
 
 ## Out of scope (explicit)
 
@@ -475,6 +479,15 @@ Direction: make the **canonical route representation structured** - a segment ar
 - Keep string `to` + `:param` as ergonomic web sugar (don't drop `/`-routes wholesale); make the *core* structured.
 
 Cost: substrate rewrite - `url.ts` (match a structured location, not a string), `Router` (pluggable structured location source), `Route` (pattern as array). Specificity scoring, relative-path resolution, and anchors are all string-based today and need structured equivalents. 2.0-tier; independent of A1 (which lands on the string matcher) but a natural follow-on once A1's exact/prefix/`*` modes are settled as data.
+
+## Feasibility study: nested / sub-routers (TODO)
+
+Big-ticket, not yet scoped - flagged for a dedicated feasibility pass. The idea: let a user spawn a **subrouter inside the overall one**, so a region of the UI runs its own route space. Two modes to evaluate:
+
+- **Air-gapped** - the subrouter owns an independent path that does not touch the URL bar. State-only navigation for self-contained widgets: multi-step **wizards**, **UI panels**, drawers, command palettes - flows that want back/forward and route semantics without polluting the browser URL or history. The headless `Router` (now a standalone in-memory router with its own stack + `back`/`forward`) is most of this already; the question is wiring + context scoping.
+- **URL-extending (virtual)** - the subrouter composes *onto* the parent's path, extending it virtually (a nested base) rather than air-gapping. Closer to today's nested `Route` bases but promoted to a first-class nested Router with its own provider/scope.
+
+Things the study must answer: how a subrouter acquires/overrides Router context (a scoped `<Provider for={Router}>` with a fresh `Router` instance is the obvious lever); whether `Route`/`Link`/`goto` resolve against the nearest Router or can target an ancestor explicitly; how air-gapped vs URL-extending is selected (prop vs subclass); and how the headless `Router`'s in-memory stack composes (or doesn't) with the browser stack above it. The headless-core split is the enabling groundwork - an air-gapped subrouter is just a headless `Router` provided in a nested scope. Gated behind a real design pass before any implementation.
 
 ## Open questions
 
