@@ -396,7 +396,13 @@ Open: how aggressively to hide anon from the tree. Settled so far: hide from *ma
 
 ### NavLinks grouping
 
-Groups are **structural** - they come from anon Routes in the tree, not a per-route prop. NavLinks' walk renders a wrapper for a group node and recurses; a path-less node flows through (default `Item` returns `children` when there's no path). Whether this is an explicit `Group` slot (override `return props.children` to flatten) or implicit walk behavior is a Phase-3 detail. (An earlier idea folded grouping into a per-route `nav` component that rendered its own children; dropped along with `nav` - see below.)
+Groups are **structural** and come from the tree, not a per-route prop. Implemented (Phase 3): `branch()` routes a node through the `Group` slot when it has **no `as` and has children** - i.e. a route with no page of its own is a *section*, not a destination. Default `Group` flattens (`return children`); override it to render a heading/section. A route *with* `as` (or a childless leaf) renders as an `Item` link.
+
+Note the predicate split:
+- **nav role** keys on **`!as`** (page vs. structure) - used by `branch`. Covers *both* anonymous Routes (`no as` + `no to`) and headless scopes (`<Route to="x/*">`, no `as`). A headless scope is a section that *owns* a URL segment; its relative children compose under it.
+- **matching transparency** keys on `route.group` (`no as` + `no to`) - used by `active`/`matches` for anonymous see-through. A headless scope is *not* see-through (it's a real match boundary).
+
+(An earlier idea folded grouping into a per-route `nav` component; dropped along with `nav` - see below. An even earlier cut keyed `branch` on `route.group`, which broke headless scopes - they rendered as always-active links since `to="x/*"` matches the whole section.)
 
 ### Route presentation: `label` + `meta`
 
@@ -414,7 +420,19 @@ Presentation differences (sidebar shows an icon, breadcrumb shows only text) liv
 ### Adjacent / later
 
 - **Breadcrumbs component (TODO).** Sibling to NavLinks: walks the active-route chain and renders each `label`. First consumer to prove the agnostic-`label` thesis beyond NavLinks. On the plan.
-- **Expand example dogfooding.** The examples app is the working proof of the router; several features (nesting, groups, breadcrumbs, redirects) aren't exercised yet. Once nesting reaches a stable stopping point, add router-specific examples and surface a **router group** in the examples UI. That requires tweaking example test/discovery (current discovery is flat - one example per dir; nesting/grouping needs the discovery + nav to represent a tree). Gated on the nesting work landing.
+- **Expand example dogfooding.** The examples app is the working proof of the router; several features (nesting, groups, breadcrumbs, redirects) aren't exercised yet. Once nesting reaches a stable stopping point, add router-specific examples and surface a **router group** in the examples UI. That requires tweaking example test/discovery (current discovery is flat - one example per dir; nesting/grouping needs the discovery + nav to represent a tree). Gated on the nesting work landing. (Partly landed: Simple/Advanced grouping via scoped nested Routes.)
+
+### URL-agnostic core: structured segments (2.0 direction)
+
+Routing is URL-string-coupled end to end today: patterns are slash-strings (`"blog/:id/*"`), `Router.path` *is* `window.location.pathname`, and the matcher (`url.ts`) splits/compares strings. That slash-string is the single thing binding the router to the web - awkward for non-URL hosts (native apps navigate a *stack of named screens + params*, not a path), which cuts against the host-agnostic charter.
+
+Direction: make the **canonical route representation structured** - a segment array with match modifiers as data/attributes, not embedded string syntax - and treat the slash-string `to` as a *convenience that desugars* to it. `window.location.pathname` becomes the web adapter's serialization; a native adapter maps its navigation state to the same structure with no string in the middle.
+
+- **`*` (catch-all)** stops being string syntax: either a hard attribute (`rest`/`catchAll`, capturing remaining segments) or it simply *falls out of P5* - a layout is a prefix-matcher because it has children, so the bare `to='*'` default disappears. Much of `*`'s current value evaporates once P5 lands; revisit whether the remaining catch-all needs more than an attribute.
+- **`:param`** → structured segment (`{ param: 'id' }`); string `:id` stays as **web sugar**.
+- Keep string `to` + `:param` as ergonomic web sugar (don't drop `/`-routes wholesale); make the *core* structured.
+
+Cost: substrate rewrite - `url.ts` (match a structured location, not a string), `Router` (pluggable structured location source), `Route` (pattern as array). Specificity scoring, relative-path resolution, and anchors are all string-based today and need structured equivalents. 2.0-tier, post-P4/P5; interacts directly with P5 (the layout/leaf inference already erodes `*`).
 
 ## Open questions
 
