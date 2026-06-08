@@ -1,5 +1,5 @@
 import { Component, get } from '@expressive/react';
-import { AnchorHTMLAttributes, MouseEvent, createElement } from 'react';
+import { AnchorHTMLAttributes, MouseEvent } from 'react';
 
 import { Route } from './route';
 
@@ -29,10 +29,10 @@ export class Link extends Component {
   };
 
   render({ children, to, replace, ...rest } = {} as Link.Props) {
-    return createElement(
-      'a',
-      { ...rest, href: this.href, onClick: this.go },
-      children
+    return (
+      <a {...rest} href={this.href} onClick={this.go}>
+        {children}
+      </a>
     );
   }
 }

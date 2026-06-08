@@ -4,7 +4,6 @@ import {
   ComponentType,
   Fragment,
   ReactNode,
-  createElement,
   isValidElement
 } from 'react';
 
@@ -178,12 +177,12 @@ export class Route extends Component {
 
   render(props = {} as { children?: ReactNode }) {
     const self = this.is;
-    const { parent, as, matched } = this;
+    const { parent, as: Component, matched } = this;
 
     if (parent) {
       register(parent.is, self);
 
-      if (as)
+      if (Component)
         for (const sibling of CHILDREN.get(parent.is)!) {
           if (sibling === self) break;
           if (sibling.as && sibling.matched) return null;
@@ -192,7 +191,7 @@ export class Route extends Component {
 
     if (this.redirect)
       return matched
-        ? createElement(Redirect, { to: this.redirect, replace: true })
+        ? <Redirect to={this.redirect} replace />
         : null;
 
     if (Object.getOwnPropertyDescriptor(props, 'children')?.get)
@@ -201,12 +200,12 @@ export class Route extends Component {
     const { children } = props;
 
     if (allRoutes(children)) {
-      if (!as) return createElement(Fragment, null, children);
-      return matched ? createElement(as, {}, children) : null;
+      if (!Component) return <>{children}</>;
+      return matched ? <Component>{children}</Component> : null;
     }
 
     if (!matched) return null;
-    return as ? createElement(as, {}, children) : children;
+    return Component ? <Component>{children}</Component> : children;
   }
 }
 
