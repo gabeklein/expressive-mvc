@@ -63,10 +63,6 @@ In rough order of priority:
 6. **`Link.onClick`** (async pre-navigation hook): user-supplied handler that can cancel; exposes `pending: boolean` for in-flight state. Detailed sketch under "Nice-to-haves".
 7. **Specificity-based arbitration**: feed `match.score` into the sibling walk so literal beats `:param` beats `*` regardless of declaration order. Currently first-match-wins.
 
-### Pending - nits
-
-- **`Route.params` reactive identity**: current implementation returns a fresh `match?.params ?? {}` on every read; downstream `useEffect` deps or `===` checks will see false positives. Memoize per match.
-
 ## Why Component is the substrate
 
 `Component` provides almost every routing primitive:
@@ -382,8 +378,32 @@ Ordered so early work survives regardless of how the injection/anon questions re
 1. **Presentation data (non-breaking, independent of the architecture).** `meta` (landed) + `label: string`; default `Item` renders `label ?? path`; retire `ExampleRoute.title` in favor of base `label`.
 2. **Anonymous Route (keystone, mildly breaking).** No-prop Route transparent to matching but present in the nav tree. Narrow behavioral delta: filter no-`as` routes out of `active`/`matches`, keep them in `inner`. Land behind the existing tests.
 3. **NavLinks grouping.** Needs anon Routes to exist first. Default-flatten so it's safe.
-4. **Top-down injection (architectural, breaking - spike behind green tests).** Clone/inject pass -> eager + complete nav registration (fixes out-of-scope routes never registering) + real outlets.
-5. **Default flip + leaf/layout inference (mechanical, only after 4).** Infer leaf/layout, make default exact, retire explicit markers. Cheap once injection is in; the expensive-churn version is the scrapped spike.
+4. **Matching model: prefix-default + remainder poison (next; spike behind green tests).** Supersedes the old "default flip + leaf/layout inference" item - see the dedicated section below. Notably **does not depend on injection (P4)**: matching is children-independent, so the deadlock that gated the old plan dissolves.
+5. **Top-down injection (architectural, breaking - spike behind green tests).** Clone/inject pass -> eager + complete nav registration (fixes out-of-scope routes never registering) + real outlets. Decoupled from matching now; wanted for outlets and complete nav, not for the default.
+
+### Matching model: prefix-default + remainder poison (next)
+
+Replaces the whole `exact`/`index`/`catchAll`-attribute thread. The chain of reasoning that got here:
+
+1. **Lexical-children inference is unsound.** `<Route to="posts/:id" as={Post}/>` looks like a leaf, but `Post` can render `<Route>`s internally - so "no lexical child Routes" does not mean "no children." You cannot infer leaf-vs-layout from the JSX a Route lexically contains.
+2. **So prefix must be the default.** A prefix match degrades gracefully: if the page routes nothing deeper, prefix-matching `/posts/5` still just renders the page; if it *does* route deeper, the deeper Routes match. Exact-by-default would silently break any internally-routed component.
+3. **Prefix-default makes matching children-independent** - a Route decides its own (provisional) match from `base + to` vs the path, never needing to know whether children exist. **This dissolves the deadlock** that made the old leaf/layout inference depend on injection (P4).
+
+The leak this creates - `<Route to="about" as={About}/>` swallowing `/about/garbage` - is closed by **remainder poison**:
+
+- A prefix match is **provisional**. It is **confirmed** only if the full remainder is consumed below: a descendant exact-matches the tail (its own remainder is empty), or a `*` Route explicitly claims the rest.
+- A provisional match whose remainder **dangles** (nothing below consumed it) **rejects**, and the rejection **cascades** to the next ancestor with an alternative (sibling / fallback); if none, it bottoms out as a 404. Cascade is mandatory: if a layout's only matching child rejects, the layout's own match was illusory.
+
+What falls out - and why this kills the explicit-marker question:
+
+- `as={Post}` routes internally -> inner Route consumes the tail -> confirmed. (The case that killed lexical inference.)
+- `as={About}` true leaf, `/about/garbage` -> tail dangles -> reject -> 404. **Exactness is emergent; no `exact` keyword.**
+- `<Route as={Home}/>`, `/about` -> empty pattern prefix-matches, `about` dangles -> reject. Home survives only at `/`. **The index footgun evaporates; no `index` keyword.**
+- The *only* thing ever stated explicitly is the opposite intent - "I claim the remainder, suppress the poison" - which is exactly **`*`**, reborn with a precise meaning. 404 pages, file viewers, imperatively-routed sub-apps use it. One marker, well-named; `exact`/`index`/`catchAll`-attribute all retired. (`*` also absorbs the old prefix default: `to="blog/*"` ≡ `to="blog"` once prefix is the rule, so the syntax stops being *needed* except to mean "claim + suppress poison.")
+
+`inner` (already reactive) is consulted only for confirmation + sibling-race tiebreaks - lazily, not eagerly. `as`-internal Routes *are* visible in `inner` because their `parent = get(Route)` resolves to the nearest Route context.
+
+**The irreducible cost, to confirm in the spike:** matching now depends on what a component routes to internally, knowable only *after* it renders. So a would-be-404 path renders its candidate subtree once, then unwinds - a **double render** - and the reject must be a stable fixed point (flip to rejected, children deregister, stays rejected; must not oscillate). Spike shape: a `consumed` getter (leaf-empty-remainder OR `*` OR "a registered `inner` child is `consumed` and accounts for the tail"), proven on three acceptance tests - `/about/garbage` -> 404, `as`-internal routing -> match, cascade-through-a-layout -> 404. Fallback if it oscillates or the double-render bites: explicit `exact` with accepted leaks.
 
 ### Anonymous Routes
 
@@ -428,7 +448,7 @@ Routing is URL-string-coupled end to end today: patterns are slash-strings (`"bl
 
 Direction: make the **canonical route representation structured** - a segment array with match modifiers as data/attributes, not embedded string syntax - and treat the slash-string `to` as a *convenience that desugars* to it. `window.location.pathname` becomes the web adapter's serialization; a native adapter maps its navigation state to the same structure with no string in the middle.
 
-- **`*` (catch-all)** stops being string syntax: either a hard attribute (`rest`/`catchAll`, capturing remaining segments) or it simply *falls out of P5* - a layout is a prefix-matcher because it has children, so the bare `to='*'` default disappears. Much of `*`'s current value evaporates once P5 lands; revisit whether the remaining catch-all needs more than an attribute.
+- **`*` (catch-all)**: resolved by the matching-model section above, not here. `*` is *not* deprecated to an attribute - it survives as the single explicit marker meaning "claim the remainder, suppress the poison." This is orthogonal to the substrate rewrite: the prefix-default + poison model lands on today's string matcher and does not require structuring `url.ts` first.
 - **`:param`** → structured segment (`{ param: 'id' }`); string `:id` stays as **web sugar**.
 - Keep string `to` + `:param` as ergonomic web sugar (don't drop `/`-routes wholesale); make the *core* structured.
 

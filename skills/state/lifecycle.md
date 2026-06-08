@@ -28,6 +28,22 @@ class Timer extends State {
 - Return `void` if no cleanup needed.
 - Return `() => void` for a cleanup function called on destruction.
 
+> **`new()` is for consumers and own-state.** Avoid it in reusable state meant to be subclassed: it's a public method, so an extending class that defines its own `new()` silently overrides yours and loses the base behavior (with no error). For internal init logic in a shippable base class, pass a trailing init callback to `super` instead - it runs in the same phase as `new()` but can't be clobbered:
+>
+> ```ts
+> class Route extends Component {
+>   index = false;
+>   to = '*';
+>
+>   constructor(props: {}, ...rest: State.Args) {
+>     // runs after props are applied, like new(), but not overridable
+>     super(props, ...rest, () => {
+>       if (this.index) this.to = '';
+>     });
+>   }
+> }
+> ```
+
 ## Constructor Arguments
 
 `State.new()` accepts `State.Args` - processed in order during activation:
@@ -36,6 +52,8 @@ class Timer extends State {
 - `object` - assigned to state properties
 - `Promise` - caught and logged if rejected
 - `array` - flattened and re-processed
+
+> **Timing:** args (and assigned props, in adapters) are applied during activation, *after* field initializers and registered setup (`State.on`). So a trailing arg callback - like `new()` - observes applied prop/arg values. The JS constructor body and `State.on` setup run *before* this merge and see only field defaults; don't read an applied prop there.
 
 ```ts
 const test = Test.new(
