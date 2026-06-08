@@ -1,20 +1,42 @@
 import { act } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, spyOn } from 'bun:test';
 
-import { BrowserRouter } from './router';
+import { BrowserRouter, Router } from './router';
 
-let router: BrowserRouter;
+describe('Router (headless)', () => {
+  it('defaults to root', () => {
+    expect(Router.new().path).toBe('/');
+  });
 
-beforeEach(() => {
-  window.history.replaceState(null, '', '/');
-  router = BrowserRouter.new();
-})
+  it('goto updates path in memory', () => {
+    const router = Router.new();
+    router.goto('/bar');
+    expect(router.path).toBe('/bar');
+  });
 
-afterEach(() => {
-  router!.set(null);
+  it('goto normalizes . and ..', () => {
+    const router = Router.new();
+    router.goto('/posts/foo/../bar');
+    expect(router.path).toBe('/posts/bar');
+  });
+
+  it('goto throws on relative paths', () => {
+    expect(() => Router.new().goto('./x')).toThrow(/absolute path/);
+  });
 });
 
-describe('Router', () => {
+describe('BrowserRouter', () => {
+  let router: BrowserRouter;
+
+  beforeEach(() => {
+    window.history.replaceState(null, '', '/');
+    router = BrowserRouter.new();
+  });
+
+  afterEach(() => {
+    router!.set(null);
+  });
+
   it('initializes from window.location', () => {
     window.history.replaceState(null, '', '/foo');
     expect(router.path).toBe('/foo');
