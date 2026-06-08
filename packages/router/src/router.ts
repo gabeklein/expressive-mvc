@@ -3,14 +3,20 @@ import { Component } from '@expressive/react';
 import { Route } from './route';
 import { Match, fullPattern, matchPattern, patternSegment } from './url';
 
+/**
+ * Headless router core: matching plus an in-memory `path`. Touches no browser
+ * globals, so it runs (and tests) under any host. `BrowserRouter` binds this
+ * to `window.location`/`history`; the public API stays string-based at the
+ * edges either way.
+ */
 export class Router extends Component {
-  path = window.location.pathname;
+  path = '/';
 
   /**
-   * Returns a function that tests a (base, to) pair against the current location.
+   * Returns a function that tests a (base, to) pair against the current path.
    *
    * Exposed as a getter so consumers track `path` reactively: reading
-   * `router.match(...)` establishes a dependency on the current URL via this
+   * `router.match(...)` establishes a dependency on the current path via this
    * getter, which is what reactive consumers (Routes, resolvers) rely on.
    */
   get match(): (base: string, to: string) => Match | null {
@@ -19,13 +25,8 @@ export class Router extends Component {
   }
 
   goto(to: string, replace = false) {
-    if (!to.startsWith('/'))
-      throw new Error(
-        `Router.goto requires an absolute path; got "${to}". Relative paths must be resolved via a Route (e.g. Route.get().goto).`
-      );
-
-    const url = new URL(to, window.location.origin);
-    history[replace ? 'replaceState' : 'pushState'](null, '', url);
+    assertAbsolute(to);
+    this.path = normalize(to);
   }
 
   segment(to: string): string {
@@ -52,7 +53,15 @@ export class Router extends Component {
   }
 }
 
+/** Binds the headless core to `window.location`, syncing `path` on navigation. */
 export class BrowserRouter extends Router {
+  path = window.location.pathname;
+
+  goto(to: string, replace = false) {
+    assertAbsolute(to);
+    history[replace ? 'replaceState' : 'pushState'](null, '', normalize(to));
+  }
+
   protected new() {
     const sync = () => {
       this.path = window.location.pathname;
@@ -70,4 +79,16 @@ export class BrowserRouter extends Router {
       history.replaceState = origReplace;
     };
   }
+}
+
+function assertAbsolute(to: string) {
+  if (!to.startsWith('/'))
+    throw new Error(
+      `Router.goto requires an absolute path; got "${to}". Relative paths must be resolved via a Route (e.g. Route.get().goto).`
+    );
+}
+
+/** Collapse `.`/`..` and stray slashes without touching browser globals. */
+function normalize(to: string): string {
+  return new URL(to, 'x://_').pathname;
 }
