@@ -7,58 +7,55 @@ import styles from './Examples.module.css';
 
 export type AppModule = { default: ComponentType };
 
-type Example = {
-  path: string;
-  file: string;
-  order: number;
-  title: string;
-  load: () => Promise<AppModule>;
-};
+const order = (seg: string) => +(seg.match(/^(\d+)-/)?.[1] ?? 0);
+const slug = (seg: string) => seg.replace(/^\d+-/, '');
+const byOrder = (a: { order: number }, b: { order: number }) => a.order - b.order;
+
+type Example = { order: number; slug: string; label: string; path: string; file: string };
+type Group = { order: number; slug: string; label: string; items: Example[] };
 
 class Examples extends Component {
   modules: Record<string, () => Promise<AppModule>> = {};
   router = new Router();
 
-  get examples() {
-    return Object.entries(this.modules)
-      .map(([file, load]): Example => {
-        let order = 0;
-        const segments = file
-          .split('/')
-          .slice(1, -1)
-          .map((p) => {
-            const match = p.match(/^(\d+)-/);
-            if (match) order = parseInt(match[1], 10);
-            return p.replace(/^\d+-/, '');
-          });
+  /** Group example modules by their first path segment (`group/example/App.tsx`). */
+  get groups(): Group[] {
+    const groups = new Map<string, Group>();
 
-        return {
-          order,
-          file,
-          path: '/' + segments.join('/'),
-          title: segments.map(titleCase).join(' / '),
-          load
-        };
-      })
-      .sort((a, b) => a.order - b.order);
+    for (const file of Object.keys(this.modules)) {
+      const [g, l] = file.split('/').slice(1, -1);
+      let group = groups.get(g);
+
+      if (!group)
+        groups.set(g, group = { order: order(g), slug: slug(g), label: titleCase(slug(g)), items: [] });
+
+      group.items.push({
+        order: order(l),
+        slug: slug(l),
+        label: titleCase(slug(l)),
+        path: `/${slug(g)}/${slug(l)}`,
+        file
+      });
+    }
+
+    return [...groups.values()]
+      .sort(byOrder)
+      .map((g) => ({ ...g, items: g.items.sort(byOrder) }));
   }
 
   render() {
-    const {
-      examples,
-      examples: [first]
-    } = this;
+    const { groups } = this;
+    const first = groups[0]?.items[0];
 
     return (
       <Route as={Shell}>
         {first && <Route to="" redirect={first.path} />}
-        {examples.map((e) => (
-          <ExampleRoute
-            key={e.path}
-            to={e.path}
-            label={e.title}
-            file={e.file}
-          />
+        {groups.map((g) => (
+          <Route key={g.slug} to={`${g.slug}/*`} label={g.label}>
+            {g.items.map((e) => (
+              <ExampleRoute key={e.slug} to={e.slug} label={e.label} file={e.file} />
+            ))}
+          </Route>
         ))}
         <Route fallback as={NotFound} />
       </Route>
@@ -97,6 +94,15 @@ class ExampleRoute extends Route {
 class Navigation extends NavLinks {
   List(props: { children?: React.ReactNode }) {
     return <div className={styles.links}>{props.children}</div>;
+  }
+
+  Group(props: { route: Route; children?: React.ReactNode }) {
+    return (
+      <div className={styles.group}>
+        <h4 className={styles.groupLabel}>{props.route.label}</h4>
+        {props.children}
+      </div>
+    );
   }
 }
 
