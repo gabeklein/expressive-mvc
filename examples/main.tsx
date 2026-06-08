@@ -13,7 +13,7 @@ let App: ComponentType;
 if (window.self === window.top) {
   App = () => (
     <BrowserRouter>
-      <Examples />
+      <Examples modules={modules} />
     </BrowserRouter>
   );
 } else {
