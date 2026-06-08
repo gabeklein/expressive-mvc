@@ -1,28 +1,10 @@
-import { State } from '@expressive/react';
+import { Component } from '@expressive/react';
 
 import { Route } from './route';
 import { Match, fullPattern, matchPattern, patternSegment } from './url';
 
-export class Router extends State {
+export class Router extends Component {
   path = window.location.pathname;
-
-  protected new() {
-    const sync = () => {
-      this.path = window.location.pathname;
-    };
-    window.addEventListener('popstate', sync);
-
-    const origPush = history.pushState.bind(history);
-    const origReplace = history.replaceState.bind(history);
-    history.pushState = (...args) => { origPush(...args); sync(); };
-    history.replaceState = (...args) => { origReplace(...args); sync(); };
-
-    return () => {
-      window.removeEventListener('popstate', sync);
-      history.pushState = origPush;
-      history.replaceState = origReplace;
-    };
-  }
 
   /**
    * Returns a function that tests a (base, to) pair against the current location.
@@ -67,5 +49,25 @@ export class Router extends State {
   resolve(route: Route, url: string): string {
     if (url.startsWith('/')) return url;
     return new URL(url, 'x://_' + this.anchor(route)).pathname;
+  }
+}
+
+export class BrowserRouter extends Router {
+  protected new() {
+    const sync = () => {
+      this.path = window.location.pathname;
+    };
+    window.addEventListener('popstate', sync);
+
+    const origPush = history.pushState.bind(history);
+    const origReplace = history.replaceState.bind(history);
+    history.pushState = (...args) => { origPush(...args); sync(); };
+    history.replaceState = (...args) => { origReplace(...args); sync(); };
+
+    return () => {
+      window.removeEventListener('popstate', sync);
+      history.pushState = origPush;
+      history.replaceState = origReplace;
+    };
   }
 }

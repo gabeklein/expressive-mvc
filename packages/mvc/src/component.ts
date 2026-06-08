@@ -95,7 +95,7 @@ class Component extends State {
    */
   fallback: Component.Node = set(null);
 
-  constructor(props: any, ...rest: any[]) {
+  constructor(props: any = {}, ...rest: any[]) {
     const seen = {} as Record<string, undefined>;
     const copy = PENDING.get(props);
 

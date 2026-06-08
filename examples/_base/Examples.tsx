@@ -1,5 +1,5 @@
 import { Component } from '@expressive/react';
-import { NavLinks, Route, Router } from '@expressive/router';
+import { NavLinks, Route } from '@expressive/router';
 import { NotFound } from './NotFound';
 import { type ComponentType } from 'react';
 import Logo from './Logo';
@@ -31,7 +31,6 @@ function byOrder<T extends Group | Example>(arr: T[]) {
 
 class Examples extends Component {
   modules: Record<string, () => Promise<AppModule>> = {};
-  router = new Router();
 
   /** Group example modules by their first path segment (`group/example/App.tsx`). */
   get groups(): Group[] {
