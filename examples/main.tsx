@@ -17,8 +17,9 @@ if (window.self === window.top) {
     </BrowserRouter>
   );
 } else {
-  const file = decodeURIComponent(window.location.hash);
-  App = lazy(modules[file.slice(1)]);
+  const name = window.location.hash.slice(1);
+  const file = decodeURIComponent(name);
+  App = lazy(modules[file]);
 }
 
 createRoot(document.getElementById('root')!).render(
