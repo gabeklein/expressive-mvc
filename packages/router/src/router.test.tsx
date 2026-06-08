@@ -23,6 +23,44 @@ describe('Router (headless)', () => {
   it('goto throws on relative paths', () => {
     expect(() => Router.new().goto('./x')).toThrow(/absolute path/);
   });
+
+  it('seeds the history stack from the initial path', () => {
+    const router = Router.new({ path: '/start' });
+    expect(router.entries).toEqual(['/start']);
+    expect(router.index).toBe(0);
+  });
+
+  it('goto pushes onto the stack; back/forward move the cursor', () => {
+    const router = Router.new();
+    router.goto('/a');
+    router.goto('/b');
+    expect(router.entries).toEqual(['/', '/a', '/b']);
+
+    router.back();
+    expect(router.path).toBe('/a');
+    router.back();
+    expect(router.path).toBe('/');
+    router.forward();
+    expect(router.path).toBe('/a');
+  });
+
+  it('goto with replace overwrites the current entry', () => {
+    const router = Router.new();
+    router.goto('/a');
+    router.goto('/b', true);
+    expect(router.entries).toEqual(['/', '/b']);
+    expect(router.path).toBe('/b');
+  });
+
+  it('goto after back truncates the forward history', () => {
+    const router = Router.new();
+    router.goto('/a');
+    router.goto('/b');
+    router.back();
+    router.goto('/c');
+    expect(router.entries).toEqual(['/', '/a', '/c']);
+    expect(router.path).toBe('/c');
+  });
 });
 
 describe('BrowserRouter', () => {

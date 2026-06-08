@@ -4,13 +4,22 @@ import { Route } from './route';
 import { Match, fullPattern, matchPattern, patternSegment } from './url';
 
 /**
- * Headless router core: matching plus an in-memory `path`. Touches no browser
- * globals, so it runs (and tests) under any host. `BrowserRouter` binds this
- * to `window.location`/`history`; the public API stays string-based at the
- * edges either way.
+ * Headless router core: matching plus an in-memory `path` and history stack.
+ * Touches no browser globals, so it runs (and tests) under any host - it is
+ * also the memory-router substrate. `BrowserRouter` binds this to
+ * `window.location`/`history`; the public API stays string-based at the edges
+ * either way.
  */
 export class Router extends Component {
   path = '/';
+
+  /** In-memory history: visited paths and the cursor into them. */
+  entries: string[] = [];
+  index = 0;
+
+  protected new() {
+    this.entries = [this.path];
+  }
 
   /**
    * Returns a function that tests a (base, to) pair against the current path.
@@ -26,7 +35,26 @@ export class Router extends Component {
 
   goto(to: string, replace = false) {
     assertAbsolute(to);
-    this.path = normalize(to);
+    const path = normalize(to);
+
+    if (replace)
+      this.entries[this.index] = path;
+    else {
+      this.entries = [...this.entries.slice(0, this.index + 1), path];
+      this.index = this.entries.length - 1;
+    }
+
+    this.path = path;
+  }
+
+  back() {
+    if (this.index > 0)
+      this.path = this.entries[--this.index];
+  }
+
+  forward() {
+    if (this.index < this.entries.length - 1)
+      this.path = this.entries[++this.index];
   }
 
   segment(to: string): string {
@@ -60,6 +88,16 @@ export class BrowserRouter extends Router {
   goto(to: string, replace = false) {
     assertAbsolute(to);
     history[replace ? 'replaceState' : 'pushState'](null, '', normalize(to));
+  }
+
+  // The browser owns the history stack; back/forward delegate to it (popstate
+  // syncs `path`), so the inherited in-memory entries/index go unused here.
+  back() {
+    history.back();
+  }
+
+  forward() {
+    history.forward();
   }
 
   protected new() {
