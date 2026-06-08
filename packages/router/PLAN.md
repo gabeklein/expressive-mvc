@@ -411,6 +411,11 @@ Presentation differences (sidebar shows an icon, breadcrumb shows only text) liv
 
 **Breadcrumbs** then falls out as a sibling consumer: walk the matched-route chain, render each `label`. Same tree, same field - the payoff that validates `label` at the agnostic-string altitude.
 
+### Adjacent / later
+
+- **Breadcrumbs component (TODO).** Sibling to NavLinks: walks the active-route chain and renders each `label`. First consumer to prove the agnostic-`label` thesis beyond NavLinks. On the plan.
+- **Expand example dogfooding.** The examples app is the working proof of the router; several features (nesting, groups, breadcrumbs, redirects) aren't exercised yet. Once nesting reaches a stable stopping point, add router-specific examples and surface a **router group** in the examples UI. That requires tweaking example test/discovery (current discovery is flat - one example per dir; nesting/grouping needs the discovery + nav to represent a tree). Gated on the nesting work landing.
+
 ## Open questions
 
 1. **Relative paths at the Router level.** `Router.get().goto('./x')` currently throws. Could resolve against `router.path` as a directory if a real use case shows up.
