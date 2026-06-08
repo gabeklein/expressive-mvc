@@ -1,4 +1,3 @@
-import { Component } from '@expressive/react';
 import { NavLinks, Route } from '@expressive/router';
 import { type ComponentType } from 'react';
 import Logo from './Logo';
@@ -7,7 +6,7 @@ import { Router } from '@expressive/router';
 
 export type AppModule = { default: ComponentType };
 
-interface Example {
+export interface Example {
   order: number;
   slug: string;
   label: string;
@@ -15,81 +14,35 @@ interface Example {
   file: string;
 }
 
-interface Group {
+export interface Group {
   order: number;
   slug: string;
   label: string;
   items: Example[];
 }
 
-const order = (seg: string) => +(seg.match(/^(\d+)-/)?.[1] ?? 0);
-const slug = (seg: string) => seg.replace(/^\d+-/, '');
+function Examples(props: { routes: Group[] }) {
+  const { routes } = props;
+  const first = routes[0]?.items[0];
 
-function byOrder<T extends Group | Example>(arr: T[]) {
-  return arr.sort((a, b) => a.order - b.order);
-}
-
-class Examples extends Component {
-  modules: Record<string, () => Promise<AppModule>> = {};
-
-  /** Group example modules by their first path segment (`group/example/App.tsx`). */
-  get groups(): Group[] {
-    const files = Object.keys(this.modules);
-    const groups = new Map<string, Group>();
-
-    for (const file of files) {
-      const [g, l] = file.split('/').slice(1, -1);
-      let group = groups.get(g);
-
-      if (!group)
-        groups.set(
-          g,
-          (group = {
-            order: order(g),
-            slug: slug(g),
-            label: titleCase(slug(g)),
-            items: []
-          })
-        );
-
-      group.items.push({
-        order: order(l),
-        slug: slug(l) + '/*',
-        label: titleCase(slug(l)),
-        path: `/${slug(g)}/${slug(l)}`,
-        file
-      });
-    }
-
-    return byOrder([...groups.values()]).map((g) => ({
-      ...g,
-      items: byOrder(g.items)
-    }));
-  }
-
-  render() {
-    const { groups } = this;
-    const first = groups[0]?.items[0];
-
-    return (
-      <Route as={Shell}>
-        {first && <Route to="" redirect={first.path} />}
-        {groups.map((g) => (
-          <Route key={g.slug} to={g.slug} label={g.label}>
-            {g.items.map((e) => (
-              <ExampleRoute
-                key={e.slug}
-                to={e.slug}
-                label={e.label}
-                file={e.file}
-              />
-            ))}
-          </Route>
-        ))}
-        <Route fallback as={NotFound} />
-      </Route>
-    );
-  }
+  return (
+    <Route as={Shell}>
+      {first && <Route to="" redirect={first.path} />}
+      {routes.map((g) => (
+        <Route key={g.slug} to={g.slug} label={g.label}>
+          {g.items.map((e) => (
+            <ExampleRoute
+              key={e.slug}
+              to={e.slug}
+              label={e.label}
+              file={e.file}
+            />
+          ))}
+        </Route>
+      ))}
+      <Route fallback as={NotFound} />
+    </Route>
+  );
 }
 
 function Shell(props: { children?: React.ReactNode }) {
@@ -141,16 +94,11 @@ function NotFound() {
   return (
     <div style={{ padding: '4rem 2rem', textAlign: 'center' }}>
       <h1>404</h1>
-      <p>No example matches <code>{path}</code>.</p>
+      <p>
+        No example matches <code>{path}</code>.
+      </p>
     </div>
   );
-}
-
-function titleCase(str: string) {
-  return str
-    .split(' ')
-    .map((w) => w[0].toUpperCase() + w.slice(1))
-    .join(' ');
 }
 
 export default Examples;
