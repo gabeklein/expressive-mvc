@@ -11,7 +11,10 @@
     "noEmit": true,
     "isolatedModules": true,
     "resolveJsonModule": true,
-    "types": ["vite/client"]
+    "types": ["vite/client"],
+    "paths": {
+      "@expressive/*": ["../packages/*/src"]
+    }
   },
-  "include": ["main.tsx", "**/*.ts", "**/*.tsx"]
+  "include": ["main.tsx", "**/*.ts", "**/*.tsx"],
 }
