@@ -292,6 +292,16 @@ class PostRoute extends Route {
 
 Defer until (a) the type story actively pays off in real apps built on the declarative form, or (b) a meaningful behavior difference between leaf and layout Routes emerges that needs a class to express.
 
+#### Possible direction: `Layout` / `Label` as consumed subclass methods
+
+For the subclass path (not the prop path), chrome has no home. When a Route subclass overrides `render()`, composition makes the subclass render the inner layer and `Route.render` the outer; `compose()` installs `children` as a *getter*, so base render takes the children-getter branch ([route.ts:198-199](src/route.ts#L198-L199)) and returns `matched ? props.children : null` - it **never reaches the `as` branches**. So a subclass whose `render()` returns its child-route structure cannot attach chrome via `as`, and can't wrap its matched descendants by return-value composition either (they render independently, bottom-up). A dedicated slot consumed by base render is the only clean option.
+
+Shape: `Layout(props)` (and maybe `Label(props)`) as **overridable members** the base consumes unconditionally - the same pattern `NavLinks` already ships (`List`/`Group`/`Item` overridden by a subclass, base orchestrates). `Route.render` would wrap the children-getter result: `matched ? (this.Layout ? Layout({children}) : props.children) : null`.
+
+- This is the *method* form, distinct from a `<Layout>` child element (that one needs the positioned-outlet justification - see P5 outlets - to earn its keep).
+- Orthogonal to `as`-the-prop, which stays the declarative-path surface for *target content*. `Layout` is the subclass-path surface for *chrome*. Two authoring styles, two surfaces; no competition.
+- `Layout` advances on filling a real gap (subclass chrome, no other home). `Label` is the riskier twin: a rendering `Label()` relocates per-route label *presentation* onto the Route, overlapping `NavLinks.Item` and reopening the settled "presentation lives in the consumer" call ([§ Route presentation](#route-presentation-label--meta)). Hold it until it can name what the `label` string + a consumer `Item` can't already do.
+
 ## Nice-to-haves
 
 ### `Route` per-URL remount opt-in
