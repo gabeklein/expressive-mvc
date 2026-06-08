@@ -1,5 +1,5 @@
 import { Component } from '@expressive/react';
-import { Link, NavLinks, Route, Router } from '@expressive/router';
+import { NavLinks, Route, Router } from '@expressive/router';
 import { NotFound } from './NotFound';
 import { type ComponentType } from 'react';
 import Logo from './Logo';
@@ -56,7 +56,7 @@ class Examples extends Component {
           <ExampleRoute
             key={e.path}
             to={e.path}
-            title={e.title}
+            label={e.title}
             file={e.file}
           />
         ))}
@@ -81,14 +81,13 @@ function Shell(props: { children?: React.ReactNode }) {
 }
 
 class ExampleRoute extends Route {
-  title = '';
   file = '';
 
   render() {
     return (
       <iframe
         className={styles.frame}
-        title={this.title}
+        title={this.label}
         src={`module#${encodeURIComponent(this.file)}`}
       />
     );
@@ -98,15 +97,6 @@ class ExampleRoute extends Route {
 class Navigation extends NavLinks {
   List(props: { children?: React.ReactNode }) {
     return <div className={styles.links}>{props.children}</div>;
-  }
-
-  Item({ route, active }: { route: Route; active: boolean }) {
-    const { path, title } = route as ExampleRoute;
-    return (
-      <Link to={path} aria-current={active ? 'page' : undefined}>
-        {title}
-      </Link>
-    );
   }
 }
 
