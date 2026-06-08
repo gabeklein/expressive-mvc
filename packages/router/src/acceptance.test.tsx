@@ -1,13 +1,19 @@
 import { act, render } from '@testing-library/react';
-import { beforeEach, describe, expect, it } from 'bun:test';
-import { Consumer, Context } from '@expressive/react';
+import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
+import { Consumer } from '@expressive/react';
 
 import { Route } from './route';
-import { Router } from './router';
+import { BrowserRouter } from './router';
+
+let router: BrowserRouter;
 
 beforeEach(() => {
-  Context.root.get(Router, false)?.set(null);
   window.history.replaceState(null, '', '/');
+  router = BrowserRouter.new();
+})
+
+afterEach(() => {
+  router!.set(null);
 });
 
 const RootLayout = (props: { children?: React.ReactNode }) => (
@@ -73,7 +79,6 @@ describe('acceptance: nested file-routing tree', () => {
         <Consumer for={Route}>{(r) => <span>{r.match!.slug}</span>}</Consumer>
       );
     };
-    const router = Router.new();
     const view = render(
       <Route to="/blog/*" as={BlogLayout}>
         <Route to=":slug" as={Tracked} />

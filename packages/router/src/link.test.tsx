@@ -1,14 +1,19 @@
 import { act, fireEvent, render } from '@testing-library/react';
-import { beforeEach, describe, expect, it } from 'bun:test';
-import { Context } from '@expressive/react';
+import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
 
 import { Link } from './link';
 import { Route } from './route';
-import { Router } from './router';
+import { BrowserRouter } from './router';
+
+let router: BrowserRouter;
 
 beforeEach(() => {
-  Context.root.get(Router, false)?.set(null);
   window.history.replaceState(null, '', '/');
+  router = BrowserRouter.new();
+})
+
+afterEach(() => {
+  router!.set(null);
 });
 
 describe('Link', () => {
@@ -24,7 +29,6 @@ describe('Link', () => {
   });
 
   it('navigates on plain left-click', async () => {
-    const router = Router.new();
     const view = render(
       <Route to="/">
         <Link to="/about">about</Link>
@@ -37,7 +41,6 @@ describe('Link', () => {
   });
 
   it('ignores modifier-clicks (meta/ctrl/shift/alt)', async () => {
-    const router = Router.new();
     const view = render(
       <Route to="/">
         <Link to="/about">about</Link>
@@ -53,7 +56,6 @@ describe('Link', () => {
   });
 
   it('ignores middle-click (button !== 0)', async () => {
-    const router = Router.new();
     const view = render(
       <Route to="/">
         <Link to="/about">about</Link>
@@ -66,7 +68,6 @@ describe('Link', () => {
   });
 
   it('respects defaultPrevented', async () => {
-    const router = Router.new();
     const view = render(
       <Route to="/">
         <div onClickCapture={(e) => e.preventDefault()}>
@@ -81,7 +82,6 @@ describe('Link', () => {
   });
 
   it('replace=true uses replaceState', async () => {
-    const router = Router.new();
     const view = render(
       <Route to="/">
         <Link to="/about" replace>about</Link>
@@ -113,7 +113,6 @@ describe('Link', () => {
 
   it('resolves relative `to` against nearest Route (directory anchor)', async () => {
     window.history.replaceState(null, '', '/posts/foo');
-    const router = Router.new();
     const view = render(
       <Route to="/posts/:id">
         <Link to="./edit">edit</Link>
