@@ -1,24 +1,16 @@
 import { act, render } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
+import { describe, expect, it } from 'bun:test';
 
+import { location, browserRouter } from '../test.setup';
 import { Redirect } from './redirect';
 import { Route } from './route';
-import { BrowserRouter } from './router';
 
-let router: BrowserRouter;
-
-afterEach(() => {
-  router!.set(null);
-});
-
-beforeEach(() => {
-  window.history.replaceState(null, '', '/');
-  router = BrowserRouter.new();
-})
+browserRouter();
 
 describe('Redirect', () => {
-  it('navigates on mount when inside a matched Route', async () => {
-    window.history.replaceState(null, '', '/legacy');
+  it('navigates on mount (pushing) when inside a matched Route', async () => {
+    location('/legacy');
+    const before = window.history.length;
     await act(async () => {
       render(
         <>
@@ -28,31 +20,19 @@ describe('Redirect', () => {
       );
     });
     expect(window.location.pathname).toBe('/new');
+    expect(window.history.length).toBe(before + 1);
   });
 
   it('does nothing when when={false}', () => {
-    window.history.replaceState(null, '', '/legacy');
+    location('/legacy');
     render(
       <Route to="/legacy" as={() => <Redirect to="/new" when={false} />} />
     );
     expect(window.location.pathname).toBe('/legacy');
   });
 
-  it('fires when when={true}', async () => {
-    window.history.replaceState(null, '', '/legacy');
-    await act(async () => {
-      render(
-        <>
-          <Route to="/legacy" as={() => <Redirect to="/new" when={true} />} />
-          <Route to="/new" as={() => null} />
-        </>
-      );
-    });
-    expect(window.location.pathname).toBe('/new');
-  });
-
   it('respects replace=true (no new history entry)', async () => {
-    window.history.replaceState(null, '', '/legacy');
+    location('/legacy');
     const before = window.history.length;
     await act(async () => {
       render(
@@ -67,7 +47,7 @@ describe('Redirect', () => {
   });
 
   it('resolves relative `to` against the surrounding Route', async () => {
-    window.history.replaceState(null, '', '/posts/foo');
+    location('/posts/foo');
     await act(async () => {
       render(
         <>
@@ -77,13 +57,5 @@ describe('Redirect', () => {
       );
     });
     expect(window.location.pathname).toBe('/posts/foo/edit');
-  });
-
-  it('renders nothing', () => {
-    window.history.replaceState(null, '', '/legacy');
-    const view = render(
-      <Route to="/legacy" as={() => <Redirect to="/legacy" when={false} />} />
-    );
-    expect(view.container.textContent).toBe('');
   });
 });

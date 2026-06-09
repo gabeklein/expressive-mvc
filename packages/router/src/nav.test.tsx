@@ -1,23 +1,14 @@
-import { render, act } from '@testing-library/react';
-import { afterEach, beforeEach, expect, it } from 'bun:test';
+import { act } from '@testing-library/react';
+import { expect, it } from 'bun:test';
 
+import { renderAct, browserRouter } from '../test.setup';
 import { NavLinks } from './nav';
 import { Route } from './route';
-import { BrowserRouter } from './router';
+
+const router = browserRouter();
 
 const current = (view: any) =>
   view.container.querySelector('a[aria-current="page"]')?.getAttribute('href');
-
-let router: BrowserRouter;
-
-beforeEach(() => {
-  window.history.replaceState(null, '', '/');
-  router = BrowserRouter.new();
-})
-
-afterEach(() => {
-  router!.set(null);
-});
 
 const links = (view: any) =>
   Array.from(view.container.querySelectorAll('a')).map((a: any) => a.getAttribute('href'));
@@ -30,28 +21,22 @@ const Page = ({ children }: { children?: React.ReactNode }) => (
 )
 
 it('mirrors the registered route tree', async () => {
-  let view: any;
-  await act(async () => {
-    view = render(
-      <Route as={Page}>
-        <Route to="a" />
-        <Route to="b" />
-      </Route>
-    );
-  });
+  const view = await renderAct(
+    <Route as={Page}>
+      <Route to="a" />
+      <Route to="b" />
+    </Route>
+  );
   expect(links(view)).toEqual(['/a', '/b']);
 });
 
 it('default Item renders label, falling back to path', async () => {
-  let view: any;
-  await act(async () => {
-    view = render(
-      <Route as={Page}>
-        <Route to="a" label="Alpha" />
-        <Route to="b" />
-      </Route>
-    );
-  });
+  const view = await renderAct(
+    <Route as={Page}>
+      <Route to="a" label="Alpha" />
+      <Route to="b" />
+    </Route>
+  );
   expect(links(view)).toEqual(['/a', '/b']);
   expect(view.container.textContent).toContain('Alpha');
   expect(view.container.textContent).toContain('/b');
@@ -61,34 +46,28 @@ it('treats a headless scope as a section, not a link', async () => {
   // `posts/*` has no `as` (no page), so the default Item renders no link for
   // it - it routes through the Group slot, which by default flattens. Its
   // child still links. (Override Group to surface a heading; see below.)
-  let view: any;
-  await act(async () => {
-    view = render(
-      <Route as={Page}>
-        <Route to="posts/*">
-          <Route to="recent" />
-        </Route>
+  const view = await renderAct(
+    <Route as={Page}>
+      <Route to="posts/*">
+        <Route to="recent" />
       </Route>
-    );
-  });
+    </Route>
+  );
   expect(links(view)).toEqual(['/posts/recent']);
 });
 
 it('marks the active link and updates on navigation', async () => {
-  router.goto('/a');
+  router.current.goto('/a');
 
-  let view: any;
-  await act(async () => {
-    view = render(
-      <Route as={Page}>
-        <Route to="a" />
-        <Route to="b" />
-      </Route>
-    );
-  });
+  const view = await renderAct(
+    <Route as={Page}>
+      <Route to="a" />
+      <Route to="b" />
+    </Route>
+  );
   expect(current(view)).toBe('/a');
 
-  await act(async () => router.goto('/b'));
+  await act(async () => router.current.goto('/b'));
   expect(current(view)).toBe('/b');
 });
 
@@ -105,14 +84,11 @@ it('Item is overridable via subclassing', async () => {
     </div>
   );
 
-  let view: any;
-  await act(async () => {
-    view = render(
-      <Route as={Page}>
-        <Route to="a" />
-      </Route>
-    );
-  });
+  const view = await renderAct(
+    <Route as={Page}>
+      <Route to="a" />
+    </Route>
+  );
   expect(view.container.querySelector('a[data-custom]')?.getAttribute('href')).toBe('/a');
 });
 
@@ -129,32 +105,26 @@ it('exposes route.meta to a custom Item', async () => {
     </div>
   );
 
-  let view: any;
-  await act(async () => {
-    view = render(
-      <Route as={Page}>
-        <Route to="a" meta={{ label: 'Alpha' }} />
-        <Route to="b" />
-      </Route>
-    );
-  });
+  const view = await renderAct(
+    <Route as={Page}>
+      <Route to="a" meta={{ label: 'Alpha' }} />
+      <Route to="b" />
+    </Route>
+  );
   expect(links(view)).toEqual(['/a', '/b']);
   expect(view.container.textContent).toContain('Alpha');
   expect(view.container.textContent).toContain('/b');
 });
 
 it('renders an anonymous group transparently (no stray link)', async () => {
-  let view: any;
-  await act(async () => {
-    view = render(
-      <Route as={Page}>
-        <Route>
-          <Route to="a" />
-          <Route to="b" />
-        </Route>
+  const view = await renderAct(
+    <Route as={Page}>
+      <Route>
+        <Route to="a" />
+        <Route to="b" />
       </Route>
-    );
-  });
+    </Route>
+  );
   expect(links(view)).toEqual(['/a', '/b']);
 });
 
@@ -171,16 +141,13 @@ it('Group slot can wrap a group as a section (opt-in)', async () => {
     </div>
   );
 
-  let view: any;
-  await act(async () => {
-    view = render(
-      <Route as={Page}>
-        <Route label="Docs">
-          <Route to="a" />
-        </Route>
+  const view = await renderAct(
+    <Route as={Page}>
+      <Route label="Docs">
+        <Route to="a" />
       </Route>
-    );
-  });
+    </Route>
+  );
   const section = view.container.querySelector('section[data-group]');
   expect(section).toBeTruthy();
   expect(section!.textContent).toContain('Docs');

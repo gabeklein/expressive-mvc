@@ -1,21 +1,12 @@
 import { act, render } from '@testing-library/react';
-import { beforeEach, describe, expect, it } from 'bun:test';
+import { describe, expect, it } from 'bun:test';
 import { Consumer } from '@expressive/react';
 
+import { location, browserRouter, renderAct } from '../test.setup';
 import { Route } from './route';
-import { BrowserRouter, Router } from './router';
-import { afterEach } from 'node:test';
+import { Router } from './router';
 
-let router: BrowserRouter;
-
-beforeEach(() => {
-  window.history.replaceState(null, '', '/');
-  router = BrowserRouter.new();
-})
-
-afterEach(() => {
-  router!.set(null);
-});
+const router = browserRouter();
 
 const Home = () => <h1>Home</h1>;
 const Post = () => {
@@ -25,6 +16,15 @@ const Post = () => {
     </Consumer>
   );
 };
+
+/** Render an anonymous root Route over `children`, capturing it, then settle.
+ * Returns the captured root plus the view for content assertions. */
+async function mount(children: React.ReactNode) {
+  let root!: Route;
+  const view = render(<Route is={(r) => (root = r)}>{children}</Route>);
+  await act(async () => {});
+  return { root, view };
+}
 
 describe('Route', () => {
   it('mounts the page when its pattern matches', () => {
@@ -38,19 +38,19 @@ describe('Route', () => {
   });
 
   it('does not mount any page when nothing matches', () => {
-    window.history.replaceState(null, '', '/unknown');
+    location('/unknown');
     const view = render(<Route to="/" as={Home} />);
     expect(view.container.textContent).toBe('');
   });
 
   it('exposes params from the matched pattern', () => {
-    window.history.replaceState(null, '', '/posts/foo');
+    location('/posts/foo');
     const view = render(<Route to="/posts/:id" as={Post} />);
     expect(view.container.textContent).toBe('id: foo');
   });
 
   it('updates in place on same-pattern navigation (instance persists)', async () => {
-    window.history.replaceState(null, '', '/posts/foo');
+    location('/posts/foo');
     let mountCount = 0;
 
     const Page = () => {
@@ -65,7 +65,7 @@ describe('Route', () => {
     expect(mountCount).toBe(1);
     expect(view.container.textContent).toBe('foo');
 
-    await act(async () => router.goto('/posts/bar'));
+    await act(async () => router.current.goto('/posts/bar'));
 
     expect(mountCount).toBe(1);
     expect(view.container.textContent).toBe('bar');
@@ -95,7 +95,7 @@ describe('Route', () => {
   });
 
   it('defaults `as` to a children-passthrough', () => {
-    window.history.replaceState(null, '', '/anything');
+    location('/anything');
     const view = render(
       <Route to="/anything">
         <span>inline</span>
@@ -110,25 +110,21 @@ describe('Route', () => {
   });
 
   it('bare Route is its own root - always on at any path', async () => {
-    window.history.replaceState(null, '', '/anything/deep');
-    let view: any;
-    await act(async () => { view = render(<Route as={Home} />); });
+    location('/anything/deep');
+    const view = await renderAct(<Route as={Home} />);
     expect(view.container.textContent).toBe('Home');
   });
 
   it('explicit to="" at root is an index (matches only root)', async () => {
-    let view: any;
-    window.history.replaceState(null, '', '/anything');
-    await act(async () => { view = render(<Route to="" as={Home} />); });
-    expect(view.container.textContent).toBe('');
+    location('/anything');
+    expect((await renderAct(<Route to="" as={Home} />)).container.textContent).toBe('');
 
-    window.history.replaceState(null, '', '/');
-    await act(async () => { view = render(<Route to="" as={Home} />); });
-    expect(view.container.textContent).toBe('Home');
+    location('/');
+    expect((await renderAct(<Route to="" as={Home} />)).container.textContent).toBe('Home');
   });
 
   it('specific sibling declared first beats bare-default Route', () => {
-    window.history.replaceState(null, '', '/about');
+    location('/about');
     const view = render(
       <Route>
         <Route to="/about" as={() => <span>About</span>} />
@@ -139,7 +135,7 @@ describe('Route', () => {
   });
 
   it('fallback Route renders when no earlier sibling matches', () => {
-    window.history.replaceState(null, '', '/nope');
+    location('/nope');
     const view = render(
       <Route>
         <Route to="/about" as={() => <span>About</span>} />
@@ -176,59 +172,44 @@ describe('Route', () => {
   });
 
   it('params is undefined when match invalidated by navigation', async () => {
-    window.history.replaceState(null, '', '/posts/foo');
+    location('/posts/foo');
     let leaf!: Route;
-    const Page = () => (
-      <Consumer for={Route}>{(r) => void (leaf = r)}</Consumer>
-    );
-    render(<Route to="/posts/:id" as={Page} />);
+    render(<Route to="/posts/:id" is={(r) => (leaf = r)} />);
     expect(leaf.match).toEqual({ id: 'foo' });
 
-    await act(async () => router.goto('/elsewhere'));
+    await act(async () => router.current.goto('/elsewhere'));
     expect(leaf.match).toBeUndefined();
   });
 
-  it('anchor handles patterns that already end with /', async () => {
+  it('anchor handles patterns that already end with /', () => {
     let leaf!: Route;
-    const Page = () => (
-      <Consumer for={Route}>{(r) => void (leaf = r)}</Consumer>
-    );
-    render(<Route to="/" as={Page} />);
+    render(<Route to="/" is={(r) => (leaf = r)} />);
     expect(leaf.anchor).toBe('/');
   });
 
   it('Route.goto resolves relative paths via anchor', async () => {
-    window.history.replaceState(null, '', '/posts/foo');
+    location('/posts/foo');
     let leaf!: Route;
-    const Page = () => (
-      <Consumer for={Route}>{(r) => void (leaf = r)}</Consumer>
-    );
-    render(<Route to="/posts/:id" as={Page} />);
+    render(<Route to="/posts/:id" is={(r) => (leaf = r)} />);
     await act(async () => leaf.goto('./edit'));
     expect(window.location.pathname).toBe('/posts/foo/edit');
   });
 
   it('Route.goto treats empty string and "." as no-op', async () => {
-    window.history.replaceState(null, '', '/posts/foo');
+    location('/posts/foo');
     let leaf!: Route;
-    const Page = () => (
-      <Consumer for={Route}>{(r) => void (leaf = r)}</Consumer>
-    );
-    render(<Route to="/posts/:id" as={Page} />);
+    render(<Route to="/posts/:id" is={(r) => (leaf = r)} />);
     await act(async () => leaf.goto(''));
     await act(async () => leaf.goto('.'));
     expect(window.location.pathname).toBe('/posts/foo');
   });
 
   it('Route.goto passes through absolute paths to Router', async () => {
-    window.history.replaceState(null, '', '/posts/foo');
+    location('/posts/foo');
     let leaf!: Route;
-    const Page = () => (
-      <Consumer for={Route}>{(r) => void (leaf = r)}</Consumer>
-    );
     render(
       <>
-        <Route to="/posts/:id" as={Page} />
+        <Route to="/posts/:id" is={(r) => (leaf = r)} />
         <Route to="/about" as={() => <div>about</div>} />
       </>
     );
@@ -237,17 +218,17 @@ describe('Route', () => {
   });
 
   it('Router.goto throws on relative paths', () => {
-    expect(() => router.goto('./x')).toThrow(/absolute path/);
+    expect(() => router.current.goto('./x')).toThrow(/absolute path/);
   });
 
   it('default `as` renders nothing when given no children', () => {
-    window.history.replaceState(null, '', '/blank');
+    location('/blank');
     const view = render(<Route to="/blank" />);
     expect(view.container.textContent).toBe('');
   });
 
   it('resolves Routes rendered through an intermediate component', () => {
-    window.history.replaceState(null, '', '/about');
+    location('/about');
     const Pages = () => (
       <>
         <Route to="/about" as={() => <span>About</span>} />
@@ -266,7 +247,7 @@ describe('Route', () => {
   });
 
   it('sibling Routes re-resolve winner on navigation', async () => {
-    window.history.replaceState(null, '', '/a');
+    location('/a');
     const view = render(
       <Route>
         <Route to="/a" as={() => <span>A</span>} />
@@ -274,7 +255,7 @@ describe('Route', () => {
       </Route>
     );
     expect(view.container.textContent).toBe('A');
-    await act(async () => router.goto('/b'));
+    await act(async () => router.current.goto('/b'));
     expect(view.container.textContent).toBe('B');
   });
 
@@ -282,7 +263,7 @@ describe('Route', () => {
   // Expressive does not reset omitted props to defaults on prop update, so
   // a winner-swap to a bare Route inherits the prior `to`.
   it.skip('switches between specific and bare-default on navigation', async () => {
-    window.history.replaceState(null, '', '/a');
+    location('/a');
     const view = render(
       <Route>
         <Route to="/a" as={() => <span>A</span>} />
@@ -290,12 +271,12 @@ describe('Route', () => {
       </Route>
     );
     expect(view.container.textContent).toBe('A');
-    await act(async () => router.goto('/b'));
+    await act(async () => router.current.goto('/b'));
     expect(view.container.textContent).toBe('Other');
   });
 
   it('parallel Route groups under one parent resolve independently', () => {
-    window.history.replaceState(null, '', '/admin/users');
+    location('/admin/users');
     const Admin = () => (
       <div>
         <Route>
@@ -313,7 +294,7 @@ describe('Route', () => {
   });
 
   it('resolves Routes nested in a Fragment', () => {
-    window.history.replaceState(null, '', '/about');
+    location('/about');
     const view = render(
       <Route>
         <>
@@ -331,7 +312,7 @@ describe('Route', () => {
     // more-specific routes before less-specific ones.
 
     it('literal declared first wins over :param at the same path', () => {
-      window.history.replaceState(null, '', '/posts/new');
+      location('/posts/new');
       const view = render(
         <Route>
           <Route to="/posts/new" as={() => <span>literal</span>} />
@@ -342,7 +323,7 @@ describe('Route', () => {
     });
 
     it(':param declared first wins over * at the same path', () => {
-      window.history.replaceState(null, '', '/posts/foo');
+      location('/posts/foo');
       const view = render(
         <Route>
           <Route to="/posts/:id" as={() => <span>dynamic</span>} />
@@ -353,7 +334,7 @@ describe('Route', () => {
     });
 
     it('catch-all matches when no earlier sibling does', () => {
-      window.history.replaceState(null, '', '/anything/at/all');
+      location('/anything/at/all');
       const view = render(
         <Route>
           <Route to="/" as={() => <span>home</span>} />
@@ -364,7 +345,7 @@ describe('Route', () => {
     });
 
     it('first declared wins on a true tie', () => {
-      window.history.replaceState(null, '', '/posts/foo');
+      location('/posts/foo');
       const view = render(
         <Route>
           <Route to="/posts/:a" as={() => <span>a</span>} />
@@ -379,7 +360,7 @@ describe('Route', () => {
     it('do not block sibling Routes from competing for selection', () => {
       // A Route without `as` is a grouping container - it must not
       // prevent its siblings (with `as`) from being chosen.
-      window.history.replaceState(null, '', '/about');
+      location('/about');
       const view = render(
         <Route>
           <Route>
@@ -394,7 +375,7 @@ describe('Route', () => {
     it('allow Routes nested inside structural wrapper components', () => {
       // Nested Routes inside an `as` component or children are relative
       // to the enclosing Route via context, not by lexical inspection.
-      window.history.replaceState(null, '', '/blog/hello');
+      location('/blog/hello');
       const Layout = (props: { children?: React.ReactNode }) => (
         <main>
           <header>chrome</header>
@@ -420,7 +401,7 @@ describe('Route', () => {
     );
 
     it('layout mounts its prefix-matched child', () => {
-      window.history.replaceState(null, '', '/blog');
+      location('/blog');
       const view = render(
         <Route to="/blog/*" as={Layout}>
           <Route to=":slug" as={BlogPost} />
@@ -431,7 +412,7 @@ describe('Route', () => {
     });
 
     it('layout resolves :param child', () => {
-      window.history.replaceState(null, '', '/blog/hello');
+      location('/blog/hello');
       const view = render(
         <Route to="/blog/*" as={Layout}>
           <Route to=":slug" as={BlogPost} />
@@ -442,7 +423,7 @@ describe('Route', () => {
     });
 
     it('layout does not mount when out of prefix', () => {
-      window.history.replaceState(null, '', '/elsewhere');
+      location('/elsewhere');
       const view = render(
         <Route to="/blog/*" as={Layout}>
           <Route as={BlogIndex} />
@@ -452,7 +433,7 @@ describe('Route', () => {
     });
 
     it('three-level nesting composes bases correctly', () => {
-      window.history.replaceState(null, '', '/admin/users/42');
+      location('/admin/users/42');
       const AdminChrome = (props: { children?: React.ReactNode }) => (
         <main>admin/{props.children}</main>
       );
@@ -473,7 +454,7 @@ describe('Route', () => {
     });
 
     it('catch-all layout (to="*") nests children at root base', () => {
-      window.history.replaceState(null, '', '/about');
+      location('/about');
       const Chrome = (props: { children?: React.ReactNode }) => (
         <main>{props.children}</main>
       );
@@ -486,14 +467,11 @@ describe('Route', () => {
     });
 
     it('own captures only - parent params not in child', () => {
-      window.history.replaceState(null, '', '/blog/hello');
+      location('/blog/hello');
       let inner!: Route;
-      const Capture = () => (
-        <Consumer for={Route}>{(r) => void (inner = r)}</Consumer>
-      );
       render(
         <Route to="/blog/*" as={Layout}>
-          <Route to=":slug" as={Capture} />
+          <Route to=":slug" is={(r) => (inner = r)} />
         </Route>
       );
       expect(inner.match).toEqual({ slug: 'hello' });
@@ -516,13 +494,13 @@ describe('Route', () => {
     });
 
     it('does not redirect when unmatched', () => {
-      window.history.replaceState(null, '', '/elsewhere');
+      location('/elsewhere');
       render(<Route to="" redirect="/home" />);
       expect(window.location.pathname).toBe('/elsewhere');
     });
 
     it('resolves a relative target against the Route anchor', async () => {
-      window.history.replaceState(null, '', '/posts/foo');
+      location('/posts/foo');
       await act(async () => {
         render(
           <>
@@ -547,7 +525,7 @@ describe('extends', () => {
       }
     }
 
-    window.history.replaceState(null, '', '/profile');
+    location('/profile');
     const view = render(<Route><Profile /></Route>);
     expect(view.container.textContent).toBe('profile');
     expect(ran).toBe(1);
@@ -563,7 +541,7 @@ describe('extends', () => {
       }
     }
 
-    window.history.replaceState(null, '', '/elsewhere');
+    location('/elsewhere');
     const view = render(<Route><Profile /></Route>);
     expect(view.container.textContent).toBe('');
     expect(ran).toBe(0); // never invoked while unmatched
@@ -582,7 +560,7 @@ describe('extends', () => {
       }
     }
 
-    window.history.replaceState(null, '', '/admin/profile/settings');
+    location('/admin/profile/settings');
     const view = render(
       <Route>
         <Route to="admin/*"><Profile /></Route>
@@ -604,14 +582,14 @@ describe('extends', () => {
       return <span>ok</span>;
     };
 
-    window.history.replaceState(null, '', '/profile');
+    location('/profile');
     render(<Route><Profile /></Route>);
     expect(found).toBeInstanceOf(Profile);
   });
 
   describe('structural children', () => {
     it('mounts child Routes even when the parent is unmatched', () => {
-      window.history.replaceState(null, '', '/elsewhere');
+      location('/elsewhere');
       let mounted = false;
       const view = render(
         <Route to="foo/*">
@@ -623,7 +601,7 @@ describe('extends', () => {
     });
 
     it('finds child Routes nested in a Fragment', () => {
-      window.history.replaceState(null, '', '/elsewhere');
+      location('/elsewhere');
       let mounted = 0;
       render(
         <Route to="foo/*">
@@ -637,7 +615,7 @@ describe('extends', () => {
     });
 
     it('shows the matched child once the parent matches', () => {
-      window.history.replaceState(null, '', '/foo/bar');
+      location('/foo/bar');
       const view = render(
         <Route to="foo/*">
           <Route to="bar" as={() => <span>bar</span>} />
@@ -647,7 +625,7 @@ describe('extends', () => {
     });
 
     it('treats non-Route content as a leaf (gated, not always-mounted)', () => {
-      window.history.replaceState(null, '', '/elsewhere');
+      location('/elsewhere');
       let ran = false;
       const Content = () => { ran = true; return <span>content</span>; };
       const view = render(
@@ -661,73 +639,50 @@ describe('extends', () => {
   });
 });
 
+const ab = (
+  <>
+    <Route to="a" />
+    <Route to="b" />
+  </>
+);
+
 describe('active', () => {
   it('is undefined when no child matches', async () => {
     Router.new();
-    let root!: Route;
-    render(
-      <Route is={(r) => (root = r)}>
-        <Route to="a" />
-        <Route to="b" />
-      </Route>
-    );
-    await act(async () => {});
+    const { root } = await mount(ab);
     expect(root.active).toBeUndefined();
   });
 
   it('returns the single matched child', async () => {
-    router.goto('/a');
-    let root!: Route;
-    render(
-      <Route is={(r) => (root = r)}>
-        <Route to="a" />
-        <Route to="b" />
-      </Route>
-    );
-    await act(async () => {});
+    router.current.goto('/a');
+    const { root } = await mount(ab);
     expect(root.active?.to).toBe('a');
   });
 
   it('updates on navigation', async () => {
-    router.goto('/a');
-    let root!: Route;
-    render(
-      <Route is={(r) => (root = r)}>
-        <Route to="a" />
-        <Route to="b" />
-      </Route>
-    );
-    await act(async () => {});
+    router.current.goto('/a');
+    const { root } = await mount(ab);
     expect(root.active?.to).toBe('a');
 
-    await act(async () => router.goto('/b'));
+    await act(async () => router.current.goto('/b'));
     expect(root.active?.to).toBe('b');
   });
 
   it('is null when more than one child matches', async () => {
-    router.goto('/a');
-    let root!: Route;
-    render(
-      <Route is={(r) => (root = r)}>
-        <Route to="a" />
-        <Route to="a" />
-      </Route>
-    );
-    await act(async () => {});
+    router.current.goto('/a');
+    const { root } = await mount(<><Route to="a" /><Route to="a" /></>);
     expect(root.active).toBeNull();
   });
 
   it('ignores redirect routes as candidates', async () => {
-    router.goto('/a');
-    let root!: Route;
+    router.current.goto('/a');
     let content!: Route;
-    render(
-      <Route is={(r) => (root = r)}>
+    const { root } = await mount(
+      <>
         <Route to="a" redirect="/a" />
         <Route to="a" is={(r) => (content = r)} />
-      </Route>
+      </>
     );
-    await act(async () => {});
     expect(root.active).toBe(content);
   });
 });
@@ -735,153 +690,114 @@ describe('active', () => {
 describe('matches', () => {
   it('is empty when no child matches', async () => {
     Router.new();
-    let root!: Route;
-    render(
-      <Route is={(r) => (root = r)}>
-        <Route to="a" />
-        <Route to="b" />
-      </Route>
-    );
-    await act(async () => {});
+    const { root } = await mount(ab);
     expect(root.matches).toEqual([]);
   });
 
   it('lists the matched child path', async () => {
-    router.goto('/a');
-    let root!: Route;
-    render(
-      <Route is={(r) => (root = r)}>
-        <Route to="a" />
-        <Route to="b" />
-      </Route>
-    );
-    await act(async () => {});
+    router.current.goto('/a');
+    const { root } = await mount(ab);
     expect(root.matches).toEqual(['/a']);
   });
 
   it('lists every match when more than one applies', async () => {
-    router.goto('/a');
-    let root!: Route;
-    render(
-      <Route is={(r) => (root = r)}>
-        <Route to="a" />
-        <Route to="a" />
-      </Route>
-    );
-    await act(async () => {});
+    router.current.goto('/a');
+    const { root } = await mount(<><Route to="a" /><Route to="a" /></>);
     expect(root.matches).toEqual(['/a', '/a']);
   });
 
   it('updates on navigation', async () => {
-    router.goto('/a');
-    let root!: Route;
-    render(
-      <Route is={(r) => (root = r)}>
-        <Route to="a" />
-        <Route to="b" />
-      </Route>
-    );
-    await act(async () => {});
+    router.current.goto('/a');
+    const { root } = await mount(ab);
     expect(root.matches).toEqual(['/a']);
 
-    await act(async () => router.goto('/b'));
+    await act(async () => router.current.goto('/b'));
     expect(root.matches).toEqual(['/b']);
   });
 
   it('excludes redirect routes', async () => {
-    router.goto('/a');
-    let root!: Route;
-    render(
-      <Route is={(r) => (root = r)}>
+    router.current.goto('/a');
+    const { root } = await mount(
+      <>
         <Route to="a" redirect="/a" />
         <Route to="a" />
-      </Route>
+      </>
     );
-    await act(async () => {});
     expect(root.matches).toEqual(['/a']);
   });
 });
 
 describe('fallback', () => {
+  const aOr404 = (
+    <>
+      <Route to="a" as={() => <span>a</span>} />
+      <Route fallback as={() => <span>404</span>} />
+    </>
+  );
+
   it('matches when no sibling matches (app 404)', async () => {
-    router.goto('/x');
-    const view = render(
-      <Route>
-        <Route to="a" as={() => <span>a</span>} />
-        <Route fallback as={() => <span>404</span>} />
-      </Route>
-    );
-    await act(async () => {});
+    router.current.goto('/x');
+    const { view } = await mount(aOr404);
     expect(view.container.textContent).toBe('404');
 
-    await act(async () => router.goto('/a'));
+    await act(async () => router.current.goto('/a'));
     expect(view.container.textContent).toBe('a');
   });
 
   it('yields once a sibling matches and restores on navigation away', async () => {
-    router.goto('/a');
-    const view = render(
-      <Route>
-        <Route to="a" as={() => <span>a</span>} />
-        <Route fallback as={() => <span>404</span>} />
-      </Route>
-    );
-    await act(async () => {});
+    router.current.goto('/a');
+    const { view } = await mount(aOr404);
     expect(view.container.textContent).toBe('a');
 
-    await act(async () => router.goto('/missing'));
+    await act(async () => router.current.goto('/missing'));
     expect(view.container.textContent).toBe('404');
   });
 
   it('is scoped to its parent (section 404 does not leak)', async () => {
-    router.goto('/posts/recent');
-    const view = render(
-      <Route>
+    router.current.goto('/posts/recent');
+    const { view } = await mount(
+      <>
         <Route to="posts/*">
           <Route to="recent" as={() => <span>recent</span>} />
           <Route fallback as={() => <span>posts404</span>} />
         </Route>
         <Route fallback as={() => <span>app404</span>} />
-      </Route>
+      </>
     );
-    await act(async () => {});
     expect(view.container.textContent).toBe('recent');
 
-    await act(async () => router.goto('/posts/xyz'));
+    await act(async () => router.current.goto('/posts/xyz'));
     expect(view.container.textContent).toBe('posts404');
 
-    await act(async () => router.goto('/elsewhere'));
+    await act(async () => router.current.goto('/elsewhere'));
     expect(view.container.textContent).toBe('app404');
   });
 
   it('is excluded from matches and active', async () => {
-    router.goto('/missing');
-    let root!: Route;
-    render(
-      <Route is={(r) => (root = r)}>
+    router.current.goto('/missing');
+    const { root } = await mount(
+      <>
         <Route to="a" />
         <Route fallback as={() => <span>404</span>} />
-      </Route>
+      </>
     );
-    await act(async () => {});
     expect(root.matches).toEqual([]);
     expect(root.active).toBeUndefined();
   });
 
   it('sees through an anonymous group - nested match suppresses sibling fallback', async () => {
-    router.goto('/a');
-    const view = render(
-      <Route>
+    router.current.goto('/a');
+    const { view } = await mount(
+      <>
         <Route>
           <Route to="a" as={() => <span>A</span>} />
         </Route>
         <Route fallback as={() => <span>F</span>} />
-      </Route>
+      </>
     );
-    await act(async () => {});
     expect(view.container.textContent).toBe('A');
 
-    await act(async () => router.goto('/missing'));
+    await act(async () => router.current.goto('/missing'));
     expect(view.container.textContent).toBe('F');
   });
 });
