@@ -109,9 +109,21 @@ describe('Route', () => {
     expect(view.container.textContent).toBe('Home');
   });
 
-  it('bare Route matches non-root paths (catch-all default)', () => {
-    window.history.replaceState(null, '', '/anything/at/all');
-    const view = render(<Route as={Home} />);
+  it('bare Route is its own root - always on at any path', async () => {
+    window.history.replaceState(null, '', '/anything/deep');
+    let view: any;
+    await act(async () => { view = render(<Route as={Home} />); });
+    expect(view.container.textContent).toBe('Home');
+  });
+
+  it('explicit to="" at root is an index (matches only root)', async () => {
+    let view: any;
+    window.history.replaceState(null, '', '/anything');
+    await act(async () => { view = render(<Route to="" as={Home} />); });
+    expect(view.container.textContent).toBe('');
+
+    window.history.replaceState(null, '', '/');
+    await act(async () => { view = render(<Route to="" as={Home} />); });
     expect(view.container.textContent).toBe('Home');
   });
 
@@ -126,12 +138,12 @@ describe('Route', () => {
     expect(view.container.textContent).toBe('About');
   });
 
-  it('bare-default Route renders when no earlier sibling matches', () => {
+  it('fallback Route renders when no earlier sibling matches', () => {
     window.history.replaceState(null, '', '/nope');
     const view = render(
       <Route>
         <Route to="/about" as={() => <span>About</span>} />
-        <Route as={() => <span>Fallback</span>} />
+        <Route fallback as={() => <span>Fallback</span>} />
       </Route>
     );
     expect(view.container.textContent).toBe('Fallback');

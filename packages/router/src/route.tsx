@@ -9,6 +9,7 @@ import {
 
 import { Redirect } from './redirect';
 import { Router } from './router';
+import { fullPattern, matchPattern, patternSegment } from './url';
 
 const PARAMS = new WeakMap<Route, Record<string, string> | undefined>();
 const CHILDREN = new WeakMap<Route, Route[]>();
@@ -18,35 +19,21 @@ export class Route extends Component {
 
   as?: ComponentType<{ children?: ReactNode }> = undefined;
 
-  to: string = '*';
+  to: string = '';
 
-  /**
-   * Universal, consumer-agnostic display name for this Route, ignored by
-   * matching. Plain text so *any* consumer can use it - NavLinks, breadcrumbs,
-   * a document-title effect, `aria-label`. Visual extras live in `meta`.
-   */
+  /** Consumer-agnostic display name (ignored by matching) - for NavLinks,
+   * breadcrumbs, titles. Non-text extras live in `meta`. */
   label?: string = undefined;
 
-  /**
-   * Free-form metadata for this Route, ignored by matching. Surfaced to
-   * NavLink components for the things `label` can't express - icon refs,
-   * ordering hints, badges - without forcing a Route subclass.
-   */
+  /** Free-form metadata (ignored by matching) for what `label` can't express -
+   * icons, ordering, badges - without a Route subclass. */
   meta?: Record<string, any> = undefined;
 
-  /**
-   * When matched, redirect here instead of rendering. Always replaces history
-   * (a route that exists only to forward shouldn't leave a back-button trap);
-   * for a non-replacing redirect, navigate yourself via `goto`/`Redirect`.
-   */
+  /** When matched, redirect here instead of rendering. Always replaces history. */
   redirect?: string = undefined;
 
-  /**
-   * Match when nothing else in this Route's scope did - the `else` branch.
-   * Has no path of its own; its blast radius is its parent (where it is nested
-   * defines its scope), so a root-level fallback is the app 404 and a nested
-   * one is the section 404.
-   */
+  /** Matches when nothing else in this scope did. Scoped to its parent: a
+   * root-level fallback is the app 404, a nested one the section 404. */
   fallback = false;
 
   /** Nearest mounted Route ancestor, if any. */
@@ -61,11 +48,8 @@ export class Route extends Component {
     return parent ? parent.base + this.router.segment(parent.to) : '';
   }
 
-  /**
-   * Captured params from the current match, or `undefined` when this Route's
-   * pattern does not match the current path. Stable identity across reads when
-   * captures are unchanged.
-   */
+  /** Captured params from the current match, or `undefined` when unmatched.
+   * Stable identity across reads when captures are unchanged. */
   get match(): Record<string, string> | undefined {
     const next = this.router.match(this.base, this.to)?.params;
     const has = PARAMS.has(this);
@@ -83,17 +67,18 @@ export class Route extends Component {
   }
 
   /**
-   * Boolean derivative of `match`. Reading this in render (instead of `match`)
-   * lets same-pattern navigations skip Route re-renders: the boolean stays
-   * `true` across `/posts/foo` -> `/posts/bar`, so Expressive's memoized
-   * computed property fires no event and the page Component reconciles in
-   * place with its Consumer picking up new params reactively.
+   * Boolean derivative of `match`, read in render instead of `match` so
+   * same-pattern navigations (`/posts/foo` -> `/posts/bar`) don't re-render the
+   * Route - the boolean is unchanged, so the page reconciles in place.
    */
   get matched(): boolean {
     const { parent } = this;
 
     if (this.fallback)
       return parent ? parent.matched && !parent.matches.length : false;
+
+    if (isRoot(this)) return true;
+    if (hasRoutes(this)) return scopeResolves(this, this.router.path);
 
     return !!this.match;
   }
@@ -104,24 +89,8 @@ export class Route extends Component {
   }
 
   /**
-   * A no-`as`, no-`to` Route: a transparent grouping node. Contributes no path
-   * segment and is not itself a match candidate, but stays in the tree (`inner`)
-   * so NavLinks can render it as a group. Matching sees *through* it to its
-   * children, which compose against the nearest real ancestor's base.
-   *
-   * The `'to' in props` check is provisional: it exists only because the
-   * default `to` is `'*'`, so "no `to`" can't be read off the resolved value.
-   * Once the default flips to `''` (see PLAN Phase 5) this becomes the clean
-   * structural `!this.as && !this.to`, with no props introspection.
-   */
-  get group(): boolean {
-    return !this.as && !('to' in this.props);
-  }
-
-  /**
-   * The matched child Route: `undefined` if none match, `null` if more than
-   * one does (ambiguous, non-discriminated). Redirect/fallback routes are not
-   * candidates; anonymous groups are seen through to their children.
+   * The matched child Route: `undefined` if none, `null` if ambiguous (>1).
+   * Redirect/fallback excluded; see-through scopes seen through to children.
    */
   get active(): Route | undefined | null {
     const { match } = this.router;
@@ -130,7 +99,7 @@ export class Route extends Component {
     const scan = (routes: Route[]): boolean => {
       for (const route of routes) {
         if (route.redirect || route.fallback) continue;
-        if (route.group) {
+        if (hasRoutes(route)) {
           if (scan(route.inner)) return true;
           continue;
         }
@@ -145,18 +114,22 @@ export class Route extends Component {
   }
 
   /**
-   * Paths of all currently-matched child routes, in declaration order.
-   * Redirect/fallback excluded; anonymous groups seen through to their children.
-   * A flat projection (no live Route refs), so it is safe to read reactively.
+   * Paths of currently-matched child routes, declaration order. A flat
+   * projection (no live Route refs), safe to read reactively.
    */
   get matches(): string[] {
-    const { match } = this.router;
+    const { match, path } = this.router;
     const collect = (routes: Route[]): string[] =>
-      routes.flatMap((route) =>
-        route.redirect || route.fallback ? []
-        : route.group ? collect(route.inner)
-        : match(route.base, route.to) ? [route.path] : []
-      );
+      routes.flatMap((route) => {
+        if (route.redirect || route.fallback) return [];
+        if (!hasRoutes(route))
+          return match(route.base, route.to) ? [route.path] : [];
+
+        // A scope counts via a matched descendant, or its own section fallback.
+        const deep = collect(route.inner);
+        return deep.length ? deep
+          : fallbackCatches(route, path) ? [route.path] : [];
+      });
 
     return collect(this.inner);
   }
@@ -199,14 +172,100 @@ export class Route extends Component {
 
     const { children } = props;
 
-    if (allRoutes(children)) {
-      if (!Component) return <>{children}</>;
-      return matched ? <Component>{children}</Component> : null;
+    // Matched: render content (in `as` chrome if present). Unmatched: a
+    // see-through scope still mounts children (registration); a leaf renders null.
+    if (matched)
+      return Component ? <Component>{children}</Component> : <>{children}</>;
+
+    return allRoutes(children) ? <>{children}</> : null;
+  }
+}
+
+/** Does `children` hold a direct fallback Route? Such a scope resolves to it. */
+function hasFallback(children: ReactNode): boolean {
+  return Children.toArray(children).some(
+    (node) => isValidElement(node) && node.type === Route && (node.props as RouteProps).fallback
+  );
+}
+
+/** Is `path` inside `base`'s subtree? The root base ('') contains everything. */
+function within(base: string, path: string): boolean {
+  return !base || path === base || path.startsWith(base + '/');
+}
+
+/**
+ * A parent-less Route with no `to` prop is its own root - always matched,
+ * capturing everything below. (Explicit `to=""` at root stays an index.)
+ */
+function isRoot(route: Route): boolean {
+  return !route.parent && !!route.props && !('to' in route.props);
+}
+
+/** The base a scope's children compose against (own base + segment). */
+function scopeBase(route: Route): string {
+  return route.base + route.router.segment(route.to);
+}
+
+/** Lexical (gate-form): scope resolves via a descendant match or its own
+ * section fallback within base - used by `matched`, before children register. */
+function scopeResolves(route: Route, path: string): boolean {
+  const base = scopeBase(route);
+  return matchesAnywhere(route.props.children, base, path)
+    || (hasFallback(route.props.children) && within(base, path));
+}
+
+/** Registration-form: scope owns a fallback catching the path within base -
+ * used by `matches` so a section 404 suppresses an ancestor 404. */
+function fallbackCatches(route: Route, path: string): boolean {
+  return route.inner.some((c) => c.fallback) && within(scopeBase(route), path);
+}
+
+/** Has lexical child Routes - i.e. a see-through scope (vs. a leaf). */
+function hasRoutes(route: Route): boolean {
+  return allRoutes(route.props.children);
+}
+
+type RouteProps = {
+  to?: string;
+  redirect?: string;
+  fallback?: boolean;
+  children?: ReactNode;
+};
+
+/**
+ * Does any Route within `children` match `path` (composed against `base`)? A
+ * synchronous, lexical walk of the JSX - the see-through opt-out gate. Strict:
+ * a scope counts only when a descendant matches, never as a greedy prefix.
+ * Blind to class-field `to` (subclasses) and component-internal routes (the
+ * `*`-delegation case) - the documented limits of the lexical model.
+ */
+export function matchesAnywhere(children: ReactNode, base: string, path: string): boolean {
+  for (const node of Children.toArray(children)) {
+    if (!isValidElement(node)) continue;
+
+    const { type } = node;
+
+    if (type === Fragment) {
+      if (matchesAnywhere((node.props as RouteProps).children, base, path)) return true;
+      continue;
     }
 
-    if (!matched) return null;
-    return Component ? <Component>{children}</Component> : children;
+    if (type !== Route) continue;
+
+    const props = node.props as RouteProps;
+    if (props.redirect || props.fallback) continue;
+
+    const to = typeof props.to === 'string' ? props.to : '';
+
+    if (allRoutes(props.children)) {
+      if (matchesAnywhere(props.children, base + patternSegment(to), path)) return true;
+      continue;
+    }
+
+    if (matchPattern(fullPattern(base, to), path)) return true;
   }
+
+  return false;
 }
 
 function allRoutes(children: ReactNode): boolean {
