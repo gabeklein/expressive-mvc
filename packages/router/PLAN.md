@@ -431,6 +431,77 @@ Concrete change: flip `to` default from `'*'` to exact (`''`/index), add "lexica
 
 Still interesting - it's the path to *marker-free* prefix-default (exactness emergent, even `*` unnecessary), via a synchronous render-phase **sentinel throw** (not Suspense - a 404 is synchronously known, nothing to await) caught by a dedicated per-scope error boundary, so the dead-end subtree never commits (no effect/microtask, no committed double render; only sibling-backtrack forces a real re-render). Deferred, not killed: it needs more understanding of scope (render-phase registration would leak on unwound subtrees - must move to commit phase or be reconcilable) and of how other features shake out (outlets, P4 injection, nav registration) before its cost is worth paying. Revisit if marker-free prefix becomes a goal; until then A1's one token is cheaper than the mechanism.
 
+### Matching refinement: strict see-through + `branch` chain (adopted, pending impl)
+
+Refines A1. The shipped commit (1c7a6b0e) landed rules 1 + 3 (`*`-delegation, exact-default) but **dropped rule 2** ("lexical child Routes present → prefix"); the live Examples bug (a group with children silently failed to suppress the sibling fallback) is exactly that hole. This section restores rule 2 - but as **strict see-through**, not greedy prefix - and settles `as`, the default `to`, and the chain accessor.
+
+**Supersedes:** the NavLinks claim that "a headless scope (`to="x/*"`, no `as`) is *not* see-through - it's a real match boundary." Under this refinement a Route with lexical child Routes is see-through regardless of `as` or `to`.
+
+#### Match modes (revised)
+
+Mode is structural, keyed on the Route's **own lexical children** (visible synchronously via `props.children`), never on `as`:
+
+1. **Has lexical child `Route`s → strict see-through prefix.** The Route matches **iff some descendant leaf matches** (children composed against the Route's base). *Strict*: a prefix with no matching descendant does **not** match - it contributes nothing to its parent's `matches` and **bubbles to the nearest `fallback`**. No `*` needed; `*` is actively wrong here because catch-all *swallows* the mismatch and kills the bubble (the `// note no * here` in Examples).
+2. **No lexical children, `as` routes internally → `*` (opaque delegation).** The one case structure can't see into; `*` opens the prefix gate so `as` mounts at deep paths and owns the remainder. **Irreducible** - neither lexical parse nor bottom-up registration can infer it (bootstrapping deadlock: the Route must already be a prefix to mount the component that would reveal it routes internally).
+3. **Childless, no `*` → exact.** With `to=''` this is the **scope index** (e.g. `<Route as={IntroIndex}/>` lands `/intro`).
+
+`as` is **orthogonal chrome**: rendered when the Route matches, wrapping its resolved descendants. Two authoring styles fall out - chrome at the matched leaf (`as` on the leaf) or shared section chrome that reads the resolved leaf from up-tree (`as` on a see-through ancestor, reading `branch`).
+
+#### Default `to`: `'*'` → `''`
+
+Required for coherence: a childless no-`to` Route must be the exact scope index, not a catch-all. The flip also lets the see-through/anonymous predicate drop its provisional `'to' in props` introspection and become structural (`!this.to` is now a real signal, since the default is falsy).
+
+#### Engine: `matchesAnywhere(children, base, path)`
+
+Lexical, top-down, **synchronous, pure-data**. Walks `props.children`, composing each nested `<Route>`'s base, and reports whether any leaf matches (and feeds `branch`). Blind only to opaque-component-internal routes - mode 2, the `*` case - which is acceptable because that case is irreducible anyway. Recursion is structural (Routes nest Routes), so a "shallow" one-level-at-a-time lexical walk still covers the entire JSX-expressed tree.
+
+#### `branch` accessor (temporary name)
+
+The **resolved match chain, deepest-first, scope-wide and caller-independent**: reading it from any Route yields the same terminal-first list.
+
+- `branch[0]` = the deepest matched route (the leaf). `branch[0] === this` **only** when read on the leaf itself.
+- Non-empty/defined ⇒ *something* in scope matched.
+- Lets chrome positioned up-tree render the resolved leaf - e.g. an `IFrame` on a see-through wrapper reads `branch[0].label` / `branch[0].meta.file`, with leaves acting as **data-only match targets** (no `as`, no children; they carry `meta` and render nothing themselves).
+
+**Name parking:** this *should* be `match`, but `match` is occupied by today's params-returning getter. Park as **`branch`** now; rename to `match` once the params getter vacates the name (`match`-as-params → `params`). Do **not** entangle the params rename with this refactor.
+
+#### Evolution / semver
+
+Ship the lexical `matchesAnywhere` now; revisit bottom-up unwinding later if it can be made safe (the registration-leak-on-unwound-subtree problem from the parked-poison note). The **authoring shape and observable contract** (strict see-through, bubble-to-fallback, `branch`, `as`-as-orthogonal-chrome) are stable, so swapping the mechanism underneath is **additive or an internal fix** - minor/patch, not breaking.
+
+#### Acceptance fixture (the Examples tree)
+
+```tsx
+<Route as={Shell}>                          {/* root chrome, up whenever anything matches */}
+  <Route to="" redirect={first.path} />      {/* '/' → first example */}
+  <Route as={IFrame}>                        {/* anon see-through wrapper; renders branch[0] */}
+    <Route to="intro" label="Intro">         {/* see-through group, NO * */}
+      <Route as={IntroIndex} />              {/* '/intro' index */}
+      <Route to="basics" meta={{ file }} />   {/* data-only leaf */}
+    </Route>
+    {/* ...more groups... */}
+  </Route>
+  <Route fallback as={NotFound} />            {/* gets control when nothing matched */}
+</Route>
+```
+
+Expected:
+- `/` → redirect to first example.
+- `/intro` → `IntroIndex` (exact index).
+- `/intro/basics` → leaf matches → group matches (see-through) → wrapper matches → `IFrame` renders, `branch[0]` = the `basics` leaf, iframe shows `meta.file`.
+- `/intro/bogus` → no leaf matches → group does **not** match → wrapper does **not** match → `NotFound`.
+- `/totally/bogus` → nothing matches → `NotFound`.
+
+#### Test plan
+
+- **Default-`to` flip:** bare `<Route as={X}/>` matches base exactly (index), not catch-all; childless no-`to` no longer matches deeper paths.
+- **Strict see-through:** group-with-children matches when a leaf matches; does **not** match (bubbles) when no descendant matches; mismatch at any depth reaches the nearest `fallback`.
+- **`*` still opaque-delegates:** no-lexical-children `as` + `*` mounts at deep paths and owns the remainder (regression guard for mode 2).
+- **`as` orthogonality:** chrome renders iff the Route matches; absent on miss (so the fallback's content fully replaces it, not nests inside it).
+- **`branch`:** deepest-first ordering; caller-independent (same chain read from wrapper vs leaf); `branch[0] === this` only on the leaf; non-empty ⇔ scope matched; chrome reads leaf `label`/`meta` from an up-tree position.
+- **Index coexistence:** `IntroIndex` resolves `/intro` while `/intro/bogus` still 404s (index does not turn the group into a catch-all).
+- **Anonymous wrapper transparency:** the no-`to` `IFrame` wrapper contributes no segment and is transparent to `matches`/`active` (children compose against the wrapper's inherited base).
+
 ### Anonymous Routes
 
 A **no-prop `<Route>`** (no `as`, no `to`) is anonymous: **transparent to matching** (contributes no segment, not a match candidate in `active`/`matches`) but **present in the registration tree (`inner`)**. Two jobs:
@@ -446,7 +517,7 @@ Groups are **structural** and come from the tree, not a per-route prop. Implemen
 
 Note the predicate split:
 - **nav role** keys on **`!as`** (page vs. structure) - used by `branch`. Covers *both* anonymous Routes (`no as` + `no to`) and headless scopes (`<Route to="x/*">`, no `as`). A headless scope is a section that *owns* a URL segment; its relative children compose under it.
-- **matching transparency** keys on `route.group` (`no as` + `no to`) - used by `active`/`matches` for anonymous see-through. A headless scope is *not* see-through (it's a real match boundary).
+- **matching transparency** keys on `route.group` (`no as` + `no to`) - used by `active`/`matches` for anonymous see-through. A headless scope is *not* see-through (it's a real match boundary). **(Superseded** by [§ Matching refinement: strict see-through + `branch`](#matching-refinement-strict-see-through--branch-chain-adopted-pending-impl): once strict see-through lands, *any* Route with lexical child Routes is see-through regardless of `as`/`to`, so this transparency no longer keys on `group`.)
 
 (An earlier idea folded grouping into a per-route `nav` component; dropped along with `nav` - see below. An even earlier cut keyed `branch` on `route.group`, which broke headless scopes - they rendered as always-active links since `to="x/*"` matches the whole section.)
 

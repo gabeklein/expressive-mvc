@@ -28,21 +28,38 @@ function Examples(props: { routes: Group[] }) {
   return (
     <Route as={Shell}>
       {first && <Route to="" redirect={first.path} />}
-      {routes.map((g) => (
-        <Route key={g.slug} to={g.slug} label={g.label}>
-          {g.items.map((e) => (
-            <ExampleRoute
-              key={e.slug}
-              to={e.slug}
-              label={e.label}
-              file={e.file}
-            />
-          ))}
-        </Route>
-      ))}
+      <Route as={IFrame}>
+        {routes.map((g) => (
+          // note no * here, we want even a mismatch of children to bubble up to fallback
+          <Route key={g.slug} to={g.slug} label={g.label}>
+            {g.items.map((e) => (
+              <Route
+                key={e.slug}
+                to={e.slug}
+                label={e.label}
+                meta={{
+                  file: e.file,
+                }}
+              />
+            ))}
+          </Route>
+        ))}
+      </Route>
       <Route fallback as={NotFound} />
     </Route>
   );
+}
+
+function IFrame(){
+  const { ancestry: [last] } = Route.get();
+
+  return (
+    <iframe
+      className={styles.frame}
+      title={last.label}
+      src={`module#${encodeURIComponent(last.meta.file)}`}
+    />
+  )
 }
 
 function Shell(props: { children?: React.ReactNode }) {
@@ -57,20 +74,6 @@ function Shell(props: { children?: React.ReactNode }) {
       <section className={styles.example}>{props.children}</section>
     </main>
   );
-}
-
-class ExampleRoute extends Route {
-  file = '';
-
-  render() {
-    return (
-      <iframe
-        className={styles.frame}
-        title={this.label}
-        src={`module#${encodeURIComponent(this.file)}`}
-      />
-    );
-  }
 }
 
 class Navigation extends NavLinks {
