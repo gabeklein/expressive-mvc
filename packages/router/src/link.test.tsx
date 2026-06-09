@@ -1,20 +1,11 @@
 import { act, fireEvent, render } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
+import { describe, expect, it } from 'bun:test';
 
+import { location, browserRouter } from '../test.setup';
 import { Link } from './link';
 import { Route } from './route';
-import { BrowserRouter } from './router';
 
-let router: BrowserRouter;
-
-beforeEach(() => {
-  window.history.replaceState(null, '', '/');
-  router = BrowserRouter.new();
-})
-
-afterEach(() => {
-  router!.set(null);
-});
+const router = browserRouter();
 
 describe('Link', () => {
   it('renders an anchor with the target href', () => {
@@ -37,7 +28,7 @@ describe('Link', () => {
     await act(async () => {
       fireEvent.click(view.container.querySelector('a')!, { button: 0 });
     });
-    expect(router.path).toBe('/about');
+    expect(router.current.path).toBe('/about');
   });
 
   it('ignores modifier-clicks (meta/ctrl/shift/alt)', async () => {
@@ -51,7 +42,7 @@ describe('Link', () => {
       await act(async () => {
         fireEvent.click(a, { button: 0, [mod]: true });
       });
-      expect(router.path).toBe('/');
+      expect(router.current.path).toBe('/');
     }
   });
 
@@ -64,7 +55,7 @@ describe('Link', () => {
     await act(async () => {
       fireEvent.click(view.container.querySelector('a')!, { button: 1 });
     });
-    expect(router.path).toBe('/');
+    expect(router.current.path).toBe('/');
   });
 
   it('respects defaultPrevented', async () => {
@@ -78,7 +69,7 @@ describe('Link', () => {
     await act(async () => {
       fireEvent.click(view.container.querySelector('a')!, { button: 0 });
     });
-    expect(router.path).toBe('/');
+    expect(router.current.path).toBe('/');
   });
 
   it('replace=true uses replaceState', async () => {
@@ -91,7 +82,7 @@ describe('Link', () => {
     await act(async () => {
       fireEvent.click(view.container.querySelector('a')!, { button: 0 });
     });
-    expect(router.path).toBe('/about');
+    expect(router.current.path).toBe('/about');
     expect(window.history.length).toBe(before);
   });
 
@@ -112,7 +103,7 @@ describe('Link', () => {
   });
 
   it('resolves relative `to` against nearest Route (directory anchor)', async () => {
-    window.history.replaceState(null, '', '/posts/foo');
+    location('/posts/foo');
     const view = render(
       <Route to="/posts/:id">
         <Link to="./edit">edit</Link>
@@ -122,6 +113,6 @@ describe('Link', () => {
     expect(a.getAttribute('href')).toBe('/posts/foo/edit');
 
     await act(async () => fireEvent.click(a, { button: 0 }));
-    expect(router.path).toBe('/posts/foo/edit');
+    expect(router.current.path).toBe('/posts/foo/edit');
   });
 });

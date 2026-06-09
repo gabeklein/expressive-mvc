@@ -1,7 +1,8 @@
 import { act } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, spyOn } from 'bun:test';
+import { describe, expect, it, spyOn } from 'bun:test';
 
-import { BrowserRouter, Router } from './router';
+import { browserRouter } from '../test.setup';
+import { Router } from './router';
 
 describe('Router (headless)', () => {
   it('defaults to root', () => {
@@ -64,32 +65,23 @@ describe('Router (headless)', () => {
 });
 
 describe('BrowserRouter', () => {
-  let router: BrowserRouter;
-
-  beforeEach(() => {
-    window.history.replaceState(null, '', '/');
-    router = BrowserRouter.new();
-  });
-
-  afterEach(() => {
-    router!.set(null);
-  });
+  const router = browserRouter();
 
   it('initializes from window.location', () => {
     window.history.replaceState(null, '', '/foo');
-    expect(router.path).toBe('/foo');
+    expect(router.current.path).toBe('/foo');
   });
 
   it('goto pushes history and updates path', () => {
-    act(() => router.goto('/bar'));
-    expect(router.path).toBe('/bar');
+    act(() => router.current.goto('/bar'));
+    expect(router.current.path).toBe('/bar');
     expect(window.location.pathname).toBe('/bar');
   });
 
   it('goto with replace uses replaceState', () => {
     const before = window.history.length;
-    act(() => router.goto('/replaced', true));
-    expect(router.path).toBe('/replaced');
+    act(() => router.current.goto('/replaced', true));
+    expect(router.current.path).toBe('/replaced');
     expect(window.location.pathname).toBe('/replaced');
     expect(window.history.length).toBe(before);
   });
@@ -99,22 +91,22 @@ describe('BrowserRouter', () => {
       window.history.pushState(null, '', '/elsewhere');
       window.dispatchEvent(new PopStateEvent('popstate'));
     });
-    expect(router.path).toBe('/elsewhere');
+    expect(router.current.path).toBe('/elsewhere');
   });
 
   it('notices external history.pushState', () => {
     act(() => window.history.pushState(null, '', '/external'));
-    expect(router.path).toBe('/external');
+    expect(router.current.path).toBe('/external');
   });
 
   it('notices external history.replaceState', () => {
     act(() => window.history.replaceState(null, '', '/replaced-external'));
-    expect(router.path).toBe('/replaced-external');
+    expect(router.current.path).toBe('/replaced-external');
   });
 
   it('removes popstate listener on destroy', () => {
     const remove = spyOn(window, 'removeEventListener');
-    router.set(null);
+    router.current.set(null);
     expect(remove).toHaveBeenCalledWith('popstate', expect.any(Function));
     remove.mockRestore();
   });

@@ -1,20 +1,11 @@
 import { act, render } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
+import { describe, expect, it } from 'bun:test';
 import { Consumer } from '@expressive/react';
 
+import { location, browserRouter } from '../test.setup';
 import { Route } from './route';
-import { BrowserRouter } from './router';
 
-let router: BrowserRouter;
-
-beforeEach(() => {
-  window.history.replaceState(null, '', '/');
-  router = BrowserRouter.new();
-})
-
-afterEach(() => {
-  router!.set(null);
-});
+const router = browserRouter();
 
 const RootLayout = (props: { children?: React.ReactNode }) => (
   <div data-root>{props.children}</div>
@@ -44,34 +35,34 @@ function Tree() {
 
 describe('acceptance: nested file-routing tree', () => {
   it('/ -> RootLayout > HomePage', () => {
-    window.history.replaceState(null, '', '/');
+    location('/');
     const view = render(<Tree />);
     expect(view.container.querySelector('[data-root]')?.textContent).toBe('home');
   });
 
   it('/blog -> RootLayout > BlogLayout > BlogIndex', () => {
-    window.history.replaceState(null, '', '/blog');
+    location('/blog');
     const view = render(<Tree />);
     const blog = view.container.querySelector('[data-root] [data-blog]');
     expect(blog?.textContent).toBe('blog-index');
   });
 
   it('/blog/hello-world -> RootLayout > BlogLayout > BlogPost(slug)', () => {
-    window.history.replaceState(null, '', '/blog/hello-world');
+    location('/blog/hello-world');
     const view = render(<Tree />);
     const blog = view.container.querySelector('[data-root] [data-blog]');
     expect(blog?.textContent).toBe('post:hello-world');
   });
 
   it('/anything-else -> RootLayout > NotFound', () => {
-    window.history.replaceState(null, '', '/anything-else');
+    location('/anything-else');
     const view = render(<Tree />);
     expect(view.container.querySelector('[data-blog]')).toBeNull();
     expect(view.container.querySelector('[data-root]')?.textContent).toBe('not-found');
   });
 
   it('navigating /blog/a -> /blog/b preserves the BlogPost instance', async () => {
-    window.history.replaceState(null, '', '/blog/a');
+    location('/blog/a');
     let mountCount = 0;
     const Tracked = () => {
       mountCount++;
@@ -87,7 +78,7 @@ describe('acceptance: nested file-routing tree', () => {
     expect(mountCount).toBe(1);
     expect(view.container.textContent).toBe('a');
 
-    await act(async () => router.goto('/blog/b'));
+    await act(async () => router.current.goto('/blog/b'));
 
     expect(mountCount).toBe(1);
     expect(view.container.textContent).toBe('b');
