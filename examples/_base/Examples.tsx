@@ -28,38 +28,34 @@ function Examples(props: { routes: Group[] }) {
   return (
     <Route as={Shell}>
       {first && <Route to="" redirect={first.path} />}
-      <Route as={IFrame}>
-        {routes.map((g) => (
-          // note no * here, we want even a mismatch of children to bubble up to fallback
-          <Route key={g.slug} to={g.slug} label={g.label}>
-            {g.items.map((e) => (
-              <Route
-                key={e.slug}
-                to={e.slug}
-                label={e.label}
-                meta={{
-                  file: e.file,
-                }}
-              />
-            ))}
-          </Route>
-        ))}
-      </Route>
+      {routes.map((g) => (
+        <Route key={g.slug} to={g.slug} label={g.label}>
+          {g.items.map((e) => (
+            <Route
+              key={e.slug}
+              to={e.slug}
+              label={e.label}
+              as={ExampleFrame}
+              meta={{ file: e.file }}
+            />
+          ))}
+        </Route>
+      ))}
       <Route fallback as={NotFound} />
     </Route>
   );
 }
 
-function IFrame(){
-  const { ancestry: [last] } = Route.get();
+function ExampleFrame() {
+  const { label, meta } = Route.get();
 
   return (
     <iframe
       className={styles.frame}
-      title={last.label}
-      src={`module#${encodeURIComponent(last.meta.file)}`}
+      title={label}
+      src={`module#${encodeURIComponent(meta!.file)}`}
     />
-  )
+  );
 }
 
 function Shell(props: { children?: React.ReactNode }) {
