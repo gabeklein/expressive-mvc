@@ -32,12 +32,12 @@ const NotFound = () => <p>not-found</p>;
 function Tree() {
   return (
     <Route as={RootLayout}>
-      <Route to="" as={HomePage} />
-      <Route to="blog/*" as={BlogLayout}>
-        <Route to="" as={BlogIndex} />
+      <Route as={HomePage} />
+      <Route to="blog" as={BlogLayout}>
+        <Route as={BlogIndex} />
         <Route to=":slug" as={BlogPost} />
       </Route>
-      <Route as={NotFound} />
+      <Route fallback as={NotFound} />
     </Route>
   );
 }
