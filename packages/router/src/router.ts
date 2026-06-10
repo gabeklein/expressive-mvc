@@ -1,7 +1,18 @@
 import { Component } from '@expressive/react';
+import {
+  ReactNode,
+  TransitionStartFunction,
+  startTransition,
+  useEffect,
+  useTransition
+} from 'react';
 
 import { Route } from './route';
 import { Match, fullPattern, matchPattern, patternSegment } from './url';
+
+/** Per-instance hook-resident `startTransition` (from `useTransition`), captured
+ * in render so `transition` - which runs outside render - can drive `pending`. */
+const TRANSITION = new WeakMap<object, TransitionStartFunction>();
 
 /**
  * Headless router core: matching plus an in-memory `path` and history stack.
@@ -12,6 +23,11 @@ import { Match, fullPattern, matchPattern, patternSegment } from './url';
  */
 export class Router extends Component {
   path = '/';
+
+  /** True while a deferred navigation is in flight - mirror to `aria-busy`, a
+   * progress bar, or a dimming overlay. Only the React-bound `BrowserRouter`
+   * drives it (via `useTransition`); on the headless base it stays `false`. */
+  pending = false;
 
   /** In-memory history: visited paths and the cursor into them. */
   entries: string[] = [];
@@ -124,10 +140,41 @@ export class BrowserRouter extends Router {
     history.forward();
   }
 
+  /**
+   * Deferred presentation: hold the current screen until the navigated page
+   * resolves. Wrapping the base seam in `startTransition` captures the
+   * re-render *because* the base emits `path` synchronously inside this
+   * callback (a batched notify would escape and no-op the deferral).
+   *
+   * Prefers the hook-resident `startTransition` (so `pending` reflects the
+   * transition), falling back to the standalone one before first render.
+   */
+  protected transition(commit: () => void) {
+    (TRANSITION.get(this.is) || startTransition)(() => super.transition(commit));
+  }
+
+  /**
+   * Runs `useTransition` in render (the only place a hook may live): captures
+   * its `startTransition` for `transition`, and feeds `pending` to the field
+   * from an effect (assigning in render would update subscribers mid-render).
+   */
+  render(props = {} as { children?: ReactNode }) {
+    const [pending, start] = useTransition();
+
+    TRANSITION.set(this.is, start);
+    useEffect(() => {
+      this.pending = pending;
+    }, [pending]);
+
+    return props.children ?? null;
+  }
+
   protected new() {
-    const sync = () => {
-      this.path = window.location.pathname;
-    };
+    // The single location -> path mirror point; routes through `transition`,
+    // so every browser navigation (goto/back/forward/popstate/external) defers.
+    const sync = () => this.transition(() => {
+      (this as Router).set({ path: window.location.pathname }, true);
+    });
     window.addEventListener('popstate', sync);
 
     const origPush = history.pushState.bind(history);

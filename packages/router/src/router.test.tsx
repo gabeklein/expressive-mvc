@@ -2,9 +2,9 @@ import { act, render } from '@testing-library/react';
 import { describe, expect, it, spyOn } from 'bun:test';
 import { Provider } from '@expressive/react';
 
-import { browserRouter } from '../test.setup';
+import { browserRouter, location, mockPromise } from '../test.setup';
 import { Route } from './route';
-import { Router } from './router';
+import { BrowserRouter, Router } from './router';
 
 describe('Router (headless)', () => {
   it('defaults to root', () => {
@@ -108,6 +108,49 @@ describe('transition seam (deferred-presentation emit protocol)', () => {
 
     // a stale match cache would keep 'A'; recompute off the new path yields 'B'
     await act(async () => router.goto('/b'));
+    expect(view.container.textContent).toBe('B');
+  });
+});
+
+describe('pending (deferred presentation)', () => {
+  // BLOCKED on Suspense boundary placement (FEATURE.md §8): each Route is its own
+  // Component with its own auto-Suspense boundary, so the incoming page suspends
+  // in a *different* boundary than the outgoing content lives in - React shows the
+  // new boundary's fallback (empty) instead of holding the old screen, and the
+  // transition completes immediately so `pending` never sustains. Needs a shared
+  // boundary at the matched-content site. Un-skip once that lands.
+  it.skip('holds the current screen and flips pending while the next suspends', async () => {
+    location('/a');
+
+    const ready = mockPromise<void>();
+    let done = false;
+    ready.then(() => { done = true; });
+
+    const Slow = () => {
+      if (!done) throw ready; // suspend until resolved
+      return <span>B</span>;
+    };
+
+    let router!: BrowserRouter;
+    const view = render(
+      <BrowserRouter is={(r) => (router = r)}>
+        <Route to="/a" as={() => <span>A</span>} />
+        <Route to="/b" as={Slow} />
+      </BrowserRouter>
+    );
+    await act(async () => {});
+
+    expect(view.container.textContent).toBe('A');
+    expect(router.pending).toBe(false);
+
+    // navigate into the suspending page: deferral holds 'A', no fallback flash
+    await act(async () => { router.goto('/b'); });
+    expect(router.pending).toBe(true);
+    expect(view.container.textContent).toBe('A');
+
+    // resolve: the new page commits and pending clears
+    await act(async () => { ready.resolve(); });
+    expect(router.pending).toBe(false);
     expect(view.container.textContent).toBe('B');
   });
 });
