@@ -1,6 +1,7 @@
 import { render, screen, act } from '@testing-library/react';
 import { mock, expect, it, describe } from 'bun:test';
 import React from 'react';
+import { observer } from '@expressive/mvc';
 
 import { mockError, mockPromise } from '../test.setup';
 import { Component, Consumer, set } from '.';
@@ -1797,5 +1798,116 @@ describe('strict mode', () => {
     expect(order).toEqual(['construct', 'construct', 'init']);
 
     element.unmount();
+  });
+});
+
+describe('discarded render (issue #118)', () => {
+  // React may discard a render before commit - a sibling suspends, or
+  // navigation redirects away while the fallback is showing. Effects never
+  // run for discarded fibers, so teardown cannot rely on unmount alone.
+  // Destruction is owned by the instance's pushed context instead: when the
+  // nearest committed ancestor pops, the cascade disposes the orphan.
+
+  const SuspendUntil = (pending: Promise<unknown> & { done?: boolean }) => () => {
+    if (!pending.done) throw pending.then(() => { pending.done = true; });
+    return null;
+  };
+
+  it('will destroy instance when discarded without retry', async () => {
+    const didDestroy = mock();
+
+    class Parent extends Component {}
+    class Model extends Component {
+      protected new() {
+        return () => didDestroy();
+      }
+    }
+
+    const pending = mockPromise();
+    const Sibling = SuspendUntil(pending);
+
+    let element!: ReturnType<typeof render>;
+    await act(async () => {
+      element = render(
+        <Parent>
+          <React.Suspense fallback={null}>
+            <Model />
+            <Sibling />
+          </React.Suspense>
+        </Parent>
+      );
+    });
+
+    // Redirect: tree unmounts while still suspended. Model never mounted,
+    // so its own unmount cleanup never runs - Parent's pop must reach it.
+    await act(async () => { element.unmount(); });
+
+    expect(didDestroy).toHaveBeenCalled();
+  });
+
+  it('will not accumulate listeners across retries', async () => {
+    class Model extends Component {}
+
+    let instance!: Model;
+    await act(async () => {
+      render(
+        <React.Suspense fallback={null}>
+          <Model is={(c: Model) => { instance = c; }} />
+        </React.Suspense>
+      );
+    });
+    const baseline = observer(instance)!.listeners.size;
+
+    // Suspends on the first two render attempts, even after the promise
+    // resolves - forcing two full discard-retry cycles before commit.
+    const pending = mockPromise();
+    let attempts = 0;
+    const Sibling = () => {
+      if (attempts++ < 2) throw pending;
+      return null;
+    };
+
+    await act(async () => {
+      render(
+        <React.Suspense fallback={<span>loading</span>}>
+          <Model is={(c: Model) => { instance = c; }} />
+          <Sibling />
+        </React.Suspense>
+      );
+    });
+
+    screen.getByText('loading');
+    await act(async () => { pending.resolve(); });
+
+    expect(observer(instance)!.listeners.size).toBe(baseline);
+  });
+
+  it('will destroy instance exactly once after retries', async () => {
+    const didDestroy = mock();
+
+    class Model extends Component {
+      protected new() {
+        return () => didDestroy();
+      }
+    }
+
+    const pending = mockPromise();
+    const Sibling = SuspendUntil(pending);
+
+    let element!: ReturnType<typeof render>;
+    await act(async () => {
+      element = render(
+        <React.Suspense fallback={null}>
+          <Model />
+          <Sibling />
+        </React.Suspense>
+      );
+    });
+
+    await act(async () => { pending.resolve(); });
+    expect(didDestroy).not.toHaveBeenCalled();
+
+    await act(async () => { element.unmount(); });
+    expect(didDestroy).toHaveBeenCalledTimes(1);
   });
 });
