@@ -21,13 +21,12 @@ export interface Group {
   items: Example[];
 }
 
-function Examples(props: { routes: Group[] }) {
-  const { routes } = props;
+function Examples({ routes }: { routes: Group[] }) {
   const first = routes[0]?.items[0];
 
   return (
     <Route as={Shell}>
-      {first && <Route to="" redirect={first.path} />}
+      {first && <Route redirect={first.path} />}
       {routes.map((g) => (
         <Route key={g.slug} to={g.slug} label={g.label}>
           {g.items.map((e) => (
@@ -36,7 +35,7 @@ function Examples(props: { routes: Group[] }) {
               to={e.slug}
               label={e.label}
               as={ExampleFrame}
-              meta={{ file: e.file }}
+              meta={e}
             />
           ))}
         </Route>
