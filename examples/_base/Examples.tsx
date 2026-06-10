@@ -41,7 +41,7 @@ function Examples(props: { routes: Group[] }) {
           ))}
         </Route>
       ))}
-      <Route fallback as={NotFound} />
+      <Route default as={NotFound} />
     </Route>
   );
 }

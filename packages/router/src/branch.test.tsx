@@ -60,11 +60,11 @@ describe('matchesAnywhere', () => {
     expect(matchesAnywhere(tree, '', '/posts')).toBe(false);
   });
 
-  it('skips redirect and fallback children as match candidates', () => {
+  it('skips redirect and default children as match candidates', () => {
     const tree = (
       <>
         <Route to="" redirect="/home" />
-        <Route fallback />
+        <Route default />
         <Route to="a" />
       </>
     );

@@ -129,12 +129,12 @@ describe('Route', () => {
     expect(view.container.textContent).toBe('About');
   });
 
-  it('fallback Route renders when no earlier sibling matches', () => {
+  it('default Route renders when no earlier sibling matches', () => {
     location('/nope');
     const view = render(
       <Route>
         <Route to="/about" as={() => <span>About</span>} />
-        <Route fallback as={() => <span>Fallback</span>} />
+        <Route default as={() => <span>Fallback</span>} />
       </Route>
     );
     expect(view.container.textContent).toBe('Fallback');
@@ -696,11 +696,11 @@ describe('matches', () => {
   });
 });
 
-describe('fallback', () => {
+describe('default', () => {
   const aOr404 = (
     <>
       <Route to="a" as={() => <span>a</span>} />
-      <Route fallback as={() => <span>404</span>} />
+      <Route default as={() => <span>404</span>} />
     </>
   );
 
@@ -728,9 +728,9 @@ describe('fallback', () => {
       <>
         <Route to="posts/*">
           <Route to="recent" as={() => <span>recent</span>} />
-          <Route fallback as={() => <span>posts404</span>} />
+          <Route default as={() => <span>posts404</span>} />
         </Route>
-        <Route fallback as={() => <span>app404</span>} />
+        <Route default as={() => <span>app404</span>} />
       </>
     );
     expect(view.container.textContent).toBe('recent');
@@ -747,21 +747,21 @@ describe('fallback', () => {
     const { root } = await mount(
       <>
         <Route to="a" />
-        <Route fallback as={() => <span>404</span>} />
+        <Route default as={() => <span>404</span>} />
       </>
     );
     expect(root.matches).toEqual([]);
     expect(root.active).toBeUndefined();
   });
 
-  it('sees through an anonymous group - nested match suppresses sibling fallback', async () => {
+  it('sees through an anonymous group - nested match suppresses sibling default', async () => {
     router.current.goto('/a');
     const { view } = await mount(
       <>
         <Route>
           <Route to="a" as={() => <span>A</span>} />
         </Route>
-        <Route fallback as={() => <span>F</span>} />
+        <Route default as={() => <span>F</span>} />
       </>
     );
     expect(view.container.textContent).toBe('A');

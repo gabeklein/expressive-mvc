@@ -268,13 +268,18 @@ packages/router/
 
 Match mvc's existing conventions (pnpm workspace entry, root tsconfig extension, `tsc --noEmit && bun test --coverage`, 100% coverage target). Tests run under `bun test` (happy-dom + setup preloaded via `bunfig.toml`).
 
+## Suspense & transitions (planned)
+
+Two capabilities about *when* and *how* a navigation presents, both riding **one overridable `transition(commit)` seam on the Router** (consistent with `NavLinks`/Route member overrides): base = **deferred presentation** (no-flash; default `startTransition` + a `pending` flag), subclass = deferral + **animation** (override `transition` to bracket the swap in the View Transitions API; consumer owns the CSS). Page-level loading already works - every `@expressive/react` Component auto-Suspends with its own `fallback`. The key enabler is Expressive's `set` (silent update + synchronous emit), used to make the `path` change notify *inside* `startTransition` so the old screen holds.
+
+Full design, requirements, and the implementation plan live in the working doc **`FEATURE.md`** (fold into here + delete on ship). The former `Route.fallback`-vs-loading conflict is resolved: Route's no-match branch is now the `default` prop, freeing `fallback` for Component's Suspense/error meaning.
+
 ## Out of scope (explicit)
 
 - SSR / streaming / `renderToPipeableStream` integration.
 - Router-owned loader / action API.
 - File-based routing codegen (lives in `expressive-dev`).
 - Server-side route definitions.
-- View transitions API.
 - Route-level metadata / `<head>` management.
 - Multi-match across sibling Routes with `as` at the same level. Single-winner-per-level stands; passthrough Routes (no `as`) may coexist freely.
 - Distribution from this repo.
@@ -383,7 +388,7 @@ Under injection, **layout-vs-leaf becomes inferable**, so an explicit `layout` m
 
 The one case lexical inspection can't see: routes rendered through an intermediate component (`<Route><Pages/></Route>`). That's the same case injection/outlets rule out by construction, so it's excluded cleanly - supported only as a limited convenience (see anon Routes).
 
-> Context: an earlier spike added an explicit `index` prop (exact leaf) then an explicit `layout` prop (flip the default to exact), with a full test migration. Scrapped as DOA in favor of this inference model - the prop churn isn't worth it if injection makes leaf/layout derivable. The `fallback` role and exact-default thinking carry forward.
+> Context: an earlier spike added an explicit `index` prop (exact leaf) then an explicit `layout` prop (flip the default to exact), with a full test migration. Scrapped as DOA in favor of this inference model - the prop churn isn't worth it if injection makes leaf/layout derivable. The `default` (no-match) role and exact-default thinking carry forward.
 
 ### Roadmap (phasing - clear wins first)
 
@@ -416,12 +421,12 @@ Mode is determined structurally, no flag in the common case:
 2. else lexical child `Route`s present → **prefix**;
 3. else → **exact**.
 
-Default `to` is exact of `base`; bare `<Route as={Home}/>` is the scope index (matches only `/`). Fallback is unchanged: a lexical `fallback` is the "nothing in this scope matched" branch; a 404 is just "no sibling matched, scope/root fallback renders."
+Default `to` is exact of `base`; bare `<Route as={Home}/>` is the scope index (matches only `/`). The no-match branch is unchanged: a lexical `default` Route is the "nothing in this scope matched" branch; a 404 is just "no sibling matched, scope/root `default` renders."
 
 What falls out:
 
-- `<Route to="posts/:id/*" as={Post}/>` routes internally → `*` transfers remainder ownership; below it routing is lexical again, `Post` owns its own fallback. (The case that killed lexical inference - handled by one explicit token.)
-- `<Route to="about" as={About}/>`, `/about/garbage` → exact, no match → falls to fallback → clean 404. **No leak, no sentinel.**
+- `<Route to="posts/:id/*" as={Post}/>` routes internally → `*` transfers remainder ownership; below it routing is lexical again, `Post` owns its own `default`. (The case that killed lexical inference - handled by one explicit token.)
+- `<Route to="about" as={About}/>`, `/about/garbage` → exact, no match → falls to `default` → clean 404. **No leak, no sentinel.**
 - `<Route as={Home}/>`, `/about` → exact `/` only. No index footgun, no `index` keyword.
 - The single explicit marker is **`*`** = "my `as` component owns everything below" - the one boundary structure can't see into. Matches React Router's `path="x/*"` intuition. `exact`/`index`/`catchAll`-attribute all retired.
 
@@ -435,7 +440,7 @@ Still interesting - it's the path to *marker-free* prefix-default (exactness eme
 
 ### Matching model: strict see-through + always-on roots (implemented)
 
-Refines and supersedes A1. The shipped A1 commit (1c7a6b0e) landed `*`-delegation + exact-default but dropped "lexical child Routes → prefix"; the live Examples bug (a group with children silently failed to suppress the sibling fallback) was exactly that hole. This is the model as built (suite green).
+Refines and supersedes A1. The shipped A1 commit (1c7a6b0e) landed `*`-delegation + exact-default but dropped "lexical child Routes → prefix"; the live Examples bug (a group with children silently failed to suppress the sibling default) was exactly that hole. This is the model as built (suite green).
 
 **Supersedes:** the NavLinks claim that "a headless scope (no `as`) is *not* see-through." Any Route with lexical child Routes is see-through, regardless of `as`/`to`.
 
@@ -443,7 +448,7 @@ Refines and supersedes A1. The shipped A1 commit (1c7a6b0e) landed `*`-delegatio
 
 Keyed on the Route's **own lexical children** (synchronous via `props.children`), never on `as`:
 
-1. **Has lexical child `Route`s → strict see-through.** Matches **iff a descendant matches** (children composed against the Route's base), decided by the synchronous lexical opt-out gate `matchesAnywhere`. *Strict*: a prefix with no matching descendant does **not** match - it bubbles to the nearest `fallback`. No `*` needed; `*` would be wrong here (catch-all swallows the mismatch and kills the bubble).
+1. **Has lexical child `Route`s → strict see-through.** Matches **iff a descendant matches** (children composed against the Route's base), decided by the synchronous lexical opt-out gate `matchesAnywhere`. *Strict*: a prefix with no matching descendant does **not** match - it bubbles to the nearest `default`. No `*` needed; `*` would be wrong here (catch-all swallows the mismatch and kills the bubble).
 2. **No lexical children, `as` routes internally → `*` (opaque delegation).** The one case structure can't see into; `*` opens the prefix gate so the component mounts at deep paths (e.g. `<Route to="*"><Pages/></Route>`). **Irreducible** - no scheme (lexical or bottom-up) can infer it (bootstrap deadlock: the Route must already be a prefix to mount the component that would reveal it routes internally).
 3. **Childless, no `*` → exact.** With `to=''` this is the **scope index** (`<Route as={IntroIndex}/>` lands `/intro`).
 
@@ -457,11 +462,11 @@ A **parent-less Route with no `to` *prop*** (`!parent && !('to' in props)`, guar
 - **Content renders at the matched leaf** via a **self-read** (`Route.get()` = itself). Ancestors supply chrome *around* content; they never reach *down* for a descendant's data. The earlier `IFrame`-reads-`branch` shape (ancestor synthesizing content from a descendant) was rejected - it caused a render-order race, the discards-children problem, and forced a lexical `branch`. Methodology tell: **if a layout needs a descendant's data to render *content*, push the content to the leaf.**
 - `as` is **orthogonal chrome**: present iff the Route matches.
 
-#### Fallback
+#### Default (no-match branch)
 
-`fallback.matched = parent.matched && !parent.matches.length`, plus two scoping rules:
-- **`within`-scoped:** a `fallback` keeps its scope matched only when the path is inside the scope's base (root base `''` contains everything → app-404 everywhere; `/posts` only within `/posts`), so a section 404 does not leak to sibling scopes.
-- **`matches` counts section-fallback resolution:** a see-through scope that resolves to its *own* section fallback is counted by its parent, so an ancestor 404 does not *also* fire. (Intuition: a fallback is a scoped last-resort match; a scope that owns its 404 has resolved, so its parent sees it as matched.)
+`default.matched = parent.matched && !parent.matches.length`, plus two scoping rules:
+- **`within`-scoped:** a `default` keeps its scope matched only when the path is inside the scope's base (root base `''` contains everything → app-404 everywhere; `/posts` only within `/posts`), so a section 404 does not leak to sibling scopes.
+- **`matches` counts section-default resolution:** a see-through scope that resolves to its *own* section default is counted by its parent, so an ancestor 404 does not *also* fire. (Intuition: a `default` is a scoped last-resort match; a scope that owns its 404 has resolved, so its parent sees it as matched.)
 
 #### Engine: `matchesAnywhere(children, base, path)`
 
@@ -480,7 +485,7 @@ A childless no-`to` Route is the exact scope index. The see-through predicate is
     <Route as={IntroIndex} />                        {/* '/intro' index */}
     <Route to="basics" as={ExampleFrame} meta={{ file }} />  {/* leaf renders its own content */}
   </Route>
-  <Route fallback as={NotFound} />
+  <Route default as={NotFound} />
 </Route>
 ```
 

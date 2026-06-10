@@ -33,8 +33,8 @@ export class Route extends Component {
   redirect?: string = undefined;
 
   /** Matches when nothing else in this scope did. Scoped to its parent: a
-   * root-level fallback is the app 404, a nested one the section 404. */
-  fallback = false;
+   * root-level default is the app 404, a nested one the section 404. */
+  default = false;
 
   /** Nearest mounted Route ancestor, if any. */
   parent = get(Route, false);
@@ -74,7 +74,7 @@ export class Route extends Component {
   get matched(): boolean {
     const { parent } = this;
 
-    if (this.fallback)
+    if (this.default)
       return parent ? parent.matched && !parent.matches.length : false;
 
     if (isRoot(this)) return true;
@@ -85,12 +85,12 @@ export class Route extends Component {
 
   /** This Route's own absolute path (base joined with its segment). */
   get path(): string {
-    return this.fallback ? this.base : this.base + this.router.segment(this.to);
+    return this.default ? this.base : this.base + this.router.segment(this.to);
   }
 
   /**
    * The matched child Route: `undefined` if none, `null` if ambiguous (>1).
-   * Redirect/fallback excluded; see-through scopes seen through to children.
+   * Redirect/default excluded; see-through scopes seen through to children.
    */
   get active(): Route | undefined | null {
     const { match } = this.router;
@@ -98,7 +98,7 @@ export class Route extends Component {
 
     const scan = (routes: Route[]): boolean => {
       for (const route of routes) {
-        if (route.redirect || route.fallback) continue;
+        if (route.redirect || route.default) continue;
         if (hasRoutes(route)) {
           if (scan(route.inner)) return true;
           continue;
@@ -121,14 +121,14 @@ export class Route extends Component {
     const { match, path } = this.router;
     const collect = (routes: Route[]): string[] =>
       routes.flatMap((route) => {
-        if (route.redirect || route.fallback) return [];
+        if (route.redirect || route.default) return [];
         if (!hasRoutes(route))
           return match(route.base, route.to) ? [route.path] : [];
 
-        // A scope counts via a matched descendant, or its own section fallback.
+        // A scope counts via a matched descendant, or its own section default.
         const deep = collect(route.inner);
         return deep.length ? deep
-          : fallbackCatches(route, path) ? [route.path] : [];
+          : defaultCatches(route, path) ? [route.path] : [];
       });
 
     return collect(this.inner);
@@ -181,10 +181,10 @@ export class Route extends Component {
   }
 }
 
-/** Does `children` hold a direct fallback Route? Such a scope resolves to it. */
-function hasFallback(children: ReactNode): boolean {
+/** Does `children` hold a direct default Route? Such a scope resolves to it. */
+function hasDefault(children: ReactNode): boolean {
   return Children.toArray(children).some(
-    (node) => isValidElement(node) && node.type === Route && (node.props as RouteProps).fallback
+    (node) => isValidElement(node) && node.type === Route && (node.props as RouteProps).default
   );
 }
 
@@ -207,17 +207,17 @@ function scopeBase(route: Route): string {
 }
 
 /** Lexical (gate-form): scope resolves via a descendant match or its own
- * section fallback within base - used by `matched`, before children register. */
+ * section default within base - used by `matched`, before children register. */
 function scopeResolves(route: Route, path: string): boolean {
   const base = scopeBase(route);
   return matchesAnywhere(route.props.children, base, path)
-    || (hasFallback(route.props.children) && within(base, path));
+    || (hasDefault(route.props.children) && within(base, path));
 }
 
-/** Registration-form: scope owns a fallback catching the path within base -
+/** Registration-form: scope owns a default catching the path within base -
  * used by `matches` so a section 404 suppresses an ancestor 404. */
-function fallbackCatches(route: Route, path: string): boolean {
-  return route.inner.some((c) => c.fallback) && within(scopeBase(route), path);
+function defaultCatches(route: Route, path: string): boolean {
+  return route.inner.some((c) => c.default) && within(scopeBase(route), path);
 }
 
 /** Has lexical child Routes - i.e. a see-through scope (vs. a leaf). */
@@ -228,7 +228,7 @@ function hasRoutes(route: Route): boolean {
 type RouteProps = {
   to?: string;
   redirect?: string;
-  fallback?: boolean;
+  default?: boolean;
   children?: ReactNode;
 };
 
@@ -253,7 +253,7 @@ export function matchesAnywhere(children: ReactNode, base: string, path: string)
     if (type !== Route) continue;
 
     const props = node.props as RouteProps;
-    if (props.redirect || props.fallback) continue;
+    if (props.redirect || props.default) continue;
 
     const to = typeof props.to === 'string' ? props.to : '';
 
