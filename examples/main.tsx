@@ -30,7 +30,7 @@ if (window.self === window.top) {
 }
 
 /** Group example modules by their first path segment (`group/example/App.tsx`). */
-function organize(modules: Record<string, unknown>): Group[] {
+function organize(modules: Record<string, () => Promise<AppModule>>): Group[] {
   const groups = new Map<string, Group>();
 
   for (const file of Object.keys(modules)) {
@@ -53,7 +53,8 @@ function organize(modules: Record<string, unknown>): Group[] {
       slug: slug(l) + '/*',
       label: titleCase(slug(l)),
       path: `/${slug(g)}/${slug(l)}`,
-      file
+      file,
+      load: modules[file]
     });
   }
 

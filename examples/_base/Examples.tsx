@@ -12,6 +12,7 @@ export interface Example {
   label: string;
   path: string;
   file: string;
+  load: () => Promise<AppModule>;
 }
 
 export interface Group {
@@ -45,8 +46,31 @@ function Examples({ routes }: { routes: Group[] }) {
   );
 }
 
+const LOADED = new Set<string>();
+const PENDING = new Map<string, Promise<unknown>>();
+
+/** Suspend until the example's module is loaded (cached). This covers the bulk
+ * of the navigation wait without mounting the iframe yet; the router's scope
+ * boundary holds the current example meanwhile (deferred presentation). */
+function awaitModule(file: string, load: () => Promise<unknown>) {
+  if (LOADED.has(file)) return;
+
+  let pending = PENDING.get(file);
+  if (!pending) {
+    pending = load().then(() => {
+      LOADED.add(file);
+      PENDING.delete(file);
+    });
+    PENDING.set(file, pending);
+  }
+
+  throw pending;
+}
+
 function ExampleFrame() {
   const { label, meta } = Route.get();
+
+  awaitModule(meta!.file, meta!.load);
 
   return (
     <iframe
@@ -58,6 +82,8 @@ function ExampleFrame() {
 }
 
 function Shell(props: { children?: React.ReactNode }) {
+  const { pending } = Router.get();
+
   return (
     <main className={styles.shell}>
       <nav className={styles.nav}>
@@ -66,7 +92,10 @@ function Shell(props: { children?: React.ReactNode }) {
         </a>
         <Navigation />
       </nav>
-      <section className={styles.example}>{props.children}</section>
+      <section className={styles.example} aria-busy={pending}>
+        {props.children}
+        {pending && <div className={styles.overlay} />}
+      </section>
     </main>
   );
 }
