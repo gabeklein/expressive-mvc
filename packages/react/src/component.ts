@@ -52,7 +52,8 @@ Object.defineProperties(proto, {
   },
   context: {
     set(this: Component, context: Context) {
-      context = context.push(this);
+      context = context.push();
+      context.set(this, () => () => this.set(null));
 
       const props = Object.getOwnPropertyDescriptor(this, 'props')!;
 
@@ -85,14 +86,15 @@ Object.defineProperties(proto, {
 function component(from: Component, context: Context) {
   const { render } = from;
   const Render = () => render.call(from, from.props);
+  // Destruction is owned by the context, not React's unmount effect: pop
+  // runs the dispose registered in the context setter. A fiber discarded
+  // before commit never unmounts, but its context is still in the parent's
+  // scope - an ancestor pop cascades and destroys the orphan.
   const Component = () => {
     from = useHook<Component>((refresh) => {
       if (observer(from) !== null)
         watch(from, refresh);
-      return () => {
-        from.set(null);
-        context.pop();
-      };
+      return () => context.pop();
     }) || from;
 
     const rendered = createElement(Render);
