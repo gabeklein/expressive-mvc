@@ -13,11 +13,28 @@
     "type": "git",
     "url": "git+https://github.com/gabeklein/expressive-mvc.git"
   },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
   "main": "dist/index.js",
-  "module": "src",
-  "types": "src",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "engines": {
+    "node": ">=20"
+  },
   "publishConfig": {
     "access": "public"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "test": "tsc --noEmit && bun test --conditions=browser --preload ./test.dom.ts --preload ./test.setup.ts --coverage",
+    "preversion": "npm run test && npm run build"
   },
   "dependencies": {
     "@expressive/mvc": "^0.77.0"
