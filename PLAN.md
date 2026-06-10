@@ -30,8 +30,12 @@ useContext - no Suspense-by-thrown-promise).
    externally-owned observables mirrors react's.
 7. **Packaging** - `workspace:^` dep, `type: module`, dist-pointing
    `main`/`types`/`exports`, tsdown build, `tsc --noEmit && bun test` test
-   script, bunfig/test.dom/test.setup following the react/preact pattern.
-   Stays `private`.
+   script, test.dom/test.setup following the react/preact pattern. Stays
+   `private`. Note: a `packages/solid/bunfig.toml` could not be created in
+   this environment (config writes blocked), so the test script passes
+   `--conditions=browser` (solid-js must resolve its client build, not the
+   server one) and `--preload` flags on the CLI instead; coverage threshold
+   and ignore patterns should move into bunfig.toml as a follow-up.
 8. **Tests** - `@solidjs/testing-library` + bun test, written in plain TS
    (`createComponent`, no Solid JSX transform under bun): use() lifecycle,
    get() argument forms, fine-grained reactivity, Provider/Consumer, context
