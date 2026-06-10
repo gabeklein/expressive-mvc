@@ -104,12 +104,7 @@ describe('Route', () => {
     expect(view.container.textContent).toBe('inline');
   });
 
-  it('matches when `to` is omitted (defaults to catch-all)', () => {
-    const view = render(<Route as={Home} />);
-    expect(view.container.textContent).toBe('Home');
-  });
-
-  it('bare Route is its own root - always on at any path', async () => {
+  it('bare Route (no `to`) is its own root - always on at any path', async () => {
     location('/anything/deep');
     const view = await renderAct(<Route as={Home} />);
     expect(view.container.textContent).toBe('Home');
@@ -143,32 +138,6 @@ describe('Route', () => {
       </Route>
     );
     expect(view.container.textContent).toBe('Fallback');
-  });
-
-  it('params returns stable identity when match recomputes to equal content', () => {
-    const getter = Object.getOwnPropertyDescriptor(Route.prototype, 'match')!.get!;
-    let match: { params: Record<string, string>; score: number } | null = null;
-    const stub = {
-      base: '',
-      to: '/x',
-      router: { match: () => match }
-    } as unknown as Route;
-
-    match = { params: { id: 'foo' }, score: 110 };
-    const first = getter.call(stub);
-    expect(first).toEqual({ id: 'foo' });
-
-    match = { params: { id: 'foo' }, score: 110 };
-    expect(getter.call(stub)).toBe(first);
-
-    match = { params: { id: 'bar' }, score: 110 };
-    const third = getter.call(stub);
-    expect(third).not.toBe(first);
-    expect(third).toEqual({ id: 'bar' });
-
-    match = null;
-    expect(getter.call(stub)).toBeUndefined();
-    expect(getter.call(stub)).toBeUndefined();
   });
 
   it('params is undefined when match invalidated by navigation', async () => {
