@@ -44,6 +44,39 @@ state.set({
 });
 ```
 
+#### What `Assign<this>` checks
+
+`Assign<T>` is `Record<string, unknown> & { [K in Field<T>]?: ... }`. The intersection means **unknown keys are not rejected** at the type level (they're ignored at runtime); the only call-site protection is **value-type-correctness of declared fields**:
+
+```ts
+state.set({ count: 'no' }); // error - count is a number
+state.set({ kount: 5 });    // OK to the type-checker - unknown key, ignored at runtime
+```
+
+#### Self-calls under polymorphic `this`
+
+Calling `this.set({ field }, ...)` from **inside a subclassable class** fails to type-check:
+
+```ts
+class Base extends State {
+  path = '/';
+  go() {
+    this.set({ path: '/x' }, true);
+    //        ^ Type '{ path: string }' is not assignable to 'Assign<this>'
+  }
+}
+```
+
+Inside the class body `this` is the polymorphic `this` type, so `this[K]` is unresolved and TS cannot verify the literal's value types - and that value-check is the *only* thing `Assign<this>` enforces. Every `keyof this`-based alternative fails identically (a generic-inferred parameter, `Partial<Values<this>>`, even the keyed-pair `set('path', v)` - the string literal isn't provably `keyof this`).
+
+The fix is a cast to the concrete class, which loses **no real safety** - the value-check it bypasses was never available under polymorphic `this`:
+
+```ts
+(this as Base).set({ path: '/x' }, true);
+```
+
+This is a TypeScript limitation (mapped types over polymorphic `this`), not an mvc bug. External callers on a concrete instance (`base.set({ path })`) type-check normally. No looser parameter type can both accept the literal *and* value-check it when `this` is unresolved - it's pick-one, so the cast is the idiomatic escape hatch.
+
 ### Listen to updates
 
 ```ts
