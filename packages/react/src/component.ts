@@ -70,10 +70,17 @@ Object.defineProperties(proto, {
 function component(from: Component, context: Context) {
   const { render } = from;
   const Render = () => render.call(from, from.props);
+  // Tracks the watch cleanup from the most recent render attempt.
+  // On a Suspense discard, React creates a new fiber (new useRef/useState)
+  // but the same closure runs again; calling pendingStop before the new
+  // watch ensures at most one subscription exists at any time.
+  let pendingStop: (() => void) | undefined;
   const Component = () => {
     from = useHook((refresh) => {
-      watch(from, refresh);
+      pendingStop?.();                    // discard previous render's subscription
+      pendingStop = watch(from, refresh); // track for potential next-render cleanup
       return () => {
+        pendingStop = undefined;          // committed – no longer a discard candidate
         from.set(null);
         context.pop();
       };

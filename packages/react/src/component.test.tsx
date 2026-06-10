@@ -1,6 +1,7 @@
 import { render, screen, act } from '@testing-library/react';
 import { mock, expect, it, describe } from 'bun:test';
 import React from 'react';
+import { observer } from '@expressive/mvc';
 
 import { mockError, mockPromise } from '../test.setup';
 import { Component, Consumer, set } from '.';
@@ -1700,5 +1701,103 @@ describe('strict mode', () => {
     expect(order).toEqual(['construct', 'construct', 'init']);
 
     element.unmount();
+  });
+});
+
+describe('suspense discard (issue #118)', () => {
+  // When a render is discarded by Suspense (a sibling suspends), React creates
+  // a new fiber on retry. Each new fiber runs the useState initializer again,
+  // which previously called watch() without cleaning up the prior call's
+  // subscription, leaking one listener per discarded render attempt.
+  // The fix: component() tracks the latest watch cleanup in pendingStop and
+  // cancels the previous subscription before establishing a new one.
+
+  it('does not accumulate subscriptions across discarded renders', async () => {
+    class Model extends Component {}
+
+    // Capture the React-managed Component instance via the `is` prop.
+    let instance: Model | undefined;
+
+    const pending = mockPromise();
+    let suspendCount = 0;
+
+    // This sibling suspends on its first two renders, then resolves.
+    // Each suspension discards the WIP tree (including Model's render).
+    const SiblingThatSuspends = () => {
+      if (suspendCount++ < 2) throw pending;
+      return null;
+    };
+
+    // Measure listener count on a normally-committed component (no discards).
+    let baseline: number;
+    await act(async () => {
+      render(
+        <React.Suspense fallback={null}>
+          <Model is={(c: Model) => { instance = c; }} />
+        </React.Suspense>
+      );
+    });
+    baseline = observer(instance!)!.listeners.size;
+
+    // Now test with Suspense discards.
+    instance = undefined;
+    suspendCount = 0;
+
+    await act(async () => {
+      render(
+        <React.Suspense fallback={<span>loading</span>}>
+          <Model is={(c: Model) => { instance = c; }} />
+          <SiblingThatSuspends />
+        </React.Suspense>
+      );
+    });
+
+    // Shows fallback while sibling is suspended.
+    screen.getByText('loading');
+
+    // Resolve the promise – React retries and commits.
+    await act(async () => { pending.resolve(); });
+
+    const withDiscards = observer(instance!)!.listeners.size;
+
+    // Without the fix, withDiscards would be baseline + 2*numDiscards
+    // because each discarded render leaked its watch subscription.
+    expect(withDiscards).toBe(baseline);
+  });
+
+  it('destroys the instance only once on unmount after discards', async () => {
+    const didDestroy = mock();
+
+    class Model extends Component {
+      protected new() {
+        return () => didDestroy();
+      }
+    }
+
+    const pending = mockPromise();
+    let suspendCount = 0;
+    const SiblingThatSuspends = () => {
+      if (suspendCount++ < 2) throw pending;
+      return null;
+    };
+
+    let element: ReturnType<typeof render>;
+    await act(async () => {
+      element = render(
+        <React.Suspense fallback={null}>
+          <Model />
+          <SiblingThatSuspends />
+        </React.Suspense>
+      );
+    });
+
+    await act(async () => { pending.resolve(); });
+
+    expect(didDestroy).not.toHaveBeenCalled();
+
+    await act(async () => { element!.unmount(); });
+
+    // The cleanup (from.set(null)) should fire exactly once.
+    expect(didDestroy).toHaveBeenCalledTimes(1);
   });
 });
