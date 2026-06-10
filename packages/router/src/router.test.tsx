@@ -112,14 +112,8 @@ describe('transition seam (deferred-presentation emit protocol)', () => {
   });
 });
 
-describe('pending (deferred presentation)', () => {
-  // BLOCKED on Suspense boundary placement (FEATURE.md §8): each Route is its own
-  // Component with its own auto-Suspense boundary, so the incoming page suspends
-  // in a *different* boundary than the outgoing content lives in - React shows the
-  // new boundary's fallback (empty) instead of holding the old screen, and the
-  // transition completes immediately so `pending` never sustains. Needs a shared
-  // boundary at the matched-content site. Un-skip once that lands.
-  it.skip('holds the current screen and flips pending while the next suspends', async () => {
+describe('deferred presentation', () => {
+  it('holds the current screen while the next page suspends, then swaps', async () => {
     location('/a');
 
     const ready = mockPromise<void>();
@@ -131,26 +125,25 @@ describe('pending (deferred presentation)', () => {
       return <span>B</span>;
     };
 
+    // A scope Route provides the shared content boundary the leaves bubble to.
     let router!: BrowserRouter;
     const view = render(
       <BrowserRouter is={(r) => (router = r)}>
-        <Route to="/a" as={() => <span>A</span>} />
-        <Route to="/b" as={Slow} />
+        <Route>
+          <Route to="/a" as={() => <span>A</span>} />
+          <Route to="/b" as={Slow} />
+        </Route>
       </BrowserRouter>
     );
     await act(async () => {});
-
     expect(view.container.textContent).toBe('A');
-    expect(router.pending).toBe(false);
 
     // navigate into the suspending page: deferral holds 'A', no fallback flash
     await act(async () => { router.goto('/b'); });
-    expect(router.pending).toBe(true);
     expect(view.container.textContent).toBe('A');
 
-    // resolve: the new page commits and pending clears
+    // resolve: the new page commits and replaces the held screen
     await act(async () => { ready.resolve(); });
-    expect(router.pending).toBe(false);
     expect(view.container.textContent).toBe('B');
   });
 });

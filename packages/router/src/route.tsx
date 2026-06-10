@@ -4,6 +4,7 @@ import {
   ComponentType,
   Fragment,
   ReactNode,
+  Suspense,
   isValidElement
 } from 'react';
 
@@ -35,6 +36,11 @@ export class Route extends Component {
   /** Matches when nothing else in this scope did. Scoped to its parent: a
    * root-level default is the app 404, a nested one the section 404. */
   default = false;
+
+  /** Routes are Suspense-transparent: no own boundary, so a page's suspension
+   * bubbles to its nearest scope's content boundary (see `render`) - which holds
+   * the current screen during a navigation. ([@expressive/react] fallback=false.) */
+  fallback = false;
 
   /** Nearest mounted Route ancestor, if any. */
   parent = get(Route, false);
@@ -172,12 +178,22 @@ export class Route extends Component {
 
     const { children } = props;
 
+    // The root Route hosts the single deferred-presentation boundary, wrapping
+    // the routed content (inside `as` chrome, so layout stays live). Descendants
+    // are Suspense-transparent and bubble their suspension up to it, so every
+    // navigation - including cross-scope - holds the current screen here. One
+    // boundary at the root, not per-scope, avoids a nested boundary catching a
+    // sibling-scope swap and flashing empty.
+    const content = !parent && allRoutes(children)
+      ? <Suspense fallback={null}>{children}</Suspense>
+      : children;
+
     // Matched: render content (in `as` chrome if present). Unmatched: a
     // see-through scope still mounts children (registration); a leaf renders null.
     if (matched)
-      return Component ? <Component>{children}</Component> : <>{children}</>;
+      return Component ? <Component>{content}</Component> : <>{content}</>;
 
-    return allRoutes(children) ? <>{children}</> : null;
+    return allRoutes(children) ? <>{content}</> : null;
   }
 }
 
