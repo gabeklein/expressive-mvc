@@ -1,7 +1,9 @@
-import { act } from '@testing-library/react';
+import { act, render } from '@testing-library/react';
 import { describe, expect, it, spyOn } from 'bun:test';
+import { Provider } from '@expressive/react';
 
 import { browserRouter } from '../test.setup';
+import { Route } from './route';
 import { Router } from './router';
 
 describe('Router (headless)', () => {
@@ -61,6 +63,52 @@ describe('Router (headless)', () => {
     router.goto('/c');
     expect(router.entries).toEqual(['/', '/a', '/c']);
     expect(router.path).toBe('/c');
+  });
+});
+
+describe('transition seam (deferred-presentation emit protocol)', () => {
+  it('updates path silently, then emits one synchronous path event', () => {
+    const router = Router.new();
+    const seen: string[] = [];
+
+    router.set((key) => {
+      if (key === 'path') seen.push(router.path);
+    });
+
+    router.goto('/x'); // synchronous - no act/await
+
+    // emitted exactly once, and `path` already holds the new value at emit time
+    expect(seen).toEqual(['/x']);
+  });
+
+  it('does not emit when navigating to the unchanged current path', () => {
+    const router = Router.new();
+    router.goto('/a');
+
+    let count = 0;
+    router.set((key) => {
+      if (key === 'path') count++;
+    });
+
+    router.goto('/a'); // same path - faithful no-op notify
+    expect(count).toBe(0);
+  });
+
+  it('recomputes match off the new path under the explicit emit', async () => {
+    const router = Router.new();
+    const view = render(
+      <Provider for={router}>
+        <Route to="/a" as={() => <span>A</span>} />
+        <Route to="/b" as={() => <span>B</span>} />
+      </Provider>
+    );
+
+    await act(async () => router.goto('/a'));
+    expect(view.container.textContent).toBe('A');
+
+    // a stale match cache would keep 'A'; recompute off the new path yields 'B'
+    await act(async () => router.goto('/b'));
+    expect(view.container.textContent).toBe('B');
   });
 });
 

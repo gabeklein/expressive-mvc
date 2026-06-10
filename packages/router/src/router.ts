@@ -37,24 +37,48 @@ export class Router extends Component {
     assertAbsolute(to);
     const path = normalize(to);
 
-    if (replace)
-      this.entries[this.index] = path;
-    else {
-      this.entries = [...this.entries.slice(0, this.index + 1), path];
-      this.index = this.entries.length - 1;
-    }
+    this.transition(() => {
+      if (replace)
+        this.entries[this.index] = path;
+      else {
+        this.entries = [...this.entries.slice(0, this.index + 1), path];
+        this.index = this.entries.length - 1;
+      }
 
-    this.path = path;
+      // cast resolves `set`'s `Assign<this>` under polymorphic `this`
+      (this as Router).set({ path }, true);
+    });
   }
 
   back() {
-    if (this.index > 0)
-      this.path = this.entries[--this.index];
+    if (this.index <= 0) return;
+    this.transition(() => {
+      (this as Router).set({ path: this.entries[--this.index] }, true);
+    });
   }
 
   forward() {
-    if (this.index < this.entries.length - 1)
-      this.path = this.entries[++this.index];
+    if (this.index >= this.entries.length - 1) return;
+    this.transition(() => {
+      (this as Router).set({ path: this.entries[++this.index] }, true);
+    });
+  }
+
+  /**
+   * Brackets a navigation. `commit` applies the path change **silently** (no
+   * notify); then `set("path")` emits explicitly so subscribers (Routes) wake
+   * **synchronously, in scope**. Splitting silent-update from explicit-emit is
+   * what lets a subclass run the emit *inside* `startTransition` so React
+   * captures the re-render as transition work (deferred presentation).
+   *
+   * The base is synchronous - no deferral. `BrowserRouter` overrides to wrap
+   * `commit` in `startTransition`, holding the current screen until the next
+   * page resolves.
+   */
+  protected transition(commit: () => void) {
+    const before = this.path;
+    commit();
+    if (this.path !== before) this.set('path');
   }
 
   segment(to: string): string {
