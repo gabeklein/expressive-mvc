@@ -28,7 +28,7 @@ function Tree() {
         <Route as={BlogIndex} />
         <Route to=":slug" as={BlogPost} />
       </Route>
-      <Route fallback as={NotFound} />
+      <Route default as={NotFound} />
     </Route>
   );
 }
