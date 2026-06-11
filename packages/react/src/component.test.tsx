@@ -594,6 +594,27 @@ describe('state props on rerender', () => {
 
     screen.getByText('empty');
   });
+
+  it('will ignore update after instance destroyed', async () => {
+    class Control extends Component {
+      value = 'foo';
+
+      render() {
+        return <span>{this.value}</span>;
+      }
+    }
+
+    let instance!: Control;
+    const view = render(<Control value="bar" is={(c) => (instance = c)} />);
+
+    screen.getByText('bar');
+
+    await act(async () => instance.set(null));
+
+    view.rerender(<Control value="baz" />);
+
+    screen.getByText('bar');
+  });
 });
 
 describe('default render', () => {
@@ -1223,6 +1244,34 @@ describe('error boundary', () => {
 });
 
 describe('subcomponents', () => {
+  const error = mockError();
+
+  it('will render last values after owner destroyed', async () => {
+    class Control extends Component {
+      value = 'foo';
+
+      Inner() {
+        return <span>{this.value}</span>;
+      }
+
+      render() {
+        return <this.Inner />;
+      }
+    }
+
+    let instance!: Control;
+    const view = render(<Control is={(c) => (instance = c)} />);
+
+    screen.getByText('foo');
+
+    await act(async () => instance.set(null));
+
+    view.rerender(<Control />);
+
+    screen.getByText('foo');
+    expect(error).not.toBeCalled();
+  });
+
   it('will wrap PascalCase method as reactive component', async () => {
     class Dashboard extends Component {
       label = 'Hello';

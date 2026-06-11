@@ -191,13 +191,26 @@ describe('use', () => {
     );
   });
 
-  it('will throw for destroyed observable', () => {
+  it('will render last-known values for destroyed observable', () => {
     const test = Test.new();
 
     test.set(null);
 
-    expect(() => renderHook(() => use(test))).toThrow(
-      'Provided object is no longer observable.'
-    );
+    const hook = renderHook(() => use(test).foo);
+
+    expect(hook.result.current).toBe('foo');
+  });
+
+  it('will keep last-known values after subject destroyed', async () => {
+    const test = Test.new();
+    const hook = renderHook(() => use(test).foo);
+
+    expect(hook.result.current).toBe('foo');
+
+    await act(async () => test.set(null));
+
+    hook.rerender();
+
+    expect(hook.result.current).toBe('foo');
   });
 });
