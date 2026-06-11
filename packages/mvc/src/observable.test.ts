@@ -325,6 +325,55 @@ describe('effect', () => {
     await expect(test).toHaveUpdated('bar');
     expect(test.bar).toBe(3);
   });
+
+  describe('destroyed', () => {
+    const error = mockError();
+
+    it('will throw for destroyed subject', () => {
+      const test = {};
+      const effect = mock();
+
+      event(test);
+      event(test, null);
+
+      expect(() => watch(test, effect)).toThrow('terminated');
+      expect(effect).not.toBeCalled();
+    });
+
+    it('will throw for get(effect) on destroyed instance', () => {
+      class Test extends State {
+        foo = 1;
+      }
+
+      const test = Test.new();
+      const effect = mock(($: Test) => void $.foo);
+
+      test.set(null);
+
+      expect(() => test.get(effect)).toThrow('terminated');
+      expect(effect).not.toBeCalled();
+    });
+
+    it('will not re-run when destroyed before dispatch', async () => {
+      class Test extends State {
+        foo = 1;
+      }
+
+      const test = Test.new();
+      const effect = mock(($: Test) => void $.foo);
+
+      test.get(effect);
+      expect(effect).toBeCalledTimes(1);
+
+      test.foo = 2;
+      test.set(null);
+
+      await new Promise((res) => setTimeout(res, 0));
+
+      expect(effect).toBeCalledTimes(1);
+      expect(error).not.toBeCalled();
+    });
+  });
 });
 
 describe('suspense', () => {

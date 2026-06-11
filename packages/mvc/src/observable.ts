@@ -263,6 +263,8 @@ function watch<T extends object>(
   let previous: T | undefined;
 
   function invoke() {
+    if (observer(target) === null) return;
+
     let ignore: boolean = true;
 
     function onUpdate() {
