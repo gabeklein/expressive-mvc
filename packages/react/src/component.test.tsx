@@ -504,6 +504,54 @@ describe('suspense', () => {
     element.getByText('Hello World');
   });
 
+  it('fallback === false opts out of the boundary, bubbling to an ancestor', async () => {
+    const ready = mockPromise<void>();
+    let done = false;
+    ready.then(() => { done = true; });
+    const Slow = () => {
+      if (!done) throw ready;
+      return <span>Hello World</span>;
+    };
+
+    class Transparent extends Component {
+      fallback = false as const; // Suspense-transparent: no own boundary
+    }
+
+    const element = render(
+      <React.Suspense fallback={<span>OUTER</span>}>
+        <Transparent>
+          <Slow />
+        </Transparent>
+      </React.Suspense>
+    );
+
+    // own boundary opted out -> child suspension bubbles to the ancestor
+    element.getByText('OUTER');
+
+    await act(async () => { ready.resolve(); });
+
+    element.getByText('Hello World');
+  });
+
+  it('default boundary catches its own subtree (control for opt-out)', () => {
+    const Slow = () => { throw new Promise<void>(() => {}); }; // never resolves
+
+    class Own extends Component {
+      fallback = (<span>INNER</span>);
+    }
+
+    const element = render(
+      <React.Suspense fallback={<span>OUTER</span>}>
+        <Own>
+          <Slow />
+        </Own>
+      </React.Suspense>
+    );
+
+    // own boundary catches - never reaches OUTER
+    element.getByText('INNER');
+  });
+
   it('will update with new fallback', async () => {
     class Foo extends Component {
       value = set<string>();
