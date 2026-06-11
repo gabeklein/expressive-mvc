@@ -6,12 +6,6 @@ import { useHook, useReady } from './runtime';
 const proto = Component.prototype;
 const SEEN = new WeakSet<object>([proto]);
 
-/** In-flight render attempts by tree position, per ambient context.
- *  When one commits, older uncommitted attempts at its slot are provably dead. */
-const SLOTS = new WeakMap<Context, Map<string, Slot[]>>();
-
-type Slot = { committed?: boolean; kill: () => void };
-
 type ComponentType = typeof Component & typeof React.Component;
 
 declare module '@expressive/mvc' {
@@ -89,10 +83,21 @@ Object.defineProperties(proto, {
   }
 });
 
+/** In-flight render attempts by tree position, per ambient context.
+ *  When one commits, older uncommitted attempts at its slot are provably dead. */
+const SLOTS = new WeakMap<Context, Map<string, Set<Entry>>>();
+
+interface Entry {
+  committed?: boolean;
+  context: Context;
+  commit: () => void;
+  remove: () => void;
+};
+
 /** Register a render attempt; superseded or unmounted attempts are killed. */
-function attempt(on: Component, ambient: Context, kill: () => void) {
-  let slots = SLOTS.get(ambient);
-  if (!slots) SLOTS.set(ambient, (slots = new Map()));
+function register(on: Component, context: Context) {
+  let slots = SLOTS.get(context.parent!);
+  if (!slots) SLOTS.set(context.parent!, (slots = new Map()));
 
   // key/index path to root: stable across render attempts of this element
   let slot = '';
@@ -100,34 +105,33 @@ function attempt(on: Component, ambient: Context, kill: () => void) {
     slot += (f.key ?? f.index) + '.';
 
   let list = slots.get(slot);
-  if (!list) slots.set(slot, (list = []));
+  if (!list) slots.set(slot, (list = new Set()));
 
-  const entry: Slot = { kill };
-  list.push(entry);
-
-  return {
+  const entry: Entry = {
+    context,
     commit() {
       entry.committed = true;
-      for (let i = 0; list[i] !== entry; )
-        if (list[i].committed) i++;
-        else {
-          list[i].kill();
-          list.splice(i, 1);
-        }
+
+      for (const e of list) {
+        if (e === entry) break;
+        if (e.committed) continue;
+        e.context.pop();
+        list.delete(e);
+      }
     },
     remove() {
-      const i = list.indexOf(entry);
-      if (i >= 0) list.splice(i, 1);
+      list.delete(entry);
     }
   };
+
+  list.add(entry);
+  return entry;
 }
 
 function component(from: Component, context: Context) {
-  const { commit, remove } = attempt(from, context.parent!, () => context.pop());
+  const { commit, remove } = register(from, context);
   const { render } = from;
   const Render = () => render.call(from, from.props);
-  // Context owns destruction; discarded fibers die via slot supersession
-  // at commit, or by ancestor context.pop() cascade if never superseded.
   const Component = () => {
     from = useHook<Component>((refresh) => {
       if (observer(from) !== null)
@@ -142,8 +146,6 @@ function component(from: Component, context: Context) {
 
     const rendered = createElement(Render);
 
-    // fallback === false opts out of the auto-Suspense boundary,
-    // letting a child's suspension bubble to an ancestor boundary.
     const children = createElement(Layers.Provider, {
       value: context,
       children: from.fallback === false
