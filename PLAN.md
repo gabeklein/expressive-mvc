@@ -31,22 +31,50 @@ Fix (react/src/component.ts only, no core changes):
 - discarded fiber: nearest committed ancestor unmounts -> its `pop()` cascades ->
   orphan contexts pop -> disposes destroy orphan instances.
 
+## Kill-at-commit (prompt sweep)
+
+Ancestor-pop alone is eventual; #118 criterion 2 wants exactly one live instance at
+commit. Fiber position (`_reactInternals` key/index path to root, probed available and
+stable at construction) identifies each element's slot. Per ambient context, a slot
+holds the ordered list of in-flight instances.
+
+Trigger matters: under React 19 concurrent lanes, construction order alone cannot tell
+a stale attempt from one pending commit on another lane - destroying the newest-but-one
+at construction killed instances React went on to commit (verified: dead Routes in the
+committed tree, commit-phase crash). What is sound: when an instance COMMITS at a slot,
+every uncommitted instance constructed BEFORE it there is dead - a parked lane predating
+a commit is restarted, never resumed. So: `commit` (useReady) kills older uncommitted
+slot-mates and marks the entry owned; `remove` clears it on unmount.
+
+Semantics made explicit: React constructs a fresh instance per attempt (suspense
+retries, error-retry passes, StrictMode), so `new()` runs per attempt and its cleanup
+now fires when the attempt is killed - previously stale instances leaked undestroyed.
+Error-boundary tests updated from shared-mock to per-instance lifecycle tracking.
+
 ## Known bounds / open questions
 
-- Sweep promptness: orphans are destroyed when the nearest surviving ancestor context
-  pops, not at commit time. During a suspense churn under a long-lived parent, orphans
-  (and their render side effects, e.g. router `parent.inner` registrations) stay live
-  until that pop. Prompt-sweep options (commit-time sibling sweep) run into the same
-  position-keying problem that makes instance reuse infeasible - deferred.
-- Orphans directly under `Context.root` live until app teardown - previously forever.
+- Discards never retried and never superseded wait for ancestor pop - deterministic,
+  previously forever. Orphans directly under `Context.root` live until app teardown.
+- Killing instances a live tree still references is only safe with the destroyed-state
+  contact contract - #120 landed on main, this branch sits on top of it.
+- A discarded attempt's `watch` refresh on a never-mounted fiber logs a benign React
+  dev warning ("update on a component that hasn't mounted") - could guard later.
 - `subcomponents()` render-phase `watch` on a discarded slot leaks a listener bounded by
   the owner instance's lifetime - unchanged, out of scope.
 - Preact/Solid adapters have no class-component bridge; React-specific.
 
 ## Tests
 
-- `will destroy instance when discarded without retry` - fails on main, passes here.
-- `will not accumulate listeners across retries` - guard invariant (passes on main too,
-  since leaked listeners sit on orphans, not the committed instance).
-- `will destroy instance exactly once after retries` - idempotence of dispose.
-- Full suites green: react 187 pass, mvc 458 pass.
+`component.test.tsx` discard suite (4 of 5 fail on main):
+- `will destroy instance when discarded without retry` - the redirect case.
+- `will supersede stale attempts, leaving one live instance at commit` - criterion 2.
+- `will not accumulate into parent state across retries` - criterion 3, models the
+  router `parent.inner` symptom.
+- `will not supersede siblings of the same class` - guards the slot keying.
+- `will not accumulate listeners across retries` - guard invariant.
+
+`transition.test.tsx` - router-free harness for the lane scenarios: screen swap inside
+`startTransition` with suspense churn; per-child subscriptions across churn and kill.
+
+Integration (examples app, with #120 merged): cold-load NavLinks 136 -> 7 anchors exact,
+navigation console 117 errors -> 0 (one benign dev warning).

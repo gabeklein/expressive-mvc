@@ -1,10 +1,23 @@
 import { watch, unbind, observer, Component } from '@expressive/mvc';
 import React, { createElement, Suspense } from 'react';
 import { Context, Layers } from './context';
-import { useHook } from './runtime';
+import { useHook, useReady } from './runtime';
 
 const proto = Component.prototype;
 const SEEN = new WeakSet<object>([proto]);
+
+/**
+ * In-flight instances by tree position, per ambient context. React makes a
+ * fresh instance for every render attempt of the same element, and under
+ * concurrent lanes several may be in flight at once - construction order
+ * alone cannot tell a stale attempt from one pending commit. What is sound:
+ * when an instance COMMITS at a position, every uncommitted instance
+ * constructed before it there is dead (a parked lane predating a commit is
+ * restarted, never resumed). Each entry's kill pops the attempt's context.
+ */
+const SLOTS = new WeakMap<Context, Map<string, Slot[]>>();
+
+type Slot = { committed?: boolean; kill: () => void };
 
 type ComponentType = typeof Component & typeof React.Component;
 
@@ -52,8 +65,38 @@ Object.defineProperties(proto, {
   },
   context: {
     set(this: Component, context: Context) {
+      let slots = SLOTS.get(context);
+      if (!slots) SLOTS.set(context, (slots = new Map()));
+
+      // Path of key/index up the fiber tree - stable identity for this
+      // element's position, shared by every render attempt of it.
+      let slot = '';
+      for (let f = (this as any)._reactInternals; f; f = f.return)
+        slot += (f.key ?? f.index) + '.';
+
+      let list = slots.get(slot);
+      if (!list) slots.set(slot, (list = []));
+
       context = context.push();
       context.set(this, () => () => this.set(null));
+
+      const entry: Slot = { kill: () => context.pop() };
+      list.push(entry);
+
+      const commit = () => {
+        entry.committed = true;
+        for (let i = 0; list[i] !== entry; )
+          if (list[i].committed) i++;
+          else {
+            list[i].kill();
+            list.splice(i, 1);
+          }
+      };
+
+      const remove = () => {
+        const i = list.indexOf(entry);
+        if (i >= 0) list.splice(i, 1);
+      };
 
       const props = Object.getOwnPropertyDescriptor(this, 'props')!;
 
@@ -76,26 +119,37 @@ Object.defineProperties(proto, {
           set() { }
         },
         render: {
-          value: component(this, context)
+          value: component(this, context, commit, remove)
         }
       });
     }
   }
 });
 
-function component(from: Component, context: Context) {
+function component(
+  from: Component,
+  context: Context,
+  commit: () => void,
+  remove: () => void
+) {
   const { render } = from;
   const Render = () => render.call(from, from.props);
   // Destruction is owned by the context, not React's unmount effect: pop
   // runs the dispose registered in the context setter. A fiber discarded
-  // before commit never unmounts, but its context is still in the parent's
-  // scope - an ancestor pop cascades and destroys the orphan.
+  // before commit never unmounts, but it is killed when a later attempt at
+  // its slot commits, or - if none ever does - its context is still in the
+  // parent's scope and an ancestor pop cascades to destroy it.
   const Component = () => {
     from = useHook<Component>((refresh) => {
       if (observer(from) !== null)
         watch(from, refresh);
-      return () => context.pop();
+      return () => {
+        remove();
+        context.pop();
+      };
     }) || from;
+
+    useReady(commit);
 
     const rendered = createElement(Render);
 
