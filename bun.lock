@@ -74,6 +74,25 @@
         "react",
       ],
     },
+    "packages/router": {
+      "name": "@expressive/router",
+      "version": "0.0.0",
+      "dependencies": {
+        "@expressive/mvc": "workspace:^",
+        "@expressive/react": "workspace:^",
+      },
+      "devDependencies": {
+        "@testing-library/react": "^16.3.0",
+        "@types/react": "^19",
+        "@types/react-dom": "^19",
+        "react": "^19",
+        "react-dom": "^19",
+        "tsdown": "^0.20.1",
+      },
+      "peerDependencies": {
+        "react": ">=16.8.0 <20.0.0",
+      },
+    },
     "packages/solid": {
       "name": "@expressive/solid",
       "version": "0.77.0",
@@ -304,6 +323,8 @@
     "@expressive/preact": ["@expressive/preact@workspace:packages/preact"],
 
     "@expressive/react": ["@expressive/react@workspace:packages/react"],
+
+    "@expressive/router": ["@expressive/router@workspace:packages/router"],
 
     "@expressive/solid": ["@expressive/solid@workspace:packages/solid"],
 
