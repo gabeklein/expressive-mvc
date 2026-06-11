@@ -275,10 +275,48 @@ describe('Route', () => {
     expect(view.container.textContent).toBe('About');
   });
 
-  describe('declaration order', () => {
-    // Specificity-based arbitration (literal > :param > *) is pending.
-    // For now, the first matching sibling with `as` wins - users declare
-    // more-specific routes before less-specific ones.
+  describe('specificity', () => {
+    // Siblings arbitrate by match score (literal > :param > *); declaration
+    // order only breaks ties.
+
+    it('literal wins over :param declared first', () => {
+      location('/posts/new');
+      const view = render(
+        <Route>
+          <Route to="/posts/:id" as={() => <span>dynamic</span>} />
+          <Route to="/posts/new" as={() => <span>literal</span>} />
+        </Route>
+      );
+      expect(view.container.textContent).toBe('literal');
+    });
+
+    it(':param wins over * declared first', () => {
+      location('/posts/foo');
+      const view = render(
+        <Route>
+          <Route to="*" as={() => <span>catch-all</span>} />
+          <Route to="/posts/:id" as={() => <span>dynamic</span>} />
+        </Route>
+      );
+      expect(view.container.textContent).toBe('dynamic');
+    });
+
+    it('re-arbitrates by specificity on navigation', async () => {
+      location('/posts/foo');
+      const view = render(
+        <Route>
+          <Route to="/posts/:id" as={() => <span>dynamic</span>} />
+          <Route to="/posts/new" as={() => <span>literal</span>} />
+        </Route>
+      );
+      expect(view.container.textContent).toBe('dynamic');
+
+      await act(async () => router.current.goto('/posts/new'));
+      expect(view.container.textContent).toBe('literal');
+
+      await act(async () => router.current.goto('/posts/bar'));
+      expect(view.container.textContent).toBe('dynamic');
+    });
 
     it('literal declared first wins over :param at the same path', () => {
       location('/posts/new');

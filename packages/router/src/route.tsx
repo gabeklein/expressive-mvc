@@ -152,11 +152,7 @@ export class Route extends Component {
     if (parent) {
       register(parent.is, self);
 
-      if (Component)
-        for (const sibling of CHILDREN.get(parent.is)!) {
-          if (sibling === self) break;
-          if (sibling.as && sibling.matched) return null;
-        }
+      if (Component && outscored(this, parent)) return null;
     }
 
     if (this.redirect)
@@ -224,6 +220,7 @@ function hasRoutes(route: Route): boolean {
 
 type RouteProps = {
   to?: string;
+  as?: unknown;
   redirect?: string;
   default?: boolean;
   children?: Component.Node;
@@ -237,29 +234,111 @@ type RouteProps = {
  * `*`-delegation case) - the documented limits of the lexical model.
  */
 export function matchesAnywhere(children: Component.Node, base: string, path: string): boolean {
+  return bestScore(children, base, path) !== null;
+}
+
+/** Highest specificity score among matching Routes lexically within `children`,
+ * or null when none match. Same walk (and limits) as `matchesAnywhere`. */
+function bestScore(children: Component.Node, base: string, path: string): number | null {
+  let best: number | null = null;
+
+  for (const node of childrenOf(children)) {
+    if (!isElement(node)) continue;
+
+    const type = typeOf(node);
+    let found: number | null = null;
+
+    if (type === Fragment)
+      found = bestScore((propsOf(node) as RouteProps).children, base, path);
+    else if (type === Route) {
+      const props = propsOf(node) as RouteProps;
+      if (props.redirect || props.default) continue;
+
+      const to = typeof props.to === 'string' ? props.to : '';
+      found = allRoutes(props.children)
+        ? bestScore(props.children, base + patternSegment(to), path)
+        : matchPattern(fullPattern(base, to), path)?.score ?? null;
+    }
+
+    if (found !== null && (best === null || found > best)) best = found;
+  }
+
+  return best;
+}
+
+/** Specificity of a Route's own claim on `path`: a leaf's match score, a
+ * see-through scope's best descendant score; null when unmatched. */
+function score(route: Route, path: string): number | null {
+  if (hasRoutes(route))
+    return bestScore(route.props.children, scopeBase(route), path);
+
+  const match = route.router.match(route.base, route.to);
+  return match ? match.score : null;
+}
+
+/**
+ * Should `self` (matched or not) yield its slot? Siblings with `as` compete by
+ * specificity score; declaration order breaks ties. Registered siblings are
+ * compared directly (reactive via `parent.inner`, so late registrants settle);
+ * a lexical scan of the parent's JSX covers higher-scored siblings declared
+ * later but not yet mounted.
+ */
+function outscored(route: Route, parent: Route): boolean {
+  const self = route.is;
+  const siblings = parent.inner;
+  const rivalry = siblings.some((s) => s !== self && s.as);
+
+  // Only competing Routes make the verdict path-dependent; absent rivals,
+  // skip the tracked read so same-pattern navigation reconciles in place.
+  const { path } = rivalry ? route.router : self.router;
+  const own = score(self, path);
+  let before = true;
+
+  for (const sibling of siblings) {
+    if (sibling === self) {
+      before = false;
+      continue;
+    }
+
+    if (!sibling.as || !sibling.matched) continue;
+    if (own === null) {
+      if (before) return true;
+      continue;
+    }
+
+    const rival = score(sibling, path) ?? -Infinity;
+
+    if (rival > own || (rival === own && before)) return true;
+  }
+
+  return own !== null
+    && !!parent.props
+    && outscoredLexically(parent.props.children, scopeBase(parent), path, own);
+}
+
+/** Is a higher-scored competing Route (with `as`) declared within `children`? */
+function outscoredLexically(children: Component.Node, base: string, path: string, own: number): boolean {
   for (const node of childrenOf(children)) {
     if (!isElement(node)) continue;
 
     const type = typeOf(node);
 
     if (type === Fragment) {
-      if (matchesAnywhere((propsOf(node) as RouteProps).children, base, path)) return true;
+      if (outscoredLexically((propsOf(node) as RouteProps).children, base, path, own)) return true;
       continue;
     }
 
     if (type !== Route) continue;
 
     const props = propsOf(node) as RouteProps;
-    if (props.redirect || props.default) continue;
+    if (!props.as || props.redirect || props.default) continue;
 
     const to = typeof props.to === 'string' ? props.to : '';
+    const rival = allRoutes(props.children)
+      ? bestScore(props.children, base + patternSegment(to), path)
+      : matchPattern(fullPattern(base, to), path)?.score ?? null;
 
-    if (allRoutes(props.children)) {
-      if (matchesAnywhere(props.children, base + patternSegment(to), path)) return true;
-      continue;
-    }
-
-    if (matchPattern(fullPattern(base, to), path)) return true;
+    if (rival !== null && rival > own) return true;
   }
 
   return false;
