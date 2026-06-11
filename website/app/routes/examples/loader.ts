@@ -20,6 +20,7 @@ const slugify = (segments: string[]) => segments.map((s) => s.replace(STRIP, '')
 
 export const examples: Record<string, Record<string, string>> = {};
 export const base: Record<string, string> = {};
+export const common: Record<string, string> = {};
 
 for (const [path, code] of Object.entries(FILES)) {
   if (path.includes('/dist/')) continue;
@@ -35,9 +36,17 @@ for (const [path, code] of Object.entries(FILES)) {
     continue;
   }
 
+  // Shared chrome library. Examples import via the `@common` dev alias; only
+  // files an example actually reaches ship with its sandbox (see getFiles).
+  if (segments[0] === 'common') {
+    common[['', ...segments, file].join('/')] = code;
+    continue;
+  }
+
   const slug = slugify(segments);
   const target = examples[slug] ??= {};
-  target[`/${file}`] = code;
+  // Sandboxes have no alias resolution - point at the adjacent folder instead.
+  target[`/${file}`] = code.replace(/(['"])@common(?=[/'"])/g, '$1./common');
 }
 
 for (const folder of Object.values(examples)) {
@@ -47,6 +56,37 @@ for (const folder of Object.values(examples)) {
     .join('');
 
   folder['/index.tsx'] = cssImports + ENTRY;
+}
+
+// Matches `import ... '...'` and re-exports (`export ... from '...'`).
+const IMPORT = /(?:import|export)\s+(?:[^'"]*?from\s+)?['"]([^'"]+)['"]/g;
+
+/** Resolve a relative specifier against the flat `common` registry. */
+function resolve(spec: string, from: string) {
+  if (!spec.startsWith('.')) return;
+
+  const path = from.split('/').slice(0, -1);
+
+  for (const part of spec.split('/'))
+    if (part === '..') path.pop();
+    else if (part !== '.') path.push(part);
+
+  const joined = path.join('/');
+
+  for (const suffix of ['', '.ts', '.tsx', '/index.ts', '/index.tsx'])
+    if (joined + suffix in common) return joined + suffix;
+}
+
+/** Collect the transitive closure of common files reachable from `code`. */
+function collect(code: string, from: string, into: Set<string>) {
+  for (const [, spec] of code.matchAll(IMPORT)) {
+    const hit = resolve(spec, from);
+
+    if (hit && !into.has(hit)) {
+      into.add(hit);
+      collect(common[hit], hit, into);
+    }
+  }
 }
 
 export function getFiles(name: string) {
@@ -66,6 +106,16 @@ export function getFiles(name: string) {
     // /index.tsx is generated boilerplate from the sandbox plugin.
     files[path] = path === '/index.tsx' ? { hidden: true, code } : code;
   }
+
+  // Shared chrome ships hidden: no editor tab, but present on eject so the
+  // sandbox remains a complete, working project.
+  const used = new Set<string>();
+
+  for (const [path, code] of Object.entries(source))
+    collect(code, path, used);
+
+  for (const path of used)
+    files[path] = { hidden: true, code: common[path] };
 
   return files;
 }
