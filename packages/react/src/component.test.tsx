@@ -1260,7 +1260,11 @@ describe('error boundary', () => {
 
   for (const reactStrictMode of [false, true])
     it('will dispose instance if unmounted in error state' + (reactStrictMode ? ' (strict)' : ''), async () => {
-      const didDispose = mock();
+      // React discards and retries the render pass on error, constructing a
+      // fresh instance; stale attempts are superseded (disposed) right away.
+      // Track lifecycle per instance - only the committed one matters here.
+      const disposed = new Set<Control>();
+      const made: Control[] = [];
       const Throws = () => {
         throw new Error('boom');
       };
@@ -1269,7 +1273,8 @@ describe('error boundary', () => {
         fallback = (<span>Oops</span>);
 
         new() {
-          return didDispose;
+          made.push(this);
+          return () => disposed.add(this);
         }
 
         async catch() {
@@ -1284,11 +1289,13 @@ describe('error boundary', () => {
       const element = render(<Control />, { reactStrictMode });
 
       screen.getByText('Oops');
-      expect(didDispose).not.toBeCalled();
+
+      const live = made.filter((c) => !disposed.has(c));
+      expect(live).toHaveLength(1);
 
       element.unmount();
 
-      expect(didDispose).toBeCalled();
+      expect(disposed.has(live[0])).toBe(true);
     });
 });
 
@@ -1882,17 +1889,23 @@ describe('discarded render (issue #118)', () => {
     expect(observer(instance)!.listeners.size).toBe(baseline);
   });
 
-  it('will destroy instance exactly once after retries', async () => {
-    const didDestroy = mock();
+  it('will supersede stale attempts, leaving one live instance at commit', async () => {
+    const disposed = new Set<Model>();
+    const made: Model[] = [];
 
     class Model extends Component {
       protected new() {
-        return () => didDestroy();
+        made.push(this);
+        return () => disposed.add(this);
       }
     }
 
     const pending = mockPromise();
-    const Sibling = SuspendUntil(pending);
+    let attempts = 0;
+    const Sibling = () => {
+      if (attempts++ < 2) throw pending;
+      return null;
+    };
 
     let element!: ReturnType<typeof render>;
     await act(async () => {
@@ -1905,9 +1918,81 @@ describe('discarded render (issue #118)', () => {
     });
 
     await act(async () => { pending.resolve(); });
-    expect(didDestroy).not.toHaveBeenCalled();
+
+    // Each discarded attempt constructed a fresh instance; every stale one
+    // was destroyed when the next attempt took its slot.
+    expect(made.length).toBeGreaterThan(1);
+    expect(made.filter((m) => !disposed.has(m))).toHaveLength(1);
 
     await act(async () => { element.unmount(); });
-    expect(didDestroy).toHaveBeenCalledTimes(1);
+    expect(made.filter((m) => !disposed.has(m))).toHaveLength(0);
+  });
+
+  it('will not accumulate into parent state across retries', async () => {
+    // The visible symptom of #118: a render-phase registration into parent
+    // state (router Route -> parent.inner) repeated per discarded attempt.
+    const registry = new Set<Model>();
+
+    class Model extends Component {
+      protected new() {
+        registry.add(this);
+        return () => registry.delete(this);
+      }
+    }
+
+    const pending = mockPromise();
+    let attempts = 0;
+    const Sibling = () => {
+      if (attempts++ < 2) throw pending;
+      return null;
+    };
+
+    await act(async () => {
+      render(
+        <React.Suspense fallback={null}>
+          <Model />
+          <Sibling />
+        </React.Suspense>
+      );
+    });
+
+    await act(async () => { pending.resolve(); });
+
+    expect(registry.size).toBe(1);
+  });
+
+  it('will not supersede siblings of the same class', async () => {
+    const disposed = new Set<Model>();
+
+    class Model extends Component {
+      protected new() {
+        return () => disposed.add(this);
+      }
+    }
+
+    const all: Model[] = [];
+    const keep = (c: Model) => { all.push(c); };
+
+    const pending = mockPromise();
+    let attempts = 0;
+    const Sibling = () => {
+      if (attempts++ < 2) throw pending;
+      return null;
+    };
+
+    await act(async () => {
+      render(
+        <React.Suspense fallback={null}>
+          <Model is={keep} />
+          <Model is={keep} />
+          <Sibling />
+        </React.Suspense>
+      );
+    });
+
+    await act(async () => { pending.resolve(); });
+
+    const live = new Set(all.filter((c) => !disposed.has(c)));
+    expect(live.size).toBe(2);
   });
 });
