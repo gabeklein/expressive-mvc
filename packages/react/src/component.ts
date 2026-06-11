@@ -146,12 +146,6 @@ function component(from: Component, context: Context) {
 
     const rendered = createElement(Render);
 
-    const rendered = createElement(Render);
-
-    // `fallback === false` opts out of the auto-Suspense boundary - the
-    // Component is "Suspense-transparent", letting a child's suspension bubble
-    // to an ancestor boundary (e.g. a router holding the current screen during
-    // a transition). Any other value (incl. null) gets its own boundary.
     const children = createElement(Layers.Provider, {
       value: context,
       children: from.fallback === false
