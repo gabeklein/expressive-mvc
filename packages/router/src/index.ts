@@ -4,4 +4,5 @@ export { Router, BrowserRouter } from './router';
 export { Route } from './route';
 export { Link, NavLink } from './link';
 export { Redirect } from './redirect';
+export { ScrollRestoration } from './scroll';
 export { NavLinks } from './nav';
