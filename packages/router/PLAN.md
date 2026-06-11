@@ -66,6 +66,39 @@ In rough order of priority:
 6. **`Link.onClick`** (async pre-navigation hook): user-supplied handler that can cancel; exposes `pending: boolean` for in-flight state. Detailed sketch under "Nice-to-haves".
 7. **Specificity-based arbitration**: feed `match.score` into the sibling walk so literal beats `:param` beats `*` regardless of declaration order. Currently first-match-wins.
 
+### Ship roadmap (PR plan to main)
+
+Strategy: merge `feature/router` to main first (foundation lands as-is), then MVP features
+arrive as small, individually-reviewable PRs against main. `feature/router-transition`
+(deferred presentation) rebases onto the shrinking delta and ships later - exotic next to
+the items below.
+
+**Gate 0 - host-agnostic router (prerequisite to the main merge):**
+
+- `feat(mvc)`: agnostic JSX runtime (#106) - `@expressive/mvc/jsx-runtime` delegating to an
+  adapter-registered host, plus element-introspection seam (`childrenOf`, `isElement`,
+  `typeOf`, `propsOf`) and `Fragment`. Today mvc exports the `Node` *type* seam but no
+  *value* seam.
+- `feat(react)`: adapter registers its runtime + introspection.
+- `refactor(router)`: imports swap to `@expressive/mvc`, `jsxImportSource` flips, React
+  type/introspection usages replaced. After this, router's sole dependency is mvc; react
+  remains test-host only.
+- Before merging: confirm release tooling (release-please) won't publish
+  `@expressive/router` prematurely - mark private/excluded until the MVP cut is in.
+
+**MVP feature PRs (post-merge, in order):**
+
+1. `fix(router)`: specificity-based arbitration (iteration #7) - correctness footgun,
+   purely internal, score already computed in `url.ts`.
+2. `feat(router)`: search params (iteration #1).
+3. `feat(router)`: `redirect()` / `notFound()` sentinels (iteration #2) - likely surfaces
+   design questions (interaction with `Route.catch`, destroyed-state semantics mid-redirect).
+4. `feat(router)`: navigation UX - `NavLink` + scroll restoration (iterations #3 + #4
+   grouped; both are small leaf components with no core interaction).
+
+Deferred with transitions: `HashRouter` (iteration #5), `Link.onClick` (#6), top-down
+injection (architecture roadmap #5).
+
 ## Why Component is the substrate
 
 `Component` provides almost every routing primitive:
