@@ -58,37 +58,8 @@ Object.defineProperties(proto, {
   },
   context: {
     set(this: Component, context: Context) {
-      let slots = SLOTS.get(context);
-      if (!slots) SLOTS.set(context, (slots = new Map()));
-
-      // key/index path to root: stable across render attempts of this element
-      let slot = '';
-      for (let f = (this as any)._reactInternals; f; f = f.return)
-        slot += (f.key ?? f.index) + '.';
-
-      let list = slots.get(slot);
-      if (!list) slots.set(slot, (list = []));
-
       context = context.push();
       context.set(this, () => () => this.set(null));
-
-      const entry: Slot = { kill: () => context.pop() };
-      list.push(entry);
-
-      const commit = () => {
-        entry.committed = true;
-        for (let i = 0; list[i] !== entry; )
-          if (list[i].committed) i++;
-          else {
-            list[i].kill();
-            list.splice(i, 1);
-          }
-      };
-
-      const remove = () => {
-        const i = list.indexOf(entry);
-        if (i >= 0) list.splice(i, 1);
-      };
 
       const props = Object.getOwnPropertyDescriptor(this, 'props')!;
 
@@ -111,19 +82,48 @@ Object.defineProperties(proto, {
           set() { }
         },
         render: {
-          value: component(this, context, commit, remove)
+          value: component(this, context)
         }
       });
     }
   }
 });
 
-function component(
-  from: Component,
-  context: Context,
-  commit: () => void,
-  remove: () => void
-) {
+/** Register a render attempt; superseded or unmounted attempts are killed. */
+function attempt(on: Component, ambient: Context, kill: () => void) {
+  let slots = SLOTS.get(ambient);
+  if (!slots) SLOTS.set(ambient, (slots = new Map()));
+
+  // key/index path to root: stable across render attempts of this element
+  let slot = '';
+  for (let f = (on as any)._reactInternals; f; f = f.return)
+    slot += (f.key ?? f.index) + '.';
+
+  let list = slots.get(slot);
+  if (!list) slots.set(slot, (list = []));
+
+  const entry: Slot = { kill };
+  list.push(entry);
+
+  return {
+    commit() {
+      entry.committed = true;
+      for (let i = 0; list[i] !== entry; )
+        if (list[i].committed) i++;
+        else {
+          list[i].kill();
+          list.splice(i, 1);
+        }
+    },
+    remove() {
+      const i = list.indexOf(entry);
+      if (i >= 0) list.splice(i, 1);
+    }
+  };
+}
+
+function component(from: Component, context: Context) {
+  const { commit, remove } = attempt(from, context.parent!, () => context.pop());
   const { render } = from;
   const Render = () => render.call(from, from.props);
   // Context owns destruction; discarded fibers die via slot supersession
