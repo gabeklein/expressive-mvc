@@ -61,30 +61,23 @@ Why one `host()` call instead of slot-by-slot assignment like `Runtime`:
   re-registration is a no-op (HMR re-runs adapter module bodies).
 - One obvious grep target for "how does an adapter bind".
 
-`Fragment` is exported from mvc as a stable sentinel object (`const Fragment = Symbol or
-frozen object`)? **No** - see Fragment note below; it must be a *getter-forwarded* host
-value.
-
 #### Fragment
 
-`Fragment` cannot be an mvc-owned sentinel: the host reconciler receives it as an element
-`type` and must recognize its own (`react.Fragment` is a registered symbol React checks
-internally). So mvc's `jsx-runtime` exports a `Fragment` that resolves to the host's at
-access time. ESM live bindings make this clean:
+The host reconciler must receive *its own* Fragment as the element `type`
+(`react.Fragment` is a registered symbol React checks internally), but mvc's `Fragment`
+export must also be usable for identity checks before/without considering host shape. So
+`Fragment` is an mvc-owned sentinel (`Symbol.for('@expressive/mvc.Fragment')`),
+translated at the boundary in both directions:
 
-```ts
-// jsx-runtime.ts
-export let Fragment: unknown;          // assigned by host(); live-bound for importers
-export const jsx = (type, props, key) => resolved().jsx(type, props, key);
-```
+- `jsx`/`jsxs`/`jsxDEV` map sentinel -> host `Fragment` on element creation;
+- `typeOf` maps host `Fragment` -> sentinel on inspection.
 
-Transpilers import `Fragment` at module top but only *read* it when constructing
-elements, after the adapter has registered - live binding means they see the assigned
-value. (Caveat verified in plan review: `jsx-runtime` output references `Fragment` lazily
-per element, so import-order is only a render-time constraint, same as `jsx` itself.)
-
-For *identity checks* (router's `node.type === Fragment`), consumers compare against the
-same live binding - it equals whatever the host returned from `typeOf`, so equality holds.
+Result: router's `typeOf(node) === Fragment` holds for fragments authored under either
+pragma, the sentinel is importable with no host registered (types-only / static analysis
+use), and the host only ever sees its native Fragment. (An ESM live-binding forward was
+considered - simpler at the boundary but `undefined` pre-registration and host-shaped at
+identity sites; the sentinel keeps both directions deterministic at the cost of one
+comparison per element creation.)
 
 ### Unregistered behavior (error design)
 
@@ -101,10 +94,9 @@ same live binding - it equals whatever the host returned from `typeOf`, so equal
   Named, actionable, and points at the actual fix (import ordering) since the most likely
   cause is an agnostic library module evaluating JSX at module scope before the app entry
   imported the adapter.
-- `Fragment` read before registration yields `undefined`; that is tolerable because it is
-  only consumed by `jsx(...)` calls which throw the real error anyway. (We could trap it
-  with a getter-only module facade, but the added indirection buys nothing - the throw in
-  `jsx` lands first in every real sequence.)
+- `Fragment` is the host-independent sentinel, so it is always safe to import and
+  compare; translation to the host Fragment happens inside `jsx(...)`, which throws the
+  error above when unregistered.
 
 ### Adapter registration (when and how)
 

@@ -8,3 +8,5 @@ export { State, State as default, unbind } from './state';
 export { watch, listener, event, Observable, observer, touch } from './observable';
 export { Context } from './context';
 export { Component } from './component';
+export { host, childrenOf, isElement, typeOf, propsOf, Fragment } from './jsx';
+export type { HostRuntime } from './jsx';
