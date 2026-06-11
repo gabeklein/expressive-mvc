@@ -1,4 +1,4 @@
-import { watch, unbind, Component } from '@expressive/mvc';
+import { watch, unbind, observer, Component } from '@expressive/mvc';
 import React, { createElement, Suspense } from 'react';
 import { Context, Layers } from './context';
 import { useHook } from './runtime';
@@ -54,7 +54,22 @@ Object.defineProperties(proto, {
     set(this: Component, context: Context) {
       context = context.push(this);
 
+      const props = Object.getOwnPropertyDescriptor(this, 'props')!;
+
       Object.defineProperties(this, {
+        props: {
+          ...props,
+          set: (next: {}) => {
+            if (this.get(null))
+              Object.defineProperty(this, 'props', {
+                value: next,
+                writable: true,
+                configurable: true
+              });
+            else
+              props.set!.call(this, next);
+          }
+        },
         context: {
           get: () => context,
           set() { }
@@ -71,13 +86,14 @@ function component(from: Component, context: Context) {
   const { render } = from;
   const Render = () => render.call(from, from.props);
   const Component = () => {
-    from = useHook((refresh) => {
-      watch(from, refresh);
+    from = useHook<Component>((refresh) => {
+      if (observer(from) !== null)
+        watch(from, refresh);
       return () => {
         from.set(null);
         context.pop();
       };
-    });
+    }) || from;
 
     const children = createElement(Layers.Provider, {
       value: context,
@@ -112,7 +128,7 @@ function subcomponents(proto: Component) {
               let render = unbind(get ? get.call(owner) : value);
               const Component = (props: unknown) =>
                 render.call(
-                  useHook<Component>((set) => watch(owner, set)),
+                  useHook<Component>((set) => watch(owner, set)) || owner,
                   props
                 );
 

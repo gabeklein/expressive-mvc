@@ -14,26 +14,28 @@ export function use<T extends object>(subject: T) {
   if (current.source !== subject) {
     const status = observer(subject);
 
-    if (status === null)
-      throw new Error('Provided object is no longer observable.');
-
-    if (!status)
+    if (status === undefined)
       throw new Error('Provided object is not observable.');
-
-    if (!status.ready) event(subject);
 
     current.unwatch?.();
     current.source = subject;
 
-    let init = true;
+    if (status === null) {
+      current.unwatch = undefined;
+      current.proxy = subject;
+    } else {
+      if (!status.ready) event(subject);
 
-    current.unwatch = watch(subject, (next, changed) => {
-      current.proxy = next;
-      if (changed.length && !init)
-        update((x) => x + 1);
-    });
+      let init = true;
 
-    init = false;
+      current.unwatch = watch(subject, (next, changed) => {
+        current.proxy = next;
+        if (changed.length && !init)
+          update((x) => x + 1);
+      });
+
+      init = false;
+    }
   }
 
   Runtime.useEffect(() => () => {
