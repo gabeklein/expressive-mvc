@@ -95,11 +95,17 @@ function component(from: Component, context: Context) {
       };
     }) || from;
 
+    const rendered = createElement(Render);
+
+    // fallback === false opts out of the auto-Suspense boundary,
+    // letting a child's suspension bubble to an ancestor boundary.
     const children = createElement(Layers.Provider, {
       value: context,
-      children: createElement(Suspense,
-        { fallback: from.fallback, name: String(from) },
-        createElement(Render))
+      children: from.fallback === false
+        ? rendered
+        : createElement(Suspense,
+          { fallback: from.fallback, name: String(from) },
+          rendered)
     });
 
     return from.catch

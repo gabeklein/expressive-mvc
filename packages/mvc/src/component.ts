@@ -36,7 +36,11 @@ declare namespace Component {
     /** Callback for newly created instance. Only called once. */
     is?: (instance: T) => void;
 
-    /** Fallback to show when suspended or in error recovery. */
+    /**
+     * Fallback to show when suspended or in error recovery.
+     * Pass `false` to opt out of the component's own suspense boundary,
+     * letting suspension bubble to an ancestor.
+     */
     fallback?: Component.Node;
   }
 
@@ -86,6 +90,8 @@ class Component extends State {
    * Can be set as a class property or overridden via the `fallback` JSX prop.
    *
    * Defaults to null - nothing will be rendered.
+   * Set `false` to opt out of having a boundary at all - suspension then
+   * bubbles to the nearest ancestor boundary.
    */
   fallback: Component.Node = set(null);
 
