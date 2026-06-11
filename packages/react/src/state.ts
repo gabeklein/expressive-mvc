@@ -1,4 +1,4 @@
-import { State, Context, watch } from '@expressive/mvc';
+import { State, Context, observer, watch } from '@expressive/mvc';
 import { Runtime, useFactory, useHook, useReady } from './runtime';
 
 export { Runtime };
@@ -178,6 +178,15 @@ State.get = function get<T extends State>(
 
     function attach(next: T) {
       unwatch?.();
+
+      if (observer(next) === null) {
+        value = typeof argument === 'function'
+          ? argument.call(next, next, refresh)
+          : next;
+        unwatch = () => {};
+        return release;
+      }
+
       unwatch = watch(
         next,
         (current, changed) => {

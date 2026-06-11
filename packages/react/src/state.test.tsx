@@ -577,6 +577,73 @@ describe('State.get', () => {
     });
   });
 
+  describe('over destroyed instance', () => {
+    class Test extends State {
+      value = 'foo';
+    }
+
+    async function lateConsumer(Consumer: React.FC) {
+      const test = Test.new();
+      const view = render(<Provider for={test}><></></Provider>);
+
+      await act(async () => test.set(null));
+
+      view.rerender(
+        <Provider for={test}>
+          <Consumer />
+        </Provider>
+      );
+
+      return view.container.textContent;
+    }
+
+    it('will render last values', async () => {
+      const text = await lateConsumer(() => <>{Test.get().value}</>);
+
+      expect(text).toBe('foo');
+      expect(error).not.toBeCalled();
+    });
+
+    it('will render last values when optional', async () => {
+      const text = await lateConsumer(() => <>{Test.get(false)?.value}</>);
+
+      expect(text).toBe('foo');
+      expect(error).not.toBeCalled();
+    });
+
+    it('will evaluate factory with last values', async () => {
+      const text = await lateConsumer(() => (
+        <>{Test.get(($) => $.value.toUpperCase())}</>
+      ));
+
+      expect(text).toBe('FOO');
+      expect(error).not.toBeCalled();
+    });
+
+    it('will keep last values in mounted consumer', async () => {
+      const test = Test.new();
+      const Consumer = () => <>{Test.get().value}</>;
+      const view = render(
+        <Provider for={test}>
+          <Consumer />
+        </Provider>
+      );
+
+      expect(view.container.textContent).toBe('foo');
+
+      await act(async () => test.set(null));
+
+      view.rerender(
+        <Provider for={test}>
+          <Consumer />
+        </Provider>
+      );
+
+      expect(view.container.textContent).toBe('foo');
+      expect(error).not.toBeCalled();
+    });
+  });
+
   describe('computed', () => {
     class Test extends State {
       foo = 1;
