@@ -13,12 +13,20 @@ import { Match, fullPattern, matchPattern, patternSegment } from './url';
 export class Router extends Component {
   path = '/';
 
-  /** In-memory history: visited paths and the cursor into them. */
+  /** Raw query string, no leading `?` - mirrors `URLSearchParams` input. */
+  search = '';
+
+  /** In-memory history: visited urls (path + query) and the cursor into them. */
   entries: string[] = [];
   index = 0;
 
   protected new() {
     this.entries = [this.path];
+  }
+
+  /** Parsed view of `search`; recomputed reactively when it changes. */
+  get query(): URLSearchParams {
+    return new URLSearchParams(this.search);
   }
 
   /**
@@ -35,26 +43,33 @@ export class Router extends Component {
 
   goto(to: string, replace = false) {
     assertAbsolute(to);
-    const path = normalize(to);
+    const url = normalize(to);
 
     if (replace)
-      this.entries[this.index] = path;
+      this.entries[this.index] = url;
     else {
-      this.entries = [...this.entries.slice(0, this.index + 1), path];
+      this.entries = [...this.entries.slice(0, this.index + 1), url];
       this.index = this.entries.length - 1;
     }
 
-    this.path = path;
+    this.locate(url);
   }
 
   back() {
     if (this.index > 0)
-      this.path = this.entries[--this.index];
+      this.locate(this.entries[--this.index]);
   }
 
   forward() {
     if (this.index < this.entries.length - 1)
-      this.path = this.entries[++this.index];
+      this.locate(this.entries[++this.index]);
+  }
+
+  /** Apply a normalized url (path + optional `?query`) to state. */
+  protected locate(url: string) {
+    const q = url.indexOf('?');
+    this.path = q < 0 ? url : url.slice(0, q);
+    this.search = q < 0 ? '' : url.slice(q + 1);
   }
 
   segment(to: string): string {
@@ -84,6 +99,7 @@ export class Router extends Component {
 /** Binds the headless core to `window.location`, syncing `path` on navigation. */
 export class BrowserRouter extends Router {
   path = window.location.pathname;
+  search = window.location.search.slice(1);
 
   goto(to: string, replace = false) {
     assertAbsolute(to);
@@ -103,6 +119,7 @@ export class BrowserRouter extends Router {
   protected new() {
     const sync = () => {
       this.path = window.location.pathname;
+      this.search = window.location.search.slice(1);
     };
     window.addEventListener('popstate', sync);
 
@@ -126,7 +143,8 @@ function assertAbsolute(to: string) {
     );
 }
 
-/** Collapse `.`/`..` and stray slashes without touching browser globals. */
+/** Collapse `.`/`..` and stray slashes without touching browser globals; keeps the query. */
 function normalize(to: string): string {
-  return new URL(to, 'x://_').pathname;
+  const url = new URL(to, 'x://_');
+  return url.pathname + url.search;
 }
