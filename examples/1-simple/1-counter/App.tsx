@@ -1,5 +1,6 @@
 import './App.css';
 
+import { Button } from '@common';
 import State from '@expressive/react';
 
 // A State tracks values; `Control` is convention for component-scoped state.
@@ -18,10 +19,10 @@ const App = () => {
     <div className="container">
       <h1>Counter Example</h1>
       <div className="counter">
-        <button onClick={decrement}>{'-'}</button>
+        <Button onClick={decrement}>{'-'}</Button>
         {/* `control` is the instance we can assign to directly. */}
         <pre onClick={() => (control.current = 1)}>{current}</pre>
-        <button onClick={increment}>{'+'}</button>
+        <Button onClick={increment}>{'+'}</Button>
       </div>
     </div>
   );

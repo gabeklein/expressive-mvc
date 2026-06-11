@@ -13,6 +13,8 @@
     "resolveJsonModule": true,
     "types": ["vite/client"],
     "paths": {
+      "@common": ["./common/index.ts"],
+      "@common/*": ["./common/*"],
       "@expressive/*": ["../packages/*/src"]
     }
   },

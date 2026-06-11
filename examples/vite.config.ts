@@ -11,6 +11,9 @@ export default defineConfig({
   // without a `dist` rebuild. (Their package.json points at built `dist`.)
   resolve: {
     alias: {
+      // Shared presentational chrome; the website loader rewrites this to a
+      // relative `./common` folder when generating standalone sandboxes.
+      '@common': fileURLToPath(new URL('./common', import.meta.url)),
       '@expressive/router': src('router'),
       '@expressive/react': src('react'),
       '@expressive/mvc': src('mvc')
