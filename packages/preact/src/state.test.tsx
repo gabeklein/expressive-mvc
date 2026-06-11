@@ -1,8 +1,19 @@
 /** @jsxImportSource preact */
-import { act, render, renderHook, waitFor } from '@testing-library/preact';
-
+import { StrictMode, Suspense } from 'preact/compat';
 import { get, State, Provider, set } from '.';
-import { expect, describe, it, mock } from 'bun:test';
+import { mock, spyOn, expect, it, describe, afterEach, afterAll } from 'bun:test';
+import { act, render, renderHook, waitFor } from '@testing-library/preact';
+import { mockPromise } from '../test.setup';
+
+function renderWith<T>(Type: State.Type | State, hook: () => T) {
+  return renderHook(hook, {
+    wrapper: (props) => (
+      <Provider for={Type}>
+        <Suspense fallback={null}>{props.children}</Suspense>
+      </Provider>
+    )
+  });
+}
 
 describe('State.use', () => {
   class Test extends State {
@@ -60,7 +71,7 @@ describe('State.use', () => {
 
       class Test extends State {
         protected new() {
-          this.get(null, didDestroy);
+          return didDestroy;
         }
       }
 
@@ -71,6 +82,24 @@ describe('State.use', () => {
       rendered.unmount();
 
       expect(didDestroy).toBeCalled();
+    });
+
+    it('will ignore updates after unmount', async () => {
+      const hook = renderHook(() => {
+        const test = Test.use();
+        void test.value;
+        return test.is;
+      });
+
+      await act(async () => {
+        hook.result.current.value = 'bar';
+      });
+
+      hook.unmount();
+
+      expect(() => {
+        hook.result.current.value = 'baz';
+      }).toThrow();
     });
 
     it('will bind methods to instance', async () => {
@@ -120,6 +149,112 @@ describe('State.use', () => {
     });
   });
 
+  describe('use method', () => {
+    it('will call every render if present', () => {
+      const didUse = mock();
+
+      class Test extends State {
+        use() {
+          didUse();
+        }
+      }
+
+      const element = renderHook(() => Test.use());
+
+      expect(didUse).toBeCalledTimes(1);
+
+      element.rerender();
+
+      expect(didUse).toBeCalledTimes(2);
+    });
+
+    it('will receive arguments', () => {
+      const didUse = mock();
+
+      class Test extends State {
+        use(foo: string, bar: number) {
+          didUse(foo, bar);
+        }
+      }
+
+      renderHook(() => Test.use('hello', 123));
+
+      expect(didUse).toBeCalledWith('hello', 123);
+    });
+
+    it('will divert arguments from constructor', () => {
+      const didUse = mock();
+
+      class Test extends State {
+        value = 0;
+      }
+
+      class Test2 extends Test {
+        use(props: { value: number }) {
+          didUse(props);
+          expect(this.value).not.toBe(props.value);
+        }
+      }
+
+      const test = renderHook(() => Test.use({ value: 42 }));
+      const test2 = renderHook(() => Test2.use({ value: 42 }));
+
+      expect(test.result.current.value).toBe(42);
+      expect(test2.result.current.value).not.toBe(42);
+      expect(didUse).toBeCalledWith({ value: 42 });
+    });
+
+    it('will enforce signature', () => {
+      class Test extends State {
+        use(foo: string, bar: number) {}
+      }
+
+      void function test() {
+        // @ts-expect-error
+        Test.use();
+      };
+    });
+  });
+
+  describe('callback argument', () => {
+    class Test extends State {
+      foo?: string = undefined;
+      bar?: string = undefined;
+    }
+
+    it('will run callback once', async () => {
+      const callback = mock();
+      const hook = renderHook(() => Test.use(callback));
+
+      expect(callback).toBeCalledTimes(1);
+
+      hook.rerender(() => Test.use(callback));
+
+      expect(callback).toBeCalledTimes(1);
+    });
+
+    it('will run argument before effects', () => {
+      const effect = mock();
+      const argument = mock(() => {
+        expect(effect).not.toBeCalled();
+      });
+
+      class Test extends State {
+        constructor(...args: State.Args) {
+          super(args);
+          this.get(effect);
+        }
+      }
+
+      renderHook(() => {
+        Test.use(argument);
+      });
+
+      expect(argument).toBeCalled();
+      expect(effect).toBeCalled();
+    });
+  });
+
   describe('props argument', () => {
     class Test extends State {
       foo?: string = undefined;
@@ -142,6 +277,28 @@ describe('State.use', () => {
       expect(hook.result.current).toMatchObject(mockExternal);
     });
 
+    it('will apply callback only once', async () => {
+      const hook = renderHook(() => {
+        return Test.use(() => ({ foo: 'foo', bar: 'bar' }));
+      });
+
+      expect(hook.result.current).toMatchObject({ foo: 'foo', bar: 'bar' });
+
+      await expect(hook.result.current).not.toHaveUpdated();
+
+      hook.rerender(() => {
+        return Test.use({ foo: 'bar', bar: 'foo' });
+      });
+
+      await expect(hook.result.current).not.toHaveUpdated();
+
+      await act(async () => {
+        hook.result.current.foo = 'bar';
+      });
+
+      expect(hook.result.current.foo).toBe('bar');
+    });
+
     it('will apply object every render', async () => {
       const hook = renderHook(
         ({ foo }) => {
@@ -155,6 +312,57 @@ describe('State.use', () => {
       hook.rerender({ foo: 'bar' });
 
       expect(hook.result.current.foo).toBe('bar');
+    });
+
+    it('will apply props over (untracked) arrow functions', () => {
+      class Test extends State {
+        foobar = () => 'Hello world!';
+      }
+
+      const mockExternal = {
+        foobar: () => 'Goodbye cruel world!'
+      };
+
+      const hook = renderHook(() => {
+        return Test.use(mockExternal);
+      });
+
+      const { foobar } = hook.result.current;
+
+      expect(foobar).toBe(mockExternal.foobar);
+    });
+
+    it('will not apply props over methods', () => {
+      class Test extends State {
+        foobar() {
+          return 'Hello world!';
+        }
+      }
+
+      const mockProps = {
+        foobar: () => 'Goodbye cruel world!'
+      };
+
+      const { result } = renderHook(() => {
+        return Test.use(mockProps);
+      });
+
+      expect(result.current).not.toBe(mockProps.foobar);
+    });
+
+    it('will not trigger updates it caused', async () => {
+      const didRender = mock();
+      const hook = renderHook(
+        (props) => {
+          didRender();
+          return Test.use(props);
+        },
+        { initialProps: { foo: 'foo' } }
+      );
+
+      hook.rerender({ foo: 'bar' });
+
+      expect(didRender).toBeCalledTimes(2);
     });
 
     it('will trigger set instruction', () => {
@@ -200,16 +408,89 @@ describe('State.use', () => {
       );
     });
   });
+
+  describe('strict mode', () => {
+    // Note: preact's StrictMode is an alias of Fragment - no double-invoke.
+    it('will create once and destroy on unmount', async () => {
+      const didCreate = mock();
+      const didDestroy = mock();
+
+      class Test extends State {
+        protected new() {
+          didCreate();
+          return didDestroy;
+        }
+      }
+
+      const Component = () => {
+        Test.use();
+        return null;
+      };
+
+      const element = render(
+        <StrictMode>
+          <Component />
+        </StrictMode>
+      );
+
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(didCreate).toBeCalledTimes(1);
+      expect(didDestroy).not.toBeCalled();
+
+      element.unmount();
+
+      expect(didDestroy).toBeCalledTimes(1);
+    });
+
+    it('will refresh via property update', async () => {
+      let instance!: Test;
+
+      class Test extends State {
+        value = 'foo';
+
+        new() {
+          instance = this;
+        }
+      }
+
+      const didRender = mock();
+
+      const Component = () => {
+        const test = Test.use();
+        didRender(test.value);
+        return <>{test.value}</>;
+      };
+
+      const element = render(
+        <StrictMode>
+          <Component />
+        </StrictMode>
+      );
+
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(didRender).toBeCalledWith('foo');
+
+      await act(async () => {
+        instance.value = 'bar';
+      });
+
+      expect(didRender).toBeCalledWith('bar');
+
+      element.unmount();
+    });
+  });
 });
 
 describe('State.get', () => {
-  function renderWith<T>(Type: State.Type | State, hook: () => T) {
-    return renderHook(hook, {
-      wrapper(props) {
-        return <Provider for={Type}>{props.children}</Provider>;
-      }
-    });
-  }
+  const error = spyOn(console, 'error').mockImplementation(() => {});
+
+  afterEach(() => {
+    error.mockReset();
+  });
+
+  afterAll(() => error.mockClear());
 
   it('will fetch model', () => {
     class Test extends State {}
@@ -234,12 +515,28 @@ describe('State.get', () => {
 
     expect(hook.result.current).toBe('foo');
 
-    await act(async () => {
-      await test.set({ foo: 'bar' });
-    });
+    await act(async () => void await test.set({ foo: 'bar' }));
 
     expect(hook.result.current).toBe('bar');
     expect(didRender).toBeCalledTimes(2);
+  });
+
+  it('will not update on death event', async () => {
+    class Test extends State {
+      foo = 'foo';
+    }
+
+    const test = Test.new();
+    const didRender = mock();
+    const hook = renderWith(test, () => {
+      didRender();
+      return Test.get().foo;
+    });
+
+    expect(hook.result.current).toBe('foo');
+    test.set(null);
+
+    expect(didRender).toBeCalledTimes(1);
   });
 
   it('will throw if not found', () => {
@@ -266,6 +563,666 @@ describe('State.get', () => {
 
     renderHook(useTest);
     expect(useTest).toHaveReturned();
+  });
+
+  it('will throw if expected value undefined', () => {
+    class Test extends State {
+      value?: number = undefined;
+    }
+
+    renderWith(Test, () => {
+      expect(() => {
+        void Test.get(true).value;
+      }).toThrow(/[\w-]+\.value is required in this context\./);
+    });
+  });
+
+  describe('computed', () => {
+    class Test extends State {
+      foo = 1;
+      bar = 2;
+    }
+
+    it.todo('will suspend if factory does', () => {});
+
+    it('will select and subscribe to subvalue', async () => {
+      const test = Test.new();
+      const hook = renderWith(test, () => {
+        return Test.get((x) => x.foo);
+      });
+
+      expect(hook.result.current).toBe(1);
+
+      await act(async () => void await test.set({ foo: 2 }));
+
+      expect(hook.result.current).toBe(2);
+    });
+
+    it('will throw if instance not found', () => {
+      class Test extends State {
+        value = 1;
+      }
+
+      const useTest = mock(() => {
+        expect(() => Test.get((x) => x)).toThrow(
+          `Could not find ${Test} in context.`
+        );
+      });
+
+      renderHook(useTest);
+      expect(useTest).toHaveReturned();
+    });
+
+    it('will compute output', async () => {
+      const test = Test.new();
+      const hook = renderWith(test, () => {
+        return Test.get((x) => x.foo + x.bar);
+      });
+
+      expect(hook.result.current).toBe(3);
+
+      await act(async () => void await test.set({ foo: 2 }));
+
+      expect(hook.result.current).toBe(4);
+    });
+
+    it('will ignore updates with same result', async () => {
+      const test = Test.new();
+      const compute = mock();
+      const didRender = mock();
+
+      const hook = renderWith(test, () => {
+        didRender();
+        return Test.get((x) => {
+          compute();
+          void x.foo;
+          return x.bar;
+        });
+      });
+
+      expect(hook.result.current).toBe(2);
+      expect(compute).toBeCalled();
+
+      test.foo = 2;
+      await expect(test).toHaveUpdated();
+
+      // did attempt a second compute
+      expect(compute).toBeCalledTimes(2);
+
+      // compute did not trigger a new render
+      expect(didRender).toBeCalledTimes(1);
+      expect(hook.result.current).toBe(2);
+    });
+
+    it('will return null', () => {
+      class Test extends State {}
+
+      const test = Test.new();
+      const rendered = renderWith(test, () => Test.get(() => null));
+
+      expect(rendered.result.current).toBe(null);
+    });
+
+    it('will convert undefined to null', () => {
+      const hook = renderWith(Test, () => {
+        return Test.get(() => {});
+      });
+
+      expect(hook.result.current).toBeNull();
+    });
+
+    it('will disable updates if null returned', async () => {
+      const factory = mock(($: Test) => {
+        void $.foo;
+        return null;
+      });
+
+      const didRender = mock(() => {
+        return Test.get(factory);
+      });
+
+      const test = Test.new();
+      const hook = renderWith(test, didRender);
+
+      expect(didRender).toBeCalledTimes(1);
+      expect(hook.result.current).toBeNull();
+
+      test.foo = 2;
+
+      await expect(test).toHaveUpdated();
+
+      expect(factory).toBeCalledTimes(1);
+      expect(didRender).toBeCalledTimes(1);
+    });
+
+    it('will run initial callback syncronously', async () => {
+      class Parent extends State {
+        values = [] as string[];
+      }
+
+      type ChildProps = {
+        value: string;
+      };
+
+      const Child = (props: ChildProps) =>
+        Parent.get(($) => {
+          didPushToValues();
+          $.values = [...$.values, props.value];
+          return null;
+        });
+
+      const parent = Parent.new();
+      const didUpdateValues = mock();
+      const didPushToValues = mock();
+
+      parent.get((state) => {
+        didUpdateValues(state.values.length);
+      });
+
+      render(
+        <Provider for={parent}>
+          <Child value="foo" />
+          <Child value="bar" />
+          <Child value="baz" />
+        </Provider>
+      );
+
+      expect(didPushToValues).toBeCalledTimes(3);
+
+      await expect(parent).toHaveUpdated();
+
+      // Expect updates to have bunched up before new frame.
+      expect(didUpdateValues).toBeCalledTimes(2);
+      expect(didUpdateValues).toBeCalledWith(3);
+    });
+  });
+
+  describe('force update', () => {
+    class Test extends State {
+      foo = 'bar';
+    }
+
+    it('will force a refresh', async () => {
+      const didRender = mock();
+      const didEvaluate = mock();
+      let forceUpdate!: () => void;
+
+      renderWith(Test, () => {
+        didRender();
+        return Test.get((_, update) => {
+          didEvaluate();
+          forceUpdate = update;
+        });
+      });
+
+      expect(didEvaluate).toBeCalledTimes(1);
+      expect(didRender).toBeCalledTimes(1);
+
+      await act(async () => {
+        forceUpdate();
+      });
+
+      expect(didEvaluate).toBeCalledTimes(1);
+      expect(didRender).toBeCalledTimes(2);
+    });
+
+    it('will refresh without reevaluating', async () => {
+      const didEvaluate = mock();
+      const didRender = mock();
+      let forceUpdate!: () => void;
+
+      renderWith(Test, () => {
+        didRender();
+        return Test.get((_, update) => {
+          didEvaluate();
+          forceUpdate = update;
+          // return null to stop subscription.
+          return null;
+        });
+      });
+
+      expect(didEvaluate).toBeCalledTimes(1);
+      expect(didRender).toBeCalledTimes(1);
+
+      act(forceUpdate);
+
+      expect(didEvaluate).toBeCalledTimes(1);
+      expect(didRender).toBeCalledTimes(2);
+    });
+
+    it('will refresh again after promise', async () => {
+      const promise = mockPromise();
+      const didRender = mock();
+
+      let forceUpdate!: <T>(after: Promise<T>) => Promise<T>;
+
+      const { result } = renderWith(Test, () => {
+        didRender();
+        return Test.get((_, update) => {
+          forceUpdate = update;
+          return null;
+        });
+      });
+
+      expect<null>(result.current).toBe(null);
+      expect(didRender).toBeCalledTimes(1);
+
+      await act(async () => {
+        forceUpdate(promise);
+      });
+
+      expect(didRender).toBeCalledTimes(2);
+
+      await act(async () => {
+        promise.resolve();
+      });
+
+      expect(didRender).toBeCalledTimes(3);
+    });
+
+    it('will invoke async function', async () => {
+      const promise = mockPromise();
+      const didRender = mock();
+
+      let forceUpdate!: <T>(after: () => Promise<T>) => Promise<T>;
+
+      renderWith(Test, () => {
+        didRender();
+        return Test.get((_, update) => {
+          forceUpdate = update;
+          return null;
+        });
+      });
+
+      expect(didRender).toBeCalledTimes(1);
+
+      await act(async () => {
+        forceUpdate(() => promise);
+      });
+
+      expect(didRender).toBeCalledTimes(2);
+
+      await act(async () => {
+        promise.resolve();
+      });
+
+      expect(didRender).toBeCalledTimes(3);
+    });
+  });
+
+  describe('async', () => {
+    class Test extends State {
+      foo = 'bar';
+    }
+
+    it('will convert void to null', async () => {
+      const promise = mockPromise<void>();
+
+      const hook = renderWith(Test, () => {
+        return Test.get(async () => promise);
+      });
+
+      await act(async () => promise.resolve(undefined));
+
+      expect(hook.result.current).toBe(null);
+    });
+
+    it('will not subscribe to values', async () => {
+      const promise = mockPromise<string>();
+
+      const test = Test.new();
+      const didRender = mock();
+      const hook = renderWith(test, () => {
+        didRender();
+        return Test.get(async ($) => {
+          void $.foo;
+          return promise;
+        });
+      });
+
+      expect(didRender).toBeCalledTimes(1);
+      expect(hook.result.current).toBeNull();
+
+      await act(async () => {
+        promise.resolve('foobar');
+      });
+
+      // preact flushes this refresh a tick later than react would
+      await waitFor(() => {
+        expect(didRender).toBeCalledTimes(2);
+      });
+
+      expect(hook.result.current).toBe('foobar');
+
+      test.foo = 'foo';
+      await expect(test).toHaveUpdated();
+
+      expect(didRender).toBeCalledTimes(2);
+    });
+
+    it('will refresh and throw if async rejects', async () => {
+      class Test extends State {}
+
+      const promise = mockPromise();
+      const hook = renderWith(Test, () => {
+        try {
+          Test.get(async () => {
+            await promise;
+            throw 'oh no';
+          });
+        } catch (err: any) {
+          return err;
+        }
+      });
+
+      expect(hook.result.current).toBeUndefined();
+
+      await act(async () => {
+        promise.resolve();
+      });
+
+      await waitFor(() => {
+        expect(hook.result.current).toBe('oh no');
+      });
+    });
+  });
+
+  describe('reactive context', () => {
+    class Test extends State {
+      value = 'foo';
+    }
+
+    it('will refresh when upstream instance is replaced', async () => {
+      const test1 = Test.new();
+      const test2 = Test.new();
+
+      test1.value = 'first';
+      test2.value = 'second';
+
+      let current: State | State.Type | Record<string, any> = test1;
+      const didRender = mock();
+
+      const Inner = () => {
+        didRender();
+        return <>{Test.get().value}</>;
+      };
+
+      const element = render(
+        <Provider for={current}>
+          <Inner />
+        </Provider>
+      );
+
+      expect(didRender).toBeCalledTimes(1);
+      expect(element.container.textContent).toBe('first');
+
+      current = test2;
+
+      await act(async () => {
+        element.rerender(
+          <Provider for={current}>
+            <Inner />
+          </Provider>
+        );
+      });
+
+      expect(element.container.textContent).toBe('second');
+      expect(didRender).toBeCalledTimes(2);
+    });
+
+    it('will track new instance after replacement', async () => {
+      const test1 = Test.new();
+      const test2 = Test.new();
+
+      test1.value = 'first';
+      test2.value = 'second';
+
+      let current: any = test1;
+      const didRender = mock();
+
+      const Inner = () => {
+        didRender();
+        const { value } = Test.get();
+        return <>{value}</>;
+      };
+
+      const element = render(
+        <Provider for={current}>
+          <Inner />
+        </Provider>
+      );
+
+      expect(didRender).toBeCalledTimes(1);
+      expect(element.container.textContent).toBe('first');
+
+      current = test2;
+
+      await act(async () => {
+        element.rerender(
+          <Provider for={current}>
+            <Inner />
+          </Provider>
+        );
+      });
+
+      expect(didRender).toBeCalledTimes(2);
+
+      // update new instance - should trigger render
+      await act(async () => {
+        test2.value = 'updated';
+      });
+
+      await waitFor(() => {
+        expect(didRender).toBeCalledTimes(3);
+      });
+
+      expect(element.container.textContent).toBe('updated');
+    });
+
+    it('will not track old instance after replacement', async () => {
+      const test1 = Test.new();
+      const test2 = Test.new();
+
+      test1.value = 'first';
+      test2.value = 'second';
+
+      let current: any = test1;
+      const didRender = mock();
+
+      const Inner = () => {
+        didRender();
+        const { value } = Test.get();
+        return <>{value}</>;
+      };
+
+      const { rerender } = render(
+        <Provider for={current}>
+          <Inner />
+        </Provider>
+      );
+
+      current = test2;
+
+      await act(async () => {
+        rerender(
+          <Provider for={current}>
+            <Inner />
+          </Provider>
+        );
+      });
+
+      expect(didRender).toBeCalledTimes(2);
+
+      // update old instance - should NOT trigger render
+      test1.value = 'stale';
+      await expect(test1).toHaveUpdated();
+
+      expect(didRender).toBeCalledTimes(2);
+    });
+
+    it('will render null when instance is removed', async () => {
+      class Other extends State {
+        label = 'other';
+      }
+
+      const test = Test.new();
+      const other = Other.new();
+
+      let current: any = { test, other };
+      const didRender = mock();
+
+      const Inner = () => {
+        didRender();
+        return <>{Test.get(false)?.value ?? null}</>;
+      };
+
+      const { rerender } = render(
+        <Provider for={current}>
+          <Inner />
+        </Provider>
+      );
+
+      expect(didRender).toBeCalledTimes(1);
+
+      // remove Test from context, keep Other
+      current = { other };
+
+      await act(async () => {
+        rerender(
+          <Provider for={current}>
+            <Inner />
+          </Provider>
+        );
+      });
+
+      await waitFor(() => {
+        expect(didRender).toBeCalledTimes(2);
+      });
+    });
+
+    it('will refresh when implicit instance is replaced', async () => {
+      class Child extends State {
+        value = 'original';
+      }
+
+      class Parent extends State {
+        child = new Child();
+      }
+
+      const parent = new Parent();
+      const didRender = mock();
+
+      const Inner = () => {
+        didRender();
+        return <>{Child.get().value}</>;
+      };
+
+      render(
+        <Provider for={parent}>
+          <Inner />
+        </Provider>
+      );
+
+      expect(didRender).toBeCalledTimes(1);
+
+      await act(async () => {
+        parent.child = new Child({ value: 'replaced' });
+      });
+
+      expect(didRender).toBeCalledTimes(2);
+
+      parent.child.value = 'updated';
+
+      await waitFor(() => {
+        expect(didRender).toBeCalledTimes(3);
+      });
+    });
+
+    it('will track implicit replacement instance', async () => {
+      class Child extends State {
+        value = 'original';
+      }
+
+      class Parent extends State {
+        child = new Child();
+      }
+
+      const parent = new Parent();
+      const didRender = mock();
+
+      const Inner = () => {
+        didRender();
+        return <>{Child.get().value}</>;
+      };
+
+      const element = render(
+        <Provider for={parent}>
+          <Inner />
+        </Provider>
+      );
+
+      expect(element.container.textContent).toBe('original');
+      expect(didRender).toBeCalledTimes(1);
+
+      // replace child implicitly
+      await act(async () => {
+        parent.child = new Child({ value: 'replaced' });
+      });
+
+      expect(element.container.textContent).toBe('replaced');
+      expect(didRender).toBeCalledTimes(2);
+
+      // update the new child - should still trigger render
+      await act(async () => {
+        parent.child.value = 'updated';
+        await expect(parent.child).toHaveUpdated();
+      });
+
+      expect(element.container.textContent).toBe('updated');
+      expect(didRender).toBeCalledTimes(3);
+    });
+
+    it('will use factory with replaced instance', async () => {
+      const test1 = Test.new();
+      const test2 = Test.new();
+
+      test1.value = 'first';
+      test2.value = 'second';
+
+      let current: any = test1;
+      const didCompute = mock();
+
+      const Inner = () => {
+        return (
+          <>
+            {Test.get(($) => {
+              didCompute();
+              return $.value;
+            })}
+          </>
+        );
+      };
+
+      const { rerender } = render(
+        <Provider for={current}>
+          <Inner />
+        </Provider>
+      );
+
+      expect(didCompute).toBeCalledTimes(1);
+
+      current = test2;
+
+      await act(async () => {
+        rerender(
+          <Provider for={current}>
+            <Inner />
+          </Provider>
+        );
+      });
+
+      expect(didCompute).toBeCalledTimes(2);
+    });
   });
 
   describe('get instruction', () => {
@@ -323,6 +1280,145 @@ describe('State.get', () => {
       expect(tryToRender).toThrow(
         /Required Bar not found in context for [\w-]+\./
       );
+    });
+
+    it('will prefer parent over context', () => {
+      class Parent extends State {
+        child = new Child();
+        value = 'foo';
+      }
+
+      class Child extends State {
+        parent = get(Parent);
+      }
+
+      const { result } = renderWith(Parent, () => Parent.use().is);
+
+      expect(result.current.child.parent).toBe(result.current);
+    });
+  });
+
+  describe('strict mode', () => {
+    it('will survive effect remount', async () => {
+      class Test extends State {
+        value = 'foo';
+      }
+
+      const test = Test.new();
+      const didRender = mock();
+
+      const Inner = () => {
+        didRender();
+        return <>{Test.get().value}</>;
+      };
+
+      const element = render(
+        <StrictMode>
+          <Provider for={test}>
+            <Inner />
+          </Provider>
+        </StrictMode>
+      );
+
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(element.container.textContent).toBe('foo');
+
+      await act(async () => {
+        test.value = 'bar';
+      });
+
+      expect(element.container.textContent).toBe('bar');
+    });
+  });
+
+  describe('set instruction', () => {
+    describe('factory', () => {
+      it('will suspend if function is async', async () => {
+        const promise = mockPromise<string>();
+
+        class Test extends State {
+          value = set(() => promise);
+        }
+
+        const hook = renderWith(Test, () => {
+          return Test.get().value;
+        });
+
+        expect(hook.result.current).toBeNull();
+
+        await act(async () => {
+          promise.resolve('hello');
+        });
+
+        await waitFor(() => {
+          expect(hook.result.current).toBe('hello');
+        });
+      });
+
+      it('will refresh and throw if async rejects', async () => {
+        const promise = mockPromise();
+
+        class Test extends State {
+          value = set(() => promise);
+        }
+
+        const hook = renderWith(Test, () => {
+          try {
+            void Test.get().value;
+          } catch (err: any) {
+            if (err instanceof Promise) throw err;
+            else return err;
+          }
+        });
+
+        expect(hook.result.current).toBeNull();
+
+        await act(async () => {
+          promise.reject('oh no');
+        });
+
+        await waitFor(() => {
+          expect(hook.result.current).toBe('oh no');
+        });
+      });
+    });
+
+    describe('placeholder', () => {
+      it('will suspend if value not yet assigned', async () => {
+        class Test extends State {
+          foobar = set<string>();
+        }
+
+        const test = Test.new();
+        const hook = renderWith(test, () => {
+          return Test.get().foobar;
+        });
+
+        expect(hook.result.current).toBeNull();
+
+        // expect refresh caused by update
+        await act(async () => {
+          test.foobar = 'foo!';
+        });
+
+        expect(hook.result.current).toBe('foo!');
+      });
+
+      it('will not suspend if already defined', async () => {
+        class Test extends State {
+          foobar = set<string>();
+        }
+
+        const test = Test.new();
+
+        test.foobar = 'foo!';
+
+        const hook = renderWith(test, () => {
+          return Test.get().foobar;
+        });
+        expect(hook.result.current).toBe('foo!');
+      });
     });
   });
 });
