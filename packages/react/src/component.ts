@@ -6,15 +6,8 @@ import { useHook, useReady } from './runtime';
 const proto = Component.prototype;
 const SEEN = new WeakSet<object>([proto]);
 
-/**
- * In-flight instances by tree position, per ambient context. React makes a
- * fresh instance for every render attempt of the same element, and under
- * concurrent lanes several may be in flight at once - construction order
- * alone cannot tell a stale attempt from one pending commit. What is sound:
- * when an instance COMMITS at a position, every uncommitted instance
- * constructed before it there is dead (a parked lane predating a commit is
- * restarted, never resumed). Each entry's kill pops the attempt's context.
- */
+/** In-flight render attempts by tree position, per ambient context.
+ *  When one commits, older uncommitted attempts at its slot are provably dead. */
 const SLOTS = new WeakMap<Context, Map<string, Slot[]>>();
 
 type Slot = { committed?: boolean; kill: () => void };
@@ -68,8 +61,7 @@ Object.defineProperties(proto, {
       let slots = SLOTS.get(context);
       if (!slots) SLOTS.set(context, (slots = new Map()));
 
-      // Path of key/index up the fiber tree - stable identity for this
-      // element's position, shared by every render attempt of it.
+      // key/index path to root: stable across render attempts of this element
       let slot = '';
       for (let f = (this as any)._reactInternals; f; f = f.return)
         slot += (f.key ?? f.index) + '.';
@@ -134,11 +126,8 @@ function component(
 ) {
   const { render } = from;
   const Render = () => render.call(from, from.props);
-  // Destruction is owned by the context, not React's unmount effect: pop
-  // runs the dispose registered in the context setter. A fiber discarded
-  // before commit never unmounts, but it is killed when a later attempt at
-  // its slot commits, or - if none ever does - its context is still in the
-  // parent's scope and an ancestor pop cascades to destroy it.
+  // Context owns destruction; discarded fibers die via slot supersession
+  // at commit, or by ancestor context.pop() cascade if never superseded.
   const Component = () => {
     from = useHook<Component>((refresh) => {
       if (observer(from) !== null)
