@@ -3,6 +3,7 @@ import { childrenOf, Fragment, isElement, propsOf, typeOf } from '@expressive/mv
 
 import { Redirect } from './redirect';
 import { Router } from './router';
+import { sentinel } from './sentinel';
 import { fullPattern, matchPattern, patternSegment } from './url';
 
 const PARAMS = new WeakMap<Route, Record<string, string> | undefined>();
@@ -29,6 +30,10 @@ export class Route extends Component {
   /** Matches when nothing else in this scope did. Scoped to its parent: a
    * root-level default is the app 404, a nested one the section 404. */
   default = false;
+
+  /** Path abandoned via `notFound()` - this Route stays unmatched while that
+   * path is current. Path-keyed, so navigating away clears it implicitly. */
+  lost?: string = undefined;
 
   /** Nearest mounted Route ancestor, if any. */
   parent = get(Route, false);
@@ -71,6 +76,8 @@ export class Route extends Component {
   get matched(): boolean {
     const { parent } = this;
 
+    if (this.lost && this.lost === this.router.path) return false;
+
     if (this.default)
       return parent ? parent.matched && !parent.matches.length : false;
 
@@ -90,12 +97,12 @@ export class Route extends Component {
    * Redirect/default excluded; see-through scopes seen through to children.
    */
   get active(): Route | undefined | null {
-    const { match } = this.router;
+    const { match, path } = this.router;
     let found: Route | undefined;
 
     const scan = (routes: Route[]): boolean => {
       for (const route of routes) {
-        if (route.redirect || route.default) continue;
+        if (route.redirect || route.default || route.lost === path) continue;
         if (hasRoutes(route)) {
           if (scan(route.inner)) return true;
           continue;
@@ -118,7 +125,7 @@ export class Route extends Component {
     const { match, path } = this.router;
     const collect = (routes: Route[]): string[] =>
       routes.flatMap((route) => {
-        if (route.redirect || route.default) return [];
+        if (route.redirect || route.default || route.lost === path) return [];
         if (!hasRoutes(route))
           return match(route.base, route.to) ? [route.path] : [];
 
@@ -143,6 +150,19 @@ export class Route extends Component {
   goto(url: string, replace = false) {
     if (url === '' || url === '.') return;
     this.router.goto(this.resolve(url), replace);
+  }
+
+  /** Handles `redirect()`/`notFound()` sentinels thrown by descendants; any
+   * other error (or any error once this Route is destroyed) propagates. */
+  catch(error: Error) {
+    const signal = sentinel(error);
+
+    if (!signal || this.get(null)) throw error;
+
+    if (signal.kind === 'redirect')
+      this.goto(signal.to, signal.replace);
+    else
+      this.lost = this.router.path;
   }
 
   render(props = {} as { children?: Component.Node }) {
