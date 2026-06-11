@@ -618,6 +618,8 @@ function compute(this: State, getter: () => unknown, key: string) {
       set: false,
       get: () => {
         if (!proxy) {
+          if (observer(this) === null) return store[key];
+
           connect();
           isAsync = true;
         }
@@ -773,6 +775,8 @@ function access(state: State, property: string, required?: boolean) {
 
   if (METHODS.get(state.constructor)!.has(property))
     return unbind((state as any)[property]);
+
+  if (observer(state) === null) return undefined;
 
   const error = new Error(`${state}.${property} is not yet available.`);
   const promise = new Promise<any>((resolve, reject) => {

@@ -600,6 +600,18 @@ describe('get method', () => {
       await expect(suspense).resolves.toBe('foobar');
     });
 
+    it('will read undefined for pending value after destroyed', () => {
+      class Test extends State {
+        foo = set(() => new Promise<string>(() => {}), true);
+      }
+
+      const test = Test.new();
+
+      test.set(null);
+
+      expect(test.foo).toBeUndefined();
+    });
+
     it('will suspend if undefined in strict mode', async () => {
       class Test extends State {
         foo?: string = undefined;
@@ -1998,6 +2010,45 @@ describe('set method', () => {
       expect(callback).toBeCalledTimes(1);
     });
 
+    it('will disallow set with config if destroyed', () => {
+      class Test extends State {
+        foo = 0;
+      }
+
+      const test = Test.new();
+
+      test.set(null);
+
+      expect(() => test.set('foo', { value: 1 })).toThrow(
+        /Tried to update [\w-]+\.foo but state is destroyed\./
+      );
+    });
+
+    it('will disallow assign if destroyed', () => {
+      class Test extends State {
+        foo = 0;
+      }
+
+      const test = Test.new();
+
+      test.set(null);
+
+      expect(() => test.set({ foo: 1 })).toThrow(/terminated/);
+    });
+
+    it('will still read values after destroyed', () => {
+      class Test extends State {
+        foo = 1;
+      }
+
+      const test = Test.new();
+
+      test.foo = 2;
+      test.set(null);
+
+      expect(test.foo).toBe(2);
+    });
+
     it('will silently skip update after destroyed', () => {
       class Test extends State {
         foo = 0;
@@ -2590,6 +2641,40 @@ describe('on method (static)', () => {
 });
 
 describe('computed (getters)', () => {
+  describe('destroyed', () => {
+    it('will read last value after destroy', () => {
+      class Test extends State {
+        source = 2;
+        get value() {
+          return this.source * 2;
+        }
+      }
+
+      const test = Test.new();
+
+      expect(test.value).toBe(4);
+
+      test.set(null);
+
+      expect(test.value).toBe(4);
+    });
+
+    it('will read undefined if never evaluated before destroy', () => {
+      class Test extends State {
+        source = 2;
+        get value() {
+          return this.source * 2;
+        }
+      }
+
+      const test = Test.new();
+
+      test.set(null);
+
+      expect(test.value).toBeUndefined();
+    });
+  });
+
   describe('property descriptors', () => {
     it('will be enumerable', () => {
       class Test extends State {
