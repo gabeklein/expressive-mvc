@@ -55,9 +55,28 @@ bun for tasks + tests, changesets for releases, no turbo.
 - **pr.yml** (on PRs): reuse `.github/actions/setup`; run
   `bun run test` + `bun run build`. Optionally `changeset status --since main`
   as a non-blocking nudge when a PR carries no changeset.
-- **release.yml** (on push to `main`): `changesets/action@v1` with `NPM_TOKEN`.
-  Opens/updates the "Version Packages" PR; on merge, publishes `mvc` + `react`.
-  Hotfixes pushed straight to `main` flow through the same Version PR gate.
+- **release.yml** (on push to `main`): `changesets/action@v1`. Opens/updates
+  the "Version Packages" PR; on merge, publishes `mvc` + `react`. Hotfixes
+  pushed straight to `main` flow through the same Version PR gate.
+- **Auth is OIDC trusted publishing - no NPM_TOKEN exists.** (npm killed
+  classic tokens 2025-12-09; granular tokens are 90-day/2FA.) Configured
+  2026-06-12 on npmjs.com for both `@expressive/mvc` and `@expressive/react`:
+  publisher `gabeklein/expressive-mvc`, workflow `release.yml` (exact-match,
+  case-sensitive), environment `release`, allowed action `npm publish` only.
+  Consequences for the publish job:
+  - `permissions: { id-token: write, contents: read }` and
+    `environment: release` - the GitHub environment must exist with
+    deployment branches restricted to `main` (publish capability pinned to
+    main structurally, not just by `on:` trigger).
+  - npm CLI >= 11.5.1 / node >= 22.14 required for OIDC, and
+    `changeset publish` shells to npm - so release.yml keeps `setup-node`
+    (node 24) alongside bun. Bun-only applies to pr.yml.
+  - Provenance attestations are automatic (public repo, no flag).
+  - Preflight: drop `npm whoami` (no token identity pre-publish);
+    version-exists check + dry-run pack stay.
+  - Renaming the workflow file requires updating both npm-side configs.
+  - preact/solid/router later: never-published names likely need their
+    first publish handled before a trusted publisher can attach.
 - **Branch protection** on `main`: require PR checks. This + CI-only publish is
   what actually protects `main`.
 
