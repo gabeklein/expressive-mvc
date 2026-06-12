@@ -21,6 +21,10 @@
     "dist"
   ],
   "type": "module",
+  "sideEffects": [
+    "./dist/index.js",
+    "./dist/jsx-runtime.js"
+  ],
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
@@ -31,6 +35,14 @@
     "./state": {
       "types": "./dist/state.d.ts",
       "default": "./dist/state.js"
+    },
+    "./jsx-runtime": {
+      "types": "./dist/jsx-runtime.d.ts",
+      "default": "./dist/jsx-runtime.js"
+    },
+    "./jsx-dev-runtime": {
+      "types": "./dist/jsx-dev-runtime.d.ts",
+      "default": "./dist/jsx-dev-runtime.js"
     }
   },
   "engines": {
