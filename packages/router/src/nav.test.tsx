@@ -153,3 +153,84 @@ it('Group slot can wrap a group as a section (opt-in)', async () => {
   expect(section!.textContent).toContain('Docs');
   expect(links(view)).toEqual(['/a']);
 });
+
+it('suspending Item takes the whole nav, not one row', async () => {
+  let resolve!: () => void;
+  let ready = false;
+  const pending = new Promise<void>((r) => (resolve = r)).then(() => {
+    ready = true;
+  });
+
+  class MyNav extends NavLinks {
+    Item({ route }: { route: Route }) {
+      if (route.path === '/b' && !ready) throw pending;
+      return <a href={route.path}>{route.path}</a>;
+    }
+  }
+
+  const Page = ({ children }: { children?: React.ReactNode }) => (
+    <div>
+      <span data-page />
+      <MyNav />
+      {children}
+    </div>
+  );
+
+  const view = await renderAct(
+    <Route as={Page}>
+      <Route to="a" />
+      <Route to="b" />
+    </Route>
+  );
+
+  // Entry declares no boundary (fallback = false), so one suspending Item
+  // suspends the nav as a unit - sibling rows don't render around a hole,
+  // and the rest of the page is untouched.
+  expect(links(view)).toEqual([]);
+  expect(view.container.querySelector('[data-page]')).toBeTruthy();
+
+  await act(async () => {
+    resolve();
+    await pending;
+  });
+  expect(links(view)).toEqual(['/a', '/b']);
+});
+
+it('NavLinks fallback shows while an Item suspends', async () => {
+  let resolve!: () => void;
+  let ready = false;
+  const pending = new Promise<void>((r) => (resolve = r)).then(() => {
+    ready = true;
+  });
+
+  class MyNav extends NavLinks {
+    fallback = (<span data-pending />);
+
+    Item({ route }: { route: Route }) {
+      if (!ready) throw pending;
+      return <a href={route.path}>{route.path}</a>;
+    }
+  }
+
+  const Page = ({ children }: { children?: React.ReactNode }) => (
+    <div>
+      <MyNav />
+      {children}
+    </div>
+  );
+
+  const view = await renderAct(
+    <Route as={Page}>
+      <Route to="a" />
+    </Route>
+  );
+
+  expect(view.container.querySelector('[data-pending]')).toBeTruthy();
+
+  await act(async () => {
+    resolve();
+    await pending;
+  });
+  expect(view.container.querySelector('[data-pending]')).toBeNull();
+  expect(links(view)).toEqual(['/a']);
+});
