@@ -1,6 +1,5 @@
-/** @jsxImportSource react */
 import { Component, get, use } from '@expressive/react';
-import { ComponentType, Fragment, ReactNode } from 'react';
+import { Fragment, ReactNode } from 'react';
 
 import { Link } from './link';
 import { Route } from './route';
@@ -58,7 +57,7 @@ export class NavLinks extends Component {
   }
 }
 
-type ItemType = ComponentType<{ route: Route; active: boolean; label?: string; meta: Route['meta'] }>;
+type ItemType = (props: { route: Route; active: boolean; label?: string; meta: Route['meta'] }) => ReactNode;
 
 function Entry(props: { route: Route; Item: ItemType; children?: ReactNode }) {
   const route = use(props.route);
