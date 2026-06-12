@@ -67,6 +67,10 @@ class Entry extends Component {
   route?: Route = undefined;
   Item?: ItemType = undefined;
 
+  /** Entry never suspends itself; no boundary here - a suspending custom
+   * `Item` bubbles to NavLinks (or above) rather than blanking one row. */
+  fallback = false;
+
   render(props = {} as { children?: Component.Node }) {
     const { route, Item } = this;
 
