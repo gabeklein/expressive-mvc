@@ -1,6 +1,6 @@
 import './App.css';
 
-import { Button } from '@common';
+import Button from '@common/Button';
 import State from '@expressive/react';
 
 // A State tracks values; `Control` is convention for component-scoped state.
