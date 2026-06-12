@@ -22,19 +22,20 @@ function mockHost(overrides?: Partial<HostRuntime>): HostRuntime {
 const runtime = mockHost();
 
 describe('unregistered', () => {
+  const noHost = 'No JSX host is registered for @expressive/mvc.';
+
   // Ordering matters: these run before any host() call in this module,
   // and no other test file touches the jsx module.
   it('will throw on element creation', () => {
-    expect(() => jsx('div', {})).toThrow(
-      'No JSX host is registered for @expressive/mvc.'
-    );
+    expect(() => jsx('div', {})).toThrow(noHost);
   });
 
   it('will throw on introspection', () => {
-    expect(() => childrenOf([])).toThrow(/No JSX host/);
-    expect(() => isElement({})).toThrow(/No JSX host/);
-    expect(() => typeOf({})).toThrow(/No JSX host/);
-    expect(() => propsOf({})).toThrow(/No JSX host/);
+    const noHost = /No JSX host/;
+    expect(() => childrenOf([])).toThrow(noHost);
+    expect(() => isElement({})).toThrow(noHost);
+    expect(() => typeOf({})).toThrow(noHost);
+    expect(() => propsOf({})).toThrow(noHost);
   });
 });
 
