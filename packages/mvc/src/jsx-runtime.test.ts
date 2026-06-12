@@ -1,9 +1,8 @@
 import { describe, expect, it, mock } from 'bun:test';
 
-import { childrenOf, Fragment, host, isElement, propsOf, typeOf } from './jsx';
-import { jsx, jsxs, Fragment as runtimeFragment } from './jsx-runtime';
-import { jsxDEV } from './jsx-dev-runtime';
-import type { HostRuntime } from './jsx';
+import { childrenOf, Fragment, host, isElement, jsx, jsxs, propsOf, typeOf } from './jsx-runtime';
+import { jsxDEV, Fragment as devFragment } from './jsx-dev-runtime';
+import type { HostRuntime } from './jsx-runtime';
 
 const HOST_FRAGMENT = Symbol('host.Fragment');
 
@@ -66,7 +65,7 @@ describe('runtime', () => {
   });
 
   it('will translate Fragment to host Fragment', () => {
-    expect(runtimeFragment).toBe(Fragment);
+    expect(devFragment).toBe(Fragment);
     expect((jsx(Fragment, {}) as any).type).toBe(HOST_FRAGMENT);
     expect((jsxs(Fragment, {}) as any).type).toBe(HOST_FRAGMENT);
     expect((jsxDEV(Fragment, {}) as any).type).toBe(HOST_FRAGMENT);
