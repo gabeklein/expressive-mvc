@@ -169,6 +169,21 @@ These run last because they finalize and then enforce the convention rename:
 3. **Single thin bun image.** Drop the CI-builds-under-node requirement;
    update AGENTS.md when release.yml lands in Phase 2.
 
+## Registry state (audited 2026-06-12; constrains the first release)
+
+- The 0.77 lineage published under the old name `@expressive/state`
+  (latest: 0.77.0); registry react@0.77.0 depends on it. The
+  `@expressive/mvc` rename has never been published.
+- `@expressive/mvc` on the registry is an older lineage: latest 0.73.1,
+  and a `1.0.0` from the 2021 beta era is permanently burned - a future
+  real 1.0 must be 1.0.1+ or skip to 2.0.
+- Repo react's `@expressive/mvc: ^0.77.0` is unsatisfiable on the registry
+  (no 0.77.x exists; 1.0.0 misses the caret). **The inaugural release must
+  include an mvc changeset** so mvc 0.77.x and react publish together;
+  react alone would ship a broken dep. Phase 2's validation release (a
+  deliberate mvc patch changeset) satisfies this naturally.
+- preact/solid never published; zeroed to 0.0.0 alongside router.
+
 ## Out of scope
 
 - Publishing preact/solid (deferred; config leaves the door open).
