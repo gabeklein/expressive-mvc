@@ -45,8 +45,7 @@
   },
   "scripts": {
     "build": "tsdown",
-    "test": "tsc --noEmit && bun test --coverage --only-failures",
-    "preversion": "npm run test && npm run build"
+    "test": "tsc --noEmit && bun test --coverage --only-failures"
   },
   "devDependencies": {
     "@types/node": "^18.19.0",

@@ -6,7 +6,7 @@ Contributor guide for AI agents working in this repository.
 
 Expressive MVC - class-based reactive state management library. For API reference, read [skills/SKILL.md](skills/SKILL.md) and linked sub-files first. Consult source only when docs are insufficient.
 
-Monorepo: bun workspaces + lerna. Install, tests, and builds run under bun (`bun install`, `bun test`, `bun run build`). Builds on CI run under node (`node --run build`).
+Monorepo: bun workspaces + changesets. Install, tests, and builds run under bun (`bun install`, `bun test`, `bun run build`). Builds on CI run under node (`node --run build`).
 
 ## Structure
 
@@ -23,7 +23,7 @@ skills/         - API reference docs (also published as skills.sh skill)
 ```bash
 bun install              # Install deps
 bun run test             # Run package test scripts (type check + bun test)
-bun run build            # Build all packages (lerna under bun)
+bun run build            # Build all packages (bun --filter, dependency order)
 ```
 
 Per-package: `tsc --noEmit && bun test --coverage`
@@ -74,9 +74,16 @@ await expect(state).not.toHaveUpdated();
 
 ## Change flow
 
+- When starting actual work, switch from any agent-scratch branch (`claude/*`) to a conventional named branch (`feat/...`, `fix/...`, `chore/...`) before the first real commit.
 - New features and non-trivial refactors begin with a root `PLAN.md` as the branch's first commit, capturing agreed scope, key decisions, and approach before implementation.
 - Keep `PLAN.md` current as the plan evolves. Close to merge, delete it and migrate its content into the PR summary and changeset entries.
-- (Changesets adoption is under evaluation; once adopted, PLAN content feeds the changeset files.)
+- Write a changeset (`bun run changeset`) when a change is user-facing: new feature, behavior change, API addition, breaking change.
+- No changeset for internal refactors, test-only changes, or fixes with no observable effect. PRs may legitimately carry zero changesets.
+
+### Releasing
+
+- Only `@expressive/mvc` and `@expressive/react` are published; `preact` and `solid` are private and ignored by changesets.
+- Merged changesets accumulate on `main`; CI maintains a "Version Packages" PR (`changeset version`). Merging that PR triggers `changeset publish` from CI. No local publishing.
 
 ## Guardrails
 
