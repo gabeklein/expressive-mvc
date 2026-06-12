@@ -11,6 +11,7 @@
     "strict": true,
     "types": ["bun", "react"],
     "paths": {
+      "@expressive/mvc/jsx-runtime": ["../mvc/src/jsx-runtime"],
       "@expressive/*": ["../*/src"]
     }
   },

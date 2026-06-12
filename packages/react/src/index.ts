@@ -1,5 +1,6 @@
 import { createElement, useEffect, useRef, useState } from 'react';
 
+import './jsx-runtime';
 import { State } from './state';
 import { Runtime } from './runtime';
 import { Consumer, Provider } from './context';
