@@ -146,15 +146,25 @@ These run last because they finalize and then enforce the convention rename:
    after migrating its content into the PR summary + changeset entries - which
    is also what makes this PR pass its own new guard.
 
-## Open questions to resolve during implementation
+## Open questions - RESOLVED (verified by dry-run probe)
 
-1. **bun + `changeset publish`:** `changeset publish` shells to `npm publish`,
-   which doesn't resolve `workspace:`. Either (a) `changeset version` rewrites
-   ranges to concrete versions before publish (verify), or (b) override the
-   release step to `bun publish` per package (resolves `workspace:` natively).
-   Validate with `--dry-run` before first real publish.
-2. Changelog generator: plain git vs GitHub (PR/author links; needs a token).
-3. Single thin bun image vs keep node for builds (see Phase 2 image note).
+1. **Publish step is `bun publish` per package, not `changeset publish`.**
+   Verified empirically: `changeset version` bumps versions (incl. dependent
+   bumps) but leaves `workspace:` ranges untouched, and `npm pack` ships
+   `workspace:` verbatim - broken manifest. `bun pm pack` / `bun publish`
+   rewrites it natively. Consequences for release.yml:
+   - publish job: per-package `bun publish` for each public package, then
+     `bunx changeset tag` for git tags.
+   - **`bun install` must run after the version bump and before publish** -
+     bun resolves the rewrite from the lockfile, not the bumped manifest
+     (probe embedded the stale version without it).
+   - Internal deps use `workspace:^` (rewrites to `^x.y.z`); `workspace:*`
+     would publish exact pins, making every mvc release strictly require a
+     paired react release.
+2. **Changelog generator: `@changesets/changelog-github`** (PR/author links;
+   GITHUB_TOKEN is already present in the Version PR action).
+3. **Single thin bun image.** Drop the CI-builds-under-node requirement;
+   update AGENTS.md when release.yml lands in Phase 2.
 
 ## Out of scope
 

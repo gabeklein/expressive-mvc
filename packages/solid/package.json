@@ -20,7 +20,7 @@
     "access": "public"
   },
   "dependencies": {
-    "@expressive/mvc": "workspace:*"
+    "@expressive/mvc": "workspace:^"
   },
   "devDependencies": {
     "@solidjs/testing-library": "^0.8.8",
