@@ -104,6 +104,20 @@ describe('BrowserRouter', () => {
     expect(router.current.path).toBe('/replaced-external');
   });
 
+  it('back/forward delegate to window.history', () => {
+    const back = spyOn(window.history, 'back');
+    const forward = spyOn(window.history, 'forward');
+
+    router.current.back();
+    router.current.forward();
+
+    expect(back).toHaveBeenCalledTimes(1);
+    expect(forward).toHaveBeenCalledTimes(1);
+
+    back.mockRestore();
+    forward.mockRestore();
+  });
+
   it('removes popstate listener on destroy', () => {
     const remove = spyOn(window, 'removeEventListener');
     router.current.set(null);

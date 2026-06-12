@@ -770,3 +770,32 @@ describe('default', () => {
     expect(view.container.textContent).toBe('F');
   });
 });
+it('match keeps identity when recompute yields equal params', async () => {
+  location('/posts/foo');
+  let leaf!: Route;
+  render(<Route to="/posts/:id" is={(r) => (leaf = r)} />);
+
+  const first = leaf.match;
+  expect(first).toEqual({ id: 'foo' });
+
+  // Case-insensitive literal: the path changes (forcing recompute) but the
+  // captures are equal, so match returns the previous object - reactive
+  // consumers see no change.
+  await act(async () => router.current.goto('/POSTS/foo'));
+  expect(leaf.match).toBe(first!);
+});
+
+it('deregisters a child from parent.inner on unmount', async () => {
+  location('/');
+  let parent!: Route;
+
+  const view = await renderAct(
+    <Route is={(r) => (parent = r)}>
+      <Route to="a" />
+    </Route>
+  );
+  expect(parent.inner.map((r) => r.path)).toEqual(['/a']);
+
+  await act(async () => view.rerender(<Route is={(r) => (parent = r)} />));
+  expect(parent.inner).toEqual([]);
+});
