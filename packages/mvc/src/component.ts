@@ -2,6 +2,8 @@ import { Context } from './context';
 import { set } from './field/set';
 import { State, unbind } from './state';
 
+import type { Host } from './jsx-runtime';
+
 const PENDING = new WeakMap<object, Component>();
 
 /** Per-class composed content render. */
@@ -9,26 +11,9 @@ const CHAIN = new WeakMap<Function, Function>();
 
 declare namespace Component {
   /**
-   * Per-adapter interpretation manifest. Each adapter augments this interface to
-   * declare how it renders; the first member is `node` - the element type produced
-   * by `Component.render`. Canonical elements slot in later as additional members
-   * via the same augmentation - no new seam.
-   *
-   * ```ts
-   * // @expressive/react
-   * declare module '@expressive/mvc' {
-   *   namespace Component { interface Host { node: React.ReactNode } }
-   * }
-   * ```
-   *
-   * Only one adapter is expected per compilation; two augmenting `node` with
-   * different types in the same build would conflict - by design.
-   */
-  interface Host { }
-
-  /**
-   * Host element type produced by `Component.render`.
-   * Resolves to `unknown` until an adapter augments {@link Host} with `node`.
+   * Host element type produced by `Component.render`. Delegates to the
+   * {@link Host} manifest on the jsx-runtime entry; resolves to `unknown`
+   * until an adapter augments it with `node`.
    */
   type Node = Host extends { node: infer T } ? T : unknown;
 
