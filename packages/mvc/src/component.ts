@@ -18,7 +18,13 @@ declare namespace Component {
   type Node = Host extends { node: infer T } ? T : unknown;
 
   interface BaseProps<T extends Component> {
-    /** Callback for newly created instance. Only called once. */
+    /**
+     * Callback for newly created instance. Only called once.
+     *
+     * Runs after props apply but **before** the `new()` lifecycle hook - so it
+     * may configure state that `new()` then observes. To react to a fully
+     * initialized instance instead, use `watch` or an effect.
+     */
     is?: (instance: T) => void;
 
     /**

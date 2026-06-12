@@ -48,8 +48,9 @@ declare namespace State {
   type Args<T extends State = any> = (Args<T> | Init<T> | Assign<T> | void)[];
 
   /**
-   * State constructor callback - is called when State finishes intializing.
-   * Returned function will run when state is destroyed.
+   * State constructor callback - runs during activation, in argument order,
+   * before the `new()` lifecycle hook (so it may configure state `new()`
+   * will observe). Returned function will run when state is destroyed.
    */
   type Init<T extends State = State> = (
     this: T,
