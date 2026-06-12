@@ -1,3 +1,4 @@
+/** @jsxImportSource react */
 import { Component, get } from '@expressive/react';
 import { AnchorHTMLAttributes, MouseEvent } from 'react';
 

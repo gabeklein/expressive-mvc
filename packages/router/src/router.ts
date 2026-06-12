@@ -1,4 +1,4 @@
-import { Component } from '@expressive/react';
+import { Component } from '@expressive/mvc';
 
 import { Route } from './route';
 import { Match, fullPattern, matchPattern, patternSegment } from './url';

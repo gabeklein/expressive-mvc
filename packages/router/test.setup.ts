@@ -1,5 +1,6 @@
 import { afterEach, beforeEach } from 'bun:test';
 import { act, cleanup, render } from '@testing-library/react';
+import '@expressive/react';
 
 import '../mvc/test.setup';
 import { BrowserRouter } from './src/router';

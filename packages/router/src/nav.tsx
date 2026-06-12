@@ -1,3 +1,4 @@
+/** @jsxImportSource react */
 import { Component, get, use } from '@expressive/react';
 import { ComponentType, Fragment, ReactNode } from 'react';
 

@@ -1,4 +1,4 @@
-import { Component, get } from '@expressive/react';
+import { Component, get } from '@expressive/mvc';
 
 import { Route } from './route';
 
