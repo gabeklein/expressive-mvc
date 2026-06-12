@@ -5,13 +5,11 @@ export default defineConfig({
   dts: true,
   sourcemap: true,
   outDir: 'dist',
-  external: ['./state', './jsx-runtime'],
+  external: ['./state'],
   outExtensions: () => ({ js: '.js' }),
   entry: {
     index: 'src/index.ts',
-    state: 'src/state.ts',
-    'jsx-runtime': 'src/jsx-runtime.ts',
-    'jsx-dev-runtime': 'src/jsx-dev-runtime.ts'
+    state: 'src/state.ts'
   },
   format: ['esm'],
   outputOptions: {
