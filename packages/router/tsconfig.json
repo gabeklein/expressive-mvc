@@ -11,6 +11,7 @@
     "strict": true,
     "types": ["bun", "react"],
     "paths": {
+      "@expressive/mvc/*": ["../mvc/src/*"],
       "@expressive/*": ["../*/src"]
     }
   },
