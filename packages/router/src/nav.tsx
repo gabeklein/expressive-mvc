@@ -1,5 +1,4 @@
-import { Component, get, use } from '@expressive/react';
-import { Fragment, ReactNode } from 'react';
+import { Component, get } from '@expressive/mvc';
 
 import { Link } from './link';
 import { Route } from './route';
@@ -7,11 +6,11 @@ import { Route } from './route';
 export class NavLinks extends Component {
   route = get(Route);
 
-  List(props: { children?: ReactNode }): ReactNode {
+  List(props: { children?: Component.Node }): Component.Node {
     return <ul>{props.children}</ul>;
   }
 
-  Item(props: { route: Route; active: boolean; label?: string; meta: Route['meta'] }): ReactNode {
+  Item(props: { route: Route; active: boolean; label?: string; meta: Route['meta'] }): Component.Node {
     const { route, active, label } = props;
     return (
       <Link to={route.path} aria-current={active ? 'page' : undefined}>
@@ -26,7 +25,7 @@ export class NavLinks extends Component {
    * (the node's `label`/`meta` describe it), turning tree structure into nav
    * sections with no explicit navigation layer.
    */
-  Group(props: { route: Route; children?: ReactNode }): ReactNode {
+  Group(props: { route: Route; children?: Component.Node }): Component.Node {
     return props.children;
   }
 
@@ -34,7 +33,7 @@ export class NavLinks extends Component {
     return this.branch(this.route.inner);
   }
 
-  branch(routes: Route[]): ReactNode {
+  branch(routes: Route[]): Component.Node {
     const { Item, List, Group } = this;
 
     return (
@@ -57,15 +56,27 @@ export class NavLinks extends Component {
   }
 }
 
-type ItemType = (props: { route: Route; active: boolean; label?: string; meta: Route['meta'] }) => ReactNode;
+type ItemType = (props: { route: Route; active: boolean; label?: string; meta: Route['meta'] }) => Component.Node;
 
-function Entry(props: { route: Route; Item: ItemType; children?: ReactNode }) {
-  const route = use(props.route);
+/**
+ * Per-item reactive wrapper. `route` arrives as a prop and becomes a managed
+ * property, so reads in render (`route.matched`) wire cross-state
+ * subscriptions - same idiom as `Route.router`, no host hook involved.
+ */
+class Entry extends Component {
+  route?: Route = undefined;
+  Item?: ItemType = undefined;
 
-  return (
-    <Fragment>
-      <props.Item route={route} active={route.matched} label={route.label} meta={route.meta} />
-      {props.children}
-    </Fragment>
-  )
+  render(props = {} as { children?: Component.Node }) {
+    const { route, Item } = this;
+
+    if (!route || !Item) return null;
+
+    return (
+      <>
+        <Item route={route} active={route.matched} label={route.label} meta={route.meta} />
+        {props.children}
+      </>
+    );
+  }
 }
