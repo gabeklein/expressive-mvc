@@ -45,9 +45,12 @@ export class Route extends Component {
   /** Captured params from the current match, or `undefined` when unmatched.
    * Stable identity across reads when captures are unchanged. */
   get match(): Record<string, string> | undefined {
+    // Key by the real instance - this getter runs under observer proxies too,
+    // and per-proxy entries would break identity stability across contexts.
+    const self = this.is;
     const next = this.router.match(this.base, this.to)?.params;
-    const has = PARAMS.has(this);
-    const prev = PARAMS.get(this);
+    const has = PARAMS.has(self);
+    const prev = PARAMS.get(self);
 
     if (has && !next === !prev) {
       if (!next) return prev;
@@ -56,7 +59,7 @@ export class Route extends Component {
         return prev;
     }
 
-    PARAMS.set(this, next);
+    PARAMS.set(self, next);
     return next;
   }
 
