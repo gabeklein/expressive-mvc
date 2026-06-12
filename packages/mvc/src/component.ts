@@ -80,9 +80,13 @@ class Component extends State {
    */
   fallback: Component.Node = set(null);
 
-  constructor(props: any = {}, ...rest: any[]) {
+  constructor(props?: any, ...rest: any[]) {
+    if (props == null) props = {};
+
     const seen = {} as Record<string, undefined>;
     const copy = PENDING.get(props);
+
+    if (typeof props == 'object') merge(props);
 
     function merge(props: {}) {
       for (const k in props) seen[k] = undefined;
@@ -90,7 +94,7 @@ class Component extends State {
     }
 
     super(copy ? [] : [
-      merge(props),
+      props,
       rest.filter((x) => !(x instanceof Context)),
       () => {
         props.is?.(this);

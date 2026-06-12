@@ -199,3 +199,26 @@ describe('render chain', () => {
     expect(Solo.new({}).render()).toBe('just me');
   });
 });
+
+describe('leading function argument', () => {
+  it('will run as init callback (State semantics)', () => {
+    class Test extends Component {
+      value = '';
+    }
+
+    const test = Test.new(function (this: Test) {
+      this.value = 'initialized';
+    });
+
+    expect(test.value).toBe('initialized');
+  });
+
+  it('will register returned function as cleanup', () => {
+    const cleanup = mock();
+    const test = Component.new(() => cleanup);
+
+    expect(cleanup).not.toHaveBeenCalled();
+    test.set(null);
+    expect(cleanup).toHaveBeenCalledTimes(1);
+  });
+});
