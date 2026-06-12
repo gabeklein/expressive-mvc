@@ -48,7 +48,7 @@
     "test": "tsc --noEmit && bun test --coverage --only-failures"
   },
   "dependencies": {
-    "@expressive/mvc": "workspace:^"
+    "@expressive/mvc": "^0.77.0"
   },
   "devDependencies": {
     "@testing-library/react": "^16.3.0",

@@ -148,19 +148,22 @@ These run last because they finalize and then enforce the convention rename:
 
 ## Open questions - RESOLVED (verified by dry-run probe)
 
-1. **Publish step is `bun publish` per package, not `changeset publish`.**
-   Verified empirically: `changeset version` bumps versions (incl. dependent
-   bumps) but leaves `workspace:` ranges untouched, and `npm pack` ships
-   `workspace:` verbatim - broken manifest. `bun pm pack` / `bun publish`
-   rewrites it natively. Consequences for release.yml:
-   - publish job: per-package `bun publish` for each public package, then
-     `bunx changeset tag` for git tags.
-   - **`bun install` must run after the version bump and before publish** -
-     bun resolves the rewrite from the lockfile, not the bumped manifest
-     (probe embedded the stale version without it).
-   - Internal deps use `workspace:^` (rewrites to `^x.y.z`); `workspace:*`
-     would publish exact pins, making every mvc release strictly require a
-     paired react release.
+1. **Drop the `workspace:` protocol; use concrete caret ranges + plain
+   `changeset publish`.** Verified empirically: `changeset version` leaves
+   `workspace:` ranges untouched and `npm pack` (which `changeset publish`
+   shells to) ships them verbatim - broken manifest. Rather than a bespoke
+   per-package `bun publish` loop, internal deps are plain `^x.y.z`:
+   - bun still links workspace packages whose version satisfies the range
+     (verified: react resolves mvc via symlink, registry untouched).
+   - `changeset version` keeps the ranges in sync with bumps
+     (`updateInternalDependencies: patch`), in the same commit - so the
+     repo manifest is byte-for-byte what publishes, and stock
+     `changeset publish` works (tags + already-published idempotency intact).
+   - **Desync guard (must-have, makes local-link drift impossible):** CI
+     installs with `bun install --frozen-lockfile`. A version that falls
+     outside a sibling's range changes resolution, which changes the
+     lockfile, which fails the frozen install - so a desynced pair can
+     never reach `main`, and only CI publishes.
 2. **Changelog generator: `@changesets/changelog-github`** (PR/author links;
    GITHUB_TOKEN is already present in the Version PR action).
 3. **Single thin bun image.** Drop the CI-builds-under-node requirement;

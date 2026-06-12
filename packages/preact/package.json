@@ -24,8 +24,8 @@
     "test": "tsc --noEmit && bun test --coverage"
   },
   "dependencies": {
-    "@expressive/react": "workspace:^",
-    "@expressive/mvc": "workspace:^"
+    "@expressive/react": "^0.77.0",
+    "@expressive/mvc": "^0.77.0"
   },
   "devDependencies": {
     "@testing-library/preact": "^3.2.3",
