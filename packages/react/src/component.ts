@@ -9,12 +9,6 @@ const SEEN = new WeakSet<object>([proto]);
 type ComponentType = typeof Component & typeof React.Component;
 
 declare module '@expressive/mvc' {
-  namespace Component {
-    interface Host {
-      node: React.ReactNode;
-    }
-  }
-
   interface Component {
     /** @deprecated Only to satisfy React JSX. Use `this.get(State)` instead. */
     readonly context: Context;

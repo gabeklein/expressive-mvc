@@ -3,6 +3,14 @@ import { Fragment, jsx, jsxs } from 'react/jsx-runtime';
 import { host } from '@expressive/mvc/jsx-runtime';
 
 import type { Component } from '@expressive/mvc';
+import type { JSX as ReactJSX, ReactNode } from 'react';
+
+declare module '@expressive/mvc/jsx-runtime' {
+  interface Host {
+    node: ReactNode;
+    intrinsics: ReactJSX.IntrinsicElements;
+  }
+}
 
 host({
   jsx,
