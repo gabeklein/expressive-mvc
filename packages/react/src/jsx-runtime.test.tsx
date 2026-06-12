@@ -1,0 +1,47 @@
+import './jsx-runtime';
+
+import { describe, expect, it } from 'bun:test';
+import { createElement, Fragment as ReactFragment } from 'react';
+import { childrenOf, Fragment, isElement, jsx, propsOf, typeOf } from '@expressive/mvc/jsx-runtime';
+
+const element = createElement('div', { id: 'foo' });
+
+describe('host registration', () => {
+  it('will create host elements', () => {
+    const node = jsx('span', { children: 'hi' }) as React.ReactElement;
+
+    expect(isElement(node)).toBe(true);
+    expect(node.type).toBe('span');
+  });
+
+  it('will translate Fragment sentinel to host Fragment', () => {
+    const node = jsx(Fragment, {}) as React.ReactElement;
+
+    expect(node.type).toBe(ReactFragment);
+    expect(typeOf(node)).toBe(Fragment);
+  });
+});
+
+describe('introspection', () => {
+  it('will flatten children', () => {
+    const items = childrenOf(['a', ['b', element]]);
+
+    expect(items).toHaveLength(3);
+    expect(items[0]).toBe('a' as never);
+  });
+
+  it('will identify elements', () => {
+    expect(isElement(element)).toBe(true);
+    expect(isElement({ type: 'div' })).toBe(false);
+  });
+
+  it('will read element type', () => {
+    expect(typeOf(element)).toBe('div');
+    expect(typeOf('text')).toBeUndefined();
+  });
+
+  it('will read element props', () => {
+    expect(propsOf(element)).toEqual({ id: 'foo' });
+    expect(propsOf('text')).toEqual({});
+  });
+});
