@@ -1,12 +1,27 @@
 import { Component, get } from '@expressive/mvc';
-import type { AnchorHTMLAttributes, MouseEvent } from 'react';
+import type { JSX } from '@expressive/mvc/jsx-runtime';
 
 import { Route } from './route';
 
+/** Host anchor attributes when the adapter declares intrinsics; `{}` agnostically. */
+type AnchorProps = JSX.IntrinsicElements extends { a: infer T } ? T : {};
+
+/** What `go` reads off a click - structural, no host event type needed. */
+interface ClickEvent {
+  defaultPrevented: boolean;
+  button: number;
+  metaKey: boolean;
+  ctrlKey: boolean;
+  shiftKey: boolean;
+  altKey: boolean;
+  preventDefault(): void;
+}
+
 export namespace Link {
-  export type Props = AnchorHTMLAttributes<HTMLAnchorElement> & {
+  export type Props = AnchorProps & {
     to?: string;
     replace?: boolean;
+    children?: Component.Node;
   };
 }
 
@@ -21,7 +36,7 @@ export class Link extends Component {
     return this.route.resolve(this.to);
   }
 
-  private go = (e: MouseEvent<HTMLAnchorElement>) => {
+  private go = (e: ClickEvent) => {
     if (e.defaultPrevented || e.button !== 0) return;
     if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
     e.preventDefault();
