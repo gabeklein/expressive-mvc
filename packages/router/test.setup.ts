@@ -1,5 +1,11 @@
 import { afterEach, beforeEach } from 'bun:test';
 import { act, cleanup, render } from '@testing-library/react';
+
+// React is the declared test host. This import is doubly load-bearing: it
+// registers the JSX runtime (values) AND carries the Host augmentation that
+// lets host tags (<a>, <ul>) and Component.Node typecheck across the whole
+// package - src and tests compile as one program, and no src module imports
+// the adapter.
 import '@expressive/react';
 
 import '../mvc/test.setup';
