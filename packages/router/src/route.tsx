@@ -1,11 +1,5 @@
-import { Component, get, set } from '@expressive/react';
-import {
-  Children,
-  ComponentType,
-  Fragment,
-  ReactNode,
-  isValidElement
-} from 'react';
+import { Component, get, set } from '@expressive/mvc';
+import { childrenOf, Fragment, isElement, propsOf, typeOf } from '@expressive/mvc/jsx-runtime';
 
 import { Redirect } from './redirect';
 import { Router } from './router';
@@ -17,7 +11,7 @@ const CHILDREN = new WeakMap<Route, Route[]>();
 export class Route extends Component {
   router = set(() => this.get(Router, false) || new Router());
 
-  as?: ComponentType<{ children?: ReactNode }> = undefined;
+  as?: (props: { children?: Component.Node }) => Component.Node = undefined;
 
   to: string = '';
 
@@ -148,7 +142,7 @@ export class Route extends Component {
     this.router.goto(this.resolve(url), replace);
   }
 
-  render(props = {} as { children?: ReactNode }) {
+  render(props = {} as { children?: Component.Node }) {
     const self = this.is;
     const { parent, as: Component, matched } = this;
 
@@ -182,9 +176,9 @@ export class Route extends Component {
 }
 
 /** Does `children` hold a direct default Route? Such a scope resolves to it. */
-function hasDefault(children: ReactNode): boolean {
-  return Children.toArray(children).some(
-    (node) => isValidElement(node) && node.type === Route && (node.props as RouteProps).default
+function hasDefault(children: Component.Node): boolean {
+  return childrenOf(children).some(
+    (node) => isElement(node) && typeOf(node) === Route && (propsOf(node) as RouteProps).default
   );
 }
 
@@ -229,7 +223,7 @@ type RouteProps = {
   to?: string;
   redirect?: string;
   default?: boolean;
-  children?: ReactNode;
+  children?: Component.Node;
 };
 
 /**
@@ -239,20 +233,20 @@ type RouteProps = {
  * Blind to class-field `to` (subclasses) and component-internal routes (the
  * `*`-delegation case) - the documented limits of the lexical model.
  */
-export function matchesAnywhere(children: ReactNode, base: string, path: string): boolean {
-  for (const node of Children.toArray(children)) {
-    if (!isValidElement(node)) continue;
+export function matchesAnywhere(children: Component.Node, base: string, path: string): boolean {
+  for (const node of childrenOf(children)) {
+    if (!isElement(node)) continue;
 
-    const { type } = node;
+    const type = typeOf(node);
 
     if (type === Fragment) {
-      if (matchesAnywhere((node.props as RouteProps).children, base, path)) return true;
+      if (matchesAnywhere((propsOf(node) as RouteProps).children, base, path)) return true;
       continue;
     }
 
     if (type !== Route) continue;
 
-    const props = node.props as RouteProps;
+    const props = propsOf(node) as RouteProps;
     if (props.redirect || props.default) continue;
 
     const to = typeof props.to === 'string' ? props.to : '';
@@ -268,14 +262,14 @@ export function matchesAnywhere(children: ReactNode, base: string, path: string)
   return false;
 }
 
-function allRoutes(children: ReactNode): boolean {
-  const nodes = Children.toArray(children);
+function allRoutes(children: Component.Node): boolean {
+  const nodes = childrenOf(children);
 
   return nodes.length > 0 && nodes.every((node) => {
-    if (!isValidElement(node)) return false;
-    const { type } = node;
+    if (!isElement(node)) return false;
+    const type = typeOf(node);
     if (type === Fragment)
-      return allRoutes((node.props as { children?: ReactNode }).children);
+      return allRoutes((propsOf(node) as RouteProps).children);
     return type === Route || (typeof type === 'function' && type.prototype instanceof Route);
   });
 }
