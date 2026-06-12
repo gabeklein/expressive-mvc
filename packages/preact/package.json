@@ -1,6 +1,6 @@
 {
   "name": "@expressive/preact",
-  "version": "0.77.0",
+  "version": "0.0.0",
   "private": true,
   "description": "Use classes to define state in Preact!",
   "license": "MIT",

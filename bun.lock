@@ -40,7 +40,7 @@
     },
     "packages/preact": {
       "name": "@expressive/preact",
-      "version": "0.77.0",
+      "version": "0.0.0",
       "dependencies": {
         "@expressive/mvc": "workspace:*",
         "@expressive/react": "workspace:*",
@@ -96,7 +96,7 @@
     },
     "packages/solid": {
       "name": "@expressive/solid",
-      "version": "0.77.0",
+      "version": "0.0.0",
       "dependencies": {
         "@expressive/mvc": "workspace:*",
       },
