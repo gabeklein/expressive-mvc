@@ -21,5 +21,3 @@ host({
   typeOf: (node) => isValidElement(node) ? node.type : undefined,
   propsOf: (node) => isValidElement(node) ? node.props as Record<string, unknown> : {}
 });
-
-export * from '@expressive/mvc/jsx-runtime';
