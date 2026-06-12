@@ -1,11 +1,5 @@
 name: Setup
-description: Install bun + Node and install dependencies
-
-inputs:
-  registry-url:
-    description: npm registry URL (only needed for publish jobs)
-    required: false
-    default: ''
+description: Install bun and dependencies
 
 runs:
   using: composite
@@ -13,11 +7,12 @@ runs:
     - name: Setup bun
       uses: oven-sh/setup-bun@v2
 
-    - name: Setup Node
-      uses: actions/setup-node@v4
+    - name: Cache dependencies
+      uses: actions/cache@v4
       with:
-        node-version: 24
-        registry-url: ${{ inputs.registry-url }}
+        path: ~/.bun/install/cache
+        key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+        restore-keys: bun-${{ runner.os }}-
 
     - name: Install dependencies
       run: bun install --frozen-lockfile
