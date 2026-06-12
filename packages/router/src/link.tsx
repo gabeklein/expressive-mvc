@@ -1,5 +1,5 @@
-import { Component, get } from '@expressive/react';
-import { AnchorHTMLAttributes, MouseEvent } from 'react';
+import { Component, get } from '@expressive/mvc';
+import type { AnchorHTMLAttributes, MouseEvent } from 'react';
 
 import { Route } from './route';
 
