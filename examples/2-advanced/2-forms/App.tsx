@@ -1,3 +1,5 @@
+import './App.css';
+
 // Form is kept separate as a reusable base class.
 import { Form } from "./Form";
 import { Preview } from "./Preview";
@@ -24,7 +26,7 @@ class MyForm extends Form {
     const { input, submit } = this;
 
     return (
-      <div>
+      <div className="form">
         <h1>Example Form</h1>
         <input ref={input.firstname} placeholder="Firstname" />
         <input ref={input.lastname} placeholder="Lastname" />

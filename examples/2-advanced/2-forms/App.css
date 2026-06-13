@@ -1,0 +1,19 @@
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+}
+
+.form h1 {
+  margin: 0 0 var(--s2);
+}
+
+/* Submit hugs its content rather than stretching to the column width. */
+.form button {
+  align-self: flex-start;
+}
+
+/* Live-preview panel sits a touch below the controls. */
+.form pre {
+  margin: var(--s3) 0 0;
+}

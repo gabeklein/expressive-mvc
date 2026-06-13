@@ -19,7 +19,6 @@
 .frame {
   display: block;
   width: 100%;
-  padding: var(--s6);
   height: calc(100vh - 3rem);
   border: 0;
   background: var(--bg);
@@ -122,6 +121,5 @@
 
   .frame {
     height: 70vh;
-    padding: var(--s5);
   }
 }

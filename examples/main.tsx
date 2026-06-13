@@ -16,6 +16,9 @@ if (window.self === window.top) {
   const file = decodeURIComponent(name);
   const Example = lazy(modules[file]);
 
+  // Centers/constrains example content; the shell (top window) opts out.
+  document.body.classList.add('example');
+
   app = <Example />;
 }
 
