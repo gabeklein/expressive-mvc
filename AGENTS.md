@@ -76,7 +76,7 @@ await expect(state).not.toHaveUpdated();
 
 - When starting actual work, switch from any agent-scratch branch (`claude/*`) to a conventional named branch (`feat/...`, `fix/...`, `chore/...`) before the first real commit.
 - New features and non-trivial refactors begin with a root `BRANCH.md` as the branch's first commit, capturing agreed scope, key decisions, and approach before implementation.
-- Keep `BRANCH.md` current as the plan evolves - it stays in the PR as review context. Close to merge, delete it and migrate its content into the PR summary and changeset entries. CI warns (non-blocking) while it exists, and the release version step deletes any that reach main.
+- Keep `BRANCH.md` current as the plan evolves - it stays in the PR as review context. Close to merge, run `bun run wrap`: it authors the changesets (migrate `BRANCH.md` content into them and the PR summary) and deletes the file. CI blocks a PR where `BRANCH.md` and changesets coexist - changesets are the plan's migrated form; warns (non-blocking) while the plan alone exists; and the release version step sweeps any that reach main.
 - Write a changeset (`bun run changeset`) when a change is user-facing: new feature, behavior change, API addition, breaking change.
 - No changeset for internal refactors, test-only changes, or fixes with no observable effect. PRs may legitimately carry zero changesets.
 

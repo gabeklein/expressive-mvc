@@ -16,10 +16,15 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Branch plan reminder
+      - name: Branch plan state
         run: |
-          test ! -f BRANCH.md || echo '::warning::BRANCH.md present - before merge, migrate it into the PR summary + changesets and delete it.'
-          test ! -f PLAN.md || echo '::warning::PLAN.md present (legacy name) - same rule as BRANCH.md.'
+          plan=$(ls BRANCH.md PLAN.md 2>/dev/null | head -1) || true
+          changesets=$(find .changeset -name '*.md' ! -name 'README.md' | head -1)
+          if [ -n "$plan" ] && [ -n "$changesets" ]; then
+            echo "::error::$plan and changesets coexist - changesets are the plan's migrated form. Finish the migration: fold $plan into the PR summary and delete it (bun run wrap does both changeset + delete)."
+            exit 1
+          fi
+          test -z "$plan" || echo "::warning::$plan present - before merge, migrate it into the PR summary + changesets and delete it."
 
       - uses: ./.github/actions/setup
 

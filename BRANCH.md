@@ -12,16 +12,18 @@ the PLAN.md -> BRANCH.md convention rename.
    that makes an internal version/range mismatch unable to reach main.
 2. **`pr.yml`** (pull_request -> main):
    - `bun run test`, `bun run build` (blocking).
-   - Non-blocking signals: BRANCH.md reminder (warning while the file
-     exists - it stays reviewable in the PR; blocking enforcement was
-     considered and deferred: always-blocking means red checks for a PR's
-     whole life, draft-gating hides the file from review-ready PRs, and a
-     merge queue - the one mechanism where reviewable + green + never-on-main
-     all hold - is more apparatus than wanted for now); `changeset status`
-     (zero-changeset PRs are legitimate); per-package `npm publish --dry-run`
-     pack validation for mvc + react.
-   - Backstop: `ci:version` deletes any BRANCH.md/PLAN.md that reached main,
-     so a missed reminder is bounded by the next release commit.
+   - Plan/changeset exclusion (blocking): BRANCH.md (or legacy PLAN.md) may
+     not coexist with changeset files - changesets are the plan's migrated
+     form, so coexistence means a half-finished migration. This gates the
+     leak without life-long red checks: plan-without-changesets (all of
+     development) is green, and the only red state is immediately
+     actionable. `bun run wrap` = changeset authoring + plan deletion in
+     one step. (Always-blocking, draft-gating, and merge queue were each
+     considered; queue revisitable if zero-changeset PRs leak plans.)
+   - Plan-alone warning (non-blocking) + `ci:version` sweep of any plan
+     file reaching main cover the zero-changeset path.
+   - Other non-blocking signals: `changeset status` (zero-changeset PRs are
+     legitimate); per-package `npm publish --dry-run` pack validation.
 3. **`release.yml`** (push -> main): `changesets/action@v1` maintains the
    Version Packages PR; on merge, builds and runs `changeset publish`.
    - Auth is OIDC trusted publishing (configured npm-side 2026-06-12 for
