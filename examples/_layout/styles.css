@@ -189,3 +189,20 @@ hr {
   max-width: 36rem;
   margin: 0 auto;
 }
+
+/* Example content (the dev iframe and every generated sandbox add this class)
+   sits in a centered, width-constrained column. Auto margins center it both
+   axes and collapse safely so tall content scrolls instead of clipping. The
+   dev shell omits the class, keeping its own grid layout. */
+body.example {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--s6);
+}
+
+body.example #root {
+  width: 100%;
+  max-width: 32rem;
+  margin: auto 0;
+}
