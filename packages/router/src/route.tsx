@@ -145,6 +145,49 @@ export class Route extends Component {
     this.router.goto(this.resolve(url), replace);
   }
 
+  /**
+   * Of the `as`-bearing child Routes competing for this scope's single slot,
+   * decide whether `child` should cede it. Highest specificity wins (literal >
+   * `:param` > catch-all); equal scores break by declaration order. `child`
+   * yields unless it is that winner.
+   *
+   * Arbitration is the parent's call, not the child's, and purely lexical:
+   * contenders and their scores are read from this Route's own children JSX
+   * (their `to` props), so the field is whole before any child mounts - no
+   * first-paint flicker, no walking live siblings. A Route whose pattern isn't
+   * lexically visible (subclass class-field `to`, component-delegated matching)
+   * doesn't contend, and a non-contending `child` is left to its own match
+   * rather than suppressed.
+   *
+   * The verdict turns on `path`, which the child supplies from its own proxy
+   * (so it re-arbitrates on navigation even when its `matched` is unchanged);
+   * `contests` first gates that read to real rivalries, leaving a solitary
+   * matched Route unsubscribed and free to reconcile in place.
+   */
+  contests(child: Route): boolean {
+    // A fallback/redirect never competes on specificity (and a default's path
+    // collides with a bare sibling's), so it's neither a rival nor arbitrated.
+    if (child.default || child.redirect) return false;
+
+    const rivals = contenders(this.props.children, scopeBase(this));
+    return rivals.length > 1 && rivals.some((r) => r.path === child.path);
+  }
+
+  arbitrate(child: Route, path: string): boolean {
+    let best: number | null = null;
+    let winner: string | null = null;
+
+    for (const rival of contenders(this.props.children, scopeBase(this))) {
+      const found = rival.score(path);
+      if (found !== null && (best === null || found > best)) {
+        best = found;
+        winner = rival.path;
+      }
+    }
+
+    return winner !== child.path;
+  }
+
   render(props = {} as { children?: Component.Node }) {
     const self = this.is;
     const { parent, as: Component, matched } = this;
@@ -152,7 +195,10 @@ export class Route extends Component {
     if (parent) {
       register(parent.is, self);
 
-      if (Component && outscored(this, parent)) return null;
+      // Defer the verdict to the parent, but read `path` here (our own proxy)
+      // so a re-arbitration re-renders us; gated to real rivalries first.
+      if (Component && parent.contests(self) && parent.arbitrate(self, this.router.path))
+        return null;
     }
 
     if (this.redirect)
@@ -266,65 +312,31 @@ function bestScore(children: Component.Node, base: string, path: string): number
   return best;
 }
 
-/** Specificity of a Route's own claim on `path`: a leaf's match score, a
- * see-through scope's best descendant score; null when unmatched. */
-function score(route: Route, path: string): number | null {
-  if (hasRoutes(route))
-    return bestScore(route.props.children, scopeBase(route), path);
-
-  const match = route.router.match(route.base, route.to);
-  return match ? match.score : null;
-}
+type Contender = {
+  /** Absolute path this Route claims - matched against a child's `path` to tie
+   * the lexical verdict back to the rendering instance. */
+  path: string;
+  /** Specificity of its claim on a given path; null when it doesn't match. */
+  score: (path: string) => number | null;
+};
 
 /**
- * Should `self` (matched or not) yield its slot? Siblings with `as` compete by
- * specificity score; declaration order breaks ties. Registered siblings are
- * compared directly (reactive via `parent.inner`, so late registrants settle);
- * a lexical scan of the parent's JSX covers higher-scored siblings declared
- * later but not yet mounted.
+ * The `as`-bearing Route nodes declared directly within `children` that vie for
+ * a single slot, each paired with the path it claims and a path-scored lookup.
+ * Recurses Fragments but stops at nested Route scopes - those arbitrate within
+ * their own parent. Lexical only (reads `to` props), so subclass and
+ * component-delegated Routes don't appear - mirroring `bestScore`.
  */
-function outscored(route: Route, parent: Route): boolean {
-  const self = route.is;
-  const siblings = parent.inner;
-  const rivalry = siblings.some((s) => s !== self && s.as);
+function contenders(children: Component.Node, base: string): Contender[] {
+  const out: Contender[] = [];
 
-  // Only competing Routes make the verdict path-dependent; absent rivals,
-  // skip the tracked read so same-pattern navigation reconciles in place.
-  const { path } = rivalry ? route.router : self.router;
-  const own = score(self, path);
-  let before = true;
-
-  for (const sibling of siblings) {
-    if (sibling === self) {
-      before = false;
-      continue;
-    }
-
-    if (!sibling.as || !sibling.matched) continue;
-    if (own === null) {
-      if (before) return true;
-      continue;
-    }
-
-    const rival = score(sibling, path) ?? -Infinity;
-
-    if (rival > own || (rival === own && before)) return true;
-  }
-
-  return own !== null
-    && !!parent.props
-    && outscoredLexically(parent.props.children, scopeBase(parent), path, own);
-}
-
-/** Is a higher-scored competing Route (with `as`) declared within `children`? */
-function outscoredLexically(children: Component.Node, base: string, path: string, own: number): boolean {
   for (const node of childrenOf(children)) {
     if (!isElement(node)) continue;
 
     const type = typeOf(node);
 
     if (type === Fragment) {
-      if (outscoredLexically((propsOf(node) as RouteProps).children, base, path, own)) return true;
+      out.push(...contenders((propsOf(node) as RouteProps).children, base));
       continue;
     }
 
@@ -334,14 +346,14 @@ function outscoredLexically(children: Component.Node, base: string, path: string
     if (!props.as || props.redirect || props.default) continue;
 
     const to = typeof props.to === 'string' ? props.to : '';
-    const rival = allRoutes(props.children)
-      ? bestScore(props.children, base + patternSegment(to), path)
-      : matchPattern(fullPattern(base, to), path)?.score ?? null;
+    const score = allRoutes(props.children)
+      ? (path: string) => bestScore(props.children, base + patternSegment(to), path)
+      : (path: string) => matchPattern(fullPattern(base, to), path)?.score ?? null;
 
-    if (rival !== null && rival > own) return true;
+    out.push({ path: base + patternSegment(to), score });
   }
 
-  return false;
+  return out;
 }
 
 function allRoutes(children: Component.Node): boolean {
