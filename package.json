@@ -8,18 +8,22 @@
     "examples"
   ],
   "scripts": {
-    "test": "lerna run test",
-    "build": "lerna run build",
+    "test": "bun run --filter='*' test",
+    "build": "bun run --filter='*' build",
+    "changeset": "changeset",
+    "version": "changeset version",
+    "release": "changeset publish",
     "pr": "bash .github/scripts/pr.sh",
     "watch": "bun test --watch --only-failures",
     "nuke": "find . -name 'node_modules' -type d -prune -exec rm -rf '{}' +"
   },
   "devDependencies": {
+    "@changesets/changelog-github": "^0.7.0",
+    "@changesets/cli": "^2.31.0",
     "@happy-dom/global-registrator": "^20.9.0",
     "@types/bun": "^1.3.14",
     "@types/node": "^25.2.0",
     "@types/react": "^19",
-    "lerna": "^9.0.3",
     "typescript": "^5.9.3"
   },
   "engines": {

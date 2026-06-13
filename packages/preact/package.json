@@ -1,6 +1,6 @@
 {
   "name": "@expressive/preact",
-  "version": "0.77.0",
+  "version": "0.0.0",
   "private": true,
   "description": "Use classes to define state in Preact!",
   "license": "MIT",
@@ -21,12 +21,11 @@
   },
   "scripts": {
     "build": "tsdown",
-    "test": "tsc --noEmit && bun test --coverage",
-    "preversion": "npm run test && npm run build"
+    "test": "tsc --noEmit && bun test --coverage"
   },
   "dependencies": {
     "@expressive/react": "^0.77.0",
-    "@expressive/mvc": "^0.73.1"
+    "@expressive/mvc": "^0.77.0"
   },
   "devDependencies": {
     "@testing-library/preact": "^3.2.3",
