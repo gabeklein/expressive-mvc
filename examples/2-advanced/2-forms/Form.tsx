@@ -27,7 +27,7 @@ export class Form extends Component {
     const onInput = () => {
       (this as any)[key] = input.value;
     };
-    const unwatch = this.get(key, () => {
+    const unwatch = this.set(key, () => {
       input.value = this[key] as string;
     });
 

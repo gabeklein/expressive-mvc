@@ -1,4 +1,5 @@
 import './_base/styles.css';
+import '@expressive/react';
 
 import { BrowserRouter } from '@expressive/router';
 import { lazy, Suspense } from 'react';
