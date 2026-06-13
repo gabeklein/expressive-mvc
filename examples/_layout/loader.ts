@@ -13,7 +13,6 @@ export interface Group {
   items: Example[];
 }
 
-/** Group example modules by their first path segment (`group/example/App.tsx`). */
 export function organize(modules: Record<string, unknown>): Group[] {
   const groups = new Map<string, Group>();
 
