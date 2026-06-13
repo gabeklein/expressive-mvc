@@ -19,7 +19,7 @@ const STRIP = /^\d+-/;
 const slugify = (segments: string[]) => segments.map((s) => s.replace(STRIP, '')).join('/');
 
 export const examples: Record<string, Record<string, string>> = {};
-export const base: Record<string, string> = {};
+export const layout: Record<string, string> = {};
 export const common: Record<string, string> = {};
 
 for (const [path, code] of Object.entries(FILES)) {
@@ -30,9 +30,9 @@ for (const [path, code] of Object.entries(FILES)) {
   const segments = path.split(/[/@]examples\//).pop()!.split('/');
   const file = segments.pop()!;
 
-  if (segments.includes('_base')) {
+  if (segments.includes('_layout')) {
     if (file.includes('styles.css'))
-      base[`/${file}`] = code;
+      layout[`/${file}`] = code;
     continue;
   }
 
@@ -93,7 +93,7 @@ export function getFiles(name: string) {
   const source = examples[name];
   const files: Record<string, any> = {};
 
-  for (const [path, code] of Object.entries(base))
+  for (const [path, code] of Object.entries(layout))
     files[path] = { hidden: true, code };
 
   // Insertion order drives Sandpack's tab order; push CSS to the end.
