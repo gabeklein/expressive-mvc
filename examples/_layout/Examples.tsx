@@ -1,51 +1,41 @@
-import { NavLinks, Route } from '@expressive/router';
+import '@expressive/react';
+import { BrowserRouter, NavLinks, Route, Router } from '@expressive/router';
 import { type ComponentType } from 'react';
+
 import Logo from './Logo';
+import { organize } from './loader';
 import styles from './Examples.module.css';
-import { Router } from '@expressive/router';
 
-export type AppModule = { default: ComponentType };
+type LazyModule = () => Promise<{ default: ComponentType }>;
 
-export interface Example {
-  order: number;
-  slug: string;
-  label: string;
-  path: string;
-  file: string;
-}
-
-export interface Group {
-  order: number;
-  slug: string;
-  label: string;
-  items: Example[];
-}
-
-function Examples({ routes }: { routes: Group[] }) {
+function Examples({ modules }: { modules: Record<string, LazyModule> }) {
+  const routes = organize(modules);
   const first = routes[0]?.items[0];
 
   return (
-    <Route as={Shell}>
-      {first && <Route redirect={first.path} />}
-      {routes.map((g) => (
-        <Route key={g.slug} to={g.slug} label={g.label}>
-          {g.items.map((e) => (
-            <Route
-              key={e.slug}
-              to={e.slug}
-              label={e.label}
-              as={ExampleFrame}
-              meta={e}
-            />
-          ))}
-        </Route>
-      ))}
-      <Route default as={NotFound} />
-    </Route>
+    <BrowserRouter>
+      <Route as={Shell}>
+        {first && <Route redirect={first.path} />}
+        {routes.map((g) => (
+          <Route key={g.slug} to={g.slug} label={g.label}>
+            {g.items.map((e) => (
+              <Route
+                key={e.slug}
+                to={e.slug}
+                label={e.label}
+                as={Example}
+                meta={e}
+              />
+            ))}
+          </Route>
+        ))}
+        <Route default as={NotFound} />
+      </Route>
+    </BrowserRouter>
   );
 }
 
-function ExampleFrame() {
+function Example() {
   const { label, meta } = Route.get();
 
   return (
