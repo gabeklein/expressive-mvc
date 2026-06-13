@@ -11,13 +11,17 @@ the PLAN.md -> BRANCH.md convention rename.
    `bun.lock`. `bun install --frozen-lockfile` stays - it is the desync guard
    that makes an internal version/range mismatch unable to reach main.
 2. **`pr.yml`** (pull_request -> main):
-   - BRANCH.md guard (blocking, runs first): fails while a `BRANCH.md` or
-     legacy `PLAN.md` exists - branch plans must be deleted near merge. This
-     PR passes its own guard only via its final cleanup commit, by design.
    - `bun run test`, `bun run build` (blocking).
-   - Non-blocking signals: `changeset status` (nudge when a PR carries no
-     changeset - zero-changeset PRs are legitimate) and per-package
-     `npm publish --dry-run` pack validation for mvc + react.
+   - Non-blocking signals: BRANCH.md reminder (warning while the file
+     exists - it stays reviewable in the PR; blocking enforcement was
+     considered and deferred: always-blocking means red checks for a PR's
+     whole life, draft-gating hides the file from review-ready PRs, and a
+     merge queue - the one mechanism where reviewable + green + never-on-main
+     all hold - is more apparatus than wanted for now); `changeset status`
+     (zero-changeset PRs are legitimate); per-package `npm publish --dry-run`
+     pack validation for mvc + react.
+   - Backstop: `ci:version` deletes any BRANCH.md/PLAN.md that reached main,
+     so a missed reminder is bounded by the next release commit.
 3. **`release.yml`** (push -> main): `changesets/action@v1` maintains the
    Version Packages PR; on merge, builds and runs `changeset publish`.
    - Auth is OIDC trusted publishing (configured npm-side 2026-06-12 for

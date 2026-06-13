@@ -16,10 +16,10 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Branch plan must be deleted before merge
+      - name: Branch plan reminder
         run: |
-          test ! -f BRANCH.md || { echo '::error::BRANCH.md still exists - migrate it into the PR summary + changesets, then delete.'; exit 1; }
-          test ! -f PLAN.md || { echo '::error::PLAN.md still exists (legacy name) - same rule as BRANCH.md.'; exit 1; }
+          test ! -f BRANCH.md || echo '::warning::BRANCH.md present - before merge, migrate it into the PR summary + changesets and delete it.'
+          test ! -f PLAN.md || echo '::warning::PLAN.md present (legacy name) - same rule as BRANCH.md.'
 
       - uses: ./.github/actions/setup
 

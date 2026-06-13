@@ -2,14 +2,15 @@
 
 ## pr.yml (pull requests -> main)
 
-Blocking: `BRANCH.md`/`PLAN.md` must not exist (branch plans are deleted near
-merge), `bun run test`, `bun run build`. The frozen-lockfile install in the
+Blocking: `bun run test`, `bun run build`. The frozen-lockfile install in the
 `setup` action doubles as the internal-dependency desync guard - a workspace
 version that falls outside a sibling's range cannot reach main.
 
-Non-blocking signals: `changeset status` (PRs may legitimately carry zero
-changesets) and `npm publish --dry-run` pack validation for the publishable
-packages.
+Non-blocking signals: a warning while `BRANCH.md`/`PLAN.md` exists (branch
+plans stay reviewable in the PR but are migrated + deleted near merge;
+`ci:version` sweeps any stragglers from main), `changeset status` (PRs may
+legitimately carry zero changesets), and `npm publish --dry-run` pack
+validation for the publishable packages.
 
 ## release.yml (push -> main)
 
