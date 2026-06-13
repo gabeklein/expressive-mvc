@@ -11,8 +11,9 @@
     "test": "bun run --filter='*' test",
     "build": "bun run --filter='*' build",
     "changeset": "changeset",
-    "version": "changeset version",
-    "release": "changeset publish",
+    "wrap": "changeset && rm -f BRANCH.md PLAN.md",
+    "ci:version": "rm -f BRANCH.md PLAN.md && changeset version && bun install",
+    "ci:publish": "bun run --filter='./packages/*' build && changeset publish",
     "pr": "bash .github/scripts/pr.sh",
     "watch": "bun test --watch --only-failures",
     "nuke": "find . -name 'node_modules' -type d -prune -exec rm -rf '{}' +"
