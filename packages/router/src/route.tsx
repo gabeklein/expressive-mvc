@@ -147,26 +147,27 @@ export class Route extends Component {
 
   /**
    * Of the `as`-bearing child Routes competing for this scope's single slot,
-   * decide whether `child` should cede it. Highest specificity wins (literal >
-   * `:param` > catch-all); equal scores break by declaration order. `child`
-   * yields unless it is that winner.
+   * decide whether `child` should cede it. The first one (in declaration order)
+   * that matches the path wins; `child` yields unless it is that one. Precedence
+   * is positional - an earlier, less-specific pattern shadows a later one, the
+   * way Express routes or `switch` cases do - so order specific-before-general.
    *
    * Arbitration is the parent's call, not the child's, and purely lexical:
-   * contenders and their scores are read from this Route's own children JSX
-   * (their `to` props), so the field is whole before any child mounts - no
-   * first-paint flicker, no walking live siblings. A Route whose pattern isn't
-   * lexically visible (subclass class-field `to`, component-delegated matching)
-   * doesn't contend, and a non-contending `child` is left to its own match
-   * rather than suppressed.
+   * contenders come from this Route's own children JSX (their `to` props), in
+   * source order, so the field is whole before any child mounts - no first-paint
+   * flicker, no walking live siblings. A Route whose pattern isn't lexically
+   * visible (subclass class-field `to`, component-delegated matching) doesn't
+   * contend, and a non-contending `child` is left to its own match rather than
+   * suppressed.
    *
    * The verdict turns on `path`, which the child supplies from its own proxy
-   * (so it re-arbitrates on navigation even when its `matched` is unchanged);
+   * (so it re-resolves on navigation even when its `matched` is unchanged);
    * `contests` first gates that read to real rivalries, leaving a solitary
    * matched Route unsubscribed and free to reconcile in place.
    */
   contests(child: Route): boolean {
-    // A fallback/redirect never competes on specificity (and a default's path
-    // collides with a bare sibling's), so it's neither a rival nor arbitrated.
+    // A fallback/redirect never competes by order (and a default's path collides
+    // with a bare sibling's), so it's neither a rival nor arbitrated.
     if (child.default || child.redirect) return false;
 
     const rivals = contenders(this.props.children, scopeBase(this));
@@ -174,18 +175,11 @@ export class Route extends Component {
   }
 
   arbitrate(child: Route, path: string): boolean {
-    let best: number | null = null;
-    let winner: string | null = null;
+    for (const rival of contenders(this.props.children, scopeBase(this)))
+      if (rival.matches(path))
+        return rival.path !== child.path;
 
-    for (const rival of contenders(this.props.children, scopeBase(this))) {
-      const found = rival.score(path);
-      if (found !== null && (best === null || found > best)) {
-        best = found;
-        winner = rival.path;
-      }
-    }
-
-    return winner !== child.path;
+    return true;
   }
 
   render(props = {} as { children?: Component.Node }) {
@@ -280,52 +274,48 @@ type RouteProps = {
  * `*`-delegation case) - the documented limits of the lexical model.
  */
 export function matchesAnywhere(children: Component.Node, base: string, path: string): boolean {
-  return bestScore(children, base, path) !== null;
-}
-
-/** Highest specificity score among matching Routes lexically within `children`,
- * or null when none match. Same walk (and limits) as `matchesAnywhere`. */
-function bestScore(children: Component.Node, base: string, path: string): number | null {
-  let best: number | null = null;
-
   for (const node of childrenOf(children)) {
     if (!isElement(node)) continue;
 
     const type = typeOf(node);
-    let found: number | null = null;
 
-    if (type === Fragment)
-      found = bestScore((propsOf(node) as RouteProps).children, base, path);
-    else if (type === Route) {
-      const props = propsOf(node) as RouteProps;
-      if (props.redirect || props.default) continue;
-
-      const to = typeof props.to === 'string' ? props.to : '';
-      found = allRoutes(props.children)
-        ? bestScore(props.children, base + patternSegment(to), path)
-        : matchPattern(fullPattern(base, to), path)?.score ?? null;
+    if (type === Fragment) {
+      if (matchesAnywhere((propsOf(node) as RouteProps).children, base, path)) return true;
+      continue;
     }
 
-    if (found !== null && (best === null || found > best)) best = found;
+    if (type !== Route) continue;
+
+    const props = propsOf(node) as RouteProps;
+    if (props.redirect || props.default) continue;
+
+    const to = typeof props.to === 'string' ? props.to : '';
+
+    if (allRoutes(props.children)) {
+      if (matchesAnywhere(props.children, base + patternSegment(to), path)) return true;
+      continue;
+    }
+
+    if (matchPattern(fullPattern(base, to), path)) return true;
   }
 
-  return best;
+  return false;
 }
 
 type Contender = {
   /** Absolute path this Route claims - matched against a child's `path` to tie
    * the lexical verdict back to the rendering instance. */
   path: string;
-  /** Specificity of its claim on a given path; null when it doesn't match. */
-  score: (path: string) => number | null;
+  /** Whether it claims (matches) a given path. */
+  matches: (path: string) => boolean;
 };
 
 /**
  * The `as`-bearing Route nodes declared directly within `children` that vie for
- * a single slot, each paired with the path it claims and a path-scored lookup.
- * Recurses Fragments but stops at nested Route scopes - those arbitrate within
- * their own parent. Lexical only (reads `to` props), so subclass and
- * component-delegated Routes don't appear - mirroring `bestScore`.
+ * a single slot, in declaration order, each paired with the path it claims and
+ * a match test. Recurses Fragments but stops at nested Route scopes - those
+ * arbitrate within their own parent. Lexical only (reads `to` props), so
+ * subclass and component-delegated Routes don't appear.
  */
 function contenders(children: Component.Node, base: string): Contender[] {
   const out: Contender[] = [];
@@ -346,11 +336,11 @@ function contenders(children: Component.Node, base: string): Contender[] {
     if (!props.as || props.redirect || props.default) continue;
 
     const to = typeof props.to === 'string' ? props.to : '';
-    const score = allRoutes(props.children)
-      ? (path: string) => bestScore(props.children, base + patternSegment(to), path)
-      : (path: string) => matchPattern(fullPattern(base, to), path)?.score ?? null;
+    const matches = allRoutes(props.children)
+      ? (path: string) => matchesAnywhere(props.children, base + patternSegment(to), path)
+      : (path: string) => matchPattern(fullPattern(base, to), path) !== null;
 
-    out.push({ path: base + patternSegment(to), score });
+    out.push({ path: base + patternSegment(to), matches });
   }
 
   return out;
