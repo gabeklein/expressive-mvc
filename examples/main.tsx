@@ -1,12 +1,12 @@
-import './_base/styles.css';
+import './_layout/styles.css';
 import '@expressive/react';
 
 import { BrowserRouter } from '@expressive/router';
 import { lazy, Suspense } from 'react';
 import { createRoot } from 'react-dom/client';
-import type { AppModule, Group } from './_base/Examples';
+import type { AppModule, Group } from './_layout/Examples';
 
-const Examples = lazy(() => import('./_base/Examples'));
+const Examples = lazy(() => import('./_layout/Examples'));
 const modules = import.meta.glob<AppModule>('../*/**/App.tsx');
 const root = createRoot(document.getElementById('root')!);
 
