@@ -3,13 +3,14 @@
   gap: 10px;
   align-items: center;
   white-space: nowrap;
-  font-family: Nunito, system-ui, -apple-system, sans-serif;
   font-weight: 700;
+  font-size: var(--t-lg);
+  letter-spacing: -0.02em;
 }
 
 .icon {
   flex: 0 0 auto;
-  width: 40px;
+  width: 30px;
   height: auto;
-  color: #8150ce;
+  color: var(--accent);
 }

@@ -1,37 +1,50 @@
 .status {
-  font-size: 1.1rem;
-  margin: 0.5rem 0 1rem;
+  font-size: var(--t-lg);
+  color: var(--muted);
+  margin: 0 0 var(--s4);
 }
 
 .board {
   display: grid;
   grid-template-columns: repeat(3, 4rem);
   grid-template-rows: repeat(3, 4rem);
-  gap: 4px;
-  margin-bottom: 1rem;
+  gap: 6px;
+  margin-bottom: var(--s4);
 }
 
-.board>button {
+.board > button {
   margin: 0;
   padding: 0;
   width: 4rem;
   height: 4rem;
-  font-size: 1.75rem;
-  font-weight: bold;
-  transition: background-color 0.3s;
+  font-size: var(--t-2xl);
+  font-weight: 700;
+  color: var(--fg-soft);
+  border-radius: var(--r-sm);
   cursor: pointer;
+  transition: background-color 0.2s;
 }
 
-.board>button:hover {
-  background-color: rgba(255, 255, 255, 0.2);
+/* Empty cells invite a move; decided cells don't react to hover. */
+.board > button:hover {
+  background-color: var(--accent-soft);
 }
 
-.X,
-.O {
-  cursor: default !important;
+.board > button.X {
+  color: var(--accent);
+  background: var(--bg);
+  cursor: default;
 }
 
-.wins {
-  background-color: #25cf58 !important;
-  cursor: default !important;
+.board > button.O {
+  color: var(--muted);
+  background: var(--bg);
+  cursor: default;
+}
+
+.board > button.wins {
+  background: var(--win-soft);
+  border-color: var(--win);
+  color: var(--win);
+  cursor: default;
 }
