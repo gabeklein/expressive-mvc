@@ -40,31 +40,20 @@
   border-radius: var(--r-lg);
 }
 
-.nav a,
-.links a {
-  display: block;
-  padding: 6px var(--s2);
-  border-radius: var(--r-sm);
-  color: var(--fg-soft);
-  text-decoration: none;
-  font-size: var(--t-sm);
-  font-weight: 500;
-}
-
 .links {
   display: flex;
   flex-direction: column;
-  gap: var(--s1);
+  gap: var(--s4);
 }
 
 .group {
   display: flex;
   flex-direction: column;
-  gap: var(--s1);
+  gap: var(--s2);
 }
 
 .groupLabel {
-  margin: var(--s3) 0 var(--s1);
+  margin: 0;
   padding: 0 var(--s2);
   font-size: var(--t-xs);
   font-weight: 600;
@@ -73,8 +62,38 @@
   color: var(--muted);
 }
 
-.group:first-child .groupLabel {
-  margin-top: 0;
+/* Example links nest under their section along a vertical guide line,
+   offset from the label - the docs-sidebar pattern. */
+.groupItems {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-left: var(--s2);
+  border-left: 1px solid var(--border-2);
+}
+
+.groupItems a {
+  margin-left: -1px;
+  padding: 5px var(--s3);
+  border-left: 2px solid transparent;
+  border-radius: 0 var(--r-sm) var(--r-sm) 0;
+  color: var(--fg-soft);
+  text-decoration: none;
+  font-size: var(--t-sm);
+  font-weight: 500;
+}
+
+.groupItems a:hover {
+  background: var(--surface-2);
+  border-left-color: var(--border-2);
+  color: var(--fg);
+}
+
+.groupItems a[aria-current='page'] {
+  background: var(--accent-soft);
+  border-left-color: var(--accent);
+  color: var(--accent);
+  font-weight: 600;
 }
 
 .logo {
@@ -87,19 +106,6 @@
 
 .logo:hover {
   background: transparent;
-}
-
-.nav a:hover,
-.links a:hover {
-  background: var(--surface-2);
-  color: var(--fg);
-  text-decoration: none;
-}
-
-.links a[aria-current='page'] {
-  background: var(--accent-soft);
-  color: var(--accent);
-  font-weight: 600;
 }
 
 @media (max-width: 760px) {

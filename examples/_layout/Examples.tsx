@@ -44,7 +44,7 @@ class Navigation extends NavLinks {
     return (
       <div className={styles.group}>
         <h4 className={styles.groupLabel}>{props.route.label}</h4>
-        {props.children}
+        <div className={styles.groupItems}>{props.children}</div>
       </div>
     );
   }
