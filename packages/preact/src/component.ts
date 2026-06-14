@@ -1,15 +1,11 @@
 import { watch, unbind, Component } from '@expressive/mvc';
-import { useHook } from '@expressive/react/state';
+import { useHook, Context, Layers } from '@expressive/react/state';
 
 import { ComponentChildren, Ref } from 'preact';
 import { Component as PreactComponent, createElement, Suspense } from 'preact/compat';
 
-import { Context, Layers } from './context';
-
 const proto = Component.prototype;
 const SEEN = new WeakSet<object>([proto]);
-
-type ComponentType = typeof Component & typeof PreactComponent;
 
 declare module '@expressive/mvc' {
   namespace Component {
@@ -40,7 +36,7 @@ declare module '@expressive/mvc' {
 }
 
 Component.on(subcomponents);
-(Component as ComponentType).contextType = Layers;
+Object.defineProperty(Component, 'contextType', { configurable: true, get: Layers });
 
 // Preact identifies class components by the presence of `prototype.render`
 // (it has no `isReactComponent` brand check). The stub is shadowed by the
@@ -131,7 +127,7 @@ function component(from: Component, context: Context) {
       };
     });
 
-    const children = createElement(Layers.Provider, {
+    const children = createElement(Layers().Provider, {
       value: context,
       children: createElement(Suspense,
         { fallback: from.fallback },

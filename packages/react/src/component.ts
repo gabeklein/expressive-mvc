@@ -6,8 +6,6 @@ import { useHook, useReady } from './runtime';
 const proto = Component.prototype;
 const SEEN = new WeakSet<object>([proto]);
 
-type ComponentType = typeof Component & typeof React.Component;
-
 declare module '@expressive/mvc' {
   interface Component {
     /** @deprecated Only to satisfy React JSX. Use `this.get(State)` instead. */
@@ -22,7 +20,7 @@ declare module '@expressive/mvc' {
 }
 
 Component.on(subcomponents);
-(Component as ComponentType).contextType = Layers;
+Object.defineProperty(Component, 'contextType', { configurable: true, get: Layers });
 
 for (const key of [
   'updater',
@@ -140,7 +138,7 @@ function component(from: Component, context: Context) {
 
     const rendered = createElement(Render);
 
-    const children = createElement(Layers.Provider, {
+    const children = createElement(Layers().Provider, {
       value: context,
       children: from.fallback === false
         ? rendered

@@ -1,8 +1,11 @@
 export const Runtime = {} as {
   createElement(type: any, props?: any, ...children: any[]): any;
+  createContext<T>(value: T): any;
+  useContext(context: any): any;
   useState<S>(initial: S | (() => S)): [S, (next: (previous: S) => S) => void];
   useEffect(effect: () => (() => void) | void, deps?: any[]): void;
   useRef<T>(initial: T): { current: T };
+  Suspense: any;
 };
 
 export function useFactory<T extends Function>(factory: () => T) {

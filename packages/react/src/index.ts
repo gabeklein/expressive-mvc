@@ -1,14 +1,27 @@
-import { createElement, useEffect, useRef, useState } from 'react';
+import {
+  createContext,
+  createElement,
+  Suspense,
+  useContext,
+  useEffect,
+  useRef,
+  useState
+} from 'react';
 
 import './jsx-runtime';
 import { State } from './state';
 import { Runtime } from './runtime';
 import { Consumer, Provider } from './context';
 
-Runtime.createElement = createElement;
-Runtime.useEffect = useEffect;
-Runtime.useState = useState;
-Runtime.useRef = useRef;
+Object.assign(Runtime, {
+  createElement,
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  useRef,
+  Suspense
+});
 
 export { State, State as default };
 export { Context, Observable, def, get, ref, set, hot } from '@expressive/mvc';

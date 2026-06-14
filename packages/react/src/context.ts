@@ -1,21 +1,23 @@
-import { State, Context } from '@expressive/mvc';
-import {
-  createContext,
-  createElement,
-  ReactNode,
-  Suspense,
-  useContext
-} from 'react';
-import { useHook } from './runtime';
+import { State, Context, Component } from '@expressive/mvc';
+import { Runtime, useHook } from './runtime';
 
-const Layers = createContext(Context.root);
+let shared: any;
+
+/**
+ * Lazily-created context carrying the active {@link Context} down the tree.
+ * Lazy because the framework's `createContext` arrives via {@link Runtime},
+ * which an adapter's entry populates at load - after this module evaluates.
+ */
+function Layers() {
+  return shared || (shared = Runtime.createContext(Context.root));
+}
 
 const _get = Context.get;
 
 Context.get = (state?: State) => {
   if (!state)
     try {
-      return useContext(Layers);
+      return Runtime.useContext(Layers());
     } catch { }
 
   return _get(state);
@@ -33,7 +35,7 @@ declare namespace Consumer {
      * Similar to `State.get()`, updates to properties accessed in
      * this function will cause a refresh when they change.
      */
-    children: (value: T) => ReactNode | void;
+    children: (value: T) => Component.Node | void;
   };
 }
 
@@ -48,10 +50,10 @@ declare namespace Provider {
     /**
      * Children to render within this Provider.
      */
-    children?: ReactNode;
+    children?: Component.Node;
 
     /** A fallback tree to show when suspended. */
-    fallback?: ReactNode;
+    fallback?: Component.Node;
 
     /**
      * A name for this Suspense boundary for instrumentation purposes.
@@ -83,7 +85,7 @@ function Provider<T extends State>(props: Provider.Props<T>) {
     ...rest
   } = props as Provider.ForSingleProps<T> & Provider.ForMultipleProps<T>;
 
-  const ambient = useContext(Layers);
+  const ambient = Runtime.useContext(Layers());
   const context = useHook<Context>((set) => {
     set(new Context(ambient));
     return () => context.pop();
@@ -96,11 +98,11 @@ function Provider<T extends State>(props: Provider.Props<T>) {
     if (i instanceof State) i.set(rest);
   }
 
-  return createElement(Layers.Provider, {
+  return Runtime.createElement(Layers().Provider, {
     value: context,
     children:
       fallback !== undefined
-        ? createElement(Suspense, { fallback, name }, children)
+        ? Runtime.createElement(Runtime.Suspense, { fallback, name }, children)
         : children
   });
 }

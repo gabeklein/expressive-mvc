@@ -2,6 +2,7 @@ import { State, Context, observer, watch } from '@expressive/mvc';
 import { Runtime, useFactory, useHook, useReady } from './runtime';
 
 export { Runtime, useFactory, useHook, useReady };
+export { Consumer, Provider, Context, Layers } from './context';
 export { use } from './use';
 
 /** Type may not be undefined - instead will be null.  */
