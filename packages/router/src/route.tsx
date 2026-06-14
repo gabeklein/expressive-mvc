@@ -145,43 +145,6 @@ export class Route extends Component {
     this.router.goto(this.resolve(url), replace);
   }
 
-  /**
-   * Of the `as`-bearing child Routes competing for this scope's single slot,
-   * decide whether `child` should cede it. The first one (in declaration order)
-   * that matches the path wins; `child` yields unless it is that one. Precedence
-   * is positional - an earlier, less-specific pattern shadows a later one, the
-   * way Express routes or `switch` cases do - so order specific-before-general.
-   *
-   * Arbitration is the parent's call, not the child's, and purely lexical:
-   * contenders come from this Route's own children JSX (their `to` props), in
-   * source order, so the field is whole before any child mounts - no first-paint
-   * flicker, no walking live siblings. A Route whose pattern isn't lexically
-   * visible (subclass class-field `to`, component-delegated matching) doesn't
-   * contend, and a non-contending `child` is left to its own match rather than
-   * suppressed.
-   *
-   * The verdict turns on `path`, which the child supplies from its own proxy
-   * (so it re-resolves on navigation even when its `matched` is unchanged);
-   * `contests` first gates that read to real rivalries, leaving a solitary
-   * matched Route unsubscribed and free to reconcile in place.
-   */
-  contests(child: Route): boolean {
-    // A fallback/redirect never competes by order (and a default's path collides
-    // with a bare sibling's), so it's neither a rival nor arbitrated.
-    if (child.default || child.redirect) return false;
-
-    const rivals = contenders(this.props.children, scopeBase(this));
-    return rivals.length > 1 && rivals.some((r) => r.path === child.path);
-  }
-
-  arbitrate(child: Route, path: string): boolean {
-    for (const rival of contenders(this.props.children, scopeBase(this)))
-      if (rival.matches(path))
-        return rival.path !== child.path;
-
-    return true;
-  }
-
   render(props = {} as { children?: Component.Node }) {
     const self = this.is;
     const { parent, as: Component, matched } = this;
@@ -189,9 +152,8 @@ export class Route extends Component {
     if (parent) {
       register(parent.is, self);
 
-      // Defer the verdict to the parent, but read `path` here (our own proxy)
-      // so a re-arbitration re-renders us; gated to real rivalries first.
-      if (Component && parent.contests(self) && parent.arbitrate(self, this.router.path))
+      // `path` read via our own proxy so re-arbitration re-renders us.
+      if (Component && cedes(parent, self, () => this.router.path))
         return null;
     }
 
@@ -303,19 +265,36 @@ export function matchesAnywhere(children: Component.Node, base: string, path: st
 }
 
 type Contender = {
-  /** Absolute path this Route claims - matched against a child's `path` to tie
-   * the lexical verdict back to the rendering instance. */
+  /** Absolute path this Route claims. */
   path: string;
   /** Whether it claims (matches) a given path. */
   matches: (path: string) => boolean;
 };
 
 /**
- * The `as`-bearing Route nodes declared directly within `children` that vie for
- * a single slot, in declaration order, each paired with the path it claims and
- * a match test. Recurses Fragments but stops at nested Route scopes - those
- * arbitrate within their own parent. Lexical only (reads `to` props), so
- * subclass and component-delegated Routes don't appear.
+ * Whether `child` should cede `parent`'s single `as`-slot to an earlier rival.
+ * First contender (declaration order) matching the path wins. `path` is a thunk,
+ * read only once a real rivalry exists, so a solitary match stays unsubscribed.
+ */
+function cedes(parent: Route, child: Route, path: () => string): boolean {
+  // Fallback/redirect never competes by order, so it's never arbitrated.
+  if (child.default || child.redirect) return false;
+
+  const rivals = contenders(parent.props.children, scopeBase(parent));
+  if (rivals.length < 2 || !rivals.some((r) => r.path === child.path)) return false;
+
+  const at = path();
+  for (const rival of rivals)
+    if (rival.matches(at))
+      return rival.path !== child.path;
+
+  return true;
+}
+
+/**
+ * The `as`-bearing Route nodes declared directly within `children`, in
+ * declaration order, each paired with its claimed path and a match test.
+ * Recurses Fragments, stops at nested Route scopes. Lexical only (reads `to`).
  */
 function contenders(children: Component.Node, base: string): Contender[] {
   const out: Contender[] = [];
