@@ -4,4 +4,5 @@ export { Router, BrowserRouter } from './router';
 export { Route } from './route';
 export { Link } from './link';
 export { Redirect } from './redirect';
+export { redirect, notFound } from './sentinel';
 export { NavLinks } from './nav';

@@ -64,12 +64,14 @@ export class Router extends Component {
   /**
    * Directory-style anchor for relative navigation from a Route. Strips trailing
    * `/*` (catch-all, which belongs to children) and substitutes `:params`.
-   * Always ends with `/`.
+   * Always ends with `/`. When unmatched, `:params` pass through unsubstituted
+   * (no captures exist) - total so passive reads can never throw.
    */
   anchor(route: Route): string {
+    const { match } = route;
     const own = route.to
       .replace(/\/?\*$/, '')
-      .replace(/:(\w+)/g, (_, name) => route.match![name]);
+      .replace(/:(\w+)/g, (text, name) => match ? match[name] : text);
 
     return own.endsWith('/') ? own : own + '/';
   }
