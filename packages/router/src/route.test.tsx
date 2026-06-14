@@ -276,11 +276,19 @@ describe('Route', () => {
   });
 
   describe('declaration order', () => {
-    // Specificity-based arbitration (literal > :param > *) is pending.
-    // For now, the first matching sibling with `as` wins - users declare
-    // more-specific routes before less-specific ones.
+    it('first matching sibling wins, shadowing later ones', () => {
+      location('/posts/new');
+      const view = render(
+        <Route>
+          <Route to="/posts/:id" as={() => <span>dynamic</span>} />
+          <Route to="/posts/new" as={() => <span>literal</span>} />
+        </Route>
+      );
+      // :id matches /posts/new first, so it shadows the literal below it.
+      expect(view.container.textContent).toBe('dynamic');
+    });
 
-    it('literal declared first wins over :param at the same path', () => {
+    it('literal declared first takes precedence', () => {
       location('/posts/new');
       const view = render(
         <Route>
@@ -291,7 +299,7 @@ describe('Route', () => {
       expect(view.container.textContent).toBe('literal');
     });
 
-    it(':param declared first wins over * at the same path', () => {
+    it(':param declared first shadows a later catch-all', () => {
       location('/posts/foo');
       const view = render(
         <Route>
@@ -302,7 +310,7 @@ describe('Route', () => {
       expect(view.container.textContent).toBe('dynamic');
     });
 
-    it('catch-all matches when no earlier sibling does', () => {
+    it('catch-all declared last catches what earlier siblings miss', () => {
       location('/anything/at/all');
       const view = render(
         <Route>
@@ -313,7 +321,24 @@ describe('Route', () => {
       expect(view.container.textContent).toBe('not-found');
     });
 
-    it('first declared wins on a true tie', () => {
+    it('re-resolves the winner on navigation', async () => {
+      location('/posts/new');
+      const view = render(
+        <Route>
+          <Route to="/posts/new" as={() => <span>literal</span>} />
+          <Route to="/posts/:id" as={() => <span>dynamic</span>} />
+        </Route>
+      );
+      expect(view.container.textContent).toBe('literal');
+
+      await act(async () => router.current.goto('/posts/bar'));
+      expect(view.container.textContent).toBe('dynamic');
+
+      await act(async () => router.current.goto('/posts/new'));
+      expect(view.container.textContent).toBe('literal');
+    });
+
+    it('first declared wins among equal matches', () => {
       location('/posts/foo');
       const view = render(
         <Route>
