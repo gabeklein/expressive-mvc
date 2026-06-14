@@ -1,7 +1,8 @@
-import { watch, unbind, observer, Component } from '@expressive/mvc';
+import { watch, observer, Component } from '@expressive/mvc';
 import React, { createElement, Suspense } from 'react';
 import { Context, Layers } from './context';
 import { useHook, useReady } from './runtime';
+import { intercept, defineSubcomponent } from './seam';
 
 const proto = Component.prototype;
 const SEEN = new WeakSet<object>([proto]);
@@ -22,17 +23,12 @@ declare module '@expressive/mvc' {
 Component.on(subcomponents);
 Object.defineProperty(Component, 'contextType', { configurable: true, get: Layers });
 
-for (const key of [
+intercept(proto, [
   'updater',
   'refs',
   '_reactInternals',
   '_reactInternalInstance'
-])
-  Object.defineProperty(proto, key, {
-    set(value) {
-      Object.defineProperty(this, key, { value, writable: true });
-    }
-  });
+]);
 
 Object.defineProperties(proto, {
   isReactComponent: {
@@ -162,33 +158,7 @@ function subcomponents(proto: Component) {
     SEEN.add(proto);
 
     for (const key of Object.getOwnPropertyNames(proto))
-      if (/^[A-Z]/.test(key)) {
-        const { get, value } = Object.getOwnPropertyDescriptor(proto, key)!;
-
-        if (get || typeof value == 'function')
-          Object.defineProperty(proto, key, {
-            configurable: true,
-            get(this: Component) {
-              const owner = this.is;
-              let render = unbind(get ? get.call(owner) : value);
-              const Component = (props: unknown) =>
-                render.call(
-                  useHook<Component>((set) => watch(owner, set)) || owner,
-                  props
-                );
-
-              Object.defineProperty(owner, key, {
-                configurable: true,
-                get: () => Component,
-                set(fn: Function) {
-                  render = fn;
-                }
-              });
-
-              return Component;
-            }
-          });
-      }
+      if (/^[A-Z]/.test(key)) defineSubcomponent(proto, key);
   } while ((proto = Object.getPrototypeOf(proto)));
 }
 

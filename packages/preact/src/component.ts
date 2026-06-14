@@ -1,5 +1,11 @@
 import { watch, unbind, Component } from '@expressive/mvc';
-import { useHook, Context, Layers } from '@expressive/react/state';
+import {
+  useHook,
+  Context,
+  Layers,
+  intercept,
+  defineSubcomponent
+} from '@expressive/react/state';
 
 import { ComponentChildren, Ref } from 'preact';
 import { Component as PreactComponent, createElement, Suspense } from 'preact/compat';
@@ -65,7 +71,7 @@ Object.defineProperty(proto, 'render', {
 // every own property preact assigns onto a mounted class component, so each
 // lands non-enumerable - keeping it out of observed state, exactly as the
 // React adapter does for `updater` and `_reactInternals`.
-for (const key of [
+intercept(proto, [
   // mangled preact internals (stable across preact 10.x):
   '__v', // _vnode
   '__n', // _globalContext
@@ -79,12 +85,7 @@ for (const key of [
   '__R', // suspended-retry callback (preact/compat suspense)
   'base',
   'componentWillUnmount'
-])
-  Object.defineProperty(proto, key, {
-    set(value) {
-      Object.defineProperty(this, key, { value, writable: true });
-    }
-  });
+]);
 
 Object.defineProperties(proto, {
   // Borrowed so preact internals (e.g. context propagation) may request a
@@ -163,33 +164,7 @@ function subcomponents(proto: Component) {
       });
 
     for (const key of Object.getOwnPropertyNames(proto))
-      if (/^[A-Z]/.test(key)) {
-        const { get, value } = Object.getOwnPropertyDescriptor(proto, key)!;
-
-        if (get || typeof value == 'function')
-          Object.defineProperty(proto, key, {
-            configurable: true,
-            get(this: Component) {
-              const owner = this.is;
-              let render = unbind(get ? get.call(owner) : value);
-              const Component = (props: unknown) =>
-                render.call(
-                  useHook<Component>((set) => watch(owner, set)),
-                  props
-                );
-
-              Object.defineProperty(owner, key, {
-                configurable: true,
-                get: () => Component,
-                set(fn: Function) {
-                  render = fn;
-                }
-              });
-
-              return Component;
-            }
-          });
-      }
+      if (/^[A-Z]/.test(key)) defineSubcomponent(proto, key);
   } while ((proto = Object.getPrototypeOf(proto)));
 }
 
