@@ -62,14 +62,71 @@ describe('Router (headless)', () => {
     expect(router.entries).toEqual(['/', '/a', '/c']);
     expect(router.path).toBe('/c');
   });
+
+  it('goto splits query string from path', () => {
+    const router = Router.new();
+    router.goto('/posts?page=2&sort=asc');
+    expect(router.path).toBe('/posts');
+    expect(router.search).toBe('page=2&sort=asc');
+  });
+
+  it('goto without query clears search', () => {
+    const router = Router.new();
+    router.goto('/posts?page=2');
+    router.goto('/posts');
+    expect(router.search).toBe('');
+  });
+
+  it('query derives URLSearchParams from search', () => {
+    const router = Router.new();
+    router.goto('/posts?page=2');
+    expect(router.query.get('page')).toBe('2');
+  });
+
+  it('query updates reactively when search changes', async () => {
+    const router = Router.new();
+    const seen: (string | null)[] = [];
+
+    router.get(state => {
+      seen.push(state.query.get('page'));
+    });
+
+    router.goto('/posts?page=1');
+    await router.set();
+    router.goto('/posts?page=2');
+    await router.set();
+
+    expect(seen).toEqual([null, '1', '2']);
+  });
+
+  it('back/forward restore search from the stack', () => {
+    const router = Router.new();
+    router.goto('/a?x=1');
+    router.goto('/b?y=2');
+
+    router.back();
+    expect(router.path).toBe('/a');
+    expect(router.search).toBe('x=1');
+
+    router.forward();
+    expect(router.path).toBe('/b');
+    expect(router.search).toBe('y=2');
+  });
+
+  it('match ignores the query string', () => {
+    const router = Router.new();
+    router.goto('/posts/123?tab=info');
+    expect(router.match('/posts', ':id')).not.toBeNull();
+  });
 });
 
 describe('BrowserRouter', () => {
   const router = browserRouter();
 
   it('initializes from window.location', () => {
-    window.history.replaceState(null, '', '/foo');
+    window.history.replaceState(null, '', '/foo?from=start');
     expect(router.current.path).toBe('/foo');
+    expect(router.current.search).toBe('from=start');
   });
 
   it('goto pushes history and updates path', () => {
@@ -97,6 +154,21 @@ describe('BrowserRouter', () => {
   it('notices external history.pushState', () => {
     act(() => window.history.pushState(null, '', '/external'));
     expect(router.current.path).toBe('/external');
+  });
+
+  it('goto with query updates location and search', () => {
+    act(() => router.current.goto('/results?q=hello'));
+    expect(window.location.pathname).toBe('/results');
+    expect(window.location.search).toBe('?q=hello');
+    expect(router.current.path).toBe('/results');
+    expect(router.current.search).toBe('q=hello');
+    expect(router.current.query.get('q')).toBe('hello');
+  });
+
+  it('clears search when navigation drops the query', () => {
+    act(() => router.current.goto('/results?q=hi'));
+    act(() => window.history.pushState(null, '', '/results'));
+    expect(router.current.search).toBe('');
   });
 
   it('notices external history.replaceState', () => {
