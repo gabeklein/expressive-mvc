@@ -131,6 +131,19 @@ export class Route extends Component {
     return collect(this.inner);
   }
 
+  /**
+   * Live query record from the active Router. Global (not route-scoped) - every
+   * Route sees the same params, unlike `match` which is this Route's captures.
+   * Narrow known keys in a subclass via `declare`, same as on Router:
+   *
+   * ```ts
+   * class Search extends Route {
+   *   declare query: { q?: string; page?: string };
+   * }
+   * ```
+   */
+  query = set(() => this.router.query);
+
   /** Directory-style anchor for relative navigation. */
   get anchor(): string {
     return this.router.anchor(this);
