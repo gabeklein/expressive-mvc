@@ -1,3 +1,8 @@
+/* Counter is a minimal hero - center the title with its controls. */
+.container {
+  text-align: center;
+}
+
 .counter {
   display: flex;
   align-items: center;
