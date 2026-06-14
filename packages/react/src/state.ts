@@ -2,7 +2,7 @@ import { State, Context, observer, watch } from '@expressive/mvc';
 import { Runtime, useFactory, useHook, useReady } from './runtime';
 
 export { Runtime, useFactory, useHook, useReady };
-export { Consumer, Provider, Context, Layers } from './context';
+export { Consumer, Provider, Context, provide } from './context';
 export { intercept, defineSubcomponent } from './seam';
 export { use } from './use';
 

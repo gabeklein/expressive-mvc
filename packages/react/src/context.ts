@@ -12,12 +12,25 @@ function Layers() {
   return shared || (shared = Runtime.createContext(Context.root));
 }
 
+/** Read the ambient {@link Context} from the nearest Layers provider. */
+function useAmbient() {
+  return Runtime.useContext(Layers());
+}
+
+/** Wrap `children` in a {@link Layers} provider carrying `context` down the tree. */
+function provide(context: Context, children: any) {
+  return Runtime.createElement(Layers().Provider, { value: context, children });
+}
+
+// Class components consume the active Context through the host's `contextType`
+Object.defineProperty(Component, 'contextType', { configurable: true, get: Layers });
+
 const _get = Context.get;
 
 Context.get = (state?: State) => {
   if (!state)
     try {
-      return Runtime.useContext(Layers());
+      return useAmbient();
     } catch { }
 
   return _get(state);
@@ -85,7 +98,7 @@ function Provider<T extends State>(props: Provider.Props<T>) {
     ...rest
   } = props as Provider.ForSingleProps<T> & Provider.ForMultipleProps<T>;
 
-  const ambient = Runtime.useContext(Layers());
+  const ambient = useAmbient();
   const context = useHook<Context>((set) => {
     set(new Context(ambient));
     return () => context.pop();
@@ -98,13 +111,11 @@ function Provider<T extends State>(props: Provider.Props<T>) {
     if (i instanceof State) i.set(rest);
   }
 
-  return Runtime.createElement(Layers().Provider, {
-    value: context,
-    children:
-      fallback !== undefined
-        ? Runtime.createElement(Runtime.Suspense, { fallback, name }, children)
-        : children
-  });
+  return provide(context,
+    fallback !== undefined
+      ? Runtime.createElement(Runtime.Suspense, { fallback, name }, children)
+      : children
+  );
 }
 
-export { Consumer, Provider, Context, Layers };
+export { Consumer, Provider, Context, provide };

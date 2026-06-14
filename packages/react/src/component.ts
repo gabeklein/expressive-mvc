@@ -1,6 +1,6 @@
 import { watch, observer, Component } from '@expressive/mvc';
 import React, { createElement, Suspense } from 'react';
-import { Context, Layers } from './context';
+import { Context, provide } from './context';
 import { useHook, useReady } from './runtime';
 import { intercept, defineSubcomponent } from './seam';
 
@@ -21,7 +21,6 @@ declare module '@expressive/mvc' {
 }
 
 Component.on(subcomponents);
-Object.defineProperty(Component, 'contextType', { configurable: true, get: Layers });
 
 intercept(proto, [
   'updater',
@@ -134,14 +133,13 @@ function component(from: Component, context: Context) {
 
     const rendered = createElement(Render);
 
-    const children = createElement(Layers().Provider, {
-      value: context,
-      children: from.fallback === false
+    const children = provide(context,
+      from.fallback === false
         ? rendered
         : createElement(Suspense,
           { fallback: from.fallback, name: String(from) },
           rendered)
-    });
+    );
 
     return from.catch
       ? createElement(ErrorBoundary, { self: from, children })
