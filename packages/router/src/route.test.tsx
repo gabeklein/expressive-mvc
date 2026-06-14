@@ -276,10 +276,6 @@ describe('Route', () => {
   });
 
   describe('declaration order', () => {
-    // First matching sibling with `as` wins; precedence is positional, so an
-    // earlier, less-specific pattern shadows a more-specific one below it -
-    // WYSIWYG, like Express routes or `switch` cases. Order specific-first.
-
     it('first matching sibling wins, shadowing later ones', () => {
       location('/posts/new');
       const view = render(
