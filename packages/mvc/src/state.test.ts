@@ -2640,6 +2640,151 @@ describe('on method (static)', () => {
   });
 });
 
+describe('on type stage (static)', () => {
+  it('will run once per class, reaching subclasses', () => {
+    const seen: string[] = [];
+
+    class Base extends State {}
+    class Sub extends Base {}
+
+    Base.on({ type: (type) => void seen.push(type.name) });
+
+    Base.new();
+    Base.new();
+    Sub.new();
+
+    expect(seen).toEqual(['Base', 'Sub']);
+  });
+
+  it('will let a handler reshape members before binding', () => {
+    class Test extends State {
+      foo() { return 'method'; }
+    }
+
+    // Redefine foo as a get/set before bootstrap classifies it; bootstrap skips
+    // getters that carry a setter, so the redefinition is left untouched rather
+    // than reactively bound.
+    Test.on({
+      type: (type) => {
+        Object.defineProperty(type.prototype, 'foo', {
+          configurable: true,
+          get: () => 'claimed',
+          set: () => {}
+        });
+      }
+    });
+
+    const test = Test.new();
+    const foo = Object.getOwnPropertyDescriptor(Test.prototype, 'foo')!;
+
+    expect(test.foo as unknown).toBe('claimed');
+    expect(typeof foo.set).toBe('function');
+  });
+});
+
+describe('on combined stages (static)', () => {
+  it('will hook multiple stages from one handler object', () => {
+    const order: string[] = [];
+
+    class Test extends State {}
+
+    Test.on({
+      type: () => void order.push('type'),
+      before: () => void order.push('before'),
+      after: () => void order.push('after')
+    });
+
+    Test.new();
+
+    // type per-class at bootstrap, then before/after per-instance around new()
+    expect(order).toEqual(['type', 'before', 'after']);
+  });
+
+  it('will run a shared handler once across base and subclass', () => {
+    const fn = mock();
+
+    class Base extends State {}
+    class Sub extends Base {}
+
+    const handler = { before: fn };
+
+    Base.on(handler);
+    Sub.on(handler);
+
+    // handlers accumulate into a Set, so registering the same one along the
+    // chain is idempotent - it runs once per instance, not once per level.
+    Sub.new();
+
+    expect(fn).toBeCalledTimes(1);
+  });
+});
+
+describe('non-configurable members (bootstrap)', () => {
+  it('will leave a non-configurable method unbound', () => {
+    class Test extends State {
+      foo() { return 'content'; }
+    }
+
+    // sealing a member is how an adapter claims it (e.g. Component's render)
+    Object.defineProperty(Test.prototype, 'foo', {
+      ...Object.getOwnPropertyDescriptor(Test.prototype, 'foo'),
+      configurable: false
+    });
+
+    Test.new();
+
+    const desc = Object.getOwnPropertyDescriptor(Test.prototype, 'foo')!;
+
+    expect(typeof desc.value).toBe('function');
+    expect(desc.get).toBeUndefined();
+  });
+
+  it('will reactively bind a configurable method', () => {
+    class Test extends State {
+      method() {}
+    }
+
+    Test.new();
+
+    const desc = Object.getOwnPropertyDescriptor(Test.prototype, 'method')!;
+
+    expect(typeof desc.get).toBe('function');
+    expect(desc.value).toBeUndefined();
+  });
+});
+
+describe('on before / after stages (static)', () => {
+  it('will run before in prepare and after at the new() slot', () => {
+    const order: string[] = [];
+
+    class Test extends State {
+      value = 1;
+      new() { order.push('new'); }
+    }
+
+    Test.on({ before: () => void order.push('before') });
+    Test.on({ after: () => void order.push('after') });
+
+    Test.new();
+
+    expect(order).toEqual(['before', 'new', 'after']);
+  });
+
+  it('will run after cleanup on destroy', () => {
+    const cleanup = mock();
+
+    class Test extends State {}
+
+    Test.on({ after: () => cleanup });
+
+    const test = Test.new();
+    expect(cleanup).not.toBeCalled();
+
+    test.set(null);
+    expect(cleanup).toBeCalled();
+  });
+});
+
 describe('computed (getters)', () => {
   describe('destroyed', () => {
     it('will read last value after destroy', () => {
