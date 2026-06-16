@@ -26,14 +26,14 @@ export interface Host { }
  * different runtime throws.
  */
 export interface HostRuntime {
-  jsx(type: unknown, props: object, key?: unknown): Component.Node;
-  jsxs(type: unknown, props: object, key?: unknown): Component.Node;
-  jsxDEV?(type: unknown, props: object, key?: unknown, isStatic?: boolean, source?: object, self?: unknown): Component.Node;
-  Fragment: unknown;
   childrenOf(children: unknown): Component.Node[];
   isElement(node: unknown): boolean;
-  typeOf(node: unknown): unknown;
+  jsx(type: unknown, props: object, key?: unknown): Component.Node;
+  jsxDEV?(type: unknown, props: object, key?: unknown, isStatic?: boolean, source?: object, self?: unknown): Component.Node;
+  jsxs(type: unknown, props: object, key?: unknown): Component.Node;
   propsOf(node: unknown): Record<string, unknown>;
+  typeOf(node: unknown): unknown;
+  Fragment: unknown;
 }
 
 export declare namespace JSX {
