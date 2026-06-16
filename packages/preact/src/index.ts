@@ -1,3 +1,5 @@
+import './jsx-runtime';
+
 import { State, Runtime, use, Consumer, Provider } from '@expressive/react/state';
 import {
   createContext,
@@ -21,6 +23,6 @@ Object.assign(Runtime, {
 
 export { State, State as default };
 export { Context, Observable, def, get, ref, set, hot } from '@expressive/mvc';
-export { Component } from './component';
+export { Component } from './runtime';
 export { use };
 export { Consumer, Provider };

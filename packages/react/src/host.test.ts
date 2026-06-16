@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, expect, it, mock } from 'bun:test';
 
-import { Runtime, useHook } from './runtime';
+import { Runtime, useHook } from './component';
 
 // useHook calls useRef, useState, useEffect once each per render. Stub Runtime
 // with a hand-driven lifecycle so a subscription update can fire before vs.

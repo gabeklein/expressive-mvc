@@ -10,7 +10,7 @@ import {
 
 import './jsx-runtime';
 import { State } from './state';
-import { Runtime } from './runtime';
+import { Runtime } from './component';
 import { Consumer, Provider } from './context';
 
 Object.assign(Runtime, {
@@ -25,6 +25,6 @@ Object.assign(Runtime, {
 
 export { State, State as default };
 export { Context, Observable, def, get, ref, set, hot } from '@expressive/mvc';
-export { Component } from './component';
+export { Component } from './runtime';
 export { use } from './use';
 export { Consumer, Provider };

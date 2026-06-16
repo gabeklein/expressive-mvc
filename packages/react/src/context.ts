@@ -1,5 +1,5 @@
 import { State, Context, Component } from '@expressive/mvc';
-import { Runtime, useHook } from './runtime';
+import { Runtime, useHook } from './component';
 
 let shared: any;
 

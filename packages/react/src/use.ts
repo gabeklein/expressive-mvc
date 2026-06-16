@@ -1,5 +1,5 @@
 import { event, observer, watch } from '@expressive/mvc';
-import { Runtime } from './runtime';
+import { Runtime } from './component';
 
 export function use<T extends object>(subject: T) {
   const { current } = Runtime.useRef<{

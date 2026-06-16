@@ -1,16 +1,8 @@
 import { Component } from '@expressive/mvc';
-import { attach, intercept, prepare, Runtime } from '@expressive/react/state';
+import { ignore, Runtime } from '@expressive/react/state';
 
 import { ComponentChildren, Ref } from 'preact';
 import { Component as PreactComponent } from 'preact/compat';
-
-const proto = Component.prototype;
-
-declare module '@expressive/mvc/jsx-runtime' {
-  interface Host {
-    node: ComponentChildren;
-  }
-}
 
 declare module '@expressive/mvc' {
   namespace Component {
@@ -25,8 +17,6 @@ declare module '@expressive/mvc' {
   }
 }
 
-Component.on(prepare);
-
 // Preact has no render-attempt stacking (no fiber-keyed supersession); teardown
 // is owned by the context, so both hooks are no-ops.
 Runtime.attempt = () => ({
@@ -34,12 +24,9 @@ Runtime.attempt = () => ({
   remove() {}
 });
 
-// Preact context Providers subscribe consumers by patching their
-// `componentWillUnmount` and re-render them via internal fields. Intercept
-// every own property preact assigns onto a mounted class component, so each
-// lands non-enumerable - keeping it out of observed state, exactly as the
-// React adapter does for `updater` and `_reactInternals`.
-intercept(proto, [
+// Own properties preact assigns onto a mounted class component; ignore each so
+// it stays out of observed state (cf. React's `updater`/`_reactInternals`).
+ignore([
   // mangled preact internals (stable across preact 10.x):
   '__v', // _vnode
   '__n', // _globalContext
@@ -55,29 +42,19 @@ intercept(proto, [
   'componentWillUnmount'
 ]);
 
-Object.defineProperties(proto, {
-  // Preact identifies class components by the presence of `prototype.render`
-  // (it has no `isReactComponent` brand check). This base stub satisfies that
-  // check for components that define no render; `subcomponents.type` seals it
-  // so bootstrap leaves it a plain method. The per-instance render is installed
-  // when context attaches (below), shadowing this.
+Object.defineProperties(Component.prototype, {
+  // Preact detects class components by `prototype.render` (no `isReactComponent`
+  // brand). Base stub for components that define no render; the `type` handler
+  // seals it, and the per-instance render shadows it when context attaches.
   render: {
     configurable: true,
     value: () => null
   },
-  // Borrowed so preact internals (e.g. context propagation) may request a
-  // re-render of this component; they operate on the intercepted fields above.
+  // Borrowed so preact internals may request a re-render of this component.
   forceUpdate: {
     writable: true,
     configurable: true,
     value: PreactComponent.prototype.forceUpdate
-  },
-  state: {
-    set() {},
-    get: proto.get
-  },
-  context: {
-    set: attach
   }
 });
 

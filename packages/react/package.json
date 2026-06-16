@@ -23,6 +23,7 @@
   "type": "module",
   "sideEffects": [
     "./dist/index.js",
+    "./dist/state.js",
     "./src/jsx-runtime.ts"
   ],
   "main": "dist/index.js",

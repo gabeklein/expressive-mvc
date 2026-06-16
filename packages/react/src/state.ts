@@ -1,8 +1,8 @@
 import { State, Context, observer, watch } from '@expressive/mvc';
-import { Runtime, useFactory, useHook, useReady } from './runtime';
+import { Runtime, useFactory, useHook, useReady } from './component';
 
 export { Runtime, useFactory, useHook, useReady };
-export { attach, intercept, prepare } from './runtime';
+export { ignore } from './component';
 export { Consumer, Provider, Context, provide } from './context';
 export { use } from './use';
 

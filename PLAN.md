@@ -225,6 +225,53 @@ per-instance). `after` was unused here. So of the three stages, `type` is the
 load-bearing one for this consumer — a useful signal for how much of the #143
 surface is actually exercised today.
 
+## Follow-on: trade `runtime` ↔ `component`, split agnostic from host
+
+The spike left `runtime.ts` as the agnostic keystone (the `Runtime` seam object +
+`render`/`attach`/`subcomponents`/hooks) while each `component.ts` welds the
+*agnostic* activation (`Component.on(prepare)`, shared `state`/`context`
+descriptors) onto *host* glue (host import, intercept-list, brand, `attempt`,
+`boundary`). That blur is why `Component.on(prepare)` can't be authored once, and
+why preact's host wiring lives ad-hoc in `index.ts` while react's is in
+`jsx-runtime.ts`.
+
+**Fix: trade the names so each module means what it says.**
+
+- **`component.ts`** = the **agnostic keystone** (authored once in react, shared).
+  Holds the `Runtime` seam object/type, `render`, `attach`, `subcomponents`,
+  `prepare`, `useFactory`/`useReady`/`useHook`, `intercept` (helper), the
+  JSX-compat `declare module`, and — inlined at the bottom — **`Component.on(prepare)`
+  plus the shared `state` + `context: attach` proto descriptors**. Activation
+  runs once here, for both hosts (preact triggers it by importing the module).
+  `prepare` no longer needs to be exported.
+- **`runtime.ts`** = **host injection**, one per package. Imports the host
+  (react / preact-compat), runs `Object.assign(Runtime, { host primitives })`
+  (moved out of `index.ts`), sets the host brand (`isReactComponent` vs preact
+  `render` stub + `forceUpdate`), the host `intercept` key-list, `Runtime.attempt`,
+  and `Runtime.boundary`. No `Component.on`, no `prepare`.
+- **`jsx-runtime.ts`** = host JSX bootstrap (`host(...)`), in **both** packages.
+- **`index.ts`** (both) → slim barrels: `import './runtime'` + `import './jsx-runtime'`
+  for side-effects, then public re-exports.
+
+**Tree-shaking:** inlining `Component.on(prepare)` into the agnostic `component.ts`
+(which feeds the pure `state.js` path) requires marking `./dist/component.js` as
+`sideEffects`. Acceptable — `state.js` already hard-depends on `component.js`, and
+the activation is mandatory for any adapter use, so nothing droppable is lost. The
+`on` accumulators are already `Set`s, so the single shared registration is
+idempotent.
+
+**Symmetry achieved:** both packages end up with `runtime.ts` (host injection) +
+`jsx-runtime.ts` (host JSX) + `index.ts` (barrel), all riding the single agnostic
+`component.ts`. Re-export source in `state.ts` flips `./runtime` → `./component`;
+public surface unchanged (a dedicated `@expressive/react/component` export is
+deferred until necessary).
+
+**Sequencing (separate commits):**
+1. **Add preact `jsx-runtime.ts`** — the missing host-JSX bootstrap, so preact can
+   serve the agnostic pragma. Independent and shippable on its own.
+2. Trade the names + inline `Component.on(prepare)` + `sideEffects` entry.
+3. Move host primitives `Object.assign` from each `index.ts` into its `runtime.ts`.
+
 ## Out of scope
 
 - Final PR polish (changeset, docs) — added when the shape settles.
