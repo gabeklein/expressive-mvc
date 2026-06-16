@@ -6,9 +6,11 @@
 # Run this once after each `claude auth login` (the stored snapshot goes stale when
 # the credential expires, so re-run it whenever you re-authenticate).
 #
-# Requires gh authenticated with permission to manage your Codespaces user secrets:
-#   gh auth login                              # interactive, pick the right scopes
-#   gh auth refresh -h github.com -s codespace # or add the scope to an existing login
+# Requires gh authenticated with permission to manage your Codespaces user secrets.
+# Inside a Codespace the built-in GITHUB_TOKEN is repo-scoped and can't write user
+# secrets (and gh won't override an env-provided token), so first either:
+#   unset GITHUB_TOKEN GH_TOKEN && gh auth login   # grant the 'codespace' scope
+#   export GH_TOKEN=<PAT with codespace scope>
 set -euo pipefail
 
 CONFIG_DIR="${CLAUDE_CONFIG_DIR:-/workspaces/.claude}"

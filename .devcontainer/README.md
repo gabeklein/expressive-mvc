@@ -118,10 +118,13 @@ one-time `claude auth login`. If you spin up new Codespaces often, you can snaps
 your login into a **user Codespaces secret** and have new Codespaces restore it
 automatically:
 
-1. In a logged-in Codespace, make sure `gh` can manage your Codespaces user secrets
-   (the default Codespaces token can't — it's repo-scoped):
+1. In a logged-in Codespace, give `gh` permission to manage your Codespaces user
+   secrets. The built-in `GITHUB_TOKEN` is repo-scoped and can't — and `gh` won't
+   override an env-provided token — so drop it and log in (or export a PAT that has
+   the `codespace` scope):
    ```bash
-   gh auth refresh -h github.com -s codespace   # or: gh auth login
+   unset GITHUB_TOKEN GH_TOKEN && gh auth login   # grant the 'codespace' scope
+   # or: export GH_TOKEN=<PAT with codespace scope>
    ```
 2. Snapshot the current login into the `CLAUDE_AUTH_ARCHIVE` secret:
    ```bash
