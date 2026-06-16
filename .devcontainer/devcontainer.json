@@ -6,7 +6,7 @@
     },
     "remoteUser": "bun",
     "userEnvProbe": "loginInteractiveShell",
-    "postCreateCommand": "sudo mkdir -p /workspaces/.claude && sudo chown -R bun:bun /workspaces/.claude /home/bun/.bun/install/cache && bun install",
+    "postCreateCommand": "sudo mkdir -p /workspaces/.claude && sudo chown -R bun:bun /workspaces/.claude /home/bun/.bun/install/cache && bash .devcontainer/restore-claude-auth.sh && bun install",
     "postStartCommand": "bash .devcontainer/start-remote-control.sh",
     "features": {
         "ghcr.io/devcontainers/features/github-cli:1": {}

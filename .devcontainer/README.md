@@ -111,6 +111,44 @@ for other inference use — it can't shadow the full-scope login RC needs.
 > re-login; local *stop/start* is unaffected. This setup is optimized for the
 > Codespaces-primary workflow.
 
+### Carrying your login to fresh Codespaces (optional)
+
+A brand-new Codespace starts with an empty `/workspaces`, so by default it needs a
+one-time `claude auth login`. If you spin up new Codespaces often, you can snapshot
+your login into a **user Codespaces secret** and have new Codespaces restore it
+automatically:
+
+1. In a logged-in Codespace, make sure `gh` can manage your Codespaces user secrets
+   (the default Codespaces token can't — it's repo-scoped):
+   ```bash
+   gh auth refresh -h github.com -s codespace   # or: gh auth login
+   ```
+2. Snapshot the current login into the `CLAUDE_AUTH_ARCHIVE` secret:
+   ```bash
+   bash .devcontainer/sync-claude-auth.sh
+   ```
+   This stores a base64 tar.gz of `.credentials.json` (auth) plus `.claude.json`
+   (folder trust + the Remote Control confirmation), scoped to this repo.
+3. New Codespaces auto-restore it: `postCreateCommand` runs
+   [`restore-claude-auth.sh`](./restore-claude-auth.sh), which unpacks the secret
+   into `CLAUDE_CONFIG_DIR` **only if there's no existing login** (it never clobbers
+   a live one). RC then comes up authenticated and trusted with no prompts.
+
+Caveats:
+
+- **The snapshot goes stale.** Claude Code's OAuth credential expires and isn't
+  silently refreshed, so when it lapses, `claude auth login` again and **re-run
+  `sync-claude-auth.sh`** to refresh the secret.
+- **Updating the secret only affects *future* Codespaces** — secrets are injected at
+  start, not mid-session.
+- **48 KB secret limit.** If `.claude.json` grows too large, `sync-claude-auth.sh`
+  errors; drop `.claude.json` from it to store credentials only (you'll then
+  re-accept trust + the RC prompt once per fresh Codespace).
+- **Security.** This stores a full-scope login (capable of opening Remote Control
+  sessions) in a Codespaces secret. Treat it like a credential: keep it scoped to
+  this repo, and to revoke run
+  `gh secret delete CLAUDE_AUTH_ARCHIVE --user --app codespaces` and re-login.
+
 ## Notes
 
 - Remote Control requires a **claude.ai subscription** and a full-scope login (not a
