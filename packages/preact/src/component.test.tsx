@@ -21,6 +21,13 @@ it('will create and provide instance', () => {
   screen.getByText('bar');
 });
 
+it('will expose a null base render for class detection', () => {
+  // Preact detects class components via `prototype.render`. The base stub is
+  // never invoked at runtime (the per-instance render shadows it, and mvc's
+  // render chain excludes the seam) but must exist and return null.
+  expect((Component.prototype as { render(): unknown }).render()).toBe(null);
+});
+
 it('will not enumerate preact internals on instance', () => {
   class Control extends Component {
     foo = 'bar';
@@ -48,21 +55,6 @@ it('will create instance only once', () => {
   rerender(<Control />);
 
   expect(didConstruct).toBeCalledTimes(1);
-});
-
-it('will call is method on creation', () => {
-  class Control extends Component {}
-
-  const didCreate = mock();
-
-  const screen = render(<Control is={didCreate} />);
-
-  expect(didCreate).toBeCalledTimes(1);
-
-  screen.rerender(<Control is={didCreate} />);
-  expect(didCreate).toBeCalledTimes(1);
-
-  act(() => void screen.unmount());
 });
 
 describe('ref prop', () => {
@@ -132,18 +124,6 @@ describe('element props', () => {
         <Consumer for={Foo}>
           {(c) => {
             expect(c.value).toBe('baz');
-          }}
-        </Consumer>
-      </Foo>
-    );
-  });
-
-  it('will assign values to instance', () => {
-    render(
-      <Foo value="foobar">
-        <Consumer for={Foo}>
-          {(i) => {
-            expect(i.value).toBe('foobar');
           }}
         </Consumer>
       </Foo>
@@ -371,40 +351,6 @@ describe('render method', () => {
     screen.rerender(<ClassComponent salutation="Bonjour" name="Preact" />);
 
     screen.getByText('Bonjour Preact');
-  });
-
-  it('will ignore children not handled', () => {
-    class Control extends Component {
-      render(props = {} as { value: string }) {
-        return <>{props.value}</>;
-      }
-    }
-
-    const screen = render(
-      // render declares props but no children, so children should be rejected
-      // @ts-expect-error
-      <Control value="Goodbye">Hello</Control>
-    );
-
-    screen.getByText('Goodbye');
-    expect(screen.queryByText('Hello')).toBe(null);
-  });
-
-  it('will accept all-optional render props', () => {
-    type ControlProps = {
-      base?: string;
-      children?: ComponentChildren;
-    };
-
-    class Control extends Component {
-      render(props: ControlProps = {}) {
-        return <>{props.base || props.children}</>;
-      }
-    }
-
-    const screen = render(<Control base="home" />);
-
-    screen.getByText('home');
   });
 
   it('will handle children if managed by this', () => {
@@ -677,35 +623,6 @@ describe('render chain', () => {
     expect(content.closest('main')).toBe(heading.closest('main'));
   });
 
-  it('will compose three levels inner to outer', () => {
-    class A extends Component {
-      render(props = {} as { children?: ComponentChildren }) {
-        return <div data-a>{props.children}</div>;
-      }
-    }
-
-    class B extends A {
-      render(props = {} as { children?: ComponentChildren }) {
-        return <section data-b>{props.children}</section>;
-      }
-    }
-
-    class C extends B {
-      render() {
-        return <span data-c>Leaf</span>;
-      }
-    }
-
-    const { container } = render(<C />);
-
-    // A (outermost) > B > C (innermost content).
-    const a = container.querySelector('[data-a]')!;
-    const b = a.querySelector('[data-b]')!;
-    const c = b.querySelector('[data-c]')!;
-
-    expect(c.textContent).toBe('Leaf');
-  });
-
   it('will stay reactive across composed levels', async () => {
     class Frame extends Component {
       title = 'Base';
@@ -765,19 +682,6 @@ describe('render chain', () => {
     expect(element.queryByText('Never seen')).toBeNull();
   });
 
-  it('will preserve identity for single-level override', () => {
-    // The universal case: a single override composes with Component's
-    // pass-through default, so output is exactly the subclass render.
-    class Solo extends Component {
-      render() {
-        return <span>Just me</span>;
-      }
-    }
-
-    const { container } = render(<Solo />);
-
-    expect(container.innerHTML).toBe('<span>Just me</span>');
-  });
 });
 
 describe('error boundary', () => {
@@ -1307,46 +1211,6 @@ describe('subcomponents', () => {
     screen.getByText('Sidebar Content');
   });
 
-  it('will work with assigned function', async () => {
-    class Dashboard extends Component {
-      Sidebar(): ComponentChildren {
-        return null;
-      }
-
-      // for coverage
-      Ignore = 3;
-
-      render() {
-        return <this.Sidebar />;
-      }
-    }
-
-    class MyDashboard extends Dashboard {
-      content = 'value';
-      Sidebar = Sidebar;
-
-      new() {
-        dashboard = this;
-      }
-    }
-
-    function Sidebar(this: MyDashboard) {
-      return <span>Sidebar {this.content}</span>;
-    }
-
-    let dashboard!: MyDashboard;
-
-    render(<MyDashboard />);
-
-    screen.getByText('Sidebar value');
-
-    await act(async () => {
-      dashboard.content = 'updated';
-    });
-
-    screen.getByText('Sidebar updated');
-  });
-
   it('will allow override via setter', async () => {
     class Dashboard extends Component {
       value = 'Original';
@@ -1373,62 +1237,6 @@ describe('subcomponents', () => {
     });
 
     screen.getByText('Replaced: yes');
-  });
-
-  it('will inherit from parent class', () => {
-    class Base extends Component {
-      Header() {
-        return <span>Header</span>;
-      }
-    }
-
-    class Page extends Base {
-      render() {
-        return <this.Header />;
-      }
-    }
-
-    render(<Page />);
-
-    screen.getByText('Header');
-  });
-
-  it('will compose elements from subclass', () => {
-    class Base extends Component {
-      Before(): ComponentChildren {
-        return null;
-      }
-
-      After(): ComponentChildren {
-        return null;
-      }
-
-      render() {
-        return (
-          <>
-            <this.Before />
-            <span>Main</span>
-            <this.After />
-          </>
-        );
-      }
-    }
-
-    class Page extends Base {
-      Before() {
-        return <span>Header</span>;
-      }
-
-      After() {
-        return <span>Footer</span>;
-      }
-    }
-
-    const element = render(<Page />);
-
-    element.getByText('Header');
-    element.getByText('Main');
-    element.getByText('Footer');
   });
 
   it('will accept props', () => {

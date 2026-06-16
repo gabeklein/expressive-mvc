@@ -17,8 +17,14 @@ host({
   jsx,
   jsxs,
   Fragment,
-  childrenOf: (children) => Children.toArray(children as ComponentChildren) as Component.Node[],
   isElement: isValidElement,
-  typeOf: (node) => isValidElement(node) ? node.type : undefined,
-  propsOf: (node) => isValidElement(node) ? node.props as Record<string, unknown> : {}
+  childrenOf(children: ComponentChildren): Component.Node[] {
+    return Children.toArray(children);
+  },
+  typeOf(node){
+    return isValidElement(node) ? node.type : undefined;
+  },
+  propsOf(node){
+    return isValidElement(node) ? node.props as Record<string, unknown> : {};
+  }
 });

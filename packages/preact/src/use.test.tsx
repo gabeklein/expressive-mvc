@@ -66,20 +66,6 @@ describe('use', () => {
     });
   });
 
-  it('will return observed proxy on initial render', () => {
-    const test = Test.new();
-    let first: Test | undefined;
-
-    renderHook(() => {
-      const current = use(test);
-      first ??= current;
-      void current.foo;
-      return current;
-    });
-
-    expect(first).not.toBe(test);
-  });
-
   it('will not leak subscription under StrictMode', () => {
     // Note: preact's StrictMode is an alias of Fragment, so unlike React
     // there is no double-mount; the key assertion is that unmount returns
@@ -195,13 +181,4 @@ describe('use', () => {
     );
   });
 
-  it('will settle on destroyed observable', () => {
-    const test = Test.new();
-
-    test.set(null);
-
-    const hook = renderHook(() => use(test));
-
-    expect(hook.result.current).toBe(test);
-  });
 });

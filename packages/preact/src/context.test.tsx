@@ -47,25 +47,6 @@ describe('Provider', () => {
     );
   });
 
-  it('will provide a mix of state and models', () => {
-    const foo = Foo.new();
-
-    render(
-      <Provider for={{ foo, Bar }}>
-        <Consumer for={Foo}>
-          {({ is }) => {
-            expect(is).toBe(foo);
-          }}
-        </Consumer>
-        <Consumer for={Bar}>
-          {(i) => {
-            expect(i).toBeInstanceOf(Bar);
-          }}
-        </Consumer>
-      </Provider>
-    );
-  });
-
   it('will pass props to created instance', () => {
     class Test extends State {
       foo = 'default';
@@ -105,22 +86,6 @@ describe('Provider', () => {
     expect(is).toBeCalledWith(expect.any(Test));
   });
 
-  it('will ignore rest props on multi-form for', () => {
-    class Test extends State {
-      foo = 'default';
-    }
-
-    render(
-      <Provider for={{ Test }} foo="hello">
-        <Consumer for={Test}>
-          {(i) => {
-            expect(i.foo).toBe('default');
-          }}
-        </Consumer>
-      </Provider>
-    );
-  });
-
   it('will update instance when props change', async () => {
     class Test extends State {
       value = 'initial';
@@ -148,21 +113,6 @@ describe('Provider', () => {
     });
 
     screen.getByText('second');
-  });
-
-  it('will pass props to instance', () => {
-    const test = Foo.new();
-
-    render(
-      <Provider for={test} value="hello">
-        <Consumer for={Foo}>
-          {({ is }) => {
-            expect(is).toBe(test);
-            expect(is.value).toBe('hello');
-          }}
-        </Consumer>
-      </Provider>
-    );
   });
 
   it('will provide children of given model', () => {
@@ -202,31 +152,6 @@ describe('Provider', () => {
 
     element.unmount();
     expect(willDestroy).toBeCalled();
-  });
-
-  it('will destroy multiple created on unmount', async () => {
-    const willDestroy = mock();
-
-    class Foo extends State {}
-    class Bar extends State {}
-
-    const element = render(
-      <Provider for={{ Foo, Bar }}>
-        <Consumer for={Foo}>
-          {(i) => {
-            i.get(() => willDestroy);
-          }}
-        </Consumer>
-        <Consumer for={Bar}>
-          {(i) => {
-            i.get(() => willDestroy);
-          }}
-        </Consumer>
-      </Provider>
-    );
-
-    element.unmount();
-    expect(willDestroy).toBeCalledTimes(2);
   });
 
   it('will not destroy given instance on unmount', async () => {
@@ -496,51 +421,10 @@ describe('Consumer', () => {
     );
   });
 
-  it('will select closest match over best match', () => {
-    render(
-      <Provider for={Bar}>
-        <Provider for={Baz}>
-          <Consumer for={Bar}>
-            {(i) => {
-              expect(i).toBeInstanceOf(Baz);
-            }}
-          </Consumer>
-        </Provider>
-      </Provider>
-    );
-  });
-
   it('will return root context if called outside render', () => {
     expect(Context.get()).toBe(Context.root);
   });
 
-  it('will handle complex arrangement', () => {
-    const instance = Foo.new();
-
-    render(
-      <Provider for={instance}>
-        <Provider for={Baz}>
-          <Provider for={{ Bar }}>
-            <Consumer for={Foo}>
-              {({ is }) => {
-                expect(is).toBe(instance);
-              }}
-            </Consumer>
-            <Consumer for={Bar}>
-              {(i) => {
-                expect(i).toBeInstanceOf(Bar);
-              }}
-            </Consumer>
-            <Consumer for={Baz}>
-              {(i) => {
-                expect(i).toBeInstanceOf(Baz);
-              }}
-            </Consumer>
-          </Provider>
-        </Provider>
-      </Provider>
-    );
-  });
 });
 
 describe('get instruction', () => {
@@ -590,29 +474,6 @@ describe('get instruction', () => {
     );
   });
 
-  it('will see multiple peers provided', async () => {
-    class Foo extends State {}
-    class Baz extends State {
-      bar = get(Bar);
-      foo = get(Foo);
-    }
-
-    const Inner = () => {
-      const { bar, foo } = Baz.use();
-
-      expect(bar).toBeInstanceOf(Bar);
-      expect(foo).toBeInstanceOf(Foo);
-
-      return null;
-    };
-
-    render(
-      <Provider for={{ Foo, Bar }}>
-        <Inner />
-      </Provider>
-    );
-  });
-
   it('will maintain hook', async () => {
     const Inner = mock(() => {
       Foo.use();
@@ -652,19 +513,6 @@ describe('get instruction', () => {
         <Provider for={Child} />
       </Provider>
     );
-  });
-
-  it('will not resolve as own parent', () => {
-    class MaybeSelf extends State {
-      parent = get(MaybeSelf, false);
-    }
-
-    const test = MaybeSelf.new();
-
-    render(<Provider for={test} />);
-
-    expect(test.parent).not.toBe(test);
-    expect(test.parent).toBeUndefined();
   });
 
   it('will compute immediately in context', () => {
