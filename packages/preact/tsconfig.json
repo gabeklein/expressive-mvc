@@ -13,6 +13,7 @@
     "strict": true,
     "types": ["bun", "preact"],
     "paths": {
+      "@expressive/mvc/*": ["../mvc/src/*"],
       "@expressive/*": ["../*/src"],
       "@expressive/react/state": ["../react/src/state"]
     }

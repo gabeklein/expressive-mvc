@@ -1,24 +1,19 @@
-import { watch, unbind, Component } from '@expressive/mvc';
-import {
-  useHook,
-  Context,
-  provide,
-  intercept,
-  defineSubcomponent
-} from '@expressive/react/state';
+import { Component } from '@expressive/mvc';
+import { attach, intercept, prepare, Runtime } from '@expressive/react/state';
 
 import { ComponentChildren, Ref } from 'preact';
-import { Component as PreactComponent, createElement, Suspense } from 'preact/compat';
+import { Component as PreactComponent } from 'preact/compat';
 
 const proto = Component.prototype;
-const SEEN = new WeakSet<object>([proto]);
+
+declare module '@expressive/mvc/jsx-runtime' {
+  interface Host {
+    node: ComponentChildren;
+  }
+}
 
 declare module '@expressive/mvc' {
   namespace Component {
-    interface Host {
-      node: ComponentChildren;
-    }
-
     interface BaseProps<T extends Component> {
       /**
        * Ref which receives the instance of this component.
@@ -28,41 +23,15 @@ declare module '@expressive/mvc' {
       ref?: Ref<T>;
     }
   }
-
-  interface Component {
-    /** @deprecated Only to satisfy Preact JSX. Use `this.get(State)` instead. */
-    readonly context: Context;
-    /** @deprecated Only to satisfy Preact JSX. Use `this.get()` instead. */
-    readonly state: State.Values<this>;
-    /** @deprecated Only to satisfy Preact JSX. Use `this.set({})` instead. */
-    setState: (state: any, callback?: () => void) => void;
-    /** @deprecated Only to satisfy Preact JSX. Use `this.set(key)` instead. */
-    forceUpdate: (callback?: () => void) => void;
-  }
 }
 
-Component.on(subcomponents);
+Component.on(prepare);
 
-// Preact identifies class components by the presence of `prototype.render`
-// (it has no `isReactComponent` brand check). The stub is shadowed by the
-// per-instance render installed when context attaches, and sits on the seam
-// itself so the mvc render chain ignores it. Defined as a get/set accessor
-// pair so mvc class-setup will not convert it into a reactive method - the
-// getter may be invoked with the prototype itself as receiver.
-function render() {
-  return null;
-}
-
-Object.defineProperty(proto, 'render', {
-  configurable: true,
-  get: () => render,
-  set(value) {
-    Object.defineProperty(this, 'render', {
-      value,
-      writable: true,
-      configurable: true
-    });
-  }
+// Preact has no render-attempt stacking (no fiber-keyed supersession); teardown
+// is owned by the context, so both hooks are no-ops.
+Runtime.attempt = () => ({
+  commit() {},
+  remove() {}
 });
 
 // Preact context Providers subscribe consumers by patching their
@@ -87,6 +56,15 @@ intercept(proto, [
 ]);
 
 Object.defineProperties(proto, {
+  // Preact identifies class components by the presence of `prototype.render`
+  // (it has no `isReactComponent` brand check). This base stub satisfies that
+  // check for components that define no render; `subcomponents.type` seals it
+  // so bootstrap leaves it a plain method. The per-instance render is installed
+  // when context attaches (below), shadowing this.
+  render: {
+    configurable: true,
+    value: () => null
+  },
   // Borrowed so preact internals (e.g. context propagation) may request a
   // re-render of this component; they operate on the intercepted fields above.
   forceUpdate: {
@@ -95,78 +73,15 @@ Object.defineProperties(proto, {
     value: PreactComponent.prototype.forceUpdate
   },
   state: {
-    set() { },
+    set() {},
     get: proto.get
   },
   context: {
-    set(this: Component, context: Context) {
-      context = context.push(this);
-
-      Object.defineProperties(this, {
-        context: {
-          get: () => context,
-          set() { }
-        },
-        render: {
-          value: component(this, context)
-        }
-      });
-    }
+    set: attach
   }
 });
 
-function component(from: Component, context: Context) {
-  const { render } = from;
-  const Render = () => render.call(from, from.props);
-  const Component = () => {
-    from = useHook((refresh) => {
-      watch(from, refresh);
-      return () => {
-        from.set(null);
-        context.pop();
-      };
-    });
-
-    const children = provide(context,
-      createElement(Suspense,
-        { fallback: from.fallback },
-        createElement(Render, null))
-    );
-
-    return from.catch
-      ? createElement(ErrorBoundary, { self: from, children })
-      : children;
-  };
-
-  return () => createElement(Component, null);
-}
-
-function subcomponents(proto: Component) {
-  do {
-    if (SEEN.has(proto)) return;
-
-    SEEN.add(proto);
-
-    // State setup converts prototype methods into reactive accessors which
-    // require an instance receiver. Preact however reads `T.prototype.render`
-    // on every diff (its class-component check), with the prototype itself as
-    // receiver. Restore `render` to a plain method - harmless, as instances
-    // always shadow it with the composed render installed by the constructor.
-    const render = Object.getOwnPropertyDescriptor(proto, 'render');
-
-    if (render && render.get)
-      Object.defineProperty(proto, 'render', {
-        value: unbind(render.get),
-        writable: true,
-        configurable: true
-      });
-
-    for (const key of Object.getOwnPropertyNames(proto))
-      if (/^[A-Z]/.test(key)) defineSubcomponent(proto, key);
-  } while ((proto = Object.getPrototypeOf(proto)));
-}
-
-class ErrorBoundary extends PreactComponent<{
+Runtime.boundary = class ErrorBoundary extends PreactComponent<{
   self: Component;
   children: ComponentChildren;
 }> {
@@ -218,6 +133,6 @@ class ErrorBoundary extends PreactComponent<{
     if (this.recovering) throw this.state.error;
     return this.props.self.fallback;
   }
-}
+};
 
 export { Component };
