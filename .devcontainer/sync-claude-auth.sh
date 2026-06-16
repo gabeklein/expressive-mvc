@@ -6,11 +6,9 @@
 # Run this once after each `claude auth login` (the stored snapshot goes stale when
 # the credential expires, so re-run it whenever you re-authenticate).
 #
-# Requires gh authenticated with permission to manage your Codespaces user secrets.
-# Inside a Codespace the built-in GITHUB_TOKEN is repo-scoped and can't write user
-# secrets (and gh won't override an env-provided token), so first either:
-#   unset GITHUB_TOKEN GH_TOKEN && gh auth login   # grant the 'codespace' scope
-#   export GH_TOKEN=<PAT with codespace scope>
+# gh auth is handled for you: the Codespaces built-in GITHUB_TOKEN is repo-scoped and
+# can't write user secrets, so this script sets it aside and ensures a stored gh login
+# with the 'codespace' scope (you'll complete a one-time web code when prompted).
 set -euo pipefail
 
 CONFIG_DIR="${CLAUDE_CONFIG_DIR:-/workspaces/.claude}"
@@ -20,6 +18,28 @@ if [ ! -f "$CONFIG_DIR/.credentials.json" ]; then
   echo "No credentials at $CONFIG_DIR/.credentials.json — run 'claude auth login' first." >&2
   exit 1
 fi
+
+ensure_gh_user_secret_auth() {
+  # The env-provided GITHUB_TOKEN/GH_TOKEN (Codespaces built-in) is repo-scoped and
+  # can't write user secrets, and gh refuses to manage an env token. Set it aside for
+  # this process and ensure a stored gh login that carries the 'codespace' scope.
+  if [ -n "${GITHUB_TOKEN:-}${GH_TOKEN:-}" ]; then
+    echo "[gh] Ignoring the environment GitHub token (can't write user secrets)."
+    unset GITHUB_TOKEN GH_TOKEN
+  fi
+  if gh auth status -h github.com 2>&1 | grep -q "codespace"; then
+    return 0
+  fi
+  if gh auth status -h github.com >/dev/null 2>&1; then
+    echo "[gh] Adding the 'codespace' scope to your existing gh login..."
+    gh auth refresh -h github.com -s codespace
+  else
+    echo "[gh] Logging in to gh with the 'codespace' scope (open the URL, enter the code)..."
+    gh auth login -h github.com -p https -s codespace -w
+  fi
+}
+
+ensure_gh_user_secret_auth
 
 # Archive credentials + trust/RC config (whichever exist).
 files=(.credentials.json)

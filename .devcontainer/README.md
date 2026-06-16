@@ -118,21 +118,18 @@ one-time `claude auth login`. If you spin up new Codespaces often, you can snaps
 your login into a **user Codespaces secret** and have new Codespaces restore it
 automatically:
 
-1. In a logged-in Codespace, give `gh` permission to manage your Codespaces user
-   secrets. The built-in `GITHUB_TOKEN` is repo-scoped and can't — and `gh` won't
-   override an env-provided token — so drop it and log in (or export a PAT that has
-   the `codespace` scope):
-   ```bash
-   unset GITHUB_TOKEN GH_TOKEN && gh auth login   # grant the 'codespace' scope
-   # or: export GH_TOKEN=<PAT with codespace scope>
-   ```
-2. Snapshot the current login into the `CLAUDE_AUTH_ARCHIVE` secret:
+1. In a logged-in Codespace, snapshot the current login into the `CLAUDE_AUTH_ARCHIVE`
+   secret:
    ```bash
    bash .devcontainer/sync-claude-auth.sh
    ```
-   This stores a base64 tar.gz of `.credentials.json` (auth) plus `.claude.json`
-   (folder trust + the Remote Control confirmation), scoped to this repo.
-3. New Codespaces auto-restore it: `postCreateCommand` runs
+   The script handles `gh` auth for you — the built-in Codespaces `GITHUB_TOKEN` is
+   repo-scoped and can't write user secrets, so it sets that token aside and ensures
+   a `gh` login with the `codespace` scope (complete the one-time web code when
+   prompted). It then stores a base64 tar.gz of `.credentials.json` (auth) plus
+   `.claude.json` (folder trust + the Remote Control confirmation), scoped to this
+   repo.
+2. New Codespaces auto-restore it: `postCreateCommand` runs
    [`restore-claude-auth.sh`](./restore-claude-auth.sh), which unpacks the secret
    into `CLAUDE_CONFIG_DIR` **only if there's no existing login** (it never clobbers
    a live one). RC then comes up authenticated and trusted with no prompts.
