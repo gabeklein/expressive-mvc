@@ -43,13 +43,9 @@ ignore([
 ]);
 
 // Preact detects class components by `prototype.render` (no `isReactComponent`
-// brand); core defines that default render, so only forceUpdate is borrowed here
-// for preact internals to request a re-render of this component.
-Object.defineProperty(Component.prototype, 'forceUpdate', {
-  writable: true,
-  configurable: true,
-  value: PreactComponent.prototype.forceUpdate
-});
+// brand); core defines that default render, so detection needs nothing here.
+// Re-renders are hook-driven on the functional render child, so the class
+// instance needs no borrowed setState/forceUpdate (cf. the react adapter).
 
 Runtime.boundary = class ErrorBoundary extends PreactComponent<{
   self: Component;
