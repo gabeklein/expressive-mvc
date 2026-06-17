@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, mock } from 'bun:test';
 import { State, event, observer, touch } from '@expressive/mvc';
 import { act, renderHook, waitFor } from '@testing-library/react';
 
-import { Runtime, useHook, use } from './host';
+import { Runtime, useHook, use } from './runtime';
 
 // useHook calls useRef, useState, useEffect once each per render. Stub Runtime
 // with a hand-driven lifecycle so a subscription update can fire before vs.

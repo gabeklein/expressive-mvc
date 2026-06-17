@@ -10,7 +10,7 @@ import {
 } from 'react';
 
 import './jsx-runtime';
-import { Runtime } from './host';
+import { Runtime } from './runtime';
 import { ErrorBoundary, dedupe } from './boundary';
 
 // React detects class components by this brand (preact reads `prototype.render`).
@@ -36,6 +36,6 @@ Object.assign(Runtime, {
   ]
 });
 
-export { State, State as default, use } from './host';
+export { State, State as default, use } from './runtime';
 export { Component, Context, Observable, def, get, ref, set, hot } from '@expressive/mvc';
 export { Consumer, Provider } from './context';

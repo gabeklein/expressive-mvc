@@ -1,5 +1,5 @@
 import { State, Context, watch } from '@expressive/mvc';
-import { useFactory, useHook, useReady } from './host';
+import { useFactory, useHook, useReady } from './runtime';
 
 declare module '@expressive/mvc' {
   interface UseState extends State {

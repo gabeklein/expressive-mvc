@@ -23,7 +23,7 @@
   "type": "module",
   "sideEffects": [
     "./dist/index.js",
-    "./dist/host.js",
+    "./dist/runtime.js",
     "./dist/state.get.js",
     "./dist/state.use.js",
     "./src/jsx-runtime.ts"
@@ -35,9 +35,9 @@
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
-    "./state": {
-      "types": "./dist/host.d.ts",
-      "default": "./dist/host.js"
+    "./runtime": {
+      "types": "./dist/runtime.d.ts",
+      "default": "./dist/runtime.js"
     }
   },
   "engines": {

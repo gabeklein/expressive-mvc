@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, expect, it, mock } from 'bun:test';
 
-import { Runtime, useHook } from '@expressive/react/state';
+import { Runtime, useHook } from '@expressive/react/runtime';
 import '.'; // binds Runtime hooks to preact (restored by afterEach below)
 
 // useHook calls useRef, useState, useEffect once each per render. Stub Runtime

@@ -15,7 +15,7 @@
     "paths": {
       "@expressive/mvc/*": ["../mvc/src/*"],
       "@expressive/*": ["../*/src"],
-      "@expressive/react/state": ["../react/src/host"]
+      "@expressive/react/runtime": ["../react/src/runtime"]
     }
   },
   "exclude": ["node_modules", "dist"]
