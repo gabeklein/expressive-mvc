@@ -42,7 +42,8 @@ setup-remote-control
 
 It walks you through everything:
 
-1. **Claude login** — opens a URL + one-time code (required for Remote Control).
+1. **Finish Claude setup** — login + theme + "trust this folder" (a URL + one-time
+   code appears for login).
 2. **Remember it for future Codespaces?** — optional; if yes, it stores your login in
    a user Codespaces secret and handles the one-time GitHub (`gh`) authorization for
    you.
