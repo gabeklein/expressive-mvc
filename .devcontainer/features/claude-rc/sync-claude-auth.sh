@@ -31,8 +31,14 @@ ensure_gh_user_secret_auth() {
     echo "[gh] Adding the 'codespace' scope to your existing gh login..."
     gh auth refresh -h github.com -s codespace
   else
-    echo "[gh] Logging in to gh with the 'codespace' scope (open the URL, enter the code)..."
+    echo "[gh] Logging in to gh (open the URL, enter the code)..."
     gh auth login -h github.com -p https -s codespace -w
+  fi
+  # `gh auth login -s` can reuse an existing authorization without granting the new
+  # scope (then the user-secrets API 401s). Verify and force a refresh if needed.
+  if ! gh auth status -h github.com 2>&1 | grep -q "codespace"; then
+    echo "[gh] Ensuring the 'codespace' scope (one more code)..."
+    gh auth refresh -h github.com -s codespace
   fi
 }
 
@@ -51,7 +57,11 @@ if [ "${#archive}" -gt 48000 ]; then
   exit 1
 fi
 
-repo="$(gh repo view --json nameWithOwner -q .nameWithOwner 2>/dev/null || true)"
+# Derive owner/repo from the git remote (no API call, so it works regardless of gh
+# token state); fall back to gh if needed.
+repo="$(git config --get remote.origin.url 2>/dev/null \
+  | sed -E 's#^(https://github\.com/|git@github\.com:)##; s#\.git$##')"
+[ -z "$repo" ] && repo="$(gh repo view --json nameWithOwner -q .nameWithOwner 2>/dev/null || true)"
 repos_flag=()
 if [ -n "$repo" ]; then
   repos_flag=(--repos "$repo")
