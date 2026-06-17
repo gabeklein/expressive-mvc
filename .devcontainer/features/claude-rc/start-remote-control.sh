@@ -49,3 +49,4 @@ tmux new-session -d -s "$SESSION" \
 echo "[remote-control] Started tmux session '$SESSION' as '$NAME (codespace)'."
 echo "[remote-control] It should appear in the Claude app session list (tap Code)."
 echo "[remote-control] View the URL/QR or check status anytime: tmux attach -t $SESSION"
+echo "[remote-control] (To leave it running, detach with Ctrl-b then d — Ctrl-C stops RC.)"
