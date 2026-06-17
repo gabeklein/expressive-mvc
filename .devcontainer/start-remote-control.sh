@@ -34,26 +34,22 @@ fi
 # --spawn same-dir keeps every remote session in the repo working directory (not an
 # isolated git worktree), so edits and session transcripts land where the editor /
 # Claude Code extension attached to this container can see and resume them.
-RC="env -u CLAUDE_CODE_OAUTH_TOKEN -u ANTHROPIC_API_KEY claude remote-control --spawn same-dir --name 'expressive-mvc (codespace)'"
-
-if [ -f "$CONFIG_DIR/.credentials.json" ]; then
-  # Authenticated: start Remote Control directly.
-  launch="$RC"
-else
-  # No login yet: run the interactive login first, in the session, then start RC.
-  # Attaching to the session shows the login URL/code; RC starts once you finish.
-  launch="echo '>>> Claude login needed for Remote Control — complete the prompt below.'; claude auth login && $RC"
+if [ ! -f "$CONFIG_DIR/.credentials.json" ]; then
+  # No full-scope login yet; Remote Control can't start. Defer to the interactive
+  # wrapper (login + optional persist + start) rather than launch a failing session.
+  echo "[remote-control] No Claude login yet — Remote Control not started."
+  echo "[remote-control] Run: bash .devcontainer/setup-remote-control.sh"
+  exit 0
 fi
 
-tmux new-session -d -s "$SESSION" "$launch"
+# env -u drops the inference-only tokens so RC uses the stored full-scope login.
+# --spawn same-dir keeps every remote session in the repo working directory (not an
+# isolated git worktree), so edits and session transcripts land where the editor /
+# Claude Code extension attached to this container can see and resume them.
+tmux new-session -d -s "$SESSION" \
+  "env -u CLAUDE_CODE_OAUTH_TOKEN -u ANTHROPIC_API_KEY claude remote-control --spawn same-dir --name 'expressive-mvc (codespace)'"
 
 echo "[remote-control] Started tmux session '$SESSION'."
-if [ -f "$CONFIG_DIR/.credentials.json" ]; then
-  echo "[remote-control] It should appear in the Claude app session list (tap Code)."
-else
-  echo "[remote-control] Not logged in yet — attach to finish login, then RC starts:"
-  echo "[remote-control]   tmux attach -t $SESSION"
-  echo "[remote-control] Afterwards, 'bash .devcontainer/sync-claude-auth.sh' remembers it for future Codespaces."
-fi
+echo "[remote-control] It should appear in the Claude app session list (tap Code)."
 echo "[remote-control] View the URL/QR or check status anytime: tmux attach -t $SESSION"
 

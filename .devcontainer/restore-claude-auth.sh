@@ -31,35 +31,27 @@ Remote Control needs a full-scope `claude auth login` (long-lived tokens are
 inference-only and rejected).
 
 > **This is optional.** If you don't need Remote Control, just **close this file** —
-> the Codespace works normally without it. Follow the steps below only if you want to
+> the Codespace works normally without it. Run the command below only if you want to
 > drive this Codespace from the Claude app.
 
-## Finish it in the waiting session
+## One command does it all
 
-Remote Control is already waiting for you to log in. Attach to it, complete the
-login (a URL + one-time code appears), and the session starts automatically:
-
-```bash
-tmux attach -t claude-rc
-```
-
-Then open the **Code** tab in the Claude app (or claude.ai/code) and pick the
-`expressive-mvc (codespace)` session. Detach from tmux with `Ctrl-b` then `d`.
-
-## Skip this on future Codespaces (optional)
-
-Snapshot the login into a user Codespaces secret so new Codespaces restore it
-automatically:
+In a terminal, run:
 
 ```bash
-bash .devcontainer/sync-claude-auth.sh
+bash .devcontainer/setup-remote-control.sh
 ```
 
-This handles the GitHub side for you — it'll prompt a one-time `gh` authorization
-(another URL + code) the first time, since storing the secret needs the `codespace`
-scope. Re-run it whenever you log in to Claude again.
+It walks you through everything:
 
-(You can close this file once you're logged in.)
+1. **Claude login** — opens a URL + one-time code (required for Remote Control).
+2. **Remember it for future Codespaces?** — optional; if yes, it stores your login in
+   a user Codespaces secret and handles the one-time GitHub (`gh`) authorization for
+   you.
+3. **Starts Remote Control** — then open the **Code** tab in the Claude app (or
+   claude.ai/code) and pick the `expressive-mvc (codespace)` session.
+
+(You can close this file at any time.)
 MD
 }
 

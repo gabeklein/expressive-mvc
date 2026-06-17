@@ -30,16 +30,18 @@ tmux attach -t claude-rc     # Ctrl-b then d to detach
 The session lives only as long as the container is running. Codespaces auto-suspend
 when idle, which ends the session until the next start (when it relaunches).
 
-> **Brand-new Codespace with no stored login?** The `claude-rc` session starts the
-> interactive `claude auth login` *first* (then Remote Control), and a rendered
-> `LOGIN-REQUIRED.md` opens automatically to point you there. Just
-> `tmux attach -t claude-rc`, finish the login (URL + code), and RC starts. This is
-> only needed when there's no restorable login — see
+> **Brand-new Codespace with no stored login?** A rendered `LOGIN-REQUIRED.md` opens
+> automatically pointing you to one command:
+> ```bash
+> bash .devcontainer/setup-remote-control.sh
+> ```
+> It wraps both interactive logins — Claude (`claude auth login`) and, if you opt to
+> remember it, GitHub (`gh`, handled for you) — and then starts Remote Control. It's
+> optional: close the file to skip. See
 > [Carrying your login to fresh Codespaces](#carrying-your-login-to-fresh-codespaces-optional).
 >
-> A one-time "trust this folder" prompt may also appear there; accept it once and it
-> persists. (Both are separate from permissions and are the only things that can hold
-> up the launch.)
+> A one-time "trust this folder" prompt may also appear; accept it once and it
+> persists. (Separate from permissions, and the only thing that can hold up launch.)
 
 ### Approving actions
 
@@ -122,7 +124,11 @@ for other inference use — it can't shadow the full-scope login RC needs.
 A brand-new Codespace starts with an empty `/workspaces`, so by default it needs a
 one-time `claude auth login`. If you spin up new Codespaces often, you can snapshot
 your login into a **user Codespaces secret** and have new Codespaces restore it
-automatically:
+automatically.
+
+The easy path is the wrapper — `bash .devcontainer/setup-remote-control.sh` offers
+this as its "remember this login?" step. The steps below are what that does (and how
+to do it standalone):
 
 1. In a logged-in Codespace, snapshot the current login into the `CLAUDE_AUTH_ARCHIVE`
    secret:
