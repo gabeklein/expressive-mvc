@@ -138,16 +138,28 @@ class Component extends State {
 }
 
 /**
+ * Default content when a component defines no `render` - pass children through.
+ * Defined (non-configurable) so core bootstrap leaves it unbound.
+ */
+Object.defineProperty(Component.prototype, 'render', {
+  value(this: Component, props?: {}) {
+    const { children } = (props || this.props) as { children?: Component.Node };
+    return children || null;
+  }
+});
+
+/**
  * Build (or fetch the cached) composed content render for an instance's class.
  * Walks the prototype chain for content renders strictly below Component - the
- * seam itself (Component.prototype.render) is excluded; an adapter owns that.
+ * default render on Component.prototype is excluded and serves as the fallback
+ * when a class authors none.
  */
 function render(target: Component) {
   const cached = CHAIN.get(target.constructor);
 
   if (cached) return cached;
 
-  let render: Function = children;
+  let render: Function | undefined;
   let proto = target;
 
   while ((proto = Object.getPrototypeOf(proto)) !== Component.prototype) {
@@ -155,9 +167,12 @@ function render(target: Component) {
 
     if (desc) {
       const layer = unbind(desc.get || desc.value);
-      render = render === children ? layer : compose(layer, render);
+      render = render ? compose(layer, render) : layer;
     }
   }
+
+  if (!render)
+    render = Component.prototype.render;
 
   CHAIN.set(target.constructor, render);
 
@@ -175,12 +190,6 @@ function compose(outer: Function, inner: Function): Function {
       }
     });
   };
-}
-
-/** Default content when a component defines no `render` - pass children through. */
-function children(this: Component, props?: {}): Component.Node {
-  const { children } = (props || this.props) as { children?: Component.Node };
-  return children || null;
 }
 
 export { Component };

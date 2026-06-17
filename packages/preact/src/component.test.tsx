@@ -21,11 +21,14 @@ it('will create and provide instance', () => {
   screen.getByText('bar');
 });
 
-it('will expose a null base render for class detection', () => {
-  // Preact detects class components via `prototype.render`. The base stub is
-  // never invoked at runtime (the per-instance render shadows it, and mvc's
-  // render chain excludes the seam) but must exist and return null.
-  expect((Component.prototype as { render(): unknown }).render()).toBe(null);
+it('will expose a base render for class detection', () => {
+  // Preact detects class components via `prototype.render`. Core defines the
+  // default (children passthrough) here; it is never invoked at runtime (the
+  // per-instance render shadows it, and mvc's render chain excludes the seam)
+  // but must exist as a function and fall back to null without children.
+  const { render } = Component.prototype as { render(props?: {}): unknown };
+  expect(typeof render).toBe('function');
+  expect(render({})).toBe(null);
 });
 
 it('will not enumerate preact internals on instance', () => {

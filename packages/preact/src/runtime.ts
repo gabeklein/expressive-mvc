@@ -42,20 +42,13 @@ ignore([
   'componentWillUnmount'
 ]);
 
-Object.defineProperties(Component.prototype, {
-  // Preact detects class components by `prototype.render` (no `isReactComponent`
-  // brand). Base stub for components that define no render; the `type` handler
-  // seals it, and the per-instance render shadows it when context attaches.
-  render: {
-    configurable: true,
-    value: () => null
-  },
-  // Borrowed so preact internals may request a re-render of this component.
-  forceUpdate: {
-    writable: true,
-    configurable: true,
-    value: PreactComponent.prototype.forceUpdate
-  }
+// Preact detects class components by `prototype.render` (no `isReactComponent`
+// brand); core defines that default render, so only forceUpdate is borrowed here
+// for preact internals to request a re-render of this component.
+Object.defineProperty(Component.prototype, 'forceUpdate', {
+  writable: true,
+  configurable: true,
+  value: PreactComponent.prototype.forceUpdate
 });
 
 Runtime.boundary = class ErrorBoundary extends PreactComponent<{
