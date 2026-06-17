@@ -1,131 +1,100 @@
-import { watch, unbind, observer, Component } from '@expressive/mvc';
-import React, { createElement, Suspense } from 'react';
-import { Context, Layers } from './context';
-import { useHook, useReady } from './runtime';
-
-const proto = Component.prototype;
-const SEEN = new WeakSet<object>([proto]);
-
-type ComponentType = typeof Component & typeof React.Component;
+import { Component, watch, unbind, observer } from '@expressive/mvc';
+import { provide, type Context } from './context';
+import { Runtime, useHook, useReady } from './runtime';
 
 declare module '@expressive/mvc' {
   interface Component {
-    /** @deprecated Only to satisfy React JSX. Use `this.get(State)` instead. */
+    /** @deprecated Only to satisfy host JSX. Use `this.get(State)` instead. */
     readonly context: Context;
-    /** @deprecated Only to satisfy React JSX. Use `this.get()` instead. */
+    /** @deprecated Only to satisfy host JSX. Use `this.get()` instead. */
     readonly state: State.Values<this>;
-    /** @deprecated Only to satisfy React JSX. Use `this.set({})` instead. */
+    /** @deprecated Only to satisfy host JSX. Use `this.set({})` instead. */
     setState: (state: any, callback?: () => void) => void;
-    /** @deprecated Only to satisfy React JSX. Use `this.set(key)` instead. */
+    /** @deprecated Only to satisfy host JSX. Use `this.set(key)` instead. */
     forceUpdate: (callback?: () => void) => void;
   }
 }
 
-Component.on(subcomponents);
-(Component as ComponentType).contextType = Layers;
-
-for (const key of [
-  'updater',
-  'refs',
-  '_reactInternals',
-  '_reactInternalInstance'
-])
-  Object.defineProperty(proto, key, {
-    set(value) {
-      Object.defineProperty(this, key, { value, writable: true });
-    }
-  });
-
-Object.defineProperties(proto, {
-  isReactComponent: {
-    get: () => true
-  },
+// Host-agnostic seams: `state` is a read-only values bag; `context`'s setter
+// pushes a child context, registers the instance for teardown, and installs its
+// per-instance render host. Host-specific descriptors stay in each adapter.
+Object.defineProperties(Component.prototype, {
   state: {
-    set() { },
-    get: proto.get
+    set() {},
+    get: Component.prototype.get
   },
   context: {
-    set(this: Component, context: Context) {
-      context = context.push();
-      context.set(this, () => () => this.set(null));
-
-      const props = Object.getOwnPropertyDescriptor(this, 'props')!;
-
-      Object.defineProperties(this, {
-        props: {
-          ...props,
-          set: (next: {}) => {
-            if (this.get(null))
-              Object.defineProperty(this, 'props', {
-                value: next,
-                writable: true,
-                configurable: true
-              });
-            else
-              props.set!.call(this, next);
-          }
-        },
-        context: {
-          get: () => context,
-          set() { }
-        },
-        render: {
-          value: component(this, context)
-        }
-      });
-    }
+    set: bootstrap
   }
 });
 
-/** In-flight render attempts by tree position, per ambient context.
- *  When one commits, older uncommitted attempts at its slot are provably dead. */
-const SLOTS = new WeakMap<Context, Map<string, Set<Entry>>>();
+/**
+ * `State.on` handler that prepares a Component's prototype at bootstrap, before
+ * mvc classifies its members:
+ *
+ * - On the root Component, host own-property keys are trapped so each lands as a
+ *   plain own property (out of observed state); each adapter assigns its own set.
+ * - capitalized methods are rewritten into subcomponents as non-configurable
+ *   getters, so bootstrap skips them too.
+ *
+ * (Sealing `render` as the content-render seam is handled by core itself.)
+ *
+ * `before` covers the per-instance case: a capitalized function assigned as an
+ * instance field (e.g. `Sidebar = Sidebar` to inject or override one), promoted
+ * before `observe` so it is not mistaken for reactive state.
+ */
+Component.on({
+  type(type) {
+    if (type === Component)
+      for (const key of Runtime.ignore)
+        Object.defineProperty(Component.prototype, key, {
+          set(value) {
+            Object.defineProperty(this, key, { value, writable: true });
+          }
+        });
 
-interface Entry {
-  committed?: boolean;
-  context: Context;
-  commit: () => void;
-  remove: () => void;
-};
+    // capitalized methods into subcomponents
+    subcomponents(type.prototype);
+  },
+  before(self){
+    // capitalized instance fields into subcomponents
+    subcomponents(self, true);
+  }
+});
 
-/** Register a render attempt; superseded or unmounted attempts are killed. */
-function register(on: Component, context: Context) {
-  let slots = SLOTS.get(context.parent!);
-  if (!slots) SLOTS.set(context.parent!, (slots = new Map()));
+function bootstrap(this: Component, context: Context){
+  context = context.push();
+  context.set(this, () => () => this.set(null));
 
-  // key/index path to root: stable across render attempts of this element
-  let slot = '';
-  for (let f = (on as any)._reactInternals; f; f = f.return)
-    slot += (f.key ?? f.index) + '.';
-
-  let list = slots.get(slot);
-  if (!list) slots.set(slot, (list = new Set()));
-
-  const entry: Entry = {
-    context,
-    commit() {
-      entry.committed = true;
-
-      for (const e of list) {
-        if (e === entry) break;
-        if (e.committed) continue;
-        e.context.pop();
-        list.delete(e);
-      }
+  Object.defineProperties(this, {
+    context: {
+      get: () => context,
+      set() {}
     },
-    remove() {
-      list.delete(entry);
+    render: {
+      value: render(this, context)
     }
-  };
+  });
 
-  list.add(entry);
-  return entry;
+  this.set(null, () => {
+    Object.defineProperty(this, 'props', {
+      value: this.props,
+      writable: true
+    });
+  })
 }
 
-function component(from: Component, context: Context) {
-  const { commit, remove } = register(from, context);
-  const { render } = from;
-  const Render = () => render.call(from, from.props);
+/**
+ * Per-instance render host: subscribe the instance, render inside its context
+ * provider, wrap pending in Suspense and (when `catch` is set) the host error
+ * boundary. Host differences live behind `Runtime.dedupe`/`Runtime.ErrorBoundary`.
+ */
+function render(from: Component, context: Context) {
+  const { createElement: create } = Runtime;
+  const { commit, remove } = Runtime.dedupe(from, context);
+
+  const content = from.render;
+  const Render = () => content.call(from, from.props);
   const Component = () => {
     from = useHook<Component>((refresh) => {
       if (observer(from) !== null)
@@ -138,99 +107,50 @@ function component(from: Component, context: Context) {
 
     useReady(commit);
 
-    const rendered = createElement(Render);
-
-    const children = createElement(Layers.Provider, {
-      value: context,
-      children: from.fallback === false
+    const rendered = create(Render);
+    const children = provide(context,
+      from.fallback === false
         ? rendered
-        : createElement(Suspense,
+        : create(Runtime.Suspense,
           { fallback: from.fallback, name: String(from) },
           rendered)
-    });
+    );
 
     return from.catch
-      ? createElement(ErrorBoundary, { self: from, children })
+      ? create(Runtime.ErrorBoundary, { self: from, children })
       : children;
   };
 
-  return () => createElement(Component);
+  return () => create(Component);
 }
 
-function subcomponents(proto: Component) {
-  do {
-    if (SEEN.has(proto)) return;
+/** Rewrite each own capitalized function on `target` into a subcomponent. */
+function subcomponents(target: object, configurable?: boolean) {
+  for (const key of Object.getOwnPropertyNames(target)) {
+    if (!/^[A-Z]/.test(key)) continue;
+    const { value } = Object.getOwnPropertyDescriptor(target, key)!;
+    if (typeof value != 'function') continue;
+    Object.defineProperty(target, key, {
+      configurable,
+      get(this: Component) {
+        const owner = this.is;
+        let render = unbind(value);
+        const Component = (props: unknown) =>
+          render.call(
+            useHook<Component>((set) => watch(owner, set)) || owner,
+            props
+          );
 
-    SEEN.add(proto);
+        Object.defineProperty(owner, key, {
+          configurable: true,
+          get: () => Component,
+          set(fn: Function) {
+            render = fn;
+          }
+        });
 
-    for (const key of Object.getOwnPropertyNames(proto))
-      if (/^[A-Z]/.test(key)) {
-        const { get, value } = Object.getOwnPropertyDescriptor(proto, key)!;
-
-        if (get || typeof value == 'function')
-          Object.defineProperty(proto, key, {
-            configurable: true,
-            get(this: Component) {
-              const owner = this.is;
-              let render = unbind(get ? get.call(owner) : value);
-              const Component = (props: unknown) =>
-                render.call(
-                  useHook<Component>((set) => watch(owner, set)) || owner,
-                  props
-                );
-
-              Object.defineProperty(owner, key, {
-                configurable: true,
-                get: () => Component,
-                set(fn: Function) {
-                  render = fn;
-                }
-              });
-
-              return Component;
-            }
-          });
+        return Component;
       }
-  } while ((proto = Object.getPrototypeOf(proto)));
-}
-
-class ErrorBoundary extends React.Component<{
-  self: Component;
-  children: React.ReactNode;
-}> {
-  state = {} as { error?: Error };
-  recovering = false;
-
-  constructor(props: ErrorBoundary['props']) {
-    super(props);
-  }
-
-  static getDerivedStateFromError(error: Error) {
-    return { error };
-  }
-
-  componentDidCatch(error: Error) {
-    const { self } = this.props;
-    const { fallback } = self;
-    const reset = (error?: Error) => {
-      this.recovering = true;
-      this.setState({ error });
-    };
-
-    Promise.resolve(self.catch!(error))
-      .then(() => reset(), reset)
-      .finally(() => self.set({ fallback }, true));
-  }
-
-  componentDidUpdate() {
-    this.recovering = false;
-  }
-
-  render() {
-    if (!this.state.error) return this.props.children;
-    if (this.recovering) throw this.state.error;
-    return this.props.self.fallback;
+    });
   }
 }
-
-export { Component };

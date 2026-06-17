@@ -1,13 +1,47 @@
-import { State, Runtime, use } from '@expressive/react/state';
-import { get, def, ref, set, Observable } from '@expressive/mvc';
+import { Runtime } from '@expressive/react/runtime';
+import {
+  createContext,
+  createElement,
+  Suspense,
+  useContext,
+  useEffect,
+  useRef,
+  useState
+} from 'preact/compat';
 
-import { useEffect, useState, createElement, useRef } from 'preact/compat';
+import './jsx-runtime';
+import { ErrorBoundary } from './boundary';
 
-Runtime.createElement = createElement;
-Runtime.useEffect = useEffect;
-Runtime.useState = useState;
-Runtime.useRef = useRef;
+Object.assign(Runtime, {
+  createElement,
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  useRef,
+  Suspense,
+  ErrorBoundary,
+  // Preact has no render-attempt stacking (no fiber-keyed supersession);
+  // teardown is owned by the context, so dedupe is a no-op.
+  dedupe: () => ({
+    commit() {},
+    remove() {}
+  }),
+  ignore: [
+    '__v',
+    '__n',
+    '__d',
+    '__e',
+    '__h',
+    '_sb',
+    '__s',
+    '__P',
+    '__z',
+    '__R',
+    'base',
+    'componentWillUnmount'
+  ]
+});
 
-export default State;
-export { get, State, Observable, ref, set, def, use };
-export { Consumer, Provider, Context } from './context';
+export { State, State as default, Consumer, Provider, use } from '@expressive/react/runtime'
+export { Component, Context, Observable, def, get, ref, set, hot } from '@expressive/mvc';
