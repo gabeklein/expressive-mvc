@@ -27,15 +27,14 @@ Object.assign(Runtime, {
   useEffect,
   useState,
   useRef,
-  Suspense
+  Suspense,
+  ignore: [
+    'updater',
+    'refs',
+    '_reactInternals',
+    '_reactInternalInstance'
+  ]
 });
-
-Runtime.ignore([
-  'updater',
-  'refs',
-  '_reactInternals',
-  '_reactInternalInstance'
-]);
 
 export { State, State as default } from './state';
 export { Component, Context, Observable, def, get, ref, set, hot } from '@expressive/mvc';

@@ -51,21 +51,6 @@ declare namespace Component {
     & RenderProps<T['render']>;
 }
 
-interface Component {
-  /**
-   * Output for this component. Override to define custom JSX.
-   *
-   * Properties accessed via `this` are reactive and trigger a render when they
-   * change, in addition to props. Accepts an optional parameter to receive extra
-   * props from JSX, beyond those merged to state properties; declare its shape
-   * via `props = {} as { ... }`. Without a parameter, children pass through.
-   *
-   * Declared, not implemented - the constructor installs a composed `render`
-   * per instance (see `render`); subclasses override with a method.
-   */
-  render(props?: {}): Component.Node;
-}
-
 class Component extends State {
   /**
    * All JSX attributes passed to this component.
@@ -126,6 +111,24 @@ class Component extends State {
   }
 
   /**
+   * Output for this component. Override to define custom JSX.
+   *
+   * Properties accessed via `this` are reactive and trigger a render when they
+   * change, in addition to props. Accepts an optional parameter to receive extra
+   * props from JSX, beyond those merged to state properties; declare its shape
+   * via `props = {} as { ... }`. Without a parameter (the default below),
+   * children pass through.
+   *
+   * The constructor installs a composed `render` per instance; the bootstrap
+   * `type` pass seals this and any override non-configurable, keeping it the
+   * content-render seam the chain reads.
+   */
+  render(props?: {}): Component.Node {
+    const { children } = (props || this.props) as { children?: Component.Node };
+    return children || null;
+  }
+
+  /**
    * Called when a child component throws during render.
    * While this is pending, `fallback` is displayed.
    * When resolved, the error boundary resets and `render` is called again.
@@ -138,13 +141,19 @@ class Component extends State {
 }
 
 /**
- * Default content when a component defines no `render` - pass children through.
- * Defined (non-configurable) so core bootstrap leaves it unbound.
+ * Seal each class's own `render` non-configurable at bootstrap so member
+ * classification leaves it unbound - it stays the content-render seam the chain
+ * reads (and which adapters like preact detect as the class-component marker).
  */
-Object.defineProperty(Component.prototype, 'render', {
-  value(this: Component, props?: {}) {
-    const { children } = (props || this.props) as { children?: Component.Node };
-    return children || null;
+Component.on({
+  type(type) {
+    const desc = Object.getOwnPropertyDescriptor(type.prototype, 'render');
+
+    if (desc && typeof desc.value == 'function')
+      Object.defineProperty(type.prototype, 'render', {
+        ...desc,
+        configurable: false
+      });
   }
 });
 

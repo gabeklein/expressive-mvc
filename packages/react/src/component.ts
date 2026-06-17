@@ -14,10 +14,9 @@ declare module '@expressive/mvc' {
   }
 }
 
-export const Runtime = {
-  ignore
-} as {
-  readonly ignore: (keys: string[]) => void;
+export const Runtime = {} as {
+  /** Host own-property keys to trap out of observed state; assigned by each adapter. */
+  ignore: string[];
   createElement(type: any, props?: any, ...children: any[]): any;
   createContext<T>(value: T): any;
   useContext(context: any): any;
@@ -83,20 +82,6 @@ export function useHook<T = void>(
   }, []);
 
   return current.output;
-}
-
-/**
- * Trap host-assigned own-properties (React's `updater`/`_reactInternals`,
- * preact's mangled internals) so each lands as a plain own property, out of
- * observed state. Keys differ per host; each adapter passes its own.
- */
-function ignore(keys: string[]) {
-  for (const key of keys)
-    Object.defineProperty(Component.prototype, key, {
-      set(value) {
-        Object.defineProperty(this, key, { value, writable: true });
-      }
-    });
 }
 
 function bootstrap(this: Component, context: Context){
@@ -209,11 +194,12 @@ Object.defineProperties(Component.prototype, {
  * `State.on` handler that prepares a Component's prototype at bootstrap, before
  * mvc classifies its members:
  *
- * - `render` is sealed (non-configurable) so bootstrap leaves it unbound - it
- *   stays the content-render seam the chain reads, and preact reads
- *   `prototype.render` directly for its class-component check.
+ * - On the root Component, host own-property keys are trapped so each lands as a
+ *   plain own property (out of observed state); each adapter assigns its own set.
  * - capitalized methods are rewritten into subcomponents as non-configurable
  *   getters, so bootstrap skips them too.
+ *
+ * (Sealing `render` as the content-render seam is handled by core itself.)
  *
  * `before` covers the per-instance case: a capitalized function assigned as an
  * instance field (e.g. `Sidebar = Sidebar` to inject or override one), promoted
@@ -221,13 +207,13 @@ Object.defineProperties(Component.prototype, {
  */
 Component.on({
   type(type) {
-    const desc = Object.getOwnPropertyDescriptor(type.prototype, "render");
-
-    if (desc && typeof desc.value == 'function')
-      Object.defineProperty(type.prototype, "render", {
-        ...desc,
-        configurable: false
-      });
+    if (type === Component)
+      for (const key of Runtime.ignore)
+        Object.defineProperty(Component.prototype, key, {
+          set(value) {
+            Object.defineProperty(this, key, { value, writable: true });
+          }
+        });
 
     // capitalized methods into subcomponents
     subcomponents(type.prototype);
