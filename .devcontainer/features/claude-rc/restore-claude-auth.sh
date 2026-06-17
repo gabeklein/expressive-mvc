@@ -67,9 +67,17 @@ if [ -z "${CLAUDE_AUTH_ARCHIVE:-}" ]; then
 fi
 
 mkdir -p "$CONFIG_DIR"
-if echo "$CLAUDE_AUTH_ARCHIVE" | base64 -d 2>/dev/null | tar -xzf - -C "$CONFIG_DIR" 2>/dev/null; then
+if echo "$CLAUDE_AUTH_ARCHIVE" | base64 -d 2>/dev/null | tar -xzf - -C "$CONFIG_DIR" 2>/dev/null \
+   && [ -f "$CONFIG_DIR/.credentials.json" ]; then
   chmod 600 "$CONFIG_DIR/.credentials.json" 2>/dev/null || true
-  echo "[claude-auth] Restored login from CLAUDE_AUTH_ARCHIVE into $CONFIG_DIR."
+  if [ -f "$CONFIG_DIR/.claude.json" ]; then
+    echo "[claude-auth] Restored login + settings from CLAUDE_AUTH_ARCHIVE into $CONFIG_DIR."
+  else
+    echo "[claude-auth] WARNING: archive had credentials but no .claude.json — onboarding" >&2
+    echo "[claude-auth] (theme / trust / Remote Control enable) will still be prompted." >&2
+    echo "[claude-auth] Recapture a complete snapshot: run 'setup-remote-control', then" >&2
+    echo "[claude-auth] 'sync-claude-auth'." >&2
+  fi
   clear_guide
 else
   echo "[claude-auth] WARNING: could not decode/extract CLAUDE_AUTH_ARCHIVE; a login is needed." >&2
