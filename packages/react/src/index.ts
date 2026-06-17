@@ -9,11 +9,18 @@ import {
 } from 'react';
 
 import './jsx-runtime';
-import { State } from './state';
+import { Component } from '@expressive/mvc';
 import { Runtime } from './component';
-import { Consumer, Provider } from './context';
+import { ErrorBoundary, dedupe } from './boundary';
+
+// React detects class components by this brand (preact reads `prototype.render`).
+Object.defineProperty(Component.prototype, 'isReactComponent', {
+  value: true
+});
 
 Object.assign(Runtime, {
+  dedupe,
+  ErrorBoundary,
   createElement,
   createContext,
   useContext,
@@ -23,8 +30,15 @@ Object.assign(Runtime, {
   Suspense
 });
 
-export { State, State as default };
-export { Context, Observable, def, get, ref, set, hot } from '@expressive/mvc';
-export { Component } from './runtime';
+Runtime.ignore([
+  'updater',
+  'refs',
+  '_reactInternals',
+  '_reactInternalInstance'
+]);
+
+export { State, State as default } from './state';
+export { Component, Context, Observable, def, get, ref, set, hot } from '@expressive/mvc';
+
 export { use } from './use';
-export { Consumer, Provider };
+export { Consumer, Provider } from './context';

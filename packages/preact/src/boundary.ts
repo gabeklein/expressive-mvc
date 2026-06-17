@@ -1,53 +1,9 @@
 import { Component } from '@expressive/mvc';
-import { ignore, Runtime } from '@expressive/react/state';
 
-import { ComponentChildren, Ref } from 'preact';
+import { ComponentChildren } from 'preact';
 import { Component as PreactComponent } from 'preact/compat';
 
-declare module '@expressive/mvc' {
-  namespace Component {
-    interface BaseProps<T extends Component> {
-      /**
-       * Ref which receives the instance of this component.
-       * (Preact JSX does not add `ref` for non-preact classes, so it is
-       * declared here - React infers it from its own class attributes.)
-       */
-      ref?: Ref<T>;
-    }
-  }
-}
-
-// Preact has no render-attempt stacking (no fiber-keyed supersession); teardown
-// is owned by the context, so both hooks are no-ops.
-Runtime.attempt = () => ({
-  commit() {},
-  remove() {}
-});
-
-// Own properties preact assigns onto a mounted class component; ignore each so
-// it stays out of observed state (cf. React's `updater`/`_reactInternals`).
-ignore([
-  // mangled preact internals (stable across preact 10.x):
-  '__v', // _vnode
-  '__n', // _globalContext
-  '__d', // _dirty
-  '__e', // _force
-  '__h', // _renderCallbacks
-  '_sb', // _stateCallbacks
-  '__s', // _nextState
-  '__P', // _parentDom
-  '__z', // unmounted flag (preact/compat suspense)
-  '__R', // suspended-retry callback (preact/compat suspense)
-  'base',
-  'componentWillUnmount'
-]);
-
-// Preact detects class components by `prototype.render` (no `isReactComponent`
-// brand); core defines that default render, so detection needs nothing here.
-// Re-renders are hook-driven on the functional render child, so the class
-// instance needs no borrowed setState/forceUpdate (cf. the react adapter).
-
-Runtime.boundary = class ErrorBoundary extends PreactComponent<{
+export class ErrorBoundary extends PreactComponent<{
   self: Component;
   children: ComponentChildren;
 }> {
@@ -100,5 +56,3 @@ Runtime.boundary = class ErrorBoundary extends PreactComponent<{
     return this.props.self.fallback;
   }
 };
-
-export { Component };

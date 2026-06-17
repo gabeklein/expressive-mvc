@@ -1,22 +1,6 @@
 import { Component } from '@expressive/mvc';
 import React from 'react';
 import { Context } from './context';
-import { Runtime, ignore } from './component';
-
-ignore([
-  'updater',
-  'refs',
-  '_reactInternals',
-  '_reactInternalInstance'
-]);
-
-Object.defineProperty(Component.prototype, 'isReactComponent', {
-  get: () => true
-});
-
-/** In-flight render attempts by tree position, per ambient context.
- *  When one commits, older uncommitted attempts at its slot are provably dead. */
-const SLOTS = new WeakMap<Context, Map<string, Set<Entry>>>();
 
 interface Entry {
   committed?: boolean;
@@ -25,11 +9,15 @@ interface Entry {
   remove: () => void;
 };
 
+/** In-flight render attempts by tree position, per ambient context.
+ *  When one commits, older uncommitted attempts at its slot are provably dead. */
+const SLOTS = new WeakMap<Context, Map<string, Set<Entry>>>();
+
 /**
  * React's attempt lifecycle: fiber-keyed stacking so a superseded (uncommitted)
  * render attempt at a tree position is discarded when a later one commits.
  */
-Runtime.attempt = function attempt(on: Component, context: Context) {
+export function dedupe(on: Component, context: Context) {
   let slots = SLOTS.get(context.parent!);
   if (!slots) SLOTS.set(context.parent!, (slots = new Map()));
 
@@ -62,7 +50,7 @@ Runtime.attempt = function attempt(on: Component, context: Context) {
   return entry;
 };
 
-Runtime.boundary = class ErrorBoundary extends React.Component<{
+export class ErrorBoundary extends React.Component<{
   self: Component;
   children: React.ReactNode;
 }> {
@@ -100,5 +88,3 @@ Runtime.boundary = class ErrorBoundary extends React.Component<{
     return this.props.self.fallback;
   }
 };
-
-export { Component };

@@ -14,59 +14,22 @@ declare module '@expressive/mvc' {
   }
 }
 
-export const Runtime = {} as {
+export const Runtime = {
+  ignore
+} as {
+  readonly ignore: (keys: string[]) => void;
   createElement(type: any, props?: any, ...children: any[]): any;
   createContext<T>(value: T): any;
   useContext(context: any): any;
   useState<S>(initial: S | (() => S)): [S, (next: (previous: S) => S) => void];
   useEffect(effect: () => (() => void) | void, deps?: any[]): void;
   useRef<T>(initial: T): { current: T };
-  Suspense: any;
   /** Per-render-attempt lifecycle, set by each adapter (React stacks attempts; others no-op). */
-  attempt(from: Component, context: Context): { commit(): void; remove(): void };
+  dedupe(from: Component, context: Context): { commit(): void; remove(): void };
   /** Host error-boundary component, wrapping a Component whose `catch` is set. */
-  boundary: unknown;
+  ErrorBoundary: unknown;
+  Suspense: any;
 };
-
-/**
- * Per-instance render host: subscribe the instance, render inside its context
- * provider, wrap pending in Suspense and (when `catch` is set) the host error
- * boundary. Host differences live behind `Runtime.attempt`/`Runtime.boundary`.
- */
-export function render(from: Component, context: Context) {
-  const { createElement: create } = Runtime;
-  const { commit, remove } = Runtime.attempt(from, context);
-  
-  const content = from.render;
-  const Render = () => content.call(from, from.props);
-  const Component = () => {
-    from = useHook<Component>((refresh) => {
-      if (observer(from) !== null)
-        watch(from, refresh);
-      return () => {
-        remove();
-        context.pop();
-      };
-    }) || from;
-
-    useReady(commit);
-
-    const rendered = create(Render);
-    const children = provide(context,
-      from.fallback === false
-        ? rendered
-        : create(Runtime.Suspense,
-          { fallback: from.fallback, name: String(from) },
-          rendered)
-    );
-
-    return from.catch
-      ? create(Runtime.boundary, { self: from, children })
-      : children;
-  };
-
-  return () => create(Component);
-}
 
 export function useFactory<T extends Function>(factory: () => T) {
   const ref = Runtime.useRef<T | null>(null);
@@ -127,13 +90,106 @@ export function useHook<T = void>(
  * preact's mangled internals) so each lands as a plain own property, out of
  * observed state. Keys differ per host; each adapter passes its own.
  */
-export function ignore(keys: string[]) {
+function ignore(keys: string[]) {
   for (const key of keys)
     Object.defineProperty(Component.prototype, key, {
       set(value) {
         Object.defineProperty(this, key, { value, writable: true });
       }
     });
+}
+
+function bootstrap(this: Component, context: Context){
+  context = context.push();
+  context.set(this, () => () => this.set(null));
+
+  Object.defineProperties(this, {
+    context: {
+      get: () => context,
+      set() {}
+    },
+    render: {
+      value: render(this, context)
+    }
+  });
+
+  this.set(null, () => {
+    Object.defineProperty(this, 'props', {
+      value: this.props,
+      writable: true
+    });
+  })
+}
+
+/**
+ * Per-instance render host: subscribe the instance, render inside its context
+ * provider, wrap pending in Suspense and (when `catch` is set) the host error
+ * boundary. Host differences live behind `Runtime.dedupe`/`Runtime.ErrorBoundary`.
+ */
+function render(from: Component, context: Context) {
+  const { createElement: create } = Runtime;
+  const { commit, remove } = Runtime.dedupe(from, context);
+  
+  const content = from.render;
+  const Render = () => content.call(from, from.props);
+  const Component = () => {
+    from = useHook<Component>((refresh) => {
+      if (observer(from) !== null)
+        watch(from, refresh);
+      return () => {
+        remove();
+        context.pop();
+      };
+    }) || from;
+
+    useReady(commit);
+
+    const rendered = create(Render);
+    const children = provide(context,
+      from.fallback === false
+        ? rendered
+        : create(Runtime.Suspense,
+          { fallback: from.fallback, name: String(from) },
+          rendered)
+    );
+
+    return from.catch
+      ? create(Runtime.ErrorBoundary, { self: from, children })
+      : children;
+  };
+
+  return () => create(Component);
+}
+
+/** Rewrite each own capitalized function on `target` into a subcomponent. */
+function subcomponents(target: object, configurable?: boolean) {
+  for (const key of Object.getOwnPropertyNames(target)) {
+    if (!/^[A-Z]/.test(key)) continue;
+    const { value } = Object.getOwnPropertyDescriptor(target, key)!;
+    if (typeof value != 'function') continue;
+    Object.defineProperty(target, key, {
+      configurable,
+      get(this: Component) {
+        const owner = this.is;
+        let render = unbind(value);
+        const Component = (props: unknown) =>
+          render.call(
+            useHook<Component>((set) => watch(owner, set)) || owner,
+            props
+          );
+
+        Object.defineProperty(owner, key, {
+          configurable: true,
+          get: () => Component,
+          set(fn: Function) {
+            render = fn;
+          }
+        });
+
+        return Component;
+      }
+    });
+  }
 }
 
 // Host-agnostic seams: `state` is a read-only values bag; `context`'s setter
@@ -145,27 +201,7 @@ Object.defineProperties(Component.prototype, {
     get: Component.prototype.get
   },
   context: {
-    set(context: Context) {
-      context = context.push();
-      context.set(this, () => () => this.set(null));
-
-      Object.defineProperties(this, {
-        context: {
-          get: () => context,
-          set() {}
-        },
-        render: {
-          value: render(this, context)
-        }
-      });
-
-      this.set(null, () => {
-        Object.defineProperty(this, 'props', {
-          value: this.props,
-          writable: true
-        });
-      })
-    }
+    set: bootstrap
   }
 });
 
@@ -201,34 +237,3 @@ Component.on({
     subcomponents(self, true);
   }
 });
-
-/** Rewrite each own capitalized function on `target` into a subcomponent. */
-function subcomponents(target: object, configurable?: boolean) {
-  for (const key of Object.getOwnPropertyNames(target)) {
-    if (!/^[A-Z]/.test(key)) continue;
-    const { value } = Object.getOwnPropertyDescriptor(target, key)!;
-    if (typeof value != 'function') continue;
-    Object.defineProperty(target, key, {
-      configurable,
-      get(this: Component) {
-        const owner = this.is;
-        let render = unbind(value);
-        const Component = (props: unknown) =>
-          render.call(
-            useHook<Component>((set) => watch(owner, set)) || owner,
-            props
-          );
-
-        Object.defineProperty(owner, key, {
-          configurable: true,
-          get: () => Component,
-          set(fn: Function) {
-            render = fn;
-          }
-        });
-
-        return Component;
-      }
-    });
-  }
-}
