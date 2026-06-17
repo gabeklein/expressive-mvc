@@ -47,7 +47,9 @@ install -m 0755 \
   "$SRC/sync-claude-auth.sh" \
   "$SRC/setup-remote-control.sh" \
   "$SRC/start-remote-control.sh" \
+  "$SRC/preseed-config.sh" \
   "$SHARE_DIR/"
+install -m 0644 "$SRC/preseed-config.js" "$SHARE_DIR/"
 ln -sf "$SHARE_DIR/setup-remote-control.sh" /usr/local/bin/setup-remote-control
 ln -sf "$SHARE_DIR/sync-claude-auth.sh" /usr/local/bin/sync-claude-auth
 

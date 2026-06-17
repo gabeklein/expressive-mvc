@@ -14,6 +14,7 @@ export PATH="$HOME/.local/bin:$PATH"
 SESSION="claude-rc"
 CONFIG_DIR="${CLAUDE_CONFIG_DIR:-/workspaces/.claude}"
 NAME="${CLAUDE_RC_NAME:-$(basename "$PWD")}"
+DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
 
 if ! command -v claude >/dev/null 2>&1; then
   echo "[remote-control] 'claude' not found on PATH; skipping." >&2
@@ -32,6 +33,11 @@ if [ ! -f "$CONFIG_DIR/.credentials.json" ]; then
   echo "[remote-control] Run: setup-remote-control"
   exit 0
 fi
+
+# Best-effort: ensure the onboarding/trust/remoteDialogSeen flags are present so a
+# detached launch doesn't hit (and exit on) the "Enable Remote Control?" or trust
+# prompt — e.g. when a restored archive had credentials but no .claude.json.
+[ -f "$DIR/preseed-config.sh" ] && bash "$DIR/preseed-config.sh" "$PWD" >/dev/null 2>&1 || true
 
 # env -u drops the inference-only tokens so RC uses the stored full-scope login.
 # --spawn same-dir keeps every remote session in the repo working directory (not an
