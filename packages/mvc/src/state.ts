@@ -18,7 +18,7 @@ const ID = new WeakMap<State, string>();
 const STORE = new WeakMap<State, Record<string | number | symbol, unknown>>();
 
 /** External lifecycle listeners for any given State class. */
-const SETUP = new WeakMap<State.Extends, Set<State.Init<any>>>();
+const SETUP = new WeakMap<State.Extends, Set<State.Init<any> | State.On<any>>>();
 
 /** Parent-child relationships. */
 const PARENT = new WeakMap<State, State | null>();
@@ -56,6 +56,33 @@ declare namespace State {
     this: T,
     thisArg: T
   ) => Promise<void> | (() => void) | Args<T> | Assign<T> | void;
+
+  /**
+   * Lifecycle handlers for `State.on`, keyed by when they run. A bare `Init`
+   * function passed to `on` is sugar for `{ before }`.
+   */
+  interface On<T extends State = State> {
+    /**
+     * Per-class setup, run once when the class is first bootstrapped - before
+     * its members are classified and bound. Receives the class, so a handler
+     * may inspect or reshape the prototype first. A handler registered on a
+     * base class runs for each subclass too.
+     */
+    type?(type: State.Extends<T>): void;
+
+    /**
+     * Per-instance setup, run in the `prepare` phase before `observe` and the
+     * `new()` hook. Equivalent to passing a bare function to `on`. May return a
+     * cleanup, constructor args, or an assign overlay.
+     */
+    before?(this: T, thisArg: T): void | (() => void) | Promise<void> | Args<T> | Assign<T>;
+
+    /**
+     * Per-instance setup, run at the `new()` slot - after own values are
+     * observed and constructor args applied. May return a cleanup function.
+     */
+    after?(this: T, self: T): void | (() => void);
+  }
 
   /** Object overlay to override values and methods on a state. */
   type Assign<T> = Record<string, unknown> & {
@@ -404,17 +431,27 @@ abstract class State {
   }
 
   /**
-   * Register a callback to run when any instance of this State is created.
-   * If callback returns a function, it will be called when the instance is destroyed.
+   * Register a lifecycle handler for this State and its subclasses.
+   *
+   * A bare function is per-instance setup run in the `prepare` phase (sugar for
+   * `{ before }`); if it returns a function, that runs when the instance is
+   * destroyed. Pass a {@link State.On} object to hook by cadence - `type`
+   * (per-class, at bootstrap), `before` (per-instance, before `new()`), and
+   * `after` (per-instance, at the `new()` slot).
+   *
+   * @returns Function to remove the handler.
    */
-  static on<T extends State>(this: State.Extends<T>, init: State.Init<T>) {
+  static on<T extends State>(
+    this: State.Extends<T>,
+    handler: State.Init<T> | State.On<T>
+  ) {
     let setup = SETUP.get(this);
 
     if (!setup) SETUP.set(this, (setup = new Set()));
 
-    setup.add(init);
+    setup.add(handler);
 
-    return () => setup.delete(init);
+    return () => setup.delete(handler);
   }
 }
 
@@ -448,7 +485,7 @@ function init(state: State, ...args: State.Args) {
 
   if (T === State) throw new Error('Cannot create base State.');
 
-  const prepare = bootstrap(T);
+  const { before, after } = bootstrap(T);
 
   ID.set(state, `${T}-${uid()}`);
   STORE.set(state, {});
@@ -467,7 +504,7 @@ function init(state: State, ...args: State.Args) {
   listener(state, () => {
     parent(state, null);
 
-    const queue = [...prepare, observe, ...args, register];
+    const queue = [...before, observe, ...args, ...after, register];
 
     for (let i = 0; i < queue.length; i++) {
       const arg = queue[i];
@@ -495,7 +532,9 @@ function init(state: State, ...args: State.Args) {
  */
 function bootstrap(T: State.Extends) {
   const chain = [] as State.Extends[];
-  const setup = [] as State.Init[];
+  const before = new Set<State.Init>();
+  const after = new Set<State.Init>();
+  const onType = new Set<NonNullable<State.On['type']>>();
   let keys = new Map<string, (value: any) => void>();
   let getters = new Map<string, () => unknown>();
 
@@ -505,7 +544,13 @@ function bootstrap(T: State.Extends) {
   } while (T.name);
 
   for (const type of chain) {
-    setup.push(...(SETUP.get(type) || []));
+    for (const handler of SETUP.get(type) || [])
+      if (typeof handler == 'function') before.add(handler);
+      else {
+        if (handler.before) before.add(handler.before);
+        if (handler.after) after.add(handler.after);
+        if (handler.type) onType.add(handler.type);
+      }
 
     if (type === State) continue;
 
@@ -515,13 +560,15 @@ function bootstrap(T: State.Extends) {
       continue;
     }
 
+    for (const setupType of onType) setupType(type);
+
     METHODS.set(type, (keys = new Map(keys)));
     GETTERS.set(type, (getters = new Map(getters)));
 
     for (const [key, desc] of Object.entries(
       Object.getOwnPropertyDescriptors(type.prototype)
     )) {
-      if (key == 'constructor') continue;
+      if (key == 'constructor' || !desc.configurable) continue;
 
       if (typeof desc.get == 'function') {
         if (desc.configurable && typeof desc.set != 'function')
@@ -556,9 +603,9 @@ function bootstrap(T: State.Extends) {
   }
 
   if (getters.size)
-    setup.push((self) => getters.forEach(compute, self));
+    before.add((self) => getters.forEach(compute, self));
 
-  return new Set(setup);
+  return { before, after };
 }
 
 /**

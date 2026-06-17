@@ -6,10 +6,14 @@
     },
     "remoteUser": "bun",
     "userEnvProbe": "loginInteractiveShell",
-    "postCreateCommand": "bun install",
+    "postCreateCommand": "sudo chown -R bun:bun /home/bun/.bun/install/cache && bun install",
     "features": {
-        "ghcr.io/devcontainers/features/github-cli:1": {}
+        "ghcr.io/devcontainers/features/github-cli:1": {},
+        "./features/claude-rc": {}
     },
+    "mounts": [
+        "source=expressive-mvc-bun-cache,target=/home/bun/.bun/install/cache,type=volume"
+    ],
     "forwardPorts": [5173],
     "portsAttributes": {
         "5173": { "label": "dev server (vite)" }
