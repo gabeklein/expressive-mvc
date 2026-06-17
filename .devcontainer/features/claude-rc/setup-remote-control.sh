@@ -11,7 +11,10 @@
 set -euo pipefail
 
 export PATH="$HOME/.local/bin:$PATH"
-DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Resolve symlinks (this is invoked via /usr/local/bin/setup-remote-control) so we
+# find the sibling scripts at their real install location.
+SELF="$(readlink -f "${BASH_SOURCE[0]}")"
+DIR="$(cd "$(dirname "$SELF")" && pwd)"
 CONFIG_DIR="${CLAUDE_CONFIG_DIR:-/workspaces/.claude}"
 
 if ! command -v claude >/dev/null 2>&1; then
