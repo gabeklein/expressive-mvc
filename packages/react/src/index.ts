@@ -1,3 +1,4 @@
+import { Component } from '@expressive/mvc';
 import {
   createContext,
   createElement,
@@ -9,8 +10,7 @@ import {
 } from 'react';
 
 import './jsx-runtime';
-import { Component } from '@expressive/mvc';
-import { Runtime } from './component';
+import { Runtime } from './host';
 import { ErrorBoundary, dedupe } from './boundary';
 
 // React detects class components by this brand (preact reads `prototype.render`).

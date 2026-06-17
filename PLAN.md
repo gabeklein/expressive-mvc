@@ -237,7 +237,7 @@ why preact's host wiring lives ad-hoc in `index.ts` while react's is in
 
 **Fix: trade the names so each module means what it says.**
 
-- **`component.ts`** = the **agnostic keystone** (authored once in react, shared).
+- **`host.ts`** = the **agnostic keystone** (authored once in react, shared).
   Holds the `Runtime` seam object/type, `render`, `attach`, `subcomponents`,
   `prepare`, `useFactory`/`useReady`/`useHook`, `intercept` (helper), the
   JSX-compat `declare module`, and — inlined at the bottom — **`Component.on(prepare)`
@@ -247,8 +247,8 @@ why preact's host wiring lives ad-hoc in `index.ts` while react's is in
 - **`boundary.ts`** = **host render classes**, one per package, side-effect free.
   Exports `ErrorBoundary` (both) and, for react, `dedupe` (the fiber-keyed
   attempt supersession; preact's is a trivial no-op inlined in `index.ts`).
-  Preact's host-`ref` JSX `declare module` rides here too. No brand, no
-  `Object.assign`, no `Component.on`.
+  No brand, no `Object.assign`, no `Component.on`. (Preact's host-`ref` JSX
+  `declare module` lives in `jsx-runtime.ts` with the other JSX typing.)
 - **`jsx-runtime.ts`** = host JSX bootstrap (`host(...)`), in **both** packages.
 - **`index.ts`** (both) = **host injection**: imports the host (react /
   preact-compat), runs `Object.assign(Runtime, { host primitives, dedupe,
@@ -256,18 +256,18 @@ why preact's host wiring lives ad-hoc in `index.ts` while react's is in
   `isReactComponent` brand. Preact needs no brand - core defines the default
   `Component.prototype.render` preact detects on. Then public re-exports.
 
-**Tree-shaking:** inlining `Component.on(prepare)` into the agnostic `component.ts`
-(which feeds the pure `state.js` path) requires marking `./dist/component.js` as
-`sideEffects`. Acceptable — `state.js` already hard-depends on `component.js`, and
+**Tree-shaking:** inlining `Component.on(prepare)` into the agnostic `host.ts`
+(which feeds the pure `state.js` path) requires marking `./dist/host.js` as
+`sideEffects`. Acceptable — `state.js` already hard-depends on `host.js`, and
 the activation is mandatory for any adapter use, so nothing droppable is lost. The
 `on` accumulators are already `Set`s, so the single shared registration is
 idempotent.
 
 **Symmetry achieved:** both packages end up with `boundary.ts` (host render
 classes) + `jsx-runtime.ts` (host JSX) + `index.ts` (host injection + barrel),
-all riding the single agnostic `component.ts`. `runtime.ts` is gone - it
+all riding the single agnostic `host.ts`. `runtime.ts` is gone - it
 atrophied to nothing once injection moved to `index.ts` and the classes to
-`boundary.ts`. Re-export source in `state.ts` flips `./runtime` → `./component`;
+`boundary.ts`. Re-export source in `state.ts` flips `./runtime` → `./host`;
 public surface unchanged (a dedicated `@expressive/react/component` export is
 deferred until necessary).
 

@@ -1,5 +1,3 @@
-import './jsx-runtime';
-
 import { Runtime } from '@expressive/react/state';
 import {
   createContext,
@@ -11,6 +9,7 @@ import {
   useState
 } from 'preact/compat';
 
+import './jsx-runtime';
 import { ErrorBoundary } from './boundary';
 
 Object.assign(Runtime, {
