@@ -24,6 +24,7 @@
   "sideEffects": [
     "./dist/index.js",
     "./dist/runtime.js",
+    "./dist/component.js",
     "./dist/state.get.js",
     "./dist/state.use.js",
     "./src/jsx-runtime.ts"
