@@ -55,6 +55,10 @@ automatically:
 bash .devcontainer/sync-claude-auth.sh
 ```
 
+This handles the GitHub side for you — it'll prompt a one-time `gh` authorization
+(another URL + code) the first time, since storing the secret needs the `codespace`
+scope. Re-run it whenever you log in to Claude again.
+
 (You can close this file once you're logged in.)
 MD
 }
