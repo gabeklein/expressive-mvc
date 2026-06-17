@@ -4,17 +4,13 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 ## oven/bun already provides a "bun" user at UID/GID 1000 - just grant it passwordless sudo.
 ## Bun is the package manager/runtime for the project; Node is intentionally absent.
-## GitHub CLI (gh) is added via a Dev Container Feature (see devcontainer.json).
+## GitHub CLI (gh) and Claude Code + Remote Control are added via Dev Container
+## Features (see devcontainer.json) - the claude-rc feature installs
+## Claude Code, tmux, and its helper scripts.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates curl git sudo tmux \
+    && apt-get install -y --no-install-recommends ca-certificates curl git sudo \
     && rm -rf /var/lib/apt/lists/* \
     && echo "bun ALL=(root) NOPASSWD:ALL" > /etc/sudoers.d/bun \
     && chmod 0440 /etc/sudoers.d/bun
 
 USER bun
-
-## Claude Code via its native installer - a standalone binary, no Node required, so the
-## image stays Bun-pure. Installs to ~/.local/bin, which we add to PATH. The binary
-## self-updates via `claude update`.
-RUN curl -fsSL https://claude.ai/install.sh | bash
-ENV PATH="/home/bun/.local/bin:${PATH}"
