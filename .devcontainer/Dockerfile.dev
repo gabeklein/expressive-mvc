@@ -5,7 +5,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 ## oven/bun already provides a "bun" user at UID/GID 1000 - just grant it passwordless sudo.
 ## Bun is the package manager/runtime for the project; Node is intentionally absent.
 ## GitHub CLI (gh) and Claude Code + Remote Control are added via Dev Container
-## Features (see devcontainer.json) - the claude-remote-control feature installs
+## Features (see devcontainer.json) - the claude-rc feature installs
 ## Claude Code, tmux, and its helper scripts.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates curl git sudo \

@@ -5,7 +5,7 @@ set -euo pipefail
 
 REMOTE_USER="${_REMOTE_USER:-root}"
 REMOTE_HOME="${_REMOTE_USER_HOME:-/root}"
-SHARE_DIR="/usr/local/share/claude-remote-control"
+SHARE_DIR="/usr/local/share/claude-rc"
 SRC="$(cd "$(dirname "$0")" && pwd)"
 
 echo "[claude-rc] Installing for user '$REMOTE_USER' (home: $REMOTE_HOME)"

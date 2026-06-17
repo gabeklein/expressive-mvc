@@ -5,19 +5,19 @@ manager for the project; Node is intentionally absent.
 
 [Claude Code](https://docs.claude.com/en/docs/claude-code) + [Remote
 Control](https://code.claude.com/docs/en/remote-control) are provided by a **local Dev
-Container Feature** at [`features/claude-remote-control`](./features/claude-remote-control/),
+Container Feature** at [`features/claude-rc`](./features/claude-rc/),
 opted into from `devcontainer.json`:
 
 ```jsonc
 "features": {
   "ghcr.io/devcontainers/features/github-cli:1": {},
-  "./features/claude-remote-control": {}
+  "./features/claude-rc": {}
 }
 ```
 
 Keeping it as a feature means the process is self-contained and portable — it can be
 lifted into a standalone repo and published for reuse. See the
-[feature README](./features/claude-remote-control/README.md) for the full design.
+[feature README](./features/claude-rc/README.md) for the full design.
 
 ## Remote Control, in short
 

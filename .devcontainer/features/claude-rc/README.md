@@ -9,7 +9,7 @@ the container in your editor.
 > Currently developed as a **local feature** inside this repo. It's a self-contained
 > folder, so it can later be lifted into a standalone repo and published to `ghcr.io`
 > for reuse across projects. The files don't change — only the reference form does
-> (`./features/claude-remote-control` → `ghcr.io/<owner>/<repo>/claude-remote-control:1`).
+> (`./features/claude-rc` → `ghcr.io/<owner>/<repo>/claude-rc:1`).
 
 ## Usage
 
@@ -17,7 +17,7 @@ the container in your editor.
 // .devcontainer/devcontainer.json
 "features": {
   "ghcr.io/devcontainers/features/github-cli:1": {},
-  "./features/claude-remote-control": {}
+  "./features/claude-rc": {}
 }
 ```
 

@@ -9,7 +9,7 @@
     "postCreateCommand": "sudo chown -R bun:bun /home/bun/.bun/install/cache && bun install",
     "features": {
         "ghcr.io/devcontainers/features/github-cli:1": {},
-        "./features/claude-remote-control": {}
+        "./features/claude-rc": {}
     },
     "mounts": [
         "source=expressive-mvc-bun-cache,target=/home/bun/.bun/install/cache,type=volume"
