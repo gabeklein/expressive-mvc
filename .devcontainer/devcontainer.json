@@ -8,6 +8,7 @@
     "userEnvProbe": "loginInteractiveShell",
     "postCreateCommand": "sudo mkdir -p /workspaces/.claude && sudo chown -R bun:bun /workspaces/.claude /home/bun/.bun/install/cache && bash .devcontainer/restore-claude-auth.sh && bun install",
     "postStartCommand": "bash .devcontainer/start-remote-control.sh",
+    "postAttachCommand": "test -f /workspaces/.claude/LOGIN-REQUIRED.md && code /workspaces/.claude/LOGIN-REQUIRED.md || true",
     "features": {
         "ghcr.io/devcontainers/features/github-cli:1": {}
     },
@@ -25,7 +26,10 @@
         "vscode": {
             "settings": {
                 "editor.tabSize": 2,
-                "editor.detectIndentation": true
+                "editor.detectIndentation": true,
+                "workbench.editorAssociations": {
+                    "**/LOGIN-REQUIRED.md": "vscode.markdown.preview.editor"
+                }
             },
             "extensions": [
                 "esbenp.prettier-vscode",

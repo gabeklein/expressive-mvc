@@ -30,10 +30,16 @@ tmux attach -t claude-rc     # Ctrl-b then d to detach
 The session lives only as long as the container is running. Codespaces auto-suspend
 when idle, which ends the session until the next start (when it relaunches).
 
-> **First run on a brand-new Codespace** may show a one-time "trust this folder"
-> prompt. Attach to the tmux session once to accept it; the acceptance persists in
-> `~/.claude` for subsequent starts. (This is separate from permissions and is the
-> only thing that can block the headless launch.)
+> **Brand-new Codespace with no stored login?** The `claude-rc` session starts the
+> interactive `claude auth login` *first* (then Remote Control), and a rendered
+> `LOGIN-REQUIRED.md` opens automatically to point you there. Just
+> `tmux attach -t claude-rc`, finish the login (URL + code), and RC starts. This is
+> only needed when there's no restorable login — see
+> [Carrying your login to fresh Codespaces](#carrying-your-login-to-fresh-codespaces-optional).
+>
+> A one-time "trust this folder" prompt may also appear there; accept it once and it
+> persists. (Both are separate from permissions and are the only things that can hold
+> up the launch.)
 
 ### Approving actions
 

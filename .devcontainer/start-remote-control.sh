@@ -18,6 +18,7 @@ set -euo pipefail
 
 export PATH="$HOME/.local/bin:$PATH"
 SESSION="claude-rc"
+CONFIG_DIR="${CLAUDE_CONFIG_DIR:-/workspaces/.claude}"
 
 if ! command -v claude >/dev/null 2>&1; then
   echo "[remote-control] 'claude' not found on PATH; skipping." >&2
@@ -33,11 +34,26 @@ fi
 # --spawn same-dir keeps every remote session in the repo working directory (not an
 # isolated git worktree), so edits and session transcripts land where the editor /
 # Claude Code extension attached to this container can see and resume them.
-tmux new-session -d -s "$SESSION" \
-  "env -u CLAUDE_CODE_OAUTH_TOKEN -u ANTHROPIC_API_KEY claude remote-control --spawn same-dir --name 'expressive-mvc (codespace)'"
+RC="env -u CLAUDE_CODE_OAUTH_TOKEN -u ANTHROPIC_API_KEY claude remote-control --spawn same-dir --name 'expressive-mvc (codespace)'"
+
+if [ -f "$CONFIG_DIR/.credentials.json" ]; then
+  # Authenticated: start Remote Control directly.
+  launch="$RC"
+else
+  # No login yet: run the interactive login first, in the session, then start RC.
+  # Attaching to the session shows the login URL/code; RC starts once you finish.
+  launch="echo '>>> Claude login needed for Remote Control — complete the prompt below.'; claude auth login && $RC"
+fi
+
+tmux new-session -d -s "$SESSION" "$launch"
 
 echo "[remote-control] Started tmux session '$SESSION'."
-echo "[remote-control] It should appear in the Claude app session list (tap Code)."
-echo "[remote-control] If it isn't authenticated, run 'claude auth login' once"
-echo "[remote-control] (persists in the ~/.claude volume), then re-run this script."
-echo "[remote-control] To view the URL/QR or check status: tmux attach -t $SESSION"
+if [ -f "$CONFIG_DIR/.credentials.json" ]; then
+  echo "[remote-control] It should appear in the Claude app session list (tap Code)."
+else
+  echo "[remote-control] Not logged in yet — attach to finish login, then RC starts:"
+  echo "[remote-control]   tmux attach -t $SESSION"
+  echo "[remote-control] Afterwards, 'bash .devcontainer/sync-claude-auth.sh' remembers it for future Codespaces."
+fi
+echo "[remote-control] View the URL/QR or check status anytime: tmux attach -t $SESSION"
+
