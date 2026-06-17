@@ -6,13 +6,10 @@
     },
     "remoteUser": "bun",
     "userEnvProbe": "loginInteractiveShell",
-    "postCreateCommand": "sudo mkdir -p /workspaces/.claude && sudo chown -R bun:bun /workspaces/.claude /home/bun/.bun/install/cache && bun install",
-    "postStartCommand": "bash .devcontainer/start-remote-control.sh",
+    "postCreateCommand": "sudo chown -R bun:bun /home/bun/.bun/install/cache && bun install",
     "features": {
-        "ghcr.io/devcontainers/features/github-cli:1": {}
-    },
-    "containerEnv": {
-        "CLAUDE_CONFIG_DIR": "/workspaces/.claude"
+        "ghcr.io/devcontainers/features/github-cli:1": {},
+        "./features/claude-remote-control": {}
     },
     "mounts": [
         "source=expressive-mvc-bun-cache,target=/home/bun/.bun/install/cache,type=volume"
