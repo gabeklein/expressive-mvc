@@ -5,7 +5,7 @@ description: Class-based reactive state management for React. Covers State API, 
 
 # Expressive MVC
 
-Class-based reactive state for React, Preact, and Solid. State classes define reactive properties, computed values, async data, and context - all as plain class fields using instruction helpers.
+Class-based reactive state for React and Preact. State classes define reactive properties, computed values, async data, and context - all as plain class fields using instruction helpers.
 
 ## Packages
 
@@ -14,7 +14,6 @@ Class-based reactive state for React, Preact, and Solid. State classes define re
 | `@expressive/react`  | Published | React adapter. Primary import for State, Component, instructions. |
 | `@expressive/mvc`  | Published | Framework-agnostic core. Rarely imported directly.                |
 | `@expressive/preact` | Private   | Thin wrapper over React adapter via preact/hooks. Prerelease.     |
-| `@expressive/solid`  | Private   | Standalone implementation. Experimental.                          |
 
 ## Core API
 
