@@ -70,6 +70,12 @@ await expect(state).not.toHaveUpdated();
 - Update tests alongside behavioral/type changes - tests must fail without the change.
 - New major features need `skills/` docs.
 - Merged code carries essentially no comments. Add explanatory comments freely while building a feature, but strip them before committing. Keep one only when the code is genuinely cryptic and would otherwise be misread - this should be rare. Never commit narration of what the code does or why a step exists; the code and commit message carry that.
+- **Always ask before adding new public surface.** Do not introduce new exported
+  functions, methods, types, or fields (anything reachable from a package's
+  public entry, including additions to shared registries like `Runtime` or the
+  `Component`/`State` interfaces) without first confirming with the user.
+  Prefer reusing or reshaping existing surface; when new surface seems needed,
+  propose it and wait for a decision.
 
 ## Change flow
 
