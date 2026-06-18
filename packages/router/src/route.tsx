@@ -131,6 +131,19 @@ export class Route extends Component {
     return collect(this.inner);
   }
 
+  /**
+   * Live query record from the active Router. Global (not route-scoped) - every
+   * Route sees the same params, unlike `match` which is this Route's captures.
+   * Narrow known keys in a subclass via `declare`, same as on Router:
+   *
+   * ```ts
+   * class Search extends Route {
+   *   declare query: { q?: string; page?: string };
+   * }
+   * ```
+   */
+  query = set(() => this.router.query);
+
   /** Directory-style anchor for relative navigation. */
   get anchor(): string {
     return this.router.anchor(this);
@@ -152,11 +165,9 @@ export class Route extends Component {
     if (parent) {
       register(parent.is, self);
 
-      if (Component)
-        for (const sibling of CHILDREN.get(parent.is)!) {
-          if (sibling === self) break;
-          if (sibling.as && sibling.matched) return null;
-        }
+      // `path` read via our own proxy so re-arbitration re-renders us.
+      if (Component && cedes(parent, self, () => this.router.path))
+        return null;
     }
 
     if (this.redirect)
@@ -224,6 +235,7 @@ function hasRoutes(route: Route): boolean {
 
 type RouteProps = {
   to?: string;
+  as?: unknown;
   redirect?: string;
   default?: boolean;
   children?: Component.Node;
@@ -263,6 +275,67 @@ export function matchesAnywhere(children: Component.Node, base: string, path: st
   }
 
   return false;
+}
+
+type Contender = {
+  /** Absolute path this Route claims. */
+  path: string;
+  /** Whether it claims (matches) a given path. */
+  matches: (path: string) => boolean;
+};
+
+/**
+ * Whether `child` should cede `parent`'s single `as`-slot to an earlier rival.
+ * First contender (declaration order) matching the path wins. `path` is a thunk,
+ * read only once a real rivalry exists, so a solitary match stays unsubscribed.
+ */
+function cedes(parent: Route, child: Route, path: () => string): boolean {
+  // Fallback/redirect never competes by order, so it's never arbitrated.
+  if (child.default || child.redirect) return false;
+
+  const rivals = contenders(parent.props.children, scopeBase(parent));
+  if (rivals.length < 2 || !rivals.some((r) => r.path === child.path)) return false;
+
+  const at = path();
+  for (const rival of rivals)
+    if (rival.matches(at))
+      return rival.path !== child.path;
+
+  return true;
+}
+
+/**
+ * The `as`-bearing Route nodes declared directly within `children`, in
+ * declaration order, each paired with its claimed path and a match test.
+ * Recurses Fragments, stops at nested Route scopes. Lexical only (reads `to`).
+ */
+function contenders(children: Component.Node, base: string): Contender[] {
+  const out: Contender[] = [];
+
+  for (const node of childrenOf(children)) {
+    if (!isElement(node)) continue;
+
+    const type = typeOf(node);
+
+    if (type === Fragment) {
+      out.push(...contenders((propsOf(node) as RouteProps).children, base));
+      continue;
+    }
+
+    if (type !== Route) continue;
+
+    const props = propsOf(node) as RouteProps;
+    if (!props.as || props.redirect || props.default) continue;
+
+    const to = typeof props.to === 'string' ? props.to : '';
+    const matches = allRoutes(props.children)
+      ? (path: string) => matchesAnywhere(props.children, base + patternSegment(to), path)
+      : (path: string) => matchPattern(fullPattern(base, to), path) !== null;
+
+    out.push({ path: base + patternSegment(to), matches });
+  }
+
+  return out;
 }
 
 function allRoutes(children: Component.Node): boolean {

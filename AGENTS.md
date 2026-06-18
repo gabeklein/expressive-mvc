@@ -14,7 +14,6 @@ Monorepo: bun workspaces + changesets. Install, tests, and builds run under bun 
 packages/mvc    - Core primitives (@expressive/mvc)
 packages/react  - React adapter (@expressive/react)
 packages/preact - Preact adapter (@expressive/preact)
-packages/solid  - Solid adapter (@expressive/solid)
 skills/         - API reference docs (also published as skills.sh skill)
 ```
 
@@ -71,6 +70,12 @@ await expect(state).not.toHaveUpdated();
 - Update tests alongside behavioral/type changes - tests must fail without the change.
 - New major features need `skills/` docs.
 - Merged code carries essentially no comments. Add explanatory comments freely while building a feature, but strip them before committing. Keep one only when the code is genuinely cryptic and would otherwise be misread - this should be rare. Never commit narration of what the code does or why a step exists; the code and commit message carry that.
+- **Always ask before adding new public surface.** Do not introduce new exported
+  functions, methods, types, or fields (anything reachable from a package's
+  public entry, including additions to shared registries like `Runtime` or the
+  `Component`/`State` interfaces) without first confirming with the user.
+  Prefer reusing or reshaping existing surface; when new surface seems needed,
+  propose it and wait for a decision.
 
 ## Change flow
 
@@ -82,7 +87,7 @@ await expect(state).not.toHaveUpdated();
 
 ### Releasing
 
-- Only `@expressive/mvc` and `@expressive/react` are published; `preact` and `solid` are private and ignored by changesets.
+- Only `@expressive/mvc` and `@expressive/react` are published; `preact` is private and ignored by changesets.
 - Merged changesets accumulate on `main`; CI maintains a "Version Packages" PR (`changeset version`). Merging that PR triggers `changeset publish` from CI. No local publishing.
 
 ## Guardrails

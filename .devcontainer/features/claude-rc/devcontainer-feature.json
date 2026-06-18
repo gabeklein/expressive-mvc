@@ -1,0 +1,22 @@
+{
+  "id": "claude-rc",
+  "version": "0.1.0",
+  "name": "Claude Code Remote Control",
+  "description": "Installs Claude Code (native binary) and auto-starts a Remote Control session in tmux so you can pair-program from the Claude app. Handles credential persistence across Codespaces and a guided, optional first-run login.",
+  "options": {},
+  "containerEnv": {
+    "CLAUDE_CONFIG_DIR": "/workspaces/.claude"
+  },
+  "postCreateCommand": "sudo mkdir -p /workspaces/.claude && sudo chown -R $(id -un) /workspaces/.claude && bash /usr/local/share/claude-rc/restore-claude-auth.sh",
+  "postStartCommand": "bash /usr/local/share/claude-rc/start-remote-control.sh",
+  "postAttachCommand": "test -f /workspaces/.claude/LOGIN-REQUIRED.md && code /workspaces/.claude/LOGIN-REQUIRED.md || true",
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "workbench.editorAssociations": {
+          "**/LOGIN-REQUIRED.md": "vscode.markdown.preview.editor"
+        }
+      }
+    }
+  }
+}

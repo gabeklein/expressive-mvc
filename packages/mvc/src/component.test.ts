@@ -198,6 +198,39 @@ describe('render chain', () => {
     // One override composes with the pass-through default to exactly itself.
     expect(Solo.new({}).render()).toBe('just me');
   });
+
+  // Intentional inverse of the footgun: a base may opt out of wrapping by
+  // detecting that a subclass supplied content. Composition synthesizes a fresh
+  // `children`, so it is not identical to the original `this.props.children`.
+  it('lets a base defer to a subclass render via children identity', () => {
+    class Base extends Component {
+      render(props = {} as { children?: unknown }): Component.Node {
+        if (props.children !== this.props.children)
+          return props.children;
+
+        return ['base', props.children];
+      }
+    }
+
+    class Override extends Base {
+      render(): Component.Node {
+        return 'replaced';
+      }
+    }
+
+    class Passthrough extends Base {}
+
+    // Subclass authored a render -> base defers, no wrapping.
+    expect(Override.new({}).render()).toBe('replaced');
+
+    // Plain base and render-less subclass keep the base output (no composition
+    // layer, so `children` is the original props.children). The framework
+    // invokes render with the instance's own props - mirror that here.
+    const base = Base.new({ children: 'x' });
+    const pass = Passthrough.new({ children: 'y' });
+    expect(base.render(base.props)).toEqual(['base', 'x']);
+    expect(pass.render(pass.props)).toEqual(['base', 'y']);
+  });
 });
 
 describe('leading function argument', () => {

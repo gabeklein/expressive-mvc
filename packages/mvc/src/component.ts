@@ -51,21 +51,6 @@ declare namespace Component {
     & RenderProps<T['render']>;
 }
 
-interface Component {
-  /**
-   * Output for this component. Override to define custom JSX.
-   *
-   * Properties accessed via `this` are reactive and trigger a render when they
-   * change, in addition to props. Accepts an optional parameter to receive extra
-   * props from JSX, beyond those merged to state properties; declare its shape
-   * via `props = {} as { ... }`. Without a parameter, children pass through.
-   *
-   * Declared, not implemented - the constructor installs a composed `render`
-   * per instance (see `render`); subclasses override with a method.
-   */
-  render(props?: {}): Component.Node;
-}
-
 class Component extends State {
   /**
    * All JSX attributes passed to this component.
@@ -126,6 +111,24 @@ class Component extends State {
   }
 
   /**
+   * Output for this component. Override to define custom JSX.
+   *
+   * Properties accessed via `this` are reactive and trigger a render when they
+   * change, in addition to props. Accepts an optional parameter to receive extra
+   * props from JSX, beyond those merged to state properties; declare its shape
+   * via `props = {} as { ... }`. Without a parameter (the default below),
+   * children pass through.
+   *
+   * The constructor installs a composed `render` per instance; the bootstrap
+   * `type` pass seals this and any override non-configurable, keeping it the
+   * content-render seam the chain reads.
+   */
+  render(props?: {}): Component.Node {
+    const { children } = (props || this.props) as { children?: Component.Node };
+    return children || null;
+  }
+
+  /**
    * Called when a child component throws during render.
    * While this is pending, `fallback` is displayed.
    * When resolved, the error boundary resets and `render` is called again.
@@ -138,16 +141,34 @@ class Component extends State {
 }
 
 /**
+ * Seal each class's own `render` non-configurable at bootstrap so member
+ * classification leaves it unbound - it stays the content-render seam the chain
+ * reads (and which adapters like preact detect as the class-component marker).
+ */
+Component.on({
+  type(type) {
+    const desc = Object.getOwnPropertyDescriptor(type.prototype, 'render');
+
+    if (desc && typeof desc.value == 'function')
+      Object.defineProperty(type.prototype, 'render', {
+        ...desc,
+        configurable: false
+      });
+  }
+});
+
+/**
  * Build (or fetch the cached) composed content render for an instance's class.
  * Walks the prototype chain for content renders strictly below Component - the
- * seam itself (Component.prototype.render) is excluded; an adapter owns that.
+ * default render on Component.prototype is excluded and serves as the fallback
+ * when a class authors none.
  */
 function render(target: Component) {
   const cached = CHAIN.get(target.constructor);
 
   if (cached) return cached;
 
-  let render: Function = children;
+  let render: Function | undefined;
   let proto = target;
 
   while ((proto = Object.getPrototypeOf(proto)) !== Component.prototype) {
@@ -155,9 +176,12 @@ function render(target: Component) {
 
     if (desc) {
       const layer = unbind(desc.get || desc.value);
-      render = render === children ? layer : compose(layer, render);
+      render = render ? compose(layer, render) : layer;
     }
   }
+
+  if (!render)
+    render = Component.prototype.render;
 
   CHAIN.set(target.constructor, render);
 
@@ -175,12 +199,6 @@ function compose(outer: Function, inner: Function): Function {
       }
     });
   };
-}
-
-/** Default content when a component defines no `render` - pass children through. */
-function children(this: Component, props?: {}): Component.Node {
-  const { children } = (props || this.props) as { children?: Component.Node };
-  return children || null;
 }
 
 export { Component };

@@ -3,7 +3,6 @@ import { describe, expect, it } from 'bun:test';
 import { fullPattern, matchPattern, patternSegment } from './url';
 
 const match = (pattern: string, path: string) => matchPattern(pattern, path)?.params;
-const score = (pattern: string, path: string) => matchPattern(pattern, path)!.score;
 
 describe('matchPattern', () => {
   it('matches root', () => {
@@ -136,34 +135,5 @@ describe('patternSegment', () => {
 
   it('preserves literal patterns unchanged', () => {
     expect(patternSegment('/posts/:id')).toBe('/posts/:id');
-  });
-});
-
-describe('match score (specificity)', () => {
-  it('ranks more literal segments higher', () => {
-    expect(score('/posts/new', '/posts/new')).toBeGreaterThan(
-      score('/posts/:id', '/posts/new')
-    );
-  });
-
-  it('ranks :param higher than catch-all', () => {
-    expect(score('/posts/:id', '/posts/foo')).toBeGreaterThan(
-      score('/posts/*', '/posts/foo')
-    );
-  });
-
-  it('ranks empty pattern (exact root) higher than catch-all', () => {
-    expect(score('', '')).toBeGreaterThan(score('*', ''));
-  });
-
-  it('catch-all alone is the least specific', () => {
-    expect(score('*', '/foo')).toBeLessThan(score('/foo', '/foo'));
-    expect(score('*', '/id')).toBeLessThan(score(':id', '/id'));
-  });
-
-  it('longer pattern with literals beats shorter pattern', () => {
-    expect(score('/posts/:id/edit', '/posts/x/edit')).toBeGreaterThan(
-      score('/posts/:id', '/posts/x')
-    );
   });
 });

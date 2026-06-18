@@ -1,8 +1,27 @@
+import { event, watch, observer } from '@expressive/mvc';
+import type { Component } from '@expressive/mvc';
+import type { Context } from './context';
+import './component';
+import './state.get';
+import './state.use';
+
+export { State } from '@expressive/mvc';
+export { Consumer, Provider, Context, provide } from './context';
+
 export const Runtime = {} as {
+  /** Host own-property keys to trap out of observed state; assigned by each adapter. */
+  ignore: string[];
   createElement(type: any, props?: any, ...children: any[]): any;
+  createContext<T>(value: T): any;
+  useContext(context: any): any;
   useState<S>(initial: S | (() => S)): [S, (next: (previous: S) => S) => void];
   useEffect(effect: () => (() => void) | void, deps?: any[]): void;
   useRef<T>(initial: T): { current: T };
+  /** Per-render-attempt lifecycle, set by each adapter (React stacks attempts; others no-op). */
+  dedupe(from: Component, context: Context): { commit(): void; remove(): void };
+  /** Host error-boundary component, wrapping a Component whose `catch` is set. */
+  ErrorBoundary: unknown;
+  Suspense: any;
 };
 
 export function useFactory<T extends Function>(factory: () => T) {
@@ -57,4 +76,49 @@ export function useHook<T = void>(
   }, []);
 
   return current.output;
+}
+
+/** Subscribe to an existing observable instance within a component. */
+export function use<T extends object>(subject: T) {
+  const { current } = Runtime.useRef<{
+    proxy: T;
+    source?: T;
+    mounted: number;
+    unwatch?: () => void;
+  }>({ mounted: 0, proxy: subject });
+
+  const update = Runtime.useState(() => current.mounted++)[1];
+
+  if (current.source !== subject) {
+    const status = observer(subject);
+
+    if (status === undefined)
+      throw new Error('Provided object is not observable.');
+
+    current.unwatch?.();
+    current.source = subject;
+
+    if (status === null) {
+      current.unwatch = undefined;
+      current.proxy = subject;
+    } else {
+      if (!status.ready) event(subject);
+
+      let init = true;
+
+      current.unwatch = watch(subject, (next, changed) => {
+        current.proxy = next;
+        if (changed.length && !init)
+          update((x) => x + 1);
+      });
+
+      init = false;
+    }
+  }
+
+  Runtime.useEffect(() => () => {
+    if (--current.mounted < 1) current.unwatch?.();
+  }, []);
+
+  return current.proxy;
 }

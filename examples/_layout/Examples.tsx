@@ -14,7 +14,7 @@ function Examples({ modules }: { modules: Record<string, LazyModule> }) {
 
   return (
     <BrowserRouter>
-      <Route as={Shell}>
+      <Route as={Page}>
         {first && <Route redirect={first.path} />}
         {routes.map((g) => (
           <Route key={g.slug} to={g.slug} label={g.label}>
@@ -35,32 +35,6 @@ function Examples({ modules }: { modules: Record<string, LazyModule> }) {
   );
 }
 
-function Example() {
-  const { label, meta } = Route.get();
-
-  return (
-    <iframe
-      className={styles.frame}
-      title={label}
-      src={`module#${encodeURIComponent(meta!.file)}`}
-    />
-  );
-}
-
-function Shell(props: { children?: React.ReactNode }) {
-  return (
-    <main className={styles.shell}>
-      <nav className={styles.nav}>
-        <a className={styles.logo} href="/">
-          <Logo />
-        </a>
-        <Navigation />
-      </nav>
-      <section className={styles.example}>{props.children}</section>
-    </main>
-  );
-}
-
 class Navigation extends NavLinks {
   List(props: { children?: React.ReactNode }) {
     return <div className={styles.links}>{props.children}</div>;
@@ -74,6 +48,32 @@ class Navigation extends NavLinks {
       </div>
     );
   }
+}
+
+function Page(props: { children?: React.ReactNode }) {
+  return (
+    <main className={styles.shell}>
+      <nav className={styles.nav}>
+        <a className={styles.logo} href="/">
+          <Logo />
+        </a>
+        <Navigation />
+      </nav>
+      <section className={styles.example}>{props.children}</section>
+    </main>
+  );
+}
+
+function Example() {
+  const { label, meta } = Route.get();
+
+  return (
+    <iframe
+      className={styles.frame}
+      title={label}
+      src={`module#${encodeURIComponent(meta!.file)}`}
+    />
+  );
 }
 
 function NotFound() {

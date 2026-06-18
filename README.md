@@ -72,7 +72,7 @@ npm install @expressive/react
 import State from '@expressive/react';
 ```
 
-> For other frameworks, use `@expressive/preact`, `@expressive/solid`, or the core `@expressive/mvc` package.
+> For other frameworks, use `@expressive/preact` or the core `@expressive/mvc` package.
 
 <br />
 
@@ -1056,12 +1056,6 @@ import { Provider, Consumer } from '@expressive/react';
 
 ```bash
 npm install @expressive/preact
-```
-
-**Solid**
-
-```bash
-npm install @expressive/solid
 ```
 
 **Framework-Agnostic Core**

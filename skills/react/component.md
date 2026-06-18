@@ -132,6 +132,34 @@ This is how a base primitive owns shared chrome/suspense/context once while subc
 
 **Footgun:** the inner content arrives as `props.children`. A wrapper render that never reads `props.children` silently drops everything below it - and because the `children` getter is lazy, the dropped layer never even runs. A base meant to wrap subclasses must declare a `props` parameter and render `props.children`.
 
+### Letting a subclass replace the base (opt-out of wrapping)
+
+Wrapping is the default, but a base can choose to *defer* to a subclass's render instead of wrapping it - useful for a leaf primitive (an `<a>`, an `<input>`) that is fully usable on its own yet should be entirely overridable. The decision belongs to the base, not the subclass: the base detects that a subclass supplied content and returns it as-is.
+
+The signal is identity. Composition synthesizes a fresh `children` getter, so when a subclass authored its own render, the `children` the base receives is *not* the same value as the original `this.props.children`:
+
+```tsx
+class Link extends Component {
+  to = '';
+
+  render({ children, ...rest } = {} as Link.Props) {
+    // A subclass authored its own render; it arrives as our `children`
+    // (base render is outer). Defer to it instead of wrapping in an anchor.
+    if (children !== this.props.children) return children;
+
+    return <a {...rest} href={this.to}>{children}</a>;
+  }
+}
+
+// <Link to="/x">hi</Link>      -> <a href="/x">hi</a>   (base renders)
+// class Nav extends Link { render() { return <a className="nav" .../> } }
+// <Nav to="/x">hi</Nav>        -> <a class="nav" .../>   (base defers)
+```
+
+Plain `<Link>` and render-less subclasses (`class Foo extends Link {}`, no composition layer) keep the base anchor, since their `children` *is* `this.props.children`. Only a subclass that authored a render replaces it.
+
+This is the sensible inverse of forcing an override: a subclass can't unilaterally refuse to be wrapped (that would turn legitimate wrapping into a runtime error and require it to know its ancestor's behavior). Keeping the choice in the base preserves "works standalone *and* overridable."
+
 **Caution with React hooks in a render layer.** Reactivity comes from `this`, so you rarely need hooks here - but they aren't forbidden. The sharp edge: the whole composed chain runs in a single host render, so all layers' hooks stack into one component. Fine if they obey the rules of hooks for the chain as a whole, but a hook in a layer below a wrapper that *conditionally* renders `props.children` runs only sometimes (mounts/unmounts across renders) and breaks the rules of hooks. When a layer needs its own isolated hooks/subscription/boundary, make it a PascalCase subcomponent (`<this.Panel />`) - those each get their own component; render layers are folded into one.
 
 ## Persistent Instance

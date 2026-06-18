@@ -1,4 +1,4 @@
-import { Component } from '@expressive/mvc';
+import { Component, hot, listener } from '@expressive/mvc';
 
 import { Route } from './route';
 import { Match, fullPattern, matchPattern, patternSegment } from './url';
@@ -13,12 +13,44 @@ import { Match, fullPattern, matchPattern, patternSegment } from './url';
 export class Router extends Component {
   path = '/';
 
-  /** In-memory history: visited paths and the cursor into them. */
+  /**
+   * Canonical query state - a reactive record. Read `query.foo` to track a
+   * param; write `query.foo = ...` (or delete) to navigate: a direct mutation
+   * pushes a new history entry, same as if it arrived via `goto`.
+   *
+   * Values are always `string | undefined` (URL params carry no other type).
+   * A subclass may narrow the known keys by redeclaring with `declare`:
+   *
+   * ```ts
+   * class Search extends Router {
+   *   declare query: { q?: string; page?: string };
+   * }
+   * ```
+   */
+  query = hot({} as Record<string, string | undefined>);
+
+  /** In-memory history: visited urls (path + query) and the cursor into them. */
   entries: string[] = [];
   index = 0;
 
   protected new() {
-    this.entries = [this.path];
+    this.entries = [this.url];
+    // Direct `query` mutations push a new entry; URL-driven changes already sit there (pushEntry no-ops).
+    const release = listener(this.query, () => pushEntry(this, this.url), false);
+
+    return () => {
+      release();
+    };
+  }
+
+  /** Full URL as assigned by the environment (path + optional `?query`). Assigning navigates. */
+  get url(): string {
+    const search = searchOf(this.query);
+    return search ? this.path + '?' + search : this.path;
+  }
+
+  set url(to: string) {
+    this.goto(to);
   }
 
   /**
@@ -35,26 +67,36 @@ export class Router extends Component {
 
   goto(to: string, replace = false) {
     assertAbsolute(to);
-    const path = normalize(to);
+    const url = normalize(to);
 
-    if (replace)
-      this.entries[this.index] = path;
-    else {
-      this.entries = [...this.entries.slice(0, this.index + 1), path];
-      this.index = this.entries.length - 1;
-    }
+    if (replace) this.entries[this.index] = url;
+    else pushEntry(this, url);
 
-    this.path = path;
+    this.locate(url);
   }
 
   back() {
-    if (this.index > 0)
-      this.path = this.entries[--this.index];
+    if (this.index > 0) this.locate(this.entries[--this.index]);
   }
 
   forward() {
     if (this.index < this.entries.length - 1)
-      this.path = this.entries[++this.index];
+      this.locate(this.entries[++this.index]);
+  }
+
+  /** Apply a normalized url (path + optional `?query`) to state, reconciling `query` in place. */
+  protected locate(url: string) {
+    const q = url.indexOf('?');
+    this.path = q < 0 ? url : url.slice(0, q);
+
+    const { query } = this;
+    const next = Object.fromEntries(
+      new URLSearchParams(q < 0 ? '' : url.slice(q + 1))
+    );
+
+    for (const key in query) if (!(key in next)) delete query[key];
+
+    Object.assign(query, next);
   }
 
   segment(to: string): string {
@@ -81,7 +123,7 @@ export class Router extends Component {
   }
 }
 
-/** Binds the headless core to `window.location`, syncing `path` on navigation. */
+/** Binds the headless core to `window.location`, syncing `path`/`query` on navigation. */
 export class BrowserRouter extends Router {
   path = window.location.pathname;
 
@@ -91,7 +133,7 @@ export class BrowserRouter extends Router {
   }
 
   // The browser owns the history stack; back/forward delegate to it (popstate
-  // syncs `path`), so the inherited in-memory entries/index go unused here.
+  // syncs path/query), so the inherited in-memory entries/index go unused here.
   back() {
     history.back();
   }
@@ -102,21 +144,49 @@ export class BrowserRouter extends Router {
 
   protected new() {
     const sync = () => {
-      this.path = window.location.pathname;
+      this.locate(window.location.pathname + window.location.search);
     };
+    sync();
     window.addEventListener('popstate', sync);
 
     const origPush = history.pushState.bind(history);
     const origReplace = history.replaceState.bind(history);
-    history.pushState = (...args) => { origPush(...args); sync(); };
-    history.replaceState = (...args) => { origReplace(...args); sync(); };
+    history.pushState = (...args) => {
+      origPush(...args);
+      sync();
+    };
+    history.replaceState = (...args) => {
+      origReplace(...args);
+      sync();
+    };
+
+    // Direct `query` writes push to the browser's history; URL-driven changes
+    // already match (compared canonically, so encoding differences don't dup).
+    const release = listener(
+      this.query,
+      () => {
+        const { url } = this;
+        if (url !== canonicalize(window.location.pathname + window.location.search))
+          history.pushState(null, '', url);
+      },
+      false
+    );
 
     return () => {
+      release();
       window.removeEventListener('popstate', sync);
       history.pushState = origPush;
       history.replaceState = origReplace;
     };
   }
+}
+
+/** Append `url` as a new history entry on a memory router, truncating any forward stack. */
+function pushEntry(router: Router, url: string) {
+  if (url === router.entries[router.index]) return;
+
+  router.entries = [...router.entries.slice(0, router.index + 1), url];
+  router.index = router.entries.length - 1;
 }
 
 function assertAbsolute(to: string) {
@@ -126,7 +196,36 @@ function assertAbsolute(to: string) {
     );
 }
 
-/** Collapse `.`/`..` and stray slashes without touching browser globals. */
+/**
+ * Collapse `.`/`..` and stray slashes without touching browser globals, and
+ * canonicalize the query so stored urls match the `url` getter byte-for-byte.
+ */
 function normalize(to: string): string {
-  return new URL(to, 'x://_').pathname;
+  const { pathname, search } = new URL(to, 'x://_');
+  return canonicalize(pathname + search);
+}
+
+/**
+ * Re-serialize a url's query through the record model (last value per key,
+ * `URLSearchParams` encoding) so it is identical to what the `url` getter emits.
+ * This is what makes the history-dedup a sound string comparison.
+ */
+function canonicalize(url: string): string {
+  const q = url.indexOf('?');
+  if (q < 0) return url;
+
+  const search = searchOf(Object.fromEntries(new URLSearchParams(url.slice(q + 1))));
+  return search ? url.slice(0, q) + '?' + search : url.slice(0, q);
+}
+
+/** Canonical query serialization: skips `undefined`, last-value-per-key, form encoding. */
+function searchOf(query: Record<string, string | undefined>): string {
+  const params = new URLSearchParams();
+
+  for (const key in query) {
+    const value = query[key];
+    if (value !== undefined) params.append(key, value);
+  }
+
+  return params.toString();
 }

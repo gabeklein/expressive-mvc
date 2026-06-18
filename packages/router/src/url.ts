@@ -1,15 +1,10 @@
 export interface Match {
   params: Record<string, string>;
-  /**
-   * Higher = more specific. Per fixed segment: literal=100, :param=10.
-   * Catch-all subtracts 1; pure-literal patterns add 1.
-   */
-  score: number;
 }
 
 /**
- * Match a `path` against a route `pattern`. Returns captured params + specificity
- * score on success, or null on no match.
+ * Match a `path` against a route `pattern`. Returns captured params on success,
+ * or null on no match.
  *
  * - Literal segments match case-insensitively.
  * - `:name` segments capture into `params.name`.
@@ -27,23 +22,19 @@ export function matchPattern(pattern: string, path: string): Match | null {
     return null;
 
   const params: Record<string, string> = {};
-  let score = catchAll ? -1 : 1;
 
   for (let i = 0; i < fixed; i++) {
     const p = patternParts[i];
     const v = pathParts[i];
-    if (p.startsWith(':')) {
+    if (p.startsWith(':'))
       params[p.slice(1)] = v;
-      score += 10;
-    } else if (p.toLowerCase() === v.toLowerCase()) {
-      score += 100;
-    }
-    else return null;
+    else if (p.toLowerCase() !== v.toLowerCase())
+      return null;
   }
 
   if (catchAll) params['*'] = pathParts.slice(fixed).join('/');
 
-  return { params, score };
+  return { params };
 }
 
 /**
