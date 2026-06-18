@@ -14,7 +14,6 @@ Monorepo: bun workspaces + changesets. Install, tests, and builds run under bun 
 packages/mvc    - Core primitives (@expressive/mvc)
 packages/react  - React adapter (@expressive/react)
 packages/preact - Preact adapter (@expressive/preact)
-packages/solid  - Solid adapter (@expressive/solid)
 skills/         - API reference docs (also published as skills.sh skill)
 ```
 
@@ -82,7 +81,7 @@ await expect(state).not.toHaveUpdated();
 
 ### Releasing
 
-- Only `@expressive/mvc` and `@expressive/react` are published; `preact` and `solid` are private and ignored by changesets.
+- Only `@expressive/mvc` and `@expressive/react` are published; `preact` is private and ignored by changesets.
 - Merged changesets accumulate on `main`; CI maintains a "Version Packages" PR (`changeset version`). Merging that PR triggers `changeset publish` from CI. No local publishing.
 
 ## Guardrails
