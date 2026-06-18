@@ -91,7 +91,7 @@ declare namespace State {
     : T[K];
   };
 
-  /** Subset of `keyof T` which are not methods or defined by base State U. **/
+  /** Subset of `keyof T` not defined by base State. **/
   type Field<T> = Exclude<keyof T, keyof State>;
 
   /** Any valid key for state, including but not limited to Field<T>. */

@@ -255,3 +255,44 @@ describe('leading function argument', () => {
     expect(cleanup).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('props (static types)', () => {
+  class Test extends Component {
+    value = 0;
+    onClick = () => {};
+    readonly id = 1;
+    get computed() { return this.value * 2 }
+    get pair() { return this.value }
+    set pair(next: number) { this.value = next }
+    method() {}
+  }
+
+  it('will accept writable fields and callbacks', () => {
+    const props: Component.StateProps<Test> = {
+      value: 1,
+      onClick: () => {},
+      pair: 2,
+      method() {}
+    };
+
+    expect(props).toBeDefined();
+  });
+
+  it('will reject get-only accessors', () => {
+    const props: Component.StateProps<Test> = {
+      // @ts-expect-error - get-only accessor is not a settable prop
+      computed: 4
+    };
+
+    expect(props).toBeDefined();
+  });
+
+  it('will reject readonly fields', () => {
+    const props: Component.StateProps<Test> = {
+      // @ts-expect-error - readonly field is not a settable prop
+      id: 2
+    };
+
+    expect(props).toBeDefined();
+  });
+});

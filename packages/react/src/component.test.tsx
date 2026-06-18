@@ -144,6 +144,23 @@ describe('element props', () => {
     );
   });
 
+  it('will only offer settable members as JSX props', () => {
+    class Bar extends Component {
+      value = 0;
+      onClick = () => {};
+      readonly id = 1;
+      get computed() { return this.value * 2 }
+    }
+
+    render(<Bar value={1} onClick={() => {}} />);
+
+    // @ts-expect-error - get-only accessor is not a settable prop
+    (() => <Bar computed={4} />);
+
+    // @ts-expect-error - readonly field is not a settable prop
+    (() => <Bar id={2} />);
+  });
+
   it('will trigger set instruction', () => {
     class Foo extends Component {
       value = set('foobar', didSet);

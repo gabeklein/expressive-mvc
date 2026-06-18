@@ -9,6 +9,19 @@ const PENDING = new WeakMap<object, Component>();
 /** Per-class composed content render. */
 const CHAIN = new WeakMap<Function, Function>();
 
+type IfEquals<X, Y, A, B> =
+  (<T>() => T extends X ? 1 : 2) extends
+  (<T>() => T extends Y ? 1 : 2) ? A : B;
+
+/** Keys of T which are settable (excludes get-only accessors and `readonly`). */
+type Acceptable<T> = {
+  [P in keyof T]-?: IfEquals<
+    { [Q in P]: T[P] },
+    { -readonly [Q in P]: T[P] },
+    P, never
+  >;
+}[keyof T];
+
 declare namespace Component {
   /**
    * Host element type produced by `Component.render`. Delegates to the
@@ -36,7 +49,7 @@ declare namespace Component {
   }
 
   type StateProps<T extends State> = {
-    [K in Exclude<keyof T, keyof Component>]?: T[K];
+    [K in Exclude<keyof T, keyof Component> & Acceptable<T>]?: T[K];
   };
 
   type RenderProps<T> = [T] extends [(props: infer P) => any]
