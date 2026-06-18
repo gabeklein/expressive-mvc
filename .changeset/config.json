@@ -7,5 +7,5 @@
   "access": "public",
   "baseBranch": "main",
   "updateInternalDependencies": "patch",
-  "ignore": ["@expressive/preact", "@expressive/examples", "website2"]
+  "ignore": ["@expressive/preact", "@expressive/examples", "website"]
 }
