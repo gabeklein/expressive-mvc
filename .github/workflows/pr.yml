@@ -1,0 +1,44 @@
+name: PR
+
+on:
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: pr-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Branch plan state
+        run: |
+          plan=$(ls BRANCH.md PLAN.md 2>/dev/null | head -1) || true
+          changesets=$(find .changeset -name '*.md' ! -name 'README.md' | head -1)
+          if [ -n "$plan" ] && [ -n "$changesets" ]; then
+            echo "::error::$plan and changesets coexist - changesets are the plan's migrated form. Finish the migration: fold $plan into the PR summary and delete it (bun run wrap does both changeset + delete)."
+            exit 1
+          fi
+          test -z "$plan" || echo "::warning::$plan present - before merge, migrate it into the PR summary + changesets and delete it."
+
+      - uses: ./.github/actions/setup
+
+      - run: bun run test
+
+      - run: bun run build
+
+      - name: Changeset reminder
+        continue-on-error: true
+        run: bunx changeset status --since origin/main
+
+      - name: Pack validation
+        continue-on-error: true
+        run: |
+          for pkg in mvc react; do
+            (cd packages/$pkg && npm publish --dry-run)
+          done

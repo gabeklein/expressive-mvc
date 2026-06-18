@@ -6,7 +6,7 @@ Contributor guide for AI agents working in this repository.
 
 Expressive MVC - class-based reactive state management library. For API reference, read [skills/SKILL.md](skills/SKILL.md) and linked sub-files first. Consult source only when docs are insufficient.
 
-Monorepo: bun workspaces + changesets. Install, tests, and builds run under bun (`bun install`, `bun test`, `bun run build`). Builds on CI run under node (`node --run build`).
+Monorepo: bun workspaces + changesets. Install, tests, and builds run under bun (`bun install`, `bun test`, `bun run build`), locally and in CI. Node appears only in `release.yml`, where `changeset publish` shells to npm for the OIDC-authenticated publish.
 
 ## Structure
 
@@ -80,8 +80,8 @@ await expect(state).not.toHaveUpdated();
 ## Change flow
 
 - When starting actual work, switch from any agent-scratch branch (`claude/*`) to a conventional named branch (`feat/...`, `fix/...`, `chore/...`) before the first real commit.
-- New features and non-trivial refactors begin with a root `PLAN.md` as the branch's first commit, capturing agreed scope, key decisions, and approach before implementation.
-- Keep `PLAN.md` current as the plan evolves. Close to merge, delete it and migrate its content into the PR summary and changeset entries.
+- New features and non-trivial refactors begin with a root `BRANCH.md` as the branch's first commit, capturing agreed scope, key decisions, and approach before implementation.
+- Keep `BRANCH.md` current as the plan evolves - it stays in the PR as review context. Close to merge, run `bun run wrap`: it authors the changesets (migrate `BRANCH.md` content into them and the PR summary) and deletes the file. CI blocks a PR where `BRANCH.md` and changesets coexist - changesets are the plan's migrated form; warns (non-blocking) while the plan alone exists; and the release version step sweeps any that reach main.
 - Write a changeset (`bun run changeset`) when a change is user-facing: new feature, behavior change, API addition, breaking change.
 - No changeset for internal refactors, test-only changes, or fixes with no observable effect. PRs may legitimately carry zero changesets.
 
