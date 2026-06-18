@@ -350,7 +350,7 @@ function capture(scope: (release: (update?: boolean | null) => void) => void) {
 export {
   listener,
   event,
-  Observer as Observable,
+  Observer,
   touch,
   pending,
   observer,

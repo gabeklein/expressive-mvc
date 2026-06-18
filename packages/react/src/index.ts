@@ -37,5 +37,5 @@ Object.assign(Runtime, {
 });
 
 export { State, State as default, use } from './runtime';
-export { Component, Context, Observable, def, get, ref, set, hot } from '@expressive/mvc';
+export { Component, Context, Observer, def, get, ref, set, hot } from '@expressive/mvc';
 export { Consumer, Provider } from './context';

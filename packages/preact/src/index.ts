@@ -44,4 +44,4 @@ Object.assign(Runtime, {
 });
 
 export { State, State as default, Consumer, Provider, use } from '@expressive/react/runtime'
-export { Component, Context, Observable, def, get, ref, set, hot } from '@expressive/mvc';
+export { Component, Context, Observer, def, get, ref, set, hot } from '@expressive/mvc';
