@@ -2,7 +2,7 @@ import { Context } from './context';
 import {
   event,
   listener,
-  Observable,
+  Observer,
   observer,
   pending,
   touch,
@@ -471,7 +471,7 @@ define(State, 'toString', {
 function callback<T extends State>(
   self: T,
   cb: Function,
-  select?: Observable.Signal | Set<Observable.Signal>
+  select?: Observer.Signal | Set<Observer.Signal>
 ) {
   return listener(self, (key) => cb.call(self, key, self), select);
 }
