@@ -95,7 +95,7 @@
       },
     },
     "website": {
-      "name": "website2",
+      "name": "website",
       "version": "0.77.0",
       "dependencies": {
         "@codesandbox/sandpack-react": "^2",
@@ -1828,7 +1828,7 @@
 
     "webidl-conversions": ["webidl-conversions@3.0.1", "", {}, "sha512-2JAn3z8AR6rjK8Sm8orRC0h/bcl/DqL7tRPdGZ4I1CjdF+EaMLmYxBHyXuKL849eucPFhvBoxMsflfOb8kxaeQ=="],
 
-    "website2": ["website2@workspace:website"],
+    "website": ["website@workspace:website"],
 
     "whatwg-mimetype": ["whatwg-mimetype@3.0.0", "", {}, "sha512-nt+N2dzIutVRxARx1nghPKGv1xHikU7HKdfafKkLNLindmPU/ch3U31NOCGGA/dmPcmb1VlofO0vnKAcsm0o/Q=="],
 
