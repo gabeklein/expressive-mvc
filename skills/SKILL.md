@@ -14,6 +14,7 @@ Class-based reactive state for React and Preact. State classes define reactive p
 | `@expressive/react`  | Published | React adapter. Primary import for State, Component, instructions. |
 | `@expressive/mvc`  | Published | Framework-agnostic core. Rarely imported directly.                |
 | `@expressive/preact` | Private   | Thin wrapper over React adapter via preact/hooks. Prerelease.     |
+| `@expressive/router` | Private   | Host-agnostic, class-based router built on MVC. Prerelease.       |
 
 ## Core API
 
@@ -271,8 +272,12 @@ Fetch these for detailed API documentation when the task requires deeper knowled
 ### React
 
 - [react/react.md](react/react.md) - use(), State.use(), State.get(), Provider, Consumer, ForceRefresh
-- [react/component.md](react/component.md) - Component class, props, children, render composition (subclass renders wrap base as `props.children`), subcomponents, error boundaries
+- [react/component.md](react/component.md) - Component class, props, children, render composition (subclass renders wrap base as `props.children`, or a base defers to let a subclass replace it), subcomponents, error boundaries
 - [react/patterns.md](react/patterns.md) - Recipes: forms, async, nested state, debounce, effects
+
+### Router
+
+- [router/router.md](router/router.md) - `@expressive/router`: nested `Route` declarations, lexical matching, `Router`/`BrowserRouter` navigation state, the reactive `query` record + derived `url`, and `Link`/`NavLinks`/`Redirect`
 
 ### Examples
 
