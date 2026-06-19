@@ -49,20 +49,18 @@ Siblings competing for the same slot arbitrate **first-match by declaration orde
 
 ## Reading the match
 
-A page reads the nearest `Route` from context and uses its reactive getters:
+A page reads the nearest `Route` from context with `get()` and uses its reactive getters:
 
 ```tsx
-import { Consumer } from '@expressive/react';
 import { Route } from '@expressive/router';
 
-const BlogPost = () => (
-  <Consumer for={Route}>
-    {route => <article>post: {route.match!.slug}</article>}
-  </Consumer>
-);
+const BlogPost = () => {
+  const { match } = Route.get();      // nearest Route in context; subscribes
+  return <article>post: {match!.slug}</article>;
+};
 ```
 
-Read `route.matched` (boolean) in render so same-pattern navigations (`/blog/a` → `/blog/b`) reconcile in place instead of remounting.
+Read `matched` (boolean) in render so same-pattern navigations (`/blog/a` → `/blog/b`) reconcile in place instead of remounting.
 
 ## Navigation state & the `query` record
 
