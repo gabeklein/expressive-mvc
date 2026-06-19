@@ -33,7 +33,7 @@
     },
     "packages/mvc": {
       "name": "@expressive/mvc",
-      "version": "0.78.0",
+      "version": "0.78.1",
       "devDependencies": {
         "@types/node": "^18.19.0",
         "tsdown": "^0.20.1",
@@ -78,7 +78,7 @@
     },
     "packages/router": {
       "name": "@expressive/router",
-      "version": "0.0.1",
+      "version": "0.1.0",
       "dependencies": {
         "@expressive/mvc": "^0.78.0",
       },
