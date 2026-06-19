@@ -28,6 +28,7 @@
 ## Table of Contents
 
 - [Overview](#overview)
+  - [Packages](#packages)
 - [Installation](#installation)
 - [Quick Start](#quick-start)
 - [Key Features](#key-features)
