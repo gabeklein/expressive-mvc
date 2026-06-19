@@ -1,6 +1,6 @@
 {
   "name": "@expressive/react",
-  "version": "0.78.0",
+  "version": "0.79.0",
   "description": "Use classes to define state in React!",
   "keywords": [
     "expressive",
