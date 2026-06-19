@@ -113,7 +113,7 @@ class DarkModeSwitch extends Toggle {
 }
 ```
 
-The base owns behavior and structure; subclasses author only the rendering. This is the same mechanism `@expressive/router`'s `NavLinks` exposes through its overridable `Item` / `List` / `Group` members.
+The base owns behavior and structure; subclasses author only the rendering. This is the same mechanism `@expressive/router`'s [`NavLinks`](https://github.com/gabeklein/expressive-mvc/blob/main/packages/router/README.md#generated-navigation) exposes through its overridable `Item` / `List` / `Group` members.
 
 ### Self-providing context
 
