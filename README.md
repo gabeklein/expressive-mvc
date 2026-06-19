@@ -28,7 +28,6 @@
 ## Table of Contents
 
 - [Overview](#overview)
-  - [Packages](#packages)
 - [Installation](#installation)
 - [Quick Start](#quick-start)
 - [Key Features](#key-features)
@@ -39,6 +38,8 @@
   - [Fine-Grained Reactivity](#fine-grained-reactivity)
   - [Lifecycle Hooks](#lifecycle-hooks)
   - [Reusable Classes](#reusable-classes)
+  - [Render Composition](#render-composition)
+  - [Subcomponents](#subcomponents)
 - [Core Concepts](#core-concepts)
 - [Instructions](#instructions)
 - [Child State Instances](#child-state-instances)
@@ -51,7 +52,7 @@
 
 ## Overview
 
-Expressive MVC is reactive state management built around plain classes. The framework-agnostic core provides the whole pattern - **model** (`State`), **view** (`Component`), and **controller** (`@expressive/router`) - and framework adapters render it.
+Expressive MVC is a reactive state management library built around classes. It provides framework-agnostic reactive primitives with a dedicated adapter for React.
 
 **Why Expressive?**
 
@@ -60,14 +61,6 @@ Expressive MVC is reactive state management built around plain classes. The fram
 - **Portable**: State logic lives in classes, not components - easy to test and reuse
 - **Context-aware**: Built-in dependency injection via hierarchical contexts
 - **Framework-agnostic**: The core (including `Component` and a JSX runtime) is renderer-independent; adapters supply the host
-
-### Packages
-
-| Package | Role |
-| --- | --- |
-| [`@expressive/mvc`](packages/mvc) | Framework-agnostic core - `State`, instructions, context, and the agnostic `Component`. |
-| [`@expressive/react`](packages/react) | React adapter - `use`/`get`, `Provider`, and `Component` rendering. |
-| [`@expressive/router`](packages/router) | Class-based declarative router built on the core. |
 
 <br />
 
@@ -81,7 +74,7 @@ npm install @expressive/react
 import State from '@expressive/react';
 ```
 
-> For other frameworks, use `@expressive/preact` or the core `@expressive/mvc` package.
+> For the framework-agnostic core, use `@expressive/mvc`.
 
 <br />
 
@@ -514,6 +507,72 @@ function UserProfile({ userId }: { userId: string }) {
   return <UserCard user={query.data!} />;
 }
 ```
+
+<br/>
+
+### Render Composition
+
+When the state belongs to one rendered unit, extend `Component` and give it a `render`. A subclass that overrides `render` **composes** with its base rather than replacing it - no `super.render()`. Each `render` up the prototype chain wraps the one below, base-outermost, with the inner output arriving as `props.children`.
+
+```tsx
+import { Component } from '@expressive/react';
+
+class Frame extends Component {
+  render(props = {} as { children?: React.ReactNode }) {
+    return (
+      <section className="frame">
+        <header>Frame</header>
+        {props.children}
+      </section>
+    );
+  }
+}
+
+class Page extends Frame {
+  body = 'Hello';
+  render() {
+    return <p>{this.body}</p>;
+  }
+}
+
+// <Page /> -> <section class="frame"><header>Frame</header><p>Hello</p></section>
+```
+
+A base owns shared chrome (layout, suspense, context) once; subclasses author only their content. Every layer binds to the same live instance, so all read the same reactive `this`.
+
+<br/>
+
+### Subcomponents
+
+PascalCase members become their own reactive components scoped to the instance - they read the parent's reactive `this` directly, yet each is isolated with its own hooks. Subclasses override them to customize pieces without touching behavior.
+
+```tsx
+abstract class Toggle extends Component {
+  active = false;
+
+  toggle = () => {
+    this.active = !this.active;
+  };
+
+  Active() { return null; }       // subclasses fill these in
+  Inactive() { return null; }
+
+  render() {
+    return (
+      <div onClick={this.toggle}>
+        {this.active ? <this.Active /> : <this.Inactive />}
+      </div>
+    );
+  }
+}
+
+class DarkModeSwitch extends Toggle {
+  Active() { return <span>Dark</span>; }
+  Inactive() { return <span>Light</span>; }
+}
+```
+
+> See the [`@expressive/react` README](packages/react#component) for the full `Component` walkthrough - props, suspense, and error boundaries.
 
 <br />
 
@@ -1061,12 +1120,6 @@ import State from '@expressive/react';
 import { Provider, Consumer } from '@expressive/react';
 ```
 
-**Preact**
-
-```bash
-npm install @expressive/preact
-```
-
 **Framework-Agnostic Core**
 
 ```bash
@@ -1086,7 +1139,7 @@ watch(state, (current) => {
 
 ## Releases
 
-The monorepo runs on [bun](https://bun.sh) workspaces and [changesets](https://github.com/changesets/changesets). PRs run type-check, tests, and build ([.github/workflows/pr.yml](.github/workflows/pr.yml)); merged changesets accumulate a "Version Packages" PR, and merging it publishes from CI ([.github/workflows/release.yml](.github/workflows/release.yml)). See [AGENTS.md](AGENTS.md) for the full contributor and release flow.
+The monorepo runs on [bun](https://bun.sh) workspaces and [changesets](https://github.com/changesets/changesets). See [.github/README.md](.github/README.md) for the CI and release pipeline, and [AGENTS.md](AGENTS.md) for the full contributor flow.
 
 ---
 
