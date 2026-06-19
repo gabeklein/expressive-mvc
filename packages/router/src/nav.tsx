@@ -29,7 +29,7 @@ export class NavLinks extends Component {
     return props.children;
   }
 
-  render() {
+  render(): Component.Node {
     return this.branch(this.route.inner);
   }
 
