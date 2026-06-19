@@ -158,7 +158,7 @@ export class Route extends Component {
     this.router.goto(this.resolve(url), replace);
   }
 
-  render(props = {} as { children?: Component.Node }) {
+  render(props = {} as { children?: Component.Node }): Component.Node {
     const self = this.is;
     const { parent, as: Component, matched } = this;
 

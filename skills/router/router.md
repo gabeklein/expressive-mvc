@@ -148,6 +148,12 @@ Both `match`/`active` are **lazy**: a `Link` whose render reads neither stays in
 
 There is no `NavLink` - extend `Link` and read `active`/`match` to express activeness however the host wants (a `className` on web, a `style` on native). A subclass that authors its own `render` **fully replaces** the base anchor rather than nesting inside it (see render composition in the Component skill): the base detects subclass-authored content and defers. `route` and `go` are `protected` so the subclass can wire its own anchor.
 
+> **Gotcha - annotate overridden `render` in agnostic packages.** When a host-agnostic package (router, or any package built against `@expressive/mvc` with no adapter in scope) ships its own `.d.ts`, give every overridden `render` an explicit `: Component.Node` return type:
+> ```tsx
+> render(props = {} as { children?: Component.Node }): Component.Node { ... }
+> ```
+> `Component.Node` is a deferred alias over the host seam - it resolves to the host's node type (e.g. `ReactNode`) only once an adapter augments `Host`. With no annotation, the `.d.ts` emitter resolves the alias at *build* time (no adapter present) and bakes the literal fallback into the published types; it never re-resolves in a consumer, so `<NavLink>` fails JSX validity. The explicit annotation makes the emitter preserve the alias *by reference* so it re-resolves per consumer. This never surfaces inside the monorepo, where path mapping reads source and re-infers - only against the built package.
+
 ```tsx
 class NavLink extends Link {
   render() {

@@ -25,10 +25,13 @@ type Acceptable<T> = {
 declare namespace Component {
   /**
    * Host element type produced by `Component.render`. Delegates to the
-   * {@link Host} manifest on the jsx-runtime entry; resolves to `unknown`
-   * until an adapter augments it with `node`.
+   * {@link Host} manifest on the jsx-runtime entry; falls back to `any`
+   * until an adapter augments it with `node`. `any` (not `unknown`) so an
+   * un-annotated `render` override in a host-agnostic package still emits a
+   * JSX-valid return - `any` is assignable to every host's node type, where
+   * `unknown` is assignable to none.
    */
-  type Node = Host extends { node: infer T } ? T : unknown;
+  type Node = Host extends { node: infer T } ? T : any;
 
   interface BaseProps<T extends Component> {
     /**
