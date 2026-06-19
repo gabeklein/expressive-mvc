@@ -10,11 +10,9 @@
 </h4>
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/@expressive/mvc"><img alt="NPM" src="https://badge.fury.io/js/%40expressive%2Fmvc.svg"></a>
-  <img src="https://img.shields.io/badge/Coverage-100%25-brightgreen.svg">
-  <a href="https://join.slack.com/t/expressivejs/shared_invite/zt-s2j5cdhz-gffKn3bTATMbXf~iq4pvHg" alt="Join Slack">
-    <img src="https://img.shields.io/badge/Slack-Come%20say%20hi!-blueviolet" />
-  </a>
+  <a href="https://github.com/gabeklein/expressive-mvc/actions/workflows/release.yml"><img alt="CI" src="https://github.com/gabeklein/expressive-mvc/actions/workflows/release.yml/badge.svg"></a>
+  <img alt="Coverage 100%" src="https://img.shields.io/badge/Coverage-100%25-brightgreen.svg">
+  <a href="https://github.com/gabeklein/expressive-mvc/blob/main/LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
 </p>
 
 <p align="center">
@@ -199,10 +197,10 @@ class Control extends State {
     const timer = setInterval(() => {
       const remains = this.remaining--;
 
-      if (remains === 0) {
-        this.dead = Math.random() > 0.5;
-        clearInterval(timer);
-      }
+      if (remains > 0) return;
+
+      this.dead = Math.random() > 0.5;
+      clearInterval(timer);
     }, 1000);
 
     // Cleanup runs when State is destroyed
@@ -282,6 +280,8 @@ function Bar() {
   );
 }
 ```
+
+> A `Component` is its own provider - since it's a `State` that renders, it supplies itself to its subtree automatically, so descendants can `get()` it with no explicit `Provider`.
 
 **Use `Consumer` for render props:**
 
@@ -436,9 +436,7 @@ class Timer extends State {
   use() {
     const navigate = useNavigate();
 
-    if (this.elapsed >= 10) {
-      navigate('/completed');
-    }
+    if (this.elapsed >= 10) navigate('/completed');
   }
 }
 ```
@@ -1146,7 +1144,6 @@ The monorepo runs on [bun](https://bun.sh) workspaces and [changesets](https://g
 <h2 align="center">Community & Support</h2>
 
 <p align="center">
-  <a href="https://join.slack.com/t/expressivejs/shared_invite/zt-s2j5cdhz-gffKn3bTATMbXf~iq4pvHg">Join our Slack</a> •
   <a href="https://github.com/gabeklein/expressive-mvc/issues">Report Issues</a> •
   <a href="https://github.com/gabeklein/expressive-mvc">GitHub</a>
 </p>
