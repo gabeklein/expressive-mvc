@@ -57,7 +57,7 @@
     },
     "packages/react": {
       "name": "@expressive/react",
-      "version": "0.78.0",
+      "version": "0.79.0",
       "dependencies": {
         "@expressive/mvc": "^0.78.0",
       },
