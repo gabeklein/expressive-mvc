@@ -93,7 +93,10 @@ PascalCase members become their own reactive React components scoped to the live
 ```tsx
 abstract class Toggle extends Component {
   active = false;
-  toggle = () => (this.active = !this.active);
+
+  toggle = () => {
+    this.active = !this.active;
+  };
 
   Active() { return null; }       // subclasses fill these in
   Inactive() { return null; }
@@ -113,7 +116,7 @@ class DarkModeSwitch extends Toggle {
 }
 ```
 
-The base owns behavior and structure; subclasses author only the rendering. This is the same mechanism `@expressive/router`'s [`NavLinks`](https://github.com/gabeklein/expressive-mvc/blob/main/packages/router/README.md#generated-navigation) exposes through its overridable `Item` / `List` / `Group` members.
+The base owns behavior and structure; subclasses author only the rendering. Override a subcomponent as a **method** when it takes no props, or as an **arrow field** when you want its props type inferred from the base - which is how `@expressive/router`'s [`NavLinks`](https://github.com/gabeklein/expressive-mvc/blob/main/packages/router/README.md#generated-navigation) exposes its overridable `Item` / `List` / `Group` members.
 
 ### Self-providing context
 
@@ -146,6 +149,45 @@ function Tab({ index, label }: { index: number; label: string }) {
 
 It works the same whether the consumer is part of the Component's own render or is passed in as `children` - both sit under the instance's context. A render-less `Component` still self-provides, which is what makes it useful purely as a context/boundary placement.
 
+### Props
+
+State fields become optional JSX props, **merged onto the instance every render** - passing `count={5}` is the same as assigning `this.count = 5`. Extra props beyond fields are read through a parameter on `render`:
+
+```tsx
+class Greeting extends Component {
+  name = 'World';                                  // -> optional `name` prop
+
+  render(props = {} as { loud?: boolean }) {       // extra render prop
+    return <h1>Hello {this.name}{props.loud && '!!!'}</h1>;
+  }
+}
+
+<Greeting name="React" loud />;
+```
+
+Every Component also accepts three special props:
+
+- **`is`** - callback handed the instance once, at creation.
+- **`ref`** - standard React ref; set after mount, cleared on unmount.
+- **`fallback`** - Suspense/error UI, overriding the instance's own.
+
+### Suspense
+
+A value that isn't ready yet suspends the render; `fallback` shows in the meantime.
+
+```tsx
+import { Component, set } from '@expressive/react';
+
+class Profile extends Component {
+  user = set<User>();              // undefined until set - suspends render
+  fallback = <Spinner />;
+
+  render() {
+    return <span>{this.user.name}</span>;
+  }
+}
+```
+
 ## Shared state via context
 
 Provide a model once; descendants read it with `State.get()` - no props, no selectors.
@@ -177,8 +219,7 @@ function Profile() {
 - **`State.get()`** - read shared state from context, no prop drilling.
 - **`Provider` / `Consumer`** - explicit hierarchical dependency injection.
 - **`Component`** - smart controls and shells whose behavior lives in the tree.
-- **Suspense** - async values and promises integrate with React Suspense.
-- **`@expressive/react/runtime`** - the host-agnostic runtime layer adapters build on.
+- **Suspense & error boundaries** - async values suspend; `catch()` handles child errors.
 
 Full guide and API reference → **[github.com/gabeklein/expressive-mvc](https://github.com/gabeklein/expressive-mvc)**
 

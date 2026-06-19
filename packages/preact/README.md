@@ -6,25 +6,9 @@
 
 ---
 
-The Preact adapter for [Expressive MVC](https://github.com/gabeklein/expressive-mvc). It mirrors the [`@expressive/react`](https://www.npmjs.com/package/@expressive/react) API - `State.use()`, `State.get()`, `Component`, `Provider` / `Consumer` - against a Preact host.
+The Preact adapter for [Expressive MVC](https://github.com/gabeklein/expressive-mvc). Its API mirrors [`@expressive/react`](https://www.npmjs.com/package/@expressive/react) - `State.use()`, `State.get()`, `Component`, `Provider` / `Consumer` - against a Preact host. See the [`@expressive/react` README](https://github.com/gabeklein/expressive-mvc/blob/main/packages/react/README.md) for usage.
 
-> **Note:** This package is currently internal and not published to npm. It is kept in parity with the React adapter; track [the repo](https://github.com/gabeklein/expressive-mvc) for availability.
-
-```tsx
-import { State } from '@expressive/preact';
-
-class Counter extends State {
-  count = 0;
-  increment = () => this.count++;
-}
-
-function CounterWidget() {
-  const { count, increment } = Counter.use();
-  return <button onClick={increment}>{count}</button>;
-}
-```
-
-Full guide and API reference → **[github.com/gabeklein/expressive-mvc](https://github.com/gabeklein/expressive-mvc)**
+> **Note:** This package is currently internal and not published to npm. Track [the repo](https://github.com/gabeklein/expressive-mvc) for availability.
 
 ## License
 
