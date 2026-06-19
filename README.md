@@ -1139,7 +1139,7 @@ watch(state, (current) => {
 
 ## Releases
 
-The monorepo runs on [bun](https://bun.sh) workspaces and [changesets](https://github.com/changesets/changesets). See [.github/README.md](.github/README.md) for the CI and release pipeline, and [AGENTS.md](AGENTS.md) for the full contributor flow.
+The monorepo runs on [bun](https://bun.sh) workspaces and [changesets](https://github.com/changesets/changesets). See [.github/RELEASING.md](.github/RELEASING.md) for the CI and release pipeline, and [AGENTS.md](AGENTS.md) for the full contributor flow.
 
 ---
 
