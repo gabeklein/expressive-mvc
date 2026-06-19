@@ -1,12 +1,6 @@
 import { event, watch, observer } from '@expressive/mvc';
 import type { Component } from '@expressive/mvc';
 import type { Context } from './context';
-import './component';
-import './state.get';
-import './state.use';
-
-export { State } from '@expressive/mvc';
-export { Consumer, Provider, Context, provide } from './context';
 
 export const Runtime = {} as {
   /** Host own-property keys to trap out of observed state; assigned by each adapter. */

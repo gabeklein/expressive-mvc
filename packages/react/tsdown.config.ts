@@ -5,11 +5,11 @@ export default defineConfig({
   dts: true,
   sourcemap: true,
   outDir: 'dist',
-  external: ['./runtime'],
+  external: ['./adapter'],
   outExtensions: () => ({ js: '.js' }),
   entry: {
     index: 'src/index.ts',
-    runtime: 'src/runtime.ts'
+    adapter: 'src/adapter.ts'
   },
   format: ['esm'],
   outputOptions: {
