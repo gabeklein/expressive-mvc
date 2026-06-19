@@ -10,11 +10,9 @@
 </h4>
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/@expressive/mvc"><img alt="NPM" src="https://badge.fury.io/js/%40expressive%2Fmvc.svg"></a>
-  <img src="https://img.shields.io/badge/Coverage-100%25-brightgreen.svg">
-  <a href="https://join.slack.com/t/expressivejs/shared_invite/zt-s2j5cdhz-gffKn3bTATMbXf~iq4pvHg" alt="Join Slack">
-    <img src="https://img.shields.io/badge/Slack-Come%20say%20hi!-blueviolet" />
-  </a>
+  <a href="https://github.com/gabeklein/expressive-mvc/actions/workflows/release.yml"><img alt="CI" src="https://github.com/gabeklein/expressive-mvc/actions/workflows/release.yml/badge.svg"></a>
+  <img alt="Coverage 100%" src="https://img.shields.io/badge/Coverage-100%25-brightgreen.svg">
+  <a href="https://github.com/gabeklein/expressive-mvc/blob/main/LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
 </p>
 
 <p align="center">
@@ -38,19 +36,21 @@
   - [Fine-Grained Reactivity](#fine-grained-reactivity)
   - [Lifecycle Hooks](#lifecycle-hooks)
   - [Reusable Classes](#reusable-classes)
+  - [Render Composition](#render-composition)
+  - [Subcomponents](#subcomponents)
 - [Core Concepts](#core-concepts)
 - [Instructions](#instructions)
 - [Child State Instances](#child-state-instances)
 - [React Integration](#react-integration)
 - [Advanced Features](#advanced-features)
 - [Framework Support](#framework-support)
-- [CI/CD Pipeline](#cicd-pipeline)
+- [Releases](#releases)
 
 <br />
 
 ## Overview
 
-Expressive MVC is a reactive state management library built around classes. It provides framework-agnostic reactive primitives with dedicated adapters for React, Preact, and Solid.
+Expressive MVC is a reactive state management library built around classes. It provides framework-agnostic reactive primitives with a dedicated adapter for React.
 
 **Why Expressive?**
 
@@ -58,7 +58,7 @@ Expressive MVC is a reactive state management library built around classes. It p
 - **Reactive**: Automatic fine-grained subscriptions - components only re-render when accessed properties change
 - **Portable**: State logic lives in classes, not components - easy to test and reuse
 - **Context-aware**: Built-in dependency injection via hierarchical contexts
-- **Framework-agnostic**: Core primitives work anywhere; framework adapters provide integration
+- **Framework-agnostic**: The core (including `Component` and a JSX runtime) is renderer-independent; adapters supply the host
 
 <br />
 
@@ -72,7 +72,7 @@ npm install @expressive/react
 import State from '@expressive/react';
 ```
 
-> For other frameworks, use `@expressive/preact` or the core `@expressive/mvc` package.
+> For the framework-agnostic core, use `@expressive/mvc`.
 
 <br />
 
@@ -197,10 +197,10 @@ class Control extends State {
     const timer = setInterval(() => {
       const remains = this.remaining--;
 
-      if (remains === 0) {
-        this.dead = Math.random() > 0.5;
-        clearInterval(timer);
-      }
+      if (remains > 0) return;
+
+      this.dead = Math.random() > 0.5;
+      clearInterval(timer);
     }, 1000);
 
     // Cleanup runs when State is destroyed
@@ -280,6 +280,8 @@ function Bar() {
   );
 }
 ```
+
+> A `Component` is its own provider - since it's a `State` that renders, it supplies itself to its subtree automatically, so descendants can `get()` it with no explicit `Provider`.
 
 **Use `Consumer` for render props:**
 
@@ -434,9 +436,7 @@ class Timer extends State {
   use() {
     const navigate = useNavigate();
 
-    if (this.elapsed >= 10) {
-      navigate('/completed');
-    }
+    if (this.elapsed >= 10) navigate('/completed');
   }
 }
 ```
@@ -505,6 +505,72 @@ function UserProfile({ userId }: { userId: string }) {
   return <UserCard user={query.data!} />;
 }
 ```
+
+<br/>
+
+### Render Composition
+
+When the state belongs to one rendered unit, extend `Component` and give it a `render`. A subclass that overrides `render` **composes** with its base rather than replacing it - no `super.render()`. Each `render` up the prototype chain wraps the one below, base-outermost, with the inner output arriving as `props.children`.
+
+```tsx
+import { Component } from '@expressive/react';
+
+class Frame extends Component {
+  render(props = {} as { children?: React.ReactNode }) {
+    return (
+      <section className="frame">
+        <header>Frame</header>
+        {props.children}
+      </section>
+    );
+  }
+}
+
+class Page extends Frame {
+  body = 'Hello';
+  render() {
+    return <p>{this.body}</p>;
+  }
+}
+
+// <Page /> -> <section class="frame"><header>Frame</header><p>Hello</p></section>
+```
+
+A base owns shared chrome (layout, suspense, context) once; subclasses author only their content. Every layer binds to the same live instance, so all read the same reactive `this`.
+
+<br/>
+
+### Subcomponents
+
+PascalCase members become their own reactive components scoped to the instance - they read the parent's reactive `this` directly, yet each is isolated with its own hooks. Subclasses override them to customize pieces without touching behavior.
+
+```tsx
+abstract class Toggle extends Component {
+  active = false;
+
+  toggle = () => {
+    this.active = !this.active;
+  };
+
+  Active() { return null; }       // subclasses fill these in
+  Inactive() { return null; }
+
+  render() {
+    return (
+      <div onClick={this.toggle}>
+        {this.active ? <this.Active /> : <this.Inactive />}
+      </div>
+    );
+  }
+}
+
+class DarkModeSwitch extends Toggle {
+  Active() { return <span>Dark</span>; }
+  Inactive() { return <span>Light</span>; }
+}
+```
+
+> See the [`@expressive/react` README](packages/react#component) for the full `Component` walkthrough - props, suspense, and error boundaries.
 
 <br />
 
@@ -1052,12 +1118,6 @@ import State from '@expressive/react';
 import { Provider, Consumer } from '@expressive/react';
 ```
 
-**Preact**
-
-```bash
-npm install @expressive/preact
-```
-
 **Framework-Agnostic Core**
 
 ```bash
@@ -1075,28 +1135,15 @@ watch(state, (current) => {
 
 <br />
 
-## CI/CD Pipeline
+## Releases
 
-This repository uses a staged, two-phase release pipeline:
-
-1. **Feature → `staging`**: Staging validation runs (`Build` + `Coverage`).
-2. **`staging` → `main` PR**: Main gate enforces branch policy, ancestry protection, and test/build validation.
-3. **Push to `main`**: release-please opens or updates a release PR.
-4. **Merge release PR**: Stable publish runs from `main` committed package versions.
-5. **Canary**: Manual workflow dispatch (`channel=canary`) publishes canary versions.
-
-Workflows:
-
-- Main gate and release PR automation: [.github/workflows/merge.yml](.github/workflows/merge.yml)
-- Staging validation: [.github/workflows/staging.yml](.github/workflows/staging.yml)
-- Stable/canary publishing: [.github/workflows/publish.yml](.github/workflows/publish.yml)
+The monorepo runs on [bun](https://bun.sh) workspaces and [changesets](https://github.com/changesets/changesets). See [.github/RELEASING.md](.github/RELEASING.md) for the CI and release pipeline, and [AGENTS.md](AGENTS.md) for the full contributor flow.
 
 ---
 
 <h2 align="center">Community & Support</h2>
 
 <p align="center">
-  <a href="https://join.slack.com/t/expressivejs/shared_invite/zt-s2j5cdhz-gffKn3bTATMbXf~iq4pvHg">Join our Slack</a> •
   <a href="https://github.com/gabeklein/expressive-mvc/issues">Report Issues</a> •
   <a href="https://github.com/gabeklein/expressive-mvc">GitHub</a>
 </p>
