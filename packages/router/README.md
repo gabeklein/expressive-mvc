@@ -112,20 +112,42 @@ class NavLink extends Link {
 }
 ```
 
-## Redirect & generated nav
+## Redirect
+
+`Redirect` navigates to `to` when mounted, gated on `when` (default `true`), and renders nothing. The `Route` `redirect` prop is an always-replace shorthand for it.
 
 ```tsx
-import { Redirect, NavLinks } from '@expressive/router';
+import { Redirect } from '@expressive/router';
 
-<Redirect to="/login" when={!user} />     {/* navigates on mount, gated by `when` */}
+<Redirect to="/login" when={!user} />     {/* navigates on mount when `when` is true */}
+<Redirect to="/home" replace />           {/* overwrite the current entry */}
+```
 
-// NavLinks renders a nav tree from the route hierarchy;
-// override Item / List / Group to control structure
+## Generated navigation
+
+`NavLinks` renders a navigation tree from the route hierarchy - it walks the declared routes and emits links automatically. Its rendering is built from PascalCase **subcomponents** you override to shape the output:
+
+| Member | Renders |
+| --- | --- |
+| `Item` | A single link (defaults to a `Link` using the route's `label`). |
+| `List` | The container wrapping a level of items. |
+| `Group` | A nested section; transparent by default - override to turn route nesting into headed sections. |
+
+```tsx
+import { NavLinks } from '@expressive/router';
+
 class SideNav extends NavLinks {
-  List = p => <ul className="side">{p.children}</ul>;
-  Group = p => <section><h3>{p.route.label}</h3>{p.children}</section>;
+  List = (props) => <ul className="side">{props.children}</ul>;
+  Group = (props) => (
+    <section>
+      <h3>{props.route.label}</h3>
+      {props.children}
+    </section>
+  );
 }
 ```
+
+These members are overridable reactive subcomponents bound to the live instance - the same render/subcomponent model `Component` provides (see **Component → Subcomponents** in [`@expressive/react`](https://www.npmjs.com/package/@expressive/react)).
 
 ---
 

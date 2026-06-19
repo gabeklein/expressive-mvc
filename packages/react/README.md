@@ -39,7 +39,9 @@ function CounterWidget() {
 }
 ```
 
-When the state belongs to one rendered unit, extend `Component` and give it a `render`:
+## Component
+
+`Component` is a `State` that owns its own rendering - a persistent class instance with lifecycle, context, suspense, and error handling baked in. Reach for it when state is intrinsic to a rendered unit: form controls, layout shells, route controllers, media players.
 
 ```tsx
 import { Component } from '@expressive/react';
@@ -53,6 +55,65 @@ class Counter extends Component {
 
 <Counter />;
 ```
+
+Anything read through `this` in `render()` is reactive; the instance survives across renders, so refs, sockets, and Maps held on `this` persist. State fields also become optional JSX props (`<Counter count={5} />`).
+
+### Render composition
+
+When a subclass overrides `render()`, it **composes** with its base rather than replacing it - no `super.render()`. Each `render()` up the prototype chain wraps the one below, base-outermost, with the inner output arriving as `props.children`.
+
+```tsx
+class Frame extends Component {
+  render(props = {} as { children?: React.ReactNode }) {
+    return (
+      <section className="frame">
+        <header>Frame</header>
+        {props.children}
+      </section>
+    );
+  }
+}
+
+class Page extends Frame {
+  body = 'Hello';
+  render() {
+    return <p>{this.body}</p>;
+  }
+}
+
+// <Page /> -> <section class="frame"><header>Frame</header><p>Hello</p></section>
+```
+
+Every layer binds to the same live instance, so all read the same reactive `this`. A base that wraps must declare a `props` parameter and render `props.children` - a layer that ignores it silently drops everything below. (A base can also choose to *defer* to a subclass's render, e.g. a leaf `<a>` that's overridable; the base detects the subclass content by identity and returns it as-is.)
+
+### Subcomponents
+
+PascalCase members become their own reactive React components scoped to the live instance. They read the parent's reactive `this` directly - no props plumbing - yet each is an isolated component with its own hooks and boundary. Subclasses override them to customize pieces without touching behavior.
+
+```tsx
+abstract class Toggle extends Component {
+  active = false;
+  toggle = () => (this.active = !this.active);
+
+  Active() { return null; }       // subclasses fill these in
+  Inactive() { return null; }
+
+  render() {
+    return (
+      <div onClick={this.toggle}>
+        {this.active ? <this.Active /> : <this.Inactive />}
+      </div>
+    );
+  }
+}
+
+class DarkModeSwitch extends Toggle {
+  Active() { return <span>Dark</span>; }
+  Inactive() { return <span>Light</span>; }
+}
+```
+
+The base owns behavior and structure; subclasses author only the rendering. This is the same mechanism `@expressive/router`'s `NavLinks` exposes through its overridable `Item` / `List` / `Group` members.
 
 ## Shared state via context
 
