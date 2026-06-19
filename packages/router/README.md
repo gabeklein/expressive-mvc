@@ -147,7 +147,7 @@ class SideNav extends NavLinks {
 }
 ```
 
-These members are overridable reactive subcomponents bound to the live instance - the same render/subcomponent model `Component` provides (see **Component → Subcomponents** in [`@expressive/react`](https://www.npmjs.com/package/@expressive/react)).
+These members are overridable reactive subcomponents bound to the live instance - the same model `Component` provides, via [render composition](https://github.com/gabeklein/expressive-mvc/blob/main/packages/react/README.md#render-composition) and [subcomponents](https://github.com/gabeklein/expressive-mvc/blob/main/packages/react/README.md#subcomponents).
 
 ---
 
