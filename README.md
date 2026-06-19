@@ -45,13 +45,13 @@
 - [React Integration](#react-integration)
 - [Advanced Features](#advanced-features)
 - [Framework Support](#framework-support)
-- [CI/CD Pipeline](#cicd-pipeline)
+- [Releases](#releases)
 
 <br />
 
 ## Overview
 
-Expressive MVC is a reactive state management library built around classes. It provides framework-agnostic reactive primitives with dedicated adapters for React, Preact, and Solid.
+Expressive MVC is reactive state management built around plain classes. The framework-agnostic core provides the whole pattern - **model** (`State`), **view** (`Component`), and **controller** (`@expressive/router`) - and framework adapters render it.
 
 **Why Expressive?**
 
@@ -59,7 +59,15 @@ Expressive MVC is a reactive state management library built around classes. It p
 - **Reactive**: Automatic fine-grained subscriptions - components only re-render when accessed properties change
 - **Portable**: State logic lives in classes, not components - easy to test and reuse
 - **Context-aware**: Built-in dependency injection via hierarchical contexts
-- **Framework-agnostic**: Core primitives work anywhere; framework adapters provide integration
+- **Framework-agnostic**: The core (including `Component` and a JSX runtime) is renderer-independent; adapters supply the host
+
+### Packages
+
+| Package | Role |
+| --- | --- |
+| [`@expressive/mvc`](packages/mvc) | Framework-agnostic core - `State`, instructions, context, and the agnostic `Component`. |
+| [`@expressive/react`](packages/react) | React adapter - `use`/`get`, `Provider`, and `Component` rendering. |
+| [`@expressive/router`](packages/router) | Class-based declarative router built on the core. |
 
 <br />
 
@@ -1076,21 +1084,9 @@ watch(state, (current) => {
 
 <br />
 
-## CI/CD Pipeline
+## Releases
 
-This repository uses a staged, two-phase release pipeline:
-
-1. **Feature → `staging`**: Staging validation runs (`Build` + `Coverage`).
-2. **`staging` → `main` PR**: Main gate enforces branch policy, ancestry protection, and test/build validation.
-3. **Push to `main`**: release-please opens or updates a release PR.
-4. **Merge release PR**: Stable publish runs from `main` committed package versions.
-5. **Canary**: Manual workflow dispatch (`channel=canary`) publishes canary versions.
-
-Workflows:
-
-- Main gate and release PR automation: [.github/workflows/merge.yml](.github/workflows/merge.yml)
-- Staging validation: [.github/workflows/staging.yml](.github/workflows/staging.yml)
-- Stable/canary publishing: [.github/workflows/publish.yml](.github/workflows/publish.yml)
+The monorepo runs on [bun](https://bun.sh) workspaces and [changesets](https://github.com/changesets/changesets). PRs run type-check, tests, and build ([.github/workflows/pr.yml](.github/workflows/pr.yml)); merged changesets accumulate a "Version Packages" PR, and merging it publishes from CI ([.github/workflows/release.yml](.github/workflows/release.yml)). See [AGENTS.md](AGENTS.md) for the full contributor and release flow.
 
 ---
 
