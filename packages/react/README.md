@@ -115,6 +115,37 @@ class DarkModeSwitch extends Toggle {
 
 The base owns behavior and structure; subclasses author only the rendering. This is the same mechanism `@expressive/router`'s `NavLinks` exposes through its overridable `Item` / `List` / `Group` members.
 
+### Self-providing context
+
+A `Component` provides *itself* to context automatically - no `Provider` needed. Both its own render output and any `children` passed in can read it with `get()`.
+
+```tsx
+class Tabs extends Component {
+  active = 0;
+  render(props = {} as { children?: React.ReactNode }) {
+    return <div className="tabs">{props.children}</div>;
+  }
+}
+
+function Tab({ index, label }: { index: number; label: string }) {
+  const tabs = Tabs.get();              // reads the enclosing Tabs instance
+  return (
+    <button
+      className={tabs.active === index ? 'on' : undefined}
+      onClick={() => (tabs.active = index)}>
+      {label}
+    </button>
+  );
+}
+
+<Tabs>
+  <Tab index={0} label="One" />
+  <Tab index={1} label="Two" />
+</Tabs>;
+```
+
+It works the same whether the consumer is part of the Component's own render or is passed in as `children` - both sit under the instance's context. A render-less `Component` still self-provides, which is what makes it useful purely as a context/boundary placement.
+
 ## Shared state via context
 
 Provide a model once; descendants read it with `State.get()` - no props, no selectors.
