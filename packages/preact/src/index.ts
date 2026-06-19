@@ -1,4 +1,4 @@
-import { Runtime } from '@expressive/react/runtime';
+import { Runtime } from '@expressive/react/adapter';
 import {
   createContext,
   createElement,
@@ -43,5 +43,5 @@ Object.assign(Runtime, {
   ]
 });
 
-export { State, State as default, Consumer, Provider, use } from '@expressive/react/runtime'
+export { State, State as default, Consumer, Provider, use } from '@expressive/react/adapter'
 export { Component, Context, Observer, def, get, ref, set, hot } from '@expressive/mvc';
