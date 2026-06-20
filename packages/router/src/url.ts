@@ -58,6 +58,28 @@ export function patternSegment(to: string): string {
   return slashed.replace(/\/?\*$/, '');
 }
 
+/**
+ * The concrete prefix of `path` that `pattern` claims, with `:param` segments
+ * taking their value from the corresponding path segment. Literal segments must
+ * agree (case-insensitive). Returns null when they don't, or when `path` is
+ * shorter than `pattern`. Trailing catch-all should be stripped by the caller -
+ * this matches a fixed-length prefix only.
+ */
+export function fillPath(pattern: string, path: string): string | null {
+  const pat = split(pattern);
+  const parts = split(path);
+
+  if (parts.length < pat.length) return null;
+
+  for (let i = 0; i < pat.length; i++) {
+    const p = pat[i];
+    if (!p.startsWith(':') && p.toLowerCase() !== parts[i].toLowerCase())
+      return null;
+  }
+
+  return '/' + parts.slice(0, pat.length).join('/');
+}
+
 function split(path: string) {
   const trimmed = path.replace(/^\/+|\/+$/g, '');
   return trimmed === '' ? [] : trimmed.split('/');
