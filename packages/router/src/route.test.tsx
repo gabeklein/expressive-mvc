@@ -181,13 +181,43 @@ describe('Route', () => {
     expect(window.location.pathname).toBe('/posts/foo/edit');
   });
 
-  it('Route.goto treats empty string and "." as no-op', async () => {
+  it('Route.goto with no argument navigates to the Route itself', async () => {
     location('/posts/foo');
     let leaf!: Route;
     render(<Route to="/posts/:id" is={(r) => (leaf = r)} />);
-    await act(async () => leaf.goto(''));
-    await act(async () => leaf.goto('.'));
+    await act(async () => leaf.goto());
     expect(window.location.pathname).toBe('/posts/foo');
+  });
+
+  it('Route.goto with no argument pops to a param ancestor from below', async () => {
+    location('/posts/foo/edit');
+    let post!: Route;
+    render(
+      <Route to="/posts/:id" is={(r) => (post = r)}>
+        <Route to="edit" as={() => <div>edit</div>} />
+      </Route>
+    );
+    await act(async () => post.goto());
+    expect(window.location.pathname).toBe('/posts/foo');
+  });
+
+  it('Route.goto resolves relative paths from a nested route against its full base', async () => {
+    location('/posts/foo/edit');
+    let leaf!: Route;
+    render(
+      <Route to="/posts/:id">
+        <Route to="edit" is={(r) => (leaf = r)} as={() => <div>edit</div>} />
+      </Route>
+    );
+    await act(async () => leaf.goto('../tags'));
+    expect(window.location.pathname).toBe('/posts/foo/tags');
+  });
+
+  it('Route.goto throws when resolving relative from an unmatched Route', () => {
+    location('/elsewhere');
+    let leaf!: Route;
+    render(<Route to="/posts/:id" is={(r) => (leaf = r)} />);
+    expect(() => leaf.goto()).toThrow(/unresolved parameters/);
   });
 
   it('Route.goto passes through absolute paths to Router', async () => {

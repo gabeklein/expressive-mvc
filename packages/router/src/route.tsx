@@ -153,9 +153,14 @@ export class Route extends Component {
     return this.router.resolve(this, url);
   }
 
-  goto(url: string, replace = false) {
-    if (url === '' || url === '.') return;
-    this.router.goto(this.resolve(url), replace);
+  goto(url = '.', replace = false) {
+    let path = this.resolve(url);
+
+    if (path.includes('/:'))
+      throw new Error(`Cannot navigate to "${path}" from unmatched Route "${this.to}" - it has unresolved parameters.`);
+
+    if (path.length > 1 && path.endsWith('/')) path = path.slice(0, -1);
+    this.router.goto(path, replace);
   }
 
   render(props = {} as { children?: Component.Node }): Component.Node {

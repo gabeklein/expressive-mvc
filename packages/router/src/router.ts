@@ -1,7 +1,7 @@
 import { Component, hot, listener } from '@expressive/mvc';
 
 import { Route } from './route';
-import { Match, fullPattern, matchPattern, patternSegment } from './url';
+import { Match, fillPath, fullPattern, matchPattern, patternSegment } from './url';
 
 /**
  * Headless router core: matching plus an in-memory `path` and history stack.
@@ -109,10 +109,9 @@ export class Router extends Component {
    * Always ends with `/`.
    */
   anchor(route: Route): string {
-    const own = route.to
-      .replace(/\/?\*$/, '')
-      .replace(/:(\w+)/g, (_, name) => route.match![name]);
-
+    // Concrete directory when the Route is on the current path (params filled
+    // from it); otherwise its own pattern, base composed - `:params` unfilled.
+    const own = fillPath(route.path, this.path) ?? route.path;
     return own.endsWith('/') ? own : own + '/';
   }
 
