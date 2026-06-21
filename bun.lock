@@ -78,7 +78,7 @@
     },
     "packages/router": {
       "name": "@expressive/router",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "dependencies": {
         "@expressive/mvc": "^0.78.0",
       },
