@@ -1,5 +1,17 @@
 # @expressive/router
 
+## 0.2.0
+
+### Minor Changes
+
+- [#176](https://github.com/gabeklein/expressive-mvc/pull/176) [`6aa0719`](https://github.com/gabeklein/expressive-mvc/commit/6aa0719d25ca260c6ad2fb1b9a02fb248b161dd9) `Route.goto()` now resolves its argument relative to the Route it is called on, and with no argument navigates to that Route itself (its concrete, params-filled path) - enabling "pop from below", where a subroute reaches a named ancestor via context and navigates up to it as currently identified. `goto` always resolves relative to its receiver and an absent argument means `"."` (here), so `''`/`'.'` are no longer dead no-ops. This also fixes `anchor` for nested Routes: it now recovers params from the live path and composes `base` correctly, so relative navigation works from any depth.
+
+- [#175](https://github.com/gabeklein/expressive-mvc/pull/175) [`fc3f416`](https://github.com/gabeklein/expressive-mvc/commit/fc3f416b1f4444b7be7b7f0d4cad89662e8205a7) Add a `protected get nested` extension point to `Route`. It defaults to the children declared in JSX; a subclass overrides the getter to opine on the child routes of its own scope - add, remove, or reorder - composing on `super.nested`. The result flows through every registration-form behavior (`inner`, `active`, `matches`, default gating) and the see-through gate for that scope, so contributed routes participate in matching and render as if declared. Because `nested` is pure analysis (it returns nodes and never triggers a page render), `matched` can consult it without breaking the lazy render gate. A subclass that contributes routes can flip its own leaf<->see-through classification, reflecting its effective children.
+
+### Patch Changes
+
+- [#173](https://github.com/gabeklein/expressive-mvc/pull/173) [`9e4009f`](https://github.com/gabeklein/expressive-mvc/commit/9e4009f85258522fa433f3d3aaf9134aeca78391) Route subclasses are now detected by the lexical JSX walk wherever a plain `Route` is. Previously only `allRoutes` recognized subclasses; the default-detection, see-through-scope, and `as`-slot arbitration walks used a strict `=== Route` identity check and silently skipped subclasses. All four sites now share the subclass-aware `Route.is(...)` test, so a `class Page extends Route` used with JSX props participates in default resolution, scope chrome visibility, and sibling arbitration like any `Route`. (Class-field `to` remains invisible to the lexical walk - unchanged.)
+
 ## 0.1.0
 
 ### Minor Changes
