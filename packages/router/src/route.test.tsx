@@ -598,6 +598,58 @@ describe('extends', () => {
     expect(found).toBeInstanceOf(Profile);
   });
 
+  it('see-through scope chrome shows only when a subclass descendant matches', () => {
+    class Page extends Route {}
+    const Chrome = ({ children }: { children?: React.ReactNode }) => (
+      <div>chrome:{children}</div>
+    );
+
+    location('/section/info');
+    const matched = render(
+      <Route>
+        <Route to="section/*" as={Chrome}>
+          <Page to="info" as={() => <span>info</span>} />
+        </Route>
+      </Route>
+    );
+    expect(matched.container.textContent).toBe('chrome:info');
+
+    location('/elsewhere');
+    const unmatched = render(
+      <Route>
+        <Route to="section/*" as={Chrome}>
+          <Page to="info" as={() => <span>info</span>} />
+        </Route>
+      </Route>
+    );
+    expect(unmatched.container.textContent).toBe('');
+  });
+
+  it('see-through scope resolves via a subclass default child', () => {
+    class Fallback extends Route {}
+    location('/section/anything');
+    const view = render(
+      <Route>
+        <Route to="section/*">
+          <Fallback default as={() => <span>fallback</span>} />
+        </Route>
+      </Route>
+    );
+    expect(view.container.textContent).toBe('fallback');
+  });
+
+  it('arbitrates the `as`-slot between subclass siblings by declaration order', () => {
+    class Page extends Route {}
+    location('/about');
+    const view = render(
+      <Route>
+        <Page to="/about" as={() => <span>About</span>} />
+        <Page to="/:slug" as={() => <span>Slug</span>} />
+      </Route>
+    );
+    expect(view.container.textContent).toBe('About');
+  });
+
   describe('structural children', () => {
     it('mounts child Routes even when the parent is unmatched', () => {
       location('/elsewhere');

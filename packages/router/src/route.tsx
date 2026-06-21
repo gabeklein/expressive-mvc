@@ -192,7 +192,7 @@ export class Route extends Component {
 /** Does `children` hold a direct default Route? Such a scope resolves to it. */
 function hasDefault(children: Component.Node): boolean {
   return childrenOf(children).some(
-    (node) => isElement(node) && typeOf(node) === Route && (propsOf(node) as RouteProps).default
+    (node) => isElement(node) && Route.is(typeOf(node)) && (propsOf(node) as RouteProps).default
   );
 }
 
@@ -245,7 +245,7 @@ type RouteProps = {
  * Does any Route within `children` match `path` (composed against `base`)? A
  * synchronous, lexical walk of the JSX - the see-through opt-out gate. Strict:
  * a scope counts only when a descendant matches, never as a greedy prefix.
- * Blind to class-field `to` (subclasses) and component-internal routes (the
+ * Blind to class-field `to` and component-internal routes (the
  * `*`-delegation case) - the documented limits of the lexical model.
  */
 export function matchesAnywhere(children: Component.Node, base: string, path: string): boolean {
@@ -259,7 +259,7 @@ export function matchesAnywhere(children: Component.Node, base: string, path: st
       continue;
     }
 
-    if (type !== Route) continue;
+    if (!Route.is(type)) continue;
 
     const props = propsOf(node) as RouteProps;
     if (props.redirect || props.default) continue;
@@ -322,7 +322,7 @@ function contenders(children: Component.Node, base: string): Contender[] {
       continue;
     }
 
-    if (type !== Route) continue;
+    if (!Route.is(type)) continue;
 
     const props = propsOf(node) as RouteProps;
     if (!props.as || props.redirect || props.default) continue;
@@ -346,7 +346,7 @@ function allRoutes(children: Component.Node): boolean {
     const type = typeOf(node);
     if (type === Fragment)
       return allRoutes((propsOf(node) as RouteProps).children);
-    return type === Route || (typeof type === 'function' && type.prototype instanceof Route);
+    return Route.is(type);
   });
 }
 
