@@ -1000,3 +1000,98 @@ it('deregisters a child from parent.inner on unmount', async () => {
   await act(async () => view.rerender(<Route is={(r) => (parent = r)} />));
   expect(parent.inner).toEqual([]);
 });
+
+describe('a Route passed as another Route', () => {
+  // The dev-repo codegen shape `<Page to="seg" as={Default}>{children}</Page>`,
+  // where the outer node carries the segment/overrides and the inner (user)
+  // Route is the subtree controller. Delegation falls out of the existing
+  // see-through machinery: the inner Route is the sole arbiter, sees the
+  // outer's computed `nested`, and keeps Route.get / fallback / suspense intact.
+  const Leaf = (label: string) => () => <span>{label}</span>;
+
+  it('lets the inner Route arbitrate and render the matched child', async () => {
+    location('/sub/a');
+    class Inner extends Route {}
+
+    const view = render(
+      <Route to="sub" as={Inner}>
+        <Route to="a" as={Leaf('A')} />
+        <Route to="b" as={Leaf('B')} />
+      </Route>
+    );
+    await act(async () => {});
+
+    expect(view.container.textContent).toBe('A');
+  });
+
+  it('resolves Route.get to the inner instance within its own content', async () => {
+    location('/sub');
+    let innerInst!: Route;
+    let resolved!: Route;
+
+    class Inner extends Route {
+      render() {
+        innerInst = this.is;
+        return (
+          <Consumer for={Route}>{(r) => { resolved = r.is; return <span>inner</span>; }}</Consumer>
+        );
+      }
+    }
+
+    const view = render(<Route to="sub" as={Inner} />);
+    await act(async () => {});
+
+    expect(view.container.textContent).toBe('inner');
+    expect(resolved).toBeInstanceOf(Inner);
+    expect(resolved).toBe(innerInst);
+  });
+
+  it('sees the outer Route\'s computed nested (outer-injected child matches)', async () => {
+    location('/sub/extra');
+    class Outer extends Route {
+      protected get nested() {
+        return (
+          <>
+            {super.nested}
+            <Route to="extra" as={Leaf('EXTRA')} />
+          </>
+        );
+      }
+    }
+    class Inner extends Route {}
+
+    const view = render(
+      <Outer to="sub" as={Inner}>
+        <Route to="a" as={Leaf('A')} />
+      </Outer>
+    );
+    await act(async () => {});
+
+    expect(view.container.textContent).toBe('EXTRA');
+  });
+
+  it('keeps the inner Route\'s fallback/suspense intact', async () => {
+    location('/sub');
+    let ready = false;
+    let resolve!: () => void;
+    const pending = new Promise<void>((r) => (resolve = r)).then(() => { ready = true; });
+
+    class Inner extends Route {
+      fallback = <span>loading</span>;
+      render() {
+        return <Suspends />;
+      }
+    }
+    const Suspends = () => {
+      if (!ready) throw pending;
+      return <span>ready</span>;
+    };
+
+    const view = render(<Route to="sub" as={Inner} />);
+    await act(async () => {});
+    expect(view.container.textContent).toBe('loading');
+
+    await act(async () => { resolve(); await pending; });
+    expect(view.container.textContent).toBe('ready');
+  });
+});

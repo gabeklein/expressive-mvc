@@ -1,5 +1,5 @@
 import { Component, get, set } from '@expressive/mvc';
-import { childrenOf, Fragment, isElement, propsOf, typeOf } from '@expressive/mvc/jsx-runtime';
+import { childrenOf, Fragment, isElement, propsOf, typeOf, type JSX } from '@expressive/mvc/jsx-runtime';
 
 import { Redirect } from './redirect';
 import { Router } from './router';
@@ -11,7 +11,9 @@ const CHILDREN = new WeakMap<Route, Route[]>();
 export class Route extends Component {
   router = set(() => this.get(Router, false) || new Router());
 
-  as?: (props: { children?: Component.Node }) => Component.Node = undefined;
+  /** Component wrapping matched content - a function or class element type
+   * (a fellow Route subclass included), but not an intrinsic host tag. */
+  as?: Exclude<JSX.ElementType, string> = undefined;
 
   to: string = '';
 
