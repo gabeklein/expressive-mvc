@@ -191,39 +191,40 @@ Navigates to `to` when mounted, gated on `when` (default `true`). Pushes by defa
 ## Extending Route: contributing child routes
 
 A `Route` subclass can opine on its own scope's children before matching and
-registration via the `protected routes()` seam. It receives the children as
-declared and returns the effective set - add, remove, or reorder. The default
-passes through. Both matching and render read the result, so contributed routes
-participate in this scope's control flow (matching, `inner` registration,
-default-resolution, `matches`, and render) exactly as if declared in JSX.
+registration by overriding the `protected get nested()` seam. It defaults to the
+children declared in JSX; override it to return the effective set - add, remove,
+or reorder - composing on `super.nested`. Both matching and render read the
+result, so contributed routes participate in this scope's control flow
+(matching, `inner` registration, default-resolution, `matches`, and render)
+exactly as if declared in JSX.
 
 ```tsx
 class Page extends Route {
   Default = NotFound;
 
-  protected routes(given: Component.Node): Component.Node {
-    return <>{given}<Route default as={this.Default} /></>;
+  protected get nested(): Component.Node {
+    return <>{super.nested}<Route default as={this.Default} /></>;
   }
 }
 ```
 
 `<Page to="docs/*">…</Page>` now resolves to `Default` whenever no child of the
 scope matches - a section fallback the caller never had to write. `Default` is
-the subclass's own surface; `Route` gains only the `routes()` seam.
+the subclass's own surface; `Route` exposes only the `nested` seam.
 
 Scope and caveats:
 - **Own scope only.** Contributed routes are first-class *within this Route*.
   They are invisible to walks that inspect this Route as a bare JSX element from
   the outside - sibling `as`-slot arbitration and a parent scope recursing into
-  this element's lexical children - which have no instance to call `routes()` on.
+  this element's lexical children - which have no instance to read `nested` from.
   Same blind spot as class-field `to` (see below).
 - **Classification follows effective children.** Contributing a default to a
   `to`-leaf turns it into a see-through scope (matched by prefix rather than
   exact pattern). Intended - the leaf/scope distinction reflects what the scope
   effectively contains.
-- Put injection in `routes()`, not `render()`: it is pure analysis (returns
-  nodes, never runs a page render), so matching can consult it without the
-  circularity and lazy-gate problems of deciding matches from render output.
+- Contribute via `nested`, not `render()`: it is pure analysis (returns nodes,
+  never runs a page render), so matching can consult it without the circularity
+  and lazy-gate problems of deciding matches from render output.
 
 ## Lexical matching - the limits
 

@@ -650,11 +650,11 @@ describe('extends', () => {
     expect(view.container.textContent).toBe('About');
   });
 
-  describe('routes() seam', () => {
+  describe('nested seam', () => {
     class Page extends Route {
       Default: () => any = () => <span>fallback</span>;
-      protected routes(given: Component.Node): Component.Node {
-        return (<>{given}<Route default as={this.Default} /></>) as any;
+      protected get nested(): Component.Node {
+        return (<>{super.nested}<Route default as={this.Default} /></>) as any;
       }
     }
 
@@ -708,9 +708,9 @@ describe('extends', () => {
     it('does not run subclass content when unmatched', () => {
       let ran = 0;
       class Tracked extends Route {
-        protected routes(given: Component.Node): Component.Node {
+        protected get nested(): Component.Node {
           return (
-            <>{given}<Route default as={() => { ran++; return <span>x</span>; }} /></>
+            <>{super.nested}<Route default as={() => { ran++; return <span>x</span>; }} /></>
           ) as any;
         }
       }

@@ -154,21 +154,16 @@ export class Route extends Component {
   }
 
   /**
-   * Opine on this scope's child routes before matching and registration.
-   * Receives the children as declared via JSX; return the effective set - add,
-   * remove, or reorder. Default passes through. Consulted by both matching and
-   * render, so contributed routes participate in this scope's control flow as
-   * if declared.
+   * This scope's child routes - the effective set matching and render consult.
+   * Defaults to the children declared via JSX. Override this getter (a subclass
+   * extension seam) to opine on them - add, remove, or reorder - composing on
+   * `super.nested`; both matching and render read the result, so contributed
+   * routes participate in this scope's control flow as if declared. Memoized by
+   * the framework (recomputes when `props` change), so contributed routes have
+   * stable identity within a render pass.
    */
-  protected routes(children: Component.Node): Component.Node {
-    return children;
-  }
-
-  /** This scope's children with `routes()` applied - the effective set matching
-   * and render consult. Memoized by the framework (recomputes when `props`
-   * change), so contributed routes have stable identity within a render pass. */
   protected get nested(): Component.Node {
-    return this.routes((this.props as { children?: Component.Node }).children);
+    return (this.props as { children?: Component.Node }).children;
   }
 
   resolve(url: string): string {
