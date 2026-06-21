@@ -7,7 +7,6 @@ import { fullPattern, matchPattern, patternSegment } from './url';
 
 const PARAMS = new WeakMap<Route, Record<string, string> | undefined>();
 const CHILDREN = new WeakMap<Route, Route[]>();
-const ROUTES = new WeakMap<Route, { given: Component.Node; out: Component.Node }>();
 
 export class Route extends Component {
   router = set(() => this.get(Router, false) || new Router());
@@ -77,10 +76,10 @@ export class Route extends Component {
 
     if (isRoot(this)) return true;
 
-    const children = effective(this);
+    const { nested } = this;
 
-    if (allRoutes(children))
-      return scopeResolves(this, children, this.router.path);
+    if (allRoutes(nested))
+      return scopeResolves(this, nested, this.router.path);
 
     return !!this.match;
   }
@@ -101,7 +100,7 @@ export class Route extends Component {
     const scan = (routes: Route[]): boolean => {
       for (const route of routes) {
         if (route.redirect || route.default) continue;
-        if (allRoutes(effective(route))) {
+        if (allRoutes(route.nested)) {
           if (scan(route.inner)) return true;
           continue;
         }
@@ -124,7 +123,7 @@ export class Route extends Component {
     const collect = (routes: Route[]): string[] =>
       routes.flatMap((route) => {
         if (route.redirect || route.default) return [];
-        if (!allRoutes(effective(route)))
+        if (!allRoutes(route.nested))
           return match(route.base, route.to) ? [route.path] : [];
 
         // A scope counts via a matched descendant, or its own section default.
@@ -165,6 +164,13 @@ export class Route extends Component {
     return children;
   }
 
+  /** This scope's children with `routes()` applied - the effective set matching
+   * and render consult. Memoized by the framework (recomputes when `props`
+   * change), so contributed routes have stable identity within a render pass. */
+  protected get nested(): Component.Node {
+    return this.routes((this.props as { children?: Component.Node }).children);
+  }
+
   resolve(url: string): string {
     return this.router.resolve(this, url);
   }
@@ -194,7 +200,7 @@ export class Route extends Component {
     if (Object.getOwnPropertyDescriptor(props, 'children')?.get)
       return matched ? props.children : null;
 
-    const children = effective(this);
+    const children = this.nested;
 
     // Matched: render content (in `as` chrome if present). Unmatched: a
     // see-through scope still mounts children (registration); a leaf renders null.
@@ -203,24 +209,6 @@ export class Route extends Component {
 
     return allRoutes(children) ? <>{children}</> : null;
   }
-}
-
-/**
- * This scope's effective children - `route.routes()` applied to the declared
- * children, memoized by input identity (keyed on the real instance, mirroring
- * the `match` getter so observer proxies share one entry).
- */
-function effective(route: Route): Component.Node {
-  const self = route.is;
-  const given = (route.props as { children?: Component.Node }).children;
-  const memo = ROUTES.get(self);
-
-  if (memo && memo.given === given)
-    return memo.out;
-
-  const out = route['routes'](given);
-  ROUTES.set(self, { given, out });
-  return out;
 }
 
 /**
@@ -303,9 +291,10 @@ type RouteProps = {
 export function matchesAnywhere(children: Component.Node, base: string, path: string): boolean {
   return lexicalRoutes(children).some(({ props, to }) => {
     if (props.redirect || props.default) return false;
-    if (allRoutes(props.children))
-      return matchesAnywhere(props.children, base + patternSegment(to), path);
-    return matchPattern(fullPattern(base, to), path) !== null;
+
+    return allRoutes(props.children)
+      ? matchesAnywhere(props.children, base + patternSegment(to), path)
+      : matchPattern(fullPattern(base, to), path) !== null;
   });
 }
 
