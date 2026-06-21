@@ -77,7 +77,7 @@ export class Route extends Component {
 
     if (isRoot(this)) return true;
 
-    const children = this.effective();
+    const children = effective(this);
 
     if (allRoutes(children))
       return scopeResolves(this, children, this.router.path);
@@ -101,7 +101,7 @@ export class Route extends Component {
     const scan = (routes: Route[]): boolean => {
       for (const route of routes) {
         if (route.redirect || route.default) continue;
-        if (allRoutes(route.effective())) {
+        if (allRoutes(effective(route))) {
           if (scan(route.inner)) return true;
           continue;
         }
@@ -124,7 +124,7 @@ export class Route extends Component {
     const collect = (routes: Route[]): string[] =>
       routes.flatMap((route) => {
         if (route.redirect || route.default) return [];
-        if (!allRoutes(route.effective()))
+        if (!allRoutes(effective(route)))
           return match(route.base, route.to) ? [route.path] : [];
 
         // A scope counts via a matched descendant, or its own section default.
@@ -165,19 +165,6 @@ export class Route extends Component {
     return children;
   }
 
-  private effective(): Component.Node {
-    const self = this.is;
-    const given = (this.props as { children?: Component.Node }).children;
-    const memo = ROUTES.get(self);
-
-    if (memo && memo.given === given)
-      return memo.out;
-
-    const out = this.routes(given);
-    ROUTES.set(self, { given, out });
-    return out;
-  }
-
   resolve(url: string): string {
     return this.router.resolve(this, url);
   }
@@ -207,7 +194,7 @@ export class Route extends Component {
     if (Object.getOwnPropertyDescriptor(props, 'children')?.get)
       return matched ? props.children : null;
 
-    const children = this.effective();
+    const children = effective(this);
 
     // Matched: render content (in `as` chrome if present). Unmatched: a
     // see-through scope still mounts children (registration); a leaf renders null.
@@ -218,15 +205,52 @@ export class Route extends Component {
   }
 }
 
+/**
+ * This scope's effective children - `route.routes()` applied to the declared
+ * children, memoized by input identity (keyed on the real instance, mirroring
+ * the `match` getter so observer proxies share one entry).
+ */
+function effective(route: Route): Component.Node {
+  const self = route.is;
+  const given = (route.props as { children?: Component.Node }).children;
+  const memo = ROUTES.get(self);
+
+  if (memo && memo.given === given)
+    return memo.out;
+
+  const out = route['routes'](given);
+  ROUTES.set(self, { given, out });
+  return out;
+}
+
+/**
+ * Route nodes declared directly within `children`, Fragments flattened (same
+ * base) and non-Route nodes skipped, each paired with its `to` segment. The
+ * shared lexical-walk primitive behind the see-through gate and `as`-arbitration.
+ */
+function lexicalRoutes(children: Component.Node) {
+  const out: { props: RouteProps; to: string }[] = [];
+
+  for (const node of childrenOf(children)) {
+    if (!isElement(node)) continue;
+
+    const type = typeOf(node);
+    if (type === Fragment) {
+      out.push(...lexicalRoutes((propsOf(node) as RouteProps).children));
+      continue;
+    }
+    if (!Route.is(type)) continue;
+
+    const props = propsOf(node) as RouteProps;
+    out.push({ props, to: typeof props.to === 'string' ? props.to : '' });
+  }
+
+  return out;
+}
+
 /** Does `children` hold a direct default Route? Such a scope resolves to it. */
 function hasDefault(children: Component.Node): boolean {
-  return childrenOf(children).some((node) => {
-    if (!isElement(node)) return false;
-    const type = typeOf(node);
-    if (type === Fragment)
-      return hasDefault((propsOf(node) as RouteProps).children);
-    return Route.is(type) && (propsOf(node) as RouteProps).default;
-  });
+  return lexicalRoutes(children).some(({ props }) => props.default);
 }
 
 /** Is `path` inside `base`'s subtree? The root base ('') contains everything. */
@@ -277,32 +301,12 @@ type RouteProps = {
  * `*`-delegation case) - the documented limits of the lexical model.
  */
 export function matchesAnywhere(children: Component.Node, base: string, path: string): boolean {
-  for (const node of childrenOf(children)) {
-    if (!isElement(node)) continue;
-
-    const type = typeOf(node);
-
-    if (type === Fragment) {
-      if (matchesAnywhere((propsOf(node) as RouteProps).children, base, path)) return true;
-      continue;
-    }
-
-    if (!Route.is(type)) continue;
-
-    const props = propsOf(node) as RouteProps;
-    if (props.redirect || props.default) continue;
-
-    const to = typeof props.to === 'string' ? props.to : '';
-
-    if (allRoutes(props.children)) {
-      if (matchesAnywhere(props.children, base + patternSegment(to), path)) return true;
-      continue;
-    }
-
-    if (matchPattern(fullPattern(base, to), path)) return true;
-  }
-
-  return false;
+  return lexicalRoutes(children).some(({ props, to }) => {
+    if (props.redirect || props.default) return false;
+    if (allRoutes(props.children))
+      return matchesAnywhere(props.children, base + patternSegment(to), path);
+    return matchPattern(fullPattern(base, to), path) !== null;
+  });
 }
 
 type Contender = {
@@ -321,7 +325,7 @@ function cedes(parent: Route, child: Route, path: () => string): boolean {
   // Fallback/redirect never competes by order, so it's never arbitrated.
   if (child.default || child.redirect) return false;
 
-  const rivals = contenders(parent.props.children, scopeBase(parent));
+  const rivals = possible(parent.props.children, scopeBase(parent));
   if (rivals.length < 2 || !rivals.some((r) => r.path === child.path)) return false;
 
   const at = path();
@@ -337,33 +341,15 @@ function cedes(parent: Route, child: Route, path: () => string): boolean {
  * declaration order, each paired with its claimed path and a match test.
  * Recurses Fragments, stops at nested Route scopes. Lexical only (reads `to`).
  */
-function contenders(children: Component.Node, base: string): Contender[] {
-  const out: Contender[] = [];
-
-  for (const node of childrenOf(children)) {
-    if (!isElement(node)) continue;
-
-    const type = typeOf(node);
-
-    if (type === Fragment) {
-      out.push(...contenders((propsOf(node) as RouteProps).children, base));
-      continue;
-    }
-
-    if (!Route.is(type)) continue;
-
-    const props = propsOf(node) as RouteProps;
-    if (!props.as || props.redirect || props.default) continue;
-
-    const to = typeof props.to === 'string' ? props.to : '';
-    const matches = allRoutes(props.children)
-      ? (path: string) => matchesAnywhere(props.children, base + patternSegment(to), path)
-      : (path: string) => matchPattern(fullPattern(base, to), path) !== null;
-
-    out.push({ path: base + patternSegment(to), matches });
-  }
-
-  return out;
+function possible(children: Component.Node, base: string): Contender[] {
+  return lexicalRoutes(children)
+    .filter(({ props }) => props.as && !props.redirect && !props.default)
+    .map(({ props, to }) => ({
+      path: base + patternSegment(to),
+      matches: allRoutes(props.children)
+        ? (path: string) => matchesAnywhere(props.children, base + patternSegment(to), path)
+        : (path: string) => matchPattern(fullPattern(base, to), path) !== null,
+    }));
 }
 
 function allRoutes(children: Component.Node): boolean {
