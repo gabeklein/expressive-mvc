@@ -75,7 +75,11 @@ export class Route extends Component {
       return parent ? parent.matched && !parent.matches.length : false;
 
     if (isRoot(this)) return true;
-    if (hasRoutes(this)) return scopeResolves(this, this.router.path);
+
+    const { nested } = this;
+
+    if (allRoutes(nested))
+      return scopeResolves(this, nested, this.router.path);
 
     return !!this.match;
   }
@@ -96,7 +100,7 @@ export class Route extends Component {
     const scan = (routes: Route[]): boolean => {
       for (const route of routes) {
         if (route.redirect || route.default) continue;
-        if (hasRoutes(route)) {
+        if (allRoutes(route.nested)) {
           if (scan(route.inner)) return true;
           continue;
         }
@@ -119,7 +123,7 @@ export class Route extends Component {
     const collect = (routes: Route[]): string[] =>
       routes.flatMap((route) => {
         if (route.redirect || route.default) return [];
-        if (!hasRoutes(route))
+        if (!allRoutes(route.nested))
           return match(route.base, route.to) ? [route.path] : [];
 
         // A scope counts via a matched descendant, or its own section default.
@@ -147,6 +151,19 @@ export class Route extends Component {
   /** Directory-style anchor for relative navigation. */
   get anchor(): string {
     return this.router.anchor(this);
+  }
+
+  /**
+   * This scope's child routes - the effective set matching and render consult.
+   * Defaults to the children declared via JSX. Override this getter (a subclass
+   * extension seam) to opine on them - add, remove, or reorder - composing on
+   * `super.nested`; both matching and render read the result, so contributed
+   * routes participate in this scope's control flow as if declared. Memoized by
+   * the framework (recomputes when `props` change), so contributed routes have
+   * stable identity within a render pass.
+   */
+  protected get nested(): Component.Node {
+    return (this.props as { children?: Component.Node }).children;
   }
 
   resolve(url: string): string {
@@ -183,7 +200,7 @@ export class Route extends Component {
     if (Object.getOwnPropertyDescriptor(props, 'children')?.get)
       return matched ? props.children : null;
 
-    const { children } = props;
+    const children = this.nested;
 
     // Matched: render content (in `as` chrome if present). Unmatched: a
     // see-through scope still mounts children (registration); a leaf renders null.
@@ -194,11 +211,34 @@ export class Route extends Component {
   }
 }
 
+/**
+ * Route nodes declared directly within `children`, Fragments flattened (same
+ * base) and non-Route nodes skipped, each paired with its `to` segment. The
+ * shared lexical-walk primitive behind the see-through gate and `as`-arbitration.
+ */
+function lexicalRoutes(children: Component.Node) {
+  const out: { props: RouteProps; to: string }[] = [];
+
+  for (const node of childrenOf(children)) {
+    if (!isElement(node)) continue;
+
+    const type = typeOf(node);
+    if (type === Fragment) {
+      out.push(...lexicalRoutes((propsOf(node) as RouteProps).children));
+      continue;
+    }
+    if (!Route.is(type)) continue;
+
+    const props = propsOf(node) as RouteProps;
+    out.push({ props, to: typeof props.to === 'string' ? props.to : '' });
+  }
+
+  return out;
+}
+
 /** Does `children` hold a direct default Route? Such a scope resolves to it. */
 function hasDefault(children: Component.Node): boolean {
-  return childrenOf(children).some(
-    (node) => isElement(node) && Route.is(typeOf(node)) && (propsOf(node) as RouteProps).default
-  );
+  return lexicalRoutes(children).some(({ props }) => props.default);
 }
 
 /** Is `path` inside `base`'s subtree? The root base ('') contains everything. */
@@ -221,21 +261,16 @@ function scopeBase(route: Route): string {
 
 /** Lexical (gate-form): scope resolves via a descendant match or its own
  * section default within base - used by `matched`, before children register. */
-function scopeResolves(route: Route, path: string): boolean {
+function scopeResolves(route: Route, children: Component.Node, path: string): boolean {
   const base = scopeBase(route);
-  return matchesAnywhere(route.props.children, base, path)
-    || (hasDefault(route.props.children) && within(base, path));
+  return matchesAnywhere(children, base, path)
+    || (hasDefault(children) && within(base, path));
 }
 
 /** Registration-form: scope owns a default catching the path within base -
  * used by `matches` so a section 404 suppresses an ancestor 404. */
 function defaultCatches(route: Route, path: string): boolean {
   return route.inner.some((c) => c.default) && within(scopeBase(route), path);
-}
-
-/** Has lexical child Routes - i.e. a see-through scope (vs. a leaf). */
-function hasRoutes(route: Route): boolean {
-  return allRoutes(route.props.children);
 }
 
 type RouteProps = {
@@ -254,32 +289,13 @@ type RouteProps = {
  * `*`-delegation case) - the documented limits of the lexical model.
  */
 export function matchesAnywhere(children: Component.Node, base: string, path: string): boolean {
-  for (const node of childrenOf(children)) {
-    if (!isElement(node)) continue;
+  return lexicalRoutes(children).some(({ props, to }) => {
+    if (props.redirect || props.default) return false;
 
-    const type = typeOf(node);
-
-    if (type === Fragment) {
-      if (matchesAnywhere((propsOf(node) as RouteProps).children, base, path)) return true;
-      continue;
-    }
-
-    if (!Route.is(type)) continue;
-
-    const props = propsOf(node) as RouteProps;
-    if (props.redirect || props.default) continue;
-
-    const to = typeof props.to === 'string' ? props.to : '';
-
-    if (allRoutes(props.children)) {
-      if (matchesAnywhere(props.children, base + patternSegment(to), path)) return true;
-      continue;
-    }
-
-    if (matchPattern(fullPattern(base, to), path)) return true;
-  }
-
-  return false;
+    return allRoutes(props.children)
+      ? matchesAnywhere(props.children, base + patternSegment(to), path)
+      : matchPattern(fullPattern(base, to), path) !== null;
+  });
 }
 
 type Contender = {
@@ -298,7 +314,7 @@ function cedes(parent: Route, child: Route, path: () => string): boolean {
   // Fallback/redirect never competes by order, so it's never arbitrated.
   if (child.default || child.redirect) return false;
 
-  const rivals = contenders(parent.props.children, scopeBase(parent));
+  const rivals = possible(parent.props.children, scopeBase(parent));
   if (rivals.length < 2 || !rivals.some((r) => r.path === child.path)) return false;
 
   const at = path();
@@ -314,33 +330,15 @@ function cedes(parent: Route, child: Route, path: () => string): boolean {
  * declaration order, each paired with its claimed path and a match test.
  * Recurses Fragments, stops at nested Route scopes. Lexical only (reads `to`).
  */
-function contenders(children: Component.Node, base: string): Contender[] {
-  const out: Contender[] = [];
-
-  for (const node of childrenOf(children)) {
-    if (!isElement(node)) continue;
-
-    const type = typeOf(node);
-
-    if (type === Fragment) {
-      out.push(...contenders((propsOf(node) as RouteProps).children, base));
-      continue;
-    }
-
-    if (!Route.is(type)) continue;
-
-    const props = propsOf(node) as RouteProps;
-    if (!props.as || props.redirect || props.default) continue;
-
-    const to = typeof props.to === 'string' ? props.to : '';
-    const matches = allRoutes(props.children)
-      ? (path: string) => matchesAnywhere(props.children, base + patternSegment(to), path)
-      : (path: string) => matchPattern(fullPattern(base, to), path) !== null;
-
-    out.push({ path: base + patternSegment(to), matches });
-  }
-
-  return out;
+function possible(children: Component.Node, base: string): Contender[] {
+  return lexicalRoutes(children)
+    .filter(({ props }) => props.as && !props.redirect && !props.default)
+    .map(({ props, to }) => ({
+      path: base + patternSegment(to),
+      matches: allRoutes(props.children)
+        ? (path: string) => matchesAnywhere(props.children, base + patternSegment(to), path)
+        : (path: string) => matchPattern(fullPattern(base, to), path) !== null,
+    }));
 }
 
 function allRoutes(children: Component.Node): boolean {
