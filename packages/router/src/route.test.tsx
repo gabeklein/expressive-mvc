@@ -1,6 +1,6 @@
 import { act, render } from '@testing-library/react';
 import { describe, expect, it } from 'bun:test';
-import { Consumer } from '@expressive/react';
+import { Component, Consumer } from '@expressive/react';
 
 import { location, browserRouter, renderAct } from '../test.setup';
 import { Route } from './route';
@@ -648,6 +648,83 @@ describe('extends', () => {
       </Route>
     );
     expect(view.container.textContent).toBe('About');
+  });
+
+  describe('routes() seam', () => {
+    class Page extends Route {
+      Default: () => any = () => <span>fallback</span>;
+      protected routes(given: Component.Node): Component.Node {
+        return (<>{given}<Route default as={this.Default} /></>) as any;
+      }
+    }
+
+    it('converts a subclass Default into a child default route', () => {
+      location('/section/missing');
+      const view = render(
+        <Route>
+          <Page to="section/*">
+            <Route to="info" as={() => <span>info</span>} />
+          </Page>
+        </Route>
+      );
+      expect(view.container.textContent).toBe('fallback');
+    });
+
+    it('lets a real sibling match win over the injected default', () => {
+      location('/section/info');
+      const view = render(
+        <Route>
+          <Page to="section/*">
+            <Route to="info" as={() => <span>info</span>} />
+          </Page>
+        </Route>
+      );
+      expect(view.container.textContent).toBe('info');
+    });
+
+    it('reclassifies a leaf as a see-through scope when only a default is contributed', () => {
+      location('/section/anything');
+      const view = render(
+        <Route>
+          <Page to="section/*" />
+        </Route>
+      );
+      expect(view.container.textContent).toBe('fallback');
+    });
+
+    it('contributed default suppresses an ancestor default (section 404)', () => {
+      location('/section/missing');
+      const view = render(
+        <Route>
+          <Page to="section/*">
+            <Route to="info" as={() => <span>info</span>} />
+          </Page>
+          <Route default as={() => <span>app-404</span>} />
+        </Route>
+      );
+      expect(view.container.textContent).toBe('fallback');
+    });
+
+    it('does not run subclass content when unmatched', () => {
+      let ran = 0;
+      class Tracked extends Route {
+        protected routes(given: Component.Node): Component.Node {
+          return (
+            <>{given}<Route default as={() => { ran++; return <span>x</span>; }} /></>
+          ) as any;
+        }
+      }
+      location('/elsewhere');
+      const view = render(
+        <Route>
+          <Tracked to="section/*">
+            <Route to="info" as={() => <span>info</span>} />
+          </Tracked>
+        </Route>
+      );
+      expect(view.container.textContent).toBe('');
+      expect(ran).toBe(0);
+    });
   });
 
   describe('structural children', () => {

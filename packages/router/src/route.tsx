@@ -7,6 +7,7 @@ import { fullPattern, matchPattern, patternSegment } from './url';
 
 const PARAMS = new WeakMap<Route, Record<string, string> | undefined>();
 const CHILDREN = new WeakMap<Route, Route[]>();
+const ROUTES = new WeakMap<Route, { given: Component.Node; out: Component.Node }>();
 
 export class Route extends Component {
   router = set(() => this.get(Router, false) || new Router());
@@ -75,7 +76,11 @@ export class Route extends Component {
       return parent ? parent.matched && !parent.matches.length : false;
 
     if (isRoot(this)) return true;
-    if (hasRoutes(this)) return scopeResolves(this, this.router.path);
+
+    const children = this.effective();
+
+    if (allRoutes(children))
+      return scopeResolves(this, children, this.router.path);
 
     return !!this.match;
   }
@@ -96,7 +101,7 @@ export class Route extends Component {
     const scan = (routes: Route[]): boolean => {
       for (const route of routes) {
         if (route.redirect || route.default) continue;
-        if (hasRoutes(route)) {
+        if (allRoutes(route.effective())) {
           if (scan(route.inner)) return true;
           continue;
         }
@@ -119,7 +124,7 @@ export class Route extends Component {
     const collect = (routes: Route[]): string[] =>
       routes.flatMap((route) => {
         if (route.redirect || route.default) return [];
-        if (!hasRoutes(route))
+        if (!allRoutes(route.effective()))
           return match(route.base, route.to) ? [route.path] : [];
 
         // A scope counts via a matched descendant, or its own section default.
@@ -147,6 +152,30 @@ export class Route extends Component {
   /** Directory-style anchor for relative navigation. */
   get anchor(): string {
     return this.router.anchor(this);
+  }
+
+  /**
+   * Opine on this scope's child routes before matching and registration.
+   * Receives the children as declared via JSX; return the effective set - add,
+   * remove, or reorder. Default passes through. Consulted by both matching and
+   * render, so contributed routes participate in this scope's control flow as
+   * if declared.
+   */
+  protected routes(children: Component.Node): Component.Node {
+    return children;
+  }
+
+  private effective(): Component.Node {
+    const self = this.is;
+    const given = (this.props as { children?: Component.Node }).children;
+    const memo = ROUTES.get(self);
+
+    if (memo && memo.given === given)
+      return memo.out;
+
+    const out = this.routes(given);
+    ROUTES.set(self, { given, out });
+    return out;
   }
 
   resolve(url: string): string {
@@ -178,7 +207,7 @@ export class Route extends Component {
     if (Object.getOwnPropertyDescriptor(props, 'children')?.get)
       return matched ? props.children : null;
 
-    const { children } = props;
+    const children = this.effective();
 
     // Matched: render content (in `as` chrome if present). Unmatched: a
     // see-through scope still mounts children (registration); a leaf renders null.
@@ -191,9 +220,13 @@ export class Route extends Component {
 
 /** Does `children` hold a direct default Route? Such a scope resolves to it. */
 function hasDefault(children: Component.Node): boolean {
-  return childrenOf(children).some(
-    (node) => isElement(node) && Route.is(typeOf(node)) && (propsOf(node) as RouteProps).default
-  );
+  return childrenOf(children).some((node) => {
+    if (!isElement(node)) return false;
+    const type = typeOf(node);
+    if (type === Fragment)
+      return hasDefault((propsOf(node) as RouteProps).children);
+    return Route.is(type) && (propsOf(node) as RouteProps).default;
+  });
 }
 
 /** Is `path` inside `base`'s subtree? The root base ('') contains everything. */
@@ -216,21 +249,16 @@ function scopeBase(route: Route): string {
 
 /** Lexical (gate-form): scope resolves via a descendant match or its own
  * section default within base - used by `matched`, before children register. */
-function scopeResolves(route: Route, path: string): boolean {
+function scopeResolves(route: Route, children: Component.Node, path: string): boolean {
   const base = scopeBase(route);
-  return matchesAnywhere(route.props.children, base, path)
-    || (hasDefault(route.props.children) && within(base, path));
+  return matchesAnywhere(children, base, path)
+    || (hasDefault(children) && within(base, path));
 }
 
 /** Registration-form: scope owns a default catching the path within base -
  * used by `matches` so a section 404 suppresses an ancestor 404. */
 function defaultCatches(route: Route, path: string): boolean {
   return route.inner.some((c) => c.default) && within(scopeBase(route), path);
-}
-
-/** Has lexical child Routes - i.e. a see-through scope (vs. a leaf). */
-function hasRoutes(route: Route): boolean {
-  return allRoutes(route.props.children);
 }
 
 type RouteProps = {
