@@ -1,8 +1,8 @@
-import { act, render } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'bun:test';
 import { Component, Consumer } from '@expressive/react';
 
-import { location, browserRouter, renderAct } from '../test.setup';
+import { location, browserRouter, mockPromise, renderAct } from '../test.setup';
 import { Route } from './route';
 import { Router } from './router';
 
@@ -551,6 +551,162 @@ describe('Route', () => {
         );
       });
       expect(window.location.pathname).toBe('/posts/foo/edit');
+    });
+
+    describe('functional guard', () => {
+      it('redirects when a sync guard returns a string', async () => {
+        location('/admin');
+        await act(async () => {
+          render(
+            <>
+              <Route to="/admin" redirect={() => '/login'} as={() => <h1>secret</h1>} />
+              <Route to="/login" as={() => <h1>login</h1>} />
+            </>
+          );
+        });
+        expect(window.location.pathname).toBe('/login');
+        expect(screen.getByText('login')).toBeDefined();
+      });
+
+      it('renders normally when a sync guard allows (falsy)', async () => {
+        location('/admin');
+        await act(async () => {
+          render(<Route to="/admin" redirect={() => undefined} as={() => <h1>secret</h1>} />);
+        });
+        expect(window.location.pathname).toBe('/admin');
+        expect(screen.getByText('secret')).toBeDefined();
+      });
+
+      it('treats an empty-string verdict as allow', async () => {
+        location('/admin');
+        await act(async () => {
+          render(<Route to="/admin" redirect={() => ''} as={() => <h1>secret</h1>} />);
+        });
+        expect(window.location.pathname).toBe('/admin');
+        expect(screen.getByText('secret')).toBeDefined();
+      });
+
+      it('does not run the guard while unmatched', async () => {
+        location('/elsewhere');
+        let ran = 0;
+        await act(async () => {
+          render(
+            <>
+              <Route to="/admin" redirect={() => { ran++; return '/login'; }} as={() => <h1>secret</h1>} />
+              <Route to="/elsewhere" as={() => <h1>here</h1>} />
+            </>
+          );
+        });
+        expect(ran).toBe(0);
+        expect(screen.getByText('here')).toBeDefined();
+      });
+
+      it('guards a whole section, redirecting from a deep child path', async () => {
+        location('/admin/users');
+        const Layout = (props: { children?: React.ReactNode }) => <main>{props.children}</main>;
+        await act(async () => {
+          render(
+            <>
+              <Route to="/admin/*" redirect={() => '/login'} as={Layout}>
+                <Route to="users" as={() => <h1>users</h1>} />
+              </Route>
+              <Route to="/login" as={() => <h1>login</h1>} />
+            </>
+          );
+        });
+        expect(window.location.pathname).toBe('/login');
+        expect(screen.getByText('login')).toBeDefined();
+      });
+
+      describe('async', () => {
+        it('shows fallback while pending, then allows', async () => {
+          location('/admin');
+          const gate = mockPromise<string | void>();
+          await act(async () => {
+            render(
+              <Route
+                to="/admin"
+                fallback={<h1>checking</h1>}
+                redirect={() => gate}
+                as={() => <h1>secret</h1>}
+              />
+            );
+          });
+          expect(screen.getByText('checking')).toBeDefined();
+
+          await act(async () => { gate.resolve(undefined); });
+          expect(window.location.pathname).toBe('/admin');
+          expect(screen.getByText('secret')).toBeDefined();
+        });
+
+        it('shows fallback while pending, then redirects', async () => {
+          location('/admin');
+          const gate = mockPromise<string | void>();
+          await act(async () => {
+            render(
+              <>
+                <Route
+                  to="/admin"
+                  fallback={<h1>checking</h1>}
+                  redirect={() => gate}
+                  as={() => <h1>secret</h1>}
+                />
+                <Route to="/login" as={() => <h1>login</h1>} />
+              </>
+            );
+          });
+          expect(screen.getByText('checking')).toBeDefined();
+
+          await act(async () => { gate.resolve('/login'); });
+          expect(window.location.pathname).toBe('/login');
+          expect(screen.getByText('login')).toBeDefined();
+        });
+      });
+
+      describe('caching', () => {
+        it('runs the guard once per entry, reusing it for in-space navigation', async () => {
+          location('/admin/users');
+          let ran = 0;
+          const guard = () => { ran++; return undefined; };
+          const Layout = (props: { children?: React.ReactNode }) => <main>{props.children}</main>;
+          await act(async () => {
+            render(
+              <Route to="/admin/*" redirect={guard} as={Layout}>
+                <Route to="users" as={() => <h1>users</h1>} />
+                <Route to="roles" as={() => <h1>roles</h1>} />
+              </Route>
+            );
+          });
+          expect(ran).toBe(1);
+          expect(screen.getByText('users')).toBeDefined();
+
+          await act(async () => router.current.goto('/admin/roles'));
+          expect(screen.getByText('roles')).toBeDefined();
+          expect(ran).toBe(1);
+        });
+
+        it('re-runs the guard on re-entry', async () => {
+          location('/admin');
+          let ran = 0;
+          const guard = () => { ran++; return undefined; };
+          await act(async () => {
+            render(
+              <>
+                <Route to="/admin" redirect={guard} as={() => <h1>secret</h1>} />
+                <Route to="/elsewhere" as={() => <h1>here</h1>} />
+              </>
+            );
+          });
+          expect(ran).toBe(1);
+
+          await act(async () => router.current.goto('/elsewhere'));
+          expect(screen.getByText('here')).toBeDefined();
+
+          await act(async () => router.current.goto('/admin'));
+          expect(screen.getByText('secret')).toBeDefined();
+          expect(ran).toBe(2);
+        });
+      });
     });
   });
 });
