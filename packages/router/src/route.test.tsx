@@ -628,14 +628,14 @@ describe('extends', () => {
     expect(found).toBeInstanceOf(Profile);
   });
 
-  it('see-through scope chrome shows only when a subclass descendant matches', () => {
+  it('see-through scope chrome shows only when a subclass descendant matches', async () => {
     class Page extends Route {}
     const Chrome = ({ children }: { children?: React.ReactNode }) => (
       <div>chrome:{children}</div>
     );
 
     location('/section/info');
-    const matched = render(
+    const matched = await renderAct(
       <Route>
         <Route to="section/*" as={Chrome}>
           <Page to="info" as={() => <span>info</span>} />
@@ -645,7 +645,7 @@ describe('extends', () => {
     expect(matched.container.textContent).toBe('chrome:info');
 
     location('/elsewhere');
-    const unmatched = render(
+    const unmatched = await renderAct(
       <Route>
         <Route to="section/*" as={Chrome}>
           <Page to="info" as={() => <span>info</span>} />
