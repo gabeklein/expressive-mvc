@@ -6,6 +6,7 @@ export class Redirect extends Component {
   to = '';
   replace = false;
   when: boolean = true;
+  fallback = false;
 
   private route = get(Route);
 
