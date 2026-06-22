@@ -233,7 +233,10 @@ const GUARD = new WeakMap<Route, { fn: Function; to?: string; promise?: Promise<
  * to the space re-runs the guard.
  */
 function guardTarget(route: Route, fn: () => Async<string | void>): string | undefined {
-  if(!within(scopeBase(route), route.router.path)){
+  // In-space iff this route is currently active for the path. `matched` is
+  // param-aware (it resolves captures), where a literal `within(scopeBase, path)`
+  // check fails on any pattern containing `:params` - skipping the guard entirely.
+  if(!route.matched){
     GUARD.delete(route);
     return;
   }

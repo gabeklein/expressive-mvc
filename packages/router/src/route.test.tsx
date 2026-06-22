@@ -601,6 +601,22 @@ describe('Route', () => {
         expect(screen.getByText('here')).toBeDefined();
       });
 
+      it('runs the guard on a route whose own pattern has a param', async () => {
+        location('/document/123');
+        let ran = 0;
+        await act(async () => {
+          render(
+            <>
+              <Route to="/document/:id" redirect={() => { ran++; return '/login'; }} as={() => <h1>doc</h1>} />
+              <Route to="/login" as={() => <h1>login</h1>} />
+            </>
+          );
+        });
+        expect(ran).toBe(1);
+        expect(window.location.pathname).toBe('/login');
+        expect(screen.getByText('login')).toBeDefined();
+      });
+
       it('guards a whole section, redirecting from a deep child path', async () => {
         location('/admin/users');
         const Layout = (props: { children?: React.ReactNode }) => <main>{props.children}</main>;
