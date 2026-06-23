@@ -2,33 +2,12 @@
 
 ## pr.yml (pull requests -> main)
 
-Blocking: `bun run test`, `bun run build`, and the plan/changeset exclusion -
-`BRANCH.md` (or legacy `PLAN.md`) may not coexist with changeset files, since
-changesets are the plan's migrated form (`bun run wrap` authors changesets and
-deletes the plan in one step). A plan alone only warns, so it stays reviewable
-in the PR for its whole life. The frozen-lockfile install in the `setup`
-action doubles as the internal-dependency desync guard - a workspace version
-that falls outside a sibling's range cannot reach main.
+Blocking: `bun run test` and `bun run build`. The frozen-lockfile install in
+the `setup` action doubles as the internal-dependency desync guard - a
+workspace version that falls outside a sibling's range cannot reach main.
 
-Non-blocking signals: the plan-present warning, `changeset status` (a preview
-of which packages would bump), and `npm publish --dry-run` pack validation for
-the publishable packages. `ci:version` sweeps any plan file that reaches main
-regardless.
-
-## changeset.yml (pull requests -> main)
-
-A confirmation gate, not a failure. The `detect` job diffs `.changeset` against
-the base (so changesets already queued on main don't count). If the PR adds its
-own changeset the gate is auto-satisfied. If it doesn't, the `confirm` job runs
-against the `changeset` environment, whose required reviewer holds it as a
-pending approval until a human confirms none is needed (internal refactor,
-test-only, no observable effect). This keeps an accidental omission from
-silently merging a user-facing change unversioned, without ever showing as a red
-failure. Kept separate from `pr.yml` so it stays a fast, self-contained gate.
-
-Branch protection requires both `verify` (from `pr.yml`) and `Confirm no
-changeset needed` to merge. When a changeset is present the `confirm` job is
-skipped, which branch protection counts as passing.
+Non-blocking signals: `changeset status` (a preview of which packages would
+bump) and `npm publish --dry-run` pack validation for the publishable packages.
 
 ## release.yml (push -> main)
 
