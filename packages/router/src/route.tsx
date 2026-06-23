@@ -8,6 +8,8 @@ import { fullPattern, matchPattern, patternSegment } from './url';
 const PARAMS = new WeakMap<Route, Record<string, string> | undefined>();
 const CHILDREN = new WeakMap<Route, Route[]>();
 
+type Async<T> = T | Promise<T>;
+
 export class Route extends Component {
   router = set(() => this.get(Router, false) || new Router());
 
@@ -25,8 +27,16 @@ export class Route extends Component {
    * icons, ordering, badges - without a Route subclass. */
   meta?: Record<string, any> = undefined;
 
-  /** When matched, redirect here instead of rendering. Always replaces history. */
-  redirect?: string = undefined;
+  /**
+   * Entry guard. A static string redirects there when matched (always replaces
+   * history). A function is evaluated on entry to this route's matched space:
+   * a truthy string redirects, a falsy result (`''`/`undefined`) allows normal
+   * render, and `null` force-404s - the route cedes the path so its scope falls
+   * through to the nearest `default`. May be async - the route's `fallback` shows
+   * while the decision pends. The verdict is cached for navigations within the
+   * space and re-evaluated on re-entry.
+   */
+  redirect?: string | (() => Async<string | void | null>) = undefined;
 
   /** Matches when nothing else in this scope did. Scoped to its parent: a
    * root-level default is the app 404, a nested one the section 404. */
@@ -96,17 +106,17 @@ export class Route extends Component {
    * Redirect/default excluded; see-through scopes seen through to children.
    */
   get active(): Route | undefined | null {
-    const { match } = this.router;
+    const { match, path, rejected } = this.router;
     let found: Route | undefined;
 
     const scan = (routes: Route[]): boolean => {
       for (const route of routes) {
-        if (route.redirect || route.default) continue;
+        if (exempt(route)) continue;
         if (allRoutes(route.nested)) {
           if (scan(route.inner)) return true;
           continue;
         }
-        if (!match(route.base, route.to)) continue;
+        if (!match(route.base, route.to) || rejected === path) continue;
         if (found) return true;
         found = route;
       }
@@ -121,12 +131,12 @@ export class Route extends Component {
    * projection (no live Route refs), safe to read reactively.
    */
   get matches(): string[] {
-    const { match, path } = this.router;
+    const { match, path, rejected } = this.router;
     const collect = (routes: Route[]): string[] =>
       routes.flatMap((route) => {
-        if (route.redirect || route.default) return [];
+        if (exempt(route)) return [];
         if (!allRoutes(route.nested))
-          return match(route.base, route.to) ? [route.path] : [];
+          return match(route.base, route.to) && rejected !== path ? [route.path] : [];
 
         // A scope counts via a matched descendant, or its own section default.
         const deep = collect(route.inner);
@@ -183,34 +193,84 @@ export class Route extends Component {
   }
 
   render(props = {} as { children?: Component.Node }): Component.Node {
-    const self = this.is;
-    const { parent, as: Component, matched } = this;
+    const { as: Component, is: self, matched, parent, redirect, router } = this;
 
     if (parent) {
       register(parent.is, self);
 
       // `path` read via our own proxy so re-arbitration re-renders us.
-      if (Component && cedes(parent, self, () => this.router.path))
+      if (Component && cedes(parent, self, () => router.path))
         return null;
     }
 
-    if (this.redirect)
+    if (typeof redirect === 'string')
       return matched
-        ? <Redirect to={this.redirect} replace />
+        ? <Redirect to={redirect} replace />
         : null;
+
+    if (typeof redirect === 'function'){
+      const target = guard(self, redirect);
+      if (target) return <Redirect to={target} replace />;
+      if (router.rejected === router.path) return null;
+    }
 
     if (Object.getOwnPropertyDescriptor(props, 'children')?.get)
       return matched ? props.children : null;
 
     const children = this.nested;
 
-    // Matched: render content (in `as` chrome if present). Unmatched: a
-    // see-through scope still mounts children (registration); a leaf renders null.
-    if (matched)
-      return Component ? <Component>{children}</Component> : <>{children}</>;
-
-    return allRoutes(children) ? <>{children}</> : null;
+    return matched
+      ? Component ? <Component>{children}</Component> : children
+      : allRoutes(children) ? children : null;
   }
+}
+
+const GUARD = new WeakMap<Route, { redirect: Function; to?: string; promise?: Promise<string | undefined> }>();
+
+/**
+ * Resolve a function `redirect` guard for an entered route. Caches the verdict
+ * per entry (keyed by the guard fn); an async guard throws its pending promise
+ * (suspense -> the route's `fallback`) until it settles, then the cached result
+ * is returned on retry. The cache is dropped on leave (see render), so returning
+ * to the space re-runs the guard.
+ */
+function guard(route: Route, redirect: () => Async<string | void | null>): string | undefined {
+  if(!route.matched){
+    GUARD.delete(route);
+    return;
+  }
+
+  let g = GUARD.get(route);
+
+  if (!g || g.redirect !== redirect)
+    GUARD.set(route, g = { redirect });
+
+  if ('to' in g) return g.to;
+  if (g.promise) throw g.promise;
+
+  function gate(to: string | void | null): string | undefined {
+    const { router } = route;
+    if (to === null) router.rejected = router.path;
+    else if (router.rejected === router.path) router.rejected = '';
+    g!.promise = undefined;
+    return g!.to = to || undefined;
+  }
+
+  const result = redirect();
+
+  if (result instanceof Promise)
+    throw g.promise = result.then(gate);
+
+  return gate(result);
+}
+
+/**
+ * Exempt from sibling arbitration and match collection: a content-less
+ * static-string redirect, or a `default` fallback. A *function* guard is a real
+ * contender - it participates in matching until it actually redirects.
+ */
+function exempt(node: { redirect?: unknown; default?: boolean }): boolean {
+  return node.default || typeof node.redirect === 'string';
 }
 
 /**
@@ -278,7 +338,7 @@ function defaultCatches(route: Route, path: string): boolean {
 type RouteProps = {
   to?: string;
   as?: unknown;
-  redirect?: string;
+  redirect?: string | (() => Async<string | null | void>);
   default?: boolean;
   children?: Component.Node;
 };
@@ -292,7 +352,7 @@ type RouteProps = {
  */
 export function matchesAnywhere(children: Component.Node, base: string, path: string): boolean {
   return lexicalRoutes(children).some(({ props, to }) => {
-    if (props.redirect || props.default) return false;
+    if (exempt(props)) return false;
 
     return allRoutes(props.children)
       ? matchesAnywhere(props.children, base + patternSegment(to), path)
@@ -313,8 +373,7 @@ type Contender = {
  * read only once a real rivalry exists, so a solitary match stays unsubscribed.
  */
 function cedes(parent: Route, child: Route, path: () => string): boolean {
-  // Fallback/redirect never competes by order, so it's never arbitrated.
-  if (child.default || child.redirect) return false;
+  if (exempt(child)) return false;
 
   const rivals = possible(parent.props.children, scopeBase(parent));
   if (rivals.length < 2 || !rivals.some((r) => r.path === child.path)) return false;
@@ -334,7 +393,7 @@ function cedes(parent: Route, child: Route, path: () => string): boolean {
  */
 function possible(children: Component.Node, base: string): Contender[] {
   return lexicalRoutes(children)
-    .filter(({ props }) => props.as && !props.redirect && !props.default)
+    .filter(({ props }) => props.as && !exempt(props))
     .map(({ props, to }) => ({
       path: base + patternSegment(to),
       matches: allRoutes(props.children)

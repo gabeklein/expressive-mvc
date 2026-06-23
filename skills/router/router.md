@@ -35,11 +35,38 @@ Routes are nested JSX. `to` is the pattern segment; `as` is the page (or layout)
 | `to`       | URL pattern segment. `:name` captures a param; `*` is a catch-all (delegated to children). Omit for an index route. |
 | `as`       | Component rendered when matched. As a layout, it receives matched children via `children`. |
 | `default`  | Matches when nothing else in this scope did. Scoped to its parent (root-level = app 404, nested = section 404). |
-| `redirect` | When matched, redirect here instead of rendering (always replaces history).              |
+| `redirect` | Entry guard. A static string redirects there when matched; a function gates the route (see [Entry guards](#entry-guards)). |
 | `label`    | Display name for NavLinks/breadcrumbs/titles (ignored by matching).                      |
 | `meta`     | Free-form metadata (icons, ordering, badges) - ignored by matching.                      |
 
 A parent-less `<Route>` with no `to` is its own root: always matched, capturing everything below.
+
+## Entry guards
+
+`redirect` accepts a **function** as well as a static string - an entry guard run when the route is matched (it can wrap a section by living on a `Route` with children). The verdict drives one of three outcomes:
+
+| Returns | Outcome |
+| --- | --- |
+| a truthy `string` | redirect there (replaces history) |
+| `''` / `undefined` / `false` | allow normal render |
+| `null` | **force-404**: cede the path so the scope falls through to its nearest `default` |
+
+The guard may be **async** (return a `Promise`); the route's `fallback` shows while it pends. The verdict is cached for navigation within the matched space and re-evaluated on re-entry.
+
+```tsx
+<Route to="document/:id"
+  fallback={<Spinner />}
+  redirect={async () => {
+    const res = await fetch(`/api/doc/${id}`);
+    if (res.status === 401) return null;        // force-404 (don't reveal forbidden vs deleted)
+    if (res.status === 302) return '/login';    // redirect
+    // ...allow
+  }}
+  as={Document} />
+<Route default as={DocumentNotFound} />          // the section 404 a null verdict cedes to
+```
+
+Force-404 is path-keyed: it marks only the concrete URL that was declined, so navigating elsewhere clears it. `null` is the deliberate "definitively not here" signal - distinct from a falsy `&&` short-circuit, which allows. The 404 surface is the scope's authored `default` sibling, so a *section*-level not-found requires a parent scope with children (a flat leaf forfeits to the nearest authored default).
 
 ## Reading match state inside a page
 
