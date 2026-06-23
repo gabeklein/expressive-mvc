@@ -106,7 +106,7 @@ export class Route extends Component {
    * Redirect/default excluded; see-through scopes seen through to children.
    */
   get active(): Route | undefined | null {
-    const { match } = this.router;
+    const { match, path, rejected } = this.router;
     let found: Route | undefined;
 
     const scan = (routes: Route[]): boolean => {
@@ -116,7 +116,8 @@ export class Route extends Component {
           if (scan(route.inner)) return true;
           continue;
         }
-        if (!match(route.base, route.to)) continue;
+        // A force-404'd leaf isn't active - the scope's default is what renders.
+        if (!match(route.base, route.to) || rejected === path) continue;
         if (found) return true;
         found = route;
       }

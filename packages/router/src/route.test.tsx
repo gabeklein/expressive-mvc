@@ -784,6 +784,22 @@ describe('Route', () => {
           expect(router.rejected === router.path).toBe(false);
           expect(screen.getByText('doc')).toBeDefined();
         });
+
+        it('a force-404\'d leaf is not reported as the active child', async () => {
+          location('/document/123');
+          const gate = mockPromise<string | void | null>();
+          let scope!: Route;
+          await act(async () => {
+            render(
+              <Route to="document" as={Layout} is={(r) => (scope = r)}>
+                <Route to=":id" redirect={() => gate} as={Document} />
+                <Route default as={NotFound} />
+              </Route>
+            );
+          });
+          await act(async () => { gate.resolve(null); });
+          expect(scope.active).toBeUndefined();
+        });
       });
     });
   });
