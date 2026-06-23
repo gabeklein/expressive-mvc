@@ -82,7 +82,7 @@ await expect(state).not.toHaveUpdated();
 - When starting actual work, switch from any agent-scratch branch (`claude/*`) to a conventional named branch (`feat/...`, `fix/...`, `chore/...`) before the first real commit.
 - For new features and non-trivial refactors, capture agreed scope, key decisions, and approach in the PR description before implementation - it is the canonical shared plan and review context. (Working notes may live in untracked local scratch; only the PR description is shared.)
 - Write a changeset (`bun run changeset`) when a change is user-facing: new feature, behavior change, API addition, breaking change.
-- No changeset for internal refactors, test-only changes, or fixes with no observable effect. A zero-changeset PR is legitimate, but the `changeset` workflow holds it at a manual confirmation gate (a pending environment approval) until a reviewer confirms none is needed - so an accidental omission can't slip a user-facing change through unversioned. Adding a changeset auto-satisfies the gate.
+- No changeset for internal refactors, test-only changes, or fixes with no observable effect. A zero-changeset PR is legitimate.
 
 ### Releasing
 

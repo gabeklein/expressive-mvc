@@ -9,21 +9,6 @@ workspace version that falls outside a sibling's range cannot reach main.
 Non-blocking signals: `changeset status` (a preview of which packages would
 bump) and `npm publish --dry-run` pack validation for the publishable packages.
 
-## changeset.yml (pull requests -> main)
-
-A confirmation gate, not a failure. The `detect` job diffs `.changeset` against
-the base (so changesets already queued on main don't count). If the PR adds its
-own changeset the gate is auto-satisfied. If it doesn't, the `confirm` job runs
-against the `changeset` environment, whose required reviewer holds it as a
-pending approval until a human confirms none is needed (internal refactor,
-test-only, no observable effect). This keeps an accidental omission from
-silently merging a user-facing change unversioned, without ever showing as a red
-failure. Kept separate from `pr.yml` so it stays a fast, self-contained gate.
-
-Branch protection requires both `verify` (from `pr.yml`) and `Confirm no
-changeset needed` to merge. When a changeset is present the `confirm` job is
-skipped, which branch protection counts as passing.
-
 ## release.yml (push -> main)
 
 `changesets/action` maintains the "Version Packages" PR (`changeset version`
