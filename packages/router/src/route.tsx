@@ -31,11 +31,12 @@ export class Route extends Component {
    * Entry guard. A static string redirects there when matched (always replaces
    * history). A function is evaluated on entry to this route's matched space:
    * a truthy string redirects, a falsy result (`''`/`undefined`) allows normal
-   * render. May be async - the route's `fallback` shows while the decision pends.
-   * The verdict is cached for navigations within the space and re-evaluated on
-   * re-entry.
+   * render, and `null` force-404s - the route cedes the path so its scope falls
+   * through to the nearest `default`. May be async - the route's `fallback` shows
+   * while the decision pends. The verdict is cached for navigations within the
+   * space and re-evaluated on re-entry.
    */
-  redirect?: string | (() => Async<string | void>) = undefined;
+  redirect?: string | (() => Async<string | void | null>) = undefined;
 
   /** Matches when nothing else in this scope did. Scoped to its parent: a
    * root-level default is the app 404, a nested one the section 404. */
@@ -130,12 +131,12 @@ export class Route extends Component {
    * projection (no live Route refs), safe to read reactively.
    */
   get matches(): string[] {
-    const { match, path } = this.router;
+    const { match, path, rejected } = this.router;
     const collect = (routes: Route[]): string[] =>
       routes.flatMap((route) => {
         if (exempt(route)) return [];
         if (!allRoutes(route.nested))
-          return match(route.base, route.to) ? [route.path] : [];
+          return match(route.base, route.to) && rejected !== path ? [route.path] : [];
 
         // A scope counts via a matched descendant, or its own section default.
         const deep = collect(route.inner);
@@ -210,6 +211,7 @@ export class Route extends Component {
     if (typeof redirect === 'function'){
       const target = guardTarget(self, redirect);
       if (target) return <Redirect to={target} replace />;
+      if (router.rejected === router.path) return null;
     }
 
     if (Object.getOwnPropertyDescriptor(props, 'children')?.get)
@@ -223,7 +225,7 @@ export class Route extends Component {
   }
 }
 
-const GUARD = new WeakMap<Route, { fn: Function; to?: string; promise?: Promise<void> }>();
+const GUARD = new WeakMap<Route, { redirect: Function; to?: string; promise?: Promise<string | undefined> }>();
 
 /**
  * Resolve a function `redirect` guard for an entered route. Caches the verdict
@@ -232,7 +234,7 @@ const GUARD = new WeakMap<Route, { fn: Function; to?: string; promise?: Promise<
  * is returned on retry. The cache is dropped on leave (see render), so returning
  * to the space re-runs the guard.
  */
-function guardTarget(route: Route, fn: () => Async<string | void>): string | undefined {
+function guardTarget(route: Route, redirect: () => Async<string | void | null>): string | undefined {
   // In-space iff this route is currently active for the path. `matched` is
   // param-aware (it resolves captures), where a literal `within(scopeBase, path)`
   // check fails on any pattern containing `:params` - skipping the guard entirely.
@@ -243,24 +245,26 @@ function guardTarget(route: Route, fn: () => Async<string | void>): string | und
 
   let g = GUARD.get(route);
 
-  if (!g || g.fn !== fn)
-    GUARD.set(route, g = { fn });
+  if (!g || g.redirect !== redirect)
+    GUARD.set(route, g = { redirect });
 
   if ('to' in g) return g.to;
   if (g.promise) throw g.promise;
 
-  const out = fn();
-
-  if (out instanceof Promise){
-    g.promise = out.then((to) => {
-      g.to = to || undefined;
-      g.promise = undefined;
-    });
-
-    throw g.promise;
+  function gate(to: string | void | null): string | undefined {
+    const { router } = route;
+    if (to === null) router.rejected = router.path;
+    else if (router.rejected === router.path) router.rejected = '';
+    g!.promise = undefined;
+    return g!.to = to || undefined;
   }
 
-  return g.to = out || undefined;
+  const result = redirect();
+
+  if (result instanceof Promise)
+    throw g.promise = result.then(gate);
+
+  return gate(result);
 }
 
 /**
@@ -337,7 +341,7 @@ function defaultCatches(route: Route, path: string): boolean {
 type RouteProps = {
   to?: string;
   as?: unknown;
-  redirect?: string | (() => Async<string | void>);
+  redirect?: string | (() => Async<string | null | void>);
   default?: boolean;
   children?: Component.Node;
 };

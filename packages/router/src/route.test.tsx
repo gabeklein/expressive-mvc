@@ -723,6 +723,68 @@ describe('Route', () => {
           expect(ran).toBe(2);
         });
       });
+
+      describe('force-404 (null verdict)', () => {
+        const Layout = (props: { children?: React.ReactNode }) => <main>{props.children}</main>;
+        const Document = () => <article>doc</article>;
+        const NotFound = () => <h1>not found</h1>;
+
+        it('cedes the path so the scope falls through to its default', async () => {
+          location('/document/123');
+          const gate = mockPromise<string | void | null>();
+          await act(async () => {
+            render(
+              <Route to="document" as={Layout}>
+                <Route to=":id" fallback={<h1>loading</h1>} redirect={() => gate} as={Document} />
+                <Route default as={NotFound} />
+              </Route>
+            );
+          });
+          expect(screen.getByText('loading')).toBeDefined();
+
+          await act(async () => gate.resolve(null));
+          expect(screen.queryByText('doc')).toBeNull();
+          expect(screen.getByText('not found')).toBeDefined();
+          expect(window.location.pathname).toBe('/document/123');
+        });
+
+        it('a non-null verdict still renders the document (control)', async () => {
+          location('/document/123');
+          const gate = mockPromise<string | void | null>();
+          await act(async () => {
+            render(
+              <Route to="document" as={Layout}>
+                <Route to=":id" fallback={<h1>loading</h1>} redirect={() => gate} as={Document} />
+                <Route default as={NotFound} />
+              </Route>
+            );
+          });
+          await act(async () => gate.resolve(undefined));
+          expect(screen.getByText('doc')).toBeDefined();
+          expect(screen.queryByText('not found')).toBeNull();
+        });
+
+        it('marks the forfeited path on the router, cleared on navigation', async () => {
+          location('/document/123');
+          const gate = mockPromise<string | void | null>();
+          let router!: Router;
+          await act(async () => {
+            render(
+              <Route to="document" as={Layout} is={(r) => (router = r.router)}>
+                <Route to=":id" redirect={() => gate} as={Document} />
+                <Route default as={NotFound} />
+              </Route>
+            );
+          });
+          await act(async () => { gate.resolve(null); });
+          expect(router.rejected).toBe('/document/123');
+          expect(screen.getByText('not found')).toBeDefined();
+
+          await act(async () => router.goto('/document/999'));
+          expect(router.rejected === router.path).toBe(false);
+          expect(screen.getByText('doc')).toBeDefined();
+        });
+      });
     });
   });
 });

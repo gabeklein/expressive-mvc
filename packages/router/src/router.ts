@@ -14,6 +14,13 @@ export class Router extends Component {
   path = '/';
 
   /**
+   * Mechanism for force-404: the concrete path a matched Route declined via its
+   * guard (returning `null`). Single-valued and path-keyed - overwritten per
+   * forfeit, never accumulates. Matching treats `rejected === path` as not-found.
+   */
+  rejected = '';
+
+  /**
    * Canonical query state - a reactive record. Read `query.foo` to track a
    * param; write `query.foo = ...` (or delete) to navigate: a direct mutation
    * pushes a new history entry, same as if it arrived via `goto`.
