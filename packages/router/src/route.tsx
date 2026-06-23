@@ -116,7 +116,6 @@ export class Route extends Component {
           if (scan(route.inner)) return true;
           continue;
         }
-        // A force-404'd leaf isn't active - the scope's default is what renders.
         if (!match(route.base, route.to) || rejected === path) continue;
         if (found) return true;
         found = route;
@@ -236,9 +235,6 @@ const GUARD = new WeakMap<Route, { redirect: Function; to?: string; promise?: Pr
  * to the space re-runs the guard.
  */
 function guard(route: Route, redirect: () => Async<string | void | null>): string | undefined {
-  // In-space iff this route is currently active for the path. `matched` is
-  // param-aware (it resolves captures), where a literal `within(scopeBase, path)`
-  // check fails on any pattern containing `:params` - skipping the guard entirely.
   if(!route.matched){
     GUARD.delete(route);
     return;
