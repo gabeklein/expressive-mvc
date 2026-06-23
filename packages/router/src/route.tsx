@@ -210,7 +210,7 @@ export class Route extends Component {
         : null;
 
     if (typeof redirect === 'function'){
-      const target = guardTarget(self, redirect);
+      const target = guard(self, redirect);
       if (target) return <Redirect to={target} replace />;
       if (router.rejected === router.path) return null;
     }
@@ -235,7 +235,7 @@ const GUARD = new WeakMap<Route, { redirect: Function; to?: string; promise?: Pr
  * is returned on retry. The cache is dropped on leave (see render), so returning
  * to the space re-runs the guard.
  */
-function guardTarget(route: Route, redirect: () => Async<string | void | null>): string | undefined {
+function guard(route: Route, redirect: () => Async<string | void | null>): string | undefined {
   // In-space iff this route is currently active for the path. `matched` is
   // param-aware (it resolves captures), where a literal `within(scopeBase, path)`
   // check fails on any pattern containing `:params` - skipping the guard entirely.
