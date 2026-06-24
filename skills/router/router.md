@@ -85,10 +85,23 @@ const BlogPost = () => (
 | `route.path`      | `string`                          | This route's own absolute path (base + segment).                        |
 | `route.query`     | `Record<string,string\|undefined>` | Live query record from the active Router (global, not route-scoped - see below). |
 | `route.anchor`    | `string`                          | Directory-style anchor for relative navigation.                         |
-| `route.goto(to)`  | -                                 | Navigate, resolving `to` relative to this route.                        |
+| `route.goto(to)`  | -                                 | Navigate. A string resolves relative to this route; a params object swaps route params in place (see below). |
 | `route.resolve(to)` | `string`                        | Resolve a (possibly relative) url to an absolute pathname.              |
 
 Same-pattern navigation (`/blog/a` -> `/blog/b`) keeps the page instance mounted: `matched` is unchanged, so the component reconciles and re-reads `match`, rather than unmounting/remounting.
+
+To swap a param without composing a relative path, pass `goto` an object: it rebuilds this route's own pattern from the current match merged with the overrides. Any param can change, not just the trailing one.
+
+```tsx
+// on /document/123, route pattern "document/:id"
+route.goto({ id: '456' });        // -> /document/456
+
+// on /a/1/2, route pattern "a/:b/:c"
+route.goto({ c: '9' });           // -> /a/1/9   (keeps :b)
+route.goto({ b: '8' });           // -> /a/8/2   (keeps :c)
+```
+
+A param the current path can't supply and the object doesn't provide throws an unresolved-parameters error.
 
 ## Navigation state on `Router`
 

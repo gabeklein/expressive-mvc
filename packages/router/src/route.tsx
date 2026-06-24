@@ -3,12 +3,24 @@ import { childrenOf, Fragment, isElement, propsOf, typeOf, type JSX } from '@exp
 
 import { Redirect } from './redirect';
 import { Router } from './router';
-import { fullPattern, matchPattern, patternSegment } from './url';
+import { fillParams, fullPattern, matchPattern, patternSegment } from './url';
 
 const PARAMS = new WeakMap<Route, Record<string, string> | undefined>();
 const CHILDREN = new WeakMap<Route, Route[]>();
 
 type Async<T> = T | Promise<T>;
+
+declare namespace Route {
+  /**
+   * Param-swap argument for `goto` - the route's path params (`:name` segments
+   * of its pattern), as overrides merged over the current match. These are the
+   * `match` namespace, distinct from `query` (the `?search` record): path params
+   * are positional and identify the matched resource, query params refine it.
+   * Lenient `string` keys: path params have no per-route declared type (unlike
+   * `query`), so keys aren't statically checked.
+   */
+  type Params = Record<string, string>;
+}
 
 export class Route extends Component {
   router = set(() => this.get(Router, false) || new Router());
@@ -182,13 +194,16 @@ export class Route extends Component {
     return this.router.resolve(this, url);
   }
 
-  goto(url = '.', replace = false) {
-    let path = this.resolve(url);
+  goto(to: string | Route.Params = '.', replace = false) {
+    let path = typeof to === 'string'
+      ? this.resolve(to)
+      : fillParams(this.path, { ...this.match, ...to });
 
     if (path.includes('/:'))
       throw new Error(`Cannot navigate to "${path}" from unmatched Route "${this.to}" - it has unresolved parameters.`);
 
     if (path.length > 1 && path.endsWith('/')) path = path.slice(0, -1);
+
     this.router.goto(path, replace);
   }
 

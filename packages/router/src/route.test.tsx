@@ -237,6 +237,65 @@ describe('Route', () => {
     expect(() => router.current.goto('./x')).toThrow(/absolute path/);
   });
 
+  describe('Route.goto param swap', () => {
+    it('swaps a single param against the route pattern', async () => {
+      location('/document/123');
+      let leaf!: Route;
+      render(<Route to="/document/:id" is={(r) => (leaf = r)} />);
+      await act(async () => leaf.goto({ id: '456' }));
+      expect(window.location.pathname).toBe('/document/456');
+    });
+
+    it('swaps any param in a multi-param pattern, keeping the rest', async () => {
+      location('/a/1/2');
+      let leaf!: Route;
+      render(<Route to="/a/:b/:c" is={(r) => (leaf = r)} />);
+
+      await act(async () => leaf.goto({ c: '9' }));
+      expect(window.location.pathname).toBe('/a/1/9');
+
+      await act(async () => leaf.goto({ b: '8' }));
+      expect(window.location.pathname).toBe('/a/8/9');
+    });
+
+    it('swaps a param on a nested leaf, same as the flat form', async () => {
+      location('/document/123');
+      let leaf!: Route;
+      render(
+        <Route to="/document">
+          <Route to=":id" is={(r) => (leaf = r)} as={() => <div>doc</div>} />
+        </Route>
+      );
+      await act(async () => leaf.goto({ id: '456' }));
+      expect(window.location.pathname).toBe('/document/456');
+    });
+
+    it('fills purely from overrides when the route is unmatched', async () => {
+      location('/elsewhere');
+      let leaf!: Route;
+      render(<Route to="/document/:id" is={(r) => (leaf = r)} />);
+      await act(async () => leaf.goto({ id: '7' }));
+      expect(window.location.pathname).toBe('/document/7');
+    });
+
+    it('throws when a param is left unresolved', () => {
+      location('/elsewhere');
+      let leaf!: Route;
+      render(<Route to="/document/:id" is={(r) => (leaf = r)} />);
+      expect(() => leaf.goto({})).toThrow(/unresolved parameters/);
+    });
+
+    it('honors the replace flag', async () => {
+      location('/document/123');
+      let leaf!: Route;
+      render(<Route to="/document/:id" is={(r) => (leaf = r)} />);
+      const before = window.history.length;
+      await act(async () => leaf.goto({ id: '456' }, true));
+      expect(window.location.pathname).toBe('/document/456');
+      expect(window.history.length).toBe(before);
+    });
+  });
+
   it('default `as` renders nothing when given no children', () => {
     location('/blank');
     const view = render(<Route to="/blank" />);
