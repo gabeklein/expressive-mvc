@@ -6,7 +6,7 @@ import { set } from '@expressive/mvc';
 
 Versatile instruction for managed slots: defaults, placeholders, lazy/async factories, validation callbacks.
 
-All `set()` forms are **non-enumerable** - excluded from snapshots, `Object.keys()`, and `ref(this)` - which distinguishes them from plain assignment (`name = 'foo'`). Forms initialized with a factory are **read-only** unless paired with a setter callback; forms initialized with a value are writable by default.
+All `set()` forms are **non-enumerable** - excluded from snapshots, `Object.keys()`, and `ref(this)` - which distinguishes them from plain assignment (`name = 'foo'`). The one exception is the [computed](#computed-reactive) form, which is enumerable to match a getter. Forms initialized with a factory are **read-only** unless paired with a setter callback; forms initialized with a value are writable by default.
 
 ## Overloads
 
@@ -97,6 +97,22 @@ class MyState extends State {
 
 Makes the property writable. Callback runs on both factory resolution and manual assignment.
 
+### Computed (Reactive)
+
+```ts
+class MyState extends State {
+  first = 'John';
+  last = 'Doe';
+  full = set(self => `${self.first} ${self.last}`); // re-runs when first/last change
+}
+```
+
+The instruction equivalent of a getter. Unlike a zero-arg factory (which runs once and caches), a function **declaring a parameter** routes into the reactive compute engine: it re-runs whenever any managed property it reads is updated. The instance is passed as both `this` and the first argument, so arrow functions and regular functions both work.
+
+- **Dispatch is by arity.** `set(() => x)` is a one-shot factory; `set(self => x)` is reactive. A function that reads dependencies via `this` still needs to declare the parameter (`set(function (self) { return this.x })`) to be treated as computed.
+- Enumerable and read-only, exactly like a prototype getter. Computes lazily on first access; included in snapshots once accessed.
+- Because the slot is instruction-assigned rather than a concrete getter, a **subclass can refine its type** with `declare` (e.g. a parent declaring a generic computed property that subclasses narrow) - which a getter on the parent class cannot express.
+
 ### Direct Promises Are Not Supported
 
 ```ts
@@ -115,6 +131,7 @@ function set<T>(value: T, onUpdate?: set.Callback<T>): T;
 function set<T>(factory: () => T | Promise<T>, required?: true): T;
 function set<T>(factory: () => T | Promise<T>, required: boolean): T | undefined;
 function set<T>(factory: () => T | Promise<T>, onUpdate: set.Callback<T>): T;
+function set<T, S = any>(compute: (this: S, self: S) => T): T;
 
 type set.Callback<T> = (this: State, next: T, previous: T) => ((next: T) => void) | Promise<any> | void | boolean;
 type set.Factory<T, S> = (this: S, property: string) => Promise<T> | T;

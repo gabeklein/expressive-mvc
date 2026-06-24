@@ -1,5 +1,5 @@
 import { listener, capture } from '../observable';
-import { access, event, State, update } from '../state';
+import { access, compute, event, State, update } from '../state';
 import { def } from './def';
 
 declare namespace set {
@@ -61,6 +61,21 @@ function set<T>(
 function set<T>(factory: () => T | Promise<T>, onUpdate: set.Callback<T>): T;
 
 /**
+ * Define a reactive computed property - the instruction equivalent of a getter.
+ *
+ * Unlike a zero-arg factory (which runs once and caches), the compute function
+ * re-runs whenever any managed property it reads is updated. It receives the
+ * instance as both `this` and its first argument, so arrow functions work.
+ *
+ * Enumerable and read-only, matching a prototype getter. Because it assigns
+ * through an instruction rather than a concrete getter, subclasses may refine
+ * the property's type with `declare`.
+ *
+ * @param compute - Function of arity >= 1; receives the instance to derive from.
+ */
+function set<T, S = any>(compute: (this: S, self: S) => T): T;
+
+/**
  * Set a property with a non-function, non-Promise value.
  *
  * Non-enumerable but writable. Unlike plain assignment (`= value`), this
@@ -83,6 +98,11 @@ function set<T = any>(value?: unknown, argument?: unknown): any {
       throw new TypeError(
         `Direct promises are not supported in set(${subject}.${key}). Use set(() => promise) instead.`
       );
+
+    if (typeof value == 'function' && value.length > 0) {
+      compute.call(subject, value as () => unknown, key);
+      return;
+    }
 
     const config: State.Apply = {
       enumerable: false,

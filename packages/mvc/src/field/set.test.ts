@@ -410,6 +410,106 @@ describe('factory', () => {
   });
 });
 
+describe('compute', () => {
+  it('will recompute when dependency updates', async () => {
+    class Test extends State {
+      first = 'John';
+      last = 'Doe';
+      full = set((self: Test) => `${self.first} ${self.last}`);
+    }
+
+    const test = Test.new();
+
+    expect(test.full).toBe('John Doe');
+
+    test.first = 'Jane';
+
+    await expect(test).toHaveUpdated('first', 'full');
+    expect(test.full).toBe('Jane Doe');
+  });
+
+  it('will receive instance as this and argument', () => {
+    const seen = mock();
+
+    class Test extends State {
+      value = 1;
+      double = set(function (this: Test, self: Test) {
+        seen(this === self);
+        return self.value * 2;
+      });
+    }
+
+    const test = Test.new();
+
+    expect(test.double).toBe(2);
+    expect(seen).toBeCalledWith(true);
+  });
+
+  it('will be enumerable like a getter', () => {
+    class Test extends State {
+      value = 1;
+      double = set((self: Test) => self.value * 2);
+    }
+
+    const test = Test.new();
+
+    expect(Object.keys(test)).toContain('double');
+
+    void test.double;
+
+    expect(test.get()).toMatchObject({ value: 1, double: 2 });
+  });
+
+  it('will be read-only', () => {
+    class Test extends State {
+      value = 1;
+      double = set((self: Test) => self.value * 2);
+    }
+
+    const test = Test.new();
+
+    expect(() => {
+      (test as any).double = 5;
+    }).toThrow(/read-only/);
+  });
+
+  it('will not recompute for unrelated update', async () => {
+    const factory = mock((self: Test) => self.value * 2);
+
+    class Test extends State {
+      value = 1;
+      other = 'foo';
+      double = set(factory);
+    }
+
+    const test = Test.new();
+
+    void test.double;
+    expect(factory).toBeCalledTimes(1);
+
+    test.other = 'bar';
+    await expect(test).toHaveUpdated('other');
+
+    void test.double;
+    expect(factory).toBeCalledTimes(1);
+  });
+
+  it('will allow subclass to refine type via declare', () => {
+    class Base extends State {
+      source = 1;
+      derived = set((self: Base) => self.source as unknown);
+    }
+
+    class Sub extends Base {
+      declare derived: number;
+    }
+
+    const sub = Sub.new();
+
+    expect(sub.derived).toBe(1);
+  });
+});
+
 describe('suspense', () => {
   it('will throw suspense-promise resembling an error', () => {
     const promise = mockPromise();
