@@ -631,6 +631,68 @@ describe('Route', () => {
       );
       expect(flat.container.textContent).toBe('detail');
     });
+
+    it('nested form interposes a section Route the flat form lacks', () => {
+      location('/users/42');
+
+      let nestedLeaf!: Route;
+      const nested = render(
+        <Route to="users" as={Chrome}>
+          <Route to=":id" is={(r) => (nestedLeaf = r)} as={Detail} />
+        </Route>
+      );
+      // the :id leaf hangs off a /users section scope
+      expect(nestedLeaf.parent!.path).toBe('/users');
+      nested.unmount();
+
+      let flatLeaf!: Route;
+      render(
+        <Route>
+          <Route to="users/:id" is={(r) => (flatLeaf = r)} as={Detail} />
+        </Route>
+      );
+      // flat leaf hangs directly off the app root - no /users layer
+      expect(flatLeaf.parent!.path).toBe('');
+    });
+
+    it('nested chrome persists across a param swap', async () => {
+      location('/users/1');
+      const Id = () => (
+        <Consumer for={Route}>{(r) => <span>{r.match!.id}</span>}</Consumer>
+      );
+      let leaf!: Route;
+      const view = render(
+        <Route to="users" as={Chrome}>
+          <Route to=":id" is={(r) => (leaf = r)} as={Id} />
+        </Route>
+      );
+      expect(view.container.textContent).toBe('chrome/1');
+
+      await act(async () => leaf.goto({ id: '2' }));
+      expect(view.container.textContent).toBe('chrome/2');
+    });
+
+    it('a literal sibling beats the param in both forms', () => {
+      const New = () => <span>new</span>;
+      location('/users/new');
+
+      const nested = render(
+        <Route to="users" as={Chrome}>
+          <Route to="new" as={New} />
+          <Route to=":id" as={Detail} />
+        </Route>
+      );
+      expect(nested.container.textContent).toBe('chrome/new');
+      nested.unmount();
+
+      const flat = render(
+        <Route>
+          <Route to="users/new" as={New} />
+          <Route to="users/:id" as={Detail} />
+        </Route>
+      );
+      expect(flat.container.textContent).toBe('new');
+    });
   });
 
   describe('redirect prop', () => {
