@@ -294,6 +294,33 @@ describe('Route', () => {
       expect(window.location.pathname).toBe('/document/456');
       expect(window.history.length).toBe(before);
     });
+
+    it('throws on a param the route does not declare', () => {
+      location('/document/123');
+      let leaf!: Route;
+      render(<Route to="/document/:id" is={(r) => (leaf = r)} />);
+      expect(() => leaf.goto({ nope: 'x' })).toThrow(/cannot set param "nope"/);
+    });
+
+    it('a flat leaf owns every param in its multi-segment pattern', async () => {
+      location('/org/1/user/2');
+      let leaf!: Route;
+      render(<Route to="/org/:orgId/user/:userId" is={(r) => (leaf = r)} />);
+      await act(async () => leaf.goto({ orgId: '9' }));
+      expect(window.location.pathname).toBe('/org/9/user/2');
+    });
+
+    it('a nested leaf owns only its own segment, not an inherited param', () => {
+      location('/org/1/user/2');
+      let leaf!: Route;
+      render(
+        <Route to="org/:orgId">
+          <Route to="user/:userId" is={(r) => (leaf = r)} as={() => null} />
+        </Route>
+      );
+      // userId is the leaf's own; orgId belongs to the parent scope.
+      expect(() => leaf.goto({ orgId: '9' })).toThrow(/cannot set param "orgId"/);
+    });
   });
 
   it('default `as` renders nothing when given no children', () => {

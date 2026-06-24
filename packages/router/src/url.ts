@@ -80,6 +80,11 @@ export function fillPath(pattern: string, path: string): string | null {
   return '/' + parts.slice(0, pat.length).join('/');
 }
 
+/** The `:param` names declared in a pattern, in order (colon stripped). */
+export function paramNames(pattern: string): string[] {
+  return split(pattern).filter((p) => p.startsWith(':')).map((p) => p.slice(1));
+}
+
 /**
  * Substitute a pattern's `:param` segments from a params map. A param absent
  * from the map is left in place (`:name`), so the caller can detect it as

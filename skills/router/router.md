@@ -111,7 +111,7 @@ const BlogPost = () => (
 
 Same-pattern navigation (`/blog/a` -> `/blog/b`) keeps the page instance mounted: `matched` is unchanged, so the component reconciles and re-reads `match`, rather than unmounting/remounting.
 
-To swap a param without composing a relative path, pass `goto` an object: it rebuilds this route's own pattern from the current match merged with the overrides. Any param can change, not just the trailing one.
+To swap a param without composing a relative path, pass `goto` an object: it rebuilds this route's path from the current match merged with the overrides. Any param the route **declares in its own `to`** can change - position doesn't matter.
 
 ```tsx
 // on /document/123, route pattern "document/:id"
@@ -122,7 +122,9 @@ route.goto({ c: '9' });           // -> /a/1/9   (keeps :b)
 route.goto({ b: '8' });           // -> /a/8/2   (keeps :c)
 ```
 
-A param the current path can't supply and the object doesn't provide throws an unresolved-parameters error.
+**A route can only set the params it declares.** Inherited (ancestor) segments are filled from the current path, read-only; a key the route does not own throws. This is where flat-vs-nested matters again: a flat `org/:orgId/user/:userId` leaf owns *both*, but in `<Route to="org/:orgId"><Route to="user/:userId"/></Route>` the inner leaf owns only `userId` - changing `orgId` is the parent scope's call. To cross levels, navigate to the owning route or pass an absolute path string. A declared param the current path can't supply and the object doesn't provide throws an unresolved-parameters error.
+
+Param changes do not remount: like `query`, `match` updates reactively and the page reconciles in place. A param combination that matches the pattern but is invalid in data (`/org/9/user/2` where that pairing doesn't exist) navigates fine; detecting it is the page's job - see force-404 under [Entry guards](#entry-guards).
 
 ## Navigation state on `Router`
 

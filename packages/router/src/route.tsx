@@ -3,7 +3,7 @@ import { childrenOf, Fragment, isElement, propsOf, typeOf, type JSX } from '@exp
 
 import { Redirect } from './redirect';
 import { Router } from './router';
-import { fillParams, fullPattern, matchPattern, patternSegment } from './url';
+import { fillParams, fullPattern, matchPattern, paramNames, patternSegment } from './url';
 
 const PARAMS = new WeakMap<Route, Record<string, string> | undefined>();
 const CHILDREN = new WeakMap<Route, Route[]>();
@@ -195,9 +195,18 @@ export class Route extends Component {
   }
 
   goto(to: string | Route.Params = '.', replace = false) {
-    let path = typeof to === 'string'
-      ? this.resolve(to)
-      : fillParams(this.path, { ...this.match, ...to });
+    let path: string;
+
+    if (typeof to === 'string')
+      path = this.resolve(to);
+    else {
+      const own = paramNames(this.to);
+      for (const key in to)
+        if (!own.includes(key))
+          throw new Error(`Route "${this.to}" cannot set param "${key}" - it owns only [${own.join(', ') || 'none'}]. Inherited or unrelated params can't be set here; navigate to the owning route or an absolute path.`);
+
+      path = fillParams(this.path, { ...this.match, ...to });
+    }
 
     if (path.includes('/:'))
       throw new Error(`Cannot navigate to "${path}" from unmatched Route "${this.to}" - it has unresolved parameters.`);
