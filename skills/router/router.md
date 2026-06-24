@@ -41,7 +41,26 @@ Routes are nested JSX. `to` is the pattern segment; `as` is the page (or layout)
 
 A parent-less `<Route>` with no `to` is its own root: always matched, capturing everything below.
 
-A multi-segment `to` (`to="users/:id"`) is a **flat leaf** - it does not synthesize an intermediate `users` scope. Nesting is the explicit (and only) way to open a scope: shared chrome via a layout `as`, and a section `default`. So `to="users/:id"` and `<Route to="users"><Route to=":id"/></Route>` match the same path but are not equivalent - only the nested form can host a section `default` or wrap its children in chrome. A `default` likewise needs an authored parent scope: a root `default` is the app 404 only because the root `<Route>` is its scope.
+### Flat leaf vs. nested scope
+
+A multi-segment `to` (`to="users/:id"`) is a **flat leaf** - it does *not* synthesize an intermediate `users` scope. Nesting is the explicit (and only) way to open one:
+
+```tsx
+<Route to="users/:id" as={Detail} />            {/* flat leaf */}
+
+<Route to="users" as={Layout}>                   {/* nested scope */}
+  <Route to=":id" as={Detail} />
+  <Route default as={NotFound} />
+</Route>
+```
+
+Both resolve `/users/42` identically - same match, same captures, same relative navigation (both anchor on the resolved `/users/42`). Nesting changes nothing for plain navigation; it buys a **scope**. Only the nested form can:
+
+- host a **section `default`** (a `/users/<bad-id>` 404 that stays in the section, rather than falling through to the app-level default);
+- wrap children in **shared chrome** (the layout `as`) that persists across param changes;
+- interpose a **section `Route`** in context (so `get(Route)` sees both the section and the leaf) and group the section in `NavLinks`.
+
+A `default` always needs an authored parent scope - a root `default` is the app 404 only because the root `<Route>` is its scope. So **use the flat leaf for a standalone endpoint; nest the moment you need a section 404, shared chrome, sibling routes under the prefix, or nav grouping** - which is most resource pages, and is required for the force-404 pattern below.
 
 ## Entry guards
 
