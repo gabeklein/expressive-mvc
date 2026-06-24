@@ -32,7 +32,7 @@ Routes are nested JSX. `to` is the pattern segment; `as` is the page (or layout)
 
 | Prop       | Meaning                                                                                  |
 | ---------- | ---------------------------------------------------------------------------------------- |
-| `to`       | URL pattern segment. `:name` captures a param; `*` is a catch-all (delegated to children). Omit for an index route. |
+| `to`       | URL pattern segment. `:name` captures a param. A trailing `*` is a catch-all matching the remaining path segments (captured as `*`) - needed on a **leaf** that should match deep paths; **redundant on a scope with child Routes**, whose children already extend the match. Omit for an index route. |
 | `as`       | Component rendered when matched. As a layout, it receives matched children via `children`. |
 | `default`  | Matches when nothing else in this scope did. Scoped to its parent (root-level = app 404, nested = section 404). |
 | `redirect` | Entry guard. A static string redirects there when matched; a function gates the route (see [Entry guards](#entry-guards)). |
@@ -40,6 +40,8 @@ Routes are nested JSX. `to` is the pattern segment; `as` is the page (or layout)
 | `meta`     | Free-form metadata (icons, ordering, badges) - ignored by matching.                      |
 
 A parent-less `<Route>` with no `to` is its own root: always matched, capturing everything below.
+
+A multi-segment `to` (`to="users/:id"`) is a **flat leaf** - it does not synthesize an intermediate `users` scope. Nesting is the explicit (and only) way to open a scope: shared chrome via a layout `as`, and a section `default`. So `to="users/:id"` and `<Route to="users"><Route to=":id"/></Route>` match the same path but are not equivalent - only the nested form can host a section `default` or wrap its children in chrome. A `default` likewise needs an authored parent scope: a root `default` is the app 404 only because the root `<Route>` is its scope.
 
 ## Entry guards
 
