@@ -578,6 +578,61 @@ describe('Route', () => {
     });
   });
 
+  // A multi-segment `to` ("users/:id") is a flat leaf - it does NOT synthesize an
+  // intermediate "users" scope. Only explicit nesting opens a scope that can hold
+  // a section `default` / shared chrome. These pin that the two forms differ.
+  describe('scope vs segment (no desugaring)', () => {
+    const Chrome = (props: { children?: React.ReactNode }) => (
+      <main>chrome/{props.children}</main>
+    );
+    const Detail = () => <span>detail</span>;
+    const SectionMissing = () => <span>section-404</span>;
+    const AppMissing = () => <span>app-404</span>;
+
+    it('nested form exposes a section scope: a miss hits the section default within chrome', () => {
+      location('/users');
+      const view = render(
+        <Route to="users" as={Chrome}>
+          <Route to=":id" as={Detail} />
+          <Route default as={SectionMissing} />
+        </Route>
+      );
+      expect(view.container.textContent).toBe('chrome/section-404');
+    });
+
+    it('flat form has no section scope: the same miss falls through to the app default, no chrome', () => {
+      location('/users');
+      const view = render(
+        <Route>
+          <Route to="users/:id" as={Detail} />
+          <Route default as={AppMissing} />
+        </Route>
+      );
+      expect(view.container.textContent).toBe('app-404');
+    });
+
+    it('both forms match the resolved path identically', () => {
+      location('/users/42');
+
+      const nested = render(
+        <Route to="users" as={Chrome}>
+          <Route to=":id" as={Detail} />
+          <Route default as={SectionMissing} />
+        </Route>
+      );
+      expect(nested.container.textContent).toBe('chrome/detail');
+      nested.unmount();
+
+      const flat = render(
+        <Route>
+          <Route to="users/:id" as={Detail} />
+          <Route default as={AppMissing} />
+        </Route>
+      );
+      expect(flat.container.textContent).toBe('detail');
+    });
+  });
+
   describe('redirect prop', () => {
     it('redirects (replacing) when matched', async () => {
       const before = window.history.length;
