@@ -2,7 +2,7 @@
 import { render, screen, act } from '@testing-library/preact';
 import { mock, expect, it, describe } from 'bun:test';
 
-import { mockError, mockPromise } from '../test.setup';
+import { mockError, mockPromise, flushMicrotasks } from '../test.setup';
 import { Component } from '.';
 
 describe('error boundary', () => {
@@ -13,7 +13,7 @@ describe('error boundary', () => {
   const settle = () =>
     act(async () => {
       for (let i = 0; i < 5; i++)
-        await new Promise((r) => setTimeout(r, 0));
+        await flushMicrotasks();
     });
 
   it('will show fallback when child throws', async () => {

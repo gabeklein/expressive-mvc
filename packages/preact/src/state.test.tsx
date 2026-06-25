@@ -3,7 +3,7 @@ import { StrictMode, Suspense } from 'preact/compat';
 import { get, State, Provider, set } from '.';
 import { mock, spyOn, expect, it, describe, afterEach, afterAll } from 'bun:test';
 import { act, render, renderHook, waitFor } from '@testing-library/preact';
-import { mockPromise } from '../test.setup';
+import { mockPromise, flushMicrotasks } from '../test.setup';
 
 function renderWith<T>(Type: State.Type | State, hook: () => T) {
   return renderHook(hook, {
@@ -250,7 +250,7 @@ describe('State.use', () => {
         </StrictMode>
       );
 
-      await new Promise((r) => setTimeout(r, 0));
+      await flushMicrotasks();
 
       expect(didCreate).toBeCalledTimes(1);
       expect(didDestroy).not.toBeCalled();
@@ -285,7 +285,7 @@ describe('State.use', () => {
         </StrictMode>
       );
 
-      await new Promise((r) => setTimeout(r, 0));
+      await flushMicrotasks();
 
       expect(didRender).toBeCalledWith('foo');
 
@@ -867,7 +867,7 @@ describe('State.get', () => {
         </StrictMode>
       );
 
-      await new Promise((r) => setTimeout(r, 0));
+      await flushMicrotasks();
 
       expect(element.container.textContent).toBe('foo');
 

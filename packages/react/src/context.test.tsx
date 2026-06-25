@@ -3,6 +3,7 @@ import { mock, spyOn, afterAll, expect, it, describe } from 'bun:test';
 
 import { act, render, screen } from '@testing-library/react';
 import { State, Consumer, Context, get, Provider, set } from '.';
+import { flushMicrotasks } from '../test.setup';
 
 const error = spyOn(console, 'error').mockImplementation(() => {});
 
@@ -390,7 +391,7 @@ describe('Provider', () => {
         </React.StrictMode>
       );
 
-      await new Promise((r) => setTimeout(r, 0));
+      await flushMicrotasks();
 
       expect(didCreate).toBeCalledTimes(1);
       expect(didDestroy).not.toBeCalled();
@@ -415,7 +416,7 @@ describe('Provider', () => {
         </React.StrictMode>
       );
 
-      await new Promise((r) => setTimeout(r, 0));
+      await flushMicrotasks();
 
       expect(element.container.textContent).toBe('hello');
 

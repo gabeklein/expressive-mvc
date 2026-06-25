@@ -2,7 +2,7 @@ import { event, listener, touch, watch, observer } from './observable';
 import { set } from './field/set';
 import { def } from './field/def';
 import { mock, describe, it, expect } from 'bun:test';
-import { mockError, mockPromise } from '../test.setup';
+import { mockError, mockPromise, flushMicrotasks } from '../test.setup';
 import { State } from './state';
 
 describe('effect', () => {
@@ -368,7 +368,7 @@ describe('effect', () => {
       test.foo = 2;
       test.set(null);
 
-      await new Promise((res) => setTimeout(res, 0));
+      await flushMicrotasks();
 
       expect(effect).toBeCalledTimes(1);
       expect(error).not.toBeCalled();

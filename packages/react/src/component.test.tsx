@@ -2,7 +2,7 @@ import { render, screen, act } from '@testing-library/react';
 import { mock, expect, it, describe } from 'bun:test';
 import React from 'react';
 
-import { mockError, mockPromise } from '../test.setup';
+import { mockError, mockPromise, flushMicrotasks } from '../test.setup';
 import { Component, Consumer, set } from '.';
 
 it('will create and provide instance', () => {
@@ -588,14 +588,14 @@ describe('suspense', () => {
 
     await act(async () => {
       foo.fallback = <span>Loading...</span>;
-      await new Promise((r) => setTimeout(r, 0));
+      await flushMicrotasks();
     });
 
     expect(element).toHaveText('Loading...');
 
     await act(async () => {
       foo.value = 'Hello World';
-      await new Promise((r) => setTimeout(r, 0));
+      await flushMicrotasks();
     });
 
     expect(element).toHaveText('Hello World');
@@ -1083,7 +1083,7 @@ describe('subcomponents', () => {
       </React.StrictMode>
     );
 
-    await new Promise((r) => setTimeout(r, 0));
+    await flushMicrotasks();
 
     expect(screen).toHaveText('Hello');
 
@@ -1200,7 +1200,7 @@ describe('strict mode', () => {
       </React.StrictMode>
     );
 
-    await new Promise((r) => setTimeout(r, 0));
+    await flushMicrotasks();
 
     expect(didCreate).toBeCalledTimes(1);
     expect(didDestroy).not.toBeCalled();
@@ -1233,7 +1233,7 @@ describe('strict mode', () => {
       </React.StrictMode>
     );
 
-    await new Promise((r) => setTimeout(r, 0));
+    await flushMicrotasks();
 
     expect(screen).toHaveText('bar');
 
@@ -1272,7 +1272,7 @@ describe('strict mode', () => {
       </React.StrictMode>
     );
 
-    await new Promise((r) => setTimeout(r, 0));
+    await flushMicrotasks();
 
     expect(screen).toHaveText('bar');
     didRender.mockClear();
@@ -1283,7 +1283,7 @@ describe('strict mode', () => {
       </React.StrictMode>
     );
 
-    await new Promise((r) => setTimeout(r, 0));
+    await flushMicrotasks();
 
     expect(screen).toHaveText('baz');
     expect(didRender).toBeCalledWith('baz');
@@ -1345,7 +1345,7 @@ describe('strict mode', () => {
       </React.StrictMode>
     );
 
-    await new Promise((r) => setTimeout(r, 0));
+    await flushMicrotasks();
 
     expect(order).toEqual(['construct', 'construct', 'init']);
 

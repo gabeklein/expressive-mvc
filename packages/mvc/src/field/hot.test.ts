@@ -2,8 +2,7 @@ import { mock, describe, it, expect } from 'bun:test';
 import { observer, watch } from '../observable';
 import { State } from '../state';
 import { hot } from './hot';
-
-const flush = () => new Promise<void>((r) => setTimeout(r, 0));
+import { flushMicrotasks as flush } from '../../test.setup';
 
 describe('factory', () => {
   it('wraps an array', () => {
@@ -507,7 +506,7 @@ describe('as State field', () => {
     expect(cb).toBeCalledWith('');
 
     game.board[0] = 'X';
-    await new Promise<void>((r) => setTimeout(r, 0));
+    await flush();
 
     expect(cb).toBeCalledWith('X');
     expect(cb).toHaveBeenCalledTimes(2);
@@ -527,7 +526,7 @@ describe('as State field', () => {
 
     cb.mockClear();
     game.board[5] = 'X';
-    await new Promise<void>((r) => setTimeout(r, 0));
+    await flush();
 
     expect(cb).not.toBeCalled();
   });

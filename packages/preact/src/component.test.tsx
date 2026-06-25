@@ -5,6 +5,7 @@ import { ComponentChildren, createRef } from 'preact';
 import { StrictMode } from 'preact/compat';
 
 import { Component, Consumer, set } from '.';
+import { flushMicrotasks } from '../test.setup';
 
 it('will create and provide instance', () => {
   class Control extends Component {
@@ -494,14 +495,14 @@ describe('suspense', () => {
 
     await act(async () => {
       foo.fallback = <span>Loading...</span>;
-      await new Promise((r) => setTimeout(r, 0));
+      await flushMicrotasks();
     });
 
     expect(element).toHaveText('Loading...');
 
     await act(async () => {
       foo.value = 'Hello World';
-      await new Promise((r) => setTimeout(r, 0));
+      await flushMicrotasks();
     });
 
     expect(element).toHaveText('Hello World');
@@ -801,7 +802,7 @@ describe('subcomponents', () => {
       </StrictMode>
     );
 
-    await new Promise((r) => setTimeout(r, 0));
+    await flushMicrotasks();
 
     expect(screen).toHaveText('Hello');
 
@@ -921,7 +922,7 @@ describe('strict mode', () => {
       </StrictMode>
     );
 
-    await new Promise((r) => setTimeout(r, 0));
+    await flushMicrotasks();
 
     expect(didCreate).toBeCalledTimes(1);
     expect(didDestroy).not.toBeCalled();
@@ -954,7 +955,7 @@ describe('strict mode', () => {
       </StrictMode>
     );
 
-    await new Promise((r) => setTimeout(r, 0));
+    await flushMicrotasks();
 
     expect(screen).toHaveText('bar');
 
@@ -993,7 +994,7 @@ describe('strict mode', () => {
       </StrictMode>
     );
 
-    await new Promise((r) => setTimeout(r, 0));
+    await flushMicrotasks();
 
     expect(screen).toHaveText('bar');
     didRender.mockClear();
@@ -1004,7 +1005,7 @@ describe('strict mode', () => {
       </StrictMode>
     );
 
-    await new Promise((r) => setTimeout(r, 0));
+    await flushMicrotasks();
 
     expect(screen).toHaveText('baz');
     expect(didRender).toBeCalledWith('baz');
@@ -1030,7 +1031,7 @@ describe('strict mode', () => {
       </StrictMode>
     );
 
-    await new Promise((r) => setTimeout(r, 0));
+    await flushMicrotasks();
 
     expect(order).toEqual(['construct', 'init']);
 

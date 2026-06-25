@@ -22,8 +22,13 @@ expect.extend({ toHaveUpdated, toHaveText });
 
 afterEach(() => Context.root.pop());
 
-export { mockError, mockPromise, mockWarn };
+export { mockError, mockPromise, mockWarn, flushMicrotasks };
 export type { MockPromise };
+
+/** Resolve after the task queue drains - flush pending dispatch/effects. */
+function flushMicrotasks() {
+  return new Promise<void>((r) => setTimeout(r, 0));
+}
 
 async function toHaveUpdated(
   received: unknown,

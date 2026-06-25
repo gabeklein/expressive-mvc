@@ -1,5 +1,5 @@
 import { mock, describe, it, expect } from 'bun:test';
-import { mockPromise, mockWarn } from '../../test.setup';
+import { mockPromise, mockWarn, flushMicrotasks } from '../../test.setup';
 import { State } from '../state';
 import { set } from './set';
 
@@ -835,7 +835,7 @@ describe('suspense', () => {
     expect(didAttemptSum).toBeCalledTimes(3);
     expect(test.sum).toBe('Answer is 30.');
 
-    await new Promise<void>((r) => setTimeout(r, 0));
+    await flushMicrotasks();
     expect(didAttemptEffect).toBeCalledTimes(2);
     expect(didCompleteEffect).toBeCalledWith('Answer is 30.');
   });

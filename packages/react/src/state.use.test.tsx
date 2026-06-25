@@ -2,6 +2,7 @@ import React from 'react';
 import { describe, expect, it, mock } from 'bun:test';
 import { State, Provider, get, set } from '.';
 import { act, render, renderHook, waitFor } from '@testing-library/react';
+import { flushMicrotasks } from '../test.setup';
 
 describe('State.use', () => {
   class Test extends State {
@@ -420,7 +421,7 @@ describe('State.use', () => {
         </React.StrictMode>
       );
 
-      await new Promise((r) => setTimeout(r, 0));
+      await flushMicrotasks();
 
       expect(didCreate).toBeCalledTimes(1);
       expect(didDestroy).not.toBeCalled();
@@ -455,7 +456,7 @@ describe('State.use', () => {
         </React.StrictMode>
       );
 
-      await new Promise((r) => setTimeout(r, 0));
+      await flushMicrotasks();
 
       expect(didRender).toBeCalledWith('foo');
 
