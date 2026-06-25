@@ -1,6 +1,6 @@
 {
   "name": "@expressive/router",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Client-side router built on @expressive/mvc Components.",
   "keywords": [
     "expressive",
@@ -39,10 +39,10 @@
     "preversion": "npm run test && npm run build"
   },
   "dependencies": {
-    "@expressive/mvc": "^0.78.1"
+    "@expressive/mvc": "^0.79.0"
   },
   "devDependencies": {
-    "@expressive/react": "^0.79.0",
+    "@expressive/react": "^0.80.0",
     "@testing-library/react": "^16.3.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
