@@ -219,6 +219,9 @@ export class Route extends Component {
   render(props = {} as { children?: Component.Node }): Component.Node {
     const { as: Component, is: self, matched, parent, redirect, router } = this;
 
+    if (!matched && typeof redirect === 'function')
+      GUARD.delete(self);
+
     if (parent) {
       register(parent.is, self);
 
