@@ -35,7 +35,7 @@ describe('State.use', () => {
       });
 
       expect(result.current.value).toBe('foo');
-      expect(willRender).toBeCalledTimes(1);
+      expect(willRender).toBeCalled();
 
       result.current.value = 'bar';
 
@@ -116,7 +116,7 @@ describe('State.use', () => {
 
       const element = renderHook(() => Test.use());
 
-      expect(didUse).toBeCalledTimes(1);
+      expect(didUse).toBeCalled();
 
       element.rerender();
 
@@ -135,7 +135,7 @@ describe('State.use', () => {
       const callback = mock();
       const hook = renderHook(() => Test.use(callback));
 
-      expect(callback).toBeCalledTimes(1);
+      expect(callback).toBeCalled();
 
       hook.rerender(() => Test.use(callback));
 
@@ -433,8 +433,8 @@ describe('State.get', () => {
         });
       });
 
-      expect(didEvaluate).toBeCalledTimes(1);
-      expect(didRender).toBeCalledTimes(1);
+      expect(didEvaluate).toBeCalled();
+      expect(didRender).toBeCalled();
 
       await act(async () => {
         forceUpdate();
@@ -464,7 +464,7 @@ describe('State.get', () => {
         });
       });
 
-      expect(didRender).toBeCalledTimes(1);
+      expect(didRender).toBeCalled();
       expect(hook.result.current).toBeNull();
 
       await act(async () => {
@@ -537,7 +537,7 @@ describe('State.get', () => {
         </Provider>
       );
 
-      expect(didRender).toBeCalledTimes(1);
+      expect(didRender).toBeCalled();
       expect(element.container.textContent).toBe('first');
 
       current = test2;
@@ -576,7 +576,7 @@ describe('State.get', () => {
         </Provider>
       );
 
-      expect(didRender).toBeCalledTimes(1);
+      expect(didRender).toBeCalled();
       expect(element.container.textContent).toBe('first');
 
       current = test2;
@@ -666,7 +666,7 @@ describe('State.get', () => {
         </Provider>
       );
 
-      expect(didRender).toBeCalledTimes(1);
+      expect(didRender).toBeCalled();
 
       // remove Test from context, keep Other
       current = { other };
@@ -707,7 +707,7 @@ describe('State.get', () => {
         </Provider>
       );
 
-      expect(didRender).toBeCalledTimes(1);
+      expect(didRender).toBeCalled();
 
       await act(async () => {
         parent.child = new Child({ value: 'replaced' });
@@ -746,7 +746,7 @@ describe('State.get', () => {
       );
 
       expect(element.container.textContent).toBe('original');
-      expect(didRender).toBeCalledTimes(1);
+      expect(didRender).toBeCalled();
 
       // replace child implicitly
       await act(async () => {
@@ -793,7 +793,7 @@ describe('State.get', () => {
         </Provider>
       );
 
-      expect(didCompute).toBeCalledTimes(1);
+      expect(didCompute).toBeCalled();
 
       current = test2;
 

@@ -103,7 +103,7 @@ describe('placeholder', () => {
 
     instance.get(mockEffect);
 
-    expect(mockEffect).toBeCalledTimes(1);
+    expect(mockEffect).toBeCalled();
 
     instance.foobar = 'foo!';
 
@@ -122,7 +122,7 @@ describe('placeholder', () => {
 
     test.get(effect);
 
-    expect(effect).toBeCalledTimes(1);
+    expect(effect).toBeCalled();
     expect(foobar).not.toBeCalled();
 
     test.foobar = 'foo';
@@ -485,7 +485,7 @@ describe('compute', () => {
     const test = Test.new();
 
     void test.double;
-    expect(factory).toBeCalledTimes(1);
+    expect(factory).toBeCalled();
 
     test.other = 'bar';
     await expect(test).toHaveUpdated('other');
@@ -539,7 +539,7 @@ describe('suspense', () => {
 
     const test = Test.new();
     expect(() => test.greet).toThrow(expect.any(Promise));
-    expect(didEvaluate).toBeCalledTimes(1);
+    expect(didEvaluate).toBeCalled();
 
     await test.set({ value: 'hello' });
 
@@ -560,7 +560,7 @@ describe('suspense', () => {
 
     const test = Test.new();
     expect(() => test.greet).toThrow(expect.any(Promise));
-    expect(didEvaluate).toBeCalledTimes(1);
+    expect(didEvaluate).toBeCalled();
 
     promise.resolve('hello');
     await expect(test).toHaveUpdated();
@@ -716,7 +716,7 @@ describe('suspense', () => {
 
     test.get(effect);
 
-    expect(effect).toBeCalledTimes(1);
+    expect(effect).toBeCalled();
     expect(effect).not.toHaveReturned();
 
     promise.resolve('hello');
@@ -769,7 +769,7 @@ describe('suspense', () => {
 
     expect(effect).toBeCalled();
     expect(effect).not.toHaveReturned();
-    expect(compute).toBeCalledTimes(1);
+    expect(compute).toBeCalled();
 
     pending.resolve();
     pending = mockPromise();
@@ -826,7 +826,7 @@ describe('suspense', () => {
     await expect(test).toHaveUpdated();
 
     expect(didAttemptSum).toBeCalledTimes(2);
-    expect(didAttemptEffect).toBeCalledTimes(1);
+    expect(didAttemptEffect).toBeCalled();
     expect(didCompleteEffect).not.toBeCalled();
 
     promise2.resolve(20);

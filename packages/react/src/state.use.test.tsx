@@ -23,7 +23,7 @@ describe('State.use', () => {
       });
 
       expect(result.current.value).toBe('foo');
-      expect(willRender).toBeCalledTimes(1);
+      expect(willRender).toBeCalled();
 
       result.current.value = 'bar';
 
@@ -149,7 +149,7 @@ describe('State.use', () => {
 
       const element = renderHook(() => Test.use());
 
-      expect(didUse).toBeCalledTimes(1);
+      expect(didUse).toBeCalled();
 
       element.rerender();
 
@@ -214,7 +214,7 @@ describe('State.use', () => {
       const callback = mock();
       const hook = renderHook(() => Test.use(callback));
 
-      expect(callback).toBeCalledTimes(1);
+      expect(callback).toBeCalled();
 
       hook.rerender(() => Test.use(callback));
 

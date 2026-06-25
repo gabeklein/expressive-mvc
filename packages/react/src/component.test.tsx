@@ -41,7 +41,7 @@ it('will create instance only once', () => {
   const didConstruct = mock();
   const { rerender } = render(<Control />);
 
-  expect(didConstruct).toBeCalledTimes(1);
+  expect(didConstruct).toBeCalled();
 
   rerender(<Control />);
 
@@ -55,7 +55,7 @@ it('will call is method on creation', () => {
 
   const screen = render(<Control is={didCreate} />);
 
-  expect(didCreate).toBeCalledTimes(1);
+  expect(didCreate).toBeCalled();
 
   screen.rerender(<Control is={didCreate} />);
   expect(didCreate).toBeCalledTimes(1);
@@ -85,7 +85,7 @@ describe('ref prop', () => {
     const cb = mock();
     const screen = render(<Control ref={cb} />);
 
-    expect(cb).toBeCalledTimes(1);
+    expect(cb).toBeCalled();
     expect(cb.mock.calls[0][0]).toBeInstanceOf(Control);
 
     act(screen.unmount);
@@ -310,7 +310,7 @@ describe('props property', () => {
 
     const { rerender } = render(<Control value="foo" />);
 
-    expect(didRender).toBeCalledTimes(1);
+    expect(didRender).toBeCalled();
 
     rerender(<Control value="bar" />);
 

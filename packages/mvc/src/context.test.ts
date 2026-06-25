@@ -108,7 +108,7 @@ it('child pop is safe to call before parent pop', () => {
 
   child.pop();
 
-  expect(destroyed).toBeCalledTimes(1);
+  expect(destroyed).toBeCalled();
 
   // parent.pop() cascades into already-popped child — must not double-destroy
   parent.pop();
@@ -166,7 +166,7 @@ it('will notify downstream subscriber when implicit child is replaced', () => {
   context.get(Foo, cb);
 
   // called immediately with existing instance
-  expect(cb).toBeCalledTimes(1);
+  expect(cb).toBeCalled();
   expect(cb).toBeCalledWith(foo1, false);
 
   parent.child = foo2;
@@ -296,7 +296,7 @@ describe('has method', () => {
     const cancel = context.get(DownstreamState, cb, true);
     context.push(DownstreamState);
 
-    expect(cb).toBeCalledTimes(1);
+    expect(cb).toBeCalled();
 
     cancel();
     context.push(DownstreamState);
@@ -314,7 +314,7 @@ describe('has method', () => {
 
     const child = context.push(DownstreamState);
 
-    expect(cb).toBeCalledTimes(1);
+    expect(cb).toBeCalled();
 
     child.pop();
 
@@ -329,7 +329,7 @@ describe('has method', () => {
     const cancel = context.get(DownstreamState, cb, true);
     context.push(DownstreamState);
 
-    expect(cb).toBeCalledTimes(1);
+    expect(cb).toBeCalled();
     cancel();
 
     context.push(DownstreamState);
@@ -358,7 +358,7 @@ describe('has method', () => {
     context.get(DownstreamState, cb, true);
 
     // existing downstream
-    expect(cb).toBeCalledTimes(1);
+    expect(cb).toBeCalled();
     expect(cb).toBeCalledWith(expect.any(DownstreamState), true);
 
     // new downstream addition

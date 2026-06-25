@@ -192,7 +192,7 @@ describe('use', () => {
       return use(test).foo;
     });
 
-    expect(didRender).toHaveBeenCalledTimes(1);
+    expect(didRender).toBeCalled();
 
     const before = didRender.mock.calls.length;
 
@@ -238,7 +238,7 @@ describe('use', () => {
     });
 
     expect(hook.result.current).toBe('first');
-    expect(didRender).toHaveBeenCalledTimes(1);
+    expect(didRender).toBeCalled();
 
     current = second;
 

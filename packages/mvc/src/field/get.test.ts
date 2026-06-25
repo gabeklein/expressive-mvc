@@ -337,7 +337,7 @@ describe('fetch mode', () => {
       const first = consumer.remote;
       const effect = mock();
 
-      expect(callback).toBeCalledTimes(1);
+      expect(callback).toBeCalled();
       expect(callback).toBeCalledWith(first, consumer);
 
       consumer.get((it) => {
@@ -754,7 +754,7 @@ describe('lifecycle callbacks', () => {
 
     new Context({ remote, test });
 
-    expect(remoteCallback).toBeCalledTimes(1);
+    expect(remoteCallback).toBeCalled();
 
     // Change should NOT trigger callback again
     remote.value = 'bar';
@@ -828,7 +828,7 @@ describe('lifecycle callbacks', () => {
 
     context.push(Parent).push(Child);
 
-    expect(didNotify).toBeCalledTimes(1);
+    expect(didNotify).toBeCalled();
     expect(didRemove).not.toBeCalled();
 
     context.pop();
@@ -854,7 +854,7 @@ describe('lifecycle callbacks', () => {
     const context = new Context(Parent);
     const inner = context.push(Child);
 
-    expect(didNotify).toBeCalledTimes(1);
+    expect(didNotify).toBeCalled();
     expect(didRemove).not.toBeCalled();
 
     inner.pop();

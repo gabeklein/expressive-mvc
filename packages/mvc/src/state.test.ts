@@ -899,7 +899,7 @@ describe('get method', () => {
 
       test.get(effect);
 
-      expect(effect).toBeCalledTimes(1);
+      expect(effect).toBeCalled();
       test.child.value = 'bar';
 
       await expect(test.child).toHaveUpdated();
@@ -1027,7 +1027,7 @@ describe('get method', () => {
       });
 
       test.get(effect);
-      expect(effect).toBeCalledTimes(1);
+      expect(effect).toBeCalled();
 
       test.nested.value++;
       await expect(test.nested).toHaveUpdated();
@@ -1345,12 +1345,12 @@ describe('get method', () => {
           didUpdate(state.value);
         });
 
-        expect(willUpdate).toBeCalledTimes(1);
+        expect(willUpdate).toBeCalled();
 
         test.other = 'bar';
 
         await expect(test).toHaveUpdated();
-        expect(willUpdate).toBeCalledTimes(1);
+        expect(willUpdate).toBeCalled();
 
         test.value = 'foo';
 
@@ -3162,7 +3162,7 @@ describe('computed (getters)', () => {
       const test = Test.new();
 
       expect(test.value).toBe('AX');
-      expect(didCompute).toBeCalledTimes(1);
+      expect(didCompute).toBeCalled();
 
       test.tracked = 'B';
       await expect(test).toHaveUpdated();

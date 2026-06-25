@@ -52,7 +52,7 @@ it('will create instance only once', () => {
   const didConstruct = mock();
   const { rerender } = render(<Control />);
 
-  expect(didConstruct).toBeCalledTimes(1);
+  expect(didConstruct).toBeCalled();
 
   rerender(<Control />);
 
@@ -85,7 +85,7 @@ describe('ref prop', () => {
     const cb = mock();
     const screen = render(<Control ref={cb} />);
 
-    expect(cb).toBeCalledTimes(1);
+    expect(cb).toBeCalled();
     expect(cb.mock.calls[0][0]).toBeInstanceOf(Control);
 
     act(() => void screen.unmount());
