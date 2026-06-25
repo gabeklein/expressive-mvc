@@ -2,7 +2,7 @@
 import { render, screen, act } from '@testing-library/preact';
 import { mock, expect, it, describe } from 'bun:test';
 
-import { mockError, mockPromise } from '../test.setup';
+import { mockError, mockPromise, flushMicrotasks } from '../test.setup';
 import { Component } from '.';
 
 describe('error boundary', () => {
@@ -13,7 +13,7 @@ describe('error boundary', () => {
   const settle = () =>
     act(async () => {
       for (let i = 0; i < 5; i++)
-        await new Promise((r) => setTimeout(r, 0));
+        await flushMicrotasks();
     });
 
   it('will show fallback when child throws', async () => {
@@ -36,7 +36,7 @@ describe('error boundary', () => {
 
     render(<Boundary />);
 
-    screen.getByText('Oops');
+    expect(screen).toHaveText('Oops');
   });
 
   it('will recover when catch resolves', async () => {
@@ -65,12 +65,12 @@ describe('error boundary', () => {
 
     render(<Boundary />);
 
-    screen.getByText('Oops');
+    expect(screen).toHaveText('Oops');
 
     await act(async () => resolve());
     await settle();
 
-    screen.getByText('Recovered');
+    expect(screen).toHaveText('Recovered');
   });
 
   it('will restore fallback after catch resolves', async () => {
@@ -102,13 +102,13 @@ describe('error boundary', () => {
     await settle();
 
     // error boundary shows error-specific fallback
-    screen.getByText('Error Fallback');
+    expect(screen).toHaveText('Error Fallback');
 
     await act(async () => resolve());
     await settle();
 
     // error recovered, render works again
-    screen.getByText('initial');
+    expect(screen).toHaveText('initial');
 
     // suspend from render - fallback was restored so suspense uses default
     await act(async () => {
@@ -116,7 +116,7 @@ describe('error boundary', () => {
       instance.value = 'trigger';
     });
 
-    screen.getByText('Default Loading');
+    expect(screen).toHaveText('Default Loading');
   });
 
   it('will propagate if render throws after recovery', async () => {
@@ -154,14 +154,14 @@ describe('error boundary', () => {
 
     render(<Parent />);
 
-    screen.getByText('Oops');
+    expect(screen).toHaveText('Oops');
 
     // resolve catch but render will throw again
     await act(async () => resolve());
     await settle();
 
     // error propagated to parent boundary
-    screen.getByText('Parent Caught');
+    expect(screen).toHaveText('Parent Caught');
     expect(parentCatch).toBeCalledWith('boom');
   });
 
@@ -201,7 +201,7 @@ describe('error boundary', () => {
 
     await settle();
 
-    screen.getByText('Parent Caught');
+    expect(screen).toHaveText('Parent Caught');
     expect(parentCatch).toBeCalledWith('recovery failed');
   });
 
@@ -237,7 +237,7 @@ describe('error boundary', () => {
 
     render(<Boundary />);
 
-    screen.getByText('Oops');
+    expect(screen).toHaveText('Oops');
     expect(catchCount).toBe(1);
 
     // fix the error, then resolve catch
@@ -246,7 +246,7 @@ describe('error boundary', () => {
     await settle();
 
     // successful recovery
-    screen.getByText('Recovered');
+    expect(screen).toHaveText('Recovered');
 
     // new error occurs later
     await act(async () => {
@@ -257,7 +257,7 @@ describe('error boundary', () => {
 
     // catch runs again for the new error
     expect(catchCount).toBe(2);
-    screen.getByText('Oops');
+    expect(screen).toHaveText('Oops');
   });
 
   it('will pass error to catch', async () => {
@@ -310,7 +310,7 @@ describe('error boundary', () => {
 
     await settle();
 
-    screen.getByText('Recovered');
+    expect(screen).toHaveText('Recovered');
   });
 
   it('will restore fallback after sync catch', async () => {
@@ -339,14 +339,14 @@ describe('error boundary', () => {
     render(<Boundary />);
     await settle();
 
-    screen.getByText('initial');
+    expect(screen).toHaveText('initial');
 
     await act(async () => {
       throwing = new Promise(() => {});
       instance.value = 'trigger';
     });
 
-    screen.getByText('Default Loading');
+    expect(screen).toHaveText('Default Loading');
   });
 
   it('will call catch exactly once per thrown error', async () => {
@@ -400,7 +400,7 @@ describe('error boundary', () => {
 
     render(<Outer />);
 
-    screen.getByText('Caught by outer');
+    expect(screen).toHaveText('Caught by outer');
   });
 
   it('will not error if unmounted during catch', async () => {
@@ -428,7 +428,7 @@ describe('error boundary', () => {
 
     const element = render(<Boundary />);
 
-    screen.getByText('Oops');
+    expect(screen).toHaveText('Oops');
 
     await act(async () => void element.unmount());
 
@@ -472,7 +472,7 @@ describe('error boundary', () => {
 
     const element = render(<Control />);
 
-    screen.getByText('Oops');
+    expect(screen).toHaveText('Oops');
     expect(didDispose).not.toBeCalled();
 
     element.unmount();

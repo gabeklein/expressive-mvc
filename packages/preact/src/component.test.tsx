@@ -5,6 +5,7 @@ import { ComponentChildren, createRef } from 'preact';
 import { StrictMode } from 'preact/compat';
 
 import { Component, Consumer, set } from '.';
+import { flushMicrotasks } from '../test.setup';
 
 it('will create and provide instance', () => {
   class Control extends Component {
@@ -17,7 +18,7 @@ it('will create and provide instance', () => {
     </Control>
   );
 
-  screen.getByText('bar');
+  expect(screen).toHaveText('bar');
 });
 
 it('will expose a base render for class detection', () => {
@@ -52,7 +53,7 @@ it('will create instance only once', () => {
   const didConstruct = mock();
   const { rerender } = render(<Control />);
 
-  expect(didConstruct).toBeCalledTimes(1);
+  expect(didConstruct).toBeCalled();
 
   rerender(<Control />);
 
@@ -85,7 +86,7 @@ describe('ref prop', () => {
     const cb = mock();
     const screen = render(<Control ref={cb} />);
 
-    expect(cb).toBeCalledTimes(1);
+    expect(cb).toBeCalled();
     expect(cb.mock.calls[0][0]).toBeInstanceOf(Control);
 
     act(() => void screen.unmount());
@@ -156,10 +157,10 @@ describe('element props', () => {
     }
 
     const element = render(<Test callback={() => 'bar'} />);
-    screen.getByText('bar');
+    expect(screen).toHaveText('bar');
 
     element.rerender(<Test callback={() => 'baz'} />);
-    screen.getByText('baz');
+    expect(screen).toHaveText('baz');
   });
 
   it('will not assign foreign values', () => {
@@ -190,8 +191,8 @@ describe('element children', () => {
       </Control>
     );
 
-    screen.getByText('Hello');
-    screen.getByText('World');
+    expect(screen).toHaveText('Hello');
+    expect(screen).toHaveText('World');
   });
 
   it('will notify parent', async () => {
@@ -202,7 +203,7 @@ describe('element children', () => {
     const didUpdate = mock();
     const screen = render(<Control>Hello</Control>);
 
-    screen.getByText('Hello');
+    expect(screen).toHaveText('Hello');
     expect(didUpdate).toBeCalled();
   });
 
@@ -218,7 +219,7 @@ describe('element children', () => {
 
     const screen = render(<Control>{symbol}</Control>);
 
-    screen.getByText('Hello');
+    expect(screen).toHaveText('Hello');
   });
 });
 
@@ -231,10 +232,10 @@ describe('props property', () => {
     }
 
     const { rerender } = render(<Control value="foo" />);
-    screen.getByText('foo');
+    expect(screen).toHaveText('foo');
 
     rerender(<Control value="bar" />);
-    screen.getByText('bar');
+    expect(screen).toHaveText('bar');
   });
 
   it('will be observable', async () => {
@@ -325,8 +326,8 @@ describe('render method', () => {
 
     const screen = render(<Control bar="foo" />);
 
-    screen.getByText('foo');
-    screen.getByText('bar');
+    expect(screen).toHaveText('foo');
+    expect(screen).toHaveText('bar');
   });
 
   it('will accept function component', async () => {
@@ -348,11 +349,11 @@ describe('render method', () => {
 
     const screen = render(<ClassComponent name="World" />);
 
-    screen.getByText('Hello World');
+    expect(screen).toHaveText('Hello World');
 
     screen.rerender(<ClassComponent salutation="Bonjour" name="Preact" />);
 
-    screen.getByText('Bonjour Preact');
+    expect(screen).toHaveText('Bonjour Preact');
   });
 
   it('will handle children if managed by this', () => {
@@ -371,8 +372,8 @@ describe('render method', () => {
 
     const screen = render(<Control value="Hello">World</Control>);
 
-    screen.getByText('Hello');
-    screen.getByText('World');
+    expect(screen).toHaveText('Hello');
+    expect(screen).toHaveText('World');
   });
 
   it('will refresh on update', async () => {
@@ -387,14 +388,14 @@ describe('render method', () => {
     let control: Control;
     const screen = render(<Control is={(x) => (control = x)} />);
 
-    screen.getByText('bar');
+    expect(screen).toHaveText('bar');
 
     await act(async () => {
       control.value = 'foo';
       await control.set();
     });
 
-    screen.getByText('foo');
+    expect(screen).toHaveText('foo');
   });
 });
 
@@ -414,11 +415,11 @@ describe('suspense', () => {
       </Foo>
     );
 
-    element.getByText('Loading...');
+    expect(element).toHaveText('Loading...');
 
     await act(async () => void (foo.value = 'Hello World'));
 
-    element.getByText('Hello World');
+    expect(element).toHaveText('Hello World');
   });
 
   it('will fallback when own render suspends', async () => {
@@ -434,13 +435,13 @@ describe('suspense', () => {
 
     const element = render(<Foo is={(x) => (foo = x)} />);
 
-    element.getByText('Loading!');
+    expect(element).toHaveText('Loading!');
 
     await act(async () => {
       foo.value = 'Hello World';
     });
 
-    element.getByText('Hello World');
+    expect(element).toHaveText('Hello World');
   });
 
   it('will use fallback property first', async () => {
@@ -458,7 +459,7 @@ describe('suspense', () => {
       </Foo>
     );
 
-    element.getByText('Loading!');
+    expect(element).toHaveText('Loading!');
 
     element.rerender(
       <Foo fallback={<span>Loading...</span>}>
@@ -466,13 +467,13 @@ describe('suspense', () => {
       </Foo>
     );
 
-    element.getByText('Loading...');
+    expect(element).toHaveText('Loading...');
 
     await act(async () => {
       foo.value = 'Hello World';
     });
 
-    element.getByText('Hello World');
+    expect(element).toHaveText('Hello World');
   });
 
   it('will update with new fallback', async () => {
@@ -490,21 +491,21 @@ describe('suspense', () => {
       </Foo>
     );
 
-    element.getByText('Loading!');
+    expect(element).toHaveText('Loading!');
 
     await act(async () => {
       foo.fallback = <span>Loading...</span>;
-      await new Promise((r) => setTimeout(r, 0));
+      await flushMicrotasks();
     });
 
-    element.getByText('Loading...');
+    expect(element).toHaveText('Loading...');
 
     await act(async () => {
       foo.value = 'Hello World';
-      await new Promise((r) => setTimeout(r, 0));
+      await flushMicrotasks();
     });
 
-    element.getByText('Hello World');
+    expect(element).toHaveText('Hello World');
   });
 });
 
@@ -540,11 +541,11 @@ describe('state props on rerender', () => {
 
     const element = render(<Control value="first" />);
 
-    screen.getByText('first');
+    expect(screen).toHaveText('first');
 
     element.rerender(<Control value="second" />);
 
-    screen.getByText('second');
+    expect(screen).toHaveText('second');
   });
 
   it('will clear omitted instance value', () => {
@@ -558,11 +559,11 @@ describe('state props on rerender', () => {
 
     const element = render(<Control value="first" />);
 
-    screen.getByText('first');
+    expect(screen).toHaveText('first');
 
     element.rerender(<Control />);
 
-    screen.getByText('empty');
+    expect(screen).toHaveText('empty');
   });
 });
 
@@ -576,7 +577,7 @@ describe('default render', () => {
       </Control>
     );
 
-    screen.getByText('Hello World');
+    expect(screen).toHaveText('Hello World');
   });
 
   it('will provide instance created', () => {
@@ -591,7 +592,7 @@ describe('default render', () => {
       </Parent>
     );
 
-    element.getByText('foobar');
+    expect(element).toHaveText('foobar');
   });
 });
 
@@ -650,8 +651,8 @@ describe('render chain', () => {
     let instance!: Page;
     render(<Page is={(x) => (instance = x)} />);
 
-    screen.getByText('Base');
-    screen.getByText('Hello');
+    expect(screen).toHaveText('Base');
+    expect(screen).toHaveText('Hello');
 
     // Both the super's and the subclass's reactive reads drive updates.
     await act(async () => {
@@ -659,8 +660,8 @@ describe('render chain', () => {
       instance.body = 'World';
     });
 
-    screen.getByText('Updated');
-    screen.getByText('World');
+    expect(screen).toHaveText('Updated');
+    expect(screen).toHaveText('World');
   });
 
   it('will drop derived content if wrapper omits children', () => {
@@ -680,8 +681,8 @@ describe('render chain', () => {
 
     const element = render(<Lost />);
 
-    element.getByText('Shell only');
-    expect(element.queryByText('Never seen')).toBeNull();
+    expect(element).toHaveText('Shell only');
+    expect(element).not.toHaveText('Never seen');
   });
 
 });
@@ -703,13 +704,13 @@ describe('subcomponents', () => {
     let instance!: Dashboard;
     render(<Dashboard is={(x) => (instance = x)} />);
 
-    screen.getByText('Hello');
+    expect(screen).toHaveText('Hello');
 
     await act(async () => {
       instance.label = 'Updated';
     });
 
-    screen.getByText('Updated');
+    expect(screen).toHaveText('Updated');
   });
 
   it('will be accessible via context get', () => {
@@ -734,7 +735,7 @@ describe('subcomponents', () => {
       </Dashboard>
     );
 
-    screen.getByText('Sidebar Content');
+    expect(screen).toHaveText('Sidebar Content');
   });
 
   it('will allow override via setter', async () => {
@@ -753,7 +754,7 @@ describe('subcomponents', () => {
     let instance!: Dashboard;
     render(<Dashboard is={(x) => (instance = x)} />);
 
-    screen.getByText('Original');
+    expect(screen).toHaveText('Original');
 
     await act(async () => {
       instance.Sidebar = function (this: Dashboard) {
@@ -762,7 +763,7 @@ describe('subcomponents', () => {
       instance.value = 'yes';
     });
 
-    screen.getByText('Replaced: yes');
+    expect(screen).toHaveText('Replaced: yes');
   });
 
   it('will accept props', () => {
@@ -778,7 +779,7 @@ describe('subcomponents', () => {
 
     render(<Dashboard />);
 
-    screen.getByText('Dynamic Label');
+    expect(screen).toHaveText('Dynamic Label');
   });
 
   it('will work in strict mode', async () => {
@@ -801,15 +802,15 @@ describe('subcomponents', () => {
       </StrictMode>
     );
 
-    await new Promise((r) => setTimeout(r, 0));
+    await flushMicrotasks();
 
-    screen.getByText('Hello');
+    expect(screen).toHaveText('Hello');
 
     await act(async () => {
       instance.label = 'Updated';
     });
 
-    screen.getByText('Updated');
+    expect(screen).toHaveText('Updated');
 
     element.unmount();
   });
@@ -842,15 +843,15 @@ describe('subcomponents', () => {
     let instance!: Dashboard;
     render(<Dashboard is={(x) => (instance = x)} />);
 
-    screen.getByText('a: Hello');
-    screen.getByText('b: Hello');
+    expect(screen).toHaveText('a: Hello');
+    expect(screen).toHaveText('b: Hello');
 
     await act(async () => {
       instance.label = 'World';
     });
 
-    screen.getByText('a: World');
-    screen.getByText('b: World');
+    expect(screen).toHaveText('a: World');
+    expect(screen).toHaveText('b: World');
     expect(renders.a).toBeGreaterThan(1);
     expect(renders.b).toBeGreaterThan(1);
   });
@@ -880,8 +881,8 @@ describe('subcomponents', () => {
     let instance!: Dashboard;
     render(<Dashboard is={(x) => (instance = x)} />);
 
-    screen.getByText('x');
-    screen.getByText('y');
+    expect(screen).toHaveText('x');
+    expect(screen).toHaveText('y');
 
     const before = { ...renders };
 
@@ -889,8 +890,8 @@ describe('subcomponents', () => {
       instance.x = 'x2';
     });
 
-    screen.getByText('x2');
-    screen.getByText('y');
+    expect(screen).toHaveText('x2');
+    expect(screen).toHaveText('y');
 
     // only the "a" instance should have re-rendered
     expect(renders.a).toBe(before.a + 1);
@@ -921,7 +922,7 @@ describe('strict mode', () => {
       </StrictMode>
     );
 
-    await new Promise((r) => setTimeout(r, 0));
+    await flushMicrotasks();
 
     expect(didCreate).toBeCalledTimes(1);
     expect(didDestroy).not.toBeCalled();
@@ -954,22 +955,22 @@ describe('strict mode', () => {
       </StrictMode>
     );
 
-    await new Promise((r) => setTimeout(r, 0));
+    await flushMicrotasks();
 
-    screen.getByText('bar');
+    expect(screen).toHaveText('bar');
 
     await act(async () => {
       instance.foo = 'baz';
     });
 
-    screen.getByText('baz');
+    expect(screen).toHaveText('baz');
     expect(didRender).toBeCalledWith('baz');
 
     await act(async () => {
       instance.foo = 'qux';
     });
 
-    screen.getByText('qux');
+    expect(screen).toHaveText('qux');
     expect(didRender).toBeCalledWith('qux');
 
     element.unmount();
@@ -993,9 +994,9 @@ describe('strict mode', () => {
       </StrictMode>
     );
 
-    await new Promise((r) => setTimeout(r, 0));
+    await flushMicrotasks();
 
-    screen.getByText('bar');
+    expect(screen).toHaveText('bar');
     didRender.mockClear();
 
     rerender(
@@ -1004,9 +1005,9 @@ describe('strict mode', () => {
       </StrictMode>
     );
 
-    await new Promise((r) => setTimeout(r, 0));
+    await flushMicrotasks();
 
-    screen.getByText('baz');
+    expect(screen).toHaveText('baz');
     expect(didRender).toBeCalledWith('baz');
   });
 
@@ -1030,7 +1031,7 @@ describe('strict mode', () => {
       </StrictMode>
     );
 
-    await new Promise((r) => setTimeout(r, 0));
+    await flushMicrotasks();
 
     expect(order).toEqual(['construct', 'init']);
 

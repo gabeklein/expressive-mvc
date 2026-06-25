@@ -8,4 +8,4 @@ afterEach(() => {
   document.body.innerHTML = '';
 });
 
-export { mockError, mockPromise, mockWarn } from '../mvc/test.setup';
+export { mockError, mockPromise, mockWarn, flushMicrotasks } from '../mvc/test.setup';

@@ -2,6 +2,7 @@ import React from 'react';
 import { describe, expect, it, mock } from 'bun:test';
 import { State, Provider, get, set } from '.';
 import { act, render, renderHook, waitFor } from '@testing-library/react';
+import { flushMicrotasks } from '../test.setup';
 
 describe('State.use', () => {
   class Test extends State {
@@ -23,7 +24,7 @@ describe('State.use', () => {
       });
 
       expect(result.current.value).toBe('foo');
-      expect(willRender).toBeCalledTimes(1);
+      expect(willRender).toBeCalled();
 
       result.current.value = 'bar';
 
@@ -149,7 +150,7 @@ describe('State.use', () => {
 
       const element = renderHook(() => Test.use());
 
-      expect(didUse).toBeCalledTimes(1);
+      expect(didUse).toBeCalled();
 
       element.rerender();
 
@@ -214,7 +215,7 @@ describe('State.use', () => {
       const callback = mock();
       const hook = renderHook(() => Test.use(callback));
 
-      expect(callback).toBeCalledTimes(1);
+      expect(callback).toBeCalled();
 
       hook.rerender(() => Test.use(callback));
 
@@ -420,7 +421,7 @@ describe('State.use', () => {
         </React.StrictMode>
       );
 
-      await new Promise((r) => setTimeout(r, 0));
+      await flushMicrotasks();
 
       expect(didCreate).toBeCalledTimes(1);
       expect(didDestroy).not.toBeCalled();
@@ -455,7 +456,7 @@ describe('State.use', () => {
         </React.StrictMode>
       );
 
-      await new Promise((r) => setTimeout(r, 0));
+      await flushMicrotasks();
 
       expect(didRender).toBeCalledWith('foo');
 

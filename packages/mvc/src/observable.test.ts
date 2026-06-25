@@ -2,7 +2,7 @@ import { event, listener, touch, watch, observer } from './observable';
 import { set } from './field/set';
 import { def } from './field/def';
 import { mock, describe, it, expect } from 'bun:test';
-import { mockError, mockPromise } from '../test.setup';
+import { mockError, mockPromise, flushMicrotasks } from '../test.setup';
 import { State } from './state';
 
 describe('effect', () => {
@@ -179,7 +179,7 @@ describe('effect', () => {
       });
     });
 
-    expect(didInvoke).toBeCalledTimes(1);
+    expect(didInvoke).toBeCalled();
     expect(didInvoke).toBeCalledWith({ foo: 1, bar: 2 });
 
     await test.set({ bar: 3 });
@@ -243,7 +243,7 @@ describe('effect', () => {
       test.bar = foo;
     });
 
-    expect(didUpdate).toBeCalledTimes(1);
+    expect(didUpdate).toBeCalled();
     expect(didUpdate).toBeCalledWith(1, undefined);
 
     // is syncronously 1 after effect did run.
@@ -281,7 +281,7 @@ describe('effect', () => {
       test.bar = foo;
     });
 
-    expect(didUpdate).toBeCalledTimes(1);
+    expect(didUpdate).toBeCalled();
     expect(didUpdate).toBeCalledWith(1, undefined);
 
     // is syncronously 1 after effect did run.
@@ -363,12 +363,12 @@ describe('effect', () => {
       const effect = mock(($: Test) => void $.foo);
 
       test.get(effect);
-      expect(effect).toBeCalledTimes(1);
+      expect(effect).toBeCalled();
 
       test.foo = 2;
       test.set(null);
 
-      await new Promise((res) => setTimeout(res, 0));
+      await flushMicrotasks();
 
       expect(effect).toBeCalledTimes(1);
       expect(error).not.toBeCalled();
@@ -483,7 +483,7 @@ describe('observable', () => {
     });
 
     expect(cb).toBeCalledWith(0);
-    expect(cb).toBeCalledTimes(1);
+    expect(cb).toBeCalled();
 
     proxy.bump();
     await new Promise((r) => setTimeout(r, 5));

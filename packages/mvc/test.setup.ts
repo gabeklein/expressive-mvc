@@ -5,6 +5,12 @@ import { listener } from './src/observable';
 interface CustomMatchers<R = unknown> {
   /** Flush pending updates, optionally asserting specific keys were updated. */
   toHaveUpdated(...keys: (string | symbol | number)[]): Promise<R>;
+  /** Assert a queryable (screen or bound element) has rendered the given text. */
+  toHaveText(text: string): R;
+}
+
+interface Queryable {
+  queryAllByText(text: string): unknown[];
 }
 
 declare module 'bun:test' {
@@ -12,12 +18,17 @@ declare module 'bun:test' {
   interface AsymmetricMatchers extends CustomMatchers { }
 }
 
-expect.extend({ toHaveUpdated });
+expect.extend({ toHaveUpdated, toHaveText });
 
 afterEach(() => Context.root.pop());
 
-export { mockError, mockPromise, mockWarn };
+export { mockError, mockPromise, mockWarn, flushMicrotasks };
 export type { MockPromise };
+
+/** Resolve after the task queue drains - flush pending dispatch/effects. */
+function flushMicrotasks() {
+  return new Promise<void>((r) => setTimeout(r, 0));
+}
 
 async function toHaveUpdated(
   received: unknown,
@@ -83,6 +94,27 @@ async function toHaveUpdated(
       `Expected ${received} not to have updated keys [${keys
         .map(String)
         .join(', ')}].`
+  };
+}
+
+function toHaveText(received: unknown, text: string) {
+  const query = (received as Queryable)?.queryAllByText;
+
+  if (typeof query != 'function')
+    return {
+      pass: false,
+      message: () =>
+        `Expected a queryable (screen or bound element) but got ${received}.`
+    };
+
+  const found = query.call(received, text);
+
+  return {
+    pass: found.length > 0,
+    message: () =>
+      found.length
+        ? `Expected not to find text "${text}" but found ${found.length}.`
+        : `Expected to find text "${text}" but found none.`
   };
 }
 

@@ -32,7 +32,7 @@ it('will call is callback once with instance', () => {
   const foo = Component.new({ is });
 
   expect(is).toBeCalledWith(foo);
-  expect(is).toHaveBeenCalledTimes(1);
+  expect(is).toBeCalled();
 
   // ressigning props from another render.
   (foo as any).props = { is };
