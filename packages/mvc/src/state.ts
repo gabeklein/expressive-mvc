@@ -609,12 +609,14 @@ function bootstrap(T: State.Extends) {
 }
 
 /**
- * Install a reactive computed property on a state instance, derived from a prototype getter.
+ * Install a reactive computed property on a state instance, derived from a prototype
+ * getter or an arity-bearing `set` factory.
  *
- * The getter is invoked with the tracking proxy as `this`; reads of managed properties
- * through it create subscriptions. Result is cached and emits a keyed event when stale.
+ * The getter is invoked with the tracking proxy as both `this` and its first argument;
+ * reads of managed properties through it create subscriptions. Result is cached and
+ * emits a keyed event when stale.
  */
-function compute(this: State, getter: () => unknown, key: string) {
+function compute(this: State, getter: (self: any) => unknown, key: string) {
   const store = STORE.get(this)!;
   let reset: (() => void) | undefined;
   let isAsync: boolean;
@@ -643,7 +645,7 @@ function compute(this: State, getter: () => unknown, key: string) {
     let next: unknown;
 
     try {
-      next = getter.call(proxy);
+      next = getter.call(proxy, proxy);
     } catch (err) {
       console.warn(
         `An exception was thrown while ${initial ? 'initializing' : 'refreshing'
@@ -924,4 +926,4 @@ function parent(child: State, value?: State | null) {
   return PARENT.get(child);
 }
 
-export { event, unbind, State, parent, STORE, uid, access, update, apply };
+export { event, unbind, State, parent, STORE, uid, access, update, apply, compute };
