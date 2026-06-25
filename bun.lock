@@ -33,7 +33,7 @@
     },
     "packages/mvc": {
       "name": "@expressive/mvc",
-      "version": "0.79.0",
+      "version": "0.79.1",
       "devDependencies": {
         "@types/node": "^18.19.0",
         "tsdown": "^0.20.1",
