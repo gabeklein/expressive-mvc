@@ -1,6 +1,6 @@
 {
   "name": "@expressive/react",
-  "version": "0.79.1",
+  "version": "0.80.0",
   "description": "Use classes to define state in React!",
   "keywords": [
     "expressive",
@@ -52,7 +52,7 @@
     "test": "tsc --noEmit && bun test --coverage --only-failures"
   },
   "dependencies": {
-    "@expressive/mvc": "^0.78.0"
+    "@expressive/mvc": "^0.79.0"
   },
   "devDependencies": {
     "@testing-library/react": "^16.3.0",

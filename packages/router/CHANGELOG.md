@@ -1,5 +1,22 @@
 # @expressive/router
 
+## 0.4.0
+
+### Minor Changes
+
+- [#181](https://github.com/gabeklein/expressive-mvc/pull/181) [`c25bb84`](https://github.com/gabeklein/expressive-mvc/commit/c25bb84b448aa859c15173e913bf73a9ee91ed68) A functional `redirect` guard returning `null` now **force-404s**: the route cedes its match for the current path and the scope falls through to its nearest `default`. This lets a page (or its data loader) decline a path it structurally matched - e.g. a fetch returning 401/404 - without revealing whether the resource is forbidden or absent. The decision is path-keyed (it marks only the concrete URL declined, cleared on navigation) and rides reactive `Router` state, so the section's `default` re-arbitrates without an error boundary. `null` is distinct from a falsy verdict (`''`/`undefined`), which still allows normal render. A force-404'd leaf is also excluded from `Route.active`.
+
+- [#186](https://github.com/gabeklein/expressive-mvc/pull/186) [`f89008d`](https://github.com/gabeklein/expressive-mvc/commit/f89008d2abd06744d39c3a840a30372a545ef6a9) `Route.goto` now accepts a params object to swap route params in place: `route.goto({ id: '456' })` rebuilds the route's path from its current match merged with the given overrides (`/document/123` -> `/document/456`). Any param the route declares works, not just the last (`goto({ b: '8' })` on `/a/:b/:c`). A route can only set the params it declares in its own `to`: inherited (ancestor) segments are filled read-only, and a key the route doesn't own throws (so in `<Route to="org/:orgId"><Route to="user/:userId"/></Route>` the inner leaf can swap `userId` but not `orgId`). A declared param the current path can't supply throws the usual unresolved-parameters error. This replaces the `goto("../" + id)` idiom for sibling-param navigation. String `goto` (relative/absolute paths) is unchanged.
+
+- [#181](https://github.com/gabeklein/expressive-mvc/pull/181) [`c25bb84`](https://github.com/gabeklein/expressive-mvc/commit/c25bb84b448aa859c15173e913bf73a9ee91ed68) `Route`'s `redirect` now accepts a function, optionally async, in addition to a static string - an entry guard for auth gates and the like. It is evaluated on entry to the route's scope (the current path falling within its subtree): a truthy string redirects there, a falsy result (`''`/`undefined`) allows normal render, and a returned `Promise` shows the route's `fallback` until it settles. The verdict is cached for navigations within the space and re-evaluated on re-entry. A static-string `redirect` behaves exactly as before; a function guard now participates in sibling matching until it actually redirects, so it can wrap a section (a `Route` with children) and gate the whole subtree.
+
+### Patch Changes
+
+- [#181](https://github.com/gabeklein/expressive-mvc/pull/181) [`c25bb84`](https://github.com/gabeklein/expressive-mvc/commit/c25bb84b448aa859c15173e913bf73a9ee91ed68) A functional `redirect` guard now runs on a route whose own pattern contains a `:param` (e.g. `to="document/:id"`). The in-space check compared the literal, unsubstituted pattern against the URL, so any such route silently skipped its guard; it now gates on `matched`, which resolves captures.
+
+- Updated dependencies [[`fbd3f0c`](https://github.com/gabeklein/expressive-mvc/commit/fbd3f0c72e88da755bec7e58081947b67ee837e0)]:
+  - @expressive/mvc@0.79.0
+
 ## 0.3.0
 
 ### Minor Changes
