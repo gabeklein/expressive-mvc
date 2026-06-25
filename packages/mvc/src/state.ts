@@ -793,8 +793,10 @@ function values<T extends State>(state: T): State.Values<T> {
 
   if (!EXPORT) {
     notRecursive = true;
-    EXPORT = new Map([[state, values]]);
+    EXPORT = new Map();
   }
+
+  EXPORT.set(state, values);
 
   for (let [key, value] of state) {
     if (EXPORT.has(value)) value = EXPORT.get(value);
@@ -804,7 +806,7 @@ function values<T extends State>(state: T): State.Values<T> {
       'get' in value &&
       typeof value.get === 'function'
     )
-      EXPORT.set(value, (value = value.get()));
+      value = value.get();
 
     values[key] = value;
   }

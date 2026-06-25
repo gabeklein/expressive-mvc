@@ -3323,5 +3323,27 @@ describe('computed (getters)', () => {
       expect(didGetNewValue).toBeCalledWith(3);
       expect(didGetOldValue).toBeCalledTimes(2);
     });
+
+    it('will export cycle not involving root', () => {
+      class Node extends State {
+        name = 'x';
+        link?: Node = undefined;
+      }
+
+      const a = Node.new();
+      const b = Node.new();
+
+      a.link = b;
+      b.link = a;
+
+      class Root extends State {
+        child = a;
+      }
+
+      const root = Root.new();
+      const exported = root.get();
+
+      expect(exported.child.link).toBe(exported.child.link!.link!.link);
+    });
   });
 });
