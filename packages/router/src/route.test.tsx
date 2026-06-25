@@ -237,6 +237,92 @@ describe('Route', () => {
     expect(() => router.current.goto('./x')).toThrow(/absolute path/);
   });
 
+  describe('Route.goto param swap', () => {
+    it('swaps a single param against the route pattern', async () => {
+      location('/document/123');
+      let leaf!: Route;
+      render(<Route to="/document/:id" is={(r) => (leaf = r)} />);
+      await act(async () => leaf.goto({ id: '456' }));
+      expect(window.location.pathname).toBe('/document/456');
+    });
+
+    it('swaps any param in a multi-param pattern, keeping the rest', async () => {
+      location('/a/1/2');
+      let leaf!: Route;
+      render(<Route to="/a/:b/:c" is={(r) => (leaf = r)} />);
+
+      await act(async () => leaf.goto({ c: '9' }));
+      expect(window.location.pathname).toBe('/a/1/9');
+
+      await act(async () => leaf.goto({ b: '8' }));
+      expect(window.location.pathname).toBe('/a/8/9');
+    });
+
+    it('swaps a param on a nested leaf, same as the flat form', async () => {
+      location('/document/123');
+      let leaf!: Route;
+      render(
+        <Route to="/document">
+          <Route to=":id" is={(r) => (leaf = r)} as={() => <div>doc</div>} />
+        </Route>
+      );
+      await act(async () => leaf.goto({ id: '456' }));
+      expect(window.location.pathname).toBe('/document/456');
+    });
+
+    it('fills purely from overrides when the route is unmatched', async () => {
+      location('/elsewhere');
+      let leaf!: Route;
+      render(<Route to="/document/:id" is={(r) => (leaf = r)} />);
+      await act(async () => leaf.goto({ id: '7' }));
+      expect(window.location.pathname).toBe('/document/7');
+    });
+
+    it('throws when a param is left unresolved', () => {
+      location('/elsewhere');
+      let leaf!: Route;
+      render(<Route to="/document/:id" is={(r) => (leaf = r)} />);
+      expect(() => leaf.goto({})).toThrow(/unresolved parameters/);
+    });
+
+    it('honors the replace flag', async () => {
+      location('/document/123');
+      let leaf!: Route;
+      render(<Route to="/document/:id" is={(r) => (leaf = r)} />);
+      const before = window.history.length;
+      await act(async () => leaf.goto({ id: '456' }, true));
+      expect(window.location.pathname).toBe('/document/456');
+      expect(window.history.length).toBe(before);
+    });
+
+    it('throws on a param the route does not declare', () => {
+      location('/document/123');
+      let leaf!: Route;
+      render(<Route to="/document/:id" is={(r) => (leaf = r)} />);
+      expect(() => leaf.goto({ nope: 'x' })).toThrow(/cannot set param "nope"/);
+    });
+
+    it('a flat leaf owns every param in its multi-segment pattern', async () => {
+      location('/org/1/user/2');
+      let leaf!: Route;
+      render(<Route to="/org/:orgId/user/:userId" is={(r) => (leaf = r)} />);
+      await act(async () => leaf.goto({ orgId: '9' }));
+      expect(window.location.pathname).toBe('/org/9/user/2');
+    });
+
+    it('a nested leaf owns only its own segment, not an inherited param', () => {
+      location('/org/1/user/2');
+      let leaf!: Route;
+      render(
+        <Route to="org/:orgId">
+          <Route to="user/:userId" is={(r) => (leaf = r)} as={() => null} />
+        </Route>
+      );
+      // userId is the leaf's own; orgId belongs to the parent scope.
+      expect(() => leaf.goto({ orgId: '9' })).toThrow(/cannot set param "orgId"/);
+    });
+  });
+
   it('default `as` renders nothing when given no children', () => {
     location('/blank');
     const view = render(<Route to="/blank" />);
@@ -516,6 +602,123 @@ describe('Route', () => {
         </Route>
       );
       expect(inner.match).toEqual({ slug: 'hello' });
+    });
+  });
+
+  // A multi-segment `to` ("users/:id") is a flat leaf - it does NOT synthesize an
+  // intermediate "users" scope. Only explicit nesting opens a scope that can hold
+  // a section `default` / shared chrome. These pin that the two forms differ.
+  describe('scope vs segment (no desugaring)', () => {
+    const Chrome = (props: { children?: React.ReactNode }) => (
+      <main>chrome/{props.children}</main>
+    );
+    const Detail = () => <span>detail</span>;
+    const SectionMissing = () => <span>section-404</span>;
+    const AppMissing = () => <span>app-404</span>;
+
+    it('nested form exposes a section scope: a miss hits the section default within chrome', () => {
+      location('/users');
+      const view = render(
+        <Route to="users" as={Chrome}>
+          <Route to=":id" as={Detail} />
+          <Route default as={SectionMissing} />
+        </Route>
+      );
+      expect(view.container.textContent).toBe('chrome/section-404');
+    });
+
+    it('flat form has no section scope: the same miss falls through to the app default, no chrome', () => {
+      location('/users');
+      const view = render(
+        <Route>
+          <Route to="users/:id" as={Detail} />
+          <Route default as={AppMissing} />
+        </Route>
+      );
+      expect(view.container.textContent).toBe('app-404');
+    });
+
+    it('both forms match the resolved path identically', () => {
+      location('/users/42');
+
+      const nested = render(
+        <Route to="users" as={Chrome}>
+          <Route to=":id" as={Detail} />
+          <Route default as={SectionMissing} />
+        </Route>
+      );
+      expect(nested.container.textContent).toBe('chrome/detail');
+      nested.unmount();
+
+      const flat = render(
+        <Route>
+          <Route to="users/:id" as={Detail} />
+          <Route default as={AppMissing} />
+        </Route>
+      );
+      expect(flat.container.textContent).toBe('detail');
+    });
+
+    it('nested form interposes a section Route the flat form lacks', () => {
+      location('/users/42');
+
+      let nestedLeaf!: Route;
+      const nested = render(
+        <Route to="users" as={Chrome}>
+          <Route to=":id" is={(r) => (nestedLeaf = r)} as={Detail} />
+        </Route>
+      );
+      // the :id leaf hangs off a /users section scope
+      expect(nestedLeaf.parent!.path).toBe('/users');
+      nested.unmount();
+
+      let flatLeaf!: Route;
+      render(
+        <Route>
+          <Route to="users/:id" is={(r) => (flatLeaf = r)} as={Detail} />
+        </Route>
+      );
+      // flat leaf hangs directly off the app root - no /users layer
+      expect(flatLeaf.parent!.path).toBe('');
+    });
+
+    it('nested chrome persists across a param swap', async () => {
+      location('/users/1');
+      const Id = () => (
+        <Consumer for={Route}>{(r) => <span>{r.match!.id}</span>}</Consumer>
+      );
+      let leaf!: Route;
+      const view = render(
+        <Route to="users" as={Chrome}>
+          <Route to=":id" is={(r) => (leaf = r)} as={Id} />
+        </Route>
+      );
+      expect(view.container.textContent).toBe('chrome/1');
+
+      await act(async () => leaf.goto({ id: '2' }));
+      expect(view.container.textContent).toBe('chrome/2');
+    });
+
+    it('a literal sibling beats the param in both forms', () => {
+      const New = () => <span>new</span>;
+      location('/users/new');
+
+      const nested = render(
+        <Route to="users" as={Chrome}>
+          <Route to="new" as={New} />
+          <Route to=":id" as={Detail} />
+        </Route>
+      );
+      expect(nested.container.textContent).toBe('chrome/new');
+      nested.unmount();
+
+      const flat = render(
+        <Route>
+          <Route to="users/new" as={New} />
+          <Route to="users/:id" as={Detail} />
+        </Route>
+      );
+      expect(flat.container.textContent).toBe('new');
     });
   });
 

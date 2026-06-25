@@ -32,7 +32,7 @@ Routes are nested JSX. `to` is the pattern segment; `as` is the page (or layout)
 
 | Prop       | Meaning                                                                                  |
 | ---------- | ---------------------------------------------------------------------------------------- |
-| `to`       | URL pattern segment. `:name` captures a param; `*` is a catch-all (delegated to children). Omit for an index route. |
+| `to`       | URL pattern segment. `:name` captures a param. A trailing `*` is a catch-all matching the remaining path segments (captured as `*`) - needed on a **leaf** that should match deep paths; **redundant on a scope with child Routes**, whose children already extend the match. Omit for an index route. |
 | `as`       | Component rendered when matched. As a layout, it receives matched children via `children`. |
 | `default`  | Matches when nothing else in this scope did. Scoped to its parent (root-level = app 404, nested = section 404). |
 | `redirect` | Entry guard. A static string redirects there when matched; a function gates the route (see [Entry guards](#entry-guards)). |
@@ -40,6 +40,27 @@ Routes are nested JSX. `to` is the pattern segment; `as` is the page (or layout)
 | `meta`     | Free-form metadata (icons, ordering, badges) - ignored by matching.                      |
 
 A parent-less `<Route>` with no `to` is its own root: always matched, capturing everything below.
+
+### Flat leaf vs. nested scope
+
+A multi-segment `to` (`to="users/:id"`) is a **flat leaf** - it does *not* synthesize an intermediate `users` scope. Nesting is the explicit (and only) way to open one:
+
+```tsx
+<Route to="users/:id" as={Detail} />            {/* flat leaf */}
+
+<Route to="users" as={Layout}>                   {/* nested scope */}
+  <Route to=":id" as={Detail} />
+  <Route default as={NotFound} />
+</Route>
+```
+
+Both resolve `/users/42` identically - same match, same captures, same relative navigation (both anchor on the resolved `/users/42`). Nesting changes nothing for plain navigation; it buys a **scope**. Only the nested form can:
+
+- host a **section `default`** (a `/users/<bad-id>` 404 that stays in the section, rather than falling through to the app-level default);
+- wrap children in **shared chrome** (the layout `as`) that persists across param changes;
+- interpose a **section `Route`** in context (so `get(Route)` sees both the section and the leaf) and group the section in `NavLinks`.
+
+A `default` always needs an authored parent scope - a root `default` is the app 404 only because the root `<Route>` is its scope. So **use the flat leaf for a standalone endpoint; nest the moment you need a section 404, shared chrome, sibling routes under the prefix, or nav grouping** - which is most resource pages, and is required for the force-404 pattern below.
 
 ## Entry guards
 
@@ -85,10 +106,25 @@ const BlogPost = () => (
 | `route.path`      | `string`                          | This route's own absolute path (base + segment).                        |
 | `route.query`     | `Record<string,string\|undefined>` | Live query record from the active Router (global, not route-scoped - see below). |
 | `route.anchor`    | `string`                          | Directory-style anchor for relative navigation.                         |
-| `route.goto(to)`  | -                                 | Navigate, resolving `to` relative to this route.                        |
+| `route.goto(to)`  | -                                 | Navigate. A string resolves relative to this route; a params object swaps route params in place (see below). |
 | `route.resolve(to)` | `string`                        | Resolve a (possibly relative) url to an absolute pathname.              |
 
 Same-pattern navigation (`/blog/a` -> `/blog/b`) keeps the page instance mounted: `matched` is unchanged, so the component reconciles and re-reads `match`, rather than unmounting/remounting.
+
+To swap a param without composing a relative path, pass `goto` an object: it rebuilds this route's path from the current match merged with the overrides. Any param the route **declares in its own `to`** can change - position doesn't matter.
+
+```tsx
+// on /document/123, route pattern "document/:id"
+route.goto({ id: '456' });        // -> /document/456
+
+// on /a/1/2, route pattern "a/:b/:c"
+route.goto({ c: '9' });           // -> /a/1/9   (keeps :b)
+route.goto({ b: '8' });           // -> /a/8/2   (keeps :c)
+```
+
+**A route can only set the params it declares.** Inherited (ancestor) segments are filled from the current path, read-only; a key the route does not own throws. This is where flat-vs-nested matters again: a flat `org/:orgId/user/:userId` leaf owns *both*, but in `<Route to="org/:orgId"><Route to="user/:userId"/></Route>` the inner leaf owns only `userId` - changing `orgId` is the parent scope's call. To cross levels, navigate to the owning route or pass an absolute path string. A declared param the current path can't supply and the object doesn't provide throws an unresolved-parameters error.
+
+Param changes do not remount: like `query`, `match` updates reactively and the page reconciles in place. A param combination that matches the pattern but is invalid in data (`/org/9/user/2` where that pairing doesn't exist) navigates fine; detecting it is the page's job - see force-404 under [Entry guards](#entry-guards).
 
 ## Navigation state on `Router`
 
