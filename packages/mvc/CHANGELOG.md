@@ -1,5 +1,11 @@
 # @expressive/mvc
 
+## 0.79.1
+
+### Patch Changes
+
+- [#188](https://github.com/gabeklein/expressive-mvc/pull/188) [`077f9e5`](https://github.com/gabeklein/expressive-mvc/commit/077f9e59bacb99e64036244501090fa8e44c82bb) Fix stack overflow in `get()` snapshots when the model graph has a cycle not passing through root state.
+
 ## 0.79.0
 
 ### Minor Changes
