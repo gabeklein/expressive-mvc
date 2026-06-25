@@ -102,7 +102,7 @@ describe('Provider', () => {
       </Provider>
     );
 
-    screen.getByText('first');
+    expect(screen).toHaveText('first');
 
     act(() => {
       element.rerender(
@@ -112,7 +112,7 @@ describe('Provider', () => {
       );
     });
 
-    screen.getByText('second');
+    expect(screen).toHaveText('second');
   });
 
   it('will provide children of given model', () => {
@@ -257,14 +257,14 @@ describe('Provider', () => {
         </Provider>
       );
 
-      element.getByText('Loading...');
+      expect(element).toHaveText('Loading...');
 
       await act(async () => {
         foo.value = 'Hello World';
       });
 
-      element.getByText('Hello World');
-      expect(element.queryByText('Loading...')).toBeNull();
+      expect(element).toHaveText('Hello World');
+      expect(element).not.toHaveText('Loading...');
     });
 
     // Differs from React here: after the outer boundary suspends, a
@@ -289,14 +289,14 @@ describe('Provider', () => {
       );
 
       // no Provider-level boundary - outer Suspense catches
-      element.getByText('Foo');
+      expect(element).toHaveText('Foo');
 
       await act(async () => {
         foo.value = 'Hello World';
       });
 
-      element.getByText('Hello World');
-      expect(element.queryByText('Foo')).toBeNull();
+      expect(element).toHaveText('Hello World');
+      expect(element).not.toHaveText('Foo');
     });
   });
 
@@ -378,7 +378,7 @@ describe('Consumer', () => {
 
     expect(didRender).toBeCalledWith('foo');
 
-    screen.getByText('foo');
+    expect(screen).toHaveText('foo');
 
     await act(async () => {
       await instance.set({ value: 'bar' });
@@ -386,7 +386,7 @@ describe('Consumer', () => {
 
     expect(didRender).toBeCalledWith('bar');
 
-    screen.getByText('bar');
+    expect(screen).toHaveText('bar');
   });
 
   it('will throw if not found', () => {
@@ -533,7 +533,7 @@ describe('get instruction', () => {
       </Provider>
     );
 
-    screen.getByText('foobar');
+    expect(screen).toHaveText('foobar');
   });
 });
 
@@ -613,7 +613,7 @@ describe('suspense', () => {
 
     render(<TestComponent />);
 
-    screen.getByText('Loading...');
+    expect(screen).toHaveText('Loading...');
 
     await act(async () => {
       resolve('hello!');
@@ -644,7 +644,7 @@ describe('HMR', () => {
       </Provider>
     );
 
-    screen.getByText('bar');
+    expect(screen).toHaveText('bar');
 
     Control = class Control2 extends Test {
       value = 'baz';
@@ -656,7 +656,7 @@ describe('HMR', () => {
       </Provider>
     );
 
-    screen.getByText('baz');
+    expect(screen).toHaveText('baz');
 
     element.unmount();
   });
