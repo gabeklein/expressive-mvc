@@ -14,7 +14,7 @@ const LINES = [
 ];
 
 class Game extends Component {
-  board: string[] = hot(Array(9).fill(''));
+  readonly board: string[] = hot(Array(9).fill(''));
   turn: 'X' | 'O' = 'X';
 
   get winner() {
@@ -40,7 +40,7 @@ class Game extends Component {
   }
 
   reset() {
-    this.board = Array(9).fill("");
+    this.board.fill("");
     this.turn = 'X';
   }
 
