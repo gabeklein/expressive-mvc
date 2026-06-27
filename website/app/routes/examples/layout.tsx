@@ -19,7 +19,7 @@ export default function ExamplesLayout() {
     display: flex;
     flexDirection: column;
     flex: 1;
-    padding: 12, 24, 24;
+    padding: 24;
     gap: 8;
     maxWidth: 1400;
     width: fill;
@@ -41,7 +41,7 @@ function Navigation() {
   alignItems: center;
   gap: 8;
   overflowX: auto;
-  paddingLeft: 12;
+  marginLeft: 12;
   paddingBottom: 12;
 
   group: {
@@ -84,7 +84,7 @@ function Navigation() {
       radius: 2;
       marginLeft: 12;
       marginRight: 5;
-      background: 0xe2e2e2;
+      background: $colorFdBorder;
     }
   }
 
@@ -103,9 +103,8 @@ function Navigation() {
     }
 
     if("[aria-current='page']") {
-      background: $colorFdPrimary;
-      color: $colorFdPrimaryForeground;
-      borderColor: $colorFdPrimary;
+      background: $colorFdMuted;
+      borderColor: $colorFdMutedForeground;
     }
   }
 
