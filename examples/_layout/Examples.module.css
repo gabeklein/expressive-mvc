@@ -140,7 +140,7 @@
   text-decoration: none;
 }
 
-@media (max-width: 760px) {
+@media (max-width: 560px) {
   .shell {
     display: flex;
     flex-direction: column;

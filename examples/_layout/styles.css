@@ -205,8 +205,22 @@ hr {
 }
 
 .container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s4);
+  width: 100%;
   max-width: 36rem;
   margin: 0 auto;
+  text-align: center;
+}
+
+.container > h1 {
+  margin-bottom: 0;
+}
+
+.container p {
+  max-width: 30rem;
 }
 
 /* Example content (the dev iframe and every generated sandbox add this class)
@@ -217,11 +231,12 @@ body.example {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   padding: var(--s6);
 }
 
 body.example #root {
   width: 100%;
   max-width: 32rem;
-  margin: auto 0;
+  margin: 0;
 }

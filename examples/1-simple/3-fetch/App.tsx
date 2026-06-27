@@ -1,3 +1,5 @@
+import './App.css';
+
 import { Query } from './Query';
 
 // Extending Query gives us all the request bookkeeping for free.
@@ -19,25 +21,25 @@ const Example = () => {
 
   if (response) 
     return (
-      <p>
-        Server said: {response} 
+      <p className="fetch-result">
+        <span>Server said: {response}</span>
         <button onClick={reset}>Reset</button>
       </p>
     )
 
   if (error) 
     return (
-      <p>
-        Error: {error.message} 
+      <p className="fetch-result">
+        <span>Error: {error.message}</span>
         <button onClick={reset}>Reset</button>
       </p>
     )
 
   if (waiting) 
-    return <p>Sent! Waiting on response...</p>
+    return <p className="fetch-status">Sent. Waiting on response...</p>
 
   return (
-    <button onClick={run}>Say hello to server!</button>
+    <button className="fetch-action" onClick={run}>Say hello to server</button>
   )
 };
 
