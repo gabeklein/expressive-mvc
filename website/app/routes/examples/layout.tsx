@@ -19,8 +19,8 @@ export default function ExamplesLayout() {
     display: flex;
     flexDirection: column;
     flex: 1;
-    padding: 24;
-    gap: 16;
+    padding: 12, 24, 24;
+    gap: 8;
     maxWidth: 1400;
     width: fill;
     margin: 0, auto;
@@ -41,6 +41,7 @@ function Navigation() {
   alignItems: center;
   gap: 8;
   overflowX: auto;
+  paddingLeft: 12;
   paddingBottom: 12;
 
   group: {
