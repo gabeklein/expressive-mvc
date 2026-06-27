@@ -13,8 +13,7 @@ if (window.self === window.top) {
   app = <Examples modules={modules} />;
 } else {
   const name = window.location.hash.slice(1);
-  const file = decodeURIComponent(name);
-  const Example = lazy(modules[file]);
+  const Example = lazy(modules[decodeURIComponent(name)]);
 
   // Centers/constrains example content; the shell (top window) opts out.
   document.body.classList.add('example');

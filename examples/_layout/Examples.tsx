@@ -19,13 +19,13 @@ function Examples({ modules }: { modules: Record<string, LazyModule> }) {
         {routes.map((g) => (
           <Route key={g.slug} to={g.slug} label={g.label}>
             {g.items.map((e) => (
-              <Route
-                key={e.slug}
-                to={e.slug}
-                label={e.label}
-                as={Example}
-                meta={e}
-              />
+              <Route key={e.slug} to={e.slug} label={e.label}>
+                <iframe
+                  title={e.label}
+                  className={styles.frame}
+                  src={`module#${encodeURIComponent(e.file)}`}
+                />
+              </Route>
             ))}
           </Route>
         ))}
@@ -61,18 +61,6 @@ function Page(props: { children?: React.ReactNode }) {
       </nav>
       <section className={styles.example}>{props.children}</section>
     </main>
-  );
-}
-
-function Example() {
-  const { label, meta } = Route.get();
-
-  return (
-    <iframe
-      className={styles.frame}
-      title={label}
-      src={`module#${encodeURIComponent(meta!.file)}`}
-    />
   );
 }
 
