@@ -1,133 +1,162 @@
-body {
-  margin: 0;
-  box-sizing: border-box;
-  font-family:
-    system-ui,
-    -apple-system,
-    sans-serif;
-
-  --bg: #fff;
-  --fg: #1a1a2e;
-  --border: #e5e7eb;
-  --surface: #fbfbfb;
-  --accent: #646cff;
-  --radius: 6px;
-}
-
 .shell {
   display: grid;
-  grid-template-columns: 15rem minmax(0, 1fr);
-  gap: 0.75rem;
-  width: min(100% - 2rem, 1600px);
+  grid-template-columns: 10rem minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-areas:
+    "header header"
+    "nav example";
+  gap: var(--s5);
+  width: min(100% - 2rem, 1400px);
   min-height: 100vh;
   margin: 0 auto;
-  padding: 1rem 0;
+  padding: var(--s2) 0 var(--s5);
+}
+
+.header {
+  grid-area: header;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s4);
+  min-width: 0;
+  padding: var(--s2) 0 var(--s4);
+}
+
+.headerRule {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 1px;
+  background: var(--border);
+  border-radius: 999px;
 }
 
 .example {
+  grid-area: example;
+  display: flex;
   min-width: 0;
+  min-height: 0;
   overflow: hidden;
-  background: color-mix(in srgb, var(--surface) 70%, var(--bg));
+  background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: calc(var(--radius) + 4px);
+  border-radius: var(--r-lg);
 }
 
 .frame {
   display: block;
+  flex: 1;
   width: 100%;
-  padding: 2em;
-  height: calc(100vh - 2rem);
+  height: 100%;
+  min-height: calc(100vh - 8rem);
   border: 0;
+  background: var(--bg);
 }
 
 .nav {
+  grid-area: nav;
   position: sticky;
-  top: 1rem;
+  top: var(--s5);
   z-index: 10;
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
-  align-self: stretch;
-  height: calc(100vh - 2rem);
-  max-height: calc(100vh - 2rem);
-  min-height: 0;
+  gap: var(--s1);
+  align-self: start;
+  max-height: calc(100vh - 3rem);
   overflow-y: auto;
-  padding: 0.75rem;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: calc(var(--radius) + 4px);
-}
-
-.nav a,
-.links a {
-  padding: 0.3em 0.8em;
-  border-radius: var(--radius);
-  color: var(--fg);
-  text-decoration: none;
-  font-size: 0.9em;
-}
-
-.nav>a {
-  font-weight: 500;
-  padding-bottom: 1em;
+  padding: var(--s3);
+  padding-right: 0;
 }
 
 .links {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: var(--s1);
 }
 
 .group {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: var(--s2);
+  margin-bottom: var(--s5);
 }
 
 .groupLabel {
-  margin: 0.6rem 0 0.1rem;
-  padding: 0 0.8em;
-  font-size: 0.7em;
+  margin: 0;
+  padding: 0 var(--s2);
+  font-size: var(--t-xs);
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: color-mix(in srgb, var(--fg) 50%, transparent);
+  letter-spacing: 0.07em;
+  color: var(--muted);
+}
+
+/* Example links nest under their section along a vertical guide line,
+   offset from the label - the docs-sidebar pattern. */
+.groupItems {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-left: var(--s2);
+  border-left: 1px solid var(--border-2);
+}
+
+.groupItems a {
+  margin-left: -1px;
+  padding: 5px var(--s3);
+  border-left: 2px solid transparent;
+  border-radius: 0 var(--r-sm) var(--r-sm) 0;
+  color: var(--fg-soft);
+  text-decoration: none;
+  font-size: var(--t-sm);
+  font-weight: 500;
+}
+
+.groupItems a:hover {
+  background: var(--surface-2);
+  border-left-color: var(--border-2);
+  color: var(--fg);
+}
+
+.groupItems a[aria-current='page'] {
+  background: var(--accent-soft);
+  border-left-color: var(--accent);
+  color: var(--accent);
+  font-weight: 600;
 }
 
 .logo {
-  margin-bottom: 0.5rem;
-  padding: 0.15rem 0.25rem 0.85rem;
-  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  padding: var(--s1) var(--s2);
   color: var(--fg);
+  border-radius: var(--r);
 }
 
 .logo:hover {
-  background: transparent;
-}
-
-.nav a:hover,
-.links a:hover {
-  background: var(--bg);
+  background: var(--surface-2);
   text-decoration: none;
 }
 
-.links a[aria-current='page'] {
-  background: color-mix(in srgb, var(--accent) 14%, transparent);
-  color: var(--fg);
-}
-
-@media (max-width: 760px) {
+@media (max-width: 560px) {
   .shell {
     display: flex;
     flex-direction: column;
-    width: min(100% - 1rem, 1600px);
-    min-height: 100vh;
-    padding: 0.5rem 0;
+    width: min(100% - 1rem, 1400px);
+    padding: var(--s3) 0;
+  }
+
+  .header {
+    position: sticky;
+    top: var(--s3);
+    z-index: 20;
+    background: var(--bg);
   }
 
   .nav {
     position: static;
-    height: auto;
     max-height: none;
   }
 

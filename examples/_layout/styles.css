@@ -1,24 +1,84 @@
-:root {
-  color-scheme: light dark;
-  --bg: #fff;
-  --fg: #1a1a2e;
-  --muted: #6b7280;
-  --border: #e5e7eb;
-  --surface: #fbfbfb;
-  --surface-dark: #f0f0f0;
-  --accent: #646cff;
-  --radius: 6px;
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+/* Modern Docs theme — restrained neutrals, single indigo accent, hairline
+   borders, flat surfaces, tight type scale. Tokens are the single source of
+   truth for both the example shell and the examples themselves. */
+:root,
+:root[data-theme='light'] {
+  color-scheme: light;
+  --bg: #ffffff;
+  --surface: #fafafa;
+  --surface-2: #f4f4f5;
+  --fg: #18181b;
+  --fg-soft: #3f3f46;
+  --muted: #71717a;
+  --border: #e4e4e7;
+  --border-2: #d4d4d8;
+  --accent: #5b5bd6;
+  --accent-soft: #5b5bd614;
+  --accent-fg: #ffffff;
+  --win: #16a34a;
+  --win-soft: #16a34a18;
+  --code-bg: #f4f4f5;
+
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', monospace;
+
+  --t-xs: 0.75rem;
+  --t-sm: 0.8125rem;
+  --t-base: 0.9375rem;
+  --t-lg: 1rem;
+  --t-xl: 1.25rem;
+  --t-2xl: 1.625rem;
+
+  --s1: 0.25rem;
+  --s2: 0.5rem;
+  --s3: 0.75rem;
+  --s4: 1rem;
+  --s5: 1.5rem;
+  --s6: 2rem;
+
+  --r-sm: 5px;
+  --r: 8px;
+  --r-lg: 12px;
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #1a1a2e;
-    --fg: rgba(255, 255, 255, 0.87);
-    --muted: #9ca3af;
-    --border: #374151;
-    --surface: #242442;
-    --surface-dark: #1a1a2e;
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+    --bg: #0a0a0b;
+    --surface: #131316;
+    --surface-2: #1c1c20;
+    --fg: #f4f4f5;
+    --fg-soft: #d4d4d8;
+    --muted: #8a8a93;
+    --border: #26262b;
+    --border-2: #34343a;
+    --accent: #7c7cf0;
+    --accent-soft: #7c7cf01f;
+    --accent-fg: #0a0a0b;
+    --win: #22c55e;
+    --win-soft: #22c55e22;
+    --code-bg: #161619;
   }
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #0a0a0b;
+  --surface: #131316;
+  --surface-2: #1c1c20;
+  --fg: #f4f4f5;
+  --fg-soft: #d4d4d8;
+  --muted: #8a8a93;
+  --border: #26262b;
+  --border-2: #34343a;
+  --accent: #7c7cf0;
+  --accent-soft: #7c7cf01f;
+  --accent-fg: #0a0a0b;
+  --win: #22c55e;
+  --win-soft: #22c55e22;
+  --code-bg: #161619;
 }
 
 * {
@@ -26,14 +86,15 @@
 }
 
 body {
-  font-family:
-    system-ui,
-    -apple-system,
-    sans-serif;
-  line-height: 1.5;
-  color: var(--fg);
   margin: 0;
   min-height: 100vh;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-sans);
+  font-size: var(--t-base);
+  line-height: 1.55;
+  letter-spacing: -0.006em;
+  -webkit-font-smoothing: antialiased;
 }
 
 h1,
@@ -42,12 +103,18 @@ h3,
 h4,
 h5,
 h6 {
-  margin: 0 0 0.5em;
+  margin: 0 0 var(--s2);
   line-height: 1.2;
+  letter-spacing: -0.02em;
+  font-weight: 700;
+}
+
+h1 {
+  font-size: var(--t-2xl);
 }
 
 p {
-  margin: 0 0 1em;
+  margin: 0 0 var(--s4);
 }
 
 a {
@@ -65,17 +132,16 @@ select,
 textarea {
   font: inherit;
   color: inherit;
-  border-radius: var(--radius);
-  margin: 0.3em;
+  border-radius: var(--r);
 }
 
 button {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  padding: 0.4em 0.8em;
+  background: var(--bg);
+  border: 1px solid var(--border-2);
+  padding: var(--s2) var(--s4);
+  font-weight: 500;
   cursor: pointer;
-  transition: border-color 0.2s;
-  margin: 0 0.5em;
+  transition: border-color 0.15s, background 0.15s;
 }
 
 button:hover {
@@ -85,16 +151,23 @@ button:hover {
 input,
 select,
 textarea {
+  width: 100%;
   background: var(--bg);
-  border: 1px solid var(--border);
-  padding: 0.4em 0.6em;
+  border: 1px solid var(--border-2);
+  padding: 9px var(--s3);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--muted);
 }
 
 input:focus,
 select:focus,
 textarea:focus {
-  outline: 2px solid var(--accent);
-  outline-offset: -1px;
+  outline: 2px solid var(--accent-soft);
+  outline-offset: 0;
+  border-color: var(--accent);
 }
 
 table {
@@ -105,31 +178,65 @@ table {
 th,
 td {
   text-align: left;
-  padding: 0.5em 0.75em;
+  padding: var(--s2) var(--s3);
   border-bottom: 1px solid var(--border);
 }
 
 pre,
 code {
-  font-family: ui-monospace, 'SF Mono', monospace;
-  font-size: 0.9em;
+  font-family: var(--font-mono);
+  font-size: var(--t-sm);
 }
 
 pre {
-  background: var(--surface-dark);
-  padding: 1em;
-  border-radius: var(--radius);
+  background: var(--code-bg);
+  padding: var(--s4);
+  border-radius: var(--r);
   border: 1px solid var(--border);
+  line-height: 1.6;
+  color: var(--fg-soft);
   overflow-x: auto;
 }
 
 hr {
   border: none;
   border-top: 1px solid var(--border);
-  margin: 1.5em 0;
+  margin: var(--s5) 0;
 }
 
 .container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s4);
+  width: 100%;
   max-width: 36rem;
   margin: 0 auto;
+  text-align: center;
+}
+
+.container > h1 {
+  margin-bottom: 0;
+}
+
+.container p {
+  max-width: 30rem;
+}
+
+/* Example content (the dev iframe and every generated sandbox add this class)
+   sits in a centered, width-constrained column. Auto margins center it both
+   axes and collapse safely so tall content scrolls instead of clipping. The
+   dev shell omits the class, keeping its own grid layout. */
+body.example {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--s6);
+}
+
+body.example #root {
+  width: 100%;
+  max-width: 32rem;
+  margin: 0;
 }

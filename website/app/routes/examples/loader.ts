@@ -11,6 +11,9 @@ import './styles.css';
 import { createRoot } from 'react-dom/client';
 import App from './App';
 
+// Matches the dev harness: centers/constrains example content via styles.css.
+document.body.classList.add('example');
+
 createRoot(document.getElementById('root')!).render(<App />);
 `;
 

@@ -3,6 +3,7 @@ import { BrowserRouter, NavLinks, Route, Router } from '@expressive/router';
 import { type ComponentType } from 'react';
 
 import Logo from './Logo';
+import Theme from './Theme';
 import { organize } from './loader';
 import styles from './Examples.module.css';
 
@@ -19,13 +20,13 @@ function Examples({ modules }: { modules: Record<string, LazyModule> }) {
         {routes.map((g) => (
           <Route key={g.slug} to={g.slug} label={g.label}>
             {g.items.map((e) => (
-              <Route
-                key={e.slug}
-                to={e.slug}
-                label={e.label}
-                as={Example}
-                meta={e}
-              />
+              <Route key={e.slug} to={e.slug} label={e.label}>
+                <iframe
+                  title={e.label}
+                  className={styles.frame}
+                  src={`module#${encodeURIComponent(e.file)}`}
+                />
+              </Route>
             ))}
           </Route>
         ))}
@@ -44,7 +45,7 @@ class Navigation extends NavLinks {
     return (
       <div className={styles.group}>
         <h4 className={styles.groupLabel}>{props.route.label}</h4>
-        {props.children}
+        <div className={styles.groupItems}>{props.children}</div>
       </div>
     );
   }
@@ -53,26 +54,18 @@ class Navigation extends NavLinks {
 function Page(props: { children?: React.ReactNode }) {
   return (
     <main className={styles.shell}>
-      <nav className={styles.nav}>
+      <header className={styles.header}>
         <a className={styles.logo} href="/">
           <Logo />
         </a>
+        <Theme />
+        <div className={styles.headerRule} />
+      </header>
+      <nav className={styles.nav}>
         <Navigation />
       </nav>
       <section className={styles.example}>{props.children}</section>
     </main>
-  );
-}
-
-function Example() {
-  const { label, meta } = Route.get();
-
-  return (
-    <iframe
-      className={styles.frame}
-      title={label}
-      src={`module#${encodeURIComponent(meta!.file)}`}
-    />
   );
 }
 

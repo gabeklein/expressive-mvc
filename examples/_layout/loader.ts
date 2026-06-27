@@ -40,7 +40,8 @@ export function organize(modules: Record<string, unknown>): Group[] {
     });
   }
 
-  return [...groups.values()]
+  return Array
+    .from(groups.values())
     .sort(byOrder)
     .map((g) => ({
       ...g,

@@ -19,7 +19,7 @@ const App = () => {
     <div className="container">
       <h1>Counter Example</h1>
       <div className="counter">
-        <Button onClick={decrement}>{'-'}</Button>
+        <Button onClick={decrement}>{'−'}</Button>
         {/* `control` is the instance we can assign to directly. */}
         <pre onClick={() => (control.current = 1)}>{current}</pre>
         <Button onClick={increment}>{'+'}</Button>

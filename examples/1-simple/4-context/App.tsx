@@ -1,3 +1,5 @@
+import './App.css';
+
 import State, { Component, get, Provider } from '@expressive/react';
 
 class FooBar extends State {
@@ -20,14 +22,17 @@ class BarBaz extends Component {
 export default function App() {
   return (
     // Provider adds any State to context for descendants to access.
-    <Provider for={FooBar}>
-      {/* Components add themselves to context. */}
-      <BarBaz>
-        <Foo />
-        <Bar />
-        <Baz />
-      </BarBaz>
-    </Provider>
+    <div className="container context">
+      <h1>Context Example</h1>
+      <Provider for={FooBar}>
+        {/* Components add themselves to context. */}
+        <BarBaz>
+          <Foo />
+          <Bar />
+          <Baz />
+        </BarBaz>
+      </Provider>
+    </div>
   );
 }
 
@@ -38,7 +43,7 @@ function Foo() {
   const { is: foobar, bar } = FooBar.get();
 
   return (
-    <div>
+    <div className="context-row">
       <button onClick={() => foobar.foo++}>Foo</button>
       <small>(Bar was clicked {bar} times)</small>
     </div>
@@ -51,7 +56,7 @@ function Bar() {
   const { is: foobar, foo } = FooBar.get();
 
   return (
-    <div>
+    <div className="context-row">
       <button onClick={() => foobar.bar++}>Bar</button>
       <small>(Foo was clicked {foo} times)</small>
     </div>
@@ -62,7 +67,7 @@ function Baz() {
   const { announce } = BarBaz.get();
 
   return (
-    <div>
+    <div className="context-row">
       <button onClick={announce}>Hello FooBar</button>
     </div>
   );
