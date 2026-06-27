@@ -925,6 +925,62 @@ describe('Route', () => {
           expect(screen.getByText('secret')).toBeDefined();
           expect(ran).toBe(2);
         });
+
+        it('re-runs the redirect on re-entry under a persistent parent', async () => {
+          location('/admin/secret');
+          let ran = 0;
+          const redirect = () => { ran++; return undefined; };
+          const Layout = (props: { children?: React.ReactNode }) => <main>{props.children}</main>;
+          await act(async () => {
+            render(
+              <Route to="/admin/*" as={Layout}>
+                <Route to="secret" redirect={redirect} as={() => <h1>secret</h1>} />
+                <Route to="open" as={() => <h1>open</h1>} />
+              </Route>
+            );
+          });
+          expect(ran).toBe(1);
+          expect(screen.getByText('secret')).toBeDefined();
+
+          await act(async () => router.current.goto('/admin/open'));
+          expect(screen.getByText('open')).toBeDefined();
+
+          await act(async () => router.current.goto('/admin/secret'));
+          expect(screen.getByText('secret')).toBeDefined();
+          expect(ran).toBe(2);
+        });
+
+        it('re-runs an async redirect on re-entry under a persistent parent', async () => {
+          location('/admin/secret');
+          let ran = 0;
+          let gate = mockPromise<string | void>();
+          const redirect = () => { ran++; return gate; };
+          const Layout = (props: { children?: React.ReactNode }) => <main>{props.children}</main>;
+          await act(async () => {
+            render(
+              <Route to="/admin/*" as={Layout}>
+                <Route to="secret" fallback={<h1>checking</h1>} redirect={redirect} as={() => <h1>secret</h1>} />
+                <Route to="open" as={() => <h1>open</h1>} />
+              </Route>
+            );
+          });
+          expect(screen.getByText('checking')).toBeDefined();
+
+          await act(async () => gate.resolve(undefined));
+          expect(screen.getByText('secret')).toBeDefined();
+          expect(ran).toBe(1);
+
+          await act(async () => router.current.goto('/admin/open'));
+          expect(screen.getByText('open')).toBeDefined();
+
+          gate = mockPromise<string | void>();
+          await act(async () => router.current.goto('/admin/secret'));
+          expect(screen.getByText('checking')).toBeDefined();
+          expect(ran).toBe(2);
+
+          await act(async () => gate.resolve(undefined));
+          expect(screen.getByText('secret')).toBeDefined();
+        });
       });
 
       describe('force-404 (null verdict)', () => {
