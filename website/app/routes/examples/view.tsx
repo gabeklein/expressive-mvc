@@ -11,9 +11,15 @@ export default function CodeSample() {
     return <Navigate to={`/examples/${NAMES[0]}`} replace />;
 
   sandbox: {
+    flex: 1;
+    minHeight: 0;
+    position: relative;
+  }
+
+  inner: {
+    absolute: fill;
     display: flex;
     flexDirection: column;
-    height: `calc(100vh - 159px)`;
   }
 
   loading: {
@@ -22,9 +28,11 @@ export default function CodeSample() {
 
   return (
     <div _sandbox>
-      <Suspense fallback={<div _loading>Loading sandbox...</div>}>
-        <Sandbox name={name} files={getFiles(name)} />
-      </Suspense>
+      <div _inner>
+        <Suspense fallback={<div _loading>Loading sandbox...</div>}>
+          <Sandbox name={name} files={getFiles(name)} />
+        </Suspense>
+      </div>
     </div>
   );
 }
