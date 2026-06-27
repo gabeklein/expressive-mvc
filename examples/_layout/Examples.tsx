@@ -3,6 +3,7 @@ import { BrowserRouter, NavLinks, Route, Router } from '@expressive/router';
 import { type ComponentType } from 'react';
 
 import Logo from './Logo';
+import Theme from './Theme';
 import { organize } from './loader';
 import styles from './Examples.module.css';
 
@@ -53,10 +54,14 @@ class Navigation extends NavLinks {
 function Page(props: { children?: React.ReactNode }) {
   return (
     <main className={styles.shell}>
-      <nav className={styles.nav}>
+      <header className={styles.header}>
         <a className={styles.logo} href="/">
           <Logo />
         </a>
+        <Theme />
+        <div className={styles.headerRule} />
+      </header>
+      <nav className={styles.nav}>
         <Navigation />
       </nav>
       <section className={styles.example}>{props.children}</section>

@@ -3,9 +3,9 @@
 /* Modern Docs theme — restrained neutrals, single indigo accent, hairline
    borders, flat surfaces, tight type scale. Tokens are the single source of
    truth for both the example shell and the examples themselves. */
-:root {
-  color-scheme: light dark;
-
+:root,
+:root[data-theme='light'] {
+  color-scheme: light;
   --bg: #ffffff;
   --surface: #fafafa;
   --surface-2: #f4f4f5;
@@ -44,7 +44,8 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
     --bg: #0a0a0b;
     --surface: #131316;
     --surface-2: #1c1c20;
@@ -60,6 +61,24 @@
     --win-soft: #22c55e22;
     --code-bg: #161619;
   }
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #0a0a0b;
+  --surface: #131316;
+  --surface-2: #1c1c20;
+  --fg: #f4f4f5;
+  --fg-soft: #d4d4d8;
+  --muted: #8a8a93;
+  --border: #26262b;
+  --border-2: #34343a;
+  --accent: #7c7cf0;
+  --accent-soft: #7c7cf01f;
+  --accent-fg: #0a0a0b;
+  --win: #22c55e;
+  --win-soft: #22c55e22;
+  --code-bg: #161619;
 }
 
 * {

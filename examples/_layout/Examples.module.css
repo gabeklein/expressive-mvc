@@ -1,15 +1,43 @@
 .shell {
   display: grid;
-  grid-template-columns: 15rem minmax(0, 1fr);
+  grid-template-columns: 10rem minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-areas:
+    "header header"
+    "nav example";
   gap: var(--s5);
   width: min(100% - 2rem, 1400px);
   min-height: 100vh;
   margin: 0 auto;
-  padding: var(--s5) 0;
+  padding: var(--s2) 0 var(--s5);
+}
+
+.header {
+  grid-area: header;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s4);
+  min-width: 0;
+  padding: var(--s2) 0 var(--s4);
+}
+
+.headerRule {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 1px;
+  background: var(--border);
+  border-radius: 999px;
 }
 
 .example {
+  grid-area: example;
+  display: flex;
   min-width: 0;
+  min-height: 0;
   overflow: hidden;
   background: var(--surface);
   border: 1px solid var(--border);
@@ -18,13 +46,16 @@
 
 .frame {
   display: block;
+  flex: 1;
   width: 100%;
-  height: calc(100vh - 3rem);
+  height: 100%;
+  min-height: calc(100vh - 8rem);
   border: 0;
   background: var(--bg);
 }
 
 .nav {
+  grid-area: nav;
   position: sticky;
   top: var(--s5);
   z-index: 10;
@@ -35,21 +66,20 @@
   max-height: calc(100vh - 3rem);
   overflow-y: auto;
   padding: var(--s3);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--r-lg);
+  padding-right: 0;
 }
 
 .links {
   display: flex;
   flex-direction: column;
-  gap: var(--s4);
+  gap: var(--s1);
 }
 
 .group {
   display: flex;
   flex-direction: column;
   gap: var(--s2);
+  margin-bottom: var(--s5);
 }
 
 .groupLabel {
@@ -97,15 +127,17 @@
 }
 
 .logo {
-  display: block;
-  margin-bottom: var(--s2);
-  padding: var(--s2) var(--s2) var(--s4);
-  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  padding: var(--s1) var(--s2);
   color: var(--fg);
+  border-radius: var(--r);
 }
 
 .logo:hover {
-  background: transparent;
+  background: var(--surface-2);
+  text-decoration: none;
 }
 
 @media (max-width: 760px) {
@@ -114,6 +146,13 @@
     flex-direction: column;
     width: min(100% - 1rem, 1400px);
     padding: var(--s3) 0;
+  }
+
+  .header {
+    position: sticky;
+    top: var(--s3);
+    z-index: 20;
+    background: var(--bg);
   }
 
   .nav {

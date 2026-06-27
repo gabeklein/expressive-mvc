@@ -1,0 +1,17 @@
+.theme {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s2);
+  padding: 7px var(--s3);
+  background: var(--bg);
+  color: var(--fg-soft);
+  border-color: var(--border);
+  font-size: var(--t-sm);
+}
+
+.theme:hover {
+  background: var(--surface-2);
+  color: var(--fg);
+}
