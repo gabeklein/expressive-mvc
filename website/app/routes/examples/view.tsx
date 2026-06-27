@@ -5,7 +5,7 @@ import { examples, getFiles, NAMES } from './loader';
 const Sandbox = lazy(() => import('@/components/Sandbox'));
 
 export default function CodeSample() {
-  const { name } = useParams();
+  const name = useParams()['*'];
 
   if (!name || !examples[name])
     return <Navigate to={`/examples/${NAMES[0]}`} replace />;
