@@ -13,7 +13,7 @@ export default function CodeSample() {
   sandbox: {
     display: flex;
     flexDirection: column;
-    height: `calc(100vh - 12rem)`;
+    height: `calc(100vh - 167px)`;
   }
 
   loading: {
