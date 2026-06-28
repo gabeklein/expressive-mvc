@@ -12,7 +12,7 @@ Rule of thumb: use `Component` when state is intrinsic to display logic. Usually
 
 A Component does not have to define `render()`: without one, it passes children through while still providing itself to context and acting as Suspense/ErrorBoundary placement. Use that headless form only when React tree placement is the feature: route controllers inserted throughout an app, progressive `Boundary` wrappers, or Suspense/ErrorBoundary placement.
 
-Use `State` for headless models/controllers, even if they are only meaningful in context. A `Component` carries React instance properties (`props`, `state`, `context`, `setState`, `forceUpdate`), so using it where `State` would suffice makes `.get()` noisier.
+Use `State` for headless models/controllers, even if they are only meaningful in context. A `Component` carries React instance members (`state`, `context`, `setState`, `forceUpdate`) that exist only to satisfy host JSX and are **deprecated** in favor of `this.get()` / `this.set()`; using a Component where `State` would suffice makes `.get()` IntelliSense noisier with these seams.
 
 For one-shot feature builds and hook refactors, avoid creating `FooState` plus `FooView` by reflex. A route shell, local router, tab panel, menu, editor surface, media player, or custom form control is often clearer as `class Foo extends Component` because the state is intrinsic to the rendered unit.
 
@@ -193,7 +193,7 @@ class ChatRoom extends Component {
 }
 ```
 
-External code can hold a reference via `is` prop (construction-time, fires once): `<ChatRoom is={c => controller = c} />`.
+External code can hold a reference via `is` prop: `<ChatRoom is={c => controller = c} />`. It fires once, **after props are applied but before the `new()` lifecycle hook** - so `is` can configure state that `new()` then observes. That ordering is the reason to choose `is` over `ref` (post-mount) when setup must happen during construction.
 
 Standard React `ref` also works - Component is a real class component, so `ref` receives the instance after mount and clears to `null` on unmount: `<ChatRoom ref={chatRef} />`. Use `is` when you need the instance during construction; use `ref` for post-mount imperative access following React conventions.
 
