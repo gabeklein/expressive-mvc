@@ -196,7 +196,7 @@ Accepts nested arrays (flattened at runtime), objects (assigned), and callbacks 
 State extends Observable. Also usable standalone:
 
 ```ts
-import { listener, watch, event, observer, touch } from '@expressive/mvc';
+import { listener, watch, event, observer, touch } from '@expressive/mvc/observable';
 
 const stop = listener(state, (key, source) => {
   /* event */

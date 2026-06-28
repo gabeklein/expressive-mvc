@@ -3,7 +3,7 @@
 The reactive substrate beneath `State`. Reach for this only to build a **custom observable** - an object that is not a `State` but hooks into the same subscription/dispatch system so `watch()`, `State.use()`, and adapter hooks can track it. If you are writing application logic, use `State`, computed getters, and `hot()` instead; this is library-authoring surface.
 
 ```ts
-import { observer, touch, event, listener, watch, Observer } from '@expressive/mvc';
+import { observer, touch, event, listener, watch, Observer } from '@expressive/mvc/observable';
 ```
 
 The canonical implementation is **`hot()`** ([field/hot.md](../field/hot.md)) - the array/object reactive sugar is built entirely on `touch` + `event`. Read its source (`packages/mvc/src/field/hot.ts`) as the reference.
@@ -46,7 +46,7 @@ All events are batched and flushed via `queueMicrotask()`.
 A minimal custom observable - a reactive cell that is not a `State`:
 
 ```ts
-import { touch, event, watch } from '@expressive/mvc';
+import { touch, event, watch } from '@expressive/mvc/observable';
 
 function cell<T>(initial: T) {
   let value = initial;
