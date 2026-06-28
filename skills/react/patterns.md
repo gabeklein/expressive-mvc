@@ -200,6 +200,80 @@ class Cart extends Component {
 }
 ```
 
+## Reusable Primitive (subclass to specialize)
+
+A base Component owns behavior; subclasses fill in only what differs. This is the "build once, team extends" story - see `./component.md` for the full inheritance and render-composition model.
+
+```tsx
+import { Component } from '@expressive/react';
+
+// Base owns open/close behavior, backdrop, and escape handling.
+abstract class Dialog extends Component {
+  open = false;
+
+  show() { this.open = true; }
+  close() { this.open = false; }
+
+  protected new() {
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && this.close();
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }
+
+  abstract Body(): Component.Node;
+
+  render() {
+    if (!this.open) return null;
+    return (
+      <div className="backdrop" onClick={this.close}>
+        <div className="dialog" onClick={(e) => e.stopPropagation()}>
+          <this.Body />
+        </div>
+      </div>
+    );
+  }
+}
+
+// Subclass authors only its content; behavior is inherited.
+class ConfirmDialog extends Dialog {
+  message = 'Are you sure?';
+  onConfirm = () => {};
+
+  Body() {
+    return (
+      <>
+        <p>{this.message}</p>
+        <button onClick={() => { this.onConfirm(); this.close(); }}>Confirm</button>
+        <button onClick={this.close}>Cancel</button>
+      </>
+    );
+  }
+}
+```
+
+## Headless Boundary (tree placement, no render)
+
+A Component without `render()` passes children through while still providing itself to context and acting as Suspense/ErrorBoundary placement. Use it when React tree position is the feature - route shells, progressive boundaries, contextual owners.
+
+```tsx
+import { Component } from '@expressive/react';
+
+class Section extends Component {
+  fallback = (<Spinner />); // suspense placement for everything below
+  error: Error | null = null;
+
+  // Error boundary: handle the throw, set fallback for error-specific UI.
+  catch(error: Error) {
+    this.error = error;
+    this.fallback = <ErrorPanel error={error} />;
+  }
+  // no render() - children render in place, this instance is in context
+}
+
+// <Section><AsyncChild /></Section>
+// Async work in AsyncChild suspends to Section's fallback; a throw runs catch().
+```
+
 ## Debounced Search
 
 ```ts
