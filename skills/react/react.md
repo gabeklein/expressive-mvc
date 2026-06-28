@@ -13,10 +13,12 @@ For examples and patterns see `patterns.md`.
 export { State, State as default, use, Provider, Consumer };
 
 // Re-exported unchanged from @expressive/mvc:
-export { Component, Context, Observer, def, get, ref, set, hot };
+export { Component, Context, def, get, ref, set, hot };
 ```
 
 `Component`, `Context`, and the instructions come straight from core. The adapter does not wrap them; it populates a shared `Runtime` (see below) and patches React behavior onto the `Component` prototype as a load-time side effect. `State` is also re-exported from core, via the adapter's `./adapter` entry.
+
+The low-level observable protocol (`observer`, `touch`, `event`, `watch`, `Observer`, etc.) is **not** re-exported here - import it from the `@expressive/mvc/observable` subpath. See [../state/observable.md](../state/observable.md).
 
 ## Quick Start
 

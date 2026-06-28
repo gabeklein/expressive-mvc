@@ -272,6 +272,8 @@ class DataView extends Component {
 }
 ```
 
+`fallback` defaults to `null` (an own Suspense boundary showing nothing). Set `fallback = false` to **opt out of the boundary entirely** - no Suspense wrapper is created, so a suspension bubbles up to the nearest ancestor boundary instead of being caught here. Use this when a parent should own the loading UI for a whole subtree.
+
 ## Error Boundaries
 
 Override `catch()` to handle child render errors:
