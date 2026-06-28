@@ -4,6 +4,12 @@ import { NavLink, Outlet } from 'react-router';
 import { layoutOptions } from '../home';
 import { NAMES } from './loader';
 
+const GROUPS = NAMES.reduce((acc, slug) => {
+  const [group, ...rest] = slug.split('/');
+  (acc[group] ??= []).push({ slug, leaf: rest.join('/') });
+  return acc;
+}, {} as Record<string, { slug: string; leaf: string }[]>);
+
 export function meta() {
   return [{ title: 'Examples - Expressive' }];
 }
@@ -14,7 +20,7 @@ export default function ExamplesLayout() {
     flexDirection: column;
     flex: 1;
     padding: 24;
-    gap: 16;
+    gap: 8;
     maxWidth: 1400;
     width: fill;
     margin: 0, auto;
@@ -32,8 +38,55 @@ export default function ExamplesLayout() {
 
 function Navigation() {
   display: flex;
-  flexWrap: wrap;
+  alignItems: center;
   gap: 8;
+  overflowX: auto;
+  marginLeft: 12;
+  paddingBottom: 12;
+
+  group: {
+    display: flex;
+    alignItems: center;
+    marginR: 1.2;
+    gap: 8;
+  }
+
+  label: {
+    display: flex;
+    alignItems: center;
+    alignSelf: stretch;
+    fontSize: 0.7;
+    fontWeight: 600;
+    textTransform: uppercase;
+    letterSpacing: '0.08em';
+    color: $colorFdMutedForeground;
+    whiteSpace: nowrap;
+    background: $colorFdBackground;
+    position: sticky;
+    left: 0;
+    zIndex: 1;
+
+    $after: {
+      content: "";
+      position: absolute;
+      left: "100%";
+      top: 0;
+      bottom: 0;
+      width: 12;
+      pointerEvents: none;
+      background: `linear-gradient(to right, var(--color-fd-background), transparent 70%)`;
+    }
+
+    separator: {
+      width: 2;
+      display: "inline-block";
+      height: 2.2;
+      radius: 2;
+      marginLeft: 12;
+      marginRight: 5;
+      background: $colorFdBorder;
+    }
+  }
 
   NavLink: {
     padding: 6, 12;
@@ -43,24 +96,33 @@ function Navigation() {
     textDecoration: none;
     color: inherit;
     userSelect: none;
+    whiteSpace: nowrap;
 
     $hover: {
       borderColor: $colorFdPrimary;
     }
 
     if("[aria-current='page']") {
-      background: $colorFdPrimary;
-      color: $colorFdPrimaryForeground;
-      borderColor: $colorFdPrimary;
+      background: $colorFdMuted;
+      borderColor: $colorFdMutedForeground;
     }
   }
 
   return (
     <nav>
-      {NAMES.map((name) => (
-        <NavLink key={name} to={`/examples/${name}`}>
-          {name}
-        </NavLink>
+      {Object.entries(GROUPS).map(([group, items]) => (
+        <div _group key={group}>
+          <span _label>
+            {group}
+            <span _separator />
+          </span>
+          
+          {items.map(({ slug, leaf }) => (
+            <NavLink key={slug} to={`/examples/${slug}`}>
+              {leaf}
+            </NavLink>
+          ))}
+        </div>
       ))}
     </nav>
   );
