@@ -123,7 +123,7 @@ class Profile extends State {
 }
 ```
 
-`displayName` suspends until `user` resolves, which suspends until `userId` is assigned. React's `<Suspense>` boundary catches it, the same way a direct read would.
+`displayName` suspends until `user` resolves, which suspends until `userId` is assigned. The thrown Promise is *produced* here but *consumed* by the rendering layer: any React `<Suspense>` boundary catches it, and a `Component`'s own `fallback` (prop/field) and `catch()` are the built-in placement for that (see `../react/component.md`).
 
 ## Errors
 

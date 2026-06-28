@@ -4,7 +4,14 @@
 import State from '@expressive/mvc';
 ```
 
-`@expressive/mvc` - framework-agnostic reactive state management built on classes.
+`@expressive/mvc` is the framework-agnostic core. It ships two primitives built on the same reactive class machinery:
+
+- **`State`** (this doc) - the **headless** primitive. Reactive properties, computed getters, async data, lifecycle, context - no render of its own. Use it for controllers, models, and shared logic that any view can subscribe to.
+- **`Component`** - a `State` that **renders itself**. Same reactivity and lifecycle, plus props, render composition, subcomponents, suspense, and error boundaries. Exported from this same package; the React/Preact adapters give it host behavior. Use it for anything display-intrinsic. See `../react/component.md`.
+
+Everything in this doc - reactivity, lifecycle, context, events, suspense - is the substrate **both** primitives share. Where a feature is consumed by the rendering layer (suspense `fallback`, error `catch`, tree placement), this doc notes the handoff to `Component`.
+
+This is not "just a state machine": `State` is the headless half, `Component` is the half that turns the same model into UI.
 
 ## Creating State
 
@@ -215,7 +222,9 @@ All events batched and flushed via `queueMicrotask()`.
 
 ## Context
 
-Every active State has a "home context" that determines where its `state.get(Type)` lookups originate. `State.new()` registers to `Context.root` (the global singleton) when not already claimed; `new Context(StateClass)` registers to particular context. Home is locked once assigned. Largely advanced/internal.
+Context is the backbone of the view tree: it is how a `Component` (or `Provider`) makes its instance findable by descendants, and how any `State` resolves its `get(Type)` lookups. Not an advanced footnote - it is the mechanism components use to find their controllers.
+
+Every active State has a "home context" that determines where its `state.get(Type)` lookups originate. `State.new()` registers to `Context.root` (the global singleton) when not already claimed; `new Context(StateClass)` registers to a particular context. Home is locked once assigned.
 
 See [context.md](context.md) for the full Context API, root singleton semantics, and the `new State()` escape hatch for pre-init context placement.
 
