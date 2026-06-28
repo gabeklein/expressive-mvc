@@ -11,8 +11,12 @@ import { useTheme } from 'next-themes';
 import type { MouseEvent as ReactMouseEvent } from 'react';
 
 class Panes extends State {
-  panel: 'preview' | 'code' = 'preview';
+  mode: 'preview' | 'code' = 'preview';
   ratio = 50; // editor width (%) when both panels are side by side
+
+  onSelect(is: typeof this.mode){
+    this.mode = is;
+  }
 
   grab(event: ReactMouseEvent) {
     event.preventDefault();
@@ -57,15 +61,22 @@ export default function Sandbox({
 }
 
 function Layout() {
-  const { dispatch } = useSandpack();
-  const panes = Panes.use();
-  const { panel, ratio, grab } = panes;
+  const { onSelect, mode, ratio, grab } = Panes.use();
+  const sandpack = useSandpack();
+  const refreshOnSave = {
+    key: 'Mod-s',
+    preventDefault: true,
+    run() {
+      sandpack.dispatch({ type: 'refresh' });
+      return true;
+    }
+  }
 
   // Below the breakpoint the panels can't fit side by side; show one at a time
   // and reveal a toggle. Inline display wins over Sandpack's own layout CSS.
   const narrow = useMediaQuery('(max-width: 767px)');
-  const showEditor = !narrow || panel === 'code';
-  const showPreview = !narrow || panel === 'preview';
+  const showEditor = !narrow || mode === 'code';
+  const showPreview = !narrow || mode === 'preview';
 
   position: relative;
   height: '100%';
@@ -86,21 +97,12 @@ function Layout() {
     <SandpackLayout>
       <SandpackCodeEditor
         style={{ display: showEditor ? 'flex' : 'none', flex: narrow ? '1' : `0 0 ${ratio}%` }}
-        extensionsKeymap={[
-          {
-            key: 'Mod-s',
-            preventDefault: true,
-            run() {
-              dispatch({ type: 'refresh' });
-              return true;
-            }
-          }
-        ]}
+        extensionsKeymap={[refreshOnSave]}
       />
       {!narrow && <div _handle onMouseDown={grab} />}
       <SandpackPreview style={{ display: showPreview ? 'flex' : 'none', flex: '1 1 0%' }} />
       {narrow && (
-        <Switcher panel={panel} onSelect={(value) => (panes.panel = value)} />
+        <Switcher panel={mode} onSelect={onSelect} />
       )}
     </SandpackLayout>
   );
