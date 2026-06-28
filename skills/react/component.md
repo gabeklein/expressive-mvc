@@ -294,6 +294,7 @@ class SafeView extends Component {
 
 - `this.fallback` in `catch()` shows error UI, reverted after recovery.
 - Rejected `catch()` propagates to parent boundary.
+- **The boundary retries render when `catch()` resolves.** Resolve only once recovery is possible. If the child throws deterministically, an immediately-resolving (or `void`) `catch` retries straight into the same throw and loops - keep the promise pending (e.g. `await` a "try again" signal) to hold the fallback.
 - Sync `catch()` triggers immediate retry.
 - Repeated throw after recovery propagates out.
 

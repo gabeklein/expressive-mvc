@@ -96,8 +96,14 @@ class Profile extends Component {
 
 ## Nested / Child State
 
+Child States held in an array do **not** subscribe their parent: reading
+`item.done` off `this.items` in the parent's render registers no dependency,
+so a child mutation won't re-render the list. Subscribe each child where it is
+rendered - give every row its own `use(item)`. Membership changes (add/remove)
+re-render the list because they reassign `this.items`, which the parent reads.
+
 ```tsx
-import State, { Component } from '@expressive/react';
+import State, { Component, use } from '@expressive/react';
 
 class TodoItem extends State {
   text = '';
@@ -107,25 +113,30 @@ class TodoItem extends State {
   }
 }
 
+// One row, subscribed to one item - re-renders when that item changes.
+const Row = ({ item }: { item: TodoItem }) => {
+  const { text, done, toggle } = use(item);
+  return (
+    <li
+      onClick={toggle}
+      style={{ textDecoration: done ? 'line-through' : 'none' }}>
+      {text}
+    </li>
+  );
+};
+
 class TodoList extends Component {
   items: TodoItem[] = [];
 
   add(text: string) {
-    const item = TodoItem.new();
-    item.text = text;
-    this.items = [...this.items, item];
+    this.items = [...this.items, TodoItem.new({ text })];
   }
 
   render() {
     return (
       <ul>
         {this.items.map((item) => (
-          <li
-            key={item.text}
-            onClick={item.toggle}
-            style={{ textDecoration: item.done ? 'line-through' : 'none' }}>
-            {item.text}
-          </li>
+          <Row key={String(item)} item={item} />
         ))}
         <button onClick={() => this.add('New item')}>Add</button>
       </ul>
@@ -260,12 +271,15 @@ import { Component } from '@expressive/react';
 
 class Section extends Component {
   fallback = (<Spinner />); // suspense placement for everything below
-  error: Error | null = null;
 
-  // Error boundary: handle the throw, set fallback for error-specific UI.
+  // Error boundary. Set `this.fallback` for error UI. The boundary shows the
+  // fallback while catch() is pending and RETRIES render when it resolves -
+  // so resolve only once recovery is possible, or the same throw loops.
+  resume = () => {};
+
   catch(error: Error) {
-    this.error = error;
-    this.fallback = <ErrorPanel error={error} />;
+    this.fallback = <ErrorPanel error={error} onRetry={() => this.resume()} />;
+    return new Promise<void>((resolve) => { this.resume = resolve; });
   }
   // no render() - children render in place, this instance is in context
 }
