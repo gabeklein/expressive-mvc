@@ -78,8 +78,9 @@ Field initializers and helper values that configure reactive behavior. Each has 
 | `set(() => v, true)`  | Eager factory. Runs immediately on init.                       |
 | `set(value, cb)`      | Default with setter callback. `throw false` to reject.         |
 | `set(() => v, cb)`    | Factory with setter callback. Makes writable.                  |
+| `set(self => v)`      | Reactive computed (arity ≥ 1). Re-runs when read deps change. Enumerable, read-only. |
 
-For **reactive computed values**, declare a normal class getter (e.g. `get total() { ... }`). Getters on a State subclass are auto-promoted to memoized, dependency-tracked properties.
+For **reactive computed values**, declare a normal class getter (e.g. `get total() { ... }`) - getters on a State subclass are auto-promoted to memoized, dependency-tracked properties. The `set(self => v)` form is the instruction equivalent (note the parameter - a zero-arg `set(() => v)` is a one-shot factory, not reactive); reach for it when a base class needs to declare a computed slot that subclasses refine via `declare`, which a prototype getter cannot express. See [field/set.md](field/set.md#computed-reactive).
 
 Do not pass a direct promise to `set()`. Use `set(() => promise)` or `set(async () => value)` so work starts during activation/access instead of construction, which avoids leaked work from abandoned instances.
 
