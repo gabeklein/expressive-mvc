@@ -232,6 +232,60 @@ See [context.md](context.md) for the full Context API, root singleton semantics,
 
 Primarily consumed via the [`get` instruction](../field/get.md) and React [`Provider`](../react/react.md).
 
+## Singletons
+
+Because `State.new()` registers its instance into `Context.root`, **activating a State once makes it globally resolvable** - no `Provider`, no wiring. Reach for this when authoring **API-like, UI-agnostic States of global significance**: an auth/session controller, a feature-flag store, a websocket or API client. They log in, hold app-wide state, and are read from anywhere, but render nothing themselves.
+
+```ts
+class Auth extends State {
+  user = set<User>();          // suspends until resolved
+  token = '';
+
+  get signedIn() {
+    return !!this.token;
+  }
+
+  async login(email: string, password: string) {
+    const res = await api.login(email, password);
+    this.token = res.token;
+    this.user = res.user;
+  }
+
+  logout() {
+    this.token = '';
+  }
+}
+
+// Activate once at app startup - this instance becomes the singleton.
+Auth.new();
+```
+
+Now any component reads it from context with no provider:
+
+```tsx
+function Header() {
+  const { user, signedIn, logout } = Auth.get();   // resolves the root singleton
+  return signedIn ? <button onClick={logout}>{user.name}</button> : <Login />;
+}
+```
+
+And any other `State` can depend on it:
+
+```ts
+class Cart extends State {
+  auth = get(Auth);           // the singleton, via context
+}
+```
+
+Breadcrumbs and limits:
+
+- **One per type.** Creating a second instance of the same class implicitly is an opt-out: both are evicted and the type has no singleton until one is re-created. If you need multiple, give each its own explicit context (`Provider`) instead of relying on root.
+- **Subtypes are independent.** `get(Base)` becomes ambiguous if two subclasses register at root, but `get(SubA)`/`get(SubB)` stay unambiguous.
+- **Ownership locks at activation** - a singleton's home stays `root` even if later placed in a `Provider` (it is still resolvable there).
+- **Scoped override.** To shadow the global for a subtree (tests, multi-tenant, previews), wrap that subtree in `<Provider for={Auth}>`; descendants get the provided instance while the rest of the app keeps the singleton.
+
+See [context.md](context.md) for the precise collision/eviction semantics and root registry details.
+
 ## String Representation
 
 Each instance gets a unique identifier used by `toString()` and error messages.
