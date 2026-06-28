@@ -40,6 +40,57 @@ class Counter extends Component {
 
 ---
 
+## Two surfaces
+
+This adapter exposes the library two ways. Reach for them in this order:
+
+1. **`Component`** - a `State` that renders itself. The centerpiece: a class that owns behavior, lifecycle, context, suspense, error handling, *and* its own JSX, used directly as a React element. This is where most display-intrinsic logic should live (controls, shells, panels, editors, route controllers). See **Component Class** below and `./component.md`.
+2. **Hooks on plain `State`** (`use`, `State.use`, `State.get`) - the connective tissue for headless models that have no render of their own, consumed from inside ordinary function components. Use these for display-agnostic controllers and externally-owned instances.
+
+If a class is "a thing on screen," it is usually a `Component`. If it is "logic some component needs," it is usually a `State` reached through a hook. (`./component.md` has the full decision guide.)
+
+---
+
+## Component Class
+
+`Component` extends `State` and works directly as a React element. It is the primary way to build UI with this library. See `./component.md` for the full reference (props, render composition, subcomponents, boundaries, inheritance).
+
+```tsx
+import { Component } from '@expressive/react';
+
+class Counter extends Component {
+  count = 0;
+  increment() {
+    this.count++;
+  }
+
+  render() {
+    return <button onClick={this.increment}>{this.count}</button>;
+  }
+}
+
+<Counter count={5} />;
+```
+
+What you get from a single class:
+
+- State fields become optional JSX props, applied every render.
+- `render()` controls output. Without it, children pass through while the instance still provides context and acts as Suspense/ErrorBoundary placement.
+- The instance is provided to context automatically - descendants read it via `State.get()`.
+- Built-in suspense (`fallback` prop/field) and error boundaries (`catch()` method).
+- PascalCase methods become reactive subcomponents.
+- Subclassing composes behavior *and* rendering: a base owns logic, a subclass fills or wraps the render. This inheritance/composition model (see `./component.md`) is the capability hooks cannot express.
+- Special props: `is` (configure on creation, before `new()`), `fallback` (suspense UI).
+- Strict-mode safe.
+
+---
+
+## Connecting plain components to State
+
+The hooks below subscribe ordinary function components to a `State` (or any observable). Use them for headless models; for display-intrinsic logic prefer a `Component` (above).
+
+---
+
 ## use() - Existing Observable Hook
 
 Subscribes a React component to an existing observable object or State instance. Import with an alias when needed to avoid confusion with React's own `use`.
@@ -213,39 +264,6 @@ const data = AppState.get(($, refresh) => {
 ### Reactive context
 
 If the upstream instance is replaced in context (e.g., Provider re-created), the hook automatically resubscribes to the new instance and refreshes.
-
----
-
-## Component Class
-
-`Component` extends `State` and works directly as a React component. See `./component.md` for full details.
-
-```tsx
-import { Component } from '@expressive/react';
-
-class Counter extends Component {
-  count = 0;
-  increment() {
-    this.count++;
-  }
-
-  render() {
-    return <button onClick={this.increment}>{this.count}</button>;
-  }
-}
-
-<Counter count={5} />;
-```
-
-Key features:
-
-- State fields become optional JSX props, applied every render.
-- `render()` controls output; without it, children pass through a context provider.
-- Instances are automatically provided to context for child access via `State.get()`.
-- Built-in suspense (`fallback` property/prop) and error boundaries (`catch()` method).
-- PascalCase methods become reactive subcomponents.
-- Special props: `is` (creation callback), `fallback` (suspense UI).
-- Strict mode safe.
 
 ---
 
