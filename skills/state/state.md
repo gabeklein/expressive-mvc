@@ -277,6 +277,25 @@ class Cart extends State {
 }
 ```
 
+### Accessing outside JSX
+
+`State.get()` is a React hook (it subscribes the calling component), so it only works inside render. To reach a singleton from a service, event handler, module scope, or test - anywhere outside a fiber - resolve it from the root context directly:
+
+```ts
+import { Context } from '@expressive/react'; // also exported from @expressive/mvc
+
+Context.root.get(Auth);          // the singleton instance; throws if none
+Context.root.get(Auth, false);   // instance or undefined
+
+// e.g. in a non-React module
+function authHeader() {
+  const { token } = Context.root.get(Auth);
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+```
+
+This is a plain synchronous read - no hook, no subscription, no component. Mutations on the returned instance still dispatch normally, so subscribed components update. (Inside a `State`, prefer the `get(Auth)` instruction; `Context.root.get` is for code with no State/context of its own.)
+
 Breadcrumbs and limits:
 
 - **One per type.** Creating a second instance of the same class implicitly is an opt-out: both are evicted and the type has no singleton until one is re-created. If you need multiple, give each its own explicit context (`Provider`) instead of relying on root.
