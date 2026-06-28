@@ -3,7 +3,7 @@
 The reactive substrate beneath `State`. Reach for this only to build a **custom observable** - an object that is not a `State` but hooks into the same subscription/dispatch system so `watch()`, `State.use()`, and adapter hooks can track it. If you are writing application logic, use `State`, computed getters, and `hot()` instead; this is library-authoring surface.
 
 ```ts
-import { observer, touch, event, listener, watch, Observer } from '@expressive/mvc/observable';
+import { observer, touch, event, listener, watch, pending, capture, Observer } from '@expressive/mvc/observable';
 ```
 
 The canonical implementation is **`hot()`** ([field/hot.md](../field/hot.md)) - the array/object reactive sugar is built entirely on `touch` + `event`. Read its source (`packages/mvc/src/field/hot.ts`) as the reference.
@@ -27,6 +27,13 @@ That is the whole loop: reads `touch`, writes `event`. The `Observer` bundle is 
 | `watch(self, effect, requireValues?)` | High-level tracked effect. Runs `effect` immediately and re-runs when any *accessed* property changes (auto-tracked). Return a cleanup fn or `null` (run once, no subscription). `true` makes reads of `undefined` throw. Returns an unsubscribe fn. |
 | `observer(self, create?)` | Fetch the bundle. Returns it if active, `null` if terminated, `undefined` if never observable. `observer(self, true)` attaches a fresh bundle (throws if terminated). Use to opt an object in explicitly, or to test observability. |
 | `Observer` | The symbol under which the bundle lives, and the bundle interface type. |
+
+The remaining two are lower-level plumbing - rarely needed when authoring a custom observable, but part of the complete interface:
+
+| Function | Purpose |
+| -------- | ------- |
+| `pending(self)` | The events currently queued for the next flush, as an array that is also a thenable. Read it synchronously for what's dirty now, or `await` it to resolve with the keys after the flush. Empty (and pre-resolved) when nothing is queued. |
+| `capture(scope)` | Run `scope(release)` inside a fresh effect-cleanup context: cleanups registered by `watch`/`observe` during `scope` are collected, and calling `release(update)` runs them. This is how nested effects propagate teardown; `watch` uses it internally. |
 
 ## Signals
 
