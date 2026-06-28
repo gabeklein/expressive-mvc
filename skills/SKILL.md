@@ -265,6 +265,7 @@ Fetch these for detailed API documentation when the task requires deeper knowled
 - [state/lifecycle.md](state/lifecycle.md) - Construction, activation, operation, destruction phases
 - [state/context.md](state/context.md) - Context system, root singleton, home context, ownership rules
 - [state/types.md](state/types.md) - TypeScript type aliases and utility types
+- [state/observable.md](state/observable.md) - **Advanced**: the observable protocol for building custom observables (`hot()`-style). Library-authoring surface only.
 
 ### Instructions & Reactive Helpers
 

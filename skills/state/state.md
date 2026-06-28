@@ -209,6 +209,8 @@ event(state, 'myEvent'); // manual dispatch
 
 Use `observer(target, true)` to opt a custom object into the observable protocol, then use `touch(this, key, value)` in getters so `watch()` and adapter hooks can subscribe to accessed fields.
 
+For building **custom observables** (objects that hook into this system without being a `State` - the way `hot()` does), see [observable.md](observable.md). That is library-authoring surface; app code uses `State`, getters, and `hot()`.
+
 ### Event Semantics
 
 | Value                        | Means                      |
