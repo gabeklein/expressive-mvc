@@ -1,11 +1,16 @@
 ---
 name: expressive-mvc
-description: Class-based reactive state management for React. Covers State API, instructions, Component class, lifecycle, patterns, and codebase auditing.
+description: Class-based reactive components and state for React. A class is both the state and the component - Component renders itself; State is the headless half. Covers Component, State API, instructions, lifecycle, router, patterns, and auditing.
 ---
 
 # Expressive MVC
 
-Class-based reactive state for React and Preact. State classes define reactive properties, computed values, async data, and context - all as plain class fields using instruction helpers.
+Class-based reactive UI for React and Preact. The library has two primitives built on the same reactive class machinery:
+
+- **`Component`** - a class that **renders itself**. It owns behavior, lifecycle, context, suspense, error handling, *and* its own JSX, used directly as an element. This is the centerpiece: controls, shells, panels, editors, route controllers, reusable primitives. Subclass it to compose both behavior and rendering.
+- **`State`** - the **headless** half. The same reactivity and lifecycle with no render, for controllers, models, and shared logic that views subscribe to.
+
+Both define reactive properties, computed getters, async data, and context as plain class fields using instruction helpers. This is more than a state machine: `State` is the model, `Component` turns the same model into UI. New work usually starts with `Component`; reach for `State` when logic is display-agnostic.
 
 ## Packages
 
