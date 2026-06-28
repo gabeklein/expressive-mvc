@@ -5,6 +5,5 @@ export { set } from './field/set';
 export { ref } from './field/ref';
 
 export { State, State as default, unbind } from './state';
-export { watch, listener, event, Observer, observer, touch } from './observable';
 export { Context } from './context';
 export { Component } from './component';

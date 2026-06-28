@@ -1,4 +1,5 @@
-import { Component, hot, listener } from '@expressive/mvc';
+import { Component, hot } from '@expressive/mvc';
+import { listener } from '@expressive/mvc/observable';
 
 import { Route } from './route';
 import { Match, fillPath, fullPattern, matchPattern, patternSegment } from './url';

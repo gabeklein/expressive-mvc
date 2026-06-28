@@ -1,4 +1,5 @@
-import { State, Context, watch } from '@expressive/mvc';
+import { State, Context } from '@expressive/mvc';
+import { watch } from '@expressive/mvc/observable';
 import { useFactory, useHook, useReady } from './runtime';
 
 declare module '@expressive/mvc' {

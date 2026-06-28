@@ -1,7 +1,7 @@
 import { render, screen, act } from '@testing-library/react';
 import { mock, expect, it, describe } from 'bun:test';
 import React from 'react';
-import { observer } from '@expressive/mvc';
+import { observer } from '@expressive/mvc/observable';
 
 import { mockError, mockPromise } from '../test.setup';
 import { Component } from '.';
