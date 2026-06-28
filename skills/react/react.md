@@ -9,12 +9,14 @@ For examples and patterns see `patterns.md`.
 ## Exports
 
 ```ts
-export { State, State as default }; // Reexported after agumentation with React features
-export { Context, Observer, def, get, hot, ref, set }; // re-exported from @expressive/mvc
-export { use }; // Hook for existing observable instances
-export { Component }; // React Component class
-export { Provider, Consumer }; // Explicit context components
+// From the React adapter itself:
+export { State, State as default, use, Provider, Consumer };
+
+// Re-exported unchanged from @expressive/mvc:
+export { Component, Context, Observer, def, get, ref, set, hot };
 ```
+
+`Component`, `Context`, and the instructions come straight from core. The adapter does not wrap them; it populates a shared `Runtime` (see below) and patches React behavior onto the `Component` prototype as a load-time side effect. `State` is also re-exported from core, via the adapter's `./adapter` entry.
 
 ## Quick Start
 
@@ -273,13 +275,16 @@ import { Provider, Consumer } from '@expressive/react';
 
 ### Provider props
 
-| Prop       | Type                                    | Description                                        |
-| ---------- | --------------------------------------- | -------------------------------------------------- |
-| `for`      | `State \| State.Type \| Context.Accept` | State instance, class, or map to provide           |
-| `is`       | `(instance) => void`                    | Called for each created instance                   |
-| `fallback` | `ReactNode`                             | Wraps children in Suspense boundary                |
-| `children` | `ReactNode`                             | Content rendered within provider                   |
-| `[field]`  | varies                                  | State fields passed as props, merged into instance |
+| Prop       | Type                                    | Description                                                  |
+| ---------- | --------------------------------------- | ----------------------------------------------------------- |
+| `for`      | `State \| State.Type \| Context.Accept` | State instance, class, or map to provide                    |
+| `is`       | `(instance) => void \| (() => void)`    | Configure each created instance. See note below.            |
+| `fallback` | `ReactNode`                             | Wraps children in Suspense boundary                          |
+| `name`     | `string`                                | Names the Suspense boundary for React DevTools               |
+| `children` | `ReactNode`                             | Content rendered within provider                            |
+| `[field]`  | varies                                  | State fields passed as props, merged into instance          |
+
+`is` differs by `for`: with a single class/instance it is **required** and `(instance) => void`; with a `{ key: State }` map it is **optional** and may return a cleanup function (`(state) => void | (() => void)`), run for each instance.
 
 State fields can be passed directly as JSX attributes:
 
@@ -302,13 +307,19 @@ Consumer uses `State.get()` internally - child function receives a tracking prox
 
 ---
 
-## Internals: Pragma
+## Internals: Runtime
 
-React adapter injects framework hooks via a `Pragma` object, allowing the same core logic to work across React and Preact:
+The same core logic runs across React and Preact because host primitives are injected through a shared `Runtime` object (exported from `@expressive/react`). Each adapter's entry populates it at load:
 
 ```ts
-Pragma.useEffect = React.useEffect;
-Pragma.useState = React.useState;
-Pragma.createElement = React.createElement;
-Pragma.useRef = React.useRef;
+import { Runtime } from '@expressive/react';
+
+Object.assign(Runtime, {
+  createElement, createContext, useContext,
+  useState, useEffect, useRef,
+  Suspense, ErrorBoundary, dedupe,
+  ignore // host own-property keys to trap out of observed state
+});
 ```
+
+Core reads only from `Runtime`, never from `react` directly. This is the seam that keeps `packages/mvc` framework-agnostic.
