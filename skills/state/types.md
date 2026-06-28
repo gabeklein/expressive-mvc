@@ -15,6 +15,10 @@ Namespace types on `State` used throughout the API.
 | `State.Values<T>`   | All fields with child states and ref objects unwrapped via `Export<R>`  |
 | `State.Export<R>`   | If R is a State, recursively exports `Values<R>`; otherwise if R has `.get()`, extracts return type; otherwise R |
 | `State.Value<T, K>` | Single property value lookup with Export unwrapping                     |
+| `State.Partial<T>`  | `{ [P in Field<T>]?: Export<T[P]> }` - optional overlay of exported field values |
+| `State.Signal<T>`   | `Event<T>` plus lifecycle meta-events `true \| false \| null` (ready / flushed / destroyed). Received by `OnEvent` callbacks |
+| `State.Init<T>`     | Bare lifecycle function passed to `State.new()`/`on()`: `(self) => void \| cleanup \| Args \| Assign \| Promise<void>`. Sugar for `On.before` |
+| `State.On<T>`       | Cadence object for `State.on()`: `{ type?, before?, after? }`. See [state.md](state.md#stateon) |
 
 ## Extends vs Type
 
