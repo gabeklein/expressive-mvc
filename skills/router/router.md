@@ -15,6 +15,17 @@ import { Route, Link, NavLinks, Redirect, Router, BrowserRouter } from '@express
 
 A `<Route>` with no ancestor `Router` in context spins up a headless `Router`. For a browser app, provide a `BrowserRouter` so navigation reflects the address bar.
 
+## Why this is a Component, not a config
+
+This router is not a separate engine bolted onto MVC - it is the clearest demonstration that **`Component` is the unit of UI**. A `Route` controller *is* a `State` that renders itself, so everything true of any Component is true here, for free:
+
+- **Reactive match state.** `match`, `matched`, `query` are reactive getters. Read them in `render` (or via `get(Route)` from a child) and the page reconciles on navigation - no router-specific hook.
+- **Context.** A `Route` finds its `Router` via `get(Router)` and is itself reachable by descendants via `get(Route)`, the same context mechanism any State uses.
+- **Render composition.** `Link` and `NavLinks` are subclassed and their `render` overridden to restyle/restructure (active links, custom items) - the Component composition model, not bespoke config props.
+- **Subclass seams.** The `nested` getter lets a `Route` subclass reshape its own children before matching/render - a Component reshaping its tree, impossible in a config-object router.
+
+The contrast with config-object routers (React Router et al.) is the point: routes here hold reactive state, participate in context, render themselves, and are subclassable. That is the "more than a state machine" argument made concrete.
+
 ## Declaring routes
 
 Routes are nested JSX. `to` is the pattern segment; `as` is the page (or layout) component. Children compose against the parent's path.
