@@ -106,7 +106,7 @@ const BlogPost = () => (
 | `route.path`      | `string`                          | This route's own absolute path (base + segment).                        |
 | `route.query`     | `Record<string,string\|undefined>` | Live query record from the active Router (global, not route-scoped - see below). |
 | `route.anchor`    | `string`                          | Directory-style anchor for relative navigation.                         |
-| `route.goto(to)`  | -                                 | Navigate. A string resolves relative to this route; a params object swaps route params in place (see below). |
+| `route.goto(to, replace?)` | -                        | Navigate. A string resolves relative to this route; a params object swaps route params in place (see below). `to` defaults to `'.'` (current route); `replace` overwrites the history entry instead of pushing. |
 | `route.resolve(to)` | `string`                        | Resolve a (possibly relative) url to an absolute pathname.              |
 
 Same-pattern navigation (`/blog/a` -> `/blog/b`) keeps the page instance mounted: `matched` is unchanged, so the component reconciles and re-reads `match`, rather than unmounting/remounting.
@@ -205,7 +205,7 @@ Renders an `<a>` that navigates on click (intercepting only plain left-clicks, s
 | `match`  | `boolean \| undefined`      | `true` exact match, `false` prefix match, `undefined` no match.    |
 | `active` | `boolean`                   | Whether the current path matches the target at all (`match !== undefined`). |
 
-Both `match`/`active` are **lazy**: a `Link` whose render reads neither stays inert across navigation (no re-render on route changes). Reading either subscribes that instance to navigation.
+Subscription to navigation follows what `render` actually reads. The default `Link` renders `href`, and resolving `href` reads the router's reactive `path`, so a default `Link` re-renders on navigation. `match`/`active` likewise subscribe when read. A subclass whose custom `render` reads none of `href`/`match`/`active` stays inert across route changes.
 
 #### Active links by subclassing
 
