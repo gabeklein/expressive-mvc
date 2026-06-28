@@ -50,7 +50,20 @@ Routes are nested JSX. `to` is the pattern segment; `as` is the page (or layout)
 | `label`    | Display name for NavLinks/breadcrumbs/titles (ignored by matching).                      |
 | `meta`     | Free-form metadata (icons, ordering, badges) - ignored by matching.                      |
 
-A parent-less `<Route>` with no `to` is its own root: always matched, capturing everything below.
+A parent-less `<Route>` with no `to` is its own root: always matched, capturing everything below. (`as` must be a component - function or class, including a `Route` subclass - not an intrinsic host tag.)
+
+### Sibling specificity
+
+When several non-`default` siblings could match the same path, the **first in declaration order that matches wins** - there is no longest-pattern scoring. Order siblings most-specific-first; a `default` sibling is always considered last. If more than one sibling matches and none is preferred, the scope is ambiguous and `route.active` resolves to `null`. Keep literal segments ahead of `:param` segments ahead of catch-alls to avoid surprises.
+
+### Reading the catch-all capture
+
+A trailing `*` captures the remaining path under the `*` key:
+
+```tsx
+// <Route to="files/*" as={Files} />, at /files/a/b/c
+route.match['*']; // "a/b/c"
+```
 
 ### Flat leaf vs. nested scope
 
