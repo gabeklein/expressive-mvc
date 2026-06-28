@@ -6,7 +6,7 @@ The reactive substrate beneath `State`. Reach for this only to build a **custom 
 import { observer, touch, event, listener, watch, Observer } from '@expressive/mvc';
 ```
 
-The canonical in-tree implementation is **`hot()`** ([field/hot.md](../field/hot.md)) - the array/object reactive sugar is built entirely on `touch` + `event`. Read its source (`packages/mvc/src/field/hot.ts`) as the reference. Higher-level reusable observables (e.g. a `List` collection class) are slated for a future contrib module and will be built on exactly this protocol; `hot()` is the example to study today.
+The canonical implementation is **`hot()`** ([field/hot.md](../field/hot.md)) - the array/object reactive sugar is built entirely on `touch` + `event`. Read its source (`packages/mvc/src/field/hot.ts`) as the reference.
 
 ## The contract
 
@@ -78,6 +78,5 @@ stop();
 
 ## Notes
 
-- `capture` and `pending` exist in the source but are **not exported** - they are internal dispatch plumbing. The public protocol is the six symbols imported above.
 - A `State` is just an observable with classified fields, computed getters, lifecycle, and context layered on top. Anything `watch()` can observe, `State.use()` / `use()` can subscribe a component to.
 - Keep custom observables single-level; for nested reactivity compose child observables (as `hot()` documents) rather than deep-proxying.
