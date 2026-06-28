@@ -1,4 +1,5 @@
-import { Component, watch, unbind, observer } from '@expressive/mvc';
+import { Component, unbind } from '@expressive/mvc';
+import { watch, observer } from '@expressive/mvc/observable';
 import { provide, type Context } from './context';
 import { Runtime, useHook, useReady } from './runtime';
 

@@ -1,4 +1,4 @@
-import { event, watch, observer } from '@expressive/mvc';
+import { event, watch, observer } from '@expressive/mvc/observable';
 import type { Component } from '@expressive/mvc';
 import type { Context } from './context';
 

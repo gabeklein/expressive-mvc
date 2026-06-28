@@ -1,6 +1,6 @@
 /** @jsxImportSource preact */
 import { StrictMode } from 'preact/compat';
-import { event, observer, touch } from '@expressive/mvc';
+import { event, observer, touch } from '@expressive/mvc/observable';
 import { describe, expect, it, mock } from 'bun:test';
 
 import { use, State } from '.';

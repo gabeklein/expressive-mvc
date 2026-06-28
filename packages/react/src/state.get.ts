@@ -1,4 +1,5 @@
-import { State, Context, observer, watch } from '@expressive/mvc';
+import { State, Context } from '@expressive/mvc';
+import { observer, watch } from '@expressive/mvc/observable';
 import { Runtime, useFactory, useHook, useReady } from './runtime';
 
 /** Type may not be undefined - instead will be null.  */

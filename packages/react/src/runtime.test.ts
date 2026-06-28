@@ -1,6 +1,7 @@
 import { StrictMode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, mock } from 'bun:test';
-import { State, event, observer, touch } from '@expressive/mvc';
+import { State } from '@expressive/mvc';
+import { event, observer, touch } from '@expressive/mvc/observable';
 import { act, renderHook, waitFor } from '@testing-library/react';
 
 import { Runtime, useHook, use } from './runtime';
