@@ -131,7 +131,7 @@ function App() {
   const profile = UserProfile.use({ userId: 1 });
 
   return (
-    <Provider of={profile}>
+    <Provider for={profile}>
       <Suspense fallback={<p>Loading...</p>}>
         <Profile />
       </Suspense>
@@ -170,7 +170,7 @@ function App() {
   const theme = Theme.use();
 
   return (
-    <Provider of={theme}>
+    <Provider for={theme}>
       <button onClick={theme.toggle}>Toggle Theme</button>
       <PanelView />
     </Provider>
