@@ -137,20 +137,44 @@ Counter.is(OtherState); // false
 
 ### `State.on()`
 
-Register a callback for any instance creation of this class (or subclasses).
+Register lifecycle handlers for any instance of this class (or subclasses). Accepts either a bare function (sugar for `{ before }`) or an `On` object keyed by cadence.
 
 ```ts
+// Bare function: per-instance, before new(). Sugar for { before }.
 const stop = Counter.on(function (this: Counter) {
-  // runs for every Counter instance on init
   return () => {
     /* cleanup on destroy */
   };
 });
+
+// Object form: hook by cadence.
+Counter.on({
+  type(Type) {
+    /* per-class, once at bootstrap, before members are classified.
+       Receives the class, so it may reshape the prototype. */
+  },
+  before(self) {
+    /* per-instance, in `prepare` - before observe and new().
+       May return a cleanup, constructor args, or an assign overlay. */
+  },
+  after(self) {
+    /* per-instance, at the new() slot - after own values are observed
+       and constructor args applied. May return a cleanup. */
+  }
+});
 ```
 
-- Callbacks run in ancestor-first order.
-- Same callback registered on parent and child runs only once.
-- Returns unsubscribe function.
+| Cadence  | When                                                  | Return                                      |
+| -------- | ----------------------------------------------------- | ------------------------------------------- |
+| `type`   | Once per (sub)class at bootstrap, before classify     | `void`                                      |
+| `before` | Per instance, before `observe`/`new()`                | cleanup, constructor `Args`, or `Assign`    |
+| `after`  | Per instance, at the `new()` slot                     | cleanup                                     |
+
+- A handler registered on a base class runs for each subclass too.
+- Callbacks run in ancestor-first order; the same handler on parent and child runs once.
+- Returns an unsubscribe function.
+
+`Component` uses the `type` cadence internally to wire its render behavior.
 
 ## Constructor Args (`State.Args`)
 
