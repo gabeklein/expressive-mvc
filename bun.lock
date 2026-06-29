@@ -20,6 +20,7 @@
       "dependencies": {
         "@expressive/react": "workspace:*",
         "@expressive/router": "workspace:*",
+        "lucide-react": "^0.570.0",
         "react": "^19.2.4",
         "react-dom": "^19.2.4",
       },
@@ -33,7 +34,7 @@
     },
     "packages/mvc": {
       "name": "@expressive/mvc",
-      "version": "0.79.1",
+      "version": "0.80.0",
       "devDependencies": {
         "@types/node": "^18.19.0",
         "tsdown": "^0.20.1",
@@ -57,9 +58,9 @@
     },
     "packages/react": {
       "name": "@expressive/react",
-      "version": "0.80.0",
+      "version": "0.81.0",
       "dependencies": {
-        "@expressive/mvc": "^0.79.0",
+        "@expressive/mvc": "^0.80.0",
       },
       "devDependencies": {
         "@testing-library/react": "^16.3.0",
@@ -78,12 +79,12 @@
     },
     "packages/router": {
       "name": "@expressive/router",
-      "version": "0.4.0",
+      "version": "0.5.0",
       "dependencies": {
-        "@expressive/mvc": "^0.78.0",
+        "@expressive/mvc": "^0.80.0",
       },
       "devDependencies": {
-        "@expressive/react": "^0.78.0",
+        "@expressive/react": "^0.81.0",
         "@testing-library/react": "^16.3.0",
         "@types/react": "^19",
         "@types/react-dom": "^19",

@@ -1,5 +1,22 @@
 # @expressive/react
 
+## 0.81.0
+
+### Minor Changes
+
+- [#196](https://github.com/gabeklein/expressive-mvc/pull/196) [`df90954`](https://github.com/gabeklein/expressive-mvc/commit/df90954199df6c06b4af3962bbd53fb8837c2d99) Move the low-level observable protocol (`observer`, `touch`, `event`, `listener`, `watch`, `Observer`) off the main entry to a dedicated `@expressive/mvc/observable` subpath. This declutters the primary import surface, which is now the app-facing API (`State`, `Component`, `Context`, instructions). The protocol is power-user surface for building custom observables; import it explicitly:
+
+  ```ts
+  import { watch, touch, event } from '@expressive/mvc/observable';
+  ```
+
+  Breaking: these names are no longer exported from `@expressive/mvc`, and `@expressive/react` no longer re-exports `Observer` from its main entry. Update imports to the subpath.
+
+### Patch Changes
+
+- Updated dependencies [[`de44e86`](https://github.com/gabeklein/expressive-mvc/commit/de44e86111c9eec6e5b0813174adfd34b15db158), [`df90954`](https://github.com/gabeklein/expressive-mvc/commit/df90954199df6c06b4af3962bbd53fb8837c2d99)]:
+  - @expressive/mvc@0.80.0
+
 ## 0.80.0
 
 ### Minor Changes

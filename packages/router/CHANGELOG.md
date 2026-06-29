@@ -1,5 +1,18 @@
 # @expressive/router
 
+## 0.5.0
+
+### Minor Changes
+
+- [#200](https://github.com/gabeklein/expressive-mvc/pull/200) [`454836b`](https://github.com/gabeklein/expressive-mvc/commit/454836bae1ed263c154be8896a8d1718e9723d57) Rename the `Route` child-contribution seam from `protected get nested()` to `protected get children()`. The getter reads more naturally as the scope's effective children (its default is `props.children`), and now coexists cleanly with the `children` prop thanks to the read-only-computed assignment fix in `@expressive/mvc`. Subclasses overriding the seam must rename `get nested()` to `get children()` and `super.nested` to `super.children`.
+
+### Patch Changes
+
+- [#192](https://github.com/gabeklein/expressive-mvc/pull/192) [`323adf0`](https://github.com/gabeklein/expressive-mvc/commit/323adf0bd7897c5e902f9eab16c0c4b6e3972727) Fix stale redirect-guard verdict when a guarded route is reused across out-and-in navigation. A route that cedes to a sibling under a persistent parent now clears its cached guard verdict, so re-entry re-runs the guard instead of reusing a stale result or hanging on a settled async promise.
+
+- Updated dependencies [[`de44e86`](https://github.com/gabeklein/expressive-mvc/commit/de44e86111c9eec6e5b0813174adfd34b15db158), [`df90954`](https://github.com/gabeklein/expressive-mvc/commit/df90954199df6c06b4af3962bbd53fb8837c2d99)]:
+  - @expressive/mvc@0.80.0
+
 ## 0.4.0
 
 ### Minor Changes
