@@ -2184,6 +2184,42 @@ describe('set method', () => {
 
       expect(test.foo).toBe('bar');
     });
+
+    it('will ignore a key matching a read-only computed', async () => {
+      class Test extends State {
+        source = 'foo';
+        get value() {
+          return this.source;
+        }
+      }
+
+      const test = Test.new();
+
+      expect(() => {
+        test.set({ value: 'bar' });
+      }).not.toThrow();
+
+      await expect(test).not.toHaveUpdated();
+
+      expect(test.value).toBe('foo');
+    });
+
+    it('will leave a computed to derive when its name also arrives as data', async () => {
+      class Test extends State {
+        source = 'foo';
+        get value() {
+          return this.source.toUpperCase();
+        }
+      }
+
+      const test = Test.new();
+
+      test.set({ value: 'ignored', source: 'bar' });
+
+      await expect(test).toHaveUpdated('source');
+
+      expect(test.value).toBe('BAR');
+    });
   });
 
   it('will trigger normal setters', async () => {
