@@ -1,6 +1,5 @@
 {
   "lockfileVersion": 1,
-  "configVersion": 0,
   "workspaces": {
     "": {
       "name": "expressive-state",
@@ -20,6 +19,7 @@
       "dependencies": {
         "@expressive/react": "workspace:*",
         "@expressive/router": "workspace:*",
+        "lucide-react": "^0.570.0",
         "react": "^19.2.4",
         "react-dom": "^19.2.4",
       },
@@ -29,6 +29,13 @@
         "@vitejs/plugin-react": "^5.0.0",
         "typescript": "^5.9.3",
         "vite": "^7.3.1",
+      },
+    },
+    "packages/form": {
+      "name": "@expressive/form",
+      "version": "0.0.0",
+      "dependencies": {
+        "@expressive/mvc": "^0.79.0",
       },
     },
     "packages/mvc": {
@@ -80,10 +87,10 @@
       "name": "@expressive/router",
       "version": "0.4.0",
       "dependencies": {
-        "@expressive/mvc": "^0.78.0",
+        "@expressive/mvc": "^0.79.0",
       },
       "devDependencies": {
-        "@expressive/react": "^0.78.0",
+        "@expressive/react": "^0.80.0",
         "@testing-library/react": "^16.3.0",
         "@types/react": "^19",
         "@types/react-dom": "^19",
@@ -342,6 +349,8 @@
     "@expressive/css": ["@expressive/css@0.7.0", "", { "dependencies": { "chroma-js": "^2.0.3", "easing-coordinates": "^2.0.2" } }, "sha512-wbZAX1vHHkpZy9IueG2DLPicvoys9RRs/YQzvBhbZrdeNjjdyWsM/KI0OS1odfwN+FvDA+zZTzdhNnnT1UkbQg=="],
 
     "@expressive/examples": ["@expressive/examples@workspace:examples"],
+
+    "@expressive/form": ["@expressive/form@workspace:packages/form"],
 
     "@expressive/mvc": ["@expressive/mvc@workspace:packages/mvc"],
 
