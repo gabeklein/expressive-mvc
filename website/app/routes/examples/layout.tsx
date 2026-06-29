@@ -55,11 +55,11 @@ function Navigation() {
     display: flex;
     alignItems: center;
     alignSelf: stretch;
-    fontSize: 0.7;
+    fontSize: 0.78;
     fontWeight: 600;
     textTransform: uppercase;
     letterSpacing: '0.08em';
-    color: $colorFdMutedForeground;
+    color: $colorFdForeground;
     whiteSpace: nowrap;
     background: $colorFdBackground;
     position: sticky;
@@ -94,17 +94,19 @@ function Navigation() {
     border: $colorFdBorder;
     fontSize: 0.875;
     textDecoration: none;
-    color: inherit;
+    color: $colorFdMutedForeground;
     userSelect: none;
     whiteSpace: nowrap;
 
     $hover: {
-      borderColor: $colorFdPrimary;
+      color: $colorFdForeground;
+      borderColor: $colorFdMutedForeground;
     }
 
     if("[aria-current='page']") {
-      background: $colorFdMuted;
-      borderColor: $colorFdMutedForeground;
+      background: `color-mix(in srgb, var(--color-fd-primary) 12%, transparent)`;
+      borderColor: `color-mix(in srgb, var(--color-fd-primary) 30%, transparent)`;
+      color: $colorFdPrimary;
     }
   }
 
