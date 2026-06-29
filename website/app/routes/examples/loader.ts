@@ -1,3 +1,6 @@
+// Shared stylesheet lives at the examples root - pull it in directly.
+import styles from '@examples/styles.css?raw';
+
 // `*/**/*` requires at least one folder under examples/ - skips top-level
 // SPA scaffolding (package.json, vite.config.ts, main.tsx, etc.).
 const FILES = import.meta.glob('@examples/*/**/*', {
@@ -25,6 +28,8 @@ export const examples: Record<string, Record<string, string>> = {};
 export const layout: Record<string, string> = {};
 export const common: Record<string, string> = {};
 
+layout['/styles.css'] = styles;
+
 for (const [path, code] of Object.entries(FILES)) {
   if (path.includes('/dist/')) continue;
 
@@ -33,11 +38,8 @@ for (const [path, code] of Object.entries(FILES)) {
   const segments = path.split(/[/@]examples\//).pop()!.split('/');
   const file = segments.pop()!;
 
-  if (segments.includes('_layout')) {
-    if (file.includes('styles.css'))
-      layout[`/${file}`] = code;
-    continue;
-  }
+  // Dev-harness chrome - not shipped into sandboxes.
+  if (segments.includes('_layout')) continue;
 
   // Shared chrome library. Examples import via the `@common` dev alias; only
   // files an example actually reaches ship with its sandbox (see getFiles).

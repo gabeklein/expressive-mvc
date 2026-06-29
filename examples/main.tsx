@@ -1,5 +1,3 @@
-import './_layout/styles.css';
-
 import { ComponentType, lazy, ReactNode, Suspense } from 'react';
 import { createRoot } from 'react-dom/client';
 
