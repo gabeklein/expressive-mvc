@@ -5,7 +5,7 @@ import {
   SandpackProvider,
   useSandpack
 } from '@codesandbox/sandpack-react';
-import State from '@expressive/react';
+import State, { ref } from '@expressive/react';
 import { useEffect, useMemo, useState } from 'react';
 import { useTheme } from 'next-themes';
 import type { MouseEvent as ReactMouseEvent } from 'react';
@@ -13,6 +13,19 @@ import type { MouseEvent as ReactMouseEvent } from 'react';
 class Panes extends State {
   mode: 'preview' | 'code' = 'preview';
   ratio = 50; // editor width (%) when both panels are side by side
+
+  // Hold Ctrl and two-finger swipe to nudge split
+  layout = ref<HTMLDivElement>((el) => {
+    const onWheel = (e: WheelEvent) => {
+      if (!e.ctrlKey) return;
+      e.preventDefault();
+      const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+      this.ratio = Math.min(80, Math.max(20, this.ratio - delta * 0.05));
+    };
+
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  });
 
   onSelect(is: typeof this.mode){
     this.mode = is;
@@ -75,7 +88,7 @@ export default function Sandbox({
 }
 
 function Layout() {
-  const { onSelect, mode, ratio, grab } = Panes.use();
+  const { onSelect, mode, ratio, grab, layout } = Panes.use();
   const sandpack = useSandpack();
   const refreshOnSave = {
     key: 'Mod-s',
@@ -108,7 +121,7 @@ function Layout() {
   }
 
   return (
-    <SandpackLayout>
+    <SandpackLayout ref={layout}>
       <SandpackCodeEditor
         style={{ display: showEditor ? 'flex' : 'none', flex: narrow ? '1' : `0 0 ${ratio}%` }}
         extensionsKeymap={[refreshOnSave]}
