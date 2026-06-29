@@ -2,8 +2,6 @@ import { Component, set } from "@expressive/mvc";
 import { Route } from "@expressive/router";
 import { type ComponentType } from 'react';
 
-import styles from './Examples.module.css';
-
 export interface Example {
   order: number;
   slug: string;
@@ -23,8 +21,11 @@ export type Modules = Record<string, () => Promise<{ default: ComponentType }>>;
 
 export default class Routes extends Route {
   modules = set<Modules>();
+  outlet = set<Route['as']>();
+  notFound = set<Route['as']>();
 
   protected get children(): Component.Node {
+    const { notFound, outlet } = this;
     const groups = organize(this.modules);
     const first = groups[0]?.items[0];
 
@@ -34,17 +35,12 @@ export default class Routes extends Route {
         {groups.map((g) => (
           <Route key={g.slug} to={g.slug} label={g.label}>
             {g.items.map((e) => (
-              <Route key={e.slug} to={e.slug} label={e.label}>
-                <iframe
-                  title={e.label}
-                  className={styles.frame}
-                  src={`module#${encodeURIComponent(e.file)}`}
-                />
-              </Route>
+              <Route key={e.slug} to={e.slug} as={outlet} meta={e} label={e.label} />
             ))}
           </Route>
         ))}
         {super.children}
+        {notFound && <Route default as={notFound} />}
       </>
     );
   }

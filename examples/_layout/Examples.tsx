@@ -9,9 +9,12 @@ import styles from './Examples.module.css';
 function Examples(props: { modules: Modules }) {
   return (
     <BrowserRouter>
-      <Routes as={Window} modules={props.modules}>
-        <Route default as={NotFound} />
-      </Routes>
+      <Routes
+        as={Window}
+        outlet={Outlet}
+        notFound={NotFound}
+        modules={props.modules}
+      />
     </BrowserRouter>
   );
 }
@@ -29,6 +32,19 @@ class Navigation extends NavLinks {
       </div>
     );
   }
+}
+
+function Outlet() {
+  const { label, meta } = Route.get();
+
+  if (meta)
+    return (
+      <iframe
+        title={label}
+        className={styles.frame}
+        src={`module#${encodeURIComponent(meta.file)}`}
+      />
+    );
 }
 
 function Window(props: { children?: React.ReactNode }) {
