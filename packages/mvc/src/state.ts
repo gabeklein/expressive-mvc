@@ -856,11 +856,13 @@ function assign(state: State, data: State.Assign<State>, silent?: boolean) {
   if (!silent) event(state);
 
   const methods = METHODS.get(state.constructor)!;
+  const getters = GETTERS.get(state.constructor);
 
   for (const key in data) {
     const bind = methods.get(key);
 
     if (bind) bind.call(state, data[key]);
+    else if (getters?.has(key)) continue;
     else if (key in state && key !== 'is') {
       const desc = Object.getOwnPropertyDescriptor(state, key)!;
       const set = desc && (desc.set as (value: any, silent?: boolean) => void);
