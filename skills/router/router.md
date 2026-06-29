@@ -254,9 +254,9 @@ Navigates to `to` when mounted, gated on `when` (default `true`). Pushes by defa
 ## Extending Route: contributing child routes
 
 A `Route` subclass can opine on its own scope's children before matching and
-registration by overriding the `protected get nested()` seam. It defaults to the
+registration by overriding the `protected get children()` seam. It defaults to the
 children declared in JSX; override it to return the effective set - add, remove,
-or reorder - composing on `super.nested`. Both matching and render read the
+or reorder - composing on `super.children`. Both matching and render read the
 result, so contributed routes participate in this scope's control flow
 (matching, `inner` registration, default-resolution, `matches`, and render)
 exactly as if declared in JSX.
@@ -265,27 +265,57 @@ exactly as if declared in JSX.
 class Page extends Route {
   Default = NotFound;
 
-  protected get nested(): Component.Node {
-    return <>{super.nested}<Route default as={this.Default} /></>;
+  protected get children(): Component.Node {
+    return <>{super.children}<Route default as={this.Default} /></>;
   }
 }
 ```
 
 `<Page to="docs/*">…</Page>` now resolves to `Default` whenever no child of the
 scope matches - a section fallback the caller never had to write. `Default` is
-the subclass's own surface; `Route` exposes only the `nested` seam.
+the subclass's own surface; `Route` exposes only the `children` seam.
+
+The same seam is how you build a **component that generates routes from data** -
+map a source to `Route` elements in `children`, and use the subclass like any
+other route:
+
+```tsx
+class Examples extends Route {
+  modules = set<Modules>();
+
+  protected get children(): Component.Node {
+    return <>
+      {organize(this.modules).map((group) => (
+        <Route key={group.slug} to={group.slug} label={group.label}>
+          {group.items.map((item) => (
+            <Route key={item.slug} to={item.slug} as={item.page} />
+          ))}
+        </Route>
+      ))}
+      {super.children}
+    </>;
+  }
+}
+
+<BrowserRouter><Examples modules={modules} as={Shell} /></BrowserRouter>
+```
+
+The generated routes match, register, and render exactly as if written in JSX.
+`super.children` splices in whatever the caller passed (e.g. a `<Route default>`),
+so the component stays composable. Caller-passed children are otherwise dropped
+unless you compose `super.children` - the seam fully owns the scope.
 
 Scope and caveats:
 - **Own scope only.** Contributed routes are first-class *within this Route*.
   They are invisible to walks that inspect this Route as a bare JSX element from
   the outside - sibling `as`-slot arbitration and a parent scope recursing into
-  this element's lexical children - which have no instance to read `nested` from.
+  this element's lexical children - which have no instance to read `children` from.
   Same blind spot as class-field `to` (see below).
 - **Classification follows effective children.** Contributing a default to a
   `to`-leaf turns it into a see-through scope (matched by prefix rather than
   exact pattern). Intended - the leaf/scope distinction reflects what the scope
   effectively contains.
-- Contribute via `nested`, not `render()`: it is pure analysis (returns nodes,
+- Contribute via `children`, not `render()`: it is pure analysis (returns nodes,
   never runs a page render), so matching can consult it without the circularity
   and lazy-gate problems of deciding matches from render output.
 

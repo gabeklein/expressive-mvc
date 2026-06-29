@@ -1189,11 +1189,11 @@ describe('extends', () => {
     expect(view.container.textContent).toBe('About');
   });
 
-  describe('nested seam', () => {
+  describe('children seam', () => {
     class Page extends Route {
       Default: () => any = () => <span>fallback</span>;
-      protected get nested(): Component.Node {
-        return (<>{super.nested}<Route default as={this.Default} /></>) as any;
+      protected get children(): Component.Node {
+        return (<>{super.children}<Route default as={this.Default} /></>) as any;
       }
     }
 
@@ -1247,9 +1247,9 @@ describe('extends', () => {
     it('does not run subclass content when unmatched', () => {
       let ran = 0;
       class Tracked extends Route {
-        protected get nested(): Component.Node {
+        protected get children(): Component.Node {
           return (
-            <>{super.nested}<Route default as={() => { ran++; return <span>x</span>; }} /></>
+            <>{super.children}<Route default as={() => { ran++; return <span>x</span>; }} /></>
           ) as any;
         }
       }
@@ -1555,13 +1555,13 @@ describe('a Route passed as another Route', () => {
     expect(resolved).toBe(innerInst);
   });
 
-  it('sees the outer Route\'s computed nested (outer-injected child matches)', async () => {
+  it('sees the outer Route\'s computed children (outer-injected child matches)', async () => {
     location('/sub/extra');
     class Outer extends Route {
-      protected get nested() {
+      protected get children() {
         return (
           <>
-            {super.nested}
+            {super.children}
             <Route to="extra" as={Leaf('EXTRA')} />
           </>
         );

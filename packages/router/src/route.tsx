@@ -100,10 +100,10 @@ export class Route extends Component {
 
     if (isRoot(this)) return true;
 
-    const { nested } = this;
+    const { children } = this;
 
-    if (allRoutes(nested))
-      return scopeResolves(this, nested, this.router.path);
+    if (allRoutes(children))
+      return scopeResolves(this, children, this.router.path);
 
     return !!this.match;
   }
@@ -124,7 +124,7 @@ export class Route extends Component {
     const scan = (routes: Route[]): boolean => {
       for (const route of routes) {
         if (exempt(route)) continue;
-        if (allRoutes(route.nested)) {
+        if (allRoutes(route.children)) {
           if (scan(route.inner)) return true;
           continue;
         }
@@ -147,7 +147,7 @@ export class Route extends Component {
     const collect = (routes: Route[]): string[] =>
       routes.flatMap((route) => {
         if (exempt(route)) return [];
-        if (!allRoutes(route.nested))
+        if (!allRoutes(route.children))
           return match(route.base, route.to) && rejected !== path ? [route.path] : [];
 
         // A scope counts via a matched descendant, or its own section default.
@@ -181,12 +181,16 @@ export class Route extends Component {
    * This scope's child routes - the effective set matching and render consult.
    * Defaults to the children declared via JSX. Override this getter (a subclass
    * extension seam) to opine on them - add, remove, or reorder - composing on
-   * `super.nested`; both matching and render read the result, so contributed
+   * `super.children`; both matching and render read the result, so contributed
    * routes participate in this scope's control flow as if declared. Memoized by
    * the framework (recomputes when `props` change), so contributed routes have
    * stable identity within a render pass.
+   *
+   * Distinct from `this.props.children` (the raw JSX prop, the default here):
+   * this getter is the *effective* child set the router consults, which an
+   * override may augment or replace.
    */
-  protected get nested(): Component.Node {
+  protected get children(): Component.Node {
     return (this.props as { children?: Component.Node }).children;
   }
 
@@ -244,7 +248,7 @@ export class Route extends Component {
     if (Object.getOwnPropertyDescriptor(props, 'children')?.get)
       return matched ? props.children : null;
 
-    const children = this.nested;
+    const children = this.children;
 
     return matched
       ? Component ? <Component>{children}</Component> : children
