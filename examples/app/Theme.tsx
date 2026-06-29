@@ -16,7 +16,9 @@ export class Theme extends State {
   mode: Mode;
 
   constructor(...args: State.Args){
-    super(args, () => this.apply())
+    super(args, () => {
+      this.apply(document.documentElement);
+    })
 
     let saved: string | null = null;
 
@@ -28,20 +30,27 @@ export class Theme extends State {
   }
 
   toggle() {
-    this.mode = next[this.mode];
-    this.apply();
-  }
-
-  apply() {
-    const { mode } = this;
-    const { dataset } = document.documentElement;
-
-    if (mode === 'system') delete dataset.theme;
-    else dataset.theme = mode;
+    const now = this.mode = next[this.mode];
+    this.apply(document.documentElement);
 
     try {
-      localStorage.setItem(KEY, mode);
+      localStorage.setItem(KEY, now);
     } catch {}
+  }
+
+  apply(root?: HTMLElement | null) {
+    if (!root) return;
+
+    const { mode } = this;
+
+    if (mode === 'system') delete root.dataset.theme;
+    else root.dataset.theme = mode;
+  }
+
+  get paint() {
+    void this.mode; // subscribe mode to refresh
+    return (frame: HTMLIFrameElement | null) =>
+      this.apply(frame?.contentDocument?.documentElement);
   }
 }
 

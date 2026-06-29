@@ -37,6 +37,7 @@ class Navigation extends NavLinks {
 
 function Outlet() {
   const { label, meta } = Route.get();
+  const { paint } = Theme.get();
 
   if (meta)
     return (
@@ -44,6 +45,8 @@ function Outlet() {
         title={label}
         className={styles.frame}
         src={`module#${encodeURIComponent(meta.file)}`}
+        ref={paint}
+        onLoad={(e) => paint(e.currentTarget)}
       />
     );
 }
