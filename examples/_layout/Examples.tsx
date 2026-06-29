@@ -1,34 +1,17 @@
 import '@expressive/react';
 import { BrowserRouter, NavLinks, Route, Router } from '@expressive/router';
 
-
 import Logo from './Logo';
 import Theme from './Theme';
 import Routes, { Modules } from './Routes';
 import styles from './Examples.module.css';
 
 function Examples(props: { modules: Modules }) {
-  const { groups, first } = Routes.use(props);
-  
   return (
     <BrowserRouter>
-      <Route as={Page}>
-        {first && <Route redirect={first.path} />}
-        {groups.map((g) => (
-          <Route key={g.slug} to={g.slug} label={g.label}>
-            {g.items.map((e) => (
-              <Route key={e.slug} to={e.slug} label={e.label}>
-                <iframe
-                  title={e.label}
-                  className={styles.frame}
-                  src={`module#${encodeURIComponent(e.file)}`}
-                />
-              </Route>
-            ))}
-          </Route>
-        ))}
+      <Routes as={Window} modules={props.modules}>
         <Route default as={NotFound} />
-      </Route>
+      </Routes>
     </BrowserRouter>
   );
 }
@@ -48,7 +31,7 @@ class Navigation extends NavLinks {
   }
 }
 
-function Page(props: { children?: React.ReactNode }) {
+function Window(props: { children?: React.ReactNode }) {
   return (
     <main className={styles.shell}>
       <header className={styles.header}>

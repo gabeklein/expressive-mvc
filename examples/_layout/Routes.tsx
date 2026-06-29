@@ -1,5 +1,8 @@
-import State, { set } from "@expressive/mvc";
+import { Component, set } from "@expressive/mvc";
+import { Route } from "@expressive/router";
 import { type ComponentType } from 'react';
+
+import styles from './Examples.module.css';
 
 export interface Example {
   order: number;
@@ -18,14 +21,32 @@ export interface Group {
 
 export type Modules = Record<string, () => Promise<{ default: ComponentType }>>;
 
-export default class Routes extends State {
+export default class Routes extends Route {
   modules = set<Modules>();
-  first?: Example = undefined;
 
-  get groups(){
-    const routes = organize(this.modules);
-    this.first = routes[0]?.items[0];
-    return routes;
+  protected get children(): Component.Node {
+    const groups = organize(this.modules);
+    const first = groups[0]?.items[0];
+
+    return (
+      <>
+        {first && <Route redirect={first.path} />}
+        {groups.map((g) => (
+          <Route key={g.slug} to={g.slug} label={g.label}>
+            {g.items.map((e) => (
+              <Route key={e.slug} to={e.slug} label={e.label}>
+                <iframe
+                  title={e.label}
+                  className={styles.frame}
+                  src={`module#${encodeURIComponent(e.file)}`}
+                />
+              </Route>
+            ))}
+          </Route>
+        ))}
+        {super.children}
+      </>
+    );
   }
 }
 
