@@ -100,15 +100,17 @@ function Navigation() {
     left: 0;
     zIndex: 1;
 
-    $after: {
-      content: "";
+    fade: {
       position: absolute;
       left: "100%";
       top: 0;
       bottom: 0;
-      width: 12;
+      width: 8;
       pointerEvents: none;
-      background: `linear-gradient(to right, var(--color-fd-background), transparent 70%)`;
+      background: `linear-gradient(to right, var(--color-fd-background), transparent)`;
+      // media nested inside the selector, not a selector inside the media
+      // block - the parser can't handle the latter (workaround).
+      $xl: { display: none; }
     }
 
     separator: {
@@ -119,6 +121,7 @@ function Navigation() {
       marginLeft: 12;
       marginRight: 5;
       background: $colorFdBorder;
+      $xl: { display: none; }
     }
 
     // In sidebar mode the row affordances (sticky pin, fade, dot) are noise;
@@ -129,9 +132,6 @@ function Navigation() {
       paddingLeft: 8;
       fontSize: 0.72;
       color: $colorFdMutedForeground;
-
-      $after: { display: none; }
-      separator: { display: none; }
     }
   }
 
@@ -165,9 +165,15 @@ function Navigation() {
     }
 
     if("[aria-current='page']") {
-      background: `color-mix(in srgb, var(--color-fd-primary) 12%, transparent)`;
-      borderColor: `color-mix(in srgb, var(--color-fd-primary) 30%, transparent)`;
-      color: $colorFdPrimary;
+      background: `color-mix(in srgb, var(--accent) 14%, transparent)`;
+      borderColor: `color-mix(in srgb, var(--accent) 45%, transparent)`;
+      color: $accent;
+
+      // Sidebar active: left bar instead of the pill border. Media nested in
+      // the selector (not the reverse) to dodge the parser bug.
+      $xl: {
+        borderLeftColor: $accent;
+      }
     }
 
     // Sidebar: flush links nested on the rail, marked by a left bar instead
@@ -182,11 +188,6 @@ function Navigation() {
         background: $colorFdMuted;
         borderLeftColor: $colorFdMutedForeground;
       }
-
-      if("[aria-current='page']") {
-        borderLeftColor: $colorFdPrimary;
-        fontWeight: 600;
-      }
     }
   }
 
@@ -197,6 +198,7 @@ function Navigation() {
           <span _label>
             {group}
             <span _separator />
+            <span _fade />
           </span>
 
           <div _items>
