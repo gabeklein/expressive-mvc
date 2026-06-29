@@ -275,6 +275,36 @@ class Page extends Route {
 scope matches - a section fallback the caller never had to write. `Default` is
 the subclass's own surface; `Route` exposes only the `children` seam.
 
+The same seam is how you build a **component that generates routes from data** -
+map a source to `Route` elements in `children`, and use the subclass like any
+other route:
+
+```tsx
+class Examples extends Route {
+  modules = set<Modules>();
+
+  protected get children(): Component.Node {
+    return <>
+      {organize(this.modules).map((group) => (
+        <Route key={group.slug} to={group.slug} label={group.label}>
+          {group.items.map((item) => (
+            <Route key={item.slug} to={item.slug} as={item.page} />
+          ))}
+        </Route>
+      ))}
+      {super.children}
+    </>;
+  }
+}
+
+<BrowserRouter><Examples modules={modules} as={Shell} /></BrowserRouter>
+```
+
+The generated routes match, register, and render exactly as if written in JSX.
+`super.children` splices in whatever the caller passed (e.g. a `<Route default>`),
+so the component stays composable. Caller-passed children are otherwise dropped
+unless you compose `super.children` - the seam fully owns the scope.
+
 Scope and caveats:
 - **Own scope only.** Contributed routes are first-class *within this Route*.
   They are invisible to walks that inspect this Route as a bare JSX element from
