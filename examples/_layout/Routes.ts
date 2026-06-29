@@ -1,3 +1,6 @@
+import State, { set } from "@expressive/mvc";
+import { type ComponentType } from 'react';
+
 export interface Example {
   order: number;
   slug: string;
@@ -13,7 +16,20 @@ export interface Group {
   items: Example[];
 }
 
-export function organize(modules: Record<string, unknown>): Group[] {
+export type Modules = Record<string, () => Promise<{ default: ComponentType }>>;
+
+export default class Routes extends State {
+  modules = set<Modules>();
+  first?: Example = undefined;
+
+  get groups(){
+    const routes = organize(this.modules);
+    this.first = routes[0]?.items[0];
+    return routes;
+  }
+}
+
+function organize(modules: Record<string, unknown>): Group[] {
   const groups = new Map<string, Group>();
 
   for (const file of Object.keys(modules)) {

@@ -1,23 +1,20 @@
 import '@expressive/react';
 import { BrowserRouter, NavLinks, Route, Router } from '@expressive/router';
-import { type ComponentType } from 'react';
+
 
 import Logo from './Logo';
 import Theme from './Theme';
-import { organize } from './loader';
+import Routes, { Modules } from './Routes';
 import styles from './Examples.module.css';
 
-type LazyModule = () => Promise<{ default: ComponentType }>;
-
-function Examples({ modules }: { modules: Record<string, LazyModule> }) {
-  const routes = organize(modules);
-  const first = routes[0]?.items[0];
-
+function Examples(props: { modules: Modules }) {
+  const { groups, first } = Routes.use(props);
+  
   return (
     <BrowserRouter>
       <Route as={Page}>
         {first && <Route redirect={first.path} />}
-        {routes.map((g) => (
+        {groups.map((g) => (
           <Route key={g.slug} to={g.slug} label={g.label}>
             {g.items.map((e) => (
               <Route key={e.slug} to={e.slug} label={e.label}>
