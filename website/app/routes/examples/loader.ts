@@ -1,3 +1,6 @@
+// Shared stylesheet lives at the examples root - pull it in directly.
+import styles from '@examples/global.css?raw';
+
 // `*/**/*` requires at least one folder under examples/ - skips top-level
 // SPA scaffolding (package.json, vite.config.ts, main.tsx, etc.).
 const FILES = import.meta.glob('@examples/*/**/*', {
@@ -7,11 +10,11 @@ const FILES = import.meta.glob('@examples/*/**/*', {
 }) as Record<string, string>;
 
 const ENTRY = `\
-import './styles.css';
+import './global.css';
 import { createRoot } from 'react-dom/client';
 import App from './App';
 
-// Matches the dev harness: centers/constrains example content via styles.css.
+// Matches the dev harness: centers/constrains example content via global.css.
 document.body.classList.add('example');
 
 createRoot(document.getElementById('root')!).render(<App />);
@@ -25,6 +28,8 @@ export const examples: Record<string, Record<string, string>> = {};
 export const layout: Record<string, string> = {};
 export const common: Record<string, string> = {};
 
+layout['/global.css'] = styles;
+
 for (const [path, code] of Object.entries(FILES)) {
   if (path.includes('/dist/')) continue;
 
@@ -33,11 +38,8 @@ for (const [path, code] of Object.entries(FILES)) {
   const segments = path.split(/[/@]examples\//).pop()!.split('/');
   const file = segments.pop()!;
 
-  if (segments.includes('_layout')) {
-    if (file.includes('styles.css'))
-      layout[`/${file}`] = code;
-    continue;
-  }
+  // Dev-harness shell - not shipped into sandboxes.
+  if (segments[0] === 'app') continue;
 
   // Shared chrome library. Examples import via the `@common` dev alias; only
   // files an example actually reaches ship with its sandbox (see getFiles).

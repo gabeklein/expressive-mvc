@@ -1,40 +1,24 @@
 import '@expressive/react';
 import { BrowserRouter, NavLinks, Route, Router } from '@expressive/router';
-import { type ComponentType } from 'react';
 
 import Logo from './Logo';
-import Theme from './Theme';
-import { organize } from './loader';
-import styles from './Examples.module.css';
+import Toggle, { Theme } from './Theme';
+import Routes, { Modules } from './Routes';
+import styles from './Shell.module.css';
+import { Provider } from '@expressive/react';
 
-type LazyModule = () => Promise<{ default: ComponentType }>;
+const Shell = (props: { modules: Modules }) => (
+  <Provider for={{ Theme, BrowserRouter }}>
+    <Routes
+      as={Window}
+      outlet={Outlet}
+      notFound={NotFound}
+      modules={props.modules}
+    />
+  </Provider>
+);
 
-function Examples({ modules }: { modules: Record<string, LazyModule> }) {
-  const routes = organize(modules);
-  const first = routes[0]?.items[0];
-
-  return (
-    <BrowserRouter>
-      <Route as={Page}>
-        {first && <Route redirect={first.path} />}
-        {routes.map((g) => (
-          <Route key={g.slug} to={g.slug} label={g.label}>
-            {g.items.map((e) => (
-              <Route key={e.slug} to={e.slug} label={e.label}>
-                <iframe
-                  title={e.label}
-                  className={styles.frame}
-                  src={`module#${encodeURIComponent(e.file)}`}
-                />
-              </Route>
-            ))}
-          </Route>
-        ))}
-        <Route default as={NotFound} />
-      </Route>
-    </BrowserRouter>
-  );
-}
+export default Shell;
 
 class Navigation extends NavLinks {
   List(props: { children?: React.ReactNode }) {
@@ -51,14 +35,30 @@ class Navigation extends NavLinks {
   }
 }
 
-function Page(props: { children?: React.ReactNode }) {
+function Outlet() {
+  const { label, meta } = Route.get();
+  const { paint } = Theme.get();
+
+  if (meta)
+    return (
+      <iframe
+        title={label}
+        className={styles.frame}
+        src={`module#${encodeURIComponent(meta.file)}`}
+        ref={paint}
+        onLoad={(e) => paint(e.currentTarget)}
+      />
+    );
+}
+
+function Window(props: { children?: React.ReactNode }) {
   return (
     <main className={styles.shell}>
       <header className={styles.header}>
         <a className={styles.logo} href="/">
           <Logo />
         </a>
-        <Theme />
+        <Toggle />
         <div className={styles.headerRule} />
       </header>
       <nav className={styles.nav}>
@@ -81,5 +81,3 @@ function NotFound() {
     </div>
   );
 }
-
-export default Examples;

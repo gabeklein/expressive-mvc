@@ -2,8 +2,10 @@ import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
-const src = (pkg: string, entry = 'index') =>
-  fileURLToPath(new URL(`../packages/${pkg}/src/${entry}.ts`, import.meta.url));
+  // Aliasing each `src` dir (not its index) lets prefix-rewrite resolve subpaths
+  // like `@expressive/mvc/observable` too.
+const src = (pkg: string) =>
+  fileURLToPath(new URL(`../packages/${pkg}/src`, import.meta.url));
 
 export default defineConfig({
   plugins: [react()],
@@ -13,9 +15,6 @@ export default defineConfig({
       '@common': fileURLToPath(new URL('./common', import.meta.url)),
       '@expressive/router': src('router'),
       '@expressive/react': src('react'),
-      // Subpaths before the bare alias, which would otherwise prefix-rewrite them.
-      '@expressive/mvc/jsx-runtime': src('mvc', 'jsx-runtime'),
-      '@expressive/mvc/jsx-dev-runtime': src('mvc', 'jsx-dev-runtime'),
       '@expressive/mvc': src('mvc')
     }
   }
