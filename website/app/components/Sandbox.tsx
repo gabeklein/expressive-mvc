@@ -6,7 +6,7 @@ import {
   useSandpack
 } from '@codesandbox/sandpack-react';
 import State from '@expressive/react';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTheme } from 'next-themes';
 import type { MouseEvent as ReactMouseEvent } from 'react';
 
@@ -43,14 +43,28 @@ export default function Sandbox({
   name: string;
   files: Record<string, string>;
 }) {
-  const { theme } = useTheme();
+  const { resolvedTheme } = useTheme();
+  const dark = resolvedTheme === 'dark';
+
+  // The preview is a cross-origin Sandpack iframe, so we can't set its theme
+  // from here - bake it into the hidden entry, which global.css honors via
+  // :root[data-theme]. Keyed into the provider so a toggle re-applies it.
+  const themed = useMemo(() => {
+    const entry = files['/index.tsx'] as string | { code: string };
+    const line = `\ndocument.documentElement.dataset.theme = ${JSON.stringify(dark ? 'dark' : 'light')};`;
+
+    return {
+      ...files,
+      '/index.tsx': typeof entry === 'string' ? entry + line : { ...entry, code: entry.code + line }
+    };
+  }, [files, dark]);
 
   return (
     <SandpackProvider
-      key={name}
-      theme={theme === 'dark' ? 'dark' : 'light'}
+      key={`${name}:${dark ? 'dark' : 'light'}`}
+      theme={dark ? 'dark' : 'light'}
       template="react-ts"
-      files={files}
+      files={themed}
       customSetup={{
         dependencies: { '@expressive/react': 'latest' }
       }}
