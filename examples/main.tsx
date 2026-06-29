@@ -6,9 +6,9 @@ const modules = import.meta.glob<{ default: ComponentType }>('../*/**/App.tsx');
 let app: ReactNode;
 
 if (window.self === window.top) {
-  const Examples = lazy(() => import('./_layout/Examples'));
+  const Shell = lazy(() => import('./app/Shell'));
 
-  app = <Examples modules={modules} />;
+  app = <Shell modules={modules} />;
 } else {
   const name = window.location.hash.slice(1);
   const Example = lazy(modules[decodeURIComponent(name)]);

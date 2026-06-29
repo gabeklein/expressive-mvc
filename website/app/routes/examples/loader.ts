@@ -38,8 +38,8 @@ for (const [path, code] of Object.entries(FILES)) {
   const segments = path.split(/[/@]examples\//).pop()!.split('/');
   const file = segments.pop()!;
 
-  // Dev-harness chrome - not shipped into sandboxes.
-  if (segments.includes('_layout')) continue;
+  // Dev-harness shell - not shipped into sandboxes.
+  if (segments[0] === 'app') continue;
 
   // Shared chrome library. Examples import via the `@common` dev alias; only
   // files an example actually reaches ship with its sandbox (see getFiles).

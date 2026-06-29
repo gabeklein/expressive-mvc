@@ -4,10 +4,10 @@ import { BrowserRouter, NavLinks, Route, Router } from '@expressive/router';
 import Logo from './Logo';
 import Toggle, { Theme } from './Theme';
 import Routes, { Modules } from './Routes';
-import styles from './Examples.module.css';
+import styles from './Shell.module.css';
 import { Provider } from '@expressive/react';
 
-const Examples = (props: { modules: Modules }) => (
+const Shell = (props: { modules: Modules }) => (
   <Provider for={{ Theme, BrowserRouter }}>
     <Routes
       as={Window}
@@ -18,7 +18,7 @@ const Examples = (props: { modules: Modules }) => (
   </Provider>
 );
 
-export default Examples;
+export default Shell;
 
 class Navigation extends NavLinks {
   List(props: { children?: React.ReactNode }) {
