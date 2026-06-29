@@ -5,14 +5,27 @@ import {
   SandpackProvider,
   useSandpack
 } from '@codesandbox/sandpack-react';
-import State from '@expressive/react';
-import { useEffect, useState } from 'react';
+import State, { ref } from '@expressive/react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTheme } from 'next-themes';
 import type { MouseEvent as ReactMouseEvent } from 'react';
 
 class Panes extends State {
   mode: 'preview' | 'code' = 'preview';
   ratio = 50; // editor width (%) when both panels are side by side
+
+  // Hold Ctrl and two-finger swipe to nudge split
+  layout = ref<HTMLDivElement>((el) => {
+    const onWheel = (e: WheelEvent) => {
+      if (!e.ctrlKey) return;
+      e.preventDefault();
+      const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+      this.ratio = Math.min(80, Math.max(20, this.ratio - delta * 0.05));
+    };
+
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  });
 
   onSelect(is: typeof this.mode){
     this.mode = is;
@@ -43,14 +56,28 @@ export default function Sandbox({
   name: string;
   files: Record<string, string>;
 }) {
-  const { theme } = useTheme();
+  const { resolvedTheme } = useTheme();
+  const dark = resolvedTheme === 'dark';
+
+  // The preview is a cross-origin Sandpack iframe, so we can't set its theme
+  // from here - bake it into the hidden entry, which global.css honors via
+  // :root[data-theme]. Keyed into the provider so a toggle re-applies it.
+  const themed = useMemo(() => {
+    const entry = files['/index.tsx'] as string | { code: string };
+    const line = `\ndocument.documentElement.dataset.theme = ${JSON.stringify(dark ? 'dark' : 'light')};`;
+
+    return {
+      ...files,
+      '/index.tsx': typeof entry === 'string' ? entry + line : { ...entry, code: entry.code + line }
+    };
+  }, [files, dark]);
 
   return (
     <SandpackProvider
-      key={name}
-      theme={theme === 'dark' ? 'dark' : 'light'}
+      key={`${name}:${dark ? 'dark' : 'light'}`}
+      theme={dark ? 'dark' : 'light'}
       template="react-ts"
-      files={files}
+      files={themed}
       customSetup={{
         dependencies: { '@expressive/react': 'latest' }
       }}
@@ -61,7 +88,7 @@ export default function Sandbox({
 }
 
 function Layout() {
-  const { onSelect, mode, ratio, grab } = Panes.use();
+  const { onSelect, mode, ratio, grab, layout } = Panes.use();
   const sandpack = useSandpack();
   const refreshOnSave = {
     key: 'Mod-s',
@@ -94,7 +121,7 @@ function Layout() {
   }
 
   return (
-    <SandpackLayout>
+    <SandpackLayout ref={layout}>
       <SandpackCodeEditor
         style={{ display: showEditor ? 'flex' : 'none', flex: narrow ? '1' : `0 0 ${ratio}%` }}
         extensionsKeymap={[refreshOnSave]}

@@ -231,12 +231,11 @@ body.example {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
   padding: var(--s6);
 }
 
 body.example #root {
   width: 100%;
   max-width: 32rem;
-  margin: 0;
+  margin: auto;
 }

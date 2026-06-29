@@ -5,7 +5,7 @@
   grid-template-areas:
     "header header"
     "nav example";
-  gap: var(--s5);
+  gap: var(--s4);
   width: min(100% - 2rem, 1400px);
   height: 100vh;
   overflow: hidden;
@@ -62,8 +62,8 @@
   gap: var(--s1);
   max-height: 100%;
   overflow-y: auto;
-  padding: var(--s3);
-  padding-right: 0;
+  padding-left: var(--s3);
+  margin-top: var(--s3);
 }
 
 .links {
@@ -76,17 +76,22 @@
   display: flex;
   flex-direction: column;
   gap: var(--s2);
-  margin-bottom: var(--s5);
 }
 
 .groupLabel {
+  position: sticky;
+  top: 0;
+  z-index: 1;
   margin: 0;
-  padding: 0 var(--s2);
+  /* Top padding (not margin) so the background covers links scrolling up
+     behind the sticky header instead of showing through a transparent gap. */
+  padding: var(--s2) var(--s2) var(--s2);
   font-size: var(--t-xs);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.07em;
   color: var(--muted);
+  background: var(--bg);
 }
 
 /* Example links nest under their section along a vertical guide line,
@@ -155,13 +160,21 @@
   .nav {
     position: static;
     max-height: none;
+    flex: 0.3;
   }
 
   .links {
     max-height: 16rem;
   }
 
+  /* Example fills the space left below the nav (rather than a fixed 70vh that
+     overflowed and pushed the centered content past the fold). */
+  .example {
+    flex: 1;
+  }
+
   .frame {
-    height: 70vh;
+    height: 100%;
+    min-height: 0;
   }
 }
