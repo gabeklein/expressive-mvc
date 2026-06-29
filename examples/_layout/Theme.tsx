@@ -1,5 +1,5 @@
-import { Component } from '@expressive/react';
-import { Monitor, Moon, Sun } from 'lucide-react';
+import State from '@expressive/react';
+import { Moon, Sun, SunMoon } from 'lucide-react';
 
 import styles from './Theme.module.css';
 
@@ -12,10 +12,23 @@ const next: Record<Mode, Mode> = {
   dark: 'system'
 };
 
-export default class Theme extends Component {
-  mode = read();
+export class Theme extends State {
+  mode: Mode;
 
-  protected new() {
+  constructor(...args: State.Args){
+    super(args, () => this.apply())
+
+    let saved: string | null = null;
+
+    try {
+      saved = localStorage.getItem(KEY);
+    } catch {}
+
+    this.mode = saved as Mode || 'system';
+  }
+
+  toggle() {
+    this.mode = next[this.mode];
     this.apply();
   }
 
@@ -30,38 +43,21 @@ export default class Theme extends Component {
       localStorage.setItem(KEY, mode);
     } catch {}
   }
-
-  toggle() {
-    this.mode = next[this.mode];
-    this.apply();
-  }
-
-  render() {
-    const { mode, toggle } = this;
-    const Icon =
-      mode === 'system' ? Monitor : mode === 'light' ? Sun : Moon;
-
-    return (
-      <button
-        className={styles.theme}
-        type="button"
-        aria-label={`Switch to ${next[mode]} theme`}
-        title={`Theme: ${mode}`}
-        onClick={toggle}>
-        <Icon aria-hidden="true" size={16} strokeWidth={2} />
-      </button>
-    );
-  }
 }
 
-function read(): Mode {
-  let saved: string | null = null;
+export default function Toggle() {
+  const { mode, toggle } = Theme.get();
+  const Icon =
+    mode === 'system' ? SunMoon : mode === 'light' ? Sun : Moon;
 
-  try {
-    saved = localStorage.getItem(KEY);
-  } catch {}
-
-  return saved === 'system' || saved === 'light' || saved === 'dark'
-    ? saved
-    : 'system';
+  return (
+    <button
+      className={styles.theme}
+      type="button"
+      aria-label={`Switch to ${next[mode]} theme`}
+      title={`Theme: ${mode}`}
+      onClick={toggle}>
+      <Icon aria-hidden="true" size={16} strokeWidth={2} />
+    </button>
+  );
 }

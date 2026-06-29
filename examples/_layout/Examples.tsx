@@ -2,22 +2,23 @@ import '@expressive/react';
 import { BrowserRouter, NavLinks, Route, Router } from '@expressive/router';
 
 import Logo from './Logo';
-import Theme from './Theme';
+import Toggle, { Theme } from './Theme';
 import Routes, { Modules } from './Routes';
 import styles from './Examples.module.css';
+import { Provider } from '@expressive/react';
 
-function Examples(props: { modules: Modules }) {
-  return (
-    <BrowserRouter>
-      <Routes
-        as={Window}
-        outlet={Outlet}
-        notFound={NotFound}
-        modules={props.modules}
-      />
-    </BrowserRouter>
-  );
-}
+const Examples = (props: { modules: Modules }) => (
+  <Provider for={{ Theme, BrowserRouter }}>
+    <Routes
+      as={Window}
+      outlet={Outlet}
+      notFound={NotFound}
+      modules={props.modules}
+    />
+  </Provider>
+);
+
+export default Examples;
 
 class Navigation extends NavLinks {
   List(props: { children?: React.ReactNode }) {
@@ -54,7 +55,7 @@ function Window(props: { children?: React.ReactNode }) {
         <a className={styles.logo} href="/">
           <Logo />
         </a>
-        <Theme />
+        <Toggle />
         <div className={styles.headerRule} />
       </header>
       <nav className={styles.nav}>
@@ -77,5 +78,3 @@ function NotFound() {
     </div>
   );
 }
-
-export default Examples;
