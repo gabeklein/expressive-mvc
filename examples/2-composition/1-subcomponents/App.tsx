@@ -17,7 +17,7 @@ class Dashboard extends Component {
   // Subcomponent - reads `fruits` and `selected`.
   List() {
     return (
-      <ul className="list">
+      <ul>
         {this.fruits.map((fruit, i) => (
           <li
             key={fruit}

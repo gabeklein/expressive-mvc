@@ -56,7 +56,7 @@ class TodoList extends Component {
           />
         </form>
 
-        <ul className="todos">
+        <ul>
           {items.map((item) => (
             <Row key={String(item)} item={item} />
           ))}

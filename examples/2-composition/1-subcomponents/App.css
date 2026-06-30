@@ -1,24 +1,4 @@
-.list {
-  list-style: none;
-  margin: 0 0 1rem;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.list li {
-  padding: 0.5rem 0.75rem;
-  border-radius: 6px;
-  cursor: pointer;
-  color: var(--fg);
-}
-
-.list li:hover {
-  background: var(--accent-soft);
-}
-
-.list li.active {
+li.active {
   background: var(--accent);
   color: var(--accent-fg);
 }

@@ -8,13 +8,4 @@
   justify-content: center;
   gap: var(--s3);
   width: 100%;
-  margin: 0;
-}
-
-.context-row:last-child {
-  margin-bottom: 0;
-}
-
-.context-row small {
-  color: var(--muted);
 }
