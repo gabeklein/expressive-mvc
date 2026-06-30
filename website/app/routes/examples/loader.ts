@@ -23,13 +23,42 @@ const FILES = import.meta.glob('@examples/*/**/*', {
 }) as Record<string, string>;
 
 const ENTRY = `\
-import "@expressive/react";
+import State from "@expressive/react";
 import './global.css';
 import { createRoot } from 'react-dom/client';
 import App from './App';
 
 // Matches the dev harness: centers/constrains example content via global.css.
 document.body.classList.add('example');
+
+// Every State instance self-registers (procedurally, via State's own lifecycle)
+// so the console REPL can reach live state. Grouped by class; each instance is
+// also aliased on window by its lowercased class name (last-wins).
+const states = window.__states = new Map();
+
+State.on({
+  before(self) {
+    const Type = self.constructor;
+    let set = states.get(Type);
+    if (!set) states.set(Type, set = new Set());
+    set.add(self);
+    window[Type.name[0].toLowerCase() + Type.name.slice(1)] = self;
+    return () => set.delete(self);
+  }
+});
+
+// REPL bridge: parent drawer posts code here; we eval it and echo the result
+// through console.* so it flows back via Sandpack's console channel.
+window.addEventListener('message', (e) => {
+  const msg = e.data;
+  if (!msg || msg.source !== 'expressive-repl') return;
+  try {
+    const result = (0, eval)(msg.code);
+    if (result !== undefined) console.log(result);
+  } catch (err) {
+    console.error(err);
+  }
+});
 
 createRoot(document.getElementById('root')!).render(<App />);
 `;

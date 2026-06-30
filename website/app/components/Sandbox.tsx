@@ -1,18 +1,24 @@
 import {
   SandpackCodeEditor,
+  SandpackConsole,
   SandpackLayout,
   SandpackPreview,
   SandpackProvider,
   useSandpack
 } from '@codesandbox/sandpack-react';
 import State, { ref } from '@expressive/react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTheme } from 'next-themes';
 import type { MouseEvent as ReactMouseEvent } from 'react';
 
 class Panes extends State {
   mode: 'preview' | 'code' = 'preview';
   ratio = 50; // editor width (%) when both panels are side by side
+  showConsole = false;
+
+  toggleConsole() {
+    this.showConsole = !this.showConsole;
+  }
 
   // Hold Ctrl and two-finger swipe to nudge split
   layout = ref<HTMLDivElement>((el) => {
@@ -100,8 +106,22 @@ export default function Sandbox({
 }
 
 function Layout() {
-  const { onSelect, mode, ratio, grab, layout } = Panes.use();
+  const { onSelect, mode, ratio, grab, layout, showConsole, toggleConsole } = Panes.use();
   const sandpack = useSandpack();
+  const preview = useRef<HTMLDivElement>(null);
+
+  // Send a REPL line into the preview iframe; the sandbox entry evals it and
+  // echoes the result back through the console channel.
+  const dispatch = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key !== 'Enter') return;
+    const code = event.currentTarget.value.trim();
+    if (!code) return;
+    preview.current
+      ?.querySelector('iframe')
+      ?.contentWindow?.postMessage({ source: 'expressive-repl', code }, '*');
+    event.currentTarget.value = '';
+  };
+
   const refreshOnSave = {
     key: 'Mod-s',
     preventDefault: true,
@@ -132,6 +152,62 @@ function Layout() {
     }
   }
 
+  // Right column: preview on top, console drawer beneath it - the console
+  // eats into the preview's height only, leaving the editor full-height.
+  preview: {
+    flexDirection: column;
+    flex: '1 1 0%';
+    minWidth: 0;
+  }
+
+  // Collapsed to just its toggle bar until opened.
+  console: {
+    flexShrink: 0;
+    display: flex;
+    flexDirection: column;
+    borderTop: $colorFdBorder, 1;
+  }
+
+  toggle: {
+    display: flex;
+    alignItems: center;
+    gap: 6;
+    padding: 6, 12;
+    fontSize: 0.7;
+    fontWeight: 600;
+    textTransform: uppercase;
+    letterSpacing: '0.06em';
+    textAlign: left;
+    color: $colorFdMutedForeground;
+    background: $colorFdBackground;
+    border: none;
+    cursor: pointer;
+
+    $hover: {
+      color: $colorFdForeground;
+    }
+  }
+
+  // Always mounted (only hidden when collapsed) so the console captures logs
+  // from the first render, not just after it's opened.
+  panel: {
+    height: 180;
+    flexDirection: column;
+    borderTop: $colorFdBorder, 1;
+  }
+
+  repl: {
+    flexShrink: 0;
+    borderTop: $colorFdBorder, 1;
+    padding: 6, 10;
+    fontFamily: "ui-monospace, monospace";
+    fontSize: 0.8;
+    color: $colorFdForeground;
+    background: $colorFdBackground;
+    border: none;
+    outline: none;
+  }
+
   return (
     <SandpackLayout ref={layout}>
       <SandpackCodeEditor
@@ -139,7 +215,18 @@ function Layout() {
         extensionsKeymap={[refreshOnSave]}
       />
       {!narrow && <div _handle onMouseDown={grab} />}
-      <SandpackPreview style={{ display: showPreview ? 'flex' : 'none', flex: '1 1 0%' }} />
+      <div _preview ref={preview} style={{ display: showPreview ? 'flex' : 'none' }}>
+        <SandpackPreview style={{ flex: '1 1 0%' }} />
+        <div _console>
+          <button _toggle onClick={toggleConsole}>
+            {showConsole ? '▾' : '▸'} Console
+          </button>
+          <div _panel style={{ display: showConsole ? 'flex' : 'none' }}>
+            <SandpackConsole showHeader={false} resetOnPreviewRestart style={{ flex: 1, minHeight: 0 }} />
+            <input _repl placeholder="› counter.current = 10" onKeyDown={dispatch} />
+          </div>
+        </div>
+      </div>
       {narrow && (
         <Switcher panel={mode} onSelect={onSelect} />
       )}
