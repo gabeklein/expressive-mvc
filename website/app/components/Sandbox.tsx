@@ -59,6 +59,20 @@ export default function Sandbox({
   const { resolvedTheme } = useTheme();
   const dark = resolvedTheme === 'dark';
 
+  // Each example declares its own @expressive/* deps via its imports - scan
+  // the source so router (or any future package) resolves without a hardcoded list.
+  const dependencies = useMemo(() => {
+    const deps: Record<string, string> = {};
+
+    for (const entry of Object.values(files) as (string | { code: string })[]) {
+      const code = typeof entry === 'string' ? entry : entry.code;
+      for (const [pkg] of code.matchAll(/@expressive\/[a-z-]+/g))
+        deps[pkg] = 'latest';
+    }
+
+    return deps;
+  }, [files]);
+
   // The preview is a cross-origin Sandpack iframe, so we can't set its theme
   // from here - bake it into the hidden entry, which global.css honors via
   // :root[data-theme]. Keyed into the provider so a toggle re-applies it.
@@ -78,9 +92,7 @@ export default function Sandbox({
       theme={dark ? 'dark' : 'light'}
       template="react-ts"
       files={themed}
-      customSetup={{
-        dependencies: { '@expressive/react': 'latest' }
-      }}
+      customSetup={{ dependencies }}
       style={{ height: '100%' }}>
       <Layout />
     </SandpackProvider>
