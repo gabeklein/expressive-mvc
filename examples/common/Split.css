@@ -1,0 +1,37 @@
+.split {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: var(--s5);
+  width: 100%;
+  max-width: 640px;
+  margin: var(--s5) auto;
+}
+
+.split > * {
+  flex: 1;
+}
+
+.split > * + * {
+  padding-left: var(--s5);
+  border-left: 1px solid var(--border);
+}
+
+@media (max-width: 480px) {
+  .split {
+    flex-direction: column;
+  }
+
+  .split > * {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .split > * + * {
+    padding-left: 0;
+    padding-top: var(--s5);
+    border-left: none;
+    border-top: 1px solid var(--border);
+  }
+}

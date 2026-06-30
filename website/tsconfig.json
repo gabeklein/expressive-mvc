@@ -20,6 +20,7 @@
     "rootDirs": [".", "./.react-router/types"],
     "paths": {
       "@/*": ["./app/*"],
+      "@examples/*": ["../examples/*"],
       "fumadocs-mdx:collections/*": ["./.source/*"]
     },
     "esModuleInterop": true,

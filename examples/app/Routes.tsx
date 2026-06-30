@@ -2,22 +2,17 @@ import { Component, set } from "@expressive/mvc";
 import { Route } from "@expressive/router";
 import { type ComponentType } from 'react';
 
-export interface Example {
-  order: number;
-  slug: string;
-  label: string;
-  path: string;
-  file: string;
-}
-
-export interface Group {
-  order: number;
-  slug: string;
-  label: string;
-  items: Example[];
-}
+import structure, { type GroupModule } from '../structure';
 
 export type Modules = Record<string, () => Promise<{ default: ComponentType }>>;
+
+const MANIFESTS = import.meta.glob<GroupModule>('../*/index.ts', { eager: true });
+
+const ORDER = Object.values(
+  import.meta.glob<string[]>('../index.ts', { eager: true, import: 'default' })
+)[0];
+
+const GROUPS = structure(ORDER, bySlug(MANIFESTS));
 
 export default class Routes extends Route {
   modules = set<Modules>();
@@ -26,16 +21,22 @@ export default class Routes extends Route {
 
   protected get children(): Component.Node {
     const { notFound, outlet } = this;
-    const groups = organize(this.modules);
-    const first = groups[0]?.items[0];
+    const files = byExample(this.modules);
+    const first = GROUPS[0]?.items[0];
 
     return (
       <>
-        {first && <Route redirect={first.path} />}
-        {groups.map((g) => (
+        {first && <Route redirect={`/${first.group}/${first.slug}`} />}
+        {GROUPS.map((g) => (
           <Route key={g.slug} to={g.slug} label={g.label}>
             {g.items.map((e) => (
-              <Route key={e.slug} to={e.slug} as={outlet} meta={e} label={e.label} />
+              <Route
+                key={e.slug}
+                to={`${e.slug}/*`}
+                as={outlet}
+                label={e.label}
+                meta={{ ...e, file: files[`${e.group}/${e.slug}`] }}
+              />
             ))}
           </Route>
         ))}
@@ -46,57 +47,22 @@ export default class Routes extends Route {
   }
 }
 
-function organize(modules: Record<string, unknown>): Group[] {
-  const groups = new Map<string, Group>();
+function bySlug(manifests: Record<string, GroupModule>) {
+  const out: Record<string, GroupModule> = {};
+
+  for (const [path, manifest] of Object.entries(manifests))
+    out[path.split('/').at(-2)!] = manifest;
+
+  return out;
+}
+
+function byExample(modules: Modules) {
+  const out: Record<string, string> = {};
 
   for (const file of Object.keys(modules)) {
-    const [g, l] = file.split('/').slice(1, -1);
-    let group = groups.get(g);
-
-    if (!group)
-      groups.set(
-        g,
-        (group = {
-          order: order(g),
-          slug: slug(g),
-          label: titleCase(slug(g)),
-          items: []
-        })
-      );
-
-    group.items.push({
-      order: order(l),
-      slug: slug(l) + '/*',
-      label: titleCase(slug(l)),
-      path: `/${slug(g)}/${slug(l)}`,
-      file
-    });
+    const [group, slug] = file.split('/').slice(1, -1);
+    out[`${group}/${slug}`] = file;
   }
 
-  return Array
-    .from(groups.values())
-    .sort(byOrder)
-    .map((g) => ({
-      ...g,
-      items: g.items.sort(byOrder)
-    }));
-}
-
-function order(seg: string) {
-  return +(seg.match(/^(\d+)-/)?.[1] ?? 0);
-}
-
-function slug(seg: string) {
-  return seg.replace(/^\d+-/, '');
-}
-
-function byOrder<T extends { order: number }>(a: T, b: T) {
-  return a.order - b.order;
-}
-
-function titleCase(str: string) {
-  return str
-    .split(' ')
-    .map((w) => w[0].toUpperCase() + w.slice(1))
-    .join(' ');
+  return out;
 }
