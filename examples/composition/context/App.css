@@ -1,0 +1,11 @@
+.context {
+  max-width: 28rem;
+}
+
+.context-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s3);
+  width: 100%;
+}

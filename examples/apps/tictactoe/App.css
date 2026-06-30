@@ -1,0 +1,65 @@
+.status {
+  font-size: var(--t-lg);
+  color: var(--muted);
+  margin: 0;
+}
+
+/* Win highlight is local to this example - the only color it adds. */
+.board {
+  --win: #16a34a;
+  --win-soft: #16a34a18;
+  display: grid;
+  grid-template-columns: repeat(3, 4rem);
+  grid-template-rows: repeat(3, 4rem);
+  gap: 6px;
+  margin: 0;
+}
+
+.board > button {
+  margin: 0;
+  padding: 0;
+  width: 4rem;
+  height: 4rem;
+  font-size: var(--t-2xl);
+  font-weight: 700;
+  color: var(--fg-soft);
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+/* Empty cells invite a move; decided cells don't react to hover. */
+.board > button:hover {
+  background-color: var(--accent-soft);
+}
+
+.board > button.X {
+  color: var(--accent);
+  background: var(--bg);
+  cursor: default;
+}
+
+.board > button.O {
+  color: var(--muted);
+  background: var(--bg);
+  cursor: default;
+}
+
+.board > button.wins {
+  background: var(--win-soft);
+  border-color: var(--win);
+  color: var(--win);
+  cursor: default;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .board {
+    --win: #22c55e;
+    --win-soft: #22c55e22;
+  }
+}
+
+:root[data-theme='dark'] .board {
+  --win: #22c55e;
+  --win-soft: #22c55e22;
+}
