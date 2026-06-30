@@ -1,4 +1,6 @@
-.status {
-  font-size: var(--t-lg);
+.size {
+  font-size: var(--t-2xl);
+  font-weight: 600;
   color: var(--fg);
+  margin: 0;
 }
