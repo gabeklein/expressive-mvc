@@ -20,13 +20,14 @@ const titleCase = (s: string) =>
  */
 export default function structure(manifests: Record<string, GroupModule>): Directory[] {
   const build = (dir: string): Directory[] =>
-    (manifests[dir]?.default ?? []).map((slug) => {
+    (manifests[dir]?.default ?? []).map((slug): Directory => {
       const path = dir ? `${dir}/${slug}` : slug;
-      const entry: Directory = { slug, label: manifests[path]?.label ?? titleCase(slug), path };
+      const label = manifests[path]?.label ?? titleCase(slug);
+      const children = manifests[path] && build(path);
 
-      if (manifests[path]) entry.children = build(path);
-
-      return entry;
+      return { 
+        slug, label, path, children
+      }
     });
 
   return build('');
