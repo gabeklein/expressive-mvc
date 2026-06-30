@@ -45,6 +45,20 @@ function Navigation() {
   marginLeft: 12;
   paddingBottom: 12;
 
+  group: {
+    display: flex;
+    alignItems: center;
+    marginR: 1.2;
+    gap: 8;
+
+    $xl: {
+      flexDirection: column;
+      alignItems: stretch;
+      marginR: 0;
+      gap: 4;
+    }
+  }
+
   // Wraps each group's links. Transparent in the horizontal bar; in the
   // sidebar it becomes the railed list (vertical guide line) the links nest in.
   items: {
@@ -77,20 +91,6 @@ function Navigation() {
     marginLeft: 0;
     paddingBottom: 0;
     gap: 20;
-  }
-
-  group: {
-    display: flex;
-    alignItems: center;
-    marginR: 1.2;
-    gap: 8;
-
-    $xl: {
-      flexDirection: column;
-      alignItems: stretch;
-      marginR: 0;
-      gap: 4;
-    }
   }
 
   return (
@@ -141,7 +141,7 @@ function ExampleLink({ path, label }: { path: string; label: string }) {
   $xl: {
     border: none;
     borderLeft: transparent, 2;
-    borderRadius: 0, 6, 6, 0;
+    borderRadius: `0 4px 4px 0`;
     marginLeft: -1;
 
     $hover: {
