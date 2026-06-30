@@ -1,0 +1,18 @@
+.panel {
+  margin-bottom: 1rem;
+  border: 1px solid var(--accent-soft);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.panel header {
+  padding: 0.5rem 0.75rem;
+  font-weight: 600;
+  background: var(--accent-soft);
+  color: var(--fg);
+}
+
+.panel .body {
+  padding: 0.75rem;
+  color: var(--fg);
+}

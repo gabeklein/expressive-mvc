@@ -1,0 +1,31 @@
+.picker {
+  margin-bottom: var(--s5);
+}
+
+.picker h2 {
+  font-size: var(--t-lg);
+  margin-bottom: var(--s3);
+}
+
+li.active {
+  background: var(--accent);
+  color: var(--accent-fg);
+}
+
+/* Palette variant: lay the items out as a horizontal row of swatches. */
+.palette ul {
+  flex-direction: row;
+  justify-content: center;
+}
+
+.palette .swatch {
+  display: block;
+  width: 2rem;
+  height: 2rem;
+  border-radius: var(--r-sm);
+}
+
+.palette li.active {
+  background: none;
+  outline: 2px solid var(--accent);
+}
