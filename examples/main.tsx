@@ -1,3 +1,5 @@
+import "@expressive/react";
+
 import { ComponentType, lazy, ReactNode, Suspense } from 'react';
 import { createRoot } from 'react-dom/client';
 

@@ -23,6 +23,7 @@ const FILES = import.meta.glob('@examples/*/**/*', {
 }) as Record<string, string>;
 
 const ENTRY = `\
+import "@expressive/react";
 import './global.css';
 import { createRoot } from 'react-dom/client';
 import App from './App';
