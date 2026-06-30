@@ -12,7 +12,7 @@ const next: Record<Mode, Mode> = {
   dark: 'system'
 };
 
-export class Theme extends State {
+export default class Theme extends State {
   mode: Mode;
 
   constructor(...args: State.Args){
@@ -54,7 +54,7 @@ export class Theme extends State {
   }
 }
 
-export default function Toggle() {
+export function Toggle() {
   const { mode, toggle } = Theme.get();
   const Icon =
     mode === 'system' ? SunMoon : mode === 'light' ? Sun : Moon;

@@ -2,7 +2,7 @@ import '@expressive/react';
 import { BrowserRouter, NavLinks, Route, Router } from '@expressive/router';
 
 import Logo from './Logo';
-import Toggle, { Theme } from './Theme';
+import Theme, { Toggle } from './Theme';
 import styles from './Shell.module.css';
 import { Provider } from '@expressive/react';
 import { type Group } from '../structure';
@@ -10,10 +10,12 @@ import { type Group } from '../structure';
 const Shell = ({ groups }: { groups: Group[] }) => {
   const first = groups[0]?.items[0];
 
+  if(!first) throw new Error("No examples are loaded.");
+
   return (
     <Provider for={{ Theme, BrowserRouter }}>
       <Route as={Window}>
-        {first && <Route redirect={`/${first.group}/${first.slug}`} />}
+        <Route redirect={`/${first.group}/${first.slug}`} />
         {groups.map((g) => (
           <Route key={g.slug} to={g.slug} label={g.label}>
             {g.items.map((e) => (
