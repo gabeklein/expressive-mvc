@@ -14,14 +14,21 @@ if (window.self === window.top) {
     import.meta.glob<string[]>('./content/index.ts', { eager: true, import: 'default' })
   )[0];
 
-  const manifests: Record<string, GroupModule> = {};
+  const manifests = Object.fromEntries(
+    Object.entries(import.meta.glob<GroupModule>('./content/*/index.ts', { eager: true }))
+      .map(([path, m]) => [path.split('/').at(-2)!, m] as const)
+  );
 
-  for (const [path, m] of Object.entries(
-    import.meta.glob<GroupModule>('./content/*/index.ts', { eager: true })
-  ))
-    manifests[path.split('/').at(-2)!] = m;
+  // Each example's lazy module key doubles as its iframe src.
+  const groups = structure(order, manifests).map((g) => ({
+    ...g,
+    items: g.items.map((e) => {
+      const file = `./content/${e.group}/${e.slug}/App.tsx`;
+      return { ...e, file: file in modules ? file : undefined };
+    })
+  }));
 
-  app = <Shell modules={modules} groups={structure(order, manifests)} />;
+  app = <Shell groups={groups} />;
 } else {
   const name = window.location.hash.slice(1);
   const Example = lazy(modules[decodeURIComponent(name)]);

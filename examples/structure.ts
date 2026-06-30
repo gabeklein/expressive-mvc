@@ -7,6 +7,7 @@ export interface Example {
   group: string;
   slug: string;
   label: string;
+  file?: string;
 }
 
 export interface Group {

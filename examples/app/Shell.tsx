@@ -3,22 +3,29 @@ import { BrowserRouter, NavLinks, Route, Router } from '@expressive/router';
 
 import Logo from './Logo';
 import Toggle, { Theme } from './Theme';
-import Routes, { Modules } from './Routes';
 import styles from './Shell.module.css';
 import { Provider } from '@expressive/react';
 import { type Group } from '../structure';
 
-const Shell = (props: { modules: Modules; groups: Group[] }) => (
-  <Provider for={{ Theme, BrowserRouter }}>
-    <Routes
-      as={Window}
-      outlet={Outlet}
-      notFound={NotFound}
-      modules={props.modules}
-      groups={props.groups}
-    />
-  </Provider>
-);
+const Shell = ({ groups }: { groups: Group[] }) => {
+  const first = groups[0]?.items[0];
+
+  return (
+    <Provider for={{ Theme, BrowserRouter }}>
+      <Route as={Window}>
+        {first && <Route redirect={`/${first.group}/${first.slug}`} />}
+        {groups.map((g) => (
+          <Route key={g.slug} to={g.slug} label={g.label}>
+            {g.items.map((e) => (
+              <Route key={e.slug} to={`${e.slug}/*`} as={Outlet} label={e.label} meta={e} />
+            ))}
+          </Route>
+        ))}
+        <Route default as={NotFound} />
+      </Route>
+    </Provider>
+  );
+};
 
 export default Shell;
 
