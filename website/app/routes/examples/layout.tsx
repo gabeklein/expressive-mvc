@@ -45,6 +45,20 @@ function Navigation() {
   marginLeft: 12;
   paddingBottom: 12;
 
+  // Wraps each group's links. Transparent in the horizontal bar; in the
+  // sidebar it becomes the railed list (vertical guide line) the links nest in.
+  items: {
+    display: "contents";
+
+    $xl: {
+      display: flex;
+      flexDirection: column;
+      gap: 2;
+      marginLeft: 10;
+      borderLeft: $colorFdBorder, 1;
+    }
+  }
+
   // Stacked vertical sidebar at wide widths. align-self:flex-start stops it
   // from stretching the row to its own height; capped to the viewport and
   // scrolled internally so a short window doesn't overflow the page.
@@ -79,80 +93,11 @@ function Navigation() {
     }
   }
 
-  label: {
-    display: flex;
-    alignItems: center;
-    alignSelf: stretch;
-    fontSize: 0.78;
-    fontWeight: 600;
-    textTransform: uppercase;
-    letterSpacing: '0.08em';
-    color: $colorFdForeground;
-    whiteSpace: nowrap;
-    background: $colorFdBackground;
-    position: sticky;
-    left: 0;
-    zIndex: 1;
-
-    fade: {
-      position: absolute;
-      left: "100%";
-      top: 0;
-      bottom: 0;
-      width: 8;
-      pointerEvents: none;
-      background: `linear-gradient(to right, var(--color-fd-background), transparent)`;
-      // media nested inside the selector, not a selector inside the media
-      // block - the parser can't handle the latter (workaround).
-      $xl: { display: none; }
-    }
-
-    separator: {
-      width: 2;
-      display: "inline-block";
-      height: 2.2;
-      radius: 2;
-      marginLeft: 12;
-      marginRight: 5;
-      background: $colorFdBorder;
-      $xl: { display: none; }
-    }
-
-    // In sidebar mode the row affordances (sticky pin, fade, dot) are noise;
-    // the label becomes a quiet section header above a railed list.
-    $xl: {
-      position: "static";
-      marginBottom: 6;
-      paddingLeft: 8;
-      fontSize: 0.72;
-      color: $colorFdMutedForeground;
-    }
-  }
-
-  // Wraps each group's links. Transparent in the horizontal bar; in the
-  // sidebar it becomes the railed list (vertical guide line) the links nest in.
-  items: {
-    display: "contents";
-
-    $xl: {
-      display: flex;
-      flexDirection: column;
-      gap: 2;
-      marginLeft: 10;
-      borderLeft: $colorFdBorder, 1;
-    }
-  }
-
   return (
     <nav>
       {GROUPS.map((group) => (
         <div _group key={group.slug}>
-          <span _label>
-            {group.label}
-            <span _separator />
-            <span _fade />
-          </span>
-
+          <GroupLabel label={group.label} />
           <div _items>
             {(group.children ?? []).map((e) => (
               <ExampleLink key={e.slug} path={e.path} label={e.label} />
@@ -206,4 +151,62 @@ function ExampleLink({ path, label }: { path: string; label: string }) {
   }
 
   return <NavLink to={`/examples/${path}`}>{label}</NavLink>;
+}
+
+function GroupLabel({ label }: { label: string }) {
+  display: flex;
+  alignItems: center;
+  alignSelf: stretch;
+  fontSize: 0.78;
+  fontWeight: 600;
+  textTransform: uppercase;
+  letterSpacing: '0.08em';
+  color: $colorFdForeground;
+  whiteSpace: nowrap;
+  background: $colorFdBackground;
+  position: sticky;
+  left: 0;
+  zIndex: 1;
+
+  fade: {
+    position: absolute;
+    left: "100%";
+    top: 0;
+    bottom: 0;
+    width: 8;
+    pointerEvents: none;
+    background: `linear-gradient(to right, var(--color-fd-background), transparent)`;
+    // media nested inside the selector, not a selector inside the media
+    // block - the parser can't handle the latter (workaround).
+    $xl: { display: none; }
+  }
+
+  separator: {
+    width: 2;
+    display: "inline-block";
+    height: 2.2;
+    radius: 2;
+    marginLeft: 12;
+    marginRight: 5;
+    background: $colorFdBorder;
+    $xl: { display: none; }
+  }
+
+  // In sidebar mode the row affordances (sticky pin, fade, dot) are noise;
+  // the label becomes a quiet section header above a railed list.
+  $xl: {
+    position: "static";
+    marginBottom: 6;
+    paddingLeft: 8;
+    fontSize: 0.72;
+    color: $colorFdMutedForeground;
+  }
+
+  return (
+    <span>
+      {label}
+      <span _separator />
+      <span _fade />
+    </span>
+  );
 }
