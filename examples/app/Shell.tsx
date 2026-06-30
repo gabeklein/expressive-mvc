@@ -6,14 +6,16 @@ import Toggle, { Theme } from './Theme';
 import Routes, { Modules } from './Routes';
 import styles from './Shell.module.css';
 import { Provider } from '@expressive/react';
+import { type Group } from '../structure';
 
-const Shell = (props: { modules: Modules }) => (
+const Shell = (props: { modules: Modules; groups: Group[] }) => (
   <Provider for={{ Theme, BrowserRouter }}>
     <Routes
       as={Window}
       outlet={Outlet}
       notFound={NotFound}
       modules={props.modules}
+      groups={props.groups}
     />
   </Provider>
 );

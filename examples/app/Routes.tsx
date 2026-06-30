@@ -2,32 +2,25 @@ import { Component, set } from "@expressive/mvc";
 import { Route } from "@expressive/router";
 import { type ComponentType } from 'react';
 
-import structure, { type GroupModule } from '../structure';
+import { type Group } from '../structure';
 
 export type Modules = Record<string, () => Promise<{ default: ComponentType }>>;
 
-const MANIFESTS = import.meta.glob<GroupModule>('../content/*/index.ts', { eager: true });
-
-const ORDER = Object.values(
-  import.meta.glob<string[]>('../content/index.ts', { eager: true, import: 'default' })
-)[0];
-
-const GROUPS = structure(ORDER, bySlug(MANIFESTS));
-
 export default class Routes extends Route {
   modules = set<Modules>();
+  groups = set<Group[]>();
   outlet = set<Route['as']>();
   notFound = set<Route['as']>();
 
   protected get children(): Component.Node {
-    const { notFound, outlet } = this;
+    const { notFound, outlet, groups } = this;
     const files = byExample(this.modules);
-    const first = GROUPS[0]?.items[0];
+    const first = groups[0]?.items[0];
 
     return (
       <>
         {first && <Route redirect={`/${first.group}/${first.slug}`} />}
-        {GROUPS.map((g) => (
+        {groups.map((g) => (
           <Route key={g.slug} to={g.slug} label={g.label}>
             {g.items.map((e) => (
               <Route
@@ -45,15 +38,6 @@ export default class Routes extends Route {
       </>
     );
   }
-}
-
-function bySlug(manifests: Record<string, GroupModule>) {
-  const out: Record<string, GroupModule> = {};
-
-  for (const [path, manifest] of Object.entries(manifests))
-    out[path.split('/').at(-2)!] = manifest;
-
-  return out;
 }
 
 function byExample(modules: Modules) {
