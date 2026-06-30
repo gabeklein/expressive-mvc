@@ -143,48 +143,6 @@ function Navigation() {
     }
   }
 
-  NavLink: {
-    padding: 6, 12;
-    borderRadius: 6;
-    border: $colorFdBorder;
-    fontSize: 0.875;
-    textDecoration: none;
-    color: $colorFdMutedForeground;
-    userSelect: none;
-    whiteSpace: nowrap;
-
-    $hover: {
-      color: $colorFdForeground;
-      borderColor: $colorFdMutedForeground;
-    }
-
-    if("[aria-current='page']") {
-      background: `color-mix(in srgb, var(--accent) 14%, transparent)`;
-      borderColor: `color-mix(in srgb, var(--accent) 45%, transparent)`;
-      color: $accent;
-
-      // Sidebar active: left bar instead of the pill border. Media nested in
-      // the selector (not the reverse) to dodge the parser bug.
-      $xl: {
-        borderLeftColor: $accent;
-      }
-    }
-
-    // Sidebar: flush links nested on the rail, marked by a left bar instead
-    // of a pill box.
-    $xl: {
-      border: none;
-      borderLeft: transparent, 2;
-      borderRadius: 0, 6, 6, 0;
-      marginLeft: -1;
-
-      $hover: {
-        background: $colorFdMuted;
-        borderLeftColor: $colorFdMutedForeground;
-      }
-    }
-  }
-
   return (
     <nav>
       {GROUPS.map((group) => (
@@ -197,13 +155,55 @@ function Navigation() {
 
           <div _items>
             {(group.children ?? []).map((e) => (
-              <NavLink key={e.slug} to={`/examples/${e.path}`}>
-                {e.label}
-              </NavLink>
+              <ExampleLink key={e.slug} path={e.path} label={e.label} />
             ))}
           </div>
         </div>
       ))}
     </nav>
   );
+}
+
+function ExampleLink({ path, label }: { path: string; label: string }) {
+  padding: 6, 12;
+  borderRadius: 6;
+  border: $colorFdBorder;
+  fontSize: 0.875;
+  textDecoration: none;
+  color: $colorFdMutedForeground;
+  userSelect: none;
+  whiteSpace: nowrap;
+
+  $hover: {
+    color: $colorFdForeground;
+    borderColor: $colorFdMutedForeground;
+  }
+
+  if("[aria-current='page']") {
+    background: `color-mix(in srgb, var(--accent) 14%, transparent)`;
+    borderColor: `color-mix(in srgb, var(--accent) 45%, transparent)`;
+    color: $accent;
+
+    // Sidebar active: left bar instead of the pill border. Media nested in
+    // the selector (not the reverse) to dodge the parser bug.
+    $xl: {
+      borderLeftColor: $accent;
+    }
+  }
+
+  // Sidebar: flush links nested on the rail, marked by a left bar instead
+  // of a pill box.
+  $xl: {
+    border: none;
+    borderLeft: transparent, 2;
+    borderRadius: 0, 6, 6, 0;
+    marginLeft: -1;
+
+    $hover: {
+      background: $colorFdMuted;
+      borderLeftColor: $colorFdMutedForeground;
+    }
+  }
+
+  return <NavLink to={`/examples/${path}`}>{label}</NavLink>;
 }
