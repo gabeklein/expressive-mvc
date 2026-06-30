@@ -4,7 +4,10 @@
   margin: 0;
 }
 
+/* Win highlight is local to this example - the only color it adds. */
 .board {
+  --win: #16a34a;
+  --win-soft: #16a34a18;
   display: grid;
   grid-template-columns: repeat(3, 4rem);
   grid-template-rows: repeat(3, 4rem);
@@ -47,4 +50,16 @@
   border-color: var(--win);
   color: var(--win);
   cursor: default;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .board {
+    --win: #22c55e;
+    --win-soft: #22c55e22;
+  }
+}
+
+:root[data-theme='dark'] .board {
+  --win: #22c55e;
+  --win-soft: #22c55e22;
 }
