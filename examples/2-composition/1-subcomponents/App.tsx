@@ -1,49 +1,60 @@
 import './App.css';
 
-import { Component } from '@expressive/react';
+import Split from '@common/Split';
 
-// A PascalCase method becomes a subcomponent scoped to `this`.
-// Each is a real component: it subscribes only to what it reads, and
-// `render()` stays a flat composition of named pieces instead of one
-// long tree.
-class Dashboard extends Component {
-  fruits = ['Apple', 'Banana', 'Cherry'];
-  selected = 0;
+// Picker is kept separate as a reusable, behavior-complete base.
+import { Picker } from './Picker';
 
-  select(index: number) {
-    this.selected = index;
-  }
+const COLORS: Record<string, string> = {
+  Coral: '#ff6f61',
+  Sky: '#4dabf7',
+  Mint: '#51cf66',
+};
 
-  // Subcomponent - reads `fruits` and `selected`.
-  List() {
+// A plain vertical list. Only Item is overridden - selection behavior
+// and the default Summary are inherited untouched.
+class FruitPicker extends Picker {
+  name = 'Fruit';
+  items = ['Apple', 'Banana', 'Cherry'];
+
+  Item({ index }: { index: number }) {
     return (
-      <ul>
-        {this.fruits.map((fruit, i) => (
-          <li
-            key={fruit}
-            className={i === this.selected ? 'active' : ''}
-            onClick={() => this.select(i)}>
-            {fruit}
-          </li>
-        ))}
-      </ul>
-    );
-  }
-
-  // Another subcomponent, refreshed on its own when selection changes.
-  Detail() {
-    return <p className="detail">You picked {this.fruits[this.selected]}.</p>;
-  }
-
-  render() {
-    return (
-      <div className="container">
-        <h1>Subcomponents</h1>
-        <this.List />
-        <this.Detail />
-      </div>
+      <>
+        {index === this.selected ? '🍎 ' : '🍏 '}
+        {this.items[index]}
+      </>
     );
   }
 }
 
-export default () => <Dashboard />;
+// A very different UX from the same base: a horizontal row of color
+// swatches. It overrides Item AND Summary - the hex readout is a
+// feature the FruitPicker doesn't have.
+class PalettePicker extends Picker {
+  name = 'Color';
+  className = 'palette';
+  items = Object.keys(COLORS);
+
+  Item({ index }: { index: number }) {
+    return <span className="swatch" style={{ background: COLORS[this.items[index]] }} />;
+  }
+
+  Summary() {
+    const name = this.items[this.selected];
+    return (
+      <small>
+        {name} <code>{COLORS[name]}</code>
+      </small>
+    );
+  }
+}
+
+export default () => (
+  <div className="container">
+    <h1>Overrideable Subcomponents</h1>
+    <Split>
+      <FruitPicker />
+      <PalettePicker />
+    </Split>
+  </div>
+);
