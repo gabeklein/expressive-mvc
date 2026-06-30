@@ -1,7 +1,7 @@
 import { ComponentType, lazy, ReactNode, Suspense } from 'react';
 import { createRoot } from 'react-dom/client';
 
-const modules = import.meta.glob<{ default: ComponentType }>('../*/**/App.tsx');
+const modules = import.meta.glob<{ default: ComponentType }>('./content/*/**/App.tsx');
 
 let app: ReactNode;
 

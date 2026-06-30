@@ -5,13 +5,13 @@ import structure, { type GroupModule } from '@examples/structure';
 // Manifests drive group order, group labels, and example order - shared with
 // the dev-harness SPA via @examples/structure. Imported eagerly as modules.
 const ORDER = Object.values(
-  import.meta.glob<string[]>('@examples/index.ts', { eager: true, import: 'default' })
+  import.meta.glob<string[]>('@examples/content/index.ts', { eager: true, import: 'default' })
 )[0];
 
 const MANIFESTS: Record<string, GroupModule> = {};
 
 Object.entries(
-  import.meta.glob<GroupModule>('@examples/*/index.ts', { eager: true })
+  import.meta.glob<GroupModule>('@examples/content/*/index.ts', { eager: true })
 ).forEach(([path, m]) => {
   MANIFESTS[path.split('/').at(-2)!] = m;
 })
@@ -60,9 +60,6 @@ for (const [path, code] of Object.entries(FILES)) {
   // Group manifests order the nav; they aren't sandbox files.
   if (file === 'index.ts') continue;
 
-  // Dev-harness shell - not shipped into sandboxes.
-  if (segments[0] === 'app') continue;
-
   // Shared chrome library. Examples import via the `@common` dev alias; only
   // files an example actually reaches ship with its sandbox (see getFiles).
   if (segments[0] === 'common') {
@@ -70,7 +67,11 @@ for (const [path, code] of Object.entries(FILES)) {
     continue;
   }
 
-  const slug = segments.join('/');
+  // Routable example content lives under content/<group>/<example>/. Anything
+  // else (the app/ dev-shell) is harness, not a sandbox.
+  if (segments[0] !== 'content') continue;
+
+  const slug = segments.slice(1).join('/');
   const target = examples[slug] ??= {};
   // Sandboxes have no alias resolution - point at the adjacent folder instead.
   target[`/${file}`] = code.replace(/(['"])@common(?=[/'"])/g, '$1./common');

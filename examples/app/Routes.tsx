@@ -6,10 +6,10 @@ import structure, { type GroupModule } from '../structure';
 
 export type Modules = Record<string, () => Promise<{ default: ComponentType }>>;
 
-const MANIFESTS = import.meta.glob<GroupModule>('../*/index.ts', { eager: true });
+const MANIFESTS = import.meta.glob<GroupModule>('../content/*/index.ts', { eager: true });
 
 const ORDER = Object.values(
-  import.meta.glob<string[]>('../index.ts', { eager: true, import: 'default' })
+  import.meta.glob<string[]>('../content/index.ts', { eager: true, import: 'default' })
 )[0];
 
 const GROUPS = structure(ORDER, bySlug(MANIFESTS));
@@ -60,8 +60,8 @@ function byExample(modules: Modules) {
   const out: Record<string, string> = {};
 
   for (const file of Object.keys(modules)) {
-    const [group, slug] = file.split('/').slice(1, -1);
-    out[`${group}/${slug}`] = file;
+    const parts = file.split('/');
+    out[`${parts.at(-3)}/${parts.at(-2)}`] = file;
   }
 
   return out;
