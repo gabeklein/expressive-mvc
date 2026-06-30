@@ -32,9 +32,42 @@ import App from './App';
 document.body.classList.add('example');
 
 // Every State instance self-registers (procedurally, via State's own lifecycle)
-// so the console REPL can reach live state. Grouped by class; each instance is
-// also aliased on window by its lowercased class name (last-wins).
+// so the inspector/REPL can reach live state. Grouped by class; each instance
+// is also aliased on window by its lowercased class name (last-wins).
 const states = window.__states = new Map();
+
+const post = (msg) => window.parent.postMessage({ source: 'expressive', ...msg }, '*');
+
+const find = (id) => {
+  for (const set of states.values())
+    for (const instance of set)
+      if (String(instance) === id) return instance;
+};
+
+// Class -> instance ids, for the inspector tree.
+const snapshot = () => post({
+  kind: 'registry',
+  tree: [...states].map(([Type, set]) => ({
+    name: Type.name,
+    instances: [...set].map(String)
+  }))
+});
+
+// Serialize a focused instance's own fields; primitives are editable, the rest
+// shown read-only.
+const fieldsOf = (instance) => {
+  const fields = {};
+  for (const key in instance) {
+    const value = instance[key];
+    const type = typeof value;
+    fields[key] = type === 'function' ? { type: 'fn' }
+      : type === 'object' && value ? { type: 'object', text: Array.isArray(value) ? \`Array(\${value.length})\` : 'Object' }
+      : { type, value };
+  }
+  return fields;
+};
+
+let unfocus;
 
 State.on({
   before(self) {
@@ -43,20 +76,51 @@ State.on({
     if (!set) states.set(Type, set = new Set());
     set.add(self);
     window[Type.name[0].toLowerCase() + Type.name.slice(1)] = self;
-    return () => set.delete(self);
+    snapshot();
+    return () => {
+      set.delete(self);
+      if (!set.size) states.delete(Type);
+      snapshot();
+    };
   }
 });
 
-// REPL bridge: parent drawer posts code here; we eval it and echo the result
-// through console.* so it flows back via Sandpack's console channel.
 window.addEventListener('message', (e) => {
   const msg = e.data;
-  if (!msg || msg.source !== 'expressive-repl') return;
-  try {
-    const result = (0, eval)(msg.code);
-    if (result !== undefined) console.log(result);
-  } catch (err) {
-    console.error(err);
+  if (!msg || msg.source !== 'expressive') return;
+
+  switch (msg.kind) {
+    case 'sync':
+      return snapshot();
+
+    case 'eval':
+      try {
+        const result = (0, eval)(msg.code);
+        if (result !== undefined) console.log(result);
+      } catch (err) {
+        console.error(err);
+      }
+      return;
+
+    case 'focus': {
+      if (unfocus) unfocus();
+      unfocus = undefined;
+      const instance = find(msg.id);
+      // get(effect) reruns whenever accessed values change; reading every key
+      // through the tracking proxy subscribes to all of them.
+      if (instance)
+        unfocus = instance.get(($) => post({ kind: 'values', id: msg.id, fields: fieldsOf($) }));
+      return;
+    }
+
+    case 'set': {
+      const instance = find(msg.id);
+      if (!instance) return;
+      let value = msg.value;
+      try { value = JSON.parse(msg.value); } catch {}
+      instance[msg.key] = value;
+      return;
+    }
   }
 });
 

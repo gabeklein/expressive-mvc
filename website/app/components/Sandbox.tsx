@@ -11,14 +11,19 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTheme } from 'next-themes';
 import type { MouseEvent as ReactMouseEvent } from 'react';
 
+type Field = { type: string; value?: unknown; text?: string };
+
+class Inspector extends State {
+  tree: { name: string; instances: string[] }[] = [];
+  focused: string | null = null;
+  fields: Record<string, Field> = {};
+}
+
 class Panes extends State {
   mode: 'preview' | 'code' = 'preview';
+  tab: 'console' | 'state' = 'console';
   ratio = 50; // editor width (%) when both panels are side by side
   showConsole = false;
-
-  toggleConsole() {
-    this.showConsole = !this.showConsole;
-  }
 
   // Hold Ctrl and two-finger swipe to nudge split
   layout = ref<HTMLDivElement>((el) => {
@@ -106,20 +111,50 @@ export default function Sandbox({
 }
 
 function Layout() {
-  const { onSelect, mode, ratio, grab, layout, showConsole, toggleConsole } = Panes.use();
+  const panes = Panes.use();
+  const { onSelect, mode, ratio, grab, layout, showConsole, tab } = panes;
+  const inspector = Inspector.use();
   const sandpack = useSandpack();
   const preview = useRef<HTMLDivElement>(null);
 
-  // Send a REPL line into the preview iframe; the sandbox entry evals it and
-  // echoes the result back through the console channel.
+  // All parent -> sandbox traffic goes to the preview iframe; the entry's
+  // message handler routes by `kind`.
+  const send = (msg: Record<string, unknown>) =>
+    preview.current
+      ?.querySelector('iframe')
+      ?.contentWindow?.postMessage({ source: 'expressive', ...msg }, '*');
+
+  // Sandbox -> parent: registry tree on any (de)registration, focused
+  // instance's live fields on any change.
+  useEffect(() => {
+    const onMessage = (e: MessageEvent) => {
+      const msg = e.data;
+      if (!msg || msg.source !== 'expressive') return;
+      if (msg.kind === 'registry') inspector.tree = msg.tree;
+      else if (msg.kind === 'values' && msg.id === inspector.focused) inspector.fields = msg.fields;
+    };
+    window.addEventListener('message', onMessage);
+    return () => window.removeEventListener('message', onMessage);
+  }, [inspector]);
+
   const dispatch = (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.key !== 'Enter') return;
     const code = event.currentTarget.value.trim();
     if (!code) return;
-    preview.current
-      ?.querySelector('iframe')
-      ?.contentWindow?.postMessage({ source: 'expressive-repl', code }, '*');
+    send({ kind: 'eval', code });
     event.currentTarget.value = '';
+  };
+
+  const focus = (id: string) => {
+    inspector.focused = id;
+    inspector.fields = {};
+    send({ kind: 'focus', id });
+  };
+
+  const openTab = (next: typeof tab) => {
+    panes.tab = next;
+    panes.showConsole = true;
+    if (next === 'state') send({ kind: 'sync' });
   };
 
   const refreshOnSave = {
@@ -208,6 +243,110 @@ function Layout() {
     outline: none;
   }
 
+  // Drawer header: collapse caret + Console/State tabs.
+  bar: {
+    display: flex;
+    alignItems: stretch;
+
+    caret: {
+      padding: 6, 8;
+      border: none;
+      background: none;
+      color: $colorFdMutedForeground;
+      cursor: pointer;
+    }
+
+    tab: {
+      padding: 6, 12;
+      fontSize: 0.7;
+      fontWeight: 600;
+      textTransform: uppercase;
+      letterSpacing: '0.06em';
+      border: none;
+      background: none;
+      color: $colorFdMutedForeground;
+      cursor: pointer;
+
+      if("[aria-pressed='true']") {
+        color: $colorFdForeground;
+        boxShadow: `inset 0 -2px 0 var(--accent)`;
+      }
+    }
+  }
+
+  // State inspector: types/instances tree beside the focused instance's fields.
+  inspector: {
+    display: flex;
+    flex: 1;
+    minHeight: 0;
+    fontSize: 0.8;
+    fontFamily: "ui-monospace, monospace";
+
+    tree: {
+      flexShrink: 0;
+      width: 180;
+      overflowY: auto;
+      borderRight: $colorFdBorder, 1;
+      padding: 6;
+    }
+
+    type: {
+      color: $colorFdMutedForeground;
+      padding: 2, 4;
+    }
+
+    instance: {
+      display: block;
+      width: fill;
+      textAlign: left;
+      padding: 2, 4, 2, 12;
+      border: none;
+      background: none;
+      color: $colorFdForeground;
+      cursor: pointer;
+      whiteSpace: nowrap;
+
+      $hover: { color: $accent; }
+
+      if("[aria-pressed='true']") {
+        color: $accent;
+      }
+    }
+
+    fields: {
+      flex: 1;
+      overflowY: auto;
+      padding: 6;
+    }
+
+    field: {
+      display: flex;
+      alignItems: center;
+      gap: 8;
+      padding: 1, 0;
+
+      key: {
+        color: $colorFdMutedForeground;
+        minWidth: 80;
+      }
+
+      value: {
+        flex: 1;
+        border: $colorFdBorder, 1;
+        borderRadius: 4;
+        padding: 1, 4;
+        background: $colorFdBackground;
+        color: $colorFdForeground;
+        fontFamily: "ui-monospace, monospace";
+        fontSize: 0.8;
+      }
+
+      muted: {
+        color: $colorFdMutedForeground;
+      }
+    }
+  }
+
   return (
     <SandpackLayout ref={layout}>
       <SandpackCodeEditor
@@ -218,12 +357,54 @@ function Layout() {
       <div _preview ref={preview} style={{ display: showPreview ? 'flex' : 'none' }}>
         <SandpackPreview style={{ flex: '1 1 0%' }} />
         <div _console>
-          <button _toggle onClick={toggleConsole}>
-            {showConsole ? '▾' : '▸'} Console
-          </button>
+          <div _bar>
+            <button _caret onClick={() => (panes.showConsole = !showConsole)}>
+              {showConsole ? '▾' : '▸'}
+            </button>
+            <button _tab aria-pressed={tab === 'console'} onClick={() => openTab('console')}>
+              Console
+            </button>
+            <button _tab aria-pressed={tab === 'state'} onClick={() => openTab('state')}>
+              State
+            </button>
+          </div>
           <div _panel style={{ display: showConsole ? 'flex' : 'none' }}>
-            <SandpackConsole showHeader={false} resetOnPreviewRestart style={{ flex: 1, minHeight: 0 }} />
-            <input _repl placeholder="› counter.current = 10" onKeyDown={dispatch} />
+            <div
+              style={{ display: tab === 'console' ? 'flex' : 'none', flex: 1, flexDirection: 'column', minHeight: 0 }}>
+              <SandpackConsole showHeader={false} resetOnPreviewRestart style={{ flex: 1, minHeight: 0 }} />
+              <input _repl placeholder="› counter.current = 10" onKeyDown={dispatch} />
+            </div>
+            {tab === 'state' && (
+              <div _inspector>
+                <div _tree>
+                  {inspector.tree.map((t) => (
+                    <div key={t.name}>
+                      <div _type>{t.name}</div>
+                      {t.instances.map((id) => (
+                        <button _instance key={id} aria-pressed={inspector.focused === id} onClick={() => focus(id)}>
+                          {id}
+                        </button>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+                <div _fields>
+                  {Object.entries(inspector.fields).map(([key, field]) => (
+                    <div _field key={key}>
+                      <span _key>{key}</span>
+                      {field.type === 'fn' ? <span _muted>ƒ</span>
+                        : field.type === 'object' ? <span _muted>{field.text}</span>
+                        : <input
+                            _value
+                            defaultValue={String(field.value)}
+                            key={String(field.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && send({ kind: 'set', id: inspector.focused, key, value: e.currentTarget.value })}
+                          />}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
