@@ -196,8 +196,8 @@ function Navigation() {
           </span>
 
           <div _items>
-            {group.items.map((e) => (
-              <NavLink key={e.slug} to={`/examples/${e.group}/${e.slug}`}>
+            {(group.children ?? []).map((e) => (
+              <NavLink key={e.slug} to={`/examples/${e.path}`}>
                 {e.label}
               </NavLink>
             ))}

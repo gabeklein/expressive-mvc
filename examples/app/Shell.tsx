@@ -5,24 +5,18 @@ import Logo from './Logo';
 import Theme, { Toggle } from './Theme';
 import styles from './Shell.module.css';
 import { Provider } from '@expressive/react';
-import { type Group } from '../structure';
+import { leaves, type Directory } from '../structure';
 
-const Shell = ({ groups }: { groups: Group[] }) => {
-  const first = groups[0]?.items[0];
+const Shell = ({ tree }: { tree: Directory[] }) => {
+  const [first] = leaves(tree);
 
-  if(!first) throw new Error("No examples are loaded.");
+  if (!first) throw new Error("No examples are loaded.");
 
   return (
     <Provider for={{ Theme, BrowserRouter }}>
       <Route as={Window}>
-        <Route redirect={`/${first.group}/${first.slug}`} />
-        {groups.map((g) => (
-          <Route key={g.slug} to={g.slug} label={g.label}>
-            {g.items.map((e) => (
-              <Route key={e.slug} to={`${e.slug}/*`} as={Outlet} label={e.label} meta={e} />
-            ))}
-          </Route>
-        ))}
+        <Route redirect={`/${first.path}`} />
+        {tree.map(renderDirectory)}
         <Route default as={NotFound} />
       </Route>
     </Provider>
@@ -30,6 +24,11 @@ const Shell = ({ groups }: { groups: Group[] }) => {
 };
 
 export default Shell;
+
+const renderDirectory = (d: Directory): React.ReactNode =>
+  d.children
+    ? <Route key={d.slug} to={d.slug} label={d.label}>{d.children.map(renderDirectory)}</Route>
+    : <Route key={d.slug} to={d.slug} as={Outlet} label={d.label} meta={d} />;
 
 function Window(props: { children?: React.ReactNode }) {
   return (

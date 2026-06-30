@@ -3,28 +3,34 @@ export interface GroupModule {
   label?: string;
 }
 
-export interface Example {
-  group: string;
+export interface Directory {
   slug: string;
   label: string;
+  path: string;
+  children?: Directory[];
   file?: string;
-}
-
-export interface Group {
-  slug: string;
-  label: string;
-  items: Example[];
 }
 
 const titleCase = (s: string) =>
   s.split(/[-/]/).map((w) => w[0].toUpperCase() + w.slice(1)).join(' ');
 
-function structure(order: string[], groups: Record<string, GroupModule>): Group[] {
-  return order.filter((g) => groups[g]).map((g) => ({
-    slug: g,
-    label: groups[g].label ?? titleCase(g),
-    items: groups[g].default.map((slug) => ({ group: g, slug, label: titleCase(slug) }))
-  }));
+/**
+ * Build an ordered tree from manifests keyed by directory path (root = '').
+ * A directory is a branch when it has a manifest, otherwise a leaf.
+ */
+export default function structure(manifests: Record<string, GroupModule>): Directory[] {
+  const build = (dir: string): Directory[] =>
+    (manifests[dir]?.default ?? []).map((slug) => {
+      const path = dir ? `${dir}/${slug}` : slug;
+      const entry: Directory = { slug, label: manifests[path]?.label ?? titleCase(slug), path };
+
+      if (manifests[path]) entry.children = build(path);
+
+      return entry;
+    });
+
+  return build('');
 }
 
-export default structure;
+export const leaves = (dirs: Directory[]): Directory[] =>
+  dirs.flatMap((d) => (d.children ? leaves(d.children) : d));

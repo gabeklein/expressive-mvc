@@ -1,7 +1,7 @@
 import { ComponentType, lazy, ReactNode, Suspense } from 'react';
 import { createRoot } from 'react-dom/client';
 
-import structure, { type GroupModule } from './structure';
+import structure, { leaves, type GroupModule } from './structure';
 
 const modules = import.meta.glob<{ default: ComponentType }>('./content/*/**/App.tsx');
 
@@ -10,25 +10,20 @@ let app: ReactNode;
 if (window.self === window.top) {
   const Shell = lazy(() => import('./app/Shell'));
 
-  const order = Object.values(
-    import.meta.glob<string[]>('./content/index.ts', { eager: true, import: 'default' })
-  )[0];
-
   const manifests = Object.fromEntries(
-    Object.entries(import.meta.glob<GroupModule>('./content/*/index.ts', { eager: true }))
-      .map(([path, m]) => [path.split('/').at(-2)!, m] as const)
+    Object.entries(import.meta.glob<GroupModule>('./content/**/index.ts', { eager: true }))
+      .map(([path, m]) => [path.replace(/^\.\/content\//, '').replace(/\/?index\.ts$/, ''), m] as const)
   );
 
-  // Each example's lazy module key doubles as its iframe src.
-  const groups = structure(order, manifests).map((g) => ({
-    ...g,
-    items: g.items.map((e) => {
-      const file = `./content/${e.group}/${e.slug}/App.tsx`;
-      return { ...e, file: file in modules ? file : undefined };
-    })
-  }));
+  const tree = structure(manifests);
 
-  app = <Shell groups={groups} />;
+  // Each leaf's lazy module key doubles as its iframe src.
+  for (const leaf of leaves(tree)) {
+    const file = `./content/${leaf.path}/App.tsx`;
+    if (file in modules) leaf.file = file;
+  }
+
+  app = <Shell tree={tree} />;
 } else {
   const name = window.location.hash.slice(1);
   const Example = lazy(modules[decodeURIComponent(name)]);

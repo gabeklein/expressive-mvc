@@ -1,27 +1,18 @@
 // Shared stylesheet lives at the examples root - pull it in directly.
 import styles from '@examples/global.css?raw';
-import structure, { type GroupModule } from '@examples/structure';
+import structure, { leaves, type GroupModule } from '@examples/structure';
 
-// Manifests drive group order, group labels, and example order - shared with
-// the dev-harness SPA via @examples/structure. Imported eagerly as modules.
-const ORDER = Object.values(
-  import.meta.glob<string[]>('@examples/content/index.ts', { eager: true, import: 'default' })
-)[0];
-
+// Manifests (keyed by directory path) drive the ordered example tree - shared
+// with the dev-harness SPA via @examples/structure.
 const MANIFESTS: Record<string, GroupModule> = {};
 
 Object.entries(
-  import.meta.glob<GroupModule>('@examples/content/*/index.ts', { eager: true })
+  import.meta.glob<GroupModule>('@examples/content/**/index.ts', { eager: true })
 ).forEach(([path, m]) => {
-  MANIFESTS[path.split('/').at(-2)!] = m;
-})
+  MANIFESTS[path.split(/content\//).pop()!.replace(/\/?index\.ts$/, '')] = m;
+});
 
-export const GROUPS = structure(ORDER, MANIFESTS);
-
-// Default redirect target: first example in manifest order that has files.
-export const REDIRECT = GROUPS
-  .flatMap((g) => g.items.map((e) => `${g.slug}/${e.slug}`))
-  .find((name) => examples[name]);
+export const GROUPS = structure(MANIFESTS);
 
 // `*/**/*` requires at least one folder under examples/ - skips top-level
 // SPA scaffolding (package.json, vite.config.ts, main.tsx, etc.).
@@ -76,6 +67,9 @@ for (const [path, code] of Object.entries(FILES)) {
   // Sandboxes have no alias resolution - point at the adjacent folder instead.
   target[`/${file}`] = code.replace(/(['"])@common(?=[/'"])/g, '$1./common');
 }
+
+// Default redirect target: first example in tree order that has files.
+export const REDIRECT = leaves(GROUPS).map((n) => n.path).find((p) => examples[p]);
 
 for (const folder of Object.values(examples)) {
   const cssImports = Object.keys(folder)
