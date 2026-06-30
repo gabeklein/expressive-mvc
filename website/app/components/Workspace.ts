@@ -1,0 +1,64 @@
+import State, { ref } from '@expressive/react';
+import type { MouseEvent as ReactMouseEvent } from 'react';
+
+export type Tab = 'console' | 'state';
+
+export default class Workspace extends State {
+  mode: 'preview' | 'code' = 'preview';
+  tab: Tab = 'console';
+  ratio = 50; // editor width (%) when both panels are side by side
+  showConsole = false;
+
+  // Wraps the preview; holds the sandbox iframe `send` talks to.
+  frame = ref<HTMLDivElement>();
+
+  // Hold Ctrl and two-finger swipe to nudge split
+  layout = ref<HTMLDivElement>((el) => {
+    const onWheel = (e: WheelEvent) => {
+      if (!e.ctrlKey) return;
+      e.preventDefault();
+      const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+      this.ratio = Math.min(80, Math.max(20, this.ratio - delta * 0.05));
+    };
+
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  });
+
+  // All parent -> sandbox traffic; the entry's message handler routes by `kind`.
+  send(msg: Record<string, unknown>) {
+    this.frame.current
+      ?.querySelector('iframe')
+      ?.contentWindow?.postMessage({ source: 'expressive', ...msg }, '*');
+  }
+
+  toggle() {
+    this.showConsole = !this.showConsole;
+  }
+
+  open(tab: Tab) {
+    this.tab = tab;
+    this.showConsole = true;
+  }
+
+  onSelect(is: typeof this.mode) {
+    this.mode = is;
+  }
+
+  grab(event: ReactMouseEvent) {
+    event.preventDefault();
+    const rect = event.currentTarget.parentElement!.getBoundingClientRect();
+
+    const move = (e: globalThis.MouseEvent) => {
+      const pct = ((e.clientX - rect.left) / rect.width) * 100;
+      this.ratio = Math.min(80, Math.max(20, pct));
+    };
+    const up = () => {
+      document.removeEventListener('mousemove', move);
+      document.removeEventListener('mouseup', up);
+    };
+
+    document.addEventListener('mousemove', move);
+    document.addEventListener('mouseup', up);
+  }
+}
