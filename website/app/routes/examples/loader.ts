@@ -1,5 +1,27 @@
 // Shared stylesheet lives at the examples root - pull it in directly.
 import styles from '@examples/global.css?raw';
+import structure, { type GroupModule } from '@examples/structure';
+
+// Manifests drive group order, group labels, and example order - shared with
+// the dev-harness SPA via @examples/structure. Imported eagerly as modules.
+const ORDER = Object.values(
+  import.meta.glob<string[]>('@examples/index.ts', { eager: true, import: 'default' })
+)[0];
+
+const MANIFESTS: Record<string, GroupModule> = {};
+
+Object.entries(
+  import.meta.glob<GroupModule>('@examples/*/index.ts', { eager: true })
+).forEach(([path, m]) => {
+  MANIFESTS[path.split('/').at(-2)!] = m;
+})
+
+export const GROUPS = structure(ORDER, MANIFESTS);
+
+// Default redirect target: first example in manifest order that has files.
+export const REDIRECT = GROUPS
+  .flatMap((g) => g.items.map((e) => `${g.slug}/${e.slug}`))
+  .find((name) => examples[name]);
 
 // `*/**/*` requires at least one folder under examples/ - skips top-level
 // SPA scaffolding (package.json, vite.config.ts, main.tsx, etc.).
@@ -20,9 +42,6 @@ document.body.classList.add('example');
 createRoot(document.getElementById('root')!).render(<App />);
 `;
 
-// Strips a leading `NN-` ordering prefix from each path segment.
-const STRIP = /^\d+-/;
-const slugify = (segments: string[]) => segments.map((s) => s.replace(STRIP, '')).join('/');
 
 export const examples: Record<string, Record<string, string>> = {};
 export const layout: Record<string, string> = {};
@@ -38,6 +57,9 @@ for (const [path, code] of Object.entries(FILES)) {
   const segments = path.split(/[/@]examples\//).pop()!.split('/');
   const file = segments.pop()!;
 
+  // Group manifests order the nav; they aren't sandbox files.
+  if (file === 'index.ts') continue;
+
   // Dev-harness shell - not shipped into sandboxes.
   if (segments[0] === 'app') continue;
 
@@ -48,7 +70,7 @@ for (const [path, code] of Object.entries(FILES)) {
     continue;
   }
 
-  const slug = slugify(segments);
+  const slug = segments.join('/');
   const target = examples[slug] ??= {};
   // Sandboxes have no alias resolution - point at the adjacent folder instead.
   target[`/${file}`] = code.replace(/(['"])@common(?=[/'"])/g, '$1./common');
@@ -124,5 +146,3 @@ export function getFiles(name: string) {
 
   return files;
 }
-
-export const NAMES = Object.keys(examples);

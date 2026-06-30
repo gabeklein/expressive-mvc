@@ -20,6 +20,24 @@ const Shell = (props: { modules: Modules }) => (
 
 export default Shell;
 
+function Window(props: { children?: React.ReactNode }) {
+  return (
+    <main className={styles.shell}>
+      <header className={styles.header}>
+        <a className={styles.logo} href="/">
+          <Logo />
+        </a>
+        <Toggle />
+        <div className={styles.headerRule} />
+      </header>
+      <nav className={styles.nav}>
+        <Navigation />
+      </nav>
+      <section className={styles.example}>{props.children}</section>
+    </main>
+  );
+}
+
 class Navigation extends NavLinks {
   List(props: { children?: React.ReactNode }) {
     return <div className={styles.links}>{props.children}</div>;
@@ -49,24 +67,6 @@ function Outlet() {
         onLoad={(e) => paint(e.currentTarget)}
       />
     );
-}
-
-function Window(props: { children?: React.ReactNode }) {
-  return (
-    <main className={styles.shell}>
-      <header className={styles.header}>
-        <a className={styles.logo} href="/">
-          <Logo />
-        </a>
-        <Toggle />
-        <div className={styles.headerRule} />
-      </header>
-      <nav className={styles.nav}>
-        <Navigation />
-      </nav>
-      <section className={styles.example}>{props.children}</section>
-    </main>
-  );
 }
 
 function NotFound() {

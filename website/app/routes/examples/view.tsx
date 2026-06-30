@@ -1,6 +1,6 @@
 import { lazy, Suspense } from 'react';
 import { Navigate, useParams } from 'react-router';
-import { examples, getFiles, NAMES } from './loader';
+import { examples, REDIRECT, getFiles } from './loader';
 
 const Sandbox = lazy(() => import('@/components/Sandbox'));
 
@@ -8,7 +8,7 @@ export default function CodeSample() {
   const name = useParams()['*'];
 
   if (!name || !examples[name])
-    return <Navigate to={`/examples/${NAMES[0]}`} replace />;
+    return <Navigate to={`/examples/${REDIRECT}`} replace />;
 
   sandbox: {
     flex: 1;

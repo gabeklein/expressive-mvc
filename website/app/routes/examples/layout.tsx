@@ -2,13 +2,7 @@ import { HomeLayout } from 'fumadocs-ui/layouts/home';
 import { NavLink, Outlet } from 'react-router';
 
 import { layoutOptions } from '../home';
-import { NAMES } from './loader';
-
-const GROUPS = NAMES.reduce((acc, slug) => {
-  const [group, ...rest] = slug.split('/');
-  (acc[group] ??= []).push({ slug, leaf: rest.join('/') });
-  return acc;
-}, {} as Record<string, { slug: string; leaf: string }[]>);
+import { GROUPS } from './loader';
 
 export function meta() {
   return [{ title: 'Examples - Expressive' }];
@@ -193,18 +187,18 @@ function Navigation() {
 
   return (
     <nav>
-      {Object.entries(GROUPS).map(([group, items]) => (
-        <div _group key={group}>
+      {GROUPS.map((group) => (
+        <div _group key={group.slug}>
           <span _label>
-            {group}
+            {group.label}
             <span _separator />
             <span _fade />
           </span>
 
           <div _items>
-            {items.map(({ slug, leaf }) => (
-              <NavLink key={slug} to={`/examples/${slug}`}>
-                {leaf}
+            {group.items.map((e) => (
+              <NavLink key={e.slug} to={`/examples/${e.group}/${e.slug}`}>
+                {e.label}
               </NavLink>
             ))}
           </div>

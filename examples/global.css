@@ -17,8 +17,6 @@
   --accent: #5b5bd6;
   --accent-soft: #5b5bd614;
   --accent-fg: #ffffff;
-  --win: #16a34a;
-  --win-soft: #16a34a18;
   --code-bg: #f4f4f5;
 
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
@@ -57,8 +55,6 @@
     --accent: #7c7cf0;
     --accent-soft: #7c7cf01f;
     --accent-fg: #0a0a0b;
-    --win: #22c55e;
-    --win-soft: #22c55e22;
     --code-bg: #161619;
   }
 }
@@ -76,8 +72,6 @@
   --accent: #7c7cf0;
   --accent-soft: #7c7cf01f;
   --accent-fg: #0a0a0b;
-  --win: #22c55e;
-  --win-soft: #22c55e22;
   --code-bg: #161619;
 }
 
@@ -180,6 +174,31 @@ td {
   text-align: left;
   padding: var(--s2) var(--s3);
   border-bottom: 1px solid var(--border);
+}
+
+ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s1);
+  width: 100%;
+}
+
+li {
+  padding: var(--s2) var(--s3);
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+li:hover {
+  background: var(--accent-soft);
+}
+
+small {
+  color: var(--muted);
 }
 
 pre,
