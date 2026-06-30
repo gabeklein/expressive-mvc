@@ -2,23 +2,33 @@ import '@expressive/react';
 import { BrowserRouter, NavLinks, Route, Router } from '@expressive/router';
 
 import Logo from './Logo';
-import Toggle, { Theme } from './Theme';
-import Routes, { Modules } from './Routes';
+import Theme, { Toggle } from './Theme';
 import styles from './Shell.module.css';
 import { Provider } from '@expressive/react';
+import { leaves, type Directory } from '../structure';
 
-const Shell = (props: { modules: Modules }) => (
-  <Provider for={{ Theme, BrowserRouter }}>
-    <Routes
-      as={Window}
-      outlet={Outlet}
-      notFound={NotFound}
-      modules={props.modules}
-    />
-  </Provider>
-);
+const Shell = ({ tree }: { tree: Directory[] }) => {
+  const [first] = leaves(tree);
+
+  if (!first) throw new Error("No examples are loaded.");
+
+  return (
+    <Provider for={{ Theme, BrowserRouter }}>
+      <Route as={Window}>
+        <Route redirect={`/${first.path}`} />
+        {tree.map(renderDirectory)}
+        <Route default as={NotFound} />
+      </Route>
+    </Provider>
+  );
+};
 
 export default Shell;
+
+const renderDirectory = (d: Directory): React.ReactNode =>
+  d.children
+    ? <Route key={d.slug} to={d.slug} label={d.label}>{d.children.map(renderDirectory)}</Route>
+    : <Route key={d.slug} to={d.slug} as={Outlet} label={d.label} meta={d} />;
 
 function Window(props: { children?: React.ReactNode }) {
   return (
