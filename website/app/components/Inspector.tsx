@@ -58,7 +58,9 @@ export default class Inspector extends Component {
     fields: {
       flex: 1;
       overflowY: auto;
-      padding: 6;
+      gridColumns: "max-content", "1fr";
+      alignContent: start;
+      borderTop: $colorFdBorder, 1;
     }
 
     return (
@@ -132,37 +134,36 @@ function Field({ name, field }: { name: string; field: FieldType }) {
     : field.type === 'object' ? String(field.text)
     : drafts[name] ?? String(field.value);
 
-  display: flex;
-  alignItems: center;
-  gap: 8;
-  padding: 3, 0;
+  // Each row's two cells drop straight into the parent grid.
+  display: "contents";
 
   key: {
+    padding: 4, 10;
     color: $colorFdMutedForeground;
-    minWidth: 80;
+    whiteSpace: nowrap;
+    borderBottom: $colorFdBorder, 1;
+    borderRight: $colorFdBorder, 1;
   }
 
   value: {
-    flex: 1;
     minWidth: 0;
-    borderRadius: 4;
-    padding: 4, 8;
+    padding: 4, 20, 4, 10;
     color: $colorFdForeground;
+    background: none;
+    border: none;
+    borderBottom: $colorFdBorder, 1;
     fontFamily: inherit;
     fontSize: inherit;
     cursor: text;
 
     $focus: {
       outline: none;
-      boxShadow: `0 0 0 1px #ddd`;
+      background: $colorFdMuted;
     }
 
     $readOnly: {
-      border: none;
-      background: none;
       color: $colorFdMutedForeground;
       cursor: "default";
-      padding: 4, 0;
     }
   }
 

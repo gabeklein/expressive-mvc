@@ -3,11 +3,15 @@ import type { MouseEvent as ReactMouseEvent } from 'react';
 
 export type Tab = 'console' | 'state';
 
+// Each example remounts Workspace; remember the drawer's open state + tab
+// module-side so a fresh instance restores the last choice.
+const remembered = { open: false, tab: 'console' as Tab };
+
 export default class Workspace extends State {
   mode: 'preview' | 'code' = 'preview';
-  tab: Tab = 'console';
+  tab: Tab = remembered.tab;
   ratio = 50; // editor width (%) when both panels are side by side
-  showConsole = false;
+  showConsole = remembered.open;
 
   // Wraps the preview; holds the sandbox iframe `send` talks to.
   frame = ref<HTMLDivElement>();
@@ -33,12 +37,12 @@ export default class Workspace extends State {
   }
 
   toggle() {
-    this.showConsole = !this.showConsole;
+    this.showConsole = remembered.open = !this.showConsole;
   }
 
   open(tab: Tab) {
-    this.tab = tab;
-    this.showConsole = true;
+    this.tab = remembered.tab = tab;
+    this.showConsole = remembered.open = true;
   }
 
   onSelect(is: typeof this.mode) {
