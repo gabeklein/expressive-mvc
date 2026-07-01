@@ -2,6 +2,15 @@ FROM oven/bun:1.3
 
 ENV DEBIAN_FRONTEND=noninteractive
 
+## Playwright + Chromium are baked in so browser-driven checks (screenshots,
+## e2e of the examples app) work on a fresh container without a per-boot
+## download. Pin the version so the CLI used at runtime
+## (`bunx playwright@$PLAYWRIGHT_VERSION`) matches the baked browser build,
+## and keep browsers in a shared, world-readable path off the bun user's home.
+ARG PLAYWRIGHT_VERSION=1.61.1
+ENV PLAYWRIGHT_VERSION=${PLAYWRIGHT_VERSION} \
+    PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+
 ## oven/bun already provides a "bun" user at UID/GID 1000 - just grant it passwordless sudo.
 ## Bun is the package manager/runtime for the project; Node is intentionally absent.
 ## GitHub CLI (gh) and Claude Code + Remote Control are added via Dev Container
@@ -9,8 +18,10 @@ ENV DEBIAN_FRONTEND=noninteractive
 ## Claude Code, tmux, and its helper scripts.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates curl git sudo \
-    && rm -rf /var/lib/apt/lists/* \
     && echo "bun ALL=(root) NOPASSWD:ALL" > /etc/sudoers.d/bun \
-    && chmod 0440 /etc/sudoers.d/bun
+    && chmod 0440 /etc/sudoers.d/bun \
+    && bunx playwright@${PLAYWRIGHT_VERSION} install --with-deps chromium \
+    && chmod -R o+rX ${PLAYWRIGHT_BROWSERS_PATH} \
+    && rm -rf /var/lib/apt/lists/* /root/.bun/install/cache
 
 USER bun

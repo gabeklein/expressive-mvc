@@ -6,7 +6,7 @@
     },
     "remoteUser": "bun",
     "userEnvProbe": "loginInteractiveShell",
-    "postCreateCommand": "sudo chown -R bun:bun /home/bun/.bun/install/cache && bun install",
+    "postCreateCommand": "sudo chown -R bun:bun /home/bun/.bun/install/cache && bun install && install -Dm644 .devcontainer/claude-global.md \"$CLAUDE_CONFIG_DIR/CLAUDE.md\"",
     "features": {
         "ghcr.io/devcontainers/features/github-cli:1": {},
         "./features/claude-rc": {}
