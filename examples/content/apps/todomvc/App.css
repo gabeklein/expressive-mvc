@@ -37,6 +37,15 @@
   overflow: hidden;
 }
 
+/* Global styling stretches inputs to full width; checkboxes opt out so
+   they don't shove their labels across the row. */
+.todomvc input[type='checkbox'] {
+  width: auto;
+  flex: none;
+  margin: 0;
+  padding: 0;
+}
+
 .toggle-all {
   display: flex;
   align-items: center;
