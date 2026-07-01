@@ -10,6 +10,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useTheme } from 'next-themes';
 
 import Panel from './Panel';
+import { Panel as Split } from './layout/Layout';
 import Workspace from './Workspace';
 
 export default function Sandbox({
@@ -65,7 +66,7 @@ export default function Sandbox({
 }
 
 function Layout() {
-  const { grab, layout, frame, mode, onSelect, ratio } = Workspace.get();
+  const { grab, layout, frame, mode, onSelect, ratio, showConsole } = Workspace.get();
   const sandpack = useSandpack();
 
   const refreshOnSave = {
@@ -98,8 +99,8 @@ function Layout() {
     }
   }
 
-  // Right column: preview on top, console drawer beneath it - the console
-  // eats into the preview's height only, leaving the editor full-height.
+  // Right column: preview on top, console drawer beneath it. When open, a
+  // Control split makes the boundary draggable; collapsed stays a flat column.
   preview: {
     flexDirection: column;
     flex: '1 1 0%';
@@ -114,8 +115,17 @@ function Layout() {
       />
       {!narrow && <div _handle onMouseDown={grab} />}
       <div _preview ref={frame} style={{ display: showPreview ? 'flex' : 'none' }}>
-        <SandpackPreview style={{ flex: '1 1 0%' }} />
-        <Panel />
+        {!narrow && showConsole ? (
+          <Split>
+            <SandpackPreview style={{ height: '100%', minHeight: 0 }} />
+            <Panel fill />
+          </Split>
+        ) : (
+          <>
+            <SandpackPreview style={{ flex: '1 1 0%' }} />
+            <Panel />
+          </>
+        )}
       </div>
       {narrow && (
         <Switcher panel={mode} onSelect={onSelect} />

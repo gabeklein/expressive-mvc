@@ -3,8 +3,14 @@ import { SandpackConsole } from '@codesandbox/sandpack-react';
 import Workspace from './Workspace';
 import Inspector from './Inspector';
 
-export default function Panel() {
+// `fill` = the drawer body is sized by a parent (e.g. a Control pane), so
+// drop the self-resize grip/height and just fill the space.
+export default function Panel({ fill }: { fill?: boolean }) {
   const { showConsole, tab, consoleHeight, toggle, open, send, grabConsole } = Workspace.get();
+
+  const body = fill
+    ? { flex: 1, minHeight: 0, display: 'flex' as const }
+    : { height: consoleHeight, display: showConsole ? 'flex' : 'none' };
 
   const dispatch = (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.key !== 'Enter') return;
@@ -86,7 +92,7 @@ export default function Panel() {
 
   return (
     <div>
-      {showConsole && <div _grip onMouseDown={grabConsole} />}
+      {!fill && showConsole && <div _grip onMouseDown={grabConsole} />}
       <div _bar>
         <button _caret onClick={() => toggle()}>{showConsole ? '▾' : '▸'}</button>
         <button _tab aria-pressed={tab === 'console'} onClick={() => open('console')}>
@@ -96,7 +102,7 @@ export default function Panel() {
           State
         </button>
       </div>
-      <div _panel style={{ display: showConsole ? 'flex' : 'none', height: consoleHeight }}>
+      <div _panel style={body}>
         <div
           style={{ display: tab === 'console' ? 'flex' : 'none', flex: 1, flexDirection: 'column', minHeight: 0 }}>
           <SandpackConsole showHeader={false} resetOnPreviewRestart style={{ flex: 1, minHeight: 0 }} />
