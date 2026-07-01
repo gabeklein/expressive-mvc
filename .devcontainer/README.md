@@ -60,6 +60,11 @@ a fresh container with no per-boot download.
 - Drive the examples app against the Vite dev server (`bun run dev` in `examples/`,
   port 5173) — e.g. deep-link the shell to `/apps/<slug>` and interact with the
   example inside its `iframe[title="…"]`.
+- Agents are told about this automatically: [`claude-global.md`](./claude-global.md)
+  is installed to `$CLAUDE_CONFIG_DIR/CLAUDE.md` on create (see
+  `devcontainer.json`), so every `claude` session in this container knows Playwright
+  is available and should verify frontend changes in a real browser. It's an
+  environment fact, so it lives here rather than in the repo's `AGENTS.md`.
 
 ## Notes
 
