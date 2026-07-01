@@ -2,23 +2,25 @@ import { Component, get } from '@expressive/react';
 
 import Workspace from './Workspace';
 
-type Field = { type: string; value?: unknown; text?: string };
+type FieldType = { type: string; value?: unknown; text?: string };
 
 export default class Inspector extends Component {
   tree: { name: string; instances: string[] }[] = [];
   focused: string | null = null;
-  fields: Record<string, Field> = {};
+  fields: Record<string, FieldType> = {};
+  drafts: Record<string, string> = {};
 
   workspace = get(Workspace);
 
-  // Sandbox -> parent: registry tree on any (de)registration, focused
-  // instance's live fields on any change. Re-sync whenever we (re)mount.
   protected new() {
     const onMessage = (e: MessageEvent) => {
       const msg = e.data;
       if (!msg || msg.source !== 'expressive') return;
       if (msg.kind === 'registry') this.tree = msg.tree;
-      else if (msg.kind === 'values' && msg.id === this.focused) this.fields = msg.fields;
+      else if (msg.kind === 'values' && msg.id === this.focused) {
+        this.fields = msg.fields;
+        this.drafts = {};
+      }
     };
     window.addEventListener('message', onMessage);
     this.workspace.send({ kind: 'sync' });
@@ -28,49 +30,29 @@ export default class Inspector extends Component {
   focus(id: string) {
     this.focused = id;
     this.fields = {};
+    this.drafts = {};
     this.workspace.send({ kind: 'focus', id });
   }
 
+  edit(key: string, value: string) {
+    this.drafts = { ...this.drafts, [key]: value };
+  }
+
+  commit(key: string) {
+    const value = this.drafts[key];
+    if (value === undefined) return;
+    this.workspace.send({ kind: 'set', id: this.focused, key, value });
+  }
+
   render() {
-    const { tree, fields, focused, focus, workspace } = this;
+    const { fields } = this;
 
     self: {
       display: flex;
       flex: 1;
       minHeight: 0;
-      fontSize: 0.8;
-      fontFamily: "ui-monospace, monospace";
-    }
-
-    tree: {
-      flexShrink: 0;
-      width: 180;
-      overflowY: auto;
-      borderRight: $colorFdBorder, 1;
-      padding: 6;
-    }
-
-    type: {
-      color: $colorFdMutedForeground;
-      padding: 2, 4;
-    }
-
-    instance: {
-      display: "block";
-      width: fill;
-      textAlign: left;
-      padding: 2, 4, 2, 12;
-      border: none;
-      background: none;
-      color: $colorFdForeground;
-      cursor: pointer;
-      whiteSpace: nowrap;
-
-      $hover: { color: $accent; }
-
-      if("[aria-pressed='true']") {
-        color: $accent;
-      }
+      fontSize: 0.9;
+      fontFamily: `ui-monospace, SFMono-Regular, Menlo, Consolas, monospace`;
     }
 
     fields: {
@@ -79,63 +61,121 @@ export default class Inspector extends Component {
       padding: 6;
     }
 
-    field: {
-      display: flex;
-      alignItems: center;
-      gap: 8;
-      padding: 1, 0;
-
-      key: {
-        color: $colorFdMutedForeground;
-        minWidth: 80;
-      }
-
-      value: {
-        flex: 1;
-        border: $colorFdBorder, 1;
-        borderRadius: 4;
-        padding: 1, 4;
-        background: $colorFdBackground;
-        color: $colorFdForeground;
-        fontFamily: "ui-monospace, monospace";
-        fontSize: 0.8;
-      }
-
-      muted: {
-        color: $colorFdMutedForeground;
-      }
-    }
-
     return (
       <div _self>
-        <div _tree>
-          {tree.map((t) => (
-            <div key={t.name}>
-              <div _type>{t.name}</div>
-              {t.instances.map((id) => (
-                <button _instance key={id} aria-pressed={focused === id} onClick={() => focus(id)}>
-                  {id}
-                </button>
-              ))}
-            </div>
-          ))}
-        </div>
+        <Tree />
         <div _fields>
-          {Object.entries(fields).map(([key, field]) => (
-            <div _field key={key}>
-              <span _key>{key}</span>
-              {field.type === 'fn' ? <span _muted>ƒ</span>
-                : field.type === 'object' ? <span _muted>{field.text}</span>
-                : <input
-                    _value
-                    defaultValue={String(field.value)}
-                    key={String(field.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && workspace.send({ kind: 'set', id: focused, key, value: e.currentTarget.value })}
-                  />}
-            </div>
+          {Object.entries(fields).map(([name, field]) => (
+            <Field key={name} name={name} field={field} />
           ))}
         </div>
       </div>
     );
   }
+}
+
+function Tree() {
+  const { tree, focused, focus } = Inspector.get();
+
+  flexShrink: 0;
+  width: 180;
+  overflowY: auto;
+  borderRight: $colorFdBorder, 1;
+  padding: 6;
+
+  type: {
+    color: $colorFdMutedForeground;
+    fontSize: 0.8;
+    textTransform: uppercase;
+    letterSpacing: '0.06em';
+    padding: 4, 4, 2;
+  }
+
+  instance: {
+    display: "block";
+    width: fill;
+    textAlign: left;
+    padding: 3, 4, 3, 12;
+    border: none;
+    background: none;
+    color: $colorFdForeground;
+    cursor: pointer;
+    whiteSpace: nowrap;
+
+    $hover: { color: $accent; }
+
+    if("[aria-pressed='true']") {
+      color: $accent;
+    }
+  }
+
+  return (
+    <div>
+      {tree.map((t) => (
+        <div key={t.name}>
+          <div _type>{t.name}</div>
+          {t.instances.map((id) => (
+            <button _instance key={id} aria-pressed={focused === id} onClick={() => focus(id)}>
+              {id}
+            </button>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function Field({ name, field }: { name: string; field: FieldType }) {
+  const { drafts, edit, commit } = Inspector.get();
+  const editable = field.type !== 'fn' && field.type !== 'object';
+  const shown = field.type === 'fn' ? 'ƒ'
+    : field.type === 'object' ? String(field.text)
+    : drafts[name] ?? String(field.value);
+
+  display: flex;
+  alignItems: center;
+  gap: 8;
+  padding: 3, 0;
+
+  key: {
+    color: $colorFdMutedForeground;
+    minWidth: 80;
+  }
+
+  value: {
+    flex: 1;
+    minWidth: 0;
+    borderRadius: 4;
+    padding: 4, 8;
+    color: $colorFdForeground;
+    fontFamily: inherit;
+    fontSize: inherit;
+    cursor: text;
+
+    $focus: {
+      outline: none;
+      boxShadow: `0 0 0 1px #ddd`;
+    }
+
+    $readOnly: {
+      border: none;
+      background: none;
+      color: $colorFdMutedForeground;
+      cursor: "default";
+      padding: 4, 0;
+    }
+  }
+
+  return (
+    <div>
+      <span _key>{name}</span>
+      <input
+        _value
+        value={shown}
+        readOnly={!editable}
+        onChange={(e) => edit(name, e.currentTarget.value)}
+        onKeyDown={(e) => e.key === 'Enter' && commit(name)}
+      />
+    </div>
+  );
 }
