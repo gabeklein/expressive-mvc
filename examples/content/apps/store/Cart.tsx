@@ -4,6 +4,12 @@ import { Link } from '@expressive/router';
 import { usd } from './catalog';
 import { Cart } from './Store';
 
+// NOTE: this reads the cart and holds no state of its own, so by the "keep it
+// lite" rule it *should* be a plain function calling Cart.get(). It is a class
+// only to work around a reactivity bug: an FC reading the `lines`/`total`
+// computed getters via Cart.get() re-renders once, then stops. A class
+// re-reads the getters in render() each time and updates reliably. See the
+// PR discussion; revert to an FC once the getter-subscription bug is fixed.
 export class CartPage extends Component {
   cart = get(Cart);
 
