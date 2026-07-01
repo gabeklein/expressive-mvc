@@ -6,10 +6,11 @@ import { Cart } from './Store';
 
 // NOTE: this reads the cart and holds no state of its own, so by the "keep it
 // lite" rule it *should* be a plain function calling Cart.get(). It is a class
-// only to work around a reactivity bug: an FC reading the `lines`/`total`
-// computed getters via Cart.get() re-renders once, then stops. A class
-// re-reads the getters in render() each time and updates reliably. See the
-// PR discussion; revert to an FC once the getter-subscription bug is fixed.
+// only to work around a reactivity bug: an FC that observes both `lines` and
+// `total` (where `total` derives from `lines`) via Cart.get() refreshes once,
+// then freezes. A class re-reads the getters in render() each time and updates
+// reliably. Repro: packages/react state.get.test.tsx, "State.get - known bug".
+// Revert to an FC once fixed.
 export class CartPage extends Component {
   cart = get(Cart);
 

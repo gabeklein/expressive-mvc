@@ -1066,3 +1066,43 @@ describe('State.get', () => {
     });
   });
 });
+
+describe('State.get - known bug', () => {
+  // A component that observes BOTH a field and a computed getter derived from
+  // that field (in either order) refreshes once, then stops - it freezes on
+  // the value from its first update. Observing either member alone works, and
+  // the core `state.get(effect)` subscription refreshes correctly for the same
+  // access pattern, so the fault is in the React `.get()` hook's per-render
+  // key tracking when the observed set contains a computed and its own
+  // dependency. Discovered via the store example (CartPage read `lines` +
+  // `total`, where `total` derives from `lines`). Unskip when fixed.
+  it.skip('will refresh when observing a field and a computed derived from it', async () => {
+    class Test extends State {
+      n = 1;
+      get double() {
+        return this.n * 2;
+      }
+    }
+
+    const test = Test.new();
+    const hook = renderWith(test, () => {
+      const state = Test.get();
+      return `${state.n}/${state.double}`;
+    });
+
+    expect(hook.result.current).toBe('1/2');
+
+    await act(async () => {
+      test.n = 2;
+    });
+
+    expect(hook.result.current).toBe('2/4');
+
+    await act(async () => {
+      test.n = 3;
+    });
+
+    // BUG: freezes at '2/4' (the value from the first update).
+    expect(hook.result.current).toBe('3/6');
+  });
+});
