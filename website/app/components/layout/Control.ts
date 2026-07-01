@@ -135,6 +135,11 @@ function onDrag(...handle: DragEvent[]) {
     const move = handle.map((x) => x());
     let previous = { x: event.x, y: event.y };
 
+    // Shield the page so an underlying iframe can't swallow mousemove mid-drag.
+    const shield = document.createElement('div');
+    shield.style.cssText = 'position:fixed;inset:0;z-index:9999;cursor:inherit';
+    document.body.appendChild(shield);
+
     function onMove(event: MouseEvent) {
       const dX = event.x - previous.x;
       const dY = event.y - previous.y;
@@ -147,6 +152,7 @@ function onDrag(...handle: DragEvent[]) {
     function onUp() {
       document.removeEventListener('mousemove', onMove);
       document.removeEventListener('mouseup', onUp);
+      shield.remove();
     }
 
     document.addEventListener('mousemove', onMove);

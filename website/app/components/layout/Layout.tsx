@@ -9,6 +9,9 @@ export class Panel extends Control {
 
     grid: {
       display: grid;
+      flex: 1;
+      minHeight: 0;
+      minWidth: 0;
     }
 
     return <div _grid ref={container}>{output}</div>;
