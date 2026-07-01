@@ -1,1 +1,1 @@
-export default ['forms', 'tictactoe', 'router'];
+export default ['forms', 'tictactoe', 'stopwatch', 'router'];

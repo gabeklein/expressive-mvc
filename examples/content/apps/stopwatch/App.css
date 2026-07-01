@@ -1,0 +1,30 @@
+.stopwatch {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s3);
+}
+
+.stopwatch h1 {
+  margin: 0;
+}
+
+.time {
+  margin: 0;
+  font-size: var(--t-3xl, var(--t-2xl));
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.05em;
+  color: var(--fg-soft);
+  transition: color 0.2s;
+}
+
+/* A subtle cue that time is advancing. */
+.time.running {
+  color: var(--accent);
+}
+
+.controls {
+  display: flex;
+  gap: var(--s2);
+}
