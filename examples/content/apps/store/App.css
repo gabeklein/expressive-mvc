@@ -1,0 +1,330 @@
+/* Only this example's iframe loads this file, so these overrides of the shared
+   column are safely scoped to the store: widen it, and pin it to the top
+   (the base rule's `margin: auto` would otherwise center the header
+   vertically on short pages like the product view or an empty cart). */
+body.example #root {
+  max-width: 52rem;
+  margin: 0 auto;
+}
+
+.store {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s5);
+  width: 100%;
+}
+
+/* Header ------------------------------------------------------------------ */
+
+.store-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s4);
+  padding-bottom: var(--s4);
+  border-bottom: 1px solid var(--border);
+}
+
+.brand {
+  font-size: var(--t-xl);
+  font-weight: 700;
+  color: var(--fg);
+  letter-spacing: -0.02em;
+}
+
+.brand:hover {
+  text-decoration: none;
+  color: var(--accent);
+}
+
+.cart-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  font-size: var(--t-xl);
+  line-height: 1;
+  padding: var(--s2);
+  border-radius: var(--r);
+  border: 1px solid var(--border-2);
+}
+
+.cart-btn:hover {
+  text-decoration: none;
+  border-color: var(--accent);
+}
+
+.badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  display: grid;
+  place-items: center;
+  background: var(--accent);
+  color: var(--accent-fg);
+  border-radius: 999px;
+  font-size: var(--t-xs);
+  font-weight: 600;
+  font-family: var(--font-sans);
+}
+
+/* Category chips ---------------------------------------------------------- */
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  margin-bottom: var(--s5);
+}
+
+.chip {
+  padding: var(--s1) var(--s3);
+  border: 1px solid var(--border-2);
+  border-radius: 999px;
+  color: var(--fg-soft);
+  font-size: var(--t-sm);
+  font-weight: 500;
+}
+
+.chip:hover {
+  text-decoration: none;
+  border-color: var(--accent);
+}
+
+.chip.on {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-fg);
+}
+
+/* Product grid ------------------------------------------------------------ */
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr));
+  gap: var(--s3);
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s1);
+  padding: var(--s4) var(--s3);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  color: var(--fg);
+  transition:
+    border-color 0.15s,
+    transform 0.15s;
+}
+
+.card:hover {
+  text-decoration: none;
+  border-color: var(--accent);
+  transform: translateY(-2px);
+}
+
+.card-emoji {
+  font-size: 2.75rem;
+  line-height: 1.1;
+}
+
+.card-name {
+  font-weight: 600;
+}
+
+.card-price {
+  color: var(--muted);
+  font-size: var(--t-sm);
+  font-family: var(--font-mono);
+}
+
+/* Breadcrumbs ------------------------------------------------------------- */
+
+.crumbs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2);
+  font-size: var(--t-sm);
+  color: var(--muted);
+  margin-bottom: var(--s5);
+}
+
+.crumbs .sep {
+  color: var(--border-2);
+}
+
+.crumbs [aria-current='page'] {
+  color: var(--fg);
+  font-weight: 600;
+}
+
+/* Product page ------------------------------------------------------------ */
+
+.hero {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s6);
+  align-items: center;
+}
+
+.hero-emoji {
+  font-size: 8rem;
+  line-height: 1;
+  flex: 0 0 auto;
+}
+
+.hero-info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+  min-width: 12rem;
+  flex: 1;
+}
+
+.hero-price {
+  margin: 0;
+  font-size: var(--t-xl);
+  font-family: var(--font-mono);
+  color: var(--fg-soft);
+}
+
+/* Quantity stepper (shared by product page + cart lines) ------------------ */
+
+.qty {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+}
+
+.qty button {
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  font-size: var(--t-lg);
+}
+
+.qty-val {
+  min-width: 1.5rem;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-fg);
+  font-weight: 600;
+  align-self: flex-start;
+}
+
+.primary:hover {
+  border-color: var(--accent);
+  filter: brightness(1.08);
+}
+
+/* Cart -------------------------------------------------------------------- */
+
+.cart {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s4);
+}
+
+.lines {
+  gap: var(--s2);
+}
+
+.line {
+  display: flex;
+  align-items: center;
+  gap: var(--s4);
+  padding: var(--s3);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  cursor: default;
+}
+
+.line:hover {
+  background: none;
+}
+
+.line-emoji {
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.line-info {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 6rem;
+}
+
+.line-info a {
+  color: var(--fg);
+  font-weight: 600;
+}
+
+.line-sub {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  min-width: 5rem;
+  text-align: right;
+}
+
+.remove {
+  padding: var(--s1) var(--s2);
+  color: var(--muted);
+  border-color: transparent;
+}
+
+.remove:hover {
+  color: var(--fg);
+  border-color: var(--border-2);
+}
+
+.summary {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding-top: var(--s3);
+  border-top: 1px solid var(--border);
+  font-weight: 600;
+}
+
+.summary .total {
+  font-size: var(--t-xl);
+  font-family: var(--font-mono);
+}
+
+.checkout {
+  align-self: stretch;
+  text-align: center;
+  padding: var(--s3);
+  font-size: var(--t-lg);
+}
+
+/* Empty / confirmation / 404 states --------------------------------------- */
+
+.notice {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s3);
+  text-align: center;
+  padding: var(--s6) var(--s4);
+}
+
+.big-emoji {
+  font-size: 4rem;
+  line-height: 1;
+}
