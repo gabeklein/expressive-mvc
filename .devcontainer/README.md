@@ -47,6 +47,20 @@ and you can open the Codespace to pick up in-flight work.
   a user Codespaces secret (`CLAUDE_AUTH_ARCHIVE`) so new Codespaces restore it. The
   snapshot goes stale when the credential expires — re-run after re-authenticating.
 
+## Browser automation
+
+Playwright and its Chromium build are baked into the image (`Dockerfile.dev`) so
+browser-driven checks — screenshots or end-to-end runs of the examples app — work on
+a fresh container with no per-boot download.
+
+- Version is pinned via the `PLAYWRIGHT_VERSION` build arg; use that same version at
+  runtime so the CLI matches the baked browser: `bunx playwright@$PLAYWRIGHT_VERSION …`.
+- Browsers live in `PLAYWRIGHT_BROWSERS_PATH=/ms-playwright` (shared, world-readable),
+  not under the bun user's home, so no `playwright install` is needed.
+- Drive the examples app against the Vite dev server (`bun run dev` in `examples/`,
+  port 5173) — e.g. deep-link the shell to `/apps/<slug>` and interact with the
+  example inside its `iframe[title="…"]`.
+
 ## Notes
 
 - Remote Control needs outbound access to `api.anthropic.com:443`.
