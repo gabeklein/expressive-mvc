@@ -1,6 +1,8 @@
 import './App.css';
 
-import { Component, Provider } from '@expressive/react';
+import { type ReactNode } from 'react';
+
+import { Provider } from '@expressive/react';
 import { Link, Route, Router } from '@expressive/router';
 
 import { CartPage } from './Cart';
@@ -8,28 +10,24 @@ import { ProductPage } from './Product';
 import { Cart } from './Store';
 import { Storefront } from './Storefront';
 
-// Persistent chrome: brand + cart button stay put while the matched page
-// arrives as `props.children`. Same instance across navigation, so the cart
-// badge updates in place.
-class Layout extends Component {
-  render() {
-    return (
-      <div className="store">
-        <header className="store-head">
-          <Link to="/" className="brand">
-            🛍️ Emoji Store
-          </Link>
-          <CartButton />
-        </header>
-        <div className="store-body">{this.props.children}</div>
-      </div>
-    );
-  }
-}
+// Persistent chrome: the brand + cart button stay put while the matched page
+// arrives as `children`. Purely presentational - it reads nothing reactive
+// itself, so a plain function (the badge subscribes inside CartButton).
+const Layout = ({ children }: { children?: ReactNode }) => (
+  <div className="store">
+    <header className="store-head">
+      <Link to="/" className="brand">
+        🛍️ Emoji Store
+      </Link>
+      <CartButton />
+    </header>
+    <div className="store-body">{children}</div>
+  </div>
+);
 
-// Reads just `count` off the shared cart, so it re-renders only when the
-// item count changes - not on every unrelated cart mutation.
-function CartButton() {
+// Reads just `count` off the shared cart, so it re-renders only when the item
+// count changes - not on every unrelated cart mutation.
+const CartButton = () => {
   const { count } = Cart.get();
 
   return (
@@ -38,17 +36,15 @@ function CartButton() {
       {count > 0 && <span className="badge">{count}</span>}
     </Link>
   );
-}
+};
 
-function NotFound() {
-  return (
-    <div className="notice">
-      <span className="big-emoji">🧭</span>
-      <h1>Nothing here</h1>
-      <Link to="/">Back to the store</Link>
-    </div>
-  );
-}
+const NotFound = () => (
+  <div className="notice">
+    <span className="big-emoji">🧭</span>
+    <h1>Nothing here</h1>
+    <Link to="/">Back to the store</Link>
+  </div>
+);
 
 // One in-memory Router; the Cart is provided above it so every page shares it.
 export default () => (

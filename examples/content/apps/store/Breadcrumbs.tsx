@@ -8,7 +8,7 @@ export interface Crumb {
 // A data-driven trail. The product page owns the hierarchy (Store > Category >
 // Product) and passes it in, because a flat `product/:id` route can't express
 // those ancestors lexically for the matcher to derive.
-export function Breadcrumbs({ trail }: { trail: Crumb[] }) {
+export const Breadcrumbs = ({ trail }: { trail: Crumb[] }) => {
   return (
     <nav className="crumbs" aria-label="Breadcrumb">
       {trail.map((crumb, i) => {
@@ -33,4 +33,4 @@ export function Breadcrumbs({ trail }: { trail: Crumb[] }) {
       })}
     </nav>
   );
-}
+};
