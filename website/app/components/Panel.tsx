@@ -4,7 +4,7 @@ import Workspace from './Workspace';
 import Inspector from './Inspector';
 
 export default function Panel() {
-  const { showConsole, tab, toggle, open, send } = Workspace.get();
+  const { showConsole, tab, consoleHeight, toggle, open, send, grabConsole } = Workspace.get();
 
   const dispatch = (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.key !== 'Enter') return;
@@ -16,9 +16,23 @@ export default function Panel() {
 
   // Collapsed to just its bar until opened.
   flexShrink: 0;
+  position: relative;
   display: flex;
   flexDirection: column;
   borderTop: $colorFdBorder, 1;
+
+  // Straddles the top edge; invisible until hovered, drags the drawer height.
+  grip: {
+    position: absolute;
+    top: -3;
+    left: 0;
+    right: 0;
+    height: 7;
+    zIndex: 5;
+    cursor: "row-resize";
+
+    $hover: { background: $colorFdPrimary; }
+  }
 
   // Header: collapse caret + Console/State tabs.
   bar: {
@@ -54,7 +68,6 @@ export default function Panel() {
   // Always mounted (only hidden when collapsed) so the console captures logs
   // from the first render, not just after it's opened.
   panel: {
-    height: 180;
     flexDirection: column;
     borderTop: $colorFdBorder, 1;
   }
@@ -73,6 +86,7 @@ export default function Panel() {
 
   return (
     <div>
+      {showConsole && <div _grip onMouseDown={grabConsole} />}
       <div _bar>
         <button _caret onClick={() => toggle()}>{showConsole ? '▾' : '▸'}</button>
         <button _tab aria-pressed={tab === 'console'} onClick={() => open('console')}>
@@ -82,7 +96,7 @@ export default function Panel() {
           State
         </button>
       </div>
-      <div _panel style={{ display: showConsole ? 'flex' : 'none' }}>
+      <div _panel style={{ display: showConsole ? 'flex' : 'none', height: consoleHeight }}>
         <div
           style={{ display: tab === 'console' ? 'flex' : 'none', flex: 1, flexDirection: 'column', minHeight: 0 }}>
           <SandpackConsole showHeader={false} resetOnPreviewRestart style={{ flex: 1, minHeight: 0 }} />

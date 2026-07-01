@@ -5,13 +5,14 @@ export type Tab = 'console' | 'state';
 
 // Each example remounts Workspace; remember the drawer's open state + tab
 // module-side so a fresh instance restores the last choice.
-const remembered = { open: false, tab: 'console' as Tab };
+const remembered = { open: false, tab: 'console' as Tab, height: 180 };
 
 export default class Workspace extends State {
   mode: 'preview' | 'code' = 'preview';
   tab: Tab = remembered.tab;
   ratio = 50; // editor width (%) when both panels are side by side
   showConsole = remembered.open;
+  consoleHeight = remembered.height; // console drawer height (px) when open
 
   // Wraps the preview; holds the sandbox iframe `send` talks to.
   frame = ref<HTMLDivElement>();
@@ -53,16 +54,41 @@ export default class Workspace extends State {
     event.preventDefault();
     const rect = event.currentTarget.parentElement!.getBoundingClientRect();
 
-    const move = (e: globalThis.MouseEvent) => {
+    onDrag('col-resize', (e) => {
       const pct = ((e.clientX - rect.left) / rect.width) * 100;
       this.ratio = Math.min(80, Math.max(20, pct));
-    };
-    const up = () => {
-      document.removeEventListener('mousemove', move);
-      document.removeEventListener('mouseup', up);
-    };
-
-    document.addEventListener('mousemove', move);
-    document.addEventListener('mouseup', up);
+    });
   }
+
+  // Drag the drawer's top edge: up grows the console (eating preview height).
+  grabConsole(event: ReactMouseEvent) {
+    event.preventDefault();
+    const startY = event.clientY;
+    const start = this.consoleHeight;
+    const column = this.frame.current?.getBoundingClientRect();
+    const max = column ? column.height - 120 : 600;
+
+    onDrag('row-resize', (e) => {
+      const next = start + (startY - e.clientY);
+      this.consoleHeight = remembered.height = Math.min(max, Math.max(80, next));
+    });
+  }
+}
+
+// A transparent shield over everything keeps mousemove firing in this
+// document for the whole drag - otherwise the preview iframe swallows the
+// events the moment the cursor crosses into it. Also pins the drag cursor.
+function onDrag(cursor: string, move: (e: globalThis.MouseEvent) => void) {
+  const shield = document.createElement('div');
+  shield.style.cssText = `position:fixed;inset:0;z-index:9999;cursor:${cursor}`;
+  document.body.appendChild(shield);
+
+  const up = () => {
+    document.removeEventListener('mousemove', move);
+    document.removeEventListener('mouseup', up);
+    shield.remove();
+  };
+
+  document.addEventListener('mousemove', move);
+  document.addEventListener('mouseup', up);
 }
