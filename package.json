@@ -10,6 +10,7 @@
   "scripts": {
     "test": "bun run --filter='./packages/*' test",
     "build": "bun run --filter='./packages/*' build",
+    "build:site": "bun run build && bun run --filter website build",
     "changeset": "changeset",
     "wrap": "changeset",
     "ci:version": "changeset version && bun install",
