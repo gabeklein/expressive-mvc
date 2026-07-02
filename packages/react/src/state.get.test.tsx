@@ -1066,3 +1066,38 @@ describe('State.get', () => {
     });
   });
 });
+
+describe('State.get - computed dependency', () => {
+  // A component that observes BOTH a field and a computed getter derived from
+  // that field used to refresh once, then freeze on its first-update value:
+  // the field's change and the computed's recompute land in one dispatch tick,
+  // and the batched queue dropped the second, same-tick refresh request.
+  it('will refresh when observing a field and a computed derived from it', async () => {
+    class Test extends State {
+      n = 1;
+      get double() {
+        return this.n * 2;
+      }
+    }
+
+    const test = Test.new();
+    const hook = renderWith(test, () => {
+      const state = Test.get();
+      return `${state.n}/${state.double}`;
+    });
+
+    expect(hook.result.current).toBe('1/2');
+
+    await act(async () => {
+      test.n = 2;
+    });
+
+    expect(hook.result.current).toBe('2/4');
+
+    await act(async () => {
+      test.n = 3;
+    });
+
+    expect(hook.result.current).toBe('3/6');
+  });
+});

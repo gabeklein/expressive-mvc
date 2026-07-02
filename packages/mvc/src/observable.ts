@@ -218,14 +218,14 @@ function emit(o: Observer, key: Observer.Signal): void {
 function enqueue(eventHandler: () => void) {
   if (!DISPATCH.size)
     queueMicrotask(() => {
-      DISPATCH.forEach((event) => {
+      for (const event of DISPATCH) {
+        DISPATCH.delete(event);
         try {
           event();
         } catch (err) {
           console.error(err);
         }
-      });
-      DISPATCH.clear();
+      }
     });
 
   DISPATCH.add(eventHandler);
