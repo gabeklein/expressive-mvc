@@ -80,6 +80,7 @@ await expect(state).not.toHaveUpdated();
 ## Change flow
 
 - When starting actual work, switch from any agent-scratch branch (`claude/*`) to a conventional named branch (`feat/...`, `fix/...`, `chore/...`) before the first real commit.
+- Always open PRs against `main` unless explicitly told otherwise. Never assume a PR should target another branch, even when the current work branch is stacked on one. If asked to break a fix out of a larger branch, the intent is to land it independently off `main` - carve out only the change in question and base its branch on `main`.
 - For new features and non-trivial refactors, capture agreed scope, key decisions, and approach in the PR description before implementation - it is the canonical shared plan and review context. (Working notes may live in untracked local scratch; only the PR description is shared.)
 - Write a changeset (`bun run changeset`) when a change is user-facing: new feature, behavior change, API addition, breaking change.
 - No changeset for internal refactors, test-only changes, or fixes with no observable effect. A zero-changeset PR is legitimate.
