@@ -4,11 +4,13 @@
 
 ## When to use Component vs State vs function components
 
-- **Function components** are dumb - they receive data, render UI. Keep them simple.
+- **Function components** are the default and stay dumb - they receive props, read context via `Foo.get()`, and render. Keep them simple. Consuming a State/Component from context does *not* justify a class: `Foo.get()` inside a function already subscribes to the fields it reads.
 - **State** is display-agnostic - pure data and logic, no render method. Use with `State.use()` in function components to separate concerns.
 - **Component** is for **custom components/primitives** that own their display logic. They're _meant_ to render. Use when you need a reusable, extensible unit combining behavior + UI: form controls, media players, data grids, modals, layout shells.
 
 Rule of thumb: use `Component` when state is intrinsic to display logic. Usually that means defining `render()`.
+
+The inverse is the more common decision, and the default. Reach for `Component` only when the unit has something of its *own* to own or share: intrinsic reactive state, values to provide to descendants via context, or consolidation you'd otherwise write with hooks (`useState`/`useMemo`/`useEffect`). A component that merely *reads* context or state and renders has nothing to own - a class there just wraps an instance (and React's `props`/`state`/`context`/`setState`) around what a plain function calling `Foo.get()` already does. `Component` exists to *replace* the hooks that compute and consolidate that UI, not to wrap a consumer. If there is nothing to own or share, keep it lite. (Example: a page that only reads `Session.get()` to render the current user is a function; a quantity stepper that holds its own `count` is a `Component`.)
 
 A Component does not have to define `render()`: without one, it passes children through while still providing itself to context and acting as Suspense/ErrorBoundary placement. Use that headless form only when React tree placement is the feature: route controllers inserted throughout an app, progressive `Boundary` wrappers, or Suspense/ErrorBoundary placement.
 
