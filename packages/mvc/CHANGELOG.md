@@ -1,5 +1,11 @@
 # @expressive/mvc
 
+## 0.80.1
+
+### Patch Changes
+
+- [#212](https://github.com/gabeklein/expressive-mvc/pull/212) [`b37b918`](https://github.com/gabeklein/expressive-mvc/commit/b37b918800f569029c297e9e5b6d458fdb723fea) Fix a dropped refresh when an observer is re-notified within the same dispatch tick. The batched event queue coalesced handlers by identity and drained with `Set.forEach`, so a handler re-enqueued after it had already run in the current tick was silently skipped. This stranded a `.get()` subscription that observed both a field and a computed derived from that field (the field's change and the computed's recompute land in one tick): the component refreshed once, then froze. The queue now removes each handler before invoking it, so a same-tick re-enqueue runs again.
+
 ## 0.80.0
 
 ### Minor Changes
@@ -39,6 +45,7 @@
   When `@expressive/router` was consumed as a built package (outside the monorepo), `<Route>`, `<Link>`, and `<NavLinks>` failed type-checking as JSX (`TS2786`). Their `render` overrides had no explicit return type, so the `.d.ts` emitter baked the host-seam alias's build-time fallback (`unknown`) into the published types, which is not assignable to `ReactNode`.
 
   Two changes fix this:
+
   - `@expressive/router`: the overridden `render` methods are annotated `: Component.Node`, so the emitter preserves the deferred alias by reference and it re-resolves to the host node type (e.g. `ReactNode`) in a consumer.
   - `@expressive/mvc`: `Component.Node` now falls back to `any` instead of `unknown`. `any` is the only fallback assignable to every host's node type, so an un-annotated `render` override in any host-agnostic package still emits a JSX-valid return.
 
@@ -57,12 +64,14 @@
   **Robustness.** Reads of a destroyed instance now settle to last-known values instead of throwing, while writes and subscriptions stay loud ([#121](https://github.com/gabeklein/expressive-mvc/issues/121)); instances discarded before a React commit are now destroyed ([#122](https://github.com/gabeklein/expressive-mvc/issues/122)).
 
   **Breaking / surface changes.**
+
   - Package renamed back to `@expressive/mvc` from the interim `@expressive/state` ([#104](https://github.com/gabeklein/expressive-mvc/issues/104)).
   - `Observable` export renamed to `Observer` ([#151](https://github.com/gabeklein/expressive-mvc/issues/151)).
   - Removed the redundant `get(key, callback)` overload; use `set()` for event listening ([#102](https://github.com/gabeklein/expressive-mvc/issues/102)).
   - ESM-only; CJS output dropped ([#79](https://github.com/gabeklein/expressive-mvc/issues/79)).
 
 - [#143](https://github.com/gabeklein/expressive-mvc/pull/143) [`92cc04c`](https://github.com/gabeklein/expressive-mvc/commit/92cc04c87441204dac809d304231839ae56f178d) `State.on` now accepts a handler object in addition to the existing init callback, hooking distinct points of the class/instance lifecycle by cadence:
+
   - `type` - per-class, runs once when the class is first bootstrapped, before its members are classified; receives the class so a handler may inspect or reshape the prototype first. A base-class handler runs for each subclass.
   - `before` - per-instance, runs in the `prepare` phase before `observe`/`new()` (equivalent to a bare function).
   - `after` - per-instance, runs at the `new()` slot after own values are observed; may return a cleanup.
