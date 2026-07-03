@@ -24,7 +24,7 @@ export class ProductPage extends Component {
     return this.product ? this.product.price * this.qty : 0;
   }
 
-  quantity(by: number){
+  quantity(by: number) {
     this.qty = Math.max(1, this.qty + by);
   }
 
@@ -34,16 +34,9 @@ export class ProductPage extends Component {
   }
 
   render() {
-    const { product, qty, subtotal, quantity } = this;
+    const { product, qty, subtotal } = this;
 
-    if (!product)
-      return (
-        <div className="notice">
-          <span className="big-emoji">🫥</span>
-          <h1>Product not found</h1>
-          <Link to="/">Back to the store</Link>
-        </div>
-      );
+    if (!product) return <NotFound />;
 
     return (
       <div className="product">
@@ -64,19 +57,7 @@ export class ProductPage extends Component {
             <h1>{product.name}</h1>
             <p className="hero-price">{usd(product.price)}</p>
 
-            <div className="qty">
-              <button
-                onClick={() => quantity(-1)}
-                aria-label="Decrease quantity">
-                −
-              </button>
-              <span className="qty-val">{qty}</span>
-              <button
-                onClick={() => quantity(1)}
-                aria-label="Increase quantity">
-                +
-              </button>
-            </div>
+            <Stepper />
 
             <button className="primary" onClick={this.addToCart}>
               Add {qty} to cart · {usd(subtotal)}
@@ -87,3 +68,29 @@ export class ProductPage extends Component {
     );
   }
 }
+
+// A Component provides itself to context, so dumb slices under it pull state
+// the same way they would from any State - no props, no subclass seam.
+const Stepper = () => {
+  const { qty, quantity } = ProductPage.get();
+
+  return (
+    <div className="qty">
+      <button onClick={() => quantity(-1)} aria-label="Decrease quantity">
+        −
+      </button>
+      <span className="qty-val">{qty}</span>
+      <button onClick={() => quantity(1)} aria-label="Increase quantity">
+        +
+      </button>
+    </div>
+  );
+};
+
+const NotFound = () => (
+  <div className="notice">
+    <span className="big-emoji">🫥</span>
+    <h1>Product not found</h1>
+    <Link to="/">Back to the store</Link>
+  </div>
+);
