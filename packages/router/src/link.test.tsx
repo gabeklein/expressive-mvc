@@ -72,6 +72,36 @@ describe('Link', () => {
     expect(router.current.path).toBe('/');
   });
 
+  it('will call consumer onClick before navigating', async () => {
+    let clicked = false;
+    const view = render(
+      <Route to="/">
+        <Link to="/about" onClick={() => (clicked = true)}>
+          about
+        </Link>
+      </Route>
+    );
+    await act(async () => {
+      fireEvent.click(view.container.querySelector('a')!, { button: 0 });
+    });
+    expect(clicked).toBe(true);
+    expect(router.current.path).toBe('/about');
+  });
+
+  it('will not navigate if consumer onClick prevents default', async () => {
+    const view = render(
+      <Route to="/">
+        <Link to="/about" onClick={(e) => e.preventDefault()}>
+          about
+        </Link>
+      </Route>
+    );
+    await act(async () => {
+      fireEvent.click(view.container.querySelector('a')!, { button: 0 });
+    });
+    expect(router.current.path).toBe('/');
+  });
+
   it('replace=true uses replaceState', async () => {
     const view = render(
       <Route to="/">

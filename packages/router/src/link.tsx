@@ -55,6 +55,10 @@ export class Link extends Component {
   }
 
   protected go = (e: ClickEvent) => {
+    const { onClick } = this.props as { onClick?: (e: ClickEvent) => void };
+
+    onClick && onClick(e);
+
     if (e.defaultPrevented || e.button !== 0) return;
     if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
     e.preventDefault();
