@@ -24,13 +24,17 @@ export class ProductPage extends Component {
     return this.product ? this.product.price * this.qty : 0;
   }
 
+  quantity(by: number){
+    this.qty = Math.max(1, this.qty + by);
+  }
+
   addToCart() {
     this.cart.add(this.product!.id, this.qty);
     this.qty = 1;
   }
 
   render() {
-    const { product, qty, subtotal } = this;
+    const { product, qty, subtotal, quantity } = this;
 
     if (!product)
       return (
@@ -62,13 +66,13 @@ export class ProductPage extends Component {
 
             <div className="qty">
               <button
-                onClick={() => (this.qty = Math.max(1, qty - 1))}
+                onClick={() => quantity(-1)}
                 aria-label="Decrease quantity">
                 −
               </button>
               <span className="qty-val">{qty}</span>
               <button
-                onClick={() => (this.qty = qty + 1)}
+                onClick={() => quantity(1)}
                 aria-label="Increase quantity">
                 +
               </button>

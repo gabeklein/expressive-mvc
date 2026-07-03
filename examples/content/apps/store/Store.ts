@@ -17,18 +17,20 @@ export class Cart extends State {
   receipt: null | { count: number; total: number } = null;
 
   add(id: string, qty = 1) {
-    const now = (this.items[id] ?? 0) + qty;
-    this.items = { ...this.items, [id]: now };
+    this.setQty(id, (this.items[id] ?? 0) + qty);
   }
 
   setQty(id: string, qty: number) {
-    if (qty < 1) return this.remove(id);
-    this.items = { ...this.items, [id]: qty };
+    const next = { ...this.items };
+
+    if (qty > 0) next[id] = qty;
+    else delete next[id];
+
+    this.items = next;
   }
 
   remove(id: string) {
-    const { [id]: _drop, ...rest } = this.items;
-    this.items = rest;
+    this.setQty(id, 0);
   }
 
   checkout() {
