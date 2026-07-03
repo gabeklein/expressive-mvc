@@ -9,13 +9,28 @@ export class ProductPage extends Component {
   route = get(Route);
   cart = get(Cart);
 
-  // A reactive field on the component - the "buy N" stepper. Assigning it
+  // The "buy N" stepper - reactive field on the component itself. Assigning it
   // re-renders, no useState needed.
   qty = 1;
 
-  render() {
+  // Getters derive from route + qty and recompute only when those change -
+  // render() stays thin markup over them.
+  get product() {
     const id = this.route.match?.id;
-    const product = id ? getProduct(id) : undefined;
+    return id ? getProduct(id) : undefined;
+  }
+
+  get subtotal() {
+    return this.product ? this.product.price * this.qty : 0;
+  }
+
+  addToCart() {
+    this.cart.add(this.product!.id, this.qty);
+    this.qty = 1;
+  }
+
+  render() {
+    const { product, qty, subtotal } = this;
 
     if (!product)
       return (
@@ -25,8 +40,6 @@ export class ProductPage extends Component {
           <Link to="/">Back to the store</Link>
         </div>
       );
-
-    const { qty } = this;
 
     return (
       <div className="product">
@@ -61,13 +74,8 @@ export class ProductPage extends Component {
               </button>
             </div>
 
-            <button
-              className="primary"
-              onClick={() => {
-                this.cart.add(product.id, qty);
-                this.qty = 1;
-              }}>
-              Add {qty} to cart · {usd(product.price * qty)}
+            <button className="primary" onClick={this.addToCart}>
+              Add {qty} to cart · {usd(subtotal)}
             </button>
           </div>
         </div>
