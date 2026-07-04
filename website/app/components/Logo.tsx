@@ -1,6 +1,6 @@
 export default function Logo() {
   return (
-    <div className="flex items-center gap-2.5 font-bold font-[Nunito] whitespace-nowrap">
+    <div className="flex items-center gap-2.5 font-bold font-brand whitespace-nowrap">
       <Icon />
       <span>Expressive MVC</span>
     </div>
@@ -10,7 +10,7 @@ export default function Logo() {
 export function Icon() {
   return (
     <svg
-      className="size-10 text-[#8150ce]"
+      className="size-10 text-logo"
       viewBox="0 0 1019 701"
       xmlns="http://www.w3.org/2000/svg">
       <path

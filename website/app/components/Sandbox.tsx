@@ -134,7 +134,7 @@ function Layout() {
       />
       {!narrow && (
         <div
-          className="shrink-0 w-[6px] cursor-col-resize bg-fd-border hover:bg-fd-primary"
+          className="shrink-0 w-1.5 cursor-col-resize bg-fd-border hover:bg-fd-primary"
           onMouseDown={grab}
         />
       )}

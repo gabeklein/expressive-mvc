@@ -4,8 +4,8 @@ export function Benefits() {
   return (
     <section className="border-b border-fd-border">
       <div className="mx-auto max-w-(--content-width) py-24 px-6">
-        <div className="max-w-[672px] mb-16">
-          <div className="text-xs leading-[inherit] uppercase tracking-[0.1em] text-fd-muted-foreground mb-3">
+        <div className="max-w-2xl mb-16">
+          <div className="text-xs leading-[inherit] uppercase tracking-widest text-fd-muted-foreground mb-3">
             What you get
           </div>
           <h2 className="text-3xl md:text-4xl leading-[inherit] md:leading-[inherit] font-bold mb-4">

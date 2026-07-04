@@ -4,10 +4,10 @@ export function Hero() {
   return (
     <section className="border-b border-fd-border box-border h-[calc(100vh-56px)] flex items-center justify-center">
       <div className="mx-auto max-w-5xl py-24 px-6 text-center md:py-32">
-        <div className="inline-block mb-6 text-[0.75em] uppercase tracking-[0.1em] text-fd-muted-foreground">
+        <div className="inline-block mb-6 text-[0.75em] uppercase tracking-widest text-fd-muted-foreground">
           State management, reorganized
         </div>
-        <h1 className="text-[3em] font-[Rubik] max-w-[10em] mx-auto font-bold tracking-[-0.025em] leading-[1.2] mb-6 md:text-[4.5em]">
+        <h1 className="text-[3em] font-display max-w-[10em] mx-auto font-bold tracking-tight leading-[1.2] mb-6 md:text-[4.5em]">
           What if state had it's own Component?
         </h1>
         <p className="text-[1.125em] text-fd-muted-foreground max-w-2xl mx-auto mb-10 md:text-[1.25em]">

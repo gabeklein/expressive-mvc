@@ -15,11 +15,11 @@ export function Problem() {
       <HooksExample />
       <p className="text-fd-muted-foreground mt-6 text-center italic">
         Three{' '}
-        <code className="text-[0.875em] bg-fd-muted py-[2px] px-1.5 rounded">
+        <code className="text-[0.875em] bg-fd-muted py-0.5 px-1.5 rounded">
           useState
         </code>{' '}
         and a{' '}
-        <code className="text-[0.875em] bg-fd-muted py-[2px] px-1.5 rounded">
+        <code className="text-[0.875em] bg-fd-muted py-0.5 px-1.5 rounded">
           useCallback
         </code>{' '}
         to coordinate one request.
@@ -58,7 +58,7 @@ function Header({
   return (
     <div className={accent ? 'max-w-[800px] mb-12' : 'max-w-2xl mb-12'}>
       <div
-        className={`text-[0.75em] uppercase tracking-[0.1em] mb-3 ${accent ? 'text-fd-primary' : 'text-fd-muted-foreground'}`}>
+        className={`text-[0.75em] uppercase tracking-widest mb-3 ${accent ? 'text-fd-primary' : 'text-fd-muted-foreground'}`}>
         {label}
       </div>
       <h2 className="text-[1.875em] md:text-[2.25em] font-bold mb-4">

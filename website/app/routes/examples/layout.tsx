@@ -27,7 +27,7 @@ function Navigation() {
           className="flex items-center mr-[1.2em] gap-2 xl:flex-col xl:items-stretch xl:mr-0 xl:gap-1"
           key={group.slug}>
           <GroupLabel label={group.label} />
-          <div className="contents xl:flex xl:flex-col xl:gap-[2px] xl:ml-2.5 xl:border-l xl:border-fd-border">
+          <div className="contents xl:flex xl:flex-col xl:gap-0.5 xl:ml-2.5 xl:border-l xl:border-fd-border">
             {(group.children ?? []).map((e) => (
               <ExampleLink key={e.slug} path={e.path} label={e.label} />
             ))}
@@ -52,7 +52,7 @@ function GroupLabel({ label }: { label: string }) {
   return (
     <span className="flex items-center self-stretch text-[0.78em] font-semibold uppercase tracking-[0.08em] text-fd-foreground whitespace-nowrap bg-fd-background sticky left-0 z-[1] xl:static xl:mb-1.5 xl:pl-2 xl:text-[0.72em] xl:text-fd-muted-foreground">
       {label}
-      <span className="w-[2px] inline-block h-[2.2em] rounded-xs ml-3 mr-[5px] bg-fd-border xl:hidden" />
+      <span className="w-0.5 inline-block h-[2.2em] rounded-xs ml-3 mr-[5px] bg-fd-border xl:hidden" />
       <span className="absolute left-full top-0 bottom-0 w-2 pointer-events-none bg-[linear-gradient(to_right,var(--color-fd-background),transparent)] xl:hidden" />
     </span>
   );
