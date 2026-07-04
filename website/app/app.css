@@ -4,6 +4,12 @@
 @import 'fumadocs-ui/css/neutral.css';
 @import 'fumadocs-ui/css/preset.css';
 
+@theme {
+  --font-brand: 'Nunito', sans-serif;
+  --font-display: 'Rubik', sans-serif;
+  --color-logo: #8150ce;
+}
+
 /* Code blocks: expand to content, never scroll. */
 .fd-scroll-container,
 figure[data-rehype-pretty-code-figure] pre,

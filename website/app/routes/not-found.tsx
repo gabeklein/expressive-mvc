@@ -7,43 +7,18 @@ export function meta() {
 }
 
 export default function NotFound() {
-  content: {
-    padding: 16;
-    display: flex;
-    flexDirection: column;
-    alignItems: center;
-    justifyContent: center;
-    textAlign: center;
-    flex: 1;
-
-    h1: {
-      fontSize: 1.25;
-      fontWeight: bold;
-      marginBottom: 8;
-    }
-
-    p: {
-      color: $colorFdMutedForeground;
-      marginBottom: 16;
-    }
-
-    Link: {
-      fontSize: 0.875;
-      background: $colorFdPrimary;
-      color: $colorFdPrimaryForeground;
-      radius: round;
-      fontWeight: 500;
-      padding: 10, 16;
-      textDecoration: none;
-    }
-  }
-
   return (
     <HomeLayout {...layoutOptions}>
-      <div _content>
-        <h1>Not Found</h1>
-        <p>This page could not be found.</p>
-        <Link to="/docs">Back to Docs</Link>
+      <div className="p-4 flex flex-col items-center justify-center text-center flex-1">
+        <h1 className="text-xl font-bold mb-2">Not Found</h1>
+        <p className="text-fd-muted-foreground mb-4">
+          This page could not be found.
+        </p>
+        <Link
+          to="/docs"
+          className="text-sm bg-fd-primary text-fd-primary-foreground rounded-full font-medium py-2.5 px-4 no-underline">
+          Back to Docs
+        </Link>
       </div>
     </HomeLayout>
   );

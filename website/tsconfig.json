@@ -7,16 +7,11 @@
   ],
   "compilerOptions": {
     "lib": ["DOM", "DOM.Iterable", "ES2022"],
-    "types": ["node", "vite/client", "@expressive/css"],
+    "types": ["node", "vite/client"],
     "target": "esnext",
     "module": "esnext",
     "moduleResolution": "bundler",
     "jsx": "react-jsx",
-    "plugins": [
-      {
-        "name": "@expressive/typescript-plugin-jsx"
-      }
-    ],
     "rootDirs": [".", "./.react-router/types"],
     "paths": {
       "@/*": ["./app/*"],

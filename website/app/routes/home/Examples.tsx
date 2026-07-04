@@ -1,102 +1,75 @@
-import React from 'react';
-
-import code from '@/components/Snippet';
+import type React from 'react';
 import Section from '@/components/Section';
+import code from '@/components/Snippet';
 
 export function Problem() {
-  code: {
-    fontSize: 0.875;
-    background: $colorFdMuted;
-    padding: 2, 6;
-    borderRadius: 4;
-  }
-
-  caption: {
-    color: $colorFdMutedForeground;
-    marginTop: 24;
-    textAlign: center;
-    fontStyle: italic;
-  }
-
   return (
     <Section>
-      <Header label="The problem" title="Hooks split state from the logic that owns it.">
-        A single async request needs three pieces of state to track its
-        phases, plus a memoized callback to keep them in sync. Each one is
-        its own hook, its own dependency, its own way to fall out of sync.
+      <Header
+        label="The problem"
+        title="Hooks split state from the logic that owns it.">
+        A single async request needs three pieces of state to track its phases,
+        plus a memoized callback to keep them in sync. Each one is its own hook,
+        its own dependency, its own way to fall out of sync.
       </Header>
       <HooksExample />
-      <p _caption>
-        Three <code>useState</code> and a <code>useCallback</code> to coordinate one request.
+      <p className="text-fd-muted-foreground mt-6 text-center italic">
+        Three{' '}
+        <code className="text-sm bg-fd-muted py-0.5 px-1.5 rounded">
+          useState
+        </code>{' '}
+        and a{' '}
+        <code className="text-sm bg-fd-muted py-0.5 px-1.5 rounded">
+          useCallback
+        </code>{' '}
+        to coordinate one request.
       </p>
     </Section>
   );
 }
 
 export function Solution() {
-  caption: {
-    color: $colorFdMutedForeground;
-    marginTop: 24;
-    textAlign: center;
-    fontStyle: italic;
-  }
-
   return (
     <Section tint>
       <Header accent label="The solution" title="A class keeps them together.">
         Fields hold state. Methods mutate them directly. The component reads
-        what it needs, and renders only when those values change. Same
-        flow, no orchestration. Components go back to being stateless.
+        what it needs, and renders only when those values change. Same flow, no
+        orchestration. Components go back to being stateless.
       </Header>
       <ClassExample />
-      <p _caption>
+      <p className="text-fd-muted-foreground mt-6 text-center italic">
         Reactive fields. Plain methods. The component just reads.
       </p>
     </Section>
   );
 }
 
-function Header({ label, title, accent, children }: {
+function Header({
+  label,
+  title,
+  accent,
+  children,
+}: {
   label: string;
   title: string;
   accent?: boolean;
   children: React.ReactNode;
 }) {
-  maxWidth: 672;
-  marginBottom: 48;
-  if (accent) { maxWidth: 800; }
-
-  label: {
-    fontSize: 0.75;
-    textTransform: uppercase;
-    letterSpacing: '0.1em';
-    color: $colorFdMutedForeground;
-    marginBottom: 12;
-    if (accent) color: $colorFdPrimary;
-  }
-
-  title: {
-    fontSize: 1.875;
-    fontWeight: bold;
-    marginBottom: 16;
-    $md: { fontSize: 2.25; }
-  }
-
-  desc: {
-    color: $colorFdMutedForeground;
-    fontSize: 1.125;
-  }
-
   return (
-    <div>
-      <div _label>{label}</div>
-      <h2 _title>{title}</h2>
-      <p _desc>{children}</p>
+    <div className={accent ? 'max-w-[800px] mb-12' : 'max-w-2xl mb-12'}>
+      <div
+        className={`text-xs uppercase tracking-widest mb-3 ${accent ? 'text-fd-primary' : 'text-fd-muted-foreground'}`}>
+        {label}
+      </div>
+      <h2 className="text-3xl md:text-4xl font-bold mb-4">
+        {title}
+      </h2>
+      <p className="text-fd-muted-foreground text-lg">{children}</p>
     </div>
   );
 }
 
-const HooksExample = code /*tsx*/ `
+const HooksExample = code /*tsx*/`
   import { getUser } from './api';
 
   function App() {
@@ -125,7 +98,7 @@ const HooksExample = code /*tsx*/ `
   }
 `;
 
-const ClassExample = code /*tsx*/ `
+const ClassExample = code /*tsx*/`
   import State from '@expressive/react';
   import { getUser } from './api';
 

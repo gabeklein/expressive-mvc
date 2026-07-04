@@ -1,25 +1,18 @@
-import React from 'react';
+import type React from 'react';
 
-export default function Section({ tint, children }: {
+export default function Section({
+  tint,
+  children,
+}: {
   tint?: boolean;
   children: React.ReactNode;
 }) {
-  borderBottom: 1, solid;
-  borderColor: $colorFdBorder;
-
-  if (tint) {
-    background: `color-mix(in srgb, var(--color-fd-muted) 30%, transparent)`;
-  }
-
-  inner: {
-    margin: 0, auto;
-    maxWidth: $contentWidth;
-    padding: 96, 24;
-  }
-
   return (
-    <section>
-      <div _inner>{children}</div>
+    <section
+      className={`border-b border-fd-border ${tint ? 'bg-fd-muted/30' : ''}`}>
+      <div className="mx-auto max-w-(--content-width) py-24 px-6">
+        {children}
+      </div>
     </section>
   );
 }

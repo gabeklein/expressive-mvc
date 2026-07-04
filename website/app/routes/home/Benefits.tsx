@@ -1,63 +1,27 @@
-import React from 'react';
+import type React from 'react';
 
 export function Benefits() {
-  borderBottom: currentColor;
-  borderColor: $colorFdBorder;
-
-  inner: {
-    margin: 0, auto;
-    maxWidth: $contentWidth;
-    padding: 96, 24;
-  }
-
-  header: {
-    maxWidth: 672;
-    marginBottom: 64;
-
-    label: {
-      fontSize: 0.75;
-      textTransform: uppercase;
-      letterSpacing: '0.1em';
-      color: $colorFdMutedForeground;
-      marginBottom: 12;
-    }
-
-    title: {
-      fontSize: 1.875;
-      fontWeight: bold;
-      marginBottom: 16;
-      $md: { fontSize: 2.25; }
-    }
-
-    desc: {
-      color: $colorFdMutedForeground;
-      fontSize: 1.125;
-    }
-  }
-
-  grid: {
-    display: grid;
-    gridTemplateColumns: '1fr';
-    gap: 32;
-    $md: { gridTemplateColumns: '1fr 1fr'; }
-  }
-
   return (
-    <section>
-      <div _inner>
-        <div _header>
-          <div _label>What you get</div>
-          <h2 _title>A state backbone for your application.</h2>
-          <p _desc>
+    <section className="border-b border-fd-border">
+      <div className="mx-auto max-w-(--content-width) py-24 px-6">
+        <div className="max-w-2xl mb-16">
+          <div className="text-xs uppercase tracking-widest text-fd-muted-foreground mb-3">
+            What you get
+          </div>
+          <h2 className="text-3xl md:text-4xl font-bold mb-4">
+            A state backbone for your application.
+          </h2>
+          <p className="text-fd-muted-foreground text-lg">
             Expressive is designed to be the place where data, behavior, and
             lifecycle live - so components can go back to doing what they do
             best: describing UI.
           </p>
         </div>
-        <div _grid>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <Benefit title="Cohesive by default">
             Related state, derived values, lifecycle, and behavior all live in
-            one place. Open a class, read it top-to-bottom, understand the feature.
+            one place. Open a class, read it top-to-bottom, understand the
+            feature.
           </Benefit>
           <Benefit title="No dependency arrays">
             Computed values and effects track what they read automatically.
@@ -74,7 +38,8 @@ export function Benefits() {
           </Benefit>
           <Benefit title="Type-safe context">
             The class is the context key. No createContext&lt;T&gt;, no default
-            values, no manual Provider/Consumer pairs. Full inference automatically.
+            values, no manual Provider/Consumer pairs. Full inference
+            automatically.
           </Benefit>
           <Benefit title="Coexists with hooks">
             No big-bang rewrite. Migrate one feature at a time. Leave simple
@@ -103,24 +68,10 @@ interface BenefitProps {
 }
 
 function Benefit({ title, children }: BenefitProps) {
-  borderLeft: $colorFdPrimary, 2;
-  paddingLeft: 20;
-
-  h3: {
-    fontSize: 1.125;
-    fontWeight: 600;
-    marginBottom: 8;
-  }
-
-  p: {
-    color: $colorFdMutedForeground;
-    lineHeight: 1.625;
-  }
-
   return (
-    <div>
-      <h3>{title}</h3>
-      <p>{children}</p>
+    <div className="border-l-2 border-fd-primary pl-5">
+      <h3 className="text-lg font-semibold mb-2">{title}</h3>
+      <p className="text-fd-muted-foreground leading-relaxed">{children}</p>
     </div>
   );
 }

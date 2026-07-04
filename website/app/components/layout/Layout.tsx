@@ -1,49 +1,44 @@
-import type { MouseEventHandler } from "react";
-import { Control, type HandleProps } from "./Control";
+import type { MouseEventHandler } from 'react';
+import { Control, type HandleProps } from './Control';
 
 export class Panel extends Control {
   Handle = Handle;
 
-  render(){
+  render() {
     const { output, container } = this;
 
-    grid: {
-      display: grid;
-    }
-
-    return <div _grid ref={container}>{output}</div>;
+    return (
+      <div className="grid" ref={container}>
+        {output}
+      </div>
+    );
   }
 }
 
 function Handle(props: HandleProps) {
   const { grab, pull, push, vertical, width } = props;
 
-  position: relative;
-  cursor: "row-resize";
-
-  bar: {
-    absolute: 3, 10;
-    radius: round;
-    transition: "background 0.1s ease-out";
-    background: 0xFFFFFF03;
-
-    $hover: {
-      background: $accentLight;
-    } 
-  }
-
-  if (vertical) {
-    cursor: "col-resize";
-    bar: {
-      absolute: 10, 3;
-    }
-  }
-
   return (
-    <div onMouseDown={grab}>
-      <div _bar />
-      {pull && <Corner onMouseDown={pull} style={{ left: -(width || 0), top: 0 }} />}
-      {push && <Corner onMouseDown={push} style={{ right: -(width || 0), bottom: 0 }} />}
+    <div
+      className={
+        vertical ? 'relative cursor-col-resize' : 'relative cursor-row-resize'
+      }
+      onMouseDown={grab}>
+      <div
+        className={
+          'absolute rounded-full [transition:background_0.1s_ease-out] bg-white/1 hover:bg-(--accent-light) ' +
+          (vertical ? 'inset-y-2.5 inset-x-1' : 'inset-y-1 inset-x-2.5')
+        }
+      />
+      {pull && (
+        <Corner onMouseDown={pull} style={{ left: -(width || 0), top: 0 }} />
+      )}
+      {push && (
+        <Corner
+          onMouseDown={push}
+          style={{ right: -(width || 0), bottom: 0 }}
+        />
+      )}
     </div>
   );
 }
@@ -53,18 +48,9 @@ interface CornerProps {
   style?: React.CSSProperties;
 }
 
-const Corner = (props: CornerProps) => {
-  position: absolute;
-  cursor: move;
-  radius: round;
-  size: 9;
-  borderColor: transparent;
-  borderStyle: solid;
-  zIndex: 10;
-
-  $hover: {
-    borderColor: $accentLight;
-  }
-
-  return <div {...props} />;
-};
+const Corner = (props: CornerProps) => (
+  <div
+    className="absolute cursor-move rounded-full size-2.5 border-transparent border-solid z-10 hover:border-(--accent-light)"
+    {...props}
+  />
+);

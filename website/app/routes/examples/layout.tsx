@@ -9,27 +9,9 @@ export function meta() {
 }
 
 export default function ExamplesLayout() {
-  content: {
-    display: flex;
-    flexDirection: column;
-    flex: 1;
-    padding: 24;
-    gap: 8;
-    maxWidth: 1400;
-    width: fill;
-    margin: 0, auto;
-
-    // Wide enough for a vertical sidebar beside the playground.
-    $xl: {
-      flexDirection: row;
-      alignItems: stretch;
-      gap: 24;
-    }
-  }
-
   return (
     <HomeLayout {...layoutOptions}>
-      <div _content>
+      <div className="flex flex-col flex-1 p-6 gap-2 max-w-[1400px] w-full mx-auto xl:flex-row xl:items-stretch xl:gap-6">
         <Navigation />
         <Outlet />
       </div>
@@ -38,67 +20,14 @@ export default function ExamplesLayout() {
 }
 
 function Navigation() {
-  display: flex;
-  alignItems: center;
-  gap: 8;
-  overflowX: auto;
-  marginLeft: 12;
-  paddingBottom: 12;
-
-  group: {
-    display: flex;
-    alignItems: center;
-    marginR: 1.2;
-    gap: 8;
-
-    $xl: {
-      flexDirection: column;
-      alignItems: stretch;
-      marginR: 0;
-      gap: 4;
-    }
-  }
-
-  // Wraps each group's links. Transparent in the horizontal bar; in the
-  // sidebar it becomes the railed list (vertical guide line) the links nest in.
-  items: {
-    display: "contents";
-
-    $xl: {
-      display: flex;
-      flexDirection: column;
-      gap: 2;
-      marginLeft: 10;
-      borderLeft: $colorFdBorder, 1;
-    }
-  }
-
-  // Stacked vertical sidebar at wide widths. align-self:flex-start stops it
-  // from stretching the row to its own height; capped to the viewport and
-  // scrolled internally so a short window doesn't overflow the page.
-  $xl: {
-    flexDirection: column;
-    alignItems: stretch;
-    alignSelf: "flex-start";
-    overflowX: visible;
-    overflowY: auto;
-    minHeight: 0;
-    maxHeight: "calc(100vh - 7rem)";
-    position: sticky;
-    top: 24;
-    width: 150;
-    flexShrink: 0;
-    marginLeft: 0;
-    paddingBottom: 0;
-    gap: 20;
-  }
-
   return (
-    <nav>
+    <nav className="flex items-center gap-2 overflow-x-auto ml-3 pb-3 xl:flex-col xl:items-stretch xl:self-start xl:overflow-x-visible xl:overflow-y-auto xl:min-h-0 xl:max-h-[calc(100vh-7rem)] xl:sticky xl:top-6 xl:w-36 xl:shrink-0 xl:ml-0 xl:pb-0 xl:gap-5">
       {GROUPS.map((group) => (
-        <div _group key={group.slug}>
+        <div
+          className="flex items-center mr-[1.2em] gap-2 xl:flex-col xl:items-stretch xl:mr-0 xl:gap-1"
+          key={group.slug}>
           <GroupLabel label={group.label} />
-          <div _items>
+          <div className="contents xl:flex xl:flex-col xl:gap-0.5 xl:ml-2.5 xl:border-l xl:border-fd-border">
             {(group.children ?? []).map((e) => (
               <ExampleLink key={e.slug} path={e.path} label={e.label} />
             ))}
@@ -110,103 +39,21 @@ function Navigation() {
 }
 
 function ExampleLink({ path, label }: { path: string; label: string }) {
-  padding: 6, 12;
-  borderRadius: 6;
-  border: $colorFdBorder;
-  fontSize: 0.875;
-  textDecoration: none;
-  color: $colorFdMutedForeground;
-  userSelect: none;
-  whiteSpace: nowrap;
-
-  $hover: {
-    color: $colorFdForeground;
-    borderColor: $colorFdMutedForeground;
-  }
-
-  if("[aria-current='page']") {
-    background: `color-mix(in srgb, var(--accent) 14%, transparent)`;
-    borderColor: `color-mix(in srgb, var(--accent) 45%, transparent)`;
-    color: $accent;
-
-    // Sidebar active: left bar instead of the pill border. Media nested in
-    // the selector (not the reverse) to dodge the parser bug.
-    $xl: {
-      borderLeftColor: $accent;
-    }
-  }
-
-  // Sidebar: flush links nested on the rail, marked by a left bar instead
-  // of a pill box.
-  $xl: {
-    border: none;
-    borderLeft: transparent, 2;
-    borderRadius: `0 4px 4px 0`;
-    marginLeft: -1;
-
-    $hover: {
-      background: $colorFdMuted;
-      borderLeftColor: $colorFdMutedForeground;
-    }
-  }
-
-  return <NavLink to={`/examples/${path}`}>{label}</NavLink>;
+  return (
+    <NavLink
+      to={`/examples/${path}`}
+      className="py-1.5 px-3 rounded-md border border-fd-border text-sm no-underline text-fd-muted-foreground select-none whitespace-nowrap hover:text-fd-foreground hover:border-fd-muted-foreground aria-[current=page]:bg-[color-mix(in_srgb,var(--accent)_14%,transparent)] aria-[current=page]:border-[color-mix(in_srgb,var(--accent)_45%,transparent)] aria-[current=page]:text-(--accent) xl:border-0 xl:border-l-2 xl:border-l-transparent xl:rounded-l-none xl:rounded-r-sm xl:-ml-px xl:hover:bg-fd-muted xl:hover:border-l-fd-muted-foreground xl:aria-[current=page]:border-l-(--accent)">
+      {label}
+    </NavLink>
+  );
 }
 
 function GroupLabel({ label }: { label: string }) {
-  display: flex;
-  alignItems: center;
-  alignSelf: stretch;
-  fontSize: 0.78;
-  fontWeight: 600;
-  textTransform: uppercase;
-  letterSpacing: '0.08em';
-  color: $colorFdForeground;
-  whiteSpace: nowrap;
-  background: $colorFdBackground;
-  position: sticky;
-  left: 0;
-  zIndex: 1;
-
-  fade: {
-    position: absolute;
-    left: "100%";
-    top: 0;
-    bottom: 0;
-    width: 8;
-    pointerEvents: none;
-    background: `linear-gradient(to right, var(--color-fd-background), transparent)`;
-    // media nested inside the selector, not a selector inside the media
-    // block - the parser can't handle the latter (workaround).
-    $xl: { display: none; }
-  }
-
-  separator: {
-    width: 2;
-    display: "inline-block";
-    height: 2.2;
-    radius: 2;
-    marginLeft: 12;
-    marginRight: 5;
-    background: $colorFdBorder;
-    $xl: { display: none; }
-  }
-
-  // In sidebar mode the row affordances (sticky pin, fade, dot) are noise;
-  // the label becomes a quiet section header above a railed list.
-  $xl: {
-    position: "static";
-    marginBottom: 6;
-    paddingLeft: 8;
-    fontSize: 0.72;
-    color: $colorFdMutedForeground;
-  }
-
   return (
-    <span>
+    <span className="flex items-center self-stretch text-xs font-semibold uppercase tracking-widest text-fd-foreground whitespace-nowrap bg-fd-background sticky left-0 z-[1] xl:static xl:mb-1.5 xl:pl-2 xl:text-xs xl:text-fd-muted-foreground">
       {label}
-      <span _separator />
-      <span _fade />
+      <span className="w-0.5 inline-block h-[2.2em] rounded-xs ml-3 mr-1 bg-fd-border xl:hidden" />
+      <span className="absolute left-full top-0 bottom-0 w-2 pointer-events-none bg-[linear-gradient(to_right,var(--color-fd-background),transparent)] xl:hidden" />
     </span>
   );
 }

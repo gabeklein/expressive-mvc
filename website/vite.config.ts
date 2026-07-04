@@ -1,5 +1,4 @@
 import { reactRouter } from '@react-router/dev/vite';
-import expressive from '@expressive/vite-plugin';
 import tailwindcss from '@tailwindcss/vite';
 import { defineConfig, type Plugin } from 'vite';
 import tsconfigPaths from 'vite-tsconfig-paths';
@@ -15,7 +14,6 @@ export default defineConfig({
     }
   },
   plugins: [
-    expressive(),
     mdx(MdxConfig),
     tailwindcss(),
     reactRouter(),

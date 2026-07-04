@@ -1,20 +1,19 @@
-import type { BaseLayoutProps } from 'fumadocs-ui/layouts/shared';
 import { HomeLayout } from 'fumadocs-ui/layouts/home';
+import type { BaseLayoutProps } from 'fumadocs-ui/layouts/shared';
 import Logo from '@/components/Logo';
-
-import { Hero } from './Hero';
 import { Background } from './Background';
-import { Problem, Solution } from './Examples';
 import { Benefits } from './Benefits';
 import { CTA } from './CTA';
+import { Problem, Solution } from './Examples';
+import { Hero } from './Hero';
 
 export const layoutOptions: BaseLayoutProps = {
   nav: { title: <Logo /> },
   links: [
     { text: 'Docs', url: '/docs' },
-    { text: 'Playground', url: '/examples' }
+    { text: 'Playground', url: '/examples' },
   ],
-  githubUrl: 'https://github.com/gabeklein/expressive-mvc'
+  githubUrl: 'https://github.com/gabeklein/expressive-mvc',
 };
 
 export function meta() {
@@ -22,16 +21,14 @@ export function meta() {
     { title: 'Expressive MVC' },
     {
       name: 'description',
-      content: 'Class-based state for modern React applications'
-    }
+      content: 'Class-based state for modern React applications',
+    },
   ];
 }
 
 export default function Home() {
-  $contentWidth: "1080px";
-
   return (
-    <HomeLayout {...layoutOptions}>
+    <HomeLayout {...layoutOptions} className="[--content-width:1080px]">
       <Background />
       <Hero />
       <Problem />

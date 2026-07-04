@@ -1,3 +1,4 @@
+import { RootProvider } from 'fumadocs-ui/provider/react-router';
 import {
   isRouteErrorResponse,
   Links,
@@ -6,7 +7,6 @@ import {
   Scripts,
   ScrollRestoration,
 } from 'react-router';
-import { RootProvider } from 'fumadocs-ui/provider/react-router';
 import type { Route } from './+types/root';
 import './app.css';
 import SearchDialog from '@/components/Search';
@@ -26,12 +26,6 @@ export const links: Route.LinksFunction = () => [
 ];
 
 export function Layout({ children }: { children: React.ReactNode }) {
-  body: {
-    display: flex;
-    flexDirection: column;
-    minHeight: `100vh`;
-  }
-
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -40,10 +34,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <Meta />
         <Links />
       </head>
-      <body>
-        <RootProvider search={{ SearchDialog }}>
-          {children}
-        </RootProvider>
+      <body className="flex min-h-screen flex-col">
+        <RootProvider search={{ SearchDialog }}>{children}</RootProvider>
         <ScrollRestoration />
         <Scripts />
       </body>
@@ -60,18 +52,6 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
   let details = 'An unexpected error occurred.';
   let stack: string | undefined;
 
-  paddingTop: 64;
-  padding: 16;
-  width: fill;
-  maxWidth: 1400;
-  margin: 0, auto;
-
-  pre: {
-    width: fill;
-    padding: 16;
-    overflowX: auto;
-  }
-
   if (isRouteErrorResponse(error)) {
     if (error.status === 404) return <NotFound />;
     message = 'Error';
@@ -82,11 +62,11 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
   }
 
   return (
-    <main>
+    <main className="mx-auto w-full max-w-[1400px] p-4 pt-16">
       <h1>{message}</h1>
       <p>{details}</p>
       {stack && (
-        <pre>
+        <pre className="w-full overflow-x-auto p-4">
           <code>{stack}</code>
         </pre>
       )}

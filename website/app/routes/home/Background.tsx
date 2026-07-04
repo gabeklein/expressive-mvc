@@ -1,21 +1,9 @@
 import { Canvas2D } from '@/components/Canvas';
 
 export function Background() {
-  position: fixed;
-  height: `100vh`;
-  width: `100vw`;
-  zIndex: -1;
-
-  AnimateBG: {
-    position: absolute;
-    filter: `blur(3px)`;
-    top: 0;
-    left: 0;
-  }
-
   return (
-    <div>
-      <AnimateBG />
+    <div className="fixed h-screen w-screen -z-1">
+      <AnimateBG className="absolute top-0 left-0 blur-xs" />
     </div>
   );
 }
@@ -120,12 +108,7 @@ class Particle {
   }
 
   drawLine(to: Particle) {
-    const {
-      canvas,
-      particleColor,
-      maxLineLength,
-      minLineLength
-    } = this.parent;
+    const { canvas, particleColor, maxLineLength, minLineLength } = this.parent;
 
     const length = Math.sqrt((to.x - this.x) ** 2 + (to.y - this.y) ** 2);
 
@@ -136,7 +119,7 @@ class Particle {
 
     const lengthOpacity = Math.min(
       1,
-      Math.min(maxLineLength - length, length - minLineLength) / fadeMarginPx
+      Math.min(maxLineLength - length, length - minLineLength) / fadeMarginPx,
     );
 
     const timeOpacity = Math.min(1, Math.min(this.life, to.life) / fadeTimeMs);
