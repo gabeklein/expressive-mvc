@@ -3,7 +3,7 @@ import { Canvas2D } from '@/components/Canvas';
 export function Background() {
   return (
     <div className="fixed h-screen w-screen -z-1">
-      <AnimateBG className="absolute top-0 left-0 blur-[3px]" />
+      <AnimateBG className="absolute top-0 left-0 blur-xs" />
     </div>
   );
 }

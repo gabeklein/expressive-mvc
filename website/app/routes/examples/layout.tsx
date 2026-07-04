@@ -21,7 +21,7 @@ export default function ExamplesLayout() {
 
 function Navigation() {
   return (
-    <nav className="flex items-center gap-2 overflow-x-auto ml-3 pb-3 xl:flex-col xl:items-stretch xl:self-start xl:overflow-x-visible xl:overflow-y-auto xl:min-h-0 xl:max-h-[calc(100vh-7rem)] xl:sticky xl:top-6 xl:w-[150px] xl:shrink-0 xl:ml-0 xl:pb-0 xl:gap-5">
+    <nav className="flex items-center gap-2 overflow-x-auto ml-3 pb-3 xl:flex-col xl:items-stretch xl:self-start xl:overflow-x-visible xl:overflow-y-auto xl:min-h-0 xl:max-h-[calc(100vh-7rem)] xl:sticky xl:top-6 xl:w-36 xl:shrink-0 xl:ml-0 xl:pb-0 xl:gap-5">
       {GROUPS.map((group) => (
         <div
           className="flex items-center mr-[1.2em] gap-2 xl:flex-col xl:items-stretch xl:mr-0 xl:gap-1"
@@ -50,9 +50,9 @@ function ExampleLink({ path, label }: { path: string; label: string }) {
 
 function GroupLabel({ label }: { label: string }) {
   return (
-    <span className="flex items-center self-stretch text-[0.78em] font-semibold uppercase tracking-[0.08em] text-fd-foreground whitespace-nowrap bg-fd-background sticky left-0 z-[1] xl:static xl:mb-1.5 xl:pl-2 xl:text-[0.72em] xl:text-fd-muted-foreground">
+    <span className="flex items-center self-stretch text-[0.78em] font-semibold uppercase tracking-widest text-fd-foreground whitespace-nowrap bg-fd-background sticky left-0 z-[1] xl:static xl:mb-1.5 xl:pl-2 xl:text-[0.72em] xl:text-fd-muted-foreground">
       {label}
-      <span className="w-0.5 inline-block h-[2.2em] rounded-xs ml-3 mr-[5px] bg-fd-border xl:hidden" />
+      <span className="w-0.5 inline-block h-[2.2em] rounded-xs ml-3 mr-1 bg-fd-border xl:hidden" />
       <span className="absolute left-full top-0 bottom-0 w-2 pointer-events-none bg-[linear-gradient(to_right,var(--color-fd-background),transparent)] xl:hidden" />
     </span>
   );

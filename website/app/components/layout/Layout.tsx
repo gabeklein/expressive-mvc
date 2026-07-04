@@ -26,8 +26,8 @@ function Handle(props: HandleProps) {
       onMouseDown={grab}>
       <div
         className={
-          'absolute rounded-full [transition:background_0.1s_ease-out] bg-[#FFFFFF03] hover:bg-(--accent-light) ' +
-          (vertical ? 'inset-y-2.5 inset-x-[3px]' : 'inset-y-[3px] inset-x-2.5')
+          'absolute rounded-full [transition:background_0.1s_ease-out] bg-white/1 hover:bg-(--accent-light) ' +
+          (vertical ? 'inset-y-2.5 inset-x-1' : 'inset-y-1 inset-x-2.5')
         }
       />
       {pull && (
@@ -50,7 +50,7 @@ interface CornerProps {
 
 const Corner = (props: CornerProps) => (
   <div
-    className="absolute cursor-move rounded-full size-[9px] border-transparent border-solid z-10 hover:border-(--accent-light)"
+    className="absolute cursor-move rounded-full size-2.5 border-transparent border-solid z-10 hover:border-(--accent-light)"
     {...props}
   />
 );
