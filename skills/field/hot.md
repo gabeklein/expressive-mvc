@@ -168,6 +168,6 @@ function hot<T extends object>(value: T): T;
 - Array `push`, `unshift`, `pop`, `shift`, `splice`, `sort`, and `reverse` work through native methods and notify the affected keys.
 - Array holes are not allowed; use placeholders or `splice()`.
 - Object property reads and writes are tracked by property key.
-- Object key enumeration is not shape-reactive; effects should read the keys they depend on.
+- Object key enumeration (`Object.keys`/`values`/`entries`, spread, `for...in`) is shape-reactive: key add and delete re-run the effect, while writes to existing keys stay tracked per key.
 - Symbol keys and function values are passed through without keyed tracking.
 - Nested arrays and objects are not wrapped recursively.

@@ -1,9 +1,11 @@
-import { event, touch } from '../observable';
+import { event, KEYS, touch } from '../observable';
 
 /**
  * Wrap an array or object as a reactive Proxy.
  *
  * Reads register subscriptions in active watch contexts; writes fire keyed events.
+ * Key enumeration is shape-reactive: add/delete of object keys re-fires consumers
+ * which enumerated, while existing-key writes stay tracked per key.
  * Single-level only - nested objects are not wrapped recursively. Use a child State
  * (or a separate `hot()` call) for nested reactivity.
  *
@@ -103,10 +105,20 @@ function object<T extends object>(value: T) {
       return touch(receiver, key, result);
     },
     set(target, key, value) {
-      return assign(proxy, target, key, value);
+      const added = !(key in target);
+      const ok = assign(proxy, target, key, value);
+
+      if (ok && added && typeof key !== 'symbol') event(proxy, KEYS);
+
+      return ok;
     },
     deleteProperty(target, key) {
-      return remove(proxy, target, key);
+      const had = key in target;
+      const ok = remove(proxy, target, key);
+
+      if (ok && had && typeof key !== 'symbol') event(proxy, KEYS);
+
+      return ok;
     }
   });
 

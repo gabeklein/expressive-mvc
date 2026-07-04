@@ -334,6 +334,22 @@ describe('array', () => {
     expect(cb).toHaveBeenCalledWith(3, 1);
   });
 
+  it('enumeration of keys subscribes to length', async () => {
+    const arr = hot([1, 2]);
+    const cb = mock();
+    watch(arr, ($) => {
+      expect(Object.keys($)).toEqual(
+        Array.from({ length: $.length }, (_, i) => String(i))
+      );
+      cb();
+    });
+    cb.mockClear();
+
+    arr.push(3);
+    await flush();
+    expect(cb).toHaveBeenCalled();
+  });
+
   it('length truncation fires length event', async () => {
     const arr = hot([1, 2, 3]);
     const onIndex = mock();
@@ -464,6 +480,58 @@ describe('object', () => {
     expect(cb).not.toHaveBeenCalled();
   });
 
+  it('enumeration sees keys and values through watch proxy', () => {
+    const obj = hot({ a: 1, b: 2 });
+
+    watch(obj, ($) => {
+      expect(Object.keys($)).toEqual(['a', 'b']);
+      expect(Object.values($)).toEqual([1, 2]);
+      expect({ ...$ }).toEqual({ a: 1, b: 2 });
+    });
+  });
+
+  it('enumeration fires when a key is added', async () => {
+    const obj = hot({ a: 1 } as Record<string, number>);
+    const cb = mock();
+    watch(obj, ($) => {
+      void Object.keys($);
+      cb();
+    });
+    cb.mockClear();
+
+    obj.b = 2;
+    await flush();
+    expect(cb).toHaveBeenCalled();
+  });
+
+  it('enumeration fires when a key is deleted', async () => {
+    const obj = hot({ a: 1, b: 2 } as Record<string, number>);
+    const cb = mock();
+    watch(obj, ($) => {
+      void Object.keys($);
+      cb();
+    });
+    cb.mockClear();
+
+    delete obj.b;
+    await flush();
+    expect(cb).toHaveBeenCalled();
+  });
+
+  it('enumeration does not fire on existing-key write', async () => {
+    const obj = hot({ a: 1, b: 2 });
+    const cb = mock();
+    watch(obj, ($) => {
+      void Object.keys($);
+      cb();
+    });
+    cb.mockClear();
+
+    obj.a = 99;
+    await flush();
+    expect(cb).not.toHaveBeenCalled();
+  });
+
   it('does not recurse into nested objects', () => {
     const obj = hot({ inner: { x: 1 } });
     expect(observer(obj.inner)).toBeUndefined();
@@ -571,5 +639,33 @@ describe('as State field', () => {
     await flush();
 
     expect(cb).toHaveBeenCalledWith('X');
+  });
+
+  it('getter aggregating over keyed collection stays reactive', async () => {
+    class Cart extends State {
+      items: Record<string, number> = hot({});
+
+      get count() {
+        return Object.values(this.items).reduce((sum, qty) => sum + qty, 0);
+      }
+    }
+
+    const cart = Cart.new();
+    const cb = mock();
+
+    cart.get(($) => cb($.count));
+    expect(cb).toHaveBeenCalledWith(0);
+
+    cart.items.pizza = 2;
+    await flush();
+    expect(cb).toHaveBeenCalledWith(2);
+
+    cart.items.pizza = 5;
+    await flush();
+    expect(cb).toHaveBeenCalledWith(5);
+
+    delete cart.items.pizza;
+    await flush();
+    expect(cb).toHaveBeenLastCalledWith(0);
   });
 });
