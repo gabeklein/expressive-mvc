@@ -1,125 +1,43 @@
 import { Link } from 'react-router';
 
 export function Hero() {
-  borderBottom: `1px solid`;
-  borderColor: $colorFdBorder;
-  boxSizing: borderBox;
-  height: `calc(100vh - 56px)`;
-  display: flex;
-  alignItems: center;
-  justifyContent: center;
-
-  inner: {
-    margin: 0, auto;
-    maxWidth: 1024;
-    padding: 96, 24;
-    textAlign: center;
-    $md: {
-      padding: 128, 24;
-    }
-  }
-
-  badge: {
-    display: inlineBlock;
-    marginBottom: 24;
-    fontSize: 0.75;
-    textTransform: uppercase;
-    letterSpacing: '0.1em';
-    color: $colorFdMutedForeground;
-  }
-
-  heading: {
-    fontSize: 3.0;
-    fontFamily: Rubik;
-    fontWeight: 300;
-    maxWidth: 10.0;
-    margin: 0, auto;
-    fontWeight: bold;
-    letterSpacing: '-0.025em';
-    lineHeight: 1.2;
-    marginBottom: 24;
-    $md: { fontSize: 4.5; }
-
-    accent: {
-      color: $colorFdPrimary;
-    }
-  }
-
-  subtitle: {
-    fontSize: 1.125;
-    color: $colorFdMutedForeground;
-    maxWidth: 672;
-    margin: 0, auto;
-    marginBottom: 40;
-    $md: { fontSize: 1.25; }
-  }
-
-  install: {
-    marginTop: 48;
-    display: "inline-block";
-    fontFamily: monospace;
-    fontSize: 0.875, rem;
-    background: $colorFdMuted;
-    padding: 12, 20;
-    borderRadius: 8;
-    color: $colorFdMutedForeground;
-  }
-
   return (
-    <section>
-      <div _inner>
-        <div _badge>State management, reorganized</div>
-        <h1 _heading>
+    <section className="border-b border-fd-border box-border h-[calc(100vh-56px)] flex items-center justify-center">
+      <div className="mx-auto max-w-5xl py-24 px-6 text-center md:py-32">
+        <div className="inline-block mb-6 text-[0.75em] uppercase tracking-[0.1em] text-fd-muted-foreground">
+          State management, reorganized
+        </div>
+        <h1 className="text-[3em] font-[Rubik] max-w-[10em] mx-auto font-bold tracking-[-0.025em] leading-[1.2] mb-6 md:text-[4.5em]">
           What if state had it's own Component?
         </h1>
-        <p _subtitle>
-          Expressive MVC consolidates your application state into
-          plain classes. No reducers, no selectors, no dependency arrays. Just
-          data, behavior, and lifecycle in one place.
+        <p className="text-[1.125em] text-fd-muted-foreground max-w-2xl mx-auto mb-10 md:text-[1.25em]">
+          Expressive MVC consolidates your application state into plain classes.
+          No reducers, no selectors, no dependency arrays. Just data, behavior,
+          and lifecycle in one place.
         </p>
         <HeroNavigation />
-        <div _install>npm install @expressive/react</div>
+        <div className="mt-12 inline-block font-mono text-sm leading-[inherit] bg-fd-muted py-3 px-5 rounded-lg text-fd-muted-foreground">
+          npm install @expressive/react
+        </div>
       </div>
     </section>
   );
 }
 
-function HeroNavigation(){
-  display: flex;
-  flexDirection: column;
-  gap: 12;
-  justifyContent: center;
-  $sm: { flexDirection: row; }
+const linkClass =
+  'inline-flex items-center justify-center rounded-full font-medium py-3 px-6 no-underline transition-[opacity,background-color] duration-200';
 
-  Link: {
-    display: "inline-flex";
-    alignItems: center;
-    justifyContent: center;
-    radius: round;
-    fontWeight: 500;
-    padding: 12, 24;
-    textDecoration: none;
-    transition: `opacity 0.2s, background-color 0.2s`;
-  }
-
-  primary: {
-    background: $colorFdPrimary;
-    color: $colorFdPrimaryForeground;
-    $hover: { opacity: 0.9; }
-  }
-
-  secondary: {
-    border: $colorFdBorder;
-    color: inherit;
-    $hover: { background: $colorFdMuted; }
-  }
-
+function HeroNavigation() {
   return (
-    <div>
-      <Link _primary to="/docs/getting-started">
+    <div className="flex flex-col gap-3 justify-center sm:flex-row">
+      <Link
+        className={`${linkClass} bg-fd-primary text-fd-primary-foreground hover:opacity-90`}
+        to="/docs/getting-started">
         Get Started
       </Link>
-      <Link _secondary to="/docs/why-classes">
+      <Link
+        className={`${linkClass} border border-fd-border text-inherit hover:bg-fd-muted`}
+        to="/docs/why-classes">
         Why Classes?
       </Link>
     </div>

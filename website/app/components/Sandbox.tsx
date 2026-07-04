@@ -3,12 +3,12 @@ import {
   SandpackLayout,
   SandpackPreview,
   SandpackProvider,
-  useSandpack
+  useSandpack,
 } from '@codesandbox/sandpack-react';
 import State, { ref } from '@expressive/react';
-import { useEffect, useMemo, useState } from 'react';
 import { useTheme } from 'next-themes';
 import type { MouseEvent as ReactMouseEvent } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 class Panes extends State {
   mode: 'preview' | 'code' = 'preview';
@@ -19,7 +19,8 @@ class Panes extends State {
     const onWheel = (e: WheelEvent) => {
       if (!e.ctrlKey) return;
       e.preventDefault();
-      const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+      const delta =
+        Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
       this.ratio = Math.min(80, Math.max(20, this.ratio - delta * 0.05));
     };
 
@@ -27,7 +28,7 @@ class Panes extends State {
     return () => el.removeEventListener('wheel', onWheel);
   });
 
-  onSelect(is: typeof this.mode){
+  onSelect(is: typeof this.mode) {
     this.mode = is;
   }
 
@@ -51,7 +52,7 @@ class Panes extends State {
 
 export default function Sandbox({
   name,
-  files
+  files,
 }: {
   name: string;
   files: Record<string, string>;
@@ -82,7 +83,10 @@ export default function Sandbox({
 
     return {
       ...files,
-      '/index.tsx': typeof entry === 'string' ? entry + line : { ...entry, code: entry.code + line }
+      '/index.tsx':
+        typeof entry === 'string'
+          ? entry + line
+          : { ...entry, code: entry.code + line },
     };
   }, [files, dark]);
 
@@ -108,8 +112,8 @@ function Layout() {
     run() {
       sandpack.dispatch({ type: 'refresh' });
       return true;
-    }
-  }
+    },
+  };
 
   // Below the breakpoint the panels can't fit side by side; show one at a time
   // and reveal a toggle. Inline display wins over Sandpack's own layout CSS.
@@ -117,75 +121,53 @@ function Layout() {
   const showEditor = !narrow || mode === 'code';
   const showPreview = !narrow || mode === 'preview';
 
-  position: relative;
-  height: '100%';
-  $spLayoutHeight: '100%';
-
-  handle: {
-    flexShrink: 0;
-    width: 6;
-    cursor: "col-resize";
-    background: $colorFdBorder;
-
-    $hover: {
-      background: $colorFdPrimary;
-    }
-  }
-
   return (
-    <SandpackLayout ref={layout}>
+    <SandpackLayout
+      ref={layout}
+      className="relative h-full [--sp-layout-height:100%]">
       <SandpackCodeEditor
-        style={{ display: showEditor ? 'flex' : 'none', flex: narrow ? '1' : `0 0 ${ratio}%` }}
+        style={{
+          display: showEditor ? 'flex' : 'none',
+          flex: narrow ? '1' : `0 0 ${ratio}%`,
+        }}
         extensionsKeymap={[refreshOnSave]}
       />
-      {!narrow && <div _handle onMouseDown={grab} />}
-      <SandpackPreview style={{ display: showPreview ? 'flex' : 'none', flex: '1 1 0%' }} />
-      {narrow && (
-        <Switcher panel={mode} onSelect={onSelect} />
+      {!narrow && (
+        <div
+          className="shrink-0 w-[6px] cursor-col-resize bg-fd-border hover:bg-fd-primary"
+          onMouseDown={grab}
+        />
       )}
+      <SandpackPreview
+        style={{ display: showPreview ? 'flex' : 'none', flex: '1 1 0%' }}
+      />
+      {narrow && <Switcher panel={mode} onSelect={onSelect} />}
     </SandpackLayout>
   );
 }
 
 function Switcher({
   panel,
-  onSelect
+  onSelect,
 }: {
   panel: 'preview' | 'code';
   onSelect: (v: 'preview' | 'code') => void;
 }) {
-  position: absolute;
-  top: 8;
-  right: 8;
-  zIndex: 10;
-  display: flex;
-  gap: 2;
-  padding: 2;
-  borderRadius: 6;
-  border: $colorFdBorder;
-  background: $colorFdBackground;
-
-  button: {
-    padding: 4, 10;
-    fontSize: 0.75;
-    borderRadius: 4;
-    border: none;
-    background: none;
-    color: $colorFdMutedForeground;
-    cursor: pointer;
-
-    if("[aria-pressed='true']") {
-      background: $colorFdMuted;
-      color: $colorFdForeground;
-    }
-  }
+  const button =
+    'px-2.5 py-1 text-[0.75em] rounded border-none bg-transparent text-fd-muted-foreground cursor-pointer aria-pressed:bg-fd-muted aria-pressed:text-fd-foreground';
 
   return (
-    <div>
-      <button _button aria-pressed={panel === 'code'} onClick={() => onSelect('code')}>
+    <div className="absolute top-2 right-2 z-10 flex gap-0.5 p-0.5 rounded-md border border-fd-border bg-fd-background">
+      <button
+        className={button}
+        aria-pressed={panel === 'code'}
+        onClick={() => onSelect('code')}>
         Code
       </button>
-      <button _button aria-pressed={panel === 'preview'} onClick={() => onSelect('preview')}>
+      <button
+        className={button}
+        aria-pressed={panel === 'preview'}
+        onClick={() => onSelect('preview')}>
         Preview
       </button>
     </div>
