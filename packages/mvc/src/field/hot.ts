@@ -91,6 +91,7 @@ function array<T>(value: T[]) {
 
 function object<T extends object>(value: T) {
   const get = () => Object.freeze({ ...value });
+  const notify = (key: unknown) => typeof key !== 'symbol' && event(proxy, KEYS);
 
   const proxy: any = new Proxy(value, {
     has,
@@ -105,10 +106,10 @@ function object<T extends object>(value: T) {
       return touch(receiver, key, result);
     },
     set(target, key, value) {
-      const added = !(key in target);
+      const had = key in target;
       const ok = assign(proxy, target, key, value);
 
-      if (ok && added && typeof key !== 'symbol') event(proxy, KEYS);
+      if (ok && !had) notify(key);
 
       return ok;
     },
@@ -116,7 +117,7 @@ function object<T extends object>(value: T) {
       const had = key in target;
       const ok = remove(proxy, target, key);
 
-      if (ok && had && typeof key !== 'symbol') event(proxy, KEYS);
+      if (ok && had) notify(key);
 
       return ok;
     }
