@@ -154,7 +154,7 @@ function Switcher({
   onSelect: (v: 'preview' | 'code') => void;
 }) {
   const button =
-    'px-2.5 py-1 text-[0.75em] rounded border-none bg-transparent text-fd-muted-foreground cursor-pointer aria-pressed:bg-fd-muted aria-pressed:text-fd-foreground';
+    'px-2.5 py-1 text-xs rounded border-none bg-transparent text-fd-muted-foreground cursor-pointer aria-pressed:bg-fd-muted aria-pressed:text-fd-foreground';
 
   return (
     <div className="absolute top-2 right-2 z-10 flex gap-0.5 p-0.5 rounded-md border border-fd-border bg-fd-background">

@@ -5,13 +5,13 @@ export function Benefits() {
     <section className="border-b border-fd-border">
       <div className="mx-auto max-w-(--content-width) py-24 px-6">
         <div className="max-w-2xl mb-16">
-          <div className="text-xs leading-[inherit] uppercase tracking-widest text-fd-muted-foreground mb-3">
+          <div className="text-xs uppercase tracking-widest text-fd-muted-foreground mb-3">
             What you get
           </div>
-          <h2 className="text-3xl md:text-4xl leading-[inherit] md:leading-[inherit] font-bold mb-4">
+          <h2 className="text-3xl md:text-4xl font-bold mb-4">
             A state backbone for your application.
           </h2>
-          <p className="text-fd-muted-foreground text-lg leading-[inherit]">
+          <p className="text-fd-muted-foreground text-lg">
             Expressive is designed to be the place where data, behavior, and
             lifecycle live - so components can go back to doing what they do
             best: describing UI.
@@ -70,7 +70,7 @@ interface BenefitProps {
 function Benefit({ title, children }: BenefitProps) {
   return (
     <div className="border-l-2 border-fd-primary pl-5">
-      <h3 className="text-lg leading-[inherit] font-semibold mb-2">{title}</h3>
+      <h3 className="text-lg font-semibold mb-2">{title}</h3>
       <p className="text-fd-muted-foreground leading-relaxed">{children}</p>
     </div>
   );

@@ -42,7 +42,7 @@ function ExampleLink({ path, label }: { path: string; label: string }) {
   return (
     <NavLink
       to={`/examples/${path}`}
-      className="py-1.5 px-3 rounded-md border border-fd-border text-[0.875em] no-underline text-fd-muted-foreground select-none whitespace-nowrap hover:text-fd-foreground hover:border-fd-muted-foreground aria-[current=page]:bg-[color-mix(in_srgb,var(--accent)_14%,transparent)] aria-[current=page]:border-[color-mix(in_srgb,var(--accent)_45%,transparent)] aria-[current=page]:text-(--accent) xl:border-0 xl:border-l-2 xl:border-l-transparent xl:rounded-l-none xl:rounded-r-sm xl:-ml-px xl:hover:bg-fd-muted xl:hover:border-l-fd-muted-foreground xl:aria-[current=page]:border-l-(--accent)">
+      className="py-1.5 px-3 rounded-md border border-fd-border text-sm no-underline text-fd-muted-foreground select-none whitespace-nowrap hover:text-fd-foreground hover:border-fd-muted-foreground aria-[current=page]:bg-[color-mix(in_srgb,var(--accent)_14%,transparent)] aria-[current=page]:border-[color-mix(in_srgb,var(--accent)_45%,transparent)] aria-[current=page]:text-(--accent) xl:border-0 xl:border-l-2 xl:border-l-transparent xl:rounded-l-none xl:rounded-r-sm xl:-ml-px xl:hover:bg-fd-muted xl:hover:border-l-fd-muted-foreground xl:aria-[current=page]:border-l-(--accent)">
       {label}
     </NavLink>
   );
@@ -50,7 +50,7 @@ function ExampleLink({ path, label }: { path: string; label: string }) {
 
 function GroupLabel({ label }: { label: string }) {
   return (
-    <span className="flex items-center self-stretch text-[0.78em] font-semibold uppercase tracking-widest text-fd-foreground whitespace-nowrap bg-fd-background sticky left-0 z-[1] xl:static xl:mb-1.5 xl:pl-2 xl:text-[0.72em] xl:text-fd-muted-foreground">
+    <span className="flex items-center self-stretch text-xs font-semibold uppercase tracking-widest text-fd-foreground whitespace-nowrap bg-fd-background sticky left-0 z-[1] xl:static xl:mb-1.5 xl:pl-2 xl:text-xs xl:text-fd-muted-foreground">
       {label}
       <span className="w-0.5 inline-block h-[2.2em] rounded-xs ml-3 mr-1 bg-fd-border xl:hidden" />
       <span className="absolute left-full top-0 bottom-0 w-2 pointer-events-none bg-[linear-gradient(to_right,var(--color-fd-background),transparent)] xl:hidden" />
