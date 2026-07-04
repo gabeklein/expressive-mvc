@@ -43,7 +43,6 @@ interface Observing {
 
 const Observer: unique symbol = Symbol('Observer');
 const Observing: unique symbol = Symbol('Observing');
-const KEYS: unique symbol = Symbol('keys');
 
 /** Central event dispatch. Bunches all updates to occur at same time. */
 const DISPATCH = new Set<() => void>();
@@ -97,18 +96,10 @@ function observe<T extends object>(
       if (update !== true) release();
     });
 
-  const observing: Observing = { callback, watching, required };
+  const proxy = Object.create(object) as T;
 
-  return new Proxy(object, {
-    get(target, key, receiver) {
-      return key === Observing
-        ? observing
-        : Reflect.get(target, key, receiver);
-    },
-    ownKeys(target) {
-      watching.add(Array.isArray(target) ? 'length' : KEYS);
-      return Reflect.ownKeys(target);
-    }
+  return Object.defineProperty(proxy, Observing, {
+    value: { callback, watching, required } as Observing
   });
 }
 
@@ -359,7 +350,6 @@ function capture(scope: (release: (update?: boolean | null) => void) => void) {
 export {
   listener,
   event,
-  KEYS,
   Observer,
   touch,
   pending,

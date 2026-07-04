@@ -35,7 +35,7 @@ export class Router extends Component {
    * }
    * ```
    */
-  query = hot({} as Record<string, string | undefined>);
+  query: Record<string, string | undefined> = hot({} as Record<string, string | undefined>);
 
   /** In-memory history: visited urls (path + query) and the cursor into them. */
   entries: string[] = [];

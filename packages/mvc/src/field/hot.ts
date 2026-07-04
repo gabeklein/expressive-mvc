@@ -1,19 +1,24 @@
-import { event, KEYS, touch } from '../observable';
+import { event, touch } from '../observable';
 
 /**
  * Wrap an array or object as a reactive Proxy.
  *
  * Reads register subscriptions in active watch contexts; writes fire keyed events.
- * Key enumeration is shape-reactive: add/delete of object keys re-fires consumers
- * which enumerated, while existing-key writes stay tracked per key.
+ * Plain key enumeration is not tracked; for aggregates, read the object `get()`
+ * snapshot, which subscribes to every change of the collection.
  * Single-level only - nested objects are not wrapped recursively. Use a child State
  * (or a separate `hot()` call) for nested reactivity.
  *
  * Storage is shared with the input value: external mutation of the original
  * collection bypasses dispatch. Pass a fresh value when this matters.
  */
+type Snapshot<T> = { get(): Readonly<T> };
+type HotObject<T> = 'get' extends keyof T
+  ? string extends keyof T ? T & Snapshot<T> : T
+  : T & Snapshot<T>;
+
 function hot<T>(value: T[]): T[];
-function hot<T extends object>(value: T): T;
+function hot<T extends object>(value: T): HotObject<T>;
 function hot(value: any) {
   if (typeof value !== 'object' || !value)
     throw new Error('hot() requires an array or object');
@@ -89,14 +94,17 @@ function array<T>(value: T[]) {
   return proxy;
 }
 
+const SNAPSHOT = Symbol('snapshot');
+
 function object<T extends object>(value: T) {
   const get = () => Object.freeze({ ...value });
-  const notify = (key: unknown) => typeof key !== 'symbol' && event(proxy, KEYS);
+  const notify = (key: unknown) => typeof key !== 'symbol' && event(proxy, SNAPSHOT);
 
   const proxy: any = new Proxy(value, {
     has,
     get(target, key, receiver) {
-      if (key === 'get' && !(key in target)) return get;
+      if (key === 'get' && !(key in target))
+        return touch(receiver, SNAPSHOT, get);
 
       const result = Reflect.get(target, key, receiver);
 
@@ -106,10 +114,10 @@ function object<T extends object>(value: T) {
       return touch(receiver, key, result);
     },
     set(target, key, value) {
-      const had = key in target;
+      const changed = !(key in target) || (target as any)[key] !== value;
       const ok = assign(proxy, target, key, value);
 
-      if (ok && !had) notify(key);
+      if (ok && changed) notify(key);
 
       return ok;
     },

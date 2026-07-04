@@ -334,22 +334,6 @@ describe('array', () => {
     expect(cb).toHaveBeenCalledWith(3, 1);
   });
 
-  it('enumeration of keys subscribes to length', async () => {
-    const arr = hot([1, 2]);
-    const cb = mock();
-    watch(arr, ($) => {
-      expect(Object.keys($)).toEqual(
-        Array.from({ length: $.length }, (_, i) => String(i))
-      );
-      cb();
-    });
-    cb.mockClear();
-
-    arr.push(3);
-    await flush();
-    expect(cb).toHaveBeenCalled();
-  });
-
   it('length truncation fires length event', async () => {
     const arr = hot([1, 2, 3]);
     const onIndex = mock();
@@ -480,21 +464,21 @@ describe('object', () => {
     expect(cb).not.toHaveBeenCalled();
   });
 
-  it('enumeration sees keys and values through watch proxy', () => {
+  it('snapshot returns keys and values', () => {
     const obj = hot({ a: 1, b: 2 });
 
     watch(obj, ($) => {
-      expect(Object.keys($)).toEqual(['a', 'b']);
-      expect(Object.values($)).toEqual([1, 2]);
-      expect({ ...$ }).toEqual({ a: 1, b: 2 });
+      const snapshot = $.get();
+      expect(Object.keys(snapshot)).toEqual(['a', 'b']);
+      expect(Object.values(snapshot)).toEqual([1, 2]);
     });
   });
 
-  it('enumeration fires when a key is added', async () => {
+  it('snapshot fires when a key is added', async () => {
     const obj = hot({ a: 1 } as Record<string, number>);
     const cb = mock();
     watch(obj, ($) => {
-      void Object.keys($);
+      void $.get();
       cb();
     });
     cb.mockClear();
@@ -504,11 +488,11 @@ describe('object', () => {
     expect(cb).toHaveBeenCalled();
   });
 
-  it('enumeration fires when a key is deleted', async () => {
+  it('snapshot fires when a key is deleted', async () => {
     const obj = hot({ a: 1, b: 2 } as Record<string, number>);
     const cb = mock();
     watch(obj, ($) => {
-      void Object.keys($);
+      void $.get();
       cb();
     });
     cb.mockClear();
@@ -518,16 +502,44 @@ describe('object', () => {
     expect(cb).toHaveBeenCalled();
   });
 
-  it('enumeration does not fire on existing-key write', async () => {
+  it('snapshot fires on existing-key write', async () => {
     const obj = hot({ a: 1, b: 2 });
     const cb = mock();
     watch(obj, ($) => {
-      void Object.keys($);
+      void $.get();
       cb();
     });
     cb.mockClear();
 
     obj.a = 99;
+    await flush();
+    expect(cb).toHaveBeenCalled();
+  });
+
+  it('snapshot does not fire on same-value write', async () => {
+    const obj = hot({ a: 1 });
+    const cb = mock();
+    watch(obj, ($) => {
+      void $.get();
+      cb();
+    });
+    cb.mockClear();
+
+    obj.a = 1;
+    await flush();
+    expect(cb).not.toHaveBeenCalled();
+  });
+
+  it('per-key effect does not fire on unrelated shape change', async () => {
+    const obj = hot({ a: 1 } as Record<string, number>);
+    const cb = mock();
+    watch(obj, ($) => {
+      void $.a;
+      cb();
+    });
+    cb.mockClear();
+
+    obj.b = 2;
     await flush();
     expect(cb).not.toHaveBeenCalled();
   });
@@ -641,12 +653,12 @@ describe('as State field', () => {
     expect(cb).toHaveBeenCalledWith('X');
   });
 
-  it('getter aggregating over keyed collection stays reactive', async () => {
+  it('getter aggregating over snapshot stays reactive', async () => {
     class Cart extends State {
-      items: Record<string, number> = hot({});
+      items = hot({} as Record<string, number>);
 
       get count() {
-        return Object.values(this.items).reduce((sum, qty) => sum + qty, 0);
+        return Object.values(this.items.get()).reduce((sum, qty) => sum + qty, 0);
       }
     }
 
