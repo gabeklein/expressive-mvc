@@ -18,7 +18,7 @@ export function Hero() {
           </h1>
           <p className="text-lg md:text-xl text-fd-muted-foreground max-w-xl mb-8">
             Just <code className="font-mono text-[0.9em] bg-fd-muted px-1.5 py-0.5 rounded">use()</code>{' '}
-             State instead - data, behavior, and lifecycle in one place.
+            a State instead - data, behavior, and lifecycle in one place.
             Components read what they need and update when values change.
           </p>
 
@@ -37,7 +37,7 @@ export function Hero() {
 
           <div className="flex flex-col gap-2 max-w-md">
             <CopyPill label="Add to your app" command="npm install @expressive/react" />
-            <CopyPill label="Ask your agent if MVC is right for you" command="npx skills add gabeklein/expressive-mvc" />
+            <CopyPill label="Ask your agent" command="npx skills add gabeklein/expressive-mvc" />
           </div>
           <p className="text-sm text-fd-muted-foreground mt-4">
             Drops into React app you already have - not a framework, no

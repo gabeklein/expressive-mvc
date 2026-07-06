@@ -5,7 +5,7 @@ import code from '@/components/Snippet';
 export function View() {
   return (
     <section>
-      <div className="mx-auto max-w-(--content-width) py-24 px-6 grid gap-12 lg:grid-cols-[2fr_3fr] lg:items-center">
+      <div className="mx-auto max-w-(--content-width) py-16 md:py-24 px-6 grid gap-12 lg:grid-cols-[2fr_3fr] lg:items-center">
         <div>
           <div className="text-xs uppercase tracking-widest text-fd-muted-foreground mb-3">
             Component
@@ -84,7 +84,7 @@ class TipCalculator extends Component {
               onChange={(e) => (this.tipPercent = +e.target.value)}
             />
           </label>
-          <span className="font-mono text-sm whitespace-nowrap ml-auto">
+          <span className="font-mono text-sm whitespace-nowrap sm:ml-auto">
             tip {tip.toFixed(2)} · total {total.toFixed(2)}
           </span>
         </div>

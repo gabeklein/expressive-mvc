@@ -3,7 +3,7 @@ import type React from 'react';
 export function Benefits() {
   return (
     <section className="bg-fd-foreground/[0.04]">
-      <div className="mx-auto max-w-(--content-width) py-24 px-6">
+      <div className="mx-auto max-w-(--content-width) py-16 md:py-24 px-6">
         <div className="max-w-2xl mb-16">
           <div className="text-xs uppercase tracking-widest text-fd-muted-foreground mb-3">
             What you get

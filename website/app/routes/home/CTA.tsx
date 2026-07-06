@@ -7,7 +7,7 @@ export function CTA() {
 
   return (
     <section>
-      <div className="mx-auto max-w-2xl py-24 px-6 text-center">
+      <div className="mx-auto max-w-2xl py-16 md:py-24 px-6 text-center">
         <h2 className="font-display text-3xl md:text-5xl font-bold tracking-tight mb-4">
           Move just one feature out of hooks.
         </h2>
