@@ -1,6 +1,7 @@
 import { HomeLayout } from 'fumadocs-ui/layouts/home';
 import type { BaseLayoutProps } from 'fumadocs-ui/layouts/shared';
 import Logo from '@/components/Logo';
+import { Agents } from './Agents';
 import { Background } from './Background';
 import { Benefits } from './Benefits';
 import { Comparison } from './Comparison';
@@ -38,6 +39,7 @@ export default function Home() {
       <Comparison />
       <Context />
       <Turn />
+      <Agents />
       <Benefits />
       <CTA />
     </HomeLayout>
