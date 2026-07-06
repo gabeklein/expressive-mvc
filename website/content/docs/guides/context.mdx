@@ -3,7 +3,7 @@ title: Context and Sharing
 description: Provider, the get instruction, and upstream/downstream lookup
 ---
 
-Expressive has a built-in, type-safe context system. The class itself is the key - no `createContext<T>()`, no default values, no prop drilling. Any State provided in an ancestor can be looked up anywhere below it.
+Expressive has a built-in, type-safe context system, and the class itself is the key. No `createContext<T>()`, no default values, no prop drilling - any State provided in an ancestor can be looked up anywhere below it.
 
 ```tsx
 import State, { Provider } from '@expressive/react';
@@ -33,6 +33,8 @@ function Header() {
   );
 }
 ```
+
+> Notice there's no plumbing between `App` and `Header` - the class is the contract. A working version of this tree lives at [composition/context](/examples/composition/context).
 
 <br />
 
@@ -86,17 +88,17 @@ Pass a record to provide several at once:
 </Provider>
 ```
 
-The `is` callback runs once per instance on creation. For multi-state providers, it runs once per instance created.
+The `is` callback runs once per instance created.
 
 ### Suspense
 
 ```tsx
-<Provider for={UserProfile} fallback={<Spinner />}>
+<Provider for={UserProfile} fallback={<Spinner />} name="profile">
   <ProfileView />
 </Provider>
 ```
 
-The `fallback` prop wraps children in a `Suspense` boundary, so any async `set()` in the provided state triggers the fallback.
+The `fallback` prop wraps children in a `Suspense` boundary, so any async `set()` in the provided state triggers the fallback. The optional `name` prop labels that boundary in React DevTools - handy when you have a few of them.
 
 <br />
 
@@ -119,7 +121,7 @@ function ThemeToggle() {
 
 - Throws if the state isn't provided above.
 - Re-renders only when accessed properties change.
-- Returns a new hook subscription if the provider is replaced upstream.
+- Re-subscribes automatically if the provider is replaced upstream.
 
 ### Optional lookup
 
@@ -133,7 +135,7 @@ const theme = Theme.get(false); // Theme | undefined
 const profile = UserProfile.get(true); // Required<UserProfile>
 ```
 
-With `true`, any accessed property that's currently undefined triggers Suspense. Use this when you want the rendering code to assume all data is present.
+With `true`, reading a property that is currently `undefined` throws an Error (`UserProfile.name is required in this context.`). That surfaces at the nearest **error boundary** - not Suspense - so use it where a missing value would be a bug, not a loading state.
 
 ### Computed selector
 
@@ -199,7 +201,7 @@ class Panel extends State {
 }
 ```
 
-This is **dependency injection**: a class declares what it needs, and whoever provides it supplies it. When an instance is created inside a Provider tree (or a Component), `get` fields are resolved automatically.
+This is **dependency injection**: a class declares what it needs, and whoever provides it supplies it. When an instance is created inside a Provider tree (or a Component), `get` fields resolve automatically.
 
 ### Upstream with callback
 
@@ -257,8 +259,8 @@ Sometimes you want a single child of a type, not an array:
 
 ```tsx
 class Container extends State {
-  form = get(FormState, true, true); // required, single
-  form = get(FormState, true, false); // optional, single
+  form = get(FormState, true, true); // required single - throws if missing
+  draft = get(DraftState, true, false); // optional single - T | undefined
 }
 ```
 
@@ -266,7 +268,7 @@ class Container extends State {
 
 ## Consumer (render prop)
 
-For cases where you want to read context inline without a new component:
+For reading context inline without a new component:
 
 ```tsx
 import { Consumer } from '@expressive/react';
@@ -277,6 +279,55 @@ import { Consumer } from '@expressive/react';
 ```
 
 The child function receives a tracking proxy, so property reads subscribe just like `State.get()`.
+
+<br />
+
+## Singletons and the root context
+
+Not everything wants a Provider. Some state is genuinely global - the session, the viewport, app settings. For those, call `State.new()` at module scope:
+
+```ts
+// session.ts
+import State from '@expressive/react';
+
+class Session extends State {
+  user = 'gabe';
+  logout() {
+    this.user = '';
+  }
+}
+
+export default Session.new();
+```
+
+`State.new()` registers the instance into `Context.root`, the global registry every context ultimately inherits from. Any component, anywhere, can now call `Session.get()` - no Provider required:
+
+```tsx
+function Avatar() {
+  const { user } = Session.get(); // found via the root context
+  return <img src={`/avatars/${user}.png`} />;
+}
+```
+
+A full app built this way (viewport, session, and theme as root singletons) is at [composition/singletons](/examples/composition/singletons).
+
+### Homes are permanent
+
+Where a state activates decides where its own `get()` lookups originate - its *home context* - and that assignment is first-wins. `State.new()` homes to root, immediately and permanently; wrapping the instance in a context afterward won't move it.
+
+The escape hatch is plain construction. `new State()` builds the instance without activating it, so the first explicit placement gets to claim it:
+
+```ts
+const cart = new Cart(); // constructed, not yet activated
+new Context(cart); // cart's home is this context
+```
+
+Useful in tests, and in code that prepares a state before mounting it into a tree.
+
+> **Good to know:** <br/>
+> Root singletons are honest about ambiguity. Create two implicit instances of the same type via `State.new()` and neither is "the" singleton - both are evicted from root lookup, rather than one silently winning. Explicit registration (a Provider, or `Context.root.add(state, true)`) bypasses this.
+
+That's the short version - constructor forms, `ctx.add`, eviction and subtype rules are all in [API: Utilities](/docs/api/utilities).
 
 <br />
 
@@ -304,8 +355,7 @@ class App extends State {
 </Provider>;
 ```
 
-When `App` is constructed, `auth` and `api` activate together. `Api` looks up `Auth` from the shared context automatically.
-Descendants can call `Auth.get()` or `Api.get()` without separate Providers for each child state, so small controllers can live on a provided root State or Component instead of in a Provider stack.
+When `App` is constructed, `auth` and `api` activate together and register into `App`'s context. Descendants can call `Auth.get()` or `Api.get()` directly - one Provider covers the whole tree, no stack required.
 
 ### Scoped overrides
 
@@ -322,7 +372,7 @@ Nested providers override inner lookups:
 
 ### Feature boundaries
 
-A `Component` subclass is both a React component and a context container. Use it when the feature's state is intrinsic to display logic or when React tree placement matters:
+A `Component` subclass is both a React component and a context container:
 
 ```tsx
 class Dashboard extends Component {
@@ -347,12 +397,12 @@ function FilterBar() {
 </Dashboard>;
 ```
 
-Use `State` for headless models such as auth, theme, or an API service. Use `Component` when the class should exist in the tree: layouts, route shells, dashboards, wizards, tab groups, toast hosts, or progressive boundaries.
+Use `State` for headless models like auth, theme, or an API service. Use `Component` when the class should exist in the tree: layouts, route shells, dashboards, wizards, tab groups, toast hosts. The container _is_ the context. ✨
 
 <br />
 
 ## Next
 
 - [Async](/docs/guides/async) - async factories, Suspense, and error recovery.
-- [API: Hooks](/docs/api/hooks) - `State.use`, `State.get`, `Provider`, `Consumer`.
+- [API: Utilities](/docs/api/utilities) - the full Context reference: constructors, `add`, root eviction.
 - [API: Instructions](/docs/api/instructions) - every overload of `get`, `set`, `ref`, and `def`.
