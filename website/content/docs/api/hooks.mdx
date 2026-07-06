@@ -27,12 +27,13 @@ function CounterView({ counter }: { counter: Counter }) {
 - Returns a tracking proxy on the initial render; reading properties subscribes the component.
 - Re-renders only when accessed properties change.
 - Re-subscribes if `subject` is replaced.
-- Activates an unready observable instance, but does not destroy it on unmount.
-- Throws if `subject` is not observable or has already been destroyed.
+- Activates an unready observable instance, but does not own its lifecycle or destroy it on unmount.
+- Throws if `subject` is not observable. A destroyed observable does *not* throw - the hook renders its last-known values and no further updates arrive.
+- Works with any observable, not just State - plain classes can opt in via the [observable protocol](/docs/api/utilities#touchtarget-key-value).
 
-Use this when state or observable object comes from somewhere else.
-`State.use()` is for when the component should create and own instance.
-`State.get()` is for finding from context.
+Use this when the state comes from somewhere else - an externally-owned store, a module-scope instance, a prop. That also makes it the natural bridge when [migrating from hooks](/docs/migrating-from-hooks): keep your store where it is, subscribe with `use`.
+`State.use()` is for when the component should create and own the instance.
+`State.get()` is for finding one in context.
 
 <br />
 
@@ -83,7 +84,7 @@ class Search extends State {
 const state = Search.use({ initialQuery: 'react' });
 ```
 
-`use()` runs on every render - use it to bridge React hooks:
+`use()` runs on every render - handy for bridging React hooks:
 
 ```tsx
 class Nav extends State {
@@ -93,6 +94,8 @@ class Nav extends State {
   }
 }
 ```
+
+> This applies to the `State.use()` hook path only. A [`Component`](/docs/api/component) rendered as JSX never calls a `use()` method.
 
 <br />
 
@@ -107,8 +110,8 @@ function Profile() {
 }
 ```
 
-- Throws if the state is not provided above.
-- Re-subscribes if the upstream instance is replaced.
+- Throws `Could not find UserProfile in context.` if the state is not provided above.
+- Re-subscribes (and refreshes) if the upstream instance is replaced.
 
 ### Optional lookup
 
@@ -119,8 +122,10 @@ const maybe = Theme.get(false); // Theme | undefined
 ### Required values
 
 ```tsx
-const user = User.get(true); // Required<User> - suspends on undefined fields
+const user = User.get(true); // Required<User>
 ```
+
+With `true`, reading a property that is currently `undefined` throws a plain `Error` - `User-XXXXXX.name is required in this context.` That surfaces at the nearest **error boundary**, not Suspense. Use it when the component's contract is "this data exists by now."
 
 ### Computed selector
 
@@ -156,8 +161,8 @@ The second argument is a function that forces the component to re-render:
 ```ts
 type ForceRefresh = {
   (): void;
-  <T>(promise: Promise<T>): Promise<T>;
-  <T>(fn: () => Promise<T>): Promise<T>;
+  <T>(waitFor: Promise<T>): Promise<T>;
+  <T>(invoke: () => Promise<T>): Promise<T>;
 };
 ```
 
@@ -167,6 +172,8 @@ const data = DataService.get((svc, refresh) => {
   return { items: svc.items, reload };
 });
 ```
+
+Given a promise (or async function), it refreshes now and again when the promise settles.
 
 <br />
 
@@ -259,3 +266,4 @@ The child function receives a tracking proxy, so property reads subscribe just l
 - [Context guide](/docs/guides/context) - `Provider` patterns and the `get` instruction.
 - [Components](/docs/api/component) - the `Component` class as an alternative to `Provider` + `use()`.
 - [State](/docs/api/state) - the base class and its methods.
+- [Utilities](/docs/api/utilities) - `watch`, `listener`, and the observable protocol behind `use(subject)`.
