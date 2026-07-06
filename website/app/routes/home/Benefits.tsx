@@ -18,6 +18,10 @@ export function Benefits() {
           </p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <Benefit title="Coexists with hooks">
+            No big-bang rewrite. Adopt it one feature at a time and leave simple
+            useState calls alone. A tool for complexity, not a replacement.
+          </Benefit>
           <Benefit title="Async is built in">
             Async factories integrate with Suspense - required data suspends
             until it resolves. No query library, no middleware, no thunks.
@@ -27,13 +31,12 @@ export function Benefits() {
             inline. Reusable state your team - and its tools - can reason about
             without digging.
           </Benefit>
-          <Benefit title="Testable without rendering">
-            State classes are plain objects. Create with .new(), call methods,
-            assert on properties. No @testing-library, no act(), no DOM.
-          </Benefit>
-          <Benefit title="Coexists with hooks">
-            No big-bang rewrite. Adopt it one feature at a time and leave simple
-            useState calls alone. A tool for complexity, not a replacement.
+          <Benefit title="Headless by design">
+            State classes are plain objects - create with .new(), call methods,
+            assert on properties. No @testing-library, no act(), no DOM. And it
+            goes further: logic that never touches the render layer can run
+            anywhere, so the classes driving your UI today can power a test
+            suite, a CLI, or an entirely different renderer tomorrow.
           </Benefit>
         </div>
       </div>
@@ -48,7 +51,7 @@ interface BenefitProps {
 
 function Benefit({ title, children }: BenefitProps) {
   return (
-    <div className="border-l-2 border-fd-primary pl-5">
+    <div className="before:content-[''] before:block before:h-[3px] before:w-full before:rounded-full before:bg-fd-muted-foreground/30 before:mb-4">
       <h3 className="text-lg font-semibold mb-2">{title}</h3>
       <p className="text-fd-muted-foreground leading-relaxed">{children}</p>
     </div>

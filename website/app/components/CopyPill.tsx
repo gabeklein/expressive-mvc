@@ -13,7 +13,7 @@ export default function CopyPill({ label, command }: { label: string; command: s
   return (
     <button
       onClick={copy}
-      className="group flex items-center justify-between gap-4 rounded-lg bg-fd-muted py-2.5 px-4 text-left transition-colors hover:bg-fd-muted/70">
+      className="group flex items-center justify-between gap-4 rounded-lg border border-fd-border/70 dark:border-transparent bg-fd-muted py-2.5 px-4 text-left transition-colors hover:bg-fd-muted/70">
       <span className="flex flex-col">
         <span className="text-[11px] uppercase tracking-widest text-fd-muted-foreground">
           {label}

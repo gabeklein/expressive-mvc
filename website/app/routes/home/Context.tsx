@@ -24,14 +24,16 @@ export function Context() {
           right={[
             { label: 'React Context', code: ReactCode },
             { label: 'Zustand', code: ZustandCode },
+            { label: 'Jotai', code: JotaiCode },
           ]}
         />
 
         <p className="text-fd-muted-foreground text-lg leading-relaxed max-w-3xl mx-auto mt-10 text-center">
           No <code className={mono}>createContext&lt;T&gt;</code>, no null default,
           no missing-provider guard, no Provider/Consumer pair to keep in sync.
-          Most state libraries punt here and wrap React context themselves - the
-          same ceremony, plus a store.
+          Every library lands back here eventually - Zustand tells you to wrap a
+          store in React context yourself, Jotai's Provider scopes a whole atom
+          store, and MobX leaves it to you entirely.
         </p>
       </div>
     </section>
@@ -95,6 +97,35 @@ const ReactCode = code /*tsx*/`
 
     return <button onClick={theme.toggle}>{theme.mode}</button>;
   }
+`;
+
+const JotaiCode = code /*tsx*/`
+  import { atom, createStore, Provider, useAtom } from 'jotai';
+  import { useState } from 'react';
+
+  const modeAtom = atom('light');
+
+  function ThemeProvider({ children }) {
+    const [store] = useState(() => createStore());
+
+    return (
+      <Provider store={store}>
+        {children}
+      </Provider>
+    );
+  }
+
+  function ModeBadge() {
+    const [mode, setMode] = useAtom(modeAtom);
+
+    const toggle = () =>
+      setMode(m => (m === 'light' ? 'dark' : 'light'));
+
+    return <button onClick={toggle}>{mode}</button>;
+  }
+
+  // note: the Provider scopes every atom in the
+  // subtree to this store, not just the theme
 `;
 
 const ZustandCode = code /*tsx*/`

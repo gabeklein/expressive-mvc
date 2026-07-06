@@ -1,8 +1,9 @@
 import type React from 'react';
 
 const SHED = [
-  'redux', 'zustand', 'react-query', 'swr',
-  'react-hook-form', 'reselect', 'use-context-selector',
+  'react-query', 'swr', 'react-hook-form', 'formik',
+  'react-use', 'usehooks-ts', 'use-debounce', 'use-local-storage',
+  'use-context-selector', 'reselect', 'immer', 'react-error-boundary',
 ];
 
 export function Turn() {
@@ -11,7 +12,7 @@ export function Turn() {
       <div className="mx-auto max-w-(--content-width) py-24 px-6">
         <div className="max-w-2xl mb-12">
           <div className="text-xs uppercase tracking-widest text-fd-primary mb-3">
-            Convention over configuration
+            Batteries included
           </div>
           <h2 className="font-display text-3xl md:text-5xl font-bold tracking-tight mb-5">
             Rails for your React app.
@@ -40,7 +41,7 @@ export function Turn() {
 
         <div className="max-w-2xl mb-10">
           <h3 className="font-display text-2xl md:text-3xl font-bold tracking-tight mb-3">
-            <span className="text-fd-muted-foreground">(Artificial)</span> Idiot-Proof.
+            <span className="text-fd-foreground/70">(Artificial)</span> Idiot-Proof.
           </h3>
           <p className="text-fd-muted-foreground text-lg">
             The same structure keeps the models working in your codebase on
@@ -75,7 +76,7 @@ const mono = 'font-mono text-sm bg-fd-muted px-1.5 py-0.5 rounded';
 
 function Point({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="border-t border-fd-border pt-4">
+    <div className="before:content-[''] before:block before:h-[3px] before:w-full before:rounded-full before:bg-fd-primary/50 before:mb-4">
       <h3 className="font-semibold mb-2">{title}</h3>
       <p className="text-fd-muted-foreground leading-relaxed">{children}</p>
     </div>
