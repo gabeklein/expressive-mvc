@@ -4,14 +4,14 @@ import code from '@/components/Snippet';
 
 export function Fetch() {
   return (
-    <section>
+    <section className="bg-fd-foreground/[0.04]">
       <div className="mx-auto max-w-(--content-width) px-6 py-24">
         <div className="max-w-2xl mb-12">
           <div className="text-xs uppercase tracking-widest text-fd-muted-foreground mb-3">
             Async
           </div>
           <h2 className="font-display text-3xl md:text-4xl font-bold tracking-tight mb-4">
-            Fetch without query libraries.
+            Async out of the box.
           </h2>
           <p className="text-fd-muted-foreground text-lg">
             An async <code className={mono}>set()</code> suspends readers until

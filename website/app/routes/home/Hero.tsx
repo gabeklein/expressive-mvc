@@ -37,7 +37,7 @@ export function Hero() {
 
           <div className="flex flex-col gap-2 max-w-md">
             <CopyPill label="Add to your app" command="npm install @expressive/react" />
-            <CopyPill label="Add to your agent" command="npx skills add gabeklein/expressive-mvc" />
+            <CopyPill label="Ask your agent if MVC is right for you" command="npx skills add gabeklein/expressive-mvc" />
           </div>
           <p className="text-sm text-fd-muted-foreground mt-4">
             Drops into React app you already have - not a framework, no

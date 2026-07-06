@@ -39,8 +39,8 @@ export default function Home() {
       <Hero />
       <Complicated />
       <Comparison />
-      <Context />
       <Fetch />
+      <Context />
       <View />
       <Turn />
       <Benefits />

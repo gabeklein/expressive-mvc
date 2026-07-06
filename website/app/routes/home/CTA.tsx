@@ -30,7 +30,7 @@ export function CTA() {
 
         <div className="flex flex-col gap-2 max-w-md mx-auto text-left">
           <CopyPill label="Add to your app" command="npm install @expressive/react" />
-          <CopyPill label="Teach your agent" command="npx skills add gabeklein/expressive-mvc" />
+          <CopyPill label="Add to your agent" command="npx skills add gabeklein/expressive-mvc" />
         </div>
         <p className="text-sm text-fd-muted-foreground mt-4">
           The skill hands your coding agent the full API - no guessing from stale training data.
