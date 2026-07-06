@@ -3,9 +3,7 @@ title: Components
 description: Smart, reusable components that own their behavior and rendering
 ---
 
-Function components work best when they're dumb - receive data, render UI, done. When you need a **smart component** that owns its behavior, lifecycle, and rendering as a single reusable unit, that's what `Component` is for.
-
-A Component is a persistent class instance that doubles as a React component. It bundles state, methods, lifecycle, context, suspense, and error handling into one extensible class - what would otherwise be a complicated arrangement of hooks wired together for a single purpose.
+Function components work best dumb - take data, render UI, done. `Component` is for when the thing you're building *is* a component. It's a persistent class instance that doubles as a React component: state, methods, lifecycle, context, suspense, and error handling in one extensible class, instead of a complicated arrangement of hooks wired together for a single purpose.
 
 ```tsx
 import { Component } from '@expressive/react';
@@ -25,29 +23,28 @@ class Counter extends Component {
 <Counter />;
 ```
 
-Properties accessed via `this` in `render()` are reactive - changes trigger re-renders automatically.
+Properties read via `this` in `render()` are tracked. When one changes, the component refreshes - no hooks required, or even used. [Try it live](/examples/essentials/counter).
 
 <br />
 
 ## When to reach for Component
 
-Use **`State` + `.use()`** when you want headless state logic separated from rendering - the most common pattern. The component stays dumb, the class handles the smarts.
+Use **`State` + `.use()`** when you want headless logic separated from rendering - the most common pattern. The component stays dumb, the class handles the smarts.
 
-Use **`Component`** when state is intrinsic to display logic - when the thing you're building _is_ a component, not data that happens to be displayed. Think: form controls, media players, animated canvases, data grids, layout shells.
+Use **`Component`** when state is intrinsic to display logic. Form controls, media players, data grids, layout shells - things where behavior and rendering move together. A hook-heavy route shell or tab panel doesn't need to become `FooState` plus `FooView`; when the rendered thing owns the behavior, make the rendered thing the class.
 
-Usually a Component defines `render()`. Without one, children pass through while the instance provides context and Suspense/ErrorBoundary placement. Use that headless form only for route controllers, progressive `Boundary` wrappers, or other classes whose value comes from repeated placement in the React tree.
+Usually a Component defines `render()`. Without one, children pass through while the instance provides context and Suspense/error-boundary placement - useful for route controllers and progressive `Boundary` wrappers, but that headless form is the exception.
 
-Use `State` for headless models/controllers, even if they are only useful in context. A provided State or Component implicitly provides its child States, so root state can own `public theme = new Theme()` without another Provider.
+> **Good to know:** <br/>
+> Don't use Component just because something is contextual. Components carry React-facing properties (`props`, `state`, `setState`...), which makes `.get()` IntelliSense noisier. Headless models should stay `State`.
 
-This matters during refactors. A hook-heavy route shell, local router, tab panel, menu, editor surface, or form control does not need to become `FooState` plus `FooView`. When the behavior and rendering move together, make the rendered thing the class.
-
-The real power is **reusability through inheritance**. You build a Component once - with all the lifecycle, reactivity, and error handling baked in - then your team extends and customizes it. No hook wiring, no boilerplate. Just subclass and fill in the blanks.
+The real payoff is reusability through inheritance. You build a Component once - lifecycle, reactivity, and error handling baked in - then extend and fill in the blanks.
 
 <br />
 
 ## Custom primitives via inheritance
 
-This is the primary use case for Component: building reusable base classes for others to extend.
+This is the primary use case: base classes for others to extend.
 
 ```tsx
 abstract class Toggle extends Component {
@@ -74,7 +71,7 @@ abstract class Toggle extends Component {
 }
 ```
 
-Now anyone can create a toggle-based component without reimplementing the behavior:
+Now anyone can make a toggle-based component without reimplementing the behavior:
 
 ```tsx
 class DarkModeSwitch extends Toggle {
@@ -103,9 +100,7 @@ class Accordion extends Toggle {
 }
 ```
 
-The base class owns the toggle logic and structure. Subclasses just define what each state looks like. Both work immediately as `<DarkModeSwitch />` or `<Accordion title="FAQ">...</Accordion>`.
-
-This is how teams DRY up complex UI patterns into organizational primitives - build once, extend everywhere.
+> The base owns the toggle logic and structure; subclasses just say what each state looks like. Both work immediately as `<DarkModeSwitch />` or `<Accordion title="FAQ">...</Accordion>`. This is how teams DRY up UI patterns into organizational primitives - build once, extend everywhere.
 
 <br />
 
@@ -145,34 +140,36 @@ class Page extends Frame {
 </section>
 ```
 
-`Frame` is the outer layer because it sits higher on the chain; `Page` is the inner content. Add a third level and it nests the same way - each subclass becomes the `children` of its parent:
+`Frame` is outer because it sits higher on the chain. Add a third level and it nests the same way - each subclass becomes the `children` of its parent. Every layer binds to the same live instance, so a change to any field re-renders the whole composed output.
+
+This is what makes a base primitive useful: it owns the surrounding chrome, suspense, or context once, and subclasses author only the content. Here it is in action:
+
+<Playground of="composition/extension" />
+
+### Letting a subclass replace the base
+
+Wrapping is the default, but a base can choose to *defer* to a subclass instead - handy for a leaf primitive (an `<a>`, an `<input>`) that works standalone yet should be entirely overridable. The decision belongs to the base: composition synthesizes a fresh `children` getter, so when a subclass authored its own render, the `children` the base receives is *not* the original `this.props.children`. The base checks identity and steps aside:
 
 ```tsx
-class Card extends Frame {
-  render(props = {} as { children?: ReactNode }) {
-    return <article className="card">{props.children}</article>;
-  }
-}
+class Link extends Component {
+  to = '';
 
-class Note extends Card {
-  render() {
-    return <p>note body</p>;
+  render(props = {} as { children?: ReactNode }) {
+    const { children } = props;
+
+    // A subclass authored its own render - defer to it.
+    if (children !== this.props.children) return children;
+
+    return <a href={this.to}>{children}</a>;
   }
 }
-// Frame > Card > <p>note body</p>
 ```
 
-Every layer binds to the same live instance, so each render reads the same reactive `this`. A change to any field re-renders the whole composed output.
-
-### The base provides the default shell
-
-This is what makes a base primitive useful: it owns the surrounding structure once, and subclasses fill the middle without restating it. A `Boundary` base can wrap every subclass in shared chrome, suspense, or context - subclasses only author the content.
-
-<br />
+Plain `<Link to="/x">hi</Link>` renders the anchor; a subclass with its own `render()` replaces it entirely. Render-less subclasses keep the base anchor, since their `children` *is* `this.props.children`. This is exactly how `@expressive/router`'s `Link` stays both usable and overridable.
 
 ### Footgun: dropping children
 
-The inner content arrives as `props.children`. A wrapper render that never reads `props.children` silently discards everything below it:
+The inner content arrives as `props.children`. A wrapper render that never reads it silently discards everything below:
 
 ```tsx
 class Shell extends Component {
@@ -189,17 +186,13 @@ class Lost extends Shell {
 }
 ```
 
-The `children` getter is lazy, so the dropped layer never even runs. If a base means to wrap subclasses, it must declare a `props` parameter and render `props.children`.
-
-<br />
+The `children` getter is lazy, so the dropped layer never even runs. A base meant to wrap subclasses must declare a `props` parameter and render `props.children`.
 
 ### Caution: React hooks in a render layer
 
-You normally won't reach for hooks here - reactivity comes from `this`, so read class fields, not `useState`/`useEffect`, inside `render()`. But hooks aren't forbidden, and there's a sharp edge worth knowing.
+You normally won't reach for hooks here - reactivity comes from `this`, so read class fields, not `useState`. But hooks aren't forbidden, and there's a sharp edge worth knowing.
 
-The whole composed chain runs inside a **single** host render - every layer executes in the same component call, so all layers' hooks stack into one component. That's fine as long as the hooks obey the rules of hooks *for the chain as a whole*: same hooks, same order, every render.
-
-The trap is conditional children. A hook in a layer below a wrapper that conditionally renders `props.children` runs only sometimes - the inner layer mounts and unmounts across renders, and React throws:
+The whole composed chain runs inside a **single** host render - all layers' hooks stack into one component. That's fine as long as they obey the rules of hooks *for the chain as a whole*. The trap is conditional children: a hook in a layer below a wrapper that conditionally renders `props.children` runs only sometimes, and React throws:
 
 ```tsx
 class Collapsible extends Component {
@@ -219,13 +212,13 @@ class Panel extends Collapsible {
 }
 ```
 
-If a layer needs its own isolated scope - its own hooks, subscription, and reconciliation boundary, immune to what wrappers above it do - make it a [subcomponent](#subcomponents) (a PascalCase method) and render `<this.Panel />`. Subcomponents are each wrapped in their own component; render layers are deliberately folded into one.
+If a layer needs its own isolated scope - its own hooks, subscription, and reconciliation boundary - make it a [subcomponent](#subcomponents) and render `<this.Panel />`. Subcomponents each get their own component; render layers are deliberately folded into one.
 
 <br />
 
 ## Persistent identity
 
-Component instances survive across renders. `this` is stable - you can store references, pass `this` to external objects, and hold imperative state (Sets, Maps, WebSocket connections) without losing it between renders.
+Component instances survive across renders. `this` is stable - store references, pass it to external objects, hold imperative state (Sets, Maps, WebSocket connections) without losing anything between renders.
 
 ```tsx
 class ChatRoom extends Component {
@@ -253,7 +246,7 @@ class ChatRoom extends Component {
 }
 ```
 
-No stale closures, no dependency arrays - just a stable object with methods.
+No stale closures, no dependency arrays - just an object with methods. 🏝
 
 <br />
 
@@ -275,9 +268,12 @@ class Greeting extends Component {
 
 Props are applied to the instance on every render.
 
+> **Good to know:** <br/>
+> Omission clears. A state prop passed on one render then left off the next is reset to `undefined` - props behave declaratively, like real JSX attributes, not like patches that stick around.
+
 ### Extra render props
 
-If you need props that aren't state fields, declare them via the `render()` parameter:
+For props that aren't state fields, declare them via the `render()` parameter:
 
 ```tsx
 class Card extends Component {
@@ -297,14 +293,17 @@ The `= {} as T` default is required for TypeScript's JSX attribute inference. Re
 
 Every Component accepts these regardless of state fields:
 
-| Prop       | Type                    | Description                                    |
-| ---------- | ----------------------- | ---------------------------------------------- |
-| `is`       | `(instance: T) => void` | Called once with the created instance          |
-| `fallback` | `ReactNode`             | Shown while suspended or during error recovery |
+| Prop       | Type                    | Description                                                            |
+| ---------- | ----------------------- | ---------------------------------------------------------------------- |
+| `is`       | `(instance: T) => void` | Called once with the created instance                                  |
+| `ref`      | React ref (object or callback) | Standard ref - receives the instance after mount, `null` on unmount |
+| `fallback` | `ReactNode \| false`    | Shown while suspended or during error recovery; `false` opts out       |
 
 ```tsx
 <Counter is={(c) => console.log('created', c)} fallback={<Loading />} />
 ```
+
+> `is` runs after props apply but **before** the `new()` lifecycle hook - so it can configure state that `new()` then observes. Use `ref` for post-mount imperative access, `is` when you need the instance during construction.
 
 <br />
 
@@ -332,7 +331,19 @@ function Header() {
 
 This is why Component is a natural fit for layouts, shells, and feature containers - the container _is_ the context.
 
-Do not use Component only because something is contextual. Components inherit React-facing properties (`props`, `state`, `context`, `setState`, `forceUpdate`), which can make `.get()` IntelliSense noisier. If the class is just a headless model, use `State` and provide it directly or as a child of an already-provided owner.
+It works in both directions. A Component can consume upstream context with the `get` instruction, same as any State:
+
+```tsx
+class ThemedButton extends Component {
+  theme = get(Theme);
+
+  render() {
+    return <button style={{ background: this.theme.color }}>Save</button>;
+  }
+}
+```
+
+More on this in [Context](/docs/guides/context), with a full example at [composition/context](/examples/composition/context).
 
 <br />
 
@@ -376,7 +387,9 @@ Key behaviors:
 - Multiple usages of the same subcomponent are independent instances.
 - They accept props like any React component.
 - Reachable through context: `Dashboard.get()` then `<dashboard.Sidebar />`.
-- **Overridable in subclasses** - this is what makes the Toggle example above work.
+- **Overridable** - subclasses redefine the method, or inject one as an instance field (`Sidebar = CustomSidebar`). That's what makes the Toggle example above work.
+
+They also double as a decomposition tool: pull a busy `.map` or chunk of chrome out of `render()` into a named section. [See them in action](/examples/composition/subcomponents).
 
 <br />
 
@@ -395,7 +408,7 @@ class DataView extends Component {
 }
 ```
 
-The JSX `fallback` prop overrides the class property for that instance.
+The JSX `fallback` prop overrides the class property for that instance. Set `fallback` to `false` (prop or property) to opt out of the component's own boundary entirely - suspension then bubbles to the nearest ancestor.
 
 <br />
 
@@ -416,11 +429,11 @@ class SafeView extends Component {
 }
 ```
 
-- Setting `this.fallback` inside `catch()` shows error UI while recovery is pending. After `catch()` resolves, `render()` retries.
+- Setting `this.fallback` inside `catch()` shows error UI while recovery is pending. After `catch()` resolves, the fallback reverts and `render()` retries.
 - If `catch()` rejects, the error propagates to the nearest parent boundary.
 - If a child throws again after recovery, the error escapes.
 
-Per-feature error handling without nesting `<ErrorBoundary>` wrappers.
+Per-feature error handling without nesting `<ErrorBoundary>` wrappers. See the full recovery flow at [essentials/boundary](/examples/essentials/boundary).
 
 <br />
 
@@ -429,7 +442,6 @@ Per-feature error handling without nesting `<ErrorBoundary>` wrappers.
 Components inherit the full State lifecycle:
 
 - `new()` - called once after initialization. Return a cleanup function for unmount teardown.
-- `use()` - called every render. Use for bridging external React hooks.
 - `catch(error)` - error boundary handler.
 - Destruction on unmount or explicit `this.set(null)`.
 
@@ -447,6 +459,8 @@ class Timer extends Component {
   }
 }
 ```
+
+> A `use()` method only matters on the `MyComponent.use()` hook path - a Component rendered as JSX never calls it. Don't put per-render logic there expecting `<MyComponent />` to run it.
 
 Component handles React strict mode correctly - only one instance is created despite double-mounts.
 

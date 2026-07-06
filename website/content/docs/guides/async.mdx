@@ -30,7 +30,7 @@ function Profile() {
 </Suspense>;
 ```
 
-By default, the factory is **lazy** - it runs the first time something reads the property. Pass `true` as the second argument to run it eagerly on activation:
+By default the factory is **lazy** - it runs the first time something reads the property. Pass `true` as the second argument to run it eagerly on activation:
 
 ```tsx
 data = set(async () => fetchData(), true); // runs immediately
@@ -42,11 +42,13 @@ Pass `false` to make it non-blocking - the property returns `undefined` while pe
 avatar = set(async () => fetchAvatar(), false); // User['avatar'] | undefined
 ```
 
+> A `Component` gives you the boundary for free: set its `fallback` and any pending property in `render()` is covered, no `<Suspense>` wrapper needed. Details in [Components](/docs/guides/components#suspense). For a headless-State version of this pattern, see [essentials/async](/examples/essentials/async).
+
 <br />
 
 ## Required placeholders
 
-A `set<T>()` with no argument is a **required** property - it's initially undefined, and reading it throws Suspense until something assigns a value:
+A `set<T>()` with no argument is a **required** property - initially undefined, and reading it throws Suspense until something assigns a value:
 
 ```tsx
 class Session extends State {
@@ -58,9 +60,10 @@ class Session extends State {
 }
 ```
 
-The async `user` factory reads `this.userId`. If `userId` hasn't been assigned, the factory itself suspends - and the cascade resolves automatically when `userId` is set.
+The async `user` factory reads `this.userId`. If `userId` hasn't been assigned, the factory itself suspends - and the cascade resolves automatically when `userId` arrives. You describe a dependency graph ("user depends on userId") and the library handles the timing. ✨
 
-This pattern is powerful: you describe a dependency graph ("user depends on userId"), and the library handles the timing.
+> **Good to know:** <br/>
+> If the state is destroyed while something still awaits a pending property, that promise **rejects** (`Session is destroyed.`) rather than hang forever. Anything awaiting a suspense throw should expect that.
 
 <br />
 
@@ -74,7 +77,7 @@ class Config extends State {
 }
 ```
 
-A promise constructed in a field initializer starts before the state is activated. In React StrictMode or other abandoned constructions, that work can continue without a live instance to receive it.
+A promise built in a field initializer would start before the state is activated - in React StrictMode or other abandoned constructions, that work continues with no live instance to receive it. So `set()` refuses outright: handing it a Promise throws a `TypeError` at init (*"Direct promises are not supported... Use `set(() => promise)` instead."*). With a factory, work doesn't start until the instance is live.
 
 <br />
 
@@ -103,17 +106,20 @@ class LoginForm extends State {
 }
 ```
 
-No `useCallback`, no dependency arrays, no stale closures. The method reads live state via `this` every time it runs.
+No `useCallback`, no dependency arrays, no stale closures. The method reads live state via `this` every time it runs - async stuff is pretty low maintenance when dispatch is already taken care of.
 
 <br />
 
 ## Refreshing async data
 
-Because async `set()` is just a property, refreshing it means reassigning:
+Factory-backed properties are **read-only** - assigning to `this.posts` throws (`Feed.posts is read-only.`). To refresh, either make the property writable by pairing the factory with a callback:
 
 ```tsx
 class Feed extends State {
-  posts = set(async () => fetch('/api/posts').then((r) => r.json()));
+  posts = set(
+    async () => fetch('/api/posts').then((r) => r.json()),
+    (posts) => console.log('posts arrived:', posts.length)
+  );
 
   async refresh() {
     this.posts = await fetch('/api/posts').then((r) => r.json());
@@ -121,7 +127,7 @@ class Feed extends State {
 }
 ```
 
-Or, using the `set('posts', { value: ... })` descriptor form to bypass the factory entirely:
+Or push a value through the descriptor form of `set`, which bypasses the setter entirely:
 
 ```tsx
 async refresh() {
@@ -130,7 +136,7 @@ async refresh() {
 }
 ```
 
-If you want the factory to re-run from scratch, destroy and recreate the state - or build the refresh semantic into a regular async method.
+Either way, subscribers update as normal. If you want the factory itself to re-run from scratch, destroy and recreate the state - or build the refresh semantic into a regular async method, like the `Query` base below.
 
 <br />
 
@@ -166,6 +172,8 @@ class Profile extends Component {
 }
 ```
 
+The full `catch()` and `fallback` semantics live in [Components](/docs/guides/components#error-boundaries).
+
 <br />
 
 ## Reusable async patterns
@@ -191,13 +199,13 @@ class UserQuery extends Query<User> {
 }
 ```
 
-The library ships no query abstraction because you don't need one. You can build the shape that fits your app in a dozen lines of class code.
+The library ships no query abstraction because you don't need one - the shape that fits your app is a dozen lines of class code. A worked version of this exact pattern (request bookkeeping, retry, reset) is at [essentials/fetch](/examples/essentials/fetch).
 
 <br />
 
 ## Suspense in effects
 
-Effects registered via `state.get(effect)` also participate in Suspense. If an effect accesses a pending value, it pauses and retries when the value resolves:
+Effects registered via `state.get(effect)` also participate in Suspense. If an effect reads a pending value, it pauses and retries when the value resolves:
 
 ```ts
 state.get((current) => {
@@ -206,7 +214,7 @@ state.get((current) => {
 });
 ```
 
-This is the same mechanism React uses for components - you get it everywhere for free.
+While paused, updates to other tracked properties don't re-trigger it - the effect simply resumes once the value lands. Same mechanism React uses for components; you get it everywhere for free.
 
 <br />
 
@@ -229,7 +237,7 @@ class Search extends State {
 }
 ```
 
-The callback returns a cleanup function, which is called before the next update (or on destruction). This gives you debouncing, abort controllers, or any other "cancel the previous thing when a new thing arrives" pattern.
+The callback returns a cleanup function, called before the next update (or on destruction). That covers debouncing, abort controllers, and any other "cancel the previous thing when a new thing arrives" pattern.
 
 <br />
 

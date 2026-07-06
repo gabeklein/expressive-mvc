@@ -3,13 +3,13 @@ title: Forms and Refs
 description: Validation callbacks, debouncing, and mutable references
 ---
 
-Forms are where state management tends to accumulate the most complexity - fields, validation, touched/dirty tracking, submission state, error messages. Expressive handles all of it with two tools: the `set` callback form for validation, and the `ref` instruction for DOM handles.
+Forms are where state management accumulates the most junk - fields, validation, touched/dirty tracking, submission state, error messages. Expressive covers all of it with two tools: the `set` callback form for validation, and the `ref` instruction for DOM handles.
 
 <br />
 
 ## The set callback
 
-`set(initial, callback)` creates a writable property with a callback that runs on every assignment. The callback can reject the update, transform it, or schedule follow-up work.
+`set(initial, callback)` creates a writable property whose callback runs on every assignment. The callback can reject the update, accept it silently, or schedule follow-up work.
 
 ```tsx
 class LoginForm extends State {
@@ -28,6 +28,8 @@ class LoginForm extends State {
 | Return a function       | Cleanup - runs before the next update (useful for cancellation).    |
 | Throw a regular `Error` | Rethrows to the caller.                                             |
 | Return `void`           | Accept normally.                                                    |
+
+> Note it's `throw false`, not `return false` - a return value doesn't reject anything.
 
 <br />
 
@@ -60,7 +62,10 @@ class SignupForm extends State {
 }
 ```
 
-The `valid` computed auto-updates when any dependency changes. The `submit` method reads `this.valid` - no stale closures, no dependency arrays.
+The `valid` computed re-runs whenever a dependency changes, and `submit` reads it live via `this` - no stale closures, no dependency arrays.
+
+> **Good to know:** <br/>
+> Declaring that `from` parameter is what makes `set` computed - a zero-argument function would be a one-shot factory instead. Arity is the dispatch.
 
 <br />
 
@@ -83,13 +88,13 @@ class Search extends State {
 }
 ```
 
-The same pattern works for abort controllers, observer subscriptions, or any resource that needs to be disposed when a new value arrives.
+The same pattern works for abort controllers, observer subscriptions, or any resource that should be disposed when a new value arrives.
 
 <br />
 
 ## Change tracking
 
-Because the callback receives the previous value, you can detect transitions:
+The callback receives the previous value too, so transitions are easy to detect:
 
 ```tsx
 class Field extends State {
@@ -103,7 +108,7 @@ class Field extends State {
 
 ## Refs
 
-The `ref` instruction creates a mutable holder that does **not** trigger re-renders on change. It's the equivalent of React's `useRef`, but declared on the class and integrated with the state event stream.
+The `ref` instruction creates a mutable holder that does **not** trigger re-renders on change. It's the `useRef` equivalent, but declared on the class and wired into the state event stream.
 
 ```tsx
 import State, { ref } from '@expressive/react';
@@ -135,10 +140,12 @@ function Player() {
 }
 ```
 
+> Notice the ref object passes straight to JSX `ref=` - it's callable, so React treats it as a ref callback. [Try it live](/examples/state/refs).
+
 Each `ref` object has:
 
 - `.current` - the held value (get/set)
-- `.get()` - read the current value or subscribe to changes
+- `.get()` - read the current value, or pass a callback to subscribe to changes
 - `.is` - the parent state instance
 - `.key` - the property name on the state
 
@@ -177,7 +184,7 @@ form.refs.name.current = 'Alice'; // updates form.name
 form.refs.email; // ref.Object<string>
 ```
 
-Useful when you want to hand ref objects to uncontrolled form inputs, or any API that expects `{ current: T }` shapes.
+Useful for handing ref objects to uncontrolled inputs, or any API that expects `{ current: T }` shapes. Computed getters are included but read-only; `this` is required - any other object throws.
 
 ### Custom ref proxy
 
@@ -189,11 +196,13 @@ class Form extends State {
 }
 ```
 
-The map function runs lazily once per key and its return value is cached. This is the hook for building custom controlled-input abstractions.
+The map function runs lazily once per key and its result is cached. This is the hook for building custom controlled-input abstractions.
 
 <br />
 
 ## Complete form example
+
+Putting it together - validation, focus, submission state, all in one class:
 
 ```tsx
 import State, { set, ref } from '@expressive/react';
@@ -269,7 +278,7 @@ function Contact() {
 }
 ```
 
-Every concern - validation, submission state, focus, error display - lives in one class. The component just renders it.
+> Every concern lives in the class; the component just renders it. And because the class is portable, a reusable `Form` base your whole team extends is one refactor away - that's the [apps/forms](/examples/apps/forms) example. 🚀
 
 <br />
 
