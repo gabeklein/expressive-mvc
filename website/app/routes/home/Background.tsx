@@ -1,8 +1,9 @@
 import { Canvas2D } from '@/components/Canvas';
 
 const PARTICLE_DENSITY = 100 / (1440 * 900);
-const PARTICLE_OPACITY = 0.4;
-const LINE_OPACITY = 0.25;
+const MOBILE_MAX_WIDTH = 640;
+const MOBILE_PARTICLE_OPACITY = 0.4;
+const MOBILE_LINE_OPACITY = 0.25;
 
 export function Background() {
   return (
@@ -18,9 +19,11 @@ export class AnimateBG extends Canvas2D {
   speed = 0.1;
 
   particleColor = '';
+  particleOpacity = 1;
   particleRadius = 3;
   particleCount = 100;
   particleLife = 20;
+  lineOpacity = 1;
   maxLineLength = 150;
   minLineLength = 140;
 
@@ -49,7 +52,13 @@ export class AnimateBG extends Canvas2D {
       const rect = parent.getBoundingClientRect();
       element.width = this.width = rect.width;
       element.height = this.height = rect.height;
-      this.particleCount = Math.max(16, Math.round(this.width * this.height * PARTICLE_DENSITY));
+      const mobile = this.width <= MOBILE_MAX_WIDTH;
+      this.particleOpacity = mobile ? MOBILE_PARTICLE_OPACITY : 1;
+      this.lineOpacity = mobile ? MOBILE_LINE_OPACITY : 1;
+      this.particleCount = Math.min(
+        100,
+        Math.max(16, Math.round(this.width * this.height * PARTICLE_DENSITY)),
+      );
       this.syncParticleCount();
     };
 
@@ -124,6 +133,10 @@ function alphaHex(opacity: number) {
   return Math.round(opacity * 255).toString(16).padStart(2, '0');
 }
 
+function colorWithAlpha(color: string, opacity: number) {
+  return opacity >= 1 ? color : color + alphaHex(opacity);
+}
+
 class Particle {
   x: number;
   y: number;
@@ -153,17 +166,17 @@ class Particle {
   }
 
   draw() {
-    const { canvas, particleColor, particleRadius } = this.parent;
+    const { canvas, particleColor, particleOpacity, particleRadius } = this.parent;
 
     canvas.beginPath();
     canvas.arc(this.x, this.y, particleRadius, 0, Math.PI * 2);
     canvas.closePath();
-    canvas.fillStyle = particleColor + alphaHex(PARTICLE_OPACITY);
+    canvas.fillStyle = colorWithAlpha(particleColor, particleOpacity);
     canvas.fill();
   }
 
   drawLine(to: Particle) {
-    const { canvas, particleColor, maxLineLength, minLineLength } = this.parent;
+    const { canvas, lineOpacity, particleColor, maxLineLength, minLineLength } = this.parent;
 
     const length = Math.sqrt((to.x - this.x) ** 2 + (to.y - this.y) ** 2);
 
@@ -178,10 +191,10 @@ class Particle {
     );
 
     const timeOpacity = Math.min(1, Math.min(this.life, to.life) / fadeTimeMs);
-    const opacity = Math.min(lengthOpacity, timeOpacity) * LINE_OPACITY;
+    const opacity = Math.min(lengthOpacity, timeOpacity) * lineOpacity;
 
     canvas.lineWidth = 0.5;
-    canvas.strokeStyle = particleColor + alphaHex(opacity);
+    canvas.strokeStyle = colorWithAlpha(particleColor, opacity);
     canvas.beginPath();
     canvas.moveTo(this.x, this.y);
     canvas.lineTo(to.x, to.y);
