@@ -93,7 +93,7 @@ function Aurora() {
       ref={layer}
       aria-hidden
       className="absolute inset-0 overflow-hidden [mask-image:linear-gradient(to_bottom,black,black_60%,transparent)]">
-      <div className="absolute inset-0 opacity-50 sm:opacity-100">
+      <div className="absolute inset-0 opacity-40 sm:opacity-100">
         <div className="aurora absolute -top-48 -left-40 size-[36rem] rounded-full bg-(--accent)/20 blur-3xl" />
         <div className="aurora absolute top-16 -right-40 size-[42rem] rounded-full bg-(--accent)/10 blur-3xl [animation-delay:-9s]" />
         <div className="aurora absolute -bottom-56 left-1/3 size-[32rem] rounded-full bg-(--accent)/15 blur-3xl [animation-delay:-17s]" />
@@ -114,10 +114,10 @@ function LiveCounter() {
   const { count, increment } = Counter.use();
 
   return (
-    <div className="mt-4 flex items-center justify-between gap-4 rounded-lg border border-fd-border py-3 px-4">
-      <span className="text-xs uppercase tracking-widest text-fd-muted-foreground">
-        Live - this exact class
-      </span>
+    <div className="mt-4 rounded-lg border border-fd-border py-3 px-4">
+      <div className="text-xs tracking-widest text-fd-muted-foreground mb-3">
+        LIVE - the class above, running.
+      </div>
       <button
         onClick={increment}
         className="rounded-full border border-fd-border font-mono text-sm py-1.5 px-4 hover:bg-fd-muted transition-colors">
