@@ -12,9 +12,8 @@ export function Benefits() {
             The rest comes along for free.
           </h2>
           <p className="text-fd-muted-foreground text-lg">
-            With data, behavior, and lifecycle in one place, a lot of what you'd
-            normally reach for a library or a pattern to solve is just how the
-            class already works.
+            Data, behavior, and lifecycle in one place - much of what you'd
+            install a library for is just how the class works.
           </p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">

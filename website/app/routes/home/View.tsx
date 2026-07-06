@@ -14,11 +14,11 @@ export function View() {
             When the state is the view.
           </h2>
           <p className="text-fd-muted-foreground text-lg mb-4">
-            Reach for <code className={mono}>Component</code> for State that renders
-            itself. Fields drive <code className={mono}>render()</code> directly
-            - destructure <code className={mono}>this</code>, assign on events,
-            and computed getters chain with no <code className={mono}>useMemo</code>,
-            no dependency arrays.
+            Reach for <code className={mono}>Component</code> when State should
+            render itself. Fields drive <code className={mono}>render()</code>{' '}
+            directly - destructure <code className={mono}>this</code>, assign on
+            events. Computed getters chain with no{' '}
+            <code className={mono}>useMemo</code>, no dependency arrays.
           </p>
           <p className="text-fd-muted-foreground text-lg mb-6">
             And because it's a class, UI composes by extension - a base owns

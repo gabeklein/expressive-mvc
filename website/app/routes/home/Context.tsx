@@ -31,9 +31,9 @@ export function Context() {
         <p className="text-fd-muted-foreground text-lg leading-relaxed max-w-3xl mx-auto mt-10 text-center">
           No <code className={mono}>createContext&lt;T&gt;</code>, no null default,
           no missing-provider guard, no Provider/Consumer pair to keep in sync.
-          Every library lands back here eventually - Zustand tells you to wrap a
+          Every library lands back here eventually - Zustand has you wrap a
           store in React context yourself, Jotai's Provider scopes a whole atom
-          store, and MobX leaves it to you entirely.
+          store, MobX leaves it to you entirely.
         </p>
       </div>
     </section>

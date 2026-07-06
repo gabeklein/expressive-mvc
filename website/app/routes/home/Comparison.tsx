@@ -14,8 +14,8 @@ export function Comparison() {
           </h2>
           <p className="text-fd-muted-foreground text-lg">
             Say you want a reusable, component-owned <code className={mono}>useFooBarBaz</code>{' '}
-            that re-renders on change. Every approach exposes the same surface -
-            only the cost of building it differs.
+            that re-renders on change. Same surface everywhere - only the cost
+            of building it differs.
           </p>
         </div>
 
@@ -32,11 +32,9 @@ export function Comparison() {
 
         <p className="text-fd-muted-foreground text-lg leading-relaxed max-w-3xl mx-auto mt-10 text-center">
           On the left, the destructure <em>is</em> the dependency list. Read a
-          field and the component subscribes to it; ignore it and it doesn't.
-          Nothing to declare, nothing to forget - and no setters, no{' '}
-          <code className={mono}>useCallback</code>, no store factory to keep in
-          sync. Need to read without subscribing? Reach through the{' '}
-          <code className={mono}>is</code> escape hatch:{' '}
+          field, subscribe to it. Ignore it, don't. Nothing to declare, nothing
+          to forget - no setters, no <code className={mono}>useCallback</code>,
+          no store factory. Need a silent read?{' '}
           <code className={mono}>state.is.foo</code>.
         </p>
       </div>

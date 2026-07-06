@@ -18,9 +18,9 @@ export function Turn() {
             Rails for your React app.
           </h2>
           <p className="text-fd-muted-foreground text-lg md:text-xl">
-            Fields are state, methods change it, the class is the context key. A
-            few conventions replace a pile of decisions - so a feature looks the
-            same whether it came from you, a teammate, or an agent.
+            Fields are state, methods change it, classes are context keys. A few
+            conventions replace a pile of decisions - a feature looks the same
+            whether it came from you, a teammate, or an agent.
           </p>
         </div>
 
