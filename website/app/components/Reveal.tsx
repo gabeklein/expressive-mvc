@@ -1,5 +1,5 @@
 import type React from 'react';
-import { useEffect, useRef, useState } from 'react';
+import State, { ref } from '@expressive/react';
 
 interface RevealProps {
   children: React.ReactNode;
@@ -14,18 +14,14 @@ const OFFSET = {
   right: 'translate-x-8',
 };
 
-export default function Reveal({ children, className, delay, from = 'up' }: RevealProps) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [shown, setShown] = useState(false);
+class Visibility extends State {
+  shown = false;
 
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-
+  element = ref<HTMLDivElement>((el) => {
     const io = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
-          setShown(true);
+          this.shown = true;
           io.disconnect();
         }
       },
@@ -34,11 +30,15 @@ export default function Reveal({ children, className, delay, from = 'up' }: Reve
 
     io.observe(el);
     return () => io.disconnect();
-  }, []);
+  });
+}
+
+export default function Reveal({ children, className, delay, from = 'up' }: RevealProps) {
+  const { shown, element } = Visibility.use();
 
   return (
     <div
-      ref={ref}
+      ref={element}
       style={delay ? { transitionDelay: `${delay}ms` } : undefined}
       className={`transition-all duration-700 ease-out motion-reduce:transition-none motion-reduce:opacity-100 motion-reduce:translate-x-0 motion-reduce:translate-y-0 ${
         shown ? 'opacity-100 translate-x-0 translate-y-0' : `opacity-0 ${OFFSET[from]}`

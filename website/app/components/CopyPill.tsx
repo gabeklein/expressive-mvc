@@ -1,18 +1,22 @@
-import { useState } from 'react';
+import State from '@expressive/react';
+
+class Copy extends State {
+  copied = false;
+
+  copy(command: string) {
+    navigator.clipboard.writeText(command).then(() => {
+      this.copied = true;
+      setTimeout(() => (this.copied = false), 1400);
+    });
+  }
+}
 
 export default function CopyPill({ label, command }: { label: string; command: string }) {
-  const [copied, setCopied] = useState(false);
-
-  const copy = () => {
-    navigator.clipboard.writeText(command).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1400);
-    });
-  };
+  const { copied, copy } = Copy.use();
 
   return (
     <button
-      onClick={copy}
+      onClick={() => copy(command)}
       className="group flex items-center justify-between gap-4 rounded-lg border border-fd-border/70 dark:border-transparent bg-fd-muted py-2.5 px-4 text-left transition-colors hover:bg-fd-muted/70">
       <span className="flex flex-col">
         <span className="text-[11px] uppercase tracking-widest text-fd-muted-foreground">

@@ -1,5 +1,5 @@
 import type React from 'react';
-import { useRef, useState } from 'react';
+import State, { ref } from '@expressive/react';
 import code from './Snippet';
 
 type Snippet = ReturnType<typeof code>;
@@ -17,53 +17,57 @@ interface CompareProps {
 const LN = { codeblock: { 'data-line-numbers': true } } as const;
 const SWIPE = 48;
 
-export default function Compare({ left, right }: CompareProps) {
-  const [tab, setTab] = useState(0);
-  const [face, setFace] = useState(0);
-  const stack = useRef<HTMLDivElement>(null);
-  const touch = useRef<{ x: number; y: number } | null>(null);
+class Control extends State {
+  tab = 0;
+  face = 0;
+  touchX = 0;
+  touchY = 0;
 
-  const active = right[Math.min(tab, right.length - 1)];
-  const Left = left.code;
-  const Right = active.code;
+  stack = ref<HTMLDivElement>();
 
-  const select = (i: number) => {
+  select(i: number) {
     if (i === 0) {
-      setFace(0);
+      this.face = 0;
     } else {
-      setTab(i - 1);
-      setFace(1);
+      this.tab = i - 1;
+      this.face = 1;
     }
-  };
+  }
 
-  const onTouchStart = (e: React.TouchEvent) => {
-    touch.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-  };
+  touchStart(e: React.TouchEvent) {
+    this.touchX = e.touches[0].clientX;
+    this.touchY = e.touches[0].clientY;
+  }
 
-  const onTouchEnd = (e: React.TouchEvent) => {
-    if (!touch.current) return;
-
-    const dx = e.changedTouches[0].clientX - touch.current.x;
-    const dy = e.changedTouches[0].clientY - touch.current.y;
-    touch.current = null;
+  touchEnd(e: React.TouchEvent) {
+    const dx = e.changedTouches[0].clientX - this.touchX;
+    const dy = e.changedTouches[0].clientY - this.touchY;
 
     if (Math.abs(dx) < SWIPE || Math.abs(dy) > Math.abs(dx)) return;
 
-    const pane = stack.current && stack.current.children[face];
+    const pane = this.stack.current && this.stack.current.children[this.face];
     const scroller =
       pane &&
       Array.from(pane.querySelectorAll('*')).find(
         (el) => el.scrollWidth > el.clientWidth + 1,
       );
 
-    if (dx < 0 && face === 0) {
+    if (dx < 0 && this.face === 0) {
       if (!scroller || scroller.scrollLeft >= scroller.scrollWidth - scroller.clientWidth - 2)
-        setFace(1);
-    } else if (dx > 0 && face === 1) {
+        this.face = 1;
+    } else if (dx > 0 && this.face === 1) {
       if (!scroller || scroller.scrollLeft <= 2)
-        setFace(0);
+        this.face = 0;
     }
-  };
+  }
+}
+
+export default function Compare({ left, right }: CompareProps) {
+  const { tab, face, select, touchStart, touchEnd, stack } = Control.use();
+
+  const active = right[Math.min(tab, right.length - 1)];
+  const Left = left.code;
+  const Right = active.code;
 
   const libTabs =
     right.length > 1 ? (
@@ -71,7 +75,7 @@ export default function Compare({ left, right }: CompareProps) {
         {right.map((s, i) => (
           <button
             key={s.label}
-            onClick={() => setTab(i)}
+            onClick={() => select(i + 1)}
             className={`rounded-full font-mono text-xs py-1 px-2.5 transition-colors ${
               i === tab
                 ? 'bg-fd-muted text-fd-foreground'
@@ -120,8 +124,8 @@ export default function Compare({ left, right }: CompareProps) {
 
         <div
           ref={stack}
-          onTouchStart={onTouchStart}
-          onTouchEnd={onTouchEnd}
+          onTouchStart={touchStart}
+          onTouchEnd={touchEnd}
           className="compare-static grid">
           <div
             className="col-start-1 row-start-1 transition-opacity duration-300 motion-reduce:transition-none"
