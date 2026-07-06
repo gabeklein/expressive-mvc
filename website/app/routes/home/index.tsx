@@ -7,6 +7,7 @@ import { Comparison } from './Comparison';
 import { Complicated } from './Complicated';
 import { Context } from './Context';
 import { CTA } from './CTA';
+import { Fetch } from './Fetch';
 import { Hero } from './Hero';
 import { Turn } from './Turn';
 import { View } from './View';
@@ -38,6 +39,7 @@ export default function Home() {
       <Complicated />
       <Comparison />
       <Context />
+      <Fetch />
       <View />
       <Turn />
       <Benefits />

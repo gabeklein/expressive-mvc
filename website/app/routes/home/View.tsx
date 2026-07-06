@@ -4,14 +4,14 @@ import code from '@/components/Snippet';
 
 export function View() {
   return (
-    <section>
+    <section className="bg-fd-foreground/[0.04]">
       <div className="mx-auto max-w-(--content-width) py-24 px-6 grid gap-12 lg:grid-cols-[2fr_3fr] lg:items-center">
         <div>
           <div className="text-xs uppercase tracking-widest text-fd-muted-foreground mb-3">
             Component
           </div>
           <h2 className="font-display text-3xl md:text-4xl font-bold tracking-tight mb-4">
-            When the state is the view.
+            State that renders itself.
           </h2>
           <p className="text-fd-muted-foreground text-lg mb-4">
             Reach for <code className={mono}>Component</code> when State should
@@ -22,8 +22,10 @@ export function View() {
           </p>
           <p className="text-fd-muted-foreground text-lg">
             And because it's a class, UI composes by extension - a base owns
-            structure and behavior, subclasses fill in the pieces. Reusable,
-            customizable components in the shadcn spirit, minus the copy-paste.
+            structure and behavior, subclasses fill in the pieces. Create your own
+            reusable, customizable components without reaching for shadcn. A{' '}
+            <code className={mono}>Component</code> is even its own Provider -
+            children pull it from context, nothing to wrap.
           </p>
         </div>
 
@@ -64,8 +66,8 @@ class TipCalculator extends Component {
 
     return (
       <div className="mt-4 rounded-lg border border-fd-border py-3 px-4">
-        <div className="text-xs uppercase tracking-widest text-fd-muted-foreground mb-3">
-          Live - this exact class
+        <div className="text-xs tracking-widest text-fd-muted-foreground mb-3">
+          LIVE - Code above is whole component, ready to use.
         </div>
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
           <label className="flex items-center gap-2 font-mono text-sm">

@@ -5,7 +5,7 @@ import code from '@/components/Snippet';
 
 export function Hero() {
   return (
-    <section className="relative overflow-hidden flex items-center min-h-[calc(100vh-56px)]">
+    <section className="relative flex items-center min-h-[calc(100vh-56px)]">
       <Aurora />
       <div className="relative w-full mx-auto max-w-(--content-width) px-6 py-24 grid gap-12 lg:grid-cols-2 lg:items-center">
         <div>
@@ -17,8 +17,8 @@ export function Hero() {
           </h1>
           <p className="text-lg md:text-xl text-fd-muted-foreground max-w-xl mb-8">
             Just <code className="font-mono text-[0.9em] bg-fd-muted px-1.5 py-0.5 rounded">use()</code>{' '}
-            a State instead - data, behavior, and lifecycle in one place.
-            Components read what they need and update when it changes.
+             State instead - data, behavior, and lifecycle in one place.
+            Components read what they need and update when values change.
           </p>
 
           <div className="flex flex-wrap gap-3 mb-8">
@@ -36,10 +36,10 @@ export function Hero() {
 
           <div className="flex flex-col gap-2 max-w-md">
             <CopyPill label="Add to your app" command="npm install @expressive/react" />
-            <CopyPill label="Teach your agent" command="npx skills add gabeklein/expressive-mvc" />
+            <CopyPill label="Add to your agent" command="npx skills add gabeklein/expressive-mvc" />
           </div>
           <p className="text-sm text-fd-muted-foreground mt-4">
-            Drops into the React app you already have - not a framework, not a
+            Drops into React app you already have - not a framework, no
             rewrite.
           </p>
         </div>

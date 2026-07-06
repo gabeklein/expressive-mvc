@@ -5,12 +5,12 @@ export function Comparison() {
   return (
     <section>
       <div className="mx-auto max-w-(--content-width) px-6 py-24">
-        <div className="max-w-2xl mb-12">
+        <div className="max-w-3xl mb-12">
           <div className="text-xs uppercase tracking-widest text-fd-muted-foreground mb-3">
             Local state
           </div>
           <h2 className="font-display text-3xl md:text-4xl font-bold tracking-tight mb-4">
-            The same component. Half the machinery.
+            The same component. <span className='text-nowrap'>Half the machinery.</span>
           </h2>
           <p className="text-fd-muted-foreground text-lg">
             Say you want a reusable, component-owned <code className={mono}>useFooBarBaz</code>{' '}
@@ -31,11 +31,10 @@ export function Comparison() {
         />
 
         <p className="text-fd-muted-foreground text-lg leading-relaxed max-w-3xl mx-auto mt-10 text-center">
-          On the left, the destructure <em>is</em> the dependency list. Read a
-          field, subscribe to it. Ignore it, don't. Nothing to declare, nothing
+          With MVC, the destructure <em>is</em> the dependency list. Read a
+          field, subscribe to it. Nothing to declare, nothing
           to forget - no setters, no <code className={mono}>useCallback</code>,
-          no store factory. Need a silent read?{' '}
-          <code className={mono}>state.is.foo</code>.
+          no store factory.
         </p>
       </div>
     </section>

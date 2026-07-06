@@ -13,14 +13,14 @@ export function Context() {
             Your classes themselves are context keys.
           </h2>
           <p className="text-fd-muted-foreground text-lg">
-            Anything needing Theme, for instance, just asks for it - another State via{' '}
-            <code className={mono}>get(Theme)</code>, a component via{' '}
-            <code className={mono}>Theme.get()</code>. Fully typed, no wiring.
+            Wrap a subtree in <code className={mono}>&lt;Provider&gt;</code> and
+            anything below just asks: <code className={mono}>Theme.get()</code>{' '}
+            finds the nearest instance. Fully typed, no wiring.
           </p>
         </div>
 
         <Compare
-          left={{ label: 'get(Theme)', code: ExprCode }}
+          left={{ label: 'Theme.get()', code: ExprCode }}
           right={[
             { label: 'React Context', code: ReactCode },
             { label: 'Zustand', code: ZustandCode },
@@ -44,7 +44,7 @@ const mono = 'font-mono text-sm bg-fd-muted px-1.5 py-0.5 rounded';
 
 const ExprCode = code /*tsx*/`
   import React from 'react';
-  import State, { get } from '@expressive/react';
+  import State, { Provider } from '@expressive/react';
 
   class Theme extends State {
     mode = 'light';
@@ -54,18 +54,18 @@ const ExprCode = code /*tsx*/`
     }
   }
 
-  class Panel extends State {
-    theme = get(Theme);
-
-    get dark() {
-      return this.theme.mode === 'dark';
-    }
-  }
-
   function ModeBadge() {
     const { mode, toggle } = Theme.get();
 
     return <button onClick={toggle}>{mode}</button>;
+  }
+
+  function App() {
+    return (
+      <Provider for={Theme}>
+        <ModeBadge />
+      </Provider>
+    );
   }
 `;
 
