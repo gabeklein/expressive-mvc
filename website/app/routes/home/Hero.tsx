@@ -1,4 +1,4 @@
-import State from '@expressive/react';
+import State, { ref } from '@expressive/react';
 import { Link } from 'react-router';
 import CopyPill from '@/components/CopyPill';
 import code from '@/components/Snippet';
@@ -58,9 +58,37 @@ export function Hero() {
 const btn =
   'inline-flex items-center justify-center rounded-full font-medium py-3 px-6 no-underline transition-[opacity,background-color] duration-200';
 
+class Parallax extends State {
+  layer = ref<HTMLDivElement>((el) => {
+    let frame = 0;
+
+    const update = () => {
+      frame = 0;
+      const y = window.scrollY;
+      el.style.transform = `translateY(${y * 0.4}px)`;
+      el.style.opacity = String(Math.max(0, 1 - y / (window.innerHeight * 0.9)));
+    };
+
+    const onScroll = () => {
+      if (!frame) frame = requestAnimationFrame(update);
+    };
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+    update();
+
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      cancelAnimationFrame(frame);
+    };
+  });
+}
+
 function Aurora() {
+  const { layer } = Parallax.use();
+
   return (
     <div
+      ref={layer}
       aria-hidden
       className="absolute inset-0 overflow-hidden [mask-image:linear-gradient(to_bottom,black,black_60%,transparent)]">
       <div className="aurora absolute -top-48 -left-40 size-[36rem] rounded-full bg-(--accent)/20 blur-3xl" />

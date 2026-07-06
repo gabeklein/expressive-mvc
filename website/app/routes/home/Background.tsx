@@ -20,6 +20,12 @@ export class AnimateBG extends Canvas2D {
   maxLineLength = 150;
   minLineLength = 140;
 
+  // Wind down after ~30s so an idle tab stops burning frames.
+  decayAfter = 30 * 60;
+  frames = 0;
+  damper = 1;
+  stopped = false;
+
   particles = new Set<Particle>();
 
   protected ready() {
@@ -41,18 +47,40 @@ export class AnimateBG extends Canvas2D {
       element.height = this.height = rect.height;
     };
 
+    const onVisibility = () => {
+      this.active = !this.stopped && !document.hidden && document.hasFocus();
+    };
+
     window.addEventListener('resize', onResize);
+    window.addEventListener('blur', onVisibility);
+    window.addEventListener('focus', onVisibility);
+    document.addEventListener('visibilitychange', onVisibility);
     onResize();
 
     for (let i = 0; i < this.particleCount; i++) new Particle(this);
 
     return () => {
       window.removeEventListener('resize', onResize);
+      window.removeEventListener('blur', onVisibility);
+      window.removeEventListener('focus', onVisibility);
+      document.removeEventListener('visibilitychange', onVisibility);
     };
   }
 
   protected draw() {
     const { canvas, particles } = this;
+
+    this.frames++;
+
+    if (this.frames > this.decayAfter) {
+      this.damper *= 0.995;
+
+      if (this.damper < 0.02) {
+        this.stopped = true;
+        this.active = false;
+        return;
+      }
+    }
 
     canvas.clearRect(0, 0, this.width, this.height);
 
@@ -86,15 +114,15 @@ class Particle {
   }
 
   update() {
-    const { width, height } = this.parent;
+    const { width, height, damper } = this.parent;
 
-    this.x += Math.cos(this.direction) * this.speed;
-    this.y += Math.sin(this.direction) * this.speed;
+    this.x += Math.cos(this.direction) * this.speed * damper;
+    this.y += Math.sin(this.direction) * this.speed * damper;
 
     if (this.x < 0 || this.x > width) this.direction = Math.PI - this.direction;
     if (this.y < 0 || this.y > height) this.direction = -this.direction;
 
-    this.life--;
+    this.life -= damper;
   }
 
   draw() {

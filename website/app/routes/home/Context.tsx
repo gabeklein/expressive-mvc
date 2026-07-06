@@ -70,7 +70,7 @@ const ExprCode = code /*tsx*/`
 `;
 
 const ReactCode = code /*tsx*/`
-  import { createContext, useContext, useState } from 'react';
+  import React, { createContext, useContext, useState } from 'react';
 
   const ThemeContext = createContext<{
     mode: string;
@@ -102,7 +102,7 @@ const ReactCode = code /*tsx*/`
 
 const JotaiCode = code /*tsx*/`
   import { atom, createStore, Provider, useAtom } from 'jotai';
-  import { useState } from 'react';
+  import React, { useState } from 'react';
 
   const modeAtom = atom('light');
 
@@ -130,7 +130,7 @@ const JotaiCode = code /*tsx*/`
 `;
 
 const ZustandCode = code /*tsx*/`
-  import { createContext, useContext, useState } from 'react';
+  import React, { createContext, useContext, useState } from 'react';
   import { createStore, useStore } from 'zustand';
 
   const ThemeContext = createContext(null);

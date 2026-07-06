@@ -70,7 +70,7 @@ const ExprCode = code /*tsx*/`
 `;
 
 const HookCode = code /*tsx*/`
-  import { useState, useCallback } from 'react';
+  import React, { useState, useCallback } from 'react';
 
   function useFooBarBaz() {
     const [foo, setFoo] = useState(0);
@@ -95,7 +95,7 @@ const HookCode = code /*tsx*/`
 
 const ZustandCode = code /*tsx*/`
   import { createStore, useStore } from 'zustand';
-  import { useState } from 'react';
+  import React, { useState } from 'react';
 
   const makeStore = () => createStore(set => ({
     foo: 0, bar: 'hello', baz: true,
@@ -120,7 +120,7 @@ const ZustandCode = code /*tsx*/`
 
 const JotaiCode = code /*tsx*/`
   import { atom, useAtom } from 'jotai';
-  import { useMemo } from 'react';
+  import React, { useMemo } from 'react';
 
   function useFooBarBaz() {
     const a = useMemo(() => ({
@@ -149,7 +149,7 @@ const JotaiCode = code /*tsx*/`
 const MobxCode = code /*tsx*/`
   import { makeAutoObservable } from 'mobx';
   import { observer } from 'mobx-react-lite';
-  import { useState } from 'react';
+  import React, { useState } from 'react';
 
   class FooBarBaz {
     foo = 0;
@@ -179,7 +179,7 @@ const MobxCode = code /*tsx*/`
 const ReduxCode = code /*tsx*/`
   import { configureStore, createSlice } from '@reduxjs/toolkit';
   import { Provider, useDispatch, useSelector } from 'react-redux';
-  import { useState } from 'react';
+  import React, { useState } from 'react';
 
   const slice = createSlice({
     name: 'fooBarBaz',

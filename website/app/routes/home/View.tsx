@@ -20,16 +20,11 @@ export function View() {
             events. Computed getters chain with no{' '}
             <code className={mono}>useMemo</code>, no dependency arrays.
           </p>
-          <p className="text-fd-muted-foreground text-lg mb-6">
+          <p className="text-fd-muted-foreground text-lg">
             And because it's a class, UI composes by extension - a base owns
             structure and behavior, subclasses fill in the pieces. Reusable,
             customizable components in the shadcn spirit, minus the copy-paste.
           </p>
-          <Link
-            className="text-fd-primary font-medium no-underline hover:opacity-80"
-            to="/examples/essentials/reactivity">
-            Try it in the Playground →
-          </Link>
         </div>
 
         <div className="min-w-0">
@@ -37,6 +32,13 @@ export function View() {
             <TipExample />
           </div>
           <LiveTip />
+          <div className="mt-4 text-right">
+            <Link
+              className="text-fd-primary font-medium no-underline hover:opacity-80"
+              to="/examples/essentials/reactivity">
+              Try it in the Playground →
+            </Link>
+          </div>
         </div>
       </div>
     </section>

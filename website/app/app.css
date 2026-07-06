@@ -104,15 +104,15 @@ figure[data-rehype-pretty-code-figure] pre code,
     transform: translate(0, 0) scale(1);
   }
   50% {
-    transform: translate(4rem, -2rem) scale(1.15);
+    transform: translate(6rem, -3rem) scale(1.25);
   }
   to {
-    transform: translate(-3rem, 2rem) scale(0.95);
+    transform: translate(-5rem, 3rem) scale(0.9);
   }
 }
 
 .aurora {
-  animation: aurora-drift 26s ease-in-out infinite alternate;
+  animation: aurora-drift 18s ease-in-out infinite alternate;
 }
 
 @media (prefers-reduced-motion: reduce) {
