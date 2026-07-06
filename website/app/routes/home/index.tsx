@@ -9,6 +9,7 @@ import { Context } from './Context';
 import { CTA } from './CTA';
 import { Hero } from './Hero';
 import { Turn } from './Turn';
+import { View } from './View';
 
 export const layoutOptions: BaseLayoutProps = {
   nav: { title: <Logo /> },
@@ -37,6 +38,7 @@ export default function Home() {
       <Complicated />
       <Comparison />
       <Context />
+      <View />
       <Turn />
       <Benefits />
       <CTA />
