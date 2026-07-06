@@ -118,11 +118,13 @@ function LiveCounter() {
       <div className="text-xs tracking-widest text-fd-muted-foreground mb-3">
         LIVE - the class above, running.
       </div>
-      <button
-        onClick={increment}
-        className="rounded-full border border-fd-border font-mono text-sm py-1.5 px-4 hover:bg-fd-muted transition-colors">
-        Clicked {count} times
-      </button>
+      <div className="flex justify-center sm:justify-start">
+        <button
+          onClick={increment}
+          className="rounded-full border border-fd-border font-mono text-sm py-1.5 px-4 hover:bg-fd-muted transition-colors">
+          Clicked {count} times
+        </button>
+      </div>
     </div>
   );
 }
