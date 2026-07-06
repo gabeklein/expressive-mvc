@@ -10,10 +10,10 @@ export function Context() {
             Shared state
           </div>
           <h2 className="font-display text-3xl md:text-4xl font-bold tracking-tight mb-4">
-            The class is the context key.
+            Your classes themselves are context keys.
           </h2>
           <p className="text-fd-muted-foreground text-lg">
-            Anything needing Theme just asks for it - another State via{' '}
+            Anything needing Theme, for instance, just asks for it - another State via{' '}
             <code className={mono}>get(Theme)</code>, a component via{' '}
             <code className={mono}>Theme.get()</code>. Fully typed, no wiring.
           </p>

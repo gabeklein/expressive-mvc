@@ -10,7 +10,7 @@ export function Hero() {
       <div className="relative mx-auto max-w-(--content-width) px-6 py-24 md:py-32 grid gap-12 lg:grid-cols-2 lg:items-center">
         <div>
           <div className="text-xs uppercase tracking-widest text-fd-muted-foreground mb-5">
-            Class-based reactive state for React
+            Class-based control for React
           </div>
           <h1 className="font-display text-4xl md:text-6xl font-bold tracking-tight leading-[1.05] mb-6">
             State doesn't belong in your components.

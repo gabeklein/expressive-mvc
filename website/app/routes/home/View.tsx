@@ -14,7 +14,7 @@ export function View() {
             When the state is the view.
           </h2>
           <p className="text-fd-muted-foreground text-lg mb-4">
-            A <code className={mono}>Component</code> is a State that renders
+            Reach for <code className={mono}>Component</code> for State that renders
             itself. Fields drive <code className={mono}>render()</code> directly
             - destructure <code className={mono}>this</code>, assign on events,
             and computed getters chain with no <code className={mono}>useMemo</code>,

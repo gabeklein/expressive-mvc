@@ -9,10 +9,10 @@ export function CTA() {
     <section>
       <div className="mx-auto max-w-2xl py-24 px-6 text-center">
         <h2 className="font-display text-3xl md:text-5xl font-bold tracking-tight mb-4">
-          Move one feature out of your components.
+          Move just one feature out of hooks.
         </h2>
         <p className="text-fd-muted-foreground text-lg mb-10">
-          Start with one. Leave everything else alone. See how it feels.
+          Start with one. Everything else the same. See how it feels.
         </p>
 
         <div className="flex flex-col sm:flex-row gap-3 justify-center mb-8">
