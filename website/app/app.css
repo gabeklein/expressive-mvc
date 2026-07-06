@@ -32,3 +32,21 @@ figure[data-rehype-pretty-code-figure] pre code,
   --accent: var(--purple);
   --accent-light: #7864f799;
 }
+
+/* Hero pill-storm marquee */
+@keyframes marquee-x {
+  to {
+    transform: translateX(-50%);
+  }
+}
+@keyframes marquee-x-reverse {
+  from {
+    transform: translateX(-50%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marquee-track {
+    animation: none !important;
+  }
+}
