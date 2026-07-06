@@ -1,255 +1,365 @@
 ---
 title: Comparisons
-description: How Expressive MVC relates to hooks, Zustand, Redux, and MobX
+description: The same component built with Zustand, Jotai, Redux, and MobX - side by side
 ---
 
-## vs React Hooks
+How Expressive relates to the store libraries you already know. For the case against raw hooks, see [Why Classes?](/docs/why-classes) - this page is about the libraries you'd otherwise pick instead.
 
-Hooks are great for small components. They scale poorly because they organize code around _when it runs_ rather than _what it means_. As features grow, related state gets smeared across multiple `useState` calls, effects, callbacks, and dependency arrays.
+The fairest comparison is a *component-owned* unit of state: reusable, self-contained, re-renders on change. Below, the consumer code is held identical everywhere it can be - only the cost of building the unit differs.
 
-### A typical hook-heavy component
+<br />
 
-```tsx
-function UserProfile({ userId }) {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
+## Local state
 
-  useEffect(() => {
-    setLoading(true);
-    fetch(`/api/users/${userId}`)
-      .then((res) => res.json())
-      .then((data) => {
-        setName(data.name);
-        setEmail(data.email);
-      })
-      .catch(setError)
-      .finally(() => setLoading(false));
-  }, [userId]);
+Say you want a reusable `useFooBarBaz` that a widget can own. Flip through:
 
-  const save = useCallback(async () => {
-    await fetch(`/api/users/${userId}`, {
-      method: 'PUT',
-      body: JSON.stringify({ name, email })
-    });
-  }, [userId, name, email]);
-
-  // ... render
-}
-```
-
-### The same feature with Expressive
+<Compare labels={['Expressive', 'Hooks', 'Zustand', 'Jotai', 'Redux', 'MobX']}>
 
 ```tsx
-class UserProfile extends State {
-  userId = set<string>();
-  name = '';
-  email = '';
-  loading = false;
-  error = set<Error | null>(null);
+import State from '@expressive/react';
 
-  data = set(async () => {
-    this.loading = true;
-    try {
-      const res = await fetch(`/api/users/${this.userId}`);
-      const data = await res.json();
-      this.name = data.name;
-      this.email = data.email;
-      return data;
-    } catch (e) {
-      this.error = e as Error;
-      throw e;
-    } finally {
-      this.loading = false;
-    }
-  });
+class FooBarBaz extends State {
+  foo = 0;
+  bar = 'hello';
+  baz = true;
 
-  async save() {
-    await fetch(`/api/users/${this.userId}`, {
-      method: 'PUT',
-      body: JSON.stringify({ name: this.name, email: this.email })
-    });
+  bump() {
+    this.foo++;
   }
 }
 
-function UserProfileView({ userId }) {
-  const { is: profile, name, email, loading, save } = UserProfile.use({ userId });
-  if (loading) return <Spinner />;
+function Widget() {
+  const { foo, bar, baz, bump } = FooBarBaz.use();
 
   return (
-    <form>
-      <input value={name} onChange={(e) => (profile.name = e.target.value)} />
-      <input value={email} onChange={(e) => (profile.email = e.target.value)} />
-      <button onClick={save}>Save</button>
-    </form>
+    <button onClick={bump}>
+      {foo} · {bar} · {String(baz)}
+    </button>
   );
 }
 ```
 
-|              | React Hooks                      | Expressive MVC                  |
-| ------------ | -------------------------------- | --------------------------------- |
-| State        | Multiple `useState` calls        | Class fields                      |
-| Logic        | Spread across hooks              | Methods on the class              |
-| Reuse        | Custom hooks (still React-bound) | Plain classes (testable anywhere) |
-| Dependencies | Manual arrays, error-prone       | Automatic tracking                |
-| Async        | `useEffect` + cleanup flags      | Regular async methods             |
-| Sharing      | Prop drilling or context + hooks | `Provider` + `State.get()`        |
+```tsx
+import { useState, useCallback } from 'react';
+
+function useFooBarBaz() {
+  const [foo, setFoo] = useState(0);
+  const [bar, setBar] = useState('hello');
+  const [baz, setBaz] = useState(true);
+
+  const bump = useCallback(() => setFoo(f => f + 1), []);
+
+  return { foo, bar, baz, bump, setFoo, setBar, setBaz };
+}
+
+function Widget() {
+  const { foo, bar, baz, bump } = useFooBarBaz();
+
+  return (
+    <button onClick={bump}>
+      {foo} · {bar} · {String(baz)}
+    </button>
+  );
+}
+```
+
+```tsx
+import { createStore, useStore } from 'zustand';
+import { useState } from 'react';
+
+const makeStore = () => createStore(set => ({
+  foo: 0, bar: 'hello', baz: true,
+  bump: () => set(s => ({ foo: s.foo + 1 })),
+}));
+
+function useFooBarBaz() {
+  const [store] = useState(makeStore);
+  return useStore(store);
+}
+
+function Widget() {
+  const { foo, bar, baz, bump } = useFooBarBaz();
+
+  return (
+    <button onClick={bump}>
+      {foo} · {bar} · {String(baz)}
+    </button>
+  );
+}
+```
+
+```tsx
+import { atom, useAtom } from 'jotai';
+import { useMemo } from 'react';
+
+function useFooBarBaz() {
+  const a = useMemo(() => ({
+    foo: atom(0), bar: atom('hello'), baz: atom(true),
+  }), []);
+
+  const [foo, setFoo] = useAtom(a.foo);
+  const [bar] = useAtom(a.bar);
+  const [baz] = useAtom(a.baz);
+  const bump = () => setFoo(f => f + 1);
+
+  return { foo, bar, baz, bump };
+}
+
+function Widget() {
+  const { foo, bar, baz, bump } = useFooBarBaz();
+
+  return (
+    <button onClick={bump}>
+      {foo} · {bar} · {String(baz)}
+    </button>
+  );
+}
+```
+
+```tsx
+import { configureStore, createSlice } from '@reduxjs/toolkit';
+import { Provider, useDispatch, useSelector } from 'react-redux';
+import { useState } from 'react';
+
+const slice = createSlice({
+  name: 'fooBarBaz',
+  initialState: { foo: 0, bar: 'hello', baz: true },
+  reducers: {
+    bump: (s) => { s.foo++; },
+  },
+});
+
+function useFooBarBaz() {
+  const { foo, bar, baz } = useSelector(s => s);
+  const dispatch = useDispatch();
+  const bump = () => dispatch(slice.actions.bump());
+
+  return { foo, bar, baz, bump };
+}
+
+function App() {
+  const [store] = useState(() =>
+    configureStore({ reducer: slice.reducer }));
+
+  return (
+    <Provider store={store}>
+      <Widget />
+    </Provider>
+  );
+}
+```
+
+```tsx
+import { makeAutoObservable } from 'mobx';
+import { observer } from 'mobx-react-lite';
+import { useState } from 'react';
+
+class FooBarBaz {
+  foo = 0;
+  bar = 'hello';
+  baz = true;
+
+  constructor() {
+    makeAutoObservable(this);
+  }
+
+  bump() {
+    this.foo++;
+  }
+}
+
+const Widget = observer(() => {
+  const [state] = useState(() => new FooBarBaz());
+
+  return (
+    <button onClick={() => state.bump()}>
+      {state.foo} · {state.bar} · {String(state.baz)}
+    </button>
+  );
+});
+```
+
+</Compare>
+
+On the Expressive side, the destructure *is* the dependency list. Read a field, subscribe to it. Ignore it, don't. Nothing to declare, nothing to forget - no setters, no selectors, no store factory. Need a silent read? `state.is.foo`.
 
 <br />
 
----
+## Shared state
+
+Context is where store libraries quietly hand the problem back to you. In Expressive, your classes themselves are context keys - anything needing `Theme` just asks for it: another State via `get(Theme)`, a component via `Theme.get()`.
+
+<Compare labels={['Expressive', 'React Context', 'Zustand', 'Jotai']}>
+
+```tsx
+import State, { get } from '@expressive/react';
+
+class Theme extends State {
+  mode = 'light';
+
+  toggle() {
+    this.mode = this.mode === 'light' ? 'dark' : 'light';
+  }
+}
+
+class Panel extends State {
+  theme = get(Theme);
+
+  get dark() {
+    return this.theme.mode === 'dark';
+  }
+}
+
+function ModeBadge() {
+  const { mode, toggle } = Theme.get();
+
+  return <button onClick={toggle}>{mode}</button>;
+}
+```
+
+```tsx
+import { createContext, useContext, useState } from 'react';
+
+const ThemeContext = createContext<{
+  mode: string;
+  toggle: () => void;
+} | null>(null);
+
+function ThemeProvider({ children }) {
+  const [mode, setMode] = useState('light');
+
+  const toggle = () =>
+    setMode(m => (m === 'light' ? 'dark' : 'light'));
+
+  return (
+    <ThemeContext.Provider value={{ mode, toggle }}>
+      {children}
+    </ThemeContext.Provider>
+  );
+}
+
+function ModeBadge() {
+  const theme = useContext(ThemeContext);
+
+  if (!theme)
+    throw new Error('ThemeProvider missing');
+
+  return <button onClick={theme.toggle}>{theme.mode}</button>;
+}
+```
+
+```tsx
+import { createContext, useContext, useState } from 'react';
+import { createStore, useStore } from 'zustand';
+
+const ThemeContext = createContext(null);
+
+const makeTheme = () => createStore(set => ({
+  mode: 'light',
+  toggle: () => set(s =>
+    ({ mode: s.mode === 'light' ? 'dark' : 'light' })),
+}));
+
+function ThemeProvider({ children }) {
+  const [store] = useState(makeTheme);
+
+  return (
+    <ThemeContext.Provider value={store}>
+      {children}
+    </ThemeContext.Provider>
+  );
+}
+
+function ModeBadge() {
+  const store = useContext(ThemeContext);
+
+  if (!store)
+    throw new Error('ThemeProvider missing');
+
+  const { mode, toggle } = useStore(store);
+
+  return <button onClick={toggle}>{mode}</button>;
+}
+```
+
+```tsx
+import { atom, createStore, Provider, useAtom } from 'jotai';
+import { useState } from 'react';
+
+const modeAtom = atom('light');
+
+function ThemeProvider({ children }) {
+  const [store] = useState(() => createStore());
+
+  return (
+    <Provider store={store}>
+      {children}
+    </Provider>
+  );
+}
+
+function ModeBadge() {
+  const [mode, setMode] = useAtom(modeAtom);
+
+  const toggle = () =>
+    setMode(m => (m === 'light' ? 'dark' : 'light'));
+
+  return <button onClick={toggle}>{mode}</button>;
+}
+
+// note: the Provider scopes every atom in the
+// subtree to this store, not just the theme
+```
+
+</Compare>
+
+No `createContext<T>`, no null default, no missing-provider guard, no Provider/Consumer pair to keep in sync. Every library lands back here eventually - Zustand has you wrap a store in React context yourself, Jotai's Provider scopes a whole atom store, MobX leaves it to you entirely.
 
 <br />
 
 ## vs Zustand
 
-Zustand is a great lightweight store library. The main differences:
+Zustand is a great lightweight store. The differences that matter in practice:
 
-```ts
-// Zustand
-const useStore = create((set) => ({
-  count: 0,
-  name: '',
-  increment: () => set((s) => ({ count: s.count + 1 })),
-  setName: (name) => set({ name }),
-}));
-
-function Counter() {
-  const count = useStore((s) => s.count);
-  const increment = useStore((s) => s.increment);
-  return <button onClick={increment}>{count}</button>;
-}
-```
-
-```tsx
-// Expressive
-class Counter extends State {
-  count = 0;
-  name = '';
-  increment() {
-    this.count++;
-  }
-}
-
-function CounterView() {
-  const { count, increment } = Counter.use();
-  return <button onClick={increment}>{count}</button>;
-}
-```
-
-- **Destructuring is the selector** - no need for per-access selector functions or shallow comparisons.
+- **Destructuring is the selector** - no per-access selector functions or shallow-compare helpers.
 - **Classes are the organizational unit** - no factory functions, no spread-based updates.
-- **Instances are scoped** - a class can back a global store, a per-component instance, or a provider tree. One API.
+- **One API for every scope** - the same class can back a global store, a per-component instance, or a provider tree.
 - **Lifecycle is built in** - `new()` and automatic destruction replace manual subscribe/teardown.
-
-<br />
-
----
 
 <br />
 
 ## vs Redux (and RTK)
 
-```ts
-const counterSlice = createSlice({
-  name: 'counter',
-  initialState: { count: 0 },
-  reducers: {
-    increment: (state) => {
-      state.count++;
-    }
-  }
-});
-
-const count = useSelector((state) => state.counter.count);
-const dispatch = useDispatch();
-dispatch(counterSlice.actions.increment());
-```
-
-Redux (even with RTK) introduces actions, reducers, selectors, and a dispatch indirection. Expressive collapses all of these into methods:
+Redux introduces actions, reducers, selectors, and a dispatch indirection. Expressive collapses all four into methods:
 
 ```tsx
 class Counter extends State {
   count = 0;
+
   increment() {
     this.count++;
   }
 }
 ```
 
-|              | Redux / RTK                 | Expressive MVC       |
-| ------------ | --------------------------- | ---------------------- |
-| Updates      | `dispatch(action)`          | Direct assignment      |
-| Subscription | `useSelector`               | Destructure            |
-| Organization | Slices + store              | Classes                |
-| Types        | Inferred from factory shape | Declared on class      |
-| Async        | Middleware (thunks, sagas)  | Regular async methods  |
-| Composition  | Store merging               | Class inheritance      |
-| DevTools     | Time-travel debugger        | Standard browser debug |
+- Updates: direct assignment instead of `dispatch(action)`.
+- Subscription: destructure instead of `useSelector`.
+- Async: regular async methods instead of thunks or sagas.
+- Composition: class inheritance instead of store merging.
 
-Redux's time-travel devtools are real value - if you rely on them, factor that into your choice.
-
-<br />
-
----
+> Redux's time-travel devtools are real value. If you rely on them daily, factor that in - Expressive gives you plain objects and standard browser debugging instead.
 
 <br />
 
 ## vs MobX
 
-MobX is the closest relative to Expressive. Both use observable classes with automatic dependency tracking. The differences are mostly about ergonomics and integration:
+MobX is the closest relative - both use observable objects with automatic dependency tracking. Expressive is what you get when that idea is allowed to own the whole problem:
 
-```ts
-// MobX
-import { makeAutoObservable } from 'mobx';
-import { observer } from 'mobx-react-lite';
+- **No `observer()` wrapper.** Miss one in MobX and you get stale renders. Expressive tracks through `use()` and `get()` themselves.
+- **No `makeAutoObservable`.** Extending `State` is enough - and methods arrive pre-bound.
+- **Lifecycle, context, and Suspense are built in** - `new()`, class-keyed context, async `set()`. In MobX these are pieces you wire together yourself.
 
-class Counter {
-  count = 0;
-  constructor() { makeAutoObservable(this); }
-  increment() { this.count++; }
-}
-
-const counter = new Counter();
-
-const CounterView = observer(() => (
-  <button onClick={() => counter.increment()}>{counter.count}</button>
-));
-```
-
-```tsx
-// Expressive
-class Counter extends State {
-  count = 0;
-  increment() {
-    this.count++;
-  }
-}
-
-function CounterView() {
-  const { count, increment } = Counter.use();
-  return <button onClick={increment}>{count}</button>;
-}
-```
-
-- **No `observer()` wrapper** - miss one in MobX and you get stale renders. Expressive tracks through `use()`/`get()`.
-- **No `makeAutoObservable`** - extending `State` is enough.
-- **Methods are auto-bound** without special configuration.
-- **Lifecycle is built in** - `new()` and destruction semantics.
-- **Context is built in** - `Provider`, `State.get()`, `get` instruction.
-- **Suspense is built in** - async `set()` works with React Suspense out of the box.
-
-If you like MobX, you'll feel at home. Expressive is more opinionated: lifecycle, context, and framework integration are part of the library rather than pieces you wire together.
-
-|            | MobX                       | Expressive MVC              |
-| ---------- | -------------------------- | ----------------------------- |
-| Setup      | `makeAutoObservable(this)` | Extend `State`                |
-| Components | `observer(...)` wrapper    | `State.use()` / `State.get()` |
-| Binding    | Manual / configured        | Auto-bound                    |
-| Lifecycle  | DIY                        | Built-in `new()`              |
-| Context    | External library           | Built-in `Provider` + `get`   |
-| Suspense   | Not included               | Built-in async `set()`        |
+If you like MobX, you'll feel at home here. Expressive is simply more opinionated about the parts MobX leaves as an exercise.
 
 <br />
 
@@ -260,4 +370,4 @@ If you like MobX, you'll feel at home. Expressive is more opinionated: lifecycle
 - You already have a state solution that works and causes no pain.
 - You rely heavily on Redux devtools' time-travel debugging.
 
-Expressive is a tool for specific kinds of complexity. If you don't have that complexity, you don't need it.
+Expressive is a tool for a specific kind of complexity. If you don't have it, you don't need it.

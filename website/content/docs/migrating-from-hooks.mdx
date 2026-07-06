@@ -251,9 +251,11 @@ class Control extends State {
 
 function Header() {
   const { color } = Theme.get();
-  // Theme resolves from AppState.theme
+  // resolves from Control.theme
 }
 ```
+
+> App-wide singletons don't even need the Provider - a module-scope `Theme.new()` registers into the root context, findable by `Theme.get()` from anywhere. [See it in the Playground.](/examples/composition/singletons)
 
 Use `Component` instead when the owner needs to exist in the React tree. A `Boundary` may have little UI, but its Suspense/ErrorBoundary placement is the point. A `Toasts` root also belongs in the tree, but it should justify `render()` by injecting toast subcomponents beside the wrapped app.
 
@@ -328,6 +330,21 @@ function SomeComponent() {
 
 This is the escape hatch - any hook you need can be bridged through `use()`. Use it sparingly; it runs every render. For one-shot setup, prefer `new()`.
 
+The bridge runs the other way too. If an instance already lives outside React - a module-scope controller, a state owned by a non-React system - the free `use()` hook subscribes any component to it:
+
+```tsx
+import { use } from '@expressive/react';
+
+const player = MediaPlayer.new(); // owned elsewhere
+
+function NowPlaying() {
+  const { track, paused } = use(player);
+  return <span>{paused ? '⏸' : '▶'} {track}</span>;
+}
+```
+
+The component subscribes to what it reads, same as always - but lifecycle stays with the owner. Unmounting doesn't destroy the instance.
+
 <br />
 
 ## Step 8 - Leave the rest alone
@@ -349,7 +366,23 @@ this.items.push(item); // no update
 this.items = [...this.items, item]; // works
 ```
 
-If you _need_ to dispatch an update without replacing the value, use `this.set('items')` to manually signal the change.
+Copy-on-write is the habit worth keeping from hooks. But when a collection is mutated *a lot* - a game board, a live buffer, rows edited in place - wrap it with `hot()` and mutate away:
+
+```ts
+import { hot } from '@expressive/react';
+
+class Game extends State {
+  board = hot(Array(9).fill(''));
+
+  play(index: number, mark: string) {
+    this.board[index] = mark; // updates, in place
+  }
+}
+```
+
+Hot values track per-key, so a component reading `board[4]` only re-renders when that cell changes. See [Arrays & Collections](/docs/guides/collections) for the full contract, or [poke the tic-tac-toe example](/examples/apps/tictactoe) to watch it work.
+
+If you just need to signal "this changed" without replacing the value, `this.set('items')` dispatches an update manually.
 
 ### Forgetting `State.new()` when constructing outside React
 
