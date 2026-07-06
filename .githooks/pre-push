@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# Reject pushes of branches that don't follow the team prefix convention.
+# Enabled via:  git config core.hooksPath .githooks
+set -euo pipefail
+
+allowed='^(feat|fix|refactor|chore|docs|test|perf)/'
+zero='0000000000000000000000000000000000000000'
+
+while read -r _local_ref local_sha remote_ref _remote_sha; do
+  [ "$local_sha" = "$zero" ] && continue          # branch deletion
+  case "$remote_ref" in
+    refs/heads/*) branch="${remote_ref#refs/heads/}" ;;
+    *) continue ;;                                 # tags etc.
+  esac
+
+  [ "$branch" = "main" ] && continue
+
+  if ! printf '%s' "$branch" | grep -Eq "$allowed"; then
+    echo "" >&2
+    echo "✗ Refusing to push branch '$branch'." >&2
+    echo "  Names must start with: feat/ fix/ refactor/ chore/ docs/ test/ perf/" >&2
+    echo "  (worktree scratch branches like claude/* must be renamed before pushing)" >&2
+    echo "  Rename with:  git branch -m <prefix>/short-description" >&2
+    echo "" >&2
+    exit 1
+  fi
+done
+exit 0
