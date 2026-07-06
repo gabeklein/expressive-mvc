@@ -8,7 +8,7 @@ const MOBILE_LINE_OPACITY = 0.25;
 export function Background() {
   return (
     <div className="fixed h-screen w-screen -z-1">
-      <AnimateBG className="absolute top-0 left-0 blur-xs" />
+      <AnimateBG className="absolute top-0 left-0 sm:blur-xs" />
     </div>
   );
 }

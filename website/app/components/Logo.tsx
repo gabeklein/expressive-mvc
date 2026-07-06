@@ -7,10 +7,10 @@ export default function Logo() {
   );
 }
 
-export function Icon() {
+export function Icon({ className = 'size-10 text-logo' }: { className?: string }) {
   return (
     <svg
-      className="size-10 text-logo"
+      className={className}
       viewBox="0 0 1019 701"
       xmlns="http://www.w3.org/2000/svg">
       <path

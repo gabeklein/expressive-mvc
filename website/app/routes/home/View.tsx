@@ -84,7 +84,7 @@ class TipCalculator extends Component {
               onChange={(e) => (this.tipPercent = +e.target.value)}
             />
           </label>
-          <span className="font-mono text-sm whitespace-nowrap sm:ml-auto">
+          <span className="font-mono text-sm whitespace-nowrap basis-full text-center sm:basis-auto sm:text-left sm:ml-auto">
             tip {tip.toFixed(2)} · total {total.toFixed(2)}
           </span>
         </div>

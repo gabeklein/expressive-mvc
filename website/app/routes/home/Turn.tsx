@@ -1,9 +1,9 @@
 import type React from 'react';
 
 const SHED = [
-  'react-query', 'swr', 'react-hook-form', 'formik',
-  'usehooks-ts', 'use-debounce', 'use-local-storage',
-  'use-context-selector', 'immer', 'react-error-boundary',
+  'swr', 'react-error-boundary', 'immer', 'use-context-selector',
+  'formik', 'use-local-storage', 'react-query', 'react-hook-form',
+  'usehooks-ts', 'use-debounce',
 ];
 
 export function Turn() {
