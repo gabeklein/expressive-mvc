@@ -12,6 +12,7 @@ interface Side {
 interface CompareProps {
   left: Side;
   right: Side[];
+  stacked?: boolean;
 }
 
 const LN = { codeblock: { 'data-line-numbers': true } } as const;
@@ -62,7 +63,7 @@ class Control extends State {
   }
 }
 
-export default function Compare({ left, right }: CompareProps) {
+export default function Compare({ left, right, stacked }: CompareProps) {
   const { tab, face, select, touchStart, touchEnd, stack } = Control.use();
 
   const active = right[Math.min(tab, right.length - 1)];
@@ -91,26 +92,28 @@ export default function Compare({ left, right }: CompareProps) {
 
   return (
     <div>
-      <div className="compare-static hidden lg:grid lg:grid-cols-2 lg:gap-5 lg:items-start">
-        <div>
-          <Head>
-            <span className="text-sm font-semibold text-fd-primary">{left.label}</span>
-            <span className="text-[11px] uppercase tracking-widest text-fd-muted-foreground">
-              Expressive
-            </span>
-          </Head>
-          <Left {...LN} />
+      {!stacked && (
+        <div className="compare-static hidden lg:grid lg:grid-cols-2 lg:gap-5 lg:items-start">
+          <div>
+            <Head>
+              <span className="text-sm font-semibold text-fd-primary">{left.label}</span>
+              <span className="text-[11px] uppercase tracking-widest text-fd-muted-foreground">
+                Expressive
+              </span>
+            </Head>
+            <Left {...LN} />
+          </div>
+          <div>
+            <Head>{libTabs}</Head>
+            <Right {...LN} />
+          </div>
         </div>
-        <div>
-          <Head>{libTabs}</Head>
-          <Right {...LN} />
-        </div>
-      </div>
+      )}
 
-      <div className="lg:hidden">
+      <div className={stacked ? undefined : 'lg:hidden'}>
         <div className="flex flex-wrap gap-1 p-1 mb-3 w-fit rounded-2xl bg-fd-muted/50">
           <Segment active={face === 0} onClick={() => select(0)}>
-            Expressive
+            {stacked ? left.label : 'Expressive'}
           </Segment>
           {right.map((s, i) => (
             <Segment

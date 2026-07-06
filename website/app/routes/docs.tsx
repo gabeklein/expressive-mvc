@@ -10,6 +10,7 @@ import {
 import { source } from '@/lib/source';
 import Logo from '@/components/Logo';
 import defaultMdxComponents from 'fumadocs-ui/mdx';
+import { docsComponents } from '@/components/docs/mdx';
 import browserCollections from 'fumadocs-mdx:collections/browser';
 import { useFumadocsLoader } from 'fumadocs-core/source/client';
 
@@ -42,7 +43,7 @@ const clientLoader = browserCollections.docs.createClientLoader({
         <DocsTitle>{frontmatter.title}</DocsTitle>
         <DocsDescription>{frontmatter.description}</DocsDescription>
         <DocsBody>
-          <Mdx components={{ ...defaultMdxComponents }} />
+          <Mdx components={{ ...defaultMdxComponents, ...docsComponents }} />
         </DocsBody>
       </DocsPage>
     );
