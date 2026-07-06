@@ -9,7 +9,10 @@ export function Agents() {
             Built for agents
           </div>
           <h2 className="font-display text-3xl md:text-5xl font-bold tracking-tight mb-5">
-            (Artificially) idiot-proof.
+            <span className="text-fd-muted-foreground/70">(</span>A
+            <span className="text-fd-muted-foreground/70">rtificial</span>
+            <span className="text-fd-muted-foreground/70">)</span> I
+            <span className="text-fd-muted-foreground/70">diot</span>-Proof.
           </h2>
           <p className="text-fd-muted-foreground text-lg md:text-xl">
             The same structure that keeps a codebase legible to people keeps it

@@ -9,7 +9,7 @@ export function Comparison() {
           <div className="text-xs uppercase tracking-widest text-fd-muted-foreground mb-3">
             Local state
           </div>
-          <h2 className="text-3xl md:text-4xl font-bold mb-4">
+          <h2 className="font-display text-3xl md:text-4xl font-bold tracking-tight mb-4">
             The same component. Half the machinery.
           </h2>
           <p className="text-fd-muted-foreground text-lg">
