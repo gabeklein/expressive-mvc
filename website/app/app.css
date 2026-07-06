@@ -149,6 +149,13 @@ figure[data-rehype-pretty-code-figure] pre code,
   }
 }
 
+/* Mobile/tablet TOC popover: fumadocs clamps the open panel to 50vh, which
+   turns a long API page's contents into a tiny scroll window. Give it most
+   of the screen. Only present below xl, where the popover exists. */
+[data-toc-popover-content] {
+  max-height: 85dvh !important;
+}
+
 :root {
   --purple: #7864f7;
   --accent: var(--purple);
