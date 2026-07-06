@@ -3,7 +3,7 @@ import code from '@/components/Snippet';
 
 export function Comparison() {
   return (
-    <section className="border-b border-fd-border">
+    <section>
       <div className="mx-auto max-w-(--content-width) px-6 py-24">
         <div className="max-w-2xl mb-12">
           <div className="text-xs uppercase tracking-widest text-fd-muted-foreground mb-3">

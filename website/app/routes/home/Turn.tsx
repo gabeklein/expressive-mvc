@@ -7,7 +7,7 @@ const SHED = [
 
 export function Turn() {
   return (
-    <section className="border-b border-fd-border">
+    <section>
       <div className="mx-auto max-w-(--content-width) py-24 px-6">
         <div className="max-w-2xl mb-12">
           <div className="text-xs uppercase tracking-widest text-fd-primary mb-3">

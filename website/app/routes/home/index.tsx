@@ -1,6 +1,7 @@
 import { HomeLayout } from 'fumadocs-ui/layouts/home';
 import type { BaseLayoutProps } from 'fumadocs-ui/layouts/shared';
 import Logo from '@/components/Logo';
+import { Background } from './Background';
 import { Benefits } from './Benefits';
 import { Comparison } from './Comparison';
 import { Complicated } from './Complicated';
@@ -31,6 +32,7 @@ export function meta() {
 export default function Home() {
   return (
     <HomeLayout {...layoutOptions} className="[--content-width:1080px]">
+      <Background />
       <Hero />
       <Complicated />
       <Comparison />

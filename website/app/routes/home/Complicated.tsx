@@ -18,7 +18,7 @@ const HOOK_ROWS = [
 
 export function Complicated() {
   return (
-    <section className="border-b border-fd-border overflow-hidden">
+    <section className="overflow-hidden">
       <div className="mx-auto max-w-4xl px-6 pt-20">
         <Reveal from="left">
           <h2 className="font-display text-3xl md:text-5xl font-bold tracking-tight leading-none">
