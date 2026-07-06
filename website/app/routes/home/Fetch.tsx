@@ -123,7 +123,9 @@ const SwrCode = code /*tsx*/`
     return <h1>Hello {data.name}</h1>;
   }
 
-  function App() {
-    return <Profile />;
-  }
+  const App = () => <Profile />;
+
+  // fewest lines on the page - and a 12 kB
+  // dependency for it. async came free with
+  // the state library you already have.
 `;
