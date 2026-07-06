@@ -36,6 +36,35 @@ figure[data-rehype-pretty-code-figure] pre code,
   word-break: break-word !important;
 }
 
+/* Comparison blocks opt out of wrapping - they scroll horizontally instead. */
+.compare-static .shiki .line,
+.compare-static .shiki code,
+.compare-static .shiki pre,
+.compare-strip .shiki .line,
+.compare-strip .shiki code,
+.compare-strip .shiki pre {
+  white-space: pre !important;
+  word-break: normal !important;
+}
+
+.compare-static .shiki pre,
+.compare-strip .shiki pre {
+  width: max-content !important;
+  min-width: 100% !important;
+}
+
+/* Desktop: each block scrolls on its own. */
+.compare-static .shiki,
+.compare-static figure.shiki > div {
+  overflow-x: auto !important;
+}
+
+/* Mobile: the blocks don't scroll - the strip does, and running off the end of A reveals B. */
+.compare-strip .shiki,
+.compare-strip figure.shiki > div {
+  overflow: visible !important;
+}
+
 :root {
   --purple: #7864f7;
   --accent: var(--purple);
