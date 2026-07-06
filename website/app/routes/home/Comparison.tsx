@@ -1,5 +1,5 @@
-import { Link } from 'react-router';
 import Compare from '@/components/Compare';
+import Playground from '@/components/Playground';
 import code from '@/components/Snippet';
 
 export function Comparison() {
@@ -31,20 +31,14 @@ export function Comparison() {
           ]}
         />
 
+        <Playground to="/examples/essentials/counter" />
+
         <p className="text-fd-muted-foreground text-lg leading-relaxed max-w-3xl mx-auto mt-10 text-center">
           With MVC, the destructure <em>is</em> the dependency list. Read a
           field, subscribe to it. Nothing to declare, nothing
           to forget - no setters, no <code className={mono}>useCallback</code>,
           no store factory.
         </p>
-
-        <div className="mt-4 text-right">
-          <Link
-            className="text-fd-primary font-medium no-underline hover:opacity-80"
-            to="/examples/essentials/counter">
-            Try it in the Playground →
-          </Link>
-        </div>
       </div>
     </section>
   );

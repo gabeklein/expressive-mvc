@@ -1,6 +1,7 @@
 import State, { ref } from '@expressive/react';
 import { Link } from 'react-router';
 import CopyPill from '@/components/CopyPill';
+import Playground from '@/components/Playground';
 import code from '@/components/Snippet';
 
 export function Hero() {
@@ -49,13 +50,7 @@ export function Hero() {
             <CounterExample />
           </div>
           <LiveCounter />
-          <div className="mt-4 text-right">
-            <Link
-              className="text-fd-primary text-sm font-medium no-underline hover:opacity-80"
-              to="/examples/essentials/counter">
-              Try it in the Playground →
-            </Link>
-          </div>
+          <Playground to="/examples/essentials/counter" />
         </div>
       </div>
     </section>

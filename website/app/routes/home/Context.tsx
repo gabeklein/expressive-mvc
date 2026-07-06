@@ -1,5 +1,5 @@
-import { Link } from 'react-router';
 import Compare from '@/components/Compare';
+import Playground from '@/components/Playground';
 import code from '@/components/Snippet';
 
 export function Context() {
@@ -29,6 +29,8 @@ export function Context() {
           ]}
         />
 
+        <Playground to="/examples/composition/context" />
+
         <p className="text-fd-muted-foreground text-lg leading-relaxed max-w-3xl mx-auto mt-10 text-center">
           No <code className={mono}>createContext&lt;T&gt;</code>, no null default,
           no missing-provider guard, no Provider/Consumer pair to keep in sync.
@@ -36,14 +38,6 @@ export function Context() {
           store in React context yourself, Jotai's Provider scopes a whole atom
           store, MobX leaves it to you entirely.
         </p>
-
-        <div className="mt-4 text-right">
-          <Link
-            className="text-fd-primary font-medium no-underline hover:opacity-80"
-            to="/examples/composition/context">
-            Try it in the Playground →
-          </Link>
-        </div>
       </div>
     </section>
   );

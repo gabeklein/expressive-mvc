@@ -1,5 +1,5 @@
 import { Component } from '@expressive/react';
-import { Link } from 'react-router';
+import Playground from '@/components/Playground';
 import code from '@/components/Snippet';
 
 export function View() {
@@ -34,13 +34,7 @@ export function View() {
             <TipExample />
           </div>
           <LiveTip />
-          <div className="mt-4 text-right">
-            <Link
-              className="text-fd-primary font-medium no-underline hover:opacity-80"
-              to="/examples/essentials/reactivity">
-              Try it in the Playground →
-            </Link>
-          </div>
+          <Playground to="/examples/essentials/reactivity" />
         </div>
       </div>
     </section>
