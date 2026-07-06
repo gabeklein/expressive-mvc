@@ -14,10 +14,12 @@ export function Fetch() {
             Async out of the box.
           </h2>
           <p className="text-fd-muted-foreground text-lg">
-            An async <code className={mono}>set()</code> suspends readers until
-            it resolves. Suspense shows the fallback, an error boundary catches
-            the failure - no <code className={mono}>isPending</code> flags,
-            client to provide, or cache keys.
+            An async <code className={mono}>set()</code> suspends render until
+            it resolves. A <code className={mono}>Component</code> brings its
+            own <code className={mono}>fallback</code> and its own error
+            boundary via <code className={mono}>catch()</code> - no{' '}
+            <code className={mono}>isPending</code> flags, client to provide,
+            or cache keys.
           </p>
         </div>
 
@@ -46,27 +48,31 @@ export function Fetch() {
 const mono = 'font-mono text-sm bg-fd-muted px-1.5 py-0.5 rounded';
 
 const ExprCode = code /*tsx*/`
-  import React, { Suspense } from 'react';
-  import State, { set } from '@expressive/react';
+  import React from 'react';
+  import { Component, set } from '@expressive/react';
 
-  class User extends State {
-    data = set(async () => {
+  class Profile extends Component {
+    fallback = <p>Loading...</p>;
+
+    user = set(async () => {
       const res = await fetch('/api/user/1');
+
+      if (!res.ok)
+        throw new Error('Something broke');
+
       return res.json();
     });
+
+    async catch(error: Error) {
+      this.fallback = <p>{error.message}</p>;
+    }
+
+    render() {
+      return <h1>Hello {this.user.name}</h1>;
+    }
   }
 
-  const Profile = () => {
-    const { data } = User.use();
-
-    return <h1>Hello {data.name}</h1>;
-  };
-
-  const App = () => (
-    <Suspense fallback={<p>Loading...</p>}>
-      <Profile />
-    </Suspense>
-  );
+  const App = () => <Profile />;
 `;
 
 const QueryCode = code /*tsx*/`

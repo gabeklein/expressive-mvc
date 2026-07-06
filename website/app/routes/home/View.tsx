@@ -4,7 +4,7 @@ import code from '@/components/Snippet';
 
 export function View() {
   return (
-    <section className="bg-fd-foreground/[0.04]">
+    <section>
       <div className="mx-auto max-w-(--content-width) py-24 px-6 grid gap-12 lg:grid-cols-[2fr_3fr] lg:items-center">
         <div>
           <div className="text-xs uppercase tracking-widest text-fd-muted-foreground mb-3">
