@@ -55,7 +55,7 @@ function CounterView({ counter }: { counter: Counter }) {
 - Re-renders only when accessed properties change.
 - Re-subscribes if the passed observable instance is replaced.
 - Activates an unready observable, but does not own lifecycle or destroy it on unmount.
-- Throws for plain objects and destroyed observables.
+- Throws for plain (non-observable) objects. A destroyed observable does not throw - the hook renders last-known values and no further updates arrive.
 - Safe in React strict mode.
 
 Use this for externally-owned observables. Use `State.use()` when the component should create and own a State instance. Use `State.get()` when the instance should come from context.
@@ -175,7 +175,7 @@ const app = AppState.get(false); // undefined if not in context
 ### Required values
 
 ```tsx
-const app = AppState.get(true); // Required<T>, suspends if any value undefined
+const app = AppState.get(true); // Required<T>, throws if an accessed value is undefined
 ```
 
 ### Computed selector
@@ -252,7 +252,7 @@ Key features:
 - Instances are automatically provided to context for child access via `State.get()`.
 - Built-in suspense (`fallback` property/prop) and error boundaries (`catch()` method).
 - PascalCase methods become reactive subcomponents.
-- Special props: `is` (creation callback), `fallback` (suspense UI).
+- Special props: `is` (creation callback), `ref` (instance ref), `fallback` (suspense UI, or `false` to defer to an ancestor boundary).
 - Strict mode safe.
 
 ---
@@ -312,13 +312,19 @@ Consumer uses `State.get()` internally - child function receives a tracking prox
 
 ---
 
-## Internals: Pragma
+## Internals: Runtime
 
-React adapter injects framework hooks via a `Pragma` object, allowing the same core logic to work across React and Preact:
+Each adapter injects framework hooks into a shared `Runtime` object, allowing the same core logic to work across React and Preact:
 
 ```ts
-Pragma.useEffect = React.useEffect;
-Pragma.useState = React.useState;
-Pragma.createElement = React.createElement;
-Pragma.useRef = React.useRef;
+Object.assign(Runtime, {
+  createElement,
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  useRef,
+  Suspense,
+  // plus adapter-specific: dedupe, ErrorBoundary, ignore
+});
 ```

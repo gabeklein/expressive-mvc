@@ -1,3 +1,7 @@
+# Solid Adapter (design notes)
+
+> No `@expressive/solid` package ships yet - this file records the intended adapter design, not published surface.
+
 ### Key difference: signal getters
 
 Properties are wrapped as Solid signals. Accessing them requires calling as functions:
