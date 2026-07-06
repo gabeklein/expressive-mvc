@@ -11,12 +11,12 @@ export function Comparison() {
             Local state
           </div>
           <h2 className="font-display text-3xl md:text-4xl font-bold tracking-tight mb-4">
-            The same component. <span className='text-nowrap'>Half the machinery.</span>
+            The same logic. <span className='text-nowrap'>Half the noise.</span>
           </h2>
           <p className="text-fd-muted-foreground text-lg">
             Say you want a reusable, component-owned <code className={mono}>useFooBarBaz</code>{' '}
             that re-renders on change. Same surface everywhere - only the cost
-            of building it differs.
+            of building it differs. Higher readability <small>(and fewer tokens)</small>.
           </p>
         </div>
 
