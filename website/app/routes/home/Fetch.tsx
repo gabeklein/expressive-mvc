@@ -11,13 +11,13 @@ export function Fetch() {
             Async
           </div>
           <h2 className="font-display text-3xl md:text-4xl font-bold tracking-tight mb-4">
-            Fetch without a query library.
+            Fetch without query libraries.
           </h2>
           <p className="text-fd-muted-foreground text-lg">
             An async <code className={mono}>set()</code> suspends readers until
             it resolves. Suspense shows the fallback, an error boundary catches
-            the failure - no <code className={mono}>isPending</code> flags, no
-            client to provide, no cache keys.
+            the failure - no <code className={mono}>isPending</code> flags,
+            client to provide, or cache keys.
           </p>
         </div>
 
@@ -29,13 +29,21 @@ export function Fetch() {
           ]}
         />
 
-        <div className="mt-8 text-center">
+        <div className="mt-4 text-right">
           <Link
             className="text-fd-primary font-medium no-underline hover:opacity-80"
-            to="/examples/essentials/fetch">
-            See a fuller pattern in the Playground →
+            to="/examples/essentials/async">
+            Try it in the Playground →
           </Link>
         </div>
+
+        <p className="text-fd-muted-foreground text-lg leading-relaxed max-w-3xl mx-auto mt-10 text-center">
+          That <code className={mono}>set()</code> is an{' '}
+          <em>instruction</em> - property helpers that give a field special
+          behavior. There are a handful: <code className={mono}>get()</code>{' '}
+          pulls from context, <code className={mono}>ref()</code> tracks DOM
+          nodes, and you can define your own.
+        </p>
       </div>
     </section>
   );
@@ -54,19 +62,17 @@ const ExprCode = code /*tsx*/`
     });
   }
 
-  function Profile() {
+  const Profile = () => {
     const { data } = User.use();
 
     return <h1>Hello {data.name}</h1>;
-  }
+  };
 
-  function App() {
-    return (
-      <Suspense fallback={<p>Loading...</p>}>
-        <Profile />
-      </Suspense>
-    );
-  }
+  const App = () => (
+    <Suspense fallback={<p>Loading...</p>}>
+      <Profile />
+    </Suspense>
+  );
 `;
 
 const QueryCode = code /*tsx*/`

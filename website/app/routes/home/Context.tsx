@@ -1,3 +1,4 @@
+import { Link } from 'react-router';
 import Compare from '@/components/Compare';
 import code from '@/components/Snippet';
 
@@ -10,7 +11,7 @@ export function Context() {
             Shared state
           </div>
           <h2 className="font-display text-3xl md:text-4xl font-bold tracking-tight mb-4">
-            Your classes themselves are context keys.
+            Your classes themselves have context.
           </h2>
           <p className="text-fd-muted-foreground text-lg">
             Wrap a subtree in <code className={mono}>&lt;Provider&gt;</code> and
@@ -35,6 +36,14 @@ export function Context() {
           store in React context yourself, Jotai's Provider scopes a whole atom
           store, MobX leaves it to you entirely.
         </p>
+
+        <div className="mt-4 text-right">
+          <Link
+            className="text-fd-primary font-medium no-underline hover:opacity-80"
+            to="/examples/composition/context">
+            Try it in the Playground →
+          </Link>
+        </div>
       </div>
     </section>
   );

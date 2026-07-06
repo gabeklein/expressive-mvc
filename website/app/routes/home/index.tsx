@@ -8,6 +8,7 @@ import { Complicated } from './Complicated';
 import { Context } from './Context';
 import { CTA } from './CTA';
 import { Fetch } from './Fetch';
+import { Footer } from './Footer';
 import { Hero } from './Hero';
 import { Turn } from './Turn';
 import { View } from './View';
@@ -44,6 +45,7 @@ export default function Home() {
       <Turn />
       <Benefits />
       <CTA />
+      <Footer />
     </HomeLayout>
   );
 }

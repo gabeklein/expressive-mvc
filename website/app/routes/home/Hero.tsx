@@ -49,6 +49,13 @@ export function Hero() {
             <CounterExample />
           </div>
           <LiveCounter />
+          <div className="mt-4 text-right">
+            <Link
+              className="text-fd-primary text-sm font-medium no-underline hover:opacity-80"
+              to="/examples/essentials/counter">
+              Try it in the Playground →
+            </Link>
+          </div>
         </div>
       </div>
     </section>
