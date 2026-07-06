@@ -4,10 +4,12 @@
   "pages": [
     "state-classes",
     "reactivity",
+    "collections",
     "components",
     "context",
     "async",
     "forms-and-refs",
+    "router",
     "testing"
   ]
 }
