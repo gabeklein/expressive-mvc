@@ -1,9 +1,9 @@
 ---
 title: Testing
-description: Test state logic without a renderer, a DOM, or act()
+description: Test state on its own terms - no renderer, no DOM, no act()
 ---
 
-One of the biggest organizational wins of moving state into classes is that the state becomes testable on its own terms. No `@testing-library/react`, no `render()`, no `act()`, no mocking a DOM - just create an instance, call methods, assert properties.
+The best thing about moving state into classes is what it does to your tests. There's no component to render, so there's nothing to mock - create an instance, call methods, assert properties. Done.
 
 ```ts
 import { test, expect } from 'vitest';
@@ -17,13 +17,13 @@ test('increments count', () => {
 });
 ```
 
-This section covers the patterns you'll use most.
+Samples here use vitest, but nothing is runner-specific - `bun test` and jest read the same.
 
 <br />
 
 ## Create with `State.new()`
 
-Always use `State.new()` in tests, never `new State()`. `.new()` activates the instance so properties are reactive and lifecycle hooks run.
+Always use `State.new()` in tests, never `new State()`. Only `.new()` activates the instance - properties become reactive and lifecycle hooks run.
 
 ```ts
 const user = UserForm.new(); // empty state
@@ -48,7 +48,7 @@ test('adds an item to the cart', () => {
 });
 ```
 
-Because computed values update synchronously (on read), assertions against them are straightforward.
+Here `total` is a getter, read for the first time - lazy getters always compute fresh on first access, so this passes as-is. Re-reading a getter across multiple writes wants a flush; more on that under [computed values](#testing-computed-values) below.
 
 <br />
 
@@ -69,41 +69,113 @@ Mock `fetch` or the service the method calls - the class has no React-specific e
 
 <br />
 
+## The flush idiom
+
+Commit this one to memory: `await state.set()` with no arguments waits for pending updates to settle and resolves an array of the keys that changed.
+
+```ts
+test('batches writes', async () => {
+  const form = Form.new();
+  form.name = 'Alice';
+  form.email = 'a@b.c';
+
+  expect(await form.set()).toEqual(['name', 'email']);
+});
+```
+
+One idiom, two jobs - it asserts the *shape* of a batched update, and it doubles as "wait for the dust to settle" before any assertion that depends on dispatch having run. You'll use it in nearly every section below.
+
+> **Good to know:** <br />
+> If nothing is pending, `await state.set()` resolves immediately with an empty array. Safe to sprinkle liberally.
+
+<br />
+
 ## Testing async factories
 
-For `set(async () => ...)` properties, you can either await the value directly or wait for the flush:
+Properties defined with `set(async () => ...)` have a wrinkle: reading one while the promise is pending doesn't return a promise - it **throws** one. That's the suspense mechanism, and it works in plain tests too. Catch the throw and await it:
 
 ```ts
+class Profile extends State {
+  user = set(async () => fetchUser(this.userId));
+}
+
 test('loads user data', async () => {
-  const profile = UserProfile.new({ userId: 'u1' });
-  const data = await profile.user; // async set - awaiting the property works
-  expect(data.name).toBe('Alice');
+  const profile = Profile.new({ userId: 'u1' });
+
+  try { void profile.user; } catch (pending) { await pending; }
+
+  expect(profile.user.name).toBe('Alice');
 });
 ```
 
-If the factory depends on a `set<T>()` placeholder, the await chains through automatically:
+The first read kicks off the factory and throws the in-flight promise; awaiting it resumes once the value has settled. After that, reads are synchronous.
+
+If suspense is more ceremony than the test deserves, define the property with `set(factory, false)` instead - it stays `undefined` while pending rather than throwing:
 
 ```ts
-test('suspends until userId is set', async () => {
-  const profile = UserProfile.new();
-  const pending = profile.user.catch?.(() => 'pending'); // suspense throw
-  profile.userId = 'u1';
-  const data = await profile.user;
-  expect(data).toBeDefined();
+class Profile extends State {
+  user = set(async () => fetchUser(this.userId), false);
+}
+
+test('starts empty, fills in', async () => {
+  const profile = Profile.new({ userId: 'u1' });
+  expect(profile.user).toBeUndefined();
 });
 ```
+
+### Controllable promises
+
+For real control over timing, hand the factory a promise you resolve yourself. The helper is ten lines and worth keeping around:
+
+```ts
+function mockPromise<T = void>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return Object.assign(promise, { resolve, reject });
+}
+```
+
+Now the test decides when the "network" answers:
+
+```ts
+test('resolves when the request does', async () => {
+  const request = mockPromise<{ name: string }>();
+
+  class Profile extends State {
+    user = set(() => request, false);
+  }
+
+  const profile = Profile.new();
+  expect(profile.user).toBeUndefined();
+
+  request.resolve({ name: 'Moneypenny' });
+  await request;
+  await profile.set(); // flush
+
+  expect(profile.user!.name).toBe('Moneypenny');
+});
+```
+
+No fake timers, no polling. The test reads top to bottom like the scenario it describes. ✨
 
 <br />
 
 ## Testing subscriptions and updates
 
-To assert that an update fires, attach a listener with `state.get('key', cb)`:
+To assert an update fires, attach a listener with `state.set('key', callback)`. Listeners fire synchronously, once per assignment that changes the value:
 
 ```ts
 test('notifies on count change', () => {
   const counter = Counter.new();
   const seen: number[] = [];
-  counter.get('count', () => seen.push(counter.count));
+
+  counter.set('count', () => {
+    seen.push(counter.count);
+  });
 
   counter.increment();
   counter.increment();
@@ -111,26 +183,18 @@ test('notifies on count change', () => {
 });
 ```
 
-To assert the shape of a batched update, await `state.set()`:
+`set(key, callback)` returns an unsubscribe function, should the test need to detach early.
 
-```ts
-test('batches writes', async () => {
-  const form = Form.new();
-  form.name = 'Alice';
-  form.email = 'a@b.c';
-  const updated = await form.set(); // array of keys
-  expect(updated).toEqual(['name', 'email']);
-});
-```
+> **Watch the arrow body.** The callback's return value is meaningful - return a function and the event system schedules it to run when the update settles. A concise arrow like `() => seen.push(...)` returns a number, which gets "called" on the next microtask and throws a TypeError long after your assertion passed. Use a block body, always.
 
 <br />
 
 ## Testing effects
 
-Effects registered via `state.get(effect)` run immediately and return an unsubscribe function:
+Effects registered via `state.get(effect)` run immediately, then once per batch of changes - two synchronous writes produce **one** re-run, not two. Flush with `await state.set()` before asserting:
 
 ```ts
-test('effect re-runs on change', () => {
+test('effect re-runs on change', async () => {
   const state = App.new();
   const snapshots: string[] = [];
 
@@ -140,18 +204,14 @@ test('effect re-runs on change', () => {
 
   state.title = 'A';
   state.title = 'B';
+  await state.set();
 
-  return new Promise((r) =>
-    queueMicrotask(() => {
-      expect(snapshots).toEqual(['', 'A', 'B']);
-      stop();
-      r(undefined);
-    })
-  );
+  expect(snapshots).toEqual(['', 'B']);
+  stop();
 });
 ```
 
-Because effect re-runs are batched via microtask, flush once with `queueMicrotask` (or `await state.set()`) before asserting.
+The `'A'` write never reaches the effect - both assignments land in the same microtask batch, and the effect sees only where things ended up. If your test expects an intermediate value, the test is wrong, not the batching.
 
 <br />
 
@@ -177,26 +237,30 @@ Useful for fixtures, serialization tests, and undo/redo logic.
 
 ## Testing computed values
 
-Computed values are pure functions of their inputs - trivial to test:
+Computed values are pure functions of their inputs - but remember that getters are cached, and the cache refreshes with the update batch, not on the spot. Flush between write and assertion:
 
 ```ts
-test('total recomputes from items', () => {
+test('total recomputes from items', async () => {
   const cart = Cart.new();
   expect(cart.total).toBe(0);
 
   cart.items = [{ price: 10, qty: 2 }];
+  await cart.set();
   expect(cart.total).toBe(20);
 
   cart.items = [];
+  await cart.set();
   expect(cart.total).toBe(0);
 });
 ```
+
+> Skip the flush and a previously-read getter may hand you a stale cache, depending on access order. The flush idiom makes it deterministic - cheap insurance.
 
 <br />
 
 ## Testing context dependencies
 
-For classes that declare `get(OtherState)`, the cleanest test is to construct the dependency and provide it via `State.new()` with a context arg, or compose them as children:
+For classes that declare `get(OtherState)`, compose the dependency as an owned child - the child finds it through the parent automatically:
 
 ```ts
 class Theme extends State {
@@ -218,7 +282,20 @@ test('panel reads theme from parent', () => {
 });
 ```
 
-When the relationship is parent-child, the child finds the parent's dependency through the owned-child context automatically.
+### Cleaning up singletons
+
+Module-scope `State.new()` registers the instance into the global root context - that's the singleton pattern, and it's sticky. Without cleanup, a singleton created in one test file (or at module load) leaks into every test that follows. Reset the root between tests:
+
+```ts
+import { afterEach } from 'vitest';
+import { Context } from '@expressive/mvc';
+
+afterEach(() => Context.root.pop());
+```
+
+`pop()` removes every State registered in the root context and runs their cleanup callbacks. This library's own test suite does exactly this, globally. If your tests never touch singletons you won't miss it - the first time one does, you will.
+
+> `Context` is also re-exported from `@expressive/react`, so no extra dependency either way.
 
 <br />
 
@@ -244,14 +321,47 @@ test('cleans up on destroy', () => {
 
 <br />
 
+## Rendering a Component
+
+When you do want to mount a `Component` subclass, your normal React setup applies - Expressive adds nothing special to the harness. The one trick worth knowing: pass `is` to capture the instance, then drive it directly.
+
+```tsx
+import { render, act, screen } from '@testing-library/react';
+import { Component } from '@expressive/react';
+
+test('refreshes on update', async () => {
+  class Control extends Component {
+    value = 'bar';
+
+    render() {
+      return <span>{this.value}</span>;
+    }
+  }
+
+  let control!: Control;
+  render(<Control is={(x) => (control = x)} />);
+
+  await act(async () => {
+    control.value = 'foo';
+    await control.set();
+  });
+
+  expect(screen.getByText('foo')).toBeDefined();
+});
+```
+
+`is` runs once, on creation - the instance survives rerenders, so the captured reference stays good for the whole test. Same flush idiom as everywhere else, just wrapped in `act`.
+
+<br />
+
 ## What you don't need
 
-- **`act()`** - there's no renderer to flush.
+- **`act()`** - unless a component is actually mounted, there's no renderer to flush.
 - **`@testing-library/react`** - you're not rendering anything.
-- **`jsdom`** - unless you're testing a `Component` subclass that actually mounts.
-- **Mocks for hooks** - State classes don't call hooks unless you define `use()`, which you can opt out of in tests by calling `.new()` instead of `.use()`.
+- **`jsdom`** - same deal; state classes never touch the DOM on their own.
+- **Mocks for hooks** - State classes don't call hooks. A `use()` method only runs on the `State.use()` hook path, which `.new()` sidesteps entirely.
 
-For tests that _do_ exercise rendering (a `Component` subclass, for example), use your normal React testing setup - Expressive does nothing special there.
+Most of your logic tests end up as plain synchronous functions. That was the point of the classes all along.
 
 <br />
 

@@ -1,0 +1,249 @@
+---
+title: Router
+description: Class-based routing - Routes are Components, navigation is state
+---
+
+Once state and components are classes, a router falls out almost for free. `@expressive/router` is exactly that: `Router` is a State holding the current path, query, and history; `Route` is a Component that matches part of the URL; `Link` is a Component you can subclass. Navigation is just properties changing - everything you already know about reactivity applies.
+
+```bash
+npm install @expressive/router
+```
+
+> **Good to know:** <br />
+> The router is published at 0.x (currently 0.5.0). It's well-tested and drives this repo's own examples app, but it's young - expect some API movement before 1.0.
+
+<br />
+
+## First routes
+
+Routes are nested JSX. `to` is the URL pattern segment, `as` is the component to render, and children compose against the parent's path:
+
+```tsx
+import { BrowserRouter, Route } from '@expressive/router';
+
+export const App = () => (
+  <BrowserRouter>
+    <Route as={Layout}>
+      <Route as={Home} />                       {/* index: matches "/" */}
+      <Route to="missions" as={Missions}>
+        <Route as={MissionList} />              {/* /missions */}
+        <Route to=":codename" as={Mission} />   {/* /missions/:codename */}
+      </Route>
+      <Route default as={NotFound} />           {/* nothing else matched */}
+    </Route>
+  </BrowserRouter>
+);
+```
+
+There is no route config object - matching is computed from the JSX tree itself. A `Route` with no `to` is an index route, matching its parent's path exactly. A `:name` segment captures a param. `default` matches when no sibling did, and it's scoped: a root-level `default` is your app 404, while one nested under `missions` catches only bad mission URLs.
+
+The full set of `Route` props:
+
+| Prop       | Meaning                                                                 |
+| ---------- | ----------------------------------------------------------------------- |
+| `to`       | URL pattern segment. `:name` captures a param; a trailing `*` on a leaf catches all remaining segments. Omit for an index route. |
+| `as`       | Component rendered when matched. As a layout, receives matched children via `children`. |
+| `default`  | Matches when nothing else in this scope did.                             |
+| `redirect` | A string redirects there when matched; a function acts as an entry guard (below). |
+| `label`    | Display name for `NavLinks` and breadcrumbs - ignored by matching.       |
+| `meta`     | Free-form metadata (icons, ordering) - also ignored by matching.         |
+
+> A `<Route>` with no ancestor `Router` spins up a headless, in-memory one - which is why route trees work in tests and sandboxes with zero setup. For a real app, wrap with `BrowserRouter` so the address bar participates.
+
+<br />
+
+## Layouts
+
+Give a `Route` both `as` and children, and the `as` component becomes a layout - the matched child arrives as `props.children`, same as any other Component composition:
+
+```tsx
+import { Component } from '@expressive/react';
+import { Link } from '@expressive/router';
+
+class Layout extends Component {
+  render() {
+    return (
+      <div>
+        <nav>
+          <Link to="/">HQ</Link>
+          <Link to="/missions">Missions</Link>
+        </nav>
+        <main>{this.props.children}</main>
+      </div>
+    );
+  }
+}
+```
+
+The layout mounts once and stays put while navigation swaps its children - whatever state the layout holds survives the transition.
+
+<br />
+
+## Reading the route
+
+A page reads its nearest `Route` from context, exactly like any other state - `get(Route)` in a class, or `Consumer` inline:
+
+```tsx
+import { Component, get } from '@expressive/react';
+import { Route } from '@expressive/router';
+
+class Mission extends Component {
+  route = get(Route);
+
+  render() {
+    return <h2>Operation {this.route.match?.codename}</h2>;
+  }
+}
+```
+
+The useful members, all reactive:
+
+- `route.match` - captured params as a record (`undefined` when unmatched). Navigating `/missions/goldfinger` → `/missions/thunderball` doesn't remount the page; `match` updates and the component re-renders in place.
+- `route.matched` - whether this route is currently active. Prefer this over `match` for render gating.
+- `route.path` - this route's own absolute path.
+- `route.query` - the live query record (global to the router, not route-scoped).
+- `route.goto(to)` - navigate, resolved relative to this route.
+- `route.resolve(to)` - resolve a relative url to an absolute pathname.
+
+`goto` also takes a params object, rebuilding the current path with the swap applied:
+
+```tsx
+// on /missions/goldfinger, pattern "missions/:codename"
+route.goto({ codename: 'thunderball' });   // → /missions/thunderball
+```
+
+A route can only set params it declares in its own `to` - inherited segments are filled from the current path, read-only.
+
+<br />
+
+## Navigation and the query record
+
+The `Router` itself exposes the canonical location. `goto` takes an absolute path (relative resolution belongs to `Route`); assigning `url` does the same; `back()`/`forward()` walk history:
+
+```tsx
+router.goto('/missions?sort=urgency');   // push
+router.goto('/missions', true);          // replace
+router.url = '/missions?sort=urgency';   // same as goto
+router.back();
+```
+
+`query` is where it gets fun - not a string, a reactive record. Read a param to subscribe to just that param; write or delete one to navigate:
+
+```tsx
+router.query.page;           // read - subscribes to this param only
+router.query.page = '2';     // write - pushes a history entry, like goto
+delete router.query.sort;    // delete - also navigates
+```
+
+Values are always `string | undefined` - URLs carry no other type. A subclass can narrow the known keys with `declare` for autocomplete:
+
+```tsx
+class Search extends Router {
+  declare query: { q?: string; page?: string };
+}
+```
+
+<br />
+
+## Links
+
+`Link` renders an `<a>` that navigates on click. `to` resolves relative to the enclosing `Route`; `replace` overwrites the history entry instead of pushing; everything else forwards to the anchor.
+
+```tsx
+<Link to="missions">Missions</Link>
+<Link to="/login" replace>Sign in</Link>
+```
+
+It intercepts only plain left-clicks - middle-click, ctrl/cmd/shift/alt-click all fall through to the browser, so open-in-new-tab keeps working. And it plays fair with your own handler: a consumer `onClick` runs *first*, and calling `preventDefault()` there cancels the navigation entirely.
+
+```tsx
+<Link to="/launch" onClick={(e) => {
+  if (!confirm('Launch the rocket?')) e.preventDefault();
+}}>
+  Launch
+</Link>
+```
+
+### Active links
+
+There's no built-in `NavLink` - because `Link` is a Component, you subclass it. Two reactive getters carry the match state: `match` is `true` for an exact match, `false` for a prefix match, `undefined` for none; `active` is simply `match !== undefined`.
+
+```tsx
+class NavLink extends Link {
+  render() {
+    return (
+      <a href={this.href} onClick={this.go}
+         className={this.active ? 'active' : undefined}
+         aria-current={this.active ? 'page' : undefined}>
+        {this.props.children}
+      </a>
+    );
+  }
+}
+```
+
+Authoring your own `render` fully replaces the base anchor (the base detects subclass content and defers), so `route` and `go` are `protected` - wire your own element however the design demands.
+
+> Both getters are lazy. A `Link` that reads neither stays completely inert across navigation - no re-render, ever. Only links that actually style themselves pay for route changes. 👀
+
+<br />
+
+## NavLinks
+
+`NavLinks` renders a whole navigation tree from the route hierarchy - the same JSX that drives matching drives the menu, so they can't drift apart. Override `Item`, `List`, and `Group` to control rendering:
+
+```tsx
+import { NavLinks } from '@expressive/router';
+
+class SideNav extends NavLinks {
+  List = (p) => <ul className="side">{p.children}</ul>;
+  Group = (p) => <section><h3>{p.route.label}</h3>{p.children}</section>;
+}
+```
+
+`Group` is transparent by default (nested routes flatten into one list); override it to turn tree structure into sections with headings. Routes with `redirect` or `default` are skipped automatically.
+
+<br />
+
+## Redirect and entry guards
+
+`Redirect` navigates when mounted, gated on `when` (default `true`). It renders nothing:
+
+```tsx
+<Redirect to="/login" when={!agent.authorized} />
+<Redirect to="/home" replace />
+```
+
+The `Route` `redirect` prop covers the declarative cases. A string is a static redirect. A function is an entry guard, run when the route matches - and its verdict has three flavors:
+
+```tsx
+<Route to="dossier/:id"
+  fallback={<Spinner />}
+  redirect={async () => {
+    const res = await fetch('/api/clearance');
+    if (res.status === 401) return '/login';   // redirect
+    if (res.status === 403) return null;       // force-404: this page "doesn't exist"
+    // falsy: allow
+  }}
+  as={Dossier} />
+<Route default as={DossierNotFound} />
+```
+
+Return a string to redirect, return `null` to cede the path to the scope's `default` (handy when "forbidden" shouldn't look different from "deleted"), return anything falsy to allow. Guards may be async - the route's `fallback` shows while it pends.
+
+<br />
+
+## See it running
+
+The gallery has a [live router demo](/examples/apps/router) - the whole thing below, editable:
+
+<Playground of="apps/router" />
+
+> Notice the demo uses plain `Router` rather than `BrowserRouter` - it runs in an iframe with no address bar to sync. Same API, in-memory history. That's the memory-router story for tests, too.
+
+<br />
+
+## Next
+
+- [Components](/docs/guides/components) - the Component class Routes and Links build on.
+- [Context](/docs/guides/context) - how `get(Route)` finds its way to the right instance.
