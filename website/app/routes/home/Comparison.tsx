@@ -22,9 +22,11 @@ export function Comparison() {
         <Compare
           left={{ label: 'FooBarBaz', code: ExprCode }}
           right={[
-            { label: 'useState', code: HookCode },
+            { label: 'Hooks', code: HookCode },
             { label: 'Zustand', code: ZustandCode },
             { label: 'Jotai', code: JotaiCode },
+            { label: 'Redux', code: ReduxCode },
+            { label: 'MobX', code: MobxCode },
           ]}
         />
 
@@ -141,6 +143,69 @@ const JotaiCode = code /*tsx*/`
       <button onClick={bump}>
         {foo} · {bar} · {String(baz)}
       </button>
+    );
+  }
+`;
+
+const MobxCode = code /*tsx*/`
+  import { makeAutoObservable } from 'mobx';
+  import { observer } from 'mobx-react-lite';
+  import { useState } from 'react';
+
+  class FooBarBaz {
+    foo = 0;
+    bar = 'hello';
+    baz = true;
+
+    constructor() {
+      makeAutoObservable(this);
+    }
+
+    bump() {
+      this.foo++;
+    }
+  }
+
+  const Widget = observer(() => {
+    const [state] = useState(() => new FooBarBaz());
+
+    return (
+      <button onClick={() => state.bump()}>
+        {state.foo} · {state.bar} · {String(state.baz)}
+      </button>
+    );
+  });
+`;
+
+const ReduxCode = code /*tsx*/`
+  import { configureStore, createSlice } from '@reduxjs/toolkit';
+  import { Provider, useDispatch, useSelector } from 'react-redux';
+  import { useState } from 'react';
+
+  const slice = createSlice({
+    name: 'fooBarBaz',
+    initialState: { foo: 0, bar: 'hello', baz: true },
+    reducers: {
+      bump: (s) => { s.foo++; },
+    },
+  });
+
+  function useFooBarBaz() {
+    const { foo, bar, baz } = useSelector(s => s);
+    const dispatch = useDispatch();
+    const bump = () => dispatch(slice.actions.bump());
+
+    return { foo, bar, baz, bump };
+  }
+
+  function App() {
+    const [store] = useState(() =>
+      configureStore({ reducer: slice.reducer }));
+
+    return (
+      <Provider store={store}>
+        <Widget />
+      </Provider>
     );
   }
 `;
