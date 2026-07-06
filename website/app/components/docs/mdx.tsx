@@ -1,5 +1,5 @@
 import type React from 'react';
-import { Children, isValidElement, lazy, Suspense } from 'react';
+import { Children, isValidElement, lazy, Suspense, useEffect, useState } from 'react';
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 import { Step, Steps } from 'fumadocs-ui/components/steps';
 import BaseCompare from '@/components/Compare';
@@ -30,15 +30,23 @@ export function Compare({ labels, wide, children }: CompareProps) {
 }
 
 export function Playground(props: { of: string; height?: number }) {
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => setReady(true), []);
+
+  const placeholder = (
+    <div
+      style={{ height: props.height ?? 480 }}
+      className="my-6 flex items-center justify-center rounded-xl border border-fd-border text-fd-muted-foreground">
+      Loading sandbox...
+    </div>
+  );
+
+  // Sandpack is client-only; prerender emits the placeholder.
+  if (!ready) return placeholder;
+
   return (
-    <Suspense
-      fallback={
-        <div
-          style={{ height: props.height ?? 480 }}
-          className="my-6 flex items-center justify-center rounded-xl border border-fd-border text-fd-muted-foreground">
-          Loading sandbox...
-        </div>
-      }>
+    <Suspense fallback={placeholder}>
       <LazyPlayground {...props} />
     </Suspense>
   );
