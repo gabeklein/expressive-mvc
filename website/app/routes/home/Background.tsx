@@ -57,6 +57,13 @@ export class AnimateBG extends Canvas2D {
     document.addEventListener('visibilitychange', onVisibility);
     onResize();
 
+    // ready() may re-run on the same instance (remount, strict-mode) -
+    // reset rather than pile new particles onto the old set.
+    this.particles.clear();
+    this.frames = 0;
+    this.damper = 1;
+    this.stopped = false;
+
     for (let i = 0; i < this.particleCount; i++) new Particle(this);
 
     return () => {

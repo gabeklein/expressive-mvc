@@ -22,7 +22,7 @@ export function Complicated() {
       <div className="mx-auto max-w-4xl px-6 pt-12 md:pt-20">
         <Reveal from="left">
           <h2 className="font-display text-3xl md:text-5xl font-bold tracking-tight leading-none">
-            React has
+            React has...
           </h2>
         </Reveal>
       </div>
@@ -36,7 +36,7 @@ export function Complicated() {
       <div className="mx-auto max-w-4xl px-6 pb-12 md:pb-20">
         <Reveal from="right" delay={120}>
           <h2 className="font-display text-3xl md:text-5xl font-bold tracking-tight leading-none text-right">
-            gotten complicated<span className="text-fd-primary">.</span>
+            ...gotten complicated<span className="text-fd-primary">.</span>
           </h2>
         </Reveal>
 
