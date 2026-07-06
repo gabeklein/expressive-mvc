@@ -3,7 +3,7 @@ title: State Classes
 description: Defining properties, methods, and lifecycle on State
 ---
 
-The State class is the basic building block of Expressive. Everything else - reactivity, components, context, async - builds on top of a class that extends `State`.
+Everything in Expressive starts here. Reactivity, components, context, async - all of it builds on a class that extends `State`.
 
 ```ts
 import State from '@expressive/react';
@@ -21,19 +21,22 @@ class Counter extends State {
 
 ## Instantiation
 
-Always create instances via `State.new()`, not `new State()`:
+Create instances with `State.new()`, not `new State()`:
 
 ```ts
 const counter = Counter.new();
 ```
 
-`new Counter()` constructs the object but **does not activate it** - properties aren't managed until activation. `Counter.new()` runs the constructor, initializes reactive properties, executes any constructor arguments, and fires the `new()` lifecycle hook.
+`new Counter()` constructs the object but does **not** activate it - properties aren't managed until activation happens. `Counter.new()` does both: it runs the constructor, promotes fields to managed properties, applies constructor arguments, and fires the `new()` lifecycle hook.
 
-Inside React, `Counter.use()` handles activation automatically. Outside React, always use `.new()`.
+Inside React, `Counter.use()` activates for you. Outside React, reach for `.new()`.
+
+> **Good to know:** <br />
+> If you're stuck holding a plain-constructed instance, `await state.set()` will activate it - the no-arg form fires the ready event if it hasn't fired already. Deferring activation on purpose is an advanced move (it controls where the state lands in [context](/docs/guides/context)), but the escape hatch is there.
 
 ### Initial values and callbacks
 
-`.new()` accepts objects (initial values), functions (lifecycle callbacks), and arrays (nested):
+`.new()` accepts objects (initial values), functions (lifecycle callbacks), and arrays of either:
 
 ```ts
 const counter = Counter.new({ count: 10 }, (self) => {
@@ -48,7 +51,7 @@ The same signature works for `Counter.use()`.
 
 ## Properties
 
-Class fields become reactive automatically. Assigning to them triggers batched updates:
+Class fields become reactive automatically. Assign, and subscribers hear about it:
 
 ```ts
 class App extends State {
@@ -61,24 +64,25 @@ app.name = 'Alice'; // notifies subscribers
 app.count += 1; // notifies subscribers
 ```
 
-All writes to the same state in the same tick are batched into one flush (via `queueMicrotask`). If the new value is `===` to the previous value, no event is emitted.
+All writes in the same tick batch into a single flush (via `queueMicrotask`), and a write that's `===` the previous value is a no-op - no event at all.
 
 ### Non-reactive properties
 
-If you need to stash something on the instance without making it reactive, assign in `new()` or use `ref`:
+Properties are discovered *at activation*, by walking the instance's own keys. So a key that first appears afterward - say, assigned inside `new()` - is just a plain JS property. No events, invisible to subscribers, absent from iteration:
 
 ```ts
-class Thing extends State {
-  element = ref<HTMLDivElement>(); // mutable, not enumerable, not reactive in renders
+class Stopwatch extends State {
+  elapsed = 0; // reactive
+
+  declare startedAt: number;
 
   new() {
-    // Assigning here *after* activation still creates a reactive property
-    // To keep something non-reactive, use ref, def, or just store on a closure.
+    this.startedAt = Date.now(); // plain property - never managed
   }
 }
 ```
 
-For the common case - holding a DOM element or a mutable handle - use [`ref`](/docs/guides/forms-and-refs).
+For the common case - holding a DOM element or a mutable handle - use [`ref`](/docs/guides/forms-and-refs) instead.
 
 <br />
 
@@ -95,7 +99,7 @@ increment(); // `this` is correct
 - `super` calls work across inheritance chains.
 - Overwriting a method works: `counter.increment = () => { ... }`.
 
-Methods called inside a tracked effect do **not** create subscriptions for the properties they read. This is a deliberate rule: methods are "actions", not "observations". If you want an effect to re-run when a method's inputs change, read those properties via the tracking proxy directly.
+Methods called inside a tracked effect do **not** create subscriptions for the properties they read. This is deliberate: methods are "actions", not "observations". If you want an effect to re-run when a method's inputs change, read those properties through the tracking proxy directly.
 
 <br />
 
@@ -110,7 +114,7 @@ const { is: counter, count } = Counter.use();
 counter.count = 5; // works
 ```
 
-Destructuring breaks the binding between a local variable and the property, so `count = 5` just reassigns the local. `is` gives you back a reference to the live instance. Destructure it first so the instance handle is easy to spot, and usually alias it to the state concept (`counter`, `form`, `dashboard`) instead of using `is` directly.
+Destructuring breaks the binding between a local variable and the property, so `count = 5` just reassigns the local. `is` hands you back the live instance. Destructure it first so the handle is easy to spot, and alias it to the state concept (`counter`, `form`, `dashboard`) rather than keeping a local named `is`.
 
 ### Silent reads
 
@@ -123,13 +127,13 @@ state.get((current) => {
 });
 ```
 
-Silent reads are useful when you need a value at a point in time but don't want a change to that value to trigger a re-run.
+Silent reads are for when you need a value at a point in time, but a change to it shouldn't trigger a re-run.
 
 <br />
 
 ## Lifecycle
 
-A State class has four phases:
+A State has four phases:
 
 | Phase        | Trigger             | What happens                                                        |
 | ------------ | ------------------- | ------------------------------------------------------------------- |
@@ -153,7 +157,39 @@ class Timer extends State {
 }
 ```
 
-`new()` runs once, after all properties are initialized and constructor arguments have been processed. Inside `new()`, everything on `this` is live - you can assign, read, call methods, and register effects.
+`new()` runs once, after fields are initialized and constructor arguments are applied. Everything on `this` is live by then - assign, read, call methods, register effects.
+
+> **Timing:** the constructor body (and `State.on` setup) runs *before* arguments merge, so it only ever sees field defaults. `new()` runs *after* - making it the right place to read a value passed via `.new({ ... })`, or props in adapters.
+
+One caveat for library authors: `new()` is a public method. A subclass that defines its own `new()` silently replaces yours - no error, no forced `super` call. Fine in app code; risky in a reusable base class. For init logic that must survive subclassing, pass a trailing callback to `super` instead. It runs in the same phase, but can't be clobbered:
+
+```ts
+class Resource extends State {
+  url = '/api';
+
+  constructor(...args: State.Args) {
+    super(...args, () => {
+      // runs like new(), but a subclass can't override it
+      this.url = this.url.replace(/\/$/, '');
+    });
+  }
+}
+```
+
+### Class-level setup with `State.on()`
+
+To run setup for *every* instance of a class (and its subclasses), register a handler with `State.on()`:
+
+```ts
+const stop = Timer.on(function () {
+  // runs for each Timer on init
+  return () => {
+    /* cleanup on destroy */
+  };
+});
+```
+
+A bare function runs per-instance, before `new()`. There's also an object form (`{ type, before, after }`) for hooking specific phases - see [API: State](/docs/api/state).
 
 ### The `use()` hook (React only)
 
@@ -172,7 +208,7 @@ class SearchState extends State {
 }
 ```
 
-When `use()` is defined, its parameter types become the arguments that `SearchState.use()` accepts:
+When `use()` is defined, its parameter types become the arguments `SearchState.use()` accepts:
 
 ```tsx
 class Greeter extends State {
@@ -197,7 +233,7 @@ Use `use()` for every-render bridging. For one-shot setup, prefer `new()`.
 state.set(null);
 ```
 
-This is automatic in React - `State.use()` destroys on unmount, `Provider` destroys on unmount. You rarely call it explicitly. When destruction runs:
+This is automatic in React - `State.use()` destroys on unmount, `Provider` destroys on unmount. You rarely call it yourself. When destruction runs:
 
 1. **Children are destroyed first**, inner-to-outer.
 2. **Listeners are notified** with a `null` signal.
@@ -243,7 +279,7 @@ function UserStreet() {
 
 ## Constructor arguments
 
-Beyond initial values and callbacks, `.new()` / `.use()` accepts arrays of arguments (flattened) and promises (caught and logged). All are applied in order during activation:
+Beyond initial values and callbacks, `.new()` / `.use()` accepts arrays of arguments (flattened) and promises (caught and logged if rejected). All are applied in order during activation:
 
 ```ts
 const t = Test.new(
@@ -298,7 +334,7 @@ Subclasses can override methods and add fields. Instructions defined on the base
 
 ## Iteration
 
-A State instance is iterable, yielding `[key, value]` pairs for its managed enumerable properties:
+A State instance is iterable, yielding `[key, value]` pairs for its managed properties:
 
 ```ts
 for (const [key, value] of state) {
@@ -310,6 +346,6 @@ for (const [key, value] of state) {
 
 ## Next
 
-- [Reactivity](/docs/guides/reactivity) - tracking, computed values, and batching.
+- [Reactivity](/docs/guides/reactivity) - tracking, computed values, effects, and batching.
 - [Components](/docs/guides/components) - the `Component` class for self-rendering state.
 - [API: State](/docs/api/state) - every method and static on the base class.
