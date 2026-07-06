@@ -18,28 +18,30 @@ const HOOK_ROWS = [
 
 export function Complicated() {
   return (
-    <section className="border-b border-fd-border bg-fd-muted/30 overflow-hidden">
-      <div className="mx-auto max-w-4xl px-6 py-28 md:py-40">
+    <section className="border-b border-fd-border overflow-hidden">
+      <div className="mx-auto max-w-4xl px-6 pt-20">
         <Reveal from="left">
-          <h2 className="font-display text-4xl md:text-6xl font-bold tracking-tight leading-none">
+          <h2 className="font-display text-3xl md:text-5xl font-bold tracking-tight leading-none">
             React has
           </h2>
         </Reveal>
+      </div>
 
-        <div className="my-14 md:my-20 flex flex-col gap-4">
-          {HOOK_ROWS.map((row, i) => (
-            <PillRow key={i} pills={row} reverse={i % 2 === 1} speed={34 + i * 6} />
-          ))}
-        </div>
+      <div className="my-10 py-8 bg-fd-foreground/[0.04] flex flex-col gap-4">
+        {HOOK_ROWS.map((row, i) => (
+          <PillRow key={i} pills={row} reverse={i % 2 === 1} speed={34 + i * 6} />
+        ))}
+      </div>
 
+      <div className="mx-auto max-w-4xl px-6 pb-20">
         <Reveal from="right" delay={120}>
-          <h2 className="font-display text-4xl md:text-6xl font-bold tracking-tight leading-none text-right">
+          <h2 className="font-display text-3xl md:text-5xl font-bold tracking-tight leading-none text-right">
             gotten complicated<span className="text-fd-primary">.</span>
           </h2>
         </Reveal>
 
-        <Reveal className="mt-24 max-w-2xl mx-auto text-center">
-          <p className="text-fd-muted-foreground text-lg md:text-xl leading-relaxed">
+        <Reveal className="mt-14 max-w-2xl mx-auto text-center">
+          <p className="text-fd-muted-foreground text-lg leading-relaxed">
             Every feature starts as one hook. Then it needs to remember, to
             derive, to sync, to persist - and each concern becomes another hook,
             another dependency array, another way to drift out of sync. The

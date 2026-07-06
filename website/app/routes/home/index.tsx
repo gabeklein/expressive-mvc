@@ -1,15 +1,12 @@
 import { HomeLayout } from 'fumadocs-ui/layouts/home';
 import type { BaseLayoutProps } from 'fumadocs-ui/layouts/shared';
 import Logo from '@/components/Logo';
-import { Agents } from './Agents';
-import { Background } from './Background';
 import { Benefits } from './Benefits';
 import { Comparison } from './Comparison';
 import { Complicated } from './Complicated';
 import { Context } from './Context';
 import { CTA } from './CTA';
 import { Hero } from './Hero';
-import { Molecules } from './Molecules';
 import { Turn } from './Turn';
 
 export const layoutOptions: BaseLayoutProps = {
@@ -34,14 +31,11 @@ export function meta() {
 export default function Home() {
   return (
     <HomeLayout {...layoutOptions} className="[--content-width:1080px]">
-      <Background />
       <Hero />
       <Complicated />
       <Comparison />
       <Context />
-      <Molecules />
       <Turn />
-      <Agents />
       <Benefits />
       <CTA />
     </HomeLayout>

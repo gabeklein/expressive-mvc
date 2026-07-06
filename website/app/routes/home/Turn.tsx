@@ -7,9 +7,9 @@ const SHED = [
 
 export function Turn() {
   return (
-    <section className="border-b border-fd-border bg-fd-muted/30">
+    <section className="border-b border-fd-border">
       <div className="mx-auto max-w-(--content-width) py-24 px-6">
-        <div className="max-w-2xl mb-14">
+        <div className="max-w-2xl mb-12">
           <div className="text-xs uppercase tracking-widest text-fd-primary mb-3">
             Convention over configuration
           </div>
@@ -19,46 +19,63 @@ export function Turn() {
           <p className="text-fd-muted-foreground text-lg md:text-xl">
             Fields are state, methods change it, the class is the context key. A
             few conventions replace a pile of decisions - so a feature looks the
-            same whether you wrote it, a teammate did, or an agent did. Organized
-            code stays easy to extend instead of seizing up.
+            same whether it came from you, a teammate, or an agent.
           </p>
         </div>
 
-        <div className="grid gap-x-10 gap-y-8 md:grid-cols-3 mb-16">
-          <Pillar title="One place for everything">
-            State, computed values, async, and lifecycle live on the class - not
-            scattered across hooks, effects, and refs.
-          </Pillar>
-          <Pillar title="Conventions, not decisions">
-            No store to configure, no context to wire, no dependency arrays to
-            keep honest. Learn the shape once and apply it everywhere.
-          </Pillar>
-          <Pillar title="Grows without tangling">
-            A new feature is a new field or method - not an afternoon spent
-            untangling the ones already there.
-          </Pillar>
+        <div className="mb-14">
+          <div className="text-xs uppercase tracking-widest text-fd-muted-foreground mb-4">
+            You stop reaching for
+          </div>
+          <div className="flex flex-wrap items-center gap-2.5 max-w-3xl">
+            {SHED.map((name) => (
+              <span
+                key={name}
+                className="rounded-full border border-fd-border font-mono text-sm text-fd-muted-foreground/60 line-through py-1.5 px-3.5">
+                {name}
+              </span>
+            ))}
+          </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5 max-w-3xl">
-          {SHED.map((name) => (
-            <span
-              key={name}
-              className="rounded-full border border-fd-border font-mono text-sm text-fd-muted-foreground/60 line-through py-1.5 px-3.5">
-              {name}
-            </span>
-          ))}
+        <div className="max-w-2xl mb-10">
+          <h3 className="font-display text-2xl md:text-3xl font-bold tracking-tight mb-3">
+            <span className="text-fd-muted-foreground">(Artificial)</span> Idiot-Proof.
+          </h3>
+          <p className="text-fd-muted-foreground text-lg">
+            The same structure keeps the models working in your codebase on
+            task - a feature is one class an agent can load whole.
+          </p>
         </div>
-        <p className="text-sm text-fd-muted-foreground mt-5">
-          Dependencies you stop reaching for - the batteries are included.
-        </p>
+
+        <div className="grid gap-x-10 gap-y-8 md:grid-cols-2">
+          <Point title="One place for everything">
+            State, derived values, async, and lifecycle live on the class. Open
+            it, read it top-to-bottom, understand the feature.
+          </Point>
+          <Point title="Conventions, not decisions">
+            One obvious way to build a thing - fewer patterns to invent, for
+            people and agents alike.
+          </Point>
+          <Point title="Less to trace">
+            No dependency arrays or stale closures. A fix starts at the class,
+            not a hunt through wiring.
+          </Point>
+          <Point title="Just objects">
+            Plain instances you can log, assert on, or bind to{' '}
+            <code className={mono}>window</code>. Transparent to debug.
+          </Point>
+        </div>
       </div>
     </section>
   );
 }
 
-function Pillar({ title, children }: { title: string; children: React.ReactNode }) {
+const mono = 'font-mono text-sm bg-fd-muted px-1.5 py-0.5 rounded';
+
+function Point({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="border-t border-fd-primary/40 pt-4">
+    <div className="border-t border-fd-border pt-4">
       <h3 className="font-semibold mb-2">{title}</h3>
       <p className="text-fd-muted-foreground leading-relaxed">{children}</p>
     </div>

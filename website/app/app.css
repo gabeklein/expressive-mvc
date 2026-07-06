@@ -37,6 +37,9 @@ figure[data-rehype-pretty-code-figure] pre code,
 }
 
 /* Comparison blocks opt out of wrapping - they scroll horizontally instead. */
+.code-nowrap .shiki .line,
+.code-nowrap .shiki code,
+.code-nowrap .shiki pre,
 .compare-static .shiki .line,
 .compare-static .shiki code,
 .compare-static .shiki pre,
@@ -47,6 +50,7 @@ figure[data-rehype-pretty-code-figure] pre code,
   word-break: normal !important;
 }
 
+.code-nowrap .shiki pre,
 .compare-static .shiki pre,
 .compare-strip .shiki pre {
   width: max-content !important;
@@ -54,6 +58,8 @@ figure[data-rehype-pretty-code-figure] pre code,
 }
 
 /* Desktop: each block scrolls on its own. */
+.code-nowrap .shiki,
+.code-nowrap figure.shiki > div,
 .compare-static .shiki,
 .compare-static figure.shiki > div {
   overflow-x: auto !important;
@@ -83,8 +89,26 @@ figure[data-rehype-pretty-code-figure] pre code,
   }
 }
 
+/* Hero aurora background */
+@keyframes aurora-drift {
+  from {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(4rem, -2rem) scale(1.15);
+  }
+  to {
+    transform: translate(-3rem, 2rem) scale(0.95);
+  }
+}
+
+.aurora {
+  animation: aurora-drift 26s ease-in-out infinite alternate;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .marquee-track {
+  .marquee-track,
+  .aurora {
     animation: none !important;
   }
 }
