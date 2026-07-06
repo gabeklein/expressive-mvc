@@ -5,7 +5,7 @@ import code from '@/components/Snippet';
 export function View() {
   return (
     <section>
-      <div className="mx-auto max-w-(--content-width) py-24 px-6 grid gap-12 lg:grid-cols-2 lg:items-center">
+      <div className="mx-auto max-w-(--content-width) py-24 px-6 grid gap-12 lg:grid-cols-[2fr_3fr] lg:items-center">
         <div>
           <div className="text-xs uppercase tracking-widest text-fd-muted-foreground mb-3">
             Component
@@ -61,11 +61,11 @@ class TipCalculator extends Component {
     const { bill, tipPercent, tip, total } = this;
 
     return (
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-4 rounded-lg border border-fd-border py-3 px-4">
-        <span className="text-xs uppercase tracking-widest text-fd-muted-foreground">
+      <div className="mt-4 rounded-lg border border-fd-border py-3 px-4">
+        <div className="text-xs uppercase tracking-widest text-fd-muted-foreground mb-3">
           Live - this exact class
-        </span>
-        <div className="flex items-center gap-4">
+        </div>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
           <label className="flex items-center gap-2 font-mono text-sm">
             $
             <input
@@ -75,17 +75,18 @@ class TipCalculator extends Component {
               onChange={(e) => (this.bill = +e.target.value)}
             />
           </label>
-          <label className="flex items-center gap-2 font-mono text-sm">
+          <label className="flex flex-1 items-center gap-2 font-mono text-sm min-w-32">
             {tipPercent}%
             <input
               type="range"
+              className="flex-1 min-w-20"
               min={0}
               max={30}
               value={tipPercent}
               onChange={(e) => (this.tipPercent = +e.target.value)}
             />
           </label>
-          <span className="font-mono text-sm">
+          <span className="font-mono text-sm whitespace-nowrap ml-auto">
             tip {tip.toFixed(2)} · total {total.toFixed(2)}
           </span>
         </div>
