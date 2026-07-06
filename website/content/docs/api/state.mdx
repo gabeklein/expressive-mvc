@@ -47,9 +47,11 @@ Type guard. Returns true if `maybe` is an instance of this class or a subclass.
 Counter.is(subCounter); // true if subCounter extends Counter
 ```
 
-### `State.on(callback)`
+### `State.on(handler)`
 
-Register a callback to run for every newly created instance of this class (or any subclass). Returns an unsubscribe function.
+Register a lifecycle handler for this class and its subclasses. Returns a function to remove the handler.
+
+The bare-function form is per-instance setup:
 
 ```ts
 const stop = Counter.on(function (this: Counter) {
@@ -60,7 +62,29 @@ const stop = Counter.on(function (this: Counter) {
 });
 ```
 
-Callbacks run ancestor-first. The same callback registered on a parent and child only runs once.
+Handlers run ancestor-first. The same handler registered on a parent and child only runs once.
+
+Pass an object to hook by phase instead:
+
+```ts
+Counter.on({
+  type(T) {
+    /* once per class, at bootstrap */
+  },
+  before() {
+    /* per instance - same slot as the bare form */
+  },
+  after() {
+    /* per instance, at the new() slot */
+  }
+});
+```
+
+Activation is a queue: `before` handlers, then own fields become managed, then constructor args and the `new()` hook, then `after` handlers, then context registration. So each phase means:
+
+- `type` - runs once when the class first bootstraps, before its members are classified and bound. Receives the class itself, so a handler can inspect or reshape the prototype first. Registered on a base class, it runs for each subclass too.
+- `before` - per-instance, before properties are observed and before `new()`. A bare function passed to `on` is sugar for `{ before }`. May return a cleanup, further constructor args, or an object of values to assign.
+- `after` - per-instance, at the `new()` slot - own values are observed and constructor args applied by then. May return a cleanup.
 
 ### `State.use(...args)` <small>(React)</small>
 
@@ -80,7 +104,7 @@ Look up an instance from React context. Covered in [Hooks](/docs/api/hooks).
 const values = state.get();
 ```
 
-Returns a frozen plain object with all enumerable property values. Exotic values (refs, computed) are unwrapped via their internal `.get()`. Recursive - exports child states too. Handles circular references.
+Returns a frozen plain object of current values. Exotic values (refs, computed) are unwrapped via their internal `.get()`. Recursive - exports child states too. Handles circular references.
 
 ### `get(key, required?)` - single property
 
@@ -91,7 +115,7 @@ state.get('foo', false); // returns undefined without suspense
 state.get('method'); // returns the unbound method
 ```
 
-For exotic values like `ref.Object`, returns the unwrapped value.
+For exotic values like `ref.Object`, returns the unwrapped value. Method keys return the original, unbound function - the counterpart to auto-binding on normal access.
 
 ### `get(effect)` - tracked effect
 
@@ -110,15 +134,7 @@ const stop = state.get((current, changed) => {
 - Cleanup receives `true` (about to re-run), `false` (cancelled), or `null` (state destroyed).
 - Suspense throws inside an effect pause the effect until resolved.
 
-### `get(key, callback)` - watch a single key
-
-```ts
-const stop = state.get('count', (key, self) => {
-  console.log('count is now', self.count);
-});
-```
-
-Fires on every assignment that changes the value, and on explicit `set(key)` dispatches. Synchronous - before the flush settles.
+> To watch a single property or event instead of tracking reads, use `set(event, callback)` below.
 
 ### `get(null)` / `get(null, callback)` - destruction
 
@@ -176,6 +192,39 @@ state.set({
 });
 ```
 
+#### What `Assign` checks
+
+`State.Assign<T>` is `Record<string, unknown>` intersected with a mapped type over declared fields. The intersection means **unknown keys are not rejected** at the type level (they're ignored at runtime anyway); the only call-site protection is value-correctness of declared fields:
+
+```ts
+state.set({ count: 'no' }); // error - count is a number
+state.set({ kount: 5 }); // fine by the type-checker - unknown key, ignored at runtime
+```
+
+#### Self-calls under polymorphic `this`
+
+Calling `this.set({ field })` from **inside a subclassable class** fails to type-check:
+
+```ts
+class Base extends State {
+  path = '/';
+  go() {
+    this.set({ path: '/x' }, true);
+    //        ^ Type '{ path: string }' is not assignable to 'Assign<this>'
+  }
+}
+```
+
+Inside the class body `this` is the polymorphic `this` type, so `this[K]` is unresolved and TypeScript cannot verify the literal's value types - and that value-check is the *only* thing `Assign<this>` enforces. Every `keyof this`-based alternative fails identically (a generic-inferred parameter, `Partial<Values<this>>`, even the keyed pair `set('path', v)` - the string literal isn't provably `keyof this`).
+
+The fix is a cast to the concrete class, which loses **no real safety** - the value-check it bypasses was never available under polymorphic `this`:
+
+```ts
+(this as Base).set({ path: '/x' }, true);
+```
+
+> This is a TypeScript limitation (mapped types over polymorphic `this`), not a bug here. External callers on a concrete instance (`base.set({ path })`) type-check normally. No looser parameter type can both accept the literal *and* value-check it while `this` is unresolved - it's pick-one, so the cast is the idiomatic escape hatch.
+
 ### `set(callback)` - listen to all updates
 
 ```ts
@@ -184,9 +233,11 @@ const stop = state.set((key, self) => {
 });
 ```
 
-Fires for every property assignment that changes a value, plus explicit dispatches. The callback can return:
+Fires synchronously for every property assignment that changes a value, plus explicit dispatches. `stop()` returns `true` if the listener was removed, `false` if it was already gone.
 
-- A function - called once when the batch settles (deduped per tick).
+The callback can return:
+
+- A function - called once when the batch settles. Returning the same function for several events in one tick still runs it once - dedupe is by identity. If it throws, the error is logged.
 - `null` - auto-unsubscribe after this invocation.
 
 ### `set(key)` - dispatch an event
@@ -207,16 +258,20 @@ state.set(null);
 
 Destroys the instance. Children are destroyed first, listeners are notified, cleanup runs, the instance is frozen.
 
-### `set(event, callback)` - watch a specific event
+### `set(event, callback)` - watch a specific key or event
 
 ```ts
 const stop = state.set('count', (key, self) => {
-  /* ... */
+  console.log('count is now', self.count);
 });
-state.set(null, () => console.log('destroyed'));
+
+state.set('my-event', onEvent); // custom events too
+state.set(null, () => console.log('destroyed')); // null - destruction
 ```
 
-Return `null` from the callback to auto-unsubscribe after one invocation.
+The way to watch a single property. Fires on every assignment that changes the value, and on explicit `set(key)` dispatches - synchronously, before the flush settles.
+
+Return semantics match `set(callback)`: return a function to run once at settle (deduped), return `null` to auto-unsubscribe after one invocation, and `stop()` reports `true`/`false`.
 
 ### `set(key, descriptor)` - define a property
 
@@ -291,7 +346,7 @@ Runs on every render when used via `State.use()`. Parameter types define the arg
 
 ```ts
 for (const [key, value] of state) {
-  // yields managed enumerable properties
+  // yields managed properties
 }
 ```
 
@@ -299,4 +354,4 @@ for (const [key, value] of state) {
 
 ## Types
 
-See [Types](/docs/api/types) for `State.Extends`, `State.Type`, `State.Field`, `State.Args`, `State.Values`, and friends.
+See [Types](/docs/api/types) for `State.Extends`, `State.Type`, `State.Field`, `State.Args`, `State.On`, `State.Values`, and friends.

@@ -74,7 +74,7 @@ Meaning of special values:
 
 ### `State.Values<T>`
 
-All fields with exotic values (refs, etc.) unwrapped to their inner type.
+All fields with exotic values (child states, refs, etc.) unwrapped to their inner type.
 
 ```ts
 type Values<T> = { [P in Field<T>]: Export<T[P]> };
@@ -82,7 +82,13 @@ type Values<T> = { [P in Field<T>]: Export<T[P]> };
 
 ### `State.Partial<T>`
 
-Object compatible with `Values<T>` but all keys optional. Used by `set(assign)`.
+Object compatible with `Values<T>` - every key optional, Export-unwrapped.
+
+```ts
+type Partial<T> = { [P in Field<T>]?: Export<T[P]> };
+```
+
+Not currently used by any public signature - `set(assign)` takes [`State.Assign<T>`](#stateassignt), which preserves declared field types rather than unwrapping them.
 
 ### `State.Value<T, K>`
 
@@ -90,7 +96,15 @@ Single-property lookup type with `Export<>` unwrapping.
 
 ### `State.Export<R>`
 
-If `R` has a `.get(): T` method, extracts `T`. Otherwise returns `R`. Drives ref unwrapping in snapshots.
+If `R` is itself a State, recursively exports `Values<R>`. Otherwise, if `R` has a `.get(): T` method, extracts `T`. Otherwise returns `R`. Drives child-state and ref unwrapping in snapshots.
+
+```ts
+type Export<R> = R extends State
+  ? Values<R>
+  : R extends { get(): infer T }
+  ? T
+  : R;
+```
 
 <br />
 
@@ -117,6 +131,20 @@ type Init<T> = (
 ) => Promise<void> | (() => void) | Args<T> | Assign<T> | void;
 ```
 
+### `State.On<T>`
+
+Handler object accepted by `State.on()` - hooks lifecycle by phase. A bare `Init` function passed to `on` is sugar for `{ before }`.
+
+```ts
+interface On<T> {
+  type?(type: State.Extends<T>): void;
+  before?(this: T, thisArg: T): void | (() => void) | Promise<void> | Args<T> | Assign<T>;
+  after?(this: T, self: T): void | (() => void);
+}
+```
+
+Phase timing is covered under [`State.on`](/docs/api/state#stateonhandler).
+
 ### `State.Assign<T>`
 
 Object overlay type. Maps each field to its value type, preserving method `this`.
@@ -128,6 +156,8 @@ type Assign<T> = Record<string, unknown> & {
     : T[K];
 };
 ```
+
+> The `Record<string, unknown>` intersection means unknown keys pass the type-checker (they're ignored at runtime) - value-correctness of declared fields is the only check. See [What `Assign` checks](/docs/api/state#what-assign-checks).
 
 <br />
 
@@ -144,12 +174,6 @@ type OnEvent<T> = (
 ```
 
 Return a function for a deduped settle callback. Return `null` to auto-unsubscribe.
-
-### `State.OnUpdate<T, K>`
-
-```ts
-type OnUpdate<T, K> = (this: T, key: K, thisArg: T) => void;
-```
 
 ### `State.Effect<T>`
 
@@ -210,6 +234,7 @@ Returned by `set()` - a synchronously readable array of keys updated, awaitable 
 
 ```ts
 interface ref.Object<T> {
+  (value: T | null): void;
   current: T;
   is: State;
   key: string;

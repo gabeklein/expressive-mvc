@@ -15,21 +15,22 @@ All instructions return a symbol at definition time that the library resolves in
 
 ## `set`
 
-The most versatile instruction. Handles default values, placeholders, lazy/async factories, and validation callbacks.
+The most versatile instruction. Handles default values, placeholders, lazy/async factories, validation callbacks, and reactive computed values.
 
-For reactive computed values, use a normal class getter - getters on a State subclass are auto-promoted to memoized, dependency-tracked properties. See [Reactive computed (getters)](#reactive-computed-getters) below.
+For reactive computed values, a normal class getter usually reads best - getters on a State subclass are auto-promoted to memoized, dependency-tracked properties. See [Reactive computed (getters)](#reactive-computed-getters) below, and [`set(compute)`](#setcompute---reactive-computed) for the instruction equivalent.
 
 ### Property descriptor policy
 
-| Form                     | Enumerable | Writable | Notes                                    |
-| ------------------------ | ---------- | -------- | ---------------------------------------- |
-| `= "foo"` (plain)        | yes        | yes      | Normal data property                     |
-| `= set("foo")`           | no         | yes      | Managed default, excluded from snapshots |
-| `= set("foo", cb)`       | no         | yes      | Managed with setter callback             |
-| `= set(() => "foo")`     | no         | no       | Factory, read-only                       |
-| `= set(() => "foo", cb)` | no         | yes      | Factory made writable by callback        |
-| `get foo() { ... }`      | yes        | no       | Reactive computed, included in snapshots |
-| `= set<T>()`             | no         | yes      | Placeholder, suspends on access          |
+| Form                     | Enumerable | Writable | Notes                                     |
+| ------------------------ | ---------- | -------- | ----------------------------------------- |
+| `= "foo"` (plain)        | yes        | yes      | Normal data property                      |
+| `= set("foo")`           | no         | yes      | Managed default, hidden from `Object.keys()` |
+| `= set("foo", cb)`       | no         | yes      | Managed with setter callback              |
+| `= set(() => "foo")`     | no         | no       | Factory, read-only                        |
+| `= set(() => "foo", cb)` | no         | yes      | Factory made writable by callback         |
+| `= set(self => ...)`     | yes        | no       | Reactive computed via instruction         |
+| `get foo() { ... }`      | yes        | no       | Reactive computed, included in snapshots  |
+| `= set<T>()`             | no         | yes      | Placeholder, suspends on access           |
 
 ### `set<T>()` - placeholder
 
@@ -53,7 +54,7 @@ userId = set<string>(undefined, (next, prev) => {
 name = set('untitled');
 ```
 
-Like `name = 'untitled'` but **non-enumerable** - excluded from snapshots and `ref(this)`.
+Like `name = 'untitled'` but **non-enumerable** - hidden from `Object.keys()`, spread, and `ref(this)`.
 
 ### `set(value, callback)` - default with validation
 
@@ -109,6 +110,23 @@ config = set(
 
 Makes the property writable. Callback runs on factory resolution and subsequent assignments.
 
+### `set(compute)` - reactive computed
+
+```ts
+class Person extends State {
+  first = 'John';
+  last = 'Doe';
+  full = set((self) => `${self.first} ${self.last}`);
+}
+```
+
+The instruction equivalent of a getter. Unlike a zero-arg factory (which runs once and caches), a function **declaring a parameter** routes into the reactive compute engine: it re-runs whenever any managed property it reads is updated. The instance is passed as both `this` and the first argument, so arrows and regular functions both work.
+
+> **Dispatch is by arity.** `set(() => x)` is a one-shot factory; `set(self => x)` is reactive. A function that reads dependencies via `this` still needs to declare the parameter - `set(function (self) { return this.x })` - to be treated as computed.
+
+- Enumerable and read-only, exactly like a prototype getter. Computes lazily on first access.
+- Because the slot is instruction-assigned rather than a concrete getter, a **subclass can refine its type with `declare`** - a parent may declare a generic computed property that subclasses narrow, which a getter on the parent class cannot express.
+
 ### Reactive computed (getters)
 
 ```ts
@@ -130,13 +148,15 @@ A getter declared on a State subclass is auto-promoted to a reactive computed pr
 - Getters declared with a paired setter (`get foo() {} set foo(v) {}`) are NOT promoted - they remain plain JS accessors.
 - Included in snapshots and `ref(this)`.
 
-### Direct promises are not supported
+### Direct promises throw
 
 ```ts
-config = set(() => fetchConfig());
+data = set(somePromise); // TypeError during activation
 ```
 
-Do not pass a raw Promise to `set()`. Use a factory instead (`set(() => promise)` or `set(async () => value)`) so async work starts during activation/access. A promise constructed in a field initializer can keep running for instances React abandons, especially under StrictMode.
+Passing a raw Promise fails fast: `TypeError: Direct promises are not supported in set({state}.{key}). Use set(() => promise) instead.`
+
+Use a factory (`set(() => promise)` or `set(async () => value)`) so async work starts during activation/access. A promise constructed in a field initializer can keep running for instances React abandons, especially under StrictMode.
 
 <br />
 
@@ -150,7 +170,7 @@ Context lookup. Fetches another State from the ambient context hierarchy.
 parent = get(ParentState);
 ```
 
-Throws `"Could not find {Type} in context."` if missing.
+Throws `"Required {Type} not found in context for {subject}."` if missing.
 
 ### `get(Type, false)` - optional upstream
 
@@ -202,10 +222,12 @@ form = get(FormState, true, false); // T | undefined
 
 ### Behavior notes
 
-- All `get()` properties are **non-enumerable** - excluded from snapshots, `Object.keys()`, and `ref(this)`.
+- All `get()` properties are **non-enumerable** - hidden from `Object.keys()`, spread, and `ref(this)`.
 - Upstream lookups check the direct parent first, then walk the context hierarchy.
 - A state does not resolve itself.
 - Upstream callbacks are not reactive - they fire once per mount.
+- Downstream collections ignore redundant registrations of the same instance.
+- Downstream callbacks run their cleanup before either side is destroyed.
 
 <br />
 
@@ -310,6 +332,8 @@ The factory runs during activation and can return:
 - `() => void` - cleanup function only.
 - A `def.Config<T>` object - full property configuration.
 
+> **Timing:** the symbol placeholder an instruction leaves on the field is deleted *before* the factory runs. Inside the factory the property does not exist yet - whatever config you return is what defines it.
+
 ### Config fields
 
 | Field        | Type                                       | Description                                |
@@ -321,3 +345,37 @@ The factory runs during activation and can return:
 | `destroy`    | `() => void`                               | Cleanup on destruction                     |
 
 Setter callbacks behave like `set()` callbacks: throw `false` to reject, throw `true` to accept silently, return a value to transform.
+
+> Nesting states needs no instruction at all. `child = new ChildState()` is auto-parented, activated, and destroyed with its parent.
+
+<br />
+
+## `hot`
+
+Keyed reactivity for arrays and objects.
+
+```ts
+import { hot } from '@expressive/react';
+
+class Game extends State {
+  board = hot(Array(9).fill(''));
+
+  play(index: number) {
+    this.board[index] = 'X';
+  }
+}
+```
+
+`hot()` is an export alongside the instructions, but not technically an instruction - it doesn't return a placeholder symbol. It returns a reactive proxy you can assign to a State field, or use standalone with `watch()`. Reads register subscriptions in active effects; writes notify only the keys that changed.
+
+- Array reads track the accessed index or `length`; native methods (`slice`, `find`, `push`, `splice`, ...) subscribe to what they actually read.
+- Arrays must stay dense - operations that would create holes throw.
+- Object reads and writes are tracked per property key.
+- Shallow - nested arrays and objects are not wrapped; use child States or another `hot()`.
+
+```ts
+function hot<T>(value: T[]): T[];
+function hot<T extends object>(value: T): T;
+```
+
+> The deep dive - the dense-array contract with its exact throws, keyed tracking through native methods, nesting recipes, and the shared-storage caveat - lives at [Arrays & Collections](/docs/guides/collections).
