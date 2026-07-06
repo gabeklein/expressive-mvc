@@ -2,8 +2,8 @@ import type React from 'react';
 
 const SHED = [
   'react-query', 'swr', 'react-hook-form', 'formik',
-  'react-use', 'usehooks-ts', 'use-debounce', 'use-local-storage',
-  'use-context-selector', 'reselect', 'immer', 'react-error-boundary',
+  'usehooks-ts', 'use-debounce', 'use-local-storage',
+  'use-context-selector', 'immer', 'react-error-boundary',
 ];
 
 export function Turn() {
@@ -76,7 +76,7 @@ const mono = 'font-mono text-sm bg-fd-muted px-1.5 py-0.5 rounded';
 
 function Point({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="before:content-[''] before:block before:h-[3px] before:w-full before:rounded-full before:bg-fd-primary/50 before:mb-4">
+    <div className="before:content-[''] before:block before:h-[3px] before:w-full before:rounded-full before:bg-fd-primary/10 before:mb-4">
       <h3 className="font-semibold mb-2">{title}</h3>
       <p className="text-fd-muted-foreground leading-relaxed">{children}</p>
     </div>

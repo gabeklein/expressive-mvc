@@ -42,11 +42,10 @@ export function Complicated() {
 
         <Reveal className="mt-10 md:mt-14 max-w-2xl mx-auto text-center">
           <p className="text-fd-muted-foreground text-lg leading-relaxed">
-            Every feature starts as one hook. Then it needs to remember, to
-            derive, to sync, to persist - and each concern becomes another hook,
-            another dependency array, another way to drift out of sync. The
-            logic that belongs together ends up scattered across a component
-            that only meant to render.
+            Every feature has a hook. Then it needs to remember,
+            derive, sync, persist. Each concern becomes another hook,
+            another dependency array, another way to drift out of sync.
+            Logic that belongs together winds up scattered and hard to follow.
           </p>
         </Reveal>
       </div>

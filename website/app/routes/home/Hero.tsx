@@ -17,7 +17,7 @@ export function Hero() {
           </h1>
           <p className="text-lg md:text-xl text-fd-muted-foreground max-w-xl mb-8">
             Just <code className="font-mono text-[0.9em] bg-fd-muted px-1.5 py-0.5 rounded">use()</code>{' '}
-            a class instead - data, behavior, and lifecycle in one place.
+            a State instead - data, behavior, and lifecycle in one place.
             Components read what they need and update when it changes.
           </p>
 

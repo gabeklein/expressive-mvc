@@ -33,10 +33,8 @@ export function Benefits() {
           </Benefit>
           <Benefit title="Headless by design">
             State classes are plain objects - create with .new(), call methods,
-            assert on properties. No @testing-library, no act(), no DOM. And it
-            goes further: logic that never touches the render layer can run
-            anywhere, so the classes driving your UI today can power a test
-            suite, a CLI, or an entirely different renderer tomorrow.
+            assert on properties. Whole app unit-testable with just expect.
+            No @testing-library, no act(), no DOM.
           </Benefit>
         </div>
       </div>
@@ -51,7 +49,7 @@ interface BenefitProps {
 
 function Benefit({ title, children }: BenefitProps) {
   return (
-    <div className="before:content-[''] before:block before:h-[3px] before:w-full before:rounded-full before:bg-fd-muted-foreground/30 before:mb-4">
+    <div className="before:content-[''] before:block before:h-[3px] before:w-full before:rounded-full before:bg-fd-muted-foreground/10 before:mb-4">
       <h3 className="text-lg font-semibold mb-2">{title}</h3>
       <p className="text-fd-muted-foreground leading-relaxed">{children}</p>
     </div>

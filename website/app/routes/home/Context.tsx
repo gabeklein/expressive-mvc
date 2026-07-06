@@ -13,7 +13,7 @@ export function Context() {
             The class is the context key.
           </h2>
           <p className="text-fd-muted-foreground text-lg">
-            Anything needing the theme just asks for it - another State via{' '}
+            Anything needing Theme just asks for it - another State via{' '}
             <code className={mono}>get(Theme)</code>, a component via{' '}
             <code className={mono}>Theme.get()</code>. Fully typed, no wiring.
           </p>
