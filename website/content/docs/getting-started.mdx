@@ -9,7 +9,7 @@ description: Install, write your first state class, and learn how the pieces fit
 npm install @expressive/react
 ```
 
-That's the only package you need for a React app - it includes the framework-agnostic core and the React adapter.
+That's the only package a React app needs - it includes the framework-agnostic core and the React adapter.
 
 ```ts
 import State from '@expressive/react';
@@ -21,11 +21,21 @@ import State from '@expressive/react';
 import State, { Component, Provider, get, set, ref } from '@expressive/react';
 ```
 
+> Working with an agent? `npx skills add gabeklein/expressive-mvc` teaches it the whole API in one shot.
+
 <br />
 
 ## Your first state
 
-A State class is just a class that extends `State`. Fields become reactive, methods become auto-bound actions.
+Ultimately, the workflow is pretty simple.
+
+1. Create a class. Fill it with the values, getters, and methods you'll need.
+2. Extend `State` (or any derivative, for that matter), making it reactive.
+3. Within a component, call `use()` as you would any other hook.
+4. Destructure out the values the component needs, subscribing to them.
+5. Update those values on demand. Your component will sync automagically. ✨
+
+Start with a bare minimum:
 
 ```tsx
 class Counter extends State {
@@ -41,7 +51,7 @@ class Counter extends State {
 }
 ```
 
-To use it inside a React component:
+Then use it inside a React component:
 
 ```tsx
 function CounterView() {
@@ -59,17 +69,19 @@ function CounterView() {
 
 Three things are happening here:
 
-1. **`Counter.use()`** creates an instance scoped to the component - it's constructed on mount and destroyed on unmount.
-2. **Destructuring** subscribes the component to `count`. When `count` changes, this component (and only this component) re-renders.
-3. **Methods are auto-bound**. `increment` and `decrement` can be destructured and passed as event handlers - `this` is always correct.
+1. **`Counter.use()`** creates an instance scoped to the component - constructed on mount, destroyed on unmount.
+2. **Destructuring subscribes.** The component grabbed `count`, so when `count` changes, this component (and only this component) re-renders. Values it ignores are ignored right back.
+3. **Methods come pre-bound.** `increment` and `decrement` can be passed straight to event handlers - `this` is always correct, no `useCallback` in sight.
 
-No `useState`. No `useCallback`. No dependency arrays.
+Here's that same idea running for real - edit it if you like:
+
+<Playground of="essentials/counter" />
 
 <br />
 
 ## A more complete example
 
-Here's a todo list with a computed value, local persistence, and validation - all in one class.
+A todo list with a computed value, local persistence, and a dash of validation - all in one class:
 
 ```tsx
 import State from '@expressive/react';
@@ -93,7 +105,7 @@ class TodoApp extends State {
     const saved = localStorage.getItem('todos');
     if (saved) this.items = JSON.parse(saved);
 
-    return this.get('items', () => {
+    return this.set('items', () => {
       localStorage.setItem('todos', JSON.stringify(this.items));
     });
   }
@@ -146,32 +158,32 @@ function TodoList() {
 }
 ```
 
-Notice what the component _doesn't_ have: no effects, no memoization, no derived state calculation in the render body, no refs, no setup. The component is a pure projection of the state.
+> Notice what the component *doesn't* have: no effects, no memoization, no derived state in the render body, no setup. It's a pure projection of the state - `new()` handles persistence, `remaining` keeps itself current, and `set('items', ...)` runs whenever the list changes.
 
 <br />
 
 ## The `is` property
 
-After destructuring, you lose write access to the instance - `count = 5` just rebinds a local variable. Every State exposes an `is` property that loops back to the instance, giving you write access post-destructure. Prefer destructuring it first, and usually alias it to the state concept:
+After destructuring, you lose write access - `count = 5` just rebinds a local variable. For this, every State exposes `is`, a loop-back to the instance itself. Prefer destructuring it first, aliased to the state's concept:
 
 ```tsx
 const { is: todo, draft } = TodoApp.use();
 todo.draft = 'hello'; // updates state and re-renders
 ```
 
-`is` has a second purpose: **silent reads**. Reading through `is` inside a tracking context does not create a subscription - useful when you need a value but don't want the component to re-render when it changes. See [Reactivity](/docs/guides/reactivity) for details.
+`is` has a second trick: **silent reads**. Reading through `is` inside a tracking context does not subscribe - handy when you want a value without volunteering to re-render every time it changes. More on that in [Reactivity](/docs/guides/reactivity).
 
 <br />
 
 ## The mental model
 
-If you've used React hooks, you're used to state living _inside_ components. Expressive flips this: state lives in a class, and components are thin projections of it.
+If you've used React hooks, you're used to state living *inside* components. Expressive flips this: state lives in a class, and components are thin projections of it.
 
 ```tsx
 // The brain - data, derived values, and behavior
 class SearchPage extends State {
   query = '';
-  results = set<string[]>([]);
+  results: string[] = [];
   loading = false;
 
   async search() {
@@ -207,43 +219,43 @@ function SearchView() {
 }
 ```
 
-This separation gives you:
+Because state is a portable object, we can modify it from anywhere - and more crucially, *whenever*. That makes the async stuff pretty low maintenance: you write the business logic, the class handles dispatch. It also means:
 
-- **Testability** - `SearchPage.new()` outside of React, call methods, assert results. No rendering required.
+- **Testability** - `SearchPage.new()` outside of React, call methods, assert results. No renderer required.
 - **Reusability** - one State can power multiple views (sidebar, modal, full page).
-- **TypeScript** - the class _is_ the type. Every destructure is fully inferred.
-- **Navigability** - every feature's data and behavior lives in one file instead of being smeared across several hook calls.
+- **TypeScript** - the class *is* the type. Every destructure is fully inferred.
+- **Navigability** - a feature's data and behavior live in one file, not smeared across several hook calls.
 
 <br />
 
 ## When to create a State class
 
-You don't need a class for every component. Good signals that you should reach for one:
+You don't need a class for every component. Good signals you should reach for one:
 
-- You have three or more related pieces of state.
-- You have an effect that syncs two or more state values.
-- You have a handler that touches more than one state value.
-- You need to share state between components.
-- You're writing a custom hook that returns an object.
-- You have async logic (fetching, polling, websockets).
-- You're passing a lot of props down just to support state sharing.
+- Three or more related pieces of state.
+- An effect that syncs two or more state values.
+- A handler that touches more than one state value.
+- State shared between components.
+- A custom hook that returns an object.
+- Async logic - fetching, polling, websockets.
+- Props being passed down mostly to support state sharing.
 
-For single booleans, form field focus, or throwaway UI state, `useState` is still the right tool. Expressive is for the cases where state has _behavior_.
+For single booleans, form field focus, or throwaway UI state, `useState` is still the right tool. Expressive is for the cases where state has *behavior*.
 
-When state has behavior, choose the class shape by ownership:
+When it does, choose the class shape by ownership:
 
-- Use **`Component`** when the state is intrinsic to one rendered unit, such as a shell, tab panel, form control, local router, media player, or editor surface.
-- Use **`State`** when the state is display-agnostic, shared across components, reusable by multiple views, or valuable to test as a model without rendering.
+- **`Component`** when the state is intrinsic to one rendered unit - a shell, tab panel, form control, media player, editor surface.
+- **`State`** when the state is display-agnostic, shared across components, or worth testing as a model without rendering.
 
-For context, do not reach for `Component` only because a class is contextual. Use `State` for headless controllers; child States of a provided State or Component are available to descendants automatically.
+Don't reach for `Component` just because a class is contextual - `State` handles headless controllers fine, and child States of anything provided are available to descendants automatically.
 
-Avoid splitting a component into `FooState` and `FooView` by default. If the behavior only exists for `Foo`'s own UI, `class Foo extends Component` is usually clearer.
+And avoid splitting into `FooState` plus `FooView` by default. If the behavior only exists for `Foo`'s own UI, `class Foo extends Component` is usually clearer.
 
 <br />
 
 ## Next steps
 
 - [Why Classes?](/docs/why-classes) - the organizational case for moving state out of components.
-- [State Classes](/docs/guides/state-classes) - defining properties, methods, and lifecycle.
+- [State Classes](/docs/guides/state-classes) - fields, methods, and lifecycle.
 - [Reactivity](/docs/guides/reactivity) - how tracking, computed values, and batching work.
 - [Components](/docs/guides/components) - the `Component` class, which lets state render itself.

@@ -3,21 +3,64 @@ title: Why Classes?
 description: The organizational case for moving state out of components
 ---
 
-React's hook model made a bold trade-off: instead of organizing code around data, organize it around _when code runs_. `useState` for mounts, `useEffect` for side effects, `useMemo` for derivations, `useCallback` for stable references. Every piece of state logic gets spread across these primitives, keyed by execution timing rather than by what it means.
+React's hook model made a bold trade-off: instead of organizing code around data, organize it around *when code runs*. `useState` for mounts, `useEffect` for side effects, `useMemo` for derivations, `useCallback` for stable references. Every piece of state logic gets spread across these primitives, keyed by execution timing rather than by what it means.
 
 That trade-off works beautifully for small components. It falls apart as features grow.
 
 <br />
 
-## The fragmentation problem
+## One feature, two shapes
 
-Here's what a moderately complex component looks like once the requirements settle:
+Here's a moderately complex feature - a user settings form with fetch, dirty-checking, and save - written both ways. Flip between them:
+
+<Compare labels={['State class', 'Hooks']}>
+
+```tsx
+class UserSettings extends State {
+  name = '';
+  email = '';
+  saving = false;
+  error?: string = undefined;
+
+  // suspends if accessed early - never undefined
+  userId = set<string>();
+
+  // async factory - runs on first access, suspends until ready
+  initial = set(async () => {
+    const res = await fetch(`/api/users/${this.userId}`);
+    const data = await res.json();
+    this.name = data.name;
+    this.email = data.email;
+    return { name: data.name, email: data.email };
+  });
+
+  // computed - tracks what it reads, always up to date
+  get dirty() {
+    return this.name !== this.initial.name || this.email !== this.initial.email;
+  }
+
+  async save() {
+    this.saving = true;
+    this.error = undefined;
+    try {
+      const body = new FormData();
+      body.append('name', this.name);
+      body.append('email', this.email);
+      await fetch(`/api/users/${this.userId}`, { method: 'PUT', body });
+      this.initial = { name: this.name, email: this.email };
+    } catch (e) {
+      this.error = (e as Error).message;
+    } finally {
+      this.saving = false;
+    }
+  }
+}
+```
 
 ```tsx
 function UserSettings({ userId }: { userId: string }) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
-  const [avatar, setAvatar] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [initial, setInitial] = useState<{
@@ -52,7 +95,6 @@ function UserSettings({ userId }: { userId: string }) {
       const body = new FormData();
       body.append('name', name);
       body.append('email', email);
-      if (avatar) body.append('avatar', avatar);
       await fetch(`/api/users/${userId}`, { method: 'PUT', body });
       setInitial({ name, email });
     } catch (e) {
@@ -60,70 +102,24 @@ function UserSettings({ userId }: { userId: string }) {
     } finally {
       setSaving(false);
     }
-  }, [userId, name, email, avatar]);
+  }, [userId, name, email]);
 
   // ... 40 lines of JSX
 }
 ```
 
-Count what's in this component:
+</Compare>
 
-- **7 hook calls** managing related state.
-- **2 dependency arrays** that must be kept in sync manually.
-- **1 closure-over-state bug waiting to happen** (the `useEffect` races if `userId` changes mid-fetch - the `cancelled` flag catches it, but only because someone remembered).
-- **Everything is trapped** in the component. You can't reuse it, you can't test it without rendering, and if another view needs the same data you're copy-pasting the whole mess.
+Count what's in the hooks version: 6 hook calls managing related state, 3 dependency arrays kept in sync by hand, and one closure-over-state bug waiting to happen - the fetch races if `userId` changes mid-flight, caught only because someone remembered a `cancelled` flag. Everything is trapped in the component: can't reuse it, can't test it without rendering, and if another view needs the same data, you're copy-pasting the whole mess.
 
-And all the logic - what "dirty" means, how saving works, how the initial state loads - is tangled into the component body. If someone asks "how does saving work?", the answer is "read this whole file".
+Now look at what moved in the class:
 
-<br />
+- **The hook calls became fields.** Visible at the top of the class, together, in one place.
+- **The fetch effect became an async `set()`.** It suspends the component until loaded, and the work doesn't even start until the instance is live - abandoned constructions (hello, StrictMode) never fetch at all.
+- **`dirty` became a getter.** Its inputs (`name`, `email`, `initial`) are tracked automatically - no dependency array to maintain, no way to forget one.
+- **`save` became a regular async method.** No `useCallback`, no stale closures.
 
-## The same feature as a class
-
-```tsx
-class UserSettings extends State {
-  name = '';
-  email = '';
-  saving = false;
-  error?: string = undefined;
-
-  // set-instruction are factories for special behaviors (lots of overloads)
-  // This suspends until defined, if accessed early. Never undefined.
-  userId = set<string>();
-
-  // Async factory runs on access, suspends unless/until ready.
-  initial = set(async () => {
-    const res = await fetch(`/api/users/${this.userId}`);
-    const data = await res.json();
-    this.name = data.name;
-    this.email = data.email;
-    return { name: data.name, email: data.email };
-  });
-
-  // Computed values track access, always up to date.
-  get dirty() {
-    return this.name !== this.initial.name || this.email !== this.initial.email;
-  }
-
-  // async methods write to `this` as-needed, no middleware or thunks required.
-  async save() {
-    this.saving = true;
-    this.error = undefined;
-    try {
-      const body = new FormData();
-      body.append('name', this.name);
-      body.append('email', this.email);
-      await fetch(`/api/users/${this.userId}`, { method: 'PUT', body });
-      this.initial = { name: this.name, email: this.email };
-    } catch (e) {
-      this.error = (e as Error).message;
-    } finally {
-      this.saving = false;
-    }
-  }
-}
-```
-
-And the component:
+And the component? Pure presentation:
 
 ```tsx
 function UserSettingsView(props: { userId: string }) {
@@ -138,15 +134,11 @@ function UserSettingsView(props: { userId: string }) {
       }}>
       <input
         value={name}
-        onChange={(e) => {
-          settings.name = e.target.value;
-        }}
+        onChange={(e) => (settings.name = e.target.value)}
       />
       <input
         value={email}
-        onChange={(e) => {
-          settings.email = e.target.value;
-        }}
+        onChange={(e) => (settings.email = e.target.value)}
       />
       <button disabled={!dirty || saving}>Save</button>
       {error && <p className="error">{error}</p>}
@@ -155,13 +147,7 @@ function UserSettingsView(props: { userId: string }) {
 }
 ```
 
-Look at what moved:
-
-- **The 7 hook calls became 7 fields.** They're visible at the top of the class, together, in one place.
-- **The fetch effect became an async `set()`.** It suspends the component until loaded, and the library handles cancellation automatically.
-- **The `dirty` computation became a computed property.** Its dependencies (`name`, `email`, `initial`) are tracked automatically - no dependency array to maintain.
-- **`save` became a regular async method.** No `useCallback`, no stale closures, no dependency array.
-- **The component is pure presentation.** It knows how to render, nothing more.
+> Notice how the component remains completely independent from the logic. Want a second view of the same feature - a modal, a sidebar, a mobile layout? Write a second component. The behavior stays put.
 
 <br />
 
@@ -169,34 +155,37 @@ Look at what moved:
 
 ### Cohesion
 
-Related state lives together. When a reviewer asks "what does this feature do?", they read the class top-to-bottom and have the complete picture. There's no chasing effects and callbacks across a 300-line component to figure out where the logic lives.
+Related state lives together. When a reviewer asks "how does saving work?", the answer is a method, not "read this whole file". The class reads top-to-bottom as the complete picture.
 
 ### No dependency arrays
 
-Every computed value and every effect tracks its own dependencies automatically, based on what it actually reads through the tracking proxy. Forgetting a dependency is impossible - you'd have to read the value without accessing it.
+Every computed value and every effect tracks its own dependencies, based on what it actually reads. Forgetting a dependency is impossible - you'd have to read the value without accessing it. 🤔
 
 ### Testability without a renderer
 
-State classes are plain objects. You can test them with vitest or jest in isolation:
+State classes are plain objects. Test them directly:
 
 ```ts
 test('marks form dirty after edit', async () => {
   const form = UserSettings.new({ userId: 'u1' });
-  await form.initial; // wait for fetch
+
+  // a pending async property throws its own promise - await it to settle
+  try { form.initial } catch (pending) { await pending }
+
   form.name = 'New Name';
   expect(form.dirty).toBe(true);
 });
 ```
 
-No render utilities, no `act()`, no DOM. This matters at scale - the tests run in milliseconds, and they test the logic at the same level the logic is written.
+No render utilities, no `act()`, no DOM. The tests run in milliseconds, and they test the logic at the same level the logic is written. More patterns in [Testing](/docs/guides/testing).
 
 ### Reuse across views
 
-The same class can power a sidebar, a modal, a mobile layout, and a full page. Components consume the class; they don't own it. When the product team asks for a second view of the same feature, you write a second component - not a second copy of the logic.
+The same class can power a sidebar, a modal, a mobile layout, and a full page. Components consume the class; they don't own it.
 
 ### Type safety as a side effect
 
-The class _is_ the type. Destructures are inferred. Refactors propagate. Context lookups are type-keyed (no `createContext<T>()` boilerplate). You don't write types for Expressive - you write classes, and TypeScript does the rest.
+The class *is* the type. Destructures are inferred, refactors propagate, and context lookups are keyed by the class itself - no `createContext<T>()` boilerplate. You don't write types for Expressive; you write classes, and TypeScript does the rest.
 
 <br />
 
@@ -204,11 +193,11 @@ The class _is_ the type. Destructures are inferred. Refactors propagate. Context
 
 The deepest reason to move state into classes isn't performance, or even test coverage. It's **navigability** - how quickly a human (or an AI) can load the relevant code into their head.
 
-In a hook-heavy codebase, features are spread across hook calls, custom hooks, context providers, and component bodies. Understanding anything non-trivial requires building a mental graph across multiple files and multiple abstraction layers.
+In a hook-heavy codebase, features are spread across hook calls, custom hooks, context providers, and component bodies. Understanding anything non-trivial means building a mental graph across multiple files and abstraction layers.
 
-In a class-heavy codebase, a feature is one class. Open it, read it, understand it. The hierarchy is the class hierarchy. The data flow is method calls. The dependencies are imports at the top of the file. Every tool you already have for reading code - outline views, go-to-definition, find-references - works exactly the way you expect.
+In a class-heavy codebase, a feature is one class. Open it, read it, understand it. The hierarchy is the class hierarchy. The data flow is method calls. Every tool you already have for reading code - outline views, go-to-definition, find-references - works exactly the way you expect.
 
-This is also why classes are unusually friendly to LLMs and agents. A State class is a self-contained unit with an explicit shape. An AI reading a hook-based component has to reconstruct the data model from execution order. An AI reading a State class just reads the class.
+This is also why classes are unusually friendly to agents. A State class is a self-contained unit with an explicit shape. An AI reading a hook-based component has to reconstruct the data model from execution order; an AI reading a State class just reads the class.
 
 <br />
 
@@ -226,5 +215,5 @@ Expressive does not try to replace hooks wholesale. It coexists. Use `useState` 
 
 ## Next
 
+- [Comparisons](/docs/comparisons) - the same component built with Zustand, Jotai, Redux, and MobX, side by side.
 - [Migrating from Hooks](/docs/migrating-from-hooks) - a step-by-step playbook for adopting Expressive in an existing codebase.
-- [Comparisons](/docs/comparisons) - how Expressive relates to Zustand, Redux, and MobX.
