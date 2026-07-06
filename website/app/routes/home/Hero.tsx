@@ -38,6 +38,10 @@ export function Hero() {
             <CopyPill label="Add to your app" command="npm install @expressive/react" />
             <CopyPill label="Teach your agent" command="npx skills add gabeklein/expressive-mvc" />
           </div>
+          <p className="text-sm text-fd-muted-foreground mt-4">
+            Drops into the React app you already have - not a framework, not a
+            rewrite.
+          </p>
         </div>
 
         <div className="min-w-0">
@@ -92,6 +96,7 @@ function LiveCounter() {
 }
 
 const CounterExample = code /*tsx*/`
+  import React from 'react';
   import State from '@expressive/react';
 
   class Counter extends State {

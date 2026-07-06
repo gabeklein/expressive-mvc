@@ -43,6 +43,7 @@ export function Context() {
 const mono = 'font-mono text-sm bg-fd-muted px-1.5 py-0.5 rounded';
 
 const ExprCode = code /*tsx*/`
+  import React from 'react';
   import State, { get } from '@expressive/react';
 
   class Theme extends State {

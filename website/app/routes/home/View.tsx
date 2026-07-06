@@ -100,6 +100,7 @@ function LiveTip() {
 }
 
 const TipExample = code /*tsx*/`
+  import React from 'react';
   import { Component } from '@expressive/react';
 
   class TipCalculator extends Component {

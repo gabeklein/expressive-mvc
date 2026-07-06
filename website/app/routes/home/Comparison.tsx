@@ -45,6 +45,7 @@ export function Comparison() {
 const mono = 'font-mono text-sm bg-fd-muted px-1.5 py-0.5 rounded';
 
 const ExprCode = code /*tsx*/`
+  import React from 'react';
   import State from '@expressive/react';
 
   class FooBarBaz extends State {
