@@ -25,14 +25,15 @@ class UserSettings extends State {
   // suspends if accessed early - never undefined
   userId = set<string>();
 
-  // async factory - runs on first access, suspends until ready
+  // async factory - runs on first access, suspends until ready.
+  // The setter callback keeps it writable, so save() can reset it.
   initial = set(async () => {
     const res = await fetch(`/api/users/${this.userId}`);
     const data = await res.json();
     this.name = data.name;
     this.email = data.email;
     return { name: data.name, email: data.email };
-  });
+  }, () => {});
 
   // computed - tracks what it reads, always up to date
   get dirty() {
