@@ -1,5 +1,9 @@
 import { Canvas2D } from '@/components/Canvas';
 
+const PARTICLE_DENSITY = 100 / (1440 * 900);
+const PARTICLE_OPACITY = 0.4;
+const LINE_OPACITY = 0.25;
+
 export function Background() {
   return (
     <div className="fixed h-screen w-screen -z-1">
@@ -45,6 +49,8 @@ export class AnimateBG extends Canvas2D {
       const rect = parent.getBoundingClientRect();
       element.width = this.width = rect.width;
       element.height = this.height = rect.height;
+      this.particleCount = Math.max(16, Math.round(this.width * this.height * PARTICLE_DENSITY));
+      this.syncParticleCount();
     };
 
     const onVisibility = () => {
@@ -102,6 +108,20 @@ export class AnimateBG extends Canvas2D {
 
     for (const p1 of particles) for (const p2 of particles) p1.drawLine(p2);
   }
+
+  private syncParticleCount() {
+    while (this.particles.size > this.particleCount) {
+      const particle = this.particles.values().next().value;
+      if (!particle) break;
+      this.particles.delete(particle);
+    }
+
+    while (this.particles.size < this.particleCount) new Particle(this);
+  }
+}
+
+function alphaHex(opacity: number) {
+  return Math.round(opacity * 255).toString(16).padStart(2, '0');
 }
 
 class Particle {
@@ -138,7 +158,7 @@ class Particle {
     canvas.beginPath();
     canvas.arc(this.x, this.y, particleRadius, 0, Math.PI * 2);
     canvas.closePath();
-    canvas.fillStyle = particleColor;
+    canvas.fillStyle = particleColor + alphaHex(PARTICLE_OPACITY);
     canvas.fill();
   }
 
@@ -158,11 +178,10 @@ class Particle {
     );
 
     const timeOpacity = Math.min(1, Math.min(this.life, to.life) / fadeTimeMs);
-    const opacity = Math.min(lengthOpacity, timeOpacity);
-    const opacityBase16 = Math.floor(opacity * 255).toString(16);
+    const opacity = Math.min(lengthOpacity, timeOpacity) * LINE_OPACITY;
 
     canvas.lineWidth = 0.5;
-    canvas.strokeStyle = particleColor + opacityBase16;
+    canvas.strokeStyle = particleColor + alphaHex(opacity);
     canvas.beginPath();
     canvas.moveTo(this.x, this.y);
     canvas.lineTo(to.x, to.y);
