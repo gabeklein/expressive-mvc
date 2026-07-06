@@ -4,6 +4,8 @@ import Logo from '@/components/Logo';
 import { Background } from './Background';
 import { Benefits } from './Benefits';
 import { Comparison } from './Comparison';
+import { Complicated } from './Complicated';
+import { Context } from './Context';
 import { CTA } from './CTA';
 import { Hero } from './Hero';
 import { Turn } from './Turn';
@@ -32,8 +34,10 @@ export default function Home() {
     <HomeLayout {...layoutOptions} className="[--content-width:1080px]">
       <Background />
       <Hero />
-      <Turn />
+      <Complicated />
       <Comparison />
+      <Context />
+      <Turn />
       <Benefits />
       <CTA />
     </HomeLayout>

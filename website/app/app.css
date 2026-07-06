@@ -10,8 +10,9 @@
   --color-logo: #8150ce;
 }
 
-/* Code blocks: expand to content, never scroll. */
+/* Code blocks: wrap to container width, never scroll. */
 .fd-scroll-container,
+figure.shiki > div,
 figure[data-rehype-pretty-code-figure] pre,
 .shiki,
 pre:has(code) {
@@ -21,8 +22,16 @@ pre:has(code) {
   word-break: break-word !important;
 }
 
+/* Shiki gives <pre> `w-max`, which defeats wrapping - pin it to the container. */
+.shiki pre,
+figure[data-rehype-pretty-code-figure] pre {
+  width: 100% !important;
+  min-width: 0 !important;
+}
+
 figure[data-rehype-pretty-code-figure] pre code,
-.shiki code {
+.shiki code,
+.shiki .line {
   white-space: pre-wrap !important;
   word-break: break-word !important;
 }
