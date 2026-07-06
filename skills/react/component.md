@@ -235,7 +235,7 @@ All props (state + render + special) available on `this.props`.
 
 - `is` - callback receiving instance on creation: `<Counter is={c => ref = c} />`
 - `ref` - standard React ref (object or callback), attached after mount, cleared on unmount
-- `fallback` - ReactNode for suspense/error UI, overrides instance property
+- `fallback` - ReactNode for suspense/error UI, overrides instance property; `false` opts out of the component's own boundary so suspension bubbles to an ancestor
 
 ## Children and Context
 
@@ -339,9 +339,10 @@ They also double as a decomposition tool: pulling a section (a list `.map`, a ch
 ## Lifecycle
 
 - `new()` - once after init. Return cleanup function for teardown.
-- `use()` - every render (same as State).
 - `catch(error)` - error boundary.
 - Destruction on unmount or `this.set(null)`.
+
+A `use()` method applies only to the `MyComponent.use()` hook path - a Component rendered as JSX (`<MyComponent />`) never calls it.
 
 ```tsx
 class Timer extends Component {

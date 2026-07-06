@@ -31,17 +31,14 @@ class Counter extends Component {
 ## Form with Validation
 
 ```tsx
-import { Component, set } from '@expressive/react';
+import { Component } from '@expressive/react';
 
 class LoginForm extends Component {
-  email = set('', (v) => {
-    if (!v.includes('@')) return false;
-  });
-  password = set('', (v) => {
-    if (v.length < 8) return false;
-  });
+  email = '';
+  password = '';
+
   get valid() {
-    return !!this.email && !!this.password;
+    return this.email.includes('@') && this.password.length >= 8;
   }
 
   submit() {

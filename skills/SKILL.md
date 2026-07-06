@@ -159,13 +159,13 @@ class CounterView extends Component {
 
 ```tsx
 // Provide state to descendants
-<Provider of={Counter}>
+<Provider for={Counter}>
   <Child />
 </Provider>;
 
 // Or with explicit instance
 const counter = Counter.use();
-<Provider of={counter}>
+<Provider for={counter}>
   <Child />
 </Provider>;
 ```
