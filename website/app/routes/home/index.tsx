@@ -9,6 +9,7 @@ import { Complicated } from './Complicated';
 import { Context } from './Context';
 import { CTA } from './CTA';
 import { Hero } from './Hero';
+import { Molecules } from './Molecules';
 import { Turn } from './Turn';
 
 export const layoutOptions: BaseLayoutProps = {
@@ -38,6 +39,7 @@ export default function Home() {
       <Complicated />
       <Comparison />
       <Context />
+      <Molecules />
       <Turn />
       <Agents />
       <Benefits />

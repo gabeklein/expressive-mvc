@@ -1,4 +1,5 @@
 import { Link } from 'react-router';
+import CopyPill from '@/components/CopyPill';
 
 export function CTA() {
   const link =
@@ -6,30 +7,34 @@ export function CTA() {
 
   return (
     <section>
-      <div className="mx-auto max-w-3xl py-24 px-6 text-center">
-        <h2 className="text-3xl md:text-4xl font-bold mb-4">
-          Ready to move state out of components?
+      <div className="mx-auto max-w-2xl py-24 px-6 text-center">
+        <h2 className="font-display text-3xl md:text-5xl font-bold tracking-tight mb-4">
+          Move one feature out of your components.
         </h2>
         <p className="text-fd-muted-foreground text-lg mb-10">
-          Start with one feature. Leave everything else alone. See how it feels.
+          Start with one. Leave everything else alone. See how it feels.
         </p>
-        <div className="flex flex-col sm:flex-row gap-3 justify-center">
+
+        <div className="flex flex-col sm:flex-row gap-3 justify-center mb-8">
           <Link
             className={`${link} bg-fd-primary text-fd-primary-foreground hover:opacity-90`}
             to="/docs/getting-started">
-            Getting Started
+            Get Started
           </Link>
           <Link
             className={`${link} border border-fd-border text-inherit hover:bg-fd-muted`}
-            to="/docs/migrating-from-hooks">
-            Migration Guide
-          </Link>
-          <Link
-            className={`${link} border border-fd-border text-inherit hover:bg-fd-muted`}
-            to="/docs/comparisons">
-            Compare
+            to="/docs">
+            View Docs
           </Link>
         </div>
+
+        <div className="flex flex-col gap-2 max-w-md mx-auto text-left">
+          <CopyPill label="Add to your app" command="npm install @expressive/react" />
+          <CopyPill label="Teach your agent" command="npx skills add gabeklein/expressive-mvc" />
+        </div>
+        <p className="text-sm text-fd-muted-foreground mt-4">
+          The skill hands your coding agent the full API - no guessing from stale training data.
+        </p>
       </div>
     </section>
   );
