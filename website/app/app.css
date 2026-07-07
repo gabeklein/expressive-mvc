@@ -66,24 +66,24 @@ figure[data-rehype-pretty-code-figure] pre code,
   --accent-light: #7864f799;
 }
 
-/* Warm light palette - dark mode keeps fumadocs neutral values. */
+/* Neutral light palette - dark mode keeps fumadocs neutral values. */
 :root:not(.dark) {
-  --color-fd-background: hsl(40, 26%, 96%);
-  --color-fd-foreground: hsl(30, 12%, 8%);
-  --color-fd-muted: hsl(40, 20%, 92%);
-  --color-fd-muted-foreground: hsl(30, 8%, 42%);
-  --color-fd-popover: hsl(40, 30%, 98%);
-  --color-fd-popover-foreground: hsl(30, 10%, 15%);
-  --color-fd-card: hsl(40, 24%, 94.5%);
-  --color-fd-card-foreground: hsl(30, 12%, 8%);
-  --color-fd-border: hsla(38, 16%, 70%, 50%);
-  --color-fd-primary: hsl(30, 10%, 10%);
-  --color-fd-primary-foreground: hsl(40, 30%, 98%);
-  --color-fd-secondary: hsl(40, 18%, 92%);
-  --color-fd-secondary-foreground: hsl(30, 10%, 10%);
-  --color-fd-accent: hsla(40, 18%, 80%, 50%);
-  --color-fd-accent-foreground: hsl(30, 10%, 10%);
-  --color-fd-ring: hsl(35, 10%, 62%);
+  --color-fd-background: hsl(0, 0%, 98%);
+  --color-fd-foreground: hsl(225, 10%, 8%);
+  --color-fd-muted: hsl(220, 12%, 94%);
+  --color-fd-muted-foreground: hsl(220, 7%, 42%);
+  --color-fd-popover: hsl(0, 0%, 100%);
+  --color-fd-popover-foreground: hsl(225, 10%, 12%);
+  --color-fd-card: hsl(220, 14%, 96%);
+  --color-fd-card-foreground: hsl(225, 10%, 8%);
+  --color-fd-border: hsla(220, 10%, 72%, 45%);
+  --color-fd-primary: hsl(225, 10%, 10%);
+  --color-fd-primary-foreground: hsl(0, 0%, 100%);
+  --color-fd-secondary: hsl(220, 12%, 94%);
+  --color-fd-secondary-foreground: hsl(225, 10%, 10%);
+  --color-fd-accent: hsla(220, 12%, 82%, 45%);
+  --color-fd-accent-foreground: hsl(225, 10%, 10%);
+  --color-fd-ring: hsl(220, 8%, 56%);
 }
 
 /* Opt-in tint: content sections tagged `panel` alternate; hero/marquee stay clear. */

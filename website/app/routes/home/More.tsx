@@ -14,6 +14,7 @@ export class More extends Component {
     Molecules,
     Singletons,
     Testing,
+    Instructions,
   };
 
   // Bridge the shared Hash to this deck: a #slug matching a tab label
@@ -107,17 +108,42 @@ function Tab({
   );
 }
 
-function InstructionsNote() {
+function Instructions() {
   return (
-    <p className="text-fd-muted-foreground text-lg leading-relaxed max-w-3xl mx-auto mt-10 text-center">
-      Powered by <em>instructions</em> - property helpers that give a field
-      special behavior. <code className={mono}>set()</code> handles values and
-      async, <code className={mono}>get()</code> pulls from context,{' '}
-      <code className={mono}>ref()</code> tracks DOM nodes, and you can define
-      your own.
-    </p>
+    <Tab title="Fields with built-in behavior.">
+      <>
+        Instructions are property initializers with runtime behavior. You still
+        read them like fields; the initializer decides what kind of field it is.
+      </>
+
+      <InstructionsCode />
+    </Tab>
   );
 }
+
+const InstructionsCode = code /*tsx*/`
+  import State, { get, hot, ref, set } from '@expressive/react';
+
+  class Profile extends State {
+    name = 'Ada';
+
+    // managed values, computed, async with suspense
+    user = set(async () => {});
+
+    // another class instance from context
+    theme = get(Theme);
+
+    // DOM nodes or mutable imperative values
+    input = ref<HTMLInputElement>((el) => {});
+
+    // reactive object and array mutation
+    todos = hot([]);
+
+    get label() {
+      return this.theme.format(this.user.name);
+    }
+  }
+`;
 
 function Async() {
   return (
@@ -131,7 +157,6 @@ function Async() {
         cache keys.
       </>
       <AsyncCode />
-      <InstructionsNote />
     </Tab>
   );
 }
@@ -173,7 +198,6 @@ function Forms() {
         or <code className={mono}>&lt;Controller&gt;</code>.
       </>
       <FormsCode />
-      <InstructionsNote />
     </Tab>
   );
 }

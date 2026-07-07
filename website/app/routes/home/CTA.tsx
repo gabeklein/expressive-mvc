@@ -12,7 +12,7 @@ export function CTA() {
           Move just one feature out of hooks.
         </h2>
         <p className="text-fd-muted-foreground text-lg mb-10">
-          Start with one. Everything else the same. See how it feels.
+          Start with one, leave the rest. See how it feels.
         </p>
 
         <div className="flex flex-col sm:flex-row gap-3 justify-center mb-8">

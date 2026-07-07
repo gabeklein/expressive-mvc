@@ -54,7 +54,7 @@ export function Turn() {
             State, derived values, async, and lifecycle live on the class. Open
             it, read it top-to-bottom, understand the feature.
           </Point>
-          <Point title="Fewer imports, fewer vendors">
+          <Point title="Less imports, fewer vendors">
             Reach for the class before another hook, provider, or client
             library. Less surface area for people and agents to know about.
           </Point>

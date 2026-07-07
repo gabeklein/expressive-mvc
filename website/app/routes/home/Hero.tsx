@@ -12,10 +12,10 @@ export function Hero() {
         <div>
           <h1 className="font-display tracking-tight mb-6">
             <span className="block text-xl md:text-[1.4rem] font-semibold text-fd-foreground/70">
-              State shouldn't live in components.
+              Your state shouldn't live in components
             </span>
             <span className="block text-3xl md:text-5xl font-bold leading-[1.05] mt-4">
-              It belongs in a class of its own.
+              It belongs in a class of its own
             </span>
           </h1>
           <p className="text-lg md:text-xl text-fd-muted-foreground max-w-xl mb-8">

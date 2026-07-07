@@ -23,7 +23,7 @@ export function Context() {
 
         <p className="text-fd-muted-foreground text-lg leading-relaxed max-w-3xl mx-auto mt-10 text-center">
           No <code className={mono}>createContext&lt;T&gt;</code>, null default,
-          missing-provider guard, or Provider-Consumer pair to keep in sync.
+          missing-provider guard to write and maintain.
           <br /><br />
           Every library lands back here eventually - Zustand has you wrap a
           store in React context yourself, Jotai's Provider scopes a whole atom

@@ -43,7 +43,7 @@ export function Complicated() {
         <Reveal className="mt-10 md:mt-14 max-w-2xl mx-auto text-center">
           <p className="text-fd-muted-foreground text-lg leading-relaxed">
             Every feature has a hook. They need to remember,
-            derive, sync, persist. Each concern becomes another hook,
+            derive, refresh, and persist. Each concern becomes another hook,
             another dependency array, another way to drift out of sync.
             Logic that belongs together winds up scattered and hard to follow.
           </p>
