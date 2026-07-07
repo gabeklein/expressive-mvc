@@ -9,8 +9,8 @@ For examples and patterns see `patterns.md`.
 ## Exports
 
 ```ts
-export { State, State as default }; // Reexported after agumentation with React features
-export { Context, Observer, def, get, hot, ref, set }; // re-exported from @expressive/mvc
+export { State, State as default }; // Reexported after augmentation with React features
+export { Context, def, get, hot, ref, set }; // re-exported from @expressive/mvc
 export { use }; // Hook for existing observable instances
 export { Component }; // React Component class
 export { Provider, Consumer }; // Explicit context components

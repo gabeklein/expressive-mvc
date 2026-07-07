@@ -1,6 +1,6 @@
 # Expressive MVC — Patterns
 
-Recipies and examples for common patterns and use cases with Expressive MVC in React.
+Recipes and examples for common patterns and use cases with Expressive MVC in React.
 
 ## Counter
 
