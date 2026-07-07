@@ -11,8 +11,8 @@ export function Context() {
           </h2>
           <p className="text-fd-muted-foreground text-lg">
             Wrap a subtree in <code className={mono}>&lt;Provider for=&#123;X&#125;&gt;</code> and
-            anything below just asks: <code className={mono}>X.get()</code>{' '}
-            finds the nearest instance. Fully typed, no wiring.
+            anything below just uses <code className={mono}>X.get()</code>{' '}
+            to find the nearest instance. Fully typed, zero boilerplate.
           </p>
         </div>
 
@@ -24,8 +24,9 @@ export function Context() {
         <p className="text-fd-muted-foreground text-lg leading-relaxed max-w-3xl mx-auto mt-10 text-center">
           No <code className={mono}>createContext&lt;T&gt;</code>, null default,
           missing-provider guard to write and maintain.
-          <br /><br />
-          Every library lands back here eventually - Zustand has you wrap a
+        </p>
+        <p className="text-fd-muted-foreground max-w-3xl mx-auto mt-4 text-center">
+          Every library needs this eventually - Zustand has you wrap a
           store in React context yourself, Jotai's Provider scopes a whole atom
           store, MobX leaves it to you entirely.
         </p>
@@ -48,18 +49,16 @@ const ExprCode = code /*tsx*/`
     }
   }
 
-  function ModeBadge() {
+  const Toggle = () => {
     const { mode, toggle } = Theme.get();
 
     return <button onClick={toggle}>{mode}</button>;
   }
 
-  function App() {
-    return (
-      <Provider for={Theme}>
-        <ModeBadge />
-      </Provider>
-    );
-  }
+  const App = () => (
+    <Provider for={Theme}>
+      <Toggle />
+    </Provider>
+  );
 `;
 
