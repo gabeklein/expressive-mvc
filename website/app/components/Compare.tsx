@@ -1,5 +1,5 @@
 import type React from 'react';
-import State, { ref } from '@expressive/react';
+import State from '@expressive/react';
 import code from './Snippet';
 
 type Snippet = ReturnType<typeof code>;
@@ -15,15 +15,10 @@ interface CompareProps {
 }
 
 const LN = { codeblock: { 'data-line-numbers': true } } as const;
-const SWIPE = 48;
 
 class Control extends State {
   tab = 0;
   face = 0;
-  touchX = 0;
-  touchY = 0;
-
-  stack = ref<HTMLDivElement>();
 
   select(i: number) {
     if (i === 0) {
@@ -33,37 +28,10 @@ class Control extends State {
       this.face = 1;
     }
   }
-
-  touchStart(e: React.TouchEvent) {
-    this.touchX = e.touches[0].clientX;
-    this.touchY = e.touches[0].clientY;
-  }
-
-  touchEnd(e: React.TouchEvent) {
-    const dx = e.changedTouches[0].clientX - this.touchX;
-    const dy = e.changedTouches[0].clientY - this.touchY;
-
-    if (Math.abs(dx) < SWIPE || Math.abs(dy) > Math.abs(dx)) return;
-
-    const pane = this.stack.current && this.stack.current.children[this.face];
-    const scroller =
-      pane &&
-      Array.from(pane.querySelectorAll('*')).find(
-        (el) => el.scrollWidth > el.clientWidth + 1,
-      );
-
-    if (dx < 0 && this.face === 0) {
-      if (!scroller || scroller.scrollLeft >= scroller.scrollWidth - scroller.clientWidth - 2)
-        this.face = 1;
-    } else if (dx > 0 && this.face === 1) {
-      if (!scroller || scroller.scrollLeft <= 2)
-        this.face = 0;
-    }
-  }
 }
 
 export default function Compare({ left, right }: CompareProps) {
-  const { tab, face, select, touchStart, touchEnd, stack } = Control.use();
+  const { tab, face, select } = Control.use();
 
   const active = right[Math.min(tab, right.length - 1)];
   const Left = left.code;
@@ -122,11 +90,7 @@ export default function Compare({ left, right }: CompareProps) {
           ))}
         </div>
 
-        <div
-          ref={stack}
-          onTouchStart={touchStart}
-          onTouchEnd={touchEnd}
-          className="compare-static relative">
+        <div className="compare-static relative">
           <div
             className={`transition-opacity duration-300 motion-reduce:transition-none ${
               face ? 'absolute inset-x-0 top-0' : ''
