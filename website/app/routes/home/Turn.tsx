@@ -8,11 +8,11 @@ const SHED = [
 
 export function Turn() {
   return (
-    <section>
+    <section className="panel">
       <div className="mx-auto max-w-(--content-width) py-16 md:py-24 px-6">
         <div className="max-w-2xl mb-12">
           <div className="text-xs uppercase tracking-widest text-fd-primary mb-3">
-            Batteries (and charger) included.
+            Batteries (and the charger) included.
           </div>
           <h2 className="font-display text-3xl md:text-5xl font-bold tracking-tight mb-5">
             Rails for your React app.

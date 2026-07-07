@@ -4,11 +4,11 @@ import code from '@/components/Snippet';
 
 export function Comparison() {
   return (
-    <section>
+    <section className="panel">
       <div className="mx-auto max-w-(--content-width) px-6 py-16 md:py-24">
         <div className="max-w-3xl mb-12">
           <div className="text-xs uppercase tracking-widest text-fd-muted-foreground mb-3">
-            Local state
+            For local state
           </div>
           <h2 className="font-display text-3xl md:text-4xl font-bold tracking-tight mb-4">
             The same logic. <span className='text-nowrap'>Half the noise.</span>

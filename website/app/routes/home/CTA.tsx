@@ -6,7 +6,7 @@ export function CTA() {
     'inline-flex items-center justify-center rounded-full font-medium py-3 px-6 no-underline transition-[opacity,background-color] duration-200';
 
   return (
-    <section>
+    <section className="panel">
       <div className="mx-auto max-w-2xl py-16 md:py-24 px-6 text-center">
         <h2 className="font-display text-3xl md:text-5xl font-bold tracking-tight mb-4">
           Move just one feature out of hooks.

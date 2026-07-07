@@ -86,6 +86,11 @@ figure[data-rehype-pretty-code-figure] pre code,
   --color-fd-ring: hsl(35, 10%, 62%);
 }
 
+/* Opt-in tint: content sections tagged `panel` alternate; hero/marquee stay clear. */
+.home-sections section.panel:nth-of-type(odd) {
+  background-color: color-mix(in oklab, var(--color-fd-foreground) 2%, transparent);
+}
+
 /* Hero pill-storm marquee */
 @keyframes marquee-x {
   to {

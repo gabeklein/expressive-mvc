@@ -7,9 +7,9 @@ import { Comparison } from './Comparison';
 import { Complicated } from './Complicated';
 import { Context } from './Context';
 import { CTA } from './CTA';
-import { Fetch } from './Fetch';
 import { Footer } from './Footer';
 import { Hero } from './Hero';
+import { More } from './More';
 import { Turn } from './Turn';
 import { View } from './View';
 
@@ -34,15 +34,15 @@ export function meta() {
 
 export default function Home() {
   return (
-    <HomeLayout {...layoutOptions} className="[--content-width:1080px]">
+    <HomeLayout {...layoutOptions} className="[--content-width:1080px] home-sections">
       <Background />
       <Hero />
       <Complicated />
       <Comparison />
+      <Turn />
       <Context />
       <View />
-      <Fetch />
-      <Turn />
+      <More />
       <Benefits />
       <CTA />
       <Footer />

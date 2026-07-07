@@ -10,11 +10,13 @@ export function Hero() {
       <Aurora />
       <div className="relative w-full mx-auto max-w-(--content-width) px-6 py-24 grid gap-12 lg:grid-cols-2 lg:items-center">
         <div>
-          <div className="text-xs uppercase tracking-widest text-fd-muted-foreground mb-5">
-            Class-based control for React
-          </div>
-          <h1 className="font-display text-4xl md:text-6xl font-bold tracking-tight leading-[1.05] mb-6">
-            State doesn't belong in your components.
+          <h1 className="font-display tracking-tight mb-6">
+            <span className="block text-xl md:text-[2rem] font-semibold text-fd-foreground/70">
+              State doesn't belong in components.
+            </span>
+            <span className="block text-3xl md:text-5xl font-bold leading-[1.05] mt-4">
+              What if they had their own?
+            </span>
           </h1>
           <p className="text-lg md:text-xl text-fd-muted-foreground max-w-xl mb-8">
             Just <code className="font-mono text-[0.9em] bg-fd-muted px-1.5 py-0.5 rounded">use()</code>{' '}
