@@ -11,7 +11,8 @@ export function View() {
             Component is state that renders itself.
           </h2>
           <p className="text-fd-muted-foreground text-lg mb-4">
-            Reach for <code className={mono}>Component</code> when making self-contained (or extensible) display logic.
+            Reach for <code className={mono}>Component</code> when making self-contained (or{' '}
+            <a href="#molecules" className="text-fd-primary underline-offset-2 hover:underline">extensible</a>) display logic.
             Fields drive <code className={mono}>render()</code>{' '} directly -
             destructure <code className={mono}>this</code>, assign on events.
           </p>

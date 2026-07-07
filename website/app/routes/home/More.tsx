@@ -1,5 +1,5 @@
 import type React from 'react';
-import State from '@expressive/react';
+import State, { ref } from '@expressive/react';
 import Playground from '@/components/Playground';
 import code from '@/components/Snippet';
 
@@ -11,8 +11,38 @@ interface Tab {
   to?: string;
 }
 
+// One window listener for the whole page - the current #hash, shared.
+class Hash extends State {
+  active = '';
+
+  protected new() {
+    if (typeof window === 'undefined') return;
+
+    const read = () => (this.active = window.location.hash.slice(1));
+    read();
+    window.addEventListener('hashchange', read);
+    return () => window.removeEventListener('hashchange', read);
+  }
+}
+
+const hash = Hash.new();
+
 class Tabs extends State {
   tab = 0;
+
+  // Bridge the shared Hash to this deck: a #slug matching a tab label
+  // selects it and scrolls the section into view.
+  section = ref<HTMLElement>((el) => {
+    const apply = () => {
+      const i = TABS.findIndex((t) => t.label.toLowerCase() === hash.active);
+      if (i < 0) return;
+      this.tab = i;
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
+
+    apply();
+    return hash.set('active', apply);
+  });
 }
 
 export function More() {
@@ -21,7 +51,7 @@ export function More() {
   const Code = active.code;
 
   return (
-    <section className="panel">
+    <section ref={state.section} className="panel">
       <div className="mx-auto max-w-(--content-width) px-6 py-16 md:py-24">
         <div className="max-w-2xl mx-auto text-center mb-8">
           <h2 className="font-display text-3xl md:text-4xl font-bold tracking-tight">
@@ -180,6 +210,34 @@ const MoleculesCode = code /*tsx*/`
   }
 `;
 
+const SingletonsCode = code /*tsx*/`
+  import React from 'react';
+  import State from '@expressive/react';
+
+  // One instance for the whole app.
+  class Session extends State {
+    user: string | null = null;
+
+    login() {
+      this.user = 'Ada';
+    }
+  }
+
+  // .new() activates it and parks it in global context.
+  Session.new();
+
+  // Any component reaches it with .get() - no props, no Provider.
+  function Status() {
+    const { user, login } = Session.get();
+
+    return user
+      ? <p>Signed in as {user}</p>
+      : <button onClick={login}>Log in</button>;
+  }
+
+  // This page uses one: the tab you're reading follows the URL #hash.
+`;
+
 const TestingCode = code /*tsx*/`
   import { expect, it } from 'bun:test';
   import { Counter } from './Counter';
@@ -240,6 +298,20 @@ const TABS: Tab[] = [
     ),
     code: MoleculesCode,
     to: '/examples/composition/subcomponents',
+  },
+  {
+    label: 'Singletons',
+    title: 'Global state, no ceremony.',
+    blurb: (
+      <>
+        Create a State once with <code className={mono}>.new()</code> and it
+        parks in global context. Any component reads it with{' '}
+        <code className={mono}>.get()</code> - app-wide session, theme, or
+        viewport with no store, no Provider, no prop drilling.
+      </>
+    ),
+    code: SingletonsCode,
+    to: '/examples/composition/singletons',
   },
   {
     label: 'Testing',
