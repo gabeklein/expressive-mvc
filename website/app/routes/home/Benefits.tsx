@@ -22,15 +22,15 @@ export function Benefits() {
             Async factories integrate with Suspense - required data suspends
             until it resolves. No query library, no middleware, no thunks.
           </Benefit>
-          <Benefit title="Self-documenting">
-            Fields, types, and JSDoc live on the class, so editors surface intent
-            inline. Reusable state your team - and its tools - can reason about
-            without digging.
-          </Benefit>
           <Benefit title="Headless by design">
             State classes are plain objects - create with .new(), call methods,
             assert on properties. Whole app unit-testable with just expect.
             No @testing-library, no act(), no DOM.
+          </Benefit>
+          <Benefit title="Self-documenting">
+            Fields, types, and JSDoc live on the class, so editors surface intent
+            inline. Reusable state your team - and its tools - can reason about
+            without digging.
           </Benefit>
         </div>
       </div>

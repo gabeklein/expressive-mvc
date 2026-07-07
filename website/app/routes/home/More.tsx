@@ -10,6 +10,7 @@ export class More extends Component {
   tab = 0;
   tabs = {
     Async,
+    Computed,
     Forms,
     Molecules,
     Singletons,
@@ -187,6 +188,57 @@ const AsyncCode = code /*tsx*/`
   }
 
   const App = () => <Profile />;
+`;
+
+function Computed() {
+  return (
+    <Tab title="Derive state with getters.">
+      <>
+        Put the formula where the data lives. Getters are memoized and
+        dependency-tracked, so render stays simple without{' '}
+        <code className={mono}>useMemo</code>, selectors, or dependency arrays.
+      </>
+      <GettersCode />
+    </Tab>
+  );
+}
+
+const GettersCode = code /*tsx*/`
+  import State, { hot } from '@expressive/react';
+
+  type Item = { name: string; price: number; qty: number };
+
+  class Cart extends State {
+    items = hot([] as Item[]);
+    taxRate = 0.0825;
+
+    get total() {
+      return this.subtotal * (1 + this.taxRate);
+    }
+
+    get subtotal() {
+      return this.items.reduce(
+        (sum, item) => sum + item.price * item.qty,
+        0
+      );
+    }
+
+    add(item: Item) {
+      this.items.push(item);
+    }
+  }
+
+  function Checkout() {
+    const { items, subtotal, total } = Cart.get();
+
+    return (
+      <section>
+        <p>{items.length} items</p>
+        <p>Subtotal: {subtotal}</p>
+        <p>Total: {total}</p>
+      </section>
+    );
+  }
 `;
 
 function Forms() {
