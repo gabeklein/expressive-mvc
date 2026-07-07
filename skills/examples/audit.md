@@ -120,7 +120,7 @@ function ThemeToggle() {
 
 ### Low-value targets (leave as-is)
 
-- Components with 0-2 simple `useState` calls (give user option how agressive to be with small components)
+- Components with 0-2 simple `useState` calls (give user option how aggressive to be with small components)
 - Pure display components with no state
 - Components where all state comes from server (RSC, SSR, data fetching libraries)
 - One-off local UI state (open/closed, hover, scroll position)

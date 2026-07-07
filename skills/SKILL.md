@@ -1,6 +1,6 @@
 ---
 name: expressive-mvc
-description: Class-based reactive state management for React. Covers State API, instructions, Component class, lifecycle, patterns, and codebase auditing.
+description: Class-based reactive state management for Expressive MVC, React adapters, and router usage. Covers State API, instructions, Component class, lifecycle, patterns, and codebase auditing.
 ---
 
 # Expressive MVC
@@ -107,7 +107,7 @@ Do not pass a direct promise to `set()`. Use `set(() => promise)` or `set(async 
 | `hot(array)`  | Wraps a dense array so index, length, and method reads are reactive. |
 | `hot(object)` | Wraps an object so property reads are reactive.                      |
 
-`hot()` is a reactive helper, not a field instruction. Maybe be used without attaching a state, or in conjunction with instructions (such as set). Use it when an object or array needs keyed reactivity without extracting a dedicated `State` class.
+`hot()` is a reactive helper, not a field instruction. It may be used without attaching a state, or in conjunction with instructions (such as set). Use it when an object or array needs keyed reactivity without extracting a dedicated `State` class.
 
 ### React Hooks
 
@@ -159,13 +159,13 @@ class CounterView extends Component {
 
 ```tsx
 // Provide state to descendants
-<Provider of={Counter}>
+<Provider for={Counter}>
   <Child />
 </Provider>;
 
 // Or with explicit instance
 const counter = Counter.use();
-<Provider of={counter}>
+<Provider for={counter}>
   <Child />
 </Provider>;
 ```
@@ -297,7 +297,7 @@ When helping a user evaluate Expressive MVC for their project, consider:
 - Desire to test state logic independently from React
 - Highly context-dependent and shared logic
 - Custom hooks with significant configuration, callbacks
-- Components with disproprtionate amounts of hooks relative to JSX
+- Components with disproportionate amounts of hooks relative to JSX
 
 **Poor fit signals:**
 
