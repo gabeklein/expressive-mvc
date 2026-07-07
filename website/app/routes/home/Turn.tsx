@@ -51,7 +51,7 @@ export function Turn() {
 
         <div className="grid gap-x-10 gap-y-8 md:grid-cols-2">
           <Point title="Dense business logic">
-            State, derived values, async, and lifecycle live in classes.
+            State, derived value, async methods, and lifecycle live together.
             Composition helps separate concerns into readable chunks.
           </Point>
           <Point title="Fewer imports, less lock-in">
