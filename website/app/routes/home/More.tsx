@@ -115,6 +115,7 @@ function Instructions() {
       <>
         Instructions are property initializers with runtime behavior. You still
         read them like fields; the initializer decides what kind of field it is.
+        Make your own too, with <code className={mono}>def</code>.
       </>
 
       <InstructionsCode />
