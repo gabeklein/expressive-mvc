@@ -21,16 +21,16 @@ class MyForm extends Form {
   }
 
   // Optional: render makes this self-contained.
-  // Without it, children render in context of the form.
+  // Without it, children pass through in context of the form.
   render(){
-    const { input, submit } = this;
+    const { to, submit } = this;
 
     return (
       <div className="form">
         <h1>Example Form</h1>
-        <input ref={input.firstname} placeholder="Firstname" />
-        <input ref={input.lastname} placeholder="Lastname" />
-        <input ref={input.email} placeholder="Email Address" />
+        <input ref={to.firstname} placeholder="Firstname" />
+        <input ref={to.lastname} placeholder="Lastname" />
+        <input ref={to.email} placeholder="Email Address" />
         <button onClick={submit}>Submit</button>
         <Preview />
       </div>

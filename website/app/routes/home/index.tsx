@@ -3,9 +3,15 @@ import type { BaseLayoutProps } from 'fumadocs-ui/layouts/shared';
 import Logo from '@/components/Logo';
 import { Background } from './Background';
 import { Benefits } from './Benefits';
+import { Comparison } from './Comparison';
+import { Complicated } from './Complicated';
+import { Context } from './Context';
 import { CTA } from './CTA';
-import { Problem, Solution } from './Examples';
+import { Footer } from './Footer';
 import { Hero } from './Hero';
+import { More } from './More';
+import { Turn } from './Turn';
+import { View } from './View';
 
 export const layoutOptions: BaseLayoutProps = {
   nav: { title: <Logo /> },
@@ -28,13 +34,18 @@ export function meta() {
 
 export default function Home() {
   return (
-    <HomeLayout {...layoutOptions} className="[--content-width:1080px]">
+    <HomeLayout {...layoutOptions} className="[--content-width:1080px] home-sections">
       <Background />
       <Hero />
-      <Problem />
-      <Solution />
+      <Complicated />
+      <Comparison />
+      <Turn />
+      <Context />
+      <View />
+      <More />
       <Benefits />
       <CTA />
+      <Footer />
     </HomeLayout>
   );
 }

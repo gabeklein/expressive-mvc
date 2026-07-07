@@ -10,8 +10,9 @@
   --color-logo: #8150ce;
 }
 
-/* Code blocks: expand to content, never scroll. */
+/* Code blocks: wrap to container width, never scroll. */
 .fd-scroll-container,
+figure.shiki > div,
 figure[data-rehype-pretty-code-figure] pre,
 .shiki,
 pre:has(code) {
@@ -21,14 +22,116 @@ pre:has(code) {
   word-break: break-word !important;
 }
 
+/* Shiki gives <pre> `w-max`, which defeats wrapping - pin it to the container. */
+.shiki pre,
+figure[data-rehype-pretty-code-figure] pre {
+  width: 100% !important;
+  min-width: 0 !important;
+}
+
 figure[data-rehype-pretty-code-figure] pre code,
-.shiki code {
+.shiki code,
+.shiki .line {
   white-space: pre-wrap !important;
   word-break: break-word !important;
+}
+
+.home-sections p code,
+.home-sections li code {
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  background-color: var(--color-fd-muted);
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+}
+
+/* Comparison blocks opt out of wrapping - they scroll horizontally instead. */
+.code-nowrap .shiki .line,
+.code-nowrap .shiki code,
+.code-nowrap .shiki pre,
+.compare-static .shiki .line,
+.compare-static .shiki code,
+.compare-static .shiki pre {
+  white-space: pre !important;
+  word-break: normal !important;
+}
+
+.code-nowrap .shiki pre,
+.compare-static .shiki pre {
+  width: max-content !important;
+  min-width: 100% !important;
+}
+
+.code-nowrap .shiki,
+.code-nowrap figure.shiki > div,
+.compare-static .shiki,
+.compare-static figure.shiki > div {
+  overflow-x: auto !important;
 }
 
 :root {
   --purple: #7864f7;
   --accent: var(--purple);
   --accent-light: #7864f799;
+}
+
+/* Neutral light palette - dark mode keeps fumadocs neutral values. */
+:root:not(.dark) {
+  --color-fd-background: hsl(0, 0%, 98%);
+  --color-fd-foreground: hsl(225, 10%, 8%);
+  --color-fd-muted: hsl(220, 12%, 94%);
+  --color-fd-muted-foreground: hsl(220, 7%, 42%);
+  --color-fd-popover: hsl(0, 0%, 100%);
+  --color-fd-popover-foreground: hsl(225, 10%, 12%);
+  --color-fd-card: hsl(220, 14%, 96%);
+  --color-fd-card-foreground: hsl(225, 10%, 8%);
+  --color-fd-border: hsla(220, 10%, 72%, 45%);
+  --color-fd-primary: hsl(225, 10%, 10%);
+  --color-fd-primary-foreground: hsl(0, 0%, 100%);
+  --color-fd-secondary: hsl(220, 12%, 94%);
+  --color-fd-secondary-foreground: hsl(225, 10%, 10%);
+  --color-fd-accent: hsla(220, 12%, 82%, 45%);
+  --color-fd-accent-foreground: hsl(225, 10%, 10%);
+  --color-fd-ring: hsl(220, 8%, 56%);
+}
+
+/* Opt-in tint: content sections tagged `panel` alternate; hero/marquee stay clear. */
+.home-sections section.panel:nth-of-type(odd) {
+  background-color: color-mix(in oklab, var(--color-fd-foreground) 2%, transparent);
+}
+
+/* Hero pill-storm marquee */
+@keyframes marquee-x {
+  to {
+    transform: translateX(-50%);
+  }
+}
+@keyframes marquee-x-reverse {
+  from {
+    transform: translateX(-50%);
+  }
+}
+
+/* Hero aurora background */
+@keyframes aurora-drift {
+  from {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(6rem, -3rem) scale(1.25);
+  }
+  to {
+    transform: translate(-5rem, 3rem) scale(0.9);
+  }
+}
+
+.aurora {
+  animation: aurora-drift 18s ease-in-out infinite alternate;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marquee-track,
+  .aurora {
+    animation: none !important;
+  }
 }

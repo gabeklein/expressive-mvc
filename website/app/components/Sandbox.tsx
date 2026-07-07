@@ -5,10 +5,10 @@ import {
   SandpackProvider,
   useSandpack,
 } from '@codesandbox/sandpack-react';
-import State, { ref } from '@expressive/react';
+import State, { ref, set } from '@expressive/react';
 import { useTheme } from 'next-themes';
 import type { MouseEvent as ReactMouseEvent } from 'react';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 
 class Panes extends State {
   mode: 'preview' | 'code' = 'preview';
@@ -117,7 +117,7 @@ function Layout() {
 
   // Below the breakpoint the panels can't fit side by side; show one at a time
   // and reveal a toggle. Inline display wins over Sandpack's own layout CSS.
-  const narrow = useMediaQuery('(max-width: 767px)');
+  const { matches: narrow } = MediaQuery.use({ query: '(max-width: 767px)' });
   const showEditor = !narrow || mode === 'code';
   const showPreview = !narrow || mode === 'preview';
 
@@ -174,17 +174,15 @@ function Switcher({
   );
 }
 
-function useMediaQuery(query: string) {
-  const [match, setMatch] = useState(() => window.matchMedia(query).matches);
+class MediaQuery extends State {
+  matches = false;
 
-  useEffect(() => {
-    const media = window.matchMedia(query);
-    const update = () => setMatch(media.matches);
+  query = set('', (value) => {
+    const media = window.matchMedia(value);
+    const update = () => (this.matches = media.matches);
 
     update();
     media.addEventListener('change', update);
     return () => media.removeEventListener('change', update);
-  }, [query]);
-
-  return match;
+  });
 }

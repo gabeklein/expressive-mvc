@@ -53,4 +53,6 @@ class TipCalculator extends Component {
   }
 }
 
+// You could export TipCalculator directly too.
+// It's renderable like any other component.
 export default () => <TipCalculator />;

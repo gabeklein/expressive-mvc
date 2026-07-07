@@ -4,9 +4,9 @@ import { Component, ref } from '@expressive/react';
 export class Form extends Component {
 
   // Use `ref` instruction to map over known keys of `this`,
-  // running a factory per key. Returns land at `this.input[key]`
-  // - here, ref-functions that two-way bind each input.
-  input = ref(this, (key) => {
+  // running a factory per key. Returns goto `this.to[key]`
+  // - for example, a react ref which binds each input.
+  to = ref(this, (key) => {
     let reset: (() => void) | undefined;
 
     return (el: HTMLInputElement | null) => {

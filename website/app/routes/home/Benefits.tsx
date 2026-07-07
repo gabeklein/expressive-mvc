@@ -2,59 +2,35 @@ import type React from 'react';
 
 export function Benefits() {
   return (
-    <section className="border-b border-fd-border">
-      <div className="mx-auto max-w-(--content-width) py-24 px-6">
+    <section id="benefits" className="panel">
+      <div className="mx-auto max-w-(--content-width) py-16 md:py-24 px-6">
         <div className="max-w-2xl mb-16">
-          <div className="text-xs uppercase tracking-widest text-fd-muted-foreground mb-3">
-            What you get
-          </div>
-          <h2 className="text-3xl md:text-4xl font-bold mb-4">
-            A state backbone for your application.
+          <h2 className="font-display text-3xl md:text-4xl font-bold tracking-tight mb-4">
+            The rest comes along for free.
           </h2>
           <p className="text-fd-muted-foreground text-lg">
-            Expressive is designed to be the place where data, behavior, and
-            lifecycle live - so components can go back to doing what they do
-            best: describing UI.
+            Data, behavior, and lifecycle in one place - much of what you'd
+            install a library for is just how the class works.
           </p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <Benefit title="Cohesive by default">
-            Related state, derived values, lifecycle, and behavior all live in
-            one place. Open a class, read it top-to-bottom, understand the
-            feature.
-          </Benefit>
-          <Benefit title="No dependency arrays">
-            Computed values and effects track what they read automatically.
-            Forgetting a dependency is impossible - you would have to read a
-            value without accessing it.
-          </Benefit>
-          <Benefit title="Testable without rendering">
-            State classes are plain objects. Create with .new(), call methods,
-            assert properties. No @testing-library, no act(), no DOM.
+          <Benefit title="Coexists with hooks">
+            No big-bang rewrite. Adopt it one feature at a time and leave simple
+            useState calls alone. A tool for complexity, not a replacement.
           </Benefit>
           <Benefit title="Async is built in">
-            Async factories integrate with Suspense. Required placeholders
-            suspend until resolved. No query library, no middleware, no thunks.
+            Async factories integrate with Suspense - required data suspends
+            until it resolves. No query library, no middleware, no thunks.
           </Benefit>
-          <Benefit title="Type-safe context">
-            The class is the context key. No createContext&lt;T&gt;, no default
-            values, no manual Provider/Consumer pairs. Full inference
-            automatically.
+          <Benefit title="Headless by design">
+            State classes are plain objects - create with .new(), call methods,
+            assert on properties. Whole app unit-testable with just expect.
+            No @testing-library, no act(), no DOM.
           </Benefit>
-          <Benefit title="Coexists with hooks">
-            No big-bang rewrite. Migrate one feature at a time. Leave simple
-            useState calls alone. Expressive is a tool for complexity, not a
-            replacement for hooks.
-          </Benefit>
-          <Benefit title="Refactor-friendly">
-            Rename a field and TypeScript catches every usage. The class is the
-            type. Go-to-definition, find-references, and outline views all work
-            exactly as you expect.
-          </Benefit>
-          <Benefit title="AI and human readable">
-            Classes are self-contained units with explicit shapes. A reviewer -
-            human or AI - can load a feature into memory without chasing hooks
-            across files.
+          <Benefit title="Self-documenting">
+            Fields, types, and JSDoc live on the class, so editors surface intent
+            inline. Reusable state your team - and its tools - can reason about
+            without digging.
           </Benefit>
         </div>
       </div>
@@ -69,7 +45,7 @@ interface BenefitProps {
 
 function Benefit({ title, children }: BenefitProps) {
   return (
-    <div className="border-l-2 border-fd-primary pl-5">
+    <div className="before:content-[''] before:block before:h-[3px] before:w-full before:rounded-full before:bg-fd-muted-foreground/10 before:mb-4">
       <h3 className="text-lg font-semibold mb-2">{title}</h3>
       <p className="text-fd-muted-foreground leading-relaxed">{children}</p>
     </div>
