@@ -6,7 +6,7 @@ export default function Playground({ to }: { to: string }) {
       <Link
         className="text-sm text-fd-primary/50 font-medium no-underline hover:text-fd-primary"
         to={to}>
-        Edit in Playground →
+        See in Playground →
       </Link>
     </div>
   );

@@ -33,10 +33,10 @@ export function Comparison() {
 
         <Playground to="/examples/essentials/counter" />
 
-        <p className="text-fd-muted-foreground text-lg leading-relaxed max-w-3xl mx-auto mt-10 text-center">
-          With MVC, the destructure <em>is</em> the dependency list. Read a
-          field, subscribe to it. Nothing to declare, nothing
-          to forget - no setters, no <code className={mono}>useCallback</code>,
+        <p className="text-fd-muted-foreground text-lg leading-relaxed max-w-2xl mx-auto mt-10 text-center">
+          With MVC, destructuring <em>is</em> the dependency list. Read a
+          field, subscribe to it. 
+          Nothing to declare, nothing to forget - no setters, no <code className={mono}>useCallback</code>,
           no store factory.
         </p>
       </div>

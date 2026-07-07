@@ -11,17 +11,17 @@ export function Hero() {
       <div className="relative w-full mx-auto max-w-(--content-width) px-6 py-24 grid gap-12 lg:grid-cols-2 lg:items-center">
         <div>
           <h1 className="font-display tracking-tight mb-6">
-            <span className="block text-xl md:text-[2rem] font-semibold text-fd-foreground/70">
-              State doesn't belong in components.
+            <span className="block text-xl md:text-[1.4rem] font-semibold text-fd-foreground/70">
+              State shouldn't live in components.
             </span>
             <span className="block text-3xl md:text-5xl font-bold leading-[1.05] mt-4">
-              What if they had their own?
+              It belongs in a class of its own.
             </span>
           </h1>
           <p className="text-lg md:text-xl text-fd-muted-foreground max-w-xl mb-8">
-            Just <code className="font-mono text-[0.9em] bg-fd-muted px-1.5 py-0.5 rounded">use()</code>{' '}
-            a State instead - data, behavior, and lifecycle in one place.
-            Components read what they need and update when values change.
+            With MVC, <code className="font-mono text-[0.9em] bg-fd-muted px-1.5 py-0.5 rounded">use()</code>{' '}
+            a State instead - data, behavior, lifecycle, and updates in one
+            place. Components read what they need; class itself does the rest.
           </p>
 
           <div className="flex flex-wrap gap-3 mb-8">

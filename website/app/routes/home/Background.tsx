@@ -27,8 +27,8 @@ export class AnimateBG extends Canvas2D {
   maxLineLength = 150;
   minLineLength = 140;
 
-  // Wind down after ~30s so an idle tab stops burning frames.
-  decayAfter = 30 * 60;
+  // Wind down after ~45s so an idle tab stops burning frames.
+  decayAfter = 45 * 60;
   frames = 0;
   damper = 1;
   stopped = false;
@@ -60,6 +60,7 @@ export class AnimateBG extends Canvas2D {
         Math.max(16, Math.round(this.width * this.height * PARTICLE_DENSITY)),
       );
       this.syncParticleCount();
+      if (this.stopped) this.paint(false);
     };
 
     const onVisibility = () => {
@@ -90,25 +91,25 @@ export class AnimateBG extends Canvas2D {
   }
 
   protected draw() {
-    const { canvas, particles } = this;
-
     this.frames++;
 
-    if (this.frames > this.decayAfter) {
-      this.damper *= 0.995;
+    if (this.frames > this.decayAfter) this.damper *= 0.995;
 
-      if (this.damper < 0.02) {
-        this.stopped = true;
-        this.active = false;
-        return;
-      }
+    this.paint(true);
+
+    if (this.damper < 0.02) {
+      this.stopped = true;
+      this.active = false;
     }
+  }
 
+  private paint(update: boolean) {
+    const { canvas, particles } = this;
     canvas.clearRect(0, 0, this.width, this.height);
 
     for (const particle of particles)
       if (particle.life > 0) {
-        particle.update();
+        if (update) particle.update();
         particle.draw();
       } else {
         this.particles.delete(particle);

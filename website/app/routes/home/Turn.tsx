@@ -12,14 +12,14 @@ export function Turn() {
       <div className="mx-auto max-w-(--content-width) py-16 md:py-24 px-6">
         <div className="max-w-2xl mb-12">
           <div className="text-xs uppercase tracking-widest text-fd-primary mb-3">
-            Batteries (and the charger) included.
+            Batteries (and charger) included.
           </div>
           <h2 className="font-display text-3xl md:text-5xl font-bold tracking-tight mb-5">
             Rails for your React app.
           </h2>
           <p className="text-fd-muted-foreground text-lg md:text-xl">
             Fields are state, methods change it, classes are context keys. A few
-            conventions replace a pile of decisions - a feature looks the same
+            conventions replace a pile of decisions - a good feature looks the same
             whether it came from you, a teammate, or an agent.
           </p>
         </div>
@@ -54,17 +54,17 @@ export function Turn() {
             State, derived values, async, and lifecycle live on the class. Open
             it, read it top-to-bottom, understand the feature.
           </Point>
-          <Point title="Conventions, not decisions">
-            One obvious way to build a thing - fewer patterns to invent, for
-            people and agents alike.
+          <Point title="Fewer imports, fewer vendors">
+            Reach for the class before another hook, provider, or client
+            library. Less surface area for people and agents to know about.
           </Point>
           <Point title="Less to trace">
             No dependency arrays or stale closures. A fix starts at the class,
             not a hunt through wiring.
           </Point>
-          <Point title="Just objects">
-            Plain instances you can log, assert on, or bind to{' '}
-            <code className={mono}>window</code>. Transparent to debug.
+          <Point title="Class instances are just objects">
+            The instance is the source of truth. Log it, assert on it, or bind
+            it to <code className={mono}>window</code> and inspect it directly.
           </Point>
         </div>
       </div>
