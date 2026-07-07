@@ -19,7 +19,7 @@ export function Hero() {
             </span>
           </h1>
           <p className="text-fd-muted-foreground max-w-xl mb-8 mr-5">
-            With MVC, <code className="font-mono text-[0.9em] bg-fd-muted px-1.5 py-0.5 rounded">use()</code>{' '}
+            With MVC, <code>.use()</code>{' '}
             a State instead - data, behavior, lifecycle, and updates in one
             place. Components read what they need; class itself does the rest.
           </p>

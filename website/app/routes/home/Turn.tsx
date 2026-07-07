@@ -50,29 +50,27 @@ export function Turn() {
         </div>
 
         <div className="grid gap-x-10 gap-y-8 md:grid-cols-2">
-          <Point title="One place for everything">
-            State, derived values, async, and lifecycle live on the class. Open
-            it, read it top-to-bottom, understand the feature.
+          <Point title="Dense business logic">
+            State, derived values, async, and lifecycle live in classes.
+            Composition helps separate concerns into readable chunks.
           </Point>
-          <Point title="Less imports, fewer vendors">
+          <Point title="Fewer imports, less lock-in">
             Reach for the class before another hook, provider, or client
-            library. Less surface area for people and agents to know about.
+            library. Less surface area for people and your agents to know about.
           </Point>
-          <Point title="Less to trace">
-            No dependency arrays or stale closures. A fix starts at the class,
-            not a hunt through wiring.
+          <Point title="Less to trace when things break">
+            No dependency arrays, stale closures, or complicated interactions.
+            A fix starts at the class, not a hunt through wiring.
           </Point>
           <Point title="Class instances are just objects">
             The instance is the source of truth. Log it, assert on it, or bind
-            it to <code className={mono}>window</code> and inspect it directly.
+            it to <code>window</code> and inspect it directly.
           </Point>
         </div>
       </div>
     </section>
   );
 }
-
-const mono = 'font-mono text-sm bg-fd-muted px-1.5 py-0.5 rounded';
 
 function Point({ title, children }: { title: string; children: React.ReactNode }) {
   return (

@@ -14,7 +14,7 @@ export function Comparison() {
             The same logic. <span className='text-nowrap'>Half the noise.</span>
           </h2>
           <p className="text-fd-muted-foreground text-lg">
-            Say you want a reusable, component-owned <code className={mono}>useFooBarBaz</code>{' '}
+            Say you want a reusable, component-owned <code>useFooBarBaz</code>{' '}
             that re-renders on change. Same surface everywhere - only the cost
             of building it differs. Higher readability <small>(and fewer tokens)</small>.
           </p>
@@ -37,14 +37,12 @@ export function Comparison() {
           With MVC, destructuring <em>is</em> the dependency list. Read a
           field, subscribe to it. 
           Nothing to declare, nothing to forget - no setters, no 
-          <code className={mono}>useCallback</code>, no factory.
+          <code>useCallback</code>, no factory.
         </p>
       </div>
     </section>
   );
 }
-
-const mono = 'font-mono text-sm bg-fd-muted px-1.5 py-0.5 rounded';
 
 const ExprCode = code /*tsx*/`
   import React from 'react';

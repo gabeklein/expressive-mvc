@@ -8,7 +8,7 @@ export function CTA() {
   return (
     <section id="cta" className="panel">
       <div className="mx-auto max-w-2xl py-16 md:py-24 px-6 text-center">
-        <h2 className="font-display text-3xl md:text-5xl font-bold tracking-tight mb-4">
+        <h2 className="font-display text-2xl md:text-4xl font-bold tracking-tight mb-4">
           Move just one feature out of hooks.
         </h2>
         <p className="text-fd-muted-foreground text-lg mb-10">
@@ -33,7 +33,7 @@ export function CTA() {
           <CopyPill label="Ask your agent if MVC is right for you." command="npx skills add gabeklein/expressive-mvc" />
         </div>
         <p className="text-sm text-fd-muted-foreground mt-4">
-          The skill hands your coding agent the full API - no guessing from stale training data.
+          The agent skill gives your coding agent the full API and best practices.
         </p>
       </div>
     </section>

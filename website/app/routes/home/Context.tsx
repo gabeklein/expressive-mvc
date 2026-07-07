@@ -10,8 +10,8 @@ export function Context() {
             Your classes themselves have context.
           </h2>
           <p className="text-fd-muted-foreground text-lg">
-            Wrap a subtree in <code className={mono}>&lt;Provider for=&#123;X&#125;&gt;</code> and
-            anything below just uses <code className={mono}>X.get()</code>{' '}
+            Wrap a subtree in <code>&lt;Provider for=&#123;X&#125;&gt;</code> and
+            anything below just uses <code>X.get()</code>{' '}
             to find the nearest instance. Fully typed, zero boilerplate.
           </p>
         </div>
@@ -22,7 +22,7 @@ export function Context() {
         </div>
 
         <p className="text-fd-muted-foreground text-lg leading-relaxed max-w-3xl mx-auto mt-10 text-center">
-          No <code className={mono}>createContext&lt;T&gt;</code>, null default,
+          No <code>createContext&lt;T&gt;</code>, null default,
           missing-provider guard to write and maintain.
         </p>
         <p className="text-fd-muted-foreground max-w-3xl mx-auto mt-4 text-center">
@@ -34,8 +34,6 @@ export function Context() {
     </section>
   );
 }
-
-const mono = 'font-mono text-sm bg-fd-muted px-1.5 py-0.5 rounded';
 
 const ExprCode = code /*tsx*/`
   import React from 'react';

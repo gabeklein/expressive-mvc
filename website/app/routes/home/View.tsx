@@ -11,10 +11,10 @@ export function View() {
             Component is state that renders itself.
           </h2>
           <p className="text-fd-muted-foreground text-lg mb-4">
-            Reach for <code className={mono}>Component</code> when making self-contained{" "}
+            Reach for <code>Component</code> when making self-contained{" "}
             (<a href="#molecules" className="underline-offset-2 underline">or extensible</a>) display logic.
-            Fields drive lazy getters and <code className={mono}>render()</code>{' '} directly -
-            destructure <code className={mono}>this</code>, assign for events.
+            Fields drive lazy getters and <code>render()</code>{' '} directly -
+            destructure <code>this</code>, assign for events.
           </p>
           <p className="text-fd-muted-foreground text-lg">
             A Component is also its own Provider.
@@ -33,8 +33,6 @@ export function View() {
     </section>
   );
 }
-
-const mono = 'font-mono text-sm bg-fd-muted px-1.5 py-0.5 rounded';
 
 class TipCalculator extends Component {
   bill = 50;

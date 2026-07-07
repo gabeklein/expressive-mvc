@@ -77,8 +77,6 @@ export class More extends Component {
   }
 }
 
-const mono = 'font-mono text-sm bg-fd-muted px-1.5 py-0.5 rounded';
-
 function Tab({
   title,
   to,
@@ -115,7 +113,7 @@ function Instructions() {
       <>
         Instructions are property initializers with runtime behavior. You still
         read them like fields; the initializer decides what kind of field it is.
-        Make your own too, with <code className={mono}>def</code>.
+        Make your own too, with <code>def</code>.
       </>
 
       <InstructionsCode />
@@ -151,11 +149,11 @@ function Async() {
   return (
     <Tab title="Async without ceremony." to="/examples/essentials/async">
       <>
-        An async <code className={mono}>set()</code> suspends render until it
-        resolves. A <code className={mono}>Component</code> brings its own{' '}
-        <code className={mono}>fallback</code> and its own error boundary via{' '}
-        <code className={mono}>catch()</code> - no{' '}
-        <code className={mono}>isPending</code> flags, client to provide, or
+        An async <code>set()</code> suspends render until it
+        resolves. A <code>Component</code> brings its own{' '}
+        <code>fallback</code> and its own error boundary via{' '}
+        <code>catch()</code> - no{' '}
+        <code>isPending</code> flags, client to provide, or
         cache keys.
       </>
       <AsyncCode />
@@ -197,7 +195,7 @@ function Computed() {
       <>
         Put the formula where the data lives. Getters are memoized and
         dependency-tracked, so render stays simple without{' '}
-        <code className={mono}>useMemo</code>, selectors, or dependency arrays.
+        <code>useMemo</code>, selectors, or dependency arrays.
       </>
       <GettersCode />
     </Tab>
@@ -247,8 +245,8 @@ function Forms() {
     <Tab title="Forms as just fields." to="/examples/apps/forms">
       <>
         One field per input, one method for submit. A tiny base class you own
-        binds the inputs - no <code className={mono}>register</code>, resolvers,
-        or <code className={mono}>&lt;Controller&gt;</code>.
+        binds the inputs - no <code>register</code>, resolvers,
+        or <code>&lt;Controller&gt;</code>.
       </>
       <FormsCode />
     </Tab>
@@ -359,9 +357,9 @@ function Singletons() {
       title="Global state, no ceremony."
       to="/examples/composition/singletons">
       <>
-        Create a State once with <code className={mono}>.new()</code> and it
+        Create a State once with <code>.new()</code> and it
         parks in global context. Any component reads it with{' '}
-        <code className={mono}>.get()</code> - app-wide session, theme, or
+        <code>.get()</code> - app-wide session, theme, or
         viewport with no store, no Provider, no prop drilling.
       </>
       <SingletonsCode />
@@ -400,10 +398,10 @@ function Testing() {
     <Tab title="Test the class, not the DOM.">
       <>
         State classes are plain objects - create with{' '}
-        <code className={mono}>.new()</code>, call methods, assert on
+        <code>.new()</code>, call methods, assert on
         properties. Whole features tested with just{' '}
-        <code className={mono}>expect</code> - no{' '}
-        <code className={mono}>act()</code>, no @testing-library.
+        <code>expect</code> - no{' '}
+        <code>act()</code>, no @testing-library.
       </>
       <TestingCode />
     </Tab>
