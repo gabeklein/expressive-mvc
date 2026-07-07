@@ -2,7 +2,7 @@ import type React from 'react';
 
 export function Benefits() {
   return (
-    <section className="panel">
+    <section id="benefits" className="panel">
       <div className="mx-auto max-w-(--content-width) py-16 md:py-24 px-6">
         <div className="max-w-2xl mb-16">
           <h2 className="font-display text-3xl md:text-4xl font-bold tracking-tight mb-4">

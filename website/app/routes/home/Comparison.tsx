@@ -4,7 +4,7 @@ import code from '@/components/Snippet';
 
 export function Comparison() {
   return (
-    <section className="panel">
+    <section id="comparison" className="panel">
       <div className="mx-auto max-w-(--content-width) px-6 py-16 md:py-24">
         <div className="max-w-3xl mb-12">
           <div className="text-xs uppercase tracking-widest text-fd-muted-foreground mb-3">

@@ -8,7 +8,7 @@ const SHED = [
 
 export function Turn() {
   return (
-    <section className="panel">
+    <section id="rails" className="panel">
       <div className="mx-auto max-w-(--content-width) py-16 md:py-24 px-6">
         <div className="max-w-2xl mb-12">
           <div className="text-xs uppercase tracking-widest text-fd-primary mb-3">

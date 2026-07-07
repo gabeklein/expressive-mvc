@@ -3,7 +3,7 @@ import code from '@/components/Snippet';
 
 export function Context() {
   return (
-    <section className="panel">
+    <section id="context" className="panel">
       <div className="mx-auto max-w-(--content-width) px-6 py-16 md:py-24">
         <div className="max-w-2xl mx-auto text-center mb-12">
           <h2 className="font-display text-3xl md:text-4xl font-bold tracking-tight mb-4">

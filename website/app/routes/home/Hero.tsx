@@ -6,7 +6,7 @@ import code from '@/components/Snippet';
 
 export function Hero() {
   return (
-    <section className="relative flex items-center min-h-[calc(100vh-56px)]">
+    <section id="hero" className="relative flex items-center min-h-[calc(100vh-56px)]">
       <Aurora />
       <div className="relative w-full mx-auto max-w-(--content-width) px-6 py-24 grid gap-12 lg:grid-cols-2 lg:items-center">
         <div>

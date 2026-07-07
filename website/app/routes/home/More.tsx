@@ -1,5 +1,6 @@
 import type React from 'react';
-import State, { ref } from '@expressive/react';
+import State, { get, ref } from '@expressive/react';
+import { Hash } from '@/components/Hash';
 import Playground from '@/components/Playground';
 import code from '@/components/Snippet';
 
@@ -11,28 +12,15 @@ interface Tab {
   to?: string;
 }
 
-// One window listener for the whole page - the current #hash, shared.
-class Hash extends State {
-  active = '';
-
-  protected new() {
-    if (typeof window === 'undefined') return;
-
-    const read = () => (this.active = window.location.hash.slice(1));
-    read();
-    window.addEventListener('hashchange', read);
-    return () => window.removeEventListener('hashchange', read);
-  }
-}
-
-const hash = Hash.new();
-
 class Tabs extends State {
   tab = 0;
+
+  hash = get(Hash);
 
   // Bridge the shared Hash to this deck: a #slug matching a tab label
   // selects it and scrolls the section into view.
   section = ref<HTMLElement>((el) => {
+    const { hash } = this;
     const apply = () => {
       const i = TABS.findIndex((t) => t.label.toLowerCase() === hash.active);
       if (i < 0) return;
@@ -51,7 +39,7 @@ export function More() {
   const Code = active.code;
 
   return (
-    <section ref={state.section} className="panel">
+    <section ref={state.section} id="more" className="panel">
       <div className="mx-auto max-w-(--content-width) px-6 py-16 md:py-24">
         <div className="max-w-2xl mx-auto text-center mb-8">
           <h2 className="font-display text-3xl md:text-4xl font-bold tracking-tight">
