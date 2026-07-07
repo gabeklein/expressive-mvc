@@ -18,7 +18,7 @@ export function Hero() {
               It belongs to a class of its own
             </span>
           </h1>
-          <p className="text-lg md:text-xl text-fd-muted-foreground max-w-xl mb-8">
+          <p className="text-fd-muted-foreground max-w-xl mb-8 mr-5">
             With MVC, <code className="font-mono text-[0.9em] bg-fd-muted px-1.5 py-0.5 rounded">use()</code>{' '}
             a State instead - data, behavior, lifecycle, and updates in one
             place. Components read what they need; class itself does the rest.
@@ -60,7 +60,7 @@ export function Hero() {
 }
 
 const btn =
-  'inline-flex items-center justify-center rounded-full font-medium py-3 px-6 no-underline transition-[opacity,background-color] duration-200';
+  'inline-flex items-center justify-center rounded-full text-sm font-medium py-2.5 px-5 no-underline transition-[opacity,background-color] duration-200';
 
 class Parallax extends State {
   layer = ref<HTMLDivElement>((el) => {
