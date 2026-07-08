@@ -4,8 +4,8 @@ import code from '@/components/Snippet';
 
 export function Comparison() {
   return (
-    <section id="comparison" className="panel">
-      <div className="mx-auto max-w-(--content-width) px-6 py-16 md:py-24">
+    <section id="comparison" className="panel px-6 lg:px-[50px]">
+      <div className="mx-auto max-w-(--content-width) py-16 md:py-24">
         <div className="max-w-3xl mb-12">
           <div className="text-xs uppercase tracking-widest text-fd-muted-foreground mb-3">
             For local state
@@ -16,7 +16,7 @@ export function Comparison() {
           <p className="text-fd-muted-foreground text-lg">
             Say you want a reusable, component-owned <code>useFooBarBaz</code>{' '}
             that re-renders on change. Same surface everywhere - only the cost
-            of building it differs. Higher readability <small>(and fewer tokens)</small>.
+            to build it differs. Higher readability <small>(and fewer tokens)</small>.
           </p>
         </div>
 
@@ -34,10 +34,9 @@ export function Comparison() {
         <Playground to="/examples/essentials/counter" />
 
         <p className="text-fd-muted-foreground text-lg leading-relaxed max-w-2xl mx-auto mt-10 text-center">
-          With MVC, destructuring <em>is</em> the dependency list. Read a
-          field, subscribe to it. 
-          Nothing to declare, nothing to forget - no setters, no 
-          <code>useCallback</code>, no factory.
+          With MVC, destructuring <em>is</em> your dependency list. Just read a
+          field to subscribe to it. Nothing to declare like
+          setters,  <code>useCallback</code>, or factory.
         </p>
       </div>
     </section>

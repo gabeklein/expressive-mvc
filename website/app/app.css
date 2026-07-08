@@ -69,6 +69,34 @@ figure[data-rehype-pretty-code-figure] pre code,
   overflow-x: auto !important;
 }
 
+.hero-mobile-code pre,
+.hero-mobile-code code,
+.hero-mobile-code .line {
+  font-size: 0.8125rem !important;
+  line-height: 1.45 !important;
+}
+
+.live-counter-button {
+  box-shadow:
+    0 1px 2px hsl(var(--click-hue) 70% 45% / 0.08),
+    inset 0 0 0 1px hsl(var(--click-hue) 75% 60% / 0.18);
+}
+
+.live-counter-pulse {
+  position: absolute;
+  inset: -0.2rem;
+  border: 2px solid hsl(var(--click-hue) 82% 58% / 0.7);
+  border-radius: 9999px;
+  animation: live-counter-pulse 420ms ease-out forwards;
+}
+
+@keyframes live-counter-pulse {
+  to {
+    opacity: 0;
+    transform: scale(1.18, 1.35);
+  }
+}
+
 :root {
   --purple: #7864f7;
   --accent: var(--purple);
@@ -131,7 +159,8 @@ figure[data-rehype-pretty-code-figure] pre code,
 
 @media (prefers-reduced-motion: reduce) {
   .marquee-track,
-  .aurora {
+  .aurora,
+  .live-counter-pulse {
     animation: none !important;
   }
 }

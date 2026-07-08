@@ -3,16 +3,16 @@ import code from '@/components/Snippet';
 
 export function Context() {
   return (
-    <section id="context" className="panel">
-      <div className="mx-auto max-w-(--content-width) px-6 py-16 md:py-24">
+    <section id="context" className="panel px-6 lg:px-[50px]">
+      <div className="mx-auto max-w-(--content-width) py-16 md:py-24">
         <div className="max-w-2xl mx-auto text-center mb-12">
           <h2 className="font-display text-3xl md:text-4xl font-bold tracking-tight mb-4">
-            Your classes themselves have context.
+            Classes are their own context.
           </h2>
           <p className="text-fd-muted-foreground text-lg">
-            Wrap a subtree in <code>&lt;Provider for=&#123;X&#125;&gt;</code> and
-            anything below just uses <code>X.get()</code>{' '}
-            to find the nearest instance. Fully typed, zero boilerplate.
+            Wrap a subtree in <code>&lt;Provider for=&#123;X&#125;&gt;</code> - 
+            components inside need only <code>X.get()</code>{' '}
+            to interact with the nearest instance. Fully typed, zero boilerplate.
           </p>
         </div>
 
@@ -23,12 +23,8 @@ export function Context() {
 
         <p className="text-fd-muted-foreground text-lg leading-relaxed max-w-3xl mx-auto mt-10 text-center">
           No <code>createContext&lt;T&gt;</code>, null default,
-          missing-provider guard to write and maintain.
-        </p>
-        <p className="text-fd-muted-foreground max-w-3xl mx-auto mt-4 text-center">
-          Every library needs this eventually - Zustand has you wrap a
-          store in React context yourself, Jotai's Provider scopes a whole atom
-          store, MobX leaves it to you entirely.
+          missing-provider guard to write and maintain. Every app needs this eventually. Jotai's Provider will wrap a whole atom
+          store, MobX leaves it to you.
         </p>
       </div>
     </section>
@@ -59,4 +55,3 @@ const ExprCode = code /*tsx*/`
     </Provider>
   );
 `;
-

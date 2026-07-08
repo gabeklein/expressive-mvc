@@ -34,7 +34,7 @@ export function Complicated() {
       </div>
 
       <div className="mx-auto max-w-4xl px-6 pb-12 md:pb-20">
-        <Reveal from="right" delay={120}>
+        <Reveal from="right" delay={220}>
           <h2 className="font-display text-3xl md:text-5xl font-bold tracking-tight leading-none text-right">
             ...gotten complicated<span className="text-fd-primary">.</span>
           </h2>
@@ -42,10 +42,10 @@ export function Complicated() {
 
         <Reveal className="mt-10 md:mt-14 max-w-2xl mx-auto text-center">
           <p className="text-fd-muted-foreground text-lg leading-relaxed">
-            Every feature has a hook. They need to remember,
-            derive, refresh, and persist. Each concern becomes another hook,
-            another dependency array, another way to drift out of sync.
-            Logic that belongs together winds up scattered and hard to follow.
+            Every feature has a hook. They need to persist, derive, remember,
+            and refresh. Each concern is another hook, another dependency array,
+            another thing to drift. Logic that belongs together winds
+            up scattered and hard to follow.
           </p>
         </Reveal>
       </div>

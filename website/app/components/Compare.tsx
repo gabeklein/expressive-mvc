@@ -1,5 +1,6 @@
 import type React from 'react';
-import State from '@expressive/react';
+import State, { ref } from '@expressive/react';
+import ScrollOverflowControls from './ScrollOverflowControls';
 import code from './Snippet';
 
 type Snippet = ReturnType<typeof code>;
@@ -19,6 +20,36 @@ const LN = { codeblock: { 'data-line-numbers': true } } as const;
 class Control extends State {
   tab = 0;
   face = 0;
+  canScrollTabsLeft = false;
+  canScrollTabsRight = false;
+
+  tabScroller = ref<HTMLDivElement>((el) => {
+    let frame = 0;
+    const media = window.matchMedia('(max-width: 1023px)');
+
+    const update = () => {
+      frame = 0;
+      const remaining = el.scrollWidth - el.clientWidth - el.scrollLeft;
+      this.canScrollTabsLeft = media.matches && el.scrollLeft > 1;
+      this.canScrollTabsRight = media.matches && remaining > 1;
+    };
+
+    const schedule = () => {
+      if (!frame) frame = requestAnimationFrame(update);
+    };
+
+    update();
+    el.addEventListener('scroll', schedule, { passive: true });
+    window.addEventListener('resize', schedule);
+    media.addEventListener('change', schedule);
+
+    return () => {
+      if (frame) cancelAnimationFrame(frame);
+      el.removeEventListener('scroll', schedule);
+      window.removeEventListener('resize', schedule);
+      media.removeEventListener('change', schedule);
+    };
+  });
 
   select(i: number) {
     if (i === 0) {
@@ -28,10 +59,35 @@ class Control extends State {
       this.face = 1;
     }
   }
+
+  scrollTabs(direction: -1 | 1) {
+    this.tabScroller.current?.scrollBy({
+      left: direction * 160,
+      behavior: 'smooth',
+    });
+  }
+
+  updateTabScrollState() {
+    const el = this.tabScroller.current;
+    if (!el) return;
+
+    const remaining = el.scrollWidth - el.clientWidth - el.scrollLeft;
+    const mobile = window.matchMedia('(max-width: 1023px)').matches;
+    this.canScrollTabsLeft = mobile && el.scrollLeft > 1;
+    this.canScrollTabsRight = mobile && remaining > 1;
+  }
 }
 
 export default function Compare({ left, right }: CompareProps) {
-  const { tab, face, select } = Control.use();
+  const {
+    tab,
+    face,
+    select,
+    tabScroller,
+    canScrollTabsLeft,
+    canScrollTabsRight,
+    scrollTabs,
+  } = Control.use();
 
   const active = right[Math.min(tab, right.length - 1)];
   const Left = left.code;
@@ -76,18 +132,33 @@ export default function Compare({ left, right }: CompareProps) {
       </div>
 
       <div className="lg:hidden">
-        <div className="flex flex-wrap gap-1 p-1 mb-3 w-fit rounded-2xl bg-fd-muted/50">
-          <Segment active={face === 0} onClick={() => select(0)}>
-            Expressive
-          </Segment>
-          {right.map((s, i) => (
-            <Segment
-              key={s.label}
-              active={face === 1 && tab === i}
-              onClick={() => select(i + 1)}>
-              {s.label}
-            </Segment>
-          ))}
+        <div className="mb-3 [--tab-scroll-bg:color-mix(in_oklab,var(--color-fd-muted)_50%,transparent)]">
+          <div className="relative w-fit max-w-full">
+            <div
+              ref={tabScroller}
+              className="flex w-fit max-w-full gap-[0.25em] overflow-x-auto rounded-[999px] bg-(--tab-scroll-bg) p-[0.25em] text-base [scrollbar-width:none] sm:text-sm [&::-webkit-scrollbar]:hidden">
+              <Segment active={face === 0} onClick={() => select(0)}>
+                Expressive
+              </Segment>
+              {right.map((s, i) => (
+                <Segment
+                  key={s.label}
+                  active={face === 1 && tab === i}
+                  onClick={() => select(i + 1)}>
+                  {s.label}
+                </Segment>
+              ))}
+            </div>
+
+            <ScrollOverflowControls
+              canScrollLeft={canScrollTabsLeft}
+              canScrollRight={canScrollTabsRight}
+              leftLabel="Scroll comparison tabs left"
+              rightLabel="Scroll comparison tabs right"
+              onScrollLeft={() => scrollTabs(-1)}
+              onScrollRight={() => scrollTabs(1)}
+            />
+          </div>
         </div>
 
         <div className="compare-static relative">
@@ -131,7 +202,7 @@ function Segment({
   return (
     <button
       onClick={onClick}
-      className={`rounded-full text-sm font-medium py-1 px-3 transition-colors ${
+      className={`shrink-0 whitespace-nowrap rounded-[999px] px-[1em] py-[0.625em] text-[inherit] leading-[1.5] font-medium transition-colors ${
         active ? 'bg-fd-background text-fd-foreground shadow-sm' : 'text-fd-muted-foreground'
       }`}>
       {children}
