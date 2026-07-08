@@ -7,9 +7,9 @@ import code from '@/components/Snippet';
 
 export function Hero() {
   return (
-    <section id="hero" className="relative lg:flex lg:items-center lg:min-h-[calc(100vh-56px)]">
+    <section id="hero" className="relative px-6 lg:flex lg:items-center lg:min-h-[calc(100vh-56px)] lg:px-[50px]">
       <Aurora />
-      <div className="relative w-full mx-auto max-w-(--content-width) px-6 pt-14 pb-16 grid gap-6 sm:pt-18 sm:pb-20 lg:py-24 lg:gap-12 lg:grid-cols-2 lg:items-center">
+      <div className="relative w-full mx-auto max-w-3xl pt-14 pb-16 grid gap-6 sm:pt-18 sm:pb-20 lg:max-w-[1020px] lg:py-24 lg:gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.92fr)] lg:items-center">
         <div className="min-w-0 lg:row-start-1">
           <h1 className="font-display tracking-tight mb-6">
             <span className="block whitespace-nowrap text-[clamp(1rem,4.7vw,1.4rem)] font-semibold leading-[1.05] text-fd-foreground/70">
@@ -53,11 +53,11 @@ export function Hero() {
               View Docs
             </Link>
           </div>
-          <div className="flex flex-col gap-2 max-w-md">
+          <div className="mx-auto flex max-w-md flex-col gap-2 lg:mx-0">
             <CopyPill label="Add to your app" command="npm install @expressive/react" />
             <CopyPill label="Ask your agent" command="npx skills add gabeklein/expressive-mvc" />
           </div>
-          <p className="text-sm text-fd-muted-foreground mt-4">
+          <p className="mx-auto mt-4 max-w-md text-center text-sm text-fd-muted-foreground lg:mx-0 lg:text-left">
             Drops into React you already have - not a framework, no
             rewrite.
           </p>
