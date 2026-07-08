@@ -9,7 +9,7 @@ import { cp, readFile } from 'fs/promises';
 
 export default defineConfig({
   server: {
-    allowedHosts: ['trainer-fairy-highest-appropriate.trycloudflare.com'],
+    allowedHosts: ['.trycloudflare.com'],
   },
   resolve: {
     alias: {
