@@ -4,8 +4,8 @@ import code from '@/components/Snippet';
 
 export function Comparison() {
   return (
-    <section id="comparison" className="panel">
-      <div className="mx-auto max-w-(--content-width) px-6 py-16 md:py-24">
+    <section id="comparison" className="panel px-6 lg:px-[50px]">
+      <div className="mx-auto max-w-(--content-width) py-16 md:py-24">
         <div className="max-w-3xl mb-12">
           <div className="text-xs uppercase tracking-widest text-fd-muted-foreground mb-3">
             For local state

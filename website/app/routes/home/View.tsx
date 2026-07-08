@@ -4,8 +4,8 @@ import code from '@/components/Snippet';
 
 export function View() {
   return (
-    <section id="component" className="panel">
-      <div className="mx-auto max-w-(--content-width) py-16 md:py-24 px-6 grid gap-12 lg:grid-cols-[2fr_3fr] lg:items-center">
+    <section id="component" className="panel px-6 lg:px-[50px]">
+      <div className="mx-auto max-w-(--content-width) py-16 md:py-24 grid gap-12 lg:grid-cols-[2fr_3fr] lg:items-center">
         <div>
           <h2 className="font-display text-3xl md:text-4xl font-bold tracking-tight mb-4">
             Component is renderable State.

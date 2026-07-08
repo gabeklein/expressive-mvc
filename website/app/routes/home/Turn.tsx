@@ -9,8 +9,8 @@ const SHED = [
 
 export function Turn() {
   return (
-    <section id="rails" className="panel">
-      <div className="mx-auto max-w-(--content-width) py-16 md:py-24 px-6">
+    <section id="rails" className="panel px-6 lg:px-[50px]">
+      <div className="mx-auto max-w-(--content-width) py-16 md:py-24">
         <div className="max-w-2xl mb-12">
           <div className="text-xs uppercase tracking-widest text-fd-primary mb-3">
             Batteries (and charger) included.
@@ -45,7 +45,7 @@ export function Turn() {
           </h3>
           <p className="text-fd-muted-foreground text-lg">
             The same structure keeps the models working in your codebase on
-            task - individual features and pages are classes an agent can
+            task - individual features and pages modularize for an agent to
             skim and load as-needed.
           </p>
         </div>

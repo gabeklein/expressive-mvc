@@ -146,8 +146,8 @@ export class More extends Component {
     const { Active } = this;
 
     return (
-      <section ref={this.section} id="more" className="panel">
-        <div className="mx-auto max-w-(--content-width) px-6 py-16 md:py-24">
+      <section ref={this.section} id="more" className="panel px-6 lg:px-[50px]">
+        <div className="mx-auto max-w-(--content-width) py-16 md:py-24">
           <div className="max-w-2xl mx-auto text-center mb-4">
             <h2 className="font-display text-2xl md:text-3xl font-bold tracking-tight">
               That and more, built right in.
@@ -156,7 +156,7 @@ export class More extends Component {
 
           <div
             ref={this.tabBar}
-            className={`sticky top-14 z-20 -mx-6 mb-10 overflow-hidden px-6 py-3 transition-colors [--more-panel-bg:color-mix(in_oklab,var(--color-fd-foreground)_2%,var(--color-fd-background))] [--tab-scroll-bg:color-mix(in_oklab,var(--color-fd-muted)_50%,transparent)] md:overflow-visible ${
+            className={`sticky top-14 z-20 -mx-6 mb-10 overflow-hidden px-6 py-3 transition-colors [--more-panel-bg:color-mix(in_oklab,var(--color-fd-foreground)_2%,var(--color-fd-background))] [--tab-scroll-bg:color-mix(in_oklab,var(--color-fd-muted)_50%,transparent)] md:overflow-visible lg:-mx-[50px] lg:px-[50px] ${
               this.tabsStuck
                 ? 'bg-(--more-panel-bg)'
                 : 'bg-transparent'

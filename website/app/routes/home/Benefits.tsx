@@ -3,8 +3,8 @@ import Reveal from '@/components/Reveal';
 
 export function Benefits() {
   return (
-    <section id="benefits" className="panel">
-      <div className="mx-auto max-w-(--content-width) py-16 md:py-24 px-6">
+    <section id="benefits" className="panel px-6 lg:px-[50px]">
+      <div className="mx-auto max-w-(--content-width) py-16 md:py-24">
         <div className="max-w-2xl mb-16">
           <h2 className="font-display text-3xl md:text-4xl font-bold tracking-tight mb-4">
             The rest comes along for free.
