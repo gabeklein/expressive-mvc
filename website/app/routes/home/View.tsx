@@ -8,17 +8,17 @@ export function View() {
       <div className="mx-auto max-w-(--content-width) py-16 md:py-24 px-6 grid gap-12 lg:grid-cols-[2fr_3fr] lg:items-center">
         <div>
           <h2 className="font-display text-3xl md:text-4xl font-bold tracking-tight mb-4">
-            Component is state that renders itself.
+            Component is renderable State.
           </h2>
           <p className="text-fd-muted-foreground text-lg mb-4">
             Reach for <code>Component</code> when making self-contained{" "}
             (<a href="#molecules" className="underline-offset-2 underline">or extensible</a>) display logic.
             Fields drive lazy getters and <code>render()</code>{' '} directly -
-            destructure <code>this</code>, assign for events.
+            destructure <code>this</code> as you would use hook.
           </p>
           <p className="text-fd-muted-foreground text-lg">
             A Component is also its own Provider.
-            Children access from context with zero prop drilling.
+            Children can pull from it with zero prop drilling.
           </p>
         </div>
 
@@ -52,14 +52,16 @@ class TipCalculator extends Component {
     return (
       <div className="mt-4 rounded-lg border border-fd-border py-3 px-4">
         <div className="text-xs tracking-widest text-fd-muted-foreground mb-3">
-          LIVE - Code above is whole component, ready to use.
+          LIVE - Code above is whole component
         </div>
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
           <label className="flex items-center gap-2 font-mono text-sm">
             $
             <input
               type="number"
-              className="w-16 rounded border border-fd-border bg-transparent py-1 px-2"
+              inputMode="decimal"
+              min={0}
+              className="w-16 rounded border border-fd-border bg-transparent py-1 px-2 text-base sm:text-sm"
               value={bill}
               onChange={(e) => (this.bill = +e.target.value)}
             />

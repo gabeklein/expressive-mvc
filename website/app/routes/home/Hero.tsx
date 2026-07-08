@@ -6,25 +6,39 @@ import code from '@/components/Snippet';
 
 export function Hero() {
   return (
-    <section id="hero" className="relative flex items-center min-h-[calc(100vh-56px)]">
+    <section id="hero" className="relative lg:flex lg:items-center lg:min-h-[calc(100vh-56px)]">
       <Aurora />
-      <div className="relative w-full mx-auto max-w-(--content-width) px-6 py-24 grid gap-12 lg:grid-cols-2 lg:items-center">
-        <div>
-          <h1 className="font-display tracking-tight mb-6">
-            <span className="block text-xl md:text-[1.4rem] font-semibold text-fd-foreground/70">
+      <div className="relative w-full mx-auto max-w-(--content-width) px-6 pt-14 pb-16 grid gap-6 sm:pt-18 sm:pb-20 lg:py-24 lg:gap-12 lg:grid-cols-2 lg:items-center">
+        <div className="min-w-0 lg:row-start-1">
+          <h1 className="font-display tracking-tight mb-10">
+            <span className="block whitespace-nowrap text-[clamp(1rem,4.7vw,1.4rem)] font-semibold leading-[1.05] text-fd-foreground/70">
               Your state shouldn't live in components
             </span>
-            <span className="block text-3xl md:text-5xl font-bold leading-[1.05] mt-4">
-              It belongs to a class of its own
+            <span className="block mt-4 text-[clamp(2.2rem,10.5vw,3rem)] font-bold leading-[0.98] sm:text-5xl lg:leading-[1.05]">
+              <span className="block">It belongs to a</span>
+              <span className="block">class of its own</span>
             </span>
           </h1>
-          <p className="text-fd-muted-foreground max-w-xl mb-8 mr-5">
+          <p className="text-fd-muted-foreground max-w-xl lg:mr-5">
             With MVC, <code>.use()</code>{' '}
-            a State instead - data, behavior, lifecycle, and updates in one
+            your State instead - data, behavior, lifecycle, and updates in one
             place. Components read what they need; class itself does the rest.
           </p>
+        </div>
 
-          <div className="flex flex-wrap gap-3 mb-8">
+        <div className="min-w-0 lg:row-span-2 lg:col-start-2">
+          <div className="hero-mobile-code code-nowrap md:hidden">
+            <MobileCounterExample />
+          </div>
+          <div className="code-nowrap hidden md:block">
+            <CounterExample />
+          </div>
+          <LiveCounter />
+          <Playground to="/examples/essentials/counter" />
+        </div>
+
+        <div className="lg:row-start-2 lg:col-start-1">
+          <div className="flex flex-wrap justify-center gap-3 mt-16 mb-8 lg:justify-start lg:mt-0">
             <Link
               className={`${btn} bg-fd-primary text-fd-primary-foreground hover:opacity-90`}
               to="/docs/getting-started">
@@ -36,23 +50,14 @@ export function Hero() {
               View Docs
             </Link>
           </div>
-
           <div className="flex flex-col gap-2 max-w-md">
             <CopyPill label="Add to your app" command="npm install @expressive/react" />
             <CopyPill label="Ask your agent" command="npx skills add gabeklein/expressive-mvc" />
           </div>
           <p className="text-sm text-fd-muted-foreground mt-4">
-            Drops into React app you already have - not a framework, no
+            Drops into React you already have - not a framework, no
             rewrite.
           </p>
-        </div>
-
-        <div className="min-w-0">
-          <div className="code-nowrap">
-            <CounterExample />
-          </div>
-          <LiveCounter />
-          <Playground to="/examples/essentials/counter" />
         </div>
       </div>
     </section>
@@ -141,6 +146,23 @@ const CounterExample = code /*tsx*/`
     increment() {
       this.count++;
     }
+  }
+
+  function App() {
+    const { count, increment } = Counter.use();
+
+    return (
+      <button onClick={increment}>
+        Clicked {count} times
+      </button>
+    );
+  }
+`;
+
+const MobileCounterExample = code /*tsx*/`
+  class Counter extends State {
+    count = 0;
+    increment() { this.count++; }
   }
 
   function App() {

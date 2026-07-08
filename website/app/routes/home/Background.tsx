@@ -8,7 +8,7 @@ const MOBILE_LINE_OPACITY = 0.25;
 export function Background() {
   return (
     <div className="fixed h-screen w-screen -z-1">
-      <AnimateBG className="absolute top-0 left-0 sm:blur-xs" />
+      <AnimateBG className="absolute top-0 left-0 blur-xs" />
     </div>
   );
 }
@@ -27,8 +27,8 @@ export class AnimateBG extends Canvas2D {
   maxLineLength = 150;
   minLineLength = 140;
 
-  // Wind down after ~45s so an idle tab stops burning frames.
-  decayAfter = 45 * 60;
+  // Wind down after ~5m so an idle tab stops burning frames.
+  decayAfter = 5 * 60 * 60;
   frames = 0;
   damper = 1;
   stopped = false;

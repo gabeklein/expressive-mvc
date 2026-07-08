@@ -34,10 +34,9 @@ export function Comparison() {
         <Playground to="/examples/essentials/counter" />
 
         <p className="text-fd-muted-foreground text-lg leading-relaxed max-w-2xl mx-auto mt-10 text-center">
-          With MVC, destructuring <em>is</em> the dependency list. Read a
-          field, subscribe to it. 
-          Nothing to declare, nothing to forget - no setters, no 
-          <code>useCallback</code>, no factory.
+          With MVC, destructuring <em>is</em> your dependency list. Just read a
+          field to subscribe to it. Nothing to declare like
+          setters,  <code>useCallback</code>, or factory.
         </p>
       </div>
     </section>
