@@ -16,7 +16,7 @@ export function Comparison() {
           <p className="text-fd-muted-foreground text-lg">
             Say you want a reusable, component-owned <code>useFooBarBaz</code>{' '}
             that re-renders on change. Same surface everywhere - only the cost
-            of building it differs. Higher readability <small>(and fewer tokens)</small>.
+            to build it differs. Higher readability <small>(and fewer tokens)</small>.
           </p>
         </div>
 

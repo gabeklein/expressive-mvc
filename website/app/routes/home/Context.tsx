@@ -12,7 +12,7 @@ export function Context() {
           <p className="text-fd-muted-foreground text-lg">
             Wrap a subtree in <code>&lt;Provider for=&#123;X&#125;&gt;</code> - 
             components inside need only <code>X.get()</code>{' '}
-            to interact with nearest instance. Fully typed, zero boilerplate.
+            to interact with the nearest instance. Fully typed, zero boilerplate.
           </p>
         </div>
 
@@ -24,7 +24,7 @@ export function Context() {
         <p className="text-fd-muted-foreground text-lg leading-relaxed max-w-3xl mx-auto mt-10 text-center">
           No <code>createContext&lt;T&gt;</code>, null default,
           missing-provider guard to write and maintain. Every app needs this eventually. Jotai's Provider will wrap a whole atom
-          store, MobX leaves it to you entirely.
+          store, MobX leaves it to you.
         </p>
       </div>
     </section>

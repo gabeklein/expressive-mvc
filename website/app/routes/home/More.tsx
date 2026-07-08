@@ -514,11 +514,12 @@ const SingletonsCode = code /*tsx*/`
 
 function Testing() {
   return (
-    <Tab title="Test the workflow, not the DOM.">
+    <Tab title="Test the app, not the DOM.">
       <>
-        Both state and components are plain instances - 
+        Technically, state and components are plain instances - 
         create with{' '} <code>.new()</code>, call methods, assert on properties.
-        Test whole workflows with only <code>expect</code> - no <code>act()</code> no React.
+        Test whole workflows with only <code>expect</code> -{" "}
+        no <code>act()</code>, not even React.
       </>
       <TestingCode />
     </Tab>

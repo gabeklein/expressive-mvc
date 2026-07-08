@@ -19,8 +19,8 @@ export function Turn() {
             Rails for your React app.
           </h2>
           <p className="text-fd-muted-foreground text-lg md:text-xl">
-            Strong conventions replace a pile of decisions - a good feature
-            looks the same whether it came from you, a teammate, or an agent.
+            Strong conventions replace a pile of opinions - a good feature
+            looks the same whether it came from you, your team, or an agent.
           </p>
         </div>
 
