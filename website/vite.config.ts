@@ -8,6 +8,9 @@ import { resolve, join } from 'path';
 import { cp, readFile } from 'fs/promises';
 
 export default defineConfig({
+  server: {
+    allowedHosts: ['trainer-fairy-highest-appropriate.trycloudflare.com'],
+  },
   resolve: {
     alias: {
       '@examples': resolve(__dirname, '../examples')
