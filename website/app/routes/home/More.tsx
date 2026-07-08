@@ -2,17 +2,21 @@ import { Children, type ReactNode } from 'react';
 import { Component, get, ref } from '@expressive/react';
 import { Hash } from '@/components/Hash';
 import Playground from '@/components/Playground';
+import ScrollOverflowControls from '@/components/ScrollOverflowControls';
 import code from '@/components/Snippet';
 
 export class More extends Component {
   hash = get(Hash);
 
   tab = 0;
+  tabsStuck = false;
+  canScrollTabsLeft = false;
+  canScrollTabsRight = false;
   tabs = {
     Async,
     Computed,
-    Forms,
     Molecules,
+    Forms,
     Singletons,
     Testing,
     Instructions,
@@ -35,6 +39,101 @@ export class More extends Component {
     return hash.set('active', apply);
   });
 
+  tabBar = ref<HTMLDivElement>((el) => {
+    let frame = 0;
+
+    const update = () => {
+      frame = 0;
+      this.tabsStuck = el.getBoundingClientRect().top <= 56;
+    };
+
+    const schedule = () => {
+      if (!frame) frame = requestAnimationFrame(update);
+    };
+
+    update();
+    window.addEventListener('scroll', schedule, { passive: true });
+    window.addEventListener('resize', schedule);
+
+    return () => {
+      if (frame) cancelAnimationFrame(frame);
+      window.removeEventListener('scroll', schedule);
+      window.removeEventListener('resize', schedule);
+    };
+  });
+
+  tabScroller = ref<HTMLDivElement>((el) => {
+    let frame = 0;
+    const media = window.matchMedia('(max-width: 767px)');
+
+    const update = () => {
+      frame = 0;
+      const remaining = el.scrollWidth - el.clientWidth - el.scrollLeft;
+      this.canScrollTabsLeft = media.matches && el.scrollLeft > 1;
+      this.canScrollTabsRight = media.matches && remaining > 1;
+    };
+
+    const schedule = () => {
+      if (!frame) frame = requestAnimationFrame(update);
+    };
+
+    update();
+    el.addEventListener('scroll', schedule, { passive: true });
+    window.addEventListener('resize', schedule);
+    media.addEventListener('change', schedule);
+
+    return () => {
+      if (frame) cancelAnimationFrame(frame);
+      el.removeEventListener('scroll', schedule);
+      window.removeEventListener('resize', schedule);
+      media.removeEventListener('change', schedule);
+    };
+  });
+
+  content = ref<HTMLDivElement>();
+
+  select(i: number) {
+    this.tab = i;
+
+    queueMicrotask(() => {
+      const content = this.content.current;
+      const tabBar = this.tabBar.current;
+      if (!content || !tabBar) return;
+
+      const top =
+        window.scrollY +
+        content.getBoundingClientRect().top -
+        tabBar.offsetHeight -
+        96;
+
+      if (top < window.scrollY) {
+        window.scrollTo({
+          top,
+          behavior: 'smooth',
+        });
+      }
+
+      requestAnimationFrame(() => this.updateTabScrollState());
+    });
+  }
+
+  scrollTabs(direction: -1 | 1) {
+    this.tabScroller.current?.scrollBy({
+      left: direction * 160,
+      behavior: 'smooth',
+    });
+  }
+
+  updateTabScrollState() {
+    const el = this.tabScroller.current;
+    if (!el) return;
+
+    const remaining = el.scrollWidth - el.clientWidth - el.scrollLeft;
+    const mobile = window.matchMedia('(max-width: 767px)').matches;
+    this.canScrollTabsLeft = mobile && el.scrollLeft > 1;
+    this.canScrollTabsRight = mobile && remaining > 1;
+  }
+
   get active() {
     return Object.values(this.tabs)[this.tab];
   }
@@ -51,26 +150,50 @@ export class More extends Component {
         <div className="mx-auto max-w-(--content-width) px-6 py-16 md:py-24">
           <div className="max-w-2xl mx-auto text-center mb-4">
             <h2 className="font-display text-2xl md:text-3xl font-bold tracking-tight">
-              That and more, built in.
+              That and more, built right in.
             </h2>
           </div>
 
-          <div className="flex flex-wrap justify-center gap-1 p-1 mb-10 w-fit mx-auto rounded-2xl bg-fd-muted/50">
-            {Object.keys(this.tabs).map((label, i) => (
-              <button
-                key={label}
-                onClick={() => (this.tab = i)}
-                className={`rounded-full text-sm font-medium py-1 px-3 transition-colors ${
-                  i === this.tab
-                    ? 'bg-fd-background text-fd-foreground shadow-sm'
-                    : 'text-fd-muted-foreground'
-                }`}>
-                {label}
-              </button>
-            ))}
+          <div
+            ref={this.tabBar}
+            className={`sticky top-14 z-20 -mx-6 mb-10 overflow-hidden px-6 py-3 transition-colors [--more-panel-bg:color-mix(in_oklab,var(--color-fd-foreground)_2%,var(--color-fd-background))] [--tab-scroll-bg:color-mix(in_oklab,var(--color-fd-muted)_50%,transparent)] md:overflow-visible ${
+              this.tabsStuck
+                ? 'bg-(--more-panel-bg)'
+                : 'bg-transparent'
+            }`}>
+            <div className="relative mx-auto w-fit max-w-full">
+              <div
+                ref={this.tabScroller}
+                className="flex w-fit max-w-full gap-[0.25em] overflow-x-auto rounded-[999px] bg-(--tab-scroll-bg) p-[0.25em] text-base [scrollbar-width:none] md:flex-wrap md:justify-center md:overflow-visible md:text-sm [&::-webkit-scrollbar]:hidden">
+                {Object.keys(this.tabs).map((label, i) => (
+                  <button
+                    key={label}
+                    onClick={() => this.select(i)}
+                    className={`shrink-0 whitespace-nowrap rounded-[999px] px-[1em] py-[0.625em] text-[inherit] leading-[1.5] font-medium transition-colors ${
+                      i === this.tab
+                        ? 'bg-fd-background text-fd-foreground shadow-sm'
+                        : 'text-fd-muted-foreground'
+                    }`}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+
+              <ScrollOverflowControls
+                canScrollLeft={this.canScrollTabsLeft}
+                canScrollRight={this.canScrollTabsRight}
+                leftLabel="Scroll tabs left"
+                rightLabel="Scroll tabs right"
+                onScrollLeft={() => this.scrollTabs(-1)}
+                onScrollRight={() => this.scrollTabs(1)}
+                hideAt="md:hidden"
+              />
+            </div>
           </div>
 
-          <Active />
+          <div ref={this.content}>
+            <Active />
+          </div>
         </div>
       </section>
     );
@@ -149,9 +272,9 @@ function Async() {
   return (
     <Tab title="Async without ceremony." to="/examples/essentials/async">
       <>
-        An async <code>set()</code> suspends render until it
-        resolves. A <code>Component</code> brings its own{' '}
-        <code>fallback</code> and its own error boundary via{' '}
+        Accessing <code>set(async)</code> will thorw suspense until it
+        resolves. A <code>Component</code> can define its own{' '}
+        <code>fallback</code> and even error boundary via{' '}
         <code>catch()</code> - no{' '}
         <code>isPending</code> flags, client to provide, or
         cache keys.
@@ -162,7 +285,6 @@ function Async() {
 }
 
 const AsyncCode = code /*tsx*/`
-  import React from 'react';
   import { Component, set } from '@expressive/react';
 
   class Profile extends Component {
@@ -172,9 +294,11 @@ const AsyncCode = code /*tsx*/`
       const res = await fetch('/api/user/1');
 
       if (!res.ok)
-        throw new Error('Something broke');
+        throw new Error('Could not find the user.');
 
-      return res.json();
+      const { first, last } = await res.json();
+
+      return first + " " + last;
     });
 
     async catch(error: Error) {
@@ -182,7 +306,7 @@ const AsyncCode = code /*tsx*/`
     }
 
     render() {
-      return <h1>Hello {this.user.name}</h1>;
+      return <h1>Hello {this.user.name}!</h1>;
     }
   }
 
@@ -254,12 +378,10 @@ function Forms() {
 }
 
 const FormsCode = code /*tsx*/`
-  import React from 'react';
-  import { Form } from "@components/form"
+  import { Form } from "@/components/form"
 
-  // Form can be a ~30 line base class _you_ write once, not a
-  // dependency - built on the ref() instruction to bind inputs.
-  // Full example in the Playground.
+  // Form can be a ~30 line base class _you_ write once.
+  // Here, \`bind\` is defined with a ref instruction.
   class MyForm extends Form {
     firstname = '';
     lastname = '';
@@ -296,12 +418,12 @@ const FormsCode = code /*tsx*/`
 function Molecules() {
   return (
     <Tab
-      title="Components compose by subclass."
+      title="Components customize by subclass."
       to="/examples/composition/subcomponents">
       <>
         A base owns structure and behavior; PascalCase subcomponents are seams a
         subclass overrides for appearance. Your own behavior-complete widgets -
-        Table, Toast, Picker - without the config soup or shadcn.
+        Table, Toast, Picker - all without config soup or shadcn.
       </>
       <MoleculesCode />
     </Tab>
@@ -309,7 +431,6 @@ function Molecules() {
 }
 
 const MoleculesCode = code /*tsx*/`
-  import React from 'react';
   import { Component } from '@expressive/react';
 
   // A behavior-complete base: owns data and selection,
@@ -354,7 +475,7 @@ const MoleculesCode = code /*tsx*/`
 function Singletons() {
   return (
     <Tab
-      title="Global state, no ceremony."
+      title="Global state with no setup."
       to="/examples/composition/singletons">
       <>
         Create a State once with <code>.new()</code> and it
@@ -368,10 +489,8 @@ function Singletons() {
 }
 
 const SingletonsCode = code /*tsx*/`
-  import React from 'react';
   import State from '@expressive/react';
 
-  // One instance for the whole app.
   class Session extends State {
     user: string | null = null;
 
@@ -383,7 +502,7 @@ const SingletonsCode = code /*tsx*/`
   // Creating outside components activates and parks in global context.
   Session.new();
 
-  // Any component reaches it with .get() - no props, no Provider.
+  // Component still reach for it with .get() - no Provider needed.
   function Status() {
     const { user, login } = Session.get();
 
@@ -395,13 +514,11 @@ const SingletonsCode = code /*tsx*/`
 
 function Testing() {
   return (
-    <Tab title="Test the class, not the DOM.">
+    <Tab title="Test the workflow, not the DOM.">
       <>
-        State classes are plain objects - create with{' '}
-        <code>.new()</code>, call methods, assert on
-        properties. Whole features tested with just{' '}
-        <code>expect</code> - no{' '}
-        <code>act()</code>, no @testing-library.
+        Both state and components are plain instances - 
+        create with{' '} <code>.new()</code>, call methods, assert on properties.
+        Test whole workflows with only <code>expect</code> - no <code>act()</code> no React.
       </>
       <TestingCode />
     </Tab>
@@ -409,18 +526,25 @@ function Testing() {
 }
 
 const TestingCode = code /*tsx*/`
-  import { Counter } from './Counter';
+  import { LoginForm } from './LoginForm';
 
-  it('will update on increment', async () => {
-    const counter = Counter.new();
+  it('will show admin state after login', async () => {
+    const form = LoginForm.new();
 
-    counter.increment();
-    counter.increment();
+    form.username = 'admin@example.com';
+    form.password = 'correct-horse';
 
-    expect(counter.count).toBe(2);
-    expect(await counter.set()).toEqual(['count']);
+    const login = form.submit();
+
+    expect(form.loading).toBe(true);
+    expect(form.canSubmit).toBe(false);
+
+    await login;
+
+    expect(form.loading).toBe(false);
+    expect(form.error).toBeUndefined();
+    expect(form.user?.email).toBe('admin@example.com');
+    expect(form.isAdmin).toBe(true);
+    expect(form.avatarIcon.loaded).toBe(true);
   });
-
-  // the Counter class from the top of this page,
-  // tested as-is. No render, no DOM.
 `;
