@@ -1,4 +1,5 @@
 import State, { ref } from '@expressive/react';
+import type { CSSProperties } from 'react';
 import { Link } from 'react-router';
 import CopyPill from '@/components/CopyPill';
 import Playground from '@/components/Playground';
@@ -10,7 +11,7 @@ export function Hero() {
       <Aurora />
       <div className="relative w-full mx-auto max-w-(--content-width) px-6 pt-14 pb-16 grid gap-6 sm:pt-18 sm:pb-20 lg:py-24 lg:gap-12 lg:grid-cols-2 lg:items-center">
         <div className="min-w-0 lg:row-start-1">
-          <h1 className="font-display tracking-tight mb-10">
+          <h1 className="font-display tracking-tight mb-6">
             <span className="block whitespace-nowrap text-[clamp(1rem,4.7vw,1.4rem)] font-semibold leading-[1.05] text-fd-foreground/70">
               Your state shouldn't live in components
             </span>
@@ -33,8 +34,10 @@ export function Hero() {
           <div className="code-nowrap hidden md:block">
             <CounterExample />
           </div>
-          <LiveCounter />
-          <Playground to="/examples/essentials/counter" />
+          <div className="mt-5 flex items-center justify-between gap-4">
+            <LiveCounter />
+            <Playground className="mt-0 mr-2 text-right" to="/examples/essentials/counter" />
+          </div>
         </div>
 
         <div className="lg:row-start-2 lg:col-start-1">
@@ -111,27 +114,29 @@ function Aurora() {
 
 class Counter extends State {
   count = 0;
+  hue = 260;
+  pulse = 0;
 
   increment() {
     this.count++;
+    this.hue = Math.floor(Math.random() * 360);
+    this.pulse++;
   }
 }
 
 function LiveCounter() {
-  const { count, increment } = Counter.use();
+  const { count, hue, increment, pulse } = Counter.use();
+  const style = { '--click-hue': hue } as CSSProperties;
 
   return (
-    <div className="mt-4 rounded-lg border border-fd-border py-3 px-4">
-      <div className="text-xs tracking-widest text-fd-muted-foreground mb-3">
-        LIVE - the class above, running.
-      </div>
-      <div className="flex justify-center sm:justify-start">
-        <button
-          onClick={increment}
-          className="rounded-full border border-fd-border font-mono text-sm py-1.5 px-4 hover:bg-fd-muted transition-colors">
-          Clicked {count} times
-        </button>
-      </div>
+    <div className="shrink-0">
+      <button
+        onClick={increment}
+        style={style}
+        className="live-counter-button relative rounded-full border border-fd-border bg-fd-background/70 font-mono text-sm py-2 px-5 hover:bg-fd-muted transition-colors">
+        {pulse > 0 && <span key={pulse} aria-hidden className="live-counter-pulse" />}
+        <span className="relative">Clicked {count} times</span>
+      </button>
     </div>
   );
 }

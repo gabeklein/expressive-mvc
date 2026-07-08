@@ -1,8 +1,8 @@
 import { Link } from 'react-router';
 
-export default function Playground({ className = 'text-right', to }: { className?: string; to: string }) {
+export default function Playground({ className = 'mt-4 mr-2 text-right', to }: { className?: string; to: string }) {
   return (
-    <div className={`mt-4 mr-2 ${className}`}>
+    <div className={className}>
       <Link
         className="text-sm text-fd-primary/50 font-medium no-underline hover:text-fd-primary"
         to={to}>
