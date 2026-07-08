@@ -51,9 +51,6 @@ class TipCalculator extends Component {
 
     return (
       <div className="mt-4 rounded-lg border border-fd-border py-3 px-4">
-        <div className="text-xs tracking-widest text-fd-muted-foreground mb-3">
-          LIVE - Code above is whole component
-        </div>
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
           <label className="flex items-center gap-2 font-mono text-sm">
             $
@@ -63,6 +60,7 @@ class TipCalculator extends Component {
               min={0}
               className="w-16 rounded border border-fd-border bg-transparent py-1 px-2 text-base sm:text-sm"
               value={bill}
+              onFocus={(e) => e.currentTarget.select()}
               onChange={(e) => (this.bill = +e.target.value)}
             />
           </label>
@@ -112,9 +110,12 @@ const TipExample = code /*tsx*/`
       return (
         <div>
           <input type="number" value={bill}
-            onChange={(e) => (this.bill = +e.target.value)} />
+            onFocus={(e) => e.currentTarget.select()}
+            onChange={(e) => (this.bill = +e.target.value)}
+          />
           <input type="range" min={0} max={30} value={tipPercent}
-            onChange={(e) => (this.tipPercent = +e.target.value)} />
+            onChange={(e) => (this.tipPercent = +e.target.value)}
+          />
           <p>
             Tip {tip.toFixed(2)} · Total {total.toFixed(2)}
           </p>
