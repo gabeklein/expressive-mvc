@@ -16,6 +16,7 @@ import {
   MobileSearchActions,
   docsLinks,
 } from '@/components/ProjectLinks';
+import { siteImage, siteTitle } from '@/lib/meta';
 import browserCollections from 'fumadocs-mdx:collections/browser';
 import { useFumadocsLoader } from 'fumadocs-core/source/client';
 
@@ -44,6 +45,17 @@ const clientLoader = browserCollections.docs.createClientLoader({
       <DocsPage toc={toc}>
         <title>{frontmatter.title}</title>
         <meta name="description" content={frontmatter.description} />
+        <meta property="og:type" content="article" />
+        <meta property="og:site_name" content={siteTitle} />
+        <meta property="og:title" content={`${frontmatter.title} - ${siteTitle}`} />
+        <meta property="og:description" content={frontmatter.description} />
+        <meta property="og:image" content={siteImage} />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={`${frontmatter.title} - ${siteTitle}`} />
+        <meta name="twitter:description" content={frontmatter.description} />
+        <meta name="twitter:image" content={siteImage} />
         <DocsTitle>{frontmatter.title}</DocsTitle>
         <DocsDescription>{frontmatter.description}</DocsDescription>
         <DocsBody>

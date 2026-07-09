@@ -1,11 +1,15 @@
 import { HomeLayout } from 'fumadocs-ui/layouts/home';
 import { NavLink, Outlet } from 'react-router';
 
+import { createMeta } from '@/lib/meta';
 import { layoutOptions } from '../home';
 import { GROUPS } from './loader';
 
 export function meta() {
-  return [{ title: 'Examples - Expressive' }];
+  return createMeta({
+    title: 'Examples - Expressive MVC',
+    description: 'Live Expressive MVC examples for React applications',
+  });
 }
 
 export default function ExamplesLayout() {

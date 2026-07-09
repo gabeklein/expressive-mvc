@@ -2,6 +2,7 @@ import { HomeLayout } from 'fumadocs-ui/layouts/home';
 import type { BaseLayoutProps } from 'fumadocs-ui/layouts/shared';
 import Logo from '@/components/Logo';
 import { MobileHeaderActions, MobileSearchActions, projectLinks } from '@/components/ProjectLinks';
+import { createMeta } from '@/lib/meta';
 import { Background } from './Background';
 import { Benefits } from './Benefits';
 import { Comparison } from './Comparison';
@@ -22,23 +23,7 @@ export const layoutOptions: BaseLayoutProps = {
 };
 
 export function meta() {
-  return [
-    { title: 'Expressive MVC' },
-    {
-      name: 'description',
-      content:
-        'Cleaner React state with smaller components and fewer lines per feature',
-    },
-    { property: 'og:title', content: 'Expressive MVC' },
-    {
-      property: 'og:description',
-      content:
-        'Cleaner React state with smaller components and fewer lines per feature',
-    },
-    { property: 'og:image', content: '/brand/logo.png' },
-    { name: 'twitter:card', content: 'summary' },
-    { name: 'twitter:image', content: '/brand/logo.png' },
-  ];
+  return createMeta();
 }
 
 export default function Home() {
