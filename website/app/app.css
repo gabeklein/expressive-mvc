@@ -149,6 +149,12 @@ figure[data-rehype-pretty-code-figure] pre code,
   }
 }
 
+/* Prose h2 top margin: typography default is 2em (~3rem at the h2's size),
+   which reads as a large gap. Tighten it. */
+.prose h2 {
+  margin-top: 1.5em !important;
+}
+
 /* Mobile/tablet TOC popover: fumadocs clamps the open panel to 50vh, which
    turns a long API page's contents into a tiny scroll window. Give it most
    of the screen. Only present below xl, where the popover exists. */
