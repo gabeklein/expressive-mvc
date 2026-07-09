@@ -9,16 +9,15 @@ import {
 } from 'fumadocs-ui/layouts/docs/page';
 import { source } from '@/lib/source';
 import Logo from '@/components/Logo';
-import defaultMdxComponents from 'fumadocs-ui/mdx';
+import docsMdxComponents from '@/components/DocsMdx';
+import { MobileHeaderActions, MobileSearchActions, projectLinks } from '@/components/ProjectLinks';
 import browserCollections from 'fumadocs-mdx:collections/browser';
 import { useFumadocsLoader } from 'fumadocs-core/source/client';
 
 const layoutOptions: BaseLayoutProps = {
-  nav: { title: <Logo /> },
-  links: [
-    { text: 'Live Examples', url: '/examples' }
-  ],
-  githubUrl: 'https://github.com/gabeklein/expressive-mvc'
+  nav: { title: <Logo />, children: <MobileHeaderActions docs={false} /> },
+  searchToggle: { components: { sm: <MobileSearchActions /> } },
+  links: projectLinks
 };
 
 export async function loader({ params }: Route.LoaderArgs) {
@@ -42,7 +41,7 @@ const clientLoader = browserCollections.docs.createClientLoader({
         <DocsTitle>{frontmatter.title}</DocsTitle>
         <DocsDescription>{frontmatter.description}</DocsDescription>
         <DocsBody>
-          <Mdx components={{ ...defaultMdxComponents }} />
+          <Mdx components={docsMdxComponents} />
         </DocsBody>
       </DocsPage>
     );

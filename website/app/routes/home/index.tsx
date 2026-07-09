@@ -1,6 +1,7 @@
 import { HomeLayout } from 'fumadocs-ui/layouts/home';
 import type { BaseLayoutProps } from 'fumadocs-ui/layouts/shared';
 import Logo from '@/components/Logo';
+import { MobileHeaderActions, MobileSearchActions, projectLinks } from '@/components/ProjectLinks';
 import { Background } from './Background';
 import { Benefits } from './Benefits';
 import { Comparison } from './Comparison';
@@ -14,12 +15,9 @@ import { Turn } from './Turn';
 import { View } from './View';
 
 export const layoutOptions: BaseLayoutProps = {
-  nav: { title: <Logo /> },
-  links: [
-    { text: 'Docs', url: '/docs' },
-    { text: 'Playground', url: '/examples' },
-  ],
-  githubUrl: 'https://github.com/gabeklein/expressive-mvc',
+  nav: { title: <Logo />, children: <MobileHeaderActions /> },
+  searchToggle: { components: { sm: <MobileSearchActions /> } },
+  links: projectLinks,
 };
 
 export function meta() {
@@ -29,6 +27,14 @@ export function meta() {
       name: 'description',
       content: 'Class-based state for modern React applications',
     },
+    { property: 'og:title', content: 'Expressive MVC' },
+    {
+      property: 'og:description',
+      content: 'Class-based state for modern React applications',
+    },
+    { property: 'og:image', content: '/brand/logo.png' },
+    { name: 'twitter:card', content: 'summary' },
+    { name: 'twitter:image', content: '/brand/logo.png' },
   ];
 }
 

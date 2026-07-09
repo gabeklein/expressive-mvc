@@ -1,5 +1,13 @@
 import { Link } from 'react-router';
 import { Icon } from '@/components/Logo';
+import {
+  DiscordLinkLabel,
+  GitHubStars,
+  NpmBadges,
+  discordUrl,
+  githubUrl,
+  reactNpmUrl,
+} from '@/components/ProjectLinks';
 
 const link = 'text-fd-muted-foreground no-underline hover:text-fd-foreground transition-colors';
 
@@ -18,11 +26,14 @@ export function Footer() {
           <Link className={link} to="/examples">
             Playground
           </Link>
-          <a className={link} href="https://github.com/gabeklein/expressive-mvc">
-            GitHub
+          <a className={link} href={githubUrl}>
+            <GitHubStars />
           </a>
-          <a className={link} href="https://www.npmjs.com/package/@expressive/react">
-            npm
+          <a className={link} href={discordUrl}>
+            <DiscordLinkLabel />
+          </a>
+          <a className={link} href={reactNpmUrl}>
+            <NpmBadges />
           </a>
         </nav>
       </div>
