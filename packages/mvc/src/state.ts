@@ -124,6 +124,11 @@ declare namespace State {
 
   type Setter<T> = (value: T, previous: T) => T | void;
 
+  interface Map<K, V> extends globalThis.Map<K, V> {
+    get(): ReadonlyMap<K, Export<V>>;
+    get(key: K): V | undefined;
+  }
+
   /** Descriptor config for a managed property. */
   type Apply<T = any> = {
     value?: T;

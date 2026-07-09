@@ -379,3 +379,39 @@ function hot<T extends object>(value: T): T;
 ```
 
 > The deep dive - the dense-array contract with its exact throws, keyed tracking through native methods, nesting recipes, and the shared-storage caveat - lives at [Arrays & Collections](/docs/guides/collections).
+
+<br />
+
+## `map`
+
+Keyed reactivity for `Map`.
+
+```ts
+import { map } from '@expressive/react';
+
+class Catalog extends State {
+  products = map<string, Product>();
+
+  add(product: Product) {
+    this.products.set(product.id, product);
+  }
+}
+```
+
+`map()` is an export alongside the instructions, but not technically an instruction - it returns a reactive `State.Map` you can assign to a State field or use standalone with `watch()`.
+
+- `get(key)` and `has(key)` track that key only.
+- `size`, `keys()`, `values()`, `entries()`, `forEach()`, and `for...of` track collection shape.
+- `values()`, `entries()`, `forEach()`, and `for...of` also track visited values.
+- `set`, `delete`, and `clear` notify affected keys; adding or removing keys also notifies shape.
+- `get()` with no key returns a shallow `ReadonlyMap` snapshot.
+- Shallow - nested State, `hot()`, and `map()` values keep their own reactivity when accessed through the map.
+
+```ts
+function map<K, V>(entries?: Iterable<readonly [K, V]> | null): State.Map<K, V>;
+
+interface State.Map<K, V> extends globalThis.Map<K, V> {
+  get(): ReadonlyMap<K, State.Export<V>>;
+  get(key: K): V | undefined;
+}
+```

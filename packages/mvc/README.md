@@ -55,12 +55,14 @@ Field initializers that change how a property behaves:
 | `set()` | computed values, smart setters, side-effects on assignment |
 | `get()` | dependency injection - pull another `State` from context |
 | `hot()` | a shallow-reactive array or object |
+| `map()` | a shallow-reactive Map |
 
 ```ts
-import { State, set, hot } from '@expressive/mvc';
+import { State, set, hot, map } from '@expressive/mvc';
 
 class Cart extends State {
   items = hot<Item[]>([]);                  // reactive collection
+  products = map<string, Product>();        // reactive keyed collection
   coupon = set('', code => apply(code));    // side-effect on assignment
 }
 ```
