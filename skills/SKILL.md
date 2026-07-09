@@ -62,6 +62,7 @@ import State, {
   def,
   get,
   hot,
+  map,
   set,
   Provider
 } from '@expressive/react';
@@ -122,6 +123,15 @@ class UserProfile extends State {
   }
 }
 ```
+
+#### `map()` - Reactive Maps
+
+| Form           | Behavior                                                     |
+| -------------- | ------------------------------------------------------------ |
+| `map<K, V>()`  | Empty reactive `Map` with keyed reads and writes.            |
+| `map(entries)` | Reactive `Map` initialized from iterable `[key, value]` pairs. |
+
+`map()` is a reactive helper, not a field instruction. It returns a `State.Map<K, V>` extending native `Map`, with reactive `get(key)`, `has(key)`, `size`, iteration, `set`, `delete`, and `clear`. Calling `get()` with no key returns a shallow `ReadonlyMap` snapshot.
 
 ### React Hooks
 
