@@ -13,6 +13,8 @@ import SearchDialog from '@/components/Search';
 import NotFound from './routes/not-found';
 
 export const links: Route.LinksFunction = () => [
+  { rel: 'icon', type: 'image/png', href: '/brand/icon-512.png' },
+  { rel: 'apple-touch-icon', href: '/brand/icon-512.png' },
   { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
   {
     rel: 'preconnect',
