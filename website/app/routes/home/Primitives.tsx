@@ -248,23 +248,34 @@ const InstructionsCode = code /*tsx*/`
   import State, { get, hot, ref, set } from '@expressive/react';
 
   class Profile extends State {
-    name = 'Ada';
+    first = 'Ada';
+    last = 'Lovelace';
 
-    // managed values, computed, async with suspense
-    user = set(async () => {});
+    // factory with Suspense if async
+    user = set(async () => fetchUser());
+
+    // validate or side-effect whenever assigned
+    email = set('', (next) => {
+      if (!next.includes('@')) throw false;
+    });
+
+    // computed field, in lieu of a getter
+    label = set(({ first, last, theme }) => {
+      return theme.format(first + ' ' + last);
+    });
 
     // another class instance from context
     theme = get(Theme);
 
-    // DOM nodes or mutable imperative values
-    input = ref<HTMLInputElement>((el) => {});
+    // a single DOM node or mutable imperative value
+    dialog = ref<HTMLDialogElement>();
+
+    // a ref proxy for form fields (inputs.first, inputs.last)
+    inputs = ref(this);
 
     // reactive object and array mutation
-    todos = hot([]);
-
-    get label() {
-      return this.theme.format(this.user.name);
-    }
+    filters = hot({ query: '', active: true });
+    todos = hot([] as string[]);
   }
 `;
 
