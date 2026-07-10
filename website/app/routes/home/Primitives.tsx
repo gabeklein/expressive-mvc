@@ -17,7 +17,7 @@ export class Primitives extends Component {
     Computed,
     Molecules,
     Forms,
-    Singletons,
+    Globals,
     Testing,
     Instructions,
   };
@@ -487,23 +487,23 @@ const MoleculesCode = code /*tsx*/`
   }
 `;
 
-function Singletons() {
+function Globals() {
   return (
     <Tab
       title="Global state with no setup."
-      to="/examples/composition/singletons">
+      to="/examples/composition/globals">
       <>
         Create a State once with <code>.new()</code> and it parks in global
         context. Any component can find it with{' '}
         <code>.get()</code> - app-wide session, theme, or
         viewport with no store, Provider, or prop drilling.
       </>
-      <SingletonsCode />
+      <GlobalsCode />
     </Tab>
   );
 }
 
-const SingletonsCode = code /*tsx*/`
+const GlobalsCode = code /*tsx*/`
   import State from '@expressive/react';
 
   class Session extends State {

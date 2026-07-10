@@ -4,7 +4,7 @@ import { Session } from './Session';
 import { Theme } from './Theme';
 import { Viewport } from './Viewport';
 
-// Singletons: created once, right here, the way you would at your app's entry
+// Globals: created once, right here, the way you would at your app's entry
 // point next to the root render. State.new() activates the instance and parks
 // it in the global context, so any component can reach it with State.get().
 Viewport.new();
@@ -14,16 +14,16 @@ Theme.new();
 export default function App() {
   return (
     <div className="container">
-      <h1>Singletons</h1>
+      <h1>Globals</h1>
       <Size />
       <Account />
       <Appearance />
-      <small>Three singletons, each created once - components subscribe with `.get()`.</small>
+      <small>Three globals, each created once - components subscribe with `.get()`.</small>
     </div>
   );
 }
 
-// Each component fetches its singleton with .get() and re-renders only when the
+// Each component fetches its global with .get() and re-renders only when the
 // fields it reads change - no props, no shared parent passing state down.
 function Size() {
   const { width, compact } = Viewport.get();

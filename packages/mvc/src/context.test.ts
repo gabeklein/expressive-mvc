@@ -1155,30 +1155,30 @@ it('will skip consumer if filter does not match downstream', () => {
   expect(cb).toBeCalledWith(bar, true);
 });
 
-describe('root singleton', () => {
+describe('root global', () => {
   const { root } = Context;
 
-  class Singleton extends State {}
+  class Global extends State {}
 
   it('will register .new() instance as implicit in root', () => {
-    const instance = Singleton.new();
+    const instance = Global.new();
 
-    expect(root.get(Singleton)).toBe(instance);
+    expect(root.get(Global)).toBe(instance);
 
     instance.set(null);
 
-    expect(root.get(Singleton, false)).toBeUndefined();
+    expect(root.get(Global, false)).toBeUndefined();
   });
 
   it('will lock state ownership to root after init', () => {
-    const instance = Singleton.new();
+    const instance = Global.new();
 
     // Root claims LOOKUP at registration; ownership is fixed post-init.
     expect(Context.get(instance)).toBe(root);
 
     const ctx = new Context(instance);
 
-    expect(ctx.get(Singleton)).toBe(instance); // resolvable via provide
+    expect(ctx.get(Global)).toBe(instance); // resolvable via provide
     expect(Context.get(instance)).toBe(root); // ownership stays with root
 
     instance.set(null);
@@ -1193,7 +1193,7 @@ describe('root singleton', () => {
 
     const second = Multi.new();
 
-    // Both are released - collision is an implicit opt-out from singleton
+    // Both are released - collision is an implicit opt-out from global
     expect(root.get(Multi, false)).toBeUndefined();
 
     first.set(null);
@@ -1257,7 +1257,7 @@ describe('root singleton', () => {
     ctx.pop();
   });
 
-  it('will not apply singleton eviction to explicit add', () => {
+  it('will not apply global eviction to explicit add', () => {
     class Base extends State {}
     class SubA extends Base {}
     class SubB extends Base {}

@@ -268,7 +268,7 @@ Fetch these for detailed API documentation when the task requires deeper knowled
 - [state/set.md](state/set.md) - Instance `.set()` method: write values, listen to updates, events, destroy
 - [state/computed.md](state/computed.md) - Reactive class getters: tracking, caching, inheritance, suspense
 - [state/lifecycle.md](state/lifecycle.md) - Construction, activation, operation, destruction phases
-- [state/context.md](state/context.md) - Context system, root singleton, home context, ownership rules
+- [state/context.md](state/context.md) - Context system, global root, home context, ownership rules
 - [state/types.md](state/types.md) - TypeScript type aliases and utility types
 
 ### Instructions & Reactive Helpers

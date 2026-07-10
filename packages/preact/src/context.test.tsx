@@ -665,16 +665,16 @@ describe('HMR', () => {
   it.todo("will updated consumer if context's instance is replaced", () => {});
 });
 
-describe('root singleton', () => {
-  class Singleton extends State {
+describe('root global', () => {
+  class Global extends State {
     value = 'root';
   }
 
   it('will get from root if not found in context', () => {
-    const instance = Singleton.new();
+    const instance = Global.new();
 
     render(
-      <Consumer for={Singleton}>
+      <Consumer for={Global}>
         {({ is }) => {
           expect(is).toBe(instance);
         }}
@@ -684,15 +684,15 @@ describe('root singleton', () => {
     instance.set(null);
   });
 
-  it('will prefer Provider instance over root singleton', () => {
-    const instance = Singleton.new();
+  it('will prefer Provider instance over root global', () => {
+    const instance = Global.new();
 
     render(
-      <Provider for={Singleton}>
-        <Consumer for={Singleton}>
+      <Provider for={Global}>
+        <Consumer for={Global}>
           {(i) => {
             expect(i).not.toBe(instance);
-            expect(i).toBeInstanceOf(Singleton);
+            expect(i).toBeInstanceOf(Global);
           }}
         </Consumer>
       </Provider>

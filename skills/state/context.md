@@ -49,7 +49,7 @@ Recursive: grandchildren inherit through their immediate parent. Reassigning a c
 
 ## Root Context
 
-`Context.root` is a global singleton registry. Any state activated via `State.new()` outside an explicit context lands here.
+`Context.root` is a global registry. Any state activated via `State.new()` outside an explicit context lands here.
 
 ```ts
 const a = MyState.new();
@@ -58,7 +58,7 @@ Context.root.get(MyState); // a
 
 `Context.root` is a regular `Context` instance (mutable static), and `Context.get(state)` falls back to it when a state has no recorded home.
 
-### Singleton Collision
+### Global Collision
 
 Two **implicit** instances of the same type in root mutually evict at the contested ancestor:
 
@@ -68,7 +68,7 @@ const b = Sub.new();
 Context.root.get(Sub, false); // undefined - both evicted
 ```
 
-Read this as "implicit collision is opt-out from singleton" - if you create two, neither is the singleton. A third `Sub.new()` would re-claim singleton status (the empty contested set is reclaimable).
+Read this as "implicit collision is opt-out from global" - if you create two, neither is the global instance. A third `Sub.new()` would re-claim global status (the empty contested set is reclaimable).
 
 ### Subtype Preservation
 
@@ -88,7 +88,7 @@ Context.root.get(SubB);        // b - unambiguous at SubB
 
 ### Explicit Bypass
 
-Explicit registration (`new Context(state)`, `ctx.add(state, true)`, JSX `Provider`) bypasses singleton eviction. Implicit and explicit entries coexist; explicit wins priority on lookup.
+Explicit registration (`new Context(state)`, `ctx.add(state, true)`, JSX `Provider`) bypasses global eviction. Implicit and explicit entries coexist; explicit wins priority on lookup.
 
 ```ts
 const a = Sub.new();          // implicit in root
@@ -128,7 +128,7 @@ ctx.get(Parent).foo = undefined;
 ctx.get(Foo); // Bar instance - heals
 ```
 
-This differs from root's permanent eviction because scoped contexts model "candidates available here," whereas root models "the global singleton."
+This differs from root's permanent eviction because scoped contexts model "candidates available here," whereas root models "the global instance."
 
 ## API Surface
 
@@ -148,7 +148,7 @@ ctx.set(inputs, forEach?);             // register multiple
 ctx.push(inputs?);                     // create child context
 ctx.pop();                             // destroy this and descendants
 Context.get(state);                    // static: state's home context
-Context.root;                          // global singleton registry
+Context.root;                          // global registry
 ```
 
 Primarily consumed via the [`get` instruction](../field/get.md) and React [`Provider`](../react/react.md).

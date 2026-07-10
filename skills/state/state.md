@@ -191,9 +191,9 @@ All events batched and flushed via `queueMicrotask()`.
 
 ## Context
 
-Every active State has a "home context" that determines where its `state.get(Type)` lookups originate. `State.new()` registers to `Context.root` (the global singleton) when not already claimed; `new Context(StateClass)` registers to particular context. Home is locked once assigned. Largely advanced/internal.
+Every active State has a "home context" that determines where its `state.get(Type)` lookups originate. `State.new()` registers to `Context.root` (the global instance) when not already claimed; `new Context(StateClass)` registers to particular context. Home is locked once assigned. Largely advanced/internal.
 
-See [context.md](context.md) for the full Context API, root singleton semantics, and the `new State()` escape hatch for pre-init context placement.
+See [context.md](context.md) for the full Context API, global root semantics, and the `new State()` escape hatch for pre-init context placement.
 
 Primarily consumed via the [`get` instruction](../field/get.md) and React [`Provider`](../react/react.md).
 
