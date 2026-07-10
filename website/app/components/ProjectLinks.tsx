@@ -2,19 +2,16 @@
 
 import type { LinkItemType } from 'fumadocs-ui/layouts/shared';
 import { useSearchContext } from 'fumadocs-ui/contexts/search';
-import { ExternalLink, Github, MessageCircle, Moon, Package, Search, Sun } from 'lucide-react';
-import { useTheme } from 'next-themes';
+import { ExternalLink, Github, Search } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Link } from 'react-router';
 
 export const githubUrl = 'https://github.com/gabeklein/expressive-mvc';
 export const discordUrl = 'https://discord.gg/EBWC7HyTBd';
-export const reactNpmUrl = 'https://www.npmjs.com/package/@expressive/react';
 
 const fallbackStats = {
   stars: 101,
-  reactDownloads: 212,
   discordMembers: 4,
 };
 
@@ -33,18 +30,13 @@ function useProjectStats() {
 
     statsRequest ??= Promise.allSettled([
       fetch('https://api.github.com/repos/gabeklein/expressive-mvc').then((res) => res.json()),
-      fetch('https://api.npmjs.org/downloads/point/last-week/@expressive/react').then((res) => res.json()),
       fetch('/api/discord-stats').then((res) => res.json()),
-    ]).then(([repo, react, discord]) => {
+    ]).then(([repo, discord]) => {
       return {
         stars:
           repo.status === 'fulfilled' && typeof repo.value.stargazers_count === 'number'
             ? repo.value.stargazers_count
             : fallbackStats.stars,
-        reactDownloads:
-          react.status === 'fulfilled' && typeof react.value.downloads === 'number'
-            ? react.value.downloads
-            : fallbackStats.reactDownloads,
         discordMembers:
           discord.status === 'fulfilled' && typeof discord.value.members === 'number'
             ? discord.value.members
@@ -73,20 +65,6 @@ export function GitHubStars() {
       <span>GitHub</span>
       <span className="hidden items-center rounded-full bg-fd-muted px-1.5 py-0.5 text-xs text-fd-muted-foreground sm:inline-flex">
         {formatCount(stars)}
-      </span>
-    </span>
-  );
-}
-
-export function NpmBadges() {
-  const { reactDownloads } = useProjectStats();
-
-  return (
-    <span className="inline-flex items-center gap-1.5">
-      <Package className="hidden size-4 sm:block" />
-      <span>npm</span>
-      <span className="hidden rounded-full bg-fd-muted px-1.5 py-0.5 text-xs text-fd-muted-foreground xl:inline-flex">
-        {formatCount(reactDownloads)}/wk
       </span>
     </span>
   );
@@ -137,11 +115,9 @@ export function MobileHeaderActions({ docs = true }: { docs?: boolean }) {
 
 export function MobileSearchActions() {
   const { enabled, setOpenSearch } = useSearchContext();
-  const { resolvedTheme, setTheme } = useTheme();
-  const nextTheme = resolvedTheme === 'dark' ? 'light' : 'dark';
 
   return (
-    <div className="flex items-center gap-1 sm:hidden">
+    <div className="flex items-center gap-1 md:hidden">
       {enabled && (
         <button
           type="button"
@@ -152,14 +128,6 @@ export function MobileSearchActions() {
           <Search className="size-4" />
         </button>
       )}
-      <button
-        type="button"
-        aria-label="Toggle theme"
-        onClick={() => setTheme(nextTheme)}
-        className="inline-flex size-8 items-center justify-center rounded-full text-fd-muted-foreground transition-colors hover:bg-fd-muted hover:text-fd-foreground">
-        <Sun className="size-4 dark:hidden" />
-        <Moon className="hidden size-4 dark:block" />
-      </button>
     </div>
   );
 }
@@ -168,7 +136,6 @@ export function DocsSocialLinks() {
   const links = [
     { label: <DiscordLinkLabel />, url: discordUrl },
     { label: <GitHubStars />, url: githubUrl },
-    { label: <NpmBadges />, url: reactNpmUrl },
   ];
 
   return (
@@ -205,13 +172,6 @@ export const projectLinks: LinkItemType[] = [
     type: 'button',
     text: <GitHubStars />,
     url: githubUrl,
-    external: true,
-    secondary: true,
-  },
-  {
-    type: 'button',
-    text: <NpmBadges />,
-    url: reactNpmUrl,
     external: true,
     secondary: true,
   },
