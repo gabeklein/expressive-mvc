@@ -14,6 +14,10 @@ import * as React from 'react';
 import * as ReactJSX from 'react/jsx-runtime';
 import * as CompilerRuntime from 'react/compiler-runtime';
 import { State, Provider } from '.';
+import { mockWarn } from '../test.setup';
+
+/** Let the guard's macrotask (setTimeout) fire so its warning can land. */
+const flushTimers = () => new Promise((resolve) => setTimeout(resolve, 10));
 
 const registry: Record<string, unknown> = {
   '@expressive/react': Expressive,
@@ -82,6 +86,7 @@ describe('harness', () => {
 
 describe('Component', () => {
   it('will stay reactive when rendered from a compiled tree', async () => {
+    const warn = mockWarn();
     const { App } = compile(`
       import { Component } from '@expressive/react';
       class Counter extends Component {
@@ -105,6 +110,9 @@ describe('Component', () => {
     });
 
     expect(container.textContent).toBe('1');
+
+    await flushTimers();
+    expect(warn).not.toHaveBeenCalled();
   });
 });
 
@@ -113,6 +121,7 @@ describe('Component', () => {
 // opts the component out and restores reactivity.
 describe('use()', () => {
   it('will not re-render without opt-out (documents react-compiler limitation)', async () => {
+    const warn = mockWarn();
     const { View } = compile(`
       import { use } from '@expressive/react';
       export function View({ model }) {
@@ -131,9 +140,15 @@ describe('use()', () => {
     });
 
     expect(container.textContent).toBe('0');
+
+    await flushTimers();
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining('did not re-render')
+    );
   });
 
   it('will re-render with "use no memo"', async () => {
+    const warn = mockWarn();
     const { View } = compile(`
       import { use } from '@expressive/react';
       export function View({ model }) {
@@ -153,11 +168,15 @@ describe('use()', () => {
     });
 
     expect(container.textContent).toBe('1');
+
+    await flushTimers();
+    expect(warn).not.toHaveBeenCalled();
   });
 });
 
 describe('State.use()', () => {
   it('will not re-render without opt-out (documents react-compiler limitation)', async () => {
+    const warn = mockWarn();
     const { View } = compile(`
       export function View({ Model }) {
         const { count, inc } = Model.use();
@@ -174,9 +193,15 @@ describe('State.use()', () => {
     });
 
     expect(container.textContent).toBe('0');
+
+    await flushTimers();
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining('did not re-render')
+    );
   });
 
   it('will re-render with "use no memo"', async () => {
+    const warn = mockWarn();
     const { View } = compile(`
       export function View({ Model }) {
         "use no memo";
@@ -194,11 +219,15 @@ describe('State.use()', () => {
     });
 
     expect(container.textContent).toBe('1');
+
+    await flushTimers();
+    expect(warn).not.toHaveBeenCalled();
   });
 });
 
 describe('State.get()', () => {
   it('will not re-render without opt-out (documents react-compiler limitation)', async () => {
+    const warn = mockWarn();
     const { View } = compile(`
       export function View({ Model }) {
         const { count } = Model.get();
@@ -220,9 +249,15 @@ describe('State.get()', () => {
     });
 
     expect(container.textContent).toBe('0');
+
+    await flushTimers();
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining('did not re-render')
+    );
   });
 
   it('will re-render with "use no memo"', async () => {
+    const warn = mockWarn();
     const { View } = compile(`
       export function View({ Model }) {
         "use no memo";
@@ -245,5 +280,8 @@ describe('State.get()', () => {
     });
 
     expect(container.textContent).toBe('1');
+
+    await flushTimers();
+    expect(warn).not.toHaveBeenCalled();
   });
 });

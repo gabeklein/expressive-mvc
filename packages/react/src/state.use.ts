@@ -1,6 +1,6 @@
 import { State, Context } from '@expressive/mvc';
 import { watch } from '@expressive/mvc/observable';
-import { useFactory, useHook, useReady } from './runtime';
+import { guard, useFactory, useHook, useReady } from './runtime';
 
 declare module '@expressive/mvc' {
   interface UseState extends State {
@@ -55,10 +55,13 @@ State.use = function use<T extends State>(
     });
 
     const context = outer.push(instance);
+    const watchdog = guard(instance);
 
     let ready = false;
 
     return (args: State.Args<T>) => {
+      watchdog.seen();
+
       if (ready) {
         ready = false;
         Promise.resolve(use(...args)).finally(() => {
@@ -69,8 +72,12 @@ State.use = function use<T extends State>(
       useReady(() => ready = true);
 
       return useHook<T>((update) => {
-        watch(instance, update);
+        watch(instance, (next, changed) => {
+          update(next);
+          if (changed.length) watchdog.check();
+        });
         return () => {
+          watchdog.stop();
           context.pop();
           instance.set(null);
         };

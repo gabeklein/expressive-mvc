@@ -23,6 +23,39 @@ export function useFactory<T extends Function>(factory: () => T) {
   return ref.current || (ref.current = factory());
 }
 
+/**
+ * React Compiler dev guard. A subscribed component whose watched value changed
+ * must re-render; if the hook body is not re-invoked after an update we
+ * requested, the compiler memoized the hook call and skipped its internal
+ * hooks. `seen` counts hook-body runs; `check` (called after requesting an
+ * update) verifies another run followed on the next macrotask. Since whether a
+ * component is compiled is fixed for its lifetime, one check settles it.
+ */
+export function guard(subject: object) {
+  let renders = 0;
+  let scheduled = false;
+  let live = true;
+
+  return {
+    seen: () => void renders++,
+    stop: () => void (live = false),
+    check() {
+      if (scheduled || !live) return;
+      scheduled = true;
+      const at = renders;
+      setTimeout(() => {
+        if (live && renders === at)
+          console.warn(
+            `A component subscribed to ${subject} did not re-render after an ` +
+            `update - React Compiler likely memoized the hook. Add the ` +
+            `"use no memo" directive to that component, or express it as a ` +
+            `Component class (which needs no opt-out).`
+          );
+      });
+    }
+  };
+}
+
 export function useReady<T>(callback: () => void) {
   return Runtime.useEffect(() => void callback(), []);
 }
@@ -79,7 +112,10 @@ export function use<T extends object>(subject: T) {
     source?: T;
     mounted: number;
     unwatch?: () => void;
+    guard?: ReturnType<typeof guard>;
   }>({ mounted: 0, proxy: subject });
+
+  current.guard?.seen();
 
   const update = Runtime.useState(() => current.mounted++)[1];
 
@@ -99,11 +135,14 @@ export function use<T extends object>(subject: T) {
       if (!status.ready) event(subject);
 
       let init = true;
+      const watchdog = (current.guard = guard(subject));
 
       current.unwatch = watch(subject, (next, changed) => {
         current.proxy = next;
-        if (changed.length && !init)
+        if (changed.length && !init) {
           update((x) => x + 1);
+          watchdog.check();
+        }
       });
 
       init = false;
@@ -111,7 +150,10 @@ export function use<T extends object>(subject: T) {
   }
 
   Runtime.useEffect(() => () => {
-    if (--current.mounted < 1) current.unwatch?.();
+    if (--current.mounted < 1) {
+      current.guard?.stop();
+      current.unwatch?.();
+    }
   }, []);
 
   return current.proxy;

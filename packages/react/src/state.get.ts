@@ -1,6 +1,6 @@
 import { State, Context } from '@expressive/mvc';
 import { observer, watch } from '@expressive/mvc/observable';
-import { Runtime, useFactory, useHook, useReady } from './runtime';
+import { guard, Runtime, useFactory, useHook, useReady } from './runtime';
 
 /** Type may not be undefined - instead will be null.  */
 type NoVoid<T> = T extends undefined | void ? null : T;
@@ -82,6 +82,8 @@ State.get = function get<T extends State>(
     let pending = false;
     let value: any;
 
+    const watchdog = guard(this as object);
+
     function update() {
       pending = false;
       next((x) => x + 1);
@@ -121,7 +123,10 @@ State.get = function get<T extends State>(
             value = current;
           }
 
-          if (changed.length) update();
+          if (changed.length) {
+            update();
+            watchdog.check();
+          }
         },
         argument === true
       );
@@ -168,9 +173,13 @@ State.get = function get<T extends State>(
     }
 
     return () => {
+      watchdog.seen();
       pending = false;
       useReady(() => mounted = true);
-      useHook(() => release);
+      useHook(() => () => {
+        watchdog.stop();
+        release();
+      });
       return value === undefined ? null : value;
     };
   });

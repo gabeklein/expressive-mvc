@@ -236,6 +236,10 @@ function Profile() {
 }
 ```
 
+To catch a missing opt-out, the adapter warns (in the console) when a subscribed
+component fails to re-render after an update it should have received - the
+signature of a memoized-away hook. Add the directive to silence it.
+
 Prefer `Component` where the state is intrinsic to display - it needs no opt-out.
 
 ---
