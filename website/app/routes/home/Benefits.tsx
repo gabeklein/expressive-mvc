@@ -7,31 +7,29 @@ export function Benefits() {
       <div className="mx-auto max-w-(--content-width) py-16 md:py-24">
         <div className="max-w-2xl mb-16">
           <h2 className="font-display text-3xl md:text-4xl font-bold tracking-tight mb-4">
-            The rest comes along for free.
+            A layer, not a leap.
           </h2>
           <p className="text-fd-muted-foreground text-lg">
-            Data, behavior, and lifecycle in one place - much of what you'd
-            install a library for is just how the class works.
+            Start with the feature already hurting and leave the rest alone.
+            MVC works with the React app and tools you already have.
           </p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <Benefit title="Coexists with hooks" delay={0}>
+          <Benefit title="Incremental adoption" delay={0}>
             No big-bang rewrite. Adopt it one feature at a time and leave simple
             useState calls alone. A tool for complexity, not a replacement.
           </Benefit>
-          <Benefit title="Async is built in" delay={100}>
-            Async factories integrate with Suspense - required data suspends
-            until it resolves. No query library, no middleware, no thunks.
+          <Benefit title="Keep what works" delay={100}>
+            MVC doesn't need to replace every hook or specialist library. Keep
+            the tools that still earn their place.
           </Benefit>
-          <Benefit title="Headless by design" delay={200}>
-            State classes are plain objects - create with .new(), call methods,
-            assert on properties. Whole app unit-testable with just expect.
-            No @testing-library, no act(), no DOM.
+          <Benefit title="Portable state" delay={200}>
+            Headless State classes don't depend on a component tree. Move them,
+            test them, or use the framework-agnostic core.
           </Benefit>
-          <Benefit title="Self-documenting" delay={300}>
-            Fields, types, and JSDoc live on the class, so editors surface intent
-            inline. Reusable state your team - and its tools - can reason about
-            without digging.
+          <Benefit title="No build-time magic" delay={300}>
+            MVC adds no compiler, code generation, or custom syntax. What you
+            write is what runs.
           </Benefit>
         </div>
       </div>

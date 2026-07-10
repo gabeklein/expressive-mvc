@@ -13,17 +13,18 @@ export function Hero() {
         <div className="min-w-0 lg:row-start-1">
           <h1 className="font-display tracking-tight mb-6">
             <span className="block whitespace-nowrap text-[clamp(1rem,4.7vw,1.4rem)] font-semibold leading-[1.05] text-fd-foreground/70">
-              Your state shouldn't live in components
+              Clean state management for React
             </span>
             <span className="block mt-4 text-[clamp(2.2rem,10.5vw,3rem)] font-bold leading-[0.98] sm:text-5xl lg:leading-[1.05]">
-              <span className="block">It belongs to a</span>
-              <span className="block">class of its own</span>
+              <span className="block">More application,</span>
+              <span className="block">for less code.</span>
             </span>
           </h1>
           <p className="text-fd-muted-foreground max-w-xl lg:mr-5">
-            With MVC, <code>.use()</code>{' '}
-            your State instead - data, behavior, lifecycle, and updates in one
-            place. Components read what they need; class itself does the rest.
+            Expressive MVC moves data, behavior, and lifecycle
+            into a focused model. Components stay small, agent code stays
+            readable, and apps remain easy to build. The goal is fewer
+            lines (and tokens) per feature, and a more pleasant DX.
           </p>
         </div>
 
@@ -58,8 +59,7 @@ export function Hero() {
             <CopyPill label="Ask your agent" command="npx skills add gabeklein/expressive-mvc" />
           </div>
           <p className="mx-auto mt-4 max-w-md text-center text-sm text-fd-muted-foreground lg:mx-0">
-            Drops into React you already have - not a framework, no
-            rewrite.
+            Drops into React you already have - not a framework, no rewrite.
           </p>
         </div>
       </div>

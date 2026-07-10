@@ -150,7 +150,7 @@ export class More extends Component {
         <div className="mx-auto max-w-(--content-width) py-16 md:py-24">
           <div className="max-w-2xl mx-auto text-center mb-4">
             <h2 className="font-display text-2xl md:text-3xl font-bold tracking-tight">
-              That and more, built right in.
+              The primitives you need, built right in.
             </h2>
           </div>
 
@@ -270,10 +270,10 @@ const InstructionsCode = code /*tsx*/`
 
 function Async() {
   return (
-    <Tab title="Async without ceremony." to="/examples/essentials/async">
+    <Tab title="Async without ceremony" to="/examples/essentials/async">
       <>
-        Accessing <code>set(async)</code> will thorw suspense until it
-        resolves. A <code>Component</code> can define its own{' '}
+        Accessing <code>set(async)</code> suspends until it resolves. A{' '}
+        <code>Component</code> can define its own{' '}
         <code>fallback</code> and even error boundary via{' '}
         <code>catch()</code> - no{' '}
         <code>isPending</code> flags, client to provide, or
@@ -315,7 +315,7 @@ const AsyncCode = code /*tsx*/`
 
 function Computed() {
   return (
-    <Tab title="Derive state with getters.">
+    <Tab title="Derived state with getters">
       <>
         Put the formula where the data lives. Getters are memoized and
         dependency-tracked, so render stays simple without{' '}
@@ -366,7 +366,7 @@ const GettersCode = code /*tsx*/`
 
 function Forms() {
   return (
-    <Tab title="Forms as just fields." to="/examples/apps/forms">
+    <Tab title="Forms from just fields" to="/examples/apps/forms">
       <>
         One field per input, one method for submit. A tiny base class you own
         binds the inputs - no <code>register</code>, resolvers,
@@ -418,7 +418,7 @@ const FormsCode = code /*tsx*/`
 function Molecules() {
   return (
     <Tab
-      title="Components customize by subclass."
+      title="Components customized by subclass"
       to="/examples/composition/subcomponents">
       <>
         A base owns structure and behavior; PascalCase subcomponents are seams a
@@ -478,10 +478,10 @@ function Singletons() {
       title="Global state with no setup."
       to="/examples/composition/singletons">
       <>
-        Create a State once with <code>.new()</code> and it
-        parks in global context. Any component reads it with{' '}
+        Create a State once with <code>.new()</code> and it parks in global
+        context. Any component can find it with{' '}
         <code>.get()</code> - app-wide session, theme, or
-        viewport with no store, no Provider, no prop drilling.
+        viewport with no store, Provider, or prop drilling.
       </>
       <SingletonsCode />
     </Tab>
@@ -502,7 +502,7 @@ const SingletonsCode = code /*tsx*/`
   // Creating outside components activates and parks in global context.
   Session.new();
 
-  // Component still reach for it with .get() - no Provider needed.
+  // Components still reach for it with .get() - no Provider needed.
   function Status() {
     const { user, login } = Session.get();
 
@@ -514,10 +514,10 @@ const SingletonsCode = code /*tsx*/`
 
 function Testing() {
   return (
-    <Tab title="Test the app, not the DOM.">
+    <Tab title="Testable logic, without the DOM.">
       <>
-        Technically, state and components are plain instances - 
-        create with{' '} <code>.new()</code>, call methods, assert on properties.
+        State and components are plain instances - create with{' '}
+        <code>.new()</code>, call methods, assert on properties.
         Test whole workflows with only <code>expect</code> -{" "}
         no <code>act()</code>, not even React.
       </>

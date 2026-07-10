@@ -12,7 +12,7 @@ export function Context() {
           <p className="text-fd-muted-foreground text-lg">
             Wrap a subtree in <code>&lt;Provider for=&#123;X&#125;&gt;</code> - 
             components inside need only <code>X.get()</code>{' '}
-            to interact with the nearest instance. Fully typed, zero boilerplate.
+            to interact with the nearest instance. Fully typed, zero ceremony.
           </p>
         </div>
 

@@ -6,7 +6,7 @@ export function View() {
   return (
     <section id="component" className="panel px-6 lg:px-[50px]">
       <div className="mx-auto max-w-(--content-width) py-16 md:py-24 grid gap-12 lg:grid-cols-[2fr_3fr] lg:items-center">
-        <div>
+        <div className="lg:-translate-y-6">
           <h2 className="font-display text-3xl md:text-4xl font-bold tracking-tight mb-4">
             Component is renderable State.
           </h2>
@@ -17,7 +17,7 @@ export function View() {
             destructure <code>this</code> as you would use hook.
           </p>
           <p className="text-fd-muted-foreground text-lg">
-            A Component is also its own Provider.
+            A Component is its own Provider too.
             Children can pull from it with zero prop drilling.
           </p>
         </div>

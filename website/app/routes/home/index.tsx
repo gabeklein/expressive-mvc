@@ -11,7 +11,8 @@ import { CTA } from './CTA';
 import { Footer } from './Footer';
 import { Hero } from './Hero';
 import { More } from './More';
-import { Turn } from './Turn';
+import { Product } from './Product';
+import { Rails } from './Turn';
 import { View } from './View';
 
 export const layoutOptions: BaseLayoutProps = {
@@ -25,12 +26,14 @@ export function meta() {
     { title: 'Expressive MVC' },
     {
       name: 'description',
-      content: 'Class-based state for modern React applications',
+      content:
+        'Cleaner React state with smaller components and fewer lines per feature',
     },
     { property: 'og:title', content: 'Expressive MVC' },
     {
       property: 'og:description',
-      content: 'Class-based state for modern React applications',
+      content:
+        'Cleaner React state with smaller components and fewer lines per feature',
     },
     { property: 'og:image', content: '/brand/logo.png' },
     { name: 'twitter:card', content: 'summary' },
@@ -44,10 +47,11 @@ export default function Home() {
       <Background />
       <Hero />
       <Complicated />
+      <Product />
       <Comparison />
-      <Turn />
       <Context />
       <View />
+      <Rails />
       <More />
       <Benefits />
       <CTA />
