@@ -1,6 +1,5 @@
 import type { Route } from './+types/docs';
-import type { BaseLayoutProps } from 'fumadocs-ui/layouts/shared';
-import { DocsLayout } from 'fumadocs-ui/layouts/docs';
+import { DocsLayout, type DocsLayoutProps } from 'fumadocs-ui/layouts/docs';
 import {
   DocsBody,
   DocsDescription,
@@ -10,14 +9,20 @@ import {
 import { source } from '@/lib/source';
 import Logo from '@/components/Logo';
 import docsMdxComponents from '@/components/DocsMdx';
-import { MobileHeaderActions, MobileSearchActions, projectLinks } from '@/components/ProjectLinks';
+import {
+  DocsSocialLinks,
+  MobileHeaderActions,
+  MobileSearchActions,
+  docsLinks,
+} from '@/components/ProjectLinks';
 import browserCollections from 'fumadocs-mdx:collections/browser';
 import { useFumadocsLoader } from 'fumadocs-core/source/client';
 
-const layoutOptions: BaseLayoutProps = {
+const layoutOptions: Omit<DocsLayoutProps, 'tree'> = {
   nav: { title: <Logo />, children: <MobileHeaderActions docs={false} /> },
   searchToggle: { components: { sm: <MobileSearchActions /> } },
-  links: projectLinks
+  links: docsLinks,
+  sidebar: { footer: <DocsSocialLinks /> },
 };
 
 export async function loader({ params }: Route.LoaderArgs) {

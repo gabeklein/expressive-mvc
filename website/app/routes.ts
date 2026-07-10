@@ -8,5 +8,6 @@ export default [
     route("*", "routes/examples/view.tsx", { id: "example-view" }),
   ]),
   route("api/search", "routes/search.ts"),
+  route("api/discord-stats", "routes/discord-stats.ts"),
   route("*", "routes/not-found.tsx"),
 ] satisfies RouteConfig;
