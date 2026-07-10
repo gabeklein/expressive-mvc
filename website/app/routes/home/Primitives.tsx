@@ -144,6 +144,7 @@ export class Primitives extends Component {
 
   render() {
     const { Active } = this;
+    const moleculesActive = Active === Molecules;
 
     return (
       <section ref={this.section} id="more" className="panel px-6 lg:px-[50px]">
@@ -192,7 +193,10 @@ export class Primitives extends Component {
           </div>
 
           <div ref={this.content}>
-            <Active />
+            <div className={moleculesActive ? undefined : 'hidden'}>
+              <Molecules />
+            </div>
+            {!moleculesActive && <Active />}
           </div>
         </div>
       </section>
