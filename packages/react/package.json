@@ -55,9 +55,14 @@
     "@expressive/mvc": "^0.80.0"
   },
   "devDependencies": {
+    "@babel/core": "^7",
+    "@babel/plugin-transform-modules-commonjs": "^7",
+    "@babel/preset-react": "^7",
     "@testing-library/react": "^16.3.0",
+    "@types/babel__core": "^7.20.5",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "babel-plugin-react-compiler": "^1.0.0",
     "react": "^19",
     "react-dom": "^19",
     "tsdown": "^0.20.1"

@@ -214,6 +214,32 @@ If the upstream instance is replaced in context (e.g., Provider re-created), the
 
 ---
 
+## React Compiler
+
+Reactivity depends on reading tracking-proxy properties during render, which the
+React Compiler treats as memoizable. This affects the two idioms differently:
+
+- **`Component` classes are safe.** Their reactive render is a function generated
+  inside the adapter at runtime, never present in your source, so the compiler
+  has nothing to memoize. No action needed.
+- **Function components using `use()`, `State.use()`, or `State.get()` need an
+  opt-out.** The compiler memoizes these hook calls on their arguments, which are
+  reference-stable, so the hook runs only on mount and later updates are silently
+  dropped (the component keeps its first render). Add the `"use no memo"`
+  directive to any such component:
+
+```tsx
+function Profile() {
+  "use no memo";
+  const { user } = AppState.get();
+  return <p>{user}</p>;
+}
+```
+
+Prefer `Component` where the state is intrinsic to display - it needs no opt-out.
+
+---
+
 ## Component Class
 
 `Component` extends `State` and works directly as a React component. See `./component.md` for full details.
