@@ -63,7 +63,7 @@ export function GitHubStars() {
     <span className="inline-flex items-center gap-1.5">
       <Github className="hidden size-4 sm:block" />
       <span>GitHub</span>
-      <span className="hidden items-center rounded-full bg-fd-muted px-1.5 py-0.5 text-xs text-fd-muted-foreground sm:inline-flex">
+      <span className="hidden items-center rounded-full bg-fd-muted px-1.5 py-0.5 text-xs text-fd-muted-foreground lg:inline-flex">
         {formatCount(stars)}
       </span>
     </span>
