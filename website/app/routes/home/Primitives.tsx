@@ -5,7 +5,7 @@ import Playground from '@/components/Playground';
 import ScrollOverflowControls from '@/components/ScrollOverflowControls';
 import code from '@/components/Snippet';
 
-export class More extends Component {
+export class Primitives extends Component {
   hash = get(Hash);
 
   tab = 0;

@@ -6,14 +6,14 @@ import { Background } from './Background';
 import { Benefits } from './Benefits';
 import { Comparison } from './Comparison';
 import { Complicated } from './Complicated';
+import { ComponentSection } from './Component';
 import { Context } from './Context';
 import { CTA } from './CTA';
 import { Footer } from './Footer';
 import { Hero } from './Hero';
-import { More } from './More';
+import { Primitives } from './Primitives';
 import { Product } from './Product';
-import { Rails } from './Turn';
-import { View } from './View';
+import { Rails } from './Rails';
 
 export const layoutOptions: BaseLayoutProps = {
   nav: { title: <Logo />, children: <MobileHeaderActions /> },
@@ -50,9 +50,9 @@ export default function Home() {
       <Product />
       <Comparison />
       <Context />
-      <View />
+      <ComponentSection />
       <Rails />
-      <More />
+      <Primitives />
       <Benefits />
       <CTA />
       <Footer />

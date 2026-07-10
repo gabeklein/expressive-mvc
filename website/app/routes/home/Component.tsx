@@ -1,8 +1,8 @@
-import { Component } from '@expressive/react';
+import { Component as StateComponent } from '@expressive/react';
 import Playground from '@/components/Playground';
 import code from '@/components/Snippet';
 
-export function View() {
+export function ComponentSection() {
   return (
     <section id="component" className="panel px-6 lg:px-[50px]">
       <div className="mx-auto max-w-(--content-width) py-16 md:py-24 grid gap-12 lg:grid-cols-[2fr_3fr] lg:items-center">
@@ -34,7 +34,7 @@ export function View() {
   );
 }
 
-class TipCalculator extends Component {
+class TipCalculator extends StateComponent {
   bill = 50;
   tipPercent = 18;
 
