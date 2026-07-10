@@ -282,7 +282,7 @@ The child function receives a tracking proxy, so property reads subscribe just l
 
 <br />
 
-## Singletons and the root context
+## Globals and the root context
 
 Not everything wants a Provider. Some state is genuinely global - the session, the viewport, app settings. For those, call `State.new()` at module scope:
 
@@ -309,7 +309,7 @@ function Avatar() {
 }
 ```
 
-A full app built this way (viewport, session, and theme as root singletons) is at [composition/singletons](/examples/composition/singletons).
+A full app built this way (viewport, session, and theme as globals) is at [composition/globals](/examples/composition/globals).
 
 ### Homes are permanent
 
@@ -325,7 +325,7 @@ new Context(cart); // cart's home is this context
 Useful in tests, and in code that prepares a state before mounting it into a tree.
 
 > **Good to know:** <br/>
-> Root singletons are honest about ambiguity. Create two implicit instances of the same type via `State.new()` and neither is "the" singleton - both are evicted from root lookup, rather than one silently winning. Explicit registration (a Provider, or `Context.root.add(state, true)`) bypasses this.
+> Root globals are honest about ambiguity. Create two implicit instances of the same type via `State.new()` and neither is "the" global instance - both are evicted from root lookup, rather than one silently winning. Explicit registration (a Provider, or `Context.root.add(state, true)`) bypasses this.
 
 That's the short version - constructor forms, `ctx.add`, eviction and subtype rules are all in [API: Utilities](/docs/api/utilities).
 

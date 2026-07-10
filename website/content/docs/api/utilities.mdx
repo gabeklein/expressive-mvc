@@ -271,12 +271,12 @@ ctx.set(inputs, forEach?);            // reconcile registered states with inputs
 ctx.push(inputs?);                    // create a child context
 ctx.pop();                            // tear down this context and descendants
 Context.get(state);                   // static - a state's home context
-Context.root;                         // global singleton registry
+Context.root;                         // global registry
 ```
 
 - A failed `ctx.get(Type)` throws `Could not find ${Type} in context.`
 - `ctx.set()` accepts a class, an instance, or a map of either. Classes are constructed and activated; when inputs change, removed entries run their cleanup and instances the context created are destroyed. Instances you passed in are left alone.
-- `ctx.add(state, explicit?)` registers without activating. Explicit entries (`true`) bypass singleton eviction and win priority on lookup.
+- `ctx.add(state, explicit?)` registers without activating. Explicit entries (`true`) bypass global eviction and win priority on lookup.
 - `ctx.pop()` recursively destroys descendant contexts and runs all cleanup.
 - Adapters may override `Context.get` - the React adapter returns the ambient React context when called with no argument.
 
@@ -325,7 +325,7 @@ ctx.get(Child); // the child instance - registered in ctx, not root
 
 Recursive: grandchildren inherit through their immediate parent. Reassigning a child field destroys the old child (if owned via `new Child()`) and registers the replacement in the same context; externally-assigned children are not destroyed on replacement.
 
-### Root context and singletons
+### Root context and globals
 
 `Context.root` is a regular `Context` instance serving as the global registry. Any state activated by `State.new()` outside an explicit context lands here - which is why a module-scope `Theme.new()` is findable app-wide with no Provider:
 
@@ -334,12 +334,12 @@ const theme = Theme.new();
 Context.root.get(Theme); // theme - and so does Theme.get(), anywhere
 ```
 
-[See singletons in action](/examples/composition/singletons).
+[See globals in action](/examples/composition/globals).
 
 > **Good to know:** <br />
-> Module-scope singletons persist across tests. `Context.root.pop()` between tests clears them - see the [testing guide](/docs/guides/testing).
+> Module-scope globals persist across tests. `Context.root.pop()` between tests clears them - see the [testing guide](/docs/guides/testing).
 
-### Singleton collision
+### Global collision
 
 Two **implicit** instances of the same type in root mutually evict at the contested ancestor:
 
@@ -349,7 +349,7 @@ const b = Sub.new();
 Context.root.get(Sub, false); // undefined - both evicted
 ```
 
-Read it as "implicit collision opts out of singleton" - if you create two, neither is *the* singleton. A third `Sub.new()` reclaims the now-empty slot.
+Read it as "implicit collision opts out of global lookup" - if you create two, neither is *the* global instance. A third `Sub.new()` reclaims the now-empty slot.
 
 Eviction is per-ancestor, so sibling subtypes only collide at their shared supertype:
 
@@ -383,7 +383,7 @@ ctx.get(Parent).foo = undefined;
 ctx.get(Foo); // the Bar instance - healed
 ```
 
-Root models "the global singleton"; scoped contexts model "candidates available here". Different jobs, different rules.
+Root models "the global instance"; scoped contexts model "candidates available here". Different jobs, different rules.
 
 <br />
 

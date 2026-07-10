@@ -255,7 +255,7 @@ function Header() {
 }
 ```
 
-> App-wide singletons don't even need the Provider - a module-scope `Theme.new()` registers into the root context, findable by `Theme.get()` from anywhere. [See it in the Playground.](/examples/composition/singletons)
+> App-wide globals don't even need the Provider - a module-scope `Theme.new()` registers into the root context, findable by `Theme.get()` from anywhere. [See it in the Playground.](/examples/composition/globals)
 
 Use `Component` instead when the owner needs to exist in the React tree. A `Boundary` may have little UI, but its Suspense/ErrorBoundary placement is the point. A `Toasts` root also belongs in the tree, but it should justify `render()` by injecting toast subcomponents beside the wrapped app.
 

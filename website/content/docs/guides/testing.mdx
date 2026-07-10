@@ -282,9 +282,9 @@ test('panel reads theme from parent', () => {
 });
 ```
 
-### Cleaning up singletons
+### Cleaning up globals
 
-Module-scope `State.new()` registers the instance into the global root context - that's the singleton pattern, and it's sticky. Without cleanup, a singleton created in one test file (or at module load) leaks into every test that follows. Reset the root between tests:
+Module-scope `State.new()` registers the instance into the global root context. Without cleanup, a global created in one test file (or at module load) leaks into every test that follows. Reset the root between tests:
 
 ```ts
 import { afterEach } from 'vitest';
@@ -293,7 +293,7 @@ import { Context } from '@expressive/mvc';
 afterEach(() => Context.root.pop());
 ```
 
-`pop()` removes every State registered in the root context and runs their cleanup callbacks. This library's own test suite does exactly this, globally. If your tests never touch singletons you won't miss it - the first time one does, you will.
+`pop()` removes every State registered in the root context and runs their cleanup callbacks. This library's own test suite does exactly this, globally. If your tests never touch globals you won't miss it - the first time one does, you will.
 
 > `Context` is also re-exported from `@expressive/react`, so no extra dependency either way.
 
