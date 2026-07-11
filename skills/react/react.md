@@ -75,8 +75,7 @@ class Counter extends State {
 }
 
 function App() {
-  // methods bound automatically, always prefer destructure
-  const { increment, count } = Counter.use();
+  const { count, increment } = Counter.use();
   return <button onClick={increment}>{count}</button>;
 }
 ```
@@ -85,6 +84,17 @@ function App() {
 - Component re-renders when any accessed property changes.
 - Instance is destroyed on unmount (context is popped, `set(null)` called).
 - Safe in React strict mode (handles double-mount correctly).
+- Always prefer destructuring `State.use()` / `State.get()`.
+- When the raw instance is needed, destructure `is` and alias it to the state concept (`is: counter`, `is: form`).
+- Nested observable reads are proxied and tracked automatically. Nested destructuring subscribes to child State fields; do not call `use(child)` when the child was reached through the parent proxy.
+
+```tsx
+const {
+  comment: {
+    value: comment,
+  },
+} = Counter.use();
+```
 
 ### Constructor arguments
 

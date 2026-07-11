@@ -133,6 +133,16 @@ function Child() {
 
 Use `use(subject)` for externally-owned observables or State instances. It returns a tracking proxy on the initial render, re-subscribes when `subject` is replaced, activates an unready observable, and does not destroy the subject on unmount.
 
+Always prefer destructuring `State.use()` / `State.get()`. If the raw instance is needed, destructure and alias `is` (`is: counter`). Nested observable reads are proxied and tracked automatically, so nested destructuring subscribes to child State fields; do not call `use(child)` when the child was reached through the parent proxy.
+
+```tsx
+const {
+  comment: {
+    value: comment,
+  },
+} = Counter.use();
+```
+
 ### Component Class
 
 A `Component` is a `State` that renders itself. It provides context automatically and supports suspense/error boundaries.
