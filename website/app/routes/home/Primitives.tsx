@@ -157,7 +157,7 @@ export class Primitives extends Component {
 
           <div
             ref={this.tabBar}
-            className={`sticky top-14 z-20 -mx-6 mb-10 overflow-hidden px-6 py-3 transition-colors [--more-panel-bg:color-mix(in_oklab,var(--color-fd-foreground)_2%,var(--color-fd-background))] [--tab-scroll-bg:color-mix(in_oklab,var(--color-fd-muted)_50%,transparent)] md:overflow-visible lg:-mx-[50px] lg:px-[50px] ${
+            className={`sticky top-14 z-20 mb-10 ml-[calc(50%-50vw)] w-screen overflow-hidden px-6 py-3 transition-colors [--more-panel-bg:color-mix(in_oklab,var(--color-fd-foreground)_2%,var(--color-fd-background))] [--tab-scroll-bg:color-mix(in_oklab,var(--color-fd-muted)_50%,transparent)] md:overflow-visible lg:px-[50px] ${
               this.tabsStuck
                 ? 'bg-(--more-panel-bg)'
                 : 'bg-transparent'
