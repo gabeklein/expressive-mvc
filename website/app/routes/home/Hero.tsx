@@ -23,7 +23,7 @@ export function Hero() {
           <p className="text-fd-muted-foreground max-w-xl lg:mr-5">
             Expressive MVC moves data, behavior, and lifecycle
             into a focused model. Components stay small, agent code stays
-            readable, and apps remain easy to build. The goal is fewer
+            readable, and apps remain easy to build at scale. The goal is fewer
             lines (and tokens) per feature, and a more pleasant DX.
           </p>
         </div>
@@ -255,7 +255,7 @@ class TypedComment extends State {
   type() {
     if (this.value || this.commentTimer) return;
 
-    const comment = '// Updates to values update components!';
+    const comment = '// Update values, update components!';
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       this.value = comment;
       return;
@@ -276,12 +276,14 @@ class TypedComment extends State {
 function CounterExample({ compact, count }: CounterExampleProps) {
   const { value } = TypedComment.use({ active: count > 0 });
 
-  const imports = compact
-    ? ''
-    : "import React from 'react';\n    import State from '@expressive/react';\n\n    ";
+  const imports =
+    "import React from 'react';\n    import State from '@expressive/react';\n\n    ";
   const increment = compact
     ? 'increment() { this.count++; }'
     : 'increment() {\n        this.count++;\n      }';
+  const destruct = compact
+    ? '{\n        count,\n        increment,\n      }'
+    : "{ count, increment }";
 
   const Example = code /*tsx*/`
     ${imports}class Counter extends State {
@@ -292,7 +294,7 @@ function CounterExample({ compact, count }: CounterExampleProps) {
     }
 
     function App() {
-      const { count, increment } = Counter.use();
+      const ${destruct} = Counter.use();
 
       return (
         <button onClick={increment}>
@@ -309,7 +311,7 @@ function CounterExample({ compact, count }: CounterExampleProps) {
         handler: /(?<=onClick=\{)increment/,
         assignment: /this\.count\+\+/,
         field: /count = \d+/,
-        destructure: /(?<=\{ )count/,
+        destructure: compact ? /count(?=,$)/ : /(?<=\{ )count/,
         jsx: /Clicked \{count\} times/,
       },
     },
