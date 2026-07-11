@@ -1,4 +1,4 @@
-import State, { ref } from '@expressive/react';
+import State, { Component, get, ref, set } from '@expressive/react';
 import type { CSSProperties } from 'react';
 import { Link } from 'react-router';
 import CopyPill from '@/components/CopyPill';
@@ -29,16 +29,7 @@ export function Hero() {
         </div>
 
         <div className="min-w-0 lg:row-span-2 lg:col-start-2">
-          <div className="hero-mobile-code code-nowrap md:hidden">
-            <MobileCounterExample />
-          </div>
-          <div className="code-nowrap hidden md:block">
-            <CounterExample />
-          </div>
-          <div className="mt-5 flex items-center justify-between gap-4">
-            <LiveCounter />
-            <Playground className="mt-0 mr-2 text-right" to="/examples/essentials/counter" />
-          </div>
+          <LiveCounterDemo />
         </div>
 
         <div className="lg:row-start-2 lg:col-start-1">
@@ -112,7 +103,47 @@ function Aurora() {
   );
 }
 
-class Counter extends State {
+class LiveCounterDemo extends Component {
+  count = 0;
+  compact = false;
+
+  responsive = ref<HTMLDivElement>(() => {
+    const media = window.matchMedia('(max-width: 767px)');
+    const update = () => (this.compact = media.matches);
+
+    update();
+    media.addEventListener('change', update);
+    return () => media.removeEventListener('change', update);
+  });
+
+  render(){
+    const {
+      count,
+      compact,
+      responsive,
+    } = this;
+
+    return (
+      <div ref={responsive}>
+        <div className={compact ? 'hero-mobile-code code-nowrap' : 'code-nowrap'}>
+          <CounterExample compact={compact} count={count} />
+        </div>
+        <div className="mt-5 flex items-center justify-between gap-4">
+          <ExampleButton />
+          <Playground className="mt-0 mr-2 text-right" to="/examples/essentials/counter" />
+        </div>
+      </div>
+    )
+  }
+}
+
+class ExampleButton extends Component {
+  demo = get(LiveCounterDemo, (demo) => {
+    return this.get(x => {
+      demo.count = x.count;
+    })
+  });
+
   count = 0;
   hue = 260;
   pulse = 0;
@@ -122,61 +153,89 @@ class Counter extends State {
     this.hue = Math.floor(Math.random() * 360);
     this.pulse++;
   }
+
+  render(){
+    const { count, hue, increment, pulse } = this;
+    const style = { '--click-hue': hue } as CSSProperties;
+
+    return (
+      <div className="shrink-0">
+        <button
+          onClick={increment}
+          style={style}
+          className="live-counter-button relative rounded-full border border-fd-border bg-fd-background/70 font-mono text-sm py-2 px-5 hover:bg-fd-muted transition-colors">
+          {pulse > 0 && <span key={pulse} aria-hidden className="live-counter-pulse" />}
+          <span className="relative">Clicked {count} times</span>
+        </button>
+      </div>
+    )
+  }
 }
 
-function LiveCounter() {
-  const { count, hue, increment, pulse } = Counter.use();
-  const style = { '--click-hue': hue } as CSSProperties;
+type CounterExampleProps = {
+  compact?: boolean;
+  count: number;
+};
 
-  return (
-    <div className="shrink-0">
-      <button
-        onClick={increment}
-        style={style}
-        className="live-counter-button relative rounded-full border border-fd-border bg-fd-background/70 font-mono text-sm py-2 px-5 hover:bg-fd-muted transition-colors">
-        {pulse > 0 && <span key={pulse} aria-hidden className="live-counter-pulse" />}
-        <span className="relative">Clicked {count} times</span>
-      </button>
-    </div>
-  );
-}
+class TypedComment extends State {
+  active = set(false, (yes) => yes && this.type());
 
-const CounterExample = code /*tsx*/`
-  import React from 'react';
-  import State from '@expressive/react';
+  value = '';
+  private commentTimer?: number;
 
-  class Counter extends State {
-    count = 0;
+  protected new() {
+    return () => window.clearTimeout(this.commentTimer);
+  }
 
-    increment() {
-      this.count++;
+  type() {
+    if (this.value || this.commentTimer) return;
+
+    const comment = '// Updates to values are events!';
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      this.value = comment;
+      return;
     }
+
+    let length = 0;
+    const type = () => {
+      this.value = comment.slice(0, ++length);
+      this.commentTimer = length < comment.length
+        ? window.setTimeout(type, 24)
+        : undefined;
+    };
+
+    this.commentTimer = window.setTimeout(type, 120);
   }
+}
 
-  function App() {
-    const { count, increment } = Counter.use();
+function CounterExample({ compact, count }: CounterExampleProps) {
+  const { value } = TypedComment.use({ active: count > 0 });
 
-    return (
-      <button onClick={increment}>
-        Clicked {count} times
-      </button>
-    );
-  }
-`;
+  const imports = compact
+    ? ''
+    : "import React from 'react';\n    import State from '@expressive/react';\n\n    ";
+  const increment = compact
+    ? 'increment() { this.count++; }'
+    : 'increment() {\n        this.count++;\n      }';
 
-const MobileCounterExample = code /*tsx*/`
-  class Counter extends State {
-    count = 0;
-    increment() { this.count++; }
-  }
+  const Example = code /*tsx*/`
+    ${imports}class Counter extends State {
+      count = ${count};
 
-  function App() {
-    const { count, increment } = Counter.use();
+      ${value}
+      ${increment}
+    }
 
-    return (
-      <button onClick={increment}>
-        Clicked {count} times
-      </button>
-    );
-  }
-`;
+    function App() {
+      const { count, increment } = Counter.use();
+
+      return (
+        <button onClick={increment}>
+          Clicked {count} times
+        </button>
+      );
+    }
+  `;
+
+  return Example();
+}
