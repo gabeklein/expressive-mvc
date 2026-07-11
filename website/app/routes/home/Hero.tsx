@@ -109,20 +109,20 @@ type TraceFrame = readonly [delay: number, step?: TraceStep, apply?: keyof Trace
 
 const traceTimeline = [
   [0, 'handler'],
-  [100, 'assignment'],
-  [45, undefined, 'field'],
-  [20, 'field'],
-  [65, 'destructure'],
-  [65, 'jsx'],
-  [45, undefined, 'output'],
-  [20, 'output'],
-  [70],
+  [70, 'assignment'],
+  [32, undefined, 'field'],
+  [14, 'field'],
+  [48, 'destructure'],
+  [48, 'jsx'],
+  [32, undefined, 'output'],
+  [14, 'output'],
+  [50],
 ] as const satisfies readonly TraceFrame[];
 
 const wait = (ms: number) => new Promise(resolve => window.setTimeout(resolve, ms));
 
 class UpdateTrace extends State {
-  step?: TraceStep;
+  root = ref<HTMLDivElement>();
   private run = { current: 0 };
 
   protected new() {
@@ -143,7 +143,22 @@ class UpdateTrace extends State {
       if (delay) await wait(delay);
       if (run !== this.run.current) return;
       if (apply) update[apply]();
-      this.step = step;
+      if (step) this.pulse(step);
+    }
+  }
+
+  private pulse(step: TraceStep) {
+    const selector = step === 'output'
+      ? '.live-counter-button'
+      : `.hero-trace-${step}`;
+
+    for (const element of this.root.current?.querySelectorAll<HTMLElement>(selector) ?? []) {
+      element.classList.remove('trace-pulse');
+      void element.offsetWidth;
+      element.classList.add('trace-pulse');
+      element.addEventListener('animationend', () => {
+        element.classList.remove('trace-pulse');
+      }, { once: true });
     }
   }
 }
@@ -163,18 +178,18 @@ class LiveCounterDemo extends Component {
   });
 
   render() {
-    const { count, compact, responsive, trace: { step } } = this;
+    const { count, compact, responsive, trace: { root } } = this;
 
     return (
       <div ref={responsive}>
-        <div
-          data-update-step={step}
-          className={compact ? 'hero-mobile-code code-nowrap' : 'code-nowrap'}>
-          <CounterExample compact={compact} count={count} />
-        </div>
-        <div className="mt-5 flex items-center justify-between gap-4">
-          <CounterButton />
-          <Playground className="mt-0 mr-2 text-right" to="/examples/essentials/counter" />
+        <div ref={root}>
+          <div className={compact ? 'hero-mobile-code code-nowrap' : 'code-nowrap'}>
+            <CounterExample compact={compact} count={count} />
+          </div>
+          <div className="mt-5 flex items-center justify-between gap-4">
+            <CounterButton />
+            <Playground className="mt-0 mr-2 text-right" to="/examples/essentials/counter" />
+          </div>
         </div>
       </div>
     );
@@ -202,7 +217,6 @@ class CounterButton extends Component {
   render() {
     const {
       count,
-      demo: { trace: { step } },
       hue,
       increment,
       pulse,
@@ -214,7 +228,6 @@ class CounterButton extends Component {
         <button
           onClick={increment}
           style={style}
-          data-update-trace={step === 'output' || undefined}
           className="live-counter-button relative rounded-full border border-fd-border bg-fd-background/70 font-mono text-sm py-2 px-5 hover:bg-fd-muted transition-colors">
           {pulse > 0 && <span key={pulse} aria-hidden className="live-counter-pulse" />}
           <span className="relative">Clicked {count} times</span>
@@ -242,7 +255,7 @@ class TypedComment extends State {
   type() {
     if (this.value || this.commentTimer) return;
 
-    const comment = '// Updates to values are events!';
+    const comment = '// Updates to values update components!';
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       this.value = comment;
       return;

@@ -113,20 +113,21 @@ figure[data-rehype-pretty-code-figure] pre code,
   animation: live-counter-pulse 420ms ease-out forwards;
 }
 
-[class*='hero-trace-'] {
+:is([class*='hero-trace-'], [class*='tip-trace-']) {
   display: inline-block;
-  padding: 2px 3px;
-  margin: -2px -3px;
+  padding: 2px 5px;
+  margin: -2px -5px;
   border-radius: 5px;
 }
 
-[data-update-step='handler'] .hero-trace-handler,
-[data-update-step='assignment'] .hero-trace-assignment,
-[data-update-step='field'] .hero-trace-field,
-[data-update-step='destructure'] .hero-trace-destructure,
-[data-update-step='jsx'] .hero-trace-jsx,
-.live-counter-button[data-update-trace] {
-  animation: hero-update-trace 70ms ease-out;
+.trace-pulse {
+  animation: hero-update-trace 240ms ease-out;
+}
+
+.trace-held {
+  color: white;
+  background-color: #4285f4;
+  box-shadow: 0 0 0 2px color-mix(in srgb, #4285f4 55%, transparent);
 }
 
 @keyframes hero-update-trace {
@@ -212,7 +213,8 @@ figure[data-rehype-pretty-code-figure] pre code,
   .marquee-track,
   .aurora,
   [class*='hero-trace-'],
-  .live-counter-button[data-update-trace],
+  [class*='tip-trace-'],
+  .trace-pulse,
   .live-counter-pulse {
     animation: none !important;
   }
