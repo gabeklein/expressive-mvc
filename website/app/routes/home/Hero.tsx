@@ -103,9 +103,55 @@ function Aurora() {
   );
 }
 
+type TraceStep = 'handler' | 'assignment' | 'field' | 'destructure' | 'jsx' | 'output';
+type TraceUpdate = { field: () => void; output: () => void };
+type TraceFrame = readonly [delay: number, step?: TraceStep, apply?: keyof TraceUpdate];
+
+const traceTimeline = [
+  [0, 'handler'],
+  [100, 'assignment'],
+  [45, undefined, 'field'],
+  [20, 'field'],
+  [65, 'destructure'],
+  [65, 'jsx'],
+  [45, undefined, 'output'],
+  [20, 'output'],
+  [70],
+] as const satisfies readonly TraceFrame[];
+
+const wait = (ms: number) => new Promise(resolve => window.setTimeout(resolve, ms));
+
+class UpdateTrace extends State {
+  step?: TraceStep;
+  private run = { current: 0 };
+
+  protected new() {
+    return () => {
+      this.run.current++;
+    };
+  }
+
+  async play(update: TraceUpdate) {
+    const run = ++this.run.current;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      update.field();
+      update.output();
+      return;
+    }
+
+    for (const [delay, step, apply] of traceTimeline) {
+      if (delay) await wait(delay);
+      if (run !== this.run.current) return;
+      if (apply) update[apply]();
+      this.step = step;
+    }
+  }
+}
+
 class LiveCounterDemo extends Component {
   count = 0;
   compact = false;
+  trace = new UpdateTrace();
 
   responsive = ref<HTMLDivElement>(() => {
     const media = window.matchMedia('(max-width: 767px)');
@@ -116,46 +162,51 @@ class LiveCounterDemo extends Component {
     return () => media.removeEventListener('change', update);
   });
 
-  render(){
-    const {
-      count,
-      compact,
-      responsive,
-    } = this;
+  render() {
+    const { count, compact, responsive, trace: { step } } = this;
 
     return (
       <div ref={responsive}>
-        <div className={compact ? 'hero-mobile-code code-nowrap' : 'code-nowrap'}>
+        <div
+          data-update-step={step}
+          className={compact ? 'hero-mobile-code code-nowrap' : 'code-nowrap'}>
           <CounterExample compact={compact} count={count} />
         </div>
         <div className="mt-5 flex items-center justify-between gap-4">
-          <ExampleButton />
+          <CounterButton />
           <Playground className="mt-0 mr-2 text-right" to="/examples/essentials/counter" />
         </div>
       </div>
-    )
+    );
   }
 }
 
-class ExampleButton extends Component {
-  demo = get(LiveCounterDemo, (demo) => {
-    return this.get(x => {
-      demo.count = x.count;
-    })
-  });
+class CounterButton extends Component {
+  demo = get(LiveCounterDemo);
 
   count = 0;
   hue = 260;
   pulse = 0;
+  private pendingCount = 0;
 
   increment() {
-    this.count++;
+    const count = ++this.pendingCount;
     this.hue = Math.floor(Math.random() * 360);
     this.pulse++;
+    this.demo.trace.play({
+      field: () => (this.demo.count = count),
+      output: () => (this.count = count),
+    });
   }
 
-  render(){
-    const { count, hue, increment, pulse } = this;
+  render() {
+    const {
+      count,
+      demo: { trace: { step } },
+      hue,
+      increment,
+      pulse,
+    } = this;
     const style = { '--click-hue': hue } as CSSProperties;
 
     return (
@@ -163,12 +214,13 @@ class ExampleButton extends Component {
         <button
           onClick={increment}
           style={style}
+          data-update-trace={step === 'output' || undefined}
           className="live-counter-button relative rounded-full border border-fd-border bg-fd-background/70 font-mono text-sm py-2 px-5 hover:bg-fd-muted transition-colors">
           {pulse > 0 && <span key={pulse} aria-hidden className="live-counter-pulse" />}
           <span className="relative">Clicked {count} times</span>
         </button>
       </div>
-    )
+    );
   }
 }
 
@@ -237,5 +289,16 @@ function CounterExample({ compact, count }: CounterExampleProps) {
     }
   `;
 
-  return Example();
+  return Example({
+    highlight: {
+      prefix: 'hero-trace',
+      targets: {
+        handler: /(?<=onClick=\{)increment/,
+        assignment: /this\.count\+\+/,
+        field: /count = \d+/,
+        destructure: /(?<=\{ )count/,
+        jsx: /Clicked \{count\} times/,
+      },
+    },
+  });
 }

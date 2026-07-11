@@ -1,12 +1,42 @@
 import { DynamicCodeBlock, type DynamicCodeblockProps } from 'fumadocs-ui/components/dynamic-codeblock';
 
-type Override = Partial<Omit<DynamicCodeblockProps, 'code'>>;
+type SnippetProps = Partial<Omit<DynamicCodeblockProps, 'code'>> & {
+  highlight?: { prefix: string; targets: Record<string, RegExp> };
+};
 
 export default function code(strings: TemplateStringsArray, ...values: unknown[]) {
   const code = dedent(String.raw({ raw: strings }, ...values));
-  return (props?: Override) => (
-    <DynamicCodeBlock lang="tsx" code={code} {...props} />
-  );
+  return ({ highlight, ...props }: SnippetProps = {}) => {
+    const decorations = highlight && Object.entries(highlight.targets).flatMap(([name, pattern]) => {
+      for (const [line, source] of code.split('\n').entries()) {
+        pattern.lastIndex = 0;
+        const match = pattern.exec(source);
+        if (match?.index === undefined) continue;
+        return [{
+          alwaysWrap: true,
+          start: { line, character: match.index },
+          end: { line, character: match.index + match[0].length },
+          properties: { class: `${highlight.prefix}-${name}` },
+        }];
+      }
+      return [];
+    });
+
+    return (
+      <DynamicCodeBlock
+        lang="tsx"
+        code={code}
+        {...props}
+        options={{
+          ...props.options,
+          decorations: [
+            ...(props.options?.decorations ?? []),
+            ...(decorations || []),
+          ],
+        }}
+      />
+    );
+  };
 }
 
 function dedent(s: string) {

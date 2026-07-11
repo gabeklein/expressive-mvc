@@ -113,6 +113,34 @@ figure[data-rehype-pretty-code-figure] pre code,
   animation: live-counter-pulse 420ms ease-out forwards;
 }
 
+[class*='hero-trace-'] {
+  display: inline-block;
+  padding: 2px 3px;
+  margin: -2px -3px;
+  border-radius: 5px;
+}
+
+[data-update-step='handler'] .hero-trace-handler,
+[data-update-step='assignment'] .hero-trace-assignment,
+[data-update-step='field'] .hero-trace-field,
+[data-update-step='destructure'] .hero-trace-destructure,
+[data-update-step='jsx'] .hero-trace-jsx,
+.live-counter-button[data-update-trace] {
+  animation: hero-update-trace 70ms ease-out;
+}
+
+@keyframes hero-update-trace {
+  0%, 35% {
+    color: white;
+    background-color: #4285f4;
+    box-shadow: 0 0 0 2px color-mix(in oklab, #4285f4 65%, transparent);
+  }
+  100% {
+    background-color: transparent;
+    box-shadow: 0 0 0 2px transparent;
+  }
+}
+
 @keyframes live-counter-pulse {
   to {
     opacity: 0;
@@ -183,6 +211,8 @@ figure[data-rehype-pretty-code-figure] pre code,
 @media (prefers-reduced-motion: reduce) {
   .marquee-track,
   .aurora,
+  [class*='hero-trace-'],
+  .live-counter-button[data-update-trace],
   .live-counter-pulse {
     animation: none !important;
   }
