@@ -32,7 +32,7 @@ export function ComponentSection() {
 
 type TipField = 'bill' | 'tipPercent';
 type TipStep = `${TipField}-input` | `${TipField}-field` |
-  'tip' | 'total' | 'destructure' | 'jsx' | 'output';
+  'tip' | 'total' | 'destructure' | 'jsx';
 
 class TipTrace extends State {
   root = ref<HTMLDivElement>();
@@ -82,8 +82,7 @@ class TipTrace extends State {
   }
 
   private pulse(step: TipStep) {
-    const selector = step === 'output' ? '.tip-output' : `.tip-trace-${step}`;
-    for (const element of this.root.current?.querySelectorAll<HTMLElement>(selector) ?? []) {
+    for (const element of this.root.current?.querySelectorAll<HTMLElement>(`.tip-trace-${step}`) ?? []) {
       element.classList.remove('trace-pulse');
       void element.offsetWidth;
       element.classList.add('trace-pulse');
@@ -173,7 +172,7 @@ class TipCalculator extends StateComponent {
               onPointerUp={() => settle('tipPercent')}
             />
           </label>
-          <span className="tip-output font-mono text-sm whitespace-nowrap basis-full text-center sm:basis-auto sm:text-left sm:ml-auto">
+          <span className="font-mono text-sm whitespace-nowrap basis-full text-center sm:basis-auto sm:text-left sm:ml-auto">
             tip {tip.toFixed(2)} · total {total.toFixed(2)}
           </span>
         </div>
