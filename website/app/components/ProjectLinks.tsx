@@ -2,7 +2,7 @@
 
 import type { LinkItemType } from 'fumadocs-ui/layouts/shared';
 import { useSearchContext } from 'fumadocs-ui/contexts/search';
-import { ExternalLink, Github, MessageCircle, Moon, Package, Search, Star, Sun } from 'lucide-react';
+import { ExternalLink, Github, MessageCircle, Moon, Package, Search, Sun } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
@@ -72,8 +72,7 @@ export function GitHubStars() {
     <span className="inline-flex items-center gap-1.5">
       <Github className="hidden size-4 sm:block" />
       <span>GitHub</span>
-      <span className="hidden items-center gap-1 rounded-full bg-fd-muted px-1.5 py-0.5 text-xs text-fd-muted-foreground sm:inline-flex">
-        <Star className="size-3 fill-current" />
+      <span className="hidden items-center rounded-full bg-fd-muted px-1.5 py-0.5 text-xs text-fd-muted-foreground sm:inline-flex">
         {formatCount(stars)}
       </span>
     </span>
