@@ -161,21 +161,8 @@ export default function Compare({ left, right }: CompareProps) {
           </div>
         </div>
 
-        <div className="compare-static relative">
-          <div
-            className={`transition-opacity duration-300 motion-reduce:transition-none ${
-              face ? 'absolute inset-x-0 top-0' : ''
-            }`}
-            style={{ opacity: face ? 0 : 1, pointerEvents: face ? 'none' : 'auto' }}>
-            <Left {...LN} />
-          </div>
-          <div
-            className={`transition-[clip-path] duration-300 motion-reduce:transition-none ${
-              face ? '' : 'absolute inset-x-0 top-0'
-            }`}
-            style={{ clipPath: face ? 'inset(0 0 0 0)' : 'inset(0 0 0 100%)' }}>
-            <Right {...LN} />
-          </div>
+        <div className="compare-static">
+          {face ? <Right {...LN} /> : <Left {...LN} />}
         </div>
       </div>
     </div>
