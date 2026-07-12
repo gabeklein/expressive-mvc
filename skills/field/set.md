@@ -6,7 +6,7 @@ import { set } from '@expressive/mvc';
 
 Versatile instruction for managed slots: defaults, placeholders, lazy/async factories, validation callbacks.
 
-All `set()` forms are **non-enumerable** - excluded from snapshots, `Object.keys()`, and `ref(this)` - which distinguishes them from plain assignment (`name = 'foo'`). The one exception is the [computed](#computed-reactive) form, which is enumerable to match a getter. Forms initialized with a factory are **read-only** unless paired with a setter callback; forms initialized with a value are writable by default.
+All `set()` forms are **non-enumerable** - hidden from `Object.keys()`, spread, and `ref(this)` - which distinguishes them from plain assignment (`name = 'foo'`). The one exception is the [computed](#computed-reactive) form, which is enumerable to match a getter. Forms initialized with a factory are **read-only** unless paired with a setter callback; forms initialized with a value are writable by default.
 
 ## Overloads
 
@@ -38,7 +38,7 @@ class MyState extends State {
 }
 ```
 
-Non-enumerable but writable. Unlike `name = 'default'`, excluded from snapshots and `ref(this)`.
+Non-enumerable but writable. Unlike `name = 'default'`, hidden from `Object.keys()` and `ref(this)`.
 
 ### Default Value with Callback
 

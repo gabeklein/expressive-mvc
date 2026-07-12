@@ -3,7 +3,7 @@ title: Expressive MVC
 description: A class-based state backbone for modern UI applications
 ---
 
-Expressive MVC is a reactive state library built around **plain classes**. It's designed to be the backbone of your application - the place where data, behavior, and lifecycle live - so that components can go back to doing what components are best at: describing UI.
+Expressive MVC is a reactive state library built around **plain classes**. It's designed to be the backbone of your application - the place where data, behavior, and lifecycle live - so components can go back to doing what they're best at: describing UI.
 
 ```tsx
 import State from '@expressive/react';
@@ -35,22 +35,24 @@ function CounterWidget() {
 
 No reducers. No selectors. No dependency arrays. No extra libraries for async, context, or computed values. Just a class and a hook.
 
+> Every concept in these docs has a live, editable counterpart in the [Playground](/examples) - when a page links one, try breaking it.
+
 <br />
 
 ## Why it exists
 
 Most React apps outgrow their state. What starts as `useState` sprawls into `useEffect` chains, `useCallback` memoization, custom hooks that return objects of hooks, then a store library, then middleware for async, then a query client. By the time a feature is "done", its logic is scattered across five different primitives - none of which are easy to test, reuse, or understand in isolation.
 
-Expressive takes a different approach: **put the logic back in one place**. Display-agnostic models live in `State` classes. Behavior that only exists for one rendered unit can live directly in a `Component` class. Either way, the values, methods, lifecycle, and rendering boundary are explicit instead of scattered across hooks.
+Expressive takes a different approach: **put the logic back in one place**. Display-agnostic models live in `State` classes. Behavior that only exists for one rendered unit can live directly in a `Component` class. Either way - values, methods, lifecycle, and rendering boundary are explicit, instead of scattered across hooks.
 
 <br />
 
 ## What you get from a single import
 
 - **Reactive properties** - plain class fields that components subscribe to automatically.
-- **Computed values** - derived properties that update when their inputs change.
-- **Async + Suspense** - declarative data loading with built-in Suspense integration.
-- **Context** - type-safe dependency injection; the class _is_ the context key.
+- **Computed values** - getters that update when the values they read change.
+- **Async + Suspense** - declarative data loading, integrated with Suspense out of the box.
+- **Context** - the class itself is the context key. Fully typed, no wiring.
 - **Lifecycle** - one `new()` hook for setup and teardown. No dependency arrays.
 - **Components** - the `Component` class lets state render itself, with built-in error boundaries and subcomponents.
 - **Testability** - state classes are plain objects. Test them without a renderer, without `act()`, without a DOM.
@@ -81,3 +83,5 @@ Expressive takes a different approach: **put the logic back in one place**. Disp
     description="Every method, instruction, and hook."
   />
 </Cards>
+
+> Building with an agent? `npx skills add gabeklein/expressive-mvc` gives it the full API reference as a skill.

@@ -1,31 +1,69 @@
 ---
 title: Utilities
-description: Framework-agnostic helpers - watch, listener, event, touch, Context, Observable
+description: Framework-agnostic helpers - Context, unbind, and the observable protocol
 ---
 
-These exports are framework-agnostic. They're available from both `@expressive/mvc` and `@expressive/react`.
+Everything on this page comes from `@expressive/mvc` - the core package under every adapter. Some of it re-exports through `@expressive/react` and some deliberately does not, so the import paths matter here.
+
+<br />
+
+## Where things live
+
+The core package has two entry points:
 
 ```ts
-import {
-  watch,
-  listener,
-  event,
-  observer,
-  touch,
+// main entry - State and friends
+import State, {
+  Component,
   Context,
-  Observable,
+  def,
+  get,
+  hot,
+  ref,
+  set,
   unbind
 } from '@expressive/mvc';
+
+// the observable protocol - a separate subpath
+import {
+  event,
+  listener,
+  observer,
+  Observer,
+  touch,
+  watch
+} from '@expressive/mvc/observable';
 ```
+
+`@expressive/react` re-exports the everyday surface and nothing else:
+
+```ts
+import State, {
+  Component,
+  Consumer,
+  Context,
+  def,
+  get,
+  hot,
+  Provider,
+  ref,
+  set,
+  use
+} from '@expressive/react';
+```
+
+Note what's absent: `unbind` and all of the observable helpers. A React project that wants `watch` or `listener` imports them from `@expressive/mvc/observable` directly - the core package is a dependency of the adapter, so it's already in your node_modules.
+
+> There is no `Observable` export. The protocol symbol is named `Observer`, on the `/observable` subpath. (That subpath also exports `pending` and `capture` - plumbing State itself uses; you'll probably never need them.)
 
 <br />
 
 ## `watch(target, callback)`
 
-Subscribe to a State's tracked values from outside a framework. Equivalent to `state.get(effect)` but as a free function.
+Run an effect against any observable, from anywhere. Same mechanism as `state.get(effect)`, as a free function.
 
 ```ts
-import { watch } from '@expressive/mvc';
+import { watch } from '@expressive/mvc/observable';
 
 const state = Counter.new();
 
@@ -33,65 +71,113 @@ const stop = watch(state, (current) => {
   console.log('count:', current.count);
 });
 
-state.count++;
+state.count++; // effect re-runs next microtask
 stop();
 ```
 
-Signature:
-
 ```ts
-function watch<T>(
+function watch<T extends object>(
   target: T,
   callback: Effect<T>,
   recursive?: boolean
 ): () => void;
-function watch<T>(
+
+function watch<T extends object>(
   target: T,
   callback: Effect<Required<T>>,
   requireValues: true
 ): () => void;
 ```
 
-Pass `requireValues: true` to throw on undefined tracked values - useful when the effect assumes all data is present.
+The callback receives a tracking proxy and the list of changed keys - reads through the proxy decide what the effect follows.
+
+- Runs immediately if the target is active; otherwise waits for activation.
+- Re-runs are batched per microtask, once per settled update.
+- Return a cleanup function: it's called with `true` before a re-run, `false` when the effect stops, `null` when the target is destroyed.
+- Return `null` to make the effect one-shot. A returned Promise is ignored, so async effects are fine.
+- Pass `true` as the third argument to require values - reading an `undefined` property then throws `Error: X.key is required in this context.`
 
 <br />
 
 ## `listener(target, callback, select?)`
 
-Low-level listener for an observable's event stream. Receives every signal (property updates, lifecycle events, custom events).
+The raw event stream underneath everything else. The callback receives every signal the target emits:
 
 ```ts
-import { listener } from '@expressive/mvc';
+import { listener } from '@expressive/mvc/observable';
 
-const stop = listener(state, (key, source) => {
+const stop = listener(state, (key) => {
   if (key === true) console.log('ready');
-  else if (key === false) console.log('batch settled');
+  else if (key === false) console.log('update settled');
   else if (key === null) console.log('destroyed');
   else console.log('event:', key);
 });
 ```
 
-Optionally filter by a specific signal or a set of signals.
+```ts
+function listener<T extends object>(
+  subject: T,
+  callback: (key: Signal) => (() => void) | null | void,
+  select?: Signal | Set<Signal>
+): () => boolean;
+```
+
+Signal values:
+
+- `string | number | symbol` - a property updated, or a custom event fired.
+- `true` - the instance is ready (activation).
+- `false` - a batch of updates has settled.
+- `null` - the instance is destroyed; listeners are cleared after this.
+
+Behavior worth knowing:
+
+- If the target is already active (and no `select` filter is given), the callback fires immediately with `true`.
+- Return `null` from the callback to unsubscribe.
+- Return a function to defer it until the current batch settles - the same function returned for several events in one batch runs only once.
+- Pass `select` (one signal or a `Set`) to filter which signals reach the callback.
+- The return value unsubscribes; it reports `true` if a listener was actually removed.
 
 <br />
 
 ## `event(target, key?, silent?)`
 
-Dispatch an event on a State manually. Equivalent to `state.set(key)` but available as a free function.
+Dispatch a signal manually.
 
 ```ts
-event(state, 'my-event');
-event(state, Symbol.for('refresh'));
+import { event } from '@expressive/mvc/observable';
+
+event(state, 'my-event');           // key event - same as state.set('my-event')
+event(state, Symbol.for('sync'));   // symbols make good custom events
+event(state);                       // ready event - what State.new() fires after construction
+event(state, null);                 // terminal - same as state.set(null)
 ```
+
+Pass `silent: true` to record a key into the current batch without notifying key listeners immediately.
+
+> `event(target)` with no key is the activation signal itself. This is exactly the difference between `new State()` and `State.new()` - the latter constructs, then calls `event(instance)`.
 
 <br />
 
 ## `touch(target, key, value?)`
 
-Mark a property as read while an observable is being watched. This is the low-level helper used by State properties and custom observable objects to support field-level subscriptions.
+Report a read to whichever effect is currently watching. This is how State properties register themselves for tracking - and how a plain class can join in.
 
 ```ts
-import { event, observer, touch } from '@expressive/mvc';
+function touch(from: object, key: any): void;
+function touch<T>(from: object, key: any, value?: T): T;
+```
+
+- Adds `key` to the active watcher's tracked set, then returns `value`.
+- If `value` is itself observable, returns a nested tracking proxy - deep tracking for free.
+- Under `requireValues`, an `undefined` value throws the "required in this context" error described above.
+- Outside any watcher, it's a no-op passthrough.
+
+### A custom observable
+
+Combine `touch`, `event` and `observer` to make any class participate in the event system:
+
+```ts
+import { event, observer, touch } from '@expressive/mvc/observable';
 
 class Counter {
   private value = 0;
@@ -110,49 +196,31 @@ const counter = new Counter();
 observer(counter, true);
 ```
 
-<br />
-
-## `Context`
-
-The context system that backs `Provider` and the `get` instruction.
-
-```ts
-import { Context } from '@expressive/mvc';
-
-const ctx = new Context({ AppState, UserState });
-const app = ctx.get(AppState);
-const child = ctx.push({ ChildState });
-child.pop();
-```
-
-| Method                     | Description                                    |
-| -------------------------- | ---------------------------------------------- |
-| `Context.root`             | Root context - global fallback                 |
-| `Context.get(s?)`          | Get the context for a given state              |
-| `ctx.get(Type)`            | Look up a state by type (upstream)             |
-| `ctx.set(input, forEach?)` | Register states in the context                 |
-| `ctx.push(input?)`         | Create a child context                         |
-| `ctx.pop()`                | Destroy this context and its registered states |
-
-Adapters can override `Context.get` to provide framework-specific context (as the React adapter does).
+Now `watch(counter, ...)` works, and so does React's [`use(counter)`](/docs/api/hooks#usesubject) hook. No State required. ✨
 
 <br />
 
-## `Observable`
+## `observer(target, create?)`
 
-Base type that `State` extends. You rarely need to interact with `Observable` directly - it's exposed mainly for tooling and advanced use cases.
+Fetch (or attach) the dispatch record behind an observable.
 
 ```ts
-import { Observable } from '@expressive/mvc';
+function observer(state: object, create: true): Observer;
+function observer(state: object, create?: boolean): Observer | undefined | null;
 ```
 
-`Observable` is also a unique symbol used as a protocol key on objects that participate in the event system.
+- Returns the live record for an observable object.
+- Returns `undefined` if the object was never observable.
+- Returns `null` if it has been destroyed.
+- `observer(obj, true)` opts a plain object into the event system; it throws if the object was already terminated.
+
+`Observer` is also exported - the unique symbol used as the protocol key on participating objects. Useful for tooling; rarely needed in application code.
 
 <br />
 
 ## `unbind(fn)`
 
-Return the original, unbound version of a method. Expressive auto-binds methods on first access; `unbind` gives you the raw function if you need it (for e.g. composing with other function wrappers).
+Get the original prototype function back from an auto-bound method.
 
 ```ts
 import { unbind } from '@expressive/mvc';
@@ -160,28 +228,167 @@ import { unbind } from '@expressive/mvc';
 const raw = unbind(state.someMethod);
 ```
 
+State auto-binds methods on first access, so you can destructure and pass them around freely. `unbind` reverses that - handy when you need identity comparison against the prototype, or want to re-wrap the raw function.
+
+- `state.get('someMethod')` already returns the unbound original, so often you don't need `unbind` at all.
+- Not exported by `@expressive/react` - import from `@expressive/mvc`.
+
 <br />
 
-## Re-exports
+## `Context`
 
-`@expressive/react` re-exports everything from `@expressive/mvc`:
+The hierarchical registry behind `Provider` and the `get` instruction. Every active State has a **home context**, assigned at activation, which decides where its `state.get(Type)` lookups originate.
 
 ```ts
-import State, {
-  Component,
-  Provider,
-  Consumer,
-  Context,
-  Observable,
-  def,
-  event,
-  get,
-  listener,
-  ref,
-  set,
-  unbind,
-  watch
-} from '@expressive/react';
+import { Context } from '@expressive/mvc';
+
+const ctx = new Context({ AppState, UserState });
+const app = ctx.get(AppState);
+
+const child = ctx.push({ ChildState });
+child.pop();
 ```
 
-So a React project never needs to import from `@expressive/mvc` directly.
+### Constructor forms
+
+```ts
+new Context();                        // empty
+new Context(parentContext);           // child of parent
+new Context(StateClass);              // create, register and activate a state
+new Context(stateInstance);           // register (and activate) an existing instance
+new Context({ a: A, b: B });          // several at once
+```
+
+### Methods
+
+```ts
+ctx.get(Type);                        // upstream lookup - throws if missing
+ctx.get(Type, false);                 // optional - undefined if missing
+ctx.get(Type, callback);              // upstream watch - returns unsubscribe
+ctx.get(Type, callback, true);        // downstream watch
+ctx.add(state, explicit?);            // register one instance (does not activate)
+ctx.set(inputs, forEach?);            // reconcile registered states with inputs
+ctx.push(inputs?);                    // create a child context
+ctx.pop();                            // tear down this context and descendants
+Context.get(state);                   // static - a state's home context
+Context.root;                         // global registry
+```
+
+- A failed `ctx.get(Type)` throws `Could not find ${Type} in context.`
+- `ctx.set()` accepts a class, an instance, or a map of either. Classes are constructed and activated; when inputs change, removed entries run their cleanup and instances the context created are destroyed. Instances you passed in are left alone.
+- `ctx.add(state, explicit?)` registers without activating. Explicit entries (`true`) bypass global eviction and win priority on lookup.
+- `ctx.pop()` recursively destroys descendant contexts and runs all cleanup.
+- Adapters may override `Context.get` - the React adapter returns the ambient React context when called with no argument.
+
+### Home context
+
+A state's home is recorded once, at activation, and is permanent.
+
+| Activation path                            | Home becomes     |
+| ------------------------------------------ | ---------------- |
+| `State.new()`                              | `Context.root`   |
+| `new Context(StateClass)`                  | that context     |
+| `new State()` then `new Context(instance)` | that context     |
+| `<Provider for={StateClass}>` (React)      | Provider context |
+
+> First-wins: once a state has a home, no later context can transfer ownership.
+
+### Construct vs activate
+
+The escape hatch for "create now, place later" is the difference between `new State()` and `State.new()`:
+
+```ts
+// .new() activates immediately - home is root, locked
+const a = MyState.new();
+new Context(a); // does NOT change a's home
+
+// new MyState() constructs without the activation event -
+// the first explicit Context claims it before init runs
+const b = new MyState();
+new Context(b); // b's home is this context
+```
+
+This matters in tests, and in any code which prepares a state before placing it in a context tree. (A plain-constructed instance can also be activated directly - `await state.set()` with no arguments does it.)
+
+### Child inheritance
+
+State-typed fields join their parent's home context at activation - children don't independently route to root:
+
+```ts
+class Parent extends State {
+  child = new Child();
+}
+
+const ctx = new Context(Parent);
+ctx.get(Child); // the child instance - registered in ctx, not root
+```
+
+Recursive: grandchildren inherit through their immediate parent. Reassigning a child field destroys the old child (if owned via `new Child()`) and registers the replacement in the same context; externally-assigned children are not destroyed on replacement.
+
+### Root context and globals
+
+`Context.root` is a regular `Context` instance serving as the global registry. Any state activated by `State.new()` outside an explicit context lands here - which is why a module-scope `Theme.new()` is findable app-wide with no Provider:
+
+```ts
+const theme = Theme.new();
+Context.root.get(Theme); // theme - and so does Theme.get(), anywhere
+```
+
+[See globals in action](/examples/composition/globals).
+
+> **Good to know:** <br />
+> Module-scope globals persist across tests. `Context.root.pop()` between tests clears them - see the [testing guide](/docs/guides/testing).
+
+### Global collision
+
+Two **implicit** instances of the same type in root mutually evict at the contested ancestor:
+
+```ts
+const a = Sub.new();
+const b = Sub.new();
+Context.root.get(Sub, false); // undefined - both evicted
+```
+
+Read it as "implicit collision opts out of global lookup" - if you create two, neither is *the* global instance. A third `Sub.new()` reclaims the now-empty slot.
+
+Eviction is per-ancestor, so sibling subtypes only collide at their shared supertype:
+
+```ts
+class SubA extends Base {}
+class SubB extends Base {}
+
+const a = SubA.new();
+const b = SubB.new();
+
+Context.root.get(Base, false); // undefined - contested at Base
+Context.root.get(SubA);        // a - unambiguous
+Context.root.get(SubB);        // b - unambiguous
+```
+
+Explicit registration (`new Context(state)`, `ctx.add(state, true)`, JSX `Provider`) bypasses eviction entirely; implicit and explicit entries coexist and explicit wins on lookup.
+
+### Ambiguity at non-root
+
+Scoped contexts use softer collision semantics: implicit candidates both stay registered, and a lookup at the shared ancestor returns `null` (ambiguous) rather than evicting. Removing one heals it:
+
+```ts
+class Parent extends State {
+  foo: Foo | undefined = new Foo();
+  bar = new Bar(); // Bar extends Foo
+}
+
+const ctx = new Context(Parent);
+ctx.get(Foo); // null - ambiguous
+ctx.get(Parent).foo = undefined;
+ctx.get(Foo); // the Bar instance - healed
+```
+
+Root models "the global instance"; scoped contexts model "candidates available here". Different jobs, different rules.
+
+<br />
+
+## See also
+
+- [Context guide](/docs/guides/context) - the React-facing surface: `Provider`, `get` instruction, patterns.
+- [State](/docs/api/state) - `set(callback)` and `get(effect)`, the instance-method forms of these helpers.
+- [Hooks](/docs/api/hooks) - `use(subject)` consumes custom observables in React.

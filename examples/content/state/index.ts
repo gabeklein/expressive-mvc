@@ -1,1 +1,1 @@
-export default ['refs', 'hot'];
+export default ['refs', 'nested'];

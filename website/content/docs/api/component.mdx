@@ -3,7 +3,7 @@ title: Component
 description: The Component class - every method, prop, and lifecycle hook
 ---
 
-`Component` extends `State` and works directly as a React component. It's a real React class component under the hood, so it integrates with error boundaries, devtools, and the React tree.
+`Component` extends `State` and works directly as a React component. It's a real React class component under the hood, so it integrates with error boundaries, devtools, refs, and the React tree.
 
 ```tsx
 import { Component } from '@expressive/react';
@@ -27,11 +27,13 @@ class Counter extends Component {
 
 Readonly. Every prop passed to the JSX element - state-derived props, render-declared props, and special props (`is`, `fallback`, `children`).
 
+`props` is itself observable: `this.set('props', callback)` fires whenever a render delivers new props, and effects reading `this.props` re-run with it.
+
 ### `this.fallback`
 
-`ReactNode`. Content displayed while the component or its children are suspended, and during error recovery. Can be set as a class field, updated inside `catch()`, or overridden by the JSX `fallback` prop.
+`ReactNode | false`. Content displayed while the component or its children are suspended, and during error recovery. Can be set as a class field, updated inside `catch()`, or overridden by the JSX `fallback` prop.
 
-Defaults to `null`.
+Defaults to `null` - nothing renders while suspended. Set `false` to opt out of the component's own Suspense boundary entirely; suspension then bubbles to the nearest ancestor boundary.
 
 <br />
 
@@ -90,20 +92,35 @@ Error boundary handler. Called when a child throws during render. While `catch()
 Component inherits the full State lifecycle. See [State](/docs/api/state) for details.
 
 - `new()` - one-shot setup, return cleanup.
-- `use(...props)` - called on every render, for bridging React hooks.
+- `catch(error)` - error boundary, above.
 - Destruction runs on unmount or `this.set(null)`.
+
+> A `use()` method never runs for a Component rendered as JSX - it belongs to the [`State.use()` hook path](/docs/api/hooks#with-a-use-method) only.
 
 <br />
 
-## Special JSX props
+## JSX props
 
-Every `Component` accepts these, regardless of state fields:
+Settable state fields become optional JSX props, applied to the instance on every render:
 
-| Prop       | Type                    | Description                                                |
-| ---------- | ----------------------- | ---------------------------------------------------------- |
-| `is`       | `(instance: T) => void` | Called once with the created instance                      |
-| `fallback` | `ReactNode`             | Overrides `this.fallback` for this instance                |
-| `children` | `ReactNode`             | Passed through unless `render()` is declared without param |
+```tsx
+<Counter count={5} />
+```
+
+A field passed on one render and omitted on the next is cleared - reset to `undefined`, not left at its previous value. Props are a live binding, not one-time seeds.
+
+### Special props
+
+Every `Component` also accepts these, regardless of state fields:
+
+| Prop       | Type                     | Description                                                          |
+| ---------- | ------------------------ | -------------------------------------------------------------------- |
+| `is`       | `(instance: T) => void`  | Called once with the created instance                                |
+| `ref`      | `Ref<T>`                 | Standard React ref - the instance after mount, `null` on unmount     |
+| `fallback` | `ReactNode \| false`     | Overrides `this.fallback`; `false` defers to an ancestor boundary    |
+| `children` | `ReactNode`              | Passed through unless `render()` is declared without a parameter     |
+
+`is` runs after props apply but **before** the `new()` lifecycle hook - so it may configure state that `new()` then observes. Use `ref` (object or callback, per React convention) for post-mount imperative access instead.
 
 <br />
 
@@ -137,7 +154,22 @@ class Dashboard extends Component {
 - Each usage subscribes independently to the parent instance.
 - Accept props like any React component.
 - Accessible via `Dashboard.get()` then `<dashboard.Sidebar />`.
-- Overridable at runtime and in subclasses.
+
+### Overriding a subcomponent
+
+A subclass swaps one out by assigning an instance field - the function receives the live instance as `this`:
+
+```tsx
+function CustomSidebar(this: MyDashboard) {
+  return <aside>{this.items.length} items</aside>;
+}
+
+class MyDashboard extends Dashboard {
+  Sidebar = CustomSidebar;
+}
+```
+
+Assignment also works at runtime (`instance.Sidebar = fn`), which triggers a refresh wherever it's rendered. This makes a behavior-complete base with placeholder subcomponents a plug-and-play kit for subclasses.
 
 <br />
 
@@ -146,14 +178,16 @@ class Dashboard extends Component {
 ```ts
 declare class Component extends State {
   readonly props: Component.Props<this>;
-  fallback: ReactNode;
+  fallback: Component.Node;
 
-  render(props?: {}): ReactNode;
+  render(props?: {}): Component.Node;
   catch?(error: Error): Promise<void> | void;
 }
 ```
 
 Props are inferred automatically from state fields plus any `render(props)` declaration.
+
+`Component.Node` is the host's element type - `ReactNode` once `@expressive/react` is loaded. In a host-agnostic package (one importing only `@expressive/mvc`), it falls back to `any` so un-annotated `render` overrides still type-check as JSX; annotate returns as `Component.Node` in library code meant to run under any adapter.
 
 <br />
 

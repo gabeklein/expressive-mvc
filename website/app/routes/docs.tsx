@@ -8,6 +8,7 @@ import {
 } from 'fumadocs-ui/layouts/docs/page';
 import { source } from '@/lib/source';
 import Logo from '@/components/Logo';
+import { docsComponents } from '@/components/docs/mdx';
 import docsMdxComponents from '@/components/DocsMdx';
 import {
   DocsSocialLinks,
@@ -46,7 +47,7 @@ const clientLoader = browserCollections.docs.createClientLoader({
         <DocsTitle>{frontmatter.title}</DocsTitle>
         <DocsDescription>{frontmatter.description}</DocsDescription>
         <DocsBody>
-          <Mdx components={docsMdxComponents} />
+          <Mdx components={{ ...docsMdxComponents, ...docsComponents }} />
         </DocsBody>
       </DocsPage>
     );
