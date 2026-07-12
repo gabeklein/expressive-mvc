@@ -19,10 +19,10 @@ const HOOK_ROWS = [
 export function Complicated() {
   return (
     <section className="overflow-hidden">
-      <div className="mx-auto max-w-4xl px-6 pt-12 md:pt-20">
-        <Reveal from="left">
-          <h2 className="font-display text-3xl md:text-5xl font-bold tracking-tight leading-none">
-            React has
+      <div className="mx-auto max-w-4xl px-6 pt-12 text-center md:pt-20">
+        <Reveal>
+          <h2 className="font-display whitespace-nowrap text-[clamp(1.4rem,6vw,3rem)] font-bold tracking-tight leading-none">
+            React has gotten complicated<span className="text-fd-primary">.</span>
           </h2>
         </Reveal>
       </div>
@@ -34,18 +34,10 @@ export function Complicated() {
       </div>
 
       <div className="mx-auto max-w-4xl px-6 pb-12 md:pb-20">
-        <Reveal from="right" delay={220}>
-          <h2 className="font-display text-3xl md:text-5xl font-bold tracking-tight leading-none text-right">
-            ...gotten complicated<span className="text-fd-primary">.</span>
-          </h2>
-        </Reveal>
-
-        <Reveal className="mt-10 md:mt-14 max-w-2xl mx-auto text-center">
+        <Reveal className="max-w-2xl mx-auto text-center">
           <p className="text-fd-muted-foreground text-lg leading-relaxed">
-            Every feature has a hook. They need to persist, derive, remember,
-            and refresh. Each concern is another hook, another dependency array,
-            another thing to drift. Logic that belongs together winds
-            up scattered and hard to follow.
+            Hooks accumulate with features. Their logic stays tied to React.
+            Wiring them makes components larger, tightly coupled, and harder to trace.
           </p>
         </Reveal>
       </div>

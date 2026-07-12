@@ -1,4 +1,4 @@
-import State, { ref } from '@expressive/react';
+import State, { Component, get, ref, set } from '@expressive/react';
 import type { CSSProperties } from 'react';
 import { Link } from 'react-router';
 import CopyPill from '@/components/CopyPill';
@@ -13,31 +13,23 @@ export function Hero() {
         <div className="min-w-0 lg:row-start-1">
           <h1 className="font-display tracking-tight mb-6">
             <span className="block whitespace-nowrap text-[clamp(1rem,4.7vw,1.4rem)] font-semibold leading-[1.05] text-fd-foreground/70">
-              Your state shouldn't live in components
+              Clean state management for React
             </span>
-            <span className="block mt-4 text-[clamp(2.2rem,10.5vw,3rem)] font-bold leading-[0.98] sm:text-5xl lg:leading-[1.05]">
-              <span className="block">It belongs to a</span>
-              <span className="block">class of its own</span>
+            <span className="block mt-4 text-[clamp(1.9rem,9.5vw,3rem)] font-bold leading-[0.98] sm:text-5xl lg:leading-[1.05]">
+              <span className="block whitespace-nowrap">More application,</span>
+              <span className="block whitespace-nowrap">for less code.</span>
             </span>
           </h1>
           <p className="text-fd-muted-foreground max-w-xl lg:mr-5">
-            With MVC, <code>.use()</code>{' '}
-            your State instead - data, behavior, lifecycle, and updates in one
-            place. Components read what they need; class itself does the rest.
+            Expressive MVC moves data, behavior, and lifecycle
+            into a focused model. Components stay small, agent code stays
+            readable, and apps remain easy to build at scale. The goal is fewer
+            lines (and tokens) per feature, and a more pleasant DX.
           </p>
         </div>
 
         <div className="min-w-0 lg:row-span-2 lg:col-start-2">
-          <div className="hero-mobile-code code-nowrap md:hidden">
-            <MobileCounterExample />
-          </div>
-          <div className="code-nowrap hidden md:block">
-            <CounterExample />
-          </div>
-          <div className="mt-5 flex items-center justify-between gap-4">
-            <LiveCounter />
-            <Playground className="mt-0 mr-2 text-right" to="/examples/essentials/counter" />
-          </div>
+          <LiveCounterDemo />
         </div>
 
         <div className="lg:row-start-2 lg:col-start-1">
@@ -58,8 +50,7 @@ export function Hero() {
             <CopyPill label="Ask your agent" command="npx skills add gabeklein/expressive-mvc" />
           </div>
           <p className="mx-auto mt-4 max-w-md text-center text-sm text-fd-muted-foreground lg:mx-0">
-            Drops into React you already have - not a framework, no
-            rewrite.
+            Drops into React you already have - not a framework, no rewrite.
           </p>
         </div>
       </div>
@@ -112,71 +103,217 @@ function Aurora() {
   );
 }
 
-class Counter extends State {
-  count = 0;
-  hue = 260;
-  pulse = 0;
+type TraceStep = 'handler' | 'assignment' | 'field' | 'destructure' | 'jsx' | 'output';
+type TraceUpdate = { field: () => void; output: () => void };
+type TraceFrame = readonly [delay: number, step?: TraceStep, apply?: keyof TraceUpdate];
 
-  increment() {
-    this.count++;
-    this.hue = Math.floor(Math.random() * 360);
-    this.pulse++;
+const traceTimeline = [
+  [0, 'handler'],
+  [70, 'assignment'],
+  [32, undefined, 'field'],
+  [14, 'field'],
+  [48, 'destructure'],
+  [48, 'jsx'],
+  [32, undefined, 'output'],
+  [14, 'output'],
+  [50],
+] as const satisfies readonly TraceFrame[];
+
+const wait = (ms: number) => new Promise(resolve => window.setTimeout(resolve, ms));
+
+class UpdateTrace extends State {
+  root = ref<HTMLDivElement>();
+  private run = { current: 0 };
+
+  protected new() {
+    return () => {
+      this.run.current++;
+    };
   }
-}
 
-function LiveCounter() {
-  const { count, hue, increment, pulse } = Counter.use();
-  const style = { '--click-hue': hue } as CSSProperties;
+  async play(update: TraceUpdate) {
+    const run = ++this.run.current;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      update.field();
+      update.output();
+      return;
+    }
 
-  return (
-    <div className="shrink-0">
-      <button
-        onClick={increment}
-        style={style}
-        className="live-counter-button relative rounded-full border border-fd-border bg-fd-background/70 font-mono text-sm py-2 px-5 hover:bg-fd-muted transition-colors">
-        {pulse > 0 && <span key={pulse} aria-hidden className="live-counter-pulse" />}
-        <span className="relative">Clicked {count} times</span>
-      </button>
-    </div>
-  );
-}
-
-const CounterExample = code /*tsx*/`
-  import React from 'react';
-  import State from '@expressive/react';
-
-  class Counter extends State {
-    count = 0;
-
-    increment() {
-      this.count++;
+    for (const [delay, step, apply] of traceTimeline) {
+      if (delay) await wait(delay);
+      if (run !== this.run.current) return;
+      if (apply) update[apply]();
+      if (step) this.pulse(step);
     }
   }
 
-  function App() {
-    const { count, increment } = Counter.use();
+  private pulse(step: TraceStep) {
+    const selector = step === 'output'
+      ? '.live-counter-button'
+      : `.hero-trace-${step}`;
+
+    for (const element of this.root.current?.querySelectorAll<HTMLElement>(selector) ?? []) {
+      element.classList.remove('trace-pulse');
+      void element.offsetWidth;
+      element.classList.add('trace-pulse');
+      element.addEventListener('animationend', () => {
+        element.classList.remove('trace-pulse');
+      }, { once: true });
+    }
+  }
+}
+
+class LiveCounterDemo extends Component {
+  count = 0;
+  compact = false;
+  trace = new UpdateTrace();
+
+  responsive = ref<HTMLDivElement>(() => {
+    const media = window.matchMedia('(max-width: 767px)');
+    const update = () => (this.compact = media.matches);
+
+    update();
+    media.addEventListener('change', update);
+    return () => media.removeEventListener('change', update);
+  });
+
+  render() {
+    const { count, compact, responsive, trace: { root } } = this;
 
     return (
-      <button onClick={increment}>
-        Clicked {count} times
-      </button>
+      <div ref={responsive}>
+        <div ref={root}>
+          <div className={compact ? 'hero-mobile-code code-nowrap' : 'code-nowrap'}>
+            <CounterExample compact={compact} count={count} />
+          </div>
+          <div className="mt-5 flex items-center justify-between gap-4">
+            <CounterButton />
+            <Playground className="mt-0 mr-2 text-right" to="/examples/essentials/counter" />
+          </div>
+        </div>
+      </div>
     );
   }
-`;
+}
 
-const MobileCounterExample = code /*tsx*/`
-  class Counter extends State {
-    count = 0;
-    increment() { this.count++; }
+class CounterButton extends Component {
+  demo = get(LiveCounterDemo);
+
+  count = 0;
+  hue = 260;
+  pulse = 0;
+  private pendingCount = 0;
+
+  increment() {
+    const count = ++this.pendingCount;
+    this.hue = Math.floor(Math.random() * 360);
+    this.pulse++;
+    this.demo.trace.play({
+      field: () => (this.demo.count = count),
+      output: () => (this.count = count),
+    });
   }
 
-  function App() {
-    const { count, increment } = Counter.use();
+  render() {
+    const {
+      count,
+      hue,
+      increment,
+      pulse,
+    } = this;
+    const style = { '--click-hue': hue } as CSSProperties;
 
     return (
-      <button onClick={increment}>
-        Clicked {count} times
-      </button>
+      <div className="shrink-0">
+        <button
+          onClick={increment}
+          style={style}
+          className="live-counter-button relative rounded-full border border-fd-border bg-fd-background/70 font-mono text-sm py-2 px-5 hover:bg-fd-muted transition-colors">
+          {pulse > 0 && <span key={pulse} aria-hidden className="live-counter-pulse" />}
+          <span className="relative">Clicked {count} times</span>
+        </button>
+      </div>
     );
   }
-`;
+}
+
+type CounterExampleProps = {
+  compact?: boolean;
+  count: number;
+};
+
+class TypedComment extends State {
+  active = set(false, (yes) => yes && this.type());
+
+  value = '';
+  private commentTimer?: number;
+
+  protected new() {
+    return () => window.clearTimeout(this.commentTimer);
+  }
+
+  type() {
+    if (this.value || this.commentTimer) return;
+
+    const comment = '// Update values, update components!';
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      this.value = comment;
+      return;
+    }
+
+    let length = 0;
+    const type = () => {
+      this.value = comment.slice(0, ++length);
+      this.commentTimer = length < comment.length
+        ? window.setTimeout(type, 24)
+        : undefined;
+    };
+
+    this.commentTimer = window.setTimeout(type, 120);
+  }
+}
+
+function CounterExample({ compact, count }: CounterExampleProps) {
+  const { value } = TypedComment.use({ active: count > 0 });
+
+  const imports =
+    "import React from 'react';\n    import State from '@expressive/react';\n\n    ";
+  const increment = compact
+    ? 'increment() { this.count++; }'
+    : 'increment() {\n        this.count++;\n      }';
+  const destruct = compact
+    ? '{\n        count,\n        increment,\n      }'
+    : "{ count, increment }";
+
+  const Example = code /*tsx*/`
+    ${imports}class Counter extends State {
+      count = ${count};
+
+      ${value}
+      ${increment}
+    }
+
+    function App() {
+      const ${destruct} = Counter.use();
+
+      return (
+        <button onClick={increment}>
+          Clicked {count} times
+        </button>
+      );
+    }
+  `;
+
+  return Example({
+    highlight: {
+      prefix: 'hero-trace',
+      targets: {
+        handler: /(?<=onClick=\{)increment/,
+        assignment: /this\.count\+\+/,
+        field: /count = \d+/,
+        destructure: compact ? /count(?=,$)/ : /(?<=\{ )count/,
+        jsx: /Clicked \{count\} times/,
+      },
+    },
+  });
+}

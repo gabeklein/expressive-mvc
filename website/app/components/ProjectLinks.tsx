@@ -2,22 +2,20 @@
 
 import type { LinkItemType } from 'fumadocs-ui/layouts/shared';
 import { useSearchContext } from 'fumadocs-ui/contexts/search';
-import { ExternalLink, Github, MessageCircle, Moon, Package, Search, Star, Sun } from 'lucide-react';
-import { useTheme } from 'next-themes';
+import { ExternalLink, Github, Search } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Link } from 'react-router';
 
 export const githubUrl = 'https://github.com/gabeklein/expressive-mvc';
 export const discordUrl = 'https://discord.gg/EBWC7HyTBd';
-export const reactNpmUrl = 'https://www.npmjs.com/package/@expressive/react';
-export const mvcNpmUrl = 'https://www.npmjs.com/package/@expressive/mvc';
 
-const fallbackStats = {
-  stars: 101,
-  mvcDownloads: 466,
-  reactDownloads: 212,
+type ProjectStats = {
+  stars?: number;
+  discordMembers?: number;
 };
+
+let statsRequest: Promise<ProjectStats> | undefined;
 
 function formatCount(value: number) {
   if (value >= 1000) return `${(value / 1000).toFixed(value >= 10000 ? 0 : 1)}k`;
@@ -25,37 +23,30 @@ function formatCount(value: number) {
 }
 
 function useProjectStats() {
-  const [stats, setStats] = useState(fallbackStats);
+  const [stats, setStats] = useState<ProjectStats>({});
 
   useEffect(() => {
     let cancelled = false;
 
-    async function load() {
-      const [repo, mvc, react] = await Promise.allSettled([
-        fetch('https://api.github.com/repos/gabeklein/expressive-mvc').then((res) => res.json()),
-        fetch('https://api.npmjs.org/downloads/point/last-week/@expressive/mvc').then((res) => res.json()),
-        fetch('https://api.npmjs.org/downloads/point/last-week/@expressive/react').then((res) => res.json()),
-      ]);
-
-      if (cancelled) return;
-
-      setStats({
+    statsRequest ??= Promise.allSettled([
+      fetch('https://api.github.com/repos/gabeklein/expressive-mvc').then((res) => res.json()),
+      fetch('/api/discord-stats').then((res) => res.json()),
+    ]).then(([repo, discord]) => {
+      return {
         stars:
           repo.status === 'fulfilled' && typeof repo.value.stargazers_count === 'number'
             ? repo.value.stargazers_count
-            : fallbackStats.stars,
-        mvcDownloads:
-          mvc.status === 'fulfilled' && typeof mvc.value.downloads === 'number'
-            ? mvc.value.downloads
-            : fallbackStats.mvcDownloads,
-        reactDownloads:
-          react.status === 'fulfilled' && typeof react.value.downloads === 'number'
-            ? react.value.downloads
-            : fallbackStats.reactDownloads,
-      });
-    }
+            : undefined,
+        discordMembers:
+          discord.status === 'fulfilled' && typeof discord.value.members === 'number'
+            ? discord.value.members
+            : undefined,
+      };
+    });
 
-    load().catch(() => {});
+    statsRequest.then((next) => {
+      if (!cancelled) setStats(next);
+    });
 
     return () => {
       cancelled = true;
@@ -72,38 +63,33 @@ export function GitHubStars() {
     <span className="inline-flex items-center gap-1.5">
       <Github className="hidden size-4 sm:block" />
       <span>GitHub</span>
-      <span className="hidden items-center gap-1 rounded-full bg-fd-muted px-1.5 py-0.5 text-xs text-fd-muted-foreground sm:inline-flex">
-        <Star className="size-3 fill-current" />
-        {formatCount(stars)}
-      </span>
-    </span>
-  );
-}
-
-export function NpmBadges() {
-  const { mvcDownloads, reactDownloads } = useProjectStats();
-
-  return (
-    <span className="inline-flex items-center gap-1.5">
-      <Package className="hidden size-4 sm:block" />
-      <span>npm</span>
-      <span className="hidden items-center gap-1 xl:inline-flex">
-        <span className="rounded-full bg-fd-muted px-1.5 py-0.5 text-xs text-fd-muted-foreground">
-          mvc {formatCount(mvcDownloads)}/wk
+      {stars !== undefined && (
+        <span className="hidden items-center rounded-full bg-fd-muted px-1.5 py-0.5 text-xs text-fd-muted-foreground lg:inline-flex">
+          {formatCount(stars)}
         </span>
-        <span className="rounded-full bg-fd-muted px-1.5 py-0.5 text-xs text-fd-muted-foreground">
-          react {formatCount(reactDownloads)}/wk
-        </span>
-      </span>
+      )}
     </span>
   );
 }
 
 export function DiscordLinkLabel() {
+  const { discordMembers } = useProjectStats();
+
   return (
     <span className="inline-flex items-center gap-1.5">
-      <MessageCircle className="hidden size-4 sm:block" />
+      <svg
+        aria-hidden="true"
+        viewBox="0 0 24 24"
+        fill="currentColor"
+        className="hidden size-4 sm:block">
+        <path d="M20.32 4.37a19.8 19.8 0 0 0-4.89-1.51 13.8 13.8 0 0 0-.63 1.28 18.3 18.3 0 0 0-5.58 0 12.6 12.6 0 0 0-.64-1.28 20 20 0 0 0-4.9 1.52C.58 9.05-.26 13.61.16 18.1a19.9 19.9 0 0 0 6 3.03 14.7 14.7 0 0 0 1.29-2.1 12.9 12.9 0 0 1-2.03-.98l.5-.39a14.2 14.2 0 0 0 12.17 0l.51.39c-.65.39-1.33.72-2.03.98.37.73.8 1.43 1.29 2.1a19.9 19.9 0 0 0 6-3.03c.5-5.2-.85-9.72-3.54-13.73ZM8.02 15.33c-1.18 0-2.16-1.08-2.16-2.42 0-1.33.96-2.42 2.16-2.42 1.21 0 2.18 1.1 2.16 2.42 0 1.34-.95 2.42-2.16 2.42Zm7.97 0c-1.19 0-2.16-1.08-2.16-2.42 0-1.33.95-2.42 2.16-2.42 1.21 0 2.17 1.1 2.15 2.42 0 1.34-.94 2.42-2.15 2.42Z" />
+      </svg>
       <span>Discord</span>
+      {discordMembers !== undefined && (
+        <span className="hidden rounded-full bg-fd-muted px-1.5 py-0.5 text-xs text-fd-muted-foreground xl:inline-flex">
+          {formatCount(discordMembers)}
+        </span>
+      )}
     </span>
   );
 }
@@ -133,11 +119,9 @@ export function MobileHeaderActions({ docs = true }: { docs?: boolean }) {
 
 export function MobileSearchActions() {
   const { enabled, setOpenSearch } = useSearchContext();
-  const { resolvedTheme, setTheme } = useTheme();
-  const nextTheme = resolvedTheme === 'dark' ? 'light' : 'dark';
 
   return (
-    <div className="flex items-center gap-1 sm:hidden">
+    <div className="flex items-center gap-1 md:hidden">
       {enabled && (
         <button
           type="button"
@@ -148,21 +132,39 @@ export function MobileSearchActions() {
           <Search className="size-4" />
         </button>
       )}
-      <button
-        type="button"
-        aria-label="Toggle theme"
-        onClick={() => setTheme(nextTheme)}
-        className="inline-flex size-8 items-center justify-center rounded-full text-fd-muted-foreground transition-colors hover:bg-fd-muted hover:text-fd-foreground">
-        <Sun className="size-4 dark:hidden" />
-        <Moon className="hidden size-4 dark:block" />
-      </button>
     </div>
   );
 }
 
-export const projectLinks: LinkItemType[] = [
+export function DocsSocialLinks() {
+  const links = [
+    { label: <DiscordLinkLabel />, url: discordUrl },
+    { label: <GitHubStars />, url: githubUrl },
+  ];
+
+  return (
+    <nav className="grid gap-0.5 pt-2">
+      {links.map(({ label, url }) => (
+        <a
+          key={url}
+          href={url}
+          target="_blank"
+          rel="noreferrer"
+          className="flex items-center rounded-lg p-2 text-fd-muted-foreground no-underline transition-colors hover:bg-fd-accent/50 hover:text-fd-accent-foreground/80">
+          {label}
+        </a>
+      ))}
+    </nav>
+  );
+}
+
+export const docsLinks: LinkItemType[] = [
   { text: 'Docs', url: '/docs', active: 'nested-url' },
   { text: 'Playground', url: '/examples', active: 'nested-url' },
+];
+
+export const projectLinks: LinkItemType[] = [
+  ...docsLinks,
   {
     type: 'button',
     text: <DiscordLinkLabel />,
@@ -174,13 +176,6 @@ export const projectLinks: LinkItemType[] = [
     type: 'button',
     text: <GitHubStars />,
     url: githubUrl,
-    external: true,
-    secondary: true,
-  },
-  {
-    type: 'button',
-    text: <NpmBadges />,
-    url: reactNpmUrl,
     external: true,
     secondary: true,
   },

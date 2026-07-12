@@ -5,7 +5,7 @@ import Playground from '@/components/Playground';
 import ScrollOverflowControls from '@/components/ScrollOverflowControls';
 import code from '@/components/Snippet';
 
-export class More extends Component {
+export class Primitives extends Component {
   hash = get(Hash);
 
   tab = 0;
@@ -144,19 +144,20 @@ export class More extends Component {
 
   render() {
     const { Active } = this;
+    const moleculesActive = Active === Molecules;
 
     return (
       <section ref={this.section} id="more" className="panel px-6 lg:px-[50px]">
         <div className="mx-auto max-w-(--content-width) py-16 md:py-24">
           <div className="max-w-2xl mx-auto text-center mb-4">
             <h2 className="font-display text-2xl md:text-3xl font-bold tracking-tight">
-              That and more, built right in.
+              All the basics, built right in.
             </h2>
           </div>
 
           <div
             ref={this.tabBar}
-            className={`sticky top-14 z-20 -mx-6 mb-10 overflow-hidden px-6 py-3 transition-colors [--more-panel-bg:color-mix(in_oklab,var(--color-fd-foreground)_2%,var(--color-fd-background))] [--tab-scroll-bg:color-mix(in_oklab,var(--color-fd-muted)_50%,transparent)] md:overflow-visible lg:-mx-[50px] lg:px-[50px] ${
+            className={`sticky top-14 z-20 mb-10 ml-[calc(50%-50vw)] w-screen overflow-hidden px-6 py-3 transition-colors [--more-panel-bg:color-mix(in_oklab,var(--color-fd-foreground)_2%,var(--color-fd-background))] [--tab-scroll-bg:color-mix(in_oklab,var(--color-fd-muted)_50%,transparent)] md:overflow-visible lg:px-[50px] ${
               this.tabsStuck
                 ? 'bg-(--more-panel-bg)'
                 : 'bg-transparent'
@@ -192,7 +193,10 @@ export class More extends Component {
           </div>
 
           <div ref={this.content}>
-            <Active />
+            <div className={moleculesActive ? undefined : 'hidden'}>
+              <Molecules />
+            </div>
+            {!moleculesActive && <Active />}
           </div>
         </div>
       </section>
@@ -205,7 +209,7 @@ function Tab({
   to,
   children,
 }: {
-  title: string;
+  title: ReactNode;
   to?: string;
   children: ReactNode;
 }) {
@@ -248,32 +252,43 @@ const InstructionsCode = code /*tsx*/`
   import State, { get, hot, ref, set } from '@expressive/react';
 
   class Profile extends State {
-    name = 'Ada';
+    first = 'Ada';
+    last = 'Lovelace';
 
-    // managed values, computed, async with suspense
-    user = set(async () => {});
+    // factory with Suspense if async
+    user = set(async () => fetchUser());
+
+    // validate or side-effect whenever assigned
+    email = set('', (next) => {
+      if (!next.includes('@')) throw false;
+    });
+
+    // computed field, in lieu of a getter
+    label = set(({ first, last, theme }) => {
+      return theme.format(first + ' ' + last);
+    });
 
     // another class instance from context
     theme = get(Theme);
 
-    // DOM nodes or mutable imperative values
-    input = ref<HTMLInputElement>((el) => {});
+    // a single DOM node or mutable imperative value
+    dialog = ref<HTMLDialogElement>();
+
+    // a ref proxy for form fields (inputs.first, inputs.last)
+    inputs = ref(this);
 
     // reactive object and array mutation
-    todos = hot([]);
-
-    get label() {
-      return this.theme.format(this.user.name);
-    }
+    filters = hot({ query: '', active: true });
+    todos = hot([] as string[]);
   }
 `;
 
 function Async() {
   return (
-    <Tab title="Async without ceremony." to="/examples/essentials/async">
+    <Tab title="Async without ceremony" to="/examples/essentials/async">
       <>
-        Accessing <code>set(async)</code> will thorw suspense until it
-        resolves. A <code>Component</code> can define its own{' '}
+        Accessing <code>set(async)</code> suspends until it resolves. A{' '}
+        <code>Component</code> can define its own{' '}
         <code>fallback</code> and even error boundary via{' '}
         <code>catch()</code> - no{' '}
         <code>isPending</code> flags, client to provide, or
@@ -315,7 +330,7 @@ const AsyncCode = code /*tsx*/`
 
 function Computed() {
   return (
-    <Tab title="Derive state with getters.">
+    <Tab title="Derived state with getters">
       <>
         Put the formula where the data lives. Getters are memoized and
         dependency-tracked, so render stays simple without{' '}
@@ -366,7 +381,7 @@ const GettersCode = code /*tsx*/`
 
 function Forms() {
   return (
-    <Tab title="Forms as just fields." to="/examples/apps/forms">
+    <Tab title="Forms from just fields" to="/examples/apps/forms">
       <>
         One field per input, one method for submit. A tiny base class you own
         binds the inputs - no <code>register</code>, resolvers,
@@ -418,7 +433,7 @@ const FormsCode = code /*tsx*/`
 function Molecules() {
   return (
     <Tab
-      title="Components customize by subclass."
+      title={<>Components customized <span className="whitespace-nowrap">by subclass</span></>}
       to="/examples/composition/subcomponents">
       <>
         A base owns structure and behavior; PascalCase subcomponents are seams a
@@ -478,10 +493,10 @@ function Singletons() {
       title="Global state with no setup."
       to="/examples/composition/singletons">
       <>
-        Create a State once with <code>.new()</code> and it
-        parks in global context. Any component reads it with{' '}
+        Create a State once with <code>.new()</code> and it parks in global
+        context. Any component can find it with{' '}
         <code>.get()</code> - app-wide session, theme, or
-        viewport with no store, no Provider, no prop drilling.
+        viewport with no store, Provider, or prop drilling.
       </>
       <SingletonsCode />
     </Tab>
@@ -502,7 +517,7 @@ const SingletonsCode = code /*tsx*/`
   // Creating outside components activates and parks in global context.
   Session.new();
 
-  // Component still reach for it with .get() - no Provider needed.
+  // Components still reach for it with .get() - no Provider needed.
   function Status() {
     const { user, login } = Session.get();
 
@@ -514,10 +529,10 @@ const SingletonsCode = code /*tsx*/`
 
 function Testing() {
   return (
-    <Tab title="Test the app, not the DOM.">
+    <Tab title="Testable logic, without the DOM.">
       <>
-        Technically, state and components are plain instances - 
-        create with{' '} <code>.new()</code>, call methods, assert on properties.
+        State and components are plain instances - create with{' '}
+        <code>.new()</code>, call methods, assert on properties.
         Test whole workflows with only <code>expect</code> -{" "}
         no <code>act()</code>, not even React.
       </>

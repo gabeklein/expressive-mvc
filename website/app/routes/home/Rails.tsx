@@ -7,7 +7,7 @@ const SHED = [
   'usehooks-ts', 'use-debounce',
 ];
 
-export function Turn() {
+export function Rails() {
   return (
     <section id="rails" className="panel px-6 lg:px-[50px]">
       <div className="mx-auto max-w-(--content-width) py-16 md:py-24">
@@ -19,14 +19,15 @@ export function Turn() {
             Rails for your React app.
           </h2>
           <p className="text-fd-muted-foreground text-lg md:text-xl">
-            Strong conventions replace a pile of opinions - a good feature
-            looks the same whether it came from you, your team, or an agent.
+            MVC covers stateful behavior you normally need a library for.
+            Build forms, tables, and modals on the same foundation -
+            install a specialist where it earns its place.
           </p>
         </div>
 
         <div className="mb-14">
-          <div className="text-xs uppercase tracking-widest text-fd-muted-foreground mb-4">
-            You stop reaching for
+          <div className="text-fd-muted-foreground mb-4">
+            With strong fundamentals, you stop reaching for
           </div>
           <div className="flex flex-wrap items-center gap-2.5 max-w-3xl">
             {SHED.map((name) => (
@@ -44,20 +45,20 @@ export function Turn() {
             <span className="text-fd-foreground/80">(Artificial)</span> Idiot-Proof.
           </h3>
           <p className="text-fd-muted-foreground text-lg">
-            The same structure keeps the models working in your codebase on
-            task - individual features and pages modularize for an agent to
-            skim and load as-needed.
+            Clear conventions mean a good feature looks the same, whether
+            written by you, your team, or an agent. Fewer one-off decisions
+            keep AI focused and on-task.
           </p>
         </div>
 
         <div className="grid gap-x-10 gap-y-8 md:grid-cols-2">
           <Point title="Dense business logic" delay={0}>
-            State, derived value, async methods, and lifecycle live together.
+            State, derived values, async, and lifecycle live together.
             Composition helps separate concerns into readable chunks.
           </Point>
-          <Point title="Fewer imports, less surface area." delay={100}>
-            Reach for the class before another hook, provider, or client
-            library. Removes bloat for people and your agents to know about.
+          <Point title="Type-safe as a rule" delay={100}>
+            Classes pair naturally with TypeScript and JSDoc, so editors
+            surface types and intent where the work is.
           </Point>
           <Point title="Less to trace when things break" delay={200}>
             No dependency arrays, stale closures, or complicated interactions.

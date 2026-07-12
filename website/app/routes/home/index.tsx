@@ -6,13 +6,14 @@ import { Background } from './Background';
 import { Benefits } from './Benefits';
 import { Comparison } from './Comparison';
 import { Complicated } from './Complicated';
+import { ComponentSection } from './Component';
 import { Context } from './Context';
 import { CTA } from './CTA';
 import { Footer } from './Footer';
 import { Hero } from './Hero';
-import { More } from './More';
-import { Turn } from './Turn';
-import { View } from './View';
+import { Primitives } from './Primitives';
+import { Product } from './Product';
+import { Rails } from './Rails';
 
 export const layoutOptions: BaseLayoutProps = {
   nav: { title: <Logo />, children: <MobileHeaderActions /> },
@@ -25,12 +26,14 @@ export function meta() {
     { title: 'Expressive MVC' },
     {
       name: 'description',
-      content: 'Class-based state for modern React applications',
+      content:
+        'Cleaner React state with smaller components and fewer lines per feature',
     },
     { property: 'og:title', content: 'Expressive MVC' },
     {
       property: 'og:description',
-      content: 'Class-based state for modern React applications',
+      content:
+        'Cleaner React state with smaller components and fewer lines per feature',
     },
     { property: 'og:image', content: '/brand/logo.png' },
     { name: 'twitter:card', content: 'summary' },
@@ -44,11 +47,12 @@ export default function Home() {
       <Background />
       <Hero />
       <Complicated />
+      <Product />
       <Comparison />
-      <Turn />
       <Context />
-      <View />
-      <More />
+      <ComponentSection />
+      <Rails />
+      <Primitives />
       <Benefits />
       <CTA />
       <Footer />

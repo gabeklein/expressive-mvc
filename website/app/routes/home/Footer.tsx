@@ -3,10 +3,8 @@ import { Icon } from '@/components/Logo';
 import {
   DiscordLinkLabel,
   GitHubStars,
-  NpmBadges,
   discordUrl,
   githubUrl,
-  reactNpmUrl,
 } from '@/components/ProjectLinks';
 
 const link = 'text-fd-muted-foreground no-underline hover:text-fd-foreground transition-colors';
@@ -31,9 +29,6 @@ export function Footer() {
           </a>
           <a className={link} href={discordUrl}>
             <DiscordLinkLabel />
-          </a>
-          <a className={link} href={reactNpmUrl}>
-            <NpmBadges />
           </a>
         </nav>
       </div>

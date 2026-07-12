@@ -113,11 +113,53 @@ figure[data-rehype-pretty-code-figure] pre code,
   animation: live-counter-pulse 420ms ease-out forwards;
 }
 
+:is([class*='hero-trace-'], [class*='tip-trace-']) {
+  display: inline-block;
+  padding: 2px 5px;
+  margin: -2px -5px;
+  border-radius: 5px;
+}
+
+.trace-pulse {
+  animation: hero-update-trace 240ms ease-out;
+}
+
+.trace-held {
+  color: white;
+  background-color: #4285f4;
+  box-shadow: 0 0 0 2px color-mix(in srgb, #4285f4 55%, transparent);
+}
+
+@keyframes hero-update-trace {
+  0%, 35% {
+    color: white;
+    background-color: #4285f4;
+    box-shadow: 0 0 0 2px color-mix(in oklab, #4285f4 65%, transparent);
+  }
+  100% {
+    background-color: transparent;
+    box-shadow: 0 0 0 2px transparent;
+  }
+}
+
 @keyframes live-counter-pulse {
   to {
     opacity: 0;
     transform: scale(1.18, 1.35);
   }
+}
+
+/* Prose h2 top margin: typography default is 2em (~3rem at the h2's size),
+   which reads as a large gap. Tighten it. */
+.prose h2 {
+  margin-top: 1.5em !important;
+}
+
+/* Mobile/tablet TOC popover: fumadocs clamps the open panel to 50vh, which
+   turns a long API page's contents into a tiny scroll window. Give it most
+   of the screen. Only present below xl, where the popover exists. */
+[data-toc-popover-content] {
+  max-height: 85dvh !important;
 }
 
 :root {
@@ -144,6 +186,95 @@ figure[data-rehype-pretty-code-figure] pre code,
   --color-fd-accent: hsla(220, 12%, 82%, 45%);
   --color-fd-accent-foreground: hsl(225, 10%, 10%);
   --color-fd-ring: hsl(220, 8%, 56%);
+}
+
+@media (min-width: 40rem) {
+  #nd-nav nav > div:has(> [data-search-full]) {
+    display: flex;
+  }
+
+  #nd-nav nav > ul:has(button[aria-label='Toggle Menu']) {
+    display: none;
+  }
+
+  #nd-nav [data-search-full] {
+    order: 2;
+  }
+
+  #nd-nav [data-theme-toggle] {
+    order: 3;
+  }
+}
+
+@media (min-width: 40rem) and (max-width: 63.999rem) {
+  #nd-nav a:is(
+    [href='https://discord.gg/EBWC7HyTBd'],
+    [href='https://github.com/gabeklein/expressive-mvc']
+  ) {
+    width: 2.25rem;
+    height: 2.25rem;
+    justify-content: center;
+    border-radius: 9999px;
+    background-color: color-mix(in oklab, var(--color-fd-secondary) 50%, transparent);
+    padding: 0;
+  }
+
+  #nd-nav a:is(
+    [href='https://discord.gg/EBWC7HyTBd'],
+    [href='https://github.com/gabeklein/expressive-mvc']
+  ) > span > span {
+    display: none;
+  }
+
+  #nd-nav [data-search-full] {
+    width: 2.25rem;
+    height: 2.25rem;
+    flex: none;
+    justify-content: center;
+    gap: 0;
+    padding: 0.375rem;
+    font-size: 0;
+  }
+
+  #nd-nav [data-search-full] > div {
+    display: none;
+  }
+}
+
+@media (min-width: 64rem) {
+  #nd-nav a:is(
+    [href='https://discord.gg/EBWC7HyTBd'],
+    [href='https://github.com/gabeklein/expressive-mvc']
+  ) {
+    height: 2.25rem;
+    border-radius: 9999px;
+    background-color: color-mix(in oklab, var(--color-fd-secondary) 50%, transparent);
+    padding: 0.375rem 0.625rem;
+  }
+}
+
+@media (max-width: 39.999rem) {
+  #nd-nav .fd-scroll-container a:is(
+    [href='https://discord.gg/EBWC7HyTBd'],
+    [href='https://github.com/gabeklein/expressive-mvc']
+  ) {
+    height: 2.25rem;
+    border-radius: 9999px;
+    background-color: color-mix(in oklab, var(--color-fd-secondary) 50%, transparent);
+    padding: 0.375rem 0.625rem;
+  }
+
+  #nd-nav .fd-scroll-container a:is(
+    [href='https://discord.gg/EBWC7HyTBd'],
+    [href='https://github.com/gabeklein/expressive-mvc']
+  ) > span > svg {
+    display: block;
+  }
+}
+
+#nd-sidebar [data-theme-toggle] {
+  margin-inline-start: 0.5rem;
+  margin-block-start: 0.5rem;
 }
 
 /* Opt-in tint: content sections tagged `panel` alternate; hero/marquee stay clear. */
@@ -183,6 +314,9 @@ figure[data-rehype-pretty-code-figure] pre code,
 @media (prefers-reduced-motion: reduce) {
   .marquee-track,
   .aurora,
+  [class*='hero-trace-'],
+  [class*='tip-trace-'],
+  .trace-pulse,
   .live-counter-pulse {
     animation: none !important;
   }
