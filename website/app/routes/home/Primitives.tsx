@@ -151,7 +151,7 @@ export class Primitives extends Component {
         <div className="mx-auto max-w-(--content-width) py-16 md:py-24">
           <div className="max-w-2xl mx-auto text-center mb-4">
             <h2 className="font-display text-2xl md:text-3xl font-bold tracking-tight">
-              The primitives you need, built right in.
+              All the basics, built right in.
             </h2>
           </div>
 
@@ -209,7 +209,7 @@ function Tab({
   to,
   children,
 }: {
-  title: string;
+  title: ReactNode;
   to?: string;
   children: ReactNode;
 }) {
@@ -433,7 +433,7 @@ const FormsCode = code /*tsx*/`
 function Molecules() {
   return (
     <Tab
-      title="Components customized by subclass"
+      title={<>Components customized <span className="whitespace-nowrap">by subclass</span></>}
       to="/examples/composition/subcomponents">
       <>
         A base owns structure and behavior; PascalCase subcomponents are seams a

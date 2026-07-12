@@ -47,7 +47,7 @@ export function Rails() {
           <p className="text-fd-muted-foreground text-lg">
             Clear conventions mean a good feature looks the same, whether
             written by you, your team, or an agent. Fewer one-off decisions
-            keep agents focused and on-task.
+            keep AI focused and on-task.
           </p>
         </div>
 
