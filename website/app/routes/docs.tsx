@@ -18,6 +18,7 @@ import {
 } from '@/components/ProjectLinks';
 import browserCollections from 'fumadocs-mdx:collections/browser';
 import { useFumadocsLoader } from 'fumadocs-core/source/client';
+import InlineEditor from '@/components/docs/InlineEditor';
 
 const layoutOptions: Omit<DocsLayoutProps, 'tree'> = {
   nav: { title: <Logo />, children: <MobileHeaderActions docs={false} /> },
@@ -60,6 +61,7 @@ export default function Page({ loaderData }: Route.ComponentProps) {
   return (
     <DocsLayout {...layoutOptions} tree={pageTree}>
       {clientLoader.useContent(loaderData.path)}
+      <InlineEditor />
     </DocsLayout>
   );
 }
