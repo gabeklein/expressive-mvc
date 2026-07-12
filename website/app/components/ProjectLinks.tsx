@@ -10,12 +10,12 @@ import { Link } from 'react-router';
 export const githubUrl = 'https://github.com/gabeklein/expressive-mvc';
 export const discordUrl = 'https://discord.gg/EBWC7HyTBd';
 
-const fallbackStats = {
-  stars: 101,
-  discordMembers: 4,
+type ProjectStats = {
+  stars?: number;
+  discordMembers?: number;
 };
 
-let statsRequest: Promise<typeof fallbackStats> | undefined;
+let statsRequest: Promise<ProjectStats> | undefined;
 
 function formatCount(value: number) {
   if (value >= 1000) return `${(value / 1000).toFixed(value >= 10000 ? 0 : 1)}k`;
@@ -23,7 +23,7 @@ function formatCount(value: number) {
 }
 
 function useProjectStats() {
-  const [stats, setStats] = useState(fallbackStats);
+  const [stats, setStats] = useState<ProjectStats>({});
 
   useEffect(() => {
     let cancelled = false;
@@ -36,11 +36,11 @@ function useProjectStats() {
         stars:
           repo.status === 'fulfilled' && typeof repo.value.stargazers_count === 'number'
             ? repo.value.stargazers_count
-            : fallbackStats.stars,
+            : undefined,
         discordMembers:
           discord.status === 'fulfilled' && typeof discord.value.members === 'number'
             ? discord.value.members
-            : fallbackStats.discordMembers,
+            : undefined,
       };
     });
 
@@ -63,9 +63,11 @@ export function GitHubStars() {
     <span className="inline-flex items-center gap-1.5">
       <Github className="hidden size-4 sm:block" />
       <span>GitHub</span>
-      <span className="hidden items-center rounded-full bg-fd-muted px-1.5 py-0.5 text-xs text-fd-muted-foreground lg:inline-flex">
-        {formatCount(stars)}
-      </span>
+      {stars !== undefined && (
+        <span className="hidden items-center rounded-full bg-fd-muted px-1.5 py-0.5 text-xs text-fd-muted-foreground lg:inline-flex">
+          {formatCount(stars)}
+        </span>
+      )}
     </span>
   );
 }
@@ -83,9 +85,11 @@ export function DiscordLinkLabel() {
         <path d="M20.32 4.37a19.8 19.8 0 0 0-4.89-1.51 13.8 13.8 0 0 0-.63 1.28 18.3 18.3 0 0 0-5.58 0 12.6 12.6 0 0 0-.64-1.28 20 20 0 0 0-4.9 1.52C.58 9.05-.26 13.61.16 18.1a19.9 19.9 0 0 0 6 3.03 14.7 14.7 0 0 0 1.29-2.1 12.9 12.9 0 0 1-2.03-.98l.5-.39a14.2 14.2 0 0 0 12.17 0l.51.39c-.65.39-1.33.72-2.03.98.37.73.8 1.43 1.29 2.1a19.9 19.9 0 0 0 6-3.03c.5-5.2-.85-9.72-3.54-13.73ZM8.02 15.33c-1.18 0-2.16-1.08-2.16-2.42 0-1.33.96-2.42 2.16-2.42 1.21 0 2.18 1.1 2.16 2.42 0 1.34-.95 2.42-2.16 2.42Zm7.97 0c-1.19 0-2.16-1.08-2.16-2.42 0-1.33.95-2.42 2.16-2.42 1.21 0 2.17 1.1 2.15 2.42 0 1.34-.94 2.42-2.15 2.42Z" />
       </svg>
       <span>Discord</span>
-      <span className="hidden rounded-full bg-fd-muted px-1.5 py-0.5 text-xs text-fd-muted-foreground xl:inline-flex">
-        {formatCount(discordMembers)}
-      </span>
+      {discordMembers !== undefined && (
+        <span className="hidden rounded-full bg-fd-muted px-1.5 py-0.5 text-xs text-fd-muted-foreground xl:inline-flex">
+          {formatCount(discordMembers)}
+        </span>
+      )}
     </span>
   );
 }
