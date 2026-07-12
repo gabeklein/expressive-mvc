@@ -1,6 +1,5 @@
 {
   "lockfileVersion": 1,
-  "configVersion": 0,
   "workspaces": {
     "": {
       "name": "expressive-mvc",
@@ -34,7 +33,7 @@
     },
     "packages/mvc": {
       "name": "@expressive/mvc",
-      "version": "0.80.0",
+      "version": "0.80.1",
       "devDependencies": {
         "@types/node": "^18.19.0",
         "tsdown": "^0.20.1",
