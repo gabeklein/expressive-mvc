@@ -35,6 +35,9 @@ const GETTERS = new WeakMap<Function, Map<string, () => unknown>>();
 /** Stale flags for compute closures awaiting refresh on next access. */
 const STALE = new WeakSet<() => void>();
 
+/** States sealed read-only (e.g. during server render). Value tracks keys already warned about. */
+const SEALED = new WeakMap<State, Set<string>>();
+
 declare namespace State {
   /** Any type of State, using own class constructor as its identifier. */
   type Extends<T extends State = State> = (abstract new (...args: any[]) => T) &
@@ -896,6 +899,25 @@ function update<T>(
     );
   }
 
+  const warned = SEALED.get(state);
+
+  if (warned && !silent) {
+    const at = String(key);
+
+    if (
+      !warned.has(at) &&
+      typeof process !== 'undefined' &&
+      process.env.NODE_ENV !== 'production'
+    ) {
+      warned.add(at);
+      console.warn(
+        `Ignored write to ${state}.${at} - this State is read-only during server render. Provide it per-request (e.g. via Provider) instead of relying on the global root.`
+      );
+    }
+
+    return false;
+  }
+
   const store = STORE.get(state)!;
 
   if (key in store && value === store[key]) return false;
@@ -905,6 +927,18 @@ function update<T>(
   if (!silent) event(state, key);
 
   return true;
+}
+
+/**
+ * Mark a state read-only. Value-carrying writes are squashed (a no-op with a
+ * dev warning) while reads, silent internal writes (computed memoization), and
+ * context membership are preserved. Used to freeze root-registered states
+ * during a server render, where the shared instance must not accept per-request
+ * mutation. Idempotent.
+ */
+function seal(state: State) {
+  const self = state.is;
+  if (!SEALED.has(self)) SEALED.set(self, new Set());
 }
 
 /** Random alphanumberic of length 6; always starts with a letter. */
@@ -930,4 +964,4 @@ function parent(child: State, value?: State | null) {
   return PARENT.get(child);
 }
 
-export { event, unbind, State, parent, STORE, uid, access, update, apply, compute };
+export { event, unbind, State, parent, STORE, uid, access, update, apply, compute, seal };

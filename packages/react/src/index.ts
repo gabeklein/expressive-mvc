@@ -1,4 +1,4 @@
-import { Component } from '@expressive/mvc';
+import { Component, Context } from '@expressive/mvc';
 import {
   createContext,
   createElement,
@@ -35,6 +35,11 @@ Object.assign(Runtime, {
     '_reactInternalInstance'
   ]
 });
+
+// No DOM implies a server render, where the shared root context is reused
+// across requests; seal root-registered states so they cannot accept
+// per-request mutation and bleed between them.
+Context.sealing = typeof window === 'undefined';
 
 export { State, State as default, use, Consumer, Provider } from './adapter';
 export { Component, Context, def, get, ref, set, hot } from '@expressive/mvc';

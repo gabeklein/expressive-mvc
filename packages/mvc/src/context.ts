@@ -1,5 +1,5 @@
 import { listener } from "./observable";
-import { event, State, uid } from "./state";
+import { event, seal, State, uid } from "./state";
 
 const LOOKUP = new WeakMap<State, Context>();
 let ROOT: Context;
@@ -19,6 +19,13 @@ declare namespace Context {
 }
 
 class Context {
+  /**
+   * When set, states registered to the root context are sealed read-only on
+   * activation. Adapters enable this during a server render, where the shared
+   * root is reused across requests and must not accept per-request mutation.
+   */
+  static sealing = false;
+
   static get root(): Context {
     return ROOT ??= new Context();
   }
@@ -220,6 +227,8 @@ class Context {
     const { cleanup, provide } = this;
     const root = this === Context.root;
     const TT: State.Extends[] = [];
+
+    if (root && Context.sealing) seal(I);
 
     function conflict(T: State.Extends) {
       const entries = provide.get(T);
