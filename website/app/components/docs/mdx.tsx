@@ -8,11 +8,10 @@ const LazyPlayground = lazy(() => import('./Playground'));
 
 interface CompareProps {
   labels: string[];
-  wide?: boolean;
   children: React.ReactNode;
 }
 
-export function Compare({ labels, wide, children }: CompareProps) {
+export function Compare({ labels, children }: CompareProps) {
   const panels = Children.toArray(children).filter(isValidElement);
   const sides = panels.map((node, i) => ({
     label: labels[i] ?? `#${i + 1}`,
@@ -24,7 +23,7 @@ export function Compare({ labels, wide, children }: CompareProps) {
 
   return (
     <div className="not-prose my-6">
-      <BaseCompare stacked={!wide} left={sides[0]} right={sides.slice(1)} />
+      <BaseCompare left={sides[0]} right={sides.slice(1)} />
     </div>
   );
 }
