@@ -5,7 +5,7 @@ export function Product() {
   return (
     <section id="product" className="panel px-6 lg:px-[50px]">
       <div className="mx-auto grid max-w-(--content-width) gap-12 py-16 md:py-24 xl:grid-cols-[minmax(26rem,0.7fr)_minmax(0,1.3fr)] xl:gap-12">
-        <div className="max-w-2xl xl:self-center">
+        <div className="mx-auto max-w-2xl text-center xl:self-center">
           <div className="mb-3 text-xs uppercase tracking-widest text-fd-primary">
             What Expressive adds
           </div>
@@ -20,7 +20,7 @@ export function Product() {
           </p>
         </div>
 
-        <div className="grid grid-cols-2 max-w-180 gap-x-5 gap-y-8 sm:gap-x-8">
+        <div className="mx-auto grid w-full max-w-180 grid-cols-2 gap-x-5 gap-y-8 sm:gap-x-8">
           <Point title="Smaller components" illustration={<SmallerComponents />} delay={0}>
             Focus on the display logic, not coordinating features.
           </Point>

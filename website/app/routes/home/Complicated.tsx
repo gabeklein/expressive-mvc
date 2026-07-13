@@ -37,7 +37,7 @@ export function Complicated() {
         <Reveal className="max-w-2xl mx-auto text-center">
           <p className="text-fd-muted-foreground text-lg leading-relaxed">
             Hooks accumulate with features. Their logic stays tied to React.
-            Wiring them makes components larger, tightly coupled, and hard to trace.
+            Wiring them makes components larger, tightly coupled, and difficult to trace.
           </p>
         </Reveal>
       </div>

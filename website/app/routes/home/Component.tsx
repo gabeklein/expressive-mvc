@@ -17,8 +17,8 @@ export function ComponentSection() {
             destructure <code>this</code> as you would use hook.
           </p>
           <p className="text-fd-muted-foreground text-lg">
-            A Component is its own Provider too.
-            Children can pull from it with zero prop drilling.
+            A Component is its own Provider too,
+            accessible to children with no prop drilling.
           </p>
         </div>
 

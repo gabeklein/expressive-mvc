@@ -236,7 +236,7 @@ function Tab({
 
 function Instructions() {
   return (
-    <Tab title="Fields with built-in behavior.">
+    <Tab title="Fields with special behavior.">
       <>
         Instructions are property initializers with runtime behavior. You still
         read them like fields; the initializer decides what kind of field it is.
@@ -291,8 +291,7 @@ function Async() {
         <code>Component</code> can define its own{' '}
         <code>fallback</code> and even error boundary via{' '}
         <code>catch()</code> - no{' '}
-        <code>isPending</code> flags, client to provide, or
-        cache keys.
+        <code>isPending</code>, no thunks.
       </>
       <AsyncCode />
     </Tab>
