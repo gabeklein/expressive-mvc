@@ -35,8 +35,7 @@ export function Comparison() {
 
         <p className="text-fd-muted-foreground text-lg leading-relaxed max-w-2xl mx-auto mt-10 text-center">
           With MVC, destructuring <em>is</em> your dependency list. Just read a
-          field to subscribe to it. Nothing to declare like
-          setters,  <code>useCallback</code>, or factory.
+          field to subscribe to it. No setters, dependency arrays, or memoized callbacks.
         </p>
       </div>
     </section>
