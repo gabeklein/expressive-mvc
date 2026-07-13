@@ -4,6 +4,10 @@ const PARTICLE_DENSITY = 100 / (1440 * 900);
 const MOBILE_MAX_WIDTH = 640;
 const MOBILE_PARTICLE_OPACITY = 0.4;
 const MOBILE_LINE_OPACITY = 0.25;
+const LIGHT_PARTICLE_OPACITY = 0.55;
+const LIGHT_LINE_OPACITY = 0.45;
+const LIGHT_MOBILE_PARTICLE_OPACITY = 0.25;
+const LIGHT_MOBILE_LINE_OPACITY = 0.15;
 
 export function Background() {
   return (
@@ -48,13 +52,23 @@ export class AnimateBG extends Canvas2D {
     this.particleColor =
       getComputedStyle(parent).getPropertyValue('--accent') || '#bbb';
 
+    const updateOpacity = () => {
+      const mobile = this.width <= MOBILE_MAX_WIDTH;
+      const dark = document.documentElement.classList.contains('dark');
+      this.particleOpacity = dark
+        ? mobile ? MOBILE_PARTICLE_OPACITY : 1
+        : mobile ? LIGHT_MOBILE_PARTICLE_OPACITY : LIGHT_PARTICLE_OPACITY;
+      this.lineOpacity = dark
+        ? mobile ? MOBILE_LINE_OPACITY : 1
+        : mobile ? LIGHT_MOBILE_LINE_OPACITY : LIGHT_LINE_OPACITY;
+      if (this.stopped) this.paint(false);
+    };
+
     const onResize = () => {
       const rect = parent.getBoundingClientRect();
       element.width = this.width = rect.width;
       element.height = this.height = rect.height;
-      const mobile = this.width <= MOBILE_MAX_WIDTH;
-      this.particleOpacity = mobile ? MOBILE_PARTICLE_OPACITY : 1;
-      this.lineOpacity = mobile ? MOBILE_LINE_OPACITY : 1;
+      updateOpacity();
       this.particleCount = Math.min(
         100,
         Math.max(16, Math.round(this.width * this.height * PARTICLE_DENSITY)),
@@ -67,9 +81,25 @@ export class AnimateBG extends Canvas2D {
       this.active = !this.stopped && !document.hidden && document.hasFocus();
     };
 
+    const onInteraction = () => {
+      this.frames = 0;
+      this.damper = 1;
+      this.stopped = false;
+      this.active = !document.hidden && document.hasFocus();
+    };
+
+    const themeObserver = new MutationObserver(updateOpacity);
+    themeObserver.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class'],
+    });
+
     window.addEventListener('resize', onResize);
     window.addEventListener('blur', onVisibility);
     window.addEventListener('focus', onVisibility);
+    window.addEventListener('scroll', onInteraction, { passive: true });
+    window.addEventListener('pointerdown', onInteraction, { passive: true });
+    window.addEventListener('keydown', onInteraction);
     document.addEventListener('visibilitychange', onVisibility);
     onResize();
 
@@ -86,7 +116,11 @@ export class AnimateBG extends Canvas2D {
       window.removeEventListener('resize', onResize);
       window.removeEventListener('blur', onVisibility);
       window.removeEventListener('focus', onVisibility);
+      window.removeEventListener('scroll', onInteraction);
+      window.removeEventListener('pointerdown', onInteraction);
+      window.removeEventListener('keydown', onInteraction);
       document.removeEventListener('visibilitychange', onVisibility);
+      themeObserver.disconnect();
     };
   }
 

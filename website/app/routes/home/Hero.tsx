@@ -13,7 +13,7 @@ export function Hero() {
         <div className="min-w-0 lg:row-start-1">
           <h1 className="font-display tracking-tight mb-6">
             <span className="block whitespace-nowrap text-[clamp(1rem,4.7vw,1.4rem)] font-semibold leading-[1.05] text-fd-foreground/70">
-              Clean state management for React
+              Managed state for React
             </span>
             <span className="block mt-4 text-[clamp(1.9rem,9.5vw,3rem)] font-bold leading-[0.98] sm:text-5xl lg:leading-[1.05]">
               <span className="block whitespace-nowrap">More application,</span>
@@ -22,9 +22,8 @@ export function Hero() {
           </h1>
           <p className="text-fd-muted-foreground max-w-xl lg:mr-5">
             Expressive MVC moves data, behavior, and lifecycle
-            into a focused model. Components stay small, agent code stays
-            readable, and apps remain easy to build at scale. The goal is fewer
-            lines (and tokens) per feature, and a more pleasant DX.
+            into a focused model. Components stay small, agent code
+            readable, and apps easy to build at scale. Less code per feature, more pleasant DX.
           </p>
         </div>
 
@@ -243,19 +242,33 @@ type CounterExampleProps = {
 };
 
 class TypedComment extends State {
-  active = set(false, (yes) => yes && this.type());
+  clicked = set(false, (yes) => yes && this.type('// Update values, update components!'));
 
   value = '';
   private commentTimer?: number;
 
   protected new() {
-    return () => window.clearTimeout(this.commentTimer);
+    if (typeof window === 'undefined') return;
+
+    const onScroll = () => {
+      if (!this.clicked) this.type('// Try clicking below!');
+      window.removeEventListener('scroll', onScroll);
+    };
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+
+    return () => {
+      window.clearTimeout(this.commentTimer);
+      window.removeEventListener('scroll', onScroll);
+    };
   }
 
-  type() {
-    if (this.value || this.commentTimer) return;
+  type(comment: string) {
+    if (this.value === comment) return;
 
-    const comment = '// Update values, update components!';
+    window.clearTimeout(this.commentTimer);
+    this.commentTimer = undefined;
+    this.value = '';
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       this.value = comment;
       return;
@@ -274,7 +287,7 @@ class TypedComment extends State {
 }
 
 function CounterExample({ compact, count }: CounterExampleProps) {
-  const { value } = TypedComment.use({ active: count > 0 });
+  const { value } = TypedComment.use({ clicked: count > 0 });
 
   const imports =
     "import React from 'react';\n    import State from '@expressive/react';\n\n    ";
