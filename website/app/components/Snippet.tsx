@@ -6,7 +6,7 @@ type SnippetProps = Partial<Omit<DynamicCodeblockProps, 'code'>> & {
 
 export default function code(strings: TemplateStringsArray, ...values: unknown[]) {
   const code = dedent(String.raw({ raw: strings }, ...values));
-  return ({ highlight, ...props }: SnippetProps = {}) => {
+  const Snippet = ({ highlight, ...props }: SnippetProps = {}) => {
     const decorations = highlight && Object.entries(highlight.targets).flatMap(([name, pattern]) => {
       for (const [line, source] of code.split('\n').entries()) {
         pattern.lastIndex = 0;
@@ -37,6 +37,8 @@ export default function code(strings: TemplateStringsArray, ...values: unknown[]
       />
     );
   };
+
+  return Object.assign(Snippet, { tokenCount: Math.round(code.length / 4) });
 }
 
 function dedent(s: string) {
