@@ -21,7 +21,7 @@ export function Rails() {
           <p className="text-fd-muted-foreground text-lg md:text-xl">
             MVC covers stateful behavior you normally need a library for.
             Build forms, tables, and modals on the same foundation -
-            install a specialist where it earns its place.
+            install specialists only where you want opinions.
           </p>
         </div>
 

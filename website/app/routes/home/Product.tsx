@@ -16,7 +16,7 @@ export function Product() {
           <p className="text-lg leading-relaxed text-fd-muted-foreground">
             Expressive MVC is a model layer for your app. It gives data, async and
             side effects a home away from display logic.
-            Components stay simple, behavior easy to read, write.
+            Components stay simple and behavior easy to read, write and debug.
           </p>
         </div>
 
@@ -24,14 +24,14 @@ export function Product() {
           <Point title="Smaller components" illustration={<SmallerComponents />} delay={0}>
             Focus on the display logic, not coordinating features.
           </Point>
-          <Point title="Separate concerns" illustration={<BuiltInSeparation />} delay={300}>
-            Breaks up pages so
+          <Point title="Separated concerns" illustration={<BuiltInSeparation />} delay={300}>
+            Break up features so
             growth isn't tech debt.
           </Point>
-          <Point title="No Ceremony" illustration={<MinimalBoilerplate />} delay={100}>
+          <Point title="Less Ceremony" illustration={<MinimalBoilerplate />} delay={100}>
             Normal logic, without the factories and wrappers.
           </Point>
-          <Point title="High Clarity" illustration={<ReadableOutput />} delay={200}>
+          <Point title="Higher Clarity" illustration={<ReadableOutput />} delay={200}>
             Review agent output with confidence, not gymnastics.
           </Point>
         </div>
@@ -59,7 +59,7 @@ function Point({
         {illustration}
       </div>
       <div className="min-w-54 max-w-54 flex-1">
-        <h3 className="mb-2 font-semibold">{title}</h3>
+        <h3 className="mb-1 font-semibold">{title}</h3>
         <p className="text-sm leading-relaxed text-balance text-fd-muted-foreground sm:text-base">
           {children}
         </p>
@@ -73,12 +73,12 @@ const illustrationClass = 'h-14 w-20 overflow-visible';
 function SmallerComponents() {
   return (
     <svg viewBox="0 0 80 56" className={illustrationClass} fill="none">
-      <rect x="2" y="7" width="28" height="42" rx="5" fill="currentColor" className="opacity-10 dark:opacity-[.06]" />
-      <path d="M8 15h16M8 24h11M8 32h16M8 41h13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" opacity=".24" />
-      <path d="M35 28h8m-3-3 3 3-3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity=".24" />
-      <rect x="49" y="4" width="29" height="14" rx="4" fill="var(--color-fd-primary)" className="opacity-[.18] dark:opacity-[.12]" />
-      <rect x="49" y="21" width="29" height="14" rx="4" fill="var(--color-fd-primary)" className="opacity-[.18] dark:opacity-[.12]" />
-      <rect x="49" y="38" width="29" height="14" rx="4" fill="var(--color-fd-primary)" className="opacity-[.18] dark:opacity-[.12]" />
+      <rect x="2" y="7" width="28" height="42" rx="5" fill="currentColor" className="opacity-[.17] dark:opacity-[.13]" />
+      <path d="M8 15h16M8 24h11M8 32h16M8 41h13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" opacity=".3" />
+      <path d="M35 28h8m-3-3 3 3-3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity=".3" />
+      <rect x="49" y="4" width="29" height="14" rx="4" fill="var(--color-fd-primary)" className="opacity-[.22] dark:opacity-[.16]" />
+      <rect x="49" y="21" width="29" height="14" rx="4" fill="var(--color-fd-primary)" className="opacity-[.22] dark:opacity-[.16]" />
+      <rect x="49" y="38" width="29" height="14" rx="4" fill="var(--color-fd-primary)" className="opacity-[.22] dark:opacity-[.16]" />
       <path d="M55 11h13M55 28h17M55 45h10" stroke="var(--color-fd-primary)" strokeWidth="2" strokeLinecap="round" />
     </svg>
   );
@@ -87,7 +87,7 @@ function SmallerComponents() {
 function MinimalBoilerplate() {
   return (
     <svg viewBox="0 0 80 56" className={illustrationClass} fill="none">
-      <rect x="8" y="7" width="64" height="42" rx="6" fill="currentColor" className="opacity-10 dark:opacity-[.06]" />
+      <rect x="4" y="7" width="72" height="42" rx="6" fill="currentColor" className="opacity-[.17] dark:opacity-[.13]" />
       <text
         x="39"
         y="35"
@@ -96,7 +96,7 @@ function MinimalBoilerplate() {
         fontSize="22"
         letterSpacing="-4"
         textAnchor="middle"
-        opacity=".3">([{'{}'}])</text>
+        opacity=".38">([{'{}'}])</text>
     </svg>
   );
 }
@@ -104,9 +104,9 @@ function MinimalBoilerplate() {
 function ReadableOutput() {
   return (
     <svg viewBox="0 0 80 56" className={illustrationClass} fill="none">
-      <path d="M3 12h16M8 21h21M2 30h14M11 39h17M5 48h18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" opacity=".2" />
-      <path d="M34 28h8m-3-3 3 3-3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity=".24" />
-      <rect x="48" y="5" width="30" height="46" rx="6" fill="var(--color-fd-primary)" className="opacity-[.16] dark:opacity-10" />
+      <path d="M3 12h16M8 21h8M20 21h9M2 30h14M11 39h17M5 48h4M13 48h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" opacity=".26" />
+      <path d="M34 28h8m-3-3 3 3-3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity=".3" />
+      <rect x="48" y="5" width="30" height="46" rx="6" fill="var(--color-fd-primary)" className="opacity-20 dark:opacity-[.14]" />
       <path d="M54 15h15M54 23h10M54 31h18M54 39h13" stroke="var(--color-fd-primary)" strokeWidth="2" strokeLinecap="round" />
     </svg>
   );
@@ -115,11 +115,11 @@ function ReadableOutput() {
 function BuiltInSeparation() {
   return (
     <svg viewBox="0 0 80 56" className={illustrationClass} fill="none">
-      <rect x="2" y="7" width="29" height="42" rx="5" fill="currentColor" className="opacity-10 dark:opacity-[.06]" />
-      <path d="M8 16h17M8 24h10M8 32h16M8 40h12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" opacity=".22" />
-      <path d="M37 28h8m-3-3 3 3-3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity=".24" />
-      <rect x="49" y="3" width="29" height="20" rx="5" fill="var(--color-fd-primary)" className="opacity-[.16] dark:opacity-10" />
-      <rect x="49" y="33" width="29" height="20" rx="5" fill="var(--color-fd-primary)" className="opacity-[.16] dark:opacity-10" />
+      <rect x="2" y="7" width="29" height="42" rx="5" fill="currentColor" className="opacity-[.17] dark:opacity-[.13]" />
+      <path d="M8 16h17M8 24h10M8 32h16M8 40h12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" opacity=".28" />
+      <path d="M37 28h8m-3-3 3 3-3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity=".3" />
+      <rect x="49" y="3" width="29" height="20" rx="5" fill="var(--color-fd-primary)" className="opacity-20 dark:opacity-[.14]" />
+      <rect x="49" y="33" width="29" height="20" rx="5" fill="var(--color-fd-primary)" className="opacity-20 dark:opacity-[.14]" />
       <path d="M55 10h16M55 17h10M55 40h11M55 47h17" stroke="var(--color-fd-primary)" strokeWidth="2" strokeLinecap="round" />
       <path d="M59 25v5m-2-2 2 2 2-2M68 31v-5m-2 2 2-2 2 2" stroke="var(--color-fd-primary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity=".45" />
     </svg>
