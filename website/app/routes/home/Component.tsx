@@ -11,14 +11,14 @@ export function ComponentSection() {
             Component is renderable State.
           </h2>
           <p className="text-fd-muted-foreground text-lg mb-4">
-            Reach for <code>Component</code> when making self-contained{" "}
+            <code>Component</code> is for self-contained{" "}
             (<a href="#molecules" className="underline-offset-2 underline">or extensible</a>) display logic.
-            Fields drive lazy getters and <code>render()</code>{' '} directly -
+            Fields drive getters and <code>render()</code>{' '} directly -
             destructure <code>this</code> as you would use hook.
           </p>
           <p className="text-fd-muted-foreground text-lg">
-            A Component is its own Provider too,
-            accessible to children with no prop drilling.
+            A Component provides itself too,
+            accessible to children without prop drilling.
           </p>
         </div>
 

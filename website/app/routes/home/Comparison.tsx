@@ -15,8 +15,8 @@ export function Comparison() {
           </h2>
           <p className="text-fd-muted-foreground text-lg">
             Say you want a reusable, component-owned <code>useFooBarBaz</code>{' '}
-            that re-renders on change. Same surface everywhere - only the cost
-            to build it differs. Higher readability <small>(and fewer tokens)</small>.
+            that re-renders on change. Examples have same state and
+            behavior. Expressive gets there with less code.
           </p>
         </div>
 

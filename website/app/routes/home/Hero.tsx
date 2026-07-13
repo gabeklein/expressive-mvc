@@ -21,9 +21,9 @@ export function Hero() {
             </span>
           </h1>
           <p className="text-fd-muted-foreground max-w-xl lg:mr-5">
-            Expressive MVC moves data, behavior, and lifecycle
-            to a focused model. Components stay small, agent code
-            readable, and apps easier to scale. Less code per feature, for a more pleasant DX.
+            Expressive MVC moves data, behavior, and lifecycle into focused
+            models. Components stay small, application logic stays readable,
+            and every feature takes less code to build, test, and change.
           </p>
         </div>
 

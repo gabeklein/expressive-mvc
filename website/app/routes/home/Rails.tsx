@@ -20,8 +20,8 @@ export function Rails() {
           </h2>
           <p className="text-fd-muted-foreground text-lg md:text-xl">
             MVC covers stateful behavior you normally need a library for.
-            Build forms, tables, and modals on the same foundation -
-            install specialists only where you want opinions.
+            Build forms, tables, and modals on the same foundation. The only
+            opinions are your own.
           </p>
         </div>
 
@@ -42,12 +42,11 @@ export function Rails() {
 
         <div className="max-w-2xl mb-10">
           <h3 className="font-display text-2xl md:text-3xl font-bold tracking-tight mb-3">
-            <span className="text-fd-foreground/80">(Artificial)</span> Idiot-Proof.
+            Better architecture, better output.
           </h3>
           <p className="text-fd-muted-foreground text-lg">
             Clear conventions mean a good feature looks the same, whether
-            written by you, your team, or an agent. Fewer one-off decisions
-            keep AI focused and on-task.
+            written by you, your team, or an agent. AI-generated code stays readable and high quality.
           </p>
         </div>
 
