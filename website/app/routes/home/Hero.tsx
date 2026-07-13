@@ -1,4 +1,4 @@
-import State, { Component, get, ref, set } from '@expressive/react';
+import State, { Component, get, ref } from '@expressive/react';
 import type { CSSProperties } from 'react';
 import { Link } from 'react-router';
 import CopyPill from '@/components/CopyPill';
@@ -13,7 +13,7 @@ export function Hero() {
         <div className="min-w-0 lg:row-start-1">
           <h1 className="font-display tracking-tight mb-6">
             <span className="block whitespace-nowrap text-[clamp(1rem,4.7vw,1.4rem)] font-semibold leading-[1.05] text-fd-foreground/70">
-              Clean state management for React
+              Managed state for React
             </span>
             <span className="block mt-4 text-[clamp(1.9rem,9.5vw,3rem)] font-bold leading-[0.98] sm:text-5xl lg:leading-[1.05]">
               <span className="block whitespace-nowrap">More application,</span>
@@ -21,10 +21,9 @@ export function Hero() {
             </span>
           </h1>
           <p className="text-fd-muted-foreground max-w-xl lg:mr-5">
-            Expressive MVC moves data, behavior, and lifecycle
-            into a focused model. Components stay small, agent code stays
-            readable, and apps remain easy to build at scale. The goal is fewer
-            lines (and tokens) per feature, and a more pleasant DX.
+            Expressive MVC moves data, behavior, and lifecycle into focused
+            models. Components stay small, application logic stays readable,
+            and every feature takes less code to build, test, and change.
           </p>
         </div>
 
@@ -167,6 +166,7 @@ class LiveCounterDemo extends Component {
   count = 0;
   compact = false;
   trace = new UpdateTrace();
+  comment = new TypedComment();
 
   responsive = ref<HTMLDivElement>(() => {
     const media = window.matchMedia('(max-width: 767px)');
@@ -178,13 +178,19 @@ class LiveCounterDemo extends Component {
   });
 
   render() {
-    const { count, compact, responsive, trace: { root } } = this;
+    const {
+      count,
+      compact,
+      responsive,
+      trace: { root },
+      comment: { value: comment },
+    } = this;
 
     return (
       <div ref={responsive}>
         <div ref={root}>
           <div className={compact ? 'hero-mobile-code code-nowrap' : 'code-nowrap'}>
-            <CounterExample compact={compact} count={count} />
+            <CounterExample compact={compact} count={count} comment={comment} />
           </div>
           <div className="mt-5 flex items-center justify-between gap-4">
             <CounterButton />
@@ -206,6 +212,7 @@ class CounterButton extends Component {
 
   increment() {
     const count = ++this.pendingCount;
+    this.demo.comment.showNormal();
     this.hue = Math.floor(Math.random() * 360);
     this.pulse++;
     this.demo.trace.play({
@@ -240,30 +247,53 @@ class CounterButton extends Component {
 type CounterExampleProps = {
   compact?: boolean;
   count: number;
+  comment: string;
 };
 
 class TypedComment extends State {
-  active = set(false, (yes) => yes && this.type());
-
+  clicked = false;
   value = '';
+  private comment = '';
   private commentTimer?: number;
 
-  protected new() {
-    return () => window.clearTimeout(this.commentTimer);
+  showNormal() {
+    this.clicked = true;
+    this.type('// Update values, update components!');
   }
 
-  type() {
-    if (this.value || this.commentTimer) return;
+  protected new() {
+    if (typeof window === 'undefined') return;
 
-    const comment = '// Update values, update components!';
+    const onScroll = () => {
+      if (!this.clicked) this.type('// Try clicking below!');
+      window.removeEventListener('scroll', onScroll);
+    };
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+
+    return () => {
+      window.clearTimeout(this.commentTimer);
+      window.removeEventListener('scroll', onScroll);
+    };
+  }
+
+  type(comment: string) {
+    if (this.comment === comment) return;
+    this.comment = comment;
+
+    window.clearTimeout(this.commentTimer);
+    this.commentTimer = undefined;
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       this.value = comment;
       return;
     }
 
-    let length = 0;
+    const replacing = this.value.startsWith('//');
+    const width = Math.max(this.value.length, comment.length);
+    let length = replacing ? 2 : 0;
+    this.value = replacing ? '//'.padEnd(width) : '';
     const type = () => {
-      this.value = comment.slice(0, ++length);
+      this.value = comment.slice(0, ++length).padEnd(width);
       this.commentTimer = length < comment.length
         ? window.setTimeout(type, 24)
         : undefined;
@@ -273,9 +303,7 @@ class TypedComment extends State {
   }
 }
 
-function CounterExample({ compact, count }: CounterExampleProps) {
-  const { value } = TypedComment.use({ active: count > 0 });
-
+function CounterExample({ compact, count, comment }: CounterExampleProps) {
   const imports =
     "import React from 'react';\n    import State from '@expressive/react';\n\n    ";
   const increment = compact
@@ -289,7 +317,7 @@ function CounterExample({ compact, count }: CounterExampleProps) {
     ${imports}class Counter extends State {
       count = ${count};
 
-      ${value}
+      ${comment}
       ${increment}
     }
 

@@ -151,7 +151,7 @@ export class Primitives extends Component {
         <div className="mx-auto max-w-(--content-width) py-16 md:py-24">
           <div className="max-w-2xl mx-auto text-center mb-4">
             <h2 className="font-display text-2xl md:text-3xl font-bold tracking-tight">
-              All the basics, built right in.
+              The basics, built right in.
             </h2>
           </div>
 
@@ -236,7 +236,7 @@ function Tab({
 
 function Instructions() {
   return (
-    <Tab title="Fields with built-in behavior.">
+    <Tab title="Fields with special behavior.">
       <>
         Instructions are property initializers with runtime behavior. You still
         read them like fields; the initializer decides what kind of field it is.
@@ -291,8 +291,7 @@ function Async() {
         <code>Component</code> can define its own{' '}
         <code>fallback</code> and even error boundary via{' '}
         <code>catch()</code> - no{' '}
-        <code>isPending</code> flags, client to provide, or
-        cache keys.
+        <code>isPending</code>, no thunks.
       </>
       <AsyncCode />
     </Tab>
@@ -400,19 +399,18 @@ const FormsCode = code /*tsx*/`
   class MyForm extends Form {
     firstname = '';
     lastname = '';
-    email = '';
 
     submit(event: React.FormEvent) {
       event.preventDefault();
 
-      const { firstname, lastname, email } = this;
+      const { firstname, lastname } = this;
 
-      if (!firstname || !lastname || !email) {
+      if (!firstname || !lastname) {
         alert('Please fill out all fields');
         return;
       }
 
-      alert('Submitting ' + firstname + ' ' + lastname);
+      alert('Hello ' + firstname + ' ' + lastname);
     }
 
     render() {
@@ -422,7 +420,6 @@ const FormsCode = code /*tsx*/`
         <form onSubmit={submit}>
           <input ref={bind.firstname} placeholder="Firstname" />
           <input ref={bind.lastname} placeholder="Lastname" />
-          <input ref={bind.email} placeholder="Email Address" />
           <button type="submit">Submit</button>
         </form>
       );

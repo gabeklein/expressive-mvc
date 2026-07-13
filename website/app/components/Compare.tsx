@@ -3,7 +3,7 @@ import State, { ref } from '@expressive/react';
 import ScrollOverflowControls from './ScrollOverflowControls';
 import code from './Snippet';
 
-type Snippet = ReturnType<typeof code>;
+type Snippet = ReturnType<typeof code> | (() => React.ReactElement);
 
 interface Side {
   label: string;
@@ -123,11 +123,11 @@ export default function Compare({ left, right }: CompareProps) {
               Expressive
             </span>
           </Head>
-          <Left {...LN} />
+          <CodePanel snippet={Left} />
         </div>
         <div>
           <Head>{libTabs}</Head>
-          <Right {...LN} />
+          <CodePanel snippet={Right} />
         </div>
       </div>
 
@@ -162,9 +162,24 @@ export default function Compare({ left, right }: CompareProps) {
         </div>
 
         <div className="compare-static">
-          {face ? <Right {...LN} /> : <Left {...LN} />}
+          <CodePanel snippet={face ? Right : Left} />
         </div>
       </div>
+    </div>
+  );
+}
+
+function CodePanel({ snippet: Snippet }: { snippet: Snippet }) {
+  const tokenCount = 'tokenCount' in Snippet ? Snippet.tokenCount : undefined;
+
+  return (
+    <div className="relative">
+      <Snippet {...LN} />
+      {tokenCount !== undefined && (
+        <span className="pointer-events-none absolute right-3 bottom-3 rounded bg-fd-card/90 px-1.5 py-0.5 font-mono text-[10px] text-fd-muted-foreground shadow-sm">
+          ~{tokenCount} tokens
+        </span>
+      )}
     </div>
   );
 }

@@ -15,8 +15,8 @@ export function Comparison() {
           </h2>
           <p className="text-fd-muted-foreground text-lg">
             Say you want a reusable, component-owned <code>useFooBarBaz</code>{' '}
-            that re-renders on change. Same surface everywhere - only the cost
-            to build it differs. Higher readability <small>(and fewer tokens)</small>.
+            that re-renders on change. Examples have same state and
+            behavior. Expressive gets there with less code.
           </p>
         </div>
 
@@ -35,8 +35,7 @@ export function Comparison() {
 
         <p className="text-fd-muted-foreground text-lg leading-relaxed max-w-2xl mx-auto mt-10 text-center">
           With MVC, destructuring <em>is</em> your dependency list. Just read a
-          field to subscribe to it. Nothing to declare like
-          setters,  <code>useCallback</code>, or factory.
+          field to subscribe to it. No setters, dependency arrays, or memoized callbacks.
         </p>
       </div>
     </section>
