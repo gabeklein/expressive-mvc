@@ -29,15 +29,6 @@ export function meta() {
       content:
         'Cleaner React state with smaller components and fewer lines per feature',
     },
-    { property: 'og:title', content: 'Expressive MVC' },
-    {
-      property: 'og:description',
-      content:
-        'Cleaner React state with smaller components and fewer lines per feature',
-    },
-    { property: 'og:image', content: '/brand/logo.png' },
-    { name: 'twitter:card', content: 'summary' },
-    { name: 'twitter:image', content: '/brand/logo.png' },
   ];
 }
 
