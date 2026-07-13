@@ -113,7 +113,7 @@ figure[data-rehype-pretty-code-figure] pre code,
   animation: live-counter-pulse 420ms ease-out forwards;
 }
 
-:is([class*='hero-trace-'], [class*='tip-trace-']) {
+:is([class*='hero-trace-'], [class*='tip-trace-'], [class*='context-trace-']) {
   display: inline-block;
   padding: 2px 5px;
   margin: -2px -5px;
@@ -315,6 +315,7 @@ figure[data-rehype-pretty-code-figure] pre code,
   .marquee-track,
   .aurora,
   [class*='hero-trace-'],
+  [class*='context-trace-'],
   [class*='tip-trace-'],
   .trace-pulse,
   .live-counter-pulse {
