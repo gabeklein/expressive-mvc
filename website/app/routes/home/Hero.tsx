@@ -1,4 +1,4 @@
-import State, { Component, get, ref, set } from '@expressive/react';
+import State, { Component, get, ref } from '@expressive/react';
 import type { CSSProperties } from 'react';
 import { Link } from 'react-router';
 import CopyPill from '@/components/CopyPill';
@@ -22,8 +22,8 @@ export function Hero() {
           </h1>
           <p className="text-fd-muted-foreground max-w-xl lg:mr-5">
             Expressive MVC moves data, behavior, and lifecycle
-            into a focused model. Components stay small, agent code
-            readable, and apps easy to build at scale. Less code per feature, more pleasant DX.
+            to a focused model. Components stay small, agent code
+            readable, and apps easier to scale. Less code per feature, for a more pleasant DX.
           </p>
         </div>
 
@@ -166,6 +166,7 @@ class LiveCounterDemo extends Component {
   count = 0;
   compact = false;
   trace = new UpdateTrace();
+  comment = new TypedComment();
 
   responsive = ref<HTMLDivElement>(() => {
     const media = window.matchMedia('(max-width: 767px)');
@@ -177,13 +178,19 @@ class LiveCounterDemo extends Component {
   });
 
   render() {
-    const { count, compact, responsive, trace: { root } } = this;
+    const {
+      count,
+      compact,
+      responsive,
+      trace: { root },
+      comment: { value: comment },
+    } = this;
 
     return (
       <div ref={responsive}>
         <div ref={root}>
           <div className={compact ? 'hero-mobile-code code-nowrap' : 'code-nowrap'}>
-            <CounterExample compact={compact} count={count} />
+            <CounterExample compact={compact} count={count} comment={comment} />
           </div>
           <div className="mt-5 flex items-center justify-between gap-4">
             <CounterButton />
@@ -205,6 +212,7 @@ class CounterButton extends Component {
 
   increment() {
     const count = ++this.pendingCount;
+    this.demo.comment.showNormal();
     this.hue = Math.floor(Math.random() * 360);
     this.pulse++;
     this.demo.trace.play({
@@ -239,13 +247,19 @@ class CounterButton extends Component {
 type CounterExampleProps = {
   compact?: boolean;
   count: number;
+  comment: string;
 };
 
 class TypedComment extends State {
-  clicked = set(false, (yes) => yes && this.type('// Update values, update components!'));
-
+  clicked = false;
   value = '';
+  private comment = '';
   private commentTimer?: number;
+
+  showNormal() {
+    this.clicked = true;
+    this.type('// Update values, update components!');
+  }
 
   protected new() {
     if (typeof window === 'undefined') return;
@@ -264,19 +278,22 @@ class TypedComment extends State {
   }
 
   type(comment: string) {
-    if (this.value === comment) return;
+    if (this.comment === comment) return;
+    this.comment = comment;
 
     window.clearTimeout(this.commentTimer);
     this.commentTimer = undefined;
-    this.value = '';
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       this.value = comment;
       return;
     }
 
-    let length = 0;
+    const replacing = this.value.startsWith('//');
+    const width = Math.max(this.value.length, comment.length);
+    let length = replacing ? 2 : 0;
+    this.value = replacing ? '//'.padEnd(width) : '';
     const type = () => {
-      this.value = comment.slice(0, ++length);
+      this.value = comment.slice(0, ++length).padEnd(width);
       this.commentTimer = length < comment.length
         ? window.setTimeout(type, 24)
         : undefined;
@@ -286,9 +303,7 @@ class TypedComment extends State {
   }
 }
 
-function CounterExample({ compact, count }: CounterExampleProps) {
-  const { value } = TypedComment.use({ clicked: count > 0 });
-
+function CounterExample({ compact, count, comment }: CounterExampleProps) {
   const imports =
     "import React from 'react';\n    import State from '@expressive/react';\n\n    ";
   const increment = compact
@@ -302,7 +317,7 @@ function CounterExample({ compact, count }: CounterExampleProps) {
     ${imports}class Counter extends State {
       count = ${count};
 
-      ${value}
+      ${comment}
       ${increment}
     }
 

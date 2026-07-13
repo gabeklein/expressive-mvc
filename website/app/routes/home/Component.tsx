@@ -133,7 +133,7 @@ class TipCalculator extends StateComponent {
     if (field === 'tipPercent') {
       this.demo.trace.hold('tipPercent-input', 'tipPercent-field');
     }
-    this.demo.trace.play(field);
+    this.demo.trace.play(field, field === 'tipPercent' ? 2500 : undefined);
   }
 
   settle(field: TipField) {
