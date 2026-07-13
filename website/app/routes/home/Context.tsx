@@ -1,6 +1,5 @@
-import State, { Component, get, ref, use } from '@expressive/react';
+import State, { Component, get, ref, set } from '@expressive/react';
 import { Moon, Sun } from 'lucide-react';
-import { useEffect } from 'react';
 import { useTheme } from 'next-themes';
 import Playground from '@/components/Playground';
 import code from '@/components/Snippet';
@@ -11,7 +10,7 @@ export function Context() {
       <div className="mx-auto max-w-(--content-width) py-16 md:py-24">
         <div className="max-w-2xl mx-auto text-center mb-12">
           <h2 className="font-display text-3xl md:text-4xl font-bold tracking-tight mb-4">
-            Classes have context.
+            Classes are their own context.
           </h2>
           <p className="text-fd-muted-foreground text-lg">
             Wrap a subtree in <code>&lt;Provider for=&#123;X&#125;&gt;</code> - 
@@ -56,13 +55,14 @@ class ThemeTrace extends State {
     };
   }
 
-  async play() {
+  async play(includeToggle = true) {
     const run = ++this.run.current;
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
     for (const [delay, step] of themeTimeline) {
       if (delay) await wait(delay);
       if (run !== this.run.current) return;
+      if (!includeToggle && (step === 'handler' || step === 'assignment')) continue;
       if (step) this.pulse(step);
     }
   }
@@ -101,42 +101,54 @@ class ThemeDemo extends Component {
 class ThemeControl extends Component {
   demo = get(ThemeDemo);
 
-  toggle(setTheme: (mode: Mode) => void) {
+  previousTheme?: Mode;
+  toggledTheme?: Mode;
+
+  resolvedTheme = set<Mode>(undefined, theme => {
+    if (!theme) return;
+    const toggled = this.toggledTheme === theme;
+    this.toggledTheme = undefined;
+    this.demo.mode = theme;
+    if (!toggled && this.previousTheme && this.previousTheme !== theme) {
+      this.demo.trace.play(false);
+    }
+    this.previousTheme = theme;
+  });
+
+  setTheme = set<(mode: Mode) => void>();
+
+  toggle() {
     const mode = this.demo.mode === 'light' ? 'dark' : 'light';
-    setTheme(mode);
+    this.toggledTheme = mode;
     this.demo.mode = mode;
     this.demo.trace.play();
+    this.setTheme(mode);
   }
 
   render() {
-    return <ThemeButton control={this} />;
-  }
-}
+    const { setTheme, resolvedTheme } = useTheme();
+    const { demo: { mode }, toggle } = this;
 
-function ThemeButton({ control }: { control: ThemeControl }) {
-  const { resolvedTheme, setTheme } = useTheme();
-  const { demo: { mode }, toggle } = use(control);
-
-  useEffect(() => {
     if (resolvedTheme === 'light' || resolvedTheme === 'dark') {
-      control.demo.mode = resolvedTheme;
+      if (this.previousTheme !== resolvedTheme) this.resolvedTheme = resolvedTheme;
+      this.setTheme = setTheme;
     }
-  }, [control, resolvedTheme]);
 
-  const Icon = mode === 'light' ? Sun : Moon;
+    const Icon = mode === 'light' ? Sun : Moon;
 
-  return (
-    <div className="theme-demo-control flex flex-col items-center justify-center justify-self-center rounded-xl p-2">
-      <button
-        type="button"
-        aria-label={`Switch to ${mode === 'light' ? 'dark' : 'light'} mode`}
-        onClick={() => toggle(setTheme)}
-        className="flex size-16 cursor-pointer items-center justify-center rounded-full border border-fd-border bg-fd-background shadow-sm transition-colors hover:bg-fd-muted">
-        <Icon aria-hidden className="size-7" />
-      </button>
-      <span className="mt-2 font-mono text-sm text-fd-muted-foreground">{mode} mode</span>
-    </div>
-  );
+    return (
+      <div className="theme-demo-control flex flex-col items-center justify-center justify-self-center rounded-xl p-2">
+        <button
+          type="button"
+          aria-label={`Switch to ${mode === 'light' ? 'dark' : 'light'} mode`}
+          onClick={toggle}
+          className="flex size-16 cursor-pointer items-center justify-center rounded-full border border-fd-border bg-fd-background shadow-sm transition-colors hover:bg-fd-muted">
+          <Icon aria-hidden className="size-7" />
+        </button>
+        <span className="mt-2 font-mono text-sm text-fd-muted-foreground">{mode} mode</span>
+      </div>
+    );
+  }
 }
 
 function ExprCode({ mode }: { mode: Mode }) {
