@@ -68,8 +68,31 @@ figure[data-rehype-pretty-code-figure] pre code,
   border-radius: 0.25rem;
 }
 
-.sandbox-navigation-trigger .sp-tabs-scrollable-container {
-  padding-left: 2.75rem !important;
+.sp-tabs-scrollable-container > .sp-tab-container {
+  padding-right: 0 !important;
+}
+
+.sp-tabs-scrollable-container .sp-tab-button {
+  padding-inline: 0.75rem !important;
+  background: transparent !important;
+  font-weight: 400;
+}
+
+.sp-tabs-scrollable-container
+  > .sp-tab-container[aria-selected='true']
+  .sp-tab-button {
+  color: var(--accent) !important;
+  font-weight: 600;
+}
+
+.sp-tabs-scrollable-container > .sp-tab-container:has(.sp-tab-button:focus) {
+  outline: none !important;
+}
+
+.sp-tabs-scrollable-container
+  > .sp-tab-container:has(.sp-tab-button:focus-visible) {
+  outline: 1px solid var(--color-fd-ring) !important;
+  outline-offset: -2px;
 }
 
 /* Comparison blocks opt out of wrapping - they scroll horizontally instead. */

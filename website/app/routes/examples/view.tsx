@@ -1,7 +1,7 @@
 import { lazy, Suspense } from 'react';
 import { Navigate, useOutletContext, useParams } from 'react-router';
 import type { ExamplesOutletContext } from './layout';
-import { examples, getFiles, REDIRECT } from './loader';
+import { examples, EXAMPLE_LABELS, getFiles, REDIRECT } from './loader';
 
 const Sandbox = lazy(() => import('@/components/Sandbox'));
 
@@ -22,6 +22,7 @@ export default function CodeSample() {
           }>
           <Sandbox
             name={name}
+            label={EXAMPLE_LABELS[name]}
             files={getFiles(name)}
             navigationOpen={navigationOpen}
             onOpenNavigation={openNavigation}

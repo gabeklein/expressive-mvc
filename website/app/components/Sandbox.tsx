@@ -12,7 +12,8 @@ import type {
   KeyboardEvent as ReactKeyboardEvent,
   PointerEvent as ReactPointerEvent,
 } from 'react';
-import { useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 class Panes extends State {
   mode: 'preview' | 'code' = 'preview';
@@ -87,11 +88,13 @@ class Panes extends State {
 
 export default function Sandbox({
   name,
+  label,
   files,
   navigationOpen = false,
   onOpenNavigation,
 }: {
   name: string;
+  label: string;
   files: Record<string, string>;
   navigationOpen?: boolean;
   onOpenNavigation?: () => void;
@@ -138,6 +141,7 @@ export default function Sandbox({
       customSetup={{ dependencies }}
       style={{ height: '100%' }}>
       <Layout
+        label={label}
         navigationOpen={navigationOpen}
         onOpenNavigation={onOpenNavigation}
       />
@@ -146,9 +150,11 @@ export default function Sandbox({
 }
 
 function Layout({
+  label,
   navigationOpen,
   onOpenNavigation,
 }: {
+  label: string;
   navigationOpen: boolean;
   onOpenNavigation?: () => void;
 }) {
@@ -162,6 +168,35 @@ function Layout({
     toggleSplit,
     layout,
   } = Panes.use();
+  const [layoutElement, setLayoutElement] = useState<HTMLDivElement | null>(
+    null
+  );
+  const [tabs, setTabs] = useState<HTMLElement | null>(null);
+  const connectLayout = useCallback(
+    (element: HTMLDivElement | null) => {
+      layout(element);
+      setLayoutElement(element);
+    },
+    [layout]
+  );
+  useEffect(() => {
+    if (!layoutElement) {
+      setTabs(null);
+      return;
+    }
+
+    const update = () =>
+      setTabs(
+        layoutElement.querySelector<HTMLElement>(
+          '.sp-tabs-scrollable-container'
+        )
+      );
+    const observer = new MutationObserver(update);
+
+    update();
+    observer.observe(layoutElement, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, [layoutElement]);
   const sandpack = useSandpack();
   const refreshOnSave = {
     key: 'Mod-s',
@@ -180,17 +215,9 @@ function Layout({
 
   return (
     <SandpackLayout
-      ref={layout}
+      ref={connectLayout}
       style={{ flexDirection: stacked ? 'column' : 'row' }}
-      className={`relative h-full [--sp-layout-height:100%] ${onOpenNavigation && !navigationOpen ? 'sandbox-navigation-trigger' : ''}`}>
-      {onOpenNavigation && !navigationOpen && (
-        <button
-          aria-label="Open examples navigation"
-          className="absolute top-1.5 left-1.5 z-20 flex size-7 items-center justify-center rounded-md border border-fd-border bg-fd-background text-fd-muted-foreground shadow-sm hover:bg-fd-muted hover:text-fd-foreground"
-          onClick={onOpenNavigation}>
-          <PanelLeftOpen className="size-4" />
-        </button>
-      )}
+      className="relative h-full [--sp-layout-height:100%]">
       <SandpackCodeEditor
         style={{
           display: showEditor ? 'flex' : 'none',
@@ -198,6 +225,19 @@ function Layout({
         }}
         extensionsKeymap={[refreshOnSave]}
       />
+      {onOpenNavigation &&
+        !navigationOpen &&
+        tabs &&
+        createPortal(
+          <button
+            aria-label={`Open examples navigation for ${label}`}
+            className="order-first mr-1 flex max-w-40 shrink-0 items-center gap-1.5 self-stretch pr-4 pl-3 text-sm font-medium text-fd-muted-foreground hover:text-fd-foreground"
+            onClick={onOpenNavigation}>
+            <PanelLeftOpen className="size-4 shrink-0" />
+            <span className="truncate">{label}</span>
+          </button>,
+          tabs
+        )}
       {!narrow && (
         <div
           role="separator"

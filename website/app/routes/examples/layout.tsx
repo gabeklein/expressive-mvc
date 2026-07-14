@@ -1,5 +1,5 @@
 import { HomeLayout } from 'fumadocs-ui/layouts/home';
-import { PanelLeftClose, X } from 'lucide-react';
+import { PanelLeftClose } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { NavLink, Outlet } from 'react-router';
 
@@ -27,6 +27,21 @@ export default function ExamplesLayout() {
     media.addEventListener('change', update);
     return () => media.removeEventListener('change', update);
   }, []);
+
+  useEffect(() => {
+    if (!navigationOpen) return;
+
+    const close = (event: KeyboardEvent) => {
+      if (
+        event.key === 'Escape' &&
+        window.matchMedia('(max-width: 1279px)').matches
+      )
+        setNavigationOpen(false);
+    };
+
+    window.addEventListener('keydown', close);
+    return () => window.removeEventListener('keydown', close);
+  }, [navigationOpen]);
 
   useEffect(() => {
     const visual = window.visualViewport;
@@ -77,14 +92,13 @@ export default function ExamplesLayout() {
         height: viewport.height,
         transform: `translateY(${viewport.offset}px)`,
       }}>
-      <div className="flex flex-1 min-h-0 p-6 gap-6 max-w-[1400px] w-full mx-auto">
-        {navigationOpen && (
-          <button
-            aria-label="Close examples navigation"
-            className="fixed inset-0 z-40 bg-black/35 xl:hidden"
-            onClick={() => setNavigationOpen(false)}
-          />
-        )}
+      <div className="relative flex min-h-0 w-full max-w-[1400px] flex-1 gap-6 p-6 mx-auto">
+        <button
+          aria-label="Close examples navigation"
+          className={`${navigationOpen ? 'pointer-events-auto bg-black/45' : 'pointer-events-none bg-black/0'} absolute inset-6 z-40 transition-colors duration-150 ease-out motion-reduce:transition-none xl:hidden`}
+          onClick={() => setNavigationOpen(false)}
+          tabIndex={navigationOpen ? 0 : -1}
+        />
         <Navigation
           open={navigationOpen}
           onClose={() => setNavigationOpen(false)}
@@ -103,15 +117,16 @@ export default function ExamplesLayout() {
 function Navigation({ open, onClose }: { open: boolean; onClose: () => void }) {
   return (
     <aside
-      className={`${open ? 'flex' : 'hidden'} fixed inset-y-0 left-0 z-50 w-64 flex-col bg-fd-background p-5 shadow-2xl xl:static xl:z-auto xl:w-40 xl:shrink-0 xl:self-stretch xl:bg-transparent xl:p-0 xl:shadow-none`}>
-      <div className="mb-5 flex items-center justify-between xl:mb-4">
+      aria-hidden={!open}
+      inert={!open}
+      className={`${open ? 'translate-x-0 xl:flex' : 'pointer-events-none -translate-x-[calc(100%+1.5rem)] xl:hidden'} absolute inset-y-4 left-6 z-50 flex w-64 flex-col overflow-hidden rounded-lg border border-fd-border bg-fd-background/75 p-5 shadow-2xl backdrop-blur-2xl backdrop-saturate-150 transition-transform duration-[220ms] ease-[cubic-bezier(0.32,0.72,0,1)] will-change-transform supports-[backdrop-filter:blur(0)]:bg-fd-background/45 motion-reduce:transition-none xl:static xl:z-auto xl:w-40 xl:shrink-0 xl:translate-x-0 xl:self-stretch xl:overflow-visible xl:rounded-none xl:border-0 xl:bg-transparent xl:p-0 xl:shadow-none xl:backdrop-blur-none xl:backdrop-saturate-100 xl:transition-none`}>
+      <div className="mb-4 hidden items-center justify-between xl:flex">
         <span className="text-sm font-semibold">Examples</span>
         <button
           aria-label="Collapse examples navigation"
           className="flex size-8 items-center justify-center rounded-md text-fd-muted-foreground hover:bg-fd-muted hover:text-fd-foreground"
           onClick={onClose}>
-          <PanelLeftClose className="hidden size-4 xl:block" />
-          <X className="size-4 xl:hidden" />
+          <PanelLeftClose className="size-4" />
         </button>
       </div>
       <nav className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto">

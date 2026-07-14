@@ -13,6 +13,9 @@ Object.entries(
 });
 
 export const GROUPS = structure(MANIFESTS);
+export const EXAMPLE_LABELS = Object.fromEntries(
+  leaves(GROUPS).map(({ path, label }) => [path, label])
+);
 
 // `*/**/*` requires at least one folder under examples/ - skips top-level
 // SPA scaffolding (package.json, vite.config.ts, main.tsx, etc.).
