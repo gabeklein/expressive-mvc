@@ -20,7 +20,7 @@ export function Product() {
           </p>
         </div>
 
-        <div className="mx-auto grid w-full max-w-180 grid-cols-2 gap-x-5 gap-y-8 sm:gap-x-8">
+        <div className="mx-auto grid w-full max-w-180 grid-cols-1 gap-x-5 gap-y-8 sm:grid-cols-2 sm:gap-x-8">
           <Point title="Smaller components" illustration={<SmallerComponents />} delay={0}>
             Focus on the display logic, not coordinating features.
           </Point>
@@ -54,13 +54,13 @@ function Point({
   return (
     <Reveal
       delay={delay}
-      className="flex flex-wrap items-start gap-x-5 gap-y-3 pt-4 lg:flex-nowrap lg:items-center">
-      <div className="h-14 shrink-0 text-fd-muted-foreground pl-2" aria-hidden>
+      className="flex items-start gap-x-5 gap-y-3 pt-4 lg:items-center">
+      <div className="h-14 shrink-0 text-fd-muted-foreground" aria-hidden>
         {illustration}
       </div>
-      <div className="min-w-54 max-w-54 flex-1">
+      <div className="min-w-0 flex-1">
         <h3 className="mb-1 font-semibold">{title}</h3>
-        <p className="text-sm leading-relaxed text-balance text-fd-muted-foreground sm:text-base">
+        <p className="max-w-46 text-sm leading-relaxed text-balance text-fd-muted-foreground sm:text-base">
           {children}
         </p>
       </div>

@@ -6,7 +6,7 @@ import code from '@/components/Snippet';
 
 export function Context() {
   return (
-    <section id="context" className="panel px-6 lg:px-[50px]">
+    <section id="context" className="panel overflow-x-hidden px-6 lg:px-[50px]">
       <div className="mx-auto max-w-(--content-width) py-16 md:py-24">
         <div className="max-w-2xl mx-auto text-center mb-12">
           <h2 className="font-display text-3xl md:text-4xl font-bold tracking-tight mb-4">
@@ -87,8 +87,8 @@ class ThemeDemo extends Component {
     const { mode, trace: { root } } = this;
 
     return (
-      <div ref={root} className="mx-auto grid w-fit max-w-full items-center gap-7 md:grid-cols-[minmax(0,max-content)_8rem] md:gap-10">
-        <div className="code-nowrap min-w-0 w-fit max-w-full">
+      <div ref={root} className="mx-auto grid w-full max-w-full items-center gap-7 md:w-fit md:grid-cols-[minmax(0,max-content)_8rem] md:gap-10">
+        <div className="code-nowrap min-w-0 w-full max-w-full overflow-hidden md:w-fit">
           <ExprCode mode={mode} />
           <Playground to="/examples/composition/context" />
         </div>
