@@ -9,9 +9,14 @@ import { cp, readFile } from 'fs/promises';
 
 export default defineConfig({
   server: {
+    port: 8080,
+    headers: {
+      'Cache-Control': 'no-store',
+    },
     allowedHosts: ['.trycloudflare.com', ...(process.env.STAGING_HOST ? [process.env.STAGING_HOST] : [])],
   },
   resolve: {
+    dedupe: ['react', 'react-dom'],
     alias: {
       '@examples': resolve(__dirname, '../examples')
     }
