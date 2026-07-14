@@ -25,7 +25,7 @@ class Control extends State {
 
   tabScroller = ref<HTMLDivElement>((el) => {
     let frame = 0;
-    const media = window.matchMedia('(max-width: 1023px)');
+    const media = window.matchMedia('(max-width: 767px)');
 
     const update = () => {
       frame = 0;
@@ -72,7 +72,7 @@ class Control extends State {
     if (!el) return;
 
     const remaining = el.scrollWidth - el.clientWidth - el.scrollLeft;
-    const mobile = window.matchMedia('(max-width: 1023px)').matches;
+    const mobile = window.matchMedia('(max-width: 767px)').matches;
     this.canScrollTabsLeft = mobile && el.scrollLeft > 1;
     this.canScrollTabsRight = mobile && remaining > 1;
   }
@@ -115,7 +115,7 @@ export default function Compare({ left, right }: CompareProps) {
 
   return (
     <div>
-      <div className="compare-static hidden lg:grid lg:grid-cols-2 lg:gap-5 lg:items-start">
+      <div className="compare-static hidden md:grid md:grid-cols-2 md:gap-5 md:items-start">
         <div>
           <Head>
             <span className="text-sm font-semibold text-fd-primary">{left.label}</span>
@@ -131,7 +131,7 @@ export default function Compare({ left, right }: CompareProps) {
         </div>
       </div>
 
-      <div className="lg:hidden">
+      <div className="md:hidden">
         <div className="mb-3 [--tab-scroll-bg:color-mix(in_oklab,var(--color-fd-muted)_50%,transparent)]">
           <div className="relative w-fit max-w-full">
             <div

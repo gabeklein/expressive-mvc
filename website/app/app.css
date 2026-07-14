@@ -68,6 +68,10 @@ figure[data-rehype-pretty-code-figure] pre code,
   border-radius: 0.25rem;
 }
 
+.sandbox-navigation-trigger .sp-tabs-scrollable-container {
+  padding-left: 2.75rem !important;
+}
+
 /* Comparison blocks opt out of wrapping - they scroll horizontally instead. */
 .code-nowrap .shiki .line,
 .code-nowrap .shiki code,
