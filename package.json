@@ -16,7 +16,7 @@
     "ci:version": "changeset version && bun install",
     "ci:publish": "bun run --filter='./packages/*' build && changeset publish",
     "pr": "bash .github/scripts/pr.sh",
-    "tunnel": "cloudflared tunnel --url http://localhost:5173",
+    "tunnel": "cloudflared tunnel --no-autoupdate ${TUNNEL_NAME:+run} --url http://localhost:5173 ${TUNNEL_NAME:-}",
     "watch": "bun test --watch --only-failures",
     "nuke": "find . -name 'node_modules' -type d -prune -exec rm -rf '{}' +"
   },
