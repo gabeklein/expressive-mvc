@@ -8,6 +8,17 @@ import { resolve, join } from 'path';
 import { cp, readFile } from 'fs/promises';
 
 export default defineConfig({
+  optimizeDeps: {
+    include: [
+      '@codesandbox/sandpack-react',
+      'lucide-react',
+      'next-themes',
+      'react',
+      'react-dom',
+      'react/jsx-dev-runtime',
+      'react/jsx-runtime',
+    ],
+  },
   server: {
     port: 8080,
     headers: {
