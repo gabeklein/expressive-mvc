@@ -5,23 +5,27 @@ import Split from '@common/Split';
 // Picker is kept separate as a reusable, behavior-complete base.
 import { Picker } from './Picker';
 
-const COLORS: Record<string, string> = {
-  Coral: '#ff6f61',
-  Sky: '#4dabf7',
-  Mint: '#51cf66',
-};
+export default () => (
+  <div className="container">
+    <h1>Overrideable Subcomponents</h1>
+    <Split>
+      <FruitPicker />
+      <PalettePicker />
+    </Split>
+  </div>
+);
 
 // A plain vertical list. Only Item is overridden - selection behavior
 // and the default Summary are inherited untouched.
 class FruitPicker extends Picker {
   name = 'Fruit';
-  items = ['Apple', 'Banana', 'Cherry'];
+  names = ['Apple', 'Banana', 'Cherry'];
 
   Item({ index }: { index: number }) {
     return (
       <>
         {index === this.selected ? '🍎 ' : '🍏 '}
-        {this.items[index]}
+        {this.names[index]}
       </>
     );
   }
@@ -33,28 +37,25 @@ class FruitPicker extends Picker {
 class PalettePicker extends Picker {
   name = 'Color';
   className = 'palette';
-  items = Object.keys(COLORS);
+
+  colors: Record<string, string> = {
+    Coral: '#ff6f61',
+    Sky: '#4dabf7',
+    Mint: '#51cf66',
+  };
+
+  names = Object.keys(this.colors);
 
   Item({ index }: { index: number }) {
-    return <span className="swatch" style={{ background: COLORS[this.items[index]] }} />;
+    return <span className="swatch" style={{ background: this.colors[this.names[index]] }} />;
   }
 
   Summary() {
-    const name = this.items[this.selected];
+    const name = this.names[this.selected];
     return (
       <small>
-        {name} <code>{COLORS[name]}</code>
+        {name} <code>{this.colors[name]}</code>
       </small>
     );
   }
 }
-
-export default () => (
-  <div className="container">
-    <h1>Overrideable Subcomponents</h1>
-    <Split>
-      <FruitPicker />
-      <PalettePicker />
-    </Split>
-  </div>
-);

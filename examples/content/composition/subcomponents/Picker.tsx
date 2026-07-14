@@ -8,7 +8,7 @@ import { Component, set } from '@expressive/react';
  */
 export class Picker extends Component {
   name = '';
-  items = [] as string[];
+  names = [] as string[];
   selected = 0;
 
   /**
@@ -26,12 +26,12 @@ export class Picker extends Component {
    * override can't touch the click-to-select wiring in render().
    */
   Item({ index }: { index: number }) {
-    return <>{this.items[index]}</>;
+    return <>{this.names[index]}</>;
   }
 
   /** Visual seam: a readout of the current choice. */
   Summary() {
-    return <small>Selected: {this.items[this.selected]}</small>;
+    return <small>Selected: {this.names[this.selected]}</small>;
   }
 
   render() {
@@ -39,7 +39,7 @@ export class Picker extends Component {
       <div className={`picker ${this.className}`}>
         {this.name && <h2>Choose {this.name}</h2>}
         <ul>
-          {this.items.map((item, i) => (
+          {this.names.map((item, i) => (
             <li
               key={item}
               className={i === this.selected ? 'active' : ''}
