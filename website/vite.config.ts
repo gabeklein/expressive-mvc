@@ -9,7 +9,7 @@ import { cp, readFile } from 'fs/promises';
 
 export default defineConfig({
   server: {
-    allowedHosts: ['.trycloudflare.com'],
+    allowedHosts: ['.trycloudflare.com', ...(process.env.STAGING_HOST ? [process.env.STAGING_HOST] : [])],
   },
   resolve: {
     alias: {
