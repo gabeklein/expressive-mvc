@@ -129,6 +129,8 @@ declare namespace State {
     add(input: A): V;
     get(): ReadonlyMap<K, Export<V>>;
     get(key: K): V | undefined;
+    set(key: K): this;
+    set(key: K, value: V): this;
   }
 
   /** Descriptor config for a managed property. */
