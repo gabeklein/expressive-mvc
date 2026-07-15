@@ -63,6 +63,18 @@ cart.items.add('sku_123');              // returns same Line, factory not called
 line.qty = 2;                           // per-item updates live on the value
 ```
 
+A `State` class may stand in for the factory. `add(input?)` instantiates it - forwarding `input` to `Type.new()`, typically an assign object - and keys the instance by its natural id (`String(instance)`).
+
+```ts
+class Roster extends State {
+  players = map(Player);
+
+  join(name: string) {
+    return this.players.add({ name });
+  }
+}
+```
+
 A zero-arity factory returns a whole `[key, value]` entry instead; `add()` then takes no arguments. Use this when members key themselves.
 
 ```ts
@@ -109,12 +121,13 @@ snapshot.get('a'); // exported product values
 
 ```ts
 function map<K, V>(entries?: Iterable<readonly [K, V]> | null): State.Map<K, V>;
-function map<K, V>(make: () => readonly [K, V]): State.Map<K, V>;
+function map<T extends State>(Type: State.Type<T>): State.Map<string, T, State.Assign<T>>;
+function map<K, V>(make: () => readonly [K, V]): State.Map<K, V, never>;
 function map<K, V>(make: (key: K) => V, entries?: Iterable<readonly [K, V]> | null): State.Map<K, V>;
 
-interface State.Map<K, V> extends globalThis.Map<K, V> {
+interface State.Map<K, V, A = K> extends globalThis.Map<K, V> {
   add(): V;
-  add(key: K): V;
+  add(input: A): V;
   get(): ReadonlyMap<K, State.Export<V>>;
   get(key: K): V | undefined;
 }
