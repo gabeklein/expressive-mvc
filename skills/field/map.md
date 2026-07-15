@@ -49,7 +49,7 @@ products.set('c', { name: 'Bag' }); // reruns because shape changed
 
 ## Factory
 
-Pass a function to create a spawning map. The factory's argument is the key; `add(key)` runs it to create the value for that key. Adding a known key returns the existing value without calling the factory (get-or-create).
+Pass a function to create a spawning map. The factory's argument is the key; `add(key)` runs it to create the value for that key. `add` never replaces - an occupied key throws. `set(key)` with no value respawns through the factory, replacing the previous value (destroying it if owned).
 
 ```ts
 class Cart extends State {
@@ -59,8 +59,10 @@ class Cart extends State {
 const cart = Cart.new();
 
 const line = cart.items.add('sku_123'); // spawns Line
-cart.items.add('sku_123');              // returns same Line, factory not called
 line.qty = 2;                           // per-item updates live on the value
+
+cart.items.add('sku_123');              // throws - key occupied
+cart.items.set('sku_123');              // respawns, destroying previous Line
 ```
 
 A `State` class may stand in for the factory. `add(input?)` instantiates it - forwarding `input` to `Type.new()`, typically an assign object - and keys the instance by its natural id (`String(instance)`).
@@ -130,6 +132,8 @@ interface State.Map<K, V, A = K> extends globalThis.Map<K, V> {
   add(input: A): V;
   get(): ReadonlyMap<K, State.Export<V>>;
   get(key: K): V | undefined;
+  set(key: K): this;
+  set(key: K, value: V): this;
 }
 ```
 
@@ -142,6 +146,7 @@ interface State.Map<K, V, A = K> extends globalThis.Map<K, V> {
 - `delete(key)` and `clear()` notify removed keys and collection shape.
 - `keys()` tracks shape only; changing an existing value does not notify key iteration.
 - `values()`, `entries()`, `forEach()`, and `for...of` track shape and each visited value.
-- `add` fires the same events as `set`; returning an existing value fires nothing and does not subscribe.
-- `add` throws when the map was created without a factory, or when an entry factory returns anything but a two-element array.
+- `add` fires the same events as `set`.
+- `add` throws when the map was created without a factory, when an entry factory returns anything but a two-element array, or when the key is already occupied.
+- `set(key)` with no value respawns through the factory; it throws unless the map has a keyed factory.
 - Reactivity is shallow. Nested State, `hot()`, and `map()` values keep their own reactivity when accessed through the map.

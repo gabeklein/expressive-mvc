@@ -150,15 +150,37 @@ describe('keyed factory', () => {
     expect(items.get('a')).toBe(value);
   });
 
-  it('will return existing value for known key', () => {
+  it('will throw if key is already occupied', () => {
+    const make = mock((key: string) => ({ key }));
+    const items = map(make);
+
+    items.add('a');
+
+    expect(() => items.add('a')).toThrow(
+      'Key is already occupied; use set() to replace.'
+    );
+    expect(make).toHaveBeenCalledTimes(1);
+  });
+
+  it('will respawn value via set with key alone', () => {
     const make = mock((key: string) => ({ key }));
     const items = map(make);
 
     const first = items.add('a');
-    const again = items.add('a');
 
-    expect(again).toBe(first);
-    expect(make).toHaveBeenCalledTimes(1);
+    items.set('a');
+
+    expect(make).toHaveBeenCalledTimes(2);
+    expect(items.get('a')).not.toBe(first);
+    expect(items.get('a')).toEqual({ key: 'a' });
+  });
+
+  it('will throw on set with key alone without keyed factory', () => {
+    const items = map<string, number>();
+
+    expect(() => items.set('a')).toThrow(
+      'set(key) alone requires a keyed factory.'
+    );
   });
 
   it('will fire events on add', async () => {
@@ -198,14 +220,14 @@ describe('entry factory', () => {
     expect(items.size).toBe(2);
   });
 
-  it('will replace existing entry on key collision', () => {
+  it('will throw on entry key collision', () => {
     const items = map(() => ['fixed', {}] as const);
 
-    const first = items.add();
-    const second = items.add();
+    items.add();
 
-    expect(second).not.toBe(first);
-    expect(items.get('fixed')).toBe(second);
+    expect(() => items.add()).toThrow(
+      'Key is already occupied; use set() to replace.'
+    );
     expect(items.size).toBe(1);
   });
 
@@ -296,6 +318,17 @@ describe('ownership', () => {
 
     expect(spawned.get(null)).toBe(true);
     expect(guest.get(null)).toBe(false);
+  });
+
+  it('will destroy spawned state on respawn', () => {
+    const items = map((key: string) => Item.new());
+    const first = items.add('a');
+
+    items.set('a');
+
+    expect(first.get(null)).toBe(true);
+    expect(items.get('a')).not.toBe(first);
+    expect(items.get('a')).toBeInstanceOf(Item);
   });
 
   it('will not destroy value provided via set', () => {

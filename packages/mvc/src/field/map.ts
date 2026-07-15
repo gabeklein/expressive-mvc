@@ -88,12 +88,15 @@ class ReactiveMap<K, V>
       if (!globalThis.Array.isArray(entry) || entry.length !== 2)
         throw new Error('Factory must return a [key, value] entry.');
 
+      if (HAS.call(target, entry[0]))
+        throw new Error('Key is already occupied; use set() to replace.');
+
       store(target, entry[0], entry[1], meta);
       return entry[1];
     }
 
     if (HAS.call(target, input))
-      return GET.call(target, input) as V;
+      throw new Error('Key is already occupied; use set() to replace.');
 
     const value = meta.make(input) as V;
 
@@ -101,8 +104,22 @@ class ReactiveMap<K, V>
     return value;
   }
 
-  set(key: K, value: V) {
-    store(source(this), key, value);
+  set(key: K): this;
+  set(key: K, value: V): this;
+  set(key: K, value?: V) {
+    const target = source(this);
+
+    if (arguments.length === 1) {
+      const meta = META.get(target);
+
+      if (!meta || meta.type || meta.entry)
+        throw new Error('set(key) alone requires a keyed factory.');
+
+      store(target, key, meta.make(key) as V, meta);
+      return this;
+    }
+
+    store(target, key, value as V);
     return this;
   }
 

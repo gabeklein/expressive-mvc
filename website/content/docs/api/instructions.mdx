@@ -400,14 +400,14 @@ class Catalog extends State {
 
 `map()` is an export alongside the instructions, but not technically an instruction - it returns a reactive `State.Map` you can assign to a State field or use standalone with `watch()`.
 
-Pass a factory to spawn values from keys. `add(key)` is get-or-create: a new key runs the factory, a known key returns the existing value. Spawned `State` values are owned by the map - destroyed when deleted, cleared, or replaced - while values supplied via `set` are guests and never destroyed. A zero-arity factory instead returns a whole `[key, value]` entry, and `add()` takes no arguments. A `State` class may stand in for the factory: `add(input?)` instantiates it, forwarding `input` to `Type.new()`, keyed by the instance's natural id.
+Pass a factory to spawn values from keys. `add(key)` runs the factory for a vacant key - an occupied key throws - while `set(key)` with no value respawns through the factory, replacing the previous value. Spawned `State` values are owned by the map - destroyed when deleted, cleared, or replaced - while values supplied via `set(key, value)` are guests and never destroyed. A zero-arity factory instead returns a whole `[key, value]` entry, and `add()` takes no arguments. A `State` class may stand in for the factory: `add(input?)` instantiates it, forwarding `input` to `Type.new()`, keyed by the instance's natural id.
 
 ```ts
 class Cart extends State {
   items = map((id: string) => Line.new(id));
 
   add(id: string) {
-    return this.items.add(id); // spawns once per id
+    return this.items.add(id); // spawns Line for vacant id
   }
 }
 ```
@@ -430,5 +430,7 @@ interface State.Map<K, V, A = K> extends globalThis.Map<K, V> {
   add(input: A): V;
   get(): ReadonlyMap<K, State.Export<V>>;
   get(key: K): V | undefined;
+  set(key: K): this;
+  set(key: K, value: V): this;
 }
 ```
