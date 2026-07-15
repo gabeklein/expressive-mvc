@@ -25,6 +25,7 @@ export function Comparison() {
           right={[
             { label: 'Hooks', code: HookCode },
             { label: 'Zustand', code: ZustandCode },
+            { label: 'XState', code: XStateCode },
             { label: 'Jotai', code: JotaiCode },
             { label: 'Redux', code: ReduxCode },
             { label: 'MobX', code: MobxCode },
@@ -103,6 +104,39 @@ const ZustandCode = code /*tsx*/`
   function useFooBarBaz() {
     const [store] = useState(makeStore);
     return useStore(store);
+  }
+
+  function Widget() {
+    const { foo, bar, baz, bump } = useFooBarBaz();
+
+    return (
+      <button onClick={bump}>
+        {foo} · {bar} · {String(baz)}
+      </button>
+    );
+  }
+`;
+
+const XStateCode = code /*tsx*/`
+  import { createStoreHook } from '@xstate/store-react';
+  import React from 'react';
+
+  const useFooBarBazStore = createStoreHook({
+    context: { foo: 0, bar: 'hello', baz: true },
+    on: {
+      bump: context => ({
+        ...context,
+        foo: context.foo + 1,
+      }),
+    },
+  });
+
+  function useFooBarBaz() {
+    const [{ foo, bar, baz }, store] =
+      useFooBarBazStore(state => state.context);
+    const bump = () => store.trigger.bump();
+
+    return { foo, bar, baz, bump };
   }
 
   function Widget() {

@@ -1,11 +1,14 @@
 import { lazy, Suspense } from 'react';
-import { Navigate, useParams } from 'react-router';
-import { examples, getFiles, REDIRECT } from './loader';
+import { Navigate, useOutletContext, useParams } from 'react-router';
+import type { ExamplesOutletContext } from './layout';
+import { examples, EXAMPLE_LABELS, getFiles, REDIRECT } from './loader';
 
 const Sandbox = lazy(() => import('@/components/Sandbox'));
 
 export default function CodeSample() {
   const name = useParams()['*'];
+  const { navigationOpen, openNavigation } =
+    useOutletContext<ExamplesOutletContext>();
 
   if (!name || !examples[name])
     return <Navigate to={`/examples/${REDIRECT}`} replace />;
@@ -17,7 +20,13 @@ export default function CodeSample() {
           fallback={
             <div className="text-fd-muted-foreground">Loading sandbox...</div>
           }>
-          <Sandbox name={name} files={getFiles(name)} />
+          <Sandbox
+            name={name}
+            label={EXAMPLE_LABELS[name]}
+            files={getFiles(name)}
+            navigationOpen={navigationOpen}
+            onOpenNavigation={openNavigation}
+          />
         </Suspense>
       </div>
     </div>

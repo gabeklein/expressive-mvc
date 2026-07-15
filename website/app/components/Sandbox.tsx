@@ -6,13 +6,19 @@ import {
   useSandpack,
 } from '@codesandbox/sandpack-react';
 import State, { ref, set } from '@expressive/react';
+import { Columns2, PanelLeftOpen, Rows2 } from 'lucide-react';
 import { useTheme } from 'next-themes';
-import type { MouseEvent as ReactMouseEvent } from 'react';
-import { useMemo } from 'react';
+import type {
+  KeyboardEvent as ReactKeyboardEvent,
+  PointerEvent as ReactPointerEvent,
+} from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 class Panes extends State {
   mode: 'preview' | 'code' = 'preview';
-  ratio = 50; // editor width (%) when both panels are side by side
+  stacked = false;
+  ratio = 50;
 
   // Hold Ctrl and two-finger swipe to nudge split
   layout = ref<HTMLDivElement>((el) => {
@@ -32,30 +38,66 @@ class Panes extends State {
     this.mode = is;
   }
 
-  grab(event: ReactMouseEvent) {
+  toggleSplit() {
+    this.stacked = !this.stacked;
+  }
+
+  grab(event: ReactPointerEvent<HTMLDivElement>) {
+    if (!event.isPrimary || event.button !== 0) return;
+
     event.preventDefault();
     const rect = event.currentTarget.parentElement!.getBoundingClientRect();
+    const pointerId = event.pointerId;
 
-    const move = (e: globalThis.MouseEvent) => {
-      const pct = ((e.clientX - rect.left) / rect.width) * 100;
+    const move = (e: globalThis.PointerEvent) => {
+      if (e.pointerId !== pointerId) return;
+      e.preventDefault();
+      const pct = this.stacked
+        ? ((e.clientY - rect.top) / rect.height) * 100
+        : ((e.clientX - rect.left) / rect.width) * 100;
       this.ratio = Math.min(80, Math.max(20, pct));
     };
-    const up = () => {
-      document.removeEventListener('mousemove', move);
-      document.removeEventListener('mouseup', up);
+    const up = (e: globalThis.PointerEvent) => {
+      if (e.pointerId !== pointerId) return;
+      document.removeEventListener('pointermove', move);
+      document.removeEventListener('pointerup', up);
+      document.removeEventListener('pointercancel', up);
     };
 
-    document.addEventListener('mousemove', move);
-    document.addEventListener('mouseup', up);
+    document.addEventListener('pointermove', move, { passive: false });
+    document.addEventListener('pointerup', up);
+    document.addEventListener('pointercancel', up);
+  }
+
+  adjust(event: ReactKeyboardEvent<HTMLDivElement>) {
+    const step = event.shiftKey ? 10 : 2;
+
+    const decrease = this.stacked ? 'ArrowUp' : 'ArrowLeft';
+    const increase = this.stacked ? 'ArrowDown' : 'ArrowRight';
+
+    if (event.key === decrease) this.ratio = Math.max(20, this.ratio - step);
+    else if (event.key === increase)
+      this.ratio = Math.min(80, this.ratio + step);
+    else if (event.key === 'Home') this.ratio = 20;
+    else if (event.key === 'End') this.ratio = 80;
+    else return;
+
+    event.preventDefault();
   }
 }
 
 export default function Sandbox({
   name,
+  label,
   files,
+  navigationOpen = false,
+  onOpenNavigation,
 }: {
   name: string;
+  label: string;
   files: Record<string, string>;
+  navigationOpen?: boolean;
+  onOpenNavigation?: () => void;
 }) {
   const { resolvedTheme } = useTheme();
   const dark = resolvedTheme === 'dark';
@@ -98,13 +140,63 @@ export default function Sandbox({
       files={themed}
       customSetup={{ dependencies }}
       style={{ height: '100%' }}>
-      <Layout />
+      <Layout
+        label={label}
+        navigationOpen={navigationOpen}
+        onOpenNavigation={onOpenNavigation}
+      />
     </SandpackProvider>
   );
 }
 
-function Layout() {
-  const { onSelect, mode, ratio, grab, layout } = Panes.use();
+function Layout({
+  label,
+  navigationOpen,
+  onOpenNavigation,
+}: {
+  label: string;
+  navigationOpen: boolean;
+  onOpenNavigation?: () => void;
+}) {
+  const {
+    onSelect,
+    mode,
+    stacked,
+    ratio,
+    grab,
+    adjust,
+    toggleSplit,
+    layout,
+  } = Panes.use();
+  const [layoutElement, setLayoutElement] = useState<HTMLDivElement | null>(
+    null
+  );
+  const [tabs, setTabs] = useState<HTMLElement | null>(null);
+  const connectLayout = useCallback(
+    (element: HTMLDivElement | null) => {
+      layout(element);
+      setLayoutElement(element);
+    },
+    [layout]
+  );
+  useEffect(() => {
+    if (!layoutElement) {
+      setTabs(null);
+      return;
+    }
+
+    const update = () =>
+      setTabs(
+        layoutElement.querySelector<HTMLElement>(
+          '.sp-tabs-scrollable-container'
+        )
+      );
+    const observer = new MutationObserver(update);
+
+    update();
+    observer.observe(layoutElement, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, [layoutElement]);
   const sandpack = useSandpack();
   const refreshOnSave = {
     key: 'Mod-s',
@@ -117,13 +209,14 @@ function Layout() {
 
   // Below the breakpoint the panels can't fit side by side; show one at a time
   // and reveal a toggle. Inline display wins over Sandpack's own layout CSS.
-  const { matches: narrow } = MediaQuery.use({ query: '(max-width: 767px)' });
+  const { matches: narrow } = MediaQuery.use({ query: '(max-width: 639px)' });
   const showEditor = !narrow || mode === 'code';
   const showPreview = !narrow || mode === 'preview';
 
   return (
     <SandpackLayout
-      ref={layout}
+      ref={connectLayout}
+      style={{ flexDirection: stacked ? 'column' : 'row' }}
       className="relative h-full [--sp-layout-height:100%]">
       <SandpackCodeEditor
         style={{
@@ -132,17 +225,88 @@ function Layout() {
         }}
         extensionsKeymap={[refreshOnSave]}
       />
+      {onOpenNavigation &&
+        !navigationOpen &&
+        tabs &&
+        createPortal(
+          <button
+            aria-label={`Open examples navigation for ${label}`}
+            className="order-first mr-1 flex max-w-40 shrink-0 items-center gap-1.5 self-stretch pr-4 pl-3 text-sm font-medium text-fd-muted-foreground hover:text-fd-foreground"
+            onClick={onOpenNavigation}>
+            <PanelLeftOpen className="size-4 shrink-0" />
+            <span className="truncate">{label}</span>
+          </button>,
+          tabs
+        )}
       {!narrow && (
         <div
-          className="shrink-0 w-1.5 cursor-col-resize bg-fd-border hover:bg-fd-primary"
-          onMouseDown={grab}
-        />
+          role="separator"
+          aria-label="Resize code and preview panels"
+          aria-orientation={stacked ? 'horizontal' : 'vertical'}
+          aria-valuemin={20}
+          aria-valuemax={80}
+          aria-valuenow={Math.round(ratio)}
+          tabIndex={0}
+          className={`group relative z-10 shrink-0 touch-none focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-fd-ring ${
+            stacked
+              ? '-my-4 h-11 w-full cursor-row-resize'
+              : '-mx-4 h-full w-11 cursor-col-resize'
+          }`}
+          onPointerDown={grab}
+          onKeyDown={adjust}>
+          <span
+            className={`pointer-events-none absolute bg-fd-border transition-colors group-hover:bg-fd-primary group-focus-visible:bg-fd-primary ${
+              stacked
+                ? 'inset-x-0 top-1/2 h-px -translate-y-1/2'
+                : 'inset-y-0 left-1/2 w-px -translate-x-1/2'
+            }`}
+          />
+          <span
+            className={`pointer-events-none absolute top-1/2 left-1/2 -translate-1/2 rounded-full border border-fd-border bg-fd-background shadow-sm transition-colors group-hover:border-fd-primary group-focus-visible:border-fd-primary ${
+              stacked ? 'h-1.5 w-12' : 'h-12 w-1.5'
+            }`}
+          />
+        </div>
       )}
       <SandpackPreview
         style={{ display: showPreview ? 'flex' : 'none', flex: '1 1 0%' }}
       />
+      {!narrow && (
+        <SplitSwitcher
+          stacked={stacked}
+          ratio={ratio}
+          onToggle={toggleSplit}
+        />
+      )}
       {narrow && <Switcher panel={mode} onSelect={onSelect} />}
     </SandpackLayout>
+  );
+}
+
+function SplitSwitcher({
+  stacked,
+  ratio,
+  onToggle,
+}: {
+  stacked: boolean;
+  ratio: number;
+  onToggle: () => void;
+}) {
+  const label = stacked ? 'Split panels vertically' : 'Split panels horizontally';
+
+  return (
+    <div
+      className="absolute right-2 z-20 flex rounded-md border border-fd-border bg-fd-background p-0.5 shadow-sm"
+      style={{ top: stacked ? `calc(${ratio}% + 1.25rem)` : '0.5rem' }}>
+      <button
+        type="button"
+        aria-label={label}
+        title={label}
+        className="flex size-9 cursor-pointer items-center justify-center rounded border-none bg-transparent text-fd-muted-foreground hover:bg-fd-muted hover:text-fd-foreground"
+        onClick={onToggle}>
+        {stacked ? <Columns2 className="size-4" /> : <Rows2 className="size-4" />}
+      </button>
+    </div>
   );
 }
 

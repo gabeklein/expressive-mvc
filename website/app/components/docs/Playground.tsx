@@ -1,5 +1,9 @@
 import { Link } from 'react-router';
-import { examples, getFiles } from '@/routes/examples/loader';
+import {
+  examples,
+  EXAMPLE_LABELS,
+  getFiles,
+} from '@/routes/examples/loader';
 import Sandbox from '@/components/Sandbox';
 
 interface PlaygroundProps {
@@ -17,7 +21,7 @@ export default function Playground({ of, height = 480 }: PlaygroundProps) {
         style={{ height }}
         className="relative overflow-hidden rounded-xl border border-fd-border">
         <div className="absolute inset-0 flex flex-col">
-          <Sandbox name={of} files={getFiles(of)} />
+          <Sandbox name={of} label={EXAMPLE_LABELS[of]} files={getFiles(of)} />
         </div>
       </div>
       <div className="mt-2 text-right">

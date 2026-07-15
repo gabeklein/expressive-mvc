@@ -25,7 +25,7 @@ class Control extends State {
 
   tabScroller = ref<HTMLDivElement>((el) => {
     let frame = 0;
-    const media = window.matchMedia('(max-width: 1023px)');
+    const media = window.matchMedia('(max-width: 767px)');
 
     const update = () => {
       frame = 0;
@@ -72,7 +72,7 @@ class Control extends State {
     if (!el) return;
 
     const remaining = el.scrollWidth - el.clientWidth - el.scrollLeft;
-    const mobile = window.matchMedia('(max-width: 1023px)').matches;
+    const mobile = window.matchMedia('(max-width: 767px)').matches;
     this.canScrollTabsLeft = mobile && el.scrollLeft > 1;
     this.canScrollTabsRight = mobile && remaining > 1;
   }
@@ -95,12 +95,12 @@ export default function Compare({ left, right }: CompareProps) {
 
   const libTabs =
     right.length > 1 ? (
-      <div className="flex flex-wrap items-center gap-1.5">
+      <div className="flex min-w-0 max-w-full flex-nowrap items-center gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {right.map((s, i) => (
           <button
             key={s.label}
             onClick={() => select(i + 1)}
-            className={`rounded-full font-mono text-xs py-1 px-2.5 transition-colors ${
+            className={`shrink-0 rounded-full font-mono text-xs py-1 px-2.5 transition-colors ${
               i === tab
                 ? 'bg-fd-muted text-fd-foreground'
                 : 'text-fd-muted-foreground hover:bg-fd-muted/60'
@@ -115,8 +115,8 @@ export default function Compare({ left, right }: CompareProps) {
 
   return (
     <div>
-      <div className="compare-static hidden lg:grid lg:grid-cols-2 lg:gap-5 lg:items-start">
-        <div>
+      <div className="compare-static hidden md:grid md:grid-cols-2 md:gap-5 md:items-start">
+        <div className="min-w-0">
           <Head>
             <span className="text-sm font-semibold text-fd-primary">{left.label}</span>
             <span className="text-[11px] uppercase tracking-widest text-fd-muted-foreground">
@@ -125,13 +125,13 @@ export default function Compare({ left, right }: CompareProps) {
           </Head>
           <CodePanel snippet={Left} />
         </div>
-        <div>
+        <div className="min-w-0">
           <Head>{libTabs}</Head>
           <CodePanel snippet={Right} />
         </div>
       </div>
 
-      <div className="lg:hidden">
+      <div className="md:hidden">
         <div className="mb-3 [--tab-scroll-bg:color-mix(in_oklab,var(--color-fd-muted)_50%,transparent)]">
           <div className="relative w-fit max-w-full">
             <div
@@ -173,7 +173,7 @@ function CodePanel({ snippet: Snippet }: { snippet: Snippet }) {
   const tokenCount = 'tokenCount' in Snippet ? Snippet.tokenCount : undefined;
 
   return (
-    <div className="relative">
+    <div className="relative min-w-0">
       <Snippet {...LN} />
       {tokenCount !== undefined && (
         <span className="pointer-events-none absolute right-3 bottom-3 rounded bg-fd-card/90 px-1.5 py-0.5 font-mono text-[10px] text-fd-muted-foreground shadow-sm">
@@ -186,7 +186,7 @@ function CodePanel({ snippet: Snippet }: { snippet: Snippet }) {
 
 function Head({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex items-center justify-between gap-2 min-h-10 px-1 mb-2">
+    <div className="flex min-w-0 items-center justify-between gap-2 min-h-10 px-1 mb-2">
       {children}
     </div>
   );
