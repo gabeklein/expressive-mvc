@@ -126,12 +126,16 @@ class UserProfile extends State {
 
 #### `map()` - Reactive Maps
 
-| Form           | Behavior                                                     |
-| -------------- | ------------------------------------------------------------ |
-| `map<K, V>()`  | Empty reactive `Map` with keyed reads and writes.            |
-| `map(entries)` | Reactive `Map` initialized from iterable `[key, value]` pairs. |
+| Form                | Behavior                                                     |
+| ------------------- | ------------------------------------------------------------ |
+| `map<K, V>()`       | Empty reactive `Map` with keyed reads and writes.            |
+| `map(entries)`      | Reactive `Map` initialized from iterable `[key, value]` pairs. |
+| `map(key => value)` | Adds `add(key)` - spawns value from key (get-or-create). Spawned values are owned. |
+| `map(() => entry)`  | Zero-arity factory returns `[key, value]`; `add()` takes no arguments. |
 
 `map()` is a reactive helper, not a field instruction. It returns a `State.Map<K, V>` extending native `Map`, with reactive `get(key)`, `has(key)`, `size`, iteration, `set`, `delete`, and `clear`. Calling `get()` with no key returns a shallow `ReadonlyMap` snapshot.
+
+With a factory, `add` spawns through it and the map owns the result: spawned `State` values are destroyed when deleted, cleared, or replaced. Values supplied directly via `set` are guests and never destroyed.
 
 ### React Hooks
 
