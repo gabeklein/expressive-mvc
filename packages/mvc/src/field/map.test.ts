@@ -218,6 +218,48 @@ describe('entry factory', () => {
   });
 });
 
+describe('class factory', () => {
+  class Item extends State {
+    value = 0;
+  }
+
+  it('will instantiate class on add', () => {
+    const items = map(Item);
+    const item = items.add();
+
+    expect(item).toBeInstanceOf(Item);
+    expect(items.get(String(item))).toBe(item);
+  });
+
+  it('will apply input values to instance', () => {
+    const items = map(Item);
+    const item = items.add({ value: 5 });
+
+    expect(item.value).toBe(5);
+  });
+
+  it('will key each instance by natural id', () => {
+    const items = map(Item);
+    const a = items.add();
+    const b = items.add();
+
+    expect(items.size).toBe(2);
+    expect(items.get(String(a))).toBe(a);
+    expect(items.get(String(b))).toBe(b);
+  });
+
+  it('will destroy instance on delete', () => {
+    const items = map(Item);
+    const item = items.add();
+
+    expect(item.get(null)).toBe(false);
+
+    items.delete(String(item));
+
+    expect(item.get(null)).toBe(true);
+  });
+});
+
 describe('ownership', () => {
   class Item extends State {
     value = 0;

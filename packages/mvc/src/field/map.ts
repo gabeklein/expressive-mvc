@@ -14,6 +14,7 @@ const KEYS = globalThis.Map.prototype.keys;
 
 type Meta = {
   make: Function;
+  type: boolean;
   entry: boolean;
   spawned: Set<unknown>;
 };
@@ -29,7 +30,12 @@ class ReactiveMap<K, V>
     if (entries) for (const [key, value] of entries) super.set(key, value);
 
     if (make)
-      META.set(this, { make, entry: !make.length, spawned: new Set() });
+      META.set(this, {
+        make,
+        type: State.is(make),
+        entry: !make.length,
+        spawned: new Set()
+      });
 
     event(this);
   }
@@ -57,13 +63,24 @@ class ReactiveMap<K, V>
   }
 
   add(): V;
-  add(key: K): V;
-  add(key?: K): V {
+  add(input: unknown): V;
+  add(input?: unknown): V {
     const target = source(this);
     const meta = META.get(target);
 
     if (!meta)
       throw new Error('add() requires a map created with a factory.');
+
+    if (meta.type) {
+      const value = (
+        input === undefined
+          ? (meta.make as State.Type).new()
+          : (meta.make as State.Type).new(input as never)
+      ) as V;
+
+      store(target, globalThis.String(value) as K, value, meta);
+      return value;
+    }
 
     if (meta.entry) {
       const entry = meta.make() as [K, V];
@@ -75,12 +92,12 @@ class ReactiveMap<K, V>
       return entry[1];
     }
 
-    if (HAS.call(target, key))
-      return GET.call(target, key) as V;
+    if (HAS.call(target, input))
+      return GET.call(target, input) as V;
 
-    const value = meta.make(key) as V;
+    const value = meta.make(input) as V;
 
-    store(target, key as K, value, meta);
+    store(target, input as K, value, meta);
     return value;
   }
 
@@ -160,7 +177,10 @@ class ReactiveMap<K, V>
 function map<K, V>(
   entries?: Iterable<readonly [K, V]> | null
 ): State.Map<K, V>;
-function map<K, V>(make: () => readonly [K, V]): State.Map<K, V>;
+function map<T extends State>(
+  Type: State.Type<T>
+): State.Map<string, T, State.Assign<T>>;
+function map<K, V>(make: () => readonly [K, V]): State.Map<K, V, never>;
 function map<K, V>(
   make: (key: K) => V,
   entries?: Iterable<readonly [K, V]> | null
@@ -168,7 +188,7 @@ function map<K, V>(
 function map<K, V>(
   arg?: Iterable<readonly [K, V]> | Function | null,
   entries?: Iterable<readonly [K, V]> | null
-): State.Map<K, V> {
+): State.Map<K, V, any> {
   return typeof arg == 'function'
     ? new ReactiveMap(entries, arg)
     : new ReactiveMap(arg);
