@@ -1,5 +1,5 @@
 import { event, touch } from '../observable';
-import type { State } from '../state';
+import { State } from '../state';
 
 const SHAPE = Symbol('shape');
 const SIZE = Object.getOwnPropertyDescriptor(globalThis.Map.prototype, 'size')!
@@ -12,13 +12,24 @@ const CLEAR = globalThis.Map.prototype.clear;
 const ENTRIES = globalThis.Map.prototype.entries;
 const KEYS = globalThis.Map.prototype.keys;
 
+type Meta = {
+  make: Function;
+  entry: boolean;
+  spawned: Set<unknown>;
+};
+
+const META = new WeakMap<object, Meta>();
+
 class ReactiveMap<K, V>
   extends globalThis.Map<K, V>
   implements State.Map<K, V> {
-  constructor(entries?: Iterable<readonly [K, V]> | null) {
+  constructor(entries?: Iterable<readonly [K, V]> | null, make?: Function) {
     super();
 
     if (entries) for (const [key, value] of entries) super.set(key, value);
+
+    if (make)
+      META.set(this, { make, entry: !make.length, spawned: new Set() });
 
     event(this);
   }
@@ -45,17 +56,36 @@ class ReactiveMap<K, V>
     return touch(this, key, HAS.call(source(this), key));
   }
 
-  set(key: K, value: V) {
+  add(): V;
+  add(key: K): V;
+  add(key?: K): V {
     const target = source(this);
-    const exists = HAS.call(target, key);
-    const previous = GET.call(target, key);
+    const meta = META.get(target);
 
-    if (exists && previous === value) return this;
+    if (!meta)
+      throw new Error('add() requires a map created with a factory.');
 
-    SET.call(target, key, value);
-    event(target, key as never);
-    if (!exists) event(target, SHAPE);
+    if (meta.entry) {
+      const entry = meta.make() as [K, V];
 
+      if (!globalThis.Array.isArray(entry) || entry.length !== 2)
+        throw new Error('Factory must return a [key, value] entry.');
+
+      store(target, entry[0], entry[1], meta);
+      return entry[1];
+    }
+
+    if (HAS.call(target, key))
+      return GET.call(target, key) as V;
+
+    const value = meta.make(key) as V;
+
+    store(target, key as K, value, meta);
+    return value;
+  }
+
+  set(key: K, value: V) {
+    store(source(this), key, value);
     return this;
   }
 
@@ -63,6 +93,8 @@ class ReactiveMap<K, V>
     const target = source(this);
 
     if (!HAS.call(target, key)) return false;
+
+    release(target, key, GET.call(target, key));
 
     const deleted = DELETE.call(target, key);
 
@@ -79,11 +111,13 @@ class ReactiveMap<K, V>
 
     if (!SIZE.call(target)) return;
 
-    const keys = globalThis.Array.from(KEYS.call(target));
+    const entries = globalThis.Array.from(ENTRIES.call(target));
+
+    for (const [key, value] of entries) release(target, key, value);
 
     CLEAR.call(target);
 
-    for (const key of keys) event(target, key as never);
+    for (const [key] of entries) event(target, key as never);
     event(target, SHAPE);
   }
 
@@ -125,8 +159,50 @@ class ReactiveMap<K, V>
 
 function map<K, V>(
   entries?: Iterable<readonly [K, V]> | null
+): State.Map<K, V>;
+function map<K, V>(make: () => readonly [K, V]): State.Map<K, V>;
+function map<K, V>(
+  make: (key: K) => V,
+  entries?: Iterable<readonly [K, V]> | null
+): State.Map<K, V>;
+function map<K, V>(
+  arg?: Iterable<readonly [K, V]> | Function | null,
+  entries?: Iterable<readonly [K, V]> | null
 ): State.Map<K, V> {
-  return new ReactiveMap(entries);
+  return typeof arg == 'function'
+    ? new ReactiveMap(entries, arg)
+    : new ReactiveMap(arg);
+}
+
+function store<K, V>(
+  target: ReactiveMap<K, V>,
+  key: K,
+  value: V,
+  meta?: Meta
+) {
+  const exists = HAS.call(target, key);
+
+  if (exists) {
+    const previous = GET.call(target, key);
+
+    if (previous === value) return;
+
+    release(target, key, previous);
+  }
+
+  SET.call(target, key, value);
+
+  if (meta) meta.spawned.add(key);
+
+  event(target, key as never);
+  if (!exists) event(target, SHAPE);
+}
+
+function release<K, V>(target: ReactiveMap<K, V>, key: K, value: V) {
+  const meta = META.get(target);
+
+  if (meta && meta.spawned.delete(key) && value instanceof State)
+    value.set(null);
 }
 
 function source<K, V>(target: ReactiveMap<K, V>) {

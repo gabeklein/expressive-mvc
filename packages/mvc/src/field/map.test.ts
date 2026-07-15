@@ -141,6 +141,151 @@ describe('iteration', () => {
   });
 });
 
+describe('keyed factory', () => {
+  it('will spawn value from key on add', () => {
+    const items = map((key: string) => ({ key }));
+    const value = items.add('a');
+
+    expect(value).toEqual({ key: 'a' });
+    expect(items.get('a')).toBe(value);
+  });
+
+  it('will return existing value for known key', () => {
+    const make = mock((key: string) => ({ key }));
+    const items = map(make);
+
+    const first = items.add('a');
+    const again = items.add('a');
+
+    expect(again).toBe(first);
+    expect(make).toHaveBeenCalledTimes(1);
+  });
+
+  it('will fire events on add', async () => {
+    const items = map((key: string) => key.toUpperCase());
+    const fn = mock();
+
+    watch(items, ($) => {
+      void $.size;
+      fn();
+    });
+    fn.mockClear();
+
+    items.add('a');
+    await flush();
+    expect(fn).toHaveBeenCalled();
+  });
+
+  it('will throw if created without factory', () => {
+    const items = map<string, number>();
+
+    expect(() => items.add('a')).toThrow(
+      'add() requires a map created with a factory.'
+    );
+  });
+});
+
+describe('entry factory', () => {
+  it('will spawn entry on add without arguments', () => {
+    let id = 0;
+    const items = map(() => [id++, { id }] as const);
+
+    const first = items.add();
+    const second = items.add();
+
+    expect(items.get(0)).toBe(first);
+    expect(items.get(1)).toBe(second);
+    expect(items.size).toBe(2);
+  });
+
+  it('will replace existing entry on key collision', () => {
+    const items = map(() => ['fixed', {}] as const);
+
+    const first = items.add();
+    const second = items.add();
+
+    expect(second).not.toBe(first);
+    expect(items.get('fixed')).toBe(second);
+    expect(items.size).toBe(1);
+  });
+
+  it('will throw if factory does not return an entry', () => {
+    const items = map(() => 'nope' as unknown as [string, string]);
+
+    expect(() => items.add()).toThrow(
+      'Factory must return a [key, value] entry.'
+    );
+  });
+});
+
+describe('ownership', () => {
+  class Item extends State {
+    value = 0;
+  }
+
+  it('will destroy spawned state on delete', () => {
+    const items = map((key: string) => Item.new());
+    const item = items.add('a');
+
+    expect(item.get(null)).toBe(false);
+
+    items.delete('a');
+
+    expect(item.get(null)).toBe(true);
+  });
+
+  it('will destroy spawned state on clear', () => {
+    const items = map((key: string) => Item.new());
+    const a = items.add('a');
+    const b = items.add('b');
+
+    items.clear();
+
+    expect(a.get(null)).toBe(true);
+    expect(b.get(null)).toBe(true);
+  });
+
+  it('will destroy spawned state when replaced via set', () => {
+    const items = map((key: string) => Item.new());
+    const spawned = items.add('a');
+    const guest = Item.new();
+
+    items.set('a', guest);
+
+    expect(spawned.get(null)).toBe(true);
+    expect(guest.get(null)).toBe(false);
+  });
+
+  it('will not destroy value provided via set', () => {
+    const items = map((key: string) => Item.new());
+    const guest = Item.new();
+
+    items.set('a', guest);
+    items.delete('a');
+
+    expect(guest.get(null)).toBe(false);
+  });
+
+  it('will not destroy spawned value set to itself', () => {
+    const items = map((key: string) => Item.new());
+    const spawned = items.add('a');
+
+    items.set('a', spawned);
+    items.delete('a');
+
+    expect(spawned.get(null)).toBe(true);
+  });
+
+  it('will ignore plain spawned values', () => {
+    const items = map((key: string) => ({ key }));
+
+    items.add('a');
+
+    expect(items.delete('a')).toBeTrue();
+    expect(items.size).toBe(0);
+  });
+});
+
 describe('subscriptions', () => {
   it('will fire on get(key) only when that key changes', async () => {
     const items = map([
