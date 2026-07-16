@@ -176,7 +176,7 @@ function map<K, V>(
 ): State.Map<K, V>;
 function map<T extends State>(
   Type: new (...args: any[]) => T
-): State.Map.Factory<T, string | State.Assign<T>>;
+): State.Map.Factory<T, State.Map.Key<T> | State.Assign<T>>;
 function map<V, I = string>(
   make: (input: I) => V,
   entries?: Iterable<readonly [string, V]> | null
@@ -190,12 +190,15 @@ function map<K, V>(
     : new ReactiveMap(arg);
 }
 
-function spawn(meta: Meta, key: unknown) {
-  if (!meta.type) return meta.make(key);
+function spawn(meta: Meta, input: unknown) {
+  if (!meta.type) return meta.make(input);
 
-  return key === undefined
-    ? (meta.make as State.Type).new()
-    : (meta.make as State.Type).new(key as never);
+  const Type = meta.make as State.Type;
+
+  if (input === undefined) return Type.new();
+  if (typeof input == 'string') return Type.new({ id: input } as never);
+
+  return Type.new(input as never);
 }
 
 function store<K, V>(

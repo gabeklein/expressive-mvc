@@ -269,14 +269,9 @@ describe('class factory', () => {
     expect(items.get(String(item))).toBe(item);
   });
 
-  it('will pass key to constructor', () => {
+  it('will assign string input to declared id field', () => {
     class Product extends State {
-      id: string;
-
-      constructor(id?: string) {
-        super();
-        this.id = id || '';
-      }
+      id = '';
     }
 
     const items = map(Product);
@@ -284,6 +279,32 @@ describe('class factory', () => {
 
     expect(item.id).toBe('sku_123');
     expect(items.get('sku_123')).toBe(item);
+  });
+
+  it('will expose id to new lifecycle hook', () => {
+    const loaded = mock();
+
+    class Product extends State {
+      id = '';
+
+      protected new() {
+        loaded(this.id);
+      }
+    }
+
+    const items = map(Product);
+
+    items.add('sku_123');
+
+    expect(loaded).toHaveBeenCalledWith('sku_123');
+  });
+
+  it('will skip id when class does not declare it', () => {
+    const items = map(Item);
+    const item = items.add('a');
+
+    expect('id' in item).toBe(false);
+    expect(items.get('a')).toBe(item);
   });
 
   it('will assign object input to instance', () => {
