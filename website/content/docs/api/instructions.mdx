@@ -400,7 +400,7 @@ class Catalog extends State {
 
 `map()` is an export alongside the instructions, but not technically an instruction - it returns a reactive `State.Map` you can assign to a State field or use standalone with `watch()`.
 
-Pass a factory to spawn values from keys. `add(key)` runs the factory for a vacant key - an occupied key throws - while `set(key)` with no value respawns through the factory, replacing the previous value. Spawned `State` values are owned by the map - destroyed when deleted, cleared, or replaced - while values supplied via `set(key, value)` are guests and never destroyed. A zero-arity factory instead returns a whole `[key, value]` entry, and `add()` takes no arguments. A `State` class may stand in for the factory: `add(input?)` instantiates it, forwarding `input` to `Type.new()`, keyed by the instance's natural id.
+Pass a factory to spawn values. Factory maps are string-keyed: `add(key)` runs the factory for a vacant key - an occupied key throws - while `set(key)` with no value respawns through the factory, replacing the previous value. Keyless `add()` derives the key from `String(value)` - for a `State`, its natural id. Spawned `State` values are owned by the map - destroyed when deleted, cleared, or replaced - while values supplied via `set(key, value)` are guests and never destroyed. A `State` class may stand in for the factory: `add(key?)` instantiates it, forwarding the key to the constructor.
 
 ```ts
 class Cart extends State {
@@ -421,16 +421,17 @@ class Cart extends State {
 
 ```ts
 function map<K, V>(entries?: Iterable<readonly [K, V]> | null): State.Map<K, V>;
-function map<T extends State>(Type: State.Type<T>): State.Map<string, T, State.Assign<T>>;
-function map<K, V>(make: () => readonly [K, V]): State.Map<K, V, never>;
-function map<K, V>(make: (key: K) => V, entries?: Iterable<readonly [K, V]> | null): State.Map<K, V>;
+function map<T extends State>(Type: new (...args: any[]) => T): State.Map.Factory<T>;
+function map<V>(make: (key: string) => V, entries?: Iterable<readonly [string, V]> | null): State.Map.Factory<V>;
 
-interface State.Map<K, V, A = K> extends globalThis.Map<K, V> {
-  add(): V;
-  add(input: A): V;
+interface State.Map<K, V> extends globalThis.Map<K, V> {
   get(): ReadonlyMap<K, State.Export<V>>;
   get(key: K): V | undefined;
-  set(key: K): this;
-  set(key: K, value: V): this;
+}
+
+interface State.Map.Factory<V> extends State.Map<string, V> {
+  add(key?: string): V;
+  set(key: string): this;
+  set(key: string, value: V): this;
 }
 ```
