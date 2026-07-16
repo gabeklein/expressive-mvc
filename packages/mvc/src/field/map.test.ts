@@ -190,6 +190,24 @@ describe('keyed factory', () => {
     expect(items.get('thing')).toBe(value);
   });
 
+  it('will not key on object input', () => {
+    class Entry extends State {
+      n = 0;
+    }
+
+    const make = mock((data: { n: number }) => Entry.new(data));
+    const items = map(make);
+
+    const first = items.add({ n: 1 });
+    const second = items.add({ n: 1 });
+
+    expect(make).toHaveBeenCalledTimes(2);
+    expect(second).not.toBe(first);
+    expect(items.size).toBe(2);
+    expect(items.get(String(first))).toBe(first);
+    expect(items.get(String(second))).toBe(second);
+  });
+
   it('will destroy orphaned state on derived key collision', () => {
     class Fixed extends State {
       toString() {
@@ -266,6 +284,14 @@ describe('class factory', () => {
 
     expect(item.id).toBe('sku_123');
     expect(items.get('sku_123')).toBe(item);
+  });
+
+  it('will assign object input to instance', () => {
+    const items = map(Item);
+    const item = items.add({ value: 5 });
+
+    expect(item.value).toBe(5);
+    expect(items.get(String(item))).toBe(item);
   });
 
   it('will respawn instance via set with key alone', () => {

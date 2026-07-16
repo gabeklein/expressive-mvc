@@ -60,25 +60,24 @@ class ReactiveMap<K, V>
     return touch(this, key, HAS.call(source(this), key));
   }
 
-  add(key?: unknown): V {
+  add(input?: unknown): V {
     const target = source(this);
     const meta = META.get(target);
 
     if (!meta)
       throw new Error('add() requires a map created with a factory.');
 
-    if (key !== undefined && HAS.call(target, key))
+    const keyed = typeof input == 'string';
+
+    if (keyed && HAS.call(target, input))
       throw new Error('Key is already occupied; use set() to replace.');
 
-    const value = spawn(meta, key) as V;
+    const value = spawn(meta, input) as V;
+    const key = keyed ? input : globalThis.String(value);
 
-    if (key === undefined) {
-      key = globalThis.String(value);
-
-      if (HAS.call(target, key)) {
-        if (value instanceof State) value.set(null);
-        throw new Error('Key is already occupied; use set() to replace.');
-      }
+    if (!keyed && HAS.call(target, key)) {
+      if (value instanceof State) value.set(null);
+      throw new Error('Key is already occupied; use set() to replace.');
     }
 
     store(target, key as K, value, meta);
@@ -177,11 +176,11 @@ function map<K, V>(
 ): State.Map<K, V>;
 function map<T extends State>(
   Type: new (...args: any[]) => T
-): State.Map.Factory<T>;
-function map<V>(
-  make: (key: string) => V,
+): State.Map.Factory<T, string | State.Assign<T>>;
+function map<V, I = string>(
+  make: (input: I) => V,
   entries?: Iterable<readonly [string, V]> | null
-): State.Map.Factory<V>;
+): State.Map.Factory<V, I>;
 function map<K, V>(
   arg?: Iterable<readonly [K, V]> | Function | null,
   entries?: Iterable<readonly [K, V]> | null

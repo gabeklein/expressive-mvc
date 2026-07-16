@@ -130,8 +130,8 @@ declare namespace State {
   }
 
   namespace Map {
-    interface Factory<V> extends State.Map<string, V> {
-      add(key?: string): V;
+    interface Factory<V, I = string> extends State.Map<string, V> {
+      add(input?: I): V;
       set(key: string): this;
       set(key: string, value: V): this;
     }
