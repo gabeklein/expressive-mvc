@@ -1,5 +1,6 @@
 import type React from 'react';
 import Reveal from '@/components/Reveal';
+import { RainbowText } from './Burst';
 
 const SHED = [
   'swr', 'react-error-boundary', 'immer', 'use-context-selector',
@@ -41,12 +42,15 @@ export function Rails() {
         </div>
 
         <div className="max-w-2xl mb-10">
-          <h3 className="font-display text-2xl md:text-3xl font-bold tracking-tight mb-3">
-            Better architecture, better output.
+          <h3 className="font-display text-2xl md:text-3xl font-bold tracking-tight mb-1">
+            <RainbowText>Vibe code</RainbowText> you can work with.
           </h3>
+          <p className="text-fd-muted-foreground mb-5">
+            How often do you <i>actually</i> review the code? LGTM too.
+          </p>
           <p className="text-fd-muted-foreground text-lg">
             Clear conventions mean a good feature looks the same, whether
-            written by you, your team, or an agent. AI-generated code stays readable and high quality.
+            written by you, your team, or an agent. Generated code stays readable so you can engage too.
           </p>
         </div>
 
@@ -55,13 +59,13 @@ export function Rails() {
             State, derived values, async, and lifecycle live together.
             Composition helps separate concerns into readable chunks.
           </Point>
-          <Point title="Type-safe as a rule" delay={100}>
-            Classes pair naturally with TypeScript and JSDoc, so editors
-            surface types and intent where the work is.
-          </Point>
           <Point title="Less to trace when things break" delay={200}>
             No dependency arrays, stale closures, or complicated interactions.
             A fix starts at the class, not a hunt through wiring.
+          </Point>
+          <Point title="Type-safe as a rule" delay={100}>
+            Classes pair naturally with TypeScript and JSDocs, to
+            surface types and intent where the work is.
           </Point>
           <Point title="Class instances are just objects" delay={300}>
             The instance is the source of truth. Log it, assert on it, or bind
