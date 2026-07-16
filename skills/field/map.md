@@ -49,7 +49,7 @@ products.set('c', { name: 'Bag' }); // reruns because shape changed
 
 ## Factory
 
-Pass a function to create a spawning map. Factory maps are keyed by string: the factory receives the key, and `add(key)` runs it to create the value for that key. `add` never replaces - an occupied key throws. `set(key)` with no value respawns through the factory, replacing the previous value (destroying it if owned).
+Pass a function to create a spawning map. Factory maps are keyed by string. `add(input?)` always passes `input` to the factory; `input` is also the key when it is a string. Any other input is factory-only - the key then derives from the value (`String(value)` - for a `State`, its natural id). `add` never replaces: an occupied key throws. `set(key)` with no value respawns through the factory, replacing the previous value (destroying it if owned).
 
 ```ts
 class Cart extends State {
@@ -77,16 +77,16 @@ class Field extends State {
 }
 ```
 
-Derived keys must be unique. Plain values sharing a generic `String()` form (like `[object Object]`) collide on the second keyless `add` - give such values a `toString` or supply keys explicitly. A spawned `State` orphaned by a derived-key collision is destroyed before the throw.
+String keys carry identity - the occupied-key throw guards real duplication. Object inputs carry none (two objects with the same contents are distinct), so they never become keys; each such `add` creates a fresh, id-keyed entry. Derived keys must still be unique: plain values sharing a generic `String()` form (like `[object Object]`) collide on the second derive - give such values a `toString` or supply string keys. A spawned `State` orphaned by a derived-key collision is destroyed before the throw.
 
-A `State` class may stand in for the factory. `add(key?)` instantiates it, forwarding the key to the constructor - declare `constructor(id: string)` to receive it (the base `State` constructor ignores strings) - keyed by the given key, or the instance's natural id when omitted.
+A `State` class may stand in for the factory. `add(input?)` instantiates it, forwarding `input` to the constructor. An object input is applied by the base constructor as an assign - fields merge natively - with the instance keyed by natural id. A string input keys the entry and reaches a constructor that declares it (the base constructor ignores strings).
 
 ```ts
 class Roster extends State {
   players = map(Player);
 
-  join(id: string) {
-    return this.players.add(id); // new Player(id), keyed by id
+  join(name: string) {
+    return this.players.add({ name }); // new Player, fields assigned, keyed by id
   }
 }
 ```
@@ -123,16 +123,16 @@ snapshot.get('a'); // exported product values
 
 ```ts
 function map<K, V>(entries?: Iterable<readonly [K, V]> | null): State.Map<K, V>;
-function map<T extends State>(Type: new (...args: any[]) => T): State.Map.Factory<T>;
-function map<V>(make: (key: string) => V, entries?: Iterable<readonly [string, V]> | null): State.Map.Factory<V>;
+function map<T extends State>(Type: new (...args: any[]) => T): State.Map.Factory<T, string | State.Assign<T>>;
+function map<V, I = string>(make: (input: I) => V, entries?: Iterable<readonly [string, V]> | null): State.Map.Factory<V, I>;
 
 interface State.Map<K, V> extends globalThis.Map<K, V> {
   get(): ReadonlyMap<K, State.Export<V>>;
   get(key: K): V | undefined;
 }
 
-interface State.Map.Factory<V> extends State.Map<string, V> {
-  add(key?: string): V;
+interface State.Map.Factory<V, I = string> extends State.Map<string, V> {
+  add(input?: I): V;
   set(key: string): this;
   set(key: string, value: V): this;
 }
@@ -148,6 +148,7 @@ interface State.Map.Factory<V> extends State.Map<string, V> {
 - `keys()` tracks shape only; changing an existing value does not notify key iteration.
 - `values()`, `entries()`, `forEach()`, and `for...of` track shape and each visited value.
 - `add` fires the same events as `set`.
+- `add(input)` keys on `input` only when it is a string; otherwise the key derives from the value.
 - `add` throws when the map was created without a factory, or when the key (given or derived) is already occupied.
 - `set(key)` with no value respawns through the factory; it throws on a map without one.
 - Reactivity is shallow. Nested State, `hot()`, and `map()` values keep their own reactivity when accessed through the map.
