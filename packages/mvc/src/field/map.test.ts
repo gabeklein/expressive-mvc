@@ -175,12 +175,43 @@ describe('keyed factory', () => {
     expect(items.get('a')).toEqual({ key: 'a' });
   });
 
-  it('will throw on set with key alone without keyed factory', () => {
+  it('will throw on set with key alone without factory', () => {
     const items = map<string, number>();
 
-    expect(() => items.set('a')).toThrow(
-      'set(key) alone requires a keyed factory.'
+    expect(() => (items as any).set('a')).toThrow(
+      'set(key) alone requires a factory.'
     );
+  });
+
+  it('will derive key from value when omitted', () => {
+    const items = map(() => ({ toString: () => 'thing' }));
+    const value = items.add();
+
+    expect(items.get('thing')).toBe(value);
+  });
+
+  it('will destroy orphaned state on derived key collision', () => {
+    class Fixed extends State {
+      toString() {
+        return 'fixed';
+      }
+    }
+
+    const made: Fixed[] = [];
+    const items = map(() => {
+      const next = Fixed.new();
+      made.push(next);
+      return next;
+    });
+
+    items.add();
+
+    expect(() => items.add()).toThrow(
+      'Key is already occupied; use set() to replace.'
+    );
+    expect(made[0].get(null)).toBe(false);
+    expect(made[1].get(null)).toBe(true);
+    expect(items.size).toBe(1);
   });
 
   it('will fire events on add', async () => {
@@ -201,41 +232,8 @@ describe('keyed factory', () => {
   it('will throw if created without factory', () => {
     const items = map<string, number>();
 
-    expect(() => items.add('a')).toThrow(
+    expect(() => (items as any).add('a')).toThrow(
       'add() requires a map created with a factory.'
-    );
-  });
-});
-
-describe('entry factory', () => {
-  it('will spawn entry on add without arguments', () => {
-    let id = 0;
-    const items = map(() => [id++, { id }] as const);
-
-    const first = items.add();
-    const second = items.add();
-
-    expect(items.get(0)).toBe(first);
-    expect(items.get(1)).toBe(second);
-    expect(items.size).toBe(2);
-  });
-
-  it('will throw on entry key collision', () => {
-    const items = map(() => ['fixed', {}] as const);
-
-    items.add();
-
-    expect(() => items.add()).toThrow(
-      'Key is already occupied; use set() to replace.'
-    );
-    expect(items.size).toBe(1);
-  });
-
-  it('will throw if factory does not return an entry', () => {
-    const items = map(() => 'nope' as unknown as [string, string]);
-
-    expect(() => items.add()).toThrow(
-      'Factory must return a [key, value] entry.'
     );
   });
 });
@@ -253,11 +251,34 @@ describe('class factory', () => {
     expect(items.get(String(item))).toBe(item);
   });
 
-  it('will apply input values to instance', () => {
-    const items = map(Item);
-    const item = items.add({ value: 5 });
+  it('will pass key to constructor', () => {
+    class Product extends State {
+      id: string;
 
-    expect(item.value).toBe(5);
+      constructor(id?: string) {
+        super();
+        this.id = id || '';
+      }
+    }
+
+    const items = map(Product);
+    const item = items.add('sku_123');
+
+    expect(item.id).toBe('sku_123');
+    expect(items.get('sku_123')).toBe(item);
+  });
+
+  it('will respawn instance via set with key alone', () => {
+    const items = map(Item);
+    const item = items.add('a');
+
+    items.set('a');
+
+    const next = items.get('a')!;
+
+    expect(item.get(null)).toBe(true);
+    expect(next).toBeInstanceOf(Item);
+    expect(next).not.toBe(item);
   });
 
   it('will key each instance by natural id', () => {

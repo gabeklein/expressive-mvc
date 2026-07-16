@@ -49,7 +49,7 @@ products.set('c', { name: 'Bag' }); // reruns because shape changed
 
 ## Factory
 
-Pass a function to create a spawning map. The factory's argument is the key; `add(key)` runs it to create the value for that key. `add` never replaces - an occupied key throws. `set(key)` with no value respawns through the factory, replacing the previous value (destroying it if owned).
+Pass a function to create a spawning map. Factory maps are keyed by string: the factory receives the key, and `add(key)` runs it to create the value for that key. `add` never replaces - an occupied key throws. `set(key)` with no value respawns through the factory, replacing the previous value (destroying it if owned).
 
 ```ts
 class Cart extends State {
@@ -65,31 +65,31 @@ cart.items.add('sku_123');              // throws - key occupied
 cart.items.set('sku_123');              // respawns, destroying previous Line
 ```
 
-A `State` class may stand in for the factory. `add(input?)` instantiates it - forwarding `input` to `Type.new()`, typically an assign object - and keys the instance by its natural id (`String(instance)`).
+Calling `add()` with no key lets the value key itself: the key becomes `String(value)` - for a `State`, its natural id.
+
+```ts
+class Field extends State {
+  sparks = map(() => Spark.new());
+
+  ignite() {
+    return this.sparks.add(); // keyed by the spark's own id
+  }
+}
+```
+
+Derived keys must be unique. Plain values sharing a generic `String()` form (like `[object Object]`) collide on the second keyless `add` - give such values a `toString` or supply keys explicitly. A spawned `State` orphaned by a derived-key collision is destroyed before the throw.
+
+A `State` class may stand in for the factory. `add(key?)` instantiates it, forwarding the key to the constructor - declare `constructor(id: string)` to receive it (the base `State` constructor ignores strings) - keyed by the given key, or the instance's natural id when omitted.
 
 ```ts
 class Roster extends State {
   players = map(Player);
 
-  join(name: string) {
-    return this.players.add({ name });
+  join(id: string) {
+    return this.players.add(id); // new Player(id), keyed by id
   }
 }
 ```
-
-A zero-arity factory returns a whole `[key, value]` entry instead; `add()` then takes no arguments. Use this when members key themselves.
-
-```ts
-class Field extends Canvas {
-  particles = map(() => [uid(), new Particle(this)] as const);
-
-  spawn() {
-    this.particles.add();
-  }
-}
-```
-
-Declared arity selects the mode - a factory with default or rest parameters reports length 0 and is treated as entry-returning.
 
 ## Ownership
 
@@ -123,17 +123,18 @@ snapshot.get('a'); // exported product values
 
 ```ts
 function map<K, V>(entries?: Iterable<readonly [K, V]> | null): State.Map<K, V>;
-function map<T extends State>(Type: State.Type<T>): State.Map<string, T, State.Assign<T>>;
-function map<K, V>(make: () => readonly [K, V]): State.Map<K, V, never>;
-function map<K, V>(make: (key: K) => V, entries?: Iterable<readonly [K, V]> | null): State.Map<K, V>;
+function map<T extends State>(Type: new (...args: any[]) => T): State.Map.Factory<T>;
+function map<V>(make: (key: string) => V, entries?: Iterable<readonly [string, V]> | null): State.Map.Factory<V>;
 
-interface State.Map<K, V, A = K> extends globalThis.Map<K, V> {
-  add(): V;
-  add(input: A): V;
+interface State.Map<K, V> extends globalThis.Map<K, V> {
   get(): ReadonlyMap<K, State.Export<V>>;
   get(key: K): V | undefined;
-  set(key: K): this;
-  set(key: K, value: V): this;
+}
+
+interface State.Map.Factory<V> extends State.Map<string, V> {
+  add(key?: string): V;
+  set(key: string): this;
+  set(key: string, value: V): this;
 }
 ```
 
@@ -147,6 +148,6 @@ interface State.Map<K, V, A = K> extends globalThis.Map<K, V> {
 - `keys()` tracks shape only; changing an existing value does not notify key iteration.
 - `values()`, `entries()`, `forEach()`, and `for...of` track shape and each visited value.
 - `add` fires the same events as `set`.
-- `add` throws when the map was created without a factory, when an entry factory returns anything but a two-element array, or when the key is already occupied.
-- `set(key)` with no value respawns through the factory; it throws unless the map has a keyed factory.
+- `add` throws when the map was created without a factory, or when the key (given or derived) is already occupied.
+- `set(key)` with no value respawns through the factory; it throws on a map without one.
 - Reactivity is shallow. Nested State, `hot()`, and `map()` values keep their own reactivity when accessed through the map.

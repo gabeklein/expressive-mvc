@@ -130,13 +130,12 @@ class UserProfile extends State {
 | ------------------- | ------------------------------------------------------------ |
 | `map<K, V>()`       | Empty reactive `Map` with keyed reads and writes.            |
 | `map(entries)`      | Reactive `Map` initialized from iterable `[key, value]` pairs. |
-| `map(key => value)` | Adds `add(key)` - spawns value from key; occupied key throws. `set(key)` alone respawns. |
-| `map(StateClass)`   | `add(input?)` instantiates the class, keyed by natural id (`String(instance)`). |
-| `map(() => entry)`  | Zero-arity factory returns `[key, value]`; `add()` takes no arguments. |
+| `map(key => value)` | `add(key?)` spawns value; occupied key throws; keyless `add()` keys by `String(value)`. `set(key)` alone respawns. |
+| `map(StateClass)`   | `add(key?)` instantiates the class (key forwards to constructor), keyed by key or natural id. |
 
 `map()` is a reactive helper, not a field instruction. It returns a `State.Map<K, V>` extending native `Map`, with reactive `get(key)`, `has(key)`, `size`, iteration, `set`, `delete`, and `clear`. Calling `get()` with no key returns a shallow `ReadonlyMap` snapshot.
 
-With a factory, `add` spawns through it and the map owns the result: spawned `State` values are destroyed when deleted, cleared, or replaced. Values supplied directly via `set` are guests and never destroyed.
+With a factory, the map is string-keyed (`State.Map.Factory<V>`) and owns what `add` spawns: spawned `State` values are destroyed when deleted, cleared, or replaced. Values supplied directly via `set(key, value)` are guests and never destroyed.
 
 ### React Hooks
 

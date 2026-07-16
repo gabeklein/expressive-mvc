@@ -15,7 +15,6 @@ const KEYS = globalThis.Map.prototype.keys;
 type Meta = {
   make: Function;
   type: boolean;
-  entry: boolean;
   spawned: Set<unknown>;
 };
 
@@ -33,7 +32,6 @@ class ReactiveMap<K, V>
       META.set(this, {
         make,
         type: State.is(make),
-        entry: !make.length,
         spawned: new Set()
       });
 
@@ -62,45 +60,28 @@ class ReactiveMap<K, V>
     return touch(this, key, HAS.call(source(this), key));
   }
 
-  add(): V;
-  add(input: unknown): V;
-  add(input?: unknown): V {
+  add(key?: unknown): V {
     const target = source(this);
     const meta = META.get(target);
 
     if (!meta)
       throw new Error('add() requires a map created with a factory.');
 
-    if (meta.type) {
-      const value = (
-        input === undefined
-          ? (meta.make as State.Type).new()
-          : (meta.make as State.Type).new(input as never)
-      ) as V;
-
-      store(target, globalThis.String(value) as K, value, meta);
-      return value;
-    }
-
-    if (meta.entry) {
-      const entry = meta.make() as [K, V];
-
-      if (!globalThis.Array.isArray(entry) || entry.length !== 2)
-        throw new Error('Factory must return a [key, value] entry.');
-
-      if (HAS.call(target, entry[0]))
-        throw new Error('Key is already occupied; use set() to replace.');
-
-      store(target, entry[0], entry[1], meta);
-      return entry[1];
-    }
-
-    if (HAS.call(target, input))
+    if (key !== undefined && HAS.call(target, key))
       throw new Error('Key is already occupied; use set() to replace.');
 
-    const value = meta.make(input) as V;
+    const value = spawn(meta, key) as V;
 
-    store(target, input as K, value, meta);
+    if (key === undefined) {
+      key = globalThis.String(value);
+
+      if (HAS.call(target, key)) {
+        if (value instanceof State) value.set(null);
+        throw new Error('Key is already occupied; use set() to replace.');
+      }
+    }
+
+    store(target, key as K, value, meta);
     return value;
   }
 
@@ -112,10 +93,10 @@ class ReactiveMap<K, V>
     if (arguments.length === 1) {
       const meta = META.get(target);
 
-      if (!meta || meta.type || meta.entry)
-        throw new Error('set(key) alone requires a keyed factory.');
+      if (!meta)
+        throw new Error('set(key) alone requires a factory.');
 
-      store(target, key, meta.make(key) as V, meta);
+      store(target, key, spawn(meta, key) as V, meta);
       return this;
     }
 
@@ -195,20 +176,27 @@ function map<K, V>(
   entries?: Iterable<readonly [K, V]> | null
 ): State.Map<K, V>;
 function map<T extends State>(
-  Type: State.Type<T>
-): State.Map<string, T, State.Assign<T>>;
-function map<K, V>(make: () => readonly [K, V]): State.Map<K, V, never>;
-function map<K, V>(
-  make: (key: K) => V,
-  entries?: Iterable<readonly [K, V]> | null
-): State.Map<K, V>;
+  Type: new (...args: any[]) => T
+): State.Map.Factory<T>;
+function map<V>(
+  make: (key: string) => V,
+  entries?: Iterable<readonly [string, V]> | null
+): State.Map.Factory<V>;
 function map<K, V>(
   arg?: Iterable<readonly [K, V]> | Function | null,
   entries?: Iterable<readonly [K, V]> | null
-): State.Map<K, V, any> {
+): State.Map<K, V> {
   return typeof arg == 'function'
     ? new ReactiveMap(entries, arg)
     : new ReactiveMap(arg);
+}
+
+function spawn(meta: Meta, key: unknown) {
+  if (!meta.type) return meta.make(key);
+
+  return key === undefined
+    ? (meta.make as State.Type).new()
+    : (meta.make as State.Type).new(key as never);
 }
 
 function store<K, V>(
