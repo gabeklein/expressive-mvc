@@ -1,4 +1,5 @@
 import { mock, describe, it, expect } from 'bun:test';
+import { Component } from '../component';
 import { watch } from '../observable';
 import { State } from '../state';
 import { flushMicrotasks as flush } from '../../test.setup';
@@ -305,6 +306,21 @@ describe('class factory', () => {
 
     expect('id' in item).toBe(false);
     expect(items.get('a')).toBe(item);
+  });
+
+  it('will support Component via props channel', () => {
+    class Widget extends Component {
+      id = '';
+      label = '';
+    }
+
+    const widgets = map(Widget);
+    const byKey = widgets.add('w1');
+    const byProps = widgets.add({ label: 'hello' });
+
+    expect(byKey.id).toBe('w1');
+    expect(widgets.get('w1')).toBe(byKey);
+    expect(byProps.label).toBe('hello');
   });
 
   it('will assign object input to instance', () => {
