@@ -400,7 +400,7 @@ class Catalog extends State {
 
 `map()` is an export alongside the instructions, but not technically an instruction - it returns a reactive `State.Map` you can assign to a State field or use standalone with `watch()`.
 
-Pass a factory to spawn values. Factory maps are string-keyed. `add(input?)` always passes `input` to the factory; a string input is also the key - an occupied key throws - while any other input is factory-only, the key deriving from `String(value)` (a `State`'s natural id). `set(key)` with no value respawns through the factory, replacing the previous value. Spawned `State` values are owned by the map - destroyed when deleted, cleared, or replaced - while values supplied via `set(key, value)` are guests and never destroyed. A `State` class may stand in for the factory: object input assigns fields via the constructor, string input keys the entry.
+Pass a factory to spawn values. Factory maps are string-keyed. `add(input?)` always passes `input` to the factory; a string input is also the key - an occupied key throws - while any other input is factory-only, the key deriving from `String(value)` (a `State`'s natural id). `set(key)` with no value respawns through the factory, replacing the previous value. Spawned `State` values are owned by the map - destroyed when deleted, cleared, or replaced - while values supplied via `set(key, value)` are guests and never destroyed. A `State` class may stand in for the factory: object input assigns fields via the constructor, while string input keys the entry and arrives as `{ id: input }` - a declared `id` field receives it before the `new()` hook runs; classes without one ignore it.
 
 ```ts
 class Cart extends State {
@@ -421,7 +421,7 @@ class Cart extends State {
 
 ```ts
 function map<K, V>(entries?: Iterable<readonly [K, V]> | null): State.Map<K, V>;
-function map<T extends State>(Type: new (...args: any[]) => T): State.Map.Factory<T, string | State.Assign<T>>;
+function map<T extends State>(Type: new (...args: any[]) => T): State.Map.Factory<T, State.Map.Key<T> | State.Assign<T>>;
 function map<V, I = string>(make: (input: I) => V, entries?: Iterable<readonly [string, V]> | null): State.Map.Factory<V, I>;
 
 interface State.Map<K, V> extends globalThis.Map<K, V> {
@@ -431,7 +431,7 @@ interface State.Map<K, V> extends globalThis.Map<K, V> {
 
 interface State.Map.Factory<V, I = string> extends State.Map<string, V> {
   add(input?: I): V;
-  set(key: string): this;
+  set(key: string & I): this;
   set(key: string, value: V): this;
 }
 ```

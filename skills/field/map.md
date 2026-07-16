@@ -79,14 +79,23 @@ class Field extends State {
 
 String keys carry identity - the occupied-key throw guards real duplication. Object inputs carry none (two objects with the same contents are distinct), so they never become keys; each such `add` creates a fresh, id-keyed entry. Derived keys must still be unique: plain values sharing a generic `String()` form (like `[object Object]`) collide on the second derive - give such values a `toString` or supply string keys. A spawned `State` orphaned by a derived-key collision is destroyed before the throw.
 
-A `State` class may stand in for the factory. `add(input?)` instantiates it, forwarding `input` to the constructor. An object input is applied by the base constructor as an assign - fields merge natively - with the instance keyed by natural id. A string input keys the entry and reaches a constructor that declares it (the base constructor ignores strings).
+A `State` class may stand in for the factory. `add(input?)` instantiates it, forwarding `input` to the constructor. An object input is applied by the base constructor as an assign - fields merge natively - with the instance keyed by natural id. A string input keys the entry and arrives as `{ id: input }`: a class declaring an `id` field receives it before the `new()` lifecycle hook runs (so `new()` may load from it); a class without one simply ignores it. Declaring `id` as anything but a string makes string input a type error.
 
 ```ts
+class Player extends State {
+  id = '';
+  stats = null;
+
+  protected new() {
+    this.stats = fetchStats(this.id);
+  }
+}
+
 class Roster extends State {
   players = map(Player);
 
-  join(name: string) {
-    return this.players.add({ name }); // new Player, fields assigned, keyed by id
+  join(id: string) {
+    return this.players.add(id); // new Player, id assigned, stats loading
   }
 }
 ```
@@ -123,7 +132,7 @@ snapshot.get('a'); // exported product values
 
 ```ts
 function map<K, V>(entries?: Iterable<readonly [K, V]> | null): State.Map<K, V>;
-function map<T extends State>(Type: new (...args: any[]) => T): State.Map.Factory<T, string | State.Assign<T>>;
+function map<T extends State>(Type: new (...args: any[]) => T): State.Map.Factory<T, State.Map.Key<T> | State.Assign<T>>;
 function map<V, I = string>(make: (input: I) => V, entries?: Iterable<readonly [string, V]> | null): State.Map.Factory<V, I>;
 
 interface State.Map<K, V> extends globalThis.Map<K, V> {
@@ -131,9 +140,12 @@ interface State.Map<K, V> extends globalThis.Map<K, V> {
   get(key: K): V | undefined;
 }
 
+// string when T declares no id, or an id assignable from string; never otherwise
+type State.Map.Key<T> = ...;
+
 interface State.Map.Factory<V, I = string> extends State.Map<string, V> {
   add(input?: I): V;
-  set(key: string): this;
+  set(key: string & I): this;
   set(key: string, value: V): this;
 }
 ```
@@ -150,5 +162,5 @@ interface State.Map.Factory<V, I = string> extends State.Map<string, V> {
 - `add` fires the same events as `set`.
 - `add(input)` keys on `input` only when it is a string; otherwise the key derives from the value.
 - `add` throws when the map was created without a factory, or when the key (given or derived) is already occupied.
-- `set(key)` with no value respawns through the factory; it throws on a map without one.
+- `set(key)` with no value respawns through the factory; it throws on a map without one. Typed `string & I`, so it is only callable when the factory accepts a string.
 - Reactivity is shallow. Nested State, `hot()`, and `map()` values keep their own reactivity when accessed through the map.

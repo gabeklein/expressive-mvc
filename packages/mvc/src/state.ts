@@ -130,9 +130,15 @@ declare namespace State {
   }
 
   namespace Map {
+    type Key<T> = T extends { id: infer ID }
+      ? ID extends string | undefined
+        ? string
+        : never
+      : string;
+
     interface Factory<V, I = string> extends State.Map<string, V> {
       add(input?: I): V;
-      set(key: string): this;
+      set(key: string & I): this;
       set(key: string, value: V): this;
     }
   }
