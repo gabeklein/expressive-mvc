@@ -119,7 +119,7 @@ Audit rule: **delete any method whose body is only `this.field = value`.** It ad
 
 ## 6. Getters: shared and semantic only
 
-A derived value earns a getter on shared state when it is read by multiple consumers, expresses domain or workflow meaning, is expensive enough to merit memoized tracking, or is part of the state's API:
+A derived value earns a getter on shared state when it is read by multiple consumers, expresses domain or workflow meaning, is expensive enough to merit memoized tracking, is a deliberate part of the state's API, or makes the state usefully introspectable (debugging, devtools):
 
 ```tsx
 get hasBlocking() {        // read by notices, actions, and header
@@ -148,6 +148,8 @@ function StepIndicator() {
   ...
 }
 ```
+
+Judge meaning, not reference counts. A getter with one JSX consumer today may still earn its place as a domain capability or an introspectable part of the state surface - a locality finding needs a semantic argument ("this is JSX formatting, not workflow meaning"), never a static count alone.
 
 ## 7. Kill prop drilling
 
@@ -303,16 +305,32 @@ function Exceptions() {
 
 When an early return would skip most of a declared snapshot, that is a signal the gated content wants its own component.
 
+The line/depth threshold is a signal, never grounds for a finding by itself. To fail a branch, name the concrete cost: a conditional subscription, multiple independent decisions in one branch, mixed ownership, a duplicated dependency snapshot, or navigation that a well-named scope would materially improve. "A separate component would be slightly nicer" is optional polish, not a defect.
+
 ## 12. Audit with this checklist
 
-- Is each state field owned at the narrowest useful scope?
-- Does every getter have multiple consumers or semantic API value?
-- Does every method do more than assign one field?
-- Are contextual values still being drilled through props?
-- Does every `.get()` / `.use()` show the exact nested dependency surface?
-- Are any reactive deep reads hidden in conditional branches or handlers?
-- Are nested destructures placed after direct properties?
-- Is `is` used only where the root object must be retained alongside sibling destructuring?
-- Can an optional child be gated by its parent and use `.get(true)`?
-- Are Component subcomponents genuine extension points?
-- Are large JSX branches named without fragmenting trivial shared logic?
+Rules carry different weights - classify every finding by severity:
+
+- **Invariant** - fail unless a real constraint is documented.
+- **Default** - follow unless the alternative has clearer ownership or API value.
+- **Heuristic** - investigate, but never fail on the numerical signal alone; the finding must name a concrete cost.
+- **Style** - apply by default per [style.md](style.md), but report separately from architectural correctness.
+
+The checklist:
+
+- Is each state field owned at the narrowest useful scope? *(invariant)*
+- Does every method do more than assign one field? *(invariant)*
+- Are contextual values still being drilled through props? *(invariant)*
+- Does every `.get()` / `.use()` show the exact nested dependency surface? *(invariant)*
+- Are any reactive deep reads hidden in conditional branches or handlers? *(invariant)*
+- Is `is` used only where the root object must be retained alongside sibling destructuring? *(invariant)*
+- Can an optional child be gated by its parent and use `.get(true)`? *(invariant)*
+- Are Component subcomponents genuine extension points? *(invariant)*
+- Does every getter on shared state earn its place - multiple consumers, domain meaning, expensive computation, deliberate API, or introspection value? *(default - judge meaning, not reference counts)*
+- Are large JSX branches named without fragmenting trivial shared logic? *(heuristic - name the cost)*
+- Are nested destructures placed after direct properties? *(style)*
+
+Auditing notes:
+
+- Compare ownership, dependency surfaces, and write behavior - never filenames, file counts, or similarity to a particular reference implementation. File size and consolidation are project preferences: supplied by the project, scored separately.
+- Report two verdicts - architectural conformance and style-profile adherence - so a formatting miss cannot obscure correct structure, or vice versa.

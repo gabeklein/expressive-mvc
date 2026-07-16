@@ -134,7 +134,7 @@ Errors inside a getter are warned and rethrown:
 
 ## When to Promote a Derivation
 
-A derived value earns a getter on shared state when it is read by **multiple consumers**, expresses **domain or workflow meaning**, is **expensive** enough to merit memoized tracking, or is part of the state's API. A calculation feeding a single view - a formatted label, a step index, a `canSubmit` for one button - belongs in that component, next to its dependency snapshot. Promoting single-consumer display derivations widens the state's surface without adding meaning; see [../react/refactor.md](../react/refactor.md) step 6.
+A derived value earns a getter on shared state when it is read by **multiple consumers**, expresses **domain or workflow meaning**, is **expensive** enough to merit memoized tracking, is a **deliberate part of the state's API**, or makes the state usefully **introspectable** (debugging, devtools). A calculation feeding a single view - a formatted label, a step index, a `canSubmit` for one button - belongs in that component, next to its dependency snapshot. Promoting single-consumer display derivations widens the state's surface without adding meaning - but judge meaning, not reference counts; see [../react/refactor.md](../react/refactor.md) step 6.
 
 ## When NOT a Computed
 

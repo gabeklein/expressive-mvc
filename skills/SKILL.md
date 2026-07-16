@@ -282,12 +282,12 @@ PascalCase methods become reactive subcomponents - but they are **extension poin
 
 ## Rules & Counter-Rules
 
-Every broad rule here has a locality constraint. Apply both halves.
+Every broad rule here has a locality constraint. Apply both halves. When auditing a result, weigh findings by the severity labels defined in [react/refactor.md](react/refactor.md) - invariant, default, heuristic, style - and never fail a heuristic on its numerical signal alone.
 
 | Rule                                                        | Counter-rule                                                                                                                        |
 | ----------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
 | Reactive fields are assigned directly                       | Keep a method when the write validates, normalizes, coordinates fields, or triggers behavior. Delete methods whose body is only `this.x = value`. |
-| Derived values become getters                               | Only when shared by multiple consumers, semantic to the domain, or part of the state's API. Single-consumer display derivations live in the consuming component. |
+| Derived values become getters                               | Only when shared by multiple consumers, semantic to the domain, expensive, or a deliberate part of the state's API/introspection surface. Single-consumer display derivations live in the consuming component - but judge meaning, not reference counts. |
 | Contextual components read via `.get()`                     | Pure presentation components may still take plain props. Context replaces drilled *state*, not every value.                          |
 | PascalCase subcomponents compose renders                    | Only for genuine extension points a subclass would replace or wrap. Implementation scopes are freestanding FCs using `.get()`.        |
 | Extract long conditional JSX (~10+ lines or ~5+ levels)     | Keep branches together when they share dependencies, read locally, and contain no nested logic.                                      |
