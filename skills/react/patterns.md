@@ -46,22 +46,24 @@ class LoginForm extends Component {
   }
 
   render() {
+    const { email, password, valid, submit } = this;
+
     return (
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          this.submit();
+          submit();
         }}>
         <input
-          value={this.email}
+          value={email}
           onChange={(e) => (this.email = e.target.value)}
         />
         <input
           type="password"
-          value={this.password}
+          value={password}
           onChange={(e) => (this.password = e.target.value)}
         />
-        <button disabled={!this.valid}>Log In</button>
+        <button disabled={!valid}>Log In</button>
       </form>
     );
   }
@@ -162,6 +164,79 @@ function App() {
       <ThemedWidget />
     </Provider>
   );
+}
+```
+
+## Contextual Children (No Prop Drilling)
+
+Children of a provided state declare their own dependencies with `.get()`. Do not thread state values and callbacks through props:
+
+```tsx
+// Before: parent unpacks state and drills it down
+function Wizard() {
+  const { step, busy, canContinue, advance, retreat } = TransferState.get();
+  return <WizardActions step={step} busy={busy} canContinue={canContinue}
+    onNext={advance} onBack={retreat} />;
+}
+
+// After: the child is contextual - dependencies are local
+function Wizard() {
+  return <WizardActions />;
+}
+
+function WizardActions() {
+  const {
+    busy,
+    canContinue,
+    advance,
+    retreat,
+  } = TransferState.get();
+
+  return (
+    <footer>
+      <button onClick={retreat} disabled={busy}>Back</button>
+      <button onClick={advance} disabled={!canContinue}>Continue</button>
+    </footer>
+  );
+}
+```
+
+Pure presentation components (a `Metric`, a badge) may still take plain props - context replaces drilled state, not every value.
+
+## Presence Boundary
+
+The parent owns whether an optional child exists; the child asserts its requirements with `.get(true)`. Declare the gated field optional (`draft?: T`), not `| null`:
+
+```tsx
+class SettingsState extends State {
+  draft?: SettingsLocation = undefined;
+  saving = false;
+
+  async saveSettings() { ... }
+}
+
+function SettingsContent() {
+  const { draft } = SettingsState.get();
+
+  return (
+    <div className="settings-layout">
+      <LocationList />
+      {draft && <SettingsEditor />}
+    </div>
+  );
+}
+
+function SettingsEditor() {
+  const {
+    saveSettings,
+    saving,
+    draft: {
+      bankAccount,
+      categoryAccounts,
+    },
+  } = SettingsState.get(true);
+
+  return <section className="settings-editor">...</section>;
 }
 ```
 

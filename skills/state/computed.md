@@ -132,6 +132,10 @@ Errors inside a getter are warned and rethrown:
 - On the **initial** compute, the error is logged via `console.warn` with `An exception was thrown while initializing {state}.{key}.` and rethrown to the caller.
 - On a **subsequent** compute (after a dependency change), the error is logged via both `console.warn` (refreshing) and `console.error`. The cached value is not updated, but the read does not throw.
 
+## When to Promote a Derivation
+
+A derived value earns a getter on shared state when it is read by **multiple consumers**, expresses **domain or workflow meaning**, is **expensive** enough to merit memoized tracking, is a **deliberate part of the state's API**, or makes the state usefully **introspectable** (debugging, devtools). A calculation feeding a single view - a formatted label, a step index, a `canSubmit` for one button - belongs in that component, next to its dependency snapshot. Promoting single-consumer display derivations widens the state's surface without adding meaning - but judge meaning, not reference counts; see [../react/refactor.md](../react/refactor.md) step 6.
+
 ## When NOT a Computed
 
 A class-syntax getter is left as a plain JS accessor (not promoted) when:

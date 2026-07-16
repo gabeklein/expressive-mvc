@@ -1,6 +1,6 @@
 ---
 name: expressive-mvc
-description: Class-based reactive state management for Expressive MVC, React adapters, and router usage. Covers State API, instructions, Component class, lifecycle, patterns, and codebase auditing.
+description: Class-based reactive state management for React (Expressive MVC). Use when writing or refactoring React state - converting useState/useEffect/useMemo hooks, fixing prop drilling, choosing state ownership (State vs Component), dependency snapshots, presence boundaries with get(true), Provider/context, async suspense, router - and when auditing a codebase for fit.
 ---
 
 # Expressive MVC
@@ -12,9 +12,45 @@ Class-based reactive state for React and Preact. State classes define reactive p
 | Package              | Status    | Description                                                       |
 | -------------------- | --------- | ----------------------------------------------------------------- |
 | `@expressive/react`  | Published | React adapter. Primary import for State, Component, instructions. |
-| `@expressive/mvc`  | Published | Framework-agnostic core. Rarely imported directly.                |
+| `@expressive/mvc`    | Published | Framework-agnostic core. Rarely imported directly.                |
 | `@expressive/preact` | Private   | Thin wrapper over React adapter via preact/hooks. Prerelease.     |
 | `@expressive/router` | Private   | Host-agnostic, class-based router built on MVC. Prerelease.       |
+
+## Start With Ownership, Not APIs
+
+The most common failure when adopting this library is translating hooks one-for-one before deciding who owns each behavior. Resolve ownership first; APIs come second.
+
+For every stateful concern, pick exactly one owner:
+
+- **`Component`** - state intrinsic to one display subtree: controls, shells, panels, editors, review/confirm surfaces. Usually defines `render()`. Fields, handlers, and rendering live on one class.
+- **`State`** - headless model or workflow: network operations, domain rules, cross-view coordination. Views subscribe via `State.get()` / `State.use()`.
+- **Plain function component** - simple presentation, or trivial local UI state. Not everything needs a class.
+
+Counter-rules:
+
+- Do not create `FooState` plus `FooView` just because hooks were present. If the behavior and rendering are one unit, `class Foo extends Component` is the refactor.
+- Avoid `Component` where a provided `State` suffices - Components carry React instance surface (`props`, `state`, `setState`, `forceUpdate`) that makes `.get()` IntelliSense noisier.
+- A render-less `Component` (children pass through while providing context and boundary placement) is only for cases where React tree placement is the feature: route controllers, progressive boundaries.
+- A provided State implicitly provides its child States - prefer `theme = new Theme()` on an existing owner over stacking Providers for every small controller.
+
+## Golden-Path Refactor Algorithm
+
+**Before refactoring existing React code, read [react/refactor.md](react/refactor.md)** - it expands every step with before/after examples and ends with the review checklist. The short form:
+
+1. Identify lifecycle and ownership boundaries before translating any hooks.
+2. Separate headless workflow state from display-intrinsic state.
+3. Choose `State`, `Component`, or a plain function component for each owner.
+4. Provide state classes directly (`<Provider for={AppState}>`); never create an instance only to provide it.
+5. Move source fields and behavioral methods first; do not mechanically translate setters.
+6. Keep shared, semantic derivations as getters; leave single-consumer display derivations in their consuming component.
+7. Let contextual children call `.get()` themselves instead of receiving drilled props.
+8. At every `.get()` / `.use()`, destructure an exact nested dependency snapshot.
+9. Assign directly through subscribed proxies; use `is` only to retain the root object alongside sibling destructuring.
+10. Gate optional children at the call site; inside, assert requirements with `.get(true)`.
+11. Extract long conditional JSX into named scopes, then consolidate scopes that share dependencies and hold no nested logic.
+12. Audit the result against the checklist in [react/refactor.md](react/refactor.md).
+
+Write output in the conventions of [react/style.md](react/style.md). They are opinion, not semantics - but they exist to keep reactive dependencies auditable, and the golden path applies them by default.
 
 ## Core API
 
@@ -52,62 +88,40 @@ counter.count; // 1
 
 Properties assigned in the class body are reactive - updates notify subscribers. Methods are auto-bound.
 
-### Instructions & Helpers
+### Instructions & Reactive Helpers
 
-Field initializers and helper values that configure reactive behavior. Each has multiple overloads - see linked docs for full details.
+Field initializers that configure reactive behavior. Each has multiple overloads - fetch the reference when a task needs them.
 
-#### `def()` - Custom Property
+| Helper  | Use for                                                                                                | Reference                  |
+| ------- | ------------------------------------------------------------------------------------------------------ | -------------------------- |
+| `set()` | Defaults, placeholders (suspend until assigned), lazy/async factories (suspense), setter callbacks and validation | [field/set.md](field/set.md) |
+| `get()` | Context lookup between States - required or optional upstream, downstream collection                   | [field/get.md](field/get.md) |
+| `ref()` | Mutable refs (`.current`), ref callbacks with cleanup, ref proxies                                      | [field/ref.md](field/ref.md) |
+| `hot()` | Keyed reactivity for a plain array or object without extracting a State class                           | [field/hot.md](field/hot.md) |
+| `def()` | Low-level custom property behavior                                                                      | [field/def.md](field/def.md) |
 
-| Form           | Behavior                                                                                                    |
-| -------------- | ----------------------------------------------------------------------------------------------------------- |
-| `def(factory)` | Primitive instruction. Factory receives `(key, subject, state)`. Return config object, cleanup fn, or void. |
+For **computed values**, declare a normal class getter - getters on a State subclass are auto-promoted to memoized, dependency-tracked properties. See [state/computed.md](state/computed.md) for tracking rules and when a derivation should *not* be a getter.
 
-#### `set()` - Values, Factories & Validation
+Do not pass a bare promise to `set()`. Use `set(() => promise)` or `set(async () => value)` so work starts during activation/access instead of construction.
 
-| Form                  | Behavior                                                       |
-| --------------------- | -------------------------------------------------------------- |
-| `set<T>()`            | Placeholder. Suspends on access until assigned.                |
-| `set(value)`          | Default value. Non-enumerable, writable.                       |
-| `set(() => v)`        | Lazy factory. Read-only. If async, suspends.                   |
-| `set(() => v, false)` | Lazy factory. Returns `undefined` while pending (no suspense). |
-| `set(() => v, true)`  | Eager factory. Runs immediately on init.                       |
-| `set(value, cb)`      | Default with setter callback. `throw false` to reject.         |
-| `set(() => v, cb)`    | Factory with setter callback. Makes writable.                  |
+```tsx
+class UserProfile extends State {
+  userId = set<string>();
 
-For **reactive computed values**, declare a normal class getter (e.g. `get total() { ... }`). Getters on a State subclass are auto-promoted to memoized, dependency-tracked properties.
+  user = set(async () => {
+    const res = await fetch(`/api/users/${this.userId}`);
+    return res.json();
+  });
 
-Do not pass a direct promise to `set()`. Use `set(() => promise)` or `set(async () => value)` so work starts during activation/access instead of construction, which avoids leaked work from abandoned instances.
+  email = set('', (value) => {
+    if (!value.includes('@')) throw false;
+  });
 
-#### `get()` - Context Lookup
-
-| Form                     | Behavior                                         |
-| ------------------------ | ------------------------------------------------ |
-| `get(Type)`              | Required upstream lookup. Throws if missing.     |
-| `get(Type, false)`       | Optional upstream. Returns `T \| undefined`.     |
-| `get(Type, cb)`          | Upstream with callback. Return cleanup function. |
-| `get(Type, true)`        | Downstream collection. Returns `readonly T[]`.   |
-| `get(Type, true, cb)`    | Downstream collection with per-child callback.   |
-| `get(Type, true, true)`  | Single downstream child. Required.               |
-| `get(Type, true, false)` | Single downstream child. Optional.               |
-
-#### `ref()` - Mutable References
-
-| Form                | Behavior                                                |
-| ------------------- | ------------------------------------------------------- |
-| `ref<T>()`          | Mutable ref with `.current`. Like `useRef`.             |
-| `ref<T>(cb)`        | Ref with callback on set. Return cleanup.               |
-| `ref<T>(cb, false)` | Ref callback also fires for `null`.                     |
-| `ref(this)`         | Ref proxy - creates refs for all enumerable properties. |
-| `ref(this, mapFn)`  | Custom ref proxy with transform per key.                |
-
-#### `hot()` - Reactive Arrays & Objects
-
-| Form          | Behavior                                                             |
-| ------------- | -------------------------------------------------------------------- |
-| `hot(array)`  | Wraps a dense array so index, length, and method reads are reactive. |
-| `hot(object)` | Wraps an object so property reads are reactive.                      |
-
-`hot()` is a reactive helper, not a field instruction. It may be used without attaching a state, or in conjunction with instructions (such as set). Use it when an object or array needs keyed reactivity without extracting a dedicated `State` class.
+  get displayName() {
+    return `${this.user.firstName} ${this.user.lastName}`;
+  }
+}
+```
 
 ### React Hooks
 
@@ -118,7 +132,7 @@ function Existing({ counter }: { counter: Counter }) {
   return <button onClick={increment}>{count}</button>;
 }
 
-// Local state - creates instance, subscribes to accessed fields
+// Local state - creates instance, owns lifecycle, subscribes to accessed fields
 function MyComponent() {
   const { count, increment } = Counter.use();
   return <button onClick={increment}>{count}</button>;
@@ -131,19 +145,119 @@ function Child() {
 }
 ```
 
-Use `use(subject)` for externally-owned observables or State instances. It returns a tracking proxy on the initial render, re-subscribes when `subject` is replaced, activates an unready observable, and does not destroy the subject on unmount.
+Use `use(subject)` for externally-owned observables. Use `State.use()` when the component should create and own the instance. Use `State.get()` when the instance comes from context. See [react/react.md](react/react.md) for overloads (optional lookup, required values, computed selector).
 
-Always prefer destructuring `State.use()` / `State.get()`. If the raw instance is needed, destructure and alias `is` (`is: counter`). Nested observable reads are proxied and tracked automatically, so nested destructuring subscribes to child State fields; do not call `use(child)` when the child was reached through the parent proxy.
+## The Dependency Snapshot
+
+Open every subscribing component by destructuring the exact reactive values it renders - nested ones included. Nested observable reads are proxied and tracked automatically, so nested destructuring subscribes to child fields; never call `use(child)` on an object reached through a parent proxy.
 
 ```tsx
-const {
-  comment: {
-    value: comment,
-  },
-} = Counter.use();
+function OrderSummary() {
+  const {
+    status,
+    customer: {
+      name,
+      address: {
+        city,
+      } = {},
+    },
+  } = Order.get();
+
+  return <p>{name} ({city ?? 'no address'}) - {status}</p>;
+}
 ```
 
-### Component Class
+This is the norm, not a preference:
+
+1. The component's complete dependency surface is visible at the top - reviewable at a glance.
+2. Each trapped getter is traversed once, instead of re-walking `order.customer.address.city` in every expression.
+3. Reads create subscriptions. A deep read buried in a conditional branch subscribes only on renders where that branch runs - a **conditional subscription**. Hoisting reads into the snapshot makes the dependency surface deterministic.
+
+Optional nested objects take in-place defaults (`= {}`) rather than a separate unwrap step. The same rule applies to `this` inside `Component.render()` and subcomponents.
+
+## Transparent Writes
+
+Subscription proxies pass assignments through to the real instance - no unwrapping needed:
+
+```tsx
+const form = LoginForm.get();          // whole object is the only need - take it directly
+
+<input
+  value={form.username}
+  onChange={(e) => (form.username = e.target.value)}
+/>
+```
+
+Nested objects reached through a snapshot are equally writable:
+
+```tsx
+const { transfer, confirmed } = ReviewStep.get();
+
+<button onClick={() => (transfer.step = 'generate')} disabled={!confirmed} />
+```
+
+Use `is` **only** when retaining the root object alongside sibling values from the same snapshot:
+
+```tsx
+const { is: review, confirmed, hasBlocking } = ReviewStep.get();
+```
+
+Do not unwrap every writable object through `is` - that is the most common misuse.
+
+## Presence Boundaries & `get(true)`
+
+When a child's content requires values that may not exist yet, the parent owns the gate and the child asserts the invariant with `get(true)`:
+
+```tsx
+function SettingsContent() {
+  const { draft } = SettingsState.get();
+
+  return (
+    <div className="settings-layout">
+      <LocationList />
+      {draft && <SettingsEditor />}
+    </div>
+  );
+}
+
+function SettingsEditor() {
+  const {
+    saveSettings,
+    saving,
+    draft: {
+      bankAccount,
+      categoryAccounts,
+    },
+  } = SettingsState.get(true); // Required<T> - throws if an accessed value is undefined
+
+  return <section className="settings-editor">...</section>;
+}
+```
+
+This gives the child a strong contract - no fallback values threaded through its body. Declare gateable fields **optional** (`draft?: SettingsLocation`), not `| null`: the runtime check rejects only `undefined`, and `Required<T>` does not strip `null` from a union (see [react/react.md](react/react.md)).
+
+## Provider & Context
+
+Pass the State class directly. If no preconfiguration or external ownership is needed, do not create an instance only to provide it:
+
+```tsx
+<Provider for={TransferState}>
+  <TransferPage />
+</Provider>
+```
+
+Provide an instance only when it is genuinely owned elsewhere:
+
+```tsx
+const counter = Counter.use();
+<Provider for={counter}>
+  <Child />
+</Provider>
+```
+
+Multiple states: `<Provider for={{ app: AppState, user: UserState }}>`. See [react/react.md](react/react.md) for `is` callbacks, fallback, and field props.
+
+## Component Class
 
 A `Component` is a `State` that renders itself. It provides context automatically and supports suspense/error boundaries.
 
@@ -161,112 +275,39 @@ class CounterView extends Component {
   }
 }
 
-// Use directly in JSX
 <CounterView />;
 ```
 
-### Provider & Context
+PascalCase methods become reactive subcomponents - but they are **extension points**, not a general decomposition tool. The test: would a subclass reasonably replace or wrap this renderer? If not, use a freestanding function component that calls `MyComponent.get()`. See [react/component.md](react/component.md).
 
-```tsx
-// Provide state to descendants
-<Provider for={Counter}>
-  <Child />
-</Provider>;
+## Rules & Counter-Rules
 
-// Or with explicit instance
-const counter = Counter.use();
-<Provider for={counter}>
-  <Child />
-</Provider>;
-```
+Every broad rule here has a locality constraint. Apply both halves. When auditing a result, weigh findings by the severity labels defined in [react/refactor.md](react/refactor.md) - invariant, default, heuristic, style - and never fail a heuristic on its numerical signal alone.
 
-### Common Patterns
-
-```tsx
-// Async data with Suspense
-class UserProfile extends State {
-  userId = set<string>();
-  user = set(async () => {
-    const res = await fetch(`/api/users/${this.userId}`);
-    return res.json();
-  });
-}
-
-// Computed values (reactive - auto-tracks dependencies)
-class Cart extends State {
-  items = set<Item[]>([]);
-  get total() {
-    return this.items.reduce((sum, i) => sum + i.price, 0);
-  }
-}
-
-// Setter callback (validation)
-class Form extends State {
-  email = set('', (value) => {
-    if (!value.includes('@')) throw false; // reject update
-  });
-}
-```
-
-### Choosing State vs Component
-
-Before extracting state, decide who owns the behavior:
-
-- Use `Component` when state is intrinsic to display logic: controls, shells, panels, editors, canvases, toasts. Usually that means defining `render()`.
-- A `Component` without `render()` passes children through while still providing itself to context and acting as Suspense/ErrorBoundary placement. Use that only when React tree placement matters: route controllers, progressive `Boundary` wrappers, or repeated contextual owners.
-- Use `State` for headless models/controllers, even if they are only useful in context. A provided State or Component implicitly provides its child States, so prefer `public theme = new Theme()` over stacking Providers for every small controller.
-- Avoid `Component` when a provided `State` would suffice; Components carry React instance surface (`props`, `state`, `context`, `setState`, `forceUpdate`) that can make `.get()` IntelliSense noisier.
-- Keep plain function components for simple presentation or trivial local UI state.
-
-Do not create a separate `FooState` plus `FooView` just because hooks were present. If the behavior and rendering are one unit, `class Foo extends Component` is the better refactor.
-
-### Refactoring React Hooks
-
-Do not translate hooks one-for-one. First identify the owner, then model it as either a `Component` or a display-agnostic `State`:
-
-- Values directly written by user input, browser events, timers, or network callbacks become mutable class fields.
-- Values derived from those fields become class getters, not extra fields kept in sync by effects.
-- `useEffect` setup/teardown becomes `protected new()` with a returned cleanup function.
-- `useCallback` handlers become auto-bound class methods.
-- If the state is only meaningful for that component's own UI, put those fields and methods directly on a `Component` subclass.
-- If the state is a headless model, keep it in a `State` subclass and have React components call `State.use()` / `State.get()` or attach it to component's controller.
-- If tree placement, rendering, boundaries, or subcomponents are the point, make it a `Component`.
-
-```tsx
-class Viewport extends State {
-  width = window.innerWidth;
-
-  get compact() {
-    return this.width < 720;
-  }
-
-  protected new() {
-    const update = () => {
-      this.width = window.innerWidth;
-    };
-
-    window.addEventListener('resize', update);
-    return () => window.removeEventListener('resize', update);
-  }
-}
-
-function LayoutBadge() {
-  const { width, compact } = Viewport.use();
-
-  return <span>{compact ? 'Compact' : `Wide (${width}px)`}</span>;
-}
-```
+| Rule                                                        | Counter-rule                                                                                                                        |
+| ----------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| Reactive fields are assigned directly                       | Keep a method when the write validates, normalizes, coordinates fields, or triggers behavior. Delete methods whose body is only `this.x = value`. |
+| Derived values become getters                               | Only when shared by multiple consumers, semantic to the domain, expensive, or a deliberate part of the state's API/introspection surface. Single-consumer display derivations live in the consuming component - but judge meaning, not reference counts. |
+| Contextual components read via `.get()`                     | Pure presentation components may still take plain props. Context replaces drilled *state*, not every value.                          |
+| PascalCase subcomponents compose renders                    | Only for genuine extension points a subclass would replace or wrap. Implementation scopes are freestanding FCs using `.get()`.        |
+| Extract long conditional JSX (~10+ lines or ~5+ levels)     | Keep branches together when they share dependencies, read locally, and contain no nested logic.                                      |
+| `is` retains the raw instance                               | Only alongside sibling destructuring from the same snapshot. Writes through proxies are transparent; nested objects need no unwrapping. |
 
 ## File Reference
 
-Fetch these for detailed API documentation when the task requires deeper knowledge.
+Fetch these for detailed documentation when the task requires deeper knowledge. **Read `react/refactor.md` in full before any hook-migration or refactor task.**
+
+### Golden path
+
+- [react/refactor.md](react/refactor.md) - the refactor algorithm expanded: ownership triage, mechanical-setter and prop-drilling anti-patterns, single-consumer getters, dependency snapshots and conditional subscriptions, presence boundaries, restrained `is`, subcomponent overuse, extract-then-consolidate, review checklist
+- [react/style.md](react/style.md) - style profile: snapshot formatting, affirmative conditions, render fallthrough vs operational guards
 
 ### State (core)
 
 - [state/state.md](state/state.md) - State class, instantiation, properties, methods, events, context
 - [state/get.md](state/get.md) - Instance `.get()` method: read values, run effects, context lookup
 - [state/set.md](state/set.md) - Instance `.set()` method: write values, listen to updates, events, destroy
-- [state/computed.md](state/computed.md) - Reactive class getters: tracking, caching, inheritance, suspense
+- [state/computed.md](state/computed.md) - Reactive class getters: tracking, caching, inheritance, suspense, when a derivation should stay local
 - [state/lifecycle.md](state/lifecycle.md) - Construction, activation, operation, destruction phases
 - [state/context.md](state/context.md) - Context system, global root, home context, ownership rules
 - [state/types.md](state/types.md) - TypeScript type aliases and utility types
@@ -281,9 +322,9 @@ Fetch these for detailed API documentation when the task requires deeper knowled
 
 ### React
 
-- [react/react.md](react/react.md) - use(), State.use(), State.get(), Provider, Consumer, ForceRefresh
-- [react/component.md](react/component.md) - Component class, props, children, render composition (subclass renders wrap base as `props.children`, or a base defers to let a subclass replace it), subcomponents, error boundaries
-- [react/patterns.md](react/patterns.md) - Recipes: forms, async, nested state, debounce, effects
+- [react/react.md](react/react.md) - use(), State.use(), State.get() (optional lookup, required values `get(true)`, computed selector), Provider, Consumer, transparent writes, ForceRefresh
+- [react/component.md](react/component.md) - Component class, props, children, render composition, subcomponent extension points, error boundaries
+- [react/patterns.md](react/patterns.md) - Recipes: forms, async, nested state, presence boundary, contextual children, debounce, effects
 
 ### Router
 
@@ -296,32 +337,22 @@ Fetch these for detailed API documentation when the task requires deeper knowled
 
 ## Auditing & Evaluation
 
-When helping a user evaluate Expressive MVC for their project, consider:
+When helping a user evaluate Expressive MVC for their project - see [examples/audit.md](examples/audit.md) for the full guide.
 
 **Good fit signals:**
 
 - Stateful logic scattered across many `useState`/`useEffect`/`useCallback`/`useMemo` calls
 - Complex forms, wizards, or multi-step flows
 - State shared via context that causes excessive re-renders
-- Business logic tangled into component bodies
+- Business logic tangled into component bodies; prop drilling through intermediaries
 - Desire to test state logic independently from React
-- Highly context-dependent and shared logic
-- Custom hooks with significant configuration, callbacks
-- Components with disproportionate amounts of hooks relative to JSX
+- Custom hooks with significant configuration and callbacks
 
 **Poor fit signals:**
 
 - App is mostly server-rendered with minimal client state
 - State is simple enough that `useState` covers it cleanly
 - Team strongly prefers functional-only patterns
-- Existing state solution (Redux, Zustand, etc.) is working well and not causing pain
+- Existing state solution is working well and not causing pain
 
-**Migration approach:**
-
-- Expressive MVC coexists with hooks - no big-bang rewrite needed
-- Start by deciding whether the behavior belongs to one view (`Component`) or to reusable/display-agnostic state (`State`)
-- Treat `State.use()` as the React subscription point for `State` classes, not as a one-for-one hook rewrite
-- Separate mutable source fields from derived getters instead of syncing duplicate state in effects
-- Context sharing via Provider replaces manual `createContext` + `useContext` boilerplate
-
-When auditing existing code, look for components where extracting behavior into a class would reduce hooks count by 3+ and consolidate related logic into methods. Prefer `Component` for display-intrinsic state; prefer `State` for headless controllers.
+**Migration approach:** Expressive MVC coexists with hooks - no big-bang rewrite needed. Start with one complex component, decide its owner (`Component` vs `State`), and follow [react/refactor.md](react/refactor.md). When auditing existing code, look for components where extracting behavior into a class would reduce hook count by 3+ and consolidate related logic into methods.

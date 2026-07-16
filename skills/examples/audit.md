@@ -134,6 +134,8 @@ function ThemeToggle() {
 
 ## Refactor Heuristic
 
+For the full conversion procedure - ownership triage, anti-patterns, and the review checklist - follow [../react/refactor.md](../react/refactor.md). The summary:
+
 For a one-shot hook migration, do not mirror React hooks mechanically. First identify the stateful concept the component is managing, then decide its owner:
 
 - Use `Component` when the concept is display-intrinsic or needs React tree placement.
