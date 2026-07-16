@@ -11,9 +11,9 @@ export function ComponentSection() {
             Component is renderable State.
           </h2>
           <p className="text-fd-muted-foreground text-lg mb-4">
-            <code>Component</code> is for self-contained{" "}
+            <code>Component</code> extends <code>State</code> for self-contained{" "}
             (<a href="#molecules" className="underline-offset-2 underline">or extensible</a>) display logic.
-            Fields drive getters and <code>render()</code>{' '} directly -
+            It's renderable in JSX. Fields drive getters and <code>render()</code>{' '} method directly -
             destructure <code>this</code> as you would use hook.
           </p>
           <p className="text-fd-muted-foreground text-lg">
