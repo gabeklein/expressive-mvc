@@ -5,7 +5,7 @@
 <h1 align="center">Expressive MVC</h1>
 
 <p align="center">
-  Class-based reactive state management for modern UI applications.
+  Define reactive UI with plain classes. When properties change, your components will too.
 </p>
 
 <p align="center">
