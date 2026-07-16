@@ -776,6 +776,50 @@ describe('State.get', () => {
       expect(didRender).toBeCalledTimes(3);
     });
 
+    it('will update when assigned through proxy', async () => {
+      class Test extends State {
+        value = 'foo';
+      }
+
+      const test = Test.new();
+      const didRender = mock();
+
+      const Inner = () => {
+        const state = Test.get();
+
+        didRender();
+
+        return (
+          <button
+            onClick={() => {
+              state.value = 'bar';
+            }}>
+            {state.value}
+          </button>
+        );
+      };
+
+      const element = render(
+        <Provider for={test}>
+          <Inner />
+        </Provider>
+      );
+
+      const button = element.getByRole('button');
+
+      expect(button.textContent).toBe('foo');
+      expect(didRender).toBeCalledTimes(1);
+
+      await act(async () => {
+        button.click();
+        await expect(test).toHaveUpdated('value');
+      });
+
+      expect(test.value).toBe('bar');
+      expect(didRender).toBeCalledTimes(2);
+      expect(button.textContent).toBe('bar');
+    });
+
     it('will use factory with replaced instance', async () => {
       const test1 = Test.new();
       const test2 = Test.new();
