@@ -40,6 +40,16 @@ class Counter extends Component {
 
 Properties accessed via `this` in `render()` are reactive - changes trigger re-renders automatically.
 
+When a render reads more than a value or two, destructure everything it reads from `this` at the top - the same dependency-snapshot rule as `.get()` / `.use()` (see [react.md](react.md)). Rendering shares its subscription plumbing with the hooks, so scattered deep reads carry the same conditional-subscription risk:
+
+```tsx
+render() {
+  const { count, step, increment } = this;
+
+  return <button onClick={increment}>{count} (+{step})</button>;
+}
+```
+
 ## Inheritance and Custom Primitives
 
 The primary power of Component: build reusable base classes, extend to specialize.
@@ -334,7 +344,23 @@ class Dashboard extends Component {
 - Accessible from context: `Dashboard.get()` then `<dashboard.Sidebar />`.
 - **Overridable by subclasses** for plug-and-play composition.
 
-They also double as a decomposition tool: pulling a section (a list `.map`, a chunk of chrome) out of `render()` into its own method keeps `render()` a flat composition of named sections. Optional - a judgement call for readability, not a default - but worth reaching for when `render()` is getting busy.
+Subcomponents are **extension points**, not a general decomposition tool. The decision test: **would a subclass reasonably replace or wrap this renderer?** If yes - a `Toggle.Active`, a grid's `Row`, chrome a theme variant swaps out - a subcomponent carries that intent. If no, the section is an implementation scope: keep it a freestanding function component that calls `Dashboard.get()`. Contextual FCs keep dependencies local without inheriting the override machinery, and decomposing a busy `render()` into them costs nothing:
+
+```tsx
+function SidebarItems() {
+  const { items } = Dashboard.get();
+
+  return (
+    <ul>
+      {items.map((i) => (
+        <li key={i}>{i}</li>
+      ))}
+    </ul>
+  );
+}
+```
+
+Inside a subcomponent body, destructure what it reads from `this` at the top, same as `render()`.
 
 ## Lifecycle
 

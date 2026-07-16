@@ -84,17 +84,9 @@ function App() {
 - Component re-renders when any accessed property changes.
 - Instance is destroyed on unmount (context is popped, `set(null)` called).
 - Safe in React strict mode (handles double-mount correctly).
-- Always prefer destructuring `State.use()` / `State.get()`.
-- When the raw instance is needed, destructure `is` and alias it to the state concept (`is: counter`, `is: form`).
-- Nested observable reads are proxied and tracked automatically. Nested destructuring subscribes to child State fields; do not call `use(child)` when the child was reached through the parent proxy.
-
-```tsx
-const {
-  comment: {
-    value: comment,
-  },
-} = Counter.use();
-```
+- Open the component with a dependency snapshot: destructure the exact values it renders, nested ones included (see [Dependency Snapshots](#dependency-snapshots) below).
+- Writes pass through the proxy transparently; `is` is only for retaining the root object alongside sibling destructuring (see [Transparent Writes](#transparent-writes--is) below).
+- Nested observable reads are proxied and tracked automatically; do not call `use(child)` when the child was reached through the parent proxy.
 
 ### Constructor arguments
 
@@ -172,11 +164,40 @@ function Profile() {
 const app = AppState.get(false); // undefined if not in context
 ```
 
-### Required values
+### Required values & presence boundaries
 
 ```tsx
 const app = AppState.get(true); // Required<T>, throws if an accessed value is undefined
 ```
+
+`get(true)` is the child half of a **presence boundary**: the parent owns whether the child renders, and the child asserts that its required values exist. This gives the child a strong contract - no fallback values threaded through its body:
+
+```tsx
+function SettingsContent() {
+  const { draft } = SettingsState.get();
+
+  return (
+    <div className="settings-layout">
+      <LocationList />
+      {draft && <SettingsEditor />}
+    </div>
+  );
+}
+
+function SettingsEditor() {
+  const {
+    saveSettings,
+    saving,
+    draft: {
+      bankAccount,
+      categoryAccounts,
+    },
+  } = SettingsState.get(true);
+  ...
+}
+```
+
+Declare gateable fields **optional** (`draft?: SettingsLocation`), not explicitly nullable (`draft: SettingsLocation | null`). The runtime check rejects only strict `undefined`, and TypeScript's `Required<T>` removes `?` optionality but does not strip `null` from a union - an explicitly nullable field silently defeats `get(true)` on both fronts.
 
 ### Computed selector
 
@@ -221,6 +242,55 @@ const data = AppState.get(($, refresh) => {
 ### Reactive context
 
 If the upstream instance is replaced in context (e.g., Provider re-created), the hook automatically resubscribes to the new instance and refreshes.
+
+---
+
+## Dependency Snapshots
+
+Open every subscribing component by destructuring the exact reactive values it renders - nested levels included, optional objects defaulted in place:
+
+```tsx
+function ReviewNotices() {
+  const {
+    blocking,
+    hasBlocking,
+    result: {
+      wssDownload: {
+        selectedLocationId,
+        usedLogin,
+      } = {},
+    },
+  } = ReviewStep.get();
+  ...
+}
+```
+
+This is the architectural norm, not a formatting preference:
+
+1. The component's complete dependency surface is visible at the top - reviewable at a glance.
+2. Trapped getters are traversed once, instead of re-walking `review.result.wssDownload.usedLogin` in every expression.
+3. Reads create subscriptions. A deep read inside a conditional branch subscribes only on renders where that branch executes (a **conditional subscription**), and reads inside event handlers never subscribe at all. Hoisting reads into the snapshot makes the dependency surface deterministic.
+
+The same rule applies to `this` inside `Component.render()` and subcomponents - rendering shares its subscription plumbing with the hooks.
+
+**Known gap:** updates originating in a *child State* reached through nested destructuring currently refresh `State.use()` but not `State.get()` ([#243](https://github.com/gabeklein/expressive-mvc/issues/243)). Until fixed, values a `.get()` component must react to should surface through getters on the parent state.
+
+## Transparent Writes & `is`
+
+Subscription proxies pass assignments through to the real instance. Three shapes cover every case:
+
+```tsx
+const form = LoginForm.get();                    // whole object is the only need
+onChange={(e) => (form.username = e.target.value)}
+
+const { transfer, confirmed } = ReviewStep.get(); // nested object from a snapshot -
+onClick={() => (transfer.step = 'generate')}      // writes are transparent
+
+const { is: review, confirmed } = ReviewStep.get(); // root object + sibling values:
+                                                     // only here does `is` earn its place
+```
+
+Do not alias `is` merely because something will be written - writes never need the raw instance. Unwrapping nested objects through `is` is noise.
 
 ---
 
