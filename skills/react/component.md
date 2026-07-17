@@ -40,6 +40,32 @@ class Counter extends Component {
 
 Properties accessed via `this` in `render()` are reactive - changes trigger re-renders automatically.
 
+An activated instance can also be rendered directly. This is useful when another
+object or collection owns the Component's lifecycle:
+
+```tsx
+const first = Item.new({ label: 'First' });
+const second = Item.new({ label: 'Second' });
+const items = new Map([[String(first), first], [String(second), second]]);
+
+<>{first}</>
+<>{items.values()}</>
+```
+
+React 18 development builds consume one-shot iterators while validating keys.
+Use `{[...items.values()]}` there; direct `items.values()` works in React 18
+production and React 19.
+
+The React adapter exposes each instance as an element with its State uid as the
+key. Mounting subscribes and provides context as usual; unmounting only detaches
+the rendered instance. Its external owner remains responsible for destruction
+with `instance.set(null)`. An instance represents one mounted element and should
+not be placed in multiple subtrees or remounted elsewhere after detaching.
+
+Direct rendering replaces wrapper components whose only job was to call
+`use(instance)` and render a Component. The standalone `use(instance)` hook
+remains the subscription primitive for headless State and custom observables.
+
 When a render reads more than a value or two, destructure everything it reads from `this` at the top - the same dependency-snapshot rule as `.get()` / `.use()` (see [react.md](react.md)). Rendering shares its subscription plumbing with the hooks, so scattered deep reads carry the same conditional-subscription risk:
 
 ```tsx

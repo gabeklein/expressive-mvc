@@ -276,7 +276,16 @@ class CounterView extends Component {
 }
 
 <CounterView />;
+
+const counter = CounterView.new();
+<>{counter}</>;
 ```
+
+Activated Component instances are React elements and may be rendered directly,
+including from an iterable such as `collection.values()`. Their external owner
+retains lifecycle ownership, so unmount detaches without destroying them. See
+[react/component.md](react/component.md) for the React 18 development-mode
+iterator caveat.
 
 PascalCase methods become reactive subcomponents - but they are **extension points**, not a general decomposition tool. The test: would a subclass reasonably replace or wrap this renderer? If not, use a freestanding function component that calls `MyComponent.get()`. See [react/component.md](react/component.md).
 
