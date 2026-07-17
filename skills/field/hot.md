@@ -66,6 +66,32 @@ form.values.name = 'Ada'; // does not rerun an effect that only read email
 
 Object reads track individual property keys. Adding or deleting a property notifies effects that already read that key.
 
+### Aggregates
+
+Key enumeration (`Object.keys`/`values`/`entries`, spread, `for...in`) is not tracked. To derive from the whole collection, read the `get()` snapshot - it subscribes to every change: key add, key delete, and value writes.
+
+```ts
+class Cart extends State {
+  items = hot({} as Record<string, number>);
+
+  get count() {
+    return Object.values(this.items.get()).reduce((sum, qty) => sum + qty, 0);
+  }
+}
+
+const cart = Cart.new();
+
+cart.get(($) => {
+  console.log($.count);
+});
+
+cart.items.pizza = 2; // logs 2
+cart.items.pizza = 5; // logs 5
+delete cart.items.pizza; // logs 0
+```
+
+If the wrapped object has its own `get` property, it wins and the snapshot method is unavailable.
+
 ## Dense Array Contract
 
 `hot()` arrays must be dense. Sparse arrays are rejected on creation, and operations that would create holes throw.
@@ -157,8 +183,10 @@ list[0] = 100; // changes storage and dispatches
 
 ```ts
 function hot<T>(value: T[]): T[];
-function hot<T extends object>(value: T): T;
+function hot<T extends object>(value: T): T & { get(): Readonly<T> };
 ```
+
+The object overload types the `get()` snapshot method, except when `T` declares its own `get` property. To keep a field's declared type plain (e.g. so subclasses can narrow it), annotate the field explicitly: `query: Record<string, string | undefined> = hot({} as Record<string, string | undefined>)`.
 
 ## Behavior
 
@@ -168,6 +196,7 @@ function hot<T extends object>(value: T): T;
 - Array `push`, `unshift`, `pop`, `shift`, `splice`, `sort`, and `reverse` work through native methods and notify the affected keys.
 - Array holes are not allowed; use placeholders or `splice()`.
 - Object property reads and writes are tracked by property key.
-- Object key enumeration is not shape-reactive; effects should read the keys they depend on.
+- Object key enumeration (`Object.keys`/`values`/`entries`, spread, `for...in`) is not tracked; read the `get()` snapshot to depend on the whole collection.
+- Reading `get` on a hot object subscribes to every change of the collection: key add, key delete, and value writes.
 - Symbol keys and function values are passed through without keyed tracking.
 - Nested arrays and objects are not wrapped recursively.

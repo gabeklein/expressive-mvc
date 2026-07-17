@@ -464,6 +464,86 @@ describe('object', () => {
     expect(cb).not.toHaveBeenCalled();
   });
 
+  it('snapshot returns keys and values', () => {
+    const obj = hot({ a: 1, b: 2 });
+
+    watch(obj, ($) => {
+      const snapshot = $.get();
+      expect(Object.keys(snapshot)).toEqual(['a', 'b']);
+      expect(Object.values(snapshot)).toEqual([1, 2]);
+    });
+  });
+
+  it('snapshot fires when a key is added', async () => {
+    const obj = hot({ a: 1 } as Record<string, number>);
+    const cb = mock();
+    watch(obj, ($) => {
+      void $.get();
+      cb();
+    });
+    cb.mockClear();
+
+    obj.b = 2;
+    await flush();
+    expect(cb).toHaveBeenCalled();
+  });
+
+  it('snapshot fires when a key is deleted', async () => {
+    const obj = hot({ a: 1, b: 2 } as Record<string, number>);
+    const cb = mock();
+    watch(obj, ($) => {
+      void $.get();
+      cb();
+    });
+    cb.mockClear();
+
+    delete obj.b;
+    await flush();
+    expect(cb).toHaveBeenCalled();
+  });
+
+  it('snapshot fires on existing-key write', async () => {
+    const obj = hot({ a: 1, b: 2 });
+    const cb = mock();
+    watch(obj, ($) => {
+      void $.get();
+      cb();
+    });
+    cb.mockClear();
+
+    obj.a = 99;
+    await flush();
+    expect(cb).toHaveBeenCalled();
+  });
+
+  it('snapshot does not fire on same-value write', async () => {
+    const obj = hot({ a: 1 });
+    const cb = mock();
+    watch(obj, ($) => {
+      void $.get();
+      cb();
+    });
+    cb.mockClear();
+
+    obj.a = 1;
+    await flush();
+    expect(cb).not.toHaveBeenCalled();
+  });
+
+  it('per-key effect does not fire on unrelated shape change', async () => {
+    const obj = hot({ a: 1 } as Record<string, number>);
+    const cb = mock();
+    watch(obj, ($) => {
+      void $.a;
+      cb();
+    });
+    cb.mockClear();
+
+    obj.b = 2;
+    await flush();
+    expect(cb).not.toHaveBeenCalled();
+  });
+
   it('does not recurse into nested objects', () => {
     const obj = hot({ inner: { x: 1 } });
     expect(observer(obj.inner)).toBeUndefined();
@@ -571,5 +651,33 @@ describe('as State field', () => {
     await flush();
 
     expect(cb).toHaveBeenCalledWith('X');
+  });
+
+  it('getter aggregating over snapshot stays reactive', async () => {
+    class Cart extends State {
+      items = hot({} as Record<string, number>);
+
+      get count() {
+        return Object.values(this.items.get()).reduce((sum, qty) => sum + qty, 0);
+      }
+    }
+
+    const cart = Cart.new();
+    const cb = mock();
+
+    cart.get(($) => cb($.count));
+    expect(cb).toHaveBeenCalledWith(0);
+
+    cart.items.pizza = 2;
+    await flush();
+    expect(cb).toHaveBeenCalledWith(2);
+
+    cart.items.pizza = 5;
+    await flush();
+    expect(cb).toHaveBeenCalledWith(5);
+
+    delete cart.items.pizza;
+    await flush();
+    expect(cb).toHaveBeenLastCalledWith(0);
   });
 });
