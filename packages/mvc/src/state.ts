@@ -34,6 +34,7 @@ const GETTERS = new WeakMap<Function, Map<string, () => unknown>>();
 
 /** Stale flags for compute closures awaiting refresh on next access. */
 const STALE = new WeakSet<() => void>();
+const PREPARE = Symbol.for('@expressive/mvc/prepare');
 
 declare namespace State {
   /** Any type of State, using own class constructor as its identifier. */
@@ -480,7 +481,11 @@ function callback<T extends State>(
  * Apply state arguemnts, run callbacks and observe properties.
  * Accumulate and handle cleanup events.
  **/
-function init(state: State, ...args: State.Args) {
+function init(
+  state: State,
+  args: State.Args,
+  create?: () => void | (() => void)
+) {
   const T = state.constructor as State.Extends;
 
   if (T === State) throw new Error('Cannot create base State.');
@@ -501,11 +506,7 @@ function init(state: State, ...args: State.Args) {
     if (Context.get(state) === Context.root) return Context.root.add(state);
   }
 
-  listener(state, () => {
-    parent(state, null);
-
-    const queue = [...before, observe, ...args, ...after, register];
-
+  function run(queue: State.Args) {
     for (let i = 0; i < queue.length; i++) {
       const arg = queue[i];
       const out = typeof arg == 'function' ? arg.call(state, state) : arg;
@@ -519,8 +520,34 @@ function init(state: State, ...args: State.Args) {
       else if (typeof out == 'function') listener(state, out, null);
       else if (typeof out == 'object') assign(state, out, true);
     }
+  }
 
-    return null;
+  let prepared = false;
+  let started = false;
+
+  function prepare() {
+    if (prepared) return;
+    prepared = true;
+    parent(state, null);
+    run([...before, observe, ...args]);
+  }
+
+  function start() {
+    if (started) return;
+    started = true;
+    run([create, ...after, register]);
+  }
+
+  listener(state, (key) => {
+    if (key === PREPARE) prepare();
+    else if (key === 'new') {
+      prepare();
+      start();
+    } else if (key === true) {
+      prepare();
+      start();
+      return null;
+    }
   });
 }
 

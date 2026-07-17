@@ -4,6 +4,7 @@ import { Context } from './context';
 import { get } from './field/get';
 import { ref } from './field/ref';
 import { set } from './field/set';
+import { event, observer } from './observable';
 import { State, update } from './state';
 
 it('will extend custom class', () => {
@@ -14,6 +15,49 @@ it('will extend custom class', () => {
   const state = Subject.new();
 
   expect(state.value).toBe(1);
+});
+
+it('will prepare and start once before ready', () => {
+  const calls: string[] = [];
+
+  class Subject extends State {
+    value = 1;
+
+    protected new() {
+      calls.push('new');
+    }
+  }
+
+  const remove = Subject.on({
+    before() {
+      calls.push('before');
+    },
+    after() {
+      calls.push('after');
+    }
+  });
+  const state = new Subject(() => {
+    calls.push('argument');
+  });
+
+  event(state, Symbol.for('@expressive/mvc/prepare'));
+
+  expect(calls).toEqual(['before', 'argument']);
+  expect(observer(state)?.ready).toBeUndefined();
+
+  event(state, 'new');
+  event(state, 'new');
+
+  expect(calls).toEqual(['before', 'argument', 'new', 'after']);
+  expect(observer(state)?.ready).toBeUndefined();
+
+  event(state);
+  event(state, 'new');
+
+  expect(calls).toEqual(['before', 'argument', 'new', 'after']);
+  expect(observer(state)?.ready).toBe(true);
+
+  remove();
 });
 
 it('will not create base State', () => {
