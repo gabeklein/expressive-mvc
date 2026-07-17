@@ -2,6 +2,7 @@ import { expect, it } from 'bun:test';
 
 const cwd = new URL('..', import.meta.url).pathname;
 const next = new URL('../../../node_modules/.bin/next', import.meta.url).pathname;
+const react = new URL('../../react/dist/index.js', import.meta.url).pathname;
 
 async function output(process: ReturnType<typeof Bun.spawn>) {
   const [stdout, stderr, exitCode] = await Promise.all([
@@ -29,6 +30,8 @@ async function waitFor(url: string, process: ReturnType<typeof Bun.spawn>) {
 }
 
 it('will render React adapter primitives through Next.js', async () => {
+  expect(await Bun.file(react).text()).toStartWith("'use client';");
+
   const build = await output(Bun.spawn([next, 'build'], {
     cwd,
     stdout: 'pipe',

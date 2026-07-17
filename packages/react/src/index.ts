@@ -1,3 +1,5 @@
+'use client';
+
 import { Component } from '@expressive/mvc';
 import {
   createContext,

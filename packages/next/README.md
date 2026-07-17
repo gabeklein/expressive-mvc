@@ -17,8 +17,9 @@ The fixture verifies that ordinary client components can use:
   synchronously creating state from its serializable result
 - concurrent requests initialized with distinct serializable values
 
-The only consumer boundary required by the fixture is the standard Next.js
-`'use client'` directive.
+The React package entry advertises its own standard Next.js `'use client'`
+boundary. Components which call MVC hooks or define client-owned State classes
+must still be client components; Server Components pass them serializable input.
 
 ## Known gaps
 
