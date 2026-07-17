@@ -7,7 +7,7 @@
   "scripts": {
     "build": "next build",
     "start": "next start",
-    "test": "bun run --cwd ../react build && bun test ./test/react-ssr.test.tsx ./test/smoke.test.ts"
+    "test": "bun run --cwd ../mvc build && bun run --cwd ../react build && bun test ./test/react-ssr.test.tsx ./test/smoke.test.ts"
   },
   "dependencies": {
     "@expressive/react": "workspace:^",

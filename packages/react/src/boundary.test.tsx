@@ -489,8 +489,9 @@ describe('discarded render (issue #118)', () => {
     return null;
   };
 
-  it('will destroy instance when discarded without retry', async () => {
+  it('will not start instance when discarded without retry', async () => {
     const didDestroy = mock();
+    let instance!: Model;
 
     class Parent extends Component {}
     class Model extends Component {
@@ -507,18 +508,17 @@ describe('discarded render (issue #118)', () => {
       element = render(
         <Parent>
           <React.Suspense fallback={null}>
-            <Model />
+            <Model is={(value: Model) => { instance = value; }} />
             <Sibling />
           </React.Suspense>
         </Parent>
       );
     });
 
-    // Redirect: tree unmounts while still suspended. Model never mounted,
-    // so its own unmount cleanup never runs - Parent's pop must reach it.
     await act(async () => { element.unmount(); });
 
-    expect(didDestroy).toHaveBeenCalled();
+    expect(didDestroy).not.toHaveBeenCalled();
+    expect(observer(instance)).toBe(null);
   });
 
   it('will not accumulate listeners across retries', async () => {
@@ -588,9 +588,7 @@ describe('discarded render (issue #118)', () => {
 
     await act(async () => { pending.resolve(); });
 
-    // Each discarded attempt constructed a fresh instance; every stale one
-    // was destroyed when the next attempt took its slot.
-    expect(made.length).toBeGreaterThan(1);
+    expect(made).toHaveLength(1);
     expect(made.filter((m) => !disposed.has(m))).toHaveLength(1);
 
     await act(async () => { element.unmount(); });
@@ -661,7 +659,7 @@ describe('discarded render (issue #118)', () => {
 
     await act(async () => { pending.resolve(); });
 
-    const live = new Set(all.filter((c) => !disposed.has(c)));
+    const live = new Set(all.filter((c) => observer(c) !== null));
     expect(live.size).toBe(2);
   });
 });

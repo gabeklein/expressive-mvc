@@ -57,11 +57,16 @@ it('will render React adapter primitives through Next.js', async () => {
 
     expect(response.status).toBe(200);
     expect(html).toContain('Count: <!-- -->3');
+    expect(html).toContain('data-local-mounted="false"');
     expect(html).toContain('Hello from context');
+    expect(html).toContain('data-context-mounted="false"');
     expect(html).toContain('Server slot: <!-- -->3');
-    expect(html).toContain('data-context="Request 3">Request 3');
+    expect(html).toContain(
+      'data-context="Request 3" data-context-mounted="false">Request 3'
+    );
     expect(html).toContain('data-streamed="3">Streamed request 3');
     expect(html).toContain('Hello, <!-- -->Next.js');
+    expect(html).toContain('data-component-mounted="false"');
     expect(nextResponse.status).toBe(200);
     expect(nextHtml).toContain('Count: <!-- -->7');
     expect(nextHtml).not.toContain('Count: <!-- -->3');
@@ -76,7 +81,9 @@ it('will render React adapter primitives through Next.js', async () => {
     for (const [value, status, html] of concurrent) {
       expect(status).toBe(200);
       expect(html).toContain(`Count: <!-- -->${value}`);
-      expect(html).toContain(`data-context="Request ${value}">Request ${value}`);
+      expect(html).toContain(
+        `data-context="Request ${value}" data-context-mounted="false">Request ${value}`
+      );
       expect(html).toContain(
         `data-streamed="${value}">Streamed request ${value}`
       );

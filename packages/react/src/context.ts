@@ -1,5 +1,8 @@
 import { State, Context, Component } from '@expressive/mvc';
-import { Runtime, useHook } from './runtime';
+import { observer } from '@expressive/mvc/observable';
+import { Runtime, start, useCommit, useHook } from './runtime';
+
+const PREPARE = Symbol.for('@expressive/mvc/prepare');
 
 let shared: any;
 
@@ -99,12 +102,25 @@ function Provider<T extends State>(props: Provider.Props<T>) {
   } = props as Provider.ForSingleProps<T> & Provider.ForMultipleProps<T>;
 
   const ambient = useAmbient();
+  const pending = Runtime.useRef(new Set<State>()).current;
   const context = useHook<Context>((set) => {
     set(new Context(ambient));
     return () => context.pop();
   });
 
-  context.set(input, is);
+  (context.set as Function)(input, (state: T) => {
+    if (!observer(state)?.ready) pending.add(state);
+    const dispose = (is as Provider.ForEach<T> | undefined)?.(state);
+    return () => {
+      pending.delete(state);
+      dispose?.();
+    };
+  }, PREPARE);
+
+  useCommit(() => {
+    pending.forEach(start);
+    pending.clear();
+  });
 
   if (Object.keys(rest).length) {
     const i = State.is(input) ? context.get(input) : input;

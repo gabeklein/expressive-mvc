@@ -2,6 +2,8 @@ import { event, watch, observer } from '@expressive/mvc/observable';
 import type { Component } from '@expressive/mvc';
 import type { Context } from './context';
 
+const PREPARE = Symbol.for('@expressive/mvc/prepare');
+
 export const Runtime = {} as {
   /** Host own-property keys to trap out of observed state; assigned by each adapter. */
   ignore: string[];
@@ -25,6 +27,21 @@ export function useFactory<T extends Function>(factory: () => T) {
 
 export function useReady<T>(callback: () => void) {
   return Runtime.useEffect(() => void callback(), []);
+}
+
+export function useCommit(callback: () => void) {
+  Runtime.useEffect(() => void callback());
+}
+
+export function prepare(state: object) {
+  if (!observer(state)?.ready) event(state, PREPARE);
+}
+
+export function start(state: object) {
+  const status = observer(state);
+  if (!status || status.ready) return;
+  event(state, 'new');
+  event(state);
 }
 
 /**
@@ -96,7 +113,7 @@ export function use<T extends object>(subject: T) {
       current.unwatch = undefined;
       current.proxy = subject;
     } else {
-      if (!status.ready) event(subject);
+      if (!status.ready && !status.prepared) event(subject);
 
       let init = true;
 

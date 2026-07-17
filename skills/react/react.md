@@ -88,6 +88,11 @@ function App() {
 - Writes pass through the proxy transparently; `is` is only for retaining the root object alongside sibling destructuring (see [Transparent Writes](#transparent-writes--is) below).
 - Nested observable reads are proxied and tracked automatically; do not call `use(child)` when the child was reached through the parent proxy.
 
+React prepares fields, arguments, props, and context during render so the
+initial tree and SSR output are complete. The `new()` lifecycle hook runs after
+the component commits. A server-only or abandoned render never runs `new()`;
+ordinary `State.new()` outside React remains synchronous.
+
 ### Constructor arguments
 
 Accepts same arguments as `State.new()` - objects, callbacks:

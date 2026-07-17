@@ -1,7 +1,9 @@
 import { Component, unbind } from '@expressive/mvc';
 import { watch, observer } from '@expressive/mvc/observable';
 import { provide, type Context } from './context';
-import { Runtime, useHook, useReady } from './runtime';
+import { Runtime, start, useCommit, useHook, useReady } from './runtime';
+
+const PREPARE = Symbol.for('@expressive/mvc/prepare');
 
 declare module '@expressive/mvc' {
   interface Component {
@@ -65,7 +67,7 @@ Component.on({
 
 function bootstrap(this: Component, context: Context){
   context = context.push();
-  context.set(this, () => () => this.set(null));
+  (context.set as Function)(this, () => () => this.set(null), PREPARE);
 
   Object.defineProperties(this, {
     context: {
@@ -107,6 +109,7 @@ function render(from: Component, context: Context) {
     }) || from;
 
     useReady(commit);
+    useCommit(() => start(from));
 
     const rendered = create(Render);
     const children = provide(context,

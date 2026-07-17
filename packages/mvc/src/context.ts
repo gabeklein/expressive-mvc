@@ -1,7 +1,8 @@
-import { listener } from "./observable";
+import { listener, observer } from "./observable";
 import { event, State, uid } from "./state";
 
 const LOOKUP = new WeakMap<State, Context>();
+const PREPARE = Symbol.for('@expressive/mvc/prepare');
 let ROOT: Context;
 
 type Accept<T extends State = State> =
@@ -169,6 +170,7 @@ class Context {
     inputs: Accept<T>,
     forEach?: (state: T) => (() => void) | void,
   ) {
+    const defer = arguments[2] === PREPARE;
     const init = new Set<() => void>();
     const { cleanup } = this;
 
@@ -199,7 +201,9 @@ class Context {
       const remove = this.add(state, true);
 
       init.add(() => {
-        event(state);
+        if (defer) {
+          if (!observer(state)?.ready) event(state, PREPARE);
+        } else event(state);
         const dispose = forEach && forEach(state as T);
         cleanup.set(K, () => {
           if (dispose) dispose();

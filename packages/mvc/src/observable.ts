@@ -204,7 +204,8 @@ function emit(o: Observer, key: Observer.Signal): void {
     return;
   }
 
-  if (!ready && key !== PREPARE && key !== 'new') pending.add(true);
+  if (!ready && !o.prepared && key !== PREPARE && key !== 'new' && key !== null)
+    pending.add(true);
 
   pending.add(key);
 
@@ -324,7 +325,7 @@ function watch<T extends object>(
   }
 
   const unlisten = listener(target, (key) => {
-    if (key === true) invoke();
+    if ((key === true || key === PREPARE) && reset === undefined) invoke();
     else if (!reset) return reset;
 
     if (key === null && unset) unset(null);

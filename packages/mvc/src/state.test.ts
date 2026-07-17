@@ -45,6 +45,11 @@ it('will prepare and start once before ready', () => {
   expect(calls).toEqual(['before', 'argument']);
   expect(observer(state)?.ready).toBeUndefined();
 
+  state.value = 2;
+
+  expect(state.value).toBe(2);
+  expect(observer(state)?.ready).toBeUndefined();
+
   event(state, 'new');
   event(state, 'new');
 

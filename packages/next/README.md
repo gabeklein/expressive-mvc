@@ -41,9 +41,10 @@ must still be client components; Server Components pass them serializable input.
   methods cannot. Treat every Server Function as a public endpoint with explicit
   input validation and authorization; do not infer RPC semantics from a State
   class.
-- `State.use()`, `Provider`, and `Component` activate during server render, while
-  their cleanup is effect-driven and never commits there. Keep `new()` hooks
-  server-safe and guard browser-only work.
+- `State.use()`, `Provider`, and `Component` prepare fields, props, and context
+  during server render, but do not run `new()` or become ready until a client
+  commit. Abandoned and server-only render attempts therefore do not start
+  mount lifecycle work.
 - `use(existingState)` retains its server-render subscription until that external
   state is destroyed.
 - A suspending factory owned by a fresh `State.use()` instance can restart with a

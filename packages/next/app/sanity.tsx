@@ -5,6 +5,11 @@ import { use, type ReactNode } from 'react';
 
 class CounterState extends State {
   count = 0;
+  mounted = false;
+
+  protected new() {
+    this.mounted = true;
+  }
 
   increment() {
     this.count++;
@@ -12,9 +17,9 @@ class CounterState extends State {
 }
 
 export function Counter({ initial }: { initial: number }) {
-  const { count, increment } = CounterState.use({ count: initial });
+  const { count, increment, mounted } = CounterState.use({ count: initial });
 
-  return <button onClick={increment}>Count: {count}</button>;
+  return <button data-local-mounted={mounted} onClick={increment}>Count: {count}</button>;
 }
 
 class StreamedCounterState extends State {
@@ -35,12 +40,17 @@ export function StreamedCounter({
 
 class Message extends State {
   text = '';
+  mounted = false;
+
+  protected new() {
+    this.mounted = true;
+  }
 }
 
 export function ContextValue() {
-  const { text } = Message.get();
+  const { text, mounted } = Message.get();
 
-  return <p data-context={text}>{text}</p>;
+  return <p data-context={text} data-context-mounted={mounted}>{text}</p>;
 }
 
 export function ContextGreeting({ message }: { message: string }) {
@@ -67,9 +77,14 @@ export function ContextFrame({
 
 class Greeting extends Component {
   name = '';
+  mounted = false;
+
+  protected new() {
+    this.mounted = true;
+  }
 
   render() {
-    return <p>Hello, {this.name}</p>;
+    return <p data-component-mounted={this.mounted}>Hello, {this.name}</p>;
   }
 }
 

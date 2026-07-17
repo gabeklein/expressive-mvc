@@ -364,7 +364,7 @@ Inside a subcomponent body, destructure what it reads from `this` at the top, sa
 
 ## Lifecycle
 
-- `new()` - once after init. Return cleanup function for teardown.
+- `new()` - once after the React component commits. Return cleanup function for teardown.
 - `catch(error)` - error boundary.
 - Destruction on unmount or `this.set(null)`.
 
