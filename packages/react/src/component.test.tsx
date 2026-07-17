@@ -48,6 +48,56 @@ it('will create instance only once', () => {
   expect(didConstruct).toBeCalledTimes(1);
 });
 
+describe('instance element', () => {
+  class Control extends Component {
+    value = '';
+
+    render() {
+      return <span>{this.value}</span>;
+    }
+  }
+
+  it('will render an existing instance', async () => {
+    const instance = Control.new({ value: 'first' });
+    const element = render(<>{instance}</>, { reactStrictMode: true });
+
+    expect(React.isValidElement(instance)).toBe(true);
+    expect(instance.$$typeof).toBe(
+      (React.createElement('template') as any).$$typeof
+    );
+    expect(instance.key).toBe(String(instance));
+    expect(screen).toHaveText('first');
+
+    await act(async () => {
+      instance.value = 'second';
+    });
+
+    expect(screen).toHaveText('second');
+
+    element.unmount();
+
+    expect(instance.get(null)).toBe(false);
+  });
+
+  it('will render collection values', () => {
+    const first = Control.new({ value: 'first' });
+    const second = Control.new({ value: 'second' });
+    const collection = new Map([
+      ['first', first],
+      ['second', second]
+    ]);
+    const element = render(<>{collection.values()}</>);
+
+    expect(element.container.textContent).toBe('firstsecond');
+    expect((first as any)._store).not.toBe((second as any)._store);
+
+    element.unmount();
+
+    expect(first.get(null)).toBe(false);
+    expect(second.get(null)).toBe(false);
+  });
+});
+
 it('will call is method on creation', () => {
   class Control extends Component {}
 
@@ -1352,4 +1402,3 @@ describe('strict mode', () => {
     element.unmount();
   });
 });
-

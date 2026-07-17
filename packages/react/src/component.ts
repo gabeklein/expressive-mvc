@@ -16,6 +16,42 @@ declare module '@expressive/mvc' {
   }
 }
 
+function configureElement(template: any) {
+  Object.defineProperty(Component.prototype, '$$typeof', {
+    get(this: Component) {
+      const from = this;
+      const Host = function () {
+        return from;
+      };
+      const descriptors = Object.getOwnPropertyDescriptors(template);
+      const store = descriptors._store?.value;
+
+      Object.setPrototypeOf(Host, Component);
+      Host.prototype = Component.prototype;
+
+      delete descriptors.$$typeof;
+      delete descriptors.type;
+      delete descriptors.key;
+      delete descriptors.props;
+
+      if (store)
+        descriptors._store.value = Object.create(
+          Object.getPrototypeOf(store),
+          Object.getOwnPropertyDescriptors(store)
+        );
+
+      Object.defineProperties(this, {
+        ...descriptors,
+        $$typeof: { value: template.$$typeof },
+        type: { value: Host },
+        key: { value: String(this) }
+      });
+
+      return template.$$typeof;
+    }
+  });
+}
+
 // Host-agnostic seams: `state` is a read-only values bag; `context`'s setter
 // pushes a child context, registers the instance for teardown, and installs its
 // per-instance render host. Host-specific descriptors stay in each adapter.
@@ -64,8 +100,9 @@ Component.on({
 });
 
 function bootstrap(this: Component, context: Context){
+  const destroy = !observer(this)?.ready;
   context = context.push();
-  context.set(this, () => () => this.set(null));
+  context.set(this, () => destroy ? () => this.set(null) : undefined);
 
   Object.defineProperties(this, {
     context: {
@@ -155,3 +192,5 @@ function subcomponents(target: object, configurable?: boolean) {
     });
   }
 }
+
+export { configureElement };
