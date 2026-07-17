@@ -113,7 +113,7 @@ export function use<T extends object>(subject: T) {
       current.unwatch = undefined;
       current.proxy = subject;
     } else {
-      if (!status.ready && !status.prepared) event(subject);
+      if (!status.ready && !(status as any)[PREPARE]) event(subject);
 
       let init = true;
 

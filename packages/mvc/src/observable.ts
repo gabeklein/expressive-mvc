@@ -25,10 +25,12 @@ declare namespace Observer {
   type Callback = () => void | null;
 }
 
+const PREPARE = Symbol.for('@expressive/mvc/prepare');
+
 interface Observer {
   /** Becomes `true` once the subject has emitted its initial event. */
   ready?: true;
-  prepared?: true;
+  [PREPARE]?: true;
   listeners: Map<Observer.Notify, Set<Observer.Signal> | undefined>;
   /** Recursion guard for an in-progress emit pass. */
   pending: Set<Observer.Signal>;
@@ -44,7 +46,6 @@ interface Observing {
 
 const Observer: unique symbol = Symbol('Observer');
 const Observing: unique symbol = Symbol('Observing');
-const PREPARE = Symbol.for('@expressive/mvc/prepare');
 
 /** Central event dispatch. Bunches all updates to occur at same time. */
 const DISPATCH = new Set<() => void>();
@@ -137,7 +138,7 @@ function listener<T extends object>(
 
   if (!select) {
     if (o.ready) callback(true);
-    else if (o.prepared) callback(PREPARE);
+    else if (o[PREPARE]) callback(PREPARE);
   }
 
   o.listeners.set(callback, select);
@@ -204,7 +205,7 @@ function emit(o: Observer, key: Observer.Signal): void {
     return;
   }
 
-  if (!ready && !o.prepared && key !== PREPARE && key !== 'new' && key !== null)
+  if (!ready && !o[PREPARE] && key !== PREPARE && key !== 'new' && key !== null)
     pending.add(true);
 
   pending.add(key);
@@ -218,7 +219,7 @@ function emit(o: Observer, key: Observer.Signal): void {
       }
 
   if (key === null) listeners.clear();
-  else if (key === PREPARE) o.prepared = true;
+  else if (key === PREPARE) o[PREPARE] = true;
   else if (key === true) o.ready = true;
 
   pending.clear();
