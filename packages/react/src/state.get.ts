@@ -74,6 +74,7 @@ State.get = function get<T extends State>(
   this: State.Extends<T>,
   argument?: boolean | State.GetFactory<T, unknown>
 ) {
+  const Type = this;
   const next = Runtime.useState(0)[1];
   const local = Context.get();
   const render = useFactory(() => {
@@ -100,6 +101,8 @@ State.get = function get<T extends State>(
     }
 
     function attach(next: T) {
+      if (local.get(Type, false) !== next) return;
+
       unwatch?.();
 
       if (observer(next) === null) {
@@ -134,12 +137,12 @@ State.get = function get<T extends State>(
       return release;
     }
 
-    const unsubscribe = local.get(this, attach);
+    const unsubscribe = local.get(Type, attach);
 
     if (!unwatch) {
       unsubscribe();
       if (argument === false) return () => undefined;
-      throw new Error(`Could not find ${this} in context.`);
+      throw new Error(`Could not find ${Type} in context.`);
     }
 
     if (value === null) {

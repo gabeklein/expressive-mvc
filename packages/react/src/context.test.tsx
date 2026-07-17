@@ -491,6 +491,21 @@ describe('Consumer', () => {
     );
   });
 
+  it('will not select nested instance from outer sibling', () => {
+    const Value = () => Foo.get().value;
+    const element = render(
+      <Provider for={Foo} value="outer">
+        <Value />
+        <Provider for={Foo} value="inner">
+          <Value />
+        </Provider>
+        <Value />
+      </Provider>
+    );
+
+    expect(element.container.textContent).toBe('outerinnerouter');
+  });
+
   it('will select closest match over best match', () => {
     render(
       <Provider for={Bar}>
