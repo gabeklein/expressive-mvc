@@ -1,6 +1,13 @@
 import { State, Context } from '@expressive/mvc';
-import { watch } from '@expressive/mvc/observable';
-import { prepare, start, useCommit, useFactory, useHook, useReady } from './runtime';
+import { observer, watch } from '@expressive/mvc/observable';
+import {
+  prepare,
+  start,
+  useCommit,
+  useFactory,
+  useHook,
+  useReady
+} from './runtime';
 
 declare module '@expressive/mvc' {
   interface UseState extends State {
@@ -57,6 +64,42 @@ State.use = function use<T extends State>(
     const context = outer.push();
     context.add(instance, true);
     prepare(instance);
+    const guarded = new WeakMap<object, object>();
+
+    function guard<S extends object>(state: S): S {
+      const found = guarded.get(state);
+      if (found) return found as S;
+
+      const proxy = new Proxy(state, {
+        get(target, key, receiver) {
+          try {
+            const value = Reflect.get(target, key, receiver);
+
+            if (
+              key !== 'is' &&
+              value &&
+              (typeof value === 'object' || typeof value === 'function') &&
+              observer(value) !== undefined
+            ) return guard(value);
+
+            return value;
+          } catch (error) {
+            if (
+              error &&
+              (typeof error === 'object' || typeof error === 'function') &&
+              typeof (error as PromiseLike<unknown>).then === 'function'
+            ) throw Object.assign(new Error(
+              'State.use() cannot suspend. Resolve async values before creating local State or read them from context with State.get().'
+            ), { cause: error });
+
+            throw error;
+          }
+        }
+      });
+
+      guarded.set(state, proxy);
+      return proxy;
+    }
 
     let ready = false;
 
@@ -80,7 +123,7 @@ State.use = function use<T extends State>(
 
       useCommit(() => start(instance));
 
-      return current;
+      return guard(current);
     };
   });
 

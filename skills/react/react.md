@@ -93,6 +93,11 @@ initial tree and SSR output are complete. The `new()` lifecycle hook runs after
 the component commits. A server-only or abandoned render never runs `new()`;
 ordinary `State.new()` outside React remains synchronous.
 
+`State.use()` cannot suspend while reading its local instance, including nested
+State values. Resolve promises before calling it, or put async state in a
+`Provider` and read it with `State.get()` so React can preserve the owner across
+Suspense retries.
+
 ### Constructor arguments
 
 Accepts same arguments as `State.new()` - objects, callbacks:

@@ -2,7 +2,7 @@ import React from 'react';
 import { describe, expect, it, mock } from 'bun:test';
 import { State, Provider, get, set } from '.';
 import { act, render, renderHook, waitFor } from '@testing-library/react';
-import { flushMicrotasks } from '../test.setup';
+import { flushMicrotasks, mockError } from '../test.setup';
 
 describe('State.use', () => {
   class Test extends State {
@@ -14,6 +14,36 @@ describe('State.use', () => {
       const hook = renderHook(() => Test.use());
 
       expect(hook.result.current).toBeInstanceOf(Test);
+    });
+
+    it('will throw if local state suspends', () => {
+      mockError();
+
+      class Pending extends State {
+        value = set<string>();
+      }
+
+      const View = () => Pending.use().value;
+
+      expect(() => render(<View />)).toThrow(
+        'State.use() cannot suspend. Resolve async values before creating local State or read them from context with State.get().'
+      );
+    });
+
+    it('will throw if nested local state suspends', () => {
+      mockError();
+
+      class Pending extends State {
+        value = set<string>();
+      }
+
+      class Parent extends State {
+        child = Pending.new();
+      }
+
+      const View = () => Parent.use().child.value;
+
+      expect(() => render(<View />)).toThrow('State.use() cannot suspend.');
     });
 
     it('will subscribe to instance of controller', async () => {
@@ -470,4 +500,3 @@ describe('State.use', () => {
     });
   });
 });
-

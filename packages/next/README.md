@@ -32,8 +32,8 @@ must still be client components; Server Components pass them serializable input.
   props or a Promise of serializable data, then enter an MVC `Provider` in a
   client component.
 - Unwrap server-created Promises with React `use()` before calling `State.use()`.
-  Creating a fresh State and then suspending on one of its fields can cause React
-  to discard the uncommitted hook state and recreate the instance on retry.
+  Suspense from a local `State.use()` instance is rejected with a direct error
+  because React may discard its hook state and recreate the instance on retry.
 - `React.cache` deduplicates within one server request. Next.js `use cache`
   supports longer-lived caching but requires serializable inputs and outputs;
   neither mechanism makes mutable State instances safe to share across requests.
@@ -47,10 +47,8 @@ must still be client components; Server Components pass them serializable input.
   mount lifecycle work.
 - `use(existingState)` retains its server-render subscription until that external
   state is destroyed.
-- A suspending factory owned by a fresh `State.use()` instance can restart with a
-  new instance on each server retry. This is tracked in
-  [#224](https://github.com/gabeklein/expressive-mvc/issues/224). Fetch in the
-  Server Component and pass plain initial values until it is addressed.
+- Fetch in the Server Component and pass plain initial values, or provide a
+  stable async owner and consume it with `State.get()`.
 
 Compatibility fixes discovered here belong in `@expressive/react`. This package
 should only gain implementation when behavior is genuinely Next-specific.
