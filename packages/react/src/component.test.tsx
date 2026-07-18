@@ -62,10 +62,10 @@ describe('instance element', () => {
     const element = render(<>{instance}</>, { reactStrictMode: true });
 
     expect(React.isValidElement(instance)).toBe(true);
-    expect(instance.$$typeof).toBe(
+    expect((instance as any).$$typeof).toBe(
       (React.createElement('template') as any).$$typeof
     );
-    expect(instance.key).toBe(String(instance));
+    expect((instance as any).key).toBe(String(instance));
     expect(screen).toHaveText('first');
 
     await act(async () => {
@@ -79,17 +79,21 @@ describe('instance element', () => {
     expect(instance.get(null)).toBe(false);
   });
 
-  it('will render collection values', () => {
-    const first = Control.new({ value: 'first' });
-    const second = Control.new({ value: 'second' });
-    const collection = new Map([
-      ['first', first],
-      ['second', second]
-    ]);
-    const element = render(<>{collection.values()}</>);
+  it('will render an array', async () => {
+    const first = Control.new({ value: 'foo' });
+    const second = Control.new({ value: 'bar' });
+    const collection = [first, second];
+    const element = render(<>{collection}</>);
 
-    expect(element.container.textContent).toBe('firstsecond');
+    expect(element.container.textContent).toBe('foobar');
     expect((first as any)._store).not.toBe((second as any)._store);
+
+    await act(async () => {
+      first.value = 'baz';
+      second.value = 'qux';
+    });
+
+    expect(element.container.textContent).toBe('bazqux');
 
     element.unmount();
 
