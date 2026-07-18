@@ -46,15 +46,11 @@ object or collection owns the Component's lifecycle:
 ```tsx
 const first = Item.new({ label: 'First' });
 const second = Item.new({ label: 'Second' });
-const items = new Map([[String(first), first], [String(second), second]]);
+const items = [first, second];
 
 <>{first}</>
-<>{items.values()}</>
+<>{items}</>
 ```
-
-React 18 development builds consume one-shot iterators while validating keys.
-Use `{[...items.values()]}` there; direct `items.values()` works in React 18
-production and React 19.
 
 The React adapter exposes each instance as an element with its State uid as the
 key. Mounting subscribes and provides context as usual; unmounting only detaches

@@ -14,14 +14,6 @@ import { Runtime } from './adapter';
 import { ErrorBoundary, dedupe } from './boundary';
 import { configureElement } from './component';
 
-declare module '@expressive/mvc' {
-  interface Component {
-    readonly $$typeof: symbol;
-    readonly type: typeof Component;
-    readonly key: string;
-  }
-}
-
 // React detects class components by this brand (preact reads `prototype.render`).
 Object.defineProperty(Component.prototype, 'isReactComponent', {
   value: true
