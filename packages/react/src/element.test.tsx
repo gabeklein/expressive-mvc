@@ -155,6 +155,47 @@ describe('instance element', () => {
       expect(item.get(null)).toBe(false);
   });
 
+  it('will render a parent-owned instance', async () => {
+    const error = mockError();
+
+    class Item extends Component {
+      owner = get(Owner);
+      value = '';
+
+      render() {
+        return <span>{this.value}</span>;
+      }
+    }
+
+    class Owner extends State {
+      item = new Item({ value: 'a' });
+    }
+
+    const owner = Owner.new({});
+    const { item } = owner;
+
+    expect(item.owner).toBe(owner);
+
+    const element = render(<>{item}</>);
+
+    expect(element.container.textContent).toBe('a');
+
+    await act(async () => {
+      item.value = 'b';
+    });
+
+    expect(element.container.textContent).toBe('b');
+
+    await act(async () => {
+      owner.set(null);
+    });
+
+    expect(item.get(null)).toBe(true);
+    expect(error).not.toBeCalled();
+
+    element.unmount();
+  });
+
   it('will warn when rendering one instance twice as siblings', () => {
     const error = mockError();
     const instance = Control.new({ value: 'first' });
