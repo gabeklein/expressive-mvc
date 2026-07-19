@@ -3,12 +3,10 @@ import { State } from '../state';
 
 const SHAPE = Symbol('shape');
 const SIZE = Object.getOwnPropertyDescriptor(Map.prototype, 'size')!.get!;
-const MAPS = new WeakSet<object>();
 const META = new WeakMap<object, Meta>();
 
 type Meta = {
-  make: Function;
-  type: boolean;
+  make?: Function;
   spawned: Set<unknown>;
 };
 
@@ -20,18 +18,12 @@ class ReactiveMap<K, V>
 
     if (entries) for (const [key, value] of entries) super.set(key, value);
 
-    if (make)
-      META.set(this, {
-        make,
-        type: State.is(make),
-        spawned: new Set()
-      });
+    META.set(this, { make, spawned: new Set() });
 
-    MAPS.add(this);
     event(this);
   }
 
-  get size() {
+  get size(): number {
     return touch(this, SHAPE, SIZE.call(source(this)));
   }
 
@@ -57,9 +49,9 @@ class ReactiveMap<K, V>
 
   add(input?: unknown): V {
     const target = source(this);
-    const meta = META.get(target);
+    const meta = META.get(target)!;
 
-    if (!meta)
+    if (!meta.make)
       throw new Error('add() requires a map created with a factory.');
 
     const keyed = typeof input == 'string';
@@ -85,9 +77,9 @@ class ReactiveMap<K, V>
     const target = source(this);
 
     if (arguments.length === 1) {
-      const meta = META.get(target);
+      const meta = META.get(target)!;
 
-      if (!meta)
+      if (!meta.make)
         throw new Error('set(key) alone requires a factory.');
 
       store(target, key, spawn(meta, key) as V, meta);
@@ -104,15 +96,12 @@ class ReactiveMap<K, V>
     if (!super.has.call(target, key)) return false;
 
     release(target, key, super.get.call(target, key) as V);
+    super.delete.call(target, key);
 
-    const deleted = super.delete.call(target, key);
+    event(target, key as never);
+    event(target, SHAPE);
 
-    if (deleted) {
-      event(target, key as never);
-      event(target, SHAPE);
-    }
-
-    return deleted;
+    return true;
   }
 
   clear() {
@@ -145,12 +134,7 @@ class ReactiveMap<K, V>
   }
 
   *values(): MapIterator<V> {
-    const target = source(this);
-
-    touch(this, SHAPE);
-
-    for (const [key, value] of super.entries.call(target))
-      yield touch(this, key, value);
+    for (const [, value] of this.entries()) yield value;
   }
 
   forEach(
@@ -169,13 +153,16 @@ class ReactiveMap<K, V>
 function map<K, V>(
   entries?: Iterable<readonly [K, V]> | null
 ): State.Map<K, V>;
+
 function map<T extends State>(
   Type: new (...args: any[]) => T
 ): State.Map.Factory<T, State.Map.Key<T> | State.Assign<T>>;
+
 function map<V, I = string>(
   make: (input: I) => V,
   entries?: Iterable<readonly [string, V]> | null
 ): State.Map.Factory<V, I>;
+
 function map<K, V>(
   arg?: Iterable<readonly [K, V]> | Function | null,
   entries?: Iterable<readonly [K, V]> | null
@@ -185,10 +172,10 @@ function map<K, V>(
     : new ReactiveMap(arg);
 }
 
-function spawn(meta: Meta, input: unknown) {
-  if (!meta.type) return meta.make(input);
+function spawn({ make }: Meta, input: unknown) {
+  if (!State.is(make)) return make!(input);
 
-  const Type = meta.make as State.Type;
+  const Type = make as State.Type;
 
   if (input === undefined) return Type.new();
   if (typeof input == 'string') return Type.new({ id: input } as never);
@@ -221,14 +208,12 @@ function store<K, V>(
 }
 
 function release<K, V>(target: ReactiveMap<K, V>, key: K, value: V) {
-  const meta = META.get(target);
-
-  if (meta && meta.spawned.delete(key) && value instanceof State)
+  if (META.get(target)!.spawned.delete(key) && value instanceof State)
     value.set(null);
 }
 
 function source<K, V>(from: ReactiveMap<K, V>): ReactiveMap<K, V> {
-  return MAPS.has(from) ? from : Object.getPrototypeOf(from);
+  return META.has(from) ? from : Object.getPrototypeOf(from);
 }
 
 function exportValue(value: any) {
