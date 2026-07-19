@@ -187,14 +187,9 @@ function map<K, V>(
 }
 
 function spawn({ make }: Meta, input: unknown) {
-  if (!State.is(make)) return make!(input);
-
-  const Type = make as State.Type;
-
-  if (input === undefined) return new Type();
-  if (typeof input == 'string') return new Type({ key: input } as never);
-
-  return new Type(input as never);
+  return State.is(make)
+    ? new (make as State.Type)(typeof input === 'string' ? { key: input } : input as {})
+    : make!(input);
 }
 
 function adopt<K, V>(target: ReactiveMap<K, V>, owner: State) {
