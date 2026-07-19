@@ -23,7 +23,7 @@ let template: any;
  */
 Object.defineProperty(Component.prototype, '$$typeof', {
   get(this: Component) {
-    template ||= Runtime.createElement('template');
+    if(!template) template = Runtime.createElement('template');
 
     const descriptors = Object.getOwnPropertyDescriptors(template);
     const store = descriptors._store?.value;
@@ -66,8 +66,7 @@ function element(source: Component) {
 
       return () => {
         from = useHook<Component>((refresh) => {
-          if (observer(source) !== null)
-            watch(source, refresh);
+          if (observer(source) !== null) watch(source, refresh);
           return () => context.pop();
         }) || source;
 
