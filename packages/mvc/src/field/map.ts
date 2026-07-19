@@ -30,14 +30,8 @@ State.on((self) => {
     listener(
       self,
       () => {
-        for (const [key, detach] of meta.owned) {
-          const value = Map.prototype.get.call(target, key);
-
-          if (detach) detach();
-          if (value instanceof State) value.set(null);
-        }
-
-        meta.owned.clear();
+        for (const [key] of meta.owned)
+          release(target, key, Map.prototype.get.call(target, key));
       },
       null
     );
