@@ -31,12 +31,8 @@ it('will derive key from instance identity', () => {
   const foo = Component.new({});
 
   expect(foo.key).toBe(String(foo));
-  expect(Object.keys(foo)).not.toContain('key');
-  expect(Object.getOwnPropertyDescriptor(foo, 'key')).toMatchObject({
-    value: String(foo),
-    enumerable: false,
-    writable: false
-  });
+  expect(foo.hasOwnProperty('key')).toBe(false);
+  expect(Object.keys(foo.get())).not.toContain('key');
 });
 
 it('will allow key override', () => {
@@ -50,6 +46,16 @@ it('will allow key override', () => {
   expect(Object.keys(foo)).not.toContain('key');
   expect(Object.keys(foo.get())).not.toContain('key');
   expect(() => ((foo as any).key = 'bar')).toThrow();
+});
+
+it('will lock key after imperative write', () => {
+  const foo = Component.new({ });
+
+  (foo as any).key = 'imperative';
+
+  expect(foo.key).toBe('imperative');
+  expect(Object.keys(foo.get())).not.toContain('key');
+  expect(() => ((foo as any).key = 'again')).toThrow();
 });
 
 it('will call is callback once with instance', () => {
