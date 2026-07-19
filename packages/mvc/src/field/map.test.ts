@@ -468,6 +468,126 @@ describe('ownership', () => {
   });
 });
 
+describe('transforms', () => {
+  it('will map values through callback', () => {
+    const items = map([
+      ['a', 1],
+      ['b', 2]
+    ]);
+
+    const doubled = items.values((value, key) => `${key}:${value * 2}`);
+
+    expect(Array.from(doubled)).toEqual(['a:2', 'b:4']);
+  });
+
+  it('will map keys and entries through callback', () => {
+    const items = map([['a', 1]]);
+
+    expect(Array.from(items.keys((key) => key.toUpperCase()))).toEqual(['A']);
+    expect(Array.from(items.entries(([key, value]) => key + value))).toEqual([
+      'a1'
+    ]);
+  });
+
+  it('will iterate transform more than once', () => {
+    const items = map([
+      ['a', 1],
+      ['b', 2]
+    ]);
+
+    const values = items.values((value) => value);
+
+    expect(Array.from(values)).toEqual([1, 2]);
+    expect(Array.from(values)).toEqual([1, 2]);
+  });
+
+  it('will reflect current state on each iteration', () => {
+    const items = map([['a', 1]]);
+    const values = items.values((value) => value);
+
+    expect(Array.from(values)).toEqual([1]);
+
+    items.set('b', 2);
+
+    expect(Array.from(values)).toEqual([1, 2]);
+  });
+
+  it('will survive break in for-of', () => {
+    const items = map([
+      ['a', 1],
+      ['b', 2]
+    ]);
+
+    const values = items.values((value) => value);
+
+    for (const value of values) if (value) break;
+
+    expect(Array.from(values)).toEqual([1, 2]);
+  });
+
+  it('will skip entry when callback throws false', () => {
+    const items = map([
+      ['a', 1],
+      ['b', 2],
+      ['c', 3]
+    ]);
+
+    const odd = items.values((value) => {
+      if (value % 2 == 0) throw false;
+      return value;
+    });
+
+    expect(Array.from(odd)).toEqual([1, 3]);
+  });
+
+  it('will rethrow real errors from callback', () => {
+    const items = map([['a', 1]]);
+    const boom = items.values(() => {
+      throw new Error('boom');
+    });
+
+    expect(() => Array.from(boom)).toThrow('boom');
+  });
+
+  it('will track shape and values in effect', async () => {
+    const items = map([['a', 1]]);
+    const fn = mock();
+
+    watch(items, ($) => {
+      Array.from($.values((value) => value));
+      fn();
+    });
+    fn.mockClear();
+
+    items.set('a', 2);
+    await flush();
+    expect(fn).toHaveBeenCalledTimes(1);
+
+    items.set('b', 3);
+    await flush();
+    expect(fn).toHaveBeenCalledTimes(2);
+  });
+
+  it('will track shape only through keys transform', async () => {
+    const items = map([['a', 1]]);
+    const fn = mock();
+
+    watch(items, ($) => {
+      Array.from($.keys((key) => key));
+      fn();
+    });
+    fn.mockClear();
+
+    items.set('a', 2);
+    await flush();
+    expect(fn).not.toHaveBeenCalled();
+
+    items.set('b', 3);
+    await flush();
+    expect(fn).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe('adoption', () => {
   class Item extends State {
     value = 0;

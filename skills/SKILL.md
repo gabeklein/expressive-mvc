@@ -133,7 +133,7 @@ class UserProfile extends State {
 | `map(input => value)` | `add(input?)` spawns; a string input is also the key (occupied throws), otherwise keyed by `String(value)`. `set(key)` alone respawns. |
 | `map(StateClass)`   | `add(input?)` instantiates the class; object input assigns fields, string input keys the entry and becomes a `Component`'s `key`. |
 
-`map()` is a reactive helper, not a field instruction. It returns a `State.Map<K, V>` extending native `Map`, with reactive `get(key)`, `has(key)`, `size`, iteration, `set`, `delete`, and `clear`. Calling `get()` with no key returns a shallow `ReadonlyMap` snapshot.
+`map()` is a reactive helper, not a field instruction. It returns a `State.Map<K, V>` extending native `Map`, with reactive `get(key)`, `has(key)`, `size`, iteration, `set`, `delete`, and `clear`. Calling `get()` with no key returns a shallow `ReadonlyMap` snapshot. `keys(fn)` / `values(fn)` / `entries(fn)` return reusable iterables of transformed results (`throw false` skips an entry), tracking like their plain forms.
 
 With a factory, the map is string-keyed (`State.Map.Factory<V>`) and owns what `add` spawns: spawned `State` values are destroyed when deleted, cleared, or replaced. Activated values supplied directly via `set(key, value)` are guests and never destroyed.
 

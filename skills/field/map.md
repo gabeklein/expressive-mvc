@@ -133,6 +133,25 @@ owner.set(null);                       // member destroyed with owner
 
 Keys compare like native `Map` (SameValueZero). Prefer primitive ids or stable object references as factory inputs - a fresh object literal is a new key every time.
 
+## Transforms
+
+`keys(fn)`, `values(fn)`, and `entries(fn)` return a **reusable iterable** of transformed results - each iteration starts fresh against the live map, so it never exhausts (a repeat consumer, like a renderer verifying keys, sees the full sequence again). Subscriptions match the plain iterators exactly: `values(fn)` and `entries(fn)` track shape plus each visited value; `keys(fn)` tracks shape only. Throw `false` inside the callback to skip an entry; real errors propagate.
+
+```ts
+class Cart extends State {
+  items = map(Line);
+
+  get subtotals() {
+    return [...this.items.values((line) => line.price * line.qty)];
+  }
+}
+
+const rows = cart.items.values((line, id) => `${id}: ${line.qty}`);
+
+[...rows]; // fresh pass over current entries
+[...rows]; // again - not exhausted
+```
+
 ## Snapshots
 
 Calling `get()` with no key returns a shallow snapshot `ReadonlyMap`. Nested values with a `.get()` method are exported through that method, matching State snapshots.
@@ -154,6 +173,9 @@ function map<V, I = string>(make: (input: I) => V, entries?: Iterable<readonly [
 interface State.Map<K, V> extends globalThis.Map<K, V> {
   get(): ReadonlyMap<K, State.Export<V>>;
   get(key: K): V | undefined;
+  entries<R>(fn: (entry: [K, V]) => R): Iterable<R>;
+  keys<R>(fn: (key: K) => R): Iterable<R>;
+  values<R>(fn: (value: V, key: K) => R): Iterable<R>;
 }
 
 // string when T declares no key, or a key assignable from string; never otherwise
@@ -175,6 +197,7 @@ interface State.Map.Factory<V, I = string> extends State.Map<string, V> {
 - `delete(key)` and `clear()` notify removed keys and collection shape.
 - `keys()` tracks shape only; changing an existing value does not notify key iteration.
 - `values()`, `entries()`, `forEach()`, and `for...of` track shape and each visited value.
+- `keys(fn)`, `values(fn)`, and `entries(fn)` return reusable iterables of transformed results - fresh pass per iteration, same tracking as their plain forms. `throw false` in the callback skips the entry.
 - `add` fires the same events as `set`.
 - `add(input)` keys on `input` only when it is a string; otherwise the key derives from the value.
 - `add` throws when the map was created without a factory, or when the key (given or derived) is already occupied.

@@ -127,6 +127,12 @@ declare namespace State {
   interface Map<K, V> extends globalThis.Map<K, V> {
     get(): ReadonlyMap<K, Export<V>>;
     get(key: K): V | undefined;
+    entries(): MapIterator<[K, V]>;
+    entries<R>(fn: (entry: [K, V]) => R): Iterable<R>;
+    keys(): MapIterator<K>;
+    keys<R>(fn: (key: K) => R): Iterable<R>;
+    values(): MapIterator<V>;
+    values<R>(fn: (value: V, key: K) => R): Iterable<R>;
   }
 
   namespace Map {

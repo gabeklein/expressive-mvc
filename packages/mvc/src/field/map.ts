@@ -44,9 +44,7 @@ State.on((self) => {
   }
 });
 
-class ReactiveMap<K, V>
-  extends Map<K, V>
-  implements State.Map<K, V> {
+class ReactiveMap<K, V> extends Map<K, V> implements State.Map<K, V> {
   constructor(entries?: Iterable<readonly [K, V]> | null, make?: Function) {
     super();
 
@@ -157,22 +155,44 @@ class ReactiveMap<K, V>
     event(target, SHAPE);
   }
 
-  *entries(): MapIterator<[K, V]> {
-    const target = source(this);
+  entries(): MapIterator<[K, V]>;
+  entries<R>(fn: (entry: [K, V]) => R): Iterable<R>;
+  entries(fn?: (entry: [K, V]) => unknown) {
+    const self = this;
 
-    touch(this, SHAPE);
+    function* iterate() {
+      const target = source(self);
 
-    for (const [key, value] of super.entries.call(target))
-      yield [key, touch(this, key, value)];
+      touch(self, SHAPE);
+
+      for (const [key, value] of Map.prototype.entries.call(target))
+        yield [key, touch(self, key, value)] as [K, V];
+    }
+
+    return fn ? transform(iterate, fn) : iterate();
   }
 
-  *keys(): MapIterator<K> {
-    touch(this, SHAPE);
-    yield* super.keys.call(source(this));
+  keys(): MapIterator<K>;
+  keys<R>(fn: (key: K) => R): Iterable<R>;
+  keys(fn?: (key: K) => unknown) {
+    const self = this;
+
+    function* iterate() {
+      touch(self, SHAPE);
+      yield* Map.prototype.keys.call(source(self)) as MapIterator<K>;
+    }
+
+    return fn ? transform(iterate, fn) : iterate();
   }
 
-  *values(): MapIterator<V> {
-    for (const [, value] of this.entries()) yield value;
+  values(): MapIterator<V>;
+  values<R>(fn: (value: V, key: K) => R): Iterable<R>;
+  values(fn?: (value: V, key: K) => unknown): any {
+    if (fn) return this.entries(([key, value]) => fn(value, key));
+
+    return (function* (self) {
+      for (const [, value] of self.entries()) yield value;
+    })(this);
   }
 
   forEach(
@@ -214,6 +234,22 @@ function spawn({ make }: Meta, input: unknown) {
   return State.is(make)
     ? new (make as State.Type)(typeof input === 'string' ? { key: input } : input as {})
     : make!(input);
+}
+
+function transform<T, R>(
+  iterate: () => Generator<T>,
+  fn: (item: T) => R
+): Iterable<R> {
+  return {
+    *[Symbol.iterator]() {
+      for (const item of iterate())
+        try {
+          yield fn(item);
+        } catch (err) {
+          if (err !== false) throw err;
+        }
+    }
+  };
 }
 
 function attach(value: State, owner: State) {
