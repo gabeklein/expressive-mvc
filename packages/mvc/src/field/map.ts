@@ -2,15 +2,37 @@ import { Context } from '../context';
 import { event, listener, touch } from '../observable';
 import { State, parent } from '../state';
 
-const SHAPE = Symbol('shape');
-const SIZE = Object.getOwnPropertyDescriptor(Map.prototype, 'size')!.get!;
-const META = new WeakMap<object, Meta>();
-
 type Meta = {
   make?: Function;
   owner?: State;
   owned: Map<unknown, (() => void) | undefined>;
 };
+
+const SHAPE = Symbol('shape');
+const SIZE = Object.getOwnPropertyDescriptor(Map.prototype, 'size')!.get!;
+const META = new WeakMap<object, Meta>();
+
+function map<K, V>(
+  entries?: Iterable<readonly [K, V]> | null
+): State.Map<K, V>;
+
+function map<T extends State>(
+  Type: new (...args: any[]) => T
+): State.Map.Factory<T, State.Map.Key<T> | State.Assign<T>>;
+
+function map<V, I = string>(
+  make: (input: I) => V,
+  entries?: Iterable<readonly [string, V]> | null
+): State.Map.Factory<V, I>;
+
+function map<K, V>(
+  arg?: Iterable<readonly [K, V]> | Function | null,
+  entries?: Iterable<readonly [K, V]> | null
+): State.Map<K, V> {
+  return typeof arg == 'function'
+    ? new ReactiveMap(entries, arg)
+    : new ReactiveMap(arg);
+}
 
 State.on((self) => {
   for (const key in self) {
@@ -200,28 +222,6 @@ class ReactiveMap<K, V> extends Map<K, V> implements State.Map<K, V> {
   [Symbol.iterator]() {
     return this.entries();
   }
-}
-
-function map<K, V>(
-  entries?: Iterable<readonly [K, V]> | null
-): State.Map<K, V>;
-
-function map<T extends State>(
-  Type: new (...args: any[]) => T
-): State.Map.Factory<T, State.Map.Key<T> | State.Assign<T>>;
-
-function map<V, I = string>(
-  make: (input: I) => V,
-  entries?: Iterable<readonly [string, V]> | null
-): State.Map.Factory<V, I>;
-
-function map<K, V>(
-  arg?: Iterable<readonly [K, V]> | Function | null,
-  entries?: Iterable<readonly [K, V]> | null
-): State.Map<K, V> {
-  return typeof arg == 'function'
-    ? new ReactiveMap(entries, arg)
-    : new ReactiveMap(arg);
 }
 
 function spawn({ make }: Meta, input: unknown) {
