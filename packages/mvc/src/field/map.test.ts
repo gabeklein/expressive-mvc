@@ -441,6 +441,22 @@ describe('ownership', () => {
     expect(spawned.get(null)).toBe(true);
   });
 
+  it('will activate fresh state on store', () => {
+    const ready = mock();
+
+    class Entry extends State {
+      protected new() {
+        ready();
+      }
+    }
+
+    const items = map<string, Entry>();
+
+    items.set('a', new Entry());
+
+    expect(ready).toHaveBeenCalled();
+  });
+
   it('will ignore plain spawned values', () => {
     const items = map((key: string) => ({ key }));
 

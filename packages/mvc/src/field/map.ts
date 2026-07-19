@@ -1,5 +1,5 @@
 import { event, touch } from '../observable';
-import { State } from '../state';
+import { State, parent } from '../state';
 
 const SHAPE = Symbol('shape');
 const SIZE = Object.getOwnPropertyDescriptor(Map.prototype, 'size')!.get!;
@@ -179,10 +179,10 @@ function spawn({ make }: Meta, input: unknown) {
 
   const Type = make as State.Type;
 
-  if (input === undefined) return Type.new();
-  if (typeof input == 'string') return Type.new({ key: input } as never);
+  if (input === undefined) return new Type();
+  if (typeof input == 'string') return new Type({ key: input } as never);
 
-  return Type.new(input as never);
+  return new Type(input as never);
 }
 
 function store<K, V>(
@@ -200,6 +200,8 @@ function store<K, V>(
 
     release(target, key, previous);
   }
+
+  if (value instanceof State && parent(value) === undefined) event(value);
 
   Map.prototype.set.call(target, key, value);
 
