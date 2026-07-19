@@ -5,6 +5,8 @@ import { Runtime, useHook, useReady } from './runtime';
 
 declare module '@expressive/mvc' {
   interface Component {
+    /** @deprecated Only to satisfy host JSX. */
+    readonly type: typeof Component;
     /** @deprecated Only to satisfy host JSX. Use `this.get(State)` instead. */
     readonly context: Context;
     /** @deprecated Only to satisfy host JSX. Use `this.get()` instead. */
@@ -16,22 +18,24 @@ declare module '@expressive/mvc' {
   }
 }
 
-function configureElement(template: any) {
+function toElement() {
+  const template = Runtime.createElement('template');
+
+  if (!template.$$typeof) return;
+
   Object.defineProperty(Component.prototype, '$$typeof', {
     get(this: Component) {
       const from = this;
-      const Host = function () {
-        return from;
-      };
       const descriptors = Object.getOwnPropertyDescriptors(template);
       const store = descriptors._store?.value;
+
+      function Host() {
+        return from;
+      }
 
       Object.setPrototypeOf(Host, Component);
       Host.prototype = Component.prototype;
 
-      delete descriptors.$$typeof;
-      delete descriptors.type;
-      delete descriptors.key;
       delete descriptors.props;
 
       if (store)
@@ -44,7 +48,7 @@ function configureElement(template: any) {
         ...descriptors,
         $$typeof: { value: template.$$typeof },
         type: { value: Host },
-        key: { value: String(this) }
+        key: { value: this.key }
       });
 
       return template.$$typeof;
@@ -82,13 +86,16 @@ Object.defineProperties(Component.prototype, {
  */
 Component.on({
   type(type) {
-    if (type === Component)
+    if (type === Component) {
+      toElement();
+
       for (const key of Runtime.ignore)
         Object.defineProperty(Component.prototype, key, {
           set(value) {
             Object.defineProperty(this, key, { value, writable: true });
           }
         });
+    }
 
     // capitalized methods into subcomponents
     subcomponents(type.prototype);
@@ -192,5 +199,3 @@ function subcomponents(target: object, configurable?: boolean) {
     });
   }
 }
-
-export { configureElement };

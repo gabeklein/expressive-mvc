@@ -79,13 +79,26 @@ describe('instance element', () => {
     expect(instance.get(null)).toBe(false);
   });
 
+  it('will use an overridden key', () => {
+    class Custom extends Control {
+      override readonly key = 'custom';
+    }
+
+    const instance = Custom.new({});
+
+    expect(React.isValidElement(instance)).toBe(true);
+    expect(instance.key).toBe('custom');
+  });
+
   it('will render an array', async () => {
+    const error = mockError();
     const first = Control.new({ value: 'foo' });
     const second = Control.new({ value: 'bar' });
     const collection = [first, second];
     const element = render(<>{collection}</>);
 
     expect(element.container.textContent).toBe('foobar');
+    expect(error).not.toBeCalled();
     expect((first as any)._store).not.toBe((second as any)._store);
 
     await act(async () => {
@@ -99,6 +112,50 @@ describe('instance element', () => {
 
     expect(first.get(null)).toBe(false);
     expect(second.get(null)).toBe(false);
+  });
+
+  it('will render one instance in multiple places', async () => {
+    const error = mockError();
+    const instance = Control.new({ value: 'first' });
+    const element = render(
+      <>
+        <section>{instance}</section>
+        <aside>{instance}</aside>
+      </>
+    );
+
+    expect(screen.getAllByText('first')).toHaveLength(2);
+    expect(error).not.toBeCalled();
+
+    await act(async () => {
+      instance.value = 'second';
+    });
+
+    expect(screen.getAllByText('second')).toHaveLength(2);
+
+    element.rerender(<>{instance}</>);
+
+    expect(screen.getAllByText('second')).toHaveLength(1);
+
+    await act(async () => {
+      instance.value = 'third';
+    });
+
+    expect(screen.getAllByText('third')).toHaveLength(1);
+
+    element.unmount();
+
+    expect(instance.get(null)).toBe(false);
+  });
+
+  it('will warn when rendering one instance twice as siblings', () => {
+    const error = mockError();
+    const instance = Control.new({ value: 'first' });
+    const element = render(<>{[instance, instance]}</>);
+
+    expect(error.mock.calls.flat().join(' ')).toContain('same key');
+
+    element.unmount();
   });
 });
 

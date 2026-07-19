@@ -76,6 +76,9 @@ class Component extends State {
    */
   declare readonly props: Component.Props<this>;
 
+  /** Stable identity used when this instance is rendered in a collection. */
+  declare readonly key: string;
+
   /**
    * Content to display while this component or its children are suspended.
    * Will cover suspense by pending properties in `this.render` as well.
@@ -111,6 +114,15 @@ class Component extends State {
     ]);
 
     if (copy) return copy;
+
+    Object.defineProperty(this, 'key', {
+      configurable: true,
+      get() {
+        const key = String(this);
+        Object.defineProperty(this, 'key', { value: key });
+        return key;
+      }
+    });
 
     PENDING.set(props, this);
 
@@ -162,6 +174,16 @@ class Component extends State {
  * reads (and which adapters like preact detect as the class-component marker).
  */
 Component.on({
+  before(self) {
+    const key = Object.getOwnPropertyDescriptor(self, 'key');
+
+    if (key && 'value' in key)
+      Object.defineProperty(self, 'key', {
+        ...key,
+        enumerable: false,
+        writable: false
+      });
+  },
   type(type) {
     const desc = Object.getOwnPropertyDescriptor(type.prototype, 'render');
 
