@@ -1,6 +1,7 @@
 import { Context } from '../context';
 import { event, listener, touch } from '../observable';
 import { State, parent } from '../state';
+import { def } from './def';
 
 type Meta = {
   make?: Function;
@@ -29,36 +30,36 @@ function map<K, V>(
   arg?: Iterable<readonly [K, V]> | Function | null,
   entries?: Iterable<readonly [K, V]> | null
 ): State.Map<K, V> {
-  return typeof arg == 'function'
-    ? new ReactiveMap(entries, arg)
-    : new ReactiveMap(arg);
+  const value = typeof arg == 'function'
+    ? new ReactiveMap<K, V>(entries, arg)
+    : new ReactiveMap<K, V>(arg);
+
+  return def((_key, subject) => {
+    adopt(value, subject);
+    return { value };
+  });
 }
 
-State.on((self) => {
-  for (const key in self) {
-    const target = Object.getOwnPropertyDescriptor(self, key)?.value;
-    const meta = META.get(target);
+function adopt<K, V>(target: ReactiveMap<K, V>, owner: State) {
+  const meta = META.get(target)!;
 
-    if (!meta || meta.owner) continue;
+  meta.owner = owner;
 
-    meta.owner = self;
+  for (const [key, value] of Map.prototype.entries.call(target))
+    if (value instanceof State && parent(value) === undefined) {
+      meta.owned.set(key, attach(value, owner));
+      event(value);
+    }
 
-    for (const [key, value] of Map.prototype.entries.call(target))
-      if (value instanceof State && parent(value) === undefined) {
-        meta.owned.set(key, attach(value, self));
-        event(value);
-      }
-
-    listener(
-      self,
-      () => {
-        for (const [key] of meta.owned)
-          release(target, key, Map.prototype.get.call(target, key));
-      },
-      null
-    );
-  }
-});
+  listener(
+    owner,
+    () => {
+      for (const [key] of meta.owned)
+        release(target, key, Map.prototype.get.call(target, key));
+    },
+    null
+  );
+}
 
 class ReactiveMap<K, V> extends Map<K, V> implements State.Map<K, V> {
   constructor(entries?: Iterable<readonly [K, V]> | null, make?: Function) {
@@ -274,7 +275,7 @@ function store<K, V>(
   Map.prototype.set.call(target, key, value);
 
   if (value instanceof State && parent(value) === undefined) {
-    meta.owned.set(key, meta.owner && attach(value, meta.owner) || undefined);
+    meta.owned.set(key, attach(value, meta.owner!));
     event(value);
   }
   else if (own) meta.owned.set(key, undefined);

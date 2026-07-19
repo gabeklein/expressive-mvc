@@ -6,7 +6,7 @@ import State, { map, watch } from '@expressive/mvc';
 
 Creates a reactive `Map`. Reads register subscriptions in active `watch()` / `State.get()` effects, and writes notify only the changed key plus collection shape when entries are added or removed.
 
-`map()` is not a field instruction like `set()`, `get()`, `ref()`, or `def()`. It returns a reactive value that can be assigned directly to a State field or used outside State with `watch()`.
+`map()` is a field instruction like `set()`, `get()`, `ref()`, and `def()`: it resolves into a `State.Map` during activation of the hosting state, which adopts the map in the same step. It is not usable standalone - the map only exists once a State field resolves it.
 
 ## Usage
 
@@ -34,10 +34,14 @@ store.products.set('sku_456', product); // does not rerun an effect that only re
 Iteration is reactive. `size`, `keys()`, `values()`, `entries()`, `forEach()`, and `for...of` subscribe to collection shape. Value iteration also subscribes to each value it reads.
 
 ```ts
-const products = map([
-  ['a', { name: 'Hat' }],
-  ['b', { name: 'Socks' }]
-]);
+class Store extends State {
+  products = map([
+    ['a', { name: 'Hat' }],
+    ['b', { name: 'Socks' }]
+  ]);
+}
+
+const { products } = Store.new();
 
 watch(products, ($) => {
   for (const product of $.values()) console.log(product.name);
@@ -104,7 +108,11 @@ class Roster extends State {
 A factory map owns what it spawns. When a spawned `State` value is deleted, cleared, or replaced via `set`, the map destroys it. Activated values supplied directly through `set(key, value)` are guests - removal never destroys them. Non-State spawned values are simply dropped.
 
 ```ts
-const items = map((id: string) => new Item());
+class Basket extends State {
+  items = map((id: string) => new Item());
+}
+
+const { items } = Basket.new();
 
 const item = items.add('a');
 items.delete('a');       // item destroyed
@@ -114,7 +122,7 @@ items.set('b', guest);
 items.delete('b');       // guest untouched
 ```
 
-A map held by a `State` field is adopted by that state at activation - first owner wins. Fresh (never-activated) `State` values landing in an owned map - spawned, stored via `set`, or already present when the owner activates - are parented to the owner and activate inside its context: `get(Owner)` resolves directly and providers above the owner resolve from members. Owned members are destroyed with the owner. An already-activated value cannot be adopted - its parent is settled - so it keeps guest status; a standalone map activates fresh landings at root instead.
+Every map is adopted by its hosting state when that state activates - the field instruction resolves and adopts in one step, so a usable map always has an owner. Fresh (never-activated) `State` values landing in the map - spawned, stored via `set`, or already present at activation - are parented to the owner and activate inside its context: `get(Owner)` resolves directly and providers above the owner resolve from members. Owned members are destroyed with the owner. An already-activated value cannot be adopted - its parent is settled - so it keeps guest status.
 
 ```ts
 class Member extends State {
@@ -157,8 +165,11 @@ const rows = cart.items.values((line, id) => `${id}: ${line.qty}`);
 Calling `get()` with no key returns a shallow snapshot `ReadonlyMap`. Nested values with a `.get()` method are exported through that method, matching State snapshots.
 
 ```ts
-const products = map([['a', Product.new()]]);
-const snapshot = products.get();
+class Store extends State {
+  products = map([['a', Product.new()]]);
+}
+
+const snapshot = Store.new().products.get();
 
 snapshot.get('a'); // exported product values
 ```

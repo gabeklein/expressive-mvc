@@ -6,16 +6,34 @@ import { flushMicrotasks as flush } from '../../test.setup';
 import { get } from './get';
 import { map } from './map';
 
+function hosted<K, V>(
+  entries?: Iterable<readonly [K, V]> | null
+): State.Map<K, V>;
+function hosted<T extends State>(
+  Type: new (...args: any[]) => T
+): State.Map.Factory<T, State.Map.Key<T> | State.Assign<T>>;
+function hosted<V, I = string>(
+  make: (input: I) => V,
+  entries?: Iterable<readonly [string, V]> | null
+): State.Map.Factory<V, I>;
+function hosted(...args: any[]): any {
+  class Host extends State {
+    value = (map as any)(...args);
+  }
+
+  return Host.new().value;
+}
+
 describe('factory', () => {
   it('will create empty map', () => {
-    const items = map<string, number>();
+    const items = hosted<string, number>();
 
     expect(items).toBeInstanceOf(Map);
     expect(items.size).toBe(0);
   });
 
   it('will accept entries', () => {
-    const items = map([
+    const items = hosted([
       ['a', 1],
       ['b', 2]
     ]);
@@ -28,7 +46,7 @@ describe('factory', () => {
 
   it('will copy entries from initial iterable', () => {
     const source = new Map([['a', 1]]);
-    const items = map(source);
+    const items = hosted(source);
 
     source.set('b', 2);
 
@@ -38,14 +56,14 @@ describe('factory', () => {
 
 describe('map', () => {
   it('will get and set values', () => {
-    const items = map<string, number>();
+    const items = hosted<string, number>();
 
     expect(items.set('a', 1)).toBe(items);
     expect(items.get('a')).toBe(1);
   });
 
   it('will delete values', () => {
-    const items = map([['a', 1]]);
+    const items = hosted([['a', 1]]);
 
     expect(items.delete('a')).toBeTrue();
     expect(items.delete('a')).toBeFalse();
@@ -53,7 +71,7 @@ describe('map', () => {
   });
 
   it('will clear values', () => {
-    const items = map([
+    const items = hosted([
       ['a', 1],
       ['b', 2]
     ]);
@@ -65,13 +83,13 @@ describe('map', () => {
 
   it('will support object keys', () => {
     const key = {};
-    const items = map([[key, 'value']]);
+    const items = hosted([[key, 'value']]);
 
     expect(items.get(key)).toBe('value');
   });
 
   it('will support undefined keys', () => {
-    const items = map<undefined, string>();
+    const items = hosted<undefined, string>();
 
     items.set(undefined, 'value');
 
@@ -79,7 +97,7 @@ describe('map', () => {
   });
 
   it('will return snapshot from get with no args', () => {
-    const items = map([['a', 1]]);
+    const items = hosted([['a', 1]]);
     const snapshot = items.get();
 
     items.set('b', 2);
@@ -89,7 +107,7 @@ describe('map', () => {
 
   it('will unwrap nested get values in snapshot', () => {
     const inner = { get: () => 'unwrapped' };
-    const items = map([['a', inner]]);
+    const items = hosted([['a', inner]]);
 
     expect(items.get().get('a')).toBe('unwrapped');
   });
@@ -97,7 +115,7 @@ describe('map', () => {
 
 describe('iteration', () => {
   it('will iterate entries', () => {
-    const items = map([
+    const items = hosted([
       ['a', 1],
       ['b', 2]
     ]);
@@ -113,7 +131,7 @@ describe('iteration', () => {
   });
 
   it('will iterate keys', () => {
-    const items = map([
+    const items = hosted([
       ['a', 1],
       ['b', 2]
     ]);
@@ -122,7 +140,7 @@ describe('iteration', () => {
   });
 
   it('will iterate values', () => {
-    const items = map([
+    const items = hosted([
       ['a', 1],
       ['b', 2]
     ]);
@@ -131,7 +149,7 @@ describe('iteration', () => {
   });
 
   it('will support forEach', () => {
-    const items = map([['a', 1]]);
+    const items = hosted([['a', 1]]);
     const calls: unknown[] = [];
     const thisArg = {};
 
@@ -145,7 +163,7 @@ describe('iteration', () => {
 
 describe('keyed factory', () => {
   it('will spawn value from key on add', () => {
-    const items = map((key: string) => ({ key }));
+    const items = hosted((key: string) => ({ key }));
     const value = items.add('a');
 
     expect(value).toEqual({ key: 'a' });
@@ -154,7 +172,7 @@ describe('keyed factory', () => {
 
   it('will throw if key is already occupied', () => {
     const make = mock((key: string) => ({ key }));
-    const items = map(make);
+    const items = hosted(make);
 
     items.add('a');
 
@@ -166,7 +184,7 @@ describe('keyed factory', () => {
 
   it('will respawn value via set with key alone', () => {
     const make = mock((key: string) => ({ key }));
-    const items = map(make);
+    const items = hosted(make);
 
     const first = items.add('a');
 
@@ -178,7 +196,7 @@ describe('keyed factory', () => {
   });
 
   it('will throw on set with key alone without factory', () => {
-    const items = map<string, number>();
+    const items = hosted<string, number>();
 
     expect(() => (items as any).set('a')).toThrow(
       'set(key) alone requires a factory.'
@@ -186,7 +204,7 @@ describe('keyed factory', () => {
   });
 
   it('will derive key from value when omitted', () => {
-    const items = map(() => ({ toString: () => 'thing' }));
+    const items = hosted(() => ({ toString: () => 'thing' }));
     const value = items.add();
 
     expect(items.get('thing')).toBe(value);
@@ -198,7 +216,7 @@ describe('keyed factory', () => {
     }
 
     const make = mock((data: { n: number }) => Entry.new(data));
-    const items = map(make);
+    const items = hosted(make);
 
     const first = items.add({ n: 1 });
     const second = items.add({ n: 1 });
@@ -218,7 +236,7 @@ describe('keyed factory', () => {
     }
 
     const made: Fixed[] = [];
-    const items = map(() => {
+    const items = hosted(() => {
       const next = Fixed.new();
       made.push(next);
       return next;
@@ -235,7 +253,7 @@ describe('keyed factory', () => {
   });
 
   it('will fire events on add', async () => {
-    const items = map((key: string) => key.toUpperCase());
+    const items = hosted((key: string) => key.toUpperCase());
     const fn = mock();
 
     watch(items, ($) => {
@@ -250,7 +268,7 @@ describe('keyed factory', () => {
   });
 
   it('will throw if created without factory', () => {
-    const items = map<string, number>();
+    const items = hosted<string, number>();
 
     expect(() => (items as any).add('a')).toThrow(
       'add() requires a map created with a factory.'
@@ -264,7 +282,7 @@ describe('class factory', () => {
   }
 
   it('will instantiate class on add', () => {
-    const items = map(Item);
+    const items = hosted(Item);
     const item = items.add();
 
     expect(item).toBeInstanceOf(Item);
@@ -274,7 +292,7 @@ describe('class factory', () => {
   it('will assign string input to component key', () => {
     class Product extends Component {}
 
-    const items = map(Product);
+    const items = hosted(Product);
     const item = items.add('sku_123');
 
     expect(item.key).toBe('sku_123');
@@ -290,7 +308,7 @@ describe('class factory', () => {
       }
     }
 
-    const items = map(Product);
+    const items = hosted(Product);
 
     items.add('sku_123');
 
@@ -298,7 +316,7 @@ describe('class factory', () => {
   });
 
   it('will skip key where instance cannot accept it', () => {
-    const items = map(Item);
+    const items = hosted(Item);
     const item = items.add('a');
 
     expect(Object.keys(item)).not.toContain('key');
@@ -310,7 +328,7 @@ describe('class factory', () => {
       override readonly key = 'custom';
     }
 
-    const widgets = map(Widget);
+    const widgets = hosted(Widget);
     const widget = widgets.add();
 
     expect(widgets.get('custom')).toBe(widget);
@@ -321,7 +339,7 @@ describe('class factory', () => {
       label = '';
     }
 
-    const widgets = map(Widget);
+    const widgets = hosted(Widget);
     const byKey = widgets.add('w1');
     const byProps = widgets.add({ label: 'hello' });
 
@@ -331,7 +349,7 @@ describe('class factory', () => {
   });
 
   it('will assign object input to instance', () => {
-    const items = map(Item);
+    const items = hosted(Item);
     const item = items.add({ value: 5 });
 
     expect(item.value).toBe(5);
@@ -339,7 +357,7 @@ describe('class factory', () => {
   });
 
   it('will respawn instance via set with key alone', () => {
-    const items = map(Item);
+    const items = hosted(Item);
     const item = items.add('a');
 
     items.set('a');
@@ -352,7 +370,7 @@ describe('class factory', () => {
   });
 
   it('will key each instance by natural id', () => {
-    const items = map(Item);
+    const items = hosted(Item);
     const a = items.add();
     const b = items.add();
 
@@ -362,7 +380,7 @@ describe('class factory', () => {
   });
 
   it('will destroy instance on delete', () => {
-    const items = map(Item);
+    const items = hosted(Item);
     const item = items.add();
 
     expect(item.get(null)).toBe(false);
@@ -379,7 +397,7 @@ describe('ownership', () => {
   }
 
   it('will destroy spawned state on delete', () => {
-    const items = map((key: string) => Item.new());
+    const items = hosted((key: string) => Item.new());
     const item = items.add('a');
 
     expect(item.get(null)).toBe(false);
@@ -390,7 +408,7 @@ describe('ownership', () => {
   });
 
   it('will destroy spawned state on clear', () => {
-    const items = map((key: string) => Item.new());
+    const items = hosted((key: string) => Item.new());
     const a = items.add('a');
     const b = items.add('b');
 
@@ -401,7 +419,7 @@ describe('ownership', () => {
   });
 
   it('will destroy spawned state when replaced via set', () => {
-    const items = map((key: string) => Item.new());
+    const items = hosted((key: string) => Item.new());
     const spawned = items.add('a');
     const guest = Item.new();
 
@@ -412,7 +430,7 @@ describe('ownership', () => {
   });
 
   it('will destroy spawned state on respawn', () => {
-    const items = map((key: string) => Item.new());
+    const items = hosted((key: string) => Item.new());
     const first = items.add('a');
 
     items.set('a');
@@ -423,7 +441,7 @@ describe('ownership', () => {
   });
 
   it('will not destroy value provided via set', () => {
-    const items = map((key: string) => Item.new());
+    const items = hosted((key: string) => Item.new());
     const guest = Item.new();
 
     items.set('a', guest);
@@ -433,7 +451,7 @@ describe('ownership', () => {
   });
 
   it('will not destroy spawned value set to itself', () => {
-    const items = map((key: string) => Item.new());
+    const items = hosted((key: string) => Item.new());
     const spawned = items.add('a');
 
     items.set('a', spawned);
@@ -451,7 +469,7 @@ describe('ownership', () => {
       }
     }
 
-    const items = map<string, Entry>();
+    const items = hosted<string, Entry>();
 
     items.set('a', new Entry());
 
@@ -459,7 +477,7 @@ describe('ownership', () => {
   });
 
   it('will ignore plain spawned values', () => {
-    const items = map((key: string) => ({ key }));
+    const items = hosted((key: string) => ({ key }));
 
     items.add('a');
 
@@ -470,7 +488,7 @@ describe('ownership', () => {
 
 describe('transforms', () => {
   it('will map values through callback', () => {
-    const items = map([
+    const items = hosted([
       ['a', 1],
       ['b', 2]
     ]);
@@ -481,7 +499,7 @@ describe('transforms', () => {
   });
 
   it('will map keys and entries through callback', () => {
-    const items = map([['a', 1]]);
+    const items = hosted([['a', 1]]);
 
     expect(Array.from(items.keys((key) => key.toUpperCase()))).toEqual(['A']);
     expect(Array.from(items.entries(([key, value]) => key + value))).toEqual([
@@ -490,7 +508,7 @@ describe('transforms', () => {
   });
 
   it('will iterate transform more than once', () => {
-    const items = map([
+    const items = hosted([
       ['a', 1],
       ['b', 2]
     ]);
@@ -502,7 +520,7 @@ describe('transforms', () => {
   });
 
   it('will reflect current state on each iteration', () => {
-    const items = map([['a', 1]]);
+    const items = hosted([['a', 1]]);
     const values = items.values((value) => value);
 
     expect(Array.from(values)).toEqual([1]);
@@ -513,7 +531,7 @@ describe('transforms', () => {
   });
 
   it('will survive break in for-of', () => {
-    const items = map([
+    const items = hosted([
       ['a', 1],
       ['b', 2]
     ]);
@@ -526,7 +544,7 @@ describe('transforms', () => {
   });
 
   it('will skip entry when callback throws false', () => {
-    const items = map([
+    const items = hosted([
       ['a', 1],
       ['b', 2],
       ['c', 3]
@@ -541,7 +559,7 @@ describe('transforms', () => {
   });
 
   it('will rethrow real errors from callback', () => {
-    const items = map([['a', 1]]);
+    const items = hosted([['a', 1]]);
     const boom = items.values(() => {
       throw new Error('boom');
     });
@@ -550,7 +568,7 @@ describe('transforms', () => {
   });
 
   it('will track shape and values in effect', async () => {
-    const items = map([['a', 1]]);
+    const items = hosted([['a', 1]]);
     const fn = mock();
 
     watch(items, ($) => {
@@ -569,7 +587,7 @@ describe('transforms', () => {
   });
 
   it('will track shape only through keys transform', async () => {
-    const items = map([['a', 1]]);
+    const items = hosted([['a', 1]]);
     const fn = mock();
 
     watch(items, ($) => {
@@ -674,20 +692,17 @@ describe('adoption', () => {
     expect(member.owner).toBe(owner);
   });
 
-  it('will keep first owner', () => {
-    const items = map(Item);
-
-    class First extends State {
-      items = items;
+  it('will adopt distinct map per instance', () => {
+    class Owner extends State {
+      items = map(Item);
     }
 
-    class Second extends State {
-      items = items;
-    }
+    const first = Owner.new();
+    const second = Owner.new();
 
-    const first = First.new();
-    const second = Second.new();
-    const item = items.add('x');
+    expect(first.items).not.toBe(second.items);
+
+    const item = first.items.add('x');
 
     second.set(null);
 
@@ -701,7 +716,7 @@ describe('adoption', () => {
 
 describe('subscriptions', () => {
   it('will fire on get(key) only when that key changes', async () => {
-    const items = map([
+    const items = hosted([
       ['a', 1],
       ['b', 2]
     ]);
@@ -723,7 +738,7 @@ describe('subscriptions', () => {
   });
 
   it('will fire on has(key) when that key changes', async () => {
-    const items = map<string, number>();
+    const items = hosted<string, number>();
     const fn = mock();
 
     watch(items, ($) => {
@@ -742,7 +757,7 @@ describe('subscriptions', () => {
   });
 
   it('will fire on size when shape changes', async () => {
-    const items = map([['a', 1]]);
+    const items = hosted([['a', 1]]);
     const fn = mock();
 
     watch(items, ($) => {
@@ -761,7 +776,7 @@ describe('subscriptions', () => {
   });
 
   it('will fire on iteration when values change', async () => {
-    const items = map([
+    const items = hosted([
       ['a', 1],
       ['b', 2]
     ]);
@@ -779,7 +794,7 @@ describe('subscriptions', () => {
   });
 
   it('will fire on keys when shape changes only', async () => {
-    const items = map([['a', 1]]);
+    const items = hosted([['a', 1]]);
     const fn = mock();
 
     watch(items, ($) => {
@@ -798,7 +813,7 @@ describe('subscriptions', () => {
   });
 
   it('will fire on deleted key subscribers', async () => {
-    const items = map([['a', 1]]);
+    const items = hosted([['a', 1]]);
     const fn = mock();
 
     watch(items, ($) => {
@@ -813,7 +828,7 @@ describe('subscriptions', () => {
   });
 
   it('will not fire when setting unchanged value', async () => {
-    const items = map([['a', 1]]);
+    const items = hosted([['a', 1]]);
     const fn = mock();
 
     watch(items, ($) => {
@@ -833,7 +848,7 @@ describe('subscriptions', () => {
     }
 
     const counter = Counter.new();
-    const items = map([['counter', counter]]);
+    const items = hosted([['counter', counter]]);
     const fn = mock();
 
     watch(items, ($) => {
