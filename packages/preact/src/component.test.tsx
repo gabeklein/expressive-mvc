@@ -31,6 +31,25 @@ it('will expose a base render for class detection', () => {
   expect(render({})).toBe(null);
 });
 
+it('will not expose React element marker', () => {
+  expect(
+    Object.getOwnPropertyDescriptor(Component.prototype, '$$typeof')
+  ).toBeUndefined();
+});
+
+it('will throw rendering existing instance', () => {
+  class Control extends Component {}
+
+  const instance = Control.new({});
+  const message =
+    'Component instances cannot be rendered directly with @expressive/preact.';
+
+  expect(() => render(<>{instance}</>)).toThrow(message);
+  expect(() => render(<>{[instance]}</>)).toThrow(message);
+
+  instance.set(null);
+});
+
 it('will not enumerate preact internals on instance', () => {
   class Control extends Component {
     foo = 'bar';

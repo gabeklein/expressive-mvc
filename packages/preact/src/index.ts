@@ -1,4 +1,6 @@
 import { Runtime } from '@expressive/react/adapter';
+import { Component } from '@expressive/mvc';
+import { options, type ComponentChildren } from 'preact';
 import {
   createContext,
   createElement,
@@ -11,6 +13,23 @@ import {
 
 import './jsx-runtime';
 import { ErrorBoundary } from './boundary';
+
+const vnode = options.vnode;
+
+options.vnode = (node) => {
+  vnode?.(node);
+  reject(node.props.children);
+};
+
+function reject(children: ComponentChildren) {
+  if (children instanceof Component)
+    throw new TypeError(
+      'Component instances cannot be rendered directly with @expressive/preact.'
+    );
+
+  if (Array.isArray(children))
+    for (const child of children) reject(child);
+}
 
 Object.assign(Runtime, {
   createElement,

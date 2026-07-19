@@ -5,8 +5,6 @@ import { Runtime, useHook, useReady } from './runtime';
 
 declare module '@expressive/mvc' {
   interface Component {
-    /** @deprecated Only to satisfy host JSX. */
-    readonly type: typeof Component;
     /** @deprecated Only to satisfy host JSX. Use `this.get(State)` instead. */
     readonly context: Context;
     /** @deprecated Only to satisfy host JSX. Use `this.get()` instead. */
@@ -16,44 +14,6 @@ declare module '@expressive/mvc' {
     /** @deprecated Only to satisfy host JSX. Use `this.set(key)` instead. */
     forceUpdate: (callback?: () => void) => void;
   }
-}
-
-function toElement() {
-  const template = Runtime.createElement('template');
-
-  if (!template.$$typeof) return;
-
-  Object.defineProperty(Component.prototype, '$$typeof', {
-    get(this: Component) {
-      const from = this;
-      const descriptors = Object.getOwnPropertyDescriptors(template);
-      const store = descriptors._store?.value;
-
-      function Host() {
-        return from;
-      }
-
-      Object.setPrototypeOf(Host, Component);
-      Host.prototype = Component.prototype;
-
-      delete descriptors.props;
-
-      if (store)
-        descriptors._store.value = Object.create(
-          Object.getPrototypeOf(store),
-          Object.getOwnPropertyDescriptors(store)
-        );
-
-      Object.defineProperties(this, {
-        ...descriptors,
-        $$typeof: { value: template.$$typeof },
-        type: { value: Host },
-        key: { value: this.key }
-      });
-
-      return template.$$typeof;
-    }
-  });
 }
 
 // Host-agnostic seams: `state` is a read-only values bag; `context`'s setter
@@ -87,8 +47,6 @@ Object.defineProperties(Component.prototype, {
 Component.on({
   type(type) {
     if (type === Component) {
-      toElement();
-
       for (const key of Runtime.ignore)
         Object.defineProperty(Component.prototype, key, {
           set(value) {
