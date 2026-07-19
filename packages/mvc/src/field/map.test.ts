@@ -3,6 +3,7 @@ import { Component } from '../component';
 import { watch } from '../observable';
 import { State } from '../state';
 import { flushMicrotasks as flush } from '../../test.setup';
+import { get } from './get';
 import { map } from './map';
 
 describe('factory', () => {
@@ -464,6 +465,117 @@ describe('ownership', () => {
 
     expect(items.delete('a')).toBeTrue();
     expect(items.size).toBe(0);
+  });
+});
+
+describe('adoption', () => {
+  class Item extends State {
+    value = 0;
+  }
+
+  it('will parent spawned state to owner', () => {
+    class Member extends State {
+      owner = get(Owner);
+    }
+
+    class Owner extends State {
+      members = map(Member);
+    }
+
+    const first = Owner.new();
+    const second = Owner.new();
+
+    expect(first.members.add('a').owner).toBe(first);
+    expect(second.members.add('b').owner).toBe(second);
+  });
+
+  it('will destroy owned members with owner', () => {
+    class Owner extends State {
+      items = map(Item);
+    }
+
+    const owner = Owner.new();
+    const a = owner.items.add('a');
+    const b = owner.items.add('b');
+
+    owner.set(null);
+
+    expect(a.get(null)).toBe(true);
+    expect(b.get(null)).toBe(true);
+  });
+
+  it('will not destroy guests with owner', () => {
+    class Owner extends State {
+      items = map(Item);
+    }
+
+    const owner = Owner.new();
+    const guest = Item.new();
+
+    owner.items.set('g', guest);
+    owner.set(null);
+
+    expect(guest.get(null)).toBe(false);
+  });
+
+  it('will adopt fresh value stored via set', () => {
+    class Member extends State {
+      owner = get(Owner);
+    }
+
+    class Owner extends State {
+      members = map<string, Member>();
+    }
+
+    const owner = Owner.new();
+    const fresh = new Member();
+
+    owner.members.set('f', fresh);
+
+    expect(fresh.owner).toBe(owner);
+
+    owner.members.delete('f');
+
+    expect(fresh.get(null)).toBe(true);
+  });
+
+  it('will adopt entries present at activation', () => {
+    class Member extends State {
+      owner = get(Owner);
+    }
+
+    class Owner extends State {
+      members = map([['a', new Member()]]);
+    }
+
+    const owner = Owner.new();
+    const member = owner.members.get('a')!;
+
+    expect(member.owner).toBe(owner);
+  });
+
+  it('will keep first owner', () => {
+    const items = map(Item);
+
+    class First extends State {
+      items = items;
+    }
+
+    class Second extends State {
+      items = items;
+    }
+
+    const first = First.new();
+    const second = Second.new();
+    const item = items.add('x');
+
+    second.set(null);
+
+    expect(item.get(null)).toBe(false);
+
+    first.set(null);
+
+    expect(item.get(null)).toBe(true);
   });
 });
 

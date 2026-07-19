@@ -204,6 +204,51 @@ describe('instance element', () => {
     element.unmount();
   });
 
+  it('will resolve provided context from spawned member', async () => {
+    const error = mockError();
+
+    class Theme extends State {
+      color = '';
+    }
+
+    class Item extends Component {
+      theme = get(Theme);
+
+      render() {
+        return <span>{this.theme.color}</span>;
+      }
+    }
+
+    class Store extends Component {
+      items = map(Item);
+
+      render() {
+        return <>{[...this.items.values()]}</>;
+      }
+    }
+
+    let store!: Store;
+    let item!: Item;
+
+    const element = render(
+      <Provider for={Theme} color="red">
+        <Store is={(x) => (store = x)} />
+      </Provider>
+    );
+
+    await act(async () => {
+      item = store.items.add('a');
+    });
+
+    expect(item.theme.color).toBe('red');
+    expect(screen.getByText('red')).toBeDefined();
+    expect(error).not.toBeCalled();
+
+    element.unmount();
+
+    expect(item.get(null)).toBe(true);
+  });
+
   it('will render a parent-owned instance', async () => {
     const error = mockError();
 
