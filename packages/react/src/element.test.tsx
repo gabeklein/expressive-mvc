@@ -3,7 +3,7 @@ import { expect, it, describe } from 'bun:test';
 import React from 'react';
 
 import { mockError } from '../test.setup';
-import { Component, Consumer } from '.';
+import { Component, Consumer, Provider, State, get } from '.';
 
 describe('instance element', () => {
   class Control extends Component {
@@ -105,6 +105,56 @@ describe('instance element', () => {
     expect(instance.get(null)).toBe(false);
   });
 
+  it('will render an owned collection through its owner', async () => {
+    const error = mockError();
+
+    class Item extends Component {
+      value = '';
+
+      render() {
+        return <span>{this.value}</span>;
+      }
+    }
+
+    class Owner extends Component {
+      items = [Item.new({ value: 'a' }), Item.new({ value: 'b' })];
+
+      remove(item: Item) {
+        item.set(null);
+        this.items = this.items.filter((x) => x !== item);
+      }
+
+      render() {
+        return <>{this.items}</>;
+      }
+    }
+
+    const owner = Owner.new({});
+    const [first] = owner.items;
+    const element = render(<>{owner}</>);
+
+    expect(element.container.textContent).toBe('ab');
+
+    await act(async () => {
+      owner.items = [...owner.items, Item.new({ value: 'c' })];
+    });
+
+    expect(element.container.textContent).toBe('abc');
+
+    await act(async () => {
+      owner.remove(first);
+    });
+
+    expect(element.container.textContent).toBe('bc');
+    expect(first.get(null)).toBe(true);
+    expect(error).not.toBeCalled();
+
+    element.unmount();
+
+    for (const item of owner.items)
+      expect(item.get(null)).toBe(false);
+  });
+
   it('will warn when rendering one instance twice as siblings', () => {
     const error = mockError();
     const instance = Control.new({ value: 'first' });
@@ -140,6 +190,73 @@ describe('instance element', () => {
 
     expect(screen.getAllByText('second')).toHaveLength(1);
     expect(instance.get(null)).toBe(false);
+    expect(error).not.toBeCalled();
+
+    element.unmount();
+
+    expect(instance.get(null)).toBe(false);
+  });
+
+  it('will render again after unmount', async () => {
+    const instance = Control.new({ value: 'first' });
+    const first = render(<>{instance}</>);
+
+    expect(screen.getAllByText('first')).toHaveLength(1);
+
+    first.unmount();
+
+    expect(instance.get(null)).toBe(false);
+
+    const second = render(<>{instance}</>);
+
+    expect(screen.getAllByText('first')).toHaveLength(1);
+
+    await act(async () => {
+      instance.value = 'second';
+    });
+
+    expect(screen.getAllByText('second')).toHaveLength(1);
+
+    second.unmount();
+
+    expect(instance.get(null)).toBe(false);
+  });
+
+  it('will resolve ancestor provided at placement', async () => {
+    const error = mockError();
+
+    class Theme extends State {
+      color = '';
+    }
+
+    class Swatch extends Component {
+      theme = get(Theme);
+
+      render() {
+        return <span>{this.theme.color}</span>;
+      }
+    }
+
+    class Slot extends Component {
+      render() {
+        return <Swatch />;
+      }
+    }
+
+    const instance = Slot.new({});
+    const element = render(
+      <>
+        <Provider for={Theme} color="red">
+          <section>{instance}</section>
+        </Provider>
+        <Provider for={Theme} color="blue">
+          <aside>{instance}</aside>
+        </Provider>
+      </>
+    );
+
+    expect(screen.getByText('red')).toBeDefined();
+    expect(screen.getByText('blue')).toBeDefined();
     expect(error).not.toBeCalled();
 
     element.unmount();
