@@ -27,6 +27,33 @@ it('will render null without children', () => {
   expect(foo.render()).toBe(null);
 });
 
+it('will derive key from instance identity', () => {
+  const foo = Component.new({});
+
+  expect(Object.getOwnPropertyDescriptor(foo, 'key')).toMatchObject({
+    configurable: true,
+    get: expect.any(Function)
+  });
+  expect(foo.key).toBe(String(foo));
+  expect(Object.getOwnPropertyDescriptor(foo, 'key')).toMatchObject({
+    value: String(foo),
+    writable: false
+  });
+});
+
+it('will allow key override', () => {
+  class Foo extends Component {
+    override readonly key = 'foo';
+  }
+
+  const foo = Foo.new({});
+
+  expect(foo.key).toBe('foo');
+  expect(Object.keys(foo)).not.toContain('key');
+  expect(Object.keys(foo.get())).not.toContain('key');
+  expect(() => ((foo as any).key = 'bar')).toThrow();
+});
+
 it('will call is callback once with instance', () => {
   const is = mock();
   const foo = Component.new({ is });

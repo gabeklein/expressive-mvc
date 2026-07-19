@@ -52,11 +52,16 @@ const items = [first, second];
 <>{items}</>
 ```
 
-The React adapter exposes each instance as an element with its State uid as the
-key. Mounting subscribes and provides context as usual; unmounting only detaches
-the rendered instance. Its external owner remains responsible for destruction
-with `instance.set(null)`. An instance represents one mounted element and should
-not be placed in multiple subtrees or remounted elsewhere after detaching.
+The React adapter exposes each instance as an element using its `key`, which
+defaults lazily to the State uid returned by `String(instance)`. Override the
+readonly `key` property when an instance needs an application-defined identity.
+Mounting subscribes and provides context as usual; unmounting only detaches the
+rendered instance. Its external owner remains responsible for destruction with
+`instance.set(null)`.
+
+One instance may appear beneath separate parents. Repeating it within the same
+sibling collection repeats the same key and intentionally produces the host's
+duplicate-key warning.
 
 Direct rendering replaces wrapper components whose only job was to call
 `use(instance)` and render a Component. The standalone `use(instance)` hook
