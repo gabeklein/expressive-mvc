@@ -53,7 +53,7 @@ Pass a function to create a spawning map. Factory maps are keyed by string. `add
 
 ```ts
 class Cart extends State {
-  items = map((id: string) => Line.new(id));
+  items = map((id: string) => new Line(id));
 }
 
 const cart = Cart.new();
@@ -69,7 +69,7 @@ Calling `add()` with no key lets the value key itself: a `Component` supplies it
 
 ```ts
 class Field extends State {
-  sparks = map(() => Spark.new());
+  sparks = map(() => new Spark());
 
   ignite() {
     return this.sparks.add(); // keyed by the spark's own identity
@@ -101,10 +101,10 @@ class Roster extends State {
 
 ## Ownership
 
-A factory map owns what it spawns. When a spawned `State` value is deleted, cleared, or replaced via `set`, the map destroys it. Values supplied directly through `set(key, value)` are guests - removal never destroys them. Non-State spawned values are simply dropped.
+A factory map owns what it spawns. When a spawned `State` value is deleted, cleared, or replaced via `set`, the map destroys it. Activated values supplied directly through `set(key, value)` are guests - removal never destroys them. Non-State spawned values are simply dropped.
 
 ```ts
-const items = map((id: string) => Item.new());
+const items = map((id: string) => new Item());
 
 const item = items.add('a');
 items.delete('a');       // item destroyed
@@ -112,6 +112,23 @@ items.delete('a');       // item destroyed
 const guest = Item.new();
 items.set('b', guest);
 items.delete('b');       // guest untouched
+```
+
+A map held by a `State` field is adopted by that state at activation - first owner wins. Fresh (never-activated) `State` values landing in an owned map - spawned, stored via `set`, or already present when the owner activates - are parented to the owner and activate inside its context: `get(Owner)` resolves directly and providers above the owner resolve from members. Owned members are destroyed with the owner. An already-activated value cannot be adopted - its parent is settled - so it keeps guest status; a standalone map activates fresh landings at root instead.
+
+```ts
+class Member extends State {
+  owner = get(Owner);
+}
+
+class Owner extends State {
+  members = map(Member);
+}
+
+const owner = Owner.new();
+const member = owner.members.add('a'); // member.owner === owner
+
+owner.set(null);                       // member destroyed with owner
 ```
 
 Keys compare like native `Map` (SameValueZero). Prefer primitive ids or stable object references as factory inputs - a fresh object literal is a new key every time.

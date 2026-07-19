@@ -135,7 +135,9 @@ class UserProfile extends State {
 
 `map()` is a reactive helper, not a field instruction. It returns a `State.Map<K, V>` extending native `Map`, with reactive `get(key)`, `has(key)`, `size`, iteration, `set`, `delete`, and `clear`. Calling `get()` with no key returns a shallow `ReadonlyMap` snapshot.
 
-With a factory, the map is string-keyed (`State.Map.Factory<V>`) and owns what `add` spawns: spawned `State` values are destroyed when deleted, cleared, or replaced. Values supplied directly via `set(key, value)` are guests and never destroyed.
+With a factory, the map is string-keyed (`State.Map.Factory<V>`) and owns what `add` spawns: spawned `State` values are destroyed when deleted, cleared, or replaced. Activated values supplied directly via `set(key, value)` are guests and never destroyed.
+
+A map held by a `State` field is adopted by that state at activation (first owner wins). Fresh (never-activated) members - spawned, stored, or present at adoption - are parented to the owner, activate inside its context, and are destroyed with it; already-activated values keep guest status.
 
 ### React Hooks
 
