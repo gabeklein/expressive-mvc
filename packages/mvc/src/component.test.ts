@@ -30,13 +30,11 @@ it('will render null without children', () => {
 it('will derive key from instance identity', () => {
   const foo = Component.new({});
 
-  expect(Object.getOwnPropertyDescriptor(foo, 'key')).toMatchObject({
-    configurable: true,
-    get: expect.any(Function)
-  });
   expect(foo.key).toBe(String(foo));
+  expect(Object.keys(foo)).not.toContain('key');
   expect(Object.getOwnPropertyDescriptor(foo, 'key')).toMatchObject({
     value: String(foo),
+    enumerable: false,
     writable: false
   });
 });

@@ -115,15 +115,6 @@ class Component extends State {
 
     if (copy) return copy;
 
-    Object.defineProperty(this, 'key', {
-      configurable: true,
-      get() {
-        const key = String(this);
-        Object.defineProperty(this, 'key', { value: key });
-        return key;
-      }
-    });
-
     PENDING.set(props, this);
 
     this.props = props;
@@ -172,17 +163,20 @@ class Component extends State {
  * Seal each class's own `render` non-configurable at bootstrap so member
  * classification leaves it unbound - it stays the content-render seam the chain
  * reads (and which adapters like preact detect as the class-component marker).
+ *
+ * `before` gives every instance a non-enumerable `key` (kept out of observed
+ * state): a subclass override is preserved read-only, otherwise it derives from
+ * the instance's identity.
  */
 Component.on({
   before(self) {
     const key = Object.getOwnPropertyDescriptor(self, 'key');
 
-    if (key && 'value' in key)
-      Object.defineProperty(self, 'key', {
-        ...key,
-        enumerable: false,
-        writable: false
-      });
+    Object.defineProperty(self, 'key', {
+      value: key ? key.value : String(self),
+      enumerable: false,
+      writable: false
+    });
   },
   type(type) {
     const desc = Object.getOwnPropertyDescriptor(type.prototype, 'render');
