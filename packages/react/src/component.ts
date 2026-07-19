@@ -1,7 +1,7 @@
 import { Component, unbind } from '@expressive/mvc';
 import { watch, observer } from '@expressive/mvc/observable';
-import { Context, provide } from './context';
-import { Runtime, useFactory, useHook, useReady } from './runtime';
+import { provide, type Context } from './context';
+import { Runtime, useHook, useReady } from './runtime';
 
 declare module '@expressive/mvc' {
   interface Component {
@@ -135,38 +135,6 @@ function render(from: Component, context: Context) {
   return () => create(Component);
 }
 
-/**
- * Borrow host for a rendered `{instance}`: the instance is externally owned, so
- * each placement gets its own child context (via `useFactory`, one per fiber),
- * subscribes, and on unmount only pops that context - never destroying the
- * instance. Its content render (`instance.render`) is never overwritten, so one
- * instance may back several independent placements.
- */
-function element(source: Component) {
-  const { createElement: create } = Runtime;
-
-  return function Host() {
-    const outer = Context.get();
-    const render = useFactory(() => {
-      const context = outer.push(source);
-      let from = source;
-      const Content = () => from.render(from.props);
-
-      return () => {
-        from = useHook<Component>((refresh) => {
-          if (observer(source) !== null)
-            watch(source, refresh);
-          return () => context.pop();
-        }) || source;
-
-        return frame(from, context, create(Content));
-      };
-    });
-
-    return render();
-  };
-}
-
 /** Rewrite each own capitalized function on `target` into a subcomponent. */
 function subcomponents(target: object, configurable?: boolean) {
   for (const key of Object.getOwnPropertyNames(target)) {
@@ -198,4 +166,4 @@ function subcomponents(target: object, configurable?: boolean) {
   }
 }
 
-export { element };
+export { frame };
