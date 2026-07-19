@@ -160,23 +160,32 @@ class Component extends State {
 }
 
 /**
+ * Default `key` accessor. The get/set pair keeps it off observed state.
+ */
+Object.defineProperty(Component.prototype, 'key', {
+  configurable: true,
+  get() {
+    return String(this);
+  },
+  set(value) {
+    Object.defineProperty(this, 'key', { value });
+  }
+});
+
+/**
  * Seal each class's own `render` non-configurable at bootstrap so member
  * classification leaves it unbound - it stays the content-render seam the chain
  * reads (and which adapters like preact detect as the class-component marker).
- *
- * `before` gives every instance a non-enumerable `key` (kept out of observed
- * state): a subclass override is preserved read-only, otherwise it derives from
- * the instance's identity.
  */
 Component.on({
   before(self) {
     const key = Object.getOwnPropertyDescriptor(self, 'key');
 
-    Object.defineProperty(self, 'key', {
-      value: key ? key.value : String(self),
-      enumerable: false,
-      writable: false
-    });
+    if (key?.configurable)
+      Object.defineProperty(self, 'key', {
+        enumerable: false,
+        writable: false
+      });
   },
   type(type) {
     const desc = Object.getOwnPropertyDescriptor(type.prototype, 'render');
