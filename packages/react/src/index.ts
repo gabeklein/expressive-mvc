@@ -9,8 +9,9 @@ import {
   useState
 } from 'react';
 
-import './jsx-runtime';
 import './element';
+import './jsx-runtime';
+
 import { Runtime } from './adapter';
 import { ErrorBoundary, dedupe } from './boundary';
 

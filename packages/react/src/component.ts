@@ -46,14 +46,13 @@ Object.defineProperties(Component.prototype, {
  */
 Component.on({
   type(type) {
-    if (type === Component) {
+    if (type === Component)
       for (const key of Runtime.ignore)
         Object.defineProperty(Component.prototype, key, {
           set(value) {
             Object.defineProperty(this, key, { value, writable: true });
           }
         });
-    }
 
     // capitalized methods into subcomponents
     subcomponents(type.prototype);
