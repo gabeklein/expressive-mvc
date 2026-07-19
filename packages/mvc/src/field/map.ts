@@ -14,9 +14,33 @@ type Meta = {
 
 State.on((self) => {
   for (const key in self) {
-    const value = Object.getOwnPropertyDescriptor(self, key)?.value;
+    const target = Object.getOwnPropertyDescriptor(self, key)?.value;
+    const meta = META.get(target);
 
-    if (META.has(value)) adopt(value, self);
+    if (!meta || meta.owner) continue;
+
+    meta.owner = self;
+
+    for (const [key, value] of Map.prototype.entries.call(target))
+      if (value instanceof State && parent(value) === undefined) {
+        meta.owned.set(key, attach(value, self));
+        event(value);
+      }
+
+    listener(
+      self,
+      () => {
+        for (const [key, detach] of meta.owned) {
+          const value = Map.prototype.get.call(target, key);
+
+          if (detach) detach();
+          if (value instanceof State) value.set(null);
+        }
+
+        meta.owned.clear();
+      },
+      null
+    );
   }
 });
 
@@ -190,35 +214,6 @@ function spawn({ make }: Meta, input: unknown) {
   return State.is(make)
     ? new (make as State.Type)(typeof input === 'string' ? { key: input } : input as {})
     : make!(input);
-}
-
-function adopt<K, V>(target: ReactiveMap<K, V>, owner: State) {
-  const meta = META.get(target)!;
-
-  if (meta.owner) return;
-
-  meta.owner = owner;
-
-  for (const [key, value] of Map.prototype.entries.call(target))
-    if (value instanceof State && parent(value) === undefined) {
-      meta.owned.set(key, attach(value, owner));
-      event(value);
-    }
-
-  listener(
-    owner,
-    () => {
-      for (const [key, detach] of meta.owned) {
-        const value = Map.prototype.get.call(target, key);
-
-        if (detach) detach();
-        if (value instanceof State) value.set(null);
-      }
-
-      meta.owned.clear();
-    },
-    null
-  );
 }
 
 function attach(value: State, owner: State) {
