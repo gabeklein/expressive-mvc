@@ -59,14 +59,7 @@ class ReactiveMap<K, V> extends Map<K, V> implements State.Map<K, V> {
         }
       }
 
-    listener(
-      owner,
-      () => {
-        for (const [key] of owned)
-          release(this, key as K, super.get(key as K) as V);
-      },
-      null
-    );
+    listener(owner, () => this.clear(), null);
 
     event(this);
   }

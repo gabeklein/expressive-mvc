@@ -656,6 +656,22 @@ describe('adoption', () => {
     expect(guest.get(null)).toBe(false);
   });
 
+  it('will clear map when owner dies', () => {
+    class Owner extends State {
+      items = map(Item);
+    }
+
+    const owner = Owner.new();
+    const guest = Item.new();
+
+    owner.items.add('a');
+    owner.items.set('g', guest);
+    owner.set(null);
+
+    expect(owner.items.size).toBe(0);
+    expect(guest.get(null)).toBe(false);
+  });
+
   it('will adopt fresh value stored via set', () => {
     class Member extends State {
       owner = get(Owner);
