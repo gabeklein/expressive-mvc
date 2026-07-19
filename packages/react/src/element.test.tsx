@@ -3,7 +3,7 @@ import { expect, it, describe } from 'bun:test';
 import React from 'react';
 
 import { mockError } from '../test.setup';
-import { Component, Consumer, Provider, State, get } from '.';
+import { Component, Consumer, Provider, State, get, map } from '.';
 
 describe('instance element', () => {
   class Control extends Component {
@@ -153,6 +153,55 @@ describe('instance element', () => {
 
     for (const item of owner.items)
       expect(item.get(null)).toBe(false);
+  });
+
+  it('will render a spawned collection through its owner', async () => {
+    const error = mockError();
+
+    class Item extends Component {
+      label = '';
+
+      render() {
+        return <span>{this.key}={this.label};</span>;
+      }
+    }
+
+    class Store extends Component {
+      items = map(Item);
+
+      render() {
+        return <>{[...this.items.values()]}</>;
+      }
+    }
+
+    const store = Store.new({});
+    const first = store.items.add('a');
+    const element = render(<>{store}</>);
+
+    expect(first.key).toBe('a');
+    expect(element.container.textContent).toBe('a=;');
+
+    await act(async () => {
+      first.label = 'apple';
+    });
+
+    expect(element.container.textContent).toBe('a=apple;');
+
+    await act(async () => {
+      store.items.add('b').label = 'berry';
+    });
+
+    expect(element.container.textContent).toBe('a=apple;b=berry;');
+
+    await act(async () => {
+      store.items.delete('a');
+    });
+
+    expect(element.container.textContent).toBe('b=berry;');
+    expect(first.get(null)).toBe(true);
+    expect(error).not.toBeCalled();
+
+    element.unmount();
   });
 
   it('will render a parent-owned instance', async () => {
