@@ -3,15 +3,12 @@ import { event, listener, touch } from '../observable';
 import { State, parent } from '../state';
 import { def } from './def';
 
-type Meta = {
-  make?: Function;
-  owner?: State;
-  owned: Map<unknown, (() => void) | undefined>;
-};
-
 const SHAPE = Symbol('shape');
 const SIZE = Object.getOwnPropertyDescriptor(Map.prototype, 'size')!.get!;
-const META = new WeakMap<object, Meta>();
+
+const MAKE = new WeakMap<object, Function>();
+const OWNER = new WeakMap<object, State>();
+const OWNED = new WeakMap<object, Map<unknown, (() => void) | undefined>>();
 
 function map<K, V>(
   entries?: Iterable<readonly [K, V]> | null
@@ -30,44 +27,46 @@ function map<K, V>(
   arg?: Iterable<readonly [K, V]> | Function | null,
   entries?: Iterable<readonly [K, V]> | null
 ): State.Map<K, V> {
-  const value = typeof arg == 'function'
-    ? new ReactiveMap<K, V>(entries, arg)
-    : new ReactiveMap<K, V>(arg);
-
-  return def((_key, subject) => {
-    adopt(value, subject);
-    return { value };
-  });
-}
-
-function adopt<K, V>(target: ReactiveMap<K, V>, owner: State) {
-  const meta = META.get(target)!;
-
-  meta.owner = owner;
-
-  for (const [key, value] of Map.prototype.entries.call(target))
-    if (value instanceof State && parent(value) === undefined) {
-      meta.owned.set(key, attach(value, owner));
-      event(value);
-    }
-
-  listener(
-    owner,
-    () => {
-      for (const [key] of meta.owned)
-        release(target, key, Map.prototype.get.call(target, key));
-    },
-    null
-  );
+  return def((_key, subject) => ({
+    value: typeof arg == 'function'
+      ? new ReactiveMap<K, V>(subject, entries, arg)
+      : new ReactiveMap<K, V>(subject, arg)
+  }));
 }
 
 class ReactiveMap<K, V> extends Map<K, V> implements State.Map<K, V> {
-  constructor(entries?: Iterable<readonly [K, V]> | null, make?: Function) {
+  constructor(
+    owner: State,
+    entries?: Iterable<readonly [K, V]> | null,
+    make?: Function
+  ) {
     super();
 
-    if (entries) for (const [key, value] of entries) super.set(key, value);
+    const owned = new Map<unknown, (() => void) | undefined>();
 
-    META.set(this, { make, owned: new Map() });
+    if (make) MAKE.set(this, make);
+
+    OWNER.set(this, owner);
+    OWNED.set(this, owned);
+
+    if (entries)
+      for (const [key, value] of entries) {
+        super.set(key, value);
+
+        if (value instanceof State && parent(value) === undefined) {
+          owned.set(key, attach(value, owner));
+          event(value);
+        }
+      }
+
+    listener(
+      owner,
+      () => {
+        for (const [key] of owned)
+          release(this, key as K, super.get(key as K) as V);
+      },
+      null
+    );
 
     event(this);
   }
@@ -98,9 +97,9 @@ class ReactiveMap<K, V> extends Map<K, V> implements State.Map<K, V> {
 
   add(input?: unknown): V {
     const target = source(this);
-    const meta = META.get(target)!;
+    const make = MAKE.get(target);
 
-    if (!meta.make)
+    if (!make)
       throw new Error('add() requires a map created with a factory.');
 
     const keyed = typeof input == 'string';
@@ -108,7 +107,7 @@ class ReactiveMap<K, V> extends Map<K, V> implements State.Map<K, V> {
     if (keyed && super.has.call(target, input as K))
       throw new Error('Key is already occupied; use set() to replace.');
 
-    const value = spawn(meta, input) as V;
+    const value = spawn(make, input) as V;
     const key = keyed
       ? input
       : (value instanceof State && (value as any).key) || String(value);
@@ -130,12 +129,12 @@ class ReactiveMap<K, V> extends Map<K, V> implements State.Map<K, V> {
     const target = source(this);
 
     if (arguments.length === 1) {
-      const meta = META.get(target)!;
+      const make = MAKE.get(target);
 
-      if (!meta.make)
+      if (!make)
         throw new Error('set(key) alone requires a factory.');
 
-      store(target, key, spawn(meta, key) as V, true);
+      store(target, key, spawn(make, key) as V, true);
       return this;
     }
 
@@ -225,10 +224,10 @@ class ReactiveMap<K, V> extends Map<K, V> implements State.Map<K, V> {
   }
 }
 
-function spawn({ make }: Meta, input: unknown) {
+function spawn(make: Function, input: unknown) {
   return State.is(make)
     ? new (make as State.Type)(typeof input === 'string' ? { key: input } : input as {})
-    : make!(input);
+    : make(input);
 }
 
 function transform<T, R>(
@@ -261,7 +260,7 @@ function store<K, V>(
   value: V,
   own?: boolean
 ) {
-  const meta = META.get(target)!;
+  const owned = OWNED.get(target)!;
   const exists = Map.prototype.has.call(target, key);
 
   if (exists) {
@@ -275,17 +274,17 @@ function store<K, V>(
   Map.prototype.set.call(target, key, value);
 
   if (value instanceof State && parent(value) === undefined) {
-    meta.owned.set(key, attach(value, meta.owner!));
+    owned.set(key, attach(value, OWNER.get(target)!));
     event(value);
   }
-  else if (own) meta.owned.set(key, undefined);
+  else if (own) owned.set(key, undefined);
 
   event(target, key as never);
   if (!exists) event(target, SHAPE);
 }
 
 function release<K, V>(target: ReactiveMap<K, V>, key: K, value: V) {
-  const { owned } = META.get(target)!;
+  const owned = OWNED.get(target)!;
 
   if (!owned.has(key)) return;
 
@@ -298,7 +297,7 @@ function release<K, V>(target: ReactiveMap<K, V>, key: K, value: V) {
 }
 
 function source<K, V>(from: ReactiveMap<K, V>): ReactiveMap<K, V> {
-  return META.has(from) ? from : Object.getPrototypeOf(from);
+  return OWNED.has(from) ? from : Object.getPrototypeOf(from);
 }
 
 function exportValue(value: any) {
