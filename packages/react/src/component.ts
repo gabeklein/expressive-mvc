@@ -89,15 +89,17 @@ function bootstrap(this: Component, context: Context){
  * Wrap a content element in its context provider, a Suspense boundary (unless
  * `fallback` is `false`) and, when `catch` is set, the host error boundary.
  */
-function frame(from: Component, context: Context, rendered: unknown) {
+function frame(from: Component, context: Context, children: unknown) {
   const { createElement: create } = Runtime;
-  const children = provide(context,
-    from.fallback === false
-      ? rendered
-      : create(Runtime.Suspense,
-        { fallback: from.fallback, name: String(from) },
-        rendered)
-  );
+
+  if(from.fallback !== false)
+    children = create(
+      Runtime.Suspense,
+      { fallback: from.fallback, name: String(from) },
+      children
+    )
+
+  children = provide(context, children);
 
   return from.catch
     ? create(Runtime.ErrorBoundary, { self: from, children })
@@ -118,8 +120,8 @@ function render(from: Component, context: Context) {
   const Render = () => content.call(from, from.props);
   const Component = () => {
     from = useHook<Component>((refresh) => {
-      if (observer(from) !== null)
-        watch(from, refresh);
+      if (observer(from) !== null) watch(from, refresh);
+
       return () => {
         remove();
         context.pop();

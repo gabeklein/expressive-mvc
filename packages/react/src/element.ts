@@ -13,14 +13,6 @@ declare module '@expressive/mvc' {
 
 let template: any;
 
-/**
- * Brand `Component.prototype` so an activated instance passes as a host element.
- * The `$$typeof` getter is lazy: on first read it rewrites the instance into an
- * element (cloning a real template's descriptors so the shape stays version
- * agnostic) whose `type` is the instance's own borrow host. The template itself
- * is built on first read - not at load - so this may install as a side effect,
- * before the entry populates `Runtime`.
- */
 Object.defineProperty(Component.prototype, '$$typeof', {
   get(this: Component) {
     if(!template) template = Runtime.createElement('template');
@@ -39,41 +31,30 @@ Object.defineProperty(Component.prototype, '$$typeof', {
     Object.defineProperties(this, {
       ...descriptors,
       $$typeof: { value: template.$$typeof },
-      type: { value: element(this) },
-      key: { value: this.key }
+      key: { value: this.key },
+      type: { value: Element.bind(this) }
     });
 
     return template.$$typeof;
   }
 });
 
-/**
- * Borrow host for a rendered `{instance}`: the instance is externally owned, so
- * each placement gets its own child context (via `useFactory`, one per fiber),
- * subscribes, and on unmount only pops that context - never destroying the
- * instance. Its content render (`instance.render`) is never overwritten, so one
- * instance may back several independent placements.
- */
-function element(source: Component) {
-  const { createElement: create } = Runtime;
+function Element(this: Component){
+  const outer = Context.get();
+  const render = useFactory(() => {
+    let from = this;
+    const context = outer.push(this);
+    const Content = () => from.render(from.props);
 
-  return function Host() {
-    const outer = Context.get();
-    const render = useFactory(() => {
-      const context = outer.push(source);
-      let from = source;
-      const Content = () => from.render(from.props);
+    return () => {
+      from = useHook<Component>((refresh) => {
+        if (observer(this) !== null) watch(this, refresh);
+        return () => context.pop();
+      }) || this;
 
-      return () => {
-        from = useHook<Component>((refresh) => {
-          if (observer(source) !== null) watch(source, refresh);
-          return () => context.pop();
-        }) || source;
+      return frame(from, context, Runtime.createElement(Content));
+    };
+  });
 
-        return frame(from, context, create(Content));
-      };
-    });
-
-    return render();
-  };
+  return render();
 }
