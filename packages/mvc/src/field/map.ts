@@ -2,15 +2,9 @@ import { event, touch } from '../observable';
 import { State } from '../state';
 
 const SHAPE = Symbol('shape');
-const SIZE = Object.getOwnPropertyDescriptor(globalThis.Map.prototype, 'size')!
-  .get!;
-const GET = globalThis.Map.prototype.get;
-const HAS = globalThis.Map.prototype.has;
-const SET = globalThis.Map.prototype.set;
-const DELETE = globalThis.Map.prototype.delete;
-const CLEAR = globalThis.Map.prototype.clear;
-const ENTRIES = globalThis.Map.prototype.entries;
-const KEYS = globalThis.Map.prototype.keys;
+const SIZE = Object.getOwnPropertyDescriptor(Map.prototype, 'size')!.get!;
+const MAPS = new WeakSet<object>();
+const META = new WeakMap<object, Meta>();
 
 type Meta = {
   make: Function;
@@ -18,10 +12,8 @@ type Meta = {
   spawned: Set<unknown>;
 };
 
-const META = new WeakMap<object, Meta>();
-
 class ReactiveMap<K, V>
-  extends globalThis.Map<K, V>
+  extends Map<K, V>
   implements State.Map<K, V> {
   constructor(entries?: Iterable<readonly [K, V]> | null, make?: Function) {
     super();
@@ -35,6 +27,7 @@ class ReactiveMap<K, V>
         spawned: new Set()
       });
 
+    MAPS.add(this);
     event(this);
   }
 
@@ -45,19 +38,21 @@ class ReactiveMap<K, V>
   get(): ReadonlyMap<K, State.Export<V>>;
   get(key: K): V | undefined;
   get(key?: K): V | undefined | ReadonlyMap<K, State.Export<V>> {
+    const target = source(this);
+
     if (!arguments.length)
-      return new globalThis.Map(
-        globalThis.Array.from(ENTRIES.call(source(this)), ([key, value]) => [
+      return new Map(
+        Array.from(super.entries.call(target), ([key, value]) => [
           key,
           exportValue(value)
         ])
       );
 
-    return touch(this, key, GET.call(source(this), key as K));
+    return touch(this, key, super.get.call(target, key as K));
   }
 
   has(key: K): boolean {
-    return touch(this, key, HAS.call(source(this), key));
+    return touch(this, key, super.has.call(source(this), key));
   }
 
   add(input?: unknown): V {
@@ -69,13 +64,13 @@ class ReactiveMap<K, V>
 
     const keyed = typeof input == 'string';
 
-    if (keyed && HAS.call(target, input))
+    if (keyed && super.has.call(target, input as K))
       throw new Error('Key is already occupied; use set() to replace.');
 
     const value = spawn(meta, input) as V;
-    const key = keyed ? input : globalThis.String(value);
+    const key = keyed ? input : String(value);
 
-    if (!keyed && HAS.call(target, key)) {
+    if (!keyed && super.has.call(target, key as K)) {
       if (value instanceof State) value.set(null);
       throw new Error('Key is already occupied; use set() to replace.');
     }
@@ -106,11 +101,11 @@ class ReactiveMap<K, V>
   delete(key: K) {
     const target = source(this);
 
-    if (!HAS.call(target, key)) return false;
+    if (!super.has.call(target, key)) return false;
 
-    release(target, key, GET.call(target, key));
+    release(target, key, super.get.call(target, key) as V);
 
-    const deleted = DELETE.call(target, key);
+    const deleted = super.delete.call(target, key);
 
     if (deleted) {
       event(target, key as never);
@@ -125,11 +120,11 @@ class ReactiveMap<K, V>
 
     if (!SIZE.call(target)) return;
 
-    const entries = globalThis.Array.from(ENTRIES.call(target));
+    const entries = Array.from(super.entries.call(target));
 
     for (const [key, value] of entries) release(target, key, value);
 
-    CLEAR.call(target);
+    super.clear.call(target);
 
     for (const [key] of entries) event(target, key as never);
     event(target, SHAPE);
@@ -140,13 +135,13 @@ class ReactiveMap<K, V>
 
     touch(this, SHAPE);
 
-    for (const [key, value] of ENTRIES.call(target))
+    for (const [key, value] of super.entries.call(target))
       yield [key, touch(this, key, value)];
   }
 
   *keys(): MapIterator<K> {
     touch(this, SHAPE);
-    yield* KEYS.call(source(this));
+    yield* super.keys.call(source(this));
   }
 
   *values(): MapIterator<V> {
@@ -154,12 +149,12 @@ class ReactiveMap<K, V>
 
     touch(this, SHAPE);
 
-    for (const [key, value] of ENTRIES.call(target))
+    for (const [key, value] of super.entries.call(target))
       yield touch(this, key, value);
   }
 
   forEach(
-    callbackfn: (value: V, key: K, map: globalThis.Map<K, V>) => void,
+    callbackfn: (value: V, key: K, map: Map<K, V>) => void,
     thisArg?: unknown
   ) {
     for (const [key, value] of this)
@@ -207,17 +202,17 @@ function store<K, V>(
   value: V,
   meta?: Meta
 ) {
-  const exists = HAS.call(target, key);
+  const exists = Map.prototype.has.call(target, key);
 
   if (exists) {
-    const previous = GET.call(target, key);
+    const previous = Map.prototype.get.call(target, key) as V;
 
     if (previous === value) return;
 
     release(target, key, previous);
   }
 
-  SET.call(target, key, value);
+  Map.prototype.set.call(target, key, value);
 
   if (meta) meta.spawned.add(key);
 
@@ -232,13 +227,8 @@ function release<K, V>(target: ReactiveMap<K, V>, key: K, value: V) {
     value.set(null);
 }
 
-function source<K, V>(target: ReactiveMap<K, V>) {
-  try {
-    globalThis.Map.prototype.has.call(target, SHAPE);
-    return target;
-  } catch {
-    return Object.getPrototypeOf(target) as ReactiveMap<K, V>;
-  }
+function source<K, V>(from: ReactiveMap<K, V>): ReactiveMap<K, V> {
+  return MAPS.has(from) ? from : Object.getPrototypeOf(from);
 }
 
 function exportValue(value: any) {
