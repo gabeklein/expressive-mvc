@@ -10,42 +10,9 @@ import {
 } from 'react';
 
 import './jsx-runtime';
+import './element';
 import { Runtime } from './adapter';
-import { element } from './component';
 import { ErrorBoundary, dedupe } from './boundary';
-
-declare module '@expressive/mvc' {
-  interface Component {
-    /** @deprecated Only to satisfy host JSX. */
-    readonly type: typeof Component;
-  }
-}
-
-function toElement(template: any) {
-  Object.defineProperty(Component.prototype, '$$typeof', {
-    get(this: Component) {
-      const descriptors = Object.getOwnPropertyDescriptors(template);
-      const store = descriptors._store?.value;
-
-      delete descriptors.props;
-
-      if (store)
-        descriptors._store.value = Object.create(
-          Object.getPrototypeOf(store),
-          Object.getOwnPropertyDescriptors(store)
-        );
-
-      Object.defineProperties(this, {
-        ...descriptors,
-        $$typeof: { value: template.$$typeof },
-        type: { value: element(this) },
-        key: { value: this.key }
-      });
-
-      return template.$$typeof;
-    }
-  });
-}
 
 // React detects class components by this brand (preact reads `prototype.render`).
 Object.defineProperty(Component.prototype, 'isReactComponent', {
@@ -69,8 +36,6 @@ Object.assign(Runtime, {
     '_reactInternalInstance'
   ]
 });
-
-toElement(createElement('template'));
 
 export { State, State as default, use, Consumer, Provider } from './adapter';
 export { Component, Context, def, get, ref, set, hot } from '@expressive/mvc';
