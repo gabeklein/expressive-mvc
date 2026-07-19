@@ -270,26 +270,22 @@ describe('class factory', () => {
     expect(items.get(String(item))).toBe(item);
   });
 
-  it('will assign string input to declared id field', () => {
-    class Product extends State {
-      id = '';
-    }
+  it('will assign string input to component key', () => {
+    class Product extends Component {}
 
     const items = map(Product);
     const item = items.add('sku_123');
 
-    expect(item.id).toBe('sku_123');
+    expect(item.key).toBe('sku_123');
     expect(items.get('sku_123')).toBe(item);
   });
 
-  it('will expose id to new lifecycle hook', () => {
+  it('will expose key to new lifecycle hook', () => {
     const loaded = mock();
 
-    class Product extends State {
-      id = '';
-
+    class Product extends Component {
       protected new() {
-        loaded(this.id);
+        loaded(this.key);
       }
     }
 
@@ -300,17 +296,27 @@ describe('class factory', () => {
     expect(loaded).toHaveBeenCalledWith('sku_123');
   });
 
-  it('will skip id when class does not declare it', () => {
+  it('will skip key where instance cannot accept it', () => {
     const items = map(Item);
     const item = items.add('a');
 
-    expect('id' in item).toBe(false);
+    expect(Object.keys(item)).not.toContain('key');
     expect(items.get('a')).toBe(item);
+  });
+
+  it('will derive key from component override', () => {
+    class Widget extends Component {
+      override readonly key = 'custom';
+    }
+
+    const widgets = map(Widget);
+    const widget = widgets.add();
+
+    expect(widgets.get('custom')).toBe(widget);
   });
 
   it('will support Component via props channel', () => {
     class Widget extends Component {
-      id = '';
       label = '';
     }
 
@@ -318,7 +324,7 @@ describe('class factory', () => {
     const byKey = widgets.add('w1');
     const byProps = widgets.add({ label: 'hello' });
 
-    expect(byKey.id).toBe('w1');
+    expect(byKey.key).toBe('w1');
     expect(widgets.get('w1')).toBe(byKey);
     expect(byProps.label).toBe('hello');
   });

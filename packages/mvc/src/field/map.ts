@@ -60,7 +60,9 @@ class ReactiveMap<K, V>
       throw new Error('Key is already occupied; use set() to replace.');
 
     const value = spawn(meta, input) as V;
-    const key = keyed ? input : String(value);
+    const key = keyed
+      ? input
+      : (value instanceof State && (value as any).key) || String(value);
 
     if (!keyed && super.has.call(target, key as K)) {
       if (value instanceof State) value.set(null);
@@ -178,7 +180,7 @@ function spawn({ make }: Meta, input: unknown) {
   const Type = make as State.Type;
 
   if (input === undefined) return Type.new();
-  if (typeof input == 'string') return Type.new({ id: input } as never);
+  if (typeof input == 'string') return Type.new({ key: input } as never);
 
   return Type.new(input as never);
 }

@@ -131,7 +131,7 @@ class UserProfile extends State {
 | `map<K, V>()`       | Empty reactive `Map` with keyed reads and writes.            |
 | `map(entries)`      | Reactive `Map` initialized from iterable `[key, value]` pairs. |
 | `map(input => value)` | `add(input?)` spawns; a string input is also the key (occupied throws), otherwise keyed by `String(value)`. `set(key)` alone respawns. |
-| `map(StateClass)`   | `add(input?)` instantiates the class; object input assigns fields, string input keys the entry and fills a declared `id` field. |
+| `map(StateClass)`   | `add(input?)` instantiates the class; object input assigns fields, string input keys the entry and becomes a `Component`'s `key`. |
 
 `map()` is a reactive helper, not a field instruction. It returns a `State.Map<K, V>` extending native `Map`, with reactive `get(key)`, `has(key)`, `size`, iteration, `set`, `delete`, and `clear`. Calling `get()` with no key returns a shallow `ReadonlyMap` snapshot.
 

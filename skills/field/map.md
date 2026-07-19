@@ -49,7 +49,7 @@ products.set('c', { name: 'Bag' }); // reruns because shape changed
 
 ## Factory
 
-Pass a function to create a spawning map. Factory maps are keyed by string. `add(input?)` always passes `input` to the factory; `input` is also the key when it is a string. Any other input is factory-only - the key then derives from the value (`String(value)` - for a `State`, its natural id). `add` never replaces: an occupied key throws. `set(key)` with no value respawns through the factory, replacing the previous value (destroying it if owned).
+Pass a function to create a spawning map. Factory maps are keyed by string. `add(input?)` always passes `input` to the factory; `input` is also the key when it is a string. Any other input is factory-only - the key then derives from the value: a `State` supplies its `key` when it has one (a `Component`'s identity), otherwise `String(value)`. `add` never replaces: an occupied key throws. `set(key)` with no value respawns through the factory, replacing the previous value (destroying it if owned).
 
 ```ts
 class Cart extends State {
@@ -65,29 +65,28 @@ cart.items.add('sku_123');              // throws - key occupied
 cart.items.set('sku_123');              // respawns, destroying previous Line
 ```
 
-Calling `add()` with no key lets the value key itself: the key becomes `String(value)` - for a `State`, its natural id.
+Calling `add()` with no key lets the value key itself: a `Component` supplies its `key` (including overrides), any other value falls back to `String(value)` - for a `State`, its natural id.
 
 ```ts
 class Field extends State {
   sparks = map(() => Spark.new());
 
   ignite() {
-    return this.sparks.add(); // keyed by the spark's own id
+    return this.sparks.add(); // keyed by the spark's own identity
   }
 }
 ```
 
-String keys carry identity - the occupied-key throw guards real duplication. Object inputs carry none (two objects with the same contents are distinct), so they never become keys; each such `add` creates a fresh, id-keyed entry. Derived keys must still be unique: plain values sharing a generic `String()` form (like `[object Object]`) collide on the second derive - give such values a `toString` or supply string keys. A spawned `State` orphaned by a derived-key collision is destroyed before the throw.
+String keys carry identity - the occupied-key throw guards real duplication. Object inputs carry none (two objects with the same contents are distinct), so they never become keys; each such `add` creates a fresh, identity-keyed entry. Derived keys must still be unique: plain values sharing a generic `String()` form (like `[object Object]`) collide on the second derive - give such values a `toString` or supply string keys. A spawned `State` orphaned by a derived-key collision is destroyed before the throw.
 
-A `State` class may stand in for the factory. `add(input?)` instantiates it, forwarding `input` to the constructor. An object input is applied by the base constructor as an assign - fields merge natively - with the instance keyed by natural id. A string input keys the entry and arrives as `{ id: input }`: a class declaring an `id` field receives it before the `new()` lifecycle hook runs (so `new()` may load from it); a class without one simply ignores it. Declaring `id` as anything but a string makes string input a type error.
+A `State` class may stand in for the factory. `add(input?)` instantiates it, forwarding `input` to the constructor. An object input is applied by the base constructor as an assign - fields merge natively - with the instance keyed by its own identity. A string input keys the entry and arrives as `{ key: input }`: a `Component` adopts it as its identity `key` before the `new()` lifecycle hook runs (so `new()` may load from it); a class with no `key` surface simply ignores it. The map key, the instance's `key`, and its identity when rendered are then the same string. Declaring `key` as anything but a string makes string input a type error.
 
 ```ts
-class Player extends State {
-  id = '';
+class Player extends Component {
   stats = null;
 
   protected new() {
-    this.stats = fetchStats(this.id);
+    this.stats = fetchStats(this.key);
   }
 }
 
@@ -95,7 +94,7 @@ class Roster extends State {
   players = map(Player);
 
   join(id: string) {
-    return this.players.add(id); // new Player, id assigned, stats loading
+    return this.players.add(id); // new Player, key assigned, stats loading
   }
 }
 ```
@@ -140,7 +139,7 @@ interface State.Map<K, V> extends globalThis.Map<K, V> {
   get(key: K): V | undefined;
 }
 
-// string when T declares no id, or an id assignable from string; never otherwise
+// string when T declares no key, or a key assignable from string; never otherwise
 type State.Map.Key<T> = ...;
 
 interface State.Map.Factory<V, I = string> extends State.Map<string, V> {

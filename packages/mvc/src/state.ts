@@ -130,8 +130,8 @@ declare namespace State {
   }
 
   namespace Map {
-    type Key<T> = T extends { id: infer ID }
-      ? ID extends string | undefined
+    type Key<T> = T extends { key: infer K }
+      ? K extends string | undefined
         ? string
         : never
       : string;
