@@ -1,7 +1,7 @@
 import { Component, unbind } from '@expressive/mvc';
 import { watch, observer } from '@expressive/mvc/observable';
-import { provide, type Context } from './context';
-import { Runtime, useHook, useReady } from './runtime';
+import { Context, provide } from './context';
+import { Runtime, useFactory, useHook, useReady } from './runtime';
 
 declare module '@expressive/mvc' {
   interface Component {
@@ -65,9 +65,8 @@ Component.on({
 });
 
 function bootstrap(this: Component, context: Context){
-  const destroy = !observer(this)?.ready;
   context = context.push();
-  context.set(this, () => destroy ? () => this.set(null) : undefined);
+  context.set(this, () => () => this.set(null));
 
   Object.defineProperties(this, {
     context: {
@@ -88,9 +87,29 @@ function bootstrap(this: Component, context: Context){
 }
 
 /**
- * Per-instance render host: subscribe the instance, render inside its context
- * provider, wrap pending in Suspense and (when `catch` is set) the host error
- * boundary. Host differences live behind `Runtime.dedupe`/`Runtime.ErrorBoundary`.
+ * Wrap a content element in its context provider, a Suspense boundary (unless
+ * `fallback` is `false`) and, when `catch` is set, the host error boundary.
+ */
+function frame(from: Component, context: Context, rendered: unknown) {
+  const { createElement: create } = Runtime;
+  const children = provide(context,
+    from.fallback === false
+      ? rendered
+      : create(Runtime.Suspense,
+        { fallback: from.fallback, name: String(from) },
+        rendered)
+  );
+
+  return from.catch
+    ? create(Runtime.ErrorBoundary, { self: from, children })
+    : children;
+}
+
+/**
+ * Ownership host for `<Component/>`: React owns the instance, so its render
+ * threads the bootstrap-pushed context through `Runtime.dedupe` (React stacks
+ * render attempts) and tears that context down - destroying the instance - on
+ * unmount.
  */
 function render(from: Component, context: Context) {
   const { createElement: create } = Runtime;
@@ -110,21 +129,42 @@ function render(from: Component, context: Context) {
 
     useReady(commit);
 
-    const rendered = create(Render);
-    const children = provide(context,
-      from.fallback === false
-        ? rendered
-        : create(Runtime.Suspense,
-          { fallback: from.fallback, name: String(from) },
-          rendered)
-    );
-
-    return from.catch
-      ? create(Runtime.ErrorBoundary, { self: from, children })
-      : children;
+    return frame(from, context, create(Render));
   };
 
   return () => create(Component);
+}
+
+/**
+ * Borrow host for a rendered `{instance}`: the instance is externally owned, so
+ * each placement gets its own child context (via `useFactory`, one per fiber),
+ * subscribes, and on unmount only pops that context - never destroying the
+ * instance. Its content render (`instance.render`) is never overwritten, so one
+ * instance may back several independent placements.
+ */
+function element(source: Component) {
+  const { createElement: create } = Runtime;
+
+  return function Host() {
+    const outer = Context.get();
+    const render = useFactory(() => {
+      const context = outer.push(source);
+      let from = source;
+      const Content = () => from.render(from.props);
+
+      return () => {
+        from = useHook<Component>((refresh) => {
+          if (observer(source) !== null)
+            watch(source, refresh);
+          return () => context.pop();
+        }) || source;
+
+        return frame(from, context, create(Content));
+      };
+    });
+
+    return render();
+  };
 }
 
 /** Rewrite each own capitalized function on `target` into a subcomponent. */
@@ -157,3 +197,5 @@ function subcomponents(target: object, configurable?: boolean) {
     });
   }
 }
+
+export { element };

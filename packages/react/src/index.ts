@@ -11,6 +11,7 @@ import {
 
 import './jsx-runtime';
 import { Runtime } from './adapter';
+import { element } from './component';
 import { ErrorBoundary, dedupe } from './boundary';
 
 declare module '@expressive/mvc' {
@@ -23,16 +24,8 @@ declare module '@expressive/mvc' {
 function toElement(template: any) {
   Object.defineProperty(Component.prototype, '$$typeof', {
     get(this: Component) {
-      const from = this;
       const descriptors = Object.getOwnPropertyDescriptors(template);
       const store = descriptors._store?.value;
-
-      function Host() {
-        return from;
-      }
-
-      Object.setPrototypeOf(Host, Component);
-      Host.prototype = Component.prototype;
 
       delete descriptors.props;
 
@@ -45,7 +38,7 @@ function toElement(template: any) {
       Object.defineProperties(this, {
         ...descriptors,
         $$typeof: { value: template.$$typeof },
-        type: { value: Host },
+        type: { value: element(this) },
         key: { value: this.key }
       });
 

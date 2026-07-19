@@ -157,6 +157,78 @@ describe('instance element', () => {
 
     element.unmount();
   });
+
+  it('will keep a sibling placement when one unmounts', async () => {
+    const error = mockError();
+    const instance = Control.new({ value: 'first' });
+
+    const View = ({ both }: { both: boolean }) => (
+      <>
+        {both && <section>{instance}</section>}
+        <aside>{instance}</aside>
+      </>
+    );
+
+    const element = render(<View both />);
+
+    expect(screen.getAllByText('first')).toHaveLength(2);
+
+    element.rerender(<View both={false} />);
+
+    expect(screen.getAllByText('first')).toHaveLength(1);
+
+    await act(async () => {
+      instance.value = 'second';
+    });
+
+    expect(screen.getAllByText('second')).toHaveLength(1);
+    expect(instance.get(null)).toBe(false);
+    expect(error).not.toBeCalled();
+
+    element.unmount();
+
+    expect(instance.get(null)).toBe(false);
+  });
+
+  it('will resolve its own context per placement', async () => {
+    const error = mockError();
+
+    class Item extends Component {
+      value = '';
+
+      render() {
+        return <Consumer for={Item}>{(self) => <span>{self.value}</span>}</Consumer>;
+      }
+    }
+
+    const instance = Item.new({ value: 'a' });
+
+    const View = ({ both }: { both: boolean }) => (
+      <>
+        {both && <section>{instance}</section>}
+        <aside>{instance}</aside>
+      </>
+    );
+
+    const element = render(<View both />);
+
+    expect(screen.getAllByText('a')).toHaveLength(2);
+
+    element.rerender(<View both={false} />);
+
+    expect(screen.getAllByText('a')).toHaveLength(1);
+
+    await act(async () => {
+      instance.value = 'b';
+    });
+
+    expect(screen.getAllByText('b')).toHaveLength(1);
+    expect(error).not.toBeCalled();
+
+    element.unmount();
+
+    expect(instance.get(null)).toBe(false);
+  });
 });
 
 it('will call is method on creation', () => {
