@@ -1,0 +1,44 @@
+name: Coverage
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: coverage
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  badge:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: ./.github/actions/setup
+
+      - name: Collect coverage
+        run: |
+          for pkg in packages/*/; do
+            (cd "$pkg" && bun test --coverage --coverage-reporter=lcov --coverage-dir=coverage)
+          done
+
+      - name: Generate badge
+        run: bun .github/scripts/coverage-badge.ts
+
+      - name: Publish badge
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p /tmp/badges
+          cp coverage-badge.json /tmp/badges/coverage.json
+          cd /tmp/badges
+          git init -q -b badges
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add coverage.json
+          git commit -q -m "chore: update coverage badge"
+          git push -f "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" badges

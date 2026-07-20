@@ -95,6 +95,29 @@ describe('Router (headless)', () => {
     expect(router.query.page).toBe('2');
   });
 
+  it('direct query mutation pushes a new entry', async () => {
+    const router = Router.new();
+    router.goto('/posts');
+    await router.set();
+
+    router.query.page = '2';
+    await router.set();
+
+    expect(router.entries).toEqual(['/', '/posts', '/posts?page=2']);
+    expect(router.url).toBe('/posts?page=2');
+  });
+
+  it('stops tracking query once destroyed', async () => {
+    const router = Router.new();
+    router.goto('/posts');
+    await router.set();
+
+    router.set(null);
+
+    expect(router.get(null)).toBe(true);
+    expect(router.entries).toEqual(['/', '/posts']);
+  });
+
   it('subclass may narrow query keys via declare (type-level)', () => {
     class Search extends Router {
       declare query: { q?: string; page?: string };

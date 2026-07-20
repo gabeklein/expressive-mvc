@@ -6,6 +6,7 @@
 .playwright-mcp
 build
 coverage
+coverage-badge.json
 dist
 node_modules
 package-lock.json

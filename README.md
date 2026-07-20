@@ -16,7 +16,7 @@
 
 <p align="center">
   <a href="https://github.com/gabeklein/expressive-mvc/actions/workflows/release.yml"><img alt="CI" src="https://github.com/gabeklein/expressive-mvc/actions/workflows/release.yml/badge.svg"></a>
-  <a href="https://github.com/gabeklein/expressive-mvc/actions/workflows/pr.yml"><img alt="Coverage 100% (enforced in CI)" src="https://img.shields.io/badge/Coverage-100%25-brightgreen.svg"></a>
+  <a href="https://github.com/gabeklein/expressive-mvc/actions/workflows/coverage.yml"><img alt="Coverage" src="https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fgabeklein%2Fexpressive-mvc%2Fbadges%2Fcoverage.json"></a>
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
 </p>
 

@@ -54,6 +54,6 @@ Subscription proxies pass assignments through to the instance, so components rea
 
 A getter reading its own name (`this.total` inside `get total()`) returns the previous cached value rather than recursing - reads under the tracking proxy resolve to the managed property's current cache. This makes "derive from prior value" expressible without a shadow field; it is documented semantics ([state/computed.md](state/computed.md)), not an accident of evaluation order.
 
-## Coverage is a CI gate, not a badge claim
+## Coverage is measured and gated, not a badge claim
 
-Every package's test script runs `tsc --noEmit && bun test --coverage` with 100% line/function thresholds, and the `PR` workflow (`.github/workflows/pr.yml`) blocks merges on it. The coverage figures in README badges restate that enforced gate and link to the workflow that enforces it.
+Every package's test script runs `tsc --noEmit && bun test --coverage` with a 100% line-coverage threshold in its `bunfig.toml` (core packages gate function coverage as well; bun counts synthetic class-field constructors as functions without ever crediting them, which caps fields-only classes below 100% - so adapter packages gate lines, where 100% is achievable and enforced). The `PR` workflow blocks merges on these thresholds. The README coverage badge is not hand-written: the `Coverage` workflow (`.github/workflows/coverage.yml`) re-measures line coverage across all packages on every push to `main`, aggregates the lcov output, and publishes the badge value it computed.
