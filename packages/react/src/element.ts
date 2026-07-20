@@ -15,6 +15,8 @@ let template: any;
 
 Object.defineProperty(Component.prototype, '$$typeof', {
   get(this: Component) {
+    const self = this.is;
+
     if(!template) template = Runtime.createElement('template');
 
     const descriptors = Object.getOwnPropertyDescriptors(template);
@@ -28,11 +30,11 @@ Object.defineProperty(Component.prototype, '$$typeof', {
         Object.getOwnPropertyDescriptors(store)
       );
 
-    Object.defineProperties(this, {
+    Object.defineProperties(self, {
       ...descriptors,
       $$typeof: { value: template.$$typeof },
-      key: { value: this.key },
-      type: { value: Element.bind(this) }
+      key: { value: self.key },
+      type: { value: Element.bind(self) }
     });
 
     return template.$$typeof;
