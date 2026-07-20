@@ -122,7 +122,9 @@ items.set('b', guest);
 items.delete('b');       // guest untouched
 ```
 
-Every map is adopted by its hosting state when that state activates - the field instruction resolves and adopts in one step, so a usable map always has an owner. Fresh (never-activated) `State` values landing in the map - spawned, stored via `set`, or already present at activation - are parented to the owner and activate inside its context: `get(Owner)` resolves directly and providers above the owner resolve from members. Owned members are destroyed with the owner. An already-activated value cannot be adopted - its parent is settled - so it keeps guest status.
+Every map is adopted by its hosting state when that state activates - the field instruction resolves and adopts in one step, so a usable map always has an owner. The field itself is read-only; assigning over it throws. Fresh (never-activated) `State` values landing in the map - spawned, stored via `set`, or already present at activation - are parented to the owner and activate inside its context: `get(Owner)` resolves directly and providers above the owner resolve from members. Owned members are destroyed with the owner. An already-activated value cannot be adopted - its parent is settled - so it keeps guest status.
+
+Death also flows the other way: a `State` value that dies evicts itself from every key it occupies - owned or guest - so a map never serves destroyed entries. Destroying a member (`member.set(null)`) is therefore a complete removal gesture on its own.
 
 ```ts
 class Member extends State {

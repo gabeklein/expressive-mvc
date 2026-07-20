@@ -334,6 +334,17 @@ describe('class factory', () => {
     expect(widgets.get('custom')).toBe(widget);
   });
 
+  it('will honor falsy key override', () => {
+    class Widget extends Component {
+      override readonly key = '';
+    }
+
+    const widgets = hosted(Widget);
+    const widget = widgets.add();
+
+    expect(widgets.get('')).toBe(widget);
+  });
+
   it('will support Component via props channel', () => {
     class Widget extends Component {
       label = '';
@@ -654,6 +665,61 @@ describe('adoption', () => {
     owner.set(null);
 
     expect(guest.get(null)).toBe(false);
+  });
+
+  it('will evict entry when member dies', () => {
+    class Owner extends State {
+      items = map(Item);
+    }
+
+    const owner = Owner.new();
+    const item = owner.items.add('a');
+
+    item.set(null);
+
+    expect(owner.items.has('a')).toBe(false);
+    expect(owner.items.size).toBe(0);
+  });
+
+  it('will evict guest when it dies', () => {
+    class Owner extends State {
+      items = map(Item);
+    }
+
+    const owner = Owner.new();
+    const guest = Item.new();
+
+    owner.items.set('g', guest);
+    guest.set(null);
+
+    expect(owner.items.has('g')).toBe(false);
+    expect(guest.get(null)).toBe(true);
+  });
+
+  it('will evict every key of a destroyed value', () => {
+    class Owner extends State {
+      items = map(Item);
+    }
+
+    const owner = Owner.new();
+    const item = owner.items.add('a');
+
+    owner.items.set('b', item);
+    owner.items.delete('a');
+
+    expect(item.get(null)).toBe(true);
+    expect(owner.items.size).toBe(0);
+  });
+
+  it('will throw on field reassignment', () => {
+    class Owner extends State {
+      items = map(Item);
+    }
+
+    const owner = Owner.new();
+
+    expect(() => ((owner as any).items = null)).toThrow('is read-only');
+    expect(owner.items).toBeInstanceOf(Map);
   });
 
   it('will clear map when owner dies', () => {

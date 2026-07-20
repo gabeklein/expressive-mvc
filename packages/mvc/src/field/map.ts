@@ -8,7 +8,7 @@ const SIZE = Object.getOwnPropertyDescriptor(Map.prototype, 'size')!.get!;
 
 const MAKE = new WeakMap<object, Function>();
 const OWNER = new WeakMap<object, State>();
-const OWNED = new WeakMap<object, Map<unknown, (() => void) | undefined>>();
+const OWNED = new WeakMap<object, Map<unknown, () => void>>();
 
 function map<K, V>(
   entries?: Iterable<readonly [K, V]> | null
@@ -28,6 +28,7 @@ function map<K, V>(
   entries?: Iterable<readonly [K, V]> | null
 ): State.Map<K, V> {
   return def((_key, subject) => ({
+    set: false,
     value: typeof arg == 'function'
       ? new ReactiveMap<K, V>(subject, entries, arg)
       : new ReactiveMap<K, V>(subject, arg)
@@ -42,26 +43,16 @@ class ReactiveMap<K, V> extends Map<K, V> implements State.Map<K, V> {
   ) {
     super();
 
-    const owned = new Map<unknown, (() => void) | undefined>();
-
     if (make) MAKE.set(this, make);
 
     OWNER.set(this, owner);
-    OWNED.set(this, owned);
-
-    if (entries)
-      for (const [key, value] of entries) {
-        super.set(key, value);
-
-        if (value instanceof State && parent(value) === undefined) {
-          owned.set(key, attach(value, owner));
-          event(value);
-        }
-      }
+    OWNED.set(this, new Map());
 
     listener(owner, () => this.clear(), null);
 
     event(this);
+
+    if (entries) for (const [key, value] of entries) store(this, key, value);
   }
 
   get size(): number {
@@ -101,9 +92,8 @@ class ReactiveMap<K, V> extends Map<K, V> implements State.Map<K, V> {
       throw new Error('Key is already occupied; use set() to replace.');
 
     const value = spawn(make, input) as V;
-    const key = keyed
-      ? input
-      : (value instanceof State && (value as any).key) || String(value);
+    const id = value instanceof State ? (value as any).key : undefined;
+    const key = keyed ? input : String(id != null ? id : value);
 
     if (!keyed && super.has.call(target, key as K)) {
       if (value instanceof State && parent(value) !== undefined)
@@ -140,7 +130,7 @@ class ReactiveMap<K, V> extends Map<K, V> implements State.Map<K, V> {
 
     if (!super.has.call(target, key)) return false;
 
-    release(target, key, super.get.call(target, key) as V);
+    release(target, key);
     super.delete.call(target, key);
 
     event(target, key as never);
@@ -156,7 +146,7 @@ class ReactiveMap<K, V> extends Map<K, V> implements State.Map<K, V> {
 
     const entries = Array.from(super.entries.call(target));
 
-    for (const [key, value] of entries) release(target, key, value);
+    for (const [key] of entries) release(target, key);
 
     super.clear.call(target);
 
@@ -251,42 +241,44 @@ function store<K, V>(
   target: ReactiveMap<K, V>,
   key: K,
   value: V,
-  own?: boolean
+  spawned?: boolean
 ) {
-  const owned = OWNED.get(target)!;
   const exists = Map.prototype.has.call(target, key);
 
   if (exists) {
-    const previous = Map.prototype.get.call(target, key) as V;
+    if (Map.prototype.get.call(target, key) === value) return;
 
-    if (previous === value) return;
-
-    release(target, key, previous);
+    release(target, key);
   }
 
   Map.prototype.set.call(target, key, value);
 
-  if (value instanceof State && parent(value) === undefined) {
-    owned.set(key, attach(value, OWNER.get(target)!));
-    event(value);
+  if (value instanceof State) {
+    const fresh = parent(value) === undefined;
+    const detach = fresh ? attach(value, OWNER.get(target)!) : undefined;
+    const evict = listener(value, () => void target.delete(key), null);
+
+    OWNED.get(target)!.set(key, () => {
+      evict();
+      if (detach) detach();
+      if (fresh || spawned) value.set(null);
+    });
+
+    if (fresh) event(value);
   }
-  else if (own) owned.set(key, undefined);
 
   event(target, key as never);
   if (!exists) event(target, SHAPE);
 }
 
-function release<K, V>(target: ReactiveMap<K, V>, key: K, value: V) {
+function release<K, V>(target: ReactiveMap<K, V>, key: K) {
   const owned = OWNED.get(target)!;
+  const free = owned.get(key);
 
-  if (!owned.has(key)) return;
-
-  const detach = owned.get(key);
-
-  owned.delete(key);
-
-  if (detach) detach();
-  if (value instanceof State) value.set(null);
+  if (free) {
+    owned.delete(key);
+    free();
+  }
 }
 
 function source<K, V>(from: ReactiveMap<K, V>): ReactiveMap<K, V> {

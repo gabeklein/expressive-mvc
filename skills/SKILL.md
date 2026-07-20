@@ -137,7 +137,7 @@ class UserProfile extends State {
 
 With a factory, the map is string-keyed (`State.Map.Factory<V>`) and owns what `add` spawns: spawned `State` values are destroyed when deleted, cleared, or replaced. Activated values supplied directly via `set(key, value)` are guests and never destroyed.
 
-Every map is adopted by its hosting state when the instruction resolves at activation. Fresh (never-activated) members - spawned, stored, or present at adoption - are parented to the owner, activate inside its context, and are destroyed with it; already-activated values keep guest status.
+Every map is adopted by its hosting state when the instruction resolves at activation; the field is read-only. Fresh (never-activated) members - spawned, stored, or present at adoption - are parented to the owner, activate inside its context, and are destroyed with it; already-activated values keep guest status. A `State` value that dies evicts itself from every key it occupies.
 
 ### React Hooks
 
