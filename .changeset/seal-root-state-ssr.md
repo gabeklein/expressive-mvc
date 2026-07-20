@@ -10,3 +10,5 @@ A `State.new()` created outside a Provider registers into the process-global roo
 The React adapter now enables `Context.sealing` when no DOM is present (a server render). While sealing is on, any state registered to the root context is sealed on activation: value-carrying writes (assignment, `.set(...)`, async factory resolution) are squashed to a no-op, with a one-time dev-only warning per property. Reads, computed getters (silent internal writes), and context membership are unaffected, so existing read-only defaults keep rendering.
 
 Request-scoped state — `State.use()` and `<Provider>` instances — lives outside the root context and is never sealed, so per-request mutation there continues to work. State created on the client is unchanged.
+
+The adapter also enables `Context.skipNew` during server render, which skips the `new()` lifecycle hook (client-only effects such as listeners, timers, and subscriptions). Both flags are host-neutral in core and independent, so a future SSR adapter may opt back into running `new()` while still sealing root state.

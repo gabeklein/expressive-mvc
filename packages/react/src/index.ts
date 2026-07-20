@@ -37,9 +37,12 @@ Object.assign(Runtime, {
 });
 
 // No DOM implies a server render, where the shared root context is reused
-// across requests; seal root-registered states so they cannot accept
-// per-request mutation and bleed between them.
-Context.sealing = typeof window === 'undefined';
+// across requests: seal root-registered states so they cannot bleed between
+// requests, and skip client-only `new()` effects.
+const server = typeof window === 'undefined';
+
+Context.sealing = server;
+Context.skipNew = server;
 
 export { State, State as default, use, Consumer, Provider } from './adapter';
 export { Component, Context, def, get, ref, set, hot } from '@expressive/mvc';

@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'bun:test';
+import { afterEach, describe, expect, it, mock } from 'bun:test';
 import { mockWarn } from '../test.setup';
 import { Context } from './context';
 import { seal, State } from './state';
@@ -114,5 +114,41 @@ describe('Context.sealing', () => {
     state.value = 2;
 
     expect(state.value).toBe(2);
+  });
+});
+
+describe('Context.skipNew', () => {
+  afterEach(() => {
+    Context.skipNew = false;
+  });
+
+  it('will skip new() while enabled', () => {
+    const hook = mock();
+
+    class Store extends State {
+      protected new() {
+        hook();
+      }
+    }
+
+    Context.skipNew = true;
+
+    Store.new();
+
+    expect(hook).not.toHaveBeenCalled();
+  });
+
+  it('will run new() by default', () => {
+    const hook = mock();
+
+    class Store extends State {
+      protected new() {
+        hook();
+      }
+    }
+
+    Store.new();
+
+    expect(hook).toHaveBeenCalled();
   });
 });

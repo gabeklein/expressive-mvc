@@ -6,10 +6,12 @@ import { mockWarn } from '../test.setup';
 describe('sealing', () => {
   afterEach(() => {
     Context.sealing = false;
+    Context.skipNew = false;
   });
 
   it('will be off when a DOM is present', () => {
     expect(Context.sealing).toBe(false);
+    expect(Context.skipNew).toBe(false);
   });
 
   it('will seal a root instance while sealing', () => {

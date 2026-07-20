@@ -26,6 +26,14 @@ class Context {
    */
   static sealing = false;
 
+  /**
+   * When set, the `new()` lifecycle hook is skipped on activation. Adapters
+   * enable this during a server render, where `new()` effects (listeners,
+   * timers, subscriptions) are client-only. Independent of {@link sealing} so
+   * an adapter may seal root state yet still run `new()` when it needs to.
+   */
+  static skipNew = false;
+
   static get root(): Context {
     return ROOT ??= new Context();
   }

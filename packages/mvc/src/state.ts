@@ -191,7 +191,7 @@ abstract class State {
 
   constructor(...args: State.Args) {
     define(this, 'is', { value: this });
-    init(this, args, this.new);
+    init(this, args, Context.skipNew ? undefined : this.new);
   }
 
   /**
