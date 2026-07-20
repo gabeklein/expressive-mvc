@@ -6,7 +6,7 @@
 
 <p align="center">
   <a href="https://www.npmjs.com/package/@expressive/mvc"><img alt="NPM" src="https://badge.fury.io/js/%40expressive%2Fmvc.svg"></a>
-  <img src="https://img.shields.io/badge/Coverage-100%25-brightgreen.svg">
+  <a href="https://github.com/gabeklein/expressive-mvc/actions/workflows/pr.yml"><img alt="Coverage 100% (enforced in CI)" src="https://img.shields.io/badge/Coverage-100%25-brightgreen.svg"></a>
 </p>
 
 ---

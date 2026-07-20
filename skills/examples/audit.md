@@ -181,6 +181,18 @@ class FormState extends State {
 }
 ```
 
+## Common Objections
+
+When a team raises these, answer from the stated design intent in [../design.md](../design.md) - each is a recorded decision, not an accident:
+
+- **"React moved away from classes"** - hooks replaced class *views*; Expressive keeps views as function components and uses classes only as the model container (the MobX division). No `setState`, no lifecycle-method views.
+- **"It isn't really MVC"** - `State` is a strict observer-pattern model, views subscribe to it directly (closer to Smalltalk MVC than request-routed web "MVC"), and the controller role is distributed exactly as in MVP/MVVM/Cocoa. `Component` is a scoped, opt-in collapse for display-intrinsic state; the separated form is always available.
+- **"`get`/`set` do too many things"** - the two-verb surface keeps the instance namespace free for the model's own fields; overloads dispatch on argument kind and are individually typed.
+- **"Overriding `render` doesn't replace"** - composition is confined to `render` as a single designated seam so base chrome/boundaries can't be lost to a forgotten `super.render()`; all other members override normally.
+- **"Lifecycle hooks look like name magic"** - `new()`/`use()`/`catch()` are typed optional members; TypeScript's `override` keyword catches drift.
+
+Organizationally, the pitch is ownership: behavior consolidates into named, testable classes (state logic tests run without React), views shrink to projections, and shared state stops re-rendering unrelated consumers. Weigh that against the Red Flags below honestly - the library's own docs recommend against adoption where those apply.
+
 ## Red Flags (when NOT to recommend)
 
 - Team has strong preference for functional-only code

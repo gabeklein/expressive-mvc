@@ -167,6 +167,8 @@ class Page extends Frame {
 
 This is how a base primitive owns shared chrome/suspense/context once while subclasses author only the content.
 
+Composition here is deliberate and confined: `render` is sealed at bootstrap as the **single** composition seam - every other member (methods, getters, subcomponents, lifecycle hooks) overrides with standard replace semantics. The rationale: a reactive base's render is chrome *plus subscriptions and boundaries* that must run for the subclass to work, and override-with-`super.render()` makes every subclass responsible for remembering the call - one forgotten `super` silently drops the base's boundaries. Composing inverts the default so the base owns its chrome exactly once (see [design.md](../design.md)).
+
 **Footgun:** the inner content arrives as `props.children`. A wrapper render that never reads `props.children` silently drops everything below it - and because the `children` getter is lazy, the dropped layer never even runs. A base meant to wrap subclasses must declare a `props` parameter and render `props.children`.
 
 ### Letting a subclass replace the base (opt-out of wrapping)

@@ -2,6 +2,8 @@
 
 Instance method on State for writing values, dispatching events, listening to updates, destroying state, and defining properties.
 
+All write-side operations share this one verb so the library's instance surface stays at two methods (`get`/`set`), leaving the rest of the namespace to the model's own fields. Overloads dispatch on the kind of the first argument, and each form is individually typed (see [design.md](../design.md)).
+
 ## Overloads
 
 ### Await pending flush

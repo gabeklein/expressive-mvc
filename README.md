@@ -16,7 +16,7 @@
 
 <p align="center">
   <a href="https://github.com/gabeklein/expressive-mvc/actions/workflows/release.yml"><img alt="CI" src="https://github.com/gabeklein/expressive-mvc/actions/workflows/release.yml/badge.svg"></a>
-  <img alt="Coverage 100%" src="https://img.shields.io/badge/Coverage-100%25-brightgreen.svg">
+  <a href="https://github.com/gabeklein/expressive-mvc/actions/workflows/pr.yml"><img alt="Coverage 100% (enforced in CI)" src="https://img.shields.io/badge/Coverage-100%25-brightgreen.svg"></a>
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
 </p>
 
@@ -74,6 +74,7 @@ Continue with [Getting Started](https://expressive.dev/docs/getting-started/), e
 ## Learn more
 
 - [Why classes?](https://expressive.dev/docs/why-classes/)
+- [Design decisions](skills/design.md)
 - [Migrating from hooks](https://expressive.dev/docs/migrating-from-hooks/)
 - [Comparisons with other state libraries](https://expressive.dev/docs/comparisons/)
 - [Live examples](https://expressive.dev/examples/)
