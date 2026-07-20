@@ -12,9 +12,9 @@ function hosted<K, V>(
 
 function hosted<T extends State>(
   Type: new (...args: State.Args<T>) => T
-): map.Pool<T, State.Args<T>>;
+): map.Set<T, State.Args<T>>;
 
-function hosted<V>(make: () => V): map.Pool<V>;
+function hosted<V>(make: () => V): map.Set<V>;
 
 function hosted<A extends [unknown, ...unknown[]], V>(
   make: (...args: A) => V
@@ -34,6 +34,18 @@ describe('factory', () => {
 
     expect(items).toBeInstanceOf(Map);
     expect(items.size).toBe(0);
+  });
+
+  it('will construct mode as class identity', () => {
+    class Item extends State {}
+
+    expect(hosted<string, number>()).toBeInstanceOf(map.Create);
+    expect(hosted((key: string) => key)).toBeInstanceOf(map.Create);
+    expect(hosted(Item)).toBeInstanceOf(map.Set);
+    expect(hosted(Item)).toBeInstanceOf(Set);
+    expect(hosted(() => ({}))).toBeInstanceOf(map.Set);
+    expect(hosted(Item)).not.toBeInstanceOf(map.Create);
+    expect(hosted(Item)).not.toBeInstanceOf(Map);
   });
 
   it('will accept entries', () => {
@@ -116,10 +128,10 @@ describe('map', () => {
     expect(items.get().get('a')).toBe('unwrapped');
   });
 
-  it('will throw on add', () => {
+  it('will not define add', () => {
     const items = hosted<string, number>();
 
-    expect(() => (items as any).add(1)).toThrow('add() requires a pool.');
+    expect(() => (items as any).add(1)).toThrow(TypeError);
   });
 });
 
@@ -228,6 +240,47 @@ describe('pool', () => {
     expect(Array.from(items.values())).toEqual([a, b]);
   });
 
+  it('will ignore repeat add of same value', async () => {
+    const shared = {};
+    const items = hosted(() => shared);
+    const fn = mock();
+
+    expect(items.add()).toBe(shared);
+
+    watch(items, ($) => {
+      void $.size;
+      fn();
+    });
+    fn.mockClear();
+
+    expect(items.add()).toBe(shared);
+    expect(items.size).toBe(1);
+
+    await flush();
+    expect(fn).not.toHaveBeenCalled();
+  });
+
+  it('will get membership by value', () => {
+    const items = hosted(() => ({}));
+    const value = items.add();
+
+    expect(items.get(value)).toBe(value);
+    expect(items.get({})).toBeUndefined();
+  });
+
+  it('will support forEach', () => {
+    const items = hosted(() => ({}));
+    const value = items.add();
+    const calls: unknown[] = [];
+    const thisArg = {};
+
+    items.forEach(function (this: unknown, ...args) {
+      calls.push([this, ...args]);
+    }, thisArg);
+
+    expect(calls).toEqual([[thisArg, value, value, items]]);
+  });
+
   it('will transform values', () => {
     const items = hosted(Item);
 
@@ -317,12 +370,10 @@ describe('pool', () => {
     expect(fn).toHaveBeenCalled();
   });
 
-  it('will throw on set', () => {
+  it('will not define set', () => {
     const items = hosted(Item);
 
-    expect(() => (items as any).set('a', 1)).toThrow(
-      'set() is not valid on a pool.'
-    );
+    expect(() => (items as any).set('a', 1)).toThrow(TypeError);
   });
 });
 
@@ -418,10 +469,10 @@ describe('create', () => {
     expect(items.size).toBe(0);
   });
 
-  it('will throw on add', () => {
+  it('will not define add', () => {
     const items = hosted((key: string) => ({ key }));
 
-    expect(() => (items as any).add()).toThrow('add() requires a pool.');
+    expect(() => (items as any).add()).toThrow(TypeError);
   });
 });
 
@@ -665,7 +716,7 @@ describe('adoption', () => {
     const owner = Owner.new();
 
     expect(() => ((owner as any).items = null)).toThrow('is read-only');
-    expect(owner.items).toBeInstanceOf(Map);
+    expect(owner.items).toBeInstanceOf(Set);
   });
 
   it('will clear map when owner dies', () => {

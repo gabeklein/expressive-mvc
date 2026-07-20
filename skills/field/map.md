@@ -13,7 +13,7 @@ The argument selects one of three modes, each with exactly one insertion verb:
 | call | interface | insert | identity |
 | --- | --- | --- | --- |
 | `map<K, V>()` / `map(entries)` | `map.Keyed<K, V>` | `set(key, value)` | your keys |
-| `map(StateClass)` / `map(() => V)` | `map.Pool<V, A>` | `add(...args)` | the value itself |
+| `map(StateClass)` / `map(() => V)` | `map.Set<V, A>` | `add(...args)` | the value itself |
 | `map((key: K, ...rest: A) => V)` | `map.Create<A, V>` | `set(key, ...rest)` spawns | your keys |
 
 `add` returns the value it spawned - the call site holds the reference, so the value is its own identity. `set` returns the map - the key is the only retrieval handle, so entries are keyed. A factory that *requires* its first parameter is keyed by it; a class or parameterless factory spawns anonymous members into a pool.
@@ -61,7 +61,7 @@ products.set('c', { name: 'Bag' }); // reruns because shape changed
 
 ## Pool
 
-A `State` class or parameterless factory makes a pool: an owned collection of anonymous values. `add(...args)` spawns through it and returns the value - which is also its identity, so `has`, `delete`, and eviction all take the value itself. Pools have no keys: no `set`, `get(key)`, `entries`, or `keys`; iteration yields values directly.
+A `State` class or parameterless factory makes a pool: an owned collection of anonymous values. `add(...args)` spawns through it and returns the value - which is also its identity, so `has`, `delete`, and eviction all take the value itself. Pools are backed by a native `Set` (`instanceof Set`, not `Map`) and have no keys: no `set`, `get(key)`, `entries`, or `keys`; iteration yields values directly.
 
 ```ts
 class Field extends State {
@@ -197,8 +197,8 @@ snapshot.get('a'); // exported product values
 
 ```ts
 function map<K, V>(entries?: Iterable<readonly [K, V]> | null): map.Keyed<K, V>;
-function map<T extends State>(Type: new (...args: State.Args<T>) => T): map.Pool<T, State.Args<T>>;
-function map<V>(make: () => V): map.Pool<V>;
+function map<T extends State>(Type: new (...args: State.Args<T>) => T): map.Set<T, State.Args<T>>;
+function map<V>(make: () => V): map.Set<V>;
 function map<A extends [unknown, ...unknown[]], V>(make: (...args: A) => V): map.Create<A, V>;
 
 // internal bases (not exported): reads, removal, iteration - no insertion verb
@@ -215,29 +215,30 @@ interface MapLike<K, V> {
   // plus plain entries/keys/values/forEach/[Symbol.iterator]
 }
 
-interface SetLike<V> {
-  readonly size: number;
-  get(): ReadonlySet<State.Export<V>>;
-  has(value: V): boolean;
-  delete(value: V): boolean;
-  clear(): void;
-  values(): MapIterator<V>;
-  values<R>(fn: (value: V) => R): Iterable<R>;
-  [Symbol.iterator](): MapIterator<V>;
+interface map.Create<A extends [unknown, ...unknown[]], V> extends MapLike<A[0], V> {
+  set(...args: A): this; // the factory's own signature; A[0] is the key
 }
 
 interface map.Keyed<K, V> extends MapLike<K, V> {
   set(key: K, value: V): this;
 }
 
-interface map.Create<A extends [unknown, ...unknown[]], V> extends MapLike<A[0], V> {
-  set(...args: A): this; // the factory's own signature; A[0] is the key
-}
-
-interface map.Pool<V, A extends unknown[] = []> extends SetLike<V> {
+interface map.Set<V, A extends unknown[] = []> {
+  readonly size: number;
   add(...args: A): V;
+  get(): ReadonlySet<State.Export<V>>;
+  get(value: V): V | undefined;
+  has(value: V): boolean;
+  delete(value: V): boolean;
+  clear(): void;
+  values(): SetIterator<V>;
+  values<R>(fn: (value: V) => R): Iterable<R>;
+  forEach(fn: (value: V, key: V, set: this) => void, thisArg?: unknown): void;
+  [Symbol.iterator](): SetIterator<V>;
 }
 ```
+
+At runtime there are two classes, exposed as `map.Create` (backing both keyed and create maps - a keyed map is a `map.Create` instance with the identity factory, and a native `Map` subclass) and `map.Set` (a native `Set` subclass). Adapters may extend their prototypes - this is the seam for rendering facades.
 
 ## Behavior
 
