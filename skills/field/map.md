@@ -14,7 +14,7 @@ The argument selects one of three modes, each with exactly one insertion verb:
 | --- | --- | --- | --- |
 | `map<K, V>()` / `map(entries)` | `map.Keyed<K, V>` | `set(key, value)` | your keys |
 | `map(StateClass)` / `map(() => V)` | `map.Pool<V, A>` | `add(...args)` | the value itself |
-| `map((key: K, ...rest: A) => V)` | `map.Create<K, A, V>` | `set(key, ...rest)` spawns | your keys |
+| `map((key: K, ...rest: A) => V)` | `map.Create<A, V>` | `set(key, ...rest)` spawns | your keys |
 
 `add` returns the value it spawned - the call site holds the reference, so the value is its own identity. `set` returns the map - the key is the only retrieval handle, so entries are keyed. A factory that *requires* its first parameter is keyed by it; a class or parameterless factory spawns anonymous members into a pool.
 
@@ -95,7 +95,7 @@ class Roster extends State {
 
 A pool of `Component` values renders directly - `<>{[...roster.players.values()]}</>` - each instance carrying its own identity.
 
-Note: a factory with an *optional* first parameter (`(key = 'x') => ...`) has arity 0 and is a pool. A keyed factory must require its key.
+Note: a factory with an *optional* first parameter (`(key = 'x') => ...`) has arity 0 and is a pool. A keyed factory must require its key; for a keyed slot with no meaningful key, type it `null` and call `set(null)`.
 
 ## Create
 
@@ -199,7 +199,7 @@ snapshot.get('a'); // exported product values
 function map<K, V>(entries?: Iterable<readonly [K, V]> | null): map.Keyed<K, V>;
 function map<T extends State>(Type: new (...args: State.Args<T>) => T): map.Pool<T, State.Args<T>>;
 function map<V>(make: () => V): map.Pool<V>;
-function map<K, A extends unknown[], V>(make: (key: K, ...args: A) => V): map.Create<K, A, V>;
+function map<A extends [unknown, ...unknown[]], V>(make: (...args: A) => V): map.Create<A, V>;
 
 interface map.Keyed<K, V> extends globalThis.Map<K, V> {
   get(): ReadonlyMap<K, State.Export<V>>;
@@ -209,9 +209,9 @@ interface map.Keyed<K, V> extends globalThis.Map<K, V> {
   values<R>(fn: (value: V, key: K) => R): Iterable<R>;
 }
 
-interface map.Create<K, A extends unknown[], V> {
-  set(key: K, ...args: A): this;
-  // otherwise Keyed-shaped: get/has/delete/clear/size/entries/keys/values/forEach/iteration
+interface map.Create<A extends [unknown, ...unknown[]], V> {
+  set(...args: A): this; // the factory's own signature; A[0] is the key
+  // otherwise Keyed-shaped over A[0]: get/has/delete/clear/size/entries/keys/values/forEach/iteration
 }
 
 interface map.Pool<V, A extends unknown[] = []> {

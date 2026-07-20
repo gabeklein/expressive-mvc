@@ -16,9 +16,9 @@ function hosted<T extends State>(
 
 function hosted<V>(make: () => V): map.Pool<V>;
 
-function hosted<K, A extends unknown[], V>(
-  make: (key: K, ...args: A) => V
-): map.Create<K, A, V>;
+function hosted<A extends [unknown, ...unknown[]], V>(
+  make: (...args: A) => V
+): map.Create<A, V>;
 
 function hosted(...args: any[]): any {
   class Host extends State {

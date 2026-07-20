@@ -23,22 +23,22 @@ declare namespace map {
     values<R>(fn: (value: V, key: K) => R): Iterable<R>;
   }
 
-  interface Create<K, A extends unknown[], V> {
+  interface Create<A extends [unknown, ...unknown[]], V> {
     readonly size: number;
-    set(key: K, ...args: A): this;
-    get(): ReadonlyMap<K, State.Export<V>>;
-    get(key: K): V | undefined;
-    has(key: K): boolean;
-    delete(key: K): boolean;
+    set(...args: A): this;
+    get(): ReadonlyMap<A[0], State.Export<V>>;
+    get(key: A[0]): V | undefined;
+    has(key: A[0]): boolean;
+    delete(key: A[0]): boolean;
     clear(): void;
-    entries(): MapIterator<[K, V]>;
-    entries<R>(fn: (entry: [K, V]) => R): Iterable<R>;
-    keys(): MapIterator<K>;
-    keys<R>(fn: (key: K) => R): Iterable<R>;
+    entries(): MapIterator<[A[0], V]>;
+    entries<R>(fn: (entry: [A[0], V]) => R): Iterable<R>;
+    keys(): MapIterator<A[0]>;
+    keys<R>(fn: (key: A[0]) => R): Iterable<R>;
     values(): MapIterator<V>;
-    values<R>(fn: (value: V, key: K) => R): Iterable<R>;
-    forEach(fn: (value: V, key: K, map: this) => void, thisArg?: unknown): void;
-    [Symbol.iterator](): MapIterator<[K, V]>;
+    values<R>(fn: (value: V, key: A[0]) => R): Iterable<R>;
+    forEach(fn: (value: V, key: A[0], map: this) => void, thisArg?: unknown): void;
+    [Symbol.iterator](): MapIterator<[A[0], V]>;
   }
 
   interface Pool<V, A extends unknown[] = []> {
@@ -64,9 +64,9 @@ function map<T extends State>(
 
 function map<V>(make: () => V): map.Pool<V>;
 
-function map<K, A extends unknown[], V>(
-  make: (key: K, ...args: A) => V
-): map.Create<K, A, V>;
+function map<A extends [unknown, ...unknown[]], V>(
+  make: (...args: A) => V
+): map.Create<A, V>;
 
 function map(
   arg?: Iterable<readonly [unknown, unknown]> | Function | null

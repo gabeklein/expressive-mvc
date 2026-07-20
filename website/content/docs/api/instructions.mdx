@@ -400,7 +400,7 @@ class Catalog extends State {
 
 `map()` is a proper instruction: the field resolves when the hosting state activates, which adopts the map in the same step. It is not usable standalone.
 
-The argument selects one of three modes, each with a single insertion verb. With no argument or an iterable of entries, it is a plain keyed map (`map.Keyed<K, V>`, extending native `Map`) - you name and insert everything via `set(key, value)`. With a `State` class or parameterless factory, it is a pool (`map.Pool<V, A>`): `add(...args)` spawns through the factory - class pools forward arguments to the constructor exactly as `Type.new()` accepts them, so a `Component` may receive `{ key }` before its `new()` hook runs - and returns the value, which is its own identity for `has`, `delete`, and iteration. With a factory that *requires* its first parameter, it is a keyed spawning map (`map.Create<K, A, V>`): `set(key, ...rest)` invokes the factory with those arguments and stores the result at `key`, replacing (and destroying, if owned) any previous value; there is no `add`.
+The argument selects one of three modes, each with a single insertion verb. With no argument or an iterable of entries, it is a plain keyed map (`map.Keyed<K, V>`, extending native `Map`) - you name and insert everything via `set(key, value)`. With a `State` class or parameterless factory, it is a pool (`map.Pool<V, A>`): `add(...args)` spawns through the factory - class pools forward arguments to the constructor exactly as `Type.new()` accepts them, so a `Component` may receive `{ key }` before its `new()` hook runs - and returns the value, which is its own identity for `has`, `delete`, and iteration. With a factory that *requires* its first parameter, it is a keyed spawning map (`map.Create<A, V>`): `set(key, ...rest)` invokes the factory with those arguments and stores the result at `key`, replacing (and destroying, if owned) any previous value; there is no `add`.
 
 Spawning maps own what the factory makes - spawned `State` values are destroyed when deleted, cleared, or replaced - while a value the factory merely passes through from its arguments stays a guest (`(key, value?) => value || new Item()` is the guest-admitting pattern). Every map is adopted by its hosting state when the instruction resolves: fresh members are parented to the owner, activate inside its context, and are destroyed with it - already-activated values keep guest status. The field is read-only, and a `State` value that dies evicts itself from the map. `keys(fn)`, `values(fn)`, and `entries(fn)` return reusable iterables of transformed results - a fresh pass over live entries per iteration, tracking like their plain forms; `throw false` in the callback skips an entry.
 
@@ -426,16 +426,16 @@ class Cart extends State {
 function map<K, V>(entries?: Iterable<readonly [K, V]> | null): map.Keyed<K, V>;
 function map<T extends State>(Type: new (...args: State.Args<T>) => T): map.Pool<T, State.Args<T>>;
 function map<V>(make: () => V): map.Pool<V>;
-function map<K, A extends unknown[], V>(make: (key: K, ...args: A) => V): map.Create<K, A, V>;
+function map<A extends [unknown, ...unknown[]], V>(make: (...args: A) => V): map.Create<A, V>;
 
 interface map.Keyed<K, V> extends globalThis.Map<K, V> {
   get(): ReadonlyMap<K, State.Export<V>>;
   get(key: K): V | undefined;
 }
 
-interface map.Create<K, A extends unknown[], V> {
-  set(key: K, ...args: A): this;
-  // otherwise Keyed-shaped: get/has/delete/clear/size/entries/keys/values/forEach/iteration
+interface map.Create<A extends [unknown, ...unknown[]], V> {
+  set(...args: A): this; // the factory's own signature; A[0] is the key
+  // otherwise Keyed-shaped over A[0]: get/has/delete/clear/size/entries/keys/values/forEach/iteration
 }
 
 interface map.Pool<V, A extends unknown[] = []> {
