@@ -201,29 +201,42 @@ function map<T extends State>(Type: new (...args: State.Args<T>) => T): map.Pool
 function map<V>(make: () => V): map.Pool<V>;
 function map<A extends [unknown, ...unknown[]], V>(make: (...args: A) => V): map.Create<A, V>;
 
-interface map.Keyed<K, V> extends globalThis.Map<K, V> {
+// key-addressed reads, removal, entry iteration, transforms; no insertion verb
+interface MapLike<K, V> {
+  readonly size: number;
   get(): ReadonlyMap<K, State.Export<V>>;
   get(key: K): V | undefined;
+  has(key: K): boolean;
+  delete(key: K): boolean;
+  clear(): void;
   entries<R>(fn: (entry: [K, V]) => R): Iterable<R>;
   keys<R>(fn: (key: K) => R): Iterable<R>;
   values<R>(fn: (value: V, key: K) => R): Iterable<R>;
+  // plus plain entries/keys/values/forEach/[Symbol.iterator]
 }
 
-interface map.Create<A extends [unknown, ...unknown[]], V> {
-  set(...args: A): this; // the factory's own signature; A[0] is the key
-  // otherwise Keyed-shaped over A[0]: get/has/delete/clear/size/entries/keys/values/forEach/iteration
-}
-
-interface map.Pool<V, A extends unknown[] = []> {
-  add(...args: A): V;
+// value-identity reads, removal, value iteration; no insertion verb
+interface SetLike<V> {
+  readonly size: number;
   get(): ReadonlySet<State.Export<V>>;
   has(value: V): boolean;
   delete(value: V): boolean;
   clear(): void;
-  readonly size: number;
   values(): MapIterator<V>;
   values<R>(fn: (value: V) => R): Iterable<R>;
   [Symbol.iterator](): MapIterator<V>;
+}
+
+interface map.Keyed<K, V> extends MapLike<K, V> {
+  set(key: K, value: V): this;
+}
+
+interface map.Create<A extends [unknown, ...unknown[]], V> extends MapLike<A[0], V> {
+  set(...args: A): this; // the factory's own signature; A[0] is the key
+}
+
+interface map.Pool<V, A extends unknown[] = []> extends SetLike<V> {
+  add(...args: A): V;
 }
 ```
 

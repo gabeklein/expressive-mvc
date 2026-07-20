@@ -11,46 +11,46 @@ const POOL = new WeakSet<object>();
 const OWNER = new WeakMap<object, State>();
 const OWNED = new WeakMap<object, Map<unknown, () => void>>();
 
+interface MapLike<K, V> {
+  readonly size: number;
+  get(): ReadonlyMap<K, State.Export<V>>;
+  get(key: K): V | undefined;
+  has(key: K): boolean;
+  delete(key: K): boolean;
+  clear(): void;
+  entries(): MapIterator<[K, V]>;
+  entries<R>(fn: (entry: [K, V]) => R): Iterable<R>;
+  keys(): MapIterator<K>;
+  keys<R>(fn: (key: K) => R): Iterable<R>;
+  values(): MapIterator<V>;
+  values<R>(fn: (value: V, key: K) => R): Iterable<R>;
+  forEach(fn: (value: V, key: K, map: this) => void, thisArg?: unknown): void;
+  [Symbol.iterator](): MapIterator<[K, V]>;
+}
+
+interface SetLike<V> {
+  readonly size: number;
+  get(): ReadonlySet<State.Export<V>>;
+  has(value: V): boolean;
+  delete(value: V): boolean;
+  clear(): void;
+  values(): MapIterator<V>;
+  values<R>(fn: (value: V) => R): Iterable<R>;
+  [Symbol.iterator](): MapIterator<V>;
+}
+
 declare namespace map {
-  interface Keyed<K, V> extends globalThis.Map<K, V> {
-    get(): ReadonlyMap<K, State.Export<V>>;
-    get(key: K): V | undefined;
-    entries(): MapIterator<[K, V]>;
-    entries<R>(fn: (entry: [K, V]) => R): Iterable<R>;
-    keys(): MapIterator<K>;
-    keys<R>(fn: (key: K) => R): Iterable<R>;
-    values(): MapIterator<V>;
-    values<R>(fn: (value: V, key: K) => R): Iterable<R>;
+  interface Keyed<K, V> extends MapLike<K, V> {
+    set(key: K, value: V): this;
   }
 
-  interface Create<A extends [unknown, ...unknown[]], V> {
-    readonly size: number;
+  interface Create<A extends [unknown, ...unknown[]], V>
+    extends MapLike<A[0], V> {
     set(...args: A): this;
-    get(): ReadonlyMap<A[0], State.Export<V>>;
-    get(key: A[0]): V | undefined;
-    has(key: A[0]): boolean;
-    delete(key: A[0]): boolean;
-    clear(): void;
-    entries(): MapIterator<[A[0], V]>;
-    entries<R>(fn: (entry: [A[0], V]) => R): Iterable<R>;
-    keys(): MapIterator<A[0]>;
-    keys<R>(fn: (key: A[0]) => R): Iterable<R>;
-    values(): MapIterator<V>;
-    values<R>(fn: (value: V, key: A[0]) => R): Iterable<R>;
-    forEach(fn: (value: V, key: A[0], map: this) => void, thisArg?: unknown): void;
-    [Symbol.iterator](): MapIterator<[A[0], V]>;
   }
 
-  interface Pool<V, A extends unknown[] = []> {
-    readonly size: number;
+  interface Pool<V, A extends unknown[] = []> extends SetLike<V> {
     add(...args: A): V;
-    get(): ReadonlySet<State.Export<V>>;
-    has(value: V): boolean;
-    delete(value: V): boolean;
-    clear(): void;
-    values(): MapIterator<V>;
-    values<R>(fn: (value: V) => R): Iterable<R>;
-    [Symbol.iterator](): MapIterator<V>;
   }
 }
 
@@ -226,7 +226,7 @@ class ReactiveMap<K, V> extends Map<K, V> implements map.Keyed<K, V> {
   }
 
   forEach(
-    callbackfn: (value: V, key: K, map: Map<K, V>) => void,
+    callbackfn: (value: V, key: K, map: this) => void,
     thisArg?: unknown
   ) {
     for (const [key, value] of this.entries())
