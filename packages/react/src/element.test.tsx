@@ -175,7 +175,7 @@ describe('instance element', () => {
     }
 
     const store = Store.new({});
-    const first = store.items.add('a');
+    const first = store.items.add({ key: 'a' });
     const element = render(<>{store}</>);
 
     expect(first.key).toBe('a');
@@ -188,13 +188,13 @@ describe('instance element', () => {
     expect(element.container.textContent).toBe('a=apple;');
 
     await act(async () => {
-      store.items.add('b').label = 'berry';
+      store.items.add({ key: 'b' }).label = 'berry';
     });
 
     expect(element.container.textContent).toBe('a=apple;b=berry;');
 
     await act(async () => {
-      store.items.delete('a');
+      store.items.delete(first);
     });
 
     expect(element.container.textContent).toBe('b=berry;');
@@ -237,7 +237,7 @@ describe('instance element', () => {
     );
 
     await act(async () => {
-      item = store.items.add('a');
+      item = store.items.add({ key: 'a' });
     });
 
     expect(item.theme.color).toBe('red');

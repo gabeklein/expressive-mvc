@@ -6,9 +6,19 @@ import State, { map, watch } from '@expressive/mvc';
 
 Creates a reactive `Map`. Reads register subscriptions in active `watch()` / `State.get()` effects, and writes notify only the changed key plus collection shape when entries are added or removed.
 
-`map()` is a field instruction like `set()`, `get()`, `ref()`, and `def()`: it resolves into a `map.Keyed` during activation of the hosting state, which adopts the map in the same step. It is not usable standalone - the map only exists once a State field resolves it.
+`map()` is a field instruction like `set()`, `get()`, `ref()`, and `def()`: it resolves during activation of the hosting state, which adopts the map in the same step. It is not usable standalone - the map only exists once a State field resolves it.
 
-## Usage
+The argument selects one of three modes, each with exactly one insertion verb:
+
+| call | interface | insert | identity |
+| --- | --- | --- | --- |
+| `map<K, V>()` / `map(entries)` | `map.Keyed<K, V>` | `set(key, value)` | your keys |
+| `map(StateClass)` / `map(() => V)` | `map.Pool<V, A>` | `add(...args)` | the value itself |
+| `map((key: K, ...rest: A) => V)` | `map.Create<K, A, V>` | `set(key, ...rest)` spawns | your keys |
+
+`add` returns the value it spawned - the call site holds the reference, so the value is its own identity. `set` returns the map - the key is the only retrieval handle, so entries are keyed. A factory that *requires* its first parameter is keyed by it; a class or parameterless factory spawns anonymous members into a pool.
+
+## Keyed
 
 ```ts
 class Store extends State {
@@ -28,8 +38,6 @@ store.get(($) => {
 store.products.set('sku_123', product); // reruns the effect
 store.products.set('sku_456', product); // does not rerun an effect that only read sku_123
 ```
-
-## Iteration
 
 Iteration is reactive. `size`, `keys()`, `values()`, `entries()`, `forEach()`, and `for...of` subscribe to collection shape. Value iteration also subscribes to each value it reads.
 
@@ -51,39 +59,21 @@ products.set('b', { name: 'Shoes' }); // reruns the effect
 products.set('c', { name: 'Bag' }); // reruns because shape changed
 ```
 
-## Factory
+## Pool
 
-Pass a function to create a spawning map. Factory maps are keyed by string. `add(input?)` always passes `input` to the factory; `input` is also the key when it is a string. Any other input is factory-only - the key then derives from the value: a `State` supplies its `key` when it has one (a `Component`'s identity), otherwise `String(value)`. `add` never replaces: an occupied key throws. `set(key)` with no value respawns through the factory, replacing the previous value (destroying it if owned).
-
-```ts
-class Cart extends State {
-  items = map((id: string) => new Line(id));
-}
-
-const cart = Cart.new();
-
-const line = cart.items.add('sku_123'); // spawns Line
-line.qty = 2;                           // per-item updates live on the value
-
-cart.items.add('sku_123');              // throws - key occupied
-cart.items.set('sku_123');              // respawns, destroying previous Line
-```
-
-Calling `add()` with no key lets the value key itself: a `Component` supplies its `key` (including overrides), any other value falls back to `String(value)` - for a `State`, its natural id.
+A `State` class or parameterless factory makes a pool: an owned collection of anonymous values. `add(...args)` spawns through it and returns the value - which is also its identity, so `has`, `delete`, and eviction all take the value itself. Pools have no keys: no `set`, `get(key)`, `entries`, or `keys`; iteration yields values directly.
 
 ```ts
 class Field extends State {
   sparks = map(() => new Spark());
 
   ignite() {
-    return this.sparks.add(); // keyed by the spark's own identity
+    return this.sparks.add();
   }
 }
 ```
 
-String keys carry identity - the occupied-key throw guards real duplication. Object inputs carry none (two objects with the same contents are distinct), so they never become keys; each such `add` creates a fresh, identity-keyed entry. Derived keys must still be unique: plain values sharing a generic `String()` form (like `[object Object]`) collide on the second derive - give such values a `toString` or supply string keys. A spawned `State` orphaned by a derived-key collision is destroyed before the throw.
-
-A `State` class may stand in for the factory. `add(input?)` instantiates it, forwarding `input` to the constructor. An object input is applied by the base constructor as an assign - fields merge natively - with the instance keyed by its own identity. A string input keys the entry and arrives as `{ key: input }`: a `Component` adopts it as its identity `key` before the `new()` lifecycle hook runs (so `new()` may load from it); a class with no `key` surface simply ignores it. The map key, the instance's `key`, and its identity when rendered are then the same string. Declaring `key` as anything but a string makes string input a type error.
+With a class, `add` forwards its arguments to the constructor - assign objects and init callbacks alike, exactly as `Type.new()` accepts them. A `Component` may receive its identity `key` this way, before the `new()` lifecycle hook runs:
 
 ```ts
 class Player extends Component {
@@ -98,33 +88,60 @@ class Roster extends State {
   players = map(Player);
 
   join(id: string) {
-    return this.players.add(id); // new Player, key assigned, stats loading
+    return this.players.add({ key: id }); // new Player, stats loading
   }
 }
 ```
 
-## Ownership
+A pool of `Component` values renders directly - `<>{[...roster.players.values()]}</>` - each instance carrying its own identity.
 
-A factory map owns what it spawns. When a spawned `State` value is deleted, cleared, or replaced via `set`, the map destroys it. Activated values supplied directly through `set(key, value)` are guests - removal never destroys them. Non-State spawned values are simply dropped.
+Note: a factory with an *optional* first parameter (`(key = 'x') => ...`) has arity 0 and is a pool. A keyed factory must require its key.
+
+## Create
+
+A factory that requires its first parameter makes a keyed spawning map. `set(key, ...rest)` invokes the factory with exactly those arguments and stores the result at `key`; setting an occupied key replaces (destroying the previous value if owned). There is no `add`, and no direct insertion - every entry passes through the factory.
+
+```ts
+class Cart extends State {
+  items = map((id: string) => new Line(id));
+}
+
+const cart = Cart.new();
+
+cart.items.set('sku_123');            // spawns Line at that key
+cart.items.get('sku_123')!.qty = 2;   // per-item updates live on the value
+
+cart.items.set('sku_123');            // respawns, destroying previous Line
+```
+
+Extra `set` arguments flow through after the key:
+
+```ts
+class Board extends State {
+  cells = map((at: string, color: string) => new Cell(at, color));
+}
+
+board.cells.set('a1', 'black');
+```
+
+Guest entries are the factory's decision, not the map's: a factory that passes a supplied value through keeps it a guest.
 
 ```ts
 class Basket extends State {
-  items = map((id: string) => new Item());
+  items = map((id: string, item?: Item) => item || new Item());
 }
 
-const { items } = Basket.new();
-
-const item = items.add('a');
-items.delete('a');       // item destroyed
-
-const guest = Item.new();
-items.set('b', guest);
-items.delete('b');       // guest untouched
+basket.items.set('a');           // spawned - owned
+basket.items.set('b', existing); // passed through - guest
 ```
+
+## Ownership
+
+Spawning maps own what they spawn: when a spawned `State` value is deleted, cleared, or replaced, the map destroys it. This includes activated values the factory *made* (`() => Item.new()`); a value the factory merely passed through from its arguments is not spawned. In a plain keyed map, ownership follows freshness - a never-activated value stored via `set` is adopted and owned, while an already-activated one is a guest and never destroyed. Non-State spawned values are simply dropped.
 
 Every map is adopted by its hosting state when that state activates - the field instruction resolves and adopts in one step, so a usable map always has an owner. The field itself is read-only; assigning over it throws. Fresh (never-activated) `State` values landing in the map - spawned, stored via `set`, or already present at activation - are parented to the owner and activate inside its context: `get(Owner)` resolves directly and providers above the owner resolve from members. Owned members are destroyed with the owner. An already-activated value cannot be adopted - its parent is settled - so it keeps guest status.
 
-Death also flows the other way: a `State` value that dies evicts itself from every key it occupies - owned or guest - so a map never serves destroyed entries. Destroying a member (`member.set(null)`) is therefore a complete removal gesture on its own.
+Death also flows the other way: a `State` value that dies evicts itself from the map - owned or guest, keyed or pooled - so a map never serves destroyed entries. Destroying a member (`member.set(null)`) is therefore a complete removal gesture on its own.
 
 ```ts
 class Member extends State {
@@ -136,12 +153,12 @@ class Owner extends State {
 }
 
 const owner = Owner.new();
-const member = owner.members.add('a'); // member.owner === owner
+const member = owner.members.add(); // member.owner === owner
 
-owner.set(null);                       // member destroyed with owner
+owner.set(null);                    // member destroyed with owner
 ```
 
-Keys compare like native `Map` (SameValueZero). Prefer primitive ids or stable object references as factory inputs - a fresh object literal is a new key every time.
+Keys compare like native `Map` (SameValueZero). Any key type is supported, including objects and `undefined`.
 
 ## Transforms
 
@@ -149,7 +166,7 @@ Keys compare like native `Map` (SameValueZero). Prefer primitive ids or stable o
 
 ```ts
 class Cart extends State {
-  items = map(Line);
+  items = map((id: string) => new Line(id));
 
   get subtotals() {
     return [...this.items.values((line) => line.price * line.qty)];
@@ -164,7 +181,7 @@ const rows = cart.items.values((line, id) => `${id}: ${line.qty}`);
 
 ## Snapshots
 
-Calling `get()` with no key returns a shallow snapshot `ReadonlyMap`. Nested values with a `.get()` method are exported through that method, matching State snapshots.
+Calling `get()` with no key returns a shallow snapshot - a `ReadonlyMap` for keyed maps, a `ReadonlySet` for pools. Nested values with a `.get()` method are exported through that method, matching State snapshots.
 
 ```ts
 class Store extends State {
@@ -180,8 +197,9 @@ snapshot.get('a'); // exported product values
 
 ```ts
 function map<K, V>(entries?: Iterable<readonly [K, V]> | null): map.Keyed<K, V>;
-function map<T extends State>(Type: new (...args: any[]) => T): map.Create<T, map.Key<T> | State.Assign<T>>;
-function map<V, I = string>(make: (input: I) => V, entries?: Iterable<readonly [string, V]> | null): map.Create<V, I>;
+function map<T extends State>(Type: new (...args: State.Args<T>) => T): map.Pool<T, State.Args<T>>;
+function map<V>(make: () => V): map.Pool<V>;
+function map<K, A extends unknown[], V>(make: (key: K, ...args: A) => V): map.Create<K, A, V>;
 
 interface map.Keyed<K, V> extends globalThis.Map<K, V> {
   get(): ReadonlyMap<K, State.Export<V>>;
@@ -191,28 +209,34 @@ interface map.Keyed<K, V> extends globalThis.Map<K, V> {
   values<R>(fn: (value: V, key: K) => R): Iterable<R>;
 }
 
-// string when T declares no key, or a key assignable from string; never otherwise
-type map.Key<T> = ...;
+interface map.Create<K, A extends unknown[], V> {
+  set(key: K, ...args: A): this;
+  // otherwise Keyed-shaped: get/has/delete/clear/size/entries/keys/values/forEach/iteration
+}
 
-interface map.Create<V, I = string> extends map.Keyed<string, V> {
-  add(input?: I): V;
-  set(key: string & I): this;
-  set(key: string, value: V): this;
+interface map.Pool<V, A extends unknown[] = []> {
+  add(...args: A): V;
+  get(): ReadonlySet<State.Export<V>>;
+  has(value: V): boolean;
+  delete(value: V): boolean;
+  clear(): void;
+  readonly size: number;
+  values(): MapIterator<V>;
+  values<R>(fn: (value: V) => R): Iterable<R>;
+  [Symbol.iterator](): MapIterator<V>;
 }
 ```
 
 ## Behavior
 
 - Any native `Map` key type is supported, including object and `undefined` keys.
-- `get(key)` and `has(key)` track that key only.
-- `set(key, value)` notifies the key; adding a new key also notifies collection shape.
+- `get(key)` and `has(key)` track that key only; in a pool, `has(value)` tracks that value.
+- Insertion notifies the key; a new key also notifies collection shape.
 - Setting an existing key to the same value does not notify.
 - `delete(key)` and `clear()` notify removed keys and collection shape.
 - `keys()` tracks shape only; changing an existing value does not notify key iteration.
 - `values()`, `entries()`, `forEach()`, and `for...of` track shape and each visited value.
 - `keys(fn)`, `values(fn)`, and `entries(fn)` return reusable iterables of transformed results - fresh pass per iteration, same tracking as their plain forms. `throw false` in the callback skips the entry.
-- `add` fires the same events as `set`.
-- `add(input)` keys on `input` only when it is a string; otherwise the key derives from the value.
-- `add` throws when the map was created without a factory, or when the key (given or derived) is already occupied.
-- `set(key)` with no value respawns through the factory; it throws on a map without one. Typed `string & I`, so it is only callable when the factory accepts a string.
+- `add` fires the same events as `set` and exists only on pools; calling it elsewhere throws, as does `set` on a pool.
+- Mode selection is by argument: iterable/none is keyed, class or arity-0 function is a pool, a function requiring its first parameter is a keyed spawner.
 - Reactivity is shallow. Nested State, `hot()`, and `map()` values keep their own reactivity when accessed through the map.

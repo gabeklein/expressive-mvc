@@ -7,6 +7,7 @@ const SHAPE = Symbol('shape');
 const SIZE = Object.getOwnPropertyDescriptor(Map.prototype, 'size')!.get!;
 
 const MAKE = new WeakMap<object, Function>();
+const POOL = new WeakSet<object>();
 const OWNER = new WeakMap<object, State>();
 const OWNED = new WeakMap<object, Map<unknown, () => void>>();
 
@@ -22,16 +23,34 @@ declare namespace map {
     values<R>(fn: (value: V, key: K) => R): Iterable<R>;
   }
 
-  type Key<T> = T extends { key: infer K }
-    ? K extends string | undefined
-      ? string
-      : never
-    : string;
+  interface Create<K, A extends unknown[], V> {
+    readonly size: number;
+    set(key: K, ...args: A): this;
+    get(): ReadonlyMap<K, State.Export<V>>;
+    get(key: K): V | undefined;
+    has(key: K): boolean;
+    delete(key: K): boolean;
+    clear(): void;
+    entries(): MapIterator<[K, V]>;
+    entries<R>(fn: (entry: [K, V]) => R): Iterable<R>;
+    keys(): MapIterator<K>;
+    keys<R>(fn: (key: K) => R): Iterable<R>;
+    values(): MapIterator<V>;
+    values<R>(fn: (value: V, key: K) => R): Iterable<R>;
+    forEach(fn: (value: V, key: K, map: this) => void, thisArg?: unknown): void;
+    [Symbol.iterator](): MapIterator<[K, V]>;
+  }
 
-  interface Create<V, I = string> extends Keyed<string, V> {
-    add(input?: I): V;
-    set(key: string & I): this;
-    set(key: string, value: V): this;
+  interface Pool<V, A extends unknown[] = []> {
+    readonly size: number;
+    add(...args: A): V;
+    get(): ReadonlySet<State.Export<V>>;
+    has(value: V): boolean;
+    delete(value: V): boolean;
+    clear(): void;
+    values(): MapIterator<V>;
+    values<R>(fn: (value: V) => R): Iterable<R>;
+    [Symbol.iterator](): MapIterator<V>;
   }
 }
 
@@ -40,35 +59,30 @@ function map<K, V>(
 ): map.Keyed<K, V>;
 
 function map<T extends State>(
-  Type: new (...args: any[]) => T
-): map.Create<T, map.Key<T> | State.Assign<T>>;
+  Type: new (...args: State.Args<T>) => T
+): map.Pool<T, State.Args<T>>;
 
-function map<V, I = string>(
-  make: (input: I) => V,
-  entries?: Iterable<readonly [string, V]> | null
-): map.Create<V, I>;
+function map<V>(make: () => V): map.Pool<V>;
 
-function map<K, V>(
-  arg?: Iterable<readonly [K, V]> | Function | null,
-  entries?: Iterable<readonly [K, V]> | null
-): map.Keyed<K, V> {
+function map<K, A extends unknown[], V>(
+  make: (key: K, ...args: A) => V
+): map.Create<K, A, V>;
+
+function map(
+  arg?: Iterable<readonly [unknown, unknown]> | Function | null
+): unknown {
   return def((_key, subject) => ({
     set: false,
-    value: typeof arg == 'function'
-      ? new ReactiveMap<K, V>(subject, entries, arg)
-      : new ReactiveMap<K, V>(subject, arg)
+    value: new ReactiveMap(subject, arg)
   }));
 }
 
 class ReactiveMap<K, V> extends Map<K, V> implements map.Keyed<K, V> {
   constructor(
     owner: State,
-    entries?: Iterable<readonly [K, V]> | null,
-    make?: Function
+    arg?: Iterable<readonly [K, V]> | Function | null
   ) {
     super();
-
-    if (make) MAKE.set(this, make);
 
     OWNER.set(this, owner);
     OWNED.set(this, new Map());
@@ -77,7 +91,13 @@ class ReactiveMap<K, V> extends Map<K, V> implements map.Keyed<K, V> {
 
     event(this);
 
-    if (entries) for (const [key, value] of entries) store(this, key, value);
+    if (typeof arg == 'function') {
+      MAKE.set(this, arg);
+
+      if (State.is(arg) || !arg.length) POOL.add(this);
+    }
+    else if (arg)
+      for (const [key, value] of arg) store(this, key, value);
   }
 
   get size(): number {
@@ -86,16 +106,18 @@ class ReactiveMap<K, V> extends Map<K, V> implements map.Keyed<K, V> {
 
   get(): ReadonlyMap<K, State.Export<V>>;
   get(key: K): V | undefined;
-  get(key?: K): V | undefined | ReadonlyMap<K, State.Export<V>> {
+  get(key?: K): unknown {
     const target = source(this);
 
     if (!arguments.length)
-      return new Map(
-        Array.from(super.entries.call(target), ([key, value]) => [
-          key,
-          exportValue(value)
-        ])
-      );
+      return POOL.has(target)
+        ? new Set(Array.from(super.values.call(target), exportValue))
+        : new Map(
+            Array.from(super.entries.call(target), ([key, value]) => [
+              key,
+              exportValue(value)
+            ])
+          );
 
     return touch(this, key, super.get.call(target, key as K));
   }
@@ -104,49 +126,33 @@ class ReactiveMap<K, V> extends Map<K, V> implements map.Keyed<K, V> {
     return touch(this, key, super.has.call(source(this), key));
   }
 
-  add(input?: unknown): V {
+  add(...args: unknown[]): V {
     const target = source(this);
     const make = MAKE.get(target);
 
-    if (!make)
-      throw new Error('add() requires a map created with a factory.');
+    if (!make || !POOL.has(target))
+      throw new Error('add() requires a pool.');
 
-    const keyed = typeof input == 'string';
+    const value = (
+      State.is(make)
+        ? new (make as State.Type)(...(args as State.Args))
+        : make()
+    ) as V;
 
-    if (keyed && super.has.call(target, input as K))
-      throw new Error('Key is already occupied; use set() to replace.');
-
-    const value = spawn(make, input) as V;
-    const id = value instanceof State ? (value as any).key : undefined;
-    const key = keyed ? input : String(id != null ? id : value);
-
-    if (!keyed && super.has.call(target, key as K)) {
-      if (value instanceof State && parent(value) !== undefined)
-        value.set(null);
-
-      throw new Error('Key is already occupied; use set() to replace.');
-    }
-
-    store(target, key as K, value, true);
+    store(target, value as unknown as K, value, true);
     return value;
   }
 
-  set(key: K): this;
-  set(key: K, value: V): this;
-  set(key: K, value?: V) {
+  set(key: K, ...rest: unknown[]): this {
     const target = source(this);
 
-    if (arguments.length === 1) {
-      const make = MAKE.get(target);
+    if (POOL.has(target))
+      throw new Error('set() is not valid on a pool.');
 
-      if (!make)
-        throw new Error('set(key) alone requires a factory.');
+    const make = MAKE.get(target);
+    const value = (make ? make(key, ...rest) : rest[0]) as V;
 
-      store(target, key, spawn(make, key) as V, true);
-      return this;
-    }
-
-    store(target, key, value as V);
+    store(target, key, value, !!make && !rest.includes(value));
     return this;
   }
 
@@ -223,19 +229,15 @@ class ReactiveMap<K, V> extends Map<K, V> implements map.Keyed<K, V> {
     callbackfn: (value: V, key: K, map: Map<K, V>) => void,
     thisArg?: unknown
   ) {
-    for (const [key, value] of this)
+    for (const [key, value] of this.entries())
       callbackfn.call(thisArg, value, key, this);
   }
 
-  [Symbol.iterator]() {
-    return this.entries();
+  [Symbol.iterator](): MapIterator<[K, V]> {
+    return (
+      POOL.has(source(this)) ? this.values() : this.entries()
+    ) as MapIterator<[K, V]>;
   }
-}
-
-function spawn(make: Function, input: unknown) {
-  return State.is(make)
-    ? new (make as State.Type)(typeof input === 'string' ? { key: input } : input as {})
-    : make(input);
 }
 
 function transform<T, R>(
