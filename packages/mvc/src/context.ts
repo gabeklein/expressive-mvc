@@ -204,7 +204,7 @@ class Context {
         cleanup.set(K, () => {
           if (dispose) dispose();
           remove();
-          if (state !== V) event(state, null);
+          if (State.is(V)) event(state, null);
         });
       });
     }
