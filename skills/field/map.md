@@ -6,7 +6,7 @@ import State, { map, watch } from '@expressive/mvc';
 
 Creates a reactive `Map`. Reads register subscriptions in active `watch()` / `State.get()` effects, and writes notify only the changed key plus collection shape when entries are added or removed.
 
-`map()` is a field instruction like `set()`, `get()`, `ref()`, and `def()`: it resolves into a `State.Map` during activation of the hosting state, which adopts the map in the same step. It is not usable standalone - the map only exists once a State field resolves it.
+`map()` is a field instruction like `set()`, `get()`, `ref()`, and `def()`: it resolves into a `map.Keyed` during activation of the hosting state, which adopts the map in the same step. It is not usable standalone - the map only exists once a State field resolves it.
 
 ## Usage
 
@@ -179,11 +179,11 @@ snapshot.get('a'); // exported product values
 ## Type Signature
 
 ```ts
-function map<K, V>(entries?: Iterable<readonly [K, V]> | null): State.Map<K, V>;
-function map<T extends State>(Type: new (...args: any[]) => T): State.Map.Factory<T, State.Map.Key<T> | State.Assign<T>>;
-function map<V, I = string>(make: (input: I) => V, entries?: Iterable<readonly [string, V]> | null): State.Map.Factory<V, I>;
+function map<K, V>(entries?: Iterable<readonly [K, V]> | null): map.Keyed<K, V>;
+function map<T extends State>(Type: new (...args: any[]) => T): map.Create<T, map.Key<T> | State.Assign<T>>;
+function map<V, I = string>(make: (input: I) => V, entries?: Iterable<readonly [string, V]> | null): map.Create<V, I>;
 
-interface State.Map<K, V> extends globalThis.Map<K, V> {
+interface map.Keyed<K, V> extends globalThis.Map<K, V> {
   get(): ReadonlyMap<K, State.Export<V>>;
   get(key: K): V | undefined;
   entries<R>(fn: (entry: [K, V]) => R): Iterable<R>;
@@ -192,9 +192,9 @@ interface State.Map<K, V> extends globalThis.Map<K, V> {
 }
 
 // string when T declares no key, or a key assignable from string; never otherwise
-type State.Map.Key<T> = ...;
+type map.Key<T> = ...;
 
-interface State.Map.Factory<V, I = string> extends State.Map<string, V> {
+interface map.Create<V, I = string> extends map.Keyed<string, V> {
   add(input?: I): V;
   set(key: string & I): this;
   set(key: string, value: V): this;

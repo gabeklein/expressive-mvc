@@ -8,14 +8,17 @@ import { map } from './map';
 
 function hosted<K, V>(
   entries?: Iterable<readonly [K, V]> | null
-): State.Map<K, V>;
+): map.Keyed<K, V>;
+
 function hosted<T extends State>(
   Type: new (...args: any[]) => T
-): State.Map.Factory<T, State.Map.Key<T> | State.Assign<T>>;
+): map.Create<T, map.Key<T> | State.Assign<T>>;
+
 function hosted<V, I = string>(
   make: (input: I) => V,
   entries?: Iterable<readonly [string, V]> | null
-): State.Map.Factory<V, I>;
+): map.Create<V, I>;
+
 function hosted(...args: any[]): any {
   class Host extends State {
     value = (map as any)(...args);

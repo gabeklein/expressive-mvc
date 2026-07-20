@@ -124,31 +124,6 @@ declare namespace State {
 
   type Setter<T> = (value: T, previous: T) => T | void;
 
-  interface Map<K, V> extends globalThis.Map<K, V> {
-    get(): ReadonlyMap<K, Export<V>>;
-    get(key: K): V | undefined;
-    entries(): MapIterator<[K, V]>;
-    entries<R>(fn: (entry: [K, V]) => R): Iterable<R>;
-    keys(): MapIterator<K>;
-    keys<R>(fn: (key: K) => R): Iterable<R>;
-    values(): MapIterator<V>;
-    values<R>(fn: (value: V, key: K) => R): Iterable<R>;
-  }
-
-  namespace Map {
-    type Key<T> = T extends { key: infer K }
-      ? K extends string | undefined
-        ? string
-        : never
-      : string;
-
-    interface Factory<V, I = string> extends State.Map<string, V> {
-      add(input?: I): V;
-      set(key: string & I): this;
-      set(key: string, value: V): this;
-    }
-  }
-
   /** Descriptor config for a managed property. */
   type Apply<T = any> = {
     value?: T;

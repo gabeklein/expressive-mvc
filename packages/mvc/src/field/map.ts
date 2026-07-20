@@ -10,23 +10,48 @@ const MAKE = new WeakMap<object, Function>();
 const OWNER = new WeakMap<object, State>();
 const OWNED = new WeakMap<object, Map<unknown, () => void>>();
 
+declare namespace map {
+  interface Keyed<K, V> extends globalThis.Map<K, V> {
+    get(): ReadonlyMap<K, State.Export<V>>;
+    get(key: K): V | undefined;
+    entries(): MapIterator<[K, V]>;
+    entries<R>(fn: (entry: [K, V]) => R): Iterable<R>;
+    keys(): MapIterator<K>;
+    keys<R>(fn: (key: K) => R): Iterable<R>;
+    values(): MapIterator<V>;
+    values<R>(fn: (value: V, key: K) => R): Iterable<R>;
+  }
+
+  type Key<T> = T extends { key: infer K }
+    ? K extends string | undefined
+      ? string
+      : never
+    : string;
+
+  interface Create<V, I = string> extends Keyed<string, V> {
+    add(input?: I): V;
+    set(key: string & I): this;
+    set(key: string, value: V): this;
+  }
+}
+
 function map<K, V>(
   entries?: Iterable<readonly [K, V]> | null
-): State.Map<K, V>;
+): map.Keyed<K, V>;
 
 function map<T extends State>(
   Type: new (...args: any[]) => T
-): State.Map.Factory<T, State.Map.Key<T> | State.Assign<T>>;
+): map.Create<T, map.Key<T> | State.Assign<T>>;
 
 function map<V, I = string>(
   make: (input: I) => V,
   entries?: Iterable<readonly [string, V]> | null
-): State.Map.Factory<V, I>;
+): map.Create<V, I>;
 
 function map<K, V>(
   arg?: Iterable<readonly [K, V]> | Function | null,
   entries?: Iterable<readonly [K, V]> | null
-): State.Map<K, V> {
+): map.Keyed<K, V> {
   return def((_key, subject) => ({
     set: false,
     value: typeof arg == 'function'
@@ -35,7 +60,7 @@ function map<K, V>(
   }));
 }
 
-class ReactiveMap<K, V> extends Map<K, V> implements State.Map<K, V> {
+class ReactiveMap<K, V> extends Map<K, V> implements map.Keyed<K, V> {
   constructor(
     owner: State,
     entries?: Iterable<readonly [K, V]> | null,
