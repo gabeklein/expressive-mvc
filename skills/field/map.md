@@ -201,8 +201,8 @@ function map<T extends State>(Type: new (...args: State.Args<T>) => T): map.Pool
 function map<V>(make: () => V): map.Pool<V>;
 function map<A extends [unknown, ...unknown[]], V>(make: (...args: A) => V): map.Create<A, V>;
 
-// consumer-facing contracts: reads, removal, iteration - no insertion verb
-interface map.MapLike<K, V> {
+// internal bases (not exported): reads, removal, iteration - no insertion verb
+interface MapLike<K, V> {
   readonly size: number;
   get(): ReadonlyMap<K, State.Export<V>>;
   get(key: K): V | undefined;
@@ -215,7 +215,7 @@ interface map.MapLike<K, V> {
   // plus plain entries/keys/values/forEach/[Symbol.iterator]
 }
 
-interface map.SetLike<V> {
+interface SetLike<V> {
   readonly size: number;
   get(): ReadonlySet<State.Export<V>>;
   has(value: V): boolean;
@@ -226,15 +226,15 @@ interface map.SetLike<V> {
   [Symbol.iterator](): MapIterator<V>;
 }
 
-interface map.Keyed<K, V> extends map.MapLike<K, V> {
+interface map.Keyed<K, V> extends MapLike<K, V> {
   set(key: K, value: V): this;
 }
 
-interface map.Create<A extends [unknown, ...unknown[]], V> extends map.MapLike<A[0], V> {
+interface map.Create<A extends [unknown, ...unknown[]], V> extends MapLike<A[0], V> {
   set(...args: A): this; // the factory's own signature; A[0] is the key
 }
 
-interface map.Pool<V, A extends unknown[] = []> extends map.SetLike<V> {
+interface map.Pool<V, A extends unknown[] = []> extends SetLike<V> {
   add(...args: A): V;
 }
 ```

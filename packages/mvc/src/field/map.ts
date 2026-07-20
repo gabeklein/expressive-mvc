@@ -11,35 +11,35 @@ const POOL = new WeakSet<object>();
 const OWNER = new WeakMap<object, State>();
 const OWNED = new WeakMap<object, Map<unknown, () => void>>();
 
+interface MapLike<K, V> {
+  readonly size: number;
+  get(): ReadonlyMap<K, State.Export<V>>;
+  get(key: K): V | undefined;
+  has(key: K): boolean;
+  delete(key: K): boolean;
+  clear(): void;
+  entries(): MapIterator<[K, V]>;
+  entries<R>(fn: (entry: [K, V]) => R): Iterable<R>;
+  keys(): MapIterator<K>;
+  keys<R>(fn: (key: K) => R): Iterable<R>;
+  values(): MapIterator<V>;
+  values<R>(fn: (value: V, key: K) => R): Iterable<R>;
+  forEach(fn: (value: V, key: K, map: this) => void, thisArg?: unknown): void;
+  [Symbol.iterator](): MapIterator<[K, V]>;
+}
+
+interface SetLike<V> {
+  readonly size: number;
+  get(): ReadonlySet<State.Export<V>>;
+  has(value: V): boolean;
+  delete(value: V): boolean;
+  clear(): void;
+  values(): MapIterator<V>;
+  values<R>(fn: (value: V) => R): Iterable<R>;
+  [Symbol.iterator](): MapIterator<V>;
+}
+
 declare namespace map {
-  interface MapLike<K, V> {
-    readonly size: number;
-    get(): ReadonlyMap<K, State.Export<V>>;
-    get(key: K): V | undefined;
-    has(key: K): boolean;
-    delete(key: K): boolean;
-    clear(): void;
-    entries(): MapIterator<[K, V]>;
-    entries<R>(fn: (entry: [K, V]) => R): Iterable<R>;
-    keys(): MapIterator<K>;
-    keys<R>(fn: (key: K) => R): Iterable<R>;
-    values(): MapIterator<V>;
-    values<R>(fn: (value: V, key: K) => R): Iterable<R>;
-    forEach(fn: (value: V, key: K, map: this) => void, thisArg?: unknown): void;
-    [Symbol.iterator](): MapIterator<[K, V]>;
-  }
-
-  interface SetLike<V> {
-    readonly size: number;
-    get(): ReadonlySet<State.Export<V>>;
-    has(value: V): boolean;
-    delete(value: V): boolean;
-    clear(): void;
-    values(): MapIterator<V>;
-    values<R>(fn: (value: V) => R): Iterable<R>;
-    [Symbol.iterator](): MapIterator<V>;
-  }
-
   interface Keyed<K, V> extends MapLike<K, V> {
     set(key: K, value: V): this;
   }
