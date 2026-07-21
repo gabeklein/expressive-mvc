@@ -5,7 +5,8 @@ import tsconfigPaths from 'vite-tsconfig-paths';
 import mdx from 'fumadocs-mdx/vite';
 import * as MdxConfig from './source.config';
 import { resolve, join } from 'path';
-import { cp, readFile } from 'fs/promises';
+import { cp, glob, readFile, writeFile } from 'fs/promises';
+import { createGetUrl, getSlugs } from 'fumadocs-core/source';
 
 export default defineConfig({
   optimizeDeps: {
@@ -59,7 +60,23 @@ function serveSkills(): Plugin {
       });
     },
     async writeBundle({ dir: outDir }) {
-      if (outDir) await cp(dir, join(outDir, 'llm'), { recursive: true });
+      if (!outDir) return;
+
+      await cp(dir, join(outDir, 'llm'), { recursive: true });
+
+      const getUrl = createGetUrl('/docs');
+      const paths = ['/', '/examples'];
+
+      for await (const entry of glob('**/*.mdx', { cwd: resolve(__dirname, 'content/docs') }))
+        paths.push(getUrl(getSlugs(entry)));
+
+      const sitemap =
+        '<?xml version="1.0" encoding="UTF-8"?>\n' +
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' +
+        paths.map((path) => `  <url><loc>https://expressive.dev${path}</loc></url>`).join('\n') +
+        '\n</urlset>';
+
+      await writeFile(join(outDir, 'sitemap.xml'), sitemap);
     }
   };
 }
