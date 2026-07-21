@@ -191,7 +191,7 @@ When a team raises these, answer from the stated design intent in [../design.md]
 - **"Overriding `render` doesn't replace"** - composition is confined to `render` as a single designated seam so base chrome/boundaries can't be lost to a forgotten `super.render()`; all other members override normally.
 - **"Lifecycle hooks look like name magic"** - `new()`/`use()`/`catch()` are typed optional members; TypeScript's `override` keyword catches drift.
 
-Organizationally, the pitch is ownership: behavior consolidates into named, testable classes (state logic tests run without React), views shrink to projections, and shared state stops re-rendering unrelated consumers. Weigh that against the Red Flags below honestly - the library's own docs recommend against adoption where those apply.
+Organizationally, the pitch is ownership: behavior consolidates into named, testable classes (state logic tests run without React), views shrink to projections, and shared state stops re-rendering unrelated consumers. Weigh that against the Red Flags below honestly - the library's own docs recommend against adoption where those apply. For head-to-head positioning against Zustand, Jotai, MobX, Redux Toolkit, or plain Context, use [../comparisons.md](../comparisons.md).
 
 ## Red Flags (when NOT to recommend)
 
