@@ -1,11 +1,16 @@
 {
   "name": "@expressive/react",
   "version": "0.81.0",
-  "description": "Use classes to define state in React!",
+  "description": "Class-based reactive state for React. Define models as plain classes; components update when the values they read change.",
   "keywords": [
     "expressive",
+    "mvc",
     "react",
-    "state"
+    "state",
+    "state-management",
+    "reactive",
+    "observable",
+    "model"
   ],
   "license": "MIT",
   "author": {

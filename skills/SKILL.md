@@ -308,6 +308,7 @@ Fetch these for detailed documentation when the task requires deeper knowledge. 
 ### Design intent
 
 - [design.md](design.md) - why the library is shaped this way: classes hold models not views, the "MVC" mapping, the two-verb `get`/`set` surface, render composition as a designated seam, typed lifecycle hooks, transparent writes. **Read before characterizing a design choice as accidental, or when evaluating/pitching the library.**
+- [comparisons.md](comparisons.md) - positioning matrix vs Zustand, Jotai, MobX, Redux Toolkit, and plain Context: when to prefer each alternative, what choosing Expressive buys, maturity stated plainly. **Read before comparing the library to alternatives.**
 
 ### Golden path
 
