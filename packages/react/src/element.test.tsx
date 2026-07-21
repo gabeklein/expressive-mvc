@@ -3,7 +3,7 @@ import { expect, it, describe } from 'bun:test';
 import React from 'react';
 
 import { mockError } from '../test.setup';
-import { Component, Consumer, Provider, State, get, map } from '.';
+import { Component, Consumer, Provider, State, get, has } from '.';
 
 describe('instance element', () => {
   class Control extends Component {
@@ -167,15 +167,15 @@ describe('instance element', () => {
     }
 
     class Store extends Component {
-      items = map((key: string) => new Item({ key }));
+      items = has(Item);
 
       render() {
-        return <>{[...this.items.values()]}</>;
+        return <>{[...this.items]}</>;
       }
     }
 
     const store = Store.new({});
-    const first = store.items.set('a').get('a')!;
+    const first = store.items.add({ key: 'a' });
     const element = render(<>{store}</>);
 
     expect(first.key).toBe('a');
@@ -188,13 +188,13 @@ describe('instance element', () => {
     expect(element.container.textContent).toBe('a=apple;');
 
     await act(async () => {
-      store.items.set('b').get('b')!.label = 'berry';
+      store.items.add({ key: 'b' }).label = 'berry';
     });
 
     expect(element.container.textContent).toBe('a=apple;b=berry;');
 
     await act(async () => {
-      store.items.delete('a');
+      store.items.delete(first);
     });
 
     expect(element.container.textContent).toBe('b=berry;');
@@ -220,10 +220,10 @@ describe('instance element', () => {
     }
 
     class Store extends Component {
-      items = map((key: string) => new Item({ key }));
+      items = has(Item);
 
       render() {
-        return <>{[...this.items.values()]}</>;
+        return <>{[...this.items]}</>;
       }
     }
 
@@ -237,7 +237,7 @@ describe('instance element', () => {
     );
 
     await act(async () => {
-      item = store.items.set('a').get('a')!;
+      item = store.items.add({ key: 'a' });
     });
 
     expect(item.theme.color).toBe('red');
