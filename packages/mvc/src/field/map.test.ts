@@ -1,5 +1,4 @@
 import { mock, describe, it, expect } from 'bun:test';
-import { Component } from '../component';
 import { watch } from '../observable';
 import { State } from '../state';
 import { flushMicrotasks as flush } from '../../test.setup';
@@ -9,12 +8,6 @@ import { map } from './map';
 function hosted<K, V>(
   entries?: Iterable<readonly [K, V]> | null
 ): map.Keyed<K, V>;
-
-function hosted<T extends State>(
-  Type: new (...args: State.Args<T>) => T
-): map.Set<T, State.Args<T>>;
-
-function hosted<V>(make: () => V): map.Set<V>;
 
 function hosted<A extends [unknown, ...unknown[]], V>(
   make: (...args: A) => V
@@ -37,15 +30,9 @@ describe('factory', () => {
   });
 
   it('will construct mode as class identity', () => {
-    class Item extends State {}
-
     expect(hosted<string, number>()).toBeInstanceOf(map.Create);
     expect(hosted((key: string) => key)).toBeInstanceOf(map.Create);
-    expect(hosted(Item)).toBeInstanceOf(map.Set);
-    expect(hosted(Item)).toBeInstanceOf(Set);
-    expect(hosted(() => ({}))).toBeInstanceOf(map.Set);
-    expect(hosted(Item)).not.toBeInstanceOf(map.Create);
-    expect(hosted(Item)).not.toBeInstanceOf(Map);
+    expect(hosted<string, number>()).toBeInstanceOf(Map);
   });
 
   it('will accept entries', () => {
@@ -180,200 +167,6 @@ describe('iteration', () => {
     }, thisArg);
 
     expect(calls).toEqual([[thisArg, 1, 'a', items]]);
-  });
-});
-
-describe('pool', () => {
-  class Item extends State {
-    value = 0;
-  }
-
-  it('will spawn value on add', () => {
-    const items = hosted(() => ({ value: 1 }));
-    const value = items.add();
-
-    expect(value).toEqual({ value: 1 });
-    expect(items.has(value)).toBeTrue();
-    expect(items.size).toBe(1);
-  });
-
-  it('will instantiate class on add', () => {
-    const items = hosted(Item);
-    const item = items.add();
-
-    expect(item).toBeInstanceOf(Item);
-    expect(items.has(item)).toBeTrue();
-  });
-
-  it('will pass constructor arguments through add', () => {
-    const items = hosted(Item);
-    const item = items.add({ value: 5 });
-
-    expect(item.value).toBe(5);
-  });
-
-  it('will assign component key through add', () => {
-    class Product extends Component {}
-
-    const items = hosted(Product);
-    const item = items.add({ key: 'sku_123' });
-
-    expect(item.key).toBe('sku_123');
-  });
-
-  it('will treat factory with optional key as pool', () => {
-    const items = hosted(((key = 'a') => ({ key })) as () => {
-      key: string;
-    });
-    const value = items.add();
-
-    expect(value).toEqual({ key: 'a' });
-    expect(items.has(value)).toBeTrue();
-  });
-
-  it('will iterate values directly', () => {
-    const items = hosted(() => ({}));
-    const a = items.add();
-    const b = items.add();
-
-    expect(Array.from(items)).toEqual([a, b]);
-    expect(Array.from(items.values())).toEqual([a, b]);
-  });
-
-  it('will ignore repeat add of same value', async () => {
-    const shared = {};
-    const items = hosted(() => shared);
-    const fn = mock();
-
-    expect(items.add()).toBe(shared);
-
-    watch(items, ($) => {
-      void $.size;
-      fn();
-    });
-    fn.mockClear();
-
-    expect(items.add()).toBe(shared);
-    expect(items.size).toBe(1);
-
-    await flush();
-    expect(fn).not.toHaveBeenCalled();
-  });
-
-  it('will get membership by value', () => {
-    const items = hosted(() => ({}));
-    const value = items.add();
-
-    expect(items.get(value)).toBe(value);
-    expect(items.get({})).toBeUndefined();
-  });
-
-  it('will support forEach', () => {
-    const items = hosted(() => ({}));
-    const value = items.add();
-    const calls: unknown[] = [];
-    const thisArg = {};
-
-    items.forEach(function (this: unknown, ...args) {
-      calls.push([this, ...args]);
-    }, thisArg);
-
-    expect(calls).toEqual([[thisArg, value, value, items]]);
-  });
-
-  it('will transform values', () => {
-    const items = hosted(Item);
-
-    items.add({ value: 1 });
-    items.add({ value: 2 });
-
-    const doubled = items.values((item) => item.value * 2);
-
-    expect(Array.from(doubled)).toEqual([2, 4]);
-  });
-
-  it('will return snapshot as set', () => {
-    const items = hosted(Item);
-    const item = items.add({ value: 3 });
-    const snapshot = items.get();
-
-    expect(snapshot).toBeInstanceOf(Set);
-    expect(Array.from(snapshot)).toEqual([{ value: 3 }]);
-
-    items.delete(item);
-
-    expect(snapshot.size).toBe(1);
-  });
-
-  it('will remove plain values on delete', () => {
-    const items = hosted(() => ({}));
-    const value = items.add();
-
-    expect(items.delete(value)).toBeTrue();
-    expect(items.delete(value)).toBeFalse();
-    expect(items.size).toBe(0);
-  });
-
-  it('will destroy member on delete', () => {
-    const items = hosted(Item);
-    const item = items.add();
-
-    expect(item.get(null)).toBe(false);
-
-    items.delete(item);
-
-    expect(item.get(null)).toBe(true);
-  });
-
-  it('will destroy members on clear', () => {
-    const items = hosted(Item);
-    const a = items.add();
-    const b = items.add();
-
-    items.clear();
-
-    expect(a.get(null)).toBe(true);
-    expect(b.get(null)).toBe(true);
-  });
-
-  it('will own activated value made by factory', () => {
-    const items = hosted(() => Item.new());
-    const item = items.add();
-
-    items.delete(item);
-
-    expect(item.get(null)).toBe(true);
-  });
-
-  it('will evict member when it dies', () => {
-    const items = hosted(Item);
-    const item = items.add();
-
-    item.set(null);
-
-    expect(items.has(item)).toBeFalse();
-    expect(items.size).toBe(0);
-  });
-
-  it('will fire events on add', async () => {
-    const items = hosted(() => ({}));
-    const fn = mock();
-
-    watch(items, ($) => {
-      void $.size;
-      fn();
-    });
-    fn.mockClear();
-
-    items.add();
-    await flush();
-    expect(fn).toHaveBeenCalled();
-  });
-
-  it('will not define set', () => {
-    const items = hosted(Item);
-
-    expect(() => (items as any).set('a', 1)).toThrow(TypeError);
   });
 });
 
@@ -607,24 +400,24 @@ describe('adoption', () => {
     }
 
     class Owner extends State {
-      members = map(Member);
+      members = map((key: string) => new Member());
     }
 
     const first = Owner.new();
     const second = Owner.new();
 
-    expect(first.members.add().owner).toBe(first);
-    expect(second.members.add().owner).toBe(second);
+    expect(first.members.set('a').get('a')!.owner).toBe(first);
+    expect(second.members.set('a').get('a')!.owner).toBe(second);
   });
 
   it('will destroy owned members with owner', () => {
     class Owner extends State {
-      items = map(Item);
+      items = map((key: string) => new Item());
     }
 
     const owner = Owner.new();
-    const a = owner.items.add();
-    const b = owner.items.add();
+    const a = owner.items.set('a').get('a')!;
+    const b = owner.items.set('b').get('b')!;
 
     owner.set(null);
 
@@ -710,23 +503,23 @@ describe('adoption', () => {
 
   it('will throw on field reassignment', () => {
     class Owner extends State {
-      items = map(Item);
+      items = map<string, Item>();
     }
 
     const owner = Owner.new();
 
     expect(() => ((owner as any).items = null)).toThrow('is read-only');
-    expect(owner.items).toBeInstanceOf(Set);
+    expect(owner.items).toBeInstanceOf(Map);
   });
 
   it('will clear map when owner dies', () => {
     class Owner extends State {
-      items = map(Item);
+      items = map((key: string) => new Item());
     }
 
     const owner = Owner.new();
 
-    owner.items.add();
+    owner.items.set('a');
     owner.set(null);
 
     expect(owner.items.size).toBe(0);
@@ -770,7 +563,7 @@ describe('adoption', () => {
 
   it('will adopt distinct map per instance', () => {
     class Owner extends State {
-      items = map(Item);
+      items = map((key: string) => new Item());
     }
 
     const first = Owner.new();
@@ -778,7 +571,7 @@ describe('adoption', () => {
 
     expect(first.items).not.toBe(second.items);
 
-    const item = first.items.add();
+    const item = first.items.set('a').get('a')!;
 
     second.set(null);
 

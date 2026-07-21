@@ -11,9 +11,7 @@ const OWNER = new WeakMap<object, State>();
 const OWNED = new WeakMap<object, Map<unknown, () => void>>();
 
 const MAP = Map.prototype;
-const SET = Set.prototype;
 const MAP_SIZE = Object.getOwnPropertyDescriptor(MAP, 'size')!.get!;
-const SET_SIZE = Object.getOwnPropertyDescriptor(SET, 'size')!.get!;
 
 interface Native {
   has(key: any): boolean;
@@ -50,33 +48,12 @@ declare namespace map {
     set(...args: A): this;
   }
 
-  interface Set<V, A extends unknown[] = []> {
-    readonly size: number;
-    add(...args: A): V;
-    get(): ReadonlySet<State.Export<V>>;
-    get(value: V): V | undefined;
-    has(value: V): boolean;
-    delete(value: V): boolean;
-    clear(): void;
-    values(): SetIterator<V>;
-    values<R>(fn: (value: V) => R): Iterable<R>;
-    forEach(fn: (value: V, key: V, set: this) => void, thisArg?: unknown): void;
-    [Symbol.iterator](): SetIterator<V>;
-  }
-
   let Create: typeof ReactiveMap;
-  let Set: typeof ReactiveSet;
 }
 
 function map<K, V>(
   entries?: Iterable<readonly [K, V]> | null
 ): map.Keyed<K, V>;
-
-function map<T extends State>(
-  Type: new (...args: State.Args<T>) => T
-): map.Set<T, State.Args<T>>;
-
-function map<V>(make: () => V): map.Set<V>;
 
 function map<A extends [unknown, ...unknown[]], V>(
   make: (...args: A) => V
@@ -88,9 +65,7 @@ function map(
   return def((_key, subject) => ({
     set: false,
     value: typeof arg == 'function'
-      ? State.is(arg) || !arg.length
-        ? new ReactiveSet(subject, arg)
-        : new ReactiveMap(subject, arg)
+      ? new ReactiveMap(subject, arg)
       : new ReactiveMap(subject, KEYED, arg)
   }));
 }
@@ -177,85 +152,10 @@ class ReactiveMap<K, V> extends Map<K, V> implements map.Keyed<K, V> {
   }
 }
 
-class ReactiveSet<V> extends Set<V> implements map.Set<V> {
-  constructor(owner: State, make: Function) {
-    super();
-
-    init(this, owner, make);
-  }
-
-  get size(): number {
-    return touch(this, SHAPE, SET_SIZE.call(source(this)));
-  }
-
-  get(): ReadonlySet<State.Export<V>>;
-  get(value: V): V | undefined;
-  get(value?: V): unknown {
-    const target = source(this);
-
-    if (arguments.length)
-      return probe(this, SET, value) ? value : undefined;
-
-    return new Set(Array.from(SET.keys.call(target), exportValue));
-  }
-
-  has(value: V): boolean {
-    return probe(this, SET, value);
-  }
-
-  add(...args: unknown[]): any {
-    const target = source(this);
-    const make = MAKE.get(target)!;
-
-    const value = (
-      State.is(make)
-        ? new (make as State.Type)(...(args as State.Args))
-        : make()
-    ) as V;
-
-    if (!super.has.call(target, value)) {
-      super.add.call(target, value);
-      adopt(target, value, value, true);
-
-      event(target, value as never);
-      event(target, SHAPE);
-    }
-
-    return value;
-  }
-
-  delete(value: V) {
-    return remove(this, SET, value);
-  }
-
-  clear() {
-    flush(this, SET);
-  }
-
-  values(): SetIterator<V>;
-  values<R>(fn: (value: V) => R): Iterable<R>;
-  values(fn?: (value: V) => unknown): any {
-    return valuesOf(this, SET, fn);
-  }
-
-  forEach(
-    callbackfn: (value: V, key: V, set: this) => void,
-    thisArg?: unknown
-  ) {
-    for (const value of this.values())
-      callbackfn.call(thisArg, value, value, this);
-  }
-
-  [Symbol.iterator]() {
-    return this.values();
-  }
-}
-
 map.Create = ReactiveMap;
-map.Set = ReactiveSet;
 
 function init(
-  self: ReactiveMap<unknown, unknown> | ReactiveSet<unknown>,
+  self: ReactiveMap<unknown, unknown>,
   owner: State,
   make: Function
 ) {

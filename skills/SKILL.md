@@ -128,13 +128,12 @@ class UserProfile extends State {
 
 | Form                | Behavior                                                     |
 | ------------------- | ------------------------------------------------------------ |
-| `map<K, V>()` / `map(entries)` | `map.Keyed<K, V>` - reactive `Map` with keyed reads and writes via `set(key, value)`. No `add`. |
-| `map(StateClass)` / `map(() => value)` | `map.Set<V, A>` - owned pool of anonymous values; `add(...args)` spawns and returns the value, which is its own identity (`has`/`delete` take the value). No `set`, keys, or entries; iterates values. |
-| `map((key: K, ...rest) => value)` | `map.Create<A, V>` - keyed spawning map; `set(key, ...rest)` invokes the factory and stores at `key`, replacing (and destroying if owned) any previous value. No `add`. |
+| `map<K, V>()` / `map(entries)` | `map.Keyed<K, V>` - reactive `Map` with keyed reads and writes via `set(key, value)`. |
+| `map((key: K, ...rest) => value)` | `map.Create<A, V>` - keyed spawning map; `set(key, ...rest)` invokes the factory and stores at `key`, replacing (and destroying if owned) any previous value. |
 
-`map()` is a field instruction: it resolves when the hosting state activates and is not usable standalone. Mode follows the argument: iterable/none is keyed, a class or arity-0 function is a pool, a function *requiring* its first parameter is a keyed spawner (an optional first parameter means pool). The map has reactive reads (`get(key)`/`has`), `size`, iteration, and removal. Calling `get()` with no key returns a shallow snapshot - `ReadonlyMap` for keyed maps, `ReadonlySet` for pools. `keys(fn)` / `values(fn)` / `entries(fn)` return reusable iterables of transformed results (`throw false` skips an entry), tracking like their plain forms.
+`map()` is a field instruction: it resolves when the hosting state activates and is not usable standalone. Mode follows the argument: iterable/none is keyed, a factory function is a keyed spawner keyed by its first parameter. The map has reactive reads (`get(key)`/`has`), `size`, iteration, and removal. Calling `get()` with no key returns a shallow `ReadonlyMap` snapshot. `keys(fn)` / `values(fn)` / `entries(fn)` return reusable iterables of transformed results (`throw false` skips an entry), tracking like their plain forms.
 
-Spawning maps own what the factory makes - spawned `State` values are destroyed when deleted, cleared, or replaced - while a value the factory merely passes through from its arguments stays a guest (`(key, value?) => value || new Item()` is the guest-admitting pattern). Class pools forward `add(...args)` to the constructor exactly as `Type.new()` accepts them, so a `Component` may receive `{ key }` before `new()` runs.
+Spawning maps own what the factory makes - spawned `State` values are destroyed when deleted, cleared, or replaced - while a value the factory merely passes through from its arguments stays a guest (`(key, value?) => value || new Item()` is the guest-admitting pattern).
 
 Every map is adopted by its hosting state when the instruction resolves at activation; the field is read-only. Fresh (never-activated) members - spawned, stored, or present at adoption - are parented to the owner, activate inside its context, and are destroyed with it; already-activated values keep guest status. A `State` value that dies evicts itself from the map.
 
