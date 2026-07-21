@@ -10,6 +10,7 @@ export default defineConfig({
   entry: {
     index: 'src/index.ts',
     adapter: 'src/adapter.ts',
+    has: 'src/has.ts',
     map: 'src/map.ts'
   },
   format: ['esm'],

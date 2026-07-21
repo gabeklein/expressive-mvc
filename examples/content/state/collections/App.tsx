@@ -29,8 +29,8 @@ class Item extends Component {
 }
 
 // `has(Item)` is an owned pool. `add` spawns a member and returns it;
-// members carry their own identity, so spreading the pool into the tree
-// is the whole render - no keys, no <Row>, no use().
+// members carry their own identity, so dropping the pool into the tree
+// is the whole render - no keys, no spread, no <Row>, no use().
 class TodoList extends Component {
   todos = has(Item);
   draft = '';
@@ -74,7 +74,7 @@ class TodoList extends Component {
           />
         </form>
 
-        <ul>{[...todos]}</ul>
+        <ul>{todos}</ul>
 
         <footer>
           <small>{remaining} of {todos.size} remaining</small>
