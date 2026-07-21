@@ -39,21 +39,19 @@ interface MapLike<K, V> {
 }
 
 declare namespace map {
-  interface Keyed<K, V> extends MapLike<K, V> {
-    set(key: K, value: V): this;
-  }
-
   interface Create<A extends [unknown, ...unknown[]], V>
     extends MapLike<A[0], V> {
     set(...args: A): this;
   }
+
+  type Insert<K, V> = map.Create<[key: K, value: V], V>;
 
   let Create: typeof ReactiveMap;
 }
 
 function map<K, V>(
   entries?: Iterable<readonly [K, V]> | null
-): map.Keyed<K, V>;
+): map.Insert<K, V>;
 
 function map<A extends [unknown, ...unknown[]], V>(
   make: (...args: A) => V
@@ -64,23 +62,21 @@ function map(
 ): unknown {
   return def((_key, subject) => ({
     set: false,
-    value: typeof arg == 'function'
-      ? new ReactiveMap(subject, arg)
-      : new ReactiveMap(subject, KEYED, arg)
+    value: new ReactiveMap(subject, arg)
   }));
 }
 
-class ReactiveMap<K, V> extends Map<K, V> implements map.Keyed<K, V> {
+class ReactiveMap<K, V> extends Map<K, V> implements map.Insert<K, V> {
   constructor(
     owner: State,
-    make: Function,
-    entries?: Iterable<readonly [K, V]> | null
+    arg?: Iterable<readonly [K, V]> | Function | null
   ) {
     super();
 
-    init(this, owner, make);
+    init(this, owner, typeof arg == 'function' ? arg : KEYED);
 
-    if (entries) for (const [key, value] of entries) store(this, key, value);
+    if (arg && typeof arg != 'function')
+      for (const [key, value] of arg) store(this, key, value);
   }
 
   get size(): number {

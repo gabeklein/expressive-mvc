@@ -7,7 +7,7 @@ import { map } from './map';
 
 function hosted<K, V>(
   entries?: Iterable<readonly [K, V]> | null
-): map.Keyed<K, V>;
+): map.Insert<K, V>;
 
 function hosted<A extends [unknown, ...unknown[]], V>(
   make: (...args: A) => V

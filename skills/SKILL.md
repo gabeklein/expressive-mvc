@@ -128,7 +128,7 @@ class UserProfile extends State {
 
 | Form                | Behavior                                                     |
 | ------------------- | ------------------------------------------------------------ |
-| `map<K, V>()` / `map(entries)` | `map.Keyed<K, V>` - reactive `Map` with keyed reads and writes via `set(key, value)`. |
+| `map<K, V>()` / `map(entries)` | `map.Insert<K, V>` - reactive `Map` with keyed reads and writes via `set(key, value)`. |
 | `map((key: K, ...rest) => value)` | `map.Create<A, V>` - keyed spawning map; `set(key, ...rest)` invokes the factory and stores at `key`, replacing (and destroying if owned) any previous value. |
 
 `map()` is a field instruction: it resolves when the hosting state activates and is not usable standalone. Mode follows the argument: iterable/none is keyed, a factory function is a keyed spawner keyed by its first parameter. The map has reactive reads (`get(key)`/`has`), `size`, iteration, and removal. Calling `get()` with no key returns a shallow `ReadonlyMap` snapshot. `keys(fn)` / `values(fn)` / `entries(fn)` return reusable iterables of transformed results (`throw false` skips an entry), tracking like their plain forms.

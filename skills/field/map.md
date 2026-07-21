@@ -12,12 +12,12 @@ The argument selects one of two modes:
 
 | call | interface | insert |
 | --- | --- | --- |
-| `map<K, V>()` / `map(entries)` | `map.Keyed<K, V>` | `set(key, value)` |
+| `map<K, V>()` / `map(entries)` | `map.Insert<K, V>` | `set(key, value)` |
 | `map((key: K, ...rest: A) => V)` | `map.Create<A, V>` | `set(key, ...rest)` spawns |
 
 `set` returns the map - the key is the retrieval handle, so entries are keyed. A factory is keyed by its first parameter.
 
-## Keyed
+## Insert
 
 ```ts
 class Store extends State {
@@ -157,7 +157,7 @@ snapshot.get('a'); // exported product values
 ## Type Signature
 
 ```ts
-function map<K, V>(entries?: Iterable<readonly [K, V]> | null): map.Keyed<K, V>;
+function map<K, V>(entries?: Iterable<readonly [K, V]> | null): map.Insert<K, V>;
 function map<A extends [unknown, ...unknown[]], V>(make: (...args: A) => V): map.Create<A, V>;
 
 // internal bases (not exported): reads, removal, iteration - no insertion verb
@@ -178,9 +178,8 @@ interface map.Create<A extends [unknown, ...unknown[]], V> extends MapLike<A[0],
   set(...args: A): this; // the factory's own signature; A[0] is the key
 }
 
-interface map.Keyed<K, V> extends MapLike<K, V> {
-  set(key: K, value: V): this;
-}
+// sugar for the plain keyed form - one interface backs both modes
+type map.Insert<K, V> = map.Create<[key: K, value: V], V>;
 ```
 
 At runtime both modes are one class, exposed as `map.Create` (a native `Map` subclass; a keyed map is a `map.Create` instance with the identity factory). Adapters may extend its prototype - this is the seam for rendering facades.
