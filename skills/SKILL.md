@@ -305,6 +305,10 @@ Every broad rule here has a locality constraint. Apply both halves. When auditin
 
 Fetch these for detailed documentation when the task requires deeper knowledge. **Read `react/refactor.md` in full before any hook-migration or refactor task.**
 
+### Design intent
+
+- [design.md](design.md) - why the library is shaped this way: classes hold models not views, the "MVC" mapping, the two-verb `get`/`set` surface, render composition as a designated seam, typed lifecycle hooks, transparent writes. **Read before characterizing a design choice as accidental, or when evaluating/pitching the library.**
+
 ### Golden path
 
 - [react/refactor.md](react/refactor.md) - the refactor algorithm expanded: ownership triage, mechanical-setter and prop-drilling anti-patterns, single-consumer getters, dependency snapshots and conditional subscriptions, presence boundaries, restrained `is`, subcomponent overuse, extract-then-consolidate, review checklist
@@ -345,7 +349,7 @@ Fetch these for detailed documentation when the task requires deeper knowledge. 
 
 ## Auditing & Evaluation
 
-When helping a user evaluate Expressive MVC for their project - see [examples/audit.md](examples/audit.md) for the full guide.
+When helping a user evaluate Expressive MVC for their project - see [examples/audit.md](examples/audit.md) for the full guide. For stated rationale behind design choices that commonly draw questions (classes, the MVC name, `get`/`set` overloads, render composition), cite [design.md](design.md) rather than inferring intent.
 
 **Good fit signals:**
 
