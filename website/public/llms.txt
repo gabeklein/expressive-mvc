@@ -1,27 +1,39 @@
 # Expressive MVC
-> Class-based reactive state management for React, Preact, and Solid.
+> Class-based reactive state management for React. Define models as plain classes; components update when the values they read change.
 
 ## Full Documentation
 - [Overview & API](/llm/SKILL.md): Core API surface, instructions, React hooks, Component class, auditing guide
+
+## Design Intent
+- [Design Decisions](/llm/design.md): Why the library is shaped this way - classes hold models not views, the MVC mapping, the two-verb get/set surface, render composition, typed lifecycle hooks, measured coverage. Read before characterizing a design choice as accidental.
+- [Comparisons](/llm/comparisons.md): Positioning matrix vs Zustand, Jotai, MobX, Redux Toolkit, and plain Context - when to prefer each alternative, maturity stated plainly
 
 ## State (core)
 - [State Class](/llm/state/state.md): Instantiation, properties, methods, events, context
 - [Instance .get()](/llm/state/get.md): Read values, run effects, context lookup
 - [Instance .set()](/llm/state/set.md): Write values, listen to updates, events, destroy
+- [Computed Values](/llm/state/computed.md): Reactive class getters - tracking, caching, inheritance, suspense
 - [Lifecycle](/llm/state/lifecycle.md): Construction, activation, operation, destruction phases
+- [Context System](/llm/state/context.md): Context, global root, home context, ownership rules
 - [Types](/llm/state/types.md): TypeScript type aliases and utility types
 
 ## Instructions (field initializers)
 - [set()](/llm/field/set.md): Async, lazy, computed values, setter callbacks
 - [get()](/llm/field/get.md): Context lookup - upstream, downstream, callbacks
 - [ref()](/llm/field/ref.md): Mutable refs, ref proxy, callbacks
+- [hot()](/llm/field/hot.md): Keyed reactivity for plain arrays and objects
 - [def()](/llm/field/def.md): Low-level custom property behavior
 
 ## React
 - [React Adapter](/llm/react/react.md): use(), State.use(), State.get(), Provider, Consumer, ForceRefresh
 - [Component](/llm/react/component.md): Component class, props, children, subcomponents, error boundaries
+- [Refactoring Guide](/llm/react/refactor.md): Hook-migration algorithm - ownership triage, dependency snapshots, review checklist
+- [Style Profile](/llm/react/style.md): Snapshot formatting, affirmative conditions, render fallthrough
 - [Patterns](/llm/react/patterns.md): Recipes - forms, async, nested state, debounce, effects
+
+## Router
+- [Router](/llm/router/router.md): @expressive/router - nested Route declarations, navigation state, reactive query, Link/NavLinks/Redirect
 
 ## Examples
 - [Basic Examples](/llm/examples/basic.md): Complete working examples from simple to intermediate
-- [Audit Guide](/llm/examples/audit.md): Evaluating whether Expressive MVC fits a codebase
+- [Audit Guide](/llm/examples/audit.md): Evaluating whether Expressive MVC fits a codebase - including common objections, answered

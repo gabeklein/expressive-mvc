@@ -218,3 +218,36 @@ Expressive does not try to replace hooks wholesale. It coexists. Use `useState` 
 
 - [Comparisons](/docs/comparisons) - the same component built with Zustand, Jotai, Redux, and MobX, side by side.
 - [Migrating from Hooks](/docs/migrating-from-hooks) - a step-by-step playbook for adopting Expressive in an existing codebase.
+
+export const faq = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: [
+    {
+      '@type': 'Question',
+      name: 'Didn’t React move away from classes?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'React moved away from class components - views with lifecycle methods and setState. Expressive agrees with that verdict: views stay ordinary function components. Classes are used only as the model layer, holding state and behavior that runs and tests without any framework, the same division MobX-style observables draw.',
+      },
+    },
+    {
+      '@type': 'Question',
+      name: 'Are Expressive MVC classes React class components?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'No. A State class is a headless model - no render method, no setState, no lifecycle-method views. Components subscribe to it through hooks like State.use() and State.get(), re-rendering only when values they actually read change.',
+      },
+    },
+    {
+      '@type': 'Question',
+      name: 'Is Expressive MVC really MVC?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'It implements the load-bearing ideas of the original Smalltalk pattern: an observable model that knows nothing about presentation, views that stay current by observing the model directly, and input translated into model operations. The controller role is distributed exactly as in MVP, MVVM, and Cocoa.',
+      },
+    },
+  ],
+};
+
+<script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faq) }} />
