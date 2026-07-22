@@ -285,27 +285,26 @@ function adopt(
   value: unknown,
   spawned?: boolean
 ) {
-  if (value instanceof State) {
-    const fresh = parent(value) === undefined;
-    const detach = fresh ? attach(value, OWNER.get(target)!) : undefined;
-    const evict = listener(value, () => void target.delete(key as never), null);
+  if (!(value instanceof State)) return;
 
-    OWNED.get(target)!.set(key, () => {
-      evict();
-      if (detach) detach();
-      if (fresh || spawned) value.set(null);
-    });
+  const fresh = parent(value) === undefined;
+  const evict = listener(value, () => void target.delete(key as never), null);
 
-    if (fresh) event(value);
+  let detach: (() => void) | undefined;
+
+  if (fresh) {
+    const owner = OWNER.get(target)!;
+    detach = Context.get(owner).add(value);
+    parent(value, owner);
   }
-}
 
-function attach(value: State, owner: State) {
-  const detach = Context.get(owner).add(value);
+  OWNED.get(target)!.set(key, () => {
+    evict();
+    if (detach) detach();
+    if (fresh || spawned) value.set(null);
+  });
 
-  parent(value, owner);
-
-  return detach;
+  if (fresh) event(value);
 }
 
 function release(target: object, key: unknown) {
