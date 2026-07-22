@@ -191,7 +191,7 @@ describe('create', () => {
   });
 
   it('will replace occupied key', () => {
-    const make = mock((key: string) => Item.new());
+    const make = mock((key: string) => new Item());
     const items = hosted(make);
 
     items.set('a');
@@ -207,8 +207,8 @@ describe('create', () => {
     expect(items.size).toBe(1);
   });
 
-  it('will destroy spawned state on delete', () => {
-    const items = hosted((key: string) => Item.new());
+  it('will destroy owned state on delete', () => {
+    const items = hosted((key: string) => new Item());
 
     items.set('a');
     const item = items.get('a')!;
@@ -220,8 +220,8 @@ describe('create', () => {
     expect(item.get(null)).toBe(true);
   });
 
-  it('will destroy spawned state on clear', () => {
-    const items = hosted((key: string) => Item.new());
+  it('will destroy owned state on clear', () => {
+    const items = hosted((key: string) => new Item());
 
     items.set('a');
     items.set('b');
@@ -237,23 +237,23 @@ describe('create', () => {
 
   it('will pass guest through factory unowned', () => {
     const items = hosted(
-      (key: string, value?: Item) => value || Item.new()
+      (key: string, value?: Item) => value || new Item()
     );
     const guest = Item.new();
 
     items.set('a', guest);
     items.set('b');
 
-    const spawned = items.get('b')!;
+    const owned = items.get('b')!;
 
     items.delete('a');
     items.delete('b');
 
     expect(guest.get(null)).toBe(false);
-    expect(spawned.get(null)).toBe(true);
+    expect(owned.get(null)).toBe(true);
   });
 
-  it('will ignore plain spawned values', () => {
+  it('will ignore plain values', () => {
     const items = hosted((key: string) => ({ key }));
 
     items.set('a');
@@ -580,6 +580,58 @@ describe('adoption', () => {
     first.set(null);
 
     expect(item.get(null)).toBe(true);
+  });
+});
+
+describe('ownerless', () => {
+  class Member extends State {
+    value = 0;
+  }
+
+  it('will construct without an owner', () => {
+    const items = new map.Create<string, number>();
+
+    items.set('a', 1);
+    items.set('b', 2);
+
+    expect(items).toBeInstanceOf(Map);
+    expect(items.size).toBe(2);
+    expect(items.get('a')).toBe(1);
+    expect(items.delete('a')).toBe(true);
+    expect(items.size).toBe(1);
+  });
+
+  it('will own and destroy fresh state without an owner', () => {
+    const items = new map.Create<string, Member>();
+    const fresh = new Member();
+
+    items.set('a', fresh);
+
+    expect(fresh.get(null)).toBe(false);
+
+    items.delete('a');
+
+    expect(fresh.get(null)).toBe(true);
+  });
+
+  it('will keep a guest without an owner', () => {
+    const items = new map.Create<string, Member>();
+    const guest = Member.new();
+
+    items.set('a', guest);
+    items.delete('a');
+
+    expect(guest.get(null)).toBe(false);
+  });
+
+  it('will destroy owned state on clear without an owner', () => {
+    const items = new map.Create<string, Member>();
+    const a = new Member();
+
+    items.set('a', a);
+    items.clear();
+
+    expect(a.get(null)).toBe(true);
   });
 });
 

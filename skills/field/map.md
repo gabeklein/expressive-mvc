@@ -85,22 +85,24 @@ class Board extends State {
 board.cells.set('a1', 'black');
 ```
 
-Guest entries are the factory's decision, not the map's: a factory that passes a supplied value through keeps it a guest.
+Ownership follows freshness, not where the value came from: a value the factory constructs fresh (`new Item()`) is owned, while an already-activated value it returns (`Item.new()`, or one handed through its arguments) is a guest.
 
 ```ts
 class Basket extends State {
   items = map((id: string, item?: Item) => item || new Item());
 }
 
-basket.items.set('a');           // spawned - owned
-basket.items.set('b', existing); // passed through - guest
+basket.items.set('a');               // new Item() - owned
+basket.items.set('b', Item.new());   // already activated - guest
 ```
 
 ## Ownership
 
-Spawning maps own what they spawn: when a spawned `State` value is deleted, cleared, or replaced, the map destroys it. This includes activated values the factory *made* (`(key) => Item.new()`); a value the factory merely passed through from its arguments is not spawned. In a plain keyed map, ownership follows freshness - a never-activated value stored via `set` is adopted and owned, while an already-activated one is a guest and never destroyed. Non-State spawned values are simply dropped.
+Ownership follows freshness, uniformly across both modes and independent of how a value arrives. A fresh (never-activated) `State` value - a `new Item()` handed to `set`, constructed by a factory, or present in initial entries - is adopted and owned; the map destroys it when that entry is deleted, cleared, or replaced. An already-activated value (`Item.new()`) is a guest: held but never destroyed, whether it came through `set` or a factory. Non-State values are never owned.
 
-Every map is adopted by its hosting state when that state activates - the field instruction resolves and adopts in one step, so a usable map always has an owner. The field itself is read-only; assigning over it throws. Fresh (never-activated) `State` values landing in the map - spawned, stored via `set`, or already present at activation - are parented to the owner and activate inside its context: `get(Owner)` resolves directly and providers above the owner resolve from members. Owned members are destroyed with the owner. An already-activated value cannot be adopted - its parent is settled - so it keeps guest status.
+Every map is adopted by its hosting state when that state activates - the field instruction resolves and adopts in one step, so a usable map always has an owner. The field itself is read-only; assigning over it throws. Fresh `State` values landing in the map are parented to the owner and activate inside its context: `get(Owner)` resolves directly and providers above the owner resolve from members. Owned members are destroyed with the owner. An already-activated value cannot be adopted - its parent is settled - so it keeps guest status.
+
+Destruction is an eviction concern, separate from context: `delete` destroys the owned entry it removes, `clear` is that over every entry, and the owner dying is itself a `clear`. Because destruction does not depend on the parent link, the underlying `map.Create` can be constructed directly without an owner (`new map.Create()`, chiefly for testing) - it has no context to parent fresh values into, but still owns and destroys them on eviction, and guests behave as usual.
 
 Death also flows the other way: a `State` value that dies evicts itself from the map - owned or guest - so a map never serves destroyed entries. Destroying a member (`member.set(null)`) is therefore a complete removal gesture on its own.
 

@@ -60,16 +60,18 @@ function map(
 
 class ReactiveMap<K, V> extends Map<K, V> implements map.Insert<K, V> {
   constructor(
-    owner: State,
+    owner?: State | null,
     arg?: Iterable<readonly [K, V]> | Function | null
   ) {
     super();
 
     MAKE.set(this, typeof arg == 'function' ? arg : KEYED);
     OWNED.set(this, new Map());
-    OWNER.set(this, owner);
 
-    listener(owner, () => this.clear(), null);
+    if (owner) {
+      OWNER.set(this, owner);
+      listener(owner, () => this.clear(), null);
+    }
 
     event(this);
 
@@ -106,7 +108,7 @@ class ReactiveMap<K, V> extends Map<K, V> implements map.Insert<K, V> {
     const target = source(this);
     const value = MAKE.get(target)!(key, ...rest) as V;
 
-    store(target, key, value, !rest.includes(value));
+    store(target, key, value);
     return this;
   }
 
@@ -210,12 +212,7 @@ function transform<T, R>(
   };
 }
 
-function store<K, V>(
-  target: ReactiveMap<K, V>,
-  key: K,
-  value: V,
-  spawned?: boolean
-) {
+function store<K, V>(target: ReactiveMap<K, V>, key: K, value: V) {
   const exists = MAP.has.call(target, key);
 
   if (exists) {
@@ -225,7 +222,7 @@ function store<K, V>(
   }
 
   MAP.set.call(target, key, value);
-  adopt(target, key, value, spawned);
+  adopt(target, key, value);
   event(target, key as never);
 
   if (!exists) event(target, SHAPE);
@@ -234,18 +231,17 @@ function store<K, V>(
 function adopt(
   target: { delete(key: never): boolean },
   key: unknown,
-  value: unknown,
-  spawned?: boolean
+  value: unknown
 ) {
   if (!(value instanceof State)) return;
 
   const fresh = parent(value) === undefined;
+  const owner = OWNER.get(target);
   const evict = listener(value, () => void target.delete(key as never), null);
 
   let detach: (() => void) | undefined;
 
-  if (fresh) {
-    const owner = OWNER.get(target)!;
+  if (fresh && owner) {
     detach = Context.get(owner).add(value);
     parent(value, owner);
   }
@@ -253,7 +249,7 @@ function adopt(
   OWNED.get(target)!.set(key, () => {
     evict();
     if (detach) detach();
-    if (fresh || spawned) value.set(null);
+    if (fresh) value.set(null);
   });
 
   if (fresh) event(value);
