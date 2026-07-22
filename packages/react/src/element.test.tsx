@@ -486,3 +486,71 @@ describe('instance element', () => {
     expect(instance.get(null)).toBe(false);
   });
 });
+
+describe('map element', () => {
+  class Item extends Component {
+    label = '';
+
+    render() {
+      return <span>{this.key}={this.label};</span>;
+    }
+  }
+
+  it('will render a keyed map placed directly', async () => {
+    const error = mockError();
+
+    class Store extends Component {
+      items = map<string, Item>();
+
+      render() {
+        return <>{this.items}</>;
+      }
+    }
+
+    const store = Store.new({});
+    const first = Item.new({ key: 'a', label: 'apple' });
+    store.items.set('a', first);
+    const element = render(<>{store}</>);
+
+    expect(element.container.textContent).toBe('a=apple;');
+
+    await act(async () => {
+      store.items.set('b', Item.new({ key: 'b', label: 'berry' }));
+    });
+
+    expect(element.container.textContent).toBe('a=apple;b=berry;');
+
+    await act(async () => {
+      store.items.delete('a');
+    });
+
+    expect(element.container.textContent).toBe('b=berry;');
+    expect(error).not.toBeCalled();
+
+    element.unmount();
+  });
+
+  it('will render a spawning map placed directly', async () => {
+    class Store extends Component {
+      items = map((key: string) => new Item({ key, label: key }));
+
+      render() {
+        return <>{this.items}</>;
+      }
+    }
+
+    const store = Store.new({});
+    store.items.set('a');
+    const element = render(<>{store}</>);
+
+    expect(element.container.textContent).toBe('a=a;');
+
+    await act(async () => {
+      store.items.set('b');
+    });
+
+    expect(element.container.textContent).toBe('a=a;b=b;');
+
+    element.unmount();
+  });
+});

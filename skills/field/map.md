@@ -182,7 +182,9 @@ interface map.Create<A extends [unknown, ...unknown[]], V> extends MapLike<A[0],
 type map.Insert<K, V> = map.Create<[key: K, value: V], V>;
 ```
 
-At runtime both modes are one class, exposed as `map.Create` (a native `Map` subclass; a keyed map is a `map.Create` instance with the identity factory). Adapters may extend its prototype - this is the seam for rendering facades.
+At runtime both modes are one class, exposed as `map.Create` (a native `Map` subclass; a keyed map is a `map.Create` instance with the identity factory) - the seam adapters extend for rendering facades.
+
+In `@expressive/react`, a map renders directly - `<ul>{this.items}</ul>` - through a `$$typeof` facade on that prototype: the map is one element whose values render in order (each carrying its own identity), subscribing to collection shape without a manual spread. Values that are `Component` instances render themselves; other values render as their React child form.
 
 ## Behavior
 

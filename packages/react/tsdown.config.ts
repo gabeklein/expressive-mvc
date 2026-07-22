@@ -9,7 +9,8 @@ export default defineConfig({
   outExtensions: () => ({ js: '.js' }),
   entry: {
     index: 'src/index.ts',
-    adapter: 'src/adapter.ts'
+    adapter: 'src/adapter.ts',
+    map: 'src/map.ts'
   },
   format: ['esm'],
   outputOptions: {

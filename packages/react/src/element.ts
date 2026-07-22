@@ -13,31 +13,45 @@ declare module '@expressive/mvc' {
 
 let template: any;
 
+/**
+ * Borrow a host element's descriptors so `self` passes as a React element.
+ * `props` false keeps the target's own `props` (Component supplies its own);
+ * an object installs it as the element's props (collections have none).
+ */
+export function seam(
+  self: object,
+  props: object | false,
+  type: Function,
+  key: unknown
+) {
+  if (!template) template = Runtime.createElement('template');
+
+  const descriptors = Object.getOwnPropertyDescriptors(template);
+  const store = descriptors._store?.value;
+
+  if (props === false) delete (descriptors as any).props;
+
+  if (store)
+    descriptors._store.value = Object.create(
+      Object.getPrototypeOf(store),
+      Object.getOwnPropertyDescriptors(store)
+    );
+
+  Object.defineProperties(self, {
+    ...descriptors,
+    $$typeof: { value: template.$$typeof },
+    ...(props ? { props: { value: props } } : undefined),
+    key: { value: key },
+    type: { value: type }
+  });
+
+  return template.$$typeof;
+}
+
 Object.defineProperty(Component.prototype, '$$typeof', {
   get(this: Component) {
     const self = this.is;
-
-    if(!template) template = Runtime.createElement('template');
-
-    const descriptors = Object.getOwnPropertyDescriptors(template);
-    const store = descriptors._store?.value;
-
-    delete descriptors.props;
-
-    if (store)
-      descriptors._store.value = Object.create(
-        Object.getPrototypeOf(store),
-        Object.getOwnPropertyDescriptors(store)
-      );
-
-    Object.defineProperties(self, {
-      ...descriptors,
-      $$typeof: { value: template.$$typeof },
-      key: { value: self.key },
-      type: { value: Element.bind(self) }
-    });
-
-    return template.$$typeof;
+    return seam(self, false, Element.bind(self), self.key);
   }
 });
 
