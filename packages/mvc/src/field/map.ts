@@ -13,14 +13,6 @@ const OWNED = new WeakMap<object, Map<unknown, () => void>>();
 const MAP = Map.prototype;
 const MAP_SIZE = Object.getOwnPropertyDescriptor(MAP, 'size')!.get!;
 
-interface Native {
-  has(key: any): boolean;
-  delete(key: any): boolean;
-  clear(): void;
-  entries(): IterableIterator<[unknown, unknown]>;
-  keys(): IterableIterator<unknown>;
-}
-
 interface MapLike<K, V> {
   readonly size: number;
   get(): ReadonlyMap<K, State.Export<V>>;
@@ -73,7 +65,13 @@ class ReactiveMap<K, V> extends Map<K, V> implements map.Insert<K, V> {
   ) {
     super();
 
-    init(this, owner, typeof arg == 'function' ? arg : KEYED);
+    MAKE.set(this, typeof arg == 'function' ? arg : KEYED);
+    OWNED.set(this, new Map());
+    OWNER.set(this, owner);
+
+    listener(owner, () => this.clear(), null);
+
+    event(this);
 
     if (arg && typeof arg != 'function')
       for (const [key, value] of arg) store(this, key, value);
@@ -92,13 +90,16 @@ class ReactiveMap<K, V> extends Map<K, V> implements map.Insert<K, V> {
       ? touch(this, key, super.get.call(target, key as K)) 
       : new Map(
         Array.from(MAP.entries.call(target), ([key, value]) => [
-          key, exportValue(value)
+          key,
+          value && typeof value === 'object' && typeof value.get === 'function'
+            ? value.get()
+            : value
         ])
       );
   }
 
   has(key: K): boolean {
-    return probe(this, MAP, key);
+    return touch(this, key, MAP.has.call(source(this), key));
   }
 
   set(key: K, ...rest: unknown[]): this {
@@ -110,29 +111,72 @@ class ReactiveMap<K, V> extends Map<K, V> implements map.Insert<K, V> {
   }
 
   delete(key: K) {
-    return remove(this, MAP, key);
+    const target = source(this);
+
+    if (!MAP.has.call(target, key)) return false;
+
+    release(target, key);
+    MAP.delete.call(target, key);
+
+    event(target, key as never);
+    event(target, SHAPE);
+
+    return true;
   }
 
   clear() {
-    flush(this, MAP);
+    const target = source(this);
+    const keys = Array.from(MAP.keys.call(target));
+
+    if (!keys.length) return;
+
+    for (const key of keys) release(target, key);
+
+    MAP.clear.call(target);
+
+    for (const key of keys) event(target, key as never);
+    event(target, SHAPE);
   }
 
   entries(): MapIterator<[K, V]>;
   entries<R>(fn: (entry: [K, V]) => R): Iterable<R>;
   entries(fn?: (entry: [K, V]) => unknown): any {
-    return entriesOf(this, MAP, fn);
+    const self = this;
+    function* iterate() {
+      const target = source(self);
+
+      touch(self, SHAPE);
+
+      for (const [key, value] of MAP.entries.call(target))
+        yield [key, touch(self, key, value)] as [K, V];
+    }
+
+    return fn ? transform(iterate, fn) : iterate();
   }
 
   keys(): MapIterator<K>;
   keys<R>(fn: (key: K) => R): Iterable<R>;
   keys(fn?: (key: K) => unknown): any {
-    return keysOf(this, MAP, fn);
+    const self = this;
+    function* iterate() {
+      touch(self, SHAPE);
+      yield* MAP.keys.call(source(self)) as IterableIterator<K>;
+    }
+
+    return fn ? transform(iterate, fn) : iterate();
   }
 
   values(): MapIterator<V>;
   values<R>(fn: (value: V, key: K) => R): Iterable<R>;
   values(fn?: (value: V, key: K) => unknown): any {
-    return valuesOf(this, MAP, fn);
+    if (fn)
+      return this.entries(([key, value]) => fn(value, key));
+
+    const self = this;
+    return (function* () {
+      for (const [, value] of self.entries())
+        yield value;
+    })();
   }
 
   forEach(
@@ -150,96 +194,6 @@ class ReactiveMap<K, V> extends Map<K, V> implements map.Insert<K, V> {
 
 map.Create = ReactiveMap;
 
-function init(
-  self: ReactiveMap<unknown, unknown>,
-  owner: State,
-  make: Function
-) {
-  MAKE.set(self, make);
-  OWNER.set(self, owner);
-  OWNED.set(self, new Map());
-
-  listener(owner, () => self.clear(), null);
-
-  event(self);
-}
-
-function probe(self: object, native: Native, key: unknown) {
-  return touch(self, key, native.has.call(source(self), key));
-}
-
-function remove(self: object, native: Native, key: unknown) {
-  const target = source(self);
-
-  if (!native.has.call(target, key)) return false;
-
-  release(target, key);
-  native.delete.call(target, key);
-
-  event(target, key as never);
-  event(target, SHAPE);
-
-  return true;
-}
-
-function flush(self: object, native: Native) {
-  const target = source(self);
-  const keys = Array.from(native.keys.call(target));
-
-  if (!keys.length) return;
-
-  for (const key of keys) release(target, key);
-
-  native.clear.call(target);
-
-  for (const key of keys) event(target, key as never);
-  event(target, SHAPE);
-}
-
-function entriesOf<K, V>(
-  self: object,
-  native: Native,
-  fn?: (entry: [K, V]) => unknown
-) {
-  function* iterate() {
-    const target = source(self);
-
-    touch(self, SHAPE);
-
-    for (const [key, value] of native.entries.call(target))
-      yield [key, touch(self, key, value)] as [K, V];
-  }
-
-  return fn ? transform(iterate, fn) : iterate();
-}
-
-function keysOf<K>(
-  self: object,
-  native: Native,
-  fn?: (key: K) => unknown
-) {
-  function* iterate() {
-    touch(self, SHAPE);
-    yield* native.keys.call(source(self)) as IterableIterator<K>;
-  }
-
-  return fn ? transform(iterate, fn) : iterate();
-}
-
-function valuesOf<K, V>(
-  self: object,
-  native: Native,
-  fn?: (value: V, key: K) => unknown
-) {
-  if (fn)
-    return entriesOf<K, V>(self, native, ([key, value]) => fn(value, key));
-
-  return (function* () {
-    for (const [, value] of entriesOf<K, V>(self, native) as Generator<[K, V]>)
-      yield value;
-  })();
-}
-
 function transform<T, R>(
   iterate: () => Generator<T>,
   fn: (item: T) => R
@@ -254,14 +208,6 @@ function transform<T, R>(
         }
     }
   };
-}
-
-function attach(value: State, owner: State) {
-  const detach = Context.get(owner).add(value);
-
-  parent(value, owner);
-
-  return detach;
 }
 
 function store<K, V>(
@@ -280,8 +226,8 @@ function store<K, V>(
 
   MAP.set.call(target, key, value);
   adopt(target, key, value, spawned);
-
   event(target, key as never);
+
   if (!exists) event(target, SHAPE);
 }
 
@@ -291,19 +237,26 @@ function adopt(
   value: unknown,
   spawned?: boolean
 ) {
-  if (value instanceof State) {
-    const fresh = parent(value) === undefined;
-    const detach = fresh ? attach(value, OWNER.get(target)!) : undefined;
-    const evict = listener(value, () => void target.delete(key as never), null);
+  if (!(value instanceof State)) return;
 
-    OWNED.get(target)!.set(key, () => {
-      evict();
-      if (detach) detach();
-      if (fresh || spawned) value.set(null);
-    });
+  const fresh = parent(value) === undefined;
+  const evict = listener(value, () => void target.delete(key as never), null);
 
-    if (fresh) event(value);
+  let detach: (() => void) | undefined;
+
+  if (fresh) {
+    const owner = OWNER.get(target)!;
+    detach = Context.get(owner).add(value);
+    parent(value, owner);
   }
+
+  OWNED.get(target)!.set(key, () => {
+    evict();
+    if (detach) detach();
+    if (fresh || spawned) value.set(null);
+  });
+
+  if (fresh) event(value);
 }
 
 function release(target: object, key: unknown) {
@@ -318,12 +271,6 @@ function release(target: object, key: unknown) {
 
 function source<T extends object>(from: T): T {
   return OWNED.has(from) ? from : Object.getPrototypeOf(from);
-}
-
-function exportValue(value: any) {
-  return value && typeof value === 'object' && typeof value.get === 'function'
-    ? value.get()
-    : value;
 }
 
 export { map };
