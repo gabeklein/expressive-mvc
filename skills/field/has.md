@@ -67,26 +67,28 @@ class Board extends State {
 const cell = board.cells.add('a1', 'black');
 ```
 
-Guests are the factory's decision, not the pool's: a factory that passes a supplied value through admits it as a guest, and ownership follows provenance - what the factory *made* is owned, what it passed through is not.
+Ownership follows freshness, not where the value came from: a member the factory constructs fresh (`new Item()`) is owned, while an already-activated value it returns (`Item.new()`, or one handed through its arguments) is a guest.
 
 ```ts
 class Basket extends State {
   items = has((item?: Item) => item || new Item());
 }
 
-const mine = basket.items.add();         // spawned - owned
-basket.items.add(existing);              // passed through - guest
+const mine = basket.items.add();          // new Item() - owned
+basket.items.add(Item.new());             // already activated - guest
 ```
 
 `has(value)` and `delete(value)` take the member itself. Adding a value already present is a no-op - no duplicate, no events. There is no positional surface: no `set`, `put`, `push`, or index reads; iteration yields members in insertion order.
 
 ## Ownership
 
-Pools own what they spawn: deleting or clearing a spawned `State` member destroys it, and owned members are destroyed with their owner. This includes activated values the factory made (`() => Item.new()`); a passed-through value stays a guest and is never destroyed by the pool. Non-State spawned values are simply dropped.
+Ownership follows freshness: a fresh (never-activated) `State` member - a `new Item()` the factory constructs or a class the pool instantiates - is adopted and owned, and the pool destroys it when it is deleted, cleared, or the owner dies. An already-activated value (`Item.new()`) is a guest: held but never destroyed. Non-State members are never owned.
 
-Every collection is adopted by its hosting state at activation. Fresh (never-activated) `State` members are parented to the owner and activate inside its context: `get(Owner)` resolves directly and providers above the owner resolve from members.
+Every collection is adopted by its hosting state at activation. Fresh `State` members are parented to the owner and activate inside its context: `get(Owner)` resolves directly and providers above the owner resolve from members.
 
 Death also flows the other way: a `State` member that dies evicts itself from the pool - owned or guest - so a pool never serves destroyed members. Destroying a member (`member.set(null)`) is a complete removal gesture on its own. Lists do not adopt or destroy - they store what you give them.
+
+Destruction is an eviction concern, separate from context, so the underlying `has.Pool` and `has.List` can be constructed directly without an owner (`new has.Pool(null, Item)`, chiefly for testing) - fresh members are still owned and destroyed on eviction, just not parented into a context.
 
 ```ts
 class Member extends State {

@@ -39,11 +39,11 @@ function has(arg?: Iterable<unknown> | Function | null): unknown {
 }
 
 class List<T> {
-  constructor(owner: State, initial?: Iterable<T> | null) {
+  constructor(owner?: State | null, initial?: Iterable<T> | null) {
     ITEMS.set(this, initial ? Array.from(initial) : []);
     own(this, owner);
 
-    listener(owner, () => this.clear(), null);
+    if (owner) listener(owner, () => this.clear(), null);
 
     event(this);
   }
@@ -164,12 +164,12 @@ class List<T> {
 }
 
 class Pool<T, A extends unknown[] = unknown[]> {
-  constructor(owner: State, make: Function) {
+  constructor(owner: State | null, make: Function) {
     MEMBERS.set(this, new Set());
     MAKE.set(this, make);
     own(this, owner);
 
-    listener(owner, () => this.clear(), null);
+    if (owner) listener(owner, () => this.clear(), null);
 
     event(this);
   }
@@ -191,7 +191,7 @@ class Pool<T, A extends unknown[] = unknown[]> {
 
     if (!values.has(value)) {
       values.add(value);
-      adopt(target, value, value, !args.includes(value));
+      adopt(target, value, value);
 
       event(target, value as never);
       event(target, SHAPE);
@@ -270,9 +270,9 @@ class Pool<T, A extends unknown[] = unknown[]> {
   }
 }
 
-function own(target: object, owner: State) {
-  OWNER.set(target, owner);
+function own(target: object, owner?: State | null) {
   OWNED.set(target, new Map());
+  if (owner) OWNER.set(target, owner);
 }
 
 function source<T extends object>(from: T): T {
@@ -282,18 +282,17 @@ function source<T extends object>(from: T): T {
 function adopt(
   target: { delete(key: never): boolean },
   key: unknown,
-  value: unknown,
-  spawned?: boolean
+  value: unknown
 ) {
   if (!(value instanceof State)) return;
 
   const fresh = parent(value) === undefined;
+  const owner = OWNER.get(target);
   const evict = listener(value, () => void target.delete(key as never), null);
 
   let detach: (() => void) | undefined;
 
-  if (fresh) {
-    const owner = OWNER.get(target)!;
+  if (fresh && owner) {
     detach = Context.get(owner).add(value);
     parent(value, owner);
   }
@@ -301,7 +300,7 @@ function adopt(
   OWNED.get(target)!.set(key, () => {
     evict();
     if (detach) detach();
-    if (fresh || spawned) value.set(null);
+    if (fresh) value.set(null);
   });
 
   if (fresh) event(value);

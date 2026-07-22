@@ -5,27 +5,27 @@ import { watch } from '../observable';
 import { get } from './get';
 import { has } from './has';
 
-function hosted<T>(initial?: Iterable<T> | null): has.List<T>;
+function reactive<T>(initial?: Iterable<T> | null): has.List<T>;
 
-function hosted<T extends State>(
+function reactive<T extends State>(
   Type: new (...args: State.Args<T>) => T
 ): has.Pool<T, State.Args<T>>;
 
-function hosted<T, A extends unknown[]>(
+function reactive<T, A extends unknown[]>(
   make: (...args: A) => T
 ): has.Pool<T, A>;
 
-function hosted(...args: any[]): any {
-  class Host extends State {
-    value = (has as any)(...args);
-  }
+function reactive(...args: any[]): any {
+  const arg = args[0];
 
-  return Host.new().value;
+  return typeof arg == 'function'
+    ? new has.Pool(null, arg)
+    : new has.List(null, arg);
 }
 
 describe('factory', () => {
   it('will create empty', () => {
-    const list = hosted<number>();
+    const list = reactive<number>();
 
     expect(list).toBeInstanceOf(has.List);
     expect(list.size).toBe(0);
@@ -33,7 +33,7 @@ describe('factory', () => {
   });
 
   it('will accept array', () => {
-    const list = hosted([1, 2, 3]);
+    const list = reactive([1, 2, 3]);
 
     expect(list.get()).toEqual([1, 2, 3]);
   });
@@ -44,12 +44,12 @@ describe('factory', () => {
       yield 'b';
     }
 
-    expect(hosted(gen()).get()).toEqual(['a', 'b']);
+    expect(reactive(gen()).get()).toEqual(['a', 'b']);
   });
 
   it('will copy from initial', () => {
     const source = [1, 2, 3];
-    const list = hosted(source);
+    const list = reactive(source);
 
     source.push(4);
 
@@ -85,7 +85,7 @@ describe('factory', () => {
 
 describe('get', () => {
   it('will return snapshot with no args', () => {
-    const list = hosted([1, 2, 3]);
+    const list = reactive([1, 2, 3]);
     const snap = list.get();
 
     expect(snap).toEqual([1, 2, 3]);
@@ -97,57 +97,57 @@ describe('get', () => {
 
   it('will unwrap nested get values in snapshot', () => {
     const inner = { get: () => 'unwrapped' };
-    const list = hosted([inner]);
+    const list = reactive([inner]);
 
     expect(list.get()).toEqual(['unwrapped']);
   });
 
   it('will read by positive index', () => {
-    const list = hosted(['a', 'b', 'c']);
+    const list = reactive(['a', 'b', 'c']);
 
     expect(list.get(1)).toBe('b');
   });
 
   it('will normalize negative index', () => {
-    const list = hosted(['a', 'b', 'c']);
+    const list = reactive(['a', 'b', 'c']);
 
     expect(list.get(-1)).toBe('c');
     expect(list.get(-3)).toBe('a');
   });
 
   it('will return undefined for out-of-range index', () => {
-    const list = hosted(['a', 'b']);
+    const list = reactive(['a', 'b']);
 
     expect(list.get(5)).toBeUndefined();
     expect(list.get(-5)).toBeUndefined();
   });
 
   it('will read range with start, end', () => {
-    const list = hosted([10, 20, 30, 40]);
+    const list = reactive([10, 20, 30, 40]);
 
     expect(list.get(1, 3)).toEqual([20, 30]);
   });
 
   it('will normalize negative start in range', () => {
-    const list = hosted([10, 20, 30, 40]);
+    const list = reactive([10, 20, 30, 40]);
 
     expect(list.get(-2, 4)).toEqual([30, 40]);
   });
 
   it('will clamp end to length in range', () => {
-    const list = hosted([1, 2]);
+    const list = reactive([1, 2]);
 
     expect(list.get(0, 99)).toEqual([1, 2]);
   });
 
   it('will return first match for predicate', () => {
-    const list = hosted([1, 2, 3, 4]);
+    const list = reactive([1, 2, 3, 4]);
 
     expect(list.get((v) => v > 2)).toBe(3);
   });
 
   it('will return undefined when predicate matches nothing', () => {
-    const list = hosted([1, 2, 3]);
+    const list = reactive([1, 2, 3]);
 
     expect(list.get((v) => v > 99)).toBeUndefined();
   });
@@ -155,7 +155,7 @@ describe('get', () => {
 
 describe('set', () => {
   it('will replace value at index', () => {
-    const list = hosted(['a', 'b', 'c']);
+    const list = reactive(['a', 'b', 'c']);
 
     list.set(1, 'B');
 
@@ -163,7 +163,7 @@ describe('set', () => {
   });
 
   it('will normalize negative index', () => {
-    const list = hosted(['a', 'b', 'c']);
+    const list = reactive(['a', 'b', 'c']);
 
     list.set(-1, 'C');
 
@@ -171,7 +171,7 @@ describe('set', () => {
   });
 
   it('will not write out-of-range positive', () => {
-    const list = hosted(['a']);
+    const list = reactive(['a']);
 
     list.set(5, 'x');
 
@@ -179,7 +179,7 @@ describe('set', () => {
   });
 
   it('will not write out-of-range negative', () => {
-    const list = hosted(['a']);
+    const list = reactive(['a']);
 
     list.set(-5, 'x');
 
@@ -187,7 +187,7 @@ describe('set', () => {
   });
 
   it('will not notify for unchanged value', async () => {
-    const list = hosted(['a']);
+    const list = reactive(['a']);
     const fn = mock();
 
     watch(list, fn);
@@ -202,7 +202,7 @@ describe('set', () => {
 
 describe('put', () => {
   it('will insert at index, shifting subsequent', () => {
-    const list = hosted([1, 2, 4]);
+    const list = reactive([1, 2, 4]);
 
     list.put(2, 3);
 
@@ -210,7 +210,7 @@ describe('put', () => {
   });
 
   it('will insert multiple', () => {
-    const list = hosted([1, 4]);
+    const list = reactive([1, 4]);
 
     list.put(1, 2, 3);
 
@@ -218,7 +218,7 @@ describe('put', () => {
   });
 
   it('will append when index equals length', () => {
-    const list = hosted([1, 2]);
+    const list = reactive([1, 2]);
 
     list.put(2, 3);
 
@@ -226,7 +226,7 @@ describe('put', () => {
   });
 
   it('will normalize negative index', () => {
-    const list = hosted([1, 4]);
+    const list = reactive([1, 4]);
 
     list.put(-1, 2, 3);
 
@@ -234,7 +234,7 @@ describe('put', () => {
   });
 
   it('will not notify when no items provided', async () => {
-    const list = hosted([1, 2]);
+    const list = reactive([1, 2]);
     const fn = mock();
 
     watch(list, fn);
@@ -249,7 +249,7 @@ describe('put', () => {
 
 describe('push', () => {
   it('will append and return new length', () => {
-    const list = hosted([1]);
+    const list = reactive([1]);
 
     expect(list.push(2, 3)).toBe(3);
     expect(list.get()).toEqual([1, 2, 3]);
@@ -258,35 +258,35 @@ describe('push', () => {
 
 describe('pop', () => {
   it('will remove from tail by default', () => {
-    const list = hosted([1, 2, 3]);
+    const list = reactive([1, 2, 3]);
 
     expect(list.pop()).toBe(3);
     expect(list.get()).toEqual([1, 2]);
   });
 
   it('will remove at index', () => {
-    const list = hosted([1, 2, 3]);
+    const list = reactive([1, 2, 3]);
 
     expect(list.pop(0)).toBe(1);
     expect(list.get()).toEqual([2, 3]);
   });
 
   it('will remove a count and return array', () => {
-    const list = hosted([1, 2, 3, 4]);
+    const list = reactive([1, 2, 3, 4]);
 
     expect(list.pop(1, 2)).toEqual([2, 3]);
     expect(list.get()).toEqual([1, 4]);
   });
 
   it('will normalize negative index', () => {
-    const list = hosted([1, 2, 3]);
+    const list = reactive([1, 2, 3]);
 
     expect(list.pop(-2)).toBe(2);
     expect(list.get()).toEqual([1, 3]);
   });
 
   it('will return undefined on empty list', () => {
-    const list = hosted<number>();
+    const list = reactive<number>();
 
     expect(list.pop()).toBeUndefined();
   });
@@ -294,7 +294,7 @@ describe('pop', () => {
 
 describe('clear', () => {
   it('will remove all items', () => {
-    const list = hosted([1, 2, 3]);
+    const list = reactive([1, 2, 3]);
 
     list.clear();
 
@@ -302,7 +302,7 @@ describe('clear', () => {
   });
 
   it('will not notify on empty list', async () => {
-    const list = hosted<number>();
+    const list = reactive<number>();
     const fn = mock();
 
     watch(list, fn);
@@ -319,19 +319,19 @@ describe('iteration', () => {
   it('will iterate via for-of', () => {
     const out: number[] = [];
 
-    for (const v of hosted([1, 2, 3])) out.push(v);
+    for (const v of reactive([1, 2, 3])) out.push(v);
 
     expect(out).toEqual([1, 2, 3]);
   });
 
   it('will spread', () => {
-    expect([...hosted(['a', 'b'])]).toEqual(['a', 'b']);
+    expect([...reactive(['a', 'b'])]).toEqual(['a', 'b']);
   });
 });
 
 describe('map', () => {
   it('will produce a plain array', () => {
-    const list = hosted([1, 2, 3]);
+    const list = reactive([1, 2, 3]);
     const out = list.map((v) => v * 2);
 
     expect(out).toEqual([2, 4, 6]);
@@ -339,14 +339,14 @@ describe('map', () => {
   });
 
   it('will skip results matching ignore value', () => {
-    const list = hosted([1, 2, 3, 4]);
+    const list = reactive([1, 2, 3, 4]);
     const out = list.map((v) => (v % 2 ? v : null), null);
 
     expect(out).toEqual([1, 3]);
   });
 
   it('will receive index and list', () => {
-    const list = hosted(['a']);
+    const list = reactive(['a']);
     const fn = mock((_v: string, _i: number, _l: unknown) => 0);
 
     list.map(fn);
@@ -357,7 +357,7 @@ describe('map', () => {
 
 describe('filter', () => {
   it('will return matching items', () => {
-    const list = hosted([1, 2, 3, 4]);
+    const list = reactive([1, 2, 3, 4]);
 
     expect(list.filter((v) => v > 2)).toEqual([3, 4]);
   });
@@ -365,35 +365,35 @@ describe('filter', () => {
 
 describe('any / all', () => {
   it('will return true when match exists', () => {
-    expect(hosted([1, 2, 3]).any((v) => v > 2)).toBe(true);
+    expect(reactive([1, 2, 3]).any((v) => v > 2)).toBe(true);
   });
 
   it('will return false when no match', () => {
-    expect(hosted([1, 2, 3]).any((v) => v > 99)).toBe(false);
+    expect(reactive([1, 2, 3]).any((v) => v > 99)).toBe(false);
   });
 
   it('will return boolean independent of value truthiness', () => {
-    const list = hosted([1, 0, 2]);
+    const list = reactive([1, 0, 2]);
 
     expect(list.any((v) => v === 0)).toBe(true);
   });
 
   it('will return true when predicate true for every item', () => {
-    expect(hosted([2, 4, 6]).all((v) => v % 2 === 0)).toBe(true);
+    expect(reactive([2, 4, 6]).all((v) => v % 2 === 0)).toBe(true);
   });
 
   it('will return false on first failure', () => {
-    expect(hosted([2, 3, 4]).all((v) => v % 2 === 0)).toBe(false);
+    expect(reactive([2, 3, 4]).all((v) => v % 2 === 0)).toBe(false);
   });
 
   it('will return true on empty list', () => {
-    expect(hosted<number>().all((v) => v > 0)).toBe(true);
+    expect(reactive<number>().all((v) => v > 0)).toBe(true);
   });
 });
 
 describe('subscriptions', () => {
   it('will update on size when length changes', async () => {
-    const list = hosted([1, 2]);
+    const list = reactive([1, 2]);
     const fn = mock();
 
     watch(list, ($) => {
@@ -409,7 +409,7 @@ describe('subscriptions', () => {
   });
 
   it('will update on get(i) only when that index changes', async () => {
-    const list = hosted(['a', 'b', 'c']);
+    const list = reactive(['a', 'b', 'c']);
     const fn = mock();
 
     watch(list, ($) => {
@@ -430,7 +430,7 @@ describe('subscriptions', () => {
   });
 
   it('will update on iteration when any index changes', async () => {
-    const list = hosted([1, 2, 3]);
+    const list = reactive([1, 2, 3]);
     const fn = mock();
 
     watch(list, ($) => {
@@ -446,7 +446,7 @@ describe('subscriptions', () => {
   });
 
   it('will update on iteration when length grows', async () => {
-    const list = hosted([1, 2]);
+    const list = reactive([1, 2]);
     const fn = mock();
 
     watch(list, ($) => {
@@ -462,7 +462,7 @@ describe('subscriptions', () => {
   });
 
   it('will update any() with no match on append', async () => {
-    const list = hosted([1, 2, 3]);
+    const list = reactive([1, 2, 3]);
     const fn = mock();
 
     watch(list, ($) => {
@@ -478,7 +478,7 @@ describe('subscriptions', () => {
   });
 
   it('will update all() when appended item violates predicate', async () => {
-    const list = hosted([2, 4]);
+    const list = reactive([2, 4]);
     const fn = mock();
 
     watch(list, ($) => {
@@ -494,7 +494,7 @@ describe('subscriptions', () => {
   });
 
   it('will update get(predicate) when earlier item becomes candidate', async () => {
-    const list = hosted([1, 2, 3]);
+    const list = reactive([1, 2, 3]);
     const fn = mock();
 
     watch(list, ($) => {
@@ -510,7 +510,7 @@ describe('subscriptions', () => {
   });
 
   it('will subscribe get(start, end) to indices in range only', async () => {
-    const list = hosted([1, 2, 3, 4, 5]);
+    const list = reactive([1, 2, 3, 4, 5]);
     const fn = mock();
 
     watch(list, ($) => {
@@ -531,7 +531,7 @@ describe('subscriptions', () => {
   });
 
   it('will subscribe out-of-range get to length so growth re-evaluates', async () => {
-    const list = hosted([1]);
+    const list = reactive([1]);
     const fn = mock();
 
     watch(list, ($) => {
@@ -553,21 +553,21 @@ describe('pool', () => {
   }
 
   it('will create pool for class', () => {
-    const pool = hosted(Item);
+    const pool = reactive(Item);
 
     expect(pool).toBeInstanceOf(has.Pool);
     expect(pool.size).toBe(0);
   });
 
   it('will create pool for factory', () => {
-    const pool = hosted(() => ({ value: 0 }));
+    const pool = reactive(() => ({ value: 0 }));
 
     expect(pool).toBeInstanceOf(has.Pool);
   });
 
   it('will construct mode as class identity', () => {
-    const list = hosted<number>();
-    const pool = hosted(Item);
+    const list = reactive<number>();
+    const pool = reactive(Item);
 
     expect(list).toBeInstanceOf(has.List);
     expect(list).not.toBeInstanceOf(has.Pool);
@@ -575,19 +575,19 @@ describe('pool', () => {
   });
 
   it('will not define add on list', () => {
-    const list = hosted<number>();
+    const list = reactive<number>();
 
     expect(() => (list as any).add()).toThrow(TypeError);
   });
 
   it('will not define push on pool', () => {
-    const pool = hosted(Item);
+    const pool = reactive(Item);
 
     expect(() => (pool as any).push(new Item())).toThrow(TypeError);
   });
 
   it('will return spawned value from add', () => {
-    const pool = hosted(Item);
+    const pool = reactive(Item);
     const item = pool.add();
 
     expect(item).toBeInstanceOf(Item);
@@ -596,21 +596,21 @@ describe('pool', () => {
   });
 
   it('will forward add arguments to class constructor', () => {
-    const pool = hosted(Item);
+    const pool = reactive(Item);
     const item = pool.add({ value: 5 });
 
     expect(item.value).toBe(5);
   });
 
   it('will forward add arguments to factory', () => {
-    const pool = hosted((n: number) => ({ n }));
+    const pool = reactive((n: number) => ({ n }));
     const item = pool.add(3);
 
     expect(item.n).toBe(3);
   });
 
   it('will pass through guest from factory', () => {
-    const pool = hosted((value?: Item) => value || Item.new());
+    const pool = reactive((value?: Item) => value || Item.new());
     const guest = Item.new();
 
     expect(pool.add(guest)).toBe(guest);
@@ -618,7 +618,7 @@ describe('pool', () => {
   });
 
   it('will ignore repeat add of same value', async () => {
-    const pool = hosted((value?: Item) => value || Item.new());
+    const pool = reactive((value?: Item) => value || Item.new());
     const guest = Item.new();
     const fn = mock();
 
@@ -638,7 +638,7 @@ describe('pool', () => {
   });
 
   it('will remove plain values on delete', () => {
-    const pool = hosted(() => ({}));
+    const pool = reactive(() => ({}));
     const value = pool.add();
 
     expect(pool.delete(value)).toBe(true);
@@ -647,7 +647,7 @@ describe('pool', () => {
   });
 
   it('will destroy member on delete', () => {
-    const pool = hosted(Item);
+    const pool = reactive(Item);
     const item = pool.add();
 
     expect(item.get(null)).toBe(false);
@@ -658,7 +658,7 @@ describe('pool', () => {
   });
 
   it('will destroy members on clear', () => {
-    const pool = hosted(Item);
+    const pool = reactive(Item);
     const a = pool.add();
     const b = pool.add();
 
@@ -669,7 +669,7 @@ describe('pool', () => {
   });
 
   it('will not destroy guest on delete', () => {
-    const pool = hosted((value?: Item) => value || Item.new());
+    const pool = reactive((value?: Item) => value || Item.new());
     const guest = Item.new();
 
     pool.add(guest);
@@ -678,8 +678,8 @@ describe('pool', () => {
     expect(guest.get(null)).toBe(false);
   });
 
-  it('will own activated value made by factory', () => {
-    const pool = hosted(() => Item.new());
+  it('will own fresh value made by factory', () => {
+    const pool = reactive(() => new Item());
     const item = pool.add();
 
     pool.delete(item);
@@ -688,7 +688,7 @@ describe('pool', () => {
   });
 
   it('will evict member when it dies', () => {
-    const pool = hosted(Item);
+    const pool = reactive(Item);
     const item = pool.add();
 
     item.set(null);
@@ -698,7 +698,7 @@ describe('pool', () => {
   });
 
   it('will not notify clear on empty pool', async () => {
-    const pool = hosted(Item);
+    const pool = reactive(Item);
     const fn = mock();
 
     watch(pool, fn);
@@ -746,7 +746,7 @@ describe('pool reads', () => {
   }
 
   it('will return snapshot array with no args', () => {
-    const pool = hosted(Item);
+    const pool = reactive(Item);
 
     pool.add({ value: 1 });
     pool.add({ value: 2 });
@@ -758,7 +758,7 @@ describe('pool reads', () => {
   });
 
   it('will return first match for predicate', () => {
-    const pool = hosted(Item);
+    const pool = reactive(Item);
 
     pool.add({ value: 1 });
     const two = pool.add({ value: 2 });
@@ -767,7 +767,7 @@ describe('pool reads', () => {
   });
 
   it('will return undefined when predicate matches nothing', () => {
-    const pool = hosted(Item);
+    const pool = reactive(Item);
 
     pool.add();
 
@@ -775,7 +775,7 @@ describe('pool reads', () => {
   });
 
   it('will iterate members', () => {
-    const pool = hosted((n: number) => ({ n }));
+    const pool = reactive((n: number) => ({ n }));
     const a = pool.add(1);
     const b = pool.add(2);
 
@@ -783,7 +783,7 @@ describe('pool reads', () => {
   });
 
   it('will map to plain array', () => {
-    const pool = hosted((n: number) => ({ n }));
+    const pool = reactive((n: number) => ({ n }));
 
     pool.add(1);
     pool.add(2);
@@ -792,7 +792,7 @@ describe('pool reads', () => {
   });
 
   it('will skip map results matching ignore value', () => {
-    const pool = hosted((n: number) => ({ n }));
+    const pool = reactive((n: number) => ({ n }));
 
     pool.add(1);
     pool.add(2);
@@ -802,7 +802,7 @@ describe('pool reads', () => {
   });
 
   it('will filter members', () => {
-    const pool = hosted((n: number) => ({ n }));
+    const pool = reactive((n: number) => ({ n }));
 
     pool.add(1);
     pool.add(2);
@@ -812,7 +812,7 @@ describe('pool reads', () => {
   });
 
   it('will support any and all', () => {
-    const pool = hosted((n: number) => ({ n }));
+    const pool = reactive((n: number) => ({ n }));
 
     pool.add(2);
     pool.add(4);
@@ -830,7 +830,7 @@ describe('pool subscriptions', () => {
   }
 
   it('will update on size when membership changes', async () => {
-    const pool = hosted(Item);
+    const pool = reactive(Item);
     const fn = mock();
 
     watch(pool, ($) => {
@@ -852,7 +852,7 @@ describe('pool subscriptions', () => {
   });
 
   it('will update has(value) only for that value', async () => {
-    const pool = hosted(Item);
+    const pool = reactive(Item);
     const item = pool.add();
     const fn = mock();
 
@@ -874,7 +874,7 @@ describe('pool subscriptions', () => {
   });
 
   it('will update iteration when membership changes', async () => {
-    const pool = hosted(Item);
+    const pool = reactive(Item);
     const fn = mock();
 
     watch(pool, ($) => {
