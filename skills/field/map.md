@@ -159,7 +159,7 @@ snapshot.get('a'); // exported product values
 ## Type Signature
 
 ```ts
-function map<K, V>(entries?: Iterable<readonly [K, V]> | false): map.Insert<K, V>;
+function map<K, V>(entries?: Iterable<readonly [K, V]> | false | null): map.Insert<K, V>;
 function map<A extends [unknown, ...unknown[]], V>(make: (...args: A) => V): map.Create<A, V>;
 
 // runtime base, reachable as map.Managed: reactive native Map subclass.

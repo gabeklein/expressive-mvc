@@ -99,6 +99,7 @@ Field initializers that configure reactive behavior. Each has multiple overloads
 | `get()` | Context lookup between States - required or optional upstream, downstream collection                   | [field/get.md](field/get.md) |
 | `ref()` | Mutable refs (`.current`), ref callbacks with cleanup, ref proxies                                      | [field/ref.md](field/ref.md) |
 | `hot()` | Keyed reactivity for a plain array or object without extracting a State class                           | [field/hot.md](field/hot.md) |
+| `map()` | Reactive `Map` field - keyed entries or a keyed spawner, with owned `State` members and direct render    | [field/map.md](field/map.md) |
 | `def()` | Low-level custom property behavior                                                                      | [field/def.md](field/def.md) |
 
 For **computed values**, declare a normal class getter - getters on a State subclass are auto-promoted to memoized, dependency-tracked properties. See [state/computed.md](state/computed.md) for tracking rules and when a derivation should *not* be a getter.
@@ -344,6 +345,7 @@ Fetch these for detailed documentation when the task requires deeper knowledge. 
 - [field/get.md](field/get.md) - Context lookup: upstream, downstream, callbacks
 - [field/ref.md](field/ref.md) - Mutable refs, ref proxy, callbacks
 - [field/hot.md](field/hot.md) - Reactive arrays and objects
+- [field/map.md](field/map.md) - Reactive `Map`: keyed entries, keyed spawner, owned members, direct render
 - [field/def.md](field/def.md) - Low-level custom property behavior
 
 ### React
