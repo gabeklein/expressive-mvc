@@ -5,34 +5,34 @@ import { flushMicrotasks as flush } from '../../test.setup';
 import { get } from './get';
 import { map } from './map';
 
-function reactive<K, V>(
+function managed<K, V>(
   entries?: Iterable<readonly [K, V]> | null
 ): map.Insert<K, V>;
 
-function reactive<A extends [unknown, ...unknown[]], V>(
+function managed<A extends [unknown, ...unknown[]], V>(
   make: (...args: A) => V
 ): map.Create<A, V>;
 
-function reactive(...args: any[]): any {
+function managed(...args: any[]): any {
   return new map.Managed(args[0]);
 }
 
 describe('factory', () => {
   it('will create empty map', () => {
-    const items = reactive<string, number>();
+    const items = managed<string, number>();
 
     expect(items).toBeInstanceOf(Map);
     expect(items.size).toBe(0);
   });
 
   it('will construct mode as class identity', () => {
-    expect(reactive<string, number>()).toBeInstanceOf(map.Managed);
-    expect(reactive((key: string) => key)).toBeInstanceOf(map.Managed);
-    expect(reactive<string, number>()).toBeInstanceOf(Map);
+    expect(managed<string, number>()).toBeInstanceOf(map.Managed);
+    expect(managed((key: string) => key)).toBeInstanceOf(map.Managed);
+    expect(managed<string, number>()).toBeInstanceOf(Map);
   });
 
   it('will accept entries', () => {
-    const items = reactive([
+    const items = managed([
       ['a', 1],
       ['b', 2]
     ]);
@@ -45,7 +45,7 @@ describe('factory', () => {
 
   it('will copy entries from initial iterable', () => {
     const source = new Map([['a', 1]]);
-    const items = reactive(source);
+    const items = managed(source);
 
     source.set('b', 2);
 
@@ -55,14 +55,14 @@ describe('factory', () => {
 
 describe('map', () => {
   it('will get and set values', () => {
-    const items = reactive<string, number>();
+    const items = managed<string, number>();
 
     expect(items.set('a', 1)).toBe(items);
     expect(items.get('a')).toBe(1);
   });
 
   it('will delete values', () => {
-    const items = reactive([['a', 1]]);
+    const items = managed([['a', 1]]);
 
     expect(items.delete('a')).toBeTrue();
     expect(items.delete('a')).toBeFalse();
@@ -70,7 +70,7 @@ describe('map', () => {
   });
 
   it('will clear values', () => {
-    const items = reactive([
+    const items = managed([
       ['a', 1],
       ['b', 2]
     ]);
@@ -82,13 +82,13 @@ describe('map', () => {
 
   it('will support object keys', () => {
     const key = {};
-    const items = reactive([[key, 'value']]);
+    const items = managed([[key, 'value']]);
 
     expect(items.get(key)).toBe('value');
   });
 
   it('will support undefined keys', () => {
-    const items = reactive<undefined, string>();
+    const items = managed<undefined, string>();
 
     items.set(undefined, 'value');
 
@@ -96,7 +96,7 @@ describe('map', () => {
   });
 
   it('will return snapshot from get with no args', () => {
-    const items = reactive([['a', 1]]);
+    const items = managed([['a', 1]]);
     const snapshot = items.get();
 
     items.set('b', 2);
@@ -106,13 +106,13 @@ describe('map', () => {
 
   it('will unwrap nested get values in snapshot', () => {
     const inner = { get: () => 'unwrapped' };
-    const items = reactive([['a', inner]]);
+    const items = managed([['a', inner]]);
 
     expect(items.get().get('a')).toBe('unwrapped');
   });
 
   it('will not define add', () => {
-    const items = reactive<string, number>();
+    const items = managed<string, number>();
 
     expect(() => (items as any).add(1)).toThrow(TypeError);
   });
@@ -120,7 +120,7 @@ describe('map', () => {
 
 describe('iteration', () => {
   it('will iterate entries', () => {
-    const items = reactive([
+    const items = managed([
       ['a', 1],
       ['b', 2]
     ]);
@@ -136,7 +136,7 @@ describe('iteration', () => {
   });
 
   it('will iterate keys', () => {
-    const items = reactive([
+    const items = managed([
       ['a', 1],
       ['b', 2]
     ]);
@@ -145,7 +145,7 @@ describe('iteration', () => {
   });
 
   it('will iterate values', () => {
-    const items = reactive([
+    const items = managed([
       ['a', 1],
       ['b', 2]
     ]);
@@ -154,7 +154,7 @@ describe('iteration', () => {
   });
 
   it('will support forEach', () => {
-    const items = reactive([['a', 1]]);
+    const items = managed([['a', 1]]);
     const calls: unknown[] = [];
     const thisArg = {};
 
@@ -172,14 +172,14 @@ describe('create', () => {
   }
 
   it('will spawn value from key on set', () => {
-    const items = reactive((key: string) => ({ key }));
+    const items = managed((key: string) => ({ key }));
 
     expect(items.set('a')).toBe(items);
     expect(items.get('a')).toEqual({ key: 'a' });
   });
 
   it('will pass arguments through to factory', () => {
-    const items = reactive((key: string, times: number) => key.repeat(times));
+    const items = managed((key: string, times: number) => key.repeat(times));
 
     items.set('ab', 2);
 
@@ -188,7 +188,7 @@ describe('create', () => {
 
   it('will replace occupied key', () => {
     const make = mock((key: string) => new Item());
-    const items = reactive(make);
+    const items = managed(make);
 
     items.set('a');
     const first = items.get('a')!;
@@ -204,7 +204,7 @@ describe('create', () => {
   });
 
   it('will destroy owned state on delete', () => {
-    const items = reactive((key: string) => new Item());
+    const items = managed((key: string) => new Item());
 
     items.set('a');
     const item = items.get('a')!;
@@ -217,7 +217,7 @@ describe('create', () => {
   });
 
   it('will destroy owned state on clear', () => {
-    const items = reactive((key: string) => new Item());
+    const items = managed((key: string) => new Item());
 
     items.set('a');
     items.set('b');
@@ -232,7 +232,7 @@ describe('create', () => {
   });
 
   it('will pass guest through factory unowned', () => {
-    const items = reactive(
+    const items = managed(
       (key: string, value?: Item) => value || new Item()
     );
     const guest = Item.new();
@@ -250,7 +250,7 @@ describe('create', () => {
   });
 
   it('will ignore plain values', () => {
-    const items = reactive((key: string) => ({ key }));
+    const items = managed((key: string) => ({ key }));
 
     items.set('a');
 
@@ -259,7 +259,7 @@ describe('create', () => {
   });
 
   it('will not define add', () => {
-    const items = reactive((key: string) => ({ key }));
+    const items = managed((key: string) => ({ key }));
 
     expect(() => (items as any).add()).toThrow(TypeError);
   });
@@ -267,7 +267,7 @@ describe('create', () => {
 
 describe('transforms', () => {
   it('will map values through callback', () => {
-    const items = reactive([
+    const items = managed([
       ['a', 1],
       ['b', 2]
     ]);
@@ -278,7 +278,7 @@ describe('transforms', () => {
   });
 
   it('will map keys and entries through callback', () => {
-    const items = reactive([['a', 1]]);
+    const items = managed([['a', 1]]);
 
     expect(Array.from(items.keys((key) => key.toUpperCase()))).toEqual(['A']);
     expect(Array.from(items.entries(([key, value]) => key + value))).toEqual([
@@ -287,7 +287,7 @@ describe('transforms', () => {
   });
 
   it('will iterate transform more than once', () => {
-    const items = reactive([
+    const items = managed([
       ['a', 1],
       ['b', 2]
     ]);
@@ -299,7 +299,7 @@ describe('transforms', () => {
   });
 
   it('will reflect current state on each iteration', () => {
-    const items = reactive([['a', 1]]);
+    const items = managed([['a', 1]]);
     const values = items.values((value) => value);
 
     expect(Array.from(values)).toEqual([1]);
@@ -310,7 +310,7 @@ describe('transforms', () => {
   });
 
   it('will survive break in for-of', () => {
-    const items = reactive([
+    const items = managed([
       ['a', 1],
       ['b', 2]
     ]);
@@ -323,7 +323,7 @@ describe('transforms', () => {
   });
 
   it('will skip entry when callback throws false', () => {
-    const items = reactive([
+    const items = managed([
       ['a', 1],
       ['b', 2],
       ['c', 3]
@@ -338,7 +338,7 @@ describe('transforms', () => {
   });
 
   it('will rethrow real errors from callback', () => {
-    const items = reactive([['a', 1]]);
+    const items = managed([['a', 1]]);
     const boom = items.values(() => {
       throw new Error('boom');
     });
@@ -347,7 +347,7 @@ describe('transforms', () => {
   });
 
   it('will track shape and values in effect', async () => {
-    const items = reactive([['a', 1]]);
+    const items = managed([['a', 1]]);
     const fn = mock();
 
     watch(items, ($) => {
@@ -366,7 +366,7 @@ describe('transforms', () => {
   });
 
   it('will track shape only through keys transform', async () => {
-    const items = reactive([['a', 1]]);
+    const items = managed([['a', 1]]);
     const fn = mock();
 
     watch(items, ($) => {
@@ -490,7 +490,7 @@ describe('adoption', () => {
       }
     }
 
-    const items = reactive<string, Entry>();
+    const items = managed<string, Entry>();
 
     items.set('a', new Entry());
 
@@ -581,7 +581,7 @@ describe('adoption', () => {
 
 describe('subscriptions', () => {
   it('will fire on get(key) only when that key changes', async () => {
-    const items = reactive([
+    const items = managed([
       ['a', 1],
       ['b', 2]
     ]);
@@ -603,7 +603,7 @@ describe('subscriptions', () => {
   });
 
   it('will fire on has(key) when that key changes', async () => {
-    const items = reactive<string, number>();
+    const items = managed<string, number>();
     const fn = mock();
 
     watch(items, ($) => {
@@ -622,7 +622,7 @@ describe('subscriptions', () => {
   });
 
   it('will fire on size when shape changes', async () => {
-    const items = reactive([['a', 1]]);
+    const items = managed([['a', 1]]);
     const fn = mock();
 
     watch(items, ($) => {
@@ -641,7 +641,7 @@ describe('subscriptions', () => {
   });
 
   it('will fire on iteration when values change', async () => {
-    const items = reactive([
+    const items = managed([
       ['a', 1],
       ['b', 2]
     ]);
@@ -659,7 +659,7 @@ describe('subscriptions', () => {
   });
 
   it('will fire on keys when shape changes only', async () => {
-    const items = reactive([['a', 1]]);
+    const items = managed([['a', 1]]);
     const fn = mock();
 
     watch(items, ($) => {
@@ -678,7 +678,7 @@ describe('subscriptions', () => {
   });
 
   it('will fire on deleted key subscribers', async () => {
-    const items = reactive([['a', 1]]);
+    const items = managed([['a', 1]]);
     const fn = mock();
 
     watch(items, ($) => {
@@ -693,7 +693,7 @@ describe('subscriptions', () => {
   });
 
   it('will not fire when setting unchanged value', async () => {
-    const items = reactive([['a', 1]]);
+    const items = managed([['a', 1]]);
     const fn = mock();
 
     watch(items, ($) => {
@@ -713,7 +713,7 @@ describe('subscriptions', () => {
     }
 
     const counter = Counter.new();
-    const items = reactive([['counter', counter]]);
+    const items = managed([['counter', counter]]);
     const fn = mock();
 
     watch(items, ($) => {
