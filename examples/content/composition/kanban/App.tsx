@@ -30,12 +30,15 @@ export default class Board extends Component {
   }
 
   add(title: string, column: string) {
-    this.cards.add({ title, column, order: this.nextOrder(column) });
+    this.cards.add({ title, column, order: this.next() });
   }
 
-  nextOrder(column: string) {
-    const last = ordered(this.cards, column).at(-1);
-    return (last ? last.order : 0) + 1;
+  // One increasing order shared across columns - only compared within a
+  // column, so a global value still sorts each correctly. Reads the current
+  // max, not the count, so it survives deletes and the fractional orders a
+  // drop inserts.
+  next() {
+    return Math.max(0, ...[...this.cards].map((c) => c.order)) + 1;
   }
 
   // Place the dragged card into a column, before `target` if given -
@@ -58,7 +61,7 @@ export default class Board extends Component {
       const prev = siblings[siblings.indexOf(target) - 1];
       card.order = prev ? (prev.order + target.order) / 2 : target.order - 1;
     } else {
-      card.order = this.nextOrder(column);
+      card.order = this.next();
     }
 
     card.column = column;
@@ -176,7 +179,7 @@ class Column extends Component {
     this.board.cards.add({
       title,
       column: this.id,
-      order: this.board.nextOrder(this.id)
+      order: this.board.next()
     });
   }
 
