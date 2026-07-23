@@ -27,7 +27,8 @@
     "./src/jsx-runtime.ts",
     "./src/state.get.ts",
     "./src/state.use.ts",
-    "./src/component.ts"
+    "./src/component.ts",
+    "./src/map.ts"
   ],
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
