@@ -5,7 +5,7 @@ import { watch } from '../observable';
 import { get } from './get';
 import { has } from './has';
 
-function reactive<T>(initial?: Iterable<T> | null): has.List<T>;
+function reactive<T>(initial?: Iterable<T> | false | null): has.List<T>;
 
 function reactive<T extends State>(
   Type: new (...args: State.Args<T>) => T
@@ -54,6 +54,11 @@ describe('factory', () => {
     source.push(4);
 
     expect(list.get()).toEqual([1, 2, 3]);
+  });
+
+  it('will treat falsy initial as empty', () => {
+    expect(reactive<number>(null).size).toBe(0);
+    expect(reactive<number>(false).size).toBe(0);
   });
 
   it('will throw if assigned', () => {
@@ -738,6 +743,7 @@ describe('pool adoption', () => {
     expect(a.get(null)).toBe(true);
     expect(b.get(null)).toBe(true);
   });
+
 });
 
 describe('pool reads', () => {

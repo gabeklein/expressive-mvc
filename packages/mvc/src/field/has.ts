@@ -19,7 +19,7 @@ declare namespace has {
   export { Predicate, Mapper, List, Pool }
 }
 
-function has<T>(initial?: Iterable<T> | null): List<T>;
+function has<T>(initial?: Iterable<T> | false | null): List<T>;
 
 function has<T extends State>(
   Type: new (...args: State.Args<T>) => T
@@ -29,7 +29,7 @@ function has<T, A extends unknown[]>(
   make: (...args: A) => T
 ): Pool<T, A>;
 
-function has(arg?: Iterable<unknown> | Function | null): unknown {
+function has(arg?: Iterable<unknown> | Function | false | null): unknown {
   return def((_key, subject) => ({
     set: false,
     value: typeof arg == 'function'
@@ -39,7 +39,7 @@ function has(arg?: Iterable<unknown> | Function | null): unknown {
 }
 
 class List<T> {
-  constructor(owner?: State | null, initial?: Iterable<T> | null) {
+  constructor(owner?: State | null, initial?: Iterable<T> | false | null) {
     ITEMS.set(this, initial ? Array.from(initial) : []);
     own(this, owner);
 
