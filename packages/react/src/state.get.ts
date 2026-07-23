@@ -110,9 +110,11 @@ State.get = function get<T extends State>(
         return release;
       }
 
+      let first = true;
+
       unwatch = watch(
         next,
-        (current, changed) => {
+        (current) => {
           if (typeof argument === 'function') {
             const next = argument.call(current, current, refresh);
             if (next === value) return;
@@ -121,7 +123,8 @@ State.get = function get<T extends State>(
             value = current;
           }
 
-          if (changed.length) update();
+          if (!first) update();
+          first = false;
         },
         argument === true
       );
