@@ -57,7 +57,19 @@ class Roster extends State {
 }
 ```
 
-`add(...args)` forwards its arguments - to the class constructor exactly as `Type.new()` accepts them, or as the factory's own parameters - and returns the member. With a `Component` class, identity `key` arrives this way before the `new()` lifecycle hook runs. A pool of `Component` values renders directly: `<>{[...roster.players]}</>`.
+`add(...args)` forwards its arguments - to the class constructor exactly as `Type.new()` accepts them, or as the factory's own parameters - and returns the member. With a `Component` class, identity `key` arrives this way before the `new()` lifecycle hook runs. In `@expressive/react` a pool of `Component` values renders directly - `<ul>{roster.players}</ul>` - through the facade; `[...roster.players]` is the manual alternative.
+
+A pool has no initial argument: it spawns, so seed it imperatively from the `new()` hook, which runs once the field has resolved. This is the single seeding seam - it also covers conditional, ordered, and derived members, which a static initializer could not.
+
+```ts
+class Board extends State {
+  columns = has(Column);
+
+  protected new() {
+    for (const column of LAYOUT) this.columns.add(column);
+  }
+}
+```
 
 ```ts
 class Board extends State {
