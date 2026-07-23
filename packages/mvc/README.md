@@ -56,6 +56,7 @@ Field initializers that change how a property behaves:
 | `get()` | dependency injection - pull another `State` from context |
 | `hot()` | a shallow-reactive array or object |
 | `map()` | a shallow-reactive Map |
+| `has()` | an owned reactive collection - an ordered list or a spawned pool |
 
 ```ts
 import { State, set, hot, map } from '@expressive/mvc';

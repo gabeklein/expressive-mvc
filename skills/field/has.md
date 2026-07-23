@@ -86,7 +86,7 @@ Ownership follows freshness: a fresh (never-activated) `State` member - a `new I
 
 Every collection is adopted by its hosting state at activation. Fresh `State` members are parented to the owner and activate inside its context: `get(Owner)` resolves directly and providers above the owner resolve from members.
 
-Death also flows the other way: a `State` member that dies evicts itself from the pool - owned or guest - so a pool never serves destroyed members. Destroying a member (`member.set(null)`) is a complete removal gesture on its own. Lists do not adopt or destroy - they store what you give them.
+Death also flows the other way: a `State` member that dies evicts itself from the pool - owned or guest - so a pool never serves destroyed members. Destroying a member (`member.set(null)`) is a complete removal gesture on its own. Lists do not adopt, destroy, or evict on death - they store values by position; use a pool (`has(Item)`) when members are owned `State`s.
 
 Destruction is an eviction concern, separate from context, so the underlying `has.Pool` and `has.List` can be constructed directly without an owner (`new has.Pool(null, Item)`, chiefly for testing) - fresh members are still owned and destroyed on eviction, just not parented into a context.
 

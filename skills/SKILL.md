@@ -146,7 +146,7 @@ Every map is adopted by its hosting state when the instruction resolves at activ
 | `has<T>()` / `has(values)` | `has.List<T>` - ordered reactive list; positional reads (`get(index)`, ranges, predicate), `push`/`put`/`set(index)`/`pop`. Index and length tracking. |
 | `has(StateClass)` / `has(factory)` | `has.Pool<T, A>` - owned pool; `add(...args)` spawns through the constructor or factory and returns the member, which is its own identity (`has`/`delete` take the value). No positional surface. |
 
-`has()` is a field instruction: mode follows the argument (iterable/none is a list, any function is a pool). Pools own what they spawn - deleted, cleared, or owner-death members are destroyed - while a value the factory passes through from its arguments stays a guest (`(item?) => item || new Item()`). A member that dies evicts itself. Both modes share `map(fn)`/`filter(fn)`/`any`/`all`/`get(predicate)` and snapshot via `get()`. A pool of `Component` values renders directly: `<>{[...pool]}</>`.
+`has()` is a field instruction: mode follows the argument (iterable/none is a list, any function is a pool). Pools own what they spawn - deleted, cleared, or owner-death members are destroyed - while a value the factory passes through from its arguments stays a guest (`(item?) => item || new Item()`). A member that dies evicts itself. Both modes share `map(fn)`/`filter(fn)`/`any`/`all`/`get(predicate)` and snapshot via `get()`. In `@expressive/react` a collection renders directly - `<ul>{this.todos}</ul>` - through a `$$typeof` facade, no spread or keys; `[...collection]` remains the manual alternative.
 
 ### React Hooks
 
