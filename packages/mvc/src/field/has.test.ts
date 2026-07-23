@@ -744,6 +744,21 @@ describe('pool adoption', () => {
     expect(b.get(null)).toBe(true);
   });
 
+  it('will not destroy guest with owner', () => {
+    class Guest extends State {}
+
+    class Host extends State {
+      members = has((value?: Guest) => value || new Guest());
+    }
+
+    const host = Host.new();
+    const guest = Guest.new();
+
+    host.members.add(guest);
+    host.set(null);
+
+    expect(guest.get(null)).toBe(false);
+  });
 });
 
 describe('pool reads', () => {
