@@ -5,6 +5,7 @@ import { get } from './field/get';
 import { ref } from './field/ref';
 import { set } from './field/set';
 import { State, update } from './state';
+import { event } from './observable';
 
 it('will extend custom class', () => {
   class Subject extends State {
@@ -2544,6 +2545,31 @@ describe('new method (static)', () => {
 
     expect(test).not.toHaveProperty('notManaged');
     expect(test).not.toHaveProperty('notMethod');
+  });
+});
+
+describe('activation', () => {
+  // A foreign non-configurable own property (e.g. React element internals
+  // like `_owner`, installed on the instance by the render facade before a
+  // bare-constructed Component activates) must not crash activation: the
+  // field sweep can only convert configurable value properties, and should
+  // leave anything else untouched rather than throw on defineProperty.
+  it('will ignore non-configurable own value properties', () => {
+    class Test extends State {
+      value = 1;
+    }
+
+    const test = new Test();
+
+    Object.defineProperty(test, '_foreign', {
+      value: {},
+      enumerable: true,
+      configurable: false,
+      writable: false
+    });
+
+    expect(() => event(test)).not.toThrow();
+    expect(test.value).toBe(1);
   });
 });
 

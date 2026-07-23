@@ -493,7 +493,7 @@ function init(state: State, ...args: State.Args) {
   function observe() {
     for (const key in state) {
       const desc = Object.getOwnPropertyDescriptor(state, key)!;
-      if ('value' in desc) apply(state, key, desc, true);
+      if ('value' in desc && desc.configurable) apply(state, key, desc, true);
     }
   }
 

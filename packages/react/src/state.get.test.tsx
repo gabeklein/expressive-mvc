@@ -1101,3 +1101,36 @@ describe('State.get - computed dependency', () => {
     expect(hook.result.current).toBe('3/6');
   });
 });
+
+describe('State.get - nested dependency', () => {
+  // Reading a nested reactive value through get() - a child State's field
+  // (or a map entry) - used to never refresh: the nested change fires with
+  // the root's own events empty, and the refresh guard keyed on those events
+  // (`if (changed.length)`, added by c0dffdbf) dropped it. Restored to
+  // refresh on any observed change after the initial run.
+  it('will refresh when observing a nested state field', async () => {
+    class Child extends State {
+      value = 0;
+    }
+
+    class Parent extends State {
+      child = new Child();
+    }
+
+    const parent = Parent.new();
+    const didRender = mock();
+    const hook = renderWith(parent, () => {
+      didRender();
+      return Parent.get().child.value;
+    });
+
+    expect(hook.result.current).toBe(0);
+
+    await act(async () => {
+      parent.child.value = 5;
+    });
+
+    expect(hook.result.current).toBe(5);
+    expect(didRender).toBeCalledTimes(2);
+  });
+});
