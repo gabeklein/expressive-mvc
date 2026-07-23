@@ -25,7 +25,7 @@ declare namespace map {
 }
 
 function map<K, V>(
-  entries?: Iterable<readonly [K, V]> | false
+  entries?: Iterable<readonly [K, V]> | false | null
 ): map.Insert<K, V>;
 
 function map<A extends [unknown, ...unknown[]], V>(
@@ -33,7 +33,7 @@ function map<A extends [unknown, ...unknown[]], V>(
 ): map.Create<A, V>;
 
 function map(
-  arg?: Iterable<readonly [unknown, unknown]> | Function | false
+  arg?: Iterable<readonly [unknown, unknown]> | Function | false | null
 ): unknown {
   return def((_key, subject) => {
     const value = new Managed(typeof arg == 'function' && arg);
@@ -41,7 +41,7 @@ function map(
     parent(value, subject);
     listener(subject, () => value.clear(), null);
 
-    if (typeof arg == 'object')
+    if (arg && typeof arg == 'object')
       for (const [key, entry] of arg) value.set(key, entry);
 
     return { set: false, value };
@@ -49,7 +49,7 @@ function map(
 }
 
 class Managed<K, V> extends Map<K, V> {
-  constructor(arg?: Iterable<readonly [K, V]> | Function | false) {
+  constructor(arg?: Iterable<readonly [K, V]> | Function | false | null) {
     super();
 
     MAKE.set(this, typeof arg == 'function' ? arg : KEYED);

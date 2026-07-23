@@ -6,7 +6,7 @@ import { get } from './get';
 import { map } from './map';
 
 function managed<K, V>(
-  entries?: Iterable<readonly [K, V]> | null
+  entries?: Iterable<readonly [K, V]> | false | null
 ): map.Insert<K, V>;
 
 function managed<A extends [unknown, ...unknown[]], V>(
@@ -50,6 +50,11 @@ describe('factory', () => {
     source.set('b', 2);
 
     expect(Array.from(items)).toEqual([['a', 1]]);
+  });
+
+  it('will treat falsy initial as empty', () => {
+    expect(managed<string, number>(null).size).toBe(0);
+    expect(managed<string, number>(false).size).toBe(0);
   });
 });
 
@@ -115,6 +120,14 @@ describe('map', () => {
     const items = managed<string, number>();
 
     expect(() => (items as any).add(1)).toThrow(TypeError);
+  });
+
+  it('will resolve falsy initial as empty field', () => {
+    class Test extends State {
+      items = map<string, number>(null);
+    }
+
+    expect(Test.new().items.size).toBe(0);
   });
 });
 
