@@ -7,7 +7,6 @@ const SHAPE = Symbol('shape');
 const KEYED = (_key: unknown, value: unknown) => value;
 
 const MAKE = new WeakMap<object, Function>();
-const OWNER = new WeakMap<object, State>();
 const OWNED = new WeakMap<object, Map<unknown, () => void>>();
 
 const MAP = Map.prototype;
@@ -42,7 +41,7 @@ declare namespace map {
 }
 
 function map<K, V>(
-  entries?: Iterable<readonly [K, V]> | null
+  entries?: Iterable<readonly [K, V]> | false
 ): map.Insert<K, V>;
 
 function map<A extends [unknown, ...unknown[]], V>(
@@ -50,28 +49,27 @@ function map<A extends [unknown, ...unknown[]], V>(
 ): map.Create<A, V>;
 
 function map(
-  arg?: Iterable<readonly [unknown, unknown]> | Function | null
+  arg?: Iterable<readonly [unknown, unknown]> | Function | false
 ): unknown {
-  return def((_key, subject) => ({
-    set: false,
-    value: new ReactiveMap(subject, arg)
-  }));
+  return def((_key, subject) => {
+    const value = new ReactiveMap(typeof arg == 'function' && arg);
+
+    parent(value, subject);
+    listener(subject, () => value.clear(), null);
+
+    if (typeof arg == 'object')
+      for (const [key, entry] of arg) value.set(key, entry);
+
+    return { set: false, value };
+  });
 }
 
 class ReactiveMap<K, V> extends Map<K, V> implements map.Insert<K, V> {
-  constructor(
-    owner?: State | null,
-    arg?: Iterable<readonly [K, V]> | Function | null
-  ) {
+  constructor(arg?: Iterable<readonly [K, V]> | Function | false) {
     super();
 
     MAKE.set(this, typeof arg == 'function' ? arg : KEYED);
     OWNED.set(this, new Map());
-
-    if (owner) {
-      OWNER.set(this, owner);
-      listener(owner, () => this.clear(), null);
-    }
 
     event(this);
 
@@ -235,16 +233,14 @@ function adopt(
 ) {
   if (!(value instanceof State)) return;
 
-  const fresh = parent(value) === undefined;
-  const owner = OWNER.get(target);
+  const owner = parent(target);
+  const fresh = parent(value, owner ?? null);
   const evict = listener(value, () => void target.delete(key as never), null);
 
   let detach: (() => void) | undefined;
 
-  if (fresh && owner) {
+  if (fresh && owner)
     detach = Context.get(owner).add(value);
-    parent(value, owner);
-  }
 
   OWNED.get(target)!.set(key, () => {
     evict();

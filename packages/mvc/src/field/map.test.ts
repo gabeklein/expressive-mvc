@@ -14,7 +14,7 @@ function reactive<A extends [unknown, ...unknown[]], V>(
 ): map.Create<A, V>;
 
 function reactive(...args: any[]): any {
-  return new map.Create(null, args[0]);
+  return new map.Create(args[0]);
 }
 
 describe('factory', () => {
