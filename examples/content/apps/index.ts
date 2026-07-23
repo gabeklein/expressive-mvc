@@ -1,1 +1,1 @@
-export default ['forms', 'tictactoe', 'stopwatch', 'router'];
+export default ['forms', 'tictactoe', 'stopwatch', 'router', 'todomvc'];
