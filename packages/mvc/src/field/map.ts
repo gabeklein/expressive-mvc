@@ -204,35 +204,29 @@ function store<K, V>(target: Managed<K, V>, key: K, value: V) {
   }
 
   MAP.set.call(target, key, value);
-  adopt(target, key, value);
+
+  if (value instanceof State) {
+    const owner = parent(target);
+    const fresh = parent(value, owner ?? null);
+    const evict = listener(value, () => void target.delete(key), null);
+
+    let detach: (() => void) | undefined;
+
+    if (fresh && owner)
+      detach = Context.get(owner).add(value);
+
+    OWNED.get(target)!.set(key, () => {
+      evict();
+      if (detach) detach();
+      if (fresh) value.set(null);
+    });
+
+    if (fresh) event(value);
+  }
+
   event(target, key as never);
 
   if (!exists) event(target, SHAPE);
-}
-
-function adopt(
-  target: { delete(key: never): boolean },
-  key: unknown,
-  value: unknown
-) {
-  if (!(value instanceof State)) return;
-
-  const owner = parent(target);
-  const fresh = parent(value, owner ?? null);
-  const evict = listener(value, () => void target.delete(key as never), null);
-
-  let detach: (() => void) | undefined;
-
-  if (fresh && owner)
-    detach = Context.get(owner).add(value);
-
-  OWNED.get(target)!.set(key, () => {
-    evict();
-    if (detach) detach();
-    if (fresh) value.set(null);
-  });
-
-  if (fresh) event(value);
 }
 
 function release(target: object, key: unknown) {
