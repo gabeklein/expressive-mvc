@@ -14,7 +14,7 @@ function reactive<A extends [unknown, ...unknown[]], V>(
 ): map.Create<A, V>;
 
 function reactive(...args: any[]): any {
-  return new map.Create(args[0]);
+  return new map.Managed(args[0]);
 }
 
 describe('factory', () => {
@@ -26,8 +26,8 @@ describe('factory', () => {
   });
 
   it('will construct mode as class identity', () => {
-    expect(reactive<string, number>()).toBeInstanceOf(map.Create);
-    expect(reactive((key: string) => key)).toBeInstanceOf(map.Create);
+    expect(reactive<string, number>()).toBeInstanceOf(map.Managed);
+    expect(reactive((key: string) => key)).toBeInstanceOf(map.Managed);
     expect(reactive<string, number>()).toBeInstanceOf(Map);
   });
 

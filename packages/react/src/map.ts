@@ -2,14 +2,14 @@ import { map } from '@expressive/mvc';
 import { use } from './runtime';
 import { seam } from './element';
 
-Object.defineProperty(map.Create.prototype, '$$typeof', {
+Object.defineProperty(map.Managed.prototype, '$$typeof', {
   get() {
-    const self = source(this) as map.Create<[unknown], unknown>;
+    const self = source(this) as map.Managed<unknown, unknown>;
     return seam(self, {}, Values.bind(self), null);
   }
 });
 
-function Values(this: map.Create<[unknown], unknown>) {
+function Values(this: map.Managed<unknown, unknown>) {
   return [...use(this).values()];
 }
 
@@ -19,7 +19,7 @@ function source(from: object) {
 
   for (
     let proto = Object.getPrototypeOf(self);
-    proto instanceof map.Create;
+    proto instanceof map.Managed;
     proto = Object.getPrototypeOf(self)
   )
     self = proto;

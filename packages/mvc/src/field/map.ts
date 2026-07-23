@@ -12,32 +12,16 @@ const OWNED = new WeakMap<object, Map<unknown, () => void>>();
 const MAP = Map.prototype;
 const MAP_SIZE = Object.getOwnPropertyDescriptor(MAP, 'size')!.get!;
 
-interface MapLike<K, V> {
-  readonly size: number;
-  get(): ReadonlyMap<K, State.Export<V>>;
-  get(key: K): V | undefined;
-  has(key: K): boolean;
-  delete(key: K): boolean;
-  clear(): void;
-  entries(): MapIterator<[K, V]>;
-  entries<R>(fn: (entry: [K, V]) => R): Iterable<R>;
-  keys(): MapIterator<K>;
-  keys<R>(fn: (key: K) => R): Iterable<R>;
-  values(): MapIterator<V>;
-  values<R>(fn: (value: V, key: K) => R): Iterable<R>;
-  forEach(fn: (value: V, key: K, map: this) => void, thisArg?: unknown): void;
-  [Symbol.iterator](): MapIterator<[K, V]>;
-}
-
 declare namespace map {
-  interface Create<A extends [unknown, ...unknown[]], V>
-    extends MapLike<A[0], V> {
+  export interface Create<A extends [unknown, ...unknown[]], V> extends Managed<A[0], V> {
     set(...args: A): this;
   }
 
-  type Insert<K, V> = map.Create<[key: K, value: V], V>;
+  export interface Insert<K, V> extends Managed<K, V> {
+    set(key: K, value: V): this;
+  }
 
-  let Create: typeof ReactiveMap;
+  export { Managed };
 }
 
 function map<K, V>(
@@ -52,7 +36,7 @@ function map(
   arg?: Iterable<readonly [unknown, unknown]> | Function | false
 ): unknown {
   return def((_key, subject) => {
-    const value = new ReactiveMap(typeof arg == 'function' && arg);
+    const value = new Managed(typeof arg == 'function' && arg);
 
     parent(value, subject);
     listener(subject, () => value.clear(), null);
@@ -64,7 +48,7 @@ function map(
   });
 }
 
-class ReactiveMap<K, V> extends Map<K, V> implements map.Insert<K, V> {
+class Managed<K, V> extends Map<K, V> {
   constructor(arg?: Iterable<readonly [K, V]> | Function | false) {
     super();
 
@@ -192,7 +176,7 @@ class ReactiveMap<K, V> extends Map<K, V> implements map.Insert<K, V> {
   }
 }
 
-map.Create = ReactiveMap;
+Object.assign(map, { Managed });
 
 function transform<T, R>(
   iterate: () => Generator<T>,
@@ -210,7 +194,7 @@ function transform<T, R>(
   };
 }
 
-function store<K, V>(target: ReactiveMap<K, V>, key: K, value: V) {
+function store<K, V>(target: Managed<K, V>, key: K, value: V) {
   const exists = MAP.has.call(target, key);
 
   if (exists) {

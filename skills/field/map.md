@@ -102,7 +102,7 @@ Ownership follows freshness, uniformly across both modes and independent of how 
 
 Every map is adopted by its hosting state when that state activates - the field instruction resolves and adopts in one step, so a usable map always has an owner. The field itself is read-only; assigning over it throws. Fresh `State` values landing in the map are parented to the owner and activate inside its context: `get(Owner)` resolves directly and providers above the owner resolve from members. Owned members are destroyed with the owner. An already-activated value cannot be adopted - its parent is settled - so it keeps guest status.
 
-Destruction is an eviction concern, separate from context: `delete` destroys the owned entry it removes, `clear` is that over every entry, and the owner dying is itself a `clear`. Because destruction does not depend on the parent link, the underlying `map.Create` can be constructed directly without an owner (`new map.Create()`, chiefly for testing) - it has no context to parent fresh values into, but still owns and destroys them on eviction, and guests behave as usual.
+Destruction is an eviction concern, separate from context: `delete` destroys the owned entry it removes, `clear` is that over every entry, and the owner dying is itself a `clear`. Because destruction does not depend on the parent link, the underlying `map.Managed` can be constructed directly without an owner (`new map.Managed()`, chiefly for testing) - it has no context to parent fresh values into, but still owns and destroys them on eviction, and guests behave as usual.
 
 Death also flows the other way: a `State` value that dies evicts itself from the map - owned or guest - so a map never serves destroyed entries. Destroying a member (`member.set(null)`) is therefore a complete removal gesture on its own.
 
@@ -159,32 +159,39 @@ snapshot.get('a'); // exported product values
 ## Type Signature
 
 ```ts
-function map<K, V>(entries?: Iterable<readonly [K, V]> | null): map.Insert<K, V>;
+function map<K, V>(entries?: Iterable<readonly [K, V]> | false): map.Insert<K, V>;
 function map<A extends [unknown, ...unknown[]], V>(make: (...args: A) => V): map.Create<A, V>;
 
-// internal bases (not exported): reads, removal, iteration - no insertion verb
-interface MapLike<K, V> {
+// runtime base, reachable as map.Managed: reactive native Map subclass.
+// Declares reads, removal, and iteration; the public shapes below narrow set.
+declare class Managed<K, V> extends Map<K, V> {
   readonly size: number;
   get(): ReadonlyMap<K, State.Export<V>>;
   get(key: K): V | undefined;
   has(key: K): boolean;
   delete(key: K): boolean;
   clear(): void;
+  set(key: K, ...rest: unknown[]): this;
   entries<R>(fn: (entry: [K, V]) => R): Iterable<R>;
   keys<R>(fn: (key: K) => R): Iterable<R>;
   values<R>(fn: (value: V, key: K) => R): Iterable<R>;
   // plus plain entries/keys/values/forEach/[Symbol.iterator]
 }
 
-interface map.Create<A extends [unknown, ...unknown[]], V> extends MapLike<A[0], V> {
+// both public shapes extend the class, each narrowing set to its mode
+interface map.Create<A extends [unknown, ...unknown[]], V> extends Managed<A[0], V> {
   set(...args: A): this; // the factory's own signature; A[0] is the key
 }
 
-// sugar for the plain keyed form - one interface backs both modes
-type map.Insert<K, V> = map.Create<[key: K, value: V], V>;
+interface map.Insert<K, V> extends Managed<K, V> {
+  set(key: K, value: V): this;
+}
+
+// the class itself is surfaced as map.Managed (value + type)
+export { Managed };
 ```
 
-At runtime both modes are one class, exposed as `map.Create` (a native `Map` subclass; a keyed map is a `map.Create` instance with the identity factory) - the seam adapters extend for rendering facades.
+At runtime both modes are one class, exposed as `map.Managed` (a native `Map` subclass; a keyed map is a `map.Managed` instance with the identity factory) - the seam adapters extend for rendering facades.
 
 In `@expressive/react`, a map renders directly - `<ul>{this.items}</ul>` - through a `$$typeof` facade on that prototype: the map is one element whose values render in order (each carrying its own identity), subscribing to collection shape without a manual spread. Values that are `Component` instances render themselves; other values render as their React child form.
 
