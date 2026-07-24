@@ -54,8 +54,10 @@ export const tree = (() => {
   return build('');
 })();
 
-export const leaves = (dirs: Directory[]): Directory[] =>
+const leaves = (dirs: Directory[]): Directory[] =>
   dirs.flatMap((d) => (d.children ? leaves(d.children) : d));
+
+export const home = leaves(tree)[0]?.path;
 
 export const frameSrc = (file: string) => `module#${encodeURIComponent(file)}`;
 

@@ -1,13 +1,13 @@
 import { lazy, ReactNode, Suspense } from 'react';
 import { createRoot } from 'react-dom/client';
 
-import { loadFrame, tree } from './pages';
+import { home, loadFrame, tree } from './pages';
 
 let app: ReactNode;
 
 if (window.self === window.top) {
   const Shell = lazy(() => import('./app/Shell'));
-  app = <Shell tree={tree} />;
+  app = <Shell tree={tree} default={home} />;
 } else {
   const Example = lazy(loadFrame());
 

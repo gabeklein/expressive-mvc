@@ -1,21 +1,17 @@
-import '@expressive/react';
+import { Provider } from '@expressive/react';
 import { BrowserRouter, NavLinks, Route, Router } from '@expressive/router';
 
 import Logo from './Logo';
 import Theme, { Toggle } from './Theme';
 import styles from './Shell.module.css';
-import { Provider } from '@expressive/react';
-import { frameSrc, leaves, type Directory } from '../pages';
 
-const Shell = ({ tree }: { tree: Directory[] }) => {
-  const [first] = leaves(tree);
+import { frameSrc, type Directory } from '../pages';
 
-  if (!first) throw new Error("No examples are loaded.");
-
+const Shell = ({ tree, default: home }: { tree: Directory[]; default?: string }) => {
   return (
     <Provider for={{ Theme, BrowserRouter }}>
       <Route as={Window}>
-        <Route redirect={`/${first.path}`} />
+        {home && <Route redirect={`/${home}`} />}
         {tree.map(renderDirectory)}
         <Route default as={NotFound} />
       </Route>
