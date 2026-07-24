@@ -12,8 +12,11 @@ import type {
   KeyboardEvent as ReactKeyboardEvent,
   PointerEvent as ReactPointerEvent,
 } from 'react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+
+import { createSandboxTs, type SandboxTs } from './sandbox/client';
+import { intellisense } from './sandbox/intellisense';
 
 class Panes extends State {
   mode: 'preview' | 'code' = 'preview';
@@ -207,6 +210,45 @@ function Layout({
     },
   };
 
+  // A per-sandbox TS language service (in a worker) powers editor completions
+  // and hovers. It's spawned on first use - not mount - so the heavy chunk
+  // stays off the critical path; once alive it's kept fed as files change.
+  const { files, activeFile } = sandpack.sandpack;
+  const clientRef = useRef<SandboxTs | undefined>(undefined);
+  const activeFileRef = useRef(activeFile);
+  const filesRef = useRef(files);
+  activeFileRef.current = activeFile;
+  filesRef.current = files;
+
+  const asSource = (source: typeof files) => {
+    const out: Record<string, string> = {};
+    for (const [path, file] of Object.entries(source)) out[path] = file.code;
+    return out;
+  };
+
+  const ensureClient = useCallback(() => {
+    if (!clientRef.current)
+      clientRef.current = createSandboxTs(asSource(filesRef.current));
+    return clientRef.current;
+  }, []);
+
+  useEffect(() => {
+    clientRef.current?.sync(asSource(files));
+  }, [files]);
+
+  useEffect(
+    () => () => {
+      clientRef.current?.dispose();
+      clientRef.current = undefined;
+    },
+    [],
+  );
+
+  const extensions = useMemo(
+    () => [intellisense(ensureClient, () => activeFileRef.current)],
+    [ensureClient],
+  );
+
   // Below the breakpoint the panels can't fit side by side; show one at a time
   // and reveal a toggle. Inline display wins over Sandpack's own layout CSS.
   const { matches: narrow } = MediaQuery.use({ query: '(max-width: 639px)' });
@@ -219,10 +261,12 @@ function Layout({
       style={{ flexDirection: stacked ? 'column' : 'row' }}
       className="relative h-full [--sp-layout-height:100%]">
       <SandpackCodeEditor
+        showLineNumbers
         style={{
           display: showEditor ? 'flex' : 'none',
           flex: narrow ? '1' : `0 0 ${ratio}%`,
         }}
+        extensions={extensions}
         extensionsKeymap={[refreshOnSave]}
       />
       {onOpenNavigation &&
