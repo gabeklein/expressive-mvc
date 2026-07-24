@@ -14,10 +14,10 @@ declare namespace Route {
   /**
    * Param-swap argument for `goto` - the route's path params (`:name` segments
    * of its pattern), as overrides merged over the current match. These are the
-   * `match` namespace, distinct from `query` (the `?search` record): path params
+   * `match` namespace, distinct from `query` (the `?search` map): path params
    * are positional and identify the matched resource, query params refine it.
-   * Lenient `string` keys: path params have no per-route declared type (unlike
-   * `query`), so keys aren't statically checked.
+   * Lenient `string` keys: path params have no per-route declared type, so keys
+   * aren't statically checked.
    */
   type Params = Record<string, string>;
 }
@@ -160,15 +160,9 @@ export class Route extends Component {
   }
 
   /**
-   * Live query record from the active Router. Global (not route-scoped) - every
+   * Live query map from the active Router. Global (not route-scoped) - every
    * Route sees the same params, unlike `match` which is this Route's captures.
-   * Narrow known keys in a subclass via `declare`, same as on Router:
-   *
-   * ```ts
-   * class Search extends Route {
-   *   declare query: { q?: string; page?: string };
-   * }
-   * ```
+   * Read `query.get('foo')`; writes navigate, same as on Router.
    */
   query = set(() => this.router.query);
 

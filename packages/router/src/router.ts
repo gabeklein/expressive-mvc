@@ -1,4 +1,4 @@
-import { Component, hot } from '@expressive/mvc';
+import { Component, map } from '@expressive/mvc';
 import { listener } from '@expressive/mvc/observable';
 
 import { Route } from './route';
@@ -22,20 +22,14 @@ export class Router extends Component {
   rejected = '';
 
   /**
-   * Canonical query state - a reactive record. Read `query.foo` to track a
-   * param; write `query.foo = ...` (or delete) to navigate: a direct mutation
-   * pushes a new history entry, same as if it arrived via `goto`.
+   * Canonical query state - a reactive map. Read `query.get('foo')` to track a
+   * param; write `query.set('foo', ...)` (or `delete`) to navigate: a direct
+   * mutation pushes a new history entry, same as if it arrived via `goto`.
    *
-   * Values are always `string | undefined` (URL params carry no other type).
-   * A subclass may narrow the known keys by redeclaring with `declare`:
-   *
-   * ```ts
-   * class Search extends Router {
-   *   declare query: { q?: string; page?: string };
-   * }
-   * ```
+   * Keys and values are `string` (URL params carry no other type); a param
+   * that is absent reads back as `undefined`.
    */
-  query = hot({} as Record<string, string | undefined>);
+  query = map<string, string>();
 
   /** In-memory history: visited urls (path + query) and the cursor into them. */
   entries: string[] = [];
@@ -98,13 +92,10 @@ export class Router extends Component {
     this.path = q < 0 ? url : url.slice(0, q);
 
     const { query } = this;
-    const next = Object.fromEntries(
-      new URLSearchParams(q < 0 ? '' : url.slice(q + 1))
-    );
+    const next = new Map(new URLSearchParams(q < 0 ? '' : url.slice(q + 1)));
 
-    for (const key in query) if (!(key in next)) delete query[key];
-
-    Object.assign(query, next);
+    for (const key of [...query.keys()]) if (!next.has(key)) query.delete(key);
+    for (const [key, value] of next) query.set(key, value);
   }
 
   segment(to: string): string {
@@ -213,7 +204,7 @@ function normalize(to: string): string {
 }
 
 /**
- * Re-serialize a url's query through the record model (last value per key,
+ * Re-serialize a url's query through the map model (last value per key,
  * `URLSearchParams` encoding) so it is identical to what the `url` getter emits.
  * This is what makes the history-dedup a sound string comparison.
  */
@@ -221,18 +212,16 @@ function canonicalize(url: string): string {
   const q = url.indexOf('?');
   if (q < 0) return url;
 
-  const search = searchOf(Object.fromEntries(new URLSearchParams(url.slice(q + 1))));
+  const search = searchOf(new Map(new URLSearchParams(url.slice(q + 1))));
   return search ? url.slice(0, q) + '?' + search : url.slice(0, q);
 }
 
 /** Canonical query serialization: skips `undefined`, last-value-per-key, form encoding. */
-function searchOf(query: Record<string, string | undefined>): string {
+function searchOf(entries: Iterable<readonly [string, string | undefined]>): string {
   const params = new URLSearchParams();
 
-  for (const key in query) {
-    const value = query[key];
+  for (const [key, value] of entries)
     if (value !== undefined) params.append(key, value);
-  }
 
   return params.toString();
 }
