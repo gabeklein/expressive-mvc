@@ -24,6 +24,24 @@ const app = render(<Timer />);
 
 State changes repaint the frame in place when stdout is interactive; non-interactive output receives only the final frame. Suspense (`set()` placeholders) shows a component's `fallback` while pending; `catch` recovers from render errors.
 
+Ships turnkey primitives - `Text` (ANSI styling), `Panel` (borders), `Spinner`, `Progress` - all plain class components, so customizing is subclassing:
+
+```tsx
+import { Panel, Spinner, Text } from '@expressive/cli';
+
+class Dots extends Spinner {
+  frames = ['.', '..', '...'];
+}
+
+render(
+  <Panel title="Working" padding={1}>
+    <Text color="yellow"><Dots /></Text> please wait
+  </Panel>
+);
+```
+
+There are no intrinsic tags: everything is a component, and `Block` (the base of `Text` and `Panel`) is the escape hatch - override `format(text)` to transform your subtree's rendered output.
+
 Try the demo:
 
 ```bash
