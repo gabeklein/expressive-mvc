@@ -11,7 +11,7 @@ export default class TodoList extends Component {
 
   // Pools resolve at activation, so seed members from the new() hook.
   protected new() {
-    this.todos.add({ text: 'Learn Expressive' });
+    this.add('Learn Expressive');
   }
 
   add(text: string = this.draft) {
