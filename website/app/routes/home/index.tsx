@@ -34,7 +34,7 @@ export function meta() {
 
 export default function Home() {
   return (
-    <HomeLayout {...layoutOptions} className="[--content-width:1080px] home-sections">
+    <HomeLayout {...layoutOptions} className="[--content-width:1080px] home-sections overflow-x-clip">
       <Background />
       <Hero />
       <Complicated />
