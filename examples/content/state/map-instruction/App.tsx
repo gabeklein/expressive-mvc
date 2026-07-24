@@ -2,13 +2,7 @@ import './App.css';
 
 import { Component, get, map } from '@expressive/react';
 
-const PEOPLE = [
-  ['alice', 'Alice'],
-  ['bob', 'Bob'],
-  ['carol', 'Carol'],
-  ['dave', 'Dave']
-];
-
+const PEOPLE = ['alice', 'bob', 'carol', 'dave'];
 const STATUS = ['online', 'away', 'busy'];
 
 // The room owns the people, keyed by id, and spawns them with a second
@@ -16,11 +10,12 @@ const STATUS = ['online', 'away', 'busy'];
 // people.get(selected), which subscribes to that one key - so it
 // re-renders when the selected person changes, not when the others do.
 export default class Room extends Component {
-  people = map((id: string, name: string) => new Person({ id, name }));
-  selected = 'alice';
+  people = map((id: string) => new Person({ id, name: capitalize(id) }));
+  selected = '';
 
   protected new() {
-    for (const [id, name] of PEOPLE) this.people.set(id, name);
+    for (const name of PEOPLE) this.people.set(name);
+    [this.selected] = PEOPLE;
   }
 
   render() {
@@ -80,4 +75,8 @@ class Person extends Component {
       </li>
     );
   }
+}
+
+function capitalize(s: string) {
+  return s.charAt(0).toUpperCase() + s.slice(1);
 }

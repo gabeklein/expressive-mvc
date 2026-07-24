@@ -65,7 +65,7 @@ class Cell extends State {
 
     if (!raw) return '';
 
-    if (raw[0] !== '=') {
+    if (!raw.startsWith('=')) {
       const n = Number(raw);
       return isNaN(n) ? raw : n;
     }
@@ -100,9 +100,9 @@ const CellView = ({ id }: { id: string }) => {
   const sheet = Sheet.get();
   const cell = sheet.cells.get(id);
 
-  if (sheet.editing === id)
-    return (
-      <td>
+  return (
+    <td>
+      {sheet.editing === id ? (
         <input
           autoFocus
           value={cell ? cell.input : ''}
@@ -112,14 +112,11 @@ const CellView = ({ id }: { id: string }) => {
             if (e.key === 'Enter' || e.key === 'Escape') sheet.editing = '';
           }}
         />
-      </td>
-    );
-
-  return (
-    <td>
-      <div className="cell" onClick={() => (sheet.editing = id)}>
-        {cell ? cell.value : ''}
-      </div>
+      ) : (
+        <div className="cell" onClick={() => (sheet.editing = id)}>
+          {cell ? cell.value : ''}
+        </div>
+      )}
     </td>
-  );
+  )
 };
