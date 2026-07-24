@@ -7,7 +7,7 @@ import structure, { leaves, type GroupModule } from '@examples/structure';
 const MANIFESTS: Record<string, GroupModule> = {};
 
 Object.entries(
-  import.meta.glob<GroupModule>('@examples/content/**/index.ts', { eager: true })
+  import.meta.glob<GroupModule>('@examples/pages/**/index.ts', { eager: true })
 ).forEach(([path, m]) => {
   MANIFESTS[path.split(/content\//).pop()!.replace(/\/?index\.ts$/, '')] = m;
 });
@@ -61,7 +61,7 @@ for (const [path, code] of Object.entries(FILES)) {
     continue;
   }
 
-  // Routable example content lives under content/<group>/<example>/. Anything
+  // Routable example content lives under pages/<group>/<example>/. Anything
   // else (the app/ dev-shell) is harness, not a sandbox.
   if (segments[0] !== 'content') continue;
 
