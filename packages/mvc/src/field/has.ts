@@ -9,7 +9,6 @@ const SHAPE = Symbol('shape');
 const ITEMS = new WeakMap<object, unknown[]>();
 const MEMBERS = new WeakMap<object, Set<unknown>>();
 const MAKE = new WeakMap<object, Function>();
-const OWNER = new WeakMap<object, State>();
 const OWNED = new WeakMap<object, Map<unknown, () => void>>();
 
 type Predicate<T> = (value: T, index: number, self: unknown) => boolean;
@@ -30,20 +29,20 @@ function has<T, A extends unknown[]>(
 ): Pool<T, A>;
 
 function has(arg?: Iterable<unknown> | Function | false | null): unknown {
-  return def((_key, subject) => ({
-    set: false,
-    value: typeof arg == 'function'
-      ? new Pool(subject, arg)
-      : new List(subject, arg)
-  }));
+  return def((_key, subject) => {
+    const value = typeof arg == 'function' ? new Pool(arg) : new List(arg);
+
+    parent(value, subject);
+    listener(subject, () => value.clear(), null);
+
+    return { set: false, value };
+  });
 }
 
 class List<T> {
-  constructor(owner?: State | null, initial?: Iterable<T> | false | null) {
+  constructor(initial?: Iterable<T> | false | null) {
     ITEMS.set(this, initial ? Array.from(initial) : []);
-    own(this, owner);
-
-    if (owner) listener(owner, () => this.clear(), null);
+    OWNED.set(this, new Map());
 
     event(this);
   }
@@ -164,12 +163,10 @@ class List<T> {
 }
 
 class Pool<T, A extends unknown[] = unknown[]> {
-  constructor(owner: State | null, make: Function) {
+  constructor(make: Function) {
     MEMBERS.set(this, new Set());
     MAKE.set(this, make);
-    own(this, owner);
-
-    if (owner) listener(owner, () => this.clear(), null);
+    OWNED.set(this, new Map());
 
     event(this);
   }
@@ -270,11 +267,6 @@ class Pool<T, A extends unknown[] = unknown[]> {
   }
 }
 
-function own(target: object, owner?: State | null) {
-  OWNED.set(target, new Map());
-  if (owner) OWNER.set(target, owner);
-}
-
 function source<T extends object>(from: T): T {
   return OWNED.has(from) ? from : Object.getPrototypeOf(from);
 }
@@ -286,16 +278,14 @@ function adopt(
 ) {
   if (!(value instanceof State)) return;
 
-  const fresh = parent(value) === undefined;
-  const owner = OWNER.get(target);
+  const owner = parent(target as object);
+  const fresh = parent(value, owner ?? null);
   const evict = listener(value, () => void target.delete(key as never), null);
 
   let detach: (() => void) | undefined;
 
-  if (fresh && owner) {
+  if (fresh && owner)
     detach = Context.get(owner).add(value);
-    parent(value, owner);
-  }
 
   OWNED.get(target)!.set(key, () => {
     evict();

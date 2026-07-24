@@ -19,8 +19,8 @@ function reactive(...args: any[]): any {
   const arg = args[0];
 
   return typeof arg == 'function'
-    ? new has.Pool(null, arg)
-    : new has.List(null, arg);
+    ? new has.Pool(arg)
+    : new has.List(arg);
 }
 
 describe('factory', () => {
