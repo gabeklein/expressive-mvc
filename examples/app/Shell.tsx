@@ -5,8 +5,7 @@ import Logo from './Logo';
 import Theme, { Toggle } from './Theme';
 import styles from './Shell.module.css';
 import { Provider } from '@expressive/react';
-import { leaves, type Directory } from '../structure';
-import { frameSrc } from '../pages';
+import { frameSrc, leaves, type Directory } from '../pages';
 
 const Shell = ({ tree }: { tree: Directory[] }) => {
   const [first] = leaves(tree);
