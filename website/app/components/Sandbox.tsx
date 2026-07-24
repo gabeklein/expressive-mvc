@@ -15,8 +15,8 @@ import type {
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
+import { createSandboxTs, type SandboxTs } from './sandbox/client';
 import { intellisense } from './sandbox/intellisense';
-import { createTsEnv, type TsEnv } from './sandbox/tsEnv';
 
 class Panes extends State {
   mode: 'preview' | 'code' = 'preview';
@@ -210,25 +210,43 @@ function Layout({
     },
   };
 
-  // A per-sandbox virtual TS language service powers editor completions and
-  // hovers. Build it once, keep it fed as files change, and hand the extension
-  // live accessors so it always targets the currently-open tab.
+  // A per-sandbox TS language service (in a worker) powers editor completions
+  // and hovers. It's spawned on first use - not mount - so the heavy chunk
+  // stays off the critical path; once alive it's kept fed as files change.
   const { files, activeFile } = sandpack.sandpack;
-  const envRef = useRef<Promise<TsEnv> | undefined>(undefined);
+  const clientRef = useRef<SandboxTs | undefined>(undefined);
   const activeFileRef = useRef(activeFile);
+  const filesRef = useRef(files);
   activeFileRef.current = activeFile;
+  filesRef.current = files;
+
+  const asSource = (source: typeof files) => {
+    const out: Record<string, string> = {};
+    for (const [path, file] of Object.entries(source)) out[path] = file.code;
+    return out;
+  };
+
+  const ensureClient = useCallback(() => {
+    if (!clientRef.current)
+      clientRef.current = createSandboxTs(asSource(filesRef.current));
+    return clientRef.current;
+  }, []);
 
   useEffect(() => {
-    const source: Record<string, string> = {};
-    for (const [path, file] of Object.entries(files)) source[path] = file.code;
-
-    if (!envRef.current) envRef.current = createTsEnv(source);
-    else envRef.current.then((holder) => holder.sync(source));
+    clientRef.current?.sync(asSource(files));
   }, [files]);
 
-  const extensions = useMemo(
-    () => [intellisense(() => envRef.current, () => activeFileRef.current)],
+  useEffect(
+    () => () => {
+      clientRef.current?.dispose();
+      clientRef.current = undefined;
+    },
     [],
+  );
+
+  const extensions = useMemo(
+    () => [intellisense(ensureClient, () => activeFileRef.current)],
+    [ensureClient],
   );
 
   // Below the breakpoint the panels can't fit side by side; show one at a time

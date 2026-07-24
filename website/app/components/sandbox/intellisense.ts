@@ -6,29 +6,8 @@ import {
 } from '@codemirror/autocomplete';
 import type { Extension } from '@codemirror/state';
 import { hoverTooltip, type Tooltip } from '@codemirror/view';
-import ts from 'typescript';
 
-import type { TsEnv } from './tsEnv';
-
-const COMPLETION_TYPE: Record<string, Completion['type']> = {
-  [ts.ScriptElementKind.constElement]: 'constant',
-  [ts.ScriptElementKind.letElement]: 'variable',
-  [ts.ScriptElementKind.variableElement]: 'variable',
-  [ts.ScriptElementKind.localVariableElement]: 'variable',
-  [ts.ScriptElementKind.parameterElement]: 'variable',
-  [ts.ScriptElementKind.functionElement]: 'function',
-  [ts.ScriptElementKind.localFunctionElement]: 'function',
-  [ts.ScriptElementKind.memberFunctionElement]: 'method',
-  [ts.ScriptElementKind.memberVariableElement]: 'property',
-  [ts.ScriptElementKind.memberGetAccessorElement]: 'property',
-  [ts.ScriptElementKind.memberSetAccessorElement]: 'property',
-  [ts.ScriptElementKind.classElement]: 'class',
-  [ts.ScriptElementKind.interfaceElement]: 'interface',
-  [ts.ScriptElementKind.enumElement]: 'enum',
-  [ts.ScriptElementKind.moduleElement]: 'namespace',
-  [ts.ScriptElementKind.typeElement]: 'type',
-  [ts.ScriptElementKind.keyword]: 'keyword',
-};
+import type { SandboxTs } from './client';
 
 function tooltipDom(main: string, doc?: string) {
   const dom = document.createElement('div');
@@ -48,25 +27,14 @@ function tooltipDom(main: string, doc?: string) {
 }
 
 /**
- * CodeMirror IntelliSense backed by the virtual TypeScript language service.
- * `getEnv` resolves the (async, lazily-built) env for the current sandbox and
- * `getPath` names the file this editor instance is showing.
+ * CodeMirror IntelliSense backed by the worker language service. `getClient`
+ * resolves (and lazily spawns) the worker for the current sandbox; `getPath`
+ * names the file this editor instance is showing.
  */
 export function intellisense(
-  getEnv: () => Promise<TsEnv> | undefined,
+  getClient: () => SandboxTs | undefined,
   getPath: () => string,
 ): Extension {
-  const sync = async (doc: string) => {
-    const holder = await getEnv();
-    if (!holder) return undefined;
-
-    const path = getPath();
-    if (holder.env.getSourceFile(path)) holder.env.updateFile(path, doc);
-    else holder.env.createFile(path, doc);
-
-    return { env: holder.env, path };
-  };
-
   const complete = async (
     ctx: CompletionContext,
   ): Promise<CompletionResult | null> => {
@@ -75,45 +43,35 @@ export function intellisense(
 
     if (!ctx.explicit && !word && before !== '.') return null;
 
-    const ready = await sync(ctx.state.doc.toString());
-    if (!ready) return null;
+    const client = getClient();
+    if (!client) return null;
 
-    const { env, path } = ready;
-    const info = env.languageService.getCompletionsAtPosition(path, ctx.pos, {
-      includeCompletionsForModuleExports: true,
-      includeCompletionsWithInsertText: true,
-    });
+    const path = getPath();
+    const res = await client.complete(path, ctx.state.doc.toString(), ctx.pos);
 
-    if (!info || !info.entries.length) return null;
+    if (ctx.aborted || !res || !res.entries.length) return null;
 
     let from = word ? word.from : ctx.pos;
     let to = ctx.pos;
 
-    if (info.optionalReplacementSpan) {
-      from = info.optionalReplacementSpan.start;
-      to = from + info.optionalReplacementSpan.length;
+    if (res.replacement) {
+      from = res.replacement.start;
+      to = from + res.replacement.length;
     }
 
-    const options: Completion[] = info.entries.map((entry) => ({
+    const options: Completion[] = res.entries.map((entry) => ({
       label: entry.name,
-      type: COMPLETION_TYPE[entry.kind],
-      info() {
-        const detail = env.languageService.getCompletionEntryDetails(
+      type: entry.type,
+      async info() {
+        const detail = await client.details(
           path,
           ctx.pos,
           entry.name,
-          undefined,
           entry.source,
-          undefined,
           entry.data,
         );
 
-        if (!detail) return null;
-
-        return tooltipDom(
-          ts.displayPartsToString(detail.displayParts),
-          ts.displayPartsToString(detail.documentation),
-        );
+        return detail ? tooltipDom(detail.display, detail.documentation) : null;
       },
     }));
 
@@ -121,21 +79,22 @@ export function intellisense(
   };
 
   const hover = hoverTooltip(async (view, pos): Promise<Tooltip | null> => {
-    const ready = await sync(view.state.doc.toString());
-    if (!ready) return null;
+    const client = getClient();
+    if (!client) return null;
 
-    const { env, path } = ready;
-    const quick = env.languageService.getQuickInfoAtPosition(path, pos);
-    if (!quick) return null;
+    const quick = await client.quickInfo(
+      getPath(),
+      view.state.doc.toString(),
+      pos,
+    );
 
-    const main = ts.displayPartsToString(quick.displayParts);
-    if (!main) return null;
+    if (!quick || !quick.display) return null;
 
     return {
-      pos: quick.textSpan.start,
-      end: quick.textSpan.start + quick.textSpan.length,
+      pos: quick.span.start,
+      end: quick.span.start + quick.span.length,
       create: () => ({
-        dom: tooltipDom(main, ts.displayPartsToString(quick.documentation)),
+        dom: tooltipDom(quick.display, quick.documentation),
       }),
     };
   });
