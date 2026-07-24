@@ -8,7 +8,7 @@ import { Route, Link, NavLinks, Redirect, Router, BrowserRouter } from '@express
 
 ## Mental model
 
-- **`Router`** - the navigation State: current `path`, reactive `query` record, derived `url`, and an in-memory history stack. Headless; touches no browser globals, so it runs and tests anywhere. It is also the memory-router substrate.
+- **`Router`** - the navigation State: current `path`, reactive `query` map, derived `url`, and an in-memory history stack. Headless; touches no browser globals, so it runs and tests anywhere. It is also the memory-router substrate.
 - **`BrowserRouter`** - binds the core to `window.location`/`history`, syncing `path`/`query` on navigation (`goto`, `popstate`, external `pushState`/`replaceState`).
 - **`Route`** - a `Component` that matches part of the URL and renders a page. Routes nest to mirror the URL hierarchy. Each `Route` is a scoped facade over the active `Router` (`path`, `match`, `query`, `goto`, `resolve`).
 - **`Link` / `NavLinks` / `Redirect`** - navigation UI built on `Route`.
@@ -104,7 +104,7 @@ const BlogPost = () => (
 | `route.match`     | `Record<string,string> \| undefined` | Captured params from the current match (`undefined` when unmatched). Stable identity across reads when captures are unchanged. |
 | `route.matched`   | `boolean`                         | Whether this route is active. Read this in render (not `match`) so same-pattern navigations reconcile in place instead of remounting. |
 | `route.path`      | `string`                          | This route's own absolute path (base + segment).                        |
-| `route.query`     | `Record<string,string\|undefined>` | Live query record from the active Router (global, not route-scoped - see below). |
+| `route.query`     | `map.Insert<string,string>`       | Live query map from the active Router (global, not route-scoped - see below). |
 | `route.anchor`    | `string`                          | Directory-style anchor for relative navigation.                         |
 | `route.goto(to)`  | -                                 | Navigate. A string resolves relative to this route; a params object swaps route params in place (see below). |
 | `route.resolve(to)` | `string`                        | Resolve a (possibly relative) url to an absolute pathname.              |
@@ -133,7 +133,7 @@ Param changes do not remount: like `query`, `match` updates reactively and the p
 | Member            | Type                                | Notes                                                                |
 | ----------------- | ----------------------------------- | -------------------------------------------------------------------- |
 | `path`            | `string`                            | Pathname only.                                                       |
-| `query`           | `Record<string,string\|undefined>` | Canonical query state - a reactive record (see below).               |
+| `query`           | `map.Insert<string,string>`         | Canonical query state - a reactive map (see below).                  |
 | `url`             | `string`                            | Full URL (path + `?query`), canonically serialized. Assigning navigates. |
 | `goto(to, replace?)` | -                                | Navigate to an absolute path; `replace` overwrites the current entry instead of pushing. |
 | `back()` / `forward()` | -                              | Move the history cursor.                                             |
@@ -145,40 +145,23 @@ router.url = '/posts?page=2';   // same as goto (push); use goto(to, true) to re
 router.back();
 ```
 
-## The `query` record
+## The `query` map
 
-`query` is the canonical query state as a reactive record - not a string. Read a param to track it; **write** a param (or delete it) to navigate.
+`query` is the canonical query state as a reactive `map` - not a string. Read a param to track it; **write** a param (or delete it) to navigate.
 
 ```tsx
-router.query.page;          // read - subscribes to just this param
-router.query.page = '2';    // write - pushes a new history entry, like goto
-delete router.query.sort;   // delete - also navigates
+router.query.get('page');       // read - subscribes to just this param
+router.query.set('page', '2');  // write - pushes a new history entry, like goto
+router.query.delete('sort');    // delete - also navigates
 ```
 
-Writing or deleting a param pushes a new history entry, exactly as if it arrived via `goto`. URL-driven changes (navigation, popstate) reconcile the same record, so consumers reading `query.foo` re-render only when that param changes.
+Writing or deleting a param pushes a new history entry, exactly as if it arrived via `goto`. URL-driven changes (navigation, popstate) reconcile the same map, so consumers reading `query.get('foo')` re-render only when that param changes.
 
 Notes:
-- Values are always `string | undefined` - URL params carry no other type. Reading an absent key is `undefined`.
+- Keys and values are `string` - URL params carry no other type. Reading an absent key is `undefined`.
 - Single-valued: repeated keys (`?a=1&a=2`) collapse to the last value.
-- `query` is **global** to the Router. On a `Route` it is the same record for every route, unlike `match` which is that route's own captures. (Query strings are not path-scoped.)
+- `query` is **global** to the Router. On a `Route` it is the same map for every route, unlike `match` which is that route's own captures. (Query strings are not path-scoped.)
 - `url` is always canonically serialized (space as `+`, last-value-per-key), so navigation never pushes a spurious duplicate entry due to encoding differences.
-
-### Narrowing known params with `declare`
-
-The default record accepts any string key. A subclass can declare the known params for autocomplete and typo safety - on both `Router` and `Route`:
-
-```tsx
-class Search extends Router {
-  declare query: { q?: string; page?: string };
-}
-
-class SearchRoute extends Route {
-  declare query: { q?: string; page?: string };
-}
-// query.q -> string | undefined; query.unknown -> compile error
-```
-
-Use `declare` (not a re-initializer) so it only retypes the inherited field. Keep declared values `string`-typed - there is no coercion, so `{ page: number }` would be a lie.
 
 ## Links and navigation UI
 

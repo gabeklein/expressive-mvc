@@ -89,10 +89,10 @@ describe('Router (headless)', () => {
     expect(repeated.entries).toEqual(['/', '/x?a=2']);
   });
 
-  it('query exposes params as a record', () => {
+  it('query exposes params as a map', () => {
     const router = Router.new();
     router.goto('/posts?page=2');
-    expect(router.query.page).toBe('2');
+    expect(router.query.get('page')).toBe('2');
   });
 
   it('direct query mutation pushes a new entry', async () => {
@@ -100,7 +100,7 @@ describe('Router (headless)', () => {
     router.goto('/posts');
     await router.set();
 
-    router.query.page = '2';
+    router.query.set('page', '2');
     await router.set();
 
     expect(router.entries).toEqual(['/', '/posts', '/posts?page=2']);
@@ -118,29 +118,12 @@ describe('Router (headless)', () => {
     expect(router.entries).toEqual(['/', '/posts']);
   });
 
-  it('subclass may narrow query keys via declare (type-level)', () => {
-    class Search extends Router {
-      declare query: { q?: string; page?: string };
-    }
-
-    const router = Search.new();
-    router.goto('/posts?q=hi&page=2');
-
-    // Compile-time: known keys resolve, unknown keys are rejected.
-    const q: string | undefined = router.query.q;
-    // @ts-expect-error - `nope` is not a declared key
-    router.query.nope;
-
-    expect(q).toBe('hi');
-    expect(router.query.page).toBe('2');
-  });
-
   it('query updates reactively when search changes', async () => {
     const router = Router.new();
     const seen: (string | undefined)[] = [];
 
     router.get(state => {
-      seen.push(state.query.page);
+      seen.push(state.query.get('page'));
     });
 
     router.goto('/posts?page=1');
@@ -154,7 +137,7 @@ describe('Router (headless)', () => {
   it('writing a query param pushes a new history entry', async () => {
     const router = Router.new();
     router.goto('/posts?page=1');
-    router.query.page = '2';
+    router.query.set('page', '2');
     await router.set();
 
     expect(router.url).toBe('/posts?page=2');
@@ -165,10 +148,10 @@ describe('Router (headless)', () => {
   it('deleting a query param navigates', async () => {
     const router = Router.new();
     router.goto('/posts?page=2&sort=asc');
-    delete router.query.sort;
+    router.query.delete('sort');
     await router.set();
 
-    expect(router.query.sort).toBeUndefined();
+    expect(router.query.get('sort')).toBeUndefined();
     expect(router.path).toBe('/posts');
   });
 
@@ -178,7 +161,7 @@ describe('Router (headless)', () => {
     router.url = '/b?x=1';
 
     expect(router.path).toBe('/b');
-    expect(router.query.x).toBe('1');
+    expect(router.query.get('x')).toBe('1');
     expect(router.entries).toEqual(['/', '/a', '/b?x=1']);
   });
 
@@ -243,7 +226,7 @@ describe('BrowserRouter', () => {
     expect(window.location.search).toBe('?q=hello');
     expect(router.current.path).toBe('/results');
     expect(router.current.url).toBe('/results?q=hello');
-    expect(router.current.query.q).toBe('hello');
+    expect(router.current.query.get('q')).toBe('hello');
   });
 
   it('clears the query when navigation drops it', () => {
@@ -262,14 +245,14 @@ describe('BrowserRouter', () => {
     act(() => window.history.pushState(null, '', '/enc?q=a%20b'));
     await router.current.set();
 
-    expect(router.current.query.q).toBe('a b');
+    expect(router.current.query.get('q')).toBe('a b');
     // The query listener must treat %20 and + as equal, not push a corrected dup.
     expect(window.history.length).toBe(len + 1);
   });
 
   it('writing a query param pushes to window.history', async () => {
     act(() => router.current.goto('/page?x=1'));
-    router.current.query.x = '9';
+    router.current.query.set('x', '9');
     await router.current.set();
 
     expect(window.location.search).toBe('?x=9');

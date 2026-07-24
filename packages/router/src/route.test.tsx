@@ -49,21 +49,12 @@ describe('Route', () => {
     expect(view.container.textContent).toBe('id: foo');
   });
 
-  it('exposes the router query, narrowable via declare', () => {
-    class Search extends Route {
-      declare query: { q?: string; page?: string };
-    }
-
-    const route = Search.new();
+  it('exposes the router query', () => {
+    const route = Route.new();
     route.router.goto('/posts?q=hi&page=2');
 
-    // Compile-time: declared keys resolve, unknown keys are rejected.
-    const q: string | undefined = route.query.q;
-    // @ts-expect-error - `nope` is not a declared key
-    route.query.nope;
-
-    expect(q).toBe('hi');
-    expect(route.query.page).toBe('2');
+    expect(route.query.get('q')).toBe('hi');
+    expect(route.query.get('page')).toBe('2');
   });
 
   it('updates in place on same-pattern navigation (instance persists)', async () => {

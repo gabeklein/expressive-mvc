@@ -62,26 +62,18 @@ const BlogPost = () => {
 
 Read `matched` (boolean) in render so same-pattern navigations (`/blog/a` → `/blog/b`) reconcile in place instead of remounting.
 
-## Navigation state & the `query` record
+## Navigation state & the `query` map
 
-`Router` exposes location as reactive surfaces - `path`, a `query` record, and a derived `url`. The query string **is state**: read a key to subscribe, write one to navigate.
+`Router` exposes location as reactive surfaces - `path`, a `query` map, and a derived `url`. The query string **is state**: read a key to subscribe, write one to navigate.
 
 ```tsx
 router.goto('/posts?page=2');   // push
 router.goto('/posts', true);    // replace
 router.url = '/posts?page=2';   // assigning url navigates
 
-router.query.page;              // read - subscribes to just this param
-router.query.page = '2';        // write - pushes a new entry, like goto
-delete router.query.sort;       // delete - also navigates
-```
-
-Subclass to declare known params for autocomplete and typo-safety:
-
-```tsx
-class Search extends Router {
-  declare query: { q?: string; page?: string };
-}
+router.query.get('page');       // read - subscribes to just this param
+router.query.set('page', '2');  // write - pushes a new entry, like goto
+router.query.delete('sort');    // delete - also navigates
 ```
 
 ## Links
