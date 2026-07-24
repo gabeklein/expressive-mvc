@@ -1,5 +1,18 @@
 # @expressive/router
 
+## 0.6.0
+
+### Minor Changes
+
+- [#257](https://github.com/gabeklein/expressive-mvc/pull/257) [`9d95ba3`](https://github.com/gabeklein/expressive-mvc/commit/9d95ba33f4ffc82648b38c3f0a617f0ba55eb641) **Breaking:** `Router.query` (and the `Route.query` facade) is now a reactive `map` (`map.Insert<string, string>`) rather than a proxied record. Read a param with `query.get('foo')`, write with `query.set('foo', value)`, and remove with `query.delete('foo')` - each write still navigates by pushing a history entry, exactly as before. Reading a key subscribes to just that param, and URL-driven changes reconcile the same map in place.
+
+  Migration: replace property access (`query.foo`, `query.foo = x`, `delete query.foo`) with the map methods above. The per-key `declare query: { ... }` narrowing is removed - a `map` cannot carry an object-shaped key type; `query` is uniformly keyed by `string`.
+
+### Patch Changes
+
+- Updated dependencies [[`1b1c7da`](https://github.com/gabeklein/expressive-mvc/commit/1b1c7da92da4948c5ceaed9f4b95119f215886c9), [`f5f2773`](https://github.com/gabeklein/expressive-mvc/commit/f5f2773362209a4d5c18259ed31e7b106034b52c), [`f003b03`](https://github.com/gabeklein/expressive-mvc/commit/f003b035b329ee8e8bbccab579badfb700b3c787), [`8e34b84`](https://github.com/gabeklein/expressive-mvc/commit/8e34b841177ff85a4aecf6c22c682426ee05ddf8), [`f0122c0`](https://github.com/gabeklein/expressive-mvc/commit/f0122c05cac8ddeb7825dd7f730cd42ce8271cf2)]:
+  - @expressive/mvc@0.81.0
+
 ## 0.5.0
 
 ### Minor Changes
@@ -57,6 +70,7 @@
   When `@expressive/router` was consumed as a built package (outside the monorepo), `<Route>`, `<Link>`, and `<NavLinks>` failed type-checking as JSX (`TS2786`). Their `render` overrides had no explicit return type, so the `.d.ts` emitter baked the host-seam alias's build-time fallback (`unknown`) into the published types, which is not assignable to `ReactNode`.
 
   Two changes fix this:
+
   - `@expressive/router`: the overridden `render` methods are annotated `: Component.Node`, so the emitter preserves the deferred alias by reference and it re-resolves to the host node type (e.g. `ReactNode`) in a consumer.
   - `@expressive/mvc`: `Component.Node` now falls back to `any` instead of `unknown`. `any` is the only fallback assignable to every host's node type, so an un-annotated `render` override in any host-agnostic package still emits a JSX-valid return.
 
@@ -72,6 +86,7 @@
 - [#161](https://github.com/gabeklein/expressive-mvc/pull/161) [`08b85ec`](https://github.com/gabeklein/expressive-mvc/commit/08b85ecfa0a16620f0851d8e2b2f79c805002050) **First release of `@expressive/router`** - a Component-based declarative router, the "C in MVC." Routes are plain `@expressive/mvc` Components authored against the agnostic JSX pragma, so they render under any host; `@expressive/react` is only a dev/test dependency ([#130](https://github.com/gabeklein/expressive-mvc/issues/130), [#131](https://github.com/gabeklein/expressive-mvc/issues/131), [#150](https://github.com/gabeklein/expressive-mvc/issues/150)).
 
   **Features.**
+
   - **Declarative `<Route>` trees** - pages are plain Components; see-through scopes, `*` opaque delegation, and a `default` no-match branch. Sibling routes arbitrate first-match by declaration order, Express/switch-case style ([#137](https://github.com/gabeklein/expressive-mvc/issues/137)).
   - **Matching** - `:param` segments, trailing `*` catch-all, slash normalization, case-insensitive, scored.
   - **`Router` / `BrowserRouter`** - a headless in-memory router (`goto`/`back`/`forward`/`replace`) and a browser binding over `window.location`/`history` with `popstate`, auto-spawned into the root context.
