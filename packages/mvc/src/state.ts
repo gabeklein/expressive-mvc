@@ -21,7 +21,7 @@ const STORE = new WeakMap<State, Record<string | number | symbol, unknown>>();
 const SETUP = new WeakMap<State.Extends, Set<State.Init<any> | State.On<any>>>();
 
 /** Parent-child relationships. */
-const PARENT = new WeakMap<State, State | null>();
+const PARENT = new WeakMap<object, State | null>();
 
 /** Reference bound instance methods, or their getter, to real one. */
 const UNBIND = new WeakMap<any, any>();
@@ -768,8 +768,7 @@ function child(state: State) {
 
     const remove = ctx.add(value);
 
-    if (parent(value) === undefined) {
-      parent(value, state);
+    if (parent(value, state)) {
       cleanup = () => {
         cancel();
         remove();
@@ -922,12 +921,18 @@ function unbind(fn?: Function) {
 }
 
 /**
- * Get or set a parent on given state. May only be assigned once; ignores new value.
- * Returns parent of child, or `undefined` if not assigned yet.
+ * Read or claim a parent for a given child. In read mode (one argument) returns
+ * the current parent, or `undefined` if never assigned. In write mode assigns
+ * only if unclaimed and returns whether the assignment applied - `true` means
+ * this call freshly claimed it, `false` means it was already parented.
  */
-function parent(child: State, value?: State | null) {
-  if (arguments.length > 1 && !PARENT.has(child)) PARENT.set(child, value!);
-  return PARENT.get(child);
+function parent(child: object): State | null | undefined;
+function parent(child: object, value: State | null): boolean;
+function parent(child: object, value?: State | null) {
+  if (arguments.length < 2) return PARENT.get(child as State);
+  if (PARENT.has(child as State)) return false;
+  PARENT.set(child as State, value ?? null);
+  return true;
 }
 
 export { event, unbind, State, parent, STORE, uid, access, update, apply, compute };

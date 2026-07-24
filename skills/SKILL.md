@@ -62,6 +62,7 @@ import State, {
   def,
   get,
   hot,
+  map,
   set,
   Provider
 } from '@expressive/react';
@@ -98,6 +99,7 @@ Field initializers that configure reactive behavior. Each has multiple overloads
 | `get()` | Context lookup between States - required or optional upstream, downstream collection                   | [field/get.md](field/get.md) |
 | `ref()` | Mutable refs (`.current`), ref callbacks with cleanup, ref proxies                                      | [field/ref.md](field/ref.md) |
 | `hot()` | Keyed reactivity for a plain array or object without extracting a State class                           | [field/hot.md](field/hot.md) |
+| `map()` | Reactive `Map` field - keyed entries or a keyed spawner, with owned `State` members and direct render    | [field/map.md](field/map.md) |
 | `def()` | Low-level custom property behavior                                                                      | [field/def.md](field/def.md) |
 
 For **computed values**, declare a normal class getter - getters on a State subclass are auto-promoted to memoized, dependency-tracked properties. See [state/computed.md](state/computed.md) for tracking rules and when a derivation should *not* be a getter.
@@ -122,6 +124,19 @@ class UserProfile extends State {
   }
 }
 ```
+
+#### `map()` - Reactive Maps
+
+| Form                | Behavior                                                     |
+| ------------------- | ------------------------------------------------------------ |
+| `map<K, V>()` / `map(entries)` | `map.Insert<K, V>` - reactive `Map` with keyed reads and writes via `set(key, value)`. |
+| `map((key: K, ...rest) => value)` | `map.Create<A, V>` - keyed spawning map; `set(key, ...rest)` invokes the factory and stores at `key`, replacing (and destroying if owned) any previous value. |
+
+`map()` is a field instruction: it resolves when the hosting state activates and is not usable standalone. Mode follows the argument: iterable/none is keyed, a factory function is a keyed spawner keyed by its first parameter. The map has reactive reads (`get(key)`/`has`), `size`, iteration, and removal. Calling `get()` with no key returns a shallow `ReadonlyMap` snapshot. `keys(fn)` / `values(fn)` / `entries(fn)` return reusable iterables of transformed results (`throw false` skips an entry), tracking like their plain forms.
+
+Spawning maps own what the factory makes - spawned `State` values are destroyed when deleted, cleared, or replaced - while a value the factory merely passes through from its arguments stays a guest (`(key, value?) => value || new Item()` is the guest-admitting pattern).
+
+Every map is adopted by its hosting state when the instruction resolves at activation; the field is read-only. Fresh (never-activated) members - spawned, stored, or present at adoption - are parented to the owner, activate inside its context, and are destroyed with it; already-activated values keep guest status. A `State` value that dies evicts itself from the map.
 
 ### React Hooks
 
@@ -330,6 +345,7 @@ Fetch these for detailed documentation when the task requires deeper knowledge. 
 - [field/get.md](field/get.md) - Context lookup: upstream, downstream, callbacks
 - [field/ref.md](field/ref.md) - Mutable refs, ref proxy, callbacks
 - [field/hot.md](field/hot.md) - Reactive arrays and objects
+- [field/map.md](field/map.md) - Reactive `Map`: keyed entries, keyed spawner, owned members, direct render
 - [field/def.md](field/def.md) - Low-level custom property behavior
 
 ### React

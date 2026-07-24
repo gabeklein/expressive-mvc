@@ -3,7 +3,7 @@ import { expect, it, describe } from 'bun:test';
 import React from 'react';
 
 import { mockError } from '../test.setup';
-import { Component, Consumer, Provider, State, get } from '.';
+import { Component, Consumer, Provider, State, get, map } from '.';
 
 describe('instance element', () => {
   class Control extends Component {
@@ -153,6 +153,100 @@ describe('instance element', () => {
 
     for (const item of owner.items)
       expect(item.get(null)).toBe(false);
+  });
+
+  it('will render a spawned collection through its owner', async () => {
+    const error = mockError();
+
+    class Item extends Component {
+      label = '';
+
+      render() {
+        return <span>{this.key}={this.label};</span>;
+      }
+    }
+
+    class Store extends Component {
+      items = map((key: string) => new Item({ key }));
+
+      render() {
+        return <>{[...this.items.values()]}</>;
+      }
+    }
+
+    const store = Store.new({});
+    const first = store.items.set('a').get('a')!;
+    const element = render(<>{store}</>);
+
+    expect(first.key).toBe('a');
+    expect(element.container.textContent).toBe('a=;');
+
+    await act(async () => {
+      first.label = 'apple';
+    });
+
+    expect(element.container.textContent).toBe('a=apple;');
+
+    await act(async () => {
+      store.items.set('b').get('b')!.label = 'berry';
+    });
+
+    expect(element.container.textContent).toBe('a=apple;b=berry;');
+
+    await act(async () => {
+      store.items.delete('a');
+    });
+
+    expect(element.container.textContent).toBe('b=berry;');
+    expect(first.get(null)).toBe(true);
+    expect(error).not.toBeCalled();
+
+    element.unmount();
+  });
+
+  it('will resolve provided context from spawned member', async () => {
+    const error = mockError();
+
+    class Theme extends State {
+      color = '';
+    }
+
+    class Item extends Component {
+      theme = get(Theme);
+
+      render() {
+        return <span>{this.theme.color}</span>;
+      }
+    }
+
+    class Store extends Component {
+      items = map((key: string) => new Item({ key }));
+
+      render() {
+        return <>{[...this.items.values()]}</>;
+      }
+    }
+
+    let store!: Store;
+    let item!: Item;
+
+    const element = render(
+      <Provider for={Theme} color="red">
+        <Store is={(x) => (store = x)} />
+      </Provider>
+    );
+
+    await act(async () => {
+      item = store.items.set('a').get('a')!;
+    });
+
+    expect(item.theme.color).toBe('red');
+    expect(screen.getByText('red')).toBeDefined();
+    expect(error).not.toBeCalled();
+
+    element.unmount();
+
+    expect(item.get(null)).toBe(true);
   });
 
   it('will render a parent-owned instance', async () => {
@@ -390,5 +484,73 @@ describe('instance element', () => {
     element.unmount();
 
     expect(instance.get(null)).toBe(false);
+  });
+});
+
+describe('map element', () => {
+  class Item extends Component {
+    label = '';
+
+    render() {
+      return <span>{this.key}={this.label};</span>;
+    }
+  }
+
+  it('will render a keyed map placed directly', async () => {
+    const error = mockError();
+
+    class Store extends Component {
+      items = map<string, Item>();
+
+      render() {
+        return <>{this.items}</>;
+      }
+    }
+
+    const store = Store.new({});
+    const first = Item.new({ key: 'a', label: 'apple' });
+    store.items.set('a', first);
+    const element = render(<>{store}</>);
+
+    expect(element.container.textContent).toBe('a=apple;');
+
+    await act(async () => {
+      store.items.set('b', Item.new({ key: 'b', label: 'berry' }));
+    });
+
+    expect(element.container.textContent).toBe('a=apple;b=berry;');
+
+    await act(async () => {
+      store.items.delete('a');
+    });
+
+    expect(element.container.textContent).toBe('b=berry;');
+    expect(error).not.toBeCalled();
+
+    element.unmount();
+  });
+
+  it('will render a spawning map placed directly', async () => {
+    class Store extends Component {
+      items = map((key: string) => new Item({ key, label: key }));
+
+      render() {
+        return <>{this.items}</>;
+      }
+    }
+
+    const store = Store.new({});
+    store.items.set('a');
+    const element = render(<>{store}</>);
+
+    expect(element.container.textContent).toBe('a=a;');
+
+    await act(async () => {
+      store.items.set('b');
+    });
+
+    expect(element.container.textContent).toBe('a=a;b=b;');
+
+    element.unmount();
   });
 });
