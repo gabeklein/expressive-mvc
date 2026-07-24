@@ -4,6 +4,7 @@ import { State } from '@expressive/mvc';
 import { event, observer, touch } from '@expressive/mvc/observable';
 import { act, renderHook, waitFor } from '@testing-library/react';
 
+import './index';
 import { Runtime, useHook, use } from './runtime';
 
 // useHook calls useRef, useState, useEffect once each per render. Stub Runtime
