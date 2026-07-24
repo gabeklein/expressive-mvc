@@ -1,1 +1,1 @@
-export default ['extension', 'subcomponents', 'context', 'globals'];
+export default ['extension', 'subcomponents', 'context', 'globals', 'kanban'];

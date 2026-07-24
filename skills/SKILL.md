@@ -100,6 +100,7 @@ Field initializers that configure reactive behavior. Each has multiple overloads
 | `ref()` | Mutable refs (`.current`), ref callbacks with cleanup, ref proxies                                      | [field/ref.md](field/ref.md) |
 | `hot()` | Keyed reactivity for a plain array or object without extracting a State class                           | [field/hot.md](field/hot.md) |
 | `map()` | Reactive `Map` field - keyed entries or a keyed spawner, with owned `State` members and direct render    | [field/map.md](field/map.md) |
+| `has()` | Owned collections - an ordered list of values, or a pool of spawned members                             | [field/has.md](field/has.md) |
 | `def()` | Low-level custom property behavior                                                                      | [field/def.md](field/def.md) |
 
 For **computed values**, declare a normal class getter - getters on a State subclass are auto-promoted to memoized, dependency-tracked properties. See [state/computed.md](state/computed.md) for tracking rules and when a derivation should *not* be a getter.
@@ -137,6 +138,15 @@ class UserProfile extends State {
 Spawning maps own what the factory makes - spawned `State` values are destroyed when deleted, cleared, or replaced - while a value the factory merely passes through from its arguments stays a guest (`(key, value?) => value || new Item()` is the guest-admitting pattern).
 
 Every map is adopted by its hosting state when the instruction resolves at activation; the field is read-only. Fresh (never-activated) members - spawned, stored, or present at adoption - are parented to the owner, activate inside its context, and are destroyed with it; already-activated values keep guest status. A `State` value that dies evicts itself from the map.
+
+#### `has()` - Owned Collections
+
+| Form | Behavior |
+| --- | --- |
+| `has<T>()` / `has(values)` | `has.List<T>` - ordered reactive list; positional reads (`get(index)`, ranges, predicate), `push`/`put`/`set(index)`/`pop`. Index and length tracking. |
+| `has(StateClass)` / `has(factory)` | `has.Pool<T, A>` - owned pool; `add(...args)` spawns through the constructor or factory and returns the member, which is its own identity (`has`/`delete` take the value). No positional surface. |
+
+`has()` is a field instruction: mode follows the argument (iterable/none is a list, any function is a pool). Pools own what they spawn - deleted, cleared, or owner-death members are destroyed - while a value the factory passes through from its arguments stays a guest (`(item?) => item || new Item()`). A member that dies evicts itself. Both modes share `map(fn)`/`filter(fn)`/`any`/`all`/`get(predicate)` and snapshot via `get()`. In `@expressive/react` a collection renders directly - `<ul>{this.todos}</ul>` - through a `$$typeof` facade, no spread or keys; `[...collection]` remains the manual alternative.
 
 ### React Hooks
 
@@ -346,6 +356,7 @@ Fetch these for detailed documentation when the task requires deeper knowledge. 
 - [field/ref.md](field/ref.md) - Mutable refs, ref proxy, callbacks
 - [field/hot.md](field/hot.md) - Reactive arrays and objects
 - [field/map.md](field/map.md) - Reactive `Map`: keyed entries, keyed spawner, owned members, direct render
+- [field/has.md](field/has.md) - Owned collections: reactive lists and spawned pools
 - [field/def.md](field/def.md) - Low-level custom property behavior
 
 ### React

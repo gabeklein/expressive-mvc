@@ -1,0 +1,29 @@
+ul {
+  list-style: none;
+  padding: 0;
+}
+
+li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+li span {
+  cursor: pointer;
+  flex: 1;
+}
+
+li.done {
+  opacity: 0.55;
+  text-decoration: line-through;
+}
+
+footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1rem;
+}

@@ -1,1 +1,1 @@
-export default ['refs', 'nested', 'map-instruction'];
+export default ['refs', 'nested', 'map-instruction', 'collections'];

@@ -1,0 +1,168 @@
+/* Give this example room for three columns; the shell caps #root narrow. */
+body.example:has(.kanban) #root {
+  max-width: 56rem;
+}
+
+.kanban {
+  max-width: 56rem;
+}
+
+.board {
+  display: flex;
+  gap: var(--s4);
+  width: 100%;
+  align-items: flex-start;
+  overflow-x: auto;
+  padding-bottom: var(--s2);
+  text-align: left;
+}
+
+.column {
+  flex: 1 0 15rem;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+  padding: var(--s3);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-top: 3px solid var(--accent);
+  border-radius: var(--r-lg);
+}
+
+.column > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s2);
+}
+
+.column h2 {
+  margin: 0;
+  font-size: var(--t-sm);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.count {
+  min-width: 1.5rem;
+  padding: 0 var(--s2);
+  font-size: var(--t-xs);
+  font-weight: 600;
+  line-height: 1.5rem;
+  text-align: center;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-radius: 999px;
+}
+
+ul.cards {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  min-height: 2.5rem;
+}
+
+.card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s2);
+  padding: var(--s3);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+  cursor: grab;
+  transition: box-shadow 0.15s, transform 0.15s;
+}
+
+.card:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.card.dragging {
+  opacity: 0.5;
+  cursor: grabbing;
+  transform: rotate(2deg) scale(1.02);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
+}
+
+/* Drop indicators: an accent line where the card would land - above the
+   hovered card, or at the end of the column over its empty space. */
+.card.over::before,
+.column.over-end .cards::after {
+  content: '';
+  height: 2px;
+  border-radius: 1px;
+  background: var(--accent);
+}
+
+.card.over::before {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(var(--s2) / -2 - 1px);
+}
+
+.column.over-end .cards::after {
+  display: block;
+}
+
+.card span {
+  flex: 1;
+  font-size: var(--t-base);
+  color: var(--fg);
+}
+
+.card .remove {
+  padding: 0;
+  width: 1.5rem;
+  height: 1.5rem;
+  line-height: 1;
+  font-size: var(--t-lg);
+  color: var(--muted);
+  background: transparent;
+  border: none;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s, background 0.15s, color 0.15s;
+}
+
+.card:hover .remove {
+  opacity: 1;
+}
+
+.card .remove:hover {
+  color: var(--fg);
+  background: var(--surface-2);
+}
+
+.card input,
+.column form input {
+  width: 100%;
+  padding: var(--s2) var(--s3);
+  font: inherit;
+  font-size: var(--t-base);
+  color: var(--fg);
+  background: var(--bg);
+  border: 1px solid var(--border-2);
+  border-radius: var(--r-sm);
+}
+
+.card input:focus,
+.column form input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.column form {
+  margin: 0;
+}
