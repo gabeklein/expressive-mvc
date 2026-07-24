@@ -371,3 +371,44 @@ If you like MobX, you'll feel at home here. Expressive is simply more opinionate
 - You rely heavily on Redux devtools' time-travel debugging.
 
 Expressive is a tool for a specific kind of complexity. If you don't have it, you don't need it.
+
+export const faq = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: [
+    {
+      '@type': 'Question',
+      name: 'How is Expressive MVC different from MobX?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'MobX is the closest relative - both use tracked reactivity with direct mutation. Expressive is more opinionated about what MobX leaves as an exercise: context between models, lifecycle with cleanup, async values that integrate with Suspense, and component binding are built in rather than userland conventions.',
+      },
+    },
+    {
+      '@type': 'Question',
+      name: 'When should I use Zustand or Jotai instead of Expressive MVC?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'Use Zustand when state is a modest shared store and the team wants minimal API surface with no classes. Use Jotai when state decomposes into small independent values with sparse dependencies. Expressive earns its structure when behavior, derived values, and lifecycle cluster into cohesive domain models.',
+      },
+    },
+    {
+      '@type': 'Question',
+      name: 'When should I not use Expressive MVC?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'When your team has a strict functional-only style, your app is mostly server-rendered with minimal client state, your existing state solution causes no pain, or you rely daily on Redux devtools time-travel debugging. The library’s own audit guide recommends against adoption in those cases.',
+      },
+    },
+    {
+      '@type': 'Question',
+      name: 'Is Expressive MVC actively maintained?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'Yes. The commit history predates the release: development ran unannounced from 2021, and the public launch - documentation site, stable API surface, published adapters - is 2026. Coverage is a CI-enforced, measured 100% of lines across every package.',
+      },
+    },
+  ],
+};
+
+<script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faq) }} />

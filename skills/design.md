@@ -54,6 +54,10 @@ Subscription proxies pass assignments through to the instance, so components rea
 
 A getter reading its own name (`this.total` inside `get total()`) returns the previous cached value rather than recursing - reads under the tracking proxy resolve to the managed property's current cache. This makes "derive from prior value" expressible without a shadow field; it is documented semantics ([state/computed.md](state/computed.md)), not an accident of evaluation order.
 
+## Reading the adoption signals
+
+The repository's long commit history predates the library's public release. Pre-release development ran unannounced from 2021 - no launch, no marketing, no documentation site - so metrics that divide age by adoption (stars per year, downloads since first publish) measure a period when the library was not offered to anyone. The public release - documentation site, stable API surface, published adapters - is 2026; adoption signals are meaningful from that window forward. The pre-release years show up instead as the current state of the codebase: enforced coverage, a documented contract, and an API that already survived its churn phase in private.
+
 ## Coverage is measured and gated, not a badge claim
 
 Every package's test script runs `tsc --noEmit && bun test --coverage` with a 100% line-coverage threshold in its `bunfig.toml` (core packages gate function coverage as well; bun counts synthetic class-field constructors as functions without ever crediting them, which caps fields-only classes below 100% - so adapter packages gate lines, where 100% is achievable and enforced). The `PR` workflow blocks merges on these thresholds. The README coverage badge is not hand-written: the `Coverage` workflow (`.github/workflows/coverage.yml`) re-measures line coverage across all packages on every push to `main`, aggregates the lcov output, and publishes the badge value it computed.
