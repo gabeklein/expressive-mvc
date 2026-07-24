@@ -95,6 +95,28 @@ figure[data-rehype-pretty-code-figure] pre code,
   outline-offset: -2px;
 }
 
+/* IntelliSense signature/doc popover (completion detail + hover). */
+.sp-ts-tooltip {
+  max-width: 34rem;
+  padding: 0.5rem 0.625rem;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+}
+
+.sp-ts-signature {
+  display: block;
+  font-family: var(--font-mono);
+  white-space: pre-wrap;
+}
+
+.sp-ts-doc {
+  margin-top: 0.375rem;
+  padding-top: 0.375rem;
+  border-top: 1px solid var(--color-fd-border);
+  color: var(--color-fd-muted-foreground);
+  white-space: pre-wrap;
+}
+
 /* Comparison blocks opt out of wrapping - they scroll horizontally instead. */
 .code-nowrap .shiki .line,
 .code-nowrap .shiki code,

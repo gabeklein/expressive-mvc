@@ -12,8 +12,11 @@ import type {
   KeyboardEvent as ReactKeyboardEvent,
   PointerEvent as ReactPointerEvent,
 } from 'react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+
+import { intellisense } from './sandbox/intellisense';
+import { createTsEnv, type TsEnv } from './sandbox/tsEnv';
 
 class Panes extends State {
   mode: 'preview' | 'code' = 'preview';
@@ -207,6 +210,27 @@ function Layout({
     },
   };
 
+  // A per-sandbox virtual TS language service powers editor completions and
+  // hovers. Build it once, keep it fed as files change, and hand the extension
+  // live accessors so it always targets the currently-open tab.
+  const { files, activeFile } = sandpack.sandpack;
+  const envRef = useRef<Promise<TsEnv> | undefined>(undefined);
+  const activeFileRef = useRef(activeFile);
+  activeFileRef.current = activeFile;
+
+  useEffect(() => {
+    const source: Record<string, string> = {};
+    for (const [path, file] of Object.entries(files)) source[path] = file.code;
+
+    if (!envRef.current) envRef.current = createTsEnv(source);
+    else envRef.current.then((holder) => holder.sync(source));
+  }, [files]);
+
+  const extensions = useMemo(
+    () => [intellisense(() => envRef.current, () => activeFileRef.current)],
+    [],
+  );
+
   // Below the breakpoint the panels can't fit side by side; show one at a time
   // and reveal a toggle. Inline display wins over Sandpack's own layout CSS.
   const { matches: narrow } = MediaQuery.use({ query: '(max-width: 639px)' });
@@ -219,10 +243,12 @@ function Layout({
       style={{ flexDirection: stacked ? 'column' : 'row' }}
       className="relative h-full [--sp-layout-height:100%]">
       <SandpackCodeEditor
+        showLineNumbers
         style={{
           display: showEditor ? 'flex' : 'none',
           flex: narrow ? '1' : `0 0 ${ratio}%`,
         }}
+        extensions={extensions}
         extensionsKeymap={[refreshOnSave]}
       />
       {onOpenNavigation &&

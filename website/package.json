@@ -10,10 +10,15 @@
     "postinstall": "fumadocs-mdx"
   },
   "dependencies": {
+    "@codemirror/autocomplete": "^6.20.3",
+    "@codemirror/state": "^6.7.0",
+    "@codemirror/view": "^6.43.4",
     "@codesandbox/sandpack-react": "^2",
     "@expressive/react": "workspace:*",
     "@orama/orama": "^3.1.18",
     "@react-router/node": "^7.13.0",
+    "@typescript/ata": "^0.9",
+    "@typescript/vfs": "^1",
     "fumadocs-core": "16.6.3",
     "fumadocs-mdx": "14.2.7",
     "fumadocs-ui": "16.6.3",
