@@ -6,6 +6,7 @@ import Theme, { Toggle } from './Theme';
 import styles from './Shell.module.css';
 import { Provider } from '@expressive/react';
 import { leaves, type Directory } from '../structure';
+import { frameSrc } from '../pages';
 
 const Shell = ({ tree }: { tree: Directory[] }) => {
   const [first] = leaves(tree);
@@ -72,7 +73,7 @@ function Outlet() {
       <iframe
         title={label}
         className={styles.frame}
-        src={`module#${encodeURIComponent(meta.file)}`}
+        src={frameSrc(meta.file)}
         ref={paint}
         onLoad={(e) => paint(e.currentTarget)}
       />
