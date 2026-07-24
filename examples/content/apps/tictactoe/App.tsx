@@ -1,6 +1,6 @@
 import './App.css';
 
-import { Component, hot } from '@expressive/react';
+import { Component, has } from '@expressive/react';
 
 const LINES = [
   [0, 1, 2],
@@ -14,33 +14,30 @@ const LINES = [
 ];
 
 class Game extends Component {
-  readonly board: string[] = hot(Array(9).fill(''));
+  board = has<string>(Array(9).fill(''));
   turn: 'X' | 'O' = 'X';
 
   get winner() {
     const { board } = this;
     for (const line of LINES) {
-      const [a, b, c] = line.map((i) => board[i]);
-      if (a && a === b && b === c) {
-        for (const i of line) board[i] += ' wins';
-        return a;
-      }
+      const [a, b, c] = line.map((i) => board.get(i));
+      if (a && a === b && b === c) return { player: a, line };
     }
   }
 
   get full() {
-    return this.board.every(Boolean);
+    return [...this.board].every(Boolean);
   }
 
   play(i: number) {
-    if (this.board[i] || this.winner) return;
+    if (this.board.get(i) || this.winner) return;
 
-    this.board[i] = this.turn;
+    this.board.set(i, this.turn);
     this.turn = this.turn === 'X' ? 'O' : 'X';
   }
 
   reset() {
-    this.board.fill("");
+    for (let i = 0; i < 9; i++) this.board.set(i, '');
     this.turn = 'X';
   }
 
@@ -51,15 +48,15 @@ class Game extends Component {
       <div className="container">
         <h1>Tic Tac Toe</h1>
         <p className="status">
-          {winner ? `${winner} wins!` : full ? 'Draw!' : `${turn}'s turn`}
+          {winner ? `${winner.player} wins!` : full ? 'Draw!' : `${turn}'s turn`}
         </p>
         <div className={`board ${winner && 'done'}`}>
           {board.map((cell, i) => (
             <button
               key={i}
               onClick={() => play(i)}
-              className={cell || ""}>
-              {cell[0]}
+              className={`${cell} ${winner?.line.includes(i) ? 'wins' : ''}`}>
+              {cell}
             </button>
           ))}
         </div>
