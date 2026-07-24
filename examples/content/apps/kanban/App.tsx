@@ -38,7 +38,7 @@ export default class Board extends Component {
   // max, not the count, so it survives deletes and the fractional orders a
   // drop inserts.
   next() {
-    return Math.max(0, ...[...this.cards].map((c) => c.order)) + 1;
+    return Math.max(0, ...this.cards.map((c) => c.order)) + 1;
   }
 
   // Place the dragged card into a column, before `target` if given -

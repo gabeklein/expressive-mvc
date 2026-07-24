@@ -1,1 +1,1 @@
-export default ['forms', 'tictactoe', 'stopwatch', 'router', 'spreadsheet'];
+export default ['forms', 'kanban', 'tictactoe', 'stopwatch', 'router', 'spreadsheet'];
