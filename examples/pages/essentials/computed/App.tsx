@@ -22,7 +22,7 @@ class TipCalculator extends Component {
 
     return (
       <div className="container">
-        <h1>Reactivity</h1>
+        <h1>Computed</h1>
 
         <label>
           Bill

@@ -107,7 +107,7 @@ class TipDemo extends StateComponent {
           <TipExample bill={bill} tipPercent={tipPercent} />
         </div>
         <TipCalculator />
-        <Playground to="/examples/essentials/reactivity" />
+        <Playground to="/examples/essentials/computed" />
       </div>
     );
   }

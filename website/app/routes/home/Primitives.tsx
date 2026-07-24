@@ -249,7 +249,7 @@ function Instructions() {
 }
 
 const InstructionsCode = code /*tsx*/`
-  import State, { get, hot, ref, set } from '@expressive/react';
+  import State, { get, has, ref, set } from '@expressive/react';
 
   class Profile extends State {
     first = 'Ada';
@@ -277,9 +277,8 @@ const InstructionsCode = code /*tsx*/`
     // a ref proxy for form fields (inputs.first, inputs.last)
     inputs = ref(this);
 
-    // reactive object and array mutation
-    filters = hot({ query: '', active: true });
-    todos = hot([] as string[]);
+    // an owned reactive collection you mutate in place
+    todos = has<string>();
   }
 `;
 
@@ -341,12 +340,12 @@ function Computed() {
 }
 
 const GettersCode = code /*tsx*/`
-  import State, { hot } from '@expressive/react';
+  import State from '@expressive/react';
 
   type Item = { name: string; price: number; qty: number };
 
   class Cart extends State {
-    items = hot([] as Item[]);
+    items = [] as Item[];
     taxRate = 0.0825;
 
     get total() {
@@ -354,14 +353,15 @@ const GettersCode = code /*tsx*/`
     }
 
     get subtotal() {
-      return this.items.reduce(
-        (sum, item) => sum + item.price * item.qty,
-        0
-      );
+      let sum = 0;
+      for (const item of this.items) {
+        sum += item.price * item.qty;
+      }
+      return sum;
     }
 
     add(item: Item) {
-      this.items.push(item);
+      this.items = [...this.items, item];
     }
   }
 
