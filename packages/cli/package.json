@@ -1,0 +1,56 @@
+{
+  "name": "@expressive/cli",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Build reactive terminal apps with classes!",
+  "license": "MIT",
+  "author": {
+    "name": "Gabe Klein",
+    "email": "gabe@termtm.com",
+    "url": "https://github.com/gabeklein"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gabeklein/expressive-mvc.git"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "sideEffects": [
+    "./dist/jsx-runtime.js",
+    "./dist/jsx-dev-runtime.js",
+    "./src/jsx-runtime.ts",
+    "./src/jsx-dev-runtime.ts"
+  ],
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./jsx-runtime": {
+      "types": "./dist/jsx-runtime.d.ts",
+      "default": "./dist/jsx-runtime.js"
+    },
+    "./jsx-dev-runtime": {
+      "types": "./dist/jsx-dev-runtime.d.ts",
+      "default": "./dist/jsx-dev-runtime.js"
+    }
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "test": "tsc --noEmit && bun test --coverage --only-failures"
+  },
+  "dependencies": {
+    "@expressive/mvc": "workspace:^"
+  },
+  "devDependencies": {
+    "@types/node": "^18.19.0",
+    "tsdown": "^0.20.1"
+  }
+}
