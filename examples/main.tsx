@@ -1,27 +1,16 @@
 import { ComponentType, lazy, ReactNode, Suspense } from 'react';
 import { createRoot } from 'react-dom/client';
 
-import structure, { leaves, type GroupModule } from './structure';
+import structure, { type GroupModule } from './structure';
 
 const modules = import.meta.glob<{ default: ComponentType }>('./pages/*/**/App.tsx');
+const pages = import.meta.glob<GroupModule>('./pages/**/index.ts', { eager: true });
 
 let app: ReactNode;
 
 if (window.self === window.top) {
   const Shell = lazy(() => import('./app/Shell'));
-
-  const manifests = Object.fromEntries(
-    Object.entries(import.meta.glob<GroupModule>('./pages/**/index.ts', { eager: true }))
-      .map(([path, m]) => [path.replace(/^\.\/pages\//, '').replace(/\/?index\.ts$/, ''), m] as const)
-  );
-
-  const tree = structure(manifests);
-
-  // Each leaf's lazy module key doubles as its iframe src.
-  for (const leaf of leaves(tree)) {
-    const file = `./pages/${leaf.path}/App.tsx`;
-    if (file in modules) leaf.file = file;
-  }
+  const tree = structure(pages, './pages/', modules);
 
   app = <Shell tree={tree} />;
 } else {
