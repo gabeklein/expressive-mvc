@@ -1,18 +1,11 @@
 // Shared stylesheet lives at the examples root - pull it in directly.
 import styles from '@examples/global.css?raw';
-import structure, { leaves, type GroupModule } from '@examples/structure';
+import { tree, type Directory } from '@examples/pages';
 
-// Manifests (keyed by directory path) drive the ordered example tree - shared
-// with the dev-harness SPA via @examples/structure.
-const MANIFESTS: Record<string, GroupModule> = {};
+const leaves = (dirs: Directory[]): Directory[] =>
+  dirs.flatMap((d) => (d.children ? leaves(d.children) : d));
 
-Object.entries(
-  import.meta.glob<GroupModule>('@examples/pages/**/index.ts', { eager: true })
-).forEach(([path, m]) => {
-  MANIFESTS[path.split(/content\//).pop()!.replace(/\/?index\.ts$/, '')] = m;
-});
-
-export const GROUPS = structure(MANIFESTS);
+export const GROUPS = tree;
 export const EXAMPLE_LABELS = Object.fromEntries(
   leaves(GROUPS).map(({ path, label }) => [path, label])
 );
@@ -63,7 +56,7 @@ for (const [path, code] of Object.entries(FILES)) {
 
   // Routable example content lives under pages/<group>/<example>/. Anything
   // else (the app/ dev-shell) is harness, not a sandbox.
-  if (segments[0] !== 'content') continue;
+  if (segments[0] !== 'pages') continue;
 
   const slug = segments.slice(1).join('/');
   const target = examples[slug] ??= {};
