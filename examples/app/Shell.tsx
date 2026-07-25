@@ -3,6 +3,7 @@ import { BrowserRouter, NavLinks, Route, Router } from '@expressive/router';
 
 import Logo from './Logo';
 import Theme, { Toggle } from './Theme';
+import Code from './Code';
 import styles from './Shell.module.css';
 
 import { frameSrc, type Directory } from '../pages';
@@ -65,13 +66,15 @@ function Outlet() {
 
   if (meta)
     return (
-      <iframe
-        title={label}
-        className={styles.frame}
-        src={frameSrc(meta.file)}
-        ref={paint}
-        onLoad={(e) => paint(e.currentTarget)}
-      />
+      <Code key={meta.path} path={meta.path}>
+        <iframe
+          title={label}
+          className={styles.frame}
+          src={frameSrc(meta.file)}
+          ref={paint}
+          onLoad={(e) => paint(e.currentTarget)}
+        />
+      </Code>
     );
 }
 

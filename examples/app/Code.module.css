@@ -1,0 +1,182 @@
+.grid {
+  flex: 1;
+  display: grid;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* Class beats Control's inline grid-template-columns, so collapsing hides the
+   source pane and handle without unmounting the iframe (grid stays put). */
+.grid.collapsed {
+  grid-template-columns: 0 0 1fr !important;
+}
+
+.pane {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.handle {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  cursor: col-resize;
+}
+
+.handleBar {
+  width: 1px;
+  height: 100%;
+  background: var(--border);
+  transition: background 0.12s ease-out;
+}
+
+.handle:hover .handleBar {
+  background: var(--accent);
+}
+
+/* Covers the whole window (incl. the iframe) for the duration of a drag, so
+   the pointer keeps feeding mousemove to this document instead of the frame. */
+.dragMask {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+}
+
+.reveal {
+  position: absolute;
+  top: var(--s3);
+  left: var(--s3);
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--s1) var(--s2);
+  color: var(--muted);
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.reveal:hover {
+  color: var(--fg);
+  border-color: var(--accent);
+}
+
+.source {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: 0;
+  background: var(--surface);
+
+  --syn-keyword: #a626a4;
+  --syn-string: #50a14f;
+  --syn-comment: var(--muted);
+  --syn-number: #b76b01;
+  --syn-func: #4078f2;
+  --syn-type: #c18401;
+  --syn-prop: var(--fg-soft);
+  --syn-tag: #e45649;
+  --syn-punct: var(--muted);
+  --cm-selection: #0000001a;
+}
+
+@media (prefers-color-scheme: dark) {
+  :global(:root:not([data-theme='light'])) .source {
+    --syn-keyword: #c678dd;
+    --syn-string: #98c379;
+    --syn-number: #d19a66;
+    --syn-func: #61afef;
+    --syn-type: #e5c07b;
+    --syn-tag: #e06c75;
+    --cm-selection: #ffffff1f;
+  }
+}
+
+:global(:root[data-theme='dark']) .source {
+  --syn-keyword: #c678dd;
+  --syn-string: #98c379;
+  --syn-number: #d19a66;
+  --syn-func: #61afef;
+  --syn-type: #e5c07b;
+  --syn-tag: #e06c75;
+  --cm-selection: #ffffff1f;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  padding: var(--s2) var(--s2) var(--s2) var(--s3);
+  border-bottom: 1px solid var(--border);
+}
+
+.tabs {
+  display: flex;
+  flex: 1;
+  gap: var(--s1);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.tab,
+.tabActive {
+  padding: var(--s1) var(--s3);
+  background: transparent;
+  border: 0;
+  border-radius: var(--r-sm);
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: var(--t-xs);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.tab:hover {
+  color: var(--fg-soft);
+  background: var(--surface-2);
+  border-color: transparent;
+}
+
+.tabActive {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.collapse {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--s1);
+  color: var(--muted);
+  background: transparent;
+  border: 0;
+}
+
+.collapse:hover {
+  color: var(--fg);
+  border-color: transparent;
+}
+
+.editor {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.editor :global(.cm-editor) {
+  height: 100%;
+}
+
+.editor :global(.cm-scroller) {
+  overflow: auto;
+}

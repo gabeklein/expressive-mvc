@@ -7,8 +7,14 @@
     "dev": "vite"
   },
   "dependencies": {
+    "@codemirror/lang-css": "^6",
+    "@codemirror/lang-javascript": "^6",
+    "@codemirror/language": "^6",
+    "@codemirror/state": "^6",
+    "@codemirror/view": "^6",
     "@expressive/react": "workspace:*",
     "@expressive/router": "workspace:*",
+    "@lezer/highlight": "^1",
     "lucide-react": "^0.570.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4"
