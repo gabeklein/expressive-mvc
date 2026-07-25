@@ -1,0 +1,24 @@
+.container label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s1);
+  text-align: left;
+  width: 100%;
+}
+
+.container label small {
+  font-weight: 400;
+}
+
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+}
+
+.stepper output {
+  font-family: var(--font-mono);
+  font-size: var(--t-xl);
+  min-width: 2ch;
+  text-align: center;
+}

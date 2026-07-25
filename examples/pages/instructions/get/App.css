@@ -1,0 +1,19 @@
+.ballot {
+  gap: var(--s1);
+}
+
+.candidate {
+  border: 1px solid var(--border);
+  text-align: center;
+  font-weight: 500;
+}
+
+.candidate.chosen {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.tally {
+  color: var(--muted);
+}

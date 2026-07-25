@@ -1,0 +1,18 @@
+.container label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s1);
+  text-align: left;
+  width: 100%;
+}
+
+.container label small {
+  font-weight: 400;
+}
+
+.result {
+  align-self: flex-start;
+  font-family: var(--font-mono);
+  font-size: var(--t-sm);
+  color: var(--fg-soft);
+}
