@@ -123,6 +123,43 @@ export default function Sandbox({
     return deps;
   }, [files]);
 
+  // The provider below is keyed on theme, so a toggle remounts it. The language
+  // service lives out here instead, where it survives that - spawning the worker
+  // and re-acquiring @types on every toggle would leave IntelliSense cold.
+  const filesRef = useRef(files);
+  filesRef.current = files;
+
+  const ts = useMemo(() => {
+    let client: SandboxTs | undefined;
+
+    return {
+      ensure() {
+        if (!client) {
+          const source: Record<string, string> = {};
+
+          for (const [path, entry] of Object.entries(filesRef.current) as [
+            string,
+            string | { code: string },
+          ][])
+            source[path] = typeof entry === 'string' ? entry : entry.code;
+
+          client = createSandboxTs(source);
+        }
+
+        return client;
+      },
+      sync(next: Record<string, string>) {
+        client?.sync(next);
+      },
+      dispose() {
+        client?.dispose();
+        client = undefined;
+      },
+    };
+  }, []);
+
+  useEffect(() => () => ts.dispose(), [ts]);
+
   // The preview is a cross-origin Sandpack iframe, so we can't set its theme
   // from here - bake it into the hidden entry, which global.css honors via
   // :root[data-theme]. Keyed into the provider so a toggle re-applies it.
@@ -151,6 +188,7 @@ export default function Sandbox({
         label={label}
         navigationOpen={navigationOpen}
         onOpenNavigation={onOpenNavigation}
+        ts={ts}
       />
     </SandpackProvider>
   );
@@ -160,10 +198,15 @@ function Layout({
   label,
   navigationOpen,
   onOpenNavigation,
+  ts,
 }: {
   label: string;
   navigationOpen: boolean;
   onOpenNavigation?: () => void;
+  ts: {
+    ensure(): SandboxTs;
+    sync(files: Record<string, string>): void;
+  };
 }) {
   const {
     onSelect,
@@ -215,43 +258,21 @@ function Layout({
     },
   };
 
-  // A per-sandbox TS language service (in a worker) powers editor completions
-  // and hovers. It's spawned on first use - not mount - so the heavy chunk
-  // stays off the critical path; once alive it's kept fed as files change.
+  // The language service is owned by Sandbox (it outlives this remount); keep it
+  // fed as files change, without spawning it if the editor was never used.
   const { files, activeFile } = sandpack.sandpack;
-  const clientRef = useRef<SandboxTs | undefined>(undefined);
   const activeFileRef = useRef(activeFile);
-  const filesRef = useRef(files);
   activeFileRef.current = activeFile;
-  filesRef.current = files;
-
-  const asSource = (source: typeof files) => {
-    const out: Record<string, string> = {};
-    for (const [path, file] of Object.entries(source)) out[path] = file.code;
-    return out;
-  };
-
-  const ensureClient = useCallback(() => {
-    if (!clientRef.current)
-      clientRef.current = createSandboxTs(asSource(filesRef.current));
-    return clientRef.current;
-  }, []);
 
   useEffect(() => {
-    clientRef.current?.sync(asSource(files));
-  }, [files]);
-
-  useEffect(
-    () => () => {
-      clientRef.current?.dispose();
-      clientRef.current = undefined;
-    },
-    [],
-  );
+    const out: Record<string, string> = {};
+    for (const [path, file] of Object.entries(files)) out[path] = file.code;
+    ts.sync(out);
+  }, [files, ts]);
 
   const extensions = useMemo(
-    () => [intellisense(ensureClient, () => activeFileRef.current)],
-    [ensureClient],
+    () => [intellisense(() => ts.ensure(), () => activeFileRef.current)],
+    [ts],
   );
 
   // Below the breakpoint the panels can't fit side by side; show one at a time
