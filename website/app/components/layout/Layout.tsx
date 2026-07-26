@@ -16,7 +16,7 @@ export class Panel extends Control {
 }
 
 function Handle(props: HandleProps) {
-  const { grab, pull, push, vertical, width } = props;
+  const { grab, pull, push, vertical, width, active } = props;
 
   return (
     <div
@@ -37,6 +37,16 @@ function Handle(props: HandleProps) {
         <Corner
           onMouseDown={push}
           style={{ right: -(width || 0), bottom: 0 }}
+        />
+      )}
+      {/* Covers the whole window (incl. the Sandpack iframe) during a drag so
+          the pointer keeps feeding mousemove to this document. */}
+      {active && (
+        <div
+          className={
+            'fixed inset-0 z-50 ' +
+            (vertical ? 'cursor-col-resize' : 'cursor-row-resize')
+          }
         />
       )}
     </div>

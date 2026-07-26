@@ -1,8 +1,10 @@
-import { Provider } from '@expressive/react';
+import { Component, get, Provider, ref } from '@expressive/react';
 import { BrowserRouter, NavLinks, Route, Router } from '@expressive/router';
 
 import Logo from './Logo';
 import Theme, { Toggle } from './Theme';
+import Code from './Code';
+import { Spinner } from './Spinner';
 import styles from './Shell.module.css';
 
 import { frameSrc, type Directory } from '../pages';
@@ -61,18 +63,77 @@ class Navigation extends NavLinks {
 
 function Outlet() {
   const { label, meta } = Route.get();
-  const { paint } = Theme.get();
 
   if (meta)
     return (
-      <iframe
-        title={label}
-        className={styles.frame}
-        src={frameSrc(meta.file)}
-        ref={paint}
-        onLoad={(e) => paint(e.currentTarget)}
-      />
+      <Code key={meta.path} path={meta.path}>
+        <ExampleFrame key={meta.file} file={meta.file} label={label} />
+      </Code>
     );
+}
+
+// The iframe reloads a fresh document on every example swap, and a fresh
+// document flashes its default (white) background before its own CSS paints.
+// A themed cover sits over the iframe until the example posts `example:ready`
+// (see main.tsx), so that flash is never visible. onLoad is a safety net.
+class ExampleFrame extends Component {
+  file = '';
+  label?: string = undefined;
+  ready = false;
+
+  theme = get(Theme);
+  frame = ref<HTMLIFrameElement>();
+
+  protected new() {
+    const settle = () => (this.ready = true);
+
+    const onReady = (event: MessageEvent) => {
+      if (
+        event.data === 'example:ready' &&
+        event.source === this.frame.current?.contentWindow
+      )
+        settle();
+    };
+
+    window.addEventListener('message', onReady);
+
+    // Safety net if the example never signals. Cleared on teardown, so a
+    // navigation before it fires can't write to a destroyed state.
+    const timer = setTimeout(settle, 2000);
+
+    return () => {
+      window.removeEventListener('message', onReady);
+      clearTimeout(timer);
+    };
+  }
+
+  render() {
+    const { file, label, ready, frame, theme } = this;
+
+    // Reading `theme.paint` subscribes render to the mode, so a toggle
+    // re-themes the current frame. The ref is a stable instruction (not a
+    // new closure per render), so it fires once on mount - no update loop.
+    theme.paint(frame.current);
+
+    return (
+      <div className={`${styles.frameWrap} exampleFrameWrap`}>
+        <iframe
+          title={label}
+          className={`${styles.frame} exampleFrame`}
+          src={frameSrc(file)}
+          ref={frame}
+          onLoad={(e) => theme.paint(e.currentTarget)}
+        />
+        {!ready && (
+          <div className={styles.frameCover} aria-hidden="true">
+            <span className={styles.frameSpinner}>
+              <Spinner />
+            </span>
+          </div>
+        )}
+      </div>
+    );
+  }
 }
 
 function NotFound() {
