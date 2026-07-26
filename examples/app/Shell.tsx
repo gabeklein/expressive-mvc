@@ -4,6 +4,7 @@ import { BrowserRouter, NavLinks, Route, Router } from '@expressive/router';
 import Logo from './Logo';
 import Theme, { Toggle } from './Theme';
 import Code from './Code';
+import { Spinner } from './Spinner';
 import styles from './Shell.module.css';
 
 import { frameSrc, type Directory } from '../pages';
@@ -123,7 +124,13 @@ class ExampleFrame extends Component {
           ref={frame}
           onLoad={(e) => theme.paint(e.currentTarget)}
         />
-        {!ready && <div className={styles.frameCover} aria-hidden="true" />}
+        {!ready && (
+          <div className={styles.frameCover} aria-hidden="true">
+            <span className={styles.frameSpinner}>
+              <Spinner />
+            </span>
+          </div>
+        )}
       </div>
     );
   }

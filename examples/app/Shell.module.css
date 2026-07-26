@@ -69,7 +69,27 @@
   position: absolute;
   inset: 0;
   z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background: var(--bg);
+  color: var(--muted);
+  font-size: 1.75rem;
+}
+
+/* Delayed fade so a quick load doesn't flash the spinner. */
+.frameSpinner {
+  display: flex;
+  animation: coverFadeIn 0.3s ease-out 0.15s both;
+}
+
+@keyframes coverFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .nav {

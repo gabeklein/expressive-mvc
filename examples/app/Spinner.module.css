@@ -1,0 +1,15 @@
+.rotating {
+  width: 1em;
+  height: 1em;
+  overflow: visible;
+  animation: rotating 0.8s linear infinite;
+}
+
+@keyframes rotating {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
