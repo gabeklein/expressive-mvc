@@ -1,0 +1,35 @@
+.container label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  width: 100%;
+  padding: var(--s4);
+  text-align: left;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+}
+
+.container label small {
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+}
+
+.stepper button {
+  min-width: 3rem;
+  font-family: var(--font-mono);
+}
+
+.stepper output {
+  flex: 1;
+  font-family: var(--font-mono);
+  font-size: var(--t-xl);
+  text-align: center;
+  color: var(--accent);
+}

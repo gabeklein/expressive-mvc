@@ -33,27 +33,37 @@ export default class TodoList extends Component {
     const { todos, draft, remaining } = this;
 
     return (
-      <div className="container">
+      <div className="container todo">
         <h1>Owned Collections</h1>
+        <p>
+          <code>has(Item)</code> is a pool that spawns and owns its members.
+          Each todo is its own Component, so dropping the pool into the tree
+          is the whole render.
+        </p>
 
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            this.add();
-          }}>
-          <input
-            value={draft}
-            placeholder="Add a todo, press Enter"
-            onChange={(e) => (this.draft = e.target.value)}
-          />
-        </form>
+        <div className="card">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              this.add();
+            }}>
+            <input
+              value={draft}
+              placeholder="Add a task…"
+              onChange={(e) => (this.draft = e.target.value)}
+            />
+            <button type="submit" aria-label="add">+</button>
+          </form>
 
-        <ul>{todos}</ul>
+          <ul>{todos}</ul>
 
-        <footer>
-          <small>{remaining} of {todos.size} remaining</small>
-          <button onClick={() => this.clearDone()}>Clear done</button>
-        </footer>
+          <footer>
+            <small>{remaining} of {todos.size} left</small>
+            <button className="ghost" onClick={() => this.clearDone()}>
+              Clear done
+            </button>
+          </footer>
+        </div>
       </div>
     );
   }
@@ -78,8 +88,9 @@ class Item extends Component {
   render() {
     return (
       <li className={this.done ? 'done' : ''}>
+        <button className="check" onClick={this.toggle} aria-label="toggle" />
         <span onClick={this.toggle}>{this.text}</span>
-        <button onClick={this.remove} aria-label="remove">×</button>
+        <button className="remove" onClick={this.remove} aria-label="remove">×</button>
       </li>
     );
   }

@@ -111,7 +111,7 @@ type ref.CustomProxy<T, R> = { [P in State.Field<T>]-?: R } & { get(): T };
 ## Behavior
 
 - Ref values are exported by `state.get()` (snapshots).
-- Ref values are accessible through tracking proxies in effects.
+- `.current` is imperative: reading it does **not** subscribe the caller, even inside a render or effect. For a reactive read, subscribe with `field.get(callback)`, or read the field through the state's tracking proxy (`state.foo`). Writing `.current` still dispatches.
 - Setting `.current` dispatches an event for the property key.
 - Callback cleanup resets nested effects (same capture semantics as `set` callbacks).
 - `null` callback is skipped by default; pass `false` as second arg to include it.

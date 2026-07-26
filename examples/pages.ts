@@ -1,7 +1,7 @@
 import type { ComponentType } from 'react';
 
 export interface GroupModule {
-  default: string[];
+  default: string[] | Record<string, string>;
   label?: string;
 }
 
@@ -49,10 +49,15 @@ export const tree = (() => {
   for (const key in manifests)
     dirs[strip(key)] = manifests[key];
 
-  const build = (dir: string): Directory[] =>
-    (dirs[dir]?.default ?? []).map((slug): Directory => {
+  const build = (dir: string): Directory[] => {
+    const manifest = dirs[dir]?.default ?? [];
+    const entries = Array.isArray(manifest)
+      ? manifest.map((slug) => [slug, undefined] as [string, string?])
+      : Object.entries(manifest);
+
+    return entries.map(([slug, name]): Directory => {
       const path = dir ? `${dir}/${slug}` : slug;
-      const label = dirs[path]?.label ?? titleCase(slug);
+      const label = name ?? dirs[path]?.label ?? titleCase(slug);
       const children = dirs[path] && build(path);
       const file = `${BASE}${path}/App.tsx`;
 
@@ -64,6 +69,7 @@ export const tree = (() => {
         file: !children && file in apps ? file : undefined,
       };
     });
+  };
 
   return build('');
 })();
