@@ -92,9 +92,10 @@ export class Panel extends Control {
           <button
             className={styles.reveal}
             type="button"
-            aria-label="Show source"
+            aria-label="Show code"
             onClick={() => (this.collapsed = false)}>
             <ChevronRight size={14} aria-hidden="true" />
+            Code
           </button>
         )}
       </>

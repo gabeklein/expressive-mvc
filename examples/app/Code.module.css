@@ -55,11 +55,13 @@
   z-index: 5;
   display: flex;
   align-items: center;
-  justify-content: center;
-  padding: var(--s1) var(--s2);
+  gap: var(--s1);
+  padding: var(--s1) var(--s3) var(--s1) var(--s2);
   color: var(--muted);
   background: var(--surface);
   border: 1px solid var(--border);
+  font-size: var(--t-xs);
+  font-weight: 500;
 }
 
 .reveal:hover {
