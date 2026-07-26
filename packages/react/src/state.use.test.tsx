@@ -35,6 +35,50 @@ describe('State.use', () => {
       expect(result.current.value).toBe('bar');
     });
 
+    it('will update when assigned through nested proxy', async () => {
+      class Child extends State {
+        value = 'foo';
+      }
+
+      class Parent extends State {
+        child = new Child();
+      }
+
+      let parent!: Parent;
+      const didRender = mock();
+
+      const Inner = () => {
+        const { is, child } = Parent.use();
+
+        parent = is;
+        didRender();
+
+        return (
+          <button
+            onClick={() => {
+              child.value = 'bar';
+            }}>
+            {child.value}
+          </button>
+        );
+      };
+
+      const element = render(<Inner />);
+      const button = element.getByRole('button');
+
+      expect(button.textContent).toBe('foo');
+      expect(didRender).toBeCalledTimes(1);
+
+      await act(async () => {
+        button.click();
+        await expect(parent.child).toHaveUpdated('value');
+      });
+
+      expect(parent.child.value).toBe('bar');
+      expect(didRender).toBeCalledTimes(2);
+      expect(button.textContent).toBe('bar');
+    });
+
     it('will assign `is` as a circular reference', async () => {
       const { result } = renderHook(() => Test.use());
 
