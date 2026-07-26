@@ -74,7 +74,7 @@
   justify-content: center;
   background: var(--bg);
   color: var(--muted);
-  font-size: 1.75rem;
+  font-size: 3rem;
 }
 
 /* Delayed fade so a quick load doesn't flash the spinner. */
