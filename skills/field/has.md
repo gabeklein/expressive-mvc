@@ -177,4 +177,4 @@ class has.Pool<T, A extends unknown[] = unknown[]> {
 - Pool events are by value: `add`/`delete` notify the member plus shape; `has(value)` tracks that member only.
 - Repeat `add` of a value already present is a no-op.
 - `get()` with no arguments returns a snapshot array in both modes.
-- Reactivity is shallow. Nested State, `hot()`, and `map()` values keep their own reactivity when accessed through the collection.
+- Reactivity is shallow. Nested State, `map()`, and `has()` values keep their own reactivity when accessed through the collection.

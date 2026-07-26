@@ -54,15 +54,14 @@ Field initializers that change how a property behaves:
 | `ref()` | a mutable reference (e.g. a DOM node) that's still reactive |
 | `set()` | computed values, smart setters, side-effects on assignment |
 | `get()` | dependency injection - pull another `State` from context |
-| `hot()` | a shallow-reactive array or object |
 | `map()` | a shallow-reactive Map |
 | `has()` | an owned reactive collection - an ordered list or a spawned pool |
 
 ```ts
-import { State, set, hot, map } from '@expressive/mvc';
+import { State, set, has, map } from '@expressive/mvc';
 
 class Cart extends State {
-  items = hot<Item[]>([]);                  // reactive collection
+  items = has<Item>();                      // reactive collection
   products = map<string, Product>();        // reactive keyed collection
   coupon = set('', code => apply(code));    // side-effect on assignment
 }

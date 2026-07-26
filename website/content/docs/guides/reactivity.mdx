@@ -35,7 +35,7 @@ A few more things tracking handles for you:
 - Replacing a child re-subscribes to the new one automatically.
 - Several tracked properties changing in one batch means one re-run, not several.
 
-> Properties are the unit of tracking, so mutating an array in place (`items.push(...)`) goes unseen - the property was never assigned. See [Arrays & Collections](/docs/guides/collections) for the ways around that, including `hot()` for per-index tracking.
+> Properties are the unit of tracking, so mutating an array in place (`items.push(...)`) goes unseen - the property was never assigned. See [Arrays & Collections](/docs/guides/collections) for the ways around that, including `has()` for per-index tracking.
 
 ### React components
 
@@ -295,6 +295,6 @@ There are no stale closures because there are no closures. Every method call rea
 
 ## Next
 
-- [Arrays & Collections](/docs/guides/collections) - mutation, `hot()`, and per-index tracking.
+- [Arrays & Collections](/docs/guides/collections) - mutation, `has()`, `map()`, and per-index tracking.
 - [Async](/docs/guides/async) - async factories, Suspense, error handling.
 - [Components](/docs/guides/components) - the `Component` class, where state renders itself.

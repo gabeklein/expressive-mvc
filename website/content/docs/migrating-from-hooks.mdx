@@ -366,21 +366,21 @@ this.items.push(item); // no update
 this.items = [...this.items, item]; // works
 ```
 
-Copy-on-write is the habit worth keeping from hooks. But when a collection is mutated *a lot* - a game board, a live buffer, rows edited in place - wrap it with `hot()` and mutate away:
+Copy-on-write is the habit worth keeping from hooks. But when a collection is mutated *a lot* - a game board, a live buffer, rows edited in place - declare it with `has()` and mutate away:
 
 ```ts
-import { hot } from '@expressive/react';
+import { has } from '@expressive/react';
 
 class Game extends State {
-  board = hot(Array(9).fill(''));
+  board = has<string>(Array(9).fill(''));
 
   play(index: number, mark: string) {
-    this.board[index] = mark; // updates, in place
+    this.board.set(index, mark); // updates, in place
   }
 }
 ```
 
-Hot values track per-key, so a component reading `board[4]` only re-renders when that cell changes. See [Arrays & Collections](/docs/guides/collections) for the full contract, or [poke the tic-tac-toe example](/examples/apps/tictactoe) to watch it work.
+A `has()` list tracks per index, so a component reading `board.get(4)` only re-renders when that cell changes; `map()` does the same for entries keyed by name. See [Arrays & Collections](/docs/guides/collections) for the full contract, or [poke the tic-tac-toe example](/examples/apps/tictactoe) to watch it work.
 
 If you just need to signal "this changed" without replacing the value, `this.set('items')` dispatches an update manually.
 
