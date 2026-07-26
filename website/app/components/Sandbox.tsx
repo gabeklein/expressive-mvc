@@ -22,6 +22,7 @@ class Panes extends State {
   mode: 'preview' | 'code' = 'preview';
   stacked = false;
   ratio = 50;
+  dragging = false;
 
   // Hold Ctrl and two-finger swipe to nudge split
   layout = ref<HTMLDivElement>((el) => {
@@ -52,6 +53,8 @@ class Panes extends State {
     const rect = event.currentTarget.parentElement!.getBoundingClientRect();
     const pointerId = event.pointerId;
 
+    this.dragging = true;
+
     const move = (e: globalThis.PointerEvent) => {
       if (e.pointerId !== pointerId) return;
       e.preventDefault();
@@ -62,6 +65,7 @@ class Panes extends State {
     };
     const up = (e: globalThis.PointerEvent) => {
       if (e.pointerId !== pointerId) return;
+      this.dragging = false;
       document.removeEventListener('pointermove', move);
       document.removeEventListener('pointerup', up);
       document.removeEventListener('pointercancel', up);
@@ -170,6 +174,7 @@ function Layout({
     adjust,
     toggleSplit,
     layout,
+    dragging,
   } = Panes.use();
   const [layoutElement, setLayoutElement] = useState<HTMLDivElement | null>(
     null
@@ -310,6 +315,13 @@ function Layout({
               stacked ? 'h-1.5 w-12' : 'h-12 w-1.5'
             }`}
           />
+          {dragging && (
+            <div
+              className={`fixed inset-0 z-50 ${
+                stacked ? 'cursor-row-resize' : 'cursor-col-resize'
+              }`}
+            />
+          )}
         </div>
       )}
       <SandpackPreview
