@@ -10,6 +10,7 @@
   border: 1px solid var(--border);
   border-radius: var(--r-lg);
   overflow: hidden;
+  user-select: none;
   background-image: radial-gradient(var(--border) 1px, transparent 1px);
   background-size: 1.25rem 1.25rem;
 }

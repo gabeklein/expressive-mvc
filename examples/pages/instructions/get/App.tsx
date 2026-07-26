@@ -47,12 +47,17 @@ function Tally() {
 
 export default class App extends Component {
   roster = ['Ada', 'Alan', 'Grace'];
+  draft = '';
 
   add() {
-    this.roster = [...this.roster, `Guest ${this.roster.length + 1}`];
+    const name = this.draft.trim() || `Guest ${this.roster.length + 1}`;
+    this.roster = [...this.roster, name];
+    this.draft = '';
   }
 
   render() {
+    const { roster, draft } = this;
+
     return (
       <div className="container">
         <h1>Context Collection</h1>
@@ -60,11 +65,23 @@ export default class App extends Component {
         <Provider for={Poll}>
           <Tally />
           <ul className="ballot">
-            {this.roster.map((name) => (
+            {roster.map((name) => (
               <Candidate key={name} name={name} />
             ))}
           </ul>
-          <button onClick={() => this.add()}>Add candidate</button>
+          <form
+            className="add"
+            onSubmit={(e) => {
+              e.preventDefault();
+              this.add();
+            }}>
+            <input
+              value={draft}
+              placeholder={`Guest ${roster.length + 1}`}
+              onChange={(e) => (this.draft = e.target.value)}
+            />
+            <button type="submit">Add</button>
+          </form>
         </Provider>
       </div>
     );

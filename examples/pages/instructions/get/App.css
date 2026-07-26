@@ -36,3 +36,13 @@
 .tally b {
   color: var(--fg);
 }
+
+.add {
+  display: flex;
+  gap: var(--s2);
+  width: 100%;
+}
+
+.add button {
+  flex: 0 0 auto;
+}
