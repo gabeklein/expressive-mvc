@@ -1,29 +1,159 @@
-ul {
-  list-style: none;
-  padding: 0;
+.todo {
+  max-width: 26rem;
 }
 
-li {
+.card {
+  width: 100%;
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  text-align: left;
+}
+
+.card > form {
+  display: flex;
+  gap: var(--s2);
+  margin: 0;
+  padding: var(--s3);
+  border-bottom: 1px solid var(--border);
+}
+
+.card > form input {
+  border: none;
+  background: transparent;
+  padding: var(--s2);
+}
+
+.card > form input:focus {
+  outline: none;
+  border: none;
+}
+
+.card > form button {
+  flex: 0 0 auto;
+  width: 2.25rem;
+  padding: 0;
+  font-size: var(--t-xl);
+  line-height: 1;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border: none;
+}
+
+.card > form button:hover {
+  color: var(--accent-fg);
+  background: var(--accent);
+}
+
+.card ul {
+  gap: 0;
+}
+
+.card li {
+  display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--s3);
+  padding: var(--s3);
+  border-radius: 0;
+  border-bottom: 1px solid var(--border);
+  cursor: default;
+  transition: background 0.15s;
 }
 
-li span {
-  cursor: pointer;
+.card li:hover {
+  background: var(--surface-2);
+}
+
+.card li span {
   flex: 1;
+  cursor: pointer;
 }
 
-li.done {
-  opacity: 0.55;
+.check {
+  position: relative;
+  flex: 0 0 auto;
+  width: 1.2rem;
+  height: 1.2rem;
+  padding: 0;
+  border: 1.5px solid var(--border-2);
+  border-radius: 50%;
+  background: var(--bg);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.check:hover {
+  border-color: var(--accent);
+}
+
+.done .check {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
+.done .check::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 6px;
+  width: 4px;
+  height: 8px;
+  border: solid var(--accent-fg);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.done {
+  opacity: 0.6;
+}
+
+.done span {
   text-decoration: line-through;
 }
 
-footer {
+.remove {
+  flex: 0 0 auto;
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
+  font-size: var(--t-lg);
+  line-height: 1;
+  color: var(--muted);
+  background: transparent;
+  border: none;
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s;
+}
+
+.card li:hover .remove {
+  opacity: 1;
+}
+
+.remove:hover {
+  color: var(--fg);
+  border: none;
+}
+
+.card footer {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  gap: 1rem;
-  margin-top: 1rem;
+  justify-content: space-between;
+  gap: var(--s3);
+  padding: var(--s3);
+}
+
+.card footer .ghost {
+  padding: var(--s1) var(--s3);
+  font-size: var(--t-sm);
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid var(--border);
+}
+
+.card footer .ghost:hover {
+  color: var(--fg);
+  border-color: var(--border-2);
 }

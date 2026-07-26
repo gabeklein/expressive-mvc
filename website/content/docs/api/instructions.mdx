@@ -1,12 +1,12 @@
 ---
 title: Instructions
-description: Field initializers - set, get, ref, def - with every overload
+description: Field initializers - set, get, ref, def, has, map - with every overload
 ---
 
 Instructions are special initializers for class fields. They wire up reactive behavior declaratively.
 
 ```ts
-import { set, get, ref, def } from '@expressive/react';
+import { set, get, ref, def, has, map } from '@expressive/react';
 ```
 
 All instructions return a symbol at definition time that the library resolves into a real typed value during activation. TypeScript sees the declared type; the runtime sees the symbol until init.
@@ -350,35 +350,56 @@ Setter callbacks behave like `set()` callbacks: throw `false` to reject, throw `
 
 <br />
 
-## `hot`
+## `has`
 
-Keyed reactivity for arrays and objects.
+An owned reactive collection - an ordered list of values, or a pool of members the state spawns.
 
 ```ts
-import { hot } from '@expressive/react';
+import { has } from '@expressive/react';
 
 class Game extends State {
-  board = hot(Array(9).fill(''));
+  board = has<string>(Array(9).fill(''));
 
   play(index: number) {
-    this.board[index] = 'X';
+    this.board.set(index, 'X');
   }
 }
 ```
 
-`hot()` is an export alongside the instructions, but not technically an instruction - it doesn't return a placeholder symbol. It returns a reactive proxy you can assign to a State field, or use standalone with `watch()`. Reads register subscriptions in active effects; writes notify only the keys that changed.
+`has()` is a proper instruction: the field resolves when the hosting state activates, which adopts the collection in the same step. It is not usable standalone, and the field is read-only - assigning over it throws.
 
-- Array reads track the accessed index or `length`; native methods (`slice`, `find`, `push`, `splice`, ...) subscribe to what they actually read.
-- Arrays must stay dense - operations that would create holes throw.
-- Object reads and writes are tracked per property key.
-- Shallow - nested arrays and objects are not wrapped; use child States or another `hot()`.
+The argument selects one of two modes. Nothing, a falsy value (`null`/`false`, for conditional init), or an iterable makes an ordered list (`has.List<T>`) addressed by index. A `State` class or a factory makes a pool (`has.Pool<T, A>`) whose members exist only by being spawned through `add(...args)` - which forwards its arguments to the constructor exactly as `Type.new()` accepts them (or to the factory's own parameters) and returns the member.
+
+A pool takes no initial argument, so seed it from the `new()` hook, which runs once the field has resolved:
 
 ```ts
-function hot<T>(value: T[]): T[];
-function hot<T extends object>(value: T): T;
+class Board extends State {
+  columns = has(Column);
+
+  protected new() {
+    for (const column of LAYOUT) this.columns.add(column);
+  }
+}
 ```
 
-> The deep dive - the dense-array contract with its exact throws, keyed tracking through native methods, nesting recipes, and the shared-storage caveat - lives at [Arrays & Collections](/docs/guides/collections).
+Ownership follows freshness: a fresh (never-activated) `State` member - one the pool instantiates, or a `new Item()` the factory constructs - is owned and destroyed when deleted, cleared, or when the owner dies, while an already-activated value (`Item.new()`) stays a guest, held but never destroyed. Fresh members are parented to the hosting state and activate inside its context; a member that dies evicts itself.
+
+- Lists are positional: `get(index)` (negative counts from the end), `get(start, end)`, `get(predicate)`, `set(index, value)`, `put(index, ...values)`, `push`, `pop(index?, count?)`.
+- Pools address the member itself: `add`, `has(value)`, `delete(value)` - no index reads, no `push`. Repeat `add` of a present value is a no-op.
+- List events are positional - replacing one index notifies that index; insert/remove notifies shifted indices plus length. Pool events are by value, plus shape.
+- `size` and iteration track length (list) or shape (pool); `map(fn)`, `filter(fn)`, `any(fn)`, `all(fn)` track what they visit.
+- `get()` with no arguments returns a shallow snapshot array.
+- Shallow - nested State, `map()`, and `has()` values keep their own reactivity when accessed through the collection.
+
+```ts
+function has<T>(initial?: Iterable<T> | null): has.List<T>;
+function has<T extends State>(Type: new (...args: State.Args<T>) => T): has.Pool<T, State.Args<T>>;
+function has<T, A extends unknown[]>(make: (...args: A) => T): has.Pool<T, A>;
+```
+
+`has.List` and `has.Pool` are the runtime classes - mode is class identity, and adapters extend their prototypes for rendering facades. In `@expressive/react` a collection of Components renders directly: `<ul>{this.todos}</ul>`.
+
+> The deep dive - positional events, ownership and eviction, the seeding seam, and the shared read surface - lives at [Arrays & Collections](/docs/guides/collections).
 
 <br />
 
@@ -420,7 +441,7 @@ class Cart extends State {
 - `values()`, `entries()`, `forEach()`, and `for...of` also track visited values.
 - `set`, `delete`, and `clear` notify affected keys; adding or removing keys also notifies shape.
 - `get()` with no key returns a shallow `ReadonlyMap` snapshot.
-- Shallow - nested State, `hot()`, and `map()` values keep their own reactivity when accessed through the map.
+- Shallow - nested State, `map()`, and `has()` values keep their own reactivity when accessed through the map.
 
 ```ts
 function map<K, V>(entries?: Iterable<readonly [K, V]> | null): map.Insert<K, V>;

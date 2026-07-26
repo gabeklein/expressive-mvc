@@ -26,7 +26,7 @@ export default class Board extends Component {
     this.add('Ship map + has', 'done');
     this.add('Wire drag and drop', 'doing');
     this.add('Write the migration guide', 'todo');
-    this.add('Deprecate hot (someday)', 'todo');
+    this.add('Retire hot (#263)', 'done');
   }
 
   add(title: string, column: string) {

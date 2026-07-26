@@ -1,0 +1,48 @@
+.ballot {
+  gap: var(--s2);
+}
+
+.candidate {
+  padding: var(--s3);
+  text-align: center;
+  font-weight: 500;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+
+.candidate:hover {
+  border-color: var(--border-2);
+  background: var(--surface-2);
+}
+
+.candidate.chosen {
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
+.tally {
+  margin: 0;
+  padding: var(--s2) var(--s4);
+  font-size: var(--t-sm);
+  color: var(--muted);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+}
+
+.tally b {
+  color: var(--fg);
+}
+
+.add {
+  display: flex;
+  gap: var(--s2);
+  width: 100%;
+}
+
+.add button {
+  flex: 0 0 auto;
+}

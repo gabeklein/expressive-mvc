@@ -908,6 +908,62 @@ describe('get method', () => {
       expect(effect).toBeCalledTimes(2);
     });
 
+    it('will update when assigned through proxy', async () => {
+      class Test extends State {
+        value = 'foo';
+      }
+
+      const test = Test.new();
+      let proxy!: Test;
+
+      const effect = mock((state: Test) => {
+        proxy = state;
+        void state.value;
+      });
+
+      test.get(effect);
+
+      expect(proxy).not.toBe(test);
+      expect(Object.getPrototypeOf(proxy)).toBe(test);
+
+      proxy.value = 'bar';
+
+      await expect(test).toHaveUpdated('value');
+
+      expect(test.value).toBe('bar');
+      expect(effect).toBeCalledTimes(2);
+    });
+
+    it('will update when assigned through nested proxy', async () => {
+      class Child extends State {
+        value = 'foo';
+      }
+
+      class Test extends State {
+        child = new Child();
+      }
+
+      const test = Test.new();
+      let child!: Child;
+
+      const effect = mock((state: Test) => {
+        child = state.child;
+        void child.value;
+      });
+
+      test.get(effect);
+
+      expect(child).not.toBe(test.child);
+      expect(Object.getPrototypeOf(child)).toBe(test.child);
+
+      child.value = 'bar';
+
+      await expect(test.child).toHaveUpdated('value');
+
+      expect(test.child.value).toBe('bar');
+      expect(effect).toBeCalledTimes(2);
+    });
+
     it('will subscribe deeply', async () => {
       class Parent extends State {
         value = 'foo';

@@ -36,6 +36,7 @@
 
 .example {
   grid-area: example;
+  position: relative;
   display: flex;
   min-width: 0;
   min-height: 0;
@@ -45,14 +46,50 @@
   border-radius: var(--r-lg);
 }
 
+.frameWrap {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
 .frame {
   display: block;
   flex: 1;
   width: 100%;
   height: 100%;
-  min-height: calc(100vh - 8rem);
+  min-height: 0;
   border: 0;
   background: var(--bg);
+}
+
+/* Themed cover over the iframe until the example signals it has painted. */
+.frameCover {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+  color: var(--muted);
+  font-size: 3rem;
+}
+
+/* Delayed fade so a quick load doesn't flash the spinner. */
+.frameSpinner {
+  display: flex;
+  animation: coverFadeIn 0.3s ease-out 0.15s both;
+}
+
+@keyframes coverFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .nav {
@@ -126,6 +163,22 @@
   border-left-color: var(--accent);
   color: var(--accent);
   font-weight: 600;
+}
+
+.codeLabel {
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  padding: 1px 4px;
+  margin-right: 3px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+}
+
+.groupItems a[aria-current='page'] .codeLabel {
+  background: var(--accent-soft);
+  border-color: transparent;
+  color: var(--accent);
 }
 
 .logo {

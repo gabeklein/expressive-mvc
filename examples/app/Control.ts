@@ -1,4 +1,4 @@
-import State, { Component, get, ref, set } from '@expressive/react';
+import { Component, get, ref, set } from '@expressive/react';
 import React, { type MouseEventHandler, type ReactNode } from 'react';
 
 const AXIS = ['gridTemplateRows', 'gridTemplateColumns'] as const;
@@ -22,7 +22,10 @@ export class Control extends Component {
   container = ref(this.applyLayout);
 
   parent = get(Control, false);
-  output = set(this.getOutput);
+  // Reactive (arity 1) so output tracks `items` and refreshes when children
+  // change - e.g. the live iframe element rebinding its theme ref - while
+  // staying stable across renders that don't touch the child set.
+  output = set((self: Control) => self.getOutput());
 
   children = set(undefined, (value: ReactNode) => {
     this.items = flatten(value);

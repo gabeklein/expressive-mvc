@@ -1,1 +1,1 @@
-export default ['counter', 'computed', 'fetch', 'async', 'boundary'];
+export default ['counter', 'computed', 'fetch', 'async', 'suspense', 'boundary'];

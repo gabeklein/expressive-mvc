@@ -1,6 +1,6 @@
 ---
 title: Arrays & Collections
-description: Reactive arrays and objects - copy-on-write, manual dispatch, child States, and hot()
+description: Reactive arrays and objects - copy-on-write, manual dispatch, child States, has() and map()
 ---
 
 Reactivity in Expressive is keyed to assignment. `this.items = [...]` dispatches an update; `this.items.push(item)` does not - the property still holds the same array, so as far as `===` change detection is concerned, nothing happened.
@@ -73,128 +73,157 @@ class TodoList extends State {
 }
 ```
 
-The list owns membership (copy-on-write for add/remove); each item owns its fields. A row component subscribing to one `Item` re-renders when *that item* changes, and the list doesn't. [Try it live](/examples/state/nested).
+The list owns membership (copy-on-write for add/remove); each item owns its fields. A row component subscribing to one `Item` re-renders when *that item* changes, and the list doesn't. [Try it live](/examples/instructions/has).
 
 > Adding and removing still goes through reassignment here - the array itself is ordinary. The per-item reactivity comes from each entry being a State.
 
 <br />
 
-## hot()
+## has()
 
-For keyed reactivity *inside* the collection - this index changed, that property changed - wrap it with `hot()`:
+For reactivity *inside* the collection - this index changed, that member joined - declare the collection with `has()`:
 
 ```ts
-import State, { hot } from '@expressive/react';
+import State, { has } from '@expressive/react';
 
 class Game extends State {
-  board = hot(Array(9).fill(''));
+  board = has<string>(Array(9).fill(''));
 
   play(index: number) {
-    this.board[index] = 'X';
+    this.board.set(index, 'X');
   }
 }
 ```
 
-`hot()` is not a field instruction like `set()` or `ref()` - it returns a reactive proxy you can assign to a State field, or use on its own. Reads register subscriptions in whatever tracking context is active; writes notify only the keys that changed.
+`has()` is a field instruction: it resolves when the hosting state activates, which adopts the collection in the same step. The field is read-only - there is no whole-collection reassignment to lose reactivity to, and no separate value sharing storage with it.
+
+The argument picks the mode. Nothing or an iterable makes an ordered **list** of values, addressed by index. A `State` class or a factory makes a **pool** of members it spawns and owns.
+
+### Lists
+
+Lists are positional: `get(index)` (negative counts from the end), `get(start, end)` for a range, `get(predicate)` for the first match, `set(index, value)` to replace, `put(index, ...values)` to insert, `push` to append, `pop(index?, count?)` to remove.
+
+Reads track precisely - `get(index)` subscribes to that index alone, `size` and iteration subscribe to length:
 
 ```ts
 const game = Game.new();
 
 game.get(($) => {
-  console.log($.board[0]);
+  console.log($.board.get(0));
 });
 
-game.board[0] = 'X'; // reruns the effect
-game.board[5] = 'O'; // does not - the effect only read index 0
+game.board.set(0, 'X'); // reruns the effect
+game.board.set(5, 'O'); // does not - the effect only read index 0
 ```
 
-Array reads track the accessed index, or `length`. Native methods keep their normal behavior, so `slice()`, `find()`, and `some()` subscribe to exactly the indices they actually read:
+Replacing one index notifies that index. Inserting or removing mid-list notifies every shifted position plus length.
+
+### Pools
+
+When members are owned States, hand `has()` the class (or a factory) instead of values. There is no positional surface - `add(...args)` spawns a member and returns it, and the member itself is the identity for `has`, `delete`, and eviction:
 
 ```ts
-import { watch } from '@expressive/mvc/observable';
+class TodoList extends State {
+  todos = has(Item);
 
-const items = hot(['a', 'b', 'c', 'd']);
+  protected new() {
+    this.todos.add({ text: 'Learn Expressive' });
+  }
 
-watch(items, ($) => {
-  $.slice(0, 2); // tracks length, index 0, and index 1
-});
-
-items[3] = 'x'; // does not notify the slice effect
-items[1] = 'x'; // notifies the slice effect
+  clearDone() {
+    for (const item of [...this.todos])
+      if (item.done) this.todos.delete(item);
+  }
+}
 ```
 
-Mutating methods work through the same seam: `push`, `unshift`, `pop`, `shift`, `splice`, `sort`, and `reverse` all notify the keys they affect, and appends notify `length`.
+`add` forwards its arguments exactly as `Item.new()` accepts them. Pools have no initial argument - they spawn - so seed them from the `new()` hook, which runs once the field has resolved.
 
-### Objects
+Ownership follows freshness: a member the pool instantiates or a factory constructs fresh (`new Item()`) is owned, and is destroyed when deleted, cleared, or when the owner dies. An already-activated value (`Item.new()`) passed through a factory is a guest - held, never destroyed. Either way, a member that dies evicts itself, so a pool never serves a destroyed State.
 
-`hot()` takes plain objects too, tracked by property key:
+Both modes share a read surface built over iteration - `map(fn)`, `filter(fn)`, `any(fn)`, `all(fn)`, `get(predicate)`:
 
 ```ts
+class TodoList extends State {
+  todos = has(Item);
+
+  get remaining() {
+    return this.todos.filter((item) => !item.done).length;
+  }
+}
+```
+
+> In `@expressive/react` a collection of Components renders directly - `<ul>{this.todos}</ul>` - no spread and no keys. See [Components](/docs/guides/components).
+
+<br />
+
+## map()
+
+When entries are addressed by name rather than position, use `map()`:
+
+```ts
+import State, { map } from '@expressive/react';
+
 class Form extends State {
-  values = hot({
-    name: '',
-    email: ''
-  });
+  values = map<string, string>();
 }
 
 const form = Form.new();
 
 form.get(($) => {
-  console.log($.values.email);
+  console.log($.values.get('email'));
 });
 
-form.values.email = 'ada@example.com'; // reruns the effect
-form.values.name = 'Ada'; // does not - the effect only read email
+form.values.set('email', 'ada@example.com'); // reruns the effect
+form.values.set('name', 'Ada'); // does not - the effect only read email
 ```
 
-Adding or deleting a property notifies effects that already read that key. Key *enumeration* is not shape-reactive though - effects should read the keys they depend on, not `Object.keys()`.
+`get(key)` and `has(key)` track that key only. `size`, iteration, `keys()`, `values()`, `entries()`, and `forEach()` track collection shape; the value-bearing ones also track the values they visit.
 
-> Symbol keys and function values pass through without keyed tracking.
-
-### Dense arrays only
-
-`hot()` arrays must be dense - no holes. Sparse input is rejected at creation, and operations that would create holes throw (`hot() arrays must be dense. Use undefined/null placeholders or splice().`):
+Given a factory, a map spawns and owns its values instead, keyed by the factory's first argument:
 
 ```ts
-hot(Array(3)); // throws
-hot([1, , 3]); // throws
+class Room extends State {
+  people = map((id: string) => new Person({ id }));
 
-const items = hot(['a', 'b']);
-
-items[2] = 'c'; // ok: appends at the next index
-items[4] = 'e'; // throws: would leave holes at 2 and 3
-items.length = 5; // throws: growing length creates holes
-delete items[0]; // throws: creates a hole
+  join(id: string) {
+    this.people.set(id);
+    return this.people.get(id)!;
+  }
+}
 ```
 
-Use `undefined` or `null` as an intentional empty value, and `splice()` to remove entries:
+Ownership works exactly as it does for a pool - a fresh `State` is adopted and destroyed on delete, clear, or replacement; an already-activated one stays a guest.
+
+### Snapshots
+
+Both instructions expose a `get()` seam with no arguments, and State snapshots use it - the same way they do for `ref` and child states. A list snapshots to a plain array, a map to a `ReadonlyMap`, with nested values exported through their own `get()`:
 
 ```ts
-items[0] = undefined; // ok
-items.splice(0, 1); // ok
-```
+class Model extends State {
+  list = has([1, 2, 3]);
+  keyed = map([['a', 1]]);
+}
 
-Truncation is fine, since it removes entries without leaving gaps:
+const snapshot = Model.new().get();
 
-```ts
-const items = hot(['a', 'b', 'c']);
-
-items.length = 1; // ok - notifies length and the removed indices
+snapshot.list; // [1, 2, 3]
+snapshot.keyed.get('a'); // 1
 ```
 
 ### Shallow only
 
-`hot()` does not wrap nested arrays or objects recursively:
+Neither instruction wraps nested plain arrays or objects:
 
 ```ts
-const model = hot({
-  nested: { value: 1 }
-});
+class Model extends State {
+  keyed = map<string, { value: number }>();
+}
 
-model.nested.value = 2; // not reactive by itself
+model.keyed.get('a')!.value = 2; // not reactive by itself
 ```
 
-For nested reactivity, use child States or separate `hot()` calls - both keep their own reactivity when reached through a parent hot collection:
+Nesting is what States are for - a child State, `has()`, or `map()` value keeps its own reactivity when reached through the collection:
 
 ```ts
 class Cell extends State {
@@ -202,57 +231,25 @@ class Cell extends State {
 }
 
 class Game extends State {
-  cells = hot([Cell.new()]);
-  options = hot({
-    active: hot({ value: true })
-  });
+  cells = has(Cell);
+  rows = map((id: string) => new Row(id));
 }
 ```
-
-### Snapshots
-
-Hot values show up in State snapshots as frozen shallow copies - `state.get()` calls the proxy's `get()` seam, same as it does for `ref` and child states:
-
-```ts
-class Model extends State {
-  list = hot([1, 2, 3]);
-  object = hot({ a: 1 });
-}
-
-const snapshot = Model.new().get();
-
-snapshot.list; // readonly [1, 2, 3]
-snapshot.object; // readonly { a: 1 }
-```
-
-### Shared storage
-
-`hot()` wraps the value you pass; it doesn't copy it. Mutating the original outside the proxy changes storage but dispatches nothing:
-
-```ts
-const source = [1, 2, 3];
-const list = hot(source);
-
-source[0] = 99; // changes storage, no event
-list[0] = 100; // changes storage AND dispatches
-```
-
-Pass a fresh value (`hot([...source])`) when someone else holds the original.
 
 <br />
 
 ## In action
 
-Tic-tac-toe is `hot()`'s home turf - a fixed board where each cell is one index, and each move should repaint one square:
+Tic-tac-toe is a list's home turf - a fixed board where each cell is one index, and each move should repaint one square:
 
 <Playground of="apps/tictactoe" />
 
-Note the computed `winner` getter reading `board` through tracking - it recomputes only when the cells it checked actually change. Not bad for one array. ✨
+Note the computed `winner` getter reading `board` through tracking - it recomputes only when the cells it checked actually change. Not bad for one collection. ✨
 
 <br />
 
 ## Next
 
 - [Reactivity](/docs/guides/reactivity) - how tracking and batching work underneath.
-- [Nested State example](/examples/state/nested) - the child-State pattern, live.
-- [API: Instructions](/docs/api/instructions) - `set`, `get`, `ref`, `def`, and where `hot` fits.
+- [Owned collections example](/examples/instructions/has) - a pool of Component members, live.
+- [API: Instructions](/docs/api/instructions) - `set`, `get`, `ref`, `def`, and the full `has` / `map` surface.
