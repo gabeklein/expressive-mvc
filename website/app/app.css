@@ -95,6 +95,11 @@ figure[data-rehype-pretty-code-figure] pre code,
   outline-offset: -2px;
 }
 
+/* Sandpack sets line numbers to .6em, which reads as tiny beside the code. */
+.sp-code-editor .cm-gutter.cm-lineNumbers {
+  font-size: 0.85em !important;
+}
+
 /* IntelliSense signature/doc popover (completion detail + hover). */
 .sp-ts-tooltip {
   max-width: 34rem;
