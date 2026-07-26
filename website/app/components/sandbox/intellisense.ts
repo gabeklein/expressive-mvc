@@ -5,7 +5,7 @@ import {
   type CompletionResult,
 } from '@codemirror/autocomplete';
 import type { Extension } from '@codemirror/state';
-import { hoverTooltip, type Tooltip } from '@codemirror/view';
+import { hoverTooltip, tooltips, type Tooltip } from '@codemirror/view';
 
 import type { SandboxTs } from './client';
 
@@ -99,5 +99,12 @@ export function intellisense(
     };
   });
 
-  return [autocompletion({ override: [complete] }), hover];
+  return [
+    // Tooltips default to living inside the editor, where they stretch its
+    // scrollable area and get clipped at its edge; in <body> they float over
+    // the preview instead.
+    tooltips({ position: 'fixed', parent: document.body }),
+    autocompletion({ override: [complete] }),
+    hover,
+  ];
 }
