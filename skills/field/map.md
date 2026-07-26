@@ -206,4 +206,4 @@ In `@expressive/react`, a map renders directly - `<ul>{this.items}</ul>` - throu
 - `values()`, `entries()`, `forEach()`, and `for...of` track shape and each visited value.
 - `keys(fn)`, `values(fn)`, and `entries(fn)` return reusable iterables of transformed results - fresh pass per iteration, same tracking as their plain forms. `throw false` in the callback skips the entry.
 - Mode selection is by argument: iterable/none is keyed, a factory function is a keyed spawner.
-- Reactivity is shallow. Nested State, `hot()`, and `map()` values keep their own reactivity when accessed through the map.
+- Reactivity is shallow. Nested State, `map()`, and `has()` values keep their own reactivity when accessed through the map.

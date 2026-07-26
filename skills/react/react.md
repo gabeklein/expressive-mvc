@@ -3,14 +3,14 @@
 `@expressive/react` connects State to React with hooks, components, and context.
 
 For core State API (properties, reactivity, lifecycle, events) see `../state/`.
-For instructions and reactive helpers (`get`, `set`, `ref`, `hot`, `def`) see `../field/*.md`.
+For instructions and reactive helpers (`get`, `set`, `ref`, `map`, `has`, `def`) see `../field/*.md`.
 For examples and patterns see `patterns.md`.
 
 ## Exports
 
 ```ts
 export { State, State as default }; // Reexported after augmentation with React features
-export { Context, def, get, hot, ref, set }; // re-exported from @expressive/mvc
+export { Context, def, get, has, map, ref, set }; // re-exported from @expressive/mvc
 export { use }; // Hook for existing observable instances
 export { Component }; // React Component class
 export { Provider, Consumer }; // Explicit context components
