@@ -165,6 +165,22 @@
   font-weight: 600;
 }
 
+.codeLabel {
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  padding: 1px 4px;
+  margin-right: 3px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+}
+
+.groupItems a[aria-current='page'] .codeLabel {
+  background: var(--accent-soft);
+  border-color: transparent;
+  color: var(--accent);
+}
+
 .logo {
   display: flex;
   align-items: center;

@@ -1,5 +1,5 @@
 import { Component, get, Provider, ref } from '@expressive/react';
-import { BrowserRouter, NavLinks, Route, Router } from '@expressive/router';
+import { BrowserRouter, Link, NavLinks, Route, Router } from '@expressive/router';
 
 import Logo from './Logo';
 import Theme, { Toggle } from './Theme';
@@ -46,9 +46,26 @@ function Window(props: { children?: React.ReactNode }) {
   );
 }
 
+// Labels may carry backtick spans (e.g. "`ref()` Single") - render the odd
+// segments as inline <code> so the instruction name reads as monospace.
+const renderLabel = (label: string): React.ReactNode =>
+  label.split('`').map((part, i) =>
+    i % 2 ? <code key={i} className={styles.codeLabel}>{part}</code> : part
+  );
+
 class Navigation extends NavLinks {
   List(props: { children?: React.ReactNode }) {
     return <div className={styles.links}>{props.children}</div>;
+  }
+
+  Item(props: { route: Route; active: boolean; label?: string }) {
+    const { route, active, label } = props;
+
+    return (
+      <Link to={route.path} aria-current={active ? 'page' : undefined}>
+        {label ? renderLabel(label) : route.path}
+      </Link>
+    );
   }
 
   Group(props: { route: Route; children?: React.ReactNode }) {
@@ -67,7 +84,7 @@ function Outlet() {
   if (meta)
     return (
       <Code key={meta.path} path={meta.path}>
-        <ExampleFrame key={meta.file} file={meta.file} label={label} />
+        <ExampleFrame key={meta.file} file={meta.file} label={label?.replace(/`/g, '')} />
       </Code>
     );
 }
