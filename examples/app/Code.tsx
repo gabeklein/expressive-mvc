@@ -29,7 +29,9 @@ const highlight = HighlightStyle.define([
 const theme = EditorView.theme({
   '&': { backgroundColor: 'transparent', color: 'var(--fg-soft)' },
   '.cm-scroller': { fontFamily: 'var(--font-mono)', fontSize: 'var(--t-sm)', lineHeight: '1.6' },
-  '.cm-gutters': { backgroundColor: 'transparent', border: 'none', color: 'var(--muted)' },
+  // Opaque (matches the panel) so horizontally-scrolled code slides behind
+  // the sticky gutter instead of showing through the line numbers.
+  '.cm-gutters': { backgroundColor: 'var(--surface)', border: 'none', color: 'var(--muted)' },
   '.cm-lineNumbers .cm-gutterElement': { padding: '0 var(--s3) 0 var(--s4)' },
   '.cm-activeLine, .cm-activeLineGutter': { backgroundColor: 'transparent' },
   // Full line-height selection blocks (via drawSelection) so consecutive
