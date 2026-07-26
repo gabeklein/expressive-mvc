@@ -1,18 +1,29 @@
 .container label {
   display: flex;
   flex-direction: column;
-  gap: var(--s1);
-  text-align: left;
+  gap: var(--s2);
   width: 100%;
+  padding: var(--s4);
+  text-align: left;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
 }
 
 .container label small {
   font-weight: 400;
+  color: var(--muted);
 }
 
 .result {
-  align-self: flex-start;
+  align-self: stretch;
+  margin: 0;
+  padding: var(--s2) var(--s3);
   font-family: var(--font-mono);
   font-size: var(--t-sm);
   color: var(--fg-soft);
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  text-align: left;
 }
