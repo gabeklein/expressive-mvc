@@ -27,6 +27,33 @@ export function meta({ params }: { params: { '*'?: string } }) {
   ];
 }
 
+function SourceListing({ name }: { name: string }) {
+  const label = EXAMPLE_LABELS[name];
+  const files = Object.entries(examples[name])
+    .filter(([path]) => path !== '/index.tsx')
+    .sort(([a], [b]) =>
+      a === '/App.tsx' ? -1 : b === '/App.tsx' ? 1 : a.localeCompare(b)
+    );
+
+  return (
+    <article className="min-h-0 flex-1 overflow-y-auto">
+      <h1 className="text-2xl font-semibold">{label}</h1>
+      <p className="mt-2 text-fd-muted-foreground">
+        {label} demo built with Expressive MVC - the complete source below
+        runs as an editable sandbox when JavaScript is enabled.
+      </p>
+      {files.map(([path, code]) => (
+        <section key={path} className="mt-6">
+          <h2 className="font-mono text-sm font-medium">{path.slice(1)}</h2>
+          <pre className="mt-2 overflow-x-auto rounded-lg border border-fd-border p-4 text-sm">
+            <code>{code}</code>
+          </pre>
+        </section>
+      ))}
+    </article>
+  );
+}
+
 export default function CodeSample() {
   const name = useParams()['*'];
   const { navigationOpen, openNavigation } =
@@ -38,15 +65,13 @@ export default function CodeSample() {
   if (!name || !examples[name])
     return <Navigate to={`/examples/${REDIRECT}`} replace />;
 
-  const placeholder = (
-    <div className="text-fd-muted-foreground">Loading sandbox...</div>
-  );
+  const listing = <SourceListing name={name} />;
 
   return (
     <div className="flex-1 min-h-0 relative">
       <div className="absolute inset-0 flex flex-col">
         {ready ? (
-          <Suspense fallback={placeholder}>
+          <Suspense fallback={listing}>
             <Sandbox
               name={name}
               label={EXAMPLE_LABELS[name]}
@@ -56,7 +81,7 @@ export default function CodeSample() {
             />
           </Suspense>
         ) : (
-          placeholder
+          listing
         )}
       </div>
     </div>
