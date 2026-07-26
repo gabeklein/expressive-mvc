@@ -1,0 +1,62 @@
+.inv {
+  max-width: 26rem;
+}
+
+.stock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.stock li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+  padding: var(--s2) var(--s3);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  cursor: default;
+}
+
+.stock .name {
+  font-weight: 500;
+  text-transform: capitalize;
+}
+
+.qty {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+}
+
+.qty button {
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  font-family: var(--font-mono);
+  line-height: 1;
+}
+
+.qty output {
+  min-width: 1.5ch;
+  font-family: var(--font-mono);
+  font-size: var(--t-lg);
+  text-align: center;
+  color: var(--accent);
+}
+
+.inv form {
+  display: flex;
+  gap: var(--s2);
+  width: 100%;
+}
+
+.inv form button {
+  flex: 0 0 auto;
+}
