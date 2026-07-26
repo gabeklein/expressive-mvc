@@ -1,10 +1,22 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" style="color-scheme: light dark">
 
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Expressive Examples</title>
+  <script>
+    try {
+      var t = localStorage.getItem('expressive-examples-theme');
+      var r = document.documentElement;
+      if (t === 'light' || t === 'dark') {
+        r.dataset.theme = t;
+        r.style.colorScheme = t;
+      } else {
+        r.style.colorScheme = 'light dark';
+      }
+    } catch (e) {}
+  </script>
   <link rel="stylesheet" href="/global.css" />
 </head>
 
