@@ -4,7 +4,7 @@ import { defineConfig, type Plugin } from 'vite';
 import tsconfigPaths from 'vite-tsconfig-paths';
 import mdx from 'fumadocs-mdx/vite';
 import * as MdxConfig from './source.config';
-import { resolve, join } from 'path';
+import { resolve, join, dirname } from 'path';
 import { cp, glob, readFile, writeFile } from 'fs/promises';
 import { createGetUrl, getSlugs } from 'fumadocs-core/source';
 
@@ -69,6 +69,9 @@ function serveSkills(): Plugin {
 
       for await (const entry of glob('**/*.mdx', { cwd: resolve(__dirname, 'content/docs') }))
         paths.push(getUrl(getSlugs(entry)));
+
+      for await (const entry of glob('**/App.tsx', { cwd: resolve(__dirname, '../examples/content') }))
+        paths.push(`/examples/${dirname(entry)}`);
 
       const sitemap =
         '<?xml version="1.0" encoding="UTF-8"?>\n' +

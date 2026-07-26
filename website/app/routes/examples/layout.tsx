@@ -6,10 +6,6 @@ import { NavLink, Outlet } from 'react-router';
 import { layoutOptions } from '../home';
 import { GROUPS } from './loader';
 
-export function meta() {
-  return [{ title: 'Examples - Expressive' }];
-}
-
 export interface ExamplesOutletContext {
   navigationOpen: boolean;
   openNavigation: () => void;
