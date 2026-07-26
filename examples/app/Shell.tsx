@@ -116,10 +116,10 @@ class ExampleFrame extends Component {
     theme.paint(frame.current);
 
     return (
-      <div className={styles.frameWrap}>
+      <div className={`${styles.frameWrap} exampleFrameWrap`}>
         <iframe
           title={label}
-          className={styles.frame}
+          className={`${styles.frame} exampleFrame`}
           src={frameSrc(file)}
           ref={frame}
           onLoad={(e) => theme.paint(e.currentTarget)}
