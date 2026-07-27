@@ -6,6 +6,8 @@ Runnable source: [`set`](https://expressive.dev/examples/instructions/set) - a c
 import { set } from '@expressive/mvc';
 ```
 
+> React apps import these from `@expressive/react` - the adapter re-exports every instruction. Examples below show the core import; do not add `@expressive/mvc` to a React app's `package.json`.
+
 Versatile instruction for managed slots: defaults, placeholders, lazy/async factories, validation callbacks.
 
 All `set()` forms are **non-enumerable** - hidden from `Object.keys()`, spread, and `ref(this)` - which distinguishes them from plain assignment (`name = 'foo'`). The one exception is the [computed](#computed-reactive) form, which is enumerable to match a getter. Forms initialized with a factory are **read-only** unless paired with a setter callback; forms initialized with a value are writable by default.

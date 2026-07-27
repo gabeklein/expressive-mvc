@@ -5,7 +5,7 @@ description: Class-based reactive state management for React (Expressive MVC). U
 
 # Expressive MVC
 
-Class-based reactive state for React and Preact. State classes define reactive properties, computed values, async data, and context - all as plain class fields using instruction helpers.
+Class-based reactive state for React. State classes define reactive properties, computed values, async data, and context - all as plain class fields using instruction helpers.
 
 The intended end state of an Expressive codebase: most application code reads as business logic. Mechanism (subscriptions, memoization, context wiring, async orchestration) lives inside the library's primitives and inside primitives you build on them - a `State` base class, a `Component` widget, an instruction - consolidated once, named for the domain, and composed via `extends` and context. When code accumulates *how* alongside *what* (the default failure mode of hook composition), the fix is to extract the mechanism into a primitive and let call sites say only what they mean.
 
@@ -82,7 +82,7 @@ import State, {
 
 ### State Class
 
-Extend `State` to define reactive models. Always instantiate via `State.new()`, not `new`.
+Extend `State` to define reactive models. Use `State.new()` to construct a root instance - it constructs *and* activates, which plain `new` does not. Bare `new` is correct in one place: a class field on another State (`theme = new Theme()`), where the owner adopts and activates the child, and destroys it in turn.
 
 ```tsx
 class Counter extends State {

@@ -14,7 +14,7 @@ Forms are where state management accumulates the most junk - fields, validation,
 ```tsx
 class LoginForm extends State {
   email = set('', (value, previous) => {
-    if (!value.includes('@')) throw false; // reject
+    if (value.length > 120) throw false; // reject
   });
 }
 ```
@@ -35,26 +35,35 @@ class LoginForm extends State {
 
 ## Validation
 
-Validation is just rejecting invalid values. The callback sees the candidate before it's applied:
+Two different jobs, two different tools. A callback **rejects a write** - the value never lands. A computed getter **reports whether what landed is acceptable** - and can drive an error message.
 
 ```tsx
 class SignupForm extends State {
+  // Reject: a hard cap that should never be stored.
   name = set('', (value) => {
     if (value.length > 50) throw false;
   });
 
-  email = set('', (value) => {
-    if (value && !/^.+@.+\..+$/.test(value)) throw false;
-  });
+  email = '';
+  password = '';
 
-  password = set('', (value) => {
-    if (value.length > 0 && value.length < 8) throw false;
-  });
+  get emailError() {
+    if (!this.email) return;
+    return /^.+@.+\..+$/.test(this.email) ? undefined : 'Enter a valid email.';
+  }
 
-  valid = set(
-    (from) =>
-      from.name.length > 0 && from.email.length > 0 && from.password.length >= 8
-  );
+  get passwordError() {
+    if (!this.password) return;
+    return this.password.length >= 8 ? undefined : 'At least 8 characters.';
+  }
+
+  get valid() {
+    return (
+      this.name.length > 0 &&
+      Boolean(this.email) && !this.emailError &&
+      Boolean(this.password) && !this.passwordError
+    );
+  }
 
   submit() {
     if (this.valid) createAccount(this.get());
@@ -62,7 +71,9 @@ class SignupForm extends State {
 }
 ```
 
-The `valid` computed re-runs whenever a dependency changes, and `submit` reads it live via `this` - no stale closures, no dependency arrays.
+Every getter re-runs whenever a dependency changes, and `submit` reads `valid` live via `this` - no stale closures, no dependency arrays.
+
+> **Don't validate user input by rejecting it.** `throw false` discards the write, so a half-typed value never lands. `if (!value.includes('@')) throw false` makes the field impossible to type into - the first keystroke is rejected, so it can never reach a value containing `@`. Reject only what should never be stored at all; express "is this acceptable yet" as a getter, which also gives you somewhere to put the message.
 
 > **Good to know:** <br/>
 > Declaring that `from` parameter is what makes `set` computed - a zero-argument function would be a one-shot factory instead. Arity is the dispatch.
@@ -211,9 +222,7 @@ class ContactForm extends State {
   name = set('', (v) => {
     if (v.length > 50) throw false;
   });
-  email = set('', (v) => {
-    if (v && !v.includes('@')) throw false;
-  });
+  email = '';
   message = '';
   submitting = false;
   submitted = false;
@@ -223,12 +232,18 @@ class ContactForm extends State {
     el.focus();
   });
 
-  valid = set(
-    (from) =>
-      from.name.length > 0 &&
-      from.email.includes('@') &&
-      from.message.length > 0
-  );
+  get emailError() {
+    if (!this.email) return;
+    return this.email.includes('@') ? undefined : 'Enter a valid email.';
+  }
+
+  get valid() {
+    return (
+      this.name.length > 0 &&
+      Boolean(this.email) && !this.emailError &&
+      this.message.length > 0
+    );
+  }
 
   async submit() {
     if (!this.valid) return;

@@ -3,8 +3,11 @@
 Runnable source: [`has`](https://expressive.dev/examples/instructions/has) and [`has-list`](https://expressive.dev/examples/instructions/has-list) - complete programs, served as HTML.
 
 ```ts
-import State, { has, watch } from '@expressive/mvc';
+import State, { has } from '@expressive/mvc';
+import { watch } from '@expressive/mvc/observable';
 ```
+
+> React apps import these from `@expressive/react` - the adapter re-exports every instruction. Examples below show the core import; do not add `@expressive/mvc` to a React app's `package.json`.
 
 Declares a reactive collection a state *has*: an ordered list of values, or a pool of members it spawns and owns. Reads register subscriptions in active `watch()` / `State.get()` effects; writes notify precisely.
 

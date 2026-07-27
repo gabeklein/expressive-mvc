@@ -6,6 +6,8 @@ Runnable source: [`ref`](https://expressive.dev/examples/instructions/ref) and [
 import { ref } from '@expressive/mvc';
 ```
 
+> React apps import these from `@expressive/react` - the adapter re-exports every instruction. Examples below show the core import; do not add `@expressive/mvc` to a React app's `package.json`.
+
 Holds a mutable value (like React's `useRef`). Updates to ref values are part of the state event stream but do not make the property enumerable.
 
 ## Overloads

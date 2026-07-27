@@ -6,6 +6,8 @@ Runnable source: [`get`](https://expressive.dev/examples/instructions/get) - a c
 import { get } from '@expressive/mvc';
 ```
 
+> React apps import these from `@expressive/react` - the adapter re-exports every instruction. Examples below show the core import; do not add `@expressive/mvc` to a React app's `package.json`.
+
 Fetches another State from ambient context hierarchy (upstream or downstream).
 
 ## Overloads

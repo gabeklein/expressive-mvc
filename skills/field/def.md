@@ -6,6 +6,8 @@ Runnable source: [`def`](https://expressive.dev/examples/instructions/def) - a c
 import { def } from '@expressive/mvc';
 ```
 
+> React apps import these from `@expressive/react` - the adapter re-exports every instruction. Examples below show the core import; do not add `@expressive/mvc` to a React app's `package.json`.
+
 Low-level primitive for defining custom property behavior during initialization. All other instructions (`get`, `set`, `ref`) are built on `def`.
 
 ## Usage

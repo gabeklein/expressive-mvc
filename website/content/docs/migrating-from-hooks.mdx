@@ -404,7 +404,7 @@ const { count } = Counter.use();
 count = 5; // just rebinds the local - doesn't update state
 ```
 
-Prefer destructuring `is` first and aliasing it to the state concept, like `const { is: counter, count } = Counter.use();`. Use `counter.count = 5` for writes after destructuring, or don't destructure the fields you write to.
+Writes pass straight through the destructured values, so no alias is needed for most code. Reach for `is` in the one case it earns: retaining the root object alongside sibling values from the same snapshot, like `const { is: counter, count } = Counter.use();`.
 
 <br />
 

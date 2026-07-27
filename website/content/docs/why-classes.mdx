@@ -160,7 +160,7 @@ Related state lives together. When a reviewer asks "how does saving work?", the 
 
 ### No dependency arrays
 
-Every computed value and every effect tracks its own dependencies, based on what it actually reads. Forgetting a dependency is impossible - you'd have to read the value without accessing it. 🤔
+Every computed value and every effect tracks its own dependencies, based on what it actually reads. There is no dependency list to forget - tracking follows the reads themselves. (Reads still have to happen: a value read only inside a branch subscribes only when that branch runs.)
 
 ### Testability without a renderer
 
