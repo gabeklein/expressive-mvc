@@ -29,6 +29,21 @@ export function meta() {
       content:
         'Class-based state for React. Smaller components, fewer lines per feature.... zero cap.',
     },
+    { property: 'og:title', content: 'Expressive MVC' },
+    {
+      property: 'og:description',
+      content: 'murdering the state game with this one 🔥',
+    },
+    { property: 'og:image', content: 'https://expressive.dev/brand/og-micha.png' },
+    { property: 'og:image:width', content: '2400' },
+    { property: 'og:image:height', content: '1260' },
+    { property: 'og:type', content: 'website' },
+    { name: 'twitter:card', content: 'summary_large_image' },
+    {
+      name: 'twitter:description',
+      content: 'murdering the state game with this one 🔥',
+    },
+    { name: 'twitter:image', content: 'https://expressive.dev/brand/og-micha.png' },
   ];
 }
 
