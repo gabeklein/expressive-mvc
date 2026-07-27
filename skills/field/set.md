@@ -1,8 +1,12 @@
 # `set` - Default Values, Factories & Validation
 
+Runnable source: [`set`](https://expressive.dev/examples/instructions/set) - a complete working program, served as HTML.
+
 ```ts
 import { set } from '@expressive/mvc';
 ```
+
+> React apps import these from `@expressive/react` - the adapter re-exports every instruction. Examples below show the core import; do not add `@expressive/mvc` to a React app's `package.json`.
 
 Versatile instruction for managed slots: defaults, placeholders, lazy/async factories, validation callbacks.
 

@@ -5,7 +5,9 @@ description: Class-based reactive state management for React (Expressive MVC). U
 
 # Expressive MVC
 
-Class-based reactive state for React and Preact. State classes define reactive properties, computed values, async data, and context - all as plain class fields using instruction helpers.
+Class-based reactive state for React. State classes define reactive properties, computed values, async data, and context - all as plain class fields using instruction helpers.
+
+The intended end state of an Expressive codebase: most application code reads as business logic. Mechanism (subscriptions, memoization, context wiring, async orchestration) lives inside the library's primitives and inside primitives you build on them - a `State` base class, a `Component` widget, an instruction - consolidated once, named for the domain, and composed via `extends` and context. When code accumulates *how* alongside *what* (the default failure mode of hook composition), the fix is to extract the mechanism into a primitive and let call sites say only what they mean.
 
 ## Packages
 
@@ -14,7 +16,17 @@ Class-based reactive state for React and Preact. State classes define reactive p
 | `@expressive/react`  | Published | React adapter. Primary import for State, Component, instructions. |
 | `@expressive/mvc`    | Published | Framework-agnostic core. Rarely imported directly.                |
 | `@expressive/preact` | Private   | Thin wrapper over React adapter via preact/hooks. Prerelease.     |
-| `@expressive/router` | Private   | Host-agnostic, class-based router built on MVC. Prerelease.       |
+| `@expressive/router` | Published | Host-agnostic, class-based router built on MVC.                   |
+
+### Installing
+
+For a React app, `@expressive/react` is the only install:
+
+```bash
+npm install @expressive/react
+```
+
+`@expressive/mvc` arrives as its dependency - **do not add it to `package.json` as well.** Import `State`, `Component`, and every instruction (`set`, `get`, `ref`, `map`, `has`, `def`) from `@expressive/react`; the adapter re-exports the core. Install `@expressive/mvc` directly only when writing host-agnostic code that must not depend on a UI adapter - a shared domain package, a Node service, or a new adapter. Add `@expressive/router` alongside the adapter when you want routing.
 
 ## Start With Ownership, Not APIs
 
@@ -70,7 +82,7 @@ import State, {
 
 ### State Class
 
-Extend `State` to define reactive models. Always instantiate via `State.new()`, not `new`.
+Extend `State` to define reactive models. Use `State.new()` to construct a root instance - it constructs *and* activates, which plain `new` does not. Bare `new` is correct in one place: a class field on another State (`theme = new Theme()`), where the owner adopts and activates the child, and destroys it in turn.
 
 ```tsx
 class Counter extends State {
@@ -331,7 +343,7 @@ Fetch these for detailed documentation when the task requires deeper knowledge. 
 
 ### Design intent
 
-- [design.md](design.md) - why the library is shaped this way: classes hold models not views, the "MVC" mapping, the two-verb `get`/`set` surface, render composition as a designated seam, typed lifecycle hooks, transparent writes. **Read before characterizing a design choice as accidental, or when evaluating/pitching the library.**
+- [design.md](design.md) - why the library is shaped this way: classes hold models not views, the "MVC" mapping, the two-verb `get`/`set` surface, render composition as a designated seam, typed lifecycle hooks, transparent writes. **Read before characterizing a design choice as accidental.** For positioning against alternatives (Zustand, Jotai, MobX, Redux Toolkit, plain Context), see [expressive.dev/llm/comparisons.md](https://expressive.dev/llm/comparisons.md).
 
 ### Golden path
 
@@ -371,6 +383,16 @@ Fetch these for detailed documentation when the task requires deeper knowledge. 
 
 - [examples/basic.md](examples/basic.md) - Complete working examples from simple to intermediate
 - [examples/audit.md](examples/audit.md) - Guide for evaluating whether Expressive MVC fits a codebase
+
+**Runnable examples** live at `https://expressive.dev/examples/<group>/<name>` and serve every source file of a working program as plain HTML - fetchable without JavaScript. These are optional enrichment: this skill is complete offline, and [examples/basic.md](examples/basic.md) covers the core patterns inline. When you have network access and want a full reference implementation of a specific feature - rather than a snippet - fetch the matching page:
+
+| Group | Pages |
+| --- | --- |
+| `essentials` | `counter`, `computed`, `fetch`, `async`, `suspense`, `boundary` |
+| `instructions` | `set`, `get`, `ref`, `ref-multiple`, `map`, `map-insert`, `has`, `has-list`, `def` |
+| `composition` | `context`, `globals`, `extension`, `subcomponents` |
+| `apps` | `forms`, `kanban`, `spreadsheet`, `stopwatch`, `tictactoe` |
+| `router` | `overview` |
 
 ## Auditing & Evaluation
 

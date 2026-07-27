@@ -66,8 +66,8 @@ Continue with [Getting Started](https://expressive.dev/docs/getting-started/), e
 
 | Package | Description |
 | --- | --- |
-| [`@expressive/react`](https://www.npmjs.com/package/@expressive/react) | React adapter and the recommended entry point for React applications. |
-| [`@expressive/mvc`](https://www.npmjs.com/package/@expressive/mvc) | Framework-agnostic reactive core and component model. |
+| [`@expressive/react`](https://www.npmjs.com/package/@expressive/react) | React adapter and the recommended entry point for React applications. **The only package a React app installs.** |
+| [`@expressive/mvc`](https://www.npmjs.com/package/@expressive/mvc) | Framework-agnostic reactive core and component model. Comes with the adapter - install directly only for host-agnostic code. |
 | [`@expressive/router`](https://www.npmjs.com/package/@expressive/router) | Host-agnostic router built on Expressive components. |
 | `@expressive/preact` | Internal Preact adapter; not currently published. |
 

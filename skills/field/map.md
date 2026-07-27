@@ -1,8 +1,13 @@
 # `map` - Reactive Maps
 
+Runnable source: [`map`](https://expressive.dev/examples/instructions/map) and [`map-insert`](https://expressive.dev/examples/instructions/map-insert) - complete programs, served as HTML.
+
 ```ts
-import State, { map, watch } from '@expressive/mvc';
+import State, { map } from '@expressive/mvc';
+import { watch } from '@expressive/mvc/observable';
 ```
+
+> React apps import these from `@expressive/react` - the adapter re-exports every instruction. Examples below show the core import; do not add `@expressive/mvc` to a React app's `package.json`.
 
 Creates a reactive `Map`. Reads register subscriptions in active `watch()` / `State.get()` effects, and writes notify only the changed key plus collection shape when entries are added or removed.
 

@@ -16,8 +16,8 @@ export function Hero() {
               Class-based state for React
             </span>
             <span className="block mt-4 text-[clamp(1.9rem,9.5vw,3rem)] font-bold leading-[0.98] sm:text-5xl lg:leading-[1.05]">
-              <span className="block whitespace-nowrap">More application,</span>
-              <span className="block whitespace-nowrap">for less code.</span>
+              <span className="block whitespace-nowrap">Structure without</span>
+              <span className="block whitespace-nowrap">a framework.</span>
             </span>
           </h1>
           <p className="text-fd-muted-foreground max-w-xl lg:mr-5">

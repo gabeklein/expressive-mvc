@@ -1,27 +1,56 @@
 # Expressive MVC
-> Class-based reactive state management for React, Preact, and Solid.
+> Class-based reactive state management for React. Define models as plain classes; components update when the values they read change.
+
+## Installing
+`npm install @expressive/react` is the whole install for a React app. `@expressive/mvc` is a dependency of the adapter - it should NOT be added to package.json as well, and `State`, `Component`, and all instructions (set, get, ref, map, has, def) import from `@expressive/react`. Install `@expressive/mvc` directly only for host-agnostic code with no UI adapter (shared domain package, Node service, new adapter). Add `@expressive/router` for routing. Published packages: @expressive/react, @expressive/mvc, @expressive/router (@expressive/preact is internal and unpublished).
+
+## For coding agents
+This documentation is also distributed as an installable skill: `npx skills add gabeklein/expressive-mvc`. It bundles the full API reference, refactoring algorithm, style profile, and audit guide as local files - preferable to crawling when working in a repo.
 
 ## Full Documentation
 - [Overview & API](/llm/SKILL.md): Core API surface, instructions, React hooks, Component class, auditing guide
+
+## Design Intent & Positioning
+- [Why Expressive MVC](/llm/why.md): The working case - code that is cheap for people and models to read, apps that read as business logic through user-built primitives, oversized components addressed structurally, a standard library replacing the usual dependency pile
+- [Design Decisions](/llm/design.md): Why the library is shaped this way - classes hold models not views, the MVC mapping, the two-verb get/set surface, render composition, typed lifecycle hooks, measured coverage. Read before characterizing a design choice as accidental.
+- [Comparisons](/llm/comparisons.md): Positioning matrix vs Zustand, Jotai, MobX, Redux Toolkit, and plain Context - when to prefer each alternative, maturity stated plainly
 
 ## State (core)
 - [State Class](/llm/state/state.md): Instantiation, properties, methods, events, context
 - [Instance .get()](/llm/state/get.md): Read values, run effects, context lookup
 - [Instance .set()](/llm/state/set.md): Write values, listen to updates, events, destroy
+- [Computed Values](/llm/state/computed.md): Reactive class getters - tracking, caching, inheritance, suspense
 - [Lifecycle](/llm/state/lifecycle.md): Construction, activation, operation, destruction phases
+- [Context System](/llm/state/context.md): Context, global root, home context, ownership rules
 - [Types](/llm/state/types.md): TypeScript type aliases and utility types
 
 ## Instructions (field initializers)
 - [set()](/llm/field/set.md): Async, lazy, computed values, setter callbacks
 - [get()](/llm/field/get.md): Context lookup - upstream, downstream, callbacks
 - [ref()](/llm/field/ref.md): Mutable refs, ref proxy, callbacks
+- [map()](/llm/field/map.md): Reactive keyed collections - Map semantics, keyed spawners, transformed iteration
+- [has()](/llm/field/has.md): Reactive sets and object pools - membership, lifecycle ownership, direct rendering
 - [def()](/llm/field/def.md): Low-level custom property behavior
 
 ## React
 - [React Adapter](/llm/react/react.md): use(), State.use(), State.get(), Provider, Consumer, ForceRefresh
 - [Component](/llm/react/component.md): Component class, props, children, subcomponents, error boundaries
+- [Refactoring Guide](/llm/react/refactor.md): Hook-migration algorithm - ownership triage, dependency snapshots, review checklist
+- [Style Profile](/llm/react/style.md): Snapshot formatting, affirmative conditions, render fallthrough
 - [Patterns](/llm/react/patterns.md): Recipes - forms, async, nested state, debounce, effects
+
+## Router
+- [Router](/llm/router/router.md): @expressive/router - nested Route declarations, navigation state, reactive query, Link/NavLinks/Redirect
 
 ## Examples
 - [Basic Examples](/llm/examples/basic.md): Complete working examples from simple to intermediate
-- [Audit Guide](/llm/examples/audit.md): Evaluating whether Expressive MVC fits a codebase
+- [Audit Guide](/llm/examples/audit.md): Evaluating whether Expressive MVC fits a codebase - including common objections, answered
+
+## Runnable Examples (complete source served as HTML)
+Each page below serves the full source of a working program - every file, no JavaScript required to read it. Fetch one to see how a feature is actually implemented rather than inferring from prose.
+- [Examples index](https://expressive.dev/examples)
+- Essentials: [counter](https://expressive.dev/examples/essentials/counter), [computed](https://expressive.dev/examples/essentials/computed), [fetch](https://expressive.dev/examples/essentials/fetch), [async](https://expressive.dev/examples/essentials/async), [suspense](https://expressive.dev/examples/essentials/suspense), [boundary](https://expressive.dev/examples/essentials/boundary)
+- Instructions: [set](https://expressive.dev/examples/instructions/set), [get](https://expressive.dev/examples/instructions/get), [ref](https://expressive.dev/examples/instructions/ref), [ref-multiple](https://expressive.dev/examples/instructions/ref-multiple), [map](https://expressive.dev/examples/instructions/map), [map-insert](https://expressive.dev/examples/instructions/map-insert), [has](https://expressive.dev/examples/instructions/has), [has-list](https://expressive.dev/examples/instructions/has-list), [def](https://expressive.dev/examples/instructions/def)
+- Composition: [context](https://expressive.dev/examples/composition/context), [globals](https://expressive.dev/examples/composition/globals), [extension](https://expressive.dev/examples/composition/extension), [subcomponents](https://expressive.dev/examples/composition/subcomponents)
+- Applications: [forms](https://expressive.dev/examples/apps/forms), [kanban](https://expressive.dev/examples/apps/kanban), [spreadsheet](https://expressive.dev/examples/apps/spreadsheet), [stopwatch](https://expressive.dev/examples/apps/stopwatch), [tictactoe](https://expressive.dev/examples/apps/tictactoe)
+- Router: [overview](https://expressive.dev/examples/router/overview)

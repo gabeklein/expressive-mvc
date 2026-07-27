@@ -42,7 +42,7 @@ const clientLoader = browserCollections.docs.createClientLoader({
   component({ toc, frontmatter, default: Mdx }) {
     return (
       <DocsPage toc={toc}>
-        <title>{frontmatter.title}</title>
+        <title>{`${frontmatter.title} - Expressive MVC`}</title>
         <meta name="description" content={frontmatter.description} />
         <DocsTitle>{frontmatter.title}</DocsTitle>
         <DocsDescription>{frontmatter.description}</DocsDescription>

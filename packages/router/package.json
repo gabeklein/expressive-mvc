@@ -1,12 +1,14 @@
 {
   "name": "@expressive/router",
   "version": "0.5.0",
-  "description": "Client-side router built on @expressive/mvc Components.",
+  "description": "Host-agnostic router built on Expressive MVC components.",
   "keywords": [
     "expressive",
+    "mvc",
     "router",
     "react",
-    "state"
+    "state",
+    "state-management"
   ],
   "license": "MIT",
   "author": {
