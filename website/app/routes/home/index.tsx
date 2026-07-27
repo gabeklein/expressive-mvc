@@ -32,7 +32,7 @@ export function meta() {
     { property: 'og:title', content: 'Expressive MVC' },
     {
       property: 'og:description',
-      content: 'murdering the state game with this one 🔥',
+      content: 'murdering the vibe code game with this one 🔥',
     },
     { property: 'og:image', content: 'https://refactor-micha-snipe.expressive-state.pages.dev/brand/og-micha.png' },
     { property: 'og:image:width', content: '2400' },
@@ -41,7 +41,7 @@ export function meta() {
     { name: 'twitter:card', content: 'summary_large_image' },
     {
       name: 'twitter:description',
-      content: 'murdering the state game with this one 🔥',
+      content: 'murdering the vibe code game with this one 🔥',
     },
     { name: 'twitter:image', content: 'https://refactor-micha-snipe.expressive-state.pages.dev/brand/og-micha.png' },
   ];
