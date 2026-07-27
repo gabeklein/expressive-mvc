@@ -22,13 +22,23 @@ export const layoutOptions: BaseLayoutProps = {
 };
 
 export function meta() {
+  const description =
+    'Cleaner React state with smaller components and fewer lines per feature';
+  const image = 'https://expressive.dev/brand/og.png';
+
   return [
     { title: 'Expressive MVC' },
-    {
-      name: 'description',
-      content:
-        'Cleaner React state with smaller components and fewer lines per feature',
-    },
+    { name: 'description', content: description },
+    { property: 'og:title', content: 'Expressive MVC' },
+    { property: 'og:description', content: description },
+    { property: 'og:image', content: image },
+    { property: 'og:image:width', content: '2400' },
+    { property: 'og:image:height', content: '1260' },
+    { property: 'og:type', content: 'website' },
+    { name: 'twitter:card', content: 'summary_large_image' },
+    { name: 'twitter:title', content: 'Expressive MVC' },
+    { name: 'twitter:description', content: description },
+    { name: 'twitter:image', content: image },
   ];
 }
 
