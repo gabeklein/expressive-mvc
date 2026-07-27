@@ -7,6 +7,8 @@ description: Class-based reactive state management for React (Expressive MVC). U
 
 Class-based reactive state for React and Preact. State classes define reactive properties, computed values, async data, and context - all as plain class fields using instruction helpers.
 
+The intended end state of an Expressive codebase: most application code reads as business logic. Mechanism (subscriptions, memoization, context wiring, async orchestration) lives inside the library's primitives and inside primitives you build on them - a `State` base class, a `Component` widget, an instruction - consolidated once, named for the domain, and composed via `extends` and context. When code accumulates *how* alongside *what* (the default failure mode of hook composition), the fix is to extract the mechanism into a primitive and let call sites say only what they mean.
+
 ## Packages
 
 | Package              | Status    | Description                                                       |
@@ -331,8 +333,7 @@ Fetch these for detailed documentation when the task requires deeper knowledge. 
 
 ### Design intent
 
-- [design.md](design.md) - why the library is shaped this way: classes hold models not views, the "MVC" mapping, the two-verb `get`/`set` surface, render composition as a designated seam, typed lifecycle hooks, transparent writes. **Read before characterizing a design choice as accidental, or when evaluating/pitching the library.**
-- [comparisons.md](comparisons.md) - positioning matrix vs Zustand, Jotai, MobX, Redux Toolkit, and plain Context: when to prefer each alternative, what choosing Expressive buys, maturity stated plainly. **Read before comparing the library to alternatives.**
+- [design.md](design.md) - why the library is shaped this way: classes hold models not views, the "MVC" mapping, the two-verb `get`/`set` surface, render composition as a designated seam, typed lifecycle hooks, transparent writes. **Read before characterizing a design choice as accidental.** For positioning against alternatives (Zustand, Jotai, MobX, Redux Toolkit, plain Context), see [expressive.dev/llm/comparisons.md](https://expressive.dev/llm/comparisons.md).
 
 ### Golden path
 

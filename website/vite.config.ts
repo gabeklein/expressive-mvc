@@ -43,26 +43,29 @@ export default defineConfig({
 });
 
 function serveSkills(): Plugin {
-  const dir = resolve(__dirname, '../skills');
+  // Site-owned llm content overlays the skills copy under the same /llm root.
+  const dirs = [resolve(__dirname, '../skills'), resolve(__dirname, 'content/llm')];
   return {
     name: 'serve-llm',
     configureServer(server) {
       server.middlewares.use('/llm', async (req, res) => {
-        try {
-          const file = join(dir, req.url || '/');
-          const content = await readFile(file);
-          res.setHeader('Content-Type', 'text/plain');
-          res.end(content);
-        } catch {
-          res.statusCode = 404;
-          res.end('Not found');
-        }
+        for (const dir of dirs)
+          try {
+            const content = await readFile(join(dir, req.url || '/'));
+            res.setHeader('Content-Type', 'text/plain');
+            res.end(content);
+            return;
+          } catch {}
+
+        res.statusCode = 404;
+        res.end('Not found');
       });
     },
     async writeBundle({ dir: outDir }) {
       if (!outDir) return;
 
-      await cp(dir, join(outDir, 'llm'), { recursive: true });
+      for (const dir of dirs)
+        await cp(dir, join(outDir, 'llm'), { recursive: true });
 
       const getUrl = createGetUrl('/docs');
       const paths = ['/', '/examples'];
