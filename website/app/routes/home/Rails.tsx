@@ -57,7 +57,7 @@ export function Rails() {
             And the rainbow is ON PURPOSE, fam. This library keeps your state
             out and proud.... no more values hiding in a closure nobody can
             reach. Everything comes out fully typed, and we love that for
-            you. 🏳️‍🌈 Love is love. State is state.
+            you. 🏳️‍🌈 Love is love. State is state. PAUSE.
           </p>
         </div>
 
