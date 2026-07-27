@@ -1,5 +1,7 @@
 # `def` - Custom Instruction
 
+Runnable source: [`def`](https://expressive.dev/examples/instructions/def) - a complete working program, served as HTML.
+
 ```ts
 import { def } from '@expressive/mvc';
 ```

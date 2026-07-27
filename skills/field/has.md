@@ -1,5 +1,7 @@
 # `has` - Owned Collections
 
+Runnable source: [`has`](https://expressive.dev/examples/instructions/has) and [`has-list`](https://expressive.dev/examples/instructions/has-list) - complete programs, served as HTML.
+
 ```ts
 import State, { has, watch } from '@expressive/mvc';
 ```

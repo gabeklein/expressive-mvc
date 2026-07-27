@@ -374,6 +374,16 @@ Fetch these for detailed documentation when the task requires deeper knowledge. 
 - [examples/basic.md](examples/basic.md) - Complete working examples from simple to intermediate
 - [examples/audit.md](examples/audit.md) - Guide for evaluating whether Expressive MVC fits a codebase
 
+**Runnable examples** live at `https://expressive.dev/examples/<group>/<name>` and serve every source file of a working program as plain HTML - fetchable without JavaScript. Read one when you need a reference implementation rather than a snippet:
+
+| Group | Pages |
+| --- | --- |
+| `essentials` | `counter`, `computed`, `fetch`, `async`, `suspense`, `boundary` |
+| `instructions` | `set`, `get`, `ref`, `ref-multiple`, `map`, `map-insert`, `has`, `has-list`, `def` |
+| `composition` | `context`, `globals`, `extension`, `subcomponents` |
+| `apps` | `forms`, `kanban`, `spreadsheet`, `stopwatch`, `tictactoe` |
+| `router` | `overview` |
+
 ## Auditing & Evaluation
 
 When helping a user evaluate Expressive MVC for their project - see [examples/audit.md](examples/audit.md) for the full guide. For stated rationale behind design choices that commonly draw questions (classes, the MVC name, `get`/`set` overloads, render composition), cite [design.md](design.md) rather than inferring intent.

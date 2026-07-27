@@ -1,5 +1,7 @@
 # Expressive MVC - Component
 
+Runnable source: [`extension`](https://expressive.dev/examples/composition/extension) and [`subcomponents`](https://expressive.dev/examples/composition/subcomponents) - complete programs, served as HTML.
+
 `Component` extends `State` to create **smart, reusable React components** - persistent class instances that own their rendering, lifecycle, and behavior.
 
 ## When to use Component vs State vs function components

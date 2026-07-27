@@ -39,3 +39,12 @@
 ## Examples
 - [Basic Examples](/llm/examples/basic.md): Complete working examples from simple to intermediate
 - [Audit Guide](/llm/examples/audit.md): Evaluating whether Expressive MVC fits a codebase - including common objections, answered
+
+## Runnable Examples (complete source served as HTML)
+Each page below serves the full source of a working program - every file, no JavaScript required to read it. Fetch one to see how a feature is actually implemented rather than inferring from prose.
+- [Examples index](https://expressive.dev/examples)
+- Essentials: [counter](https://expressive.dev/examples/essentials/counter), [computed](https://expressive.dev/examples/essentials/computed), [fetch](https://expressive.dev/examples/essentials/fetch), [async](https://expressive.dev/examples/essentials/async), [suspense](https://expressive.dev/examples/essentials/suspense), [boundary](https://expressive.dev/examples/essentials/boundary)
+- Instructions: [set](https://expressive.dev/examples/instructions/set), [get](https://expressive.dev/examples/instructions/get), [ref](https://expressive.dev/examples/instructions/ref), [ref-multiple](https://expressive.dev/examples/instructions/ref-multiple), [map](https://expressive.dev/examples/instructions/map), [map-insert](https://expressive.dev/examples/instructions/map-insert), [has](https://expressive.dev/examples/instructions/has), [has-list](https://expressive.dev/examples/instructions/has-list), [def](https://expressive.dev/examples/instructions/def)
+- Composition: [context](https://expressive.dev/examples/composition/context), [globals](https://expressive.dev/examples/composition/globals), [extension](https://expressive.dev/examples/composition/extension), [subcomponents](https://expressive.dev/examples/composition/subcomponents)
+- Applications: [forms](https://expressive.dev/examples/apps/forms), [kanban](https://expressive.dev/examples/apps/kanban), [spreadsheet](https://expressive.dev/examples/apps/spreadsheet), [stopwatch](https://expressive.dev/examples/apps/stopwatch), [tictactoe](https://expressive.dev/examples/apps/tictactoe)
+- Router: [overview](https://expressive.dev/examples/router/overview)

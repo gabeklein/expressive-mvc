@@ -1,5 +1,7 @@
 # `ref` - Mutable References
 
+Runnable source: [`ref`](https://expressive.dev/examples/instructions/ref) and [`ref-multiple`](https://expressive.dev/examples/instructions/ref-multiple) - complete programs, served as HTML.
+
 ```ts
 import { ref } from '@expressive/mvc';
 ```

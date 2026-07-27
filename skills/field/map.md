@@ -1,5 +1,7 @@
 # `map` - Reactive Maps
 
+Runnable source: [`map`](https://expressive.dev/examples/instructions/map) and [`map-insert`](https://expressive.dev/examples/instructions/map-insert) - complete programs, served as HTML.
+
 ```ts
 import State, { map, watch } from '@expressive/mvc';
 ```

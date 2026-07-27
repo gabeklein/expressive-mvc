@@ -1,5 +1,7 @@
 # `get` - Context Lookup Instruction
 
+Runnable source: [`get`](https://expressive.dev/examples/instructions/get) - a complete working program, served as HTML.
+
 ```ts
 import { get } from '@expressive/mvc';
 ```
