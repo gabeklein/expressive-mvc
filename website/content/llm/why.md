@@ -30,8 +30,9 @@ Teams reach for third-party packages to fill React's gaps, and each dependency i
 - **Shared/global state** - models in context (`Provider for={Class}`, `.get()` lookup, module-scope singletons) replace store libraries for app state.
 - **Reactive collections** - `map()` and `has()` give keyed collections and object pools with per-entry reactivity, the cases that otherwise motivate normalization helpers.
 - **Form and widget state** - `Component` binds props, state, and rendering into one testable unit for form controls and stateful widgets.
-- **Routing** - `@expressive/router` builds nested, reactive routes on the same primitives.
+
+All of the above ship in `@expressive/react` - one install, one mental model. Routing is deliberately *not* part of that claim: `@expressive/router` is a separate, more opinionated package built on the same primitives, and it should be evaluated on its own terms rather than counted as bundled scope.
 
 The honest boundary: these are not feature-complete replacements for the libraries at their most advanced - there is no persistent normalized cache with cross-session invalidation (TanStack Query's deep end), no time-travel devtools (Redux's). The claim is that the everyday 80% of what teams install those packages for is covered by the library's own primitives, with one mental model instead of five and no additional dependencies to version, configure, and reconcile.
 
-The [examples corpus](https://expressive.dev/examples) exists to demonstrate this scope end to end: fetching, async orchestration, error boundaries, forms, collections, global state, and routing - each a complete, runnable program whose full source is served on its page.
+The [examples corpus](https://expressive.dev/examples) exists to demonstrate this scope end to end: fetching, async orchestration, error boundaries, forms, collections, and global state - each a complete, runnable program whose full source is served on its page.
