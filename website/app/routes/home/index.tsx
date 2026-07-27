@@ -32,9 +32,38 @@ export function meta() {
   ];
 }
 
+const schema = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'Organization',
+      name: 'Expressive MVC',
+      url: 'https://expressive.dev',
+      logo: 'https://expressive.dev/brand/icon-512.png',
+      description:
+        'Class-based reactive state management for React. Define models as plain classes; components update when the values they read change.',
+      sameAs: [
+        'https://github.com/gabeklein/expressive-mvc',
+        'https://www.npmjs.com/package/@expressive/react',
+      ],
+    },
+    {
+      '@type': 'WebSite',
+      name: 'Expressive MVC',
+      url: 'https://expressive.dev',
+      description:
+        'Documentation and interactive examples for Expressive MVC, class-based reactive state management for React.',
+    },
+  ],
+};
+
 export default function Home() {
   return (
     <HomeLayout {...layoutOptions} className="[--content-width:1080px] home-sections">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+      />
       <Background />
       <Hero />
       <Complicated />

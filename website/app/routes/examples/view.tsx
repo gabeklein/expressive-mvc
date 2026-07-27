@@ -10,7 +10,7 @@ export function meta({ params }: { params: { '*'?: string } }) {
 
   if (!label)
     return [
-      { title: 'Examples - Expressive' },
+      { title: 'Examples - Expressive MVC' },
       {
         name: 'description',
         content:
@@ -19,7 +19,7 @@ export function meta({ params }: { params: { '*'?: string } }) {
     ];
 
   return [
-    { title: `${label} Example - Expressive` },
+    { title: `${label} Example - Expressive MVC` },
     {
       name: 'description',
       content: `${label} built with Expressive MVC - class-based reactive state for React, editable and runnable in the browser.`,

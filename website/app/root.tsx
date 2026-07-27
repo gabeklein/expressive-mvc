@@ -6,6 +6,7 @@ import {
   Outlet,
   Scripts,
   ScrollRestoration,
+  useLocation,
 } from 'react-router';
 import type { Route } from './+types/root';
 import './app.css';
@@ -27,12 +28,21 @@ export const links: Route.LinksFunction = () => [
   },
 ];
 
+function canonical(pathname: string) {
+  const docs = pathname.match(/^\/llms\.mdx(\/.*?)(?:\/index\.mdx)?\/?$/);
+  const path = (docs ? docs[1] : pathname).replace(/\/+$/, '');
+  return `https://expressive.dev${path || '/'}`;
+}
+
 export function Layout({ children }: { children: React.ReactNode }) {
+  const { pathname } = useLocation();
+
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <link rel="canonical" href={canonical(pathname)} />
         <Meta />
         <Links />
       </head>
