@@ -34,7 +34,7 @@ export function meta() {
       property: 'og:description',
       content: 'murdering the state game with this one 🔥',
     },
-    { property: 'og:image', content: 'https://expressive.dev/brand/og-micha.png' },
+    { property: 'og:image', content: 'https://refactor-micha-snipe.expressive-state.pages.dev/brand/og-micha.png' },
     { property: 'og:image:width', content: '2400' },
     { property: 'og:image:height', content: '1260' },
     { property: 'og:type', content: 'website' },
@@ -43,7 +43,7 @@ export function meta() {
       name: 'twitter:description',
       content: 'murdering the state game with this one 🔥',
     },
-    { name: 'twitter:image', content: 'https://expressive.dev/brand/og-micha.png' },
+    { name: 'twitter:image', content: 'https://refactor-micha-snipe.expressive-state.pages.dev/brand/og-micha.png' },
   ];
 }
 
