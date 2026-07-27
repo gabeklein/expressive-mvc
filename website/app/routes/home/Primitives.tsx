@@ -151,7 +151,7 @@ export class Primitives extends Component {
         <div className="mx-auto max-w-(--content-width) py-16 md:py-24">
           <div className="max-w-2xl mx-auto text-center mb-4">
             <h2 className="font-display text-2xl md:text-3xl font-bold tracking-tight">
-              The basics? Built in. All of them.
+              The basics? BUILT IN. All of em. Yerrr. 🗽
             </h2>
           </div>
 
@@ -236,12 +236,12 @@ function Tab({
 
 function Instructions() {
   return (
-    <Tab title="Fields with SPECIAL behavior.">
+    <Tab title="Fields with SPECIAL behavior. 😈">
       <>
         Instructions are property initializers with runtime behavior. You
-        still read them like regular fields.... the initializer decides what
-        kind of field it is. Make your own with <code>def</code>. Alphas
-        don't gatekeep.
+        still read em like regular fields.... the initializer decides what
+        kind of field it is. Make your OWN with <code>def</code>. Alphas
+        don't gatekeep. EVER.
       </>
 
       <InstructionsCode />
@@ -285,13 +285,13 @@ const InstructionsCode = code /*tsx*/`
 
 function Async() {
   return (
-    <Tab title="Async without the ceremony.... at ALL" to="/examples/essentials/async">
+    <Tab title="Async with NO ceremony. NONE. 😮‍💨" to="/examples/essentials/async">
       <>
-        Touch <code>set(async)</code> and it suspends until it resolves. A{' '}
-        <code>Component</code> brings its own{' '}
+        Touch <code>set(async)</code> and it suspends till it resolves.
+        Simple as. A <code>Component</code> brings its OWN{' '}
         <code>fallback</code> AND an error boundary via{' '}
         <code>catch()</code>. No{' '}
-        <code>isPending</code>, no thunks, no crashout.
+        <code>isPending</code>, no thunks, no crashout. We outside. 🏍️
       </>
       <AsyncCode />
     </Tab>
@@ -331,9 +331,9 @@ function Computed() {
   return (
     <Tab title="Derived state with getters">
       <>
-        Put the formula where the data lives. Getters are memoized and
+        Put the formula WHERE THE DATA LIVES, b. Getters are memoized and
         dependency-tracked, so render stays clean.... no{' '}
-        <code>useMemo</code>, no selectors, no dependency arrays. Free game.
+        <code>useMemo</code>, no selectors, no dependency arrays. FREE. GAME. 💸
       </>
       <GettersCode />
     </Tab>
@@ -386,7 +386,7 @@ function Forms() {
         One field per input, one method for submit. A tiny base class YOU own
         binds the inputs.... no <code>register</code>, no resolvers,
         no <code>&lt;Controller&gt;</code>. Form libraries been eating off
-        this for years.
+        this for YEARS, son. Pure cap industry. 🧢
       </>
       <FormsCode />
     </Tab>
@@ -436,8 +436,8 @@ function Molecules() {
       to="/examples/composition/subcomponents">
       <>
         A base owns structure and behavior; PascalCase subcomponents are seams
-        a subclass overrides for looks. Your own behavior-complete widgets....
-        Table, Toast, Picker.... no config soup, no shadcn tax.
+        a subclass overrides for the fit. Your OWN behavior-complete
+        widgets.... Table, Toast, Picker.... no config soup, no shadcn tax. 🧾
       </>
       <MoleculesCode />
     </Tab>
@@ -492,10 +492,11 @@ function Globals() {
       title="Global state with ZERO setup."
       to="/examples/composition/globals">
       <>
-        Create a State once with <code>.new()</code> and it parks itself in
+        Create a State once with <code>.new()</code> and it parks ITSELF in
         global context. Any component finds it with{' '}
-        <code>.get()</code>.... app-wide session, theme, or viewport with no
-        store, no Provider, no prop drilling. Slept on, honestly.
+        <code>.get()</code>.... app-wide session, theme, viewport. No store,
+        no Provider, no prop drilling. SOOOO slept on it's basically in a
+        coma. 😴
       </>
       <GlobalsCode />
     </Tab>
@@ -533,7 +534,7 @@ function Testing() {
         State and components are plain instances, fam. Create with{' '}
         <code>.new()</code>, call methods, assert on properties.
         Whole workflows tested with only <code>expect</code>....{" "}
-        no <code>act()</code>, and React isn't even in the room.
+        no <code>act()</code>. React isn't even in the ROOM, b. 🚪
       </>
       <TestingCode />
     </Tab>

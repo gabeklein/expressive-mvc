@@ -13,18 +13,19 @@ export function Hero() {
         <div className="min-w-0 lg:row-start-1">
           <h1 className="font-display tracking-tight mb-6">
             <span className="block whitespace-nowrap text-[clamp(1rem,4.7vw,1.4rem)] font-semibold leading-[1.05] text-fd-foreground/70">
-              Class-based state for React.... yes, classes.
+              YERRRR.... class-based state for React. Deadass. Classes.
             </span>
             <span className="block mt-4 text-[clamp(1.9rem,9.5vw,3rem)] font-bold leading-[0.98] sm:text-5xl lg:leading-[1.05]">
               <span className="block whitespace-nowrap">More application,</span>
-              <span className="block whitespace-nowrap">WAY less code.</span>
+              <span className="block whitespace-nowrap">WAY less code 😤</span>
             </span>
           </h1>
           <p className="text-fd-muted-foreground max-w-xl lg:mr-5">
-            I keep saying this.... your components are doing too much.
-            Expressive moves data, behavior, and lifecycle into focused models
-            so components can mind their business. Every feature takes less
-            code to build, test, and change. Not marketing.... receipts.
+            I keep saying this.... your components are doing TOO MUCH. Deadass
+            out here looking like a junk drawer. Expressive moves data,
+            behavior, and lifecycle into models so components can mind they
+            business. Every feature: less code to build, test, change.
+            Receipts, not vibes. 🧾
           </p>
         </div>
 
@@ -37,7 +38,7 @@ export function Hero() {
             <Link
               className={`${btn} bg-fd-primary text-fd-primary-foreground hover:opacity-90`}
               to="/docs/getting-started">
-              Let's Cook
+              Let Me Cook 🍳
             </Link>
             <Link
               className={`${btn} border border-fd-border text-inherit hover:bg-fd-muted`}
@@ -46,11 +47,12 @@ export function Hero() {
             </Link>
           </div>
           <div className="mx-auto flex max-w-md flex-col gap-2 lg:mx-0">
-            <CopyPill label="Run this today" command="npm install @expressive/react" />
-            <CopyPill label="Put your agent on game" command="npx skills add gabeklein/expressive-mvc" />
+            <CopyPill label="Run this TODAY. Not tomorrow." command="npm install @expressive/react" />
+            <CopyPill label="Put your agent on game 🎩" command="npx skills add gabeklein/expressive-mvc" />
           </div>
           <p className="mx-auto mt-4 max-w-md text-center text-sm text-fd-muted-foreground lg:mx-0">
-            Drops into the React you already got.... not a framework, no rewrite, no crashout.
+            Drops into the React you already got, son.... no framework, no
+            rewrite, no crashout. Plug and PLAY. 🔌
           </p>
         </div>
       </div>
@@ -259,14 +261,14 @@ class TypedComment extends State {
 
   showNormal() {
     this.clicked = true;
-    this.type('// Update values, components follow. EASY.');
+    this.type('// Value updates, component follows. EASY MONEY.');
   }
 
   protected new() {
     if (typeof window === 'undefined') return;
 
     const onScroll = () => {
-      if (!this.clicked) this.type('// Aye.... click the button');
+      if (!this.clicked) this.type('// YERRR.... click the button b');
       window.removeEventListener('scroll', onScroll);
     };
 

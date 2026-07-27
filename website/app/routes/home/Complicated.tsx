@@ -22,7 +22,7 @@ export function Complicated() {
       <div className="mx-auto max-w-4xl px-6 pt-12 text-center md:pt-20">
         <Reveal>
           <h2 className="font-display whitespace-nowrap text-[clamp(1.4rem,6vw,3rem)] font-bold tracking-tight leading-none">
-            React is out here doing crazy work<span className="text-fd-primary">.</span>
+            React is doing OD crazy work rn<span className="text-fd-primary">.</span>
           </h2>
         </Reveal>
       </div>
@@ -36,10 +36,10 @@ export function Complicated() {
       <div className="mx-auto max-w-4xl px-6 pb-12 md:pb-20">
         <Reveal className="max-w-2xl mx-auto text-center">
           <p className="text-fd-muted-foreground text-lg leading-relaxed">
-            Hooks stack up like browser tabs you're scared to close. Every
-            feature is another hook, every hook is married to React, and
-            tracing an update through all that wiring is straight forensic
-            work.... Stop doing forensic work in your components.
+            Hooks stack up like unpaid parking tickets, son. 🎫 Every feature
+            is another hook, every hook is married to React, and your
+            component turns into a whole crime scene.... CSI: useEffect.
+            Stop doing forensic work in your components. DEADASS.
           </p>
         </Reveal>
       </div>

@@ -8,16 +8,16 @@ export function Comparison() {
       <div className="mx-auto max-w-(--content-width) py-16 md:py-24">
         <div className="max-w-3xl mb-12">
           <div className="text-xs uppercase tracking-widest text-fd-muted-foreground mb-3">
-            Bar for bar
+            BAR FOR BAR 🎤
           </div>
           <h2 className="font-display text-3xl md:text-4xl font-bold tracking-tight mb-4">
-            Same logic. <span className='text-nowrap'>HALF the noise.</span>
+            Same logic. <span className='text-nowrap'>HALF the noise. Sheeeesh.</span>
           </h2>
           <p className="text-fd-muted-foreground text-lg">
-            Say you want a reusable, component-owned <code>useFooBarBaz</code>{' '}
-            that re-renders on change. Every example here has the same state
-            and behavior, bar for bar. Expressive just gets there with less
-            code.... count the lines yourself, receipts don't lie.
+            You want a reusable, component-owned <code>useFooBarBaz</code>{' '}
+            that re-renders on change? Say less. Every example: same state,
+            same behavior, bar for bar. Expressive just gets there in less
+            lines.... count em yourself b, receipts don't lie. 🧾
           </p>
         </div>
 
@@ -36,9 +36,9 @@ export function Comparison() {
         <Playground to="/examples/essentials/counter" />
 
         <p className="text-fd-muted-foreground text-lg leading-relaxed max-w-2xl mx-auto mt-10 text-center">
-          With MVC, destructuring <em>is</em> your dependency list. Read a
-          field, you're subscribed. No setters, no dependency arrays, no
-          memoized callbacks.... none of that.
+          With MVC, destructuring <em>IS</em> the dependency list. Read a
+          field? You subscribed. 📬 No setters, no dependency arrays, no
+          memoized callbacks.... NONE of that. We don't do allat over here.
         </p>
       </div>
     </section>

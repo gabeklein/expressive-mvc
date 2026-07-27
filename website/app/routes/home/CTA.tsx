@@ -9,18 +9,18 @@ export function CTA() {
     <section id="cta" className="panel px-6 lg:px-[50px]">
       <div className="mx-auto max-w-2xl py-16 md:py-24 text-center">
         <h2 className="font-display text-2xl md:text-4xl font-bold tracking-tight mb-4">
-          Move ONE feature out of hooks. Just one.
+          Move ONE feature out of hooks. Just one, b. ☝️
         </h2>
         <p className="text-fd-muted-foreground text-lg mb-10">
-          Start with one, leave the rest. See how it feels.... that's the
-          whole ask.
+          Start with one, leave the rest, see how it feel.... that's the
+          whole ask. I'm not even charging you. 😤
         </p>
 
         <div className="flex flex-col sm:flex-row gap-3 justify-center mb-8">
           <Link
             className={`${link} bg-fd-primary text-fd-primary-foreground hover:opacity-90`}
             to="/docs/getting-started">
-            Let's Cook
+            Let Me Cook 🍳
           </Link>
           <Link
             className={`${link} border border-fd-border text-inherit hover:bg-fd-muted`}
@@ -30,12 +30,12 @@ export function CTA() {
         </div>
 
         <div className="flex flex-col gap-2 max-w-md mx-auto text-left">
-          <CopyPill label="Run this today" command="npm install @expressive/react" />
-          <CopyPill label="Ask your agent if MVC is the move." command="npx skills add gabeklein/expressive-mvc" />
+          <CopyPill label="Run this TODAY. Not tomorrow." command="npm install @expressive/react" />
+          <CopyPill label="Ask your agent if MVC is the move fr" command="npx skills add gabeklein/expressive-mvc" />
         </div>
         <p className="text-sm text-fd-muted-foreground mt-4">
-          The skill puts your coding agent on the full API and best practices.
-          Alphas don't gatekeep. #TheAIMogul
+          The skill puts your coding agent on the FULL API + best practices.
+          Alphas don't gatekeep. Secure the bag together. 🎩 #TheAIMogul
         </p>
       </div>
     </section>

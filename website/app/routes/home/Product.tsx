@@ -7,32 +7,32 @@ export function Product() {
       <div className="mx-auto grid max-w-(--content-width) gap-12 py-16 md:py-24 xl:grid-cols-[minmax(26rem,0.7fr)_minmax(0,1.3fr)] xl:gap-12">
         <div className="mx-auto max-w-2xl text-center xl:self-center">
           <div className="mb-3 text-xs uppercase tracking-widest text-fd-primary">
-            Peep game
+            Peep game 🎓
           </div>
           <h2 className="mb-5 font-display text-3xl font-bold tracking-tight md:text-4xl">
             <span className="md:whitespace-nowrap">React renders your app.</span><br />
-            <span className="md:whitespace-nowrap">MVC keeps it a hunnid.</span>
+            <span className="md:whitespace-nowrap">MVC keeps it a HUNNID.</span>
           </h2>
           <p className="text-lg leading-relaxed text-fd-muted-foreground">
-            Expressive MVC is the model layer, plain and simple. Data, async,
-            and side effects get their own crib away from display logic.
-            Components stay light and behavior stays easy to read, write, and
-            debug.... no investigation required.
+            Expressive MVC is the model layer, point blank period. Data,
+            async, and side effects get they OWN crib away from display
+            logic. Components stay light like a bacon egg n cheese 🥯 and
+            behavior stays readable.... no yellow tape, no investigation.
           </p>
         </div>
 
         <div className="mx-auto grid w-full max-w-180 grid-cols-2 gap-x-5 gap-y-8 sm:gap-x-8">
-          <Point title="Components on a diet" illustration={<SmallerComponents />} delay={0}>
-            Display logic only. Coordinating features is not their job no more.
+          <Point title="Components on a diet 🥗" illustration={<SmallerComponents />} delay={0}>
+            Display logic ONLY. Coordinating features? Not they job. Period.
           </Point>
-          <Point title="Everything in its lane" illustration={<BuiltInSeparation />} delay={300}>
-            Features stay separate, so growth is a W instead of tech debt.
+          <Point title="Errthing in its lane" illustration={<BuiltInSeparation />} delay={300}>
+            Features stay in they lane, so growth is a W and not tech debt.
           </Point>
-          <Point title="Zero ceremony" illustration={<MinimalBoilerplate />} delay={100}>
-            Normal logic. No factories, no wrappers, no corny ish.
+          <Point title="ZERO ceremony" illustration={<MinimalBoilerplate />} delay={100}>
+            Normal logic. No factories, no wrappers, no corny ish. 🚫🧢
           </Point>
-          <Point title="Readable receipts" illustration={<ReadableOutput />} delay={200}>
-            Review agent output with confidence.... not gymnastics.
+          <Point title="Receipts you can read" illustration={<ReadableOutput />} delay={200}>
+            Review agent output with confidence.... not gymnastics. 🤸 Nah.
           </Point>
         </div>
       </div>

@@ -8,18 +8,18 @@ export function ComponentSection() {
       <div className="mx-auto max-w-(--content-width) py-16 md:py-24 grid gap-12 lg:grid-cols-[2fr_3fr] lg:items-center">
         <div className="lg:-translate-y-6">
           <h2 className="font-display text-3xl md:text-4xl font-bold tracking-tight mb-4">
-            Component is renderable State. Period.
+            Component is renderable State. PERIOD. 🎤⬇️
           </h2>
           <p className="text-fd-muted-foreground text-lg mb-4">
             <code>Component</code> extends <code>State</code> for self-contained{" "}
             (<a href="#molecules" className="underline-offset-2 underline">or extensible</a>) display logic.
-            Drop it straight in JSX. Fields drive getters and <code>render()</code>{' '}
+            Drop it STRAIGHT in JSX, son. Fields drive getters and <code>render()</code>{' '}
             directly.... destructure <code>this</code> like you would a hook
-            and keep it moving.
+            and keep it pushing.
           </p>
           <p className="text-fd-muted-foreground text-lg">
-            A Component provides itself too. Children reach it with zero prop
-            drilling.... not one prop passed. Free game.
+            A Component provides itself too. Children reach it with ZERO prop
+            drilling.... not one prop passed. Not ONE. Free game. 🎁
           </p>
         </div>
 
