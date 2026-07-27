@@ -18,6 +18,16 @@ The intended end state of an Expressive codebase: most application code reads as
 | `@expressive/preact` | Private   | Thin wrapper over React adapter via preact/hooks. Prerelease.     |
 | `@expressive/router` | Published | Host-agnostic, class-based router built on MVC.                   |
 
+### Installing
+
+For a React app, `@expressive/react` is the only install:
+
+```bash
+npm install @expressive/react
+```
+
+`@expressive/mvc` arrives as its dependency - **do not add it to `package.json` as well.** Import `State`, `Component`, and every instruction (`set`, `get`, `ref`, `map`, `has`, `def`) from `@expressive/react`; the adapter re-exports the core. Install `@expressive/mvc` directly only when writing host-agnostic code that must not depend on a UI adapter - a shared domain package, a Node service, or a new adapter. Add `@expressive/router` alongside the adapter when you want routing.
+
 ## Start With Ownership, Not APIs
 
 The most common failure when adopting this library is translating hooks one-for-one before deciding who owns each behavior. Resolve ownership first; APIs come second.

@@ -1,6 +1,12 @@
 # Expressive MVC
 > Class-based reactive state management for React. Define models as plain classes; components update when the values they read change.
 
+## Installing
+`npm install @expressive/react` is the whole install for a React app. `@expressive/mvc` is a dependency of the adapter - it should NOT be added to package.json as well, and `State`, `Component`, and all instructions (set, get, ref, map, has, def) import from `@expressive/react`. Install `@expressive/mvc` directly only for host-agnostic code with no UI adapter (shared domain package, Node service, new adapter). Add `@expressive/router` for routing. Published packages: @expressive/react, @expressive/mvc, @expressive/router (@expressive/preact is internal and unpublished).
+
+## For coding agents
+This documentation is also distributed as an installable skill: `npx skills add gabeklein/expressive-mvc`. It bundles the full API reference, refactoring algorithm, style profile, and audit guide as local files - preferable to crawling when working in a repo.
+
 ## Full Documentation
 - [Overview & API](/llm/SKILL.md): Core API surface, instructions, React hooks, Component class, auditing guide
 
