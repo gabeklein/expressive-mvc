@@ -16,14 +16,15 @@ export function Hero() {
               Class-based state for React
             </span>
             <span className="block mt-4 text-[clamp(1.9rem,9.5vw,3rem)] font-bold leading-[0.98] sm:text-5xl lg:leading-[1.05]">
-              <span className="block whitespace-nowrap">More application,</span>
-              <span className="block whitespace-nowrap">for less code.</span>
+              <span className="block whitespace-nowrap">Structure without</span>
+              <span className="block whitespace-nowrap">a framework.</span>
             </span>
           </h1>
           <p className="text-fd-muted-foreground max-w-xl lg:mr-5">
-            Expressive MVC moves data, behavior, and lifecycle into focused
-            models. Components stay small, application logic stays readable,
-            and every feature takes less code to build, test, and change.
+            State, async, and context all come from one small package - no
+            build step, no conventions to adopt, no rewrite. Data and behavior
+            move into models, components shrink to what they render, and
+            application code reads like business logic instead of wiring.
           </p>
         </div>
 
@@ -49,7 +50,8 @@ export function Hero() {
             <CopyPill label="Ask your agent" command="npx skills add gabeklein/expressive-mvc" />
           </div>
           <p className="mx-auto mt-4 max-w-md text-center text-sm text-fd-muted-foreground lg:mx-0">
-            Drops into React you already have - not a framework, no rewrite.
+            Drops into the React you already have - versions 16.8 through 19,
+            any bundler.
           </p>
         </div>
       </div>
