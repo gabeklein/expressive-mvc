@@ -151,7 +151,7 @@ export class Primitives extends Component {
         <div className="mx-auto max-w-(--content-width) py-16 md:py-24">
           <div className="max-w-2xl mx-auto text-center mb-4">
             <h2 className="font-display text-2xl md:text-3xl font-bold tracking-tight">
-              The basics, built right in.
+              The basics? Built in. All of them.
             </h2>
           </div>
 
@@ -236,11 +236,12 @@ function Tab({
 
 function Instructions() {
   return (
-    <Tab title="Fields with special behavior.">
+    <Tab title="Fields with SPECIAL behavior.">
       <>
-        Instructions are property initializers with runtime behavior. You still
-        read them like fields; the initializer decides what kind of field it is.
-        Make your own too, with <code>def</code>.
+        Instructions are property initializers with runtime behavior. You
+        still read them like regular fields.... the initializer decides what
+        kind of field it is. Make your own with <code>def</code>. Alphas
+        don't gatekeep.
       </>
 
       <InstructionsCode />
@@ -255,10 +256,10 @@ const InstructionsCode = code /*tsx*/`
     first = 'Ada';
     last = 'Lovelace';
 
-    // factory with Suspense if async
+    // async factory.... Suspense on the house
     user = set(async () => fetchUser());
 
-    // validate or side-effect whenever assigned
+    // validate or side-effect on every assign. No exceptions.
     email = set('', (next) => {
       if (!next.includes('@')) throw false;
     });
@@ -268,13 +269,13 @@ const InstructionsCode = code /*tsx*/`
       return theme.format(first + ' ' + last);
     });
 
-    // another class instance from context
+    // another class instance, pulled straight from context
     theme = get(Theme);
 
     // a single DOM node or mutable imperative value
     dialog = ref<HTMLDialogElement>();
 
-    // a ref proxy for form fields (inputs.first, inputs.last)
+    // ref proxy for form fields (inputs.first, inputs.last).... clutch
     inputs = ref(this);
 
     // an owned reactive collection you mutate in place
@@ -284,13 +285,13 @@ const InstructionsCode = code /*tsx*/`
 
 function Async() {
   return (
-    <Tab title="Async without ceremony" to="/examples/essentials/async">
+    <Tab title="Async without the ceremony.... at ALL" to="/examples/essentials/async">
       <>
-        Accessing <code>set(async)</code> suspends until it resolves. A{' '}
-        <code>Component</code> can define its own{' '}
-        <code>fallback</code> and even error boundary via{' '}
-        <code>catch()</code> - no{' '}
-        <code>isPending</code>, no thunks.
+        Touch <code>set(async)</code> and it suspends until it resolves. A{' '}
+        <code>Component</code> brings its own{' '}
+        <code>fallback</code> AND an error boundary via{' '}
+        <code>catch()</code>. No{' '}
+        <code>isPending</code>, no thunks, no crashout.
       </>
       <AsyncCode />
     </Tab>
@@ -301,13 +302,13 @@ const AsyncCode = code /*tsx*/`
   import { Component, set } from '@expressive/react';
 
   class Profile extends Component {
-    fallback = <p>Loading...</p>;
+    fallback = <p>Hold up....</p>;
 
     user = set(async () => {
       const res = await fetch('/api/user/1');
 
       if (!res.ok)
-        throw new Error('Could not find the user.');
+        throw new Error('Could not find my guy.');
 
       const { first, last } = await res.json();
 
@@ -331,8 +332,8 @@ function Computed() {
     <Tab title="Derived state with getters">
       <>
         Put the formula where the data lives. Getters are memoized and
-        dependency-tracked, so render stays simple without{' '}
-        <code>useMemo</code>, selectors, or dependency arrays.
+        dependency-tracked, so render stays clean.... no{' '}
+        <code>useMemo</code>, no selectors, no dependency arrays. Free game.
       </>
       <GettersCode />
     </Tab>
@@ -382,9 +383,10 @@ function Forms() {
   return (
     <Tab title="Forms from just fields" to="/examples/apps/forms">
       <>
-        One field per input, one method for submit. A tiny base class you own
-        binds the inputs - no <code>register</code>, resolvers,
-        or <code>&lt;Controller&gt;</code>.
+        One field per input, one method for submit. A tiny base class YOU own
+        binds the inputs.... no <code>register</code>, no resolvers,
+        no <code>&lt;Controller&gt;</code>. Form libraries been eating off
+        this for years.
       </>
       <FormsCode />
     </Tab>
@@ -394,8 +396,8 @@ function Forms() {
 const FormsCode = code /*tsx*/`
   import { Form } from "@/components/form"
 
-  // Form can be a ~30 line base class _you_ write once.
-  // Here, \`bind\` is defined with a ref instruction.
+  // Form is a ~30 line base class YOU write once.
+  // Here, \`bind\` is a ref instruction. Steal my idea today.
   class MyForm extends Form {
     firstname = '';
     lastname = '';
@@ -406,11 +408,11 @@ const FormsCode = code /*tsx*/`
       const { firstname, lastname } = this;
 
       if (!firstname || !lastname) {
-        alert('Please fill out all fields');
+        alert('Fam.... fill out the fields');
         return;
       }
 
-      alert('Hello ' + firstname + ' ' + lastname);
+      alert('Sheesh, welcome ' + firstname + ' ' + lastname);
     }
 
     render() {
@@ -433,9 +435,9 @@ function Molecules() {
       title={<>Components customized <span className="whitespace-nowrap">by subclass</span></>}
       to="/examples/composition/subcomponents">
       <>
-        A base owns structure and behavior; PascalCase subcomponents are seams a
-        subclass overrides for appearance. Your own behavior-complete widgets -
-        Table, Toast, Picker - all without config soup or shadcn.
+        A base owns structure and behavior; PascalCase subcomponents are seams
+        a subclass overrides for looks. Your own behavior-complete widgets....
+        Table, Toast, Picker.... no config soup, no shadcn tax.
       </>
       <MoleculesCode />
     </Tab>
@@ -445,8 +447,8 @@ function Molecules() {
 const MoleculesCode = code /*tsx*/`
   import { Component } from '@expressive/react';
 
-  // A behavior-complete base: owns data and selection,
-  // leaves appearance to overrideable subcomponents.
+  // Behavior-complete base: owns data and selection,
+  // leaves the fit to overrideable subcomponents.
   class Picker extends Component {
     items = [] as string[];
     selected = 0;
@@ -473,7 +475,7 @@ const MoleculesCode = code /*tsx*/`
     }
   }
 
-  // Subclass fills in appearance; behavior is inherited.
+  // Subclass handles the drip; behavior is inherited.
   class FruitPicker extends Picker {
     items = ['Apple', 'Banana', 'Cherry'];
 
@@ -487,13 +489,13 @@ const MoleculesCode = code /*tsx*/`
 function Globals() {
   return (
     <Tab
-      title="Global state with no setup."
+      title="Global state with ZERO setup."
       to="/examples/composition/globals">
       <>
-        Create a State once with <code>.new()</code> and it parks in global
-        context. Any component can find it with{' '}
-        <code>.get()</code> - app-wide session, theme, or
-        viewport with no store, Provider, or prop drilling.
+        Create a State once with <code>.new()</code> and it parks itself in
+        global context. Any component finds it with{' '}
+        <code>.get()</code>.... app-wide session, theme, or viewport with no
+        store, no Provider, no prop drilling. Slept on, honestly.
       </>
       <GlobalsCode />
     </Tab>
@@ -507,14 +509,14 @@ const GlobalsCode = code /*tsx*/`
     user: string | null = null;
 
     login() {
-      this.user = 'Ada';
+      this.user = 'Micah';
     }
   }
 
-  // Creating outside components activates and parks in global context.
+  // Made outside a component? Parks itself in global context. Valet included.
   Session.new();
 
-  // Components still reach for it with .get() - no Provider needed.
+  // Components still reach it with .get().... no Provider needed.
   function Status() {
     const { user, login } = Session.get();
 
@@ -528,10 +530,10 @@ function Testing() {
   return (
     <Tab title="Testable logic, without the DOM.">
       <>
-        State and components are plain instances - create with{' '}
+        State and components are plain instances, fam. Create with{' '}
         <code>.new()</code>, call methods, assert on properties.
-        Test whole workflows with only <code>expect</code> -{" "}
-        no <code>act()</code>, not even React.
+        Whole workflows tested with only <code>expect</code>....{" "}
+        no <code>act()</code>, and React isn't even in the room.
       </>
       <TestingCode />
     </Tab>

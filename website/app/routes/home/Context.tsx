@@ -10,21 +10,23 @@ export function Context() {
       <div className="mx-auto max-w-(--content-width) py-16 md:py-24">
         <div className="max-w-2xl mx-auto text-center mb-12">
           <h2 className="font-display text-3xl md:text-4xl font-bold tracking-tight mb-4">
-            Classes are their own context.
+            Classes are their own context. Sheesh.
           </h2>
           <p className="text-fd-muted-foreground text-lg">
-            Wrap a subtree in <code>&lt;Provider for=&#123;X&#125;&gt;</code> - 
-            components inside need only <code>X.get()</code>{' '}
-            to interact with the nearest instance. Fully typed, zero boilerplate.
+            Wrap a subtree in <code>&lt;Provider for=&#123;X&#125;&gt;</code> and
+            anything inside just calls <code>X.get()</code>{' '}
+            to link up with the nearest instance. Fully typed, zero
+            boilerplate.... that part is not negotiable.
           </p>
         </div>
 
         <ThemeDemo />
 
         <p className="text-fd-muted-foreground text-lg leading-relaxed max-w-3xl mx-auto mt-10 text-center">
-          No <code>createContext&lt;T&gt;</code>, null default,
-          missing-provider guard to write and maintain. Every app needs this eventually. Jotai's Provider will wrap a whole atom
-          store, MobX leaves it to you.
+          No <code>createContext&lt;T&gt;</code>, no null default, no
+          missing-provider guard to babysit. Every app needs this eventually....
+          Jotai's Provider wraps a whole atom store, and MobX straight up
+          leaves you on read. #ColdWorld
         </p>
       </div>
     </section>

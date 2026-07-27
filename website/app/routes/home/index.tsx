@@ -27,7 +27,7 @@ export function meta() {
     {
       name: 'description',
       content:
-        'Cleaner React state with smaller components and fewer lines per feature',
+        'Class-based state for React. Smaller components, fewer lines per feature.... zero cap.',
     },
   ];
 }

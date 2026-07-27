@@ -8,15 +8,16 @@ export function Comparison() {
       <div className="mx-auto max-w-(--content-width) py-16 md:py-24">
         <div className="max-w-3xl mb-12">
           <div className="text-xs uppercase tracking-widest text-fd-muted-foreground mb-3">
-            For local state
+            Bar for bar
           </div>
           <h2 className="font-display text-3xl md:text-4xl font-bold tracking-tight mb-4">
-            The same logic. <span className='text-nowrap'>Half the noise.</span>
+            Same logic. <span className='text-nowrap'>HALF the noise.</span>
           </h2>
           <p className="text-fd-muted-foreground text-lg">
             Say you want a reusable, component-owned <code>useFooBarBaz</code>{' '}
-            that re-renders on change. Examples have same state and
-            behavior. Expressive gets there with less code.
+            that re-renders on change. Every example here has the same state
+            and behavior, bar for bar. Expressive just gets there with less
+            code.... count the lines yourself, receipts don't lie.
           </p>
         </div>
 
@@ -35,8 +36,9 @@ export function Comparison() {
         <Playground to="/examples/essentials/counter" />
 
         <p className="text-fd-muted-foreground text-lg leading-relaxed max-w-2xl mx-auto mt-10 text-center">
-          With MVC, destructuring <em>is</em> your dependency list. Just read a
-          field to subscribe to it. No setters, dependency arrays, or memoized callbacks.
+          With MVC, destructuring <em>is</em> your dependency list. Read a
+          field, you're subscribed. No setters, no dependency arrays, no
+          memoized callbacks.... none of that.
         </p>
       </div>
     </section>
@@ -49,7 +51,7 @@ const ExprCode = code /*tsx*/`
 
   class FooBarBaz extends State {
     foo = 0;
-    bar = 'hello';
+    bar = 'sheesh';
     baz = true;
 
     bump() {
@@ -73,7 +75,7 @@ const HookCode = code /*tsx*/`
 
   function useFooBarBaz() {
     const [foo, setFoo] = useState(0);
-    const [bar, setBar] = useState('hello');
+    const [bar, setBar] = useState('sheesh');
     const [baz, setBaz] = useState(true);
 
     const bump = useCallback(() => setFoo(f => f + 1), []);
@@ -97,7 +99,7 @@ const ZustandCode = code /*tsx*/`
   import React, { useState } from 'react';
 
   const makeStore = () => createStore(set => ({
-    foo: 0, bar: 'hello', baz: true,
+    foo: 0, bar: 'sheesh', baz: true,
     bump: () => set(s => ({ foo: s.foo + 1 })),
   }));
 
@@ -122,7 +124,7 @@ const XStateCode = code /*tsx*/`
   import React from 'react';
 
   const useFooBarBazStore = createStoreHook({
-    context: { foo: 0, bar: 'hello', baz: true },
+    context: { foo: 0, bar: 'sheesh', baz: true },
     on: {
       bump: context => ({
         ...context,
@@ -156,7 +158,7 @@ const JotaiCode = code /*tsx*/`
 
   function useFooBarBaz() {
     const a = useMemo(() => ({
-      foo: atom(0), bar: atom('hello'), baz: atom(true),
+      foo: atom(0), bar: atom('sheesh'), baz: atom(true),
     }), []);
 
     const [foo, setFoo] = useAtom(a.foo);
@@ -185,7 +187,7 @@ const MobxCode = code /*tsx*/`
 
   class FooBarBaz {
     foo = 0;
-    bar = 'hello';
+    bar = 'sheesh';
     baz = true;
 
     constructor() {
@@ -215,7 +217,7 @@ const ReduxCode = code /*tsx*/`
 
   const slice = createSlice({
     name: 'fooBarBaz',
-    initialState: { foo: 0, bar: 'hello', baz: true },
+    initialState: { foo: 0, bar: 'sheesh', baz: true },
     reducers: {
       bump: (s) => { s.foo++; },
     },

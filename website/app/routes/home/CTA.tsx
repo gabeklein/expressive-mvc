@@ -9,31 +9,33 @@ export function CTA() {
     <section id="cta" className="panel px-6 lg:px-[50px]">
       <div className="mx-auto max-w-2xl py-16 md:py-24 text-center">
         <h2 className="font-display text-2xl md:text-4xl font-bold tracking-tight mb-4">
-          Move just one feature out of hooks.
+          Move ONE feature out of hooks. Just one.
         </h2>
         <p className="text-fd-muted-foreground text-lg mb-10">
-          Start with one, leave the rest. See how it feels.
+          Start with one, leave the rest. See how it feels.... that's the
+          whole ask.
         </p>
 
         <div className="flex flex-col sm:flex-row gap-3 justify-center mb-8">
           <Link
             className={`${link} bg-fd-primary text-fd-primary-foreground hover:opacity-90`}
             to="/docs/getting-started">
-            Get Started
+            Let's Cook
           </Link>
           <Link
             className={`${link} border border-fd-border text-inherit hover:bg-fd-muted`}
             to="/docs">
-            View Docs
+            Peep the Docs
           </Link>
         </div>
 
         <div className="flex flex-col gap-2 max-w-md mx-auto text-left">
-          <CopyPill label="Add to your app" command="npm install @expressive/react" />
-          <CopyPill label="Ask your agent if MVC is right for you." command="npx skills add gabeklein/expressive-mvc" />
+          <CopyPill label="Run this today" command="npm install @expressive/react" />
+          <CopyPill label="Ask your agent if MVC is the move." command="npx skills add gabeklein/expressive-mvc" />
         </div>
         <p className="text-sm text-fd-muted-foreground mt-4">
-          The agent skill gives your coding agent the full API and best practices.
+          The skill puts your coding agent on the full API and best practices.
+          Alphas don't gatekeep. #TheAIMogul
         </p>
       </div>
     </section>

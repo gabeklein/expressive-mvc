@@ -13,17 +13,18 @@ export function Hero() {
         <div className="min-w-0 lg:row-start-1">
           <h1 className="font-display tracking-tight mb-6">
             <span className="block whitespace-nowrap text-[clamp(1rem,4.7vw,1.4rem)] font-semibold leading-[1.05] text-fd-foreground/70">
-              Class-based state for React
+              Class-based state for React.... yes, classes.
             </span>
             <span className="block mt-4 text-[clamp(1.9rem,9.5vw,3rem)] font-bold leading-[0.98] sm:text-5xl lg:leading-[1.05]">
               <span className="block whitespace-nowrap">More application,</span>
-              <span className="block whitespace-nowrap">for less code.</span>
+              <span className="block whitespace-nowrap">WAY less code.</span>
             </span>
           </h1>
           <p className="text-fd-muted-foreground max-w-xl lg:mr-5">
-            Expressive MVC moves data, behavior, and lifecycle into focused
-            models. Components stay small, application logic stays readable,
-            and every feature takes less code to build, test, and change.
+            I keep saying this.... your components are doing too much.
+            Expressive moves data, behavior, and lifecycle into focused models
+            so components can mind their business. Every feature takes less
+            code to build, test, and change. Not marketing.... receipts.
           </p>
         </div>
 
@@ -36,20 +37,20 @@ export function Hero() {
             <Link
               className={`${btn} bg-fd-primary text-fd-primary-foreground hover:opacity-90`}
               to="/docs/getting-started">
-              Get Started
+              Let's Cook
             </Link>
             <Link
               className={`${btn} border border-fd-border text-inherit hover:bg-fd-muted`}
               to="/docs">
-              View Docs
+              Peep the Docs
             </Link>
           </div>
           <div className="mx-auto flex max-w-md flex-col gap-2 lg:mx-0">
-            <CopyPill label="Add to your app" command="npm install @expressive/react" />
-            <CopyPill label="Ask your agent" command="npx skills add gabeklein/expressive-mvc" />
+            <CopyPill label="Run this today" command="npm install @expressive/react" />
+            <CopyPill label="Put your agent on game" command="npx skills add gabeklein/expressive-mvc" />
           </div>
           <p className="mx-auto mt-4 max-w-md text-center text-sm text-fd-muted-foreground lg:mx-0">
-            Drops into React you already have - not a framework, no rewrite.
+            Drops into the React you already got.... not a framework, no rewrite, no crashout.
           </p>
         </div>
       </div>
@@ -237,7 +238,7 @@ class CounterButton extends Component {
           style={style}
           className="live-counter-button relative rounded-full border border-fd-border bg-fd-background/70 font-mono text-sm py-2 px-5 hover:bg-fd-muted transition-colors">
           {pulse > 0 && <span key={pulse} aria-hidden className="live-counter-pulse" />}
-          <span className="relative">Clicked {count} times</span>
+          <span className="relative">Ran it up {count} times</span>
         </button>
       </div>
     );
@@ -258,14 +259,14 @@ class TypedComment extends State {
 
   showNormal() {
     this.clicked = true;
-    this.type('// Update values, update components!');
+    this.type('// Update values, components follow. EASY.');
   }
 
   protected new() {
     if (typeof window === 'undefined') return;
 
     const onScroll = () => {
-      if (!this.clicked) this.type('// Try clicking below!');
+      if (!this.clicked) this.type('// Aye.... click the button');
       window.removeEventListener('scroll', onScroll);
     };
 
@@ -326,7 +327,7 @@ function CounterExample({ compact, count, comment }: CounterExampleProps) {
 
       return (
         <button onClick={increment}>
-          Clicked {count} times
+          Ran it up {count} times
         </button>
       );
     }
@@ -340,7 +341,7 @@ function CounterExample({ compact, count, comment }: CounterExampleProps) {
         assignment: /this\.count\+\+/,
         field: /count = \d+/,
         destructure: compact ? /count(?=,$)/ : /(?<=\{ )count/,
-        jsx: /Clicked \{count\} times/,
+        jsx: /Ran it up \{count\} times/,
       },
     },
   });

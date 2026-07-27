@@ -7,29 +7,29 @@ export function Benefits() {
       <div className="mx-auto max-w-(--content-width) py-16 md:py-24">
         <div className="max-w-2xl mb-16">
           <h2 className="font-display text-3xl md:text-4xl font-bold tracking-tight mb-4">
-            A layer, not a leap.
+            A layer, not a leap. Facts.
           </h2>
           <p className="text-fd-muted-foreground text-lg">
-            Start with the feature already hurting and leave the rest alone.
-            MVC works with the React app and tools you already have.
+            Start with the feature that's already hurting and leave the rest
+            alone. MVC rides with the React app and tools you already have.
           </p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <Benefit title="Incremental adoption" delay={0}>
-            No big-bang rewrite. Adopt it one feature at a time and leave simple
-            useState calls alone. A tool for complexity, not a replacement.
+          <Benefit title="One feature at a time" delay={0}>
+            No big-bang rewrite. Adopt it where it counts and leave the simple
+            useState calls alone.... a tool for complexity, not a replacement.
           </Benefit>
-          <Benefit title="Keep what works" delay={100}>
-            MVC doesn't need to replace every hook or specialist library. Keep
-            the tools that still earn their place.
+          <Benefit title="Keep what's still eating" delay={100}>
+            MVC doesn't need to replace every hook or specialist library.
+            The tools still earning their spot? They stay.
           </Benefit>
-          <Benefit title="Portable state" delay={200}>
-            Headless State classes don't depend on a component tree. Move them,
-            test them, or use the framework-agnostic core.
+          <Benefit title="State that travels" delay={200}>
+            Headless State classes don't care about a component tree. Move
+            them, test them, run the framework-agnostic core wherever.
           </Benefit>
           <Benefit title="No build-time magic" delay={300}>
-            MVC adds no compiler, code generation, or custom syntax. What you
-            write is what runs.
+            No compiler, no code generation, no custom syntax. What you write
+            is what runs. Zero cap.
           </Benefit>
         </div>
       </div>
