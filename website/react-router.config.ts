@@ -26,7 +26,7 @@ export default {
       );
     }
 
-    for await (const entry of glob('**/App.tsx', { cwd: '../examples/content' }))
+    for await (const entry of glob('**/App.tsx', { cwd: '../examples/pages' }))
       paths.push(`/examples/${dirname(entry)}`);
 
     return paths;

@@ -70,7 +70,7 @@ function serveSkills(): Plugin {
       for await (const entry of glob('**/*.mdx', { cwd: resolve(__dirname, 'content/docs') }))
         paths.push(getUrl(getSlugs(entry)));
 
-      for await (const entry of glob('**/App.tsx', { cwd: resolve(__dirname, '../examples/content') }))
+      for await (const entry of glob('**/App.tsx', { cwd: resolve(__dirname, '../examples/pages') }))
         paths.push(`/examples/${dirname(entry)}`);
 
       const sitemap =

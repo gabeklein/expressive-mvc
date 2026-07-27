@@ -21,7 +21,8 @@
 - [set()](/llm/field/set.md): Async, lazy, computed values, setter callbacks
 - [get()](/llm/field/get.md): Context lookup - upstream, downstream, callbacks
 - [ref()](/llm/field/ref.md): Mutable refs, ref proxy, callbacks
-- [hot()](/llm/field/hot.md): Keyed reactivity for plain arrays and objects
+- [map()](/llm/field/map.md): Reactive keyed collections - Map semantics, keyed spawners, transformed iteration
+- [has()](/llm/field/has.md): Reactive sets and object pools - membership, lifecycle ownership, direct rendering
 - [def()](/llm/field/def.md): Low-level custom property behavior
 
 ## React

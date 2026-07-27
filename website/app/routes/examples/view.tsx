@@ -6,7 +6,7 @@ import { examples, EXAMPLE_LABELS, getFiles, REDIRECT } from './loader';
 const Sandbox = lazy(() => import('@/components/Sandbox'));
 
 export function meta({ params }: { params: { '*'?: string } }) {
-  const label = params['*'] && EXAMPLE_LABELS[params['*']];
+  const label = params['*'] && EXAMPLE_LABELS[params['*']]?.replace(/`/g, '');
 
   if (!label)
     return [
@@ -28,7 +28,7 @@ export function meta({ params }: { params: { '*'?: string } }) {
 }
 
 function SourceListing({ name }: { name: string }) {
-  const label = EXAMPLE_LABELS[name];
+  const label = EXAMPLE_LABELS[name].replace(/`/g, '');
   const files = Object.entries(examples[name])
     .filter(([path]) => path !== '/index.tsx')
     .sort(([a], [b]) =>
