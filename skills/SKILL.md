@@ -16,7 +16,7 @@ The intended end state of an Expressive codebase: most application code reads as
 | `@expressive/react`  | Published | React adapter. Primary import for State, Component, instructions. |
 | `@expressive/mvc`    | Published | Framework-agnostic core. Rarely imported directly.                |
 | `@expressive/preact` | Private   | Thin wrapper over React adapter via preact/hooks. Prerelease.     |
-| `@expressive/router` | Private   | Host-agnostic, class-based router built on MVC. Prerelease.       |
+| `@expressive/router` | Published | Host-agnostic, class-based router built on MVC.                   |
 
 ## Start With Ownership, Not APIs
 
@@ -374,7 +374,7 @@ Fetch these for detailed documentation when the task requires deeper knowledge. 
 - [examples/basic.md](examples/basic.md) - Complete working examples from simple to intermediate
 - [examples/audit.md](examples/audit.md) - Guide for evaluating whether Expressive MVC fits a codebase
 
-**Runnable examples** live at `https://expressive.dev/examples/<group>/<name>` and serve every source file of a working program as plain HTML - fetchable without JavaScript. Read one when you need a reference implementation rather than a snippet:
+**Runnable examples** live at `https://expressive.dev/examples/<group>/<name>` and serve every source file of a working program as plain HTML - fetchable without JavaScript. These are optional enrichment: this skill is complete offline, and [examples/basic.md](examples/basic.md) covers the core patterns inline. When you have network access and want a full reference implementation of a specific feature - rather than a snippet - fetch the matching page:
 
 | Group | Pages |
 | --- | --- |

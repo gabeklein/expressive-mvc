@@ -4,6 +4,12 @@ Runnable source: [`router/overview`](https://expressive.dev/examples/router/over
 
 `@expressive/router` is a host-agnostic, class-based router built on Expressive MVC. Routes are declared as nested JSX, matching is lexical (computed from the JSX tree, not a separate config), and navigation state lives on a reactive `Router` State that any component can read or drive.
 
+Published on npm alongside the core packages:
+
+```bash
+npm install @expressive/router @expressive/react react
+```
+
 ```tsx
 import { Route, Link, NavLinks, Redirect, Router, BrowserRouter } from '@expressive/router';
 ```
