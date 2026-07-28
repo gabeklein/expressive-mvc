@@ -1,6 +1,6 @@
 import { State, Context } from '@expressive/mvc';
 import { observer, watch } from '@expressive/mvc/observable';
-import { Runtime, useFactory, useHook, useReady } from './runtime';
+import { Runtime, useFactory, useHook } from './runtime';
 
 /** Type may not be undefined - instead will be null.  */
 type NoVoid<T> = T extends undefined | void ? null : T;
@@ -172,8 +172,10 @@ State.get = function get<T extends State>(
 
     return () => {
       pending = false;
-      useReady(() => mounted = true);
-      useHook(() => release);
+      useHook(() => () => {
+        mounted = true;
+        return release;
+      });
       return value === undefined ? null : value;
     };
   });

@@ -100,8 +100,11 @@ function Provider<T extends State>(props: Provider.Props<T>) {
 
   const ambient = useAmbient();
   const context = useHook<Context>((set) => {
-    set(new Context(ambient));
-    return () => context.pop();
+    const value = new Context(ambient);
+
+    set(value);
+
+    return () => () => value.pop();
   });
 
   context.set(input, is);

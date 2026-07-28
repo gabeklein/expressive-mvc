@@ -1,7 +1,7 @@
 import { Component, unbind } from '@expressive/mvc';
 import { watch, observer } from '@expressive/mvc/observable';
 import { provide, type Context } from './context';
-import { Runtime, useHook, useReady } from './runtime';
+import { Runtime, useHook } from './runtime';
 
 declare module '@expressive/mvc' {
   interface Component {
@@ -123,12 +123,14 @@ function render(from: Component, context: Context) {
       if (observer(from) !== null) watch(from, refresh);
 
       return () => {
-        remove();
-        context.pop();
+        commit();
+
+        return () => {
+          remove();
+          context.pop();
+        };
       };
     }) || from;
-
-    useReady(commit);
 
     return frame(from, context, create(Render));
   };
@@ -149,7 +151,10 @@ function subcomponents(target: object, configurable?: boolean) {
         let render = unbind(value);
         const Component = (props: unknown) =>
           render.call(
-            useHook<Component>((set) => watch(owner, set)) || owner,
+            useHook<Component>((set) => {
+              const release = watch(owner, set);
+              return () => release;
+            }) || owner,
             props
           );
 

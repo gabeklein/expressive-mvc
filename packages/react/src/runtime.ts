@@ -23,25 +23,24 @@ export function useFactory<T extends Function>(factory: () => T) {
   return ref.current || (ref.current = factory());
 }
 
-export function useReady<T>(callback: () => void) {
-  return Runtime.useEffect(() => void callback(), []);
-}
-
 /**
  * Mount-effect with a refreshable return value, safe under React StrictMode.
  *
- * @param callback Setup handler; receives a setter, must return a cleanup.
+ * @param callback Setup handler, run on creation; receives a setter and returns
+ *   a mount handler, which in turn returns a cleanup. All three share this
+ *   hook's render counter, so a StrictMode remount repeats none of them.
  * @returns Latest value published via the setter (`undefined` until set).
  */
 export function useHook<T = void>(
-  callback: (refresh: (next: T) => void) => () => void
+  callback: (refresh: (next: T) => void) => () => (() => void) | void
 ) {
   const { current } = Runtime.useRef(
     { rendered: 0 } as {
       rendered: number;
       mounted?: boolean;
       pending?: boolean;
-      unmount: () => void;
+      commit?: () => (() => void) | void;
+      release?: (() => void) | void;
       update?: (next: (previous: number) => number) => void;
       output: T;
     }
@@ -49,7 +48,7 @@ export function useHook<T = void>(
 
   current.update = Runtime.useState(() => {
     if (!current.rendered)
-      current.unmount = callback((next) => {
+      current.commit = callback((next) => {
         current.output = next;
         if (current.mounted) current.update?.((x) => x + 1);
         else if (current.update) current.pending = true;
@@ -60,12 +59,19 @@ export function useHook<T = void>(
 
   Runtime.useEffect(() => {
     current.mounted = true;
+
+    if (current.commit) {
+      current.release = current.commit();
+      current.commit = undefined;
+    }
+
     if (current.pending) {
       current.pending = false;
       current.update!((x) => x + 1);
     }
+
     return () => {
-      if (--current.rendered < 1) current.unmount();
+      if (--current.rendered <= 0) current.release?.();
     }
   }, []);
 

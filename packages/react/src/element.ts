@@ -65,7 +65,7 @@ function Element(this: Component){
     return () => {
       from = useHook<Component>((refresh) => {
         if (observer(this) !== null) watch(this, refresh);
-        return () => context.pop();
+        return () => () => context.pop();
       }) || this;
 
       return frame(from, context, Runtime.createElement(Content));

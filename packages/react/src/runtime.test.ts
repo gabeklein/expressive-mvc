@@ -41,7 +41,7 @@ function harness() {
   return {
     update,
     unmount,
-    render: () => useHook((r) => ((refresh = r), unmount)),
+    render: () => useHook((r) => ((refresh = r), () => unmount)),
     commit: () => void (cleanup = effect()),
     unwind: () => cleanup && cleanup(),
     refresh: (next?: any) => refresh(next)
