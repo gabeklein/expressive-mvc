@@ -1,5 +1,5 @@
 import { render, screen, act } from '@testing-library/react';
-import { expect, it, describe } from 'bun:test';
+import { expect, it, describe, mock } from 'bun:test';
 import React from 'react';
 
 import { mockError } from '../test.setup';
@@ -400,6 +400,34 @@ describe('instance element', () => {
     expect(screen.getAllByText('second')).toHaveLength(1);
 
     second.unmount();
+
+    expect(instance.get(null)).toBe(false);
+  });
+
+  it('will not mount a placed instance', () => {
+    const didMount = mock();
+
+    class Test extends Component {
+      mount() {
+        didMount();
+      }
+
+      render() {
+        return <span>hello</span>;
+      }
+    }
+
+    const instance = Test.new();
+    const element = render(
+      <>
+        <section>{instance}</section>
+        <aside>{instance}</aside>
+      </>
+    );
+
+    expect(didMount).not.toBeCalled();
+
+    element.unmount();
 
     expect(instance.get(null)).toBe(false);
   });

@@ -134,6 +134,7 @@ function render(from: Component, context: Context) {
   const { createElement } = Runtime;
   const { commit, remove } = Runtime.dedupe(from, context);
 
+  const self = from;
   const content = from.render;
   const Render = () => content.call(from, from.props);
   const Component = () => {
@@ -141,9 +142,12 @@ function render(from: Component, context: Context) {
       if (observer(from) !== null) watch(from, refresh);
 
       return () => {
+        const release = self.mount?.();
+
         commit();
 
         return () => {
+          if (release) release();
           remove();
           context.pop();
         };

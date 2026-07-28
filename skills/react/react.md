@@ -144,6 +144,57 @@ function App({ name }: { name: string }) {
 }
 ```
 
+### mount() method
+
+Define `mount()` for client-only effects. Called once when the host component
+commits, and the function it returns runs on unmount.
+
+```tsx
+class Viewport extends State {
+  width = 0;
+
+  mount() {
+    const measure = () => (this.width = window.innerWidth);
+
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }
+}
+```
+
+`mount()` is an **ownership** hook, not an observation one. It runs where a
+component creates and destroys the instance - `State.use()` and
+`<Component />` - and never on a path that merely reaches an instance owned
+elsewhere:
+
+| Reaching an instance | Owns it | `mount()` |
+| -------------------- | ------- | --------- |
+| `State.use()`        | yes     | yes       |
+| `<Component />`      | yes     | yes       |
+| `State.get()`        | no      | no        |
+| `{instance}`         | no      | no        |
+| `State.new()`        | no host | no        |
+
+The excluded paths are all *many-to-one*: any number of components can `.get()`
+one instance, or place it as `{instance}`, and each does so for less time than
+the instance lives. A hook firing once per observer is not a lifecycle - to
+react to an instance from a component that does not own it, subscribe with
+`State.get()` or an event.
+
+It also never runs during server render.
+
+Pick the seam by what the work needs:
+
+| Hook       | Phase        | Runs                        | On the server |
+| ---------- | ------------ | --------------------------- | ------------- |
+| `new()`    | construction | once, synchronously         | yes           |
+| `use()`    | render        | every render of the host    | yes           |
+| `mount()`  | commit       | once, when the host commits | no            |
+
+Setup that must accompany the instance itself goes in `new()`; anything
+touching `window`, timers or subscriptions goes in `mount()`.
+
 ---
 
 ## State.get() - Context Hook

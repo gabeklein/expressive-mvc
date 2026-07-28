@@ -1,5 +1,6 @@
 import { render, screen, act } from '@testing-library/react';
 import { mock, expect, it, describe } from 'bun:test';
+import { renderToString } from 'react-dom/server';
 import React from 'react';
 
 import { mockError, mockPromise, flushMicrotasks } from '../test.setup';
@@ -111,6 +112,81 @@ describe('new method', () => {
     element.rerender(<Test />);
 
     expect(didCreate).toBeCalledTimes(1);
+  });
+});
+
+describe('mount method', () => {
+  it('will call once on commit', () => {
+    const didMount = mock();
+
+    class Test extends Component {
+      mount() {
+        didMount();
+      }
+    }
+
+    const element = render(<Test />);
+
+    expect(didMount).toBeCalledTimes(1);
+
+    element.rerender(<Test />);
+
+    expect(didMount).toBeCalledTimes(1);
+  });
+
+  it('will run returned callback on unmount', () => {
+    const didUnmount = mock();
+
+    class Test extends Component {
+      mount() {
+        return didUnmount;
+      }
+    }
+
+    const element = render(<Test />);
+
+    expect(didUnmount).not.toBeCalled();
+
+    element.unmount();
+
+    expect(didUnmount).toBeCalledTimes(1);
+  });
+
+  it('will not repeat under strict mode', () => {
+    const didMount = mock();
+    const didUnmount = mock();
+
+    class Test extends Component {
+      mount() {
+        didMount();
+        return didUnmount;
+      }
+    }
+
+    const element = render(<Test />, { reactStrictMode: true });
+
+    expect(didMount).toBeCalledTimes(1);
+
+    element.unmount();
+
+    expect(didUnmount).toBeCalledTimes(1);
+  });
+
+  it('will not call during server render', () => {
+    const didMount = mock();
+
+    class Test extends Component {
+      mount() {
+        didMount();
+      }
+
+      render() {
+        return <span>hello</span>;
+      }
+    }
+
+    expect(renderToString(<Test />)).toContain('<span>hello</span>');
+    expect(didMount).not.toBeCalled();
   });
 });
 

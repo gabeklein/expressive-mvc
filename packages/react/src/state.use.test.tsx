@@ -182,6 +182,78 @@ describe('State.use', () => {
     });
   });
 
+  describe('mount method', () => {
+    it('will call once on commit', () => {
+      const didMount = mock();
+
+      class Test extends State {
+        mount() {
+          didMount();
+        }
+      }
+
+      const element = renderHook(() => Test.use());
+
+      expect(didMount).toBeCalledTimes(1);
+
+      element.rerender();
+
+      expect(didMount).toBeCalledTimes(1);
+    });
+
+    it('will run returned callback on unmount', () => {
+      const didUnmount = mock();
+
+      class Test extends State {
+        mount() {
+          return didUnmount;
+        }
+      }
+
+      const element = renderHook(() => Test.use());
+
+      expect(didUnmount).not.toBeCalled();
+
+      element.unmount();
+
+      expect(didUnmount).toBeCalledTimes(1);
+    });
+
+    it('will not repeat under strict mode', () => {
+      const didMount = mock();
+      const didUnmount = mock();
+
+      class Test extends State {
+        mount() {
+          didMount();
+          return didUnmount;
+        }
+      }
+
+      const element = renderHook(() => Test.use(), { reactStrictMode: true });
+
+      expect(didMount).toBeCalledTimes(1);
+
+      element.unmount();
+
+      expect(didUnmount).toBeCalledTimes(1);
+    });
+
+    it('will not call for an instance no component owns', () => {
+      const didMount = mock();
+
+      class Test extends State {
+        mount() {
+          didMount();
+        }
+      }
+
+      Test.new();
+
+      expect(didMount).not.toBeCalled();
+    });
+  });
+
   describe('use method', () => {
     it('will call every render if present', () => {
       const didUse = mock();
