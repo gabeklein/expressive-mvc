@@ -1,0 +1,151 @@
+.todomvc {
+  width: 100%;
+  max-width: 34rem;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+}
+
+.todomvc h1 {
+  margin: 0;
+  text-align: center;
+  font-weight: 200;
+  color: var(--accent);
+}
+
+.todomvc input[type='text'],
+.new input,
+.edit {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.new input {
+  font-size: var(--t-lg);
+}
+
+/* main + footer share a bordered card so the empty state is just the input. */
+.main,
+.footer {
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  background: var(--surface);
+}
+
+.main {
+  overflow: hidden;
+}
+
+/* Global styling stretches inputs to full width; checkboxes opt out so
+   they don't shove their labels across the row. */
+.todomvc input[type='checkbox'] {
+  width: auto;
+  flex: none;
+  margin: 0;
+  padding: 0;
+}
+
+.toggle-all {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  padding: var(--s2) var(--s3);
+  border-bottom: 1px solid var(--border);
+  color: var(--muted);
+  font-size: var(--t-sm);
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.list li {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  padding: var(--s2) var(--s3);
+  border-bottom: 1px solid var(--border);
+}
+
+.list li:last-child {
+  border-bottom: none;
+}
+
+.list label {
+  flex: 1;
+  cursor: pointer;
+}
+
+.list li.done label {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+
+/* Delete affordance stays quiet until the row is hovered. */
+.destroy {
+  margin: 0;
+  padding: 0 var(--s2);
+  border: none;
+  background: none;
+  color: var(--muted);
+  font-size: var(--t-xl);
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.list li:hover .destroy {
+  opacity: 1;
+}
+
+.destroy:hover {
+  color: var(--accent);
+}
+
+.edit {
+  font-size: var(--t-base);
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  padding: var(--s2) var(--s3);
+  font-size: var(--t-sm);
+  color: var(--muted);
+}
+
+.filters {
+  display: flex;
+  gap: var(--s1);
+  margin-left: auto;
+}
+
+.filters a {
+  padding: 2px var(--s2);
+  border-radius: var(--r-sm);
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.filters a.selected {
+  color: var(--accent);
+  border: 1px solid var(--accent-soft);
+}
+
+.clear {
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.clear:hover {
+  text-decoration: underline;
+}
