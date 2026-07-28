@@ -28,7 +28,9 @@ class Timer extends State {
 - Return `void` if no cleanup needed.
 - Return `() => void` for a cleanup function called on destruction.
 
-`new()` is a typed optional member of `State` (`protected new?(): void | (() => void)`), not name-based detection - editors autocomplete it, its signature is checked, and TypeScript's `override` keyword catches a misspelled override. The same holds for `catch()` on `Component` and `use()` in adapters.
+`new()` is a typed optional member of `State` (`protected new?(): void | (() => void)`), not name-based detection - editors autocomplete it, its signature is checked, and TypeScript's `override` keyword catches a misspelled override. The same holds for `catch()` on `Component` and `use()` / `mount()` in adapters.
+
+> **`new()` runs on the server.** It is part of activation, so it fires wherever the state is constructed - including during `renderToString`. Anything touching `window`, timers or subscriptions belongs in the adapter's commit hook instead: see `mount()` in [../react/react.md](../react/react.md), which runs only on the client and only for a state some component owns.
 
 > **`new()` is for consumers and own-state.** Avoid it in reusable state meant to be subclassed: it's a public method, so an extending class that defines its own `new()` silently overrides yours and loses the base behavior (with no error). For internal init logic in a shippable base class, pass a trailing init callback to `super` instead - it runs in the same phase as `new()` but can't be clobbered:
 >
