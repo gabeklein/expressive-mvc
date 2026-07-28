@@ -114,6 +114,16 @@ describe('new method', () => {
   });
 });
 
+describe('use method', () => {
+  it('will throw if called as a hook', () => {
+    class Test extends Component {}
+
+    expect(() => (Test as any).use()).toThrow(
+      'Test is a Component - render as an element instead of calling use().'
+    );
+  });
+});
+
 describe('element props', () => {
   class Foo extends Component {
     /** Hover over this prop to see description. */

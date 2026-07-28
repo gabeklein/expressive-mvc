@@ -4,6 +4,15 @@ import { createProvider, type Context } from './context';
 import { Runtime, useHook } from './runtime';
 
 declare module '@expressive/mvc' {
+  namespace Component {
+    /**
+     * Not available - a Component is rendered, not a hook.
+     * Render it with `<Component />` or `{component}`.
+     * For a bare instance use `Component.new()`.
+     */
+    const use: never;
+  }
+
   interface Component {
     /** @deprecated Only to satisfy host JSX. Use `this.get(State)` instead. */
     readonly context: Context;
@@ -26,6 +35,15 @@ Object.defineProperties(Component.prototype, {
   },
   context: {
     set: bootstrap
+  }
+});
+
+Object.defineProperty(Component, 'use', {
+  configurable: true,
+  value() {
+    throw new Error(
+      `${this} is a Component - render as an element instead of calling use().`
+    );
   }
 });
 
