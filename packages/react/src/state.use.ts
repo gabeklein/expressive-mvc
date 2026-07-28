@@ -1,24 +1,9 @@
 import { State, Context } from '@expressive/mvc';
+import type { UseState } from '@expressive/mvc';
 import { watch } from '@expressive/mvc/observable';
 import { useFactory, useHook } from './runtime';
 
 declare module '@expressive/mvc' {
-  interface State {
-    /**
-     * Optional hook called once the host component commits. Return a function
-     * to run when it unmounts.
-     *
-     * Applies where a component owns the instance - `State.use()` and
-     * `<Component />`. Not called during server render, nor for an instance
-     * merely observed or placed: `.get()` and `{instance}` reach one a
-     * component does not own, and `State.new()` has no component at all.
-     *
-     * Client-only effects belong here - setup which must accompany the
-     * instance itself belongs in `new()`.
-     */
-    mount?(): (() => void) | void;
-  }
-
   interface UseState extends State {
     /**
      * Optional hook called when State.use() is invoked within a React component.
@@ -29,6 +14,19 @@ declare module '@expressive/mvc' {
      * @param props Arguments passed to State.use().
      */
     use?(...props: any[]): Promise<void> | void;
+
+    /**
+     * Optional hook called once the host component commits. Return a function
+     * to run when it unmounts.
+     *
+     * Not called during server render, nor for an instance merely observed or
+     * placed: `.get()` and `{instance}` reach one a component does not own, and
+     * `State.new()` has no component at all.
+     *
+     * Client-only effects belong here - setup which must accompany the instance
+     * itself belongs in `new()`.
+     */
+    mount?(): (() => void) | void;
   }
 
   namespace State {
@@ -88,10 +86,10 @@ State.use = function use<T extends State>(
         return () => {
           ready = true;
 
-          const release = instance.mount?.();
+          const release = (instance as UseState).mount?.();
 
           return () => {
-            if (release) release();
+            if (typeof release == 'function') release();
             context.pop();
             instance.set(null);
           };

@@ -239,6 +239,22 @@ describe('State.use', () => {
       expect(didUnmount).toBeCalledTimes(1);
     });
 
+    it('will ignore a non-function returned by mount', () => {
+      class Test extends State {
+        value = 'x';
+
+        // a plain State is only structurally checked against UseState, where
+        // TypeScript's void-permissive return rule lets this through
+        mount() {
+          return this.value as any;
+        }
+      }
+
+      const element = renderHook(() => Test.use());
+
+      expect(() => element.unmount()).not.toThrow();
+    });
+
     it('will not call for an instance no component owns', () => {
       const didMount = mock();
 

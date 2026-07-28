@@ -14,6 +14,17 @@ declare module '@expressive/mvc' {
   }
 
   interface Component {
+    /**
+     * Optional hook called once this Component commits. Return a function to
+     * run when it unmounts.
+     *
+     * Not called during server render, nor for an instance placed as
+     * `{component}` - a placement does not own what it renders. Client-only
+     * effects belong here; setup which must accompany the instance itself
+     * belongs in `new()`.
+     */
+    mount?(): (() => void) | void;
+
     /** @deprecated Only to satisfy host JSX. Use `this.get(State)` instead. */
     readonly context: Context;
     /** @deprecated Only to satisfy host JSX. Use `this.get()` instead. */
@@ -147,7 +158,7 @@ function render(from: Component, context: Context) {
         commit();
 
         return () => {
-          if (release) release();
+          if (typeof release == 'function') release();
           remove();
           context.pop();
         };

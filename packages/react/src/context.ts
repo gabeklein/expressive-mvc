@@ -1,4 +1,5 @@
 import { State, Context, Component } from '@expressive/mvc';
+import type { UseState } from '@expressive/mvc';
 import { Runtime, useHook } from './runtime';
 
 let shared: any;
@@ -128,10 +129,10 @@ function Provider<T extends State>({
     });
 
     return () => {
-      const release = fresh.map((state) => state.mount?.());
+      const release = fresh.map((state) => (state as UseState).mount?.());
 
       return () => {
-        for (const done of release) if (done) done();
+        for (const done of release) if (typeof done == 'function') done();
         context.pop();
       };
     };
