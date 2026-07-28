@@ -733,8 +733,8 @@ describe('set method', () => {
 
     context.set({ foo, bar }, cb);
 
-    expect(cb).toBeCalledWith(foo);
-    expect(cb).toBeCalledWith(bar);
+    expect(cb).toBeCalledWith(foo, false);
+    expect(cb).toBeCalledWith(bar, false);
     expect(cb).toBeCalledTimes(2);
 
     context.set({ foo, bar }, cb);
@@ -745,7 +745,7 @@ describe('set method', () => {
 
     context.set({ foo, bar, foo2 }, cb);
 
-    expect(cb).toBeCalledWith(foo2);
+    expect(cb).toBeCalledWith(foo2, false);
     expect(cb).toBeCalledTimes(3);
   });
 
@@ -891,6 +891,38 @@ describe('set method', () => {
     expect(cleanup).toBeCalledTimes(1);
     expect(context.get(Foo, false)).toBeUndefined();
     expect(context.get(Foo2)).toBeInstanceOf(Foo2);
+  });
+
+  it('will ignore a non-function returned by forEach', () => {
+    class Foo extends State {}
+
+    const context = new Context();
+
+    // an `is`-style callback written with a concise arrow body returns the state
+    context.set(Foo, (state) => (state as any));
+
+    expect(() => context.set({})).not.toThrow();
+  });
+
+  it('will tell forEach whether context owns the state', () => {
+    class Foo extends State {}
+    class Bar extends State {}
+
+    const bar = Bar.new();
+    const didCall = mock();
+    const context = new Context();
+
+    context.set({ Foo, bar }, (state, owned) => {
+      didCall(state.constructor.name, owned);
+    });
+
+    expect(didCall).toBeCalledWith('Foo', true);
+    expect(didCall).toBeCalledWith('Bar', false);
+
+    context.pop();
+
+    expect(context.get(Foo, false)).toBeUndefined();
+    expect(bar.get(null)).toBe(false);
   });
 
   it('will call forEach cleanup on pop', () => {

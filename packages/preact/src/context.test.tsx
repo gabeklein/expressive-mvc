@@ -227,19 +227,45 @@ describe('Provider', () => {
       expect(forEach).toBeCalledWith(expect.any(Bar));
     });
 
-    it('will cleanup on unmount', async () => {
-      const forEach = mock(() => cleanup);
+    it('will cleanup on unmount through the state', () => {
       const cleanup = mock();
+      const forEach = mock((state: State) => {
+        state.set(null, cleanup);
+      });
 
       const rendered = render(<Provider for={{ Foo, Bar }} is={forEach} />);
 
       expect(forEach).toBeCalledTimes(2);
-      expect(forEach).toBeCalledWith(expect.any(Foo));
-      expect(forEach).toBeCalledWith(expect.any(Bar));
       expect(cleanup).not.toBeCalled();
 
       rendered.unmount();
+
       expect(cleanup).toBeCalledTimes(2);
+    });
+
+    it('will mount an instance it creates', () => {
+      const didMount = mock();
+      const didUnmount = mock();
+
+      class Test extends State {
+        mount() {
+          didMount();
+          return didUnmount;
+        }
+      }
+
+      const rendered = render(
+        <Provider for={Test}>
+          <span />
+        </Provider>
+      );
+
+      expect(didMount).toBeCalledTimes(1);
+      expect(didUnmount).not.toBeCalled();
+
+      rendered.unmount();
+
+      expect(didUnmount).toBeCalledTimes(1);
     });
   });
 

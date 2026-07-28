@@ -395,11 +395,16 @@ Inside a subcomponent body, destructure what it reads from `this` at the top, sa
 
 ## Lifecycle
 
-- `new()` - once after init. Return cleanup function for teardown.
+- `new()` - once after init, synchronously. Return cleanup function for teardown.
+- `render(props)` - every render.
+- `mount()` - once when `<MyComponent />` commits. Return cleanup for unmount.
+  Not called for an instance placed as `{instance}`, which the placing component
+  does not own (see [react.md](react.md)).
 - `catch(error)` - error boundary.
 - Destruction on unmount or `this.set(null)`.
 
-A `use()` method applies only to the `MyComponent.use()` hook path - a Component rendered as JSX (`<MyComponent />`) never calls it.
+`MyComponent.use()` is not available - a Component is rendered, not used. Render
+it with `<MyComponent />` or `{instance}`; for a bare instance use `MyComponent.new()`.
 
 ```tsx
 class Timer extends Component {
@@ -412,6 +417,27 @@ class Timer extends Component {
 
   render() {
     return <span>{this.elapsed}s</span>;
+  }
+}
+```
+
+`new()` runs during server render, so anything touching `window`, timers or
+subscriptions belongs in `mount()` instead - it only runs on the client.
+
+```tsx
+class Viewport extends Component {
+  width = 0;
+
+  mount() {
+    const measure = () => (this.width = window.innerWidth);
+
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }
+
+  render() {
+    return <span>{this.width}px</span>;
   }
 }
 ```

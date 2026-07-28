@@ -104,6 +104,33 @@ describe('State.use', () => {
     });
   });
 
+  describe('mount method', () => {
+    it('will call once on commit', () => {
+      const didMount = mock();
+      const didUnmount = mock();
+
+      class Test extends State {
+        mount() {
+          didMount();
+          return didUnmount;
+        }
+      }
+
+      const element = renderHook(() => Test.use());
+
+      expect(didMount).toBeCalledTimes(1);
+
+      element.rerender();
+
+      expect(didMount).toBeCalledTimes(1);
+      expect(didUnmount).not.toBeCalled();
+
+      element.unmount();
+
+      expect(didUnmount).toBeCalledTimes(1);
+    });
+  });
+
   describe('use method', () => {
     it('will call every render if present', () => {
       const didUse = mock();

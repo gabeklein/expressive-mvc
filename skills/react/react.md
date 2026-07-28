@@ -144,6 +144,70 @@ function App({ name }: { name: string }) {
 }
 ```
 
+### mount() method
+
+Define `mount()` for client-only effects. Called once when the host component
+commits, and the function it returns runs on unmount.
+
+```tsx
+class Viewport extends State {
+  width = 0;
+
+  mount() {
+    const measure = () => (this.width = window.innerWidth);
+
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }
+}
+```
+
+`mount()` is an **ownership** hook, not an observation one. It runs where a
+component creates and destroys the instance - `State.use()` and
+`<Component />` - and never on a path that merely reaches an instance owned
+elsewhere:
+
+| Reaching an instance          | Owns it | `mount()` |
+| ----------------------------- | ------- | --------- |
+| `State.use()`                 | yes     | yes       |
+| `<Component />`               | yes     | yes       |
+| `<Provider for={State}>`      | yes     | yes       |
+| `<Provider for={instance}>`   | no      | no        |
+| `State.get()`                 | no      | no        |
+| `{instance}`                  | no      | no        |
+| `State.new()`                 | no host | no        |
+
+A `Provider` decides per entry, so `for={{ Session, theme }}` mounts `Session`
+- which it constructed and will destroy - and leaves `theme` alone. Two things
+follow from `mount()` belonging to the Provider's own commit:
+
+- Like any parent, it mounts *after* its descendants - React commits bottom-up -
+  so a descendant should react to provided state through subscription rather
+  than read it imperatively in its own `mount()`.
+- Replacing `for` mid-life provides the new State without mounting it. Key the
+  Provider (`<Provider key={name} for={Type}>`) to make the swap a fresh mount,
+  the same way `key` signals changed identity anywhere else in React.
+
+The excluded paths are all *many-to-one*: any number of components can `.get()`
+one instance, or place it as `{instance}`, and each does so for less time than
+the instance lives. A hook firing once per observer is not a lifecycle - to
+react to an instance from a component that does not own it, subscribe with
+`State.get()` or an event.
+
+It also never runs during server render.
+
+Pick the seam by what the work needs:
+
+| Hook       | Phase        | Runs                        | On the server |
+| ---------- | ------------ | --------------------------- | ------------- |
+| `new()`    | construction | once, synchronously         | yes           |
+| `use()`    | render        | every render of the host    | yes           |
+| `mount()`  | commit       | once, when the host commits | no            |
+
+Setup that must accompany the instance itself goes in `new()`; anything
+touching `window`, timers or subscriptions goes in `mount()`.
+
 ---
 
 ## State.get() - Context Hook

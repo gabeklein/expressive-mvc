@@ -163,11 +163,14 @@ class Context {
    * Context will add or remove States as needed to keep with provided input.
    *
    * @param inputs State, State class, or map of States / State classes to register.
-   * @param forEach Optional callback to run for each State registered.
+   * @param forEach Optional callback to run for each State registered. Receives
+   *   whether this context created the State - and so will destroy it - as
+   *   opposed to it having been provided already active. May return a callback
+   *   to run before that entry is dropped.
    */
   public set<T extends State>(
     inputs: Accept<T>,
-    forEach?: (state: T) => (() => void) | void,
+    forEach?: (state: T, owned: boolean) => (() => void) | void,
   ) {
     const init = new Set<() => void>();
     const { cleanup } = this;
@@ -188,23 +191,27 @@ class Context {
 
       if (!V) continue;
 
-      if (!(State.is(V) || V instanceof State)) {
+      // a class is constructed here - and so destroyed here; an instance is
+      // adopted as-is and outlives this context
+      const owned = State.is(V);
+
+      if (!(owned || V instanceof State)) {
         const as = K == "0" || K == String(V) ? V : `${V} (as '${K}')`;
         throw new Error(
           `Context can only include an instance or class of State but got ${as}.`,
         );
       }
 
-      const state = State.is(V) ? new (V as State.Type)() : V.is;
+      const state = owned ? new (V as State.Type)() : V.is;
       const remove = this.add(state, true);
 
       init.add(() => {
         event(state);
-        const dispose = forEach && forEach(state as T);
+        const dispose = forEach?.(state as T, owned);
         cleanup.set(K, () => {
-          if (dispose) dispose();
+          if (typeof dispose == "function") dispose();
           remove();
-          if (State.is(V)) event(state, null);
+          if (owned) event(state, null);
         });
       });
     }

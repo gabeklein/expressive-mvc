@@ -2,7 +2,7 @@ import { Component } from '@expressive/mvc';
 import { watch, observer } from '@expressive/mvc/observable';
 import { Context } from './context';
 import { Runtime, useFactory, useHook } from './runtime';
-import { frame } from './component';
+import { createFrame } from './component';
 
 declare module '@expressive/mvc' {
   interface Component {
@@ -65,10 +65,10 @@ function Element(this: Component){
     return () => {
       from = useHook<Component>((refresh) => {
         if (observer(this) !== null) watch(this, refresh);
-        return () => context.pop();
+        return () => () => context.pop();
       }) || this;
 
-      return frame(from, context, Runtime.createElement(Content));
+      return createFrame(from, context, Runtime.createElement(Content));
     };
   });
 
