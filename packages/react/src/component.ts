@@ -1,6 +1,6 @@
 import { Component, unbind } from '@expressive/mvc';
 import { watch, observer } from '@expressive/mvc/observable';
-import { provide, type Context } from './context';
+import { createProvider, type Context } from './context';
 import { Runtime, useHook } from './runtime';
 
 declare module '@expressive/mvc' {
@@ -89,20 +89,20 @@ function bootstrap(this: Component, context: Context){
  * Wrap a content element in its context provider, a Suspense boundary (unless
  * `fallback` is `false`) and, when `catch` is set, the host error boundary.
  */
-function frame(from: Component, context: Context, children: unknown) {
-  const { createElement: create } = Runtime;
+function createFrame(from: Component, context: Context, children: unknown) {
+  const { createElement } = Runtime;
 
   if(from.fallback !== false)
-    children = create(
+    children = createElement(
       Runtime.Suspense,
       { fallback: from.fallback, name: String(from) },
       children
     )
 
-  children = provide(context, children);
+  children = createProvider(context, children);
 
   return from.catch
-    ? create(Runtime.ErrorBoundary, { self: from, children })
+    ? createElement(Runtime.ErrorBoundary, { self: from, children })
     : children;
 }
 
@@ -113,7 +113,7 @@ function frame(from: Component, context: Context, children: unknown) {
  * unmount.
  */
 function render(from: Component, context: Context) {
-  const { createElement: create } = Runtime;
+  const { createElement } = Runtime;
   const { commit, remove } = Runtime.dedupe(from, context);
 
   const content = from.render;
@@ -132,10 +132,10 @@ function render(from: Component, context: Context) {
       };
     }) || from;
 
-    return frame(from, context, create(Render));
+    return createFrame(from, context, createElement(Render));
   };
 
-  return () => create(Component);
+  return () => createElement(Component);
 }
 
 /** Rewrite each own capitalized function on `target` into a subcomponent. */
@@ -172,4 +172,4 @@ function subcomponents(target: object, configurable?: boolean) {
   }
 }
 
-export { frame };
+export { createFrame };

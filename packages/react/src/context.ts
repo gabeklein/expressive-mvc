@@ -18,7 +18,7 @@ function useAmbient() {
 }
 
 /** Wrap `children` in a {@link Layers} provider carrying `context` down the tree. */
-function provide(context: Context, children: any) {
+function createProvider(context: Context, children: any) {
   return Runtime.createElement(Layers().Provider, { value: context, children });
 }
 
@@ -114,11 +114,11 @@ function Provider<T extends State>(props: Provider.Props<T>) {
     if (i instanceof State) i.set(rest);
   }
 
-  return provide(context,
+  return createProvider(context,
     fallback !== undefined
       ? Runtime.createElement(Runtime.Suspense, { fallback, name }, children)
       : children
   );
 }
 
-export { Consumer, Provider, Context, provide };
+export { Consumer, Provider, Context, createProvider };
