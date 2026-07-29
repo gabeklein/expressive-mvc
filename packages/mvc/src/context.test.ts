@@ -1191,7 +1191,7 @@ describe('root global', () => {
   const { root } = Context;
 
   class Global extends State {
-    static global = true;
+    static readonly global = true;
   }
 
   it('will register a global .new() instance in root', () => {
@@ -1204,18 +1204,8 @@ describe('root global', () => {
     expect(root.get(Global, false)).toBeUndefined();
   });
 
-  it('will throw when a subclass inherits global without declaring it', () => {
+  it('will inherit global to a subclass', () => {
     class Sub extends Global {}
-
-    expect(() => Sub.new()).toThrow(
-      /inherits `global` from a superclass/
-    );
-  });
-
-  it('will allow a subclass to re-declare global', () => {
-    class Sub extends Global {
-      static global = true;
-    }
 
     const instance = Sub.new();
 
@@ -1224,9 +1214,12 @@ describe('root global', () => {
     instance.set(null);
   });
 
-  it('will allow a subclass to opt out of an inherited global', () => {
-    class Sub extends Global {
-      static global = false;
+  it('will allow a subclass to opt out of a widened global', () => {
+    class Open extends State {
+      static readonly global: State.Global = true;
+    }
+    class Sub extends Open {
+      static readonly global = false;
     }
 
     const instance = Sub.new();
@@ -1234,6 +1227,68 @@ describe('root global', () => {
     expect(root.get(Sub, false)).toBeUndefined();
 
     instance.set(null);
+  });
+
+  it('will resolve global from a function at activation', () => {
+    let allow = false;
+
+    class Conditional extends State {
+      static readonly global: State.Global = () => allow;
+    }
+
+    const off = Conditional.new();
+    expect(root.get(Conditional, false)).toBeUndefined();
+    off.set(null);
+
+    allow = true;
+
+    const on = Conditional.new();
+    expect(root.get(Conditional)).toBe(on);
+    on.set(null);
+  });
+
+  it('will pass the instance to a global resolver', () => {
+    class Instanced extends State {
+      persistent = true;
+      static readonly global: State.Global<Instanced> = (self) => self.persistent;
+    }
+
+    const instance = Instanced.new();
+
+    expect(root.get(Instanced)).toBe(instance);
+
+    instance.set(null);
+  });
+
+  it('will enforce global inheritance through static types', () => {
+    void function () {
+      class SealedGlobal extends State {
+        static readonly global = true;
+      }
+      class Floor extends State {
+        static readonly global = false;
+      }
+
+      // @ts-expect-error - cannot opt out of a sealed (literal true) global
+      class OptOut extends SealedGlobal {
+        static readonly global = false;
+      }
+
+      // @ts-expect-error - cannot opt in against a literal-false floor
+      class OptIn extends Floor {
+        static readonly global = true;
+      }
+
+      // widening permits an override
+      class Open extends State {
+        static readonly global: State.Global = true;
+      }
+      class Scoped extends Open {
+        static readonly global = false;
+      }
+
+      return [OptOut, OptIn, Scoped];
+    };
   });
 
   it('will not register a context-less instance by default', () => {

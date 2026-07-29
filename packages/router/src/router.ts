@@ -14,10 +14,11 @@ import { Match, fillPath, fullPattern, matchPattern, patternSegment } from './ur
 export class Router extends Component {
   /**
    * The default router is a process-wide singleton: a `Route` with no ambient
-   * `Router` resolves this shared one. During server render it is sealed, so a
-   * request that must navigate should provide its own `Router` per-request.
+   * `Router` resolves this shared one (subclasses, incl. `BrowserRouter`,
+   * inherit this). A request that needs its own path should provide a `Router`
+   * per-request via `<Provider>`.
    */
-  static global = true;
+  static readonly global = true;
 
   path = '/';
 
@@ -130,8 +131,6 @@ export class Router extends Component {
 
 /** Binds the headless core to `window.location`, syncing `path`/`query` on navigation. */
 export class BrowserRouter extends Router {
-  static global = true;
-
   path = typeof window == 'undefined' ? '/' : window.location.pathname;
 
   goto(to: string, replace = false) {

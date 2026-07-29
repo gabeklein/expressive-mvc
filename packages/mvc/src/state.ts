@@ -48,6 +48,16 @@ declare namespace State {
   type Args<T extends State = any> = (Args<T> | Init<T> | Assign<T> | void)[];
 
   /**
+   * Value of `static global`. A boolean opts a State in or out of the
+   * process-global root; a resolver decides at activation, receiving the
+   * instance and returning whether it registers - use it to make the choice
+   * conditional (e.g. per environment). A bare literal (`= true` / `= false`)
+   * seals the choice for subclasses; widen a subclass's `static global` type to
+   * `State.Global` to permit a resolver or a later override.
+   */
+  type Global<T extends State = State> = boolean | ((self: T) => boolean);
+
+  /**
    * State constructor callback - runs during activation, in argument order,
    * before the `new()` lifecycle hook (so it may configure state `new()`
    * will observe). Returned function will run when state is destroyed.
@@ -181,14 +191,15 @@ declare namespace State {
 
 abstract class State {
   /**
-   * When `true`, an instance activated with no enclosing context registers
-   * itself to the process-global root, where `get()` can resolve it from
-   * anywhere. Left `false`, a context-less instance is still fully functional
-   * but private - not injectable, and never shared across server-render
-   * requests. Declaring a global is opt-in so an accidental one (e.g. a
-   * forgotten `Provider`) cannot silently leak into the shared root.
+   * Whether an instance activated with no enclosing context registers itself
+   * to the process-global root, where `get()` can resolve it from anywhere.
+   * `false` (the default) keeps a context-less instance fully functional but
+   * private - not injectable, though it can still read declared globals. Opt in
+   * with `static readonly global = true`; a resolver (see {@link State.Global})
+   * makes the choice conditional. Declaring it is deliberate, so an accidental
+   * global (e.g. a forgotten `Provider`) cannot leak into the shared root.
    */
-  static global = false;
+  static readonly global: State.Global<any> = false;
 
   /**
    * Loopback to instance of this state. This is useful when in a subscribed context,
@@ -510,16 +521,10 @@ function init(state: State, ...args: State.Args) {
   function register() {
     if (Context.get(state) !== Context.root) return;
 
-    const type = state.constructor as typeof State;
+    const g = (state.constructor as typeof State).global;
 
-    if (!type.global) return;
-
-    if (!Object.prototype.hasOwnProperty.call(type, 'global'))
-      throw new Error(
-        `${state} inherits \`global\` from a superclass - it is opt-in per class. Declare \`static global = true\` on ${type.name} to make it global, or \`static global = false\` to opt out.`
-      );
-
-    return Context.root.add(state);
+    if (typeof g == 'function' ? g(state) : g)
+      return Context.root.add(state);
   }
 
   listener(state, () => {
