@@ -1,11 +1,11 @@
 export default {
   ref: '`ref()` Single',
-  'ref-multiple': '`ref()` Multiple',
+  'ref-multiple': '`ref()` Multi',
   set: '`set()`',
   get: '`get()`',
-  has: '`has()` Pool',
   'has-list': '`has()` List',
-  map: '`map()` Create',
+  has: '`has()` Pool',
   'map-insert': '`map()` Insert',
+  map: '`map()` Factory',
   def: '`def()`'
 };
