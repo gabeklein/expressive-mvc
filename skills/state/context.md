@@ -84,6 +84,8 @@ Two rules keep a global deliberate:
 
 Global status is irrelevant to a context-claimed State: an instance provided by a `<Provider>` (or any explicit context) never consults `global`.
 
+> **Server render:** root is process-global, so a declared global is *shared across requests* on the server (it is not sealed). Keep per-request data in a `<Provider>` instead. See [Server render](../react/react.md#server-render-ssr--rsc).
+
 ### Global Collision
 
 Two global instances of the same type in root mutually evict at the contested ancestor:

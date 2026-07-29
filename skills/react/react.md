@@ -208,6 +208,29 @@ Pick the seam by what the work needs:
 Setup that must accompany the instance itself goes in `new()`; anything
 touching `window`, timers or subscriptions goes in `mount()`.
 
+### Server render (SSR / RSC)
+
+Expressive components render on the server - `renderToString`, and the SSR pass
+of an RSC app (Expressive components are client components) - without touching
+the DOM. Effects don't run there, so `mount()` never fires; `new()` and `use()`
+do. Three rules keep a render request-safe:
+
+- **Request state goes in a `<Provider>`.** Each render builds its own context,
+  so provided instances are isolated - one request never sees another's.
+- **A `static global` is process-wide, and *shared across requests* on the
+  server** (globals are not sealed - a `global` is trusted to be mutable
+  process state like config, flags or a warmed cache). Keep per-request data out
+  of it; put that behind a Provider.
+- **Resources belong in `mount()` or the request handler, never `new()`.**
+  `new()` runs on the server but its returned teardown does not - there is no
+  unmount - so a socket or handle opened there leaks. `mount()` is client-only;
+  server-side resources are the framework's request scope to open and close.
+
+To render a specific request's data (a path, a session), provide it per-request:
+`<Provider for={Session} …>`. The default `Router` is a client-only global for
+exactly this reason - on the server it is per-render, so paths never bleed
+between requests; provide `<Provider for={Router}>` to render a request's path.
+
 ---
 
 ## State.get() - Context Hook
