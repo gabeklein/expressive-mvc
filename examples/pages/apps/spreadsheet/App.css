@@ -54,6 +54,7 @@
   inset: 0;
   padding: 0 var(--s2);
   font: inherit;
+  border-radius: 0;
   font-size: var(--t-sm);
   text-align: right;
   color: var(--fg);
