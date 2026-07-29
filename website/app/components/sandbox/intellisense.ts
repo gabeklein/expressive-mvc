@@ -1,13 +1,15 @@
 import {
+  acceptCompletion,
   autocompletion,
   type Completion,
   type CompletionContext,
   type CompletionResult,
 } from '@codemirror/autocomplete';
-import type { Extension } from '@codemirror/state';
+import { Prec, type Extension } from '@codemirror/state';
 import {
   EditorView,
   hoverTooltip,
+  keymap,
   tooltips,
   type Tooltip,
 } from '@codemirror/view';
@@ -111,6 +113,9 @@ export function intellisense(
     // over any tooltip parented there - parenting to <html> escapes it. Absolute,
     // not fixed - fixed sends Safari into a measure-and-reflip flicker.
     tooltips({ position: 'absolute', parent: document.documentElement }),
+    // Tab accepts the highlighted completion (like an editor); acceptCompletion
+    // returns false when no popup is open, so Tab still indents otherwise.
+    Prec.highest(keymap.of([{ key: 'Tab', run: acceptCompletion }])),
     // Warm the worker the moment the editor is focused, so its multi-second
     // first-load (worker chunk + CDN libs) overlaps with the user reading and
     // typing rather than stalling the first completion.
