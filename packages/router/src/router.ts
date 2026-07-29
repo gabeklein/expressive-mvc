@@ -130,7 +130,7 @@ export class Router extends Component {
 
 /** Binds the headless core to `window.location`, syncing `path`/`query` on navigation. */
 export class BrowserRouter extends Router {
-  path = window.location.pathname;
+  path = typeof window == 'undefined' ? '/' : window.location.pathname;
 
   goto(to: string, replace = false) {
     assertAbsolute(to);
@@ -148,6 +148,8 @@ export class BrowserRouter extends Router {
   }
 
   protected new() {
+    if (typeof window == 'undefined') return () => {};
+
     const sync = () => {
       this.locate(window.location.pathname + window.location.search);
     };

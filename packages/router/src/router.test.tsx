@@ -2,7 +2,7 @@ import { act } from '@testing-library/react';
 import { describe, expect, it, spyOn } from 'bun:test';
 
 import { browserRouter } from '../test.setup';
-import { Router } from './router';
+import { BrowserRouter, Router } from './router';
 
 describe('Router (headless)', () => {
   it('defaults to root', () => {
@@ -278,5 +278,21 @@ describe('BrowserRouter', () => {
     router.current.set(null);
     expect(remove).toHaveBeenCalledWith('popstate', expect.any(Function));
     remove.mockRestore();
+  });
+
+  it('constructs without a window (server render)', () => {
+    const saved = (globalThis as any).window;
+
+    try {
+      delete (globalThis as any).window;
+
+      const server = BrowserRouter.new();
+
+      expect(server.path).toBe('/');
+
+      server.set(null);
+    } finally {
+      (globalThis as any).window = saved;
+    }
   });
 });
