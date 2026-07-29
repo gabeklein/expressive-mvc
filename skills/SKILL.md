@@ -388,9 +388,10 @@ Fetch these for detailed documentation when the task requires deeper knowledge. 
 
 | Group | Pages |
 | --- | --- |
-| `essentials` | `counter`, `computed`, `fetch`, `async`, `suspense`, `boundary` |
+| `essentials` | `counter`, `computed`, `fetch`, `async` |
 | `instructions` | `set`, `get`, `ref`, `ref-multiple`, `map`, `map-insert`, `has`, `has-list`, `def` |
-| `composition` | `context`, `globals`, `extension`, `subcomponents` |
+| `component` | `props`, `subcomponents`, `lifecycle`, `instances`, `headless`, `suspense`, `boundary`, `dial` |
+| `composition` | `extension`, `context`, `globals` |
 | `apps` | `forms`, `kanban`, `spreadsheet`, `stopwatch`, `tictactoe` |
 | `router` | `overview` |
 

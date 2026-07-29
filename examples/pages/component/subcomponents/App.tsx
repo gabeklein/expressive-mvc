@@ -2,12 +2,17 @@ import './App.css';
 
 import Split from '@common/Split';
 
-// Picker is kept separate as a reusable, behavior-complete base.
 import { Picker } from './Picker';
 
 export default () => (
   <div className="container">
-    <h1>Overrideable Subcomponents</h1>
+    <h1>Subcomponents</h1>
+    <p>
+      Picker owns the data and the selection logic; its PascalCase methods are
+      seams a subclass overrides to change only how things look. Fruit replaces{' '}
+      <code>Item</code> alone and inherits the rest. Color replaces{' '}
+      <code>Summary</code> too, adding a readout Fruit has no use for.
+    </p>
     <Split>
       <FruitPicker />
       <PalettePicker />
@@ -15,8 +20,6 @@ export default () => (
   </div>
 );
 
-// A plain vertical list. Only Item is overridden - selection behavior
-// and the default Summary are inherited untouched.
 class FruitPicker extends Picker {
   name = 'Fruit';
   names = ['Apple', 'Banana', 'Cherry'];
@@ -31,9 +34,6 @@ class FruitPicker extends Picker {
   }
 }
 
-// A very different UX from the same base: a horizontal row of color
-// swatches. It overrides Item AND Summary - the hex readout is a
-// feature the FruitPicker doesn't have.
 class PalettePicker extends Picker {
   name = 'Color';
   className = 'palette';
@@ -41,7 +41,7 @@ class PalettePicker extends Picker {
   colors: Record<string, string> = {
     Coral: '#ff6f61',
     Sky: '#4dabf7',
-    Mint: '#51cf66',
+    Mint: '#51cf66'
   };
 
   names = Object.keys(this.colors);
@@ -52,6 +52,7 @@ class PalettePicker extends Picker {
 
   Summary() {
     const name = this.names[this.selected];
+
     return (
       <small>
         {name} <code>{this.colors[name]}</code>

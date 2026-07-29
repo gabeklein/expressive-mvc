@@ -389,7 +389,7 @@ Key behaviors:
 - Reachable through context: `Dashboard.get()` then `<dashboard.Sidebar />`.
 - **Overridable** - subclasses redefine the method, or inject one as an instance field (`Sidebar = CustomSidebar`). That's what makes the Toggle example above work.
 
-They also double as a decomposition tool: pull a busy `.map` or chunk of chrome out of `render()` into a named section. [See them in action](/examples/composition/subcomponents).
+They also double as a decomposition tool: pull a busy `.map` or chunk of chrome out of `render()` into a named section. [See them in action](/examples/component/subcomponents).
 
 <br />
 
@@ -433,7 +433,7 @@ class SafeView extends Component {
 - If `catch()` rejects, the error propagates to the nearest parent boundary.
 - If a child throws again after recovery, the error escapes.
 
-Per-feature error handling without nesting `<ErrorBoundary>` wrappers. See the full recovery flow at [essentials/boundary](/examples/essentials/boundary).
+Per-feature error handling without nesting `<ErrorBoundary>` wrappers. See the full recovery flow at [component/boundary](/examples/component/boundary).
 
 <br />
 

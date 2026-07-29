@@ -1,6 +1,6 @@
 # Expressive MVC - Component
 
-Runnable source: [`extension`](https://expressive.dev/examples/composition/extension) and [`subcomponents`](https://expressive.dev/examples/composition/subcomponents) - complete programs, served as HTML.
+Runnable source: the [`component`](https://expressive.dev/examples/component/props) section walks the whole surface - [`props`](https://expressive.dev/examples/component/props), [`subcomponents`](https://expressive.dev/examples/component/subcomponents), [`lifecycle`](https://expressive.dev/examples/component/lifecycle), [`instances`](https://expressive.dev/examples/component/instances), [`headless`](https://expressive.dev/examples/component/headless), [`suspense`](https://expressive.dev/examples/component/suspense), [`boundary`](https://expressive.dev/examples/component/boundary), [`dial`](https://expressive.dev/examples/component/dial) - plus [`extension`](https://expressive.dev/examples/composition/extension) for render composition. Complete programs, served as HTML.
 
 `Component` extends `State` to create **smart, reusable React components** - persistent class instances that own their rendering, lifecycle, and behavior.
 
