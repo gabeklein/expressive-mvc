@@ -19,20 +19,14 @@ export default () => (
 // which is why three of them can disagree about presentation and never
 // about the value.
 class Manuscript extends Scale {
-  title = 'Meditations';
   value = 14;
   max = 100;
 
   render() {
-    const { title, value } = this;
+    const { value } = this;
 
     return (
       <form className="volume" onSubmit={(e) => e.preventDefault()}>
-        <label>
-          Title
-          <input value={title} onChange={(e) => (this.title = e.target.value)} />
-        </label>
-
         <Volume />
 
         <div className="row">
@@ -41,9 +35,7 @@ class Manuscript extends Scale {
         </div>
 
         <footer>
-          <small>
-            {title}, Volume {roman(value)}
-          </small>
+          <small>Manuscript, Volume {roman(value)}</small>
         </footer>
       </form>
     );

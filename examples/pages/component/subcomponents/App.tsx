@@ -12,15 +12,11 @@ export default () => (
       A base owns the data and the selection logic; its PascalCase methods are
       the seams a subclass overrides to change only how things look.
     </p>
-    <Pickers />
+    <Split>
+      <FruitPicker />
+      <PalettePicker />
+    </Split>
   </div>
-);
-
-const Pickers = () => (
-  <Split>
-    <FruitPicker />
-    <PalettePicker />
-  </Split>
 );
 
 // A plain vertical list. Only Item is overridden - selection behavior

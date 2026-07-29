@@ -3,84 +3,82 @@ import './App.css';
 import Button from '@common/Button';
 import { Component } from '@expressive/react';
 
-class Cart extends Component {
-  items = 0;
-
-  add() {
-    this.items++;
-  }
-
-  render() {
-    return (
-      <button className="cart" onClick={this.add}>
-        Cart <strong>{this.items}</strong>
-      </button>
-    );
-  }
-}
-
-class Step extends Component {
-  label = '';
-  done = false;
-
-  toggle() {
-    this.done = !this.done;
-  }
-
-  render() {
-    return (
-      <li className={this.done ? 'done' : ''} onClick={this.toggle}>
-        {this.label}
-      </li>
-    );
-  }
-}
-
-// Built here, outside React, and owned by this module. `.new()` activates the
-// instance so it is ready to place; nothing in the tree constructs or destroys
-// it. The owner would end its life with `cart.set(null)`.
-const cart = Cart.new();
-
-const steps = ['Browse', 'Checkout', 'Confirm'].map((label) => Step.new({ label }));
-
 export default () => (
   <div className="container">
     <h1>Instances</h1>
     <p>
-      An activated instance is an element. Placing it subscribes and provides
-      context as usual, but the placement never owns it.
+      An activated instance is an element. Hold one as a field and that field
+      becomes the switch - assign a different instance and the view swaps, while
+      whatever left the tree keeps its state.
     </p>
-    <Demo />
+    <Workspace />
   </div>
 );
 
-class Demo extends Component {
-  footer = true;
+class Workspace extends Component {
+  // Two panels this component owns outright. Both live as long as the workspace
+  // does, on screen or not.
+  draft = Panel.new({ name: 'Draft' });
+  review = Panel.new({ name: 'Review' });
+
+  // Which one renders. Assigning here neither creates nor destroys a panel, so
+  // switching away is not an unmount in the sense that loses anything.
+  active?: Panel = this.draft;
 
   render() {
-    const { footer } = this;
+    const { draft, review, active } = this;
 
     return (
       <>
-        {/* The same instance in two places. React needs a distinct key per
-            sibling, which each instance supplies from its own identity - the
-            readonly `key` field, defaulting to the State uid. */}
-        <header className="bar">Header {cart}</header>
+        <div className="row">
+          {[draft, review].map((panel) => (
+            <Button
+              key={panel.key}
+              primary={panel === active}
+              onClick={() => (this.active = panel)}>
+              {panel.name}
+            </Button>
+          ))}
+          <Button onClick={() => (this.active = undefined)}>Close</Button>
+        </div>
 
-        {/* Collections need no wrapper component and no key plumbing. */}
-        <ul>{steps}</ul>
-
-        {footer && <footer className="bar">Footer {cart}</footer>}
-
-        <Button primary onClick={() => (this.footer = !footer)}>
-          {footer ? 'Unmount footer' : 'Mount footer'}
-        </Button>
+        {/* An instance placed straight into the tree. It supplies its own key
+            from the readonly `key` field, defaulting to the State uid. */}
+        <div className="slot">{active}</div>
 
         <small>
-          One cart, two placements. Unmounting the footer only detaches it - the
-          count survives, because destruction stays with the owner.
+          Type in one, switch, come back - the text is still there. The field
+          decides what renders, never what exists.
         </small>
       </>
+    );
+  }
+}
+
+class Panel extends Component {
+  name = '';
+  text = '';
+
+  get count() {
+    return this.text.trim() ? this.text.trim().split(/\s+/).length : 0;
+  }
+
+  render() {
+    const { name, text, count } = this;
+
+    return (
+      <div className="panel">
+        <header>
+          <span>{name}</span>
+          <small>{count} words</small>
+        </header>
+        <textarea
+          rows={3}
+          value={text}
+          placeholder={`Write the ${name.toLowerCase()}…`}
+          onChange={(e) => (this.text = e.target.value)}
+        />
+      </div>
     );
   }
 }

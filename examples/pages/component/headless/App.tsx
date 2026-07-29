@@ -12,21 +12,19 @@ export default () => (
       boundaries - all without drawing anything.
     </p>
     <Scopes />
+    <small>Same Readout, same class, two scopes - each finds the Ticker above it.</small>
   </div>
 );
 
 const Scopes = () => (
-  <>
-    <Split>
-      <Ticker rate={100}>
-        <Readout />
-      </Ticker>
-      <Ticker rate={1000}>
-        <Readout />
-      </Ticker>
-    </Split>
-    <small>Same Readout, same class, two scopes - each finds the Ticker above it.</small>
-  </>
+  <Split>
+    <Ticker rate={100}>
+      <Readout />
+    </Ticker>
+    <Ticker rate={1000}>
+      <Readout />
+    </Ticker>
+  </Split>
 );
 
 // No render(), so this Component contributes no markup at all. Children pass

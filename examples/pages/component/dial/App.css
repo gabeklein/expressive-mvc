@@ -7,16 +7,6 @@
   max-width: 22rem;
 }
 
-.volume label {
-  display: flex;
-  flex-direction: column;
-  gap: var(--s1);
-  width: 100%;
-  text-align: left;
-  font-size: var(--t-sm);
-  color: var(--muted);
-}
-
 .volume .row {
   display: flex;
   align-items: center;

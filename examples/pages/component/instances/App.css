@@ -1,21 +1,32 @@
-.bar {
+.row {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  gap: var(--s2);
+}
+
+.slot {
   width: 100%;
-  padding: var(--s3) var(--s4);
+  min-height: 8.5rem;
+}
+
+.panel {
+  width: 100%;
+  padding: var(--s4);
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--r);
+  text-align: left;
+}
+
+.panel header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: var(--s2);
   font-weight: 600;
 }
 
-.cart strong {
+.panel textarea {
+  resize: vertical;
   font-family: var(--font-mono);
-  color: var(--accent);
-}
-
-li.done {
-  color: var(--muted);
-  text-decoration: line-through;
+  font-size: var(--t-sm);
 }
