@@ -102,8 +102,9 @@ export function intellisense(
   return [
     // Tooltips default to living inside the editor, where they stretch its
     // scrollable area and get clipped at its edge; in <body> they float over
-    // the preview instead.
-    tooltips({ position: 'fixed', parent: document.body }),
+    // the preview instead. Absolute, not the default fixed - fixed sends Safari
+    // down a measure-and-reflip kludge in CodeMirror's positioning code.
+    tooltips({ position: 'absolute', parent: document.body }),
     autocompletion({ override: [complete] }),
     hover,
   ];
