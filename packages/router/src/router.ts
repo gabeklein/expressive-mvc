@@ -5,6 +5,13 @@ import { Route } from './route';
 import { Match, fillPath, fullPattern, matchPattern, patternSegment } from './url';
 
 /**
+ * Global only on the client. On the server there is no shared singleton, so a
+ * per-request `path`/`query` can't bleed across requests; provide a `Router`
+ * per-request (via `<Provider>`) to render a specific path there.
+ */
+const clientOnly: State.Global = () => typeof window !== 'undefined';
+
+/**
  * Headless router core: matching plus an in-memory `path` and history stack.
  * Touches no browser globals, so it runs (and tests) under any host - it is
  * also the memory-router substrate. `BrowserRouter` binds this to
@@ -12,13 +19,9 @@ import { Match, fillPath, fullPattern, matchPattern, patternSegment } from './ur
  * either way.
  */
 export class Router extends Component {
-  /**
-   * The default router is a process-wide singleton: a `Route` with no ambient
-   * `Router` resolves this shared one. Widened so subclasses may re-declare or
-   * opt out; a request that needs its own path should provide a `Router`
-   * per-request via `<Provider>`.
-   */
-  static readonly global: State.Global = true;
+  /** The default router: a client-side singleton a `Route` resolves when no
+   * ambient `Router` is provided. See {@link clientOnly}. */
+  static readonly global = clientOnly;
 
   path = '/';
 
@@ -131,7 +134,7 @@ export class Router extends Component {
 
 /** Binds the headless core to `window.location`, syncing `path`/`query` on navigation. */
 export class BrowserRouter extends Router {
-  static readonly global: State.Global = true;
+  static readonly global = clientOnly;
 
   path = typeof window == 'undefined' ? '/' : window.location.pathname;
 

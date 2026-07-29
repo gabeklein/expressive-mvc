@@ -14,4 +14,4 @@ Previously any `State.new()` activated outside a Provider registered itself into
 
 A declared global is intentional and long-lived — process-wide, mutable, and shared across requests, including on the server. Keep request-specific data out of it: scope that with a `<Provider>` instead. A non-global that a consumer expects to inject but that was never provided still throws the usual `Could not find <State> in context`, so a missing Provider surfaces at the point of use.
 
-`@expressive/router`'s `Router` and `BrowserRouter` each declare `static readonly global: State.Global = true`, preserving the default single-router behavior under the new rule; an app that navigates during server render should provide its own `Router` per-request.
+`@expressive/router`'s `Router` and `BrowserRouter` declare `static readonly global = () => typeof window !== 'undefined'` — a client-side singleton, but *not* a shared global during server render, so a per-request `path`/`query` can't bleed across requests. Provide a `Router` per-request (via `<Provider>`) to render a specific path on the server.
