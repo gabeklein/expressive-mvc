@@ -1,5 +1,30 @@
 # @expressive/router
 
+## 0.6.1
+
+### Patch Changes
+
+- [#251](https://github.com/gabeklein/expressive-mvc/pull/251) [`a89bf57`](https://github.com/gabeklein/expressive-mvc/commit/a89bf570e6136b0aaa1783b8f4b181ecb29b392e) Construct `BrowserRouter` safely during server render.
+
+  `BrowserRouter` read `window.location.pathname` in a class-field initializer and bound `window`/`history` in `new()`, both of which run at construction - so activating one during `renderToString` threw `ReferenceError: window is not defined`.
+
+  The field now falls back to `'/'` when there is no `window`, and `new()` skips its browser binding on the server. A `BrowserRouter` activated during server render is inert at `'/'`; provide a `Router` per-request (e.g. via `<Provider>`) to render a request's actual path.
+
+- [#251](https://github.com/gabeklein/expressive-mvc/pull/251) [`a89bf57`](https://github.com/gabeklein/expressive-mvc/commit/a89bf570e6136b0aaa1783b8f4b181ecb29b392e) Make root (global) registration opt-in via `static global`.
+
+  Previously any `State.new()` activated outside a Provider registered itself into the process-global root context, becoming resolvable via `get()` from anywhere. This made an accidental global easy to create — a forgotten `<Provider>` would silently land a per-request instance in the shared root, where it persists for the life of the process and (during server render) is shared across every request.
+
+  **Breaking:** a State now registers to the root context only when it declares `static readonly global = true`. Without it, a context-less instance is still fully functional but private — not resolvable via `get()` from elsewhere, and never shared across server-render requests. A private instance can still _read_ declared globals through the root fallback; it simply isn't one. Scope request state with `<Provider>`, or declare a global for a genuine process-wide singleton (e.g. a router, keyboard, or `localStorage` adapter).
+
+  `global` is `readonly` and typed `State.Global` — a boolean, or a resolver `(self) => boolean` evaluated at activation (after props apply) to decide membership per instance or environment (e.g. `() => typeof window !== 'undefined'`). It is declared per class: a subclass that would be global purely by _inheriting_ a `true` **throws on activation** unless it re-declares (`true` to keep it, `false` to opt out), so a global never propagates silently. A bare-literal `false` additionally locks the subtree at compile time — TypeScript rejects a descendant `= true` — a best-effort vendor lockout that a resolver or wide cast can still override. Using a global class inside a `<Provider>` scopes it to that context and never touches the root, so a process-wide default (e.g. `BrowserRouter`) can still be provided per-request.
+
+  A declared global is intentional and long-lived — process-wide, mutable, and shared across requests, including on the server. Keep request-specific data out of it: scope that with a `<Provider>` instead. A non-global that a consumer expects to inject but that was never provided still throws the usual `Could not find <State> in context`, so a missing Provider surfaces at the point of use.
+
+  `@expressive/router`'s `Router` and `BrowserRouter` declare `static readonly global = () => typeof window !== 'undefined'` — a client-side singleton, but _not_ a shared global during server render, so a per-request `path`/`query` can't bleed across requests. Provide a `Router` per-request (via `<Provider>`) to render a specific path on the server.
+
+- Updated dependencies [[`366ef98`](https://github.com/gabeklein/expressive-mvc/commit/366ef9820c3105de5a6623589a8723e8fe2142a2), [`a89bf57`](https://github.com/gabeklein/expressive-mvc/commit/a89bf570e6136b0aaa1783b8f4b181ecb29b392e)]:
+  - @expressive/mvc@0.82.0
+
 ## 0.6.0
 
 ### Minor Changes
