@@ -11,6 +11,9 @@ import { createGetUrl, getSlugs } from 'fumadocs-core/source';
 export default defineConfig({
   optimizeDeps: {
     include: [
+      '@codemirror/autocomplete',
+      '@codemirror/state',
+      '@codemirror/view',
       '@codesandbox/sandpack-react',
       'lucide-react',
       'next-themes',
