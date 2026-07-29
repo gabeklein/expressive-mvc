@@ -130,6 +130,8 @@ export class Router extends Component {
 
 /** Binds the headless core to `window.location`, syncing `path`/`query` on navigation. */
 export class BrowserRouter extends Router {
+  static global = true;
+
   path = typeof window == 'undefined' ? '/' : window.location.pathname;
 
   goto(to: string, replace = false) {

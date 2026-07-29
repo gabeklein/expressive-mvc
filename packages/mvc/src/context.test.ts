@@ -1204,6 +1204,38 @@ describe('root global', () => {
     expect(root.get(Global, false)).toBeUndefined();
   });
 
+  it('will throw when a subclass inherits global without declaring it', () => {
+    class Sub extends Global {}
+
+    expect(() => Sub.new()).toThrow(
+      /inherits `global` from a superclass/
+    );
+  });
+
+  it('will allow a subclass to re-declare global', () => {
+    class Sub extends Global {
+      static global = true;
+    }
+
+    const instance = Sub.new();
+
+    expect(root.get(Sub)).toBe(instance);
+
+    instance.set(null);
+  });
+
+  it('will allow a subclass to opt out of an inherited global', () => {
+    class Sub extends Global {
+      static global = false;
+    }
+
+    const instance = Sub.new();
+
+    expect(root.get(Sub, false)).toBeUndefined();
+
+    instance.set(null);
+  });
+
   it('will not register a context-less instance by default', () => {
     class Private extends State {
       value = 1;
@@ -1252,11 +1284,13 @@ describe('root global', () => {
   });
 
   it('will preserve subtype entries on eviction', () => {
-    class Base extends State {
+    class Base extends State {}
+    class SubA extends Base {
       static global = true;
     }
-    class SubA extends Base {}
-    class SubB extends Base {}
+    class SubB extends Base {
+      static global = true;
+    }
 
     const a = SubA.new();
 
@@ -1275,12 +1309,16 @@ describe('root global', () => {
   });
 
   it('will register fresh sibling cleanly after ancestor eviction', () => {
-    class Base extends State {
+    class Base extends State {}
+    class SubA extends Base {
       static global = true;
     }
-    class SubA extends Base {}
-    class SubB extends Base {}
-    class SubC extends Base {}
+    class SubB extends Base {
+      static global = true;
+    }
+    class SubC extends Base {
+      static global = true;
+    }
 
     const a = SubA.new();
     const b = SubB.new();
@@ -1313,10 +1351,10 @@ describe('root global', () => {
   });
 
   it('will not apply global eviction to explicit add', () => {
-    class Base extends State {
+    class Base extends State {}
+    class SubA extends Base {
       static global = true;
     }
-    class SubA extends Base {}
     class SubB extends Base {}
 
     const a = SubA.new();

@@ -513,8 +513,16 @@ function init(state: State, ...args: State.Args) {
   function register() {
     if (Context.get(state) !== Context.root) return;
 
-    if ((state.constructor as typeof State).global)
+    const type = state.constructor as typeof State;
+
+    if (type.global) {
+      if (!Object.prototype.hasOwnProperty.call(type, 'global'))
+        throw new Error(
+          `${state} inherits \`global\` from a superclass - it is opt-in per class. Declare \`static global = true\` on ${type.name} to make it global, or \`static global = false\` to opt out.`
+        );
+
       return Context.root.add(state);
+    }
 
     if (
       Context.sealing &&
