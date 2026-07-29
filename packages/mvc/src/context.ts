@@ -19,13 +19,6 @@ declare namespace Context {
 }
 
 class Context {
-  /**
-   * Set by adapters during a server render (no DOM). Root-registered globals
-   * are shared across requests there, so a context-less non-global activated
-   * while this is on warns - it most often means a missing per-request Provider.
-   */
-  static server = false;
-
   static get root(): Context {
     return ROOT ??= new Context();
   }

@@ -1,4 +1,4 @@
-import { Component, Context } from '@expressive/mvc';
+import { Component } from '@expressive/mvc';
 import {
   createContext,
   createElement,
@@ -37,11 +37,6 @@ Object.assign(Runtime, {
     '_reactInternalInstance'
   ]
 });
-
-// No DOM implies a server render, where the shared root context is reused
-// across requests; flag it so a context-less non-global (usually a missing
-// per-request Provider) warns on activation.
-Context.server = typeof window === 'undefined';
 
 export { State, State as default, use, Consumer, Provider } from './adapter';
 export { Component, Context, def, get, ref, set } from '@expressive/mvc';

@@ -512,23 +512,14 @@ function init(state: State, ...args: State.Args) {
 
     const type = state.constructor as typeof State;
 
-    if (type.global) {
-      if (!Object.prototype.hasOwnProperty.call(type, 'global'))
-        throw new Error(
-          `${state} inherits \`global\` from a superclass - it is opt-in per class. Declare \`static global = true\` on ${type.name} to make it global, or \`static global = false\` to opt out.`
-        );
+    if (!type.global) return;
 
-      return Context.root.add(state);
-    }
-
-    if (
-      Context.server &&
-      typeof process !== 'undefined' &&
-      process.env.NODE_ENV !== 'production'
-    )
-      console.warn(
-        `${state} activated during server render with no context. It will not be shared - scope it per-request with a <Provider>, or mark it \`static global = true\` if a process-wide singleton is intended.`
+    if (!Object.prototype.hasOwnProperty.call(type, 'global'))
+      throw new Error(
+        `${state} inherits \`global\` from a superclass - it is opt-in per class. Declare \`static global = true\` on ${type.name} to make it global, or \`static global = false\` to opt out.`
       );
+
+    return Context.root.add(state);
   }
 
   listener(state, () => {

@@ -1,5 +1,4 @@
 import { mock, describe, it, expect } from 'bun:test';
-import { mockWarn } from '../test.setup';
 import { Context } from './context';
 import { State } from './state';
 
@@ -1250,38 +1249,6 @@ describe('root global', () => {
     expect(instance.value).toBe(2);
 
     instance.set(null);
-  });
-
-  it('will warn for a context-less non-global during server render', () => {
-    const warn = mockWarn();
-    Context.server = true;
-
-    class Orphan extends State {}
-
-    try {
-      Orphan.new();
-      expect(warn).toHaveBeenCalledWith(
-        expect.stringContaining('activated during server render with no context')
-      );
-    } finally {
-      Context.server = false;
-    }
-  });
-
-  it('will not warn for a declared global during server render', () => {
-    const warn = mockWarn();
-    Context.server = true;
-
-    class Flag extends State {
-      static global = true;
-    }
-
-    try {
-      Flag.new().set(null);
-      expect(warn).not.toHaveBeenCalled();
-    } finally {
-      Context.server = false;
-    }
   });
 
   it('will lock state ownership to root after init', () => {
