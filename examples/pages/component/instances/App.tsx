@@ -12,14 +12,18 @@ export default () => (
       whatever left the tree keeps its state.
     </p>
     <Workspace />
+    <small>
+      Type in one, switch, come back - the text is still there. The field decides
+      what renders, never what exists.
+    </small>
   </div>
 );
 
 class Workspace extends Component {
-  // Two panels this component owns outright. Both live as long as the workspace
-  // does, on screen or not.
-  draft = Panel.new({ name: 'Draft' });
-  review = Panel.new({ name: 'Review' });
+  // Bare construction makes each panel nested state this component owns: built
+  // here, activated into this context, and destroyed with it.
+  draft = new Panel({ name: 'Draft' });
+  review = new Panel({ name: 'Review' });
 
   // Which one renders. Assigning here neither creates nor destroys a panel, so
   // switching away is not an unmount in the sense that loses anything.
@@ -45,11 +49,6 @@ class Workspace extends Component {
         {/* An instance placed straight into the tree. It supplies its own key
             from the readonly `key` field, defaulting to the State uid. */}
         <div className="slot">{active}</div>
-
-        <small>
-          Type in one, switch, come back - the text is still there. The field
-          decides what renders, never what exists.
-        </small>
       </>
     );
   }
@@ -59,12 +58,9 @@ class Panel extends Component {
   name = '';
   text = '';
 
-  get count() {
-    return this.text.trim() ? this.text.trim().split(/\s+/).length : 0;
-  }
-
   render() {
-    const { name, text, count } = this;
+    const { name, text } = this;
+    const count = text.trim() ? text.trim().split(/\s+/).length : 0;
 
     return (
       <div className="panel">

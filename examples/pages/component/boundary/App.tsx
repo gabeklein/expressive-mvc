@@ -12,6 +12,11 @@ export default () => (
       <code>&lt;ErrorBoundary&gt;</code> wrappers.
     </p>
     <Demo />
+    <small>
+      The first card keeps its error, so only it swaps to a fallback while the
+      page stays put. The second declines - its <code>catch()</code> rejects, and
+      the page boundary takes over.
+    </small>
   </div>
 );
 
@@ -49,13 +54,11 @@ class Demo extends Component {
         <div className="card">
           <h2>Handled in place</h2>
           <Recoverable key={`local-${round}`} />
-          <small>Only this card swaps to the fallback; the page stays put.</small>
         </div>
 
         <div className="card">
           <h2>Escalated</h2>
           <Escalating key={`up-${round}`} message="The widget gave up." />
-          <small>Its catch() rejects, so the page boundary takes over.</small>
         </div>
       </>
     );
