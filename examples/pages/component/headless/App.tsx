@@ -3,10 +3,36 @@ import './App.css';
 import Split from '@common/Split';
 import { Component } from '@expressive/react';
 
+export default () => (
+  <div className="container">
+    <h1>Headless</h1>
+    <p>
+      A Component without <code>render()</code> is pure placement: it provides
+      itself to its subtree, owns a lifecycle, and hosts the suspense and error
+      boundaries - all without drawing anything.
+    </p>
+    <Scopes />
+  </div>
+);
+
+const Scopes = () => (
+  <>
+    <Split>
+      <Ticker rate={100}>
+        <Readout />
+      </Ticker>
+      <Ticker rate={1000}>
+        <Readout />
+      </Ticker>
+    </Split>
+    <small>Same Readout, same class, two scopes - each finds the Ticker above it.</small>
+  </>
+);
+
 // No render(), so this Component contributes no markup at all. Children pass
 // straight through its context provider, which makes placement in the tree the
 // entire feature: everything below reaches it with Ticker.get(), and the two
-// instances below scope to their own subtrees.
+// instances above scope to their own subtrees.
 class Ticker extends Component {
   rate = 1000;
   elapsed = 0;
@@ -37,27 +63,3 @@ function Readout() {
     </div>
   );
 }
-
-export default () => (
-  <div className="container">
-    <h1>Headless</h1>
-    <p>
-      A Component without <code>render()</code> is pure placement: it provides
-      itself to its subtree, owns a lifecycle, and hosts the suspense and error
-      boundaries - all without drawing anything.
-    </p>
-
-    <Split>
-      <Ticker rate={100}>
-        <Readout />
-      </Ticker>
-      <Ticker rate={1000}>
-        <Readout />
-      </Ticker>
-    </Split>
-
-    <small>
-      Same Readout, same class, two scopes - each finds the Ticker above it.
-    </small>
-  </div>
-);

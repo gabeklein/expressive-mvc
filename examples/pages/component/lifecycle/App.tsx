@@ -3,8 +3,52 @@ import './App.css';
 import Button from '@common/Button';
 import { Component, get, ref } from '@expressive/react';
 
+export default () => (
+  <div className="container">
+    <h1>Lifecycle</h1>
+    <p>
+      Three seams, three phases: <code>new()</code> at construction,{' '}
+      <code>mount()</code> at commit, <code>ref()</code> when an element
+      attaches. Toggle the probe to watch each one fire and unwind.
+    </p>
+    <Demo />
+  </div>
+);
+
+class Demo extends Component {
+  showing = true;
+  entries: string[] = [];
+
+  log(note: string) {
+    this.entries = [...this.entries, note];
+  }
+
+  render() {
+    const { showing, entries } = this;
+
+    return (
+      <>
+        {showing && <Probe />}
+
+        <div className="row">
+          <Button primary onClick={() => (this.showing = !showing)}>
+            {showing ? 'Unmount' : 'Mount'}
+          </Button>
+          <Button onClick={() => (this.entries = [])}>Clear</Button>
+        </div>
+
+        <ol className="trace">
+          {entries.map((note, i) => (
+            <li key={i}>{note}</li>
+          ))}
+        </ol>
+      </>
+    );
+  }
+}
+
 class Probe extends Component {
-  // The transcript belongs to the page, which outlives this probe - so its own
+  // The transcript belongs to the demo, which outlives this probe - so its own
   // teardown still has somewhere to write.
   demo = get(Demo);
 
@@ -50,45 +94,6 @@ class Probe extends Component {
       <div className="probe" ref={this.box}>
         <strong>{width}px</strong>
         <small>alive {ticks}s</small>
-      </div>
-    );
-  }
-}
-
-export default class Demo extends Component {
-  showing = true;
-  entries: string[] = [];
-
-  log(note: string) {
-    this.entries = [...this.entries, note];
-  }
-
-  render() {
-    const { showing, entries } = this;
-
-    return (
-      <div className="container">
-        <h1>Lifecycle</h1>
-        <p>
-          Three seams, three phases: <code>new()</code> at construction,{' '}
-          <code>mount()</code> at commit, <code>ref()</code> when an element
-          attaches. Toggle the probe to watch each one fire and unwind.
-        </p>
-
-        {showing && <Probe />}
-
-        <div className="row">
-          <Button primary onClick={() => (this.showing = !showing)}>
-            {showing ? 'Unmount' : 'Mount'}
-          </Button>
-          <Button onClick={() => (this.entries = [])}>Clear</Button>
-        </div>
-
-        <ol className="trace">
-          {entries.map((note, i) => (
-            <li key={i}>{note}</li>
-          ))}
-        </ol>
       </div>
     );
   }

@@ -43,26 +43,29 @@ const cart = Cart.new();
 
 const steps = ['Browse', 'Checkout', 'Confirm'].map((label) => Step.new({ label }));
 
-export default class Demo extends Component {
+export default () => (
+  <div className="container">
+    <h1>Instances</h1>
+    <p>
+      An activated instance is an element. Placing it subscribes and provides
+      context as usual, but the placement never owns it.
+    </p>
+    <Demo />
+  </div>
+);
+
+class Demo extends Component {
   footer = true;
 
   render() {
     const { footer } = this;
 
     return (
-      <div className="container">
-        <h1>Instances</h1>
-        <p>
-          An activated instance is an element. Placing it subscribes and
-          provides context as usual, but the placement never owns it.
-        </p>
-
+      <>
         {/* The same instance in two places. React needs a distinct key per
             sibling, which each instance supplies from its own identity - the
             readonly `key` field, defaulting to the State uid. */}
-        <header className="bar">
-          Header {cart}
-        </header>
+        <header className="bar">Header {cart}</header>
 
         {/* Collections need no wrapper component and no key plumbing. */}
         <ul>{steps}</ul>
@@ -77,7 +80,7 @@ export default class Demo extends Component {
           One cart, two placements. Unmounting the footer only detaches it - the
           count survives, because destruction stays with the owner.
         </small>
-      </div>
+      </>
     );
   }
 }

@@ -4,6 +4,52 @@ import './App.css';
 import { Arc } from './Arc';
 import { Scale } from './Scale';
 
+export default () => (
+  <div className="container">
+    <h1>Custom Control</h1>
+    <p>
+      Drag the arc. The number lives on the form above it, so the arc, the
+      slider and the input are three views of one field.
+    </p>
+    <Manuscript />
+  </div>
+);
+
+// The form owns the number. Placing a control inside it is not ownership -
+// which is why three of them can disagree about presentation and never
+// about the value.
+class Manuscript extends Scale {
+  title = 'Meditations';
+  value = 14;
+  max = 100;
+
+  render() {
+    const { title, value } = this;
+
+    return (
+      <form className="volume" onSubmit={(e) => e.preventDefault()}>
+        <label>
+          Title
+          <input value={title} onChange={(e) => (this.title = e.target.value)} />
+        </label>
+
+        <Volume />
+
+        <div className="row">
+          <Slider />
+          <Digits />
+        </div>
+
+        <footer>
+          <small>
+            {title}, Volume {roman(value)}
+          </small>
+        </footer>
+      </form>
+    );
+  }
+}
+
 // Only the well of the arc changes. `Readout` is a subcomponent, so this
 // replaces it outright - overriding `render` would have wrapped the arc.
 class Volume extends Arc {
@@ -40,49 +86,6 @@ function Digits() {
       onChange={(e) => scale.to(e.target.valueAsNumber)}
     />
   );
-}
-
-// The form owns the number. Placing a control inside it is not ownership -
-// which is why three of them can disagree about presentation and never
-// about the value.
-export default class Manuscript extends Scale {
-  title = 'Meditations';
-  value = 14;
-  max = 100;
-
-  render() {
-    const { title, value } = this;
-
-    return (
-      <div className="container dial">
-        <h1>Custom Control</h1>
-        <p>
-          Drag the arc. The number lives on the form above it, so the arc, the
-          slider and the input are three views of one field.
-        </p>
-
-        <form className="volume" onSubmit={(e) => e.preventDefault()}>
-          <label>
-            Title
-            <input value={title} onChange={(e) => (this.title = e.target.value)} />
-          </label>
-
-          <Volume />
-
-          <div className="row">
-            <Slider />
-            <Digits />
-          </div>
-
-          <footer>
-            <small>
-              {title}, Volume {roman(value)}
-            </small>
-          </footer>
-        </form>
-      </div>
-    );
-  }
 }
 
 const NUMERALS = [

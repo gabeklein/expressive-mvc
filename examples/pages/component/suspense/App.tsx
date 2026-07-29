@@ -3,7 +3,46 @@ import './App.css';
 import Button from '@common/Button';
 import { Component, get, set } from '@expressive/react';
 
-const wait = (ms: number) => new Promise((done) => setTimeout(done, ms));
+export default () => (
+  <div className="container">
+    <h1>Suspense</h1>
+    <p>
+      Reading a pending property suspends the render. Every Component carries a
+      boundary for it, so <code>fallback</code> is the whole of the wiring.
+    </p>
+    <Demo />
+  </div>
+);
+
+class Demo extends Component {
+  round = 0;
+
+  render() {
+    const { round } = this;
+
+    return (
+      <>
+        <div className="card">
+          <h2>Its own boundary</h2>
+          <Greeter key={`own-${round}`} name="Ada" />
+        </div>
+
+        <div className="card">
+          <h2>Deferred to an ancestor</h2>
+          <Panel key={`panel-${round}`}>
+            <Reader fallback={false} />
+          </Panel>
+        </div>
+
+        {/* An async factory resolves once. Keying the owner is how you ask for
+            a fresh instance, and so for a fresh request. */}
+        <Button primary onClick={() => this.round++}>
+          Ask again
+        </Button>
+      </>
+    );
+  }
+}
 
 // An async `set` factory resolves straight into the field. Reading it while
 // pending suspends the render - no waiting flag, no error state threaded by
@@ -48,39 +87,4 @@ class Reader extends Component {
   }
 }
 
-export default class Demo extends Component {
-  round = 0;
-
-  render() {
-    const { round } = this;
-
-    return (
-      <div className="container">
-        <h1>Suspense</h1>
-        <p>
-          Reading a pending property suspends the render. Every Component
-          carries a boundary for it, so <code>fallback</code> is the whole of
-          the wiring.
-        </p>
-
-        <div className="card">
-          <h2>Its own boundary</h2>
-          <Greeter key={`own-${round}`} name="Ada" />
-        </div>
-
-        <div className="card">
-          <h2>Deferred to an ancestor</h2>
-          <Panel key={`panel-${round}`}>
-            <Reader fallback={false} />
-          </Panel>
-        </div>
-
-        {/* An async factory resolves once. Keying the owner is how you ask for
-            a fresh instance, and so for a fresh request. */}
-        <Button primary onClick={() => this.round++}>
-          Ask again
-        </Button>
-      </div>
-    );
-  }
-}
+const wait = (ms: number) => new Promise((done) => setTimeout(done, ms));

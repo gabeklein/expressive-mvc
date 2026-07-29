@@ -7,12 +7,20 @@ import { Picker } from './Picker';
 
 export default () => (
   <div className="container">
-    <h1>Overrideable Subcomponents</h1>
-    <Split>
-      <FruitPicker />
-      <PalettePicker />
-    </Split>
+    <h1>Subcomponents</h1>
+    <p>
+      A base owns the data and the selection logic; its PascalCase methods are
+      the seams a subclass overrides to change only how things look.
+    </p>
+    <Pickers />
   </div>
+);
+
+const Pickers = () => (
+  <Split>
+    <FruitPicker />
+    <PalettePicker />
+  </Split>
 );
 
 // A plain vertical list. Only Item is overridden - selection behavior
@@ -41,7 +49,7 @@ class PalettePicker extends Picker {
   colors: Record<string, string> = {
     Coral: '#ff6f61',
     Sky: '#4dabf7',
-    Mint: '#51cf66',
+    Mint: '#51cf66'
   };
 
   names = Object.keys(this.colors);
