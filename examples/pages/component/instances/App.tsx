@@ -9,7 +9,8 @@ export default () => (
     <p>
       An activated instance is an element. Hold one as a field and that field
       becomes the switch - assign a different instance and the view swaps, while
-      whatever left the tree keeps its state.
+      whatever left the tree keeps its state. Each panel here is
+      bare-constructed, which makes it nested state the workspace owns.
     </p>
     <Workspace />
     <small>
@@ -20,13 +21,9 @@ export default () => (
 );
 
 class Workspace extends Component {
-  // Bare construction makes each panel nested state this component owns: built
-  // here, activated into this context, and destroyed with it.
   draft = new Panel({ name: 'Draft' });
   review = new Panel({ name: 'Review' });
 
-  // Which one renders. Assigning here neither creates nor destroys a panel, so
-  // switching away is not an unmount in the sense that loses anything.
   active?: Panel = this.draft;
 
   render() {
@@ -46,8 +43,6 @@ class Workspace extends Component {
           <Button onClick={() => (this.active = undefined)}>Close</Button>
         </div>
 
-        {/* An instance placed straight into the tree. It supplies its own key
-            from the readonly `key` field, defaulting to the State uid. */}
         <div className="slot">{active}</div>
       </>
     );

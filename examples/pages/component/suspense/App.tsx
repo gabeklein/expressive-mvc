@@ -7,10 +7,18 @@ export default () => (
   <div className="container">
     <h1>Suspense</h1>
     <p>
-      Reading a pending property suspends the render. Every Component carries a
-      boundary for it, so <code>fallback</code> is the whole of the wiring.
+      An async <code>set</code> factory resolves straight into its field, and
+      reading it while pending suspends the render. Every Component carries a
+      boundary for that, so <code>fallback</code> is the whole of the wiring -
+      there is no <code>&lt;Suspense&gt;</code> anywhere in this file.
     </p>
     <Demo />
+    <small>
+      The second card declines its own boundary with{' '}
+      <code>{'fallback={false}'}</code>, so Panel covers it. That works only
+      because Panel owns the pending value: a boundary rebuilds the subtree it
+      retries, so state owned below would be rebuilt and requested again forever.
+    </small>
   </div>
 );
 
@@ -34,8 +42,8 @@ class Demo extends Component {
           </Panel>
         </div>
 
-        {/* An async factory resolves once. Keying the owner is how you ask for
-            a fresh instance, and so for a fresh request. */}
+        {/* An async factory resolves once, so a fresh request means a fresh
+            instance - which is what keying the owner asks for. */}
         <Button primary onClick={() => this.round++}>
           Ask again
         </Button>
@@ -44,9 +52,6 @@ class Demo extends Component {
   }
 }
 
-// An async `set` factory resolves straight into the field. Reading it while
-// pending suspends the render - no waiting flag, no error state threaded by
-// hand. Compare essentials/fetch, which tracks that lifecycle manually.
 class Greeter extends Component {
   name = 'world';
 
@@ -55,8 +60,6 @@ class Greeter extends Component {
     return `Hello, ${this.name}.`;
   });
 
-  // A Component is its own boundary. This covers whatever its render suspends
-  // on, which is why there is no <Suspense> anywhere in this file.
   fallback = <small>Greeting someone…</small>;
 
   render() {
@@ -64,10 +67,6 @@ class Greeter extends Component {
   }
 }
 
-// Headless, so it draws nothing. It owns the pending value AND the boundary
-// that covers it - the order that matters, because a boundary rebuilds the
-// subtree it retries. State owned below would be reconstructed on every
-// attempt and request again, forever.
 class Panel extends Component {
   farewell = set(async () => {
     await wait(1400);
@@ -77,8 +76,6 @@ class Panel extends Component {
   fallback = <small>The panel is waiting…</small>;
 }
 
-// Declines its own boundary, so the suspension bubbles to Panel. Safe here
-// only because the value it reads lives above that boundary.
 class Reader extends Component {
   panel = get(Panel);
 

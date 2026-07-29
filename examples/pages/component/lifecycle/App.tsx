@@ -7,19 +7,22 @@ export default () => (
   <div className="container">
     <h1>Lifecycle</h1>
     <p>
-      Three seams, three phases: <code>new()</code> at construction,{' '}
-      <code>mount()</code> at commit, <code>ref()</code> when an element
-      attaches. Toggle the probe to watch each one fire and unwind.
+      Three seams, three phases. <code>new()</code> runs at construction,
+      synchronously and during server render too, so it belongs to setup the
+      instance carries with it. <code>mount()</code> runs at commit and only on
+      the client - where timers, listeners and anything reaching for{' '}
+      <code>window</code> go. <code>ref()</code> fires when its element attaches.
     </p>
     <Demo />
+    <small>
+      Toggle the probe to watch each seam fire, then unwind in reverse. The
+      transcript lives on the demo, which outlives the probe writing to it.
+    </small>
   </div>
 );
 
 class Demo extends Component {
   showing = true;
-
-  // An owned list, which is what a transcript is - push to append, clear to
-  // reset. No spread-and-replace to make the write register.
   entries = has<string>();
 
   log(note: string) {
@@ -51,22 +54,16 @@ class Demo extends Component {
 }
 
 class Probe extends Component {
-  // The transcript belongs to the demo, which outlives this probe - so its own
-  // teardown still has somewhere to write.
   demo = get(Demo);
 
   width = 0;
   ticks = 0;
 
-  // Construction. Synchronous, and it runs during server render too, so keep
-  // it to setup that belongs to the instance itself.
   protected new() {
     this.demo.log('new() · constructed');
     return () => this.demo.log('new() cleanup · destroyed');
   }
 
-  // Commit, client only. Timers, listeners and anything reaching for `window`
-  // belong here - never in new().
   mount() {
     this.demo.log('mount() · committed');
 
@@ -83,8 +80,6 @@ class Probe extends Component {
     };
   }
 
-  // A ref fires when its element attaches and cleans up when it detaches -
-  // a third seam, independent of both hooks above.
   box = ref<HTMLDivElement>(() => {
     this.demo.log('ref() · element attached');
     return () => this.demo.log('ref() · element detached');

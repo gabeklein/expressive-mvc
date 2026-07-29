@@ -1,6 +1,5 @@
 import './App.css';
 
-// Arc is the reusable control; Scale is the contract it looks for above it.
 import { Arc } from './Arc';
 import { Scale } from './Scale';
 
@@ -8,16 +7,18 @@ export default () => (
   <div className="container">
     <h1>Custom Control</h1>
     <p>
-      Drag the arc. The number lives on the form above it, so the arc, the
-      slider and the input are three views of one field.
+      Drag the arc, or focus it and use the arrow keys. The number lives on the
+      form above it, so the arc, the slider and the input are three views of one
+      field - and none of them knows the others exist.
     </p>
     <Manuscript />
+    <small>
+      Arc finds the Scale above it and declares <code>children</code> on{' '}
+      <code>render</code>, so the caller decides what sits in the well.
+    </small>
   </div>
 );
 
-// The form owns the number. Placing a control inside it is not ownership -
-// which is why three of them can disagree about presentation and never
-// about the value.
 class Manuscript extends Scale {
   value = 14;
   max = 100;
@@ -27,7 +28,7 @@ class Manuscript extends Scale {
 
     return (
       <form className="volume" onSubmit={(e) => e.preventDefault()}>
-        <Volume />
+        <Arc>{roman(value)}</Arc>
 
         <div className="row">
           <Slider />
@@ -42,17 +43,7 @@ class Manuscript extends Scale {
   }
 }
 
-// Only the well of the arc changes. `Readout` is a subcomponent, so this
-// replaces it outright - overriding `render` would have wrapped the arc.
-class Volume extends Arc {
-  Readout() {
-    return <em>{roman(this.scale.value)}</em>;
-  }
-}
-
-// The plain controls are function components, because nothing about them is
-// worth extending. Both find the same Scale and write the same field.
-function Slider() {
+const Slider = () => {
   const { is: scale, value, min, max } = Scale.get();
 
   return (
@@ -64,9 +55,9 @@ function Slider() {
       onChange={(e) => scale.to(e.target.valueAsNumber)}
     />
   );
-}
+};
 
-function Digits() {
+const Digits = () => {
   const { is: scale, value, min, max } = Scale.get();
 
   return (
@@ -78,7 +69,7 @@ function Digits() {
       onChange={(e) => scale.to(e.target.valueAsNumber)}
     />
   );
-}
+};
 
 const NUMERALS = [
   [100, 'C'],
@@ -92,8 +83,7 @@ const NUMERALS = [
   [1, 'I']
 ] as const;
 
-// 1 through 100 is the range worth dragging: it visits every subtractive
-// pair the notation has below CD - IV, IX, XL, XC.
+// Declared, not an arrow: read by Manuscript above.
 function roman(value: number) {
   let out = '';
 

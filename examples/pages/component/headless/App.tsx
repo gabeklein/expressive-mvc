@@ -7,9 +7,10 @@ export default () => (
   <div className="container">
     <h1>Headless</h1>
     <p>
-      A Component without <code>render()</code> is pure placement: it provides
-      itself to its subtree, owns a lifecycle, and hosts the suspense and error
-      boundaries - all without drawing anything.
+      A Component without <code>render()</code> draws nothing. Children pass
+      through its context provider, which makes placement in the tree the entire
+      feature: it owns a lifecycle and hosts the suspense and error boundaries
+      for everything below it.
     </p>
     <Scopes />
     <small>Same Readout, same class, two scopes - each finds the Ticker above it.</small>
@@ -27,10 +28,6 @@ const Scopes = () => (
   </Split>
 );
 
-// No render(), so this Component contributes no markup at all. Children pass
-// straight through its context provider, which makes placement in the tree the
-// entire feature: everything below reaches it with Ticker.get(), and the two
-// instances above scope to their own subtrees.
 class Ticker extends Component {
   rate = 1000;
   elapsed = 0;
@@ -39,7 +36,6 @@ class Ticker extends Component {
     return (this.elapsed / 1000).toFixed(1);
   }
 
-  // Props are applied before commit, so `rate` is already the one passed in.
   mount() {
     const started = Date.now();
     const timer = setInterval(() => {
@@ -50,8 +46,7 @@ class Ticker extends Component {
   }
 }
 
-// A plain function component, unaware of which Ticker it sits under.
-function Readout() {
+const Readout = () => {
   const { seconds, rate } = Ticker.get();
 
   return (
@@ -60,4 +55,4 @@ function Readout() {
       <small>every {rate}ms</small>
     </div>
   );
-}
+};

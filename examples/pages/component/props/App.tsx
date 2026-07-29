@@ -7,10 +7,17 @@ export default () => (
   <div className="container">
     <h1>Props</h1>
     <p>
-      State fields are optional props. Whoever passes one owns it, because props
-      reapply every render.
+      Every state field is an optional JSX prop, reapplied on each render - so
+      whoever passes one owns it. <code>unit</code> is declared on{' '}
+      <code>render</code> instead, which keeps it out of state and, being
+      non-optional there, makes it a required attribute.
     </p>
     <Dashboard />
+    <small>
+      CPU takes its value from above, so its own buttons only hold until the next
+      render up there reapplies the preset. Disk keeps its own, seeded once by{' '}
+      <code>is</code> at construction.
+    </small>
   </div>
 );
 
@@ -32,22 +39,13 @@ class Dashboard extends Component {
           ))}
         </div>
 
-        {/* `value` arrives from here, so this gauge's own buttons only hold
-            until the next render above - picking a preset reapplies it. */}
         <Gauge label="CPU" value={presets[preset]} unit="%" />
-
-        {/* No `value` prop, so the gauge keeps its own. `is` seeds it once at
-            construction, before new() runs. */}
         <Gauge label="Disk" max={512} step={32} unit=" GB" is={(disk) => (disk.value = 128)} />
       </>
     );
   }
 }
 
-// Every state field below doubles as an optional JSX prop, applied to the
-// instance on each render. `unit` is different: it is declared on render's
-// parameter, so it never joins state - and being non-optional there, it is a
-// required JSX attribute.
 class Gauge extends Component {
   label = 'Metric';
   value = 0;
