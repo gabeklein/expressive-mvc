@@ -1,5 +1,8 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { Navigate, useOutletContext, useParams } from 'react-router';
+
+import CodeLabel from '@/components/CodeLabel';
+
 import type { ExamplesOutletContext } from './layout';
 import { examples, EXAMPLE_LABELS, getFiles, REDIRECT } from './loader';
 
@@ -37,7 +40,9 @@ function SourceListing({ name }: { name: string }) {
 
   return (
     <article className="min-h-0 flex-1 overflow-y-auto">
-      <h1 className="text-2xl font-semibold">{label}</h1>
+      <h1 className="text-2xl font-semibold">
+        <CodeLabel label={EXAMPLE_LABELS[name]} />
+      </h1>
       <p className="mt-2 text-fd-muted-foreground">
         {label} demo built with Expressive MVC - the complete source below
         runs as an editable sandbox when JavaScript is enabled.
