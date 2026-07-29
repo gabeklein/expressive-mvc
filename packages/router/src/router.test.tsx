@@ -2,7 +2,8 @@ import { act } from '@testing-library/react';
 import { describe, expect, it, spyOn } from 'bun:test';
 
 import { browserRouter } from '../test.setup';
-import { Router } from './router';
+import { Context } from '@expressive/mvc';
+import { BrowserRouter, Router } from './router';
 
 describe('Router (headless)', () => {
   it('defaults to root', () => {
@@ -278,5 +279,28 @@ describe('BrowserRouter', () => {
     router.current.set(null);
     expect(remove).toHaveBeenCalledWith('popstate', expect.any(Function));
     remove.mockRestore();
+  });
+
+  it('is a global on the client', () => {
+    expect(Context.root.get(BrowserRouter)).toBe(router.current);
+  });
+
+  it('constructs without a window, and is not global there (server render)', () => {
+    const saved = (globalThis as any).window;
+
+    try {
+      delete (globalThis as any).window;
+
+      const server = BrowserRouter.new();
+
+      expect(server.path).toBe('/');
+      // did not register a global - else it would collide with and evict the
+      // client instance, leaving the lookup ambiguous
+      expect(Context.root.get(BrowserRouter)).toBe(router.current);
+
+      server.set(null);
+    } finally {
+      (globalThis as any).window = saved;
+    }
   });
 });

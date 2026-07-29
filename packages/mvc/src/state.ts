@@ -48,6 +48,16 @@ declare namespace State {
   type Args<T extends State = any> = (Args<T> | Init<T> | Assign<T> | void)[];
 
   /**
+   * Value of `static global`. A boolean opts a State in or out of the
+   * process-global root; a resolver decides at activation, receiving the
+   * instance and returning whether it registers - use it to make the choice
+   * conditional (e.g. per environment). A bare literal (`= true` / `= false`)
+   * seals the choice for subclasses; widen a subclass's `static global` type to
+   * `State.Global` to permit a resolver or a later override.
+   */
+  type Global<T extends State = any> = boolean | ((self: T) => boolean);
+
+  /**
    * State constructor callback - runs during activation, in argument order,
    * before the `new()` lifecycle hook (so it may configure state `new()`
    * will observe). Returned function will run when state is destroyed.
@@ -180,6 +190,19 @@ declare namespace State {
 }
 
 abstract class State {
+  /**
+   * Whether an instance activated with no enclosing context registers itself
+   * to the process-global root, where `get()` can resolve it from anywhere.
+   * `false` (the default) keeps a context-less instance fully functional but
+   * private - not injectable, though it can still read declared globals. Opt in
+   * with `static readonly global = true`; a resolver (see {@link State.Global})
+   * makes the choice conditional. It must be declared per class - a subclass
+   * that would inherit a global without its own declaration throws on
+   * activation, so an accidental global (a forgotten `Provider`, an extended
+   * global) cannot leak into the shared root.
+   */
+  static readonly global: State.Global = false;
+
   /**
    * Loopback to instance of this state. This is useful when in a subscribed context,
    * to keep write access to `this` after a destructure. You can use it to read variables silently as well.
@@ -498,7 +521,19 @@ function init(state: State, ...args: State.Args) {
   }
 
   function register() {
-    if (Context.get(state) === Context.root) return Context.root.add(state);
+    if (Context.get(state) !== Context.root) return;
+
+    const type = state.constructor as typeof State;
+    const g = type.global;
+
+    if (!(typeof g == 'function' ? g(state) : g)) return;
+
+    if (!Object.prototype.hasOwnProperty.call(type, 'global'))
+      throw new Error(
+        `${state} would register as a global by inheritance alone - re-declare \`static global\` on ${type.name} (\`true\` to keep it, \`false\` to opt out).`
+      );
+
+    return Context.root.add(state);
   }
 
   listener(state, () => {

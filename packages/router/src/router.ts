@@ -1,8 +1,15 @@
-import { Component, map } from '@expressive/mvc';
+import { Component, map, State } from '@expressive/mvc';
 import { listener } from '@expressive/mvc/observable';
 
 import { Route } from './route';
 import { Match, fillPath, fullPattern, matchPattern, patternSegment } from './url';
+
+/**
+ * Global only on the client. On the server there is no shared singleton, so a
+ * per-request `path`/`query` can't bleed across requests; provide a `Router`
+ * per-request (via `<Provider>`) to render a specific path there.
+ */
+const clientOnly: State.Global = () => typeof window !== 'undefined';
 
 /**
  * Headless router core: matching plus an in-memory `path` and history stack.
@@ -12,6 +19,10 @@ import { Match, fillPath, fullPattern, matchPattern, patternSegment } from './ur
  * either way.
  */
 export class Router extends Component {
+  /** The default router: a client-side singleton a `Route` resolves when no
+   * ambient `Router` is provided. See {@link clientOnly}. */
+  static readonly global = clientOnly;
+
   path = '/';
 
   /**
@@ -123,7 +134,9 @@ export class Router extends Component {
 
 /** Binds the headless core to `window.location`, syncing `path`/`query` on navigation. */
 export class BrowserRouter extends Router {
-  path = window.location.pathname;
+  static readonly global = clientOnly;
+
+  path = typeof window == 'undefined' ? '/' : window.location.pathname;
 
   goto(to: string, replace = false) {
     assertAbsolute(to);
@@ -141,6 +154,8 @@ export class BrowserRouter extends Router {
   }
 
   protected new() {
+    if (typeof window == 'undefined') return () => {};
+
     const sync = () => {
       this.locate(window.location.pathname + window.location.search);
     };

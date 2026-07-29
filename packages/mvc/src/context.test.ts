@@ -1190,9 +1190,11 @@ it('will skip consumer if filter does not match downstream', () => {
 describe('root global', () => {
   const { root } = Context;
 
-  class Global extends State {}
+  class Global extends State {
+    static readonly global: State.Global = true;
+  }
 
-  it('will register .new() instance as implicit in root', () => {
+  it('will register a global .new() instance in root', () => {
     const instance = Global.new();
 
     expect(root.get(Global)).toBe(instance);
@@ -1200,6 +1202,115 @@ describe('root global', () => {
     instance.set(null);
 
     expect(root.get(Global, false)).toBeUndefined();
+  });
+
+  it('will throw when a subclass inherits global without re-declaring', () => {
+    class Sub extends Global {}
+
+    expect(() => Sub.new()).toThrow(
+      /would register as a global by inheritance alone/
+    );
+  });
+
+  it('will register when a subclass re-declares global', () => {
+    class Sub extends Global {
+      static readonly global = true;
+    }
+
+    const instance = Sub.new();
+
+    expect(root.get(Sub)).toBe(instance);
+
+    instance.set(null);
+  });
+
+  it('will allow a subclass to opt out of a global', () => {
+    class Sub extends Global {
+      static readonly global = false;
+    }
+
+    const instance = Sub.new();
+
+    expect(root.get(Sub, false)).toBeUndefined();
+
+    instance.set(null);
+  });
+
+  it('will resolve global from a function at activation', () => {
+    let allow = false;
+
+    class Conditional extends State {
+      static readonly global: State.Global = () => allow;
+    }
+
+    const off = Conditional.new();
+    expect(root.get(Conditional, false)).toBeUndefined();
+    off.set(null);
+
+    allow = true;
+
+    const on = Conditional.new();
+    expect(root.get(Conditional)).toBe(on);
+    on.set(null);
+  });
+
+  it('will pass the instance to a global resolver', () => {
+    class Instanced extends State {
+      persistent = true;
+      static readonly global: State.Global<Instanced> = (self) => self.persistent;
+    }
+
+    const instance = Instanced.new();
+
+    expect(root.get(Instanced)).toBe(instance);
+
+    instance.set(null);
+  });
+
+  it('will enforce global inheritance through static types', () => {
+    void function () {
+      class SealedGlobal extends State {
+        static readonly global = true;
+      }
+      class Floor extends State {
+        static readonly global = false;
+      }
+
+      // @ts-expect-error - cannot opt out of a sealed (literal true) global
+      class OptOut extends SealedGlobal {
+        static readonly global = false;
+      }
+
+      // @ts-expect-error - cannot opt in against a literal-false floor
+      class OptIn extends Floor {
+        static readonly global = true;
+      }
+
+      // widening permits an override
+      class Open extends State {
+        static readonly global: State.Global = true;
+      }
+      class Scoped extends Open {
+        static readonly global = false;
+      }
+
+      return [OptOut, OptIn, Scoped];
+    };
+  });
+
+  it('will not register a context-less instance by default', () => {
+    class Private extends State {
+      value = 1;
+    }
+
+    const instance = Private.new();
+
+    expect(root.get(Private, false)).toBeUndefined();
+
+    instance.value = 2;
+    expect(instance.value).toBe(2);
+
+    instance.set(null);
   });
 
   it('will lock state ownership to root after init', () => {
@@ -1217,7 +1328,9 @@ describe('root global', () => {
   });
 
   it('will evict prior and reject new on implicit collision', () => {
-    class Multi extends State {}
+    class Multi extends State {
+      static global = true;
+    }
 
     const first = Multi.new();
 
@@ -1234,8 +1347,12 @@ describe('root global', () => {
 
   it('will preserve subtype entries on eviction', () => {
     class Base extends State {}
-    class SubA extends Base {}
-    class SubB extends Base {}
+    class SubA extends Base {
+      static global = true;
+    }
+    class SubB extends Base {
+      static global = true;
+    }
 
     const a = SubA.new();
 
@@ -1255,9 +1372,15 @@ describe('root global', () => {
 
   it('will register fresh sibling cleanly after ancestor eviction', () => {
     class Base extends State {}
-    class SubA extends Base {}
-    class SubB extends Base {}
-    class SubC extends Base {}
+    class SubA extends Base {
+      static global = true;
+    }
+    class SubB extends Base {
+      static global = true;
+    }
+    class SubC extends Base {
+      static global = true;
+    }
 
     const a = SubA.new();
     const b = SubB.new();
@@ -1291,7 +1414,9 @@ describe('root global', () => {
 
   it('will not apply global eviction to explicit add', () => {
     class Base extends State {}
-    class SubA extends Base {}
+    class SubA extends Base {
+      static global = true;
+    }
     class SubB extends Base {}
 
     const a = SubA.new();
