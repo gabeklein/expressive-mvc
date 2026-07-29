@@ -7,6 +7,8 @@ import type {
 } from './protocol';
 
 export interface SandboxTs {
+  /** Resolves once the worker's language service has loaded its libs. */
+  whenReady: Promise<void>;
   sync(files: Record<string, string>): void;
   complete(
     path: string,
@@ -58,9 +60,10 @@ export function createSandboxTs(files: Record<string, string>): SandboxTs {
       worker.postMessage({ ...command, id });
     });
 
-  void send({ kind: 'init', files });
+  const whenReady = send({ kind: 'init', files }).then(() => undefined);
 
   return {
+    whenReady,
     sync(files) {
       void send({ kind: 'sync', files });
     },

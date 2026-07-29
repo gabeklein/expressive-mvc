@@ -5,7 +5,12 @@ import {
   type CompletionResult,
 } from '@codemirror/autocomplete';
 import type { Extension } from '@codemirror/state';
-import { hoverTooltip, tooltips, type Tooltip } from '@codemirror/view';
+import {
+  EditorView,
+  hoverTooltip,
+  tooltips,
+  type Tooltip,
+} from '@codemirror/view';
 
 import type { SandboxTs } from './client';
 
@@ -105,6 +110,15 @@ export function intellisense(
     // the preview instead. Absolute, not the default fixed - fixed sends Safari
     // down a measure-and-reflip kludge in CodeMirror's positioning code.
     tooltips({ position: 'absolute', parent: document.body }),
+    // Warm the worker the moment the editor is focused, so its multi-second
+    // first-load (worker chunk + CDN libs) overlaps with the user reading and
+    // typing rather than stalling the first completion.
+    EditorView.domEventHandlers({
+      focus() {
+        getClient();
+        return false;
+      },
+    }),
     autocompletion({ override: [complete] }),
     hover,
   ];
