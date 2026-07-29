@@ -39,9 +39,9 @@ Object.assign(Runtime, {
 });
 
 // No DOM implies a server render, where the shared root context is reused
-// across requests; seal root-registered states so they cannot accept
-// per-request mutation and bleed between them.
-Context.sealing = typeof window === 'undefined';
+// across requests; flag it so a context-less non-global (usually a missing
+// per-request Provider) warns on activation.
+Context.server = typeof window === 'undefined';
 
 export { State, State as default, use, Consumer, Provider } from './adapter';
 export { Component, Context, def, get, ref, set } from '@expressive/mvc';

@@ -12,6 +12,6 @@ Previously any `State.new()` activated outside a Provider registered itself into
 
 `global` is not inherited. A subclass of a global that does not itself declare `static global` throws on activation, so a class never becomes global merely by extending one — each opts in (or out with `static global = false`) explicitly. Using a global class inside a `<Provider>` scopes it to that context and never touches the root, so a process-wide default (e.g. `BrowserRouter`) can still be provided per-request.
 
-During a server render (`Context.sealing`), a context-less non-global logs a one-time dev-only warning naming the fix, since it most often means a missing Provider. Declared globals continue to register and are sealed read-only on the server, exactly as before.
+During a server render, a context-less non-global logs a one-time dev-only warning naming the fix, since it most often means a missing Provider. A declared global is intentional and long-lived — process-wide, mutable, shared across requests — so it is left alone; keep request-specific data out of it and in a `<Provider>` instead.
 
 `@expressive/router`'s `Router` now declares `static global = true`, preserving the default single-router behavior under the new rule; an app that navigates during server render should provide its own `Router` per-request.
