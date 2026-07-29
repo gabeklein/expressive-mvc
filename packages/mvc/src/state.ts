@@ -55,7 +55,7 @@ declare namespace State {
    * seals the choice for subclasses; widen a subclass's `static global` type to
    * `State.Global` to permit a resolver or a later override.
    */
-  type Global<T extends State = State> = boolean | ((self: T) => boolean);
+  type Global<T extends State = any> = boolean | ((self: T) => boolean);
 
   /**
    * State constructor callback - runs during activation, in argument order,
@@ -196,10 +196,12 @@ abstract class State {
    * `false` (the default) keeps a context-less instance fully functional but
    * private - not injectable, though it can still read declared globals. Opt in
    * with `static readonly global = true`; a resolver (see {@link State.Global})
-   * makes the choice conditional. Declaring it is deliberate, so an accidental
-   * global (e.g. a forgotten `Provider`) cannot leak into the shared root.
+   * makes the choice conditional. It must be declared per class - a subclass
+   * that would inherit a global without its own declaration throws on
+   * activation, so an accidental global (a forgotten `Provider`, an extended
+   * global) cannot leak into the shared root.
    */
-  static readonly global: State.Global<any> = false;
+  static readonly global: State.Global = false;
 
   /**
    * Loopback to instance of this state. This is useful when in a subscribed context,
@@ -521,10 +523,17 @@ function init(state: State, ...args: State.Args) {
   function register() {
     if (Context.get(state) !== Context.root) return;
 
-    const g = (state.constructor as typeof State).global;
+    const type = state.constructor as typeof State;
+    const g = type.global;
 
-    if (typeof g == 'function' ? g(state) : g)
-      return Context.root.add(state);
+    if (!(typeof g == 'function' ? g(state) : g)) return;
+
+    if (!Object.prototype.hasOwnProperty.call(type, 'global'))
+      throw new Error(
+        `${state} would register as a global by inheritance alone - re-declare \`static global\` on ${type.name} (\`true\` to keep it, \`false\` to opt out).`
+      );
+
+    return Context.root.add(state);
   }
 
   listener(state, () => {

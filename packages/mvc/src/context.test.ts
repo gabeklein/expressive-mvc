@@ -1191,7 +1191,7 @@ describe('root global', () => {
   const { root } = Context;
 
   class Global extends State {
-    static readonly global = true;
+    static readonly global: State.Global = true;
   }
 
   it('will register a global .new() instance in root', () => {
@@ -1204,8 +1204,18 @@ describe('root global', () => {
     expect(root.get(Global, false)).toBeUndefined();
   });
 
-  it('will inherit global to a subclass', () => {
+  it('will throw when a subclass inherits global without re-declaring', () => {
     class Sub extends Global {}
+
+    expect(() => Sub.new()).toThrow(
+      /would register as a global by inheritance alone/
+    );
+  });
+
+  it('will register when a subclass re-declares global', () => {
+    class Sub extends Global {
+      static readonly global = true;
+    }
 
     const instance = Sub.new();
 
@@ -1214,11 +1224,8 @@ describe('root global', () => {
     instance.set(null);
   });
 
-  it('will allow a subclass to opt out of a widened global', () => {
-    class Open extends State {
-      static readonly global: State.Global = true;
-    }
-    class Sub extends Open {
+  it('will allow a subclass to opt out of a global', () => {
+    class Sub extends Global {
       static readonly global = false;
     }
 

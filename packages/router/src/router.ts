@@ -1,4 +1,4 @@
-import { Component, map } from '@expressive/mvc';
+import { Component, map, State } from '@expressive/mvc';
 import { listener } from '@expressive/mvc/observable';
 
 import { Route } from './route';
@@ -14,11 +14,11 @@ import { Match, fillPath, fullPattern, matchPattern, patternSegment } from './ur
 export class Router extends Component {
   /**
    * The default router is a process-wide singleton: a `Route` with no ambient
-   * `Router` resolves this shared one (subclasses, incl. `BrowserRouter`,
-   * inherit this). A request that needs its own path should provide a `Router`
+   * `Router` resolves this shared one. Widened so subclasses may re-declare or
+   * opt out; a request that needs its own path should provide a `Router`
    * per-request via `<Provider>`.
    */
-  static readonly global = true;
+  static readonly global: State.Global = true;
 
   path = '/';
 
@@ -131,6 +131,8 @@ export class Router extends Component {
 
 /** Binds the headless core to `window.location`, syncing `path`/`query` on navigation. */
 export class BrowserRouter extends Router {
+  static readonly global: State.Global = true;
+
   path = typeof window == 'undefined' ? '/' : window.location.pathname;
 
   goto(to: string, replace = false) {

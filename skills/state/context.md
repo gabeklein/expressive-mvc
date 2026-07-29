@@ -15,12 +15,14 @@ A State's home is assigned at activation and is permanent. It's recorded in a si
 
 > First-wins: once a state has a home, no later context can transfer ownership.
 
+> A bare `State.new()` resolves its `get()` lookups against root either way, but it only *registers* into root - becoming findable by others - when the class opts in with `static global`. See [Root Context](#root-context).
+
 ### Construct vs Activate
 
 The escape hatch for "create now, place in context later" is the difference between `new State()` and `State.new()`:
 
 ```ts
-// .new() activates immediately - home is root, locked
+// .new() activates immediately - home resolves to root, locked
 const a = MyState.new(); // post init
 new Context(a); // does NOT change a's home
 
@@ -49,34 +51,59 @@ Recursive: grandchildren inherit through their immediate parent. Reassigning a c
 
 ## Root Context
 
-`Context.root` is a global registry. Any state activated via `State.new()` outside an explicit context lands here.
+`Context.root` is the process-global registry, and `Context.get(state)` falls back to it when a state has no recorded home. A State *reads* from root either way, but it only *registers* into root - becoming findable by others via `get(Type)` - when it opts in with `static global`.
 
 ```ts
-const a = MyState.new();
-Context.root.get(MyState); // a
+class Flags extends State {
+  static readonly global = true;
+}
+Flags.new();
+Context.root.get(Flags); // the instance
+
+class Private extends State {}
+Private.new();
+Context.root.get(Private, false); // undefined - private, not a global
 ```
 
-`Context.root` is a regular `Context` instance (mutable static), and `Context.get(state)` falls back to it when a state has no recorded home.
+### Declaring a global
+
+`static global` is `readonly` and typed `State.Global` - a boolean, or a resolver `(self) => boolean` evaluated at activation (after props apply) to decide per instance or environment.
+
+| Declaration                                       | Meaning                                                        |
+| ------------------------------------------------- | -------------------------------------------------------------- |
+| *(none)*                                          | private - reads globals, isn't one                             |
+| `static readonly global = true`                   | global, **sealed** - subclasses inherit the type, can't opt out|
+| `static readonly global = false`                  | not global, a **lockout** - subclasses can't opt in            |
+| `static readonly global: State.Global = true`     | global, but subclasses may re-declare or opt out               |
+| `static readonly global: State.Global = self => …`| conditional - e.g. `() => typeof window !== 'undefined'`        |
+
+Two rules keep a global deliberate:
+
+- **Re-declare on extend (runtime).** A subclass that would be global purely by inheriting a `true` throws on activation; it must re-declare (`true` to keep it, `false` to opt out). Checked only where the instance would actually register at root - a `<Provider>`-scoped one never trips it.
+- **Lockout (compile-time).** A bare-literal `false` makes TypeScript reject a subclass `= true` (`TS2417`). Best-effort: a subclass escapes with a resolver (`static global = (() => true) as any`) or a wide cast - the sanctioned "I'm overriding the vendor" move. A plain `any`-cast boolean cannot.
+
+Global status is irrelevant to a context-claimed State: an instance provided by a `<Provider>` (or any explicit context) never consults `global`.
 
 ### Global Collision
 
-Two **implicit** instances of the same type in root mutually evict at the contested ancestor:
+Two global instances of the same type in root mutually evict at the contested ancestor:
 
 ```ts
-const a = Sub.new();
+const a = Sub.new(); // Sub declares `static global`
 const b = Sub.new();
 Context.root.get(Sub, false); // undefined - both evicted
 ```
 
-Read this as "implicit collision is opt-out from global" - if you create two, neither is the global instance. A third `Sub.new()` would re-claim global status (the empty contested set is reclaimable).
+Read this as "a collision is opt-out from global" - if you create two, neither is the global instance. A third `Sub.new()` would re-claim global status (the empty contested set is reclaimable).
 
 ### Subtype Preservation
 
 Eviction is per-ancestor. Sibling subtypes only collide at their shared supertype - subtype lookups remain unambiguous:
 
 ```ts
-class SubA extends Base {}
-class SubB extends Base {}
+// Base is a widened global; each subtype re-declares (required on extend)
+class SubA extends Base { static readonly global = true; }
+class SubB extends Base { static readonly global = true; }
 
 const a = SubA.new();
 const b = SubB.new();
@@ -88,10 +115,10 @@ Context.root.get(SubB);        // b - unambiguous at SubB
 
 ### Explicit Bypass
 
-Explicit registration (`new Context(state)`, `ctx.add(state, true)`, JSX `Provider`) bypasses global eviction. Implicit and explicit entries coexist; explicit wins priority on lookup.
+Explicit registration (`new Context(state)`, `ctx.add(state, true)`, JSX `Provider`) bypasses global eviction. Global and explicit entries coexist; explicit wins priority on lookup.
 
 ```ts
-const a = Sub.new();          // implicit in root
+const a = Sub.new();          // global, in root
 const b = new Sub();
 Context.root.add(b, true);    // explicit, no eviction
 
