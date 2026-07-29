@@ -10,6 +10,9 @@ import { cp, readFile } from 'fs/promises';
 export default defineConfig({
   optimizeDeps: {
     include: [
+      '@codemirror/autocomplete',
+      '@codemirror/state',
+      '@codemirror/view',
       '@codesandbox/sandpack-react',
       'lucide-react',
       'next-themes',
