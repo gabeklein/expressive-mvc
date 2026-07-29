@@ -106,10 +106,11 @@ export function intellisense(
 
   return [
     // Tooltips default to living inside the editor, where they stretch its
-    // scrollable area and get clipped at its edge; in <body> they float over
-    // the preview instead. Absolute, not the default fixed - fixed sends Safari
-    // down a measure-and-reflip kludge in CodeMirror's positioning code.
-    tooltips({ position: 'absolute', parent: document.body }),
+    // scrollable area and get clipped at its edge. Float them at the document
+    // root instead: <body> hosts the app's own stacking context, which paints
+    // over any tooltip parented there - parenting to <html> escapes it. Absolute,
+    // not fixed - fixed sends Safari into a measure-and-reflip flicker.
+    tooltips({ position: 'absolute', parent: document.documentElement }),
     // Warm the worker the moment the editor is focused, so its multi-second
     // first-load (worker chunk + CDN libs) overlaps with the user reading and
     // typing rather than stalling the first completion.
