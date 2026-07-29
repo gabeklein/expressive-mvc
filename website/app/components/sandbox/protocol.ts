@@ -16,7 +16,8 @@ export type Request = Command & { id: number };
 
 export interface Response {
   id: number;
-  result: unknown;
+  result?: unknown;
+  error?: string;
 }
 
 export interface CompletionEntry {

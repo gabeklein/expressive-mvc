@@ -43,42 +43,75 @@ export function createSandboxTs(files: Record<string, string>): SandboxTs {
   );
 
   let seq = 0;
-  const pending = new Map<number, (value: unknown) => void>();
+  const pending = new Map<
+    number,
+    { resolve: (value: unknown) => void; reject: (error: Error) => void }
+  >();
+
+  const failAll = (error: Error) => {
+    for (const { reject } of pending.values()) reject(error);
+    pending.clear();
+  };
 
   worker.addEventListener('message', ({ data }: MessageEvent<Response>) => {
-    const resolve = pending.get(data.id);
-    if (resolve) {
-      pending.delete(data.id);
-      resolve(data.result);
-    }
+    const slot = pending.get(data.id);
+    if (!slot) return;
+    pending.delete(data.id);
+    if (data.error) slot.reject(new Error(data.error));
+    else slot.resolve(data.result);
   });
 
+  // A worker that dies (load error, crash) would otherwise leave every caller
+  // hanging forever; reject them so failures surface instead of stalling.
+  worker.addEventListener('error', (e) =>
+    failAll(new Error(e.message || 'sandbox language-service worker error')),
+  );
+  worker.addEventListener('messageerror', () =>
+    failAll(new Error('sandbox language-service message error')),
+  );
+
   const send = <T>(command: Command): Promise<T> =>
-    new Promise<T>((resolve) => {
+    new Promise<T>((resolve, reject) => {
       const id = ++seq;
-      pending.set(id, resolve as (value: unknown) => void);
+      pending.set(id, {
+        resolve: resolve as (value: unknown) => void,
+        reject,
+      });
       worker.postMessage({ ...command, id });
     });
 
-  const whenReady = send({ kind: 'init', files }).then(() => undefined);
+  // A failed language service should degrade to "no completions", never a
+  // hang or an unhandled rejection - callers treat null as "nothing to offer".
+  const safe = <T>(command: Command): Promise<T | null> =>
+    send<T>(command).catch((error) => {
+      console.warn('[sandbox] IntelliSense request failed:', error);
+      return null;
+    });
+
+  const whenReady = send({ kind: 'init', files }).then(
+    () => undefined,
+    (error) => {
+      console.warn('[sandbox] IntelliSense failed to start:', error);
+    },
+  );
 
   return {
     whenReady,
     sync(files) {
-      void send({ kind: 'sync', files });
+      void safe({ kind: 'sync', files });
     },
     complete(path, code, pos) {
-      return send({ kind: 'complete', path, code, pos });
+      return safe({ kind: 'complete', path, code, pos });
     },
     details(path, pos, name, source, data) {
-      return send({ kind: 'details', path, pos, name, source, data });
+      return safe({ kind: 'details', path, pos, name, source, data });
     },
     quickInfo(path, code, pos) {
-      return send({ kind: 'quickInfo', path, code, pos });
+      return safe({ kind: 'quickInfo', path, code, pos });
     },
     dispose() {
       worker.terminate();
-      pending.clear();
+      failAll(new Error('sandbox language service disposed'));
     },
   };
 }

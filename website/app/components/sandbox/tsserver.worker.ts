@@ -35,36 +35,34 @@ function feed(env: TsEnv['env'], path: string, code: string) {
   else env.createFile(path, code);
 }
 
-ctx.onmessage = async ({ data: msg }: MessageEvent<Command & { id: number }>) => {
+async function handle(msg: Command): Promise<unknown> {
   if (msg.kind === 'init') {
     ready = createTsEnv(msg.files);
     await ready;
-    ctx.postMessage({ id: msg.id, result: true });
-    return;
+    return true;
   }
 
   const holder = await ready;
-  let result: unknown = null;
+  if (!holder) return null;
 
-  if (holder) {
-    const { env } = holder;
-    const service = env.languageService;
+  const { env } = holder;
+  const service = env.languageService;
 
-    switch (msg.kind) {
-      case 'sync':
-        holder.sync(msg.files);
-        break;
+  switch (msg.kind) {
+    case 'sync':
+      holder.sync(msg.files);
+      return null;
 
-      case 'complete': {
-        feed(env, msg.path, msg.code);
+    case 'complete': {
+      feed(env, msg.path, msg.code);
 
-        const info = service.getCompletionsAtPosition(msg.path, msg.pos, {
-          includeCompletionsForModuleExports: true,
-          includeCompletionsWithInsertText: true,
-        });
+      const info = service.getCompletionsAtPosition(msg.path, msg.pos, {
+        includeCompletionsForModuleExports: true,
+        includeCompletionsWithInsertText: true,
+      });
 
-        if (info)
-          result = {
+      return info
+        ? {
             replacement: info.optionalReplacementSpan && {
               start: info.optionalReplacementSpan.start,
               length: info.optionalReplacementSpan.length,
@@ -75,44 +73,52 @@ ctx.onmessage = async ({ data: msg }: MessageEvent<Command & { id: number }>) =>
               source: entry.source,
               data: entry.data,
             })),
-          };
-        break;
-      }
+          }
+        : null;
+    }
 
-      case 'details': {
-        const detail = service.getCompletionEntryDetails(
-          msg.path,
-          msg.pos,
-          msg.name,
-          undefined,
-          msg.source,
-          undefined,
-          msg.data as ts.CompletionEntryData | undefined,
-        );
+    case 'details': {
+      const detail = service.getCompletionEntryDetails(
+        msg.path,
+        msg.pos,
+        msg.name,
+        undefined,
+        msg.source,
+        undefined,
+        msg.data as ts.CompletionEntryData | undefined,
+      );
 
-        if (detail)
-          result = {
+      return detail
+        ? {
             display: ts.displayPartsToString(detail.displayParts),
             documentation: ts.displayPartsToString(detail.documentation),
-          };
-        break;
-      }
+          }
+        : null;
+    }
 
-      case 'quickInfo': {
-        feed(env, msg.path, msg.code);
+    case 'quickInfo': {
+      feed(env, msg.path, msg.code);
 
-        const quick = service.getQuickInfoAtPosition(msg.path, msg.pos);
+      const quick = service.getQuickInfoAtPosition(msg.path, msg.pos);
 
-        if (quick?.displayParts?.length)
-          result = {
+      return quick?.displayParts?.length
+        ? {
             display: ts.displayPartsToString(quick.displayParts),
             documentation: ts.displayPartsToString(quick.documentation),
             span: { start: quick.textSpan.start, length: quick.textSpan.length },
-          };
-        break;
-      }
+          }
+        : null;
     }
   }
+}
 
-  ctx.postMessage({ id: msg.id, result });
+ctx.onmessage = async ({ data: msg }: MessageEvent<Command & { id: number }>) => {
+  try {
+    ctx.postMessage({ id: msg.id, result: await handle(msg) });
+  } catch (error) {
+    ctx.postMessage({
+      id: msg.id,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
 };
