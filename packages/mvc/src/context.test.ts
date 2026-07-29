@@ -1190,9 +1190,11 @@ it('will skip consumer if filter does not match downstream', () => {
 describe('root global', () => {
   const { root } = Context;
 
-  class Global extends State {}
+  class Global extends State {
+    static global = true;
+  }
 
-  it('will register .new() instance as implicit in root', () => {
+  it('will register a global .new() instance in root', () => {
     const instance = Global.new();
 
     expect(root.get(Global)).toBe(instance);
@@ -1200,6 +1202,21 @@ describe('root global', () => {
     instance.set(null);
 
     expect(root.get(Global, false)).toBeUndefined();
+  });
+
+  it('will not register a context-less instance by default', () => {
+    class Private extends State {
+      value = 1;
+    }
+
+    const instance = Private.new();
+
+    expect(root.get(Private, false)).toBeUndefined();
+
+    instance.value = 2;
+    expect(instance.value).toBe(2);
+
+    instance.set(null);
   });
 
   it('will lock state ownership to root after init', () => {
@@ -1217,7 +1234,9 @@ describe('root global', () => {
   });
 
   it('will evict prior and reject new on implicit collision', () => {
-    class Multi extends State {}
+    class Multi extends State {
+      static global = true;
+    }
 
     const first = Multi.new();
 
@@ -1233,7 +1252,9 @@ describe('root global', () => {
   });
 
   it('will preserve subtype entries on eviction', () => {
-    class Base extends State {}
+    class Base extends State {
+      static global = true;
+    }
     class SubA extends Base {}
     class SubB extends Base {}
 
@@ -1254,7 +1275,9 @@ describe('root global', () => {
   });
 
   it('will register fresh sibling cleanly after ancestor eviction', () => {
-    class Base extends State {}
+    class Base extends State {
+      static global = true;
+    }
     class SubA extends Base {}
     class SubB extends Base {}
     class SubC extends Base {}
@@ -1290,7 +1313,9 @@ describe('root global', () => {
   });
 
   it('will not apply global eviction to explicit add', () => {
-    class Base extends State {}
+    class Base extends State {
+      static global = true;
+    }
     class SubA extends Base {}
     class SubB extends Base {}
 

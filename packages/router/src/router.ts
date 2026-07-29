@@ -12,6 +12,13 @@ import { Match, fillPath, fullPattern, matchPattern, patternSegment } from './ur
  * either way.
  */
 export class Router extends Component {
+  /**
+   * The default router is a process-wide singleton: a `Route` with no ambient
+   * `Router` resolves this shared one. During server render it is sealed, so a
+   * request that must navigate should provide its own `Router` per-request.
+   */
+  static global = true;
+
   path = '/';
 
   /**

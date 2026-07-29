@@ -693,6 +693,7 @@ describe('HMR', () => {
 
 describe('root global', () => {
   class Global extends State {
+    static global = true;
     value = 'root';
   }
 

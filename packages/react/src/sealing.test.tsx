@@ -12,8 +12,24 @@ describe('sealing', () => {
     expect(Context.sealing).toBe(false);
   });
 
-  it('will seal a root instance while sealing', () => {
+  it('will seal a global root instance while sealing', () => {
     mockWarn();
+    Context.sealing = true;
+
+    class Store extends State {
+      static global = true;
+      value = 1;
+    }
+
+    const state = Store.new();
+
+    state.value = 2;
+
+    expect(state.value).toBe(1);
+  });
+
+  it('will not seal a context-less non-global while sealing', () => {
+    const warn = mockWarn();
     Context.sealing = true;
 
     class Store extends State {
@@ -24,7 +40,10 @@ describe('sealing', () => {
 
     state.value = 2;
 
-    expect(state.value).toBe(1);
+    expect(state.value).toBe(2);
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining('activated during server render with no context')
+    );
   });
 
   it('will not seal a use() instance while sealing', async () => {

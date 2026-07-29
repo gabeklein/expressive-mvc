@@ -184,6 +184,16 @@ declare namespace State {
 
 abstract class State {
   /**
+   * When `true`, an instance activated with no enclosing context registers
+   * itself to the process-global root, where `get()` can resolve it from
+   * anywhere. Left `false`, a context-less instance is still fully functional
+   * but private - not injectable, and never shared across server-render
+   * requests. Declaring a global is opt-in so an accidental one (e.g. a
+   * forgotten `Provider`) cannot silently leak into the shared root.
+   */
+  static global = false;
+
+  /**
    * Loopback to instance of this state. This is useful when in a subscribed context,
    * to keep write access to `this` after a destructure. You can use it to read variables silently as well.
    **/
@@ -501,7 +511,19 @@ function init(state: State, ...args: State.Args) {
   }
 
   function register() {
-    if (Context.get(state) === Context.root) return Context.root.add(state);
+    if (Context.get(state) !== Context.root) return;
+
+    if ((state.constructor as typeof State).global)
+      return Context.root.add(state);
+
+    if (
+      Context.sealing &&
+      typeof process !== 'undefined' &&
+      process.env.NODE_ENV !== 'production'
+    )
+      console.warn(
+        `${state} activated during server render with no context. It will not be shared - scope it per-request with a <Provider>, or mark it \`static global = true\` if a process-wide singleton is intended.`
+      );
   }
 
   listener(state, () => {
