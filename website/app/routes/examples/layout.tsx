@@ -160,15 +160,7 @@ function Navigation({ open, onClose }: { open: boolean; onClose: () => void }) {
                 className={`${isOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'} grid transition-[grid-template-rows,opacity] duration-200 ease-out motion-reduce:transition-none`}>
                 <div className="ml-2.5 flex min-h-0 flex-col gap-0.5 overflow-hidden border-l border-fd-border">
                   {(group.children ?? []).map((e) => (
-                    <ExampleLink
-                      key={e.slug}
-                      path={e.path}
-                      label={e.label}
-                      onNavigate={() => {
-                        if (window.matchMedia('(max-width: 1279px)').matches)
-                          onClose();
-                      }}
-                    />
+                    <ExampleLink key={e.slug} path={e.path} label={e.label} />
                   ))}
                 </div>
               </div>
@@ -188,19 +180,10 @@ function useActiveGroup() {
   )?.slug;
 }
 
-function ExampleLink({
-  path,
-  label,
-  onNavigate,
-}: {
-  path: string;
-  label: string;
-  onNavigate: () => void;
-}) {
+function ExampleLink({ path, label }: { path: string; label: string }) {
   return (
     <NavLink
       to={`/examples/${path}`}
-      onClick={onNavigate}
       className="group -ml-px rounded-r-sm border-l-2 border-l-transparent py-1.5 px-3 text-sm no-underline text-fd-muted-foreground select-none whitespace-nowrap hover:border-l-fd-muted-foreground hover:bg-fd-muted hover:text-fd-foreground aria-[current=page]:border-l-(--accent) aria-[current=page]:bg-[color-mix(in_srgb,var(--accent)_14%,transparent)] aria-[current=page]:text-(--accent)">
       <CodeLabel
         label={label}
