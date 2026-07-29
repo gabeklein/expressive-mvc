@@ -18,7 +18,6 @@ import {
   useMemo,
   useRef,
   useState,
-  useSyncExternalStore,
 } from 'react';
 import { createPortal } from 'react-dom';
 
@@ -138,9 +137,6 @@ export default function Sandbox({
 
   const ts = useMemo(() => {
     let client: SandboxTs | undefined;
-    let warming = false;
-    const listeners = new Set<() => void>();
-    const emit = () => listeners.forEach((l) => l());
 
     return {
       ensure() {
@@ -154,12 +150,6 @@ export default function Sandbox({
             source[path] = typeof entry === 'string' ? entry : entry.code;
 
           client = createSandboxTs(source);
-          warming = true;
-          emit();
-          client.whenReady.finally(() => {
-            warming = false;
-            emit();
-          });
         }
 
         return client;
@@ -170,14 +160,6 @@ export default function Sandbox({
       dispose() {
         client?.dispose();
         client = undefined;
-        warming = false;
-      },
-      get warming() {
-        return warming;
-      },
-      subscribe(listener: () => void) {
-        listeners.add(listener);
-        return () => listeners.delete(listener);
       },
     };
   }, []);
@@ -230,8 +212,6 @@ function Layout({
   ts: {
     ensure(): SandboxTs;
     sync(files: Record<string, string>): void;
-    warming: boolean;
-    subscribe(listener: () => void): () => void;
   };
 }) {
   const {
@@ -301,12 +281,6 @@ function Layout({
     [ts],
   );
 
-  const warming = useSyncExternalStore(
-    ts.subscribe,
-    () => ts.warming,
-    () => false,
-  );
-
   // Below the breakpoint the panels can't fit side by side; show one at a time
   // and reveal a toggle. Inline display wins over Sandpack's own layout CSS.
   const { matches: narrow } = MediaQuery.use({ query: '(max-width: 639px)' });
@@ -327,14 +301,6 @@ function Layout({
         extensions={extensions}
         extensionsKeymap={[refreshOnSave]}
       />
-      {showEditor && warming && (
-        <div
-          role="status"
-          className="pointer-events-none absolute bottom-3 left-3 z-20 flex items-center gap-2 rounded-md border border-fd-border bg-fd-background/90 px-2.5 py-1.5 text-xs text-fd-muted-foreground shadow-sm backdrop-blur-sm">
-          <span className="size-3 animate-spin rounded-full border-2 border-fd-border border-t-fd-primary" />
-          Loading IntelliSense…
-        </div>
-      )}
       {onOpenNavigation &&
         !navigationOpen &&
         tabs &&

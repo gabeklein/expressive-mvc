@@ -7,8 +7,6 @@ import type {
 } from './protocol';
 
 export interface SandboxTs {
-  /** Resolves once the worker's language service has loaded its libs. */
-  whenReady: Promise<void>;
   sync(files: Record<string, string>): void;
   complete(
     path: string,
@@ -88,15 +86,11 @@ export function createSandboxTs(files: Record<string, string>): SandboxTs {
       return null;
     });
 
-  const whenReady = send({ kind: 'init', files }).then(
-    () => undefined,
-    (error) => {
-      console.warn('[sandbox] IntelliSense failed to start:', error);
-    },
-  );
+  send({ kind: 'init', files }).catch((error) => {
+    console.warn('[sandbox] IntelliSense failed to start:', error);
+  });
 
   return {
-    whenReady,
     sync(files) {
       void safe({ kind: 'sync', files });
     },
