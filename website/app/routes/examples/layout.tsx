@@ -1,7 +1,9 @@
 import { HomeLayout } from 'fumadocs-ui/layouts/home';
-import { PanelLeftClose } from 'lucide-react';
+import { ChevronRight, PanelLeftClose } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { NavLink, Outlet } from 'react-router';
+
+import CodeLabel from '@/components/CodeLabel';
 
 import { layoutOptions } from '../home';
 import { GROUPS } from './loader';
@@ -111,6 +113,8 @@ export default function ExamplesLayout() {
 }
 
 function Navigation({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+
   return (
     <aside
       aria-hidden={!open}
@@ -128,20 +132,31 @@ function Navigation({ open, onClose }: { open: boolean; onClose: () => void }) {
       <nav className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto">
         {GROUPS.map((group) => (
           <div className="flex flex-col gap-1" key={group.slug}>
-            <GroupLabel label={group.label} />
-            <div className="ml-2.5 flex flex-col gap-0.5 border-l border-fd-border">
-              {(group.children ?? []).map((e) => (
-                <ExampleLink
-                  key={e.slug}
-                  path={e.path}
-                  label={e.label}
-                  onNavigate={() => {
-                    if (window.matchMedia('(max-width: 1279px)').matches)
-                      onClose();
-                  }}
-                />
-              ))}
-            </div>
+            <GroupLabel
+              label={group.label}
+              expanded={!collapsed[group.slug]}
+              onToggle={() =>
+                setCollapsed((state) => ({
+                  ...state,
+                  [group.slug]: !state[group.slug],
+                }))
+              }
+            />
+            {!collapsed[group.slug] && (
+              <div className="ml-2.5 flex flex-col gap-0.5 border-l border-fd-border">
+                {(group.children ?? []).map((e) => (
+                  <ExampleLink
+                    key={e.slug}
+                    path={e.path}
+                    label={e.label}
+                    onNavigate={() => {
+                      if (window.matchMedia('(max-width: 1279px)').matches)
+                        onClose();
+                    }}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         ))}
       </nav>
@@ -162,16 +177,35 @@ function ExampleLink({
     <NavLink
       to={`/examples/${path}`}
       onClick={onNavigate}
-      className="-ml-px rounded-r-sm border-l-2 border-l-transparent py-1.5 px-3 text-sm no-underline text-fd-muted-foreground select-none whitespace-nowrap hover:border-l-fd-muted-foreground hover:bg-fd-muted hover:text-fd-foreground aria-[current=page]:border-l-(--accent) aria-[current=page]:bg-[color-mix(in_srgb,var(--accent)_14%,transparent)] aria-[current=page]:text-(--accent)">
-      {label}
+      className="group -ml-px rounded-r-sm border-l-2 border-l-transparent py-1.5 px-3 text-sm no-underline text-fd-muted-foreground select-none whitespace-nowrap hover:border-l-fd-muted-foreground hover:bg-fd-muted hover:text-fd-foreground aria-[current=page]:border-l-(--accent) aria-[current=page]:bg-[color-mix(in_srgb,var(--accent)_14%,transparent)] aria-[current=page]:text-(--accent)">
+      <CodeLabel
+        label={label}
+        className="group-aria-[current=page]:border-transparent group-aria-[current=page]:bg-[color-mix(in_srgb,var(--accent)_14%,transparent)] group-aria-[current=page]:text-(--accent)"
+      />
     </NavLink>
   );
 }
 
-function GroupLabel({ label }: { label: string }) {
+function GroupLabel({
+  label,
+  expanded,
+  onToggle,
+}: {
+  label: string;
+  expanded: boolean;
+  onToggle: () => void;
+}) {
   return (
-    <span className="mb-1.5 pl-2 text-xs font-semibold uppercase tracking-widest text-fd-muted-foreground whitespace-nowrap">
+    <button
+      type="button"
+      aria-expanded={expanded}
+      onClick={onToggle}
+      className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-widest text-fd-muted-foreground select-none whitespace-nowrap hover:text-fd-foreground">
+      <ChevronRight
+        aria-hidden
+        className={`${expanded ? 'rotate-90' : ''} ml-[3px] size-3.5 shrink-0 transition-transform duration-150 ease-out motion-reduce:transition-none`}
+      />
       {label}
-    </span>
+    </button>
   );
 }

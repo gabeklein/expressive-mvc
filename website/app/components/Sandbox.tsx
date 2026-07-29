@@ -21,6 +21,7 @@ import {
 } from 'react';
 import { createPortal } from 'react-dom';
 
+import CodeLabel from './CodeLabel';
 import { createSandboxTs, type SandboxTs } from './sandbox/client';
 import { intellisense } from './sandbox/intellisense';
 
@@ -306,11 +307,13 @@ function Layout({
         tabs &&
         createPortal(
           <button
-            aria-label={`Open examples navigation for ${label}`}
-            className="order-first mr-1 flex max-w-40 shrink-0 items-center gap-1.5 self-stretch pr-4 pl-3 text-sm font-medium text-fd-muted-foreground hover:text-fd-foreground"
+            aria-label={`Open examples navigation for ${label.replace(/`/g, '')}`}
+            className="order-first mr-1 flex max-w-56 shrink-0 items-center gap-1.5 self-stretch pr-4 pl-3 text-sm font-medium text-fd-muted-foreground hover:text-fd-foreground"
             onClick={onOpenNavigation}>
             <PanelLeftOpen className="size-4 shrink-0" />
-            <span className="truncate">{label}</span>
+            <span className="truncate">
+              <CodeLabel label={label} />
+            </span>
           </button>,
           tabs
         )}
