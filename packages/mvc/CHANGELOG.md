@@ -1,5 +1,88 @@
 # @expressive/mvc
 
+## 0.82.0
+
+### Minor Changes
+
+- [#265](https://github.com/gabeklein/expressive-mvc/pull/265) [`366ef98`](https://github.com/gabeklein/expressive-mvc/commit/366ef9820c3105de5a6623589a8723e8fe2142a2) Add `mount()`, a commit-phase lifecycle hook for a State whose lifetime a
+  component owns - `State.use()`, `<Component />`, and an instance a `Provider`
+  constructs. It is called once when that component commits, and the function it
+  returns runs on unmount.
+
+  This fills a gap `new()` could not. `new()` runs synchronously at construction,
+  which means it also runs during server render, making it the wrong home for
+  anything touching `window`, timers, or subscriptions - the workaround being a
+  `typeof window === 'undefined'` guard at the top of every such hook. `mount()`
+  never runs on the server, and never for an instance no component owns, so
+  client-only effects can be written plainly:
+
+  ```tsx
+  class Viewport extends State {
+    width = 0;
+
+    mount() {
+      const measure = () => (this.width = window.innerWidth);
+
+      measure();
+      window.addEventListener('resize', measure);
+      return () => window.removeEventListener('resize', measure);
+    }
+  }
+  ```
+
+  `mount()` is deliberately an ownership hook, not an observation one, so it does
+  not fire on paths that reach an instance owned elsewhere - `State.get()`,
+  placing one as `{instance}`, or `<Provider for={existingInstance}>`. Those are
+  many-to-one: any number of components can observe or place a single instance,
+  each for less time than the instance lives, and a hook firing once per observer
+  would not be a lifecycle. Use `State.get()` or an event to react to an instance
+  a component does not own.
+
+  A `Provider` decides per entry, so `for={{ Session, theme }}` mounts the
+  `Session` it constructed and leaves the already-live `theme` alone. As with any
+  parent, its `mount()` runs after its descendants' - React commits bottom-up -
+  and belongs to its own commit, so replacing `for` mid-life provides the new
+  State without mounting it; key the Provider to make that a fresh mount.
+  `Context.set`'s per-state callback now receives the ownership flag as a second
+  argument.
+
+  `new()` and `use()` are unchanged: `new()` stays construction-time setup with a
+  teardown, and `use()` stays the render-phase hook that intercepts `State.use()`
+  arguments and hosts other hooks.
+
+  Under StrictMode a remount repeats none of the three stages - setup, mount and
+  cleanup now share one render counter.
+
+  **Breaking:** `Component.use()` is no longer available. A Component is rendered,
+  not used; the static now throws and is typed `never` so the call is rejected at
+  compile time. Render one with `<MyComponent />` or `{instance}`, or take a bare
+  instance with `MyComponent.new()`.
+
+  **Breaking:** a `Provider`'s `is` callback no longer takes a teardown from its
+  return value, which is now ignored and typed `void`. A concise arrow body
+  returns whatever it evaluates - `is={x => (mine = x)}` returns the State - and
+  that was indistinguishable from an intentional cleanup, so it crashed at
+  teardown. Register teardown against the State instead:
+
+  ```tsx
+  <Provider for={Session} is={(session) => session.set(null, cleanup)} />
+  ```
+
+  `Context.set`'s own callback keeps its optional teardown, and now ignores a
+  returned non-function rather than calling it.
+
+- [#251](https://github.com/gabeklein/expressive-mvc/pull/251) [`a89bf57`](https://github.com/gabeklein/expressive-mvc/commit/a89bf570e6136b0aaa1783b8f4b181ecb29b392e) Make root (global) registration opt-in via `static global`.
+
+  Previously any `State.new()` activated outside a Provider registered itself into the process-global root context, becoming resolvable via `get()` from anywhere. This made an accidental global easy to create — a forgotten `<Provider>` would silently land a per-request instance in the shared root, where it persists for the life of the process and (during server render) is shared across every request.
+
+  **Breaking:** a State now registers to the root context only when it declares `static readonly global = true`. Without it, a context-less instance is still fully functional but private — not resolvable via `get()` from elsewhere, and never shared across server-render requests. A private instance can still _read_ declared globals through the root fallback; it simply isn't one. Scope request state with `<Provider>`, or declare a global for a genuine process-wide singleton (e.g. a router, keyboard, or `localStorage` adapter).
+
+  `global` is `readonly` and typed `State.Global` — a boolean, or a resolver `(self) => boolean` evaluated at activation (after props apply) to decide membership per instance or environment (e.g. `() => typeof window !== 'undefined'`). It is declared per class: a subclass that would be global purely by _inheriting_ a `true` **throws on activation** unless it re-declares (`true` to keep it, `false` to opt out), so a global never propagates silently. A bare-literal `false` additionally locks the subtree at compile time — TypeScript rejects a descendant `= true` — a best-effort vendor lockout that a resolver or wide cast can still override. Using a global class inside a `<Provider>` scopes it to that context and never touches the root, so a process-wide default (e.g. `BrowserRouter`) can still be provided per-request.
+
+  A declared global is intentional and long-lived — process-wide, mutable, and shared across requests, including on the server. Keep request-specific data out of it: scope that with a `<Provider>` instead. A non-global that a consumer expects to inject but that was never provided still throws the usual `Could not find <State> in context`, so a missing Provider surfaces at the point of use.
+
+  `@expressive/router`'s `Router` and `BrowserRouter` declare `static readonly global = () => typeof window !== 'undefined'` — a client-side singleton, but _not_ a shared global during server render, so a per-request `path`/`query` can't bleed across requests. Provide a `Router` per-request (via `<Provider>`) to render a specific path on the server.
+
 ## 0.81.0
 
 ### Minor Changes
