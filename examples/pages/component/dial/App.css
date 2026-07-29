@@ -52,8 +52,12 @@
   height: auto;
   overflow: visible;
   cursor: grab;
-  /* Claim the gesture from the browser, or a touch drag scrolls the page. */
+  /* Claim the gesture from the browser, or a touch drag scrolls the page,
+     selects the text it passes over, and flashes a tap highlight. */
   touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .arc svg:active {
@@ -80,7 +84,9 @@
   stroke-width: 4;
 }
 
-.arc svg:focus-visible {
+/* Pressing the arc focuses it, which must not read as a boxed-in widget. The
+   knob carries the keyboard affordance instead. */
+.arc svg:focus {
   outline: none;
 }
 
