@@ -92,6 +92,22 @@ await expect(state).not.toHaveUpdated();
 - `@expressive/mvc`, `@expressive/react`, and `@expressive/router` are published; `preact` is private and ignored by changesets.
 - Merged changesets accumulate on `main`; CI maintains a "Version Packages" PR (`changeset version`). Merging that PR triggers `changeset publish` from CI. No local publishing.
 
+## Followups
+
+Findings that fall outside the current task go to the **MVC Followups** GitHub project (number `6`, owner `gabeklein`) as **draft issues**. Draft means the item lives only in the project - it is not a repo issue, has no number or labels, and never appears in the issue tracker or issue search, which keeps triage notes out of the public backlog. Confidentiality is separate and comes from the project's own visibility (currently private); drafts on a public project are publicly readable.
+
+File eagerly. When something is obviously worth looking into - a latent throw, an undocumented footgun, behavior contradicting the docs, a rough edge you had to work around - just file it. Don't ask first and don't wait to be asked; ask only when it's genuinely ambiguous whether the thing is a problem at all. File it even when the same conversation goes on to fix it: the item is the record of what was wrong and why it mattered, which is the durable value. Treat the board as project-level memory, not a queue you're obliged to keep short.
+
+Trivia is not a followup. Dead links, typos and one-word corrections get fixed on the current branch instead.
+
+A good item states the finding, how it was reproduced, whether it's currently reachable in shipped code, and what remains open.
+
+```bash
+gh project item-create 6 --owner gabeklein --title "..." --body "$(cat note.md)"
+```
+
+Requires `gh auth refresh -s project` (`read:project` can list but not create). `item-create` prints nothing and exits 0 on success, and `item-list`'s table output silently drops rows - verify with `gh project item-list 6 --owner gabeklein --format json`, where bodies live under `content.body`, not top-level `body`. Re-running a create that looked like it failed duplicates the item.
+
 ## Guardrails
 
 - Don't modify `packages/mvc` to fix React-only concerns - use adapter packages.
