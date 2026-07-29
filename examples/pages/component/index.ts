@@ -5,5 +5,6 @@ export default [
   'instances',
   'headless',
   'suspense',
-  'boundary'
+  'boundary',
+  'dial'
 ];

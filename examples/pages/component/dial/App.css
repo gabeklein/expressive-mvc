@@ -1,0 +1,106 @@
+.volume {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s4);
+  width: 100%;
+  max-width: 22rem;
+}
+
+.volume label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s1);
+  width: 100%;
+  text-align: left;
+  font-size: var(--t-sm);
+  color: var(--muted);
+}
+
+.volume .row {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  width: 100%;
+}
+
+.volume input[type='range'] {
+  padding: 0;
+  border: none;
+  background: none;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.volume input[type='number'] {
+  flex: none;
+  width: 5rem;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The arc and its readout share one box, so the well can sit inside the
+   sweep without measuring anything. */
+.arc {
+  position: relative;
+  width: 100%;
+}
+
+.arc svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+  cursor: grab;
+  /* Claim the gesture from the browser, or a touch drag scrolls the page. */
+  touch-action: none;
+}
+
+.arc svg:active {
+  cursor: grabbing;
+}
+
+.arc path {
+  fill: none;
+  stroke-width: 14;
+  stroke-linecap: round;
+}
+
+.arc .groove {
+  stroke: var(--surface-2);
+}
+
+.arc .filled {
+  stroke: var(--accent);
+}
+
+.arc .knob {
+  fill: var(--bg);
+  stroke: var(--accent);
+  stroke-width: 4;
+}
+
+.arc svg:focus-visible {
+  outline: none;
+}
+
+.arc svg:focus-visible .knob {
+  fill: var(--accent-soft);
+  r: 13;
+}
+
+/* Anchored to the pivot rather than the box, since the lower half is empty. */
+.well {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 17%;
+  font-size: var(--t-2xl);
+  font-weight: 700;
+  pointer-events: none;
+}
+
+.well em {
+  font-style: normal;
+  letter-spacing: 0.05em;
+}
