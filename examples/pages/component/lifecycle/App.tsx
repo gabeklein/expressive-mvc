@@ -1,7 +1,7 @@
 import './App.css';
 
 import Button from '@common/Button';
-import { Component, get, ref } from '@expressive/react';
+import { Component, get, has, ref } from '@expressive/react';
 
 export default () => (
   <div className="container">
@@ -17,10 +17,13 @@ export default () => (
 
 class Demo extends Component {
   showing = true;
-  entries: string[] = [];
+
+  // An owned list, which is what a transcript is - push to append, clear to
+  // reset. No spread-and-replace to make the write register.
+  entries = has<string>();
 
   log(note: string) {
-    this.entries = [...this.entries, note];
+    this.entries.push(note);
   }
 
   render() {
@@ -34,7 +37,7 @@ class Demo extends Component {
           <Button primary onClick={() => (this.showing = !showing)}>
             {showing ? 'Unmount' : 'Mount'}
           </Button>
-          <Button onClick={() => (this.entries = [])}>Clear</Button>
+          <Button onClick={() => entries.clear()}>Clear</Button>
         </div>
 
         <ol className="trace">
