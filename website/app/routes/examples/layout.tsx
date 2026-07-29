@@ -1,12 +1,12 @@
 import { HomeLayout } from 'fumadocs-ui/layouts/home';
 import { ChevronRight, PanelLeftClose } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { NavLink, Outlet } from 'react-router';
+import { NavLink, Outlet, useLocation } from 'react-router';
 
 import CodeLabel from '@/components/CodeLabel';
 
 import { layoutOptions } from '../home';
-import { GROUPS } from './loader';
+import { exampleSlug, GROUPS } from './loader';
 
 export interface ExamplesOutletContext {
   navigationOpen: boolean;
@@ -113,7 +113,17 @@ export default function ExamplesLayout() {
 }
 
 function Navigation({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const active = useActiveGroup();
+  const [expanded, setExpanded] = useState<Record<string, boolean>>(() =>
+    active ? { [active]: true } : {}
+  );
+
+  useEffect(() => {
+    if (active)
+      setExpanded((state) =>
+        state[active] ? state : { ...state, [active]: true }
+      );
+  }, [active]);
 
   return (
     <aside
@@ -129,39 +139,53 @@ function Navigation({ open, onClose }: { open: boolean; onClose: () => void }) {
           <PanelLeftClose className="size-4" />
         </button>
       </div>
-      <nav className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto">
-        {GROUPS.map((group) => (
-          <div className="flex flex-col gap-1" key={group.slug}>
-            <GroupLabel
-              label={group.label}
-              expanded={!collapsed[group.slug]}
-              onToggle={() =>
-                setCollapsed((state) => ({
-                  ...state,
-                  [group.slug]: !state[group.slug],
-                }))
-              }
-            />
-            {!collapsed[group.slug] && (
-              <div className="ml-2.5 flex flex-col gap-0.5 border-l border-fd-border">
-                {(group.children ?? []).map((e) => (
-                  <ExampleLink
-                    key={e.slug}
-                    path={e.path}
-                    label={e.label}
-                    onNavigate={() => {
-                      if (window.matchMedia('(max-width: 1279px)').matches)
-                        onClose();
-                    }}
-                  />
-                ))}
+      <nav className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto pb-[50vh]">
+        {GROUPS.map((group) => {
+          const isOpen = !!expanded[group.slug];
+
+          return (
+            <div className="flex flex-col" key={group.slug}>
+              <GroupLabel
+                label={group.label}
+                expanded={isOpen}
+                onToggle={() =>
+                  setExpanded((state) => ({
+                    ...state,
+                    [group.slug]: !state[group.slug],
+                  }))
+                }
+              />
+              <div
+                inert={!isOpen}
+                className={`${isOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'} grid transition-[grid-template-rows,opacity] duration-200 ease-out motion-reduce:transition-none`}>
+                <div className="ml-2.5 flex min-h-0 flex-col gap-0.5 overflow-hidden border-l border-fd-border">
+                  {(group.children ?? []).map((e) => (
+                    <ExampleLink
+                      key={e.slug}
+                      path={e.path}
+                      label={e.label}
+                      onNavigate={() => {
+                        if (window.matchMedia('(max-width: 1279px)').matches)
+                          onClose();
+                      }}
+                    />
+                  ))}
+                </div>
               </div>
-            )}
-          </div>
-        ))}
+            </div>
+          );
+        })}
       </nav>
     </aside>
   );
+}
+
+function useActiveGroup() {
+  const slug = exampleSlug(useLocation().pathname);
+
+  return GROUPS.find((group) =>
+    (group.children ?? []).some((child) => child.path === slug)
+  )?.slug;
 }
 
 function ExampleLink({
