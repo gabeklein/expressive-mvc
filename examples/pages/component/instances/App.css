@@ -1,0 +1,21 @@
+.bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: var(--s3) var(--s4);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  font-weight: 600;
+}
+
+.cart strong {
+  font-family: var(--font-mono);
+  color: var(--accent);
+}
+
+li.done {
+  color: var(--muted);
+  text-decoration: line-through;
+}

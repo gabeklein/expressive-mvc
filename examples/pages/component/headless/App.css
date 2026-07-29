@@ -1,0 +1,12 @@
+.readout {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s1);
+  padding: var(--s4);
+}
+
+.readout strong {
+  font-family: var(--font-mono);
+  font-size: var(--t-2xl);
+  color: var(--accent);
+}

@@ -1,1 +1,9 @@
-export default ['subcomponents', 'suspense', 'boundary'];
+export default [
+  'props',
+  'subcomponents',
+  'lifecycle',
+  'instances',
+  'headless',
+  'suspense',
+  'boundary'
+];

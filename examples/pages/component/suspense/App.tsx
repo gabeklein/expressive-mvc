@@ -1,67 +1,85 @@
 import './App.css';
 
-import { Suspense } from 'react';
-import State, { Component, Provider, set } from '@expressive/react';
+import Button from '@common/Button';
+import { Component, get, set } from '@expressive/react';
 
-// An async `set` factory suspends on read and resolves straight into the
-// field - no `waiting` flag, no `error` state threaded by hand. Compare
-// essentials/fetch, which tracks that same lifecycle manually.
-class Greeter extends State {
-  hello = set(async () => {
-    const res = await fetch('https://randomuser.me/api?nat=us&results=1');
+const wait = (ms: number) => new Promise((done) => setTimeout(done, ms));
 
-    if (!res.ok) throw new Error(`Server responded ${res.status}.`);
+// An async `set` factory resolves straight into the field. Reading it while
+// pending suspends the render - no waiting flag, no error state threaded by
+// hand. Compare essentials/fetch, which tracks that lifecycle manually.
+class Greeter extends Component {
+  name = 'world';
 
-    const { first, last } = (await res.json()).results[0].name;
-    return `Hello, ${first} ${last}.`;
+  greeting = set(async () => {
+    await wait(900);
+    return `Hello, ${this.name}.`;
   });
-}
 
-// Reading `hello` while pending throws the suspense signal <Suspense>
-// catches; a rejected fetch throws past it to the boundary's catch().
-function Hello() {
-  return <p className="result">{Greeter.get().hello}</p>;
-}
-
-// The Greeter is provided *above* <Suspense> so it survives the suspended
-// renders - an instance created inside the boundary would be rebuilt (and
-// refetch) on every retry. Bumping `round` remounts it for a fresh request.
-export default class Demo extends Component {
-  round = 0;
-  resume = () => {};
-
-  catch(error: Error) {
-    this.fallback = (
-      <div className="status error">
-        <p>{error.message}</p>
-        <button onClick={() => this.again()}>Try again</button>
-      </div>
-    );
-
-    return new Promise<void>((resolve) => (this.resume = resolve));
-  }
-
-  again() {
-    this.round++;
-    this.resume();
-  }
+  // A Component is its own boundary. This covers whatever its render suspends
+  // on, which is why there is no <Suspense> anywhere in this file.
+  fallback = <small>Greeting someone…</small>;
 
   render() {
+    return <p className="result">{this.greeting}</p>;
+  }
+}
+
+// Headless, so it draws nothing. It owns the pending value AND the boundary
+// that covers it - the order that matters, because a boundary rebuilds the
+// subtree it retries. State owned below would be reconstructed on every
+// attempt and request again, forever.
+class Panel extends Component {
+  farewell = set(async () => {
+    await wait(1400);
+    return 'Goodbye, Grace.';
+  });
+
+  fallback = <small>The panel is waiting…</small>;
+}
+
+// Declines its own boundary, so the suspension bubbles to Panel. Safe here
+// only because the value it reads lives above that boundary.
+class Reader extends Component {
+  panel = get(Panel);
+
+  render() {
+    return <p className="result">{this.panel.farewell}</p>;
+  }
+}
+
+export default class Demo extends Component {
+  round = 0;
+
+  render() {
+    const { round } = this;
+
     return (
       <div className="container">
         <h1>Suspense</h1>
         <p>
-          The greeting is an async <code>set</code> factory. Reading it
-          suspends until the fetch resolves — no waiting flag, no error field.
+          Reading a pending property suspends the render. Every Component
+          carries a boundary for it, so <code>fallback</code> is the whole of
+          the wiring.
         </p>
 
-        <Provider for={Greeter} key={this.round}>
-          <Suspense fallback={<p className="status">Contacting server…</p>}>
-            <Hello />
-          </Suspense>
-        </Provider>
+        <div className="card">
+          <h2>Its own boundary</h2>
+          <Greeter key={`own-${round}`} name="Ada" />
+        </div>
 
-        <button onClick={() => this.again()}>Say hello again</button>
+        <div className="card">
+          <h2>Deferred to an ancestor</h2>
+          <Panel key={`panel-${round}`}>
+            <Reader fallback={false} />
+          </Panel>
+        </div>
+
+        {/* An async factory resolves once. Keying the owner is how you ask for
+            a fresh instance, and so for a fresh request. */}
+        <Button primary onClick={() => this.round++}>
+          Ask again
+        </Button>
       </div>
     );
   }

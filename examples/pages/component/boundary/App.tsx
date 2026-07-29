@@ -1,27 +1,36 @@
 import './App.css';
 
+import Button from '@common/Button';
 import { Component } from '@expressive/react';
 
-// Owns the boundary: `catch()` handles a throw from anything it renders.
-class Guard extends Component {
-  failing = true;
+// Throws on demand, and defines no catch() of its own - so whichever subclass
+// or ancestor owns a boundary is the one that hears about it.
+class Fragile extends Component {
+  message = 'The widget failed to render.';
+  broken = false;
 
-  // A subcomponent that throws during render until recovered.
   Child() {
-    if (this.failing)
-      throw new Error('The child failed to render.');
+    if (this.broken) throw new Error(this.message);
 
-    return <p className="ok">Recovered - rendering normally now.</p>;
+    return <Button onClick={() => (this.broken = true)}>Break it</Button>;
   }
 
-  // Set `this.fallback` for the error UI; the returned promise keeps it up
-  // until the user retries. (A catch that resolves immediately would just
-  // re-render, throw again, and loop.)
+  render() {
+    return <this.Child />;
+  }
+}
+
+// Handles it in place. Setting `fallback` inside catch() supplies the error UI,
+// and the returned promise keeps it up until the user retries - a catch that
+// resolved immediately would re-render, throw again, and loop.
+class Recoverable extends Fragile {
+  resume = () => {};
+
   catch(error: Error) {
     this.fallback = (
       <div className="error">
-        <p>Caught: {error.message}</p>
-        <button onClick={() => this.recover()}>Retry</button>
+        <p>Caught right here: {error.message}</p>
+        <Button onClick={() => this.recover()}>Retry</Button>
       </div>
     );
 
@@ -30,23 +39,71 @@ class Guard extends Component {
     });
   }
 
-  resume = () => {};
-
   recover() {
-    this.failing = false;
-    this.resume(); // resolve catch -> boundary retries the render
-  }
-
-  render() {
-    return <this.Child />;
+    this.broken = false;
+    this.resume();
+    // fallback assigned in catch() is reverted once it resolves
   }
 }
 
-// Title lives outside the boundary, so only the Guard subtree swaps to
-// the fallback while the rest of the page stays put.
-export default () => (
-  <div className="container">
-    <h1>Error Boundary</h1>
-    <Guard />
-  </div>
-);
+// Declines it. A rejected catch() propagates to the next boundary above, the
+// same way rethrowing does anywhere else.
+class Escalating extends Fragile {
+  async catch(error: Error) {
+    throw error;
+  }
+}
+
+export default class Demo extends Component {
+  round = 0;
+  resume = () => {};
+
+  // The outermost boundary on this page. Nothing below it declared a catch that
+  // kept the error, so it lands here.
+  catch(error: Error) {
+    this.fallback = (
+      <div className="error">
+        <p>Reached the page: {error.message}</p>
+        <Button primary onClick={() => this.restart()}>
+          Start over
+        </Button>
+      </div>
+    );
+
+    return new Promise<void>((resolve) => {
+      this.resume = resolve;
+    });
+  }
+
+  restart() {
+    this.round++;
+    this.resume();
+  }
+
+  render() {
+    const { round } = this;
+
+    return (
+      <div className="container">
+        <h1>Error Boundary</h1>
+        <p>
+          Override <code>catch()</code> and a Component becomes the boundary for
+          everything it renders. Per-feature error handling, without nesting{' '}
+          <code>&lt;ErrorBoundary&gt;</code> wrappers.
+        </p>
+
+        <div className="card">
+          <h2>Handled in place</h2>
+          <Recoverable key={`local-${round}`} />
+          <small>Only this card swaps to the fallback; the page stays put.</small>
+        </div>
+
+        <div className="card">
+          <h2>Escalated</h2>
+          <Escalating key={`up-${round}`} message="The widget gave up." />
+          <small>Its catch() rejects, so the page boundary takes over.</small>
+        </div>
+      </div>
+    );
+  }
+}

@@ -1,0 +1,52 @@
+.row {
+  display: flex;
+  gap: var(--s2);
+}
+
+.gauge {
+  width: 100%;
+  padding: var(--s4);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  text-align: left;
+}
+
+.gauge header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: var(--s2);
+  font-weight: 600;
+}
+
+.gauge output {
+  font-family: var(--font-mono);
+  font-size: var(--t-sm);
+  color: var(--accent);
+}
+
+.track {
+  height: 8px;
+  background: var(--surface-2);
+  border-radius: var(--r-sm);
+  overflow: hidden;
+}
+
+.fill {
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.2s;
+}
+
+.gauge footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--s2);
+  margin-top: var(--s3);
+}
+
+.gauge footer button {
+  padding: 0 var(--s3);
+  line-height: 1.8;
+}
