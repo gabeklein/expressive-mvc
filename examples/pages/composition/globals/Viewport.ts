@@ -3,7 +3,14 @@ import State from '@expressive/react';
 // Display-agnostic logic with no render() of its own - a plain State that any
 // component can subscribe to. Mutable inputs are fields, derived values are
 // getters, and setup/teardown lives in new().
+//
+// `static global` is the opt-in that makes it reachable app-wide: it puts an
+// instance activated outside any Provider into the root context, where
+// Viewport.get() finds it. Remove the line and everything here still works -
+// the instance is just private to whoever created it.
 export class Viewport extends State {
+  static global = true;
+
   width = window.innerWidth;
 
   get compact() {

@@ -5,8 +5,13 @@ import { Theme } from './Theme';
 import { Viewport } from './Viewport';
 
 // Globals: created once, right here, the way you would at your app's entry
-// point next to the root render. State.new() activates the instance and parks
-// it in the global context, so any component can reach it with State.get().
+// point next to the root render. Two things have to be true for State.get() to
+// find one of these anywhere - the class declares `static global = true`, and
+// something activates it. State.new() is that second half.
+//
+// Activation alone is not enough: a class without the declaration stays private
+// to its creator, which is what keeps a forgotten Provider from quietly
+// installing per-request state into a process-wide registry.
 Viewport.new();
 Session.new();
 Theme.new();
@@ -18,7 +23,10 @@ export default function App() {
       <Size />
       <Account />
       <Appearance />
-      <small>Three globals, each created once - components subscribe with `.get()`.</small>
+      <small>
+        Three classes declaring <code>static global</code>, each activated once -
+        components subscribe with <code>.get()</code> and no Provider anywhere.
+      </small>
     </div>
   );
 }
