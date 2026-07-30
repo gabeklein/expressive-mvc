@@ -2,7 +2,7 @@ export default {
   props: 'Props',
   subcomponents: 'Subcomponents',
   lifecycle: 'Lifecycle',
-  instances: 'Instances',
+  injection: 'Injection',
   headless: 'Headless',
   suspense: 'Suspense',
   boundary: 'Boundary',

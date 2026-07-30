@@ -11,10 +11,19 @@ export default () => (
       form above it, so the arc, the slider and the input are three views of one
       field - and none of them knows the others exist.
     </p>
+    <p>
+      Arc is a whole concern of its own - pointer capture, keyboard stepping, the
+      geometry that turns an angle into a value - and none of it leaks. It reads
+      the Scale above it, writes through <code>to()</code>, and owns its element
+      via <code>ref</code>. Nothing about dragging appears in the form.
+    </p>
     <Manuscript />
     <small>
-      Arc finds the Scale above it and declares <code>children</code> on{' '}
-      <code>render</code>, so the caller decides what sits in the well.
+      In React that logic has nowhere to live but hooks the parent must arrange -
+      state, refs and handlers hoisted into whoever renders the control. Here it
+      is a class: instantiated by being rendered, and reusable by being placed
+      under any Scale. Arc also declares <code>children</code> on{' '}
+      <code>render</code>, so the caller still decides what sits in the well.
     </small>
   </div>
 );
