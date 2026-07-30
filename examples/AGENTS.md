@@ -35,7 +35,7 @@ A page that type-checks and builds can still be broken. Run every new or edited 
 cd examples && bun test --preload ../packages/react/test.dom.ts smoke.test.tsx
 ```
 
-- `import.meta.glob` is Vite-only and undefined under `bun test` - enumerate pages with `readdirSync('./pages')` and `await import()` each `App.tsx`. CSS imports resolve fine.
+- `import.meta.glob` is Vite-only and undefined under `bun test` - enumerate `pages/<group>/<example>/App.tsx` with `readdirSync` and `await import()` each. CSS imports resolve fine.
 - A render-only pass catches crashes, not dead reactivity. Drive interactions with `fireEvent` and assert on `container.textContent`.
 - Flush pattern: `await act(async () => fireEvent.click(x)); await settle()` where `settle = ms => act(() => new Promise(r => setTimeout(r, ms)))`. Nesting the settle *inside* the same `act` callback reports the previous render's DOM and invents phantom bugs.
 
