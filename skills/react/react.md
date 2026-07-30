@@ -360,8 +360,6 @@ This is the architectural norm, not a formatting preference:
 
 The same rule applies to `this` inside `Component.render()` and subcomponents - rendering shares its subscription plumbing with the hooks.
 
-**Known gap:** updates originating in a *child State* reached through nested destructuring currently refresh `State.use()` but not `State.get()` ([#243](https://github.com/gabeklein/expressive-mvc/issues/243)). Until fixed, values a `.get()` component must react to should surface through getters on the parent state.
-
 ## Transparent Writes & `is`
 
 Subscription proxies pass assignments through to the real instance. Three shapes cover every case:

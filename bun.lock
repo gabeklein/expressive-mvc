@@ -78,9 +78,6 @@
       "peerDependencies": {
         "react": ">=16.8.0 <20.0.0",
       },
-      "optionalPeers": [
-        "react",
-      ],
     },
     "packages/router": {
       "name": "@expressive/router",

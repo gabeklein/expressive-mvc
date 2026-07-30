@@ -284,13 +284,15 @@ The child function receives a tracking proxy, so property reads subscribe just l
 
 ## Globals and the root context
 
-Not everything wants a Provider. Some state is genuinely global - the session, the viewport, app settings. For those, call `State.new()` at module scope:
+Not everything wants a Provider. Some state is genuinely global - the session, the viewport, app settings. Declare those with `static global` and call `State.new()` at module scope:
 
 ```ts
 // session.ts
 import State from '@expressive/react';
 
 class Session extends State {
+  static global = true;
+
   user = 'gabe';
   logout() {
     this.user = '';
@@ -300,7 +302,7 @@ class Session extends State {
 export default Session.new();
 ```
 
-`State.new()` registers the instance into `Context.root`, the global registry every context ultimately inherits from. Any component, anywhere, can now call `Session.get()` - no Provider required:
+`State.new()` activates the instance against `Context.root`, the global registry every context ultimately inherits from - and because `Session` declares `static global`, it registers there too. Any component, anywhere, can now call `Session.get()` - no Provider required:
 
 ```tsx
 function Avatar() {
@@ -308,6 +310,8 @@ function Avatar() {
   return <img src={`/avatars/${user}.png`} />;
 }
 ```
+
+The declaration is the opt-in. Without it, a context-less `State.new()` instance is fully functional but private - it can read declared globals, but nothing can find *it*. And `static global` must be declared per class: a subclass of a global that doesn't redeclare it throws on activation, so an extended global can't leak into the shared root by accident.
 
 A full app built this way (viewport, session, and theme as globals) is at [composition/globals](/examples/composition/globals).
 
@@ -325,7 +329,7 @@ new Context(cart); // cart's home is this context
 Useful in tests, and in code that prepares a state before mounting it into a tree.
 
 > **Good to know:** <br/>
-> Root globals are honest about ambiguity. Create two implicit instances of the same type via `State.new()` and neither is "the" global instance - both are evicted from root lookup, rather than one silently winning. Explicit registration (a Provider, or `Context.root.add(state, true)`) bypasses this.
+> Root globals are honest about ambiguity. Create two implicit instances of the same global class via `State.new()` and neither is "the" global instance - both are evicted from root lookup, rather than one silently winning. Explicit registration (a Provider, or `Context.root.add(state, true)`) bypasses this.
 
 That's the short version - constructor forms, `ctx.add`, eviction and subtype rules are all in [API: Utilities](/docs/api/utilities).
 

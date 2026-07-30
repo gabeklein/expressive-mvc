@@ -1,5 +1,8 @@
 import State, { Component, get, ref } from '@expressive/react';
 import type { CSSProperties } from 'react';
+
+declare const __LIB_VERSION__: string;
+declare const __LIB_TESTS__: number;
 import { Link } from 'react-router';
 import CopyPill from '@/components/CopyPill';
 import Playground from '@/components/Playground';
@@ -43,6 +46,11 @@ export function Hero() {
               to="/docs">
               View Docs
             </Link>
+            <Link
+              className={`${btn} border border-fd-border text-inherit hover:bg-fd-muted`}
+              to="/examples">
+              See Examples
+            </Link>
           </div>
           <div className="mx-auto flex max-w-md flex-col gap-2 lg:mx-0">
             <CopyPill label="Add to your app" command="npm install @expressive/react" />
@@ -50,6 +58,9 @@ export function Hero() {
           </div>
           <p className="mx-auto mt-4 max-w-md text-center text-sm text-fd-muted-foreground lg:mx-0">
             Drops into React you already have - not a framework, no rewrite.
+          </p>
+          <p className="mx-auto mt-2 max-w-md text-center font-mono text-xs text-fd-muted-foreground/80 lg:mx-0">
+            {__LIB_TESTS__.toLocaleString('en-US')} tests · 100% line coverage · v{__LIB_VERSION__}
           </p>
         </div>
       </div>

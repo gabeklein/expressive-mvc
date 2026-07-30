@@ -6,9 +6,16 @@ import mdx from 'fumadocs-mdx/vite';
 import * as MdxConfig from './source.config';
 import { resolve, join, dirname } from 'path';
 import { cp, glob, readFile, writeFile } from 'fs/promises';
+import { readdirSync, readFileSync } from 'fs';
 import { createGetUrl, getSlugs } from 'fumadocs-core/source';
 
 export default defineConfig({
+  define: {
+    __LIB_VERSION__: JSON.stringify(
+      JSON.parse(readFileSync(resolve(__dirname, '../packages/react/package.json'), 'utf8')).version
+    ),
+    __LIB_TESTS__: countTests(resolve(__dirname, '../packages')),
+  },
   optimizeDeps: {
     include: [
       '@codemirror/autocomplete',
@@ -44,6 +51,18 @@ export default defineConfig({
     serveSkills()
   ]
 });
+
+function countTests(dir: string): number {
+  let total = 0;
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    if (entry.name === 'node_modules' || entry.name === 'dist') continue;
+    const path = join(dir, entry.name);
+    if (entry.isDirectory()) total += countTests(path);
+    else if (/\.test\.(ts|tsx)$/.test(entry.name))
+      total += (readFileSync(path, 'utf8').match(/^\s*(it|test)\(/gm) ?? []).length;
+  }
+  return total;
+}
 
 interface ExampleDirectory {
   label: string;

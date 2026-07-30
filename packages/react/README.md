@@ -14,11 +14,11 @@
 The React adapter for [Expressive MVC](https://github.com/gabeklein/expressive-mvc). Define state as a class, use it in a component, and reads automatically subscribe - components re-render only when accessed values change.
 
 ```bash
-npm install @expressive/react react
+npm install @expressive/react
 ```
 
 ```tsx
-import { State } from '@expressive/react';
+import State from '@expressive/react';
 
 class Counter extends State {
   count = 0;

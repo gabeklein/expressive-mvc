@@ -71,10 +71,5 @@
   },
   "peerDependencies": {
     "react": ">=16.8.0 <20.0.0"
-  },
-  "peerDependenciesMeta": {
-    "react": {
-      "optional": true
-    }
   }
 }

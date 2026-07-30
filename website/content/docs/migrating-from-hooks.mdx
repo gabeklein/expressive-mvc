@@ -137,22 +137,25 @@ For a `useEffect` that subscribes to an external source, store the external sour
 
 ```tsx
 class Viewport extends State {
-  width = window.innerWidth;
+  width = Infinity; // desktop-first until measured
 
   get compact() {
     return this.width < 720;
   }
 
-  protected new() {
+  mount() {
     const update = () => {
       this.width = window.innerWidth;
     };
 
+    update();
     window.addEventListener('resize', update);
     return () => window.removeEventListener('resize', update);
   }
 }
 ```
+
+`mount()` runs once when the owning component commits - and never during server render, which is why `window` is safe inside it where a field initializer or `new()` would crash on the server. See [lifecycle hooks](/docs/api/state#lifecycle-hooks).
 
 ### 4c. Move handlers to methods
 
@@ -255,7 +258,7 @@ function Header() {
 }
 ```
 
-> App-wide globals don't even need the Provider - a module-scope `Theme.new()` registers into the root context, findable by `Theme.get()` from anywhere. [See it in the Playground.](/examples/composition/globals)
+> App-wide globals don't even need the Provider - declare the class [`static global`](/docs/guides/context#globals-and-the-root-context) and a module-scope `Theme.new()` registers into the root context, findable by `Theme.get()` from anywhere. [See it in the Playground.](/examples/composition/globals)
 
 Use `Component` instead when the owner needs to exist in the React tree. A `Boundary` may have little UI, but its Suspense/ErrorBoundary placement is the point. A `Toasts` root also belongs in the tree, but it should justify `render()` by injecting toast subcomponents beside the wrapped app.
 
