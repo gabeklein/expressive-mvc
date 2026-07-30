@@ -3,44 +3,83 @@ import './App.css';
 import { Component } from '@expressive/react';
 import type { ReactNode } from 'react';
 
-// A base that owns shared chrome. When a subclass overrides render(),
-// it COMPOSES with the base instead of replacing it: the base render
-// runs outermost, and the subclass's output arrives as `props.children`.
-// No super.render() call - just read children where content should slot.
+export default () => (
+  <div className="container">
+    <h1>Render Composition</h1>
+    <p>
+      A subclass that writes its own <code>render</code> does not replace the
+      base's - it composes with it. Panel's render runs outermost and the
+      subclass's output arrives as <code>props.children</code>. There is no{' '}
+      <code>super.render()</code> to call; you read children where content should
+      slot.
+    </p>
+    <div className="pair">
+      <Tally />
+      <Notes />
+    </div>
+    <small>
+      Click either header. The chrome, the toggle, and the <code>open</code> field
+      behind it all belong to Panel - each subclass wrote only what sits inside,
+      and each instance keeps its own state. Collapse one and the base is visibly
+      still running the other.
+    </small>
+  </div>
+);
+
 class Panel extends Component {
   title = 'Panel';
+  open = true;
+
+  toggle() {
+    this.open = !this.open;
+  }
 
   render(props = {} as { children?: ReactNode }) {
+    const { title, open } = this;
+
     return (
       <section className="panel">
-        <header>{this.title}</header>
-        <div className="body">{props.children}</div>
+        <header onClick={() => this.toggle()}>
+          <b>{title}</b>
+          <span>{open ? '–' : '+'}</span>
+        </header>
+        {open && <div className="body">{props.children}</div>}
       </section>
     );
   }
 }
 
-// Each subclass authors only its content; the Panel chrome wraps it.
-class Welcome extends Panel {
-  title = 'Welcome';
+class Tally extends Panel {
+  title = 'Tally';
+  count = 3;
 
   render() {
-    return <p>This paragraph slots into the Panel chrome - defined once, above.</p>;
+    const { count } = this;
+
+    return (
+      <div className="tally">
+        <button onClick={() => this.count--}>−</button>
+        <output>{count}</output>
+        <button onClick={() => this.count++}>+</button>
+      </div>
+    );
   }
 }
 
-class Goodbye extends Panel {
-  title = 'Goodbye';
+class Notes extends Panel {
+  title = 'Notes';
+  text = '';
 
   render() {
-    return <p>So does this one. Same base, different content.</p>;
+    const { text } = this;
+
+    return (
+      <textarea
+        rows={2}
+        value={text}
+        placeholder="Type something, then collapse…"
+        onChange={(e) => (this.text = e.target.value)}
+      />
+    );
   }
 }
-
-export default () => (
-  <div className="container">
-    <h1>Render Composition</h1>
-    <Welcome />
-    <Goodbye />
-  </div>
-);

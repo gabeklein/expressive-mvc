@@ -1,9 +1,7 @@
 import State from '@expressive/react';
 
-// Theme is global by nature - there is only one document to paint - so it says
-// so. The effect in new() writes the active theme to the root element,
-// retinting everything.
 export class Theme extends State {
+  // Global by nature: there is only one document to paint.
   static global = true;
 
   dark = false;

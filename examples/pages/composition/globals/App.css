@@ -1,6 +1,40 @@
-.size {
-  font-size: var(--t-2xl);
-  font-weight: 600;
-  color: var(--fg);
+.cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s3);
+  width: 100%;
+}
+
+.card {
+  display: flex;
+  flex: 1 1 7rem;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--s2);
+  padding: var(--s4);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  text-align: left;
+}
+
+.card h2 {
   margin: 0;
+  font-size: var(--t-xs);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.card b {
+  font-family: var(--font-mono);
+  font-size: var(--t-lg);
+  color: var(--accent);
+}
+
+.card button {
+  align-self: stretch;
+  margin-top: auto;
+  font-size: var(--t-sm);
 }

@@ -1,18 +1,45 @@
 .panel {
-  margin-bottom: 1rem;
-  border: 1px solid var(--accent-soft);
-  border-radius: 8px;
+  display: flex;
+  flex: 1 1 12rem;
+  flex-direction: column;
+  align-self: flex-start;
   overflow: hidden;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
 }
 
 .panel header {
-  padding: 0.5rem 0.75rem;
-  font-weight: 600;
-  background: var(--accent-soft);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s2);
+  padding: var(--s2) var(--s3);
   color: var(--fg);
+  background: var(--accent-soft);
+  cursor: pointer;
+  user-select: none;
+}
+
+.panel header span {
+  font-family: var(--font-mono);
+  color: var(--accent);
 }
 
 .panel .body {
-  padding: 0.75rem;
-  color: var(--fg);
+  display: flex;
+  padding: var(--s3);
+}
+
+.tally {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+}
+
+.tally output {
+  min-width: 2rem;
+  font-family: var(--font-mono);
+  font-size: var(--t-lg);
+  color: var(--accent);
 }

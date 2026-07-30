@@ -1,14 +1,10 @@
 import State from '@expressive/react';
 
-// Display-agnostic logic with no render() of its own - a plain State that any
-// component can subscribe to. Mutable inputs are fields, derived values are
-// getters, and setup/teardown lives in new().
-//
-// `static global` is the opt-in that makes it reachable app-wide: it puts an
-// instance activated outside any Provider into the root context, where
-// Viewport.get() finds it. Remove the line and everything here still works -
-// the instance is just private to whoever created it.
+// Display-agnostic logic with no render() of its own: mutable inputs are
+// fields, derived values are getters, setup and teardown live in new().
 export class Viewport extends State {
+  // Reachable app-wide. Without this line the instance is private to whoever
+  // created it - everything here still works, but Viewport.get() finds nothing.
   static global = true;
 
   width = window.innerWidth;
@@ -17,10 +13,11 @@ export class Viewport extends State {
     return this.width < 600;
   }
 
-  // Runs once when ready; the returned function runs on teardown.
   protected new() {
     const update = () => (this.width = window.innerWidth);
+
     window.addEventListener('resize', update);
+
     return () => window.removeEventListener('resize', update);
   }
 }
