@@ -112,11 +112,16 @@ export default function ExamplesLayout() {
   );
 }
 
+// Whichever group leads the nav is the showcase, so it starts open - a visitor
+// landing anywhere still has finished apps one glance away.
+const LEAD = GROUPS[0]?.slug;
+
 function Navigation({ open, onClose }: { open: boolean; onClose: () => void }) {
   const active = useActiveGroup();
-  const [expanded, setExpanded] = useState<Record<string, boolean>>(() =>
-    active ? { [active]: true } : {}
-  );
+  const [expanded, setExpanded] = useState<Record<string, boolean>>(() => ({
+    ...(LEAD ? { [LEAD]: true } : {}),
+    ...(active ? { [active]: true } : {})
+  }));
 
   useEffect(() => {
     if (active)
