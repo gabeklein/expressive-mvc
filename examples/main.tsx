@@ -1,7 +1,9 @@
 import { lazy, Suspense } from 'react';
 import { createRoot } from 'react-dom/client';
 
-import { home, loadFrame, tree } from './pages';
+import Notes from './common/Notes';
+import { notesFor } from './notes';
+import { frameFile, home, loadFrame, tree } from './pages';
 
 const root = createRoot(document.getElementById('root')!);
 
@@ -17,11 +19,15 @@ if (window.self === window.top) {
   // Theme is pushed in directly by the shell (see Outlet).
   document.body.classList.add('example');
 
+  const file = frameFile();
+  const notes = notesFor(file);
+
   // Await the module so render commits promptly.
-  const { default: Example } = await loadFrame()();
+  const { default: Example } = await loadFrame(file)();
 
   root.render(
     <Suspense>
+      {notes && <Notes>{notes}</Notes>}
       <Example />
     </Suspense>
   );

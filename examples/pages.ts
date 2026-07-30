@@ -81,7 +81,9 @@ export const home = leaves(tree)[0]?.path;
 
 export const frameSrc = (file: string) => `module#${encodeURIComponent(file)}`;
 
-export const loadFrame = () => apps[decodeURIComponent(location.hash.slice(1))];
+export const frameFile = () => decodeURIComponent(location.hash.slice(1));
+
+export const loadFrame = (file: string) => apps[file];
 
 const sortKey = (name: string) =>
   (name === 'App.tsx' ? '0' : name === 'App.css' ? '1' : '2') + name;

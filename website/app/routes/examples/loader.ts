@@ -1,6 +1,7 @@
 // Shared stylesheet lives at the examples root - pull it in directly.
 import styles from '@examples/global.css?raw';
 import { tree, type Directory } from '@examples/pages';
+import notes from 'virtual:example-notes';
 
 const leaves = (dirs: Directory[]): Directory[] =>
   dirs.flatMap((d) => (d.children ? leaves(d.children) : d));
@@ -11,22 +12,37 @@ export const EXAMPLE_LABELS = Object.fromEntries(
 );
 
 // `*/**/*` requires at least one folder under examples/ - skips top-level
-// SPA scaffolding (package.json, vite.config.ts, main.tsx, etc.).
-const FILES = import.meta.glob('@examples/*/**/*', {
+// SPA scaffolding (package.json, vite.config.ts, main.tsx, etc.). Extensions
+// are explicit so README.md stays out: fumadocs-mdx would claim it here and
+// hand back a compiled component (see `virtual:example-notes`).
+const FILES = import.meta.glob('@examples/*/**/*.{ts,tsx,css}', {
   query: '?raw',
   import: 'default',
   eager: true
 }) as Record<string, string>;
 
-const ENTRY = `\
+const entry = (readme: boolean) => `\
 import './global.css';
 import { createRoot } from 'react-dom/client';
 import App from './App';
-
+${readme ? "import Readme from './README';\n" : ''}
 // Matches the dev harness: centers/constrains example content via global.css.
 document.body.classList.add('example');
 
-createRoot(document.getElementById('root')!).render(<App />);
+createRoot(document.getElementById('root')!).render(
+  ${readme ? '<>\n    <Readme />\n    <App />\n  </>' : '<App />'}
+);
+`;
+
+// Backslash, backtick and `${` would otherwise break out of the literal.
+const readme = (source: string) => `\
+import Notes from './common/Notes';
+
+export default () => (
+  <Notes>{\`
+${source.trim().replace(/[\\`]|\$(?=\{)/g, '\\$&')}
+\`}</Notes>
+);
 `;
 
 
@@ -72,13 +88,17 @@ export const REDIRECT = leaves(GROUPS).map((n) => n.path).find((p) => examples[p
 export const exampleSlug = (path = '') =>
   path.replace(/^\/examples\//, '').replace(/\/+$/, '');
 
-for (const folder of Object.values(examples)) {
+for (const [slug, folder] of Object.entries(examples)) {
   const cssImports = Object.keys(folder)
     .filter((p) => p.endsWith('.css'))
     .map((p) => `import '.${p}';\n`)
     .join('');
 
-  folder['/index.tsx'] = cssImports + ENTRY;
+  const source = notes[slug];
+
+  if (source) folder['/README.tsx'] = readme(source);
+
+  folder['/index.tsx'] = cssImports + entry(!!source);
 }
 
 // Matches `import ... '...'` and re-exports (`export ... from '...'`).
@@ -126,8 +146,11 @@ export function getFiles(name: string) {
 
   for (const [path, code] of sorted) {
     if (path === '/index.css') continue;
-    // /index.tsx is generated boilerplate from the sandbox plugin.
-    files[path] = path === '/index.tsx' ? { hidden: true, code } : code;
+    // Both are generated: the entry point, and the example's README as JSX.
+    files[path] =
+      path === '/index.tsx' || path === '/README.tsx'
+        ? { hidden: true, code }
+        : code;
   }
 
   // Shared chrome ships hidden: no editor tab, but present on eject so the
