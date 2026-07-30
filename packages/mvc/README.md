@@ -26,7 +26,7 @@ npm install @expressive/mvc
 A `State` is a class whose fields are reactive - read to subscribe, assign to update. Getters are cached computed values.
 
 ```ts
-import { State } from '@expressive/mvc';
+import State from '@expressive/mvc';
 
 class Counter extends State {
   count = 0;
@@ -62,7 +62,7 @@ Field initializers that change how a property behaves:
 | `has()` | an owned reactive collection - an ordered list or a spawned pool |
 
 ```ts
-import { State, set, has, map } from '@expressive/mvc';
+import State, { set, has, map } from '@expressive/mvc';
 
 class Cart extends State {
   items = has<Item>();                      // reactive collection
@@ -92,7 +92,7 @@ timer.set(null);             // destroy - runs cleanup, freezes state
 States find each other through context, and compose by holding one another:
 
 ```ts
-import { State, get } from '@expressive/mvc';
+import State, { get } from '@expressive/mvc';
 
 class Session extends State {
   user = 'guest';
