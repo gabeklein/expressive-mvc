@@ -23,12 +23,16 @@ class Manuscript extends Scale {
   value = 14;
   max = 100;
 
+  get volume() {
+    return roman(this.value);
+  }
+
   render() {
-    const { value } = this;
+    const { volume } = this;
 
     return (
       <form className="volume" onSubmit={(e) => e.preventDefault()}>
-        <Arc>{roman(value)}</Arc>
+        <Arc>{volume}</Arc>
 
         <div className="row">
           <Slider />
@@ -36,7 +40,7 @@ class Manuscript extends Scale {
         </div>
 
         <footer>
-          <small>Manuscript, Volume {roman(value)}</small>
+          <small>Manuscript, Volume {volume}</small>
         </footer>
       </form>
     );
