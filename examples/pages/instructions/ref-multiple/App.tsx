@@ -1,21 +1,24 @@
 import './App.css';
 
 import State, { Component, ref } from '@expressive/react';
+import type { ChangeEvent } from 'react';
 
 export default () => (
   <div className="container">
     <h1>Ref Proxy</h1>
     <p>
-      <code>ref(this)</code> is the plural form: one call hands back a callable
-      handle for <em>every</em> field, keyed by name. Nothing below names a fader -
-      the desk walks the state's own keys, and each handle writes the field it
-      belongs to.
+      <code>ref(this)</code> is the plural form: one call, one handle per field,
+      keyed by name. Give it a factory and each key maps to whatever the call site
+      wants instead - here the props for that field's input, so the state hands out
+      its own wiring. Nothing below names a fader; the desk walks the state's keys.
     </p>
     <Desk />
     <small>
       Add <code>presence = 20</code> to Bands and a fifth fader appears, labelled
-      and wired, because the list was never written down anywhere. Nudge and
-      Flatten loop that same proxy over whatever is there.
+      and wired, because the list was never written down anywhere. The buttons use
+      the plain proxy - <code>refs[band].current</code> writes a field the loop
+      never had to name. Only <code>value</code> stays in render: that read is the
+      subscription.
     </small>
   </div>
 );
@@ -26,10 +29,25 @@ class Bands extends State {
   treble = 30;
   air = 55;
 
+  // The factory form maps each field to whatever the call site needs. Here that
+  // is the input itself: its wiring comes from the state, one object per field.
+  fader = ref(this, (key, bands) => {
+    const band = key as Band;
+
+    return {
+      type: 'range',
+      min: 0,
+      max: 100,
+      onChange: (event: ChangeEvent<HTMLInputElement>) => {
+        bands[band] = event.target.valueAsNumber;
+      }
+    };
+  });
+
   refs = ref(this);
 }
 
-type Band = Exclude<State.Field<Bands>, 'refs'>;
+type Band = Exclude<State.Field<Bands>, 'fader' | 'refs'>;
 
 class Desk extends Component {
   bands = new Bands();
@@ -55,11 +73,7 @@ class Desk extends Component {
         {faders(bands).map((band) => (
           <label key={band}>
             <span>{band}</span>
-            <input
-              type="range"
-              value={bands[band]}
-              onChange={(e) => (bands.refs[band].current = +e.target.value)}
-            />
+            <input {...bands.fader[band]} value={bands[band]} />
             <output>{bands[band]}</output>
           </label>
         ))}
