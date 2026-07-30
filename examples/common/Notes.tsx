@@ -2,7 +2,7 @@ import './Notes.css';
 
 import type { ReactNode } from 'react';
 
-const INLINE = /(\*\*.+?\*\*|`.+?`|\[.+?\]\(.+?\))/g;
+const INLINE = /(\*\*.+?\*\*|\*[^*]+\*|`.+?`|\[.+?\]\(.+?\))/g;
 const LINK = /^\[(.+?)\]\((.+?)\)$/;
 
 const inline = (text: string): ReactNode[] =>
@@ -10,6 +10,7 @@ const inline = (text: string): ReactNode[] =>
     if (part.startsWith('**'))
       return <strong key={i}>{inline(part.slice(2, -2))}</strong>;
 
+    if (part.startsWith('*')) return <em key={i}>{inline(part.slice(1, -1))}</em>;
     if (part.startsWith('`')) return <code key={i}>{part.slice(1, -1)}</code>;
 
     const link = LINK.exec(part);
@@ -18,9 +19,6 @@ const inline = (text: string): ReactNode[] =>
   });
 
 const block = (text: string, i: number) => {
-  if (text.startsWith('## '))
-    return <h2 key={i}>{inline(text.slice(3))}</h2>;
-
   if (text.startsWith('- '))
     return (
       <ul key={i}>
