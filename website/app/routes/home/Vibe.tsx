@@ -22,8 +22,8 @@ export function Vibe() {
             State, derived values, async, and lifecycle live together.
             Composition helps separate concerns into readable chunks.
           </Point>
-          <Point title="Less to trace when things break" delay={200}>
-            No dependency arrays, stale closures, or complicated interactions.
+          <Point title="Logic and state are addressable" delay={200}>
+            Every behavior has a name and a home you can point at.
             A fix starts at the class, not a hunt through wiring.
           </Point>
           <Point title="Type-safe as a rule" delay={100}>
