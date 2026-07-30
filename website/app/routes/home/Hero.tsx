@@ -46,6 +46,11 @@ export function Hero() {
               to="/docs">
               View Docs
             </Link>
+            <Link
+              className={`${btn} border border-fd-border text-inherit hover:bg-fd-muted`}
+              to="/examples">
+              See Examples
+            </Link>
           </div>
           <div className="mx-auto flex max-w-md flex-col gap-2 lg:mx-0">
             <CopyPill label="Add to your app" command="npm install @expressive/react" />
