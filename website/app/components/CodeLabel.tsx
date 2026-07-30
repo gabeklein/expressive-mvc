@@ -1,5 +1,5 @@
 const CHIP =
-  'mr-[3px] rounded-sm border border-fd-border bg-fd-muted px-1 py-px font-mono text-[0.85em] font-normal';
+  'relative -top-px mr-[3px] rounded-sm border border-fd-border bg-fd-muted px-1 py-px font-mono text-[0.85em] font-normal';
 
 export default function CodeLabel({
   label,

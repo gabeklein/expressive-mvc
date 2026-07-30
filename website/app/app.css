@@ -281,14 +281,14 @@ figure[data-rehype-pretty-code-figure] pre code,
   border-radius: 5px;
 }
 
-.trace-pulse {
-  animation: hero-update-trace 240ms ease-out;
+/* Shiki's JS regex engine mis-tokenizes trailing line comments, so annotations
+   injected into a snippet are colored as code. Paint them like comments. */
+[class^='tip-trace-note-'] span {
+  color: var(--color-fd-muted-foreground) !important;
 }
 
-.trace-held {
-  color: white;
-  background-color: #4285f4;
-  box-shadow: 0 0 0 2px color-mix(in srgb, #4285f4 55%, transparent);
+.trace-pulse {
+  animation: hero-update-trace 240ms ease-out;
 }
 
 @keyframes hero-update-trace {
