@@ -14,8 +14,9 @@ import SearchDialog from '@/components/Search';
 import NotFound from './routes/not-found';
 
 export const links: Route.LinksFunction = () => [
-  { rel: 'icon', type: 'image/png', href: '/brand/icon-512.png' },
-  { rel: 'apple-touch-icon', href: '/brand/icon-512.png' },
+  { rel: 'icon', href: '/favicon.ico', sizes: '48x48 32x32 16x16' },
+  { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' },
+  { rel: 'apple-touch-icon', href: '/brand/icon-touch.png' },
   { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
   {
     rel: 'preconnect',
