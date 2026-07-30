@@ -1,5 +1,15 @@
 # @expressive/router
 
+## 0.6.2
+
+### Patch Changes
+
+- [#282](https://github.com/gabeklein/expressive-mvc/pull/282) [`2820e96`](https://github.com/gabeklein/expressive-mvc/commit/2820e964c3a0700e2b092276f0c6ebe236d8c48f) Packaging hygiene: drop the `react` peer dependency and declare `sideEffects: false`.
+
+  The router is host-agnostic - its runtime imports are `@expressive/mvc` entries only, so nothing here requires React itself. The hard peer range (`>=16.8.0 <20.0.0`) produced unmet-peer warnings for non-React hosts and belongs to the adapter, which already declares React as an optional peer. Installing under React is unchanged: the adapter's own peering still applies.
+
+  `sideEffects: false` lets bundlers tree-shake the package like `@expressive/mvc`; no module runs anything at import time. Also aligns publish metadata with sibling packages (`publishConfig.access`) and removes a vestigial npm-based `preversion` script - releases run through changesets CI.
+
 ## 0.6.1
 
 ### Patch Changes

@@ -1,6 +1,5 @@
 {
   "lockfileVersion": 1,
-  "configVersion": 0,
   "workspaces": {
     "": {
       "name": "expressive-mvc",
@@ -64,7 +63,7 @@
     },
     "packages/react": {
       "name": "@expressive/react",
-      "version": "0.83.0",
+      "version": "0.83.1",
       "dependencies": {
         "@expressive/mvc": "^0.82.0",
       },
@@ -85,7 +84,7 @@
     },
     "packages/router": {
       "name": "@expressive/router",
-      "version": "0.6.1",
+      "version": "0.6.2",
       "dependencies": {
         "@expressive/mvc": "^0.82.0",
       },

@@ -1,5 +1,11 @@
 # @expressive/react
 
+## 0.83.1
+
+### Patch Changes
+
+- [#279](https://github.com/gabeklein/expressive-mvc/pull/279) [`b6be135`](https://github.com/gabeklein/expressive-mvc/commit/b6be135dae3a3d888d5fcce35f7f17bf56fd5618) `State.get()` no longer dispatches a React update before its render attempt has committed. A subscriber whose fiber was discarded pre-commit - a sibling mutating shared state during render, under a Suspense boundary that never resolves - called `setState` on a fiber React had not mounted, producing the dev warning _"Can't perform a React state update on a component that hasn't mounted yet."_ A change arriving before commit is now held and flushed once the fiber commits, so no update is lost.
+
 ## 0.83.0
 
 ### Minor Changes
