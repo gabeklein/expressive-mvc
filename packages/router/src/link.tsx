@@ -66,7 +66,7 @@ export class Link extends Component {
   };
 
   /**
-   * If a subclass authores own render, it will override default anchor wrapping.
+   * A subclass that authors its own render overrides the default anchor wrapping.
    */
   render({ children, to, replace, ...rest } = {} as Link.Props): Component.Node {
     if (children !== this.props.children) return children;

@@ -1,6 +1,6 @@
 import { reactRouter } from '@react-router/dev/vite';
 import tailwindcss from '@tailwindcss/vite';
-import { defineConfig, type Plugin } from 'vite';
+import { defineConfig, runnerImport, type Plugin } from 'vite';
 import tsconfigPaths from 'vite-tsconfig-paths';
 import mdx from 'fumadocs-mdx/vite';
 import * as MdxConfig from './source.config';
@@ -64,6 +64,38 @@ function countTests(dir: string): number {
   return total;
 }
 
+interface ExampleDirectory {
+  label: string;
+  path: string;
+  file?: string;
+  children?: ExampleDirectory[];
+}
+
+const EXAMPLES = resolve(__dirname, '../examples/pages.ts');
+const EXAMPLES_INDEX = 'examples/index.md';
+
+function examplesIndex(tree: ExampleDirectory[]) {
+  const leaves = (dirs: ExampleDirectory[]): ExampleDirectory[] =>
+    dirs.flatMap((d) => (d.children ? leaves(d.children) : d.file ? d : []));
+
+  const sections = tree.map((group) =>
+    [
+      `## ${group.label}`,
+      ...leaves(group.children ?? []).map(
+        (d) => `- [${d.label}](https://expressive.dev/examples/${d.path})`
+      )
+    ].join('\n')
+  );
+
+  return [
+    '# Runnable Examples',
+    'Each page below serves the full source of a working program - every file, ' +
+      'no JavaScript required to read it. Groups appear in site navigation order. ' +
+      'Generated at build from the example manifests.',
+    ...sections
+  ].join('\n\n') + '\n';
+}
+
 function serveSkills(): Plugin {
   // Site-owned llm content overlays the skills copy under the same /llm root.
   const dirs = [resolve(__dirname, '../skills'), resolve(__dirname, 'content/llm')];
@@ -71,6 +103,15 @@ function serveSkills(): Plugin {
     name: 'serve-llm',
     configureServer(server) {
       server.middlewares.use('/llm', async (req, res) => {
+        if (req.url === `/${EXAMPLES_INDEX}`) {
+          const { tree } = (await server.ssrLoadModule(EXAMPLES)) as {
+            tree: ExampleDirectory[];
+          };
+          res.setHeader('Content-Type', 'text/plain');
+          res.end(examplesIndex(tree));
+          return;
+        }
+
         for (const dir of dirs)
           try {
             const content = await readFile(join(dir, req.url || '/'));
@@ -88,6 +129,10 @@ function serveSkills(): Plugin {
 
       for (const dir of dirs)
         await cp(dir, join(outDir, 'llm'), { recursive: true });
+
+      const { module } = await runnerImport<{ tree: ExampleDirectory[] }>(EXAMPLES);
+
+      await writeFile(join(outDir, 'llm', EXAMPLES_INDEX), examplesIndex(module.tree));
 
       const getUrl = createGetUrl('/docs');
       const paths = ['/', '/examples'];

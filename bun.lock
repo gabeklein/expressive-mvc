@@ -84,19 +84,16 @@
       "name": "@expressive/router",
       "version": "0.6.1",
       "dependencies": {
-        "@expressive/mvc": "^0.80.0",
+        "@expressive/mvc": "^0.82.0",
       },
       "devDependencies": {
-        "@expressive/react": "^0.81.0",
+        "@expressive/react": "^0.83.0",
         "@testing-library/react": "^16.3.0",
         "@types/react": "^19",
         "@types/react-dom": "^19",
         "react": "^19",
         "react-dom": "^19",
         "tsdown": "^0.20.1",
-      },
-      "peerDependencies": {
-        "react": ">=16.8.0 <20.0.0",
       },
     },
     "website": {

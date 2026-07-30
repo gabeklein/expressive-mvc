@@ -1,8 +1,9 @@
 import React, { Suspense } from 'react';
-import { Component, get, State, Provider, set } from '.';
-import { mock, spyOn, expect, it, describe, afterEach, afterAll } from 'bun:test';
+import { Component, Context, get, State, Provider, set } from '.';
+import { mock, spyOn, expect, it, describe, beforeEach, afterEach, afterAll } from 'bun:test';
 import { act, render, renderHook, waitFor } from '@testing-library/react';
 import { mockPromise, flushMicrotasks } from '../test.setup';
+import { Runtime } from './runtime';
 
 function renderWith<T>(Type: State.Type | State, hook: () => T) {
   return renderHook(hook, {
@@ -1176,5 +1177,101 @@ describe('State.get - nested dependency', () => {
 
     expect(hook.result.current).toBe(5);
     expect(didRender).toBeCalledTimes(2);
+  });
+});
+
+// Runtime is stubbed with a hand-driven lifecycle (as in runtime.test.ts) so a
+// change can land strictly before vs. after commit - the ordering React itself
+// won't reproduce on demand.
+describe('State.get - pre-commit dispatch', () => {
+  class Test extends State {
+    value = 0;
+  }
+
+  function harness(test: Test) {
+    const refs: { current: any }[] = [];
+    const inited: boolean[] = [];
+    const effects: (() => (() => void) | void)[] = [];
+    const context = new Context({ test });
+    const update = mock();
+    let index = 0;
+
+    Runtime.useContext = (() => context) as typeof Runtime.useContext;
+
+    Runtime.useRef = ((value: any) => {
+      const ref = refs[index] || (refs[index] = { current: value });
+      index++;
+      return ref;
+    }) as typeof Runtime.useRef;
+
+    Runtime.useState = ((value: any) => {
+      const slot = index++;
+      if (!inited[slot]) {
+        inited[slot] = true;
+        if (typeof value === 'function') value();
+      }
+      return [0, update];
+    }) as typeof Runtime.useState;
+
+    Runtime.useEffect = ((fn: any) => void effects.push(fn)) as typeof Runtime.useEffect;
+
+    return {
+      update,
+      render: () => {
+        index = 0;
+        effects.length = 0;
+        void Test.get().value;
+      },
+      commit: () => effects.forEach((fn) => fn())
+    };
+  }
+
+  let saved: Partial<typeof Runtime>;
+
+  beforeEach(() => void (saved = { ...Runtime }));
+  afterEach(() => void Object.assign(Runtime, saved));
+
+  it('will not dispatch before the attempt commits', async () => {
+    const test = Test.new();
+    const { update, render } = harness(test);
+
+    render();
+    test.value = 1;
+
+    await expect(test).toHaveUpdated();
+
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it('will flush a deferred dispatch once committed', async () => {
+    const test = Test.new();
+    const { update, render, commit } = harness(test);
+
+    render();
+    test.value = 1;
+    test.value = 2;
+
+    await expect(test).toHaveUpdated();
+
+    expect(update).not.toHaveBeenCalled();
+
+    commit();
+
+    expect(update).toHaveBeenCalledTimes(1);
+  });
+
+  it('will dispatch immediately after commit', async () => {
+    const test = Test.new();
+    const { update, render, commit } = harness(test);
+
+    render();
+    commit();
+    update.mockClear();
+
+    test.value = 1;
+
+    await expect(test).toHaveUpdated();
+
+    expect(update).toHaveBeenCalledTimes(1);
   });
 });
