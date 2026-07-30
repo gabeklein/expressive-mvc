@@ -70,14 +70,14 @@ function Point({
 
 const illustrationClass = 'h-14 w-20 overflow-visible';
 
-const RED = '#ff375f';
-const ORANGE = '#ff9f0a';
-const GREEN = '#30d158';
+const ACCENT = 'var(--accent)';
 const BLUE = '#0a84ff';
-const VIOLET = '#bf5af2';
-const CYAN = '#64d2ff';
 
-const noise = 'opacity-70 dark:opacity-80';
+const GOLD = '#c08a3e';
+const ORCHID = '#a86fb5';
+const STEEL = '#4b8fc7';
+
+const lines = 'opacity-[.28]';
 const panel = 'opacity-[.17] dark:opacity-[.13]';
 const resolved = 'opacity-[.22] dark:opacity-[.18]';
 
@@ -98,19 +98,14 @@ function SmallerComponents() {
   return (
     <svg viewBox="0 0 80 56" className={illustrationClass} fill="none">
       <rect x="2" y="7" width="28" height="42" rx="5" fill="currentColor" className={panel} />
-      <g strokeWidth="2" strokeLinecap="round" className={noise}>
-        <path d="M8 15h16" stroke={RED} />
-        <path d="M8 24h11" stroke={ORANGE} />
-        <path d="M8 32h16" stroke={GREEN} />
-        <path d="M8 41h13" stroke={BLUE} />
-      </g>
+      <path d="M8 15h16M8 24h11M8 32h16M8 41h13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className={lines} />
       <Arrow x={35} />
-      <g fill="var(--accent)" className={resolved}>
+      <g fill={ACCENT} className={resolved}>
         <rect x="49" y="4" width="29" height="14" rx="4" />
         <rect x="49" y="21" width="29" height="14" rx="4" />
         <rect x="49" y="38" width="29" height="14" rx="4" />
       </g>
-      <path d="M55 11h13M55 28h17M55 45h10" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" />
+      <path d="M55 11h13M55 28h17M55 45h10" stroke={ACCENT} strokeWidth="2" strokeLinecap="round" />
     </svg>
   );
 }
@@ -126,13 +121,13 @@ function MinimalBoilerplate() {
         fontSize="22"
         letterSpacing="-4"
         textAnchor="middle"
-        className={noise}>
-        <tspan fill={RED}>(</tspan>
-        <tspan fill={ORANGE}>[</tspan>
-        <tspan fill={GREEN}>{'{'}</tspan>
-        <tspan fill={CYAN}>{'}'}</tspan>
-        <tspan fill={BLUE}>]</tspan>
-        <tspan fill={VIOLET}>)</tspan>
+        className="opacity-80">
+        <tspan fill={GOLD}>(</tspan>
+        <tspan fill={ORCHID}>[</tspan>
+        <tspan fill={STEEL}>{'{'}</tspan>
+        <tspan fill={STEEL}>{'}'}</tspan>
+        <tspan fill={ORCHID}>]</tspan>
+        <tspan fill={GOLD}>)</tspan>
       </text>
     </svg>
   );
@@ -141,18 +136,10 @@ function MinimalBoilerplate() {
 function ReadableOutput() {
   return (
     <svg viewBox="0 0 80 56" className={illustrationClass} fill="none">
-      <g strokeWidth="2" strokeLinecap="round" className={noise}>
-        <path d="M3 12h16" stroke={RED} />
-        <path d="M8 21h8" stroke={ORANGE} />
-        <path d="M20 21h9" stroke={VIOLET} />
-        <path d="M2 30h14" stroke={GREEN} />
-        <path d="M11 39h17" stroke={BLUE} />
-        <path d="M5 48h4" stroke={CYAN} />
-        <path d="M13 48h10" stroke={RED} />
-      </g>
+      <path d="M3 12h16M8 21h8M20 21h9M2 30h14M11 39h17M5 48h4M13 48h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className={lines} />
       <Arrow x={34} />
-      <rect x="48" y="5" width="30" height="46" rx="6" fill="var(--accent)" className={resolved} />
-      <path d="M54 15h15M54 23h10M54 31h18M54 39h13" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" />
+      <rect x="48" y="5" width="30" height="46" rx="6" fill={ACCENT} className={resolved} />
+      <path d="M54 15h15M54 23h10M54 31h18M54 39h13" stroke={ACCENT} strokeWidth="2" strokeLinecap="round" />
     </svg>
   );
 }
@@ -161,18 +148,18 @@ function BuiltInSeparation() {
   return (
     <svg viewBox="0 0 80 56" className={illustrationClass} fill="none">
       <rect x="2" y="7" width="29" height="42" rx="5" fill="currentColor" className={panel} />
-      <g strokeWidth="2" strokeLinecap="round" className={noise}>
-        <path d="M8 16h17" stroke={GREEN} />
-        <path d="M8 24h10" stroke={RED} />
-        <path d="M8 32h16" stroke={BLUE} />
-        <path d="M8 40h12" stroke={ORANGE} />
+      <g strokeWidth="2" strokeLinecap="round" className="opacity-70">
+        <path d="M8 16h17" stroke={ACCENT} />
+        <path d="M8 24h10" stroke={BLUE} />
+        <path d="M8 32h16" stroke={ACCENT} />
+        <path d="M8 40h12" stroke={BLUE} />
       </g>
       <Arrow x={37} />
       <g className={resolved}>
-        <rect x="49" y="3" width="29" height="20" rx="5" fill="var(--accent)" />
+        <rect x="49" y="3" width="29" height="20" rx="5" fill={ACCENT} />
         <rect x="49" y="33" width="29" height="20" rx="5" fill={BLUE} />
       </g>
-      <path d="M55 10h16M55 17h10" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" />
+      <path d="M55 10h16M55 17h10" stroke={ACCENT} strokeWidth="2" strokeLinecap="round" />
       <path d="M55 40h11M55 47h17" stroke={BLUE} strokeWidth="2" strokeLinecap="round" />
       <path d="M59 25v5m-2-2 2 2 2-2M68 31v-5m-2 2 2-2 2 2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity=".45" />
     </svg>
