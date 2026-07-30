@@ -44,20 +44,15 @@ class TipTrace extends State {
     };
   }
 
-  async play(field: TipField, debounce = 180) {
+  async play(field: TipField, debounce = 400) {
     const run = ++this.run.current;
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     if (debounce) await new Promise(resolve => window.setTimeout(resolve, debounce));
     if (run !== this.run.current) return;
-    this.root.current?.querySelectorAll('.trace-held').forEach(element => {
-      element.classList.remove('trace-held');
-    });
 
     const timeline: readonly (readonly [number, TipStep?])[] = [
-      ...(field === 'bill' ? [
-        [0, 'bill-input'],
-        [80, 'bill-field'],
-      ] as const : []),
+      [0, `${field}-input`],
+      [80, `${field}-field`],
       [50, 'tip'],
       [50, 'total'],
       [50, 'destructure'],
@@ -69,15 +64,6 @@ class TipTrace extends State {
       if (delay) await new Promise(resolve => window.setTimeout(resolve, delay));
       if (run !== this.run.current) return;
       if (step) this.pulse(step);
-    }
-  }
-
-  hold(...steps: TipStep[]) {
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    for (const step of steps) {
-      this.root.current?.querySelectorAll(`.tip-trace-${step}`).forEach(element => {
-        element.classList.add('trace-held');
-      });
     }
   }
 
@@ -96,15 +82,16 @@ class TipTrace extends State {
 class TipDemo extends StateComponent {
   bill = 50;
   tipPercent = 18;
+  touched = false;
   trace = new TipTrace();
 
   render() {
-    const { bill, tipPercent, trace: { root } } = this;
+    const { bill, tipPercent, touched, trace: { root } } = this;
 
     return (
       <div ref={root}>
         <div className="code-nowrap">
-          <TipExample bill={bill} tipPercent={tipPercent} />
+          <TipExample bill={bill} tipPercent={tipPercent} annotate={touched} />
         </div>
         <TipCalculator />
         <Playground to="/examples/essentials/computed" />
@@ -130,10 +117,8 @@ class TipCalculator extends StateComponent {
   update(field: TipField, value: number) {
     this[field] = value;
     this.demo[field] = value;
-    if (field === 'tipPercent') {
-      this.demo.trace.hold('tipPercent-input', 'tipPercent-field');
-    }
-    this.demo.trace.play(field, field === 'tipPercent' ? 2500 : undefined);
+    this.demo.touched = true;
+    this.demo.trace.play(field);
   }
 
   settle(field: TipField) {
@@ -181,9 +166,13 @@ class TipCalculator extends StateComponent {
   }
 }
 
-type TipExampleProps = { bill: number; tipPercent: number };
+type TipExampleProps = { bill: number; tipPercent: number; annotate: boolean };
 
-function TipExample({ bill, tipPercent }: TipExampleProps) {
+function TipExample({ bill, tipPercent, annotate }: TipExampleProps) {
+  const tip = (bill * tipPercent) / 100;
+  const total = bill + tip;
+  const note = (value: number) => annotate ? ` // -> ${value.toFixed(2)}` : '';
+
   const Example = code /*tsx*/`
     import React from 'react';
     import { Component } from '@expressive/react';
@@ -193,11 +182,11 @@ function TipExample({ bill, tipPercent }: TipExampleProps) {
       tipPercent = ${tipPercent};
 
       get tip() {
-        return (this.bill * this.tipPercent) / 100;
+        return (this.bill * this.tipPercent) / 100;${note(tip)}
       }
 
       get total() {
-        return this.bill + this.tip;
+        return this.bill + this.tip;${note(total)}
       }
 
       render() {
@@ -229,8 +218,10 @@ function TipExample({ bill, tipPercent }: TipExampleProps) {
         'tipPercent-input': /this\.tipPercent = \+e\.target\.value/,
         'bill-field': /bill = \d+/,
         'tipPercent-field': /tipPercent = \d+/,
-        tip: /return \(this\.bill \* this\.tipPercent\) \/ 100/,
-        total: /return this\.bill \+ this\.tip/,
+        tip: /return \(this\.bill \* this\.tipPercent\) \/ 100;.*/,
+        total: /return this\.bill \+ this\.tip;.*/,
+        'note-tip': /(?<=\/ 100; )\/\/ -> [\d.]+/,
+        'note-total': /(?<=this\.tip; )\/\/ -> [\d.]+/,
         destructure: /bill, tipPercent, tip, total/,
         jsx: /Tip \{tip\.toFixed\(2\)\} · Total \{total\.toFixed\(2\)\}/,
       },
