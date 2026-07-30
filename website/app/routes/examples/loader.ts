@@ -67,6 +67,11 @@ for (const [path, code] of Object.entries(FILES)) {
 // Default redirect target: first example in tree order that has files.
 export const REDIRECT = leaves(GROUPS).map((n) => n.path).find((p) => examples[p]);
 
+// Static hosting 308s /examples/<slug> to a trailing slash; normalize so the
+// slug still resolves instead of falling through to the default redirect.
+export const exampleSlug = (path = '') =>
+  path.replace(/^\/examples\//, '').replace(/\/+$/, '');
+
 for (const folder of Object.values(examples)) {
   const cssImports = Object.keys(folder)
     .filter((p) => p.endsWith('.css'))

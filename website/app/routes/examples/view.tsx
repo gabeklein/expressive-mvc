@@ -4,12 +4,19 @@ import { Navigate, useOutletContext, useParams } from 'react-router';
 import CodeLabel from '@/components/CodeLabel';
 
 import type { ExamplesOutletContext } from './layout';
-import { examples, EXAMPLE_LABELS, getFiles, REDIRECT } from './loader';
+import {
+  exampleSlug,
+  examples,
+  EXAMPLE_LABELS,
+  getFiles,
+  REDIRECT,
+} from './loader';
 
 const Sandbox = lazy(() => import('@/components/Sandbox'));
 
 export function meta({ params }: { params: { '*'?: string } }) {
-  const label = params['*'] && EXAMPLE_LABELS[params['*']]?.replace(/`/g, '');
+  const slug = exampleSlug(params['*']);
+  const label = slug && EXAMPLE_LABELS[slug]?.replace(/`/g, '');
 
   if (!label)
     return [
@@ -60,7 +67,7 @@ function SourceListing({ name }: { name: string }) {
 }
 
 export default function CodeSample() {
-  const name = useParams()['*'];
+  const name = exampleSlug(useParams()['*']);
   const { navigationOpen, openNavigation } =
     useOutletContext<ExamplesOutletContext>();
   const [ready, setReady] = useState(false);
