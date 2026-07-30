@@ -118,12 +118,12 @@ function MinimalBoilerplate() {
         letterSpacing="-4"
         textAnchor="middle"
         className="opacity-80">
-        <tspan fill="currentColor">(</tspan>
-        <tspan fill={ACCENT}>[</tspan>
-        <tspan fill={BLUE}>{'{'}</tspan>
-        <tspan fill={BLUE}>{'}'}</tspan>
-        <tspan fill={ACCENT}>]</tspan>
-        <tspan fill="currentColor">)</tspan>
+        <tspan fill={BLUE}>(</tspan>
+        <tspan fill="currentColor">[</tspan>
+        <tspan fill={ACCENT}>{'{'}</tspan>
+        <tspan fill={ACCENT}>{'}'}</tspan>
+        <tspan fill="currentColor">]</tspan>
+        <tspan fill={BLUE}>)</tspan>
       </text>
     </svg>
   );
