@@ -1,13 +1,12 @@
-.picker {
-  margin-bottom: var(--s5);
-}
-
 .picker h2 {
+  margin: 0;
   font-size: var(--t-lg);
-  margin-bottom: var(--s3);
 }
 
-li.active {
+/* Selected wins over hover: without the second selector the global hover tint
+   replaces the fill and leaves accent-fg text on a near-transparent ground. */
+li.active,
+li.active:hover {
   background: var(--accent);
   color: var(--accent-fg);
 }

@@ -1,7 +1,5 @@
 import './App.css';
 
-import Split from '@common/Split';
-
 import { Picker } from './Picker';
 
 export default () => (
@@ -13,10 +11,10 @@ export default () => (
       <code>Item</code> alone and inherits the rest. Color replaces{' '}
       <code>Summary</code> too, adding a readout Fruit has no use for.
     </p>
-    <Split>
+    <div className="pair">
       <FruitPicker />
       <PalettePicker />
-    </Split>
+    </div>
   </div>
 );
 

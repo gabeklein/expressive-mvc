@@ -21,7 +21,7 @@ export class Picker extends Component {
 
   render() {
     return (
-      <div className={`picker ${this.className}`}>
+      <div className={`pane picker ${this.className}`}>
         {this.name && <h2>Choose {this.name}</h2>}
         <ul>
           {this.names.map((item, i) => (
