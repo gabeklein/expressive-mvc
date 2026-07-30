@@ -4,7 +4,7 @@ import { Navigate, useOutletContext, useParams } from 'react-router';
 import CodeLabel from '@/components/CodeLabel';
 
 import type { ExamplesOutletContext } from './layout';
-import { examples, EXAMPLE_LABELS, getFiles, REDIRECT } from './loader';
+import { examples, EXAMPLE_LABELS, getFiles, MOVED, REDIRECT } from './loader';
 
 const Sandbox = lazy(() => import('@/components/Sandbox'));
 
@@ -66,6 +66,9 @@ export default function CodeSample() {
   const [ready, setReady] = useState(false);
 
   useEffect(() => setReady(true), []);
+
+  if (name && MOVED[name])
+    return <Navigate to={`/examples/${MOVED[name]}`} replace />;
 
   if (!name || !examples[name])
     return <Navigate to={`/examples/${REDIRECT}`} replace />;

@@ -29,8 +29,6 @@ class Bands extends State {
   treble = 30;
   air = 55;
 
-  // The factory form maps each field to whatever the call site needs. Here that
-  // is the input itself: its wiring comes from the state, one object per field.
   fader = ref(this, (key, bands) => {
     const band = key as Band;
 

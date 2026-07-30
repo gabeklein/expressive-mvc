@@ -75,7 +75,6 @@ class Field extends Component {
   }
 }
 
-// A plain wrapper, so the field inside it is nowhere near its form in the tree.
 const Group = (props: { title: string; children?: ReactNode }) => (
   <fieldset className="group">
     <legend>{props.title}</legend>

@@ -64,6 +64,18 @@ for (const [path, code] of Object.entries(FILES)) {
   target[`/${file}`] = code.replace(/(['"])@common(?=[/'"])/g, '$1./common');
 }
 
+// Paths that have moved. The old URLs are cited by docs, llms.txt and the
+// published skill, so they redirect to the page rather than the landing example.
+export const MOVED: Record<string, string> = {
+  'apps/forms': 'featured/forms',
+  'apps/kanban': 'featured/kanban',
+  'apps/spreadsheet': 'featured/spreadsheet',
+  'apps/stopwatch': 'featured/stopwatch',
+  'apps/tictactoe': 'featured/tictactoe',
+  'component/dial': 'component/custom',
+  'component/instances': 'component/injection'
+};
+
 // Default redirect target: the landing example the dev shell also opens with,
 // falling back to the first example in tree order that has files.
 export const REDIRECT =
