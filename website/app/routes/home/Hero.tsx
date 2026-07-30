@@ -17,7 +17,7 @@ export function Hero() {
             </span>
             <span className="block mt-4 text-[clamp(1.9rem,9.5vw,3rem)] font-bold leading-[0.98] sm:text-5xl lg:leading-[1.05]">
               <span className="block whitespace-nowrap">Structure without</span>
-              <span className="block whitespace-nowrap">a framework.</span>
+              <span className="block whitespace-nowrap">all the baggage.</span>
             </span>
           </h1>
           <p className="text-fd-muted-foreground max-w-xl lg:mr-5">

@@ -2,55 +2,18 @@ import type React from 'react';
 import Reveal from '@/components/Reveal';
 import { RainbowText } from './Burst';
 
-const SHED = [
-  'swr', 'react-error-boundary', 'immer', 'use-context-selector',
-  'formik', 'use-local-storage', 'react-query', 'react-hook-form',
-  'usehooks-ts', 'use-debounce',
-];
-
-export function Rails() {
+export function Vibe() {
   return (
-    <section id="rails" className="panel px-6 lg:px-[50px]">
+    <section id="vibe" className="panel px-6 lg:px-[50px]">
       <div className="mx-auto max-w-(--content-width) py-16 md:py-24">
         <div className="max-w-2xl mb-12">
-          <div className="text-xs uppercase tracking-widest text-fd-primary mb-3">
-            Batteries (and charger) included.
-          </div>
           <h2 className="font-display text-3xl md:text-5xl font-bold tracking-tight mb-5">
-            Rails for your React app.
+            <RainbowText>Vibe code</RainbowText> you can keep.
           </h2>
           <p className="text-fd-muted-foreground text-lg md:text-xl">
-            MVC covers stateful behavior you normally need a library for.
-            Build forms, tables, and modals on the same foundation. The only
-            opinions are your own.
-          </p>
-        </div>
-
-        <div className="mb-14">
-          <div className="text-fd-muted-foreground mb-4">
-            With strong fundamentals, you stop reaching for
-          </div>
-          <div className="flex flex-wrap items-center gap-2.5 max-w-3xl">
-            {SHED.map((name) => (
-              <span
-                key={name}
-                className="rounded-full border border-fd-border font-mono text-sm text-fd-muted-foreground/60 line-through py-1.5 px-3.5">
-                {name}
-              </span>
-            ))}
-          </div>
-        </div>
-
-        <div className="max-w-2xl mb-10">
-          <h3 className="font-display text-2xl md:text-3xl font-bold tracking-tight mb-1">
-            <RainbowText>Vibe code</RainbowText> you can work with.
-          </h3>
-          <p className="text-fd-muted-foreground mb-5">
-            How often do you <i>actually</i> review the code? LGTM too.
-          </p>
-          <p className="text-fd-muted-foreground text-lg">
             Clear conventions mean a good feature looks the same, whether
-            written by you, your team, or an agent. Generated code stays readable so you can engage too.
+            written by you, your team, or an agent. Generated code stays
+            readable, with less to trace when things break.
           </p>
         </div>
 

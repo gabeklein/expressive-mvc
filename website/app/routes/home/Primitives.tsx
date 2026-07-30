@@ -431,7 +431,7 @@ function Molecules() {
   return (
     <Tab
       title={<>Components customized <span className="whitespace-nowrap">by subclass</span></>}
-      to="/examples/component/subcomponents">
+      to="/examples/composition/subcomponents">
       <>
         A base owns structure and behavior; PascalCase subcomponents are seams a
         subclass overrides for appearance. Your own behavior-complete widgets -
