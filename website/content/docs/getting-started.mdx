@@ -101,9 +101,13 @@ class TodoApp extends State {
     return this.items.filter((i) => !i.done).length;
   }
 
-  new() {
+  mount() {
     const saved = localStorage.getItem('todos');
-    if (saved) this.items = JSON.parse(saved);
+
+    if (saved) {
+      this.items = JSON.parse(saved);
+      this.nextId = Math.max(0, ...this.items.map((i) => i.id)) + 1;
+    }
 
     return this.set('items', () => {
       localStorage.setItem('todos', JSON.stringify(this.items));
@@ -158,7 +162,7 @@ function TodoList() {
 }
 ```
 
-> Notice what the component *doesn't* have: no effects, no memoization, no derived state in the render body, no setup. It's a pure projection of the state - `new()` handles persistence, `remaining` keeps itself current, and `set('items', ...)` runs whenever the list changes.
+> Notice what the component *doesn't* have: no effects, no memoization, no derived state in the render body, no setup. It's a pure projection of the state - [`mount()`](/docs/api/state#lifecycle-hooks) handles persistence once the component commits (client-only, so `localStorage` is safe even under server render), `remaining` keeps itself current, and `set('items', ...)` runs whenever the list changes.
 
 <br />
 
