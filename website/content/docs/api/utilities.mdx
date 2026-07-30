@@ -295,6 +295,8 @@ A state's home is recorded once, at activation, and is permanent.
 
 > First-wins: once a state has a home, no later context can transfer ownership.
 
+> A bare `State.new()` resolves its `get()` lookups against root either way, but it only *registers* into root - becoming findable by others - when the class declares [`static global`](#root-context-and-globals).
+
 ### Construct vs activate
 
 The escape hatch for "create now, place later" is the difference between `new State()` and `State.new()`:
@@ -329,12 +331,18 @@ Recursive: grandchildren inherit through their immediate parent. Reassigning a c
 
 ### Root context and globals
 
-`Context.root` is a regular `Context` instance serving as the global registry. Any state activated by `State.new()` outside an explicit context lands here - which is why a module-scope `Theme.new()` is findable app-wide with no Provider:
+`Context.root` is a regular `Context` instance serving as the global registry. A state activated by `State.new()` outside an explicit context resolves its own lookups against root either way, but it only *registers* here - becoming findable app-wide with no Provider - when the class declares `static global`:
 
 ```ts
+class Theme extends State {
+  static global = true;
+}
+
 const theme = Theme.new();
 Context.root.get(Theme); // theme - and so does Theme.get(), anywhere
 ```
+
+Without the declaration, a context-less instance stays private. `static global` also takes a resolver (`self => boolean`) to decide at activation, and must be declared per class - a subclass that would be global purely by inheritance throws on activation.
 
 [See globals in action](/examples/composition/globals).
 
@@ -343,10 +351,10 @@ Context.root.get(Theme); // theme - and so does Theme.get(), anywhere
 
 ### Global collision
 
-Two **implicit** instances of the same type in root mutually evict at the contested ancestor:
+Two **implicit** instances of the same global class in root mutually evict at the contested ancestor:
 
 ```ts
-const a = Sub.new();
+const a = Sub.new(); // Sub declares `static global`
 const b = Sub.new();
 Context.root.get(Sub, false); // undefined - both evicted
 ```
@@ -356,8 +364,9 @@ Read it as "implicit collision opts out of global lookup" - if you create two, n
 Eviction is per-ancestor, so sibling subtypes only collide at their shared supertype:
 
 ```ts
-class SubA extends Base {}
-class SubB extends Base {}
+// Base is a widened global; each subtype re-declares (required on extend)
+class SubA extends Base { static readonly global = true; }
+class SubB extends Base { static readonly global = true; }
 
 const a = SubA.new();
 const b = SubB.new();
