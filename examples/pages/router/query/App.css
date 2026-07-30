@@ -1,0 +1,46 @@
+.catalog {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s4);
+  width: 100%;
+  padding: var(--s4);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+}
+
+.controls button {
+  font-size: var(--t-sm);
+}
+
+.books li {
+  display: flex;
+  justify-content: space-between;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  cursor: default;
+}
+
+.books li:hover {
+  background: var(--bg);
+}
+
+.catalog footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+  padding-top: var(--s3);
+  border-top: 1px solid var(--border);
+}
+
+.catalog footer code {
+  overflow-x: auto;
+  color: var(--accent);
+}
