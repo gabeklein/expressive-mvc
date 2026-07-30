@@ -1,6 +1,6 @@
 // Shared stylesheet lives at the examples root - pull it in directly.
 import styles from '@examples/global.css?raw';
-import { tree, type Directory } from '@examples/pages';
+import { home, tree, type Directory } from '@examples/pages';
 
 const leaves = (dirs: Directory[]): Directory[] =>
   dirs.flatMap((d) => (d.children ? leaves(d.children) : d));
@@ -64,8 +64,11 @@ for (const [path, code] of Object.entries(FILES)) {
   target[`/${file}`] = code.replace(/(['"])@common(?=[/'"])/g, '$1./common');
 }
 
-// Default redirect target: first example in tree order that has files.
-export const REDIRECT = leaves(GROUPS).map((n) => n.path).find((p) => examples[p]);
+// Default redirect target: the landing example the dev shell also opens with,
+// falling back to the first example in tree order that has files.
+export const REDIRECT =
+  (home && home in examples && home) ||
+  leaves(GROUPS).map((n) => n.path).find((p) => examples[p]);
 
 for (const folder of Object.values(examples)) {
   const cssImports = Object.keys(folder)

@@ -380,7 +380,7 @@ class Game extends State {
 }
 ```
 
-A `has()` list tracks per index, so a component reading `board.get(4)` only re-renders when that cell changes; `map()` does the same for entries keyed by name. See [Arrays & Collections](/docs/guides/collections) for the full contract, or [poke the tic-tac-toe example](/examples/apps/tictactoe) to watch it work.
+A `has()` list tracks per index, so a component reading `board.get(4)` only re-renders when that cell changes; `map()` does the same for entries keyed by name. See [Arrays & Collections](/docs/guides/collections) for the full contract, or [poke the tic-tac-toe example](/examples/featured/tictactoe) to watch it work.
 
 If you just need to signal "this changed" without replacing the value, `this.set('items')` dispatches an update manually.
 

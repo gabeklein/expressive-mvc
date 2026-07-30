@@ -380,7 +380,7 @@ const GettersCode = code /*tsx*/`
 
 function Forms() {
   return (
-    <Tab title="Forms from just fields" to="/examples/apps/forms">
+    <Tab title="Forms from just fields" to="/examples/featured/forms">
       <>
         One field per input, one method for submit. A tiny base class you own
         binds the inputs - no <code>register</code>, resolvers,

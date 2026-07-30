@@ -77,7 +77,13 @@ export const tree = (() => {
 const leaves = (dirs: Directory[]): Directory[] =>
   dirs.flatMap((d) => (d.children ? leaves(d.children) : d));
 
-export const home = leaves(tree)[0]?.path;
+/** Landing example. Featured leads the nav, but the counter is the better
+ *  first read - until an index page takes over the job. */
+const LANDING = 'essentials/counter';
+
+const paths = leaves(tree).map((d) => d.path);
+
+export const home = paths.find((p) => p === LANDING) ?? paths[0];
 
 export const frameSrc = (file: string) => `module#${encodeURIComponent(file)}`;
 
