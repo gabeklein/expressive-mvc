@@ -150,18 +150,9 @@ export class Primitives extends Component {
       <section ref={this.section} id="more" className="panel px-6 lg:px-[50px]">
         <div className="mx-auto max-w-(--content-width) py-16 md:py-24">
           <div className="max-w-2xl mx-auto text-center mb-4">
-            <div className="text-xs uppercase tracking-widest text-fd-primary mb-3">
-              One foundation
-            </div>
-            <h2 className="font-display text-2xl md:text-3xl font-bold tracking-tight mb-4">
-              Stop installing architecture one feature at a time.
+            <h2 className="font-display text-2xl md:text-3xl font-bold tracking-tight">
+              The basics, built right in.
             </h2>
-            <p className="text-fd-muted-foreground text-lg">
-              Specialist libraries keep repackaging state, reactivity, lifecycle,
-              and context behind new APIs. MVC supplies that machinery once, so a
-              specialized feature becomes a compact model instead of another
-              architecture.
-            </p>
           </div>
 
           <div
@@ -440,7 +431,7 @@ function Molecules() {
   return (
     <Tab
       title={<>Components customized <span className="whitespace-nowrap">by subclass</span></>}
-      to="/examples/component/subcomponents">
+      to="/examples/composition/subcomponents">
       <>
         A base owns structure and behavior; PascalCase subcomponents are seams a
         subclass overrides for appearance. Your own behavior-complete widgets -
