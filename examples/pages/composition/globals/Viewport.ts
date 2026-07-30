@@ -1,7 +1,9 @@
 import State from '@expressive/react';
 
 // Display-agnostic logic with no render() of its own: mutable inputs are
-// fields, derived values are getters, setup and teardown live in new().
+// fields, derived values are getters. A global belongs to the app, not a
+// component, so setup and teardown live in new() - browser-only code here;
+// an app that renders on the server would guard its window access.
 export class Viewport extends State {
   // Reachable app-wide. Without this line the instance is private to whoever
   // created it - everything here still works, but Viewport.get() finds nothing.
