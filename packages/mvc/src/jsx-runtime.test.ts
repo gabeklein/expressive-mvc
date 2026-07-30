@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { childrenOf, Fragment, host, isElement, jsx, jsxs, propsOf, typeOf } from './jsx-runtime';
+import { childrenOf, Fragment, host, isElement, jsx, jsxs, propsOf, transition, typeOf } from './jsx-runtime';
 import { jsxDEV, Fragment as devFragment } from './jsx-dev-runtime';
 import type { HostRuntime } from './jsx-runtime';
 
@@ -36,6 +36,12 @@ describe('unregistered', () => {
     expect(() => isElement({})).toThrow(noHost);
     expect(() => typeOf({})).toThrow(noHost);
     expect(() => propsOf({})).toThrow(noHost);
+  });
+
+  it('will run transition work inline', () => {
+    const work = mock(() => {});
+    expect(() => transition(work)).not.toThrow();
+    expect(work).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -79,6 +85,23 @@ describe('runtime', () => {
     expect(jsxDEV('div', {}, 'k', true)).toEqual({
       kind: 'jsxs', type: 'div', props: {}, key: 'k'
     });
+  });
+
+  it('will run transition work inline when host has no scheduler', () => {
+    const work = mock(() => {});
+    transition(work);
+    expect(work).toHaveBeenCalledTimes(1);
+  });
+
+  it('will delegate transition when host provides a scheduler', () => {
+    // the registered host is ours - giving it a scheduler is not a re-registration
+    runtime.transition = mock((work: () => void) => work());
+
+    const work = mock(() => {});
+    transition(work);
+
+    expect(runtime.transition).toHaveBeenCalledWith(work);
+    expect(work).toHaveBeenCalledTimes(1);
   });
 
   it('will delegate jsxDEV when host provides it', () => {

@@ -21,9 +21,14 @@ import type { Component } from './component';
 export interface Host { }
 
 /**
- * Host JSX runtime, registered by an adapter (e.g. `@expressive/react`) as an
+ * Host runtime, registered by an adapter (e.g. `@expressive/react`) as an
  * import side effect. One host per build - a second registration with a
  * different runtime throws.
+ *
+ * Members are ambient host capabilities: plain functions the host uniquely
+ * owns, callable outside render - element mechanics always, plus optional
+ * extras that fall back sanely when absent. Hook-shaped (render-resident)
+ * capabilities do not belong here; those live with the adapter.
  */
 export interface HostRuntime {
   childrenOf(children: unknown): Component.Node[];
@@ -33,6 +38,8 @@ export interface HostRuntime {
   jsxs(type: unknown, props: object, key?: unknown): Component.Node;
   propsOf(node: unknown): Record<string, unknown>;
   typeOf(node: unknown): unknown;
+  /** Non-urgent update bracket (e.g. React `startTransition`). Optional - see {@link transition}. */
+  transition?(work: () => void): void;
   Fragment: unknown;
 }
 
@@ -145,4 +152,15 @@ export function typeOf(node: unknown): unknown {
 /** Props carried by element `node`. */
 export function propsOf(node: unknown): Record<string, unknown> {
   return resolved().propsOf(node);
+}
+
+/**
+ * Bracket `work` in the host's non-urgent update scheduling (e.g. React's
+ * `startTransition`), so state updates inside it present deferred. Unlike the
+ * element helpers, this never requires a host: absent one (or a host without
+ * a scheduler), `work` simply runs inline.
+ */
+export function transition(work: () => void): void {
+  if (HOST?.transition) HOST.transition(work);
+  else work();
 }
