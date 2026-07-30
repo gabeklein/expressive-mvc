@@ -16,6 +16,8 @@ packages/react  - React adapter (@expressive/react)
 packages/preact - Preact adapter (@expressive/preact)
 packages/router - Router built on Component (@expressive/router)
 skills/         - API reference docs (also published as skills.sh skill)
+examples/       - Playground of crawlable example pages (see examples/AGENTS.md)
+website/        - Docs site
 ```
 
 ## Commands
@@ -64,12 +66,18 @@ await expect(state).not.toHaveUpdated();
 - Negative: `it('will not trigger update')`
 - Error: `it('will throw if not found')`
 
+### Verify runtime, not just build
+
+A green `tsc --noEmit` + `bun run build` says nothing about whether a browser-facing feature (website, examples, sandbox tooling) actually works. Before calling such work done, drive the real code path: a `bun run` probe importing the module directly, the examples smoke pass (see [examples/AGENTS.md](examples/AGENTS.md)), or the Cloudflare Pages preview - every push publishes one, with a branch alias at `https://<branch>.expressive-state.pages.dev` (exact URLs in the check-run output). If runtime was not exercised, say so plainly instead of reporting "passes".
+
 ## Conventions
 
 - Framework-agnostic logic belongs in `packages/mvc`.
 - React changes must stay aligned across `packages/react/src/{state,component,context}.{ts,test.tsx}`.
 - Update tests alongside behavioral/type changes - tests must fail without the change.
 - New major features need `skills/` docs.
+- `skills/` stays task-focused: how to use the library and succeed with it. Positioning, comparisons, and adoption pitches belong in `website/content/llm/`, which the site overlays onto the same `/llm/` URLs - persuasion inside the skill is dead context weight for an agent already mid-task.
+- The style conventions documented in `skills/` (affirmative render conditions, dependency-snapshot destructuring, render fallthrough) are partly the point of the library, not decoration. Label them as opinionated convention, but apply them by default in refactors and new code - opt-out, not opt-in.
 - Merged code carries essentially no comments. Add explanatory comments freely while building a feature, but strip them before committing. Keep one only when the code is genuinely cryptic and would otherwise be misread - this should be rare. Never commit narration of what the code does or why a step exists; the code and commit message carry that.
 - **Always ask before adding new public surface.** Do not introduce new exported
   functions, methods, types, or fields (anything reachable from a package's
@@ -86,6 +94,15 @@ await expect(state).not.toHaveUpdated();
 - Prefer more, logically-scoped commits within a branch over one squashed blob - the PR itself squashes on merge, so granular commits cost nothing and give better evolution tracking during review.
 - Write a changeset (`bun run changeset`) when a change is user-facing: new feature, behavior change, API addition, breaking change.
 - No changeset for internal refactors, test-only changes, or fixes with no observable effect. A zero-changeset PR is legitimate.
+
+### Git hygiene
+
+- Do feature and isolated-fix work in a git worktree (`.claude/worktrees/<slug>`), addressing it with explicit paths - the session itself stays in the primary checkout, which is where work gets resumed from.
+- Branch from `origin/main`. Upstreams are deliberately not auto-configured, so a branch's first push must be `git push -u origin <branch>` - a bare `git push` failing with "no upstream" means exactly that, nothing deeper. Renaming a branch does not move its upstream; reset it with `git branch --set-upstream-to=origin/<name>`.
+- Pushing publishes. Don't push a branch or open a PR beyond what the task at hand calls for.
+- Never use `git stash` as a scratch mechanism. Long-lived stashes live in this repo, a bad pathspec makes `stash push` a silent no-op, and the following `stash pop` then applies an unrelated pre-existing stash into the working tree. To check something clean, copy files to scratch and `git checkout HEAD -- <file>`, or use a worktree. If stash is truly unavoidable: `git stash list` first, named push with verified paths, confirm the entry exists, pop by that explicit ref.
+- Before removing a worktree or running `git clean`, check untracked files (`git status --porcelain` plus `git ls-files --others --exclude-standard`), not just merge status - branches here that look disposable by every automated signal (fully merged, zero commits ahead) have carried their entire value as untracked files.
+- Commit messages carry no AI attribution - no `Co-authored-by` bot trailers, no "Generated with" footers.
 
 ### Releasing
 
@@ -115,5 +132,6 @@ Requires `gh auth refresh -s project` (`read:project` can list but not create). 
 - Don't introduce framework-specific imports in `packages/mvc`.
 - Instructions (`def`, `ref`, `get`, `set`) are re-exported from adapters - don't duplicate implementations.
 - `new()` lifecycle hook is optional; don't add it unnecessarily.
+- `@expressive/router` is strictly client-side - no SSR or server coupling. Its roadmap priority is stability over features: `to`, `as`, `default`, `fallback`, `redirect`, the protected `children` getter, `Component.catch`, `Link`, and `BrowserRouter` form a de facto compatibility contract consumed by downstream tooling, so treat changes to them as breaking and design new seams once, carefully.
 - Event dispatch is batched via `queueMicrotask()` - not synchronous.
 - `State.new()` constructs + activates; plain `new State()` doesn't dispatch ready.
