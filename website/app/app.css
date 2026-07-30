@@ -285,12 +285,6 @@ figure[data-rehype-pretty-code-figure] pre code,
   animation: hero-update-trace 240ms ease-out;
 }
 
-.trace-held {
-  color: white;
-  background-color: #4285f4;
-  box-shadow: 0 0 0 2px color-mix(in srgb, #4285f4 55%, transparent);
-}
-
 @keyframes hero-update-trace {
   0%, 35% {
     color: white;
