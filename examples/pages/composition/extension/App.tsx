@@ -39,10 +39,10 @@ class Panel extends Component {
 
     return (
       <section className="panel">
-        <header onClick={() => this.toggle()}>
+        <button className="head" aria-expanded={open} onClick={() => this.toggle()}>
           <b>{title}</b>
           <span>{open ? '–' : '+'}</span>
-        </header>
+        </button>
         {open && <div className="body">{props.children}</div>}
       </section>
     );

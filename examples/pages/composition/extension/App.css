@@ -9,7 +9,7 @@
   border-radius: var(--r-lg);
 }
 
-.panel header {
+.panel .head {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -17,11 +17,17 @@
   padding: var(--s2) var(--s3);
   color: var(--fg);
   background: var(--accent-soft);
-  cursor: pointer;
-  user-select: none;
+  border: none;
+  border-radius: 0;
+  text-align: left;
 }
 
-.panel header span {
+.panel .head:hover {
+  background: var(--accent-soft);
+  border: none;
+}
+
+.panel .head span {
   font-family: var(--font-mono);
   color: var(--accent);
 }
