@@ -33,8 +33,15 @@ export default () => (
 );
 
 class Profile extends Component {
-  user = set(() => after(700, { name: 'Ada Lovelace', role: 'Engineer' }));
-  greeting = set(() => `Welcome back, ${this.user.name.split(' ')[0]}`);
+  user = set(async () => {
+    return await after(700, { name: 'Ada Lovelace', role: 'Engineer' });
+  });
+
+  greeting = set(() => {
+    const [first] = this.user.name.split(' ');
+
+    return `Welcome back, ${first}`;
+  });
 
   render() {
     const { user, greeting } = this;
@@ -49,7 +56,9 @@ class Profile extends Component {
 }
 
 class Sidebar extends Component {
-  followers = set(() => after(1500, 1204), false);
+  followers = set(async () => {
+    return await after(1500, 1204);
+  }, false);
 
   render() {
     const { followers } = this;
@@ -64,5 +73,6 @@ class Sidebar extends Component {
   }
 }
 
-const after = <T,>(ms: number, value: T) =>
-  new Promise<T>((resolve) => setTimeout(resolve, ms, value));
+function after<T>(ms: number, value: T) {
+  return new Promise<T>((resolve) => setTimeout(resolve, ms, value));
+}
