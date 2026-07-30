@@ -1,4 +1,5 @@
-/* Give this example room for three columns; the shell caps #root narrow. */
+/* Give the board room for four columns where there is room; the shell caps
+   #root narrow, and the columns wrap into pairs when there isn't. */
 body.example:has(.kanban) #root {
   max-width: 56rem;
 }
@@ -9,16 +10,16 @@ body.example:has(.kanban) #root {
 
 .board {
   display: flex;
-  gap: var(--s4);
+  flex-wrap: wrap;
+  gap: var(--s3);
   width: 100%;
   align-items: flex-start;
-  overflow-x: auto;
-  padding-bottom: var(--s2);
   text-align: left;
 }
 
 .column {
-  flex: 1 0 15rem;
+  flex: 1 1 12rem;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: var(--s3);

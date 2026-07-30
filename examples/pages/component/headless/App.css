@@ -1,8 +1,13 @@
 .readout {
   display: flex;
+  flex: 1 1 12rem;
   flex-direction: column;
+  align-items: center;
   gap: var(--s1);
   padding: var(--s4);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
 }
 
 .readout strong {

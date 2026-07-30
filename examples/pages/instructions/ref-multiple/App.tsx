@@ -1,61 +1,94 @@
 import './App.css';
 
-import State, { ref } from '@expressive/react';
+import State, { Component, ref } from '@expressive/react';
+import type { ChangeEvent } from 'react';
 
-const FIELDS = [
-  { key: 'first', label: 'First name' },
-  { key: 'last', label: 'Last name' },
-  { key: 'email', label: 'Email' }
-] as const;
+export default () => (
+  <div className="container">
+    <h1>Ref Proxy</h1>
+    <p>
+      <code>ref(this)</code> is the plural form: one call, one handle per field,
+      keyed by name. Give it a factory and each key maps to whatever the call site
+      wants instead - here the props for that field's input, so the state hands out
+      its own wiring. Nothing below names a fader; the desk walks the state's keys.
+    </p>
+    <Desk />
+    <small>
+      Add <code>presence = 20</code> to Bands and a fifth fader appears, labelled
+      and wired, because the list was never written down anywhere. The buttons use
+      the plain proxy - <code>refs[band].current</code> writes a field the loop
+      never had to name. Only <code>value</code> stays in render: that read is the
+      subscription.
+    </small>
+  </div>
+);
 
-// `ref(this)` is the plural form: one call hands back an imperative handle
-// for *every* field, keyed by name. Each `refs.first` is a callable ref -
-// `refs.first('Ada')` writes the field - so one proxy drives the whole form
-// and a loop can clear every field, with no useRef per input.
-class Profile extends State {
-  first = '';
-  last = '';
-  email = '';
+class Bands extends State {
+  bass = 40;
+  mids = 65;
+  treble = 30;
+  air = 55;
+
+  fader = ref(this, (key, bands) => {
+    const band = key as Band;
+
+    return {
+      type: 'range',
+      min: 0,
+      max: 100,
+      onChange: (event: ChangeEvent<HTMLInputElement>) => {
+        bands[band] = event.target.valueAsNumber;
+      }
+    };
+  });
 
   refs = ref(this);
+}
 
-  clear() {
-    for (const { key } of FIELDS)
-      this.refs[key]('');
+type Band = Exclude<State.Field<Bands>, 'fader' | 'refs'>;
+
+class Desk extends Component {
+  bands = new Bands();
+
+  nudge(by: number) {
+    const { refs } = this.bands;
+
+    for (const band of faders(this.bands))
+      refs[band].current = clamp(refs[band].current + by);
+  }
+
+  flatten() {
+    const { refs } = this.bands;
+
+    for (const band of faders(this.bands)) refs[band].current = 50;
+  }
+
+  render() {
+    const { bands } = this;
+
+    return (
+      <section className="desk">
+        {faders(bands).map((band) => (
+          <label key={band}>
+            <span>{band}</span>
+            <input {...bands.fader[band]} value={bands[band]} />
+            <output>{bands[band]}</output>
+          </label>
+        ))}
+
+        <footer>
+          <button onClick={() => this.nudge(-10)}>−10 all</button>
+          <button onClick={() => this.flatten()}>Flatten</button>
+          <button onClick={() => this.nudge(10)}>+10 all</button>
+        </footer>
+      </section>
+    );
   }
 }
 
-function Form() {
-  const profile = Profile.use();
-  const { refs } = profile;
-  const filled = FIELDS.filter(({ key }) => profile[key]).length;
+// `refs` is non-enumerable, like every instruction, so a state's own keys are
+// exactly its faders. Read them off `is`: the tracking proxy a render sees
+// forwards property access, not enumeration.
+const faders = (bands: Bands) => Object.keys(bands.is) as Band[];
 
-  return (
-    <div className="container form">
-      <h1>Ref Proxy</h1>
-      <p>
-        <code>ref(this)</code> exposes one callable ref per field. Every input
-        writes through that proxy, and Clear loops it over all three.
-      </p>
-
-      <div className="fields">
-        {FIELDS.map(({ key, label }) => (
-          <label key={key}>
-            {label}
-            <input
-              value={profile[key]}
-              onChange={(e) => refs[key](e.target.value)}
-            />
-          </label>
-        ))}
-      </div>
-
-      <footer>
-        <small>{filled} of {FIELDS.length} filled</small>
-        <button onClick={() => profile.clear()}>Clear all</button>
-      </footer>
-    </div>
-  );
-}
-
-export default () => <Form />;
+const clamp = (value: number) => Math.max(0, Math.min(100, value));

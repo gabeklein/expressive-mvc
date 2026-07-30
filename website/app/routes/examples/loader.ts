@@ -1,6 +1,6 @@
 // Shared stylesheet lives at the examples root - pull it in directly.
 import styles from '@examples/global.css?raw';
-import { tree, type Directory } from '@examples/pages';
+import { home, tree, type Directory } from '@examples/pages';
 
 const leaves = (dirs: Directory[]): Directory[] =>
   dirs.flatMap((d) => (d.children ? leaves(d.children) : d));
@@ -64,8 +64,23 @@ for (const [path, code] of Object.entries(FILES)) {
   target[`/${file}`] = code.replace(/(['"])@common(?=[/'"])/g, '$1./common');
 }
 
-// Default redirect target: first example in tree order that has files.
-export const REDIRECT = leaves(GROUPS).map((n) => n.path).find((p) => examples[p]);
+// Paths that have moved. The old URLs are cited by docs, llms.txt and the
+// published skill, so they redirect to the page rather than the landing example.
+export const MOVED: Record<string, string> = {
+  'apps/forms': 'featured/forms',
+  'apps/kanban': 'featured/kanban',
+  'apps/spreadsheet': 'featured/spreadsheet',
+  'apps/stopwatch': 'featured/stopwatch',
+  'apps/tictactoe': 'featured/tictactoe',
+  'component/dial': 'component/custom',
+  'component/instances': 'component/injection'
+};
+
+// Default redirect target: the landing example the dev shell also opens with,
+// falling back to the first example in tree order that has files.
+export const REDIRECT =
+  (home && home in examples && home) ||
+  leaves(GROUPS).map((n) => n.path).find((p) => examples[p]);
 
 // Static hosting 308s /examples/<slug> to a trailing slash; normalize so the
 // slug still resolves instead of falling through to the default redirect.

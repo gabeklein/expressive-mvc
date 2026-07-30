@@ -1,74 +1,78 @@
 import './App.css';
 
-import State, { Component, get, Provider } from '@expressive/react';
+import State, { Consumer, Provider } from '@expressive/react';
 
-class FooBar extends State {
-  foo = 0;
-  bar = 0;
+const SHELF = [
+  { name: 'Espresso', price: 3 },
+  { name: 'Cortado', price: 4 },
+  { name: 'Pour-over', price: 5 }
+];
+
+export default () => (
+  <div className="container">
+    <h1>Context</h1>
+    <p>
+      <code>Provider</code> puts state in context - a class it constructs and will
+      destroy, an instance it leaves alone, or a map of several at once. Anything
+      below finds it by class with <code>.get()</code>, which is the difference
+      between joining state and creating it.
+    </p>
+    <Provider for={{ shop: Shop, cart: Cart }}>
+      <div className="counter">
+        <Greeting />
+        <Shelf />
+        <Badge />
+        <Consumer for={Cart}>
+          {(cart) => <p className="total">Total ${cart.total}</p>}
+        </Consumer>
+      </div>
+    </Provider>
+    <small>
+      Subscriptions are per component and per field: the badge tracks{' '}
+      <code>count</code>, the total tracks <code>total</code>, and the greeting
+      re-renders for neither. <code>is</code> is the instance itself - reads
+      through it don't subscribe, which is how the shelf writes to a cart it never
+      displays.
+    </small>
+  </div>
+);
+
+class Shop extends State {
+  barista = 'Ada';
 }
 
-// A Component is a renderable State - it both reads upstream
-// context and provides itself to descendants.
-class BarBaz extends Component {
-  // The `get` instruction lets in-context State/Components
-  // find each other for direct access to state and methods.
-  foobar = get(FooBar);
+class Cart extends State {
+  count = 0;
+  total = 0;
 
-  announce(){
-    alert(`Foo is ${this.foobar.foo} and Bar is ${this.foobar.bar}`);
+  add(price: number) {
+    this.count++;
+    this.total += price;
   }
 }
 
-export default function App() {
-  return (
-    // Provider adds any State to context for descendants to access.
-    <div className="container context">
-      <h1>Context Example</h1>
-      <Provider for={FooBar}>
-        {/* Components add themselves to context. */}
-        <BarBaz>
-          <Foo />
-          <Bar />
-          <Baz />
-        </BarBaz>
-      </Provider>
-    </div>
-  );
-}
+const Greeting = () => {
+  const { barista } = Shop.get();
 
-function Foo() {
-  // `.get()` finds the nearest provided instance (unlike `.use()`
-  // which creates one). Destructured fields subscribe either way.
-  // `is` loops back to `this` for writes and silent reads.
-  const { is: foobar, bar } = FooBar.get();
+  return <p className="greeting">{barista} is on bar</p>;
+};
+
+const Shelf = () => {
+  const { is: cart } = Cart.get();
 
   return (
-    <div className="context-row">
-      <button onClick={() => foobar.foo++}>Foo</button>
-      <small>(Bar was clicked {bar} times)</small>
+    <div className="shelf">
+      {SHELF.map(({ name, price }) => (
+        <button key={name} onClick={() => cart.add(price)}>
+          {name} <small>${price}</small>
+        </button>
+      ))}
     </div>
   );
-}
+};
 
-function Bar() {
-  // Dependencies are per-component, so this only
-  // refreshes when `foo` changes, not when `bar` does.
-  const { is: foobar, foo } = FooBar.get();
+const Badge = () => {
+  const { count } = Cart.get();
 
-  return (
-    <div className="context-row">
-      <button onClick={() => foobar.bar++}>Bar</button>
-      <small>(Foo was clicked {foo} times)</small>
-    </div>
-  );
-}
-
-function Baz() {
-  const { announce } = BarBaz.get();
-
-  return (
-    <div className="context-row">
-      <button onClick={announce}>Hello FooBar</button>
-    </div>
-  );
-}
+  return <p className="badge">{count} in cart</p>;
+};

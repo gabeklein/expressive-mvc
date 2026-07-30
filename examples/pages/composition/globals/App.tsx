@@ -4,63 +4,68 @@ import { Session } from './Session';
 import { Theme } from './Theme';
 import { Viewport } from './Viewport';
 
-// Globals: created once, right here, the way you would at your app's entry
-// point next to the root render. Two things have to be true for State.get() to
-// find one of these anywhere - the class declares `static global = true`, and
-// something activates it. State.new() is that second half.
-//
-// Activation alone is not enough: a class without the declaration stays private
-// to its creator, which is what keeps a forgotten Provider from quietly
-// installing per-request state into a process-wide registry.
 Viewport.new();
 Session.new();
 Theme.new();
 
-export default function App() {
-  return (
-    <div className="container">
-      <h1>Globals</h1>
+export default () => (
+  <div className="container">
+    <h1>Globals</h1>
+    <p>
+      Three states created once up here, the way you would beside the root render.
+      Reaching one anywhere takes two halves: the class declares{' '}
+      <code>static global</code>, and <code>.new()</code> activates it. Activation
+      alone leaves an instance private to whoever made it - which is what keeps a
+      forgotten Provider from installing per-request state process-wide.
+    </p>
+    <div className="cards">
       <Size />
       <Account />
       <Appearance />
-      <small>
-        Three classes declaring <code>static global</code>, each activated once -
-        components subscribe with <code>.get()</code> and no Provider anywhere.
-      </small>
     </div>
-  );
-}
+    <small>
+      No Provider anywhere. Each card calls <code>.get()</code> and subscribes to
+      only the fields it reads - resize the window and just the first one moves.
+    </small>
+  </div>
+);
 
-// Each component fetches its global with .get() and re-renders only when the
-// fields it reads change - no props, no shared parent passing state down.
-function Size() {
+const Size = () => {
   const { width, compact } = Viewport.get();
-  return (
-    <>
-      <p className="size">{width}px</p>
-      <p>{compact ? 'Compact layout' : 'Wide layout'}</p>
-    </>
-  );
-}
 
-function Account() {
+  return (
+    <article className="card">
+      <h2>Viewport</h2>
+      <b>{width}px</b>
+      <small>{compact ? 'compact layout' : 'wide layout'}</small>
+    </article>
+  );
+};
+
+const Account = () => {
   const { user, login, logout } = Session.get();
-  return user ? (
-    <p>
-      Signed in as {user} - <button onClick={logout}>Log out</button>
-    </p>
-  ) : (
-    <p>
-      Signed out - <button onClick={login}>Log in</button>
-    </p>
-  );
-}
 
-function Appearance() {
-  const { dark, toggle } = Theme.get();
   return (
-    <p>
-      <button onClick={toggle}>{dark ? 'Dark' : 'Light'} theme</button>
-    </p>
+    <article className="card">
+      <h2>Session</h2>
+      <b>{user ?? 'signed out'}</b>
+      {user ? (
+        <button onClick={logout}>Log out</button>
+      ) : (
+        <button onClick={login}>Log in</button>
+      )}
+    </article>
   );
-}
+};
+
+const Appearance = () => {
+  const { dark, toggle } = Theme.get();
+
+  return (
+    <article className="card">
+      <h2>Theme</h2>
+      <b>{dark ? 'dark' : 'light'}</b>
+      <button onClick={toggle}>Switch</button>
+    </article>
+  );
+};

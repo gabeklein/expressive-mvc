@@ -1,6 +1,5 @@
 import './App.css';
 
-import Split from '@common/Split';
 import { Component } from '@expressive/react';
 
 export default () => (
@@ -18,14 +17,14 @@ export default () => (
 );
 
 const Scopes = () => (
-  <Split>
+  <div className="pair">
     <Ticker rate={100}>
       <Readout />
     </Ticker>
     <Ticker rate={1000}>
       <Readout />
     </Ticker>
-  </Split>
+  </div>
 );
 
 class Ticker extends Component {

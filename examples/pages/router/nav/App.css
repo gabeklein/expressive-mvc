@@ -1,0 +1,75 @@
+.layout {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s4);
+  width: 100%;
+  text-align: left;
+}
+
+.menu {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  flex: 0 0 11rem;
+}
+
+.group {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  gap: var(--s1);
+}
+
+.group h4 {
+  margin: 0;
+  font-size: var(--t-xs);
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.tab {
+  padding: var(--s1) var(--s2);
+  border-radius: var(--r-sm);
+  font-size: var(--t-sm);
+  color: var(--fg-soft);
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.tab:hover {
+  background: var(--surface-2);
+  text-decoration: none;
+}
+
+.tab.near {
+  color: var(--fg);
+}
+
+.tab.here {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.view {
+  flex: 1;
+  min-height: 7rem;
+  padding: var(--s4);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+}
+
+.view p {
+  margin: 0;
+}
+
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s1);
+}
+
+.page code {
+  color: var(--muted);
+}

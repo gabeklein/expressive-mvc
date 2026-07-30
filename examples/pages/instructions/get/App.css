@@ -1,48 +1,67 @@
-.ballot {
-  gap: var(--s2);
-}
-
-.candidate {
-  padding: var(--s3);
-  text-align: center;
-  font-weight: 500;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--r);
-  transition: border-color 0.15s, background 0.15s, color 0.15s;
-}
-
-.candidate:hover {
-  border-color: var(--border-2);
-  background: var(--surface-2);
-}
-
-.candidate.chosen {
-  color: var(--accent);
-  background: var(--accent-soft);
-  border-color: var(--accent);
-}
-
-.tally {
-  margin: 0;
-  padding: var(--s2) var(--s4);
-  font-size: var(--t-sm);
-  color: var(--muted);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 999px;
-}
-
-.tally b {
-  color: var(--fg);
-}
-
-.add {
+.signup {
   display: flex;
+  flex-direction: column;
+  gap: var(--s4);
+  width: 100%;
+  padding: var(--s4);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
   gap: var(--s2);
   width: 100%;
+  text-align: left;
 }
 
-.add button {
-  flex: 0 0 auto;
+.field span {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s2);
+  font-size: var(--t-sm);
+  font-weight: 500;
+}
+
+.field small {
+  font-family: var(--font-mono);
+  font-size: var(--t-xs);
+}
+
+.field input:disabled {
+  color: var(--muted);
+  background: var(--surface-2);
+  cursor: not-allowed;
+}
+
+.signup footer {
+  display: flex;
+  padding-top: var(--s3);
+  border-top: 1px solid var(--border);
+}
+
+.signup footer button {
+  flex: 1;
+  font-size: var(--t-sm);
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  margin: 0;
+  padding: var(--s3);
+  border: 1px dashed var(--border-2);
+  border-radius: var(--r);
+}
+
+.group legend {
+  padding: 0 var(--s2);
+  font-size: var(--t-xs);
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
 }

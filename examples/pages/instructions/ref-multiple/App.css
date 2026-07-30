@@ -1,28 +1,43 @@
-.form {
-  max-width: 26rem;
-}
-
-.fields {
+.desk {
   display: flex;
   flex-direction: column;
   gap: var(--s3);
   width: 100%;
+  padding: var(--s4);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
 }
 
-.fields label {
-  display: flex;
-  flex-direction: column;
-  gap: var(--s1);
-  text-align: left;
-  font-size: var(--t-sm);
-  font-weight: 500;
-  color: var(--muted);
-}
-
-.form footer {
+.desk label {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: var(--s3);
-  width: 100%;
+  font-size: var(--t-sm);
+}
+
+.desk label span {
+  flex: 0 0 4rem;
+  text-align: left;
+  color: var(--muted);
+  text-transform: capitalize;
+}
+
+.desk label output {
+  flex: 0 0 2.5rem;
+  font-family: var(--font-mono);
+  text-align: right;
+  color: var(--accent);
+}
+
+.desk footer {
+  display: flex;
+  gap: var(--s2);
+  padding-top: var(--s3);
+  border-top: 1px solid var(--border);
+}
+
+.desk footer button {
+  flex: 1;
+  font-size: var(--t-sm);
 }

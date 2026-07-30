@@ -21,11 +21,13 @@ export default class Board extends Component {
 
     columns.add({ id: "todo", label: "To Do", accent: "#6366f1" });
     columns.add({ id: "doing", label: "In Progress", accent: "#f59e0b" });
+    columns.add({ id: "review", label: "In Review", accent: "#06b6d4" });
     columns.add({ id: "done", label: "Done", accent: "#10b981" });
 
     this.add('Ship map + has', 'done');
     this.add('Wire drag and drop', 'doing');
     this.add('Write the migration guide', 'todo');
+    this.add('Router guards', 'review');
     this.add('Retire hot (#263)', 'done');
   }
 

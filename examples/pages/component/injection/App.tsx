@@ -5,17 +5,18 @@ import { Component } from '@expressive/react';
 
 export default () => (
   <div className="container">
-    <h1>Instances</h1>
+    <h1>Injection</h1>
     <p>
-      An activated instance is an element. Hold one as a field and that field
-      becomes the switch - assign a different instance and the view swaps, while
-      whatever left the tree keeps its state. Each panel here is
-      bare-constructed, which makes it nested state the workspace owns.
+      An activated instance <em>is</em> an element, so rendering one is a matter of
+      putting the object you already hold into the tree - no element type to pick,
+      no props to forward. The field holding it is the switch: assign a different
+      instance and the view swaps.
     </p>
     <Workspace />
     <small>
-      Type in one, switch, come back - the text is still there. The field decides
-      what renders, never what exists.
+      Type in one, switch, come back - the text is still there, because the
+      instances live on the workspace and only their placement changed. Each is
+      bare-constructed, making it nested state the workspace owns.
     </small>
   </div>
 );

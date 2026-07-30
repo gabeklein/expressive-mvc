@@ -9,6 +9,7 @@ import {
   examples,
   EXAMPLE_LABELS,
   getFiles,
+  MOVED,
   REDIRECT,
 } from './loader';
 
@@ -73,6 +74,9 @@ export default function CodeSample() {
   const [ready, setReady] = useState(false);
 
   useEffect(() => setReady(true), []);
+
+  if (name && MOVED[name])
+    return <Navigate to={`/examples/${MOVED[name]}`} replace />;
 
   if (!name || !examples[name])
     return <Navigate to={`/examples/${REDIRECT}`} replace />;
