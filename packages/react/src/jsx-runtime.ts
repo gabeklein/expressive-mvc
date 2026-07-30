@@ -1,4 +1,4 @@
-import { Children, isValidElement } from 'react';
+import { Children, isValidElement, startTransition } from 'react';
 import { Fragment, jsx, jsxs } from 'react/jsx-runtime';
 import { host } from '@expressive/mvc/jsx-runtime';
 
@@ -16,6 +16,7 @@ host({
   jsx,
   jsxs,
   Fragment,
+  transition: startTransition,
   isElement: isValidElement,
   childrenOf(children): Component.Node[] {
     return Children.toArray(children as React.ReactNode);
