@@ -151,6 +151,10 @@ textarea {
   padding: 9px var(--s3);
 }
 
+input[type='range'] {
+  accent-color: var(--accent);
+}
+
 input::placeholder,
 textarea::placeholder {
   color: var(--muted);
@@ -240,6 +244,27 @@ hr {
 
 .container p {
   max-width: 30rem;
+}
+
+/* Side-by-side cards that stack when the column is narrow - two demos read as
+   two surfaces, without a separator doing the work. */
+.pair {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s3);
+  width: 100%;
+}
+
+.pane {
+  display: flex;
+  flex: 1 1 12rem;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s3);
+  padding: var(--s4);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
 }
 
 /* Example content (the dev iframe and every generated sandbox add this class)
