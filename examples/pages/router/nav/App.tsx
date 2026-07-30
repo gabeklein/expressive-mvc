@@ -1,6 +1,7 @@
 import './App.css';
 
-import { NavLinks, Link, Route, Router } from '@expressive/router';
+import { Component, get } from '@expressive/react';
+import { Link, NavLinks, Route, Router } from '@expressive/router';
 import type { ReactNode } from 'react';
 
 export default () => (
@@ -76,13 +77,17 @@ class Tab extends Link {
 
 const Home = () => <p>Pick anything in the menu.</p>;
 
-const Page = () => {
-  const { label, path } = Route.get();
+class Page extends Component {
+  route = get(Route);
 
-  return (
-    <p className="page">
-      <b>{label}</b>
-      <code>{path}</code>
-    </p>
-  );
-};
+  render() {
+    const { label, path } = this.route;
+
+    return (
+      <p className="page">
+        <b>{label}</b>
+        <code>{path}</code>
+      </p>
+    );
+  }
+}
