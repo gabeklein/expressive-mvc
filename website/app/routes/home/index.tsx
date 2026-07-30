@@ -13,7 +13,7 @@ import { Footer } from './Footer';
 import { Hero } from './Hero';
 import { Primitives } from './Primitives';
 import { Product } from './Product';
-import { Rails } from './Rails';
+import { Vibe } from './Vibe';
 
 export const layoutOptions: BaseLayoutProps = {
   nav: { title: <Logo />, children: <MobileHeaderActions /> },
@@ -79,9 +79,9 @@ export default function Home() {
       <Complicated />
       <Product />
       <Comparison />
+      <Vibe />
       <Context />
       <ComponentSection />
-      <Rails />
       <Primitives />
       <Benefits />
       <CTA />
