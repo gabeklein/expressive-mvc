@@ -1,4 +1,4 @@
-.desk {
+.signup {
   display: flex;
   flex-direction: column;
   gap: var(--s4);
@@ -9,53 +9,59 @@
   border-radius: var(--r-lg);
 }
 
-.master {
+.field {
   display: flex;
   flex-direction: column;
   gap: var(--s2);
+  width: 100%;
   text-align: left;
-  font-size: var(--t-sm);
-  color: var(--muted);
 }
 
-.master b {
-  color: var(--fg);
-}
-
-.channels {
+.field span {
   display: flex;
-  gap: var(--s3);
-}
-
-.channel {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
+  align-items: baseline;
+  justify-content: space-between;
   gap: var(--s2);
-  padding: var(--s3);
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: var(--r);
-}
-
-.channel header {
   font-size: var(--t-sm);
   font-weight: 500;
 }
 
-.channel output {
+.field small {
   font-family: var(--font-mono);
-  font-size: var(--t-sm);
-  color: var(--accent);
+  font-size: var(--t-xs);
 }
 
-.meter {
-  margin: 0;
-  padding: var(--s2) var(--s4);
-  font-family: var(--font-mono);
+.field input:disabled {
+  color: var(--muted);
+  background: var(--surface-2);
+  cursor: not-allowed;
+}
+
+.signup footer {
+  display: flex;
+  padding-top: var(--s3);
+  border-top: 1px solid var(--border);
+}
+
+.signup footer button {
+  flex: 1;
   font-size: var(--t-sm);
-  color: var(--fg-soft);
-  background: var(--code-bg);
-  border: 1px solid var(--border);
-  border-radius: 999px;
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  margin: 0;
+  padding: var(--s3);
+  border: 1px dashed var(--border-2);
+  border-radius: var(--r);
+}
+
+.group legend {
+  padding: 0 var(--s2);
+  font-size: var(--t-xs);
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
 }

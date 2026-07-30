@@ -1,103 +1,136 @@
 import './App.css';
 
-import State, { Component, get } from '@expressive/react';
+import State, { Component, get, has } from '@expressive/react';
 
 export default () => (
   <div className="container">
     <h1>Nested State</h1>
     <p>
       A state-typed field is state the parent <em>owns</em>: built with it,
-      destroyed with it, and reactive through it. <code>new Track()</code> is the
-      ownership form - <code>Track.new()</code> would make a private instance with
-      no context at all.
+      destroyed with it. <code>new Doc()</code> is the ownership form -{' '}
+      <code>Doc.new()</code> would make a private instance with no context at all.
     </p>
     <p>
-      Ownership also places the child. Nothing here provides a Track or a Volume,
-      yet both are findable below the player, because a child joins whatever
-      context its parent belongs to. Provide the parent and you have provided its
-      children.
+      Ownership also places it. Nothing here provides a Doc or a History, yet the
+      toolbar two levels down finds both - a child joins whatever context its
+      parent belongs to, so providing the parent provides its children.
     </p>
-    <Player />
+    <Workspace />
     <small>
-      Each control reads one child and re-renders only for it - dragging the fader
-      leaves the display alone, and neither had to be handed anything.
+      Close the editor and both go with it: reopen to an empty sheet and no
+      history. Neither child had to unregister or clean up after itself - their
+      lifetime was their owner's all along.
     </small>
   </div>
 );
 
-class Track extends State {
-  title = 'Aria in D';
-  playing = false;
+class Doc extends State {
+  text = '';
 
-  toggle() {
-    this.playing = !this.playing;
+  get words() {
+    const words = this.text.trim();
+
+    return words ? words.split(/\s+/).length : 0;
   }
 }
 
-class Volume extends State {
-  level = 40;
-  muted = false;
+class History extends State {
+  entries = has<string>();
 
-  get output() {
-    return this.muted ? 0 : this.level;
+  record(text: string) {
+    this.entries.push(text);
+  }
+
+  undo() {
+    return this.entries.pop();
   }
 }
 
-class Player extends Component {
-  track = new Track();
-  volume = new Volume();
+class Workspace extends Component {
+  open = true;
 
   render() {
-    const { track } = this;
+    const { open } = this;
 
     return (
-      <section className="player">
-        <header>
-          <h2>{track.title}</h2>
-          <small>{track.playing ? 'now playing' : 'paused'}</small>
-        </header>
+      <>
+        {open && <Editor />}
 
-        <Transport />
-        <Fader />
+        <button onClick={() => (this.open = !open)}>
+          {open ? 'Close' : 'Open'} editor
+        </button>
+      </>
+    );
+  }
+}
+
+class Editor extends Component {
+  doc = new Doc();
+  history = new History();
+
+  render() {
+    return (
+      <section className="editor">
+        <Toolbar />
+        <Sheet />
       </section>
     );
   }
 }
 
-class Transport extends Component {
-  track = get(Track);
+const Toolbar = () => (
+  <header className="toolbar">
+    <Undo />
+    <Words />
+  </header>
+);
+
+class Undo extends Component {
+  doc = get(Doc);
+  history = get(History);
+
+  revert() {
+    const previous = this.history.undo();
+
+    if (previous !== undefined) this.doc.text = previous;
+  }
 
   render() {
-    const { track } = this;
+    const { history } = this;
 
     return (
-      <button className="transport" onClick={() => track.toggle()}>
-        {track.playing ? 'Pause' : 'Play'}
+      <button disabled={!history.entries.size} onClick={() => this.revert()}>
+        Undo {history.entries.size || ''}
       </button>
     );
   }
 }
 
-class Fader extends Component {
-  volume = get(Volume);
+class Words extends Component {
+  doc = get(Doc);
 
   render() {
-    const { volume } = this;
+    return <small>{this.doc.words} words</small>;
+  }
+}
 
+class Sheet extends Component {
+  doc = get(Doc);
+  history = get(History);
+
+  write(text: string) {
+    this.history.record(this.doc.text);
+    this.doc.text = text;
+  }
+
+  render() {
     return (
-      <label className="fader">
-        <span>
-          Level <b>{volume.output}</b>
-        </span>
-        <input
-          type="range"
-          value={volume.level}
-          onChange={(e) => (volume.level = +e.target.value)}
-        />
-        <button onClick={() => (volume.muted = !volume.muted)}>
-          {volume.muted ? 'Unmute' : 'Mute'}
-        </button>
-      </label>
+      <textarea
+        rows={3}
+        value={this.doc.text}
+        placeholder="Write something, then undo it…"
+        onChange={(e) => this.write(e.target.value)}
+      />
     );
   }
 }

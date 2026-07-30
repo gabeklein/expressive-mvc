@@ -1,94 +1,84 @@
 import './App.css';
 
 import { Component, get } from '@expressive/react';
+import type { ReactNode } from 'react';
 
 export default () => (
   <div className="container">
     <h1>Upstream</h1>
     <p>
-      <code>get(Desk)</code> hands a channel the desk it lives under - located by
-      class, never threaded through props. A <code>Component</code> is in context
-      for everything it renders, so the desk provides itself just by being one.
+      <code>get(Form)</code> locates the nearest form by class, not by prop. A{' '}
+      <code>Component</code> is in context for everything it renders, so the form
+      provides itself just by being one - and every field below finds it, however
+      deep it sits.
     </p>
-    <Desk />
+    <Form />
     <p>
-      Pass <code>false</code> and the lookup turns optional. The meter below
-      renders outside the desk and reports what it found - same class as the one
-      inside, no standalone variant.
+      With <code>false</code> the lookup is optional. This is the same Field class,
+      rendered outside any form: it finds nothing, says so, and still works.
     </p>
-    <Meter />
+    <Field label="Nickname" />
     <small>
-      The field is typed as the class you asked for, so <code>desk.</code>{' '}
-      completes to real fields and methods - and a rename moves every reader
-      with it.
+      One class covers both placements because the answer is typed{' '}
+      <code>Form | undefined</code> - the compiler makes you handle the standalone
+      case, rather than a missing provider making you find out at runtime.
     </small>
   </div>
 );
 
-class Desk extends Component {
-  master = 70;
-  channels = ['Drums', 'Bass', 'Keys'];
+class Form extends Component {
+  locked = false;
 
   render() {
-    const { master, channels } = this;
+    const { locked } = this;
 
     return (
-      <section className="desk">
-        <label className="master">
-          <span>
-            Master <b>{master}%</b>
-          </span>
-          <input
-            type="range"
-            value={master}
-            onChange={(e) => (this.master = +e.target.value)}
-          />
-        </label>
+      <form className="signup" onSubmit={(e) => e.preventDefault()}>
+        <Field label="Name" />
 
-        <div className="channels">
-          {channels.map((name) => (
-            <Channel key={name} name={name} />
-          ))}
-        </div>
+        <Group title="Contact">
+          <Field label="Email" />
+        </Group>
 
-        <Meter />
-      </section>
+        <footer>
+          <button type="button" onClick={() => (this.locked = !locked)}>
+            {locked ? 'Unlock' : 'Lock'} form
+          </button>
+        </footer>
+      </form>
     );
   }
 }
 
-class Channel extends Component {
-  desk = get(Desk);
-  name = '';
-  level = 50;
+class Field extends Component {
+  form = get(Form, false);
+  label = '';
+  value = '';
 
   render() {
-    const { desk, name, level } = this;
+    const { form, label, value } = this;
 
     return (
-      <div className="channel">
-        <header>{name}</header>
+      <label className="field">
+        <span>
+          {label}
+          <small>{form ? 'in a form' : 'no form above'}</small>
+        </span>
         <input
-          type="range"
-          value={level}
-          onChange={(e) => (this.level = +e.target.value)}
+          value={value}
+          disabled={form?.locked}
+          placeholder={form?.locked ? 'locked' : `Your ${label.toLowerCase()}`}
+          onChange={(e) => (this.value = e.target.value)}
         />
-        <output>{Math.round((level * desk.master) / 100)}%</output>
-      </div>
+      </label>
     );
   }
 }
 
-class Meter extends Component {
-  desk = get(Desk, false);
-
-  render() {
-    const { desk } = this;
-
-    return (
-      <p className="meter">
-        {desk ? `bus riding at ${desk.master}%` : 'no desk in context - idle'}
-      </p>
-    );
-  }
-}
+// A plain wrapper, so the field inside it is nowhere near its form in the tree.
+const Group = (props: { title: string; children?: ReactNode }) => (
+  <fieldset className="group">
+    <legend>{props.title}</legend>
+    {props.children}
+  </fieldset>
+);
