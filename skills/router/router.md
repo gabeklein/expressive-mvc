@@ -1,6 +1,6 @@
 # Router
 
-Runnable source: [`router/overview`](https://expressive.dev/examples/router/overview) - a complete working program, served as HTML.
+Runnable source: the [`router`](https://expressive.dev/examples/router/overview) section - [`overview`](https://expressive.dev/examples/router/overview), [`params`](https://expressive.dev/examples/router/params), [`query`](https://expressive.dev/examples/router/query), [`guards`](https://expressive.dev/examples/router/guards), [`nav`](https://expressive.dev/examples/router/nav). Complete programs, served as HTML.
 
 `@expressive/router` is a host-agnostic, class-based router built on Expressive MVC. Routes are declared as nested JSX, matching is lexical (computed from the JSX tree, not a separate config), and navigation state lives on a reactive `Router` State that any component can read or drive.
 

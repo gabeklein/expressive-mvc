@@ -1,6 +1,6 @@
 # `set` - Default Values, Factories & Validation
 
-Runnable source: [`set`](https://expressive.dev/examples/instructions/set) - a complete working program, served as HTML.
+Runnable source: [`set`](https://expressive.dev/examples/instructions/set) (default + callback), [`set-factory`](https://expressive.dev/examples/instructions/set-factory) and [`set-computed`](https://expressive.dev/examples/instructions/set-computed) - complete programs, served as HTML.
 
 ```ts
 import { set } from '@expressive/mvc';
