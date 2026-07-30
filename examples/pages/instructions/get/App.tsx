@@ -1,89 +1,94 @@
 import './App.css';
 
-import State, { Component, get, Provider } from '@expressive/react';
+import { Component, get } from '@expressive/react';
 
-// The same instruction reaches both directions of the context tree.
-// Downstream: get(Candidate, true) collects every Candidate mounted below,
-// and the array tracks them as they mount and unmount - no registration.
-class Poll extends State {
-  candidates = get(Candidate, true);
-  choice = '';
+export default () => (
+  <div className="container">
+    <h1>Upstream</h1>
+    <p>
+      <code>get(Desk)</code> hands a channel the desk it lives under - located by
+      class, never threaded through props. A <code>Component</code> is in context
+      for everything it renders, so the desk provides itself just by being one.
+    </p>
+    <Desk />
+    <p>
+      Pass <code>false</code> and the lookup turns optional. The meter below
+      renders outside the desk and reports what it found - same class as the one
+      inside, no standalone variant.
+    </p>
+    <Meter />
+    <small>
+      The field is typed as the class you asked for, so <code>desk.</code>{' '}
+      completes to real fields and methods - and a rename moves every reader
+      with it.
+    </small>
+  </div>
+);
 
-  get leader() {
-    return this.choice || '—';
-  }
-}
-
-// Upstream: get(Poll) hands each Candidate the poll it lives under, so a
-// click writes the shared choice and every candidate restyles.
-class Candidate extends Component {
-  poll = get(Poll);
-  name = '';
+class Desk extends Component {
+  master = 70;
+  channels = ['Drums', 'Bass', 'Keys'];
 
   render() {
-    const { poll, name } = this;
+    const { master, channels } = this;
 
     return (
-      <li
-        className={poll.choice === name ? 'candidate chosen' : 'candidate'}
-        onClick={() => (poll.choice = name)}>
-        {name}
-      </li>
+      <section className="desk">
+        <label className="master">
+          <span>
+            Master <b>{master}%</b>
+          </span>
+          <input
+            type="range"
+            value={master}
+            onChange={(e) => (this.master = +e.target.value)}
+          />
+        </label>
+
+        <div className="channels">
+          {channels.map((name) => (
+            <Channel key={name} name={name} />
+          ))}
+        </div>
+
+        <Meter />
+      </section>
     );
   }
 }
 
-// A separate consumer reads the collected array - it re-renders as the
-// roster grows or shrinks, and when the shared choice changes.
-function Tally() {
-  const { candidates, leader } = Poll.get();
-
-  return (
-    <p className="tally">
-      {candidates.length} on the ballot · chose <b>{leader}</b>
-    </p>
-  );
-}
-
-export default class App extends Component {
-  roster = ['Ada', 'Alan', 'Grace'];
-  draft = '';
-
-  add() {
-    const name = this.draft.trim() || `Guest ${this.roster.length + 1}`;
-    this.roster = [...this.roster, name];
-    this.draft = '';
-  }
+class Channel extends Component {
+  desk = get(Desk);
+  name = '';
+  level = 50;
 
   render() {
-    const { roster, draft } = this;
+    const { desk, name, level } = this;
 
     return (
-      <div className="container">
-        <h1>Context Collection</h1>
-
-        <Provider for={Poll}>
-          <Tally />
-          <ul className="ballot">
-            {roster.map((name) => (
-              <Candidate key={name} name={name} />
-            ))}
-          </ul>
-          <form
-            className="add"
-            onSubmit={(e) => {
-              e.preventDefault();
-              this.add();
-            }}>
-            <input
-              value={draft}
-              placeholder={`Guest ${roster.length + 1}`}
-              onChange={(e) => (this.draft = e.target.value)}
-            />
-            <button type="submit">Add</button>
-          </form>
-        </Provider>
+      <div className="channel">
+        <header>{name}</header>
+        <input
+          type="range"
+          value={level}
+          onChange={(e) => (this.level = +e.target.value)}
+        />
+        <output>{Math.round((level * desk.master) / 100)}%</output>
       </div>
+    );
+  }
+}
+
+class Meter extends Component {
+  desk = get(Desk, false);
+
+  render() {
+    const { desk } = this;
+
+    return (
+      <p className="meter">
+        {desk ? `bus riding at ${desk.master}%` : 'no desk in context - idle'}
+      </p>
     );
   }
 }

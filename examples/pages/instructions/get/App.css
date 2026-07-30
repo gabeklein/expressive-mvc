@@ -1,48 +1,61 @@
-.ballot {
-  gap: var(--s2);
-}
-
-.candidate {
-  padding: var(--s3);
-  text-align: center;
-  font-weight: 500;
+.desk {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s4);
+  width: 100%;
+  padding: var(--s4);
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--r);
-  transition: border-color 0.15s, background 0.15s, color 0.15s;
+  border-radius: var(--r-lg);
 }
 
-.candidate:hover {
-  border-color: var(--border-2);
-  background: var(--surface-2);
-}
-
-.candidate.chosen {
-  color: var(--accent);
-  background: var(--accent-soft);
-  border-color: var(--accent);
-}
-
-.tally {
-  margin: 0;
-  padding: var(--s2) var(--s4);
+.master {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  text-align: left;
   font-size: var(--t-sm);
   color: var(--muted);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 999px;
 }
 
-.tally b {
+.master b {
   color: var(--fg);
 }
 
-.add {
+.channels {
   display: flex;
-  gap: var(--s2);
-  width: 100%;
+  gap: var(--s3);
 }
 
-.add button {
-  flex: 0 0 auto;
+.channel {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--s2);
+  padding: var(--s3);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+}
+
+.channel header {
+  font-size: var(--t-sm);
+  font-weight: 500;
+}
+
+.channel output {
+  font-family: var(--font-mono);
+  font-size: var(--t-sm);
+  color: var(--accent);
+}
+
+.meter {
+  margin: 0;
+  padding: var(--s2) var(--s4);
+  font-family: var(--font-mono);
+  font-size: var(--t-sm);
+  color: var(--fg-soft);
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 999px;
 }

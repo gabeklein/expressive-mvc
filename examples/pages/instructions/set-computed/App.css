@@ -1,0 +1,38 @@
+.invoice {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s4);
+  width: 100%;
+  padding: var(--s4);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+}
+
+.invoice label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  text-align: left;
+  font-size: var(--t-sm);
+  color: var(--muted);
+}
+
+.invoice footer {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding-top: var(--s3);
+  border-top: 1px solid var(--border);
+  font-family: var(--font-mono);
+}
+
+.invoice footer span {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+
+.invoice footer b {
+  font-size: var(--t-xl);
+  color: var(--accent);
+}
