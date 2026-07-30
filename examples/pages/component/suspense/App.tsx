@@ -5,20 +5,7 @@ import { Component, get, set } from '@expressive/react';
 
 export default () => (
   <div className="container">
-    <h1>Suspense</h1>
-    <p>
-      An async <code>set</code> factory resolves straight into its field, and
-      reading it while pending suspends the render. Every Component carries a
-      boundary for that, so <code>fallback</code> is the whole of the wiring -
-      there is no <code>&lt;Suspense&gt;</code> anywhere in this file.
-    </p>
     <Demo />
-    <small>
-      The second card declines its own boundary with{' '}
-      <code>{'fallback={false}'}</code>, so Panel covers it. That works only
-      because Panel owns the pending value: a boundary rebuilds the subtree it
-      retries, so state owned below would be rebuilt and requested again forever.
-    </small>
   </div>
 );
 
@@ -42,8 +29,6 @@ class Demo extends Component {
           </Panel>
         </div>
 
-        {/* An async factory resolves once, so a fresh request means a fresh
-            instance - which is what keying the owner asks for. */}
         <Button primary onClick={() => this.round++}>
           Ask again
         </Button>

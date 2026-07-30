@@ -5,15 +5,7 @@ import { Component } from '@expressive/react';
 
 export default () => (
   <div className="container">
-    <h1>Headless</h1>
-    <p>
-      A Component without <code>render()</code> draws nothing. Children pass
-      through its context provider, which makes placement in the tree the entire
-      feature: it owns a lifecycle and hosts the suspense and error boundaries
-      for everything below it.
-    </p>
     <Scopes />
-    <small>Same Readout, same class, two scopes - each finds the Ticker above it.</small>
   </div>
 );
 

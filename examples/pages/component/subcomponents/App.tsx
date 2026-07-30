@@ -6,13 +6,6 @@ import { Picker } from './Picker';
 
 export default () => (
   <div className="container">
-    <h1>Subcomponents</h1>
-    <p>
-      Picker owns the data and the selection logic; its PascalCase methods are
-      seams a subclass overrides to change only how things look. Fruit replaces{' '}
-      <code>Item</code> alone and inherits the rest. Color replaces{' '}
-      <code>Summary</code> too, adding a readout Fruit has no use for.
-    </p>
     <Split>
       <FruitPicker />
       <PalettePicker />
