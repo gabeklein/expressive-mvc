@@ -220,6 +220,8 @@ function TipExample({ bill, tipPercent, annotate }: TipExampleProps) {
         'tipPercent-field': /tipPercent = \d+/,
         tip: /return \(this\.bill \* this\.tipPercent\) \/ 100;.*/,
         total: /return this\.bill \+ this\.tip;.*/,
+        'note-tip': /(?<=\/ 100; )\/\/ -> [\d.]+/,
+        'note-total': /(?<=this\.tip; )\/\/ -> [\d.]+/,
         destructure: /bill, tipPercent, tip, total/,
         jsx: /Tip \{tip\.toFixed\(2\)\} · Total \{total\.toFixed\(2\)\}/,
       },

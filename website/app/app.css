@@ -281,6 +281,12 @@ figure[data-rehype-pretty-code-figure] pre code,
   border-radius: 5px;
 }
 
+/* Shiki's JS regex engine mis-tokenizes trailing line comments, so annotations
+   injected into a snippet are colored as code. Paint them like comments. */
+[class^='tip-trace-note-'] span {
+  color: var(--color-fd-muted-foreground) !important;
+}
+
 .trace-pulse {
   animation: hero-update-trace 240ms ease-out;
 }
