@@ -5,14 +5,6 @@ import { Component } from '@expressive/react';
 
 export default () => (
   <div className="container">
-    <h1>Error Boundary</h1>
-    <p>
-      Override <code>catch()</code> and a Component becomes the boundary for
-      everything it renders - per-feature error handling without nesting{' '}
-      <code>&lt;ErrorBoundary&gt;</code> wrappers. Boundary below has no{' '}
-      <code>render()</code> at all; it exists to sit in the tree and catch.
-    </p>
-
     <Boundary>
       <div className="card">
         <h2>Handled in place</h2>
@@ -24,12 +16,6 @@ export default () => (
         <Escalating message="The widget gave up." />
       </div>
     </Boundary>
-
-    <small>
-      The first card keeps its error, so only it swaps to a fallback while the
-      rest stays put. The second declines - its <code>catch()</code> rejects, so
-      the boundary above takes the whole group.
-    </small>
   </div>
 );
 
@@ -85,8 +71,6 @@ class Recoverable extends Fragile {
     );
   }
 
-  // Returning a pending promise holds the fallback up; resolving immediately
-  // would re-render, throw again, and loop.
   catch() {
     this.fallback = <this.Fallback />;
 

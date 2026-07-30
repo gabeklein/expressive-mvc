@@ -1,0 +1,126 @@
+.notes {
+  interpolate-size: allow-keywords;
+  width: 100%;
+  margin: var(--s2) 0 var(--s6);
+  color: var(--fg-soft);
+  font-size: var(--t-sm);
+  text-align: left;
+}
+
+.notes > summary {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  color: var(--muted);
+  font-size: var(--t-xs);
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  list-style: none;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+
+.notes > summary::-webkit-details-marker {
+  display: none;
+}
+
+.notes > summary::before,
+.notes > summary::after {
+  content: '';
+  flex: 1;
+  border-top: 1px solid var(--border);
+  transition: border-color 0.15s;
+}
+
+.notes > summary:hover {
+  color: var(--fg-soft);
+}
+
+.notes > summary:hover::before,
+.notes > summary:hover::after {
+  border-color: var(--border-2);
+}
+
+.notes::details-content {
+  block-size: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition:
+    block-size 0.3s ease,
+    opacity 0.2s ease,
+    content-visibility 0.3s allow-discrete;
+}
+
+.notes[open]::details-content {
+  block-size: auto;
+  opacity: 1;
+}
+
+.notes-body {
+  padding: var(--s5);
+  border: 1px solid var(--border);
+  border-top: none;
+}
+
+.notes-body > :first-child {
+  margin-top: 0;
+}
+
+.notes-body > :last-child {
+  margin-bottom: 0;
+}
+
+.notes-body p {
+  margin: 0 0 var(--s3);
+  max-width: none;
+  line-height: 1.6;
+}
+
+.notes-body em {
+  color: var(--fg);
+  font-style: italic;
+}
+
+.notes-body strong {
+  color: var(--fg);
+  font-weight: 600;
+}
+
+.notes-body code {
+  padding: 0.1em 0.35em;
+  border-radius: var(--r-sm);
+  background: var(--code-bg);
+  color: var(--fg-soft);
+  font-size: 0.92em;
+}
+
+.notes-body ul {
+  display: block;
+  margin: 0 0 var(--s3);
+  padding: 0;
+}
+
+.notes-body li {
+  position: relative;
+  padding: 0 0 0 var(--s4);
+  margin-bottom: var(--s1);
+  border-radius: 0;
+  line-height: 1.6;
+  cursor: auto;
+}
+
+.notes-body li:hover {
+  background: none;
+}
+
+.notes-body li::before {
+  content: '';
+  position: absolute;
+  left: var(--s1);
+  top: 0.7em;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--muted);
+}

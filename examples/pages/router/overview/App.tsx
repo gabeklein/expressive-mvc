@@ -3,13 +3,10 @@ import './App.css';
 import { Component, get } from '@expressive/react';
 import { Link, Route, Router } from '@expressive/router';
 
-// Routes ARE Components. The layout renders the nav once; the matched
-// child arrives as `props.children`.
 class Layout extends Component {
   render() {
     return (
       <div className="container">
-        <h1>Router</h1>
         <nav className="nav">
           <Link to="/">Home</Link>
           <Link to="/about">About</Link>
@@ -33,7 +30,6 @@ class About extends Component {
   }
 }
 
-// A page reads its own Route from context for params, match, navigation.
 class User extends Component {
   route = get(Route);
 

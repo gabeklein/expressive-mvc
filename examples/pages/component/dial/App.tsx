@@ -5,17 +5,7 @@ import { Scale } from './Scale';
 
 export default () => (
   <div className="container">
-    <h1>Custom Control</h1>
-    <p>
-      Drag the arc, or focus it and use the arrow keys. The number lives on the
-      form above it, so the arc, the slider and the input are three views of one
-      field - and none of them knows the others exist.
-    </p>
     <Manuscript />
-    <small>
-      Arc finds the Scale above it and declares <code>children</code> on{' '}
-      <code>render</code>, so the caller decides what sits in the well.
-    </small>
   </div>
 );
 

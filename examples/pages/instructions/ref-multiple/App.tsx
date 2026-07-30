@@ -8,10 +8,6 @@ const FIELDS = [
   { key: 'email', label: 'Email' }
 ] as const;
 
-// `ref(this)` is the plural form: one call hands back an imperative handle
-// for *every* field, keyed by name. Each `refs.first` is a callable ref -
-// `refs.first('Ada')` writes the field - so one proxy drives the whole form
-// and a loop can clear every field, with no useRef per input.
 class Profile extends State {
   first = '';
   last = '';
@@ -32,12 +28,6 @@ function Form() {
 
   return (
     <div className="container form">
-      <h1>Ref Proxy</h1>
-      <p>
-        <code>ref(this)</code> exposes one callable ref per field. Every input
-        writes through that proxy, and Clear loops it over all three.
-      </p>
-
       <div className="fields">
         {FIELDS.map(({ key, label }) => (
           <label key={key}>

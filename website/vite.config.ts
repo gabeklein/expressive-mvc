@@ -41,9 +41,49 @@ export default defineConfig({
     tailwindcss(),
     reactRouter(),
     tsconfigPaths(),
+    exampleNotes(),
     serveSkills()
   ]
 });
+
+const NOTES = 'virtual:example-notes';
+
+/**
+ * Example READMEs as a slug -> markdown map. Read off disk rather than
+ * import.meta.glob'd because fumadocs-mdx claims every `*.md` id (including
+ * `?raw`) and would hand back a compiled MDX component instead of source.
+ */
+function exampleNotes(): Plugin {
+  const resolved = `\0${NOTES}`;
+  const root = resolve(__dirname, '../examples/pages');
+
+  return {
+    name: 'example-notes',
+    resolveId(id) {
+      if (id === NOTES) return resolved;
+    },
+    async load(id) {
+      if (id !== resolved) return;
+
+      const notes: Record<string, string> = {};
+
+      for await (const entry of glob('**/README.md', { cwd: root })) {
+        notes[dirname(entry)] = await readFile(join(root, entry), 'utf8');
+        this.addWatchFile(join(root, entry));
+      }
+
+      return `export default ${JSON.stringify(notes)}`;
+    },
+    configureServer(server) {
+      server.watcher.on('all', (_event, file) => {
+        if (!file.endsWith('README.md')) return;
+
+        const mod = server.moduleGraph.getModuleById(resolved);
+        if (mod) server.reloadModule(mod);
+      });
+    }
+  };
+}
 
 function serveSkills(): Plugin {
   // Site-owned llm content overlays the skills copy under the same /llm root.

@@ -5,19 +5,7 @@ import { Component, get, has, ref } from '@expressive/react';
 
 export default () => (
   <div className="container">
-    <h1>Lifecycle</h1>
-    <p>
-      Three seams, three phases. <code>new()</code> runs at construction,
-      synchronously and during server render too, so it belongs to setup the
-      instance carries with it. <code>mount()</code> runs at commit and only on
-      the client - where timers, listeners and anything reaching for{' '}
-      <code>window</code> go. <code>ref()</code> fires when its element attaches.
-    </p>
     <Demo />
-    <small>
-      Toggle the probe to watch each seam fire, then unwind in reverse. The
-      transcript lives on the demo, which outlives the probe writing to it.
-    </small>
   </div>
 );
 

@@ -5,10 +5,6 @@ import { Component, get, map } from '@expressive/react';
 const PEOPLE = ['alice', 'bob', 'carol', 'dave'];
 const STATUS = ['online', 'away', 'busy'];
 
-// The room owns the people, keyed by id, and spawns them with a second
-// argument: set(id, name) forwards to the factory. The detail reads
-// people.get(selected), which subscribes to that one key - so it
-// re-renders when the selected person changes, not when the others do.
 export default class Room extends Component {
   people = map((id: string) => new Person({ id, name: capitalize(id) }));
   selected = '';
@@ -24,12 +20,6 @@ export default class Room extends Component {
 
     return (
       <div className="container room">
-        <h1>Presence</h1>
-        <p>
-          Click a name to select; click a status dot to cycle it. The detail
-          reads <code>people.get(selected)</code>, so it tracks only that key.
-        </p>
-
         <div className="layout">
           <ul className="people">{people}</ul>
 
@@ -51,8 +41,6 @@ export default class Room extends Component {
   }
 }
 
-// A person is a spawned, owned member keyed by id. It reads get(Room) to
-// reflect and change the selection.
 class Person extends Component {
   room = get(Room);
   id = '';

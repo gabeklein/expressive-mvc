@@ -5,19 +5,7 @@ import { Component } from '@expressive/react';
 
 export default () => (
   <div className="container">
-    <h1>Props</h1>
-    <p>
-      Every state field is an optional JSX prop, reapplied on each render - so
-      whoever passes one owns it. <code>unit</code> is declared on{' '}
-      <code>render</code> instead, which keeps it out of state and, being
-      non-optional there, makes it a required attribute.
-    </p>
     <Dashboard />
-    <small>
-      CPU takes its value from above, so its own buttons only hold until the next
-      render up there reapplies the preset. Disk keeps its own, seeded once by{' '}
-      <code>is</code> at construction.
-    </small>
   </div>
 );
 

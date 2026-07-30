@@ -3,10 +3,6 @@ import './App.css';
 import { Component, ref } from '@expressive/react';
 import type { PointerEvent } from 'react';
 
-// `ref` is the useRef replacement: a slot for a value outside the render
-// data - here the DOM node being dragged. Its callable form captures the
-// node; `.current` reaches it to measure geometry. Position is plain x/y
-// state, so the box just follows the numbers.
 class Draggable extends Component {
   box = ref<HTMLDivElement>();
 
@@ -16,8 +12,7 @@ class Draggable extends Component {
 
   offset = { x: 0, y: 0 };
 
-  // Pointer events unify mouse and touch; capturing the pointer keeps the
-  // drag tracking even when it outruns the box.
+  // Capturing the pointer keeps the drag tracking when it outruns the box.
   grab(e: PointerEvent) {
     const rect = this.box.current!.getBoundingClientRect();
 
@@ -45,12 +40,6 @@ class Draggable extends Component {
 
     return (
       <div className="container drag">
-        <h1>Refs</h1>
-        <p>
-          Drag the box. Its position is plain <code>x</code>/<code>y</code>{' '}
-          state; <code>ref</code> holds the node so the handler can measure it.
-        </p>
-
         <div className="surface">
           <div
             ref={this.box}
