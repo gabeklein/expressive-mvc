@@ -7,7 +7,9 @@ const LINK = /^\[(.+?)\]\((.+?)\)$/;
 
 const inline = (text: string): ReactNode[] =>
   text.split(INLINE).map((part, i) => {
-    if (part.startsWith('**')) return <strong key={i}>{part.slice(2, -2)}</strong>;
+    if (part.startsWith('**'))
+      return <strong key={i}>{inline(part.slice(2, -2))}</strong>;
+
     if (part.startsWith('`')) return <code key={i}>{part.slice(1, -1)}</code>;
 
     const link = LINK.exec(part);
