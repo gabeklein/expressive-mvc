@@ -2,9 +2,6 @@ import './App.css';
 
 import State, { Component, get, Provider } from '@expressive/react';
 
-// The same instruction reaches both directions of the context tree.
-// Downstream: get(Candidate, true) collects every Candidate mounted below,
-// and the array tracks them as they mount and unmount - no registration.
 class Poll extends State {
   candidates = get(Candidate, true);
   choice = '';
@@ -14,8 +11,6 @@ class Poll extends State {
   }
 }
 
-// Upstream: get(Poll) hands each Candidate the poll it lives under, so a
-// click writes the shared choice and every candidate restyles.
 class Candidate extends Component {
   poll = get(Poll);
   name = '';
@@ -33,8 +28,6 @@ class Candidate extends Component {
   }
 }
 
-// A separate consumer reads the collected array - it re-renders as the
-// roster grows or shrinks, and when the shared choice changes.
 function Tally() {
   const { candidates, leader } = Poll.get();
 
@@ -60,8 +53,6 @@ export default class App extends Component {
 
     return (
       <div className="container">
-        <h1>Context Collection</h1>
-
         <Provider for={Poll}>
           <Tally />
           <ul className="ballot">

@@ -2,9 +2,6 @@ import './App.css';
 
 import { Component, map } from '@expressive/react';
 
-// `map<K, V>()` is the insert mode: a reactive Map of values you place by
-// key with `set(key, value)` - no factory, no spawning. Bumping one key
-// notifies only that entry; adding or removing a key notifies shape.
 export default class Inventory extends Component {
   stock = map<string, number>();
   item = '';
@@ -28,13 +25,6 @@ export default class Inventory extends Component {
 
     return (
       <div className="container inv">
-        <h1>Reactive Map</h1>
-        <p>
-          <code>map&lt;string, number&gt;()</code> keys values you insert with{' '}
-          <code>set(key, value)</code>. Re-adding a name bumps its count in
-          place.
-        </p>
-
         <ul className="stock">
           {[...stock].map(([name, qty]) => (
             <li key={name}>

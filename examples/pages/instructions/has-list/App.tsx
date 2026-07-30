@@ -2,9 +2,6 @@ import './App.css';
 
 import { Component, has } from '@expressive/react';
 
-// `has<string>()` is the list mode: an ordered collection of plain values you
-// push, addressed by index. No spawned members, no keys - just a log. Reads
-// track precisely, so `get(-1)` re-renders on a new tail, `size` on length.
 export default class Editor extends Component {
   history = has<string>();
   draft = '';
@@ -29,12 +26,6 @@ export default class Editor extends Component {
 
     return (
       <div className="container log">
-        <h1>Owned List</h1>
-        <p>
-          <code>has&lt;string&gt;()</code> stores values by position. Push to
-          append, pop to undo; <code>get(-1)</code> reads the latest entry.
-        </p>
-
         <ol className="entries">
           {[...history].map((entry, i) => (
             <li key={i}>
