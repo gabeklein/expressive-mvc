@@ -1,0 +1,44 @@
+.player {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s4);
+  width: 100%;
+  padding: var(--s4);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  text-align: left;
+}
+
+.player header h2 {
+  margin: 0;
+  font-size: var(--t-lg);
+}
+
+.transport {
+  align-self: flex-start;
+  min-width: 6rem;
+}
+
+.fader {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  padding-top: var(--s3);
+  border-top: 1px solid var(--border);
+  font-size: var(--t-sm);
+  color: var(--muted);
+}
+
+.fader span {
+  flex: 0 0 5rem;
+}
+
+.fader b {
+  font-family: var(--font-mono);
+  color: var(--fg);
+}
+
+.fader button {
+  flex: 0 0 auto;
+}

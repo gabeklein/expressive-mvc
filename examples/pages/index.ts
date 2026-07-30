@@ -1,1 +1,1 @@
-export default ['essentials', 'instructions', 'component', 'composition', 'apps', 'router'];
+export default ['essentials', 'component', 'composition', 'instructions', 'apps', 'router'];
