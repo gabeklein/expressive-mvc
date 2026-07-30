@@ -2,12 +2,6 @@ import type React from 'react';
 import Reveal from '@/components/Reveal';
 import { RainbowText } from './Burst';
 
-const SHED = [
-  'swr', 'react-error-boundary', 'immer', 'use-context-selector',
-  'formik', 'use-local-storage', 'react-query', 'react-hook-form',
-  'usehooks-ts', 'use-debounce',
-];
-
 export function Vibe() {
   return (
     <section id="vibe" className="panel px-6 lg:px-[50px]">
@@ -21,21 +15,6 @@ export function Vibe() {
             written by you, your team, or an agent. Generated code stays
             readable, with less to trace when things break.
           </p>
-        </div>
-
-        <div className="mb-14">
-          <div className="text-fd-muted-foreground mb-4">
-            With strong fundamentals, you stop reaching for
-          </div>
-          <div className="flex flex-wrap items-center gap-2.5 max-w-3xl">
-            {SHED.map((name) => (
-              <span
-                key={name}
-                className="rounded-full border border-fd-border font-mono text-sm text-fd-muted-foreground/60 line-through py-1.5 px-3.5">
-                {name}
-              </span>
-            ))}
-          </div>
         </div>
 
         <div className="grid gap-x-10 gap-y-8 md:grid-cols-2">

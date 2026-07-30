@@ -150,9 +150,18 @@ export class Primitives extends Component {
       <section ref={this.section} id="more" className="panel px-6 lg:px-[50px]">
         <div className="mx-auto max-w-(--content-width) py-16 md:py-24">
           <div className="max-w-2xl mx-auto text-center mb-4">
-            <h2 className="font-display text-2xl md:text-3xl font-bold tracking-tight">
-              The basics, built right in.
+            <div className="text-xs uppercase tracking-widest text-fd-primary mb-3">
+              One foundation
+            </div>
+            <h2 className="font-display text-2xl md:text-3xl font-bold tracking-tight mb-4">
+              Stop installing architecture one feature at a time.
             </h2>
+            <p className="text-fd-muted-foreground text-lg">
+              Specialist libraries keep repackaging state, reactivity, lifecycle,
+              and context behind new APIs. MVC supplies that machinery once, so a
+              specialized feature becomes a compact model instead of another
+              architecture.
+            </p>
           </div>
 
           <div
