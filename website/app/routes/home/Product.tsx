@@ -73,10 +73,6 @@ const illustrationClass = 'h-14 w-20 overflow-visible';
 const ACCENT = 'var(--accent)';
 const BLUE = '#0a84ff';
 
-const GOLD = '#c08a3e';
-const ORCHID = '#a86fb5';
-const STEEL = '#4b8fc7';
-
 const lines = 'opacity-[.28]';
 const panel = 'opacity-[.17] dark:opacity-[.13]';
 const resolved = 'opacity-[.22] dark:opacity-[.18]';
@@ -122,12 +118,12 @@ function MinimalBoilerplate() {
         letterSpacing="-4"
         textAnchor="middle"
         className="opacity-80">
-        <tspan fill={GOLD}>(</tspan>
-        <tspan fill={ORCHID}>[</tspan>
-        <tspan fill={STEEL}>{'{'}</tspan>
-        <tspan fill={STEEL}>{'}'}</tspan>
-        <tspan fill={ORCHID}>]</tspan>
-        <tspan fill={GOLD}>)</tspan>
+        <tspan fill="currentColor">(</tspan>
+        <tspan fill={ACCENT}>[</tspan>
+        <tspan fill={BLUE}>{'{'}</tspan>
+        <tspan fill={BLUE}>{'}'}</tspan>
+        <tspan fill={ACCENT}>]</tspan>
+        <tspan fill="currentColor">)</tspan>
       </text>
     </svg>
   );
