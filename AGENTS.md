@@ -94,6 +94,7 @@ A green `tsc --noEmit` + `bun run build` says nothing about whether a browser-fa
 - Prefer more, logically-scoped commits within a branch over one squashed blob - the PR itself squashes on merge, so granular commits cost nothing and give better evolution tracking during review.
 - Write a changeset (`bun run changeset`) when a change is user-facing: new feature, behavior change, API addition, breaking change.
 - No changeset for internal refactors, test-only changes, or fixes with no observable effect. A zero-changeset PR is legitimate.
+- An open PR is not a stopping point that needs a "merged" announcement. When the task's remaining work is gated on the PR landing, watch its state quietly (e.g. poll `gh pr view <n> --json state` in the background) and continue when it resolves. On merge of a leaf branch - nothing stacked on it, task ends there - finish cleanup unprompted: remove its worktree (the untracked-file check below still applies) and delete the local branch; the remote branch auto-deletes on merge. A PR closed without merging, or review pushback, is a signal to surface to the user, never to clean up after silently.
 
 ### Git hygiene
 
