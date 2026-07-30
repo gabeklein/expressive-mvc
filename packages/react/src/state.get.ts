@@ -87,6 +87,11 @@ State.get = function get<T extends State>(
       next((x) => x + 1);
     }
 
+    function observed() {
+      if (mounted) update();
+      else pending = true;
+    }
+
     function refresh<T>(action?: Promise<T> | (() => Promise<T>)): any {
       if (typeof action == 'function') action = action();
       update();
@@ -123,7 +128,7 @@ State.get = function get<T extends State>(
             value = current;
           }
 
-          if (!first) update();
+          if (!first) observed();
           first = false;
         },
         argument === true
@@ -174,6 +179,7 @@ State.get = function get<T extends State>(
       pending = false;
       useHook(() => () => {
         mounted = true;
+        if (pending) update();
         return release;
       });
       return value === undefined ? null : value;
