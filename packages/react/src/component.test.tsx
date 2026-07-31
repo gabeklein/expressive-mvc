@@ -1,5 +1,5 @@
 import { render, screen, act } from '@testing-library/react';
-import { mock, expect, it, describe } from 'bun:test';
+import { vi, expect, it, describe } from 'vitest';
 import { renderToString } from 'react-dom/server';
 import React from 'react';
 
@@ -39,7 +39,7 @@ it('will create instance only once', () => {
     }
   }
 
-  const didConstruct = mock();
+  const didConstruct = vi.fn();
   const { rerender } = render(<Control />);
 
   expect(didConstruct).toBeCalled();
@@ -52,7 +52,7 @@ it('will create instance only once', () => {
 it('will call is method on creation', () => {
   class Control extends Component {}
 
-  const didCreate = mock();
+  const didCreate = vi.fn();
 
   const screen = render(<Control is={didCreate} />);
 
@@ -83,7 +83,7 @@ describe('ref prop', () => {
   it('will invoke callback ref with instance', () => {
     class Control extends Component {}
 
-    const cb = mock();
+    const cb = vi.fn();
     const screen = render(<Control ref={cb} />);
 
     expect(cb).toBeCalled();
@@ -97,7 +97,7 @@ describe('ref prop', () => {
 
 describe('new method', () => {
   it('will call if exists', () => {
-    const didCreate = mock();
+    const didCreate = vi.fn();
 
     class Test extends Component {
       protected new() {
@@ -117,7 +117,7 @@ describe('new method', () => {
 
 describe('mount method', () => {
   it('will call once on commit', () => {
-    const didMount = mock();
+    const didMount = vi.fn();
 
     class Test extends Component {
       mount() {
@@ -135,7 +135,7 @@ describe('mount method', () => {
   });
 
   it('will run returned callback on unmount', () => {
-    const didUnmount = mock();
+    const didUnmount = vi.fn();
 
     class Test extends Component {
       mount() {
@@ -153,8 +153,8 @@ describe('mount method', () => {
   });
 
   it('will not repeat under strict mode', () => {
-    const didMount = mock();
-    const didUnmount = mock();
+    const didMount = vi.fn();
+    const didUnmount = vi.fn();
 
     class Test extends Component {
       mount() {
@@ -173,7 +173,7 @@ describe('mount method', () => {
   });
 
   it('will not call during server render', () => {
-    const didMount = mock();
+    const didMount = vi.fn();
 
     class Test extends Component {
       mount() {
@@ -252,7 +252,7 @@ describe('element props', () => {
       value = set('foobar', didSet);
     }
 
-    const didSet = mock();
+    const didSet = vi.fn();
 
     render(<Foo value="barfoo" />);
 
@@ -314,7 +314,7 @@ describe('element children', () => {
       children = set<React.ReactNode>(undefined, didUpdate);
     }
 
-    const didUpdate = mock();
+    const didUpdate = vi.fn();
     const screen = render(<Control>Hello</Control>);
 
     expect(screen).toHaveText('Hello');
@@ -353,7 +353,7 @@ describe('props property', () => {
   });
 
   it('will be observable', async () => {
-    const didUpdate = mock();
+    const didUpdate = vi.fn();
 
     class Control extends Component {
       protected new() {
@@ -380,7 +380,7 @@ describe('props property', () => {
   });
 
   it('will not cause redundant render', async () => {
-    const didRender = mock();
+    const didRender = vi.fn();
     let control: Control;
 
     class Control extends Component {
@@ -691,7 +691,7 @@ describe('suspense', () => {
 describe('unmount', () => {
   for (const reactStrictMode of [false, true])
     it('will dispose instance' + (reactStrictMode ? ' (strict)' : ''), () => {
-      const didDispose = mock();
+      const didDispose = vi.fn();
 
       class Control extends Component {
         protected new() {
@@ -1268,8 +1268,8 @@ describe('subcomponents', () => {
 
 describe('strict mode', () => {
   it('will not create two instances', async () => {
-    const didCreate = mock();
-    const didDestroy = mock();
+    const didCreate = vi.fn();
+    const didDestroy = vi.fn();
 
     class Control extends Component {
       foo = 'bar';
@@ -1297,7 +1297,7 @@ describe('strict mode', () => {
   });
 
   it('will refresh via property update', async () => {
-    const didRender = mock();
+    const didRender = vi.fn();
     let instance!: Control;
 
     class Control extends Component {
@@ -1341,7 +1341,7 @@ describe('strict mode', () => {
   });
 
   it('will refresh via props update', async () => {
-    const didRender = mock();
+    const didRender = vi.fn();
 
     class Control extends Component {
       foo = 'bar';
@@ -1376,7 +1376,7 @@ describe('strict mode', () => {
   });
 
   it('will survive define-semantics field clobber', async () => {
-    const didAttemptConstruct = mock();
+    const didAttemptConstruct = vi.fn();
 
     class Control extends Component {
       foo = 'foo';
@@ -1396,7 +1396,7 @@ describe('strict mode', () => {
 
     expect(didAttemptConstruct).toBeCalledTimes(2);
 
-    const effect = mock();
+    const effect = vi.fn();
     instance.get(($) => {
       effect($.foo);
     });

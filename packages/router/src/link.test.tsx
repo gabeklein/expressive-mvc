@@ -1,5 +1,5 @@
 import { act, fireEvent, render } from '@testing-library/react';
-import { beforeEach, describe, expect, it } from 'bun:test';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 import { location, browserRouter } from '../test.setup';
 import { Link } from './link';

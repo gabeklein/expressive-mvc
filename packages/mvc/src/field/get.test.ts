@@ -1,4 +1,4 @@
-import { mock, describe, it, expect } from 'bun:test';
+import { vi, describe, it, expect } from 'vitest';
 import { mockPromise } from '../../test.setup';
 import { Context } from '../context';
 import { State } from '../state';
@@ -52,7 +52,7 @@ describe('fetch mode', () => {
     }
 
     const foo = Foo.new();
-    const mockEffect = mock();
+    const mockEffect = vi.fn();
     let promise = mockPromise();
 
     expect(foo.bar.foo).toBe(foo);
@@ -202,7 +202,7 @@ describe('fetch mode', () => {
     }
 
     const { child } = Parent.new();
-    const effect = mock((it: Child) => {
+    const effect = vi.fn((it: Child) => {
       void it.value;
       void it.parent.value;
     });
@@ -276,7 +276,7 @@ describe('fetch mode', () => {
 
       new Context(parent).push(child);
 
-      const effect = mock();
+      const effect = vi.fn();
       const first = parent.peer;
 
       expect(child.peer).toBe(first);
@@ -300,7 +300,7 @@ describe('fetch mode', () => {
       const child = new Child();
       const ambient = Ambient.new();
       const context = new Context();
-      const effect = mock();
+      const effect = vi.fn();
 
       context.push(child);
 
@@ -320,7 +320,7 @@ describe('fetch mode', () => {
         value = 'initial';
       }
 
-      const callback = mock();
+      const callback = vi.fn();
 
       class Owner extends State {
         remote = new Remote();
@@ -335,7 +335,7 @@ describe('fetch mode', () => {
       new Context(owner).push(consumer);
 
       const first = consumer.remote;
-      const effect = mock();
+      const effect = vi.fn();
 
       expect(callback).toBeCalled();
       expect(callback).toBeCalledWith(first, consumer);
@@ -488,7 +488,7 @@ describe('fetch mode', () => {
           children = get(Child, true, gotChild);
         }
 
-        const gotChild = mock();
+        const gotChild = vi.fn();
         const parent = new Parent();
         const child = new Child();
 
@@ -551,7 +551,7 @@ describe('fetch mode', () => {
           baz = get(Baz, true, gotBaz);
         }
 
-        const gotBaz = mock();
+        const gotBaz = vi.fn();
         const foo = new Foo();
         const baz = new Baz();
 
@@ -655,7 +655,7 @@ describe('lifecycle callbacks', () => {
       value = 'foo';
     }
 
-    const remoteCallback = mock();
+    const remoteCallback = vi.fn();
 
     class Test extends State {
       remote = get(Remote, remoteCallback);
@@ -676,7 +676,7 @@ describe('lifecycle callbacks', () => {
       children = get(Child, true, gotChild);
     }
 
-    const gotChild = mock();
+    const gotChild = vi.fn();
     const parent = new Parent();
     const child = new Child();
 
@@ -686,8 +686,8 @@ describe('lifecycle callbacks', () => {
   });
 
   it('will run cleanup on downstream unmount', async () => {
-    const didRemove = mock();
-    const didAdd = mock(() => didRemove);
+    const didRemove = vi.fn();
+    const didAdd = vi.fn(() => didRemove);
 
     class Child extends State {
       value = 0;
@@ -719,7 +719,7 @@ describe('lifecycle callbacks', () => {
       children = get(Child, true, hasChild);
     }
 
-    const hasChild = mock(() => false);
+    const hasChild = vi.fn(() => false);
     const parent = new Parent();
     const context = new Context(parent);
 
@@ -740,7 +740,7 @@ describe('lifecycle callbacks', () => {
       value = 'foo';
     }
 
-    const remoteCallback = mock((remote: Remote) => {
+    const remoteCallback = vi.fn((remote: Remote) => {
       // Access value but should not subscribe
       void remote.value;
     });
@@ -766,8 +766,8 @@ describe('lifecycle callbacks', () => {
   it('will run cleanup on state destruction', async () => {
     class Remote extends State {}
 
-    const cleanup = mock();
-    const remoteCallback = mock(() => cleanup);
+    const cleanup = vi.fn();
+    const remoteCallback = vi.fn(() => cleanup);
 
     class Test extends State {
       remote = get(Remote, remoteCallback);
@@ -787,7 +787,7 @@ describe('lifecycle callbacks', () => {
   });
 
   it('will receive ready instance', async () => {
-    const didSet = mock();
+    const didSet = vi.fn();
 
     class Child extends State {
       value = set(undefined, didSet);
@@ -821,8 +821,8 @@ describe('lifecycle callbacks', () => {
       });
     }
 
-    const didNotify = mock();
-    const didRemove = mock();
+    const didNotify = vi.fn();
+    const didRemove = vi.fn();
 
     const context = new Context();
 
@@ -848,8 +848,8 @@ describe('lifecycle callbacks', () => {
       });
     }
 
-    const didNotify = mock();
-    const didRemove = mock();
+    const didNotify = vi.fn();
+    const didRemove = vi.fn();
 
     const context = new Context(Parent);
     const inner = context.push(Child);

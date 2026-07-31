@@ -1,4 +1,4 @@
-import { mock, describe, it, expect } from 'bun:test';
+import { vi, describe, it, expect } from 'vitest';
 import { Context } from './context';
 import { State } from './state';
 
@@ -95,7 +95,7 @@ it('will remove implicit children on pop', () => {
 });
 
 it('child pop is safe to call before parent pop', () => {
-  const destroyed = mock();
+  const destroyed = vi.fn();
 
   class Test extends State {
     protected new() {
@@ -161,7 +161,7 @@ it('will notify downstream subscriber when implicit child is replaced', () => {
 
   const parent = new Parent();
   const context = new Context(parent);
-  const cb = mock();
+  const cb = vi.fn();
 
   context.get(Foo, cb);
 
@@ -240,7 +240,7 @@ it('will clear consume and provide on pop', () => {
 
   // register() seeds null placeholders up the parent chain — these survive
   // child cleanup callbacks and accumulate on long-lived roots without this.
-  child.get(Foo, mock());
+  child.get(Foo, vi.fn());
   child.add(Foo.new());
 
   expect(parent.consume.has(Foo)).toBe(true);
@@ -264,7 +264,7 @@ it('will pop child context', () => {
   class Test2 extends Test {}
   class Test3 extends Test {}
 
-  const didDestroy = mock();
+  const didDestroy = vi.fn();
   const context = new Context(Test);
 
   context.push(Test2).push(Test3);
@@ -280,7 +280,7 @@ describe('has method', () => {
 
   it('will call callback when type is added downstream', () => {
     const context = new Context();
-    const cb = mock();
+    const cb = vi.fn();
 
     context.get(DownstreamState, cb, true);
     context.push(DownstreamState);
@@ -291,7 +291,7 @@ describe('has method', () => {
 
   it('will clean up callback on cancel', () => {
     const context = new Context();
-    const cb = mock();
+    const cb = vi.fn();
 
     const cancel = context.get(DownstreamState, cb, true);
     context.push(DownstreamState);
@@ -307,8 +307,8 @@ describe('has method', () => {
 
   it('will call cleanup when state is removed', () => {
     const context = new Context();
-    const cleanup = mock();
-    const cb = mock(() => cleanup);
+    const cleanup = vi.fn();
+    const cb = vi.fn(() => cleanup);
 
     context.get(DownstreamState, cb, true);
 
@@ -324,7 +324,7 @@ describe('has method', () => {
 
   it('will not call callback for new additions after cancel', () => {
     const context = new Context();
-    const cb = mock();
+    const cb = vi.fn();
 
     const cancel = context.get(DownstreamState, cb, true);
     context.push(DownstreamState);
@@ -342,7 +342,7 @@ describe('has method', () => {
     const context = new Context();
     const child = context.push(DownstreamState);
     const existing = child.get(DownstreamState);
-    const cb = mock();
+    const cb = vi.fn();
 
     context.get(DownstreamState, cb, true);
 
@@ -353,7 +353,7 @@ describe('has method', () => {
   it('will flag direction in callback', () => {
     const context = new Context();
     context.push(DownstreamState);
-    const cb = mock();
+    const cb = vi.fn();
 
     context.get(DownstreamState, cb, true);
 
@@ -372,7 +372,7 @@ describe('has method', () => {
     const context = new Context();
     context.push(DownstreamState);
     context.push(DownstreamState);
-    const cb = mock();
+    const cb = vi.fn();
 
     context.get(DownstreamState, cb, true);
 
@@ -384,7 +384,7 @@ describe('has method', () => {
   it('will notify has-subscriber for state created before context', () => {
     const parent = new Context();
     const child = parent.push();
-    const cb = mock();
+    const cb = vi.fn();
 
     parent.get(DownstreamState, cb, true);
 
@@ -404,7 +404,7 @@ describe('get callback (upstream subscription)', () => {
   it('will call callback when type is added to parent', () => {
     const parent = new Context();
     const child = parent.push();
-    const cb = mock();
+    const cb = vi.fn();
 
     child.get(Upstream, cb);
     parent.set(Upstream);
@@ -416,7 +416,7 @@ describe('get callback (upstream subscription)', () => {
   it('will cancel subscription', () => {
     const parent = new Context();
     const child = parent.push();
-    const cb = mock();
+    const cb = vi.fn();
 
     const cancel = child.get(Upstream, cb);
     cancel();
@@ -428,8 +428,8 @@ describe('get callback (upstream subscription)', () => {
   it('will call cleanup returned from callback', () => {
     const parent = new Context();
     const child = parent.push();
-    const cleanup = mock();
-    const cb = mock(() => cleanup);
+    const cleanup = vi.fn();
+    const cb = vi.fn(() => cleanup);
 
     child.get(Upstream, cb);
     parent.set(Upstream);
@@ -447,7 +447,7 @@ describe('get callback (upstream subscription)', () => {
 
     const parent = new Context();
     const child = parent.push();
-    const cb = mock();
+    const cb = vi.fn();
 
     child.get(Upstream, cb);
     parent.set(shared);
@@ -459,7 +459,7 @@ describe('get callback (upstream subscription)', () => {
   it('will call callback for already-registered upstream state', () => {
     const parent = new Context(Upstream);
     const child = parent.push();
-    const cb = mock();
+    const cb = vi.fn();
 
     child.get(Upstream, cb);
 
@@ -471,7 +471,7 @@ describe('get callback (upstream subscription)', () => {
   it('will flag direction in upstream callback', () => {
     const parent = new Context();
     const child = parent.push();
-    const cb = mock();
+    const cb = vi.fn();
 
     // subscribe before anything exists
     child.get(Upstream, cb);
@@ -609,7 +609,7 @@ describe('set method', () => {
 
   it('will destroy state created by layer', () => {
     class Test extends State {
-      destroyed = mock();
+      destroyed = vi.fn();
 
       new() {
         return this.destroyed;
@@ -727,7 +727,7 @@ describe('set method', () => {
 
     const foo = Foo.new();
     const bar = Bar.new();
-    const cb = mock();
+    const cb = vi.fn();
 
     const context = new Context();
 
@@ -752,7 +752,7 @@ describe('set method', () => {
   it('will ignore subsequent if callback', () => {
     class Foo extends State {}
 
-    const cb = mock();
+    const cb = vi.fn();
     const context = new Context();
 
     context.set(Foo, cb);
@@ -765,7 +765,7 @@ describe('set method', () => {
 
   it('will remove and delete state of type absent', () => {
     class Bar extends State {
-      didDie = mock();
+      didDie = vi.fn();
 
       protected new() {
         return this.didDie;
@@ -783,7 +783,7 @@ describe('set method', () => {
 
   it('will replace owned instance when key changes', () => {
     class Baz extends State {
-      didDie = mock();
+      didDie = vi.fn();
 
       protected new() {
         return this.didDie;
@@ -847,8 +847,8 @@ describe('set method', () => {
   it('will call forEach cleanup when state is removed via set', () => {
     class Foo extends State {}
 
-    const cleanup = mock();
-    const forEach = mock(() => cleanup);
+    const cleanup = vi.fn();
+    const forEach = vi.fn(() => cleanup);
     const context = new Context();
 
     context.set(Foo, forEach);
@@ -865,7 +865,7 @@ describe('set method', () => {
     class Foo extends State {}
     class Bar extends State {}
 
-    const didCleanup = mock();
+    const didCleanup = vi.fn();
     const context = new Context();
 
     context.set({ Foo, Bar }, (state) => {
@@ -882,7 +882,7 @@ describe('set method', () => {
     class Foo extends State {}
     class Foo2 extends State {}
 
-    const cleanup = mock();
+    const cleanup = vi.fn();
     const context = new Context();
 
     context.set({ x: Foo }, () => cleanup);
@@ -909,7 +909,7 @@ describe('set method', () => {
     class Bar extends State {}
 
     const bar = Bar.new();
-    const didCall = mock();
+    const didCall = vi.fn();
     const context = new Context();
 
     context.set({ Foo, bar }, (state, owned) => {
@@ -928,7 +928,7 @@ describe('set method', () => {
   it('will call forEach cleanup on pop', () => {
     class Foo extends State {}
 
-    const cleanup = mock();
+    const cleanup = vi.fn();
     const parent = new Context();
     const child = parent.push();
 
@@ -967,7 +967,7 @@ describe('ambiguous implicit entries', () => {
     ctx.add(ChildA.new());
     ctx.add(ChildB.new());
 
-    const cb = mock();
+    const cb = vi.fn();
 
     // Subscribe on a child context looking upstream
     const child = ctx.push();
@@ -988,7 +988,7 @@ describe('ambiguous implicit entries', () => {
     ctx.add(a, true);
     ctx.add(b, true);
 
-    const cb = mock();
+    const cb = vi.fn();
 
     expect(() => ctx.get(Base, cb)).toThrow(
       'Did find Base in context, but multiple were defined.'
@@ -1006,7 +1006,7 @@ describe('ambiguous implicit entries', () => {
     ctx.add(explicit, true);
     ctx.add(implicit);
 
-    const cb = mock();
+    const cb = vi.fn();
     ctx.get(Base, cb);
 
     // Should only get the explicit one
@@ -1024,7 +1024,7 @@ describe('ambiguous implicit entries', () => {
     ctx.add(a, true);
     ctx.add(a, true);
 
-    const cb = mock();
+    const cb = vi.fn();
     ctx.get(Base, cb);
 
     expect(cb).toBeCalledTimes(1);
@@ -1038,7 +1038,7 @@ describe('add method listener lookup', () => {
 
     const parent = new Context();
     const child = parent.push();
-    const cb = mock();
+    const cb = vi.fn();
 
     // Subscribe on child for downstream
     child.get(Foo, cb);
@@ -1054,7 +1054,7 @@ describe('add method listener lookup', () => {
     class Foo extends State {}
 
     const parent = new Context();
-    const cb = mock();
+    const cb = vi.fn();
 
     parent.get(Foo, cb, true);
 
@@ -1069,7 +1069,7 @@ describe('add method listener lookup', () => {
     class Bar extends Foo {}
 
     const parent = new Context();
-    const cb = mock();
+    const cb = vi.fn();
 
     // Subscribe for both Foo and Bar — but cb is same ref
     parent.get(Foo, cb, true);
@@ -1087,7 +1087,7 @@ describe('add method listener lookup', () => {
     const grandparent = new Context();
     const parent = grandparent.push();
     const child = parent.push();
-    const cb = mock();
+    const cb = vi.fn();
 
     // Register same cb on both grandparent and parent
     grandparent.get(Foo, cb, true);
@@ -1108,7 +1108,7 @@ describe('add method listener lookup', () => {
     const child = parent.push();
 
     // Subscribe child for Bar only
-    child.get(Bar, mock());
+    child.get(Bar, vi.fn());
 
     // Add Foo to parent — below path visits child but finds no Foo listener
     parent.set(Foo);
@@ -1123,7 +1123,7 @@ describe('add method listener lookup', () => {
     const parent = new Context();
     const middle = parent.push();
     const child = middle.push();
-    const cb = mock();
+    const cb = vi.fn();
 
     // Register the same callback on both parent and child
     parent.get(Foo, cb);
@@ -1144,7 +1144,7 @@ it('will not traverse downstream when downstream is false', () => {
   const foo = Example.new();
   child.add(foo);
 
-  const cb = mock();
+  const cb = vi.fn();
   parent.get(Example, cb, false);
 
   expect(cb).not.toBeCalled();
@@ -1158,7 +1158,7 @@ it('will traverse deeply nested contexts', () => {
   const foo = Example.new();
   grandchild.add(foo);
 
-  const cb = mock();
+  const cb = vi.fn();
   root.get(Example, cb);
 
   expect(cb).toBeCalledWith(foo, true);
@@ -1170,7 +1170,7 @@ it('will skip consumer if filter does not match downstream', () => {
   const grandchild = child.push();
 
   // Register consumer that only wants downstream (filter=true)
-  const cb = mock();
+  const cb = vi.fn();
   child.get(Example, cb, true);
 
   // Add a provider to parent - traverse reaches child with downstream=false

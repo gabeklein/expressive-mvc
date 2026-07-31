@@ -1,7 +1,6 @@
-import { expect, it, mock } from 'bun:test';
+import { describe, expect, it, vi } from 'vitest';
 import { Component } from './component';
 import { Context } from './context';
-import { describe } from 'bun:test';
 
 it('will default fallback to null', () => {
   const foo = Component.new({});
@@ -59,7 +58,7 @@ it('will lock key after imperative write', () => {
 });
 
 it('will call is callback once with instance', () => {
-  const is = mock();
+  const is = vi.fn();
   const foo = Component.new({ is });
 
   expect(is).toBeCalledWith(foo);
@@ -201,7 +200,7 @@ describe('render chain', () => {
   // Documented footgun: a wrapper that never reads `props.children` drops the
   // derived content. The children getter is lazy, so inner never even runs.
   it('will drop derived content if wrapper omits children', () => {
-    const inner = mock(() => 'never seen');
+    const inner = vi.fn(() => 'never seen');
 
     class Shell extends Component {
       render(): Component.Node {
@@ -278,7 +277,7 @@ describe('leading function argument', () => {
   });
 
   it('will register returned function as cleanup', () => {
-    const cleanup = mock();
+    const cleanup = vi.fn();
     const test = Component.new(() => cleanup);
 
     expect(cleanup).not.toHaveBeenCalled();

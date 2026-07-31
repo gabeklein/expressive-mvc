@@ -1,5 +1,5 @@
 import { render, screen, act } from '@testing-library/react';
-import { expect, it, describe, mock } from 'bun:test';
+import { expect, it, describe, vi } from 'vitest';
 import React from 'react';
 
 import { mockError } from '../test.setup';
@@ -405,7 +405,7 @@ describe('instance element', () => {
   });
 
   it('will not mount a placed instance', () => {
-    const didMount = mock();
+    const didMount = vi.fn();
 
     class Test extends Component {
       mount() {

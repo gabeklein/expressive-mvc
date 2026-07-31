@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
     "target": "es2020",
+    "useDefineForClassFields": true,
     "esModuleInterop": true,
     "jsx": "react-jsx",
     "lib": ["ES2020", "DOM"],
@@ -9,11 +10,11 @@
     "noUnusedLocals": true,
     "sourceMap": true,
     "strict": true,
-    "types": ["bun", "react"],
+    "types": ["react"],
     "paths": {
       "@expressive/mvc/*": ["../mvc/src/*"],
       "@expressive/*": ["../*/src"]
     }
   },
-  "exclude": ["node_modules", "dist"]
+  "exclude": ["node_modules", "dist", "vitest.config.ts"]
 }

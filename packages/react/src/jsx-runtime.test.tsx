@@ -1,6 +1,6 @@
 import './jsx-runtime';
 
-import { describe, expect, it } from 'bun:test';
+import { describe, expect, it } from 'vitest';
 import { createElement, Fragment as ReactFragment } from 'react';
 import { childrenOf, Fragment, isElement, jsx, propsOf, typeOf } from '@expressive/mvc/jsx-runtime';
 

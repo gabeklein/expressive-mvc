@@ -1,5 +1,5 @@
 import { act, render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'bun:test';
+import { describe, expect, it } from 'vitest';
 import { Component, Consumer } from '@expressive/react';
 
 import { location, browserRouter, mockPromise, renderAct } from '../test.setup';

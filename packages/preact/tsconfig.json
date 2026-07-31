@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
     "target": "es2020",
+    "useDefineForClassFields": true,
     "esModuleInterop": true,
     "jsx": "react-jsx",
     "jsxImportSource": "preact",
@@ -11,12 +12,12 @@
     "noUnusedLocals": true,
     "sourceMap": true,
     "strict": true,
-    "types": ["bun", "preact"],
+    "types": ["preact"],
     "paths": {
       "@expressive/mvc/*": ["../mvc/src/*"],
       "@expressive/*": ["../*/src"],
       "@expressive/react/adapter": ["../react/src/adapter"]
     }
   },
-  "exclude": ["node_modules", "dist"]
+  "exclude": ["node_modules", "dist", "vitest.config.ts"]
 }

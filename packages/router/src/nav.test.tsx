@@ -1,5 +1,5 @@
 import { act } from '@testing-library/react';
-import { expect, it } from 'bun:test';
+import { expect, it } from 'vitest';
 
 import { renderAct, browserRouter } from '../test.setup';
 import { NavLinks } from './nav';

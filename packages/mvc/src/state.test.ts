@@ -1,4 +1,4 @@
-import { mock, expect, it, describe } from 'bun:test';
+import { vi, expect, it, describe } from 'vitest';
 import { mockError, mockPromise, mockWarn } from '../test.setup';
 import { Context } from './context';
 import { get } from './field/get';
@@ -87,8 +87,8 @@ it('will update from within a method', async () => {
 });
 
 it('will not ignore function properties', async () => {
-  const mockFunction = mock();
-  const mockFunction2 = mock();
+  const mockFunction = vi.fn();
+  const mockFunction2 = vi.fn();
 
   class Test extends State {
     fn = mockFunction;
@@ -118,7 +118,7 @@ it('will iterate over properties', () => {
   }
 
   const test = Test.new();
-  const cb = mock<(key: string, value: unknown) => void>();
+  const cb = vi.fn<(key: string, value: unknown) => void>();
 
   for (const [key, value] of test) cb(key, value);
 
@@ -134,7 +134,7 @@ it('will destroy children before self', () => {
   }
 
   const test = Test.new();
-  const destroyed = mock();
+  const destroyed = vi.fn();
 
   test.nested.get(null, destroyed);
   test.set(null);
@@ -225,7 +225,7 @@ it('will not update when assigning same child instance', () => {
 
   const parent = Parent.new();
   const child = parent.child;
-  const cb = mock();
+  const cb = vi.fn();
 
   parent.set(cb);
   parent.child = child;
@@ -333,7 +333,7 @@ describe('subscriber', () => {
 
   it('will detect change to properties accessed', async () => {
     const state = Subject.new();
-    const effect = mock(($: Subject) => {
+    const effect = vi.fn(($: Subject) => {
       void $.value;
       void $.value2;
     });
@@ -351,7 +351,7 @@ describe('subscriber', () => {
 
   it('will ignore change to property not accessed', async () => {
     const state = Subject.new();
-    const effect = mock(($: Subject) => {
+    const effect = vi.fn(($: Subject) => {
       void $.value;
     });
 
@@ -373,7 +373,7 @@ describe('subscriber', () => {
 
   it('will not obstruct set-behavior', () => {
     class Test extends State {
-      didSet = mock();
+      didSet = vi.fn();
       value = set('foo', this.didSet);
     }
 
@@ -414,7 +414,7 @@ describe('string coercion', () => {
     }
 
     const test = Test.new();
-    const cb = mock();
+    const cb = vi.fn();
 
     test.get((state) => {
       cb(String(state));
@@ -733,7 +733,7 @@ describe('get method', () => {
 
       new Context(outer).push(inner);
 
-      const callback = mock();
+      const callback = vi.fn();
       inner.get(Foo, callback);
 
       expect(callback).toHaveBeenCalledTimes(1);
@@ -744,7 +744,7 @@ describe('get method', () => {
       const parent = new Foo();
       const ctx = new Context(parent);
 
-      const callback = mock();
+      const callback = vi.fn();
       const unsub = ctx.get(Bar, callback, true);
 
       const child = new Bar();
@@ -773,7 +773,7 @@ describe('get method', () => {
 
     it('will callback when state is destroyed', () => {
       const test = Test.new();
-      const cb = mock();
+      const cb = vi.fn();
 
       test.get(null, cb);
 
@@ -798,7 +798,7 @@ describe('get method', () => {
     it('will watch values', async () => {
       const test = Test.new();
       const anyTest = expect.any(Test);
-      const effect = mock((state: Test) => {
+      const effect = vi.fn((state: Test) => {
         void state.value1;
         void state.value2;
         void state.value3;
@@ -829,7 +829,7 @@ describe('get method', () => {
     });
 
     it('will not call twice if set up during init', () => {
-      const didUpdate = mock();
+      const didUpdate = vi.fn();
 
       class Control extends State {
         value = 'foo';
@@ -849,7 +849,7 @@ describe('get method', () => {
 
     it('will squash simultaneous updates', async () => {
       const test = Test.new();
-      const cb = mock();
+      const cb = vi.fn();
 
       test.get((state) => {
         void state.value1;
@@ -868,7 +868,7 @@ describe('get method', () => {
 
     it('will squash computed updates', async () => {
       const test = Test.new();
-      const cb = mock();
+      const cb = vi.fn();
 
       test.get((state) => {
         void state.value3;
@@ -894,7 +894,7 @@ describe('get method', () => {
       }
 
       const test = Test.new();
-      const effect = mock((state: Test) => {
+      const effect = vi.fn((state: Test) => {
         void state.child.value;
       });
 
@@ -916,7 +916,7 @@ describe('get method', () => {
       const test = Test.new();
       let proxy!: Test;
 
-      const effect = mock((state: Test) => {
+      const effect = vi.fn((state: Test) => {
         proxy = state;
         void state.value;
       });
@@ -946,7 +946,7 @@ describe('get method', () => {
       const test = Test.new();
       let child!: Child;
 
-      const effect = mock((state: Test) => {
+      const effect = vi.fn((state: Test) => {
         child = state.child;
         void child.value;
       });
@@ -981,7 +981,7 @@ describe('get method', () => {
       }
 
       const parent = Parent.new();
-      const effect = mock();
+      const effect = vi.fn();
       let promise = mockPromise();
 
       parent.get((state) => {
@@ -1035,7 +1035,7 @@ describe('get method', () => {
       }
 
       const state = Parent.new();
-      const cb = mock((it: Parent) => {
+      const cb = vi.fn((it: Parent) => {
         void it.value;
 
         if (it.child) void it.child.value;
@@ -1079,7 +1079,7 @@ describe('get method', () => {
       }
 
       const test = Test.new();
-      const effect = mock((state: Test) => {
+      const effect = vi.fn((state: Test) => {
         void state.nested.value;
       });
 
@@ -1103,7 +1103,7 @@ describe('get method', () => {
     });
 
     it('will call immediately', async () => {
-      const testEffect = mock();
+      const testEffect = vi.fn();
       const test = Test.new();
 
       test.get(testEffect);
@@ -1123,7 +1123,7 @@ describe('get method', () => {
         }
       }
 
-      const cb = mock();
+      const cb = vi.fn();
       const state = Test2.new();
 
       state.value1++;
@@ -1145,7 +1145,7 @@ describe('get method', () => {
         didCreate(this);
       }
 
-      const didCreate = mock();
+      const didCreate = vi.fn();
       const test = Test.new();
 
       test.get(testEffect);
@@ -1155,7 +1155,7 @@ describe('get method', () => {
 
     it('will work without State.new', async () => {
       const test = new Test();
-      const cb = mock();
+      const cb = vi.fn();
 
       test.get(cb);
 
@@ -1177,7 +1177,7 @@ describe('get method', () => {
       }
 
       const test = Test.new();
-      const effect = mock((self: Test) => {
+      const effect = vi.fn((self: Test) => {
         self.action();
         void self.foo;
       });
@@ -1196,7 +1196,7 @@ describe('get method', () => {
     });
 
     it('will subscribe method passed directly', async () => {
-      const didInvoke = mock();
+      const didInvoke = vi.fn();
 
       class Test extends State {
         foo = 1;
@@ -1228,7 +1228,7 @@ describe('get method', () => {
         }
 
         const state = Test.new();
-        const cb = mock();
+        const cb = vi.fn();
 
         state.get((state) => {
           void state.value1;
@@ -1245,7 +1245,7 @@ describe('get method', () => {
       });
 
       it('will callback on null event', async () => {
-        const willDestroy = mock();
+        const willDestroy = vi.fn();
         const test = Test.new();
 
         test.get(() => willDestroy);
@@ -1256,8 +1256,8 @@ describe('get method', () => {
 
       it('will cancel effect on callback', async () => {
         const test = Test.new();
-        const cb = mock();
-        const didEffect = mock((test: Test) => {
+        const cb = vi.fn();
+        const didEffect = vi.fn((test: Test) => {
           void test.value1;
           return cb;
         });
@@ -1283,7 +1283,7 @@ describe('get method', () => {
 
       it('will cancel if null', async () => {
         const test = Test.new();
-        const didEffect = mock((test: Test) => {
+        const didEffect = vi.fn((test: Test) => {
           void test.value1;
           return null;
         });
@@ -1298,11 +1298,11 @@ describe('get method', () => {
 
       it('will cancel if null after callback', async () => {
         const test = Test.new();
-        const cleanup = mock();
+        const cleanup = vi.fn();
 
         let callback: (() => void) | null = cleanup;
 
-        const didEffect = mock((test: Test) => {
+        const didEffect = vi.fn((test: Test) => {
           void test.value1;
           return callback;
         });
@@ -1351,8 +1351,8 @@ describe('get method', () => {
 
       it('will retry', async () => {
         const test = Test.new();
-        const didTry = mock();
-        const didInvoke = mock();
+        const didTry = vi.fn();
+        const didInvoke = vi.fn();
 
         test.get(($) => {
           didTry();
@@ -1370,8 +1370,8 @@ describe('get method', () => {
 
       it('will still subscribe', async () => {
         const test = Test.new();
-        const didTry = mock();
-        const didInvoke = mock();
+        const didTry = vi.fn();
+        const didInvoke = vi.fn();
 
         test.get(($) => {
           didTry();
@@ -1392,8 +1392,8 @@ describe('get method', () => {
 
       it('will not update while pending', async () => {
         const test = Test.new();
-        const willUpdate = mock();
-        const didUpdate = mock();
+        const willUpdate = vi.fn();
+        const didUpdate = vi.fn();
 
         test.get((state) => {
           willUpdate();
@@ -1428,7 +1428,7 @@ describe('get method', () => {
           }
         }
 
-        const cb = mock();
+        const cb = vi.fn();
         const state = Test.new();
 
         state.value1++;
@@ -1450,7 +1450,7 @@ describe('get method', () => {
           }
         }
 
-        const cb = mock();
+        const cb = vi.fn();
         const state = Test.new();
 
         state.value1++;
@@ -1467,7 +1467,7 @@ describe('get method', () => {
           done = this.get((state) => cb(state.value));
         }
 
-        const cb = mock();
+        const cb = vi.fn();
         const test = Test.new();
 
         test.value++;
@@ -1693,7 +1693,7 @@ describe('set method', () => {
       }
 
       const test = Test.new();
-      const cb = mock();
+      const cb = vi.fn();
 
       test.get(({ foo, bar }) => {
         cb(foo, bar);
@@ -1806,7 +1806,7 @@ describe('set method', () => {
       }
 
       const test = new Test();
-      const effect = mock();
+      const effect = vi.fn();
 
       test.get(effect);
       expect(effect).not.toBeCalled();
@@ -1816,7 +1816,7 @@ describe('set method', () => {
     });
 
     it('will initialize from set({}) when created with new', () => {
-      const didSetFoo = mock();
+      const didSetFoo = vi.fn();
 
       class Test extends State {
         foo = set<string>(undefined, didSetFoo);
@@ -1838,7 +1838,7 @@ describe('set method', () => {
       }
 
       const test = Test.new();
-      const cb = mock();
+      const cb = vi.fn();
 
       test.set(cb);
 
@@ -1855,7 +1855,7 @@ describe('set method', () => {
       }
 
       const test = Test.new();
-      const cb = mock(() => {
+      const cb = vi.fn(() => {
         test.foo = 'baz';
       });
 
@@ -1875,7 +1875,7 @@ describe('set method', () => {
       }
 
       const test = Test.new();
-      const didUpdateFoo = mock();
+      const didUpdateFoo = vi.fn();
 
       test.set('foo', didUpdateFoo);
 
@@ -1894,8 +1894,8 @@ describe('set method', () => {
       }
 
       const test = Test.new();
-      const done = mock();
-      const cb = mock(() => done);
+      const done = vi.fn();
+      const cb = vi.fn(() => done);
 
       test.set('foo', cb);
 
@@ -1918,7 +1918,7 @@ describe('set method', () => {
       }
 
       const test = Test.new();
-      const cb = mock();
+      const cb = vi.fn();
 
       test.set('baz', cb);
 
@@ -1936,7 +1936,7 @@ describe('set method', () => {
       }
 
       const test = Test.new();
-      const didUpdateFoo = mock(() => null);
+      const didUpdateFoo = vi.fn(() => null);
 
       test.set('foo', didUpdateFoo);
 
@@ -1952,7 +1952,7 @@ describe('set method', () => {
       }
 
       const test = Test.new();
-      const didDestroy = mock();
+      const didDestroy = vi.fn();
 
       test.set(null, didDestroy);
       test.set(null);
@@ -1972,7 +1972,7 @@ describe('set method', () => {
 
     it('will call every update', async () => {
       const test = Test.new();
-      const cb = mock();
+      const cb = vi.fn();
 
       const done = test.set((a, b) => {
         cb(a, Object.assign({}, b));
@@ -1991,8 +1991,8 @@ describe('set method', () => {
 
     it('will callback after frame', async () => {
       const test = Test.new();
-      const didUpdate = mock(() => didUpdateAsync);
-      const didUpdateAsync = mock();
+      const didUpdate = vi.fn(() => didUpdateAsync);
+      const didUpdateAsync = vi.fn();
 
       const done = test.set(didUpdate);
 
@@ -2040,7 +2040,7 @@ describe('set method', () => {
         bar = 1;
       }
 
-      const callback = mock();
+      const callback = vi.fn();
       const test = Subject.new();
 
       test.bar = 2;
@@ -2053,7 +2053,7 @@ describe('set method', () => {
         foo = 0;
       }
 
-      const callback = mock();
+      const callback = vi.fn();
       const test = Test.new();
 
       test.set(callback);
@@ -2123,7 +2123,7 @@ describe('set method', () => {
         foo = 0;
       }
 
-      const callback = mock();
+      const callback = vi.fn();
       const test = Test.new();
 
       test.set(callback);
@@ -2308,7 +2308,7 @@ describe('set method', () => {
 
 describe('new method', () => {
   it('will ignore instance-property new', () => {
-    const didCreate = mock();
+    const didCreate = vi.fn();
 
     class Test extends State {
       new = didCreate;
@@ -2320,7 +2320,7 @@ describe('new method', () => {
   });
 
   it('will call if exists', () => {
-    const didCreate = mock();
+    const didCreate = vi.fn();
 
     class Test extends State {
       protected new() {
@@ -2334,8 +2334,8 @@ describe('new method', () => {
   });
 
   it('will cleanup if returns function', () => {
-    const didDestroy = mock();
-    const didCreate = mock(() => didDestroy);
+    const didDestroy = vi.fn();
+    const didCreate = vi.fn(() => didDestroy);
 
     class Test extends State {
       protected new() {
@@ -2358,8 +2358,8 @@ describe('new method (static)', () => {
   class Test extends State {}
 
   it('will call argument as lifecycle', () => {
-    const didDestroy = mock();
-    const didCreate = mock(() => didDestroy);
+    const didDestroy = vi.fn();
+    const didCreate = vi.fn(() => didDestroy);
 
     const state = Test.new(didCreate);
 
@@ -2376,7 +2376,7 @@ describe('new method (static)', () => {
       foo = 'foo';
     }
 
-    const willCreate = mock(() => ({
+    const willCreate = vi.fn(() => ({
       foo: 'bar'
     }));
 
@@ -2391,7 +2391,7 @@ describe('new method (static)', () => {
       bar = 1;
     }
 
-    const willCreate = mock(() => [{ foo: 2 }, { bar: 3 }]);
+    const willCreate = vi.fn(() => [{ foo: 2 }, { bar: 3 }]);
 
     const test = Test.new(willCreate);
 
@@ -2405,8 +2405,8 @@ describe('new method (static)', () => {
       bar = 1;
     }
 
-    const willCreate = mock(() => ({ foo: 2 }));
-    const willDestroy = mock();
+    const willCreate = vi.fn(() => ({ foo: 2 }));
+    const willDestroy = vi.fn();
 
     const test = Test.new(willCreate, () => willDestroy, { bar: 3 });
 
@@ -2494,13 +2494,13 @@ describe('new method (static)', () => {
   });
 
   it('will run callbacks in order', () => {
-    const willDestroy2 = mock();
-    const willDestroy1 = mock(() => {
+    const willDestroy2 = vi.fn();
+    const willDestroy1 = vi.fn(() => {
       expect(willDestroy2).not.toBeCalled();
     });
 
-    const willCreate2 = mock(() => willDestroy2);
-    const willCreate1 = mock(() => {
+    const willCreate2 = vi.fn(() => willDestroy2);
+    const willCreate1 = vi.fn(() => {
       expect(willCreate2).not.toBeCalled();
       return willDestroy1;
     });
@@ -2517,7 +2517,7 @@ describe('new method (static)', () => {
   });
 
   it('will ingore promise from callback', () => {
-    const didCreate = mock(() => Promise.resolve());
+    const didCreate = vi.fn(() => Promise.resolve());
 
     Test.new(didCreate);
 
@@ -2529,7 +2529,7 @@ describe('new method (static)', () => {
     const error = mockError();
     const expects = new Error('State callback rejected.');
 
-    const init = mock(() => Promise.reject(expects));
+    const init = vi.fn(() => Promise.reject(expects));
     const test = Test.new(init);
 
     expect(init).toBeCalledTimes(1);
@@ -2654,7 +2654,7 @@ describe('on method (static)', () => {
   it('will run callback on create', () => {
     class Test extends State {}
 
-    const cb = mock();
+    const cb = vi.fn();
     const done = Test.on(cb);
     const test = Test.new();
 
@@ -2666,7 +2666,7 @@ describe('on method (static)', () => {
   it('will run cleanup on destroy', () => {
     class Test extends State {}
 
-    const cleanup = mock();
+    const cleanup = vi.fn();
     const done = Test.on(() => cleanup);
     const test = Test.new();
 
@@ -2682,8 +2682,8 @@ describe('on method (static)', () => {
     class Test extends State {}
     class Test2 extends Test {}
 
-    const createTest = mock();
-    const createTest2 = mock();
+    const createTest = vi.fn();
+    const createTest2 = vi.fn();
 
     Test.on(createTest);
     Test2.on(createTest2);
@@ -2716,7 +2716,7 @@ describe('on method (static)', () => {
     class Test extends State {}
     class Test2 extends Test {}
 
-    const didCreate = mock();
+    const didCreate = vi.fn();
 
     Test.on(didCreate);
     Test2.on(didCreate);
@@ -2729,7 +2729,7 @@ describe('on method (static)', () => {
   it('will remove callback', () => {
     class Test extends State {}
 
-    const cb = mock();
+    const cb = vi.fn();
     const done = Test.on(cb);
 
     Test.new();
@@ -2744,8 +2744,8 @@ describe('on method (static)', () => {
   it('will register multiple callbacks', () => {
     class Fresh extends State {}
 
-    const cb1 = mock();
-    const cb2 = mock();
+    const cb1 = vi.fn();
+    const cb2 = vi.fn();
 
     // First .on() creates the setup Set (line 455)
     Fresh.on(cb1);
@@ -2819,7 +2819,7 @@ describe('on combined stages (static)', () => {
   });
 
   it('will run a shared handler once across base and subclass', () => {
-    const fn = mock();
+    const fn = vi.fn();
 
     class Base extends State {}
     class Sub extends Base {}
@@ -2889,7 +2889,7 @@ describe('on before / after stages (static)', () => {
   });
 
   it('will run after cleanup on destroy', () => {
-    const cleanup = mock();
+    const cleanup = vi.fn();
 
     class Test extends State {}
 
@@ -3012,7 +3012,7 @@ describe('computed (getters)', () => {
   });
 
   it.todo("will not update if output doesn't change", async () => {
-    const didCompute = mock();
+    const didCompute = vi.fn();
 
     class Subject extends State {
       value = 1;
@@ -3069,7 +3069,7 @@ describe('computed (getters)', () => {
   });
 
   it('will compute early if value is accessed', async () => {
-    const didCompute = mock();
+    const didCompute = vi.fn();
 
     class Test extends State {
       number = 0;
@@ -3107,8 +3107,8 @@ describe('computed (getters)', () => {
   // between sync assertions; getter re-evaluation actually happens via
   // queueMicrotask. Skipped pending a rewrite against the real reactive contract.
   it.skip('will be squashed with regular updates', async () => {
-    const exec = mock();
-    const emit = mock();
+    const exec = vi.fn();
+    const emit = vi.fn();
 
     class Inner extends State {
       value = 1;
@@ -3265,7 +3265,7 @@ describe('computed (getters)', () => {
 
   describe('opt-out tracking', () => {
     it('will not subscribe to values accessed via this.is', async () => {
-      const didCompute = mock();
+      const didCompute = vi.fn();
 
       class Test extends State {
         tracked = 'A';
@@ -3408,8 +3408,8 @@ describe('computed (getters)', () => {
     });
 
     it('will not trigger itself', async () => {
-      const didGetOldValue = mock();
-      const didGetNewValue = mock();
+      const didGetOldValue = vi.fn();
+      const didGetNewValue = vi.fn();
 
       class Test extends State {
         input = 1;

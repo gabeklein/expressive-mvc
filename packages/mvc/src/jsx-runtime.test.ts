@@ -1,4 +1,4 @@
-import { describe, expect, it, mock } from 'bun:test';
+import { describe, expect, it, vi } from 'vitest';
 
 import { childrenOf, Fragment, host, isElement, jsx, jsxs, propsOf, typeOf } from './jsx-runtime';
 import { jsxDEV, Fragment as devFragment } from './jsx-dev-runtime';
@@ -8,13 +8,13 @@ const HOST_FRAGMENT = Symbol('host.Fragment');
 
 function mockHost(overrides?: Partial<HostRuntime>): HostRuntime {
   return {
-    jsx: mock((type, props, key) => ({ kind: 'jsx', type, props, key })),
-    jsxs: mock((type, props, key) => ({ kind: 'jsxs', type, props, key })),
+    jsx: vi.fn((type, props, key) => ({ kind: 'jsx', type, props, key })),
+    jsxs: vi.fn((type, props, key) => ({ kind: 'jsxs', type, props, key })),
     Fragment: HOST_FRAGMENT,
-    childrenOf: mock((children) => [children]),
-    isElement: mock((node) => !!node),
-    typeOf: mock((node: any) => node.type),
-    propsOf: mock((node: any) => node.props),
+    childrenOf: vi.fn((children) => [children]),
+    isElement: vi.fn((node) => !!node),
+    typeOf: vi.fn((node: any) => node.type),
+    propsOf: vi.fn((node: any) => node.props),
     ...overrides
   };
 }
@@ -83,7 +83,7 @@ describe('runtime', () => {
 
   it('will delegate jsxDEV when host provides it', () => {
     // the registered host is ours - giving it a dev runtime is not a re-registration
-    runtime.jsxDEV = mock((type, props, key, isStatic) => ({
+    runtime.jsxDEV = vi.fn((type, props, key, isStatic) => ({
       kind: 'jsxDEV', type, props, key, isStatic
     }) as any);
 

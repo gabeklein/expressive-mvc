@@ -1,5 +1,5 @@
 import { act } from '@testing-library/react';
-import { describe, expect, it, spyOn } from 'bun:test';
+import { describe, expect, it, vi } from 'vitest';
 
 import { browserRouter } from '../test.setup';
 import { Context } from '@expressive/mvc';
@@ -261,8 +261,8 @@ describe('BrowserRouter', () => {
   });
 
   it('back/forward delegate to window.history', () => {
-    const back = spyOn(window.history, 'back');
-    const forward = spyOn(window.history, 'forward');
+    const back = vi.spyOn(window.history, 'back');
+    const forward = vi.spyOn(window.history, 'forward');
 
     router.current.back();
     router.current.forward();
@@ -275,7 +275,7 @@ describe('BrowserRouter', () => {
   });
 
   it('removes popstate listener on destroy', () => {
-    const remove = spyOn(window, 'removeEventListener');
+    const remove = vi.spyOn(window, 'removeEventListener');
     router.current.set(null);
     expect(remove).toHaveBeenCalledWith('popstate', expect.any(Function));
     remove.mockRestore();
