@@ -199,6 +199,6 @@ Organizationally, the pitch is ownership: behavior consolidates into named, test
 
 - Team has strong preference for functional-only code
 - Existing state solution is working without pain
-- App is primarily server-rendered with minimal client interactivity
+- App is primarily server-rendered with minimal client interactivity (server rendering itself is supported - the flag is having little client state to own)
 - Project is in maintenance mode with no active feature work
 - Team is unfamiliar with classes and would face a learning curve during a deadline

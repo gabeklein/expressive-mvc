@@ -207,7 +207,7 @@ This is also why classes are unusually friendly to agents. A State class is a se
 To be honest about the trade-off:
 
 - **`this`** - you have to use it. If your team has a strict "functional only" rule, Expressive isn't for you.
-- **A small runtime footprint** - reactive proxies, lifecycle tracking, context management. It's not zero.
+- **A runtime footprint** - reactive proxies, lifecycle tracking, context management: ~18 kB gzipped for core and adapter together. Tracked reads are proxy reads during render; reads in handlers or through `is` subscribe nothing. Measurable, not zero.
 - **Familiarity for new hires** - engineers used to Redux or Zustand will need a brief ramp-up on classes and instructions.
 
 Expressive does not try to replace hooks wholesale. It coexists. Use `useState` where it's fine; reach for a class where the complexity justifies it.
