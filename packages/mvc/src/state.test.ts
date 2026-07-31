@@ -323,6 +323,22 @@ describe('methods', () => {
     expect(test.action()).toBe('Foo Bar');
     expect(test.action()).toBe('Foo Bar');
   });
+
+  it('will ignore setter-only accessors', () => {
+    class Test extends State {
+      values: number[] = [];
+
+      set latest(value: number) {
+        this.values.push(value);
+      }
+    }
+
+    const test = Test.new();
+
+    test.latest = 5;
+
+    expect(test.values).toEqual([5]);
+  });
 });
 
 describe('subscriber', () => {

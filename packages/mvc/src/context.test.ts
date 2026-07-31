@@ -1137,6 +1137,20 @@ describe('add method listener lookup', () => {
   });
 });
 
+it('will skip self when traversing downstream', () => {
+  const parent = new Context();
+  const child = parent.push();
+
+  const example = Example.new();
+  parent.add(example);
+  child.add(example);
+
+  const cb = vi.fn();
+  example.get(Example, cb);
+
+  expect(cb).not.toBeCalled();
+});
+
 it('will not traverse downstream when downstream is false', () => {
   const parent = new Context();
   const child = parent.push();
@@ -1202,6 +1216,16 @@ describe('root global', () => {
     instance.set(null);
 
     expect(root.get(Global, false)).toBeUndefined();
+  });
+
+  it('will keep instance when re-added implicitly', () => {
+    const instance = Global.new();
+
+    root.add(instance);
+
+    expect(root.get(Global)).toBe(instance);
+
+    instance.set(null);
   });
 
   it('will throw when a subclass inherits global without re-declaring', () => {

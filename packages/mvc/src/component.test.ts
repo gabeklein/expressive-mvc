@@ -8,6 +8,12 @@ it('will default fallback to null', () => {
   expect(foo.fallback).toBe(null);
 });
 
+it('will construct without props', () => {
+  const foo = Component.new();
+
+  expect(foo.fallback).toBe(null);
+});
+
 it('will accept fallback as prop', () => {
   const foo = Component.new({ fallback: 'Loading' });
 
