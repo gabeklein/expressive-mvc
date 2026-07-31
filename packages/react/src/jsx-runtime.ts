@@ -1,11 +1,11 @@
 import { Children, isValidElement, startTransition } from 'react';
 import { Fragment, jsx, jsxs } from 'react/jsx-runtime';
-import { host } from '@expressive/mvc/jsx-runtime';
+import { host } from '@expressive/mvc/runtime';
 
 import type { Component } from '@expressive/mvc';
 import type { JSX as ReactJSX, ReactNode } from 'react';
 
-declare module '@expressive/mvc/jsx-runtime' {
+declare module '@expressive/mvc/runtime' {
   interface Host {
     node: ReactNode;
     intrinsics: ReactJSX.IntrinsicElements;

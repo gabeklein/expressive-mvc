@@ -2,7 +2,7 @@ import { Context } from './context';
 import { set } from './field/set';
 import { State, unbind } from './state';
 
-import type { Host } from './jsx-runtime';
+import type { Host } from './runtime';
 
 const PENDING = new WeakMap<object, Component>();
 

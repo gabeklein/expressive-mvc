@@ -1,8 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { childrenOf, Fragment, host, isElement, jsx, jsxs, propsOf, transition, typeOf } from './jsx-runtime';
+import { childrenOf, Fragment, host, isElement, jsx, jsxs, propsOf, transition, typeOf } from './runtime';
 import { jsxDEV, Fragment as devFragment } from './jsx-dev-runtime';
-import type { HostRuntime } from './jsx-runtime';
+import * as compat from './jsx-runtime';
+import type { HostRuntime } from './runtime';
 
 const HOST_FRAGMENT = Symbol('host.Fragment');
 
@@ -127,5 +128,22 @@ describe('introspection', () => {
 
   it('will surface host Fragment as agnostic Fragment', () => {
     expect(typeOf({ type: HOST_FRAGMENT })).toBe(Fragment);
+  });
+});
+
+describe('jsx-runtime compat', () => {
+  it('will re-export the runtime', () => {
+    expect(compat.jsx).toBe(jsx);
+    expect(compat.jsxs).toBe(jsxs);
+    expect(compat.host).toBe(host);
+    expect(compat.Fragment).toBe(Fragment);
+    expect(compat.childrenOf).toBe(childrenOf);
+    expect(compat.isElement).toBe(isElement);
+    expect(compat.typeOf).toBe(typeOf);
+    expect(compat.propsOf).toBe(propsOf);
+  });
+
+  it('will not carry transition', () => {
+    expect('transition' in compat).toBe(false);
   });
 });

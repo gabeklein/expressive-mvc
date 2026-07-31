@@ -1,12 +1,12 @@
 import { isValidElement } from 'preact';
 import { Children } from 'preact/compat';
 import { Fragment, jsx, jsxs } from 'preact/jsx-runtime';
-import { host } from '@expressive/mvc/jsx-runtime';
+import { host } from '@expressive/mvc/runtime';
 
 import type { Component } from '@expressive/mvc';
 import type { ComponentChildren, JSX as PreactJSX, Ref } from 'preact';
 
-declare module '@expressive/mvc/jsx-runtime' {
+declare module '@expressive/mvc/runtime' {
   interface Host {
     node: ComponentChildren;
     intrinsics: PreactJSX.IntrinsicElements;
