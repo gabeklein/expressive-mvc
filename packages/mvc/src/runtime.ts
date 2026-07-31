@@ -1,4 +1,5 @@
 import type { Component } from './component';
+import { schedule } from './scheduler';
 
 /**
  * Per-adapter interpretation manifest. Each adapter augments this interface to
@@ -147,6 +148,5 @@ export function propsOf(node: unknown): Record<string, unknown> {
  * a scheduler), `work` simply runs inline.
  */
 export function transition(work: () => void): void {
-  if (HOST.transition) HOST.transition(work);
-  else work();
+  schedule(work, HOST.transition);
 }

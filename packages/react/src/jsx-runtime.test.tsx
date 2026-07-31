@@ -4,6 +4,8 @@ import { describe, expect, it } from 'vitest';
 import { act, render } from '@testing-library/react';
 import { createElement, Fragment as ReactFragment, Suspense, useState } from 'react';
 import { childrenOf, Fragment, isElement, jsx, propsOf, transition, typeOf } from '@expressive/mvc/runtime';
+import { State, use } from '.';
+import { mockPromise } from '../test.setup';
 
 const element = createElement('div', { id: 'foo' });
 
@@ -100,5 +102,205 @@ describe('transition', () => {
 
     await act(async () => {});
     expect(container.textContent).toBe('b');
+  });
+
+  it('will hold prior content through a suspending State update', async () => {
+    class Model extends State {
+      value = 'a';
+    }
+
+    const model = Model.new();
+    const pending = mockPromise<void>();
+    const Content = ({ value }: { value: string }) => {
+      if (value === 'b') throw pending;
+      return <span>{value}</span>;
+    };
+    const App = () => {
+      const { value } = use(model);
+      return (
+        <Suspense fallback={<i>loading</i>}>
+          <Content value={value} />
+        </Suspense>
+      );
+    };
+    const { container } = render(<App />);
+
+    expect(container.textContent).toBe('a');
+
+    await act(async () => {
+      transition(() => {
+        model.value = 'b';
+      });
+      await Promise.resolve();
+    });
+
+    expect(container.textContent).toBe('a');
+
+    model.value = 'c';
+    pending.resolve();
+    await act(async () => {});
+
+    expect(container.textContent).toBe('c');
+  });
+
+  it('will squash stacked State updates into one transition', async () => {
+    class Model extends State {
+      value = 'a';
+    }
+
+    const model = Model.new();
+    const pending = mockPromise<void>();
+    const Content = ({ value }: { value: string }) => {
+      if (value === 'c') throw pending;
+      return <span>{value}</span>;
+    };
+    const App = () => {
+      const { value } = use(model);
+      return (
+        <Suspense fallback={<i>loading</i>}>
+          <Content value={value} />
+        </Suspense>
+      );
+    };
+    const { container } = render(<App />);
+
+    await act(async () => {
+      transition(() => {
+        model.value = 'b';
+        model.value = 'c';
+      });
+      await Promise.resolve();
+    });
+
+    expect(model.value).toBe('c');
+    expect(container.textContent).toBe('a');
+
+    model.value = 'd';
+    pending.resolve();
+    await act(async () => {});
+
+    expect(container.textContent).toBe('d');
+  });
+
+  it('will carry a State transition through a cascading write', async () => {
+    class Model extends State {
+      source = 'a';
+      presented = 'a';
+    }
+
+    const model = Model.new();
+    const pending = mockPromise<void>();
+
+    model.get(({ source }) => {
+      model.presented = source;
+    });
+
+    const Content = ({ value }: { value: string }) => {
+      if (value === 'b') throw pending;
+      return <span>{value}</span>;
+    };
+    const App = () => {
+      const { presented } = use(model);
+      return (
+        <Suspense fallback={<i>loading</i>}>
+          <Content value={presented} />
+        </Suspense>
+      );
+    };
+    const { container } = render(<App />);
+
+    await act(async () => {
+      transition(() => {
+        model.source = 'b';
+      });
+      await Promise.resolve();
+    });
+
+    expect(model.presented).toBe('b');
+    expect(container.textContent).toBe('a');
+
+    model.presented = 'c';
+    pending.resolve();
+    await act(async () => {});
+
+    expect(container.textContent).toBe('c');
+  });
+
+  it('will preserve State priority through nested transitions', async () => {
+    class Model extends State {
+      value = 'a';
+    }
+
+    const model = Model.new();
+    const pending = mockPromise<void>();
+    const Content = ({ value }: { value: string }) => {
+      if (value === 'b') throw pending;
+      return <span>{value}</span>;
+    };
+    const App = () => {
+      const { value } = use(model);
+      return (
+        <Suspense fallback={<i>loading</i>}>
+          <Content value={value} />
+        </Suspense>
+      );
+    };
+    const { container } = render(<App />);
+
+    await act(async () => {
+      transition(() => {
+        transition(() => {
+          model.value = 'b';
+        });
+      });
+      await Promise.resolve();
+    });
+
+    expect(container.textContent).toBe('a');
+
+    model.value = 'c';
+    pending.resolve();
+    await act(async () => {});
+
+    expect(container.textContent).toBe('c');
+  });
+
+  it('will let an urgent State invalidation replace deferred content', async () => {
+    class Model extends State {
+      value = 'a';
+      urgent = 0;
+    }
+
+    const model = Model.new();
+    const pending = mockPromise<void>();
+    const Content = ({ value }: { value: string }) => {
+      if (value === 'b') throw pending;
+      return <span>{value}</span>;
+    };
+    const App = () => {
+      const { value, urgent } = use(model);
+      return (
+        <Suspense fallback={<i>loading {urgent}</i>}>
+          <Content value={value} />
+        </Suspense>
+      );
+    };
+    const { container } = render(<App />);
+
+    await act(async () => {
+      transition(() => {
+        model.value = 'b';
+      });
+      model.urgent = 1;
+      await Promise.resolve();
+    });
+
+    expect(container.textContent).toContain('loading 1');
+
+    model.value = 'c';
+    pending.resolve();
+    await act(async () => {});
+
+    expect(container.textContent).toBe('c');
   });
 });
