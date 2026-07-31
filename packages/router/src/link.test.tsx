@@ -19,6 +19,20 @@ describe('Link', () => {
     expect(a.textContent).toBe('about');
   });
 
+  it('passes through bare invocation as foreign content', () => {
+    let link!: Link;
+    const Grab = () => {
+      link = Link.get();
+      return <>about</>;
+    };
+    render(
+      <Route to="/">
+        <Link to="/about"><Grab /></Link>
+      </Route>
+    );
+    expect(Link.prototype.render.call(link)).toBeUndefined();
+  });
+
   it('navigates on plain left-click', async () => {
     const view = render(
       <Route to="/">

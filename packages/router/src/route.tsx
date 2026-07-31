@@ -453,8 +453,7 @@ function register(parent: Route, child: Route) {
   parent.inner = list.slice();
 
   child.set(null, () => {
-    const i = list!.indexOf(child);
-    if (i >= 0) list!.splice(i, 1);
+    list!.splice(list!.indexOf(child), 1);
     if (!list!.length) CHILDREN.delete(parent);
     if (!parent.get(null)) parent.inner = list!.slice();
   });

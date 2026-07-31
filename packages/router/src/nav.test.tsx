@@ -42,6 +42,17 @@ it('default Item renders label, falling back to path', async () => {
   expect(view.container.textContent).toContain('/b');
 });
 
+it('skips redirect and default rows', async () => {
+  const view = await renderAct(
+    <Route as={Page}>
+      <Route to="a" />
+      <Route to="old" redirect="/a" />
+      <Route default as={() => <div>fallback</div>} />
+    </Route>
+  );
+  expect(links(view)).toEqual(['/a']);
+});
+
 it('treats a headless scope as a section, not a link', async () => {
   // `posts/*` has no `as` (no page), so the default Item renders no link for
   // it - it routes through the Group slot, which by default flattens. Its

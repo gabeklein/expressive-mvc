@@ -46,6 +46,35 @@ describe('Router (headless)', () => {
     expect(router.path).toBe('/a');
   });
 
+  it('back does nothing at the oldest entry', () => {
+    const router = Router.new();
+    router.back();
+    expect(router.path).toBe('/');
+    expect(router.index).toBe(0);
+  });
+
+  it('forward does nothing at the newest entry', () => {
+    const router = Router.new();
+    router.goto('/a');
+    router.forward();
+    expect(router.path).toBe('/a');
+    expect(router.index).toBe(1);
+  });
+
+  it('goto drops an empty query', () => {
+    const router = Router.new();
+    router.goto('/a?&');
+    expect(router.path).toBe('/a');
+    expect(router.entries).toEqual(['/', '/a']);
+  });
+
+  it('url omits query params set to undefined', () => {
+    const router = Router.new();
+    router.goto('/posts?page=2');
+    router.query.set('page', undefined as any);
+    expect(router.url).toBe('/posts');
+  });
+
   it('goto with replace overwrites the current entry', () => {
     const router = Router.new();
     router.goto('/a');
