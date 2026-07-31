@@ -2,13 +2,11 @@ import type { Component } from './component';
 import type { Host } from './runtime';
 
 /**
- * Transform-contract module: `jsxImportSource` resolves element creation and
- * the `JSX` namespace here. The host registry itself lives in
- * `@expressive/mvc/runtime` - augment `Host` there, not via this module
- * (augmentations do not follow re-exports).
+ * Transform-contract module: exactly what `jsxImportSource` resolves here -
+ * element creation and the `JSX` namespace. Everything else about the host
+ * (registration, introspection, scheduling) lives in `@expressive/mvc/runtime`.
  */
-export { childrenOf, Fragment, host, isElement, jsx, jsxDEV, jsxs, propsOf, typeOf } from './runtime';
-export type { Host, HostRuntime } from './runtime';
+export { Fragment, jsx, jsxs } from './runtime';
 
 export declare namespace JSX {
   type Element = Component.Node;

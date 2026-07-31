@@ -131,19 +131,11 @@ describe('introspection', () => {
   });
 });
 
-describe('jsx-runtime compat', () => {
-  it('will re-export the runtime', () => {
+describe('jsx-runtime module', () => {
+  it('will carry exactly the transform contract', () => {
+    expect(Object.keys(compat).sort()).toEqual(['Fragment', 'jsx', 'jsxs']);
     expect(compat.jsx).toBe(jsx);
     expect(compat.jsxs).toBe(jsxs);
-    expect(compat.host).toBe(host);
     expect(compat.Fragment).toBe(Fragment);
-    expect(compat.childrenOf).toBe(childrenOf);
-    expect(compat.isElement).toBe(isElement);
-    expect(compat.typeOf).toBe(typeOf);
-    expect(compat.propsOf).toBe(propsOf);
-  });
-
-  it('will not carry transition', () => {
-    expect('transition' in compat).toBe(false);
   });
 });

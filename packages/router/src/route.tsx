@@ -1,5 +1,6 @@
 import { Component, get, set } from '@expressive/mvc';
-import { childrenOf, Fragment, isElement, propsOf, typeOf, type JSX } from '@expressive/mvc/jsx-runtime';
+import { childrenOf, Fragment, isElement, propsOf, typeOf } from '@expressive/mvc/runtime';
+import type { JSX } from '@expressive/mvc/jsx-runtime';
 
 import { Redirect } from './redirect';
 import { Router } from './router';
