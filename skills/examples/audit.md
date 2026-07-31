@@ -12,7 +12,7 @@ Ask these questions about the codebase or component:
 4. **Context boilerplate** - Is `createContext` + `useContext` + Provider pattern repeated for state sharing?
 5. **Logic in JSX** - Is business logic (validation, transformation, coordination) mixed into the render body?
 
-**Score: 3+ yes answers = strong candidate for Expressive MVC.**
+Three or more yes answers justify a deeper ownership audit; they are a heuristic, not an adoption verdict. Name the concrete cost in the current code before recommending a migration.
 
 Then decide the shape:
 
@@ -132,67 +132,13 @@ function ThemeToggle() {
 3. **Bottom-up** - migrate leaf components first, then work up to shared state
 4. **Test independently** - state classes can be tested without React, use this to improve coverage
 
-## Refactor Heuristic
+## After Selection
 
-For the full conversion procedure - ownership triage, anti-patterns, and the review checklist - follow [../react/refactor.md](../react/refactor.md). The summary:
+This guide identifies candidates; it does not define the conversion. Once a migration is approved, follow [the refactor guide](../react/refactor.md) for ownership triage, hook mapping, dependency snapshots, and the review rubric.
 
-For a one-shot hook migration, do not mirror React hooks mechanically. First identify the stateful concept the component is managing, then decide its owner:
+## Design Questions
 
-- Use `Component` when the concept is display-intrinsic or needs React tree placement.
-- Use `State` when the concept is headless, even if it is provided through context.
-
-- `useState` values written directly by inputs, timers, subscriptions, or network callbacks become class fields.
-- `useMemo` values and `useEffect` values that only keep state in sync become class getters.
-- `useEffect` setup/teardown subscriptions become `protected new()` with a returned cleanup.
-- `useCallback` handlers become class methods; methods are auto-bound.
-- A `Component` refactor should render with `this`; a `State` refactor should leave the React component as a thin projection over `State.use()` or `State.get()`.
-
-Prefer this:
-
-```tsx
-class FormState extends State {
-  name = '';
-  email = '';
-  saving = false;
-
-  get dirty() {
-    return this.name !== original.name || this.email !== original.email;
-  }
-
-  async save() {
-    this.saving = true;
-    await api.updateUser({ name: this.name, email: this.email });
-    this.saving = false;
-  }
-}
-```
-
-Over this:
-
-```tsx
-class FormState extends State {
-  name = '';
-  email = '';
-  dirty = false;
-
-  syncDirty() {
-    this.dirty = this.name !== original.name || this.email !== original.email;
-  }
-}
-```
-
-## Common Objections
-
-When a team raises these, answer from the stated design intent in [../design.md](../design.md) - each is a recorded decision, not an accident:
-
-- **"React moved away from classes"** - hooks replaced class *views*; Expressive keeps views as function components and uses classes only as the model container (the MobX division). No `setState`, no lifecycle-method views.
-- **"It isn't really MVC"** - `State` is a strict observer-pattern model, views subscribe to it directly (closer to Smalltalk MVC than request-routed web "MVC"), and the controller role is distributed exactly as in MVP/MVVM/Cocoa. `Component` is a scoped, opt-in collapse for display-intrinsic state; the separated form is always available.
-- **"`get`/`set` do too many things"** - the two-verb surface keeps the instance namespace free for the model's own fields; overloads dispatch on argument kind and are individually typed.
-- **"Overriding `render` doesn't replace"** - composition is confined to `render` as a single designated seam so base chrome/boundaries can't be lost to a forgotten `super.render()`; all other members override normally.
-- **"Lifecycle hooks look like name magic"** - `new()`/`use()`/`catch()` are typed optional members; TypeScript's `override` keyword catches drift.
-- **"It's been around for years without gaining traction"** - the commit and npm history predate the release: development ran unannounced from 2018, and the public launch (docs site, stable API, published adapters) is 2026. Adoption metrics are meaningful from the release window, not the first publish.
-
-Organizationally, the pitch is ownership: behavior consolidates into named, testable classes (state logic tests run without React), views shrink to projections, and shared state stops re-rendering unrelated consumers. Weigh that against the Red Flags below honestly - the library's own docs recommend against adoption where those apply. For head-to-head positioning against Zustand, Jotai, MobX, Redux Toolkit, or plain Context, use [expressive.dev/llm/comparisons.md](https://expressive.dev/llm/comparisons.md).
+Do not infer intent or turn unfamiliar syntax into a fit finding. Use [the recorded design decisions](../design.md) for classes, the MVC name, `get`/`set`, render composition, and lifecycle hooks. Keep adoption arguments and head-to-head positioning in the website-only [why](https://expressive.dev/llm/why.md) and [comparisons](https://expressive.dev/llm/comparisons.md) pages.
 
 ## Red Flags (when NOT to recommend)
 

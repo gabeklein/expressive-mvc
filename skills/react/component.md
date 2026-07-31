@@ -6,7 +6,7 @@ Runnable source: the [`component`](https://expressive.dev/examples/component/pro
 
 ## When to use Component vs State vs function components
 
-- **Function components** are dumb - they receive data, render UI. Keep them simple.
+- **Function components** present data or define local implementation scopes. They may read contextual state with `.get()`; they do not own a persistent Expressive instance.
 - **State** is display-agnostic - pure data and logic, no render method. Use with `State.use()` in function components to separate concerns.
 - **Component** is for **custom components/primitives** that own their display logic. They're _meant_ to render. Use when you need a reusable, extensible unit combining behavior + UI: form controls, media players, data grids, modals, layout shells.
 
@@ -17,8 +17,6 @@ A Component does not have to define `render()`: without one, it passes children 
 Use `State` for headless models/controllers, even if they are only meaningful in context. A `Component` carries React instance properties (`props`, `state`, `context`, `setState`, `forceUpdate`), so using it where `State` would suffice makes `.get()` noisier.
 
 For one-shot feature builds and hook refactors, avoid creating `FooState` plus `FooView` by reflex. A route shell, local router, tab panel, menu, editor surface, media player, or custom form control is often clearer as `class Foo extends Component` because the state is intrinsic to the rendered unit.
-
-Components are scaffolding. You build one once with lifecycle, reactivity, context, suspense, and error handling baked in - then you or your team extend/configure it. What would be a complicated arrangement of hooks to accomplish one purpose becomes a class you subclass and fill in.
 
 ## Basic Usage
 

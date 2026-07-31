@@ -24,7 +24,7 @@ const counter = Counter.new(); // creates AND activates
 const counter = Counter.new({ count: 10 }); // with initial values
 ```
 
-> `new Counter()` constructs but does NOT activate. Always prefer `Counter.new()`.
+> `new Counter()` constructs but does not activate. Use `Counter.new()` for a root instance. Bare `new` is correct for a child State declared on another State, which adopts and activates it, or when activation must be deferred deliberately.
 
 ## Properties & Reactivity
 

@@ -9,7 +9,7 @@
 | Operation    | Property assignment | Batched updates via `queueMicrotask()`, effects re-run                                  |     YES      |
 | Destruction  | `state.set(null)`   | Children destroyed first, listeners called, state frozen                                |  DESTROYED   |
 
-> **Always use `State.new()` not `new State()`** unless you need to defer activation. `new State()` constructs without firing the ready event - useful as an escape hatch when you want to wrap an instance in a `new Context(state)` *before* it activates (otherwise activation locks the home to `Context.root`). See [context.md](context.md).
+> Use `State.new()` for a root instance. Bare `new` constructs without activating: use it for a child State declared on another State, which adopts and activates it, or to defer activation deliberately. One advanced use is wrapping an instance in `new Context(state)` before activation locks its home to `Context.root`; see [context.md](context.md).
 
 ## The `new()` Hook
 
