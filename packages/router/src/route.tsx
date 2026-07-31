@@ -1,5 +1,6 @@
 import { Component, get, set } from '@expressive/mvc';
-import { childrenOf, Fragment, isElement, propsOf, typeOf, type JSX } from '@expressive/mvc/jsx-runtime';
+import { childrenOf, Fragment, isElement, propsOf, typeOf } from '@expressive/mvc/runtime';
+import type { JSX } from '@expressive/mvc/jsx-runtime';
 
 import { Redirect } from './redirect';
 import { Router } from './router';
@@ -453,8 +454,7 @@ function register(parent: Route, child: Route) {
   parent.inner = list.slice();
 
   child.set(null, () => {
-    const i = list!.indexOf(child);
-    if (i >= 0) list!.splice(i, 1);
+    list!.splice(list!.indexOf(child), 1);
     if (!list!.length) CHILDREN.delete(parent);
     if (!parent.get(null)) parent.inner = list!.slice();
   });

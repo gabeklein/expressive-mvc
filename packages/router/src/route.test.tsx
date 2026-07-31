@@ -1,5 +1,5 @@
 import { act, render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'bun:test';
+import { describe, expect, it } from 'vitest';
 import { Component, Consumer } from '@expressive/react';
 
 import { location, browserRouter, mockPromise, renderAct } from '../test.setup';
@@ -247,6 +247,14 @@ describe('Route', () => {
 
       await act(async () => leaf.goto({ b: '8' }));
       expect(window.location.pathname).toBe('/a/8/9');
+    });
+
+    it('throws when the route owns no params', async () => {
+      location('/about');
+      let leaf!: Route;
+      render(<Route to="/about" is={(r) => (leaf = r)} />);
+      await act(async () => {});
+      expect(() => leaf.goto({ id: '1' })).toThrow(/owns only \[none\]/);
     });
 
     it('swaps a param on a nested leaf, same as the flat form', async () => {
@@ -550,6 +558,27 @@ describe('Route', () => {
       expect(view.container.textContent).toBe('');
     });
 
+    it('unregisters a child destroyed after its scope', async () => {
+      location('/a/b');
+      let scope!: Route;
+      let leaf!: Route;
+      const view = render(
+        <Route>
+          <Route to="a/*" is={(r) => (scope = r)}>
+            <Route to="b" is={(r) => (leaf = r)} as={() => <span>b</span>} />
+          </Route>
+        </Route>
+      );
+      await act(async () => {});
+      expect(view.container.textContent).toBe('b');
+      expect(scope.inner).toEqual([leaf]);
+
+      await act(async () => scope.set(null));
+      await act(async () => leaf.set(null));
+      expect(leaf.get(null)).toBe(true);
+      expect(scope.inner).toEqual([leaf]);
+    });
+
     it('three-level nesting composes bases correctly', () => {
       location('/admin/users/42');
       const AdminChrome = (props: { children?: React.ReactNode }) => (
@@ -616,6 +645,17 @@ describe('Route', () => {
         </Route>
       );
       expect(view.container.textContent).toBe('chrome/section-404');
+    });
+
+    it('mixed children make a content route, not a scope', () => {
+      location('/posts');
+      const view = render(
+        <Route to="posts/*" as={Chrome}>
+          hello
+          <Route to="recent" as={Detail} />
+        </Route>
+      );
+      expect(view.container.textContent).toContain('hello');
     });
 
     it('flat form has no section scope: the same miss falls through to the app default, no chrome', () => {
@@ -1035,6 +1075,29 @@ describe('Route', () => {
           expect(screen.getByText('doc')).toBeDefined();
         });
 
+        it('clears the rejection when the guard later allows', async () => {
+          location('/admin');
+          let allow = false;
+          let owner!: Router;
+          const gate = () => (allow ? undefined : null);
+          const tree = () => (
+            <Route is={(r) => (owner = r.router)}>
+              <Route to="admin" redirect={() => gate()} as={() => <h1>secret</h1>} />
+              <Route default as={NotFound} />
+            </Route>
+          );
+
+          let view!: ReturnType<typeof render>;
+          await act(async () => { view = render(tree()); });
+          expect(owner.rejected).toBe('/admin');
+          expect(screen.getByText('not found')).toBeDefined();
+
+          allow = true;
+          await act(async () => view.rerender(tree()));
+          expect(owner.rejected).toBe('');
+          expect(screen.getByText('secret')).toBeDefined();
+        });
+
         it('a force-404\'d leaf is not reported as the active child', async () => {
           location('/document/123');
           const gate = mockPromise<string | void | null>();
@@ -1187,6 +1250,12 @@ describe('extends', () => {
         return (<>{super.children}<Route default as={this.Default} /></>) as any;
       }
     }
+
+    it('tolerates the layer render invoked bare', async () => {
+      router.current.goto('/a');
+      const { root } = await mount(<Route to="a" as={Home} />);
+      expect(Route.prototype.render.call(root)).toBeDefined();
+    });
 
     it('converts a subclass Default into a child default route', () => {
       location('/section/missing');
@@ -1344,6 +1413,28 @@ describe('active', () => {
     expect(root.active).toBeNull();
   });
 
+  it('sees through a scope to the matched child', async () => {
+    router.current.goto('/posts/recent');
+    let recent!: Route;
+    const { root } = await mount(
+      <Route to="posts/*">
+        <Route to="recent" is={(r) => (recent = r)} />
+      </Route>
+    );
+    expect(root.active).toBe(recent);
+  });
+
+  it('is null when a scope yields competing matches', async () => {
+    router.current.goto('/posts/recent');
+    const { root } = await mount(
+      <Route to="posts/*">
+        <Route to=":id" />
+        <Route to="recent" />
+      </Route>
+    );
+    expect(root.active).toBeNull();
+  });
+
   it('ignores redirect routes as candidates', async () => {
     router.current.goto('/a');
     let content!: Route;
@@ -1412,6 +1503,28 @@ describe('default', () => {
 
     await act(async () => router.current.goto('/a'));
     expect(view.container.textContent).toBe('a');
+  });
+
+  it('never matches without a parent', async () => {
+    Router.new();
+    let lone!: Route;
+    const view = render(
+      <Route default as={() => <span>lone</span>} is={(r) => (lone = r)} />
+    );
+    await act(async () => {});
+    expect(lone.matched).toBe(false);
+    expect(view.container.textContent).toBe('');
+  });
+
+  it('path is its base', async () => {
+    router.current.goto('/docs');
+    let fallback!: Route;
+    await mount(
+      <Route to="docs/*">
+        <Route default is={(r) => (fallback = r)} as={() => <span>404</span>} />
+      </Route>
+    );
+    expect(fallback.path).toBe('/docs');
   });
 
   it('yields once a sibling matches and restores on navigation away', async () => {

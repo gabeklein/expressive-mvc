@@ -1,4 +1,4 @@
-import { mock, describe, it, expect } from 'bun:test';
+import { vi, describe, it, expect } from 'vitest';
 import { State } from '../state';
 import { flushMicrotasks as flush } from '../../test.setup';
 import { watch } from '../observable';
@@ -193,7 +193,7 @@ describe('set', () => {
 
   it('will not notify for unchanged value', async () => {
     const list = reactive(['a']);
-    const fn = mock();
+    const fn = vi.fn();
 
     watch(list, fn);
     fn.mockClear();
@@ -240,7 +240,7 @@ describe('put', () => {
 
   it('will not notify when no items provided', async () => {
     const list = reactive([1, 2]);
-    const fn = mock();
+    const fn = vi.fn();
 
     watch(list, fn);
     fn.mockClear();
@@ -308,7 +308,7 @@ describe('clear', () => {
 
   it('will not notify on empty list', async () => {
     const list = reactive<number>();
-    const fn = mock();
+    const fn = vi.fn();
 
     watch(list, fn);
     fn.mockClear();
@@ -352,7 +352,7 @@ describe('map', () => {
 
   it('will receive index and list', () => {
     const list = reactive(['a']);
-    const fn = mock((_v: string, _i: number, _l: unknown) => 0);
+    const fn = vi.fn((_v: string, _i: number, _l: unknown) => 0);
 
     list.map(fn);
 
@@ -399,7 +399,7 @@ describe('any / all', () => {
 describe('subscriptions', () => {
   it('will update on size when length changes', async () => {
     const list = reactive([1, 2]);
-    const fn = mock();
+    const fn = vi.fn();
 
     watch(list, ($) => {
       void $.size;
@@ -415,7 +415,7 @@ describe('subscriptions', () => {
 
   it('will update on get(i) only when that index changes', async () => {
     const list = reactive(['a', 'b', 'c']);
-    const fn = mock();
+    const fn = vi.fn();
 
     watch(list, ($) => {
       void $.get(1);
@@ -436,7 +436,7 @@ describe('subscriptions', () => {
 
   it('will update on iteration when any index changes', async () => {
     const list = reactive([1, 2, 3]);
-    const fn = mock();
+    const fn = vi.fn();
 
     watch(list, ($) => {
       for (const _ of $) void _;
@@ -452,7 +452,7 @@ describe('subscriptions', () => {
 
   it('will update on iteration when length grows', async () => {
     const list = reactive([1, 2]);
-    const fn = mock();
+    const fn = vi.fn();
 
     watch(list, ($) => {
       for (const _ of $) void _;
@@ -468,7 +468,7 @@ describe('subscriptions', () => {
 
   it('will update any() with no match on append', async () => {
     const list = reactive([1, 2, 3]);
-    const fn = mock();
+    const fn = vi.fn();
 
     watch(list, ($) => {
       void $.any((v) => v > 99);
@@ -484,7 +484,7 @@ describe('subscriptions', () => {
 
   it('will update all() when appended item violates predicate', async () => {
     const list = reactive([2, 4]);
-    const fn = mock();
+    const fn = vi.fn();
 
     watch(list, ($) => {
       void $.all((v) => v % 2 === 0);
@@ -500,7 +500,7 @@ describe('subscriptions', () => {
 
   it('will update get(predicate) when earlier item becomes candidate', async () => {
     const list = reactive([1, 2, 3]);
-    const fn = mock();
+    const fn = vi.fn();
 
     watch(list, ($) => {
       void $.get((v) => v > 2);
@@ -516,7 +516,7 @@ describe('subscriptions', () => {
 
   it('will subscribe get(start, end) to indices in range only', async () => {
     const list = reactive([1, 2, 3, 4, 5]);
-    const fn = mock();
+    const fn = vi.fn();
 
     watch(list, ($) => {
       void $.get(1, 3);
@@ -537,7 +537,7 @@ describe('subscriptions', () => {
 
   it('will subscribe out-of-range get to length so growth re-evaluates', async () => {
     const list = reactive([1]);
-    const fn = mock();
+    const fn = vi.fn();
 
     watch(list, ($) => {
       void $.get(5);
@@ -625,7 +625,7 @@ describe('pool', () => {
   it('will ignore repeat add of same value', async () => {
     const pool = reactive((value?: Item) => value || Item.new());
     const guest = Item.new();
-    const fn = mock();
+    const fn = vi.fn();
 
     pool.add(guest);
 
@@ -704,7 +704,7 @@ describe('pool', () => {
 
   it('will not notify clear on empty pool', async () => {
     const pool = reactive(Item);
-    const fn = mock();
+    const fn = vi.fn();
 
     watch(pool, fn);
     fn.mockClear();
@@ -852,7 +852,7 @@ describe('pool subscriptions', () => {
 
   it('will update on size when membership changes', async () => {
     const pool = reactive(Item);
-    const fn = mock();
+    const fn = vi.fn();
 
     watch(pool, ($) => {
       void $.size;
@@ -875,7 +875,7 @@ describe('pool subscriptions', () => {
   it('will update has(value) only for that value', async () => {
     const pool = reactive(Item);
     const item = pool.add();
-    const fn = mock();
+    const fn = vi.fn();
 
     watch(pool, ($) => {
       void $.has(item);
@@ -896,7 +896,7 @@ describe('pool subscriptions', () => {
 
   it('will update iteration when membership changes', async () => {
     const pool = reactive(Item);
-    const fn = mock();
+    const fn = vi.fn();
 
     watch(pool, ($) => {
       for (const _ of $) void _;

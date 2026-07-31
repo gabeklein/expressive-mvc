@@ -1,5 +1,5 @@
 import { Component, unbind } from '@expressive/mvc';
-import { watch, observer } from '@expressive/mvc/observable';
+import { watch } from '@expressive/mvc/observable';
 import { createProvider, type Context } from './context';
 import { Runtime, useHook } from './runtime';
 
@@ -150,7 +150,7 @@ function render(from: Component, context: Context) {
   const Render = () => content.call(from, from.props);
   const Component = () => {
     from = useHook<Component>((refresh) => {
-      if (observer(from) !== null) watch(from, refresh);
+      watch(from, refresh);
 
       return () => {
         const release = self.mount?.();
@@ -163,7 +163,7 @@ function render(from: Component, context: Context) {
           context.pop();
         };
       };
-    }) || from;
+    });
 
     return createFrame(from, context, createElement(Render));
   };

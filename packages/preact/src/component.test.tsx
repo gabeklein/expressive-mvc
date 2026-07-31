@@ -1,6 +1,6 @@
 /** @jsxImportSource preact */
 import { render, screen, act } from '@testing-library/preact';
-import { mock, expect, it, describe } from 'bun:test';
+import { vi, expect, it, describe } from 'vitest';
 import { ComponentChildren, createRef } from 'preact';
 import { StrictMode } from 'preact/compat';
 
@@ -69,7 +69,7 @@ it('will create instance only once', () => {
     }
   }
 
-  const didConstruct = mock();
+  const didConstruct = vi.fn();
   const { rerender } = render(<Control />);
 
   expect(didConstruct).toBeCalled();
@@ -102,7 +102,7 @@ describe('ref prop', () => {
   it('will invoke callback ref with instance', () => {
     class Control extends Component {}
 
-    const cb = mock();
+    const cb = vi.fn();
     const screen = render(<Control ref={cb} />);
 
     expect(cb).toBeCalled();
@@ -116,7 +116,7 @@ describe('ref prop', () => {
 
 describe('new method', () => {
   it('will call if exists', () => {
-    const didCreate = mock();
+    const didCreate = vi.fn();
 
     class Test extends Component {
       protected new() {
@@ -157,7 +157,7 @@ describe('element props', () => {
       value = set('foobar', didSet);
     }
 
-    const didSet = mock();
+    const didSet = vi.fn();
 
     render(<Foo value="barfoo" />);
 
@@ -219,7 +219,7 @@ describe('element children', () => {
       children = set<ComponentChildren>(undefined, didUpdate);
     }
 
-    const didUpdate = mock();
+    const didUpdate = vi.fn();
     const screen = render(<Control>Hello</Control>);
 
     expect(screen).toHaveText('Hello');
@@ -258,7 +258,7 @@ describe('props property', () => {
   });
 
   it('will be observable', async () => {
-    const didUpdate = mock();
+    const didUpdate = vi.fn();
 
     class Control extends Component {
       protected new() {
@@ -285,7 +285,7 @@ describe('props property', () => {
   });
 
   it('will not cause redundant render', async () => {
-    const didRender = mock();
+    const didRender = vi.fn();
     let control: Control;
 
     class Control extends Component {
@@ -530,7 +530,7 @@ describe('suspense', () => {
 
 describe('unmount', () => {
   it('will dispose instance', () => {
-    const didDispose = mock();
+    const didDispose = vi.fn();
 
     class Control extends Component {
       protected new() {
@@ -923,8 +923,8 @@ describe('strict mode', () => {
   // constructed and mounted exactly once, so the React-specific
   // double-invocation behaviors (construct twice, init once) do not exist.
   it('will not create two instances', async () => {
-    const didCreate = mock();
-    const didDestroy = mock();
+    const didCreate = vi.fn();
+    const didDestroy = vi.fn();
 
     class Control extends Component {
       foo = 'bar';
@@ -952,7 +952,7 @@ describe('strict mode', () => {
   });
 
   it('will refresh via property update', async () => {
-    const didRender = mock();
+    const didRender = vi.fn();
     let instance!: Control;
 
     class Control extends Component {
@@ -996,7 +996,7 @@ describe('strict mode', () => {
   });
 
   it('will refresh via props update', async () => {
-    const didRender = mock();
+    const didRender = vi.fn();
 
     class Control extends Component {
       foo = 'bar';

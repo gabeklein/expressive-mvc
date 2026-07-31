@@ -1,20 +1,21 @@
-import { describe, expect, it, mock } from 'bun:test';
+import { describe, expect, it, vi } from 'vitest';
 
-import { childrenOf, Fragment, host, isElement, jsx, jsxs, propsOf, typeOf } from './jsx-runtime';
+import { childrenOf, Fragment, host, isElement, jsx, jsxs, propsOf, transition, typeOf } from './runtime';
 import { jsxDEV, Fragment as devFragment } from './jsx-dev-runtime';
-import type { HostRuntime } from './jsx-runtime';
+import * as compat from './jsx-runtime';
+import type { HostRuntime } from './runtime';
 
 const HOST_FRAGMENT = Symbol('host.Fragment');
 
 function mockHost(overrides?: Partial<HostRuntime>): HostRuntime {
   return {
-    jsx: mock((type, props, key) => ({ kind: 'jsx', type, props, key })),
-    jsxs: mock((type, props, key) => ({ kind: 'jsxs', type, props, key })),
+    jsx: vi.fn((type, props, key) => ({ kind: 'jsx', type, props, key })),
+    jsxs: vi.fn((type, props, key) => ({ kind: 'jsxs', type, props, key })),
     Fragment: HOST_FRAGMENT,
-    childrenOf: mock((children) => [children]),
-    isElement: mock((node) => !!node),
-    typeOf: mock((node: any) => node.type),
-    propsOf: mock((node: any) => node.props),
+    childrenOf: vi.fn((children) => [children]),
+    isElement: vi.fn((node) => !!node),
+    typeOf: vi.fn((node: any) => node.type),
+    propsOf: vi.fn((node: any) => node.props),
     ...overrides
   };
 }
@@ -36,6 +37,12 @@ describe('unregistered', () => {
     expect(() => isElement({})).toThrow(noHost);
     expect(() => typeOf({})).toThrow(noHost);
     expect(() => propsOf({})).toThrow(noHost);
+  });
+
+  it('will run transition work inline', () => {
+    const work = vi.fn();
+    expect(() => transition(work)).not.toThrow();
+    expect(work).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -81,11 +88,30 @@ describe('runtime', () => {
     });
   });
 
+  it('will run transition work inline when host has no scheduler', () => {
+    const work = vi.fn();
+    transition(work);
+    expect(work).toHaveBeenCalledTimes(1);
+  });
+
+  it('will delegate transition when host provides a scheduler', () => {
+    // same-runtime re-registration is how a host extends its seams
+    runtime.transition = vi.fn((work: () => void) => work());
+    host(runtime);
+
+    const work = vi.fn();
+    transition(work);
+
+    expect(runtime.transition).toHaveBeenCalledWith(work);
+    expect(work).toHaveBeenCalledTimes(1);
+  });
+
   it('will delegate jsxDEV when host provides it', () => {
-    // the registered host is ours - giving it a dev runtime is not a re-registration
-    runtime.jsxDEV = mock((type, props, key, isStatic) => ({
+    // same-runtime re-registration is how a host extends its seams
+    runtime.jsxDEV = vi.fn((type, props, key, isStatic) => ({
       kind: 'jsxDEV', type, props, key, isStatic
     }) as any);
+    host(runtime);
 
     expect(jsxDEV('div', {}, 'k', true)).toEqual({
       kind: 'jsxDEV', type: 'div', props: {}, key: 'k', isStatic: true
@@ -104,5 +130,14 @@ describe('introspection', () => {
 
   it('will surface host Fragment as agnostic Fragment', () => {
     expect(typeOf({ type: HOST_FRAGMENT })).toBe(Fragment);
+  });
+});
+
+describe('jsx-runtime module', () => {
+  it('will carry exactly the transform contract', () => {
+    expect(Object.keys(compat).sort()).toEqual(['Fragment', 'jsx', 'jsxs']);
+    expect(compat.jsx).toBe(jsx);
+    expect(compat.jsxs).toBe(jsxs);
+    expect(compat.Fragment).toBe(Fragment);
   });
 });

@@ -1,5 +1,5 @@
 import React from 'react';
-import { describe, expect, it, mock } from 'bun:test';
+import { describe, expect, it, vi } from 'vitest';
 import { State, Provider, get, set } from '.';
 import { act, render, renderHook, waitFor } from '@testing-library/react';
 import { flushMicrotasks } from '../test.setup';
@@ -17,7 +17,7 @@ describe('State.use', () => {
     });
 
     it('will subscribe to instance of controller', async () => {
-      const willRender = mock();
+      const willRender = vi.fn();
       const { result } = renderHook(() => {
         willRender();
         return Test.use();
@@ -45,7 +45,7 @@ describe('State.use', () => {
       }
 
       let parent!: Parent;
-      const didRender = mock();
+      const didRender = vi.fn();
 
       const Inner = () => {
         const { is, child } = Parent.use();
@@ -92,7 +92,7 @@ describe('State.use', () => {
     });
 
     it('will run callback', () => {
-      const callback = mock();
+      const callback = vi.fn();
 
       renderHook(() => Test.use(callback));
 
@@ -100,7 +100,7 @@ describe('State.use', () => {
     });
 
     it('will destroy instance of given class', async () => {
-      const didDestroy = mock();
+      const didDestroy = vi.fn();
 
       class Test extends State {
         protected new() {
@@ -164,7 +164,7 @@ describe('State.use', () => {
 
   describe('new method', () => {
     it('will call if exists', () => {
-      const didCreate = mock();
+      const didCreate = vi.fn();
 
       class Test extends State {
         protected new() {
@@ -184,7 +184,7 @@ describe('State.use', () => {
 
   describe('mount method', () => {
     it('will call once on commit', () => {
-      const didMount = mock();
+      const didMount = vi.fn();
 
       class Test extends State {
         mount() {
@@ -202,7 +202,7 @@ describe('State.use', () => {
     });
 
     it('will run returned callback on unmount', () => {
-      const didUnmount = mock();
+      const didUnmount = vi.fn();
 
       class Test extends State {
         mount() {
@@ -220,8 +220,8 @@ describe('State.use', () => {
     });
 
     it('will not repeat under strict mode', () => {
-      const didMount = mock();
-      const didUnmount = mock();
+      const didMount = vi.fn();
+      const didUnmount = vi.fn();
 
       class Test extends State {
         mount() {
@@ -256,7 +256,7 @@ describe('State.use', () => {
     });
 
     it('will not call for an instance no component owns', () => {
-      const didMount = mock();
+      const didMount = vi.fn();
 
       class Test extends State {
         mount() {
@@ -272,7 +272,7 @@ describe('State.use', () => {
 
   describe('use method', () => {
     it('will call every render if present', () => {
-      const didUse = mock();
+      const didUse = vi.fn();
 
       class Test extends State {
         use() {
@@ -290,7 +290,7 @@ describe('State.use', () => {
     });
 
     it('will receive arguments', () => {
-      const didUse = mock();
+      const didUse = vi.fn();
 
       class Test extends State {
         use(foo: string, bar: number) {
@@ -304,7 +304,7 @@ describe('State.use', () => {
     });
 
     it('will divert arguments from constructor', () => {
-      const didUse = mock();
+      const didUse = vi.fn();
 
       class Test extends State {
         value = 0;
@@ -344,7 +344,7 @@ describe('State.use', () => {
     }
 
     it('will run callback once', async () => {
-      const callback = mock();
+      const callback = vi.fn();
       const hook = renderHook(() => Test.use(callback));
 
       expect(callback).toBeCalled();
@@ -355,8 +355,8 @@ describe('State.use', () => {
     });
 
     it('will run argument before effects', () => {
-      const effect = mock();
-      const argument = mock(() => {
+      const effect = vi.fn();
+      const argument = vi.fn(() => {
         expect(effect).not.toBeCalled();
       });
 
@@ -388,7 +388,7 @@ describe('State.use', () => {
         bar: 'bar'
       };
 
-      const didRender = mock();
+      const didRender = vi.fn();
 
       const hook = renderHook(() => {
         didRender();
@@ -472,7 +472,7 @@ describe('State.use', () => {
     });
 
     it('will not trigger updates it caused', async () => {
-      const didRender = mock();
+      const didRender = vi.fn();
       const hook = renderHook(
         (props) => {
           didRender();
@@ -487,7 +487,7 @@ describe('State.use', () => {
     });
 
     it('will trigger set instruction', () => {
-      const cb = mock();
+      const cb = vi.fn();
 
       class Test extends State {
         foo = set('foo', cb);
@@ -532,8 +532,8 @@ describe('State.use', () => {
 
   describe('strict mode', () => {
     it('will create once and destroy on unmount', async () => {
-      const didCreate = mock();
-      const didDestroy = mock();
+      const didCreate = vi.fn();
+      const didDestroy = vi.fn();
 
       class Test extends State {
         protected new() {
@@ -574,7 +574,7 @@ describe('State.use', () => {
         }
       }
 
-      const didRender = mock();
+      const didRender = vi.fn();
 
       const Component = () => {
         const test = Test.use();

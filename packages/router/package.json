@@ -41,7 +41,7 @@
   },
   "scripts": {
     "build": "tsdown",
-    "test": "tsc --noEmit && bun test --coverage"
+    "test": "tsc --noEmit && vitest run --coverage"
   },
   "dependencies": {
     "@expressive/mvc": "^0.82.0"

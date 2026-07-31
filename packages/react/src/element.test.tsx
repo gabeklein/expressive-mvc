@@ -1,5 +1,5 @@
 import { render, screen, act } from '@testing-library/react';
-import { expect, it, describe, mock } from 'bun:test';
+import { expect, it, describe, vi } from 'vitest';
 import React from 'react';
 
 import { mockError } from '../test.setup';
@@ -34,6 +34,20 @@ describe('instance element', () => {
     element.unmount();
 
     expect(instance.get(null)).toBe(false);
+  });
+
+  it('will activate a plain-constructed instance', async () => {
+    const instance = new Control({ value: 'first' });
+
+    render(<>{instance}</>);
+
+    expect(screen).toHaveText('first');
+
+    await act(async () => {
+      instance.value = 'second';
+    });
+
+    expect(screen).toHaveText('second');
   });
 
   it('will use an overridden key', () => {
@@ -405,7 +419,7 @@ describe('instance element', () => {
   });
 
   it('will not mount a placed instance', () => {
-    const didMount = mock();
+    const didMount = vi.fn();
 
     class Test extends Component {
       mount() {
@@ -580,6 +594,27 @@ describe('map element', () => {
     expect(element.container.textContent).toBe('a=a;b=b;');
 
     element.unmount();
+  });
+});
+
+describe('seam', () => {
+  it('will seam host elements without a dev store', async () => {
+    vi.resetModules();
+
+    await import('.');
+
+    const { Runtime } = await import('./runtime');
+    const { seam } = await import('./element');
+    const template = { $$typeof: Symbol.for('react.transitional.element') };
+
+    vi.spyOn(Runtime, 'createElement').mockReturnValueOnce(template);
+
+    const self = {} as any;
+    const type = () => null;
+
+    expect(seam(self, false, type, 'key')).toBe(template.$$typeof);
+    expect(self.type).toBe(type);
+    expect(self.key).toBe('key');
   });
 });
 

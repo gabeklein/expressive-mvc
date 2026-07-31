@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'bun:test';
+import { describe, expect, it } from 'vitest';
 
-import { fullPattern, matchPattern, patternSegment } from './url';
+import { fillPath, fullPattern, matchPattern, patternSegment } from './url';
 
 const match = (pattern: string, path: string) => matchPattern(pattern, path)?.params;
 
@@ -135,5 +135,15 @@ describe('patternSegment', () => {
 
   it('preserves literal patterns unchanged', () => {
     expect(patternSegment('/posts/:id')).toBe('/posts/:id');
+  });
+});
+
+describe('fillPath', () => {
+  it('claims the prefix with params filled from the path', () => {
+    expect(fillPath('/users/:id', '/users/42/posts')).toBe('/users/42');
+  });
+
+  it('returns null when a literal segment disagrees', () => {
+    expect(fillPath('/users/:id', '/posts/42')).toBe(null);
   });
 });

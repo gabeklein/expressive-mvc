@@ -1,5 +1,5 @@
 import { StrictMode } from 'react';
-import { afterEach, beforeEach, describe, expect, it, mock } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { State } from '@expressive/mvc';
 import { event, observer, touch } from '@expressive/mvc/observable';
 import { act, renderHook, waitFor } from '@testing-library/react';
@@ -16,10 +16,10 @@ function harness() {
   let state = 0;
   let effect: () => (() => void) | void;
   let refresh: (next?: any) => void;
-  const unmount = mock();
+  const unmount = vi.fn();
 
   // Apply the updater like React would, so the `(x) => x + 1` path is exercised.
-  const update = mock((fn: (prev: number) => number) => void (state = fn(state)));
+  const update = vi.fn((fn: (prev: number) => number) => void (state = fn(state)));
 
   Runtime.useRef = ((value: any) => {
     if (ref.current === undefined) ref.current = value;
@@ -103,7 +103,7 @@ describe('use', () => {
 
   it('will subscribe to observable instance', async () => {
     const test = Test.new();
-    const didRender = mock();
+    const didRender = vi.fn();
     const hook = renderHook(() => {
       didRender();
       return use(test).foo;
@@ -187,7 +187,7 @@ describe('use', () => {
 
   it('will only refresh for accessed values', async () => {
     const test = Test.new();
-    const didRender = mock();
+    const didRender = vi.fn();
 
     renderHook(() => {
       didRender();
@@ -228,7 +228,7 @@ describe('use', () => {
   it('will track replacement observable', async () => {
     const first = Test.new();
     const second = Test.new();
-    const didRender = mock();
+    const didRender = vi.fn();
     let current = first;
 
     first.foo = 'first';

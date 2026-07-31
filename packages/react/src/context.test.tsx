@@ -1,11 +1,11 @@
 import React, { Suspense } from 'react';
-import { mock, spyOn, afterAll, expect, it, describe } from 'bun:test';
+import { vi, afterAll, expect, it, describe } from 'vitest';
 
 import { act, render, screen } from '@testing-library/react';
 import { State, Consumer, Context, get, Provider, set } from '.';
 import { flushMicrotasks } from '../test.setup';
 
-const error = spyOn(console, 'error').mockImplementation(() => {});
+const error = vi.spyOn(console, 'error').mockImplementation(() => {});
 
 afterAll(() => {
   error.mockReset();
@@ -89,7 +89,7 @@ describe('Provider', () => {
       value = 'hello';
     }
 
-    const is = mock();
+    const is = vi.fn();
 
     render(
       <Provider for={Test} is={is}>
@@ -106,7 +106,7 @@ describe('Provider', () => {
   });
 
   it('will apply rest props alongside is', () => {
-    const is = mock();
+    const is = vi.fn();
 
     render(
       <Provider for={Foo} is={is} value="hello">
@@ -193,7 +193,7 @@ describe('Provider', () => {
       value = 'initial';
     }
 
-    const Child = mock(() => {
+    const Child = vi.fn(() => {
       const { value } = Test.get();
       return <span>{value}</span>;
     });
@@ -252,7 +252,7 @@ describe('Provider', () => {
   });
 
   it('will destroy created model on unmount', async () => {
-    const willDestroy = mock();
+    const willDestroy = vi.fn();
 
     class Test extends State {}
 
@@ -272,7 +272,7 @@ describe('Provider', () => {
   });
 
   it('will destroy multiple created on unmount', async () => {
-    const willDestroy = mock();
+    const willDestroy = vi.fn();
 
     class Foo extends State {}
     class Bar extends State {}
@@ -297,7 +297,7 @@ describe('Provider', () => {
   });
 
   it('will not destroy given instance on unmount', async () => {
-    const didUnmount = mock();
+    const didUnmount = vi.fn();
 
     class Test extends State {}
 
@@ -316,7 +316,7 @@ describe('Provider', () => {
   it('will conflict colliding State types', () => {
     const foo = Foo.new();
 
-    const Consumer: React.FC = mock(() => {
+    const Consumer: React.FC = vi.fn(() => {
       expect(() => Foo.get()).toThrow(
         'Did find Foo in context, but multiple were defined.'
       );
@@ -333,7 +333,7 @@ describe('Provider', () => {
   });
 
   it('will destroy from bottom-up', async () => {
-    const didDestroy = mock();
+    const didDestroy = vi.fn();
 
     class Test extends State {
       protected new() {
@@ -359,8 +359,8 @@ describe('Provider', () => {
 
   describe('mount method', () => {
     it('will call for an instance it creates', () => {
-      const didMount = mock();
-      const didUnmount = mock();
+      const didMount = vi.fn();
+      const didUnmount = vi.fn();
 
       class Test extends State {
         mount() {
@@ -384,7 +384,7 @@ describe('Provider', () => {
     });
 
     it('will not call for an instance it is given', () => {
-      const didMount = mock();
+      const didMount = vi.fn();
 
       class Test extends State {
         mount() {
@@ -407,7 +407,7 @@ describe('Provider', () => {
     });
 
     it('will distinguish created from given per key', () => {
-      const didMount = mock();
+      const didMount = vi.fn();
 
       class Owned extends State {
         mount() {
@@ -434,8 +434,8 @@ describe('Provider', () => {
     });
 
     it('will not repeat under strict mode', () => {
-      const didMount = mock();
-      const didUnmount = mock();
+      const didMount = vi.fn();
+      const didUnmount = vi.fn();
 
       class Test extends State {
         mount() {
@@ -459,7 +459,7 @@ describe('Provider', () => {
     });
 
     it('will not mount a state swapped in by a later render', () => {
-      const didMount = mock();
+      const didMount = vi.fn();
 
       class First extends State {
         mount() {
@@ -493,7 +493,7 @@ describe('Provider', () => {
     });
 
     it('will mount a swapped state when the Provider is keyed', () => {
-      const didMount = mock();
+      const didMount = vi.fn();
 
       class First extends State {
         mount() {
@@ -557,7 +557,7 @@ describe('Provider', () => {
 
   describe('forEach prop', () => {
     it('will call function for each model', () => {
-      const forEach = mock();
+      const forEach = vi.fn();
 
       render(<Provider for={{ Foo, Bar }} is={forEach} />);
 
@@ -570,7 +570,7 @@ describe('Provider', () => {
       let captured!: Foo | Bar;
       // a concise arrow body returns the state, which must not be mistaken
       // for a teardown - hence no dispose seam here at all
-      const forEach = mock((state: Foo | Bar) => (captured = state));
+      const forEach = vi.fn((state: Foo | Bar) => (captured = state));
 
       const rendered = render(<Provider for={{ Foo, Bar }} is={forEach} />);
 
@@ -581,8 +581,8 @@ describe('Provider', () => {
     });
 
     it('will cleanup on unmount through the state', () => {
-      const cleanup = mock();
-      const forEach = mock((state: State) => {
+      const cleanup = vi.fn();
+      const forEach = vi.fn((state: State) => {
         state.set(null, cleanup);
       });
 
@@ -655,8 +655,8 @@ describe('Provider', () => {
 
   describe('strict mode', () => {
     it('will create once and destroy on unmount', async () => {
-      const didCreate = mock();
-      const didDestroy = mock();
+      const didCreate = vi.fn();
+      const didDestroy = vi.fn();
 
       class Test extends State {
         protected new() {
@@ -712,7 +712,7 @@ describe('Consumer', () => {
     }
 
     const instance = Test.new();
-    const didRender = mock();
+    const didRender = vi.fn();
 
     function onRender(instance: Test) {
       const { value } = instance;
@@ -889,7 +889,7 @@ describe('get instruction', () => {
   });
 
   it('will maintain hook', async () => {
-    const Inner: React.FC = mock(() => {
+    const Inner: React.FC = vi.fn(() => {
       Foo.use();
       return null;
     });
@@ -974,7 +974,7 @@ describe('has instruction', () => {
       foo = get(Foo);
     }
 
-    const didGetBar = mock();
+    const didGetBar = vi.fn();
     const FooBar = () => void Bar.use();
     const foo = new Foo();
 
@@ -999,7 +999,7 @@ describe('has instruction', () => {
       foo = get(Foo);
     }
 
-    const didGetBar = mock();
+    const didGetBar = vi.fn();
     const FooBar = () => void Bar.use();
 
     const Component = () => {
