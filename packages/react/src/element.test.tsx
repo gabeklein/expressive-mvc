@@ -597,6 +597,27 @@ describe('map element', () => {
   });
 });
 
+describe('seam', () => {
+  it('will seam host elements without a dev store', async () => {
+    vi.resetModules();
+
+    await import('.');
+
+    const { Runtime } = await import('./runtime');
+    const { seam } = await import('./element');
+    const template = { $$typeof: Symbol.for('react.transitional.element') };
+
+    vi.spyOn(Runtime, 'createElement').mockReturnValueOnce(template);
+
+    const self = {} as any;
+    const type = () => null;
+
+    expect(seam(self, false, type, 'key')).toBe(template.$$typeof);
+    expect(self.type).toBe(type);
+    expect(self.key).toBe('key');
+  });
+});
+
 describe('collection element', () => {
   class Item extends Component {
     label = '';
