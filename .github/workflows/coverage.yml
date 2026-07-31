@@ -23,7 +23,7 @@ jobs:
       - name: Collect coverage
         run: |
           for pkg in packages/*/; do
-            (cd "$pkg" && bun test --coverage --coverage-reporter=lcov --coverage-dir=coverage)
+            (cd "$pkg" && bunx vitest run --coverage)
           done
 
       - name: Generate badge
