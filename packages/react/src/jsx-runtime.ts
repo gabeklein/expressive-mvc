@@ -2,7 +2,6 @@ import { Children, isValidElement, startTransition } from 'react';
 import { Fragment, jsx, jsxs } from 'react/jsx-runtime';
 import { host } from '@expressive/mvc/runtime';
 
-import type { Component } from '@expressive/mvc';
 import type { JSX as ReactJSX, ReactNode } from 'react';
 
 declare module '@expressive/mvc/runtime' {
@@ -18,9 +17,7 @@ host({
   Fragment,
   transition: startTransition,
   isElement: isValidElement,
-  childrenOf(children): Component.Node[] {
-    return Children.toArray(children as React.ReactNode);
-  },
+  childrenOf: Children.toArray,
   typeOf(node){
     return isValidElement(node) ? node.type : undefined;
   },
