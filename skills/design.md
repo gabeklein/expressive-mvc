@@ -56,7 +56,7 @@ A getter reading its own name (`this.total` inside `get total()`) returns the pr
 
 ## Stability before surface
 
-Pre-1.0 development optimizes for a finishable library, not a growing one. Convenience APIs that overlap existing primitives are removed rather than accumulated - `hot` was retired once `map` and `has` covered its uses, and the standalone `use(instance)` hook followed once context lookup, instance placement, and proxy-tracked nested reads covered every job it did - and the router deliberately keeps a small contract whose priority is stability over features. 1.0 is defined as completion: a bounded surface, documented in these skills, gated by total coverage, and intended to hold still afterward. This is recorded intent, not an inference to draw from commit graphs - after 1.0, low churn should read as a utility that is done, and the pre-1.0 removals are the cost paid for that end state.
+Pre-1.0 development optimizes for a finishable library, not a growing one. Overlapping convenience APIs are removed rather than accumulated - `hot` fell to `map`/`has`, the standalone `use(instance)` hook to context, placement, and proxy tracking - and the router deliberately keeps a small contract whose priority is stability over features. 1.0 is defined as completion: a bounded surface, documented in these skills, gated by total coverage, and intended to hold still afterward. This is recorded intent, not an inference to draw from commit graphs - after 1.0, low churn should read as a utility that is done, and the pre-1.0 removals are the cost paid for that end state.
 
 ## Coverage is measured and gated, not a badge claim
 
