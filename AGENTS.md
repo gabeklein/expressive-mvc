@@ -88,7 +88,7 @@ A green `tsc --noEmit` + `bun run build` says nothing about whether a browser-fa
 
 ## Change flow
 
-- When starting actual work, switch from any agent-scratch branch (`claude/*`) to a conventional named branch (`feat/...`, `fix/...`, `chore/...`) before the first real commit.
+- When starting actual work, switch from any auto-generated scratch branch (`claude/*` or whatever your tooling names them) to a conventional named branch (`feat/...`, `fix/...`, `chore/...`) before the first real commit.
 - Always open PRs against `main` unless explicitly told otherwise. Never assume a PR should target another branch, even when the current work branch is stacked on one. If asked to break a fix out of a larger branch, the intent is to land it independently off `main` - carve out only the change in question and base its branch on `main`.
 - For new features and non-trivial refactors, capture agreed scope, key decisions, and approach in the PR description before implementation - it is the canonical shared plan and review context. (Working notes may live in untracked local scratch; only the PR description is shared.)
 - Prefer more, logically-scoped commits within a branch over one squashed blob - the PR itself squashes on merge, so granular commits cost nothing and give better evolution tracking during review.
@@ -98,7 +98,7 @@ A green `tsc --noEmit` + `bun run build` says nothing about whether a browser-fa
 
 ### Git hygiene
 
-- Do feature and isolated-fix work in a git worktree (`.claude/worktrees/<slug>`), addressing it with explicit paths - the session itself stays in the primary checkout, which is where work gets resumed from.
+- Do feature and isolated-fix work in a git worktree, addressing it with explicit paths - the working session stays in the primary checkout, which is where work gets resumed from. Any gitignored or out-of-repo location works; `.claude/worktrees/<slug>` is one existing ignored convention, but use whatever your tooling provides.
 - Branch from `origin/main`. Never assume an upstream exists - the maintainer deliberately disables upstream auto-setup, so a bare `git push` failing with "no upstream" means exactly that, nothing deeper, and changing git config to "fix" it is unwelcome. A branch's first push is `git push -u origin <branch>`, correct under any config. Renaming a branch does not move its upstream; reset it with `git branch --set-upstream-to=origin/<name>`.
 - Pushing publishes. Don't push a branch or open a PR beyond what the task at hand calls for.
 - Never use `git stash` as a scratch mechanism. The stash may already hold long-lived work that isn't yours, a bad pathspec makes `stash push` a silent no-op, and the following `stash pop` then applies an unrelated pre-existing stash into the working tree. To check something clean, copy files to scratch and `git checkout HEAD -- <file>`, or use a worktree. If stash is truly unavoidable: `git stash list` first, named push with verified paths, confirm the entry exists, pop by that explicit ref.
