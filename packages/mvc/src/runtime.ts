@@ -50,23 +50,8 @@ export interface HostRuntime {
  */
 export const Fragment = Symbol.for('@expressive/mvc.Fragment');
 
-let HOST: HostRuntime | undefined;
-
-/** Register the host runtime. Idempotent for the same runtime. */
-export function host(runtime: HostRuntime) {
-  if (HOST && HOST !== runtime)
-    throw new Error(
-      'A different JSX host is already registered for @expressive/mvc. ' +
-      'Only one host adapter may be active per build.'
-    );
-
-  HOST = runtime;
-}
-
-/** Current host runtime; throws a setup-pointing error when none registered. */
-function resolved(): HostRuntime {
-  if (HOST) return HOST;
-
+/** Default for seams only a registered host can provide. */
+function absent(): never {
   throw new Error(
     'No JSX host is registered for @expressive/mvc. ' +
     "Import a host adapter (e.g. '@expressive/react') before anything renders - " +
@@ -74,21 +59,51 @@ function resolved(): HostRuntime {
   );
 }
 
+const HOST: HostRuntime = {
+  childrenOf: absent,
+  isElement: absent,
+  jsx: absent,
+  jsxs: absent,
+  propsOf: absent,
+  typeOf: absent,
+  Fragment
+};
+
+let registered: HostRuntime | undefined;
+
+/**
+ * Register the host runtime. Idempotent for the same runtime - re-registering
+ * picks up members added since (e.g. an optional dev or scheduler seam).
+ * Element mechanics the host leaves unset keep defaults that throw a
+ * setup-pointing error; the optional seams (`jsxDEV`, `transition`) are
+ * routed around at the call sites instead.
+ */
+export function host(runtime: HostRuntime) {
+  if (registered && registered !== runtime)
+    throw new Error(
+      'A different JSX host is already registered for @expressive/mvc. ' +
+      'Only one host adapter may be active per build.'
+    );
+
+  registered = runtime;
+  Object.assign(HOST, runtime);
+}
+
 /** Translate the agnostic Fragment sentinel to the host's Fragment. */
 function hostType(type: unknown): unknown {
-  return type === Fragment ? resolved().Fragment : type;
+  return type === Fragment ? HOST.Fragment : type;
 }
 
 export function jsx(type: unknown, props: object, key?: unknown): Component.Node {
-  return resolved().jsx(hostType(type), props, key);
+  return HOST.jsx(hostType(type), props, key);
 }
 
 export function jsxs(type: unknown, props: object, key?: unknown): Component.Node {
-  return resolved().jsxs(hostType(type), props, key);
+  return HOST.jsxs(hostType(type), props, key);
 }
 
-/** Dev-transpiled element creation. Falls back to the production runtime when
- * the host registered no `jsxDEV` (prod-only host under a dev build). */
+/** Dev-transpiled element creation. Hosts without a `jsxDEV` of their own fall
+ * back to the production entries (prod-only host under a dev build). */
 export function jsxDEV(
   type: unknown,
   props: object,
@@ -97,36 +112,32 @@ export function jsxDEV(
   source?: object,
   self?: unknown
 ): Component.Node {
-  const runtime = resolved();
-  const resolvedType = hostType(type);
-
-  return runtime.jsxDEV
-    ? runtime.jsxDEV(resolvedType, props, key, isStatic, source, self)
+  return HOST.jsxDEV
+    ? HOST.jsxDEV(hostType(type), props, key, isStatic, source, self)
     : isStatic
-      ? runtime.jsxs(resolvedType, props, key)
-      : runtime.jsx(resolvedType, props, key);
+      ? jsxs(type, props, key)
+      : jsx(type, props, key);
 }
 
 /** Flatten `children` to an array of nodes, per the host's semantics. */
 export function childrenOf(children: unknown): Component.Node[] {
-  return resolved().childrenOf(children);
+  return HOST.childrenOf(children);
 }
 
 /** Is `node` a host element? */
 export function isElement(node: unknown): boolean {
-  return resolved().isElement(node);
+  return HOST.isElement(node);
 }
 
 /** Element type of `node`; host Fragments surface as the agnostic `Fragment`. */
 export function typeOf(node: unknown): unknown {
-  const { typeOf, Fragment: hosted } = resolved();
-  const type = typeOf(node);
-  return type === hosted ? Fragment : type;
+  const type = HOST.typeOf(node);
+  return type === HOST.Fragment ? Fragment : type;
 }
 
 /** Props carried by element `node`. */
 export function propsOf(node: unknown): Record<string, unknown> {
-  return resolved().propsOf(node);
+  return HOST.propsOf(node);
 }
 
 /**
@@ -136,6 +147,6 @@ export function propsOf(node: unknown): Record<string, unknown> {
  * a scheduler), `work` simply runs inline.
  */
 export function transition(work: () => void): void {
-  if (HOST?.transition) HOST.transition(work);
+  if (HOST.transition) HOST.transition(work);
   else work();
 }

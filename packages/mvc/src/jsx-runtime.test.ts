@@ -40,7 +40,7 @@ describe('unregistered', () => {
   });
 
   it('will run transition work inline', () => {
-    const work = mock(() => {});
+    const work = vi.fn();
     expect(() => transition(work)).not.toThrow();
     expect(work).toHaveBeenCalledTimes(1);
   });
@@ -89,16 +89,17 @@ describe('runtime', () => {
   });
 
   it('will run transition work inline when host has no scheduler', () => {
-    const work = mock(() => {});
+    const work = vi.fn();
     transition(work);
     expect(work).toHaveBeenCalledTimes(1);
   });
 
   it('will delegate transition when host provides a scheduler', () => {
-    // the registered host is ours - giving it a scheduler is not a re-registration
-    runtime.transition = mock((work: () => void) => work());
+    // same-runtime re-registration is how a host extends its seams
+    runtime.transition = vi.fn((work: () => void) => work());
+    host(runtime);
 
-    const work = mock(() => {});
+    const work = vi.fn();
     transition(work);
 
     expect(runtime.transition).toHaveBeenCalledWith(work);
@@ -106,10 +107,11 @@ describe('runtime', () => {
   });
 
   it('will delegate jsxDEV when host provides it', () => {
-    // the registered host is ours - giving it a dev runtime is not a re-registration
+    // same-runtime re-registration is how a host extends its seams
     runtime.jsxDEV = vi.fn((type, props, key, isStatic) => ({
       kind: 'jsxDEV', type, props, key, isStatic
     }) as any);
+    host(runtime);
 
     expect(jsxDEV('div', {}, 'k', true)).toEqual({
       kind: 'jsxDEV', type: 'div', props: {}, key: 'k', isStatic: true
