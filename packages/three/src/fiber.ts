@@ -18,13 +18,18 @@ interface Fiber {
   children: Fiber[];
   /** Object contributed to the graph by this placement, once attached. */
   object?: Object3D;
-  instance?: Component;
   /** Re-invoke this placement's content with fresh props. */
   refresh?(props: Record<string, unknown>): void;
   release?(): void;
 }
 
-/** Nearest ancestor object that children attach to. */
+/**
+ * Nearest ancestor object that children attach to.
+ *
+ * Resolved from the fiber tree, not from context: a State adopted by `has()` or
+ * `map()` is registered in its *owner's* context, so a type lookup there can
+ * find a sibling - or nothing, when two of them make it ambiguous.
+ */
 function container(fiber: Fiber): Object3D | undefined {
   for (let at: Fiber | undefined = fiber; at; at = at.parent)
     if (at.object) return at.object;
@@ -60,7 +65,6 @@ function mount(fiber: Fiber, instance: Component, owned: boolean) {
 
   context.set(instance, owned ? () => () => instance.set(null) : undefined);
 
-  fiber.instance = instance;
   // No public seam pushes fresh props into a live Component - the field is
   // declared readonly, though its setter is what re-merges them into state.
   fiber.refresh = (props) => {
@@ -71,6 +75,7 @@ function mount(fiber: Fiber, instance: Component, owned: boolean) {
     const content = self.render(self.props);
     const object = (self as { object?: unknown }).object;
 
+    // Attach after render, so a node which suspended stays out of the graph.
     if (object instanceof Object3D && !fiber.object) {
       fiber.object = object;
       container(fiber.parent!)!.add(object);

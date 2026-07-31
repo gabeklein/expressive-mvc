@@ -105,13 +105,22 @@
         "@expressive/mvc": "workspace:^",
       },
       "devDependencies": {
+        "@expressive/react": "workspace:^",
+        "@testing-library/react": "^16.3.0",
+        "@types/react": "^19",
         "@types/three": "^0.185.0",
+        "react": "^19",
+        "react-dom": "^19",
         "three": "^0.185.0",
         "tsdown": "^0.20.1",
       },
       "peerDependencies": {
+        "@expressive/react": "workspace:^",
         "three": ">=0.160.0",
       },
+      "optionalPeers": [
+        "@expressive/react",
+      ],
     },
     "website": {
       "name": "website",

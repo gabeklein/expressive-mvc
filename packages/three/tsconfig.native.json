@@ -1,0 +1,19 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "jsxImportSource": "@expressive/mvc",
+    "types": ["node"]
+  },
+  "include": [
+    "test.setup.ts",
+    "src/fiber.ts",
+    "src/fiber.test.tsx",
+    "src/frame.ts",
+    "src/native.ts",
+    "src/node.ts",
+    "src/node.test.ts",
+    "src/object.ts",
+    "src/object.test.tsx"
+  ],
+  "exclude": []
+}

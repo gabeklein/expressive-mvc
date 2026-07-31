@@ -24,14 +24,23 @@ abstract class Object3D extends Component {
 }
 
 Object3D.on({
-  after(self) {
+  /**
+   * Created in `before` rather than at the `new()` slot: a member spawned by
+   * `has()` or `map()` inside its owner's `new()` activates immediately, and
+   * would otherwise look for an owner whose object does not exist yet.
+   *
+   * Props are not applied this early, so `create` cannot read them - fields
+   * drive the object through the effect below instead of through construction.
+   */
+  before(self) {
     Object.defineProperty(self, 'object', {
       value: self.create(),
       enumerable: false
     });
 
     self.object.name = String(self);
-
+  },
+  after(self) {
     return self.get(({ object, visible, position, rotation, scale }) => {
       object.visible = visible;
       object.position.set(...position);
@@ -42,6 +51,15 @@ Object3D.on({
     });
   }
 });
+
+/** Root of a graph - what a React-hosted scene hangs from. */
+class Scene extends Object3D {
+  declare readonly object: THREE.Scene;
+
+  protected create() {
+    return new THREE.Scene();
+  }
+}
 
 /** A bare transform - the usual place to put shared position or rotation. */
 class Group extends Object3D {
@@ -72,4 +90,4 @@ Mesh.on({
   }
 });
 
-export { Group, Mesh, Object3D, Vec3 };
+export { Group, Mesh, Object3D, Scene, Vec3 };
