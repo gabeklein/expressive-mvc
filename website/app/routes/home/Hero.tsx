@@ -60,7 +60,7 @@ export function Hero() {
             Drops into React you already have - not a framework, no rewrite.
           </p>
           <p className="mx-auto mt-2 max-w-md text-center font-mono text-xs text-fd-muted-foreground/80 lg:mx-0">
-            {__LIB_TESTS__.toLocaleString('en-US')} tests · 100% line coverage · v{__LIB_VERSION__}
+            {__LIB_TESTS__.toLocaleString('en-US')} tests · 100% coverage · v{__LIB_VERSION__}
           </p>
         </div>
       </div>
