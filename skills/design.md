@@ -54,12 +54,6 @@ Subscription proxies pass assignments through to the instance, so components rea
 
 A getter reading its own name (`this.total` inside `get total()`) returns the previous cached value rather than recursing - reads under the tracking proxy resolve to the managed property's current cache. This makes "derive from prior value" expressible without a shadow field; it is documented semantics ([state/computed.md](state/computed.md)), not an accident of evaluation order.
 
-## Concurrent React
-
-The adapter routes subscriber updates through ordinary `useState` setters rather than `useSyncExternalStore`. That distinction is intentional: [React documents](https://react.dev/reference/react/useSyncExternalStore#caveats) that external-store mutations cannot be marked as non-blocking Transition updates, so a changed snapshot restarts the work as blocking and a suspending render shows its fallback. Ordinary state setters can instead participate when a host-owned operation emits them synchronously inside `startTransition`; the host transition seam verifies that such a suspending update holds prior content, and the router's deferred-presentation path is built on that capability.
-
-Ordinary model writes still batch dispatch in a microtask. A microtask queued by `transition(() => model.value = next)` runs after the transition callback returns, so that general form does not inherit the transition; transition-aware infrastructure must bracket a synchronous emit. The trade for retaining transition participation is that renders read from the live observable instance rather than an immutable external-store snapshot, so no formal non-tearing guarantee is made for a render interrupted mid-flight - a write landing during one converges on the re-render it schedules. StrictMode double-mounting is explicitly supported (one instance survives the double-mount), and server rendering is exercised by the adapter's test suite.
-
 ## Coverage is measured and gated, not a badge claim
 
 Every package's test script runs `tsc --noEmit && vitest run --coverage` with istanbul thresholds pinning statements, branches, functions, and lines at 100% in its `vitest.config.ts` - not a lines-only claim: every conditional arm is either exercised by a test or deleted as dead code. The `PR` workflow blocks merges on these thresholds. The README coverage badge is not hand-written: the `Coverage` workflow (`.github/workflows/coverage.yml`) re-measures coverage across all packages on every push to `main`, aggregates the lcov output, and publishes the badge value it computed.

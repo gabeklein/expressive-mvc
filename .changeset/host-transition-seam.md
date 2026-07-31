@@ -9,6 +9,6 @@ Host registry moves to `@expressive/mvc/runtime`, and gains a transition seam.
 
 **Transition seam:** `HostRuntime` gains an optional `transition(work)` member - the host's non-urgent update bracket - and `@expressive/mvc/runtime` exports a delegating `transition(work)` helper (new in this release; deliberately not re-exported from `jsx-runtime`). Unlike the element helpers, `transition` never requires a host: with none registered (or a host that declares no scheduler) the work simply runs inline, so host-agnostic code can call it unconditionally.
 
-`@expressive/react` registers React's `startTransition` as the scheduler, so under the React host, state updates inside `transition(...)` present deferred - a suspending update holds prior content instead of flashing a fallback.
+`@expressive/react` registers React's `startTransition` as the scheduler. Updates scheduled synchronously through the host callback receive React's Transition priority. Expressive model subscriber notifications remain microtask-batched; transition propagation through that dispatch path is not part of this release.
 
-This establishes the pattern for host capabilities beyond element mechanics: `HostRuntime` members are plain functions the host uniquely owns, callable outside render, each with a sane fallback when absent; render-resident (hook-shaped) capabilities remain with the adapter. First consumer: `@expressive/router`'s deferred navigation (next release).
+This establishes the pattern for host capabilities beyond element mechanics: `HostRuntime` members are plain functions the host uniquely owns, callable outside render, each with a sane fallback when absent; render-resident (hook-shaped) capabilities remain with the adapter.
