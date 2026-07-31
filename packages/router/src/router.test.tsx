@@ -112,6 +112,7 @@ describe('Router (headless)', () => {
     encoded.goto('/x?q=a%20b');
     await encoded.set();
     expect(encoded.entries).toEqual(['/', '/x?q=a+b']);
+    encoded.set(null);
 
     const repeated = Router.new();
     repeated.goto('/x?a=1&a=2');
@@ -323,8 +324,8 @@ describe('BrowserRouter', () => {
       const server = BrowserRouter.new();
 
       expect(server.path).toBe('/');
-      // did not register a global - else it would collide with and evict the
-      // client instance, leaving the lookup ambiguous
+      // did not register a global - else it would throw on collision with the
+      // live client instance
       expect(Context.root.get(BrowserRouter)).toBe(router.current);
 
       server.set(null);

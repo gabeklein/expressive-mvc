@@ -88,19 +88,19 @@ Global status is irrelevant to a context-claimed State: an instance provided by 
 
 ### Global Collision
 
-Two global instances of the same type in root mutually evict at the contested ancestor:
+A second global instance of the same type throws on activation - a global is a singleton, and a duplicate is treated as a bug at its source:
 
 ```ts
 const a = Sub.new(); // Sub declares `static global`
-const b = Sub.new();
-Context.root.get(Sub, false); // undefined - both evicted
+Sub.new();           // throws - Sub already exists in root
+Context.root.get(Sub); // a - first instance unaffected
 ```
 
-Read this as "a collision is opt-out from global" - if you create two, neither is the global instance. A third `Sub.new()` would re-claim global status (the empty contested set is reclaimable).
+Destroy the existing instance first (`a.set(null)`) and a fresh `Sub.new()` registers cleanly. To hold multiple instances deliberately, register them explicitly instead (see [Explicit Bypass](#explicit-bypass)).
 
-### Subtype Preservation
+### Subtype Eviction
 
-Eviction is per-ancestor. Sibling subtypes only collide at their shared supertype - subtype lookups remain unambiguous:
+Sibling subtypes are different types - they don't throw, they collide only at their shared supertype, where both evict. Subtype lookups remain unambiguous:
 
 ```ts
 // Base is a widened global; each subtype re-declares (required on extend)
@@ -117,7 +117,7 @@ Context.root.get(SubB);        // b - unambiguous at SubB
 
 ### Explicit Bypass
 
-Explicit registration (`new Context(state)`, `ctx.add(state, true)`, JSX `Provider`) bypasses global eviction. Global and explicit entries coexist; explicit wins priority on lookup.
+Explicit registration (`new Context(state)`, `ctx.add(state, true)`, JSX `Provider`) bypasses collision handling entirely - no throw, no eviction. Global and explicit entries coexist; explicit wins priority on lookup.
 
 ```ts
 const a = Sub.new();          // global, in root
@@ -157,7 +157,7 @@ ctx.get(Parent).foo = undefined;
 ctx.get(Foo); // Bar instance - heals
 ```
 
-This differs from root's permanent eviction because scoped contexts model "candidates available here," whereas root models "the global instance."
+This differs from root - where a same-type duplicate throws and ancestor contests evict permanently - because scoped contexts model "candidates available here," whereas root models "the global instance."
 
 ## API Surface
 
