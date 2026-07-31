@@ -65,7 +65,7 @@ One instance may appear beneath separate parents. Repeating it within the same
 sibling collection repeats the same key and intentionally produces the host's
 duplicate-key warning.
 
-Direct rendering eliminates wrapper components whose only job was to manage subscriptions.
+Direct rendering eliminates wrapper components whose only job is to manage subscriptions.
 
 When a render reads more than a value or two, destructure everything it reads from `this` at the top - the same dependency-snapshot rule as `.get()` / `State.use()` (see [react.md](react.md)). Rendering shares its subscription plumbing with the hooks, so scattered deep reads carry the same conditional-subscription risk:
 
