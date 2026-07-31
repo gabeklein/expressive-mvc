@@ -54,6 +54,10 @@ Subscription proxies pass assignments through to the instance, so components rea
 
 A getter reading its own name (`this.total` inside `get total()`) returns the previous cached value rather than recursing - reads under the tracking proxy resolve to the managed property's current cache. This makes "derive from prior value" expressible without a shadow field; it is documented semantics ([state/computed.md](state/computed.md)), not an accident of evaluation order.
 
+## Stability before surface
+
+Pre-1.0 development optimizes for a finishable library, not a growing one. Convenience APIs that overlap existing primitives are removed rather than accumulated - `hot` was retired once `map` and `has` covered its uses - and the router deliberately keeps a small contract whose priority is stability over features. 1.0 is defined as completion: a bounded surface, documented in these skills, gated by total coverage, and intended to hold still afterward. This is recorded intent, not an inference to draw from commit graphs - after 1.0, low churn should read as a utility that is done, and the pre-1.0 removals are the cost paid for that end state.
+
 ## Coverage is measured and gated, not a badge claim
 
 Every package's test script runs `tsc --noEmit && vitest run --coverage` with istanbul thresholds pinning statements, branches, functions, and lines at 100% in its `vitest.config.ts` - not a lines-only claim: every conditional arm is either exercised by a test or deleted as dead code. The `PR` workflow blocks merges on these thresholds. The README coverage badge is not hand-written: the `Coverage` workflow (`.github/workflows/coverage.yml`) re-measures coverage across all packages on every push to `main`, aggregates the lcov output, and publishes the badge value it computed.
