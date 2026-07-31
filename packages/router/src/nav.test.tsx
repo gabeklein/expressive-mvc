@@ -1,5 +1,5 @@
 import { act } from '@testing-library/react';
-import { expect, it } from 'bun:test';
+import { expect, it } from 'vitest';
 
 import { renderAct, browserRouter } from '../test.setup';
 import { NavLinks } from './nav';
@@ -40,6 +40,17 @@ it('default Item renders label, falling back to path', async () => {
   expect(links(view)).toEqual(['/a', '/b']);
   expect(view.container.textContent).toContain('Alpha');
   expect(view.container.textContent).toContain('/b');
+});
+
+it('skips redirect and default rows', async () => {
+  const view = await renderAct(
+    <Route as={Page}>
+      <Route to="a" />
+      <Route to="old" redirect="/a" />
+      <Route default as={() => <div>fallback</div>} />
+    </Route>
+  );
+  expect(links(view)).toEqual(['/a']);
 });
 
 it('treats a headless scope as a section, not a link', async () => {

@@ -21,7 +21,7 @@
   },
   "scripts": {
     "build": "tsdown",
-    "test": "tsc --noEmit && bun test --coverage"
+    "test": "tsc --noEmit && vitest run --coverage"
   },
   "dependencies": {
     "@expressive/react": "workspace:^",

@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'bun:test';
+import { describe, it, expect } from 'vitest';
 import { renderToString } from 'react-dom/server';
 import { State, Provider, Consumer } from '.';
 

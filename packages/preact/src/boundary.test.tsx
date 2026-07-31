@@ -1,6 +1,6 @@
 /** @jsxImportSource preact */
 import { render, screen, act } from '@testing-library/preact';
-import { mock, expect, it, describe } from 'bun:test';
+import { vi, expect, it, describe } from 'vitest';
 
 import { mockError, mockPromise, flushMicrotasks } from '../test.setup';
 import { Component } from '.';
@@ -120,7 +120,7 @@ describe('error boundary', () => {
   });
 
   it('will propagate if render throws after recovery', async () => {
-    const parentCatch = mock();
+    const parentCatch = vi.fn();
     let resolve!: () => void;
 
     const Throws = () => {
@@ -166,7 +166,7 @@ describe('error boundary', () => {
   });
 
   it('will propagate catch rejection to parent boundary', async () => {
-    const parentCatch = mock();
+    const parentCatch = vi.fn();
 
     const Throws = () => {
       throw new Error('boom');
@@ -261,7 +261,7 @@ describe('error boundary', () => {
   });
 
   it('will pass error to catch', async () => {
-    const caught = mock();
+    const caught = vi.fn();
 
     const Throws = () => {
       throw new Error('specific error');
@@ -350,7 +350,7 @@ describe('error boundary', () => {
   });
 
   it('will call catch exactly once per thrown error', async () => {
-    const catchSpy = mock();
+    const catchSpy = vi.fn();
 
     const Throws = () => {
       throw new Error('boom');
@@ -449,7 +449,7 @@ describe('error boundary', () => {
   });
 
   it('will dispose instance if unmounted in error state', async () => {
-    const didDispose = mock();
+    const didDispose = vi.fn();
     const Throws = () => {
       throw new Error('boom');
     };

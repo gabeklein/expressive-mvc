@@ -1,4 +1,4 @@
-import { afterEach } from 'bun:test';
+import { afterEach } from 'vitest';
 import { cleanup } from '@testing-library/preact';
 
 import '../mvc/test.setup';

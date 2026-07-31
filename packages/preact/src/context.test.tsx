@@ -1,12 +1,12 @@
 /** @jsxImportSource preact */
 import { StrictMode, Suspense } from 'preact/compat';
-import { mock, spyOn, afterAll, expect, it, describe } from 'bun:test';
+import { vi, afterAll, expect, it, describe } from 'vitest';
 
 import { act, render, screen } from '@testing-library/preact';
 import { State, Consumer, Context, get, Provider, set } from '.';
 import { flushMicrotasks } from '../test.setup';
 
-const error = spyOn(console, 'error').mockImplementation(() => {});
+const error = vi.spyOn(console, 'error').mockImplementation(() => {});
 
 afterAll(() => {
   error.mockReset();
@@ -71,7 +71,7 @@ describe('Provider', () => {
       value = 'hello';
     }
 
-    const is = mock();
+    const is = vi.fn();
 
     render(
       <Provider for={Test} is={is}>
@@ -92,7 +92,7 @@ describe('Provider', () => {
       value = 'initial';
     }
 
-    const Child = mock(() => {
+    const Child = vi.fn(() => {
       const { value } = Test.get();
       return <span>{value}</span>;
     });
@@ -136,7 +136,7 @@ describe('Provider', () => {
   });
 
   it('will destroy created model on unmount', async () => {
-    const willDestroy = mock();
+    const willDestroy = vi.fn();
 
     class Test extends State {}
 
@@ -156,7 +156,7 @@ describe('Provider', () => {
   });
 
   it('will not destroy given instance on unmount', async () => {
-    const didUnmount = mock();
+    const didUnmount = vi.fn();
 
     class Test extends State {}
 
@@ -175,7 +175,7 @@ describe('Provider', () => {
   it('will conflict colliding State types', () => {
     const foo = Foo.new();
 
-    const Consumer = mock(() => {
+    const Consumer = vi.fn(() => {
       expect(() => Foo.get()).toThrow(
         'Did find Foo in context, but multiple were defined.'
       );
@@ -192,7 +192,7 @@ describe('Provider', () => {
   });
 
   it('will destroy from bottom-up', async () => {
-    const didDestroy = mock();
+    const didDestroy = vi.fn();
 
     class Test extends State {
       protected new() {
@@ -218,7 +218,7 @@ describe('Provider', () => {
 
   describe('forEach prop', () => {
     it('will call function for each model', () => {
-      const forEach = mock();
+      const forEach = vi.fn();
 
       render(<Provider for={{ Foo, Bar }} is={forEach} />);
 
@@ -228,8 +228,8 @@ describe('Provider', () => {
     });
 
     it('will cleanup on unmount through the state', () => {
-      const cleanup = mock();
-      const forEach = mock((state: State) => {
+      const cleanup = vi.fn();
+      const forEach = vi.fn((state: State) => {
         state.set(null, cleanup);
       });
 
@@ -244,8 +244,8 @@ describe('Provider', () => {
     });
 
     it('will mount an instance it creates', () => {
-      const didMount = mock();
-      const didUnmount = mock();
+      const didMount = vi.fn();
+      const didUnmount = vi.fn();
 
       class Test extends State {
         mount() {
@@ -332,8 +332,8 @@ describe('Provider', () => {
     // double-invocation of renders or effects. These tests assert the same
     // outcomes as React's, which hold trivially under preact.
     it('will create once and destroy on unmount', async () => {
-      const didCreate = mock();
-      const didDestroy = mock();
+      const didCreate = vi.fn();
+      const didDestroy = vi.fn();
 
       class Test extends State {
         protected new() {
@@ -389,7 +389,7 @@ describe('Consumer', () => {
     }
 
     const instance = Test.new();
-    const didRender = mock();
+    const didRender = vi.fn();
 
     function onRender(instance: Test) {
       const { value } = instance;
@@ -502,7 +502,7 @@ describe('get instruction', () => {
   });
 
   it('will maintain hook', async () => {
-    const Inner = mock(() => {
+    const Inner = vi.fn(() => {
       Foo.use();
       return null;
     });
@@ -574,7 +574,7 @@ describe('has instruction', () => {
       foo = get(Foo);
     }
 
-    const didGetBar = mock();
+    const didGetBar = vi.fn();
     const FooBar = () => void Bar.use();
     const foo = new Foo();
 
@@ -599,7 +599,7 @@ describe('has instruction', () => {
       foo = get(Foo);
     }
 
-    const didGetBar = mock();
+    const didGetBar = vi.fn();
     const FooBar = () => void Bar.use();
 
     const Component = () => {

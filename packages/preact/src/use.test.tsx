@@ -1,7 +1,7 @@
 /** @jsxImportSource preact */
 import { StrictMode } from 'preact/compat';
 import { event, observer, touch } from '@expressive/mvc/observable';
-import { describe, expect, it, mock } from 'bun:test';
+import { describe, expect, it, vi } from 'vitest';
 
 import { use, State } from '.';
 import { act, renderHook, waitFor } from '@testing-library/preact';
@@ -14,7 +14,7 @@ describe('use', () => {
 
   it('will subscribe to observable instance', async () => {
     const test = Test.new();
-    const didRender = mock();
+    const didRender = vi.fn();
     const hook = renderHook(() => {
       didRender();
       return use(test).foo;
@@ -87,7 +87,7 @@ describe('use', () => {
 
   it('will only refresh for accessed values', async () => {
     const test = Test.new();
-    const didRender = mock();
+    const didRender = vi.fn();
 
     renderHook(() => {
       didRender();
@@ -128,7 +128,7 @@ describe('use', () => {
   it('will track replacement observable', async () => {
     const first = Test.new();
     const second = Test.new();
-    const didRender = mock();
+    const didRender = vi.fn();
     let current = first;
 
     first.foo = 'first';

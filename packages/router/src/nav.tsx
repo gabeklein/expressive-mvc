@@ -71,10 +71,9 @@ class Entry extends Component {
    * `Item` bubbles to NavLinks (or above) rather than blanking one row. */
   fallback = false;
 
-  render(props = {} as { children?: Component.Node }) {
-    const { route, Item } = this;
-
-    if (!route || !Item) return null;
+  render(props: { children?: Component.Node }) {
+    const route = this.route!;
+    const Item = this.Item!;
 
     return (
       <>

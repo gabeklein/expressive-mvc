@@ -1,5 +1,5 @@
 import { act } from '@testing-library/react';
-import { describe, expect, it, spyOn } from 'bun:test';
+import { describe, expect, it, vi } from 'vitest';
 
 import { browserRouter } from '../test.setup';
 import { Context } from '@expressive/mvc';
@@ -44,6 +44,35 @@ describe('Router (headless)', () => {
     expect(router.path).toBe('/');
     router.forward();
     expect(router.path).toBe('/a');
+  });
+
+  it('back does nothing at the oldest entry', () => {
+    const router = Router.new();
+    router.back();
+    expect(router.path).toBe('/');
+    expect(router.index).toBe(0);
+  });
+
+  it('forward does nothing at the newest entry', () => {
+    const router = Router.new();
+    router.goto('/a');
+    router.forward();
+    expect(router.path).toBe('/a');
+    expect(router.index).toBe(1);
+  });
+
+  it('goto drops an empty query', () => {
+    const router = Router.new();
+    router.goto('/a?&');
+    expect(router.path).toBe('/a');
+    expect(router.entries).toEqual(['/', '/a']);
+  });
+
+  it('url omits query params set to undefined', () => {
+    const router = Router.new();
+    router.goto('/posts?page=2');
+    router.query.set('page', undefined as any);
+    expect(router.url).toBe('/posts');
   });
 
   it('goto with replace overwrites the current entry', () => {
@@ -261,8 +290,8 @@ describe('BrowserRouter', () => {
   });
 
   it('back/forward delegate to window.history', () => {
-    const back = spyOn(window.history, 'back');
-    const forward = spyOn(window.history, 'forward');
+    const back = vi.spyOn(window.history, 'back');
+    const forward = vi.spyOn(window.history, 'forward');
 
     router.current.back();
     router.current.forward();
@@ -275,7 +304,7 @@ describe('BrowserRouter', () => {
   });
 
   it('removes popstate listener on destroy', () => {
-    const remove = spyOn(window, 'removeEventListener');
+    const remove = vi.spyOn(window, 'removeEventListener');
     router.current.set(null);
     expect(remove).toHaveBeenCalledWith('popstate', expect.any(Function));
     remove.mockRestore();

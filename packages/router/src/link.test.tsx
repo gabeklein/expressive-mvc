@@ -1,5 +1,5 @@
 import { act, fireEvent, render } from '@testing-library/react';
-import { beforeEach, describe, expect, it } from 'bun:test';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 import { location, browserRouter } from '../test.setup';
 import { Link } from './link';
@@ -17,6 +17,20 @@ describe('Link', () => {
     const a = view.container.querySelector('a')!;
     expect(a.getAttribute('href')).toBe('/about');
     expect(a.textContent).toBe('about');
+  });
+
+  it('passes through bare invocation as foreign content', () => {
+    let link!: Link;
+    const Grab = () => {
+      link = Link.get();
+      return <>about</>;
+    };
+    render(
+      <Route to="/">
+        <Link to="/about"><Grab /></Link>
+      </Route>
+    );
+    expect(Link.prototype.render.call(link)).toBeUndefined();
   });
 
   it('navigates on plain left-click', async () => {
