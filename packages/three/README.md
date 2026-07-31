@@ -1,34 +1,38 @@
 # @expressive/three (spike)
 
-A three.js scene graph driven by Expressive MVC classes. JSX declares hierarchy
-and gates existence; behavior lives imperatively in subclasses of primitive
-wrappers. **No changes to any existing package.**
+A three.js scene graph built from Expressive MVC classes, composed with **plain
+React JSX**. React mounts and unmounts the hierarchy; it never sees a value
+change. **No changes to any existing package.**
 
-Not a proposal to ship. It exists to answer whether the core is actually
-host-agnostic, and to record what it costs.
+Not a proposal to ship. It exists to find out what the shape costs.
 
-## Two hosts, one set of primitives
+## The idea
 
-`Object3D`, `Group`, `Mesh`, `Scene` and `Frame` know nothing about a host. Pick
-how existence gets gated:
+React is the host, deliberately under-levered. It answers one question per node -
+*does this exist, and where* - and the scene's values never touch the render
+pipeline. Where r3f drills props through renders to reach scene memory, here a
+wrapper holds a reference to the three.js object it represents and exposes its
+members as **reactive passthroughs**: the object is the storage, a write forwards
+straight to it and dispatches through the update system.
 
-```ts
-import { Group, Mesh } from '@expressive/three/react';   // React composes
-import { render } from '@expressive/three/native';       // mvc is the host
-```
-
-**`@expressive/three/react` is the one to reach for inside a React app.** It is
-plain React JSX - no `jsxImportSource`, no reconciler, no `<Canvas>` wrapper
-owning a parallel tree. React contributes hierarchy and existence; nothing else
-about a scene rides the render pipeline. The whole adapter is ~25 lines.
+Actors find each other through the context hierarchy rather than props.
 
 ```tsx
 class Spinner extends Mesh {
   frame = get(Frame);
   speed = 2;
 
-  geometry = new THREE.BoxGeometry();
-  material = new THREE.MeshStandardMaterial({ color: 'tomato' });
+  protected create() {
+    return new THREE.Mesh(
+      new THREE.BoxGeometry(),
+      new THREE.MeshStandardMaterial({ color: 'tomato' })
+    );
+  }
+
+  /** Business logic an external actor calls. */
+  boost(by: number) {
+    this.speed += by;
+  }
 
   protected new() {
     return this.frame.each((delta) => {
@@ -49,124 +53,116 @@ function View() {
 }
 ```
 
-JSX carries three things and nothing else: what exists, where it sits, and
-whether it exists at all. Everything a `Spinner` *does* is on the class, and
-`frame.each` moves it with no render at any level - asserted in the tests.
+`spinner.position = [0, 2, 0]` reaches GPU memory and notifies reactive
+consumers, with **zero renders at any level** - asserted in the tests. Same for
+`frame.each`, and for `boost()` called from anywhere holding the instance.
 
-`@expressive/three/native` registers mvc as the JSX host instead, for a
-standalone 3D app with no React in the build. It gains one thing React cannot
-give: because `watch` absorbs a thrown promise, a node whose `render` reads an
-unresolved value stays **out of the graph entirely** until the value arrives.
+Extending a primitive is the norm: that is where custom properties and methods
+for business logic live. Everything internal to the contract - `object`,
+`create` - is `protected`, so a subclass has it and outside code does not.
 
-## What the core already provides
+## What the core provides
 
-Nothing here required a core change.
-
-- **`Host` / `HostRuntime`** is a genuine adapter seam. The whole element layer
-  for the native host is ~40 lines in `node.ts`, and leaving `Host.intrinsics`
-  unaugmented makes `JSX.IntrinsicElements` `{}` - so every tag *must* be a
-  class. The desired bias falls out of the existing design.
-- **`Context`** is host-independent, so children resolve state with `get(Type)`
-  instead of receiving drilled props - identically under both hosts.
+- **`Context` is host-independent**, so children resolve actors with `get(Type)`
+  instead of receiving drilled props. This is the piece that carries the design.
+- **`def()` is enough to build `pass()`** - a reactive property whose storage is
+  somewhere else entirely. ~40 lines, no core change.
 - **Render composition** lives in core, so a subclass `render` wrapping `super`'s
-  content via the lazy `children` getter works with no adapter involvement.
-- **Destruction** (`set(null)`, `new()` cleanups) maps cleanly onto three's
-  `dispose()`. Unmount-time resource release is a lifecycle the library owns.
-- **A scene graph needs no reordering pass** - sibling order is not observable -
-  so fibers really can be existence-only. `fiber.ts` is ~140 lines.
+  content works with no adapter involvement.
+- **Destruction** (`set(null)`, `new()` cleanups) maps onto three's `dispose()`.
+- **The React binding is ~25 lines** - no `jsxImportSource`, no reconciler, no
+  `<Canvas>` owning a parallel tree.
 
 ## What it cost
 
-Ranked by how much they'd shape a real adapter.
+Ranked by how much they'd shape the real thing.
 
-### 1. One host per build - which is why the React path matters
+### 1. A passthrough cannot be redeclared in a subclass
 
-`host()` throws on a second registration, and `Host` is a single global
-interface. Both halves are real:
+This is the sharpest edge, and it follows directly from "the object is the
+storage." A base-class instruction field is just an own property holding a token
+until it resolves - so **any** subclass initializer replaces it first, silently:
 
+```ts
+class Ball extends Mesh {
+  geometry = new THREE.SphereGeometry();   // ordinary state; never reaches the object
+  material = set((self) => ...);           // a computed; never reaches the object
+}
 ```
-A different JSX host is already registered for @expressive/mvc.
-error TS2717: Property 'node' must be of type 'Node', but here has type 'ReactNode'.
+
+Neither errors. `ball.geometry` reads back what you assigned, while the mesh
+still has three's default. Defaults belong in `create`; derived values are
+**assigned by an effect** rather than declared as a getter:
+
+```ts
+protected new() {
+  return this.get(({ theme }) => {
+    this.material = new THREE.MeshBasicMaterial({ color: theme.color });
+  });
+}
 ```
 
-This package needs **two tsconfigs** because the native host and the React entry
-cannot occupy one TypeScript program. That is the constraint, made concrete.
-
-It is not a problem for `@expressive/three/react`, which never registers a host -
-React is the host. The native entry is for builds with no React at all.
+That inverts the library's usual "derivation is a getter" idiom, and it is worth
+deciding whether `pass` should detect the shadowing and throw. Note the footgun
+is **general to instructions**, not to `pass` - `has()`, `map()`, `get()` on a
+base class are shadowed the same way, silently.
 
 ### 2. "Nearest ancestor in the graph" has no reliable lookup
 
 `get(Object3D)` looks like the way to find the node you attach under. It is not:
 
 - A State adopted by `has()` or `map()` is registered in its **owner's** context,
-  so a type lookup from it can match a *sibling*.
-- Two such siblings in one context make the lookup ambiguous, and `Context.get`
-  returns `null` - so a parent silently fails to attach anything.
+  so a lookup from it can match a *sibling*.
+- Two such siblings in one context make it ambiguous and `Context.get` returns
+  `null`, so a parent silently attaches nothing.
 
-The native host sidesteps this by walking its own fiber tree. The React entry has
-no tree to walk, so it walks the context chain looking for an `Object3D`
-registered **explicitly** - which is what a Component does for itself, and what
-distinguishes "the node this context belongs to" from "nodes that live in it".
-That reads `Context.provide` directly; there is no public API for
-resolve-by-tree-position.
-
-This is the one place the spike reaches past the public surface, and the finding
-worth acting on.
+The binding instead walks the context chain for an `Object3D` registered
+**explicitly** - which is what a Component does for itself, and what separates
+"the node this context belongs to" from "nodes that merely live in it." That
+reads `Context.provide` directly; there is no public API for
+resolve-by-tree-position. It is the one place the spike reaches past the public
+surface, and the finding most worth acting on.
 
 ### 3. `mount` is not called for a placed instance
 
 `mount` is the natural commit hook for attachment, but it is skipped for an
-instance rendered as `{component}` - which is exactly how a `has()` or `map()`
-collection renders. Members would never join the graph.
+instance rendered as `{component}` - exactly how a `has()` or `map()` collection
+renders, so members would never join the graph.
 
-So the React entry attaches at **activation** instead, which covers every
-placement path. The cost: attachment happens during React's render pass, so a
-render attempt React later discards attaches first and detaches when its context
-is popped. (An attempt discarded and never superseded would leak - but it leaks
-the instance too, so that is pre-existing adapter behavior, not new.)
+So attachment happens at **activation**, which covers every placement path. Two
+consequences:
 
-### 4. Activation order: a spawned member outruns its owner
+- A render attempt React later discards attaches first, and detaches when its
+  context is popped. (An attempt discarded and never superseded leaks - but it
+  leaks the instance too, so that is pre-existing adapter behavior.)
+- **Suspense does not gate existence.** A node whose `render` suspends is already
+  in the graph while React shows a fallback (asserted in the tests). Gate an
+  asset-dependent node at the call site instead - which is the intended idiom
+  anyway.
 
-A member spawned by `has()` inside its owner's `new()` activates *immediately* -
-before the owner reaches its own `new()` slot. Attachment from the member then
-finds an owner whose `object` does not exist yet.
+### 4. Protected members are unreachable from `State.on`
 
-Fixed by creating the three.js object in `before` rather than at the `new()`
-slot. Consequence: props are not applied that early, so `create` cannot read
-them - fields drive the object through effects instead of through construction.
-That happens to be the intended style anyway, but it is a constraint, not a
-choice.
+`State.on` handlers live outside the class, so they cannot touch `protected`
+members - which is precisely what a "contract" base class needs to do. Object
+creation moved into the constructor to avoid casting past its own contract. That
+works, and is arguably better OO, but it means `create` runs before subclass
+field initializers and before props apply.
 
-### 5. Effects leak out of a child into the parent's render scope
+There is also a guard there worth knowing about: `Component` dedupes construction
+against a pending props object, so a second `new Mesh(props)` with the same props
+returns the first instance. Without a check, that path would build a second
+three.js object and orphan the first.
 
-Mounting a child State synchronously inside a parent's `watch` callback
-registers the child's effect cleanups into the **parent's** `EffectContext`.
-`watch`'s `cleanup` ignores its `update` argument, so the parent's next render
-tears down every descendant effect permanently. Symptom: children mount, render
-once, then go inert.
+### 5. A computed field's first value is asynchronous
 
-One line, and undiscoverable:
+A getter (or `set(fn)`) first read during activation is not yet connected, so it
+throws suspense and resolves a microtask later. Reading one directly inside
+`new()` throws a bare promise rather than a value. Tests flush a microtask before
+asserting on a computed.
 
-```ts
-capture(() => reconcile(fiber, content));
-```
+### 6. Subclass getters cannot override base-class fields (TypeScript)
 
-Native-host only - React mounts children inside its own render - but any new
-reconciler will hit it.
-
-### 6. A computed field's first value is asynchronous
-
-A class getter (or `set(fn)`) first read during activation is not yet connected,
-so it throws suspense and resolves a microtask later. Reading one directly in
-`new()` / `before` / `after` throws a bare suspense promise rather than a value,
-and a derived field does not reach its three.js object synchronously on mount -
-several tests flush a microtask before their first assertion.
-
-### 7. Subclass getters cannot override base-class fields (TypeScript)
-
-The documented idiom - "declare a getter and it becomes a memoized reactive
-property" - breaks against a library-provided base class:
+Independent of the shadowing above, TypeScript rejects the override outright:
 
 ```ts
 class Themed extends Mesh {
@@ -174,51 +170,51 @@ class Themed extends Mesh {
 }
 ```
 
-Runtime is fine; TypeScript rejects it in both directions (property→accessor is
-TS2611, accessor→property TS2610). The `set` factory substitutes, at the cost of
-inference:
+Both directions error (property→accessor TS2611, accessor→property TS2610). So
+the type system and the runtime agree here, for different reasons.
 
-```ts
-material = set((self: Themed) => new THREE.MeshBasicMaterial({ ... }));
-```
+### 7. Single inheritance forecloses the literal reading of the goal
 
-This shapes wrapper design directly: base classes should expose as few
-initialized fields as possible, because each one forecloses the getter idiom in
-every subclass.
+`class Rig extends THREE.Mesh` is impossible - `State` must be in the prototype
+chain. Wrappers *represent* a three object rather than being one, so `this.object`
+appears in every imperative method. Close in feel; not the same thing.
 
-### 8. No seam for pushing fresh props into a live Component
+### 8. TypeScript cannot express asymmetric read/write on a property
 
-`props` is `declare readonly`, yet assigning it is what re-merges props into
-state, so the native reconciler casts:
+`position` would ideally read as a live `Vector3` and accept a tuple. It cannot,
+so passthrough vectors read as a tuple snapshot both ways, and a subclass uses
+`this.object.position` for per-frame math. Fine in practice - reads are for
+reactive consumers, not frame loops - but it is a forced choice, and it means
+`scale` takes `[2, 2, 2]` rather than `2`.
 
-```ts
-(instance as { props: unknown }).props = props;
-```
+## Dropped
 
-### 9. Single inheritance forecloses the literal reading of the goal
+The self-registering mvc JSX host from earlier commits is **gone** (see `61f9f9e`
+and `52b5fb4` if it is ever wanted as a fallback). It worked, but it bought
+little: any real app already renders a React entry point, and one host per build
+meant it could not share a TypeScript program with `@expressive/react` at all -
+`Host.node` cannot be both `Three.Node` and `ReactNode`. Dropping it removed a
+whole reconciler, a second tsconfig, and the constraint.
 
-"Extensions of primitive classes" cannot mean `class Rig extends THREE.Mesh` -
-`State` must be in the prototype chain. Wrappers *own* a three object
-(`this.object`) and users extend `Mesh`/`Group`. Close in feel, but it is
-composition wearing inheritance's clothes, and `this.object` appears in every
-imperative method.
+The primitives stay host-agnostic - `object.ts` and `pass.ts` import no host -
+but React is the host in practice.
 
 ## Deliberately out of scope
 
-Not limitations discovered - just unbuilt: `WebGLRenderer` and a canvas host (so
-the spike stays WebGL-free and fully testable - wire your own renderer against a
-`Scene`'s `object` and drive `Frame` with `loop`), `Component.catch` error
-boundaries, PascalCase subcomponent promotion, raycasting and pointer events, and
-prop-level diffing of three objects.
+Not limitations found, just unbuilt: `WebGLRenderer` and a canvas host (so the
+spike stays WebGL-free and fully testable - wire a renderer against a `Scene` and
+drive `Frame` with `loop`), the rest of three's member surface beyond
+`visible`/`position`/`rotation`/`scale`/`geometry`/`material` and `lookAt`
+(mechanical), `Component.catch` boundaries, raycasting and pointer events.
 
 ## Verified
 
-`bun run test` here: 44 tests, 100% statements/branches/functions/lines, both
-TypeScript programs clean. Tests build real `THREE.Scene` graphs and assert on
-`scene.children` under **both** hosts, covering hierarchy, conditional
-existence, context resolution, owned collections, destruction/disposal, suspense
-gating (native), and per-frame animation with no render.
+`bun run test` here: 27 tests, 100% statements/branches/functions/lines, clean
+typecheck. Tests assert on real `THREE.Scene` graphs, covering hierarchy,
+conditional existence, context resolution, owned collections, destruction and
+disposal, passthrough reads/writes/dispatch, the shadowing contract, and both
+per-frame animation and value writes causing **no React render**.
 
 **No pixels were rendered.** There is no `WebGLRenderer` here, so nothing
 verifies that a scene this builds draws correctly - only that the object graph
-is the intended shape.
+and the values on it are what they should be.

@@ -2,9 +2,10 @@ import { act, render } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
 
-import { get, has, set } from '@expressive/mvc';
+import { get, has, set, State } from '@expressive/mvc';
 
 import { Frame, Group, Mesh, Scene } from './react';
+import { target } from './target';
 
 /** Every object under `target` as a path of constructor names. */
 function graph(target: THREE.Object3D, path = ''): string[] {
@@ -30,7 +31,7 @@ describe('composition', () => {
       </Scene>
     );
 
-    expect(graph(scene.object)).toEqual([
+    expect(graph(target(scene))).toEqual([
       '/Mesh',
       '/Group',
       '/Group/Mesh'
@@ -55,35 +56,43 @@ describe('composition', () => {
       </Scene>
     );
 
-    expect(graph(scene.object)).toEqual(['/Mesh', '/Mesh']);
+    expect(graph(target(scene))).toEqual(['/Mesh', '/Mesh']);
   });
 
   it('will resolve state from context rather than props', async () => {
-    class Theme extends Mesh {
+    class Theme extends State {
       color = 'red';
     }
 
+    // A passthrough cannot be redeclared as a computed - the object is the
+    // storage, so a derived value is assigned by an effect instead.
     class Themed extends Mesh {
       theme = get(Theme);
 
-      material = set(
-        (self: Themed) => new THREE.MeshBasicMaterial({ color: self.theme.color })
-      );
+      protected new() {
+        return this.get(({ theme }) => {
+          this.material = new THREE.MeshBasicMaterial({ color: theme.color });
+        });
+      }
+    }
+
+    class World extends Group {
+      theme = new Theme();
     }
 
     let themed!: Themed;
 
     render(
       <Scene>
-        <Theme>
+        <World>
           <Themed is={(self) => (themed = self)} />
-        </Theme>
+        </World>
       </Scene>
     );
 
     await act(async () => {});
 
-    const material = themed.object.material as THREE.MeshBasicMaterial;
+    const material = (target(themed) as THREE.Mesh).material as THREE.MeshBasicMaterial;
 
     expect(material.color.getHexString()).toBe('ff0000');
   });
@@ -110,19 +119,49 @@ describe('existence', () => {
       </Scene>
     );
 
-    expect(graph(scene.object)).toEqual(['/Group']);
+    expect(graph(target(scene))).toEqual(['/Group']);
 
     await act(async () => {
       room.lit = true;
     });
 
-    expect(graph(scene.object)).toEqual(['/Group', '/Group/Mesh']);
+    expect(graph(target(scene))).toEqual(['/Group', '/Group/Mesh']);
 
     await act(async () => {
       room.lit = false;
     });
 
-    expect(graph(scene.object)).toEqual(['/Group']);
+    expect(graph(target(scene))).toEqual(['/Group']);
+  });
+
+  it('will attach a node even while its render is suspended', async () => {
+    class Model extends Mesh {
+      asset = set<string>();
+
+      render() {
+        void this.asset;
+        return null;
+      }
+    }
+
+    let scene!: Scene;
+    let model!: Model;
+
+    render(
+      <Scene is={(self) => (scene = self)}>
+        <Model is={(self) => (model = self)} />
+      </Scene>
+    );
+
+    // Attachment is at activation, so React showing a fallback does not keep a
+    // node out of the graph. Gate an asset-dependent node at the call site.
+    expect(graph(target(scene))).toEqual(['/Mesh']);
+
+    await act(async () => {
+      model.asset = 'ready';
+    });
+
+    expect(graph(target(scene))).toEqual(['/Mesh']);
   });
 
   it('will detach and dispose on unmount', () => {
@@ -147,7 +186,7 @@ describe('existence', () => {
       </Scene>
     );
 
-    const { object } = scene;
+    const object = target(scene);
 
     expect(graph(object)).toEqual(['/Mesh']);
 
@@ -198,7 +237,7 @@ describe('imperative behavior', () => {
     world.frame.tick(0.5);
     world.frame.tick(0.5);
 
-    expect(spinner.object.rotation.y).toBe(2);
+    expect(target(spinner).rotation.y).toBe(2);
     expect(rendered.mock.calls.length).toBe(before);
   });
 });
@@ -228,7 +267,7 @@ describe('collections', () => {
       </Scene>
     );
 
-    expect(graph(scene.object)).toEqual([
+    expect(graph(target(scene))).toEqual([
       '/Group',
       '/Group/Mesh',
       '/Group/Mesh'
