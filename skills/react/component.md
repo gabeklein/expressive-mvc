@@ -65,11 +65,9 @@ One instance may appear beneath separate parents. Repeating it within the same
 sibling collection repeats the same key and intentionally produces the host's
 duplicate-key warning.
 
-Direct rendering replaces wrapper components whose only job was to call
-`use(instance)` and render a Component. The standalone `use(instance)` hook
-remains the subscription primitive for headless State and custom observables.
+Direct rendering eliminates wrapper components whose only job was to manage subscriptions.
 
-When a render reads more than a value or two, destructure everything it reads from `this` at the top - the same dependency-snapshot rule as `.get()` / `.use()` (see [react.md](react.md)). Rendering shares its subscription plumbing with the hooks, so scattered deep reads carry the same conditional-subscription risk:
+When a render reads more than a value or two, destructure everything it reads from `this` at the top - the same dependency-snapshot rule as `.get()` / `State.use()` (see [react.md](react.md)). Rendering shares its subscription plumbing with the hooks, so scattered deep reads carry the same conditional-subscription risk:
 
 ```tsx
 render() {

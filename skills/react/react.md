@@ -11,7 +11,6 @@ For examples and patterns see `patterns.md`.
 ```ts
 export { State, State as default }; // Reexported after augmentation with React features
 export { Context, def, get, has, map, ref, set }; // re-exported from @expressive/mvc
-export { use }; // Hook for existing observable instances
 export { Component }; // React Component class
 export { Provider, Consumer }; // Explicit context components
 ```
@@ -35,30 +34,6 @@ class Counter extends Component {
 // Use as JSX directly
 <Counter count={5} />;
 ```
-
----
-
-## use() - Existing Observable Hook
-
-Subscribes a React component to an existing observable object or State instance. Import with an alias when needed to avoid confusion with React's own `use`.
-
-```tsx
-import { use as useObservable } from '@expressive/react';
-
-function CounterView({ counter }: { counter: Counter }) {
-  const { count, increment } = useObservable(counter);
-  return <button onClick={increment}>{count}</button>;
-}
-```
-
-- Returns a tracking proxy during the initial render; property reads subscribe immediately.
-- Re-renders only when accessed properties change.
-- Re-subscribes if the passed observable instance is replaced.
-- Activates an unready observable, but does not own lifecycle or destroy it on unmount.
-- Throws for plain (non-observable) objects. A destroyed observable does not throw - the hook renders last-known values and no further updates arrive.
-- Safe in React strict mode.
-
-Use this for externally-owned observables. Use `State.use()` when the component should create and own a State instance. Use `State.get()` when the instance should come from context.
 
 ---
 
@@ -86,7 +61,7 @@ function App() {
 - Safe in React strict mode (handles double-mount correctly).
 - Open the component with a dependency snapshot: destructure the exact values it renders, nested ones included (see [Dependency Snapshots](#dependency-snapshots) below).
 - Writes pass through the proxy transparently; `is` is only for retaining the root object alongside sibling destructuring (see [Transparent Writes](#transparent-writes--is) below).
-- Nested observable reads are proxied and tracked automatically; do not call `use(child)` when the child was reached through the parent proxy.
+- Nested observable reads are proxied and tracked automatically.
 
 ### Constructor arguments
 

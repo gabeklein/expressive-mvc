@@ -78,47 +78,30 @@ export function useHook<T = void>(
   return current.output;
 }
 
-/** Subscribe to an existing observable instance within a component. */
+// Internal-only use() function for collection rendering. Public use() hook was removed.
+// Only used where collections are guaranteed to be observable (has/map prototypes).
 export function use<T extends object>(subject: T) {
-  const { current } = Runtime.useRef<{
-    proxy: T;
-    source?: T;
-    mounted: number;
-    unwatch?: () => void;
-  }>({ mounted: 0, proxy: subject });
+  const ref = Runtime.useRef<{ proxy: T; unwatch?: () => void; init: boolean }>({
+    proxy: subject,
+    init: true
+  });
+  const [, update] = Runtime.useState(() => 0);
 
-  const update = Runtime.useState(() => current.mounted++)[1];
+  const status = observer(subject)!;
+  if (!status.ready) event(subject);
 
-  if (current.source !== subject) {
-    const status = observer(subject);
-
-    if (status === undefined)
-      throw new Error('Provided object is not observable.');
-
-    current.unwatch?.();
-    current.source = subject;
-
-    if (status === null) {
-      current.unwatch = undefined;
-      current.proxy = subject;
-    } else {
-      if (!status.ready) event(subject);
-
-      let init = true;
-
-      current.unwatch = watch(subject, (next, changed) => {
-        current.proxy = next;
-        if (changed.length && !init)
-          update((x) => x + 1);
-      });
-
-      init = false;
-    }
+  if (!ref.current.unwatch) {
+    ref.current.unwatch = watch(subject, (next, changed) => {
+      ref.current.proxy = next;
+      if (changed.length && !ref.current.init) update((x) => x + 1);
+      ref.current.init = false;
+    });
   }
 
-  Runtime.useEffect(() => () => {
-    if (--current.mounted < 1) current.unwatch?.();
-  }, []);
-
-  return current.proxy;
+  Runtime.useEffect(
+    () => () => ref.current.unwatch?.(),
+    []
+  );
+  return ref.current.proxy;
 }
+
