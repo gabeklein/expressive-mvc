@@ -11,6 +11,7 @@ describe('public surface', () => {
       'Group',
       'Mesh',
       'Object3D',
+      'Scene',
       'State',
       'def',
       'default',
@@ -19,7 +20,6 @@ describe('public surface', () => {
       'loop',
       'map',
       'ref',
-      'render',
       'set'
     ]);
   });

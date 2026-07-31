@@ -9,7 +9,7 @@
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsdown",
-    "test": "tsc --noEmit && vitest run --coverage"
+    "test": "tsc --noEmit && tsc -p tsconfig.native.json --noEmit && vitest run --coverage"
   },
   "dependencies": {
     "@expressive/mvc": "workspace:^"
@@ -17,9 +17,34 @@
   "devDependencies": {
     "three": "^0.185.0",
     "@types/three": "^0.185.0",
-    "tsdown": "^0.20.1"
+    "tsdown": "^0.20.1",
+    "@expressive/react": "workspace:^",
+    "@testing-library/react": "^16.3.0",
+    "react": "^19",
+    "react-dom": "^19",
+    "@types/react": "^19"
   },
   "peerDependencies": {
-    "three": ">=0.160.0"
+    "three": ">=0.160.0",
+    "@expressive/react": "workspace:^"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./native": {
+      "types": "./dist/native.d.ts",
+      "default": "./dist/native.js"
+    },
+    "./react": {
+      "types": "./dist/react.d.ts",
+      "default": "./dist/react.js"
+    }
+  },
+  "peerDependenciesMeta": {
+    "@expressive/react": {
+      "optional": true
+    }
   }
 }

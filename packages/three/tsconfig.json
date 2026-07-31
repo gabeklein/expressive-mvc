@@ -5,18 +5,27 @@
     "useDefineForClassFields": true,
     "esModuleInterop": true,
     "jsx": "react-jsx",
-    "jsxImportSource": "@expressive/mvc",
     "lib": ["ES2020", "DOM", "DOM.Iterable"],
     "moduleResolution": "bundler",
     "skipLibCheck": true,
     "noUnusedLocals": true,
     "sourceMap": true,
     "strict": true,
-    "types": ["node"],
+    "types": ["node", "react"],
     "paths": {
       "@expressive/mvc/*": ["../mvc/src/*"],
       "@expressive/*": ["../*/src"]
     }
   },
-  "exclude": ["node_modules", "dist", "vitest.config.ts"]
+  "exclude": [
+    "node_modules",
+    "dist",
+    "vitest.config.ts",
+    "src/fiber.ts",
+    "src/fiber.test.tsx",
+    "src/native.ts",
+    "src/node.ts",
+    "src/node.test.ts",
+    "src/object.test.tsx"
+  ]
 }

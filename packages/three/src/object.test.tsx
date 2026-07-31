@@ -1,3 +1,4 @@
+/** @jsxImportSource @expressive/mvc */
 import { describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
 
