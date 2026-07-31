@@ -6,32 +6,26 @@ import { seam } from './element';
 for (const Collection of [has.List, has.Pool])
   Object.defineProperty(Collection.prototype, '$$typeof', {
     get() {
-      const self = source(this) as has.List<unknown>;
+      let self = this as has.List<unknown> | has.Pool<unknown>;
+
+      for (
+        let proto = Object.getPrototypeOf(self);
+        proto instanceof has.List || proto instanceof has.Pool;
+        proto = Object.getPrototypeOf(self)
+      )
+        self = proto;
+
       return seam(self, {}, Members.bind(self), null);
     }
   });
 
 function Members(this: has.List<unknown> | has.Pool<unknown>) {
-  const self = useHook<has.List<unknown> | has.Pool<unknown>>((refresh) => {
+  const self = useHook<typeof this>((refresh) => {
     const release = watch(this, refresh);
     return () => release;
   });
 
   return [...self];
-}
-
-/** Resolve a collection's canonical instance behind any subscriber proxies. */
-function source(from: object) {
-  let self = from;
-
-  for (
-    let proto = Object.getPrototypeOf(self);
-    proto instanceof has.List || proto instanceof has.Pool;
-    proto = Object.getPrototypeOf(self)
-  )
-    self = proto;
-
-  return self;
 }
 
 export { has };
