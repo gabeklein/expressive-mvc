@@ -36,6 +36,20 @@ describe('instance element', () => {
     expect(instance.get(null)).toBe(false);
   });
 
+  it('will activate a plain-constructed instance', async () => {
+    const instance = new Control({ value: 'first' });
+
+    render(<>{instance}</>);
+
+    expect(screen).toHaveText('first');
+
+    await act(async () => {
+      instance.value = 'second';
+    });
+
+    expect(screen).toHaveText('second');
+  });
+
   it('will use an overridden key', () => {
     class Custom extends Control {
       override readonly key = 'custom';

@@ -766,6 +766,7 @@ describe('state props on rerender', () => {
 
     expect(screen).toHaveText('bar');
   });
+
 });
 
 describe('default render', () => {
@@ -957,6 +958,22 @@ describe('subcomponents', () => {
 
     expect(screen).toHaveText('foo');
     expect(error).not.toBeCalled();
+  });
+
+  it('will render from owner not yet activated', () => {
+    class Control extends Component {
+      value = 'foo';
+
+      Sidebar() {
+        return <span>{this.value}</span>;
+      }
+    }
+
+    const control = new Control({});
+
+    render(<control.Sidebar />);
+
+    expect(screen).toHaveText('foo');
   });
 
   it('will wrap PascalCase method as reactive component', async () => {
