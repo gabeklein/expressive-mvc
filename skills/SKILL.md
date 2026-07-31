@@ -181,7 +181,7 @@ function Child() {
 }
 ```
 
-Use `use(subject)` for externally-owned observables. Use `State.use()` when the component should create and own the instance. Use `State.get()` when the instance comes from context. See [react/react.md](react/react.md) for overloads (optional lookup, required values, computed selector).
+Use `use(subject)` for externally-owned observables. Use `State.use()` when the component should create and own the instance. Use `State.get()` when the instance comes from context. React 19 exports its own `use` hook - alias on import (`import { use as subscribe }`) in files that need both. See [react/react.md](react/react.md) for overloads (optional lookup, required values, computed selector).
 
 ## The Dependency Snapshot
 
