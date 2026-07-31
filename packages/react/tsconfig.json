@@ -4,13 +4,13 @@
     "useDefineForClassFields": true,
     "esModuleInterop": true,
     "jsx": "react-jsx",
-    "lib": ["ES2020", "DOM"],
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
     "moduleResolution": "bundler",
     "skipLibCheck": true,
     "noUnusedLocals": true,
     "sourceMap": true,
     "strict": true,
-    "types": ["react"],
+    "types": ["react", "node"],
     "paths": {
       "@expressive/mvc/*": ["../mvc/src/*"],
       "@expressive/*": ["../*/src"]
