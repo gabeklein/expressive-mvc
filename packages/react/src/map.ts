@@ -1,5 +1,6 @@
 import { map } from '@expressive/mvc';
-import { use } from './runtime';
+import { watch } from '@expressive/mvc/observable';
+import { useHook } from './runtime';
 import { seam } from './element';
 
 Object.defineProperty(map.Managed.prototype, '$$typeof', {
@@ -10,7 +11,12 @@ Object.defineProperty(map.Managed.prototype, '$$typeof', {
 });
 
 function Values(this: map.Managed<unknown, unknown>) {
-  return [...use(this).values()];
+  const self = useHook<map.Managed<unknown, unknown>>((refresh) => {
+    const release = watch(this, refresh);
+    return () => release;
+  });
+
+  return [...self.values()];
 }
 
 /** Resolve a map's canonical instance behind any subscriber proxies. */

@@ -1,5 +1,6 @@
 import { has } from '@expressive/mvc';
-import { use } from './runtime';
+import { watch } from '@expressive/mvc/observable';
+import { useHook } from './runtime';
 import { seam } from './element';
 
 for (const Collection of [has.List, has.Pool])
@@ -11,7 +12,12 @@ for (const Collection of [has.List, has.Pool])
   });
 
 function Members(this: has.List<unknown> | has.Pool<unknown>) {
-  return [...use(this)];
+  const self = useHook<has.List<unknown> | has.Pool<unknown>>((refresh) => {
+    const release = watch(this, refresh);
+    return () => release;
+  });
+
+  return [...self];
 }
 
 /** Resolve a collection's canonical instance behind any subscriber proxies. */

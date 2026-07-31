@@ -1,4 +1,3 @@
-import { event, watch, observer } from '@expressive/mvc/observable';
 import type { Component } from '@expressive/mvc';
 import type { Context } from './context';
 
@@ -78,30 +77,4 @@ export function useHook<T = void>(
   return current.output;
 }
 
-// Internal-only use() function for collection rendering. Public use() hook was removed.
-// Only used where collections are guaranteed to be observable (has/map prototypes).
-export function use<T extends object>(subject: T) {
-  const ref = Runtime.useRef<{ proxy: T; unwatch?: () => void; init: boolean }>({
-    proxy: subject,
-    init: true
-  });
-  const [, update] = Runtime.useState(() => 0);
-
-  const status = observer(subject)!;
-  if (!status.ready) event(subject);
-
-  if (!ref.current.unwatch) {
-    ref.current.unwatch = watch(subject, (next, changed) => {
-      ref.current.proxy = next;
-      if (changed.length && !ref.current.init) update((x) => x + 1);
-      ref.current.init = false;
-    });
-  }
-
-  Runtime.useEffect(
-    () => () => ref.current.unwatch?.(),
-    []
-  );
-  return ref.current.proxy;
-}
 
