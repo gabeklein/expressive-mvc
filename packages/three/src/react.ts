@@ -3,6 +3,7 @@ import '@expressive/react';
 import { Context } from '@expressive/mvc';
 
 import { Object3D } from './object';
+import { target } from './target';
 
 /**
  * Compose scenes with plain React JSX - no `jsxImportSource` change and no
@@ -20,10 +21,10 @@ Object3D.on({
   after(self) {
     const parent = enclosing(self);
 
-    if (parent) parent.object.add(self.object);
+    if (parent) target(parent).add(target(self));
 
     return () => {
-      self.object.removeFromParent();
+      target(self).removeFromParent();
     };
   }
 });
@@ -48,6 +49,7 @@ function enclosing(self: Object3D) {
   }
 }
 
+export { pass } from './pass';
 export { Frame, loop } from './frame';
 export { Group, Mesh, Object3D, Scene } from './object';
-export type { Vec3 } from './object';
+export type { Vec3 } from './pass';

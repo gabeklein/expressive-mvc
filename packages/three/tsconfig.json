@@ -20,12 +20,6 @@
   "exclude": [
     "node_modules",
     "dist",
-    "vitest.config.ts",
-    "src/fiber.ts",
-    "src/fiber.test.tsx",
-    "src/native.ts",
-    "src/node.ts",
-    "src/node.test.ts",
-    "src/object.test.tsx"
+    "vitest.config.ts"
   ]
 }

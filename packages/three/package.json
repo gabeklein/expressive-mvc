@@ -9,7 +9,7 @@
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsdown",
-    "test": "tsc --noEmit && tsc -p tsconfig.native.json --noEmit && vitest run --coverage"
+    "test": "tsc --noEmit && vitest run --coverage"
   },
   "dependencies": {
     "@expressive/mvc": "workspace:^"
@@ -32,10 +32,6 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
-    },
-    "./native": {
-      "types": "./dist/native.d.ts",
-      "default": "./dist/native.js"
     },
     "./react": {
       "types": "./dist/react.d.ts",

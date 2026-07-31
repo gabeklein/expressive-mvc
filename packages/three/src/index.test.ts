@@ -19,6 +19,7 @@ describe('public surface', () => {
       'has',
       'loop',
       'map',
+      'pass',
       'ref',
       'set'
     ]);
