@@ -1,0 +1,25 @@
+{
+  "name": "@expressive/three",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Spike - class-based reactive scene graph for three.js (Expressive MVC host adapter).",
+  "license": "MIT",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsdown",
+    "test": "tsc --noEmit && vitest run --coverage"
+  },
+  "dependencies": {
+    "@expressive/mvc": "workspace:^"
+  },
+  "devDependencies": {
+    "three": "^0.185.0",
+    "@types/three": "^0.185.0",
+    "tsdown": "^0.20.1"
+  },
+  "peerDependencies": {
+    "three": ">=0.160.0"
+  }
+}

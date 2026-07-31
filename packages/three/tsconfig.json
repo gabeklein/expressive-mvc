@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "target": "es2020",
+    "module": "esnext",
+    "useDefineForClassFields": true,
+    "esModuleInterop": true,
+    "jsx": "react-jsx",
+    "jsxImportSource": "@expressive/mvc",
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "moduleResolution": "bundler",
+    "skipLibCheck": true,
+    "noUnusedLocals": true,
+    "sourceMap": true,
+    "strict": true,
+    "types": ["node"],
+    "paths": {
+      "@expressive/mvc/*": ["../mvc/src/*"],
+      "@expressive/*": ["../*/src"]
+    }
+  },
+  "exclude": ["node_modules", "dist", "vitest.config.ts"]
+}
