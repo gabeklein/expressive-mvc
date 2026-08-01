@@ -1,6 +1,6 @@
 ---
 title: Utilities
-description: Framework-agnostic helpers - Context, unbind, and the observable protocol
+description: Framework-agnostic helpers - transition, Context, unbind, and the observable protocol
 ---
 
 Everything on this page comes from `@expressive/mvc` - the core package under every adapter. Some of it re-exports through `@expressive/react` and some deliberately does not, so the import paths matter here.
@@ -22,6 +22,7 @@ import State, {
   map,
   ref,
   set,
+  transition,
   unbind
 } from '@expressive/mvc';
 
@@ -50,6 +51,7 @@ import State, {
   Provider,
   ref,
   set,
+  transition,
   use
 } from '@expressive/react';
 ```
@@ -217,6 +219,27 @@ function observer(state: object, create?: boolean): Observer | undefined | null;
 - `observer(obj, true)` opts a plain object into the event system; it throws if the object was already terminated.
 
 `Observer` is also exported - the unique symbol used as the protocol key on participating objects. Useful for tooling; rarely needed in application code.
+
+<br />
+
+## `transition(work)`
+
+Mark model writes as non-urgent presentation work. The callback itself runs synchronously; subscriber callbacks retain the designation when they run in the normal microtask dispatch.
+
+```tsx
+import { transition } from '@expressive/react';
+
+transition(() => {
+  router.path = '/settings';
+});
+```
+
+React interprets the designation with `startTransition`, so a suspending subscriber can keep its previous content visible while the next presentation prepares. MVC still applies every mutation immediately and preserves its normal batching and final-state squashing.
+
+- The scope is synchronous. Writes after an `await` or in a later callback need their own `transition()` call.
+- If the same pending watcher receives both transitional and urgent invalidation, it runs once as urgent because it can present only the final squashed state.
+- Unrelated watchers retain their own priority; one urgent update does not upgrade the entire batch.
+- Without a registered host scheduler, work and dispatch keep their normal timing.
 
 <br />
 

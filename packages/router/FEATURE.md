@@ -25,16 +25,15 @@ members work - behavior lives as members on the class; the base ships thin
 boilerplate; a subclass customizes. `goto` brackets every navigation:
 
 ```ts
+import { transition as scheduleTransition } from '@expressive/mvc';
+
 goto(to, replace?) {
   this.transition(() => /* mutate path */);
 }
 
 // BrowserRouter default: deferred presentation, no animation.
 protected transition(commit: () => void) {
-  startTransition(() => {
-    commit();      // silent path update - set(assign, true)
-    this.set();    // synchronous emit, inside the transition (see §4)
-  });
+  scheduleTransition(commit);
 }
 ```
 
@@ -51,24 +50,24 @@ deferral + animation.
   error placeholder ([:169](../react/src/component.ts#L169)). So a page (`as`) is
   its own Component with its own loading fallback - **page-level loading already
   works**; Route does not implement it.
-- **Expressive `set` control.** `set(assign, true)` updates silently (no event);
-  `set()` forces a synchronous flush/emit; `set("event")` emits a named event
-  ([state.ts:266-307](../mvc/src/state.ts#L266)). This is what lets the path
-  change notify *synchronously, inside* `startTransition` (see §4).
+- **Expressive `transition`.** Model writes run synchronously while their queued
+  subscriber callbacks retain non-urgent priority through MVC's microtask
+  dispatch. The active host interprets that priority; React registers
+  `startTransition`.
 - **React** `startTransition` (deferral) + `useTransition` (the `pending` flag).
 
 ## 4. Deferred presentation (built-in default)
 
 No-flash-on-navigate is universal and opinion-free, so it is the seam's default.
 
-**The crux (solved):** `startTransition` only defers renders triggered
-*synchronously inside its callback*. `goto` mutates `this.path` (a reactive
-field); Expressive's default batched (microtask) notify would fire *after* the
-callback and escape capture, so deferral would silently no-op. Fix with `set`:
-update `path` **silently**, then call `this.set()` **inside** `startTransition`
-so the subscriber notify (Route re-renders reading `path`) lands in-scope and
-React captures it as transition work - holding the prior screen until the
-suspending page resolves. No `flushSync`, no framework change.
+**The crux (solved):** React only assigns transition priority to state setters
+called inside `startTransition`, while Expressive normally delivers subscriber
+callbacks in a later microtask. MVC's `transition()` records that designation
+with each queued watcher and replays the watcher through the host bracket when
+dispatch flushes. `goto` can therefore mutate `path` normally: batching,
+computed invalidation, and final-state squashing remain intact while Route's
+React setter receives transition priority and holds the prior screen until the
+suspending page resolves.
 
 **`pending`.** React's pending state comes from the `useTransition` *hook*, which
 lives in a component, not a method. Expose `router.pending` via a hook-resident
@@ -84,7 +83,7 @@ overrides `transition` to bracket the swap and the **consumer owns all the CSS**
 ```ts
 transition(commit) {
   document.startViewTransition(() => {
-    startTransition(() => { commit(); this.set(); });
+    scheduleTransition(commit);
   });
 }
 ```
@@ -124,10 +123,9 @@ Rejected alternatives:
 
 1. **`transition(commit)` seam** on Router; `goto` routes through it; default =
    deferred presentation.
-2. **`set`-based in-transition emit** (the core): silent path update +
-   `this.set()` inside `startTransition`. Verify memoized computeds
-   (`matched`/`match`) recompute off the new `path` when the explicit emit fires
-   (not a stale cached value), and that there's no double-notify.
+2. **MVC transition dispatch** (the core, done): normal path updates carry
+   non-urgent priority through batched subscriber dispatch. Verify router
+   computeds (`matched`/`match`) and Route presentation use that contract.
 3. **`pending`** flag via a hook-resident `useTransition` member on Router.
 4. **Verify** against page-level loading: a suspending page holds the old screen
    on in-app nav, shows its own `fallback` on cold load. Dogfood by making one
@@ -136,7 +134,6 @@ Rejected alternatives:
    `default` prop; `fallback` reverts to Component's Suspense/error meaning.
 
 ## 8. Concerns / open
-- Memoized-computed recompute timing under silent-update + explicit emit (§7.2).
 - Suspense **boundary placement** for any route-level case: per-route vs a shared
   boundary at the matched-content site.
 - `pending` requires a render-resident member (hook), not a plain method.

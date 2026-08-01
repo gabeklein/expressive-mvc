@@ -1,10 +1,9 @@
 import React, { Suspense } from 'react';
-import { Component, Context, get, State, Provider, set } from '.';
+import { Component, Context, get, State, Provider, set, transition } from '.';
 import { vi, expect, it, describe, beforeEach, afterEach, afterAll } from 'vitest';
 import { act, render, renderHook, waitFor } from '@testing-library/react';
 import { mockPromise, flushMicrotasks } from '../test.setup';
 import { Runtime } from './runtime';
-import { transition } from '@expressive/mvc/runtime';
 
 function renderWith<T>(Type: State.Type | State, hook: () => T) {
   return renderHook(hook, {
