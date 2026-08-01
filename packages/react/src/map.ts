@@ -1,30 +1,30 @@
 import { map } from '@expressive/mvc';
-import { use } from './runtime';
+import { watch } from '@expressive/mvc/observable';
+import { useHook } from './runtime';
 import { seam } from './element';
 
 Object.defineProperty(map.Managed.prototype, '$$typeof', {
   get() {
-    const self = source(this) as map.Managed<unknown, unknown>;
+    let self = this as map.Managed<unknown, unknown>;
+
+    for (
+      let proto = Object.getPrototypeOf(self);
+      proto instanceof map.Managed;
+      proto = Object.getPrototypeOf(self)
+    )
+      self = proto;
+
     return seam(self, {}, Values.bind(self), null);
   }
 });
 
 function Values(this: map.Managed<unknown, unknown>) {
-  return [...use(this).values()];
-}
+  const self = useHook<map.Managed<unknown, unknown>>((refresh) => {
+    const release = watch(this, refresh);
+    return () => release;
+  });
 
-/** Resolve a map's canonical instance behind any subscriber proxies. */
-function source(from: object) {
-  let self = from;
-
-  for (
-    let proto = Object.getPrototypeOf(self);
-    proto instanceof map.Managed;
-    proto = Object.getPrototypeOf(self)
-  )
-    self = proto;
-
-  return self;
+  return [...self.values()];
 }
 
 export { map };

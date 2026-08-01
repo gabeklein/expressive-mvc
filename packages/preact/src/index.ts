@@ -62,5 +62,5 @@ Object.assign(Runtime, {
   ]
 });
 
-export { State, State as default, Consumer, Provider, use } from '@expressive/react/adapter'
+export { State, State as default, Consumer, Provider } from '@expressive/react/adapter'
 export { Component, Context, def, get, has, ref, set, map } from '@expressive/mvc';

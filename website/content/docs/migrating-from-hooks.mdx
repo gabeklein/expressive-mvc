@@ -308,7 +308,7 @@ The class version is shorter, testable without rendering, and shareable across c
 
 <br />
 
-## Step 7 - Bridge to existing hooks with `use()`
+## Step 7 - Bridge to existing React hooks with `use()` method
 
 Some hooks cannot be replaced - `useNavigate`, `useLocation`, `useTranslation`, `useQuery` from a library. To use them inside a State class, define a `use()` method. It runs on every render of the consumer:
 
@@ -332,21 +332,6 @@ function SomeComponent() {
 ```
 
 This is the escape hatch - any hook you need can be bridged through `use()`. Use it sparingly; it runs every render. For one-shot setup, prefer `new()`.
-
-The bridge runs the other way too. If an instance already lives outside React - a module-scope controller, a state owned by a non-React system - the free `use()` hook subscribes any component to it:
-
-```tsx
-import { use } from '@expressive/react';
-
-const player = MediaPlayer.new(); // owned elsewhere
-
-function NowPlaying() {
-  const { track, paused } = use(player);
-  return <span>{paused ? '⏸' : '▶'} {track}</span>;
-}
-```
-
-The component subscribes to what it reads, same as always - but lifecycle stays with the owner. Unmounting doesn't destroy the instance.
 
 <br />
 
