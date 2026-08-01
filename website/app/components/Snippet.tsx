@@ -28,6 +28,7 @@ export default function code(strings: TemplateStringsArray, ...values: unknown[]
         code={code}
         {...props}
         options={{
+          themes: { light: 'github-light', dark: 'github-dark' },
           ...props.options,
           decorations: [
             ...(props.options?.decorations ?? []),

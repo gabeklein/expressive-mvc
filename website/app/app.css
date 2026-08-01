@@ -42,19 +42,6 @@ figure[data-rehype-pretty-code-figure] pre code,
   word-break: normal !important;
 }
 
-.source-listing .shiki {
-  margin: 0;
-  overflow-x: auto !important;
-  border-radius: 0 !important;
-}
-
-.source-listing .shiki code {
-  display: grid;
-  width: max-content;
-  min-width: 100%;
-  padding: 1rem;
-}
-
 .docs-scroll-frame {
   max-width: 100%;
   overflow: hidden;

@@ -120,7 +120,6 @@
         "react": "^19.2.4",
         "react-dom": "^19.2.4",
         "react-router": "^8.3.0",
-        "shiki": "^4.4.1",
         "tailwind-merge": "^3.4.1",
       },
       "devDependencies": {
