@@ -232,8 +232,17 @@ class Context {
       const entries = provide.get(T);
       if (entries)
         for (const entry of entries)
-          if (!entry[1] && entry[0] !== I)
+          if (!entry[1] && entry[0] !== I) {
+            const type = I.constructor as State.Extends;
+            const g = type.global;
+
+            if (entry[0].constructor === type && (typeof g == 'function' ? g(I) : g))
+              throw new Error(
+                `Cannot register ${I} as a global - ${entry[0]} already exists in root. Destroy the existing instance first, or provide additional ones via explicit context.`
+              );
+
             return entries.delete(entry);
+          }
     }
 
     for (

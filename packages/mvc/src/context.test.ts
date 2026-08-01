@@ -1351,7 +1351,7 @@ describe('root global', () => {
     instance.set(null);
   });
 
-  it('will evict prior and reject new on implicit collision', () => {
+  it('will throw on duplicate global of same type', () => {
     class Multi extends State {
       static global = true;
     }
@@ -1360,12 +1360,42 @@ describe('root global', () => {
 
     expect(root.get(Multi)).toBe(first);
 
-    const second = Multi.new();
+    expect(() => Multi.new()).toThrow(
+      /already exists in root/
+    );
 
-    // Both are released - collision is an implicit opt-out from global
-    expect(root.get(Multi, false)).toBeUndefined();
+    expect(root.get(Multi)).toBe(first);
 
     first.set(null);
+  });
+
+  it('will throw on duplicate global from a resolver', () => {
+    class Multi extends State {
+      static global: State.Global = () => true;
+    }
+
+    const first = Multi.new();
+
+    expect(() => Multi.new()).toThrow(
+      /already exists in root/
+    );
+
+    first.set(null);
+  });
+
+  it('will register a new global after previous is destroyed', () => {
+    class Multi extends State {
+      static global = true;
+    }
+
+    const first = Multi.new();
+
+    first.set(null);
+
+    const second = Multi.new();
+
+    expect(root.get(Multi)).toBe(second);
+
     second.set(null);
   });
 
