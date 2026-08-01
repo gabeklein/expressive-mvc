@@ -94,7 +94,7 @@ describe('runtime', () => {
     expect(work).toHaveBeenCalledTimes(1);
   });
 
-  it('will delegate transition when host provides a scheduler', () => {
+  it('will invoke the host scheduler around transition work', () => {
     // same-runtime re-registration is how a host extends its seams
     runtime.transition = vi.fn((work: () => void) => work());
     host(runtime);

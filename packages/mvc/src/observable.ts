@@ -1,3 +1,5 @@
+import { enqueue } from './dispatch';
+
 declare namespace Observer {
   /**
    * Update callback function.
@@ -43,9 +45,6 @@ interface Observing {
 
 const Observer: unique symbol = Symbol('Observer');
 const Observing: unique symbol = Symbol('Observing');
-
-/** Central event dispatch. Bunches all updates to occur at same time. */
-const DISPATCH = new Set<() => void>();
 
 interface Observable { [Observer]?: Observer | null }
 interface Observed { [Observing]?: Observing }
@@ -215,22 +214,6 @@ function emit(o: Observer, key: Observer.Signal): void {
   pending.clear();
 }
 
-function enqueue(eventHandler: () => void) {
-  if (!DISPATCH.size)
-    queueMicrotask(() => {
-      for (const event of DISPATCH) {
-        DISPATCH.delete(event);
-        try {
-          event();
-        } catch (err) {
-          console.error(err);
-        }
-      }
-    });
-
-  DISPATCH.add(eventHandler);
-}
-
 /**
  * Create a side-effect which will update whenever values accessed change.
  * Callback is called immediately and whenever values are stale.
@@ -261,19 +244,25 @@ function watch<T extends object>(
   let unset: ((update: boolean | null) => void) | undefined;
   let reset: (() => void) | null | undefined;
   let previous: T | undefined;
+  let queued = false;
 
   function invoke() {
     if (observer(target) === null) return;
 
+    queued = false;
     let ignore: boolean = true;
 
     function onUpdate() {
       events = [...o.events];
 
       if (reset === null) return null;
-      if (ignore) return;
+      if (ignore) {
+        if (queued) enqueue(invoke);
+        return;
+      }
 
       ignore = true;
+      queued = true;
 
       unset!(true);
       unset = undefined;

@@ -1,5 +1,5 @@
 import React, { Suspense } from 'react';
-import { Component, Context, get, State, Provider, set } from '.';
+import { Component, Context, get, State, Provider, set, transition } from '.';
 import { vi, expect, it, describe, beforeEach, afterEach, afterAll } from 'vitest';
 import { act, render, renderHook, waitFor } from '@testing-library/react';
 import { mockPromise, flushMicrotasks } from '../test.setup';
@@ -52,6 +52,44 @@ describe('State.get', () => {
 
     expect(hook.result.current).toBe('bar');
     expect(didRender).toBeCalledTimes(2);
+  });
+
+  it('will transition model subscriber dispatch', async () => {
+    class Test extends State {
+      value = 'a';
+      urgent = 0;
+    }
+
+    const test = Test.new();
+    const pending = mockPromise<void>();
+    const Content = () => {
+      const { value } = Test.get();
+      if (value === 'b') throw pending;
+      return <span>{value}</span>;
+    };
+    const Status = () => <strong>{Test.get().urgent}</strong>;
+    const view = render(
+      <Provider for={test}>
+        <Suspense fallback={<i>loading</i>}>
+          <Content />
+        </Suspense>
+        <Status />
+      </Provider>
+    );
+
+    await act(async () => {
+      transition(() => void (test.value = 'b'));
+      test.urgent = 1;
+      await Promise.resolve();
+    });
+
+    expect(view.container.textContent).toBe('a1');
+
+    test.value = 'c';
+    pending.resolve();
+    await act(async () => {});
+
+    expect(view.container.textContent).toBe('c1');
   });
 
   it('will not update on death event', async () => {

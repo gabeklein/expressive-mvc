@@ -1,9 +1,10 @@
 import { render, screen, act } from '@testing-library/react';
 import { expect, it, describe, vi } from 'vitest';
-import React from 'react';
+import React, { Suspense } from 'react';
 
-import { mockError } from '../test.setup';
+import { mockError, mockPromise } from '../test.setup';
 import { Component, Consumer, Provider, State, get, has, map } from '.';
+import { transition } from '@expressive/mvc/runtime';
 
 describe('instance element', () => {
   class Control extends Component {
@@ -595,6 +596,44 @@ describe('map element', () => {
 
     element.unmount();
   });
+
+  it('will transition a direct map subscriber', async () => {
+    const pending = mockPromise<void>();
+
+    class Suspends extends Component {
+      label = '';
+
+      render() {
+        if (this.label === 'wait') throw pending;
+        return <span>{this.key}={this.label};</span>;
+      }
+    }
+
+    class Store extends Component {
+      items = map<string, Suspends>();
+
+      render() {
+        return <Suspense fallback={<i>loading</i>}>{this.items}</Suspense>;
+      }
+    }
+
+    const store = Store.new({});
+    store.items.set('a', Suspends.new({ key: 'a', label: 'ready' }));
+    const element = render(<>{store}</>);
+
+    await act(async () => {
+      transition(() => {
+        store.items.set('b', Suspends.new({ key: 'b', label: 'wait' }));
+      });
+      await Promise.resolve();
+    });
+
+    expect(element.container.textContent).toBe('a=ready;');
+
+    store.items.delete('b');
+    pending.resolve();
+    await act(async () => {});
+  });
 });
 
 describe('seam', () => {
@@ -687,6 +726,43 @@ describe('collection element', () => {
     expect(element.container.textContent).toBe('a=x;b=y;');
 
     element.unmount();
+  });
+
+  it('will transition a direct list subscriber', async () => {
+    const pending = mockPromise<void>();
+
+    class Suspends extends Component {
+      label = '';
+
+      render() {
+        if (this.label === 'wait') throw pending;
+        return <span>{this.key}={this.label};</span>;
+      }
+    }
+
+    class Store extends Component {
+      items = has([Suspends.new({ key: 'a', label: 'ready' })]);
+
+      render() {
+        return <Suspense fallback={<i>loading</i>}>{this.items}</Suspense>;
+      }
+    }
+
+    const store = Store.new({});
+    const element = render(<>{store}</>);
+
+    await act(async () => {
+      transition(() => {
+        store.items.push(Suspends.new({ key: 'b', label: 'wait' }));
+      });
+      await Promise.resolve();
+    });
+
+    expect(element.container.textContent).toBe('a=ready;');
+
+    store.items.pop();
+    pending.resolve();
+    await act(async () => {});
   });
 
   it('will render the same collection in multiple places', async () => {

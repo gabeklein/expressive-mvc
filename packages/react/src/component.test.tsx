@@ -1,10 +1,11 @@
 import { render, screen, act } from '@testing-library/react';
 import { vi, expect, it, describe } from 'vitest';
 import { renderToString } from 'react-dom/server';
-import React from 'react';
+import React, { Suspense } from 'react';
 
 import { mockError, mockPromise, flushMicrotasks } from '../test.setup';
 import { Component, Consumer, set } from '.';
+import { transition } from '@expressive/mvc/runtime';
 
 it('will create and provide instance', () => {
   class Control extends Component {
@@ -62,6 +63,51 @@ it('will call is method on creation', () => {
   expect(didCreate).toBeCalledTimes(1);
 
   act(screen.unmount);
+});
+
+it('will transition Component dispatch', async () => {
+  const pending = mockPromise<void>();
+
+  class Control extends Component {
+    value = 'a';
+
+    render() {
+      if (this.value === 'b') throw pending;
+      return <span>{this.value}</span>;
+    }
+  }
+
+  let instance!: Control;
+  let setLocal!: React.Dispatch<React.SetStateAction<string>>;
+
+  function View() {
+    const [local, update] = React.useState('a');
+    setLocal = update;
+
+    return <>{local}<Control is={(current) => void (instance = current)} /></>;
+  }
+
+  const view = render(
+    <Suspense fallback={<i>loading</i>}>
+      <View />
+    </Suspense>
+  );
+
+  await act(async () => {
+    transition(() => {
+      setLocal('b');
+      instance.value = 'b';
+    });
+    await Promise.resolve();
+  });
+
+  expect(view.container.textContent).toBe('aa');
+
+  instance.value = 'c';
+  pending.resolve();
+  await act(async () => {});
+
+  expect(view.container.textContent).toBe('bc');
 });
 
 describe('ref prop', () => {

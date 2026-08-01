@@ -1,4 +1,5 @@
 import type { Component } from './component';
+import { schedule } from './dispatch';
 
 /**
  * Per-adapter interpretation manifest. Each adapter augments this interface to
@@ -141,12 +142,10 @@ export function propsOf(node: unknown): Record<string, unknown> {
 }
 
 /**
- * Bracket `work` in the host's non-urgent update scheduling (e.g. React's
- * `startTransition`), so state updates inside it present deferred. Unlike the
- * element helpers, this never requires a host: absent one (or a host without
- * a scheduler), `work` simply runs inline.
+ * Mark synchronous work as non-urgent. `work` runs inline through the host
+ * scheduler; queued subscriber updates inherit the designation and replay it
+ * after dispatch. Without a host scheduler, normal timing is retained.
  */
 export function transition(work: () => void): void {
-  if (HOST.transition) HOST.transition(work);
-  else work();
+  schedule(work, HOST.transition);
 }

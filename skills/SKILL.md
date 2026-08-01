@@ -74,6 +74,7 @@ import State, {
   has,
   map,
   set,
+  transition,
   Provider
 } from '@expressive/react';
 ```
