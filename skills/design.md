@@ -28,7 +28,7 @@ Expressive implements all three structurally. `State` is the model: headless, fr
 
 A `State` subclass's instance namespace belongs to the **user's domain**. Every method the library adds to the prototype is a name a model can no longer use for its own fields - `state.status`, `state.watch`, `state.export`, `state.destroy` should be available as domain properties. The library therefore keeps its entire instance surface to two verbs, `get` (read-side: values, effects, context lookup, destruction status) and `set` (write-side: assignment, events, listeners, destruction), rather than a dozen well-named methods that each squat on the namespace.
 
-Overloads dispatch on the **kind** of the first argument - property key, function, `null`, State class, plain object - not on subtle arity differences. Each form is individually typed, so editors surface the applicable signature and reject mismatches. The trade is real: `get`/`set` are less self-describing than dedicated names, which is why every overload is enumerated in [state/get.md](state/get.md) and [state/set.md](state/set.md). The alternative traded away was the model author's own vocabulary.
+Overloads dispatch on the **kind** of the first argument - property key, function, `null`, State class, plain object - not on subtle arity differences. Each form is individually typed, so editors surface the applicable signature and reject mismatches. The forms with consequences are not shape-ambiguous: destruction is only ever the explicit `set(null)` - no argument's kind selects it by accident - and a wrong-kind argument is a compile error, not a silent behavior change. The trade is real: `get`/`set` are less self-describing than dedicated names, which is why every overload is enumerated in [state/get.md](state/get.md) and [state/set.md](state/set.md). The alternative traded away was the model author's own vocabulary.
 
 ## Render composition is one designated seam
 
@@ -48,11 +48,15 @@ A PascalCase member on a `Component` becomes a reactive subcomponent. This mirro
 
 ## Writes are transparent; `is` is bounded
 
-Subscription proxies pass assignments through to the instance, so components read and write the same destructured values - no unwrapping step. The `is` self-reference exists for exactly one pattern: retaining the root object *alongside* sibling destructuring from the same snapshot. Using `is` to unwrap every writable object is documented as a misuse ([SKILL.md](SKILL.md), Transparent Writes). Code juggling parallel `is:`-aliases throughout is out-of-date style, not the current contract.
+Subscription proxies pass assignments through to the instance, so components read and write the same destructured values - no unwrapping step. The `is` self-reference exists for exactly one pattern: retaining the root object *alongside* sibling destructuring from the same snapshot - a destructured snapshot has no other way back to its proxy root. That makes `is` the deliberate exception to the namespace rule above: after arguing that the instance surface belongs to the model's own fields, the library reserves exactly one property, because one reserved name is the floor for that capability. Using `is` to unwrap every writable object is documented as a misuse ([SKILL.md](SKILL.md), Transparent Writes); the boundary is a rule of the contract, not folklore.
 
 ## Computed self-reference
 
 A getter reading its own name (`this.total` inside `get total()`) returns the previous cached value rather than recursing - reads under the tracking proxy resolve to the managed property's current cache. This makes "derive from prior value" expressible without a shadow field; it is documented semantics ([state/computed.md](state/computed.md)), not an accident of evaluation order.
+
+## Stability before surface
+
+Pre-1.0 development optimizes for a finishable library, not a growing one. Overlapping convenience APIs are removed rather than accumulated - `hot` fell to `map`/`has`, the standalone `use(instance)` hook to context, placement, and proxy tracking - and the router deliberately keeps a small contract whose priority is stability over features. 1.0 is defined as completion: a bounded surface, documented in these skills, gated by total coverage, and intended to hold still afterward. This is recorded intent, not an inference to draw from commit graphs - after 1.0, low churn should read as a utility that is done, and the pre-1.0 removals are the cost paid for that end state.
 
 ## Coverage is measured and gated, not a badge claim
 

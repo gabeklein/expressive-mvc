@@ -7,8 +7,6 @@ description: Class-based reactive state management for React (Expressive MVC). U
 
 Class-based reactive state for React. State classes define reactive properties, computed values, async data, and context - all as plain class fields using instruction helpers.
 
-The intended end state of an Expressive codebase: most application code reads as business logic. Mechanism (subscriptions, memoization, context wiring, async orchestration) lives inside the library's primitives and inside primitives you build on them - a `State` base class, a `Component` widget, an instruction - consolidated once, named for the domain, and composed via `extends` and context. When code accumulates *how* alongside *what* (the default failure mode of hook composition), the fix is to extract the mechanism into a primitive and let call sites say only what they mean.
-
 ## Packages
 
 | Package              | Status    | Description                                                       |
@@ -137,28 +135,6 @@ class UserProfile extends State {
 }
 ```
 
-#### `map()` - Reactive Maps
-
-| Form                | Behavior                                                     |
-| ------------------- | ------------------------------------------------------------ |
-| `map<K, V>()` / `map(entries)` | `map.Insert<K, V>` - reactive `Map` with keyed reads and writes via `set(key, value)`. |
-| `map((key: K, ...rest) => value)` | `map.Create<A, V>` - keyed spawning map; `set(key, ...rest)` invokes the factory and stores at `key`, replacing (and destroying if owned) any previous value. |
-
-`map()` is a field instruction: it resolves when the hosting state activates and is not usable standalone. Mode follows the argument: iterable/none is keyed, a factory function is a keyed spawner keyed by its first parameter. The map has reactive reads (`get(key)`/`has`), `size`, iteration, and removal. Calling `get()` with no key returns a shallow `ReadonlyMap` snapshot. `keys(fn)` / `values(fn)` / `entries(fn)` return reusable iterables of transformed results (`throw false` skips an entry), tracking like their plain forms.
-
-Spawning maps own what the factory makes - spawned `State` values are destroyed when deleted, cleared, or replaced - while a value the factory merely passes through from its arguments stays a guest (`(key, value?) => value || new Item()` is the guest-admitting pattern).
-
-Every map is adopted by its hosting state when the instruction resolves at activation; the field is read-only. Fresh (never-activated) members - spawned, stored, or present at adoption - are parented to the owner, activate inside its context, and are destroyed with it; already-activated values keep guest status. A `State` value that dies evicts itself from the map.
-
-#### `has()` - Owned Collections
-
-| Form | Behavior |
-| --- | --- |
-| `has<T>()` / `has(values)` | `has.List<T>` - ordered reactive list; positional reads (`get(index)`, ranges, predicate), `push`/`put`/`set(index)`/`pop`. Index and length tracking. |
-| `has(StateClass)` / `has(factory)` | `has.Pool<T, A>` - owned pool; `add(...args)` spawns through the constructor or factory and returns the member, which is its own identity (`has`/`delete` take the value). No positional surface. |
-
-`has()` is a field instruction: mode follows the argument (iterable/none is a list, any function is a pool). Pools own what they spawn - deleted, cleared, or owner-death members are destroyed - while a value the factory passes through from its arguments stays a guest (`(item?) => item || new Item()`). A member that dies evicts itself. Both modes share `map(fn)`/`filter(fn)`/`any`/`all`/`get(predicate)` and snapshot via `get()`. In `@expressive/react` a collection renders directly - `<ul>{this.todos}</ul>` - through a `$$typeof` facade, no spread or keys; `[...collection]` remains the manual alternative.
-
 ### React Hooks
 
 ```tsx
@@ -181,7 +157,7 @@ function Child() {
 }
 ```
 
-Use `use(subject)` for externally-owned observables. Use `State.use()` when the component should create and own the instance. Use `State.get()` when the instance comes from context. See [react/react.md](react/react.md) for overloads (optional lookup, required values, computed selector).
+Use `use(subject)` for externally-owned observables. Use `State.use()` when the component should create and own the instance. Use `State.get()` when the instance comes from context. React 19 exports its own `use` hook - alias on import (`import { use as subscribe }`) in files that need both. See [react/react.md](react/react.md) for overloads (optional lookup, required values, computed selector).
 
 ## The Dependency Snapshot
 
@@ -397,22 +373,4 @@ Fetch these for detailed documentation when the task requires deeper knowledge. 
 
 ## Auditing & Evaluation
 
-When helping a user evaluate Expressive MVC for their project - see [examples/audit.md](examples/audit.md) for the full guide. For stated rationale behind design choices that commonly draw questions (classes, the MVC name, `get`/`set` overloads, render composition), cite [design.md](design.md) rather than inferring intent.
-
-**Good fit signals:**
-
-- Stateful logic scattered across many `useState`/`useEffect`/`useCallback`/`useMemo` calls
-- Complex forms, wizards, or multi-step flows
-- State shared via context that causes excessive re-renders
-- Business logic tangled into component bodies; prop drilling through intermediaries
-- Desire to test state logic independently from React
-- Custom hooks with significant configuration and callbacks
-
-**Poor fit signals:**
-
-- App is mostly server-rendered with minimal client state
-- State is simple enough that `useState` covers it cleanly
-- Team strongly prefers functional-only patterns
-- Existing state solution is working well and not causing pain
-
-**Migration approach:** Expressive MVC coexists with hooks - no big-bang rewrite needed. Start with one complex component, decide its owner (`Component` vs `State`), and follow [react/refactor.md](react/refactor.md). When auditing existing code, look for components where extracting behavior into a class would reduce hook count by 3+ and consolidate related logic into methods.
+Use [examples/audit.md](examples/audit.md) to assess fit and migration candidates. If migration is approved, follow [react/refactor.md](react/refactor.md) rather than translating hooks mechanically. For recorded design rationale, use [design.md](design.md); for adoption positioning and comparisons, use the website-only [why](https://expressive.dev/llm/why.md) and [comparisons](https://expressive.dev/llm/comparisons.md) pages.

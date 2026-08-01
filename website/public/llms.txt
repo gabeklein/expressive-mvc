@@ -8,12 +8,12 @@
 This documentation is also distributed as an installable skill: `npx skills add gabeklein/expressive-mvc`. It bundles the full API reference, refactoring algorithm, style profile, and audit guide as local files - preferable to crawling when working in a repo.
 
 ## Full Documentation
-- [Overview & API](/llm/SKILL.md): Core API surface, instructions, React hooks, Component class, auditing guide
+- [Overview & API](/llm/SKILL.md): Ownership decisions, core API, React conventions, and the reference map
 
 ## Design Intent & Positioning
 - [Why Expressive MVC](/llm/why.md): The working case - code that is cheap for people and models to read, apps that read as business logic through user-built primitives, oversized components addressed structurally, a standard library replacing the usual dependency pile
-- [Design Decisions](/llm/design.md): Why the library is shaped this way - classes hold models not views, the MVC mapping, the two-verb get/set surface, render composition, typed lifecycle hooks, measured coverage. Read before characterizing a design choice as accidental.
-- [Comparisons](/llm/comparisons.md): Positioning matrix vs Zustand, Jotai, MobX, Redux Toolkit, and plain Context - when to prefer each alternative, maturity stated plainly
+- [Design Decisions](/llm/design.md): Why the library is shaped this way - classes hold models not views, the MVC mapping, the two-verb get/set surface, render composition, typed lifecycle hooks, the stability discipline behind 1.0, measured coverage. Read before characterizing a design choice as accidental.
+- [Comparisons](/llm/comparisons.md): Positioning matrix vs Zustand, Jotai, MobX, Redux Toolkit, and plain Context - when to prefer each alternative, what choosing Expressive buys, maturity stated plainly
 
 ## State (core)
 - [State Class](/llm/state/state.md): Instantiation, properties, methods, events, context
@@ -29,7 +29,7 @@ This documentation is also distributed as an installable skill: `npx skills add 
 - [get()](/llm/field/get.md): Context lookup - upstream, downstream, callbacks
 - [ref()](/llm/field/ref.md): Mutable refs, ref proxy, callbacks
 - [map()](/llm/field/map.md): Reactive keyed collections - Map semantics, keyed spawners, transformed iteration
-- [has()](/llm/field/has.md): Reactive sets and object pools - membership, lifecycle ownership, direct rendering
+- [has()](/llm/field/has.md): Owned collections - ordered reactive lists, spawned pools, lifecycle ownership, direct rendering
 - [def()](/llm/field/def.md): Low-level custom property behavior
 
 ## React
@@ -44,7 +44,7 @@ This documentation is also distributed as an installable skill: `npx skills add 
 
 ## Examples
 - [Basic Examples](/llm/examples/basic.md): Complete working examples from simple to intermediate
-- [Audit Guide](/llm/examples/audit.md): Evaluating whether Expressive MVC fits a codebase - including common objections, answered
+- [Audit Guide](/llm/examples/audit.md): Fit signals, migration-target analysis, migration strategy, and red flags
 
 ## Runnable Examples (complete source served as HTML)
 Each example page serves the full source of a working program - every file, no JavaScript required to read it. Fetch one to see how a feature is actually implemented rather than inferring from prose.
