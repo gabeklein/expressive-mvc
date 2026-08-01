@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { State, Provider, get, set } from '.';
 import { act, render, renderHook, waitFor } from '@testing-library/react';
-import { flushMicrotasks } from '../test.setup';
+import { flushMicrotasks, mockPromise } from '../test.setup';
+import { transition } from '@expressive/mvc/runtime';
 
 describe('State.use', () => {
   class Test extends State {
@@ -33,6 +34,34 @@ describe('State.use', () => {
       });
 
       expect(result.current.value).toBe('bar');
+    });
+
+    it('will transition owned model dispatch', async () => {
+      let instance!: Test;
+      const pending = mockPromise<void>();
+      const App = () => {
+        instance = Test.use();
+        if (instance.value === 'bar') throw pending;
+        return <span>{instance.value}</span>;
+      };
+      const view = render(
+        <Suspense fallback={<i>loading</i>}>
+          <App />
+        </Suspense>
+      );
+
+      await act(async () => {
+        transition(() => void (instance.value = 'bar'));
+        await Promise.resolve();
+      });
+
+      expect(view.container.textContent).toBe('foo');
+
+      instance.value = 'done';
+      pending.resolve();
+      await act(async () => {});
+
+      expect(view.container.textContent).toBe('done');
     });
 
     it('will update when assigned through nested proxy', async () => {
@@ -602,4 +631,3 @@ describe('State.use', () => {
     });
   });
 });
-

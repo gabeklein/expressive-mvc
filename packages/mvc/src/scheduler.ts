@@ -45,7 +45,14 @@ function enqueue(handler: Handler) {
 }
 
 function schedule(work: Handler, transition?: Transition) {
-  execute(work, transition);
+  const parent = active;
+  active = transition || parent;
+
+  try {
+    work();
+  } finally {
+    active = parent;
+  }
 }
 
 export { enqueue, schedule };

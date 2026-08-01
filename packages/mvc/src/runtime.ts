@@ -142,10 +142,9 @@ export function propsOf(node: unknown): Record<string, unknown> {
 }
 
 /**
- * Bracket `work` in the host's non-urgent update scheduling (e.g. React's
- * `startTransition`), so state updates inside it present deferred. Unlike the
- * element helpers, this never requires a host: absent one (or a host without
- * a scheduler), `work` simply runs inline.
+ * Mark observable work as non-urgent. `work` runs inline; queued subscriber
+ * updates inherit the designation and are replayed through the host scheduler.
+ * Without a host scheduler, subscriber updates retain their normal timing.
  */
 export function transition(work: () => void): void {
   schedule(work, HOST.transition);

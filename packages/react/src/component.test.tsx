@@ -1,10 +1,11 @@
 import { render, screen, act } from '@testing-library/react';
 import { vi, expect, it, describe } from 'vitest';
 import { renderToString } from 'react-dom/server';
-import React from 'react';
+import React, { Suspense } from 'react';
 
 import { mockError, mockPromise, flushMicrotasks } from '../test.setup';
 import { Component, Consumer, set } from '.';
+import { transition } from '@expressive/mvc/runtime';
 
 it('will create and provide instance', () => {
   class Control extends Component {
@@ -62,6 +63,39 @@ it('will call is method on creation', () => {
   expect(didCreate).toBeCalledTimes(1);
 
   act(screen.unmount);
+});
+
+it('will transition Component dispatch', async () => {
+  const pending = mockPromise<void>();
+
+  class Control extends Component {
+    value = 'a';
+
+    render() {
+      if (this.value === 'b') throw pending;
+      return <span>{this.value}</span>;
+    }
+  }
+
+  let instance!: Control;
+  const view = render(
+    <Suspense fallback={<i>loading</i>}>
+      <Control is={(current) => void (instance = current)} />
+    </Suspense>
+  );
+
+  await act(async () => {
+    transition(() => void (instance.value = 'b'));
+    await Promise.resolve();
+  });
+
+  expect(view.container.textContent).toBe('a');
+
+  instance.value = 'c';
+  pending.resolve();
+  await act(async () => {});
+
+  expect(view.container.textContent).toBe('c');
 });
 
 describe('ref prop', () => {
