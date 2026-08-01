@@ -6,6 +6,8 @@ type SnippetProps = Partial<Omit<DynamicCodeblockProps, 'code'>> & {
   highlight?: { prefix: string; targets: Record<string, RegExp> };
 };
 
+let highlightingReady = false;
+
 export default function code(strings: TemplateStringsArray, ...values: unknown[]) {
   const code = dedent(String.raw({ raw: strings }, ...values));
   const Snippet = ({ highlight, ...props }: SnippetProps = {}) => {
@@ -49,19 +51,22 @@ export default function code(strings: TemplateStringsArray, ...values: unknown[]
 class SnippetEntrance extends Component {
   root = ref<HTMLDivElement>((element) => {
     let timeout = 0;
-    const highlighted = () => element.querySelector('[style*="--shiki-light"]');
-    const reveal = () => {
+    const animate = !highlightingReady;
+    const highlighted = () => Boolean(element.querySelector('[style*="--shiki-light"]'));
+    const reveal = (ready: boolean) => {
+      if (ready) highlightingReady = true;
+      if (animate) element.dataset.animate = '';
       element.dataset.visible = '';
       observer.disconnect();
       window.clearTimeout(timeout);
     };
     const observer = new MutationObserver(() => {
-      if (highlighted()) reveal();
+      if (highlighted()) reveal(true);
     });
 
     observer.observe(element, { childList: true, subtree: true });
-    timeout = window.setTimeout(reveal, 1750);
-    if (highlighted()) reveal();
+    timeout = window.setTimeout(() => reveal(false), 1750);
+    if (highlighted()) reveal(true);
 
     return () => {
       observer.disconnect();
