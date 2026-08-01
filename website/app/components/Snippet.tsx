@@ -33,7 +33,7 @@ export default function code(strings: TemplateStringsArray, ...values: unknown[]
             ...(props.options?.decorations ?? []),
             ...(decorations || []),
           ],
-        }}
+        } as SnippetProps['options']}
       />
     );
   };
