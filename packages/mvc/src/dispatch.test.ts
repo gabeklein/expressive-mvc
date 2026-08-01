@@ -15,7 +15,7 @@ describe('dispatch', () => {
     };
   }
 
-  it('will only transition queued work', async () => {
+  it('will transition immediate and queued work', async () => {
     const log: string[] = [];
 
     schedule(() => {
@@ -23,12 +23,18 @@ describe('dispatch', () => {
       enqueue(() => log.push('dispatch'));
     }, transition(log));
 
-    expect(log).toEqual(['work']);
+    expect(log).toEqual([
+      'transition:start',
+      'work',
+      'transition:end'
+    ]);
 
     await flushMicrotasks();
 
     expect(log).toEqual([
+      'transition:start',
       'work',
+      'transition:end',
       'transition:start',
       'dispatch',
       'transition:end'
@@ -46,11 +52,13 @@ describe('dispatch', () => {
       }), host);
     }, host);
 
-    expect(log).toEqual([]);
+    expect(log).toEqual(['transition:start', 'transition:end']);
 
     await flushMicrotasks();
 
     expect(log).toEqual([
+      'transition:start',
+      'transition:end',
       'transition:start',
       'first',
       'transition:end',
@@ -73,6 +81,8 @@ describe('dispatch', () => {
     await flushMicrotasks();
 
     expect(log).toEqual([
+      'transition:start',
+      'transition:end',
       'mixed',
       'transition:start',
       'deferred',

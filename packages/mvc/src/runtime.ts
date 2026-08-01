@@ -142,9 +142,9 @@ export function propsOf(node: unknown): Record<string, unknown> {
 }
 
 /**
- * Mark observable work as non-urgent. `work` runs inline; queued subscriber
- * updates inherit the designation and are replayed through the host scheduler.
- * Without a host scheduler, subscriber updates retain their normal timing.
+ * Mark synchronous work as non-urgent. `work` runs inline through the host
+ * scheduler; queued subscriber updates inherit the designation and replay it
+ * after dispatch. Without a host scheduler, normal timing is retained.
  */
 export function transition(work: () => void): void {
   schedule(work, HOST.transition);

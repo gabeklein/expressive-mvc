@@ -224,19 +224,22 @@ function observer(state: object, create?: boolean): Observer | undefined | null;
 
 ## `transition(work)`
 
-Mark model writes as non-urgent presentation work. The callback itself runs synchronously; subscriber callbacks retain the designation when they run in the normal microtask dispatch.
+Mark synchronous state updates as non-urgent presentation work. The callback runs inline through the registered host transition; model subscriber callbacks retain the designation when they run in the normal microtask dispatch.
 
 ```tsx
 import { transition } from '@expressive/react';
 
 transition(() => {
+  setPanel('settings');
   router.path = '/settings';
 });
 ```
 
 React interprets the designation with `startTransition`, so a suspending subscriber can keep its previous content visible while the next presentation prepares. MVC still applies every mutation immediately and preserves its normal batching and final-state squashing.
 
+- Synchronous React setters and Expressive writes inside one callback are both transitional, but MVC subscriber publication occurs through a later transition bracket rather than one atomic transaction.
 - The scope is synchronous. Writes after an `await` or in a later callback need their own `transition()` call.
+- Updates which must remain urgent, including controlled-input state, belong outside `transition()`.
 - If the same pending watcher receives both transitional and urgent invalidation, it runs once as urgent because it can present only the final squashed state.
 - Unrelated watchers retain their own priority; one urgent update does not upgrade the entire batch.
 - Without a registered host scheduler, work and dispatch keep their normal timing.

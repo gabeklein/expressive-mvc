@@ -78,24 +78,36 @@ it('will transition Component dispatch', async () => {
   }
 
   let instance!: Control;
+  let setLocal!: React.Dispatch<React.SetStateAction<string>>;
+
+  function View() {
+    const [local, update] = React.useState('a');
+    setLocal = update;
+
+    return <>{local}<Control is={(current) => void (instance = current)} /></>;
+  }
+
   const view = render(
     <Suspense fallback={<i>loading</i>}>
-      <Control is={(current) => void (instance = current)} />
+      <View />
     </Suspense>
   );
 
   await act(async () => {
-    transition(() => void (instance.value = 'b'));
+    transition(() => {
+      setLocal('b');
+      instance.value = 'b';
+    });
     await Promise.resolve();
   });
 
-  expect(view.container.textContent).toBe('a');
+  expect(view.container.textContent).toBe('aa');
 
   instance.value = 'c';
   pending.resolve();
   await act(async () => {});
 
-  expect(view.container.textContent).toBe('c');
+  expect(view.container.textContent).toBe('bc');
 });
 
 describe('ref prop', () => {

@@ -45,14 +45,8 @@ function enqueue(handler: Handler) {
 }
 
 function schedule(work: Handler, transition?: Transition) {
-  const parent = active;
-  active = transition || parent;
-
-  try {
-    work();
-  } finally {
-    active = parent;
-  }
+  if (!transition || transition === active) return work();
+  execute(work, transition);
 }
 
 export { enqueue, schedule };
