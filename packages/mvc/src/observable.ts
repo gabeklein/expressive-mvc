@@ -1,4 +1,4 @@
-import { enqueue } from './scheduler';
+import { enqueue } from './dispatch';
 
 declare namespace Observer {
   /**

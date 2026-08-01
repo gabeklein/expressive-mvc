@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 import { flushMicrotasks, mockError } from '../test.setup';
 import { watch } from './observable';
-import { enqueue, schedule } from './scheduler';
+import { enqueue, schedule } from './dispatch';
 import { State } from './state';
 
-describe('scheduler', () => {
+describe('dispatch', () => {
   const error = mockError();
 
   function transition(log: string[]) {

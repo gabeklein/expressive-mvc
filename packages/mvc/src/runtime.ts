@@ -1,5 +1,5 @@
 import type { Component } from './component';
-import { schedule } from './scheduler';
+import { schedule } from './dispatch';
 
 /**
  * Per-adapter interpretation manifest. Each adapter augments this interface to
