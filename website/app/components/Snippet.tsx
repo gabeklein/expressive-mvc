@@ -1,4 +1,6 @@
+import { Component, ref } from '@expressive/react';
 import { DynamicCodeBlock, type DynamicCodeblockProps } from 'fumadocs-ui/components/dynamic-codeblock';
+import type { ReactNode } from 'react';
 
 type SnippetProps = Partial<Omit<DynamicCodeblockProps, 'code'>> & {
   highlight?: { prefix: string; targets: Record<string, RegExp> };
@@ -23,23 +25,53 @@ export default function code(strings: TemplateStringsArray, ...values: unknown[]
     });
 
     return (
-      <DynamicCodeBlock
-        lang="tsx"
-        code={code}
-        {...props}
-        options={{
-          themes: { light: 'github-light', dark: 'github-dark' },
-          ...props.options,
-          decorations: [
-            ...(props.options?.decorations ?? []),
-            ...(decorations || []),
-          ],
-        } as SnippetProps['options']}
-      />
+      <SnippetEntrance>
+        <DynamicCodeBlock
+          lang="tsx"
+          code={code}
+          {...props}
+          options={{
+            themes: { light: 'github-light', dark: 'github-dark' },
+            ...props.options,
+            decorations: [
+              ...(props.options?.decorations ?? []),
+              ...(decorations || []),
+            ],
+          } as SnippetProps['options']}
+        />
+      </SnippetEntrance>
     );
   };
 
   return Object.assign(Snippet, { tokenCount: Math.round(code.length / 4) });
+}
+
+class SnippetEntrance extends Component {
+  root = ref<HTMLDivElement>((element) => {
+    let timeout = 0;
+    const highlighted = () => element.querySelector('[style*="--shiki-light"]');
+    const reveal = () => {
+      element.dataset.visible = '';
+      observer.disconnect();
+      window.clearTimeout(timeout);
+    };
+    const observer = new MutationObserver(() => {
+      if (highlighted()) reveal();
+    });
+
+    observer.observe(element, { childList: true, subtree: true });
+    timeout = window.setTimeout(reveal, 1750);
+    if (highlighted()) reveal();
+
+    return () => {
+      observer.disconnect();
+      window.clearTimeout(timeout);
+    };
+  });
+
+  render({ children } = {} as { children: ReactNode }) {
+    return <div ref={this.root} className="snippet-entrance">{children}</div>;
+  }
 }
 
 function dedent(s: string) {

@@ -42,6 +42,22 @@ figure[data-rehype-pretty-code-figure] pre code,
   word-break: normal !important;
 }
 
+.snippet-entrance > .shiki > [role='region'] {
+  opacity: 0;
+  transform: translateX(-0.5rem);
+}
+
+.snippet-entrance[data-visible] > .shiki > [role='region'] {
+  animation: snippet-entrance 400ms ease-out both;
+}
+
+@keyframes snippet-entrance {
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
 .docs-scroll-frame {
   max-width: 100%;
   overflow: hidden;
@@ -479,7 +495,13 @@ figure[data-rehype-pretty-code-figure] pre code,
   [class*='context-trace-'],
   [class*='tip-trace-'],
   .trace-pulse,
-  .live-counter-pulse {
+  .live-counter-pulse,
+  .snippet-entrance[data-visible] > .shiki > [role='region'] {
     animation: none !important;
+  }
+
+  .snippet-entrance > .shiki > [role='region'] {
+    opacity: 1;
+    transform: none;
   }
 }
