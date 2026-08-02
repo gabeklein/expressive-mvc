@@ -178,10 +178,7 @@ function subcomponents(target: object, configurable?: boolean) {
         const owner = this.is;
         let render = unbind(value);
         const Component = (props: unknown) =>
-          render.call(
-            useWatch(owner),
-            props
-          );
+          render.call(useWatch(owner), props);
 
         Object.defineProperty(owner, key, {
           configurable: true,
