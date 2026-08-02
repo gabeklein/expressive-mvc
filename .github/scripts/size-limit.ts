@@ -7,45 +7,46 @@ import { join, resolve } from 'node:path';
  * Per-shape rather than one aggregate: the point is to notice when the adapter's
  * irreducible floor grows, or when a formerly shakeable export stops shaking.
  *
- * Each carries ~6% headroom over the measured figure, because minifier output
- * shifts slightly between Bun versions and CI does not pin one. Real growth is
- * structural and clears that margin; toolchain drift does not.
+ * Each carries ~3.5% headroom over the measured figure, because CI does not pin
+ * a Bun version and minifier output drifts a little between them - measured at
+ * <=0.5% across 1.3.1 and 1.3.14, so the margin is mostly slack. Real growth is
+ * structural and clears it; toolchain drift does not.
  */
 const CASES = [
   {
     name: 'mvc: State only',
-    limit: 5000,
+    limit: 4900,
     code: `import State from '@expressive/mvc'; console.log(State);`
   },
   {
     name: 'mvc: everything',
-    limit: 8700,
+    limit: 8450,
     code: `import * as all from '@expressive/mvc'; console.log(all);`
   },
   {
     name: 'react: State only',
-    limit: 8300,
+    limit: 8100,
     code: `import State from '@expressive/react'; console.log(State);`
   },
   {
     name: 'react: typical app',
-    limit: 8950,
+    limit: 8750,
     code: `import State, { Component, get, set, ref, def } from '@expressive/react';
            console.log(State, Component, get, set, ref, def);`
   },
   {
     name: 'react: everything',
-    limit: 11350,
+    limit: 11100,
     code: `import * as all from '@expressive/react'; console.log(all);`
   },
   {
     name: 'router: everything',
-    limit: 10950,
+    limit: 10700,
     code: `import * as all from '@expressive/router'; console.log(all);`
   },
   {
     name: 'react + router',
-    limit: 14950,
+    limit: 14600,
     code: `import * as a from '@expressive/react';
            import * as b from '@expressive/router';
            console.log(a, b);`
@@ -125,7 +126,7 @@ await Bun.write(
 
 if (stale.length)
   console.log(
-    `\nBudgets exceed measured size by >1 kB (${stale.map(({ name }) => name).join(', ')}).` +
+    `\nBudgets exceed measured size by >15% (${stale.map(({ name }) => name).join(', ')}).` +
     ` Tighten them so the gate keeps its teeth.`
   );
 
