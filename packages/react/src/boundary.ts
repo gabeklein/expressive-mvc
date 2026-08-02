@@ -13,6 +13,21 @@ interface Entry {
  *  When one commits, older uncommitted attempts at its slot are provably dead. */
 const SLOTS = new WeakMap<Context, Map<string, Set<Entry>>>();
 
+export function revision(
+  useSyncExternalStore?: (
+    subscribe: (notify: () => void) => () => void,
+    getSnapshot: () => number,
+    getServerSnapshot?: () => number
+  ) => number
+) {
+  const subscribe = () => () => {};
+
+  if (useSyncExternalStore)
+    return ((getRevision: () => number) => {
+      useSyncExternalStore(subscribe, getRevision, getRevision);
+    });
+}
+
 /**
  * React's attempt lifecycle: fiber-keyed stacking so a superseded (uncommitted)
  * render attempt at a tree position is discarded when a later one commits.
