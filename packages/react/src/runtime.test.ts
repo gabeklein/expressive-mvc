@@ -98,7 +98,7 @@ it('will advance revision on reset', () => {
   const { render, reset } = harness();
   let getRevision!: () => number;
 
-  Runtime.useRevision = (get) => void (getRevision = get);
+  Runtime.useRevision = (_subscribe, get) => (getRevision = get)();
 
   render();
   expect(getRevision()).toBe(0);

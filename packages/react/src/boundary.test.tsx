@@ -5,7 +5,6 @@ import { observer } from '@expressive/mvc/observable';
 
 import { mockError, mockPromise } from '../test.setup';
 import { Component } from '.';
-import { revision } from './boundary';
 
 describe('error boundary', () => {
   mockError();
@@ -664,24 +663,5 @@ describe('discarded render (issue #118)', () => {
 
     const live = new Set(all.filter((c) => !disposed.has(c)));
     expect(live.size).toBe(2);
-  });
-});
-
-describe('revision', () => {
-  it('will wrap useSyncExternalStore when present', () => {
-    const uSES = vi.fn((_subscribe: any, get: () => number) => get());
-    const useRevision = revision(uSES)!;
-    const getRevision = () => 5;
-
-    useRevision(getRevision);
-
-    expect(uSES).toHaveBeenCalledWith(expect.any(Function), getRevision, getRevision);
-
-    const [subscribe] = uSES.mock.calls[0];
-    expect(subscribe(() => {})()).toBeUndefined();
-  });
-
-  it('will not wrap without useSyncExternalStore', () => {
-    expect(revision()).toBeUndefined();
   });
 });
