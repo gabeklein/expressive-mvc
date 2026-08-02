@@ -27,13 +27,13 @@ export function revision(
     getServerSnapshot?: () => number
   ) => number
 ) {
-  if (!useSyncExternalStore) return undefined;
+  if (useSyncExternalStore) {
+    const subscribe = () => () => {};
 
-  const subscribe = () => () => {};
-
-  return (getRevision: () => number) => {
-    useSyncExternalStore(subscribe, getRevision, getRevision);
-  };
+    return (getRevision: () => number) => {
+      useSyncExternalStore(subscribe, getRevision, getRevision);
+    };
+  }
 }
 
 export function useFactory<T extends Function>(factory: () => T) {
