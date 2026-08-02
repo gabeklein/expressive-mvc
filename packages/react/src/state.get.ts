@@ -81,6 +81,7 @@ State.get = function get<T extends State>(
     let mounted = false;
     let pending = false;
     let value: any;
+    let force!: () => void;
 
     function update() {
       pending = false;
@@ -130,6 +131,10 @@ State.get = function get<T extends State>(
 
           if (!first) observed();
           first = false;
+
+          return (update) => {
+            if (update === true) force();
+          };
         },
         argument === true
       );
@@ -177,10 +182,14 @@ State.get = function get<T extends State>(
 
     return () => {
       pending = false;
-      useHook(() => () => {
-        mounted = true;
-        if (pending) update();
-        return release;
+      useHook((_refresh, reset) => {
+        force = reset;
+
+        return () => {
+          mounted = true;
+          if (pending) update();
+          return release;
+        };
       });
       return value === undefined ? null : value;
     };

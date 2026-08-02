@@ -1,7 +1,6 @@
 import { State, Context } from '@expressive/mvc';
 import type { UseState } from '@expressive/mvc';
-import { watch } from '@expressive/mvc/observable';
-import { useFactory, useHook } from './runtime';
+import { useFactory, useWatch } from './runtime';
 
 declare module '@expressive/mvc' {
   interface UseState extends State {
@@ -80,19 +79,15 @@ State.use = function use<T extends State>(
         });
       }
 
-      return useHook<T>((update) => {
-        watch(instance, update);
+      return useWatch(instance, () => {
+        ready = true;
+
+        const release = (instance as UseState).mount?.();
 
         return () => {
-          ready = true;
-
-          const release = (instance as UseState).mount?.();
-
-          return () => {
-            if (typeof release == 'function') release();
-            context.pop();
-            instance.set(null);
-          };
+          if (typeof release == 'function') release();
+          context.pop();
+          instance.set(null);
         };
       });
     };

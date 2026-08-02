@@ -1,4 +1,4 @@
-import { render, screen, act } from '@testing-library/react';
+import { render, screen, act, waitFor } from '@testing-library/react';
 import { expect, it, describe, vi } from 'vitest';
 import React, { Suspense } from 'react';
 
@@ -781,5 +781,134 @@ describe('collection element', () => {
     expect(element.container.textContent).toBe('a=z;a=z;');
 
     element.unmount();
+  });
+});
+
+describe('collection concurrent consistency', () => {
+  class Item extends Component {
+    label = '';
+
+    render() {
+      return <span>{this.key}={this.label};</span>;
+    }
+  }
+
+  function harness(content: React.ReactNode, write: () => void) {
+    const commits: (string | null)[][] = [];
+    let reveal!: () => void;
+    let scheduled = false;
+
+    function Slow({ index }: { index: number }) {
+      const started = performance.now();
+
+      while (performance.now() - started < 1) {}
+
+      if (!index && !scheduled) {
+        scheduled = true;
+        setTimeout(write);
+      }
+
+      return null;
+    }
+
+    function Recorder() {
+      const root = React.useRef<HTMLDivElement>(null);
+
+      React.useLayoutEffect(() => {
+        commits.push(
+          [...root.current!.querySelectorAll('div')].map((node) => node.textContent)
+        );
+      });
+
+      return <div ref={root}>{content}</div>;
+    }
+
+    function App() {
+      const [shown, setShown] = React.useState(false);
+      reveal = () => React.startTransition(() => setShown(true));
+      return shown && <Recorder />;
+    }
+
+    const view = render(<App />);
+
+    return { commits, view, reveal: () => reveal(), Slow };
+  }
+
+  it('will not commit mixed revisions across repeated pool placements', async () => {
+    class Store extends Component {
+      items = has(Item);
+
+      render() {
+        const { items } = this;
+        return (
+          <>
+            {Array.from({ length: 40 }, (_, index) => (
+              <div key={index}>
+                <Slow index={index} />
+                {items}
+              </div>
+            ))}
+          </>
+        );
+      }
+    }
+
+    const store = Store.new({});
+    store.items.add({ key: 'a', label: 'a' });
+
+    const { commits, view, reveal, Slow } = harness(<>{store}</>, () => {
+      store.items.add({ key: 'b', label: 'b' });
+    });
+
+    reveal();
+
+    await waitFor(() => {
+      expect(commits[0]).toHaveLength(40);
+    });
+
+    expect(new Set(commits[0]).size).toBe(1);
+
+    await waitFor(() => {
+      expect(view.container.textContent).toBe('a=a;b=b;'.repeat(40));
+    });
+  });
+
+  it('will not commit mixed revisions across repeated map placements', async () => {
+    class Store extends Component {
+      items = map((key: string) => new Item({ key, label: key }));
+
+      render() {
+        const { items } = this;
+        return (
+          <>
+            {Array.from({ length: 40 }, (_, index) => (
+              <div key={index}>
+                <Slow index={index} />
+                {items}
+              </div>
+            ))}
+          </>
+        );
+      }
+    }
+
+    const store = Store.new({});
+    store.items.set('a');
+
+    const { commits, view, reveal, Slow } = harness(<>{store}</>, () => {
+      store.items.set('b');
+    });
+
+    reveal();
+
+    await waitFor(() => {
+      expect(commits[0]).toHaveLength(40);
+    });
+
+    expect(new Set(commits[0]).size).toBe(1);
+
+    await waitFor(() => {
+      expect(view.container.textContent).toBe('a=a;b=b;'.repeat(40));
+    });
   });
 });

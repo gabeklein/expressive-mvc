@@ -1,7 +1,6 @@
 import { Component, unbind } from '@expressive/mvc';
-import { watch } from '@expressive/mvc/observable';
 import { createProvider, type Context } from './context';
-import { Runtime, useHook } from './runtime';
+import { Runtime, useWatch } from './runtime';
 
 declare module '@expressive/mvc' {
   namespace Component {
@@ -149,19 +148,15 @@ function render(from: Component, context: Context) {
   const content = from.render;
   const Render = () => content.call(from, from.props);
   const Component = () => {
-    from = useHook<Component>((refresh) => {
-      watch(from, refresh);
+    from = useWatch(from, () => {
+      const release = self.mount?.();
+
+      commit();
 
       return () => {
-        const release = self.mount?.();
-
-        commit();
-
-        return () => {
-          if (typeof release == 'function') release();
-          remove();
-          context.pop();
-        };
+        if (typeof release == 'function') release();
+        remove();
+        context.pop();
       };
     });
 
@@ -183,13 +178,7 @@ function subcomponents(target: object, configurable?: boolean) {
         const owner = this.is;
         let render = unbind(value);
         const Component = (props: unknown) =>
-          render.call(
-            useHook<Component>((set) => {
-              const release = watch(owner, set);
-              return () => release;
-            }) || owner,
-            props
-          );
+          render.call(useWatch(owner), props);
 
         Object.defineProperty(owner, key, {
           configurable: true,

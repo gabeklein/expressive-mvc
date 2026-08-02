@@ -1,4 +1,4 @@
-import { render, screen, act } from '@testing-library/react';
+import { render, screen, act, waitFor } from '@testing-library/react';
 import { vi, expect, it, describe } from 'vitest';
 import { renderToString } from 'react-dom/server';
 import React, { Suspense } from 'react';
@@ -108,6 +108,69 @@ it('will transition Component dispatch', async () => {
   await act(async () => {});
 
   expect(view.container.textContent).toBe('bc');
+});
+
+it('will not commit mixed revisions across repeated placement', async () => {
+  let scheduled = false;
+
+  class Control extends Component {
+    revision = 1;
+
+    render() {
+      const { revision } = this;
+      const started = performance.now();
+
+      while (performance.now() - started < 1) {}
+
+      if (!scheduled) {
+        scheduled = true;
+        setTimeout(() => {
+          this.revision = 2;
+        });
+      }
+
+      return <span>{revision}</span>;
+    }
+  }
+
+  const instance = Control.new();
+  const commits: number[][] = [];
+  let reveal!: () => void;
+
+  function Placements() {
+    const root = React.useRef<HTMLDivElement>(null);
+
+    React.useLayoutEffect(() => {
+      commits.push(
+        [...root.current!.querySelectorAll('span')].map((node) =>
+          Number(node.textContent)
+        )
+      );
+    });
+
+    return (
+      <div ref={root}>
+        {Array.from({ length: 40 }, (_, index) => (
+          <div key={index}>{instance}</div>
+        ))}
+      </div>
+    );
+  }
+
+  function App() {
+    const [shown, setShown] = React.useState(false);
+    reveal = () => React.startTransition(() => setShown(true));
+    return shown && <Placements />;
+  }
+
+  const view = render(<App />);
+  reveal();
+
+  await waitFor(() => {
+    expect(view.container.querySelectorAll('span')).toHaveLength(40);
+  });
+
+  expect(new Set(commits[0]).size).toBe(1);
 });
 
 describe('ref prop', () => {

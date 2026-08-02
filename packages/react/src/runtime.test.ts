@@ -12,6 +12,7 @@ function harness() {
   let state = 0;
   let effect: () => (() => void) | void;
   let refresh: (next?: any) => void;
+  let reset: () => void;
   const unmount = vi.fn();
 
   // Apply the updater like React would, so the `(x) => x + 1` path is exercised.
@@ -31,16 +32,18 @@ function harness() {
   }) as typeof Runtime.useState;
 
   Runtime.useEffect = ((fn: any) => void (effect = fn)) as typeof Runtime.useEffect;
+  Runtime.useSyncExternalStore = undefined;
 
   let cleanup: (() => void) | void;
 
   return {
     update,
     unmount,
-    render: () => useHook((r) => ((refresh = r), () => unmount)),
+    render: () => useHook((r, x) => ((refresh = r), (reset = x), () => unmount)),
     commit: () => void (cleanup = effect()),
     unwind: () => cleanup && cleanup(),
-    refresh: (next?: any) => refresh(next)
+    refresh: (next?: any) => refresh(next),
+    reset: () => reset()
   };
 }
 
@@ -89,6 +92,22 @@ it('runs the callback cleanup on unmount', () => {
 
   unwind();
   expect(unmount).toHaveBeenCalledTimes(1);
+});
+
+it('will advance revision on reset', () => {
+  const { render, reset } = harness();
+  let getRevision!: () => number;
+
+  Runtime.useSyncExternalStore = (_subscribe, get) => (getRevision = get)();
+
+  render();
+  expect(getRevision()).toBe(0);
+
+  reset();
+  expect(getRevision()).toBe(1);
+
+  render();
+  expect(getRevision()).toBe(1);
 });
 
 

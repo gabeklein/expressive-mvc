@@ -50,6 +50,12 @@ A PascalCase member on a `Component` becomes a reactive subcomponent. This mirro
 
 Subscription proxies pass assignments through to the instance, so components read and write the same destructured values - no unwrapping step. The `is` self-reference exists for exactly one pattern: retaining the root object *alongside* sibling destructuring from the same snapshot - a destructured snapshot has no other way back to its proxy root. That makes `is` the deliberate exception to the namespace rule above: after arguing that the instance surface belongs to the model's own fields, the library reserves exactly one property, because one reserved name is the floor for that capability. Using `is` to unwrap every writable object is documented as a misuse ([SKILL.md](SKILL.md), Transparent Writes); the boundary is a rule of the contract, not folklore.
 
+## Concurrent validation is separate from presentation
+
+React adapter does not store model values in `useSyncExternalStore` - external-store updates are blocking, which would forfeit deferred rendering. Subscriber dispatch publishes through ordinary useState, so `transition()` updates keep host priority and may retain prior content while a replacement suspends.
+
+Each subscription exposes a scalar revision to `useSyncExternalStore` for pre-commit validation. A write invalidating a subscriber advances its revision; a yielded render attempt then fails React's consistency check and restarts instead of committing mixed model revisions. A racing write costs that attempt its time-slicing, never consistency. Hosts without `useSyncExternalStore` (React below 18, preact) cannot yield mid-render and skip validation.
+
 ## Computed self-reference
 
 A getter reading its own name (`this.total` inside `get total()`) returns the previous cached value rather than recursing - reads under the tracking proxy resolve to the managed property's current cache. This makes "derive from prior value" expressible without a shadow field; it is documented semantics ([state/computed.md](state/computed.md)), not an accident of evaluation order.

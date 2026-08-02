@@ -1,5 +1,5 @@
 import { Component } from '@expressive/mvc';
-import {
+import React, {
   createContext,
   createElement,
   Suspense,
@@ -29,6 +29,7 @@ Object.assign(Runtime, {
   useEffect,
   useState,
   useRef,
+  useSyncExternalStore: React.useSyncExternalStore,
   Suspense,
   ignore: [
     'updater',

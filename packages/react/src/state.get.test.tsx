@@ -1218,6 +1218,112 @@ describe('State.get - nested dependency', () => {
   });
 });
 
+describe('State.get - concurrent consistency', () => {
+  class Test extends State {
+    revision = 1;
+  }
+
+  function fixture(test: Test, mutate: (test: Test) => void) {
+    const commits: number[][] = [];
+    let reveal!: () => void;
+    let scheduled = false;
+
+    function Reader({ index }: { index: number }) {
+      const { revision } = Test.get();
+      const started = performance.now();
+
+      while (performance.now() - started < 1) {}
+
+      if (!index && !scheduled) {
+        scheduled = true;
+        setTimeout(() => mutate(test));
+      }
+
+      return <span>{revision}</span>;
+    }
+
+    function Readers() {
+      const root = React.useRef<HTMLDivElement>(null);
+
+      React.useLayoutEffect(() => {
+        commits.push(
+          [...root.current!.querySelectorAll('span')].map((node) =>
+            Number(node.textContent)
+          )
+        );
+      });
+
+      return (
+        <div ref={root}>
+          {Array.from({ length: 40 }, (_, index) => (
+            <Reader key={index} index={index} />
+          ))}
+        </div>
+      );
+    }
+
+    function App() {
+      const [shown, setShown] = React.useState(false);
+      reveal = () => React.startTransition(() => setShown(true));
+      return shown && <Readers />;
+    }
+
+    const view = render(
+      <Provider for={test}>
+        <App />
+      </Provider>
+    );
+
+    return {
+      commits,
+      view,
+      reveal: () => reveal()
+    };
+  }
+
+  it('will not commit mixed revisions across a yielded mount', async () => {
+    const test = Test.new();
+    const { commits, view, reveal } = fixture(test, (test) => {
+      test.revision = 2;
+      test.revision = 3;
+      test.revision = 4;
+    });
+
+    reveal();
+
+    await waitFor(() => {
+      expect(view.container.querySelectorAll('span')).toHaveLength(40);
+    });
+
+    expect(new Set(commits[0]).size).toBe(1);
+
+    await waitFor(() => {
+      expect(view.container.textContent).toBe('4'.repeat(40));
+    });
+  });
+
+  it('will not commit mixed revisions for a transition write', async () => {
+    const test = Test.new();
+    const { commits, view, reveal } = fixture(test, (test) => {
+      transition(() => {
+        test.revision = 2;
+      });
+    });
+
+    reveal();
+
+    await waitFor(() => {
+      expect(view.container.querySelectorAll('span')).toHaveLength(40);
+    });
+
+    expect(new Set(commits[0]).size).toBe(1);
+
+    await waitFor(() => {
+      expect(view.container.textContent).toBe('2'.repeat(40));
+    });
+  });
+});
+
 // Runtime is stubbed with a hand-driven lifecycle (as in runtime.test.ts) so a
 // change can land strictly before vs. after commit - the ordering React itself
 // won't reproduce on demand.
@@ -1252,6 +1358,7 @@ describe('State.get - pre-commit dispatch', () => {
     }) as typeof Runtime.useState;
 
     Runtime.useEffect = ((fn: any) => void effects.push(fn)) as typeof Runtime.useEffect;
+    Runtime.useSyncExternalStore = undefined;
 
     return {
       update,

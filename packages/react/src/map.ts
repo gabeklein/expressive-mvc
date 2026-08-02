@@ -1,6 +1,5 @@
 import { map } from '@expressive/mvc';
-import { watch } from '@expressive/mvc/observable';
-import { useHook } from './runtime';
+import { useWatch } from './runtime';
 import { seam } from './element';
 
 Object.defineProperty(map.Managed.prototype, '$$typeof', {
@@ -19,10 +18,7 @@ Object.defineProperty(map.Managed.prototype, '$$typeof', {
 });
 
 function Values(this: map.Managed<unknown, unknown>) {
-  const self = useHook<map.Managed<unknown, unknown>>((refresh) => {
-    const release = watch(this, refresh);
-    return () => release;
-  });
+  const self = useWatch(this);
 
   return [...self.values()];
 }
