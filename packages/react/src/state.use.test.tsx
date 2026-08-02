@@ -173,17 +173,19 @@ describe('State.use', () => {
         }
       }
 
-      const hook = renderHook(() => {
-        const { action, current } = Test.use();
+      let action!: () => void;
 
-        action();
+      const hook = renderHook(() => {
+        const { action: bound, current } = Test.use();
+
+        action = bound;
 
         return current;
       });
 
       expect(hook.result.current).toBe(0);
 
-      hook.rerender();
+      await act(async () => action());
 
       expect(hook.result.current).toBe(1);
 

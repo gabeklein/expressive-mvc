@@ -1,6 +1,5 @@
 import { has } from '@expressive/mvc';
-import { watch } from '@expressive/mvc/observable';
-import { useHook } from './runtime';
+import { useWatch } from './runtime';
 import { seam } from './element';
 
 for (const Collection of [has.List, has.Pool])
@@ -20,10 +19,7 @@ for (const Collection of [has.List, has.Pool])
   });
 
 function Members(this: has.List<unknown> | has.Pool<unknown>) {
-  const self = useHook<typeof this>((refresh) => {
-    const release = watch(this, refresh);
-    return () => release;
-  });
+  const self = useWatch(this);
 
   return [...self];
 }

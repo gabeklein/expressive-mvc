@@ -1,4 +1,5 @@
 import type { Component } from '@expressive/mvc';
+import { watch } from '@expressive/mvc/observable';
 import type { Context } from './context';
 
 export const Runtime = {} as {
@@ -10,6 +11,8 @@ export const Runtime = {} as {
   useState<S>(initial: S | (() => S)): [S, (next: (previous: S) => S) => void];
   useEffect(effect: () => (() => void) | void, deps?: any[]): void;
   useRef<T>(initial: T): { current: T };
+  /** Pre-commit revision validation; hosts with synchronous commits omit it. */
+  useRevision?(getRevision: () => number): void;
   /** Per-render-attempt lifecycle, set by each adapter (React stacks attempts; others no-op). */
   dedupe(from: Component, context: Context): { commit(): void; remove(): void };
   /** Host error-boundary component, wrapping a Component whose `catch` is set. */
@@ -17,9 +20,31 @@ export const Runtime = {} as {
   Suspense: any;
 };
 
+export function revision(
+  useSyncExternalStore?: (
+    subscribe: (notify: () => void) => () => void,
+    getSnapshot: () => number,
+    getServerSnapshot?: () => number
+  ) => number
+) {
+  if (!useSyncExternalStore) return undefined;
+
+  const subscribe = () => () => {};
+
+  return (getRevision: () => number) => {
+    useSyncExternalStore(subscribe, getRevision, getRevision);
+  };
+}
+
 export function useFactory<T extends Function>(factory: () => T) {
   const ref = Runtime.useRef<T | null>(null);
   return ref.current || (ref.current = factory());
+}
+
+interface Refresh<T> {
+  (next: T): void;
+  /** Invalidate the currently rendered value; in-flight render attempts fail validation. */
+  stale(): void;
 }
 
 /**
@@ -31,11 +56,13 @@ export function useFactory<T extends Function>(factory: () => T) {
  * @returns Latest value published via the setter (`undefined` until set).
  */
 export function useHook<T = void>(
-  callback: (refresh: (next: T) => void) => () => (() => void) | void
+  callback: (refresh: Refresh<T>) => () => (() => void) | void
 ) {
   const { current } = Runtime.useRef(
-    { rendered: 0 } as {
+    { rendered: 0, revision: 0 } as {
       rendered: number;
+      revision: number;
+      getRevision?: () => number;
       mounted?: boolean;
       pending?: boolean;
       commit?: () => (() => void) | void;
@@ -46,15 +73,24 @@ export function useHook<T = void>(
   );
 
   current.update = Runtime.useState(() => {
-    if (!current.rendered)
-      current.commit = callback((next) => {
+    if (!current.rendered) {
+      const refresh = ((next: T) => {
         current.output = next;
         if (current.mounted) current.update?.((x) => x + 1);
         else if (current.update) current.pending = true;
-      });
+      }) as Refresh<T>;
+
+      refresh.stale = () => {
+        current.revision++;
+      };
+
+      current.commit = callback(refresh);
+    }
 
     return current.rendered++;
   })[1];
+
+  Runtime.useRevision?.((current.getRevision ??= () => current.revision));
 
   Runtime.useEffect(() => {
     current.mounted = true;
@@ -77,4 +113,26 @@ export function useHook<T = void>(
   return current.output;
 }
 
+export function useWatch<T extends object>(
+  from: T,
+  mount?: () => (() => void) | void
+) {
+  return useHook<T>((refresh) => {
+    const release = watch(from, (current) => {
+      refresh(current);
 
+      return (update) => {
+        if (update === true) refresh.stale();
+      };
+    });
+
+    return () => {
+      const cleanup = mount?.();
+
+      return () => {
+        release();
+        cleanup?.();
+      };
+    };
+  });
+}
