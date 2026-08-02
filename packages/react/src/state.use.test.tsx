@@ -165,31 +165,23 @@ describe('State.use', () => {
     });
 
     it('will bind methods to instance', async () => {
+      const mock = vi.fn();
+      
       class Test extends State {
-        current = 0;
+        method = mock;
 
         action() {
-          this.current++;
+          this.method();
         }
       }
 
-      let action!: () => void;
+      renderHook(() => {
+        const { action } = Test.use();
 
-      const hook = renderHook(() => {
-        const { action: bound, current } = Test.use();
-
-        action = bound;
-
-        return current;
+        action();
       });
 
-      expect(hook.result.current).toBe(0);
-
-      await act(async () => action());
-
-      expect(hook.result.current).toBe(1);
-
-      hook.unmount();
+      expect(mock).toHaveBeenCalled();
     });
   });
 

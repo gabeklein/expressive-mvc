@@ -19,9 +19,7 @@ for (const Collection of [has.List, has.Pool])
   });
 
 function Members(this: has.List<unknown> | has.Pool<unknown>) {
-  const self = useWatch(this);
-
-  return [...self];
+  return [...useWatch(this)];
 }
 
 export { has };
