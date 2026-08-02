@@ -50,6 +50,12 @@ A PascalCase member on a `Component` becomes a reactive subcomponent. This mirro
 
 Subscription proxies pass assignments through to the instance, so components read and write the same destructured values - no unwrapping step. The `is` self-reference exists for exactly one pattern: retaining the root object *alongside* sibling destructuring from the same snapshot - a destructured snapshot has no other way back to its proxy root. That makes `is` the deliberate exception to the namespace rule above: after arguing that the instance surface belongs to the model's own fields, the library reserves exactly one property, because one reserved name is the floor for that capability. Using `is` to unwrap every writable object is documented as a misuse ([SKILL.md](SKILL.md), Transparent Writes); the boundary is a rule of the contract, not folklore.
 
+## Concurrent validation is separate from presentation
+
+The React adapter does not present model values through `useSyncExternalStore`. Subscriber dispatch publishes through ordinary React state, so `transition()` updates keep host priority and can retain prior content while a replacement suspends - React documents external-store snapshot changes during a transition as blocking, so making that channel the presentation owner would trade away deferred rendering.
+
+Instead each subscription exposes only a scalar revision to `useSyncExternalStore`, for pre-commit validation. Any write invalidating a subscriber advances its revision, so a render attempt yielded mid-way fails React's consistency check and restarts instead of committing components from mixed model revisions. The restart is synchronous: a write racing an in-flight attempt trades that attempt's time-slicing for consistency, while presentation - urgent or transitional - still arrives through the ordinary state setters. Hosts without `useSyncExternalStore` (React below 18, preact) cannot yield mid-render and skip validation entirely.
+
 ## Computed self-reference
 
 A getter reading its own name (`this.total` inside `get total()`) returns the previous cached value rather than recursing - reads under the tracking proxy resolve to the managed property's current cache. This makes "derive from prior value" expressible without a shadow field; it is documented semantics ([state/computed.md](state/computed.md)), not an accident of evaluation order.
