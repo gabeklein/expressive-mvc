@@ -13,7 +13,6 @@ import './element';
 import './jsx-runtime';
 
 import { Runtime } from './adapter';
-import { revision } from './runtime';
 import { ErrorBoundary, dedupe } from './boundary';
 
 // React detects class components by this brand (preact reads `prototype.render`).
@@ -30,7 +29,7 @@ Object.assign(Runtime, {
   useEffect,
   useState,
   useRef,
-  useRevision: revision(React.useSyncExternalStore),
+  useRevision: React.useSyncExternalStore,
   Suspense,
   ignore: [
     'updater',

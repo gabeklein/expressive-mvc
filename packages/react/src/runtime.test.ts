@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 
 import './index';
-import { revision, Runtime, useHook } from './runtime';
+import { Runtime, useHook } from './runtime';
 
 // useHook calls useRef, useState, useEffect once each per render. Stub Runtime
 // with a hand-driven lifecycle so a subscription update can fire before vs.
@@ -32,7 +32,7 @@ function harness() {
   }) as typeof Runtime.useState;
 
   Runtime.useEffect = ((fn: any) => void (effect = fn)) as typeof Runtime.useEffect;
-  Runtime.useRevision = revision();
+  Runtime.useRevision = undefined;
 
   let cleanup: (() => void) | void;
 
@@ -98,8 +98,7 @@ it('will advance revision on reset', () => {
   const { render, reset } = harness();
   let getRevision!: () => number;
 
-  Runtime.useRevision = ((get: () => number) =>
-    void (getRevision = get)) as typeof Runtime.useRevision;
+  Runtime.useRevision = (_subscribe, get) => (getRevision = get)();
 
   render();
   expect(getRevision()).toBe(0);
@@ -109,26 +108,6 @@ it('will advance revision on reset', () => {
 
   render();
   expect(getRevision()).toBe(1);
-});
-
-it('will validate revisions through useSyncExternalStore', () => {
-  const uSES = vi.fn((_subscribe: any, get: () => number) => get());
-  const useRevision = revision(uSES)!;
-  const getRevision = () => 5;
-
-  useRevision(getRevision);
-
-  expect(uSES).toHaveBeenCalledWith(expect.any(Function), getRevision, getRevision);
-
-  const [subscribe] = uSES.mock.calls[0];
-  expect(subscribe(() => {})()).toBeUndefined();
-});
-
-it('will not validate without useSyncExternalStore', () => {
-  const getRevision = vi.fn();
-
-  expect(revision()(getRevision)).toBeUndefined();
-  expect(getRevision).not.toHaveBeenCalled();
 });
 
 

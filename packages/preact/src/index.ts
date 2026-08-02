@@ -38,8 +38,6 @@ Object.assign(Runtime, {
   useEffect,
   useState,
   useRef,
-  // Preact renders synchronously; commits cannot interleave with writes.
-  useRevision: () => {},
   Suspense,
   ErrorBoundary,
   // Preact has no render-attempt stacking (no fiber-keyed supersession);
