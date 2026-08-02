@@ -23,6 +23,15 @@ import State, { Component, Provider, get, set, ref } from '@expressive/react';
 
 > Working with an agent? `npx skills add gabeklein/expressive-mvc` teaches it the whole API in one shot.
 
+### React Native
+
+The same package covers React Native and Expo. The adapter imports only `react` and `react/jsx-runtime`, so it works on any renderer, and Metro resolves it without extra configuration.
+
+Support is **provisional** — verified on Expo SDK 57 (React Native 0.86, React 19.2) for iOS and Android, including a Hermes bytecode build and re-render on write, but not yet on a device or simulator. Two things to know:
+
+- Testing with `jest-expo` needs `@expressive` added to `transformIgnorePatterns`, because the build is ESM-only and Jest skips `node_modules` by default.
+- `BrowserRouter` from `@expressive/router` reads `window.location`, which React Native does not define. Use `Router` instead — it keeps path and history in memory.
+
 <br />
 
 ## Your first state
