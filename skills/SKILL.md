@@ -139,12 +139,6 @@ class UserProfile extends State {
 ### React Hooks
 
 ```tsx
-// Existing observable - subscribes to accessed fields, does not own lifecycle
-function Existing({ counter }: { counter: Counter }) {
-  const { count, increment } = use(counter);
-  return <button onClick={increment}>{count}</button>;
-}
-
 // Local state - creates instance, owns lifecycle, subscribes to accessed fields
 function MyComponent() {
   const { count, increment } = Counter.use();
@@ -156,13 +150,18 @@ function Child() {
   const { count } = Counter.get();
   return <span>{count}</span>;
 }
+
+// An instance you already hold - place it; it renders and subscribes itself
+function Parent({ counter }: { counter: Counter }) {
+  return <section>{counter}</section>;
+}
 ```
 
-Use `use(subject)` for externally-owned observables. Use `State.use()` when the component should create and own the instance. Use `State.get()` when the instance comes from context. React 19 exports its own `use` hook - alias on import (`import { use as subscribe }`) in files that need both. See [react/react.md](react/react.md) for overloads (optional lookup, required values, computed selector).
+Use `State.use()` when the component should create and own the instance. Use `State.get()` when the instance comes from context. To render an instance you already hold, make it a `Component` and place it as `{instance}` - subscription belongs to the placed instance, not the surrounding function. See [react/react.md](react/react.md) for overloads (optional lookup, required values, computed selector).
 
 ## The Dependency Snapshot
 
-Open every subscribing component by destructuring the exact reactive values it renders - nested ones included. Nested observable reads are proxied and tracked automatically, so nested destructuring subscribes to child fields; never call `use(child)` on an object reached through a parent proxy.
+Open every subscribing component by destructuring the exact reactive values it renders - nested ones included. Nested observable reads are proxied and tracked automatically, so nested destructuring subscribes to child fields; a child reached through a parent proxy needs no separate subscription.
 
 ```tsx
 function OrderSummary() {
