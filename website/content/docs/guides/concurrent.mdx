@@ -1,0 +1,66 @@
+---
+title: Concurrent Rendering
+description: How Expressive stays consistent under React 18+ concurrent rendering, and how to defer updates with transition()
+---
+
+Concurrent React can pause a render, run other work, and resume — or throw the attempt away and start over. That is what makes `startTransition` and Suspense useful, and it is also what makes external mutable state dangerous: if a model changes while React is halfway through reading it, the finished frame can contain values from two different points in time. Nothing throws. The screen is simply, briefly, wrong.
+
+Expressive holds state in mutable class instances, so this applies to it directly. Two separate guarantees are needed, and they are handled by two separate mechanisms.
+
+## Consistency: one commit, one revision
+
+Every subscription carries a revision number, which React reads through `useSyncExternalStore` before it commits. Any write that invalidates a subscriber advances that subscriber's revision. If a render attempt yielded partway through and the model moved underneath it, React's own pre-commit check fails and the attempt is re-rendered instead of committed.
+
+The result is the guarantee you want, stated plainly:
+
+> A committed React tree never mixes values from two revisions of one model.
+
+Nothing is required of you to get this. There is no provider to add, no selector to write, no equality function to tune.
+
+The cost is bounded and worth knowing: a write that lands *during* an in-flight render forces that attempt to restart, so it loses the benefit of having been time-sliced. It never loses consistency. Renders that begin after the write — including the restart itself — validate cleanly, so steady-state updates keep slicing normally.
+
+## Priority: `transition()` for deferred presentation
+
+Consistency says *what* may be rendered together. It says nothing about *when*. For that, mark the writes:
+
+```ts
+import { transition } from '@expressive/react';
+
+transition(() => {
+  app.page = 'settings';
+});
+```
+
+Writes inside the callback are tagged as non-urgent. That tag survives batching and the microtask dispatch, and the adapter applies React's `startTransition` at the point the subscriber actually updates. The practical payoff is Suspense behaviour: if the new page suspends, React keeps the current screen on-screen instead of flashing a fallback.
+
+Three rules:
+
+- The callback runs **synchronously**. Writes after an `await` are outside its scope and need their own `transition()`.
+- **Urgent wins.** If an urgent write invalidates a subscriber already pending at transition priority, the urgent priority takes over — a text input never becomes laggy because a background navigation was in flight.
+- Normal batching still applies; `transition()` changes priority, not timing.
+
+Presentation deliberately stays on ordinary React state rather than moving into the external store. Store-backed updates are always blocking, so publishing through the store would have made deferred rendering impossible — the two mechanisms are kept apart precisely so you can have both.
+
+## React version support
+
+The floor is **React 16.14** (where `react/jsx-runtime` landed, which the adapter imports).
+
+Revision validation applies on **React 18 and newer**. On 16.14–17 it is skipped, and nothing is lost by that: those renderers cannot interrupt a render, so there is no window for a write to interleave into one. The guarantee is not weaker there — it is inapplicable.
+
+## How this was verified
+
+Unit tests are not sufficient evidence for a claim about a scheduler, so this one was checked against a real browser:
+
+- Real Chromium with real `react-dom` 19.2 under a concurrent root, driving 40 slow consumers so React genuinely slices the work, with a write fired mid-render.
+- Each run was **gated for validity** before being counted: the run only passes if the render actually yielded, the write actually landed between render start and commit, and both the old and new values were actually observed during the render. A test that never provoked the race does not count as a pass.
+- A **negative control**: the same harness against a build with the validation call removed produced a torn commit on every single run.
+
+That last point is the one that matters. It is easy to write a test that passes because nothing was ever at risk; the control proves this harness detects real tearing, so the passes mean something.
+
+## Known limits
+
+Stated rather than omitted:
+
+- A write racing an in-flight render costs that attempt its time-slicing (see above). Consistency is never traded.
+- Priority classification is conservative. If a deferred write changes which fields a component reads, and an urgent write then changes one of those newly-read fields, the resulting update may be treated as urgent rather than deferred. This errs toward showing you fresh data sooner, and is an open refinement.
+- Preact and React below 18 skip validation, as described above.

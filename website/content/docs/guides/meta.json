@@ -10,6 +10,8 @@
     "async",
     "forms-and-refs",
     "router",
-    "testing"
+    "concurrent",
+    "testing",
+    "bundle-size"
   ]
 }

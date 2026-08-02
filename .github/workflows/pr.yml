@@ -23,6 +23,9 @@ jobs:
 
       - run: bun run build
 
+      - name: Bundle size
+        run: bun run size
+
       - name: Changeset reminder
         continue-on-error: true
         run: bunx changeset status --since origin/main
