@@ -67,7 +67,6 @@ Write output in the conventions of [react/style.md](react/style.md). They are op
 ```tsx
 import State, {
   Component,
-  use,
   ref,
   def,
   get,
@@ -75,6 +74,7 @@ import State, {
   map,
   set,
   transition,
+  Consumer,
   Provider
 } from '@expressive/react';
 ```
