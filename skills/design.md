@@ -52,9 +52,9 @@ Subscription proxies pass assignments through to the instance, so components rea
 
 ## Concurrent validation is separate from presentation
 
-The React adapter does not present model values through `useSyncExternalStore`. Subscriber dispatch publishes through ordinary React state, so `transition()` updates keep host priority and can retain prior content while a replacement suspends - React documents external-store snapshot changes during a transition as blocking, so making that channel the presentation owner would trade away deferred rendering.
+React adapter does not store model values in `useSyncExternalStore`. Subscriber dispatch publishes through ordinary useState (a snapshot), so `transition()` updates keep host priority and may retain prior content while a replacement suspends - React documents external-store snapshot changes during a transition as blocking, so making that channel the presentation owner would trade away deferred rendering.
 
-Instead each subscription exposes only a scalar revision to `useSyncExternalStore`, for pre-commit validation. Any write invalidating a subscriber advances its revision, so a render attempt yielded mid-way fails React's consistency check and restarts instead of committing components from mixed model revisions. The restart is synchronous: a write racing an in-flight attempt trades that attempt's time-slicing for consistency, while presentation - urgent or transitional - still arrives through the ordinary state setters. Hosts without `useSyncExternalStore` (React below 18, preact) cannot yield mid-render and skip validation entirely.
+Instead each subscription exposes a scalar revision to `useSyncExternalStore`, for pre-commit validation. Any write invalidating a subscriber advances its revision, so a render attempt yielded mid-way fails React's consistency check and restarts instead of committing components from mixed model revisions. The restart is synchronous: a write racing an in-flight attempt trades that attempt's time-slicing for consistency, while presentation - urgent or transitional - still arrives through the ordinary state setters. Hosts without `useSyncExternalStore` (React below 18, preact) cannot yield mid-render and skip validation anyway.
 
 ## Computed self-reference
 
