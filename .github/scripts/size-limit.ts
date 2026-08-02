@@ -1,6 +1,6 @@
 import { gzipSync } from 'bun';
-import { mkdirSync, rmSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, mkdirSync, rmSync, symlinkSync, unlinkSync } from 'node:fs';
+import { join, resolve } from 'node:path';
 
 /**
  * Budgets are min+gzip bytes for one import shape, measured against built dist.
@@ -52,8 +52,31 @@ const CASES = [
   }
 ];
 
-// At the workspace root, where a consumer's own entry file would sit - bare
-// specifiers then resolve through ./node_modules on any bundler version.
+/**
+ * Measure through bare specifiers, as a consumer writes them, so the exports
+ * map and each package's `sideEffects` both take part. That needs
+ * `node_modules/@expressive/*` present, which the runner's bun does not always
+ * link for workspace packages - so guarantee it here rather than assume it.
+ * Only links this script creates are removed afterward.
+ */
+const PACKAGES = ['mvc', 'react', 'router'];
+const scope = join('node_modules', '@expressive');
+const linked: string[] = [];
+
+mkdirSync(scope, { recursive: true });
+
+for (const name of PACKAGES) {
+  const link = join(scope, name);
+
+  if (!existsSync(link)) {
+    symlinkSync(resolve('packages', name), link, 'junction');
+    linked.push(link);
+  }
+}
+
+if (linked.length)
+  console.log(`Linked for measurement: ${linked.join(', ')}\n`);
+
 const dir = '.size-probe';
 mkdirSync(dir, { recursive: true });
 
@@ -83,6 +106,7 @@ try {
   }
 } finally {
   rmSync(dir, { recursive: true, force: true });
+  for (const link of linked) unlinkSync(link);
 }
 
 const kb = (n: number) => (n / 1024).toFixed(2) + ' kB';
