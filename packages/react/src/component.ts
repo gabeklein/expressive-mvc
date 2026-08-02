@@ -179,7 +179,7 @@ function subcomponents(target: object, configurable?: boolean) {
         let render = unbind(value);
         const Component = (props: unknown) =>
           render.call(
-            useWatch(owner) || owner,
+            useWatch(owner),
             props
           );
 

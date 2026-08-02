@@ -41,22 +41,21 @@ export function useFactory<T extends Function>(factory: () => T) {
   return ref.current || (ref.current = factory());
 }
 
-interface Refresh<T> {
-  (next: T): void;
-  /** Invalidate the currently rendered value; in-flight render attempts fail validation. */
-  stale(): void;
-}
-
 /**
  * Mount-effect with a refreshable return value, safe under React StrictMode.
  *
- * @param callback Setup handler, run on creation; receives a setter and returns
- *   a mount handler, which in turn returns a cleanup. All three share this
- *   hook's render counter, so a StrictMode remount repeats none of them.
+ * @param callback Setup handler, run on creation; receives a setter, plus a
+ *   reset which invalidates the rendered value so in-flight render attempts
+ *   revalidate, and returns a mount handler, which in turn returns a cleanup.
+ *   All share this hook's render counter, so a StrictMode remount repeats
+ *   none of them.
  * @returns Latest value published via the setter (`undefined` until set).
  */
 export function useHook<T = void>(
-  callback: (refresh: Refresh<T>) => () => (() => void) | void
+  callback: (
+    refresh: (next: T) => void,
+    reset: () => void
+  ) => () => (() => void) | void
 ) {
   const { current } = Runtime.useRef(
     { rendered: 0, revision: 0 } as {
@@ -72,19 +71,17 @@ export function useHook<T = void>(
   );
 
   current.update = Runtime.useState(() => {
-    if (!current.rendered) {
-      const refresh = ((next: T) => {
-        current.output = next;
-        if (current.mounted) current.update?.((x) => x + 1);
-        else if (current.update) current.pending = true;
-      }) as Refresh<T>;
-
-      refresh.stale = () => {
-        current.revision++;
-      };
-
-      current.commit = callback(refresh);
-    }
+    if (!current.rendered)
+      current.commit = callback(
+        (next) => {
+          current.output = next;
+          if (current.mounted) current.update?.((x) => x + 1);
+          else if (current.update) current.pending = true;
+        },
+        () => {
+          current.revision++;
+        }
+      );
 
     return current.rendered++;
   })[1];
@@ -116,12 +113,12 @@ export function useWatch<T extends object>(
   from: T,
   mount?: () => (() => void) | void
 ) {
-  return useHook<T>((refresh) => {
+  return useHook<T>((refresh, reset) => {
     const release = watch(from, (current) => {
       refresh(current);
 
       return (update) => {
-        if (update === true) refresh.stale();
+        if (update === true) reset();
       };
     });
 
@@ -133,5 +130,5 @@ export function useWatch<T extends object>(
         cleanup?.();
       };
     };
-  });
+  }) ?? from;
 }

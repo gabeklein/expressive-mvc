@@ -182,8 +182,8 @@ State.get = function get<T extends State>(
 
     return () => {
       pending = false;
-      useHook((refresh) => {
-        stale = refresh.stale;
+      useHook((_refresh, reset) => {
+        stale = reset;
 
         return () => {
           mounted = true;

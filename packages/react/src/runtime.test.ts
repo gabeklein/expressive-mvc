@@ -12,6 +12,7 @@ function harness() {
   let state = 0;
   let effect: () => (() => void) | void;
   let refresh: (next?: any) => void;
+  let reset: () => void;
   const unmount = vi.fn();
 
   // Apply the updater like React would, so the `(x) => x + 1` path is exercised.
@@ -38,11 +39,11 @@ function harness() {
   return {
     update,
     unmount,
-    render: () => useHook((r) => ((refresh = r), () => unmount)),
+    render: () => useHook((r, x) => ((refresh = r), (reset = x), () => unmount)),
     commit: () => void (cleanup = effect()),
     unwind: () => cleanup && cleanup(),
     refresh: (next?: any) => refresh(next),
-    stale: () => (refresh as any).stale()
+    reset: () => reset()
   };
 }
 
@@ -93,8 +94,8 @@ it('runs the callback cleanup on unmount', () => {
   expect(unmount).toHaveBeenCalledTimes(1);
 });
 
-it('will advance revision when marked stale', () => {
-  const { render, stale } = harness();
+it('will advance revision on reset', () => {
+  const { render, reset } = harness();
   let getRevision!: () => number;
 
   Runtime.useRevision = ((get: () => number) =>
@@ -103,7 +104,7 @@ it('will advance revision when marked stale', () => {
   render();
   expect(getRevision()).toBe(0);
 
-  stale();
+  reset();
   expect(getRevision()).toBe(1);
 
   render();
