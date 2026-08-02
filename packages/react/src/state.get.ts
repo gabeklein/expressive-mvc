@@ -81,7 +81,7 @@ State.get = function get<T extends State>(
     let mounted = false;
     let pending = false;
     let value: any;
-    let stale!: () => void;
+    let force!: () => void;
 
     function update() {
       pending = false;
@@ -133,7 +133,7 @@ State.get = function get<T extends State>(
           first = false;
 
           return (update) => {
-            if (update === true) stale();
+            if (update === true) force();
           };
         },
         argument === true
@@ -183,7 +183,7 @@ State.get = function get<T extends State>(
     return () => {
       pending = false;
       useHook((_refresh, reset) => {
-        stale = reset;
+        force = reset;
 
         return () => {
           mounted = true;
