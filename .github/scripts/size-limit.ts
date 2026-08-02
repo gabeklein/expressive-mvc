@@ -6,50 +6,55 @@ import { join } from 'node:path';
  * Budgets are min+gzip bytes for one import shape, measured against built dist.
  * Per-shape rather than one aggregate: the point is to notice when the adapter's
  * irreducible floor grows, or when a formerly shakeable export stops shaking.
+ *
+ * Each carries ~6% headroom over the measured figure, because minifier output
+ * shifts slightly between Bun versions and CI does not pin one. Real growth is
+ * structural and clears that margin; toolchain drift does not.
  */
 const CASES = [
   {
     name: 'mvc: State only',
-    limit: 4800,
+    limit: 5000,
     code: `import State from '@expressive/mvc'; console.log(State);`
   },
   {
     name: 'mvc: everything',
-    limit: 8200,
+    limit: 8700,
     code: `import * as all from '@expressive/mvc'; console.log(all);`
   },
   {
     name: 'react: State only',
-    limit: 7900,
+    limit: 8300,
     code: `import State from '@expressive/react'; console.log(State);`
   },
   {
     name: 'react: typical app',
-    limit: 8500,
+    limit: 8950,
     code: `import State, { Component, get, set, ref, def } from '@expressive/react';
            console.log(State, Component, get, set, ref, def);`
   },
   {
     name: 'react: everything',
-    limit: 10700,
+    limit: 11350,
     code: `import * as all from '@expressive/react'; console.log(all);`
   },
   {
     name: 'router: everything',
-    limit: 10300,
+    limit: 10950,
     code: `import * as all from '@expressive/router'; console.log(all);`
   },
   {
     name: 'react + router',
-    limit: 14100,
+    limit: 14950,
     code: `import * as a from '@expressive/react';
            import * as b from '@expressive/router';
            console.log(a, b);`
   }
 ];
 
-// Inside the workspace so bare specifiers resolve through node_modules.
-const dir = 'node_modules/.size-probe';
+// At the workspace root, where a consumer's own entry file would sit - bare
+// specifiers then resolve through ./node_modules on any bundler version.
+const dir = '.size-probe';
 mkdirSync(dir, { recursive: true });
 
 const results: { name: string; bytes: number; limit: number }[] = [];
@@ -82,10 +87,10 @@ try {
 
 const kb = (n: number) => (n / 1024).toFixed(2) + ' kB';
 const over = results.filter(({ bytes, limit }) => bytes > limit);
-const stale = results.filter(({ bytes, limit }) => bytes < limit - 1024);
+const stale = results.filter(({ bytes, limit }) => bytes < limit * 0.85);
 
 for (const { name, bytes, limit } of results) {
-  const mark = bytes > limit ? 'FAIL' : bytes < limit - 1024 ? 'under' : 'ok';
+  const mark = bytes > limit ? 'FAIL' : bytes < limit * 0.85 ? 'slack' : 'ok';
   console.log(`${name.padEnd(24)} ${kb(bytes).padStart(9)} / ${kb(limit).padStart(9)}  ${mark}`);
 }
 
