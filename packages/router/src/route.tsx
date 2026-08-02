@@ -104,7 +104,7 @@ export class Route extends Component {
     const { children } = this;
 
     if (allRoutes(children))
-      return scopeResolves(this, children, this.router.path);
+      return scopeResolves(children, scopeBase(this), this.router.path);
 
     return !!this.match;
   }
@@ -347,14 +347,6 @@ function scopeBase(route: Route): string {
   return route.base + route.router.segment(route.to);
 }
 
-/** Lexical (gate-form): scope resolves via a descendant match or its own
- * section default within base - used by `matched`, before children register. */
-function scopeResolves(route: Route, children: Component.Node, path: string): boolean {
-  const base = scopeBase(route);
-  return matchesAnywhere(children, base, path)
-    || (hasDefault(children) && within(base, path));
-}
-
 /** Registration-form: scope owns a default catching the path within base -
  * used by `matches` so a section 404 suppresses an ancestor 404. */
 function defaultCatches(route: Route, path: string): boolean {
@@ -370,20 +362,24 @@ type RouteProps = {
 };
 
 /**
- * Does any Route within `children` match `path` (composed against `base`)? A
- * synchronous, lexical walk of the JSX - the see-through opt-out gate. Strict:
- * a scope counts only when a descendant matches, never as a greedy prefix.
+ * Does the scope described by `children` (composed against `base`) claim
+ * `path`? A synchronous, lexical walk of the JSX - the see-through opt-out
+ * gate, and the single arbiter behind `matched` and `as`-slot arbitration.
+ * A scope claims via a descendant match, or via its own `default`, which
+ * catches anything within its base; without one it is never a greedy prefix.
  * Blind to class-field `to` and component-internal routes (the
  * `*`-delegation case) - the documented limits of the lexical model.
  */
-export function matchesAnywhere(children: Component.Node, base: string, path: string): boolean {
-  return lexicalRoutes(children).some(({ props, to }) => {
+export function scopeResolves(children: Component.Node, base: string, path: string): boolean {
+  const claimed = lexicalRoutes(children).some(({ props, to }) => {
     if (exempt(props)) return false;
 
     return allRoutes(props.children)
-      ? matchesAnywhere(props.children, base + patternSegment(to), path)
+      ? scopeResolves(props.children, base + patternSegment(to), path)
       : matchPattern(fullPattern(base, to), path) !== null;
   });
+
+  return claimed || (hasDefault(children) && within(base, path));
 }
 
 type Contender = {
@@ -423,7 +419,7 @@ function possible(children: Component.Node, base: string): Contender[] {
     .map(({ props, to }) => ({
       path: base + patternSegment(to),
       matches: allRoutes(props.children)
-        ? (path: string) => matchesAnywhere(props.children, base + patternSegment(to), path)
+        ? (path: string) => scopeResolves(props.children, base + patternSegment(to), path)
         : (path: string) => matchPattern(fullPattern(base, to), path) !== null,
     }));
 }

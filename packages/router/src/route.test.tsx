@@ -753,6 +753,145 @@ describe('Route', () => {
     });
   });
 
+  // A section scope owning a `default` is claimed by that default for any path
+  // within it - the same verdict whether the scope is the root route or sits
+  // under a wrapper alongside other `as`-bearing siblings.
+  describe('section default under a wrapper', () => {
+    const Chrome = (props: { children?: React.ReactNode }) => (
+      <main>chrome/{props.children}</main>
+    );
+    const Detail = () => <span>detail</span>;
+    const SectionMissing = () => <span>section-404</span>;
+    const Index = () => <span>index</span>;
+
+    const docs = (
+      <Route to="docs" as={Chrome}>
+        <Route to=":id" as={Detail} />
+        <Route default as={SectionMissing} />
+      </Route>
+    );
+
+    it('catches a miss when the section is the root route', () => {
+      location('/docs');
+      const view = render(docs);
+      expect(view.container.textContent).toBe('chrome/section-404');
+    });
+
+    it('catches a deep miss when the section is the root route', () => {
+      location('/docs/a/b');
+      const view = render(docs);
+      expect(view.container.textContent).toBe('chrome/section-404');
+    });
+
+    it('catches a miss under a plain wrapper', () => {
+      location('/docs');
+      const view = render(<Route>{docs}</Route>);
+      expect(view.container.textContent).toBe('chrome/section-404');
+    });
+
+    it('catches a deep miss under a plain wrapper', () => {
+      location('/docs/a/b');
+      const view = render(<Route>{docs}</Route>);
+      expect(view.container.textContent).toBe('chrome/section-404');
+    });
+
+    it('catches a miss with an index sibling present', () => {
+      location('/docs');
+      const view = render(
+        <Route>
+          <Route as={Index} />
+          {docs}
+        </Route>
+      );
+      expect(view.container.textContent).toBe('chrome/section-404');
+    });
+
+    it('catches a deep miss with an index sibling present', () => {
+      location('/docs/a/b');
+      const view = render(
+        <Route>
+          <Route as={Index} />
+          {docs}
+        </Route>
+      );
+      expect(view.container.textContent).toBe('chrome/section-404');
+    });
+
+    it('resolves a real child with an index sibling present', () => {
+      location('/docs/intro');
+      const view = render(
+        <Route>
+          <Route as={Index} />
+          {docs}
+        </Route>
+      );
+      expect(view.container.textContent).toBe('chrome/detail');
+    });
+
+    it('does not let the section claim the index path', () => {
+      location('/');
+      const view = render(
+        <Route>
+          <Route as={Index} />
+          {docs}
+        </Route>
+      );
+      expect(view.container.textContent).toBe('index');
+    });
+
+    it('keeps outer chrome when an inner section default catches', () => {
+      location('/site/docs');
+      const Outer = (props: { children?: React.ReactNode }) => (
+        <div>outer/{props.children}</div>
+      );
+      const view = render(
+        <Route to="site" as={Outer}>
+          <Route to="docs" as={Chrome}>
+            <Route to=":id" as={Detail} />
+            <Route default as={SectionMissing} />
+          </Route>
+        </Route>
+      );
+      expect(view.container.textContent).toBe('outer/chrome/section-404');
+    });
+
+    it('shadows a later flat sibling under the section path', () => {
+      location('/docs/team/roster');
+      const Roster = () => <span>roster</span>;
+      const view = render(
+        <Route>
+          {docs}
+          <Route to="docs/team/roster" as={Roster} />
+        </Route>
+      );
+      expect(view.container.textContent).toBe('chrome/section-404');
+    });
+
+    it('yields to an earlier flat sibling under the section path', () => {
+      location('/docs/team/roster');
+      const Roster = () => <span>roster</span>;
+      const view = render(
+        <Route>
+          <Route to="docs/team/roster" as={Roster} />
+          {docs}
+        </Route>
+      );
+      expect(view.container.textContent).toBe('roster');
+    });
+
+    it('does not claim a sibling path outside the section', () => {
+      location('/about');
+      const About = () => <span>about</span>;
+      const view = render(
+        <Route>
+          {docs}
+          <Route to="about" as={About} />
+        </Route>
+      );
+      expect(view.container.textContent).toBe('about');
+    });
+  });
+
   describe('redirect prop', () => {
     it('redirects (replacing) when matched', async () => {
       const before = window.history.length;
