@@ -3,7 +3,7 @@ import { Component, Context, get, State, Provider, set, transition } from '.';
 import { vi, expect, it, describe, beforeEach, afterEach, afterAll } from 'vitest';
 import { act, render, renderHook, waitFor } from '@testing-library/react';
 import { mockPromise, flushMicrotasks } from '../test.setup';
-import { Runtime } from './runtime';
+import { revision, Runtime } from './runtime';
 
 function renderWith<T>(Type: State.Type | State, hook: () => T) {
   return renderHook(hook, {
@@ -1358,7 +1358,7 @@ describe('State.get - pre-commit dispatch', () => {
     }) as typeof Runtime.useState;
 
     Runtime.useEffect = ((fn: any) => void effects.push(fn)) as typeof Runtime.useEffect;
-    Runtime.useRevision = undefined;
+    Runtime.useRevision = revision();
 
     return {
       update,

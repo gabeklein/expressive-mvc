@@ -31,7 +31,7 @@ function harness() {
   }) as typeof Runtime.useState;
 
   Runtime.useEffect = ((fn: any) => void (effect = fn)) as typeof Runtime.useEffect;
-  Runtime.useRevision = undefined;
+  Runtime.useRevision = revision();
 
   let cleanup: (() => void) | void;
 
@@ -124,7 +124,10 @@ it('will validate revisions through useSyncExternalStore', () => {
 });
 
 it('will not validate without useSyncExternalStore', () => {
-  expect(revision()).toBeUndefined();
+  const getRevision = vi.fn();
+
+  expect(revision()(getRevision)).toBeUndefined();
+  expect(getRevision).not.toHaveBeenCalled();
 });
 
 

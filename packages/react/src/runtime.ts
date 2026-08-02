@@ -11,8 +11,8 @@ export const Runtime = {} as {
   useState<S>(initial: S | (() => S)): [S, (next: (previous: S) => S) => void];
   useEffect(effect: () => (() => void) | void, deps?: any[]): void;
   useRef<T>(initial: T): { current: T };
-  /** Pre-commit revision validation; hosts with synchronous commits omit it. */
-  useRevision?(getRevision: () => number): void;
+  /** Pre-commit revision validation; inert where commits cannot interleave with writes. */
+  useRevision(getRevision: () => number): void;
   /** Per-render-attempt lifecycle, set by each adapter (React stacks attempts; others no-op). */
   dedupe(from: Component, context: Context): { commit(): void; remove(): void };
   /** Host error-boundary component, wrapping a Component whose `catch` is set. */
@@ -26,14 +26,16 @@ export function revision(
     getSnapshot: () => number,
     getServerSnapshot?: () => number
   ) => number
-) {
+): (getRevision: () => number) => void {
   if (useSyncExternalStore) {
     const subscribe = () => () => {};
 
-    return (getRevision: () => number) => {
+    return (getRevision) => {
       useSyncExternalStore(subscribe, getRevision, getRevision);
     };
   }
+
+  return () => {};
 }
 
 export function useFactory<T extends Function>(factory: () => T) {
@@ -62,7 +64,6 @@ export function useHook<T = void>(
     { rendered: 0, revision: 0 } as {
       rendered: number;
       revision: number;
-      getRevision?: () => number;
       mounted?: boolean;
       pending?: boolean;
       commit?: () => (() => void) | void;
@@ -90,7 +91,7 @@ export function useHook<T = void>(
     return current.rendered++;
   })[1];
 
-  Runtime.useRevision?.((current.getRevision ??= () => current.revision));
+  Runtime.useRevision(() => current.revision);
 
   Runtime.useEffect(() => {
     current.mounted = true;
