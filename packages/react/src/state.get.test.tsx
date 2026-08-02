@@ -1358,7 +1358,7 @@ describe('State.get - pre-commit dispatch', () => {
     }) as typeof Runtime.useState;
 
     Runtime.useEffect = ((fn: any) => void effects.push(fn)) as typeof Runtime.useEffect;
-    Runtime.useRevision = undefined;
+    Runtime.useSyncExternalStore = undefined;
 
     return {
       update,

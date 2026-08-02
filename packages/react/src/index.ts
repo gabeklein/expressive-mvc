@@ -29,7 +29,7 @@ Object.assign(Runtime, {
   useEffect,
   useState,
   useRef,
-  useRevision: React.useSyncExternalStore,
+  useSyncExternalStore: React.useSyncExternalStore,
   Suspense,
   ignore: [
     'updater',

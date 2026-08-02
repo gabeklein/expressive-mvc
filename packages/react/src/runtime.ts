@@ -11,9 +11,9 @@ export const Runtime = {} as {
   useState<S>(initial: S | (() => S)): [S, (next: (previous: S) => S) => void];
   useEffect(effect: () => (() => void) | void, deps?: any[]): void;
   useRef<T>(initial: T): { current: T };
-  /** Host useSyncExternalStore, consumed for pre-commit revision validation;
-   *  absent where commits cannot interleave with writes. */
-  useRevision?(
+  /** Consumed for pre-commit revision validation; absent where commits
+   *  cannot interleave with writes. */
+  useSyncExternalStore?(
     subscribe: (notify: () => void) => () => void,
     getSnapshot: () => number,
     getServerSnapshot?: () => number
@@ -25,7 +25,7 @@ export const Runtime = {} as {
   Suspense: any;
 };
 
-const subscribe = () => () => {};
+const noop = () => () => {};
 
 export function useFactory<T extends Function>(factory: () => T) {
   const ref = Runtime.useRef<T | null>(null);
@@ -79,7 +79,7 @@ export function useHook<T = void>(
 
   const getRevision = () => current.revision;
 
-  Runtime.useRevision?.(subscribe, getRevision, getRevision);
+  Runtime.useSyncExternalStore?.(noop, getRevision, getRevision);
 
   Runtime.useEffect(() => {
     current.mounted = true;

@@ -32,7 +32,7 @@ function harness() {
   }) as typeof Runtime.useState;
 
   Runtime.useEffect = ((fn: any) => void (effect = fn)) as typeof Runtime.useEffect;
-  Runtime.useRevision = undefined;
+  Runtime.useSyncExternalStore = undefined;
 
   let cleanup: (() => void) | void;
 
@@ -98,7 +98,7 @@ it('will advance revision on reset', () => {
   const { render, reset } = harness();
   let getRevision!: () => number;
 
-  Runtime.useRevision = (_subscribe, get) => (getRevision = get)();
+  Runtime.useSyncExternalStore = (_subscribe, get) => (getRevision = get)();
 
   render();
   expect(getRevision()).toBe(0);
