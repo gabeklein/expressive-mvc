@@ -15,6 +15,13 @@ import './jsx-runtime';
 import { Runtime } from './adapter';
 import { ErrorBoundary, dedupe } from './boundary';
 
+const { useSyncExternalStore } = React;
+const subscribe = () => () => {};
+const useRevision = useSyncExternalStore &&
+  ((getRevision: () => number) => {
+    useSyncExternalStore(subscribe, getRevision, getRevision);
+  });
+
 // React detects class components by this brand (preact reads `prototype.render`).
 Object.defineProperty(Component.prototype, 'isReactComponent', {
   value: true
@@ -29,7 +36,7 @@ Object.assign(Runtime, {
   useEffect,
   useState,
   useRef,
-  useRevision: React.useSyncExternalStore,
+  useRevision,
   Suspense,
   ignore: [
     'updater',
