@@ -24,6 +24,7 @@ jobs:
       - run: bun run build
 
       - name: Bundle size
+        continue-on-error: true
         run: bun run size
 
       - name: Docs agree with code

@@ -56,7 +56,7 @@ React adapter does not store model values in `useSyncExternalStore` - external-s
 
 Each subscription exposes a scalar revision to `useSyncExternalStore` for pre-commit validation. A write invalidating a subscriber advances its revision; a yielded render attempt then fails React's consistency check and restarts instead of committing mixed model revisions. A racing write costs that attempt its time-slicing, never consistency. Hosts without `useSyncExternalStore` (React below 18, preact) cannot yield mid-render and skip validation.
 
-The supported floor is React 16.14 (where `react/jsx-runtime` landed, which the adapter imports). Validation therefore applies on 18+ and is absent on 16.14-17 - not a weaker guarantee on those hosts, but an inapplicable one, since a renderer that cannot interrupt a render cannot interleave a write into one. Verification is browser-level rather than inferred: the acceptance harness drives a real concurrent root and includes a negative control which tears on every run once the validation call is removed.
+The supported floor is React 16.14 (for `react/jsx-runtime`). Validation applies on 18+ and is absent on 16.14-17 - inapplicable, since renders cannot interrupt or interleave a write. Verification is browser-level rather than inferred: the acceptance harness drives a real concurrent root and includes a negative control which tears on every run once the validation call is removed.
 
 ## Computed self-reference
 

@@ -157,7 +157,7 @@ function Parent({ counter }: { counter: Counter }) {
 }
 ```
 
-Use `State.use()` when the component should create and own the instance. Use `State.get()` when the instance comes from context. To render an instance you already hold, make it a `Component` and place it as `{instance}` - subscription belongs to the placed instance, not the surrounding function. See [react/react.md](react/react.md) for overloads (optional lookup, required values, computed selector).
+Use `State.use()` when the component should create and own the instance. Use `State.get()` when the instance comes from context. To render an instance you already hold, make it a `Component` and place as `{instance}` - subscription belongs to the placed instance, not the surrounding function. See [react/react.md](react/react.md) for overloads (optional lookup, required values, computed selector).
 
 ## The Dependency Snapshot
 

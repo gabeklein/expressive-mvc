@@ -104,6 +104,25 @@ await Bun.write(
   JSON.stringify(Object.fromEntries(results.map(({ name, bytes }) => [name, bytes])), null, 2)
 );
 
+// Surfaced on the run's summary page so growth is visible without opening logs.
+if (process.env.GITHUB_STEP_SUMMARY)
+  await Bun.write(
+    process.env.GITHUB_STEP_SUMMARY,
+    [
+      '## Bundle size',
+      '',
+      '| Import shape | min+gzip | budget |',
+      '| --- | --- | --- |',
+      ...results.map(({ name, bytes, limit }) =>
+        `| ${name} | ${bytes > limit ? `**${kb(bytes)}** :warning:` : kb(bytes)} | ${kb(limit)} |`
+      ),
+      '',
+      over.length
+        ? `${over.length} shape(s) over budget. Advisory - raise budgets in \`.github/scripts/size-limit.ts\` if intended.`
+        : 'All shapes within budget.'
+    ].join('\n')
+  );
+
 if (stale.length)
   console.log(
     `\nBudgets exceed measured size by >15% (${stale.map(({ name }) => name).join(', ')}).` +

@@ -25,9 +25,9 @@ import State, { Component, Provider, get, set, ref } from '@expressive/react';
 
 ### Requirements
 
-React **16.14 or newer** — that is where `react/jsx-runtime` landed, which the adapter imports. React is a peer dependency; nothing else is.
+React **16.14 or newer** — interacts with `react/jsx-runtime`. React is a peer dependency; nothing else is.
 
-One guarantee is version-dependent. On **React 18+** the adapter validates model revisions before each commit, so a concurrent render that yields mid-work can never commit a tree mixing two revisions of one model. React 16 and 17 cannot yield mid-render at all, so there is nothing to validate and the check is skipped — behavior is equivalent, by way of those hosts having no interleaving to protect against. See [Concurrent rendering](/docs/guides/concurrent) for the full contract.
+On **React 18+** the adapter will validate model revisions before each commit, so a concurrent render that yields mid-work can never commit a tree mixing two revisions of one model. React 16 and 17 do not yield mid-render, so nothing to validate — behavior is equivalent - no interleaving to protect against. See [Concurrent rendering](/docs/guides/concurrent) for the full contract.
 
 ### Size
 
