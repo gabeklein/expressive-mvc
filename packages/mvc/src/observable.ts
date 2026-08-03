@@ -169,6 +169,8 @@ function event(state: object, key?: Observer.Event | null, silent?: boolean) {
   if (!o) return;
 
   if (key === null) {
+    if (!Object.getOwnPropertyDescriptor(state, Observer)) return;
+
     (state as Observable)[Observer] = null;
     return emit(o, key);
   }
