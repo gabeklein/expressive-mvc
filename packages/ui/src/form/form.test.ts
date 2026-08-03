@@ -1,8 +1,8 @@
 import { Context } from '@expressive/mvc';
-import { describe, expect, it } from 'bun:test';
+import { describe, expect, it } from 'vitest';
 
-import { Form } from './Form';
-import { Input } from './Input';
+import { Form } from './form';
+import { Input } from './input';
 
 /**
  * Mounts a form the way a render tree would: the form is a provider with its own

@@ -1,6 +1,6 @@
 import { State, get, ref } from '@expressive/mvc';
 
-import { Form } from './Form';
+import { Form } from './form';
 
 export type Ref<T extends State = any> = (input?: Input) => readonly [T, keyof T];
 

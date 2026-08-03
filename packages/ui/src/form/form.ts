@@ -1,6 +1,6 @@
 import { State, get } from '@expressive/mvc';
 
-import { Async, Input, input } from './Input';
+import { Async, Input, input } from './input';
 
 type Field<T extends Form> = Exclude<keyof T, keyof Form>;
 

@@ -1,5 +1,6 @@
 {
   "lockfileVersion": 1,
+  "configVersion": 0,
   "workspaces": {
     "": {
       "name": "expressive-mvc",
@@ -94,6 +95,16 @@
         "@types/react-dom": "^19",
         "react": "^19",
         "react-dom": "^19",
+        "tsdown": "^0.20.1",
+      },
+    },
+    "packages/ui": {
+      "name": "@expressive/ui",
+      "version": "0.0.0",
+      "dependencies": {
+        "@expressive/mvc": "^0.83.0",
+      },
+      "devDependencies": {
         "tsdown": "^0.20.1",
       },
     },
@@ -335,6 +346,8 @@
     "@expressive/react": ["@expressive/react@workspace:packages/react"],
 
     "@expressive/router": ["@expressive/router@workspace:packages/router"],
+
+    "@expressive/ui": ["@expressive/ui@workspace:packages/ui"],
 
     "@floating-ui/core": ["@floating-ui/core@1.7.5", "", { "dependencies": { "@floating-ui/utils": "^0.2.11" } }, "sha512-1Ih4WTWyw0+lKyFMcBHGbb5U5FtuHJuujoyyr5zTaWS5EYMeT6Jb2AuDeftsCsEuchO+mM2ij5+q9crhydzLhQ=="],
 
