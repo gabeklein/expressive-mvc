@@ -9,13 +9,14 @@ import { cp, glob, readFile, writeFile } from 'fs/promises';
 import { readdirSync, readFileSync } from 'fs';
 import { createGetUrl, getSlugs } from 'fumadocs-core/source';
 
-export default defineConfig({
+export default defineConfig(async ({ command }) => ({
   define: {
     __LIB_VERSION__: JSON.stringify(
       JSON.parse(readFileSync(resolve(__dirname, '../packages/react/package.json'), 'utf8')).version
     ),
     __LIB_TESTS__: countTests(resolve(__dirname, '../packages')),
     __LIB_SIZE__: readSize(resolve(__dirname, '../size-report.json')),
+    __SANDBOX_DEPS__: JSON.stringify(await sandboxDeps(command === 'build')),
   },
   optimizeDeps: {
     include: [
@@ -51,7 +52,7 @@ export default defineConfig({
     tsconfigPaths(),
     serveSkills()
   ]
-});
+}));
 
 function countTests(dir: string): number {
   let total = 0;
@@ -63,6 +64,87 @@ function countTests(dir: string): number {
       total += (readFileSync(path, 'utf8').match(/^\s*(it|test)\(/gm) ?? []).length;
   }
   return total;
+}
+
+/**
+ * Sandpack installs each example's `@expressive/*` deps from npm, where
+ * `latest` made the live site disagree with local review - that resolves the
+ * workspace, which is never behind. Pin to workspace versions instead, and
+ * report the ways the workspace can still be ahead of the registry.
+ */
+async function sandboxDeps(build: boolean) {
+  const dir = resolve(__dirname, '../packages');
+  const deps: Record<string, string> = {};
+
+  for (const entry of readdirSync(dir)) {
+    const pkg = JSON.parse(readFileSync(join(dir, entry, 'package.json'), 'utf8'));
+
+    if (!pkg.private) deps[pkg.name] = pkg.version;
+  }
+
+  warnPending(deps);
+
+  if (build) await assertPublished(deps);
+
+  return deps;
+}
+
+async function assertPublished(deps: Record<string, string>) {
+  const missing: string[] = [];
+
+  await Promise.all(
+    Object.entries(deps).map(async ([name, version]) => {
+      const url = `https://registry.npmjs.org/${name.replace('/', '%2f')}/${version}`;
+
+      let response: Response;
+
+      try {
+        response = await fetch(url, { signal: AbortSignal.timeout(15_000) });
+      } catch (error) {
+        console.warn(
+          `Sandbox: npm unreachable, cannot verify ${name}@${version} - ${(error as Error).message}`
+        );
+        return;
+      }
+
+      if (response.status === 404) missing.push(`${name}@${version}`);
+      else if (!response.ok)
+        console.warn(
+          `Sandbox: npm answered ${response.status} for ${name}@${version}, cannot verify`
+        );
+    })
+  );
+
+  if (missing.length)
+    throw new Error(
+      'Sandbox dependencies are pinned to versions npm does not have: ' +
+        `${missing.join(', ')}.\nEvery live example would fail to install. ` +
+        'Publish first, or roll the workspace version back to a released one.'
+    );
+}
+
+function warnPending(deps: Record<string, string>) {
+  const dir = resolve(__dirname, '../.changeset');
+  const pending = new Map<string, string[]>();
+
+  for (const entry of readdirSync(dir)) {
+    if (!entry.endsWith('.md') || entry === 'README.md') continue;
+
+    const text = readFileSync(join(dir, entry), 'utf8');
+    const front = /^---\r?\n([\s\S]*?)\r?\n---/.exec(text);
+
+    if (!front) continue;
+
+    for (const [, name] of front[1].matchAll(/^\s*["']?(@expressive\/[a-z-]+)["']?\s*:/gm))
+      if (name in deps) pending.set(name, [...(pending.get(name) ?? []), entry]);
+  }
+
+  for (const [name, files] of pending)
+    console.warn(
+      `Sandbox: ${name} pins ${deps[name]}, the last published version, but ` +
+        `${files.join(', ')} describes changes not in it. Examples relying on ` +
+        'unreleased behavior will not work on the live site until the next release.'
+    );
 }
 
 function readSize(report: string): string {

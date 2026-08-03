@@ -25,6 +25,8 @@ import CodeLabel from './CodeLabel';
 import { createSandboxTs, type SandboxTs } from './sandbox/client';
 import { intellisense } from './sandbox/intellisense';
 
+declare const __SANDBOX_DEPS__: Record<string, string>;
+
 class Panes extends State {
   mode: 'preview' | 'code' = 'preview';
   stacked = false;
@@ -117,14 +119,21 @@ export default function Sandbox({
   const dark = resolvedTheme === 'dark';
 
   // Each example declares its own @expressive/* deps via its imports - scan
-  // the source so router (or any future package) resolves without a hardcoded list.
+  // the source so router (or any future package) resolves without a hardcoded
+  // list. Versions are pinned to the workspace at build time.
   const dependencies = useMemo(() => {
     const deps: Record<string, string> = {};
 
     for (const entry of Object.values(files) as (string | { code: string })[]) {
       const code = typeof entry === 'string' ? entry : entry.code;
-      for (const [pkg] of code.matchAll(/@expressive\/[a-z-]+/g))
-        deps[pkg] = 'latest';
+      for (const [pkg] of code.matchAll(/@expressive\/[a-z-]+/g)) {
+        const version = __SANDBOX_DEPS__[pkg];
+
+        if (!version)
+          throw new Error(`${pkg} is not a published package - a sandbox example cannot import it.`);
+
+        deps[pkg] = version;
+      }
     }
 
     return deps;
