@@ -1,6 +1,6 @@
 {
   "name": "@expressive/react",
-  "version": "0.84.0",
+  "version": "0.84.1",
   "description": "Class-based reactive state for React. Define models as plain classes; components update when the values they read change.",
   "keywords": [
     "expressive",
@@ -27,14 +27,10 @@
   ],
   "type": "module",
   "sideEffects": [
+    "./src/*.ts",
     "./dist/index.js",
     "./dist/adapter.js",
-    "./src/jsx-runtime.ts",
-    "./src/state.get.ts",
-    "./src/state.use.ts",
-    "./src/component.ts",
-    "./src/map.ts",
-    "./src/has.ts"
+    "./dist/chunk-*.js"
   ],
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -59,7 +55,7 @@
     "test": "tsc --noEmit && vitest run --coverage"
   },
   "dependencies": {
-    "@expressive/mvc": "^0.83.0"
+    "@expressive/mvc": "^0.83.1"
   },
   "devDependencies": {
     "@testing-library/react": "^16.3.0",

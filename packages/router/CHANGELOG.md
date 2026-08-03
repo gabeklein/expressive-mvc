@@ -1,5 +1,18 @@
 # @expressive/router
 
+## 0.7.0
+
+### Minor Changes
+
+- [#302](https://github.com/gabeklein/expressive-mvc/pull/302) [`3d0032a`](https://github.com/gabeklein/expressive-mvc/commit/3d0032afaec35f22010680d8c788608f5968cd8c) A section `default` now answers wherever the section is declared. Previously the lexical gate behind sibling `as`-arbitration ignored a scope's own `default`, while the same scope's `matched` counted it - so a section holding a 404 lost its slot whenever it competed with another `as`-bearing sibling (an index route, a second layout), rendering nothing at all, and an outer layout dropped its chrome when an inner section's default caught the path. Both verdicts now come from one predicate: a scope claims a path via a descendant match, or via its own `default`, which catches anything under the scope's path.
+
+  **Breaking:** a scope holding a section 404 now owns everything under its path, per the usual first-match declaration order - and because a later sibling declared under it is statically dead, the router **throws** on that shape rather than leaving the route silently unreachable. A flat `<Route to="docs/team/roster">` declared after a `docs` section that owns a `default` was reachable before; it now raises `Route "/docs/team/roster" is unreachable` - move it above the section (or into it) to restore it.
+
+### Patch Changes
+
+- Updated dependencies [[`25071c7`](https://github.com/gabeklein/expressive-mvc/commit/25071c7d4cd6e57db154a4430ec4f6228a8f2c56), [`3407792`](https://github.com/gabeklein/expressive-mvc/commit/3407792584f2fe07e72777041951e3ab7aad5c8d), [`a4d2011`](https://github.com/gabeklein/expressive-mvc/commit/a4d201152319d845c3df29d9b9769dd864ebcc74), [`9f75bf2`](https://github.com/gabeklein/expressive-mvc/commit/9f75bf2d086a176581815c26940d2647349f728c)]:
+  - @expressive/mvc@0.83.1
+
 ## 0.6.3
 
 ### Patch Changes

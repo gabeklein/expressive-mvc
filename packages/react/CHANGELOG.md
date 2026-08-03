@@ -1,5 +1,24 @@
 # @expressive/react
 
+## 0.84.1
+
+### Patch Changes
+
+- [#296](https://github.com/gabeklein/expressive-mvc/pull/296) [`a8570ea`](https://github.com/gabeklein/expressive-mvc/commit/a8570ea4ee3ec61ec377975c9571e1c7625eca6a) Fix `{instance}` placement being tree-shaken out of production bundles.
+
+  `Component.prototype.$$typeof` - the descriptor that lets a Component instance
+  render as `{instance}` - is installed by a shared chunk that the published
+  `sideEffects` manifest could not name, so bundlers dropped it. Any consumer
+  build that shook away `has` and `map` lost placement entirely and threw
+  "Objects are not valid as a React child" at render, in production builds only.
+
+  Shared chunks now emit under a `chunk-` prefix and the manifest covers them by
+  pattern, so no future chunk can fall outside it. `dist/has.js` and `dist/map.js`
+  stay tree-shakeable; the export map and published entry paths are unchanged.
+
+- Updated dependencies [[`25071c7`](https://github.com/gabeklein/expressive-mvc/commit/25071c7d4cd6e57db154a4430ec4f6228a8f2c56), [`3407792`](https://github.com/gabeklein/expressive-mvc/commit/3407792584f2fe07e72777041951e3ab7aad5c8d), [`a4d2011`](https://github.com/gabeklein/expressive-mvc/commit/a4d201152319d845c3df29d9b9769dd864ebcc74), [`9f75bf2`](https://github.com/gabeklein/expressive-mvc/commit/9f75bf2d086a176581815c26940d2647349f728c)]:
+  - @expressive/mvc@0.83.1
+
 ## 0.84.0
 
 ### Minor Changes

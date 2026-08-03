@@ -316,4 +316,4 @@ Matching is computed statically from the JSX tree in the same render. It does **
 - class-field `to` on `Route` subclasses (only the JSX `to` prop), or
 - routes declared inside a child component's own render (the `*`-delegation case).
 
-A see-through scope counts as matched only when a descendant matches - never as a greedy prefix. Put routes where they are lexically visible to the matcher.
+A see-through scope counts as matched when a descendant matches, or when it owns a `default` - which claims anything under the scope's path, so the section 404 answers there instead of the app one. Without a default the scope is never a greedy prefix. That verdict is the same one sibling `as`-routes arbitrate over, so a scope holding a section 404 owns everything under its path - a later sibling declared under it can never match, and the router **throws** on that shape rather than leaving the route silently unreachable. Declare such a route above the section, or inside it. Put routes where they are lexically visible to the matcher.

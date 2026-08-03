@@ -169,6 +169,8 @@ function event(state: object, key?: Observer.Event | null, silent?: boolean) {
   if (!o) return;
 
   if (key === null) {
+    if (!Object.getOwnPropertyDescriptor(state, Observer)) return;
+
     (state as Observable)[Observer] = null;
     return emit(o, key);
   }
@@ -273,6 +275,12 @@ function watch<T extends object>(
     function run(release?: (update?: boolean | null) => void) {
       const proxy = observe(target, onUpdate, argument === true);
       const output = callback.call(proxy, proxy, events);
+
+      if (observer(target) === null) {
+        if (typeof output == 'function') output(null);
+        if (release) release(null);
+        return;
+      }
 
       if (previous && argument === false) {
         const { watching } = (proxy as Observed)[Observing]!;
