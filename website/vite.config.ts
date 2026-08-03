@@ -15,6 +15,7 @@ export default defineConfig({
       JSON.parse(readFileSync(resolve(__dirname, '../packages/react/package.json'), 'utf8')).version
     ),
     __LIB_TESTS__: countTests(resolve(__dirname, '../packages')),
+    __LIB_SIZE__: readSize(resolve(__dirname, '../size-report.json')),
   },
   optimizeDeps: {
     include: [
@@ -62,6 +63,15 @@ function countTests(dir: string): number {
       total += (readFileSync(path, 'utf8').match(/^\s*(it|test)\(/gm) ?? []).length;
   }
   return total;
+}
+
+function readSize(report: string): string {
+  try {
+    const bytes = JSON.parse(readFileSync(report, 'utf8'))['react: typical app'];
+    return JSON.stringify(typeof bytes === 'number' ? bytes : null);
+  } catch {
+    return 'null';
+  }
 }
 
 interface ExampleDirectory {

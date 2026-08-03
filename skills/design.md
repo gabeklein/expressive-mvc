@@ -20,7 +20,7 @@ Strict MVC (Smalltalk-80; Krasner & Pope, 1988) has three load-bearing ideas:
 2. views that stay current by **observing the model directly**;
 3. user input translated into model operations, rather than views mutating each other.
 
-Expressive implements all three structurally. `State` is the model: headless, framework-agnostic (enforced by package boundaries - `@expressive/mvc` has no framework imports), and observable via subscription. Views observe the model directly: `State.get()` / `use()` subscribe a component to exactly the fields it reads, with no dispatcher or presenter in between - closer to the original pattern than request-routed "MVC" web frameworks, where the name denotes the unrelated Model 2 pattern. The controller role is distributed, as in every surviving MVC descendant (MVP, MVVM, Cocoa): the host's event system interprets raw input, and model methods (`increment()`, validated setters) translate gestures into model operations.
+Expressive implements all three structurally. `State` is the model: headless, framework-agnostic (enforced by package boundaries - `@expressive/mvc` has no framework imports), and observable via subscription. Views observe the model directly: `State.get()` / `State.use()` subscribe a component to exactly the fields it reads, with no dispatcher or presenter in between - closer to the original pattern than request-routed "MVC" web frameworks, where the name denotes the unrelated Model 2 pattern. The controller role is distributed, as in every surviving MVC descendant (MVP, MVVM, Cocoa): the host's event system interprets raw input, and model methods (`increment()`, validated setters) translate gestures into model operations.
 
 `Component` deliberately collapses the triad for state that is intrinsic to one rendered unit - a form control, a media player, a route shell - where separating model from view produces ceremony, not architecture. The collapse is scoped and opt-in: the separated form (`State` + observing function components) is always available and is the default recommendation for headless or shared state. Smalltalk's own successors made the same trade when they merged view and controller into widgets.
 
@@ -55,6 +55,8 @@ Subscription proxies pass assignments through to the instance, so components rea
 React adapter does not store model values in `useSyncExternalStore` - external-store updates are blocking, which would forfeit deferred rendering. Subscriber dispatch publishes through ordinary useState, so `transition()` updates keep host priority and may retain prior content while a replacement suspends.
 
 Each subscription exposes a scalar revision to `useSyncExternalStore` for pre-commit validation. A write invalidating a subscriber advances its revision; a yielded render attempt then fails React's consistency check and restarts instead of committing mixed model revisions. A racing write costs that attempt its time-slicing, never consistency. Hosts without `useSyncExternalStore` (React below 18, preact) cannot yield mid-render and skip validation.
+
+The supported floor is React 16.14 (for `react/jsx-runtime`). Validation applies on 18+ and is absent on 16.14-17 - inapplicable, since renders cannot interrupt or interleave a write. Verification is browser-level rather than inferred: the acceptance harness drives a real concurrent root and includes a negative control which tears on every run once the validation call is removed.
 
 ## Computed self-reference
 

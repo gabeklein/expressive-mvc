@@ -1,5 +1,6 @@
 {
   "lockfileVersion": 1,
+  "configVersion": 0,
   "workspaces": {
     "": {
       "name": "expressive-mvc",
@@ -78,7 +79,7 @@
         "tsdown": "^0.20.1",
       },
       "peerDependencies": {
-        "react": ">=16.8.0 <20.0.0",
+        "react": ">=16.14.0 <20.0.0",
       },
     },
     "packages/router": {
