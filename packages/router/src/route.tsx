@@ -436,12 +436,45 @@ function allRoutes(children: Component.Node): boolean {
   });
 }
 
+/** Every path matched by `pattern` also falls within `claim`: each claim
+ * segment covers its counterpart (`:param` covers any segment; literals
+ * compare case-insensitively and never cover a param or `*`). */
+function coveredBy(claim: string, pattern: string): boolean {
+  const over = claim.split('/');
+  const under = pattern.split('/');
+
+  return under.length >= over.length && over.every((seg, i) =>
+    seg.startsWith(':') || seg.toLowerCase() === under[i].toLowerCase());
+}
+
+/** Throw for a statically-dead sibling: a default-bearing scope claims every
+ * path under its segment, so a later sibling within it can never match. */
+function assertReachable(children: Component.Node, base: string): void {
+  const claims: string[] = [];
+
+  for (const { props, to } of lexicalRoutes(children)) {
+    if (exempt(props)) continue;
+
+    const path = base + patternSegment(to);
+    const claim = claims.find((c) => coveredBy(c, path));
+
+    if (claim !== undefined)
+      throw new Error(
+        `Route "${path}" is unreachable: an earlier sibling holds a default, claiming everything under "${claim}".`
+      );
+
+    if (allRoutes(props.children) && hasDefault(props.children))
+      claims.push(path);
+  }
+}
+
 function register(parent: Route, child: Route) {
   let list = CHILDREN.get(parent);
 
   if (list) {
     if (list.includes(child)) return;
   } else {
+    assertReachable(parent.props.children, scopeBase(parent));
     list = [];
     CHILDREN.set(parent, list);
   }

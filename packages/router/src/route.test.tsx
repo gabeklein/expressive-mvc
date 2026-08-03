@@ -855,16 +855,44 @@ describe('Route', () => {
       expect(view.container.textContent).toBe('outer/chrome/section-404');
     });
 
-    it('shadows a later flat sibling under the section path', () => {
+    it('will throw if a later sibling is shadowed by a section default', () => {
       location('/docs/team/roster');
       const Roster = () => <span>roster</span>;
+      expect(() =>
+        render(
+          <Route>
+            {docs}
+            <Route to="docs/team/roster" as={Roster} />
+          </Route>
+        )
+      ).toThrow(/Route "\/docs\/team\/roster" is unreachable/);
+    });
+
+    it('will throw if a param section default shadows a later sibling', () => {
+      location('/');
+      expect(() =>
+        render(
+          <Route>
+            <Route to=":section" as={Chrome}>
+              <Route default as={SectionMissing} />
+            </Route>
+            <Route to="docs/intro" as={Detail} />
+          </Route>
+        )
+      ).toThrow(/unreachable/);
+    });
+
+    it('will not throw for a later sibling above the section', () => {
+      location('/docs');
       const view = render(
         <Route>
-          {docs}
-          <Route to="docs/team/roster" as={Roster} />
+          <Route to="docs/team" as={Chrome}>
+            <Route default as={SectionMissing} />
+          </Route>
+          <Route to="docs" as={Index} />
         </Route>
       );
-      expect(view.container.textContent).toBe('chrome/section-404');
+      expect(view.container.textContent).toBe('index');
     });
 
     it('yields to an earlier flat sibling under the section path', () => {
