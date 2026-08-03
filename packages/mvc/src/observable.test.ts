@@ -357,6 +357,60 @@ describe('effect', () => {
       expect(test.get(null)).toBe(true);
     });
 
+    it('will run cleanup when effect terminates own subject', async () => {
+      class Test extends State {
+        done = false;
+      }
+
+      const test = Test.new();
+      const didCleanup = vi.fn();
+
+      test.get(($) => {
+        if ($.done) $.set(null);
+        return didCleanup;
+      });
+
+      test.done = true;
+      await expect(test).toHaveUpdated();
+
+      expect(test.get(null)).toBe(true);
+      expect(didCleanup).toBeCalledWith(null);
+    });
+
+    it('will run cleanup when first run terminates subject', () => {
+      class Test extends State {
+        done = true;
+      }
+
+      const test = Test.new();
+      const didCleanup = vi.fn();
+
+      test.get(($) => {
+        if ($.done) $.set(null);
+        return didCleanup;
+      });
+
+      expect(test.get(null)).toBe(true);
+      expect(didCleanup).toBeCalledWith(null);
+    });
+
+    it('will run cleanup when uncaptured effect terminates subject', () => {
+      class Test extends State {
+        value = 1;
+      }
+
+      const test = Test.new();
+      const didCleanup = vi.fn();
+
+      watch(test, ($) => {
+        $.set(null);
+        return didCleanup;
+      }, false);
+
+      expect(test.get(null)).toBe(true);
+      expect(didCleanup).toBeCalledWith(null);
+    });
+
     it('will not terminate subject via derived object', async () => {
       class Test extends State {
         value = 1;

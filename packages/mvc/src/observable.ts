@@ -276,6 +276,12 @@ function watch<T extends object>(
       const proxy = observe(target, onUpdate, argument === true);
       const output = callback.call(proxy, proxy, events);
 
+      if (observer(target) === null) {
+        if (typeof output == 'function') output(null);
+        if (release) release(null);
+        return;
+      }
+
       if (previous && argument === false) {
         const { watching } = (proxy as Observed)[Observing]!;
         if (!watching.size)
