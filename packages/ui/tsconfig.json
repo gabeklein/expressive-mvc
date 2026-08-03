@@ -3,6 +3,8 @@
     "target": "es2020",
     "useDefineForClassFields": true,
     "esModuleInterop": true,
+    "jsx": "react-jsx",
+    "jsxImportSource": "@expressive/mvc",
     "lib": ["ES2020", "dom"],
     "moduleResolution": "bundler",
     "declaration": false,
@@ -16,5 +18,5 @@
       "@expressive/*": ["../*/src"]
     }
   },
-  "exclude": ["node_modules", "dist", "vitest.config.ts"]
+  "exclude": ["node_modules", "dist", "vitest.config.ts", "reference"]
 }
