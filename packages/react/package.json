@@ -27,14 +27,10 @@
   ],
   "type": "module",
   "sideEffects": [
+    "./src/*.ts",
     "./dist/index.js",
     "./dist/adapter.js",
-    "./src/jsx-runtime.ts",
-    "./src/state.get.ts",
-    "./src/state.use.ts",
-    "./src/component.ts",
-    "./src/map.ts",
-    "./src/has.ts"
+    "./dist/chunk-*.js"
   ],
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
