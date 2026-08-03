@@ -340,6 +340,43 @@ describe('effect', () => {
       expect(effect).not.toBeCalled();
     });
 
+    it('will terminate subject via set(null) within an effect', async () => {
+      class Test extends State {
+        done = false;
+      }
+
+      const test = Test.new();
+
+      test.get(($) => {
+        if ($.done) $.set(null);
+      });
+
+      test.done = true;
+      await expect(test).toHaveUpdated();
+
+      expect(test.get(null)).toBe(true);
+    });
+
+    it('will not terminate subject via derived object', async () => {
+      class Test extends State {
+        value = 1;
+      }
+
+      const test = Test.new();
+      const effect = vi.fn(($: Test) => void $.value);
+
+      watch(test, effect);
+
+      event(Object.create(test), null);
+
+      expect(observer(test)!.listeners.size).toBeGreaterThan(0);
+
+      test.value = 2;
+
+      await expect(test).toHaveUpdated();
+      expect(effect).toBeCalledTimes(2);
+    });
+
     it('will throw for get(effect) on destroyed instance', () => {
       class Test extends State {
         foo = 1;
