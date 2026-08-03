@@ -5,7 +5,7 @@ import tsconfigPaths from 'vite-tsconfig-paths';
 import mdx from 'fumadocs-mdx/vite';
 import * as MdxConfig from './source.config';
 import { resolve, join, dirname } from 'path';
-import { cp, glob, readFile, writeFile } from 'fs/promises';
+import { cp, glob, mkdir, readFile, writeFile } from 'fs/promises';
 import { readdirSync, readFileSync } from 'fs';
 import { createGetUrl, getSlugs } from 'fumadocs-core/source';
 
@@ -136,6 +136,8 @@ function serveSkills(): Plugin {
     },
     async writeBundle({ dir: outDir }) {
       if (!outDir) return;
+
+      await mkdir(join(outDir, 'llm'), { recursive: true });
 
       for (const dir of dirs)
         await cp(dir, join(outDir, 'llm'), { recursive: true });

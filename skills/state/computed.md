@@ -77,6 +77,25 @@ class Extra extends Base {
 
 Subclasses can override or extend a parent's getter. `super.total` invokes the parent's getter under the same tracking proxy, so dependencies on both classes are picked up.
 
+### Getter vs Field Across Classes
+
+A getter overrides a base *getter*. Swapping kinds across the boundary is what TypeScript refuses - a getter over a base plain field is `TS2611`, a plain field over a base getter is `TS2610` - even though the runtime resolves either one (the getter wins and tracks normally). The errors are not suppressible on the subclass; the escape is on whichever side you control:
+
+```ts
+class Cart extends State {
+  rate = 0.1;
+  total = 0;
+}
+
+class TaxedCart extends Cart {
+  // get total() {}                              // TS2611
+  total = set((self: TaxedCart) => 100 * (1 + self.rate));
+}
+```
+
+- **Own the subclass only:** override the field with a field. `set(self => ...)` is a computed in property position, so it is legal TS and reactive.
+- **Own the base:** a member subclasses are expected to derive belongs on the prototype - a getter, or an accessor pair (`get`/`set`, still writable and managed). A base `set(...)` field does not help: it is a property too, so a subclass getter still errors.
+
 ## Self-Reference
 
 A computed can read its own previous value without infinite looping:
