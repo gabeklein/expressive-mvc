@@ -17,6 +17,24 @@ describe('instruction', () => {
     expect(didApply).toBeCalledWith('property');
   });
 
+  it('will skip enumerable properties inherited from prototype', () => {
+    class Test extends State {
+      property = def(() => ({ value: 'hello' }));
+    }
+
+    Object.defineProperty(Test.prototype, 'legacy', {
+      value: 'world',
+      enumerable: true,
+      writable: true,
+      configurable: true
+    });
+
+    const test = Test.new();
+
+    expect(test.property).toBe('hello');
+    expect((test as any).legacy).toBe('world');
+  });
+
   describe('symbol', () => {
     it('will use unique symbol as placeholder', async () => {
       class Test extends State {
