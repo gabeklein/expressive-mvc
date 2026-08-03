@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { Navigate, useOutletContext, useParams } from 'react-router';
 
 import CodeLabel from '@/components/CodeLabel';
@@ -73,6 +73,13 @@ export default function CodeSample() {
     useOutletContext<ExamplesOutletContext>();
   const [ready, setReady] = useState(false);
 
+  // Stable identity - Sandpack resets its file state (and any edits in it)
+  // whenever the files prop changes.
+  const files = useMemo(
+    () => (name && examples[name] ? getFiles(name) : {}),
+    [name]
+  );
+
   useEffect(() => setReady(true), []);
 
   if (name && MOVED[name])
@@ -91,7 +98,7 @@ export default function CodeSample() {
             <Sandbox
               name={name}
               label={EXAMPLE_LABELS[name]}
-              files={getFiles(name)}
+              files={files}
               navigationOpen={navigationOpen}
               onOpenNavigation={openNavigation}
             />

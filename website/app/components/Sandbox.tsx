@@ -6,7 +6,7 @@ import {
   useSandpack,
 } from '@codesandbox/sandpack-react';
 import State, { ref, set } from '@expressive/react';
-import { Columns2, PanelLeftOpen, Rows2 } from 'lucide-react';
+import { Columns2, PanelLeftOpen, RotateCcw, Rows2 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import type {
   KeyboardEvent as ReactKeyboardEvent,
@@ -24,6 +24,29 @@ import { createPortal } from 'react-dom';
 import CodeLabel from './CodeLabel';
 import { createSandboxTs, type SandboxTs } from './sandbox/client';
 import { intellisense } from './sandbox/intellisense';
+
+const STORE = 'expressive:sandbox:';
+
+function readEdits(name: string): Record<string, string> {
+  try {
+    const saved = globalThis.localStorage?.getItem(STORE + name);
+    const parsed = saved && JSON.parse(saved);
+
+    if (parsed && typeof parsed === 'object') return parsed;
+  } catch {}
+
+  return {};
+}
+
+function writeEdits(name: string, edits: Record<string, string>) {
+  const store = globalThis.localStorage;
+
+  try {
+    if (Object.keys(edits).length)
+      store?.setItem(STORE + name, JSON.stringify(edits));
+    else store?.removeItem(STORE + name);
+  } catch {}
+}
 
 class Panes extends State {
   mode: 'preview' | 'code' = 'preview';
@@ -116,6 +139,12 @@ export default function Sandbox({
   const { resolvedTheme } = useTheme();
   const dark = resolvedTheme === 'dark';
 
+  // Saved edits seed the provider so a returning visitor never sees pristine
+  // code paint first. Re-read on everything that remounts the provider below,
+  // plus `generation`, which a revert bumps.
+  const [generation, setGeneration] = useState(0);
+  const edits = useMemo(() => readEdits(name), [name, dark, generation]);
+
   // Each example declares its own @expressive/* deps via its imports - scan
   // the source so router (or any future package) resolves without a hardcoded list.
   const dependencies = useMemo(() => {
@@ -167,21 +196,36 @@ export default function Sandbox({
 
   useEffect(() => () => ts.dispose(), [ts]);
 
+  // Hidden files arrive as objects; the plain strings are the editable tabs,
+  // which are also the only ones worth remembering edits for.
+  const baseline = useMemo(() => {
+    const out: Record<string, string> = {};
+
+    for (const [path, entry] of Object.entries(files))
+      if (typeof entry === 'string') out[path] = entry;
+
+    return out;
+  }, [files]);
+
   // The preview is a cross-origin Sandpack iframe, so we can't set its theme
   // from here - bake it into the hidden entry, which global.css honors via
   // :root[data-theme]. Keyed into the provider so a toggle re-applies it.
   const themed = useMemo(() => {
     const entry = files['/index.tsx'] as string | { code: string };
     const line = `\ndocument.documentElement.dataset.theme = ${JSON.stringify(dark ? 'dark' : 'light')};`;
+    const restored: Record<string, any> = { ...files };
+
+    for (const path in edits)
+      if (path in baseline) restored[path] = edits[path];
 
     return {
-      ...files,
+      ...restored,
       '/index.tsx':
         typeof entry === 'string'
           ? entry + line
           : { ...entry, code: entry.code + line },
     };
-  }, [files, dark]);
+  }, [files, baseline, edits, dark]);
 
   return (
     <SandpackProvider
@@ -192,7 +236,10 @@ export default function Sandbox({
       customSetup={{ dependencies }}
       style={{ height: '100%' }}>
       <Layout
+        name={name}
         label={label}
+        baseline={baseline}
+        onRevert={() => setGeneration(generation + 1)}
         navigationOpen={navigationOpen}
         onOpenNavigation={onOpenNavigation}
         ts={ts}
@@ -202,12 +249,18 @@ export default function Sandbox({
 }
 
 function Layout({
+  name,
   label,
+  baseline,
+  onRevert,
   navigationOpen,
   onOpenNavigation,
   ts,
 }: {
+  name: string;
   label: string;
+  baseline: Record<string, string>;
+  onRevert: () => void;
   navigationOpen: boolean;
   onOpenNavigation?: () => void;
   ts: {
@@ -256,6 +309,29 @@ function Layout({
     return () => observer.disconnect();
   }, [layoutElement]);
   const sandpack = useSandpack();
+  const { files, updateFile, activeFile } = sandpack.sandpack;
+  const [dirty, setDirty] = useState(false);
+
+  useEffect(() => {
+    const edits: Record<string, string> = {};
+
+    for (const [path, code] of Object.entries(baseline)) {
+      const current = files[path]?.code;
+
+      if (current !== undefined && current !== code) edits[path] = current;
+    }
+
+    writeEdits(name, edits);
+    setDirty(!!Object.keys(edits).length);
+  }, [name, baseline, files]);
+
+  const revert = () => {
+    updateFile(baseline);
+    writeEdits(name, {});
+    setDirty(false);
+    onRevert();
+  };
+
   const refreshOnSave = {
     key: 'Mod-s',
     preventDefault: true,
@@ -267,7 +343,6 @@ function Layout({
 
   // The language service is owned by Sandbox (it outlives this remount); keep it
   // fed as files change, without spawning it if the editor was never used.
-  const { files, activeFile } = sandpack.sandpack;
   const activeFileRef = useRef(activeFile);
   activeFileRef.current = activeFile;
 
@@ -314,6 +389,19 @@ function Layout({
             <span className="truncate">
               <CodeLabel label={label} />
             </span>
+          </button>,
+          tabs
+        )}
+      {dirty &&
+        tabs &&
+        createPortal(
+          <button
+            aria-label="Revert edits to original example code"
+            title="Revert edits"
+            className="order-last ml-auto flex shrink-0 items-center gap-1.5 self-stretch pr-3 pl-4 text-sm font-medium text-fd-muted-foreground hover:text-fd-foreground"
+            onClick={revert}>
+            <RotateCcw className="size-4 shrink-0" />
+            <span className="hidden sm:inline">Revert</span>
           </button>,
           tabs
         )}

@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { Link } from 'react-router';
 import {
   examples,
@@ -15,13 +16,17 @@ export default function Playground({ of, height = 480 }: PlaygroundProps) {
   if (!examples[of])
     throw new Error(`No example found for <Playground of="${of}" />`);
 
+  // Stable identity - Sandpack resets its file state (and any edits in it)
+  // whenever the files prop changes.
+  const files = useMemo(() => getFiles(of), [of]);
+
   return (
     <div className="not-prose my-6">
       <div
         style={{ height }}
         className="relative overflow-hidden rounded-xl border border-fd-border">
         <div className="absolute inset-0 flex flex-col">
-          <Sandbox name={of} label={EXAMPLE_LABELS[of]} files={getFiles(of)} />
+          <Sandbox name={of} label={EXAMPLE_LABELS[of]} files={files} />
         </div>
       </div>
       <div className="mt-2 text-right">
