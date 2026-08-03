@@ -11,7 +11,9 @@
     "forms-and-refs",
     "router",
     "concurrent",
+    "server",
     "testing",
-    "bundle-size"
+    "bundle-size",
+    "packaging"
   ]
 }

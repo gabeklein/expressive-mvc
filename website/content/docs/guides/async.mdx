@@ -241,6 +241,56 @@ The callback returns a cleanup function, called before the next update (or on de
 
 <br />
 
+## With a query library
+
+Expressive and a server-cache library are not rivals - they own different things. TanStack Query (or SWR) owns the server cache: request dedupe, retries, background refresh, invalidation. The model owns what the view actually works with: filters, selection, derived values, actions.
+
+The bridge is the class `use()` method. It runs on every render of the hosting component, so hooks are legal inside it - the query lives *in the model*, and components never see the query library at all:
+
+```tsx
+import { useQuery } from '@tanstack/react-query';
+
+class Todos extends State {
+  items: Todo[] = [];
+  pending = false;
+  filter: 'all' | 'open' = 'all';
+
+  use() {
+    const { data, isPending } = useQuery({
+      queryKey: ['todos'],
+      queryFn: fetchTodos
+    });
+
+    if (data) this.items = data;
+    this.pending = isPending;
+  }
+
+  get visible() {
+    if (this.filter === 'all') return this.items;
+    return this.items.filter((t) => !t.done);
+  }
+}
+
+function TodoList() {
+  const { visible, pending, is: todos } = Todos.use();
+
+  if (pending) return <Spinner />;
+
+  return (
+    <>
+      <FilterBar onPick={(f) => (todos.filter = f)} />
+      {visible.map((t) => <TodoRow key={t.id} todo={t} />)}
+    </>
+  );
+}
+```
+
+Assigning an unchanged value is a no-op - no event fires - so copying the query result in on every render costs nothing while the cache is stable. Writes flow the other way as ordinary assignments; a mutation hook slots into `use()` the same way.
+
+For data without cross-view cache requirements, the [async factory](#async-factories) and [async method](#async-methods) patterns above cover fetching with no second library at all - reach for a query library when you need its cache semantics, not to fetch.
+
+<br />
+
 ## Next
 
 - [Forms and Refs](/docs/guides/forms-and-refs) - validation callbacks and mutable handles.
