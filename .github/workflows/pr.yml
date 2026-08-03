@@ -26,6 +26,13 @@ jobs:
       - name: Dist is consumable
         run: bun run dist
 
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 20
+
+      - name: Dist executes when installed
+        run: bun run smoke
+
       - name: Bundle size
         continue-on-error: true
         run: bun run size

@@ -2,9 +2,11 @@
 
 ## pr.yml (pull requests -> main)
 
-Blocking: `bun run test`, `bun run build` and `bun run dist` (static invariants
-on the emitted dist - relative specifiers resolve, side-effect imports are
-declared). The frozen-lockfile install in the `setup` action doubles as the
+Blocking: `bun run test`, `bun run build`, `bun run dist` (static invariants on
+the emitted dist - relative specifiers resolve, side-effect imports declared)
+and `bun run smoke` (pack each publishable package, install the tarballs into a
+throwaway project outside the repo, execute an import under native Node ESM).
+The frozen-lockfile install in the `setup` action doubles as the
 internal-dependency desync guard - a workspace version that falls outside a
 sibling's range cannot reach main.
 

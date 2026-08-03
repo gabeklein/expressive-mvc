@@ -18,6 +18,7 @@
     "pr": "bash .github/scripts/pr.sh",
     "size": "bun .github/scripts/size-limit.ts",
     "dist": "bun .github/scripts/dist-check.ts",
+    "smoke": "bun .github/scripts/dist-smoke.ts",
     "docs": "bun .github/scripts/docs-check.ts",
     "tunnel": "cloudflared tunnel --no-autoupdate ${TUNNEL_NAME:+run} --url http://localhost:5173 ${TUNNEL_NAME:-}",
     "watch": "bun test --watch --only-failures",
