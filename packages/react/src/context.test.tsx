@@ -1,4 +1,5 @@
 import React, { Suspense } from 'react';
+import { renderToString } from 'react-dom/server';
 import { vi, afterAll, expect, it, describe } from 'vitest';
 
 import { act, render, screen } from '@testing-library/react';
@@ -769,6 +770,38 @@ describe('Consumer', () => {
         </Provider>
       </Provider>
     );
+  });
+
+  it('will not select nested instance from outer sibling', () => {
+    const Value = () => Foo.get().value;
+
+    const element = render(
+      <Provider for={Foo} value="outer">
+        <Value />
+        <Provider for={Foo} value="inner">
+          <Value />
+        </Provider>
+        <Value />
+      </Provider>
+    );
+
+    expect(element.container.textContent).toBe('outerinnerouter');
+  });
+
+  it('will not select nested instance from outer sibling on server', () => {
+    const Value = () => <Consumer for={Foo}>{({ value }) => value}</Consumer>;
+
+    const html = renderToString(
+      <Provider for={Foo} value="outer">
+        <Value />
+        <Provider for={Foo} value="inner">
+          <Value />
+        </Provider>
+        <Value />
+      </Provider>
+    );
+
+    expect(html.replace(/<!--[^>]*-->/g, '')).toBe('outerinnerouter');
   });
 
   it('will select closest match over best match', () => {
