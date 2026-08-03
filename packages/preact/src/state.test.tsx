@@ -1,7 +1,15 @@
 /** @jsxImportSource preact */
 import { StrictMode, Suspense } from 'preact/compat';
 import { get, State, Provider, set } from '.';
-import { vi, expect, it, describe, afterEach, afterAll } from 'vitest';
+import {
+  vi,
+  expect,
+  it,
+  describe,
+  beforeEach,
+  afterEach,
+  type MockInstance
+} from 'vitest';
 import { act, render, renderHook, waitFor } from '@testing-library/preact';
 import { mockPromise, flushMicrotasks } from '../test.setup';
 
@@ -328,13 +336,19 @@ describe('State.use', () => {
 });
 
 describe('State.get', () => {
-  const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+  let error: MockInstance<Console['error']>;
 
-  afterEach(() => {
-    error.mockReset();
+  beforeEach(() => {
+    error = vi.spyOn(console, 'error').mockImplementation(() => {});
   });
 
-  afterAll(() => error.mockClear());
+  afterEach(() => {
+    const { calls } = error.mock;
+
+    error.mockRestore();
+
+    expect(calls).toEqual([]);
+  });
 
   it('will fetch model', () => {
     class Test extends State {}

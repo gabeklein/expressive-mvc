@@ -62,6 +62,11 @@ await expect(state).not.toHaveUpdated();
 - `mockPromise<T>()` - controllable promise with `.resolve()` / `.reject()`
 - `mockWarn()` / `mockError()` - spy on console, auto-clear between tests
 
+`packages/mvc/test.setup.ts` also registers a serializer so State instances and
+tracking proxies print their managed values in diffs and snapshots. A spy that
+silences `console.error` must be scoped with `beforeEach`/`afterEach`, restored
+(not cleared), and asserted empty - an unexpected React warning is a failure.
+
 ### Naming Convention
 
 - Positive: `it('will create instance')`

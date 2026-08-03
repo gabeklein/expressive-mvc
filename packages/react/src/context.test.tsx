@@ -1,15 +1,31 @@
 import React, { Suspense } from 'react';
 import { renderToString } from 'react-dom/server';
-import { vi, afterAll, expect, it, describe } from 'vitest';
+import {
+  vi,
+  afterEach,
+  beforeEach,
+  expect,
+  it,
+  describe,
+  type MockInstance
+} from 'vitest';
 
 import { act, render, screen } from '@testing-library/react';
 import { State, Consumer, Context, get, Provider, set } from '.';
 import { flushMicrotasks } from '../test.setup';
 
-const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+let error: MockInstance<Console['error']>;
 
-afterAll(() => {
-  error.mockReset();
+beforeEach(() => {
+  error = vi.spyOn(console, 'error').mockImplementation(() => {});
+});
+
+afterEach(() => {
+  const { calls } = error.mock;
+
+  error.mockRestore();
+
+  expect(calls).toEqual([]);
 });
 
 class Foo extends State {
