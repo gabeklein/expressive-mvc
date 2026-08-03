@@ -34,7 +34,7 @@ declared on the `UseState` interface instead, which a class satisfies
 structurally: they stay optional and unadvertised on States that are never
 rendered, at the cost of a looser check than a declared override gets.
 
-> **`new()` runs on the server.** It is part of activation, so it fires wherever the state is constructed - including during `renderToString`. Anything touching `window`, timers or subscriptions belongs in the adapter's commit hook instead: see `mount()` in [../react/react.md](../react/react.md), which runs only on the client and only for a state some component owns.
+> **`new()` runs on the server.** It is part of activation, so it fires wherever the state is constructed - including during `renderToString`. The teardown it returns never does: there is no unmount on the server, so a resource opened in `new()` - a socket, a subscription, a file handle - leaks there, once per render. Anything touching `window`, timers or subscriptions belongs in the adapter's commit hook instead: see `mount()` in [../react/react.md](../react/react.md), which runs only on the client and only for a state some component owns.
 
 > **`new()` is for consumers and own-state.** Avoid it in reusable state meant to be subclassed: it's a public method, so an extending class that defines its own `new()` silently overrides yours and loses the base behavior (with no error). For internal init logic in a shippable base class, pass a trailing init callback to `super` instead - it runs in the same phase as `new()` but can't be clobbered:
 >
