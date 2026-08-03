@@ -117,6 +117,72 @@ class Field extends State {
 
 <br />
 
+## Touched and dirty
+
+Neither needs library machinery - both are ordinary state.
+
+**Touched** - mark fields on blur, and gate error display on it so pristine fields stay quiet:
+
+```tsx
+class SignupForm extends State {
+  email = '';
+  touched = {} as Record<string, boolean>;
+
+  touch(field: string) {
+    this.touched = { ...this.touched, [field]: true };
+  }
+
+  get emailError() {
+    if (!this.email) return 'Email is required.';
+    return /^.+@.+\..+$/.test(this.email) ? undefined : 'Enter a valid email.';
+  }
+}
+
+function Signup() {
+  const form = SignupForm.use();
+
+  return (
+    <>
+      <input
+        value={form.email}
+        onChange={(e) => (form.email = e.target.value)}
+        onBlur={() => form.touch('email')}
+      />
+      {form.touched.email && form.emailError && <p>{form.emailError}</p>}
+    </>
+  );
+}
+```
+
+Reassigning `touched` rather than mutating it is what dispatches the update - the same rule as any other property.
+
+**Dirty** - compare against a snapshot taken when the data arrived:
+
+```tsx
+class ProfileForm extends State {
+  name = '';
+  email = '';
+  saved = { name: '', email: '' };
+
+  load(data: { name: string; email: string }) {
+    Object.assign(this, data);
+    this.saved = { ...data };
+  }
+
+  reset() {
+    Object.assign(this, this.saved);
+  }
+
+  get dirty() {
+    return this.name !== this.saved.name || this.email !== this.saved.email;
+  }
+}
+```
+
+`dirty` is computed, so a save button `disabled={!form.dirty}` enables the moment an edit lands - and disables again if the user reverts it by hand.
+
+<br />
+
 ## Refs
 
 The `ref` instruction creates a mutable holder that does **not** trigger re-renders on change. It's the `useRef` equivalent, but declared on the class and wired into the state event stream.
