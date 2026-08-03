@@ -1,3 +1,5 @@
+import { printDiffOrStringify } from '@vitest/utils/diff';
+
 import { event, listener, touch, watch, observer } from './observable';
 import { set } from './field/set';
 import { def } from './field/def';
@@ -692,6 +694,40 @@ describe('observable', () => {
       expect(() => listener(test, () => {})).toThrow(
         `${test} was destroyed - cannot be rendered, watched or updated.`
       );
+    });
+  });
+
+  describe('proxy', () => {
+    class Test extends State {
+      foo = 'foo';
+    }
+
+    it('will expose is as a writable own property', () => {
+      const test = Test.new();
+
+      test.get(($) => {
+        expect(Object.getOwnPropertyDescriptor($, 'is')).toEqual({
+          value: test,
+          writable: true,
+          enumerable: false,
+          configurable: false
+        });
+      });
+    });
+
+    it('will diff against its own subject', () => {
+      const test = Test.new();
+      const other = Test.new();
+      let output: string | undefined;
+
+      other.foo = 'bar';
+
+      test.get(($) => {
+        output = printDiffOrStringify($, other, {});
+      });
+
+      expect(output).toContain('"foo": "foo"');
+      expect(output).toContain('"foo": "bar"');
     });
   });
 });
