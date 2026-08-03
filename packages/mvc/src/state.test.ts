@@ -233,6 +233,46 @@ it('will not update when assigning same child instance', () => {
   expect(cb).not.toBeCalled();
 });
 
+it('will store a child read through a subscriber as itself', async () => {
+  class Child extends State {
+    value = 1;
+
+    get double() {
+      return this.value * 2;
+    }
+  }
+
+  class Parent extends State {
+    a = new Child();
+    active?: Child = this.a;
+  }
+
+  const parent = Parent.new();
+  const child = parent.a;
+
+  let proxy!: Parent;
+
+  parent.get((self) => {
+    proxy = self;
+    return null;
+  });
+
+  expect(child.double).toBe(2);
+
+  proxy.active = undefined;
+  proxy.active = proxy.a;
+
+  expect(Object.is(parent.is.active, child)).toBe(true);
+
+  proxy.active = undefined;
+  child.value = 3;
+
+  await expect(child).toHaveUpdated();
+
+  expect(child.get(null)).toBe(false);
+  expect(child.double).toBe(6);
+});
+
 it('will destroy parent after child property cleared', () => {
   class Child extends State {}
   class Parent extends State {
