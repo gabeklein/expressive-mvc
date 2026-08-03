@@ -11,6 +11,9 @@ import { withWorkspaceLinks } from './workspace-links';
  */
 const SCOPES = ['@expressive/mvc', '@expressive/react', '@expressive/router'];
 
+/** Written at build time by the serve-llm plugin, so it has no source file. */
+const GENERATED_LLM = 'examples/index.md';
+
 const release = withWorkspaceLinks();
 const exported = new Map<string, Set<string>>();
 
@@ -33,7 +36,7 @@ type Doc = { path: string; text: string };
 
 const docs: Doc[] = [];
 
-for (const pattern of ['skills/**/*.md', 'website/content/**/*.{md,mdx}'])
+for (const pattern of ['skills/**/*.md', 'website/content/**/*.{md,mdx}', 'website/public/llms.txt'])
   for await (const path of new Glob(pattern).scan('.'))
     docs.push({ path, text: await Bun.file(path).text() });
 
@@ -82,6 +85,21 @@ for (const { path, text } of docs) {
           `${at(path, text, match.index)}  imports { ${name} } from '${scope}', which does not export it`
         );
     }
+  }
+
+  // --- /llm/ links must resolve to a file the build actually publishes ---
+  for (const match of text.matchAll(/\]\((\/llm\/[^)#\s]+)\)/g)) {
+    const target = match[1].slice(5);
+
+    if (target === GENERATED_LLM)
+      continue;
+
+    const found = await Promise.all(
+      ['skills', 'website/content/llm'].map((dir) => Bun.file(`${dir}/${target}`).exists())
+    );
+
+    if (!found.includes(true))
+      problems.push(`${at(path, text, match.index)}  links /llm/${target}, but no such document exists`);
   }
 
   // --- internal docs links must resolve, anchors included ---

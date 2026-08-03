@@ -33,7 +33,7 @@ This documentation is also distributed as an installable skill: `npx skills add 
 - [def()](/llm/field/def.md): Low-level custom property behavior
 
 ## React
-- [React Adapter](/llm/react/react.md): use(), State.use(), State.get(), Provider, Consumer, ForceRefresh
+- [React Adapter](/llm/react/react.md): State.use(), State.get(), Provider, Consumer, ForceRefresh
 - [Component](/llm/react/component.md): Component class, props, children, subcomponents, error boundaries
 - [Refactoring Guide](/llm/react/refactor.md): Hook-migration algorithm - ownership triage, dependency snapshots, review checklist
 - [Style Profile](/llm/react/style.md): Snapshot formatting, affirmative conditions, render fallthrough
