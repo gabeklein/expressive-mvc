@@ -1175,6 +1175,53 @@ describe('subcomponents', () => {
     expect(screen).toHaveText('Sidebar updated');
   });
 
+  it('will work with function assigned in constructor', async () => {
+    class Dashboard extends Component {
+      Sidebar(): React.ReactNode {
+        return null;
+      }
+
+      render() {
+        return <this.Sidebar />;
+      }
+    }
+
+    function Sidebar(this: Defined) {
+      return <span>Sidebar {this.content}</span>;
+    }
+
+    class Defined extends Dashboard {
+      content = 'value';
+      Sidebar = Sidebar;
+    }
+
+    class Assigned extends Dashboard {
+      content = 'value';
+
+      constructor(props: {}) {
+        super(props);
+        this.Sidebar = Sidebar as any;
+      }
+    }
+
+    for (const Type of [Defined, Assigned]) {
+      let instance!: Defined;
+
+      const { unmount } = render(
+        <Type is={(x) => (instance = x as Defined)} />
+      );
+
+      expect(screen).toHaveText('Sidebar value');
+
+      await act(async () => {
+        instance.content = 'updated';
+      });
+
+      expect(screen).toHaveText('Sidebar updated');
+      unmount();
+    }
+  });
+
   it('will allow override via setter', async () => {
     class Dashboard extends Component {
       value = 'Original';
