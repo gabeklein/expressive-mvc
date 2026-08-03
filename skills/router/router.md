@@ -97,6 +97,18 @@ The guard may be **async** (return a `Promise`); the route's `fallback` shows wh
 
 Force-404 is path-keyed: it marks only the concrete URL that was declined, so navigating elsewhere clears it. `null` is the deliberate "definitively not here" signal - distinct from a falsy `&&` short-circuit, which allows. The 404 surface is the scope's authored `default` sibling, so a *section*-level not-found requires a parent scope with children (a flat leaf forfeits to the nearest authored default).
 
+## Code-split pages
+
+`as` takes a lazy component - `React.lazy`, or anything that suspends while its module loads. A `Route` inherits `Component`'s suspense boundary, and that is a guaranteed seam: `fallback` shows while the chunk is in flight, then the page resolves in place, with the Route instance, its `match`, and any ancestor layout intact across the load.
+
+```tsx
+const Document = lazy(() => import('./Document'));
+
+<Route to="document/:id" fallback={<Spinner />} as={Document} />
+```
+
+A lazy *layout* suspends its whole scope - child routes register only once the module resolves, so nothing below it matches while pending. Navigating away mid-load abandons the page: it never mounts. A failed chunk is an error, not a suspension - handle it with `catch` on a `Route` subclass, or it propagates to the nearest ancestor boundary.
+
 ## Reading match state inside a page
 
 A page reads the nearest `Route` from context (e.g. via `Consumer` or `get(Route)`) and uses its reactive getters:
