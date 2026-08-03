@@ -1,5 +1,36 @@
 # @expressive/mvc
 
+## 0.83.1
+
+### Patch Changes
+
+- [#301](https://github.com/gabeklein/expressive-mvc/pull/301) [`25071c7`](https://github.com/gabeklein/expressive-mvc/commit/25071c7d4cd6e57db154a4430ec4f6228a8f2c56) Run effect cleanup when an effect terminates its own subject.
+
+  An effect which called `set(null)` on its own subject synchronously - during its first run or any re-run - left the cleanup it returned dangling. The terminal event completed inside `set(null)`, before the effect had returned, so its cleanup registered after listeners were already cleared and never fired. Resources held there, such as timers or sockets, would leak.
+
+  Cleanup returned by a run which terminated its subject now fires immediately with `null`, matching the normal destruction path.
+
+- [#298](https://github.com/gabeklein/expressive-mvc/pull/298) [`3407792`](https://github.com/gabeklein/expressive-mvc/commit/3407792584f2fe07e72777041951e3ab7aad5c8d) Scope effects created during activation to the state that creates them.
+
+  A State activated inside another state's effect registered its own activation-time
+  effects into the enclosing effect scope. The enclosing effect's next run tore them
+  down permanently, leaving the inner state inert - it would render once and then stop
+  responding to updates. Activation now captures its own scope, so those effects belong
+  to the state being activated and survive unrelated reruns.
+
+  As part of the same scoping, an effect a state registers on a _different_ state during
+  activation is now released when that state is destroyed, rather than outliving it.
+
+- [#295](https://github.com/gabeklein/expressive-mvc/pull/295) [`a4d2011`](https://github.com/gabeklein/expressive-mvc/commit/a4d201152319d845c3df29d9b9769dd864ebcc74) Store the underlying instance when a State is assigned from a subscriber.
+
+  Reading a child State through a subscriber proxy - a render body, an effect, or any handler which closed over one - yields a tracking proxy for that child, not the child itself. Assigning it back to a managed field stored the proxy. Since the proxy is a fresh object each read, adoption treated it as an unparented State and claimed ownership of it, and clearing the field then fired the terminal event against the proxy. That event resolves the child's real observer through the prototype chain, so every listener on the live child was dropped while the child itself stayed active and unaware.
+
+  The visible symptom was a computed getter that stopped recomputing. Its subscription is established once and never re-established, so it never recovered - it returned a frozen value while plain fields, whose subscriptions are rebuilt on each render, kept tracking. Under React this surfaced on the third `{instance}` placement of a child field toggled from an event handler.
+
+  Managed fields now hold the instance, so identity, update de-duplication and adoption all reference the same object.
+
+- [#303](https://github.com/gabeklein/expressive-mvc/pull/303) [`9f75bf2`](https://github.com/gabeklein/expressive-mvc/commit/9f75bf2d086a176581815c26940d2647349f728c) `event(state, null)` (exported via `@expressive/mvc/observable`) now honors a terminal event only when the target owns its observer. Previously a derived object - `Object.create(subject)` or a subscriber proxy - resolved the subject's observer through the prototype chain and cleared the real subject's listeners, leaving it silently deaf while the null write landed on the throwaway object. Such calls are now inert; legitimate destruction (`State.set(null)`, owner teardown) is unaffected, as every valid terminal call already arrives holding the slot owner.
+
 ## 0.83.0
 
 ### Minor Changes
