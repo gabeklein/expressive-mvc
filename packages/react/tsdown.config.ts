@@ -5,7 +5,6 @@ export default defineConfig({
   dts: true,
   sourcemap: true,
   outDir: 'dist',
-  external: ['./adapter'],
   outExtensions: () => ({ js: '.js' }),
   entry: {
     index: 'src/index.ts',
