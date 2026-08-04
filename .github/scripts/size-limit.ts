@@ -1,5 +1,6 @@
 import { gzipSync } from 'bun';
 import { mkdirSync, rmSync } from 'node:fs';
+import { appendFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { withWorkspaceLinks } from './workspace-links';
 
@@ -106,9 +107,17 @@ await Bun.write(
   JSON.stringify(Object.fromEntries(results.map(({ name, bytes }) => [name, bytes])), null, 2)
 );
 
-// Surfaced on the run's summary page so growth is visible without opening logs.
+// Advisory step (`continue-on-error`), so a breach cannot rely on a red check to
+// be seen - the annotation reaches the PR's Checks tab, the table the run page.
+if (over.length)
+  console.log(
+    `::warning title=Bundle size::` +
+    over.map(({ name, bytes, limit }) =>
+      `${name} is ${kb(bytes)}, over its ${kb(limit)} budget`).join('; ')
+  );
+
 if (process.env.GITHUB_STEP_SUMMARY)
-  await Bun.write(
+  await appendFile(
     process.env.GITHUB_STEP_SUMMARY,
     [
       '## Bundle size',
@@ -121,7 +130,8 @@ if (process.env.GITHUB_STEP_SUMMARY)
       '',
       over.length
         ? `${over.length} shape(s) over budget. Advisory - raise budgets in \`.github/scripts/size-limit.ts\` if intended.`
-        : 'All shapes within budget.'
+        : 'All shapes within budget.',
+      ''
     ].join('\n')
   );
 
