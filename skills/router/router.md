@@ -99,7 +99,7 @@ Force-404 is path-keyed: it marks only the concrete URL that was declined, so na
 
 ## Code-split pages
 
-`as` takes a lazy component - `React.lazy`, or anything that suspends while its module loads. A `Route` inherits `Component`'s suspense boundary, and that is a guaranteed seam: `fallback` shows while the chunk is in flight, then the page resolves in place, with the Route instance, its `match`, and any ancestor layout intact across the load.
+`as` takes a lazy component - `React.lazy`, or anything that suspends while its module loads. A `Route` is its own suspense boundary: `fallback` shows while the chunk loads, then the page resolves in place - the Route instance, its `match`, and any ancestor layout survive.
 
 ```tsx
 const Document = lazy(() => import('./Document'));
@@ -107,7 +107,7 @@ const Document = lazy(() => import('./Document'));
 <Route to="document/:id" fallback={<Spinner />} as={Document} />
 ```
 
-A lazy *layout* suspends its whole scope - child routes register only once the module resolves, so nothing below it matches while pending. Navigating away mid-load abandons the page: it never mounts. A failed chunk is an error, not a suspension - handle it with `catch` on a `Route` subclass, or it propagates to the nearest ancestor boundary.
+A lazy *layout* suspends its whole scope - child routes register only after its module resolves. Navigating away mid-load abandons the page; it never mounts. A failed chunk is an error, not a suspension - handle it with `catch` on a `Route` subclass, or it propagates to the nearest ancestor boundary.
 
 ## Reading match state inside a page
 
