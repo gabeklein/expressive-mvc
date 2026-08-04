@@ -189,6 +189,16 @@ function subcomponents(target: object, configurable?: boolean) {
         });
 
         return Component;
+      },
+      set(this: Component, value: unknown) {
+        Object.defineProperty(this, key, {
+          value,
+          writable: true,
+          enumerable: true,
+          configurable: true
+        });
+
+        subcomponents(this, true);
       }
     });
   }
