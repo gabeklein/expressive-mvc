@@ -37,7 +37,7 @@ The whole install is about **10 kB** min+gzip with everything imported, and clos
 
 The same package covers React Native and Expo — Metro resolves the adapter without extra configuration.
 
-Support is **provisional** — verified on Expo SDK 57 (React Native 0.86, React 19.2) for iOS and Android, including a Hermes bytecode build and re-render on write, but not yet on a device or simulator. Two things to know:
+Support is **provisional** — a CI job builds an Expo SDK 57 app (React Native 0.86, React 19.2) and runs it on an iOS simulator, covering render and re-render on write, context, suspense and error recovery. Not yet run on a physical device. Two things to know:
 
 - Testing with `jest-expo` needs `@expressive` added to `transformIgnorePatterns`, because the build is ESM-only and Jest skips `node_modules` by default.
 - `BrowserRouter` from `@expressive/router` reads `window.location`, which React Native does not define. Use `Router` instead — it keeps path and history in memory.
