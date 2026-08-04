@@ -2146,7 +2146,7 @@ describe('set method', () => {
 
       test.set(null);
 
-      expect(() => test.set({ foo: 1 })).toThrow(/terminated/);
+      expect(() => test.set({ foo: 1 })).toThrow(/was destroyed/);
     });
 
     it('will still read values after destroyed', () => {
@@ -2988,6 +2988,40 @@ describe('non-configurable members (bootstrap)', () => {
 
     expect(typeof desc.get).toBe('function');
     expect(desc.value).toBeUndefined();
+  });
+});
+
+describe('enumerable prototype members', () => {
+  class Test extends State {
+    foo = 1;
+  }
+
+  Object.defineProperty(Test.prototype, 'legacy', {
+    value: 'world',
+    enumerable: true,
+    writable: true,
+    configurable: true
+  });
+
+  it('will activate without managing the property', async () => {
+    const test = Test.new();
+
+    expect((test as any).legacy).toBe('world');
+    expect(test.get()).toEqual({ foo: 1 });
+
+    (test as any).legacy = 'moon';
+
+    await expect(test).not.toHaveUpdated();
+    expect((test as any).legacy).toBe('moon');
+  });
+
+  it('will assign to the property without dispatch', async () => {
+    const test = Test.new();
+
+    test.set({ legacy: 'moon' } as any);
+
+    await expect(test).not.toHaveUpdated();
+    expect((test as any).legacy).toBe('moon');
   });
 });
 

@@ -65,7 +65,9 @@ function observer(state: object, create?: boolean) {
 
   if (!o && create) {
     if (o === null)
-      throw new Error('Object is not observable (terminated).');
+      throw new Error(
+        `${state} was destroyed - cannot be rendered, watched or updated.`
+      );
 
     const value: Observer = {
       listeners: new Map(),

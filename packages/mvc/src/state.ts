@@ -516,7 +516,8 @@ function init(state: State, ...args: State.Args) {
 
   function observe() {
     for (const key in state) {
-      const desc = Object.getOwnPropertyDescriptor(state, key)!;
+      const desc: PropertyDescriptor = Object.getOwnPropertyDescriptor(state, key) || {};
+
       if ('value' in desc && desc.configurable) apply(state, key, desc, true);
     }
   }
@@ -903,8 +904,8 @@ function assign(state: State, data: State.Assign<State>, silent?: boolean) {
     if (bind) bind.call(state, data[key]);
     else if (getters?.has(key)) continue;
     else if (key in state && key !== 'is') {
-      const desc = Object.getOwnPropertyDescriptor(state, key)!;
-      const set = desc && (desc.set as (value: any, silent?: boolean) => void);
+      const desc: PropertyDescriptor = Object.getOwnPropertyDescriptor(state, key) || {};
+      const set = desc.set as (value: any, silent?: boolean) => void;
 
       if (set) {
         set.call(state, data[key], silent);

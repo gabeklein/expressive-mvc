@@ -30,7 +30,7 @@ State.on((self) => {
   const store = STORE.get(self)!;
 
   for (const key in self) {
-    const property = Object.getOwnPropertyDescriptor(self, key)!;
+    const property: PropertyDescriptor = Object.getOwnPropertyDescriptor(self, key) || {};
     const instruction = APPLY.get(property.value);
 
     if (!instruction) continue;

@@ -336,7 +336,7 @@ describe('effect', () => {
       event(test);
       event(test, null);
 
-      expect(() => watch(test, effect)).toThrow('terminated');
+      expect(() => watch(test, effect)).toThrow('was destroyed');
       expect(effect).not.toBeCalled();
     });
 
@@ -441,7 +441,9 @@ describe('effect', () => {
 
       test.set(null);
 
-      expect(() => test.get(effect)).toThrow('terminated');
+      expect(() => test.get(effect)).toThrow(
+        /Test-[\w-]+ was destroyed - cannot be rendered, watched or updated\./
+      );
       expect(effect).not.toBeCalled();
     });
 
@@ -673,7 +675,23 @@ describe('observable', () => {
       listener(test, () => {});
       event(test, null);
 
-      expect(() => listener(test, () => {})).toThrow(/terminated/);
+      expect(() => listener(test, () => {})).toThrow(
+        '[object Object] was destroyed - cannot be rendered, watched or updated.'
+      );
+    });
+
+    it('will name the state which was destroyed', () => {
+      class Test extends State {
+        foo = 1;
+      }
+
+      const test = Test.new();
+
+      test.set(null);
+
+      expect(() => listener(test, () => {})).toThrow(
+        `${test} was destroyed - cannot be rendered, watched or updated.`
+      );
     });
   });
 });
