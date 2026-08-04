@@ -197,6 +197,8 @@ function subcomponents(target: object, configurable?: boolean) {
           enumerable: true,
           configurable: true
         });
+
+        subcomponents(this, true);
       }
     });
   }

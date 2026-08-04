@@ -1222,6 +1222,41 @@ describe('subcomponents', () => {
     }
   });
 
+  it('will work with function assigned after activation', async () => {
+    class Dashboard extends Component {
+      content = 'value';
+
+      Sidebar(): React.ReactNode {
+        return null;
+      }
+
+      render() {
+        return <this.Sidebar />;
+      }
+    }
+
+    let instance!: Dashboard;
+
+    render(
+      <Dashboard
+        is={(x) => {
+          instance = x;
+          x.Sidebar = function (this: Dashboard) {
+            return <span>Sidebar {this.content}</span>;
+          };
+        }}
+      />
+    );
+
+    expect(screen).toHaveText('Sidebar value');
+
+    await act(async () => {
+      instance.content = 'updated';
+    });
+
+    expect(screen).toHaveText('Sidebar updated');
+  });
+
   it('will allow override via setter', async () => {
     class Dashboard extends Component {
       value = 'Original';
