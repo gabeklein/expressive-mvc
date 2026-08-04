@@ -20,10 +20,15 @@ const workspace = await mkdtemp(join(tmpdir(), 'expressive-gauntlet-'));
 const report = Promise.withResolvers<string[]>();
 const lines: string[] = [];
 
-const timeout = setTimeout(
-  () => report.reject(new Error('The app never reported. See the log above.')),
-  10 * 60 * 1000
-);
+let timeout: Timer;
+
+const idle = () => {
+  clearTimeout(timeout);
+  timeout = setTimeout(
+    () => report.reject(new Error('Five minutes of silence. See the log above.')),
+    5 * 60 * 1000
+  );
+};
 
 try {
   await Bun.write(join(workspace, 'package.json'), JSON.stringify({
@@ -83,6 +88,8 @@ try {
 
       pending = split.pop() || '';
 
+      idle();
+
       for (const line of split) {
         console.log(line);
 
@@ -101,6 +108,7 @@ try {
     }
   };
 
+  idle();
   watch();
 
   const results = await Promise.race([
