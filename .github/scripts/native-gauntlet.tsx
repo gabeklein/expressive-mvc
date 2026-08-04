@@ -1,4 +1,5 @@
 import State, { Component, Provider, get, has, map, ref, set } from '@expressive/react';
+import * as React from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
@@ -199,13 +200,20 @@ const CHECKS: [string, (report: Report) => Promise<void>][] = [
   }],
 
   ['uSES identity', async report => {
-    const runtime: any = await import('@expressive/mvc/runtime');
-    const react: any = await import('react');
-    const registered = (runtime.default ?? runtime).useSyncExternalStore;
+    const module: any = await import('@expressive/mvc/runtime');
+    const runtime = module.default ?? module;
+    const registered = runtime.useSyncExternalStore;
+    const dynamic: any = await import('react');
 
-    report('Runtime.useSyncExternalStore is React\'s own',
-      registered === react.useSyncExternalStore && typeof registered === 'function',
-      registered === react.useSyncExternalStore ? 'identical to React' : 'registry diverged');
+    const same = [
+      ['static', registered === React.useSyncExternalStore],
+      ['namespace', registered === dynamic.useSyncExternalStore],
+      ['default', registered === dynamic.default?.useSyncExternalStore]
+    ].filter(([, hit]) => hit).map(([which]) => which);
+
+    report('Runtime.useSyncExternalStore is React\'s own', same.length > 0,
+      `registered ${typeof registered}, React ${typeof React.useSyncExternalStore}` +
+      `, matches [${same.join(', ')}], runtime keys ${Object.keys(runtime).length}`);
   }],
 
   ['BrowserRouter', async report => {
