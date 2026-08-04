@@ -1,0 +1,53 @@
+---
+title: Packaging and Monorepos
+description: Version alignment, building libraries on Expressive, and the one-copy rule
+---
+
+## One core per app
+
+`@expressive/mvc` holds module state: the context registry, prototype brands, and the JSX host registration all live in the loaded module. Two copies of the core in one application are two disconnected worlds - a `<Provider>` in one and a `State.get()` resolving through the other do not see each other. The classic symptom is `Could not find X in context` from a component that visibly sits under the right Provider.
+
+The packages are shaped to make one copy the default outcome: `@expressive/react` and `@expressive/router` declare `@expressive/mvc` as a regular dependency with a caret range, so installing the adapter brings a core your package manager can dedupe. You install `@expressive/react`; the core is its concern.
+
+When the symptom above appears anyway, check for duplicates first:
+
+```bash
+npm ls @expressive/mvc   # or: pnpm why @expressive/mvc / bun pm ls
+```
+
+More than one version listed means something pinned or bounded the core apart from the adapter's range. Align the ranges (or remove the direct `@expressive/mvc` entry and let the adapter carry it) and reinstall.
+
+<br />
+
+## Building a library on Expressive
+
+A component library or shared package built on Expressive should **not** bundle it:
+
+- Declare `@expressive/react` as a **peerDependency** (with a devDependency copy for local development), the same way you already treat `react`.
+- Mark `@expressive/*` external in your build, so your dist imports it rather than inlining a private copy - an inlined copy is the two-worlds problem above, shipped on purpose.
+- Keep the peer range wide (`^` on the minor you develop against, pre-1.0) and move it deliberately: pre-1.0 minors are the breaking channel.
+
+Consumers of your library install `@expressive/react` themselves - the same contract as `react` itself. What that costs them: the adapter has an irreducible floor of about 7.9 kB min+gzip (measured, budgeted in CI - see [Bundle size](/docs/guides/bundle-size)), paid once per application regardless of how many libraries share it.
+
+State classes your library exports are ordinary exports. Subclassing, `Provider`-ing, and `get()`-ing them works across package boundaries because everyone resolves the same core - which is the point of the rules above.
+
+<br />
+
+## Monorepos
+
+Workspace tooling makes duplicate cores easier to produce: two apps pinning different adapter versions, a hoisting boundary, or a stale lockfile after a version bump. The diagnosis is the same `npm ls @expressive/mvc`, and the fix is the same alignment - in a workspace, prefer a single version of `@expressive/react` declared once and shared.
+
+Version skew between the adapter and core does not need managing by hand: the adapter's caret dependency states the compatible window, and within a single resolved copy the pair is always one your package manager accepted.
+
+<br />
+
+## Module format
+
+All packages ship ESM only (`"type": "module"`) - no `require()` entry. Bundlers (vite, esbuild, webpack, rollup) and Metro consume this directly. Jest is the notable exception: its default `transformIgnorePatterns` skips `node_modules`, so add an allowance for `@expressive` if your tests import it. Vitest needs nothing.
+
+<br />
+
+## Next
+
+- [Bundle size](/docs/guides/bundle-size) - measured cost per import shape, and what tree-shakes.
+- [Getting started](/docs/getting-started) - installation and first model.

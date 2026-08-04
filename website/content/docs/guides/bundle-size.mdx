@@ -1,0 +1,51 @@
+---
+title: Bundle Size
+description: What Expressive costs your bundle, measured per import shape and gated in CI
+---
+
+Every figure on this page is produced by `bun run size`, which bundles the built packages and gzips the result. The same script runs on every pull request and fails the build if any shape exceeds its budget, so these numbers cannot drift away from reality — if they grow, CI says so before the docs go stale.
+
+## What it costs
+
+Minified, then gzipped. React is a peer dependency and excluded, as it would already be in your app.
+
+| What you import | min+gzip |
+| --- | --- |
+| `@expressive/mvc` — `State` only (headless) | ~4.6 kB |
+| `@expressive/mvc` — every export | ~8.0 kB |
+| `@expressive/react` — `State` only | ~7.9 kB |
+| `@expressive/react` — `State`, `Component`, instructions | ~8.5 kB |
+| `@expressive/react` — every export | ~10.5 kB |
+| `@expressive/router` — every export | ~10.3 kB |
+| `@expressive/react` + `@expressive/router` | ~13.9 kB |
+
+A typical React app lands around **8.5 kB**. There are no runtime dependencies, so that is the whole cost — nothing else arrives behind it.
+
+## Methodology, and why the numbers differ elsewhere
+
+Bundle size has no single definition, and the three common ones differ by more than the numbers above:
+
+- **min+gzip of an import shape** — what this page reports, and what actually reaches your users.
+- **Unminified and gzipped** — larger, because comments survive; 18-42% of our shipped JavaScript is documentation comments, which minification removes. Reporting this number would overstate the cost roughly twofold.
+- **npm install size** — much larger again (`@expressive/mvc` unpacks to ~237 kB), because the published tarball carries type declarations and source maps. Those never enter a browser bundle.
+
+If a third-party size service quotes something different from this table, the measurement is probably one of the other two.
+
+## Tree-shaking
+
+The headless core shakes properly: importing only `State` costs ~4.6 kB against ~8.0 kB for everything, so unused instructions genuinely do not ship. It is built unbundled — one module per source file, `sideEffects: false` — and its module-level work only touches classes the same module exports, which is what makes that declaration safe.
+
+The React adapter has a **floor you cannot shake below: ~7.9 kB**, reached by importing anything at all from it. That is deliberate and worth being plain about. The adapter works by patching types it does not own, at import time:
+
+- `Component.prototype.$$typeof`, so an instance can be placed directly as JSX
+- `Component.contextType`, wiring the class into React context
+- `isReactComponent`, so React treats it as a class component
+- the host runtime registry, which hands the core its renderer
+
+Cross-package prototype patches cannot be tree-shaken away without breaking the library, so the wiring arrives whole or not at all. Above the floor, shaking resumes normally — `has`, `map` and `transition` together account for the remaining ~2.6 kB and drop out when unused.
+
+The practical consequence: Expressive rewards using more of what you have already paid for, and is a poor fit for shipping one tiny piece of it into an otherwise dependency-free bundle.
+
+## Raising a budget
+
+Budgets live in `.github/scripts/size-limit.ts`, one per import shape rather than a single aggregate — the point is to notice when the adapter floor grows, or when a formerly shakeable export stops shaking, neither of which a total would reveal. When a change legitimately grows the bundle, raise the budget in the same commit and update the table above; the script's failure message says so too.

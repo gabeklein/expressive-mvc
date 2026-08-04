@@ -410,6 +410,8 @@ class DataView extends Component {
 
 The JSX `fallback` prop overrides the class property for that instance. Set `fallback` to `false` (prop or property) to opt out of the component's own boundary entirely - suspension then bubbles to the nearest ancestor.
 
+Opting out only works when the pending value is owned *above* the boundary that catches the suspension. A boundary rebuilds the subtree it retries, so state owned below it is reconstructed on every retry and requests again - a silent infinite retry loop. [See both halves side by side](/examples/component/suspense).
+
 <br />
 
 ## Error boundaries

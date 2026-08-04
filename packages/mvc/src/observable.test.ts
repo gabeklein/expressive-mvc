@@ -336,8 +336,99 @@ describe('effect', () => {
       event(test);
       event(test, null);
 
-      expect(() => watch(test, effect)).toThrow('terminated');
+      expect(() => watch(test, effect)).toThrow('was destroyed');
       expect(effect).not.toBeCalled();
+    });
+
+    it('will terminate subject via set(null) within an effect', async () => {
+      class Test extends State {
+        done = false;
+      }
+
+      const test = Test.new();
+
+      test.get(($) => {
+        if ($.done) $.set(null);
+      });
+
+      test.done = true;
+      await expect(test).toHaveUpdated();
+
+      expect(test.get(null)).toBe(true);
+    });
+
+    it('will run cleanup when effect terminates own subject', async () => {
+      class Test extends State {
+        done = false;
+      }
+
+      const test = Test.new();
+      const didCleanup = vi.fn();
+
+      test.get(($) => {
+        if ($.done) $.set(null);
+        return didCleanup;
+      });
+
+      test.done = true;
+      await expect(test).toHaveUpdated();
+
+      expect(test.get(null)).toBe(true);
+      expect(didCleanup).toBeCalledWith(null);
+    });
+
+    it('will run cleanup when first run terminates subject', () => {
+      class Test extends State {
+        done = true;
+      }
+
+      const test = Test.new();
+      const didCleanup = vi.fn();
+
+      test.get(($) => {
+        if ($.done) $.set(null);
+        return didCleanup;
+      });
+
+      expect(test.get(null)).toBe(true);
+      expect(didCleanup).toBeCalledWith(null);
+    });
+
+    it('will run cleanup when uncaptured effect terminates subject', () => {
+      class Test extends State {
+        value = 1;
+      }
+
+      const test = Test.new();
+      const didCleanup = vi.fn();
+
+      watch(test, ($) => {
+        $.set(null);
+        return didCleanup;
+      }, false);
+
+      expect(test.get(null)).toBe(true);
+      expect(didCleanup).toBeCalledWith(null);
+    });
+
+    it('will not terminate subject via derived object', async () => {
+      class Test extends State {
+        value = 1;
+      }
+
+      const test = Test.new();
+      const effect = vi.fn(($: Test) => void $.value);
+
+      watch(test, effect);
+
+      event(Object.create(test), null);
+
+      expect(observer(test)!.listeners.size).toBeGreaterThan(0);
+
+      test.value = 2;
+
+      await expect(test).toHaveUpdated();
+      expect(effect).toBeCalledTimes(2);
     });
 
     it('will throw for get(effect) on destroyed instance', () => {
@@ -350,7 +441,9 @@ describe('effect', () => {
 
       test.set(null);
 
-      expect(() => test.get(effect)).toThrow('terminated');
+      expect(() => test.get(effect)).toThrow(
+        /Test-[\w-]+ was destroyed - cannot be rendered, watched or updated\./
+      );
       expect(effect).not.toBeCalled();
     });
 
@@ -582,7 +675,23 @@ describe('observable', () => {
       listener(test, () => {});
       event(test, null);
 
-      expect(() => listener(test, () => {})).toThrow(/terminated/);
+      expect(() => listener(test, () => {})).toThrow(
+        '[object Object] was destroyed - cannot be rendered, watched or updated.'
+      );
+    });
+
+    it('will name the state which was destroyed', () => {
+      class Test extends State {
+        foo = 1;
+      }
+
+      const test = Test.new();
+
+      test.set(null);
+
+      expect(() => listener(test, () => {})).toThrow(
+        `${test} was destroyed - cannot be rendered, watched or updated.`
+      );
     });
   });
 });

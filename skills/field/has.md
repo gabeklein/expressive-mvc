@@ -105,7 +105,7 @@ Every collection is adopted by its hosting state at activation. Fresh `State` me
 
 Death also flows the other way: a `State` member that dies evicts itself from the pool - owned or guest - so a pool never serves destroyed members. Destroying a member (`member.set(null)`) is a complete removal gesture on its own. Lists do not adopt, destroy, or evict on death - they store values by position; use a pool (`has(Item)`) when members are owned `State`s.
 
-Destruction is an eviction concern, separate from context, so the underlying `has.Pool` and `has.List` can be constructed directly without an owner (`new has.Pool(null, Item)`, chiefly for testing) - fresh members are still owned and destroyed on eviction, just not parented into a context.
+Destruction is an eviction concern, separate from context, so the underlying `has.Pool` and `has.List` can be constructed directly without an owner (`new has.Pool(Item)`, chiefly for testing) - fresh members are still owned and destroyed on eviction, just not parented into a context.
 
 ```ts
 class Member extends State {
@@ -143,7 +143,7 @@ Calling `get()` with no arguments returns a shallow snapshot array; nested value
 ## Type Signature
 
 ```ts
-function has<T>(initial?: Iterable<T> | null): has.List<T>;
+function has<T>(initial?: Iterable<T> | false | null): has.List<T>;
 function has<T extends State>(Type: new (...args: State.Args<T>) => T): has.Pool<T, State.Args<T>>;
 function has<T, A extends unknown[]>(make: (...args: A) => T): has.Pool<T, A>;
 

@@ -5,7 +5,6 @@ export default defineConfig({
   dts: true,
   sourcemap: true,
   outDir: 'dist',
-  external: ['./adapter'],
   outExtensions: () => ({ js: '.js' }),
   entry: {
     index: 'src/index.ts',
@@ -15,6 +14,7 @@ export default defineConfig({
   },
   format: ['esm'],
   outputOptions: {
-    exports: 'named'
+    exports: 'named',
+    chunkFileNames: 'chunk-[name]-[hash].js'
   }
 });

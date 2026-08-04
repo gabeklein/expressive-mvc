@@ -51,8 +51,7 @@ import State, {
   Provider,
   ref,
   set,
-  transition,
-  use
+  transition
 } from '@expressive/react';
 ```
 
@@ -200,7 +199,9 @@ const counter = new Counter();
 observer(counter, true);
 ```
 
-Now `watch(counter, ...)` works, and so does React's [`use(counter)`](/docs/api/hooks#usesubject) hook. No State required. ✨
+Now `watch(counter, ...)` works - no State required. ✨
+
+This is a headless seam. React components subscribe through [`State.use()` or `State.get()`](/docs/api/hooks), so reaching React with a custom observable means wrapping it in a State; there is no hook that subscribes to an arbitrary object.
 
 <br />
 
@@ -428,4 +429,4 @@ Root models "the global instance"; scoped contexts model "candidates available h
 
 - [Context guide](/docs/guides/context) - the React-facing surface: `Provider`, `get` instruction, patterns.
 - [State](/docs/api/state) - `set(callback)` and `get(effect)`, the instance-method forms of these helpers.
-- [Hooks](/docs/api/hooks) - `use(subject)` consumes custom observables in React.
+- [Hooks](/docs/api/hooks) - `State.use` and `State.get`, the React subscription paths.

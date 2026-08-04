@@ -233,6 +233,46 @@ it('will not update when assigning same child instance', () => {
   expect(cb).not.toBeCalled();
 });
 
+it('will store a child read through a subscriber as itself', async () => {
+  class Child extends State {
+    value = 1;
+
+    get double() {
+      return this.value * 2;
+    }
+  }
+
+  class Parent extends State {
+    a = new Child();
+    active?: Child = this.a;
+  }
+
+  const parent = Parent.new();
+  const child = parent.a;
+
+  let proxy!: Parent;
+
+  parent.get((self) => {
+    proxy = self;
+    return null;
+  });
+
+  expect(child.double).toBe(2);
+
+  proxy.active = undefined;
+  proxy.active = proxy.a;
+
+  expect(Object.is(parent.is.active, child)).toBe(true);
+
+  proxy.active = undefined;
+  child.value = 3;
+
+  await expect(child).toHaveUpdated();
+
+  expect(child.get(null)).toBe(false);
+  expect(child.double).toBe(6);
+});
+
 it('will destroy parent after child property cleared', () => {
   class Child extends State {}
   class Parent extends State {
@@ -2106,7 +2146,7 @@ describe('set method', () => {
 
       test.set(null);
 
-      expect(() => test.set({ foo: 1 })).toThrow(/terminated/);
+      expect(() => test.set({ foo: 1 })).toThrow(/was destroyed/);
     });
 
     it('will still read values after destroyed', () => {
@@ -2643,6 +2683,70 @@ describe('activation', () => {
     expect(() => event(test)).not.toThrow();
     expect(test.value).toBe(1);
   });
+
+  it('will not release effects when an enclosing effect reruns', async () => {
+    const didUpdate = vi.fn();
+
+    class Child extends State {
+      value = 0;
+
+      new() {
+        this.get((self) => void didUpdate(self.value));
+      }
+    }
+
+    class Parent extends State {
+      tick = 0;
+    }
+
+    const parent = Parent.new();
+
+    let child!: Child;
+
+    parent.get((self) => {
+      void self.tick;
+      if (!child) child = Child.new();
+    });
+
+    child.value = 1;
+    await expect(child).toHaveUpdated();
+    expect(didUpdate).toBeCalledWith(1);
+
+    parent.tick = 1;
+    await expect(parent).toHaveUpdated();
+
+    child.value = 2;
+    await expect(child).toHaveUpdated();
+    expect(didUpdate).toBeCalledWith(2);
+  });
+
+  it('will release effects on a foreign state when destroyed', async () => {
+    const didUpdate = vi.fn();
+
+    class Foreign extends State {
+      value = 0;
+    }
+
+    const foreign = Foreign.new();
+
+    class Test extends State {
+      new() {
+        foreign.get((self) => void didUpdate(self.value));
+      }
+    }
+
+    const test = Test.new();
+
+    foreign.value = 1;
+    await expect(foreign).toHaveUpdated();
+    expect(didUpdate).toBeCalledTimes(2);
+
+    test.set(null);
+
+    foreign.value = 2;
+    await expect(foreign).toHaveUpdated();
+    expect(didUpdate).toBeCalledTimes(2);
+  });
 });
 
 describe('is method (static)', () => {
@@ -2884,6 +2988,40 @@ describe('non-configurable members (bootstrap)', () => {
 
     expect(typeof desc.get).toBe('function');
     expect(desc.value).toBeUndefined();
+  });
+});
+
+describe('enumerable prototype members', () => {
+  class Test extends State {
+    foo = 1;
+  }
+
+  Object.defineProperty(Test.prototype, 'legacy', {
+    value: 'world',
+    enumerable: true,
+    writable: true,
+    configurable: true
+  });
+
+  it('will activate without managing the property', async () => {
+    const test = Test.new();
+
+    expect((test as any).legacy).toBe('world');
+    expect(test.get()).toEqual({ foo: 1 });
+
+    (test as any).legacy = 'moon';
+
+    await expect(test).not.toHaveUpdated();
+    expect((test as any).legacy).toBe('moon');
+  });
+
+  it('will assign to the property without dispatch', async () => {
+    const test = Test.new();
+
+    test.set({ legacy: 'moon' } as any);
+
+    await expect(test).not.toHaveUpdated();
+    expect((test as any).legacy).toBe('moon');
   });
 });
 

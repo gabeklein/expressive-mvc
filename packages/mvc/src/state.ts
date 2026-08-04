@@ -1,5 +1,6 @@
 import { Context } from './context';
 import {
+  capture,
   event,
   listener,
   Observer,
@@ -515,7 +516,8 @@ function init(state: State, ...args: State.Args) {
 
   function observe() {
     for (const key in state) {
-      const desc = Object.getOwnPropertyDescriptor(state, key)!;
+      const desc: PropertyDescriptor = Object.getOwnPropertyDescriptor(state, key) || {};
+
       if ('value' in desc && desc.configurable) apply(state, key, desc, true);
     }
   }
@@ -541,19 +543,23 @@ function init(state: State, ...args: State.Args) {
 
     const queue = [...before, observe, ...args, ...after, register];
 
-    for (let i = 0; i < queue.length; i++) {
-      const arg = queue[i];
-      const out = typeof arg == 'function' ? arg.call(state, state) : arg;
+    capture((release) => {
+      listener(state, () => release(null), null);
 
-      if (out instanceof Promise)
-        out.catch((err) => {
-          console.error(`Async error in constructor for ${state}:`);
-          console.error(err);
-        });
-      else if (Array.isArray(out)) queue.splice(i + 1, 0, ...out);
-      else if (typeof out == 'function') listener(state, out, null);
-      else if (typeof out == 'object') assign(state, out, true);
-    }
+      for (let i = 0; i < queue.length; i++) {
+        const arg = queue[i];
+        const out = typeof arg == 'function' ? arg.call(state, state) : arg;
+
+        if (out instanceof Promise)
+          out.catch((err) => {
+            console.error(`Async error in constructor for ${state}:`);
+            console.error(err);
+          });
+        else if (Array.isArray(out)) queue.splice(i + 1, 0, ...out);
+        else if (typeof out == 'function') listener(state, out, null);
+        else if (typeof out == 'object') assign(state, out, true);
+      }
+    });
 
     return null;
   });
@@ -747,7 +753,7 @@ function apply(
 
   function set(value: unknown, silent?: boolean) {
     if (!update(state, key, value, silent)) return;
-    if (adopt) adopt(value);
+    if (adopt) adopt(STORE.get(state)![key]);
   }
 
   define(state, key, {
@@ -898,8 +904,8 @@ function assign(state: State, data: State.Assign<State>, silent?: boolean) {
     if (bind) bind.call(state, data[key]);
     else if (getters?.has(key)) continue;
     else if (key in state && key !== 'is') {
-      const desc = Object.getOwnPropertyDescriptor(state, key)!;
-      const set = desc && (desc.set as (value: any, silent?: boolean) => void);
+      const desc: PropertyDescriptor = Object.getOwnPropertyDescriptor(state, key) || {};
+      const set = desc.set as (value: any, silent?: boolean) => void;
 
       if (set) {
         set.call(state, data[key], silent);
@@ -931,6 +937,8 @@ function update<T>(
   }
 
   const store = STORE.get(state)!;
+
+  if (value instanceof State) value = value.is as T;
 
   if (key in store && value === store[key]) return false;
 

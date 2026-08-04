@@ -97,6 +97,18 @@ The guard may be **async** (return a `Promise`); the route's `fallback` shows wh
 
 Force-404 is path-keyed: it marks only the concrete URL that was declined, so navigating elsewhere clears it. `null` is the deliberate "definitively not here" signal - distinct from a falsy `&&` short-circuit, which allows. The 404 surface is the scope's authored `default` sibling, so a *section*-level not-found requires a parent scope with children (a flat leaf forfeits to the nearest authored default).
 
+## Code-split pages
+
+`as` takes a lazy component - `React.lazy`, or anything that suspends while its module loads. A `Route` is its own suspense boundary: `fallback` shows while the chunk loads, then the page resolves in place - the Route instance, its `match`, and any ancestor layout survive.
+
+```tsx
+const Document = lazy(() => import('./Document'));
+
+<Route to="document/:id" fallback={<Spinner />} as={Document} />
+```
+
+A lazy *layout* suspends its whole scope - child routes register only after its module resolves. Navigating away mid-load abandons the page; it never mounts. A failed chunk is an error, not a suspension - handle it with `catch` on a `Route` subclass, or it propagates to the nearest ancestor boundary.
+
 ## Reading match state inside a page
 
 A page reads the nearest `Route` from context (e.g. via `Consumer` or `get(Route)`) and uses its reactive getters:
@@ -316,4 +328,4 @@ Matching is computed statically from the JSX tree in the same render. It does **
 - class-field `to` on `Route` subclasses (only the JSX `to` prop), or
 - routes declared inside a child component's own render (the `*`-delegation case).
 
-A see-through scope counts as matched only when a descendant matches - never as a greedy prefix. Put routes where they are lexically visible to the matcher.
+A see-through scope counts as matched when a descendant matches, or when it owns a `default` - which claims anything under the scope's path, so the section 404 answers there instead of the app one. Without a default the scope is never a greedy prefix. That verdict is the same one sibling `as`-routes arbitrate over, so a scope holding a section 404 owns everything under its path - a later sibling declared under it can never match, and the router **throws** on that shape rather than leaving the route silently unreachable. Declare such a route above the section, or inside it. Put routes where they are lexically visible to the matcher.

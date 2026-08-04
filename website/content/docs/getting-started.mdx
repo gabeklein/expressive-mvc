@@ -23,6 +23,16 @@ import State, { Component, Provider, get, set, ref } from '@expressive/react';
 
 > Working with an agent? `npx skills add gabeklein/expressive-mvc` teaches it the whole API in one shot.
 
+### Requirements
+
+React **16.14 or newer** — interacts with `react/jsx-runtime`. React is a peer dependency; nothing else is.
+
+On **React 18+** the adapter will validate model revisions before each commit, so a concurrent render that yields mid-work can never commit a tree mixing two revisions of one model. React 16 and 17 do not yield mid-render, so nothing to validate — behavior is equivalent - no interleaving to protect against. See [Concurrent rendering](/docs/guides/concurrent) for the full contract.
+
+### Size
+
+The whole install is about **10 kB** min+gzip with everything imported, and closer to **8 kB** for a typical app. Numbers are measured per import shape and gated in CI — see [Bundle size](/docs/guides/bundle-size).
+
 ### React Native
 
 The same package covers React Native and Expo — Metro resolves the adapter without extra configuration.

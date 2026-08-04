@@ -5,7 +5,7 @@ import tsconfigPaths from 'vite-tsconfig-paths';
 import mdx from 'fumadocs-mdx/vite';
 import * as MdxConfig from './source.config';
 import { resolve, join, dirname } from 'path';
-import { cp, glob, readFile, writeFile } from 'fs/promises';
+import { cp, glob, mkdir, readFile, writeFile } from 'fs/promises';
 import { readdirSync, readFileSync } from 'fs';
 import { createGetUrl, getSlugs } from 'fumadocs-core/source';
 
@@ -15,6 +15,8 @@ export default defineConfig({
       JSON.parse(readFileSync(resolve(__dirname, '../packages/react/package.json'), 'utf8')).version
     ),
     __LIB_TESTS__: countTests(resolve(__dirname, '../packages')),
+    __LIB_SIZE__: readSize(resolve(__dirname, '../size-report.json')),
+    __SANDBOX_DEPS__: JSON.stringify(sandboxDeps()),
   },
   optimizeDeps: {
     include: [
@@ -62,6 +64,60 @@ function countTests(dir: string): number {
       total += (readFileSync(path, 'utf8').match(/^\s*(it|test)\(/gm) ?? []).length;
   }
   return total;
+}
+
+/**
+ * Sandpack installs each example's `@expressive/*` deps from npm, where
+ * `latest` made the live site disagree with local review - that resolves the
+ * workspace, which is never behind. Pin to workspace versions instead, and
+ * report where the workspace is ahead of what has been published.
+ */
+function sandboxDeps() {
+  const dir = resolve(__dirname, '../packages');
+  const deps: Record<string, string> = {};
+
+  for (const entry of readdirSync(dir)) {
+    const pkg = JSON.parse(readFileSync(join(dir, entry, 'package.json'), 'utf8'));
+
+    if (!pkg.private) deps[pkg.name] = pkg.version;
+  }
+
+  warnPending(deps);
+
+  return deps;
+}
+
+function warnPending(deps: Record<string, string>) {
+  const dir = resolve(__dirname, '../.changeset');
+  const pending = new Map<string, string[]>();
+
+  for (const entry of readdirSync(dir)) {
+    if (!entry.endsWith('.md') || entry === 'README.md') continue;
+
+    const text = readFileSync(join(dir, entry), 'utf8');
+    const front = /^---\r?\n([\s\S]*?)\r?\n---/.exec(text);
+
+    if (!front) continue;
+
+    for (const [, name] of front[1].matchAll(/^\s*["']?(@expressive\/[a-z-]+)["']?\s*:/gm))
+      if (name in deps) pending.set(name, [...(pending.get(name) ?? []), entry]);
+  }
+
+  for (const [name, files] of pending)
+    console.warn(
+      `Sandbox: ${name} pins ${deps[name]}, the last published version, but ` +
+        `${files.join(', ')} describes changes not in it. Examples relying on ` +
+        'unreleased behavior will not work on the live site until the next release.'
+    );
+}
+
+function readSize(report: string): string {
+  try {
+    const bytes = JSON.parse(readFileSync(report, 'utf8'))['react: typical app'];
+    return JSON.stringify(typeof bytes === 'number' ? bytes : null);
+  } catch {
+    return 'null';
+  }
 }
 
 interface ExampleDirectory {
@@ -126,6 +182,8 @@ function serveSkills(): Plugin {
     },
     async writeBundle({ dir: outDir }) {
       if (!outDir) return;
+
+      await mkdir(join(outDir, 'llm'), { recursive: true });
 
       for (const dir of dirs)
         await cp(dir, join(outDir, 'llm'), { recursive: true });

@@ -1,4 +1,4 @@
-import { render, screen, act, waitFor } from '@testing-library/react';
+import { render, screen, act, fireEvent, waitFor } from '@testing-library/react';
 import { expect, it, describe, vi } from 'vitest';
 import React, { Suspense } from 'react';
 
@@ -527,6 +527,160 @@ describe('instance element', () => {
     element.unmount();
 
     expect(instance.get(null)).toBe(false);
+  });
+});
+
+describe('repeated placement of a child field', () => {
+  class Panel extends Component {
+    text = '';
+
+    get count() {
+      return this.text.trim() ? this.text.trim().split(/\s+/).length : 0;
+    }
+
+    render() {
+      const { text, count } = this;
+
+      return (
+        <i>
+          <b data-testid="len">{text.length}</b>
+          <u data-testid="count">{count}</u>
+          <textarea
+            data-testid="input"
+            value={text}
+            onChange={(e) => (this.text = e.target.value)}
+          />
+        </i>
+      );
+    }
+  }
+
+  /**
+   * Type into the panel, read what it rendered, then detach and reattach it -
+   * five times. Writes land in an event handler, where the owner's `this` is a
+   * render proxy.
+   */
+  async function cycle() {
+    const seen: string[] = [];
+
+    for (let i = 1; i <= 5; i++) {
+      const text = Array.from({ length: i }, (_, n) => `w${n}`).join(' ');
+
+      await act(async () => {
+        fireEvent.change(screen.getByTestId('input'), { target: { value: text } });
+      });
+
+      seen.push(
+        `${screen.getByTestId('len').textContent}/${
+          screen.getByTestId('count').textContent
+        }`
+      );
+
+      await act(async () => {
+        fireEvent.click(screen.getByText('off'));
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByText('on'));
+      });
+    }
+
+    return seen;
+  }
+
+  const expected = ['2/1', '5/2', '8/3', '11/4', '14/5'];
+
+  it('will recompute for a plain-constructed instance', async () => {
+    class Host extends Component {
+      panel = new Panel();
+      active?: Panel = this.panel;
+
+      render() {
+        return (
+          <>
+            <button onClick={() => (this.active = this.panel)}>on</button>
+            <button onClick={() => (this.active = undefined)}>off</button>
+            <span>{this.active}</span>
+          </>
+        );
+      }
+    }
+
+    render(<>{Host.new()}</>);
+
+    expect(await cycle()).toEqual(expected);
+  });
+
+  it('will recompute for an activated instance', async () => {
+    class Host extends Component {
+      panel = Panel.new();
+      active?: Panel = this.panel;
+
+      render() {
+        return (
+          <>
+            <button onClick={() => (this.active = this.panel)}>on</button>
+            <button onClick={() => (this.active = undefined)}>off</button>
+            <span>{this.active}</span>
+          </>
+        );
+      }
+    }
+
+    render(<>{Host.new()}</>);
+
+    expect(await cycle()).toEqual(expected);
+  });
+
+  it('will recompute for an owned element', async () => {
+    class Host extends Component {
+      shown = true;
+
+      render() {
+        return (
+          <>
+            <button onClick={() => (this.shown = true)}>on</button>
+            <button onClick={() => (this.shown = false)}>off</button>
+            <span>{this.shown ? <Panel /> : null}</span>
+          </>
+        );
+      }
+    }
+
+    render(<>{Host.new()}</>);
+
+    expect(await cycle()).toEqual(expected);
+  });
+
+  it('will keep a child assigned through a render proxy', async () => {
+    class Host extends Component {
+      panel = new Panel();
+      active?: Panel = this.panel;
+
+      render() {
+        return (
+          <>
+            <button onClick={() => (this.active = this.panel)}>on</button>
+            <button onClick={() => (this.active = undefined)}>off</button>
+            <span>{this.active}</span>
+          </>
+        );
+      }
+    }
+
+    const host = Host.new();
+
+    render(<>{host}</>);
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('off'));
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('on'));
+    });
+
+    expect(Object.is(host.is.active, host.panel)).toBe(true);
   });
 });
 

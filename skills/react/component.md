@@ -309,6 +309,8 @@ class DataView extends Component {
 }
 ```
 
+`fallback={false}` declines the component's own boundary so suspension bubbles to an ancestor - valid only when the pending value is owned **above** the boundary that catches it. A boundary rebuilds the subtree it retries, so state owned below is reconstructed on every retry and requests again: a silent infinite retry loop.
+
 ## Error Boundaries
 
 Override `catch()` to handle child render errors:

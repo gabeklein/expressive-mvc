@@ -207,7 +207,8 @@ This is also why classes are unusually friendly to agents. A State class is a se
 To be honest about the trade-off:
 
 - **`this`** - you have to use it. If your team has a strict "functional only" rule, Expressive isn't for you.
-- **A runtime footprint** - reactive proxies, lifecycle tracking, context management: ~18 kB gzipped for core and adapter together. Tracked reads are proxy reads during render; reads in handlers or through `is` subscribe nothing. Measurable, not zero.
+- **A runtime footprint** - reactive proxies, lifecycle tracking, context management: ~8 kB min+gzip for a typical app, ~10 kB with every export used ([measured and CI-gated](/docs/guides/bundle-size)). Tracked reads are proxy reads during render; reads in handlers or through `is` subscribe nothing. Measurable, not zero.
+- **An adapter floor you cannot tree-shake** - the React adapter works by patching things it does not own at import: `Component.prototype`, `contextType`, `isReactComponent`, the host runtime registry. Cross-package prototype patches cannot be shaken away, so importing anything from `@expressive/react` costs ~7.9 kB before your first field. The headless core does shake properly (~4.6 kB for `State` alone, ~8 kB for all of it).
 - **Familiarity for new hires** - engineers used to Redux or Zustand will need a brief ramp-up on classes and instructions.
 
 Expressive does not try to replace hooks wholesale. It coexists. Use `useState` where it's fine; reach for a class where the complexity justifies it.
