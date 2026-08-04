@@ -4,7 +4,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 type Report = (name: string, pass: boolean, detail: string) => void;
 
-const REPORT_URL = 'http://127.0.0.1:19555/result';
+const MARKER = '[gauntlet]';
 
 const drain = () => new Promise(resolve => queueMicrotask(() => resolve(null)));
 
@@ -60,8 +60,12 @@ class Panel extends Component<{ label: string }> {
   }
 }
 
+let recovered = '';
+
 class Broken extends Component {
-  static catch = true;
+  catch(error: Error) {
+    recovered = error.message;
+  }
 
   render(): never {
     throw new Error('boom');
@@ -228,6 +232,11 @@ const CHECKS: [string, (report: Report) => Promise<void>][] = [
       `path is ${JSON.stringify(path)}`);
 
     router.set(null);
+  }],
+
+  ['Component.catch', async report => {
+    report('Component.catch() recovers a thrown render', recovered === 'boom',
+      recovered ? `caught ${JSON.stringify(recovered)}` : 'catch never ran');
   }]
 ];
 
@@ -283,6 +292,7 @@ export default function App() {
     const collect: Report = (name, pass, detail) => {
       collected.push([name, pass, detail]);
       report(name, pass, detail);
+      console.log(`${MARKER} ${pass ? 'ok' : 'FAIL'} ${name} - ${detail}`);
     };
 
     const run = async () => {
@@ -294,13 +304,9 @@ export default function App() {
           collect(label, false, `threw: ${(thrown as Error).message}`);
         }
 
-      collect('GAUNTLET', true, 'complete');
+      const failed = collected.filter(([, pass]) => !pass).length;
 
-      await fetch(REPORT_URL, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(collected)
-      }).catch(() => {});
+      console.log(`${MARKER} DONE ${collected.length} checks, ${failed} failed`);
     };
 
     run();

@@ -12,22 +12,13 @@ const PINS = {
 };
 
 const PACKAGES = ['mvc', 'react', 'router'];
-const PORT = 19555;
+const MARKER = '[gauntlet]';
 const PLATFORM = process.argv[2] === 'android' ? 'android' : 'ios';
 
 const workspace = await mkdtemp(join(tmpdir(), 'expressive-gauntlet-'));
 
-const report = Promise.withResolvers<[string, boolean, string][]>();
-
-const server = Bun.serve({
-  port: PORT,
-  async fetch(request) {
-    if (new URL(request.url).pathname === '/result')
-      report.resolve(await request.json());
-
-    return new Response('ok');
-  }
-});
+const report = Promise.withResolvers<string[]>();
+const lines: string[] = [];
 
 const timeout = setTimeout(
   () => report.reject(new Error('The app never reported. See the log above.')),
@@ -78,10 +69,39 @@ try {
 
   const run = Bun.spawn(['npx', 'expo', `run:${PLATFORM}`, ...device], {
     cwd: workspace,
-    stdout: 'inherit',
+    stdout: 'pipe',
     stderr: 'inherit',
     env: { ...process.env, CI: '1', EXPO_NO_TELEMETRY: '1' }
   });
+
+  const watch = async () => {
+    let pending = '';
+
+    for await (const chunk of run.stdout) {
+      const text = pending + new TextDecoder().decode(chunk);
+      const split = text.split('\n');
+
+      pending = split.pop() || '';
+
+      for (const line of split) {
+        console.log(line);
+
+        const marked = line.indexOf(MARKER);
+
+        if (marked < 0)
+          continue;
+
+        const result = line.slice(marked + MARKER.length).trim();
+
+        if (result.startsWith('DONE'))
+          report.resolve(lines);
+        else
+          lines.push(result);
+      }
+    }
+  };
+
+  watch();
 
   const results = await Promise.race([
     report.promise,
@@ -92,18 +112,19 @@ try {
 
   run.kill();
 
-  const failed = results.filter(([, pass]) => !pass);
+  const failed = results.filter(line => line.startsWith('FAIL'));
 
-  for (const [name, pass, detail] of results)
-    console.log(`${pass ? 'ok  ' : 'FAIL'} ${name} - ${detail}`);
+  console.log(`\n--- gauntlet on ${PLATFORM} ---`);
+
+  for (const line of results)
+    console.log(line);
 
   if (failed.length)
     throw new Error(`${failed.length} of ${results.length} checks failed on ${PLATFORM}.`);
 
-  console.log(`\n${results.length - 1} checks passed on ${PLATFORM}.`);
+  console.log(`\n${results.length} checks passed on ${PLATFORM}.`);
 }
 finally {
   clearTimeout(timeout);
-  server.stop(true);
   await rm(workspace, { recursive: true, force: true });
 }
