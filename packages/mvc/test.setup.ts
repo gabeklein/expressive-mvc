@@ -1,4 +1,3 @@
-import { getDefaultFormatOptions } from '@vitest/utils/diff';
 import { afterAll, afterEach, expect, vi, type MockInstance } from 'vitest';
 import { Context, State } from './src';
 import { listener } from './src/observable';
@@ -20,74 +19,17 @@ declare module 'vitest' {
 
 expect.extend({ toHaveUpdated, toHaveText });
 
-/**
- * State instances (and the tracking proxies handed to effects and renders) keep
- * their values in a private store, so the default serializer prints internals
- * instead of state. Print the class and its managed values instead.
- */
-const serializer = {
-  test: (value: unknown) => value instanceof State,
-  serialize(
-    value: State,
-    config: any,
-    indentation: string,
-    depth: number,
-    refs: unknown[],
-    printer: (
-      value: unknown,
-      config: any,
-      indentation: string,
-      depth: number,
-      refs: unknown[]
-    ) => string
-  ) {
-    const name = value.constructor.name;
+Object.defineProperty(State.prototype, 'toJSON', {
+  value: function (this: object) {
+    const output: Record<string, unknown> = {};
 
-    if (refs.includes(value)) return `[Circular ${name}]`;
+    for (let owner = this; owner; owner = Object.getPrototypeOf(owner))
+      for (const key of Object.keys(owner))
+        if (!(key in output)) output[key] = (owner as any)[key];
 
-    if (depth > config.maxDepth) return `[${name}]`;
-
-    return (
-      name +
-      ' ' +
-      printer(
-        managed(value),
-        config,
-        indentation,
-        depth,
-        refs.concat([value])
-      )
-    );
+    return output;
   }
-};
-
-/**
- * Values visible through a State - own fields, plus those a tracking proxy
- * inherits from its subject. Read from the owner to avoid registering
- * subscriptions while a value is being printed.
- */
-function managed(value: object) {
-  const output: Record<string, unknown> = {};
-
-  for (let owner = value; owner; owner = Object.getPrototypeOf(owner))
-    for (const key of Object.keys(owner))
-      if (!(key in output)) output[key] = (owner as any)[key];
-
-  return output;
-}
-
-expect.addSnapshotSerializer(serializer);
-
-// Assertion diffs use a fixed plugin list which addSnapshotSerializer does not
-// reach; the array behind getDefaultFormatOptions is that list.
-const plugins = getDefaultFormatOptions({}).plugins!;
-
-plugins.unshift(serializer);
-
-if (plugins[0] !== serializer)
-  throw new Error(
-    'Failed to register State serializer for assertion diffs - vitest internals moved.'
-  );
+});
 
 afterEach(() => Context.root.pop());
 
