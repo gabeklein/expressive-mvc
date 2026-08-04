@@ -3,6 +3,7 @@ name: Native
 on:
   workflow_dispatch:
   pull_request:
+    types: [opened, synchronize, reopened, labeled]
     branches: [main]
     paths:
       - 'packages/*/package.json'
