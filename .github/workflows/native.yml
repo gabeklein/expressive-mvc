@@ -49,6 +49,7 @@ jobs:
 
       - name: Boot an iOS simulator
         run: |
+          mkdir -p ~/.expo
           udid=$(xcrun simctl list devices available -j |
             bun -e 'const d=await Bun.stdin.json();
               const all=Object.values(d.devices).flat();

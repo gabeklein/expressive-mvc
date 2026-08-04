@@ -74,16 +74,21 @@ try {
 
   const device = process.env.SIMULATOR_UDID ? ['--device', process.env.SIMULATOR_UDID] : [];
 
-  const run = $`npx expo run:${PLATFORM} ${device}`.cwd(workspace).env({
-    ...process.env,
-    CI: '1',
-    EXPO_NO_TELEMETRY: '1'
+  const run = Bun.spawn(['npx', 'expo', `run:${PLATFORM}`, ...device], {
+    cwd: workspace,
+    stdout: 'inherit',
+    stderr: 'inherit',
+    env: { ...process.env, CI: '1', EXPO_NO_TELEMETRY: '1' }
   });
 
   const results = await Promise.race([
     report.promise,
-    run.then(() => report.promise)
+    run.exited.then(code => {
+      throw new Error(`expo run:${PLATFORM} exited with ${code} before the app reported.`);
+    })
   ]);
+
+  run.kill();
 
   const failed = results.filter(([, pass]) => !pass);
 
