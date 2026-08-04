@@ -206,25 +206,26 @@ To render a specific request's data (a path, a session), provide it per-request:
 exactly this reason - on the server it is per-render, so paths never bleed
 between requests; provide `<Provider for={Router}>` to render a request's path.
 
-### React Native (provisional)
+### React Native
 
-Nothing about the adapter is web-specific: it imports `react` and
-`react/jsx-runtime`, and `react-dom` is a dev dependency. `State.use()`,
+The adapter imports only `react` and `react/jsx-runtime`, so `State.use()`,
 `State.get()`, `Component`, `Provider` and `catch` behave on the native
-renderer as they do on the DOM, and Hermes needs no workaround - it implements
-the `Proxy` traps the core relies on, and Metro emits class fields with native
-define semantics, which is what the packages compile to anyway.
+renderer as they do on the DOM, and Hermes needs no workaround. Metro resolves
+the package with no extra configuration. Verified on Expo SDK 57 (React Native
+0.86, React 19.2) for iOS and Android, not yet on a device - provisional.
 
-Verified on Expo SDK 57 (React Native 0.86, React 19.2) for iOS and Android:
-Metro resolution, a Hermes bytecode build, render and re-render on write. Not
-yet verified on a device or simulator - treat it as provisional.
+- **Jest.** The build is ESM-only and `jest-expo` skips `node_modules`, so the
+  import fails to parse until `@expressive` is added to
+  `transformIgnorePatterns`:
 
-Two boundaries:
+  ```js
+  transformIgnorePatterns: [
+    '/node_modules/(?!(.pnpm|@expressive|react-native|@react-native|expo|@expo))'
+  ]
+  ```
 
-- **Jest.** The build is ESM-only and `jest-expo` skips `node_modules`, so add
-  `@expressive` to `transformIgnorePatterns` or the import fails to parse.
 - **`BrowserRouter`.** React Native defines `window` without `location`, so it
-  throws on construction. Use `Router` for in-memory paths.
+  throws on construction. Use `Router` - path and history in memory.
 
 ---
 

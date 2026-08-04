@@ -25,7 +25,7 @@ import State, { Component, Provider, get, set, ref } from '@expressive/react';
 
 ### React Native
 
-The same package covers React Native and Expo. The adapter imports only `react` and `react/jsx-runtime`, so it works on any renderer, and Metro resolves it without extra configuration.
+The same package covers React Native and Expo — Metro resolves the adapter without extra configuration.
 
 Support is **provisional** — verified on Expo SDK 57 (React Native 0.86, React 19.2) for iOS and Android, including a Hermes bytecode build and re-render on write, but not yet on a device or simulator. Two things to know:
 

@@ -26,21 +26,7 @@ npm install @expressive/react
 
 `@expressive/mvc` arrives as its dependency - **do not add it to `package.json` as well.** Import `State`, `Component`, and every instruction (`set`, `get`, `ref`, `map`, `has`, `def`) from `@expressive/react`; the adapter re-exports the core. Install `@expressive/mvc` directly only when writing host-agnostic code that must not depend on a UI adapter - a shared domain package, a Node service, or a new adapter. Add `@expressive/router` alongside the adapter when you want routing.
 
-### React Native
-
-The same install covers React Native and Expo - the adapter imports only `react` and `react/jsx-runtime`, so it is renderer-agnostic. Metro resolves the ESM build through the `default` export condition; Hermes runs the proxy layer and class fields natively. Provisional: verified on Expo SDK 57 (React Native 0.86, React 19.2), iOS and Android, not yet on a device.
-
-Two caveats:
-
-- **Jest needs the package transformed.** The build is ESM-only and `jest-expo` skips `node_modules`, so a test importing the adapter fails with `Cannot use import statement outside a module`. Add `@expressive` to `transformIgnorePatterns`:
-
-  ```js
-  transformIgnorePatterns: [
-    '/node_modules/(?!(.pnpm|@expressive|react-native|@react-native|expo|@expo))'
-  ]
-  ```
-
-- **`BrowserRouter` is DOM-only.** React Native defines `window` without `location`, so constructing it throws. Use `Router`, whose path and history are in memory.
+React Native and Expo need no extra install - Metro resolves the adapter as-is. Provisional: verified on Expo SDK 57 (React Native 0.86), not yet on a device. Two boundaries, detailed in [react/react.md](react/react.md#react-native): `jest-expo` needs `@expressive` in `transformIgnorePatterns`, and `BrowserRouter` throws on native - use `Router`.
 
 ## Start With Ownership, Not APIs
 
