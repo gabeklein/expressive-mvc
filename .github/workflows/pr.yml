@@ -24,14 +24,14 @@ jobs:
       - run: bun run build
 
       - name: Dist is consumable
-        run: bun run dist
+        run: bun .github/scripts/dist-check.ts
 
       - name: Bundle size
         continue-on-error: true
-        run: bun run size
+        run: bun .github/scripts/size-limit.ts
 
       - name: Docs agree with code
-        run: bun run docs
+        run: bun .github/scripts/docs-check.ts
 
       - name: Changeset reminder
         continue-on-error: true
