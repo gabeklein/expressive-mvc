@@ -16,7 +16,13 @@ bump) and `npm publish --dry-run` pack validation for the publishable packages.
 
 `changesets/action` maintains the "Version Packages" PR (`changeset version`
 + `bun install` so the lockfile stays consistent with the bumps). Merging that
-PR builds the packages and runs `changeset publish`.
+PR builds the packages, runs `dist-smoke.ts`, then `changeset publish`.
+
+`dist-smoke.ts` packs each publishable package, installs the tarballs into a
+throwaway project outside the repo and executes them under native Node ESM - the
+only consumer-shaped check of the built dist, since tests alias the `@expressive`
+scope onto sources. It sits in `ci:publish` rather than `pr.yml` so a failure
+blocks the publish, and ordinary merges pay nothing for it.
 
 Publishing authenticates via npm OIDC trusted publishing - no token secrets.
 Each published package's npm settings trust this exact workflow filename under
