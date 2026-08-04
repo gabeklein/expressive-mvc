@@ -27,7 +27,7 @@ A component library or shared package built on Expressive should **not** bundle 
 - Mark `@expressive/*` external in your build, so your dist imports it rather than inlining a private copy - an inlined copy is the two-worlds problem above, shipped on purpose.
 - Keep the peer range wide (`^` on the minor you develop against, pre-1.0) and move it deliberately: pre-1.0 minors are the breaking channel.
 
-Consumers of your library install `@expressive/react` themselves - the same contract as `react` itself. What that costs them: the adapter has an irreducible floor of about 7.6 kB min+gzip (measured, budgeted in CI - see [Bundle size](/docs/guides/bundle-size)), paid once per application regardless of how many libraries share it.
+Consumers of your library install `@expressive/react` themselves - the same contract as `react` itself. What that costs them: the adapter has an irreducible floor of about 7.9 kB min+gzip (measured, budgeted in CI - see [Bundle size](/docs/guides/bundle-size)), paid once per application regardless of how many libraries share it.
 
 State classes your library exports are ordinary exports. Subclassing, `Provider`-ing, and `get()`-ing them works across package boundaries because everyone resolves the same core - which is the point of the rules above.
 
