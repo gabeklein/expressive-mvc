@@ -60,7 +60,7 @@ function CounterWidget() {
 
 No reducers, selectors, dependency arrays, or action wrappers. Update a property and every consumer that reads it updates automatically.
 
-The adapter is renderer-agnostic, so the same install covers React Native and Expo - provisionally, exercised in CI on an iOS simulator (Expo SDK 57, React Native 0.86) but not on a device. See [React Native](skills/react/react.md#react-native) for the two caveats.
+The adapter is renderer-agnostic, so the same install covers React Native and Expo - provisionally, with each release gated on Metro resolution and a Hermes build (Expo SDK 57, React Native 0.86) but no device run. See [React Native](skills/react/react.md#react-native) for the two caveats.
 
 Continue with [Getting Started](https://expressive.dev/docs/getting-started/), explore the [guides](https://expressive.dev/docs/guides/state-classes/), or browse the [API reference](https://expressive.dev/docs/api/state/).
 

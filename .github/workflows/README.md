@@ -16,13 +16,19 @@ bump) and `npm publish --dry-run` pack validation for the publishable packages.
 
 `changesets/action` maintains the "Version Packages" PR (`changeset version`
 + `bun install` so the lockfile stays consistent with the bumps). Merging that
-PR builds the packages, runs `dist-smoke.ts`, then `changeset publish`.
+PR builds the packages, runs `dist-smoke.ts` and `native-check.ts`, then
+`changeset publish`.
 
 `dist-smoke.ts` packs each publishable package, installs the tarballs into a
 throwaway project outside the repo and executes them under native Node ESM - the
 only consumer-shaped check of the built dist, since tests alias the `@expressive`
-scope onto sources. It sits in `ci:publish` rather than `pr.yml` so a failure
-blocks the publish, and ordinary merges pay nothing for it.
+scope onto sources. `native-check.ts` is its React Native counterpart: the same
+tarballs into a throwaway Expo app, asserting Metro resolves every published
+subpath for ios and android, `expo export` emits Hermes bytecode, and a `State`
+subclass behaves the same whether Metro keeps native class fields
+(`caller.engine` is `hermes`) or downlevels them to assignment (`jsEngine: jsc`).
+Both sit in `ci:publish` rather than `pr.yml` so a failure blocks the publish,
+and ordinary merges pay nothing for them.
 
 Publishing authenticates via npm OIDC trusted publishing - no token secrets.
 Each published package's npm settings trust this exact workflow filename under

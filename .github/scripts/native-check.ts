@@ -4,6 +4,15 @@ import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
+/**
+ * Pack every publishable package, install the tarballs into a throwaway Expo
+ * app outside the repo, and put the result through React Native's toolchain -
+ * the sibling of `dist-smoke.ts`, which does the same for Node ESM. Neither
+ * vitest nor a bundler-agnostic check can see these: Metro reads its own
+ * condition set, and Hermes is a different engine from the one tests run on.
+ *
+ * Runs from `ci:publish`, so it gates the publish rather than every merge.
+ */
 const PINS = {
   expo: '~57.0.9',
   react: '19.2.3',
@@ -165,8 +174,11 @@ try {
 
   results.push(`babel: identical behavior from native fields and assignment - ${observed.hermes}`);
 }
-finally {
-  await rm(workspace, { recursive: true, force: true });
+catch (error) {
+  console.error(`Fixture kept for inspection: ${workspace}`);
+  throw error;
 }
+
+await rm(workspace, { recursive: true, force: true });
 
 console.log(results.join('\n'));

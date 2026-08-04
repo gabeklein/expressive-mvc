@@ -212,8 +212,10 @@ between requests; provide `<Provider for={Router}>` to render a request's path.
 The adapter imports only `react` and `react/jsx-runtime`, so `State.use()`,
 `State.get()`, `Component`, `Provider` and `catch` behave on the native
 renderer as they do on the DOM, and Hermes needs no workaround. Metro resolves
-the package with no extra configuration. Exercised in CI on an iOS simulator -
-Expo SDK 57, React Native 0.86, React 19.2 - not on a device, so provisional.
+the package with no extra configuration. Provisional: `native-check.ts` gates
+each release on Metro resolution, a Hermes bytecode build and class-field
+semantics (Expo SDK 57, React Native 0.86), but no device or simulator run is
+part of CI.
 
 - **Jest.** The build is ESM-only and `jest-expo` skips `node_modules`, so the
   import fails to parse until `@expressive` is added to
