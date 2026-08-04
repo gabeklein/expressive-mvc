@@ -1,6 +1,14 @@
 import React, { Suspense } from 'react';
 import { Component, Context, get, State, Provider, set, transition } from '.';
-import { vi, expect, it, describe, beforeEach, afterEach, afterAll } from 'vitest';
+import {
+  vi,
+  expect,
+  it,
+  describe,
+  beforeEach,
+  afterEach,
+  type MockInstance
+} from 'vitest';
 import { act, render, renderHook, waitFor } from '@testing-library/react';
 import { mockPromise, flushMicrotasks } from '../test.setup';
 import { Runtime } from './runtime';
@@ -16,14 +24,19 @@ function renderWith<T>(Type: State.Type | State, hook: () => T) {
 }
 
 describe('State.get', () => {
-  const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+  let error: MockInstance<Console['error']>;
 
-  afterEach(() => {
-    // expect(error).not.toBeCalled();
-    error.mockReset();
+  beforeEach(() => {
+    error = vi.spyOn(console, 'error').mockImplementation(() => {});
   });
 
-  afterAll(() => error.mockClear());
+  afterEach(() => {
+    const { calls } = error.mock;
+
+    error.mockRestore();
+
+    expect(calls).toEqual([]);
+  });
 
   it('will fetch model', () => {
     class Test extends State {}
