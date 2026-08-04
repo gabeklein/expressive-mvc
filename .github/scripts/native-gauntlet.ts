@@ -72,7 +72,9 @@ try {
 
   await $`npm install --silent --no-audit --no-fund ${tarballs}`.cwd(workspace);
 
-  const run = $`npx expo run:${PLATFORM}`.cwd(workspace).env({
+  const device = process.env.SIMULATOR_UDID ? ['--device', process.env.SIMULATOR_UDID] : [];
+
+  const run = $`npx expo run:${PLATFORM} ${device}`.cwd(workspace).env({
     ...process.env,
     CI: '1',
     EXPO_NO_TELEMETRY: '1'

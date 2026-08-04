@@ -32,7 +32,7 @@ jobs:
     if: >-
       github.event_name == 'workflow_dispatch' ||
       contains(github.event.pull_request.labels.*.name, 'native')
-    runs-on: macos-15
+    runs-on: macos-26
     steps:
       - uses: actions/checkout@v5
 
@@ -40,11 +40,24 @@ jobs:
 
       - run: bun run build
 
+      - name: Select an Xcode with Swift 6.2 or newer
+        run: |
+          latest=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
+          if [ -n "$latest" ]; then sudo xcode-select -s "$latest"; fi
+          xcodebuild -version
+          swift --version
+
       - name: Boot an iOS simulator
         run: |
-          xcrun simctl list devices available
-          xcrun simctl boot "iPhone 16" || true
-          xcrun simctl list devices booted
+          udid=$(xcrun simctl list devices available -j |
+            bun -e 'const d=await Bun.stdin.json();
+              const all=Object.values(d.devices).flat();
+              const one=all.find(x => /iPhone/.test(x.name));
+              if(!one) throw new Error("no iPhone simulator available");
+              console.log(one.udid)')
+          xcrun simctl boot "$udid" || true
+          xcrun simctl bootstatus "$udid" -b
+          echo "SIMULATOR_UDID=$udid" >> "$GITHUB_ENV"
 
       - name: Gauntlet on the iOS simulator
         run: bun .github/scripts/native-gauntlet.ts ios
