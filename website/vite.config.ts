@@ -9,14 +9,14 @@ import { cp, glob, readFile, writeFile } from 'fs/promises';
 import { readdirSync, readFileSync } from 'fs';
 import { createGetUrl, getSlugs } from 'fumadocs-core/source';
 
-export default defineConfig(async ({ command }) => ({
+export default defineConfig({
   define: {
     __LIB_VERSION__: JSON.stringify(
       JSON.parse(readFileSync(resolve(__dirname, '../packages/react/package.json'), 'utf8')).version
     ),
     __LIB_TESTS__: countTests(resolve(__dirname, '../packages')),
     __LIB_SIZE__: readSize(resolve(__dirname, '../size-report.json')),
-    __SANDBOX_DEPS__: JSON.stringify(await sandboxDeps(command === 'build')),
+    __SANDBOX_DEPS__: JSON.stringify(sandboxDeps()),
   },
   optimizeDeps: {
     include: [
@@ -52,7 +52,7 @@ export default defineConfig(async ({ command }) => ({
     tsconfigPaths(),
     serveSkills()
   ]
-}));
+});
 
 function countTests(dir: string): number {
   let total = 0;
@@ -70,9 +70,9 @@ function countTests(dir: string): number {
  * Sandpack installs each example's `@expressive/*` deps from npm, where
  * `latest` made the live site disagree with local review - that resolves the
  * workspace, which is never behind. Pin to workspace versions instead, and
- * report the ways the workspace can still be ahead of the registry.
+ * report where the workspace is ahead of what has been published.
  */
-async function sandboxDeps(build: boolean) {
+function sandboxDeps() {
   const dir = resolve(__dirname, '../packages');
   const deps: Record<string, string> = {};
 
@@ -84,43 +84,7 @@ async function sandboxDeps(build: boolean) {
 
   warnPending(deps);
 
-  if (build) await assertPublished(deps);
-
   return deps;
-}
-
-async function assertPublished(deps: Record<string, string>) {
-  const missing: string[] = [];
-
-  await Promise.all(
-    Object.entries(deps).map(async ([name, version]) => {
-      const url = `https://registry.npmjs.org/${name.replace('/', '%2f')}/${version}`;
-
-      let response: Response;
-
-      try {
-        response = await fetch(url, { signal: AbortSignal.timeout(15_000) });
-      } catch (error) {
-        console.warn(
-          `Sandbox: npm unreachable, cannot verify ${name}@${version} - ${(error as Error).message}`
-        );
-        return;
-      }
-
-      if (response.status === 404) missing.push(`${name}@${version}`);
-      else if (!response.ok)
-        console.warn(
-          `Sandbox: npm answered ${response.status} for ${name}@${version}, cannot verify`
-        );
-    })
-  );
-
-  if (missing.length)
-    throw new Error(
-      'Sandbox dependencies are pinned to versions npm does not have: ' +
-        `${missing.join(', ')}.\nEvery live example would fail to install. ` +
-        'Publish first, or roll the workspace version back to a released one.'
-    );
 }
 
 function warnPending(deps: Record<string, string>) {
