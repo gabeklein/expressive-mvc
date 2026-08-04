@@ -1,8 +1,9 @@
 import { act, render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { lazy } from 'react';
+import { describe, expect, it, vi } from 'vitest';
 import { Component, Consumer } from '@expressive/react';
 
-import { location, browserRouter, mockPromise, renderAct } from '../test.setup';
+import { location, browserRouter, mockError, mockPromise, renderAct } from '../test.setup';
 import { Route } from './route';
 import { Router } from './router';
 
@@ -1873,5 +1874,161 @@ describe('a Route passed as another Route', () => {
 
     await act(async () => { resolve(); await pending; });
     expect(view.container.textContent).toBe('ready');
+  });
+});
+
+describe('a lazy page as `as`', () => {
+  type Module = { default: () => any };
+
+  it('suspends into the route fallback, then resolves in place', async () => {
+    location('/posts/foo');
+    const module = mockPromise<Module>();
+    const Page = lazy(() => module);
+    const created = vi.fn();
+    let route!: Route;
+
+    const view = await renderAct(
+      <Route
+        to="/posts/:id"
+        fallback={<span>loading</span>}
+        as={Page}
+        is={(r) => { created(); route = r; }}
+      />
+    );
+
+    expect(view.container.textContent).toBe('loading');
+
+    await act(async () => {
+      module.resolve({ default: Post });
+      await module;
+    });
+
+    expect(view.container.textContent).toBe('id: foo');
+    expect(created).toHaveBeenCalledTimes(1);
+    expect(route.match).toEqual({ id: 'foo' });
+  });
+
+  it('suspends within a nested scope without remounting the layout', async () => {
+    location('/admin/users/7');
+    const module = mockPromise<Module>();
+    const Users = lazy(() => module);
+    let mounted = 0;
+    let child!: Route;
+
+    const Layout = (props: { children?: React.ReactNode }) => {
+      mounted++;
+      return <main>{props.children}</main>;
+    };
+
+    const view = await renderAct(
+      <Route to="/admin/*" as={Layout}>
+        <Route
+          to="users/:id"
+          fallback={<span>loading</span>}
+          as={Users}
+          is={(r) => (child = r)}
+        />
+      </Route>
+    );
+
+    expect(view.container.querySelector('main')!.textContent).toBe('loading');
+    expect(mounted).toBe(1);
+
+    await act(async () => {
+      module.resolve({ default: Post });
+      await module;
+    });
+
+    expect(view.container.querySelector('main')!.textContent).toBe('id: 7');
+    expect(mounted).toBe(1);
+    expect(child.match).toEqual({ id: '7' });
+  });
+
+  it('resolves a lazy scope layout, then its nested children', async () => {
+    location('/admin/users');
+    const module = mockPromise<{ default: (props: any) => any }>();
+    const Layout = lazy(() => module);
+    let scope!: Route;
+
+    const view = await renderAct(
+      <Route to="/admin/*" fallback={<span>loading</span>} as={Layout} is={(r) => (scope = r)}>
+        <Route to="users" as={() => <span>users</span>} />
+        <Route to="roles" as={() => <span>roles</span>} />
+      </Route>
+    );
+
+    expect(view.container.textContent).toBe('loading');
+    expect(scope.inner).toEqual([]);
+
+    await act(async () => {
+      module.resolve({ default: (props) => <main>{props.children}</main> });
+      await module;
+    });
+
+    expect(view.container.querySelector('main')!.textContent).toBe('users');
+    expect(scope.inner.map((r) => r.path)).toEqual(['/admin/users', '/admin/roles']);
+
+    await act(async () => router.current.goto('/admin/roles'));
+
+    expect(view.container.querySelector('main')!.textContent).toBe('roles');
+  });
+
+  it('reaches the Route catch when the module rejects', async () => {
+    mockError();
+    location('/posts/foo');
+    const module = mockPromise<Module>();
+    const failure = new Error('chunk load failed');
+    let caught!: Error;
+
+    class Page extends Route {
+      fallback = (<span>loading</span>);
+
+      async catch(error: Error) {
+        caught = error;
+        this.fallback = <span>offline</span>;
+        await new Promise(() => {});
+      }
+    }
+
+    const view = await renderAct(
+      <Page to="/posts/:id" as={lazy(() => module)} />
+    );
+
+    expect(view.container.textContent).toBe('loading');
+
+    await act(async () => {
+      module.reject(failure);
+      await module.catch(() => {});
+    });
+
+    expect(caught).toBe(failure);
+    expect(view.container.textContent).toBe('offline');
+  });
+
+  it('does not mount a lazy page abandoned by navigation mid-load', async () => {
+    location('/posts/foo');
+    const module = mockPromise<Module>();
+    const page = vi.fn(() => <span>post</span>);
+
+    const view = await renderAct(
+      <>
+        <Route to="/posts/:id" fallback={<span>loading</span>} as={lazy(() => module)} />
+        <Route to="/about" as={() => <span>about</span>} />
+      </>
+    );
+
+    expect(view.container.textContent).toBe('loading');
+
+    await act(async () => router.current.goto('/about'));
+
+    expect(view.container.textContent).toBe('about');
+
+    await act(async () => {
+      module.resolve({ default: page });
+      await module;
+    });
+
+    expect(view.container.textContent).toBe('about');
+    expect(page).not.toHaveBeenCalled();
   });
 });
