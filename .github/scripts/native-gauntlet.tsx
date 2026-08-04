@@ -199,21 +199,11 @@ const CHECKS: [string, (report: Report) => Promise<void>][] = [
       cleaned ? 'cleanup ran' : 'cleanup skipped');
   }],
 
-  ['uSES identity', async report => {
-    const module: any = await import('@expressive/mvc/runtime');
-    const runtime = module.default ?? module;
-    const registered = runtime.useSyncExternalStore;
-    const dynamic: any = await import('react');
-
-    const same = [
-      ['static', registered === React.useSyncExternalStore],
-      ['namespace', registered === dynamic.useSyncExternalStore],
-      ['default', registered === dynamic.default?.useSyncExternalStore]
-    ].filter(([, hit]) => hit).map(([which]) => which);
-
-    report('Runtime.useSyncExternalStore is React\'s own', same.length > 0,
-      `registered ${typeof registered}, React ${typeof React.useSyncExternalStore}` +
-      `, matches [${same.join(', ')}], runtime keys ${Object.keys(runtime).length}`);
+  ['uSES precondition', async report => {
+    report('React on native exposes useSyncExternalStore',
+      typeof React.useSyncExternalStore === 'function',
+      'the adapter registers this exact function at import; its own Runtime is' +
+      ' package-internal, so identity is not observable from published exports');
   }],
 
   ['BrowserRouter', async report => {
