@@ -23,6 +23,9 @@ jobs:
 
       - run: bun run build
 
+      - name: Dist is consumable
+        run: bun run dist
+
       - name: Bundle size
         continue-on-error: true
         run: bun run size
@@ -37,6 +40,6 @@ jobs:
       - name: Pack validation
         continue-on-error: true
         run: |
-          for pkg in mvc react; do
+          for pkg in mvc react router; do
             (cd packages/$pkg && npm publish --dry-run)
           done
