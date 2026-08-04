@@ -66,7 +66,7 @@ function observer(state: object, create?: boolean) {
   if (!o && create) {
     if (o === null)
       throw new Error(
-        `${state} was destroyed - a destroyed state cannot be rendered, watched or updated.`
+        `${state} was destroyed - cannot be rendered, watched or updated.`
       );
 
     const value: Observer = {

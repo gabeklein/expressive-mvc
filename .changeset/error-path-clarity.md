@@ -13,5 +13,5 @@ as methods.
 
 Using a destroyed state threw `Object is not observable (terminated).`, naming an
 internal slot rather than the error. It now names the state and what cannot be
-done with it: `Foo-a1b2c3 was destroyed - a destroyed state cannot be rendered,
-watched or updated.`
+done with it: `Foo-a1b2c3 was destroyed - cannot be rendered, watched or
+updated.`
