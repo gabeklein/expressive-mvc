@@ -19,6 +19,18 @@ declare module 'vitest' {
 
 expect.extend({ toHaveUpdated, toHaveText });
 
+Object.defineProperty(State.prototype, 'toJSON', {
+  value: function (this: object) {
+    const output: Record<string, unknown> = {};
+
+    for (let owner = this; owner; owner = Object.getPrototypeOf(owner))
+      for (const key of Object.keys(owner))
+        if (!(key in output)) output[key] = (owner as any)[key];
+
+    return output;
+  }
+});
+
 afterEach(() => Context.root.pop());
 
 export { mockError, mockPromise, mockWarn, flushMicrotasks };

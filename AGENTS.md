@@ -62,6 +62,12 @@ await expect(state).not.toHaveUpdated();
 - `mockPromise<T>()` - controllable promise with `.resolve()` / `.reject()`
 - `mockWarn()` / `mockError()` - spy on console, auto-clear between tests
 
+`packages/mvc/test.setup.ts` defines `toJSON` on `State.prototype` so tracking
+proxies print their managed values in assertion diffs rather than internals. A
+spy that silences `console.error` must be scoped with `beforeEach`/`afterEach`,
+restored (not cleared), and asserted empty - an unexpected React warning is a
+failure.
+
 ### Naming Convention
 
 - Positive: `it('will create instance')`
@@ -128,6 +134,36 @@ gh project item-create 6 --owner gabeklein --title "..." --body "$(cat note.md)"
 ```
 
 Requires `gh auth refresh -s project` (`read:project` can list but not create). `item-create` prints nothing and exits 0 on success, and `item-list`'s table output silently drops rows - verify with `gh project item-list 6 --owner gabeklein --format json`, where bodies live under `content.body`, not top-level `body`. Re-running a create that looked like it failed duplicates the item.
+
+A draft has no open/closed state, so `Status` is the board's only progression signal. Set it on create and move it as the item advances - an unset item is invisible. Four states, deliberately no `Ready` or `In progress`: work here goes from picked-up to PR in minutes, so those columns only ever held stale rows.
+
+| Status | Option id | Means |
+| --- | --- | --- |
+| `Issues` | `ad4b7e6a` | Bugs - a defect in current behavior, wants attention now |
+| `Backlog` | `95f4fe41` | Known but not pressing - features, chores, docs, open questions |
+| `In review` | `d4e312b2` | Has an open PR |
+| `Done` | `dbd6afac` | Merged |
+
+The split is defect versus not-pressing, so a bug files into `Issues` however well diagnosed it is, and a missing capability files into `Backlog` however sharply it bit. Move to `Done` in the same pass that lands the fix. Residual open questions on a resolved finding get their own item rather than holding the original open.
+
+Set `Priority` (field `PVTSSF_lAHOAQ6js84BewtBzhZIhgI`) alongside it. Judge by consequence, not by how interesting the finding is:
+
+| Priority | Option id | Means |
+| --- | --- | --- |
+| `P0` | `79628723` | Breaks a documented or ordinary path with no workaround, or blocks other work |
+| `P1` | `0a877460` | Real but survivable - a workaround exists, or a consumer is waiting |
+| `P2` | `da944a9c` | Latent, low-impact, speculative, or a decision record |
+
+Record the PR in the item body, since `Linked pull requests` is populated by GitHub for real issues and cannot be set on a draft. `In review` items carry an **Open PR:** line; `Done` items carry a **Resolved by** line naming the PR and what it actually changed, which is what makes the board auditable later without re-deriving the fix from git.
+
+```bash
+gh project item-edit --id "$ITEM" \
+  --project-id PVT_kwHOAQ6js84BewtB \
+  --field-id PVTSSF_lAHOAQ6js84BewtBzhZIhUI \
+  --single-select-option-id dbd6afac
+```
+
+Item ids come from `gh project item-list 6 --owner gabeklein --format json`. Do not edit the option set with `updateProjectV2Field` - `singleSelectOptions` has no `id` input, so a write replaces every option and silently clears every item's `Status`.
 
 ## Guardrails
 

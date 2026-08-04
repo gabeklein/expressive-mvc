@@ -99,6 +99,12 @@ function observe<T extends object>(
 
   const proxy = Object.create(object) as T;
 
+  if ('is' in object)
+    Object.defineProperty(proxy, 'is', {
+      value: (object as { is?: unknown }).is,
+      writable: true
+    });
+
   return Object.defineProperty(proxy, Observing, {
     value: { callback, watching, required } as Observing
   });
