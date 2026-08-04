@@ -2,11 +2,12 @@
 
 ## pr.yml (pull requests -> main)
 
-Blocking: `bun run test`, `bun run build` and `bun run dist` (static invariants
+Blocking: `bun run test`, `bun run build` and `dist-check.ts` (static invariants
 on the emitted dist - relative specifiers resolve, side-effect imports are
-declared). The frozen-lockfile install in the `setup` action doubles as the
-internal-dependency desync guard - a workspace version that falls outside a
-sibling's range cannot reach main.
+declared). Steps backed by a script under `.github/scripts` invoke it directly;
+only workspace-wide commands are `package.json` entries. The frozen-lockfile
+install in the `setup` action doubles as the internal-dependency desync guard -
+a workspace version that falls outside a sibling's range cannot reach main.
 
 Non-blocking signals: `changeset status` (a preview of which packages would
 bump) and `npm publish --dry-run` pack validation for the publishable packages.
