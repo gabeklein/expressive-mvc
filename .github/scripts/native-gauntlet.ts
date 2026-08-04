@@ -4,9 +4,11 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 const PINS = {
+  '@types/react': '~19.2.2',
   expo: '~57.0.9',
   react: '19.2.3',
-  'react-native': '0.86.2'
+  'react-native': '0.86.2',
+  typescript: '~6.0.3'
 };
 
 const PACKAGES = ['mvc', 'react', 'router'];
