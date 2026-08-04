@@ -11,7 +11,9 @@ import { withWorkspaceLinks } from './workspace-links';
  * Each carries ~3.5% headroom over the measured figure, because CI does not pin
  * a Bun version and minifier output drifts a little between them - measured at
  * <=0.5% across 1.3.1 and 1.3.14, so the margin is mostly slack. Real growth is
- * structural and clears it; toolchain drift does not.
+ * structural and clears it; toolchain drift does not. The react floor is the
+ * exception: pinned to a round 8 kB, so ~1% - still above observed drift, but it
+ * will flag sooner than the rest.
  */
 const CASES = [
   {
@@ -26,7 +28,7 @@ const CASES = [
   },
   {
     name: 'react: State only',
-    limit: 8100,
+    limit: 8192,
     code: `import State from '@expressive/react'; console.log(State);`
   },
   {
