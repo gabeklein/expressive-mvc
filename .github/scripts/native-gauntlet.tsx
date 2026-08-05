@@ -258,18 +258,25 @@ function Renderer() {
 
   useEffect(() => {
     const mounted = renders.current;
+    let waited = 0;
 
     counter.bump();
 
-    queueMicrotask(() => {
+    const poll = setInterval(() => {
+      const again = renders.current > mounted;
+
+      if (!again && waited++ < 50)
+        return;
+
+      clearInterval(poll);
+
       if (reported.current)
         return;
 
       reported.current = true;
-      record(RENDERED,
-        counter.count === 1 && renders.current > mounted,
-        `count ${counter.count}, ${renders.current} renders`);
-    });
+      record(RENDERED, again && counter.count === 1,
+        `count ${counter.count}, ${renders.current} renders after ${waited * 20}ms`);
+    }, 20);
   }, []);
 
   return (
