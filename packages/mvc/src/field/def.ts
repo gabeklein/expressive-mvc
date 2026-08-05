@@ -18,7 +18,7 @@ declare namespace def {
   }
 }
 
-const APPLY = new Map<symbol, def.Factory>();
+const APPLY = new WeakMap<symbol, def.Factory>();
 
 function def<T>(arg1: def.Factory<T>) {
   const token = Symbol('field-' + uid());
