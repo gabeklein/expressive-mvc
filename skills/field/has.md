@@ -112,6 +112,28 @@ basket.items.add(Item.new());             // already activated - guest
 
 `has(value)` and `delete(value)` take the member itself. Adding a value already present is a no-op - no duplicate, no events. There is no positional surface: no `set`, `put`, `push`, or index reads; iteration yields members in insertion order.
 
+### DTO boundary
+
+Pools are the home for per-item UI state. Accept API payloads through the factory (DTO in), read them back out at the boundary (DTO out); refill on fetch with `clear()` plus `add` per item:
+
+```ts
+class Gallery extends State {
+  images = has((meta: ImageMeta) => new GalleryImage({ info: meta, name: meta.name }));
+
+  get dtos() {
+    return this.images.map((i) => i.info);
+  }
+
+  async refresh() {
+    const data = await api.list();
+    this.images.clear();
+    for (const meta of data) this.images.add(meta);
+  }
+}
+```
+
+Keep members small: promote a payload key to its own reactive field only when views render it or it changes independently - the rest stays whole as one subobject field (`info`). Normalize API `null` to `undefined` here so presence fields stay optional.
+
 ## Ownership
 
 Ownership follows freshness, not how the member arrived: a fresh (never-activated) `State` - one the pool instantiates, a factory constructs, or `add` admits directly - is adopted and owned, and the pool destroys it when it is deleted, cleared, or the owner dies. An already-activated value (`Item.new()`) is a guest: held but never destroyed. Non-State members are never owned.
@@ -154,6 +176,8 @@ const names = roster.players.map((p) => p.name);
 ```
 
 Calling `get()` with no arguments returns a shallow snapshot array; nested values with a `.get()` method are exported through it, matching State snapshots.
+
+Member fields read through a subscribed context track deeply - a parent rendering `players.filter((p) => p.online)` re-renders when any visited member's `online` changes. For per-row paint, prefer `Component` members owning `render()`: each row subscribes to itself and the parent tracks only shape. Never read a value solely to force tracking (`void x`) in a render - consume it, or move paint to the member.
 
 ## Type Signature
 
