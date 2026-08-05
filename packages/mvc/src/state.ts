@@ -36,6 +36,9 @@ const GETTERS = new WeakMap<Function, Map<string, () => unknown>>();
 /** Stale flags for compute closures awaiting refresh on next access. */
 const STALE = new WeakSet<() => void>();
 
+/** Adopters for managed properties which have held a child State. */
+const ADOPT = new WeakMap<State, Map<unknown, (value: unknown) => void>>();
+
 declare namespace State {
   /** Any type of State, using own class constructor as its identifier. */
   type Extends<T extends State = State> = (abstract new (...args: any[]) => T) &
@@ -698,7 +701,7 @@ function compute(this: State, getter: (self: any) => unknown, key: string) {
       console.error(err);
     }
 
-    update(this, key, next, !isAsync);
+    update(this, key, next, !isAsync, true);
   };
 
   apply(
@@ -749,11 +752,8 @@ function apply(
     return;
   }
 
-  const adopt = config.value instanceof State && child(state);
-
   function set(value: unknown, silent?: boolean) {
-    if (!update(state, key, value, silent)) return;
-    if (adopt) adopt(STORE.get(state)![key]);
+    update(state, key, value, silent);
   }
 
   define(state, key, {
@@ -927,7 +927,8 @@ function update<T>(
   state: State,
   key: State.Event<T>,
   value: T,
-  silent?: boolean
+  silent?: boolean,
+  derived?: boolean
 ) {
   if (observer(state) === null) {
     if (silent) return false;
@@ -946,7 +947,33 @@ function update<T>(
 
   if (!silent) event(state, key);
 
+  if (!derived) adopt(state, key, value);
+
   return true;
+}
+
+/**
+ * Hand a value landing in a managed property to that property's adopter,
+ * creating one the first time a State is stored there. A property which has
+ * held a State keeps its adopter, so a later non-State value releases the
+ * previous child.
+ */
+function adopt(state: State, key: unknown, value: unknown) {
+  let keys = ADOPT.get(state);
+
+  if (!keys) {
+    if (!(value instanceof State)) return;
+    ADOPT.set(state, (keys = new Map()));
+  }
+
+  let claim = keys.get(key);
+
+  if (!claim) {
+    if (!(value instanceof State)) return;
+    keys.set(key, (claim = child(state)));
+  }
+
+  claim(value);
 }
 
 /** Random alphanumberic of length 6; always starts with a letter. */
