@@ -214,10 +214,11 @@ Nothing in the adapter is renderer-specific - it imports only `react` and
 and `catch()` should behave as they do on the DOM, and Hermes needs no
 workaround. Metro resolves the package with no extra configuration.
 
-Provisional, and specific about why: `native-check.ts` gates each release on
-Metro resolution, a Hermes bytecode build and class-field semantics (Expo SDK
-57, React Native 0.86). Renderer behavior itself is inference from the import
-surface - no device or simulator run is part of CI.
+Provisional, and specific about why. Every release is checked against Metro
+resolution, a Hermes bytecode build and class-field semantics under both of
+Metro's transform paths (Expo SDK 57, React Native 0.86). The renderer is not:
+no device or simulator run exists, so parity with the DOM is inference from the
+import surface. Verify anything load-bearing on a device yourself.
 
 - **Jest.** The build is ESM-only and `jest-expo` skips `node_modules`, so the
   import fails to parse until `@expressive` is added to
