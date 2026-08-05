@@ -17,7 +17,7 @@ The React adapter for [Expressive MVC](https://github.com/gabeklein/expressive-m
 npm install @expressive/react
 ```
 
-Works on React DOM and, provisionally, React Native and Expo - the adapter imports only `react` and `react/jsx-runtime`. Each release is gated on Metro resolution and a Hermes build (Expo SDK 57, React Native 0.86), with no device run; under Jest, add `@expressive` to `transformIgnorePatterns`.
+Works on React DOM, and on React Native and Expo - the adapter imports only `react` and `react/jsx-runtime`, so there is nothing renderer-specific to port. Exercised on an iOS simulator and gated per release on Metro resolution and a Hermes build (Expo SDK 57, React Native 0.86); provisional only in that no physical device is tested. Under Jest, add `@expressive` to `transformIgnorePatterns`.
 
 ```tsx
 import State from '@expressive/react';

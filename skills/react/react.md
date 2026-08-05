@@ -209,16 +209,18 @@ between requests; provide `<Provider for={Router}>` to render a request's path.
 
 ### React Native
 
-Nothing in the adapter is renderer-specific - it imports only `react` and
-`react/jsx-runtime` - so `State.use()`, `State.get()`, `Component`, `Provider`
-and `catch()` should behave as they do on the DOM, and Hermes needs no
-workaround. Metro resolves the package with no extra configuration.
+Supported. The adapter imports only `react` and `react/jsx-runtime`, so there is
+nothing renderer-specific to port - `State.use()`, `State.get()`, `Component`,
+`Provider` and `catch()` behave as they do on the DOM, Metro resolves the
+package with no extra configuration, and Hermes needs no workaround.
 
-Provisional, and specific about why. Every release is checked against Metro
-resolution, a Hermes bytecode build and class-field semantics under both of
-Metro's transform paths (Expo SDK 57, React Native 0.86). The renderer is not:
-no device or simulator run exists, so parity with the DOM is inference from the
-import surface. Verify anything load-bearing on a device yourself.
+Exercised on an iOS simulator (Expo SDK 57, React Native 0.86, React 19.2):
+render and re-render on write through the native renderer, context through a
+`Provider`, async `set()` suspension, `map`/`has`/`ref`, batched dispatch and
+`catch()` recovery. Every release additionally gates on Metro resolution for
+both platforms, a Hermes bytecode build, and class-field semantics under either
+of Metro's transform paths. Untested on physical hardware, which is why this is
+called provisional rather than guaranteed.
 
 - **Jest.** The build is ESM-only and `jest-expo` skips `node_modules`, so the
   import fails to parse until `@expressive` is added to
@@ -230,8 +232,9 @@ import surface. Verify anything load-bearing on a device yourself.
   ]
   ```
 
-- **`BrowserRouter`.** React Native defines `window` without `location`, so it
-  throws on construction. Use `Router` - path and history in memory.
+- **`BrowserRouter` is the browser binding**, as the name says - it reads
+  `window.location`, which React Native does not define. Use `Router`, whose
+  path and history are in memory.
 
 ---
 
