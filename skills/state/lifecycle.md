@@ -17,8 +17,12 @@
 class Timer extends State {
   elapsed = 0;
 
+  tick() {
+    this.elapsed++;
+  }
+
   protected new() {
-    const id = setInterval(() => this.elapsed++, 1000);
+    const id = setInterval(this.tick, 1000);
     return () => clearInterval(id);
   }
 }
