@@ -39,8 +39,10 @@ export interface HostRuntime {
   jsxs(type: unknown, props: object, key?: unknown): Component.Node;
   propsOf(node: unknown): Record<string, unknown>;
   typeOf(node: unknown): unknown;
-  /** Non-urgent update bracket (e.g. React `startTransition`). Optional - see {@link transition}. */
-  transition?(work: () => void): void;
+  /** Non-urgent update bracket (e.g. React `startTransition`). Optional - see
+   * {@link transition}. Return a promise settling when the bracketed work has
+   * been presented to report progress; return nothing to opt out. */
+  transition?(work: () => void): void | Promise<void>;
   Fragment: unknown;
 }
 
@@ -145,7 +147,11 @@ export function propsOf(node: unknown): Record<string, unknown> {
  * Mark synchronous work as non-urgent. `work` runs inline through the host
  * scheduler; queued subscriber updates inherit the designation and replay it
  * after dispatch. Without a host scheduler, normal timing is retained.
+ *
+ * Resolves once those updates have been presented, so a caller can hold a
+ * pending flag for the span. Hosts that do not report presentation resolve on
+ * replay instead.
  */
-export function transition(work: () => void): void {
-  schedule(work, HOST.transition);
+export function transition(work: () => void): Promise<void> {
+  return schedule(work, HOST.transition);
 }

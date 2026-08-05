@@ -30,6 +30,7 @@ Object.assign(Runtime, {
   useState,
   useRef,
   useSyncExternalStore: React.useSyncExternalStore,
+  useTransition: React.useTransition,
   Suspense,
   ignore: [
     'updater',

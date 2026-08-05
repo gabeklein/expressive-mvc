@@ -55,6 +55,26 @@ transition(() => {
 
 The callback runs synchronously. Its queued subscriber callbacks retain transition priority through MVC's microtask dispatch; React interprets that priority with `startTransition`. Writes after an `await` are outside the scope and need another `transition()` call. Normal batching still applies, and urgent invalidation wins when the same watcher is already pending at transition priority.
 
+`transition()` returns a promise settling once those updates are on screen - hold a flag across it for progress UI:
+
+```ts
+class App extends State {
+  page = 'home';
+  busy = false;
+
+  go(to: string) {
+    this.busy = true;
+    transition(() => {
+      this.page = to;
+    }).then(() => {
+      this.busy = false;
+    });
+  }
+}
+```
+
+`busy` is an urgent write, so an indicator reading it paints immediately while the page defers. Under React this spans a suspended replacement - the promise settles when the new page commits, not when the write lands. Reporting requires a mounted `Provider`; without one (or on a host that cannot report) the work still defers and the promise settles on dispatch.
+
 ### Value Equality
 
 Updates are skipped when new value `===` previous value. No event is emitted.
