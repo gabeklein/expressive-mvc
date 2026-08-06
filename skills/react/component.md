@@ -311,6 +311,37 @@ class DataView extends Component {
 
 `fallback={false}` declines the component's own boundary so suspension bubbles to an ancestor - valid only when the pending value is owned **above** the boundary that catches it. A boundary rebuilds the subtree it retries, so state owned below is reconstructed on every retry and requests again: a silent infinite retry loop.
 
+## Transitions
+
+`transition()` marks work non-urgent, so React keeps current content on screen while a replacement gets ready instead of falling back to `fallback`. Writes inside are ordinary - the designation rides with the subscriber updates they queue, for state this component does not own included.
+
+```tsx
+class Shell extends Component {
+  busy = false;
+
+  go(to: string) {
+    this.busy = true;
+    this.transition(() => {
+      data.page = to;
+    }).then(() => {
+      this.busy = false;
+    });
+  }
+}
+```
+
+The returned promise settles once the work is **presented** - after a suspended replacement commits, not when the write lands. Before mount, or on a host that cannot report, work still defers and the promise settles on dispatch.
+
+**Read a pending flag above the deferred content, never beside it.** A component carries one update at one priority, so a component reading both `busy` and the deferred value takes the urgent priority of `busy` for both: it re-renders at once, suspends, and the fallback appears rather than the previous content holding.
+
+```tsx
+const Frame = (props) => (              // pending only - paints at once
+  <div aria-busy={shell.busy}>{props.children}</div>
+);
+
+const Screen = () => <Page page={Data.get().page} />;   // deferred value only - holds
+```
+
 ## Error Boundaries
 
 Override `catch()` to handle child render errors:

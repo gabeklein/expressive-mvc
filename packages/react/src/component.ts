@@ -1,6 +1,7 @@
 import { Component, unbind } from '@expressive/mvc';
 import { createProvider, type Context } from './context';
 import { Runtime, useWatch } from './runtime';
+import { Driver } from './transition';
 
 declare module '@expressive/mvc' {
   namespace Component {
@@ -160,7 +161,10 @@ function render(from: Component, context: Context) {
       };
     });
 
-    return createFrame(from, context, createElement(Render));
+    return createElement(Driver, {
+      owner: self,
+      children: createFrame(from, context, createElement(Render))
+    });
   };
 
   return () => createElement(Component);

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { flushMicrotasks, mockError } from '../test.setup';
+import { flushMicrotasks, mockError, mockPromise } from '../test.setup';
 import { watch } from './observable';
 import { enqueue, schedule } from './dispatch';
 import { State } from './state';
@@ -165,5 +165,49 @@ describe('dispatch', () => {
 
     expect(error).toHaveBeenCalledWith(expected);
     expect(after).toHaveBeenCalledOnce();
+  });
+
+  it('will settle when the host reports the replay presented', async () => {
+    const presented = mockPromise<void>();
+    const log: string[] = [];
+
+    const settled = schedule(() => {
+      enqueue(() => log.push('dispatch'));
+    }, (work) => {
+      work();
+      return presented;
+    });
+
+    let done = false;
+    settled.then(() => (done = true));
+
+    await flushMicrotasks();
+
+    expect(log).toEqual(['dispatch']);
+    expect(done).toBe(false);
+
+    presented.resolve();
+    await flushMicrotasks();
+
+    expect(done).toBe(true);
+  });
+
+  it('will settle when the host reports a failed replay', async () => {
+    const presented = mockPromise<void>();
+
+    const settled = schedule(() => {
+      enqueue(() => {});
+    }, (work) => {
+      work();
+      return presented;
+    });
+
+    let done = false;
+    settled.then(() => (done = true));
+
+    presented.reject(new Error('abandoned'));
+    await flushMicrotasks();
+
+    expect(done).toBe(true);
   });
 });

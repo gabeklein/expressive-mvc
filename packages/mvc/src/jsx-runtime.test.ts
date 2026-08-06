@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { childrenOf, Fragment, host, isElement, jsx, jsxs, propsOf, transition, typeOf } from './runtime';
+import { childrenOf, defer, Fragment, host, isElement, jsx, jsxs, owns, propsOf, typeOf } from './runtime';
 import { jsxDEV, Fragment as devFragment } from './jsx-dev-runtime';
 import * as compat from './jsx-runtime';
 import type { HostRuntime } from './runtime';
@@ -41,7 +41,7 @@ describe('unregistered', () => {
 
   it('will run transition work inline', () => {
     const work = vi.fn();
-    expect(() => transition(work)).not.toThrow();
+    expect(() => defer(undefined, work)).not.toThrow();
     expect(work).toHaveBeenCalledTimes(1);
   });
 });
@@ -90,7 +90,7 @@ describe('runtime', () => {
 
   it('will run transition work inline when host has no scheduler', () => {
     const work = vi.fn();
-    transition(work);
+    defer(undefined, work);
     expect(work).toHaveBeenCalledTimes(1);
   });
 
@@ -100,7 +100,7 @@ describe('runtime', () => {
     host(runtime);
 
     const work = vi.fn();
-    transition(work);
+    defer(undefined, work);
 
     expect(runtime.transition).toHaveBeenCalledWith(work);
     expect(work).toHaveBeenCalledTimes(1);
@@ -139,5 +139,26 @@ describe('jsx-runtime module', () => {
     expect(compat.jsx).toBe(jsx);
     expect(compat.jsxs).toBe(jsxs);
     expect(compat.Fragment).toBe(Fragment);
+  });
+
+  it('will prefer an owner scheduler over the ambient one', () => {
+    const owner = {};
+    const own = vi.fn((work: () => void) => work());
+
+    runtime.transition = vi.fn((work: () => void) => work());
+    host(runtime);
+
+    const release = owns(owner, own);
+    const work = vi.fn();
+
+    defer(owner, work);
+
+    expect(own).toHaveBeenCalledWith(work);
+    expect(runtime.transition).not.toHaveBeenCalled();
+
+    release();
+    defer(owner, work);
+
+    expect(runtime.transition).toHaveBeenCalledWith(work);
   });
 });
