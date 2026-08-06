@@ -581,9 +581,7 @@ function bootstrap(T: State.Extends) {
 
   while (true) {
     chain.unshift(T);
-
     if (T === State) break;
-
     T = Object.getPrototypeOf(T);
   }
 
