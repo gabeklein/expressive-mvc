@@ -330,7 +330,9 @@ class Shell extends Component {
 }
 ```
 
-The returned promise settles once the work is **presented** - after a suspended replacement commits, not when the write lands. Before mount, or on a host that cannot report, work still defers and the promise settles on dispatch.
+The returned promise settles once the work is **presented** - after a suspended replacement commits, not when the write lands.
+
+**Override `transition` to be observed.** Watching progress costs a hook per component, so the adapter only wires one where the class declares its own `transition` - as the example does to hold `busy`. Inheriting it still defers; the promise just settles on dispatch instead, as it also does before mount or on a host without `useTransition`.
 
 **Read a pending flag above the deferred content, never beside it.** A component carries one update at one priority, so a component reading both `busy` and the deferred value takes the urgent priority of `busy` for both: it re-renders at once, suspends, and the fallback appears rather than the previous content holding.
 

@@ -1,51 +1,59 @@
 import { act, render } from '@testing-library/react';
 import { Suspense } from 'react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { Component, Provider, State } from '.';
 import { Runtime } from './adapter';
 import { mockPromise } from '../test.setup';
 
 describe('Component.transition', () => {
-  function gated() {
+  class Data extends State {
+    value = 'a';
+  }
+
+  /** A screen which suspends on `b` until its gate resolves. */
+  function scenario() {
     const gate = mockPromise<void>();
+    const data = Data.new();
     let ready = false;
 
     gate.then(() => {
       ready = true;
     });
 
-    return {
-      gate,
-      suspend: (value: string) => {
-        if (value === 'b' && !ready) throw gate;
-      }
-    };
-  }
-
-  class Data extends State {
-    value = 'a';
-  }
-
-  it('will hold current content until the replacement is presented', async () => {
-    const { gate, suspend } = gated();
-    const data = Data.new();
-    let shell!: Shell;
-    let settled = false;
-
     const Screen = () => {
       const { value } = Data.get();
-      suspend(value);
+
+      if (value === 'b' && !ready) throw gate;
+
       return <span>{value}</span>;
     };
 
+    const Content = () => (
+      <Suspense fallback={<i>fallback</i>}>
+        <Screen />
+      </Suspense>
+    );
+
+    return { gate, data, Content };
+  }
+
+  it('will hold current content until the replacement is presented', async () => {
+    const { gate, data, Content } = scenario();
+    let shell!: Shell;
+
     class Shell extends Component {
+      busy = false;
+
+      transition(work: () => void) {
+        this.busy = true;
+        return super.transition(work).then(() => {
+          this.busy = false;
+        });
+      }
+
       render() {
-        return (
-          <Suspense fallback={<i>fallback</i>}>
-            <Screen />
-          </Suspense>
-        );
+        return <Content />;
       }
     }
 
@@ -60,15 +68,13 @@ describe('Component.transition', () => {
     await act(async () => {
       shell.transition(() => {
         data.value = 'b';
-      }).then(() => {
-        settled = true;
       });
       await Promise.resolve();
     });
 
     expect(view.container.querySelector('i')).toBeNull();
     expect(view.container.textContent).toBe('a');
-    expect(settled).toBe(false);
+    expect(shell.busy).toBe(true);
 
     await act(async () => {
       gate.resolve();
@@ -76,31 +82,25 @@ describe('Component.transition', () => {
     });
 
     expect(view.container.textContent).toBe('b');
-    expect(settled).toBe(true);
+    expect(shell.busy).toBe(false);
   });
 
-  it('will settle where the host cannot report', async () => {
+  it('will settle on dispatch where the host cannot report', async () => {
     const { useTransition } = Runtime;
     delete Runtime.useTransition;
 
     try {
-      const { gate, suspend } = gated();
-      const data = Data.new();
+      const { gate, data, Content } = scenario();
       let shell!: Shell;
-
-      const Screen = () => {
-        const { value } = Data.get();
-        suspend(value);
-        return <span>{value}</span>;
-      };
+      let settled = false;
 
       class Shell extends Component {
+        transition(work: () => void) {
+          return super.transition(work);
+        }
+
         render() {
-          return (
-            <Suspense fallback={<i>fallback</i>}>
-              <Screen />
-            </Suspense>
-          );
+          return <Content />;
         }
       }
 
@@ -111,8 +111,6 @@ describe('Component.transition', () => {
       );
 
       await act(async () => {});
-
-      let settled = false;
 
       await act(async () => {
         shell.transition(() => {
@@ -148,5 +146,42 @@ describe('Component.transition', () => {
     });
 
     expect(settled).toBe(true);
+  });
+
+  it('will not mount a driver where transition is inherited', async () => {
+    const { data, Content } = scenario();
+    const hook = vi.spyOn(Runtime, 'useTransition');
+    let shell!: Shell;
+    let settled = false;
+
+    class Shell extends Component {
+      render() {
+        return <Content />;
+      }
+    }
+
+    render(
+      <Provider for={data}>
+        <Shell is={(i) => (shell = i)} />
+      </Provider>
+    );
+
+    await act(async () => {});
+
+    expect(hook).not.toHaveBeenCalled();
+
+    await act(async () => {
+      shell.transition(() => {
+        data.value = 'b';
+      }).then(() => {
+        settled = true;
+      });
+      await Promise.resolve();
+    });
+
+    expect(settled).toBe(true);
+    expect(hook).not.toHaveBeenCalled();
+
+    hook.mockRestore();
   });
 });
