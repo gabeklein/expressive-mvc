@@ -8,38 +8,37 @@ interface Driver {
 }
 
 /**
- * Wraps a component's content to host its transition scheduler. Separate from
- * the component itself because React re-renders whoever holds the hook when
- * pending flips - were that the component, the re-render would rebuild this
- * content, which reads the already-written value and suspends, defeating the
- * deferral. Re-rendering here leaves `children` identical, so the subtree
- * bails out.
+ * Gives `owner` a scheduler React can report progress through - it tracks a
+ * transition by the hook which started it, so deferring from outside render
+ * still needs one minted in it.
+ *
+ * A frame of its own because this re-renders whenever pending flips: the
+ * component below rebuilds its content every render (that is how updates
+ * arrive), and rebuilding it here would read the already-written value and
+ * suspend, defeating the deferral. Re-rendering leaves `children` identical
+ * instead, so the content bails out.
  */
 export function Driver(props: { owner: object; children: unknown }) {
-  const hook = Runtime.useTransition;
+  const [pending, start] = Runtime.useTransition!();
+  const ref = Runtime.useRef<Driver | null>(null);
+  const driver = ref.current || (ref.current = { start, waiting: [] });
 
-  if (hook) {
-    const [pending, start] = hook();
-    const ref = Runtime.useRef<Driver | null>(null);
-    const driver = ref.current || (ref.current = { start, waiting: [] });
+  driver.start = start;
 
-    driver.start = start;
+  Runtime.useEffect(
+    () =>
+      owns(props.owner, (work) =>
+        new Promise<void>((resolve) => {
+          driver.waiting.push(resolve);
+          driver.start(work);
+        })
+      ),
+    []
+  );
 
-    Runtime.useEffect(
-      () =>
-        owns(props.owner, (work) =>
-          new Promise<void>((resolve) => {
-            driver.waiting.push(resolve);
-            driver.start(work);
-          })
-        ),
-      []
-    );
-
-    Runtime.useEffect(() => {
-      if (!pending) for (const resolve of driver.waiting.splice(0)) resolve();
-    }, [pending]);
-  }
+  Runtime.useEffect(() => {
+    if (!pending) for (const resolve of driver.waiting.splice(0)) resolve();
+  }, [pending]);
 
   return props.children;
 }

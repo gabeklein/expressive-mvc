@@ -3,23 +3,6 @@ import { createProvider, type Context } from './context';
 import { Runtime, useWatch } from './runtime';
 import { Driver } from './transition';
 
-/**
- * Does `from`'s class declare its own `transition`? Descriptors are read rather
- * than the value, since a method access binds it - and binds it to the wrong
- * receiver when read off a prototype. Only such a class gets a {@link Driver};
- * inheriting the base means deferring without observing it.
- */
-function observes(from: object) {
-  let proto = Object.getPrototypeOf(from);
-
-  while (proto && proto !== Component.prototype) {
-    if (Object.getOwnPropertyDescriptor(proto, 'transition')) return true;
-    proto = Object.getPrototypeOf(proto);
-  }
-
-  return false;
-}
-
 declare module '@expressive/mvc' {
   namespace Component {
     /**
@@ -153,6 +136,23 @@ function createFrame(from: Component, context: Context, children: unknown) {
 }
 
 /**
+ * Does `from`'s class declare its own `transition`? Descriptors are read rather
+ * than the value, since a method access binds it - and binds it to the wrong
+ * receiver when read off a prototype. Only such a class gets a {@link Driver};
+ * inheriting the base means deferring without observing it.
+ */
+function observes(from: object) {
+  let proto = Object.getPrototypeOf(from);
+
+  while (proto && proto !== Component.prototype) {
+    if (Object.getOwnPropertyDescriptor(proto, 'transition')) return true;
+    proto = Object.getPrototypeOf(proto);
+  }
+
+  return false;
+}
+
+/**
  * Ownership host for `<Component/>`: React owns the instance, so its render
  * threads the bootstrap-pushed context through `Runtime.dedupe` (React stacks
  * render attempts) and tears that context down - destroying the instance - on
@@ -161,14 +161,13 @@ function createFrame(from: Component, context: Context, children: unknown) {
 function render(from: Component, context: Context) {
   const { createElement } = Runtime;
   const { commit, remove } = Runtime.dedupe(from, context);
+  const { is: owner, render } = from;
 
-  const self = from;
-  const observed = observes(self);
-  const content = from.render;
-  const Render = () => content.call(from, from.props);
+  const observed = observes(owner) && !!Runtime.useTransition;
+  const Render = () => render.call(from, from.props);
   const Component = () => {
     from = useWatch(from, () => {
-      const release = self.mount?.();
+      const release = owner.mount?.();
 
       commit();
 
@@ -179,11 +178,11 @@ function render(from: Component, context: Context) {
       };
     });
 
-    const frame = createFrame(from, context, createElement(Render));
+    const children = createFrame(from, context, createElement(Render));
 
     return observed
-      ? createElement(Driver, { owner: self, children: frame })
-      : frame;
+      ? createElement(Driver, { owner, children })
+      : children;
   };
 
   return () => createElement(Component);
