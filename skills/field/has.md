@@ -18,9 +18,9 @@ The argument selects the mode:
 | call | interface | insert | identity |
 | --- | --- | --- | --- |
 | `has<T>()` / `has(values)` | `has.List<T>` | `push` / `put` / `set(index)` | position |
-| `has(StateClass)` / `has(factory)` | `has.Pool<T, A>` | `add(...args)` spawns | the value itself |
+| `has(StateClass)` / `has(factory)` | `has.Pool<T, A>` | `add(...args)` spawns, `add(value)` admits | the value itself |
 
-A list stores values you give it, in order, addressed by index. A pool admits values only by spawning them - `add` returns the member, the call site holds the reference, and the value is its own identity for `has`, `delete`, and eviction.
+A list stores values you give it, in order, addressed by index. A pool spawns its members - `add` returns the member, the call site holds the reference, and the value is its own identity for `has`, `delete`, and eviction. A class-mode pool also takes a ready-made instance.
 
 ## List
 
@@ -50,7 +50,7 @@ history.push('a'); // reruns - length changed re-resolves the index
 
 ## Pool
 
-A `State` class or factory makes a pool: an owned collection of members that exist only by being spawned through it.
+A `State` class or factory makes a pool: a collection of members it owns, addressed by identity rather than position.
 
 ```ts
 class Roster extends State {
@@ -63,6 +63,21 @@ class Roster extends State {
 ```
 
 `add(...args)` forwards its arguments - to the class constructor exactly as `Type.new()` accepts them, or as the factory's own parameters - and returns the member. With a `Component` class, identity `key` arrives this way before the `new()` lifecycle hook runs. In `@expressive/react` a pool of `Component` values renders directly - `<ul>{roster.players}</ul>` - through the facade; `[...roster.players]` is the manual alternative.
+
+A class-mode pool also admits a ready-made member: `add(value)` with a lone instance of the class (or a subclass) holds that value instead of constructing. So one field both spawns and injects - use it for a second pool over members of a first, or to hydrate from a fetch.
+
+```ts
+class Store extends State {
+  items = has(Item);
+  selected = has(Item);
+}
+
+store.items.add({ value: 1 });           // spawns - owned
+store.items.add(new Item(fetched));      // injects fresh - owned
+store.selected.add(item);                // holds an active member - guest
+```
+
+Only a single argument is treated this way; `add(a, b)` always constructs, so multi-argument constructors are unaffected. A factory pool never admits - its arguments are its own, so route instances through the factory body (`has((item?: Item) => item || new Item())`).
 
 A pool has no initial argument: it spawns, so seed it imperatively from the `new()` hook, which runs once the field has resolved. This is the single seeding seam - it also covers conditional, ordered, and derived members, which a static initializer could not.
 
@@ -84,7 +99,7 @@ class Board extends State {
 const cell = board.cells.add('a1', 'black');
 ```
 
-Ownership follows freshness, not where the value came from: a member the factory constructs fresh (`new Item()`) is owned, while an already-activated value it returns (`Item.new()`, or one handed through its arguments) is a guest.
+The same rule holds through a factory: a member it constructs fresh (`new Item()`) is owned, while an already-activated value it returns (`Item.new()`, or one handed through its arguments) is a guest.
 
 ```ts
 class Basket extends State {
@@ -99,7 +114,7 @@ basket.items.add(Item.new());             // already activated - guest
 
 ## Ownership
 
-Ownership follows freshness: a fresh (never-activated) `State` member - a `new Item()` the factory constructs or a class the pool instantiates - is adopted and owned, and the pool destroys it when it is deleted, cleared, or the owner dies. An already-activated value (`Item.new()`) is a guest: held but never destroyed. Non-State members are never owned.
+Ownership follows freshness, not how the member arrived: a fresh (never-activated) `State` - one the pool instantiates, a factory constructs, or `add` admits directly - is adopted and owned, and the pool destroys it when it is deleted, cleared, or the owner dies. An already-activated value (`Item.new()`) is a guest: held but never destroyed. Non-State members are never owned.
 
 Every collection is adopted by its hosting state at activation. Fresh `State` members are parented to the owner and activate inside its context: `get(Owner)` resolves directly and providers above the owner resolve from members.
 
@@ -144,7 +159,7 @@ Calling `get()` with no arguments returns a shallow snapshot array; nested value
 
 ```ts
 function has<T>(initial?: Iterable<T> | false | null): has.List<T>;
-function has<T extends State>(Type: new (...args: State.Args<T>) => T): has.Pool<T, State.Args<T>>;
+function has<T extends State>(Type: new (...args: State.Args<T>) => T): has.Pool<T, State.Args<T> | [T]>;
 function has<T, A extends unknown[]>(make: (...args: A) => T): has.Pool<T, A>;
 
 class has.List<T> {
@@ -163,7 +178,7 @@ class has.List<T> {
 
 class has.Pool<T, A extends unknown[] = unknown[]> {
   readonly size: number;
-  add(...args: A): T;                          // the constructor's or factory's own signature
+  add(...args: A): T;                          // constructor's or factory's own signature; class mode also takes [T]
   get(): State.Export<T>[];                    // snapshot
   get(predicate): T | undefined;
   has(value: T): boolean;

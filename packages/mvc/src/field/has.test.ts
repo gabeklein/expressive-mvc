@@ -9,7 +9,7 @@ function reactive<T>(initial?: Iterable<T> | false | null): has.List<T>;
 
 function reactive<T extends State>(
   Type: new (...args: State.Args<T>) => T
-): has.Pool<T, State.Args<T>>;
+): has.Pool<T, State.Args<T> | [T]>;
 
 function reactive<T, A extends unknown[]>(
   make: (...args: A) => T
@@ -622,6 +622,69 @@ describe('pool', () => {
     expect(pool.has(guest)).toBe(true);
   });
 
+  it('will admit instance of class instead of constructing', () => {
+    const pool = reactive(Item);
+    const guest = Item.new();
+
+    expect(pool.add(guest)).toBe(guest);
+    expect(pool.size).toBe(1);
+  });
+
+  it('will admit subclass instance', () => {
+    class Special extends Item {}
+
+    const pool = reactive(Item);
+    const special = Special.new();
+
+    expect(pool.add(special)).toBe(special);
+    expect(pool.has(special)).toBe(true);
+  });
+
+  it('will still construct from props object', () => {
+    const pool = reactive(Item);
+    const item = pool.add({ value: 7 });
+
+    expect(item).toBeInstanceOf(Item);
+    expect(item.value).toBe(7);
+  });
+
+  it('will construct when args are not a lone instance', () => {
+    const pool = reactive(Item);
+    const item = pool.add({ value: 1 }, { value: 2 });
+
+    expect(item).toBeInstanceOf(Item);
+    expect(item.value).toBe(2);
+  });
+
+  it('will own admitted instance which is fresh', () => {
+    const pool = reactive(Item);
+    const item = new Item();
+
+    pool.add(item);
+    pool.delete(item);
+
+    expect(item.get(null)).toBe(true);
+  });
+
+  it('will not destroy admitted instance which is active', () => {
+    const pool = reactive(Item);
+    const guest = Item.new();
+
+    pool.add(guest);
+
+    expect(pool.delete(guest)).toBe(true);
+    expect(guest.get(null)).toBe(false);
+  });
+
+  it('will not admit instance in factory mode', () => {
+    const pool = reactive((value: Item) => new Item({ value: value.value + 1 }));
+    const seed = Item.new({ value: 1 });
+    const made = pool.add(seed);
+
+    expect(made).not.toBe(seed);
+    expect(made.value).toBe(2);
+  });
+
   it('will ignore repeat add of same value', async () => {
     const pool = reactive((value?: Item) => value || Item.new());
     const guest = Item.new();
@@ -758,6 +821,45 @@ describe('pool adoption', () => {
     host.set(null);
 
     expect(guest.get(null)).toBe(false);
+  });
+
+  it('will hold a member of one pool in another', () => {
+    class Thing extends State {}
+
+    class Store extends State {
+      items = has(Thing);
+      selected = has(Thing);
+    }
+
+    const store = Store.new();
+    const item = store.items.add();
+
+    expect(store.selected.add(item)).toBe(item);
+
+    store.selected.delete(item);
+
+    expect(item.get(null)).toBe(false);
+    expect(store.items.has(item)).toBe(true);
+
+    item.set(null);
+
+    expect(store.items.has(item)).toBe(false);
+  });
+
+  it('will own instances injected into pool', () => {
+    class Thing extends State {}
+
+    class Store extends State {
+      items = has(Thing);
+    }
+
+    const store = Store.new();
+    const injected = new Thing();
+
+    store.items.add(injected);
+    store.set(null);
+
+    expect(injected.get(null)).toBe(true);
   });
 });
 

@@ -22,7 +22,7 @@ function has<T>(initial?: Iterable<T> | false | null): List<T>;
 
 function has<T extends State>(
   Type: new (...args: State.Args<T>) => T
-): Pool<T, State.Args<T>>;
+): Pool<T, State.Args<T> | [T]>;
 
 function has<T, A extends unknown[]>(
   make: (...args: A) => T
@@ -181,9 +181,11 @@ class Pool<T, A extends unknown[] = unknown[]> {
     const make = MAKE.get(target)!;
 
     const value = (
-      State.is(make)
-        ? new (make as State.Type)(...(args as State.Args))
-        : make(...args)
+      !State.is(make)
+        ? make(...args)
+        : args.length == 1 && args[0] instanceof make
+          ? args[0]
+          : new (make as State.Type)(...(args as State.Args))
     ) as T;
 
     if (!values.has(value)) {
