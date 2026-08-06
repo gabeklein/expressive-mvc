@@ -579,10 +579,11 @@ function bootstrap(T: State.Extends) {
   let keys = new Map<string, (value: any) => void>();
   let getters = new Map<string, () => unknown>();
 
-  do {
+  while (true) {
     chain.unshift(T);
+    if (T === State) break;
     T = Object.getPrototypeOf(T);
-  } while (T.name);
+  }
 
   for (const type of chain) {
     for (const handler of SETUP.get(type) || [])

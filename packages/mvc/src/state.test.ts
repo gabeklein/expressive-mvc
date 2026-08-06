@@ -2832,6 +2832,29 @@ describe('on method (static)', () => {
     expect(order).toEqual(['A', 'B', 'C']);
   });
 
+  it('will run handlers above an anonymous class', () => {
+    const order: string[] = [];
+
+    class A extends State {}
+
+    A.on(() => void order.push('A'));
+
+    const attach = <T extends typeof A>(type: T) => {
+      type.on(() => void order.push('anonymous'));
+      return type;
+    };
+
+    class C extends attach(class extends A {}) {}
+
+    C.on(() => void order.push('C'));
+
+    expect(Object.getPrototypeOf(C).name).toBe('');
+
+    C.new();
+
+    expect(order).toEqual(['A', 'anonymous', 'C']);
+  });
+
   it('will squash same callback for multiple classes', () => {
     class Test extends State {}
     class Test2 extends Test {}
