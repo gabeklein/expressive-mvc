@@ -209,18 +209,8 @@ between requests; provide `<Provider for={Router}>` to render a request's path.
 
 ### React Native
 
-Supported. The adapter imports only `react` and `react/jsx-runtime`, so there is
-nothing renderer-specific to port - `State.use()`, `State.get()`, `Component`,
-`Provider` and `catch()` behave as they do on the DOM, Metro resolves the
-package with no extra configuration, and Hermes needs no workaround.
-
-Exercised on an iOS simulator (Expo SDK 57, React Native 0.86, React 19.2):
-render and re-render on write through the native renderer, context through a
-`Provider`, async `set()` suspension, `map`/`has`/`ref`, batched dispatch and
-`catch()` recovery. Every release additionally gates on Metro resolution for
-both platforms, a Hermes bytecode build, and class-field semantics under either
-of Metro's transform paths. Untested on physical hardware, which is why this is
-called provisional rather than guaranteed.
+Works with no configuration - the adapter imports only `react` and
+`react/jsx-runtime`, and Metro resolves it as published. Two boundaries:
 
 - **Jest.** The build is ESM-only and `jest-expo` skips `node_modules`, so the
   import fails to parse until `@expressive` is added to
@@ -232,9 +222,9 @@ called provisional rather than guaranteed.
   ]
   ```
 
-- **`BrowserRouter` is the browser binding**, as the name says - it reads
-  `window.location`, which React Native does not define. Use `Router`, whose
-  path and history are in memory.
+- **`BrowserRouter` is the browser binding** - it reads `window.location`,
+  which React Native does not define. Use `Router`, whose path and history are
+  in memory.
 
 ---
 
