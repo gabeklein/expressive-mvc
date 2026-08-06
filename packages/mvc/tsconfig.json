@@ -9,7 +9,7 @@
     "noUnusedLocals": true,
     "strict": true,
     "types": [],
-    "lib": ["ES2020", "dom"]
+    "lib": ["ES2023", "dom"]
   },
   "exclude": ["node_modules", "dist", "vitest.config.ts"]
 }
