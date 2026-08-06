@@ -1,6 +1,6 @@
 import { act, render } from '@testing-library/react';
 import { Suspense } from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 import { Component, Provider, State } from '.';
 import { Runtime } from './adapter';
@@ -148,19 +148,35 @@ describe('Component.transition', () => {
     expect(settled).toBe(true);
   });
 
-  it('will not mount a driver where transition is inherited', async () => {
-    const { data, Content } = scenario();
-    const hook = vi.spyOn(Runtime, 'useTransition');
+  it('will track pending without an own transition', async () => {
+    const { gate, data, Content } = scenario();
     let shell!: Shell;
-    let settled = false;
+
+    const Status = () => <b>{Shell.get().pending ? 'busy' : 'idle'}</b>;
 
     class Shell extends Component {
+      pending = false;
+
+      go(to: string) {
+        this.pending = true;
+        this.transition(() => {
+          data.value = to;
+        }).then(() => {
+          this.pending = false;
+        });
+      }
+
       render() {
-        return <Content />;
+        return (
+          <>
+            <Status />
+            <Content />
+          </>
+        );
       }
     }
 
-    render(
+    const view = render(
       <Provider for={data}>
         <Shell is={(i) => (shell = i)} />
       </Provider>
@@ -168,20 +184,22 @@ describe('Component.transition', () => {
 
     await act(async () => {});
 
-    expect(hook).not.toHaveBeenCalled();
+    expect(view.container.textContent).toBe('idlea');
 
     await act(async () => {
-      shell.transition(() => {
-        data.value = 'b';
-      }).then(() => {
-        settled = true;
-      });
+      shell.go('b');
       await Promise.resolve();
     });
 
-    expect(settled).toBe(true);
-    expect(hook).not.toHaveBeenCalled();
+    expect(view.container.querySelector('i')).toBeNull();
+    expect(view.container.textContent).toBe('busya');
 
-    hook.mockRestore();
+    await act(async () => {
+      gate.resolve();
+      await gate;
+    });
+
+    expect(view.container.textContent).toBe('idleb');
   });
+
 });

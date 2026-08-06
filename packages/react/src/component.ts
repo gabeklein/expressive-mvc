@@ -136,23 +136,6 @@ function createFrame(from: Component, context: Context, children: unknown) {
 }
 
 /**
- * Does `from`'s class declare its own `transition`? Descriptors are read rather
- * than the value, since a method access binds it - and binds it to the wrong
- * receiver when read off a prototype. Only such a class gets a {@link Driver};
- * inheriting the base means deferring without observing it.
- */
-function observes(from: object) {
-  let proto = Object.getPrototypeOf(from);
-
-  while (proto && proto !== Component.prototype) {
-    if (Object.getOwnPropertyDescriptor(proto, 'transition')) return true;
-    proto = Object.getPrototypeOf(proto);
-  }
-
-  return false;
-}
-
-/**
  * Ownership host for `<Component/>`: React owns the instance, so its render
  * threads the bootstrap-pushed context through `Runtime.dedupe` (React stacks
  * render attempts) and tears that context down - destroying the instance - on
@@ -163,7 +146,6 @@ function render(from: Component, context: Context) {
   const { commit, remove } = Runtime.dedupe(from, context);
   const { is: owner, render } = from;
 
-  const observed = observes(owner) && !!Runtime.useTransition;
   const Render = () => render.call(from, from.props);
   const Component = () => {
     from = useWatch(from, () => {
@@ -178,14 +160,18 @@ function render(from: Component, context: Context) {
       };
     });
 
-    const children = createFrame(from, context, createElement(Render));
-
-    return observed
-      ? createElement(Driver, { owner, children })
-      : children;
+    return createFrame(from, context, createElement(Render));
   };
 
-  return () => createElement(Component);
+  const observed = !!Runtime.useTransition;
+
+  return () => {
+    const content = createElement(Component);
+
+    return observed
+      ? createElement(Driver, { owner, children: content })
+      : content;
+  };
 }
 
 /** Rewrite each own capitalized function on `target` into a subcomponent. */
