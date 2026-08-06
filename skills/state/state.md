@@ -73,7 +73,19 @@ class App extends State {
 }
 ```
 
-`busy` is an urgent write, so an indicator reading it paints immediately while the page defers. Under React this spans a suspended replacement - the promise settles when the new page commits, not when the write lands. Reporting requires a mounted `Provider`; without one (or on a host that cannot report) the work still defers and the promise settles on dispatch.
+Under React the promise spans a suspended replacement - it settles when the new page commits, not when the write lands.
+
+**Read the flag above the deferred content, never beside it.** A component is one watcher carrying one update at one priority, so a component reading both `busy` and `page` takes the urgent priority of `busy` for the whole update - it re-renders at once, suspends, and the fallback appears instead of the previous screen holding.
+
+```tsx
+const Frame = (props) => (             // pending only - paints at once
+  <div aria-busy={App.get().busy}>{props.children}</div>
+);
+
+const Screen = () => <Page page={App.get().page} />;   // deferred value only - holds
+```
+
+Reporting requires a mounted `Provider`; without one (or on a host that cannot report) the work still defers and the promise settles on dispatch.
 
 ### Value Equality
 
