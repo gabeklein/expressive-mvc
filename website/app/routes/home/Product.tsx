@@ -24,14 +24,14 @@ export function Product() {
           <Point title="Smaller components" illustration={<SmallerComponents />} delay={0}>
             Focus on the display logic, not coordinating features.
           </Point>
-          <Point title="Separated concerns" illustration={<BuiltInSeparation />} delay={300}>
+          <Point title="Separated concerns" illustration={<BuiltInSeparation />} delay={50}>
             Break up features so
             growth isn't tech debt.
           </Point>
           <Point title="Less Ceremony" illustration={<MinimalBoilerplate />} delay={100}>
             Normal logic, without the factories and wrappers.
           </Point>
-          <Point title="Higher Clarity" illustration={<ReadableOutput />} delay={200}>
+          <Point title="Higher Clarity" illustration={<ReadableOutput />} delay={150}>
             Review agent output with confidence, not gymnastics.
           </Point>
         </div>
