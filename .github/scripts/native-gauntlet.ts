@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 const PINS = {
+  '@babel/code-frame': '^7.27.1',
   '@types/react': '~19.2.2',
   expo: '~57.0.9',
   react: '19.2.3',
