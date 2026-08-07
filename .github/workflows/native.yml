@@ -19,7 +19,7 @@ jobs:
   gauntlet:
     if: >-
       github.event_name != 'pull_request' ||
-      contains(github.event.pull_request.labels.*.name, 'native')
+      contains(github.event.pull_request.labels.*.name, 'react-native')
     runs-on: macos-26
     timeout-minutes: 60
     steps:
