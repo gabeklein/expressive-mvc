@@ -8,9 +8,23 @@ on:
         type: choice
         default: Debug
         options: [Debug, Release]
+  workflow_call:
+    inputs:
+      configuration:
+        type: string
+        default: Debug
+  pull_request:
+    types: [opened, reopened, synchronize, labeled]
+
+concurrency:
+  group: native-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   gauntlet:
+    if: >-
+      github.event_name != 'pull_request' ||
+      contains(github.event.pull_request.labels.*.name, 'native')
     runs-on: macos-26
     steps:
       - uses: actions/checkout@v5
@@ -41,7 +55,7 @@ jobs:
       - name: Gauntlet on the iOS simulator
         run: |
           bun .github/scripts/native-gauntlet.ts ios \
-            ${{ inputs.configuration == 'Release' && 'release' || '' }}
+            ${{ (inputs.configuration || 'Release') == 'Release' && 'release' || '' }}
 
       - name: What the app actually logged
         if: failure()
