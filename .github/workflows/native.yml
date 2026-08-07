@@ -8,11 +8,6 @@ on:
         type: choice
         default: Debug
         options: [Debug, Release]
-  workflow_call:
-    inputs:
-      configuration:
-        type: string
-        default: Debug
   pull_request:
     types: [opened, reopened, synchronize, labeled]
 

@@ -40,3 +40,20 @@ partial release.
 First publish of a new package cannot use OIDC (npm requires the package to
 exist before a trusted publisher attaches) - publish a stub manually, attach
 the trusted publisher, then release normally.
+
+## native.yml (`native` label, or manual)
+
+Builds a throwaway Expo app around the packed tarballs, runs it on a booted iOS
+simulator and asserts thirteen behaviors from the log stream - dispatch
+batching, computed getters, suspense, context, `map`/`has`/`ref`, both routers,
+error recovery, and a write re-rendering through the native renderer.
+
+Opt a PR in with the `native` label; unlabeled PRs skip the job without
+claiming a macOS runner. `workflow_dispatch` takes a `configuration` choice,
+otherwise the run is Release - minified Hermes bytecode with `__DEV__` false,
+the only configuration where an uncaught render error is fatal rather than a
+redbox.
+
+A Release build forwards `console.error` to os_log but not `console.log`, so
+the fixture reports on whichever channel `__DEV__` implies and the runner reads
+markers from `simctl log stream` instead of Metro.

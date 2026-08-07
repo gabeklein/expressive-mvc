@@ -15,8 +15,6 @@ jobs:
   release:
     runs-on: ubuntu-latest
     environment: release
-    outputs:
-      major: ${{ steps.major.outputs.major }}
     steps:
       - uses: actions/checkout@v5
 
@@ -28,7 +26,6 @@ jobs:
           node-version: 24
 
       - name: Version PR or publish
-        id: changesets
         uses: changesets/action@v1
         with:
           version: bun run ci:version
@@ -37,22 +34,3 @@ jobs:
           title: 'chore: version packages'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Did a major go out
-        id: major
-        if: steps.changesets.outputs.published == 'true'
-        env:
-          PUBLISHED: ${{ steps.changesets.outputs.publishedPackages }}
-        run: |
-          bun -e 'const out = JSON.parse(process.env.PUBLISHED)
-            .filter(p => /^\d+\.0\.0$/.test(p.version));
-            console.log("major=" + (out.length > 0));
-            for (const p of out) console.error(`major release: ${p.name}@${p.version}`);
-          ' >> "$GITHUB_OUTPUT"
-
-  native:
-    needs: release
-    if: needs.release.outputs.major == 'true'
-    uses: ./.github/workflows/native.yml
-    with:
-      configuration: Release
