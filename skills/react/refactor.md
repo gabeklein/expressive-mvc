@@ -58,7 +58,7 @@ export class ReviewStep extends Component {
 
 If a property or action is *about* an entry in a collection, it lives on that entry's class - not on the page. The page-level tells are syntactic:
 
-- a field keyed by id: `Record<Id, T>`, `Map<Id, unknown>`, or parallel structures (`items` plus `selectedIds`)
+- a field keyed by id: `Record<Id, T>`, `Map<Id, unknown>`, or parallel structures (`items` plus `selectedIds` - a second pool of the members themselves, `selected = has(Item)`, is the honest shape)
 - a method taking `(id, value)`: `setItemWeight(id, w)`, `toggle(id)`
 - reassigning a collection to update one entry: `this.items = this.items.map(...)`, `this.jobs = { ...this.jobs, [id]: job }`
 

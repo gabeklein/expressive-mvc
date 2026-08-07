@@ -36,7 +36,7 @@ For every stateful concern, pick exactly one owner:
 - **`State`** - headless model or workflow: network operations, domain rules, cross-view coordination. Views subscribe via `State.get()` / `State.use()`.
 - **Plain function component** - simple presentation, or trivial local UI state. Not everything needs a class.
 
-Concerns include the rows: when UI state describes an entry in a collection - selection, status, progress - the entry is its own `State` or `Component` spawned in a `has` pool, and actions about an item belong on the item. Id-keyed fields (`Record<Id, T>`, parallel `Map`s) and `(id, value)` methods are a missing class.
+Concerns include the rows: when UI state describes an entry in a collection - selection, status, progress - the entry is its own `State` or `Component` spawned in a `has` pool, and actions about an item belong on the item. Id-keyed fields (`Record<Id, T>`, parallel `Map`s) and `(id, value)` methods are a missing class; subsets (selection, comparison) are a second pool admitting the same members.
 
 Counter-rules:
 

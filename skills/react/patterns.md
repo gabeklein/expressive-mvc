@@ -157,6 +157,20 @@ function ThumbGrid({ list }: { list: GalleryImage[] }) {
 
 Activated Components are React elements: the pool (`{page.images}`) and plain subsets (`{list}`) place directly, no `.map`. Each row paints from its own `render()` subscription, so selecting one image re-renders one row.
 
+A cross-cutting subset can be a second pool instead of a member flag - class-mode `add` admits ready-made members, and `pool.has(value)` tracks that member only:
+
+```tsx
+class GalleryPage extends Component {
+  images = has((meta: ImageMeta) => new GalleryImage({ info: meta, name: meta.name }));
+  selected = has(GalleryImage);   // holds members of `images` as guests
+}
+
+// on the row
+get selected() {
+  return this.gallery.selected.has(this);
+}
+```
+
 **Anti-pattern:** `void selected;` in an FC to force tracking of member fields. Consume the value in JSX, or move paint into the row's `render()`.
 
 ## Form Chips in a Pool
