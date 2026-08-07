@@ -22,7 +22,7 @@ export function Vibe() {
             State, derived values, async, and lifecycle live together.
             Composition helps separate concerns into readable chunks.
           </Point>
-          <Point title="Logic and state are addressable" delay={200}>
+          <Point title="Logic and state are addressable" delay={50}>
             Every behavior has a name and a home you can point at.
             A fix starts at the class, not a hunt through wiring.
           </Point>
@@ -30,7 +30,7 @@ export function Vibe() {
             Classes pair naturally with TypeScript and JSDocs, to
             surface types and intent where the work is.
           </Point>
-          <Point title="Class instances are just objects" delay={300}>
+          <Point title="Class instances are just objects" delay={150}>
             The instance is the source of truth. Log it, assert on it, or bind
             it to <code>window</code> to inspect directly.
           </Point>

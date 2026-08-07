@@ -47,19 +47,23 @@ figure[data-rehype-pretty-code-figure] pre code,
   transform: translateX(-0.5rem);
 }
 
-.snippet-entrance[data-visible]:not([data-animate]) > .shiki > [role='region'] {
+.snippet-entrance[data-visible] > .shiki > [role='region'] {
   opacity: 1;
   transform: none;
 }
 
-.snippet-entrance[data-animate] > .shiki > [role='region'] {
-  animation: snippet-entrance 400ms ease-out both;
+.snippet-entrance[data-visible][data-animate] > .shiki > [role='region'] {
+  animation: snippet-entrance 400ms ease-out;
 }
 
 @keyframes snippet-entrance {
+  from {
+    opacity: 0;
+    transform: translateX(-0.5rem);
+  }
   to {
     opacity: 1;
-    transform: translateX(0);
+    transform: none;
   }
 }
 
@@ -501,7 +505,7 @@ figure[data-rehype-pretty-code-figure] pre code,
   [class*='tip-trace-'],
   .trace-pulse,
   .live-counter-pulse,
-  .snippet-entrance[data-animate] > .shiki > [role='region'] {
+  .snippet-entrance[data-visible][data-animate] > .shiki > [role='region'] {
     animation: none !important;
   }
 
