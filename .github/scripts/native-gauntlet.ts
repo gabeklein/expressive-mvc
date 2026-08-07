@@ -128,10 +128,15 @@ try {
 
   // In Release the app is already installed and launched, so expo exiting is
   // expected; only silence is fatal.
-  const results = await Promise.race(RELEASE ? [report.promise] : [
+  const results = await Promise.race([
     report.promise,
     run.exited.then(code => {
-      throw new Error(`expo run:${PLATFORM} exited with ${code} before the app reported.`);
+      // In Release the app is already installed and launched, so a clean exit
+      // is expected - but a failed build still has to surface as one.
+      if (code || !RELEASE)
+        throw new Error(`expo run:${PLATFORM} exited with ${code} before the app reported.`);
+
+      return report.promise;
     })
   ]);
 
