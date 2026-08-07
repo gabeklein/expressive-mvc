@@ -21,6 +21,7 @@ jobs:
       github.event_name != 'pull_request' ||
       contains(github.event.pull_request.labels.*.name, 'native')
     runs-on: macos-26
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v5
 

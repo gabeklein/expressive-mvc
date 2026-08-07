@@ -24,11 +24,15 @@ const lines: string[] = [];
 
 let timeout: Timer;
 
-const idle = () => {
+// A Release run reads the device log, which stays silent through the Xcode
+// build - so the wait for a first line has to cover building, not just idling.
+const idle = (minutes: number) => {
   clearTimeout(timeout);
   timeout = setTimeout(
-    () => report.reject(new Error('Five minutes of silence. See the log above.')),
-    5 * 60 * 1000
+    () => report.reject(
+      new Error(`${minutes} minutes of silence. See the log above.`)
+    ),
+    minutes * 60 * 1000
   );
 };
 
@@ -103,7 +107,7 @@ try {
 
       pending = split.pop() || '';
 
-      idle();
+      idle(5);
 
       for (const line of split) {
         console.log(line);
@@ -123,7 +127,7 @@ try {
     }
   };
 
-  idle();
+  idle(30);
   watch();
 
   // In Release the app is already installed and launched, so expo exiting is
