@@ -60,6 +60,7 @@ If a property or action is *about* an entry in a collection, it lives on that en
 
 - a field keyed by id: `Record<Id, T>`, `Map<Id, unknown>`, or parallel structures (`items` plus `selectedIds` - a second pool of the members themselves, `selected = has(Item)`, is the honest shape)
 - a method taking `(id, value)`: `setItemWeight(id, w)`, `toggle(id)`
+- a page method that re-finds a member by id (`pool.get((x) => x.id === id)`) - it is the member's method; behavior moves with the state
 - reassigning a collection to update one entry: `this.items = this.items.map(...)`, `this.jobs = { ...this.jobs, [id]: job }`
 
 Each tell is a missing class. Declare a `has` pool whose factory accepts the API payload, and move the state and actions onto the member:
@@ -99,6 +100,8 @@ Selection flags, per-row status, and row actions live on the member (`image.sele
 
 Keep members small: promote a payload key to its own reactive field only when views render it or it changes independently; the rest stays whole as one `info` field. Normalize API `null` to `undefined` at this boundary so presence fields stay optional. See [has.md](../field/has.md) for the pool surface and [patterns.md](patterns.md) for worked recipes.
 
+Behavior parity does not exempt this step - parity constrains observable behavior, not code shape. Entry ownership is an invariant, not a stylistic option a conversion may decline.
+
 ## 5. Split regions out of fat orchestrators
 
 When a page State still accumulates unrelated clusters after pools - form config plus catalog plus job plus navigation is the classic shape - each cluster becomes its own State owned as a field. Ownership provides implicitly; views bind the region directly:
@@ -128,7 +131,7 @@ const { is: recipe, prompt } = RecipePanel.get();
 const { canGenerate, generate } = GeneratePage.get();
 ```
 
-Split when the second cluster appears, not as a late cleanup.
+An owned region needs no cross-controller synchronization - the parent holds the instance and reads it directly; only views subscribe. Split when the second cluster appears, not as a late cleanup.
 
 ## 6. Provide classes directly
 
@@ -165,7 +168,7 @@ Mapping for what remains after ownership is settled:
 - Chains of `useEffect`s reacting to each other -> tracked reactions (`this.get($ => ...)`) registered in `new()`/`mount()`. Updates batch, so each flush re-runs a reaction once, however many trigger fields changed.
 - `useCallback` handlers -> auto-bound class methods. Pass them directly to timers and listeners: `setInterval(this.tick, 1000)`, not `() => this.tick()`.
 - `useRef` handles - unsubscribe functions, snapshots, timer ids -> unmanaged fields ([state.md](../state/state.md#unmanaged-instance-data)), never reactive fields and never `#private`.
-- Route params -> props on the page owner. Keep working identity (current session, selection) as separate fields a reaction soft-syncs - do not bind a field 1:1 to a URL param when leaving the route must not clear it. See the router recipe in [patterns.md](patterns.md).
+- Route params -> props on the page owner. Keep working identity (current session, selection) as a separate field a reaction soft-syncs - never the URL param itself. The fused version announces itself as stale-prop workarounds: threading fresh ids through method arguments to outrun the route, or shadow fields remembering the last route seen. See the router recipe in [patterns.md](patterns.md).
 
 Reactive fields are assigned directly - do not manufacture setters:
 
@@ -404,6 +407,7 @@ The checklist:
 - Are opaque handles (unsubscribe fns, timers, snapshots) unmanaged rather than reactive fields? *(invariant)*
 - Does every subscription consume what it declares - no `void x` reads to force tracking in a render? *(invariant)*
 - Is a page State with unrelated clusters split into owned region States? *(default)*
+- Is working identity (session, selection) a separate field from URL params, soft-synced by a reaction? *(default)*
 - Does every method do more than assign one field? *(invariant)*
 - Are contextual values still being drilled through props? *(invariant)*
 - Does every `.get()` / `.use()` show the exact nested dependency surface? *(invariant)*
