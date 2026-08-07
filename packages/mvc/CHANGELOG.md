@@ -1,5 +1,55 @@
 # @expressive/mvc
 
+## 0.84.0
+
+### Minor Changes
+
+- [#319](https://github.com/gabeklein/expressive-mvc/pull/319) [`6c9a626`](https://github.com/gabeklein/expressive-mvc/commit/6c9a62612d34b3dc460676cf788723e72c1cd493) `has(Type)` pools now admit a ready-made member. `add(value)` with a lone instance of the pool's class (or a subclass) holds that value instead of forwarding it to the constructor, so one field both spawns and injects - a second pool over members of a first (`selected = has(Item)`) and fetch hydration (`items.add(new Item(data))`) no longer need an identity factory. Ownership is unchanged and still follows freshness: a fresh instance is adopted and destroyed with the pool, an already-activated one is a guest. Only a single argument is treated this way, so multi-argument constructors are unaffected, and factory pools never admit - their arguments are their own.
+
+### Patch Changes
+
+- [#325](https://github.com/gabeklein/expressive-mvc/pull/325) [`37ef4e9`](https://github.com/gabeklein/expressive-mvc/commit/37ef4e95ae19285ca902bafdccdbe9bd6304176a) Fix `State.on()` handlers being silently skipped when an anonymous class sits in the prototype chain.
+
+  Bootstrap walked the chain until it hit a class with a falsy `name`, which terminated correctly only because `Object.getPrototypeOf(State)` is `Function.prototype`. Any intermediate class with an empty `name` ended the walk early and every ancestor above it was dropped - their per-class `type` hooks, per-instance `before`/`after` setup, and the teardowns those return never ran, with no error.
+
+  The ordinary mixin idiom produces exactly that: a class expression which is returned or passed rather than assigned gets no inferred name.
+
+  ```ts
+  const Timestamped = (Base) =>
+    class extends Base {
+      stamp = Date.now();
+    };
+
+  class Doc extends Timestamped(State) {} // handlers on State were lost
+  ```
+
+  The walk now ends on `State` itself rather than on a name check.
+
+- [#321](https://github.com/gabeklein/expressive-mvc/pull/321) [`0bdb45f`](https://github.com/gabeklein/expressive-mvc/commit/0bdb45f294f77970569747262bae4fd8bbc35071) Instruction tokens are now held weakly, so an instruction that never lands on an activated instance (shadowed by a subclass initializer, or constructed without activation) no longer retains its factory for the process lifetime.
+
+- [#306](https://github.com/gabeklein/expressive-mvc/pull/306) [`6b34ad5`](https://github.com/gabeklein/expressive-mvc/commit/6b34ad5d967f3aa678cf47820140a6e81fb5f3e2) Fix two error paths that reported internals instead of the mistake.
+
+  An enumerable property declared on a State subclass's prototype crashed
+  activation with `undefined is not an object (evaluating 'property.value')`.
+  `for-in` enumerates such a key but `getOwnPropertyDescriptor` returns nothing for
+  it, and the `def` and `observe` sweeps assumed a descriptor. Keys with no own
+  descriptor are now skipped - prototype members are unmanaged by design, the same
+  as methods.
+
+  Using a destroyed state threw `Object is not observable (terminated).`, naming an
+  internal slot rather than the error. It now names the state and what cannot be
+  done with it: `Foo-a1b2c3 was destroyed - cannot be rendered, watched or
+updated.`
+
+- [#312](https://github.com/gabeklein/expressive-mvc/pull/312) [`519c800`](https://github.com/gabeklein/expressive-mvc/commit/519c8003e6a1cefdad4bb025b11d1d1a3717d4e7) Tracking proxies now carry `is` as an own writable property.
+
+  Value is unchanged - `is` still resolves to the subject instance - but the
+  property no longer comes from the non-writable one on the instance. Test runners
+  that diff a proxy (the value handed to effects and renders) against a State
+  crashed while building the diff: vitest clones both sides through the prototype
+  chain and assigns onto the clone, which threw `Cannot assign to read only
+property 'is'` and replaced the real assertion failure with a TypeError.
+
 ## 0.83.1
 
 ### Patch Changes

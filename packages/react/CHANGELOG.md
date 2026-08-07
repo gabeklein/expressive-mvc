@@ -1,5 +1,39 @@
 # @expressive/react
 
+## 0.85.0
+
+### Minor Changes
+
+- [#294](https://github.com/gabeklein/expressive-mvc/pull/294) [`8860645`](https://github.com/gabeklein/expressive-mvc/commit/88606452917a67308e7e5201eb4f7b45bb5ad573) Raise the React peer range floor to 16.14.
+
+  `>=16.8.0` was never accurate: the adapter imports `react/jsx-runtime`, which
+  does not exist before 16.14, so installs on 16.8-16.13 resolved without warning
+  and then failed at import. The range now states the version that actually works.
+
+  Documented alongside it: revision validation for concurrent rendering applies on
+  React 18+, and is skipped on 16.14-17 because those renderers cannot interrupt a
+  render and so have no interleaving to protect against.
+
+### Patch Changes
+
+- [#309](https://github.com/gabeklein/expressive-mvc/pull/309) [`6b57bb2`](https://github.com/gabeklein/expressive-mvc/commit/6b57bb221584ba2435c9e3cfb7668da4f108ea77) Keep context consumers attached to their nearest upstream Provider when nested
+  Providers render in sibling branches, including during server rendering.
+
+- [#305](https://github.com/gabeklein/expressive-mvc/pull/305) [`1341292`](https://github.com/gabeklein/expressive-mvc/commit/1341292a185830f02635ecd6dd0269c057052142) Accept assignment to subcomponent fields, so a Component override such as `Sidebar = Sidebar` no longer throws `TypeError: Cannot set property ... which has only a getter` when built with `useDefineForClassFields: false` (the default for any `target` below ES2022).
+
+- [#308](https://github.com/gabeklein/expressive-mvc/pull/308) [`f0ea5e5`](https://github.com/gabeklein/expressive-mvc/commit/f0ea5e5d5e7ff9ac68e74f72c23310577834bcbe) Fix an unloadable published dist: `import '@expressive/react'` threw
+  `ERR_MODULE_NOT_FOUND` under native Node ESM.
+
+  The build declared `./adapter` external, so `dist/index.js` shipped an
+  extensionless `from "./adapter"`. Bundlers tolerate that; Node's ESM resolver
+  does not, which broke plain-node and native-ESM SSR consumers - the package
+  could only be imported through a bundler. The adapter is already its own entry,
+  so dropping the external emits `./adapter.js` with no change to chunking or
+  public surface.
+
+- Updated dependencies [[`37ef4e9`](https://github.com/gabeklein/expressive-mvc/commit/37ef4e95ae19285ca902bafdccdbe9bd6304176a), [`0bdb45f`](https://github.com/gabeklein/expressive-mvc/commit/0bdb45f294f77970569747262bae4fd8bbc35071), [`6b34ad5`](https://github.com/gabeklein/expressive-mvc/commit/6b34ad5d967f3aa678cf47820140a6e81fb5f3e2), [`6c9a626`](https://github.com/gabeklein/expressive-mvc/commit/6c9a62612d34b3dc460676cf788723e72c1cd493), [`519c800`](https://github.com/gabeklein/expressive-mvc/commit/519c8003e6a1cefdad4bb025b11d1d1a3717d4e7)]:
+  - @expressive/mvc@0.84.0
+
 ## 0.84.1
 
 ### Patch Changes
