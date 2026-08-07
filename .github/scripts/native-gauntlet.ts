@@ -14,6 +14,7 @@ const PINS = {
 const PACKAGES = ['mvc', 'react', 'router'];
 const MARKER = '[gauntlet]';
 const PLATFORM = process.argv[2] === 'android' ? 'android' : 'ios';
+const RELEASE = process.argv.includes('release');
 
 const workspace = await mkdtemp(join(tmpdir(), 'expressive-gauntlet-'));
 
@@ -70,19 +71,32 @@ try {
 
   await $`npm install --silent --no-audit --no-fund ${tarballs}`.cwd(workspace);
 
-  const device = process.env.SIMULATOR_UDID ? ['--device', process.env.SIMULATOR_UDID] : [];
+  const udid = process.env.SIMULATOR_UDID;
+  const device = udid ? ['--device', udid] : [];
+  const configuration = RELEASE ? ['--configuration', 'Release'] : [];
 
-  const run = Bun.spawn(['npx', 'expo', `run:${PLATFORM}`, ...device], {
+  if (RELEASE && !udid)
+    throw new Error('A Release run needs SIMULATOR_UDID - its logs come from the device, not Metro.');
+
+  const run = Bun.spawn(['npx', 'expo', `run:${PLATFORM}`, ...configuration, ...device], {
     cwd: workspace,
-    stdout: 'pipe',
+    stdout: RELEASE ? 'inherit' : 'pipe',
     stderr: 'inherit',
     env: { ...process.env, CI: '1', EXPO_NO_TELEMETRY: '1' }
   });
 
+  // A Release build embeds the bundle, so the app's console never reaches Metro.
+  const logs = RELEASE
+    ? Bun.spawn([
+        'xcrun', 'simctl', 'spawn', udid!, 'log', 'stream',
+        '--style', 'compact', '--predicate', `eventMessage CONTAINS "${MARKER}"`
+      ], { stdout: 'pipe', stderr: 'ignore' })
+    : run;
+
   const watch = async () => {
     let pending = '';
 
-    for await (const chunk of run.stdout) {
+    for await (const chunk of logs.stdout as ReadableStream<Uint8Array>) {
       const text = pending + new TextDecoder().decode(chunk);
       const split = text.split('\n');
 
@@ -111,7 +125,9 @@ try {
   idle();
   watch();
 
-  const results = await Promise.race([
+  // In Release the app is already installed and launched, so expo exiting is
+  // expected; only silence is fatal.
+  const results = await Promise.race(RELEASE ? [report.promise] : [
     report.promise,
     run.exited.then(code => {
       throw new Error(`expo run:${PLATFORM} exited with ${code} before the app reported.`);
@@ -119,6 +135,8 @@ try {
   ]);
 
   run.kill();
+
+  if (logs !== run) logs.kill();
 
   const failed = results.filter(line => line.startsWith('FAIL'));
 

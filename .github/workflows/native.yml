@@ -1,6 +1,13 @@
 name: Native
 
-on: workflow_dispatch
+on:
+  workflow_dispatch:
+    inputs:
+      configuration:
+        description: Build configuration
+        type: choice
+        default: Debug
+        options: [Debug, Release]
 
 jobs:
   gauntlet:
@@ -32,4 +39,6 @@ jobs:
           echo "SIMULATOR_UDID=$udid" >> "$GITHUB_ENV"
 
       - name: Gauntlet on the iOS simulator
-        run: bun .github/scripts/native-gauntlet.ts ios
+        run: |
+          bun .github/scripts/native-gauntlet.ts ios \
+            ${{ inputs.configuration == 'Release' && 'release' || '' }}
