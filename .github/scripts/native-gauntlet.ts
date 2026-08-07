@@ -24,8 +24,11 @@ const lines: string[] = [];
 
 let timeout: Timer;
 
-// A Release run reads the device log, which stays silent through the Xcode
-// build - so the wait for a first line has to cover building, not just idling.
+// The Xcode build goes minutes at a time without output, and a Release run
+// reads the device log - where unrelated lines arrive meanwhile. Only the app
+// reporting means the short idle applies.
+let reporting = false;
+
 const idle = (minutes: number) => {
   clearTimeout(timeout);
   timeout = setTimeout(
@@ -107,7 +110,7 @@ try {
 
       pending = split.pop() || '';
 
-      idle(5);
+      idle(reporting ? 5 : 30);
 
       for (const line of split) {
         console.log(line);
@@ -116,6 +119,8 @@ try {
 
         if (marked < 0)
           continue;
+
+        reporting = true;
 
         const result = line.slice(marked + MARKER.length).trim();
 
