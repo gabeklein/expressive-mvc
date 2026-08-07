@@ -22,6 +22,15 @@ const record: Report = (name, pass, detail) => {
   listen?.();
 };
 
+// At module scope: a render-time crash never reaches the checks below.
+try {
+  new WeakMap<any, number>().set(Symbol('probe'), 1);
+  record('WeakMap takes a symbol key', true, 'ES2023 symbol keys supported');
+}
+catch (thrown) {
+  record('WeakMap takes a symbol key', false, (thrown as Error).message);
+}
+
 const drain = () => new Promise(resolve => queueMicrotask(() => resolve(null)));
 
 class Counter extends State {
