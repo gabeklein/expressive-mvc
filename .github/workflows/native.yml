@@ -42,3 +42,9 @@ jobs:
         run: |
           bun .github/scripts/native-gauntlet.ts ios \
             ${{ inputs.configuration == 'Release' && 'release' || '' }}
+
+      - name: What the app actually logged
+        if: failure()
+        run: |
+          xcrun simctl spawn "$SIMULATOR_UDID" log show --last 10m \
+            --predicate 'process == "gauntlet"' --style compact | tail -60

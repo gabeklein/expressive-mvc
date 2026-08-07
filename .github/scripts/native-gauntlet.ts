@@ -90,7 +90,7 @@ try {
   const logs = RELEASE
     ? Bun.spawn([
         'xcrun', 'simctl', 'spawn', udid!, 'log', 'stream',
-        '--style', 'compact', '--predicate', `eventMessage CONTAINS "${MARKER}"`
+        '--style', 'compact', '--predicate', 'process == "gauntlet"'
       ], { stdout: 'pipe', stderr: 'ignore' })
     : run;
 
