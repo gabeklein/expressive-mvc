@@ -12,9 +12,13 @@ const collected: [string, boolean, string][] = [];
 
 let listen: (() => void) | undefined;
 
+// A Release build forwards console.error to os_log, but not console.log.
+declare const __DEV__: boolean;
+const emit = __DEV__ ? console.log : console.error;
+
 const record: Report = (name, pass, detail) => {
   collected.push([name, pass, detail]);
-  console.log(`${MARKER} ${pass ? 'ok' : 'FAIL'} ${name} - ${detail}`);
+  emit(`${MARKER} ${pass ? 'ok' : 'FAIL'} ${name} - ${detail}`);
   listen?.();
 };
 
@@ -73,14 +77,19 @@ class Panel extends Component<{ label: string }> {
 }
 
 let recovered = '';
+let broken = true;
 
 class Broken extends Component {
+  fallback = null;
+
   catch(error: Error) {
     recovered = error.message;
+    broken = false;
   }
 
-  render(): never {
-    throw new Error('boom');
+  render() {
+    if (broken) throw new Error('boom');
+    return <Text testID="recovered">recovered</Text>;
   }
 }
 
@@ -244,8 +253,11 @@ const CHECKS: [string, (report: Report) => Promise<void>][] = [
   }],
 
   ['Component.catch', async report => {
-    report('Component.catch() recovers a thrown render', recovered === 'boom',
-      recovered ? `caught ${JSON.stringify(recovered)}` : 'catch never ran');
+    for (let wait = 0; wait < 50 && broken; wait++)
+      await new Promise(resolve => setTimeout(resolve, 20));
+
+    report('Component.catch() recovers a thrown render', recovered === 'boom' && !broken,
+      `caught ${JSON.stringify(recovered)}, retry ${broken ? 'still throwing' : 'succeeded'}`);
   }]
 ];
 
@@ -321,7 +333,7 @@ export default function App() {
 
       const failed = collected.filter(([, pass]) => !pass).length;
 
-      console.log(`${MARKER} DONE ${collected.length} checks, ${failed} failed`);
+      emit(`${MARKER} DONE ${collected.length} checks, ${failed} failed`);
     };
 
     run();
