@@ -333,4 +333,17 @@ describe('BrowserRouter', () => {
       (globalThis as any).window = saved;
     }
   });
+
+  it('will throw where window has no location (React Native)', () => {
+    const saved = (globalThis as any).window;
+
+    try {
+      (globalThis as any).window = Object.create(null);
+
+      expect(typeof window).not.toBe('undefined');
+      expect(() => BrowserRouter.new()).toThrow(/pathname/);
+    } finally {
+      (globalThis as any).window = saved;
+    }
+  });
 });

@@ -207,6 +207,25 @@ To render a specific request's data (a path, a session), provide it per-request:
 exactly this reason - on the server it is per-render, so paths never bleed
 between requests; provide `<Provider for={Router}>` to render a request's path.
 
+### React Native
+
+Works with no configuration - the adapter imports only `react` and
+`react/jsx-runtime`, and Metro resolves it as published. Two boundaries:
+
+- **Jest.** The build is ESM-only and `jest-expo` skips `node_modules`, so the
+  import fails to parse until `@expressive` is added to
+  `transformIgnorePatterns`:
+
+  ```js
+  transformIgnorePatterns: [
+    '/node_modules/(?!(.pnpm|@expressive|react-native|@react-native|expo|@expo))'
+  ]
+  ```
+
+- **`BrowserRouter` is the browser binding** - it reads `window.location`,
+  which React Native does not define. Use `Router`, whose path and history are
+  in memory.
+
 ---
 
 ## State.get() - Context Hook

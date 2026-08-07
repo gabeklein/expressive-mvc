@@ -1,0 +1,60 @@
+name: Native
+
+on:
+  workflow_dispatch:
+    inputs:
+      configuration:
+        description: Build configuration
+        type: choice
+        default: Debug
+        options: [Debug, Release]
+  pull_request:
+    types: [opened, reopened, synchronize, labeled]
+
+concurrency:
+  group: native-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gauntlet:
+    if: >-
+      github.event_name != 'pull_request' ||
+      contains(github.event.pull_request.labels.*.name, 'react-native')
+    runs-on: macos-26
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: ./.github/actions/setup
+
+      - run: bun run build
+
+      - name: Select an Xcode with Swift 6.2 or newer
+        run: |
+          latest=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
+          if [ -n "$latest" ]; then sudo xcode-select -s "$latest"; fi
+          xcodebuild -version
+
+      - name: Boot an iOS simulator
+        run: |
+          mkdir -p ~/.expo
+          udid=$(xcrun simctl list devices available -j |
+            bun -e 'const d=await Bun.stdin.json();
+              const all=Object.values(d.devices).flat();
+              const one=all.find(x => /iPhone/.test(x.name));
+              if(!one) throw new Error("no iPhone simulator available");
+              console.log(one.udid)')
+          xcrun simctl boot "$udid" || true
+          xcrun simctl bootstatus "$udid" -b
+          echo "SIMULATOR_UDID=$udid" >> "$GITHUB_ENV"
+
+      - name: Gauntlet on the iOS simulator
+        run: |
+          bun .github/scripts/native-gauntlet.ts ios \
+            ${{ (inputs.configuration || 'Release') == 'Release' && 'release' || '' }}
+
+      - name: What the app actually logged
+        if: failure()
+        run: |
+          xcrun simctl spawn "$SIMULATOR_UDID" log show --last 10m \
+            --predicate 'process == "gauntlet"' --style compact | tail -60
