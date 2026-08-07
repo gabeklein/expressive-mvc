@@ -64,7 +64,12 @@ class SnippetEntrance extends Component {
       if (highlighted()) reveal(true);
     });
 
-    observer.observe(element, { childList: true, subtree: true });
+    observer.observe(element, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['style', 'class'],
+    });
     timeout = window.setTimeout(() => reveal(false), 1750);
     if (highlighted()) reveal(true);
 
