@@ -134,6 +134,8 @@ class Inbox extends State {
 
 Keep members small: promote a payload key to its own reactive field only when views render it or it changes independently - the rest stays whole as one subobject field (`info`). Normalize API `null` to `undefined` here so presence fields stay optional.
 
+Refill destroys member identity - references, flags, and second-pool membership die with it. Selection that must survive a refresh is a durable key (`selectedId`) plus a re-find getter; member references and flags fit pools that live between fetches.
+
 ## Ownership
 
 Ownership follows freshness, not how the member arrived: a fresh (never-activated) `State` - one the pool instantiates, a factory constructs, or `add` admits directly - is adopted and owned, and the pool destroys it when it is deleted, cleared, or the owner dies. An already-activated value (`Item.new()`) is a guest: held but never destroyed. Non-State members are never owned.
