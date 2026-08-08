@@ -252,7 +252,7 @@ The page remains orchestrator - route identity, session, request dispatch, page-
 
 ## Bridging an Existing Router
 
-An outer FC reads the router hooks and passes them as props; alternatively the class encapsulates the hooks itself with `use()` (see [react.md](react.md)):
+Bridge, don't replace: a conversion keeps the app's router, and adopting `@expressive/router` instead is a separate decision needing explicit go-ahead. An outer FC reads the router hooks and passes them as props; alternatively the class encapsulates the hooks itself with `use()` (see [react.md](react.md)):
 
 ```tsx
 function InboxRoute() {

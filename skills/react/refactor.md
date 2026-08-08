@@ -19,6 +19,7 @@ A one-shot conversion cannot ask. Proceed on these defaults and declare any devi
 | File layout | Colocate a feature folder once a route has model classes; existing project convention wins |
 | Verification gate | The project's currently-green checks - a check broken at base is not yours to fix; report exactly what was exercised |
 | Bug or dead branch found at base | Preserve behavior and note it; drop only provably dead code, and say so |
+| Routing | Bridge the existing router (step 7); adopting `@expressive/router` is a separate decision that needs explicit go-ahead, never part of a conversion |
 | Deliverable | Ownership map, assumptions taken, behavior deltas, filled checklist - in the PR or ledger |
 
 ## 1. Identify owners before touching hooks
