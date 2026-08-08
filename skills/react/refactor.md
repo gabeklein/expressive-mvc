@@ -6,6 +6,21 @@ Examples follow the conventions in [style.md](style.md).
 
 **Scope for large apps:** convert route/page controllers and their domain pools first; leave mature leaf widgets (inputs, menus) on hooks until their parent domain is stable. Coexistence is fine mid-migration.
 
+## Ambiguity defaults
+
+A one-shot conversion cannot ask. Proceed on these defaults and declare any deviation in the deliverable; ask only when acting on an assumption would destroy something unrecoverable - a feature, a public API.
+
+| Ambiguity | Default |
+|---|---|
+| "No redesigns" / parity scope | Observable behavior and public contracts; internal structure is the task |
+| Does leaving a route clear its model? | Keep the model alive; soft-sync working identity from params |
+| Selection across refetch | Durable key + re-find getter; member references only in pools stable between fetches |
+| Loading UX for user-initiated ops | Explicit loading/error fields; suspense for load-once data |
+| File layout | Colocate a feature folder once a route has model classes; existing project convention wins |
+| Verification gate | The project's currently-green checks - a check broken at base is not yours to fix; report exactly what was exercised |
+| Bug or dead branch found at base | Preserve behavior and note it; drop only provably dead code, and say so |
+| Deliverable | Ownership map, assumptions taken, behavior deltas, filled checklist - in the PR or ledger |
+
 ## 1. Identify owners before touching hooks
 
 List the stateful concerns in the code being converted - not the hooks, the *concerns*: a multi-step workflow, a settings draft, a preview toggle, a network resource. Each concern gets exactly one owner. Only after the owner list is stable should any hook be touched.
