@@ -117,17 +117,17 @@ basket.items.add(Item.new());             // already activated - guest
 Pools are the home for per-item UI state. Accept API payloads through the factory (DTO in), read them back out at the boundary (DTO out); refill on fetch with `clear()` plus `add` per item:
 
 ```ts
-class Gallery extends State {
-  images = has((meta: ImageMeta) => new GalleryImage({ info: meta, name: meta.name }));
+class Inbox extends State {
+  messages = has((dto: MessageDto) => new Message({ info: dto, id: dto.id }));
 
   get dtos() {
-    return this.images.map((i) => i.info);
+    return this.messages.map((m) => m.info);
   }
 
   async refresh() {
     const data = await api.list();
-    this.images.clear();
-    for (const meta of data) this.images.add(meta);
+    this.messages.clear();
+    for (const dto of data) this.messages.add(dto);
   }
 }
 ```

@@ -67,36 +67,36 @@ Each tell is a missing class. Declare a `has` pool whose factory accepts the API
 
 ```tsx
 // Wrong: item state flattened onto the page
-class GalleryPage extends Component {
-  images: ImageMeta[] = [];
-  selectedNames = new Set<string>();
-  imports: Record<string, ImportJob> = {};
+class Inbox extends Component {
+  messages: MessageDto[] = [];
+  selectedIds = new Set<string>();
+  uploads: Record<string, UploadJob> = {};
 
-  setWeight(name: string, weight: number) {
-    this.images = this.images.map((i) => i.name === name ? { ...i, weight } : i);
+  setLabel(id: string, label: string) {
+    this.messages = this.messages.map((m) => m.id === id ? { ...m, label } : m);
   }
 }
 
 // Right: the entry is a class; the page keeps fetch, the pool, and policy
-class GalleryImage extends Component {
-  info = set<ImageMeta>();   // payload stays one subobject - not exploded per key
-  name = set<string>();
+class Message extends Component {
+  info = set<MessageDto>();   // payload stays one subobject - not exploded per key
+  id = set<string>();
   selected = false;
-  gallery = get(GalleryPage);
+  inbox = get(Inbox);
 
   render() { /* the row paints itself */ }
 }
 
-class GalleryPage extends Component {
-  images = has((meta: ImageMeta) => new GalleryImage({ info: meta, name: meta.name }));
+class Inbox extends Component {
+  messages = has((dto: MessageDto) => new Message({ info: dto, id: dto.id }));
 
   get selected() {
-    return this.images.filter((i) => i.selected);
+    return this.messages.filter((m) => m.selected);
   }
 }
 ```
 
-Selection flags, per-row status, and row actions live on the member (`image.selected`, `image.remove()`); the page keeps fetch, pool lifecycle, and multi-select *policy*. Rows that own `render()` place directly - `{page.images}` or a subset `{list}` - no `.map`. If two views compute the same expression over an entry, that expression is a getter on the entry's class.
+Selection flags, per-row status, and row actions live on the member (`message.selected`, `message.archive()`); the page keeps fetch, pool lifecycle, and multi-select *policy*. Rows that own `render()` place directly - `{inbox.messages}` or a subset `{list}` - no `.map`. If two views compute the same expression over an entry, that expression is a getter on the entry's class.
 
 Keep members small: promote a payload key to its own reactive field only when views render it or it changes independently; the rest stays whole as one `info` field. Normalize API `null` to `undefined` at this boundary so presence fields stay optional. See [has.md](../field/has.md) for the pool surface and [patterns.md](patterns.md) for worked recipes.
 
@@ -104,31 +104,31 @@ Behavior parity does not exempt this step - parity constrains observable behavio
 
 ## 5. Split regions out of fat orchestrators
 
-When a page State still accumulates unrelated clusters after pools - form config plus catalog plus job plus navigation is the classic shape - each cluster becomes its own State owned as a field. Ownership provides implicitly; views bind the region directly:
+When a page State still accumulates unrelated clusters after pools - draft fields plus lookups plus request state plus navigation is the classic shape - each cluster becomes its own State owned as a field. Ownership provides implicitly; views bind the region directly:
 
 ```tsx
-class RecipePanel extends State {      // headless region
-  page = get(GeneratePage);
-  prompt = '';
-  loras = has((dto: Lora) => new AppliedLora(dto));
+class Composer extends State {        // headless region
+  page = get(ComposePage);
+  subject = '';
+  attachments = has((file: File) => new Attachment({ file }));
 
   get ready() { ... }
 }
 
-class GeneratePage extends Component { // orchestrator: route, session, job
-  recipe = new RecipePanel();
+class ComposePage extends Component { // orchestrator: route, session, request
+  composer = new Composer();
   busy = false;
 
-  get canGenerate() {
-    return this.recipe.ready && !this.busy;
+  get canSend() {
+    return this.composer.ready && !this.busy;
   }
 
-  async generate() { /* recipe -> job -> session */ }
+  async send() { /* composer -> request -> thread */ }
 }
 
 // Form sections bind the region; the footer mixes both
-const { is: recipe, prompt } = RecipePanel.get();
-const { canGenerate, generate } = GeneratePage.get();
+const { is: composer, subject } = Composer.get();
+const { canSend, send } = ComposePage.get();
 ```
 
 An owned region needs no cross-controller synchronization - the parent holds the instance and reads it directly; only views subscribe. Split when the second cluster appears, not as a late cleanup.

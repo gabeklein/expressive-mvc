@@ -65,4 +65,4 @@ If a render guard would skip past most of an already-declared snapshot, the gate
 
 ## Layout
 
-Once a route has a model class, colocate the feature: `pages/gallery/` holding `index.tsx` (route shell), the page class, domain classes, and view slices - not a fat `Gallery.tsx` beside a partial folder. Project preference; never an audit finding.
+Once a route has a model class, colocate the feature: `pages/inbox/` holding `index.tsx` (route shell), the page class, domain classes, and view slices - not a fat `Inbox.tsx` beside a partial folder. Project preference; never an audit finding.

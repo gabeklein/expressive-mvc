@@ -102,72 +102,72 @@ State about an entry in a collection lives on the entry's class, spawned through
 ```tsx
 import State, { Component, get, has, set } from '@expressive/react';
 
-class GalleryImage extends Component {
-  info = set<ImageMeta>();   // payload stays one subobject - not exploded per key
-  name = set<string>();
+class Message extends Component {
+  info = set<MessageDto>();   // payload stays one subobject - not exploded per key
+  id = set<string>();
   selected = false;
-  gallery = get(GalleryPage);
+  inbox = get(Inbox);
 
   toggle(event: MouseEvent) {
-    this.gallery.selectThumb(this, event);  // policy stays on the page
+    this.inbox.select(this, event);  // policy stays on the page
   }
 
-  async remove() {
-    await api.remove(this.name);
-    this.gallery.images.delete(this);
+  async archive() {
+    await api.archive(this.id);
+    this.inbox.messages.delete(this);
   }
 
   render() {
     const {
-      name,
       selected,
       info: {
-        thumbUrl,
+        sender,
+        subject,
       },
     } = this;
 
     return (
-      <button className={selected ? 'thumb on' : 'thumb'} onClick={this.toggle}>
-        <img src={thumbUrl} alt={name} />
+      <button className={selected ? 'row on' : 'row'} onClick={this.toggle}>
+        <b>{sender}</b> {subject}
       </button>
     );
   }
 }
 
-class GalleryPage extends Component {
-  images = has((meta: ImageMeta) => new GalleryImage({ info: meta, name: meta.name }));
+class Inbox extends Component {
+  messages = has((dto: MessageDto) => new Message({ info: dto, id: dto.id }));
 
   get selected() {
-    return this.images.filter((i) => i.selected);
+    return this.messages.filter((m) => m.selected);
   }
 
   async refresh() {
     const data = await api.list();
-    this.images.clear();
-    for (const meta of data) this.images.add(meta);
+    this.messages.clear();
+    for (const dto of data) this.messages.add(dto);
   }
 
-  selectThumb(image: GalleryImage, event: MouseEvent) { /* shift/meta multi-select */ }
+  select(message: Message, event: MouseEvent) { /* shift/meta multi-select */ }
 }
 
-function ThumbGrid({ list }: { list: GalleryImage[] }) {
-  return <div className="thumbs">{list}</div>;
+function MessageList({ list }: { list: Message[] }) {
+  return <div className="messages">{list}</div>;
 }
 ```
 
-Activated Components are React elements: the pool (`{page.images}`) and plain subsets (`{list}`) place directly, no `.map`. Each row paints from its own `render()` subscription, so selecting one image re-renders one row.
+Activated Components are React elements: the pool (`{inbox.messages}`) and plain subsets (`{list}`) place directly, no `.map`. Each row paints from its own `render()` subscription, so selecting one message re-renders one row.
 
 A cross-cutting subset can be a second pool instead of a member flag - class-mode `add` admits ready-made members, and `pool.has(value)` tracks that member only:
 
 ```tsx
-class GalleryPage extends Component {
-  images = has((meta: ImageMeta) => new GalleryImage({ info: meta, name: meta.name }));
-  selected = has(GalleryImage);   // holds members of `images` as guests
+class Inbox extends Component {
+  messages = has((dto: MessageDto) => new Message({ info: dto, id: dto.id }));
+  selected = has(Message);   // holds members of `messages` as guests
 }
 
 // on the row
 get selected() {
-  return this.gallery.selected.has(this);
+  return this.inbox.selected.has(this);
 }
 ```
 
@@ -175,87 +175,95 @@ get selected() {
 
 ## Form Chips in a Pool
 
-The same shape covers form entries with their own async lifecycle - an upload, a pending download, an applied filter. The chip owns its status and removal; the form owns the pool and overall readiness, reading DTOs back out at the API boundary:
+The same shape covers form entries with their own async lifecycle - an upload, a pending download, an applied filter. The chip owns that lifecycle end to end: started in `new()`, handle in an unmanaged field, torn down on destroy. The form owns the pool and overall readiness, reading DTOs back out at the API boundary:
 
 ```tsx
-class AppliedLora extends Component {
-  file = set<string>();
-  weight = 1;
-  importJob?: ImportJob;
-  recipe = get(RecipePanel);
+class Attachment extends Component {
+  file = set<File>();
+  job?: UploadJob;
+  composer = get(Composer);
+  stop = put<(() => void) | null>(null);  // unmanaged - see state/state.md
 
-  get importing() {
-    return this.importJob?.phase === 'downloading';
+  get uploading() {
+    return !this.job?.done;
   }
 
-  toApi(): Lora {
-    return { file: this.file, weight: this.weight };
+  protected new() {
+    this.stop = api.upload(this.file, (job) => { this.job = job; });
+    return () => this.stop?.();
+  }
+
+  toApi(): AttachmentDto {
+    return { name: this.file.name, url: this.job!.url };
   }
 
   remove() {
-    this.recipe.loras.delete(this);
+    this.composer.attachments.delete(this);
   }
 
-  render() { /* card: weight nudge, progress, remove */ }
+  render() { /* chip: name, progress, remove */ }
 }
 
-class RecipePanel extends State {
-  loras = has((dto: Lora) => new AppliedLora(dto));
+class Composer extends State {
+  subject = '';
+  attachments = has((file: File) => new Attachment({ file }));
 
   get ready() {
-    return !this.loras.any((l) => l.importing);
+    return !this.attachments.any((a) => a.uploading);
   }
 
-  get loraDtos() {
-    return this.loras.map((l) => l.toApi());
+  get attachmentDtos() {
+    return this.attachments.map((a) => a.toApi());
   }
 }
 ```
 
+The owner coordinates readiness only. A method that re-finds a chip by id to feed it progress (`attachments.get((a) => a.id === id)`) belongs on the chip.
+
 ## Region Controllers
 
-When a page State accumulates unrelated clusters - form config plus catalog plus job plus navigation - split each into its own State owned as a field. Ownership provides implicitly; views bind the region directly:
+When a page State accumulates unrelated clusters - draft fields plus lookups plus request state plus navigation - split each into its own State owned as a field. Ownership provides implicitly; views bind the region directly:
 
 ```tsx
-class GeneratePage extends Component {
-  recipe = new RecipePanel();  // owned field - provided with the page
+class ComposePage extends Component {
+  composer = new Composer();  // owned field - provided with the page
   busy = false;
 
-  get canGenerate() {
-    return this.recipe.ready && !this.busy;
+  get canSend() {
+    return this.composer.ready && !this.busy;
   }
 
-  async generate() { /* orchestrates: recipe -> job -> session */ }
+  async send() { /* composer -> request -> thread */ }
 }
 
 // Form sections bind the region; the footer mixes both
-function PromptFields() {
-  const { is: recipe, prompt } = RecipePanel.get();
+function SubjectField() {
+  const { is: composer, subject } = Composer.get();
   ...
 }
 
 function Footer() {
-  const { canGenerate, generate } = GeneratePage.get();
+  const { canSend, send } = ComposePage.get();
   ...
 }
 ```
 
-The page remains orchestrator - route identity, session, job dispatch, page-level errors. Split when the second cluster appears, not as a late cleanup.
+The page remains orchestrator - route identity, session, request dispatch, page-level errors. Split when the second cluster appears, not as a late cleanup.
 
 ## Bridging an Existing Router
 
 An outer FC reads the router hooks and passes them as props; alternatively the class encapsulates the hooks itself with `use()` (see [react.md](react.md)):
 
 ```tsx
-function GalleryRoute() {
+function InboxRoute() {
   const navigate = useNavigate();
-  const { sessionId } = useParams();
+  const { folder } = useParams();
 
   return (
-    <GalleryPage navigate={navigate} urlSessionId={sessionId}>
+    <Inbox navigate={navigate} urlFolder={folder}>
       <Toolbar />
-      <Thumbs />
-    </GalleryPage>
+      <Messages />
+    </Inbox>
   );
 }
 ```
@@ -263,18 +271,26 @@ function GalleryRoute() {
 Route params are props, not always working identity. When leaving a route must not clear the model, keep the working field separate and soft-sync with a reaction:
 
 ```tsx
-class GeneratePage extends Component {
-  sessionId?: string;     // working identity - survives route changes
-  urlSessionId?: string;  // route param - undefined off /s/:id
+class ComposePage extends Component {
+  threadId?: string;     // working identity - survives route changes
+  urlThreadId?: string;  // route param - undefined off /t/:id
 
   mount() {
     return this.get(($) => {
-      void $.urlSessionId;  // declare the trigger - legitimate in model effects, never in renders
+      void $.urlThreadId;  // declare the trigger - legitimate in model effects, never in renders
       this.syncRoute();
     });
   }
+
+  async send() {
+    const tid = this.threadId ??= createId();       // working field leads
+    this.navigate(`/t/${tid}`, { replace: true });  // navigation confirms, never informs
+    ...
+  }
 }
 ```
+
+Assign the working field the moment identity is created. If methods thread fresh ids through arguments to outrun the route, or a shadow field remembers the last route seen, the working field is still a mirror.
 
 ## Context Sharing
 
