@@ -102,7 +102,7 @@ A row earns a pool when it has any of: mutable UI state (selection, expanded), a
 
 Keep members small: promote a payload key to its own reactive field only when views render it or it changes independently; the rest stays whole as one `info` field. Normalize API `null` to `undefined` at this boundary so presence fields stay optional. See [has.md](../field/has.md) for the pool surface and [patterns.md](patterns.md) for worked recipes.
 
-Behavior parity does not exempt this step - parity constrains observable behavior, not code shape. Entry ownership is an invariant, not a stylistic option a conversion may decline.
+Behavior parity does not exempt this step - parity constrains observable behavior, not code shape, and a task scoped "no redesigns" means the UI and public contracts, not internal structure; this conversion restructures by definition. Entry ownership is an invariant, not a stylistic option a conversion may decline.
 
 ## 5. Split regions out of fat orchestrators
 

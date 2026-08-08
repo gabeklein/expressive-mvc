@@ -382,4 +382,6 @@ Fetch these for detailed documentation when the task requires deeper knowledge. 
 
 ## Auditing & Evaluation
 
+Audit a conversion as a separate pass, not while authoring - self-audits under-report the author's own architecture gaps, and a fresh checklist pass over the diff recovers them.
+
 Use [examples/audit.md](examples/audit.md) to assess fit and migration candidates. If migration is approved, follow [react/refactor.md](react/refactor.md) rather than translating hooks mechanically. For recorded design rationale, use [design.md](design.md); for adoption positioning and comparisons, use the website-only [why](https://expressive.dev/llm/why.md) and [comparisons](https://expressive.dev/llm/comparisons.md) pages.
