@@ -1,6 +1,7 @@
 import { State, Context, Component } from '@expressive/mvc';
 import type { UseState } from '@expressive/mvc';
 import { Runtime, useHook } from './runtime';
+import { useDriver } from './transition';
 
 let shared: any;
 
@@ -102,6 +103,9 @@ function Provider<T extends State>({
   ...props
 }: Provider.Props<T>) {
   const ambient = useAmbient();
+
+  useDriver();
+
   const digest: Digest<T> = useHook((returns) => {
     const context = new Context(ambient);
     const fresh: State[] = [];

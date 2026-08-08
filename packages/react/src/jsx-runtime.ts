@@ -2,6 +2,8 @@ import React, { Children, isValidElement } from 'react';
 import { Fragment, jsx, jsxs } from 'react/jsx-runtime';
 import { host } from '@expressive/mvc/runtime';
 
+import { drive } from './transition';
+
 import type { JSX as ReactJSX, ReactNode } from 'react';
 
 declare module '@expressive/mvc/runtime' {
@@ -15,7 +17,7 @@ host({
   jsx,
   jsxs,
   Fragment,
-  transition: React.startTransition,
+  transition: (work) => drive(work, React.startTransition),
   isElement: isValidElement,
   childrenOf: Children.toArray,
   typeOf(node){
