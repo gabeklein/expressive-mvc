@@ -98,6 +98,8 @@ class Inbox extends Component {
 
 Selection flags, per-row status, and row actions live on the member (`message.selected`, `message.archive()`); the page keeps fetch, pool lifecycle, and multi-select *policy*. Rows that own `render()` place directly - `{inbox.messages}` or a subset `{list}` - no `.map`. If two views compute the same expression over an entry, that expression is a getter on the entry's class.
 
+A row earns a pool when it has any of: mutable UI state (selection, expanded), an async lifecycle (upload, watch, progress), or actions (remove, retry) - one suffices. Demoting such a row to a plain DTO is not economy: its status then reads through lookups, and a method call on a raw instance creates no subscription - progress that only ever renders through `page.importFor(id)` never repaints. Tracked reads reach the member through the pool or its own `render()`.
+
 Keep members small: promote a payload key to its own reactive field only when views render it or it changes independently; the rest stays whole as one `info` field. Normalize API `null` to `undefined` at this boundary so presence fields stay optional. See [has.md](../field/has.md) for the pool surface and [patterns.md](patterns.md) for worked recipes.
 
 Behavior parity does not exempt this step - parity constrains observable behavior, not code shape. Entry ownership is an invariant, not a stylistic option a conversion may decline.
@@ -169,6 +171,43 @@ Mapping for what remains after ownership is settled:
 - `useCallback` handlers -> auto-bound class methods. Pass them directly to timers and listeners: `setInterval(this.tick, 1000)`, not `() => this.tick()`.
 - `useRef` handles - unsubscribe functions, snapshots, timer ids -> unmanaged fields ([state.md](../state/state.md#unmanaged-instance-data)), never reactive fields and never `#private`.
 - Route params -> props on the page owner. Keep working identity (current session, selection) as a separate field a reaction soft-syncs - never the URL param itself. The fused version announces itself as stale-prop workarounds: threading fresh ids through method arguments to outrun the route, or shadow fields remembering the last route seen. See the router recipe in [patterns.md](patterns.md).
+
+The route-identity split, concretely:
+
+```tsx
+// Wrong: the URL param is the working identity - fresh ids outrun the route
+class Workspace extends Component {
+  sessionId?: string;                 // route prop
+
+  async send() {
+    let sid = this.sessionId;
+    if (!sid) {
+      sid = createId();               // threaded through locals; the model
+      this.navigate(`/s/${sid}`);     // learns its own id via prop round-trip
+    }
+    await api.send(sid, this.body);
+  }
+}
+
+// Right: the working field leads; navigation confirms, never informs
+class Workspace extends Component {
+  sessionId?: string;                 // working identity
+  urlSessionId?: string;              // route prop
+
+  mount() {
+    return this.get(($) => {
+      void $.urlSessionId;
+      this.syncRoute();               // adopt or keep per policy - not 1:1
+    });
+  }
+
+  async send() {
+    const sid = this.sessionId ??= createId();
+    this.navigate(`/s/${sid}`, { replace: true });
+    await api.send(sid, this.body);
+  }
+}
+```
 
 Reactive fields are assigned directly - do not manufacture setters:
 

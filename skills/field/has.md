@@ -177,7 +177,7 @@ const names = roster.players.map((p) => p.name);
 
 Calling `get()` with no arguments returns a shallow snapshot array; nested values with a `.get()` method are exported through it, matching State snapshots.
 
-Member fields read through a subscribed context track deeply - a parent rendering `players.filter((p) => p.online)` re-renders when any visited member's `online` changes. For per-row paint, prefer `Component` members owning `render()`: each row subscribes to itself and the parent tracks only shape. Never read a value solely to force tracking (`void x`) in a render - consume it, or move paint to the member.
+Member fields read through a subscribed context track deeply - a parent rendering `players.filter((p) => p.online)` re-renders when any visited member's `online` changes. A method call on a raw instance creates no subscription: `page.importFor(id).progress` in a render never repaints. Per-row async status must be a tracked read - a member field reached through the pool, or the member's own `render()`. Never read a value solely to force tracking (`void x`) in a render - consume it, or move paint to the member.
 
 ## Type Signature
 
