@@ -101,6 +101,7 @@ A green `tsc --noEmit` + `bun run build` says nothing about whether a browser-fa
 - Always open PRs against `main` unless explicitly told otherwise. Never assume a PR should target another branch, even when the current work branch is stacked on one. If asked to break a fix out of a larger branch, the intent is to land it independently off `main` - carve out only the change in question and base its branch on `main`.
 - For new features and non-trivial refactors, capture agreed scope, key decisions, and approach in the PR description before implementation - it is the canonical shared plan and review context. (Working notes may live in untracked local scratch; only the PR description is shared.)
 - Prefer more, logically-scoped commits within a branch over one squashed blob - the PR itself squashes on merge, so granular commits cost nothing and give better evolution tracking during review.
+- Dead links, typos and one-word corrections get fixed on the current branch - don't route trivia elsewhere.
 - Write a changeset (`bun run changeset`) when a change is user-facing: new feature, behavior change, API addition, breaking change.
 - No changeset for internal refactors, test-only changes, or fixes with no observable effect. A zero-changeset PR is legitimate.
 - An open PR is not a stopping point that needs a "merged" announcement. When the task's remaining work is gated on the PR landing, watch its state quietly (e.g. poll `gh pr view <n> --json state` in the background; if background watching isn't available, check at the next opportunity) and continue when it resolves. On merge of a leaf branch - nothing stacked on it, task ends there - finish cleanup unprompted: remove its worktree (the untracked-file check below still applies) and delete the local branch; the remote branch auto-deletes on merge. A PR closed without merging, or review pushback, is a signal to surface to the user, never to clean up after silently.
@@ -118,52 +119,6 @@ A green `tsc --noEmit` + `bun run build` says nothing about whether a browser-fa
 
 - `@expressive/mvc`, `@expressive/react`, and `@expressive/router` are published; `preact` is private and ignored by changesets.
 - Merged changesets accumulate on `main`; CI maintains a "Version Packages" PR (`changeset version`). Merging that PR triggers `changeset publish` from CI. No local publishing.
-
-## Followups
-
-Findings that fall outside the current task go to the **MVC Followups** GitHub project (number `6`, owner `gabeklein`) as **draft issues**. Draft means the item lives only in the project - it is not a repo issue, has no number or labels, and never appears in the issue tracker or issue search, which keeps triage notes out of the public backlog. Confidentiality is separate and comes from the project's own visibility (currently private); drafts on a public project are publicly readable.
-
-File eagerly. When something is obviously worth looking into - a latent throw, an undocumented footgun, behavior contradicting the docs, a rough edge you had to work around - just file it. Don't ask first and don't wait to be asked; ask only when it's genuinely ambiguous whether the thing is a problem at all. File it even when the same conversation goes on to fix it: the item is the record of what was wrong and why it mattered, which is the durable value. Treat the board as project-level memory, not a queue you're obliged to keep short.
-
-Trivia is not a followup. Dead links, typos and one-word corrections get fixed on the current branch instead.
-
-A good item states the finding, how it was reproduced, whether it's currently reachable in shipped code, and what remains open.
-
-```bash
-gh project item-create 6 --owner gabeklein --title "..." --body "$(cat note.md)"
-```
-
-Requires `gh auth refresh -s project` (`read:project` can list but not create). `item-create` prints nothing and exits 0 on success, and `item-list`'s table output silently drops rows - verify with `gh project item-list 6 --owner gabeklein --format json`, where bodies live under `content.body`, not top-level `body`. Re-running a create that looked like it failed duplicates the item.
-
-A draft has no open/closed state, so `Status` is the board's only progression signal. Set it on create and move it as the item advances - an unset item is invisible. Four states, deliberately no `Ready` or `In progress`: work here goes from picked-up to PR in minutes, so those columns only ever held stale rows.
-
-| Status | Option id | Means |
-| --- | --- | --- |
-| `Issues` | `ad4b7e6a` | Bugs - a defect in current behavior, wants attention now |
-| `Backlog` | `95f4fe41` | Known but not pressing - features, chores, docs, open questions |
-| `In review` | `d4e312b2` | Has an open PR |
-| `Done` | `dbd6afac` | Merged |
-
-The split is defect versus not-pressing, so a bug files into `Issues` however well diagnosed it is, and a missing capability files into `Backlog` however sharply it bit. Move to `Done` in the same pass that lands the fix. Residual open questions on a resolved finding get their own item rather than holding the original open.
-
-Set `Priority` (field `PVTSSF_lAHOAQ6js84BewtBzhZIhgI`) alongside it. Judge by consequence, not by how interesting the finding is:
-
-| Priority | Option id | Means |
-| --- | --- | --- |
-| `P0` | `79628723` | Breaks a documented or ordinary path with no workaround, or blocks other work |
-| `P1` | `0a877460` | Real but survivable - a workaround exists, or a consumer is waiting |
-| `P2` | `da944a9c` | Latent, low-impact, speculative, or a decision record |
-
-Record the PR in the item body, since `Linked pull requests` is populated by GitHub for real issues and cannot be set on a draft. `In review` items carry an **Open PR:** line; `Done` items carry a **Resolved by** line naming the PR and what it actually changed, which is what makes the board auditable later without re-deriving the fix from git.
-
-```bash
-gh project item-edit --id "$ITEM" \
-  --project-id PVT_kwHOAQ6js84BewtB \
-  --field-id PVTSSF_lAHOAQ6js84BewtBzhZIhUI \
-  --single-select-option-id dbd6afac
-```
-
-Item ids come from `gh project item-list 6 --owner gabeklein --format json`. Do not edit the option set with `updateProjectV2Field` - `singleSelectOptions` has no `id` input, so a write replaces every option and silently clears every item's `Status`.
 
 ## Guardrails
 
