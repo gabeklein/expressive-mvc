@@ -36,6 +36,8 @@ For every stateful concern, pick exactly one owner:
 - **`State`** - headless model or workflow: network operations, domain rules, cross-view coordination. Views subscribe via `State.get()` / `State.use()`.
 - **Plain function component** - simple presentation, or trivial local UI state. Not everything needs a class.
 
+Concerns include the rows: when UI state describes an entry in a collection - selection, status, progress - the entry is its own `State` or `Component` spawned in a `has` pool, and actions about an item belong on the item. Id-keyed fields (`Record<Id, T>`, parallel `Map`s) and `(id, value)` methods are a missing class; subsets (selection, comparison) are a second pool admitting the same members.
+
 Counter-rules:
 
 - Do not create `FooState` plus `FooView` just because hooks were present. If the behavior and rendering are one unit, `class Foo extends Component` is the refactor.
@@ -50,15 +52,19 @@ Counter-rules:
 1. Identify lifecycle and ownership boundaries before translating any hooks.
 2. Separate headless workflow state from display-intrinsic state.
 3. Choose `State`, `Component`, or a plain function component for each owner.
-4. Provide state classes directly (`<Provider for={AppState}>`); never create an instance only to provide it.
-5. Move source fields and behavioral methods first; do not mechanically translate setters.
-6. Keep shared, semantic derivations as getters; leave single-consumer display derivations in their consuming component.
-7. Let contextual children call `.get()` themselves instead of receiving drilled props.
-8. At every `.get()` / `.use()`, destructure an exact nested dependency snapshot.
-9. Assign directly through subscribed proxies; use `is` only to retain the root object alongside sibling destructuring.
-10. Gate optional children at the call site; inside, assert requirements with `.get(true)`.
-11. Extract long conditional JSX into named scopes, then consolidate scopes that share dependencies and hold no nested logic.
-12. Audit the result against the checklist in [react/refactor.md](react/refactor.md).
+4. Give every repeated UI entry its own class in a `has` pool; actions about an item belong on the item.
+5. Split unrelated clusters remaining on a page State into owned region States (`composer = new Composer()`).
+6. Provide state classes directly (`<Provider for={AppState}>`); never create an instance only to provide it.
+7. Move source fields and behavioral methods first; do not mechanically translate setters.
+8. Keep shared, semantic derivations as getters; leave single-consumer display derivations in their consuming component.
+9. Let contextual children call `.get()` themselves instead of receiving drilled props.
+10. At every `.get()` / `.use()`, destructure an exact nested dependency snapshot.
+11. Assign directly through subscribed proxies; use `is` only to retain the root object alongside sibling destructuring.
+12. Gate optional children at the call site; inside, assert requirements with `.get(true)`.
+13. Extract long conditional JSX into named scopes, then consolidate scopes that share dependencies and hold no nested logic.
+14. Audit the result against the checklist in [react/refactor.md](react/refactor.md).
+
+For large apps, scope a one-shot conversion to route/page controllers and their domain pools; leave mature leaf widgets on hooks until parent domains stabilize.
 
 Write output in the conventions of [react/style.md](react/style.md). They are opinion, not semantics - but they exist to keep reactive dependencies auditable, and the golden path applies them by default.
 
@@ -110,7 +116,7 @@ Field initializers that configure reactive behavior. Each has multiple overloads
 | `get()` | Context lookup between States - required or optional upstream, downstream collection                   | [field/get.md](field/get.md) |
 | `ref()` | Mutable refs (`.current`), ref callbacks with cleanup, ref proxies                                      | [field/ref.md](field/ref.md) |
 | `map()` | Reactive `Map` field - keyed entries or a keyed spawner, with owned `State` members and direct render    | [field/map.md](field/map.md) |
-| `has()` | Owned collections - an ordered list of values, or a pool of spawned members                             | [field/has.md](field/has.md) |
+| `has()` | Owned collections - an ordered list of values, or a pool of spawned members. Pools are the home for per-item UI state (selection, progress, row actions) | [field/has.md](field/has.md) |
 | `def()` | Low-level custom property behavior                                                                      | [field/def.md](field/def.md) |
 
 For **computed values**, declare a normal class getter - getters on a State subclass are auto-promoted to memoized, dependency-tracked properties. See [state/computed.md](state/computed.md) for tracking rules and when a derivation should *not* be a getter.
@@ -312,6 +318,7 @@ Every broad rule here has a locality constraint. Apply both halves. When auditin
 | PascalCase subcomponents compose renders                    | Only for genuine extension points a subclass would replace or wrap. Implementation scopes are freestanding FCs using `.get()`.        |
 | Extract long conditional JSX (~10+ lines or ~5+ levels)     | Keep branches together when they share dependencies, read locally, and contain no nested logic.                                      |
 | `is` retains the raw instance                               | Only alongside sibling destructuring from the same snapshot. Writes through proxies are transparent; nested objects need no unwrapping. |
+| State about a collection entry lives on the entry's class   | Payload keys that never drive UI stay as one `info` subobject on the member - a reactive field without a reader is pure cost.           |
 
 ## File Reference
 
@@ -349,7 +356,7 @@ Fetch these for detailed documentation when the task requires deeper knowledge. 
 
 - [react/react.md](react/react.md) - use(), State.use(), State.get() (optional lookup, required values `get(true)`, computed selector), Provider, Consumer, transparent writes, ForceRefresh
 - [react/component.md](react/component.md) - Component class, props, children, render composition, subcomponent extension points, error boundaries
-- [react/patterns.md](react/patterns.md) - Recipes: forms, async, nested state, presence boundary, contextual children, debounce, effects
+- [react/patterns.md](react/patterns.md) - Recipes: forms, async, domain-row and form-chip pools, region controllers, router bridge, presence boundary, contextual children, debounce, effects
 
 ### Router
 

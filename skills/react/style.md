@@ -5,6 +5,7 @@ These are conventions, not library semantics. They ship with the golden path bec
 ## Snapshot formatting
 
 - When a destructure contains multiple values, put every binding on its own line.
+- `is` (aliased) is the first binding when retained.
 - Direct properties come first; nested destructures go at the bottom.
 - Expand nested levels vertically - one key per line, closing braces aligned.
 - Optional nested objects take in-place defaults, not a separate unwrap:
@@ -60,4 +61,8 @@ downloadIif() {
 }
 ```
 
-If a render guard would skip past most of an already-declared snapshot, the gated content is a candidate for its own component - see step 11 of [refactor.md](refactor.md).
+If a render guard would skip past most of an already-declared snapshot, the gated content is a candidate for its own component - see step 13 of [refactor.md](refactor.md).
+
+## Layout
+
+Once a route has a model class, colocate the feature: `pages/inbox/` holding `index.tsx` (route shell), the page class, domain classes, and view slices - not a fat `Inbox.tsx` beside a partial folder. Project preference; never an audit finding.

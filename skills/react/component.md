@@ -206,16 +206,14 @@ Component instances survive across renders. `this` is stable - you can store ref
 ```tsx
 class ChatRoom extends Component {
   messages: Message[] = [];
-  socket: WebSocket | null = null;
-
   url = '';
 
   new() {
-    this.socket = new WebSocket(this.url);
-    this.socket.onmessage = (e) => {
+    const socket = new WebSocket(this.url);
+    socket.onmessage = (e) => {
       this.messages = [...this.messages, JSON.parse(e.data)];
     };
-    return () => this.socket?.close();
+    return () => socket.close();
   }
 
   render() {
