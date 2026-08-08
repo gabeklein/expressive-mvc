@@ -121,49 +121,9 @@ A green `tsc --noEmit` + `bun run build` says nothing about whether a browser-fa
 
 ## Followups
 
-Findings that fall outside the current task go to the **MVC Followups** GitHub project (number `6`, owner `gabeklein`) as **draft issues**. Draft means the item lives only in the project - it is not a repo issue, has no number or labels, and never appears in the issue tracker or issue search, which keeps triage notes out of the public backlog. Confidentiality is separate and comes from the project's own visibility (currently private); drafts on a public project are publicly readable.
-
-File eagerly. When something is obviously worth looking into - a latent throw, an undocumented footgun, behavior contradicting the docs, a rough edge you had to work around - just file it. Don't ask first and don't wait to be asked; ask only when it's genuinely ambiguous whether the thing is a problem at all. File it even when the same conversation goes on to fix it: the item is the record of what was wrong and why it mattered, which is the durable value. Treat the board as project-level memory, not a queue you're obliged to keep short.
+Findings that fall outside the current task - a latent throw, an undocumented footgun, behavior contradicting the docs - are tracked on a private project board rather than the issue tracker. Agents: see the `gh-project` skill, and `ghp policy` for what belongs there.
 
 Trivia is not a followup. Dead links, typos and one-word corrections get fixed on the current branch instead.
-
-A good item states the finding, how it was reproduced, whether it's currently reachable in shipped code, and what remains open.
-
-```bash
-gh project item-create 6 --owner gabeklein --title "..." --body "$(cat note.md)"
-```
-
-Requires `gh auth refresh -s project` (`read:project` can list but not create). `item-create` prints nothing and exits 0 on success, and `item-list`'s table output silently drops rows - verify with `gh project item-list 6 --owner gabeklein --format json`, where bodies live under `content.body`, not top-level `body`. Re-running a create that looked like it failed duplicates the item.
-
-A draft has no open/closed state, so `Status` is the board's only progression signal. Set it on create and move it as the item advances - an unset item is invisible. Four states, deliberately no `Ready` or `In progress`: work here goes from picked-up to PR in minutes, so those columns only ever held stale rows.
-
-| Status | Option id | Means |
-| --- | --- | --- |
-| `Issues` | `ad4b7e6a` | Bugs - a defect in current behavior, wants attention now |
-| `Backlog` | `95f4fe41` | Known but not pressing - features, chores, docs, open questions |
-| `In review` | `d4e312b2` | Has an open PR |
-| `Done` | `dbd6afac` | Merged |
-
-The split is defect versus not-pressing, so a bug files into `Issues` however well diagnosed it is, and a missing capability files into `Backlog` however sharply it bit. Move to `Done` in the same pass that lands the fix. Residual open questions on a resolved finding get their own item rather than holding the original open.
-
-Set `Priority` (field `PVTSSF_lAHOAQ6js84BewtBzhZIhgI`) alongside it. Judge by consequence, not by how interesting the finding is:
-
-| Priority | Option id | Means |
-| --- | --- | --- |
-| `P0` | `79628723` | Breaks a documented or ordinary path with no workaround, or blocks other work |
-| `P1` | `0a877460` | Real but survivable - a workaround exists, or a consumer is waiting |
-| `P2` | `da944a9c` | Latent, low-impact, speculative, or a decision record |
-
-Record the PR in the item body, since `Linked pull requests` is populated by GitHub for real issues and cannot be set on a draft. `In review` items carry an **Open PR:** line; `Done` items carry a **Resolved by** line naming the PR and what it actually changed, which is what makes the board auditable later without re-deriving the fix from git.
-
-```bash
-gh project item-edit --id "$ITEM" \
-  --project-id PVT_kwHOAQ6js84BewtB \
-  --field-id PVTSSF_lAHOAQ6js84BewtBzhZIhUI \
-  --single-select-option-id dbd6afac
-```
-
-Item ids come from `gh project item-list 6 --owner gabeklein --format json`. Do not edit the option set with `updateProjectV2Field` - `singleSelectOptions` has no `id` input, so a write replaces every option and silently clears every item's `Status`.
 
 ## Guardrails
 
