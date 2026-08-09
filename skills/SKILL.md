@@ -1,6 +1,6 @@
 ---
 name: expressive-mvc
-description: Class-based reactive state management for React (Expressive MVC). Use when writing or refactoring React state - converting useState/useEffect/useMemo hooks, fixing prop drilling, choosing state ownership (State vs Component), dependency snapshots, presence boundaries with get(true), Provider/context, async suspense, router - and when auditing a codebase for fit.
+description: Class-based reactive state management for React (Expressive MVC). Use when writing or refactoring React state - converting useState/useEffect/useMemo hooks, fixing prop drilling, choosing state ownership (State vs Component, has-pool domain rows, region controllers), dependency snapshots, presence boundaries with get(true), Provider/context, async suspense, router - and when auditing a codebase for fit.
 ---
 
 # Expressive MVC
