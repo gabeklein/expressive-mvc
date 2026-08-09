@@ -93,11 +93,11 @@ class Profile extends Component {
 }
 ```
 
-Suspense fits load-once data the view cannot render without. Keep explicit `loading` / `error` fields when the fetch is user-initiated, stale content should stay visible during refresh, or errors render inline - see [set.md](../field/set.md).
+Suspense fits load-once data the view cannot render without. Keep explicit `loading` / `error` fields when the fetch is user-initiated, stale content stays visible during refresh, or errors render inline - see [set.md](../field/set.md).
 
 ## Domain Rows in a Pool
 
-State about an entry in a collection lives on the entry's class, spawned through a `has` pool - not in id-keyed records or `(id, value)` methods on the page. The factory takes the API payload (DTO in); the page keeps fetch, the pool, and selection *policy*:
+State about a collection entry lives on the entry's class, spawned thru a `has` pool - not id-keyed records or `(id, value)` methods on the page. Factory takes the API payload (DTO in); page keeps fetch, the pool, and selection *policy*:
 
 ```tsx
 import State, { Component, get, has, set } from '@expressive/react';
@@ -155,9 +155,9 @@ function MessageList({ list }: { list: Message[] }) {
 }
 ```
 
-Activated Components are React elements: the pool (`{inbox.messages}`) and plain subsets (`{list}`) place directly, no `.map`. Each row paints from its own `render()` subscription, so selecting one message re-renders one row.
+Activated Components are React elements: the pool `{inbox.messages}` and plain subsets `{list}` place directly, no `.map`. Each row paints from its own `render()` subscription - selecting one message re-renders one row.
 
-A cross-cutting subset can be a second pool instead of a member flag - class-mode `add` admits ready-made members, and `pool.has(value)` tracks that member only. Members evict on destroy, so a refill clears the subset - use a durable key instead when selection must survive refresh:
+A cross-cutting subset can be a second pool instead of a member flag - class-mode `add` admits ready-made members; `pool.has(value)` tracks that member only. Members evict on destroy, so refill clears the subset - use a durable key when selection must survive refresh:
 
 ```tsx
 class Inbox extends Component {
@@ -175,7 +175,7 @@ get selected() {
 
 ## Form Chips in a Pool
 
-The same shape covers form entries with their own async lifecycle - an upload, a pending download, an applied filter. The chip owns that lifecycle end to end: started in `new()`, handle in an unmanaged field, torn down on destroy. The form owns the pool and overall readiness, reading DTOs back out at the API boundary:
+The same shape covers form entries with their own async lifecycle - an upload, a pending download, an applied filter. The chip owns that lifecycle: started in `new()`, handle in an unmanaged field, torn down on destroy. The form owns the pool and readiness, reading DTOs back out at the API boundary:
 
 ```tsx
 class Attachment extends Component {
@@ -218,7 +218,7 @@ class Composer extends State {
 }
 ```
 
-The owner coordinates readiness only. A method that re-finds a chip by id to feed it progress (`attachments.get((a) => a.id === id)`) belongs on the chip.
+The owner coordinates readiness only. A method re-finding a chip by id to feed it progress belongs on the chip.
 
 ## Region Controllers
 
@@ -248,11 +248,11 @@ function Footer() {
 }
 ```
 
-The page remains orchestrator - route identity, session, request dispatch, page-level errors. Split when the second cluster appears, not as a late cleanup.
+The page remains orchestrator - route identity, session, request dispatch, page-level errors. Split when the second cluster appears, not as late cleanup.
 
 ## Bridging an Existing Router
 
-Bridge, don't replace: a conversion keeps the app's router, and adopting `@expressive/router` instead is a separate decision needing explicit go-ahead. An outer FC reads the router hooks and passes them as props; alternatively the class encapsulates the hooks itself with `use()` (see [react.md](react.md)):
+Bridge, don't replace: a conversion keeps the app's router; adopting `@expressive/router` needs explicit go-ahead. An outer FC reads router hooks and passes props; alternatively the class encapsulates hooks itself with `use()` (see [react.md](react.md)):
 
 ```tsx
 function InboxRoute() {
@@ -290,7 +290,7 @@ class ComposePage extends Component {
 }
 ```
 
-Assign the working field the moment identity is created. If methods thread fresh ids through arguments to outrun the route, or a shadow field remembers the last route seen, the working field is still a mirror.
+Assign the working field the moment identity is created. Fresh ids threaded thru arguments, or a shadow field remembering the last route - the working field is still a mirror.
 
 ## Context Sharing
 

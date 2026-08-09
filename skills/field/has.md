@@ -114,7 +114,7 @@ basket.items.add(Item.new());             // already activated - guest
 
 ### DTO boundary
 
-Pools are the home for per-item UI state. Accept API payloads through the factory (DTO in), read them back out at the boundary (DTO out); refill on fetch with `clear()` plus `add` per item:
+Pools are for per-item UI state. Accept API payloads thru the factory (DTO in), read back out at the boundary (DTO out); refill on fetch with `clear()` plus `add` per item:
 
 ```ts
 class Inbox extends State {
@@ -132,9 +132,9 @@ class Inbox extends State {
 }
 ```
 
-Keep members small: promote a payload key to its own reactive field only when views render it or it changes independently - the rest stays whole as one subobject field (`info`). Normalize API `null` to `undefined` here so presence fields stay optional.
+Keep members small: promote a payload key to reactive field only when views render it or it changes independently - the rest stays one subobject field (`info`). Normalize API `null` to `undefined` here so presence fields stay optional.
 
-Refill destroys member identity - references, flags, and second-pool membership die with it. Selection that must survive a refresh is a durable key (`selectedId`) plus a re-find getter; member references and flags fit pools that live between fetches.
+Refill destroys member identity - references, flags, second-pool membership die with it. Selection surviving refresh is a durable key (`selectedId`) plus re-find getter; references and flags fit pools stable between fetches.
 
 ## Ownership
 
@@ -179,7 +179,7 @@ const names = roster.players.map((p) => p.name);
 
 Calling `get()` with no arguments returns a shallow snapshot array; nested values with a `.get()` method are exported through it, matching State snapshots.
 
-Member fields read through a subscribed context track deeply - a parent rendering `players.filter((p) => p.online)` re-renders when any visited member's `online` changes. A method call on a raw instance creates no subscription: `page.importFor(id).progress` in a render never repaints. Per-row async status must be a tracked read - a member field reached through the pool, or the member's own `render()`. Never read a value solely to force tracking (`void x`) in a render - consume it, or move paint to the member.
+Member fields read thru a subscribed context track deeply - a parent rendering `players.filter((p) => p.online)` re-renders when any visited member's `online` changes. A method call on a raw instance creates no subscription: `page.importFor(id).progress` in a render never repaints. Per-row async status must be a tracked read - member field thru the pool, or the member's own `render()`. Never read solely to force tracking (`void x`) in a render - consume it, or move paint to the member.
 
 ## Type Signature
 

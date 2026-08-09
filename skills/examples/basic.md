@@ -92,7 +92,7 @@ function TodoApp() {
 }
 ```
 
-Rows that should paint themselves become `Component` members placed as `{state.items}` - see the pool recipes in [patterns.md](../react/patterns.md).
+Rows that paint themselves become `Component` members placed as `{state.items}` - pool recipes in [patterns.md](../react/patterns.md).
 
 ## Async Data (with Suspense)
 

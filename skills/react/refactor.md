@@ -4,22 +4,22 @@ Read this in full before converting hook-based React code. The most common failu
 
 Examples follow the conventions in [style.md](style.md).
 
-**Scope for large apps:** convert route/page controllers and their domain pools first; leave mature leaf widgets (inputs, menus) on hooks until their parent domain is stable. Coexistence is fine mid-migration.
+**Scope for large apps:** convert route/page controllers and their domain pools first; leave mature leaf widgets (inputs, menus) on hooks until parent domain is stable. Coexistence is fine mid-migration.
 
 ## Ambiguity defaults
 
-A one-shot conversion cannot ask. Proceed on these defaults and declare any deviation in the deliverable; ask only when acting on an assumption would destroy something unrecoverable - a feature, a public API.
+A one-shot conversion cannot ask. Proceed on these defaults and declare deviations in the deliverable; ask only when an assumption would destroy something unrecoverable - a feature, a public API.
 
 | Ambiguity | Default |
 |---|---|
 | "No redesigns" / parity scope | Observable behavior and public contracts; internal structure is the task |
-| Does leaving a route clear its model? | Keep the model alive; soft-sync working identity from params |
+| Does leaving a route clear its model? | Keep model alive; soft-sync working identity from params |
 | Selection across refetch | Durable key + re-find getter; member references only in pools stable between fetches |
 | Loading UX for user-initiated ops | Explicit loading/error fields; suspense for load-once data |
-| File layout | Colocate a feature folder once a route has model classes; existing project convention wins |
-| Verification gate | The project's currently-green checks - a check broken at base is not yours to fix; report exactly what was exercised |
+| File layout | Colocate feature folder once a route has model classes; existing convention wins |
+| Verification gate | Currently-green checks only - a check broken at base is not yours to fix; report what was exercised |
 | Bug or dead branch found at base | Preserve behavior and note it; drop only provably dead code, and say so |
-| Routing | Bridge the existing router (step 7); adopting `@expressive/router` is a separate decision that needs explicit go-ahead, never part of a conversion |
+| Routing | Bridge the existing router (step 7); adopting `@expressive/router` needs explicit go-ahead, never part of a conversion |
 | Deliverable | Ownership map, assumptions taken, behavior deltas, filled checklist - in the PR or ledger |
 
 ## 1. Identify owners before touching hooks
@@ -72,14 +72,14 @@ export class ReviewStep extends Component {
 
 ## 4. Give repeated UI entries their own class
 
-If a property or action is *about* an entry in a collection, it lives on that entry's class - not on the page. The page-level tells are syntactic:
+A property or action *about* an entry in a collection lives on that entry's class - not the page. The tells are syntactic:
 
-- a field keyed by id: `Record<Id, T>`, `Map<Id, unknown>`, or parallel structures (`items` plus `selectedIds` - a second pool of the members themselves, `selected = has(Item)`, is the honest shape)
+- a field keyed by id: `Record<Id, T>`, `Map<Id, unknown>`, or parallel structures - `items` plus `selectedIds`; a second pool of the members, `selected = has(Item)`, is the honest shape
 - a method taking `(id, value)`: `setItemWeight(id, w)`, `toggle(id)`
-- a page method that re-finds a member by id (`pool.get((x) => x.id === id)`) - it is the member's method; behavior moves with the state
+- a page method re-finding a member by id `pool.get((x) => x.id === id)` - that is the member's method; behavior moves with state
 - reassigning a collection to update one entry: `this.items = this.items.map(...)`, `this.jobs = { ...this.jobs, [id]: job }`
 
-Each tell is a missing class. Declare a `has` pool whose factory accepts the API payload, and move the state and actions onto the member:
+Each tell is a missing class. Declare a `has` pool whose factory takes the API payload; move state and actions onto the member:
 
 ```tsx
 // Wrong: item state flattened onto the page
@@ -112,17 +112,17 @@ class Inbox extends Component {
 }
 ```
 
-Selection flags, per-row status, and row actions live on the member (`message.selected`, `message.archive()`); the page keeps fetch, pool lifecycle, and multi-select *policy*. Rows that own `render()` place directly - `{inbox.messages}` or a subset `{list}` - no `.map`. If two views compute the same expression over an entry, that expression is a getter on the entry's class.
+Selection flags, per-row status, and row actions live on the member (`message.selected`, `message.archive()`); the page keeps fetch, pool lifecycle, and multi-select *policy*. Rows owning `render()` place directly - `{inbox.messages}` or subset `{list}` - no `.map`. Two views computing the same expression over an entry means a getter on the entry's class.
 
-A row earns a pool when it has any of: mutable UI state (selection, expanded), an async lifecycle (upload, watch, progress), or actions (remove, retry) - one suffices. Demoting such a row to a plain DTO is not economy: its status then reads through lookups, and a method call on a raw instance creates no subscription - progress that only ever renders through `page.importFor(id)` never repaints. Tracked reads reach the member through the pool or its own `render()`.
+A row earns a pool with any of: mutable UI state (selection, expanded), async lifecycle (upload, watch, progress), actions (remove, retry) - one suffices. Demoting such a row to plain DTO is not economy: status then reads thru lookups, and a method call on a raw instance creates no subscription - progress rendered only thru `page.importFor(id)` never repaints. Tracked reads reach the member thru the pool or its own `render()`.
 
-Keep members small: promote a payload key to its own reactive field only when views render it or it changes independently; the rest stays whole as one `info` field. Normalize API `null` to `undefined` at this boundary so presence fields stay optional. See [has.md](../field/has.md) for the pool surface and [patterns.md](patterns.md) for worked recipes.
+Keep members small: promote a payload key to reactive field only when views render it or it changes independently; the rest stays whole as one `info` field. Normalize API `null` to `undefined` here so presence fields stay optional. See [has.md](../field/has.md) for pool surface, [patterns.md](patterns.md) for worked recipes.
 
-Behavior parity does not exempt this step - parity constrains observable behavior, not code shape, and a task scoped "no redesigns" means the UI and public contracts, not internal structure; this conversion restructures by definition. Entry ownership is an invariant, not a stylistic option a conversion may decline.
+Behavior parity does not exempt this step - parity constrains observable behavior, not code shape; a task scoped "no redesigns" means UI and public contracts, not internal structure. Entry ownership is an invariant, not a style option a conversion may decline.
 
 ## 5. Split regions out of fat orchestrators
 
-When a page State still accumulates unrelated clusters after pools - draft fields plus lookups plus request state plus navigation is the classic shape - each cluster becomes its own State owned as a field. Ownership provides implicitly; views bind the region directly:
+When a page State still accumulates unrelated clusters after pools - draft fields plus lookups plus request state plus navigation - each cluster becomes its own State owned as a field. Ownership provides implicitly; views bind the region directly:
 
 ```tsx
 class Composer extends State {        // headless region
@@ -149,7 +149,7 @@ const { is: composer, subject } = Composer.get();
 const { canSend, send } = ComposePage.get();
 ```
 
-An owned region needs no cross-controller synchronization - the parent holds the instance and reads it directly; only views subscribe. Split when the second cluster appears, not as a late cleanup.
+An owned region needs no cross-controller synchronization - the parent holds the instance and reads it directly. Split when the second cluster appears, not as late cleanup.
 
 ## 6. Provide classes directly
 
@@ -183,10 +183,10 @@ Mapping for what remains after ownership is settled:
 - Values written by user input, browser events, timers, or network callbacks -> mutable class fields.
 - `useMemo` values and effects that only sync state -> class getters.
 - `useEffect` setup/teardown -> `protected new()` returning cleanup; browser-only resources -> `mount()` on a `Component`.
-- Chains of `useEffect`s reacting to each other -> tracked reactions (`this.get($ => ...)`) registered in `new()`/`mount()`. Updates batch, so each flush re-runs a reaction once, however many trigger fields changed.
-- `useCallback` handlers -> auto-bound class methods. Pass them directly to timers and listeners: `setInterval(this.tick, 1000)`, not `() => this.tick()`.
-- `useRef` handles - unsubscribe functions, snapshots, timer ids -> unmanaged fields ([state.md](../state/state.md#unmanaged-instance-data)), never reactive fields and never `#private`.
-- Route params -> props on the page owner. Keep working identity (current session, selection) as a separate field a reaction soft-syncs - never the URL param itself. The fused version announces itself as stale-prop workarounds: threading fresh ids through method arguments to outrun the route, or shadow fields remembering the last route seen. See the router recipe in [patterns.md](patterns.md).
+- Chains of `useEffect`s reacting to each other -> tracked reactions (`this.get($ => ...)`) registered in `new()`/`mount()`; updates batch, one re-run per flush however many trigger fields changed.
+- `useCallback` handlers -> auto-bound class methods - pass directly to timers and listeners: `setInterval(this.tick, 1000)`, not `() => this.tick()`.
+- `useRef` handles - unsubscribe functions, snapshots, timer ids -> unmanaged fields ([state.md](../state/state.md#unmanaged-instance-data)) - never reactive, never `#private`.
+- Route params -> props on the page owner. Working identity (session, selection) is a separate field a reaction soft-syncs - never the URL param itself. Fusion announces itself as stale-prop workarounds: fresh ids threaded thru arguments to outrun the route, shadow fields remembering the last route seen. Router recipe in [patterns.md](patterns.md).
 
 The route-identity split, concretely:
 
@@ -321,7 +321,7 @@ Pure presentation components (a `Metric`, a `StatusCallout`) may still take plai
 
 ## 10. Destructure an exact dependency snapshot
 
-Every `.get()` / `.use()` opens the component with the exact reactive values it renders, nested levels included, optional objects defaulted in place. These are React hooks: top of the component or `render()`, unconditionally - a `.get()` in an event handler or a conditionally-called helper builds green and crashes at runtime.
+Every `.get()` / `.use()` opens the component with the exact reactive values it renders, nested levels included, optional objects defaulted in place. These are React hooks: top of component or `render()`, unconditionally - in a branch, handler, or loop they build green and crash at runtime.
 
 ```tsx
 // Wrong: deep reads scattered through JSX, one hidden in a branch

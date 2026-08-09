@@ -129,7 +129,7 @@ function ThemeToggle() {
 
 1. **Start small** - pick one complex component, then decide whether its behavior belongs in a `Component` or a display-agnostic `State`
 2. **Coexist** - Expressive MVC works alongside existing hooks, no need to migrate everything
-3. **Bottom-up when coexisting** - migrate leaf components first, then work up to shared state. A one-shot conversion of a whole surface inverts this: route/page controllers first, domain pools second, mature leaf widgets last (see the refactor guide)
+3. **Bottom-up when coexisting** - migrate leaf components first, then work up to shared state. A one-shot conversion inverts this: route/page controllers first, domain pools second, mature leaf widgets last (see the refactor guide)
 4. **Test independently** - state classes can be tested without React, use this to improve coverage
 
 ## After Selection

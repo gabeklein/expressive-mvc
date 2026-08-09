@@ -36,7 +36,7 @@ For every stateful concern, pick exactly one owner:
 - **`State`** - headless model or workflow: network operations, domain rules, cross-view coordination. Views subscribe via `State.get()` / `State.use()`.
 - **Plain function component** - simple presentation, or trivial local UI state. Not everything needs a class.
 
-Concerns include the rows: when UI state describes an entry in a collection - selection, status, progress - the entry is its own `State` or `Component` spawned in a `has` pool, and actions about an item belong on the item. Id-keyed fields (`Record<Id, T>`, parallel `Map`s) and `(id, value)` methods are a missing class; subsets (selection, comparison) are a second pool admitting the same members.
+Concerns include the rows: UI state describing an entry in a collection - selection, status, progress - is its own `State` or `Component` spawned in a `has` pool; actions about item belong on item. Id-keyed fields (`Record<Id, T>`, parallel `Map`s) and `(id, value)` methods are a missing class; subsets are a second pool admitting the same members.
 
 Counter-rules:
 
@@ -52,16 +52,16 @@ Counter-rules:
 1. Identify lifecycle and ownership boundaries before translating any hooks.
 2. Separate headless workflow state from display-intrinsic state.
 3. Choose `State`, `Component`, or a plain function component for each owner.
-4. Give every repeated UI entry its own class in a `has` pool; actions about an item belong on the item.
-5. Split unrelated clusters remaining on a page State into owned region States (`composer = new Composer()`).
-6. Provide state classes directly (`<Provider for={AppState}>`); never create an instance only to provide it.
+4. Give every repeated UI entry own class in a `has` pool; actions about item belong on item.
+5. Split unrelated clusters remaining on page State to owned region States `composer = new Composer()`.
+6. Provide classes directly `<Provider for={AppState}>` never an instance if only to provide it.
 7. Move source fields and behavioral methods first; do not mechanically translate setters.
 8. Keep shared, semantic derivations as getters; leave single-consumer display derivations in their consuming component.
-9. Let contextual children call `.get()` themselves instead of receiving drilled props.
-10. At every `.get()` / `.use()`, destructure an exact nested dependency snapshot.
-11. Assign directly through subscribed proxies; use `is` only to retain the root object alongside sibling destructuring.
-12. Gate optional children at the call site; inside, assert requirements with `.get(true)`.
-13. Extract long conditional JSX into named scopes, then consolidate scopes that share dependencies and hold no nested logic.
+9. Let contextual children call `.get()` instead of receiving drilled props.
+10. At every `.get()` / `.use()`, destructure for exact nested dependency snapshot.
+11. May assign thru subscribed proxies; `is` only to retain the root object alongside sibling destructuring.
+12. Gate optional children at call site; inside, assert requirements with `.get(true)`.
+13. Extract long conditional JSX to named scopes, then consolidate scopes that share dependencies and hold no nested logic.
 14. Audit the result against the checklist in [react/refactor.md](react/refactor.md).
 
 For large apps, scope a one-shot conversion to route/page controllers and their domain pools; leave mature leaf widgets on hooks until parent domains stabilize.
@@ -116,7 +116,7 @@ Field initializers that configure reactive behavior. Each has multiple overloads
 | `get()` | Context lookup between States - required or optional upstream, downstream collection                   | [field/get.md](field/get.md) |
 | `ref()` | Mutable refs (`.current`), ref callbacks with cleanup, ref proxies                                      | [field/ref.md](field/ref.md) |
 | `map()` | Reactive `Map` field - keyed entries or a keyed spawner, with owned `State` members and direct render    | [field/map.md](field/map.md) |
-| `has()` | Owned collections - an ordered list of values, or a pool of spawned members. Pools are the home for per-item UI state (selection, progress, row actions) | [field/has.md](field/has.md) |
+| `has()` | Owned collections - an ordered list of values, or a pool of spawned members. Pools are for per-item UI state (selection, progress, row actions) | [field/has.md](field/has.md) |
 | `def()` | Low-level custom property behavior                                                                      | [field/def.md](field/def.md) |
 
 For **computed values**, declare a normal class getter - getters on a State subclass are auto-promoted to memoized, dependency-tracked properties. See [state/computed.md](state/computed.md) for tracking rules and when a derivation should *not* be a getter.
@@ -163,7 +163,7 @@ function Parent({ counter }: { counter: Counter }) {
 }
 ```
 
-Static `.use()` and `.get()` are React hooks - call them unconditionally at the top of a component or `render()`, never inside event handlers, loops, or helpers a render calls conditionally. They build green when misused and crash at runtime. (Instance `this.get(...)` is not a hook.)
+Static `.use()` and `.get()` are React hooks - call unconditionally at the top of a component or `render()`, never inside branch, event handlers, or loops. They build green when misused and crash at runtime. (Instance method get is not a hook.)
 
 Use `State.use()` when the component should create and own the instance. Use `State.get()` when the instance comes from context. To render an instance you already hold, make it a `Component` and place as `{instance}` - subscription belongs to the placed instance, not the surrounding function. See [react/react.md](react/react.md) for overloads (optional lookup, required values, computed selector).
 
@@ -382,6 +382,6 @@ Fetch these for detailed documentation when the task requires deeper knowledge. 
 
 ## Auditing & Evaluation
 
-Audit a conversion as a separate pass, not while authoring - self-audits under-report the author's own architecture gaps, and a fresh checklist pass over the diff recovers them.
+Audit a conversion as a separate pass, not while authoring - self-audits under-report the author's architecture gaps; a fresh checklist pass over the diff recovers them.
 
 Use [examples/audit.md](examples/audit.md) to assess fit and migration candidates. If migration is approved, follow [react/refactor.md](react/refactor.md) rather than translating hooks mechanically. For recorded design rationale, use [design.md](design.md); for adoption positioning and comparisons, use the website-only [why](https://expressive.dev/llm/why.md) and [comparisons](https://expressive.dev/llm/comparisons.md) pages.
