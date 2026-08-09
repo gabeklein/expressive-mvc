@@ -67,6 +67,32 @@ for (const [key, value] of state) {
 }
 ```
 
+### Unmanaged Instance Data
+
+Opaque handles - unsubscribe functions, timers, snapshots - are not reactive state: writes should not notify, nor throw thru the managed setter after destroy. TypeScript `private` does not opt out (any enumerable own field is managed); ES `#private` escapes management but re-initializes unsafely on Components. Define the field non-enumerable via `def`:
+
+```ts
+import State, { def } from '@expressive/mvc';
+
+function put<T>(initial?: T): T {
+  return def((key, self) => {
+    Object.defineProperty(self, key, {
+      value: initial as T,
+      writable: true,
+      enumerable: false,
+      configurable: true
+    });
+  }) as T;
+}
+
+class Job extends State {
+  progress = 0;                              // reactive
+  unwatch = put<(() => void) | null>(null);  // unmanaged
+}
+```
+
+The `def` factory returns void, so no managed property is applied. A destroyed instance is frozen - run cleanup before then: `const stop = this.unwatch; this.unwatch = null; stop?.();`. A handle only lifecycle touches stays simpler as a `new()` closure variable.
+
 ## The `is` Property
 
 Circular self-reference. Destructure first to retain instance access alongside values, and usually alias it to the state concept (`is: counter`, `is: form`) rather than keeping a local named `is`.

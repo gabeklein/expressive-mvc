@@ -86,6 +86,8 @@ Zero-argument factory. Computed lazily on first access (unless `true` passed). R
 - Factory is bound to the state instance (`this` works).
 - Factories can suspend on other pending `set()` properties - resolution cascades.
 
+Suspense via factory fits load-once data a view cannot render without. Keep explicit `loading` / `error` fields when the operation is user-initiated (submit, refresh), stale content stays visible during refetch, or errors render inline rather than thru a boundary.
+
 ### Factory with Callback
 
 ```ts

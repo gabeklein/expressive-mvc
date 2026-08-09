@@ -103,6 +103,8 @@ function SearchPage() {
 }
 ```
 
+This is the bridge for router hooks (`useParams`, `useLocation`, `useNavigate`); the alternative - an outer FC passing params as props - and route-identity guidance are in [patterns.md](patterns.md).
+
 When `use()` is defined, its parameter types become the static .use() argument types. They are passed to method instead of the constructor.
 
 ```tsx
