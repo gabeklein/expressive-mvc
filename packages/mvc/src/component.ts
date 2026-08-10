@@ -113,7 +113,10 @@ class Component extends State {
       }
     ]);
 
-    if (copy) return copy;
+    if (copy) {
+      this.set(null);
+      return copy;
+    }
 
     PENDING.set(props, this);
 
