@@ -266,3 +266,26 @@ describe('instruction', () => {
     });
   });
 });
+
+describe('reuse', () => {
+  it('will throw if instruction already applied elsewhere', () => {
+    const shared = def(() => ({ value: 42 }));
+
+    class Test extends State {
+      value: any = shared;
+    }
+
+    expect(Test.new().value).toBe(42);
+    expect(() => Test.new()).toThrowError(
+      /has an instruction applied to another State/
+    );
+  });
+
+  it('will not throw for an unrelated symbol', () => {
+    class Test extends State {
+      tag: any = Symbol('mine');
+    }
+
+    expect(String(Test.new().tag)).toBe('Symbol(mine)');
+  });
+});

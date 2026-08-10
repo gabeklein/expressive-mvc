@@ -18,7 +18,7 @@ declare namespace def {
   }
 }
 
-const APPLY = new WeakMap<symbol, def.Factory>();
+const APPLY = new WeakMap<symbol, def.Factory | null>();
 
 function def<T>(arg1: def.Factory<T>) {
   const token = Symbol('field-' + uid());
@@ -33,9 +33,14 @@ State.on((self) => {
     const property: PropertyDescriptor = Object.getOwnPropertyDescriptor(self, key) || {};
     const instruction = APPLY.get(property.value);
 
+    if (instruction === null)
+      throw new Error(
+        `${self}.${key} has an instruction applied to another State.`
+      );
+
     if (!instruction) continue;
 
-    APPLY.delete(property.value);
+    APPLY.set(property.value, null);
     delete (self as any)[key];
 
     const output = instruction.call(self, key, self, store);
