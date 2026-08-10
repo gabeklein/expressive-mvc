@@ -1,6 +1,6 @@
 import React, { Suspense } from 'react';
 import { Component, Context, get, State, Provider, set } from '.';
-import { defer } from '@expressive/mvc/runtime';
+import { transition } from '@expressive/mvc/runtime';
 import {
   vi,
   expect,
@@ -92,7 +92,9 @@ describe('State.get', () => {
     );
 
     await act(async () => {
-      defer(undefined, () => void (test.value = 'b'));
+      transition(() => {
+        test.value = 'b';
+      });
       test.urgent = 1;
       await Promise.resolve();
     });
@@ -1319,7 +1321,7 @@ describe('State.get - concurrent consistency', () => {
   it('will not commit mixed revisions for a transition write', async () => {
     const test = Test.new();
     const { commits, view, reveal } = fixture(test, (test) => {
-      defer(undefined, () => {
+      transition(() => {
         test.revision = 2;
       });
     });

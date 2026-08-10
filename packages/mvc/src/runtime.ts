@@ -39,7 +39,6 @@ export interface HostRuntime {
   jsxs(type: unknown, props: object, key?: unknown): Component.Node;
   propsOf(node: unknown): Record<string, unknown>;
   typeOf(node: unknown): unknown;
-  /** Non-urgent update bracket (e.g. React `startTransition`). Optional - see {@link transition}. */
   /** Non-urgent update bracket (e.g. React `startTransition`). Optional. Return
    * a promise settling when the bracketed work is presented to report progress;
    * return nothing to opt out. */
@@ -164,6 +163,6 @@ export function owns(owner: object, transition: HostRuntime['transition']) {
  * Resolves when those updates have been presented - on dispatch where the host
  * (or `owner`) cannot report it.
  */
-export function defer(owner: object | undefined, work: () => void): Promise<void> {
+export function transition(work: () => void, owner?: object): Promise<void> {
   return schedule(work, (owner && OWNED.get(owner)) || HOST.transition);
 }

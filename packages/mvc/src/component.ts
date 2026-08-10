@@ -2,7 +2,7 @@ import { Context } from './context';
 import { set } from './field/set';
 import { State, unbind } from './state';
 
-import { defer } from './runtime';
+import { transition } from './runtime';
 import type { Host } from './runtime';
 
 const PENDING = new WeakMap<object, Component>();
@@ -81,7 +81,7 @@ class Component extends State {
    * takes the flag's urgent priority for both and the fallback wins.
    */
   transition(work: () => void): Promise<void> {
-    return defer(this.is, work);
+    return transition(work, this.is);
   }
 
   /**

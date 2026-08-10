@@ -4,7 +4,7 @@ import React, { Suspense } from 'react';
 
 import { mockError, mockPromise } from '../test.setup';
 import { Component, Consumer, Provider, State, get, has, map } from '.';
-import { defer } from '@expressive/mvc/runtime';
+import { transition } from '@expressive/mvc/runtime';
 
 describe('instance element', () => {
   class Control extends Component {
@@ -776,7 +776,7 @@ describe('map element', () => {
     const element = render(<>{store}</>);
 
     await act(async () => {
-      defer(undefined, () => {
+      transition(() => {
         store.items.set('b', Suspends.new({ key: 'b', label: 'wait' }));
       });
       await Promise.resolve();
@@ -906,7 +906,7 @@ describe('collection element', () => {
     const element = render(<>{store}</>);
 
     await act(async () => {
-      defer(undefined, () => {
+      transition(() => {
         store.items.push(Suspends.new({ key: 'b', label: 'wait' }));
       });
       await Promise.resolve();

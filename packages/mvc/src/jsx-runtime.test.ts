@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { childrenOf, defer, Fragment, host, isElement, jsx, jsxs, owns, propsOf, typeOf } from './runtime';
+import { childrenOf, Fragment, host, isElement, jsx, jsxs, owns, propsOf, transition, typeOf } from './runtime';
 import { jsxDEV, Fragment as devFragment } from './jsx-dev-runtime';
 import * as compat from './jsx-runtime';
 import type { HostRuntime } from './runtime';
@@ -41,7 +41,7 @@ describe('unregistered', () => {
 
   it('will run transition work inline', () => {
     const work = vi.fn();
-    expect(() => defer(undefined, work)).not.toThrow();
+    expect(() => transition(work)).not.toThrow();
     expect(work).toHaveBeenCalledTimes(1);
   });
 });
@@ -90,7 +90,7 @@ describe('runtime', () => {
 
   it('will run transition work inline when host has no scheduler', () => {
     const work = vi.fn();
-    defer(undefined, work);
+    transition(work);
     expect(work).toHaveBeenCalledTimes(1);
   });
 
@@ -100,7 +100,7 @@ describe('runtime', () => {
     host(runtime);
 
     const work = vi.fn();
-    defer(undefined, work);
+    transition(work);
 
     expect(runtime.transition).toHaveBeenCalledWith(work);
     expect(work).toHaveBeenCalledTimes(1);
@@ -151,13 +151,13 @@ describe('jsx-runtime module', () => {
     const release = owns(owner, own);
     const work = vi.fn();
 
-    defer(owner, work);
+    transition(work, owner);
 
     expect(own).toHaveBeenCalledWith(work);
     expect(runtime.transition).not.toHaveBeenCalled();
 
     release();
-    defer(owner, work);
+    transition(work, owner);
 
     expect(runtime.transition).toHaveBeenCalledWith(work);
   });
