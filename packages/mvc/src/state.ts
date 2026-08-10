@@ -18,8 +18,9 @@ const ID = new WeakMap<State, string>();
 /** Internal state assigned to states. */
 const STORE = new WeakMap<State, Record<string | number | symbol, unknown>>();
 
-/** States constructed this tick, awaiting activation. */
-let PENDING: Set<State> | undefined;
+/** States under construction - added on `new`, removed when activated or released.
+ *  Also carries work to run at the deadline, which `def` uses to bound its registry. */
+const PENDING = new Set<State | (() => void)>();
 
 /** External lifecycle listeners for any given State class. */
 const SETUP = new WeakMap<State.Extends, Set<State.Init<any> | State.On<any>>>();
@@ -38,6 +39,9 @@ const GETTERS = new WeakMap<Function, Map<string, () => unknown>>();
 
 /** Stale flags for compute closures awaiting refresh on next access. */
 const STALE = new WeakSet<() => void>();
+
+/** Whether the deadline which drains `PENDING` is already queued for this tick. */
+let QUEUED = false;
 
 declare namespace State {
   /** Any type of State, using own class constructor as its identifier. */
@@ -541,7 +545,11 @@ function init(state: State, ...args: State.Args) {
     return Context.root.add(state);
   }
 
-  listener(state, () => {
+  listener(state, (key) => {
+    PENDING.delete(state);
+
+    if (key === null) return null;
+
     parent(state, null);
 
     const queue = [...before, observe, ...args, ...after, register];
@@ -565,29 +573,19 @@ function init(state: State, ...args: State.Args) {
     });
 
     return null;
-  }, true);
+  });
 
-  expect(state);
-}
-
-/**
- * Hold a freshly constructed state to the end of this tick, where anything
- * still unactivated is reported. Destroyed instances are exempt.
- */
-function expect(state: State) {
-  if (!PENDING) {
-    const batch = (PENDING = new Set<State>());
+  if (!QUEUED) {
+    QUEUED = true;
 
     queueMicrotask(() => {
-      PENDING = undefined;
+      QUEUED = false;
 
-      for (const state of batch) {
-        const o = observer(state);
+      for (const item of PENDING)
+        if (typeof item == 'function') item();
+        else console.warn(`${item} was constructed but never activated.`);
 
-        if (!o || o.ready) continue;
-
-        console.warn(`${state} was constructed but never activated.`);
-      }
+      PENDING.clear();
     });
   }
 
@@ -1008,4 +1006,4 @@ function parent(child: object, value?: State | null) {
   return true;
 }
 
-export { event, unbind, State, parent, STORE, uid, access, update, apply, compute };
+export { event, unbind, State, parent, PENDING, STORE, uid, access, update, apply, compute };

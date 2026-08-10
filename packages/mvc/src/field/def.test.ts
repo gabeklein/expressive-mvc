@@ -269,15 +269,37 @@ describe('instruction', () => {
 
 describe('reuse', () => {
   it('will throw if instruction already applied elsewhere', () => {
-    const shared = def(() => ({ value: 42 }));
+    let stolen: any;
 
-    class Test extends State {
-      value: any = shared;
+    class Source extends State {
+      value: any = (stolen = def(() => ({ value: 42 })));
     }
 
-    expect(Test.new().value).toBe(42);
-    expect(() => Test.new()).toThrowError(
+    expect(Source.new().value).toBe(42);
+
+    class Thief extends State {
+      value: any = stolen;
+    }
+
+    expect(() => Thief.new()).toThrowError(
       /has an instruction applied to another State/
+    );
+  });
+
+  it('will throw if created outside a construction', () => {
+    expect(() => def(() => ({ value: 1 }))).toThrowError(
+      /no State under construction/
+    );
+  });
+
+  it('will throw once construction has completed', () => {
+    class Test extends State {
+      value: any = def(() => ({ value: 1 }));
+    }
+
+    expect(Test.new().value).toBe(1);
+    expect(() => def(() => ({ value: 2 }))).toThrowError(
+      /no State under construction/
     );
   });
 

@@ -1,5 +1,5 @@
 import { listener } from '../observable';
-import { State, STORE, uid, apply } from '../state';
+import { PENDING, State, STORE, uid, apply } from '../state';
 
 declare namespace def {
   /**
@@ -18,11 +18,21 @@ declare namespace def {
   }
 }
 
-const APPLY = new WeakMap<symbol, def.Factory | null>();
+const APPLY = new Map<symbol, def.Factory | null>();
+const RESET = () => APPLY.clear();
 
 function def<T>(arg1: def.Factory<T>) {
+  if (!PENDING.size || (PENDING.size == 1 && PENDING.has(RESET)))
+    throw new Error(
+      'Instruction created with no State under construction.'
+    );
+
+  PENDING.add(RESET);
+
   const token = Symbol('field-' + uid());
+
   APPLY.set(token, arg1);
+
   return token as T extends void ? unknown : T;
 }
 
