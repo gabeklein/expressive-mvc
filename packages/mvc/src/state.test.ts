@@ -3642,3 +3642,20 @@ describe('computed (getters)', () => {
     });
   });
 });
+
+it('will release a state which never activated', () => {
+  const didInit = vi.fn();
+
+  class Test extends State {
+    value = 1;
+
+    protected new() {
+      didInit();
+    }
+  }
+
+  const state = new Test();
+
+  expect(() => state.set(null)).not.toThrow();
+  expect(didInit).not.toBeCalled();
+});

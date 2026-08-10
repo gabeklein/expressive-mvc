@@ -562,7 +562,7 @@ function init(state: State, ...args: State.Args) {
     });
 
     return null;
-  });
+  }, true);
 }
 
 /**
