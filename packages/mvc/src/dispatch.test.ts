@@ -216,6 +216,37 @@ describe('dispatch', () => {
     expect(done).toEqual(['first', 'second']);
   });
 
+  it('will await updates cascading from a replay', async () => {
+    const gates: ReturnType<typeof mockPromise<void>>[] = [];
+    const host = (work: () => void) => {
+      work();
+
+      const gate = mockPromise<void>();
+      gates.push(gate);
+      return gate;
+    };
+
+    const log: string[] = [];
+
+    schedule(() => enqueue(() => {
+      log.push('source');
+      enqueue(() => log.push('derived'));
+    }), host).then(() => log.push('settled'));
+
+    await flushMicrotasks();
+
+    // gates: [0] the scheduling bracket, [1] source replay, [2] derived replay
+    gates[1].resolve();
+    await flushMicrotasks();
+
+    expect(log).toEqual(['source', 'derived']);
+
+    gates[2].resolve();
+    await flushMicrotasks();
+
+    expect(log).toEqual(['source', 'derived', 'settled']);
+  });
+
   it('will release every claim on a handler urgency strips', async () => {
     const host = (work: () => void) => {
       work();

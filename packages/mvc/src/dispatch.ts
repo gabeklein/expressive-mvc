@@ -16,7 +16,7 @@ const DISPATCH = new Map<Handler, Scheduled>();
 const RESOLVED = Promise.resolve();
 
 let active: Transition | undefined;
-let current: Pending | undefined;
+let current: Set<Pending> | undefined;
 
 function execute(work: Handler, transition?: Transition): Settle {
   if (!transition) return work();
@@ -36,10 +36,15 @@ function execute(work: Handler, transition?: Transition): Settle {
  * transitions may each be waiting on the same handler, which replays once.
  */
 function claim(scheduled: Scheduled) {
-  if (!current || scheduled.pending?.has(current)) return;
+  if (!current) return;
 
-  (scheduled.pending || (scheduled.pending = new Set())).add(current);
-  current.count++;
+  const pending = scheduled.pending || (scheduled.pending = new Set());
+
+  for (const record of current)
+    if (!pending.has(record)) {
+      pending.add(record);
+      record.count++;
+    }
 }
 
 function drop(scheduled: Scheduled) {
@@ -59,10 +64,16 @@ function flush() {
 
     let settled: Settle = undefined;
 
+    const parent = current;
+
+    current = scheduled.pending;
+
     try {
       settled = execute(handler, scheduled.transition);
     } catch (err) {
       console.error(err);
+    } finally {
+      current = parent;
     }
 
     if (settled instanceof Promise) {
@@ -104,7 +115,7 @@ function schedule(work: Handler, transition?: Transition): Promise<void> {
   const parent = current;
   const scheduled: Scheduled = {};
   const promise = new Promise<void>((resolve) => {
-    scheduled.pending = new Set([current = { count: 1, done: resolve }]);
+    scheduled.pending = current = new Set([{ count: 1, done: resolve }]);
   });
 
   try {
