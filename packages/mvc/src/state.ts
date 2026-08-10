@@ -18,6 +18,9 @@ const ID = new WeakMap<State, string>();
 /** Internal state assigned to states. */
 const STORE = new WeakMap<State, Record<string | number | symbol, unknown>>();
 
+/** States constructed this tick, awaiting activation. */
+let PENDING: Set<State> | undefined;
+
 /** External lifecycle listeners for any given State class. */
 const SETUP = new WeakMap<State.Extends, Set<State.Init<any> | State.On<any>>>();
 
@@ -563,6 +566,32 @@ function init(state: State, ...args: State.Args) {
 
     return null;
   }, true);
+
+  expect(state);
+}
+
+/**
+ * Hold a freshly constructed state to the end of this tick, where anything
+ * still unactivated is reported. Destroyed instances are exempt.
+ */
+function expect(state: State) {
+  if (!PENDING) {
+    const batch = (PENDING = new Set<State>());
+
+    queueMicrotask(() => {
+      PENDING = undefined;
+
+      for (const state of batch) {
+        const o = observer(state);
+
+        if (!o || o.ready) continue;
+
+        console.warn(`${state} was constructed but never activated.`);
+      }
+    });
+  }
+
+  PENDING.add(state);
 }
 
 /**
