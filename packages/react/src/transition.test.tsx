@@ -203,3 +203,58 @@ describe('Component.transition', () => {
   });
 
 });
+
+describe('Driver teardown', () => {
+  it('will settle work left pending by an unmount', async () => {
+    class Data extends State {
+      value = 'a';
+    }
+
+    const data = Data.new();
+    const gate = mockPromise<void>();
+    let shell!: Shell;
+    let settled = false;
+
+    const Screen = () => {
+      const { value } = Data.get();
+      if (value === 'b') throw gate;
+      return <span>{value}</span>;
+    };
+
+    class Shell extends Component {
+      render() {
+        return (
+          <Suspense fallback={<i>fallback</i>}>
+            <Screen />
+          </Suspense>
+        );
+      }
+    }
+
+    const view = render(
+      <Provider for={data}>
+        <Shell is={(i) => (shell = i)} />
+      </Provider>
+    );
+
+    await act(async () => {});
+
+    await act(async () => {
+      shell.transition(() => {
+        data.value = 'b';
+      }).then(() => {
+        settled = true;
+      });
+      await Promise.resolve();
+    });
+
+    expect(settled).toBe(false);
+
+    await act(async () => {
+      view.unmount();
+      await Promise.resolve();
+    });
+
+    expect(settled).toBe(true);
+  });
+});

@@ -7,6 +7,11 @@ interface Driver {
   waiting: (() => void)[];
 }
 
+/** Release anything waiting on this driver - it has nothing left to report. */
+function settle(driver: Driver) {
+  for (const resolve of driver.waiting.splice(0)) resolve();
+}
+
 /**
  * Gives `owner` a scheduler React can report progress through - it tracks a
  * transition by the hook which started it, so deferring from outside render
@@ -25,19 +30,22 @@ export function Driver(props: { owner: object; children: unknown }) {
 
   driver.start = start;
 
-  Runtime.useEffect(
-    () =>
-      owns(props.owner, (work) =>
-        new Promise<void>((resolve) => {
-          driver.waiting.push(resolve);
-          driver.start(work);
-        })
-      ),
-    []
-  );
+  Runtime.useEffect(() => {
+    const release = owns(props.owner, (work) =>
+      new Promise<void>((resolve) => {
+        driver.waiting.push(resolve);
+        driver.start(work);
+      })
+    );
+
+    return () => {
+      release();
+      settle(driver);
+    };
+  }, []);
 
   Runtime.useEffect(() => {
-    if (!pending) for (const resolve of driver.waiting.splice(0)) resolve();
+    if (!pending) settle(driver);
   }, [pending]);
 
   return props.children;
