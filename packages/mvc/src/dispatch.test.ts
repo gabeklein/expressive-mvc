@@ -192,6 +192,48 @@ describe('dispatch', () => {
     expect(done).toBe(true);
   });
 
+  it('will settle a second transition when its own replay is presented', async () => {
+    const presented = mockPromise<void>();
+    const host = (work: () => void) => {
+      work();
+      return presented;
+    };
+
+    const handler = vi.fn();
+    const done: string[] = [];
+
+    schedule(() => enqueue(handler), host).then(() => done.push('first'));
+    schedule(() => enqueue(handler), host).then(() => done.push('second'));
+
+    await flushMicrotasks();
+
+    expect(handler).toHaveBeenCalledOnce();
+    expect(done).toEqual([]);
+
+    presented.resolve();
+    await flushMicrotasks();
+
+    expect(done).toEqual(['first', 'second']);
+  });
+
+  it('will release every claim on a handler urgency strips', async () => {
+    const host = (work: () => void) => {
+      work();
+      return mockPromise<void>();
+    };
+
+    const handler = () => {};
+    const settled: string[] = [];
+
+    schedule(() => enqueue(handler), host).then(() => settled.push('first'));
+    schedule(() => enqueue(handler), host).then(() => settled.push('second'));
+    enqueue(handler);
+
+    await flushMicrotasks();
+
+    expect(settled).toEqual(['first', 'second']);
+  });
+
   it('will settle when the host reports a failed replay', async () => {
     const presented = mockPromise<void>();
 

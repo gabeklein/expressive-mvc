@@ -9,7 +9,7 @@ interface Pending {
 
 interface Scheduled {
   transition?: Transition;
-  pending?: Pending;
+  pending?: Set<Pending>;
 }
 
 const DISPATCH = new Map<Handler, Scheduled>();
@@ -31,6 +31,17 @@ function execute(work: Handler, transition?: Transition): Settle {
   }
 }
 
+/**
+ * Await this handler's replay for the transition being scheduled. Overlapping
+ * transitions may each be waiting on the same handler, which replays once.
+ */
+function claim(scheduled: Scheduled) {
+  if (!current || scheduled.pending?.has(current)) return;
+
+  (scheduled.pending || (scheduled.pending = new Set())).add(current);
+  current.count++;
+}
+
 function drop(scheduled: Scheduled) {
   const { pending } = scheduled;
 
@@ -38,7 +49,8 @@ function drop(scheduled: Scheduled) {
 
   scheduled.pending = undefined;
 
-  if (!--pending.count) pending.done();
+  for (const record of pending)
+    if (!--record.count) record.done();
 }
 
 function flush() {
@@ -65,15 +77,16 @@ function enqueue(handler: Handler) {
 
   const scheduled = DISPATCH.get(handler);
 
-  if (scheduled) {
-    if (!active) {
-      scheduled.transition = undefined;
-      drop(scheduled);
-    }
-  } else {
-    if (current) current.count++;
+  if (!scheduled) {
+    const next: Scheduled = { transition: active };
 
-    DISPATCH.set(handler, { transition: active, pending: current });
+    DISPATCH.set(handler, next);
+    claim(next);
+  } else if (active) {
+    claim(scheduled);
+  } else {
+    scheduled.transition = undefined;
+    drop(scheduled);
   }
 }
 
@@ -91,7 +104,7 @@ function schedule(work: Handler, transition?: Transition): Promise<void> {
   const parent = current;
   const scheduled: Scheduled = {};
   const promise = new Promise<void>((resolve) => {
-    scheduled.pending = current = { count: 1, done: resolve };
+    scheduled.pending = new Set([current = { count: 1, done: resolve }]);
   });
 
   try {
