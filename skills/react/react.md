@@ -212,7 +212,7 @@ between requests; provide `<Provider for={Router}>` to render a request's path.
 ### React Native
 
 Works with no configuration - the adapter imports only `react` and
-`react/jsx-runtime`, and Metro resolves it as published. Two boundaries:
+`react/jsx-runtime`, and Metro resolves it as published. Three boundaries:
 
 - **Jest.** The build is ESM-only and `jest-expo` skips `node_modules`, so the
   import fails to parse until `@expressive` is added to
@@ -227,6 +227,10 @@ Works with no configuration - the adapter imports only `react` and
 - **`BrowserRouter` is the browser binding** - it reads `window.location`,
   which React Native does not define. Use `Router`, whose path and history are
   in memory.
+
+- **`Link` and `NavLinks` render DOM elements** (`<a>`, `<ul>`) and have no
+  native host yet. Drive navigation from `Router` directly and render your own
+  `Pressable`.
 
 ---
 
