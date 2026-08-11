@@ -1,5 +1,6 @@
 import type { Component } from '@expressive/mvc';
 import { watch } from '@expressive/mvc/observable';
+import { presenting } from '@expressive/mvc/runtime';
 import type { Context } from './context';
 
 export const Runtime = {} as {
@@ -42,6 +43,25 @@ export function useFactory<T extends Function>(factory: () => T) {
  *   none of them.
  * @returns Latest value published via the setter (`undefined` until set).
  */
+/**
+ * Release deferred updates this hook is holding once it commits - and on
+ * unmount, where the update it was holding will never arrive.
+ */
+export function useSettle(tick: number) {
+  const { current } = Runtime.useRef({ waiting: [] as (() => void)[] });
+
+  Runtime.useEffect(() => {
+    const settle = () => {
+      for (const release of current.waiting.splice(0)) release();
+    };
+
+    settle();
+    return settle;
+  }, [tick]);
+
+  return current;
+}
+
 export function useHook<T = void>(
   callback: (
     refresh: (next: T) => void,
@@ -61,12 +81,19 @@ export function useHook<T = void>(
     }
   );
 
-  current.update = Runtime.useState(() => {
+  const [tick, update] = Runtime.useState(() => {
     if (!current.rendered)
       current.commit = callback(
         (next) => {
           current.output = next;
-          if (current.mounted) current.update?.((x) => x + 1);
+
+          if (current.mounted) {
+            const release = presenting();
+
+            if (release) settle.waiting.push(release);
+
+            current.update?.((x) => x + 1);
+          }
           else if (current.update) current.pending = true;
         },
         () => {
@@ -75,7 +102,11 @@ export function useHook<T = void>(
       );
 
     return current.rendered++;
-  })[1];
+  });
+
+  const settle = useSettle(tick);
+
+  current.update = update;
 
   const getRevision = () => current.revision;
 
