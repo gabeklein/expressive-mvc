@@ -23,6 +23,7 @@ const report = Promise.withResolvers<string[]>();
 const lines: string[] = [];
 
 let timeout: Timer;
+let status = 0;
 
 // The Xcode build goes minutes at a time without output, and a Release run
 // reads the device log - where unrelated lines arrive meanwhile. Only the app
@@ -173,7 +174,15 @@ try {
 
   console.log(`\n${results.length} checks passed on ${PLATFORM}.`);
 }
+catch (thrown) {
+  console.error(thrown);
+  status = 1;
+}
 finally {
   clearTimeout(timeout);
   await rm(workspace, { recursive: true, force: true });
 }
+
+// expo leaves Metro and the platform tooling running, and those children would
+// otherwise hold the process open past the verdict.
+process.exit(status);
