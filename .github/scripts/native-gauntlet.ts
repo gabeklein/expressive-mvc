@@ -93,12 +93,24 @@ try {
   if (RELEASE && !ios)
     await $`adb logcat -c`.nothrow().quiet();
 
+  // Never 'inherit' - Metro and the Gradle daemon outlive the kill below, and
+  // a copy of the caller's stdout would keep the CI step open past the verdict.
   const run = Bun.spawn(['npx', 'expo', `run:${PLATFORM}`, ...configuration, ...device], {
     cwd: workspace,
-    stdout: RELEASE ? 'inherit' : 'pipe',
-    stderr: 'inherit',
+    stdout: 'pipe',
+    stderr: 'pipe',
     env: { ...process.env, CI: '1', EXPO_NO_TELEMETRY: '1' }
   });
+
+  const forward = async (stream: ReadableStream<Uint8Array>) => {
+    for await (const chunk of stream)
+      process.stdout.write(chunk);
+  };
+
+  forward(run.stderr as ReadableStream<Uint8Array>);
+
+  if (RELEASE)
+    forward(run.stdout as ReadableStream<Uint8Array>);
 
   // A Release build embeds the bundle, so the app's console never reaches Metro.
   const logs = RELEASE
