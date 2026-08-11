@@ -19,7 +19,7 @@ A State's home is assigned at activation and is permanent. It's recorded in a si
 
 ### Construct vs Activate
 
-The escape hatch for "create now, place in context later" is the difference between `new State()` and `State.new()`:
+To choose a home other than root, construct with `new State()` and place it in the same tick - the difference between `new State()` and `State.new()`:
 
 ```ts
 // .new() activates immediately - home resolves to root, locked
@@ -32,7 +32,7 @@ const b = new MyState();
 new Context(b); // b's home is this context
 ```
 
-This matters in tests and in code that prepares a state before placing it in a context tree.
+This matters in tests and in code that prepares a state before placing it in a context tree. The placement is an ordering constraint, not a deferral - an instance which has not activated by the end of the tick warns. Release one you no longer want with `set(null)`.
 
 ### Child Inheritance
 

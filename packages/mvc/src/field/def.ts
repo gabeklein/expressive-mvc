@@ -1,5 +1,5 @@
 import { listener } from '../observable';
-import { State, STORE, uid, apply } from '../state';
+import { PENDING, State, STORE, uid, apply } from '../state';
 
 declare namespace def {
   /**
@@ -18,11 +18,21 @@ declare namespace def {
   }
 }
 
-const APPLY = new WeakMap<symbol, def.Factory>();
+const APPLY = new Map<symbol, def.Factory | null>();
+const RESET = () => APPLY.clear();
 
 function def<T>(arg1: def.Factory<T>) {
+  if (!PENDING.size || (PENDING.size == 1 && PENDING.has(RESET)))
+    throw new Error(
+      'Instruction created with no State under construction.'
+    );
+
+  PENDING.add(RESET);
+
   const token = Symbol('field-' + uid());
+
   APPLY.set(token, arg1);
+
   return token as T extends void ? unknown : T;
 }
 
@@ -33,9 +43,14 @@ State.on((self) => {
     const property: PropertyDescriptor = Object.getOwnPropertyDescriptor(self, key) || {};
     const instruction = APPLY.get(property.value);
 
+    if (instruction === null)
+      throw new Error(
+        `${self}.${key} has an instruction applied to another State.`
+      );
+
     if (!instruction) continue;
 
-    APPLY.delete(property.value);
+    APPLY.set(property.value, null);
     delete (self as any)[key];
 
     const output = instruction.call(self, key, self, store);

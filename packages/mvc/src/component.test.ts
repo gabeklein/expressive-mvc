@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { flushMicrotasks, mockWarn } from '../test.setup';
 import { Component } from './component';
 import { Context } from './context';
 
@@ -117,6 +118,21 @@ it('will dedupe construction by props object', () => {
   const b = new Component(props);
 
   expect(b).toBe(a);
+});
+
+it('will release the twin discarded by dedupe', async () => {
+  const warn = mockWarn();
+  const props = { value: 1 };
+
+  const a = new Component(props);
+  const b = new Component(props);
+
+  expect(b).toBe(a);
+
+  await flushMicrotasks();
+
+  expect(warn).toBeCalledTimes(1);
+  expect(warn).toBeCalledWith(expect.stringContaining(String(a)));
 });
 
 // Seam: React passes context as a constructor argument alongside props.

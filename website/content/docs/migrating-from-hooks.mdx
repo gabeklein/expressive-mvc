@@ -379,6 +379,8 @@ const counter = new Counter(); // constructs but does NOT activate
 const counter = Counter.new(); // constructs AND activates - always use this
 ```
 
+The first form warns if nothing activates it before the end of the tick, so this mistake announces itself rather than leaving you with an inert instance.
+
 Inside React, `Counter.use()` handles activation for you.
 
 ### Assuming `use()` replaces `useEffect`

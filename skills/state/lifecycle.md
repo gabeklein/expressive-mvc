@@ -9,7 +9,7 @@
 | Operation    | Property assignment | Batched updates via `queueMicrotask()`, effects re-run                                  |     YES      |
 | Destruction  | `state.set(null)`   | Children destroyed first, listeners called, state frozen                                |  DESTROYED   |
 
-> Use `State.new()` for a root instance. Bare `new` constructs without activating: use it for a child State declared on another State, which adopts and activates it, or to defer activation deliberately. One advanced use is wrapping an instance in `new Context(state)` before activation locks its home to `Context.root`; see [context.md](context.md).
+> Use `State.new()` for a root instance. Bare `new` constructs without activating: use it for a child State declared on another State, which adopts and activates it. One advanced use is wrapping an instance in `new Context(state)` before activation locks its home to `Context.root`; see [context.md](context.md). Either way it must activate before the end of the tick - one that does not warns, and `set(null)` releases an instance you decide against.
 
 ## The `new()` Hook
 
@@ -17,12 +17,8 @@
 class Timer extends State {
   elapsed = 0;
 
-  tick() {
-    this.elapsed++;
-  }
-
   protected new() {
-    const id = setInterval(this.tick, 1000);
+    const id = setInterval(() => this.elapsed++, 1000);
     return () => clearInterval(id);
   }
 }
