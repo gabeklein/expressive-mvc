@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { flushMicrotasks, mockError } from '../test.setup';
 import { watch } from './observable';
-import { enqueue, schedule } from './dispatch';
+import { enqueue, presenting, schedule } from './dispatch';
 import { State } from './state';
 
 describe('dispatch', () => {
@@ -165,5 +165,145 @@ describe('dispatch', () => {
 
     expect(error).toHaveBeenCalledWith(expected);
     expect(after).toHaveBeenCalledOnce();
+  });
+
+  it('will settle when a subscriber presents its replay', async () => {
+    const bracket = (work: () => void) => work();
+    const log: string[] = [];
+
+    let present!: () => void;
+
+    schedule(() => {
+      enqueue(() => {
+        log.push('dispatch');
+        present = presenting()!;
+      });
+    }, bracket).then(() => log.push('settled'));
+
+    await flushMicrotasks();
+
+    expect(log).toEqual(['dispatch']);
+
+    present();
+    await flushMicrotasks();
+
+    expect(log).toEqual(['dispatch', 'settled']);
+  });
+
+  it('will settle on replay where no subscriber claims presentation', async () => {
+    const bracket = (work: () => void) => work();
+    let settled = false;
+
+    schedule(() => enqueue(() => {}), bracket).then(() => (settled = true));
+
+    await flushMicrotasks();
+
+    expect(settled).toBe(true);
+  });
+
+  it('will ignore a claim released more than once', async () => {
+    const bracket = (work: () => void) => work();
+    let present!: () => void;
+    let settled = 0;
+
+    schedule(() => enqueue(() => {
+      present = presenting()!;
+    }), bracket).then(() => settled++);
+
+    await flushMicrotasks();
+
+    present();
+    present();
+    await flushMicrotasks();
+
+    expect(settled).toBe(1);
+  });
+
+  it('will wait on every claim a single replay makes', async () => {
+    const bracket = (work: () => void) => work();
+    const held: (() => void)[] = [];
+    let settled = false;
+
+    schedule(() => enqueue(() => {
+      held.push(presenting()!, presenting()!);
+    }), bracket).then(() => (settled = true));
+
+    await flushMicrotasks();
+
+    held[0]();
+    await flushMicrotasks();
+
+    expect(settled).toBe(false);
+
+    held[1]();
+    await flushMicrotasks();
+
+    expect(settled).toBe(true);
+  });
+
+  it('will settle a second transition when its own replay is presented', async () => {
+    const bracket = (work: () => void) => work();
+    const handler = () => {
+      present = presenting()!;
+    };
+
+    let present!: () => void;
+    const done: string[] = [];
+
+    schedule(() => enqueue(handler), bracket).then(() => done.push('first'));
+    schedule(() => enqueue(handler), bracket).then(() => done.push('second'));
+
+    await flushMicrotasks();
+
+    expect(done).toEqual([]);
+
+    present();
+    await flushMicrotasks();
+
+    expect(done).toEqual(['first', 'second']);
+  });
+
+  it('will await updates cascading from a replay', async () => {
+    const bracket = (work: () => void) => work();
+    const log: string[] = [];
+    const held: (() => void)[] = [];
+
+    schedule(() => enqueue(() => {
+      log.push('source');
+      held.push(presenting()!);
+      enqueue(() => {
+        log.push('derived');
+        held.push(presenting()!);
+      });
+    }), bracket).then(() => log.push('settled'));
+
+    await flushMicrotasks();
+
+    expect(log).toEqual(['source', 'derived']);
+    expect(held.length).toBe(2);
+
+    held[0]();
+    await flushMicrotasks();
+
+    expect(log).toEqual(['source', 'derived']);
+
+    held[1]();
+    await flushMicrotasks();
+
+    expect(log).toEqual(['source', 'derived', 'settled']);
+  });
+
+  it('will release every claim on a handler urgency strips', async () => {
+    const bracket = (work: () => void) => work();
+    const handler = () => {};
+    const settled: string[] = [];
+
+    schedule(() => enqueue(handler), bracket).then(() => settled.push('first'));
+    schedule(() => enqueue(handler), bracket).then(() => settled.push('second'));
+    enqueue(handler);
+
+    await flushMicrotasks();
+
+    expect(settled).toEqual(['first', 'second']);
   });
 });

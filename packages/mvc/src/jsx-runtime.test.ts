@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { childrenOf, Fragment, host, isElement, jsx, jsxs, propsOf, transition, typeOf } from './runtime';
+import { flushMicrotasks } from '../test.setup';
+import { enqueue } from './dispatch';
+
+import { childrenOf, Fragment, host, isElement, jsx, jsxs, presenting, propsOf, transition, typeOf } from './runtime';
 import { jsxDEV, Fragment as devFragment } from './jsx-dev-runtime';
 import * as compat from './jsx-runtime';
 import type { HostRuntime } from './runtime';
@@ -139,5 +142,43 @@ describe('jsx-runtime module', () => {
     expect(compat.jsx).toBe(jsx);
     expect(compat.jsxs).toBe(jsxs);
     expect(compat.Fragment).toBe(Fragment);
+  });
+
+  it('will wait on a subscriber which claims presentation', async () => {
+    runtime.transition = (work: () => void) => work();
+    host(runtime);
+
+    let present!: () => void;
+    let settled = false;
+
+    const handler = () => {
+      present = presenting()!;
+    };
+
+    transition(() => enqueue(handler)).then(() => (settled = true));
+
+    await flushMicrotasks();
+
+    expect(settled).toBe(false);
+
+    present();
+    await flushMicrotasks();
+
+    expect(settled).toBe(true);
+  });
+
+  it('will not claim presentation outside a deferred replay', async () => {
+    runtime.transition = undefined;
+    host(runtime);
+
+    let claimed: unknown = 'unset';
+
+    enqueue(() => {
+      claimed = presenting();
+    });
+
+    await flushMicrotasks();
+
+    expect(claimed).toBeUndefined();
   });
 });
