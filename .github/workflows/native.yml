@@ -10,6 +10,8 @@ on:
         options: [Debug, Release]
   pull_request:
     types: [opened, reopened, synchronize, labeled]
+  schedule:
+    - cron: '0 9 1 * *'
 
 concurrency:
   group: native-${{ github.ref }}
@@ -20,7 +22,16 @@ jobs:
     if: >-
       github.event_name != 'pull_request' ||
       contains(github.event.pull_request.labels.*.name, 'react-native')
-    runs-on: macos-26
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: ios
+            runner: macos-26
+          - platform: android
+            runner: ubuntu-latest
+    name: gauntlet (${{ matrix.platform }})
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v5
@@ -30,12 +41,14 @@ jobs:
       - run: bun run build
 
       - name: Select an Xcode with Swift 6.2 or newer
+        if: matrix.platform == 'ios'
         run: |
           latest=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
           if [ -n "$latest" ]; then sudo xcode-select -s "$latest"; fi
           xcodebuild -version
 
       - name: Boot an iOS simulator
+        if: matrix.platform == 'ios'
         run: |
           mkdir -p ~/.expo
           udid=$(xcrun simctl list devices available -j |
@@ -49,12 +62,38 @@ jobs:
           echo "SIMULATOR_UDID=$udid" >> "$GITHUB_ENV"
 
       - name: Gauntlet on the iOS simulator
+        if: matrix.platform == 'ios'
         run: |
           bun .github/scripts/native-gauntlet.ts ios \
             ${{ (inputs.configuration || 'Release') == 'Release' && 'release' || '' }}
 
       - name: What the app actually logged
-        if: failure()
+        if: failure() && matrix.platform == 'ios'
         run: |
           xcrun simctl spawn "$SIMULATOR_UDID" log show --last 10m \
             --predicate 'process == "gauntlet"' --style compact | tail -60
+
+      - uses: actions/setup-java@v4
+        if: matrix.platform == 'android'
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Let the emulator reach KVM
+        if: matrix.platform == 'android'
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' |
+            sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Gauntlet on the Android emulator
+        if: matrix.platform == 'android'
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          target: google_apis
+          script: |
+            bun .github/scripts/native-gauntlet.ts android \
+              ${{ (inputs.configuration || 'Release') == 'Release' && 'release' || '' }}

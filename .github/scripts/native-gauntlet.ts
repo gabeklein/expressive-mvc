@@ -80,11 +80,17 @@ try {
   await $`npm install --silent --no-audit --no-fund ${tarballs}`.cwd(workspace);
 
   const udid = process.env.SIMULATOR_UDID;
-  const device = udid ? ['--device', udid] : [];
-  const configuration = RELEASE ? ['--configuration', 'Release'] : [];
+  const ios = PLATFORM === 'ios';
+  const device = ios && udid ? ['--device', udid] : [];
+  const configuration = RELEASE
+    ? ios ? ['--configuration', 'Release'] : ['--variant', 'release']
+    : [];
 
-  if (RELEASE && !udid)
+  if (RELEASE && ios && !udid)
     throw new Error('A Release run needs SIMULATOR_UDID - its logs come from the device, not Metro.');
+
+  if (RELEASE && !ios)
+    await $`adb logcat -c`.nothrow().quiet();
 
   const run = Bun.spawn(['npx', 'expo', `run:${PLATFORM}`, ...configuration, ...device], {
     cwd: workspace,
@@ -95,9 +101,11 @@ try {
 
   // A Release build embeds the bundle, so the app's console never reaches Metro.
   const logs = RELEASE
-    ? Bun.spawn([
+    ? Bun.spawn(ios ? [
         'xcrun', 'simctl', 'spawn', udid!, 'log', 'stream',
         '--style', 'compact', '--predicate', 'process == "gauntlet"'
+      ] : [
+        'adb', 'logcat', '-s', 'ReactNativeJS:*'
       ], { stdout: 'pipe', stderr: 'ignore' })
     : run;
 

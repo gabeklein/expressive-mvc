@@ -41,19 +41,22 @@ First publish of a new package cannot use OIDC (npm requires the package to
 exist before a trusted publisher attaches) - publish a stub manually, attach
 the trusted publisher, then release normally.
 
-## native.yml (`react-native` label, or manual)
+## native.yml (`react-native` label, monthly, or manual)
 
 Builds a throwaway Expo app around the packed tarballs, runs it on a booted iOS
-simulator and asserts thirteen behaviors from the log stream - dispatch
-batching, computed getters, suspense, context, `map`/`has`/`ref`, both routers,
-error recovery, and a write re-rendering through the native renderer.
+simulator and an Android emulator, and asserts fourteen behaviors from the log
+stream - the engine's weak-key constraint, dispatch batching, computed getters,
+suspense, context, `map`/`has`/`ref`, both routers, error recovery, and a write
+re-rendering through the native renderer.
 
 Opt a PR in with the `react-native` label; unlabeled PRs skip the job without
-claiming a macOS runner. `workflow_dispatch` takes a `configuration` choice,
-otherwise the run is Release - minified Hermes bytecode with `__DEV__` false,
-the only configuration where an uncaught render error is fatal rather than a
-redbox.
+claiming a runner. It also runs monthly, which is what catches an Expo or React
+Native SDK bump breaking resolution when no PR is involved. `workflow_dispatch`
+takes a `configuration` choice; otherwise the run is Release - minified Hermes
+bytecode with `__DEV__` false, the only configuration where an uncaught render
+error is fatal rather than a redbox.
 
-A Release build forwards `console.error` to os_log but not `console.log`, so
-the fixture reports on whichever channel `__DEV__` implies and the runner reads
-markers from `simctl log stream` instead of Metro.
+A Release build embeds the bundle, so the app's console never reaches Metro -
+markers are read from `simctl log stream` on iOS and `adb logcat` on Android.
+iOS forwards `console.error` to os_log but not `console.log`, so the fixture
+reports on whichever channel `__DEV__` implies.
