@@ -1,5 +1,4 @@
 import { Context } from './context';
-import { transition } from './runtime';
 import {
   capture,
   event,
@@ -316,23 +315,6 @@ abstract class State {
     if (typeof arg2 == 'function') return callback(self, arg2, arg1);
     if (arg1 === null) return observer(self) === null;
     return access(self, arg1, arg2);
-  }
-
-  /**
-   * Run `work` as one act, resolving once every subscriber it touched has
-   * absorbed the update. Writes inside are ordinary and may target any state,
-   * owned or not.
-   *
-   * Where the host defers presentation (React keeps current content on screen
-   * while a replacement gets ready), settlement waits for that. A subscriber
-   * which cannot report presentation settles on replay.
-   *
-   * Read a flag held across the wait *above* the deferred content - a
-   * subscriber carries one update at one priority, so reading it beside that
-   * content takes the flag's urgent priority for both.
-   */
-  act(work: () => void): Promise<void> {
-    return transition(work);
   }
 
   /**

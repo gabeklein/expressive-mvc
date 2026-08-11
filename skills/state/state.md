@@ -43,7 +43,7 @@ app.count = 1; // queues another - both flush via microtask
 
 ### Presentation Transitions
 
-`act(work)` runs writes as one act, resolving once every subscriber has absorbed them - see [Transitions](../react/component.md#transitions). Under React that waits for presentation, so a replacement which suspends holds the current screen instead of falling back.
+`defer(work)` marks writes non-urgent, resolving once every subscriber has absorbed them - see [Transitions](../react/component.md#transitions). Under React that waits for presentation, so a replacement which suspends holds the current screen instead of falling back. A free function, not a method: the bracket is global and settlement comes from whichever subscribers the writes touch.
 
 ### Value Equality
 

@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { State, Provider, get, set } from '.';
 import { act, render, renderHook, waitFor } from '@testing-library/react';
 import { flushMicrotasks, mockPromise } from '../test.setup';
-import { transition } from '@expressive/mvc/runtime';
+import { defer } from '@expressive/mvc/runtime';
 
 describe('State.use', () => {
   class Test extends State {
@@ -51,7 +51,7 @@ describe('State.use', () => {
       );
 
       await act(async () => {
-        transition(() => void (instance.value = 'bar'));
+        defer(() => void (instance.value = 'bar'));
         await Promise.resolve();
       });
 

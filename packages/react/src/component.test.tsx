@@ -4,7 +4,7 @@ import { renderToString } from 'react-dom/server';
 import React, { Suspense } from 'react';
 
 import { mockError, mockPromise, flushMicrotasks } from '../test.setup';
-import { Component, Consumer, set } from '.';
+import { Component, Consumer, defer, set } from '.';
 
 it('will create and provide instance', () => {
   class Control extends Component {
@@ -93,7 +93,7 @@ it('will transition Component dispatch', async () => {
   );
 
   await act(async () => {
-    instance.act(() => {
+    defer(() => {
       setLocal('b');
       instance.value = 'b';
     });
