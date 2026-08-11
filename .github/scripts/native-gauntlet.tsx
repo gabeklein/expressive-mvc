@@ -22,13 +22,16 @@ const record: Report = (name, pass, detail) => {
   listen?.();
 };
 
-// At module scope: a render-time crash never reaches the checks below.
+// The engine constraint a weak keyspace here has to respect. At module scope
+// because a render-time crash never reaches the checks below.
 try {
   new WeakMap<any, number>().set(Symbol('probe'), 1);
-  record('WeakMap takes a symbol key', true, 'ES2023 symbol keys supported');
+  record('symbol WeakMap keys stay unavailable', false,
+    'this engine now accepts them - the object-key constraint can be revisited');
 }
 catch (thrown) {
-  record('WeakMap takes a symbol key', false, (thrown as Error).message);
+  record('symbol WeakMap keys stay unavailable', true,
+    `${(thrown as Error).message} - keep weak keys object-keyed`);
 }
 
 const drain = () => new Promise(resolve => queueMicrotask(() => resolve(null)));
