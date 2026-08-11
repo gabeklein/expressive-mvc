@@ -206,7 +206,7 @@ function emit(o: Observer, key: Observer.Signal): void {
     return;
   }
 
-  if (!ready) pending.add(true);
+  if (!ready && key !== null) pending.add(true);
 
   pending.add(key);
 

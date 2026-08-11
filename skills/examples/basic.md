@@ -32,21 +32,25 @@ function CounterApp() {
 }
 ```
 
-## Todo List (local state with collections)
+## Todo List (owned collection)
+
+Each entry is its own State in a `has` pool - `done` and `toggle` live on the item, not as `(id, value)` methods on the list:
 
 ```tsx
-import State, { set } from '@expressive/react';
+import State, { has } from '@expressive/react';
 
-interface TodoItem {
-  id: number;
-  text: string;
-  done: boolean;
+class TodoItem extends State {
+  text = '';
+  done = false;
+
+  toggle() {
+    this.done = !this.done;
+  }
 }
 
 class TodoState extends State {
-  items = set<TodoItem[]>([]);
+  items = has(TodoItem);
   input = '';
-  nextId = 1;
 
   get remaining() {
     return this.items.filter((i) => !i.done).length;
@@ -54,17 +58,8 @@ class TodoState extends State {
 
   add() {
     if (!this.input.trim()) return;
-    this.items = [
-      ...this.items,
-      { id: this.nextId++, text: this.input, done: false }
-    ];
+    this.items.add({ text: this.input });
     this.input = '';
-  }
-
-  toggle(id: number) {
-    this.items = this.items.map((i) =>
-      i.id === id ? { ...i, done: !i.done } : i
-    );
   }
 }
 
@@ -87,7 +82,7 @@ function TodoApp() {
       <p>{state.remaining} remaining</p>
       <ul>
         {state.items.map((item) => (
-          <li key={item.id} onClick={() => state.toggle(item.id)}>
+          <li key={String(item)} onClick={item.toggle}>
             {item.done ? <s>{item.text}</s> : item.text}
           </li>
         ))}
@@ -96,6 +91,8 @@ function TodoApp() {
   );
 }
 ```
+
+Rows that paint themselves become `Component` members placed as `{state.items}` - pool recipes in [patterns.md](../react/patterns.md).
 
 ## Async Data (with Suspense)
 
@@ -236,6 +233,8 @@ function App() {
   return <Search />;
 }
 ```
+
+Explicit `loading` keeps previous results visible during refresh - the deliberate alternative to `set(async)` suspense for user-initiated fetches.
 
 ## Form Validation (setter callbacks)
 

@@ -1,5 +1,5 @@
 import { vi, expect, it, describe } from 'vitest';
-import { mockError, mockPromise, mockWarn } from '../test.setup';
+import { flushMicrotasks, mockError, mockPromise, mockWarn } from '../test.setup';
 import { Context } from './context';
 import { get } from './field/get';
 import { ref } from './field/ref';
@@ -2832,6 +2832,29 @@ describe('on method (static)', () => {
     expect(order).toEqual(['A', 'B', 'C']);
   });
 
+  it('will run handlers above an anonymous class', () => {
+    const order: string[] = [];
+
+    class A extends State {}
+
+    A.on(() => void order.push('A'));
+
+    const attach = <T extends typeof A>(type: T) => {
+      type.on(() => void order.push('anonymous'));
+      return type;
+    };
+
+    class C extends attach(class extends A {}) {}
+
+    C.on(() => void order.push('C'));
+
+    expect(Object.getPrototypeOf(C).name).toBe('');
+
+    C.new();
+
+    expect(order).toEqual(['A', 'anonymous', 'C']);
+  });
+
   it('will squash same callback for multiple classes', () => {
     class Test extends State {}
     class Test2 extends Test {}
@@ -3617,5 +3640,96 @@ describe('computed (getters)', () => {
 
       expect(exported.child.link).toBe(exported.child.link!.link!.link);
     });
+  });
+});
+
+it('will release a state which never activated', () => {
+  const didInit = vi.fn();
+
+  class Test extends State {
+    value = 1;
+
+    protected new() {
+      didInit();
+    }
+  }
+
+  const state = new Test();
+
+  expect(() => state.set(null)).not.toThrow();
+  expect(didInit).not.toBeCalled();
+});
+
+describe('activation', () => {
+  const warn = mockWarn();
+
+  it('will warn if never activated', async () => {
+    class Test extends State {
+      value = 1;
+    }
+
+    const state = new Test();
+
+    await flushMicrotasks();
+
+    expect(warn).toBeCalledWith(
+      `${state} was constructed but never activated.`
+    );
+  });
+
+  it('will not warn if activated', async () => {
+    class Test extends State {
+      value = 1;
+    }
+
+    Test.new();
+
+    await flushMicrotasks();
+
+    expect(warn).not.toBeCalled();
+  });
+
+  it('will not warn if adopted by an owner', async () => {
+    class Child extends State {
+      value = 1;
+    }
+
+    class Parent extends State {
+      child = new Child();
+    }
+
+    Parent.new();
+
+    await flushMicrotasks();
+
+    expect(warn).not.toBeCalled();
+  });
+
+  it('will not warn if placed in a context', async () => {
+    class Test extends State {
+      value = 1;
+    }
+
+    const state = new Test();
+
+    new Context(state);
+
+    await flushMicrotasks();
+
+    expect(warn).not.toBeCalled();
+  });
+
+  it('will not warn if released', async () => {
+    class Test extends State {
+      value = 1;
+    }
+
+    const state = new Test();
+
+    state.set(null);
+
+    await flushMicrotasks();
+
+    expect(warn).not.toBeCalled();
   });
 });
