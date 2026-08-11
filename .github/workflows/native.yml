@@ -94,6 +94,4 @@ jobs:
           api-level: 34
           arch: x86_64
           target: google_apis
-          script: |
-            bun .github/scripts/native-gauntlet.ts android \
-              ${{ (inputs.configuration || 'Release') == 'Release' && 'release' || '' }}
+          script: bun .github/scripts/native-gauntlet.ts android ${{ (inputs.configuration || 'Release') == 'Release' && 'release' || '' }}
