@@ -43,17 +43,7 @@ app.count = 1; // queues another - both flush via microtask
 
 ### Presentation Transitions
 
-Use `transition()` when model writes should present as non-urgent host work:
-
-```ts
-import { transition } from '@expressive/mvc';
-
-transition(() => {
-  app.page = 'settings';
-});
-```
-
-The callback runs synchronously. Its queued subscriber callbacks retain transition priority through MVC's microtask dispatch; React interprets that priority with `startTransition`. Writes after an `await` are outside the scope and need another `transition()` call. Normal batching still applies, and urgent invalidation wins when the same watcher is already pending at transition priority.
+`act(work)` runs writes as one act, resolving once every subscriber has absorbed them - see [Transitions](../react/component.md#transitions). Under React that waits for presentation, so a replacement which suspends holds the current screen instead of falling back.
 
 ### Value Equality
 
