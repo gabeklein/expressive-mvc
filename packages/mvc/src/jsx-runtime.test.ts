@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { flushMicrotasks } from '../test.setup';
 import { enqueue } from './dispatch';
 
-import { childrenOf, Fragment, host, isElement, jsx, jsxs, presenting, propsOf, transition, typeOf } from './runtime';
+import { childrenOf, defer, Fragment, host, isElement, jsx, jsxs, presenting, propsOf, typeOf } from './runtime';
 import { jsxDEV, Fragment as devFragment } from './jsx-dev-runtime';
 import * as compat from './jsx-runtime';
 import type { HostRuntime } from './runtime';
@@ -44,7 +44,7 @@ describe('unregistered', () => {
 
   it('will run transition work inline', () => {
     const work = vi.fn();
-    expect(() => transition(work)).not.toThrow();
+    expect(() => defer(work)).not.toThrow();
     expect(work).toHaveBeenCalledTimes(1);
   });
 });
@@ -93,7 +93,7 @@ describe('runtime', () => {
 
   it('will run transition work inline when host has no scheduler', () => {
     const work = vi.fn();
-    transition(work);
+    defer(work);
     expect(work).toHaveBeenCalledTimes(1);
   });
 
@@ -103,7 +103,7 @@ describe('runtime', () => {
     host(runtime);
 
     const work = vi.fn();
-    transition(work);
+    defer(work);
 
     expect(runtime.transition).toHaveBeenCalledWith(work);
     expect(work).toHaveBeenCalledTimes(1);
@@ -155,7 +155,7 @@ describe('jsx-runtime module', () => {
       present = presenting()!;
     };
 
-    transition(() => enqueue(handler)).then(() => (settled = true));
+    defer(() => enqueue(handler)).then(() => (settled = true));
 
     await flushMicrotasks();
 

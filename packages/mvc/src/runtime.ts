@@ -152,6 +152,6 @@ export { presenting } from './dispatch';
  * Resolves when those updates have been presented - on replay where a
  * subscriber cannot report it.
  */
-export function transition(work: () => void): Promise<void> {
+export function defer(work: () => void): Promise<void> {
   return schedule(work, HOST.transition);
 }

@@ -2,10 +2,10 @@ import { act, render } from '@testing-library/react';
 import { Activity, Suspense, useState } from 'react';
 import { describe, expect, it } from 'vitest';
 
-import { Component, Provider, State } from '.';
+import { Component, defer, Provider, State } from '.';
 import { mockPromise } from '../test.setup';
 
-describe('State.act', () => {
+describe('defer', () => {
   class Data extends State {
     value = 'a';
   }
@@ -44,9 +44,9 @@ describe('State.act', () => {
     class Shell extends Component {
       busy = false;
 
-      act(work: () => void) {
+      go(work: () => void) {
         this.busy = true;
-        return super.act(work).then(() => {
+        return defer(work).then(() => {
           this.busy = false;
         });
       }
@@ -65,7 +65,7 @@ describe('State.act', () => {
     await act(async () => {});
 
     await act(async () => {
-      shell.act(() => {
+      shell.go(() => {
         data.value = 'b';
       });
       await Promise.resolve();
@@ -97,7 +97,7 @@ describe('State.act', () => {
     await act(async () => {});
 
     await act(async () => {
-      data.act(() => {
+      defer(() => {
         data.value = 'b';
       }).then(() => (busy = false));
       await Promise.resolve();
@@ -140,7 +140,7 @@ describe('State.act', () => {
     await act(async () => {});
 
     await act(async () => {
-      data.act(() => {
+      defer(() => {
         data.value = 'b';
       }).then(() => (settled = true));
       await Promise.resolve();
@@ -170,7 +170,7 @@ describe('State.act', () => {
     await act(async () => {});
 
     await act(async () => {
-      data.act(() => {
+      defer(() => {
         data.value = 'b';
       }).then(() => (settled = true));
       await Promise.resolve();
@@ -181,10 +181,9 @@ describe('State.act', () => {
 
   it('will settle on dispatch before mount', async () => {
     const data = Data.new();
-    const shell = (class extends Component {}).new();
     let settled = false;
 
-    await shell.act(() => {
+    await defer(() => {
       data.value = 'b';
     }).then(() => {
       settled = true;
@@ -193,7 +192,7 @@ describe('State.act', () => {
     expect(settled).toBe(true);
   });
 
-  it('will track pending without an own transition', async () => {
+  it('will track pending from a sibling', async () => {
     const { gate, data, Content } = scenario();
     let shell!: Shell;
 
@@ -204,7 +203,7 @@ describe('State.act', () => {
 
       go(to: string) {
         this.pending = true;
-        this.act(() => {
+        defer(() => {
           data.value = to;
         }).then(() => {
           this.pending = false;
@@ -249,7 +248,7 @@ describe('State.act', () => {
 
 });
 
-describe('act teardown', () => {
+describe('defer teardown', () => {
   it('will settle work left pending by an unmount', async () => {
     class Data extends State {
       value = 'a';
@@ -257,7 +256,6 @@ describe('act teardown', () => {
 
     const data = Data.new();
     const gate = mockPromise<void>();
-    let shell!: Shell;
     let settled = false;
 
     const Screen = () => {
@@ -278,14 +276,14 @@ describe('act teardown', () => {
 
     const view = render(
       <Provider for={data}>
-        <Shell is={(i) => (shell = i)} />
+        <Shell />
       </Provider>
     );
 
     await act(async () => {});
 
     await act(async () => {
-      shell.act(() => {
+      defer(() => {
         data.value = 'b';
       }).then(() => {
         settled = true;
