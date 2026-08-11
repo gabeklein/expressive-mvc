@@ -80,7 +80,7 @@ class Component extends State {
    * carries one update at one priority, so reading it beside the deferred value
    * takes the flag's urgent priority for both and the fallback wins.
    */
-  transition(work: () => void): Promise<void> {
+  act(work: () => void): Promise<void> {
     return transition(work, this.is);
   }
 

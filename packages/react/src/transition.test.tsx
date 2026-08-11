@@ -6,7 +6,7 @@ import { Component, Provider, State } from '.';
 import { Runtime } from './adapter';
 import { mockPromise } from '../test.setup';
 
-describe('Component.transition', () => {
+describe('Component.act', () => {
   class Data extends State {
     value = 'a';
   }
@@ -45,9 +45,9 @@ describe('Component.transition', () => {
     class Shell extends Component {
       busy = false;
 
-      transition(work: () => void) {
+      act(work: () => void) {
         this.busy = true;
-        return super.transition(work).then(() => {
+        return super.act(work).then(() => {
           this.busy = false;
         });
       }
@@ -66,7 +66,7 @@ describe('Component.transition', () => {
     await act(async () => {});
 
     await act(async () => {
-      shell.transition(() => {
+      shell.act(() => {
         data.value = 'b';
       });
       await Promise.resolve();
@@ -95,8 +95,8 @@ describe('Component.transition', () => {
       let settled = false;
 
       class Shell extends Component {
-        transition(work: () => void) {
-          return super.transition(work);
+        act(work: () => void) {
+          return super.act(work);
         }
 
         render() {
@@ -113,7 +113,7 @@ describe('Component.transition', () => {
       await act(async () => {});
 
       await act(async () => {
-        shell.transition(() => {
+        shell.act(() => {
           data.value = 'b';
         }).then(() => {
           settled = true;
@@ -139,7 +139,7 @@ describe('Component.transition', () => {
     const shell = (class extends Component {}).new();
     let settled = false;
 
-    await shell.transition(() => {
+    await shell.act(() => {
       data.value = 'b';
     }).then(() => {
       settled = true;
@@ -159,7 +159,7 @@ describe('Component.transition', () => {
 
       go(to: string) {
         this.pending = true;
-        this.transition(() => {
+        this.act(() => {
           data.value = to;
         }).then(() => {
           this.pending = false;
@@ -240,7 +240,7 @@ describe('Driver teardown', () => {
     await act(async () => {});
 
     await act(async () => {
-      shell.transition(() => {
+      shell.act(() => {
         data.value = 'b';
       }).then(() => {
         settled = true;

@@ -93,7 +93,7 @@ it('will transition Component dispatch', async () => {
   );
 
   await act(async () => {
-    instance.transition(() => {
+    instance.act(() => {
       setLocal('b');
       instance.value = 'b';
     });

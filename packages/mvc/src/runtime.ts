@@ -146,7 +146,7 @@ export function propsOf(node: unknown): Record<string, unknown> {
 const OWNED = new WeakMap<object, HostRuntime['transition']>();
 
 /**
- * Give `owner` a scheduler of its own, which {@link Component.transition} will
+ * Give `owner` a scheduler of its own, which {@link Component.act} will
  * prefer over the ambient one. An adapter installs this from a render, the only
  * place a host can observe its own deferred work.
  */

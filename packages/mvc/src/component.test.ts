@@ -342,7 +342,7 @@ describe('transition', () => {
     const test = Test.new();
     let settled = false;
 
-    await test.transition(() => {
+    await test.act(() => {
       test.value = 'b';
     }).then(() => {
       settled = true;

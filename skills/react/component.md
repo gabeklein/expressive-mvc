@@ -313,7 +313,7 @@ class DataView extends Component {
 
 ## Transitions
 
-`transition()` marks work non-urgent, so React keeps current content on screen while a replacement gets ready instead of falling back to `fallback`. Writes inside are ordinary - the designation rides with the subscriber updates they queue, for state this component does not own included.
+`act()` marks work non-urgent, so React keeps current content on screen while a replacement gets ready instead of falling back to `fallback`. Writes inside are ordinary - the designation rides with the subscriber updates they queue, for state this component does not own included.
 
 ```tsx
 class Shell extends Component {
@@ -321,7 +321,7 @@ class Shell extends Component {
 
   go(to: string) {
     this.busy = true;
-    this.transition(() => {
+    this.act(() => {
       data.page = to;
     }).then(() => {
       this.busy = false;
