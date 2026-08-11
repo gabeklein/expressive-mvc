@@ -1,5 +1,5 @@
 import { act, render } from '@testing-library/react';
-import { Suspense } from 'react';
+import { Activity, Suspense, useState } from 'react';
 import { describe, expect, it } from 'vitest';
 
 import { Component, Provider, State } from '.';
@@ -114,6 +114,69 @@ describe('State.act', () => {
 
     expect(view.container.textContent).toBe('b');
     expect(busy).toBe(false);
+  });
+
+  it('will release a claim when its subscriber is hidden mid-act', async () => {
+    const { gate, data, Content } = scenario();
+    let settled = false;
+    let hide!: () => void;
+
+    const App = () => {
+      const [mode, set] = useState<'visible' | 'hidden'>('visible');
+      hide = () => set('hidden');
+      return (
+        <Activity mode={mode}>
+          <Content />
+        </Activity>
+      );
+    };
+
+    render(
+      <Provider for={data}>
+        <App />
+      </Provider>
+    );
+
+    await act(async () => {});
+
+    await act(async () => {
+      data.act(() => {
+        data.value = 'b';
+      }).then(() => (settled = true));
+      await Promise.resolve();
+    });
+
+    expect(settled).toBe(false);
+
+    await act(async () => hide());
+
+    expect(settled).toBe(true);
+
+    gate.resolve();
+  });
+
+  it('will not claim for a subscriber which is already hidden', async () => {
+    const { data, Content } = scenario();
+    let settled = false;
+
+    render(
+      <Provider for={data}>
+        <Activity mode="hidden">
+          <Content />
+        </Activity>
+      </Provider>
+    );
+
+    await act(async () => {});
+
+    await act(async () => {
+      data.act(() => {
+        data.value = 'b';
+      }).then(() => (settled = true));
+      await Promise.resolve();
+    });
+
+    expect(settled).toBe(true);
   });
 
   it('will settle on dispatch before mount', async () => {
