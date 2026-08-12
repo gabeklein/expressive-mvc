@@ -9,6 +9,20 @@ interface Settle {
   release(): void;
 }
 
+interface Setup {
+  rendered: number;
+  revision: number;
+  mounted?: boolean;
+  commit?: () => (() => void) | void;
+  release?: (() => void) | void;
+}
+
+interface Hook<T> extends Setup {
+  pending?: boolean;
+  update?: (next: (previous: number) => number) => void;
+  output: T;
+}
+
 export const Runtime = {} as {
   /** Host own-property keys to trap out of observed state; assigned by each adapter. */
   ignore: string[];
@@ -68,57 +82,26 @@ export function useSettle(tick: number) {
 }
 
 /**
- * Mount-effect with a refreshable return value, safe under React StrictMode.
+ * Run `init` once for the life of a hook and clean up when it unmounts, safe
+ * under React StrictMode - a remount shares the render counter, so neither the
+ * setup nor its cleanup repeats. `reset` invalidates the rendered value so
+ * in-flight render attempts revalidate.
  *
- * @param callback Setup handler, run on creation; receives a setter, plus a
- *   reset which invalidates the rendered value so in-flight render attempts
- *   revalidate, and returns a mount handler, which in turn returns a cleanup.
- *   All share this hook's render counter, so a StrictMode remount repeats
- *   none of them.
- * @returns Latest value published via the setter (`undefined` until set).
+ * @returns The hook's own record, plus the render counter and its setter.
  */
-export function useHook<T = void>(
-  callback: (
-    refresh: (next: T) => void,
-    reset: () => void
-  ) => () => (() => void) | void
+export function useSetup<T extends Setup>(
+  init: (self: T, reset: () => void) => () => (() => void) | void
 ) {
-  const { current } = Runtime.useRef(
-    { rendered: 0, revision: 0 } as {
-      rendered: number;
-      revision: number;
-      mounted?: boolean;
-      pending?: boolean;
-      commit?: () => (() => void) | void;
-      release?: (() => void) | void;
-      update?: (next: (previous: number) => number) => void;
-      output: T;
-    }
-  );
+  const { current } = Runtime.useRef({ rendered: 0, revision: 0 } as T);
 
   const [tick, update] = Runtime.useState(() => {
     if (!current.rendered)
-      current.commit = callback(
-        (next) => {
-          current.output = next;
-
-          if (current.mounted) {
-            claim();
-            current.update?.((x) => x + 1);
-          }
-          else if (current.update) current.pending = true;
-        },
-        () => {
-          current.revision++;
-        }
-      );
+      current.commit = init(current, () => {
+        current.revision++;
+      });
 
     return current.rendered++;
   });
-
-  const claim = useSettle(tick);
-
-  current.update = update;
 
   const getRevision = () => current.revision;
 
@@ -132,15 +115,53 @@ export function useHook<T = void>(
       current.commit = undefined;
     }
 
-    if (current.pending) {
-      current.pending = false;
-      current.update!((x) => x + 1);
-    }
-
     return () => {
       if (--current.rendered <= 0) current.release?.();
     }
   }, []);
+
+  return [current, tick, update] as const;
+}
+
+/**
+ * Mount-effect with a refreshable return value. Publishing a value before mount
+ * defers the update to it, and one published after claims the act being
+ * replayed until this hook commits carrying it.
+ *
+ * @returns Latest value published via the setter (`undefined` until set).
+ */
+export function useHook<T = void>(
+  callback: (
+    refresh: (next: T) => void,
+    reset: () => void
+  ) => () => (() => void) | void
+) {
+  const [current, tick, update] = useSetup<Hook<T>>((self, reset) => {
+    const mount = callback((next) => {
+      self.output = next;
+
+      if (self.mounted) {
+        claim();
+        self.update?.((x) => x + 1);
+      }
+      else if (self.update) self.pending = true;
+    }, reset);
+
+    return () => {
+      const cleanup = mount();
+
+      if (self.pending) {
+        self.pending = false;
+        self.update!((x) => x + 1);
+      }
+
+      return cleanup;
+    };
+  });
+
+  const claim = useSettle(tick);
+
+  current.update = update;
 
   return current.output;
 }

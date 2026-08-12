@@ -1,6 +1,6 @@
 import { State, Context } from '@expressive/mvc';
 import { observer, watch } from '@expressive/mvc/observable';
-import { Runtime, useFactory, useHook, useSettle } from './runtime';
+import { Runtime, useFactory, useSettle, useSetup } from './runtime';
 
 /** Type may not be undefined - instead will be null.  */
 type NoVoid<T> = T extends undefined | void ? null : T;
@@ -91,11 +91,11 @@ State.get = function get<T extends State>(
     }
 
     function observed() {
-      if (!mounted) pending = true;
-      else {
+      if (mounted) {
         claim();
         update();
       }
+      else pending = true;
     }
 
     function refresh<T>(action?: Promise<T> | (() => Promise<T>)): any {
@@ -189,7 +189,7 @@ State.get = function get<T extends State>(
 
     return () => {
       pending = false;
-      useHook((_refresh, reset) => {
+      useSetup((_self, reset) => {
         force = reset;
 
         return () => {
