@@ -9,7 +9,7 @@ interface Pending {
 interface Scheduled {
   transition?: Transition;
   pending?: Set<Pending>;
-  holds?: number;
+  holds: number;
 }
 
 const DISPATCH = new Map<Handler, Scheduled>();
@@ -69,19 +69,17 @@ function drop(scheduled: Scheduled) {
 function presenting() {
   const scheduled = replaying;
 
-  if (!scheduled || !scheduled.pending) return;
-
-  scheduled.holds = (scheduled.holds || 0) + 1;
+  if (!scheduled?.pending) return;
 
   let released = false;
 
+  scheduled.holds++;
+
   return () => {
     if (released) return;
-
     released = true;
-
-    if (!--scheduled.holds!) drop(scheduled);
-  };
+    if (!--scheduled.holds) drop(scheduled);
+  }
 }
 
 function flush() {
@@ -113,7 +111,7 @@ function enqueue(handler: Handler) {
   const scheduled = DISPATCH.get(handler);
 
   if (!scheduled) {
-    const next: Scheduled = { transition: active };
+    const next: Scheduled = { transition: active, holds: 0 };
 
     DISPATCH.set(handler, next);
     claim(next);
@@ -137,7 +135,7 @@ function schedule(work: Handler, transition?: Transition): Promise<void> {
   }
 
   const parent = current;
-  const scheduled: Scheduled = {};
+  const scheduled: Scheduled = { holds: 0 };
   const promise = new Promise<void>((resolve) => {
     scheduled.pending = current = new Set([{ count: 1, done: resolve }]);
   });

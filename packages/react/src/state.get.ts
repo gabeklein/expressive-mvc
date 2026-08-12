@@ -1,7 +1,5 @@
 import { State, Context } from '@expressive/mvc';
 import { observer, watch } from '@expressive/mvc/observable';
-import { presenting } from '@expressive/mvc/runtime';
-
 import { Runtime, useFactory, useHook, useSettle } from './runtime';
 
 /** Type may not be undefined - instead will be null.  */
@@ -78,7 +76,7 @@ State.get = function get<T extends State>(
 ) {
   const Type = this;
   const [tick, next] = Runtime.useState(0);
-  const settle = useSettle(tick);
+  const claim = useSettle(tick);
   const local = Context.get();
   const render = useFactory(() => {
     let unwatch: (() => void) | undefined;
@@ -93,16 +91,11 @@ State.get = function get<T extends State>(
     }
 
     function observed() {
-      if (!mounted) {
-        pending = true;
-        return;
+      if (!mounted) pending = true;
+      else {
+        claim();
+        update();
       }
-
-      const release = presenting();
-
-      if (release) settle.waiting.push(release);
-
-      update();
     }
 
     function refresh<T>(action?: Promise<T> | (() => Promise<T>)): any {
