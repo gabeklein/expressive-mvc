@@ -3,6 +3,12 @@ import { watch } from '@expressive/mvc/observable';
 import { presenting } from '@expressive/mvc/runtime';
 import type { Context } from './context';
 
+interface Settle {
+  waiting: (() => void)[];
+  claim(): void;
+  release(): void;
+}
+
 export const Runtime = {} as {
   /** Host own-property keys to trap out of observed state; assigned by each adapter. */
   ignore: string[];
@@ -34,6 +40,34 @@ export function useFactory<T extends Function>(factory: () => T) {
 }
 
 /**
+ * Returns a claim on the update being replayed, held until this hook commits
+ * carrying it - or until unmount, where it never will. Keyed on `tick` so an
+ * urgent commit in the meantime, which leaves the deferred update queued, does
+ * not release it.
+ */
+export function useSettle(tick: number) {
+  const ref = Runtime.useRef<Settle | null>(null);
+  const settle = ref.current || (ref.current = {
+    waiting: [],
+    claim() {
+      const held = presenting();
+
+      if (held) settle.waiting.push(held);
+    },
+    release() {
+      for (const held of settle.waiting.splice(0)) held();
+    }
+  });
+
+  Runtime.useEffect(() => {
+    settle.release();
+    return settle.release;
+  }, [tick]);
+
+  return settle.claim;
+}
+
+/**
  * Mount-effect with a refreshable return value, safe under React StrictMode.
  *
  * @param callback Setup handler, run on creation; receives a setter, plus a
@@ -43,31 +77,6 @@ export function useFactory<T extends Function>(factory: () => T) {
  *   none of them.
  * @returns Latest value published via the setter (`undefined` until set).
  */
-/**
- * Returns a claim on the update being replayed, held until this hook commits
- * carrying it - or until unmount, where it never will. Keyed on `tick` so an
- * urgent commit in the meantime, which leaves the deferred update queued, does
- * not release it.
- */
-export function useSettle(tick: number) {
-  const { current } = Runtime.useRef({ waiting: [] as (() => void)[] });
-
-  Runtime.useEffect(() => {
-    const settle = () => {
-      for (const release of current.waiting.splice(0)) release();
-    };
-
-    settle();
-    return settle;
-  }, [tick]);
-
-  return () => {
-    const release = presenting();
-
-    if (release) current.waiting.push(release);
-  };
-}
-
 export function useHook<T = void>(
   callback: (
     refresh: (next: T) => void,

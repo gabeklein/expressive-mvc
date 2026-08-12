@@ -3,11 +3,13 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import './index';
 import { Runtime, useHook } from './runtime';
 
-// useHook calls useRef, useState, useEffect once each per render. Stub Runtime
-// with a hand-driven lifecycle so a subscription update can fire before vs.
-// after commit, and watch whether the React setter actually runs.
+// Stub Runtime with a hand-driven lifecycle so a subscription update can fire
+// before vs. after commit, and watch whether the React setter actually runs.
+// useHook takes more than one ref (its own record, plus useSettle's), so slots
+// are handed out in call order and kept across renders.
 function harness() {
-  const ref = { current: undefined as any };
+  const refs: { current: any }[] = [];
+  let slot = 0;
   let inited = false;
   let state = 0;
   let effect: () => (() => void) | void;
@@ -19,7 +21,8 @@ function harness() {
   const update = vi.fn((fn: (prev: number) => number) => void (state = fn(state)));
 
   Runtime.useRef = ((value: any) => {
-    if (ref.current === undefined) ref.current = value;
+    const ref = refs[slot] || (refs[slot] = { current: value });
+    slot++;
     return ref;
   }) as typeof Runtime.useRef;
 
@@ -39,7 +42,10 @@ function harness() {
   return {
     update,
     unmount,
-    render: () => useHook((r, x) => ((refresh = r), (reset = x), () => unmount)),
+    render: () => {
+      slot = 0;
+      return useHook((r, x) => ((refresh = r), (reset = x), () => unmount));
+    },
     commit: () => void (cleanup = effect()),
     unwind: () => cleanup && cleanup(),
     refresh: (next?: any) => refresh(next),
