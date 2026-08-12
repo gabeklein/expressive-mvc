@@ -44,8 +44,10 @@ export function useFactory<T extends Function>(factory: () => T) {
  * @returns Latest value published via the setter (`undefined` until set).
  */
 /**
- * Release deferred updates this hook is holding once it commits - and on
- * unmount, where the update it was holding will never arrive.
+ * Returns a claim on the update being replayed, held until this hook commits
+ * carrying it - or until unmount, where it never will. Keyed on `tick` so an
+ * urgent commit in the meantime, which leaves the deferred update queued, does
+ * not release it.
  */
 export function useSettle(tick: number) {
   const { current } = Runtime.useRef({ waiting: [] as (() => void)[] });
@@ -59,7 +61,11 @@ export function useSettle(tick: number) {
     return settle;
   }, [tick]);
 
-  return current;
+  return () => {
+    const release = presenting();
+
+    if (release) current.waiting.push(release);
+  };
 }
 
 export function useHook<T = void>(
@@ -88,10 +94,7 @@ export function useHook<T = void>(
           current.output = next;
 
           if (current.mounted) {
-            const release = presenting();
-
-            if (release) settle.waiting.push(release);
-
+            claim();
             current.update?.((x) => x + 1);
           }
           else if (current.update) current.pending = true;
@@ -104,7 +107,7 @@ export function useHook<T = void>(
     return current.rendered++;
   });
 
-  const settle = useSettle(tick);
+  const claim = useSettle(tick);
 
   current.update = update;
 
