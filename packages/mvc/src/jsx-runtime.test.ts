@@ -91,21 +91,9 @@ describe('runtime', () => {
     });
   });
 
-  it('will run transition work inline when host has no scheduler', () => {
+  it('will run deferred work inline', () => {
     const work = vi.fn();
     defer(work);
-    expect(work).toHaveBeenCalledTimes(1);
-  });
-
-  it('will invoke the host scheduler around transition work', () => {
-    // same-runtime re-registration is how a host extends its seams
-    runtime.transition = vi.fn((work: () => void) => work());
-    host(runtime);
-
-    const work = vi.fn();
-    defer(work);
-
-    expect(runtime.transition).toHaveBeenCalledWith(work);
     expect(work).toHaveBeenCalledTimes(1);
   });
 
@@ -145,9 +133,6 @@ describe('jsx-runtime module', () => {
   });
 
   it('will wait on a subscriber which claims presentation', async () => {
-    runtime.transition = (work: () => void) => work();
-    host(runtime);
-
     let present!: () => void;
     let settled = false;
 
@@ -168,9 +153,6 @@ describe('jsx-runtime module', () => {
   });
 
   it('will not claim presentation outside a deferred replay', async () => {
-    runtime.transition = undefined;
-    host(runtime);
-
     let claimed: unknown = 'unset';
 
     enqueue(() => {

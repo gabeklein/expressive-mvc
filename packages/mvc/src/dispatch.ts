@@ -7,7 +7,10 @@ interface Pending {
 }
 
 interface Scheduled {
+  /** How this subscriber defers, if it can - supplied where it subscribed. */
   transition?: Transition;
+  /** Whether this update is deferred - decided by the act which queued it. */
+  deferred?: boolean;
   pending?: Set<Pending>;
   holds: number;
 }
@@ -15,27 +18,12 @@ interface Scheduled {
 const DISPATCH = new Map<Handler, Scheduled>();
 const RESOLVED = Promise.resolve();
 
-let active: Transition | undefined;
 let current: Set<Pending> | undefined;
 let replaying: Scheduled | undefined;
 
-function execute(work: Handler, transition?: Transition) {
-  if (!transition) return work();
-
-  const parent = active;
-
-  active = transition;
-
-  try {
-    transition(work);
-  } finally {
-    active = parent;
-  }
-}
-
 /**
- * Await this handler's replay for the transition being scheduled. Overlapping
- * transitions may each be waiting on the same handler, which replays once.
+ * Await this handler's replay for the act being scheduled. Overlapping acts may
+ * each be waiting on the same handler, which replays once.
  */
 function claim(scheduled: Scheduled) {
   if (!current) return;
@@ -62,9 +50,9 @@ function drop(scheduled: Scheduled) {
 
 /**
  * Claim responsibility for presenting the update being replayed - settlement
- * waits on the returned callback rather than the replay itself. Returns
- * nothing where the replay is not deferred, so a subscriber pays for this only
- * during a transition.
+ * waits on the returned callback rather than the replay itself. Returns nothing
+ * where the replay is not deferred, so a subscriber pays for this only during
+ * an act.
  */
 function presenting() {
   const scheduled = replaying;
@@ -86,6 +74,7 @@ function flush() {
   for (const [handler, scheduled] of DISPATCH) {
     DISPATCH.delete(handler);
 
+    const { deferred, transition } = scheduled;
     const parent = current;
     const outer = replaying;
 
@@ -93,7 +82,8 @@ function flush() {
     replaying = scheduled;
 
     try {
-      execute(handler, scheduled.transition);
+      if (deferred && transition) transition(handler);
+      else handler();
     } catch (err) {
       console.error(err);
     } finally {
@@ -105,45 +95,49 @@ function flush() {
   }
 }
 
-function enqueue(handler: Handler) {
+/**
+ * Queue `handler` to replay after this tick. `transition` is how this
+ * subscriber defers - it brackets the replay, but only where an act asked for
+ * one.
+ */
+function enqueue(handler: Handler, transition?: Transition) {
   if (!DISPATCH.size) queueMicrotask(flush);
 
   const scheduled = DISPATCH.get(handler);
 
   if (!scheduled) {
-    const next: Scheduled = { transition: active, holds: 0 };
+    const next: Scheduled = { transition, deferred: !!current, holds: 0 };
 
     DISPATCH.set(handler, next);
     claim(next);
-  } else if (active) {
+  } else if (current) {
     claim(scheduled);
   } else {
-    scheduled.transition = undefined;
+    scheduled.deferred = false;
     drop(scheduled);
   }
 }
 
 /**
- * Run `work` under `transition`, resolving once every subscriber update it
- * queued has replayed and been presented. Subscribers which cannot report
- * presentation resolve on replay.
+ * Run `work` as one act, resolving once every subscriber update it queued has
+ * replayed and been presented. A subscriber which cannot report presentation
+ * resolves on replay; one which can defer brackets its own replay.
  */
-function schedule(work: Handler, transition?: Transition): Promise<void> {
-  if (!transition || transition === active) {
+function schedule(work: Handler): Promise<void> {
+  if (current) {
     work();
     return RESOLVED;
   }
 
-  const parent = current;
   const scheduled: Scheduled = { holds: 0 };
   const promise = new Promise<void>((resolve) => {
     scheduled.pending = current = new Set([{ count: 1, done: resolve }]);
   });
 
   try {
-    execute(work, transition);
+    work();
   } finally {
-    current = parent;
+    current = undefined;
   }
 
   drop(scheduled);

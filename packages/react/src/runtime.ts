@@ -32,6 +32,9 @@ export const Runtime = {} as {
   useState<S>(initial: S | (() => S)): [S, (next: (previous: S) => S) => void];
   useEffect(effect: () => (() => void) | void, deps?: any[]): void;
   useRef<T>(initial: T): { current: T };
+  /** Non-urgent bracket a subscriber replays through; absent where the host
+   *  cannot defer, which keeps normal timing. */
+  transition?(work: () => void): void;
   /** Consumed for pre-commit revision validation; absent where commits
    *  cannot interleave with writes. */
   useSyncExternalStore?(
@@ -177,7 +180,7 @@ export function useWatch<T extends object>(
       return (update) => {
         if (update === true) reset();
       };
-    });
+    }, undefined, Runtime.transition);
 
     return () => {
       const cleanup = mount?.();

@@ -100,7 +100,10 @@ it('will transition Component dispatch', async () => {
     await Promise.resolve();
   });
 
-  expect(view.container.textContent).toBe('aa');
+  // Local state updates urgently - defer() scopes to mvc-driven updates - while
+  // the Component holds its own content rather than suspending to fallback.
+  expect(view.container.querySelector('i')).toBeNull();
+  expect(view.container.textContent).toBe('ba');
 
   instance.value = 'c';
   pending.resolve();
