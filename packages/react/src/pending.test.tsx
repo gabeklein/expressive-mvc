@@ -2,10 +2,10 @@ import { act, render } from '@testing-library/react';
 import { Activity, ReactNode, Suspense, useState } from 'react';
 import { describe, expect, it } from 'vitest';
 
-import { Component, passive, Provider, State } from '.';
+import { Component, pending, Provider, State } from '.';
 import { mockPromise } from '../test.setup';
 
-describe('passive', () => {
+describe('pending', () => {
   class Data extends State {
     value = 'a';
   }
@@ -46,7 +46,7 @@ describe('passive', () => {
 
       go(work: () => void) {
         this.busy = true;
-        return passive(work).then(() => {
+        return pending(work).then(() => {
           this.busy = false;
         });
       }
@@ -97,7 +97,7 @@ describe('passive', () => {
     await act(async () => {});
 
     await act(async () => {
-      passive(() => {
+      pending(() => {
         data.value = 'b';
       }).then(() => (busy = false));
       await Promise.resolve();
@@ -140,7 +140,7 @@ describe('passive', () => {
     await act(async () => {});
 
     await act(async () => {
-      passive(() => {
+      pending(() => {
         data.value = 'b';
       }).then(() => (settled = true));
       await Promise.resolve();
@@ -170,7 +170,7 @@ describe('passive', () => {
     await act(async () => {});
 
     await act(async () => {
-      passive(() => {
+      pending(() => {
         data.value = 'b';
       }).then(() => (settled = true));
       await Promise.resolve();
@@ -206,7 +206,7 @@ describe('passive', () => {
     await act(async () => {});
 
     await act(async () => {
-      passive(() => {
+      pending(() => {
         data.value = 'b';
       });
       await Promise.resolve();
@@ -240,7 +240,7 @@ describe('passive', () => {
     await act(async () => {});
 
     await act(async () => {
-      passive(() => {
+      pending(() => {
         data.value = 'b';
       }).then(() => (settled = true));
       await Promise.resolve();
@@ -261,7 +261,7 @@ describe('passive', () => {
     const data = Data.new();
     let settled = false;
 
-    await passive(() => {
+    await pending(() => {
       data.value = 'b';
     }).then(() => {
       settled = true;
@@ -281,7 +281,7 @@ describe('passive', () => {
 
       go(to: string) {
         this.pending = true;
-        passive(() => {
+        pending(() => {
           data.value = to;
         }).then(() => {
           this.pending = false;
@@ -337,7 +337,7 @@ describe('passive', () => {
 
       go(to: string) {
         this.pending = true;
-        passive(() => {
+        pending(() => {
           data.value = to;
         }).then(() => {
           this.pending = false;
@@ -386,7 +386,7 @@ describe('passive', () => {
   });
 });
 
-describe('passive teardown', () => {
+describe('pending teardown', () => {
   it('will settle work left pending by an unmount', async () => {
     class Data extends State {
       value = 'a';
@@ -421,7 +421,7 @@ describe('passive teardown', () => {
     await act(async () => {});
 
     await act(async () => {
-      passive(() => {
+      pending(() => {
         data.value = 'b';
       }).then(() => {
         settled = true;

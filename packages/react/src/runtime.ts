@@ -18,7 +18,7 @@ interface Setup {
 }
 
 interface Hook<T> extends Setup {
-  pending?: boolean;
+  queued?: boolean;
   update?: (next: (previous: number) => number) => void;
   output: T;
 }
@@ -147,14 +147,14 @@ export function useHook<T = void>(
         claim();
         self.update?.((x) => x + 1);
       }
-      else if (self.update) self.pending = true;
+      else if (self.update) self.queued = true;
     }, reset);
 
     return () => {
       const cleanup = mount();
 
-      if (self.pending) {
-        self.pending = false;
+      if (self.queued) {
+        self.queued = false;
         self.update!((x) => x + 1);
       }
 
