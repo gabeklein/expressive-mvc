@@ -43,7 +43,17 @@ app.count = 1; // queues another - both flush via microtask
 
 ### Presentation Transitions
 
+```ts
+import { pending } from '@expressive/mvc';
+
+await pending(() => {
+  app.page = 'settings';
+});
+```
+
 `pending(work)` runs `work` now and marks the updates it queues non-urgent, resolving once every reader has absorbed them - see [Transitions](../react/component.md#transitions). Under React that waits for presentation, so a replacement which suspends holds the current screen instead of falling back. A free function, not a method: settlement comes from whichever readers the writes touch, and each replays through the scheduler it subscribed with.
+
+With no host registered there is no priority to apply, but the promise still resolves once every subscriber has replayed - awaiting it is how headless code waits out a whole cascade, not just the first flush. Distinct from `state.set()`, which resolves on the next flush of *that* state (see [set.md](set.md)).
 
 ### Value Equality
 

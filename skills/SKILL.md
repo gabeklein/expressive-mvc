@@ -120,6 +120,8 @@ Field initializers that configure reactive behavior. Each has multiple overloads
 
 For **computed values**, declare a normal class getter - getters on a State subclass are auto-promoted to memoized, dependency-tracked properties. See [state/computed.md](state/computed.md) for tracking rules and when a derivation should *not* be a getter.
 
+`pending(work)` is not a field helper but imports alongside them - it marks the updates `work` queues non-urgent and resolves once every reader has taken them. See [Transitions](react/component.md#transitions).
+
 Do not pass a bare promise to `set()`. Use `set(() => promise)` or `set(async () => value)` so work starts during activation/access instead of construction.
 
 ```tsx

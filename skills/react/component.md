@@ -314,6 +314,8 @@ class DataView extends Component {
 `pending()` marks work non-urgent, so React keeps current content on screen while a replacement gets ready instead of falling back to `fallback`. Writes inside are ordinary - the designation rides with the subscriber updates they queue, for state this component does not own included.
 
 ```tsx
+import { Component, pending } from '@expressive/react';
+
 class Shell extends Component {
   busy = false;
 
