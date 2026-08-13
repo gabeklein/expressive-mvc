@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { flushMicrotasks, mockError } from '../test.setup';
 import { watch } from './observable';
-import { enqueue, presenting, schedule } from './dispatch';
+import { enqueue, absorbing, schedule } from './dispatch';
 import { State } from './state';
 
 describe('dispatch', () => {
@@ -98,12 +98,12 @@ describe('dispatch', () => {
   it('will fold a nested act into the one in flight', async () => {
     const done: string[] = [];
 
-    let present!: () => void;
+    let release!: () => void;
 
     schedule(() => {
       schedule(() => {
         enqueue(() => {
-          present = presenting()!;
+          release = absorbing()!;
         });
       }).then(() => done.push('inner'));
     }).then(() => done.push('outer'));
@@ -112,7 +112,7 @@ describe('dispatch', () => {
 
     expect(done).toEqual(['inner']);
 
-    present();
+    release();
     await flushMicrotasks();
 
     expect(done).toEqual(['inner', 'outer']);
@@ -217,15 +217,15 @@ describe('dispatch', () => {
     expect(after).toHaveBeenCalledOnce();
   });
 
-  it('will settle when a subscriber presents its replay', async () => {
+  it('will settle when a subscriber absorbs its replay', async () => {
     const log: string[] = [];
 
-    let present!: () => void;
+    let release!: () => void;
 
     schedule(() => {
       enqueue(() => {
         log.push('dispatch');
-        present = presenting()!;
+        release = absorbing()!;
       });
     }).then(() => log.push('settled'));
 
@@ -233,13 +233,13 @@ describe('dispatch', () => {
 
     expect(log).toEqual(['dispatch']);
 
-    present();
+    release();
     await flushMicrotasks();
 
     expect(log).toEqual(['dispatch', 'settled']);
   });
 
-  it('will settle on replay where no subscriber claims presentation', async () => {
+  it('will settle on replay where no subscriber claims absorption', async () => {
     let settled = false;
 
     schedule(() => enqueue(() => {})).then(() => (settled = true));
@@ -250,17 +250,17 @@ describe('dispatch', () => {
   });
 
   it('will ignore a claim released more than once', async () => {
-    let present!: () => void;
+    let release!: () => void;
     let settled = 0;
 
     schedule(() => enqueue(() => {
-      present = presenting()!;
+      release = absorbing()!;
     })).then(() => settled++);
 
     await flushMicrotasks();
 
-    present();
-    present();
+    release();
+    release();
     await flushMicrotasks();
 
     expect(settled).toBe(1);
@@ -271,7 +271,7 @@ describe('dispatch', () => {
     let settled = false;
 
     schedule(() => enqueue(() => {
-      held.push(presenting()!, presenting()!);
+      held.push(absorbing()!, absorbing()!);
     })).then(() => (settled = true));
 
     await flushMicrotasks();
@@ -287,12 +287,12 @@ describe('dispatch', () => {
     expect(settled).toBe(true);
   });
 
-  it('will settle a second act when its own replay is presented', async () => {
+  it('will settle a second act when its own replay is absorbed', async () => {
     const handler = () => {
-      present = presenting()!;
+      release = absorbing()!;
     };
 
-    let present!: () => void;
+    let release!: () => void;
     const done: string[] = [];
 
     schedule(() => enqueue(handler)).then(() => done.push('first'));
@@ -302,7 +302,7 @@ describe('dispatch', () => {
 
     expect(done).toEqual([]);
 
-    present();
+    release();
     await flushMicrotasks();
 
     expect(done).toEqual(['first', 'second']);
@@ -314,10 +314,10 @@ describe('dispatch', () => {
 
     schedule(() => enqueue(() => {
       log.push('source');
-      held.push(presenting()!);
+      held.push(absorbing()!);
       enqueue(() => {
         log.push('derived');
-        held.push(presenting()!);
+        held.push(absorbing()!);
       });
     })).then(() => log.push('settled'));
 

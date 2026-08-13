@@ -49,12 +49,12 @@ function drop(scheduled: Scheduled) {
 }
 
 /**
- * Claim responsibility for presenting the update being replayed - settlement
+ * Claim responsibility for absorbing the update being replayed - settlement
  * waits on the returned callback rather than the replay itself. Returns nothing
  * where the replay is not deferred, so a subscriber pays for this only during
  * an act.
  */
-function presenting() {
+function absorbing() {
   const scheduled = replaying;
 
   if (!scheduled?.pending) return;
@@ -120,7 +120,7 @@ function enqueue(handler: Handler, transition?: Transition) {
 
 /**
  * Run `work` as one act, resolving once every subscriber update it queued has
- * replayed and been presented. A subscriber which cannot report presentation
+ * replayed and been absorbed. A subscriber which cannot report absorption
  * resolves on replay; one which can defer brackets its own replay.
  */
 function schedule(work: Handler): Promise<void> {
@@ -145,4 +145,4 @@ function schedule(work: Handler): Promise<void> {
   return promise;
 }
 
-export { enqueue, presenting, schedule };
+export { enqueue, absorbing, schedule };

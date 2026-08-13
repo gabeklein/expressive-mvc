@@ -37,7 +37,7 @@ describe('defer', () => {
     return { gate, data, Content };
   }
 
-  it('will hold current content until the replacement is presented', async () => {
+  it('will hold current content until the replacement is absorbed', async () => {
     const { gate, data, Content } = scenario();
     let shell!: Shell;
 
