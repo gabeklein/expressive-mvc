@@ -328,7 +328,7 @@ class Shell extends Component {
 }
 ```
 
-The returned promise settles once the work is **presented** - after a suspended replacement commits, not when the write lands. Writes inside run immediately; only notification defers. Subscribers which cannot report presentation - unmounted, hidden, or a host which does not defer - settle on replay.
+The returned promise settles once every reader has **absorbed** the work - after a suspended replacement commits, not when the write lands. Writes inside run immediately; only notification defers. A reader which cannot report - unmounted, hidden, or one with no scheduler - absorbs on replay. Every reader is waited on, not the first.
 
 **Where the flag is read matters.** Writes are immediate; only notification defers. A component which re-renders urgently and *rebuilds* the deferred content therefore rebuilds it against the value already written, so it suspends and the fallback replaces the screen the deferral existed to keep. Read the flag from a sibling of that content, or from a wrapper receiving it as `children` - both leave its element untouched, so it holds.
 

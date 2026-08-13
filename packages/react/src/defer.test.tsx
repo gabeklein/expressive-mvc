@@ -179,6 +179,84 @@ describe('defer', () => {
     expect(settled).toBe(true);
   });
 
+  it('will hold every reader while one of them suspends', async () => {
+    const gate = mockPromise<void>();
+    const data = Data.new();
+    let ready = false;
+
+    gate.then(() => (ready = true));
+
+    const Slow = () => {
+      const { value } = Data.get();
+      if (value === 'b' && !ready) throw gate;
+      return <span>{value}</span>;
+    };
+
+    const Fast = () => <b>{Data.get().value}</b>;
+
+    const view = render(
+      <Provider for={data}>
+        <Fast />
+        <Suspense fallback={<i>fallback</i>}>
+          <Slow />
+        </Suspense>
+      </Provider>
+    );
+
+    await act(async () => {});
+
+    await act(async () => {
+      defer(() => {
+        data.value = 'b';
+      });
+      await Promise.resolve();
+    });
+
+    // React entangles a transition - it will not commit the reader which is
+    // ready while its sibling is suspended.
+    expect(view.container.textContent).toBe('aa');
+
+    await act(async () => {
+      gate.resolve();
+      await gate;
+    });
+
+    expect(view.container.textContent).toBe('bb');
+  });
+
+  it('will wait on every reader, not the first', async () => {
+    const { gate, data, Content } = scenario();
+    const seen: string[] = [];
+    let settled = false;
+
+    data.get(({ value }) => void seen.push(value));
+
+    render(
+      <Provider for={data}>
+        <Content />
+      </Provider>
+    );
+
+    await act(async () => {});
+
+    await act(async () => {
+      defer(() => {
+        data.value = 'b';
+      }).then(() => (settled = true));
+      await Promise.resolve();
+    });
+
+    expect(seen).toEqual(['a', 'b']);
+    expect(settled).toBe(false);
+
+    await act(async () => {
+      gate.resolve();
+      await gate;
+    });
+
+    expect(settled).toBe(true);
+  });
+
   it('will settle on dispatch before mount', async () => {
     const data = Data.new();
     let settled = false;
