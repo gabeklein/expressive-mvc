@@ -2,10 +2,10 @@ import { act, render } from '@testing-library/react';
 import { Activity, ReactNode, Suspense, useState } from 'react';
 import { describe, expect, it } from 'vitest';
 
-import { Component, defer, Provider, State } from '.';
+import { Component, passive, Provider, State } from '.';
 import { mockPromise } from '../test.setup';
 
-describe('defer', () => {
+describe('passive', () => {
   class Data extends State {
     value = 'a';
   }
@@ -46,7 +46,7 @@ describe('defer', () => {
 
       go(work: () => void) {
         this.busy = true;
-        return defer(work).then(() => {
+        return passive(work).then(() => {
           this.busy = false;
         });
       }
@@ -97,7 +97,7 @@ describe('defer', () => {
     await act(async () => {});
 
     await act(async () => {
-      defer(() => {
+      passive(() => {
         data.value = 'b';
       }).then(() => (busy = false));
       await Promise.resolve();
@@ -140,7 +140,7 @@ describe('defer', () => {
     await act(async () => {});
 
     await act(async () => {
-      defer(() => {
+      passive(() => {
         data.value = 'b';
       }).then(() => (settled = true));
       await Promise.resolve();
@@ -170,7 +170,7 @@ describe('defer', () => {
     await act(async () => {});
 
     await act(async () => {
-      defer(() => {
+      passive(() => {
         data.value = 'b';
       }).then(() => (settled = true));
       await Promise.resolve();
@@ -206,7 +206,7 @@ describe('defer', () => {
     await act(async () => {});
 
     await act(async () => {
-      defer(() => {
+      passive(() => {
         data.value = 'b';
       });
       await Promise.resolve();
@@ -240,7 +240,7 @@ describe('defer', () => {
     await act(async () => {});
 
     await act(async () => {
-      defer(() => {
+      passive(() => {
         data.value = 'b';
       }).then(() => (settled = true));
       await Promise.resolve();
@@ -261,7 +261,7 @@ describe('defer', () => {
     const data = Data.new();
     let settled = false;
 
-    await defer(() => {
+    await passive(() => {
       data.value = 'b';
     }).then(() => {
       settled = true;
@@ -281,7 +281,7 @@ describe('defer', () => {
 
       go(to: string) {
         this.pending = true;
-        defer(() => {
+        passive(() => {
           data.value = to;
         }).then(() => {
           this.pending = false;
@@ -337,7 +337,7 @@ describe('defer', () => {
 
       go(to: string) {
         this.pending = true;
-        defer(() => {
+        passive(() => {
           data.value = to;
         }).then(() => {
           this.pending = false;
@@ -386,7 +386,7 @@ describe('defer', () => {
   });
 });
 
-describe('defer teardown', () => {
+describe('passive teardown', () => {
   it('will settle work left pending by an unmount', async () => {
     class Data extends State {
       value = 'a';
@@ -421,7 +421,7 @@ describe('defer teardown', () => {
     await act(async () => {});
 
     await act(async () => {
-      defer(() => {
+      passive(() => {
         data.value = 'b';
       }).then(() => {
         settled = true;
