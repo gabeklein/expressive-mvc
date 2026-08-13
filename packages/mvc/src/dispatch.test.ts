@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { flushMicrotasks, mockError } from '../test.setup';
 import { watch } from './observable';
-import { enqueue, hold, pending } from './dispatch';
+import { enqueue, pending } from './dispatch';
 import { State } from './state';
 
 describe('dispatch', () => {
@@ -103,7 +103,7 @@ describe('dispatch', () => {
     pending(() => {
       pending(() => {
         enqueue(() => {
-          release = hold()!;
+          release = pending()!;
         });
       }).then(() => done.push('inner'));
     }).then(() => done.push('outer'));
@@ -225,7 +225,7 @@ describe('dispatch', () => {
     pending(() => {
       enqueue(() => {
         log.push('dispatch');
-        release = hold()!;
+        release = pending()!;
       });
     }).then(() => log.push('settled'));
 
@@ -254,7 +254,7 @@ describe('dispatch', () => {
     let settled = 0;
 
     pending(() => enqueue(() => {
-      release = hold()!;
+      release = pending()!;
     })).then(() => settled++);
 
     await flushMicrotasks();
@@ -271,7 +271,7 @@ describe('dispatch', () => {
     let settled = false;
 
     pending(() => enqueue(() => {
-      held.push(hold()!, hold()!);
+      held.push(pending()!, pending()!);
     })).then(() => (settled = true));
 
     await flushMicrotasks();
@@ -289,7 +289,7 @@ describe('dispatch', () => {
 
   it('will settle a second call when its own replay is absorbed', async () => {
     const handler = () => {
-      release = hold()!;
+      release = pending()!;
     };
 
     let release!: () => void;
@@ -314,10 +314,10 @@ describe('dispatch', () => {
 
     pending(() => enqueue(() => {
       log.push('source');
-      held.push(hold()!);
+      held.push(pending()!);
       enqueue(() => {
         log.push('derived');
-        held.push(hold()!);
+        held.push(pending()!);
       });
     })).then(() => log.push('settled'));
 

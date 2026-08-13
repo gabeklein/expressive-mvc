@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { flushMicrotasks, mockWarn } from '../test.setup';
 import { Component } from './component';
 import { Context } from './context';
-import { pending } from './runtime';
+import { pending } from './dispatch';
 
 it('will default fallback to null', () => {
   const foo = Component.new({});

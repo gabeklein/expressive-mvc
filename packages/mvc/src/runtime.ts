@@ -137,4 +137,3 @@ export function propsOf(node: unknown): Record<string, unknown> {
   return HOST.propsOf(node);
 }
 
-export { hold, pending } from './dispatch';

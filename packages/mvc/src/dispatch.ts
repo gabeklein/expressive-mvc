@@ -127,7 +127,19 @@ function enqueue(handler: Handler, transition?: Transition) {
  * subscriber which cannot report absorption resolves on replay; one which can
  * defer brackets its own replay.
  */
-function pending(work: Handler): Promise<void> {
+function pending(work: Handler): Promise<void>;
+
+/**
+ * Declare the subscriber currently replaying has not absorbed its update yet -
+ * settlement waits on the returned callback rather than on the replay. Call
+ * only from inside a replay: anywhere else, and where the replay is not
+ * deferred, this returns nothing and the subscriber pays for none of it.
+ */
+function pending(): (() => void) | undefined;
+
+function pending(work?: Handler) {
+  if (!work) return hold();
+
   if (current) {
     work();
     return RESOLVED;
@@ -149,4 +161,4 @@ function pending(work: Handler): Promise<void> {
   return promise;
 }
 
-export { enqueue, hold, pending };
+export { enqueue, pending };

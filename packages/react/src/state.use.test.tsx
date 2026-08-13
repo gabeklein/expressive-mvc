@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { State, Provider, get, set } from '.';
 import { act, render, renderHook, waitFor } from '@testing-library/react';
 import { flushMicrotasks, mockPromise } from '../test.setup';
-import { pending } from '@expressive/mvc/runtime';
+import { pending } from '@expressive/mvc';
 
 describe('State.use', () => {
   class Test extends State {

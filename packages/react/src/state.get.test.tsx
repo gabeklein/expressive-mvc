@@ -1,6 +1,6 @@
 import React, { Suspense } from 'react';
 import { Component, Context, get, State, Provider, set } from '.';
-import { pending } from '@expressive/mvc/runtime';
+import { pending } from '@expressive/mvc';
 import {
   vi,
   expect,

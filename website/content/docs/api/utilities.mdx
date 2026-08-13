@@ -246,6 +246,19 @@ The return value is a promise, resolving once every reader has **absorbed** the 
 - Unrelated watchers retain their own priority; one urgent update does not upgrade the entire batch.
 - Without a host scheduler, work and dispatch keep their normal timing - the promise still resolves.
 
+### `pending()` - the subscriber half
+
+Called with no arguments, from inside a subscriber's replay, `pending()` declares that subscriber has not absorbed its update yet. It returns a release callback, and the writer's promise waits on that rather than on the replay returning - which is how the React adapter holds settlement until it commits.
+
+```ts
+watch(state, () => {
+  const release = pending();
+  animate().then(release);
+});
+```
+
+Only meaningful inside a replay: anywhere else, and where the replay is not deferred, it returns `undefined`.
+
 > Not to be confused with `pending(state)` on the `/observable` subpath, which reports the events a state has queued. Same word, different entry point.
 
 <br />
