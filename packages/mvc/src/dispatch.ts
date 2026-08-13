@@ -49,12 +49,12 @@ function drop(scheduled: Scheduled) {
 }
 
 /**
- * Claim responsibility for absorbing the update being replayed - settlement
- * waits on the returned callback rather than the replay itself. Returns nothing
- * where the replay is not deferred, so a subscriber pays for this only during
- * an act.
+ * Hold the act being replayed until the returned callback runs - a subscriber
+ * which has not yet absorbed the update takes one, and settlement waits on it
+ * rather than on the replay. Returns nothing where the replay is not deferred,
+ * so a subscriber pays for this only during an act.
  */
-function absorbing() {
+function hold() {
   const scheduled = replaying;
 
   if (!scheduled?.pending) return;
@@ -145,4 +145,4 @@ function schedule(work: Handler): Promise<void> {
   return promise;
 }
 
-export { enqueue, absorbing, schedule };
+export { enqueue, hold, schedule };
