@@ -142,13 +142,13 @@ export function propsOf(node: unknown): Record<string, unknown> {
 export { hold } from './dispatch';
 
 /**
- * Mark synchronous work as non-urgent. Writes inside run immediately; the
- * subscriber updates they queue inherit the designation and each replays
- * through whatever scheduler it subscribed with.
+ * Run `work` now, marking the subscriber updates it queues non-urgent - each
+ * replays through whatever scheduler it subscribed with. The callback itself is
+ * synchronous; only what it notifies is passive.
  *
  * Resolves when those updates have been absorbed - on replay where a
  * subscriber cannot report it.
  */
-export function defer(work: () => void): Promise<void> {
+export function passive(work: () => void): Promise<void> {
   return schedule(work);
 }

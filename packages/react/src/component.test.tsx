@@ -4,7 +4,7 @@ import { renderToString } from 'react-dom/server';
 import React, { Suspense } from 'react';
 
 import { mockError, mockPromise, flushMicrotasks } from '../test.setup';
-import { Component, Consumer, defer, set } from '.';
+import { Component, Consumer, passive, set } from '.';
 
 it('will create and provide instance', () => {
   class Control extends Component {
@@ -93,14 +93,14 @@ it('will transition Component dispatch', async () => {
   );
 
   await act(async () => {
-    defer(() => {
+    passive(() => {
       setLocal('b');
       instance.value = 'b';
     });
     await Promise.resolve();
   });
 
-  // Local state updates urgently - defer() scopes to mvc-driven updates - while
+  // Local state updates urgently - passive() scopes to mvc-driven updates - while
   // the Component holds its own content rather than suspending to fallback.
   expect(view.container.querySelector('i')).toBeNull();
   expect(view.container.textContent).toBe('ba');

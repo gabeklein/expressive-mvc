@@ -8,4 +8,4 @@ export { ref } from './field/ref';
 export { State, State as default, unbind } from './state';
 export { Context } from './context';
 export { Component } from './component';
-export { defer } from './runtime';
+export { passive } from './runtime';
