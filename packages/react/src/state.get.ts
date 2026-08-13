@@ -143,7 +143,8 @@ State.get = function get<T extends State>(
             if (update === true) force();
           };
         },
-        argument === true
+        argument === true,
+        Runtime.transition
       );
 
       if (mounted) {

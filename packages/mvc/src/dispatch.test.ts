@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+
 import { flushMicrotasks, mockError } from '../test.setup';
 import { watch } from './observable';
 import { enqueue, presenting, schedule } from './dispatch';
@@ -7,58 +8,84 @@ import { State } from './state';
 describe('dispatch', () => {
   const error = mockError();
 
-  function transition(log: string[]) {
+  function scheduler(log: string[], name = 'transition') {
     return (work: () => void) => {
-      log.push('transition:start');
+      log.push(`${name}:start`);
       work();
-      log.push('transition:end');
+      log.push(`${name}:end`);
     };
   }
 
-  it('will transition immediate and queued work', async () => {
+  it('will replay queued work through the subscriber own scheduler', async () => {
     const log: string[] = [];
 
     schedule(() => {
       log.push('work');
-      enqueue(() => log.push('dispatch'));
-    }, transition(log));
+      enqueue(() => log.push('dispatch'), scheduler(log));
+    });
 
-    expect(log).toEqual([
-      'transition:start',
-      'work',
-      'transition:end'
-    ]);
+    expect(log).toEqual(['work']);
 
     await flushMicrotasks();
 
     expect(log).toEqual([
-      'transition:start',
       'work',
-      'transition:end',
       'transition:start',
       'dispatch',
       'transition:end'
     ]);
   });
 
-  it('will preserve priority through nested and cascading work', async () => {
+  it('will replay each subscriber through its own', async () => {
     const log: string[] = [];
-    const host = transition(log);
 
     schedule(() => {
-      schedule(() => enqueue(() => {
-        log.push('first');
-        enqueue(() => log.push('second'));
-      }), host);
-    }, host);
-
-    expect(log).toEqual(['transition:start', 'transition:end']);
+      enqueue(() => log.push('a'), scheduler(log, 'a'));
+      enqueue(() => log.push('b'), scheduler(log, 'b'));
+    });
 
     await flushMicrotasks();
 
     expect(log).toEqual([
-      'transition:start',
-      'transition:end',
+      'a:start', 'a', 'a:end',
+      'b:start', 'b', 'b:end'
+    ]);
+  });
+
+  it('will not bracket a subscriber with no scheduler', async () => {
+    const log: string[] = [];
+
+    schedule(() => enqueue(() => log.push('dispatch')));
+
+    await flushMicrotasks();
+
+    expect(log).toEqual(['dispatch']);
+  });
+
+  it('will not bracket work queued outside an act', async () => {
+    const log: string[] = [];
+
+    enqueue(() => log.push('dispatch'), scheduler(log));
+
+    await flushMicrotasks();
+
+    expect(log).toEqual(['dispatch']);
+  });
+
+  it('will preserve priority through cascading work', async () => {
+    const log: string[] = [];
+    const host = scheduler(log);
+
+    schedule(() => enqueue(() => {
+      log.push('first');
+      enqueue(() => log.push('second'), host);
+    }, host));
+
+    expect(log).toEqual([]);
+
+    await flushMicrotasks();
+
+    expect(log).toEqual([
       'transition:start',
       'first',
       'transition:end',
@@ -68,21 +95,43 @@ describe('dispatch', () => {
     ]);
   });
 
+  it('will fold a nested act into the one in flight', async () => {
+    const done: string[] = [];
+
+    let present!: () => void;
+
+    schedule(() => {
+      schedule(() => {
+        enqueue(() => {
+          present = presenting()!;
+        });
+      }).then(() => done.push('inner'));
+    }).then(() => done.push('outer'));
+
+    await flushMicrotasks();
+
+    expect(done).toEqual(['inner']);
+
+    present();
+    await flushMicrotasks();
+
+    expect(done).toEqual(['inner', 'outer']);
+  });
+
   it('will let urgent priority win for one handler', async () => {
     const log: string[] = [];
+    const host = scheduler(log);
     const mixed = () => log.push('mixed');
 
     schedule(() => {
-      enqueue(mixed);
-      enqueue(() => log.push('deferred'));
-    }, transition(log));
-    enqueue(mixed);
+      enqueue(mixed, host);
+      enqueue(() => log.push('deferred'), host);
+    });
+    enqueue(mixed, host);
 
     await flushMicrotasks();
 
     expect(log).toEqual([
-      'transition:start',
-      'transition:end',
       'mixed',
       'transition:start',
       'deferred',
@@ -107,12 +156,13 @@ describe('dispatch', () => {
 
     watch(model, ({ deferred }) => {
       if (deferred) priorities.push(`deferred:${transitioning}`);
-    });
+    }, undefined, host);
+
     watch(model, ({ deferred, urgent }) => {
       if (deferred || urgent) priorities.push(`mixed:${transitioning}`);
-    });
+    }, undefined, host);
 
-    schedule(() => void (model.deferred = 1), host);
+    schedule(() => void (model.deferred = 1));
     model.urgent = 1;
 
     await flushMicrotasks();
@@ -135,15 +185,15 @@ describe('dispatch', () => {
       transitioning = false;
     };
 
-    watch(model, ({ source }) => void (model.derived = source * 2));
+    watch(model, ({ source }) => void (model.derived = source * 2), undefined, host);
     watch(model, ({ derived }) => {
       if (derived) values.push(`${derived}:${transitioning}`);
-    });
+    }, undefined, host);
 
     schedule(() => {
       model.source = 1;
       model.source = 2;
-    }, host);
+    });
 
     await flushMicrotasks();
 
@@ -168,7 +218,6 @@ describe('dispatch', () => {
   });
 
   it('will settle when a subscriber presents its replay', async () => {
-    const bracket = (work: () => void) => work();
     const log: string[] = [];
 
     let present!: () => void;
@@ -178,7 +227,7 @@ describe('dispatch', () => {
         log.push('dispatch');
         present = presenting()!;
       });
-    }, bracket).then(() => log.push('settled'));
+    }).then(() => log.push('settled'));
 
     await flushMicrotasks();
 
@@ -191,10 +240,9 @@ describe('dispatch', () => {
   });
 
   it('will settle on replay where no subscriber claims presentation', async () => {
-    const bracket = (work: () => void) => work();
     let settled = false;
 
-    schedule(() => enqueue(() => {}), bracket).then(() => (settled = true));
+    schedule(() => enqueue(() => {})).then(() => (settled = true));
 
     await flushMicrotasks();
 
@@ -202,13 +250,12 @@ describe('dispatch', () => {
   });
 
   it('will ignore a claim released more than once', async () => {
-    const bracket = (work: () => void) => work();
     let present!: () => void;
     let settled = 0;
 
     schedule(() => enqueue(() => {
       present = presenting()!;
-    }), bracket).then(() => settled++);
+    })).then(() => settled++);
 
     await flushMicrotasks();
 
@@ -220,13 +267,12 @@ describe('dispatch', () => {
   });
 
   it('will wait on every claim a single replay makes', async () => {
-    const bracket = (work: () => void) => work();
     const held: (() => void)[] = [];
     let settled = false;
 
     schedule(() => enqueue(() => {
       held.push(presenting()!, presenting()!);
-    }), bracket).then(() => (settled = true));
+    })).then(() => (settled = true));
 
     await flushMicrotasks();
 
@@ -241,8 +287,7 @@ describe('dispatch', () => {
     expect(settled).toBe(true);
   });
 
-  it('will settle a second transition when its own replay is presented', async () => {
-    const bracket = (work: () => void) => work();
+  it('will settle a second act when its own replay is presented', async () => {
     const handler = () => {
       present = presenting()!;
     };
@@ -250,8 +295,8 @@ describe('dispatch', () => {
     let present!: () => void;
     const done: string[] = [];
 
-    schedule(() => enqueue(handler), bracket).then(() => done.push('first'));
-    schedule(() => enqueue(handler), bracket).then(() => done.push('second'));
+    schedule(() => enqueue(handler)).then(() => done.push('first'));
+    schedule(() => enqueue(handler)).then(() => done.push('second'));
 
     await flushMicrotasks();
 
@@ -264,7 +309,6 @@ describe('dispatch', () => {
   });
 
   it('will await updates cascading from a replay', async () => {
-    const bracket = (work: () => void) => work();
     const log: string[] = [];
     const held: (() => void)[] = [];
 
@@ -275,12 +319,11 @@ describe('dispatch', () => {
         log.push('derived');
         held.push(presenting()!);
       });
-    }), bracket).then(() => log.push('settled'));
+    })).then(() => log.push('settled'));
 
     await flushMicrotasks();
 
     expect(log).toEqual(['source', 'derived']);
-    expect(held.length).toBe(2);
 
     held[0]();
     await flushMicrotasks();
@@ -294,12 +337,11 @@ describe('dispatch', () => {
   });
 
   it('will release every claim on a handler urgency strips', async () => {
-    const bracket = (work: () => void) => work();
     const handler = () => {};
     const settled: string[] = [];
 
-    schedule(() => enqueue(handler), bracket).then(() => settled.push('first'));
-    schedule(() => enqueue(handler), bracket).then(() => settled.push('second'));
+    schedule(() => enqueue(handler)).then(() => settled.push('first'));
+    schedule(() => enqueue(handler)).then(() => settled.push('second'));
     enqueue(handler);
 
     await flushMicrotasks();
