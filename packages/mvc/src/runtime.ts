@@ -1,5 +1,4 @@
 import type { Component } from './component';
-import { schedule } from './dispatch';
 
 /**
  * Per-adapter interpretation manifest. Each adapter augments this interface to
@@ -72,10 +71,9 @@ let registered: HostRuntime | undefined;
 
 /**
  * Register the host runtime. Idempotent for the same runtime - re-registering
- * picks up members added since (e.g. an optional dev or scheduler seam).
- * Element mechanics the host leaves unset keep defaults that throw a
- * setup-pointing error; the optional seams (`jsxDEV`, `transition`) are
- * routed around at the call sites instead.
+ * picks up members added since (e.g. an optional dev seam). Element mechanics
+ * the host leaves unset keep defaults that throw a setup-pointing error;
+ * `jsxDEV` is routed around at the call site instead.
  */
 export function host(runtime: HostRuntime) {
   if (registered && registered !== runtime)
@@ -139,16 +137,4 @@ export function propsOf(node: unknown): Record<string, unknown> {
   return HOST.propsOf(node);
 }
 
-export { hold } from './dispatch';
-
-/**
- * Run `work` now, marking the subscriber updates it queues non-urgent - each
- * replays through whatever scheduler it subscribed with. The callback itself is
- * synchronous; only what it notifies is pending.
- *
- * Resolves when those updates have been absorbed - on replay where a
- * subscriber cannot report it.
- */
-export function pending(work: () => void): Promise<void> {
-  return schedule(work);
-}
+export { hold, pending } from './dispatch';

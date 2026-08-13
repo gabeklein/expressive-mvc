@@ -119,11 +119,15 @@ function enqueue(handler: Handler, transition?: Transition) {
 }
 
 /**
- * Run `work` as one unit, resolving once every subscriber update it queued has
- * replayed and been absorbed. A subscriber which cannot report absorption
- * resolves on replay; one which can defer brackets its own replay.
+ * Run `work` now, marking the subscriber updates it queues non-urgent - each
+ * replays through whatever scheduler it subscribed with. The callback itself is
+ * synchronous; only what it notifies is pending.
+ *
+ * Resolves once every one of those updates has replayed and been absorbed. A
+ * subscriber which cannot report absorption resolves on replay; one which can
+ * defer brackets its own replay.
  */
-function schedule(work: Handler): Promise<void> {
+function pending(work: Handler): Promise<void> {
   if (current) {
     work();
     return RESOLVED;
@@ -145,4 +149,4 @@ function schedule(work: Handler): Promise<void> {
   return promise;
 }
 
-export { enqueue, hold, schedule };
+export { enqueue, hold, pending };

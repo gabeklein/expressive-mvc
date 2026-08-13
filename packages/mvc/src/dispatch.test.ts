@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { flushMicrotasks, mockError } from '../test.setup';
 import { watch } from './observable';
-import { enqueue, hold, schedule } from './dispatch';
+import { enqueue, hold, pending } from './dispatch';
 import { State } from './state';
 
 describe('dispatch', () => {
@@ -19,7 +19,7 @@ describe('dispatch', () => {
   it('will replay queued work through the subscriber own scheduler', async () => {
     const log: string[] = [];
 
-    schedule(() => {
+    pending(() => {
       log.push('work');
       enqueue(() => log.push('dispatch'), scheduler(log));
     });
@@ -39,7 +39,7 @@ describe('dispatch', () => {
   it('will replay each subscriber through its own', async () => {
     const log: string[] = [];
 
-    schedule(() => {
+    pending(() => {
       enqueue(() => log.push('a'), scheduler(log, 'a'));
       enqueue(() => log.push('b'), scheduler(log, 'b'));
     });
@@ -55,7 +55,7 @@ describe('dispatch', () => {
   it('will not bracket a subscriber with no scheduler', async () => {
     const log: string[] = [];
 
-    schedule(() => enqueue(() => log.push('dispatch')));
+    pending(() => enqueue(() => log.push('dispatch')));
 
     await flushMicrotasks();
 
@@ -76,7 +76,7 @@ describe('dispatch', () => {
     const log: string[] = [];
     const host = scheduler(log);
 
-    schedule(() => enqueue(() => {
+    pending(() => enqueue(() => {
       log.push('first');
       enqueue(() => log.push('second'), host);
     }, host));
@@ -100,8 +100,8 @@ describe('dispatch', () => {
 
     let release!: () => void;
 
-    schedule(() => {
-      schedule(() => {
+    pending(() => {
+      pending(() => {
         enqueue(() => {
           release = hold()!;
         });
@@ -123,7 +123,7 @@ describe('dispatch', () => {
     const host = scheduler(log);
     const mixed = () => log.push('mixed');
 
-    schedule(() => {
+    pending(() => {
       enqueue(mixed, host);
       enqueue(() => log.push('deferred'), host);
     });
@@ -162,7 +162,7 @@ describe('dispatch', () => {
       if (deferred || urgent) priorities.push(`mixed:${transitioning}`);
     }, undefined, host);
 
-    schedule(() => void (model.deferred = 1));
+    pending(() => void (model.deferred = 1));
     model.urgent = 1;
 
     await flushMicrotasks();
@@ -190,7 +190,7 @@ describe('dispatch', () => {
       if (derived) values.push(`${derived}:${transitioning}`);
     }, undefined, host);
 
-    schedule(() => {
+    pending(() => {
       model.source = 1;
       model.source = 2;
     });
@@ -222,7 +222,7 @@ describe('dispatch', () => {
 
     let release!: () => void;
 
-    schedule(() => {
+    pending(() => {
       enqueue(() => {
         log.push('dispatch');
         release = hold()!;
@@ -242,7 +242,7 @@ describe('dispatch', () => {
   it('will settle on replay where no subscriber claims absorption', async () => {
     let settled = false;
 
-    schedule(() => enqueue(() => {})).then(() => (settled = true));
+    pending(() => enqueue(() => {})).then(() => (settled = true));
 
     await flushMicrotasks();
 
@@ -253,7 +253,7 @@ describe('dispatch', () => {
     let release!: () => void;
     let settled = 0;
 
-    schedule(() => enqueue(() => {
+    pending(() => enqueue(() => {
       release = hold()!;
     })).then(() => settled++);
 
@@ -270,7 +270,7 @@ describe('dispatch', () => {
     const held: (() => void)[] = [];
     let settled = false;
 
-    schedule(() => enqueue(() => {
+    pending(() => enqueue(() => {
       held.push(hold()!, hold()!);
     })).then(() => (settled = true));
 
@@ -295,8 +295,8 @@ describe('dispatch', () => {
     let release!: () => void;
     const done: string[] = [];
 
-    schedule(() => enqueue(handler)).then(() => done.push('first'));
-    schedule(() => enqueue(handler)).then(() => done.push('second'));
+    pending(() => enqueue(handler)).then(() => done.push('first'));
+    pending(() => enqueue(handler)).then(() => done.push('second'));
 
     await flushMicrotasks();
 
@@ -312,7 +312,7 @@ describe('dispatch', () => {
     const log: string[] = [];
     const held: (() => void)[] = [];
 
-    schedule(() => enqueue(() => {
+    pending(() => enqueue(() => {
       log.push('source');
       held.push(hold()!);
       enqueue(() => {
@@ -340,8 +340,8 @@ describe('dispatch', () => {
     const handler = () => {};
     const settled: string[] = [];
 
-    schedule(() => enqueue(handler)).then(() => settled.push('first'));
-    schedule(() => enqueue(handler)).then(() => settled.push('second'));
+    pending(() => enqueue(handler)).then(() => settled.push('first'));
+    pending(() => enqueue(handler)).then(() => settled.push('second'));
     enqueue(handler);
 
     await flushMicrotasks();
