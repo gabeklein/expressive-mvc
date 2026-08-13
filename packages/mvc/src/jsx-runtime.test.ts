@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { flushMicrotasks } from '../test.setup';
 import { enqueue } from './dispatch';
+import { State } from './state';
 
 import { childrenOf, defer, Fragment, host, isElement, jsx, jsxs, presenting, propsOf, typeOf } from './runtime';
 import { jsxDEV, Fragment as devFragment } from './jsx-dev-runtime';
@@ -89,6 +90,23 @@ describe('runtime', () => {
     expect(jsxDEV('div', {}, 'k', true)).toEqual({
       kind: 'jsxs', type: 'div', props: {}, key: 'k'
     });
+  });
+
+  it('will settle a headless act once subscribers have replayed', async () => {
+    class Model extends State {
+      value = 0;
+    }
+
+    const model = Model.new();
+    const seen: number[] = [];
+
+    model.get(({ value }) => void seen.push(value));
+
+    await defer(() => {
+      model.value = 1;
+    });
+
+    expect(seen).toEqual([0, 1]);
   });
 
   it('will run deferred work inline', () => {
