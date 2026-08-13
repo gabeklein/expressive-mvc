@@ -141,6 +141,7 @@ increment(); // `this` is correctly bound
 - Overwriting methods works: `test.method = () => 'bar'`.
 - `super` calls work across inheritance chains.
 - Methods called inside effects do NOT create subscriptions for properties they access.
+- `this` inside a method is the instance, never a tracking proxy - so `this === this.is`, and it is safe as a `Map`/`Set` key or for identity comparison. True however the method was reached, including off a proxy handed to an effect or render. The `new()` hook has the same guarantee (see [lifecycle.md](lifecycle.md#the-new-hook)).
 
 ## Static Methods
 
