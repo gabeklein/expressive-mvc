@@ -1,7 +1,7 @@
 type Handler = () => void;
 type Transition = (work: Handler) => void;
 
-interface Settlement {
+interface Pending {
   count: number;
   done(): void;
 }
@@ -11,14 +11,14 @@ interface Scheduled {
   transition?: Transition;
   /** Whether this update is deferred - decided by the call which queued it. */
   deferred?: boolean;
-  awaiting?: Set<Settlement>;
+  awaiting?: Set<Pending>;
   holds: number;
 }
 
 const DISPATCH = new Map<Handler, Scheduled>();
 const RESOLVED = Promise.resolve();
 
-let current: Set<Settlement> | undefined;
+let current: Set<Pending> | undefined;
 let replaying: Scheduled | undefined;
 
 /**
