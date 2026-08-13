@@ -1,4 +1,4 @@
-import { Component, map, State } from '@expressive/mvc';
+import { Component, map, pending, State } from '@expressive/mvc';
 import { listener } from '@expressive/mvc/observable';
 
 import type { Route } from './route';
@@ -19,6 +19,19 @@ import {
  * per-request (via `<Provider>`) to render a specific path there.
  */
 const clientOnly: State.Global = () => typeof window !== 'undefined';
+
+/** Routers writing their own address, whose state is already applied. */
+const SELF_DRIVEN = new WeakSet<object>();
+
+/** Navigations still awaiting presentation, per router. */
+const WAITING = new WeakMap<object, number>();
+
+/** Adjust a router's outstanding navigations, returning what remains. */
+function waiting(object: object, delta: number) {
+  const next = (WAITING.get(object) || 0) + delta;
+  WAITING.set(object, next);
+  return next;
+}
 
 /**
  * Headless router core: matching plus an in-memory `path` and history stack.
@@ -89,21 +102,54 @@ export class Router extends Component {
 
   goto(to: string, replace = false) {
     assertAbsolute(to);
-    const url = normalize(to);
+    this.next(normalize(to), replace);
+  }
 
-    if (replace) this.entries[this.index] = url;
-    else pushEntry(this, url);
+  /**
+   * Commit a navigation: apply `url` as one unit, then record it wherever this
+   * router keeps history. Override to bind a different history - `BrowserRouter`
+   * writes the address here, once the page is on screen.
+   */
+  protected async next(url: string, replace?: boolean) {
+    await this.navigate(() => {
+      if (replace) this.entries[this.index] = url;
+      else pushEntry(this, url);
 
-    this.locate(url);
+      this.locate(url);
+    });
   }
 
   back() {
-    if (this.index > 0) this.locate(this.entries[--this.index]);
+    if (this.index > 0)
+      this.navigate(() => this.locate(this.entries[--this.index]));
   }
 
   forward() {
     if (this.index < this.entries.length - 1)
-      this.locate(this.entries[++this.index]);
+      this.navigate(() => this.locate(this.entries[++this.index]));
+  }
+
+  /**
+   * Whether a navigation has yet to appear. Read it beside the outgoing screen
+   * or in a wrapper around it - never inside the page itself, which would
+   * render it urgently against the new path and forfeit the hold.
+   */
+  navigating = false;
+
+  /**
+   * Every navigation is applied through here, non-urgent, so a not-yet-ready
+   * page holds the current screen rather than flashing its fallback. Override
+   * to stage the swap differently (e.g. `document.startViewTransition`) -
+   * `work` applies the navigation and must run.
+   */
+  protected async navigate(work: () => void) {
+    waiting(this, 1);
+    this.navigating = true;
+
+    await pending(work);
+
+    if (waiting(this, -1) || this.get(null)) return;
+    this.navigating = false;
   }
 
   /** Apply a normalized url (path + optional `?query`) to state, reconciling `query` in place. */
