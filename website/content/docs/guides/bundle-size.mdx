@@ -13,13 +13,13 @@ Minified, then gzipped. React is a peer dependency and excluded, as it would alr
 | --- | --- |
 | `@expressive/mvc` — `State` only (headless) | ~4.9 kB |
 | `@expressive/mvc` — every export | ~8.2 kB |
-| `@expressive/react` — `State` only | ~8.4 kB |
-| `@expressive/react` — `State`, `Component`, instructions | ~9.0 kB |
+| `@expressive/react` — `State` only | ~8.5 kB |
+| `@expressive/react` — `State`, `Component`, instructions | ~9.1 kB |
 | `@expressive/react` — every export | ~11.1 kB |
 | `@expressive/router` — every export | ~10.6 kB |
 | `@expressive/react` + `@expressive/router` | ~14.5 kB |
 
-A typical React app lands around **9.0 kB**. There are no runtime dependencies, so that is the whole cost — nothing else arrives behind it.
+A typical React app lands around **9.1 kB**. There are no runtime dependencies, so that is the whole cost — nothing else arrives behind it.
 
 ## Methodology, and why the numbers differ elsewhere
 
@@ -35,14 +35,14 @@ If a third-party size service quotes something different from this table, the me
 
 The headless core shakes properly: importing only `State` costs ~4.9 kB against ~8.2 kB for everything, so unused instructions genuinely do not ship. It is built unbundled — one module per source file, `sideEffects: false` — and its module-level work only touches classes the same module exports, which is what makes that declaration safe.
 
-The React adapter has a **floor you cannot shake below: ~8.4 kB**, reached by importing anything at all from it. That is deliberate and worth being plain about. The adapter works by patching types it does not own, at import time:
+The React adapter has a **floor you cannot shake below: ~8.5 kB**, reached by importing anything at all from it. That is deliberate and worth being plain about. The adapter works by patching types it does not own, at import time:
 
 - `Component.prototype.$$typeof`, so an instance can be placed directly as JSX
 - `Component.contextType`, wiring the class into React context
 - `isReactComponent`, so React treats it as a class component
 - the host runtime registry, which hands the core its renderer
 
-Cross-package prototype patches cannot be tree-shaken away without breaking the library, so the wiring arrives whole or not at all. Above the floor, shaking resumes normally — `has`, `map` and `pending` together account for the remaining ~2.7 kB and drop out when unused.
+Cross-package prototype patches cannot be tree-shaken away without breaking the library, so the wiring arrives whole or not at all. Above the floor, shaking resumes normally — `has`, `map` and `pending` together account for the remaining ~2.6 kB and drop out when unused.
 
 The practical consequence: Expressive rewards using more of what you have already paid for, and is a poor fit for shipping one tiny piece of it into an otherwise dependency-free bundle.
 

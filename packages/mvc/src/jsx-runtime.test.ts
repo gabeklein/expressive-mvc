@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { flushMicrotasks } from '../test.setup';
-import { enqueue } from './dispatch';
 import { State } from './state';
 
-import { childrenOf, Fragment, hold, host, isElement, jsx, jsxs, pending, propsOf, typeOf } from './runtime';
+import { childrenOf, Fragment, host, isElement, jsx, jsxs, propsOf, typeOf } from './runtime';
+import { enqueue, pending } from './dispatch';
 import { jsxDEV, Fragment as devFragment } from './jsx-dev-runtime';
 import * as compat from './jsx-runtime';
 import type { HostRuntime } from './runtime';
@@ -155,7 +155,7 @@ describe('jsx-runtime module', () => {
     let settled = false;
 
     const handler = () => {
-      release = hold()!;
+      release = pending()!;
     };
 
     pending(() => enqueue(handler)).then(() => (settled = true));
@@ -174,7 +174,7 @@ describe('jsx-runtime module', () => {
     let claimed: unknown = 'unset';
 
     enqueue(() => {
-      claimed = hold();
+      claimed = pending();
     });
 
     await flushMicrotasks();

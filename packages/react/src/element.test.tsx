@@ -4,7 +4,7 @@ import React, { Suspense } from 'react';
 
 import { mockError, mockPromise } from '../test.setup';
 import { Component, Consumer, Provider, State, get, has, map } from '.';
-import { pending } from '@expressive/mvc/runtime';
+import { pending } from '@expressive/mvc';
 
 describe('instance element', () => {
   class Control extends Component {

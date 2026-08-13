@@ -13,6 +13,8 @@ A free function rather than a method, because nothing about it is bound to one s
 
 Subscribers which cannot report absorption - unmounted, hidden inside an `Activity` tree, or a host with no scheduler - settle on replay rather than holding.
 
+`pending()` with no arguments is the other half of the same feature. Called during a replay it returns a release callback, and settlement waits on that instead of on the replay returning; outside one it returns nothing. Adapters use it to hold until they commit, and a hand-written `watch` subscriber can participate on the same terms. It lives on the main entry rather than `@expressive/mvc/runtime`, which is for host seams - deferral no longer consults the host at all.
+
 Note that a subscriber carries one update at one priority, so one which reads a progress flag must not rebuild the deferred content on the same pass - read it from a sibling, or from a wrapper taking that content as `children`.
 
 Migrating: `transition(() => …)` becomes `pending(() => …)`. `HostRuntime.transition` is removed - a scheduler is passed to `watch` instead, by whoever subscribes.
