@@ -128,7 +128,7 @@ export function useSetup<T extends Setup>(
 
 /**
  * Mount-effect with a refreshable return value. Publishing a value before mount
- * defers the update to it, and one published after claims the act being
+ * defers the update to it, and one published after claims the update being
  * replayed until this hook commits carrying it.
  *
  * @returns Latest value published via the setter (`undefined` until set).

@@ -9,7 +9,7 @@ The name describes the updates, not the callback: `work` runs immediately and sy
 
 A free function rather than a method, because nothing about it is bound to one state. Settlement comes from whichever subscribers the writes happen to touch, so a receiver would only imply a scope that does not exist.
 
-`passive` covers **mvc-driven updates**, not everything in the block. Each subscriber replays through the scheduler it subscribed with - `@expressive/react` supplies `startTransition`, a plain effect supplies nothing and keeps normal timing. One act may have both, and neither is subjected to the other's semantics. A host is not required at all: with none registered the promise still settles once every subscriber has replayed, which makes it a headless barrier for the whole cascade.
+`passive` covers **mvc-driven updates**, not everything in the block. Each subscriber replays through the scheduler it subscribed with - `@expressive/react` supplies `startTransition`, a plain effect supplies nothing and keeps normal timing. One `passive()` call may have both, and neither is subjected to the other's semantics. A host is not required at all: with none registered the promise still settles once every subscriber has replayed, which makes it a headless barrier for the whole cascade.
 
 Subscribers which cannot report absorption - unmounted, hidden inside an `Activity` tree, or a host with no scheduler - settle on replay rather than holding.
 

@@ -62,7 +62,7 @@ describe('dispatch', () => {
     expect(log).toEqual(['dispatch']);
   });
 
-  it('will not bracket work queued outside an act', async () => {
+  it('will not bracket work queued on its own', async () => {
     const log: string[] = [];
 
     enqueue(() => log.push('dispatch'), scheduler(log));
@@ -95,7 +95,7 @@ describe('dispatch', () => {
     ]);
   });
 
-  it('will fold a nested act into the one in flight', async () => {
+  it('will fold a nested call into the one in flight', async () => {
     const done: string[] = [];
 
     let release!: () => void;
@@ -287,7 +287,7 @@ describe('dispatch', () => {
     expect(settled).toBe(true);
   });
 
-  it('will settle a second act when its own replay is absorbed', async () => {
+  it('will settle a second call when its own replay is absorbed', async () => {
     const handler = () => {
       release = hold()!;
     };
