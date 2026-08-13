@@ -116,7 +116,7 @@ describe('passive', () => {
     expect(busy).toBe(false);
   });
 
-  it('will release a claim when its subscriber is hidden mid-act', async () => {
+  it('will release a claim when its subscriber is hidden mid-flight', async () => {
     const { gate, data, Content } = scenario();
     let settled = false;
     let hide!: () => void;

@@ -92,7 +92,7 @@ describe('runtime', () => {
     });
   });
 
-  it('will settle a headless act once subscribers have replayed', async () => {
+  it('will settle headless once subscribers have replayed', async () => {
     class Model extends State {
       value = 0;
     }

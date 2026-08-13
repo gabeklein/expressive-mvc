@@ -9,7 +9,7 @@ interface Pending {
 interface Scheduled {
   /** How this subscriber defers, if it can - supplied where it subscribed. */
   transition?: Transition;
-  /** Whether this update is deferred - decided by the act which queued it. */
+  /** Whether this update is deferred - decided by the call which queued it. */
   deferred?: boolean;
   pending?: Set<Pending>;
   holds: number;
@@ -22,8 +22,8 @@ let current: Set<Pending> | undefined;
 let replaying: Scheduled | undefined;
 
 /**
- * Await this handler's replay for the act being scheduled. Overlapping acts may
- * each be waiting on the same handler, which replays once.
+ * Await this handler's replay for the work being scheduled. Overlapping calls
+ * may each be waiting on the same handler, which replays once.
  */
 function claim(scheduled: Scheduled) {
   if (!current) return;
@@ -49,10 +49,10 @@ function drop(scheduled: Scheduled) {
 }
 
 /**
- * Hold the act being replayed until the returned callback runs - a subscriber
+ * Hold the work being replayed until the returned callback runs - a subscriber
  * which has not yet absorbed the update takes one, and settlement waits on it
  * rather than on the replay. Returns nothing where the replay is not deferred,
- * so a subscriber pays for this only during an act.
+ * so a subscriber pays for this only where work was scheduled.
  */
 function hold() {
   const scheduled = replaying;
@@ -97,8 +97,8 @@ function flush() {
 
 /**
  * Queue `handler` to replay after this tick. `transition` is how this
- * subscriber defers - it brackets the replay, but only where an act asked for
- * one.
+ * subscriber defers - it brackets the replay, but only where the scheduled
+ * work asked for one.
  */
 function enqueue(handler: Handler, transition?: Transition) {
   if (!DISPATCH.size) queueMicrotask(flush);
@@ -119,7 +119,7 @@ function enqueue(handler: Handler, transition?: Transition) {
 }
 
 /**
- * Run `work` as one act, resolving once every subscriber update it queued has
+ * Run `work` as one unit, resolving once every subscriber update it queued has
  * replayed and been absorbed. A subscriber which cannot report absorption
  * resolves on replay; one which can defer brackets its own replay.
  */
