@@ -330,7 +330,7 @@ class Shell extends Component {
 
 The returned promise settles once every reader has **absorbed** the work - after a suspended replacement commits, not when the write lands. Writes inside run immediately; only notification defers. A reader which cannot report - unmounted, hidden, or one with no scheduler - absorbs on replay. Every reader is waited on, not the first.
 
-**Where the flag is read matters.** Writes are immediate; only notification defers. A component which re-renders urgently and *rebuilds* the deferred content therefore rebuilds it against the value already written, so it suspends and the fallback replaces the screen the deferral existed to keep. Read the flag from a sibling of that content, or from a wrapper receiving it as `children` - both leave its element untouched, so it holds.
+**Where the flag is read matters.** No reader inside a deferred act commits until every reader can - React entangles them - so a held subtree cannot render its own pending state. A component which re-renders urgently and *rebuilds* the deferred content therefore rebuilds it against the value already written, so it suspends and the fallback replaces the screen the deferral existed to keep. Read the flag from a sibling of that content, or from a wrapper receiving it as `children` - both leave its element untouched, so it holds.
 
 ```tsx
 const Status = () => <b>{Shell.get().busy ? 'loading' : 'idle'}</b>;
