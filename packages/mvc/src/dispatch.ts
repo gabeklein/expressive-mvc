@@ -1,7 +1,7 @@
 type Handler = () => void;
 type Transition = (work: Handler) => void;
 
-interface Pending {
+interface Settlement {
   count: number;
   done(): void;
 }
@@ -11,14 +11,14 @@ interface Scheduled {
   transition?: Transition;
   /** Whether this update is deferred - decided by the call which queued it. */
   deferred?: boolean;
-  pending?: Set<Pending>;
+  awaiting?: Set<Settlement>;
   holds: number;
 }
 
 const DISPATCH = new Map<Handler, Scheduled>();
 const RESOLVED = Promise.resolve();
 
-let current: Set<Pending> | undefined;
+let current: Set<Settlement> | undefined;
 let replaying: Scheduled | undefined;
 
 /**
@@ -28,23 +28,23 @@ let replaying: Scheduled | undefined;
 function claim(scheduled: Scheduled) {
   if (!current) return;
 
-  const pending = scheduled.pending || (scheduled.pending = new Set());
+  const awaiting = scheduled.awaiting || (scheduled.awaiting = new Set());
 
   for (const record of current)
-    if (!pending.has(record)) {
-      pending.add(record);
+    if (!awaiting.has(record)) {
+      awaiting.add(record);
       record.count++;
     }
 }
 
 function drop(scheduled: Scheduled) {
-  const { pending } = scheduled;
+  const { awaiting } = scheduled;
 
-  if (!pending) return;
+  if (!awaiting) return;
 
-  scheduled.pending = undefined;
+  scheduled.awaiting = undefined;
 
-  for (const record of pending)
+  for (const record of awaiting)
     if (!--record.count) record.done();
 }
 
@@ -57,7 +57,7 @@ function drop(scheduled: Scheduled) {
 function hold() {
   const scheduled = replaying;
 
-  if (!scheduled?.pending) return;
+  if (!scheduled?.awaiting) return;
 
   let released = false;
 
@@ -78,7 +78,7 @@ function flush() {
     const parent = current;
     const outer = replaying;
 
-    current = scheduled.pending;
+    current = scheduled.awaiting;
     replaying = scheduled;
 
     try {
@@ -131,7 +131,7 @@ function schedule(work: Handler): Promise<void> {
 
   const scheduled: Scheduled = { holds: 0 };
   const promise = new Promise<void>((resolve) => {
-    scheduled.pending = current = new Set([{ count: 1, done: resolve }]);
+    scheduled.awaiting = current = new Set([{ count: 1, done: resolve }]);
   });
 
   try {

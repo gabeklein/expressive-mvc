@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { flushMicrotasks, mockWarn } from '../test.setup';
 import { Component } from './component';
 import { Context } from './context';
-import { passive } from './runtime';
+import { pending } from './runtime';
 
 it('will default fallback to null', () => {
   const foo = Component.new({});
@@ -359,7 +359,7 @@ describe('transition', () => {
     const test = Test.new();
     let settled = false;
 
-    await passive(() => {
+    await pending(() => {
       test.value = 'b';
     }).then(() => {
       settled = true;

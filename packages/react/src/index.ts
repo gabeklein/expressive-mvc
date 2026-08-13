@@ -41,6 +41,6 @@ Object.assign(Runtime, {
 });
 
 export { State, State as default, Consumer, Provider } from './adapter';
-export { Component, Context, def, get, ref, set, passive } from '@expressive/mvc';
+export { Component, Context, def, get, ref, set, pending } from '@expressive/mvc';
 export { has } from './has';
 export { map } from './map';
