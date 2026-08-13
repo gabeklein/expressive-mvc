@@ -139,7 +139,7 @@ export function propsOf(node: unknown): Record<string, unknown> {
   return HOST.propsOf(node);
 }
 
-export { absorbing } from './dispatch';
+export { hold } from './dispatch';
 
 /**
  * Mark synchronous work as non-urgent. Writes inside run immediately; the

@@ -4,7 +4,7 @@ import { flushMicrotasks } from '../test.setup';
 import { enqueue } from './dispatch';
 import { State } from './state';
 
-import { childrenOf, defer, Fragment, host, isElement, jsx, jsxs, absorbing, propsOf, typeOf } from './runtime';
+import { childrenOf, defer, Fragment, hold, host, isElement, jsx, jsxs, propsOf, typeOf } from './runtime';
 import { jsxDEV, Fragment as devFragment } from './jsx-dev-runtime';
 import * as compat from './jsx-runtime';
 import type { HostRuntime } from './runtime';
@@ -155,7 +155,7 @@ describe('jsx-runtime module', () => {
     let settled = false;
 
     const handler = () => {
-      release = absorbing()!;
+      release = hold()!;
     };
 
     defer(() => enqueue(handler)).then(() => (settled = true));
@@ -174,7 +174,7 @@ describe('jsx-runtime module', () => {
     let claimed: unknown = 'unset';
 
     enqueue(() => {
-      claimed = absorbing();
+      claimed = hold();
     });
 
     await flushMicrotasks();
