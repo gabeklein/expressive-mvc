@@ -1,5 +1,5 @@
 import { act, render } from '@testing-library/react';
-import { Activity, Suspense, useState } from 'react';
+import { Activity, ReactNode, Suspense, useState } from 'react';
 import { describe, expect, it } from 'vitest';
 
 import { Component, defer, Provider, State } from '.';
@@ -324,6 +324,66 @@ describe('defer', () => {
     expect(view.container.textContent).toBe('idleb');
   });
 
+  it('will disable outgoing content without collapsing it', async () => {
+    const { gate, data, Content } = scenario();
+    let shell!: Shell;
+
+    const Lock = ({ children }: { children: ReactNode }) => (
+      <fieldset disabled={Shell.get().pending}>{children}</fieldset>
+    );
+
+    class Shell extends Component {
+      pending = false;
+
+      go(to: string) {
+        this.pending = true;
+        defer(() => {
+          data.value = to;
+        }).then(() => {
+          this.pending = false;
+        });
+      }
+
+      render() {
+        return (
+          <Lock>
+            <Content />
+          </Lock>
+        );
+      }
+    }
+
+    const view = render(
+      <Provider for={data}>
+        <Shell is={(i) => (shell = i)} />
+      </Provider>
+    );
+
+    await act(async () => {});
+
+    const lock = () => view.container.querySelector('fieldset')!;
+
+    expect(view.container.textContent).toBe('a');
+    expect(lock().disabled).toBe(false);
+
+    await act(async () => {
+      shell.go('b');
+      await Promise.resolve();
+    });
+
+    // The wrapper re-renders urgently and locks down; its child is the element
+    // Shell already rendered, so the outgoing screen holds.
+    expect(view.container.textContent).toBe('a');
+    expect(lock().disabled).toBe(true);
+
+    await act(async () => {
+      gate.resolve();
+      await gate;
+    });
+
+    expect(view.container.textContent).toBe('b');
+    expect(lock().disabled).toBe(false);
+  });
 });
 
 describe('defer teardown', () => {

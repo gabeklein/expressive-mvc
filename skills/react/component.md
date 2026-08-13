@@ -330,17 +330,23 @@ class Shell extends Component {
 
 The returned promise settles once every reader has **absorbed** the work - after a suspended replacement commits, not when the write lands. Writes inside run immediately; only notification defers. A reader which cannot report - unmounted, hidden, or one with no scheduler - absorbs on replay. Every reader is waited on, not the first.
 
-**Where the flag is read matters.** No reader inside a deferred act commits until every reader can - React entangles them - so a held subtree cannot render its own pending state. A component which re-renders urgently and *rebuilds* the deferred content therefore rebuilds it against the value already written, so it suspends and the fallback replaces the screen the deferral existed to keep. Read the flag from a sibling of that content, or from a wrapper receiving it as `children` - both leave its element untouched, so it holds.
+**Where the flag is read matters.** The flag is written urgently, so its readers re-render while the act is still in flight - but they read deferred state at the value already written. A component reading both jumps ahead of the held screen; one which *rebuilds* the deferred content suspends, replacing the screen the deferral existed to keep. Read the flag from a sibling of that content, or from a wrapper receiving it as `children` - both leave its element untouched, so it holds.
 
 ```tsx
 const Status = () => <b>{Shell.get().busy ? 'loading' : 'idle'}</b>;
 
+const Lock = ({ children }) => (
+  <fieldset disabled={Shell.get().busy}>{children}</fieldset>
+);
+
 class Shell extends Component {
   render() {
-    return <><Status /><Screen /></>;   // Status re-renders; Screen is untouched
+    return <><Status /><Lock><Screen /></Lock></>;
   }
 }
 ```
+
+`Lock` re-renders urgently and disables the outgoing screen; `<Screen />` is the same element it already rendered, so it holds.
 
 Reading `busy` in `Shell` itself would rebuild `<Screen />` on the same urgent pass, which is the one arrangement that does not work.
 
