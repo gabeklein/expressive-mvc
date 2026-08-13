@@ -1,4 +1,4 @@
-import { enqueue } from './dispatch';
+import { enqueue, pending as hold } from './dispatch';
 
 declare namespace Observer {
   /**
@@ -258,9 +258,17 @@ function watch<T extends object>(
   let reset: (() => void) | null | undefined;
   let previous: T | undefined;
   let queued = false;
+  let suspense: (() => void) | undefined;
+
+  function resume() {
+    if (suspense) {
+      suspense();
+      suspense = undefined;
+    }
+  }
 
   function invoke() {
-    if (observer(target) === null) return;
+    if (observer(target) === null) return resume();
 
     queued = false;
     let ignore: boolean = true;
@@ -313,11 +321,14 @@ function watch<T extends object>(
     try {
       if (argument !== false) capture(run);
       else run();
+      resume();
     } catch (err) {
       if (err instanceof Promise) {
         reset = undefined;
+        if (!suspense) suspense = hold();
         err.then(invoke);
       } else {
+        resume();
         throw err;
       }
     }
@@ -333,6 +344,7 @@ function watch<T extends object>(
   function cleanup() {
     if (unset) unset(false);
 
+    resume();
     reset = null;
     unlisten();
   }
