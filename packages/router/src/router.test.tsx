@@ -1,8 +1,10 @@
 import { act } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import { browserRouter } from '../test.setup';
+import { browserRouter, location, mockPromise, renderAct } from '../test.setup';
 import { Context } from '@expressive/mvc';
+import { Provider } from '@expressive/react';
+import { Route } from './route';
 import { BrowserRouter, Router } from './router';
 
 describe('Router (headless)', () => {
@@ -224,15 +226,26 @@ describe('BrowserRouter', () => {
     expect(router.current.url).toBe('/foo?from=start');
   });
 
-  it('goto pushes history and updates path', () => {
-    act(() => router.current.goto('/bar'));
+  it('goto pushes history and updates path', async () => {
+    await act(async () => router.current.goto('/bar'));
     expect(router.current.path).toBe('/bar');
     expect(window.location.pathname).toBe('/bar');
   });
 
-  it('goto with replace uses replaceState', () => {
+  it('goto holds the address until the navigation is presented', async () => {
+    router.current.goto('/later');
+
+    expect(router.current.path).toBe('/later');
+    expect(window.location.pathname).toBe('/');
+
+    await act(async () => {});
+
+    expect(window.location.pathname).toBe('/later');
+  });
+
+  it('goto with replace uses replaceState', async () => {
     const before = window.history.length;
-    act(() => router.current.goto('/replaced', true));
+    await act(async () => router.current.goto('/replaced', true));
     expect(router.current.path).toBe('/replaced');
     expect(window.location.pathname).toBe('/replaced');
     expect(window.history.length).toBe(before);
@@ -251,8 +264,8 @@ describe('BrowserRouter', () => {
     expect(router.current.path).toBe('/external');
   });
 
-  it('goto with query updates location and url', () => {
-    act(() => router.current.goto('/results?q=hello'));
+  it('goto with query updates location and url', async () => {
+    await act(async () => router.current.goto('/results?q=hello'));
     expect(window.location.pathname).toBe('/results');
     expect(window.location.search).toBe('?q=hello');
     expect(router.current.path).toBe('/results');
@@ -282,7 +295,7 @@ describe('BrowserRouter', () => {
   });
 
   it('writing a query param pushes to window.history', async () => {
-    act(() => router.current.goto('/page?x=1'));
+    await act(async () => router.current.goto('/page?x=1'));
     router.current.query.set('x', '9');
     await router.current.set();
 
@@ -332,5 +345,170 @@ describe('BrowserRouter', () => {
     } finally {
       (globalThis as any).window = saved;
     }
+  });
+});
+
+describe('transition seam', () => {
+  it('brackets goto, back and forward', () => {
+    const log: string[] = [];
+
+    class Test extends Router {
+      static global = false;
+
+      protected navigate(work: () => void) {
+        log.push('bracket');
+        return super.navigate(work);
+      }
+    }
+
+    const router = Test.new();
+    router.goto('/a');
+    router.goto('/b');
+    router.back();
+    router.forward();
+
+    expect(log).toEqual(['bracket', 'bracket', 'bracket', 'bracket']);
+    expect(router.path).toBe('/b');
+  });
+
+  it('applies navigation only once the bracket runs commit', () => {
+    let staged!: () => void;
+
+    class Test extends Router {
+      static global = false;
+
+      protected navigate(work: () => void) {
+        staged = work;
+        return Promise.resolve();
+      }
+    }
+
+    const router = Test.new();
+    router.goto('/next');
+
+    expect(router.path).toBe('/');
+    expect(router.entries).toEqual(['/']);
+
+    staged();
+
+    expect(router.path).toBe('/next');
+    expect(router.entries).toEqual(['/', '/next']);
+  });
+
+  it('brackets browser navigation, popstate included', () => {
+    window.history.replaceState(null, '', '/');
+    const log: string[] = [];
+
+    class Test extends BrowserRouter {
+      static global = false;
+
+      protected navigate(work: () => void) {
+        log.push('bracket');
+        return super.navigate(work);
+      }
+    }
+
+    const router = Test.new();
+    expect(log.length).toBe(1);
+
+    router.goto('/a');
+    expect(router.path).toBe('/a');
+    expect(log.length).toBe(2);
+
+    act(() => {
+      window.history.pushState(null, '', '/b');
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    });
+    expect(router.path).toBe('/b');
+    expect(log.length).toBe(4);
+
+    router.set(null);
+  });
+});
+
+describe('navigating', () => {
+  it('reports until a navigated page is presented', async () => {
+    location('/');
+
+    const gate = mockPromise<void>();
+    let ready = false;
+    let router!: BrowserRouter;
+    gate.then(() => (ready = true));
+
+    const Slow = () => {
+      if (!ready) throw gate;
+      return <h1>slow</h1>;
+    };
+    const Status = () => <b>{BrowserRouter.get().navigating ? 'busy' : 'idle'}</b>;
+
+    const view = await renderAct(
+      <BrowserRouter is={(i) => (router = i)}>
+        <Status />
+        <Route>
+          <Route to="" as={() => <h1>home</h1>} />
+          <Route to="slow" fallback={<i>fallback</i>} as={Slow} />
+        </Route>
+      </BrowserRouter>
+    );
+
+    expect(view.container.textContent).toBe('idlehome');
+
+    await act(async () => {
+      router.goto('/slow');
+      await Promise.resolve();
+    });
+
+    expect(view.container.textContent).toBe('busyhome');
+
+    await act(async () => {
+      gate.resolve();
+      await gate;
+    });
+
+    expect(view.container.textContent).toBe('idleslow');
+  });
+
+  it('reports for a router which is provided, not rendered', async () => {
+    location('/');
+
+    const gate = mockPromise<void>();
+    let ready = false;
+    gate.then(() => (ready = true));
+
+    const router = BrowserRouter.new();
+
+    const Slow = () => {
+      if (!ready) throw gate;
+      return <h1>slow</h1>;
+    };
+    const Status = () => <b>{BrowserRouter.get().navigating ? 'busy' : 'idle'}</b>;
+
+    const view = await renderAct(
+      <Provider for={router}>
+        <Status />
+        <Route>
+          <Route to="" as={() => <h1>home</h1>} />
+          <Route to="slow" fallback={<i>fallback</i>} as={Slow} />
+        </Route>
+      </Provider>
+    );
+
+    expect(view.container.textContent).toBe('idlehome');
+
+    await act(async () => {
+      router.goto('/slow');
+      await Promise.resolve();
+    });
+
+    expect(view.container.textContent).toBe('busyhome');
+
+    await act(async () => {
+      gate.resolve();
+      await gate;
+    });
+
+    expect(view.container.textContent).toBe('idleslow');
+
+    router.set(null);
   });
 });
