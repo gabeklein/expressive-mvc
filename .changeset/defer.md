@@ -11,7 +11,7 @@ A free function rather than a method, because nothing about it is bound to one s
 
 `defer` covers **mvc-driven updates**, not everything in the block. Each subscriber replays through the scheduler it subscribed with - `@expressive/react` supplies `startTransition`, a plain effect supplies nothing and keeps normal timing. One act may have both, and neither is subjected to the other's semantics. A host is not required at all: with none registered the promise still settles once every subscriber has replayed, which makes it a headless barrier for the whole cascade.
 
-Subscribers which cannot report presentation - unmounted, hidden inside an `Activity` tree, or a host with no scheduler - settle on replay rather than holding.
+Subscribers which cannot report absorption - unmounted, hidden inside an `Activity` tree, or a host with no scheduler - settle on replay rather than holding.
 
 Note that a subscriber carries one update at one priority, so one which reads a pending flag must not rebuild the deferred content on the same pass - read it from a sibling, or from a wrapper taking that content as `children`.
 

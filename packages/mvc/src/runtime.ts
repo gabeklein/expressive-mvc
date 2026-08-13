@@ -139,14 +139,14 @@ export function propsOf(node: unknown): Record<string, unknown> {
   return HOST.propsOf(node);
 }
 
-export { presenting } from './dispatch';
+export { absorbing } from './dispatch';
 
 /**
  * Mark synchronous work as non-urgent. Writes inside run immediately; the
  * subscriber updates they queue inherit the designation and each replays
  * through whatever scheduler it subscribed with.
  *
- * Resolves when those updates have been presented - on replay where a
+ * Resolves when those updates have been absorbed - on replay where a
  * subscriber cannot report it.
  */
 export function defer(work: () => void): Promise<void> {

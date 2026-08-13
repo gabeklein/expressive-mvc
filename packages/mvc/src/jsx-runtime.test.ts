@@ -4,7 +4,7 @@ import { flushMicrotasks } from '../test.setup';
 import { enqueue } from './dispatch';
 import { State } from './state';
 
-import { childrenOf, defer, Fragment, host, isElement, jsx, jsxs, presenting, propsOf, typeOf } from './runtime';
+import { childrenOf, defer, Fragment, host, isElement, jsx, jsxs, absorbing, propsOf, typeOf } from './runtime';
 import { jsxDEV, Fragment as devFragment } from './jsx-dev-runtime';
 import * as compat from './jsx-runtime';
 import type { HostRuntime } from './runtime';
@@ -150,12 +150,12 @@ describe('jsx-runtime module', () => {
     expect(compat.Fragment).toBe(Fragment);
   });
 
-  it('will wait on a subscriber which claims presentation', async () => {
-    let present!: () => void;
+  it('will wait on a subscriber which claims absorption', async () => {
+    let release!: () => void;
     let settled = false;
 
     const handler = () => {
-      present = presenting()!;
+      release = absorbing()!;
     };
 
     defer(() => enqueue(handler)).then(() => (settled = true));
@@ -164,17 +164,17 @@ describe('jsx-runtime module', () => {
 
     expect(settled).toBe(false);
 
-    present();
+    release();
     await flushMicrotasks();
 
     expect(settled).toBe(true);
   });
 
-  it('will not claim presentation outside a deferred replay', async () => {
+  it('will not claim absorption outside a deferred replay', async () => {
     let claimed: unknown = 'unset';
 
     enqueue(() => {
-      claimed = presenting();
+      claimed = absorbing();
     });
 
     await flushMicrotasks();

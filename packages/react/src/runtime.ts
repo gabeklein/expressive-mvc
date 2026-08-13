@@ -1,6 +1,6 @@
 import type { Component } from '@expressive/mvc';
 import { watch } from '@expressive/mvc/observable';
-import { presenting } from '@expressive/mvc/runtime';
+import { absorbing } from '@expressive/mvc/runtime';
 import type { Context } from './context';
 
 interface Settle {
@@ -67,7 +67,7 @@ export function useSettle(tick: number) {
   const settle = ref.current || (ref.current = {
     waiting: [],
     claim() {
-      const held = presenting();
+      const held = absorbing();
 
       if (held) settle.waiting.push(held);
     },
