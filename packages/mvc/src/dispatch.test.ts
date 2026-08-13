@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { flushMicrotasks, mockError } from '../test.setup';
+import { flushMicrotasks, mockError, mockPromise } from '../test.setup';
 import { watch } from './observable';
 import { enqueue, pending } from './dispatch';
 import { State } from './state';
@@ -404,6 +404,126 @@ describe('dispatch', () => {
     await flushMicrotasks();
 
     expect(log).toEqual(['source', 'derived', 'settled']);
+  });
+
+  it('will hold a call while an effect it updated suspends', async () => {
+    class Test extends State {
+      value = 1;
+    }
+
+    const test = Test.new();
+    const gate = mockPromise();
+    const seen: number[] = [];
+    let open = false;
+    let settled = false;
+
+    watch(test, ({ value }) => {
+      if (value === 2 && !open) throw gate;
+      seen.push(value);
+    });
+
+    expect(seen).toEqual([1]);
+
+    pending(() => {
+      test.value = 2;
+    }).then(() => (settled = true));
+
+    await flushMicrotasks();
+
+    expect(seen).toEqual([1]);
+    expect(settled).toBe(false);
+
+    open = true;
+    gate.resolve();
+    await flushMicrotasks();
+
+    expect(seen).toEqual([1, 2]);
+    expect(settled).toBe(true);
+  });
+
+  it('will hold once across repeated suspension', async () => {
+    class Test extends State {
+      value = 1;
+    }
+
+    const test = Test.new();
+    const gates = [mockPromise(), mockPromise()];
+    let settled = false;
+
+    watch(test, ({ value }) => {
+      if (value === 2 && gates.length) throw gates[0];
+    });
+
+    pending(() => {
+      test.value = 2;
+    }).then(() => (settled = true));
+
+    await flushMicrotasks();
+
+    gates.shift()!.resolve();
+    await flushMicrotasks();
+
+    expect(settled).toBe(false);
+
+    gates.shift()!.resolve();
+    await flushMicrotasks();
+
+    expect(settled).toBe(true);
+  });
+
+  it('will release a suspended effect claim if it is destroyed', async () => {
+    class Test extends State {
+      value = 1;
+    }
+
+    const test = Test.new();
+    const gate = mockPromise();
+    let settled = false;
+
+    watch(test, ({ value }) => {
+      if (value === 2) throw gate;
+    });
+
+    pending(() => {
+      test.value = 2;
+    }).then(() => (settled = true));
+
+    await flushMicrotasks();
+
+    expect(settled).toBe(false);
+
+    test.set(null);
+    gate.resolve();
+    await flushMicrotasks();
+
+    expect(settled).toBe(true);
+  });
+
+  it('will release a suspended effect claim if it is cancelled', async () => {
+    class Test extends State {
+      value = 1;
+    }
+
+    const test = Test.new();
+    const gate = mockPromise();
+    let settled = false;
+
+    const done = watch(test, ({ value }) => {
+      if (value === 2) throw gate;
+    });
+
+    pending(() => {
+      test.value = 2;
+    }).then(() => (settled = true));
+
+    await flushMicrotasks();
+
+    expect(settled).toBe(false);
+
+    done();
+    await flushMicrotasks();
+
+    expect(settled).toBe(true);
   });
 
   it('will carry every claim through a replay urgency strips', async () => {
