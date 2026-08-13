@@ -301,6 +301,42 @@ describe('methods', () => {
     expect(foo1).not.toBe(foo2);
   });
 
+  it('will bind to the instance, not a proxy', () => {
+    class Test extends State {
+      value = 0;
+
+      whoami() {
+        return this;
+      }
+    }
+
+    const test = Test.new();
+    let proxy!: Test;
+    let inside!: Test;
+
+    test.get((current) => {
+      proxy = current;
+      inside = current.whoami();
+    });
+
+    expect(proxy).not.toBe(test.is);
+    expect(inside).toBe(test.is);
+  });
+
+  it('will call new() with the instance', () => {
+    let inside!: Test;
+
+    class Test extends State {
+      protected new() {
+        inside = this;
+      }
+    }
+
+    const test = Test.new();
+
+    expect(inside).toBe(test.is);
+  });
+
   it('will allow overwrite', () => {
     class Test extends State {
       foo = 'foo';

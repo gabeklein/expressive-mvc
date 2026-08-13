@@ -27,6 +27,7 @@ class Timer extends State {
 - Runs once after all properties are initialized and child states are set up.
 - Return `void` if no cleanup needed.
 - Return `() => void` for a cleanup function called on destruction.
+- `this` is the instance, not a tracking proxy - closures made here (a listener, an interval) capture it and may use it as a `Map`/`Set` key.
 
 `new()` is a typed optional member of `State` (`protected new?(): void | (() => void)`), not name-based detection - editors autocomplete it, its signature is checked, and TypeScript's `override` keyword catches a misspelled override. The same holds for `catch()` and `mount()` on `Component`. Adapter hooks reached
 only through `State.use()` - `use()` and `mount()` on a plain `State` - are
