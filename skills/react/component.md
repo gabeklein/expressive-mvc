@@ -16,7 +16,7 @@ A Component does not have to define `render()`: without one, it passes children 
 
 Use `State` for headless models/controllers, even if they are only meaningful in context. A `Component` carries React instance properties (`props`, `state`, `context`, `setState`, `forceUpdate`), so using it where `State` would suffice makes `.get()` noisier.
 
-Prefer an FC when state is reducible or zero and neither boundary nor suspense is wanted. A class whose only members are `pairing = get(Pairing)` and `render()` is a pass-through - an FC snapshotting `Pairing.get()` is the same subscription without an instance. Component earns the class when the instance owns fields, a pool, lifecycle, or its boundary. Inverse for a leaf widget still on `useState`/`useEffect` whose inputs are its identity: `<CodeBlock code={…} lang={…} />` writes class fields; reactions to them live in `mount()` or `set` callbacks.
+Prefer an FC when state is reducible or zero and neither boundary nor suspense is wanted. A class whose only members are `inbox = get(Inbox)` and `render()` is a pass-through - an FC snapshotting `Inbox.get()` is the same subscription without an instance. Component earns the class when the instance owns fields, a pool, lifecycle, or its boundary. Inverse for a leaf widget still on `useState`/`useEffect` whose inputs are its identity: `<Thumbnail src={…} size={…} />` writes class fields; reactions to them live in `mount()` or `set` callbacks.
 
 For one-shot feature builds and hook refactors, avoid creating `FooState` plus `FooView` by reflex. A route shell, local router, tab panel, menu, editor surface, media player, or custom form control is often clearer as `class Foo extends Component` because the state is intrinsic to the rendered unit.
 
@@ -77,22 +77,22 @@ render() {
 }
 ```
 
-An injected parent (`agent = get(Agent)`) is part of that snapshot - reach it and its nested values thru `this`:
+An injected parent (`inbox = get(Inbox)`) is part of that snapshot - reach it and its nested values thru `this`:
 
 ```tsx
 render() {
   const {
-    visible,
-    info: { id, title },
-    agent: {
-      connecting,
+    selected,
+    info: { sender, subject },
+    inbox: {
+      searching,
     },
   } = this;
   ...
 }
 ```
 
-Calling `Agent.get()` inside `render()` when the class already holds the field opens a second hook subscription to the same instance. Static `Type.get()` belongs in freestanding FCs, which have no `this`.
+Calling `Inbox.get()` inside `render()` when the class already holds the field opens a second hook subscription to the same instance. Static `Type.get()` belongs in freestanding FCs, which have no `this`.
 
 ## Inheritance and Custom Primitives
 

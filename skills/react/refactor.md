@@ -68,7 +68,7 @@ export class ReviewStep extends Component {
 
 **Anti-pattern - the reflexive split.** Creating `ReviewState` plus a `ReviewView` FC because the old code had hooks. If the fields exist only to support one rendered surface, they belong on the `Component` that renders it.
 
-**Anti-pattern - the pass-through Component.** A class whose only members are `foo = get(Foo)` and `render()` is an FC wearing an instance - snapshot `Foo.get()` instead. Component earns the class when the instance owns fields, a pool, lifecycle, or its boundary/suspense is wanted. Same triage for shells: a singleton feature with no state of its own is an FC mounting its children (`<History /> <Tabs />`); owned instance fields (`history = new History()`) are for headless regions, pools, and swappable members. Inversely, a leaf widget still on `useState`/`useEffect` whose inputs are its identity is a Component - `<CodeBlock code lang />` writes the fields, `mount()` reacts to them.
+**Anti-pattern - the pass-through Component.** A class whose only members are `foo = get(Foo)` and `render()` is an FC wearing an instance - snapshot `Foo.get()` instead. Component earns the class when the instance owns fields, a pool, lifecycle, or its boundary/suspense is wanted. Same triage for shells: a singleton feature with no state of its own is an FC mounting its children (`<Sidebar /> <MessageList />`); owned instance fields (`sidebar = new Sidebar()`) are for headless regions, pools, and swappable members. Inversely, a leaf widget still on `useState`/`useEffect` whose inputs are its identity is a Component - `<Thumbnail src size />` writes the fields, `mount()` reacts to them.
 
 **Anti-pattern - subcomponent overuse.** The sections composed in `render()` above are freestanding FCs, not PascalCase methods on the class. Subcomponents (`<this.Header />`) are extension points - machinery for subclasses to replace or wrap. The test: **would a subclass reasonably replace or wrap this renderer?** For ordinary implementation scopes the answer is no, and a freestanding FC calling `ReviewStep.get()` is clearer. See [component.md](component.md).
 
@@ -324,7 +324,7 @@ function ReviewActions() {
 
 Pure presentation components (a `Metric`, a `StatusCallout`) may still take plain props - context replaces drilled *state*, not every value.
 
-`.get()` the nearest real parent. When Composer owns the bar, its controls call `Composer.get()` - reaching over it to `Pairing.get()` and back down is drilling with extra steps. Facts repeated across those children (`status === 'connecting'`) become getters on the parent (`get connecting()`); nested config they keep unpacking is forwarded once (`get config() { return this.pairing.composer; }`), named for the local scope - on Composer, `config`, not `composer`. Only the parent itself holds `get(Pairing)`.
+`.get()` the nearest real parent. When Composer owns the form, its controls call `Composer.get()` - reaching over it to `ComposePage.get()` and back down is drilling with extra steps. Facts repeated across those children (`status === 'sending'`) become getters on the parent (`get sending()`); nested config they keep unpacking is forwarded once (`get config() { return this.page.sendOptions; }`), named for the local scope - on Composer, `config`, not `sendOptions`. Only the parent itself holds `get(ComposePage)`.
 
 ## 10. Destructure an exact dependency snapshot
 
@@ -368,7 +368,7 @@ Three reasons this is the norm:
 2. Trapped getters are traversed once instead of re-walked per expression.
 3. Reads create subscriptions - a deep read inside a branch subscribes only on renders where the branch runs (a **conditional subscription**), and reads inside event handlers never subscribe at all. The snapshot makes the surface deterministic.
 
-The same applies to `this` inside `Component.render()` and subcomponents: destructure what the section reads at the top - the rendering shares its subscription plumbing with the hooks. Injected parents (`agent = get(Agent)`) are part of that snapshot - `Agent.get()` in a render whose class already holds the field is a second subscription to the same instance. Static `.get()` is for freestanding FCs.
+The same applies to `this` inside `Component.render()` and subcomponents: destructure what the section reads at the top - the rendering shares its subscription plumbing with the hooks. Injected parents (`inbox = get(Inbox)`) are part of that snapshot - `Inbox.get()` in a render whose class already holds the field is a second subscription to the same instance. Static `.get()` is for freestanding FCs.
 
 ## 11. Write through the proxy; use `is` sparingly
 
@@ -425,7 +425,7 @@ function SettingsEditor() {
 
 Declare gateable fields optional (`draft?: SettingsLocation`), not `| null` - `get(true)` rejects only `undefined`, and `Required<T>` does not strip `null` from unions.
 
-The inverse shape: a self-contained widget the parent always mounts owns its own gate. The parent writes `<PermissionBar />` unconditionally; the bar reads `Pairing.get()` and falls thru when `permission` is unset ([style.md](style.md) render fallthrough). Reach for it when the gated content is a whole widget whose absence is its own policy - `cond && <Foo />` in a parent render is a moderate signal Foo should own the gate. Parent gate plus `get(true)` stays right when the parent already reads the field or composition genuinely varies.
+The inverse shape: a self-contained widget the parent always mounts owns its own gate. The parent writes `<UndoBar />` unconditionally; the bar reads `Outbox.get()` and falls thru when `pendingSend` is unset ([style.md](style.md) render fallthrough). Reach for it when the gated content is a whole widget whose absence is its own policy - `cond && <Foo />` in a parent render is a moderate signal Foo should own the gate. Parent gate plus `get(true)` stays right when the parent already reads the field or composition genuinely varies.
 
 ## 13. Extract, then consolidate
 
@@ -455,11 +455,11 @@ When an early return would skip most of a declared snapshot, that is a signal th
 
 A `render()` past ~50 lines usually means the Component stopped composing. Conditionals and ternaries are the cut points: `cond && <Widget />` becomes a local FC that `.get()`s the parent and owns the gate; `a ? <Foo /> : <Bar />` picks its branch inside. Look for a gated chunk, independent siblings sharing no snapshot, or a replaceable slice (that one a subcomponent). Not a hard fail - a dense one-concern tree stays; a hop just to get under 50 is worse than reading the paint in place.
 
-A split needs a name meaningful without the parent (`GlyphPicker`, `PermissionBar`). When the only honest name is the parent plus "Body"/"Label" *and* the call site is children, it is not a concern. Two shapes stay valid even small: a child passed as a named slot prop (`label={<CommitLabel />}`, `detail`, `icon`) - the hop keeps the parent composing instead of painting; and an early-return body whose branches *are* its job.
+A split needs a name meaningful without the parent (`UndoBar`, `AttachmentTray`). When the only honest name is the parent plus "Body"/"Label" *and* the call site is children, it is not a concern. Two shapes stay valid even small: a child passed as a named slot prop (`label={<SenderBadge />}`, `detail`, `icon`) - the hop keeps the parent composing instead of painting; and an early-return body whose branches *are* its job.
 
-A slot FC reads its own context: `StatusTally` calls `FullDiff.get()` for `files` rather than taking a prop the parent unpacked from `this`, so the parent writes `detail={<StatusTally />}` without snapshotting for it. Same when section chrome only wraps one Component - `open`/`onToggle` read from the parent by `.get()`, not drilled back thru a generic wrapper. A shared wrapper stays shared where labels and actions actually vary.
+A slot FC reads its own context: `UnreadCount` calls `Folder.get()` for `unread` rather than taking a prop the parent unpacked from `this`, so the parent writes `detail={<UnreadCount />}` without snapshotting for it. Same when section chrome only wraps one Component - `open`/`onToggle` read from the parent by `.get()`, not drilled back thru a generic wrapper. A shared wrapper stays shared where labels and actions actually vary.
 
-Independent siblings that never interact (model select, send, permissions on one bar) split into local FCs in the same module, each snapshotting what it needs; a layout-only row with no state inlines into `render()`.
+Independent siblings that never interact (recipient field, attachment picker, send button on one bar) split into local FCs in the same module, each snapshotting what it needs; a layout-only row with no state inlines into `render()`.
 
 The line/depth threshold is a signal, never grounds for a finding by itself. To fail a branch, name the concrete cost: a conditional subscription, multiple independent decisions in one branch, mixed ownership, a duplicated dependency snapshot, or navigation that a well-named scope would materially improve. "A separate component would be slightly nicer" is optional polish, not a defect.
 
@@ -487,7 +487,7 @@ The checklist:
 - Are any reactive deep reads hidden in conditional branches or handlers? *(invariant)*
 - Does a Component holding `foo = get(Foo)` read it thru `this` - never a second `Foo.get()` in `render()`? *(invariant)*
 - Is `is` used only where the root object must be retained alongside sibling destructuring? *(invariant)*
-- Can an optional child be gated by its parent and use `.get(true)`? *(invariant)*
+- Can an optional child be gated by its parent and use `.get(true)` - or, as a self-contained widget, own its gate and fall thru? *(invariant)*
 - Are Component subcomponents genuine extension points? *(invariant)*
 - Does every getter on shared state earn its place - multiple consumers, domain meaning, expensive computation, deliberate API, or introspection value? *(default - judge meaning, not reference counts)*
 - Are large JSX branches and ~50-line renders split at conditionals into honestly-named scopes, without fragmenting trivial shared logic? *(heuristic - name the cost)*

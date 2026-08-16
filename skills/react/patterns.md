@@ -250,7 +250,7 @@ function Footer() {
 
 The page remains orchestrator - route identity, session, request dispatch, page-level errors. Split when the second cluster appears, not as late cleanup.
 
-Children of a region `.get()` the region, never the page above it and back down. Facts they repeat become getters on the region; nested config they keep unpacking is forwarded once (`get config() { return this.page.composer; }`), named for the local scope.
+Children of a region `.get()` the region, never the page above it and back down. Facts they repeat become getters on the region; nested config they keep unpacking is forwarded once (`get config() { return this.page.sendOptions; }`), named for the local scope.
 
 ## Bridging an Existing Router
 
@@ -401,7 +401,7 @@ function SettingsEditor() {
 }
 ```
 
-Inverse for a self-contained widget: the parent mounts `<PermissionBar />` unconditionally; the bar reads `Pairing.get()` and falls thru when `permission` is unset. `cond && <Foo />` in a parent render is a moderate signal Foo should own the gate.
+Inverse for a self-contained widget: the parent mounts `<UndoBar />` unconditionally; the bar reads `Outbox.get()` and falls thru when `pendingSend` is unset. `cond && <Foo />` in a parent render is a moderate signal Foo should own the gate.
 
 ## Computed Values
 
