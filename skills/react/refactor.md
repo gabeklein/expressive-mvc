@@ -153,6 +153,8 @@ const { canSend, send } = ComposePage.get();
 
 An owned region needs no cross-controller synchronization - the parent holds the instance and reads it directly. Split when the second cluster appears, not as late cleanup.
 
+A feature region is unpluggable: it owns its pool, display state, and chrome, and deleting its import removes the feature whole - don't leave the pool or query on the page because the page syncs it. Sibling features read each other thru optional context (`get(Other, false)`); siblings do not see each other's context, so the consumer mounts beneath the provider in JSX.
+
 ## 6. Provide classes directly
 
 ```tsx

@@ -222,7 +222,7 @@ The owner coordinates readiness only. A method re-finding a chip by id to feed i
 
 ## Region Controllers
 
-When a page State accumulates unrelated clusters - draft fields plus lookups plus request state plus navigation - split each into its own State owned as a field. Ownership provides implicitly; views bind the region directly:
+When a page State accumulates unrelated clusters - draft fields plus lookups plus request state plus navigation - split each into its own State owned as a field. A feature region is unpluggable - pool, display state, and chrome travel with its import. Ownership provides implicitly; views bind the region directly:
 
 ```tsx
 class ComposePage extends Component {
