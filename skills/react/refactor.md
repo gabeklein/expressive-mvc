@@ -420,6 +420,8 @@ function SettingsEditor() {
 
 Declare gateable fields optional (`draft?: SettingsLocation`), not `| null` - `get(true)` rejects only `undefined`, and `Required<T>` does not strip `null` from unions.
 
+The inverse shape: a self-contained widget the parent always mounts owns its own gate. The parent writes `<PermissionBar />` unconditionally; the bar reads `Pairing.get()` and falls thru when `permission` is unset ([style.md](style.md) render fallthrough). Reach for it when the gated content is a whole widget whose absence is its own policy - `cond && <Foo />` in a parent render is a moderate signal Foo should own the gate. Parent gate plus `get(true)` stays right when the parent already reads the field or composition genuinely varies.
+
 ## 13. Extract, then consolidate
 
 A conditional JSX branch above roughly ten lines or five component levels is a signal to give it its own named scope - a heuristic, not a mandate. Then apply the inverse: **recombine scopes that share the same dependencies, read locally, and contain no nested decision logic.** Splitting every fragment creates navigation overhead without clarifying ownership.

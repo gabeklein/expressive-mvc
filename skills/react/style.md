@@ -50,7 +50,7 @@ function ResolvedFeeClassifications() {
 }
 ```
 
-Do not annotate these components as returning `void` - allow inference.
+Do not annotate these components as returning `void` - allow inference. Fallthrough is also how an always-mounted widget owns its own gate - step 12 of [refactor.md](refactor.md).
 
 Operational guards are different: a method controlling a workflow uses explicit `return`, because it guards behavior rather than producing a render result:
 

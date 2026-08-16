@@ -399,6 +399,8 @@ function SettingsEditor() {
 }
 ```
 
+Inverse for a self-contained widget: the parent mounts `<PermissionBar />` unconditionally; the bar reads `Pairing.get()` and falls thru when `permission` is unset. `cond && <Foo />` in a parent render is a moderate signal Foo should own the gate.
+
 ## Computed Values
 
 ```tsx
