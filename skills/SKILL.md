@@ -42,6 +42,7 @@ Counter-rules:
 
 - Do not create `FooState` plus `FooView` just because hooks were present. If the behavior and rendering are one unit, `class Foo extends Component` is the refactor.
 - Avoid `Component` where a provided `State` suffices - Components carry React instance surface (`props`, `state`, `setState`, `forceUpdate`) that makes `.get()` IntelliSense noisier.
+- Prefer an FC over `Component` when state is zero or reducible and no boundary is wanted - a class holding only `get(...)` fields plus `render()` is an FC snapshotting `.get()`.
 - A render-less `Component` (children pass through while providing context and boundary placement) is only for cases where React tree placement is the feature: route controllers, progressive boundaries.
 - A provided State implicitly provides its child States - prefer `theme = new Theme()` on an existing owner over stacking Providers for every small controller.
 

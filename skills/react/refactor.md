@@ -68,6 +68,8 @@ export class ReviewStep extends Component {
 
 **Anti-pattern - the reflexive split.** Creating `ReviewState` plus a `ReviewView` FC because the old code had hooks. If the fields exist only to support one rendered surface, they belong on the `Component` that renders it.
 
+**Anti-pattern - the pass-through Component.** A class whose only members are `foo = get(Foo)` and `render()` is an FC wearing an instance - snapshot `Foo.get()` instead. Component earns the class when the instance owns fields, a pool, lifecycle, or its boundary/suspense is wanted. Same triage for shells: a singleton feature with no state of its own is an FC mounting its children (`<History /> <Tabs />`); owned instance fields (`history = new History()`) are for headless regions, pools, and swappable members. Inversely, a leaf widget still on `useState`/`useEffect` whose inputs are its identity is a Component - `<CodeBlock code lang />` writes the fields, `mount()` reacts to them.
+
 **Anti-pattern - subcomponent overuse.** The sections composed in `render()` above are freestanding FCs, not PascalCase methods on the class. Subcomponents (`<this.Header />`) are extension points - machinery for subclasses to replace or wrap. The test: **would a subclass reasonably replace or wrap this renderer?** For ordinary implementation scopes the answer is no, and a freestanding FC calling `ReviewStep.get()` is clearer. See [component.md](component.md).
 
 ## 4. Give repeated UI entries their own class
@@ -462,6 +464,7 @@ The checklist:
 - Are opaque handles (unsubscribe fns, timers, snapshots) unmanaged rather than reactive fields? *(invariant)*
 - Does every subscription consume what it declares - no `void x` reads to force tracking in a render? *(invariant)*
 - Is a page State with unrelated clusters split into owned region States? *(default)*
+- Does every Component earn its instance (owned fields, pool, lifecycle, boundary) - pass-throughs demoted to FCs, stateless shells mounted not held? *(default)*
 - Is working identity (session, selection) a separate field from URL params, soft-synced by a reaction? *(default)*
 - Does every method do more than assign one field? *(invariant)*
 - Are contextual values still being drilled through props? *(invariant)*
