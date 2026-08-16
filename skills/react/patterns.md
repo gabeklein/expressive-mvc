@@ -250,6 +250,8 @@ function Footer() {
 
 The page remains orchestrator - route identity, session, request dispatch, page-level errors. Split when the second cluster appears, not as late cleanup.
 
+Children of a region `.get()` the region, never the page above it and back down. Facts they repeat become getters on the region; nested config they keep unpacking is forwarded once (`get config() { return this.page.composer; }`), named for the local scope.
+
 ## Bridging an Existing Router
 
 Bridge, don't replace: a conversion keeps the app's router; adopting `@expressive/router` needs explicit go-ahead. An outer FC reads router hooks and passes props; alternatively the class encapsulates hooks itself with `use()` (see [react.md](react.md)):

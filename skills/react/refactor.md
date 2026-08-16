@@ -321,6 +321,8 @@ function ReviewActions() {
 
 Pure presentation components (a `Metric`, a `StatusCallout`) may still take plain props - context replaces drilled *state*, not every value.
 
+`.get()` the nearest real parent. When Composer owns the bar, its controls call `Composer.get()` - reaching over it to `Pairing.get()` and back down is drilling with extra steps. Facts repeated across those children (`status === 'connecting'`) become getters on the parent (`get connecting()`); nested config they keep unpacking is forwarded once (`get config() { return this.pairing.composer; }`), named for the local scope - on Composer, `config`, not `composer`. Only the parent itself holds `get(Pairing)`.
+
 ## 10. Destructure an exact dependency snapshot
 
 Every `.get()` / `.use()` opens the component with the exact reactive values it renders, nested levels included, optional objects defaulted in place. These are React hooks: top of component or `render()`, unconditionally - in a branch, handler, or loop they build green and crash at runtime.
