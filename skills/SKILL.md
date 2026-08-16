@@ -193,7 +193,7 @@ This is the norm, not a preference:
 2. Each trapped getter is traversed once, instead of re-walking `order.customer.address.city` in every expression.
 3. Reads create subscriptions. A deep read buried in a conditional branch subscribes only on renders where that branch runs - a **conditional subscription**. Hoisting reads into the snapshot makes the dependency surface deterministic.
 
-Optional nested objects take in-place defaults (`= {}`) rather than a separate unwrap step. The same rule applies to `this` inside `Component.render()` and subcomponents.
+Optional nested objects take in-place defaults (`= {}`) rather than a separate unwrap step. The same rule applies to `this` inside `Component.render()` and subcomponents - injected parents (`agent = get(Agent)`) are read thru that snapshot, never a second `Agent.get()`.
 
 ## Transparent Writes
 

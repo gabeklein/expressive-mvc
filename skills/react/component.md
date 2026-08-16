@@ -75,6 +75,23 @@ render() {
 }
 ```
 
+An injected parent (`agent = get(Agent)`) is part of that snapshot - reach it and its nested values thru `this`:
+
+```tsx
+render() {
+  const {
+    visible,
+    info: { id, title },
+    agent: {
+      connecting,
+    },
+  } = this;
+  ...
+}
+```
+
+Calling `Agent.get()` inside `render()` when the class already holds the field opens a second hook subscription to the same instance. Static `Type.get()` belongs in freestanding FCs, which have no `this`.
+
 ## Inheritance and Custom Primitives
 
 The primary power of Component: build reusable base classes, extend to specialize.

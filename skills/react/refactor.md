@@ -361,7 +361,7 @@ Three reasons this is the norm:
 2. Trapped getters are traversed once instead of re-walked per expression.
 3. Reads create subscriptions - a deep read inside a branch subscribes only on renders where the branch runs (a **conditional subscription**), and reads inside event handlers never subscribe at all. The snapshot makes the surface deterministic.
 
-The same applies to `this` inside `Component.render()` and subcomponents: destructure what the section reads at the top - the rendering shares its subscription plumbing with the hooks.
+The same applies to `this` inside `Component.render()` and subcomponents: destructure what the section reads at the top - the rendering shares its subscription plumbing with the hooks. Injected parents (`agent = get(Agent)`) are part of that snapshot - `Agent.get()` in a render whose class already holds the field is a second subscription to the same instance. Static `.get()` is for freestanding FCs.
 
 ## 11. Write through the proxy; use `is` sparingly
 
@@ -467,6 +467,7 @@ The checklist:
 - Are contextual values still being drilled through props? *(invariant)*
 - Does every `.get()` / `.use()` show the exact nested dependency surface? *(invariant)*
 - Are any reactive deep reads hidden in conditional branches or handlers? *(invariant)*
+- Does a Component holding `foo = get(Foo)` read it thru `this` - never a second `Foo.get()` in `render()`? *(invariant)*
 - Is `is` used only where the root object must be retained alongside sibling destructuring? *(invariant)*
 - Can an optional child be gated by its parent and use `.get(true)`? *(invariant)*
 - Are Component subcomponents genuine extension points? *(invariant)*
