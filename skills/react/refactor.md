@@ -448,6 +448,14 @@ function Exceptions() {
 
 When an early return would skip most of a declared snapshot, that is a signal the gated content wants its own component.
 
+A `render()` past ~50 lines usually means the Component stopped composing. Conditionals and ternaries are the cut points: `cond && <Widget />` becomes a local FC that `.get()`s the parent and owns the gate; `a ? <Foo /> : <Bar />` picks its branch inside. Look for a gated chunk, independent siblings sharing no snapshot, or a replaceable slice (that one a subcomponent). Not a hard fail - a dense one-concern tree stays; a hop just to get under 50 is worse than reading the paint in place.
+
+A split needs a name meaningful without the parent (`GlyphPicker`, `PermissionBar`). When the only honest name is the parent plus "Body"/"Label" *and* the call site is children, it is not a concern. Two shapes stay valid even small: a child passed as a named slot prop (`label={<CommitLabel />}`, `detail`, `icon`) - the hop keeps the parent composing instead of painting; and an early-return body whose branches *are* its job.
+
+A slot FC reads its own context: `StatusTally` calls `FullDiff.get()` for `files` rather than taking a prop the parent unpacked from `this`, so the parent writes `detail={<StatusTally />}` without snapshotting for it. Same when section chrome only wraps one Component - `open`/`onToggle` read from the parent by `.get()`, not drilled back thru a generic wrapper. A shared wrapper stays shared where labels and actions actually vary.
+
+Independent siblings that never interact (model select, send, permissions on one bar) split into local FCs in the same module, each snapshotting what it needs; a layout-only row with no state inlines into `render()`.
+
 The line/depth threshold is a signal, never grounds for a finding by itself. To fail a branch, name the concrete cost: a conditional subscription, multiple independent decisions in one branch, mixed ownership, a duplicated dependency snapshot, or navigation that a well-named scope would materially improve. "A separate component would be slightly nicer" is optional polish, not a defect.
 
 ## 14. Audit with this checklist
@@ -477,7 +485,7 @@ The checklist:
 - Can an optional child be gated by its parent and use `.get(true)`? *(invariant)*
 - Are Component subcomponents genuine extension points? *(invariant)*
 - Does every getter on shared state earn its place - multiple consumers, domain meaning, expensive computation, deliberate API, or introspection value? *(default - judge meaning, not reference counts)*
-- Are large JSX branches named without fragmenting trivial shared logic? *(heuristic - name the cost)*
+- Are large JSX branches and ~50-line renders split at conditionals into honestly-named scopes, without fragmenting trivial shared logic? *(heuristic - name the cost)*
 - Are nested destructures placed after direct properties, with `is` first when retained? *(style)*
 
 Auditing notes:

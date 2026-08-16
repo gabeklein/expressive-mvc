@@ -62,7 +62,7 @@ Counter-rules:
 10. At every `.get()` / `.use()`, destructure for exact nested dependency snapshot.
 11. May assign thru subscribed proxies; `is` only to retain the root object alongside sibling destructuring.
 12. Gate optional children at call site; inside, assert requirements with `.get(true)`.
-13. Extract long conditional JSX to named scopes, then consolidate scopes that share dependencies and hold no nested logic.
+13. Split `render()` and long JSX at conditionals and non-interacting siblings into honestly-named local FCs; consolidate scopes that share dependencies and hold no nested logic.
 14. Audit the result against the checklist in [react/refactor.md](react/refactor.md).
 
 For large apps, scope a one-shot conversion to route/page controllers and their domain pools; leave mature leaf widgets on hooks until parent domains stabilize.
