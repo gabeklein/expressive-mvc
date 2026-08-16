@@ -190,6 +190,7 @@ Mapping for what remains after ownership is settled:
 - Chains of `useEffect`s reacting to each other -> tracked reactions (`this.get($ => ...)`) registered in `new()`/`mount()`; updates batch, one re-run per flush however many trigger fields changed.
 - `useCallback` handlers -> auto-bound class methods - pass directly to timers and listeners: `setInterval(this.tick, 1000)`, not `() => this.tick()`.
 - `useRef` handles - unsubscribe functions, snapshots, timer ids -> unmanaged fields ([state.md](../state/state.md#unmanaged-instance-data)) - never reactive, never `#private`.
+- Repeated `postMessage`-style calls over a typed union -> one `signal(type, payload)` helper. The union is the API - no per-message facade methods.
 - Route params -> props on the page owner. Working identity (session, selection) is a separate field a reaction soft-syncs - never the URL param itself. Fusion announces itself as stale-prop workarounds: fresh ids threaded thru arguments to outrun the route, shadow fields remembering the last route seen. Router recipe in [patterns.md](patterns.md).
 
 The route-identity split, concretely:
