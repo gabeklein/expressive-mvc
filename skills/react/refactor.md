@@ -225,7 +225,7 @@ Mapping for what remains after ownership is settled:
 - Chains of `useEffect`s reacting to each other -> tracked reactions (`this.get($ => ...)`) registered in `new()`/`mount()`; updates batch, one re-run per flush however many trigger fields changed.
 - `useCallback` handlers -> auto-bound class methods - pass directly to timers and listeners: `setInterval(this.tick, 1000)`, not `() => this.tick()`.
 - `useRef` handles - unsubscribe functions, snapshots, timer ids -> unmanaged fields ([state.md](../state/state.md#unmanaged-instance-data)) - never reactive, never `#private`.
-- Repeated `postMessage`-style calls over a typed union -> one `signal(type, payload)` helper - type is the first parameter (`signal('setLabel', { id })`; no-payload types take only the type), not a single message object. The union is the API - no per-message facade methods.
+- Repeated `postMessage`-style calls over a typed union -> one signal helper (`signal('setLabel', { id })`). The union is the API - no per-message facade methods.
 - Inbound host snapshots -> `this.set(values)` - unknown keys are ignored, missing keys stay; no `apply()`/`pick` facade ([set.md](../state/set.md)).
 - Route params -> props on the page owner. Working identity (session, selection) is a separate field a reaction soft-syncs - never the URL param itself. Fusion announces itself as stale-prop workarounds: fresh ids threaded thru arguments to outrun the route, shadow fields remembering the last route seen. Router recipe in [patterns.md](patterns.md).
 
@@ -422,19 +422,21 @@ const { is: review, confirmed } = ReviewStep.get(); // root object + sibling val
 
 **Anti-pattern:** aliasing `is` whenever anything will be written. Writes do not need the raw instance - unwrapping nested objects through `is` is noise.
 
-## 12. Put presence gates at the call site
+## 12. Widgets own their gates
 
-When content requires values that may not exist yet, the parent owns the render gate and the child asserts its invariant with `.get(true)`:
+Default: a self-contained widget mounts unconditionally and gates itself - the parent writes `<UndoBar />`; the bar reads `Outbox.get()` and falls thru when `pendingSend` is unset ([style.md](style.md) render fallthrough). A parent read existing only to gate belongs in the widget.
+
+Parent gate plus child `get(true)` is the secondary shape - right when the parent reads the field for its own content, or composition genuinely varies. Either way presence is a contract; what fails audit is the half-measure - `get()` plus an internal null-guard mid-snapshot:
 
 ```tsx
-// Wrong: child destructures a maybe-value and bails internally
+// Wrong: no contract either way
 function SettingsEditor() {
   const { draft, saving } = SettingsState.get();
   if (!draft) return null;
   ...
 }
 
-// Right: parent gates, child asserts
+// Right (parent reads draft for its own content): parent gates, child asserts
 function SettingsContent() {
   const { draft } = SettingsState.get();
 
@@ -460,8 +462,6 @@ function SettingsEditor() {
 ```
 
 Declare gateable fields optional (`draft?: SettingsLocation`), not `| null` - `get(true)` rejects only `undefined`, and `Required<T>` does not strip `null` from unions.
-
-The inverse shape: a self-contained widget the parent always mounts owns its own gate. The parent writes `<UndoBar />` unconditionally; the bar reads `Outbox.get()` and falls thru when `pendingSend` is unset ([style.md](style.md) render fallthrough). Reach for it when the gated content is a whole widget whose absence is its own policy - `cond && <Foo />` in a parent render is a moderate signal Foo should own the gate. Parent gate plus `get(true)` stays right when the parent reads the field for its own content or composition genuinely varies - a read that exists only to gate is the widget's, not the parent's.
 
 ## 13. Extract, then consolidate
 
@@ -489,7 +489,7 @@ function Exceptions() {
 
 When an early return would skip most of a declared snapshot, that is a signal the gated content wants its own component.
 
-A `render()` past ~50 lines usually means the Component stopped composing. Conditionals and ternaries are the cut points when the branch is a widget - ~20+ lines behind a condition, or multiple moving parts; something you'd delete or move as a unit. Then `cond && <Widget />` becomes a local FC that `.get()`s the parent and owns the gate; `a ? <Foo /> : <Bar />` picks its branch inside. A one-op stays in the parent: a single gated button or formatted scalar is those lines in `render()`, not a component - the extra name means deleting or moving the feature touches two places. Look for a gated chunk, independent siblings sharing no snapshot, or a replaceable slice (that one a subcomponent). Not a hard fail - a dense one-concern tree stays; a hop just to get under 50 is worse than reading the paint in place.
+A `render()` past ~50 lines usually means the Component stopped composing. Conditionals and ternaries are the cut points when the branch is a widget - something you'd delete or move as a unit, with its own moving parts. Then `cond && <Widget />` becomes a local FC that `.get()`s the parent and owns the gate; `a ? <Foo /> : <Bar />` picks its branch inside. A one-op stays in the parent: a single gated button or formatted scalar is those lines in `render()`, not a component - the extra name means deleting or moving the feature touches two places. Look for a gated chunk, independent siblings sharing no snapshot, or a replaceable slice (that one a subcomponent). Not a hard fail - a dense one-concern tree stays; a hop just to get under 50 is worse than reading the paint in place.
 
 A split needs a name meaningful without the parent (`UndoBar`, `AttachmentTray`). When the only honest name is the parent plus "Body"/"Label" *and* the call site is children, it is not a concern. Two shapes stay valid even small: a child passed as a named slot prop (`label={<SenderBadge />}`, `detail`, `icon`) - the hop keeps the parent composing instead of painting; and an early-return body whose branches *are* its job. A slot earns an FC only when it paints - `detail={String(unread || '')}` is a formatted scalar and stays inline.
 
@@ -515,11 +515,10 @@ The checklist:
 - Is every `has((x) => new Foo({...}))` factory doing work `has(Foo)` wouldn't - transform, rename, multi-argument? *(default)*
 - Are opaque handles (unsubscribe fns, timers, snapshots) unmanaged rather than reactive fields? *(invariant)*
 - Does every subscription consume what it declares - no `void x` reads to force tracking in a render? *(invariant)*
-- Is a page State with unrelated clusters split into owned region States - does each rendered feature (pane, strip, panel) unplug by deleting one import? *(default)*
-- Does each class name one concern, or is it a declared barrel (page orchestrator, pool owner, mounting shell)? A composer still holding `height`/`resizing`/`beginDrag` fails. *(default)*
+- Does each class name one concern or a declared barrel (page orchestrator, pool owner, mounting shell) - unrelated clusters split into region States, each rendered feature unplugging by one import? *(default)*
 - Does every Component earn its instance (owned fields, pool, boundary - not a ref plus a DOM-sync reaction) - pass-throughs demoted to FCs, stateless shells mounted not held? *(default)*
 - Is the app/route entrypoint a Component owning replica and regions as fields - `main` only mounting it, no bootstrap `Provider`? *(default)*
-- Is every `new Component()` on a parent a pool member or hot-swap - painting features mounted as JSX, regions held as State fields? *(default)*
+- Is every `new Component()` on a parent a pool member or hot-swap - painting features mounted as JSX, regions held as State fields? *(invariant)*
 - Does every Component without chrome omit `render()` - no `return this.props.children`? *(default)*
 - Is working identity (session, selection) a separate field from URL params, soft-synced by a reaction? *(default)*
 - Does every method do more than assign one field? *(invariant)*
@@ -528,7 +527,7 @@ The checklist:
 - Are any reactive deep reads hidden in conditional branches or handlers? *(invariant)*
 - Does a Component holding `foo = get(Foo)` read it thru `this` - never a second `Foo.get()` in `render()`? *(invariant)*
 - Is `is` used only where the root object must be retained alongside sibling destructuring? *(invariant)*
-- Can an optional child be gated by its parent and use `.get(true)` - or, as a self-contained widget, own its gate and fall thru? *(invariant)*
+- Is presence a contract - widget owns its gate and falls thru by default; parent gate + `.get(true)` where the parent reads the field for its own content; never `get()` plus an internal null-guard? *(invariant)*
 - Are Component subcomponents genuine extension points? *(invariant)*
 - Does every getter on shared state earn its place - multiple consumers, domain meaning, expensive computation, deliberate API, or introspection value? *(default - judge meaning, not reference counts)*
 - Are large JSX branches and ~50-line renders split at conditionals into honestly-named scopes - units that delete or move as one place, never one-op conditionals or formatted scalars? *(heuristic - name the cost)*

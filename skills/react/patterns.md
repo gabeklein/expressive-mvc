@@ -224,7 +224,7 @@ The owner coordinates readiness only. A method re-finding a chip by id to feed i
 
 ## Region Controllers
 
-When a page State accumulates unrelated clusters - draft fields plus lookups plus request state plus navigation - split each into its own State owned as a field. A feature region is unpluggable - pool, display state, and chrome travel with its import; test each pane, strip, or panel: delete its import and the feature leaves whole. The rule applies while building, not only as cleanup: one concern per class, second concern leaves when it appears; barrels (page orchestrator, pool owner, mounting shell) are deliberate. The page's owned fields are States; features that paint mount in `render()` as JSX, never as `new Component()` fields. Ownership provides implicitly; views bind the region directly:
+When a page State accumulates unrelated clusters - draft fields plus lookups plus request state plus navigation - split each into its own State owned as a field. Owned fields are States; features that paint mount in `render()` as JSX. Unplug test, build-time bias, and the forms table: [refactor.md](refactor.md) steps 3/5. Ownership provides implicitly; views bind the region directly:
 
 ```tsx
 class ComposePage extends Component {
@@ -442,7 +442,7 @@ function SettingsEditor() {
 }
 ```
 
-Inverse for a self-contained widget: the parent mounts `<UndoBar />` unconditionally; the bar reads `Outbox.get()` and falls thru when `pendingSend` is unset. `cond && <Foo />` in a parent render is a moderate signal Foo should own the gate.
+Default for a self-contained widget: the parent mounts `<UndoBar />` unconditionally; the bar reads `Outbox.get()` and falls thru when `pendingSend` is unset. The parent gate above fits when the parent reads the field for its own content.
 
 ## Computed Values
 
