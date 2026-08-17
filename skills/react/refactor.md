@@ -493,7 +493,23 @@ A `render()` past ~50 lines usually means the Component stopped composing. Condi
 
 A split needs a name meaningful without the parent (`UndoBar`, `AttachmentTray`). When the only honest name is the parent plus "Body"/"Label" *and* the call site is children, it is not a concern. Two shapes stay valid even small: a child passed as a named slot prop (`label={<SenderBadge />}`, `detail`, `icon`) - the hop keeps the parent composing instead of painting; and an early-return body whose branches *are* its job. A slot earns an FC only when it paints - `detail={String(unread || '')}` is a formatted scalar and stays inline.
 
-A slot FC reads its own context: `UnreadBadge` calls `Folder.get()` and paints its pill rather than taking a prop the parent unpacked from `this`, so the parent writes `detail={<UnreadBadge />}` without snapshotting for it. Same when section chrome only wraps one Component - `open`/`onToggle` read from the parent by `.get()`, not drilled back thru a generic wrapper. A shared wrapper stays shared across callers whose labels and actions actually vary; a caller whose slots are unconditional gets its own chrome reading the parent, not the generic wrapper.
+A slot FC reads its own context: `UnreadBadge` calls `Folder.get()` and paints its pill rather than taking a prop the parent unpacked from `this`, so the parent writes `detail={<UnreadBadge />}` without snapshotting for it. "It's just presentation props" does not exempt a slot whose value came off `this` - the step 9 carve-out is for values with no contextual owner:
+
+```tsx
+// Wrong: parent snapshots files only to feed its own slot
+render() {
+  const { open, files } = this;
+  return <Section open={open} detail={<SizeTally files={files} />} ... />;
+}
+
+// Right: the slot reads the parent; render() composes without it
+function SizeTally() {
+  const { files } = Outbox.get();
+  ...
+}
+```
+
+Same when section chrome only wraps one Component - `open`/`onToggle` read from the parent by `.get()`, not drilled back thru a generic wrapper. A shared wrapper earns its props per caller, not across the set: other callers varying does not license this one - a caller whose slots are constant gets its own chrome reading the parent.
 
 Independent siblings that never interact (recipient field, attachment picker) split into local FCs in the same module, each snapshotting what it needs - independent *features* split; one-op chrome like a lone send button stays. A layout-only row with no state inlines into `render()`.
 
