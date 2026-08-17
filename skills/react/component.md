@@ -8,11 +8,44 @@ Runnable source: the [`component`](https://expressive.dev/examples/component/pro
 
 - **Function components** present data or define local implementation scopes. They may read contextual state with `.get()`; they do not own a persistent Expressive instance.
 - **State** is display-agnostic - pure data and logic, no render method. Use with `State.use()` in function components to separate concerns.
-- **Component** is for **custom components/primitives** that own their display logic. They're _meant_ to render. Use when you need a reusable, extensible unit combining behavior + UI: form controls, media players, data grids, modals. A layout shell earns Component only with owned state; a stateless shell is an FC mounting its children. The exception is the **app/route entrypoint**: it is a Component even when `render()` is pure composition, because owning the construction graph is the state - replica and region fields provide implicitly, and the instance ships the last-resort `catch` and `fallback` an FC root would hand-roll as a Provider + ErrorBoundary + Suspense stack in `main`. Its fields are also the introspection surface - the state tree names the app's parts without walking Providers.
+- **Component** is for **custom components/primitives** that own their display logic. They're _meant_ to render. Use when you need a reusable, extensible unit combining behavior + UI: form controls, media players, data grids, modals. A layout shell earns Component only with owned state; a stateless shell is an FC mounting its children. The exception is the **app/route entrypoint**: it is a Component even when `render()` is pure composition, because owning the construction graph is the state - replica and region fields provide implicitly, and the instance ships the last-resort `catch` and `fallback` an FC root would hand-roll as a Provider + ErrorBoundary + Suspense stack in `main`.
+
+The assumption behind these rules: **the class tree is the app; rendering is a projection of it.** `App.new()` stands the UX up headless - every feature's status reads off the instance (`inbox.archive.open`, a pool's members, an import's progress) with no DOM in the loop. Structure ownership so that stays true: regions as fields rather than Providers, `has()` subtrees contributing to macro-state whether or not they are placed, render-less Components. Tests, devtools, and agents consume this surface as much as views do.
 
 Rule of thumb: use `Component` when state is intrinsic to display logic. Usually that means defining `render()`. Intrinsic to *this* display concern, not to the surface - a second intrinsic concern (a resize handle beside send) is a second class, composed as a mounted wrapper, not more fields on the first.
 
 A Component does not have to define `render()`: without one, it passes children through while placement, `mount()`, implicit provide, `catch`, and `fallback` all still run. The default is omit `render()` unless the class paints - never write `render() { return this.props.children; }`. Headless examples, not a closed set: route controllers inserted throughout an app, progressive `Boundary` wrappers, the app root's last-resort boundary, and mount-only ancestors - a stick-to-bottom scroller, a focus trap, a resize listener that must sit above what it measures. A mount-only ancestor stays a Component when the instance owns fields or a reaction; having no JSX does not demote it to an FC-plus-`useEffect`.
+
+This and the pass-through demotion are one rule, not two. A ref plus a DOM-sync reaction never earns the *paint's* instance - but that same behavior, separated into its own name, earns its own:
+
+```tsx
+// Wrong: paint and scroll policy fused on one class
+class Transcript extends Component {
+  session = get(Session);
+  box = ref<HTMLDivElement>();
+
+  mount() { /* scroll box to bottom as messages arrive */ }
+  render() { /* paint messages from session */ }
+}
+
+// Right: paint is an FC; the policy is its own name
+function Transcript() {
+  const { messages } = Session.get();
+  return <div className="transcript">{messages}</div>;
+}
+
+class Stick extends Component {
+  on = true;
+
+  mount() { /* pin scroll to bottom while on */ }
+}
+
+<Stick>
+  <Transcript />
+</Stick>
+```
+
+The fused class demotes because scroll-sync was incidental to its paint. `Stick` earns the instance because the behavior is now a feature: unplug is deleting one wrap, and `stick.on` reads off the tree.
 
 Use `State` for headless models/controllers, even if they are only meaningful in context. A `Component` carries React instance properties (`props`, `state`, `context`, `setState`, `forceUpdate`), so using it where `State` would suffice makes `.get()` noisier.
 
