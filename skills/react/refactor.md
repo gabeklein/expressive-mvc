@@ -68,7 +68,7 @@ export class ReviewStep extends Component {
 
 **Anti-pattern - the reflexive split.** Creating `ReviewState` plus a `ReviewView` FC because the old code had hooks. If the fields exist only to support one rendered surface, they belong on the `Component` that renders it.
 
-**Anti-pattern - the pass-through Component.** A class whose only members are `foo = get(Foo)` and `render()` is an FC wearing an instance - snapshot `Foo.get()` instead. Component earns the class when the instance owns fields, a pool, lifecycle, or its boundary/suspense is wanted. Same triage for shells: a singleton feature with no state of its own is an FC mounting its children (`<Sidebar /> <MessageList />`); owned instance fields (`sidebar = new Sidebar()`) are for headless regions, pools, and swappable members. Inversely, a leaf widget still on `useState`/`useEffect` whose inputs are its identity is a Component - `<Thumbnail src size />` writes the fields, `mount()` reacts to them.
+**Anti-pattern - the pass-through Component.** A class whose only members are `foo = get(Foo)` and `render()` is an FC wearing an instance - snapshot `Foo.get()` instead. Component earns the class when the instance owns fields, a pool, or its boundary/suspense is wanted - lifecycle counts only when it manages owned state; a ref plus a DOM-sync reaction over context is still an FC. Same triage for shells: a singleton feature with no state of its own is an FC mounting its children (`<Sidebar /> <MessageList />`); owned instance fields (`sidebar = new Sidebar()`) are for headless regions, pools, and swappable members. Inversely, a leaf widget still on `useState`/`useEffect` whose inputs are its identity is a Component - `<Thumbnail src size />` writes the fields, `mount()` reacts to them.
 
 **Anti-pattern - subcomponent overuse.** The sections composed in `render()` above are freestanding FCs, not PascalCase methods on the class. Subcomponents (`<this.Header />`) are extension points - machinery for subclasses to replace or wrap. The test: **would a subclass reasonably replace or wrap this renderer?** For ordinary implementation scopes the answer is no, and a freestanding FC calling `ReviewStep.get()` is clearer. See [component.md](component.md).
 
@@ -153,7 +153,7 @@ const { canSend, send } = ComposePage.get();
 
 An owned region needs no cross-controller synchronization - the parent holds the instance and reads it directly. Split when the second cluster appears, not as late cleanup.
 
-A feature region is unpluggable: it owns its pool, display state, and chrome, and deleting its import removes the feature whole - don't leave the pool or query on the page because the page syncs it. Sibling features read each other thru optional context (`get(Other, false)`); siblings do not see each other's context, so the consumer mounts beneath the provider in JSX.
+A feature region is unpluggable: it owns its pool, display state, and chrome, and deleting its import removes the feature whole - don't leave the pool or query on the page because the page syncs it. Run that as a test on each pane, strip, or panel the page mounts: delete its import - does the feature leave whole, pool included? Judge clusters by interaction, not product framing - clusters that never read each other are unrelated even when the product calls them one surface; a shared wire or replica decides sync, not view ownership. Sibling features read each other thru optional context (`get(Other, false)`); siblings do not see each other's context, so the consumer mounts beneath the provider in JSX. A page left with no owned fields after extraction demotes to an FC mounting its regions (step 3).
 
 ## 6. Provide classes directly
 
@@ -190,7 +190,7 @@ Mapping for what remains after ownership is settled:
 - Chains of `useEffect`s reacting to each other -> tracked reactions (`this.get($ => ...)`) registered in `new()`/`mount()`; updates batch, one re-run per flush however many trigger fields changed.
 - `useCallback` handlers -> auto-bound class methods - pass directly to timers and listeners: `setInterval(this.tick, 1000)`, not `() => this.tick()`.
 - `useRef` handles - unsubscribe functions, snapshots, timer ids -> unmanaged fields ([state.md](../state/state.md#unmanaged-instance-data)) - never reactive, never `#private`.
-- Repeated `postMessage`-style calls over a typed union -> one `signal(type, payload)` helper. The union is the API - no per-message facade methods.
+- Repeated `postMessage`-style calls over a typed union -> one `signal(type, payload)` helper - type is the first parameter (`signal('setLabel', { id })`; no-payload types take only the type), not a single message object. The union is the API - no per-message facade methods.
 - Route params -> props on the page owner. Working identity (session, selection) is a separate field a reaction soft-syncs - never the URL param itself. Fusion announces itself as stale-prop workarounds: fresh ids threaded thru arguments to outrun the route, shadow fields remembering the last route seen. Router recipe in [patterns.md](patterns.md).
 
 The route-identity split, concretely:
@@ -425,7 +425,7 @@ function SettingsEditor() {
 
 Declare gateable fields optional (`draft?: SettingsLocation`), not `| null` - `get(true)` rejects only `undefined`, and `Required<T>` does not strip `null` from unions.
 
-The inverse shape: a self-contained widget the parent always mounts owns its own gate. The parent writes `<UndoBar />` unconditionally; the bar reads `Outbox.get()` and falls thru when `pendingSend` is unset ([style.md](style.md) render fallthrough). Reach for it when the gated content is a whole widget whose absence is its own policy - `cond && <Foo />` in a parent render is a moderate signal Foo should own the gate. Parent gate plus `get(true)` stays right when the parent already reads the field or composition genuinely varies.
+The inverse shape: a self-contained widget the parent always mounts owns its own gate. The parent writes `<UndoBar />` unconditionally; the bar reads `Outbox.get()` and falls thru when `pendingSend` is unset ([style.md](style.md) render fallthrough). Reach for it when the gated content is a whole widget whose absence is its own policy - `cond && <Foo />` in a parent render is a moderate signal Foo should own the gate. Parent gate plus `get(true)` stays right when the parent reads the field for its own content or composition genuinely varies - a read that exists only to gate is the widget's, not the parent's.
 
 ## 13. Extract, then consolidate
 
@@ -457,11 +457,11 @@ A `render()` past ~50 lines usually means the Component stopped composing. Condi
 
 A split needs a name meaningful without the parent (`UndoBar`, `AttachmentTray`). When the only honest name is the parent plus "Body"/"Label" *and* the call site is children, it is not a concern. Two shapes stay valid even small: a child passed as a named slot prop (`label={<SenderBadge />}`, `detail`, `icon`) - the hop keeps the parent composing instead of painting; and an early-return body whose branches *are* its job.
 
-A slot FC reads its own context: `UnreadCount` calls `Folder.get()` for `unread` rather than taking a prop the parent unpacked from `this`, so the parent writes `detail={<UnreadCount />}` without snapshotting for it. Same when section chrome only wraps one Component - `open`/`onToggle` read from the parent by `.get()`, not drilled back thru a generic wrapper. A shared wrapper stays shared where labels and actions actually vary.
+A slot FC reads its own context: `UnreadCount` calls `Folder.get()` for `unread` rather than taking a prop the parent unpacked from `this`, so the parent writes `detail={<UnreadCount />}` without snapshotting for it. Same when section chrome only wraps one Component - `open`/`onToggle` read from the parent by `.get()`, not drilled back thru a generic wrapper. A shared wrapper stays shared across callers whose labels and actions actually vary; a caller whose slots are unconditional gets its own chrome reading the parent, not the generic wrapper.
 
 Independent siblings that never interact (recipient field, attachment picker, send button on one bar) split into local FCs in the same module, each snapshotting what it needs; a layout-only row with no state inlines into `render()`.
 
-The line/depth threshold is a signal, never grounds for a finding by itself. To fail a branch, name the concrete cost: a conditional subscription, multiple independent decisions in one branch, mixed ownership, a duplicated dependency snapshot, or navigation that a well-named scope would materially improve. "A separate component would be slightly nicer" is optional polish, not a defect.
+The line/depth threshold is a signal, never grounds for a finding by itself. To fail a branch, name the concrete cost: a conditional subscription, multiple independent decisions in one branch, independent controls funneled thru one shared snapshot, mixed ownership, a duplicated dependency snapshot, or navigation that a well-named scope would materially improve. "A separate component would be slightly nicer" is optional polish, not a defect.
 
 ## 14. Audit with this checklist
 
@@ -478,11 +478,11 @@ The checklist:
 - Does state about a collection entry live on the entry's class - no id-keyed records, no `(id, value)` methods, no reassign-to-update-one-entry? *(invariant)*
 - Are opaque handles (unsubscribe fns, timers, snapshots) unmanaged rather than reactive fields? *(invariant)*
 - Does every subscription consume what it declares - no `void x` reads to force tracking in a render? *(invariant)*
-- Is a page State with unrelated clusters split into owned region States? *(default)*
-- Does every Component earn its instance (owned fields, pool, lifecycle, boundary) - pass-throughs demoted to FCs, stateless shells mounted not held? *(default)*
+- Is a page State with unrelated clusters split into owned region States - does each rendered feature (pane, strip, panel) unplug by deleting one import? *(default)*
+- Does every Component earn its instance (owned fields, pool, boundary - not a ref plus a DOM-sync reaction) - pass-throughs demoted to FCs, stateless shells mounted not held? *(default)*
 - Is working identity (session, selection) a separate field from URL params, soft-synced by a reaction? *(default)*
 - Does every method do more than assign one field? *(invariant)*
-- Are contextual values still being drilled through props? *(invariant)*
+- Are contextual values still being drilled through props - including slot FCs and section chrome fed values the parent unpacked from `this`? *(invariant)*
 - Does every `.get()` / `.use()` show the exact nested dependency surface? *(invariant)*
 - Are any reactive deep reads hidden in conditional branches or handlers? *(invariant)*
 - Does a Component holding `foo = get(Foo)` read it thru `this` - never a second `Foo.get()` in `render()`? *(invariant)*
@@ -492,9 +492,10 @@ The checklist:
 - Does every getter on shared state earn its place - multiple consumers, domain meaning, expensive computation, deliberate API, or introspection value? *(default - judge meaning, not reference counts)*
 - Are large JSX branches and ~50-line renders split at conditionals into honestly-named scopes, without fragmenting trivial shared logic? *(heuristic - name the cost)*
 - Are nested destructures placed after direct properties, with `is` first when retained? *(style)*
+- Are modules near ~400 lines split at feature seams, without peeling thin wrappers? *(style)*
 
 Auditing notes:
 
-- Compare ownership, dependency surfaces, and write behavior - never filenames, file counts, or similarity to a particular reference implementation. File size and consolidation are project preferences: supplied by the project, scored separately.
+- Compare ownership, dependency surfaces, and write behavior - never filenames, file counts, or similarity to a particular reference implementation. File size and consolidation follow [style.md](style.md) layout unless the project overrides - style lane, scored separately.
 - Report two verdicts - architectural conformance and style-profile adherence - so a formatting miss cannot obscure correct structure, or vice versa.
 - Deliver the filled checklist with the change (PR description or ledger), not only a verdict.

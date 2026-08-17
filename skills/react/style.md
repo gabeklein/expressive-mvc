@@ -69,6 +69,6 @@ Fields, getters, methods - then lifecycle (`new`/`mount`) and `render()` last, a
 
 ## Layout
 
-Once a route has a model class, colocate: `pages/inbox/` holding `index.tsx` (route shell), page class, domain classes, view slices - not a fat `Inbox.tsx` beside a partial folder. Project preference; never an audit finding.
+Once a route has a model class, colocate: `pages/inbox/` holding `index.tsx` (route shell), page class, domain classes, view slices - not a fat `Inbox.tsx` beside a partial folder. Colocation is project preference; never an audit finding.
 
-Split a module approaching ~400 lines where the cut makes the original easier to read. A single-concern widget earns its file even small; a 30-line wrapper does not - an extraction needs real lines or a real concern unloaded from the parent. Fold back wrappers that turn out to be barrels-in-name.
+Split a module approaching ~400 lines where the cut makes the original easier to read. A single-concern widget earns its file even small; a 30-line wrapper does not - an extraction needs real lines or a real concern unloaded from the parent. Fold back wrappers that turn out to be barrels-in-name. Apply during a conversion like the rest of this profile; report in the style lane.
