@@ -81,7 +81,7 @@ A property or action *about* an entry in a collection lives on that entry's clas
 - a page method re-finding a member by id `pool.get((x) => x.id === id)` - that is the member's method; behavior moves with state
 - reassigning a collection to update one entry: `this.items = this.items.map(...)`, `this.jobs = { ...this.jobs, [id]: job }`
 
-Each tell is a missing class. Declare a `has` pool whose factory takes the API payload; move state and actions onto the member:
+Each tell is a missing class. Declare a `has` pool - class mode when the seed already matches the member's init; a factory only when the seed must transform. Move state and actions onto the member:
 
 ```tsx
 // Wrong: item state flattened onto the page
@@ -97,16 +97,17 @@ class Inbox extends Component {
 
 // Right: the entry is a class; the page keeps fetch, the pool, and policy
 class Message extends Component {
-  info = set<MessageDto>();   // payload stays one subobject - not exploded per key
   id = set<string>();
-  selected = false;
+  subject = '';
+  label = '';
+  selected = false;           // UI - not on the seed, never written by it
   inbox = get(Inbox);
 
   render() { /* the row paints itself */ }
 }
 
 class Inbox extends Component {
-  messages = has((dto: MessageDto) => new Message({ info: dto, id: dto.id }));
+  messages = has(Message);    // add({ id, subject, label }) - the seed is the init
 
   get selected() {
     return this.messages.filter((m) => m.selected);
@@ -114,11 +115,13 @@ class Inbox extends Component {
 }
 ```
 
+Class mode writes only keys the class declares - leftover seed keys are skipped; a key on both with a clashing type is a TypeScript error, so check it, don't pre-empt it with a factory.
+
 Selection flags, per-row status, and row actions live on the member (`message.selected`, `message.archive()`); the page keeps fetch, pool lifecycle, and multi-select *policy*. Rows owning `render()` place directly - `{inbox.messages}` or subset `{list}` - no `.map`. Two views computing the same expression over an entry means a getter on the entry's class.
 
 A row earns a pool with any of: mutable UI state (selection, expanded), async lifecycle (upload, watch, progress), actions (remove, retry) - one suffices. Demoting such a row to plain DTO is not economy: status then reads thru lookups, and a method call on a raw instance creates no subscription - progress rendered only thru `page.importFor(id)` never repaints. Tracked reads reach the member thru the pool or its own `render()`.
 
-Keep members small: promote a payload key to reactive field only when views render it or it changes independently; the rest stays whole as one `info` field. Normalize API `null` to `undefined` here so presence fields stay optional. See [has.md](../field/has.md) for pool surface, [patterns.md](patterns.md) for worked recipes.
+A factory earns its line only when the seed must transform: fat payload folded to one field (`has((dto: MessageDto) => new Message({ info: dto, id: dto.id }))`), a rename, a colliding key dropped, multi-argument construction (`has((file: File) => new Attachment({ file }))`). Keep members small: promote a payload key to reactive field only when views render it or it changes independently; the rest stays whole as `info`. Normalize API `null` to `undefined` here so presence fields stay optional. See [has.md](../field/has.md) for pool surface, [patterns.md](patterns.md) for worked recipes.
 
 Behavior parity does not exempt this step - parity constrains observable behavior, not code shape; a task scoped "no redesigns" means UI and public contracts, not internal structure. Entry ownership is an invariant, not a style option a conversion may decline.
 
@@ -494,6 +497,7 @@ The checklist:
 
 - Is each state field owned at the narrowest useful scope? *(invariant)*
 - Does state about a collection entry live on the entry's class - no id-keyed records, no `(id, value)` methods, no reassign-to-update-one-entry? *(invariant)*
+- Is every `has((x) => new Foo({...}))` factory doing work `has(Foo)` wouldn't - transform, rename, multi-argument? *(default)*
 - Are opaque handles (unsubscribe fns, timers, snapshots) unmanaged rather than reactive fields? *(invariant)*
 - Does every subscription consume what it declares - no `void x` reads to force tracking in a render? *(invariant)*
 - Is a page State with unrelated clusters split into owned region States - does each rendered feature (pane, strip, panel) unplug by deleting one import? *(default)*

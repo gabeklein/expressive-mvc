@@ -157,6 +157,8 @@ function MessageList({ list }: { list: Message[] }) {
 
 Activated Components are React elements: the pool `{inbox.messages}` and plain subsets `{list}` place directly, no `.map`. Each row paints from its own `render()` subscription - selecting one message re-renders one row.
 
+The factory here earns its line by folding the payload to `info`. A seed already matching the class's init is just `has(Message)` - integration writes declared keys only, skips the rest, and a clashing shared key is a TypeScript error.
+
 A cross-cutting subset can be a second pool instead of a member flag - class-mode `add` admits ready-made members; `pool.has(value)` tracks that member only. Members evict on destroy, so refill clears the subset - use a durable key when selection must survive refresh:
 
 ```tsx

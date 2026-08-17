@@ -114,7 +114,7 @@ basket.items.add(Item.new());             // already activated - guest
 
 ### DTO boundary
 
-Pools are for per-item UI state. Accept API payloads thru the factory (DTO in), read back out at the boundary (DTO out); refill on fetch with `clear()` plus `add` per item:
+Pools are for per-item UI state. A payload already matching the class's init needs no factory - `has(Message)`, then `add(dto)`: integration writes only keys the class declares, skips the rest, and a shared key with a clashing type is a TypeScript error. A factory is the transform case - fat payload folded to one field (DTO in), read back out at the boundary (DTO out); refill on fetch with `clear()` plus `add` per item:
 
 ```ts
 class Inbox extends State {
