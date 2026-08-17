@@ -61,7 +61,7 @@ Counter-rules:
 9. Let contextual children call `.get()` instead of receiving drilled props.
 10. At every `.get()` / `.use()`, destructure for exact nested dependency snapshot.
 11. May assign thru subscribed proxies; `is` only to retain the root object alongside sibling destructuring.
-12. Gate optional children at call site; inside, assert requirements with `.get(true)`.
+12. Gate optional children at call site; inside, assert requirements with `.get(true)`. A self-contained widget instead mounts unconditionally and owns its gate - a parent read existing only to gate is the widget's.
 13. Split `render()` and long JSX at conditionals and non-interacting siblings into honestly-named local FCs; consolidate scopes that share dependencies and hold no nested logic.
 14. Audit the result against the checklist in [react/refactor.md](react/refactor.md).
 
@@ -256,6 +256,8 @@ function SettingsEditor() {
 ```
 
 This gives the child a strong contract - no fallback values threaded through its body. Declare gateable fields **optional** (`draft?: SettingsLocation`), not `| null`: the runtime check rejects only `undefined`, and `Required<T>` does not strip `null` from a union (see [react/react.md](react/react.md)).
+
+Inverse for a self-contained widget whose absence is its own policy: the parent mounts `<UndoBar />` unconditionally; the bar reads `Outbox.get()` and falls thru when `pendingSend` is unset. A parent read existing only to gate belongs in the widget; the parent gate stays right when the parent reads the field for its own content (see [react/refactor.md](react/refactor.md) step 12).
 
 ## Provider & Context
 

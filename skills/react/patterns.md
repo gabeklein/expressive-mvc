@@ -222,7 +222,7 @@ The owner coordinates readiness only. A method re-finding a chip by id to feed i
 
 ## Region Controllers
 
-When a page State accumulates unrelated clusters - draft fields plus lookups plus request state plus navigation - split each into its own State owned as a field. A feature region is unpluggable - pool, display state, and chrome travel with its import. Ownership provides implicitly; views bind the region directly:
+When a page State accumulates unrelated clusters - draft fields plus lookups plus request state plus navigation - split each into its own State owned as a field. A feature region is unpluggable - pool, display state, and chrome travel with its import; test each pane, strip, or panel: delete its import and the feature leaves whole. A page left with no owned fields demotes to an FC mounting its regions. Ownership provides implicitly; views bind the region directly:
 
 ```tsx
 class ComposePage extends Component {
@@ -308,12 +308,21 @@ class Theme extends State {
 
 class ThemedWidget extends Component {
   theme = get(Theme);
+  clicks = 0;
 
   render() {
+    const {
+      clicks,
+      theme: {
+        color,
+        toggle,
+      },
+    } = this;
+
     return (
-      <div style={{ color: this.theme.color }}>
-        Themed content
-        <button onClick={this.theme.toggle}>Toggle</button>
+      <div style={{ color }}>
+        <button onClick={() => this.clicks++}>Clicked {clicks}</button>
+        <button onClick={toggle}>Toggle theme</button>
       </div>
     );
   }
@@ -327,6 +336,8 @@ function App() {
   );
 }
 ```
+
+`ThemedWidget` owns `clicks`; were `theme` its only member, an FC snapshotting `Theme.get()` replaces the class.
 
 ## Contextual Children (No Prop Drilling)
 

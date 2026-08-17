@@ -8,7 +8,7 @@ Runnable source: the [`component`](https://expressive.dev/examples/component/pro
 
 - **Function components** present data or define local implementation scopes. They may read contextual state with `.get()`; they do not own a persistent Expressive instance.
 - **State** is display-agnostic - pure data and logic, no render method. Use with `State.use()` in function components to separate concerns.
-- **Component** is for **custom components/primitives** that own their display logic. They're _meant_ to render. Use when you need a reusable, extensible unit combining behavior + UI: form controls, media players, data grids, modals, layout shells.
+- **Component** is for **custom components/primitives** that own their display logic. They're _meant_ to render. Use when you need a reusable, extensible unit combining behavior + UI: form controls, media players, data grids, modals. A layout shell earns Component only with owned state; a stateless shell is an FC mounting its children.
 
 Rule of thumb: use `Component` when state is intrinsic to display logic. Usually that means defining `render()`.
 
@@ -18,7 +18,7 @@ Use `State` for headless models/controllers, even if they are only meaningful in
 
 Prefer an FC when state is reducible or zero and neither boundary nor suspense is wanted. A class whose only members are `inbox = get(Inbox)` and `render()` is a pass-through - an FC snapshotting `Inbox.get()` is the same subscription without an instance. Component earns the class when the instance owns fields, a pool, or its boundary; lifecycle earns it only when it manages owned state - a ref plus a reaction mirroring context to the DOM is still an FC (effect over its `.get()` snapshot). Inverse for a leaf widget still on `useState`/`useEffect` whose inputs are its identity: `<Thumbnail src={…} size={…} />` writes class fields; reactions to them live in `mount()` or `set` callbacks.
 
-For one-shot feature builds and hook refactors, avoid creating `FooState` plus `FooView` by reflex. A route shell, local router, tab panel, menu, editor surface, media player, or custom form control is often clearer as `class Foo extends Component` because the state is intrinsic to the rendered unit.
+For one-shot feature builds and hook refactors, avoid creating `FooState` plus `FooView` by reflex. A local router, tab panel, menu, editor surface, media player, or custom form control is often clearer as `class Foo extends Component` because the state is intrinsic to the rendered unit - a route shell too, but only while it owns state; emptied by region extraction, it demotes to an FC.
 
 ## Basic Usage
 
