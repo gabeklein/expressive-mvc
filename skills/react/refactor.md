@@ -68,7 +68,21 @@ export class ReviewStep extends Component {
 
 **Anti-pattern - the reflexive split.** Creating `ReviewState` plus a `ReviewView` FC because the old code had hooks. If the fields exist only to support one rendered surface, they belong on the `Component` that renders it.
 
-**Anti-pattern - the pass-through Component.** A class whose only members are `foo = get(Foo)` and `render()` is an FC wearing an instance - snapshot `Foo.get()` instead. Component earns the class when the instance owns fields, a pool, or its boundary/suspense is wanted - lifecycle counts only when it manages owned state; a ref plus a DOM-sync reaction over context is still an FC. Same triage for shells: a singleton feature with no state of its own is an FC mounting its children (`<Sidebar /> <MessageList />`); owned instance fields (`sidebar = new Sidebar()`) are for headless regions, pools, and swappable members. Inversely, a leaf widget still on `useState`/`useEffect` whose inputs are its identity is a Component - `<Thumbnail src size />` writes the fields, `mount()` reacts to them.
+**Anti-pattern - the pass-through Component.** A class whose only members are `foo = get(Foo)` and `render()` is an FC wearing an instance - snapshot `Foo.get()` instead. Component earns the class when the instance owns fields, a pool, or its boundary/suspense is wanted - lifecycle counts only when it manages owned state; a ref plus a DOM-sync reaction over context is still an FC. Same triage for shells: a singleton feature with no state of its own is an FC mounting its children (`<Sidebar /> <MessageList />`). Inversely, a leaf widget still on `useState`/`useEffect` whose inputs are its identity is a Component - `<Thumbnail src size />` writes the fields, `mount()` reacts to them.
+
+**The app/route entrypoint is a Component** even when `render()` is pure composition - owning the construction graph is the state. The replica and each headless region are its fields; those fields provide implicitly, ship the last-resort boundary (`catch`, `fallback`), and are the introspection surface - a debugger or later agent reads the app's parts off the instance instead of walking Providers. `main` only mounts it: `createRoot(el).render(<Inbox />)` - no `Provider`, no `Session.new()` in bootstrap. "Stateless shell → FC" is a chrome rule; it never fires on the entrypoint.
+
+The forms, by role:
+
+| Thing | Form |
+|---|---|
+| App / route entrypoint | `Component` - owns construction, catch, fallback, implicit provide |
+| Headless region (query, pool, policy) | `State` field on that entrypoint |
+| Feature that paints | mounted `<Composer />` - never `new Composer()` on a parent |
+| Mount-only ancestor (scroll pin, focus trap) | `Component` without `render()` |
+| Chrome / token frame / zero-state strip | FC that `.get()`s |
+
+`new X()` on a parent is for States and pool members. A nested `new Component()` that is not a pool member or hot-swap either paints - mount it - or is a State's job wearing paint. Don't wrap a consumer under a provider Component with nothing to paint; hold the State as a field on the controller that already exists and let sibling views `.get()` it.
 
 **Anti-pattern - subcomponent overuse.** The sections composed in `render()` above are freestanding FCs, not PascalCase methods on the class. Subcomponents (`<this.Header />`) are extension points - machinery for subclasses to replace or wrap. The test: **would a subclass reasonably replace or wrap this renderer?** For ordinary implementation scopes the answer is no, and a freestanding FC calling `ReviewStep.get()` is clearer. See [component.md](component.md).
 
@@ -156,7 +170,7 @@ const { canSend, send } = ComposePage.get();
 
 An owned region needs no cross-controller synchronization - the parent holds the instance and reads it directly. Split when the second cluster appears, not as late cleanup.
 
-A feature region is unpluggable: it owns its pool, display state, and chrome, and deleting its import removes the feature whole - don't leave the pool or query on the page because the page syncs it. Run that as a test on each pane, strip, or panel the page mounts: delete its import - does the feature leave whole, pool included? Judge clusters by interaction, not product framing - clusters that never read each other are unrelated even when the product calls them one surface; a shared wire or replica decides sync, not view ownership. Sibling features read each other thru optional context (`get(Other, false)`); siblings do not see each other's context, so the consumer mounts beneath the provider in JSX. A page left with no owned fields after extraction demotes to an FC mounting its regions (step 3).
+A feature region is unpluggable: it owns its pool, display state, and chrome, and deleting its import removes the feature whole - don't leave the pool or query on the page because the page syncs it. Run that as a test on each pane, strip, or panel the page mounts: delete its import - does the feature leave whole, pool included? Judge clusters by interaction, not product framing - clusters that never read each other are unrelated even when the product calls them one surface; a shared wire or replica decides sync, not view ownership. Sibling features read each other thru optional context (`get(Other, false)`); siblings do not see each other's context, so the consumer mounts beneath the provider in JSX. Extraction moves concerns off the class, not ownership off the tree: regions stay fields on the entrypoint. Only a shell owning nothing at all - chrome between the entrypoint and its features - demotes to an FC (step 3).
 
 The same rule while building, not only as cleanup: a second concern appearing on a class is the moment it leaves. Bias one concern per State/Component; barrels are deliberate - the page after extraction, a pool owner, a shell that only mounts. Chrome counts: a resize handle's `height`/`resizing`/`beginDrag` parked on Composer fails the test the way a stranded pool does. Compose the add-on as a mounted wrapper - the sized thing reads the sizer:
 
@@ -199,7 +213,7 @@ function App() {
 }
 ```
 
-Provide an instance only when preconfiguration or external ownership genuinely requires it.
+Provide an instance only when preconfiguration or external ownership genuinely requires it. The app entrypoint needs neither: its owned fields provide implicitly, so `main` mounts `<Inbox />` bare - a `Provider` plus `Session.new()` in bootstrap hides the construction graph the entrypoint's fields would show.
 
 ## 7. Move source state and behavior; do not translate setters
 
@@ -212,6 +226,7 @@ Mapping for what remains after ownership is settled:
 - `useCallback` handlers -> auto-bound class methods - pass directly to timers and listeners: `setInterval(this.tick, 1000)`, not `() => this.tick()`.
 - `useRef` handles - unsubscribe functions, snapshots, timer ids -> unmanaged fields ([state.md](../state/state.md#unmanaged-instance-data)) - never reactive, never `#private`.
 - Repeated `postMessage`-style calls over a typed union -> one `signal(type, payload)` helper - type is the first parameter (`signal('setLabel', { id })`; no-payload types take only the type), not a single message object. The union is the API - no per-message facade methods.
+- Inbound host snapshots -> `this.set(values)` - unknown keys are ignored, missing keys stay; no `apply()`/`pick` facade ([set.md](../state/set.md)).
 - Route params -> props on the page owner. Working identity (session, selection) is a separate field a reaction soft-syncs - never the URL param itself. Fusion announces itself as stale-prop workarounds: fresh ids threaded thru arguments to outrun the route, shadow fields remembering the last route seen. Router recipe in [patterns.md](patterns.md).
 
 The route-identity split, concretely:
@@ -345,7 +360,7 @@ function ReviewActions() {
 
 Pure presentation components (a `Metric`, a `StatusCallout`) may still take plain props - context replaces drilled *state*, not every value.
 
-`.get()` the nearest real parent. When Composer owns the form, its controls call `Composer.get()` - reaching over it to `ComposePage.get()` and back down is drilling with extra steps. Facts repeated across those children (`status === 'sending'`) become getters on the parent (`get sending()`); nested config they keep unpacking is forwarded once (`get config() { return this.page.sendOptions; }`), named for the local scope - on Composer, `config`, not `sendOptions`. Only the parent itself holds `get(ComposePage)`.
+`.get()` the nearest real parent. When Composer owns the form, its controls call `Composer.get()` - reaching over it to `ComposePage.get()` and back down is drilling with extra steps. Facts repeated across those children (`status === 'sending'`) become getters on the parent (`get sending()`); nested config they keep unpacking is forwarded once (`get config() { return this.page.sendOptions; }`), named for the local scope - on Composer, `config`, not `sendOptions`. Only the parent itself holds `get(ComposePage)`. The entrypoint is not exempt: token and frame chrome reads its own snapshot (`Frame` `.get()`s `theme`) - don't snapshot `this` at the root only to drill `style`.
 
 ## 10. Destructure an exact dependency snapshot
 
@@ -503,6 +518,9 @@ The checklist:
 - Is a page State with unrelated clusters split into owned region States - does each rendered feature (pane, strip, panel) unplug by deleting one import? *(default)*
 - Does each class name one concern, or is it a declared barrel (page orchestrator, pool owner, mounting shell)? A composer still holding `height`/`resizing`/`beginDrag` fails. *(default)*
 - Does every Component earn its instance (owned fields, pool, boundary - not a ref plus a DOM-sync reaction) - pass-throughs demoted to FCs, stateless shells mounted not held? *(default)*
+- Is the app/route entrypoint a Component owning replica and regions as fields - `main` only mounting it, no bootstrap `Provider`? *(default)*
+- Is every `new Component()` on a parent a pool member or hot-swap - painting features mounted as JSX, regions held as State fields? *(default)*
+- Does every Component without chrome omit `render()` - no `return this.props.children`? *(default)*
 - Is working identity (session, selection) a separate field from URL params, soft-synced by a reaction? *(default)*
 - Does every method do more than assign one field? *(invariant)*
 - Are contextual values still being drilled through props - including slot FCs and section chrome fed values the parent unpacked from `this`? *(invariant)*

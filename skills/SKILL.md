@@ -32,7 +32,7 @@ The most common failure when adopting this library is translating hooks one-for-
 
 For every stateful concern, pick exactly one owner:
 
-- **`Component`** - state intrinsic to one display subtree: controls, shells, panels, editors, review/confirm surfaces. Usually defines `render()`. Fields, handlers, and rendering live on one class.
+- **`Component`** - state intrinsic to one display subtree: controls, panels, editors, review/confirm surfaces. Usually defines `render()`. Fields, handlers, and rendering live on one class. The app/route entrypoint is one even when `render()` only composes: it owns construction (replica + region State fields), provides implicitly, and ships last-resort `catch`/`fallback` - `main` just mounts it.
 - **`State`** - headless model or workflow: network operations, domain rules, cross-view coordination. Views subscribe via `State.get()` / `State.use()`.
 - **Plain function component** - simple presentation, or trivial local UI state. Not everything needs a class.
 
@@ -55,7 +55,7 @@ Counter-rules:
 3. Choose `State`, `Component`, or a plain function component for each owner.
 4. Give every repeated UI entry own class in a `has` pool; actions about item belong on item.
 5. Split unrelated clusters remaining on page State to owned region States `composer = new Composer()`. Bias one concern per class - barrels are deliberate (page orchestrator, pool owner, mounting shell); shed a second concern the moment it appears, growing a feature or refactoring one alike.
-6. Provide classes directly `<Provider for={AppState}>` never an instance if only to provide it.
+6. Provide classes directly `<Provider for={AppState}>` never an instance if only to provide it; the entrypoint Component's own fields provide implicitly - `main` only mounts `<Inbox />`.
 7. Move source fields and behavioral methods first; do not mechanically translate setters.
 8. Keep shared, semantic derivations as getters; leave single-consumer display derivations in their consuming component.
 9. Let contextual children call `.get()` instead of receiving drilled props.
@@ -361,7 +361,7 @@ Fetch these for detailed documentation when the task requires deeper knowledge. 
 
 - [react/react.md](react/react.md) - use(), State.use(), State.get() (optional lookup, required values `get(true)`, computed selector), Provider, Consumer, transparent writes, ForceRefresh
 - [react/component.md](react/component.md) - Component class, props, children, render composition, subcomponent extension points, error boundaries
-- [react/patterns.md](react/patterns.md) - Recipes: forms, async, domain-row and form-chip pools, region controllers, router bridge, presence boundary, contextual children, debounce, effects
+- [react/patterns.md](react/patterns.md) - Recipes: forms, async, domain-row and form-chip pools, region controllers, router bridge, host-agnostic model + view adapter, presence boundary, contextual children, debounce, effects
 
 ### Router
 

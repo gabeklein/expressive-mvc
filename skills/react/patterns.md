@@ -224,7 +224,7 @@ The owner coordinates readiness only. A method re-finding a chip by id to feed i
 
 ## Region Controllers
 
-When a page State accumulates unrelated clusters - draft fields plus lookups plus request state plus navigation - split each into its own State owned as a field. A feature region is unpluggable - pool, display state, and chrome travel with its import; test each pane, strip, or panel: delete its import and the feature leaves whole. A page left with no owned fields demotes to an FC mounting its regions. The rule applies while building, not only as cleanup: one concern per class, second concern leaves when it appears; barrels (page orchestrator, pool owner, mounting shell) are deliberate. Ownership provides implicitly; views bind the region directly:
+When a page State accumulates unrelated clusters - draft fields plus lookups plus request state plus navigation - split each into its own State owned as a field. A feature region is unpluggable - pool, display state, and chrome travel with its import; test each pane, strip, or panel: delete its import and the feature leaves whole. The rule applies while building, not only as cleanup: one concern per class, second concern leaves when it appears; barrels (page orchestrator, pool owner, mounting shell) are deliberate. The page's owned fields are States; features that paint mount in `render()` as JSX, never as `new Component()` fields. Ownership provides implicitly; views bind the region directly:
 
 ```tsx
 class ComposePage extends Component {
@@ -295,6 +295,34 @@ class ComposePage extends Component {
 ```
 
 Assign the working field the moment identity is created. Fresh ids threaded thru arguments, or a shadow field remembering the last route - the working field is still a mirror.
+
+## Host-Agnostic Model, View Adapter
+
+A class shared across environments (extension host + webview, server + client) stays fields-only - no `window`, DOM, or host APIs at module scope or in `new()`. The view-side module re-exports the class and registers `State.on()` once; every instance constructed after that import gets the wiring, and hosts that never import the adapter never run it:
+
+```ts
+// domain/session.ts - loads anywhere
+export class Session extends State {
+  status = 'idle';
+  messages: MessageDto[] = [];
+}
+
+// webview/session.ts - the adapter; views import Session from here
+export { Session } from '../domain/session';
+
+Session.on(function (this: Session) {
+  const onMessage = (event: MessageEvent<HostToView>) => {
+    if (event.data?.type === 'state')
+      this.set(event.data.values as State.Assign<Session>);
+  };
+
+  window.addEventListener('message', onMessage);
+  signal('ready');
+  return () => window.removeEventListener('message', onMessage);
+});
+```
+
+Construction stays with the consumer - `session = new Session()` on the entrypoint. No subclass (`class ViewSession extends Session`), no `Session.new()` in the adapter. Inbound snapshots land with `set(values)` - a superset payload is fine, extra keys drop ([set.md](../state/set.md)).
 
 ## Context Sharing
 
