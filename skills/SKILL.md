@@ -54,7 +54,7 @@ Counter-rules:
 2. Separate headless workflow state from display-intrinsic state.
 3. Choose `State`, `Component`, or a plain function component for each owner.
 4. Give every repeated UI entry own class in a `has` pool; actions about item belong on item.
-5. Split unrelated clusters remaining on page State to owned region States `composer = new Composer()`.
+5. Split unrelated clusters remaining on page State to owned region States `composer = new Composer()`. Bias one concern per class - barrels are deliberate (page orchestrator, pool owner, mounting shell); shed a second concern the moment it appears, growing a feature or refactoring one alike.
 6. Provide classes directly `<Provider for={AppState}>` never an instance if only to provide it.
 7. Move source fields and behavioral methods first; do not mechanically translate setters.
 8. Keep shared, semantic derivations as getters; leave single-consumer display derivations in their consuming component.

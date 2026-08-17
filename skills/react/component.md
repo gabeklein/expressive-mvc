@@ -10,7 +10,7 @@ Runnable source: the [`component`](https://expressive.dev/examples/component/pro
 - **State** is display-agnostic - pure data and logic, no render method. Use with `State.use()` in function components to separate concerns.
 - **Component** is for **custom components/primitives** that own their display logic. They're _meant_ to render. Use when you need a reusable, extensible unit combining behavior + UI: form controls, media players, data grids, modals. A layout shell earns Component only with owned state; a stateless shell is an FC mounting its children.
 
-Rule of thumb: use `Component` when state is intrinsic to display logic. Usually that means defining `render()`.
+Rule of thumb: use `Component` when state is intrinsic to display logic. Usually that means defining `render()`. Intrinsic to *this* display concern, not to the surface - a second intrinsic concern (a resize handle beside send) is a second class, composed as a mounted wrapper, not more fields on the first.
 
 A Component does not have to define `render()`: without one, it passes children through while still providing itself to context and acting as Suspense/ErrorBoundary placement. Use that headless form only when React tree placement is the feature: route controllers inserted throughout an app, progressive `Boundary` wrappers, or Suspense/ErrorBoundary placement.
 
@@ -183,6 +183,8 @@ class Page extends Frame {
 `Frame` is the outer layer (higher on the chain); `Page` content slots in where `Frame` reads `props.children`. Levels nest the same way - each subclass becomes its parent's `children`. Every layer binds to the same live instance, so all read the same reactive `this`.
 
 This is how a base primitive owns shared chrome/suspense/context once while subclasses author only the content.
+
+Extend only when the subclass *is a kind of* the base (`Nav` is a `Link`). An add-on - resize, collapse, drag - wraps as a mounted Component (`<Resize>{children}</Resize>`) instead: extending parks the add-on's fields on the subclass's every snapshot, and taking it off means rewriting the class rather than dropping the wrap.
 
 Composition here is deliberate and confined: `render` is sealed at bootstrap as the **single** composition seam - every other member (methods, getters, subcomponents, lifecycle hooks) overrides with standard replace semantics. The rationale: a reactive base's render is chrome *plus subscriptions and boundaries* that must run for the subclass to work, and override-with-`super.render()` makes every subclass responsible for remembering the call - one forgotten `super` silently drops the base's boundaries. Composing inverts the default so the base owns its chrome exactly once (see [design.md](../design.md)).
 

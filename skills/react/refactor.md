@@ -155,6 +155,24 @@ An owned region needs no cross-controller synchronization - the parent holds the
 
 A feature region is unpluggable: it owns its pool, display state, and chrome, and deleting its import removes the feature whole - don't leave the pool or query on the page because the page syncs it. Run that as a test on each pane, strip, or panel the page mounts: delete its import - does the feature leave whole, pool included? Judge clusters by interaction, not product framing - clusters that never read each other are unrelated even when the product calls them one surface; a shared wire or replica decides sync, not view ownership. Sibling features read each other thru optional context (`get(Other, false)`); siblings do not see each other's context, so the consumer mounts beneath the provider in JSX. A page left with no owned fields after extraction demotes to an FC mounting its regions (step 3).
 
+The same rule while building, not only as cleanup: a second concern appearing on a class is the moment it leaves. Bias one concern per State/Component; barrels are deliberate - the page after extraction, a pool owner, a shell that only mounts. Chrome counts: a resize handle's `height`/`resizing`/`beginDrag` parked on Composer fails the test the way a stranded pool does. Compose the add-on as a mounted wrapper - the sized thing reads the sizer:
+
+```tsx
+<Resize>                      {/* owns height, drag, the handle */}
+  <div className="compose-box">
+    <Draft />
+  </div>
+</Resize>
+
+function Draft() {
+  const { parts } = Composer.get();
+  const { height } = Resize.get();  // the only other reader
+  ...
+}
+```
+
+Unplug is dropping the `<Resize>` wrap and the height read. `class Composer extends Resizable` is not this: extension puts drag fields on every `Composer.get()` snapshot. Extend for *is a kind of* (a `Nav` that is a `Link`); wrap for an add-on you take off.
+
 ## 6. Provide classes directly
 
 ```tsx
@@ -479,6 +497,7 @@ The checklist:
 - Are opaque handles (unsubscribe fns, timers, snapshots) unmanaged rather than reactive fields? *(invariant)*
 - Does every subscription consume what it declares - no `void x` reads to force tracking in a render? *(invariant)*
 - Is a page State with unrelated clusters split into owned region States - does each rendered feature (pane, strip, panel) unplug by deleting one import? *(default)*
+- Does each class name one concern, or is it a declared barrel (page orchestrator, pool owner, mounting shell)? A composer still holding `height`/`resizing`/`beginDrag` fails. *(default)*
 - Does every Component earn its instance (owned fields, pool, boundary - not a ref plus a DOM-sync reaction) - pass-throughs demoted to FCs, stateless shells mounted not held? *(default)*
 - Is working identity (session, selection) a separate field from URL params, soft-synced by a reaction? *(default)*
 - Does every method do more than assign one field? *(invariant)*

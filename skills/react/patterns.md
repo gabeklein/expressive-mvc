@@ -222,7 +222,7 @@ The owner coordinates readiness only. A method re-finding a chip by id to feed i
 
 ## Region Controllers
 
-When a page State accumulates unrelated clusters - draft fields plus lookups plus request state plus navigation - split each into its own State owned as a field. A feature region is unpluggable - pool, display state, and chrome travel with its import; test each pane, strip, or panel: delete its import and the feature leaves whole. A page left with no owned fields demotes to an FC mounting its regions. Ownership provides implicitly; views bind the region directly:
+When a page State accumulates unrelated clusters - draft fields plus lookups plus request state plus navigation - split each into its own State owned as a field. A feature region is unpluggable - pool, display state, and chrome travel with its import; test each pane, strip, or panel: delete its import and the feature leaves whole. A page left with no owned fields demotes to an FC mounting its regions. The rule applies while building, not only as cleanup: one concern per class, second concern leaves when it appears; barrels (page orchestrator, pool owner, mounting shell) are deliberate. Ownership provides implicitly; views bind the region directly:
 
 ```tsx
 class ComposePage extends Component {
