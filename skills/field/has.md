@@ -18,7 +18,7 @@ The argument selects the mode:
 | call | interface | insert | identity |
 | --- | --- | --- | --- |
 | `has<T>()` / `has(values)` | `has.List<T>` | `push` / `put` / `set(index)` | position |
-| `has(StateClass)` / `has(factory)` | `has.Pool<T, A>` | `add(...args)` spawns, `add(value)` admits | the value itself |
+| `has(StateClass)` / `has(StateClass, key)` / `has(factory)` | `has.Pool<T, A>` | `add(...args)` spawns, `add(value)` admits | the value itself |
 
 A list stores values you give it, in order, addressed by index. A pool spawns its members - `add` returns the member, the call site holds the reference, and the value is its own identity for `has`, `delete`, and eviction. A class-mode pool also takes a ready-made instance.
 
@@ -78,6 +78,44 @@ store.selected.add(item);                // holds an active member - guest
 ```
 
 Only a single argument is treated this way; `add(a, b)` always constructs, so multi-argument constructors are unaffected. A factory pool never admits - its arguments are its own, so route instances through the factory body (`has((item?: Item) => item || new Item())`).
+
+### Argument key
+
+A field name after the class assigns `add`'s argument to it - the common case, without writing a function.
+
+```ts
+class Roster extends State {
+  players = has(Player, 'id');
+}
+
+const player = roster.players.add('abc');   // new Player({ id: 'abc' })
+```
+
+The key is a `State.Field<T>` - an own field, not a base `State` member - and `add` takes its value type. One key only; transposing more than one value is a factory.
+
+### Declining to add
+
+A factory returning `undefined` adds nothing and `add` yields `undefined` - so it decides *which* member, not just how to build one. Return an existing instance and the pool holds that, making `add` a lookup-or-create; a member already present is returned untouched.
+
+```ts
+const USERS = new Map<string, User>();
+
+class Store extends State {
+  active = has((id: string) => USERS.get(id) || new User({ id }));
+  online = has((id: string) => USERS.get(id));
+}
+
+store.active.add('abc');         // known user, else spawns one
+store.online.add('nope');        // undefined - nothing added
+```
+
+Members stay `T` - only `add` widens - so reads are not infected by the miss case. The same applies to filtering at construction:
+
+```ts
+messages = has((dto: MessageDto) =>
+  dto.deleted ? undefined : new Message({ info: dto, id: dto.id })
+);
+```
 
 A pool has no initial argument: it spawns, so seed it imperatively from the `new()` hook, which runs once the field has resolved. This is the single seeding seam - it also covers conditional, ordered, and derived members, which a static initializer could not.
 
@@ -186,7 +224,13 @@ Member fields read thru a subscribed context track deeply - a parent rendering `
 ```ts
 function has<T>(initial?: Iterable<T> | false | null): has.List<T>;
 function has<T extends State>(Type: new (...args: State.Args<T>) => T): has.Pool<T, State.Args<T> | [T]>;
-function has<T, A extends unknown[]>(make: (...args: A) => T): has.Pool<T, A>;
+function has<T extends State, K extends State.Field<T>>(
+  Type: new (...args: State.Args<T>) => T,
+  key: K
+): has.Pool<T, [T[K]] | [T]>;
+function has<R, A extends unknown[]>(
+  make: (...args: A) => R
+): has.Pool<Exclude<R, undefined>, A, R>;
 
 class has.List<T> {
   readonly size: number;
@@ -202,9 +246,9 @@ class has.List<T> {
   // map / filter / any / all / [Symbol.iterator]
 }
 
-class has.Pool<T, A extends unknown[] = unknown[]> {
+class has.Pool<T, A extends unknown[] = unknown[], R = T> {
   readonly size: number;
-  add(...args: A): T;                          // constructor's or factory's own signature; class mode also takes [T]
+  add(...args: A): R;                          // constructor's or factory's own signature; class mode also takes [T]
   get(): State.Export<T>[];                    // snapshot
   get(predicate): T | undefined;
   has(value: T): boolean;
@@ -221,6 +265,6 @@ class has.Pool<T, A extends unknown[] = unknown[]> {
 - Mode follows the argument: iterable/none is a list, any function (class or factory, any arity) is a pool.
 - List events are positional: `set(index)` notifies that index; `put`/`pop` notify shifted indices plus length.
 - Pool events are by value: `add`/`delete` notify the member plus shape; `has(value)` tracks that member only.
-- Repeat `add` of a value already present is a no-op.
+- `add` is a no-op for a value already present, and for `undefined` from a factory - which it returns.
 - `get()` with no arguments returns a snapshot array in both modes.
 - Reactivity is shallow. Nested State, `map()`, and `has()` values keep their own reactivity when accessed through the collection.

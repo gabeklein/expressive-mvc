@@ -25,13 +25,22 @@ function has<T extends State>(
   Type: new (...args: State.Args<T>) => T
 ): Pool<T, State.Args<T> | [T]>;
 
-function has<T, A extends unknown[]>(
-  make: (...args: A) => T
-): Pool<T, A>;
+function has<T extends State, K extends State.Field<T>>(
+  Type: new (...args: State.Args<T>) => T,
+  key: K
+): Pool<T, [T[K]] | [T]>;
 
-function has(arg?: Iterable<unknown> | Function | false | null): unknown {
+function has<R, A extends unknown[]>(
+  make: (...args: A) => R
+): Pool<Exclude<R, undefined>, A, R>;
+
+function has(
+  arg?: Iterable<unknown> | Function | false | null,
+  key?: string
+): unknown {
   return def((_key, subject) => {
-    const value = typeof arg == 'function' ? new Pool(arg) : new List(arg);
+    const value =
+      typeof arg == 'function' ? new Pool(arg, key) : new List(arg);
 
     parent(value, subject);
     listener(subject, () => value.clear(), null);
@@ -163,15 +172,15 @@ class List<T> {
   }
 }
 
-class Pool<T, A extends unknown[] = unknown[]> {
-  constructor(make: Function) {
+class Pool<T, A extends unknown[] = unknown[], R = T> {
+  constructor(make: Function, key?: string) {
     if (State.is(make)) {
       const Type = make as unknown as State.Type;
 
       make = (...args: State.Args) =>
-        args.length == 1 && args[0] instanceof Type
-          ? args[0]
-          : new Type(...args);
+        args.length == 1 && args[0] instanceof Type ? args[0] :
+        key ? new Type({ [key]: args[0] }) :
+        new Type(...args);
     }
 
     MEMBERS.set(this, new Set());
@@ -185,9 +194,12 @@ class Pool<T, A extends unknown[] = unknown[]> {
     return touch(this, SHAPE, members<T>(this).size);
   }
 
-  add(...args: A): T {
+  add(...args: A): R {
     const target = source(this);
-    const made = MAKE.get(target)!(...args) as T;
+    const made = MAKE.get(target)!(...args) as T | undefined;
+
+    if (made === undefined) return undefined as R;
+
     const values = MEMBERS.get(target) as Set<T>;
 
     if (!values.has(made)) {
@@ -197,7 +209,7 @@ class Pool<T, A extends unknown[] = unknown[]> {
       event(target, SHAPE);
     }
 
-    return made;
+    return made as R;
   }
 
   get(): State.Export<T>[];
