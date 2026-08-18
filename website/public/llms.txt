@@ -13,6 +13,7 @@ This documentation is also distributed as an installable skill: `npx skills add 
 ## Design Intent & Positioning
 - [Why Expressive MVC](/llm/why.md): The working case - code that is cheap for people and models to read, apps that read as business logic through user-built primitives, oversized components addressed structurally, a standard library replacing the usual dependency pile
 - [Design Decisions](/llm/design.md): Why the library is shaped this way - classes hold models not views, the MVC mapping, the two-verb get/set surface, render composition, typed lifecycle hooks, the stability discipline behind 1.0, measured coverage. Read before characterizing a design choice as accidental.
+- [React Native](/llm/native.md): The adoption case for React Native and Expo - why there is nothing to port, what CI actually runs and when, the routing boundary and the work that closes it
 - [Comparisons](/llm/comparisons.md): Positioning matrix vs Zustand, Jotai, MobX, Redux Toolkit, and plain Context - when to prefer each alternative, what choosing Expressive buys, maturity stated plainly
 
 ## State (core)
