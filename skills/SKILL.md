@@ -32,7 +32,7 @@ The most common failure when adopting this library is translating hooks one-for-
 
 For every stateful concern, pick exactly one owner:
 
-- **`Component`** - state intrinsic to one display subtree: controls, shells, panels, editors, review/confirm surfaces. Usually defines `render()`. Fields, handlers, and rendering live on one class.
+- **`Component`** - state intrinsic to one display subtree: controls, panels, editors, review/confirm surfaces. Usually defines `render()`. Fields, handlers, and rendering live on one class. The app/route entrypoint is one even when `render()` only composes: it owns construction (replica + region State fields), provides implicitly, and ships last-resort `catch`/`fallback` - `main` just mounts it.
 - **`State`** - headless model or workflow: network operations, domain rules, cross-view coordination. Views subscribe via `State.get()` / `State.use()`.
 - **Plain function component** - simple presentation, or trivial local UI state. Not everything needs a class.
 
@@ -42,6 +42,7 @@ Counter-rules:
 
 - Do not create `FooState` plus `FooView` just because hooks were present. If the behavior and rendering are one unit, `class Foo extends Component` is the refactor.
 - Avoid `Component` where a provided `State` suffices - Components carry React instance surface (`props`, `state`, `setState`, `forceUpdate`) that makes `.get()` IntelliSense noisier.
+- Prefer an FC over `Component` when state is zero or reducible and no boundary is wanted - a class holding only `get(...)` fields plus `render()` is an FC snapshotting `.get()`.
 - A render-less `Component` (children pass through while providing context and boundary placement) is only for cases where React tree placement is the feature: route controllers, progressive boundaries.
 - A provided State implicitly provides its child States - prefer `theme = new Theme()` on an existing owner over stacking Providers for every small controller.
 
@@ -53,15 +54,15 @@ Counter-rules:
 2. Separate headless workflow state from display-intrinsic state.
 3. Choose `State`, `Component`, or a plain function component for each owner.
 4. Give every repeated UI entry own class in a `has` pool; actions about item belong on item.
-5. Split unrelated clusters remaining on page State to owned region States `composer = new Composer()`.
-6. Provide classes directly `<Provider for={AppState}>` never an instance if only to provide it.
+5. Split unrelated clusters remaining on page State to owned region States `composer = new Composer()`. Bias one concern per class - barrels are deliberate (page orchestrator, pool owner, mounting shell); shed a second concern the moment it appears, growing a feature or refactoring one alike.
+6. Provide classes directly `<Provider for={AppState}>` never an instance if only to provide it; the entrypoint Component's own fields provide implicitly - `main` only mounts `<Inbox />`.
 7. Move source fields and behavioral methods first; do not mechanically translate setters.
 8. Keep shared, semantic derivations as getters; leave single-consumer display derivations in their consuming component.
 9. Let contextual children call `.get()` instead of receiving drilled props.
 10. At every `.get()` / `.use()`, destructure for exact nested dependency snapshot.
 11. May assign thru subscribed proxies; `is` only to retain the root object alongside sibling destructuring.
-12. Gate optional children at call site; inside, assert requirements with `.get(true)`.
-13. Extract long conditional JSX to named scopes, then consolidate scopes that share dependencies and hold no nested logic.
+12. A gated widget mounts unconditionally and gates itself, falling thru when unset; parent gate + `.get(true)` where the parent reads the field for its own content.
+13. Split `render()` and long JSX at conditionals and non-interacting siblings into honestly-named local FCs - units you'd delete or move whole; one-op conditionals and formatted scalars stay inline. Consolidate scopes that share dependencies and hold no nested logic.
 14. Audit the result against the checklist in [react/refactor.md](react/refactor.md).
 
 For large apps, scope a one-shot conversion to route/page controllers and their domain pools; leave mature leaf widgets on hooks until parent domains stabilize.
@@ -116,7 +117,7 @@ Field initializers that configure reactive behavior. Each has multiple overloads
 | `get()` | Context lookup between States - required or optional upstream, downstream collection                   | [field/get.md](field/get.md) |
 | `ref()` | Mutable refs (`.current`), ref callbacks with cleanup, ref proxies                                      | [field/ref.md](field/ref.md) |
 | `map()` | Reactive `Map` field - keyed entries or a keyed spawner, with owned `State` members and direct render    | [field/map.md](field/map.md) |
-| `has()` | Owned collections - an ordered list of values, or a pool of spawned members. Pools are for per-item UI state (selection, progress, row actions) | [field/has.md](field/has.md) |
+| `has()` | Owned collections - an ordered list of values, or a pool of spawned members. Pools are for per-item UI state (selection, progress, row actions). Class first (`has(Row)`); factory when the seed isn't the init | [field/has.md](field/has.md) |
 | `def()` | Low-level custom property behavior                                                                      | [field/def.md](field/def.md) |
 
 For **computed values**, declare a normal class getter - getters on a State subclass are auto-promoted to memoized, dependency-tracked properties. See [state/computed.md](state/computed.md) for tracking rules and when a derivation should *not* be a getter.
@@ -193,7 +194,7 @@ This is the norm, not a preference:
 2. Each trapped getter is traversed once, instead of re-walking `order.customer.address.city` in every expression.
 3. Reads create subscriptions. A deep read buried in a conditional branch subscribes only on renders where that branch runs - a **conditional subscription**. Hoisting reads into the snapshot makes the dependency surface deterministic.
 
-Optional nested objects take in-place defaults (`= {}`) rather than a separate unwrap step. The same rule applies to `this` inside `Component.render()` and subcomponents.
+Optional nested objects take in-place defaults (`= {}`) rather than a separate unwrap step. The same rule applies to `this` inside `Component.render()` and subcomponents - injected parents (`inbox = get(Inbox)`) are read thru that snapshot, never a second `Inbox.get()`.
 
 ## Transparent Writes
 
@@ -226,7 +227,7 @@ Do not unwrap every writable object through `is` - that is the most common misus
 
 ## Presence Boundaries & `get(true)`
 
-When a child's content requires values that may not exist yet, the parent owns the gate and the child asserts the invariant with `get(true)`:
+Default: a self-contained widget mounts unconditionally, reads its own context, and falls thru when its reason to render is unset - a parent read existing only to gate belongs in the widget. The secondary shape, when the parent reads the field for its own content: parent gates, child asserts with `get(true)`:
 
 ```tsx
 function SettingsContent() {
@@ -254,7 +255,7 @@ function SettingsEditor() {
 }
 ```
 
-This gives the child a strong contract - no fallback values threaded through its body. Declare gateable fields **optional** (`draft?: SettingsLocation`), not `| null`: the runtime check rejects only `undefined`, and `Required<T>` does not strip `null` from a union (see [react/react.md](react/react.md)).
+This gives the child a strong contract - no fallback values threaded through its body. Declare gateable fields **optional** (`draft?: SettingsLocation`), not `| null`: the runtime check rejects only `undefined`, and `Required<T>` does not strip `null` from a union (see [react/react.md](react/react.md)). Both shapes in full: [react/refactor.md](react/refactor.md) step 12.
 
 ## Provider & Context
 
@@ -358,7 +359,7 @@ Fetch these for detailed documentation when the task requires deeper knowledge. 
 
 - [react/react.md](react/react.md) - use(), State.use(), State.get() (optional lookup, required values `get(true)`, computed selector), Provider, Consumer, transparent writes, ForceRefresh
 - [react/component.md](react/component.md) - Component class, props, children, render composition, subcomponent extension points, error boundaries
-- [react/patterns.md](react/patterns.md) - Recipes: forms, async, domain-row and form-chip pools, region controllers, router bridge, presence boundary, contextual children, debounce, effects
+- [react/patterns.md](react/patterns.md) - Recipes: forms, async, domain-row and form-chip pools, region controllers, router bridge, host-agnostic model + view adapter, presence boundary, contextual children, debounce, effects
 
 ### Router
 

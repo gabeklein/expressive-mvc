@@ -193,6 +193,8 @@ const stop = Counter.on(function (this: Counter) {
 - Same callback registered on parent and child runs only once.
 - Returns unsubscribe function.
 
+`on()` is the mix-in for environment-specific activation of a shared class. The domain module stays fields-only - no `window`, DOM, or host APIs at module scope or in `new()`; an adapter module re-exports the class and registers `on()` once, so every instance constructed after that import gets the wiring and environments that never import the adapter never run it. Don't subclass (`class ViewSession extends Session`) and don't construct in the adapter - the consumer owns the instance. Recipe: [patterns.md](../react/patterns.md).
+
 ## Constructor Args (`State.Args`)
 
 ```ts

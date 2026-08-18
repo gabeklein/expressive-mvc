@@ -157,6 +157,8 @@ function MessageList({ list }: { list: Message[] }) {
 
 Activated Components are React elements: the pool `{inbox.messages}` and plain subsets `{list}` place directly, no `.map`. Each row paints from its own `render()` subscription - selecting one message re-renders one row.
 
+The factory here earns its line by folding the payload to `info`. A seed already matching the class's init is just `has(Message)` - integration writes declared keys only, skips the rest, and a clashing shared key is a TypeScript error.
+
 A cross-cutting subset can be a second pool instead of a member flag - class-mode `add` admits ready-made members; `pool.has(value)` tracks that member only. Members evict on destroy, so refill clears the subset - use a durable key when selection must survive refresh:
 
 ```tsx
@@ -222,7 +224,7 @@ The owner coordinates readiness only. A method re-finding a chip by id to feed i
 
 ## Region Controllers
 
-When a page State accumulates unrelated clusters - draft fields plus lookups plus request state plus navigation - split each into its own State owned as a field. Ownership provides implicitly; views bind the region directly:
+When a page State accumulates unrelated clusters - draft fields plus lookups plus request state plus navigation - split each into its own State owned as a field. Owned fields are States; features that paint mount in `render()` as JSX. Unplug test, build-time bias, and the forms table: [refactor.md](refactor.md) steps 3/5. Ownership provides implicitly; views bind the region directly:
 
 ```tsx
 class ComposePage extends Component {
@@ -249,6 +251,8 @@ function Footer() {
 ```
 
 The page remains orchestrator - route identity, session, request dispatch, page-level errors. Split when the second cluster appears, not as late cleanup.
+
+Children of a region `.get()` the region, never the page above it and back down. Facts they repeat become getters on the region; nested config they keep unpacking is forwarded once (`get config() { return this.page.sendOptions; }`), named for the local scope.
 
 ## Bridging an Existing Router
 
@@ -292,6 +296,34 @@ class ComposePage extends Component {
 
 Assign the working field the moment identity is created. Fresh ids threaded thru arguments, or a shadow field remembering the last route - the working field is still a mirror.
 
+## Host-Agnostic Model, View Adapter
+
+A class shared across environments (extension host + webview, server + client) stays fields-only - no `window`, DOM, or host APIs at module scope or in `new()`. The view-side module re-exports the class and registers `State.on()` once; every instance constructed after that import gets the wiring, and hosts that never import the adapter never run it:
+
+```ts
+// domain/session.ts - loads anywhere
+export class Session extends State {
+  status = 'idle';
+  messages: MessageDto[] = [];
+}
+
+// webview/session.ts - the adapter; views import Session from here
+export { Session } from '../domain/session';
+
+Session.on(function (this: Session) {
+  const onMessage = (event: MessageEvent<HostToView>) => {
+    if (event.data?.type === 'state')
+      this.set(event.data.values as State.Assign<Session>);
+  };
+
+  window.addEventListener('message', onMessage);
+  signal('ready');
+  return () => window.removeEventListener('message', onMessage);
+});
+```
+
+Construction stays with the consumer - `session = new Session()` on the entrypoint. No subclass (`class ViewSession extends Session`), no `Session.new()` in the adapter. Inbound snapshots land with `set(values)` - a superset payload is fine, extra keys drop ([set.md](../state/set.md)).
+
 ## Context Sharing
 
 ```tsx
@@ -306,12 +338,21 @@ class Theme extends State {
 
 class ThemedWidget extends Component {
   theme = get(Theme);
+  clicks = 0;
 
   render() {
+    const {
+      clicks,
+      theme: {
+        color,
+        toggle,
+      },
+    } = this;
+
     return (
-      <div style={{ color: this.theme.color }}>
-        Themed content
-        <button onClick={this.theme.toggle}>Toggle</button>
+      <div style={{ color }}>
+        <button onClick={() => this.clicks++}>Clicked {clicks}</button>
+        <button onClick={toggle}>Toggle theme</button>
       </div>
     );
   }
@@ -325,6 +366,8 @@ function App() {
   );
 }
 ```
+
+`ThemedWidget` owns `clicks`; were `theme` its only member, an FC snapshotting `Theme.get()` replaces the class.
 
 ## Contextual Children (No Prop Drilling)
 
@@ -398,6 +441,8 @@ function SettingsEditor() {
   return <section className="settings-editor">...</section>;
 }
 ```
+
+Default for a self-contained widget: the parent mounts `<UndoBar />` unconditionally; the bar reads `Outbox.get()` and falls thru when `pendingSend` is unset. The parent gate above fits when the parent reads the field for its own content.
 
 ## Computed Values
 

@@ -29,6 +29,8 @@ set(assign?: State.Assign<this>, silent?: boolean): State.Updated<this>
 
 Merges properties from object into state. Only known properties and methods are applied; unknown keys are ignored. The `is` property is always ignored.
 
+This makes `set(values)` the wire-snapshot ingest: a host payload may be a superset - extra keys drop, missing keys stay untouched. `undefined` / `null` present in the bag *do* write, so don't pad. On a subclassable class the ingest call is `this.set(msg.values as State.Assign<Session>)` (the cast below); never hand-roll an `apply()`/`pick` loop over declared fields.
+
 ```ts
 state.set({ count: 5 }); // merge, triggers events
 state.set({ count: 5 }, true); // merge silently (no events, no throw if destroyed)
