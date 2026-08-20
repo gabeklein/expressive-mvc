@@ -32,7 +32,7 @@ function has<T extends State, K extends State.Field<T>>(
 
 function has<R, A extends unknown[]>(
   make: (...args: A) => R
-): Pool<Exclude<R, undefined>, A, R>;
+): Pool<Exclude<R, null | undefined>, A, R>;
 
 function has(
   arg?: Iterable<unknown> | Function | false | null,
@@ -196,9 +196,9 @@ class Pool<T, A extends unknown[] = unknown[], R = T> {
 
   add(...args: A): R {
     const target = source(this);
-    const made = MAKE.get(target)!(...args) as T | undefined;
+    const made = MAKE.get(target)!(...args) as T | null | undefined;
 
-    if (made === undefined) return undefined as R;
+    if (made == null) return made as R;
 
     const values = MEMBERS.get(target) as Set<T>;
 

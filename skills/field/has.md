@@ -95,7 +95,7 @@ The key is a `State.Field<T>` - an own field, not a base `State` member - and `a
 
 ### Declining to add
 
-A factory returning `undefined` adds nothing and `add` yields `undefined` - so it decides *which* member, not just how to build one. Return an existing instance and the pool holds that, making `add` a lookup-or-create; a member already present is returned untouched.
+A factory returning `undefined` or `null` adds nothing and `add` yields it back - so a factory decides *which* member, not just how to build one. Return an existing instance and the pool holds that, making `add` a lookup-or-create; a member already present is returned untouched.
 
 ```ts
 const USERS = new Map<string, User>();
@@ -180,7 +180,7 @@ Ownership follows freshness, not how the member arrived: a fresh (never-activate
 
 Every collection is adopted by its hosting state at activation. Fresh `State` members are parented to the owner and activate inside its context: `get(Owner)` resolves directly and providers above the owner resolve from members.
 
-Death also flows the other way: a `State` member that dies evicts itself from the pool - owned or guest - so a pool never serves destroyed members. Destroying a member (`member.set(null)`) is a complete removal gesture on its own. Lists do not adopt, destroy, or evict on death - they store values by position; use a pool (`has(Item)`) when members are owned `State`s.
+Death also flows the other way: a `State` member that dies evicts itself from the pool - owned or guest - so a pool never serves destroyed members. Adding one already destroyed throws. Destroying a member (`member.set(null)`) is a complete removal gesture on its own. Lists do not adopt, destroy, or evict on death - they store values by position; use a pool (`has(Item)`) when members are owned `State`s.
 
 Destruction is an eviction concern, separate from context, so the underlying `has.Pool` and `has.List` can be constructed directly without an owner (`new has.Pool(Item)`, chiefly for testing) - fresh members are still owned and destroyed on eviction, just not parented into a context.
 
@@ -230,7 +230,7 @@ function has<T extends State, K extends State.Field<T>>(
 ): has.Pool<T, [T[K]] | [T]>;
 function has<R, A extends unknown[]>(
   make: (...args: A) => R
-): has.Pool<Exclude<R, undefined>, A, R>;
+): has.Pool<Exclude<R, null | undefined>, A, R>;
 
 class has.List<T> {
   readonly size: number;
@@ -265,6 +265,6 @@ class has.Pool<T, A extends unknown[] = unknown[], R = T> {
 - Mode follows the argument: iterable/none is a list, any function (class or factory, any arity) is a pool.
 - List events are positional: `set(index)` notifies that index; `put`/`pop` notify shifted indices plus length.
 - Pool events are by value: `add`/`delete` notify the member plus shape; `has(value)` tracks that member only.
-- `add` is a no-op for a value already present, and for `undefined` from a factory - which it returns.
+- `add` is a no-op for a value already present, and for nullish from a factory - which it returns.
 - `get()` with no arguments returns a snapshot array in both modes.
 - Reactivity is shallow. Nested State, `map()`, and `has()` values keep their own reactivity when accessed through the collection.

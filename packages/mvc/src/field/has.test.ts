@@ -18,7 +18,7 @@ function reactive<T extends State, K extends State.Field<T>>(
 
 function reactive<R, A extends unknown[]>(
   make: (...args: A) => R
-): has.Pool<Exclude<R, undefined>, A, R>;
+): has.Pool<Exclude<R, null | undefined>, A, R>;
 
 function reactive(...args: any[]): any {
   const arg = args[0];
@@ -852,9 +852,27 @@ describe('pool lookup', () => {
     expect(pool.size).toBe(0);
   });
 
-  it('will exclude undefined from member type', () => {
+  it('will not add if factory returns null', async () => {
     const known = new Map([['abc', Item.new({ id: 'abc' })]]);
-    const pool = reactive((id: string) => known.get(id));
+    const pool = reactive((id: string) => known.get(id) || null);
+    const fn = vi.fn();
+
+    watch(pool, ($) => {
+      void $.size;
+      fn();
+    });
+    fn.mockClear();
+
+    expect(pool.add('nope')).toBeNull();
+    await flush();
+
+    expect(fn).not.toHaveBeenCalled();
+    expect(pool.size).toBe(0);
+  });
+
+  it('will exclude nullish from member type', () => {
+    const known = new Map([['abc', Item.new({ id: 'abc' })]]);
+    const pool = reactive((id: string) => known.get(id) || null);
 
     pool.add('abc');
 
