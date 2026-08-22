@@ -4,5 +4,6 @@ export default {
   query: 'Query',
   guards: 'Guards',
   transitions: 'Transitions',
-  nav: 'Navigation'
+  nav: 'Navigation',
+  wizard: 'Wizard'
 };
