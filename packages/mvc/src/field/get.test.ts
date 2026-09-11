@@ -476,6 +476,39 @@ describe('fetch mode', () => {
       expect(parent.a.peer).toBe(parent.b);
       expect(parent.b.peer).toBe(parent.a);
     });
+
+    it('will resolve a sibling a subclass initializer replaced', () => {
+      class Workspace extends State {
+        git = 'host';
+      }
+      class HarnessWorkspace extends Workspace {
+        git = 'harness';
+      }
+      class Session extends State {
+        workspace = get(Workspace);
+      }
+      class HarnessSession extends Session {}
+      class Pairing extends State {
+        session = new Session();
+        workspace = new Workspace();
+      }
+      class HarnessPairing extends Pairing {
+        session = new HarnessSession();
+        workspace = new HarnessWorkspace();
+      }
+
+      const p1 = HarnessPairing.new();
+      const p2 = HarnessPairing.new();
+
+      p1.set(null);
+
+      const p3 = HarnessPairing.new();
+
+      for (const p of [p2, p3]) {
+        expect(p.session.workspace).toBe(p.workspace);
+        expect(p.session.workspace.git).toBe('harness');
+      }
+    });
   });
 
   it('will not register upstream into own context', () => {
