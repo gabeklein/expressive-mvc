@@ -1,5 +1,11 @@
 # @expressive/mvc
 
+## 0.84.2
+
+### Patch Changes
+
+- [#340](https://github.com/gabeklein/expressive-mvc/pull/340) [`8f5a446`](https://github.com/gabeklein/expressive-mvc/commit/8f5a446385a9e2815ea7e1cebfa20cab325ddf2c) A child State constructed by a base-class field initializer and overwritten by a subclass initializer no longer warns that it was constructed but never activated. Activation drops pending States constructed between a parent and the last child it adopted.
+
 ## 0.84.1
 
 ### Patch Changes
