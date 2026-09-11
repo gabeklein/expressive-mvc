@@ -550,6 +550,8 @@ function init(state: State, ...args: State.Args) {
   }
 
   listener(state, (key) => {
+    const rest = queued(state);
+
     PENDING.delete(state);
 
     if (key === null) return null;
@@ -575,6 +577,12 @@ function init(state: State, ...args: State.Args) {
         else if (typeof out == 'object') assign(state, out, true);
       }
     });
+
+    let end = rest.length;
+
+    while (end-- > 0 && PENDING.has(rest[end]));
+
+    for (let i = 0; i < end; i++) PENDING.delete(rest[i]);
 
     return null;
   });
@@ -853,6 +861,21 @@ function child(state: State) {
 
     CHILDREN.get(state)?.forEach((cb) => cb(value));
   };
+}
+
+/**
+ * Pending States constructed after this one - in a parent, the products of
+ * its own initializers, until the last one it kept.
+ */
+function queued(state: State) {
+  const rest: State[] = [];
+  let seen = false;
+
+  for (const item of PENDING)
+    if (!seen) seen = item === state;
+    else if (item instanceof State) rest.push(item);
+
+  return rest;
 }
 
 /**

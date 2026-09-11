@@ -3849,6 +3849,70 @@ describe('activation', () => {
     expect(warn).not.toBeCalled();
   });
 
+  it('will not warn for base child a subclass overwrote', async () => {
+    class Child extends State {
+      value = 1;
+    }
+
+    class Base extends State {
+      child = new Child();
+    }
+
+    class Sub extends Base {
+      child = new Child();
+    }
+
+    const sub = Sub.new();
+
+    await flushMicrotasks();
+
+    expect(sub.child).toBeInstanceOf(Child);
+    expect(warn).not.toBeCalled();
+  });
+
+  it('will not warn for overwritten child of an adopted child', async () => {
+    class Leaf extends State {}
+
+    class Base extends State {
+      leaf = new Leaf();
+    }
+
+    class Sub extends Base {
+      leaf = new Leaf();
+    }
+
+    class Parent extends State {
+      child = new Sub();
+    }
+
+    Parent.new();
+
+    await flushMicrotasks();
+
+    expect(warn).not.toBeCalled();
+  });
+
+  it('will still warn for unrelated state constructed alongside', async () => {
+    class Child extends State {}
+    class Other extends State {}
+
+    class Parent extends State {
+      child = new Child();
+    }
+
+    const parent = new Parent();
+    const other = new Other();
+
+    event(parent);
+
+    await flushMicrotasks();
+
+    expect(warn).toBeCalledTimes(1);
+    expect(warn).toBeCalledWith(
+      `${other} was constructed but never activated.`
+    );
+  });
+
   it('will not warn if placed in a context', async () => {
     class Test extends State {
       value = 1;
