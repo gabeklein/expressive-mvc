@@ -46,6 +46,8 @@ let QUEUED = false;
 /** Adopters for managed properties which have held a child State. */
 const ADOPT = new WeakMap<State, Map<unknown, (value: unknown) => void>>();
 const CHILDREN = new WeakMap<State, Set<(child: State) => void>>();
+const ORDER = new WeakMap<State, number>();
+let SERIAL = 0;
 
 declare namespace State {
   /** Any type of State, using own class constructor as its identifier. */
@@ -524,6 +526,7 @@ function init(state: State, ...args: State.Args) {
 
   ID.set(state, `${T}-${uid()}`);
   STORE.set(state, {});
+  ORDER.set(state, ++SERIAL);
 
   function observe() {
     for (const key in state) {
@@ -575,6 +578,8 @@ function init(state: State, ...args: State.Args) {
         else if (typeof out == 'object') assign(state, out, true);
       }
     });
+
+    orphans(state);
 
     return null;
   });
@@ -853,6 +858,26 @@ function child(state: State) {
 
     CHILDREN.get(state)?.forEach((cb) => cb(value));
   };
+}
+
+/**
+ * Drop pending States constructed between a parent and the latest State it
+ * holds - initializers a subclass overwrote before activation.
+ */
+function orphans(state: State) {
+  const own = ORDER.get(state)!;
+  const store = STORE.get(state)!;
+  let last = own;
+
+  for (const key in store) {
+    const value = store[key];
+    if (value instanceof State) last = Math.max(last, ORDER.get(value)!);
+  }
+
+  for (const item of PENDING) {
+    const at = item instanceof State ? ORDER.get(item)! : 0;
+    if (at > own && at < last) PENDING.delete(item);
+  }
 }
 
 /**
