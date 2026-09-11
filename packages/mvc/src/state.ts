@@ -46,8 +46,6 @@ let QUEUED = false;
 /** Adopters for managed properties which have held a child State. */
 const ADOPT = new WeakMap<State, Map<unknown, (value: unknown) => void>>();
 const CHILDREN = new WeakMap<State, Set<(child: State) => void>>();
-const ORDER = new WeakMap<State, number>();
-let SERIAL = 0;
 
 declare namespace State {
   /** Any type of State, using own class constructor as its identifier. */
@@ -526,7 +524,6 @@ function init(state: State, ...args: State.Args) {
 
   ID.set(state, `${T}-${uid()}`);
   STORE.set(state, {});
-  ORDER.set(state, ++SERIAL);
 
   function observe() {
     for (const key in state) {
@@ -553,6 +550,8 @@ function init(state: State, ...args: State.Args) {
   }
 
   listener(state, (key) => {
+    const rest = queued(state);
+
     PENDING.delete(state);
 
     if (key === null) return null;
@@ -579,7 +578,11 @@ function init(state: State, ...args: State.Args) {
       }
     });
 
-    orphans(state);
+    let end = rest.length;
+
+    while (end-- > 0 && PENDING.has(rest[end]));
+
+    for (let i = 0; i < end; i++) PENDING.delete(rest[i]);
 
     return null;
   });
@@ -861,23 +864,18 @@ function child(state: State) {
 }
 
 /**
- * Drop pending States constructed between a parent and the latest State it
- * holds - initializers a subclass overwrote before activation.
+ * Pending States constructed after this one - in a parent, the products of
+ * its own initializers, until the last one it kept.
  */
-function orphans(state: State) {
-  const own = ORDER.get(state)!;
-  const store = STORE.get(state)!;
-  let last = own;
+function queued(state: State) {
+  const rest: State[] = [];
+  let seen = false;
 
-  for (const key in store) {
-    const value = store[key];
-    if (value instanceof State) last = Math.max(last, ORDER.get(value)!);
-  }
+  for (const item of PENDING)
+    if (!seen) seen = item === state;
+    else if (item instanceof State) rest.push(item);
 
-  for (const item of PENDING) {
-    const at = item instanceof State ? ORDER.get(item)! : 0;
-    if (at > own && at < last) PENDING.delete(item);
-  }
+  return rest;
 }
 
 /**
