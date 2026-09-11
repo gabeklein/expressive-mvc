@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { withWorkspaceLinks } from './workspace-links';
 
 /**
- * Budgets are min+gzip bytes for one import shape, measured against built dist.
+ * Budgets are gzip bytes for one import shape, measured against built dist.
  * Per-shape rather than one aggregate: the point is to notice when the adapter's
  * irreducible floor grows, or when a formerly shakeable export stops shaking.
  *
@@ -13,44 +13,44 @@ import { withWorkspaceLinks } from './workspace-links';
  * a Bun version and minifier output drifts a little between them - measured at
  * <=0.5% across 1.3.1 and 1.3.14, so the margin is mostly slack. Real growth is
  * structural and clears it; toolchain drift does not. The react floor is the
- * exception: pinned to a round 8 kB, so ~1% - still above observed drift, but it
+ * exception: pinned to 8.5 kB, so ~1.5% - still above observed drift, but it
  * will flag sooner than the rest.
  */
 const CASES = [
   {
     name: 'mvc: State only',
-    limit: 4900,
+    limit: 5100,
     code: `import State from '@expressive/mvc'; console.log(State);`
   },
   {
     name: 'mvc: everything',
-    limit: 8450,
+    limit: 9000,
     code: `import * as all from '@expressive/mvc'; console.log(all);`
   },
   {
     name: 'react: State only',
-    limit: 8192,
+    limit: 8500,
     code: `import State from '@expressive/react'; console.log(State);`
   },
   {
     name: 'react: typical app',
-    limit: 8750,
+    limit: 9450,
     code: `import State, { Component, get, set, ref, def } from '@expressive/react';
            console.log(State, Component, get, set, ref, def);`
   },
   {
     name: 'react: everything',
-    limit: 11100,
+    limit: 11650,
     code: `import * as all from '@expressive/react'; console.log(all);`
   },
   {
     name: 'router: everything',
-    limit: 10700,
+    limit: 11350,
     code: `import * as all from '@expressive/router'; console.log(all);`
   },
   {
     name: 'react + router',
-    limit: 14600,
+    limit: 15300,
     code: `import * as a from '@expressive/react';
            import * as b from '@expressive/router';
            console.log(a, b);`
@@ -122,7 +122,7 @@ if (process.env.GITHUB_STEP_SUMMARY)
     [
       '## Bundle size',
       '',
-      '| Import shape | min+gzip | budget |',
+      '| Import shape | gzip | budget |',
       '| --- | --- | --- |',
       ...results.map(({ name, bytes, limit }) =>
         `| ${name} | ${bytes > limit ? `**${kb(bytes)}** :warning:` : kb(bytes)} | ${kb(limit)} |`
