@@ -9,7 +9,7 @@ Every figure on this page is produced by `.github/scripts/size-limit.ts`, which 
 
 Minified, then gzipped. React is a peer dependency and excluded, as it would already be in your app.
 
-| What you import | min+gzip |
+| What you import | gzip |
 | --- | --- |
 | `@expressive/mvc` — `State` only (headless) | ~4.8 kB |
 | `@expressive/mvc` — every export | ~8.4 kB |
@@ -25,7 +25,7 @@ A typical React app lands around **8.8 kB**. There are no runtime dependencies, 
 
 Bundle size has no single definition, and the three common ones differ by more than the numbers above:
 
-- **min+gzip of an import shape** — what this page reports, and what actually reaches your users.
+- **gzip of an import shape** — what this page reports, and what actually reaches your users.
 - **Unminified and gzipped** — larger, because comments survive; 18-42% of our shipped JavaScript is documentation comments, which minification removes. Reporting this number would overstate the cost roughly twofold.
 - **npm install size** — much larger again (`@expressive/mvc` unpacks to ~237 kB), because the published tarball carries type declarations and source maps. Those never enter a browser bundle.
 

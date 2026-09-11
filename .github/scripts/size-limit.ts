@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { withWorkspaceLinks } from './workspace-links';
 
 /**
- * Budgets are min+gzip bytes for one import shape, measured against built dist.
+ * Budgets are gzip bytes for one import shape, measured against built dist.
  * Per-shape rather than one aggregate: the point is to notice when the adapter's
  * irreducible floor grows, or when a formerly shakeable export stops shaking.
  *
@@ -122,7 +122,7 @@ if (process.env.GITHUB_STEP_SUMMARY)
     [
       '## Bundle size',
       '',
-      '| Import shape | min+gzip | budget |',
+      '| Import shape | gzip | budget |',
       '| --- | --- | --- |',
       ...results.map(({ name, bytes, limit }) =>
         `| ${name} | ${bytes > limit ? `**${kb(bytes)}** :warning:` : kb(bytes)} | ${kb(limit)} |`
