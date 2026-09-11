@@ -1,5 +1,11 @@
 # @expressive/mvc
 
+## 0.84.1
+
+### Patch Changes
+
+- [#336](https://github.com/gabeklein/expressive-mvc/pull/336) [`1ef128d`](https://github.com/gabeklein/expressive-mvc/commit/1ef128d671586a47e7476b0d4b0ef7d6c20096d7) Resolve upstream `get()` siblings through the parent rather than the shared context. Two `Parent.new()` instances in one process no longer cross-resolve each other's children through root, and a destroyed child's pending lookup is unregistered so a later `Parent.new()` does not throw.
+
 ## 0.84.0
 
 ### Minor Changes
