@@ -19,6 +19,7 @@ declare namespace def {
 }
 
 const APPLY = new Map<symbol, def.Factory | null>();
+const TRACE = new Map<symbol, State[]>();
 const RESET = () => APPLY.clear();
 
 function def<T>(arg1: def.Factory<T>) {
@@ -32,6 +33,7 @@ function def<T>(arg1: def.Factory<T>) {
   const token = Symbol('field-' + uid());
 
   APPLY.set(token, arg1);
+  TRACE.set(token, [...PENDING].filter((x) => x instanceof State) as State[]);
 
   return token as T extends void ? unknown : T;
 }
@@ -51,6 +53,7 @@ State.on((self) => {
     if (!instruction) continue;
 
     APPLY.set(property.value, null);
+    discard(self, property.value);
     delete (self as any)[key];
 
     const output = instruction.call(self, key, self, store);
@@ -64,5 +67,19 @@ State.on((self) => {
     apply(self, key, desc, true);
   }
 });
+
+/**
+ * Drop pending States constructed after `self` and before the instruction -
+ * products of its own initializers, discarded when this token replaced them.
+ */
+function discard(self: State, token: symbol) {
+  let seen = false;
+
+  for (const item of TRACE.get(token)!)
+    if (!seen) seen = item === self;
+    else PENDING.delete(item);
+
+  TRACE.delete(token);
+}
 
 export { def };
