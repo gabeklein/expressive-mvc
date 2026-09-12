@@ -18,8 +18,7 @@ declare namespace def {
   }
 }
 
-const APPLY = new Map<symbol, def.Factory | null>();
-const TRACE = new Map<symbol, State[]>();
+const APPLY = new Map<symbol, [def.Factory, State[]] | null>();
 const RESET = () => APPLY.clear();
 
 function def<T>(arg1: def.Factory<T>) {
@@ -32,8 +31,7 @@ function def<T>(arg1: def.Factory<T>) {
 
   const token = Symbol('field-' + uid());
 
-  APPLY.set(token, arg1);
-  TRACE.set(token, [...PENDING].filter((x) => x instanceof State) as State[]);
+  APPLY.set(token, [arg1, [...PENDING].filter((x) => x instanceof State) as State[]]);
 
   return token as T extends void ? unknown : T;
 }
@@ -43,17 +41,19 @@ State.on((self) => {
 
   for (const key in self) {
     const property: PropertyDescriptor = Object.getOwnPropertyDescriptor(self, key) || {};
-    const instruction = APPLY.get(property.value);
+    const entry = APPLY.get(property.value);
 
-    if (instruction === null)
+    if (entry === null)
       throw new Error(
         `${self}.${key} has an instruction applied to another State.`
       );
 
-    if (!instruction) continue;
+    if (!entry) continue;
+
+    const [instruction, pending] = entry;
 
     APPLY.set(property.value, null);
-    discard(self, property.value);
+    discard(self, pending);
     delete (self as any)[key];
 
     const output = instruction.call(self, key, self, store);
@@ -72,14 +72,12 @@ State.on((self) => {
  * Drop pending States constructed after `self` and before the instruction -
  * products of its own initializers, discarded when this token replaced them.
  */
-function discard(self: State, token: symbol) {
+function discard(self: State, pending: State[]) {
   let seen = false;
 
-  for (const item of TRACE.get(token)!)
+  for (const item of pending)
     if (!seen) seen = item === self;
     else PENDING.delete(item);
-
-  TRACE.delete(token);
 }
 
 export { def };
