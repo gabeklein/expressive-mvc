@@ -3870,6 +3870,51 @@ describe('activation', () => {
     expect(warn).not.toBeCalled();
   });
 
+  it('will not warn for a child a subclass instruction replaced', async () => {
+    class Child extends State {}
+
+    class Base extends State {
+      child = new Child();
+    }
+
+    class Sub extends Base {
+      child = get(Child) as any;
+    }
+
+    class Root extends State {
+      child = new Child();
+      sub = new Sub();
+    }
+
+    const root = Root.new();
+
+    await flushMicrotasks();
+
+    expect(root.sub.child).toBe(root.child);
+    expect(warn).not.toBeCalled();
+  });
+
+  it('will not warn for a child replaced by ref or set', async () => {
+    class Child extends State {}
+
+    class Base extends State {
+      a = new Child();
+      b = new Child();
+    }
+
+    class Sub extends Base {
+      a = ref<Child>() as any;
+      b = set(() => new Child());
+    }
+
+    const sub = Sub.new();
+
+    await flushMicrotasks();
+
+    expect(sub.b).toBeInstanceOf(Child);
+    expect(warn).not.toBeCalled();
+  });
+
   it('will not warn for overwritten child of an adopted child', async () => {
     class Leaf extends State {}
 
