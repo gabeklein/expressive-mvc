@@ -11,15 +11,15 @@ Minified, then gzipped. React is a peer dependency and excluded, as it would alr
 
 | What you import | gzip |
 | --- | --- |
-| `@expressive/mvc` — `State` only (headless) | ~4.9 kB |
-| `@expressive/mvc` — every export | ~8.6 kB |
-| `@expressive/react` — `State` only | ~8.3 kB |
-| `@expressive/react` — `State`, `Component`, instructions | ~9.1 kB |
-| `@expressive/react` — every export | ~11.1 kB |
-| `@expressive/router` — every export | ~10.8 kB |
-| `@expressive/react` + `@expressive/router` | ~14.6 kB |
+| `@expressive/mvc` — `State` only (headless) | ~5.1 kB |
+| `@expressive/mvc` — every export | ~8.7 kB |
+| `@expressive/react` — `State` only | ~8.7 kB |
+| `@expressive/react` — `State`, `Component`, instructions | ~9.5 kB |
+| `@expressive/react` — every export | ~11.5 kB |
+| `@expressive/router` — every export | ~11.0 kB |
+| `@expressive/react` + `@expressive/router` | ~14.9 kB |
 
-A typical React app lands around **9.1 kB**. There are no runtime dependencies, so that is the whole cost — nothing else arrives behind it.
+A typical React app lands around **9.5 kB**. There are no runtime dependencies, so that is the whole cost — nothing else arrives behind it.
 
 ## Methodology, and why the numbers differ elsewhere
 
@@ -33,9 +33,9 @@ If a third-party size service quotes something different from this table, the me
 
 ## Tree-shaking
 
-The headless core shakes properly: importing only `State` costs ~4.9 kB against ~8.6 kB for everything, so unused instructions genuinely do not ship. It is built unbundled — one module per source file, `sideEffects: false` — and its module-level work only touches classes the same module exports, which is what makes that declaration safe.
+The headless core shakes properly: importing only `State` costs ~5.1 kB against ~8.7 kB for everything, so unused instructions genuinely do not ship. It is built unbundled — one module per source file, `sideEffects: false` — and its module-level work only touches classes the same module exports, which is what makes that declaration safe.
 
-The React adapter has a **floor you cannot shake below: ~8.3 kB**, reached by importing anything at all from it. That is deliberate and worth being plain about. The adapter works by patching types it does not own, at import time:
+The React adapter has a **floor you cannot shake below: ~8.7 kB**, reached by importing anything at all from it. That is deliberate and worth being plain about. The adapter works by patching types it does not own, at import time:
 
 - `Component.prototype.$$typeof`, so an instance can be placed directly as JSX
 - `Component.contextType`, wiring the class into React context
