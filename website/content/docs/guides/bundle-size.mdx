@@ -42,7 +42,7 @@ The React adapter has a **floor you cannot shake below: ~8.3 kB**, reached by im
 - `isReactComponent`, so React treats it as a class component
 - the host runtime registry, which hands the core its renderer
 
-Cross-package prototype patches cannot be tree-shaken away without breaking the library, so the wiring arrives whole or not at all. Above the floor, shaking resumes normally — `has`, `map` and `pending` together account for the remaining ~2.6 kB and drop out when unused.
+Cross-package prototype patches cannot be tree-shaken away without breaking the library, so the wiring arrives whole or not at all. Above the floor, shaking resumes normally — `has`, `map` and `pending` together account for the remaining ~2.8 kB and drop out when unused.
 
 The practical consequence: Expressive rewards using more of what you have already paid for, and is a poor fit for shipping one tiny piece of it into an otherwise dependency-free bundle.
 
