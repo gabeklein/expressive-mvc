@@ -10,7 +10,7 @@ import { join, resolve } from 'node:path';
  *
  * Runs from `ci:publish`, so it gates the publish itself rather than every merge.
  */
-const PACKAGES = ['mvc', 'react', 'router'];
+const PACKAGES = ['mvc', 'react', 'dom', 'router'];
 
 const PROBES: Record<string, string> = {
   mvc: `
@@ -70,6 +70,15 @@ assert.equal(
 );
 
 console.log('react: hook render + Component render ok');
+`,
+  dom: `
+import assert from 'node:assert/strict';
+import State, { Component, Consumer, Provider, createPortal, lazy, render } from '@expressive/dom';
+
+for (const [name, value] of Object.entries({ State, Component, Consumer, Provider, createPortal, lazy, render }))
+  assert.equal(typeof value, 'function', name + ' is not exported by the built dist');
+
+console.log('dom: import shape ok');
 `,
   router: `
 import assert from 'node:assert/strict';
