@@ -4,6 +4,7 @@ type Transition = (work: Handler) => void;
 interface Pending {
   count: number;
   done(): void;
+  settled: Promise<void>;
 }
 
 interface Scheduled {
@@ -16,7 +17,7 @@ interface Scheduled {
 }
 
 const DISPATCH = new Map<Handler, Scheduled>();
-const RESOLVED = Promise.resolve();
+const noop = () => {};
 
 let current: Set<Pending> | undefined;
 let replaying: Scheduled | undefined;
@@ -142,13 +143,16 @@ function pending(work?: Handler) {
 
   if (current) {
     work();
-    return RESOLVED;
+    return Promise.all([...current].map((record) => record.settled)).then(noop);
   }
 
   const scheduled: Scheduled = { holds: 0 };
-  const promise = new Promise<void>((resolve) => {
-    scheduled.awaiting = current = new Set([{ count: 1, done: resolve }]);
-  });
+  const record = { count: 1 } as Pending;
+  const promise = (record.settled = new Promise<void>((resolve) => {
+    record.done = resolve;
+  }));
+
+  scheduled.awaiting = current = new Set([record]);
 
   try {
     work();

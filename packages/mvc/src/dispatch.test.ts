@@ -110,12 +110,31 @@ describe('dispatch', () => {
 
     await flushMicrotasks();
 
-    expect(done).toEqual(['inner']);
+    expect(done).toEqual([]);
 
     release();
     await flushMicrotasks();
 
-    expect(done).toEqual(['inner', 'outer']);
+    expect(done).toEqual(['outer', 'inner']);
+  });
+
+  it('will join the calls in flight when made from a replay', async () => {
+    const done: string[] = [];
+    let release!: () => void;
+
+    pending(() => enqueue(() => {
+      release = pending()!;
+      pending(() => {}).then(() => done.push('inner'));
+    })).then(() => done.push('outer'));
+
+    await flushMicrotasks();
+
+    expect(done).toEqual([]);
+
+    release();
+    await flushMicrotasks();
+
+    expect(done).toEqual(['outer', 'inner']);
   });
 
   it('will let urgent priority win for one handler', async () => {
