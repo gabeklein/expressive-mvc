@@ -844,7 +844,9 @@ function child(state: State) {
 
     if (!(value instanceof State)) return;
 
-    const remove = ctx.add(value);
+    const remove = ctx.parent?.get(value.constructor as State.Extends, false) === value
+      ? () => {}
+      : ctx.add(value);
 
     if (parent(value, state)) {
       cleanup = () => {
