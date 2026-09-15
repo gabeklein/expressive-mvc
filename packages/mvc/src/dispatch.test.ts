@@ -406,14 +406,24 @@ describe('dispatch', () => {
     expect(log).toEqual(['source', 'derived', 'settled']);
   });
 
-  it('will release every claim on a handler urgency strips', async () => {
-    const handler = () => {};
+  it('will carry every claim through a replay urgency strips', async () => {
+    const transition = vi.fn((work: () => void) => work());
     const settled: string[] = [];
+    let release: (() => void) | undefined;
+    const handler = () => {
+      release = pending();
+    };
 
-    pending(() => enqueue(handler)).then(() => settled.push('first'));
-    pending(() => enqueue(handler)).then(() => settled.push('second'));
-    enqueue(handler);
+    pending(() => enqueue(handler, transition)).then(() => settled.push('first'));
+    pending(() => enqueue(handler, transition)).then(() => settled.push('second'));
+    enqueue(handler, transition);
 
+    await flushMicrotasks();
+
+    expect(transition).not.toHaveBeenCalled();
+    expect(settled).toEqual([]);
+
+    release!();
     await flushMicrotasks();
 
     expect(settled).toEqual(['first', 'second']);

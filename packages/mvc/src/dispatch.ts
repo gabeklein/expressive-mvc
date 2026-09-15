@@ -109,7 +109,6 @@ function enqueue(handler: Handler, transition?: Transition) {
     claim(scheduled);
   } else {
     scheduled.transition = undefined;
-    drop(scheduled);
   }
 }
 
