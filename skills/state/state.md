@@ -55,7 +55,7 @@ await pending(() => {
 
 With no host registered there is no priority to apply, but the promise still resolves once every subscriber has replayed - awaiting it is how headless code waits out a whole cascade, not just the first flush. A nested call settles its own consequences and joins the outer call. Distinct from `state.set()`, which resolves on the next flush of *that* state (see [set.md](set.md)).
 
-If an effect suspends by throwing a promise, settlement waits for its retry and any downstream updates that retry causes. Fulfillment and rejection both retry through MVC dispatch; cancelling the effect or destroying its state releases the hold and prevents revival.
+If an effect suspends by throwing a promise, settlement waits for its retry and any downstream updates that retry causes. Pending updates arriving meanwhile join the same hold and remain squashed into that retry. Fulfillment and rejection both retry through MVC dispatch; cancelling the effect or destroying its state releases the hold and prevents revival.
 
 An exception from `work` propagates synchronously. Updates queued before it threw still dispatch. The promise never rejects - a reader that throws during its replay is logged, not reported to the writer, so awaiting settlement needs no catch.
 
