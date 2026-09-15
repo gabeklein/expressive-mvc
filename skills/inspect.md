@@ -25,16 +25,17 @@ import { find, roots, instances } from '@expressive/inspect';
 const app = roots()[0];              // instances with no owner
 const composer = find('Composer');   // by label, or find('Composer-x1s4') by id
 composer.state                       // the raw instance - assign to it directly
-composer.parent / composer.children  // ownership
+composer.alive / since / until       // registry span (ms); an Instance outlives its state
+composer.parent / composer.children  // ownership, memoized until the registry changes
 app.find('Composer')                 // depth-first by label or predicate
 composer.get('draft')                // stored value, serialized
 composer.model()                     // { id, typeId, type, site?, parent?, keys, absent }
-composer.watch((key) => ..., ['draft'])   // unsubscribe returned
+composer.watch((key) => ..., ['draft'])   // key per update, null on destroy; unsubscribe returned
 composer.frames({ since })           // this instance's journal
 await composer.act((s) => s.submit('x'))  // run, settle, return frames produced
 ```
 
-Ownership: a State stored in another State's field, `has` pool, or `map` is that owner's child. First owner wins.
+Ownership: a State stored in another State's field, `has` pool, or `map` is that owner's child. First owner wins. One `Instance` per state - `find` returns the same object each time, and a held reference keeps working after destruction with `alive` false and `until` set.
 
 `act` records for its window even when the journal is off, and returns every frame produced, including downstream ones.
 

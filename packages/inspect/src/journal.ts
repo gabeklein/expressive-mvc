@@ -141,11 +141,10 @@ export async function act(work: () => unknown): Promise<Frame[]> {
   return journal.frames({ since: start });
 }
 
-export function note(state: State, key: unknown): void {
+export function note(state: State, key: unknown, store = entries(state)): void {
   const type = labelOf(state.constructor as typeof State);
   if (!wants(type)) return;
 
-  const store = entries(state);
   const name = String(key);
   const event: Event = {
     id: String(state),

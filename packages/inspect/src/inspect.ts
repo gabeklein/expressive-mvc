@@ -19,13 +19,29 @@ export interface Node {
   children: Node[];
 }
 
+interface Span {
+  since: number;
+  until?: number;
+}
+
 const live = new Map<string, State>();
 const hooks = new Map<typeof State, () => boolean>();
 const wrapped = new WeakSet<State>();
+const wrappers = new WeakMap<State, Instance>();
+const spans = new WeakMap<State, Span>();
 
-/** Navigable view of one live instance - identity, ownership, reads, observation. */
+let version = 0;
+let cached: { version: number; parents: Map<State, State> } | undefined;
+
+/** Navigable view of one instance - identity, ownership, reads, observation. One per state; outlives it. */
 export class Instance {
-  constructor(readonly state: State) {}
+  private constructor(readonly state: State) {}
+
+  static of(state: State): Instance {
+    let instance = wrappers.get(state);
+    if (!instance) wrappers.set(state, (instance = new Instance(state)));
+    return instance;
+  }
 
   get id() {
     return String(this.state);
@@ -35,16 +51,30 @@ export class Instance {
     return seen(this.state.constructor as typeof State).type;
   }
 
+  get alive() {
+    return live.get(this.id) === this.state;
+  }
+
+  /** Registration time (ms). */
+  get since() {
+    return spans.get(this.state)!.since;
+  }
+
+  /** Destruction time (ms), once destroyed. */
+  get until() {
+    return spans.get(this.state)!.until;
+  }
+
   get parent(): Instance | undefined {
     const owner = ownership().get(this.state);
-    return owner && new Instance(owner);
+    return owner && Instance.of(owner);
   }
 
   get children(): Instance[] {
     const parents = ownership();
     return [...live.values()]
       .filter((state) => parents.get(state) === this.state)
-      .map((state) => new Instance(state));
+      .map(Instance.of);
   }
 
   /** First instance in this subtree, depth-first, matching `where` (a label or predicate). */
@@ -71,13 +101,16 @@ export class Instance {
     return run(() => work(this.state));
   }
 
-  /** Call `fn` on each update; `keys` narrows. Returns unsubscribe. */
-  watch(fn: (key: string) => void, keys?: string[]): () => void {
-    const stop = this.state.set((key) => {
-      if (typeof key !== 'string' || (keys && !keys.includes(key))) return;
-      fn(key);
+  /** Call `fn` on each update, and with `null` on destroy; `keys` narrows updates. Returns unsubscribe. */
+  watch(fn: (key: string | null) => void, keys?: string[]): () => void {
+    const updates = this.state.set((key) => {
+      if (typeof key === 'string' && (!keys || keys.includes(key))) fn(key);
     });
-    return () => void stop();
+    const destroy = this.state.get(null, () => fn(null));
+    return () => {
+      updates();
+      destroy();
+    };
   }
 
   frames(query: Query = {}): Frame[] {
@@ -93,11 +126,19 @@ export function attach(Type: typeof State = State): () => void {
         const self = this.is;
         seen(self.constructor as typeof State);
         live.set(String(self), self);
+        spans.set(self, { since: Date.now() });
+        version++;
         if (recordsCalls()) wrap(self);
-        const stop = self.set((key) => note(self, key));
+        const stop = self.set((key) => {
+          const store = entries(self);
+          if (typeof key === 'string' && typeof store.get(key) === 'object') version++;
+          note(self, key, store);
+        });
         return () => {
           stop();
           live.delete(String(self));
+          spans.get(self)!.until = Date.now();
+          version++;
           noteDestroy(self);
         };
       })
@@ -113,6 +154,7 @@ export function detach(): void {
   for (const stop of hooks.values()) stop();
   hooks.clear();
   live.clear();
+  cached = undefined;
   journal.reset();
   forget();
 }
@@ -120,14 +162,14 @@ export function detach(): void {
 /** Resolve an id or label to a instance. */
 export function find(target: string): Instance | undefined {
   const byId = live.get(target);
-  if (byId) return new Instance(byId);
+  if (byId) return Instance.of(byId);
   for (const state of live.values())
-    if (seen(state.constructor as typeof State).type === target) return new Instance(state);
+    if (seen(state.constructor as typeof State).type === target) return Instance.of(state);
   return undefined;
 }
 
 export function instances(): Instance[] {
-  return [...live.values()].map((state) => new Instance(state));
+  return [...live.values()].map(Instance.of);
 }
 
 export function roots(): Instance[] {
@@ -232,12 +274,16 @@ function wrap(state: State) {
 }
 
 function ownership(): Map<State, State> {
-  const parents = new Map<State, State>();
+  if (cached?.version !== version) {
+    const parents = new Map<State, State>();
 
-  for (const owner of live.values())
-    for (const value of entries(owner).values()) claim(parents, owner, value);
+    for (const owner of live.values())
+      for (const value of entries(owner).values()) claim(parents, owner, value);
 
-  return parents;
+    cached = { version, parents };
+  }
+
+  return cached.parents;
 }
 
 function claim(parents: Map<State, State>, owner: State, value: unknown) {

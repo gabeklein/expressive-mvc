@@ -1,7 +1,7 @@
 import { State, has } from '@expressive/mvc';
 import { describe, expect, it } from 'vitest';
 
-import { attach, find, instances, label, models, resolve, roots } from './index';
+import { attach, find, Instance, instances, label, models, resolve, roots } from './index';
 
 class Child extends State {
   name = 'kid';
@@ -35,6 +35,40 @@ describe('Instance', () => {
     expect(root.find('Child')!.id).toBe(String(parent.child));
     expect(root.find((h) => h.id === String(kid))!.id).toBe(String(kid));
     expect(root.find('Nope')).toBeUndefined();
+  });
+
+  it('will keep one Instance per state and reflect ownership changes', () => {
+    attach();
+    const parent = Parent.new();
+    const root = find('Parent')!;
+    expect(find(String(parent))).toBe(root);
+    expect(root.children[0]).toBe(root.children[0]);
+    expect(root.children[0]).toBe(Instance.of(parent.child));
+
+    parent.kids.add();
+    expect(root.children.length).toBe(2);
+
+    parent.title = 'primitive write';
+    expect(root.children.length).toBe(2);
+  });
+
+  it('will outlive destruction with alive, since, and until', () => {
+    attach();
+    const parent = Parent.new();
+    const child = Instance.of(parent.child);
+    expect(child.alive).toBe(true);
+    expect(child.since).toBeLessThanOrEqual(Date.now());
+    expect(child.until).toBeUndefined();
+
+    const seen: Array<string | null> = [];
+    child.watch((key) => seen.push(key));
+    parent.set(null);
+
+    expect(child.alive).toBe(false);
+    expect(child.until).toBeGreaterThanOrEqual(child.since);
+    expect(seen).toEqual([null]);
+    expect(find('Child')).toBeUndefined();
+    expect(child.parent).toBeUndefined();
   });
 
   it('will find deep descendants', () => {
@@ -73,8 +107,8 @@ describe('Instance', () => {
     attach();
     const parent = Parent.new();
     const instance = find('Parent')!;
-    const all: string[] = [];
-    const some: string[] = [];
+    const all: Array<string | null> = [];
+    const some: Array<string | null> = [];
     const stopAll = instance.watch((key) => all.push(key));
     const stopSome = instance.watch((key) => some.push(key), ['title']);
     parent.title = 'a';
