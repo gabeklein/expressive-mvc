@@ -3,7 +3,8 @@ import { renderToString } from 'react-dom/server';
 import { Context } from '@expressive/mvc';
 
 import { Route } from './route';
-import { BrowserRouter, Router } from './router';
+import { BrowserRouter } from './browser';
+import { Router } from './router';
 
 function onServer<T>(fn: () => T): T {
   const saved = (globalThis as any).window;

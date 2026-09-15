@@ -2,7 +2,16 @@ import { Component, map, State } from '@expressive/mvc';
 import { listener } from '@expressive/mvc/observable';
 
 import { Route } from './route';
-import { Match, fillPath, fullPattern, matchPattern, patternSegment } from './url';
+import {
+  Match,
+  assertAbsolute,
+  fillPath,
+  fullPattern,
+  matchPattern,
+  normalize,
+  patternSegment,
+  searchOf
+} from './url';
 
 /**
  * Global only on the client. On the server there is no shared singleton, so a
@@ -14,9 +23,9 @@ const clientOnly: State.Global = () => typeof window !== 'undefined';
 /**
  * Headless router core: matching plus an in-memory `path` and history stack.
  * Touches no browser globals, so it runs (and tests) under any host - it is
- * also the memory-router substrate. `BrowserRouter` binds this to
- * `window.location`/`history`; the public API stays string-based at the edges
- * either way.
+ * also the memory-router substrate. `BrowserRouter` (see `./browser`) binds
+ * this to `window.location`/`history`; the public API stays string-based at
+ * the edges either way.
  */
 export class Router extends Component {
   /** The default router: a client-side singleton a `Route` resolves when no
@@ -132,111 +141,10 @@ export class Router extends Component {
   }
 }
 
-/** Binds the headless core to `window.location`, syncing `path`/`query` on navigation. */
-export class BrowserRouter extends Router {
-  static readonly global = clientOnly;
-
-  path = typeof window == 'undefined' ? '/' : window.location.pathname;
-
-  goto(to: string, replace = false) {
-    assertAbsolute(to);
-    history[replace ? 'replaceState' : 'pushState'](null, '', normalize(to));
-  }
-
-  // The browser owns the history stack; back/forward delegate to it (popstate
-  // syncs path/query), so the inherited in-memory entries/index go unused here.
-  back() {
-    history.back();
-  }
-
-  forward() {
-    history.forward();
-  }
-
-  protected new() {
-    if (typeof window == 'undefined') return () => {};
-
-    const sync = () => {
-      this.locate(window.location.pathname + window.location.search);
-    };
-    sync();
-    window.addEventListener('popstate', sync);
-
-    const origPush = history.pushState.bind(history);
-    const origReplace = history.replaceState.bind(history);
-    history.pushState = (...args) => {
-      origPush(...args);
-      sync();
-    };
-    history.replaceState = (...args) => {
-      origReplace(...args);
-      sync();
-    };
-
-    // Direct `query` writes push to the browser's history; URL-driven changes
-    // already match (compared canonically, so encoding differences don't dup).
-    const release = listener(
-      this.query,
-      () => {
-        const { url } = this;
-        if (url !== canonicalize(window.location.pathname + window.location.search))
-          history.pushState(null, '', url);
-      },
-      false
-    );
-
-    return () => {
-      release();
-      window.removeEventListener('popstate', sync);
-      history.pushState = origPush;
-      history.replaceState = origReplace;
-    };
-  }
-}
-
 /** Append `url` as a new history entry on a memory router, truncating any forward stack. */
 function pushEntry(router: Router, url: string) {
   if (url === router.entries[router.index]) return;
 
   router.entries = [...router.entries.slice(0, router.index + 1), url];
   router.index = router.entries.length - 1;
-}
-
-function assertAbsolute(to: string) {
-  if (!to.startsWith('/'))
-    throw new Error(
-      `Router.goto requires an absolute path; got "${to}". Relative paths must be resolved via a Route (e.g. Route.get().goto).`
-    );
-}
-
-/**
- * Collapse `.`/`..` and stray slashes without touching browser globals, and
- * canonicalize the query so stored urls match the `url` getter byte-for-byte.
- */
-function normalize(to: string): string {
-  const { pathname, search } = new URL(to, 'x://_');
-  return canonicalize(pathname + search);
-}
-
-/**
- * Re-serialize a url's query through the map model (last value per key,
- * `URLSearchParams` encoding) so it is identical to what the `url` getter emits.
- * This is what makes the history-dedup a sound string comparison.
- */
-function canonicalize(url: string): string {
-  const q = url.indexOf('?');
-  if (q < 0) return url;
-
-  const search = searchOf(new Map(new URLSearchParams(url.slice(q + 1))));
-  return search ? url.slice(0, q) + '?' + search : url.slice(0, q);
-}
-
-/** Canonical query serialization: skips `undefined`, last-value-per-key, form encoding. */
-function searchOf(entries: Iterable<readonly [string, string | undefined]>): string {
-  const params = new URLSearchParams();
-
-  for (const [key, value] of entries)
-    if (value !== undefined) params.append(key, value);
-
-  return params.toString();
 }
