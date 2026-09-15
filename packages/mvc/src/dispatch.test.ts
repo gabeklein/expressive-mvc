@@ -155,6 +155,24 @@ describe('dispatch', () => {
     expect(settled).toBe(true);
   });
 
+  it('will restore dispatch after pending work throws', async () => {
+    const expected = new Error('failed');
+    const transition = vi.fn((work: () => void) => work());
+    let held: (() => void) | undefined;
+
+    expect(() => pending(() => {
+      throw expected;
+    })).toThrow(expected);
+
+    enqueue(() => {
+      held = pending();
+    }, transition);
+    await flushMicrotasks();
+
+    expect(transition).not.toHaveBeenCalled();
+    expect(held).toBeUndefined();
+  });
+
   it('will let urgent priority win for one handler', async () => {
     const log: string[] = [];
     const host = scheduler(log);

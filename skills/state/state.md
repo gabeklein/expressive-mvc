@@ -55,6 +55,8 @@ await pending(() => {
 
 With no host registered there is no priority to apply, but the promise still resolves once every subscriber has replayed - awaiting it is how headless code waits out a whole cascade, not just the first flush. A nested call settles its own consequences and joins the outer call. Distinct from `state.set()`, which resolves on the next flush of *that* state (see [set.md](set.md)).
 
+An exception from `work` propagates synchronously. Updates queued before it threw still dispatch.
+
 `pending()` with no arguments is the reader half. Called inside a replay it returns a release callback, and settlement waits on that rather than on the replay returning - which is how the React adapter holds until it commits. A hand-written `watch` effect can do the same; outside a deferred replay it returns `undefined`.
 
 ```ts

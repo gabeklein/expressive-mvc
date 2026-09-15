@@ -7,6 +7,8 @@ Deferred presentation arrives as `pending(work)`, replacing the free `transition
 
 The name describes the updates, not the callback: `work` runs immediately and synchronously, and the subscriber notifications it produces are what become pending. React therefore keeps current content on screen while a replacement gets ready rather than falling back. Writes may target any state. The returned promise settles once every subscriber the work touched has **absorbed** it: under React, once the update commits.
 
+An exception from `work` propagates synchronously. Updates queued before it threw still dispatch.
+
 A free function rather than a method, because nothing about it is bound to one state. Settlement comes from whichever subscribers the writes happen to touch, so a receiver would only imply a scope that does not exist.
 
 `pending` covers **mvc-driven updates**, not everything in the block. Each subscriber replays through the scheduler it subscribed with - `@expressive/react` supplies `startTransition`, a plain effect supplies nothing and keeps normal timing. One `pending()` call may have both, and neither is subjected to the other's semantics. Nested calls settle their own consequences while also joining the outer call, so awaiting either remains truthful. A host is not required at all: with none registered the promise still settles once every subscriber has replayed, which makes it a headless barrier for the whole cascade.
