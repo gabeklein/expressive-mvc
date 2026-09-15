@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { flushMicrotasks, mockError, mockPromise } from '../test.setup';
 import { watch } from './observable';
-import { enqueue, pending } from './dispatch';
+import { enqueue, hold, pending } from './dispatch';
 import { State } from './state';
 
 describe('dispatch', () => {
@@ -336,6 +336,23 @@ describe('dispatch', () => {
     expect(settled).toBe(1);
   });
 
+  it('will ignore a retry after its claim was released', async () => {
+    const replay = vi.fn();
+    let release!: NonNullable<ReturnType<typeof hold>>;
+
+    pending(() => enqueue(() => {
+      release = hold()!;
+    }));
+
+    await flushMicrotasks();
+
+    release();
+    release.retry(replay);
+    await flushMicrotasks();
+
+    expect(replay).not.toHaveBeenCalled();
+  });
+
   it('will wait on every claim a single replay makes', async () => {
     const held: (() => void)[] = [];
     let settled = false;
@@ -471,6 +488,80 @@ describe('dispatch', () => {
     expect(settled).toBe(true);
   });
 
+  it('will retry a suspended effect after rejection', async () => {
+    class Test extends State {
+      value = 1;
+    }
+
+    const test = Test.new();
+    const gate = mockPromise();
+    const effect = vi.fn(({ value }: Test) => {
+      if (value === 2 && effect.mock.calls.length === 2) throw gate;
+    });
+    let settled = false;
+
+    watch(test, effect);
+
+    pending(() => {
+      test.value = 2;
+    }).then(() => (settled = true));
+
+    await flushMicrotasks();
+
+    expect(effect).toHaveBeenCalledTimes(2);
+    expect(settled).toBe(false);
+
+    gate.reject(new Error('failed'));
+    await flushMicrotasks();
+
+    expect(effect).toHaveBeenCalledTimes(3);
+    expect(settled).toBe(true);
+  });
+
+  it('will preserve pending causality through a suspended retry', async () => {
+    class Source extends State {
+      value = 1;
+    }
+
+    class Derived extends State {
+      value = 1;
+    }
+
+    const source = Source.new();
+    const derived = Derived.new();
+    const gate = mockPromise();
+    let open = false;
+    let release!: () => void;
+    let settled = false;
+
+    watch(source, ({ value }) => {
+      if (value === 2 && !open) throw gate;
+      derived.value = value;
+    });
+
+    watch(derived, ({ value }) => {
+      if (value === 2) release = pending()!;
+    });
+
+    pending(() => {
+      source.value = 2;
+    }).then(() => (settled = true));
+
+    await flushMicrotasks();
+
+    open = true;
+    gate.resolve();
+    await flushMicrotasks();
+
+    expect(derived.value).toBe(2);
+    expect(settled).toBe(false);
+
+    release();
+    await flushMicrotasks();
+
+    expect(settled).toBe(true);
+  });
+
   it('will release a suspended effect claim if it is destroyed', async () => {
     class Test extends State {
       value = 1;
@@ -478,11 +569,12 @@ describe('dispatch', () => {
 
     const test = Test.new();
     const gate = mockPromise();
-    let settled = false;
-
-    watch(test, ({ value }) => {
+    const effect = vi.fn(({ value }: Test) => {
       if (value === 2) throw gate;
     });
+    let settled = false;
+
+    watch(test, effect);
 
     pending(() => {
       test.value = 2;
@@ -497,6 +589,7 @@ describe('dispatch', () => {
     await flushMicrotasks();
 
     expect(settled).toBe(true);
+    expect(effect).toHaveBeenCalledTimes(2);
   });
 
   it('will release a suspended effect claim if it is cancelled', async () => {
@@ -506,11 +599,12 @@ describe('dispatch', () => {
 
     const test = Test.new();
     const gate = mockPromise();
-    let settled = false;
-
-    const done = watch(test, ({ value }) => {
+    const effect = vi.fn(({ value }: Test) => {
       if (value === 2) throw gate;
     });
+    let settled = false;
+
+    const done = watch(test, effect);
 
     pending(() => {
       test.value = 2;
@@ -521,8 +615,38 @@ describe('dispatch', () => {
     expect(settled).toBe(false);
 
     done();
+    gate.resolve();
     await flushMicrotasks();
 
+    expect(settled).toBe(true);
+    expect(effect).toHaveBeenCalledTimes(2);
+  });
+
+  it('will cancel a suspended retry already queued for replay', async () => {
+    class Test extends State {
+      value = 1;
+    }
+
+    const test = Test.new();
+    const gate = mockPromise();
+    const effect = vi.fn(({ value }: Test) => {
+      if (value === 2) throw gate;
+    });
+    const done = watch(test, effect);
+    let settled = false;
+
+    pending(() => {
+      test.value = 2;
+    }).then(() => (settled = true));
+
+    await flushMicrotasks();
+
+    gate.resolve();
+    await gate;
+    done();
+    await flushMicrotasks();
+
+    expect(effect).toHaveBeenCalledTimes(2);
     expect(settled).toBe(true);
   });
 
