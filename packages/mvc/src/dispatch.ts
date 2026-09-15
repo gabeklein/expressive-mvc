@@ -52,10 +52,13 @@ function drop(scheduled: Scheduled) {
  * rather than on the replay. Returns nothing unless the replay carries pending
  * work, so an unrelated subscriber pays for none of it.
  */
-function hold(detached?: true) {
-  const scheduled = replaying || { holds: 0 };
+function hold(detached?: true, transition?: Transition) {
+  const scheduled = replaying || {};
 
-  if (detached) claim(scheduled);
+  if (detached) {
+    scheduled.transition = transition;
+    claim(scheduled);
+  }
   else if (!scheduled.awaiting) return;
 
   let released = false;
@@ -67,10 +70,9 @@ function hold(detached?: true) {
     if (retry === false) return claim(scheduled);
 
     if (retry) {
-      const parent = current;
       current = scheduled.awaiting;
       enqueue(retry, scheduled.transition);
-      current = parent;
+      current = undefined;
     }
 
     released = true;
@@ -84,9 +86,9 @@ function flush() {
   for (const [handler, scheduled] of DISPATCH) {
     DISPATCH.delete(handler);
 
-    const { transition } = scheduled;
+    const { awaiting, transition } = scheduled;
 
-    current = scheduled.awaiting;
+    current = awaiting;
     replaying = scheduled;
 
     try {

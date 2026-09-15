@@ -609,12 +609,13 @@ describe('dispatch', () => {
     const test = Test.new();
     const gate = mockPromise();
     const seen: number[] = [];
+    const transition = vi.fn((work: () => void) => work());
     let settled = false;
 
     watch(test, ({ value }) => {
       if (value === 2) throw gate;
       seen.push(value);
-    });
+    }, undefined, transition);
 
     test.value = 2;
     await flushMicrotasks();
@@ -633,6 +634,7 @@ describe('dispatch', () => {
 
     expect(seen).toEqual([1, 3]);
     expect(settled).toBe(true);
+    expect(transition).toHaveBeenCalledOnce();
   });
 
   it('will release a suspended effect claim if it is destroyed', async () => {
@@ -658,10 +660,14 @@ describe('dispatch', () => {
     expect(settled).toBe(false);
 
     test.set(null);
-    gate.resolve();
     await flushMicrotasks();
 
     expect(settled).toBe(true);
+    expect(effect).toHaveBeenCalledTimes(2);
+
+    gate.resolve();
+    await flushMicrotasks();
+
     expect(effect).toHaveBeenCalledTimes(2);
   });
 
