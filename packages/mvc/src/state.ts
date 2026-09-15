@@ -828,6 +828,13 @@ function apply(
   if ('value' in config) set(config.value, silent);
 }
 
+function provides(ctx: Context, value: State) {
+  while (ctx = ctx.parent!) {
+    const entries = ctx.provide.get(value.constructor as State.Extends);
+    if (entries) for (const [state] of entries) if (state === value) return true;
+  }
+}
+
 function child(state: State) {
   let cleanup: (() => void) | undefined;
   const ctx = Context.get(state);
@@ -844,17 +851,16 @@ function child(state: State) {
 
     if (!(value instanceof State)) return;
 
-    const remove = ctx.add(value);
-
     if (parent(value, state)) {
+      const remove = ctx.add(value);
       cleanup = () => {
         cancel();
         remove();
         event(value, null);
       };
       const cancel = listener(state, cleanup, null);
-    } else {
-      cleanup = remove;
+    } else if (!provides(ctx, value)) {
+      cleanup = ctx.add(value);
     }
 
     event(value);

@@ -264,6 +264,47 @@ it('will not own active child from set factory', () => {
   expect(held.get(null)).toBe(false);
 });
 
+it('will not re-provide a guest already provided above', () => {
+  class Foo extends State {}
+  class Holder extends State {
+    foo = set(() => this.get(Foo));
+  }
+
+  const outer = new Context({ Foo });
+  const foo = outer.get(Foo);
+  const release = vi.fn();
+  const attach = vi.fn(() => release);
+
+  outer.get(Foo, attach);
+
+  const notified = attach.mock.calls.length;
+  const inner = outer.push().push(Holder);
+
+  expect(inner.get(Holder).foo).toBe(foo);
+  expect(attach).toHaveBeenCalledTimes(notified);
+
+  inner.pop();
+
+  expect(release).not.toHaveBeenCalled();
+  expect(outer.get(Foo)).toBe(foo);
+});
+
+it('will provide a guest when ancestors hold others of its type', () => {
+  class Foo extends State {}
+
+  const foo = Foo.new();
+
+  class Holder extends State {
+    foo = set(() => foo);
+  }
+
+  const outer = new Context({ a: Foo, b: Foo });
+  const inner = outer.push(Holder);
+
+  expect(() => inner.get(Holder).foo).not.toThrow();
+  expect(inner.get(Foo)).toBe(foo);
+});
+
 it('will not adopt child derived by getter', () => {
   class Child extends State {
     value = 1;
