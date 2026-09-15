@@ -4,7 +4,7 @@ import { pending } from '@expressive/mvc';
 import type { Context } from './context';
 
 interface Settle {
-  waiting: (() => void)[];
+  waiting?: (() => void)[];
   claim(): void;
   release(): void;
 }
@@ -65,14 +65,18 @@ export function useFactory<T extends Function>(factory: () => T) {
 export function useSettle(tick: number) {
   const ref = Runtime.useRef<Settle | null>(null);
   const settle = ref.current || (ref.current = {
-    waiting: [],
     claim() {
       const held = pending();
 
-      if (held) settle.waiting.push(held);
+      if (held) (settle.waiting ||= []).push(held);
     },
     release() {
-      for (const held of settle.waiting.splice(0)) held();
+      const { waiting } = settle;
+
+      if (!waiting) return;
+      settle.waiting = undefined;
+
+      for (const held of waiting) held();
     }
   });
 
