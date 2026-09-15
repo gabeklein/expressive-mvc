@@ -828,11 +828,10 @@ function apply(
   if ('value' in config) set(config.value, silent);
 }
 
-function provides(ctx: Context | undefined, value: State) {
-  while (ctx) {
+function provides(ctx: Context, value: State) {
+  while (ctx = ctx.parent!) {
     const entries = ctx.provide.get(value.constructor as State.Extends);
-    if (entries) for (const e of entries) if (e[0] === value) return true;
-    ctx = ctx.parent;
+    if (entries) for (const [state] of entries) if (state === value) return true;
   }
 }
 
@@ -860,7 +859,7 @@ function child(state: State) {
         event(value, null);
       };
       const cancel = listener(state, cleanup, null);
-    } else if (!provides(ctx.parent, value)) {
+    } else if (!provides(ctx, value)) {
       cleanup = ctx.add(value);
     }
 
