@@ -1,7 +1,7 @@
 import { Component, map, State } from '@expressive/mvc';
 import { listener } from '@expressive/mvc/observable';
 
-import { Route } from './route';
+import type { Route } from './route';
 import {
   Match,
   assertAbsolute,
