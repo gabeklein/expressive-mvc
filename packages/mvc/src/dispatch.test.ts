@@ -562,6 +562,79 @@ describe('dispatch', () => {
     expect(settled).toBe(true);
   });
 
+  it('will join pending work arriving while an effect is suspended', async () => {
+    class Test extends State {
+      value = 1;
+    }
+
+    const test = Test.new();
+    const gate = mockPromise();
+    const seen: number[] = [];
+    const settled: string[] = [];
+    let open = false;
+
+    watch(test, ({ value }) => {
+      if (value > 1 && !open) throw gate;
+      seen.push(value);
+    });
+
+    pending(() => {
+      test.value = 2;
+    }).then(() => settled.push('first'));
+
+    await flushMicrotasks();
+
+    pending(() => {
+      test.value = 3;
+    }).then(() => settled.push('second'));
+
+    await flushMicrotasks();
+
+    expect(seen).toEqual([1]);
+    expect(settled).toEqual([]);
+
+    open = true;
+    gate.resolve();
+    await flushMicrotasks();
+
+    expect(seen).toEqual([1, 3]);
+    expect(settled).toEqual(['first', 'second']);
+  });
+
+  it('will claim pending work after an urgent suspension', async () => {
+    class Test extends State {
+      value = 1;
+    }
+
+    const test = Test.new();
+    const gate = mockPromise();
+    const seen: number[] = [];
+    let settled = false;
+
+    watch(test, ({ value }) => {
+      if (value === 2) throw gate;
+      seen.push(value);
+    });
+
+    test.value = 2;
+    await flushMicrotasks();
+
+    pending(() => {
+      test.value = 3;
+    }).then(() => (settled = true));
+
+    await flushMicrotasks();
+
+    expect(seen).toEqual([1]);
+    expect(settled).toBe(false);
+
+    gate.resolve();
+    await flushMicrotasks();
+
+    expect(seen).toEqual([1, 3]);
+    expect(settled).toBe(true);
+  });
+
   it('will release a suspended effect claim if it is destroyed', async () => {
     class Test extends State {
       value = 1;

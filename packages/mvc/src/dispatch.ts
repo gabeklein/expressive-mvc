@@ -6,7 +6,7 @@ interface Pending {
   done(): void;
 }
 
-type Hold = (retry?: Handler) => void;
+type Hold = (retry?: Handler | false) => void;
 
 interface Scheduled {
   /** How this subscriber defers, if it can - supplied where it subscribed. */
@@ -52,10 +52,11 @@ function drop(scheduled: Scheduled) {
  * rather than on the replay. Returns nothing unless the replay carries pending
  * work, so an unrelated subscriber pays for none of it.
  */
-function hold() {
-  const scheduled = replaying;
+function hold(detached?: true) {
+  const scheduled = replaying || { holds: 0 };
 
-  if (!scheduled?.awaiting) return;
+  if (detached) claim(scheduled);
+  else if (!scheduled.awaiting) return;
 
   let released = false;
 
@@ -63,6 +64,7 @@ function hold() {
 
   const release: Hold = (retry) => {
     if (released) return;
+    if (retry === false) return claim(scheduled);
 
     if (retry) {
       const parent = current;
