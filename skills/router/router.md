@@ -113,15 +113,15 @@ A lazy *layout* suspends its whole scope - child routes register only after its 
 
 Every navigation (`goto`, `Link`, `back`/`forward`, popstate) commits through `Router.navigate`, whose default marks the commit non-urgent via the host scheduler (React `startTransition`). In-app navigation to a page that isn't ready - a loading chunk, a pending entry guard - holds the current screen until the next resolves, instead of flashing `fallback`. Cold load (initial mount, no prior screen) still shows `fallback`. `BrowserRouter` writes the address once the navigation is on screen, so the bar and the page never disagree.
 
-Override `navigate(commit)` on a subclass to stage the swap differently - `commit` applies the navigation state and must run:
+Override `navigate(work)` on a subclass to stage the swap differently - `work` applies the navigation state and must run:
 
 ```ts
 class MyRouter extends BrowserRouter {
   static global = true;   // subclasses re-declare global explicitly
 
-  protected navigate(commit: () => void) {
+  protected navigate(work: () => void) {
     // bracket the swap (e.g. View Transitions), then defer as usual
-    return super.navigate(commit);
+    return super.navigate(work);
   }
 }
 ```
