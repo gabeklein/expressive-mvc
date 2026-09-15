@@ -13,18 +13,18 @@ import { withWorkspaceLinks } from './workspace-links';
  * a Bun version and minifier output drifts a little between them - measured at
  * <=0.5% across 1.3.1 and 1.3.14, so the margin is mostly slack. Real growth is
  * structural and clears it; toolchain drift does not. The react floor is the
- * exception: pinned to 9.1 kB, so ~1.8% - still above observed drift, but it
+ * exception: pinned to 9.1 kB, so ~1.9% - still above observed drift, but it
  * will flag sooner than the rest.
  */
 const CASES = [
   {
     name: 'mvc: State only',
-    limit: 5510,
+    limit: 5360,
     code: `import State from '@expressive/mvc'; console.log(State);`
   },
   {
     name: 'mvc: everything',
-    limit: 9230,
+    limit: 9220,
     code: `import * as all from '@expressive/mvc'; console.log(all);`
   },
   {
@@ -34,23 +34,23 @@ const CASES = [
   },
   {
     name: 'react: typical app',
-    limit: 10060,
+    limit: 10040,
     code: `import State, { Component, get, set, ref, def } from '@expressive/react';
            console.log(State, Component, get, set, ref, def);`
   },
   {
     name: 'react: everything',
-    limit: 12220,
+    limit: 12190,
     code: `import * as all from '@expressive/react'; console.log(all);`
   },
   {
     name: 'router: everything',
-    limit: 11780,
+    limit: 11620,
     code: `import * as all from '@expressive/router'; console.log(all);`
   },
   {
     name: 'react + router',
-    limit: 15850,
+    limit: 15830,
     code: `import * as a from '@expressive/react';
            import * as b from '@expressive/router';
            console.log(a, b);`
