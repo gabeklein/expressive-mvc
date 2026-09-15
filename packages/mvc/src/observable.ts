@@ -270,7 +270,7 @@ function watch<T extends object>(
 
     suspense = undefined;
 
-    if (suspended) suspended.retry(invoke);
+    if (suspended) suspended(invoke);
     else enqueue(invoke, transition);
   }
 
@@ -333,10 +333,8 @@ function watch<T extends object>(
       if (err instanceof Promise) {
         reset = undefined;
         const suspended = suspense = hold() || null;
-        err.then(
-          () => retry(suspended),
-          () => retry(suspended)
-        );
+        const replay = () => retry(suspended);
+        err.then(replay, replay);
       } else {
         resume();
         throw err;

@@ -6,10 +6,7 @@ interface Pending {
   done(): void;
 }
 
-interface Hold {
-  (): void;
-  retry(handler: Handler): void;
-}
+type Hold = (retry?: Handler) => void;
 
 interface Scheduled {
   /** How this subscriber defers, if it can - supplied where it subscribed. */
@@ -64,24 +61,18 @@ function hold() {
 
   scheduled.holds = (scheduled.holds || 0) + 1;
 
-  const release = (() => {
+  const release: Hold = (retry) => {
     if (released) return;
+
+    if (retry) {
+      const parent = current;
+      current = scheduled.awaiting;
+      enqueue(retry, scheduled.transition);
+      current = parent;
+    }
+
     released = true;
     if (!--scheduled.holds!) drop(scheduled);
-  }) as Hold;
-
-  release.retry = (handler) => {
-    if (released) return;
-
-    const parent = current;
-    current = scheduled.awaiting;
-
-    try {
-      enqueue(handler, scheduled.transition);
-    } finally {
-      current = parent;
-      release();
-    }
   };
 
   return release;
