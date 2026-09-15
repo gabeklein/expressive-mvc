@@ -1,9 +1,11 @@
-import { attach, call, detach, get, models, set, tree, wrapAll } from './inspect';
-import { journal as base, type Options } from './journal';
+import { attach, call, detach, find, get, Handle, handles, models, roots, set, tree, wrapAll } from './inspect';
+import { act, journal as base, type Options } from './journal';
+import { label, resolve } from './types';
 
 export type { Model, Node } from './inspect';
 export type { Event, Frame, Level, Options, Query } from './journal';
-export { attach, call, detach, get, models, set, tree };
+export type { TypeInfo } from './types';
+export { Handle, act, attach, call, detach, find, get, handles, label, models, resolve, roots, set, tree };
 export { parsePath, serialize } from './serialize';
 
 export const journal = {
@@ -15,6 +17,21 @@ export const journal = {
   }
 };
 
-export const inspect = { attach, detach, models, tree, get, set, call, journal };
+export const inspect = {
+  attach,
+  detach,
+  find,
+  handles,
+  roots,
+  models,
+  tree,
+  get,
+  set,
+  call,
+  act,
+  label,
+  resolve,
+  journal
+};
 
 export default inspect;
