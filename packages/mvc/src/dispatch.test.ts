@@ -194,6 +194,21 @@ describe('dispatch', () => {
     ]);
   });
 
+  it('will keep a handler urgent when pending work reaches it later', async () => {
+    const transition = vi.fn((work: () => void) => work());
+    const handler = vi.fn();
+    let settled = false;
+
+    enqueue(handler, transition);
+    pending(() => enqueue(handler, transition)).then(() => (settled = true));
+
+    await flushMicrotasks();
+
+    expect(handler).toHaveBeenCalledOnce();
+    expect(transition).not.toHaveBeenCalled();
+    expect(settled).toBe(true);
+  });
+
   it('will only upgrade inseparable watchers to urgent', async () => {
     class Model extends State {
       deferred = 0;

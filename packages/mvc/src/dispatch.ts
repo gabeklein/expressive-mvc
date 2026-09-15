@@ -9,14 +9,12 @@ interface Pending {
 interface Scheduled {
   /** How this subscriber defers, if it can - supplied where it subscribed. */
   transition?: Transition;
-  /** Whether this update is deferred - decided by the call which queued it. */
-  deferred?: boolean;
   awaiting?: Set<Pending>;
-  holds: number;
+  holds?: number;
 }
 
 const DISPATCH = new Map<Handler, Scheduled>();
-let current: Set<Pending> | undefined;
+let current: Iterable<Pending> | undefined;
 let replaying: Scheduled | undefined;
 
 /**
@@ -49,8 +47,8 @@ function drop(scheduled: Scheduled) {
 /**
  * Hold the work being replayed until the returned callback runs - a subscriber
  * which has not yet absorbed the update takes one, and settlement waits on it
- * rather than on the replay. Returns nothing where the replay is not deferred,
- * so a subscriber pays for this only where work was scheduled.
+ * rather than on the replay. Returns nothing unless the replay carries pending
+ * work, so an unrelated subscriber pays for none of it.
  */
 function hold() {
   const scheduled = replaying;
@@ -59,12 +57,12 @@ function hold() {
 
   let released = false;
 
-  scheduled.holds++;
+  scheduled.holds = (scheduled.holds || 0) + 1;
 
   return () => {
     if (released) return;
     released = true;
-    if (!--scheduled.holds) drop(scheduled);
+    if (!--scheduled.holds!) drop(scheduled);
   }
 }
 
@@ -72,21 +70,18 @@ function flush() {
   for (const [handler, scheduled] of DISPATCH) {
     DISPATCH.delete(handler);
 
-    const { deferred, transition } = scheduled;
-    const parent = current;
-    const outer = replaying;
+    const { transition } = scheduled;
 
     current = scheduled.awaiting;
     replaying = scheduled;
 
     try {
-      if (deferred && transition) transition(handler);
+      if (transition) transition(handler);
       else handler();
     } catch (err) {
       console.error(err);
     } finally {
-      current = parent;
-      replaying = outer;
+      current = replaying = undefined;
     }
 
     if (!scheduled.holds) drop(scheduled);
@@ -104,14 +99,16 @@ function enqueue(handler: Handler, transition?: Transition) {
   const scheduled = DISPATCH.get(handler);
 
   if (!scheduled) {
-    const next: Scheduled = { transition, deferred: !!current, holds: 0 };
+    const next: Scheduled = {
+      transition: current ? transition : undefined
+    };
 
     DISPATCH.set(handler, next);
     claim(next);
   } else if (current) {
     claim(scheduled);
   } else {
-    scheduled.deferred = false;
+    scheduled.transition = undefined;
     drop(scheduled);
   }
 }
@@ -130,8 +127,8 @@ function pending(work: Handler): Promise<void>;
 /**
  * Declare the subscriber currently replaying has not absorbed its update yet -
  * settlement waits on the returned callback rather than on the replay. Call
- * only from inside a replay: anywhere else, and where the replay is not
- * deferred, this returns nothing and the subscriber pays for none of it.
+ * only from inside a replay carrying pending work; elsewhere this returns
+ * nothing and the subscriber pays for none of it.
  */
 function pending(): (() => void) | undefined;
 
@@ -139,20 +136,18 @@ function pending(work?: Handler) {
   if (!work) return hold();
 
   const parent = current;
-  const scheduled: Scheduled = { holds: 0 };
   const record = { count: 1 } as Pending;
   const promise = new Promise<void>((resolve) => {
     record.done = resolve;
   });
 
-  scheduled.awaiting = new Set([record]);
-  current = new Set(parent).add(record);
+  current = parent ? [...parent, record] : [record];
 
   try {
     work();
   } finally {
     current = parent;
-    drop(scheduled);
+    if (!--record.count) record.done();
   }
 
   return promise;
