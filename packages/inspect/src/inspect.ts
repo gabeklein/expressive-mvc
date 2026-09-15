@@ -24,7 +24,7 @@ const hooks = new Map<typeof State, () => boolean>();
 const wrapped = new WeakSet<State>();
 
 /** Navigable view of one live instance - identity, ownership, reads, observation. */
-export class Handle {
+export class Instance {
   constructor(readonly state: State) {}
 
   get id() {
@@ -35,21 +35,21 @@ export class Handle {
     return seen(this.state.constructor as typeof State).type;
   }
 
-  get parent(): Handle | undefined {
+  get parent(): Instance | undefined {
     const owner = ownership().get(this.state);
-    return owner && new Handle(owner);
+    return owner && new Instance(owner);
   }
 
-  get children(): Handle[] {
+  get children(): Instance[] {
     const parents = ownership();
     return [...live.values()]
       .filter((state) => parents.get(state) === this.state)
-      .map((state) => new Handle(state));
+      .map((state) => new Instance(state));
   }
 
-  /** First handle in this subtree, depth-first, matching `where` (a label or predicate). */
-  find(where: string | ((handle: Handle) => boolean)): Handle | undefined {
-    const test = typeof where === 'string' ? (h: Handle) => h.type === where : where;
+  /** First instance in this subtree, depth-first, matching `where` (a label or predicate). */
+  find(where: string | ((instance: Instance) => boolean)): Instance | undefined {
+    const test = typeof where === 'string' ? (h: Instance) => h.type === where : where;
     for (const child of this.children) {
       if (test(child)) return child;
       const deep = child.find(test);
@@ -117,22 +117,22 @@ export function detach(): void {
   forget();
 }
 
-/** Resolve an id or label to a handle. */
-export function find(target: string): Handle | undefined {
+/** Resolve an id or label to a instance. */
+export function find(target: string): Instance | undefined {
   const byId = live.get(target);
-  if (byId) return new Handle(byId);
+  if (byId) return new Instance(byId);
   for (const state of live.values())
-    if (seen(state.constructor as typeof State).type === target) return new Handle(state);
+    if (seen(state.constructor as typeof State).type === target) return new Instance(state);
   return undefined;
 }
 
-export function handles(): Handle[] {
-  return [...live.values()].map((state) => new Handle(state));
+export function instances(): Instance[] {
+  return [...live.values()].map((state) => new Instance(state));
 }
 
-export function roots(): Handle[] {
+export function roots(): Instance[] {
   const parents = ownership();
-  return handles().filter((handle) => !parents.has(handle.state));
+  return instances().filter((instance) => !parents.has(instance.state));
 }
 
 export function models(): Model[] {
@@ -166,12 +166,12 @@ export function get(address?: string): unknown {
 
 export function set(address: string, value: unknown): void {
   const { target, path } = parsePath(address);
-  const handle = find(target);
-  if (!handle || !path) throw new Error(`No model at ${address}.`);
+  const instance = find(target);
+  if (!instance || !path) throw new Error(`No model at ${address}.`);
 
   const dot = path.lastIndexOf('.');
   const key = path.slice(dot + 1);
-  const owner = dot < 0 ? handle.state : walk(handle.state, path.slice(0, dot));
+  const owner = dot < 0 ? instance.state : walk(instance.state, path.slice(0, dot));
 
   if (owner == null || typeof owner !== 'object') throw new Error(`No model at ${address}.`);
 

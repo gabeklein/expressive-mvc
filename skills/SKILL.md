@@ -370,7 +370,7 @@ Fetch these for detailed documentation when the task requires deeper knowledge. 
 
 ### Inspect
 
-- [inspect.md](inspect.md) - `@expressive/inspect`: install entry, handles in process vs addresses across a boundary, ownership, stored-value reads with `absent`, labels under minification, frame journal with `cause`, `act`, Playwright use
+- [inspect.md](inspect.md) - `@expressive/inspect`: install entry, instances in process vs addresses across a boundary, ownership, stored-value reads with `absent`, labels under minification, frame journal with `cause`, `act`, Playwright use
 
 ### Examples
 

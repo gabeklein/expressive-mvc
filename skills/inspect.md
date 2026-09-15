@@ -15,14 +15,14 @@ Programmatic: `attach(State)` returns detach; `attach(Sub)` scopes to a subclass
 
 ## Two faces, one id
 
-In process you get **handles**. Across a serializing boundary (`evaluate`, `postMessage`, socket) you use **addresses**. Both key on the same ids: `String(state)`, e.g. `Composer-x1s4`.
+In process you get **instances**. Across a serializing boundary (`evaluate`, `postMessage`, socket) you use **addresses**. Both key on the same ids: `String(state)`, e.g. `Composer-x1s4`.
 
-## Handles (in process)
+## Instances (in process)
 
 ```ts
-import { find, roots, handles } from '@expressive/inspect';
+import { find, roots, instances } from '@expressive/inspect';
 
-const app = roots()[0];              // handles with no owner
+const app = roots()[0];              // instances with no owner
 const composer = find('Composer');   // by label, or find('Composer-x1s4') by id
 composer.state                       // the raw instance - assign to it directly
 composer.parent / composer.children  // ownership

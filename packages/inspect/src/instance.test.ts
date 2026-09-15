@@ -1,7 +1,7 @@
 import { State, has } from '@expressive/mvc';
 import { describe, expect, it } from 'vitest';
 
-import { attach, find, handles, label, models, resolve, roots } from './index';
+import { attach, find, instances, label, models, resolve, roots } from './index';
 
 class Child extends State {
   name = 'kid';
@@ -17,7 +17,7 @@ class Parent extends State {
   }
 }
 
-describe('Handle', () => {
+describe('Instance', () => {
   it('will navigate ownership', () => {
     attach();
     const parent = Parent.new();
@@ -25,7 +25,7 @@ describe('Handle', () => {
     const loose = Child.new();
 
     expect(roots().map((h) => h.id)).toEqual([String(parent), String(loose)]);
-    expect(handles().length).toBe(4);
+    expect(instances().length).toBe(4);
 
     const root = find('Parent')!;
     expect(root.type).toBe('Parent');
@@ -49,34 +49,34 @@ describe('Handle', () => {
   it('will read and describe', () => {
     attach();
     Parent.new();
-    const handle = find('Parent')!;
-    expect(handle.get('title')).toBe('root');
-    expect((handle.get() as any).$type).toBe('Parent');
-    expect(handle.model()).toMatchObject({ type: 'Parent', absent: [] });
-    expect(handle.model().keys.sort()).toEqual(['child', 'kids', 'title']);
+    const instance = find('Parent')!;
+    expect(instance.get('title')).toBe('root');
+    expect((instance.get() as any).$type).toBe('Parent');
+    expect(instance.model()).toMatchObject({ type: 'Parent', absent: [] });
+    expect(instance.model().keys.sort()).toEqual(['child', 'kids', 'title']);
     expect(find('Nope')).toBeUndefined();
   });
 
   it('will act and return the frames produced', async () => {
     attach();
     const parent = Parent.new();
-    const handle = find('Parent')!;
-    const frames = await handle.act((state) => (state as Parent).rename('acted'));
+    const instance = find('Parent')!;
+    const frames = await instance.act((state) => (state as Parent).rename('acted'));
     expect(parent.title).toBe('acted');
     expect(frames.length).toBe(1);
     expect(frames[0].events[0]).toMatchObject({ key: 'title', value: 'acted' });
-    expect(handle.frames().length).toBe(1);
-    expect(handle.frames({ since: 1 })).toEqual([]);
+    expect(instance.frames().length).toBe(1);
+    expect(instance.frames({ since: 1 })).toEqual([]);
   });
 
   it('will watch updates with optional key filter', async () => {
     attach();
     const parent = Parent.new();
-    const handle = find('Parent')!;
+    const instance = find('Parent')!;
     const all: string[] = [];
     const some: string[] = [];
-    const stopAll = handle.watch((key) => all.push(key));
-    const stopSome = handle.watch((key) => some.push(key), ['title']);
+    const stopAll = instance.watch((key) => all.push(key));
+    const stopSome = instance.watch((key) => some.push(key), ['title']);
     parent.title = 'a';
     parent.child = Child.new();
     parent.set('custom');
