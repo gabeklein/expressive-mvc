@@ -1,5 +1,8 @@
+import { pending } from '@expressive/mvc';
+
 interface Schedulable {
   queued?: 'urgent' | 'passive';
+  holds?: (() => void)[];
   update(passive: boolean): void;
 }
 
@@ -17,6 +20,7 @@ function flushUrgent() {
     urgent.delete(scope);
     scope.queued = undefined;
     scope.update(false);
+    settle(scope);
   }
 }
 
@@ -30,10 +34,26 @@ function flushPassive() {
 
     scope.queued = undefined;
     scope.update(true);
+    settle(scope);
   }
 }
 
+function release(holds?: (() => void)[]) {
+  holds?.forEach((held) => held());
+}
+
+function settle(scope: Schedulable) {
+  const { holds } = scope;
+
+  scope.holds = undefined;
+  release(holds);
+}
+
 function schedule(scope: Schedulable) {
+  const held = pending();
+
+  if (held) (scope.holds ||= []).push(held);
+
   if (!depth) {
     passive.delete(scope);
     scope.queued = 'urgent';
@@ -72,7 +92,8 @@ function unschedule(scope: Schedulable) {
   urgent.delete(scope);
   passive.delete(scope);
   scope.queued = undefined;
+  settle(scope);
 }
 
-export { schedule, transition, unschedule };
+export { release, schedule, transition, unschedule };
 export type { Schedulable };

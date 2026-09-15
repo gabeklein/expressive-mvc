@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { Component, Provider, State, lazy, render, transition } from './index';
+import { Component, Provider, State, lazy, pending, render } from './index';
 import { flushMicrotasks, mockPromise } from '../test.setup';
 
 describe('suspense and recovery', () => {
@@ -61,15 +61,19 @@ describe('suspense and recovery', () => {
     const root = document.createElement('main');
     render(<App is={(value) => (app = value)} />, root);
 
-    transition(() => {
+    let settled = false;
+
+    pending(() => {
       app.next = true;
-    });
+    }).then(() => (settled = true));
     await new Promise((resolve) => setTimeout(resolve, 10));
     expect(root.textContent).toBe('current');
+    expect(settled).toBe(false);
 
     loaded.resolve(() => <p>next</p>);
     await flushMicrotasks();
     expect(root.textContent).toBe('next');
+    expect(settled).toBe(true);
   });
 
   it('will invoke Component.catch and retry rendering', async () => {
@@ -116,6 +120,38 @@ describe('suspense and recovery', () => {
     loaded.resolve(() => <p>late</p>);
     await flushMicrotasks();
 
+    expect(root.textContent).toBe('');
+  });
+
+  it('will settle pending work when a suspended scope unmounts', async () => {
+    const loaded = mockPromise<() => Component.Node>();
+    const Lazy = lazy(() => loaded);
+
+    class App extends Component {
+      next = false;
+      fallback = <i>loading</i>;
+
+      render() {
+        return this.next ? <Lazy /> : <p>current</p>;
+      }
+    }
+
+    let app!: App;
+    let settled = false;
+    const root = document.createElement('main');
+    const release = render(<App is={(value) => (app = value)} />, root);
+
+    pending(() => {
+      app.next = true;
+    }).then(() => (settled = true));
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(settled).toBe(false);
+
+    release();
+    loaded.resolve(() => <p>late</p>);
+    await flushMicrotasks();
+
+    expect(settled).toBe(true);
     expect(root.textContent).toBe('');
   });
 

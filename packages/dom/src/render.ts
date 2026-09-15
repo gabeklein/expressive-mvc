@@ -6,7 +6,7 @@ import { Fragment } from '@expressive/mvc/runtime';
 import { commit, dispose, enter } from './adapter';
 import type { Scope } from './adapter';
 import { Provider, provide } from './context';
-import { schedule } from './scheduler';
+import { release, schedule, transition } from './scheduler';
 import { PORTAL, childrenOf, isVNode } from './vnode';
 import type { Key, Node as RenderNode, VNode } from './vnode';
 
@@ -210,7 +210,7 @@ function mountComponent(
     }
 
     first = false;
-  });
+  }, undefined, transition);
 
   Object.defineProperty(fiber, 'value', { get: () => proxy });
   complete(fiber, () => {
@@ -242,7 +242,7 @@ function mountCollection(value: has.List<unknown> | has.Pool<unknown> | map.Mana
     fiber.value = current;
     if (!first && fiber.scope?.active) schedule(fiber.scope);
     first = false;
-  });
+  }, undefined, transition);
 
   return complete(fiber, () => {
     runCollection(fiber, passiveRender);
@@ -363,9 +363,20 @@ function suspend(fiber: Fiber, thrown: unknown, passive: boolean) {
     if (!passive)
       reconcile(fiber, boundary.fallback(), fiber.context, boundary.parent);
 
+    const scope = fiber.scope!;
+    const held = scope.holds;
+
+    scope.holds = undefined;
+
+    const resume = (retry: () => void) => {
+      if (!scope.active) return release(held);
+      retry();
+      if (held) scope.holds = held;
+    };
+
     thrown.then(
-      () => fiber.scope!.active && schedule(fiber.scope!),
-      (error) => fiber.scope!.active && recover(fiber, error)
+      () => resume(() => schedule(scope)),
+      (error) => resume(() => recover(fiber, error))
     );
     return;
   }

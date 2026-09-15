@@ -79,3 +79,40 @@ it('will unschedule work and restore priority after an error', async () => {
   await Promise.resolve();
   expect(scope.update).toHaveBeenCalledWith(false);
 });
+
+it('will release holds once the scope updates', async () => {
+  vi.useFakeTimers();
+  const scope = target();
+  const held = vi.fn();
+
+  transition(() => schedule(scope));
+  scope.holds = [held];
+
+  await vi.runAllTimersAsync();
+  expect(scope.update).toHaveBeenCalledWith(true);
+  expect(held).toHaveBeenCalledOnce();
+  expect(scope.holds).toBeUndefined();
+  vi.useRealTimers();
+});
+
+it('will release holds when promoted to urgent', async () => {
+  const scope = target();
+  const held = vi.fn();
+
+  schedule(scope);
+  scope.holds = [held];
+
+  await Promise.resolve();
+  expect(held).toHaveBeenCalledOnce();
+});
+
+it('will release holds on unschedule', () => {
+  const scope = target();
+  const held = vi.fn();
+
+  schedule(scope);
+  scope.holds = [held];
+  unschedule(scope);
+
+  expect(held).toHaveBeenCalledOnce();
+});

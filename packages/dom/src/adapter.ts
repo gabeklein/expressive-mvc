@@ -1,7 +1,7 @@
 import { Component, Context, State, unbind } from '@expressive/mvc';
 import { watch } from '@expressive/mvc/observable';
 
-import { schedule, unschedule } from './scheduler';
+import { schedule, transition, unschedule } from './scheduler';
 import type { Schedulable } from './scheduler';
 
 interface UseState extends State {
@@ -110,7 +110,8 @@ function tracked<T extends object>(target: T, required?: boolean): T {
       if (!first && scope.active) schedule(scope);
       first = false;
     },
-    required
+    required,
+    transition
   );
 
   collecting!.push(release);
@@ -236,7 +237,7 @@ declare module '@expressive/mvc' {
 
       if (!first && scope.active) schedule(scope);
       first = false;
-    });
+    }, undefined, transition);
 
     slot.apply = apply;
     scope.uses.push(slot);

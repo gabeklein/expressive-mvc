@@ -2,7 +2,6 @@ import { Fragment, host } from '@expressive/mvc/runtime';
 
 import { childrenOf, isVNode, vnode } from './vnode';
 import type { Node, VNode } from './vnode';
-import { transition } from './scheduler';
 
 type EventAttributes = {
   [K in keyof GlobalEventHandlersEventMap as `on${Capitalize<K & string>}`]?:
@@ -47,7 +46,6 @@ const runtime = {
   jsx: vnode,
   jsxs: vnode,
   Fragment,
-  transition,
   childrenOf,
   isElement: isVNode,
   typeOf(node: unknown) {
