@@ -241,7 +241,7 @@ pending(() => {
 
 React interprets the designation with `startTransition`, so a suspending subscriber can keep its previous content visible while the next presentation prepares. MVC still applies every mutation immediately and preserves its normal batching and final-state squashing.
 
-The return value is a promise, resolving once every reader has **absorbed** the update - for React, once it commits; for a plain effect, once its replay returns. A reader which cannot report - unmounted, hidden, or one whose host has no scheduler - resolves on replay instead of holding. Every reader is waited on, so this doubles as a barrier with no host at all.
+The return value is a promise, resolving once every reader has **absorbed** the update - for React, once it commits; for a plain effect, once its replay returns. A reader which does not claim absorption resolves on replay instead of holding. Scheduling and settlement are independent: an adapter without concurrent deferral may still claim through its commit. Every reader is waited on, so this doubles as a barrier with no host at all.
 
 - The scope is synchronous. Writes after an `await` or in a later callback need their own `pending()` call.
 - An exception from the callback propagates synchronously; updates queued before it threw still dispatch.
@@ -263,7 +263,7 @@ watch(state, () => {
 });
 ```
 
-Only meaningful inside a replay: anywhere else, and where the replay is not deferred, it returns `undefined`.
+Only meaningful inside a replay carrying pending work; elsewhere it returns `undefined`.
 
 > Not to be confused with `pending(state)` on the `/observable` subpath, which reports the events a state has queued. Same word, different entry point.
 

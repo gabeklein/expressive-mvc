@@ -57,7 +57,7 @@ With no host registered there is no priority to apply, but the promise still res
 
 An exception from `work` propagates synchronously. Updates queued before it threw still dispatch.
 
-`pending()` with no arguments is the reader half. Called inside a replay it returns a release callback, and settlement waits on that rather than on the replay returning - which is how the React adapter holds until it commits. A hand-written `watch` effect can do the same; outside a deferred replay it returns `undefined`.
+`pending()` with no arguments is the reader half. Called inside a replay carrying pending work it returns a release callback, and settlement waits on that rather than on the replay returning - which is how the React adapter holds until it commits. A hand-written `watch` effect can do the same; elsewhere it returns `undefined`.
 
 ```ts
 watch(state, () => {
