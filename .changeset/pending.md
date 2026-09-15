@@ -19,4 +19,4 @@ Subscribers which do not claim absorption settle on replay. React claims through
 
 Note that a subscriber carries one update at one priority, so one which reads a progress flag must not rebuild the deferred content on the same pass - read it from a sibling, or from a wrapper taking that content as `children`.
 
-Migrating: `transition(() => …)` becomes `pending(() => …)`. `HostRuntime.transition` is removed - whoever subscribes may pass a synchronous priority bracket as `watch`'s fourth argument.
+Migrating: `transition(() => …)` becomes `pending(() => …)`. The `/observable` helper formerly named `pending(state)` - the queued event keys behind `state.set()` - is now `queued(state)`, so the word means one thing. `HostRuntime.transition` is removed - whoever subscribes may pass a synchronous priority bracket as `watch`'s fourth argument.

@@ -57,7 +57,7 @@ import State, {
 
 Note what's absent: `unbind` and all of the observable helpers. A React project that wants `watch` or `listener` imports them from `@expressive/mvc/observable` directly - the core package is a dependency of the adapter, so it's already in your node_modules.
 
-> There is no `Observable` export. The protocol symbol is named `Observer`, on the `/observable` subpath. (That subpath also exports `pending` and `capture` - plumbing State itself uses; you'll probably never need them.)
+> There is no `Observable` export. The protocol symbol is named `Observer`, on the `/observable` subpath. (That subpath also exports `queued` and `capture` - plumbing State itself uses; you'll probably never need them.)
 
 <br />
 
@@ -264,8 +264,6 @@ watch(state, () => {
 ```
 
 Only meaningful inside a replay carrying pending work; elsewhere it returns `undefined`.
-
-> Not to be confused with `pending(state)` on the `/observable` subpath, which reports the events a state has queued. Same word, different entry point.
 
 <br />
 

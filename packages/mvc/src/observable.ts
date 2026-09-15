@@ -151,7 +151,7 @@ const EMPTY = Object.assign([], {
   then: Promise.prototype.then.bind(Promise.resolve([]))
 } as PromiseLike<never[]>);
 
-function pending<K extends Observer.Event>(
+function queued<K extends Observer.Event>(
   state: object
 ): K[] & PromiseLike<K[]> {
   const o = observer(state);
@@ -360,7 +360,7 @@ export {
   event,
   Observer,
   touch,
-  pending,
+  queued,
   observer,
   watch,
   capture
