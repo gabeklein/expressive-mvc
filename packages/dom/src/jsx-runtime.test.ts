@@ -7,7 +7,6 @@ import {
   jsxDEV as coreJsxDEV,
   jsxs as coreJsxs,
   propsOf,
-  transition,
   typeOf
 } from '@expressive/mvc/runtime';
 
@@ -31,13 +30,5 @@ describe('JSX runtime', () => {
   it('will expose the development transform entry', () => {
     expect(isVNode(jsxDEV('div', {}, undefined, false, {}, null))).toBe(true);
     expect(isVNode(coreJsxDEV('div', {}, undefined, false))).toBe(true);
-  });
-
-  it('will bracket transition work', () => {
-    let called = false;
-    transition(() => {
-      called = true;
-    });
-    expect(called).toBe(true);
   });
 });

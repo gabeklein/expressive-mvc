@@ -41,7 +41,7 @@ const unmount = render(<Count />, document.getElementById('app')!);
 
 `Component` retains the React adapter's model: fields read by `render()` are dependencies, owned instances mount and clean up with the DOM range, and an externally activated instance can be placed directly without transferring ownership.
 
-The first release includes keyed reconciliation, native events, refs, SVG, `Provider` / `Consumer`, direct `has` / `map` collection rendering, portals, lazy components, error and suspense fallbacks, and transition-aware retention of committed content. It deliberately excludes standalone hooks, synthetic events, memo wrappers, SSR, hydration, and a styling runtime.
+The first release includes keyed reconciliation, native events, refs, SVG, `Provider` / `Consumer`, direct `has` / `map` collection rendering, portals, lazy components, error and suspense fallbacks, and retention of committed content while `pending()` work suspends. It deliberately excludes standalone hooks, synthetic events, memo wrappers, SSR, hydration, and a styling runtime.
 
 See [the DOM adapter guide](../../skills/dom/dom.md) for the API and constraints.
 
