@@ -104,3 +104,42 @@ function split(path: string) {
   const trimmed = path.replace(/^\/+|\/+$/g, '');
   return trimmed === '' ? [] : trimmed.split('/');
 }
+
+export function assertAbsolute(to: string) {
+  if (!to.startsWith('/'))
+    throw new Error(
+      `Router.goto requires an absolute path; got "${to}". Relative paths must be resolved via a Route (e.g. Route.get().goto).`
+    );
+}
+
+/**
+ * Collapse `.`/`..` and stray slashes without touching browser globals, and
+ * canonicalize the query so stored urls match the `url` getter byte-for-byte.
+ */
+export function normalize(to: string): string {
+  const { pathname, search } = new URL(to, 'x://_');
+  return canonicalize(pathname + search);
+}
+
+/**
+ * Re-serialize a url's query through the map model (last value per key,
+ * `URLSearchParams` encoding) so it is identical to what the `url` getter emits.
+ * This is what makes the history-dedup a sound string comparison.
+ */
+export function canonicalize(url: string): string {
+  const q = url.indexOf('?');
+  if (q < 0) return url;
+
+  const search = searchOf(new Map(new URLSearchParams(url.slice(q + 1))));
+  return search ? url.slice(0, q) + '?' + search : url.slice(0, q);
+}
+
+/** Canonical query serialization: skips `undefined`, last-value-per-key, form encoding. */
+export function searchOf(entries: Iterable<readonly [string, string | undefined]>): string {
+  const params = new URLSearchParams();
+
+  for (const [key, value] of entries)
+    if (value !== undefined) params.append(key, value);
+
+  return params.toString();
+}
