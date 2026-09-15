@@ -61,7 +61,7 @@ Note what's absent: `unbind` and all of the observable helpers. A React project 
 
 <br />
 
-## `watch(target, callback)`
+## `watch(target, callback, recursive?, scheduler?)`
 
 Run an effect against any observable, from anywhere. Same mechanism as `state.get(effect)`, as a free function.
 
@@ -82,17 +82,21 @@ stop();
 function watch<T extends object>(
   target: T,
   callback: Effect<T>,
-  recursive?: boolean
+  recursive?: boolean,
+  scheduler?: (work: () => void) => void
 ): () => void;
 
 function watch<T extends object>(
   target: T,
   callback: Effect<Required<T>>,
-  requireValues: true
+  requireValues: true,
+  scheduler?: (work: () => void) => void
 ): () => void;
 ```
 
 The callback receives a tracking proxy and the list of changed keys - reads through the proxy decide what the effect follows.
+
+Adapters may supply `scheduler` to bracket this subscriber's replay when it was queued by `pending(work)`. The scheduler must invoke its callback synchronously; React passes `startTransition`. Omit it for normal effect timing.
 
 - Runs immediately if the target is active; otherwise waits for activation.
 - Re-runs are batched per microtask, once per settled update.

@@ -66,6 +66,8 @@ watch(state, () => {
 });
 ```
 
+A renderer passes its non-urgent bracket as `watch`'s fourth argument. The bracket must invoke its callback synchronously; it assigns priority rather than queues the replay.
+
 ### Value Equality
 
 Updates are skipped when new value `===` previous value. No event is emitted.
