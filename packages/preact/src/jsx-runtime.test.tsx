@@ -22,7 +22,7 @@ describe('host registration', () => {
     expect(typeOf(node)).toBe(Fragment);
   });
 
-  it('will expose transition scheduling', () => {
+  it('will run pending work synchronously', () => {
     const work = vi.fn();
 
     pending(work);

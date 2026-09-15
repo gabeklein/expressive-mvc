@@ -170,7 +170,7 @@ describe('jsx-runtime module', () => {
     expect(settled).toBe(true);
   });
 
-  it('will not claim absorption outside a deferred replay', async () => {
+  it('will not claim absorption outside pending work', async () => {
     let claimed: unknown = 'unset';
 
     enqueue(() => {

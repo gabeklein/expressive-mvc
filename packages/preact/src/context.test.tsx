@@ -11,8 +11,8 @@ import {
 } from 'vitest';
 
 import { act, render, screen } from '@testing-library/preact';
-import { State, Consumer, Context, get, Provider, set } from '.';
-import { flushMicrotasks } from '../test.setup';
+import { State, Consumer, Context, get, pending, Provider, set } from '.';
+import { flushMicrotasks, mockPromise } from '../test.setup';
 
 let error: MockInstance<Console['error']>;
 
@@ -663,6 +663,47 @@ describe('suspense', () => {
     });
 
     await screen.findByText('hello!');
+  });
+
+  it('will settle when pending work falls back without a scheduler', async () => {
+    class Test extends State {
+      value = 'a';
+    }
+
+    const test = Test.new();
+    const gate = mockPromise<void>();
+    let ready = false;
+    let settled = false;
+
+    gate.then(() => (ready = true));
+
+    const Content = () => {
+      const { value } = Test.get();
+
+      if (value === 'b' && !ready) throw gate;
+      return <span>{value}</span>;
+    };
+
+    render(
+      <Provider for={test}>
+        <Suspense fallback={<i>loading</i>}>
+          <Content />
+        </Suspense>
+      </Provider>
+    );
+
+    pending(() => void (test.value = 'b')).then(() => (settled = true));
+    await flushMicrotasks();
+
+    expect(screen).toHaveText('loading');
+    expect(settled).toBe(true);
+
+    await act(async () => {
+      gate.resolve();
+      await gate;
+    });
+
+    expect(screen).toHaveText('b');
   });
 });
 
