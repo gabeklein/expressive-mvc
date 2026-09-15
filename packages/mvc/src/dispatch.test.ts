@@ -95,21 +95,45 @@ describe('dispatch', () => {
     ]);
   });
 
-  it('will fold a nested call into the one in flight', async () => {
+  it('will settle nested work independently inside the outer call', async () => {
     const done: string[] = [];
-
-    let release!: () => void;
+    let releaseOuter!: () => void;
+    let releaseInner!: () => void;
 
     pending(() => {
+      enqueue(() => {
+        releaseOuter = pending()!;
+      });
       pending(() => {
         enqueue(() => {
-          release = pending()!;
+          releaseInner = pending()!;
         });
       }).then(() => done.push('inner'));
     }).then(() => done.push('outer'));
 
     await flushMicrotasks();
+    expect(done).toEqual([]);
 
+    releaseInner();
+    await flushMicrotasks();
+    expect(done).toEqual(['inner']);
+
+    releaseOuter();
+    await flushMicrotasks();
+    expect(done).toEqual(['inner', 'outer']);
+  });
+
+  it('will include nested consequences in the outer settlement', async () => {
+    const done: string[] = [];
+    let release!: () => void;
+
+    pending(() => {
+      pending(() => enqueue(() => {
+        release = pending()!;
+      })).then(() => done.push('inner'));
+    }).then(() => done.push('outer'));
+
+    await flushMicrotasks();
     expect(done).toEqual([]);
 
     release();
@@ -118,23 +142,17 @@ describe('dispatch', () => {
     expect(done).toEqual(['outer', 'inner']);
   });
 
-  it('will join the calls in flight when made from a replay', async () => {
-    const done: string[] = [];
-    let release!: () => void;
+  it('will let nested work settle the replay holding its outer call', async () => {
+    let settled = false;
 
     pending(() => enqueue(() => {
-      release = pending()!;
-      pending(() => {}).then(() => done.push('inner'));
-    })).then(() => done.push('outer'));
+      const release = pending()!;
+      pending(() => {}).then(release);
+    })).then(() => (settled = true));
 
     await flushMicrotasks();
 
-    expect(done).toEqual([]);
-
-    release();
-    await flushMicrotasks();
-
-    expect(done).toEqual(['outer', 'inner']);
+    expect(settled).toBe(true);
   });
 
   it('will let urgent priority win for one handler', async () => {

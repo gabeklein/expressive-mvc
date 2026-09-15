@@ -240,7 +240,7 @@ React interprets the designation with `startTransition`, so a suspending subscri
 The return value is a promise, resolving once every reader has **absorbed** the update - for React, once it commits; for a plain effect, once its replay returns. A reader which cannot report - unmounted, hidden, or one whose host has no scheduler - resolves on replay instead of holding. Every reader is waited on, so this doubles as a barrier with no host at all.
 
 - The scope is synchronous. Writes after an `await` or in a later callback need their own `pending()` call.
-- A call made inside another - or from a subscriber while it replays - folds into the one in flight, and its promise resolves with that one.
+- A call made inside another - or from a subscriber while it replays - settles its own consequences and also joins the outer call.
 - It covers **Expressive updates**, not everything in the callback. A raw React setter written alongside keeps its own priority - each subscriber replays through the scheduler it subscribed with, so the bracket lands per subscriber rather than around the block.
 - Updates which must remain urgent, including controlled-input state, belong outside `pending()`.
 - If the same queued watcher receives both non-urgent and urgent invalidation, it runs once as urgent because it can present only the final squashed state.
