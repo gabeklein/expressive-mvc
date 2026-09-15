@@ -265,6 +265,8 @@ watch(state, () => {
 
 Only meaningful inside a replay carrying pending work; elsewhere it returns `undefined`.
 
+The writer's promise never rejects. An exception thrown by `work` itself propagates synchronously from the call; a reader that throws while replaying is logged and does not reach the writer.
+
 <br />
 
 ## `unbind(fn)`
