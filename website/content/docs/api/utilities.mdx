@@ -243,6 +243,8 @@ React interprets the designation with `startTransition`, so a suspending subscri
 
 The return value is a promise, resolving once every reader has **absorbed** the update - for React, once it commits; for a plain effect, once its replay returns. A reader which does not claim absorption resolves on replay instead of holding. Scheduling and settlement are independent: an adapter without concurrent deferral may still claim through its commit. Every reader is waited on, so this doubles as a barrier with no host at all.
 
+An effect which suspends by throwing a promise holds settlement through its retry and any downstream updates the retry causes. Fulfillment and rejection both retry through MVC dispatch. Cancelling the effect or destroying its state releases the hold and prevents the settled promise from reviving it.
+
 - The scope is synchronous. Writes after an `await` or in a later callback need their own `pending()` call.
 - An exception from the callback propagates synchronously; updates queued before it threw still dispatch.
 - A call made inside another - or from a subscriber while it replays - settles its own consequences and also joins the outer call.
