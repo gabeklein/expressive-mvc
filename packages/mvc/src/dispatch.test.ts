@@ -347,7 +347,7 @@ describe('dispatch', () => {
     await flushMicrotasks();
 
     release();
-    release.retry(replay);
+    release(replay);
     await flushMicrotasks();
 
     expect(replay).not.toHaveBeenCalled();
