@@ -258,20 +258,19 @@ function watch<T extends object>(
   let reset: (() => void) | null | undefined;
   let previous: T | undefined;
   let queued = false;
-  let suspense: ReturnType<typeof hold> | null;
+  let suspense: ReturnType<typeof hold>;
 
   function resume() {
     suspense?.();
     suspense = undefined;
   }
 
-  function retry(suspended: typeof suspense) {
+  function retry(suspended: NonNullable<typeof suspense>) {
     if (suspense !== suspended) return;
 
     suspense = undefined;
 
-    if (suspended) suspended(invoke);
-    else enqueue(invoke, transition);
+    suspended(invoke);
   }
 
   function invoke() {
@@ -332,7 +331,7 @@ function watch<T extends object>(
     } catch (err) {
       if (err instanceof Promise) {
         reset = undefined;
-        const suspended = suspense = hold() || null;
+        const suspended = suspense = hold(true)!;
         const replay = () => retry(suspended);
         err.then(replay, replay);
       } else {
@@ -344,7 +343,10 @@ function watch<T extends object>(
 
   const unlisten = listener(target, (key) => {
     if (key === true) invoke();
-    else if (!reset) return reset;
+    else if (!reset) {
+      suspense?.(false);
+      return reset;
+    }
 
     if (key === null && unset) unset(null);
   });
