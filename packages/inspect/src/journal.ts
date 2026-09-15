@@ -1,6 +1,6 @@
 import { State } from '@expressive/mvc';
 
-import { entries, serialize } from './serialize';
+import { serialize } from './serialize';
 import { labelOf } from './types';
 
 export type Level = 'off' | 'keys' | 'values';
@@ -141,7 +141,7 @@ export async function act(work: () => unknown): Promise<Frame[]> {
   return journal.frames({ since: start });
 }
 
-export function note(state: State, key: unknown, store = entries(state)): void {
+export function note(state: State, key: unknown, store: Map<string, unknown>): void {
   const type = labelOf(state.constructor as typeof State);
   if (!wants(type)) return;
 
