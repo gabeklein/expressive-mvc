@@ -384,6 +384,26 @@ describe('transition seam', () => {
     expect(router.path).toBe('/b');
   });
 
+  it('clears navigating if the navigation throws', async () => {
+    class Test extends Router {
+      static global = false;
+
+      apply(work: () => void) {
+        return this.navigate(work);
+      }
+    }
+
+    const router = Test.new();
+    const failing = router.apply(() => {
+      throw new Error('boom');
+    });
+
+    await expect(failing).rejects.toThrow('boom');
+
+    expect(router.navigating).toBe(false);
+    expect(router.path).toBe('/');
+  });
+
   it('applies navigation only once the bracket runs commit', () => {
     let staged!: () => void;
 

@@ -10,4 +10,4 @@ Navigation now commits through `Router.navigate`, which applies it with `pending
 
 Reporting works whether the router is rendered (`<BrowserRouter>...</BrowserRouter>`) or only provided - settlement comes from the subscribers a navigation touched, not from a hook mounted in the tree.
 
-Override `navigate(commit)` to stage the swap differently - `commit` applies the navigation and must run. Every navigation routes through one protected `next()` seam, so `BrowserRouter` overrides only that rather than `goto`.
+Override `navigate(work)` to stage the swap differently - `work` applies the navigation and must run. Every navigation routes through one protected `next()` seam, so `BrowserRouter` overrides only that rather than `goto`.

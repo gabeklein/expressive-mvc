@@ -137,10 +137,11 @@ export class Router extends Component {
     waiting(this, 1);
     this.navigating = true;
 
-    await pending(work);
-
-    if (waiting(this, -1) || this.get(null)) return;
-    this.navigating = false;
+    try {
+      await pending(work);
+    } finally {
+      if (!waiting(this, -1) && !this.get(null)) this.navigating = false;
+    }
   }
 
   /** Apply a normalized url (path + optional `?query`) to state, reconciling `query` in place. */
