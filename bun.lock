@@ -40,6 +40,17 @@
         "vite": "^7.3.1",
       },
     },
+    "packages/dom": {
+      "name": "@expressive/dom",
+      "version": "0.0.0",
+      "dependencies": {
+        "@expressive/mvc": "workspace:^",
+      },
+      "devDependencies": {
+        "@types/node": "^25.2.0",
+        "tsdown": "^0.20.1",
+      },
+    },
     "packages/mvc": {
       "name": "@expressive/mvc",
       "version": "0.84.2",
@@ -326,6 +337,8 @@
     "@esbuild/win32-ia32": ["@esbuild/win32-ia32@0.28.1", "", { "os": "win32", "cpu": "ia32" }, "sha512-zvb/mB2bSCoJOpoCBgYKKpX6YM6mJBlBUVUtVj41DlZJVEB6/0CKlRYxP5wWl1C1ILiCoAU5wZZ4q1P3qeS6Eg=="],
 
     "@esbuild/win32-x64": ["@esbuild/win32-x64@0.28.1", "", { "os": "win32", "cpu": "x64" }, "sha512-bm4Mowrv+GXMlpWX++EcXw/iLyd1o3+bJkC2DkWXYVvgZCqD/bSj9ctZeAMC3cIxgjRVR2Dufaiu4YPxr5gW1A=="],
+
+    "@expressive/dom": ["@expressive/dom@workspace:packages/dom"],
 
     "@expressive/examples": ["@expressive/examples@workspace:examples"],
 

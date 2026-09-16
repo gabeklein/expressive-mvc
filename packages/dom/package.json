@@ -1,0 +1,58 @@
+{
+  "name": "@expressive/dom",
+  "version": "0.0.0",
+  "description": "MVC-native JSX renderer for the DOM.",
+  "license": "MIT",
+  "author": {
+    "name": "Gabe Klein",
+    "email": "gabe@expressive.dev",
+    "url": "https://github.com/gabeklein"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gabeklein/expressive-mvc.git"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "sideEffects": [
+    "./src/*.ts",
+    "./dist/index.js",
+    "./dist/jsx-runtime.js",
+    "./dist/jsx-dev-runtime.js"
+  ],
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./jsx-runtime": {
+      "types": "./dist/jsx-runtime.d.ts",
+      "default": "./dist/jsx-runtime.js"
+    },
+    "./jsx-dev-runtime": {
+      "types": "./dist/jsx-dev-runtime.d.ts",
+      "default": "./dist/jsx-dev-runtime.js"
+    }
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "test": "tsc --noEmit && vitest run --coverage"
+  },
+  "dependencies": {
+    "@expressive/mvc": "workspace:^"
+  },
+  "devDependencies": {
+    "@types/node": "^25.2.0",
+    "tsdown": "^0.20.1"
+  }
+}

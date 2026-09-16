@@ -13,6 +13,7 @@ Class-based reactive state for React. State classes define reactive properties, 
 | -------------------- | --------- | ----------------------------------------------------------------- |
 | `@expressive/react`  | Published | React adapter. Primary import for State, Component, instructions. |
 | `@expressive/mvc`    | Published | Framework-agnostic core. Rarely imported directly.                |
+| `@expressive/dom`    | Public    | MVC-native client DOM renderer without a framework dependency.    |
 | `@expressive/preact` | Private   | Thin wrapper over React adapter via preact/hooks. Prerelease.     |
 | `@expressive/router` | Published | Host-agnostic, class-based router built on MVC.                   |
 
@@ -27,6 +28,8 @@ npm install @expressive/react
 `@expressive/mvc` arrives as its dependency - **do not add it to `package.json` as well.** Import `State`, `Component`, and every instruction (`set`, `get`, `ref`, `map`, `has`, `def`) from `@expressive/react`; the adapter re-exports the core. Install `@expressive/mvc` directly only when writing host-agnostic code that must not depend on a UI adapter - a shared domain package, a Node service, or a new adapter. Add `@expressive/router` alongside the adapter when you want routing.
 
 React Native and Expo need no extra install and no configuration. Three boundaries, in [react/react.md](react/react.md#react-native): `jest-expo` needs `@expressive` in `transformIgnorePatterns`, `BrowserRouter` is the browser binding - use `Router` on native - and `Link`/`NavLinks` render DOM elements, so drive navigation from `Router` directly.
+
+For a client-only DOM app without React, install `@expressive/dom`. Its FC model, renderer API, portals, lazy loading, and transition constraints are in [dom/dom.md](dom/dom.md).
 
 ## Start With Ownership, Not APIs
 
@@ -363,6 +366,10 @@ Fetch these for detailed documentation when the task requires deeper knowledge. 
 - [react/react.md](react/react.md) - use(), State.use(), State.get() (optional lookup, required values `get(true)`, computed selector), Provider, Consumer, transparent writes, ForceRefresh
 - [react/component.md](react/component.md) - Component class, props, children, render composition, subcomponent extension points, error boundaries
 - [react/patterns.md](react/patterns.md) - Recipes: forms, async, domain-row and form-chip pools, region controllers, router bridge, host-agnostic model + view adapter, presence boundary, contextual children, debounce, effects
+
+### DOM
+
+- [dom/dom.md](dom/dom.md) - client DOM render/unmount, stateless FC scopes, MVC snapshots, native events, portals, lazy boundaries, transitions, exclusions
 
 ### Router
 
