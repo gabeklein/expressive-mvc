@@ -1,6 +1,5 @@
 {
   "lockfileVersion": 1,
-  "configVersion": 0,
   "workspaces": {
     "": {
       "name": "expressive-mvc",
@@ -44,18 +43,18 @@
     },
     "packages/inspect": {
       "name": "@expressive/inspect",
-      "version": "0.0.1",
+      "version": "0.1.0",
       "devDependencies": {
         "@expressive/mvc": "workspace:*",
         "tsdown": "^0.20.1",
       },
       "peerDependencies": {
-        "@expressive/mvc": "^0.84.0",
+        "@expressive/mvc": "^0.84.3",
       },
     },
     "packages/mvc": {
       "name": "@expressive/mvc",
-      "version": "0.84.2",
+      "version": "0.84.3",
       "devDependencies": {
         "@types/node": "^18.19.0",
         "tsdown": "^0.20.1",

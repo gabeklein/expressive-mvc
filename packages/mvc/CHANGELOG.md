@@ -1,5 +1,15 @@
 # @expressive/mvc
 
+## 0.84.3
+
+### Patch Changes
+
+- [#348](https://github.com/gabeklein/expressive-mvc/pull/348) [`df641d7`](https://github.com/gabeklein/expressive-mvc/commit/df641d7ca422bb77beee1306b352acf8ef89e376) A State stored on another State - through a `set()` factory or by assignment - is no longer re-provided into the holder's context when an ancestor context already provides that same instance.
+
+  The extra entry was redundant, and removing it later ran the cleanups of every subscriber notified by it, including ones which still resolved the instance from above. Reachable as a component reading a router field beside `Route`s: each Route storing the router via `set(() => this.get(Router))` re-provided it, and the subscriber stopped updating once one of those entries went away.
+
+- [#344](https://github.com/gabeklein/expressive-mvc/pull/344) [`c6c06dd`](https://github.com/gabeklein/expressive-mvc/commit/c6c06dd99e5d82f63b9fe904ec9dfaeeeb02f48d) A child State a base-class initializer constructed no longer warns that it was never activated when a subclass initializer replaces it with an instruction (`get`, `ref`, `set`). An instruction records the States pending when it was created; applying it drops those constructed after its owner, which came from the owner's own initializers.
+
 ## 0.84.2
 
 ### Patch Changes
