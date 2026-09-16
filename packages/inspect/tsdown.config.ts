@@ -8,7 +8,8 @@ export default defineConfig({
   outExtensions: () => ({ js: '.js' }),
   entry: {
     index: 'src/index.ts',
-    install: 'src/install.ts'
+    install: 'src/install.ts',
+    playwright: 'src/playwright.ts'
   },
   external: ['@expressive/mvc'],
   format: ['esm'],

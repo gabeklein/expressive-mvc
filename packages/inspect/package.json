@@ -1,6 +1,6 @@
 {
   "name": "@expressive/inspect",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "private": true,
   "description": "In-page inspector for Expressive MVC - registry, ownership tree, path queries, and a frame journal for agents and devtools.",
   "keywords": [
@@ -38,6 +38,10 @@
     "./install": {
       "types": "./dist/install.d.ts",
       "default": "./dist/install.js"
+    },
+    "./playwright": {
+      "types": "./dist/playwright.d.ts",
+      "default": "./dist/playwright.js"
     }
   },
   "engines": {

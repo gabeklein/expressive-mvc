@@ -9,7 +9,6 @@ it('will attach and publish a global', async () => {
     value = 1;
   }
   Thing.new();
-  const global = globalThis as typeof globalThis & { __EXPRESSIVE_INSPECT__?: typeof inspect };
-  expect(global.__EXPRESSIVE_INSPECT__).toBe(inspect);
+  expect(globalThis.__EXPRESSIVE_INSPECT__).toBe(inspect);
   expect(inspect.get('Thing.value')).toBe(1);
 });

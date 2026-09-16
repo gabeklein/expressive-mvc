@@ -34,4 +34,8 @@ export const inspect = {
   journal
 };
 
+declare global {
+  var __EXPRESSIVE_INSPECT__: typeof inspect | undefined;
+}
+
 export default inspect;
