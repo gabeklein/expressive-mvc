@@ -1,14 +1,18 @@
 import type { inspect as Inspect } from './index';
 import type { Frame, Options, Query } from './journal';
 
-/** Anything that can run a function in the page: Playwright `Page`, `Frame`, `Locator`; puppeteer `Page`, `Frame`. */
+/**
+ * Anything that can run a function in the page: Playwright `Page`, `Frame`, or
+ * `Locator` (which passes the element first), puppeteer `Page` or `Frame`.
+ */
 export interface Evaluates {
-  evaluate<R, A>(fn: (arg: A) => R | Promise<R>, arg: A): Promise<R>;
+  evaluate(fn: (...args: any[]) => unknown, arg?: unknown): Promise<unknown>;
 }
 
 type Call = [path: string[], args: unknown[]];
 
-function bridge(call: Call) {
+function bridge(first: unknown, second?: unknown) {
+  const call = (second ?? first) as Call;
   const api = (globalThis as { __EXPRESSIVE_INSPECT__?: Record<string, unknown> }).__EXPRESSIVE_INSPECT__;
 
   if (!api)
@@ -35,7 +39,7 @@ export function inspect(target: Evaluates) {
   const remote =
     <R>(...path: string[]) =>
     (...args: unknown[]) =>
-      target.evaluate<R, Call>(bridge, [path, args]);
+      target.evaluate(bridge, [path, args] as Call) as Promise<R>;
 
   const record = remote<Required<Options>>('journal', 'record');
   const seq = remote<number>('journal', 'seq');
@@ -66,7 +70,7 @@ export function inspect(target: Evaluates) {
 
       try {
         await step();
-        await target.evaluate(() => new Promise((resolve) => setTimeout(resolve, 0)), undefined);
+        await target.evaluate(() => new Promise((resolve) => setTimeout(resolve, 0)));
         return await frames({ since });
       } finally {
         if (before.level === 'off') await record({ level: 'off' });

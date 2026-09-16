@@ -1,5 +1,7 @@
-import { State, has } from '@expressive/mvc';
+import { Context, State, get, has } from '@expressive/mvc';
 import { describe, expect, it } from 'vitest';
+
+import { flushMicrotasks } from '../test.setup';
 
 import { attach, find, Instance, instances, label, models, resolve, roots } from './index';
 
@@ -69,6 +71,33 @@ describe('Instance', () => {
     expect(seen).toEqual([null]);
     expect(find('Child')).toBeUndefined();
     expect(child.parent).toBeUndefined();
+  });
+
+  it('will not treat a context reference as ownership', () => {
+    class Consumer extends State {
+      theme = get(Theme);
+      own = new Child();
+    }
+    class Theme extends State {
+      static global = true;
+      mode = 'dark';
+    }
+    attach();
+    const theme = Theme.new();
+    const consumer = Consumer.new();
+    expect(consumer.theme).toBe(theme);
+    expect(Instance.of(theme).parent).toBeUndefined();
+    expect(Instance.of(consumer.own).parent!.id).toBe(String(consumer));
+    expect(roots().map((r) => r.type)).toEqual(['Theme', 'Consumer']);
+    Context.root.pop();
+  });
+
+  it('will keep unowned instances on the mainline without a host', async () => {
+    attach();
+    const loose = Child.new();
+    await flushMicrotasks();
+    expect(models().map((m) => m.id)).toEqual([String(loose)]);
+    expect(Instance.of(loose).claimed).toBe(true);
   });
 
   it('will find deep descendants', () => {

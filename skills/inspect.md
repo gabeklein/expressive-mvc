@@ -35,7 +35,19 @@ composer.frames({ since })           // this instance's journal
 await composer.act((s) => s.submit('x'))  // run, settle, return frames produced
 ```
 
-Ownership: a State stored in another State's field, `has` pool, or `map` is that owner's child. First owner wins. One `Instance` per state - `find` returns the same object each time, and a held reference keeps working after destruction with `alive` false and `until` set.
+Ownership: a State held in a plain field, `has` pool, or `map` is that owner's child; a `get(Type)` reference is not. First owner wins. One `Instance` per state - `find` returns the same object each time, and a held reference keeps working after destruction with `alive` false and `until` set.
+
+## Orphans
+
+Under a host adapter, an activated instance is **claimed** by a host commit (`mount`), by a claimed owner, or by holding its `static global` slot in the root context. One settled but unclaimed - a render React threw away, a StrictMode twin, a `State.new()` nobody placed - is an orphan. Orphans stay out of `models()`, `tree()`, `instances()`, `roots()`, and label lookups resolve mainline first; `orphans()` lists them, `warnings()` counts them plus unclaimed instances the collector already reaped. Children of an orphan are orphans. Without a host every instance is mainline.
+
+```ts
+inspect.warnings()                  // { orphans: 54, collected: 0 } - a suspended first render left a full tree behind
+inspect.orphans().map((o) => o.type)
+instance.claimed
+```
+
+Unclaimed instances are held weakly, so the inspector never pins an abandoned render in memory. A rising `collected` count with no `destroy` events is a leak the host cleaned up for you.
 
 `act` records for its window even when the journal is off, and returns every frame produced, including downstream ones.
 
@@ -111,7 +123,7 @@ const produced = await api.around(() => page.click('#submit'));   // act across 
 await api.journal.record({ level: 'keys', types: ['Composer'] }); // labels, not classes
 ```
 
-If the app renders in an iframe, hand the helper that frame: `inspect(page.frame({ name }))`, or `inspect(page.frameLocator('iframe[title="App"]').locator('body'))`. A missing global throws one line naming the install import - that is the install-order check.
+If the app renders in an iframe, hand the helper that frame: `inspect(page.frame({ name }))`, or a locator such as `inspect(page.frameLocator('iframe[title="App"]').locator('body'))` - the helper accepts the element-first arity `Locator.evaluate` uses. A missing global throws one line naming the install import - that is the install-order check.
 
 Drive input through the UI; assert on the model. Reserve DOM assertions for presentation the model does not express.
 

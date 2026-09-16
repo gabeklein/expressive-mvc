@@ -1,4 +1,5 @@
-import { State } from '@expressive/mvc';
+import { Context, State } from '@expressive/mvc';
+import { isElement } from '@expressive/mvc/runtime';
 
 import { act as run, journal, note, noteCall, noteDestroy, recordsCalls, type Frame, type Query } from './journal';
 import { entries, parsePath, serialize, walk } from './serialize';
@@ -22,16 +23,91 @@ export interface Node {
 interface Span {
   since: number;
   until?: number;
+  claimed: boolean;
+  settled: boolean;
 }
 
-const live = new Map<string, State>();
+interface Row {
+  ref: WeakRef<State>;
+  held?: State;
+}
+
+const live = new Map<string, Row>();
 const hooks = new Map<typeof State, () => boolean>();
 const wrapped = new WeakSet<State>();
 const wrappers = new WeakMap<State, Instance>();
 const spans = new WeakMap<State, Span>();
+const reaper = new FinalizationRegistry<string>(collected);
 
 let version = 0;
 let cached: { version: number; parents: Map<State, State> } | undefined;
+let lost = 0;
+
+/** Registered instances still reachable, claimed or not. */
+function registered(): State[] {
+  return [...live.values()]
+    .map((row) => row.held ?? row.ref.deref())
+    .filter((state): state is State => !!state);
+}
+
+/** Instances on the mainline: claimed, or too young to judge, or every one when no host renders. */
+function* mainline(): Generator<State> {
+  const parents = ownership();
+  for (const state of registered()) if (!orphaned(state, parents)) yield state;
+}
+
+function orphaned(state: State, parents: Map<State, State>, seen = new Set<State>()): boolean {
+  const span = spans.get(state)!;
+  if (span.claimed || !span.settled || !hosted()) return false;
+  if (provided(state)) {
+    claim(state);
+    return false;
+  }
+  const owner = parents.get(state);
+  if (!owner || seen.has(owner)) return true;
+  seen.add(state);
+  if (orphaned(owner, parents, seen)) return true;
+  if (spans.get(owner)!.claimed) claim(state);
+  return false;
+}
+
+function claim(state: State) {
+  const span = spans.get(state)!;
+  if (span.claimed) return;
+  span.claimed = true;
+  const row = live.get(String(state));
+  if (row) {
+    row.held = state;
+    reaper.unregister(state);
+  }
+  version++;
+}
+
+/** A `static global` instance currently holding its slot in the root context. */
+function provided(state: State): boolean {
+  const type = state.constructor as typeof State;
+  const global = typeof type.global === 'function' ? type.global(state) : type.global;
+  if (!global) return false;
+  for (const set of Context.root.provide.values())
+    if (set) for (const [member] of set) if (member === state) return true;
+  return false;
+}
+
+function hosted(): boolean {
+  try {
+    isElement(null);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** A registered, unclaimed instance was garbage collected - it was abandoned. */
+export function collected(id: string): void {
+  if (!live.delete(id)) return;
+  lost++;
+  version++;
+}
 
 /** Navigable view of one instance - identity, ownership, reads, observation. One per state; outlives it. */
 export class Instance {
@@ -52,7 +128,12 @@ export class Instance {
   }
 
   get alive() {
-    return live.get(this.id) === this.state;
+    return live.has(this.id);
+  }
+
+  /** Reached by a host commit (`mount`), a claimed owner, or `static global`. Always true without a host. */
+  get claimed() {
+    return !orphaned(this.state, ownership());
   }
 
   /** Registration time (ms). */
@@ -72,7 +153,7 @@ export class Instance {
 
   get children(): Instance[] {
     const parents = ownership();
-    return [...live.values()]
+    return [...registered()]
       .filter((state) => parents.get(state) === this.state)
       .map(Instance.of);
   }
@@ -124,11 +205,18 @@ export function attach(Type: typeof State = State): () => void {
       Type,
       Type.on(function (this: State) {
         const self = this.is;
+        const id = String(self);
+        const span: Span = { since: Date.now(), claimed: false, settled: false };
         seen(self.constructor as typeof State);
-        live.set(String(self), self);
-        spans.set(self, { since: Date.now() });
+        live.set(id, { ref: new WeakRef(self) });
+        spans.set(self, span);
+        reaper.register(self, id, self);
+        setTimeout(() => {
+          span.settled = true;
+        }, 0);
         version++;
         if (recordsCalls()) wrap(self);
+        mounts(self);
         const stop = self.set((key) => {
           const store = entries(self);
           if (typeof key === 'string' && typeof store.get(key) === 'object') version++;
@@ -136,8 +224,9 @@ export function attach(Type: typeof State = State): () => void {
         });
         return () => {
           stop();
-          live.delete(String(self));
-          spans.get(self)!.until = Date.now();
+          live.delete(id);
+          reaper.unregister(self);
+          span.until = Date.now();
           version++;
           noteDestroy(self);
         };
@@ -155,21 +244,39 @@ export function detach(): void {
   hooks.clear();
   live.clear();
   cached = undefined;
+  lost = 0;
   journal.reset();
   forget();
 }
 
-/** Resolve an id or label to a instance. */
+/** Resolve an id or label to an instance - mainline first, then orphans. */
 export function find(target: string): Instance | undefined {
   const byId = live.get(target);
-  if (byId) return Instance.of(byId);
-  for (const state of live.values())
-    if (seen(state.constructor as typeof State).type === target) return Instance.of(state);
+  const held = byId && (byId.held ?? byId.ref.deref());
+  if (held) return Instance.of(held);
+  for (const pool of [mainline(), abandoned()])
+    for (const state of pool)
+      if (seen(state.constructor as typeof State).type === target) return Instance.of(state);
   return undefined;
 }
 
 export function instances(): Instance[] {
-  return [...live.values()].map(Instance.of);
+  return [...mainline()].map(Instance.of);
+}
+
+/** Registered and settled, but never claimed by a host commit, an owner, or root context. */
+export function orphans(): Instance[] {
+  return [...abandoned()].map(Instance.of);
+}
+
+function* abandoned(): Generator<State> {
+  const parents = ownership();
+  for (const state of registered()) if (orphaned(state, parents)) yield state;
+}
+
+/** Counts worth a look: live orphans, and unclaimed instances the collector already reaped. */
+export function warnings(): { orphans: number; collected: number } {
+  return { orphans: orphans().length, collected: lost };
 }
 
 export function roots(): Instance[] {
@@ -179,7 +286,7 @@ export function roots(): Instance[] {
 
 export function models(): Model[] {
   const parents = ownership();
-  return [...live.values()].map((state) => describe(state, parents));
+  return [...mainline()].map((state) => describe(state, parents));
 }
 
 export function tree(): Node[] {
@@ -187,7 +294,7 @@ export function tree(): Node[] {
   const nodes = new Map<State, Node>();
   const out: Node[] = [];
 
-  for (const state of live.values())
+  for (const state of mainline())
     nodes.set(state, { id: String(state), type: seen(state.constructor as typeof State).type, children: [] });
 
   for (const [state, node] of nodes) {
@@ -232,7 +339,22 @@ export async function call(address: string, ...args: unknown[]): Promise<unknown
 }
 
 export function wrapAll(): void {
-  for (const state of live.values()) wrap(state);
+  for (const state of registered()) wrap(state);
+}
+
+/** Observe the host commit: adapters call `mount?.()` once an instance is placed. */
+function mounts(state: State) {
+  const target = state as State & { mount?: (...args: unknown[]) => unknown };
+  const original = target.mount;
+
+  Object.defineProperty(target, 'mount', {
+    configurable: true,
+    writable: true,
+    value(this: unknown, ...args: unknown[]) {
+      claim(state);
+      return typeof original === 'function' ? original.apply(this, args) : undefined;
+    }
+  });
 }
 
 function describe(state: State, parents: Map<State, State>): Model {
@@ -277,8 +399,11 @@ function ownership(): Map<State, State> {
   if (cached?.version !== version) {
     const parents = new Map<State, State>();
 
-    for (const owner of live.values())
-      for (const value of entries(owner).values()) claim(parents, owner, value);
+    for (const owner of registered())
+      for (const [key, value] of entries(owner)) {
+        const field = Object.getOwnPropertyDescriptor(owner, key)?.enumerable;
+        if (field || !(value instanceof State)) own(parents, owner, value);
+      }
 
     cached = { version, parents };
   }
@@ -286,11 +411,11 @@ function ownership(): Map<State, State> {
   return cached.parents;
 }
 
-function claim(parents: Map<State, State>, owner: State, value: unknown) {
+function own(parents: Map<State, State>, owner: State, value: unknown) {
   if (value instanceof State) {
     if (!parents.has(value) && value !== owner) parents.set(value, owner);
   } else if (value && typeof value === 'object' && Symbol.iterator in value) {
     const items = value instanceof Map ? value.values() : (value as Iterable<unknown>);
-    for (const item of items) if (item instanceof State) claim(parents, owner, item);
+    for (const item of items) if (item instanceof State) own(parents, owner, item);
   }
 }

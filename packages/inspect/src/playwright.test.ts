@@ -17,6 +17,10 @@ const page: Evaluates = {
   evaluate: async (fn, arg) => fn(arg)
 };
 
+const locator: Evaluates = {
+  evaluate: async (fn, arg) => fn({ tagName: 'BODY' }, arg)
+};
+
 beforeEach(() => {
   globalThis.__EXPRESSIVE_INSPECT__ = local;
   attach();
@@ -77,6 +81,16 @@ describe('inspect(page)', () => {
 
     expect(frames[0].events[0].value).toBeUndefined();
     expect(journal.record().level).toBe('keys');
+  });
+
+  it('will accept a locator, which passes the element first', async () => {
+    const composer = Composer.new();
+    const api = inspect(locator);
+    expect(await api.get('Composer.draft')).toBe('');
+    const frames = await api.around(() => {
+      composer.draft = 'via locator';
+    });
+    expect(frames[0].events[0].value).toBe('via locator');
   });
 
   it('will throw a short error when the page has no inspector', async () => {
