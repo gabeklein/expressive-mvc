@@ -1,14 +1,18 @@
 import { State } from '@expressive/mvc';
 
-import { serialize } from './serialize';
-import { labelOf } from './types';
+import { parsePath, serialize } from './serialize';
+import { labelOf, seen } from './types';
 
 export type Level = 'off' | 'keys' | 'values';
 
 export interface Options {
   level?: Level;
-  /** Labels to record; default all. */
+  /** Labels to record. */
   types?: string[];
+  /** `Type.key` addresses to record - label, `typeId`, or instance id on the left, property on the right. */
+  paths?: string[];
+  /** Property names to record on any type. */
+  keys?: string[];
   /** Also record method calls (wraps instance methods except `render`). */
   calls?: boolean;
 }
@@ -41,7 +45,7 @@ export interface Query {
 const FRAME_CAP = 500;
 
 const frames: Frame[] = [];
-const config: Required<Options> = { level: 'off', types: [], calls: false };
+const config: Required<Options> = { level: 'off', types: [], paths: [], keys: [], calls: false };
 let seq = 0;
 let open: Frame | undefined;
 let cause: number | undefined;
@@ -50,7 +54,7 @@ export const journal = {
   record(options: Options = {}): Required<Options> {
     Object.assign(config, options);
     if (!options.level && options.calls && config.level === 'off') config.level = 'keys';
-    return { ...config, types: [...config.types] };
+    return { ...config, types: [...config.types], paths: [...config.paths], keys: [...config.keys] };
   },
 
   frames(query: Query = {}): Frame[] {
@@ -107,7 +111,7 @@ export const journal = {
 
   reset(): void {
     journal.clear();
-    Object.assign(config, { level: 'off', types: [], calls: false });
+    Object.assign(config, { level: 'off', types: [], paths: [], keys: [], calls: false });
   }
 };
 
@@ -119,8 +123,24 @@ function matches(event: Event, query: Query) {
   );
 }
 
-export function wants(type: string): boolean {
-  return config.level !== 'off' && (!config.types.length || config.types.includes(type));
+/** Filters OR together; none set records everything. Without a key only type-level filters apply. */
+export function wants(state: State, key?: string): boolean {
+  if (config.level === 'off') return false;
+
+  const { types, paths, keys } = config;
+  if (!types.length && !paths.length && !keys.length) return true;
+
+  const Type = state.constructor as typeof State;
+  const label = labelOf(Type);
+  if (types.includes(label)) return true;
+  if (key !== undefined && keys.includes(key)) return true;
+
+  const targets = [label, seen(Type).typeId, String(state)];
+  for (const address of paths) {
+    const { target, path } = parsePath(address);
+    if (targets.includes(target) && (key === undefined || path === key)) return true;
+  }
+  return false;
 }
 
 export function recordsCalls(): boolean {
@@ -142,13 +162,12 @@ export async function act(work: () => unknown): Promise<Frame[]> {
 }
 
 export function note(state: State, key: unknown, store: Map<string, unknown>): void {
-  const type = labelOf(state.constructor as typeof State);
-  if (!wants(type)) return;
-
   const name = String(key);
+  if (!wants(state, name)) return;
+
   const event: Event = {
     id: String(state),
-    type,
+    type: labelOf(state.constructor as typeof State),
     key: name,
     kind: typeof key === 'string' && store.has(key) ? 'update' : 'event'
   };
@@ -160,18 +179,16 @@ export function note(state: State, key: unknown, store: Map<string, unknown>): v
 }
 
 export function noteCall(state: State, key: string, args: unknown[]): void {
-  const type = labelOf(state.constructor as typeof State);
-  if (!recordsCalls() || !wants(type)) return;
+  if (!recordsCalls() || !wants(state, key)) return;
 
-  const event: Event = { id: String(state), type, key, kind: 'call' };
+  const event: Event = { id: String(state), type: labelOf(state.constructor as typeof State), key, kind: 'call' };
   if (config.level === 'values') event.args = args.map((arg) => serialize(arg, 1));
   push(event);
 }
 
 export function noteDestroy(state: State): void {
-  const type = labelOf(state.constructor as typeof State);
-  if (!wants(type)) return;
-  push({ id: String(state), type, key: '', kind: 'destroy' });
+  if (!wants(state)) return;
+  push({ id: String(state), type: labelOf(state.constructor as typeof State), key: '', kind: 'destroy' });
 }
 
 function push(event: Event) {

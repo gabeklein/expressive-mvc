@@ -79,6 +79,7 @@ Off by default. Nothing is retained until asked.
 journal.record({ level: 'keys' })                  // keys only
 journal.record({ level: 'values', calls: true })   // values and method calls
 journal.record({ level: 'keys', types: ['Composer'] })
+journal.record({ paths: ['Composer.draft', 'T3.openTabs', `${id}.value`], keys: ['status'] })
 journal.frames({ since, type, id, key, cause })
 journal.history({ id, key })       // flat [{ seq, at, event }]
 journal.downstream(seq)            // frames reachable through cause
@@ -86,6 +87,8 @@ journal.seq()                      // pass back as since
 journal.export({ since })          // NDJSON, one event per line
 journal.clear()
 ```
+
+Filters OR together; none set records everything. `paths` take a label, `typeId`, or instance id on the left and a property on the right - events are keyed on the instance that changed, so `Chats.openTabs`, never the owner path `Pairing.chats.openTabs`. `keys` match that property on any type.
 
 A frame is one synchronous batch of writes plus its flush, including writes effects make synchronously during it - the unit React commits. Work an effect defers to a later microtask opens a new frame with `cause` set to the frame that scheduled it; work deferred to a macrotask starts a new root. Events: `update` (stored key), `event` (custom dispatch), `call` (method, `render` excluded), `destroy`. Retains 500 frames.
 

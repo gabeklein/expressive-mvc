@@ -2,7 +2,7 @@ import { State } from '@expressive/mvc';
 import { describe, expect, it } from 'vitest';
 
 import { flushMicrotasks } from '../test.setup';
-import { act, attach, journal } from './index';
+import { act, attach, journal, models } from './index';
 
 class Composer extends State {
   draft = '';
@@ -78,6 +78,45 @@ describe('journal', () => {
     composer.draft = 'a';
     other.value = 1;
     expect(journal.frames().flatMap((f) => f.events.map((e) => e.type))).toEqual(['Other']);
+  });
+
+  it('will filter by path - label, typeId, or id on the left', async () => {
+    attach();
+    const composer = Composer.new();
+    const other = Other.new();
+    const typeId = models().find((m) => m.id === String(other))!.typeId;
+    journal.record({ level: 'keys', paths: ['Composer.draft', `${typeId}.value`] });
+
+    composer.draft = 'a';
+    composer.rows = 2;
+    other.value = 1;
+    expect(journal.history({}).map((h) => `${h.event.type}.${h.event.key}`)).toEqual(['Composer.draft', 'Other.value']);
+
+    journal.clear();
+    journal.record({ paths: [`${composer}.rows`] });
+    composer.draft = 'b';
+    composer.rows = 3;
+    expect(journal.history({}).map((h) => h.event.key)).toEqual(['rows']);
+  });
+
+  it('will filter by key on any type, and OR the filters together', () => {
+    attach();
+    const composer = Composer.new();
+    const other = Other.new();
+    journal.record({ level: 'keys', keys: ['value'], types: ['Composer'] });
+    composer.rows = 2;
+    other.value = 1;
+    expect(journal.record().keys).toEqual(['value']);
+    expect(journal.history({}).map((h) => `${h.event.type}.${h.event.key}`)).toEqual(['Composer.rows', 'Other.value']);
+  });
+
+  it('will record calls and destroy for a path-filtered type', () => {
+    attach();
+    journal.record({ level: 'keys', calls: true, paths: ['Composer.submit'] });
+    const composer = Composer.new();
+    composer.submit('x');
+    composer.set(null);
+    expect(journal.history({}).map((h) => h.event.kind)).toEqual(['call', 'destroy']);
   });
 
   it('will record custom events, calls, and destroy', () => {
