@@ -28,16 +28,27 @@ interface Span {
 }
 
 interface Row {
-  ref: WeakRef<State>;
+  ref: { deref(): State | undefined };
   held?: State;
 }
+
+const Reaper: typeof FinalizationRegistry =
+  typeof FinalizationRegistry === 'function'
+    ? FinalizationRegistry
+    : (class {
+        register() {}
+        unregister() {}
+      } as unknown as typeof FinalizationRegistry);
+
+const weak = (state: State): Row['ref'] =>
+  typeof WeakRef === 'function' ? new WeakRef(state) : { deref: () => state };
 
 const live = new Map<string, Row>();
 const hooks = new Map<typeof State, () => boolean>();
 const wrapped = new WeakSet<State>();
 const wrappers = new WeakMap<State, Instance>();
 const spans = new WeakMap<State, Span>();
-const reaper = new FinalizationRegistry<string>(collected);
+const reaper = new Reaper<string>(collected);
 
 let version = 0;
 let cached: { version: number; parents: Map<State, State> } | undefined;
@@ -208,7 +219,7 @@ export function attach(Type: typeof State = State): () => void {
         const id = String(self);
         const span: Span = { since: Date.now(), claimed: false, settled: false };
         seen(self.constructor as typeof State);
-        live.set(id, { ref: new WeakRef(self) });
+        live.set(id, { ref: weak(self) });
         spans.set(self, span);
         reaper.register(self, id, self);
         setTimeout(() => {

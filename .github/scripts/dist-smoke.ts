@@ -10,7 +10,7 @@ import { join, resolve } from 'node:path';
  *
  * Runs from `ci:publish`, so it gates the publish itself rather than every merge.
  */
-const PACKAGES = ['mvc', 'react', 'router'];
+const PACKAGES = ['mvc', 'react', 'router', 'inspect'];
 
 const PROBES: Record<string, string> = {
   mvc: `
@@ -81,6 +81,33 @@ for (const [name, value] of Object.entries({ Router, BrowserRouter, Route, Link,
 assert.deepEqual(matchPattern('/user/:id', '/user/42').params, { id: '42' });
 
 console.log('router: import shape ok');
+`,
+  inspect: `
+import assert from 'node:assert/strict';
+import '@expressive/inspect/install';
+import State from '@expressive/mvc';
+import { find, journal } from '@expressive/inspect';
+import { inspect } from '@expressive/inspect/playwright';
+
+class Composer extends State {
+  draft = '';
+  submit(text) { this.draft = text }
+}
+
+const composer = Composer.new();
+const page = { evaluate: async (fn, arg) => fn(arg) };
+const api = inspect(page);
+
+assert.equal(typeof globalThis.__EXPRESSIVE_INSPECT__, 'object');
+assert.equal(await api.get('Composer.draft'), '');
+
+const frames = await find('Composer').act((s) => s.submit('hi'));
+
+assert.equal(frames[0].events[0].key, 'draft');
+assert.equal(composer.draft, 'hi');
+assert.equal(journal.record().level, 'off');
+
+console.log('inspect: install + act + playwright bridge ok');
 `
 };
 

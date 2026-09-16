@@ -15,7 +15,7 @@ Class-based reactive state for React. State classes define reactive properties, 
 | `@expressive/mvc`    | Published | Framework-agnostic core. Rarely imported directly.                |
 | `@expressive/preact` | Private   | Thin wrapper over React adapter via preact/hooks. Prerelease.     |
 | `@expressive/router` | Published | Host-agnostic, class-based router built on MVC.                   |
-| `@expressive/inspect` | Private  | In-page inspector: registry, ownership tree, path queries, journal. |
+| `@expressive/inspect` | Published | In-process inspector: registry, ownership tree, path queries, journal. |
 
 ### Installing
 

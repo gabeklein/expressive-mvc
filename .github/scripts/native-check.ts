@@ -19,7 +19,7 @@ const PINS = {
   'react-native': '0.86.2'
 };
 
-const PACKAGES = ['mvc', 'react', 'router'];
+const PACKAGES = ['mvc', 'react', 'router', 'inspect'];
 
 const SUBPATHS = [
   '@expressive/mvc',
@@ -27,7 +27,10 @@ const SUBPATHS = [
   '@expressive/mvc/observable',
   '@expressive/react',
   '@expressive/react/adapter',
-  '@expressive/router'
+  '@expressive/router',
+  '@expressive/inspect',
+  '@expressive/inspect/install',
+  '@expressive/inspect/playwright'
 ];
 
 const ENTRY = `

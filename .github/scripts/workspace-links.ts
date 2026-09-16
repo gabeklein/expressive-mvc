@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, symlinkSync, unlinkSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
-const PACKAGES = ['mvc', 'react', 'router'];
+const PACKAGES = ['mvc', 'react', 'router', 'inspect'];
 
 /**
  * Guarantee the `@expressive` scope under node_modules so bare specifiers
