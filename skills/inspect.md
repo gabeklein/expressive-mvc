@@ -9,7 +9,7 @@
 import '@expressive/inspect/install';
 ```
 
-Attaches to `State` from the same `@expressive/mvc` instance and publishes `globalThis.__EXPRESSIVE_INSPECT__`. Instances constructed before the import are invisible. A script outside the app's module graph (userscript, Playwright init script) imports a different `State` and sees nothing - reach the app's global instead.
+Attaches to `State` from the same `@expressive/mvc` instance and publishes `globalThis.__EXPRESSIVE_INSPECT__` (typed on `globalThis`). Instances constructed before the import are invisible. Install ships in the app bundle - a Playwright `addInitScript` or userscript imports a different `State` and sees nothing. Gate it yourself: side-effect import for a harness, `attach()` behind a dev flag for a shipped build.
 
 Programmatic: `attach(State)` returns detach; `attach(Sub)` scopes to a subclass.
 
@@ -79,13 +79,42 @@ A frame is one synchronous batch of writes plus its flush, including writes effe
 
 Bulk analysis belongs outside the page: `export` to a sidecar and query there.
 
-## Playwright
+## Testing a State
+
+`act` is the default assertion for State specs - run a mutation, get back what changed:
 
 ```ts
-const draft = await page.evaluate(() => __EXPRESSIVE_INSPECT__.get('Composer.draft'));
-const since = await page.evaluate(() => __EXPRESSIVE_INSPECT__.journal.seq());
-await page.click('#submit');
-const frames = await page.evaluate((s) => __EXPRESSIVE_INSPECT__.journal.frames({ since: s }), since);
+import { attach, find } from '@expressive/inspect';
+
+attach();
+const composer = Composer.new();
+const frames = await find('Composer')!.act((s) => s.submit('hi'));
+expect(frames[0].events.map((e) => e.key)).toEqual(['draft']);
 ```
 
+Host-agnostic packages depending only on `@expressive/mvc` get the same seat.
+
+## Playwright
+
+`@expressive/inspect/playwright` wraps anything with `evaluate(fn, arg)` - Playwright `Page`, `Frame`, `Locator`, or puppeteer `Page`/`Frame`. Every method is one round trip to the page's global.
+
+```ts
+import { inspect } from '@expressive/inspect/playwright';
+
+const api = inspect(page);                                  // or a frame - see below
+expect(await api.get('Composer.draft')).toBe('');
+const since = await api.journal.seq();
+await page.click('#submit');
+const frames = await api.journal.frames({ since, type: 'Composer' });
+
+const produced = await api.around(() => page.click('#submit'));   // act across the wire
+await api.journal.record({ level: 'keys', types: ['Composer'] }); // labels, not classes
+```
+
+If the app renders in an iframe, hand the helper that frame: `inspect(page.frame({ name }))`, or `inspect(page.frameLocator('iframe[title="App"]').locator('body'))`. A missing global throws one line naming the install import - that is the install-order check.
+
 Drive input through the UI; assert on the model. Reserve DOM assertions for presentation the model does not express.
+
+## Several instances of one type
+
+`find('Row')` and `get('Row.x')` take the first live instance. Disambiguate by id (`models().filter((m) => m.type === 'Row')`, then `get(`${id}.x`)`), or address through the owner (`Table.rows` rather than a bare `Row`).
