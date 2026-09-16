@@ -12,6 +12,7 @@
     "@codemirror/language": "^6",
     "@codemirror/state": "^6",
     "@codemirror/view": "^6",
+    "@expressive/inspect": "workspace:*",
     "@expressive/react": "workspace:*",
     "@expressive/router": "workspace:*",
     "@lezer/highlight": "^1",

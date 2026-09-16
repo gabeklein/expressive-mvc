@@ -1,0 +1,63 @@
+{
+  "name": "@expressive/inspect",
+  "version": "0.0.1",
+  "description": "In-process inspector for Expressive MVC - registry, ownership tree, path queries, and a frame journal for agents, tests, and devtools.",
+  "keywords": [
+    "expressive",
+    "mvc",
+    "devtools",
+    "inspector",
+    "state"
+  ],
+  "license": "MIT",
+  "author": {
+    "name": "Gabe Klein",
+    "email": "gabe@termtm.com",
+    "url": "https://github.com/gabeklein"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gabeklein/expressive-mvc.git"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "sideEffects": [
+    "./dist/install.js",
+    "./src/install.ts"
+  ],
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./install": {
+      "types": "./dist/install.d.ts",
+      "default": "./dist/install.js"
+    },
+    "./playwright": {
+      "types": "./dist/playwright.d.ts",
+      "default": "./dist/playwright.js"
+    }
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "test": "tsc --noEmit && vitest run --coverage"
+  },
+  "peerDependencies": {
+    "@expressive/mvc": "^0.84.0"
+  },
+  "devDependencies": {
+    "@expressive/mvc": "workspace:*",
+    "tsdown": "^0.20.1"
+  }
+}

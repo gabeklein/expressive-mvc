@@ -1,0 +1,135 @@
+# Inspect
+
+`@expressive/inspect` - in-process inspector over live State. Registry, ownership, path reads, a frame journal with causality. No UI, no network. The base layer for agents (via a browser tool or Playwright `evaluate`), devtools, and test helpers.
+
+## Install
+
+```ts
+// first import of the app entry, before any State is constructed
+import '@expressive/inspect/install';
+```
+
+Attaches to `State` from the same `@expressive/mvc` instance and publishes `globalThis.__EXPRESSIVE_INSPECT__` (typed on `globalThis`). Instances constructed before the import are invisible. Install ships in the app bundle - a Playwright `addInitScript` or userscript imports a different `State` and sees nothing. Gate it yourself: side-effect import for a harness, `attach()` behind a dev flag for a shipped build.
+
+Programmatic: `attach(State)` returns detach; `attach(Sub)` scopes to a subclass.
+
+## Two faces, one id
+
+In process you get **instances**. Across a serializing boundary (`evaluate`, `postMessage`, socket) you use **addresses**. Both key on the same ids: `String(state)`, e.g. `Composer-x1s4`.
+
+## Instances (in process)
+
+```ts
+import { find, roots, instances } from '@expressive/inspect';
+
+const app = roots()[0];              // instances with no owner
+const composer = find('Composer');   // by label, or find('Composer-x1s4') by id
+composer.state                       // the raw instance - assign to it directly
+composer.alive / since / until       // registry span (ms); an Instance outlives its state
+composer.parent / composer.children  // ownership, memoized until the registry changes
+app.find('Composer')                 // depth-first by label or predicate
+composer.get('draft')                // stored value, serialized
+composer.model()                     // { id, typeId, type, site?, parent?, keys, absent }
+composer.watch((key) => ..., ['draft'])   // key per update, null on destroy; unsubscribe returned
+composer.frames({ since })           // this instance's journal
+await composer.act((s) => s.submit('x'))  // run, settle, return frames produced
+```
+
+Ownership: a State held in a plain field, `has` pool, or `map` is that owner's child; a `get(Type)` reference is not. First owner wins. One `Instance` per state - `find` returns the same object each time, and a held reference keeps working after destruction with `alive` false and `until` set.
+
+## Orphans
+
+Under a host adapter, an activated instance is **claimed** by a host commit (`mount`), by a claimed owner, or by holding its `static global` slot in the root context. One settled but unclaimed - a render React threw away, a StrictMode twin, a `State.new()` nobody placed - is an orphan. Orphans stay out of `models()`, `tree()`, `instances()`, `roots()`, and label lookups resolve mainline first; `orphans()` lists them, `warnings()` counts them plus unclaimed instances the collector already reaped. Children of an orphan are orphans. Without a host every instance is mainline.
+
+```ts
+inspect.warnings()                  // { orphans: 54, collected: 0 } - a suspended first render left a full tree behind
+inspect.orphans().map((o) => o.type)
+instance.claimed
+```
+
+Unclaimed instances are held weakly, so the inspector never pins an abandoned render in memory. A rising `collected` count with no `destroy` events is a leak the host cleaned up for you.
+
+`act` records for its window even when the journal is off, and returns every frame produced, including downstream ones.
+
+## Addresses (across a boundary)
+
+`Type.path` or `Type-id.path`. `Type` is the label (first live instance); path steps through child States, `Map`s, arrays, objects.
+
+```ts
+inspect.models()                 // flat list with parent ids
+inspect.tree()                   // nested { id, type, children }
+inspect.get('Composer.draft')
+inspect.set('Composer.draft', 'x')
+await inspect.call('Composer.submit', 'x')
+```
+
+Reads come from stored values, never through accessors - no getter, factory, or suspense fires. `absent` lists declared keys with no stored value: lazy `set(factory)`, pending async, uncomputed getters. Nested States serialize to `{ $ref, $type }`; strings cap at 240 chars, arrays 24, keys 40, depth 2. Query, do not dump.
+
+## Labels and minified builds
+
+Minifiers keep property names and mangle class names, so keys survive production and `constructor.name` does not. Each class gets an opaque `typeId` at first sight and a `site` (construction stack) for a resolver. Label resolution: `label(Type, name)` or `static displayName`, then a table from `resolve({ [typeId | site]: name })`, then the class name when longer than two characters, else `typeId`.
+
+For builds an agent or devtool will touch, keep class names: esbuild `keepNames`, terser `keep_classnames`. Property mangling is unsupported.
+
+## Journal
+
+Off by default. Nothing is retained until asked.
+
+```ts
+journal.record({ level: 'keys' })                  // keys only
+journal.record({ level: 'values', calls: true })   // values and method calls
+journal.record({ level: 'keys', types: ['Composer'] })
+journal.record({ paths: ['Composer.draft', 'T3.openTabs', `${id}.value`], keys: ['status'] })
+journal.frames({ since, type, id, key, cause })
+journal.history({ id, key })       // flat [{ seq, at, event }]
+journal.downstream(seq)            // frames reachable through cause
+journal.seq()                      // pass back as since
+journal.export({ since })          // NDJSON, one event per line
+journal.clear()
+```
+
+Filters OR together; none set records everything. `paths` take a label, `typeId`, or instance id on the left and a property on the right - events are keyed on the instance that changed, so `Chats.openTabs`, never the owner path `Pairing.chats.openTabs`. `keys` match that property on any type.
+
+A frame is one synchronous batch of writes plus its flush, including writes effects make synchronously during it - the unit React commits. Work an effect defers to a later microtask opens a new frame with `cause` set to the frame that scheduled it; work deferred to a macrotask starts a new root. Events: `update` (stored key), `event` (custom dispatch), `call` (method, `render` excluded), `destroy`. Retains 500 frames.
+
+Bulk analysis belongs outside the page: `export` to a sidecar and query there.
+
+## Testing a State
+
+`act` is the default assertion for State specs - run a mutation, get back what changed:
+
+```ts
+import { attach, find } from '@expressive/inspect';
+
+attach();
+const composer = Composer.new();
+const frames = await find('Composer')!.act((s) => s.submit('hi'));
+expect(frames[0].events.map((e) => e.key)).toEqual(['draft']);
+```
+
+Host-agnostic packages depending only on `@expressive/mvc` get the same seat.
+
+## Playwright
+
+`@expressive/inspect/playwright` wraps anything with `evaluate(fn, arg)` - Playwright `Page`, `Frame`, `Locator`, or puppeteer `Page`/`Frame`. Every method is one round trip to the page's global.
+
+```ts
+import { inspect } from '@expressive/inspect/playwright';
+
+const api = inspect(page);                                  // or a frame - see below
+expect(await api.get('Composer.draft')).toBe('');
+const since = await api.journal.seq();
+await page.click('#submit');
+const frames = await api.journal.frames({ since, type: 'Composer' });
+
+const produced = await api.around(() => page.click('#submit'));   // act across the wire
+await api.journal.record({ level: 'keys', types: ['Composer'] }); // labels, not classes
+```
+
+If the app renders in an iframe, hand the helper that frame: `inspect(page.frame({ name }))`, or a locator such as `inspect(page.frameLocator('iframe[title="App"]').locator('body'))` - the helper accepts the element-first arity `Locator.evaluate` uses. A missing global throws one line naming the install import - that is the install-order check.
+
+Drive input through the UI; assert on the model. Reserve DOM assertions for presentation the model does not express.
+
+## Several instances of one type
+
+`find('Row')` and `get('Row.x')` take the first live instance. Disambiguate by id (`models().filter((m) => m.type === 'Row')`, then `get(`${id}.x`)`), or address through the owner (`Table.rows` rather than a bare `Row`).
