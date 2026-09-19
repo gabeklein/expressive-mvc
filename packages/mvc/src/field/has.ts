@@ -23,12 +23,12 @@ function has<T>(initial?: Iterable<T> | false | null): List<T>;
 
 function has<T extends State>(
   Type: new (...args: State.Args<T>) => T
-): Pool<T, State.Args<T> | [T]>;
+): Pool<T, State.Args<T>> & { add(instance: T): T };
 
 function has<T extends State, K extends State.Field<T>>(
   Type: new (...args: State.Args<T>) => T,
   fromKey: K
-): Pool<T, [T[K]] | [T]>;
+): Pool<T, [from: T[K]]> & { add(instance: T): T };
 
 function has<R, A extends unknown[]>(
   make: (...args: A) => R
