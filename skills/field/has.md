@@ -18,7 +18,8 @@ The argument selects the mode:
 | call | interface | insert | identity |
 | --- | --- | --- | --- |
 | `has<T>()` / `has(values)` | `has.List<T>` | `push` / `put` / `set(index)` | position |
-| `has(StateClass)` / `has(StateClass, fromKey)` / `has(factory)` | `has.Pool<T, A>` | `add(...args)` spawns, `add(value)` admits | the value itself |
+| `has(StateClass)` / `has(StateClass, fromKey)` | `has.From<T, A>` | `add(...args)` spawns, `add(instance)` admits | the value itself |
+| `has(factory)` | `has.Pool<T, A>` | `add(...args)` spawns | the value itself |
 
 A list stores values you give it, in order, addressed by index. A pool spawns its members - `add` returns the member, the call site holds the reference, and the value is its own identity for `has`, `delete`, and eviction. A class-mode pool also takes a ready-made instance.
 
@@ -223,11 +224,11 @@ Member fields read thru a subscribed context track deeply - a parent rendering `
 
 ```ts
 function has<T>(initial?: Iterable<T> | false | null): has.List<T>;
-function has<T extends State>(Type: new (...args: State.Args<T>) => T): has.Pool<T, State.Args<T> | [T]>;
+function has<T extends State>(Type: new (...args: State.Args<T>) => T): has.From<T, State.Args<T>>;
 function has<T extends State, K extends State.Field<T>>(
   Type: new (...args: State.Args<T>) => T,
   fromKey: K
-): has.Pool<T, [T[K]] | [T]>;
+): has.From<T, [from: T[K]]>;
 function has<R, A extends unknown[]>(
   make: (...args: A) => R
 ): has.Pool<Exclude<R, null | undefined>, A, R>;
@@ -248,7 +249,7 @@ class has.List<T> {
 
 class has.Pool<T, A extends unknown[] = unknown[], R = T> {
   readonly size: number;
-  add(...args: A): R;                          // constructor's or factory's own signature; class mode also takes [T]
+  add(...args: A): R;                          // constructor's or factory's own signature
   get(): State.Export<T>[];                    // snapshot
   get(predicate): T | undefined;
   has(value: T): boolean;
@@ -256,9 +257,14 @@ class has.Pool<T, A extends unknown[] = unknown[], R = T> {
   clear(): void;
   // map / filter / any / all / [Symbol.iterator]
 }
+
+interface has.From<T, A extends unknown[]> extends has.Pool<T, A> {
+  add(...args: A): T;                          // spawn
+  add(instance: T): T;                         // admit
+}
 ```
 
-`has.List` and `has.Pool` are the runtime classes - mode is class identity (`instanceof` works; a list has no `add`, a pool no `push`, as natural TypeErrors). Adapters may extend their prototypes - this is the seam for rendering facades.
+`has.List` and `has.Pool` are the runtime classes (`has.From` is the class-mode pool's type) - mode is class identity (`instanceof` works; a list has no `add`, a pool no `push`, as natural TypeErrors). Adapters may extend their prototypes - this is the seam for rendering facades.
 
 ## Behavior
 
