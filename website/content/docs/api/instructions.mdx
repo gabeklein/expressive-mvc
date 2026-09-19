@@ -395,7 +395,7 @@ Ownership follows freshness: a fresh (never-activated) `State` member - one the 
 ```ts
 function has<T>(initial?: Iterable<T> | null): has.List<T>;
 function has<T extends State>(Type: new (...args: State.Args<T>) => T): has.Create<T, State.Args<T>>;
-function has<T extends State, K extends State.Field<T>>(Type: new (...args: State.Args<T>) => T, fromKey: K): has.Create<T, [from: T[K]]>;
+function has<T extends State, K extends State.Field<T>>(Type: new (...args: State.Args<T>) => T, fromKey: K): has.From<T, T[K]>;
 function has<T, A extends unknown[]>(make: (...args: A) => T): has.Pool<T, A>;
 ```
 
