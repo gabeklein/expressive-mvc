@@ -16,19 +16,19 @@ type Predicate<T> = (value: T, index: number, self: unknown) => boolean;
 type Mapper<T, U> = (value: T, index: number, self: unknown) => U;
 
 declare namespace has {
-  export { Predicate, Mapper, List, Pool }
+  export { Predicate, Mapper, List, Pool, From }
 }
 
 function has<T>(initial?: Iterable<T> | false | null): List<T>;
 
 function has<T extends State>(
   Type: new (...args: State.Args<T>) => T
-): Pool<T, State.Args<T>> & { add(instance: T): T };
+): From<T, State.Args<T>>;
 
 function has<T extends State, K extends State.Field<T>>(
   Type: new (...args: State.Args<T>) => T,
   fromKey: K
-): Pool<T, [from: T[K]]> & { add(instance: T): T };
+): From<T, [from: T[K]]>;
 
 function has<R, A extends unknown[]>(
   make: (...args: A) => R
@@ -170,6 +170,11 @@ class List<T> {
   all(fn: Predicate<T>): boolean {
     return !anyOf(this, (v, i, self) => !fn(v, i, self));
   }
+}
+
+interface From<T, A extends unknown[]> extends Pool<T, A> {
+  add(...args: A): T;
+  add(instance: T): T;
 }
 
 class Pool<T, A extends unknown[] = unknown[], R = T> {
