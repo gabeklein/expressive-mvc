@@ -9,12 +9,12 @@ Class-based reactive state for React. State classes define reactive properties, 
 
 ## Packages
 
-| Package              | Status    | Description                                                       |
-| -------------------- | --------- | ----------------------------------------------------------------- |
-| `@expressive/react`  | Published | React adapter. Primary import for State, Component, instructions. |
-| `@expressive/mvc`    | Published | Framework-agnostic core. Rarely imported directly.                |
-| `@expressive/preact` | Private   | Thin wrapper over React adapter via preact/hooks. Prerelease.     |
-| `@expressive/router` | Published | Host-agnostic, class-based router built on MVC.                   |
+| Package               | Status    | Description                                                            |
+| --------------------- | --------- | ---------------------------------------------------------------------- |
+| `@expressive/react`   | Published | React adapter. Primary import for State, Component, instructions.      |
+| `@expressive/mvc`     | Published | Framework-agnostic core. Rarely imported directly.                     |
+| `@expressive/preact`  | Private   | Thin wrapper over React adapter via preact/hooks. Prerelease.          |
+| `@expressive/router`  | Published | Host-agnostic, class-based router built on MVC.                        |
 | `@expressive/inspect` | Published | In-process inspector: registry, ownership tree, path queries, journal. |
 
 ### Installing
@@ -91,7 +91,7 @@ import State, {
 
 ### State Class
 
-Extend `State` to define reactive models. Use `State.new()` to construct a root instance - it constructs *and* activates, which plain `new` does not. Bare `new` is correct in one place: a class field on another State (`theme = new Theme()`), where the owner adopts and activates the child, and destroys it in turn.
+Extend `State` to define reactive models. Use `State.new()` to construct a root instance - it constructs _and_ activates, which plain `new` does not. Bare `new` is correct in one place: a class field on another State (`theme = new Theme()`), where the owner adopts and activates the child, and destroys it in turn.
 
 ```tsx
 class Counter extends State {
@@ -114,16 +114,16 @@ Properties assigned in the class body are reactive - updates notify subscribers.
 
 Field initializers that configure reactive behavior. Each has multiple overloads - fetch the reference when a task needs them.
 
-| Helper  | Use for                                                                                                | Reference                  |
-| ------- | ------------------------------------------------------------------------------------------------------ | -------------------------- |
-| `set()` | Defaults, placeholders (suspend until assigned), lazy/async factories (suspense), setter callbacks and validation | [field/set.md](field/set.md) |
-| `get()` | Context lookup between States - required or optional upstream, downstream collection                   | [field/get.md](field/get.md) |
-| `ref()` | Mutable refs (`.current`), ref callbacks with cleanup, ref proxies                                      | [field/ref.md](field/ref.md) |
-| `map()` | Reactive `Map` field - keyed entries or a keyed spawner, with owned `State` members and direct render    | [field/map.md](field/map.md) |
+| Helper  | Use for                                                                                                                                                                                                         | Reference                    |
+| ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- |
+| `set()` | Defaults, placeholders (suspend until assigned), lazy/async factories (suspense), setter callbacks and validation                                                                                               | [field/set.md](field/set.md) |
+| `get()` | Context lookup between States - required or optional upstream, downstream collection                                                                                                                            | [field/get.md](field/get.md) |
+| `ref()` | Mutable refs (`.current`), ref callbacks with cleanup, ref proxies                                                                                                                                              | [field/ref.md](field/ref.md) |
+| `map()` | Reactive `Map` field - keyed entries or a keyed spawner, with owned `State` members and direct render                                                                                                           | [field/map.md](field/map.md) |
 | `has()` | Owned collections - an ordered list of values, or a pool of spawned members. Pools are for per-item UI state (selection, progress, row actions). Class first (`has(Row)`); factory when the seed isn't the init | [field/has.md](field/has.md) |
-| `def()` | Low-level custom property behavior                                                                      | [field/def.md](field/def.md) |
+| `def()` | Low-level custom property behavior                                                                                                                                                                              | [field/def.md](field/def.md) |
 
-For **computed values**, declare a normal class getter - getters on a State subclass are auto-promoted to memoized, dependency-tracked properties. See [state/computed.md](state/computed.md) for tracking rules and when a derivation should *not* be a getter.
+For **computed values**, declare a normal class getter - getters on a State subclass are auto-promoted to memoized, dependency-tracked properties. See [state/computed.md](state/computed.md) for tracking rules and when a derivation should _not_ be a getter.
 
 `pending(work)` is not a field helper but imports alongside them - it marks the updates `work` queues non-urgent and resolves once every reader has taken them. See [Transitions](react/component.md#transitions).
 
@@ -181,15 +181,14 @@ Open every subscribing component by destructuring the exact reactive values it r
 function OrderSummary() {
   const {
     status,
-    customer: {
-      name,
-      address: {
-        city,
-      } = {},
-    },
+    customer: { name, address: { city } = {} }
   } = Order.get();
 
-  return <p>{name} ({city ?? 'no address'}) - {status}</p>;
+  return (
+    <p>
+      {name} ({city ?? 'no address'}) - {status}
+    </p>
+  );
 }
 ```
 
@@ -206,12 +205,12 @@ Optional nested objects take in-place defaults (`= {}`) rather than a separate u
 Subscription proxies pass assignments through to the real instance - no unwrapping needed:
 
 ```tsx
-const form = LoginForm.get();          // whole object is the only need - take it directly
+const form = LoginForm.get(); // whole object is the only need - take it directly
 
 <input
   value={form.username}
   onChange={(e) => (form.username = e.target.value)}
-/>
+/>;
 ```
 
 Nested objects reached through a snapshot are equally writable:
@@ -219,7 +218,7 @@ Nested objects reached through a snapshot are equally writable:
 ```tsx
 const { transfer, confirmed } = ReviewStep.get();
 
-<button onClick={() => (transfer.step = 'generate')} disabled={!confirmed} />
+<button onClick={() => (transfer.step = 'generate')} disabled={!confirmed} />;
 ```
 
 Use `is` **only** when retaining the root object alongside sibling values from the same snapshot:
@@ -250,10 +249,7 @@ function SettingsEditor() {
   const {
     saveSettings,
     saving,
-    draft: {
-      bankAccount,
-      categoryAccounts,
-    },
+    draft: { bankAccount, categoryAccounts }
   } = SettingsState.get(true); // Required<T> - throws if an accessed value is undefined
 
   return <section className="settings-editor">...</section>;
@@ -278,7 +274,7 @@ Provide an instance only when it is genuinely owned elsewhere:
 const counter = Counter.use();
 <Provider for={counter}>
   <Child />
-</Provider>
+</Provider>;
 ```
 
 Multiple states: `<Provider for={{ app: AppState, user: UserState }}>`. See [react/react.md](react/react.md) for `is` callbacks, fallback, and field props.
@@ -318,15 +314,15 @@ PascalCase methods become reactive subcomponents - but they are **extension poin
 
 Every broad rule here has a locality constraint. Apply both halves. When auditing a result, weigh findings by the severity labels defined in [react/refactor.md](react/refactor.md) - invariant, default, heuristic, style - and never fail a heuristic on its numerical signal alone.
 
-| Rule                                                        | Counter-rule                                                                                                                        |
-| ----------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| Reactive fields are assigned directly                       | Keep a method when the write validates, normalizes, coordinates fields, or triggers behavior. Delete methods whose body is only `this.x = value`. |
-| Derived values become getters                               | Only when shared by multiple consumers, semantic to the domain, expensive, or a deliberate part of the state's API/introspection surface. Single-consumer display derivations live in the consuming component - but judge meaning, not reference counts. |
-| Contextual components read via `.get()`                     | Pure presentation components may still take plain props. Context replaces drilled *state*, not every value.                          |
-| PascalCase subcomponents compose renders                    | Only for genuine extension points a subclass would replace or wrap. Implementation scopes are freestanding FCs using `.get()`.        |
-| Extract long conditional JSX (~10+ lines or ~5+ levels)     | Keep branches together when they share dependencies, read locally, and contain no nested logic.                                      |
-| `is` retains the raw instance                               | Only alongside sibling destructuring from the same snapshot. Writes through proxies are transparent; nested objects need no unwrapping. |
-| State about a collection entry lives on the entry's class   | Payload keys that never drive UI stay as one `info` subobject on the member - a reactive field without a reader is pure cost.           |
+| Rule                                                      | Counter-rule                                                                                                                                                                                                                                             |
+| --------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Reactive fields are assigned directly                     | Keep a method when the write validates, normalizes, coordinates fields, or triggers behavior. Delete methods whose body is only `this.x = value`.                                                                                                        |
+| Derived values become getters                             | Only when shared by multiple consumers, semantic to the domain, expensive, or a deliberate part of the state's API/introspection surface. Single-consumer display derivations live in the consuming component - but judge meaning, not reference counts. |
+| Contextual components read via `.get()`                   | Pure presentation components may still take plain props. Context replaces drilled _state_, not every value.                                                                                                                                              |
+| PascalCase subcomponents compose renders                  | Only for genuine extension points a subclass would replace or wrap. Implementation scopes are freestanding FCs using `.get()`.                                                                                                                           |
+| Extract long conditional JSX (~10+ lines or ~5+ levels)   | Keep branches together when they share dependencies, read locally, and contain no nested logic.                                                                                                                                                          |
+| `is` retains the raw instance                             | Only alongside sibling destructuring from the same snapshot. Writes through proxies are transparent; nested objects need no unwrapping.                                                                                                                  |
+| State about a collection entry lives on the entry's class | Payload keys that never drive UI stay as one `info` subobject on the member - a reactive field without a reader is pure cost.                                                                                                                            |
 
 ## File Reference
 
@@ -368,7 +364,8 @@ Fetch these for detailed documentation when the task requires deeper knowledge. 
 
 ### Router
 
-- [router/router.md](router/router.md) - `@expressive/router`: nested `Route` declarations, lexical matching, `Router`/`BrowserRouter` navigation state, the reactive `query` record + derived `url`, and `Link`/`NavLinks`/`Redirect`
+- [router/router.md](router/router.md) - route declarations, lexical matching, guards, Suspense, navigation state, and UI
+- [router/production.md](router/production.md) - choose `Router` vs `BrowserRouter`, page-data ownership, navigation settlement, testing, host boundaries, and unsupported browser behavior
 
 ### Inspect
 
@@ -381,14 +378,14 @@ Fetch these for detailed documentation when the task requires deeper knowledge. 
 
 **Runnable examples** live at `https://expressive.dev/examples/<group>/<name>` and serve every source file of a working program as plain HTML - fetchable without JavaScript. These are optional enrichment: this skill is complete offline, and [examples/basic.md](examples/basic.md) covers the core patterns inline. When you have network access and want a full reference implementation of a specific feature - rather than a snippet - fetch the matching page:
 
-| Group | Pages |
-| --- | --- |
-| `featured` | `forms`, `kanban`, `spreadsheet`, `stopwatch`, `tictactoe` |
-| `essentials` | `counter`, `computed`, `fetch`, `async` |
-| `component` | `props`, `subcomponents`, `lifecycle`, `injection`, `headless`, `suspense`, `boundary`, `custom` |
-| `composition` | `nested`, `context`, `concerns`, `extension`, `globals` |
+| Group          | Pages                                                                                                                               |
+| -------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `featured`     | `forms`, `kanban`, `spreadsheet`, `stopwatch`, `tictactoe`                                                                          |
+| `essentials`   | `counter`, `computed`, `fetch`, `async`                                                                                             |
+| `component`    | `props`, `subcomponents`, `lifecycle`, `injection`, `headless`, `suspense`, `boundary`, `custom`                                    |
+| `composition`  | `nested`, `context`, `concerns`, `extension`, `globals`                                                                             |
 | `instructions` | `set`, `set-factory`, `set-computed`, `get`, `get-downstream`, `ref`, `ref-multiple`, `map`, `map-insert`, `has`, `has-list`, `def` |
-| `router` | `overview`, `params`, `query`, `guards`, `nav` |
+| `router`       | `overview`, `params`, `query`, `guards`, `transitions`, `nav`                                                                       |
 
 ## Auditing & Evaluation
 
