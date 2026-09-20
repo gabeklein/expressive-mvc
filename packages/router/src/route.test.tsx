@@ -188,6 +188,15 @@ describe('Route', () => {
     expect(window.location.pathname).toBe('/posts/foo/edit');
   });
 
+  it('Route.goto will preserve query in relative paths', async () => {
+    location('/posts/foo');
+    let leaf!: Route;
+    render(<Route to="/posts/:id" is={(r) => (leaf = r)} />);
+    await act(async () => leaf.goto('./edit?tab=history'));
+    expect(router.current.url).toBe('/posts/foo/edit?tab=history');
+    expect(window.location.search).toBe('?tab=history');
+  });
+
   it('Route.goto with no argument navigates to the Route itself', async () => {
     location('/posts/foo');
     let leaf!: Route;

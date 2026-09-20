@@ -166,6 +166,21 @@ describe('Link', () => {
     await act(async () => fireEvent.click(a, { button: 0 }));
     expect(router.current.path).toBe('/posts/foo/edit');
   });
+
+  it('will preserve query in a relative `to` href and navigation', async () => {
+    location('/posts/foo');
+    const view = render(
+      <Route to="/posts/:id">
+        <Link to="./edit?tab=history">edit</Link>
+      </Route>
+    );
+    const a = view.container.querySelector('a')!;
+    expect(a.getAttribute('href')).toBe('/posts/foo/edit?tab=history');
+
+    await act(async () => fireEvent.click(a, { button: 0 }));
+    expect(router.current.url).toBe('/posts/foo/edit?tab=history');
+    expect(router.current.query.get('tab')).toBe('history');
+  });
 });
 
 describe('Link.match / Link.active', () => {
