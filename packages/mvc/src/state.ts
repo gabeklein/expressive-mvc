@@ -5,7 +5,7 @@ import {
   listener,
   Observer,
   observer,
-  pending,
+  queued,
   touch,
   watch
 } from './observable';
@@ -428,7 +428,7 @@ abstract class State {
     else if (arg2) apply(self, arg1 as string, arg2);
     else event(self, arg1);
 
-    return pending(self) as State.Updated<this>;
+    return queued(self) as State.Updated<this>;
   }
 
   /**
@@ -550,7 +550,7 @@ function init(state: State, ...args: State.Args) {
   }
 
   listener(state, (key) => {
-    const rest = queued(state);
+    const rest = trailing(state);
 
     PENDING.delete(state);
 
@@ -873,7 +873,7 @@ function child(state: State) {
  * Pending States constructed after this one - in a parent, the products of
  * its own initializers, until the last one it kept.
  */
-function queued(state: State) {
+function trailing(state: State) {
   const rest: State[] = [];
   let seen = false;
 

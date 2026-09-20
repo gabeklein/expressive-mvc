@@ -151,7 +151,7 @@ const EMPTY = Object.assign([], {
   then: Promise.prototype.then.bind(Promise.resolve([]))
 } as PromiseLike<never[]>);
 
-function pending<K extends Observer.Event>(
+function queued<K extends Observer.Event>(
   state: object
 ): K[] & PromiseLike<K[]> {
   const o = observer(state);
@@ -235,19 +235,22 @@ function emit(o: Observer, key: Observer.Signal): void {
 function watch<T extends object>(
   target: T,
   callback: Observer.Effect<Required<T>>,
-  requireValues: true
+  requireValues: true,
+  transition?: (work: () => void) => void
 ): () => void;
 
 function watch<T extends object>(
   target: T,
   callback: Observer.Effect<T>,
-  recursive?: boolean
+  recursive?: boolean,
+  transition?: (work: () => void) => void
 ): () => void;
 
 function watch<T extends object>(
   target: T,
   callback: Observer.Effect<T>,
-  argument?: boolean
+  argument?: boolean,
+  transition?: (work: () => void) => void
 ) {
   const o = observer(target, true);
   let events: readonly Observer.Event[] = [];
@@ -267,7 +270,7 @@ function watch<T extends object>(
 
       if (reset === null) return null;
       if (ignore) {
-        if (queued) enqueue(invoke);
+        if (queued) enqueue(invoke, transition);
         return;
       }
 
@@ -277,7 +280,7 @@ function watch<T extends object>(
       unset!(true);
       unset = undefined;
 
-      enqueue(invoke);
+      enqueue(invoke, transition);
     }
 
     function run(release?: (update?: boolean | null) => void) {
@@ -357,7 +360,7 @@ export {
   event,
   Observer,
   touch,
-  pending,
+  queued,
   observer,
   watch,
   capture
