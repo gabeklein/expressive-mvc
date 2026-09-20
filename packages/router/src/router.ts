@@ -187,10 +187,11 @@ export class Router extends Component {
     return own.endsWith('/') ? own : own + '/';
   }
 
-  /** Resolve a (possibly relative) url against a Route's anchor; returns absolute pathname. */
+  /** Resolve a (possibly relative) url against a Route's anchor; returns absolute path + search. */
   resolve(route: Route, url: string): string {
     if (url.startsWith('/')) return url;
-    return new URL(url, 'x://_' + this.anchor(route)).pathname;
+    const resolved = new URL(url, 'x://_' + this.anchor(route));
+    return resolved.pathname + resolved.search;
   }
 }
 
