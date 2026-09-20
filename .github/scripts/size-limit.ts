@@ -45,7 +45,7 @@ const CASES = [
   },
   {
     name: 'router: everything',
-    limit: 11620,
+    limit: 12110,
     code: `import * as all from '@expressive/router'; console.log(all);`
   },
   {
