@@ -218,10 +218,10 @@ Notes:
 
 ### `Link`
 
-Renders an `<a>` that navigates internal targets on click (intercepting only
-plain left-clicks, so modifier/middle clicks fall through to the browser).
-Scheme-bearing and protocol-relative targets stay unchanged and are not
-intercepted. Internal `href` values are resolved to absolute paths.
+Renders an `<a>` that navigates internal targets on click. Modifier/middle
+clicks, non-`_self` targets, downloads, and scheme-bearing or protocol-relative
+targets stay browser-owned. Internal `href` values are resolved to absolute
+paths.
 
 ```tsx
 <Link to="blog">Blog</Link>
