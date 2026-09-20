@@ -302,8 +302,9 @@ describe('navigation settlement', () => {
       static global = false;
 
       protected navigate(work: () => void) {
-        work();
-        return gates.shift()!;
+        const gate = gates.shift()!;
+        gate.then(work);
+        return gate;
       }
     }
 
@@ -311,12 +312,15 @@ describe('navigation settlement', () => {
     router.goto('/slow');
     window.history.pushState(null, '', '/external');
 
-    expect(router.path).toBe('/external');
+    expect(router.path).toBe('/');
     expect(window.location.pathname).toBe('/external');
 
     external.resolve();
     await external;
     await Promise.resolve();
+
+    expect(router.path).toBe('/external');
+
     goto.resolve();
     await goto;
     await Promise.resolve();

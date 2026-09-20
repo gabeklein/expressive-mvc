@@ -205,7 +205,9 @@ export async function navigate(
   router.navigating = true;
 
   try {
-    await stage(work);
+    await stage(() => {
+      if (ACTIVE.get(router) === token && !router.get(null)) work();
+    });
     if (ACTIVE.get(router) === token && !router.get(null)) commit?.();
   } finally {
     if (ACTIVE.get(router) === token) {

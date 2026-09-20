@@ -291,8 +291,9 @@ describe('navigation settlement', () => {
       static global = false;
 
       protected navigate(work: () => void) {
-        work();
-        return gates.shift()!;
+        const gate = gates.shift()!;
+        gate.then(work);
+        return gate;
       }
     }
 
@@ -300,7 +301,7 @@ describe('navigation settlement', () => {
     router.goto('/a');
     router.goto('/b');
 
-    expect(router.path).toBe('/b');
+    expect(router.path).toBe('/');
     expect(router.entries).toEqual(['/']);
     expect(router.navigating).toBe(true);
 
@@ -309,6 +310,7 @@ describe('navigation settlement', () => {
     await Promise.resolve();
 
     expect(router.entries).toEqual(['/', '/b']);
+    expect(router.path).toBe('/b');
     expect(router.navigating).toBe(false);
 
     first.resolve();
