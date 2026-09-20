@@ -111,7 +111,7 @@ A lazy *layout* suspends its whole scope - child routes register only after its 
 
 ## Deferred presentation
 
-Every navigation (`goto`, `Link`, `back`/`forward`, popstate) commits through `Router.navigate`, whose default marks the commit non-urgent via the host scheduler (React `startTransition`). In-app navigation to a page that isn't ready - a loading chunk, a pending entry guard - holds the current screen until the next resolves, instead of flashing `fallback`. Cold load (initial mount, no prior screen) still shows `fallback`. `BrowserRouter` writes the address once the navigation is on screen, so the bar and the page never disagree.
+Every navigation (`goto`, `Link`, query writes, `back`/`forward`, popstate) commits through `Router.navigate`, whose default marks the commit non-urgent via the host scheduler (React `startTransition`). In-app navigation to a page that isn't ready - a loading chunk, a pending entry guard - holds the current screen until the next resolves, instead of flashing `fallback`. Cold load (initial mount, no prior screen) still shows `fallback`. For `goto`, `Link`, and query writes, `BrowserRouter` writes the address once the navigation is on screen. Browser back/forward and external History API calls change the address before the app receives them, so the old screen may remain while the new address settles.
 
 Override `navigate(work)` on a subclass to stage the swap differently - `work` applies the navigation state and must run:
 
@@ -125,6 +125,8 @@ class MyRouter extends BrowserRouter {
   }
 }
 ```
+
+Navigation status and ordering wrap this seam; the override need not call `super`. If navigations overlap, only the latest may commit history or clear `navigating`. Initial browser synchronization does not count as navigation.
 
 `router.navigating` is true from the call until the new screen is on. Read it beside the outgoing content or from a wrapper around it - a component which reads it *and* rebuilds the deferred content renders that content against the path already written, forfeiting the hold.
 
@@ -200,7 +202,7 @@ router.query.set('page', '2');  // write - pushes a new history entry, like goto
 router.query.delete('sort');    // delete - also navigates
 ```
 
-Writing or deleting a param pushes a new history entry, exactly as if it arrived via `goto`. URL-driven changes (navigation, popstate) reconcile the same map, so consumers reading `query.get('foo')` re-render only when that param changes.
+Writing, deleting, or clearing params pushes a new history entry through the same settlement path as `goto`. URL-driven changes (navigation, popstate) reconcile the same map, so consumers reading `query.get('foo')` re-render only when that param changes.
 
 Notes:
 - Keys and values are `string` - URL params carry no other type. Reading an absent key is `undefined`.
