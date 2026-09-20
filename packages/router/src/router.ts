@@ -1,5 +1,4 @@
 import { Component, map, pending, State } from '@expressive/mvc';
-import { listener } from '@expressive/mvc/observable';
 
 import type { Route } from './route';
 import {
@@ -20,18 +19,19 @@ import {
  */
 const clientOnly: State.Global = () => typeof window !== 'undefined';
 
-/** Routers writing their own address, whose state is already applied. */
-const SELF_DRIVEN = new WeakSet<object>();
-
-/** Navigations still awaiting presentation, per router. */
-const WAITING = new WeakMap<object, number>();
-
-/** Adjust a router's outstanding navigations, returning what remains. */
-function waiting(object: object, delta: number) {
-  const next = (WAITING.get(object) || 0) + delta;
-  WAITING.set(object, next);
-  return next;
+interface Navigation {
+  navigating: boolean;
+  get(key: null): boolean;
 }
+
+interface QueryRouter extends Navigation {
+  path: string;
+  query: map.Insert<string, string>;
+  goto(to: string): void;
+}
+
+const ACTIVE = new WeakMap<object, object>();
+const LOCATING = new WeakSet<object>();
 
 /**
  * Headless router core: matching plus an in-memory `path` and history stack.
@@ -69,13 +69,8 @@ export class Router extends Component {
   index = 0;
 
   protected new() {
+    bindQuery(this);
     this.entries = [this.url];
-    // Direct `query` mutations push a new entry; URL-driven changes already sit there (pushEntry no-ops).
-    const release = listener(this.query, () => pushEntry(this, this.url), false);
-
-    return () => {
-      release();
-    };
   }
 
   /** Full URL as assigned by the environment (path + optional `?query`). Assigning navigates. */
@@ -111,22 +106,34 @@ export class Router extends Component {
    * writes the address here, once the page is on screen.
    */
   protected async next(url: string, replace?: boolean) {
-    await this.navigate(() => {
+    await navigate(this, (work) => this.navigate(work), () => {
+      this.locate(url);
+    }, () => {
       if (replace) this.entries[this.index] = url;
       else pushEntry(this, url);
-
-      this.locate(url);
     });
   }
 
   back() {
-    if (this.index > 0)
-      this.navigate(() => this.locate(this.entries[--this.index]));
+    const index = this.index - 1;
+    if (index >= 0)
+      navigate(
+        this,
+        (work) => this.navigate(work),
+        () => this.locate(this.entries[index]),
+        () => { this.index = index; }
+      );
   }
 
   forward() {
-    if (this.index < this.entries.length - 1)
-      this.navigate(() => this.locate(this.entries[++this.index]));
+    const index = this.index + 1;
+    if (index < this.entries.length)
+      navigate(
+        this,
+        (work) => this.navigate(work),
+        () => this.locate(this.entries[index]),
+        () => { this.index = index; }
+      );
   }
 
   /**
@@ -142,27 +149,26 @@ export class Router extends Component {
    * to stage the swap differently (e.g. `document.startViewTransition`) -
    * `work` applies the navigation and must run.
    */
-  protected async navigate(work: () => void) {
-    waiting(this, 1);
-    this.navigating = true;
-
-    try {
-      await pending(work);
-    } finally {
-      if (!waiting(this, -1) && !this.get(null)) this.navigating = false;
-    }
+  protected navigate(work: () => void) {
+    return pending(work);
   }
 
   /** Apply a normalized url (path + optional `?query`) to state, reconciling `query` in place. */
   protected locate(url: string) {
-    const q = url.indexOf('?');
-    this.path = q < 0 ? url : url.slice(0, q);
+    LOCATING.add(this);
 
-    const { query } = this;
-    const next = new Map(new URLSearchParams(q < 0 ? '' : url.slice(q + 1)));
+    try {
+      const q = url.indexOf('?');
+      this.path = q < 0 ? url : url.slice(0, q);
 
-    for (const key of [...query.keys()]) if (!next.has(key)) query.delete(key);
-    for (const [key, value] of next) query.set(key, value);
+      const { query } = this;
+      const next = new Map(new URLSearchParams(q < 0 ? '' : url.slice(q + 1)));
+
+      for (const key of [...query.keys()]) if (!next.has(key)) query.delete(key);
+      for (const [key, value] of next) query.set(key, value);
+    } finally {
+      LOCATING.delete(this);
+    }
   }
 
   segment(to: string): string {
@@ -186,6 +192,65 @@ export class Router extends Component {
     if (url.startsWith('/')) return url;
     return new URL(url, 'x://_' + this.anchor(route)).pathname;
   }
+}
+
+export async function navigate(
+  router: Navigation,
+  stage: (work: () => void) => Promise<void>,
+  work: () => void,
+  commit?: () => void
+) {
+  const token = {};
+  ACTIVE.set(router, token);
+  router.navigating = true;
+
+  try {
+    await stage(work);
+    if (ACTIVE.get(router) === token && !router.get(null)) commit?.();
+  } finally {
+    if (ACTIVE.get(router) === token) {
+      ACTIVE.delete(router);
+      if (!router.get(null)) router.navigating = false;
+    }
+  }
+}
+
+export function bindQuery(router: QueryRouter) {
+  const { query } = router;
+  const set = query.set;
+  const remove = query.delete;
+  const clear = query.clear;
+
+  query.set = function (key, value) {
+    if (LOCATING.has(router) || router.get(null))
+      return set.call(this, key, value);
+
+    const next = new Map(query);
+    next.set(key, value);
+    router.goto(withQuery(router.path, next));
+    return this;
+  };
+
+  query.delete = function (key) {
+    if (LOCATING.has(router) || router.get(null))
+      return remove.call(this, key);
+    if (!query.has(key)) return false;
+
+    const next = new Map(query);
+    next.delete(key);
+    router.goto(withQuery(router.path, next));
+    return true;
+  };
+
+  query.clear = function () {
+    if (LOCATING.has(router) || router.get(null)) return clear.call(this);
+    if (query.size) router.goto(router.path);
+  };
+}
+
+function withQuery(path: string, query: Iterable<readonly [string, string | undefined]>) {
+  const search = searchOf(query);
+  return search ? path + '?' + search : path;
 }
 
 /** Append `url` as a new history entry on a memory router, truncating any forward stack. */

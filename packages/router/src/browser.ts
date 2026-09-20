@@ -1,7 +1,6 @@
-import { listener } from '@expressive/mvc/observable';
+import { bindQuery, navigate, Router } from './router';
 
-import { Router } from './router';
-import { assertAbsolute, canonicalize, normalize } from './url';
+const SELF_DRIVEN = new WeakSet<object>();
 
 /** Binds the headless core to `window.location`, syncing `path`/`query` on navigation. */
 export class BrowserRouter extends Router {
@@ -9,9 +8,21 @@ export class BrowserRouter extends Router {
 
   path = typeof window == 'undefined' ? '/' : window.location.pathname;
 
-  goto(to: string, replace = false) {
-    assertAbsolute(to);
-    history[replace ? 'replaceState' : 'pushState'](null, '', normalize(to));
+  protected async next(url: string, replace?: boolean) {
+    await navigate(
+      this,
+      (work) => this.navigate(work),
+      () => this.locate(url),
+      () => {
+        SELF_DRIVEN.add(this);
+
+        try {
+          history[replace ? 'replaceState' : 'pushState'](null, '', url);
+        } finally {
+          SELF_DRIVEN.delete(this);
+        }
+      }
+    );
   }
 
   // The browser owns the history stack; back/forward delegate to it (popstate
@@ -27,10 +38,18 @@ export class BrowserRouter extends Router {
   protected new() {
     if (typeof window == 'undefined') return () => {};
 
+    bindQuery(this);
+    this.locate(window.location.pathname + window.location.search);
+
     const sync = () => {
-      this.locate(window.location.pathname + window.location.search);
+      if (SELF_DRIVEN.has(this)) return;
+
+      navigate(
+        this,
+        (work) => this.navigate(work),
+        () => this.locate(window.location.pathname + window.location.search)
+      );
     };
-    sync();
     window.addEventListener('popstate', sync);
 
     const origPush = history.pushState.bind(history);
@@ -44,20 +63,7 @@ export class BrowserRouter extends Router {
       sync();
     };
 
-    // Direct `query` writes push to the browser's history; URL-driven changes
-    // already match (compared canonically, so encoding differences don't dup).
-    const release = listener(
-      this.query,
-      () => {
-        const { url } = this;
-        if (url !== canonicalize(window.location.pathname + window.location.search))
-          history.pushState(null, '', url);
-      },
-      false
-    );
-
     return () => {
-      release();
       window.removeEventListener('popstate', sync);
       history.pushState = origPush;
       history.replaceState = origReplace;

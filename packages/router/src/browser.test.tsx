@@ -1,9 +1,11 @@
 import { act } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import { browserRouter } from '../test.setup';
+import { browserRouter, location, mockPromise, renderAct } from '../test.setup';
 import { Context } from '@expressive/mvc';
+import { Provider } from '@expressive/react';
 import { BrowserRouter } from './browser';
+import { Route } from './route';
 
 describe('BrowserRouter', () => {
   const router = browserRouter();
@@ -14,15 +16,15 @@ describe('BrowserRouter', () => {
     expect(router.current.url).toBe('/foo?from=start');
   });
 
-  it('goto pushes history and updates path', () => {
-    act(() => router.current.goto('/bar'));
+  it('goto pushes history and updates path', async () => {
+    await act(async () => router.current.goto('/bar'));
     expect(router.current.path).toBe('/bar');
     expect(window.location.pathname).toBe('/bar');
   });
 
-  it('goto with replace uses replaceState', () => {
+  it('goto with replace uses replaceState', async () => {
     const before = window.history.length;
-    act(() => router.current.goto('/replaced', true));
+    await act(async () => router.current.goto('/replaced', true));
     expect(router.current.path).toBe('/replaced');
     expect(window.location.pathname).toBe('/replaced');
     expect(window.history.length).toBe(before);
@@ -41,8 +43,8 @@ describe('BrowserRouter', () => {
     expect(router.current.path).toBe('/external');
   });
 
-  it('goto with query updates location and url', () => {
-    act(() => router.current.goto('/results?q=hello'));
+  it('goto with query updates location and url', async () => {
+    await act(async () => router.current.goto('/results?q=hello'));
     expect(window.location.pathname).toBe('/results');
     expect(window.location.search).toBe('?q=hello');
     expect(router.current.path).toBe('/results');
@@ -135,5 +137,193 @@ describe('BrowserRouter', () => {
     } finally {
       (globalThis as any).window = saved;
     }
+  });
+});
+
+describe('navigation settlement', () => {
+  it('does not report the initial browser synchronization as navigation', () => {
+    location('/initial?x=1');
+    const router = BrowserRouter.new();
+
+    expect(router.url).toBe('/initial?x=1');
+    expect(router.navigating).toBe(false);
+
+    router.set(null);
+  });
+
+  it('keeps the latest page and address when navigations settle out of order', async () => {
+    location('/');
+
+    const a = mockPromise<void>();
+    const b = mockPromise<void>();
+    let readyA = false;
+    let readyB = false;
+    let router!: BrowserRouter;
+    a.then(() => (readyA = true));
+    b.then(() => (readyB = true));
+
+    const A = () => {
+      if (!readyA) throw a;
+      return <h1>a</h1>;
+    };
+    const B = () => {
+      if (!readyB) throw b;
+      return <h1>b</h1>;
+    };
+
+    const view = await renderAct(
+      <BrowserRouter is={(value) => (router = value)}>
+        <Route>
+          <Route to="" as={() => <h1>home</h1>} />
+          <Route to="a" fallback={<i>loading</i>} as={A} />
+          <Route to="b" fallback={<i>loading</i>} as={B} />
+        </Route>
+      </BrowserRouter>
+    );
+
+    await act(async () => {
+      router.goto('/a');
+      await Promise.resolve();
+    });
+    await act(async () => {
+      router.goto('/b');
+      await Promise.resolve();
+    });
+
+    expect(view.container.textContent).toBe('home');
+    expect(window.location.pathname).toBe('/');
+
+    await act(async () => {
+      b.resolve();
+      await b;
+    });
+
+    expect(view.container.textContent).toBe('b');
+    expect(window.location.pathname).toBe('/b');
+
+    await act(async () => {
+      a.resolve();
+      await a;
+    });
+
+    expect(view.container.textContent).toBe('b');
+    expect(window.location.pathname).toBe('/b');
+  });
+
+  it('routes direct query writes through navigation settlement', async () => {
+    location('/page');
+
+    const gate = mockPromise<void>();
+    let ready = false;
+    let router!: BrowserRouter;
+    gate.then(() => (ready = true));
+
+    const Page = () => {
+      const value = BrowserRouter.get().query.get('x');
+      if (value && !ready) throw gate;
+      return <h1>{value || 'empty'}</h1>;
+    };
+    const Status = () => <b>{BrowserRouter.get().navigating ? 'busy' : 'idle'}</b>;
+
+    const view = await renderAct(
+      <BrowserRouter is={(value) => (router = value)}>
+        <Status />
+        <Route to="page" as={Page} />
+      </BrowserRouter>
+    );
+
+    expect(view.container.textContent).toBe('idleempty');
+
+    await act(async () => {
+      router.query.set('x', '1');
+      await Promise.resolve();
+    });
+
+    expect(view.container.textContent).toBe('busyempty');
+    expect(window.location.search).toBe('');
+
+    await act(async () => {
+      gate.resolve();
+      await gate;
+    });
+
+    expect(view.container.textContent).toBe('idle1');
+    expect(window.location.search).toBe('?x=1');
+  });
+
+  it('reports navigation for a provided router', async () => {
+    location('/');
+
+    const gate = mockPromise<void>();
+    let ready = false;
+    gate.then(() => (ready = true));
+    const router = BrowserRouter.new();
+
+    const Slow = () => {
+      if (!ready) throw gate;
+      return <h1>slow</h1>;
+    };
+    const Status = () => <b>{BrowserRouter.get().navigating ? 'busy' : 'idle'}</b>;
+
+    const view = await renderAct(
+      <Provider for={router}>
+        <Status />
+        <Route>
+          <Route to="" as={() => <h1>home</h1>} />
+          <Route to="slow" as={Slow} />
+        </Route>
+      </Provider>
+    );
+
+    await act(async () => {
+      router.goto('/slow');
+      await Promise.resolve();
+    });
+
+    expect(view.container.textContent).toBe('busyhome');
+
+    await act(async () => {
+      gate.resolve();
+      await gate;
+    });
+
+    expect(view.container.textContent).toBe('idleslow');
+    router.set(null);
+  });
+
+  it('does not let an older goto undo browser-driven navigation', async () => {
+    location('/');
+
+    const goto = mockPromise<void>();
+    const external = mockPromise<void>();
+    const gates = [goto, external];
+
+    class Test extends BrowserRouter {
+      static global = false;
+
+      protected navigate(work: () => void) {
+        work();
+        return gates.shift()!;
+      }
+    }
+
+    const router = Test.new();
+    router.goto('/slow');
+    window.history.pushState(null, '', '/external');
+
+    expect(router.path).toBe('/external');
+    expect(window.location.pathname).toBe('/external');
+
+    external.resolve();
+    await external;
+    await Promise.resolve();
+    goto.resolve();
+    await goto;
+    await Promise.resolve();
+
+    expect(router.path).toBe('/external');
+    expect(window.location.pathname).toBe('/external');
+
+    router.set(null);
   });
 });
