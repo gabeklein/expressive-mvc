@@ -4,7 +4,7 @@
 
 ## Status
 
-This is a usable, tested browser renderer at `0.0.x`, not an LTS contract. Use it for applications prepared to track prerelease changes. The documented behavior is intentional; package shape and extension seams may change before stabilization. Renderer internals are private—import only the package root and its JSX runtime entries.
+The initial `0.1` release is a usable, tested browser renderer for dogfooding, not an LTS contract. Use it for applications prepared to track pre-1.0 changes. The documented behavior is intentional; package shape and extension seams may change before stabilization. Renderer internals are private—import only the package root and its JSX runtime entries.
 
 ```jsonc
 {
