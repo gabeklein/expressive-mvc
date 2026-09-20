@@ -2,6 +2,10 @@
 
 `@expressive/jsx` renders MVC components directly to browser DOM. It has no React or Preact dependency.
 
+## Status
+
+This is a usable, tested browser renderer at `0.0.x`, not an LTS contract. Use it for applications prepared to track prerelease changes. The documented behavior is intentional; package shape and extension seams may change before stabilization. Renderer internals are private—import only the package root and its JSX runtime entries.
+
 ```jsonc
 {
   "compilerOptions": {

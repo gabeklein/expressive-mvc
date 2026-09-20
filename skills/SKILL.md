@@ -13,7 +13,7 @@ Class-based reactive state for React. State classes define reactive properties, 
 | -------------------- | --------- | ----------------------------------------------------------------- |
 | `@expressive/react`  | Published | React adapter. Primary import for State, Component, instructions. |
 | `@expressive/mvc`    | Published | Framework-agnostic core. Rarely imported directly.                |
-| `@expressive/jsx`    | Public    | MVC-native client DOM renderer without a framework dependency.    |
+| `@expressive/jsx`    | Preview   | MVC-native client DOM renderer without a framework dependency.    |
 | `@expressive/preact` | Private   | Thin wrapper over React adapter via preact/hooks. Prerelease.     |
 | `@expressive/router` | Published | Host-agnostic, class-based router built on MVC.                   |
 | `@expressive/inspect` | Published | In-process inspector: registry, ownership tree, path queries, journal. |
