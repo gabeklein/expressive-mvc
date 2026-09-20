@@ -168,8 +168,8 @@ describe('MVC adapter', () => {
       }
     }
 
-    expect(() => Value.get()).toThrow('may only run while @expressive/dom is rendering');
-    expect(() => Value.use()).toThrow('may only run while @expressive/dom is rendering');
+    expect(() => Value.get()).toThrow('may only run while @expressive/jsx is rendering');
+    expect(() => Value.use()).toThrow('may only run while @expressive/jsx is rendering');
     expect(() => (View as any).use()).toThrow('render it instead of calling use()');
     expect(() => render(<View />, document.createElement('main'))).toThrow(
       'only available at the top level of a function component'

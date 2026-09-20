@@ -1,12 +1,12 @@
-# DOM adapter
+# JSX renderer
 
-`@expressive/dom` renders MVC components directly to browser DOM. It has no React or Preact dependency.
+`@expressive/jsx` renders MVC components directly to browser DOM. It has no React or Preact dependency.
 
 ```jsonc
 {
   "compilerOptions": {
     "jsx": "react-jsx",
-    "jsxImportSource": "@expressive/dom"
+    "jsxImportSource": "@expressive/jsx"
   }
 }
 ```
@@ -19,7 +19,7 @@ import State, {
   lazy,
   pending,
   render
-} from '@expressive/dom';
+} from '@expressive/jsx';
 ```
 
 ## Render
@@ -101,4 +101,4 @@ return createPortal(<Dialog />, document.body);
 
 ## Boundaries
 
-The adapter is client-only: no SSR or hydration. It has no general hook API, memo wrapper, synthetic events, devtools ownership, or CSS-in-JS runtime. Ordinary classes/styles work now; a future `@expressive/jsx` integration can emit DOM classes and extracted CSS without making styling part of this renderer.
+The renderer is browser-only: no native target, SSR, or hydration. It has no general hook API, memo wrapper, synthetic events, devtools ownership, or CSS-in-JS runtime. Ordinary classes/styles work now; the expressive-jsx label-based styling compiler is not included.

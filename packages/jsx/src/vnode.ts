@@ -1,5 +1,5 @@
-const VNODE = Symbol('@expressive/dom.vnode');
-const PORTAL = Symbol('@expressive/dom.portal');
+const VNODE = Symbol('@expressive/jsx.vnode');
+const PORTAL = Symbol('@expressive/jsx.portal');
 
 type Key = string | number | null | undefined;
 type FunctionComponent<P = any> = (props: P) => Node;

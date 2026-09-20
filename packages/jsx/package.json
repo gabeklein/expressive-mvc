@@ -1,5 +1,5 @@
 {
-  "name": "@expressive/dom",
+  "name": "@expressive/jsx",
   "version": "0.0.0",
   "description": "MVC-native JSX renderer for the DOM.",
   "license": "MIT",

@@ -13,7 +13,7 @@ Class-based reactive state for React. State classes define reactive properties, 
 | -------------------- | --------- | ----------------------------------------------------------------- |
 | `@expressive/react`  | Published | React adapter. Primary import for State, Component, instructions. |
 | `@expressive/mvc`    | Published | Framework-agnostic core. Rarely imported directly.                |
-| `@expressive/dom`    | Public    | MVC-native client DOM renderer without a framework dependency.    |
+| `@expressive/jsx`    | Public    | MVC-native client DOM renderer without a framework dependency.    |
 | `@expressive/preact` | Private   | Thin wrapper over React adapter via preact/hooks. Prerelease.     |
 | `@expressive/router` | Published | Host-agnostic, class-based router built on MVC.                   |
 | `@expressive/inspect` | Published | In-process inspector: registry, ownership tree, path queries, journal. |
@@ -28,7 +28,7 @@ npm install @expressive/react            # + @expressive/router for routing
 
 React Native / Expo need no setup beyond three boundaries ([react/react.md](react/react.md#react-native)): add `@expressive` to `jest-expo`'s `transformIgnorePatterns`; use `Router`, not `BrowserRouter`; `Link`/`NavLinks` render DOM, so navigate through `Router`.
 
-For a client-only DOM app without React, install `@expressive/dom`. Its FC model, renderer API, portals, lazy loading, and transition constraints are in [dom/dom.md](dom/dom.md).
+For a client-only DOM app without React, install `@expressive/jsx`. Its FC model, renderer API, portals, lazy loading, and transition constraints are in [jsx/jsx.md](jsx/jsx.md).
 
 ## Start With Ownership, Not APIs
 
@@ -327,9 +327,9 @@ Instructions: `field/*.md`, linked from the [helper table](#instructions--reacti
 - [react/component.md](react/component.md) - Component class, props, children, render composition, subcomponent extension points, error boundaries
 - [react/patterns.md](react/patterns.md) - Recipes: forms, async, domain-row and form-chip pools, region controllers, router bridge, host-agnostic model + view adapter, presence boundary, contextual children, debounce, effects
 
-### DOM
+### JSX
 
-- [dom/dom.md](dom/dom.md) - client DOM render/unmount, stateless FC scopes, MVC snapshots, native events, portals, lazy boundaries, transitions, exclusions
+- [jsx/jsx.md](jsx/jsx.md) - client DOM render/unmount, stateless FC scopes, MVC snapshots, native events, portals, lazy boundaries, transitions, exclusions
 
 ### Router
 

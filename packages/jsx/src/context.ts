@@ -30,7 +30,7 @@ namespace Provider {
 }
 
 function Provider<T extends State>(_props: Provider.Props<T>): Component.Node {
-  throw new Error('Provider must be rendered by @expressive/dom.');
+  throw new Error('Provider must be rendered by @expressive/jsx.');
 }
 
 function provide<T extends State>(context: Context, props: Provider.Props<T>) {

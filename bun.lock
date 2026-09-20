@@ -1,5 +1,6 @@
 {
   "lockfileVersion": 1,
+  "configVersion": 0,
   "workspaces": {
     "": {
       "name": "expressive-mvc",
@@ -52,8 +53,8 @@
         "@expressive/mvc": "^0.85.0",
       },
     },
-    "packages/dom": {
-      "name": "@expressive/dom",
+    "packages/jsx": {
+      "name": "@expressive/jsx",
       "version": "0.0.0",
       "dependencies": {
         "@expressive/mvc": "workspace:^",
@@ -350,11 +351,11 @@
 
     "@esbuild/win32-x64": ["@esbuild/win32-x64@0.28.1", "", { "os": "win32", "cpu": "x64" }, "sha512-bm4Mowrv+GXMlpWX++EcXw/iLyd1o3+bJkC2DkWXYVvgZCqD/bSj9ctZeAMC3cIxgjRVR2Dufaiu4YPxr5gW1A=="],
 
-    "@expressive/dom": ["@expressive/dom@workspace:packages/dom"],
-
     "@expressive/examples": ["@expressive/examples@workspace:examples"],
 
     "@expressive/inspect": ["@expressive/inspect@workspace:packages/inspect"],
+
+    "@expressive/jsx": ["@expressive/jsx@workspace:packages/jsx"],
 
     "@expressive/mvc": ["@expressive/mvc@workspace:packages/mvc"],
 
