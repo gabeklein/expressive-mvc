@@ -258,10 +258,12 @@ An effect which suspends by throwing a promise holds settlement through its retr
 
 Called with no arguments, from inside a subscriber's replay, `pending()` declares that subscriber has not absorbed its update yet. It returns a release callback, and the writer's promise waits on that rather than on the replay returning - which is how the React adapter holds settlement until it commits.
 
+A promise returned by an effect remains ignored. To include other async work, claim during replay and release in `finally`:
+
 ```ts
 watch(state, () => {
   const release = pending();
-  animate().then(release);
+  animate().finally(release);
 });
 ```
 

@@ -61,10 +61,12 @@ An exception from `work` propagates synchronously. Updates queued before it thre
 
 `pending()` with no arguments is the reader half. Called inside a replay carrying pending work it returns a release callback, and settlement waits on that rather than on the replay returning - which is how the React adapter holds until it commits. A hand-written `watch` effect can do the same; elsewhere it returns `undefined`.
 
+A promise returned by an effect remains ignored. To include other async work, claim during replay and release in `finally`:
+
 ```ts
 watch(state, () => {
   const release = pending();
-  animate().then(release);
+  animate().finally(release);
 });
 ```
 
