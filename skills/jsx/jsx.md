@@ -102,5 +102,3 @@ return createPortal(<Dialog />, document.body);
 ## Boundaries
 
 The renderer is browser-only: no native target, SSR, or hydration. It has no general hook API, memo wrapper, synthetic events, devtools ownership, or CSS-in-JS runtime. Ordinary classes/styles work now; the expressive-jsx label-based styling compiler is not included.
-
-`@expressive/jsx/adapter` exports the MVC state API and render-scope lifecycle without registering DOM element mechanics. Alternate hosts build on this entry and supply their own JSX runtime, elements, events, and mount implementation. Application code imports the host package instead.
