@@ -82,6 +82,7 @@ import State, {
   get,
   has,
   map,
+  pending,
   set,
   Consumer,
   Provider
