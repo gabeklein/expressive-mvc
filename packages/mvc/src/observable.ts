@@ -1,4 +1,4 @@
-import { enqueue } from './dispatch';
+import { enqueue, hold } from './dispatch';
 
 declare namespace Observer {
   /**
@@ -258,9 +258,15 @@ function watch<T extends object>(
   let reset: (() => void) | null | undefined;
   let previous: T | undefined;
   let queued = false;
+  let suspense: ReturnType<typeof hold>;
+
+  function resume() {
+    suspense?.();
+    suspense = undefined;
+  }
 
   function invoke() {
-    if (observer(target) === null) return;
+    if (reset === null || observer(target) === null) return;
 
     queued = false;
     let ignore: boolean = true;
@@ -316,7 +322,13 @@ function watch<T extends object>(
     } catch (err) {
       if (err instanceof Promise) {
         reset = undefined;
-        err.then(invoke);
+        const suspended = suspense = hold(true, transition)!;
+        const replay = () => {
+          if (suspense !== suspended) return;
+          suspense = undefined;
+          suspended(invoke);
+        };
+        err.then(replay, replay);
       } else {
         throw err;
       }
@@ -325,14 +337,20 @@ function watch<T extends object>(
 
   const unlisten = listener(target, (key) => {
     if (key === true) invoke();
-    else if (!reset) return reset;
-
-    if (key === null && unset) unset(null);
+    else if (key === null) {
+      if (unset) unset(null);
+      resume();
+      reset = null;
+    } else if (!reset) {
+      suspense?.(false);
+      return reset;
+    }
   });
 
   function cleanup() {
     if (unset) unset(false);
 
+    resume();
     reset = null;
     unlisten();
   }

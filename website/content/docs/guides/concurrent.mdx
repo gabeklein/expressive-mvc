@@ -31,7 +31,7 @@ pending(() => {
 });
 ```
 
-The updates those writes queue are tagged non-urgent. The tag survives batching and the microtask dispatch, and each subscriber replays through the scheduler it subscribed with — React's `startTransition`, for the adapter's. The practical payoff is Suspense behaviour: if the new page suspends, React keeps the current screen on-screen instead of flashing a fallback.
+The updates those writes queue are tagged non-urgent. The tag survives batching and the microtask dispatch, and each subscriber replays through the scheduler it subscribed with — React's `startTransition` in the React adapter. The practical payoff is Suspense behaviour: if the new page suspends, React keeps the current screen on-screen instead of flashing a fallback.
 
 It also returns a promise, resolving once every reader has taken the update — for React, once it commits. That is what a progress flag reads:
 

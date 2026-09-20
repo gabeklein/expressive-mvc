@@ -6,6 +6,8 @@ interface Pending {
   done(): void;
 }
 
+type Hold = (retry?: Handler | false) => void;
+
 interface Scheduled {
   /** How this subscriber defers, if it can - supplied where it subscribed. */
   transition?: Transition;
@@ -50,29 +52,43 @@ function drop(scheduled: Scheduled) {
  * rather than on the replay. Returns nothing unless the replay carries pending
  * work, so an unrelated subscriber pays for none of it.
  */
-function hold() {
-  const scheduled = replaying;
+function hold(detached?: true, transition?: Transition) {
+  const scheduled = replaying || {};
 
-  if (!scheduled?.awaiting) return;
+  if (detached) {
+    scheduled.transition = transition;
+    claim(scheduled);
+  }
+  else if (!scheduled.awaiting) return;
 
   let released = false;
 
   scheduled.holds = (scheduled.holds || 0) + 1;
 
-  return () => {
+  const release: Hold = (retry) => {
     if (released) return;
+    if (retry === false) return claim(scheduled);
+
+    if (retry) {
+      current = scheduled.awaiting;
+      enqueue(retry, scheduled.transition);
+      current = undefined;
+    }
+
     released = true;
     if (!--scheduled.holds!) drop(scheduled);
-  }
+  };
+
+  return release;
 }
 
 function flush() {
   for (const [handler, scheduled] of DISPATCH) {
     DISPATCH.delete(handler);
 
-    const { transition } = scheduled;
+    const { awaiting, transition } = scheduled;
 
-    current = scheduled.awaiting;
+    current = awaiting;
     replaying = scheduled;
 
     try {
@@ -131,7 +147,7 @@ function pending(work: Handler): Promise<void>;
  */
 function pending(): (() => void) | undefined;
 
-function pending(work?: Handler) {
+function pending(work?: Handler): Promise<void> | (() => void) | undefined {
   if (!work) return hold();
 
   const parent = current;
@@ -152,4 +168,4 @@ function pending(work?: Handler) {
   return promise;
 }
 
-export { enqueue, pending };
+export { enqueue, hold, pending };
