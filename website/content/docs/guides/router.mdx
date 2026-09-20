@@ -131,9 +131,9 @@ is canonically serialized with `URLSearchParams` rules.
 
 ## Links and active links
 
-`Link` renders an anchor and intercepts plain left-clicks. Modifier and middle
-clicks remain browser behavior; a consumer `onClick` runs first and can call
-`preventDefault()`.
+`Link` renders an anchor and intercepts plain left-clicks. Modifier/middle
+clicks, non-`_self` targets, downloads, and external targets remain browser
+behavior; a consumer `onClick` runs first and can call `preventDefault()`.
 
 ```tsx
 import { Link } from '@expressive/router';

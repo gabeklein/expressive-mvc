@@ -56,12 +56,18 @@ export class Link extends Component {
   }
 
   protected go = (e: ClickEvent) => {
-    const { onClick } = this.props as { onClick?: (e: ClickEvent) => void };
+    const { onClick, target, download } = this.props as {
+      onClick?: (e: ClickEvent) => void;
+      target?: string;
+      download?: string | boolean;
+    };
 
     if (onClick) onClick(e);
     if (e.defaultPrevented || e.button !== 0) return;
     if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
     if (isExternal(this.to)) return;
+    if (target && target.toLowerCase() !== '_self') return;
+    if (download !== undefined && download !== false) return;
 
     e.preventDefault();
     this.route.goto(this.to, this.replace);

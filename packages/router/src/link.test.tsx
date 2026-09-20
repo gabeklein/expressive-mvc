@@ -1,11 +1,34 @@
 import { act, fireEvent, render } from '@testing-library/react';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { location, browserRouter } from '../test.setup';
 import { Link } from './link';
 import { Route } from './route';
 
 const router = browserRouter();
+
+function leftClick(link: Link) {
+  const preventDefault = vi.fn();
+  const go = Reflect.get(link, 'go') as (event: {
+    defaultPrevented: boolean;
+    button: number;
+    metaKey: boolean;
+    ctrlKey: boolean;
+    shiftKey: boolean;
+    altKey: boolean;
+    preventDefault(): void;
+  }) => void;
+  go({
+    defaultPrevented: false,
+    button: 0,
+    metaKey: false,
+    ctrlKey: false,
+    shiftKey: false,
+    altKey: false,
+    preventDefault
+  });
+  return preventDefault;
+}
 
 describe('Link', () => {
   it('renders an anchor with the target href', () => {
@@ -199,27 +222,89 @@ describe('Link', () => {
   it.each([
     'https://example.com/docs',
     '//cdn.example.com/file.js'
-  ])('will leave external click %s to the browser', async (to) => {
+  ])('will leave external click %s to the browser', (to) => {
+    let link!: Link;
     let clicked = false;
-    const view = render(
+    const Grab = () => {
+      link = Link.get();
+      return <>external</>;
+    };
+    render(
       <Route to="/">
         <Link to={to} onClick={() => (clicked = true)}>
-          external
+          <Grab />
         </Link>
       </Route>
     );
-    let allowed = false;
 
-    await act(async () => {
-      allowed = fireEvent.click(view.container.querySelector('a')!, {
-        button: 0
-      });
-    });
-
+    const preventDefault = leftClick(link);
     expect(clicked).toBe(true);
-    expect(allowed).toBe(true);
+    expect(preventDefault).not.toHaveBeenCalled();
     expect(router.current.path).toBe('/');
   });
+
+  it.each(['_blank', 'preview'])(
+    'will leave target=%s clicks to the browser',
+    (target) => {
+      let link!: Link;
+      const Grab = () => {
+        link = Link.get();
+        return <>about</>;
+      };
+      render(
+        <Route to="/">
+          <Link to="/about" target={target}>
+            <Grab />
+          </Link>
+        </Route>
+      );
+
+      expect(leftClick(link)).not.toHaveBeenCalled();
+      expect(router.current.path).toBe('/');
+    }
+  );
+
+  it.each([true, '', 'report.pdf'])(
+    'will leave download=%s clicks to the browser',
+    (download) => {
+      let link!: Link;
+      const Grab = () => {
+        link = Link.get();
+        return <>report</>;
+      };
+      render(
+        <Route to="/">
+          <Link to="/report" download={download}>
+            <Grab />
+          </Link>
+        </Route>
+      );
+
+      expect(leftClick(link)).not.toHaveBeenCalled();
+      expect(router.current.path).toBe('/');
+    }
+  );
+
+  it.each([{ target: '_self' }, { target: '_SELF' }, { download: false }])(
+    'will navigate SPA-owned anchor intent',
+    async (props) => {
+      const view = render(
+        <Route to="/">
+          <Link to="/about" {...props}>
+            about
+          </Link>
+        </Route>
+      );
+
+      await act(async () => {
+        expect(
+          fireEvent.click(view.container.querySelector('a')!, { button: 0 })
+        ).toBe(false);
+      });
+
+      expect(router.current.path).toBe('/about');
+    }
+  );
 });
 
 describe('Link.match / Link.active', () => {

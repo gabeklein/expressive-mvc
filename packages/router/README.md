@@ -107,10 +107,10 @@ and settle `work`.
 
 ## Links
 
-`Link` renders an `<a>` that navigates internal targets on plain left-click
-(modifier/middle clicks fall through). Scheme-bearing and protocol-relative
-targets remain unchanged and are left to the browser. It exposes its own match
-state, so active styling needs no separate component:
+`Link` renders an `<a>` that navigates internal targets on plain left-click.
+Modifier/middle clicks, non-`_self` targets, downloads, and scheme-bearing or
+protocol-relative targets remain browser-owned. It exposes its own match state,
+so active styling needs no separate component:
 
 ```tsx
 import { Link } from '@expressive/router';
