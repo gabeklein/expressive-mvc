@@ -21,29 +21,29 @@ npm install @expressive/router @expressive/react react
 Routes nest to mirror the URL. `to` is the pattern segment, `as` is the page (or layout) component. A layout receives its matched children via `children`.
 
 ```tsx
-import '@expressive/react';           // registers the host adapter
+import '@expressive/react'; // registers the host adapter
 import { BrowserRouter, Route } from '@expressive/router';
 
 <BrowserRouter>
   <Route as={RootLayout}>
-    <Route as={HomePage} />                {/* index - matches the parent path */}
+    <Route as={HomePage} /> {/* index - matches the parent path */}
     <Route to="blog" as={BlogLayout}>
-      <Route as={BlogIndex} />             {/* /blog */}
-      <Route to=":slug" as={BlogPost} />   {/* /blog/:slug */}
+      <Route as={BlogIndex} /> {/* /blog */}
+      <Route to=":slug" as={BlogPost} /> {/* /blog/:slug */}
     </Route>
-    <Route to="login" redirect="/" />      {/* matched -> redirects */}
-    <Route default as={NotFound} />        {/* nothing else matched */}
+    <Route to="login" redirect="/" /> {/* matched -> redirects */}
+    <Route default as={NotFound} /> {/* nothing else matched */}
   </Route>
 </BrowserRouter>;
 ```
 
-| Prop | Meaning |
-| --- | --- |
-| `to` | URL segment. `:name` captures a param, `*` is a catch-all. Omit for an index route. |
-| `as` | Component rendered when matched (as a layout, receives `children`). |
-| `default` | Matches when no sibling did - scoped to its parent (root = app 404, nested = section 404). |
-| `redirect` | When matched, redirect here instead of rendering. |
-| `label` / `meta` | Display name / free-form metadata for nav and breadcrumbs (ignored by matching). |
+| Prop             | Meaning                                                                                    |
+| ---------------- | ------------------------------------------------------------------------------------------ |
+| `to`             | URL segment. `:name` captures a param, `*` is a catch-all. Omit for an index route.        |
+| `as`             | Component rendered when matched (as a layout, receives `children`).                        |
+| `default`        | Matches when no sibling did - scoped to its parent (root = app 404, nested = section 404). |
+| `redirect`       | When matched, redirect here instead of rendering.                                          |
+| `label` / `meta` | Display name / free-form metadata for nav and breadcrumbs (ignored by matching).           |
 
 Siblings competing for the same slot arbitrate **first-match by declaration order**. Without an ancestor `Router`, a `<Route>` spins up a headless in-memory one; `BrowserRouter` binds to the address bar.
 
@@ -55,7 +55,7 @@ A page reads the nearest `Route` from context with `get()` and uses its reactive
 import { Route } from '@expressive/router';
 
 const BlogPost = () => {
-  const { match } = Route.get();      // nearest Route in context; subscribes
+  const { match } = Route.get(); // nearest Route in context; subscribes
   return <article>post: {match!.slug}</article>;
 };
 ```
@@ -67,14 +67,43 @@ Read `matched` (boolean) in render so same-pattern navigations (`/blog/a` → `/
 `Router` exposes location as reactive surfaces - `path`, a `query` map, and a derived `url`. The query string **is state**: read a key to subscribe, write one to navigate.
 
 ```tsx
-router.goto('/posts?page=2');   // push
-router.goto('/posts', true);    // replace
-router.url = '/posts?page=2';   // assigning url navigates
+router.goto('/posts?page=2'); // push
+router.goto('/posts', true); // replace
+router.url = '/posts?page=2'; // assigning url navigates
 
-router.query.get('page');       // read - subscribes to just this param
-router.query.set('page', '2');  // write - pushes a new entry, like goto
-router.query.delete('sort');    // delete - also navigates
+router.query.get('page'); // read - subscribes to just this param
+router.query.set('page', '2'); // write - pushes a new entry, like goto
+router.query.delete('sort'); // delete - also navigates
 ```
+
+The map is single-valued (`string` keys and values); repeated URL keys collapse
+to the last value. URL-driven changes reconcile the same map in place.
+
+## Suspense and navigation settlement
+
+Routes are Suspense boundaries. Pass `fallback` for cold load and use a lazy
+page normally:
+
+```tsx
+const Post = lazy(() => import('./Post'));
+
+<Route to="posts/:id" fallback={<Spinner />} as={Post} />;
+```
+
+In-app navigation runs through protected `Router.navigate(work)`, whose default
+uses the host transition scheduler. If the next page or entry guard suspends,
+the current screen remains visible until the next one is ready. Cold load still
+renders `fallback`.
+
+`router.navigating` remains true through presentation. Read it beside or around
+the routed content; overlapping navigation is latest-wins, so superseded work
+cannot later change the page, history, or status. For app-driven browser
+navigation, the address is written after the screen settles. Browser
+Back/Forward and external History API calls necessarily change it first.
+
+Override `navigate(work)` on a Router subclass to stage presentation
+differently. Status and ordering wrap the seam, so the override need only run
+and settle `work`.
 
 ## Links
 
@@ -92,9 +121,11 @@ import { Link } from '@expressive/router';
 class NavLink extends Link {
   render() {
     return (
-      <a href={this.href} onClick={this.go}
-         className={this.active ? 'active' : undefined}
-         aria-current={this.active ? 'page' : undefined}>
+      <a
+        href={this.href}
+        onClick={this.go}
+        className={this.active ? 'active' : undefined}
+        aria-current={this.active ? 'page' : undefined}>
         {this.props.children}
       </a>
     );
@@ -113,14 +144,31 @@ import { Redirect } from '@expressive/router';
 <Redirect to="/home" replace />           {/* overwrite the current entry */}
 ```
 
+`Route.redirect` also accepts a synchronous or async entry guard. A non-empty
+string redirects with replacement, a falsy value allows the route, and `null`
+cedes the path to the nearest scoped `default`:
+
+```tsx
+<Route
+  to="admin"
+  fallback={<Spinner />}
+  redirect={async () => (session.authorize() ? undefined : '/login')}
+  as={Admin}
+/>
+```
+
+The router coordinates navigation, not application data. Keep fetching,
+mutations, caches, and request cancellation in the route/page State; async
+fields suspend through the Route boundary.
+
 ## Generated navigation
 
 `NavLinks` renders a navigation tree from the route hierarchy - it walks the declared routes and emits links automatically. Its rendering is built from PascalCase **subcomponents** you override to shape the output:
 
-| Member | Renders |
-| --- | --- |
-| `Item` | A single link (defaults to a `Link` using the route's `label`). |
-| `List` | The container wrapping a level of items. |
+| Member  | Renders                                                                                         |
+| ------- | ----------------------------------------------------------------------------------------------- |
+| `Item`  | A single link (defaults to a `Link` using the route's `label`).                                 |
+| `List`  | The container wrapping a level of items.                                                        |
 | `Group` | A nested section; transparent by default - override to turn route nesting into headed sections. |
 
 ```tsx
@@ -139,11 +187,25 @@ class SideNav extends NavLinks {
 
 These members are overridable reactive subcomponents bound to the live instance - the same model `Component` provides, via [render composition](https://github.com/gabeklein/expressive-mvc/blob/main/packages/react/README.md#render-composition) and [subcomponents](https://github.com/gabeklein/expressive-mvc/blob/main/packages/react/README.md#subcomponents).
 
+## Runtime boundaries
+
+- `Router` is headless and keeps in-memory history - use it for tests and
+  non-browser hosts.
+- `BrowserRouter` binds the browser address and History API.
+- Server rendering does not share a global router between requests, but the
+  package is not an SSR routing/data/hydration system.
+- React Native can use `Router`; `BrowserRouter`, `Link`, and `NavLinks` are
+  browser/DOM-facing.
+
+The supported location model is pathname plus single-valued query parameters.
+Fragments, basename mounting, arbitrary history state, scroll restoration,
+navigation blocking, and data-router APIs are not currently built in.
+
 ---
 
 Routes are plain `@expressive/mvc` Components, so they render under any Expressive host adapter.
 
-Full guide and API reference → **[github.com/gabeklein/expressive-mvc](https://github.com/gabeklein/expressive-mvc)**
+Full guide and examples → **[expressive.dev/docs/guides/router](https://expressive.dev/docs/guides/router)**
 
 ## License
 

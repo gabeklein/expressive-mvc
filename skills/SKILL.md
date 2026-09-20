@@ -368,7 +368,8 @@ Fetch these for detailed documentation when the task requires deeper knowledge. 
 
 ### Router
 
-- [router/router.md](router/router.md) - `@expressive/router`: nested `Route` declarations, lexical matching, `Router`/`BrowserRouter` navigation state, the reactive `query` record + derived `url`, and `Link`/`NavLinks`/`Redirect`
+- [router/router.md](router/router.md) - route declarations, lexical matching, guards, Suspense, navigation state, and UI
+- [router/production.md](router/production.md) - choose `Router` vs `BrowserRouter`, page-data ownership, navigation settlement, testing, host boundaries, and unsupported browser behavior
 
 ### Inspect
 
@@ -388,7 +389,7 @@ Fetch these for detailed documentation when the task requires deeper knowledge. 
 | `component` | `props`, `subcomponents`, `lifecycle`, `injection`, `headless`, `suspense`, `boundary`, `custom` |
 | `composition` | `nested`, `context`, `concerns`, `extension`, `globals` |
 | `instructions` | `set`, `set-factory`, `set-computed`, `get`, `get-downstream`, `ref`, `ref-multiple`, `map`, `map-insert`, `has`, `has-list`, `def` |
-| `router` | `overview`, `params`, `query`, `guards`, `nav` |
+| `router` | `overview`, `params`, `query`, `guards`, `transitions`, `nav` |
 
 ## Auditing & Evaluation
 
