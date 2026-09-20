@@ -218,11 +218,15 @@ Notes:
 
 ### `Link`
 
-Renders an `<a>` that navigates on click (intercepting only plain left-clicks, so modifier/middle clicks fall through to the browser). `href` is the resolved absolute path.
+Renders an `<a>` that navigates internal targets on click (intercepting only
+plain left-clicks, so modifier/middle clicks fall through to the browser).
+Scheme-bearing and protocol-relative targets stay unchanged and are not
+intercepted. Internal `href` values are resolved to absolute paths.
 
 ```tsx
 <Link to="blog">Blog</Link>
 <Link to="/posts?page=2" replace>Page 2</Link>
+<Link to="https://example.com/docs">External docs</Link>
 ```
 
 | Prop      | Meaning                                                  |

@@ -148,8 +148,12 @@ Not currently supported by the public contract:
 - router-owned loading, mutation, prefetch, cache, or revalidation;
 - request-path SSR, redirects, loader serialization, or hydration.
 
-Do not simulate these by relying on current normalization accidents. Use an
-ordinary anchor or the host/framework router until the relevant feature lands.
+External URL routing remains outside the router. `Link` preserves
+scheme-bearing and protocol-relative targets as browser-owned anchors; it does
+not route them through the SPA.
+
+Do not simulate the other limits by relying on current normalization accidents.
+Use the host/framework router until the relevant feature lands.
 
 Server rendering does not register Router/BrowserRouter as a shared process
 global, so requests do not leak the default instance. This is crash and

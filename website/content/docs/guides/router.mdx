@@ -284,9 +284,10 @@ the owning State should use `AbortController` or its own generation check.
 
 Current location state is pathname plus single-valued query parameters.
 Fragments, basename mounting, arbitrary `history.state`, scroll restoration,
-navigation blockers, external URLs, and data-router behavior are not part of
-the supported contract yet. Keep ordinary anchors or the host router for a use
-case that depends on one of those features.
+navigation blockers, external URL routing, and data-router behavior are not
+part of the supported contract yet. `Link` preserves scheme-bearing and
+protocol-relative targets as browser-owned anchors; use the host router for a
+case that needs to route them through the application.
 
 ## Testing
 
