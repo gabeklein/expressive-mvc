@@ -1,7 +1,7 @@
 {
   "name": "@expressive/jsx",
   "version": "0.0.0",
-  "description": "MVC-native JSX renderer for the DOM.",
+  "description": "Browser-ready MVC-native JSX renderer with a reusable host adapter.",
   "license": "MIT",
   "author": {
     "name": "Gabe Klein",
@@ -19,6 +19,8 @@
   "sideEffects": [
     "./src/*.ts",
     "./dist/index.js",
+    "./dist/adapter.js",
+    "./dist/chunk-*.js",
     "./dist/jsx-runtime.js",
     "./dist/jsx-dev-runtime.js"
   ],
@@ -28,6 +30,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./adapter": {
+      "types": "./dist/adapter.d.ts",
+      "default": "./dist/adapter.js"
     },
     "./jsx-runtime": {
       "types": "./dist/jsx-runtime.d.ts",

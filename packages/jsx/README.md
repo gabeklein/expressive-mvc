@@ -45,6 +45,8 @@ The first release includes keyed reconciliation, native events, refs, SVG, `Prov
 
 See [the JSX renderer guide](../../skills/jsx/jsx.md) for the API and constraints. This package currently targets browser DOM; native rendering and the expressive-jsx styling compiler are not included.
 
+Alternate hosts can reuse the state and render-scope lifecycle from `@expressive/jsx/adapter` without registering browser element mechanics. Applications import their host package rather than this implementation entry.
+
 ## License
 
 MIT

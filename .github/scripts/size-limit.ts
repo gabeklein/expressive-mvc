@@ -49,6 +49,11 @@ const CASES = [
     code: `import * as all from '@expressive/jsx'; console.log(all);`
   },
   {
+    name: 'jsx: adapter',
+    limit: 10550,
+    code: `import * as all from '@expressive/jsx/adapter'; console.log(all);`
+  },
+  {
     name: 'router: everything',
     limit: 12110,
     code: `import * as all from '@expressive/router'; console.log(all);`

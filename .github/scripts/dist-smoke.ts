@@ -84,6 +84,18 @@ assert.equal(jsx('div', { children: 'ready' }).type, 'div');
 
 console.log('jsx: import shape ok');
 `,
+  'jsx-adapter': `
+import assert from 'node:assert/strict';
+import State, { Component, Context, commit, def, dispose, enter, get, has, map, pending, ref, set, tracked } from '@expressive/jsx/adapter';
+import { jsx } from '@expressive/mvc/runtime';
+
+for (const [name, value] of Object.entries({ State, Component, Context, commit, def, dispose, enter, get, has, map, pending, ref, set, tracked }))
+  assert.equal(typeof value, 'function', name + ' is not exported by the adapter');
+
+assert.throws(() => jsx('div', {}), /No JSX host is registered/);
+
+console.log('jsx: reusable adapter imports without DOM host registration');
+`,
   router: `
 import assert from 'node:assert/strict';
 import { Router, BrowserRouter, Route, Link, Redirect, NavLinks, matchPattern } from '@expressive/router';

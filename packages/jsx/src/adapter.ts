@@ -306,4 +306,5 @@ function subcomponents(target: object, configurable?: boolean) {
 }
 
 export { commit, dispose, enter, tracked };
+export { State, State as default, Component, Context, def, get, has, map, pending, ref, set } from '@expressive/mvc';
 export type { Scope };
