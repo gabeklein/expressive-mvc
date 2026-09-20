@@ -181,6 +181,45 @@ describe('Link', () => {
     expect(router.current.url).toBe('/posts/foo/edit?tab=history');
     expect(router.current.query.get('tab')).toBe('history');
   });
+
+  it('will preserve scheme-bearing and protocol-relative hrefs', () => {
+    const view = render(
+      <Route to="/">
+        <Link to="https://example.com/docs?q=1#intro">https</Link>
+        <Link to="//cdn.example.com/file.js">cdn</Link>
+      </Route>
+    );
+    const links = view.container.querySelectorAll('a');
+    expect(links[0].getAttribute('href')).toBe(
+      'https://example.com/docs?q=1#intro'
+    );
+    expect(links[1].getAttribute('href')).toBe('//cdn.example.com/file.js');
+  });
+
+  it.each([
+    'https://example.com/docs',
+    '//cdn.example.com/file.js'
+  ])('will leave external click %s to the browser', async (to) => {
+    let clicked = false;
+    const view = render(
+      <Route to="/">
+        <Link to={to} onClick={() => (clicked = true)}>
+          external
+        </Link>
+      </Route>
+    );
+    let allowed = false;
+
+    await act(async () => {
+      allowed = fireEvent.click(view.container.querySelector('a')!, {
+        button: 0
+      });
+    });
+
+    expect(clicked).toBe(true);
+    expect(allowed).toBe(true);
+    expect(router.current.path).toBe('/');
+  });
 });
 
 describe('Link.match / Link.active', () => {

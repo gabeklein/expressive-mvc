@@ -107,13 +107,17 @@ and settle `work`.
 
 ## Links
 
-`Link` renders an `<a>` that navigates on plain left-click (modifier/middle clicks fall through). It exposes its own match state, so active styling needs no separate component:
+`Link` renders an `<a>` that navigates internal targets on plain left-click
+(modifier/middle clicks fall through). Scheme-bearing and protocol-relative
+targets remain unchanged and are left to the browser. It exposes its own match
+state, so active styling needs no separate component:
 
 ```tsx
 import { Link } from '@expressive/router';
 
 <Link to="blog">Blog</Link>
 <Link to="/posts?page=2" replace>Page 2</Link>
+<Link to="https://example.com/docs">External docs</Link>
 ```
 
 ```tsx

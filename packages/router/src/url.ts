@@ -112,6 +112,10 @@ export function assertAbsolute(to: string) {
     );
 }
 
+export function isExternal(to: string): boolean {
+  return /^[a-z][a-z\d+.-]*:/i.test(to) || to.startsWith('//');
+}
+
 /**
  * Collapse `.`/`..` and stray slashes without touching browser globals, and
  * canonicalize the query so stored urls match the `url` getter byte-for-byte.

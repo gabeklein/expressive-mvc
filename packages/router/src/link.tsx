@@ -2,6 +2,7 @@ import { Component, get } from '@expressive/mvc';
 import type { JSX } from '@expressive/mvc/jsx-runtime';
 
 import { Route } from './route';
+import { isExternal } from './url';
 
 /** Host anchor attributes when the adapter declares intrinsics; `{}` agnostically. */
 type AnchorProps = JSX.IntrinsicElements extends { a: infer T } ? T : {};
@@ -60,6 +61,7 @@ export class Link extends Component {
     if (onClick) onClick(e);
     if (e.defaultPrevented || e.button !== 0) return;
     if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    if (isExternal(this.to)) return;
 
     e.preventDefault();
     this.route.goto(this.to, this.replace);
