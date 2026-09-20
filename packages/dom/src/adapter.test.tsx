@@ -4,7 +4,7 @@ import State, { Component, Consumer, Provider, render } from './index';
 import { Context } from '@expressive/mvc';
 import { commit, dispose, enter } from './adapter';
 import type { Scope } from './adapter';
-import { flushMicrotasks } from '../test.setup';
+import { flushMicrotasks, mockPromise } from '../test.setup';
 
 describe('MVC adapter', () => {
   it('will render a Component and update only an accessed field', async () => {
@@ -346,6 +346,95 @@ describe('MVC adapter', () => {
     expect(lifecycle).toEqual(['mount', 'mount', 'unmount', 'unmount']);
     expect(external.get(null)).toBe(false);
     external.set(null);
+  });
+
+  it('will transfer Provider lifecycle when its State type changes', async () => {
+    const lifecycle: string[] = [];
+
+    class First extends State {
+      mount() {
+        lifecycle.push('first:mount');
+        return () => lifecycle.push('first:unmount');
+      }
+    }
+
+    class Second extends State {
+      mount() {
+        lifecycle.push('second:mount');
+        return () => lifecycle.push('second:unmount');
+      }
+    }
+
+    class App extends Component {
+      second = false;
+
+      render() {
+        const Type = this.second ? Second : First;
+        return <Provider for={Type} />;
+      }
+    }
+
+    let app!: App;
+    const root = document.createElement('main');
+    const release = render(<App is={(value) => (app = value)} />, root);
+    expect(lifecycle).toEqual(['first:mount']);
+
+    app.second = true;
+    await flushMicrotasks();
+    expect(lifecycle).toEqual([
+      'first:mount',
+      'first:unmount',
+      'second:mount'
+    ]);
+
+    release();
+    expect(lifecycle).toEqual([
+      'first:mount',
+      'first:unmount',
+      'second:mount',
+      'second:unmount'
+    ]);
+  });
+
+  it('will mount State.use after suspended content commits', async () => {
+    const waiting = mockPromise<void>();
+    const lifecycle: string[] = [];
+    let ready = false;
+
+    class Local extends State {
+      mount() {
+        lifecycle.push('mount');
+        return () => lifecycle.push('unmount');
+      }
+    }
+
+    function Content() {
+      Local.use();
+      if (!ready) throw waiting;
+      return <p>ready</p>;
+    }
+
+    class App extends Component {
+      fallback = <i>loading</i>;
+
+      render() {
+        return <Content />;
+      }
+    }
+
+    const root = document.createElement('main');
+    const release = render(<App />, root);
+    expect(root.textContent).toBe('loading');
+    expect(lifecycle).toEqual([]);
+
+    ready = true;
+    waiting.resolve();
+    await flushMicrotasks();
+    expect(root.textContent).toBe('ready');
+    expect(lifecycle).toEqual(['mount']);
+
+    release();
+    expect(lifecycle).toEqual(['mount', 'unmount']);
   });
 
   it('will reserve Provider execution for the renderer', () => {

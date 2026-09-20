@@ -26,7 +26,13 @@ describe('render', () => {
               onClick={first}
               onClickCapture={capture}
               ref={(node) => refs.push(node)}
-              style={{ width: 10 } as any}
+              style={{
+                flexGrow: 1,
+                lineHeight: 1.2,
+                opacity: 0.5,
+                width: 10,
+                zIndex: 2
+              }}
               tabIndex={2}
               title="before"
             >
@@ -53,7 +59,7 @@ describe('render', () => {
           return <div dangerouslySetInnerHTML={{ __html: '<b>trusted</b>' }} />;
 
         if (this.mode == 3)
-          return <div ref={objectRef} style={{ color: 'red', height: null, width: 0 } as any}>children</div>;
+          return <div ref={objectRef} style={{ color: 'red', height: null, width: 0 }}>children</div>;
 
         return <div style={null as any}>unstyled</div>;
       }
@@ -68,7 +74,11 @@ describe('render', () => {
     expect(node.getAttribute('aria-label')).toBe('greeting');
     expect(node.getAttribute('data-state')).toBe('open');
     expect(node.hidden).toBe(true);
+    expect(node.style.flexGrow).toBe('1');
+    expect(node.style.lineHeight).toBe('1.2');
+    expect(node.style.opacity).toBe('0.5');
     expect(node.style.width).toBe('10px');
+    expect(node.style.zIndex).toBe('2');
     node.click();
     expect(first).toHaveBeenCalledOnce();
     expect(capture).toHaveBeenCalledOnce();
@@ -107,6 +117,36 @@ describe('render', () => {
     expect(refs[0]).toBe(node);
     expect(refs.at(-1)).toBe(null);
     expect(objectRef.current).toBeNull();
+  });
+
+  it('will update numeric styles', async () => {
+    class Styled extends Component {
+      size = 10;
+
+      render() {
+        return <div style={{ flexGrow: this.size / 10, width: this.size }} />;
+      }
+    }
+
+    let view!: Styled;
+    const root = document.createElement('main');
+    const release = render(<Styled is={(value) => (view = value)} />, root);
+    const node = root.querySelector('div')!;
+
+    expect(node.style.flexGrow).toBe('1');
+    expect(node.style.width).toBe('10px');
+
+    view.size = 20;
+    await flushMicrotasks();
+    expect(node.style.flexGrow).toBe('2');
+    expect(node.style.width).toBe('20px');
+
+    view.size = 0;
+    await flushMicrotasks();
+    expect(node.style.flexGrow).toBe('0');
+    expect(node.style.width).toBe('0px');
+
+    release();
   });
 
   it('will render SVG, fragments and primitive updates', async () => {

@@ -13,29 +13,32 @@ let depth = 0;
 let urgentQueued = false;
 let passiveQueued = false;
 
-function flushUrgent() {
-  urgentQueued = false;
+function flush(scopes: Set<Schedulable>, isPassive: boolean) {
+  for (const scope of scopes) {
+    scopes.delete(scope);
 
-  for (const scope of urgent) {
-    urgent.delete(scope);
+    if (isPassive && scope.queued !== 'passive') continue;
+
     scope.queued = undefined;
-    scope.update(false);
+
+    try {
+      scope.update(isPassive);
+    } catch (error) {
+      console.error(error);
+    }
+
     settle(scope);
   }
 }
 
+function flushUrgent() {
+  urgentQueued = false;
+  flush(urgent, false);
+}
+
 function flushPassive() {
   passiveQueued = false;
-
-  for (const scope of passive) {
-    passive.delete(scope);
-
-    if (scope.queued !== 'passive') continue;
-
-    scope.queued = undefined;
-    scope.update(true);
-    settle(scope);
-  }
+  flush(passive, true);
 }
 
 function release(holds?: (() => void)[]) {

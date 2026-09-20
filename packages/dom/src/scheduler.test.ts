@@ -2,6 +2,9 @@ import { expect, it, vi } from 'vitest';
 
 import { schedule, transition, unschedule } from './scheduler';
 import type { Schedulable } from './scheduler';
+import { mockError } from '../test.setup';
+
+const error = mockError();
 
 function target(update = vi.fn()): Schedulable {
   return { update };
@@ -67,6 +70,7 @@ it('will ignore stale passive queue entries', async () => {
 });
 
 it('will unschedule work and restore priority after an error', async () => {
+  vi.useFakeTimers();
   const scope = target();
   transition(() => schedule(scope));
   unschedule(scope);
@@ -78,6 +82,30 @@ it('will unschedule work and restore priority after an error', async () => {
   schedule(scope);
   await Promise.resolve();
   expect(scope.update).toHaveBeenCalledWith(false);
+  await vi.runAllTimersAsync();
+  vi.useRealTimers();
+});
+
+it('will settle failed work and continue the queue', async () => {
+  vi.useFakeTimers();
+  const expected = new Error('failed');
+  const held = vi.fn();
+  const failed = target(vi.fn(() => {
+    throw expected;
+  }));
+  const after = target();
+
+  transition(() => {
+    schedule(failed);
+    schedule(after);
+  });
+  failed.holds = [held];
+
+  await vi.runAllTimersAsync();
+  expect(error).toHaveBeenCalledWith(expected);
+  expect(held).toHaveBeenCalledOnce();
+  expect(after.update).toHaveBeenCalledWith(true);
+  vi.useRealTimers();
 });
 
 it('will release holds once the scope updates', async () => {

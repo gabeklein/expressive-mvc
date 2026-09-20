@@ -45,7 +45,7 @@ const CASES = [
   },
   {
     name: 'dom: everything',
-    limit: 13500,
+    limit: 13850,
     code: `import * as all from '@expressive/dom'; console.log(all);`
   },
   {

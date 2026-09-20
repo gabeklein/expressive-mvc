@@ -11,6 +11,8 @@ type EventAttributes = {
     (event: GlobalEventHandlersEventMap[K]) => unknown;
 };
 
+type Style = Partial<Record<keyof CSSStyleDeclaration, string | number | null>>;
+
 type Attributes<T extends Element> = EventAttributes & {
   [K in keyof T as K extends 'children' | 'className' | 'style'
     ? never
@@ -24,7 +26,7 @@ type Attributes<T extends Element> = EventAttributes & {
   dangerouslySetInnerHTML?: { __html: string };
   key?: string | number | null;
   ref?: ((node: T | null) => unknown) | { current: T | null };
-  style?: string | Partial<CSSStyleDeclaration>;
+  style?: string | Style;
   [attribute: `data-${string}`]: unknown;
   [attribute: `aria-${string}`]: unknown;
 };

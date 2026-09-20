@@ -72,6 +72,54 @@ describe('suspense and recovery', () => {
 
     loaded.resolve(() => <p>next</p>);
     await flushMicrotasks();
+    await flushMicrotasks();
+    expect(root.textContent).toBe('next');
+    expect(settled).toBe(true);
+  });
+
+  it('will retain committed content until repeated suspension settles', async () => {
+    const first = mockPromise<void>();
+    const second = mockPromise<void>();
+    let stage = 0;
+
+    function Next() {
+      if (stage == 0) throw first;
+      if (stage == 1) throw second;
+      return <p>next</p>;
+    }
+
+    class App extends Component {
+      next = false;
+      fallback = <i>loading</i>;
+
+      render() {
+        return this.next ? <Next /> : <p>current</p>;
+      }
+    }
+
+    let app!: App;
+    let settled = false;
+    const root = document.createElement('main');
+    render(<App is={(value) => (app = value)} />, root);
+
+    pending(() => {
+      app.next = true;
+    }).then(() => (settled = true));
+    await flushMicrotasks();
+    expect(root.textContent).toBe('current');
+    expect(settled).toBe(false);
+
+    stage = 1;
+    first.resolve();
+    await flushMicrotasks();
+    await flushMicrotasks();
+    expect(root.textContent).toBe('current');
+    expect(settled).toBe(false);
+
+    stage = 2;
+    second.resolve();
+    await flushMicrotasks();
+    await flushMicrotasks();
     expect(root.textContent).toBe('next');
     expect(settled).toBe(true);
   });
@@ -148,6 +196,11 @@ describe('suspense and recovery', () => {
     expect(settled).toBe(false);
 
     release();
+    await flushMicrotasks();
+
+    expect(settled).toBe(true);
+    expect(root.textContent).toBe('');
+
     loaded.resolve(() => <p>late</p>);
     await flushMicrotasks();
 

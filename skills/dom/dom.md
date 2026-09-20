@@ -17,8 +17,8 @@ import State, {
   Provider,
   createPortal,
   lazy,
-  render,
-  transition
+  pending,
+  render
 } from '@expressive/dom';
 ```
 
@@ -83,10 +83,10 @@ class App extends Component {
 }
 ```
 
-MVC `transition(work)` runs `work` inline and defers subscriber DOM work. If the replacement suspends, the committed range remains until it can complete; an urgent suspension shows its fallback.
+MVC `pending(work)` runs `work` inline and defers subscriber DOM work. If the replacement suspends, the committed range remains until it can complete; an urgent suspension shows its fallback. Its promise resolves after the replacement commits or the affected scope unmounts.
 
 ```tsx
-transition(() => {
+await pending(() => {
   router.page = 'settings';
 });
 ```

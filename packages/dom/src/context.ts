@@ -35,14 +35,21 @@ function Provider<T extends State>(_props: Provider.Props<T>): Component.Node {
 
 function provide<T extends State>(context: Context, props: Provider.Props<T>) {
   const { for: input, is, children: _children, fallback: _fallback, name: _name, ...rest } = props;
-  const fresh: UseState[] = [];
+  const mount: (() => void)[] = [];
   let single: State | undefined;
   const solo = State.is(input) || input instanceof State;
 
   context.set(input, (state, owned) => {
     if (solo) single = state;
-    if (owned) fresh.push(state as UseState);
     is?.(state as T);
+
+    if (owned) {
+      let cleanup: (() => void) | void;
+      mount.push(() => {
+        cleanup = (state as UseState).mount?.();
+      });
+      return () => cleanup?.();
+    }
   });
 
   if (solo && !single) {
@@ -52,7 +59,7 @@ function provide<T extends State>(context: Context, props: Provider.Props<T>) {
 
   if (single && Object.keys(rest).length) single.set(rest);
 
-  return fresh;
+  return () => mount.forEach((commit) => commit());
 }
 
 export { Consumer, Provider, provide };

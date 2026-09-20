@@ -1,4 +1,4 @@
-import { Component, Context, State } from '@expressive/mvc';
+import { Component, Context } from '@expressive/mvc';
 import { has, map } from '@expressive/mvc';
 import { watch } from '@expressive/mvc/observable';
 import { Fragment } from '@expressive/mvc/runtime';
@@ -43,8 +43,7 @@ interface Fiber {
   portalStart?: globalThis.Node;
   portalEnd?: globalThis.Node;
   portalContainer?: Container;
-  fresh?: State[];
-  mounts?: (() => void)[];
+  suspended?: Set<() => void>;
   ignore?: boolean;
 }
 
@@ -164,10 +163,9 @@ function mountFunction(value: VNode, parent: globalThis.Node, before: globalThis
 }
 
 function runFunction(fiber: Fiber, passive: boolean) {
-  attempt(fiber, passive, () =>
+  if (attempt(fiber, passive, () =>
     enter(fiber.scope!, () => (fiber.type as Function)(fiber.props))
-  );
-  commit(fiber.scope!);
+  )) commit(fiber.scope!);
 }
 
 function mountComponent(
@@ -264,8 +262,7 @@ function mountProvider(value: VNode, parent: globalThis.Node, before: globalThis
   fiber.type = Provider;
   fiber.props = value.props;
   fiber.childContext = childContext;
-  fiber.fresh = provide(childContext, value.props as any);
-  fiber.mounts = [];
+  const commit = provide(childContext, value.props as any);
 
   const boundary = value.props.fallback !== undefined
     ? { fallback: () => fiber.props!.fallback, parent: inherited }
@@ -276,11 +273,7 @@ function mountProvider(value: VNode, parent: globalThis.Node, before: globalThis
   complete(fiber, () => {
     reconcile(fiber, value.props.children, childContext, boundary);
   });
-
-  for (const state of fiber.fresh) {
-    const cleanup = (state as State & { mount?(): (() => void) | void }).mount?.();
-    if (typeof cleanup == 'function') fiber.mounts.push(cleanup);
-  }
+  commit();
 
   return fiber;
 }
@@ -347,8 +340,10 @@ function attempt(fiber: Fiber, passive: boolean, render: () => RenderNode) {
 
   try {
     reconcile(fiber, render(), fiber.scope!.childContext, fiber.boundary);
+    return true;
   } catch (thrown) {
     suspend(fiber, thrown, passive);
+    return false;
   } finally {
     passiveRender = previous;
   }
@@ -364,18 +359,28 @@ function suspend(fiber: Fiber, thrown: unknown, passive: boolean) {
       reconcile(fiber, boundary.fallback(), fiber.context, boundary.parent);
 
     const scope = fiber.scope!;
-    const held = scope.holds;
+    let held = scope.holds;
 
     scope.holds = undefined;
 
+    const clear = () => {
+      fiber.suspended!.delete(clear);
+      release(held);
+      held = undefined;
+    };
+
+    (fiber.suspended ||= new Set()).add(clear);
+
     const resume = (retry: () => void) => {
-      if (!scope.active) return release(held);
+      fiber.suspended!.delete(clear);
+      if (!scope.active) return clear();
+      if (held) (scope.holds ||= []).push(...held);
+      held = undefined;
       retry();
-      if (held) scope.holds = held;
     };
 
     thrown.then(
-      () => resume(() => schedule(scope)),
+      () => resume(() => passive ? transition(() => schedule(scope)) : schedule(scope)),
       (error) => resume(() => recover(fiber, error))
     );
     return;
@@ -491,8 +496,9 @@ function patch(old: Fiber | undefined, value: RenderNode, parent: globalThis.Nod
     runComponent(old, passiveRender);
   } else if (old.kind == 'provider') {
     old.props = (value as VNode).props;
-    provide(old.childContext!, old.props as any);
+    const commit = provide(old.childContext!, old.props as any);
     reconcile(old, old.props!.children, old.childContext!, old.boundary);
+    commit();
   } else {
     const vnode = value as VNode;
     old.props = vnode.props;
@@ -622,7 +628,11 @@ function patchStyle(element: HTMLElement, previous: string | Record<string, unkn
 
   for (const key of Object.keys({ ...before, ...after })) {
     const value = after[key];
-    (element.style as any)[key] = value == null ? '' : typeof value == 'number' && value !== 0 ? `${value}px` : value;
+    const style = element.style as any;
+    if (typeof value == 'number') style[key] = '';
+    style[key] = value == null ? '' : value;
+    if (typeof value == 'number' && value !== 0 && !style[key])
+      style[key] = `${value}px`;
   }
 }
 
@@ -635,6 +645,7 @@ function unmountFiber(fiber: Fiber) {
   for (let index = fiber.children.length - 1; index >= 0; index--)
     unmountFiber(fiber.children[index]);
 
+  fiber.suspended?.forEach((clear) => clear());
   if (fiber.scope) dispose(fiber.scope);
   fiber.release?.();
 
@@ -651,8 +662,6 @@ function unmountFiber(fiber: Fiber) {
     fiber.childContext?.pop();
     if (fiber.owned && !fiber.instance!.get(null)) fiber.instance!.set(null);
   } else if (fiber.kind == 'provider') {
-    for (let index = fiber.mounts!.length - 1; index >= 0; index--)
-      fiber.mounts![index]();
     fiber.childContext?.pop();
   } else if (fiber.kind == 'portal') {
     (fiber.portalStart as ChildNode).remove();
