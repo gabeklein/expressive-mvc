@@ -106,7 +106,6 @@ Routes it renders:
 ```tsx
 class PanelRouter extends Router {
   static readonly global = false;
-  path = '/profile';
 
   select(to: string) {
     this.goto(to, true); // selection, not a growing visit history
@@ -125,11 +124,14 @@ class PanelRouter extends Router {
 <BrowserRouter>
   <Route>
     <Route to="settings">
-      <PanelRouter />
+      <PanelRouter path="/profile" />
     </Route>
   </Route>
 </BrowserRouter>;
 ```
+
+`global = false` keeps externally created instances private; nesting itself
+does not require it because the outer context owns the instance.
 
 The outer Route matches `/settings`; the private Router navigates among
 `/profile` and `/security` without changing that browser URL. Its internal
@@ -142,8 +144,9 @@ tabs usually replace the current location; wizards usually push steps and use
 `back()`. Keep workflow data and validation in a domain State.
 
 Ownership controls lifetime. An inline `<PanelRouter>` is owned by its placement
-and resets when remounted. Place an externally owned `PanelRouter.new()` instance
-when its location and history should survive removal from the rendered tree.
+and resets when remounted. Place an externally owned
+`PanelRouter.new({ path: '/profile' })` instance when its location and history
+should survive removal from the rendered tree.
 Use a headless Router inside `BrowserRouter`; nesting `BrowserRouter` would make
 both instances compete for the same browser address and History API.
 

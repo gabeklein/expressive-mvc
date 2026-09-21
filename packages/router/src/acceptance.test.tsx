@@ -99,7 +99,6 @@ describe('acceptance: nested Router', () => {
 
   class Flow extends Router {
     static readonly global = false;
-    path = '/one';
 
     render() {
       return (
@@ -119,7 +118,7 @@ describe('acceptance: nested Router', () => {
       <Router path="/flow" is={(router) => { outer = router; }}>
         <Route>
           <Route to="flow" is={(route) => { boundary = route; }}>
-            <Flow is={(router) => { flow = router; }} />
+            <Flow path="/one" is={(router) => { flow = router; }} />
           </Route>
         </Route>
       </Router>
@@ -138,7 +137,7 @@ describe('acceptance: nested Router', () => {
     const view = render(
       <Router path="/shell" is={(router) => { outer = router; }}>
         <Route as={RootLayout}>
-          <Flow is={(router) => { inner = router; }} />
+          <Flow path="/one" is={(router) => { inner = router; }} />
         </Route>
       </Router>
     );
@@ -164,7 +163,7 @@ describe('acceptance: nested Router', () => {
     render(
       <Router path="/first" is={(router) => { outer = router; }}>
         <Route as={RootLayout}>
-          <Flow is={(router) => { inner = router; }} />
+          <Flow path="/one" is={(router) => { inner = router; }} />
         </Route>
       </Router>
     );
@@ -179,7 +178,7 @@ describe('acceptance: nested Router', () => {
   it('will reset an inline inner Router when its placement remounts', async () => {
     let inner!: Router;
     const App = ({ show }: { show: boolean }) => show
-      ? <Flow is={(router) => { inner = router; }} />
+      ? <Flow path="/one" is={(router) => { inner = router; }} />
       : null;
     const view = render(<App show />);
 
@@ -193,7 +192,7 @@ describe('acceptance: nested Router', () => {
   });
 
   it('will preserve an externally owned Router across placement', async () => {
-    const router = Flow.new();
+    const router = Flow.new({ path: '/one' });
     const App = ({ show }: { show: boolean }) => show ? router : null;
     const view = render(<App show />);
 

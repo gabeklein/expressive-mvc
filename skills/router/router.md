@@ -216,7 +216,6 @@ navigable UX behind one independent location/history boundary:
 ```tsx
 class PanelRouter extends Router {
   static readonly global = false;
-  path = '/profile';
 
   select(to: string) { this.goto(to, true); }
 
@@ -228,8 +227,11 @@ class PanelRouter extends Router {
   }
 }
 
-<Route to="settings"><PanelRouter /></Route>
+<Route to="settings"><PanelRouter path="/profile" /></Route>
 ```
+
+`global = false` keeps externally created instances private; nesting itself
+does not require it because the outer context owns the instance.
 
 The outer Route controls placement; Routes authored inside `PanelRouter.render`
 are invisible to its lexical matcher and use the nearer Router. Navigation does
@@ -240,8 +242,9 @@ upstream - that is convenience, not isolation.
 Prefer semantic subclasses over library-supplied modes. Tabs normally replace
 selection; wizards normally push steps. Domain State owns workflow data and
 validity. Inline Router elements reset on remount; place an externally owned
-`PanelRouter.new()` instance to preserve state across placement. Nest headless
-`Router`, not `BrowserRouter` - browser routers share one History API.
+`PanelRouter.new({ path: '/profile' })` instance to preserve state across
+placement. Nest headless `Router`, not `BrowserRouter` - browser routers share
+one History API.
 
 ## The `query` map
 

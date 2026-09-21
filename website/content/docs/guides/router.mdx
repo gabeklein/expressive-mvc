@@ -295,7 +295,6 @@ internal Routes:
 ```tsx
 class PanelRouter extends Router {
   static readonly global = false;
-  path = '/profile';
 
   select(to: string) {
     this.goto(to, true);
@@ -314,11 +313,14 @@ class PanelRouter extends Router {
 <BrowserRouter>
   <Route>
     <Route to="settings">
-      <PanelRouter />
+      <PanelRouter path="/profile" />
     </Route>
   </Route>
 </BrowserRouter>;
 ```
+
+`global = false` keeps externally created instances private; nesting itself
+does not require it because the outer context owns the instance.
 
 The browser matches `/settings`. Inside it, `PanelRouter` moves between
 `/profile` and `/security` without changing the browser URL. Its Routes are
@@ -333,9 +335,9 @@ steps, form values, and validation in a separate domain State.
 
 Normal Component ownership determines persistence. An inline `<PanelRouter>`
 resets when its placement unmounts and remounts. An externally owned instance
-created with `PanelRouter.new()` survives placement, so it can retain a flow's
-location and history. Nest `Router`, not `BrowserRouter`: two browser bindings
-would compete for the same address and History API.
+created with `PanelRouter.new({ path: '/profile' })` survives placement, so it
+can retain a flow's location and history. Nest `Router`, not `BrowserRouter`:
+two browser bindings would compete for the same address and History API.
 
 A top-level Route already creates and owns a fallback headless Router when it
 cannot find one upstream. That supports standalone route trees, but it does not
