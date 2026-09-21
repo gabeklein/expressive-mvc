@@ -141,7 +141,7 @@ Not currently supported by the public contract:
 
 - automatic scroll-to-anchor;
 - basename/subpath mounting;
-- arbitrary `history.state` and `go(n)`;
+- arbitrary `history.state`;
 - scroll restoration or automatic scroll-to-top;
 - navigation blocking;
 - external URL routing;
