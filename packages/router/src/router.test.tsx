@@ -10,7 +10,10 @@ async function settle(router: Router) {
 
 describe('Router (headless)', () => {
   it('defaults to root', () => {
-    expect(Router.new().path).toBe('/');
+    const router = Router.new();
+    expect(router.path).toBe('/');
+    expect(router.hash).toBe('');
+    expect(router.url).toBe('/');
   });
 
   it('goto updates path in memory', () => {
@@ -30,8 +33,9 @@ describe('Router (headless)', () => {
   });
 
   it('seeds the history stack from the initial path', () => {
-    const router = Router.new({ path: '/start' });
-    expect(router.entries).toEqual(['/start']);
+    const router = Router.new({ path: '/start', hash: 'section one' });
+    expect(router.hash).toBe('#section%20one');
+    expect(router.entries).toEqual(['/start#section%20one']);
     expect(router.index).toBe(0);
   });
 
@@ -116,6 +120,29 @@ describe('Router (headless)', () => {
     expect(router.url).toBe('/posts?page=2&sort=asc');
   });
 
+  it('goto will preserve an opaque fragment after canonical query state', async () => {
+    const router = Router.new();
+    router.goto('/docs?q=a%20b#install');
+    await settle(router);
+
+    expect(router.path).toBe('/docs');
+    expect(router.query.get('q')).toBe('a b');
+    expect(router.hash).toBe('#install');
+    expect(router.url).toBe('/docs?q=a+b#install');
+    expect(router.entries).toEqual(['/', '/docs?q=a+b#install']);
+  });
+
+  it('goto without a fragment will clear it', async () => {
+    const router = Router.new();
+    router.goto('/docs#install');
+    await settle(router);
+    router.goto('/docs');
+    await settle(router);
+
+    expect(router.hash).toBe('');
+    expect(router.url).toBe('/docs');
+  });
+
   it('goto without query clears the query', () => {
     const router = Router.new();
     router.goto('/posts?page=2');
@@ -194,6 +221,61 @@ describe('Router (headless)', () => {
     expect(router.url).toBe('/posts?page=1');
   });
 
+  it('writing a query param will preserve the fragment', async () => {
+    const router = Router.new();
+    router.goto('/posts#results');
+    await settle(router);
+    router.query.set('page', '2');
+    await settle(router);
+
+    expect(router.url).toBe('/posts?page=2#results');
+
+    router.query.clear();
+    await settle(router);
+    expect(router.url).toBe('/posts#results');
+  });
+
+  it('assigning hash will navigate and normalize the leading marker', async () => {
+    const router = Router.new();
+    router.goto('/docs?mode=api#intro');
+    await settle(router);
+
+    router.hash = 'install guide';
+    expect(router.navigating).toBe(true);
+    await settle(router);
+
+    expect(router.hash).toBe('#install%20guide');
+    expect(router.url).toBe('/docs?mode=api#install%20guide');
+    expect(router.entries).toEqual([
+      '/',
+      '/docs?mode=api#intro',
+      '/docs?mode=api#install%20guide'
+    ]);
+
+    router.hash = '#install%20guide';
+    expect(router.navigating).toBe(false);
+  });
+
+  it('will react to fragment changes', async () => {
+    const router = Router.new();
+    const seen: string[] = [];
+    router.get(state => void seen.push(state.hash));
+
+    router.goto('/docs#one');
+    await settle(router);
+    router.hash = '#two';
+    await settle(router);
+
+    expect(seen).toEqual(['', '#one', '#two']);
+  });
+
+  it('will leave hash inert after destruction', () => {
+    const router = Router.new({ hash: '#before' });
+    router.set(null);
+    router.hash = '#after';
+    expect(router.hash).toBe('#before');
+  });
+
   it('deleting a query param navigates', async () => {
     const router = Router.new();
     router.goto('/posts?page=2&sort=asc');
@@ -258,30 +340,58 @@ describe('Router (headless)', () => {
     expect(router.entries).toEqual(['/', '/a', '/b?x=1']);
   });
 
-  it('back/forward restore the query from the stack', async () => {
+  it('back/forward restore query and fragment from the stack', async () => {
     const router = Router.new();
-    router.goto('/a?x=1');
+    router.goto('/a?x=1#first');
     await settle(router);
-    router.goto('/b?y=2');
+    router.goto('/b?y=2#second');
     await settle(router);
 
     router.back();
     await settle(router);
-    expect(router.url).toBe('/a?x=1');
+    expect(router.url).toBe('/a?x=1#first');
 
     router.forward();
     await settle(router);
-    expect(router.url).toBe('/b?y=2');
+    expect(router.url).toBe('/b?y=2#second');
   });
 
-  it('match ignores the query string', () => {
+  it('match ignores query and fragment state', () => {
     const router = Router.new();
-    router.goto('/posts/123?tab=info');
+    router.goto('/posts/123?tab=info#comments');
     expect(router.match('/posts', ':id')).not.toBeNull();
   });
 });
 
 describe('navigation settlement', () => {
+  it('settles fragment assignment before committing history', async () => {
+    const gate = mockPromise<void>();
+
+    class Test extends Router {
+      static global = false;
+
+      protected navigate(work: () => void) {
+        gate.then(work);
+        return gate;
+      }
+    }
+
+    const router = Test.new();
+    router.hash = '#details';
+
+    expect(router.hash).toBe('');
+    expect(router.entries).toEqual(['/']);
+    expect(router.navigating).toBe(true);
+
+    gate.resolve();
+    await gate;
+    await Promise.resolve();
+
+    expect(router.hash).toBe('#details');
+    expect(router.entries).toEqual(['/', '/#details']);
+    expect(router.navigating).toBe(false);
+  });
+
   it('commits only the latest overlapping navigation', async () => {
     const first = mockPromise<void>();
     const second = mockPromise<void>();

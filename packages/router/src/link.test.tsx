@@ -190,19 +190,47 @@ describe('Link', () => {
     expect(router.current.path).toBe('/posts/foo/edit');
   });
 
-  it('will preserve query in a relative `to` href and navigation', async () => {
+  it('will preserve query and fragment in a relative `to`', async () => {
     location('/posts/foo');
     const view = render(
       <Route to="/posts/:id">
-        <Link to="./edit?tab=history">edit</Link>
+        <Link to="./edit?tab=history#form">edit</Link>
       </Route>
     );
     const a = view.container.querySelector('a')!;
-    expect(a.getAttribute('href')).toBe('/posts/foo/edit?tab=history');
+    expect(a.getAttribute('href')).toBe('/posts/foo/edit?tab=history#form');
 
     await act(async () => fireEvent.click(a, { button: 0 }));
-    expect(router.current.url).toBe('/posts/foo/edit?tab=history');
+    expect(router.current.url).toBe('/posts/foo/edit?tab=history#form');
     expect(router.current.query.get('tab')).toBe('history');
+    expect(router.current.hash).toBe('#form');
+  });
+
+  it('will resolve a fragment against the Route and preserve query', async () => {
+    location('/posts/foo?view=full#intro');
+    const view = render(
+      <Route to="/posts/:id">
+        <Link to="#details">details</Link>
+      </Route>
+    );
+    const a = view.container.querySelector('a')!;
+    expect(a.getAttribute('href')).toBe('/posts/foo?view=full#details');
+
+    await act(async () => fireEvent.click(a, { button: 0 }));
+    expect(router.current.url).toBe('/posts/foo?view=full#details');
+  });
+
+  it('will resolve a fragment against the root Route', () => {
+    location('/?view=full');
+    const view = render(
+      <Route to="/">
+        <Link to="#details">details</Link>
+      </Route>
+    );
+
+    expect(view.container.querySelector('a')!.getAttribute('href')).toBe(
+      '/?view=full#details'
+    );
   });
 
   it('will preserve scheme-bearing and protocol-relative hrefs', () => {

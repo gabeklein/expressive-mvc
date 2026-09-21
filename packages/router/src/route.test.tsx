@@ -197,6 +197,16 @@ describe('Route', () => {
     expect(window.location.search).toBe('?tab=history');
   });
 
+  it('Route.goto will resolve a fragment against the Route and preserve query', async () => {
+    location('/posts/foo?view=full#intro');
+    let leaf!: Route;
+    render(<Route to="/posts/:id" is={(r) => (leaf = r)} />);
+    await act(async () => leaf.goto('#details'));
+
+    expect(router.current.url).toBe('/posts/foo?view=full#details');
+    expect(window.location.hash).toBe('#details');
+  });
+
   it('Route.goto with no argument navigates to the Route itself', async () => {
     location('/posts/foo');
     let leaf!: Route;
