@@ -288,14 +288,12 @@ locations are useful in native apps and for local UI flows that should not
 change an outer URL.
 
 A headless Router subclass can own a reusable route tree as well as its
-navigation behavior. An ordinary outer Route decides when the feature is
-mounted; the Router supplies an independent location and history to its
-internal Routes:
+navigation behavior. Use a plain nested Router when there is nothing to
+package. An ordinary outer Route decides when the reusable feature is mounted;
+the Router supplies an independent location and history to its internal Routes:
 
 ```tsx
 class PanelRouter extends Router {
-  static readonly global = false;
-
   select(to: string) {
     this.goto(to, true);
   }
@@ -319,8 +317,8 @@ class PanelRouter extends Router {
 </BrowserRouter>;
 ```
 
-`global = false` keeps externally created instances private; nesting itself
-does not require it because the outer context owns the instance.
+No `global` declaration is needed: the outer context claims the instance. A
+standalone `.new()` call instead requires the subclass to choose a root policy.
 
 The browser matches `/settings`. Inside it, `PanelRouter` moves between
 `/profile` and `/security` without changing the browser URL. Its Routes are
@@ -334,10 +332,11 @@ current entry. Wizards generally push steps and use `back()`. Keep completed
 steps, form values, and validation in a separate domain State.
 
 Normal Component ownership determines persistence. An inline `<PanelRouter>`
-resets when its placement unmounts and remounts. An externally owned instance
-created with `PanelRouter.new({ path: '/profile' })` survives placement, so it
-can retain a flow's location and history. Nest `Router`, not `BrowserRouter`:
-two browser bindings would compete for the same address and History API.
+resets when its placement unmounts and remounts. To preserve its location and
+history, store `panel = new PanelRouter({ path: '/profile' })` on a longer-lived
+State or Component and render that owned instance. Nest `Router`, not
+`BrowserRouter`: two browser bindings would compete for the same address and
+History API.
 
 A top-level Route already creates and owns a fallback headless Router when it
 cannot find one upstream. That supports standalone route trees, but it does not

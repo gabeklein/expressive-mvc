@@ -1,6 +1,6 @@
 import { act, render } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { Consumer } from '@expressive/react';
+import { Component, Consumer } from '@expressive/react';
 
 import { location, browserRouter } from '../test.setup';
 import { Route } from './route';
@@ -97,9 +97,7 @@ describe('acceptance: nested Router', () => {
     </Consumer>
   );
 
-  class Flow extends Router {
-    static readonly global = false;
-
+  class Flow extends CoreRouter {
     render() {
       return (
         <Route>
@@ -180,29 +178,38 @@ describe('acceptance: nested Router', () => {
     const App = ({ show }: { show: boolean }) => show
       ? <Flow path="/one" is={(router) => { inner = router; }} />
       : null;
-    const view = render(<App show />);
+    const view = render(<Router><App show /></Router>);
 
     await act(async () => inner.goto('/two'));
     expect(view.container.textContent).toBe('/two');
 
-    view.rerender(<App show={false} />);
-    view.rerender(<App show />);
+    view.rerender(<Router><App show={false} /></Router>);
+    view.rerender(<Router><App show /></Router>);
 
     expect(view.container.textContent).toBe('/one');
   });
 
-  it('will preserve an externally owned Router across placement', async () => {
-    const router = Flow.new({ path: '/one' });
-    const App = ({ show }: { show: boolean }) => show ? router : null;
-    const view = render(<App show />);
+  it('will preserve an owner-held Router across placement', async () => {
+    class App extends Component {
+      flow = new Flow({ path: '/one' });
+
+      render({ show }: { show: boolean }) {
+        return show ? this.flow : null;
+      }
+    }
+
+    let app!: App;
+    const view = render(
+      <Router><App show is={(value) => { app = value; }} /></Router>
+    );
+    const router = app.flow;
 
     await act(async () => router.goto('/two'));
     expect(view.container.textContent).toBe('/two');
 
-    view.rerender(<App show={false} />);
-    view.rerender(<App show />);
+    view.rerender(<Router><App show={false} /></Router>);
+    view.rerender(<Router><App show /></Router>);
 
     expect(view.container.textContent).toBe('/two');
-    router.set(null);
   });
 });

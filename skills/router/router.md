@@ -211,12 +211,11 @@ Fragment navigation does not scroll or focus an element automatically.
 
 `Router` is headless navigation state; its path-like locations need not be
 public URLs. A subclass may render its own root Route tree, packaging reusable
-navigable UX behind one independent location/history boundary:
+navigable UX behind one independent location/history boundary. Use a plain
+nested Router when there is nothing to package.
 
 ```tsx
 class PanelRouter extends Router {
-  static readonly global = false;
-
   select(to: string) { this.goto(to, true); }
 
   render() {
@@ -230,8 +229,8 @@ class PanelRouter extends Router {
 <Route to="settings"><PanelRouter path="/profile" /></Route>
 ```
 
-`global = false` keeps externally created instances private; nesting itself
-does not require it because the outer context owns the instance.
+No `global` declaration is needed: the outer context claims the instance. A
+standalone `.new()` call instead requires the subclass to choose a root policy.
 
 The outer Route controls placement; Routes authored inside `PanelRouter.render`
 are invisible to its lexical matcher and use the nearer Router. Navigation does
@@ -241,10 +240,10 @@ upstream - that is convenience, not isolation.
 
 Prefer semantic subclasses over library-supplied modes. Tabs normally replace
 selection; wizards normally push steps. Domain State owns workflow data and
-validity. Inline Router elements reset on remount; place an externally owned
-`PanelRouter.new({ path: '/profile' })` instance to preserve state across
-placement. Nest headless `Router`, not `BrowserRouter` - browser routers share
-one History API.
+validity. Inline Router elements reset on remount; to preserve state, store
+`panel = new PanelRouter({ path: '/profile' })` on a longer-lived State or
+Component and render it. Nest headless `Router`, not `BrowserRouter` - browser
+routers share one History API.
 
 ## The `query` map
 

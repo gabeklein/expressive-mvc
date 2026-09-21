@@ -99,14 +99,13 @@ locations also work for native apps, tabs, wizards, modal flows, and other UI
 with no public URL.
 
 A headless Router subclass can own a reusable route tree as well as its
-navigation behavior. An ordinary outer Route controls when that feature is
-mounted; the Router establishes an independent location and history for the
-Routes it renders:
+navigation behavior. Use a plain nested Router when there is nothing to
+package. An ordinary outer Route controls when the reusable feature is mounted;
+the Router establishes an independent location and history for the Routes it
+renders:
 
 ```tsx
 class PanelRouter extends Router {
-  static readonly global = false;
-
   select(to: string) {
     this.goto(to, true); // selection, not a growing visit history
   }
@@ -130,8 +129,8 @@ class PanelRouter extends Router {
 </BrowserRouter>;
 ```
 
-`global = false` keeps externally created instances private; nesting itself
-does not require it because the outer context owns the instance.
+No `global` declaration is needed: the outer context claims the instance. A
+standalone `.new()` call instead requires the subclass to choose a root policy.
 
 The outer Route matches `/settings`; the private Router navigates among
 `/profile` and `/security` without changing that browser URL. Its internal
@@ -144,9 +143,9 @@ tabs usually replace the current location; wizards usually push steps and use
 `back()`. Keep workflow data and validation in a domain State.
 
 Ownership controls lifetime. An inline `<PanelRouter>` is owned by its placement
-and resets when remounted. Place an externally owned
-`PanelRouter.new({ path: '/profile' })` instance when its location and history
-should survive removal from the rendered tree.
+and resets when remounted. To preserve its location and history, store
+`panel = new PanelRouter({ path: '/profile' })` on a longer-lived State or
+Component and render that owned instance.
 Use a headless Router inside `BrowserRouter`; nesting `BrowserRouter` would make
 both instances compete for the same browser address and History API.
 
