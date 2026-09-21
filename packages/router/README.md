@@ -98,30 +98,44 @@ reload signal.
 locations also work for native apps, tabs, wizards, modal flows, and other UI
 with no public URL.
 
-A nested headless Router establishes an independent navigation context. Its
-descendant Routes resolve the nearest Router; navigation and history do not
-change an outer Router or bubble across the boundary:
+A headless Router subclass can own a reusable route tree as well as its
+navigation behavior. An ordinary outer Route controls when that feature is
+mounted; the Router establishes an independent location and history for the
+Routes it renders:
 
 ```tsx
 class PanelRouter extends Router {
   static readonly global = () => false;
+  path = '/profile';
 
   select(to: string) {
     this.goto(to, true); // selection, not a growing visit history
   }
-}
 
-<BrowserRouter>
-  <Route to="settings" as={Settings}>
-    <PanelRouter path="/profile">
-      <Route>
+  render() {
+    return (
+      <Route as={Settings}>
         <Route to="profile" as={ProfileTab} />
         <Route to="security" as={SecurityTab} />
       </Route>
-    </PanelRouter>
+    );
+  }
+}
+
+<BrowserRouter>
+  <Route>
+    <Route to="settings">
+      <PanelRouter />
+    </Route>
   </Route>
 </BrowserRouter>;
 ```
+
+The outer Route matches `/settings`; the private Router navigates among
+`/profile` and `/security` without changing that browser URL. Its internal
+Routes live inside `PanelRouter.render()`, so the outer lexical matcher does not
+interpret them. Descendants resolve the nearest Router, and navigation never
+changes or implicitly bubbles to the outer one.
 
 Build behavior from `Router` rather than selecting a specialized router type:
 tabs usually replace the current location; wizards usually push steps and use
@@ -132,6 +146,11 @@ and resets when remounted. Place an externally owned `PanelRouter.new()` instanc
 when its location and history should survive removal from the rendered tree.
 Use a headless Router inside `BrowserRouter`; nesting `BrowserRouter` would make
 both instances compete for the same browser address and History API.
+
+A top-level Route already creates and owns a fallback headless Router when no
+Router exists upstream. That makes a standalone route tree work; it does not
+isolate a Route nested beneath an existing Router. Use a Router subclass when
+the feature needs a deliberate navigation boundary.
 
 ## Suspense and navigation settlement
 

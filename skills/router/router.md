@@ -210,26 +210,38 @@ Fragment navigation does not scroll or focus an element automatically.
 ### Memory and nested Routers
 
 `Router` is headless navigation state; its path-like locations need not be
-public URLs. Render one inside another Router to give its descendant Routes an
-independent location and history. Routes resolve the nearest Router. Navigation
-never mutates or implicitly bubbles to an outer Router; an out-of-bounds
-`back()` remains a no-op.
-
-Prefer a semantic subclass over library-supplied modes. Re-declare the global
-policy and add only application behavior:
+public URLs. A subclass may render its own root Route tree, packaging reusable
+navigable UX behind one independent location/history boundary:
 
 ```tsx
 class PanelRouter extends Router {
   static readonly global = () => false;
+  path = '/profile';
+
   select(to: string) { this.goto(to, true); }
+
+  render() {
+    return <Route>
+      <Route to="profile" as={ProfileTab} />
+      <Route to="security" as={SecurityTab} />
+    </Route>;
+  }
 }
+
+<Route to="settings"><PanelRouter /></Route>
 ```
 
-Tabs normally replace selection; wizards normally push steps. Domain State owns
-workflow data and validity. Inline Router elements reset on remount; place an
-externally owned `PanelRouter.new()` instance to preserve its state across
-placement. Nest headless `Router`, not `BrowserRouter` - browser routers would
-share one address and History API.
+The outer Route controls placement; Routes authored inside `PanelRouter.render`
+are invisible to its lexical matcher and use the nearer Router. Navigation does
+not mutate or implicitly bubble to the outer Router; an out-of-bounds `back()`
+is a no-op. A top-level Route creates a fallback Router only when none exists
+upstream - that is convenience, not isolation.
+
+Prefer semantic subclasses over library-supplied modes. Tabs normally replace
+selection; wizards normally push steps. Domain State owns workflow data and
+validity. Inline Router elements reset on remount; place an externally owned
+`PanelRouter.new()` instance to preserve state across placement. Nest headless
+`Router`, not `BrowserRouter` - browser routers share one History API.
 
 ## The `query` map
 

@@ -287,30 +287,44 @@ the owning State should use `AbortController` or its own generation check.
 locations are useful in native apps and for local UI flows that should not
 change an outer URL.
 
-A nested headless Router creates an independent navigation context. Descendant
-Routes use the nearest Router, and Back stops at that Router's oldest entry
-instead of escaping into its parent:
+A headless Router subclass can own a reusable route tree as well as its
+navigation behavior. An ordinary outer Route decides when the feature is
+mounted; the Router supplies an independent location and history to its
+internal Routes:
 
 ```tsx
 class PanelRouter extends Router {
   static readonly global = () => false;
+  path = '/profile';
 
   select(to: string) {
     this.goto(to, true);
   }
-}
 
-<BrowserRouter>
-  <Route to="settings" as={Settings}>
-    <PanelRouter path="/profile">
-      <Route>
+  render() {
+    return (
+      <Route as={Settings}>
         <Route to="profile" as={ProfileTab} />
         <Route to="security" as={SecurityTab} />
       </Route>
-    </PanelRouter>
+    );
+  }
+}
+
+<BrowserRouter>
+  <Route>
+    <Route to="settings">
+      <PanelRouter />
+    </Route>
   </Route>
 </BrowserRouter>;
 ```
+
+The browser matches `/settings`. Inside it, `PanelRouter` moves between
+`/profile` and `/security` without changing the browser URL. Its Routes are
+authored inside `render()`, so the outer lexical matcher does not interpret
+them. Descendants use the nearest Router, and Back stops at that Router's oldest
+entry instead of escaping into its parent.
 
 The subclass is application policy, not a second router hierarchy supplied by
 the library. Tabs generally call `goto(path, true)` so selection replaces the
@@ -322,6 +336,11 @@ resets when its placement unmounts and remounts. An externally owned instance
 created with `PanelRouter.new()` survives placement, so it can retain a flow's
 location and history. Nest `Router`, not `BrowserRouter`: two browser bindings
 would compete for the same address and History API.
+
+A top-level Route already creates and owns a fallback headless Router when it
+cannot find one upstream. That supports standalone route trees, but it does not
+isolate a Route beneath an existing Router. Use a Router subclass when the
+feature deliberately needs its own navigation boundary.
 
 ## Browser, server, and native boundaries
 
