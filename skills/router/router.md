@@ -207,6 +207,30 @@ and out-of-range deltas do nothing; `go(0)` does not reload the document.
 targets such as `<Link to="#comments" />` preserve the current path and query.
 Fragment navigation does not scroll or focus an element automatically.
 
+### Memory and nested Routers
+
+`Router` is headless navigation state; its path-like locations need not be
+public URLs. Render one inside another Router to give its descendant Routes an
+independent location and history. Routes resolve the nearest Router. Navigation
+never mutates or implicitly bubbles to an outer Router; an out-of-bounds
+`back()` remains a no-op.
+
+Prefer a semantic subclass over library-supplied modes. Re-declare the global
+policy and add only application behavior:
+
+```tsx
+class PanelRouter extends Router {
+  static readonly global = () => false;
+  select(to: string) { this.goto(to, true); }
+}
+```
+
+Tabs normally replace selection; wizards normally push steps. Domain State owns
+workflow data and validity. Inline Router elements reset on remount; place an
+externally owned `PanelRouter.new()` instance to preserve its state across
+placement. Nest headless `Router`, not `BrowserRouter` - browser routers would
+share one address and History API.
+
 ## The `query` map
 
 `query` is the canonical query state as a reactive `map` - not a string. Read a param to track it; **write** a param (or delete it) to navigate.

@@ -281,6 +281,48 @@ The navigation layer prevents stale router commits; it does not abort domain
 requests. If an operation has side effects or consumes significant resources,
 the owning State should use `AbortController` or its own generation check.
 
+## Memory and nested routers
+
+`Router` is navigation state, not an address-bar abstraction. Its path-like
+locations are useful in native apps and for local UI flows that should not
+change an outer URL.
+
+A nested headless Router creates an independent navigation context. Descendant
+Routes use the nearest Router, and Back stops at that Router's oldest entry
+instead of escaping into its parent:
+
+```tsx
+class PanelRouter extends Router {
+  static readonly global = () => false;
+
+  select(to: string) {
+    this.goto(to, true);
+  }
+}
+
+<BrowserRouter>
+  <Route to="settings" as={Settings}>
+    <PanelRouter path="/profile">
+      <Route>
+        <Route to="profile" as={ProfileTab} />
+        <Route to="security" as={SecurityTab} />
+      </Route>
+    </PanelRouter>
+  </Route>
+</BrowserRouter>;
+```
+
+The subclass is application policy, not a second router hierarchy supplied by
+the library. Tabs generally call `goto(path, true)` so selection replaces the
+current entry. Wizards generally push steps and use `back()`. Keep completed
+steps, form values, and validation in a separate domain State.
+
+Normal Component ownership determines persistence. An inline `<PanelRouter>`
+resets when its placement unmounts and remounts. An externally owned instance
+created with `PanelRouter.new()` survives placement, so it can retain a flow's
+location and history. Nest `Router`, not `BrowserRouter`: two browser bindings
+would compete for the same address and History API.
+
 ## Browser, server, and native boundaries
 
 - `Router` is headless and owns an in-memory history stack. Use it in tests and

@@ -92,6 +92,47 @@ focus an element automatically.
 non-finite, and out-of-range deltas do nothing; it never uses `go(0)` as a
 reload signal.
 
+## Memory and nested routers
+
+`Router` is navigation state, not an address-bar abstraction. Its path-like
+locations also work for native apps, tabs, wizards, modal flows, and other UI
+with no public URL.
+
+A nested headless Router establishes an independent navigation context. Its
+descendant Routes resolve the nearest Router; navigation and history do not
+change an outer Router or bubble across the boundary:
+
+```tsx
+class PanelRouter extends Router {
+  static readonly global = () => false;
+
+  select(to: string) {
+    this.goto(to, true); // selection, not a growing visit history
+  }
+}
+
+<BrowserRouter>
+  <Route to="settings" as={Settings}>
+    <PanelRouter path="/profile">
+      <Route>
+        <Route to="profile" as={ProfileTab} />
+        <Route to="security" as={SecurityTab} />
+      </Route>
+    </PanelRouter>
+  </Route>
+</BrowserRouter>;
+```
+
+Build behavior from `Router` rather than selecting a specialized router type:
+tabs usually replace the current location; wizards usually push steps and use
+`back()`. Keep workflow data and validation in a domain State.
+
+Ownership controls lifetime. An inline `<PanelRouter>` is owned by its placement
+and resets when remounted. Place an externally owned `PanelRouter.new()` instance
+when its location and history should survive removal from the rendered tree.
+Use a headless Router inside `BrowserRouter`; nesting `BrowserRouter` would make
+both instances compete for the same browser address and History API.
+
 ## Suspense and navigation settlement
 
 Routes are Suspense boundaries. Pass `fallback` for cold load and use a lazy
