@@ -215,7 +215,7 @@ navigable UX behind one independent location/history boundary:
 
 ```tsx
 class PanelRouter extends Router {
-  static readonly global = () => false;
+  static readonly global = false;
   path = '/profile';
 
   select(to: string) { this.goto(to, true); }

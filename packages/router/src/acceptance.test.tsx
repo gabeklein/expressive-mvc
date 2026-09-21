@@ -98,7 +98,7 @@ describe('acceptance: nested Router', () => {
   );
 
   class Flow extends Router {
-    static readonly global: (typeof Router)['global'] = false;
+    static readonly global = false;
     path = '/one';
 
     render() {
