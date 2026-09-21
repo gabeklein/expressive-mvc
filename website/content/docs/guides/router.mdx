@@ -114,7 +114,7 @@ router.goto('/missions?sort=urgency#briefing');
 router.goto('/missions', true); // replace current history entry
 router.url = '/missions?sort=urgency#briefing'; // push
 router.back();
-router.forward();
+router.go(-2);
 
 router.query.get('page');
 router.query.set('page', '2');
@@ -124,6 +124,11 @@ router.query.clear();
 router.hash; // '' or a leading-# string
 router.hash = '#briefing'; // preserve path/query and push
 ```
+
+`go(delta)` moves through history by an arbitrary relative offset; `back()` is
+the common `go(-1)` convenience. Finite fractional deltas are truncated. Zero,
+non-finite, and out-of-range deltas do nothing, so `go(0)` never reloads the
+document.
 
 The query is a reactive `Map<string, string>`, not an object. Reading one key
 subscribes to that key. `set`, `delete`, and `clear` navigate through the same

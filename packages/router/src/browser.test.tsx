@@ -110,18 +110,19 @@ describe('BrowserRouter', () => {
     expect(router.current.url).toBe('/#native');
   });
 
-  it('back/forward delegate to window.history', () => {
-    const back = vi.spyOn(window.history, 'back');
-    const forward = vi.spyOn(window.history, 'forward');
+  it('back and go delegate normalized deltas to window.history', () => {
+    const go = vi.spyOn(window.history, 'go').mockImplementation(() => {});
 
     router.current.back();
-    router.current.forward();
+    router.current.go(2.9);
+    router.current.go(0);
+    router.current.go(Number.NaN);
 
-    expect(back).toHaveBeenCalledTimes(1);
-    expect(forward).toHaveBeenCalledTimes(1);
+    expect(go).toHaveBeenNthCalledWith(1, -1);
+    expect(go).toHaveBeenNthCalledWith(2, 2);
+    expect(go).toHaveBeenCalledTimes(2);
 
-    back.mockRestore();
-    forward.mockRestore();
+    go.mockRestore();
   });
 
   it('removes popstate listener on destroy', () => {

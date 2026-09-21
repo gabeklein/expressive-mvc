@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
 import { mockPromise } from '../test.setup';
-import { Router } from './router';
+import { Router as CoreRouter } from './router';
+
+class Router extends CoreRouter {
+  static readonly global: (typeof CoreRouter)['global'] = false;
+  declare public entries: string[];
+  declare public index: number;
+}
 
 async function settle(router: Router) {
   await router.set();
@@ -39,8 +45,9 @@ describe('Router (headless)', () => {
     expect(router.index).toBe(0);
   });
 
-  it('goto pushes onto the stack; back/forward move the cursor', async () => {
+  it('goto pushes onto the stack; back and go move the cursor', async () => {
     const router = Router.new();
+    expect((router as any).forward).toBeUndefined();
     router.goto('/a');
     await settle(router);
     router.goto('/b');
@@ -50,10 +57,10 @@ describe('Router (headless)', () => {
     router.back();
     await settle(router);
     expect(router.path).toBe('/a');
-    router.back();
+    router.go(-1);
     await settle(router);
     expect(router.path).toBe('/');
-    router.forward();
+    router.go(1);
     await settle(router);
     expect(router.path).toBe('/a');
   });
@@ -65,13 +72,39 @@ describe('Router (headless)', () => {
     expect(router.index).toBe(0);
   });
 
-  it('forward does nothing at the newest entry', async () => {
+  it('go does nothing outside the history bounds', async () => {
     const router = Router.new();
     router.goto('/a');
     await settle(router);
-    router.forward();
+    router.go(1);
     expect(router.path).toBe('/a');
     expect(router.index).toBe(1);
+
+    router.go(-2);
+    expect(router.path).toBe('/a');
+    expect(router.index).toBe(1);
+  });
+
+  it('go normalizes finite deltas and ignores zero or non-finite values', async () => {
+    const router = Router.new();
+    router.goto('/a');
+    await settle(router);
+    router.goto('/b');
+    await settle(router);
+
+    router.go(-1.9);
+    await settle(router);
+    expect(router.path).toBe('/a');
+
+    router.go(1.9);
+    await settle(router);
+    expect(router.path).toBe('/b');
+
+    router.go(0);
+    router.go(Number.NaN);
+    router.go(Number.POSITIVE_INFINITY);
+    expect(router.path).toBe('/b');
+    expect(router.navigating).toBe(false);
   });
 
   it('goto drops an empty query', async () => {
@@ -340,7 +373,7 @@ describe('Router (headless)', () => {
     expect(router.entries).toEqual(['/', '/a', '/b?x=1']);
   });
 
-  it('back/forward restore query and fragment from the stack', async () => {
+  it('back and go restore query and fragment from the stack', async () => {
     const router = Router.new();
     router.goto('/a?x=1#first');
     await settle(router);
@@ -351,7 +384,7 @@ describe('Router (headless)', () => {
     await settle(router);
     expect(router.url).toBe('/a?x=1#first');
 
-    router.forward();
+    router.go(1);
     await settle(router);
     expect(router.url).toBe('/b?y=2#second');
   });
@@ -364,6 +397,52 @@ describe('Router (headless)', () => {
 });
 
 describe('navigation settlement', () => {
+  it('commits only the latest overlapping history traversal', async () => {
+    const first = mockPromise<void>();
+    const second = mockPromise<void>();
+    const gates = [first, second];
+
+    class Test extends Router {
+      static readonly global = false;
+
+      seed() {
+        this.entries = ['/', '/a', '/b'];
+        this.index = 2;
+        this.locate('/b');
+      }
+
+      protected navigate(work: () => void) {
+        const gate = gates.shift()!;
+        gate.then(work);
+        return gate;
+      }
+    }
+
+    const router = Test.new();
+    router.seed();
+    router.go(-1);
+    router.go(-2);
+
+    expect(router.path).toBe('/b');
+    expect(router.index).toBe(2);
+    expect(router.navigating).toBe(true);
+
+    second.resolve();
+    await second;
+    await Promise.resolve();
+
+    expect(router.path).toBe('/');
+    expect(router.index).toBe(0);
+    expect(router.navigating).toBe(false);
+
+    first.resolve();
+    await first;
+    await Promise.resolve();
+
+    expect(router.path).toBe('/');
+    expect(router.index).toBe(0);
+  });
+
   it('settles fragment assignment before committing history', async () => {
     const gate = mockPromise<void>();
 

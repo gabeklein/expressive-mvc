@@ -1,4 +1,4 @@
-import { bindLocation, navigate, Router } from './router';
+import { bindLocation, deltaOf, navigate, Router } from './router';
 
 const SELF_DRIVEN = new WeakSet<object>();
 
@@ -25,14 +25,10 @@ export class BrowserRouter extends Router {
     );
   }
 
-  // The browser owns the history stack; back/forward delegate to it (popstate
-  // syncs location), so the inherited in-memory entries/index go unused here.
-  back() {
-    history.back();
-  }
-
-  forward() {
-    history.forward();
+  // The browser owns the history stack; popstate synchronizes its location.
+  go(delta: number) {
+    delta = deltaOf(delta);
+    if (delta) history.go(delta);
   }
 
   protected new() {

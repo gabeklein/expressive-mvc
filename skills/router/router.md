@@ -115,7 +115,7 @@ A lazy *layout* suspends its whole scope - child routes register only after its 
 
 ## Deferred presentation
 
-Every navigation (`goto`, `Link`, query writes, `back`/`forward`, popstate) commits through `Router.navigate`, whose default marks the commit non-urgent via the host scheduler (React `startTransition`). In-app navigation to a page that isn't ready - a loading chunk, a pending entry guard - holds the current screen until the next resolves, instead of flashing `fallback`. Cold load (initial mount, no prior screen) still shows `fallback`. For `goto`, `Link`, and query writes, `BrowserRouter` writes the address once the navigation is on screen. Browser back/forward and external History API calls change the address before the app receives them, so the old screen may remain while the new address settles.
+Every navigation (`goto`, `Link`, query writes, `back`/`go`, popstate) commits through `Router.navigate`, whose default marks the commit non-urgent via the host scheduler (React `startTransition`). In-app navigation to a page that isn't ready - a loading chunk, a pending entry guard - holds the current screen until the next resolves, instead of flashing `fallback`. Cold load (initial mount, no prior screen) still shows `fallback`. For `goto`, `Link`, and query writes, `BrowserRouter` writes the address once the navigation is on screen. Browser history traversal and external History API calls change the address before the app receives them, so the old screen may remain while the new address settles.
 
 Override `navigate(work)` on a subclass to stage the swap differently - `work` applies the navigation state and must run:
 
@@ -188,7 +188,8 @@ Param changes do not remount: like `query`, `match` updates reactively and the p
 | `hash`               | `string`                    | Opaque fragment: `''` or a leading-`#` string. Assigning navigates.      |
 | `url`                | `string`                    | Full path + query + fragment, canonically serialized. Assigning navigates. |
 | `goto(to, replace?)` | -                           | Navigate; `replace` overwrites the current entry instead of pushing.    |
-| `back()` / `forward()` | -                         | Move the history cursor.                                                 |
+| `back()`               | -                           | Move back one history entry.                                             |
+| `go(delta)`            | -                           | Move by a relative history delta.                                        |
 
 ```tsx
 router.goto('/posts?page=2#comments'); // push
@@ -196,7 +197,11 @@ router.goto('/posts', true);    // replace
 router.url = '/posts?page=2#comments'; // same as goto (push)
 router.hash = '#comments';      // preserves path/query and pushes
 router.back();
+router.go(-2);
 ```
+
+`go` truncates finite fractional deltas to integer steps. Zero, non-finite,
+and out-of-range deltas do nothing; `go(0)` does not reload the document.
 
 `hash` stays percent-encoded and is not parsed into structured state. Hash-only
 targets such as `<Link to="#comments" />` preserve the current path and query.

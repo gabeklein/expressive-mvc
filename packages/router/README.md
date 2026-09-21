@@ -78,12 +78,19 @@ router.query.delete('sort'); // delete - also navigates
 
 router.hash; // '' or a leading-# string
 router.hash = '#comments'; // pushes through the same settlement path
+
+router.back(); // one entry back
+router.go(-2); // move by an arbitrary history delta
 ```
 
 The map is single-valued (`string` keys and values); repeated URL keys collapse
 to the last value. URL-driven changes reconcile the same map in place. The hash
 is an opaque, percent-encoded string. Fragment navigation does not scroll or
 focus an element automatically.
+
+`go(delta)` truncates finite fractional deltas to integer steps. Zero,
+non-finite, and out-of-range deltas do nothing; it never uses `go(0)` as a
+reload signal.
 
 ## Suspense and navigation settlement
 

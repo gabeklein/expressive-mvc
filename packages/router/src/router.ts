@@ -79,8 +79,8 @@ export class Router extends Component {
   });
 
   /** In-memory history: visited urls and the cursor into them. */
-  entries: string[] = [];
-  index = 0;
+  protected entries: string[] = [];
+  protected index = 0;
 
   protected new() {
     this.locate(normalize(this.url));
@@ -124,30 +124,31 @@ export class Router extends Component {
       this.locate(url);
     }, () => {
       if (replace) this.entries[this.index] = url;
-      else pushEntry(this, url);
+      else if (url !== this.entries[this.index]) {
+        this.entries = [...this.entries.slice(0, this.index + 1), url];
+        this.index = this.entries.length - 1;
+      }
     });
   }
 
+  /** Move back one history entry. */
   back() {
-    const index = this.index - 1;
-    if (index >= 0)
-      navigate(
-        this,
-        (work) => this.navigate(work),
-        () => this.locate(this.entries[index]),
-        () => { this.index = index; }
-      );
+    this.go(-1);
   }
 
-  forward() {
-    const index = this.index + 1;
-    if (index < this.entries.length)
-      navigate(
-        this,
-        (work) => this.navigate(work),
-        () => this.locate(this.entries[index]),
-        () => { this.index = index; }
-      );
+  /** Move by a relative history delta. */
+  go(delta: number) {
+    delta = deltaOf(delta);
+    const index = this.index + delta;
+
+    if (!delta || index < 0 || index >= this.entries.length) return;
+
+    navigate(
+      this,
+      (work) => this.navigate(work),
+      () => this.locate(this.entries[index]),
+      () => { this.index = index; }
+    );
   }
 
   /**
@@ -273,6 +274,10 @@ export function bindLocation(router: LocationRouter) {
   };
 }
 
+export function deltaOf(delta: number) {
+  return Number.isFinite(delta) ? Math.trunc(delta) : 0;
+}
+
 function withQuery(
   path: string,
   query: Iterable<readonly [string, string | undefined]>,
@@ -284,12 +289,4 @@ function withQuery(
     (search ? '?' + search : '') +
     (hash && !hash.startsWith('#') ? '#' + hash : hash)
   );
-}
-
-/** Append `url` as a new history entry on a memory router, truncating any forward stack. */
-function pushEntry(router: Router, url: string) {
-  if (url === router.entries[router.index]) return;
-
-  router.entries = [...router.entries.slice(0, router.index + 1), url];
-  router.index = router.entries.length - 1;
 }
