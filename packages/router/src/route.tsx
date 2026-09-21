@@ -63,10 +63,6 @@ export class Route extends Component {
     return upstream?.router.is === router.is ? upstream : undefined;
   }
 
-  set parent(parent: Route | undefined) {
-    this.upstream = parent;
-  }
-
   /** Registered child Routes, in declaration order. Reactive. */
   inner: Route[] = [];
 
