@@ -55,7 +55,7 @@ const CASES = [
   },
   {
     name: 'react + router',
-    limit: 15830,
+    limit: 15950,
     code: `import * as a from '@expressive/react';
            import * as b from '@expressive/router';
            console.log(a, b);`

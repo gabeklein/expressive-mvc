@@ -1,4 +1,4 @@
-import { Component, map, pending, State } from '@expressive/mvc';
+import { Component, map, pending, set, State } from '@expressive/mvc';
 
 import type { Route } from './route';
 import {
@@ -25,14 +25,16 @@ interface Navigation {
   get(key: null): boolean;
 }
 
-interface QueryRouter extends Navigation {
+interface LocationRouter extends Navigation {
   path: string;
+  hash: string;
   query: map.Insert<string, string>;
   goto(to: string): void;
 }
 
 const ACTIVE = new WeakMap<object, object>();
 const LOCATING = new WeakSet<object>();
+const READY = new WeakSet<object>();
 
 /**
  * Headless router core: matching plus an in-memory `path` and history stack.
@@ -65,19 +67,30 @@ export class Router extends Component {
    */
   query = map<string, string>();
 
-  /** In-memory history: visited urls (path + query) and the cursor into them. */
+  /** Opaque URL fragment, including its leading `#`, or an empty string. */
+  hash = set('', (value) => {
+    if (LOCATING.has(this) || !READY.has(this)) return;
+
+    const url = normalize(withQuery(this.path, this.query, value));
+    if (this.get(null) || url === this.url) throw false;
+
+    this.goto(url);
+    throw false;
+  });
+
+  /** In-memory history: visited urls and the cursor into them. */
   entries: string[] = [];
   index = 0;
 
   protected new() {
-    bindQuery(this);
+    this.locate(normalize(this.url));
+    bindLocation(this);
     this.entries = [this.url];
   }
 
-  /** Full URL as assigned by the environment (path + optional `?query`). Assigning navigates. */
+  /** Full URL as assigned by the environment. Assigning navigates. */
   get url(): string {
-    const search = searchOf(this.query);
-    return search ? this.path + '?' + search : this.path;
+    return withQuery(this.path, this.query, this.hash);
   }
 
   set url(to: string) {
@@ -154,16 +167,17 @@ export class Router extends Component {
     return pending(work);
   }
 
-  /** Apply a normalized url (path + optional `?query`) to state, reconciling `query` in place. */
+  /** Apply a normalized url to state, reconciling location fields in place. */
   protected locate(url: string) {
     LOCATING.add(this);
 
     try {
-      const q = url.indexOf('?');
-      this.path = q < 0 ? url : url.slice(0, q);
+      const { pathname, searchParams, hash } = new URL(url, 'x://_');
+      this.path = pathname;
+      this.hash = hash;
 
       const { query } = this;
-      const next = new Map(new URLSearchParams(q < 0 ? '' : url.slice(q + 1)));
+      const next = new Map(searchParams);
 
       for (const key of [...query.keys()]) if (!next.has(key)) query.delete(key);
       for (const [key, value] of next) query.set(key, value);
@@ -188,11 +202,16 @@ export class Router extends Component {
     return own.endsWith('/') ? own : own + '/';
   }
 
-  /** Resolve a (possibly relative) url against a Route's anchor; returns absolute path + search. */
+  /** Resolve a (possibly relative) url against a Route's anchor. */
   resolve(route: Route, url: string): string {
     if (isExternal(url) || url.startsWith('/')) return url;
+    if (url.startsWith('#')) {
+      const anchor = this.anchor(route);
+      const path = anchor.length > 1 ? anchor.slice(0, -1) : anchor;
+      return normalize(withQuery(path, this.query, url));
+    }
     const resolved = new URL(url, 'x://_' + this.anchor(route));
-    return resolved.pathname + resolved.search;
+    return resolved.pathname + resolved.search + resolved.hash;
   }
 }
 
@@ -219,7 +238,9 @@ export async function navigate(
   }
 }
 
-export function bindQuery(router: QueryRouter) {
+export function bindLocation(router: LocationRouter) {
+  READY.add(router);
+
   const { query } = router;
   const set = query.set;
   const remove = query.delete;
@@ -231,7 +252,7 @@ export function bindQuery(router: QueryRouter) {
 
     const next = new Map(query);
     next.set(key, value);
-    router.goto(withQuery(router.path, next));
+    router.goto(withQuery(router.path, next, router.hash));
     return this;
   };
 
@@ -242,19 +263,27 @@ export function bindQuery(router: QueryRouter) {
 
     const next = new Map(query);
     next.delete(key);
-    router.goto(withQuery(router.path, next));
+    router.goto(withQuery(router.path, next, router.hash));
     return true;
   };
 
   query.clear = function () {
     if (LOCATING.has(router) || router.get(null)) return clear.call(this);
-    if (query.size) router.goto(router.path);
+    if (query.size) router.goto(router.path + router.hash);
   };
 }
 
-function withQuery(path: string, query: Iterable<readonly [string, string | undefined]>) {
+function withQuery(
+  path: string,
+  query: Iterable<readonly [string, string | undefined]>,
+  hash: string
+) {
   const search = searchOf(query);
-  return search ? path + '?' + search : path;
+  return (
+    path +
+    (search ? '?' + search : '') +
+    (hash && !hash.startsWith('#') ? '#' + hash : hash)
+  );
 }
 
 /** Append `url` as a new history entry on a memory router, truncating any forward stack. */

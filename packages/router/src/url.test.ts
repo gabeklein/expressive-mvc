@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import { fillPath, fullPattern, matchPattern, patternSegment } from './url';
+import {
+  canonicalize,
+  fillPath,
+  fullPattern,
+  matchPattern,
+  normalize,
+  patternSegment
+} from './url';
 
 const match = (pattern: string, path: string) => matchPattern(pattern, path)?.params;
 
@@ -145,5 +152,20 @@ describe('fillPath', () => {
 
   it('returns null when a literal segment disagrees', () => {
     expect(fillPath('/users/:id', '/posts/42')).toBe(null);
+  });
+});
+
+describe('URL normalization', () => {
+  it('will canonicalize search without consuming the fragment', () => {
+    expect(canonicalize('/docs?q=a%20b&q=last#install')).toBe(
+      '/docs?q=last#install'
+    );
+    expect(canonicalize('/docs#install')).toBe('/docs#install');
+  });
+
+  it('will normalize path, search, and fragment together', () => {
+    expect(normalize('/guides/../docs?q=a%20b#hello world')).toBe(
+      '/docs?q=a+b#hello%20world'
+    );
   });
 });

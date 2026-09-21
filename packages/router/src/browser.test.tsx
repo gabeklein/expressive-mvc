@@ -11,9 +11,10 @@ describe('BrowserRouter', () => {
   const router = browserRouter();
 
   it('initializes from window.location', () => {
-    window.history.replaceState(null, '', '/foo?from=start');
+    window.history.replaceState(null, '', '/foo?from=start#intro');
     expect(router.current.path).toBe('/foo');
-    expect(router.current.url).toBe('/foo?from=start');
+    expect(router.current.hash).toBe('#intro');
+    expect(router.current.url).toBe('/foo?from=start#intro');
   });
 
   it('goto pushes history and updates path', async () => {
@@ -39,16 +40,18 @@ describe('BrowserRouter', () => {
   });
 
   it('notices external history.pushState', () => {
-    act(() => window.history.pushState(null, '', '/external'));
+    act(() => window.history.pushState(null, '', '/external#section'));
     expect(router.current.path).toBe('/external');
+    expect(router.current.hash).toBe('#section');
   });
 
   it('goto with query updates location and url', async () => {
-    await act(async () => router.current.goto('/results?q=hello'));
+    await act(async () => router.current.goto('/results?q=hello#answer'));
     expect(window.location.pathname).toBe('/results');
     expect(window.location.search).toBe('?q=hello');
     expect(router.current.path).toBe('/results');
-    expect(router.current.url).toBe('/results?q=hello');
+    expect(window.location.hash).toBe('#answer');
+    expect(router.current.url).toBe('/results?q=hello#answer');
     expect(router.current.query.get('q')).toBe('hello');
   });
 
@@ -74,12 +77,37 @@ describe('BrowserRouter', () => {
   });
 
   it('writing a query param pushes to window.history', async () => {
-    act(() => router.current.goto('/page?x=1'));
+    act(() => router.current.goto('/page?x=1#results'));
     router.current.query.set('x', '9');
     await router.current.set();
 
     expect(window.location.search).toBe('?x=9');
     expect(window.location.pathname).toBe('/page');
+    expect(window.location.hash).toBe('#results');
+  });
+
+  it('writing hash pushes to window.history', async () => {
+    act(() => router.current.goto('/page?x=1#intro'));
+    await router.current.set();
+    const before = window.history.length;
+
+    router.current.hash = '#details';
+    await router.current.set();
+
+    expect(window.location.pathname).toBe('/page');
+    expect(window.location.search).toBe('?x=1');
+    expect(window.location.hash).toBe('#details');
+    expect(window.history.length).toBe(before + 1);
+  });
+
+  it('will synchronize native hash changes', () => {
+    act(() => {
+      window.location.hash = '#native';
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
+    });
+
+    expect(router.current.hash).toBe('#native');
+    expect(router.current.url).toBe('/#native');
   });
 
   it('back/forward delegate to window.history', () => {
@@ -100,6 +128,7 @@ describe('BrowserRouter', () => {
     const remove = vi.spyOn(window, 'removeEventListener');
     router.current.set(null);
     expect(remove).toHaveBeenCalledWith('popstate', expect.any(Function));
+    expect(remove).toHaveBeenCalledWith('hashchange', expect.any(Function));
     remove.mockRestore();
   });
 
@@ -142,10 +171,10 @@ describe('BrowserRouter', () => {
 
 describe('navigation settlement', () => {
   it('does not report the initial browser synchronization as navigation', () => {
-    location('/initial?x=1');
+    location('/initial?x=1#intro');
     const router = BrowserRouter.new();
 
-    expect(router.url).toBe('/initial?x=1');
+    expect(router.url).toBe('/initial?x=1#intro');
     expect(router.navigating).toBe(false);
 
     router.set(null);

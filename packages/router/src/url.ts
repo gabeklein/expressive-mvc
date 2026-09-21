@@ -121,8 +121,7 @@ export function isExternal(to: string): boolean {
  * canonicalize the query so stored urls match the `url` getter byte-for-byte.
  */
 export function normalize(to: string): string {
-  const { pathname, search } = new URL(to, 'x://_');
-  return canonicalize(pathname + search);
+  return canonicalize(to);
 }
 
 /**
@@ -131,11 +130,9 @@ export function normalize(to: string): string {
  * This is what makes the history-dedup a sound string comparison.
  */
 export function canonicalize(url: string): string {
-  const q = url.indexOf('?');
-  if (q < 0) return url;
-
-  const search = searchOf(new Map(new URLSearchParams(url.slice(q + 1))));
-  return search ? url.slice(0, q) + '?' + search : url.slice(0, q);
+  const { pathname, searchParams, hash } = new URL(url, 'x://_');
+  const search = searchOf(new Map(searchParams));
+  return pathname + (search ? '?' + search : '') + hash;
 }
 
 /** Canonical query serialization: skips `undefined`, last-value-per-key, form encoding. */

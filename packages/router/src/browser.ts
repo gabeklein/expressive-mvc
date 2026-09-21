@@ -1,8 +1,8 @@
-import { bindQuery, navigate, Router } from './router';
+import { bindLocation, navigate, Router } from './router';
 
 const SELF_DRIVEN = new WeakSet<object>();
 
-/** Binds the headless core to `window.location`, syncing `path`/`query` on navigation. */
+/** Binds the headless core to `window.location` and browser history. */
 export class BrowserRouter extends Router {
   static readonly global = Router.global;
 
@@ -26,7 +26,7 @@ export class BrowserRouter extends Router {
   }
 
   // The browser owns the history stack; back/forward delegate to it (popstate
-  // syncs path/query), so the inherited in-memory entries/index go unused here.
+  // syncs location), so the inherited in-memory entries/index go unused here.
   back() {
     history.back();
   }
@@ -38,8 +38,8 @@ export class BrowserRouter extends Router {
   protected new() {
     if (typeof window == 'undefined') return () => {};
 
-    bindQuery(this);
-    this.locate(window.location.pathname + window.location.search);
+    this.locate(current());
+    bindLocation(this);
 
     const sync = () => {
       if (SELF_DRIVEN.has(this)) return;
@@ -47,10 +47,11 @@ export class BrowserRouter extends Router {
       navigate(
         this,
         (work) => this.navigate(work),
-        () => this.locate(window.location.pathname + window.location.search)
+        () => this.locate(current())
       );
     };
     window.addEventListener('popstate', sync);
+    window.addEventListener('hashchange', sync);
 
     const origPush = history.pushState.bind(history);
     const origReplace = history.replaceState.bind(history);
@@ -65,8 +66,13 @@ export class BrowserRouter extends Router {
 
     return () => {
       window.removeEventListener('popstate', sync);
+      window.removeEventListener('hashchange', sync);
       history.pushState = origPush;
       history.replaceState = origReplace;
     };
   }
+}
+
+function current() {
+  return window.location.pathname + window.location.search + window.location.hash;
 }
