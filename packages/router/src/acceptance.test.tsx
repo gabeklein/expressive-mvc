@@ -4,6 +4,11 @@ import { Consumer } from '@expressive/react';
 
 import { location, browserRouter } from '../test.setup';
 import { Route } from './route';
+import { Router as CoreRouter } from './router';
+
+class Router extends CoreRouter {
+  static readonly global: (typeof CoreRouter)['global'] = false;
+}
 
 const router = browserRouter();
 
@@ -82,5 +87,105 @@ describe('acceptance: nested file-routing tree', () => {
 
     expect(mountCount).toBe(1);
     expect(view.container.textContent).toBe('b');
+  });
+});
+
+describe('acceptance: nested Router', () => {
+  const Page = () => (
+    <Consumer for={CoreRouter}>
+      {(router) => <span>{router.path}</span>}
+    </Consumer>
+  );
+
+  const Flow = ({ capture }: { capture(router: Router): void }) => (
+    <Router path="/one" is={capture}>
+      <Route>
+        <Route to="one" as={Page} />
+        <Route to="two" as={Page} />
+      </Route>
+    </Router>
+  );
+
+  it('will isolate inner location and history from the outer Router', async () => {
+    let outer!: Router;
+    let inner!: Router;
+    const view = render(
+      <Router path="/shell" is={(router) => { outer = router; }}>
+        <Route as={RootLayout}>
+          <Flow capture={(router) => { inner = router; }} />
+        </Route>
+      </Router>
+    );
+
+    expect(view.container.textContent).toBe('/one');
+
+    await act(async () => inner.goto('/two'));
+    expect(view.container.textContent).toBe('/two');
+    expect(outer.path).toBe('/shell');
+
+    await act(async () => outer.goto('/elsewhere'));
+    expect(view.container.textContent).toBe('/two');
+    expect(inner.path).toBe('/two');
+
+    await act(async () => inner.back());
+    expect(view.container.textContent).toBe('/one');
+    expect(outer.path).toBe('/elsewhere');
+  });
+
+  it('will not bubble an out-of-bounds back to the outer Router', async () => {
+    let outer!: Router;
+    let inner!: Router;
+    render(
+      <Router path="/first" is={(router) => { outer = router; }}>
+        <Route as={RootLayout}>
+          <Flow capture={(router) => { inner = router; }} />
+        </Route>
+      </Router>
+    );
+
+    await act(async () => outer.goto('/second'));
+    inner.back();
+
+    expect(inner.path).toBe('/one');
+    expect(outer.path).toBe('/second');
+  });
+
+  it('will reset an inline inner Router when its placement remounts', async () => {
+    let inner!: Router;
+    const App = ({ show }: { show: boolean }) => show
+      ? <Flow capture={(router) => { inner = router; }} />
+      : null;
+    const view = render(<App show />);
+
+    await act(async () => inner.goto('/two'));
+    expect(view.container.textContent).toBe('/two');
+
+    view.rerender(<App show={false} />);
+    view.rerender(<App show />);
+
+    expect(view.container.textContent).toBe('/one');
+  });
+
+  it('will preserve an externally owned Router across placement', async () => {
+    const router = Router.new({
+      path: '/one',
+      children: (
+        <Route>
+          <Route to="one" as={Page} />
+          <Route to="two" as={Page} />
+        </Route>
+      )
+    });
+    const App = ({ show }: { show: boolean }) => show ? router : null;
+    const view = render(<App show />);
+
+    await act(async () => router.goto('/two'));
+    expect(view.container.textContent).toBe('/two');
+
+    view.rerender(<App show={false} />);
+    view.rerender(<App show />);
+
+    expect(view.container.textContent).toBe('/two');
+    router.set(null);
   });
 });
