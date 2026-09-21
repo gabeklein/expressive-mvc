@@ -55,8 +55,17 @@ export class Route extends Component {
    * root-level default is the app 404, a nested one the section 404. */
   default = false;
 
-  /** Nearest mounted Route ancestor, if any. */
-  parent = get(Route, false);
+  private upstream = get(Route, false);
+
+  /** Nearest mounted Route ancestor within this Router, if any. */
+  get parent(): Route | undefined {
+    const { upstream, router } = this;
+    return upstream?.router.is === router.is ? upstream : undefined;
+  }
+
+  set parent(parent: Route | undefined) {
+    this.upstream = parent;
+  }
 
   /** Registered child Routes, in declaration order. Reactive. */
   inner: Route[] = [];

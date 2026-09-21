@@ -97,14 +97,40 @@ describe('acceptance: nested Router', () => {
     </Consumer>
   );
 
-  const Flow = ({ capture }: { capture(router: Router): void }) => (
-    <Router path="/one" is={capture}>
-      <Route>
-        <Route to="one" as={Page} />
-        <Route to="two" as={Page} />
-      </Route>
-    </Router>
-  );
+  class Flow extends Router {
+    static readonly global: (typeof Router)['global'] = false;
+    path = '/one';
+
+    render() {
+      return (
+        <Route>
+          <Route to="one" as={Page} />
+          <Route to="two" as={Page} />
+        </Route>
+      );
+    }
+  }
+
+  it('will mount a self-contained Router within an outer Route', () => {
+    let outer!: Router;
+    let boundary!: Route;
+    let flow!: Flow;
+    const view = render(
+      <Router path="/flow" is={(router) => { outer = router; }}>
+        <Route>
+          <Route to="flow" is={(route) => { boundary = route; }}>
+            <Flow is={(router) => { flow = router; }} />
+          </Route>
+        </Route>
+      </Router>
+    );
+
+    expect(outer.path).toBe('/flow');
+    expect(boundary.path).toBe('/flow');
+    expect(boundary.matched).toBe(true);
+    expect(flow.path).toBe('/one');
+    expect(view.container.textContent).toBe('/one');
+  });
 
   it('will isolate inner location and history from the outer Router', async () => {
     let outer!: Router;
@@ -112,7 +138,7 @@ describe('acceptance: nested Router', () => {
     const view = render(
       <Router path="/shell" is={(router) => { outer = router; }}>
         <Route as={RootLayout}>
-          <Flow capture={(router) => { inner = router; }} />
+          <Flow is={(router) => { inner = router; }} />
         </Route>
       </Router>
     );
@@ -138,7 +164,7 @@ describe('acceptance: nested Router', () => {
     render(
       <Router path="/first" is={(router) => { outer = router; }}>
         <Route as={RootLayout}>
-          <Flow capture={(router) => { inner = router; }} />
+          <Flow is={(router) => { inner = router; }} />
         </Route>
       </Router>
     );
@@ -153,7 +179,7 @@ describe('acceptance: nested Router', () => {
   it('will reset an inline inner Router when its placement remounts', async () => {
     let inner!: Router;
     const App = ({ show }: { show: boolean }) => show
-      ? <Flow capture={(router) => { inner = router; }} />
+      ? <Flow is={(router) => { inner = router; }} />
       : null;
     const view = render(<App show />);
 
@@ -167,15 +193,7 @@ describe('acceptance: nested Router', () => {
   });
 
   it('will preserve an externally owned Router across placement', async () => {
-    const router = Router.new({
-      path: '/one',
-      children: (
-        <Route>
-          <Route to="one" as={Page} />
-          <Route to="two" as={Page} />
-        </Route>
-      )
-    });
+    const router = Flow.new();
     const App = ({ show }: { show: boolean }) => show ? router : null;
     const view = render(<App show />);
 

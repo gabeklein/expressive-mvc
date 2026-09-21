@@ -65,6 +65,24 @@ describe('Route', () => {
     expect(fallback.get(null)).toBe(true);
   });
 
+  it('will retain an assigned parent within the same Router', () => {
+    let parent!: Route;
+    let route!: Route;
+    const view = render(
+      <Router>
+        <Route is={(value) => (parent = value)}>
+          <Route is={(value) => (route = value)} />
+        </Route>
+      </Router>
+    );
+
+    route.parent = parent;
+
+    expect(route.parent).toBe(parent);
+
+    view.unmount();
+  });
+
   it('exposes the router query', () => {
     const route = Route.new();
     route.router.goto('/posts?q=hi&page=2');
