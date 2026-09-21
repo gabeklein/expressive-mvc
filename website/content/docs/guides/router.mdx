@@ -104,14 +104,15 @@ function Mission() {
 Navigating from `/missions/a` to `/missions/b` preserves the page instance.
 `match` updates reactively instead of remounting the route.
 
-## Navigation and query state
+## Navigation, query, and fragment state
 
-`Router` exposes the canonical location as `path`, `query`, and derived `url`:
+`Router` exposes the canonical location as `path`, `query`, `hash`, and derived
+`url`:
 
 ```tsx
-router.goto('/missions?sort=urgency');
+router.goto('/missions?sort=urgency#briefing');
 router.goto('/missions', true); // replace current history entry
-router.url = '/missions?sort=urgency'; // push
+router.url = '/missions?sort=urgency#briefing'; // push
 router.back();
 router.forward();
 
@@ -119,6 +120,9 @@ router.query.get('page');
 router.query.set('page', '2');
 router.query.delete('sort');
 router.query.clear();
+
+router.hash; // '' or a leading-# string
+router.hash = '#briefing'; // preserve path/query and push
 ```
 
 The query is a reactive `Map<string, string>`, not an object. Reading one key
@@ -127,7 +131,9 @@ settlement path as `goto`; each effective mutation pushes an entry. URL-driven
 changes reconcile the existing Map in place.
 
 Query values are strings. Repeated keys collapse to the last value and the URL
-is canonically serialized with `URLSearchParams` rules.
+is canonically serialized with `URLSearchParams` rules. The hash remains an
+opaque, percent-encoded string. Hash-only links preserve the current path and
+query. Fragment navigation does not scroll or focus an element automatically.
 
 ## Links and active links
 
@@ -282,12 +288,13 @@ the owning State should use `AbortController` or its own generation check.
 - On React Native, use `Router` and render navigation controls from native host
   components. `BrowserRouter`, `Link`, and `NavLinks` are DOM-facing.
 
-Current location state is pathname plus single-valued query parameters.
-Fragments, basename mounting, arbitrary `history.state`, scroll restoration,
-navigation blockers, external URL routing, and data-router behavior are not
-part of the supported contract yet. `Link` preserves scheme-bearing and
-protocol-relative targets as browser-owned anchors; use the host router for a
-case that needs to route them through the application.
+Current location state is pathname, single-valued query parameters, and an
+opaque fragment. Basename mounting, arbitrary `history.state`, automatic
+scroll-to-anchor, scroll restoration, navigation blockers, external URL
+routing, and data-router behavior are not part of the supported contract yet.
+`Link` preserves scheme-bearing and protocol-relative targets as browser-owned
+anchors; use the host router for a case that needs to route them through the
+application.
 
 ## Testing
 

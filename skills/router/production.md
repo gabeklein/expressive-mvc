@@ -132,13 +132,14 @@ the method as a completion signal.
 
 ## Host and URL boundary
 
-Supported location state is pathname plus a single string value per query key.
-Repeated query keys collapse to the last value. URL changes reconcile the same
-reactive Map instance.
+Supported location state is pathname, a single string value per query key, and
+an opaque fragment string. Repeated query keys collapse to the last value. URL
+changes reconcile the same reactive Map instance. Fragment state remains
+percent-encoded and does not trigger automatic scrolling or focus.
 
 Not currently supported by the public contract:
 
-- fragments and scroll-to-anchor;
+- automatic scroll-to-anchor;
 - basename/subpath mounting;
 - arbitrary `history.state` and `go(n)`;
 - scroll restoration or automatic scroll-to-top;

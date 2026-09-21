@@ -20,8 +20,8 @@ import { Route, Link, NavLinks, Redirect, Router, BrowserRouter } from '@express
 
 ## Mental model
 
-- **`Router`** - the navigation State: current `path`, reactive `query` map, derived `url`, and an in-memory history stack. Headless; touches no browser globals, so it runs and tests anywhere. It is also the memory-router substrate.
-- **`BrowserRouter`** - binds the core to `window.location`/`history`, syncing `path`/`query` on navigation (`goto`, `popstate`, external `pushState`/`replaceState`).
+- **`Router`** - the navigation State: current `path`, reactive `query`/`hash`, derived `url`, and an in-memory history stack. Headless; touches no browser globals, so it runs and tests anywhere. It is also the memory-router substrate.
+- **`BrowserRouter`** - binds the core to `window.location`/`history`, syncing `path`/`query`/`hash` on navigation (`goto`, `popstate`, `hashchange`, external `pushState`/`replaceState`).
 - **`Route`** - a `Component` that matches part of the URL and renders a page. Routes nest to mirror the URL hierarchy. Each `Route` is a scoped facade over the active `Router` (`path`, `match`, `query`, `goto`, `resolve`).
 - **`Link` / `NavLinks` / `Redirect`** - navigation UI built on `Route`.
 
@@ -179,22 +179,28 @@ Param changes do not remount: like `query`, `match` updates reactively and the p
 
 ## Navigation state on `Router`
 
-`Router` (and `BrowserRouter`) expose the canonical location as three reactive surfaces:
+`Router` (and `BrowserRouter`) expose the canonical location as four reactive surfaces:
 
-| Member            | Type                                | Notes                                                                |
-| ----------------- | ----------------------------------- | -------------------------------------------------------------------- |
-| `path`            | `string`                            | Pathname only.                                                       |
-| `query`           | `map.Insert<string,string>`         | Canonical query state - a reactive map (see below).                  |
-| `url`             | `string`                            | Full URL (path + `?query`), canonically serialized. Assigning navigates. |
-| `goto(to, replace?)` | -                                | Navigate to an absolute path; `replace` overwrites the current entry instead of pushing. |
-| `back()` / `forward()` | -                              | Move the history cursor.                                             |
+| Member               | Type                        | Notes                                                                    |
+| -------------------- | --------------------------- | ------------------------------------------------------------------------ |
+| `path`               | `string`                    | Pathname only.                                                           |
+| `query`              | `map.Insert<string,string>` | Canonical query state - a reactive map (see below).                      |
+| `hash`               | `string`                    | Opaque fragment: `''` or a leading-`#` string. Assigning navigates.      |
+| `url`                | `string`                    | Full path + query + fragment, canonically serialized. Assigning navigates. |
+| `goto(to, replace?)` | -                           | Navigate; `replace` overwrites the current entry instead of pushing.    |
+| `back()` / `forward()` | -                         | Move the history cursor.                                                 |
 
 ```tsx
-router.goto('/posts?page=2');   // push
+router.goto('/posts?page=2#comments'); // push
 router.goto('/posts', true);    // replace
-router.url = '/posts?page=2';   // same as goto (push); use goto(to, true) to replace
+router.url = '/posts?page=2#comments'; // same as goto (push)
+router.hash = '#comments';      // preserves path/query and pushes
 router.back();
 ```
+
+`hash` stays percent-encoded and is not parsed into structured state. Hash-only
+targets such as `<Link to="#comments" />` preserve the current path and query.
+Fragment navigation does not scroll or focus an element automatically.
 
 ## The `query` map
 
@@ -212,7 +218,7 @@ Notes:
 - Keys and values are `string` - URL params carry no other type. Reading an absent key is `undefined`.
 - Single-valued: repeated keys (`?a=1&a=2`) collapse to the last value.
 - `query` is **global** to the Router. On a `Route` it is the same map for every route, unlike `match` which is that route's own captures. (Query strings are not path-scoped.)
-- `url` is always canonically serialized (space as `+`, last-value-per-key), so navigation never pushes a spurious duplicate entry due to encoding differences.
+- `url` is always canonically serialized (space as `+`, last-value-per-key), so navigation never pushes a spurious duplicate entry due to encoding differences. Query mutations preserve `hash`.
 
 ## Links and navigation UI
 

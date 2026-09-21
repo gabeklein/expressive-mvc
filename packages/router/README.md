@@ -62,22 +62,28 @@ const BlogPost = () => {
 
 Read `matched` (boolean) in render so same-pattern navigations (`/blog/a` → `/blog/b`) reconcile in place instead of remounting.
 
-## Navigation state & the `query` map
+## Navigation state, query & fragments
 
-`Router` exposes location as reactive surfaces - `path`, a `query` map, and a derived `url`. The query string **is state**: read a key to subscribe, write one to navigate.
+`Router` exposes location as reactive `path`, `query`, `hash`, and derived `url`
+surfaces. Query and fragment state round-trip through navigation and history.
 
 ```tsx
-router.goto('/posts?page=2'); // push
+router.goto('/posts?page=2#comments'); // push
 router.goto('/posts', true); // replace
-router.url = '/posts?page=2'; // assigning url navigates
+router.url = '/posts?page=2#comments'; // assigning url navigates
 
 router.query.get('page'); // read - subscribes to just this param
 router.query.set('page', '2'); // write - pushes a new entry, like goto
 router.query.delete('sort'); // delete - also navigates
+
+router.hash; // '' or a leading-# string
+router.hash = '#comments'; // pushes through the same settlement path
 ```
 
 The map is single-valued (`string` keys and values); repeated URL keys collapse
-to the last value. URL-driven changes reconcile the same map in place.
+to the last value. URL-driven changes reconcile the same map in place. The hash
+is an opaque, percent-encoded string. Fragment navigation does not scroll or
+focus an element automatically.
 
 ## Suspense and navigation settlement
 
@@ -201,9 +207,10 @@ These members are overridable reactive subcomponents bound to the live instance 
 - React Native can use `Router`; `BrowserRouter`, `Link`, and `NavLinks` are
   browser/DOM-facing.
 
-The supported location model is pathname plus single-valued query parameters.
-Fragments, basename mounting, arbitrary history state, scroll restoration,
-navigation blocking, and data-router APIs are not currently built in.
+The supported location model is pathname, single-valued query parameters, and
+an opaque fragment. Basename mounting, arbitrary history state, automatic
+scroll-to-anchor, scroll restoration, navigation blocking, and data-router APIs
+are not currently built in.
 
 ---
 
