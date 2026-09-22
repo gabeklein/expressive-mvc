@@ -28,9 +28,9 @@ export const App = () => (
       <Route to="missions" as={Missions}>
         <Route as={MissionList} />
         <Route to=":codename" as={Mission} />
-        <Route default as={MissionNotFound} />
+        <Route none as={MissionNotFound} />
       </Route>
-      <Route default as={NotFound} />
+      <Route none as={NotFound} />
     </Route>
   </BrowserRouter>
 );
@@ -43,7 +43,7 @@ or layout, and a layout receives the matched child through `children`.
 | ---------------- | --------------------------------------------------------------------------------------------------------------------- |
 | `to`             | Segment or pattern. `:name` captures a param; a trailing `*` catches the remaining segments. Omit for an index route. |
 | `as`             | Page or layout Component. A layout receives matched `children`.                                                       |
-| `default`        | Matches when no sibling in this scope did. Root = app 404; nested = section 404.                                      |
+| `none`           | Matches when no sibling in this scope did. Root = app 404; nested = section 404.                                      |
 | `redirect`       | Static redirect or synchronous/async entry guard.                                                                     |
 | `fallback`       | Suspense fallback on cold load. In-app navigation normally holds the outgoing page.                                   |
 | `label` / `meta` | Display data for navigation and breadcrumbs; ignored by matching.                                                     |
@@ -60,12 +60,12 @@ Nesting is not only visual grouping. It creates a route scope:
 <Route to="missions" as={MissionLayout}>
   <Route as={MissionList} />
   <Route to=":codename" as={Mission} />
-  <Route default as={MissionNotFound} />
+  <Route none as={MissionNotFound} />
 </Route>
 ```
 
 `MissionLayout` remains mounted while its child changes, so its state survives.
-The nested `default` catches only misses below `/missions`. A flat
+The nested `none` Route catches only misses below `/missions`. A flat
 `to="missions/:codename"` leaf resolves the same valid URL, but cannot own that
 layout or section fallback.
 
@@ -193,7 +193,7 @@ The `Route.redirect` prop runs before a matched route enters:
 | ----------------------------- | ---------------------------------------------- |
 | non-empty string              | Redirect there, replacing history.             |
 | `undefined`, `false`, or `''` | Allow the route.                               |
-| `null`                        | Cede the path to the nearest scoped `default`. |
+| `null`                        | Cede the path to the nearest scoped `none` Route. |
 
 ```tsx
 <Route
@@ -210,7 +210,7 @@ cached while navigation stays inside the matched route space and re-evaluated
 after leaving and re-entering it.
 
 Use `null` for a resource that should behave as not found. Put the leaf inside a
-scope with a `default` so there is somewhere local to fall through.
+scope with a `none` child so there is somewhere local to fall through.
 
 ## Lazy pages, errors, and pending navigation
 

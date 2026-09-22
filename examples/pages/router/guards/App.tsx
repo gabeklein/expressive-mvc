@@ -31,7 +31,7 @@ export default () => (
       <Route as={Lobby} />
       <Route to="login" as={Login} />
       <Route to="vault/:doc" as={Doc} redirect={vet} fallback={<p className="gate">checking…</p>} />
-      <Route default as={NotFound} />
+      <Route none as={NotFound} />
     </Route>
   </Provider>
 );
@@ -43,7 +43,7 @@ const Frame = (props: { children?: ReactNode }) => (
       A <code>redirect</code> function is an entry guard, run when its route is
       matched, and one function covers every verdict: a path sends the visitor
       elsewhere, nothing at all lets the render through, and <code>null</code>{' '}
-      cedes the path - the scope falls through to its <code>default</code> rather
+      cedes the path - the scope falls through to its <code>none</code> Route rather
       than admitting whether anything was there.
     </p>
     <nav className="nav">
