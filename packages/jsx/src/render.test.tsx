@@ -4,6 +4,11 @@ import { Component, State, createPortal, has, map, render } from './index';
 import { flushMicrotasks } from '../test.setup';
 import { vnode } from './vnode';
 
+if (false) {
+  // @ts-expect-error @expressive/jsx uses the native class prop.
+  <div className="legacy" />;
+}
+
 describe('render', () => {
   it('will patch native properties, events, styles, refs and raw HTML', async () => {
     const first = vi.fn();
@@ -20,7 +25,7 @@ describe('render', () => {
           return (
             <div
               aria-label="greeting"
-              className="ready"
+              class="ready"
               data-state="open"
               hidden
               onClick={first}
@@ -48,7 +53,7 @@ describe('render', () => {
               hidden={false}
               onClick={second}
               ref={(node) => refs.push(node)}
-              style="height: 12px"
+              style={['next-style', { height: 12 }]}
               tabIndex={undefined}
             >
               after
@@ -61,7 +66,7 @@ describe('render', () => {
         if (this.mode == 3)
           return <div ref={objectRef} style={{ color: 'red', height: null, width: 0 }}>children</div>;
 
-        return <div style={null as any}>unstyled</div>;
+        return <div style={null}>unstyled</div>;
       }
     }
 
@@ -86,11 +91,11 @@ describe('render', () => {
     view.mode = 1;
     await flushMicrotasks();
     expect(root.querySelector('div')).toBe(node);
-    expect(node.className).toBe('next');
+    expect(node.className).toBe('next next-style');
     expect(node.hasAttribute('data-state')).toBe(false);
     expect(node.hidden).toBe(false);
     expect(node.title).toBe('');
-    expect(node.style.cssText).toContain('height: 12px');
+    expect(node.style.height).toBe('12px');
     node.click();
     expect(first).toHaveBeenCalledOnce();
     expect(capture).toHaveBeenCalledOnce();
@@ -401,6 +406,66 @@ describe('render', () => {
     release();
   });
 
+  it('will recursively compose classes and inline styles', async () => {
+    class Styled extends Component {
+      native: string | undefined = 'external';
+      mode = 0;
+      initial = [
+        ' base\ttwo height: 12px ',
+        false,
+        null,
+        undefined,
+        '',
+        [
+          { color: 'red', height: 12, opacity: 1, width: 10 },
+          [{ color: 'blue', height: null, opacity: 0, width: 20 }]
+        ]
+      ] as const;
+
+      render() {
+        return (
+          <div
+            {...({ className: 'legacy' } as any)}
+            class={this.native}
+            style={this.mode == 0 ? this.initial : this.mode == 1 ? ['next', { height: 4 }] : null}
+          />
+        );
+      }
+    }
+
+    let view!: Styled;
+    const root = document.createElement('main');
+    render(<Styled is={(value) => (view = value)} />, root);
+    const node = root.querySelector('div')!;
+
+    expect(node.className).toBe('external base two height: 12px');
+    expect(node.style.color).toBe('blue');
+    expect(node.style.height).toBe('');
+    expect(node.style.opacity).toBe('0');
+    expect(node.style.width).toBe('20px');
+
+    view.native = 'changed';
+    await flushMicrotasks();
+    expect(node.className).toBe('changed base two height: 12px');
+    expect(node.style.width).toBe('20px');
+
+    view.mode = 1;
+    await flushMicrotasks();
+    expect(node.className).toBe('changed next');
+    expect(node.style.color).toBe('');
+    expect(node.style.height).toBe('4px');
+    expect(node.style.width).toBe('');
+
+    view.native = undefined;
+    await flushMicrotasks();
+    expect(node.className).toBe('next');
+
+    view.mode = 2;
+    await flushMicrotasks();
+    expect(node.hasAttribute('class')).toBe(false);
+    expect(node.style.height).toBe('');
+  });
+
   it('will render SVG, fragments and primitive updates', async () => {
     class Shapes extends Component {
       count: number | bigint = 1;
@@ -410,7 +475,16 @@ describe('render', () => {
           <>
             text:{this.count}
             <label htmlFor="shape">shape</label>
-            <svg viewBox="0 0 10 10" {...({ focusable: true } as any)}><circle cx={5} cy={5} r={4} /></svg>
+            <svg viewBox="0 0 10 10" {...({ focusable: true } as any)}>
+              <circle
+                {...({ className: 'legacy' } as any)}
+                class="shape"
+                cx={5}
+                cy={5}
+                r={4}
+                style={['active', { opacity: 0.5 }]}
+              />
+            </svg>
             {false}
           </>
         );
@@ -423,6 +497,8 @@ describe('render', () => {
 
     expect(root.textContent).toBe('text:1shape');
     expect(root.querySelector('circle')?.namespaceURI).toBe('http://www.w3.org/2000/svg');
+    expect(root.querySelector('circle')?.getAttribute('class')).toBe('shape active');
+    expect((root.querySelector('circle') as SVGCircleElement).style.opacity).toBe('0.5');
     expect(root.querySelector('label')?.getAttribute('for')).toBe('shape');
     expect(root.querySelector('svg')?.getAttribute('focusable')).toBe('');
 

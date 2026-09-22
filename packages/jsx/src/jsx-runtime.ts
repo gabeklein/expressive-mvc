@@ -29,9 +29,10 @@ type EventAttributes = {
     (event: GlobalEventHandlersEventMap[K]) => unknown;
 };
 
-type Style = Partial<Record<keyof CSSStyleDeclaration, string | number | null>> & {
+type Declarations = Partial<Record<keyof CSSStyleDeclaration, string | number | null>> & {
   [property: `--${string}`]: string | number | null | undefined;
 };
+type Style = string | Declarations | false | null | undefined | readonly Style[];
 
 type SVGAttributes = {
   [K in
@@ -53,11 +54,10 @@ type Attributes<T extends Element> = EventAttributes & {
 } & {
   children?: Node;
   class?: string;
-  className?: string;
   dangerouslySetInnerHTML?: { __html: string };
   key?: string | number | null;
   ref?: ((node: T | null) => unknown) | { current: T | null };
-  style?: string | Style;
+  style?: Style;
   [attribute: `data-${string}`]: unknown;
   [attribute: `aria-${string}`]: unknown;
 };

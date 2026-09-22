@@ -683,10 +683,13 @@ function patchProps(fiber: Fiber, next: Record<string, any>) {
   }
 
   for (const key of Object.keys({ ...previous, ...next })) {
-    if (key == 'children' || key == 'key' || key == 'ref' || CONTROLS.includes(key)) continue;
+    if (key == 'children' || key == 'class' || key == 'className' || key == 'key' || key == 'ref' || key == 'style' || CONTROLS.includes(key)) continue;
     if (previous[key] === next[key]) continue;
     patchProp(fiber, element, key, previous[key], next[key]);
   }
+
+  if (previous.class !== next.class || previous.style !== next.style)
+    patchAppearance(element, previous.class, previous.style, next.class, next.style);
 
   fiber.props = next;
 
@@ -712,11 +715,6 @@ function patchProp(fiber: Fiber, element: Element, key: string, previous: any, n
     return;
   }
 
-  if (key == 'style') {
-    patchStyle(element as HTMLElement, previous, next);
-    return;
-  }
-
   if (key == 'dangerouslySetInnerHTML') {
     element.innerHTML = next?.__html || '';
     return;
@@ -736,7 +734,7 @@ function patchProp(fiber: Fiber, element: Element, key: string, previous: any, n
     return;
   }
 
-  const name = key == 'className' ? 'class' : key == 'htmlFor' ? 'for' : key;
+  const name = key == 'htmlFor' ? 'for' : key;
 
   if (key.startsWith('aria-') && next != null) {
     element.setAttribute(name, String(next));
@@ -766,29 +764,65 @@ function patchProp(fiber: Fiber, element: Element, key: string, previous: any, n
   element.setAttribute(name, next === true ? '' : String(next));
 }
 
-function patchStyle(element: HTMLElement, previous: string | Record<string, unknown> | undefined, next: string | Record<string, unknown> | undefined) {
-  if (typeof next == 'string') {
-    element.style.cssText = next;
+type Style = string | Record<string, unknown> | false | null | undefined | readonly Style[];
+
+function patchAppearance(
+  element: Element,
+  previousClass: unknown,
+  previousStyle: Style,
+  nextClass: unknown,
+  nextStyle: Style
+) {
+  const before = normalizeStyle(previousClass, previousStyle);
+  const after = normalizeStyle(nextClass, nextStyle);
+
+  if (before.className !== after.className) {
+    if (after.className) element.setAttribute('class', after.className);
+    else element.removeAttribute('class');
+  }
+
+  const declaration = (element as HTMLElement).style as any;
+  for (const key of Object.keys({ ...before.declarations, ...after.declarations })) {
+    const value = after.declarations[key];
+    if (key.startsWith('--')) {
+      declaration.setProperty(key, value == null ? '' : String(value));
+      continue;
+    }
+    if (typeof value == 'number') declaration[key] = '';
+    declaration[key] = value == null ? '' : value;
+    if (typeof value == 'number' && value !== 0 && !declaration[key])
+      declaration[key] = `${value}px`;
+  }
+}
+
+function normalizeStyle(className: unknown, value: Style) {
+  const classes: string[] = [];
+  const declarations: Record<string, unknown> = {};
+
+  appendClasses(classes, className);
+  flattenStyle(value, classes, declarations);
+
+  return { className: classes.join(' '), declarations };
+}
+
+function flattenStyle(value: Style, classes: string[], declarations: Record<string, unknown>) {
+  if (!value) return;
+
+  if (typeof value == 'string') {
+    appendClasses(classes, value);
     return;
   }
 
-  if (typeof previous == 'string') element.style.cssText = '';
-
-  const before = typeof previous == 'object' && previous ? previous : {};
-  const after = typeof next == 'object' && next ? next : {};
-
-  for (const key of Object.keys({ ...before, ...after })) {
-    const value = after[key];
-    const style = element.style as any;
-    if (key.startsWith('--')) {
-      style.setProperty(key, value == null ? '' : String(value));
-      continue;
-    }
-    if (typeof value == 'number') style[key] = '';
-    style[key] = value == null ? '' : value;
-    if (typeof value == 'number' && value !== 0 && !style[key])
-      style[key] = `${value}px`;
+  if (Array.isArray(value)) {
+    value.forEach((entry) => flattenStyle(entry, classes, declarations));
+    return;
   }
+
+  Object.assign(declarations, value);
+}
+
+function appendClasses(classes: string[], value: unknown) {
+  if (typeof value == 'string') classes.push(...value.split(/\s+/).filter(Boolean));
 }
 
 function applyRef(ref: unknown, value: Element | null) {
