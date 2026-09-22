@@ -56,7 +56,29 @@ Events are native `addEventListener` listeners (`onClick`, `onKeyDown`, `onClick
 />
 ```
 
-`className` is ignored, including through untyped spreads. A string in `style` is a class token, not CSS declaration text. Treat arrays and objects as immutable render values—replace them when their contents change. Compiler-generated style blocks are not part of the `0.1` contract.
+`className` is ignored, including through untyped spreads. A string in `style` is a class token, not CSS declaration text. Treat arrays and objects as immutable render values—replace them when their contents change.
+
+### Component appearance rules
+
+Assign an immutable `style` map to an FC or Component class. A host-tag key applies automatically. `_rule` activates an object rule; `_macro={value}` passes the value to a pure function rule. Style maps inherit through component nesting, with the nearer component shadowing a parent rule.
+
+```tsx
+function Button({ active, color }: { active: boolean; color: string }) {
+  return <button _active={active} _color={color}>Save</button>;
+}
+
+Button.style = {
+  button: { padding: 8 },
+  active: { fontWeight: 700 },
+  color: (value: unknown) => ({ color: value })
+};
+```
+
+Object rules are constant macro expansions. Function rules may return an object, class token, nested array, or empty value. Keep them argument-pure—expansions are cached. `false`, `null`, and `undefined` omit an invocation; `0` remains a value. `_` attributes are style-only and never reach the DOM.
+
+Serializable combinations emit a generated class lazily. A structural route caches 64 combinations; further unseen combinations fall back to inline declarations, while prior cached combinations remain reusable. Explicit inline objects in `style` apply after appearance declarations.
+
+Keep each JSX location's `_` attribute names stable. Values may change, but adding a new `_` key later through a dynamic spread is not yet detected. Nested descendant scopes and build-time extraction are not included in the `0.1` experiment.
 
 `class` is element-only. `style` on a component forwards through component and transparent boundaries to its host root; fragment output applies it to every host root. Reading `style` during render - destructuring, a spread, `this.props.style`, or a declared `style` field on a Component - takes ownership and suppresses forwarding for that render. Forwarded style overrides the root's own, and the outermost caller wins; a component wanting the last word consumes `style` and places it first:
 
@@ -138,4 +160,4 @@ return createPortal(<Dialog />, document.body);
 
 ## Boundaries
 
-The renderer is browser-only: no native target, SSR, or hydration. It has no general hook API, memo wrapper, synthetic events, devtools ownership, or generated stylesheet runtime. The expressive-jsx label-based styling compiler is not included.
+The renderer is browser-only: no native target, SSR, or hydration. It has no general hook API, memo wrapper, synthetic events, or devtools ownership. Build-time expressive-jsx extraction is not included.
