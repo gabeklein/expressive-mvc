@@ -39,7 +39,7 @@ export class NavLinks extends Component {
     return (
       <List>
         {routes.map((route, i) => {
-          if (route.redirect || route.default) return null;
+          if (route.redirect || route.none) return null;
 
           const inner = route.inner.length ? this.branch(route.inner) : null;
 

@@ -142,7 +142,7 @@ describe('Route', () => {
     expect((await renderAct(<Route to="" as={Home} />)).container.textContent).toBe('Home');
   });
 
-  it('specific sibling declared first beats bare-default Route', () => {
+  it('specific sibling declared first beats bare-none Route', () => {
     location('/about');
     const view = render(
       <Route>
@@ -153,12 +153,12 @@ describe('Route', () => {
     expect(view.container.textContent).toBe('About');
   });
 
-  it('default Route renders when no earlier sibling matches', () => {
+  it('none Route renders when no earlier sibling matches', () => {
     location('/nope');
     const view = render(
       <Route>
         <Route to="/about" as={() => <span>About</span>} />
-        <Route default as={() => <span>Fallback</span>} />
+        <Route none as={() => <span>Fallback</span>} />
       </Route>
     );
     expect(view.container.textContent).toBe('Fallback');
@@ -398,7 +398,7 @@ describe('Route', () => {
   // Blocked on https://github.com/gabeklein/expressive-state/issues/85 -
   // Expressive does not reset omitted props to defaults on prop update, so
   // a winner-swap to a bare Route inherits the prior `to`.
-  it.skip('switches between specific and bare-default on navigation', async () => {
+  it.skip('switches between specific and bare-none on navigation', async () => {
     location('/a');
     const view = render(
       <Route>
@@ -662,7 +662,7 @@ describe('Route', () => {
 
   // A multi-segment `to` ("users/:id") is a flat leaf - it does NOT synthesize an
   // intermediate "users" scope. Only explicit nesting opens a scope that can hold
-  // a section `default` / shared chrome. These pin that the two forms differ.
+  // a section `none` / shared chrome. These pin that the two forms differ.
   describe('scope vs segment (no desugaring)', () => {
     const Chrome = (props: { children?: React.ReactNode }) => (
       <main>chrome/{props.children}</main>
@@ -671,12 +671,12 @@ describe('Route', () => {
     const SectionMissing = () => <span>section-404</span>;
     const AppMissing = () => <span>app-404</span>;
 
-    it('nested form exposes a section scope: a miss hits the section default within chrome', () => {
+    it('nested form exposes a section scope: a miss hits the section none Route within chrome', () => {
       location('/users');
       const view = render(
         <Route to="users" as={Chrome}>
           <Route to=":id" as={Detail} />
-          <Route default as={SectionMissing} />
+          <Route none as={SectionMissing} />
         </Route>
       );
       expect(view.container.textContent).toBe('chrome/section-404');
@@ -693,12 +693,12 @@ describe('Route', () => {
       expect(view.container.textContent).toContain('hello');
     });
 
-    it('flat form has no section scope: the same miss falls through to the app default, no chrome', () => {
+    it('flat form has no section scope: the same miss falls through to the app none Route, no chrome', () => {
       location('/users');
       const view = render(
         <Route>
           <Route to="users/:id" as={Detail} />
-          <Route default as={AppMissing} />
+          <Route none as={AppMissing} />
         </Route>
       );
       expect(view.container.textContent).toBe('app-404');
@@ -710,7 +710,7 @@ describe('Route', () => {
       const nested = render(
         <Route to="users" as={Chrome}>
           <Route to=":id" as={Detail} />
-          <Route default as={SectionMissing} />
+          <Route none as={SectionMissing} />
         </Route>
       );
       expect(nested.container.textContent).toBe('chrome/detail');
@@ -719,7 +719,7 @@ describe('Route', () => {
       const flat = render(
         <Route>
           <Route to="users/:id" as={Detail} />
-          <Route default as={AppMissing} />
+          <Route none as={AppMissing} />
         </Route>
       );
       expect(flat.container.textContent).toBe('detail');
@@ -788,10 +788,10 @@ describe('Route', () => {
     });
   });
 
-  // A section scope owning a `default` is claimed by that default for any path
+  // A section scope owning a `none` Route is claimed by it for any path
   // within it - the same verdict whether the scope is the root route or sits
   // under a wrapper alongside other `as`-bearing siblings.
-  describe('section default under a wrapper', () => {
+  describe('section none Route under a wrapper', () => {
     const Chrome = (props: { children?: React.ReactNode }) => (
       <main>chrome/{props.children}</main>
     );
@@ -802,7 +802,7 @@ describe('Route', () => {
     const docs = (
       <Route to="docs" as={Chrome}>
         <Route to=":id" as={Detail} />
-        <Route default as={SectionMissing} />
+        <Route none as={SectionMissing} />
       </Route>
     );
 
@@ -874,7 +874,7 @@ describe('Route', () => {
       expect(view.container.textContent).toBe('index');
     });
 
-    it('keeps outer chrome when an inner section default catches', () => {
+    it('keeps outer chrome when an inner section none Route catches', () => {
       location('/site/docs');
       const Outer = (props: { children?: React.ReactNode }) => (
         <div>outer/{props.children}</div>
@@ -883,14 +883,14 @@ describe('Route', () => {
         <Route to="site" as={Outer}>
           <Route to="docs" as={Chrome}>
             <Route to=":id" as={Detail} />
-            <Route default as={SectionMissing} />
+            <Route none as={SectionMissing} />
           </Route>
         </Route>
       );
       expect(view.container.textContent).toBe('outer/chrome/section-404');
     });
 
-    it('will throw if a later sibling is shadowed by a section default', () => {
+    it('will throw if a later sibling is shadowed by a section none Route', () => {
       location('/docs/team/roster');
       const Roster = () => <span>roster</span>;
       expect(() =>
@@ -903,13 +903,13 @@ describe('Route', () => {
       ).toThrow(/Route "\/docs\/team\/roster" is unreachable/);
     });
 
-    it('will throw if a param section default shadows a later sibling', () => {
+    it('will throw if a param section none Route shadows a later sibling', () => {
       location('/');
       expect(() =>
         render(
           <Route>
             <Route to=":section" as={Chrome}>
-              <Route default as={SectionMissing} />
+              <Route none as={SectionMissing} />
             </Route>
             <Route to="docs/intro" as={Detail} />
           </Route>
@@ -922,7 +922,7 @@ describe('Route', () => {
       const view = render(
         <Route>
           <Route to="docs/team" as={Chrome}>
-            <Route default as={SectionMissing} />
+            <Route none as={SectionMissing} />
           </Route>
           <Route to="docs" as={Index} />
         </Route>
@@ -1221,14 +1221,14 @@ describe('Route', () => {
         const Document = () => <article>doc</article>;
         const NotFound = () => <h1>not found</h1>;
 
-        it('cedes the path so the scope falls through to its default', async () => {
+        it('cedes the path so the scope falls through to its none Route', async () => {
           location('/document/123');
           const gate = mockPromise<string | void | null>();
           await act(async () => {
             render(
               <Route to="document" as={Layout}>
                 <Route to=":id" fallback={<h1>loading</h1>} redirect={() => gate} as={Document} />
-                <Route default as={NotFound} />
+                <Route none as={NotFound} />
               </Route>
             );
           });
@@ -1247,7 +1247,7 @@ describe('Route', () => {
             render(
               <Route to="document" as={Layout}>
                 <Route to=":id" fallback={<h1>loading</h1>} redirect={() => gate} as={Document} />
-                <Route default as={NotFound} />
+                <Route none as={NotFound} />
               </Route>
             );
           });
@@ -1264,7 +1264,7 @@ describe('Route', () => {
             render(
               <Route to="document" as={Layout} is={(r) => (router = r.router)}>
                 <Route to=":id" redirect={() => gate} as={Document} />
-                <Route default as={NotFound} />
+                <Route none as={NotFound} />
               </Route>
             );
           });
@@ -1285,7 +1285,7 @@ describe('Route', () => {
           const tree = () => (
             <Route is={(r) => (owner = r.router)}>
               <Route to="admin" redirect={() => gate()} as={() => <h1>secret</h1>} />
-              <Route default as={NotFound} />
+              <Route none as={NotFound} />
             </Route>
           );
 
@@ -1308,7 +1308,7 @@ describe('Route', () => {
             render(
               <Route to="document" as={Layout} is={(r) => (scope = r)}>
                 <Route to=":id" redirect={() => gate} as={Document} />
-                <Route default as={NotFound} />
+                <Route none as={NotFound} />
               </Route>
             );
           });
@@ -1420,13 +1420,13 @@ describe('extends', () => {
     expect(unmatched.container.textContent).toBe('');
   });
 
-  it('see-through scope resolves via a subclass default child', () => {
+  it('see-through scope resolves via a subclass none child', () => {
     class Fallback extends Route {}
     location('/section/anything');
     const view = render(
       <Route>
         <Route to="section/*">
-          <Fallback default as={() => <span>fallback</span>} />
+          <Fallback none as={() => <span>fallback</span>} />
         </Route>
       </Route>
     );
@@ -1447,9 +1447,9 @@ describe('extends', () => {
 
   describe('children seam', () => {
     class Page extends Route {
-      Default: () => any = () => <span>fallback</span>;
+      None: () => any = () => <span>fallback</span>;
       protected get children(): Component.Node {
-        return (<>{super.children}<Route default as={this.Default} /></>) as any;
+        return (<>{super.children}<Route none as={this.None} /></>) as any;
       }
     }
 
@@ -1459,7 +1459,7 @@ describe('extends', () => {
       expect(Route.prototype.render.call(root)).toBeDefined();
     });
 
-    it('converts a subclass Default into a child default route', () => {
+    it('converts a subclass None into a child none Route', () => {
       location('/section/missing');
       const view = render(
         <Route>
@@ -1471,7 +1471,7 @@ describe('extends', () => {
       expect(view.container.textContent).toBe('fallback');
     });
 
-    it('lets a real sibling match win over the injected default', () => {
+    it('lets a real sibling match win over the injected none Route', () => {
       location('/section/info');
       const view = render(
         <Route>
@@ -1483,7 +1483,7 @@ describe('extends', () => {
       expect(view.container.textContent).toBe('info');
     });
 
-    it('reclassifies a leaf as a see-through scope when only a default is contributed', () => {
+    it('reclassifies a leaf as a see-through scope when only a none Route is contributed', () => {
       location('/section/anything');
       const view = render(
         <Route>
@@ -1493,14 +1493,14 @@ describe('extends', () => {
       expect(view.container.textContent).toBe('fallback');
     });
 
-    it('contributed default suppresses an ancestor default (section 404)', () => {
+    it('contributed none Route suppresses an ancestor none Route (section 404)', () => {
       location('/section/missing');
       const view = render(
         <Route>
           <Page to="section/*">
             <Route to="info" as={() => <span>info</span>} />
           </Page>
-          <Route default as={() => <span>app-404</span>} />
+          <Route none as={() => <span>app-404</span>} />
         </Route>
       );
       expect(view.container.textContent).toBe('fallback');
@@ -1511,7 +1511,7 @@ describe('extends', () => {
       class Tracked extends Route {
         protected get children(): Component.Node {
           return (
-            <>{super.children}<Route default as={() => { ran++; return <span>x</span>; }} /></>
+            <>{super.children}<Route none as={() => { ran++; return <span>x</span>; }} /></>
           ) as any;
         }
       }
@@ -1690,11 +1690,11 @@ describe('matches', () => {
   });
 });
 
-describe('default', () => {
+describe('none', () => {
   const aOr404 = (
     <>
       <Route to="a" as={() => <span>a</span>} />
-      <Route default as={() => <span>404</span>} />
+      <Route none as={() => <span>404</span>} />
     </>
   );
 
@@ -1711,7 +1711,7 @@ describe('default', () => {
     Router.new();
     let lone!: Route;
     const view = render(
-      <Route default as={() => <span>lone</span>} is={(r) => (lone = r)} />
+      <Route none as={() => <span>lone</span>} is={(r) => (lone = r)} />
     );
     await act(async () => {});
     expect(lone.matched).toBe(false);
@@ -1723,7 +1723,7 @@ describe('default', () => {
     let fallback!: Route;
     await mount(
       <Route to="docs/*">
-        <Route default is={(r) => (fallback = r)} as={() => <span>404</span>} />
+        <Route none is={(r) => (fallback = r)} as={() => <span>404</span>} />
       </Route>
     );
     expect(fallback.path).toBe('/docs');
@@ -1744,9 +1744,9 @@ describe('default', () => {
       <>
         <Route to="posts/*">
           <Route to="recent" as={() => <span>recent</span>} />
-          <Route default as={() => <span>posts404</span>} />
+          <Route none as={() => <span>posts404</span>} />
         </Route>
-        <Route default as={() => <span>app404</span>} />
+        <Route none as={() => <span>app404</span>} />
       </>
     );
     expect(view.container.textContent).toBe('recent');
@@ -1763,21 +1763,21 @@ describe('default', () => {
     const { root } = await mount(
       <>
         <Route to="a" />
-        <Route default as={() => <span>404</span>} />
+        <Route none as={() => <span>404</span>} />
       </>
     );
     expect(root.matches).toEqual([]);
     expect(root.active).toBeUndefined();
   });
 
-  it('sees through an anonymous group - nested match suppresses sibling default', async () => {
+  it('sees through an anonymous group - nested match suppresses sibling none Route', async () => {
     router.current.goto('/a');
     const { view } = await mount(
       <>
         <Route>
           <Route to="a" as={() => <span>A</span>} />
         </Route>
-        <Route default as={() => <span>F</span>} />
+        <Route none as={() => <span>F</span>} />
       </>
     );
     expect(view.container.textContent).toBe('A');

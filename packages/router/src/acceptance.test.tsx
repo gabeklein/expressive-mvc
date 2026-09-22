@@ -33,7 +33,7 @@ function Tree() {
         <Route as={BlogIndex} />
         <Route to=":slug" as={BlogPost} />
       </Route>
-      <Route default as={NotFound} />
+      <Route none as={NotFound} />
     </Route>
   );
 }

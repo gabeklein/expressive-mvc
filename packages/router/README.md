@@ -32,7 +32,7 @@ import { BrowserRouter, Route } from '@expressive/router';
       <Route to=":slug" as={BlogPost} /> {/* /blog/:slug */}
     </Route>
     <Route to="login" redirect="/" /> {/* matched -> redirects */}
-    <Route default as={NotFound} /> {/* nothing else matched */}
+    <Route none as={NotFound} /> {/* no sibling matched */}
   </Route>
 </BrowserRouter>;
 ```
@@ -41,7 +41,7 @@ import { BrowserRouter, Route } from '@expressive/router';
 | ---------------- | ------------------------------------------------------------------------------------------ |
 | `to`             | URL segment. `:name` captures a param, `*` is a catch-all. Omit for an index route.        |
 | `as`             | Component rendered when matched (as a layout, receives `children`).                        |
-| `default`        | Matches when no sibling did - scoped to its parent (root = app 404, nested = section 404). |
+| `none`           | Matches when no sibling did - scoped to its parent (root = app 404, nested = section 404). |
 | `redirect`       | When matched, redirect here instead of rendering.                                          |
 | `label` / `meta` | Display name / free-form metadata for nav and breadcrumbs (ignored by matching).           |
 
@@ -225,7 +225,7 @@ import { Redirect } from '@expressive/router';
 
 `Route.redirect` also accepts a synchronous or async entry guard. A non-empty
 string redirects with replacement, a falsy value allows the route, and `null`
-cedes the path to the nearest scoped `default`:
+cedes the path to the nearest scoped `none` Route:
 
 ```tsx
 <Route

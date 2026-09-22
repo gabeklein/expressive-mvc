@@ -71,11 +71,11 @@ describe('scopeResolves', () => {
     expect(scopeResolves(tree, '', '/anything')).toBe(false);
   });
 
-  it('a default claims anything within the scope base', () => {
+  it('a none Route claims anything within the scope base', () => {
     const tree = (
       <Route to="docs">
         <Route to=":id" />
-        <Route default />
+        <Route none />
       </Route>
     );
     expect(scopeResolves(tree, '', '/docs')).toBe(true);
@@ -84,12 +84,12 @@ describe('scopeResolves', () => {
     expect(scopeResolves(tree, '', '/elsewhere')).toBe(false);
   });
 
-  it('a nested scope default resolves its ancestors too', () => {
+  it('a nested scope none Route resolves its ancestors too', () => {
     const tree = (
       <Route to="a">
         <Route to="b">
           <Route to=":id" />
-          <Route default />
+          <Route none />
         </Route>
       </Route>
     );

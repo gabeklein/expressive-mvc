@@ -67,7 +67,7 @@ general loader:
 
 - string: redirect with replacement;
 - `undefined`, `false`, or `''`: allow;
-- `null`: cede to the nearest scoped `default`.
+- `null`: cede to the nearest scoped `none` Route.
 
 ## Presentation settlement
 
@@ -105,16 +105,16 @@ need not call `super`.
 - A lazy page or async field throwing a Promise suspends into `fallback`.
 - A rejected lazy import or async field is an error. Handle it with
   `Component.catch` on a Route subclass or an ancestor boundary.
-- A structural miss reaches the nearest `default` Route.
-- A guard returning `null` force-404s into that same scoped default.
+- A structural miss reaches the nearest `none` Route.
+- A guard returning `null` force-404s into that same scoped fallback.
 
-Put a resource leaf inside a parent Route with a `default` when it needs a
+Put a resource leaf inside a parent Route with a `none` child when it needs a
 section-specific not-found page.
 
 ## Test the owner of the behavior
 
 Use a headless Router for matching, relative navigation, params, query state,
-guards, defaults, and memory history. Use BrowserRouter only when the assertion
+guards, none branches, and memory history. Use BrowserRouter only when the assertion
 depends on `window.location`, `window.history`, Back/Forward, external History
 calls, or address timing.
 
