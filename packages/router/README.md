@@ -104,24 +104,24 @@ subclass it when the route set or navigation policy is reusable:
 
 ```tsx
 class PanelRouter extends Router {
+  path = '/profile';
+
   select(to: string) {
     this.goto(to, true); // selection, not a growing visit history
   }
 
   render() {
     return (
-      <Settings>
+      <>
         <Route to="profile" as={ProfileTab} />
         <Route to="security" as={SecurityTab} />
-      </Settings>
+      </>
     );
   }
 }
 
 <BrowserRouter>
-  <Route to="settings">
-    <PanelRouter path="/profile" />
-  </Route>
+  <Route to="settings" as={PanelRouter} />
 </BrowserRouter>;
 ```
 
@@ -141,10 +141,15 @@ Build behavior from `Router` rather than selecting a specialized router type:
 tabs usually replace the current location; wizards usually push steps and use
 `back()`. Keep workflow data and validation in a domain State.
 
-Ownership controls lifetime. An inline `<PanelRouter>` is owned by its placement
-and resets when remounted. To preserve its location and history, store
-`panel = new PanelRouter({ path: '/profile' })` on a longer-lived State or
-Component and render that owned instance.
+Ownership controls lifetime. A Route-owned `PanelRouter` resets when remounted.
+To preserve its location and history, store `panel = new PanelRouter()` on a
+longer-lived State or Component and render that owned instance. Use explicit
+child composition when the placement must configure `path`:
+
+```tsx
+<Route to="settings"><PanelRouter path="/security" /></Route>
+```
+
 Use a headless Router inside `BrowserRouter`; nesting `BrowserRouter` would make
 both instances compete for the same browser address and History API.
 

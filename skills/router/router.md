@@ -216,6 +216,8 @@ subclass it to package reusable routes or navigation policy.
 
 ```tsx
 class PanelRouter extends Router {
+  path = '/profile';
+
   select(to: string) { this.goto(to, true); }
 
   render() {
@@ -226,7 +228,7 @@ class PanelRouter extends Router {
   }
 }
 
-<Route to="settings"><PanelRouter path="/profile" /></Route>
+<Route to="settings" as={PanelRouter} />
 ```
 
 No `global` declaration is needed: the outer context claims the instance. A
@@ -243,10 +245,11 @@ a local `none`, nested paths, or a NavLinks tree.
 
 Prefer semantic subclasses over library-supplied modes. Tabs normally replace
 selection; wizards normally push steps. Domain State owns workflow data and
-validity. Inline Router elements reset on remount; to preserve state, store
-`panel = new PanelRouter({ path: '/profile' })` on a longer-lived State or
-Component and render it. Nest headless `Router`, not `BrowserRouter` - browser
-routers share one History API.
+validity. A Route-owned Router resets on remount; to preserve state, store
+`panel = new PanelRouter()` on a longer-lived State or Component and render it.
+When placement must configure `path`, use
+`<Route to="settings"><PanelRouter path="/security" /></Route>`. Nest headless
+`Router`, not `BrowserRouter` - browser routers share one History API.
 
 ## The `query` map
 

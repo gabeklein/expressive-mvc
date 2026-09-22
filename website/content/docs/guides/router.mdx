@@ -303,24 +303,24 @@ ordinary outer Route decides when that feature is mounted:
 
 ```tsx
 class PanelRouter extends Router {
+  path = '/profile';
+
   select(to: string) {
     this.goto(to, true);
   }
 
   render() {
     return (
-      <Settings>
+      <>
         <Route to="profile" as={ProfileTab} />
         <Route to="security" as={SecurityTab} />
-      </Settings>
+      </>
     );
   }
 }
 
 <BrowserRouter>
-  <Route to="settings">
-    <PanelRouter path="/profile" />
-  </Route>
+  <Route to="settings" as={PanelRouter} />
 </BrowserRouter>;
 ```
 
@@ -341,12 +341,20 @@ the library. Tabs generally call `goto(path, true)` so selection replaces the
 current entry. Wizards generally push steps and use `back()`. Keep completed
 steps, form values, and validation in a separate domain State.
 
-Normal Component ownership determines persistence. An inline `<PanelRouter>`
+Normal Component ownership determines persistence. A Route-owned `PanelRouter`
 resets when its placement unmounts and remounts. To preserve its location and
-history, store `panel = new PanelRouter({ path: '/profile' })` on a longer-lived
-State or Component and render that owned instance. Nest `Router`, not
-`BrowserRouter`: two browser bindings would compete for the same address and
-History API.
+history, store `panel = new PanelRouter()` on a longer-lived State or Component
+and render that owned instance.
+
+When the entry location varies by placement instead of belonging to the flow,
+mount it explicitly so the caller can pass `path`:
+
+```tsx
+<Route to="settings"><PanelRouter path="/security" /></Route>
+```
+
+Nest `Router`, not `BrowserRouter`: two browser bindings would compete for the
+same address and History API.
 
 A top-level Route already creates and owns a fallback headless Router when it
 cannot find one upstream. That supports standalone route trees, but it does not
