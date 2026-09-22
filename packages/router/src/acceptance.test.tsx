@@ -100,10 +100,10 @@ describe('acceptance: nested Router', () => {
   class Flow extends CoreRouter {
     render() {
       return (
-        <Route>
+        <>
           <Route to="one" as={Page} />
           <Route to="two" as={Page} />
-        </Route>
+        </>
       );
     }
   }
@@ -114,10 +114,8 @@ describe('acceptance: nested Router', () => {
     let flow!: Flow;
     const view = render(
       <Router path="/flow" is={(router) => { outer = router; }}>
-        <Route>
-          <Route to="flow" is={(route) => { boundary = route; }}>
-            <Flow path="/one" is={(router) => { flow = router; }} />
-          </Route>
+        <Route to="flow" is={(route) => { boundary = route; }}>
+          <Flow path="/one" is={(router) => { flow = router; }} />
         </Route>
       </Router>
     );
