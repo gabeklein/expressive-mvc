@@ -56,7 +56,7 @@ export class Route extends Component {
   none = false;
 
   /** Nearest mounted Route ancestor within this Router, if any. */
-  readonly parent: Route | undefined = set<Route | undefined>(() => {
+  readonly parent: Route | undefined = set(() => {
     const parent = this.get(Route, false);
     return parent?.router.is === this.router.is ? parent : undefined;
   }, false);
