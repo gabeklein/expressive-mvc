@@ -98,11 +98,9 @@ reload signal.
 locations also work for native apps, tabs, wizards, modal flows, and other UI
 with no public URL.
 
-A headless Router subclass can own a reusable route tree as well as its
-navigation behavior. Use a plain nested Router when there is nothing to
-package. An ordinary outer Route controls when the reusable feature is mounted;
-the Router establishes an independent location and history for the Routes it
-renders:
+Nest Routes for one address space. Nest a Router only when a UI region needs an
+independent location and history. Use `<Router>` directly for a one-off region;
+subclass it when the route set or navigation policy is reusable:
 
 ```tsx
 class PanelRouter extends Router {
@@ -112,19 +110,17 @@ class PanelRouter extends Router {
 
   render() {
     return (
-      <Route as={Settings}>
+      <Settings>
         <Route to="profile" as={ProfileTab} />
         <Route to="security" as={SecurityTab} />
-      </Route>
+      </Settings>
     );
   }
 }
 
 <BrowserRouter>
-  <Route>
-    <Route to="settings">
-      <PanelRouter path="/profile" />
-    </Route>
+  <Route to="settings">
+    <PanelRouter path="/profile" />
   </Route>
 </BrowserRouter>;
 ```
@@ -134,9 +130,12 @@ standalone `.new()` call instead requires the subclass to choose a root policy.
 
 The outer Route matches `/settings`; the private Router navigates among
 `/profile` and `/security` without changing that browser URL. Its internal
-Routes live inside `PanelRouter.render()`, so the outer lexical matcher does not
-interpret them. Descendants resolve the nearest Router, and navigation never
-changes or implicitly bubbles to the outer one.
+Routes are invisible to the outer lexical matcher and resolve the nearer
+Router. Navigation never changes or implicitly bubbles to the outer one.
+
+Direct Route siblings are enough here. Wrap them in a root Route only when that
+scope provides shared `as` layout, a local `none`, nested paths, or a NavLinks
+tree.
 
 Build behavior from `Router` rather than selecting a specialized router type:
 tabs usually replace the current location; wizards usually push steps and use
@@ -149,10 +148,8 @@ Component and render that owned instance.
 Use a headless Router inside `BrowserRouter`; nesting `BrowserRouter` would make
 both instances compete for the same browser address and History API.
 
-A top-level Route already creates and owns a fallback headless Router when no
-Router exists upstream. That makes a standalone route tree work; it does not
-isolate a Route nested beneath an existing Router. Use a Router subclass when
-the feature needs a deliberate navigation boundary.
+A top-level Route creates a fallback headless Router only when none exists
+upstream. That convenience does not isolate a Route beneath an existing Router.
 
 ## Suspense and navigation settlement
 

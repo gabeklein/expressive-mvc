@@ -287,10 +287,19 @@ the owning State should use `AbortController` or its own generation check.
 locations are useful in native apps and for local UI flows that should not
 change an outer URL.
 
-A headless Router subclass can own a reusable route tree as well as its
-navigation behavior. Use a plain nested Router when there is nothing to
-package. An ordinary outer Route decides when the reusable feature is mounted;
-the Router supplies an independent location and history to its internal Routes:
+Nest Routes when screens share one address space. Nest a Router only when a UI
+region needs an independent location and history. A standalone or one-off
+memory flow needs no subclass:
+
+```tsx
+<Router path="/profile">
+  <Route to="profile" as={ProfileTab} />
+  <Route to="security" as={SecurityTab} />
+</Router>
+```
+
+Subclass Router when the route set or navigation policy is reusable. An
+ordinary outer Route decides when that feature is mounted:
 
 ```tsx
 class PanelRouter extends Router {
@@ -300,19 +309,17 @@ class PanelRouter extends Router {
 
   render() {
     return (
-      <Route as={Settings}>
+      <Settings>
         <Route to="profile" as={ProfileTab} />
         <Route to="security" as={SecurityTab} />
-      </Route>
+      </Settings>
     );
   }
 }
 
 <BrowserRouter>
-  <Route>
-    <Route to="settings">
-      <PanelRouter path="/profile" />
-    </Route>
+  <Route to="settings">
+    <PanelRouter path="/profile" />
   </Route>
 </BrowserRouter>;
 ```
@@ -325,6 +332,9 @@ The browser matches `/settings`. Inside it, `PanelRouter` moves between
 authored inside `render()`, so the outer lexical matcher does not interpret
 them. Descendants use the nearest Router, and Back stops at that Router's oldest
 entry instead of escaping into its parent.
+
+Direct Route siblings need no anonymous root. Add a root Route when it provides
+shared `as` layout, a local `none`, nested paths, or a NavLinks tree.
 
 The subclass is application policy, not a second router hierarchy supplied by
 the library. Tabs generally call `goto(path, true)` so selection replaces the

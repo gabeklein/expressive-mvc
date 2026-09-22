@@ -210,19 +210,19 @@ Fragment navigation does not scroll or focus an element automatically.
 ### Memory and nested Routers
 
 `Router` is headless navigation state; its path-like locations need not be
-public URLs. A subclass may render its own root Route tree, packaging reusable
-navigable UX behind one independent location/history boundary. Use a plain
-nested Router when there is nothing to package.
+public URLs. Nest Routes within one address space; nest a Router only for an
+independent location and history. Use `<Router>` directly for a one-off region;
+subclass it to package reusable routes or navigation policy.
 
 ```tsx
 class PanelRouter extends Router {
   select(to: string) { this.goto(to, true); }
 
   render() {
-    return <Route>
+    return <>
       <Route to="profile" as={ProfileTab} />
       <Route to="security" as={SecurityTab} />
-    </Route>;
+    </>;
   }
 }
 
@@ -237,6 +237,9 @@ are invisible to its lexical matcher and use the nearer Router. Navigation does
 not mutate or implicitly bubble to the outer Router; an out-of-bounds `back()`
 is a no-op. A top-level Route creates a fallback Router only when none exists
 upstream - that is convenience, not isolation.
+
+Direct Route siblings need no root Route. Add one only for shared `as` layout,
+a local `none`, nested paths, or a NavLinks tree.
 
 Prefer semantic subclasses over library-supplied modes. Tabs normally replace
 selection; wizards normally push steps. Domain State owns workflow data and
