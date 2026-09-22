@@ -76,7 +76,7 @@ Button.style = {
 
 Object rules are constant macro expansions. Function rules may return an object, class token, nested array, or empty value. Keep them argument-pure—expansions are cached. `false`, `null`, and `undefined` omit an invocation; `0` remains a value. `_` attributes are style-only and never reach the DOM.
 
-Serializable combinations emit a generated class lazily. A structural route caches 64 combinations; further unseen combinations fall back to inline declarations, while prior cached combinations remain reusable. Explicit inline objects in `style` apply after appearance declarations.
+Serializable combinations emit a generated class lazily. A structural route caches 8 combinations; further unseen combinations fall back to inline declarations, while prior cached combinations remain reusable. Explicit inline objects in `style` apply after appearance declarations.
 
 Keep each JSX location's `_` attribute names stable. Values may change, but adding a new `_` key later through a dynamic spread is not yet detected. Nested descendant scopes and build-time extraction are not included in the `0.1` experiment.
 

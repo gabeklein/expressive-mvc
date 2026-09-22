@@ -54,7 +54,7 @@ interface Sheet {
   element: HTMLStyleElement;
 }
 
-const CACHE_LIMIT = 64;
+const CACHE_LIMIT = 8;
 const rootScopes = new WeakMap<object, StyleScope>();
 const sheets = new WeakMap<Document, Sheet>();
 

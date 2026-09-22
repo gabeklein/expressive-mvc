@@ -64,7 +64,7 @@ Button.style = {
 };
 ```
 
-Serializable combinations become generated CSS classes on first use. Each structural route caches up to 64 combinations, then resolves new high-cardinality values inline. `false`, `null`, and `undefined` omit a rule; `0` remains a macro argument.
+Serializable combinations become generated CSS classes on first use. Each structural route caches up to 8 combinations, then resolves new high-cardinality values inline. `false`, `null`, and `undefined` omit a rule; `0` remains a macro argument.
 
 `Component` retains the React adapter's model: fields read by `render()` are dependencies, owned instances mount and clean up with the DOM range, and an externally activated instance can be placed directly without transferring ownership.
 
