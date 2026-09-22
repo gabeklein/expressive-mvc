@@ -98,6 +98,8 @@ describe('acceptance: nested Router', () => {
   );
 
   class Flow extends CoreRouter {
+    path = '/one';
+
     render() {
       return (
         <>
@@ -111,19 +113,15 @@ describe('acceptance: nested Router', () => {
   it('will mount a self-contained Router within an outer Route', () => {
     let outer!: Router;
     let boundary!: Route;
-    let flow!: Flow;
     const view = render(
       <Router path="/flow" is={(router) => { outer = router; }}>
-        <Route to="flow" is={(route) => { boundary = route; }}>
-          <Flow path="/one" is={(router) => { flow = router; }} />
-        </Route>
+        <Route to="flow" as={Flow} is={(route) => { boundary = route; }} />
       </Router>
     );
 
     expect(outer.path).toBe('/flow');
     expect(boundary.path).toBe('/flow');
     expect(boundary.matched).toBe(true);
-    expect(flow.path).toBe('/one');
     expect(view.container.textContent).toBe('/one');
   });
 
@@ -133,7 +131,7 @@ describe('acceptance: nested Router', () => {
     const view = render(
       <Router path="/shell" is={(router) => { outer = router; }}>
         <Route as={RootLayout}>
-          <Flow path="/one" is={(router) => { inner = router; }} />
+          <Flow is={(router) => { inner = router; }} />
         </Route>
       </Router>
     );
@@ -159,7 +157,7 @@ describe('acceptance: nested Router', () => {
     render(
       <Router path="/first" is={(router) => { outer = router; }}>
         <Route as={RootLayout}>
-          <Flow path="/one" is={(router) => { inner = router; }} />
+          <Flow is={(router) => { inner = router; }} />
         </Route>
       </Router>
     );
@@ -174,7 +172,7 @@ describe('acceptance: nested Router', () => {
   it('will reset an inline inner Router when its placement remounts', async () => {
     let inner!: Router;
     const App = ({ show }: { show: boolean }) => show
-      ? <Flow path="/one" is={(router) => { inner = router; }} />
+      ? <Flow is={(router) => { inner = router; }} />
       : null;
     const view = render(<Router><App show /></Router>);
 
@@ -189,7 +187,7 @@ describe('acceptance: nested Router', () => {
 
   it('will preserve an owner-held Router across placement', async () => {
     class App extends Component {
-      flow = new Flow({ path: '/one' });
+      flow = new Flow();
 
       render({ show }: { show: boolean }) {
         return show ? this.flow : null;
