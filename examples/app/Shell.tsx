@@ -15,7 +15,7 @@ const Shell = ({ tree, default: home }: { tree: Directory[]; default?: string })
       <Route as={Window}>
         {home && <Route redirect={`/${home}`} />}
         {tree.map(renderDirectory)}
-        <Route default as={NotFound} />
+        <Route none as={NotFound} />
       </Route>
     </Provider>
   );

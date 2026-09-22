@@ -42,12 +42,12 @@ it('default Item renders label, falling back to path', async () => {
   expect(view.container.textContent).toContain('/b');
 });
 
-it('skips redirect and default rows', async () => {
+it('skips redirect and none rows', async () => {
   const view = await renderAct(
     <Route as={Page}>
       <Route to="a" />
       <Route to="old" redirect="/a" />
-      <Route default as={() => <div>fallback</div>} />
+      <Route none as={() => <div>fallback</div>} />
     </Route>
   );
   expect(links(view)).toEqual(['/a']);

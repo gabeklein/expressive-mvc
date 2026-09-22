@@ -45,15 +45,15 @@ export class Route extends Component {
    * history). A function is evaluated on entry to this route's matched space:
    * a truthy string redirects, a falsy result (`''`/`undefined`) allows normal
    * render, and `null` force-404s - the route cedes the path so its scope falls
-   * through to the nearest `default`. May be async - the route's `fallback` shows
+   * through to the nearest `none`. May be async - the route's `fallback` shows
    * while the decision pends. The verdict is cached for navigations within the
    * space and re-evaluated on re-entry.
    */
   redirect?: string | (() => Async<string | void | null>) = undefined;
 
   /** Matches when nothing else in this scope did. Scoped to its parent: a
-   * root-level default is the app 404, a nested one the section 404. */
-  default = false;
+   * root-level none Route is the app 404, a nested one the section 404. */
+  none = false;
 
   /** Nearest mounted Route ancestor, if any. */
   parent = get(Route, false);
@@ -96,7 +96,7 @@ export class Route extends Component {
   get matched(): boolean {
     const { parent } = this;
 
-    if (this.default)
+    if (this.none)
       return parent ? parent.matched && !parent.matches.length : false;
 
     if (isRoot(this)) return true;
@@ -111,12 +111,12 @@ export class Route extends Component {
 
   /** This Route's own absolute path (base joined with its segment). */
   get path(): string {
-    return this.default ? this.base : this.base + this.router.segment(this.to);
+    return this.none ? this.base : this.base + this.router.segment(this.to);
   }
 
   /**
    * The matched child Route: `undefined` if none, `null` if ambiguous (>1).
-   * Redirect/default excluded; see-through scopes seen through to children.
+   * Redirect/none excluded; see-through scopes seen through to children.
    */
   get active(): Route | undefined | null {
     const { match, path, rejected } = this.router;
@@ -151,10 +151,10 @@ export class Route extends Component {
         if (!allRoutes(route.children))
           return match(route.base, route.to) && rejected !== path ? [route.path] : [];
 
-        // A scope counts via a matched descendant, or its own section default.
+        // A scope counts via a matched descendant, or its own section none Route.
         const deep = collect(route.inner);
         return deep.length ? deep
-          : defaultCatches(route, path) ? [route.path] : [];
+          : noneCatches(route, path) ? [route.path] : [];
       });
 
     return collect(this.inner);
@@ -292,11 +292,11 @@ function guard(route: Route, redirect: () => Async<string | void | null>): strin
 
 /**
  * Exempt from sibling arbitration and match collection: a content-less
- * static-string redirect, or a `default` fallback. A *function* guard is a real
+ * static-string redirect, or a `none` fallback. A *function* guard is a real
  * contender - it participates in matching until it actually redirects.
  */
-function exempt(node: { redirect?: unknown; default?: boolean }): boolean {
-  return node.default || typeof node.redirect === 'string';
+function exempt(node: { redirect?: unknown; none?: boolean }): boolean {
+  return node.none || typeof node.redirect === 'string';
 }
 
 /**
@@ -324,9 +324,9 @@ function lexicalRoutes(children: Component.Node) {
   return out;
 }
 
-/** Does `children` hold a direct default Route? Such a scope resolves to it. */
-function hasDefault(children: Component.Node): boolean {
-  return lexicalRoutes(children).some(({ props }) => props.default);
+/** Does `children` hold a direct none Route? Such a scope resolves to it. */
+function hasNone(children: Component.Node): boolean {
+  return lexicalRoutes(children).some(({ props }) => props.none);
 }
 
 /** Is `path` inside `base`'s subtree? The root base ('') contains everything. */
@@ -347,17 +347,17 @@ function scopeBase(route: Route): string {
   return route.base + route.router.segment(route.to);
 }
 
-/** Registration-form: scope owns a default catching the path within base -
+/** Registration-form: scope owns a none Route catching the path within base -
  * used by `matches` so a section 404 suppresses an ancestor 404. */
-function defaultCatches(route: Route, path: string): boolean {
-  return route.inner.some((c) => c.default) && within(scopeBase(route), path);
+function noneCatches(route: Route, path: string): boolean {
+  return route.inner.some((c) => c.none) && within(scopeBase(route), path);
 }
 
 type RouteProps = {
   to?: string;
   as?: unknown;
   redirect?: string | (() => Async<string | null | void>);
-  default?: boolean;
+  none?: boolean;
   children?: Component.Node;
 };
 
@@ -365,7 +365,7 @@ type RouteProps = {
  * Does the scope described by `children` (composed against `base`) claim
  * `path`? A synchronous, lexical walk of the JSX - the see-through opt-out
  * gate, and the single arbiter behind `matched` and `as`-slot arbitration.
- * A scope claims via a descendant match, or via its own `default`, which
+ * A scope claims via a descendant match, or via its own `none` Route, which
  * catches anything within its base; without one it is never a greedy prefix.
  * Blind to class-field `to` and component-internal routes (the
  * `*`-delegation case) - the documented limits of the lexical model.
@@ -379,7 +379,7 @@ export function scopeResolves(children: Component.Node, base: string, path: stri
       : matchPattern(fullPattern(base, to), path) !== null;
   });
 
-  return claimed || (hasDefault(children) && within(base, path));
+  return claimed || (hasNone(children) && within(base, path));
 }
 
 type Contender = {
@@ -447,7 +447,7 @@ function coveredBy(claim: string, pattern: string): boolean {
     seg.startsWith(':') || seg.toLowerCase() === under[i].toLowerCase());
 }
 
-/** Throw for a statically-dead sibling: a default-bearing scope claims every
+/** Throw for a statically-dead sibling: a none-bearing scope claims every
  * path under its segment, so a later sibling within it can never match. */
 function assertReachable(children: Component.Node, base: string): void {
   const claims: string[] = [];
@@ -460,10 +460,10 @@ function assertReachable(children: Component.Node, base: string): void {
 
     if (claim !== undefined)
       throw new Error(
-        `Route "${path}" is unreachable: an earlier sibling holds a default, claiming everything under "${claim}".`
+        `Route "${path}" is unreachable: an earlier sibling holds a none Route, claiming everything under "${claim}".`
       );
 
-    if (allRoutes(props.children) && hasDefault(props.children))
+    if (allRoutes(props.children) && hasNone(props.children))
       claims.push(path);
   }
 }
