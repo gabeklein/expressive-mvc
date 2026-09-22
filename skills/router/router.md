@@ -38,7 +38,7 @@ Routes are nested JSX. `to` is the pattern segment; `as` is the page (or layout)
     <Route as={BlogIndex} />             {/* /blog */}
     <Route to=":slug" as={BlogPost} />   {/* /blog/:slug */}
   </Route>
-  <Route default as={NotFound} />        {/* matches when no sibling did */}
+  <Route none as={NotFound} />        {/* no sibling matched */}
 </Route>
 ```
 
@@ -46,7 +46,7 @@ Routes are nested JSX. `to` is the pattern segment; `as` is the page (or layout)
 | ---------- | ---------------------------------------------------------------------------------------- |
 | `to`       | URL pattern segment. `:name` captures a param. A trailing `*` is a catch-all matching the remaining path segments (captured as `*`) - needed on a **leaf** that should match deep paths; **redundant on a scope with child Routes**, whose children already extend the match. Omit for an index route. |
 | `as`       | Component rendered when matched. As a layout, it receives matched children via `children`. |
-| `default`  | Matches when nothing else in this scope did. Scoped to its parent (root-level = app 404, nested = section 404). |
+| `none`     | Matches when nothing else in this scope did. Scoped to its parent (root-level = app 404, nested = section 404). |
 | `redirect` | Entry guard. A static string redirects there when matched; a function gates the route (see [Entry guards](#entry-guards)). |
 | `label`    | Display name for NavLinks/breadcrumbs/titles (ignored by matching).                      |
 | `meta`     | Free-form metadata (icons, ordering, badges) - ignored by matching.                      |
@@ -62,17 +62,17 @@ A multi-segment `to` (`to="users/:id"`) is a **flat leaf** - it does *not* synth
 
 <Route to="users" as={Layout}>                   {/* nested scope */}
   <Route to=":id" as={Detail} />
-  <Route default as={NotFound} />
+  <Route none as={NotFound} />
 </Route>
 ```
 
 Both resolve `/users/42` identically - same match, same captures, same relative navigation (both anchor on the resolved `/users/42`). Nesting changes nothing for plain navigation; it buys a **scope**. Only the nested form can:
 
-- host a **section `default`** (a `/users/<bad-id>` 404 that stays in the section, rather than falling through to the app-level default);
+- host a **section `none` Route** (a `/users/<bad-id>` 404 that stays in the section, rather than falling through to the app-level none Route);
 - wrap children in **shared chrome** (the layout `as`) that persists across param changes;
 - interpose a **section `Route`** in context (so `get(Route)` sees both the section and the leaf) and group the section in `NavLinks`.
 
-A `default` always needs an authored parent scope - a root `default` is the app 404 only because the root `<Route>` is its scope. So **use the flat leaf for a standalone endpoint; nest the moment you need a section 404, shared chrome, sibling routes under the prefix, or nav grouping** - which is most resource pages, and is required for the force-404 pattern below.
+A `none` Route always needs an authored parent scope - a root-level one is the app 404 only because the root `<Route>` is its scope. So **use the flat leaf for a standalone endpoint; nest the moment you need a section 404, shared chrome, sibling routes under the prefix, or nav grouping** - which is most resource pages, and is required for the force-404 pattern below.
 
 ## Entry guards
 
@@ -82,7 +82,7 @@ A `default` always needs an authored parent scope - a root `default` is the app 
 | --- | --- |
 | a truthy `string` | redirect there (replaces history) |
 | `''` / `undefined` / `false` | allow normal render |
-| `null` | **force-404**: cede the path so the scope falls through to its nearest `default` |
+| `null` | **force-404**: cede the path so the scope falls through to its nearest `none` Route |
 
 The guard may be **async** (return a `Promise`); while it pends, the route's `fallback` shows on cold load, and in-app navigation holds the current screen (see [Deferred presentation](#deferred-presentation)). The verdict is cached for navigation within the matched space and re-evaluated on re-entry.
 
@@ -96,10 +96,10 @@ The guard may be **async** (return a `Promise`); while it pends, the route's `fa
     // ...allow
   }}
   as={Document} />
-<Route default as={DocumentNotFound} />          // the section 404 a null verdict cedes to
+<Route none as={DocumentNotFound} />          // the section 404 a null verdict cedes to
 ```
 
-Force-404 is path-keyed: it marks only the concrete URL that was declined, so navigating elsewhere clears it. `null` is the deliberate "definitively not here" signal - distinct from a falsy `&&` short-circuit, which allows. The 404 surface is the scope's authored `default` sibling, so a *section*-level not-found requires a parent scope with children (a flat leaf forfeits to the nearest authored default).
+Force-404 is path-keyed: it marks only the concrete URL that was declined, so navigating elsewhere clears it. `null` is the deliberate "definitively not here" signal - distinct from a falsy `&&` short-circuit, which allows. The 404 surface is the scope's authored `none` sibling, so a *section*-level not-found requires a parent scope with children (a flat leaf forfeits to the nearest authored `none` Route).
 
 ## Code-split pages
 
@@ -307,21 +307,21 @@ registration by overriding the `protected get children()` seam. It defaults to t
 children declared in JSX; override it to return the effective set - add, remove,
 or reorder - composing on `super.children`. Both matching and render read the
 result, so contributed routes participate in this scope's control flow
-(matching, `inner` registration, default-resolution, `matches`, and render)
+(matching, `inner` registration, none-resolution, `matches`, and render)
 exactly as if declared in JSX.
 
 ```tsx
 class Page extends Route {
-  Default = NotFound;
+  None = NotFound;
 
   protected get children(): Component.Node {
-    return <>{super.children}<Route default as={this.Default} /></>;
+    return <>{super.children}<Route none as={this.None} /></>;
   }
 }
 ```
 
-`<Page to="docs/*">…</Page>` now resolves to `Default` whenever no child of the
-scope matches - a section fallback the caller never had to write. `Default` is
+`<Page to="docs/*">…</Page>` now resolves to `None` whenever no child of the
+scope matches - a section fallback the caller never had to write. `None` is
 the subclass's own surface; `Route` exposes only the `children` seam.
 
 The same seam is how you build a **component that generates routes from data** -
@@ -350,7 +350,7 @@ class Examples extends Route {
 ```
 
 The generated routes match, register, and render exactly as if written in JSX.
-`super.children` splices in whatever the caller passed (e.g. a `<Route default>`),
+`super.children` splices in whatever the caller passed (e.g. a `<Route none>`),
 so the component stays composable. Caller-passed children are otherwise dropped
 unless you compose `super.children` - the seam fully owns the scope.
 
@@ -360,7 +360,7 @@ Scope and caveats:
   the outside - sibling `as`-slot arbitration and a parent scope recursing into
   this element's lexical children - which have no instance to read `children` from.
   Same blind spot as class-field `to` (see below).
-- **Classification follows effective children.** Contributing a default to a
+- **Classification follows effective children.** Contributing a `none` Route to a
   `to`-leaf turns it into a see-through scope (matched by prefix rather than
   exact pattern). Intended - the leaf/scope distinction reflects what the scope
   effectively contains.
@@ -374,4 +374,4 @@ Matching is computed statically from the JSX tree in the same render. It does **
 - class-field `to` on `Route` subclasses (only the JSX `to` prop), or
 - routes declared inside a child component's own render (the `*`-delegation case).
 
-A see-through scope counts as matched when a descendant matches, or when it owns a `default` - which claims anything under the scope's path, so the section 404 answers there instead of the app one. Without a default the scope is never a greedy prefix. That verdict is the same one sibling `as`-routes arbitrate over, so a scope holding a section 404 owns everything under its path - a later sibling declared under it can never match, and the router **throws** on that shape rather than leaving the route silently unreachable. Declare such a route above the section, or inside it. Put routes where they are lexically visible to the matcher.
+A see-through scope counts as matched when a descendant matches, or when it owns a `none` Route - which claims anything under the scope's path, so the section 404 answers there instead of the app one. Without one the scope is never a greedy prefix. That verdict is the same one sibling `as`-routes arbitrate over, so a scope holding a section 404 owns everything under its path - a later sibling declared under it can never match, and the router **throws** on that shape rather than leaving the route silently unreachable. Declare such a route above the section, or inside it. Put routes where they are lexically visible to the matcher.
