@@ -1,5 +1,6 @@
+import { registerAppearance, registerAppearanceRoot } from './appearance-protocol';
+import type { AppearanceContext, Declaration, ResolvedAppearance } from './appearance-protocol';
 import { applyDeclarations } from './declarations';
-import type { Declaration } from './declarations';
 
 type Expression = string | Declaration | false | null | undefined | readonly Expression[];
 type Rule = Declaration | ((value?: unknown) => Expression);
@@ -17,22 +18,6 @@ interface Selector {
   name: string;
   parameter: boolean;
   rule: Rule;
-}
-
-interface ResolvedAppearance {
-  className?: string;
-  declarations?: Declaration;
-}
-
-interface AppearanceAdapter {
-  createScope(parent: unknown, type: unknown): unknown;
-  resolve(
-    route: unknown,
-    scope: unknown,
-    tag: string,
-    props: Record<string, unknown>,
-    document: Document
-  ): { appearance?: ResolvedAppearance; route?: unknown };
 }
 
 interface Invocation {
@@ -55,8 +40,14 @@ interface Sheet {
 }
 
 const CACHE_LIMIT = 8;
+const contexts = new WeakMap<StyleScope, AppearanceContext>();
 const rootScopes = new WeakMap<object, StyleScope>();
 const sheets = new WeakMap<Document, Sheet>();
+const styles = new WeakMap<object, StyleMap[]>();
+const entered = new WeakSet<object>();
+const globals: StyleMap[] = [];
+let globalsEntered = false;
+let globalContext: AppearanceContext | undefined;
 
 function createStyleScope(parent: StyleScope | undefined, value: unknown): StyleScope | undefined {
   if (!value || typeof value != 'object' || Array.isArray(value)) return parent;
@@ -66,25 +57,71 @@ function createStyleScope(parent: StyleScope | undefined, value: unknown): Style
   if (cached) return cached;
 
   const own = Object.keys(value);
-  const replaced = new Set(own);
   const names = parent
-    ? [...parent.names.filter((name) => !replaced.has(name)), ...own]
+    ? [...parent.names, ...own.filter((name) => !parent.names.includes(name))]
     : own;
-  const rules = Object.assign(Object.create(parent?.rules || null), value) as StyleMap;
+  const rules = Object.create(parent?.rules || null) as StyleMap;
 
-  const scope = {
-    children: new WeakMap(),
-    names,
-    routes: new Map(),
-    rules
-  };
+  for (const name of own) {
+    const rule = (value as StyleMap)[name];
+    const inherited = parent?.rules[name];
+    rules[name] = isObjectRule(inherited) && isObjectRule(rule)
+      ? { ...inherited, ...rule }
+      : rule;
+  }
+  const scope = { children: new WeakMap(), names, routes: new Map(), rules };
 
   cache.set(value, scope);
   return scope;
 }
 
-function styleOf(value: unknown): unknown {
-  return typeof value == 'function' ? (value as { style?: unknown }).style : undefined;
+function createContext(scope: StyleScope | undefined): AppearanceContext | undefined {
+  if (!scope) return undefined;
+  const cached = contexts.get(scope);
+  if (cached) return cached;
+
+  const context: AppearanceContext = {
+    scope,
+    resolve(route, tag, props, document) {
+      return resolveAppearance(route as AppearanceRoute | undefined, scope, tag, props, document);
+    }
+  };
+
+  contexts.set(scope, context);
+  return context;
+}
+
+function extendContext(parent: AppearanceContext | undefined, maps: readonly StyleMap[]) {
+  let scope = parent?.scope as StyleScope | undefined;
+  for (const map of maps) scope = createStyleScope(scope, map);
+  return createContext(scope)!;
+}
+
+function style<T extends object>(type: T, rules: StyleMap): T {
+  if (entered.has(type)) throw new Error('Cannot add styles after a component has rendered.');
+
+  const maps = styles.get(type);
+  if (maps) maps.push(rules);
+  else {
+    styles.set(type, [rules]);
+    registerAppearance(type, (parent) => {
+      entered.add(type);
+      return extendContext(parent, styles.get(type)!);
+    });
+  }
+
+  return type;
+}
+
+function macro(rules: StyleMap): StyleMap {
+  if (globalsEntered) throw new Error('Cannot add macros after rendering has started.');
+  globals.push(rules);
+  globalContext = undefined;
+  registerAppearanceRoot(() => {
+    globalsEntered = true;
+    return globalContext ||= extendContext(undefined, globals);
+  });
+  return rules;
 }
 
 function createAppearanceRoute(
@@ -106,24 +143,16 @@ function createAppearanceRoute(
     if (!present.has(name) || name == tag) continue;
     const rule = scope.rules[name];
     if (!isRule(rule)) continue;
-
-    selectors.push({
-      bit: selectors.length,
-      name,
-      parameter: typeof rule == 'function',
-      rule
-    });
+    selectors.push({ bit: selectors.length, name, parameter: typeof rule == 'function', rule });
   }
 
   const tagRule = scope.rules[tag];
-  const resolvedTag = isRule(tagRule) ? tagRule : undefined;
-
   const route = {
     cache: new Map(),
     scope,
     selectors,
     shape,
-    tag: resolvedTag
+    tag: isRule(tagRule) ? tagRule : undefined
   };
 
   scope.routes.set(`${tag}\0${shape}`, route);
@@ -150,10 +179,8 @@ function resolveAppearance(
   for (const selector of route.selectors) {
     const value = props[`_${selector.name}`];
     if (!isPresent(value)) continue;
-
     if (selector.bit < 31) mask |= 1 << selector.bit;
     else cacheable = false;
-
     active.push({ rule: selector.rule, value });
     if (selector.parameter) {
       parameters.push(value);
@@ -167,12 +194,13 @@ function resolveAppearance(
 
   const classes: string[] = [];
   const declarations: Declaration = {};
+  const nested: StyleMap = {};
 
-  for (const { rule, value } of active) {
-    expand(typeof rule == 'function' ? rule(value === true ? undefined : value) : rule, classes, declarations);
-  }
+  for (const { rule, value } of active)
+    expand(typeof rule == 'function' ? rule(value === true ? undefined : value) : rule, classes, declarations, nested, document);
 
-  if (!classes.length && !Object.keys(declarations).length) {
+  const childScope = Object.keys(nested).length ? createStyleScope(route.scope, nested) : undefined;
+  if (!classes.length && !Object.keys(declarations).length && !childScope) {
     if (key !== undefined && route.cache.size < CACHE_LIMIT) {
       const appearance = {};
       route.cache.set(key, appearance);
@@ -189,22 +217,35 @@ function resolveAppearance(
     className: [...classes, generated].filter(Boolean).join(' ') || undefined,
     declarations: generated ? undefined : declarations
   };
+  const context = createContext(childScope);
+  if (context) appearance.context = context;
 
   if (canCompile) route.cache.set(key, appearance);
   return { appearance, route };
 }
 
-function expand(value: Expression, classes: string[], declarations: Declaration) {
+function expand(
+  value: Expression,
+  classes: string[],
+  declarations: Declaration,
+  nested: StyleMap,
+  document: Document
+) {
   if (!value) return;
   if (typeof value == 'string') {
     classes.push(...value.split(/\s+/).filter(Boolean));
     return;
   }
   if (Array.isArray(value)) {
-    value.forEach((entry) => expand(entry, classes, declarations));
+    value.forEach((entry) => expand(entry, classes, declarations, nested, document));
     return;
   }
-  Object.assign(declarations, value);
+
+  const probe = document.documentElement.style;
+  for (const [name, entry] of Object.entries(value)) {
+    if (!name.startsWith('--') && !(name in probe) && isRule(entry)) nested[name] = entry;
+    else declarations[name] = entry;
+  }
 }
 
 function classFor(document: Document, declarations: Declaration) {
@@ -229,9 +270,9 @@ function classFor(document: Document, declarations: Declaration) {
 }
 
 function serialize(document: Document, declarations: Declaration) {
-  const style = document.createElement('div').style as any;
-  applyDeclarations(style, declarations);
-  return style.cssText;
+  const value = document.createElement('div').style as any;
+  applyDeclarations(value, declarations);
+  return value.cssText;
 }
 
 function cacheKey(mask: number, parameters: readonly unknown[]) {
@@ -254,28 +295,9 @@ function isRule(value: unknown): value is Rule {
   return typeof value == 'function' || !!value && typeof value == 'object' && !Array.isArray(value);
 }
 
-const appearance: AppearanceAdapter = {
-  createScope(parent, type) {
-    return createStyleScope(parent as StyleScope | undefined, styleOf(type));
-  },
-  resolve(route, scope, tag, props, document) {
-    return resolveAppearance(
-      route as AppearanceRoute | undefined,
-      scope as StyleScope | undefined,
-      tag,
-      props,
-      document
-    );
-  }
-};
+function isObjectRule(value: unknown): value is Declaration {
+  return !!value && typeof value == 'object' && !Array.isArray(value);
+}
 
-export {
-  CACHE_LIMIT,
-  appearance,
-  createAppearanceRoute,
-  createStyleScope,
-  resolveAppearance,
-  styleOf
-};
-
-export type { AppearanceAdapter, AppearanceRoute, ResolvedAppearance, StyleScope };
+export { CACHE_LIMIT, createAppearanceRoute, createStyleScope, macro, resolveAppearance, style };
+export type { AppearanceRoute, StyleMap, StyleScope };

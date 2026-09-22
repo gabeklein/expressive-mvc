@@ -2,4 +2,4 @@
 "@expressive/jsx": minor
 ---
 
-Compile immutable component style maps into lazily generated CSS classes. Host tag rules apply automatically, `_rule` attributes activate static objects or pure parameter macros, and high-cardinality combinations fall back to inline declarations after a bounded cache.
+Register layered component and global macro maps for lazily generated CSS. Host/component rules auto-apply, nested objects establish descendant scopes, `_rule` attributes activate static or parameter rules, and component tokens follow automatic or explicit style placement. High-cardinality combinations fall back inline after a bounded cache.

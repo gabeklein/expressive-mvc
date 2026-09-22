@@ -5,6 +5,13 @@ import { Fragment } from '@expressive/mvc/runtime';
 
 import { commit, dispose, enter } from './adapter';
 import type { Scope } from './adapter';
+import {
+  appearanceRoot,
+  appearanceToken,
+  createAppearanceToken,
+  enterAppearance
+} from './appearance-protocol';
+import type { AppearanceContext, ResolvedAppearance } from './appearance-protocol';
 import { Provider, provide } from './context';
 import { claim, release, schedule, settle as absorb, transition } from './scheduler';
 import { PORTAL, childrenOf, isVNode } from './vnode';
@@ -54,9 +61,12 @@ interface Fiber {
   placeholder?: Fiber;
   appearance?: Appearance;
   consumed?: boolean;
+  appearanceRoute?: unknown;
+  resolvedAppearance?: ResolvedAppearance;
 }
 
 interface Appearance {
+  context?: AppearanceContext;
   entries: Style[];
 }
 
@@ -85,7 +95,10 @@ function render(node: RenderNode, container: Container): () => void {
   const fiber = range('fragment', container, null, context);
 
   try {
-    pass(() => reconcile(fiber, node, context, undefined));
+    pass(() => {
+      const appearanceContext = appearanceRoot();
+      reconcile(fiber, node, context, undefined, appearanceContext ? { context: appearanceContext, entries: [] } : undefined);
+    });
   } catch (error) {
     unmountFiber(fiber);
     context.pop();
@@ -139,6 +152,37 @@ function complete<T extends Fiber>(fiber: T, work: () => void): T {
   return fiber;
 }
 
+function componentProps(
+  type: unknown,
+  props: Record<string, any>,
+  appearance: Appearance | undefined,
+  parent: globalThis.Node,
+  route?: unknown
+) {
+  const context = appearance?.context;
+  if (!context || typeof type != 'function') return { appearance, props, route };
+
+  const resolved = context.resolve(
+    route,
+    type.name,
+    props,
+    parent.ownerDocument!
+  );
+  const value = resolved.appearance;
+  if (!value || !value.className && !value.declarations && !value.context)
+    return { appearance, props, route: resolved.route };
+
+  const token = createAppearanceToken(value);
+  return {
+    appearance: {
+      context: value.context || context,
+      entries: appearance!.entries
+    },
+    props: { ...props, style: [token, props.style] },
+    route: resolved.route
+  };
+}
+
 function mount(value: RenderNode, parent: globalThis.Node, before: globalThis.Node | null, context: Context, boundary?: Boundary, appearance?: Appearance): Fiber {
   if (typeof value == 'string' || typeof value == 'number' || typeof value == 'bigint') {
     const text = document.createTextNode(String(value));
@@ -160,7 +204,7 @@ function mount(value: RenderNode, parent: globalThis.Node, before: globalThis.No
     throw new Error(`Cannot render ${String(value.type)}.`);
 
   if (value.type.prototype instanceof Component)
-    return mountComponent(new (value.type as new (props: any) => Component)(observe(value.props)), parent, before, context, boundary, appearance, true, value.key);
+    return mountOwnedComponent(value, parent, before, context, boundary, appearance);
 
   return mountFunction(value, parent, before, context, boundary, appearance);
 }
@@ -178,16 +222,31 @@ function mountFragment(value: VNode, parent: globalThis.Node, before: globalThis
 
 function mountFunction(value: VNode, parent: globalThis.Node, before: globalThis.Node | null, context: Context, boundary?: Boundary, appearance?: Appearance) {
   const fiber = range('function', parent, before, context);
+  const resolved = componentProps(value.type, value.props, appearance, parent);
   fiber.key = value.key;
   fiber.type = value.type;
-  fiber.props = observe(value.props);
+  fiber.props = observe(resolved.props);
   fiber.boundary = boundary;
-  fiber.appearance = appearance;
+  fiber.appearance = resolved.appearance;
+  fiber.appearanceRoute = resolved.route;
   fiber.scope = makeScope('function', context, (passive) => runFunction(fiber, passive));
 
   return complete(fiber, () => {
     runFunction(fiber, passiveRender);
   });
+}
+
+function mountOwnedComponent(
+  value: VNode,
+  parent: globalThis.Node,
+  before: globalThis.Node | null,
+  context: Context,
+  boundary?: Boundary,
+  appearance?: Appearance
+) {
+  const resolved = componentProps(value.type, value.props, appearance, parent);
+  const instance = new (value.type as new (props: any) => Component)(observe(resolved.props));
+  return mountComponent(instance, parent, before, context, boundary, resolved.appearance, true, value.key, resolved.route);
 }
 
 function runFunction(fiber: Fiber, passive: boolean) {
@@ -204,7 +263,8 @@ function mountComponent(
   inherited?: Boundary,
   appearance?: Appearance,
   owned = false,
-  key?: Key
+  key?: Key,
+  appearanceRoute?: unknown
 ) {
   const fiber = range('component', parent, before, context);
   const childContext = context.push(instance);
@@ -226,6 +286,7 @@ function mountComponent(
   fiber.props = instance.props as Record<string, any>;
   fiber.owned = owned;
   fiber.appearance = appearance;
+  fiber.appearanceRoute = appearanceRoute;
   fiber.scope = makeScope('component', childContext, (passive) => runComponent(fiber, passive));
 
   let first = true;
@@ -699,12 +760,19 @@ function patch(old: Fiber | undefined, value: RenderNode, parent: globalThis.Nod
     old.appearance = appearance;
     reconcile(old, (value as VNode).props.children, context, old.boundary, appearance);
   } else if (old.kind == 'function') {
-    old.appearance = appearance;
-    old.props = observe((value as VNode).props);
+    const vnode = value as VNode;
+    const resolved = componentProps(vnode.type, vnode.props, appearance, parent, old.appearanceRoute);
+    old.appearance = resolved.appearance;
+    old.appearanceRoute = resolved.route;
+    old.props = observe(resolved.props);
     rerun(old, () => runFunction(old, passiveRender));
   } else if (old.kind == 'component') {
-    old.appearance = appearance;
-    const props = isVNode(value) ? observe(value.props) : old.instance!.props;
+    const resolved = isVNode(value)
+      ? componentProps(value.type, value.props, appearance, parent, old.appearanceRoute)
+      : { appearance, props: old.instance!.props, route: old.appearanceRoute };
+    old.appearance = resolved.appearance;
+    old.appearanceRoute = resolved.route;
+    const props = isVNode(value) ? observe(resolved.props) : resolved.props;
     if (isVNode(value) && props !== old.instance!.props) {
       if (passiveRender) old.applied = true;
       (old.instance as any).props = props;
@@ -765,6 +833,16 @@ function patchProps(fiber: Fiber, next: Record<string, any>, appearance?: Appear
   const element = fiber.start as Element;
   const previous = fiber.props!;
   const raw = 'dangerouslySetInnerHTML' in next;
+  const previousResolved = fiber.resolvedAppearance;
+  const resolved = appearance?.context?.resolve(
+    fiber.appearanceRoute,
+    fiber.type as string,
+    next,
+    element.ownerDocument
+  ) || {};
+
+  fiber.appearanceRoute = resolved.route;
+  fiber.resolvedAppearance = resolved.appearance;
 
   if (raw) {
     for (let index = fiber.children.length - 1; index >= 0; index--)
@@ -773,18 +851,39 @@ function patchProps(fiber: Fiber, next: Record<string, any>, appearance?: Appear
   }
 
   for (const key of Object.keys({ ...previous, ...next })) {
-    if (key == 'children' || key == 'class' || key == 'className' || key == 'key' || key == 'ref' || key == 'style' || CONTROLS.includes(key)) continue;
+    if (key.startsWith('_') || key == 'children' || key == 'class' || key == 'className' || key == 'key' || key == 'ref' || key == 'style' || CONTROLS.includes(key)) continue;
     if (previous[key] === next[key]) continue;
     patchProp(fiber, element, key, previous[key], next[key]);
   }
 
-  if (previous.class !== next.class || previous.style !== next.style || fiber.appearance !== appearance)
-    patchAppearance(element, fiber.appearance, previous.class, previous.style, appearance, next.class, next.style);
+  if (previous.class !== next.class || previous.style !== next.style || fiber.appearance !== appearance || previousResolved !== resolved.appearance)
+    patchAppearance(
+      element,
+      fiber.appearance,
+      previousResolved,
+      previous.class,
+      previous.style,
+      appearance,
+      resolved.appearance,
+      next.class,
+      next.style
+    );
 
   fiber.props = next;
   fiber.appearance = appearance;
 
-  if (!raw) reconcileChildren(fiber, element, null, next.children, fiber.context, fiber.boundary);
+  if (!raw) {
+    const appearanceContext = styleContext(appearance, next.style, resolved.appearance);
+    reconcileChildren(
+      fiber,
+      element,
+      null,
+      next.children,
+      fiber.context,
+      fiber.boundary,
+      appearanceContext ? { context: appearanceContext, entries: [] } : undefined
+    );
+  }
 
   for (const key of CONTROLS) {
     const value = next[key];
@@ -860,14 +959,16 @@ type Style = string | Record<string, unknown> | false | null | undefined | reado
 function patchAppearance(
   element: Element,
   previousAppearance: Appearance | undefined,
+  previousResolved: ResolvedAppearance | undefined,
   previousClass: unknown,
   previousStyle: Style,
   nextAppearance: Appearance | undefined,
+  nextResolved: ResolvedAppearance | undefined,
   nextClass: unknown,
   nextStyle: Style
 ) {
-  const before = normalizeStyle(previousAppearance, previousClass, previousStyle);
-  const after = normalizeStyle(nextAppearance, nextClass, nextStyle);
+  const before = normalizeStyle(previousAppearance, previousResolved, previousClass, previousStyle);
+  const after = normalizeStyle(nextAppearance, nextResolved, nextClass, nextStyle);
 
   if (before.className !== after.className) {
     if (after.className) element.setAttribute('class', after.className);
@@ -888,12 +989,18 @@ function patchAppearance(
   }
 }
 
-function normalizeStyle(appearance: Appearance | undefined, className: unknown, value: Style) {
+function normalizeStyle(
+  appearance: Appearance | undefined,
+  resolved: ResolvedAppearance | undefined,
+  className: unknown,
+  value: Style
+) {
   const classes: string[] = [];
   const declarations: Record<string, unknown> = {};
 
   const entries = appearance?.entries || [];
 
+  appendResolved(resolved, classes, declarations);
   appendClasses(classes, className);
   flattenStyle(value, classes, declarations);
 
@@ -904,16 +1011,53 @@ function normalizeStyle(appearance: Appearance | undefined, className: unknown, 
 }
 
 function renderedAppearance(fiber: Fiber): Appearance | undefined {
+  if (fiber.kind != 'component' && fiber.kind != 'function') return fiber.appearance;
+
   const style = fiber.props?.style as Style;
+  const entries = [...fiber.appearance?.entries || []];
+  const context = enterAppearance(fiber.appearance?.context, fiber.type as Function);
 
-  if (fiber.kind != 'component' && fiber.kind != 'function' || !style || fiber.consumed || fiber.instance && 'style' in fiber.instance)
-    return fiber.appearance;
+  if (style && !fiber.consumed && !(fiber.instance && 'style' in fiber.instance)) entries.push(style);
 
-  return { entries: [...fiber.appearance?.entries || [], style] };
+  return entries.length || context ? { context, entries } : undefined;
+}
+
+function styleContext(
+  appearance: Appearance | undefined,
+  value: Style,
+  resolved: ResolvedAppearance | undefined
+) {
+  let context = resolved?.context || appearance?.context;
+
+  function visit(entry: Style) {
+    if (!entry) return;
+    if (Array.isArray(entry)) return entry.forEach(visit);
+    context = appearanceToken(entry)?.context || context;
+  }
+
+  appearance?.entries.forEach(visit);
+  visit(value);
+  return context;
+}
+
+function appendResolved(
+  resolved: ResolvedAppearance | undefined,
+  classes: string[],
+  declarations: Record<string, unknown>
+) {
+  if (!resolved) return;
+  appendClasses(classes, resolved.className);
+  if (resolved.declarations) Object.assign(declarations, resolved.declarations);
 }
 
 function flattenStyle(value: Style, classes: string[], declarations: Record<string, unknown>) {
   if (!value) return;
+
+  const token = appearanceToken(value);
+  if (token) {
+    appendResolved(token, classes, declarations);
+    return;
+  }
 
   if (typeof value == 'string') {
     appendClasses(classes, value);

@@ -1,16 +1,14 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { Component, render } from './index';
+import { Component, macro, render, style } from './index';
 import { flushMicrotasks } from '../test.setup';
 import {
   CACHE_LIMIT,
   createAppearanceRoute,
   createStyleScope,
-  resolveAppearance,
-  styleOf
+  resolveAppearance
 } from './appearance';
 import { applyDeclarations } from './declarations';
-import { createRender } from './render';
 
 describe('appearance', () => {
   it('will compile tag, boolean and parameter rules into a class', async () => {
@@ -20,12 +18,6 @@ describe('appearance', () => {
     ] as const);
 
     class Styled extends Component {
-      static style = {
-        active: { fontWeight: 700 },
-        color,
-        div: { padding: 4 }
-      };
-
       active = true;
       color = 'red';
       count = 0;
@@ -38,6 +30,12 @@ describe('appearance', () => {
         );
       }
     }
+
+    style(Styled, {
+      active: { fontWeight: 700 },
+      color,
+      div: { padding: 4 }
+    });
 
     let view!: Styled;
     const root = document.createElement('main');
@@ -76,9 +74,9 @@ describe('appearance', () => {
       return <span _tone />;
     }
 
-    Child.style = {
+    style(Child, {
       tone: { color: 'blue' }
-    };
+    });
 
     function Parent() {
       return (
@@ -89,9 +87,9 @@ describe('appearance', () => {
       );
     }
 
-    Parent.style = {
+    style(Parent, {
       tone: { color: 'red' }
-    };
+    });
 
     const root = document.createElement('main');
     document.body.append(root);
@@ -103,18 +101,77 @@ describe('appearance', () => {
     root.remove();
   });
 
+  it('will forward component rules to their explicit placement', () => {
+    function Child({ style: appearance }: any) {
+      return (
+        <section>
+          <span style={appearance}>
+            <b _mark>child</b>
+          </span>
+        </section>
+      );
+    }
+
+    function Plain() {
+      return <i />;
+    }
+
+    function Parent() {
+      return <><Child /><Plain /></>;
+    }
+
+    style(Parent, {
+      Child: {
+        color: 'red',
+        mark: { fontWeight: 700 }
+      },
+      Plain: { color: 'blue' }
+    });
+
+    const root = document.createElement('main');
+    document.body.append(root);
+    const release = render(<Parent />, root);
+
+    expect(root.querySelector('section')?.className).toBe('');
+    expect(getComputedStyle(root.querySelector('span')!).color).toBe('red');
+    expect(getComputedStyle(root.querySelector('b')!).fontWeight).toBe('700');
+    expect(getComputedStyle(root.querySelector('i')!).color).toBe('blue');
+    release();
+    root.remove();
+  });
+
+  it('will register global macros before rendering', () => {
+    macro({ globalTone: (value?: unknown) => ({ color: value }) });
+
+    function Global() {
+      return <i _globalTone="purple" />;
+    }
+
+    style(Global, { i: { padding: 2 } });
+    const root = document.createElement('main');
+    document.body.append(root);
+    const release = render(<Global />, root);
+
+    expect(getComputedStyle(root.querySelector('i')!).color).toBe('purple');
+    expect(getComputedStyle(root.querySelector('i')!).padding).toBe('2px');
+    expect(() => macro({ late: { color: 'red' } })).toThrow('after rendering');
+    expect(() => style(Global, { late: { color: 'red' } })).toThrow('after a component');
+    release();
+    root.remove();
+  });
+
   it('will preserve zero and fall back inline after the route cache fills', async () => {
     class Variable extends Component {
-      static style = {
-        width: (value?: unknown) => ({ width: value })
-      };
-
       width = 0;
 
       render() {
         return <div _width={this.width} />;
       }
     }
+
+    style(Variable, {
+      width: (value?: unknown) => ({ width: value })
+    });
 
     let view!: Variable;
     const root = document.createElement('main');
@@ -217,39 +274,43 @@ describe('appearance', () => {
     const right = resolveAppearance(undefined, second, 'div', { _tone: true }, document);
     const style = document.createElement('div').style;
 
-    applyDeclarations(style, { '--count': 2, '--empty': null });
+    applyDeclarations(style, { '--count': 2, '--empty': null, color: null });
 
     expect(right.appearance?.className).toBe(left.appearance?.className);
     expect(style.getPropertyValue('--count')).toBe('2');
     expect(style.getPropertyValue('--empty')).toBe('');
+    expect(style.color).toBe('');
   });
 
-  it('will ignore invalid maps and expose style only from component types', () => {
-    function Styled() {
-      return null;
-    }
-    Styled.style = { div: { color: 'red' } };
-
+  it('will ignore invalid maps', () => {
     expect(createStyleScope(undefined, null)).toBeUndefined();
     expect(createStyleScope(undefined, [])).toBeUndefined();
-    expect(styleOf(Styled)).toBe(Styled.style);
-    expect(styleOf({ style: Styled.style })).toBeUndefined();
+    expect(createAppearanceRoute(undefined, 'div', {})).toBeUndefined();
+    expect(resolveAppearance(undefined, undefined, 'div', {}, document)).toEqual({});
   });
 
-  it('will keep the dry renderer independent of appearance compilation', () => {
-    function Styled() {
-      return <div _tone style={{ color: 'blue' }} />;
+  it('will compose repeated and inherited registrations', () => {
+    class Base extends Component {
+      render() {
+        return <div _tone />;
+      }
     }
-    Styled.style = { tone: { color: 'red' } };
+    class Styled extends Base {}
+
+    style(Base, { tone: { color: 'red', padding: 2 } });
+    style(Styled, { tone: { color: 'blue' } });
+    style(Styled, { tone: { marginLeft: 3 } });
 
     const root = document.createElement('main');
-    const release = createRender()(<Styled />, root);
+    document.body.append(root);
+    const release = render(<Styled />, root);
     const node = root.querySelector('div')!;
 
-    expect(node.className).toBe('');
-    expect(node.hasAttribute('_tone')).toBe(false);
-    expect(node.style.color).toBe('blue');
+    expect(getComputedStyle(node).color).toBe('blue');
+    expect(getComputedStyle(node).marginLeft).toBe('3px');
+    expect(getComputedStyle(node).padding).toBe('2px');
     release();
+    root.remove();
   });
 
   it('will share immutable scopes and structural routes', () => {
@@ -275,7 +336,7 @@ describe('appearance', () => {
     expect(result.appearance?.className).toMatch(/^e\d+$/);
   });
 
-  it.fails('will activate nested descendant scopes', () => {
+  it('will activate nested descendant scopes', () => {
     function Nested() {
       return (
         <section _nested>
@@ -284,15 +345,17 @@ describe('appearance', () => {
       );
     }
 
-    Nested.style = {
+    style(Nested, {
       nested: {
         fontStyle: 'italic',
         strong: { fontWeight: 700 }
       }
-    };
+    });
 
     const root = document.createElement('main');
+    document.body.append(root);
     render(<Nested />, root);
     expect(getComputedStyle(root.querySelector('strong')!).fontWeight).toBe('700');
+    root.remove();
   });
 });

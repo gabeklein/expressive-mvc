@@ -60,25 +60,31 @@ Events are native `addEventListener` listeners (`onClick`, `onKeyDown`, `onClick
 
 ### Component appearance rules
 
-Assign an immutable `style` map to an FC or Component class. A host-tag key applies automatically. `_rule` activates an object rule; `_macro={value}` passes the value to a pure function rule. Style maps inherit through component nesting, with the nearer component shadowing a parent rule.
+Register immutable maps with `style(Component, rules)`. A host-tag or component-name key applies automatically. `_rule` activates an object rule; `_macro={value}` passes the value to a pure function rule. Nested objects establish descendant scopes.
 
 ```tsx
 function Button({ active, color }: { active: boolean; color: string }) {
   return <button _active={active} _color={color}>Save</button>;
 }
 
-Button.style = {
+style(Button, {
   button: { padding: 8 },
   active: { fontWeight: 700 },
   color: (value: unknown) => ({ color: value })
-};
+});
 ```
+
+Repeated `style()` calls add layers and return the component unchanged. Resolution order is global macros, base class, derived class, registration order, then explicit element `style`; later properties win. Register before the component first renders.
+
+`macro(rules)` registers global rules. A sidecar may call it at import time for app-wide `_` macros. Register all macros before the first render after any macro is installed.
 
 Object rules are constant macro expansions. Function rules may return an object, class token, nested array, or empty value. Keep them argument-pure—expansions are cached. `false`, `null`, and `undefined` omit an invocation; `0` remains a value. `_` attributes are style-only and never reach the DOM.
 
 Serializable combinations emit a generated class lazily. A structural route caches 8 combinations; further unseen combinations fall back to inline declarations, while prior cached combinations remain reusable. Explicit inline objects in `style` apply after appearance declarations.
 
-Keep each JSX location's `_` attribute names stable. Values may change, but adding a new `_` key later through a dynamic spread is not yet detected. Nested descendant scopes and build-time extraction are not included in the `0.1` experiment.
+Keep each JSX location's `_` attribute names stable. Values may change, but adding a new `_` key later through a dynamic spread is not yet detected. Build-time extraction is not included in the `0.1` experiment.
+
+A component-name rule becomes an opaque `style` token carrying its source scope. It auto-forwards to the component root or follows explicit placement through the component's incoming `style` prop; nested rules remain available below that placement.
 
 `class` is element-only. `style` on a component forwards through component and transparent boundaries to its host root; fragment output applies it to every host root. Reading `style` during render - destructuring, a spread, `this.props.style`, or a declared `style` field on a Component - takes ownership and suppresses forwarding for that render. Forwarded style overrides the root's own, and the outermost caller wins; a component wanting the last word consumes `style` and places it first:
 

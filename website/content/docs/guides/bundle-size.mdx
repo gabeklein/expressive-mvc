@@ -16,7 +16,8 @@ Minified, then gzipped. React is a peer dependency and excluded, as it would alr
 | `@expressive/react` — `State` only | ~8.7 kB |
 | `@expressive/react` — `State`, `Component`, instructions | ~9.5 kB |
 | `@expressive/react` — every export | ~11.5 kB |
-| `@expressive/jsx` — every export | ~14.8 kB |
+| `@expressive/jsx` — renderer without style helpers | ~14.2 kB |
+| `@expressive/jsx` — every export, including styling | ~15.7 kB |
 | `@expressive/router` — every export | ~11.6 kB |
 | `@expressive/react` + `@expressive/router` | ~15.5 kB |
 
@@ -35,6 +36,8 @@ If a third-party size service quotes something different from this table, the me
 ## Tree-shaking
 
 The headless core shakes properly: importing only `State` costs ~5.3 kB against ~8.7 kB for everything, so unused instructions genuinely do not ship. It is built unbundled — one module per source file, `sideEffects: false` — and its module-level work only touches classes the same module exports, which is what makes that declaration safe.
+
+The JSX appearance compiler is likewise optional: renderer imports measure ~14.2 kB; importing `style` and `macro` raises the complete package to ~15.7 kB. The renderer retains only the small token/provenance protocol needed to accept styles registered elsewhere.
 
 The React adapter has a **floor you cannot shake below: ~8.7 kB**, reached by importing anything at all from it. That is deliberate and worth being plain about. The adapter works by patching types it does not own, at import time:
 
