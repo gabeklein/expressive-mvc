@@ -58,6 +58,16 @@ Events are native `addEventListener` listeners (`onClick`, `onKeyDown`, `onClick
 
 `className` is ignored, including through untyped spreads. A string in `style` is a class token, not CSS declaration text. Treat arrays and objects as immutable render values—replace them when their contents change. Compiler-generated style blocks are not part of the `0.1` contract.
 
+`class` and `style` on a component forward through component and transparent boundaries to its host root. Fragment output applies them to every host root. To choose another element, consume the same value explicitly; identity lets the renderer suppress automatic root placement:
+
+```tsx
+function Field({ style }: { style?: JSX.IntrinsicElements['div']['style'] }) {
+  return <label><input style={style} /></label>;
+}
+
+<Field style={['invalid', { color: 'red' }]} />;
+```
+
 ## MVC render scopes
 
 FCs have no renderer-owned state cells or effects. Treat them as pre-hooks stateless components whose MVC reads declare a dependency snapshot:

@@ -48,6 +48,8 @@ const unmount = render(<Count />, document.getElementById('app')!);
 />
 ```
 
+`class` and `style` on a component automatically reach its rendered host root, including through component, fragment, provider, portal, and collection boundaries. A fragment applies them to each host root. Explicit placement wins: if the component uses the same class or style value in its returned tree, the renderer applies it there instead of also forwarding it to the root.
+
 `Component` retains the React adapter's model: fields read by `render()` are dependencies, owned instances mount and clean up with the DOM range, and an externally activated instance can be placed directly without transferring ownership.
 
 The first release includes keyed reconciliation, native events, refs, SVG, `Provider` / `Consumer`, direct `has` / `map` collection rendering, portals, lazy components, error and suspense fallbacks, and retention of committed content while `pending()` work suspends. It deliberately excludes standalone hooks, synthetic events, memo wrappers, SSR, hydration, and a generated stylesheet runtime.

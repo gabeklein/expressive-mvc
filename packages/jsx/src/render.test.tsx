@@ -466,6 +466,106 @@ describe('render', () => {
     expect(node.style.height).toBe('');
   });
 
+  it('will forward appearance through component roots', async () => {
+    const Leaf = (_props: any) => <div class="leaf" style={['local', { color: 'blue' }]} />;
+    const Middle = (_props: any) => (
+      <Leaf {...({ class: 'middle', style: ['inner', { color: 'green', height: 4 }] } as any)} />
+    );
+
+    class View extends Component {
+      active = true;
+
+      render() {
+        return (
+          <Middle
+            class={this.active ? 'outer' : 'changed'}
+            style={[false, this.active ? 'call' : 'updated', { color: 'red', width: this.active ? 3 : 6 }]}
+          />
+        );
+      }
+    }
+
+    let view!: View;
+    const root = document.createElement('main');
+    render(<View is={(value) => (view = value)} />, root);
+    const node = root.querySelector('div')!;
+
+    expect(node.className).toBe('outer call middle inner leaf local');
+    expect(node.style.color).toBe('blue');
+    expect(node.style.height).toBe('4px');
+    expect(node.style.width).toBe('3px');
+
+    view.active = false;
+    await flushMicrotasks();
+    expect(node.className).toBe('changed updated middle inner leaf local');
+    expect(node.style.width).toBe('6px');
+  });
+
+  it('will honor explicit appearance placement', () => {
+    const Placed = ({ class: className, style }: any) => (
+      <section>
+        <span class={className} style={style} />
+      </section>
+    );
+    const root = document.createElement('main');
+
+    render(
+      <Placed {...({ class: 'placed', style: ['selected', { color: 'red' }] } as any)} />,
+      root
+    );
+
+    expect(root.querySelector('section')?.hasAttribute('class')).toBe(false);
+    expect(root.querySelector('section')?.getAttribute('style')).toBeNull();
+    expect(root.querySelector('span')?.className).toBe('placed selected');
+    expect(root.querySelector('span')?.style.color).toBe('red');
+  });
+
+  it('will honor explicit appearance placement through component instances', () => {
+    class Placed extends Component {
+      render() {
+        return <span />;
+      }
+    }
+
+    const Place = ({ style }: any) => new Placed({ style });
+    const root = document.createElement('main');
+
+    render(<Place {...({ style: 'placed' } as any)} />, root);
+
+    expect(root.querySelector('span')?.className).toBe('placed');
+  });
+
+  it('will update forwarded appearance on collection roots', async () => {
+    const items = new has.List([<span />]);
+
+    const Items = (_props: any) => items as any;
+    class View extends Component {
+      active = true;
+
+      render() {
+        return <Items {...({ style: this.active ? 'active' : 'inactive' } as any)} />;
+      }
+    }
+
+    let view!: View;
+    const root = document.createElement('main');
+    render(<View is={(value) => (view = value)} />, root);
+    expect(root.querySelector('span')?.className).toBe('active');
+
+    view.active = false;
+    await flushMicrotasks();
+    expect(root.querySelector('span')?.className).toBe('inactive');
+  });
+
+  it('will forward appearance to fragment roots', () => {
+    const Pair = () => <><i /><b /></>;
+    const root = document.createElement('main');
+
+    render(<Pair style="shared" />, root);
+
+    expect([...root.children].map((node) => node.className)).toEqual(['shared', 'shared']);
+  });
+
   it('will render SVG, fragments and primitive updates', async () => {
     class Shapes extends Component {
       count: number | bigint = 1;
