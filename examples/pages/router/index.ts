@@ -1,5 +1,6 @@
 export default {
   overview: 'Overview',
+  browser: 'Browser history',
   params: 'Params',
   query: 'Query',
   guards: 'Guards',
