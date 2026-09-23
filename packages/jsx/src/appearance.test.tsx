@@ -170,6 +170,37 @@ describe('appearance', () => {
     expect(getComputedStyle(node).color).toBe('purple');
   });
 
+  it('will take descendant scopes from the token with the most doors', () => {
+    const handles: any[] = [];
+
+    function Capture({ style: forwarded }: { style?: any }) {
+      handles.push(forwarded);
+      return null;
+    }
+
+    function Relay({ style: forwarded }: { style?: any }) {
+      return <Capture style={forwarded} />;
+    }
+
+    function Deep() {
+      return <Relay />;
+    }
+
+    function Shallow() {
+      return <Capture />;
+    }
+
+    style(Deep, { Relay: { strong: { color: 'red' } } });
+    style(Shallow, { Capture: { strong: { color: 'blue' } } });
+
+    mount(<><Deep /><Shallow /></>);
+
+    const [deep, shallow] = handles;
+    const root = mount(<section style={{ ...deep, ...shallow }}><strong>deep</strong></section>);
+
+    expect(getComputedStyle(root.querySelector('strong')!).color).toBe('red');
+  });
+
   it('will compose rules from macros without expanding a macro into itself', () => {
     function Card() {
       return <><section _raised _tone="red" /><em _glow /></>;

@@ -84,7 +84,7 @@ style(Button, {
 
 Repeated `style()` calls add layers and return the component unchanged. Within a scope, globals come first, then base class, derived class, and registration order. Register before the component first renders; register all macros before the first render after any macro is installed.
 
-Inline style always beats classes. Among classes, a caller's rule beats the callee's: component-name rules and `_rule`s on a component element travel as tokens through `style`, and each component `style` prop crossed - forwarded or handed on explicitly - adds a door. More doors wins, independent of render or emission order. Blocks emitted past the first door carry a `-dN` suffix.
+Inline style always beats classes. Among classes, a caller's rule beats the callee's: component-name rules and `_rule`s on a component element travel as tokens through `style`, and each component `style` prop crossed - forwarded or handed on explicitly - adds a door. More doors wins - for classes and for which nested rules reach descendants - independent of render or emission order. Blocks emitted past the first door carry a `-dN` suffix.
 
 Keep each JSX location's `_` attribute names stable; a `_` key added later through a dynamic spread is not detected. Build-time extraction is not part of the `0.1` experiment.
 
