@@ -1,9 +1,5 @@
 import { Component } from '@expressive/react';
 
-// A todo is a Component: it owns its text, its done flag, and its edit draft,
-// and it renders its own row. The list drops the instance into the tree - no
-// key, no props, no <Row> wrapper. Every mutation here is local to one item,
-// so toggling or editing re-renders that row alone.
 export class Todo extends Component {
   text = '';
   done = false;
@@ -19,8 +15,6 @@ export class Todo extends Component {
     this.editing = true;
   }
 
-  // Committing empty text is a delete; destroying itself evicts it from the
-  // pool, so the store never has to be told.
   commit() {
     const text = this.draft.trim();
 
