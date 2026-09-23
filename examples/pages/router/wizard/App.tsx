@@ -78,7 +78,7 @@ const Frame = (props: { children?: ReactNode }) => (
 const Progress = () => {
   const { active, inner, router } = Route.get();
   const steps = inner.filter((route) => route.label);
-  const at = active ? steps.indexOf(active) : 0;
+  const at = steps.findIndex((step) => step.path === active?.path);
 
   return (
     <nav className="steps">
