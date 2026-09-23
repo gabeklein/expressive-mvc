@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { Component, createPortal, has, map, render } from './index';
+import { Component, State, createPortal, has, map, render } from './index';
 import { flushMicrotasks } from '../test.setup';
 import { vnode } from './vnode';
 
@@ -117,6 +117,103 @@ describe('render', () => {
     expect(refs[0]).toBe(node);
     expect(refs.at(-1)).toBe(null);
     expect(objectRef.current).toBeNull();
+  });
+
+  it('will write boolean aria attributes as strings', async () => {
+    class View extends Component {
+      open = false;
+
+      render() {
+        return <button aria-expanded={this.open} aria-hidden={!this.open ? undefined : false} />;
+      }
+    }
+
+    let view!: View;
+    const root = document.createElement('main');
+    render(<View is={(value) => (view = value)} />, root);
+    const node = root.querySelector('button')!;
+
+    expect(node.getAttribute('aria-expanded')).toBe('false');
+    expect(node.hasAttribute('aria-hidden')).toBe(false);
+
+    view.open = true;
+    await flushMicrotasks();
+    expect(node.getAttribute('aria-expanded')).toBe('true');
+    expect(node.getAttribute('aria-hidden')).toBe('false');
+  });
+
+  it('will set and remove inline custom properties', async () => {
+    class View extends Component {
+      gap: string | undefined = '4px';
+
+      render() {
+        return <div style={{ ['--gap' as 'color']: this.gap }} />;
+      }
+    }
+
+    let view!: View;
+    const root = document.createElement('main');
+    render(<View is={(value) => (view = value)} />, root);
+    const node = root.querySelector('div')!;
+
+    expect(node.style.getPropertyValue('--gap')).toBe('4px');
+
+    view.gap = undefined;
+    await flushMicrotasks();
+    expect(node.style.getPropertyValue('--gap')).toBe('');
+  });
+
+  it('will bind camel-cased multi-word events', () => {
+    const keyDown = vi.fn();
+    const pointerDown = vi.fn();
+    const root = document.createElement('main');
+
+    render(<input onKeyDown={(event) => keyDown(event.key)} onPointerDownCapture={pointerDown} />, root);
+    const node = root.querySelector('input')!;
+
+    node.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+    node.dispatchEvent(new Event('pointerdown'));
+
+    expect(keyDown).toHaveBeenCalledWith('Enter');
+    expect(pointerDown).toHaveBeenCalledTimes(1);
+  });
+
+  it('will render a child once when its parent re-renders it', async () => {
+    class Count extends State {
+      value = 0;
+    }
+
+    const renders = vi.fn();
+
+    function Child() {
+      const { value } = Count.get();
+      renders(value);
+      return <b>{value}</b>;
+    }
+
+    function Parent() {
+      const { value } = Count.get();
+      return <p>{value}<Child /></p>;
+    }
+
+    class App extends Component {
+      count = new Count();
+
+      render() {
+        return <Parent />;
+      }
+    }
+
+    let app!: App;
+    const root = document.createElement('main');
+    render(<App is={(value) => (app = value)} />, root);
+    renders.mockClear();
+
+    app.count.value = 1;
+    await flushMicrotasks();
+
+    expect(renders.mock.calls).toEqual([[1]]);
+    expect(root.textContent).toBe('11');
   });
 
   it('will update numeric styles', async () => {

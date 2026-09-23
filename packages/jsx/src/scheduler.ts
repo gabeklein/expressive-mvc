@@ -91,6 +91,12 @@ function transition(work: () => void) {
   }
 }
 
+function claim(scope: Schedulable) {
+  urgent.delete(scope);
+  passive.delete(scope);
+  scope.queued = undefined;
+}
+
 function unschedule(scope: Schedulable) {
   urgent.delete(scope);
   passive.delete(scope);
@@ -98,5 +104,5 @@ function unschedule(scope: Schedulable) {
   settle(scope);
 }
 
-export { release, schedule, transition, unschedule };
+export { claim, release, schedule, settle, transition, unschedule };
 export type { Schedulable };

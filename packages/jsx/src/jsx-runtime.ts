@@ -3,11 +3,29 @@ import { Fragment, host } from '@expressive/mvc/runtime';
 import { childrenOf, isVNode, vnode } from './vnode';
 import type { Node, VNode } from './vnode';
 
+type Words =
+  | 'AnimationCancel' | 'AnimationEnd' | 'AnimationIteration' | 'AnimationStart'
+  | 'AuxClick' | 'BeforeInput' | 'BeforeMatch' | 'BeforeToggle' | 'CanPlay' | 'CanPlayThrough'
+  | 'CompositionEnd' | 'CompositionStart' | 'CompositionUpdate'
+  | 'ContextLost' | 'ContextMenu' | 'ContextRestored' | 'CueChange' | 'DblClick'
+  | 'DragEnd' | 'DragEnter' | 'DragLeave' | 'DragOver' | 'DragStart' | 'DurationChange'
+  | 'FocusIn' | 'FocusOut' | 'FormData' | 'GotPointerCapture' | 'KeyDown' | 'KeyPress' | 'KeyUp'
+  | 'LoadedData' | 'LoadedMetadata' | 'LoadStart' | 'LostPointerCapture'
+  | 'MouseDown' | 'MouseEnter' | 'MouseLeave' | 'MouseMove' | 'MouseOut' | 'MouseOver' | 'MouseUp'
+  | 'PointerCancel' | 'PointerDown' | 'PointerEnter' | 'PointerLeave' | 'PointerMove'
+  | 'PointerOut' | 'PointerOver' | 'PointerRawUpdate' | 'PointerUp'
+  | 'RateChange' | 'ScrollEnd' | 'SecurityPolicyViolation' | 'SelectionChange' | 'SelectStart'
+  | 'SlotChange' | 'TimeUpdate' | 'TouchCancel' | 'TouchEnd' | 'TouchMove' | 'TouchStart'
+  | 'TransitionCancel' | 'TransitionEnd' | 'TransitionRun' | 'TransitionStart' | 'VolumeChange';
+
+type Cased = { [W in Words as Lowercase<W>]: W };
+type EventName<K> = K extends keyof Cased ? Cased[K] : Capitalize<K & string>;
+
 type EventAttributes = {
-  [K in keyof GlobalEventHandlersEventMap as `on${Capitalize<K & string>}`]?:
+  [K in keyof GlobalEventHandlersEventMap as `on${EventName<K>}`]?:
     (event: GlobalEventHandlersEventMap[K]) => unknown;
 } & {
-  [K in keyof GlobalEventHandlersEventMap as `on${Capitalize<K & string>}Capture`]?:
+  [K in keyof GlobalEventHandlersEventMap as `on${EventName<K>}Capture`]?:
     (event: GlobalEventHandlersEventMap[K]) => unknown;
 };
 

@@ -6,7 +6,7 @@ import { Fragment } from '@expressive/mvc/runtime';
 import { commit, dispose, enter } from './adapter';
 import type { Scope } from './adapter';
 import { Provider, provide } from './context';
-import { release, schedule, transition } from './scheduler';
+import { claim, release, schedule, settle as absorb, transition } from './scheduler';
 import { PORTAL, childrenOf, isVNode } from './vnode';
 import type { Key, Node as RenderNode, VNode } from './vnode';
 
@@ -569,7 +569,7 @@ function patch(old: Fiber | undefined, value: RenderNode, parent: globalThis.Nod
     reconcile(old, (value as VNode).props.children, context, old.boundary);
   } else if (old.kind == 'function') {
     old.props = (value as VNode).props;
-    runFunction(old, passiveRender);
+    rerun(old, () => runFunction(old, passiveRender));
   } else if (old.kind == 'component') {
     const props = isVNode(value) ? value.props : old.instance!.props;
     if (isVNode(value) && props !== old.instance!.props) {
@@ -577,7 +577,7 @@ function patch(old: Fiber | undefined, value: RenderNode, parent: globalThis.Nod
       (old.instance as any).props = props;
     }
     old.props = props as Record<string, any>;
-    runComponent(old, passiveRender);
+    rerun(old, () => runComponent(old, passiveRender));
   } else if (old.kind == 'provider') {
     old.props = (value as VNode).props;
     const commit = provide(old.childContext!, old.props as any);
@@ -590,6 +590,12 @@ function patch(old: Fiber | undefined, value: RenderNode, parent: globalThis.Nod
   }
 
   return old;
+}
+
+function rerun(fiber: Fiber, run: () => void) {
+  claim(fiber.scope!);
+  run();
+  absorb(fiber.scope!);
 }
 
 function compatible(fiber: Fiber, value: RenderNode) {
@@ -674,6 +680,11 @@ function patchProp(fiber: Fiber, element: Element, key: string, previous: any, n
 
   const name = key == 'className' ? 'class' : key == 'htmlFor' ? 'for' : key;
 
+  if (key.startsWith('aria-') && next != null) {
+    element.setAttribute(name, String(next));
+    return;
+  }
+
   if (next === null || next === undefined || next === false) {
     element.removeAttribute(name);
     if (key in element && typeof (element as any)[key] != 'function')
@@ -688,7 +699,7 @@ function patchProp(fiber: Fiber, element: Element, key: string, previous: any, n
     return;
   }
 
-  if (key in element && !key.startsWith('aria-') && !key.startsWith('data-') && element.namespaceURI !== SVG)
+  if (key in element && !key.startsWith('data-') && element.namespaceURI !== SVG)
     try {
       (element as any)[key] = next;
       return;
@@ -711,6 +722,10 @@ function patchStyle(element: HTMLElement, previous: string | Record<string, unkn
   for (const key of Object.keys({ ...before, ...after })) {
     const value = after[key];
     const style = element.style as any;
+    if (key.startsWith('--')) {
+      style.setProperty(key, value == null ? '' : String(value));
+      continue;
+    }
     if (typeof value == 'number') style[key] = '';
     style[key] = value == null ? '' : value;
     if (typeof value == 'number' && value !== 0 && !style[key])
