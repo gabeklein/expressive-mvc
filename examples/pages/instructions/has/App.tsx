@@ -14,7 +14,7 @@ export default class TodoList extends Component {
     this.add('Learn Expressive');
   }
 
-  add(text: string = this.draft) {
+  add(text: string = this.draft.trim()) {
     if (!text) return;
     this.todos.add({ text });
     this.draft = '';
