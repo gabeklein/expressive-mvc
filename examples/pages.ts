@@ -41,7 +41,7 @@ const strip = (key: string) =>
 /**
  * Ordered tree of examples, keyed off directory manifests (root = '').
  * A directory is a branch when it has a manifest, otherwise a leaf; each leaf's
- * lazy App.tsx module key is attached as `file` (it doubles as the iframe src).
+ * lazy App.tsx module key is attached as `file` (the iframe reads it back from `data-example`).
  */
 export const tree = (() => {
   const dirs: Record<string, GroupModule> = {};
@@ -85,9 +85,8 @@ const paths = leaves(tree).map((d) => d.path);
 
 export const home = paths.find((p) => p === LANDING) ?? paths[0];
 
-export const frameSrc = (file: string) => `module#${encodeURIComponent(file)}`;
-
-export const loadFrame = () => apps[decodeURIComponent(location.hash.slice(1))];
+export const loadFrame = () =>
+  apps[window.frameElement?.getAttribute('data-example') ?? ''];
 
 const sortKey = (name: string) =>
   (name === 'App.tsx' ? '0' : name === 'App.css' ? '1' : '2') + name;
