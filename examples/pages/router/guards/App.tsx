@@ -18,9 +18,8 @@ export default () => (
     <Guarded />
     <small>
       Signed out, both vault links land on sign-in. Signed in, known documents
-      open and unknown ones get the vault's not-found page, not the app's. The
-      verdict is cached while <code>vault/:doc</code> stays matched, so return to
-      the lobby between documents. During the check the current screen
+      open and unknown ones get the vault's not-found page, not the app's. Each
+      document is checked on entry. During the check the current screen
       holds; <code>fallback</code> shows only on a cold load.
     </small>
   </div>
