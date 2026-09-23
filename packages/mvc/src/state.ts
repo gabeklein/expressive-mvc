@@ -1,4 +1,4 @@
-import { Context } from './context';
+import { Context, join } from './context';
 import {
   capture,
   event,
@@ -38,7 +38,6 @@ const METHODS = new WeakMap<Function, Map<string, (value: any) => void>>();
 const GETTERS = new WeakMap<Function, Map<string, () => unknown>>();
 
 /** Stale flags for compute closures awaiting refresh on next access. */
-const HELD = new WeakMap<State, Set<State>>();
 const STALE = new WeakSet<() => void>();
 
 /** Whether the deadline which drains `PENDING` is already queued for this tick. */
@@ -829,40 +828,11 @@ function apply(
   if ('value' in config) set(config.value, silent);
 }
 
-function rooted(state: State) {
-  const entries = Context.root.provide.get(state.constructor as State.Extends);
-  if (entries) for (const [member] of entries) if (member === state.is) return true;
-}
-
 function provides(ctx: Context, value: State) {
   while (ctx = ctx.parent!) {
     const entries = ctx.provide.get(value.constructor as State.Extends);
     if (entries) for (const [state] of entries) if (state === value) return true;
   }
-}
-
-/**
- * Add `value` to its parent's context. A parent resolving only to the root
- * fallback - context-less and not registered there - holds it instead, until
- * some context adds the parent (see `provideHeld`).
- */
-function join(ctx: Context, state: State, value: State) {
-  if (ctx !== Context.root || rooted(state)) return ctx.add(value);
-
-  let held = HELD.get(state);
-  if (!held) HELD.set(state, (held = new Set()));
-  held.add(value);
-
-  return () => { held.delete(value); };
-}
-
-/** Add to `ctx` the children `state` holds for want of a context. */
-function provideHeld(state: State, ctx: Context) {
-  const held = HELD.get(state);
-  if (!held) return;
-
-  const done = [...held].map((value) => ctx.add(value));
-  return () => done.forEach((remove) => remove());
 }
 
 function child(state: State) {
@@ -882,7 +852,7 @@ function child(state: State) {
     if (!(value instanceof State)) return;
 
     if (parent(value, state)) {
-      const remove = join(ctx, state, value);
+      const remove = join(state, value);
       cleanup = () => {
         cancel();
         remove();
@@ -890,7 +860,7 @@ function child(state: State) {
       };
       const cancel = listener(state, cleanup, null);
     } else if (!provides(ctx, value)) {
-      cleanup = join(ctx, state, value);
+      cleanup = join(state, value);
     }
 
     event(value);
@@ -1118,5 +1088,4 @@ function parent(child: object, value?: State | null) {
   return true;
 }
 
-export {
-  provideHeld, event, unbind, State, parent, children, PENDING, STORE, uid, access, update, apply, compute };
+export { event, unbind, State, parent, children, PENDING, STORE, uid, access, update, apply, compute };
