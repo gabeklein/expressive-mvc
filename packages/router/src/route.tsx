@@ -1,4 +1,4 @@
-import { Component, get, set } from '@expressive/mvc';
+import { Component, set } from '@expressive/mvc';
 import { childrenOf, Fragment, isElement, propsOf, typeOf } from '@expressive/mvc/runtime';
 import type { JSX } from '@expressive/mvc/jsx-runtime';
 
@@ -55,8 +55,11 @@ export class Route extends Component {
    * root-level none Route is the app 404, a nested one the section 404. */
   none = false;
 
-  /** Nearest mounted Route ancestor, if any. */
-  parent = get(Route, false);
+  /** Nearest mounted Route ancestor within this Router, if any. */
+  readonly parent: Route | undefined = set(() => {
+    const parent = this.get(Route, false);
+    return parent?.router.is === this.router.is ? parent : undefined;
+  }, false);
 
   /** Registered child Routes, in declaration order. Reactive. */
   inner: Route[] = [];
