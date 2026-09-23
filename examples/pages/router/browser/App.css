@@ -14,6 +14,21 @@
   border-radius: var(--r-sm);
 }
 
+.nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2) var(--s3);
+}
+
+.nav a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.nav a:hover {
+  text-decoration: underline;
+}
+
 .view {
   width: 100%;
   min-height: 6rem;

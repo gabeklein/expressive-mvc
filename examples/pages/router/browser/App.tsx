@@ -24,7 +24,7 @@ export default () => (
       </Route>
     </BrowserRouter>
     <small>
-      Reload or use the browser's Back and Forward - the URL stays the source of
+      Browser Back and Forward walk these pages - the URL is the source of
       truth. The projects layout persists across every page
       below <code>/projects</code>, its own not-found page included.
     </small>
