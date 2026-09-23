@@ -682,6 +682,28 @@ describe('Route', () => {
       expect(view.container.textContent).toBe('chrome/section-404');
     });
 
+    it('keeps the app none Route out when a ceded section re-enters', async () => {
+      location('/');
+      const view = render(
+        <Route>
+          <Route as={() => <span>home</span>} />
+          <Route to="users" as={Chrome}>
+            <Route to=":id" as={Detail} />
+            <Route none as={SectionMissing} />
+          </Route>
+          <Route none as={AppMissing} />
+        </Route>
+      );
+      await act(async () => {});
+
+      await act(async () => router.current.goto('/users/ada'));
+      expect(view.container.textContent).toBe('chrome/detail');
+
+      await act(async () => router.current.goto('/elsewhere'));
+      await act(async () => router.current.goto('/users/ada'));
+      expect(view.container.textContent).toBe('chrome/detail');
+    });
+
     it('mixed children make a content route, not a scope', () => {
       location('/posts');
       const view = render(

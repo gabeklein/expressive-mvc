@@ -480,11 +480,23 @@ function register(parent: Route, child: Route) {
   }
 
   list.push(child);
-  parent.inner = list.slice();
+  publish(parent, list);
 
   child.set(null, () => {
     list!.splice(list!.indexOf(child), 1);
     if (!list!.length) CHILDREN.delete(parent);
-    if (!parent.get(null)) parent.inner = list!.slice();
+    publish(parent, list!);
   });
+}
+
+/** Reassign `inner` on `route` and republish it on every ancestor - getters
+ * walking nested `inner` (matches, active) read raw children, so only the
+ * top-level field they did read can notify them. */
+function publish(route: Route, list: Route[]) {
+  if (route.get(null)) return;
+
+  route.inner = list.slice();
+
+  for (let up = route.parent; up && !up.get(null); up = up.parent)
+    up.inner = up.inner.slice();
 }
