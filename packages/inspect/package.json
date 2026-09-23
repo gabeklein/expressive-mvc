@@ -1,6 +1,6 @@
 {
   "name": "@expressive/inspect",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "In-process inspector for Expressive MVC - registry, ownership tree, path queries, and a frame journal for agents, tests, and devtools.",
   "keywords": [
     "expressive",
@@ -54,7 +54,7 @@
     "test": "tsc --noEmit && vitest run --coverage"
   },
   "peerDependencies": {
-    "@expressive/mvc": "^0.84.3"
+    "@expressive/mvc": "^0.85.0"
   },
   "devDependencies": {
     "@expressive/mvc": "workspace:*",

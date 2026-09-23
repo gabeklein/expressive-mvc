@@ -1,5 +1,39 @@
 # @expressive/mvc
 
+## 0.85.0
+
+### Minor Changes
+
+- [#331](https://github.com/gabeklein/expressive-mvc/pull/331) [`bfdf4ea`](https://github.com/gabeklein/expressive-mvc/commit/bfdf4eaf3cb06ccd8fbdb3d5813a6e45d2d39e53) Deferred presentation arrives as `pending(work)`, replacing the free `transition()` export it supersedes.
+
+  The name describes the updates, not the callback: `work` runs immediately and synchronously, and the subscriber notifications it produces are what become pending. React therefore keeps current content on screen while a replacement gets ready rather than falling back. Writes may target any state. The returned promise settles once every subscriber the work touched has **absorbed** it: under React, once the update commits.
+
+  An exception from `work` propagates synchronously. Updates queued before it threw still dispatch. The promise never rejects - a reader that throws during its replay is logged, not reported to the writer, so awaiting settlement needs no catch.
+
+  A free function rather than a method, because nothing about it is bound to one state. Settlement comes from whichever subscribers the writes happen to touch, so a receiver would only imply a scope that does not exist.
+
+  `pending` covers **mvc-driven updates**, not everything in the block. Each subscriber replays through the scheduler it subscribed with - `@expressive/react` supplies `startTransition`, a plain effect supplies nothing and keeps normal timing. One `pending()` call may have both, and neither is subjected to the other's semantics. Nested calls settle their own consequences while also joining the outer call, so awaiting either remains truthful. A host is not required at all: with none registered the promise still settles once every subscriber has replayed, which makes it a headless barrier for the whole cascade.
+
+  Subscribers which do not claim absorption settle on replay. React claims through commit; unmounted or hidden readers do not. Scheduling and settlement are independent - an adapter without concurrent deferral may still claim through its commit.
+
+  `pending()` with no arguments is the other half of the same feature. Called during a replay it returns a release callback, and settlement waits on that instead of on the replay returning; outside one it returns nothing. Adapters use it to hold until they commit, and a hand-written `watch` subscriber can participate on the same terms. It lives on the main entry rather than `@expressive/mvc/runtime`, which is for host seams - deferral no longer consults the host at all.
+
+  Note that a subscriber carries one update at one priority, so one which reads a progress flag must not rebuild the deferred content on the same pass - read it from a sibling, or from a wrapper taking that content as `children`.
+
+  Migrating: `transition(() => …)` becomes `pending(() => …)`. The `/observable` helper formerly named `pending(state)` - the queued event keys behind `state.set()` - is now `queued(state)`, so the word means one thing. `HostRuntime.transition` is removed - whoever subscribes may pass a synchronous priority bracket as `watch`'s fourth argument.
+
+### Patch Changes
+
+- [#371](https://github.com/gabeklein/expressive-mvc/pull/371) [`94e741a`](https://github.com/gabeklein/expressive-mvc/commit/94e741a9eace7979b02bd0dda54c9037385c02d8) An async `set()` factory that settles after its state is destroyed is dropped instead of throwing `Tried to update … but state is destroyed.` - a remount or unmount mid-load no longer surfaces an unhandled rejection.
+
+- [#367](https://github.com/gabeklein/expressive-mvc/pull/367) [`43febba`](https://github.com/gabeklein/expressive-mvc/commit/43febbab17359b099554dfb1a561cf3e463237d5) A computed getter read between an update and its refresh keeps its nested dependencies. Previously only direct fields carried over, so a getter reading `this.child.value` stopped updating - in `@expressive/router`, a guard that redirected once left its scope unable to reach its `none` Route later.
+
+- [#374](https://github.com/gabeklein/expressive-mvc/pull/374) [`397dae7`](https://github.com/gabeklein/expressive-mvc/commit/397dae7060d9f9ad0ecb657b492b844a1d77b0de) Children of a private instance (`State.new()` without `static global`) no longer register in the global root, where any context-less `get()` could find them. They follow their parent instead: providing the instance (`<Provider for={app}>`) provides its children there, and a global parent still puts them in root.
+
+- [#347](https://github.com/gabeklein/expressive-mvc/pull/347) [`d0ea0ed`](https://github.com/gabeklein/expressive-mvc/commit/d0ea0ed4a91db45dd8dd3173975d8cd8d1b87826) A suspending effect now holds the `pending()` call which updated it, rather than releasing on the replay that suspended.
+
+  An effect which throws a promise is retried through MVC dispatch when that promise settles. Until now the throw was caught inside the replay, so the call saw a clean return and settled while the effect was still waiting - the one arm of `Promise.all` over subscribers which was incomplete. The retry retains the original pending scope, including updates it causes downstream. Pending updates arriving during suspension join the same hold and remain squashed into that retry. Its hold is released when a retry returns, when the effect is cancelled, or when its state is destroyed; cancellation also prevents a settled promise from reviving the effect.
+
 ## 0.84.3
 
 ### Patch Changes
