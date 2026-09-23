@@ -342,7 +342,7 @@ Instructions: `field/*.md`, linked from the [helper table](#instructions--reacti
 
 | Group | Pages |
 | --- | --- |
-| `featured` | `forms`, `kanban`, `spreadsheet`, `stopwatch`, `tictactoe` |
+| `featured` | `forms`, `kanban`, `spreadsheet`, `stopwatch`, `tictactoe`, `todomvc` |
 | `essentials` | `counter`, `computed`, `fetch`, `async` |
 | `component` | `props`, `subcomponents`, `lifecycle`, `injection`, `headless`, `suspense`, `boundary`, `custom` |
 | `composition` | `nested`, `context`, `concerns`, `extension`, `globals` |
