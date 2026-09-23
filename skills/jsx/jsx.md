@@ -84,7 +84,7 @@ Serializable combinations emit a generated class lazily. A structural route cach
 
 Keep each JSX location's `_` attribute names stable. Values may change, but adding a new `_` key later through a dynamic spread is not yet detected. Build-time extraction is not included in the `0.1` experiment.
 
-A component-name rule becomes an opaque `style` token carrying its source scope. It auto-forwards to the component root or follows explicit placement through the component's incoming `style` prop; nested rules remain available below that placement.
+A component-name rule matches `displayName`, else the function or class name - set `displayName` or keep names (`keepNames`, `keep_fnames`/`keep_classnames`) when minifying. It becomes an opaque `style` token carrying its source scope. It auto-forwards to the component root or follows explicit placement through the component's incoming `style` prop; nested rules remain available below that placement.
 
 `class` is element-only. `style` on a component forwards through component and transparent boundaries to its host root; fragment output applies it to every host root. Reading `style` during render - destructuring, a spread, `this.props.style`, or a declared `style` field on a Component - takes ownership and suppresses forwarding for that render. Forwarded style overrides the root's own, and the outermost caller wins; a component wanting the last word consumes `style` and places it first:
 

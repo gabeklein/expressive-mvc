@@ -69,6 +69,28 @@ describe('appearance', () => {
     root.remove();
   });
 
+  it('will match component rules by displayName', () => {
+    const b = () => <button>go</button>;
+    const Button = Object.assign(b, { displayName: 'Button' });
+
+    function Toolbar() {
+      return <nav><Button /></nav>;
+    }
+
+    style(Toolbar, {
+      Button: { color: 'red' },
+      b: { color: 'blue' }
+    });
+
+    const root = document.createElement('main');
+    document.body.append(root);
+    const release = render(<Toolbar />, root);
+
+    expect(getComputedStyle(root.querySelector('button')!).color).toBe('red');
+    release();
+    root.remove();
+  });
+
   it('will inherit and shadow function component rules', () => {
     function Child() {
       return <span _tone />;

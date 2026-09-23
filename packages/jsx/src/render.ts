@@ -164,7 +164,7 @@ function componentProps(
 
   const resolved = context.resolve(
     route,
-    type.name,
+    (type as { displayName?: string }).displayName ?? type.name,
     props,
     parent.ownerDocument!
   );
