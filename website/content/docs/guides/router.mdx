@@ -281,85 +281,47 @@ The navigation layer prevents stale router commits; it does not abort domain
 requests. If an operation has side effects or consumes significant resources,
 the owning State should use `AbortController` or its own generation check.
 
-## Memory and nested routers
+## Nested routers
 
-`Router` is navigation state, not an address-bar abstraction. Its path-like
-locations are useful in native apps and for local UI flows that should not
-change an outer URL.
+A Router provided inside a Route tree starts a new tree. Descendant Routes
+match against the nearest Router rather than an outer Route's base, so a
+self-contained flow can navigate without touching the page URL.
 
-Nest Routes when screens share one address space. Nest a Router only when a UI
-region needs an independent location and history. A standalone or one-off
-memory flow needs no subclass:
+Reach for this only when the flow has no address of its own - wizards, modal
+flows, screens in a native app. If a view should be linkable or survive a
+reload, tabs included, use nested Routes instead.
 
-```tsx
-<Router path="/profile">
-  <Route to="profile" as={ProfileTab} />
-  <Route to="security" as={SecurityTab} />
-</Router>
-```
-
-Subclass Router when the route set or navigation policy is reusable. An
-ordinary outer Route decides when that feature is mounted:
+The component that owns the flow owns its Router, like any other child state:
 
 ```tsx
-class PanelRouter extends Router {
-  path = '/profile';
-
-  select(to: string) {
-    this.goto(to, true);
-  }
+class Wizard extends Component {
+  router = new Router({ path: '/name' });
 
   render() {
     return (
       <>
-        <Route to="profile" as={ProfileTab} />
-        <Route to="security" as={SecurityTab} />
+        <Route to="name" as={Name} />
+        <Route to="review" as={Review} />
       </>
     );
   }
 }
 
 <BrowserRouter>
-  <Route to="settings" as={PanelRouter} />
+  <Route to="apply">
+    <Wizard />
+  </Route>
 </BrowserRouter>;
 ```
 
-No `global` declaration is needed: the outer context claims the instance. A
-standalone `.new()` call instead requires the subclass to choose a root policy.
+The browser URL stays `/apply` while the Wizard moves between `/name` and
+`/review`. The Wizard can call `this.router.goto()` or `back()` directly, and
+its location resets whenever it remounts. Inner navigation never touches the
+outer Router, and `back()` past the first entry does nothing rather than
+escaping to the page.
 
-The browser matches `/settings`. Inside it, `PanelRouter` moves between
-`/profile` and `/security` without changing the browser URL. Its Routes are
-authored inside `render()`, so the outer lexical matcher does not interpret
-them. Descendants use the nearest Router, and Back stops at that Router's oldest
-entry instead of escaping into its parent.
-
-Direct Route siblings need no anonymous root. Add a root Route when it provides
-shared `as` layout, a local `none`, nested paths, or a NavLinks tree.
-
-The subclass is application policy, not a second router hierarchy supplied by
-the library. Tabs generally call `goto(path, true)` so selection replaces the
-current entry. Wizards generally push steps and use `back()`. Keep completed
-steps, form values, and validation in a separate domain State.
-
-Normal Component ownership determines persistence. A Route-owned `PanelRouter`
-resets when its placement unmounts and remounts. To preserve its location and
-history, store `panel = new PanelRouter()` on a longer-lived State or Component
-and render that owned instance.
-
-When the entry location varies by placement instead of belonging to the flow,
-mount it explicitly so the caller can pass `path`:
-
-```tsx
-<Route to="settings"><PanelRouter path="/security" /></Route>
-```
-
-Nest `Router`, not `BrowserRouter`: two browser bindings would compete for the
-same address and History API.
-
-A top-level Route already creates and owns a fallback headless Router when it
-cannot find one upstream. That supports standalone route trees, but it does not
-isolate a Route beneath an existing Router. Use a Router subclass when the
-feature deliberately needs its own navigation boundary.
+Nest a headless `Router`, never `BrowserRouter` - two browser bindings would
+compete for the same History API.
 
 ## Browser, server, and native boundaries
 

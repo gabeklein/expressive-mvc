@@ -207,49 +207,28 @@ and out-of-range deltas do nothing; `go(0)` does not reload the document.
 targets such as `<Link to="#comments" />` preserve the current path and query.
 Fragment navigation does not scroll or focus an element automatically.
 
-### Memory and nested Routers
+### Nested Routers
 
-`Router` is headless navigation state; its path-like locations need not be
-public URLs. Nest Routes within one address space; nest a Router only for an
-independent location and history. Use `<Router>` directly for a one-off region;
-subclass it to package reusable routes or navigation policy.
+A Router provided inside a Route tree starts a new tree - descendant Routes match against the nearest Router, not an outer Route's base. Use one for flows with no URL of their own: wizards, modal flows, native screens. Anything linkable, tabs included, belongs in nested Routes.
+
+Own the Router on the Component that owns the flow:
 
 ```tsx
-class PanelRouter extends Router {
-  path = '/profile';
-
-  select(to: string) { this.goto(to, true); }
+class Wizard extends Component {
+  router = new Router({ path: '/name' });
 
   render() {
     return <>
-      <Route to="profile" as={ProfileTab} />
-      <Route to="security" as={SecurityTab} />
+      <Route to="name" as={Name} />
+      <Route to="review" as={Review} />
     </>;
   }
 }
 
-<Route to="settings" as={PanelRouter} />
+<Route to="apply"><Wizard /></Route>
 ```
 
-No `global` declaration is needed: the outer context claims the instance. A
-standalone `.new()` call instead requires the subclass to choose a root policy.
-
-The outer Route controls placement; Routes authored inside `PanelRouter.render`
-are invisible to its lexical matcher and use the nearer Router. Navigation does
-not mutate or implicitly bubble to the outer Router; an out-of-bounds `back()`
-is a no-op. A top-level Route creates a fallback Router only when none exists
-upstream - that is convenience, not isolation.
-
-Direct Route siblings need no root Route. Add one only for shared `as` layout,
-a local `none`, nested paths, or a NavLinks tree.
-
-Prefer semantic subclasses over library-supplied modes. Tabs normally replace
-selection; wizards normally push steps. Domain State owns workflow data and
-validity. A Route-owned Router resets on remount; to preserve state, store
-`panel = new PanelRouter()` on a longer-lived State or Component and render it.
-When placement must configure `path`, use
-`<Route to="settings"><PanelRouter path="/security" /></Route>`. Nest headless
-`Router`, not `BrowserRouter` - browser routers share one History API.
+The outer browser URL stays `/apply` while the Wizard moves between `/name` and `/review`. Inner navigation never touches the outer Router; `back()` past the first entry is a no-op. Nest headless `Router`, never `BrowserRouter`. See the [`wizard`](https://expressive.dev/examples/router/wizard) example.
 
 ## The `query` map
 

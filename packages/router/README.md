@@ -92,69 +92,40 @@ focus an element automatically.
 non-finite, and out-of-range deltas do nothing; it never uses `go(0)` as a
 reload signal.
 
-## Memory and nested routers
+## Nested routers
 
-`Router` is navigation state, not an address-bar abstraction. Its path-like
-locations also work for native apps, tabs, wizards, modal flows, and other UI
-with no public URL.
+A Router provided inside a Route tree starts a new tree: descendant Routes
+match against the nearest Router, not an outer Route's base. Use one for flows
+with no URL of their own - wizards, modal flows, native screens. Anything that
+should be linkable, tabs included, belongs in nested Routes.
 
-Nest Routes for one address space. Nest a Router only when a UI region needs an
-independent location and history. Use `<Router>` directly for a one-off region;
-subclass it when the route set or navigation policy is reusable:
+Own the Router on the Component that owns the flow:
 
 ```tsx
-class PanelRouter extends Router {
-  path = '/profile';
-
-  select(to: string) {
-    this.goto(to, true); // selection, not a growing visit history
-  }
+class Wizard extends Component {
+  router = new Router({ path: '/name' });
 
   render() {
     return (
       <>
-        <Route to="profile" as={ProfileTab} />
-        <Route to="security" as={SecurityTab} />
+        <Route to="name" as={Name} />
+        <Route to="review" as={Review} />
       </>
     );
   }
 }
 
 <BrowserRouter>
-  <Route to="settings" as={PanelRouter} />
+  <Route to="apply">
+    <Wizard />
+  </Route>
 </BrowserRouter>;
 ```
 
-No `global` declaration is needed: the outer context claims the instance. A
-standalone `.new()` call instead requires the subclass to choose a root policy.
-
-The outer Route matches `/settings`; the private Router navigates among
-`/profile` and `/security` without changing that browser URL. Its internal
-Routes are invisible to the outer lexical matcher and resolve the nearer
-Router. Navigation never changes or implicitly bubbles to the outer one.
-
-Direct Route siblings are enough here. Wrap them in a root Route only when that
-scope provides shared `as` layout, a local `none`, nested paths, or a NavLinks
-tree.
-
-Build behavior from `Router` rather than selecting a specialized router type:
-tabs usually replace the current location; wizards usually push steps and use
-`back()`. Keep workflow data and validation in a domain State.
-
-Ownership controls lifetime. A Route-owned `PanelRouter` resets when remounted.
-To preserve its location and history, store `panel = new PanelRouter()` on a
-longer-lived State or Component and render that owned instance. Use explicit
-child composition when the placement must configure `path`:
-
-```tsx
-<Route to="settings"><PanelRouter path="/security" /></Route>
-```
-
-Use a headless Router inside `BrowserRouter`; nesting `BrowserRouter` would make
-both instances compete for the same browser address and History API.
-
-A top-level Route creates a fallback headless Router only when none exists
-upstream. That convenience does not isolate a Route beneath an existing Router.
+The browser URL stays `/apply` while the Wizard moves between `/name` and
+`/review`. Inner navigation never touches the outer Router, and `back()` past
+the first entry does nothing. Nest a headless `Router`, never `BrowserRouter` -
+two browser bindings would compete for the same History API.
 
 ## Suspense and navigation settlement
 
