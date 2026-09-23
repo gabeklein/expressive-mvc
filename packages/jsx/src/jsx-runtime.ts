@@ -29,7 +29,20 @@ type EventAttributes = {
     (event: GlobalEventHandlersEventMap[K]) => unknown;
 };
 
-type Style = Partial<Record<keyof CSSStyleDeclaration, string | number | null>>;
+type Style = Partial<Record<keyof CSSStyleDeclaration, string | number | null>> & {
+  [property: `--${string}`]: string | number | null | undefined;
+};
+
+type SVGAttributes = {
+  [K in
+    | 'clipPathUnits' | 'cx' | 'cy' | 'd' | 'dx' | 'dy' | 'fill' | 'filter' | 'fx' | 'fy'
+    | 'gradientTransform' | 'gradientUnits' | 'height' | 'href' | 'in' | 'in2' | 'mask'
+    | 'markerHeight' | 'markerUnits' | 'markerWidth' | 'maskUnits' | 'offset' | 'opacity'
+    | 'orient' | 'pathLength' | 'patternUnits' | 'points' | 'preserveAspectRatio' | 'r'
+    | 'refX' | 'refY' | 'result' | 'rotate' | 'rx' | 'ry' | 'stdDeviation' | 'stroke'
+    | 'textLength' | 'transform' | 'type' | 'values' | 'version' | 'viewBox' | 'width'
+    | 'x' | 'x1' | 'x2' | 'xmlns' | 'y' | 'y1' | 'y2']?: string | number;
+};
 
 type Attributes<T extends Element> = EventAttributes & {
   [K in keyof T as K extends 'children' | 'className' | 'style'
@@ -52,7 +65,7 @@ type Attributes<T extends Element> = EventAttributes & {
 type Intrinsics = {
   [K in keyof HTMLElementTagNameMap]: Attributes<HTMLElementTagNameMap[K]>;
 } & {
-  [K in keyof SVGElementTagNameMap]: Attributes<SVGElementTagNameMap[K]>;
+  [K in keyof SVGElementTagNameMap]: Attributes<SVGElementTagNameMap[K]> & SVGAttributes;
 };
 
 declare module '@expressive/mvc/runtime' {

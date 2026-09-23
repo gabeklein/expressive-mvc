@@ -355,6 +355,22 @@ describe('render', () => {
     expect(root.textContent).toBe('c5');
   });
 
+  it('will type SVG attributes and custom properties', () => {
+    const root = document.createElement('main');
+
+    render(
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10" style={{ '--tone': 'red' }}>
+        <path d="M0 0L10 10" fill="none" stroke="red" transform="scale(1)" />
+      </svg>,
+      root
+    );
+
+    const path = root.querySelector('path')!;
+    expect(path.getAttribute('d')).toBe('M0 0L10 10');
+    expect(path.getAttribute('stroke')).toBe('red');
+    expect(root.querySelector('svg')!.style.getPropertyValue('--tone')).toBe('red');
+  });
+
   it('will update numeric styles', async () => {
     class Styled extends Component {
       size = 10;
