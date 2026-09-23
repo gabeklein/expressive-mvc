@@ -55,7 +55,7 @@ export default () => (
         <Route to="category/:cat" as={Storefront} />
         <Route to="product/:id" as={ProductPage} />
         <Route to="cart" as={CartPage} />
-        <Route default as={NotFound} />
+        <Route none as={NotFound} />
       </Route>
     </Router>
   </Provider>
