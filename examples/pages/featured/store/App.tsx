@@ -10,9 +10,34 @@ import { ProductPage } from './Product';
 import { Cart } from './Store';
 import { Storefront } from './Storefront';
 
-// Persistent chrome: the brand + cart button stay put while the matched page
-// arrives as `children`. Purely presentational - it reads nothing reactive
-// itself, so a plain function (the badge subscribes inside CartButton).
+export default () => (
+  <div className="container shop">
+    <h1>Storefront</h1>
+    <p>
+      The cart is a <code>map</code> keyed by product id, spawning a{' '}
+      <code>Line</code> per entry. Adding a product again finds its line by key
+      and bumps it; a line stepped to zero destroys itself, which evicts it from
+      the map.
+    </p>
+    <Provider for={Cart}>
+      <Router>
+        <Route as={Layout}>
+          <Route as={Storefront} />
+          <Route to="category/:cat" as={Storefront} />
+          <Route to="product/:id" as={ProductPage} />
+          <Route to="cart" as={CartPage} />
+          <Route none as={NotFound} />
+        </Route>
+      </Router>
+    </Provider>
+    <small>
+      Each line renders its own row, so the cart page drops the map straight
+      into a <code>&lt;ul&gt;</code>. The badge reads only <code>count</code>,
+      and the product page's quantity stepper reads the page through context.
+    </small>
+  </div>
+);
+
 const Layout = ({ children }: { children?: ReactNode }) => (
   <div className="store">
     <header className="store-head">
@@ -21,12 +46,10 @@ const Layout = ({ children }: { children?: ReactNode }) => (
       </Link>
       <CartButton />
     </header>
-    <div className="store-body">{children}</div>
+    {children}
   </div>
 );
 
-// Reads just `count` off the shared cart, so it re-renders only when the item
-// count changes - not on every unrelated cart mutation.
 const CartButton = () => {
   const { count } = Cart.get();
 
@@ -41,22 +64,7 @@ const CartButton = () => {
 const NotFound = () => (
   <div className="notice">
     <span className="big-emoji">🧭</span>
-    <h1>Nothing here</h1>
+    <h2>Nothing here</h2>
     <Link to="/">Back to the store</Link>
   </div>
-);
-
-// One in-memory Router; the Cart is provided above it so every page shares it.
-export default () => (
-  <Provider for={Cart}>
-    <Router>
-      <Route as={Layout}>
-        <Route as={Storefront} />
-        <Route to="category/:cat" as={Storefront} />
-        <Route to="product/:id" as={ProductPage} />
-        <Route to="cart" as={CartPage} />
-        <Route none as={NotFound} />
-      </Route>
-    </Router>
-  </Provider>
 );

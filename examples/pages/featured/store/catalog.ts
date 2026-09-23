@@ -11,52 +11,44 @@ export interface Category {
   label: string;
 }
 
-// The "inventory": emoji grouped by category. One source of truth that the
-// storefront grid, product page, and breadcrumbs all read from.
-const INVENTORY = {
+const INVENTORY: Record<string, Record<string, [string, number]>> = {
   Food: {
-    Pizza: '🍕',
-    Burger: '🍔',
-    Taco: '🌮',
-    Sushi: '🍣',
-    Donut: '🍩',
-    IceCream: '🍦'
+    Pizza: ['🍕', 12.5],
+    Burger: ['🍔', 9.75],
+    Taco: ['🌮', 4.25],
+    Sushi: ['🍣', 18],
+    Donut: ['🍩', 2.5],
+    IceCream: ['🍦', 3.75]
   },
   Animals: {
-    Dog: '🐶',
-    Cat: '🐱',
-    Fox: '🦊',
-    Panda: '🐼',
-    Lion: '🦁',
-    Penguin: '🐧'
+    Dog: ['🐶', 45],
+    Cat: ['🐱', 42],
+    Fox: ['🦊', 38.5],
+    Panda: ['🐼', 49.99],
+    Lion: ['🦁', 47],
+    Penguin: ['🐧', 29.5]
   },
   Faces: {
-    Grinning: '😀',
-    Cool: '😎',
-    Robot: '🤖',
-    Ghost: '👻',
-    Cowboy: '🤠',
-    Party: '🥳'
+    Grinning: ['😀', 5],
+    Cool: ['😎', 7.5],
+    Robot: ['🤖', 14.25],
+    Ghost: ['👻', 6.66],
+    Cowboy: ['🤠', 11],
+    Party: ['🥳', 8.5]
   },
   Nature: {
-    Cactus: '🌵',
-    Wave: '🌊',
-    Fire: '🔥',
-    Rainbow: '🌈',
-    Star: '⭐',
-    Moon: '🌙'
+    Cactus: ['🌵', 16],
+    Wave: ['🌊', 22.5],
+    Fire: ['🔥', 13.75],
+    Rainbow: ['🌈', 24],
+    Star: ['⭐', 19.99],
+    Moon: ['🌙', 21]
   }
 };
 
-// Keys are PascalCase identifiers; split into words for display ("IceCream"
-// -> "Ice Cream"), then kebab for ids/urls ("ice-cream").
 const label = (key: string) => key.replace(/([a-z])([A-Z])/g, '$1 $2');
 
 const slug = (name: string) => name.toLowerCase().replace(/\s+/g, '-');
-
-// Prices are rolled once, at module load, from a fixed range - so they stay
-// stable while you browse but differ run-to-run.
-const roll = () => Math.round((2 + Math.random() * 48) * 100) / 100;
 
 export const categories: Category[] = Object.keys(INVENTORY).map((key) => ({
   slug: slug(key),
@@ -65,7 +57,7 @@ export const categories: Category[] = Object.keys(INVENTORY).map((key) => ({
 
 export const products: Product[] = Object.entries(INVENTORY).flatMap(
   ([category, items]) =>
-    Object.entries(items).map(([key, emoji]) => {
+    Object.entries(items).map(([key, [emoji, price]]) => {
       const name = label(key);
 
       return {
@@ -73,7 +65,7 @@ export const products: Product[] = Object.entries(INVENTORY).flatMap(
         emoji,
         name,
         category: slug(category),
-        price: roll()
+        price
       };
     })
 );
@@ -85,10 +77,8 @@ export const getProduct = (id: string) => byId.get(id);
 export const inCategory = (cat: string) =>
   products.filter((p) => p.category === cat);
 
-export const categoryLabel = (cat: string) => {
-  const found = categories.find((c) => c.slug === cat);
-  return found ? found.label : cat;
-};
+export const categoryLabel = (cat: string) =>
+  categories.find((c) => c.slug === cat)?.label ?? cat;
 
 export const usd = (n: number) =>
   n.toLocaleString('en-US', { style: 'currency', currency: 'USD' });

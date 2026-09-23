@@ -3,39 +3,43 @@ import { Link } from '@expressive/router';
 import { usd } from './catalog';
 import { Cart } from './Store';
 
-// Each slice below does its own Cart.get() and subscribes only to what it
-// reads - the page just picks a branch. Receipt wins over Empty: checkout
-// clears the items, so both are true at once.
 export const CartPage = () => {
-  const { receipt, count } = Cart.get();
+  const {
+    receipt,
+    count
+  } = Cart.get();
 
   if (receipt) return <Receipt />;
-  if (!count) return <Empty />;
 
-  return (
-    <div className="cart">
-      <h1>Your Cart</h1>
-      <Lines />
-      <Checkout />
-    </div>
-  );
+  if (count)
+    return (
+      <div className="cart">
+        <h2>Your Cart</h2>
+        <Lines />
+        <Checkout />
+      </div>
+    );
+
+  return <Empty />;
 };
 
-// Post-checkout confirmation. `reset()` clears it back to the live cart.
 const Receipt = () => {
-  const { is: cart, receipt } = Cart.get();
-
-  if (!receipt) return null;
+  const {
+    reset,
+    receipt: {
+      count,
+      total
+    }
+  } = Cart.get(true);
 
   return (
     <div className="notice">
       <span className="big-emoji">✅</span>
-      <h1>Order placed!</h1>
+      <h2>Order placed!</h2>
       <p>
-        {receipt.count} {receipt.count === 1 ? 'item' : 'items'} ·{' '}
-        {usd(receipt.total)}
+        {count} {count === 1 ? 'item' : 'items'} · {usd(total)}
       </p>
-      <Link to="/" onClick={() => cart.reset()}>
+      <Link to="/" onClick={reset}>
         Continue shopping
       </Link>
     </div>
@@ -45,13 +49,11 @@ const Receipt = () => {
 const Empty = () => (
   <div className="notice">
     <span className="big-emoji">🛒</span>
-    <h1>Your cart is empty</h1>
+    <h2>Your cart is empty</h2>
     <Link to="/">Browse the store</Link>
   </div>
 );
 
-// Dropping the map in renders its values, and each Line renders its own row -
-// so this is the entire list body.
 const Lines = () => {
   const { items } = Cart.get();
 
@@ -59,7 +61,10 @@ const Lines = () => {
 };
 
 const Checkout = () => {
-  const { is: cart, total } = Cart.get();
+  const {
+    total,
+    checkout
+  } = Cart.get();
 
   return (
     <>
@@ -67,7 +72,7 @@ const Checkout = () => {
         <span>Total</span>
         <span className="total">{usd(total)}</span>
       </div>
-      <button className="primary checkout" onClick={() => cart.checkout()}>
+      <button className="primary checkout" onClick={checkout}>
         Checkout · {usd(total)}
       </button>
     </>

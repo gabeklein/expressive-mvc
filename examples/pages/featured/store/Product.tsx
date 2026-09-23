@@ -1,7 +1,6 @@
 import { Component, get } from '@expressive/react';
 import { Link, Route } from '@expressive/router';
 
-import { Breadcrumbs } from './Breadcrumbs';
 import { categoryLabel, getProduct, usd } from './catalog';
 import { Cart } from './Store';
 
@@ -9,14 +8,11 @@ export class ProductPage extends Component {
   route = get(Route);
   cart = get(Cart);
 
-  // The "buy N" stepper - reactive field on the component itself. Assigning it
-  // re-renders, no useState needed.
   qty = 1;
 
-  // Getters derive from route + qty and recompute only when those change -
-  // render() stays thin markup over them.
   get product() {
     const id = this.route.match?.id;
+
     return id ? getProduct(id) : undefined;
   }
 
@@ -29,50 +25,56 @@ export class ProductPage extends Component {
   }
 
   addToCart() {
-    this.cart.add(this.product!.id, this.qty);
+    const { product, qty } = this;
+
+    if (!product) return;
+
+    this.cart.add(product.id, qty);
     this.qty = 1;
   }
 
   render() {
-    const { product, qty, subtotal } = this;
+    const {
+      product,
+      qty,
+      subtotal,
+      addToCart
+    } = this;
 
-    if (!product) return <NotFound />;
+    if (product)
+      return (
+        <div className="product">
+          <nav className="crumbs" aria-label="Breadcrumb">
+            <Link to="/">Store</Link>
+            <Link to={`/category/${product.category}`}>
+              {categoryLabel(product.category)}
+            </Link>
+            <span aria-current="page">{product.name}</span>
+          </nav>
 
-    return (
-      <div className="product">
-        <Breadcrumbs
-          trail={[
-            { label: 'Store', to: '/' },
-            {
-              label: categoryLabel(product.category),
-              to: `/category/${product.category}`
-            },
-            { label: product.name }
-          ]}
-        />
-
-        <div className="hero">
-          <span className="hero-emoji">{product.emoji}</span>
-          <div className="hero-info">
-            <h1>{product.name}</h1>
-            <p className="hero-price">{usd(product.price)}</p>
-
-            <Stepper />
-
-            <button className="primary" onClick={this.addToCart}>
-              Add {qty} to cart · {usd(subtotal)}
-            </button>
+          <div className="hero">
+            <span className="hero-emoji">{product.emoji}</span>
+            <div className="hero-info">
+              <h2>{product.name}</h2>
+              <p className="hero-price">{usd(product.price)}</p>
+              <Stepper />
+              <button className="primary" onClick={addToCart}>
+                Add {qty} to cart · {usd(subtotal)}
+              </button>
+            </div>
           </div>
         </div>
-      </div>
-    );
+      );
+
+    return <NotFound />;
   }
 }
 
-// A Component provides itself to context, so dumb slices under it pull state
-// the same way they would from any State - no props, no subclass seam.
 const Stepper = () => {
-  const { qty, quantity } = ProductPage.get();
+  const {
+    qty,
+    quantity
+  } = ProductPage.get();
 
   return (
     <div className="qty">
@@ -90,7 +92,7 @@ const Stepper = () => {
 const NotFound = () => (
   <div className="notice">
     <span className="big-emoji">🫥</span>
-    <h1>Product not found</h1>
+    <h2>Product not found</h2>
     <Link to="/">Back to the store</Link>
   </div>
 );

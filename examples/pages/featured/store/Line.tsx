@@ -3,12 +3,7 @@ import { Link } from '@expressive/router';
 
 import { getProduct, usd } from './catalog';
 
-// A cart line is a Component the cart's map spawns, keyed by product id. It
-// owns its quantity and renders its own row, so the cart page drops the map
-// straight into the tree - no <CartLine>, no props, no key.
 export class Line extends Component {
-  // Spawns at zero; `Cart.add` bumps it, so one code path covers both the
-  // first add and every repeat.
   qty = 0;
 
   constructor(readonly sku: string) {
@@ -23,7 +18,6 @@ export class Line extends Component {
     return this.product.price * this.qty;
   }
 
-  // Stepping to zero is a removal; destroying itself evicts it from the map.
   step(by: number) {
     const qty = this.qty + by;
 
@@ -36,32 +30,41 @@ export class Line extends Component {
   }
 
   render() {
-    const { product, qty, subtotal } = this;
-    const to = `/product/${product.id}`;
+    const {
+      qty,
+      subtotal,
+      step,
+      remove,
+      product: {
+        id,
+        emoji,
+        name,
+        price
+      }
+    } = this;
+
+    const to = `/product/${id}`;
 
     return (
       <li className="line">
         <Link to={to} className="line-emoji">
-          {product.emoji}
+          {emoji}
         </Link>
         <div className="line-info">
-          <Link to={to}>{product.name}</Link>
-          <small>{usd(product.price)} each</small>
+          <Link to={to}>{name}</Link>
+          <small>{usd(price)} each</small>
         </div>
         <div className="qty">
-          <button onClick={() => this.step(-1)} aria-label="Decrease quantity">
+          <button onClick={() => step(-1)} aria-label="Decrease quantity">
             −
           </button>
           <span className="qty-val">{qty}</span>
-          <button onClick={() => this.step(1)} aria-label="Increase quantity">
+          <button onClick={() => step(1)} aria-label="Increase quantity">
             +
           </button>
         </div>
         <span className="line-sub">{usd(subtotal)}</span>
-        <button
-          className="remove"
-          onClick={this.remove}
-          aria-label={`Remove ${product.name}`}>
+        <button className="remove" onClick={remove} aria-label={`Remove ${name}`}>
           ✕
         </button>
       </li>

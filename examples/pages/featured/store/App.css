@@ -1,10 +1,5 @@
-/* Only this example's iframe loads this file, so these overrides of the shared
-   column are safely scoped to the store: widen it, and pin it to the top
-   (the base rule's `margin: auto` would otherwise center the header
-   vertically on short pages like the product view or an empty cart). */
-body.example #root {
+.container.shop {
   max-width: 52rem;
-  margin: 0 auto;
 }
 
 .store {
@@ -12,9 +7,8 @@ body.example #root {
   flex-direction: column;
   gap: var(--s5);
   width: 100%;
+  text-align: left;
 }
-
-/* Header ------------------------------------------------------------------ */
 
 .store-head {
   display: flex;
@@ -70,8 +64,6 @@ body.example #root {
   font-family: var(--font-sans);
 }
 
-/* Category chips ---------------------------------------------------------- */
-
 .chips {
   display: flex;
   flex-wrap: wrap;
@@ -98,8 +90,6 @@ body.example #root {
   border-color: var(--accent);
   color: var(--accent-fg);
 }
-
-/* Product grid ------------------------------------------------------------ */
 
 .grid {
   display: grid;
@@ -143,8 +133,6 @@ body.example #root {
   font-family: var(--font-mono);
 }
 
-/* Breadcrumbs ------------------------------------------------------------- */
-
 .crumbs {
   display: flex;
   flex-wrap: wrap;
@@ -155,7 +143,10 @@ body.example #root {
   margin-bottom: var(--s5);
 }
 
-.crumbs .sep {
+.crumbs > * + *::before {
+  display: inline-block;
+  content: '›';
+  margin-right: var(--s2);
   color: var(--border-2);
 }
 
@@ -163,8 +154,6 @@ body.example #root {
   color: var(--fg);
   font-weight: 600;
 }
-
-/* Product page ------------------------------------------------------------ */
 
 .hero {
   display: flex;
@@ -193,8 +182,6 @@ body.example #root {
   font-family: var(--font-mono);
   color: var(--fg-soft);
 }
-
-/* Quantity stepper (shared by product page + cart lines) ------------------ */
 
 .qty {
   display: inline-flex;
@@ -230,8 +217,6 @@ body.example #root {
   border-color: var(--accent);
   filter: brightness(1.08);
 }
-
-/* Cart -------------------------------------------------------------------- */
 
 .cart {
   display: flex;
@@ -312,8 +297,6 @@ body.example #root {
   padding: var(--s3);
   font-size: var(--t-lg);
 }
-
-/* Empty / confirmation / 404 states --------------------------------------- */
 
 .notice {
   display: flex;

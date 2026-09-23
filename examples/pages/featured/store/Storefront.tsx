@@ -2,14 +2,13 @@ import { Link, Route } from '@expressive/router';
 
 import { categories, inCategory, products, usd } from './catalog';
 
-// Reads its own Route to tell which listing to show; holds no state and
-// provides nothing, so a plain function that consumes Route.get(). It does
-// double duty: the index route (all products) AND `category/:cat` (filtered).
 export const Storefront = () => {
-  // `cat` is present on /category/:cat, absent on the index route. Same-pattern
-  // navigation (food -> animals) reconciles in place, re-reading match.
-  const { match } = Route.get();
-  const cat = match?.cat;
+  const {
+    match: {
+      cat
+    } = {}
+  } = Route.get();
+
   const shown = cat ? inCategory(cat) : products;
 
   return (
