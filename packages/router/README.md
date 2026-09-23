@@ -92,41 +92,6 @@ focus an element automatically.
 non-finite, and out-of-range deltas do nothing; it never uses `go(0)` as a
 reload signal.
 
-## Nested routers
-
-A Router provided inside a Route tree starts a new tree: descendant Routes
-match against the nearest Router, not an outer Route's base. Use one for flows
-with no URL of their own - wizards, modal flows, native screens. Anything that
-should be linkable, tabs included, belongs in nested Routes.
-
-Own the Router on the Component that owns the flow:
-
-```tsx
-class Wizard extends Component {
-  router = new Router({ path: '/name' });
-
-  render() {
-    return (
-      <>
-        <Route to="name" as={Name} />
-        <Route to="review" as={Review} />
-      </>
-    );
-  }
-}
-
-<BrowserRouter>
-  <Route to="apply">
-    <Wizard />
-  </Route>
-</BrowserRouter>;
-```
-
-The browser URL stays `/apply` while the Wizard moves between `/name` and
-`/review`. Inner navigation never touches the outer Router, and `back()` past
-the first entry does nothing. Nest a headless `Router`, never `BrowserRouter` -
-two browser bindings would compete for the same History API.
-
 ## Suspense and navigation settlement
 
 Routes are Suspense boundaries. Pass `fallback` for cold load and use a lazy

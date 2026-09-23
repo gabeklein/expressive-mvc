@@ -84,7 +84,7 @@ A `none` Route always needs an authored parent scope - a root-level one is the a
 | `''` / `undefined` / `false` | allow normal render |
 | `null` | **force-404**: cede the path so the scope falls through to its nearest `none` Route |
 
-The guard may be **async** (return a `Promise`); while it pends, the route's `fallback` shows on cold load, and in-app navigation holds the current screen (see [Deferred presentation](#deferred-presentation)). The verdict is cached for navigation within the matched space and re-evaluated on re-entry.
+The guard may be **async** (return a `Promise`); while it pends, the route's `fallback` shows on cold load, and in-app navigation holds the current screen (see [Deferred presentation](#deferred-presentation)). The verdict is cached per concrete path of the route's own pattern: navigation below it reuses the verdict; re-entry or a change to its own params (`/vault/a` -> `/vault/b` on `vault/:doc`) re-runs the guard.
 
 ```tsx
 <Route to="document/:id"
@@ -206,29 +206,6 @@ and out-of-range deltas do nothing; `go(0)` does not reload the document.
 `hash` stays percent-encoded and is not parsed into structured state. Hash-only
 targets such as `<Link to="#comments" />` preserve the current path and query.
 Fragment navigation does not scroll or focus an element automatically.
-
-### Nested Routers
-
-A Router provided inside a Route tree starts a new tree - descendant Routes match against the nearest Router, not an outer Route's base. Use one for flows with no URL of their own: wizards, modal flows, native screens. Anything linkable, tabs included, belongs in nested Routes.
-
-Own the Router on the Component that owns the flow:
-
-```tsx
-class Wizard extends Component {
-  router = new Router({ path: '/name' });
-
-  render() {
-    return <>
-      <Route to="name" as={Name} />
-      <Route to="review" as={Review} />
-    </>;
-  }
-}
-
-<Route to="apply"><Wizard /></Route>
-```
-
-The outer browser URL stays `/apply` while the Wizard moves between `/name` and `/review`. Inner navigation never touches the outer Router; `back()` past the first entry is a no-op. Nest headless `Router`, never `BrowserRouter`. See the [`wizard`](https://expressive.dev/examples/router/wizard) example.
 
 ## The `query` map
 

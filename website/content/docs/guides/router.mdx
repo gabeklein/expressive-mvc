@@ -281,48 +281,6 @@ The navigation layer prevents stale router commits; it does not abort domain
 requests. If an operation has side effects or consumes significant resources,
 the owning State should use `AbortController` or its own generation check.
 
-## Nested routers
-
-A Router provided inside a Route tree starts a new tree. Descendant Routes
-match against the nearest Router rather than an outer Route's base, so a
-self-contained flow can navigate without touching the page URL.
-
-Reach for this only when the flow has no address of its own - wizards, modal
-flows, screens in a native app. If a view should be linkable or survive a
-reload, tabs included, use nested Routes instead.
-
-The component that owns the flow owns its Router, like any other child state:
-
-```tsx
-class Wizard extends Component {
-  router = new Router({ path: '/name' });
-
-  render() {
-    return (
-      <>
-        <Route to="name" as={Name} />
-        <Route to="review" as={Review} />
-      </>
-    );
-  }
-}
-
-<BrowserRouter>
-  <Route to="apply">
-    <Wizard />
-  </Route>
-</BrowserRouter>;
-```
-
-The browser URL stays `/apply` while the Wizard moves between `/name` and
-`/review`. The Wizard can call `this.router.goto()` or `back()` directly, and
-its location resets whenever it remounts. Inner navigation never touches the
-outer Router, and `back()` past the first entry does nothing rather than
-escaping to the page.
-
-Nest a headless `Router`, never `BrowserRouter` - two browser bindings would
-compete for the same History API.
-
 ## Browser, server, and native boundaries
 
 - `Router` is headless and owns an in-memory history stack. Use it in tests and
