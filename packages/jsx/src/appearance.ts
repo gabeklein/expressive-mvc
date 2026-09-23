@@ -35,7 +35,7 @@ interface AppearanceRoute {
   flags: readonly string[];
   macros: readonly string[];
   scope: StyleScope;
-  site: Site;
+  sites: Map<string, Site>;
   tag?: string;
 }
 
@@ -97,8 +97,8 @@ function createContext(scope: StyleScope): AppearanceContext {
 
   const context: AppearanceContext = {
     scope,
-    resolve(route, tag, props) {
-      return resolveAppearance(route as AppearanceRoute | undefined, scope, tag, props);
+    resolve(route, tag, props, site) {
+      return resolveAppearance(route as AppearanceRoute | undefined, scope, tag, props, site);
     }
   };
 
@@ -169,7 +169,7 @@ function createAppearanceRoute(
     flags,
     macros,
     scope,
-    site: { version: 0 },
+    sites: new Map(),
     tag: isObject(scope.rules[tag]) ? tag : undefined
   };
 
@@ -181,7 +181,8 @@ function resolveAppearance(
   route: AppearanceRoute | undefined,
   scope: StyleScope | undefined,
   tag: string,
-  props: Record<string, unknown>
+  props: Record<string, unknown>,
+  site = ''
 ): { appearance?: ResolvedAppearance; route?: AppearanceRoute } {
   if (!route || route.scope !== scope) route = createAppearanceRoute(scope, tag, props);
   if (!route) return {};
@@ -195,7 +196,7 @@ function resolveAppearance(
   for (const name of names)
     parts.push(expandRule(route.scope, name));
 
-  const inline = locate(route, tag, props, parts);
+  const inline = locate(route, tag, props, parts, site);
   const blocks = parts.flatMap((part) => part.block ? [part.block] : []);
   const classes = parts.flatMap((part) => part.classes);
   let child: StyleScope | undefined = route.scope;
@@ -220,12 +221,14 @@ function locate(
   route: AppearanceRoute,
   tag: string,
   props: Record<string, unknown>,
-  parts: Expansion[]
+  parts: Expansion[],
+  path: string
 ) {
   const args = route.macros.map((name) => props[`_${name}`]);
   if (!args.some(isPresent)) return undefined;
 
-  const site = route.site;
+  let site = route.sites.get(path);
+  if (!site) route.sites.set(path, (site = { version: 0 }));
 
   if (!site.args || args.some((value, index) => !Object.is(value, site.args![index]))) {
     site.args = args;
@@ -241,7 +244,7 @@ function locate(
 
   if (!site.stable) {
     site.stable = { ...declarations };
-    site.block = createBlock(route, tag, { ...site.stable });
+    site.block = createBlock(route, site, tag, { ...site.stable });
   } else {
     let changed = false;
 
@@ -253,7 +256,7 @@ function locate(
 
     if (changed) {
       site.version++;
-      site.block = createBlock(route, tag, { ...site.stable });
+      site.block = createBlock(route, site, tag, { ...site.stable });
     }
   }
 
@@ -264,10 +267,10 @@ function locate(
   return inline;
 }
 
-function createBlock(route: AppearanceRoute, tag: string, declarations: Declaration): Block | undefined {
+function createBlock(route: AppearanceRoute, site: Site, tag: string, declarations: Declaration): Block | undefined {
   if (!Object.keys(declarations).length) return undefined;
 
-  const { scope, macros, site } = route;
+  const { scope, macros } = route;
   const name = `${scope.label}_${tag}-${macros.join('-')}`;
 
   return {

@@ -103,6 +103,53 @@ describe('appearance', () => {
     expect(getComputedStyle(node).paddingTop).toBe('2px');
   });
 
+  it('will give same-shaped elements at different positions their own sites', () => {
+    function Card() {
+      return <><div _mx={1} /><div _mx={2} /></>;
+    }
+
+    style(Card, { mx: (value?: unknown) => ({ marginLeft: value }) });
+
+    const [first, second] = [...mount(<Card />).querySelectorAll('div')];
+    expect(first.style.marginLeft).toBe('');
+    expect(second.style.marginLeft).toBe('');
+    expect(getComputedStyle(first).marginLeft).toBe('1px');
+    expect(getComputedStyle(second).marginLeft).toBe('2px');
+    expect(first.className).not.toBe(second.className);
+  });
+
+  it('will share one site across list rows and keep later positions stable', async () => {
+    class List extends Component {
+      rows = [1, 2];
+
+      render() {
+        return (
+          <ul>
+            {this.rows.map((row) => <li key={row} _w={row} />)}
+            <li _w={9} />
+          </ul>
+        );
+      }
+    }
+
+    style(List, { w: (value?: unknown) => ({ marginLeft: value }) });
+
+    let view!: List;
+    const root = mount(<List is={(value) => (view = value)} />);
+    const items = () => [...root.querySelectorAll('li')];
+
+    expect(items()[0].style.marginLeft).toBe('');
+    expect(items()[1].style.marginLeft).toBe('2px');
+
+    const footer = items()[2].className;
+    view.rows = [1, 2, 3];
+    await flushMicrotasks();
+
+    expect(items()[3].className).toBe(footer);
+    expect(items()[3].style.marginLeft).toBe('');
+    expect(getComputedStyle(items()[3]).marginLeft).toBe('9px');
+  });
+
   it('will let caller rules win over the callee regardless of emission order', () => {
     function Button() {
       return <button style={{ letterSpacing: 1 }}>go</button>;

@@ -1,6 +1,6 @@
 import { Fragment, host } from '@expressive/mvc/runtime';
 
-import { childrenOf, isVNode, vnode } from './vnode';
+import { childrenOf, isVNode, markStatic, vnode } from './vnode';
 import type { Node, VNode } from './vnode';
 
 type Words =
@@ -86,7 +86,7 @@ declare module '@expressive/mvc/jsx-runtime' {
 
 host({
   jsx: vnode,
-  jsxs: vnode,
+  jsxs,
   Fragment,
   childrenOf,
   isElement: isVNode,
@@ -99,7 +99,11 @@ host({
 });
 
 const jsx = vnode;
-const jsxs = vnode;
+
+function jsxs(type: VNode['type'], props: object, key?: unknown) {
+  markStatic(props);
+  return vnode(type, props, key);
+}
 
 export { Fragment, jsx, jsxs };
 export type { VNode as JSXElement };

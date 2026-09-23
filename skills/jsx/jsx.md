@@ -78,7 +78,7 @@ style(Button, {
 
 - A rule applies when its key matches a host tag or child component name in scope, or when `_rule` is truthy. Each applied rule is one class named after its source, such as `Button_active`.
 - A macro expands wherever its key appears: in a rule body (`raised: { mx: 4 }`) or as `_macro={value}` on an element. A macro never expands into itself, so `color` inside `color`'s output is plain CSS. A defined macro shadows a CSS property of the same name.
-- An element's macro calls form its **location rule**, one class per site (`Button_button-color`). At runtime a site is a tag plus its `_` attribute names within one scope, so same-shaped elements share it. When a value differs, only the differing properties move inline; the rest keep the class.
+- An element's macro calls form its **location rule**, one class per site (`Button_button-color`). A site is the element's position in its component's output - every row of a mapped list shares one, while static siblings each get their own. When a value differs within a site, only the differing properties move inline; the rest keep the class.
 - An object value opens a descendant scope keyed by tag, component, or rule name - including keys that are also CSS properties, such as SVG `filter` or `mask`.
 - `false`, `null`, and `undefined` omit an entry; `0` is a value. `_` attributes are style-only and never reach the DOM.
 

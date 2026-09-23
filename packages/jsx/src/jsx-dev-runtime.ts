@@ -1,16 +1,17 @@
 import { Fragment } from '@expressive/mvc/runtime';
 
-import { vnode } from './vnode';
+import { markStatic, vnode } from './vnode';
 import type { VNode } from './vnode';
 
 function jsxDEV(
   type: VNode['type'],
   props: object,
   key?: unknown,
-  _isStatic?: boolean,
+  isStatic?: boolean,
   _source?: object,
   _self?: unknown
 ) {
+  if (isStatic) markStatic(props);
   return vnode(type, props, key);
 }
 

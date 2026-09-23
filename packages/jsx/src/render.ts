@@ -15,7 +15,7 @@ import {
 import type { AppearanceContext, ResolvedAppearance } from './appearance-protocol';
 import { Provider, provide } from './context';
 import { claim as dequeue, release, schedule, settle as absorb, transition } from './scheduler';
-import { PORTAL, childrenOf, isVNode } from './vnode';
+import { PORTAL, childrenOf, isVNode, segmentsOf } from './vnode';
 import type { Key, Node as RenderNode, VNode } from './vnode';
 
 type Container = Element | DocumentFragment;
@@ -64,6 +64,7 @@ interface Fiber {
   consumed?: boolean;
   appearanceRoute?: unknown;
   claimed?: Claim;
+  path?: string;
 }
 
 interface Appearance {
@@ -97,6 +98,9 @@ const roots = new WeakMap<Container, () => void>();
 const SVG = 'http://www.w3.org/2000/svg';
 const dirty = new Set<Boundary>();
 const stashes = new WeakMap<globalThis.Node, Fiber>();
+const types = new WeakMap<object, number>();
+let site = '';
+let typeCount = 0;
 const CONTROLS = ['checked', 'value'];
 let passiveRender = false;
 let depth = 0;
@@ -149,7 +153,7 @@ function range(kind: Kind, parent: globalThis.Node, before: globalThis.Node | nu
   parent.insertBefore(start, before);
   parent.insertBefore(end, before);
 
-  return { kind, context, start, end, children: [] };
+  return { kind, context, start, end, children: [], path: site };
 }
 
 function makeScope(kind: Scope['kind'], context: Context, update: (passive: boolean) => void): Scope {
@@ -180,6 +184,7 @@ function componentProps(
   type: unknown,
   props: Record<string, any>,
   appearance: Appearance | undefined,
+  path: string | undefined,
   route?: unknown
 ) {
   const context = appearance?.context;
@@ -188,7 +193,8 @@ function componentProps(
   const resolved = context.resolve(
     route,
     (type as { displayName?: string }).displayName ?? type.name,
-    props
+    props,
+    path
   );
   const value = resolved.appearance;
   if (!value) return { appearance, props, route: resolved.route };
@@ -208,7 +214,7 @@ function mount(value: RenderNode, parent: globalThis.Node, before: globalThis.No
   if (typeof value == 'string' || typeof value == 'number' || typeof value == 'bigint') {
     const text = document.createTextNode(String(value));
     parent.insertBefore(text, before);
-    return { kind: 'text', value, context, start: text, end: text, children: [] };
+    return { kind: 'text', value, context, start: text, end: text, children: [], path: site };
   }
 
   if (value instanceof Component) return mountComponent(value, parent, before, context, boundary, appearance);
@@ -243,7 +249,7 @@ function mountFragment(value: VNode, parent: globalThis.Node, before: globalThis
 
 function mountFunction(value: VNode, parent: globalThis.Node, before: globalThis.Node | null, context: Context, boundary?: Boundary, appearance?: Appearance) {
   const fiber = range('function', parent, before, context);
-  const resolved = componentProps(value.type, value.props, appearance);
+  const resolved = componentProps(value.type, value.props, appearance, fiber.path);
   fiber.key = value.key;
   fiber.type = value.type;
   fiber.props = observe(resolved.props);
@@ -265,7 +271,7 @@ function mountOwnedComponent(
   boundary?: Boundary,
   appearance?: Appearance
 ) {
-  const resolved = componentProps(value.type, value.props, appearance);
+  const resolved = componentProps(value.type, value.props, appearance, site);
   const instance = new (value.type as new (props: any) => Component)(observe(resolved.props));
   return mountComponent(instance, parent, before, context, boundary, resolved.appearance, true, value.key, resolved.route);
 }
@@ -413,6 +419,7 @@ function mountPortal(value: VNode, parent: globalThis.Node, before: globalThis.N
     context,
     boundary,
     appearance,
+    path: site,
     start: marker,
     end: marker,
     children: [],
@@ -444,6 +451,7 @@ function mountElement(value: VNode, parent: globalThis.Node, before: globalThis.
     props: {},
     context,
     boundary,
+    path: site,
     start: element,
     end: element,
     children: [],
@@ -599,6 +607,8 @@ function hide(owner: Fiber, boundary: Boundary) {
   const context = owner.childContext!;
   const placeholder = range('fragment', owner.end.parentNode!, owner.end, context);
 
+  placeholder.path = `${owner.path}/!`;
+
   owner.stash = stash;
   owner.placeholder = placeholder;
   reconcile(placeholder, boundary.fallback(), context, boundary.parent);
@@ -713,6 +723,8 @@ function reconcilePortal(fiber: Fiber, value: RenderNode, context: Context, boun
 
 function reconcileChildren(owner: Fiber, parent: globalThis.Node, before: globalThis.Node | null, value: RenderNode, context: Context, boundary?: Boundary, appearance?: Appearance) {
   const values = childrenOf(value);
+  const segments = segmentsOf(value);
+  const base = owner.kind == 'component' || owner.kind == 'function' ? `#${typeOf(owner.type!)}` : owner.path;
   const old = owner.children;
   const keyed = new Map<Key, Fiber>();
   const used = new Set<Fiber>();
@@ -734,6 +746,8 @@ function reconcileChildren(owner: Fiber, parent: globalThis.Node, before: global
       if (child && used.has(child)) child = undefined;
       if (child) used.add(child);
 
+      site = `${base}/${segments[index]}`;
+      if (child) child.path = site;
       next.push(patch(child, value, parent, before, context, boundary, appearance));
     }
   } catch (error) {
@@ -782,14 +796,14 @@ function patch(old: Fiber | undefined, value: RenderNode, parent: globalThis.Nod
     reconcile(old, (value as VNode).props.children, context, old.boundary, appearance);
   } else if (old.kind == 'function') {
     const vnode = value as VNode;
-    const resolved = componentProps(vnode.type, vnode.props, appearance, old.appearanceRoute);
+    const resolved = componentProps(vnode.type, vnode.props, appearance, old.path, old.appearanceRoute);
     old.appearance = resolved.appearance;
     old.appearanceRoute = resolved.route;
     old.props = observe(resolved.props);
     rerun(old, () => runFunction(old, passiveRender));
   } else if (old.kind == 'component') {
     const resolved = isVNode(value)
-      ? componentProps(value.type, value.props, appearance, old.appearanceRoute)
+      ? componentProps(value.type, value.props, appearance, old.path, old.appearanceRoute)
       : { appearance, props: old.instance!.props, route: old.appearanceRoute };
     old.appearance = resolved.appearance;
     old.appearanceRoute = resolved.route;
@@ -833,6 +847,12 @@ function compatible(fiber: Fiber, value: RenderNode) {
   return true;
 }
 
+function typeOf(type: object) {
+  let id = types.get(type);
+  if (id === undefined) types.set(type, (id = typeCount++));
+  return id;
+}
+
 function keyOf(value: RenderNode): Key {
   if (value instanceof Component) return value.key;
   return isVNode(value) ? value.key : undefined;
@@ -854,7 +874,7 @@ function patchProps(fiber: Fiber, next: Record<string, any>, appearance?: Appear
   const element = fiber.start as Element;
   const previous = fiber.props!;
   const raw = 'dangerouslySetInnerHTML' in next;
-  const resolved = appearance?.context?.resolve(fiber.appearanceRoute, fiber.type as string, next) || {};
+  const resolved = appearance?.context?.resolve(fiber.appearanceRoute, fiber.type as string, next, fiber.path) || {};
 
   fiber.appearanceRoute = resolved.route;
 

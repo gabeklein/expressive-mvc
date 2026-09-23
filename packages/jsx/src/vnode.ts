@@ -27,6 +27,28 @@ interface VNode<P = any> {
   readonly key?: Key;
 }
 
+const statics = new WeakSet<object>();
+
+function markStatic<P>(props: P) {
+  const children = (props as { children?: unknown }).children;
+  if (Array.isArray(children)) statics.add(children);
+}
+
+function segmentsOf(value: unknown): string[] {
+  const output: string[] = [];
+
+  function add(child: unknown, segment: string, dynamic: boolean) {
+    if (Array.isArray(child)) {
+      const fixed = !dynamic && statics.has(child);
+      child.forEach((item, index) => add(item, fixed ? String(index) : `${segment}*`, !fixed));
+    } else if (child !== null && child !== undefined && typeof child != 'boolean')
+      output.push(segment);
+  }
+
+  add(value, '', false);
+  return output;
+}
+
 function vnode<P>(type: VNode<P>['type'], props: P, key?: unknown): VNode<P> {
   return {
     [VNODE]: true,
@@ -63,6 +85,8 @@ export {
   childrenOf,
   createPortal,
   isVNode,
+  markStatic,
+  segmentsOf,
   vnode
 };
 

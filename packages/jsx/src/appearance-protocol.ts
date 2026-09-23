@@ -18,7 +18,8 @@ interface AppearanceContext {
   resolve(
     route: unknown,
     tag: string,
-    props: Record<string, unknown>
+    props: Record<string, unknown>,
+    site?: string
   ): { appearance?: ResolvedAppearance; route?: unknown };
 }
 
