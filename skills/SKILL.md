@@ -347,7 +347,7 @@ Instructions: `field/*.md`, linked from the [helper table](#instructions--reacti
 | `component` | `props`, `subcomponents`, `lifecycle`, `injection`, `headless`, `suspense`, `boundary`, `custom` |
 | `composition` | `nested`, `context`, `concerns`, `extension`, `globals` |
 | `instructions` | `set`, `set-factory`, `set-computed`, `get`, `get-downstream`, `ref`, `ref-multiple`, `map`, `map-insert`, `has`, `has-list`, `def` |
-| `router` | `overview`, `params`, `query`, `guards`, `transitions`, `nav` |
+| `router` | `overview`, `browser`, `params`, `query`, `guards`, `transitions`, `nav`, `wizard` |
 
 ## Auditing & Evaluation
 

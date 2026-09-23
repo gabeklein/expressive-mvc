@@ -81,8 +81,16 @@ class Candidate extends Component {
   writeIn = false;
   remove = () => {};
 
+  drop(event: { stopPropagation(): void }) {
+    event.stopPropagation();
+
+    if (this.poll.choice === this.name) this.poll.choice = '';
+
+    this.remove();
+  }
+
   render() {
-    const { poll, name, writeIn } = this;
+    const { poll, name, writeIn, drop } = this;
 
     return (
       <li
@@ -90,7 +98,7 @@ class Candidate extends Component {
         onClick={() => (poll.choice = name)}>
         <span>{name}</span>
         {writeIn && <em>write-in</em>}
-        <button onClick={() => this.remove()}>×</button>
+        <button onClick={drop}>×</button>
       </li>
     );
   }

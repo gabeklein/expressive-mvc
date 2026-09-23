@@ -257,7 +257,7 @@ it('will not own active child from set factory', () => {
   const parent = Parent.new();
 
   expect(parent.child).toBe(held);
-  expect(Context.get(parent).get(Child)).toBe(held);
+  expect(Context.root.get(Child, false)).toBeUndefined();
 
   parent.set(null);
 
@@ -3578,6 +3578,35 @@ describe('computed (getters)', () => {
     await expect(test).toHaveUpdated();
 
     expect(test.fooBar).toBe('bar');
+  });
+
+  it('will keep nested dependencies when read before refresh', async () => {
+    class Inner extends State {
+      value = 1;
+    }
+
+    class Test extends State {
+      inner = new Inner();
+
+      get double() {
+        return this.inner.value * 2;
+      }
+    }
+
+    const test = Test.new();
+    const effect = vi.fn((state: Test) => void state.double);
+
+    test.get(effect);
+
+    test.inner.value = 2;
+    expect(test.double).toBe(4);
+    await flushMicrotasks();
+
+    test.inner.value = 3;
+    await flushMicrotasks();
+
+    expect(test.double).toBe(6);
+    expect(effect).toHaveBeenCalledTimes(3);
   });
 
   describe('inheritance', () => {

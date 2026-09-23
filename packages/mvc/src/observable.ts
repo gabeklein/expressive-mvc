@@ -87,9 +87,10 @@ function observe<T extends object>(
   required?: boolean
 ): T {
   const watching = new Set<Observer.Signal>();
+  const observing: Observing = { callback, watching, required };
 
   const release = listener(object, (key) => {
-    if (watching.has(key)) return callback();
+    if (watching.has(key)) return observing.callback();
   });
 
   if (EffectContext)
@@ -105,9 +106,7 @@ function observe<T extends object>(
       writable: true
     });
 
-  return Object.defineProperty(proxy, Observing, {
-    value: { callback, watching, required } as Observing
-  });
+  return Object.defineProperty(proxy, Observing, { value: observing });
 }
 
 function touch(from: object, key: any): void;
@@ -124,7 +123,7 @@ function touch(from: object, key: any, value?: any) {
     active.watching.add(key);
 
     if (value instanceof Object && observer(value))
-      return observe(value, active.callback, active.required);
+      return observe(value, () => active.callback(), active.required);
   }
 
   return value;
@@ -299,13 +298,11 @@ function watch<T extends object>(
         return;
       }
 
-      if (previous && argument === false) {
-        const { watching } = (proxy as Observed)[Observing]!;
-        if (!watching.size)
-          (previous as Observed)[Observing]!.watching.forEach((k) => watching.add(k));
-      }
-      
-      previous = proxy;
+      if (previous && argument === false && !(proxy as Observed)[Observing]!.watching.size)
+        (previous as Observed)[Observing]!.callback = onUpdate;
+      else
+        previous = proxy;
+
       ignore = false;
       reset = output === null ? null : invoke;
       unset = (key) => {

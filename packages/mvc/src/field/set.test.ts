@@ -5,6 +5,15 @@ import { set } from './set';
 
 const warn = mockWarn();
 
+function attempt(fn: () => unknown): Promise<unknown> {
+  try {
+    fn();
+  } catch (thrown) {
+    return thrown as Promise<unknown>;
+  }
+  throw new Error('did not suspend');
+}
+
 describe('property descriptors', () => {
   it('will not be enumerable with value', () => {
     class Test extends State {
@@ -331,6 +340,44 @@ describe('factory', () => {
     expect(() => Test.new()).toThrow(
       /Direct promises are not supported in set\([\w-]+\.value\)\. Use set\(\(\) => promise\) instead\./
     );
+  });
+
+  it('will drop a promise resolved after destroy', async () => {
+    const pending = mockPromise<string>();
+
+    class Test extends State {
+      value = set(() => pending);
+    }
+
+    const test = Test.new();
+    const suspense = attempt(() => test.value);
+
+    expect(suspense).toBeInstanceOf(Promise);
+    suspense.catch(() => {});
+
+    test.set(null);
+    pending.resolve('late');
+
+    await flushMicrotasks();
+  });
+
+  it('will drop a promise rejected after destroy', async () => {
+    const pending = mockPromise<string>();
+
+    class Test extends State {
+      value = set(() => pending);
+    }
+
+    const test = Test.new();
+    const suspense = attempt(() => test.value);
+
+    expect(suspense).toBeInstanceOf(Promise);
+    suspense.catch(() => {});
+
+    test.set(null);
+    pending.reject(new Error('late'));
+
+    await flushMicrotasks();
   });
 
   it('will be read-only', () => {
