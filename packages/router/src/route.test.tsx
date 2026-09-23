@@ -1,5 +1,5 @@
 import { act, render, screen } from '@testing-library/react';
-import { lazy } from 'react';
+import { lazy, type ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { Component, Consumer } from '@expressive/react';
 
@@ -1784,6 +1784,42 @@ describe('none', () => {
 
     await act(async () => router.current.goto('/elsewhere'));
     expect(view.container.textContent).toBe('app404');
+  });
+
+  it('will not match when entering a section 404 from outside the section', async () => {
+    router.current.goto('/');
+    const { view } = await mount(
+      <>
+        <Route as={() => <span>home</span>} />
+        <Route to="posts" as={(props: { children?: ReactNode }) => <>{props.children}</>}>
+          <Route to=":id" as={() => <span>post</span>} />
+          <Route none as={() => <span>posts404</span>} />
+        </Route>
+        <Route none as={() => <span>app404</span>} />
+      </>
+    );
+    expect(view.container.textContent).toBe('home');
+
+    await act(async () => router.current.goto('/posts/a/b'));
+    expect(view.container.textContent).toBe('posts404');
+  });
+
+  it('will not match when entering a section route from outside the section', async () => {
+    router.current.goto('/');
+    const { view } = await mount(
+      <>
+        <Route as={() => <span>home</span>} />
+        <Route to="posts" as={(props: { children?: ReactNode }) => <>{props.children}</>}>
+          <Route to=":id" as={() => <span>post</span>} />
+          <Route none as={() => <span>posts404</span>} />
+        </Route>
+        <Route none as={() => <span>app404</span>} />
+      </>
+    );
+    expect(view.container.textContent).toBe('home');
+
+    await act(async () => router.current.goto('/posts/a'));
+    expect(view.container.textContent).toBe('post');
   });
 
   it('is excluded from matches and active', async () => {

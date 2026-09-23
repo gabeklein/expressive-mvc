@@ -154,7 +154,7 @@ export class Route extends Component {
         // A scope counts via a matched descendant, or its own section none Route.
         const deep = collect(route.inner);
         return deep.length ? deep
-          : noneCatches(route, path) ? [route.path] : [];
+          : scopeResolves(route.children, scopeBase(route), path) ? [route.path] : [];
       });
 
     return collect(this.inner);
@@ -345,12 +345,6 @@ function isRoot(route: Route): boolean {
 /** The base a scope's children compose against (own base + segment). */
 function scopeBase(route: Route): string {
   return route.base + route.router.segment(route.to);
-}
-
-/** Registration-form: scope owns a none Route catching the path within base -
- * used by `matches` so a section 404 suppresses an ancestor 404. */
-function noneCatches(route: Route, path: string): boolean {
-  return route.inner.some((c) => c.none) && within(scopeBase(route), path);
 }
 
 type RouteProps = {
