@@ -180,7 +180,6 @@ function componentProps(
   type: unknown,
   props: Record<string, any>,
   appearance: Appearance | undefined,
-  parent: globalThis.Node,
   route?: unknown
 ) {
   const context = appearance?.context;
@@ -189,8 +188,7 @@ function componentProps(
   const resolved = context.resolve(
     route,
     (type as { displayName?: string }).displayName ?? type.name,
-    props,
-    parent.ownerDocument!
+    props
   );
   const value = resolved.appearance;
   if (!value) return { appearance, props, route: resolved.route };
@@ -245,7 +243,7 @@ function mountFragment(value: VNode, parent: globalThis.Node, before: globalThis
 
 function mountFunction(value: VNode, parent: globalThis.Node, before: globalThis.Node | null, context: Context, boundary?: Boundary, appearance?: Appearance) {
   const fiber = range('function', parent, before, context);
-  const resolved = componentProps(value.type, value.props, appearance, parent);
+  const resolved = componentProps(value.type, value.props, appearance);
   fiber.key = value.key;
   fiber.type = value.type;
   fiber.props = observe(resolved.props);
@@ -267,7 +265,7 @@ function mountOwnedComponent(
   boundary?: Boundary,
   appearance?: Appearance
 ) {
-  const resolved = componentProps(value.type, value.props, appearance, parent);
+  const resolved = componentProps(value.type, value.props, appearance);
   const instance = new (value.type as new (props: any) => Component)(observe(resolved.props));
   return mountComponent(instance, parent, before, context, boundary, resolved.appearance, true, value.key, resolved.route);
 }
@@ -784,14 +782,14 @@ function patch(old: Fiber | undefined, value: RenderNode, parent: globalThis.Nod
     reconcile(old, (value as VNode).props.children, context, old.boundary, appearance);
   } else if (old.kind == 'function') {
     const vnode = value as VNode;
-    const resolved = componentProps(vnode.type, vnode.props, appearance, parent, old.appearanceRoute);
+    const resolved = componentProps(vnode.type, vnode.props, appearance, old.appearanceRoute);
     old.appearance = resolved.appearance;
     old.appearanceRoute = resolved.route;
     old.props = observe(resolved.props);
     rerun(old, () => runFunction(old, passiveRender));
   } else if (old.kind == 'component') {
     const resolved = isVNode(value)
-      ? componentProps(value.type, value.props, appearance, parent, old.appearanceRoute)
+      ? componentProps(value.type, value.props, appearance, old.appearanceRoute)
       : { appearance, props: old.instance!.props, route: old.appearanceRoute };
     old.appearance = resolved.appearance;
     old.appearanceRoute = resolved.route;
@@ -856,12 +854,7 @@ function patchProps(fiber: Fiber, next: Record<string, any>, appearance?: Appear
   const element = fiber.start as Element;
   const previous = fiber.props!;
   const raw = 'dangerouslySetInnerHTML' in next;
-  const resolved = appearance?.context?.resolve(
-    fiber.appearanceRoute,
-    fiber.type as string,
-    next,
-    element.ownerDocument
-  ) || {};
+  const resolved = appearance?.context?.resolve(fiber.appearanceRoute, fiber.type as string, next) || {};
 
   fiber.appearanceRoute = resolved.route;
 

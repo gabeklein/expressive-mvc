@@ -97,8 +97,8 @@ function createContext(scope: StyleScope): AppearanceContext {
 
   const context: AppearanceContext = {
     scope,
-    resolve(route, tag, props, document) {
-      return resolveAppearance(route as AppearanceRoute | undefined, scope, tag, props, document);
+    resolve(route, tag, props) {
+      return resolveAppearance(route as AppearanceRoute | undefined, scope, tag, props);
     }
   };
 
@@ -181,8 +181,7 @@ function resolveAppearance(
   route: AppearanceRoute | undefined,
   scope: StyleScope | undefined,
   tag: string,
-  props: Record<string, unknown>,
-  document: Document
+  props: Record<string, unknown>
 ): { appearance?: ResolvedAppearance; route?: AppearanceRoute } {
   if (!route || route.scope !== scope) route = createAppearanceRoute(scope, tag, props);
   if (!route) return {};
@@ -194,9 +193,9 @@ function resolveAppearance(
     if (isPresent(props[`_${name}`])) names.push(name);
 
   for (const name of names)
-    parts.push(expandRule(route.scope, name, document));
+    parts.push(expandRule(route.scope, name));
 
-  const inline = locate(route, tag, props, parts, document);
+  const inline = locate(route, tag, props, parts);
   const blocks = parts.flatMap((part) => part.block ? [part.block] : []);
   const classes = parts.flatMap((part) => part.classes);
   let child: StyleScope | undefined = route.scope;
@@ -221,8 +220,7 @@ function locate(
   route: AppearanceRoute,
   tag: string,
   props: Record<string, unknown>,
-  parts: Expansion[],
-  document: Document
+  parts: Expansion[]
 ) {
   const args = route.macros.map((name) => props[`_${name}`]);
   if (!args.some(isPresent)) return undefined;
@@ -234,8 +232,7 @@ function locate(
     site.expansion = expand(
       route.scope,
       route.macros.map((name, index) => ({ [name]: args[index] })),
-      [],
-      document
+      []
     );
   }
 
@@ -280,11 +277,11 @@ function createBlock(route: AppearanceRoute, tag: string, declarations: Declarat
   };
 }
 
-function expandRule(scope: StyleScope, name: string, document: Document) {
+function expandRule(scope: StyleScope, name: string) {
   let expansion = scope.expansions.get(name);
 
   if (!expansion) {
-    expansion = expand(scope, scope.rules[name], [], document);
+    expansion = expand(scope, scope.rules[name], []);
 
     if (Object.keys(expansion.declarations).length)
       expansion.block = {
@@ -299,9 +296,8 @@ function expandRule(scope: StyleScope, name: string, document: Document) {
   return expansion;
 }
 
-function expand(scope: StyleScope, value: unknown, stack: string[], document: Document): Expansion {
+function expand(scope: StyleScope, value: unknown, stack: string[]): Expansion {
   const output: Expansion = { classes: [], declarations: {}, nested: [] };
-  const probe = document.documentElement.style;
   const nested: StyleMap = {};
 
   function walk(value: unknown, stack: string[]) {
@@ -322,8 +318,8 @@ function expand(scope: StyleScope, value: unknown, stack: string[], document: Do
 
       if (typeof rule == 'function' && !stack.includes(name)) {
         if (isPresent(entry)) walk(rule(entry === true ? undefined : entry), [...stack, name]);
-      } else if (!name.startsWith('--') && !(name in probe) && isObject(entry))
-        nested[name] = entry as Declaration;
+      } else if (isObject(entry))
+        nested[name] = entry;
       else output.declarations[name] = entry;
     }
   }
@@ -336,7 +332,7 @@ function expand(scope: StyleScope, value: unknown, stack: string[], document: Do
 function emit(block: Block, depth: number, document: Document) {
   let sheet = sheets.get(document);
 
-  if (!sheet) {
+  if (!sheet?.element.sheet) {
     const element = document.createElement('style');
     element.dataset.expressive = 'jsx';
     document.head.append(element);

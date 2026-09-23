@@ -380,6 +380,35 @@ describe('appearance', () => {
     expect(getComputedStyle(root.querySelector('em')!).color).toBe('red');
   });
 
+  it('will open descendant scopes under keys that are also CSS properties', () => {
+    function Icon() {
+      return <svg _frame><filter /></svg>;
+    }
+
+    style(Icon, { frame: { filter: { opacity: 0.5 } } });
+
+    expect(mount(<Icon />).querySelector('filter')!.getAttribute('class')).toBe('Icon_svg_filter');
+  });
+
+  it('will recreate a removed stylesheet', () => {
+    function First() {
+      return <i _tone />;
+    }
+
+    function Second() {
+      return <b _tone />;
+    }
+
+    style(First, { tone: { color: 'red' } });
+    style(Second, { tone: { color: 'blue' } });
+
+    mount(<First />);
+    document.head.querySelector('style[data-expressive]')!.remove();
+
+    const node = mount(<Second />).querySelector('b')!;
+    expect(getComputedStyle(node).color).toBe('blue');
+  });
+
   it('will resolve class-only, empty and plain routes', () => {
     const called = vi.fn(() => 'zero');
     const scope = createStyleScope(undefined, {
@@ -390,14 +419,14 @@ describe('appearance', () => {
       plain: { opacity: 0.5 }
     })!;
     const props = { _bad: true, _empty: true, _token: true, _zero: true, _plain: false };
-    const resolved = resolveAppearance(undefined, scope, 'div', props, document);
+    const resolved = resolveAppearance(undefined, scope, 'div', props);
 
     expect(resolved.appearance).toEqual({ classes: ['one', 'two', 'zero'] });
     expect(called).toHaveBeenCalledWith(undefined);
 
     const empty = createAppearanceRoute(scope, 'div', { _empty: true });
-    expect(resolveAppearance(empty, scope, 'div', { _empty: true }, document)).toEqual({ route: empty });
-    expect(resolveAppearance(empty, scope, 'div', { _empty: false }, document)).toEqual({ route: empty });
+    expect(resolveAppearance(empty, scope, 'div', { _empty: true })).toEqual({ route: empty });
+    expect(resolveAppearance(empty, scope, 'div', { _empty: false })).toEqual({ route: empty });
   });
 
   it('will distinguish signed zero macro arguments', () => {
@@ -405,8 +434,8 @@ describe('appearance', () => {
       signed: (value?: unknown) => ({ zIndex: Object.is(value, -0) ? -1 : 1 })
     })!;
     const route = createAppearanceRoute(scope, 'div', { _signed: 0 });
-    const positive = resolveAppearance(route, scope, 'div', { _signed: 0 }, document);
-    const negative = resolveAppearance(route, scope, 'div', { _signed: -0 }, document);
+    const positive = resolveAppearance(route, scope, 'div', { _signed: 0 });
+    const negative = resolveAppearance(route, scope, 'div', { _signed: -0 });
 
     expect(positive.appearance?.blocks?.[0].declarations).toEqual({ zIndex: 1 });
     expect(negative.appearance?.declarations).toEqual({ zIndex: -1 });
@@ -426,7 +455,7 @@ describe('appearance', () => {
     expect(createStyleScope(undefined, null)).toBeUndefined();
     expect(createStyleScope(undefined, [])).toBeUndefined();
     expect(createAppearanceRoute(undefined, 'div', {})).toBeUndefined();
-    expect(resolveAppearance(undefined, undefined, 'div', {}, document)).toEqual({});
+    expect(resolveAppearance(undefined, undefined, 'div', {})).toEqual({});
   });
 
   it('will share immutable scopes and structural routes', () => {
@@ -447,7 +476,7 @@ describe('appearance', () => {
       active: { color: 'red' }
     })!;
     const route = createAppearanceRoute(scope, 'div', {});
-    const result = resolveAppearance(route, scope, 'div', { _active: true }, document);
+    const result = resolveAppearance(route, scope, 'div', { _active: true });
 
     expect(result.appearance?.blocks).toHaveLength(1);
   });
