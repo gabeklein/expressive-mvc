@@ -1230,6 +1230,112 @@ describe('root global', () => {
     expect(root.get(Global, false)).toBeUndefined();
   });
 
+  it('will not register children of a private instance in root', () => {
+    class Child extends State {}
+    class Parent extends State {
+      child = new Child();
+    }
+
+    const parent = Parent.new();
+
+    expect(root.get(Parent, false)).toBeUndefined();
+    expect(root.get(Child, false)).toBeUndefined();
+
+    parent.set(null);
+  });
+
+  it('will register children of a global instance in root', () => {
+    class Child extends State {}
+    class Parent extends State {
+      static readonly global = true;
+      child = new Child();
+    }
+
+    const parent = Parent.new();
+
+    expect(root.get(Child)).toBe(parent.child);
+
+    parent.set(null);
+
+    expect(root.get(Child, false)).toBeUndefined();
+  });
+
+  it('will register a child assigned after a global joins root', () => {
+    class Child extends State {}
+    class Parent extends State {
+      static readonly global = true;
+      child?: Child = undefined;
+    }
+
+    const parent = Parent.new();
+
+    parent.child = new Child();
+
+    expect(root.get(Child)).toBe(parent.child);
+
+    parent.set(null);
+  });
+
+  it('will not register a late child of a private sibling of a global', () => {
+    class Child extends State {}
+    class Parent extends State {
+      static readonly global: State.Global<Parent> = (self) => self.shared;
+      shared = false;
+      child?: Child = undefined;
+    }
+
+    const shared = Parent.new({ shared: true });
+    const alone = Parent.new();
+
+    alone.child = new Child();
+
+    expect(root.get(Parent)).toBe(shared);
+    expect(root.get(Child, false)).toBeUndefined();
+
+    shared.set(null);
+    alone.set(null);
+  });
+
+  it('will provide children of a private instance where it is provided', () => {
+    class Grandchild extends State {}
+    class Child extends State {
+      grandchild = new Grandchild();
+    }
+    class Parent extends State {
+      child = new Child();
+    }
+
+    const parent = Parent.new();
+    const context = root.push({ parent });
+
+    expect(context.get(Child)).toBe(parent.child);
+    expect(context.get(Grandchild)).toBe(parent.child.grandchild);
+    expect(root.get(Child, false)).toBeUndefined();
+
+    context.pop();
+
+    expect(context.get(Child, false)).toBeUndefined();
+
+    parent.set(null);
+  });
+
+  it('will register grandchildren of a global instance in root', () => {
+    class Grandchild extends State {}
+    class Child extends State {
+      grandchild = new Grandchild();
+    }
+    class Parent extends State {
+      static readonly global = true;
+      child = new Child();
+    }
+
+    const parent = Parent.new();
+
+    expect(root.get(Grandchild)).toBe(parent.child.grandchild);
+
+    parent.set(null);
+  });
+
   it('will keep instance when re-added implicitly', () => {
     const instance = Global.new();
 

@@ -46,8 +46,8 @@ export class Route extends Component {
    * a truthy string redirects, a falsy result (`''`/`undefined`) allows normal
    * render, and `null` force-404s - the route cedes the path so its scope falls
    * through to the nearest `none`. May be async - the route's `fallback` shows
-   * while the decision pends. The verdict is cached for navigations within the
-   * space and re-evaluated on re-entry.
+   * while the decision pends. The verdict is cached per concrete path of the
+   * route's own pattern: re-evaluated on re-entry or when its own params change.
    */
   redirect?: string | (() => Async<string | void | null>) = undefined;
 
@@ -157,7 +157,7 @@ export class Route extends Component {
         // A scope counts via a matched descendant, or its own section none Route.
         const deep = collect(route.inner);
         return deep.length ? deep
-          : noneCatches(route, path) ? [route.path] : [];
+          : scopeResolves(route.children, scopeBase(route), path) ? [route.path] : [];
       });
 
     return collect(this.inner);
@@ -254,11 +254,12 @@ export class Route extends Component {
   }
 }
 
-const GUARD = new WeakMap<Route, { redirect: Function; to?: string; promise?: Promise<string | undefined> }>();
+const GUARD = new WeakMap<Route, { redirect: Function; space: string; to?: string; promise?: Promise<string | undefined> }>();
 
 /**
  * Resolve a function `redirect` guard for an entered route. Caches the verdict
- * per entry (keyed by the guard fn); an async guard throws its pending promise
+ * per entry (keyed by the guard fn and the concrete path its own pattern
+ * consumes, so a param change re-enters); an async guard throws its pending promise
  * (suspense -> the route's `fallback`) until it settles, then the cached result
  * is returned on retry. The cache is dropped on leave (see render), so returning
  * to the space re-runs the guard.
@@ -270,9 +271,10 @@ function guard(route: Route, redirect: () => Async<string | void | null>): strin
   }
 
   let g = GUARD.get(route);
+  const at = space(route);
 
-  if (!g || g.redirect !== redirect)
-    GUARD.set(route, g = { redirect });
+  if (!g || g.redirect !== redirect || g.space !== at)
+    GUARD.set(route, g = { redirect, space: at });
 
   if ('to' in g) return g.to;
   if (g.promise) throw g.promise;
@@ -345,15 +347,15 @@ function isRoot(route: Route): boolean {
   return !route.parent && !!route.props && !('to' in route.props);
 }
 
+/** The concrete prefix of the current path consumed by a route's own pattern. */
+function space(route: Route): string {
+  const depth = scopeBase(route).split('/').filter(Boolean).length;
+  return route.router.path.split('/').filter(Boolean).slice(0, depth).join('/');
+}
+
 /** The base a scope's children compose against (own base + segment). */
 function scopeBase(route: Route): string {
   return route.base + route.router.segment(route.to);
-}
-
-/** Registration-form: scope owns a none Route catching the path within base -
- * used by `matches` so a section 404 suppresses an ancestor 404. */
-function noneCatches(route: Route, path: string): boolean {
-  return route.inner.some((c) => c.none) && within(scopeBase(route), path);
 }
 
 type RouteProps = {

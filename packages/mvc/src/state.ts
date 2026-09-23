@@ -1,4 +1,4 @@
-import { Context } from './context';
+import { Context, join } from './context';
 import {
   capture,
   event,
@@ -852,7 +852,7 @@ function child(state: State) {
     if (!(value instanceof State)) return;
 
     if (parent(value, state)) {
-      const remove = ctx.add(value);
+      const remove = join(state, value);
       cleanup = () => {
         cancel();
         remove();
@@ -860,7 +860,7 @@ function child(state: State) {
       };
       const cancel = listener(state, cleanup, null);
     } else if (!provides(ctx, value)) {
-      cleanup = ctx.add(value);
+      cleanup = join(state, value);
     }
 
     event(value);

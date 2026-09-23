@@ -282,6 +282,24 @@ describe('fetch mode', () => {
       expect(parent.child.peer).toBe(parent.peer);
     });
 
+    it('will keep own sibling when another arrives in context', () => {
+      class Parent extends State {
+        child = new Required();
+        peer = new Peer();
+      }
+      class A extends Parent {}
+      class B extends Parent {}
+
+      const context = new Context({ A, B });
+      const a = context.get(A);
+      const b = context.get(B);
+
+      expect(a.child.peer).toBe(a.peer);
+      expect(b.child.peer).toBe(b.peer);
+
+      context.pop();
+    });
+
     it('will resolve optional sibling declared later', () => {
       class Parent extends State {
         child = new Optional();
