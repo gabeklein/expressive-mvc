@@ -50,7 +50,7 @@ const unmount = render(<Count />, document.getElementById('app')!);
 
 `style` on a component automatically reaches its rendered host root, including through component, fragment, provider, portal, and collection boundaries. A fragment applies it to each host root. Forwarded style overrides the root's own, with the outermost caller winning. A component which reads its `style` prop while rendering owns placement, and nothing is forwarded. It receives a frozen object of the caller's inline declarations - spread, pluck or merge it freely; the caller's classes travel hidden with it. `class` applies to elements only.
 
-A component may register immutable rule maps with `style(Component, rules)`. Repeated calls add layers. Tag/component-name rules apply automatically; `_rule` attributes activate object rules or pass a value to pure macro functions. These attributes never reach the DOM.
+A component may register immutable maps with `style(Component, map)`. Object entries are rules - static blocks applied by host tag, child component name, or a truthy `_rule` attribute. Function entries are macros - used as keys inside rules or as `_macro={value}` attributes. Each applied rule is one class named after its source; an element's macro calls form one location class per site - a tag and its `_` attribute names within a scope - and values that differ move inline property by property. `_` attributes never reach the DOM.
 
 ```tsx
 function Button({ active, color }: { active: boolean; color: string }) {
@@ -64,7 +64,7 @@ style(Button, {
 });
 ```
 
-Global maps use `macro(rules)` and can live in side-effect imports. Register macros and styles before the first relevant render. Order is deterministic: globals, base classes, derived classes, repeated calls, then explicit element `style`; later properties win. Serializable combinations become generated CSS classes on first use. Each structural route caches up to 8 combinations, then resolves new high-cardinality values inline. `false`, `null`, and `undefined` omit a rule; `0` remains a macro argument.
+Global maps use `macro(map)` and can live in side-effect imports. Register macros and styles before the first relevant render. Inline style always beats classes; among classes, a caller's rule beats the callee's, and a rule carried through more component `style` props wins - independent of render order. `false`, `null`, and `undefined` omit an entry; `0` remains a macro argument.
 
 `Component` retains the React adapter's model: fields read by `render()` are dependencies, owned instances mount and clean up with the DOM range, and an externally activated instance can be placed directly without transferring ownership.
 

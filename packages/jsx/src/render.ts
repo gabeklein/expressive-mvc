@@ -9,11 +9,12 @@ import {
   appearanceRoot,
   appearanceToken,
   createAppearanceToken,
+  emitClass,
   enterAppearance
 } from './appearance-protocol';
 import type { AppearanceContext, ResolvedAppearance } from './appearance-protocol';
 import { Provider, provide } from './context';
-import { claim, release, schedule, settle as absorb, transition } from './scheduler';
+import { claim as dequeue, release, schedule, settle as absorb, transition } from './scheduler';
 import { PORTAL, childrenOf, isVNode } from './vnode';
 import type { Key, Node as RenderNode, VNode } from './vnode';
 
@@ -62,12 +63,34 @@ interface Fiber {
   appearance?: Appearance;
   consumed?: boolean;
   appearanceRoute?: unknown;
-  resolvedAppearance?: ResolvedAppearance;
+  claimed?: Claim;
 }
 
 interface Appearance {
   context?: AppearanceContext;
-  entries: Style[];
+  entries: Forwarded[];
+}
+
+interface Forwarded {
+  hops: number;
+  style: Style;
+}
+
+interface Carried {
+  appearance: ResolvedAppearance;
+  doors: number;
+}
+
+interface Collected {
+  classes: string[];
+  declarations: Record<string, unknown>;
+  tokens: Carried[];
+}
+
+interface Claim {
+  className: string;
+  context?: AppearanceContext;
+  declarations: Record<string, unknown>;
 }
 
 const roots = new WeakMap<Container, () => void>();
@@ -85,6 +108,7 @@ const tickets = new WeakMap<object, Ticket>();
 
 interface Ticket {
   classes: string[];
+  tokens: Carried[];
 }
 
 function render(node: RenderNode, container: Container): () => void {
@@ -169,8 +193,7 @@ function componentProps(
     parent.ownerDocument!
   );
   const value = resolved.appearance;
-  if (!value || !value.className && !value.declarations && !value.context)
-    return { appearance, props, route: resolved.route };
+  if (!value) return { appearance, props, route: resolved.route };
 
   const token = createAppearanceToken(value);
   return {
@@ -495,16 +518,16 @@ function observe(props: Record<string, any>) {
 }
 
 function door(value: Style) {
-  const ticket: Ticket = { classes: [] };
-  const declarations: Record<string, unknown> = {};
+  const collected: Collected = { classes: [], declarations: {}, tokens: [] };
+  const { classes, declarations, tokens } = collected;
 
-  flattenStyle(value, ticket.classes, declarations);
+  collect(value, collected, 1);
 
-  if (!ticket.classes.length && !Object.keys(declarations).length) return undefined;
+  if (!classes.length && !tokens.length && !Object.keys(declarations).length) return undefined;
 
   const key = Object.freeze({});
 
-  tickets.set(key, ticket);
+  tickets.set(key, { classes, tokens });
   return Object.freeze({ ...declarations, [Symbol('style')]: key });
 }
 
@@ -796,7 +819,7 @@ function patch(old: Fiber | undefined, value: RenderNode, parent: globalThis.Nod
 }
 
 function rerun(fiber: Fiber, run: () => void) {
-  claim(fiber.scope!);
+  dequeue(fiber.scope!);
   run();
   absorb(fiber.scope!);
 }
@@ -833,7 +856,6 @@ function patchProps(fiber: Fiber, next: Record<string, any>, appearance?: Appear
   const element = fiber.start as Element;
   const previous = fiber.props!;
   const raw = 'dangerouslySetInnerHTML' in next;
-  const previousResolved = fiber.resolvedAppearance;
   const resolved = appearance?.context?.resolve(
     fiber.appearanceRoute,
     fiber.type as string,
@@ -842,7 +864,6 @@ function patchProps(fiber: Fiber, next: Record<string, any>, appearance?: Appear
   ) || {};
 
   fiber.appearanceRoute = resolved.route;
-  fiber.resolvedAppearance = resolved.appearance;
 
   if (raw) {
     for (let index = fiber.children.length - 1; index >= 0; index--)
@@ -856,24 +877,14 @@ function patchProps(fiber: Fiber, next: Record<string, any>, appearance?: Appear
     patchProp(fiber, element, key, previous[key], next[key]);
   }
 
-  if (previous.class !== next.class || previous.style !== next.style || fiber.appearance !== appearance || previousResolved !== resolved.appearance)
-    patchAppearance(
-      element,
-      fiber.appearance,
-      previousResolved,
-      previous.class,
-      previous.style,
-      appearance,
-      resolved.appearance,
-      next.class,
-      next.style
-    );
+  const claimed = claim(element, appearance, resolved.appearance, next.class, next.style);
 
+  applyClaim(element, fiber.claimed, claimed);
+  fiber.claimed = claimed;
   fiber.props = next;
   fiber.appearance = appearance;
 
   if (!raw) {
-    const appearanceContext = styleContext(appearance, next.style, resolved.appearance);
     reconcileChildren(
       fiber,
       element,
@@ -881,7 +892,7 @@ function patchProps(fiber: Fiber, next: Record<string, any>, appearance?: Appear
       next.children,
       fiber.context,
       fiber.boundary,
-      appearanceContext ? { context: appearanceContext, entries: [] } : undefined
+      claimed.context ? { context: claimed.context, entries: [] } : undefined
     );
   }
 
@@ -956,27 +967,16 @@ function patchProp(fiber: Fiber, element: Element, key: string, previous: any, n
 
 type Style = string | Record<string, unknown> | false | null | undefined | readonly Style[];
 
-function patchAppearance(
-  element: Element,
-  previousAppearance: Appearance | undefined,
-  previousResolved: ResolvedAppearance | undefined,
-  previousClass: unknown,
-  previousStyle: Style,
-  nextAppearance: Appearance | undefined,
-  nextResolved: ResolvedAppearance | undefined,
-  nextClass: unknown,
-  nextStyle: Style
-) {
-  const before = normalizeStyle(previousAppearance, previousResolved, previousClass, previousStyle);
-  const after = normalizeStyle(nextAppearance, nextResolved, nextClass, nextStyle);
+function applyClaim(element: Element, before: Claim | undefined, after: Claim) {
+  const previous = before || { className: '', declarations: {} };
 
-  if (before.className !== after.className) {
+  if (previous.className !== after.className) {
     if (after.className) element.setAttribute('class', after.className);
     else element.removeAttribute('class');
   }
 
   const declaration = (element as HTMLElement).style as any;
-  for (const key of Object.keys({ ...before.declarations, ...after.declarations })) {
+  for (const key of Object.keys({ ...previous.declarations, ...after.declarations })) {
     const value = after.declarations[key];
     if (key.startsWith('--')) {
       declaration.setProperty(key, value == null ? '' : String(value));
@@ -989,92 +989,80 @@ function patchAppearance(
   }
 }
 
-function normalizeStyle(
+function claim(
+  element: Element,
   appearance: Appearance | undefined,
   resolved: ResolvedAppearance | undefined,
   className: unknown,
   value: Style
-) {
-  const classes: string[] = [];
-  const declarations: Record<string, unknown> = {};
-
+): Claim {
+  const collected: Collected = { classes: [], declarations: {}, tokens: [] };
   const entries = appearance?.entries || [];
+  let context = appearance?.context;
 
-  appendResolved(resolved, classes, declarations);
-  appendClasses(classes, className);
-  flattenStyle(value, classes, declarations);
+  if (resolved) collect(createAppearanceToken(resolved), collected, 0);
+  appendClasses(collected.classes, className);
+  collect(value, collected, 0);
 
   for (let index = entries.length - 1; index >= 0; index--)
-    flattenStyle(entries[index], classes, declarations);
+    collect(entries[index].style, collected, entries[index].hops);
 
-  return { className: [...new Set(classes)].join(' '), declarations };
+  for (const { appearance, doors } of collected.tokens) {
+    for (const block of appearance.blocks || [])
+      collected.classes.push(emitClass(block, doors, element.ownerDocument));
+    if (appearance.classes) collected.classes.push(...appearance.classes);
+    if (appearance.context) context = appearance.context;
+  }
+
+  return {
+    className: [...new Set(collected.classes)].join(' '),
+    context,
+    declarations: collected.declarations
+  };
 }
 
 function renderedAppearance(fiber: Fiber): Appearance | undefined {
   if (fiber.kind != 'component' && fiber.kind != 'function') return fiber.appearance;
 
   const style = fiber.props?.style as Style;
-  const entries = [...fiber.appearance?.entries || []];
+  const entries = (fiber.appearance?.entries || []).map(({ hops, style }) => ({ hops: hops + 1, style }));
   const context = enterAppearance(fiber.appearance?.context, fiber.type as Function);
 
-  if (style && !fiber.consumed && !(fiber.instance && 'style' in fiber.instance)) entries.push(style);
+  if (style && !fiber.consumed && !(fiber.instance && 'style' in fiber.instance)) entries.push({ hops: 0, style });
 
   return entries.length || context ? { context, entries } : undefined;
 }
 
-function styleContext(
-  appearance: Appearance | undefined,
-  value: Style,
-  resolved: ResolvedAppearance | undefined
-) {
-  let context = resolved?.context || appearance?.context;
-
-  function visit(entry: Style) {
-    if (!entry) return;
-    if (Array.isArray(entry)) return entry.forEach(visit);
-    context = appearanceToken(entry)?.context || context;
-  }
-
-  appearance?.entries.forEach(visit);
-  visit(value);
-  return context;
-}
-
-function appendResolved(
-  resolved: ResolvedAppearance | undefined,
-  classes: string[],
-  declarations: Record<string, unknown>
-) {
-  if (!resolved) return;
-  appendClasses(classes, resolved.className);
-  if (resolved.declarations) Object.assign(declarations, resolved.declarations);
-}
-
-function flattenStyle(value: Style, classes: string[], declarations: Record<string, unknown>) {
+function collect(value: Style, collected: Collected, doors: number) {
   if (!value) return;
 
   const token = appearanceToken(value);
   if (token) {
-    appendResolved(token, classes, declarations);
+    collected.tokens.push({ appearance: token, doors });
+    Object.assign(collected.declarations, token.declarations);
     return;
   }
 
   if (typeof value == 'string') {
-    appendClasses(classes, value);
+    appendClasses(collected.classes, value);
     return;
   }
 
   if (Array.isArray(value)) {
-    value.forEach((entry) => flattenStyle(entry, classes, declarations));
+    value.forEach((entry) => collect(entry, collected, doors));
     return;
   }
 
   for (const symbol of Object.getOwnPropertySymbols(value)) {
     const ticket = tickets.get((value as Record<symbol, object>)[symbol]);
-    if (ticket) classes.push(...ticket.classes);
+    if (!ticket) continue;
+
+    collected.classes.push(...ticket.classes);
+    for (const carried of ticket.tokens)
+      collected.tokens.push({ appearance: carried.appearance, doors: carried.doors + doors });
   }
 
-  for (const key of Object.keys(value)) declarations[key] = (value as Record<string, unknown>)[key];
+  for (const key of Object.keys(value)) collected.declarations[key] = (value as Record<string, unknown>)[key];
 }
 
 function appendClasses(classes: string[], value: unknown) {
