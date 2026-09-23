@@ -13,6 +13,7 @@
   grid-template-columns: 0 0 1fr !important;
 }
 
+
 .pane {
   display: flex;
   min-width: 0;
@@ -181,4 +182,28 @@
 
 .editor :global(.cm-scroller) {
   overflow: auto;
+}
+
+@media (max-width: 1000px) {
+  .grid > .pane:first-child {
+    order: 1;
+  }
+
+  .grid > .pane:last-child {
+    order: -1;
+  }
+
+  .grid.collapsed {
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: 1fr 0 0 !important;
+  }
+
+  .handle {
+    cursor: row-resize;
+  }
+
+  .handleBar {
+    width: 100%;
+    height: 1px;
+  }
 }
