@@ -257,7 +257,7 @@ it('will not own active child from set factory', () => {
   const parent = Parent.new();
 
   expect(parent.child).toBe(held);
-  expect(Context.get(parent).get(Child)).toBe(held);
+  expect(Context.root.get(Child, false)).toBeUndefined();
 
   parent.set(null);
 

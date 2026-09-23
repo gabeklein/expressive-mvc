@@ -2,6 +2,7 @@ import { listener } from "./observable";
 import { event, State, uid } from "./state";
 
 const LOOKUP = new WeakMap<State, Context>();
+const HELD = new WeakMap<State, Set<State>>();
 let ROOT: Context;
 
 type Accept<T extends State = State> =
@@ -290,8 +291,11 @@ class Context {
       onDone.clear();
     }
 
+    const held = Array.from(HELD.get(I) || [], (child) => this.add(child));
+
     function remove() {
       cleanup.delete(remove);
+      held.forEach((done) => done());
       flush();
     }
 
@@ -336,4 +340,19 @@ Object.defineProperty(Context.prototype, "toString", {
   },
 });
 
-export { Context };
+/**
+ * Add `value` to the context `state` was added to. A context-less `state` holds
+ * it instead - every context adding `state` later adds its held children too.
+ */
+function join(state: State, value: State): () => void {
+  const ctx = LOOKUP.get(state.is);
+
+  if (ctx) return ctx.add(value);
+
+  const held = HELD.get(state) || new Set();
+  HELD.set(state, held.add(value));
+
+  return () => held.delete(value);
+}
+
+export { Context, join };
