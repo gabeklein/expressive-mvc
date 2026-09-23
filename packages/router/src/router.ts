@@ -1,17 +1,53 @@
-import { Component, map } from '@expressive/mvc';
-import { listener } from '@expressive/mvc/observable';
+import { Component, map, pending, set, State } from '@expressive/mvc';
 
-import { Route } from './route';
-import { Match, fillPath, fullPattern, matchPattern, patternSegment } from './url';
+import type { Route } from './route';
+import {
+  Match,
+  assertAbsolute,
+  fillPath,
+  fullPattern,
+  isExternal,
+  matchPattern,
+  normalize,
+  patternSegment,
+  searchOf
+} from './url';
+
+/**
+ * Global only on the client. On the server there is no shared singleton, so a
+ * per-request `path`/`query` can't bleed across requests; provide a `Router`
+ * per-request (via `<Provider>`) to render a specific path there.
+ */
+const clientOnly: State.Global = () => typeof window !== 'undefined';
+
+interface Navigation {
+  navigating: boolean;
+  get(key: null): boolean;
+}
+
+interface LocationRouter extends Navigation {
+  path: string;
+  hash: string;
+  query: map.Insert<string, string>;
+  goto(to: string): void;
+}
+
+const ACTIVE = new WeakMap<object, object>();
+const LOCATING = new WeakSet<object>();
+const READY = new WeakSet<object>();
 
 /**
  * Headless router core: matching plus an in-memory `path` and history stack.
  * Touches no browser globals, so it runs (and tests) under any host - it is
- * also the memory-router substrate. `BrowserRouter` binds this to
- * `window.location`/`history`; the public API stays string-based at the edges
- * either way.
+ * also the memory-router substrate. `BrowserRouter` (see `./browser`) binds
+ * this to `window.location`/`history`; the public API stays string-based at
+ * the edges either way.
  */
 export class Router extends Component {
+  /** The default router: a client-side singleton a `Route` resolves when no
+   * ambient `Router` is provided. See {@link clientOnly}. */
+  static readonly global = clientOnly;
+
   path = '/';
 
   /**
@@ -31,24 +67,30 @@ export class Router extends Component {
    */
   query = map<string, string>();
 
-  /** In-memory history: visited urls (path + query) and the cursor into them. */
-  entries: string[] = [];
-  index = 0;
+  /** Opaque URL fragment, including its leading `#`, or an empty string. */
+  hash = set('', (value) => {
+    if (LOCATING.has(this) || !READY.has(this)) return;
+
+    const url = normalize(withQuery(this.path, this.query, value));
+    if (this.get(null) || url === this.url) throw false;
+
+    this.goto(url);
+    throw false;
+  });
+
+  /** In-memory history: visited urls and the cursor into them. */
+  protected entries: string[] = [];
+  protected index = 0;
 
   protected new() {
+    this.locate(normalize(this.url));
+    bindLocation(this);
     this.entries = [this.url];
-    // Direct `query` mutations push a new entry; URL-driven changes already sit there (pushEntry no-ops).
-    const release = listener(this.query, () => pushEntry(this, this.url), false);
-
-    return () => {
-      release();
-    };
   }
 
-  /** Full URL as assigned by the environment (path + optional `?query`). Assigning navigates. */
+  /** Full URL as assigned by the environment. Assigning navigates. */
   get url(): string {
-    const search = searchOf(this.query);
-    return search ? this.path + '?' + search : this.path;
+    return withQuery(this.path, this.query, this.hash);
   }
 
   set url(to: string) {
@@ -69,33 +111,80 @@ export class Router extends Component {
 
   goto(to: string, replace = false) {
     assertAbsolute(to);
-    const url = normalize(to);
-
-    if (replace) this.entries[this.index] = url;
-    else pushEntry(this, url);
-
-    this.locate(url);
+    this.next(normalize(to), replace);
   }
 
+  /**
+   * Commit a navigation: apply `url` as one unit, then record it wherever this
+   * router keeps history. Override to bind a different history - `BrowserRouter`
+   * writes the address here, once the page is on screen.
+   */
+  protected async next(url: string, replace?: boolean) {
+    await navigate(this, (work) => this.navigate(work), () => {
+      this.locate(url);
+    }, () => {
+      if (replace) this.entries[this.index] = url;
+      else if (url !== this.entries[this.index]) {
+        this.entries = [...this.entries.slice(0, this.index + 1), url];
+        this.index = this.entries.length - 1;
+      }
+    });
+  }
+
+  /** Move back one history entry. */
   back() {
-    if (this.index > 0) this.locate(this.entries[--this.index]);
+    this.go(-1);
   }
 
-  forward() {
-    if (this.index < this.entries.length - 1)
-      this.locate(this.entries[++this.index]);
+  /** Move by a relative history delta. */
+  go(delta: number) {
+    delta = deltaOf(delta);
+    const index = this.index + delta;
+
+    if (!delta || index < 0 || index >= this.entries.length) return;
+
+    navigate(
+      this,
+      (work) => this.navigate(work),
+      () => this.locate(this.entries[index]),
+      () => { this.index = index; }
+    );
   }
 
-  /** Apply a normalized url (path + optional `?query`) to state, reconciling `query` in place. */
+  /**
+   * Whether a navigation has yet to appear. Read it beside the outgoing screen
+   * or in a wrapper around it - never inside the page itself, which would
+   * render it urgently against the new path and forfeit the hold.
+   */
+  navigating = false;
+
+  /**
+   * Every navigation is applied through here, non-urgent, so a not-yet-ready
+   * page holds the current screen rather than flashing its fallback. Override
+   * to stage the swap differently (e.g. `document.startViewTransition`) -
+   * `work` applies the navigation and must run.
+   */
+  protected navigate(work: () => void) {
+    return pending(work);
+  }
+
+  /** Apply a normalized url to state, reconciling location fields in place. */
   protected locate(url: string) {
-    const q = url.indexOf('?');
-    this.path = q < 0 ? url : url.slice(0, q);
+    LOCATING.add(this);
 
-    const { query } = this;
-    const next = new Map(new URLSearchParams(q < 0 ? '' : url.slice(q + 1)));
+    try {
+      const { pathname, searchParams, hash } = new URL(url, 'x://_');
+      this.path = pathname;
+      this.hash = hash;
 
-    for (const key of [...query.keys()]) if (!next.has(key)) query.delete(key);
-    for (const [key, value] of next) query.set(key, value);
+      const { query } = this;
+      const next = new Map(searchParams);
+
+      for (const key of [...query.keys()]) if (!next.has(key)) query.delete(key);
+      for (const [key, value] of next) query.set(key, value);
+    } finally {
+      LOCATING.delete(this);
+    }
   }
 
   segment(to: string): string {
@@ -114,114 +203,90 @@ export class Router extends Component {
     return own.endsWith('/') ? own : own + '/';
   }
 
-  /** Resolve a (possibly relative) url against a Route's anchor; returns absolute pathname. */
+  /** Resolve a (possibly relative) url against a Route's anchor. */
   resolve(route: Route, url: string): string {
-    if (url.startsWith('/')) return url;
-    return new URL(url, 'x://_' + this.anchor(route)).pathname;
+    if (isExternal(url) || url.startsWith('/')) return url;
+    if (url.startsWith('#')) {
+      const anchor = this.anchor(route);
+      const path = anchor.length > 1 ? anchor.slice(0, -1) : anchor;
+      return normalize(withQuery(path, this.query, url));
+    }
+    const resolved = new URL(url, 'x://_' + this.anchor(route));
+    return resolved.pathname + resolved.search + resolved.hash;
   }
 }
 
-/** Binds the headless core to `window.location`, syncing `path`/`query` on navigation. */
-export class BrowserRouter extends Router {
-  path = window.location.pathname;
+export async function navigate(
+  router: Navigation,
+  stage: (work: () => void) => Promise<void>,
+  work: () => void,
+  commit?: () => void
+) {
+  const token = {};
+  ACTIVE.set(router, token);
+  router.navigating = true;
 
-  goto(to: string, replace = false) {
-    assertAbsolute(to);
-    history[replace ? 'replaceState' : 'pushState'](null, '', normalize(to));
-  }
-
-  // The browser owns the history stack; back/forward delegate to it (popstate
-  // syncs path/query), so the inherited in-memory entries/index go unused here.
-  back() {
-    history.back();
-  }
-
-  forward() {
-    history.forward();
-  }
-
-  protected new() {
-    const sync = () => {
-      this.locate(window.location.pathname + window.location.search);
-    };
-    sync();
-    window.addEventListener('popstate', sync);
-
-    const origPush = history.pushState.bind(history);
-    const origReplace = history.replaceState.bind(history);
-    history.pushState = (...args) => {
-      origPush(...args);
-      sync();
-    };
-    history.replaceState = (...args) => {
-      origReplace(...args);
-      sync();
-    };
-
-    // Direct `query` writes push to the browser's history; URL-driven changes
-    // already match (compared canonically, so encoding differences don't dup).
-    const release = listener(
-      this.query,
-      () => {
-        const { url } = this;
-        if (url !== canonicalize(window.location.pathname + window.location.search))
-          history.pushState(null, '', url);
-      },
-      false
-    );
-
-    return () => {
-      release();
-      window.removeEventListener('popstate', sync);
-      history.pushState = origPush;
-      history.replaceState = origReplace;
-    };
+  try {
+    await stage(() => {
+      if (ACTIVE.get(router) === token && !router.get(null)) work();
+    });
+    if (ACTIVE.get(router) === token && !router.get(null)) commit?.();
+  } finally {
+    if (ACTIVE.get(router) === token) {
+      ACTIVE.delete(router);
+      if (!router.get(null)) router.navigating = false;
+    }
   }
 }
 
-/** Append `url` as a new history entry on a memory router, truncating any forward stack. */
-function pushEntry(router: Router, url: string) {
-  if (url === router.entries[router.index]) return;
+export function bindLocation(router: LocationRouter) {
+  READY.add(router);
 
-  router.entries = [...router.entries.slice(0, router.index + 1), url];
-  router.index = router.entries.length - 1;
+  const { query } = router;
+  const set = query.set;
+  const remove = query.delete;
+  const clear = query.clear;
+
+  query.set = function (key, value) {
+    if (LOCATING.has(router) || router.get(null))
+      return set.call(this, key, value);
+
+    const next = new Map(query);
+    next.set(key, value);
+    router.goto(withQuery(router.path, next, router.hash));
+    return this;
+  };
+
+  query.delete = function (key) {
+    if (LOCATING.has(router) || router.get(null))
+      return remove.call(this, key);
+    if (!query.has(key)) return false;
+
+    const next = new Map(query);
+    next.delete(key);
+    router.goto(withQuery(router.path, next, router.hash));
+    return true;
+  };
+
+  query.clear = function () {
+    if (LOCATING.has(router) || router.get(null)) return clear.call(this);
+    if (query.size) router.goto(router.path + router.hash);
+  };
 }
 
-function assertAbsolute(to: string) {
-  if (!to.startsWith('/'))
-    throw new Error(
-      `Router.goto requires an absolute path; got "${to}". Relative paths must be resolved via a Route (e.g. Route.get().goto).`
-    );
+export function deltaOf(delta: number) {
+  return Number.isFinite(delta) ? Math.trunc(delta) : 0;
 }
 
-/**
- * Collapse `.`/`..` and stray slashes without touching browser globals, and
- * canonicalize the query so stored urls match the `url` getter byte-for-byte.
- */
-function normalize(to: string): string {
-  const { pathname, search } = new URL(to, 'x://_');
-  return canonicalize(pathname + search);
-}
-
-/**
- * Re-serialize a url's query through the map model (last value per key,
- * `URLSearchParams` encoding) so it is identical to what the `url` getter emits.
- * This is what makes the history-dedup a sound string comparison.
- */
-function canonicalize(url: string): string {
-  const q = url.indexOf('?');
-  if (q < 0) return url;
-
-  const search = searchOf(new Map(new URLSearchParams(url.slice(q + 1))));
-  return search ? url.slice(0, q) + '?' + search : url.slice(0, q);
-}
-
-/** Canonical query serialization: skips `undefined`, last-value-per-key, form encoding. */
-function searchOf(entries: Iterable<readonly [string, string | undefined]>): string {
-  const params = new URLSearchParams();
-
-  for (const [key, value] of entries)
-    if (value !== undefined) params.append(key, value);
-
-  return params.toString();
+function withQuery(
+  path: string,
+  query: Iterable<readonly [string, string | undefined]>,
+  hash: string
+) {
+  const search = searchOf(query);
+  return (
+    path +
+    (search ? '?' + search : '') +
+    (hash && !hash.startsWith('#') ? '#' + hash : hash)
+  );
 }

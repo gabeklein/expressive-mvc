@@ -19,15 +19,15 @@ export function Benefits() {
             No big-bang rewrite. Adopt it one feature at a time and leave simple
             useState calls alone. A tool for complexity, not a replacement.
           </Benefit>
-          <Benefit title="Keep what works" delay={100}>
+          <Benefit title="Keep what works" delay={50}>
             MVC doesn't need to replace every hook or specialist library. Keep
             the tools that still earn their place.
           </Benefit>
-          <Benefit title="Portable state" delay={200}>
+          <Benefit title="Portable state" delay={100}>
             Headless State classes don't depend on a component tree. Move them,
             test them, or use the framework-agnostic core.
           </Benefit>
-          <Benefit title="No build-time magic" delay={300}>
+          <Benefit title="No build-time magic" delay={150}>
             MVC adds no compiler, code generation, or custom syntax. What you
             write is what runs.
           </Benefit>

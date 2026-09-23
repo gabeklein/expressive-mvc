@@ -1,10 +1,29 @@
 import { Component, unbind } from '@expressive/mvc';
-import { watch, observer } from '@expressive/mvc/observable';
-import { provide, type Context } from './context';
-import { Runtime, useHook, useReady } from './runtime';
+import { createProvider, type Context } from './context';
+import { Runtime, useWatch } from './runtime';
 
 declare module '@expressive/mvc' {
+  namespace Component {
+    /**
+     * Not available - a Component is rendered, not a hook.
+     * Render it with `<Component />` or `{component}`.
+     * For a bare instance use `Component.new()`.
+     */
+    const use: never;
+  }
+
   interface Component {
+    /**
+     * Optional hook called once this Component commits. Return a function to
+     * run when it unmounts.
+     *
+     * Not called during server render, nor for an instance placed as
+     * `{component}` - a placement does not own what it renders. Client-only
+     * effects belong here; setup which must accompany the instance itself
+     * belongs in `new()`.
+     */
+    mount?(): (() => void) | void;
+
     /** @deprecated Only to satisfy host JSX. Use `this.get(State)` instead. */
     readonly context: Context;
     /** @deprecated Only to satisfy host JSX. Use `this.get()` instead. */
@@ -26,6 +45,15 @@ Object.defineProperties(Component.prototype, {
   },
   context: {
     set: bootstrap
+  }
+});
+
+Object.defineProperty(Component, 'use', {
+  configurable: true,
+  value() {
+    throw new Error(
+      `${this} is a Component - render as an element instead of calling use().`
+    );
   }
 });
 
@@ -89,20 +117,20 @@ function bootstrap(this: Component, context: Context){
  * Wrap a content element in its context provider, a Suspense boundary (unless
  * `fallback` is `false`) and, when `catch` is set, the host error boundary.
  */
-function frame(from: Component, context: Context, children: unknown) {
-  const { createElement: create } = Runtime;
+function createFrame(from: Component, context: Context, children: unknown) {
+  const { createElement } = Runtime;
 
   if(from.fallback !== false)
-    children = create(
+    children = createElement(
       Runtime.Suspense,
       { fallback: from.fallback, name: String(from) },
       children
     )
 
-  children = provide(context, children);
+  children = createProvider(context, children);
 
   return from.catch
-    ? create(Runtime.ErrorBoundary, { self: from, children })
+    ? createElement(Runtime.ErrorBoundary, { self: from, children })
     : children;
 }
 
@@ -113,27 +141,28 @@ function frame(from: Component, context: Context, children: unknown) {
  * unmount.
  */
 function render(from: Component, context: Context) {
-  const { createElement: create } = Runtime;
+  const { createElement } = Runtime;
   const { commit, remove } = Runtime.dedupe(from, context);
+  const { is: owner, render } = from;
 
-  const content = from.render;
-  const Render = () => content.call(from, from.props);
+  const Render = () => render.call(from, from.props);
   const Component = () => {
-    from = useHook<Component>((refresh) => {
-      if (observer(from) !== null) watch(from, refresh);
+    from = useWatch(from, () => {
+      const release = owner.mount?.();
+
+      commit();
 
       return () => {
+        if (typeof release == 'function') release();
         remove();
         context.pop();
       };
-    }) || from;
+    });
 
-    useReady(commit);
-
-    return frame(from, context, create(Render));
+    return createFrame(from, context, createElement(Render));
   };
 
-  return () => create(Component);
+  return () => createElement(Component);
 }
 
 /** Rewrite each own capitalized function on `target` into a subcomponent. */
@@ -148,10 +177,7 @@ function subcomponents(target: object, configurable?: boolean) {
         const owner = this.is;
         let render = unbind(value);
         const Component = (props: unknown) =>
-          render.call(
-            useHook<Component>((set) => watch(owner, set)) || owner,
-            props
-          );
+          render.call(useWatch(owner), props);
 
         Object.defineProperty(owner, key, {
           configurable: true,
@@ -162,9 +188,19 @@ function subcomponents(target: object, configurable?: boolean) {
         });
 
         return Component;
+      },
+      set(this: Component, value: unknown) {
+        Object.defineProperty(this, key, {
+          value,
+          writable: true,
+          enumerable: true,
+          configurable: true
+        });
+
+        subcomponents(this, true);
       }
     });
   }
 }
 
-export { frame };
+export { createFrame };

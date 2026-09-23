@@ -1,4 +1,5 @@
 import { State, Context, Component } from '@expressive/mvc';
+import type { UseState } from '@expressive/mvc';
 import { Runtime, useHook } from './runtime';
 
 let shared: any;
@@ -18,7 +19,7 @@ function useAmbient() {
 }
 
 /** Wrap `children` in a {@link Layers} provider carrying `context` down the tree. */
-function provide(context: Context, children: any) {
+function createProvider(context: Context, children: any) {
   return Runtime.createElement(Layers().Provider, { value: context, children });
 }
 
@@ -57,7 +58,11 @@ function Consumer<T extends State>(props: Consumer.Props<T>) {
 }
 
 declare namespace Provider {
-  type ForEach<T> = (state: T) => void | (() => void);
+  /**
+   * Runs for each State registered by this Provider. Return value is ignored -
+   * to run teardown with a State, use `state.set(null, callback)`.
+   */
+  type ForEach<T> = (state: T) => void;
 
   interface SharedProps {
     /**
@@ -88,34 +93,57 @@ declare namespace Provider {
   type Props<T extends State = State> = ForSingleProps<T> | ForMultipleProps<T>;
 }
 
-function Provider<T extends State>(props: Provider.Props<T>) {
-  const {
-    for: input,
-    children,
-    fallback,
-    name,
-    is,
-    ...rest
-  } = props as Provider.ForSingleProps<T> & Provider.ForMultipleProps<T>;
+type Digest<T extends State> = (props: Provider.Props<T>) => Context;
 
+function Provider<T extends State>({
+  children,
+  fallback,
+  name,
+  ...props
+}: Provider.Props<T>) {
   const ambient = useAmbient();
-  const context = useHook<Context>((set) => {
-    set(new Context(ambient));
-    return () => context.pop();
+  const digest: Digest<T> = useHook((returns) => {
+    const context = new Context(ambient);
+    const fresh: State[] = [];
+
+    let applied: Context.Accept<T> | undefined;
+    let solo: State | undefined;
+
+    returns(({ is, for: input, ...rest }) => {
+      if (input !== applied) {
+        const single = State.is(input) || input instanceof State;
+
+        applied = input;
+        solo = undefined;
+
+        context.set(input, (state, owned) => {
+          if (single) solo = state;
+          if (owned) fresh.push(state);
+          if (is) is(state);
+        });
+      }
+
+      if (solo && Object.keys(rest).length) solo.set(rest);
+
+      return context;
+    });
+
+    return () => {
+      const release = fresh.map((state) => (state as UseState).mount?.());
+
+      return () => {
+        for (const done of release) if (typeof done == 'function') done();
+        context.pop();
+      };
+    };
   });
 
-  context.set(input, is);
-
-  if (Object.keys(rest).length) {
-    const i = State.is(input) ? context.get(input) : input;
-    if (i instanceof State) i.set(rest);
-  }
-
-  return provide(context,
+  return createProvider(
+    digest(props),
     fallback !== undefined
       ? Runtime.createElement(Runtime.Suspense, { fallback, name }, children)
       : children
   );
 }
 
-export { Consumer, Provider, Context, provide };
+export { Consumer, Provider, Context, createProvider };

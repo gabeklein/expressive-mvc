@@ -1,0 +1,106 @@
+.steps {
+  display: flex;
+  gap: var(--s2);
+  width: 100%;
+}
+
+.step {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s2);
+  padding: var(--s2) var(--s3);
+  font-size: var(--t-sm);
+  color: var(--muted);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  cursor: pointer;
+}
+
+.step b {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  font-size: var(--t-xs);
+  border-radius: 50%;
+  background: var(--surface-2);
+  color: var(--fg-soft);
+}
+
+.step.here {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.step.here b,
+.step.past b {
+  background: var(--accent);
+  color: var(--accent-fg);
+}
+
+.step.past {
+  color: var(--fg-soft);
+}
+
+.view {
+  width: 100%;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s4);
+  width: 100%;
+  padding: var(--s4);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+}
+
+.card label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  font-size: var(--t-sm);
+  color: var(--fg-soft);
+}
+
+.card label.agree {
+  flex-direction: row;
+  align-items: center;
+}
+
+.card dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--s2) var(--s4);
+  margin: 0;
+  font-size: var(--t-sm);
+}
+
+.card dt {
+  color: var(--muted);
+}
+
+.card dd {
+  margin: 0;
+}
+
+.controls {
+  display: flex;
+  justify-content: space-between;
+  padding-top: var(--s2);
+}
+
+.done {
+  align-items: flex-start;
+}
+
+.done p {
+  margin: 0;
+}

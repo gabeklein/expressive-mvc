@@ -1,8 +1,9 @@
 import { act, render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'bun:test';
+import { lazy, type ReactNode } from 'react';
+import { describe, expect, it, vi } from 'vitest';
 import { Component, Consumer } from '@expressive/react';
 
-import { location, browserRouter, mockPromise, renderAct } from '../test.setup';
+import { location, browserRouter, mockError, mockPromise, renderAct } from '../test.setup';
 import { Route } from './route';
 import { Router } from './router';
 
@@ -47,6 +48,21 @@ describe('Route', () => {
     location('/posts/foo');
     const view = render(<Route to="/posts/:id" as={Post} />);
     expect(view.container.textContent).toBe('id: foo');
+  });
+
+  it('will own a fallback router when none is in context', () => {
+    router.current.set(null);
+
+    const route = Route.new();
+    const fallback = route.router;
+
+    expect(fallback).toBeInstanceOf(Router);
+    expect(fallback).not.toBe(router.current);
+    expect(fallback.get(null)).toBe(false);
+
+    route.set(null);
+
+    expect(fallback.get(null)).toBe(true);
   });
 
   it('exposes the router query', () => {
@@ -126,7 +142,7 @@ describe('Route', () => {
     expect((await renderAct(<Route to="" as={Home} />)).container.textContent).toBe('Home');
   });
 
-  it('specific sibling declared first beats bare-default Route', () => {
+  it('specific sibling declared first beats bare-none Route', () => {
     location('/about');
     const view = render(
       <Route>
@@ -137,12 +153,12 @@ describe('Route', () => {
     expect(view.container.textContent).toBe('About');
   });
 
-  it('default Route renders when no earlier sibling matches', () => {
+  it('none Route renders when no earlier sibling matches', () => {
     location('/nope');
     const view = render(
       <Route>
         <Route to="/about" as={() => <span>About</span>} />
-        <Route default as={() => <span>Fallback</span>} />
+        <Route none as={() => <span>Fallback</span>} />
       </Route>
     );
     expect(view.container.textContent).toBe('Fallback');
@@ -170,6 +186,25 @@ describe('Route', () => {
     render(<Route to="/posts/:id" is={(r) => (leaf = r)} />);
     await act(async () => leaf.goto('./edit'));
     expect(window.location.pathname).toBe('/posts/foo/edit');
+  });
+
+  it('Route.goto will preserve query in relative paths', async () => {
+    location('/posts/foo');
+    let leaf!: Route;
+    render(<Route to="/posts/:id" is={(r) => (leaf = r)} />);
+    await act(async () => leaf.goto('./edit?tab=history'));
+    expect(router.current.url).toBe('/posts/foo/edit?tab=history');
+    expect(window.location.search).toBe('?tab=history');
+  });
+
+  it('Route.goto will resolve a fragment against the Route and preserve query', async () => {
+    location('/posts/foo?view=full#intro');
+    let leaf!: Route;
+    render(<Route to="/posts/:id" is={(r) => (leaf = r)} />);
+    await act(async () => leaf.goto('#details'));
+
+    expect(router.current.url).toBe('/posts/foo?view=full#details');
+    expect(window.location.hash).toBe('#details');
   });
 
   it('Route.goto with no argument navigates to the Route itself', async () => {
@@ -247,6 +282,14 @@ describe('Route', () => {
 
       await act(async () => leaf.goto({ b: '8' }));
       expect(window.location.pathname).toBe('/a/8/9');
+    });
+
+    it('throws when the route owns no params', async () => {
+      location('/about');
+      let leaf!: Route;
+      render(<Route to="/about" is={(r) => (leaf = r)} />);
+      await act(async () => {});
+      expect(() => leaf.goto({ id: '1' })).toThrow(/owns only \[none\]/);
     });
 
     it('swaps a param on a nested leaf, same as the flat form', async () => {
@@ -355,7 +398,7 @@ describe('Route', () => {
   // Blocked on https://github.com/gabeklein/expressive-state/issues/85 -
   // Expressive does not reset omitted props to defaults on prop update, so
   // a winner-swap to a bare Route inherits the prior `to`.
-  it.skip('switches between specific and bare-default on navigation', async () => {
+  it.skip('switches between specific and bare-none on navigation', async () => {
     location('/a');
     const view = render(
       <Route>
@@ -550,6 +593,27 @@ describe('Route', () => {
       expect(view.container.textContent).toBe('');
     });
 
+    it('unregisters a child destroyed after its scope', async () => {
+      location('/a/b');
+      let scope!: Route;
+      let leaf!: Route;
+      const view = render(
+        <Route>
+          <Route to="a/*" is={(r) => (scope = r)}>
+            <Route to="b" is={(r) => (leaf = r)} as={() => <span>b</span>} />
+          </Route>
+        </Route>
+      );
+      await act(async () => {});
+      expect(view.container.textContent).toBe('b');
+      expect(scope.inner).toEqual([leaf]);
+
+      await act(async () => scope.set(null));
+      await act(async () => leaf.set(null));
+      expect(leaf.get(null)).toBe(true);
+      expect(scope.inner).toEqual([leaf]);
+    });
+
     it('three-level nesting composes bases correctly', () => {
       location('/admin/users/42');
       const AdminChrome = (props: { children?: React.ReactNode }) => (
@@ -598,7 +662,7 @@ describe('Route', () => {
 
   // A multi-segment `to` ("users/:id") is a flat leaf - it does NOT synthesize an
   // intermediate "users" scope. Only explicit nesting opens a scope that can hold
-  // a section `default` / shared chrome. These pin that the two forms differ.
+  // a section `none` / shared chrome. These pin that the two forms differ.
   describe('scope vs segment (no desugaring)', () => {
     const Chrome = (props: { children?: React.ReactNode }) => (
       <main>chrome/{props.children}</main>
@@ -607,23 +671,34 @@ describe('Route', () => {
     const SectionMissing = () => <span>section-404</span>;
     const AppMissing = () => <span>app-404</span>;
 
-    it('nested form exposes a section scope: a miss hits the section default within chrome', () => {
+    it('nested form exposes a section scope: a miss hits the section none Route within chrome', () => {
       location('/users');
       const view = render(
         <Route to="users" as={Chrome}>
           <Route to=":id" as={Detail} />
-          <Route default as={SectionMissing} />
+          <Route none as={SectionMissing} />
         </Route>
       );
       expect(view.container.textContent).toBe('chrome/section-404');
     });
 
-    it('flat form has no section scope: the same miss falls through to the app default, no chrome', () => {
+    it('mixed children make a content route, not a scope', () => {
+      location('/posts');
+      const view = render(
+        <Route to="posts/*" as={Chrome}>
+          hello
+          <Route to="recent" as={Detail} />
+        </Route>
+      );
+      expect(view.container.textContent).toContain('hello');
+    });
+
+    it('flat form has no section scope: the same miss falls through to the app none Route, no chrome', () => {
       location('/users');
       const view = render(
         <Route>
           <Route to="users/:id" as={Detail} />
-          <Route default as={AppMissing} />
+          <Route none as={AppMissing} />
         </Route>
       );
       expect(view.container.textContent).toBe('app-404');
@@ -635,7 +710,7 @@ describe('Route', () => {
       const nested = render(
         <Route to="users" as={Chrome}>
           <Route to=":id" as={Detail} />
-          <Route default as={SectionMissing} />
+          <Route none as={SectionMissing} />
         </Route>
       );
       expect(nested.container.textContent).toBe('chrome/detail');
@@ -644,7 +719,7 @@ describe('Route', () => {
       const flat = render(
         <Route>
           <Route to="users/:id" as={Detail} />
-          <Route default as={AppMissing} />
+          <Route none as={AppMissing} />
         </Route>
       );
       expect(flat.container.textContent).toBe('detail');
@@ -710,6 +785,173 @@ describe('Route', () => {
         </Route>
       );
       expect(flat.container.textContent).toBe('new');
+    });
+  });
+
+  // A section scope owning a `none` Route is claimed by it for any path
+  // within it - the same verdict whether the scope is the root route or sits
+  // under a wrapper alongside other `as`-bearing siblings.
+  describe('section none Route under a wrapper', () => {
+    const Chrome = (props: { children?: React.ReactNode }) => (
+      <main>chrome/{props.children}</main>
+    );
+    const Detail = () => <span>detail</span>;
+    const SectionMissing = () => <span>section-404</span>;
+    const Index = () => <span>index</span>;
+
+    const docs = (
+      <Route to="docs" as={Chrome}>
+        <Route to=":id" as={Detail} />
+        <Route none as={SectionMissing} />
+      </Route>
+    );
+
+    it('catches a miss when the section is the root route', () => {
+      location('/docs');
+      const view = render(docs);
+      expect(view.container.textContent).toBe('chrome/section-404');
+    });
+
+    it('catches a deep miss when the section is the root route', () => {
+      location('/docs/a/b');
+      const view = render(docs);
+      expect(view.container.textContent).toBe('chrome/section-404');
+    });
+
+    it('catches a miss under a plain wrapper', () => {
+      location('/docs');
+      const view = render(<Route>{docs}</Route>);
+      expect(view.container.textContent).toBe('chrome/section-404');
+    });
+
+    it('catches a deep miss under a plain wrapper', () => {
+      location('/docs/a/b');
+      const view = render(<Route>{docs}</Route>);
+      expect(view.container.textContent).toBe('chrome/section-404');
+    });
+
+    it('catches a miss with an index sibling present', () => {
+      location('/docs');
+      const view = render(
+        <Route>
+          <Route as={Index} />
+          {docs}
+        </Route>
+      );
+      expect(view.container.textContent).toBe('chrome/section-404');
+    });
+
+    it('catches a deep miss with an index sibling present', () => {
+      location('/docs/a/b');
+      const view = render(
+        <Route>
+          <Route as={Index} />
+          {docs}
+        </Route>
+      );
+      expect(view.container.textContent).toBe('chrome/section-404');
+    });
+
+    it('resolves a real child with an index sibling present', () => {
+      location('/docs/intro');
+      const view = render(
+        <Route>
+          <Route as={Index} />
+          {docs}
+        </Route>
+      );
+      expect(view.container.textContent).toBe('chrome/detail');
+    });
+
+    it('does not let the section claim the index path', () => {
+      location('/');
+      const view = render(
+        <Route>
+          <Route as={Index} />
+          {docs}
+        </Route>
+      );
+      expect(view.container.textContent).toBe('index');
+    });
+
+    it('keeps outer chrome when an inner section none Route catches', () => {
+      location('/site/docs');
+      const Outer = (props: { children?: React.ReactNode }) => (
+        <div>outer/{props.children}</div>
+      );
+      const view = render(
+        <Route to="site" as={Outer}>
+          <Route to="docs" as={Chrome}>
+            <Route to=":id" as={Detail} />
+            <Route none as={SectionMissing} />
+          </Route>
+        </Route>
+      );
+      expect(view.container.textContent).toBe('outer/chrome/section-404');
+    });
+
+    it('will throw if a later sibling is shadowed by a section none Route', () => {
+      location('/docs/team/roster');
+      const Roster = () => <span>roster</span>;
+      expect(() =>
+        render(
+          <Route>
+            {docs}
+            <Route to="docs/team/roster" as={Roster} />
+          </Route>
+        )
+      ).toThrow(/Route "\/docs\/team\/roster" is unreachable/);
+    });
+
+    it('will throw if a param section none Route shadows a later sibling', () => {
+      location('/');
+      expect(() =>
+        render(
+          <Route>
+            <Route to=":section" as={Chrome}>
+              <Route none as={SectionMissing} />
+            </Route>
+            <Route to="docs/intro" as={Detail} />
+          </Route>
+        )
+      ).toThrow(/unreachable/);
+    });
+
+    it('will not throw for a later sibling above the section', () => {
+      location('/docs');
+      const view = render(
+        <Route>
+          <Route to="docs/team" as={Chrome}>
+            <Route none as={SectionMissing} />
+          </Route>
+          <Route to="docs" as={Index} />
+        </Route>
+      );
+      expect(view.container.textContent).toBe('index');
+    });
+
+    it('yields to an earlier flat sibling under the section path', () => {
+      location('/docs/team/roster');
+      const Roster = () => <span>roster</span>;
+      const view = render(
+        <Route>
+          <Route to="docs/team/roster" as={Roster} />
+          {docs}
+        </Route>
+      );
+      expect(view.container.textContent).toBe('roster');
+    });
+
+    it('does not claim a sibling path outside the section', () => {
+      location('/about');
+      const About = () => <span>about</span>;
+      const view = render(
+        <Route>
+          {docs}
+          <Route to="about" as={About} />
+        </Route>
+      );
+      expect(view.container.textContent).toBe('about');
     });
   });
 
@@ -895,6 +1137,51 @@ describe('Route', () => {
           expect(ran).toBe(1);
         });
 
+        it('re-runs the guard when its own param changes', async () => {
+          location('/vault/charter');
+          const seen: string[] = [];
+          const guard = () => {
+            const doc = router.current.path.split('/').pop()!;
+            seen.push(doc);
+            return doc === 'charter' ? undefined : null;
+          };
+          await act(async () => {
+            render(
+              <Route to="vault">
+                <Route to=":doc" redirect={guard} as={() => <h1>doc</h1>} />
+                <Route none as={() => <h1>missing</h1>} />
+              </Route>
+            );
+          });
+          expect(screen.getByText('doc')).toBeDefined();
+
+          await act(async () => router.current.goto('/vault/secrets'));
+          expect(screen.getByText('missing')).toBeDefined();
+          expect(seen).toEqual(['charter', 'secrets']);
+        });
+
+        it('reuses the verdict across descendant params but not its own', async () => {
+          location('/org/1/a');
+          let ran = 0;
+          const guard = () => { ran++; return undefined; };
+          const Layout = (props: { children?: React.ReactNode }) => <main>{props.children}</main>;
+          await act(async () => {
+            render(
+              <Route to="org/:org" redirect={guard} as={Layout}>
+                <Route to=":tab" as={() => <h1>tab</h1>} />
+              </Route>
+            );
+          });
+          expect(ran).toBe(1);
+
+          await act(async () => router.current.goto('/org/1/b'));
+          expect(ran).toBe(1);
+
+          await act(async () => router.current.goto('/org/2/b'));
+          expect(screen.getByText('tab')).toBeDefined();
+          expect(ran).toBe(2);
+        });
+
         it('re-runs the guard on re-entry', async () => {
           location('/admin');
           let ran = 0;
@@ -966,7 +1253,7 @@ describe('Route', () => {
 
           gate = mockPromise<string | void>();
           await act(async () => router.current.goto('/admin/secret'));
-          expect(screen.getByText('checking')).toBeDefined();
+          expect(screen.getByText('open')).toBeDefined();
           expect(ran).toBe(2);
 
           await act(async () => gate.resolve(undefined));
@@ -979,14 +1266,14 @@ describe('Route', () => {
         const Document = () => <article>doc</article>;
         const NotFound = () => <h1>not found</h1>;
 
-        it('cedes the path so the scope falls through to its default', async () => {
+        it('cedes the path so the scope falls through to its none Route', async () => {
           location('/document/123');
           const gate = mockPromise<string | void | null>();
           await act(async () => {
             render(
               <Route to="document" as={Layout}>
                 <Route to=":id" fallback={<h1>loading</h1>} redirect={() => gate} as={Document} />
-                <Route default as={NotFound} />
+                <Route none as={NotFound} />
               </Route>
             );
           });
@@ -998,6 +1285,34 @@ describe('Route', () => {
           expect(window.location.pathname).toBe('/document/123');
         });
 
+        it('cedes to the none Route after an earlier redirect', async () => {
+          location('/');
+          let gate = mockPromise<string | void | null>();
+          let router!: Router;
+          await act(async () => {
+            render(
+              <Route is={(r) => (router = r.router)}>
+                <Route as={() => <h1>lobby</h1>} />
+                <Route to="login" as={() => <h1>login</h1>} />
+                <Route to="document" as={Layout}>
+                  <Route to=":id" redirect={() => gate} as={Document} />
+                  <Route none as={NotFound} />
+                </Route>
+              </Route>
+            );
+          });
+
+          await act(async () => router.goto('/document/1'));
+          await act(async () => gate.resolve('/login'));
+          expect(screen.getByText('login')).toBeDefined();
+
+          await act(async () => router.goto('/'));
+          gate = mockPromise();
+          await act(async () => router.goto('/document/2'));
+          await act(async () => gate.resolve(null));
+          expect(screen.getByText('not found')).toBeDefined();
+        });
+
         it('a non-null verdict still renders the document (control)', async () => {
           location('/document/123');
           const gate = mockPromise<string | void | null>();
@@ -1005,7 +1320,7 @@ describe('Route', () => {
             render(
               <Route to="document" as={Layout}>
                 <Route to=":id" fallback={<h1>loading</h1>} redirect={() => gate} as={Document} />
-                <Route default as={NotFound} />
+                <Route none as={NotFound} />
               </Route>
             );
           });
@@ -1021,8 +1336,8 @@ describe('Route', () => {
           await act(async () => {
             render(
               <Route to="document" as={Layout} is={(r) => (router = r.router)}>
-                <Route to=":id" redirect={() => gate} as={Document} />
-                <Route default as={NotFound} />
+                <Route to=":id" redirect={() => router.path === '/document/123' ? gate : undefined} as={Document} />
+                <Route none as={NotFound} />
               </Route>
             );
           });
@@ -1035,6 +1350,29 @@ describe('Route', () => {
           expect(screen.getByText('doc')).toBeDefined();
         });
 
+        it('clears the rejection when the guard later allows', async () => {
+          location('/admin');
+          let allow = false;
+          let owner!: Router;
+          const gate = () => (allow ? undefined : null);
+          const tree = () => (
+            <Route is={(r) => (owner = r.router)}>
+              <Route to="admin" redirect={() => gate()} as={() => <h1>secret</h1>} />
+              <Route none as={NotFound} />
+            </Route>
+          );
+
+          let view!: ReturnType<typeof render>;
+          await act(async () => { view = render(tree()); });
+          expect(owner.rejected).toBe('/admin');
+          expect(screen.getByText('not found')).toBeDefined();
+
+          allow = true;
+          await act(async () => view.rerender(tree()));
+          expect(owner.rejected).toBe('');
+          expect(screen.getByText('secret')).toBeDefined();
+        });
+
         it('a force-404\'d leaf is not reported as the active child', async () => {
           location('/document/123');
           const gate = mockPromise<string | void | null>();
@@ -1043,7 +1381,7 @@ describe('Route', () => {
             render(
               <Route to="document" as={Layout} is={(r) => (scope = r)}>
                 <Route to=":id" redirect={() => gate} as={Document} />
-                <Route default as={NotFound} />
+                <Route none as={NotFound} />
               </Route>
             );
           });
@@ -1155,13 +1493,13 @@ describe('extends', () => {
     expect(unmatched.container.textContent).toBe('');
   });
 
-  it('see-through scope resolves via a subclass default child', () => {
+  it('see-through scope resolves via a subclass none child', () => {
     class Fallback extends Route {}
     location('/section/anything');
     const view = render(
       <Route>
         <Route to="section/*">
-          <Fallback default as={() => <span>fallback</span>} />
+          <Fallback none as={() => <span>fallback</span>} />
         </Route>
       </Route>
     );
@@ -1182,13 +1520,19 @@ describe('extends', () => {
 
   describe('children seam', () => {
     class Page extends Route {
-      Default: () => any = () => <span>fallback</span>;
+      None: () => any = () => <span>fallback</span>;
       protected get children(): Component.Node {
-        return (<>{super.children}<Route default as={this.Default} /></>) as any;
+        return (<>{super.children}<Route none as={this.None} /></>) as any;
       }
     }
 
-    it('converts a subclass Default into a child default route', () => {
+    it('tolerates the layer render invoked bare', async () => {
+      router.current.goto('/a');
+      const { root } = await mount(<Route to="a" as={Home} />);
+      expect(Route.prototype.render.call(root)).toBeDefined();
+    });
+
+    it('converts a subclass None into a child none Route', () => {
       location('/section/missing');
       const view = render(
         <Route>
@@ -1200,7 +1544,7 @@ describe('extends', () => {
       expect(view.container.textContent).toBe('fallback');
     });
 
-    it('lets a real sibling match win over the injected default', () => {
+    it('lets a real sibling match win over the injected none Route', () => {
       location('/section/info');
       const view = render(
         <Route>
@@ -1212,7 +1556,7 @@ describe('extends', () => {
       expect(view.container.textContent).toBe('info');
     });
 
-    it('reclassifies a leaf as a see-through scope when only a default is contributed', () => {
+    it('reclassifies a leaf as a see-through scope when only a none Route is contributed', () => {
       location('/section/anything');
       const view = render(
         <Route>
@@ -1222,14 +1566,14 @@ describe('extends', () => {
       expect(view.container.textContent).toBe('fallback');
     });
 
-    it('contributed default suppresses an ancestor default (section 404)', () => {
+    it('contributed none Route suppresses an ancestor none Route (section 404)', () => {
       location('/section/missing');
       const view = render(
         <Route>
           <Page to="section/*">
             <Route to="info" as={() => <span>info</span>} />
           </Page>
-          <Route default as={() => <span>app-404</span>} />
+          <Route none as={() => <span>app-404</span>} />
         </Route>
       );
       expect(view.container.textContent).toBe('fallback');
@@ -1240,7 +1584,7 @@ describe('extends', () => {
       class Tracked extends Route {
         protected get children(): Component.Node {
           return (
-            <>{super.children}<Route default as={() => { ran++; return <span>x</span>; }} /></>
+            <>{super.children}<Route none as={() => { ran++; return <span>x</span>; }} /></>
           ) as any;
         }
       }
@@ -1344,6 +1688,28 @@ describe('active', () => {
     expect(root.active).toBeNull();
   });
 
+  it('sees through a scope to the matched child', async () => {
+    router.current.goto('/posts/recent');
+    let recent!: Route;
+    const { root } = await mount(
+      <Route to="posts/*">
+        <Route to="recent" is={(r) => (recent = r)} />
+      </Route>
+    );
+    expect(root.active).toBe(recent);
+  });
+
+  it('is null when a scope yields competing matches', async () => {
+    router.current.goto('/posts/recent');
+    const { root } = await mount(
+      <Route to="posts/*">
+        <Route to=":id" />
+        <Route to="recent" />
+      </Route>
+    );
+    expect(root.active).toBeNull();
+  });
+
   it('ignores redirect routes as candidates', async () => {
     router.current.goto('/a');
     let content!: Route;
@@ -1397,11 +1763,11 @@ describe('matches', () => {
   });
 });
 
-describe('default', () => {
+describe('none', () => {
   const aOr404 = (
     <>
       <Route to="a" as={() => <span>a</span>} />
-      <Route default as={() => <span>404</span>} />
+      <Route none as={() => <span>404</span>} />
     </>
   );
 
@@ -1412,6 +1778,28 @@ describe('default', () => {
 
     await act(async () => router.current.goto('/a'));
     expect(view.container.textContent).toBe('a');
+  });
+
+  it('never matches without a parent', async () => {
+    Router.new();
+    let lone!: Route;
+    const view = render(
+      <Route none as={() => <span>lone</span>} is={(r) => (lone = r)} />
+    );
+    await act(async () => {});
+    expect(lone.matched).toBe(false);
+    expect(view.container.textContent).toBe('');
+  });
+
+  it('path is its base', async () => {
+    router.current.goto('/docs');
+    let fallback!: Route;
+    await mount(
+      <Route to="docs/*">
+        <Route none is={(r) => (fallback = r)} as={() => <span>404</span>} />
+      </Route>
+    );
+    expect(fallback.path).toBe('/docs');
   });
 
   it('yields once a sibling matches and restores on navigation away', async () => {
@@ -1429,9 +1817,9 @@ describe('default', () => {
       <>
         <Route to="posts/*">
           <Route to="recent" as={() => <span>recent</span>} />
-          <Route default as={() => <span>posts404</span>} />
+          <Route none as={() => <span>posts404</span>} />
         </Route>
-        <Route default as={() => <span>app404</span>} />
+        <Route none as={() => <span>app404</span>} />
       </>
     );
     expect(view.container.textContent).toBe('recent');
@@ -1443,26 +1831,62 @@ describe('default', () => {
     expect(view.container.textContent).toBe('app404');
   });
 
+  it('will not match when entering a section 404 from outside the section', async () => {
+    router.current.goto('/');
+    const { view } = await mount(
+      <>
+        <Route as={() => <span>home</span>} />
+        <Route to="posts" as={(props: { children?: ReactNode }) => <>{props.children}</>}>
+          <Route to=":id" as={() => <span>post</span>} />
+          <Route none as={() => <span>posts404</span>} />
+        </Route>
+        <Route none as={() => <span>app404</span>} />
+      </>
+    );
+    expect(view.container.textContent).toBe('home');
+
+    await act(async () => router.current.goto('/posts/a/b'));
+    expect(view.container.textContent).toBe('posts404');
+  });
+
+  it('will not match when entering a section route from outside the section', async () => {
+    router.current.goto('/');
+    const { view } = await mount(
+      <>
+        <Route as={() => <span>home</span>} />
+        <Route to="posts" as={(props: { children?: ReactNode }) => <>{props.children}</>}>
+          <Route to=":id" as={() => <span>post</span>} />
+          <Route none as={() => <span>posts404</span>} />
+        </Route>
+        <Route none as={() => <span>app404</span>} />
+      </>
+    );
+    expect(view.container.textContent).toBe('home');
+
+    await act(async () => router.current.goto('/posts/a'));
+    expect(view.container.textContent).toBe('post');
+  });
+
   it('is excluded from matches and active', async () => {
     router.current.goto('/missing');
     const { root } = await mount(
       <>
         <Route to="a" />
-        <Route default as={() => <span>404</span>} />
+        <Route none as={() => <span>404</span>} />
       </>
     );
     expect(root.matches).toEqual([]);
     expect(root.active).toBeUndefined();
   });
 
-  it('sees through an anonymous group - nested match suppresses sibling default', async () => {
+  it('sees through an anonymous group - nested match suppresses sibling none Route', async () => {
     router.current.goto('/a');
     const { view } = await mount(
       <>
         <Route>
           <Route to="a" as={() => <span>A</span>} />
         </Route>
-        <Route default as={() => <span>F</span>} />
+        <Route none as={() => <span>F</span>} />
       </>
     );
     expect(view.container.textContent).toBe('A');
@@ -1593,5 +2017,210 @@ describe('a Route passed as another Route', () => {
 
     await act(async () => { resolve(); await pending; });
     expect(view.container.textContent).toBe('ready');
+  });
+});
+
+describe('a lazy page as `as`', () => {
+  type Module = { default: () => any };
+
+  it('suspends into the route fallback, then resolves in place', async () => {
+    location('/posts/foo');
+    const module = mockPromise<Module>();
+    const Page = lazy(() => module);
+    const created = vi.fn();
+    let route!: Route;
+
+    const view = await renderAct(
+      <Route
+        to="/posts/:id"
+        fallback={<span>loading</span>}
+        as={Page}
+        is={(r) => { created(); route = r; }}
+      />
+    );
+
+    expect(view.container.textContent).toBe('loading');
+
+    await act(async () => {
+      module.resolve({ default: Post });
+      await module;
+    });
+
+    expect(view.container.textContent).toBe('id: foo');
+    expect(created).toHaveBeenCalledTimes(1);
+    expect(route.match).toEqual({ id: 'foo' });
+  });
+
+  it('suspends within a nested scope without remounting the layout', async () => {
+    location('/admin/users/7');
+    const module = mockPromise<Module>();
+    const Users = lazy(() => module);
+    let mounted = 0;
+    let child!: Route;
+
+    const Layout = (props: { children?: React.ReactNode }) => {
+      mounted++;
+      return <main>{props.children}</main>;
+    };
+
+    const view = await renderAct(
+      <Route to="/admin/*" as={Layout}>
+        <Route
+          to="users/:id"
+          fallback={<span>loading</span>}
+          as={Users}
+          is={(r) => (child = r)}
+        />
+      </Route>
+    );
+
+    expect(view.container.querySelector('main')!.textContent).toBe('loading');
+    expect(mounted).toBe(1);
+
+    await act(async () => {
+      module.resolve({ default: Post });
+      await module;
+    });
+
+    expect(view.container.querySelector('main')!.textContent).toBe('id: 7');
+    expect(mounted).toBe(1);
+    expect(child.match).toEqual({ id: '7' });
+  });
+
+  it('resolves a lazy scope layout, then its nested children', async () => {
+    location('/admin/users');
+    const module = mockPromise<{ default: (props: any) => any }>();
+    const Layout = lazy(() => module);
+    let scope!: Route;
+
+    const view = await renderAct(
+      <Route to="/admin/*" fallback={<span>loading</span>} as={Layout} is={(r) => (scope = r)}>
+        <Route to="users" as={() => <span>users</span>} />
+        <Route to="roles" as={() => <span>roles</span>} />
+      </Route>
+    );
+
+    expect(view.container.textContent).toBe('loading');
+    expect(scope.inner).toEqual([]);
+
+    await act(async () => {
+      module.resolve({ default: (props) => <main>{props.children}</main> });
+      await module;
+    });
+
+    expect(view.container.querySelector('main')!.textContent).toBe('users');
+    expect(scope.inner.map((r) => r.path)).toEqual(['/admin/users', '/admin/roles']);
+
+    await act(async () => router.current.goto('/admin/roles'));
+
+    expect(view.container.querySelector('main')!.textContent).toBe('roles');
+  });
+
+  it('reaches the Route catch when the module rejects', async () => {
+    mockError();
+    location('/posts/foo');
+    const module = mockPromise<Module>();
+    const failure = new Error('chunk load failed');
+    let caught!: Error;
+
+    class Page extends Route {
+      fallback = (<span>loading</span>);
+
+      async catch(error: Error) {
+        caught = error;
+        this.fallback = <span>offline</span>;
+        await new Promise(() => {});
+      }
+    }
+
+    const view = await renderAct(
+      <Page to="/posts/:id" as={lazy(() => module)} />
+    );
+
+    expect(view.container.textContent).toBe('loading');
+
+    await act(async () => {
+      module.reject(failure);
+      await module.catch(() => {});
+    });
+
+    expect(caught).toBe(failure);
+    expect(view.container.textContent).toBe('offline');
+  });
+
+  it('does not mount a lazy page abandoned by navigation mid-load', async () => {
+    location('/posts/foo');
+    const module = mockPromise<Module>();
+    const page = vi.fn(() => <span>post</span>);
+
+    const view = await renderAct(
+      <>
+        <Route to="/posts/:id" fallback={<span>loading</span>} as={lazy(() => module)} />
+        <Route to="/about" as={() => <span>about</span>} />
+      </>
+    );
+
+    expect(view.container.textContent).toBe('loading');
+
+    await act(async () => router.current.goto('/about'));
+
+    expect(view.container.textContent).toBe('about');
+
+    await act(async () => {
+      module.resolve({ default: page });
+      await module;
+    });
+
+    expect(view.container.textContent).toBe('about');
+    expect(page).not.toHaveBeenCalled();
+  });
+});
+
+describe('deferred presentation', () => {
+  it('holds the current screen while the next page loads', async () => {
+    location('/');
+    const module = mockPromise<{ default: () => any }>();
+
+    const view = await renderAct(
+      <>
+        <Route to="/" as={Home} />
+        <Route to="/next" fallback={<span>loading</span>} as={lazy(() => module)} />
+      </>
+    );
+    expect(view.container.textContent).toBe('Home');
+
+    await act(async () => router.current.goto('/next'));
+
+    expect(view.container.textContent).toBe('Home');
+    expect(window.location.pathname).toBe('/');
+
+    await act(async () => {
+      module.resolve({ default: () => <h1>next</h1> });
+      await module;
+    });
+
+    expect(view.container.textContent).toBe('next');
+    expect(window.location.pathname).toBe('/next');
+  });
+
+  it('holds the current screen while an entry guard pends', async () => {
+    location('/');
+    const gate = mockPromise<string | void>();
+
+    const view = await renderAct(
+      <>
+        <Route to="/" as={Home} />
+        <Route to="/secret" fallback={<span>checking</span>} redirect={() => gate} as={() => <h1>secret</h1>} />
+      </>
+    );
+    expect(view.container.textContent).toBe('Home');
+
+    await act(async () => router.current.goto('/secret'));
+
+    expect(view.container.textContent).toBe('Home');
+
+    await act(async () => gate.resolve(undefined));
+
+    expect(view.container.textContent).toBe('secret');
   });
 });

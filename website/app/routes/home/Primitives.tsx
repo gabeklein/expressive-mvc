@@ -380,7 +380,7 @@ const GettersCode = code /*tsx*/`
 
 function Forms() {
   return (
-    <Tab title="Forms from just fields" to="/examples/apps/forms">
+    <Tab title="Forms from just fields" to="/examples/featured/forms">
       <>
         One field per input, one method for submit. A tiny base class you own
         binds the inputs - no <code>register</code>, resolvers,
@@ -490,8 +490,8 @@ function Globals() {
       title="Global state with no setup."
       to="/examples/composition/globals">
       <>
-        Create a State once with <code>.new()</code> and it parks in global
-        context. Any component can find it with{' '}
+        Declare a State <code>global</code>, create it once with{' '}
+        <code>.new()</code>, and any component can find it with{' '}
         <code>.get()</code> - app-wide session, theme, or
         viewport with no store, Provider, or prop drilling.
       </>
@@ -504,6 +504,8 @@ const GlobalsCode = code /*tsx*/`
   import State from '@expressive/react';
 
   class Session extends State {
+    static global = true;
+
     user: string | null = null;
 
     login() {

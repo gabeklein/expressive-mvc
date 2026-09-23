@@ -1,5 +1,9 @@
 import State, { Component, get, ref } from '@expressive/react';
 import type { CSSProperties } from 'react';
+
+declare const __LIB_VERSION__: string;
+declare const __LIB_TESTS__: number;
+declare const __LIB_SIZE__: number | null;
 import { Link } from 'react-router';
 import CopyPill from '@/components/CopyPill';
 import Playground from '@/components/Playground';
@@ -16,8 +20,8 @@ export function Hero() {
               Class-based state for React
             </span>
             <span className="block mt-4 text-[clamp(1.9rem,9.5vw,3rem)] font-bold leading-[0.98] sm:text-5xl lg:leading-[1.05]">
-              <span className="block whitespace-nowrap">More application,</span>
-              <span className="block whitespace-nowrap">for less code.</span>
+              <span className="block whitespace-nowrap">Structure without</span>
+              <span className="block whitespace-nowrap">all the baggage.</span>
             </span>
           </h1>
           <p className="text-fd-muted-foreground max-w-xl lg:mr-5">
@@ -43,6 +47,11 @@ export function Hero() {
               to="/docs">
               View Docs
             </Link>
+            <Link
+              className={`${btn} border border-fd-border text-inherit hover:bg-fd-muted`}
+              to="/examples">
+              See Examples
+            </Link>
           </div>
           <div className="mx-auto flex max-w-md flex-col gap-2 lg:mx-0">
             <CopyPill label="Add to your app" command="npm install @expressive/react" />
@@ -50,6 +59,10 @@ export function Hero() {
           </div>
           <p className="mx-auto mt-4 max-w-md text-center text-sm text-fd-muted-foreground lg:mx-0">
             Drops into React you already have - not a framework, no rewrite.
+          </p>
+          <p className="mx-auto mt-2 max-w-md text-center font-mono text-xs text-fd-muted-foreground/80 lg:mx-0">
+            {__LIB_TESTS__.toLocaleString('en-US')} tests · 100% coverage
+            {__LIB_SIZE__ !== null && ` · ${(__LIB_SIZE__ / 1024).toFixed(1)} kB min+gzip`} · v{__LIB_VERSION__}
           </p>
         </div>
       </div>

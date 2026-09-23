@@ -1,4 +1,4 @@
-import { mock, describe, it, expect } from 'bun:test';
+import { vi, describe, it, expect } from 'vitest';
 import { watch } from '../observable';
 import { State } from '../state';
 import { flushMicrotasks as flush } from '../../test.setup';
@@ -69,9 +69,9 @@ describe('map', () => {
   it('will delete values', () => {
     const items = managed([['a', 1]]);
 
-    expect(items.delete('a')).toBeTrue();
-    expect(items.delete('a')).toBeFalse();
-    expect(items.has('a')).toBeFalse();
+    expect(items.delete('a')).toBe(true);
+    expect(items.delete('a')).toBe(false);
+    expect(items.has('a')).toBe(false);
   });
 
   it('will clear values', () => {
@@ -200,7 +200,7 @@ describe('create', () => {
   });
 
   it('will replace occupied key', () => {
-    const make = mock((key: string) => new Item());
+    const make = vi.fn((key: string) => new Item());
     const items = managed(make);
 
     items.set('a');
@@ -267,7 +267,7 @@ describe('create', () => {
 
     items.set('a');
 
-    expect(items.delete('a')).toBeTrue();
+    expect(items.delete('a')).toBe(true);
     expect(items.size).toBe(0);
   });
 
@@ -361,7 +361,7 @@ describe('transforms', () => {
 
   it('will track shape and values in effect', async () => {
     const items = managed([['a', 1]]);
-    const fn = mock();
+    const fn = vi.fn();
 
     watch(items, ($) => {
       Array.from($.values((value) => value));
@@ -380,7 +380,7 @@ describe('transforms', () => {
 
   it('will track shape only through keys transform', async () => {
     const items = managed([['a', 1]]);
-    const fn = mock();
+    const fn = vi.fn();
 
     watch(items, ($) => {
       Array.from($.keys((key) => key));
@@ -495,7 +495,7 @@ describe('adoption', () => {
   });
 
   it('will activate fresh state on store', () => {
-    const ready = mock();
+    const ready = vi.fn();
 
     class Entry extends State {
       protected new() {
@@ -598,7 +598,7 @@ describe('subscriptions', () => {
       ['a', 1],
       ['b', 2]
     ]);
-    const fn = mock();
+    const fn = vi.fn();
 
     watch(items, ($) => {
       void $.get('a');
@@ -617,7 +617,7 @@ describe('subscriptions', () => {
 
   it('will fire on has(key) when that key changes', async () => {
     const items = managed<string, number>();
-    const fn = mock();
+    const fn = vi.fn();
 
     watch(items, ($) => {
       void $.has('a');
@@ -636,7 +636,7 @@ describe('subscriptions', () => {
 
   it('will fire on size when shape changes', async () => {
     const items = managed([['a', 1]]);
-    const fn = mock();
+    const fn = vi.fn();
 
     watch(items, ($) => {
       void $.size;
@@ -658,7 +658,7 @@ describe('subscriptions', () => {
       ['a', 1],
       ['b', 2]
     ]);
-    const fn = mock();
+    const fn = vi.fn();
 
     watch(items, ($) => {
       Array.from($.values());
@@ -673,7 +673,7 @@ describe('subscriptions', () => {
 
   it('will fire on keys when shape changes only', async () => {
     const items = managed([['a', 1]]);
-    const fn = mock();
+    const fn = vi.fn();
 
     watch(items, ($) => {
       Array.from($.keys());
@@ -692,7 +692,7 @@ describe('subscriptions', () => {
 
   it('will fire on deleted key subscribers', async () => {
     const items = managed([['a', 1]]);
-    const fn = mock();
+    const fn = vi.fn();
 
     watch(items, ($) => {
       void $.get('a');
@@ -707,7 +707,7 @@ describe('subscriptions', () => {
 
   it('will not fire when setting unchanged value', async () => {
     const items = managed([['a', 1]]);
-    const fn = mock();
+    const fn = vi.fn();
 
     watch(items, ($) => {
       void $.get('a');
@@ -727,7 +727,7 @@ describe('subscriptions', () => {
 
     const counter = Counter.new();
     const items = managed([['counter', counter]]);
-    const fn = mock();
+    const fn = vi.fn();
 
     watch(items, ($) => {
       void $.get('counter')?.count;

@@ -2,14 +2,14 @@
 
 ## Lifecycle Phases
 
-| Phase        | Trigger             | What Happens                                                                            | State Ready? |
-| ------------ | ------------------- | --------------------------------------------------------------------------------------- | :----------: |
-| Construction | `new MyState()`     | Listeners registered, nothing activated. Home context still claimable.                  |      NO      |
-| Activation   | `State.new()`       | Properties managed, constructor args run, `new()` hook runs, home context locked        |     YES      |
-| Operation    | Property assignment | Batched updates via `queueMicrotask()`, effects re-run                                  |     YES      |
-| Destruction  | `state.set(null)`   | Children destroyed first, listeners called, state frozen                                |  DESTROYED   |
+| Phase        | Trigger             | What Happens                                                                  | State Ready? |
+| ------------ | ------------------- | ----------------------------------------------------------------------------- | :----------: |
+| Construction | `new MyState()`     | Listeners registered, nothing activated. Home context claimable.              |      NO      |
+| Activation   | `State.new()`       | Properties managed, constructor args run, `new()` hook runs; a global's home locks to root | YES |
+| Operation    | Property assignment | Batched updates via `queueMicrotask()`, effects re-run                        |     YES      |
+| Destruction  | `state.set(null)`   | Children destroyed first, listeners called, state frozen                      |  DESTROYED   |
 
-> **Always use `State.new()` not `new State()`** unless you need to defer activation. `new State()` constructs without firing the ready event - useful as an escape hatch when you want to wrap an instance in a `new Context(state)` *before* it activates (otherwise activation locks the home to `Context.root`). See [context.md](context.md).
+> Use `State.new()` for a root instance. Bare `new` constructs without activating: use it for a child State declared on another State, which adopts and activates it, or to wrap an instance in `new Context(state)` before activation ([context.md](context.md)). Either way it must activate before the end of the tick - one that does not warns; `set(null)` releases an instance you decide against.
 
 ## The `new()` Hook
 
@@ -24,13 +24,15 @@ class Timer extends State {
 }
 ```
 
-- Runs once after all properties are initialized and child states are set up.
-- Return `void` if no cleanup needed.
-- Return `() => void` for a cleanup function called on destruction.
+- Runs once, after all properties and child states are set up.
+- Return nothing, or `() => void` to run on destruction.
+- `this` is the instance, not a tracking proxy - closures made here (a listener, an interval) capture it and may use it as a `Map`/`Set` key.
 
-`new()` is a typed optional member of `State` (`protected new?(): void | (() => void)`), not name-based detection - editors autocomplete it, its signature is checked, and TypeScript's `override` keyword catches a misspelled override. The same holds for `catch()` on `Component` and `use()` in adapters.
+`new()` is a typed optional member of `State` (`protected new?(): void | (() => void)`), not name-based detection - editors autocomplete it, its signature is checked, and `override` catches a misspelling. Same for `catch()` and `mount()` on `Component`. Adapter hooks reached only through `State.use()` - `use()` and `mount()` on a plain `State` - are declared on the `UseState` interface instead, which a class satisfies structurally: optional and unadvertised on never-rendered States, at the cost of a looser check than a declared override.
 
-> **`new()` is for consumers and own-state.** Avoid it in reusable state meant to be subclassed: it's a public method, so an extending class that defines its own `new()` silently overrides yours and loses the base behavior (with no error). For internal init logic in a shippable base class, pass a trailing init callback to `super` instead - it runs in the same phase as `new()` but can't be clobbered:
+> **`new()` runs on the server.** It is part of activation, so it fires wherever the state is constructed - including during `renderToString`. Its teardown never does (no unmount on the server), so a resource opened in `new()` - socket, subscription, file handle - leaks there once per render. Anything touching `window`, timers or subscriptions belongs in the adapter's commit hook: `mount()` in [../react/react.md](../react/react.md), which runs only on the client and only for a state some component owns.
+
+> **`new()` is for consumers and own-state.** Avoid it in reusable state meant to be subclassed: it's a public method, so a subclass defining its own `new()` silently replaces yours. For internal init in a shippable base class, pass a trailing init callback to `super` - same phase as `new()`, but can't be clobbered:
 >
 > ```ts
 > class Route extends Component {
@@ -48,14 +50,14 @@ class Timer extends State {
 
 ## Constructor Arguments
 
-`State.new()` accepts `State.Args` - processed in order during activation:
+`State.new()` accepts `State.Args`, processed in order during activation:
 
-- `function` - called with `this` context; return value becomes cleanup, or object/array to apply
+- `function` - called with `this` as the instance; may return a cleanup function, an object to assign, an array to process, or a Promise
 - `object` - assigned to state properties
-- `Promise` - caught and logged if rejected
 - `array` - flattened and re-processed
+- `Promise` (returned by a callback) - rejection caught and logged
 
-> **Timing:** args (and assigned props, in adapters) are applied during activation, *after* field initializers and registered setup (`State.on`). So a trailing arg callback - like `new()` - observes applied prop/arg values. The JS constructor body and `State.on` setup run *before* this merge and see only field defaults; don't read an applied prop there.
+> **Timing:** args (and assigned props, in adapters) apply during activation, *after* field initializers and `State.on` setup. A trailing arg callback - like `new()` and an `on({ after })` handler - sees applied values. The JS constructor body and bare/`before` `State.on` setup run *before* the merge and see only field defaults; don't read an applied prop there.
 
 ```ts
 const test = Test.new(
@@ -69,24 +71,24 @@ const test = Test.new(
 
 ## Destruction
 
-`state.set(null)` triggers:
+`state.set(null)` triggers, in order:
 
-1. **Children destroyed first** - owned child states are destroyed recursively
-2. **All listeners notified** - destruction event dispatched
-3. **Effect cleanups run** - cleanup functions called with `null`
-4. **`new()` cleanup called** - returned function from `new()` invoked
-5. **State frozen** - `Object.freeze(state)` prevents further updates
+1. **Children destroyed first** - owned child states, recursively
+2. **Listeners notified** - destruction event dispatched
+3. **Effect cleanups run** - called with `null`
+4. **`new()` cleanup called**
+5. **State frozen** - `Object.freeze(state)`
 
-Children are always destroyed before parents. In nested contexts, destruction happens inner-to-outer.
+Children always go before parents; nested contexts destroy inner-to-outer.
 
-Post-destruction:
+Afterward:
 
-- Property assignment throws: `"Tried to update {state}.{key} but state is destroyed."`
+- Assignment throws `"Tried to update {state}.{key} but state is destroyed."`
 - Silent updates (`state.set(assign, true)`) return without throwing.
 
 ## Batching
 
-All property updates in the same tick are batched into a single flush:
+All updates in one tick batch into a single flush:
 
 ```ts
 state.foo = 1; // schedules queueMicrotask
@@ -95,19 +97,19 @@ state.baz = 3; // added to pending
 // -> single flush with all 3 keys
 ```
 
-Updates are skipped when new value `===` previous value.
+Writes where the new value `===` the previous are skipped.
 
 ## Effect Lifecycle
 
-1. Effect callback receives a tracking proxy of the state
-2. Property accesses on proxy are tracked
+1. Effect receives a tracking proxy of the state
+2. Reads on the proxy are tracked
 3. Only tracked properties trigger re-runs
-4. Re-runs are queued asynchronously
+4. Re-runs queue asynchronously
 5. Previous cleanup runs before re-invocation
 
 ### Cleanup semantics
 
-Effect cleanup functions receive a signal argument:
+Cleanup functions receive a signal:
 
 | Argument | Meaning                                |
 | -------- | -------------------------------------- |
@@ -117,7 +119,7 @@ Effect cleanup functions receive a signal argument:
 
 ### Suspense in effects
 
-If an effect throws a Promise (e.g., accessing an unset `set<T>()` property), the effect pauses and retries when the Promise resolves.
+An effect that throws a Promise (e.g. reading an unset `set<T>()`) pauses and retries when it resolves.
 
 ```ts
 state.get((current) => {
@@ -128,18 +130,7 @@ state.get((current) => {
 
 ## Error Handling
 
-### Async errors in constructors
-
-Caught and logged to `console.error`. Do not prevent state creation.
-
-### Accessing destroyed state
-
-Throws synchronously. Silent mode (`state.set(assign, true)`) skips instead of throwing.
-
-### Accessing uninitialized required values
-
-Throws a Suspense-compatible error (Promise with Error properties). Resolves when the value is assigned. Rejects if state is destroyed first.
-
-### Circular updates
-
-Effects that update properties they read don't re-trigger in the same cycle. The update is processed in the next batch.
+- **Async errors in constructors** - logged to `console.error`; the state is still created.
+- **Writing destroyed state** - throws synchronously; silent `state.set(assign, true)` skips instead.
+- **Reading uninitialized required values** - throws a Suspense-compatible error (Promise with Error properties) that resolves when the value is assigned, or rejects if the state is destroyed first.
+- **Circular updates** - an effect updating a property it reads does not re-trigger in the same cycle; the update lands in the next batch.

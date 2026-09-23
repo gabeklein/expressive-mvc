@@ -1,1 +1,1 @@
-export default ['extension', 'subcomponents', 'context', 'globals'];
+export default ['nested', 'context', 'concerns', 'extension', 'globals'];

@@ -1,0 +1,26 @@
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s1);
+  width: 100%;
+  padding: var(--s4);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+}
+
+.card h2 {
+  margin: 0;
+  font-size: var(--t-xl);
+}
+
+.pending {
+  margin: 0;
+  padding: var(--s2) var(--s4);
+  font-family: var(--font-mono);
+  font-size: var(--t-sm);
+  color: var(--fg-soft);
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+}

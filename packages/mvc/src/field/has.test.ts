@@ -1,4 +1,4 @@
-import { mock, describe, it, expect } from 'bun:test';
+import { vi, describe, it, expect } from 'vitest';
 import { State } from '../state';
 import { flushMicrotasks as flush } from '../../test.setup';
 import { watch } from '../observable';
@@ -9,17 +9,22 @@ function reactive<T>(initial?: Iterable<T> | false | null): has.List<T>;
 
 function reactive<T extends State>(
   Type: new (...args: State.Args<T>) => T
-): has.Pool<T, State.Args<T>>;
+): has.Pool<T, State.Args<T> | [T]>;
 
-function reactive<T, A extends unknown[]>(
-  make: (...args: A) => T
-): has.Pool<T, A>;
+function reactive<T extends State, K extends State.Field<T>>(
+  Type: new (...args: State.Args<T>) => T,
+  fromKey: K
+): has.Pool<T, [T[K]] | [T]>;
+
+function reactive<R, A extends unknown[]>(
+  make: (...args: A) => R
+): has.Pool<Exclude<R, null | undefined>, A, R>;
 
 function reactive(...args: any[]): any {
   const arg = args[0];
 
   return typeof arg == 'function'
-    ? new has.Pool(arg)
+    ? new has.Pool(arg, args[1])
     : new has.List(arg);
 }
 
@@ -193,7 +198,7 @@ describe('set', () => {
 
   it('will not notify for unchanged value', async () => {
     const list = reactive(['a']);
-    const fn = mock();
+    const fn = vi.fn();
 
     watch(list, fn);
     fn.mockClear();
@@ -240,7 +245,7 @@ describe('put', () => {
 
   it('will not notify when no items provided', async () => {
     const list = reactive([1, 2]);
-    const fn = mock();
+    const fn = vi.fn();
 
     watch(list, fn);
     fn.mockClear();
@@ -308,7 +313,7 @@ describe('clear', () => {
 
   it('will not notify on empty list', async () => {
     const list = reactive<number>();
-    const fn = mock();
+    const fn = vi.fn();
 
     watch(list, fn);
     fn.mockClear();
@@ -352,7 +357,7 @@ describe('map', () => {
 
   it('will receive index and list', () => {
     const list = reactive(['a']);
-    const fn = mock((_v: string, _i: number, _l: unknown) => 0);
+    const fn = vi.fn((_v: string, _i: number, _l: unknown) => 0);
 
     list.map(fn);
 
@@ -399,7 +404,7 @@ describe('any / all', () => {
 describe('subscriptions', () => {
   it('will update on size when length changes', async () => {
     const list = reactive([1, 2]);
-    const fn = mock();
+    const fn = vi.fn();
 
     watch(list, ($) => {
       void $.size;
@@ -415,7 +420,7 @@ describe('subscriptions', () => {
 
   it('will update on get(i) only when that index changes', async () => {
     const list = reactive(['a', 'b', 'c']);
-    const fn = mock();
+    const fn = vi.fn();
 
     watch(list, ($) => {
       void $.get(1);
@@ -436,7 +441,7 @@ describe('subscriptions', () => {
 
   it('will update on iteration when any index changes', async () => {
     const list = reactive([1, 2, 3]);
-    const fn = mock();
+    const fn = vi.fn();
 
     watch(list, ($) => {
       for (const _ of $) void _;
@@ -452,7 +457,7 @@ describe('subscriptions', () => {
 
   it('will update on iteration when length grows', async () => {
     const list = reactive([1, 2]);
-    const fn = mock();
+    const fn = vi.fn();
 
     watch(list, ($) => {
       for (const _ of $) void _;
@@ -468,7 +473,7 @@ describe('subscriptions', () => {
 
   it('will update any() with no match on append', async () => {
     const list = reactive([1, 2, 3]);
-    const fn = mock();
+    const fn = vi.fn();
 
     watch(list, ($) => {
       void $.any((v) => v > 99);
@@ -484,7 +489,7 @@ describe('subscriptions', () => {
 
   it('will update all() when appended item violates predicate', async () => {
     const list = reactive([2, 4]);
-    const fn = mock();
+    const fn = vi.fn();
 
     watch(list, ($) => {
       void $.all((v) => v % 2 === 0);
@@ -500,7 +505,7 @@ describe('subscriptions', () => {
 
   it('will update get(predicate) when earlier item becomes candidate', async () => {
     const list = reactive([1, 2, 3]);
-    const fn = mock();
+    const fn = vi.fn();
 
     watch(list, ($) => {
       void $.get((v) => v > 2);
@@ -516,7 +521,7 @@ describe('subscriptions', () => {
 
   it('will subscribe get(start, end) to indices in range only', async () => {
     const list = reactive([1, 2, 3, 4, 5]);
-    const fn = mock();
+    const fn = vi.fn();
 
     watch(list, ($) => {
       void $.get(1, 3);
@@ -537,7 +542,7 @@ describe('subscriptions', () => {
 
   it('will subscribe out-of-range get to length so growth re-evaluates', async () => {
     const list = reactive([1]);
-    const fn = mock();
+    const fn = vi.fn();
 
     watch(list, ($) => {
       void $.get(5);
@@ -562,6 +567,14 @@ describe('pool', () => {
 
     expect(pool).toBeInstanceOf(has.Pool);
     expect(pool.size).toBe(0);
+  });
+
+  it('will create pool for class without keys', () => {
+    const pool = new has.Pool<Item>(Item);
+    const item = pool.add({ value: 3 });
+
+    expect(item.value).toBe(3);
+    expect(pool.size).toBe(1);
   });
 
   it('will create pool for factory', () => {
@@ -614,6 +627,14 @@ describe('pool', () => {
     expect(item.n).toBe(3);
   });
 
+  it('will not add if factory returns nothing', () => {
+    const pool = reactive((n: number) => (n > 0 ? { n } : undefined));
+
+    expect(pool.add(1)).toEqual({ n: 1 });
+    expect(pool.add(0)).toBeUndefined();
+    expect(pool.size).toBe(1);
+  });
+
   it('will pass through guest from factory', () => {
     const pool = reactive((value?: Item) => value || Item.new());
     const guest = Item.new();
@@ -622,10 +643,73 @@ describe('pool', () => {
     expect(pool.has(guest)).toBe(true);
   });
 
+  it('will admit instance of class instead of constructing', () => {
+    const pool = reactive(Item);
+    const guest = Item.new();
+
+    expect(pool.add(guest)).toBe(guest);
+    expect(pool.size).toBe(1);
+  });
+
+  it('will admit subclass instance', () => {
+    class Special extends Item {}
+
+    const pool = reactive(Item);
+    const special = Special.new();
+
+    expect(pool.add(special)).toBe(special);
+    expect(pool.has(special)).toBe(true);
+  });
+
+  it('will still construct from props object', () => {
+    const pool = reactive(Item);
+    const item = pool.add({ value: 7 });
+
+    expect(item).toBeInstanceOf(Item);
+    expect(item.value).toBe(7);
+  });
+
+  it('will construct when args are not a lone instance', () => {
+    const pool = reactive(Item);
+    const item = pool.add({ value: 1 }, { value: 2 });
+
+    expect(item).toBeInstanceOf(Item);
+    expect(item.value).toBe(2);
+  });
+
+  it('will own admitted instance which is fresh', () => {
+    const pool = reactive(Item);
+    const item = new Item();
+
+    pool.add(item);
+    pool.delete(item);
+
+    expect(item.get(null)).toBe(true);
+  });
+
+  it('will not destroy admitted instance which is active', () => {
+    const pool = reactive(Item);
+    const guest = Item.new();
+
+    pool.add(guest);
+
+    expect(pool.delete(guest)).toBe(true);
+    expect(guest.get(null)).toBe(false);
+  });
+
+  it('will not admit instance in factory mode', () => {
+    const pool = reactive((value: Item) => new Item({ value: value.value + 1 }));
+    const seed = Item.new({ value: 1 });
+    const made = pool.add(seed);
+
+    expect(made).not.toBe(seed);
+    expect(made.value).toBe(2);
+  });
+
   it('will ignore repeat add of same value', async () => {
     const pool = reactive((value?: Item) => value || Item.new());
     const guest = Item.new();
-    const fn = mock();
+    const fn = vi.fn();
 
     pool.add(guest);
 
@@ -704,7 +788,7 @@ describe('pool', () => {
 
   it('will not notify clear on empty pool', async () => {
     const pool = reactive(Item);
-    const fn = mock();
+    const fn = vi.fn();
 
     watch(pool, fn);
     fn.mockClear();
@@ -713,6 +797,126 @@ describe('pool', () => {
     await flush();
 
     expect(fn).not.toHaveBeenCalled();
+  });
+});
+
+describe('pool lookup', () => {
+  class Item extends State {
+    id = '';
+  }
+
+  it('will adopt instance returned by factory', () => {
+    const known = new Map([['abc', Item.new({ id: 'abc' })]]);
+    const pool = reactive((id: string) => known.get(id) || new Item({ id }));
+
+    expect(pool.add('abc')).toBe(known.get('abc'));
+    expect(pool.add('xyz')).not.toBe(known.get('abc'));
+    expect(pool.size).toBe(2);
+  });
+
+  it('will not add member returned twice', async () => {
+    const known = new Map([['abc', Item.new({ id: 'abc' })]]);
+    const pool = reactive((id: string) => known.get(id));
+    const fn = vi.fn();
+
+    pool.add('abc');
+
+    watch(pool, ($) => {
+      void $.size;
+      fn();
+    });
+    fn.mockClear();
+
+    expect(pool.add('abc')).toBe(known.get('abc'));
+    await flush();
+
+    expect(fn).not.toHaveBeenCalled();
+    expect(pool.size).toBe(1);
+  });
+
+  it('will not add if factory declines', async () => {
+    const known = new Map([['abc', Item.new({ id: 'abc' })]]);
+    const pool = reactive((id: string) => known.get(id));
+    const fn = vi.fn();
+
+    watch(pool, ($) => {
+      void $.size;
+      fn();
+    });
+    fn.mockClear();
+
+    expect(pool.add('nope')).toBeUndefined();
+    await flush();
+
+    expect(fn).not.toHaveBeenCalled();
+    expect(pool.size).toBe(0);
+  });
+
+  it('will not add if factory returns null', async () => {
+    const known = new Map([['abc', Item.new({ id: 'abc' })]]);
+    const pool = reactive((id: string) => known.get(id) || null);
+    const fn = vi.fn();
+
+    watch(pool, ($) => {
+      void $.size;
+      fn();
+    });
+    fn.mockClear();
+
+    expect(pool.add('nope')).toBeNull();
+    await flush();
+
+    expect(fn).not.toHaveBeenCalled();
+    expect(pool.size).toBe(0);
+  });
+
+  it('will exclude nullish from member type', () => {
+    const known = new Map([['abc', Item.new({ id: 'abc' })]]);
+    const pool = reactive((id: string) => known.get(id) || null);
+
+    pool.add('abc');
+
+    expect(pool.map((item) => item.id)).toEqual(['abc']);
+  });
+});
+
+describe('pool key', () => {
+  class Cell extends State {
+    at = '';
+    color = 'white';
+  }
+
+  it('will assign argument to named property', () => {
+    const pool = reactive(Cell, 'at');
+    const cell = pool.add('a1');
+
+    expect(cell.at).toBe('a1');
+    expect(cell.color).toBe('white');
+  });
+
+  it('will still admit instance of class', () => {
+    const pool = reactive(Cell, 'at');
+    const guest = Cell.new({ at: 'b2' });
+
+    expect(pool.add(guest)).toBe(guest);
+    expect(pool.size).toBe(1);
+  });
+
+  it('will own member spawned through key', () => {
+    class Member extends State {
+      id = '';
+      owner = get(Owner);
+    }
+
+    class Owner extends State {
+      members = has(Member, 'id');
+    }
+
+    const owner = Owner.new();
+    const member = owner.members.add('abc');
+
+    expect(member.owner).toBe(owner);
+    expect(member.id).toBe('abc');
   });
 });
 
@@ -758,6 +962,45 @@ describe('pool adoption', () => {
     host.set(null);
 
     expect(guest.get(null)).toBe(false);
+  });
+
+  it('will hold a member of one pool in another', () => {
+    class Thing extends State {}
+
+    class Store extends State {
+      items = has(Thing);
+      selected = has(Thing);
+    }
+
+    const store = Store.new();
+    const item = store.items.add();
+
+    expect(store.selected.add(item)).toBe(item);
+
+    store.selected.delete(item);
+
+    expect(item.get(null)).toBe(false);
+    expect(store.items.has(item)).toBe(true);
+
+    item.set(null);
+
+    expect(store.items.has(item)).toBe(false);
+  });
+
+  it('will own instances injected into pool', () => {
+    class Thing extends State {}
+
+    class Store extends State {
+      items = has(Thing);
+    }
+
+    const store = Store.new();
+    const injected = new Thing();
+
+    store.items.add(injected);
+    store.set(null);
+
+    expect(injected.get(null)).toBe(true);
   });
 });
 
@@ -852,7 +1095,7 @@ describe('pool subscriptions', () => {
 
   it('will update on size when membership changes', async () => {
     const pool = reactive(Item);
-    const fn = mock();
+    const fn = vi.fn();
 
     watch(pool, ($) => {
       void $.size;
@@ -875,7 +1118,7 @@ describe('pool subscriptions', () => {
   it('will update has(value) only for that value', async () => {
     const pool = reactive(Item);
     const item = pool.add();
-    const fn = mock();
+    const fn = vi.fn();
 
     watch(pool, ($) => {
       void $.has(item);
@@ -896,7 +1139,7 @@ describe('pool subscriptions', () => {
 
   it('will update iteration when membership changes', async () => {
     const pool = reactive(Item);
-    const fn = mock();
+    const fn = vi.fn();
 
     watch(pool, ($) => {
       for (const _ of $) void _;

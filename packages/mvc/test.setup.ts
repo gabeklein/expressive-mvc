@@ -1,4 +1,4 @@
-import { afterAll, afterEach, expect, spyOn } from 'bun:test';
+import { afterAll, afterEach, expect, vi, type MockInstance } from 'vitest';
 import { Context, State } from './src';
 import { listener } from './src/observable';
 
@@ -13,12 +13,23 @@ interface Queryable {
   queryAllByText(text: string): unknown[];
 }
 
-declare module 'bun:test' {
-  interface Matchers<T> extends CustomMatchers<T> { }
-  interface AsymmetricMatchers extends CustomMatchers { }
+declare module 'vitest' {
+  interface Matchers<T = any> extends CustomMatchers<T> { }
 }
 
 expect.extend({ toHaveUpdated, toHaveText });
+
+Object.defineProperty(State.prototype, 'toJSON', {
+  value: function (this: object) {
+    const output: Record<string, unknown> = {};
+
+    for (let owner = this; owner; owner = Object.getPrototypeOf(owner))
+      for (const key of Object.keys(owner))
+        if (!(key in output)) output[key] = (owner as any)[key];
+
+    return output;
+  }
+});
 
 afterEach(() => Context.root.pop());
 
@@ -133,7 +144,7 @@ function mockPromise<T = void>() {
   return Object.assign(promise, methods);
 }
 
-type ConsoleSpy = ReturnType<typeof spyOn<Console, 'warn' | 'error'>>;
+type ConsoleSpy = MockInstance<Console['warn']>;
 
 const SPIES = new Map<'warn' | 'error', ConsoleSpy>();
 
@@ -147,7 +158,7 @@ function spyOnce(method: 'warn' | 'error') {
   let spy = SPIES.get(method);
 
   if (!spy) {
-    spy = spyOn(console, method).mockImplementation(() => { });
+    spy = vi.spyOn(console, method).mockImplementation(() => { });
     SPIES.set(method, spy);
   }
 

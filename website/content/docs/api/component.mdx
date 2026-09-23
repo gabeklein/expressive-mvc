@@ -3,7 +3,7 @@ title: Component
 description: The Component class - every method, prop, and lifecycle hook
 ---
 
-`Component` extends `State` and works directly as a React component. It's a real React class component under the hood, so it integrates with error boundaries, devtools, refs, and the React tree.
+`Component` extends `State` and works directly as a React component - React mounts it as a class component, so it integrates with error boundaries, devtools, refs, and the React tree. The class itself is still a model: fields and getters hold state, and `render` is a projection of it.
 
 ```tsx
 import { Component } from '@expressive/react';
@@ -91,7 +91,8 @@ Error boundary handler. Called when a child throws during render. While `catch()
 
 Component inherits the full State lifecycle. See [State](/docs/api/state) for details.
 
-- `new()` - one-shot setup, return cleanup.
+- `new()` - one-shot setup on activation (runs on the server too), return cleanup.
+- `mount()` - client-only effects, once on commit; return a function to run on unmount. Never runs during server render, nor for an instance placed as `{component}` - a placement does not own what it renders.
 - `catch(error)` - error boundary, above.
 - Destruction runs on unmount or `this.set(null)`.
 

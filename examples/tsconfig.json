@@ -14,6 +14,7 @@
     "types": ["vite/client"],
     "paths": {
       "@common/*": ["./common/*"],
+      "@expressive/inspect/*": ["../packages/inspect/src/*"],
       "@expressive/mvc/*": ["../packages/mvc/src/*"],
       "@expressive/*": ["../packages/*/src"]
     }

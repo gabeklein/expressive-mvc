@@ -11,6 +11,9 @@ export interface HandleProps {
   push?: MouseEventHandler;
   vertical?: boolean;
   width?: number;
+  /** True while this handle owns an in-progress drag - render a mask over
+   *  managed UI (e.g. an iframe) so the pointer keeps feeding this document. */
+  active?: boolean;
 }
 
 export class Control extends Component {
@@ -28,6 +31,9 @@ export class Control extends Component {
 
   index?: number = 0;
   row?: boolean = undefined;
+
+  // Spacer index of an in-progress drag, or undefined at rest.
+  dragging?: number = undefined;
 
   gap = 9;
 
@@ -95,24 +101,38 @@ export class Control extends Component {
   }
 
   public resize(between: number) {
-    const { parent, items, index = 0 } = this;
+    const { parent, index = 0 } = this;
     const move = () => this.nudge(between);
 
-    let pull: ((value: any) => void) | undefined;
-    let push: ((value: any) => void) | undefined;
+    // Flag the drag so the active Handle can mask managed UI, and hand the
+    // native event to onDrag (real x/y, unlike a pooled synthetic).
+    const track =
+      (base: (event: MouseEvent) => void): MouseEventHandler =>
+      (event) => {
+        this.dragging = between;
+
+        const done = () => {
+          this.dragging = undefined;
+          document.removeEventListener('mouseup', done);
+        };
+
+        document.addEventListener('mouseup', done);
+        base(event.nativeEvent);
+      };
+
+    let pull: MouseEventHandler | undefined;
+    let push: MouseEventHandler | undefined;
 
     if (parent) {
-      if (index > 1) {
-        pull = onDrag(move, () => parent.nudge(index - 1));
-      }
+      if (index > 1)
+        pull = track(onDrag(move, () => parent.nudge(index - 1)));
 
-      if (index < parent.items.length - 1) {
-        push = onDrag(move, () => parent.nudge(index + 1));
-      }
+      if (index < parent.items.length - 1)
+        push = track(onDrag(move, () => parent.nudge(index + 1)));
     }
 
     return {
-      grab: onDrag(move),
+      grab: track(onDrag(move)),
       pull,
       push
     };
@@ -162,9 +182,10 @@ function Spacer({ index }: { index: number }) {
     return React.createElement(Handle, {
       pull,
       push,
-      grab: grab as any,
+      grab,
       vertical: row,
-      width: gap
+      width: gap,
+      active: layout.dragging === index
     });
   });
 }

@@ -60,16 +60,19 @@ function CounterWidget() {
 
 No reducers, selectors, dependency arrays, or action wrappers. Update a property and every consumer that reads it updates automatically.
 
+The adapter is renderer-agnostic, so the same install covers React Native and Expo - exercised on an iOS simulator and an Android emulator in both Debug and Release builds (Expo SDK 57, React Native 0.86) and gated per release on Metro resolution and a Hermes build. See [React Native](skills/react/react.md#react-native) for the three boundaries.
+
 Continue with [Getting Started](https://expressive.dev/docs/getting-started/), explore the [guides](https://expressive.dev/docs/guides/state-classes/), or browse the [API reference](https://expressive.dev/docs/api/state/).
 
 ## Packages
 
 | Package | Description |
 | --- | --- |
-| [`@expressive/react`](https://www.npmjs.com/package/@expressive/react) | React adapter and the recommended entry point for React applications. |
-| [`@expressive/mvc`](https://www.npmjs.com/package/@expressive/mvc) | Framework-agnostic reactive core and component model. |
-| [`@expressive/router`](https://www.npmjs.com/package/@expressive/router) | Host-agnostic router built on Expressive components. |
-| `@expressive/preact` | Internal Preact adapter; not currently published. |
+| [`@expressive/mvc`](https://www.npmjs.com/package/@expressive/mvc) | Framework-agnostic reactive core and component model. Comes with the adapter - install directly only for host-agnostic code. |
+| [`@expressive/react`](https://www.npmjs.com/package/@expressive/react) | React adapter and the recommended entry point for React applications. **The only package a React app installs.** |
+| [`@expressive/router`](https://www.npmjs.com/package/@expressive/router) | Host-agnostic router built on Expressive components. The newest package, and the one that moves the most. |
+
+All packages are pre-1.0 under one discipline: breaking changes land only in minor versions, each documented by a changeset in the package's CHANGELOG - patch releases are always safe to take.
 
 ## Learn more
 

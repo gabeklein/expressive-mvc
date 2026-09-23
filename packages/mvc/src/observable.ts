@@ -1,3 +1,5 @@
+import { enqueue, hold } from './dispatch';
+
 declare namespace Observer {
   /**
    * Update callback function.
@@ -44,9 +46,6 @@ interface Observing {
 const Observer: unique symbol = Symbol('Observer');
 const Observing: unique symbol = Symbol('Observing');
 
-/** Central event dispatch. Bunches all updates to occur at same time. */
-const DISPATCH = new Set<() => void>();
-
 interface Observable { [Observer]?: Observer | null }
 interface Observed { [Observing]?: Observing }
 
@@ -66,7 +65,9 @@ function observer(state: object, create?: boolean) {
 
   if (!o && create) {
     if (o === null)
-      throw new Error('Object is not observable (terminated).');
+      throw new Error(
+        `${state} was destroyed - cannot be rendered, watched or updated.`
+      );
 
     const value: Observer = {
       listeners: new Map(),
@@ -86,9 +87,10 @@ function observe<T extends object>(
   required?: boolean
 ): T {
   const watching = new Set<Observer.Signal>();
+  const observing: Observing = { callback, watching, required };
 
   const release = listener(object, (key) => {
-    if (watching.has(key)) return callback();
+    if (watching.has(key)) return observing.callback();
   });
 
   if (EffectContext)
@@ -98,9 +100,13 @@ function observe<T extends object>(
 
   const proxy = Object.create(object) as T;
 
-  return Object.defineProperty(proxy, Observing, {
-    value: { callback, watching, required } as Observing
-  });
+  if ('is' in object)
+    Object.defineProperty(proxy, 'is', {
+      value: (object as { is?: unknown }).is,
+      writable: true
+    });
+
+  return Object.defineProperty(proxy, Observing, { value: observing });
 }
 
 function touch(from: object, key: any): void;
@@ -117,7 +123,7 @@ function touch(from: object, key: any, value?: any) {
     active.watching.add(key);
 
     if (value instanceof Object && observer(value))
-      return observe(value, active.callback, active.required);
+      return observe(value, () => active.callback(), active.required);
   }
 
   return value;
@@ -144,7 +150,7 @@ const EMPTY = Object.assign([], {
   then: Promise.prototype.then.bind(Promise.resolve([]))
 } as PromiseLike<never[]>);
 
-function pending<K extends Observer.Event>(
+function queued<K extends Observer.Event>(
   state: object
 ): K[] & PromiseLike<K[]> {
   const o = observer(state);
@@ -170,6 +176,8 @@ function event(state: object, key?: Observer.Event | null, silent?: boolean) {
   if (!o) return;
 
   if (key === null) {
+    if (!Object.getOwnPropertyDescriptor(state, Observer)) return;
+
     (state as Observable)[Observer] = null;
     return emit(o, key);
   }
@@ -197,7 +205,7 @@ function emit(o: Observer, key: Observer.Signal): void {
     return;
   }
 
-  if (!ready) pending.add(true);
+  if (!ready && key !== null) pending.add(true);
 
   pending.add(key);
 
@@ -215,22 +223,6 @@ function emit(o: Observer, key: Observer.Signal): void {
   pending.clear();
 }
 
-function enqueue(eventHandler: () => void) {
-  if (!DISPATCH.size)
-    queueMicrotask(() => {
-      for (const event of DISPATCH) {
-        DISPATCH.delete(event);
-        try {
-          event();
-        } catch (err) {
-          console.error(err);
-        }
-      }
-    });
-
-  DISPATCH.add(eventHandler);
-}
-
 /**
  * Create a side-effect which will update whenever values accessed change.
  * Callback is called immediately and whenever values are stale.
@@ -242,56 +234,75 @@ function enqueue(eventHandler: () => void) {
 function watch<T extends object>(
   target: T,
   callback: Observer.Effect<Required<T>>,
-  requireValues: true
+  requireValues: true,
+  transition?: (work: () => void) => void
 ): () => void;
 
 function watch<T extends object>(
   target: T,
   callback: Observer.Effect<T>,
-  recursive?: boolean
+  recursive?: boolean,
+  transition?: (work: () => void) => void
 ): () => void;
 
 function watch<T extends object>(
   target: T,
   callback: Observer.Effect<T>,
-  argument?: boolean
+  argument?: boolean,
+  transition?: (work: () => void) => void
 ) {
   const o = observer(target, true);
   let events: readonly Observer.Event[] = [];
   let unset: ((update: boolean | null) => void) | undefined;
   let reset: (() => void) | null | undefined;
   let previous: T | undefined;
+  let queued = false;
+  let suspense: ReturnType<typeof hold>;
+
+  function resume() {
+    suspense?.();
+    suspense = undefined;
+  }
 
   function invoke() {
-    if (observer(target) === null) return;
+    if (reset === null || observer(target) === null) return;
 
+    queued = false;
     let ignore: boolean = true;
 
     function onUpdate() {
       events = [...o.events];
 
       if (reset === null) return null;
-      if (ignore) return;
+      if (ignore) {
+        if (queued) enqueue(invoke, transition);
+        return;
+      }
 
       ignore = true;
+      queued = true;
 
       unset!(true);
       unset = undefined;
 
-      enqueue(invoke);
+      enqueue(invoke, transition);
     }
 
     function run(release?: (update?: boolean | null) => void) {
       const proxy = observe(target, onUpdate, argument === true);
       const output = callback.call(proxy, proxy, events);
 
-      if (previous && argument === false) {
-        const { watching } = (proxy as Observed)[Observing]!;
-        if (!watching.size)
-          (previous as Observed)[Observing]!.watching.forEach((k) => watching.add(k));
+      if (observer(target) === null) {
+        if (typeof output == 'function') output(null);
+        if (release) release(null);
+        return;
       }
-      
-      previous = proxy;
+
+      if (previous && argument === false && !(proxy as Observed)[Observing]!.watching.size)
+        (previous as Observed)[Observing]!.callback = onUpdate;
+      else
+        previous = proxy;
+
       ignore = false;
       reset = output === null ? null : invoke;
       unset = (key) => {
@@ -308,7 +319,13 @@ function watch<T extends object>(
     } catch (err) {
       if (err instanceof Promise) {
         reset = undefined;
-        err.then(invoke);
+        const suspended = suspense = hold(true, transition)!;
+        const replay = () => {
+          if (suspense !== suspended) return;
+          suspense = undefined;
+          suspended(invoke);
+        };
+        err.then(replay, replay);
       } else {
         throw err;
       }
@@ -317,14 +334,20 @@ function watch<T extends object>(
 
   const unlisten = listener(target, (key) => {
     if (key === true) invoke();
-    else if (!reset) return reset;
-
-    if (key === null && unset) unset(null);
+    else if (key === null) {
+      if (unset) unset(null);
+      resume();
+      reset = null;
+    } else if (!reset) {
+      suspense?.(false);
+      return reset;
+    }
   });
 
   function cleanup() {
     if (unset) unset(false);
 
+    resume();
     reset = null;
     unlisten();
   }
@@ -352,7 +375,7 @@ export {
   event,
   Observer,
   touch,
-  pending,
+  queued,
   observer,
   watch,
   capture

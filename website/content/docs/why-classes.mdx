@@ -160,7 +160,7 @@ Related state lives together. When a reviewer asks "how does saving work?", the 
 
 ### No dependency arrays
 
-Every computed value and every effect tracks its own dependencies, based on what it actually reads. Forgetting a dependency is impossible - you'd have to read the value without accessing it. 🤔
+Every computed value and every effect tracks its own dependencies, based on what it actually reads. There is no dependency list to forget - tracking follows the reads themselves. (Reads still have to happen: a value read only inside a branch subscribes only when that branch runs.)
 
 ### Testability without a renderer
 
@@ -207,7 +207,8 @@ This is also why classes are unusually friendly to agents. A State class is a se
 To be honest about the trade-off:
 
 - **`this`** - you have to use it. If your team has a strict "functional only" rule, Expressive isn't for you.
-- **A small runtime footprint** - reactive proxies, lifecycle tracking, context management. It's not zero.
+- **A runtime footprint** - reactive proxies, lifecycle tracking, context management: ~9 kB gzip for a typical app, ~11 kB with every export used ([measured and CI-gated](/docs/guides/bundle-size)). Tracked reads are proxy reads during render; reads in handlers or through `is` subscribe nothing. Measurable, not zero.
+- **An adapter floor you cannot tree-shake** - the React adapter works by patching things it does not own at import: `Component.prototype`, `contextType`, `isReactComponent`, the host runtime registry. Cross-package prototype patches cannot be shaken away, so importing anything from `@expressive/react` costs ~7.9 kB before your first field. The headless core does shake properly (~4.6 kB for `State` alone, ~8 kB for all of it).
 - **Familiarity for new hires** - engineers used to Redux or Zustand will need a brief ramp-up on classes and instructions.
 
 Expressive does not try to replace hooks wholesale. It coexists. Use `useState` where it's fine; reach for a class where the complexity justifies it.
@@ -218,3 +219,36 @@ Expressive does not try to replace hooks wholesale. It coexists. Use `useState` 
 
 - [Comparisons](/docs/comparisons) - the same component built with Zustand, Jotai, Redux, and MobX, side by side.
 - [Migrating from Hooks](/docs/migrating-from-hooks) - a step-by-step playbook for adopting Expressive in an existing codebase.
+
+export const faq = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: [
+    {
+      '@type': 'Question',
+      name: 'Didn’t React move away from classes?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'React moved away from class components - views with lifecycle methods and setState. Expressive agrees with that verdict: views stay ordinary function components. Classes are used only as the model layer, holding state and behavior that runs and tests without any framework, the same division MobX-style observables draw.',
+      },
+    },
+    {
+      '@type': 'Question',
+      name: 'Are Expressive MVC classes React class components?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'No. A State class is a headless model - no render method, no setState, no lifecycle-method views. Components subscribe to it through hooks like State.use() and State.get(), re-rendering only when values they actually read change.',
+      },
+    },
+    {
+      '@type': 'Question',
+      name: 'Is Expressive MVC really MVC?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'It implements the load-bearing ideas of the original Smalltalk pattern: an observable model that knows nothing about presentation, views that stay current by observing the model directly, and input translated into model operations. The controller role is distributed exactly as in MVP, MVVM, and Cocoa.',
+      },
+    },
+  ],
+};
+
+<script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faq) }} />

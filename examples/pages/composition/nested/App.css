@@ -1,0 +1,33 @@
+.editor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+  width: 100%;
+  padding: var(--s4);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+}
+
+.toolbar button {
+  font-size: var(--t-sm);
+}
+
+.toolbar button:disabled {
+  color: var(--muted);
+  border-color: var(--border);
+  cursor: not-allowed;
+}
+
+.editor textarea {
+  resize: vertical;
+  font-family: var(--font-mono);
+  font-size: var(--t-sm);
+}

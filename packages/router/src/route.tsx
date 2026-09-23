@@ -1,5 +1,6 @@
-import { Component, get, set } from '@expressive/mvc';
-import { childrenOf, Fragment, isElement, propsOf, typeOf, type JSX } from '@expressive/mvc/jsx-runtime';
+import { Component, set } from '@expressive/mvc';
+import { childrenOf, Fragment, isElement, propsOf, typeOf } from '@expressive/mvc/runtime';
+import type { JSX } from '@expressive/mvc/jsx-runtime';
 
 import { Redirect } from './redirect';
 import { Router } from './router';
@@ -44,18 +45,21 @@ export class Route extends Component {
    * history). A function is evaluated on entry to this route's matched space:
    * a truthy string redirects, a falsy result (`''`/`undefined`) allows normal
    * render, and `null` force-404s - the route cedes the path so its scope falls
-   * through to the nearest `default`. May be async - the route's `fallback` shows
-   * while the decision pends. The verdict is cached for navigations within the
-   * space and re-evaluated on re-entry.
+   * through to the nearest `none`. May be async - the route's `fallback` shows
+   * while the decision pends. The verdict is cached per concrete path of the
+   * route's own pattern: re-evaluated on re-entry or when its own params change.
    */
   redirect?: string | (() => Async<string | void | null>) = undefined;
 
   /** Matches when nothing else in this scope did. Scoped to its parent: a
-   * root-level default is the app 404, a nested one the section 404. */
-  default = false;
+   * root-level none Route is the app 404, a nested one the section 404. */
+  none = false;
 
-  /** Nearest mounted Route ancestor, if any. */
-  parent = get(Route, false);
+  /** Nearest mounted Route ancestor within this Router, if any. */
+  readonly parent: Route | undefined = set(() => {
+    const parent = this.get(Route, false);
+    return parent?.router.is === this.router.is ? parent : undefined;
+  }, false);
 
   /** Registered child Routes, in declaration order. Reactive. */
   inner: Route[] = [];
@@ -95,7 +99,7 @@ export class Route extends Component {
   get matched(): boolean {
     const { parent } = this;
 
-    if (this.default)
+    if (this.none)
       return parent ? parent.matched && !parent.matches.length : false;
 
     if (isRoot(this)) return true;
@@ -103,19 +107,19 @@ export class Route extends Component {
     const { children } = this;
 
     if (allRoutes(children))
-      return scopeResolves(this, children, this.router.path);
+      return scopeResolves(children, scopeBase(this), this.router.path);
 
     return !!this.match;
   }
 
   /** This Route's own absolute path (base joined with its segment). */
   get path(): string {
-    return this.default ? this.base : this.base + this.router.segment(this.to);
+    return this.none ? this.base : this.base + this.router.segment(this.to);
   }
 
   /**
    * The matched child Route: `undefined` if none, `null` if ambiguous (>1).
-   * Redirect/default excluded; see-through scopes seen through to children.
+   * Redirect/none excluded; see-through scopes seen through to children.
    */
   get active(): Route | undefined | null {
     const { match, path, rejected } = this.router;
@@ -150,10 +154,10 @@ export class Route extends Component {
         if (!allRoutes(route.children))
           return match(route.base, route.to) && rejected !== path ? [route.path] : [];
 
-        // A scope counts via a matched descendant, or its own section default.
+        // A scope counts via a matched descendant, or its own section none Route.
         const deep = collect(route.inner);
         return deep.length ? deep
-          : defaultCatches(route, path) ? [route.path] : [];
+          : scopeResolves(route.children, scopeBase(route), path) ? [route.path] : [];
       });
 
     return collect(this.inner);
@@ -250,11 +254,12 @@ export class Route extends Component {
   }
 }
 
-const GUARD = new WeakMap<Route, { redirect: Function; to?: string; promise?: Promise<string | undefined> }>();
+const GUARD = new WeakMap<Route, { redirect: Function; space: string; to?: string; promise?: Promise<string | undefined> }>();
 
 /**
  * Resolve a function `redirect` guard for an entered route. Caches the verdict
- * per entry (keyed by the guard fn); an async guard throws its pending promise
+ * per entry (keyed by the guard fn and the concrete path its own pattern
+ * consumes, so a param change re-enters); an async guard throws its pending promise
  * (suspense -> the route's `fallback`) until it settles, then the cached result
  * is returned on retry. The cache is dropped on leave (see render), so returning
  * to the space re-runs the guard.
@@ -266,9 +271,10 @@ function guard(route: Route, redirect: () => Async<string | void | null>): strin
   }
 
   let g = GUARD.get(route);
+  const at = space(route);
 
-  if (!g || g.redirect !== redirect)
-    GUARD.set(route, g = { redirect });
+  if (!g || g.redirect !== redirect || g.space !== at)
+    GUARD.set(route, g = { redirect, space: at });
 
   if ('to' in g) return g.to;
   if (g.promise) throw g.promise;
@@ -291,11 +297,11 @@ function guard(route: Route, redirect: () => Async<string | void | null>): strin
 
 /**
  * Exempt from sibling arbitration and match collection: a content-less
- * static-string redirect, or a `default` fallback. A *function* guard is a real
+ * static-string redirect, or a `none` fallback. A *function* guard is a real
  * contender - it participates in matching until it actually redirects.
  */
-function exempt(node: { redirect?: unknown; default?: boolean }): boolean {
-  return node.default || typeof node.redirect === 'string';
+function exempt(node: { redirect?: unknown; none?: boolean }): boolean {
+  return node.none || typeof node.redirect === 'string';
 }
 
 /**
@@ -323,9 +329,9 @@ function lexicalRoutes(children: Component.Node) {
   return out;
 }
 
-/** Does `children` hold a direct default Route? Such a scope resolves to it. */
-function hasDefault(children: Component.Node): boolean {
-  return lexicalRoutes(children).some(({ props }) => props.default);
+/** Does `children` hold a direct none Route? Such a scope resolves to it. */
+function hasNone(children: Component.Node): boolean {
+  return lexicalRoutes(children).some(({ props }) => props.none);
 }
 
 /** Is `path` inside `base`'s subtree? The root base ('') contains everything. */
@@ -341,48 +347,44 @@ function isRoot(route: Route): boolean {
   return !route.parent && !!route.props && !('to' in route.props);
 }
 
+/** The concrete prefix of the current path consumed by a route's own pattern. */
+function space(route: Route): string {
+  const depth = scopeBase(route).split('/').filter(Boolean).length;
+  return route.router.path.split('/').filter(Boolean).slice(0, depth).join('/');
+}
+
 /** The base a scope's children compose against (own base + segment). */
 function scopeBase(route: Route): string {
   return route.base + route.router.segment(route.to);
-}
-
-/** Lexical (gate-form): scope resolves via a descendant match or its own
- * section default within base - used by `matched`, before children register. */
-function scopeResolves(route: Route, children: Component.Node, path: string): boolean {
-  const base = scopeBase(route);
-  return matchesAnywhere(children, base, path)
-    || (hasDefault(children) && within(base, path));
-}
-
-/** Registration-form: scope owns a default catching the path within base -
- * used by `matches` so a section 404 suppresses an ancestor 404. */
-function defaultCatches(route: Route, path: string): boolean {
-  return route.inner.some((c) => c.default) && within(scopeBase(route), path);
 }
 
 type RouteProps = {
   to?: string;
   as?: unknown;
   redirect?: string | (() => Async<string | null | void>);
-  default?: boolean;
+  none?: boolean;
   children?: Component.Node;
 };
 
 /**
- * Does any Route within `children` match `path` (composed against `base`)? A
- * synchronous, lexical walk of the JSX - the see-through opt-out gate. Strict:
- * a scope counts only when a descendant matches, never as a greedy prefix.
+ * Does the scope described by `children` (composed against `base`) claim
+ * `path`? A synchronous, lexical walk of the JSX - the see-through opt-out
+ * gate, and the single arbiter behind `matched` and `as`-slot arbitration.
+ * A scope claims via a descendant match, or via its own `none` Route, which
+ * catches anything within its base; without one it is never a greedy prefix.
  * Blind to class-field `to` and component-internal routes (the
  * `*`-delegation case) - the documented limits of the lexical model.
  */
-export function matchesAnywhere(children: Component.Node, base: string, path: string): boolean {
-  return lexicalRoutes(children).some(({ props, to }) => {
+export function scopeResolves(children: Component.Node, base: string, path: string): boolean {
+  const claimed = lexicalRoutes(children).some(({ props, to }) => {
     if (exempt(props)) return false;
 
     return allRoutes(props.children)
-      ? matchesAnywhere(props.children, base + patternSegment(to), path)
+      ? scopeResolves(props.children, base + patternSegment(to), path)
       : matchPattern(fullPattern(base, to), path) !== null;
   });
+
+  return claimed || (hasNone(children) && within(base, path));
 }
 
 type Contender = {
@@ -422,7 +424,7 @@ function possible(children: Component.Node, base: string): Contender[] {
     .map(({ props, to }) => ({
       path: base + patternSegment(to),
       matches: allRoutes(props.children)
-        ? (path: string) => matchesAnywhere(props.children, base + patternSegment(to), path)
+        ? (path: string) => scopeResolves(props.children, base + patternSegment(to), path)
         : (path: string) => matchPattern(fullPattern(base, to), path) !== null,
     }));
 }
@@ -439,12 +441,45 @@ function allRoutes(children: Component.Node): boolean {
   });
 }
 
+/** Every path matched by `pattern` also falls within `claim`: each claim
+ * segment covers its counterpart (`:param` covers any segment; literals
+ * compare case-insensitively and never cover a param or `*`). */
+function coveredBy(claim: string, pattern: string): boolean {
+  const over = claim.split('/');
+  const under = pattern.split('/');
+
+  return under.length >= over.length && over.every((seg, i) =>
+    seg.startsWith(':') || seg.toLowerCase() === under[i].toLowerCase());
+}
+
+/** Throw for a statically-dead sibling: a none-bearing scope claims every
+ * path under its segment, so a later sibling within it can never match. */
+function assertReachable(children: Component.Node, base: string): void {
+  const claims: string[] = [];
+
+  for (const { props, to } of lexicalRoutes(children)) {
+    if (exempt(props)) continue;
+
+    const path = base + patternSegment(to);
+    const claim = claims.find((c) => coveredBy(c, path));
+
+    if (claim !== undefined)
+      throw new Error(
+        `Route "${path}" is unreachable: an earlier sibling holds a none Route, claiming everything under "${claim}".`
+      );
+
+    if (allRoutes(props.children) && hasNone(props.children))
+      claims.push(path);
+  }
+}
+
 function register(parent: Route, child: Route) {
   let list = CHILDREN.get(parent);
 
   if (list) {
     if (list.includes(child)) return;
   } else {
+    assertReachable(parent.props.children, scopeBase(parent));
     list = [];
     CHILDREN.set(parent, list);
   }
@@ -453,8 +488,7 @@ function register(parent: Route, child: Route) {
   parent.inner = list.slice();
 
   child.set(null, () => {
-    const i = list!.indexOf(child);
-    if (i >= 0) list!.splice(i, 1);
+    list!.splice(list!.indexOf(child), 1);
     if (!list!.length) CHILDREN.delete(parent);
     if (!parent.get(null)) parent.inner = list!.slice();
   });

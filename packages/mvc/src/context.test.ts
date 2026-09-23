@@ -1,4 +1,4 @@
-import { mock, describe, it, expect } from 'bun:test';
+import { vi, describe, it, expect } from 'vitest';
 import { Context } from './context';
 import { State } from './state';
 
@@ -95,7 +95,7 @@ it('will remove implicit children on pop', () => {
 });
 
 it('child pop is safe to call before parent pop', () => {
-  const destroyed = mock();
+  const destroyed = vi.fn();
 
   class Test extends State {
     protected new() {
@@ -161,7 +161,7 @@ it('will notify downstream subscriber when implicit child is replaced', () => {
 
   const parent = new Parent();
   const context = new Context(parent);
-  const cb = mock();
+  const cb = vi.fn();
 
   context.get(Foo, cb);
 
@@ -240,7 +240,7 @@ it('will clear consume and provide on pop', () => {
 
   // register() seeds null placeholders up the parent chain — these survive
   // child cleanup callbacks and accumulate on long-lived roots without this.
-  child.get(Foo, mock());
+  child.get(Foo, vi.fn());
   child.add(Foo.new());
 
   expect(parent.consume.has(Foo)).toBe(true);
@@ -264,7 +264,7 @@ it('will pop child context', () => {
   class Test2 extends Test {}
   class Test3 extends Test {}
 
-  const didDestroy = mock();
+  const didDestroy = vi.fn();
   const context = new Context(Test);
 
   context.push(Test2).push(Test3);
@@ -280,7 +280,7 @@ describe('has method', () => {
 
   it('will call callback when type is added downstream', () => {
     const context = new Context();
-    const cb = mock();
+    const cb = vi.fn();
 
     context.get(DownstreamState, cb, true);
     context.push(DownstreamState);
@@ -291,7 +291,7 @@ describe('has method', () => {
 
   it('will clean up callback on cancel', () => {
     const context = new Context();
-    const cb = mock();
+    const cb = vi.fn();
 
     const cancel = context.get(DownstreamState, cb, true);
     context.push(DownstreamState);
@@ -307,8 +307,8 @@ describe('has method', () => {
 
   it('will call cleanup when state is removed', () => {
     const context = new Context();
-    const cleanup = mock();
-    const cb = mock(() => cleanup);
+    const cleanup = vi.fn();
+    const cb = vi.fn(() => cleanup);
 
     context.get(DownstreamState, cb, true);
 
@@ -324,7 +324,7 @@ describe('has method', () => {
 
   it('will not call callback for new additions after cancel', () => {
     const context = new Context();
-    const cb = mock();
+    const cb = vi.fn();
 
     const cancel = context.get(DownstreamState, cb, true);
     context.push(DownstreamState);
@@ -342,7 +342,7 @@ describe('has method', () => {
     const context = new Context();
     const child = context.push(DownstreamState);
     const existing = child.get(DownstreamState);
-    const cb = mock();
+    const cb = vi.fn();
 
     context.get(DownstreamState, cb, true);
 
@@ -353,7 +353,7 @@ describe('has method', () => {
   it('will flag direction in callback', () => {
     const context = new Context();
     context.push(DownstreamState);
-    const cb = mock();
+    const cb = vi.fn();
 
     context.get(DownstreamState, cb, true);
 
@@ -372,7 +372,7 @@ describe('has method', () => {
     const context = new Context();
     context.push(DownstreamState);
     context.push(DownstreamState);
-    const cb = mock();
+    const cb = vi.fn();
 
     context.get(DownstreamState, cb, true);
 
@@ -384,7 +384,7 @@ describe('has method', () => {
   it('will notify has-subscriber for state created before context', () => {
     const parent = new Context();
     const child = parent.push();
-    const cb = mock();
+    const cb = vi.fn();
 
     parent.get(DownstreamState, cb, true);
 
@@ -404,7 +404,7 @@ describe('get callback (upstream subscription)', () => {
   it('will call callback when type is added to parent', () => {
     const parent = new Context();
     const child = parent.push();
-    const cb = mock();
+    const cb = vi.fn();
 
     child.get(Upstream, cb);
     parent.set(Upstream);
@@ -416,7 +416,7 @@ describe('get callback (upstream subscription)', () => {
   it('will cancel subscription', () => {
     const parent = new Context();
     const child = parent.push();
-    const cb = mock();
+    const cb = vi.fn();
 
     const cancel = child.get(Upstream, cb);
     cancel();
@@ -428,8 +428,8 @@ describe('get callback (upstream subscription)', () => {
   it('will call cleanup returned from callback', () => {
     const parent = new Context();
     const child = parent.push();
-    const cleanup = mock();
-    const cb = mock(() => cleanup);
+    const cleanup = vi.fn();
+    const cb = vi.fn(() => cleanup);
 
     child.get(Upstream, cb);
     parent.set(Upstream);
@@ -447,7 +447,7 @@ describe('get callback (upstream subscription)', () => {
 
     const parent = new Context();
     const child = parent.push();
-    const cb = mock();
+    const cb = vi.fn();
 
     child.get(Upstream, cb);
     parent.set(shared);
@@ -459,7 +459,7 @@ describe('get callback (upstream subscription)', () => {
   it('will call callback for already-registered upstream state', () => {
     const parent = new Context(Upstream);
     const child = parent.push();
-    const cb = mock();
+    const cb = vi.fn();
 
     child.get(Upstream, cb);
 
@@ -471,7 +471,7 @@ describe('get callback (upstream subscription)', () => {
   it('will flag direction in upstream callback', () => {
     const parent = new Context();
     const child = parent.push();
-    const cb = mock();
+    const cb = vi.fn();
 
     // subscribe before anything exists
     child.get(Upstream, cb);
@@ -609,7 +609,7 @@ describe('set method', () => {
 
   it('will destroy state created by layer', () => {
     class Test extends State {
-      destroyed = mock();
+      destroyed = vi.fn();
 
       new() {
         return this.destroyed;
@@ -727,14 +727,14 @@ describe('set method', () => {
 
     const foo = Foo.new();
     const bar = Bar.new();
-    const cb = mock();
+    const cb = vi.fn();
 
     const context = new Context();
 
     context.set({ foo, bar }, cb);
 
-    expect(cb).toBeCalledWith(foo);
-    expect(cb).toBeCalledWith(bar);
+    expect(cb).toBeCalledWith(foo, false);
+    expect(cb).toBeCalledWith(bar, false);
     expect(cb).toBeCalledTimes(2);
 
     context.set({ foo, bar }, cb);
@@ -745,14 +745,14 @@ describe('set method', () => {
 
     context.set({ foo, bar, foo2 }, cb);
 
-    expect(cb).toBeCalledWith(foo2);
+    expect(cb).toBeCalledWith(foo2, false);
     expect(cb).toBeCalledTimes(3);
   });
 
   it('will ignore subsequent if callback', () => {
     class Foo extends State {}
 
-    const cb = mock();
+    const cb = vi.fn();
     const context = new Context();
 
     context.set(Foo, cb);
@@ -765,7 +765,7 @@ describe('set method', () => {
 
   it('will remove and delete state of type absent', () => {
     class Bar extends State {
-      didDie = mock();
+      didDie = vi.fn();
 
       protected new() {
         return this.didDie;
@@ -783,7 +783,7 @@ describe('set method', () => {
 
   it('will replace owned instance when key changes', () => {
     class Baz extends State {
-      didDie = mock();
+      didDie = vi.fn();
 
       protected new() {
         return this.didDie;
@@ -847,8 +847,8 @@ describe('set method', () => {
   it('will call forEach cleanup when state is removed via set', () => {
     class Foo extends State {}
 
-    const cleanup = mock();
-    const forEach = mock(() => cleanup);
+    const cleanup = vi.fn();
+    const forEach = vi.fn(() => cleanup);
     const context = new Context();
 
     context.set(Foo, forEach);
@@ -865,7 +865,7 @@ describe('set method', () => {
     class Foo extends State {}
     class Bar extends State {}
 
-    const didCleanup = mock();
+    const didCleanup = vi.fn();
     const context = new Context();
 
     context.set({ Foo, Bar }, (state) => {
@@ -882,7 +882,7 @@ describe('set method', () => {
     class Foo extends State {}
     class Foo2 extends State {}
 
-    const cleanup = mock();
+    const cleanup = vi.fn();
     const context = new Context();
 
     context.set({ x: Foo }, () => cleanup);
@@ -893,10 +893,42 @@ describe('set method', () => {
     expect(context.get(Foo2)).toBeInstanceOf(Foo2);
   });
 
+  it('will ignore a non-function returned by forEach', () => {
+    class Foo extends State {}
+
+    const context = new Context();
+
+    // an `is`-style callback written with a concise arrow body returns the state
+    context.set(Foo, (state) => (state as any));
+
+    expect(() => context.set({})).not.toThrow();
+  });
+
+  it('will tell forEach whether context owns the state', () => {
+    class Foo extends State {}
+    class Bar extends State {}
+
+    const bar = Bar.new();
+    const didCall = vi.fn();
+    const context = new Context();
+
+    context.set({ Foo, bar }, (state, owned) => {
+      didCall(state.constructor.name, owned);
+    });
+
+    expect(didCall).toBeCalledWith('Foo', true);
+    expect(didCall).toBeCalledWith('Bar', false);
+
+    context.pop();
+
+    expect(context.get(Foo, false)).toBeUndefined();
+    expect(bar.get(null)).toBe(false);
+  });
+
   it('will call forEach cleanup on pop', () => {
     class Foo extends State {}
 
-    const cleanup = mock();
+    const cleanup = vi.fn();
     const parent = new Context();
     const child = parent.push();
 
@@ -935,7 +967,7 @@ describe('ambiguous implicit entries', () => {
     ctx.add(ChildA.new());
     ctx.add(ChildB.new());
 
-    const cb = mock();
+    const cb = vi.fn();
 
     // Subscribe on a child context looking upstream
     const child = ctx.push();
@@ -956,7 +988,7 @@ describe('ambiguous implicit entries', () => {
     ctx.add(a, true);
     ctx.add(b, true);
 
-    const cb = mock();
+    const cb = vi.fn();
 
     expect(() => ctx.get(Base, cb)).toThrow(
       'Did find Base in context, but multiple were defined.'
@@ -974,7 +1006,7 @@ describe('ambiguous implicit entries', () => {
     ctx.add(explicit, true);
     ctx.add(implicit);
 
-    const cb = mock();
+    const cb = vi.fn();
     ctx.get(Base, cb);
 
     // Should only get the explicit one
@@ -992,7 +1024,7 @@ describe('ambiguous implicit entries', () => {
     ctx.add(a, true);
     ctx.add(a, true);
 
-    const cb = mock();
+    const cb = vi.fn();
     ctx.get(Base, cb);
 
     expect(cb).toBeCalledTimes(1);
@@ -1006,7 +1038,7 @@ describe('add method listener lookup', () => {
 
     const parent = new Context();
     const child = parent.push();
-    const cb = mock();
+    const cb = vi.fn();
 
     // Subscribe on child for downstream
     child.get(Foo, cb);
@@ -1022,7 +1054,7 @@ describe('add method listener lookup', () => {
     class Foo extends State {}
 
     const parent = new Context();
-    const cb = mock();
+    const cb = vi.fn();
 
     parent.get(Foo, cb, true);
 
@@ -1037,7 +1069,7 @@ describe('add method listener lookup', () => {
     class Bar extends Foo {}
 
     const parent = new Context();
-    const cb = mock();
+    const cb = vi.fn();
 
     // Subscribe for both Foo and Bar — but cb is same ref
     parent.get(Foo, cb, true);
@@ -1055,7 +1087,7 @@ describe('add method listener lookup', () => {
     const grandparent = new Context();
     const parent = grandparent.push();
     const child = parent.push();
-    const cb = mock();
+    const cb = vi.fn();
 
     // Register same cb on both grandparent and parent
     grandparent.get(Foo, cb, true);
@@ -1076,7 +1108,7 @@ describe('add method listener lookup', () => {
     const child = parent.push();
 
     // Subscribe child for Bar only
-    child.get(Bar, mock());
+    child.get(Bar, vi.fn());
 
     // Add Foo to parent — below path visits child but finds no Foo listener
     parent.set(Foo);
@@ -1091,7 +1123,7 @@ describe('add method listener lookup', () => {
     const parent = new Context();
     const middle = parent.push();
     const child = middle.push();
-    const cb = mock();
+    const cb = vi.fn();
 
     // Register the same callback on both parent and child
     parent.get(Foo, cb);
@@ -1105,6 +1137,20 @@ describe('add method listener lookup', () => {
   });
 });
 
+it('will skip self when traversing downstream', () => {
+  const parent = new Context();
+  const child = parent.push();
+
+  const example = Example.new();
+  parent.add(example);
+  child.add(example);
+
+  const cb = vi.fn();
+  example.get(Example, cb);
+
+  expect(cb).not.toBeCalled();
+});
+
 it('will not traverse downstream when downstream is false', () => {
   const parent = new Context();
   const child = parent.push();
@@ -1112,7 +1158,7 @@ it('will not traverse downstream when downstream is false', () => {
   const foo = Example.new();
   child.add(foo);
 
-  const cb = mock();
+  const cb = vi.fn();
   parent.get(Example, cb, false);
 
   expect(cb).not.toBeCalled();
@@ -1126,10 +1172,22 @@ it('will traverse deeply nested contexts', () => {
   const foo = Example.new();
   grandchild.add(foo);
 
-  const cb = mock();
+  const cb = vi.fn();
   root.get(Example, cb);
 
   expect(cb).toBeCalledWith(foo, true);
+});
+
+it('will notify upstream consumer when type is added to same context', () => {
+  const context = new Context();
+  const cb = vi.fn();
+
+  context.get(Example, cb, false);
+
+  const foo = Example.new();
+  context.add(foo);
+
+  expect(cb).toBeCalledWith(foo, false);
 });
 
 it('will skip consumer if filter does not match downstream', () => {
@@ -1138,7 +1196,7 @@ it('will skip consumer if filter does not match downstream', () => {
   const grandchild = child.push();
 
   // Register consumer that only wants downstream (filter=true)
-  const cb = mock();
+  const cb = vi.fn();
   child.get(Example, cb, true);
 
   // Add a provider to parent - traverse reaches child with downstream=false
@@ -1158,9 +1216,11 @@ it('will skip consumer if filter does not match downstream', () => {
 describe('root global', () => {
   const { root } = Context;
 
-  class Global extends State {}
+  class Global extends State {
+    static readonly global: State.Global = true;
+  }
 
-  it('will register .new() instance as implicit in root', () => {
+  it('will register a global .new() instance in root', () => {
     const instance = Global.new();
 
     expect(root.get(Global)).toBe(instance);
@@ -1168,6 +1228,231 @@ describe('root global', () => {
     instance.set(null);
 
     expect(root.get(Global, false)).toBeUndefined();
+  });
+
+  it('will not register children of a private instance in root', () => {
+    class Child extends State {}
+    class Parent extends State {
+      child = new Child();
+    }
+
+    const parent = Parent.new();
+
+    expect(root.get(Parent, false)).toBeUndefined();
+    expect(root.get(Child, false)).toBeUndefined();
+
+    parent.set(null);
+  });
+
+  it('will register children of a global instance in root', () => {
+    class Child extends State {}
+    class Parent extends State {
+      static readonly global = true;
+      child = new Child();
+    }
+
+    const parent = Parent.new();
+
+    expect(root.get(Child)).toBe(parent.child);
+
+    parent.set(null);
+
+    expect(root.get(Child, false)).toBeUndefined();
+  });
+
+  it('will register a child assigned after a global joins root', () => {
+    class Child extends State {}
+    class Parent extends State {
+      static readonly global = true;
+      child?: Child = undefined;
+    }
+
+    const parent = Parent.new();
+
+    parent.child = new Child();
+
+    expect(root.get(Child)).toBe(parent.child);
+
+    parent.set(null);
+  });
+
+  it('will not register a late child of a private sibling of a global', () => {
+    class Child extends State {}
+    class Parent extends State {
+      static readonly global: State.Global<Parent> = (self) => self.shared;
+      shared = false;
+      child?: Child = undefined;
+    }
+
+    const shared = Parent.new({ shared: true });
+    const alone = Parent.new();
+
+    alone.child = new Child();
+
+    expect(root.get(Parent)).toBe(shared);
+    expect(root.get(Child, false)).toBeUndefined();
+
+    shared.set(null);
+    alone.set(null);
+  });
+
+  it('will provide children of a private instance where it is provided', () => {
+    class Grandchild extends State {}
+    class Child extends State {
+      grandchild = new Grandchild();
+    }
+    class Parent extends State {
+      child = new Child();
+    }
+
+    const parent = Parent.new();
+    const context = root.push({ parent });
+
+    expect(context.get(Child)).toBe(parent.child);
+    expect(context.get(Grandchild)).toBe(parent.child.grandchild);
+    expect(root.get(Child, false)).toBeUndefined();
+
+    context.pop();
+
+    expect(context.get(Child, false)).toBeUndefined();
+
+    parent.set(null);
+  });
+
+  it('will register grandchildren of a global instance in root', () => {
+    class Grandchild extends State {}
+    class Child extends State {
+      grandchild = new Grandchild();
+    }
+    class Parent extends State {
+      static readonly global = true;
+      child = new Child();
+    }
+
+    const parent = Parent.new();
+
+    expect(root.get(Grandchild)).toBe(parent.child.grandchild);
+
+    parent.set(null);
+  });
+
+  it('will keep instance when re-added implicitly', () => {
+    const instance = Global.new();
+
+    root.add(instance);
+
+    expect(root.get(Global)).toBe(instance);
+
+    instance.set(null);
+  });
+
+  it('will throw when a subclass inherits global without re-declaring', () => {
+    class Sub extends Global {}
+
+    expect(() => Sub.new()).toThrow(
+      /would register as a global by inheritance alone/
+    );
+  });
+
+  it('will register when a subclass re-declares global', () => {
+    class Sub extends Global {
+      static readonly global = true;
+    }
+
+    const instance = Sub.new();
+
+    expect(root.get(Sub)).toBe(instance);
+
+    instance.set(null);
+  });
+
+  it('will allow a subclass to opt out of a global', () => {
+    class Sub extends Global {
+      static readonly global = false;
+    }
+
+    const instance = Sub.new();
+
+    expect(root.get(Sub, false)).toBeUndefined();
+
+    instance.set(null);
+  });
+
+  it('will resolve global from a function at activation', () => {
+    let allow = false;
+
+    class Conditional extends State {
+      static readonly global: State.Global = () => allow;
+    }
+
+    const off = Conditional.new();
+    expect(root.get(Conditional, false)).toBeUndefined();
+    off.set(null);
+
+    allow = true;
+
+    const on = Conditional.new();
+    expect(root.get(Conditional)).toBe(on);
+    on.set(null);
+  });
+
+  it('will pass the instance to a global resolver', () => {
+    class Instanced extends State {
+      persistent = true;
+      static readonly global: State.Global<Instanced> = (self) => self.persistent;
+    }
+
+    const instance = Instanced.new();
+
+    expect(root.get(Instanced)).toBe(instance);
+
+    instance.set(null);
+  });
+
+  it('will enforce global inheritance through static types', () => {
+    void function () {
+      class SealedGlobal extends State {
+        static readonly global = true;
+      }
+      class Floor extends State {
+        static readonly global = false;
+      }
+
+      // @ts-expect-error - cannot opt out of a sealed (literal true) global
+      class OptOut extends SealedGlobal {
+        static readonly global = false;
+      }
+
+      // @ts-expect-error - cannot opt in against a literal-false floor
+      class OptIn extends Floor {
+        static readonly global = true;
+      }
+
+      // widening permits an override
+      class Open extends State {
+        static readonly global: State.Global = true;
+      }
+      class Scoped extends Open {
+        static readonly global = false;
+      }
+
+      return [OptOut, OptIn, Scoped];
+    };
+  });
+
+  it('will not register a context-less instance by default', () => {
+    class Private extends State {
+      value = 1;
+    }
+
+    const instance = Private.new();
+
+    expect(root.get(Private, false)).toBeUndefined();
+
+    instance.value = 2;
+    expect(instance.value).toBe(2);
+
+    instance.set(null);
   });
 
   it('will lock state ownership to root after init', () => {
@@ -1184,26 +1469,62 @@ describe('root global', () => {
     instance.set(null);
   });
 
-  it('will evict prior and reject new on implicit collision', () => {
-    class Multi extends State {}
+  it('will throw on duplicate global of same type', () => {
+    class Multi extends State {
+      static global = true;
+    }
 
     const first = Multi.new();
 
     expect(root.get(Multi)).toBe(first);
 
-    const second = Multi.new();
+    expect(() => Multi.new()).toThrow(
+      /already exists in root/
+    );
 
-    // Both are released - collision is an implicit opt-out from global
-    expect(root.get(Multi, false)).toBeUndefined();
+    expect(root.get(Multi)).toBe(first);
 
     first.set(null);
+  });
+
+  it('will throw on duplicate global from a resolver', () => {
+    class Multi extends State {
+      static global: State.Global = () => true;
+    }
+
+    const first = Multi.new();
+
+    expect(() => Multi.new()).toThrow(
+      /already exists in root/
+    );
+
+    first.set(null);
+  });
+
+  it('will register a new global after previous is destroyed', () => {
+    class Multi extends State {
+      static global = true;
+    }
+
+    const first = Multi.new();
+
+    first.set(null);
+
+    const second = Multi.new();
+
+    expect(root.get(Multi)).toBe(second);
+
     second.set(null);
   });
 
   it('will preserve subtype entries on eviction', () => {
     class Base extends State {}
-    class SubA extends Base {}
-    class SubB extends Base {}
+    class SubA extends Base {
+      static global = true;
+    }
+    class SubB extends Base {
+      static global = true;
+    }
 
     const a = SubA.new();
 
@@ -1223,9 +1544,15 @@ describe('root global', () => {
 
   it('will register fresh sibling cleanly after ancestor eviction', () => {
     class Base extends State {}
-    class SubA extends Base {}
-    class SubB extends Base {}
-    class SubC extends Base {}
+    class SubA extends Base {
+      static global = true;
+    }
+    class SubB extends Base {
+      static global = true;
+    }
+    class SubC extends Base {
+      static global = true;
+    }
 
     const a = SubA.new();
     const b = SubB.new();
@@ -1259,7 +1586,9 @@ describe('root global', () => {
 
   it('will not apply global eviction to explicit add', () => {
     class Base extends State {}
-    class SubA extends Base {}
+    class SubA extends Base {
+      static global = true;
+    }
     class SubB extends Base {}
 
     const a = SubA.new();

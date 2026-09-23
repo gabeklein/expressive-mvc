@@ -1,8 +1,18 @@
 import React, { Suspense } from 'react';
-import { Component, get, State, Provider, set } from '.';
-import { mock, spyOn, expect, it, describe, afterEach, afterAll } from 'bun:test';
+import { Component, Context, get, State, Provider, set } from '.';
+import { pending } from '@expressive/mvc';
+import {
+  vi,
+  expect,
+  it,
+  describe,
+  beforeEach,
+  afterEach,
+  type MockInstance
+} from 'vitest';
 import { act, render, renderHook, waitFor } from '@testing-library/react';
 import { mockPromise, flushMicrotasks } from '../test.setup';
+import { Runtime } from './runtime';
 
 function renderWith<T>(Type: State.Type | State, hook: () => T) {
   return renderHook(hook, {
@@ -15,14 +25,19 @@ function renderWith<T>(Type: State.Type | State, hook: () => T) {
 }
 
 describe('State.get', () => {
-  const error = spyOn(console, 'error').mockImplementation(() => {});
+  let error: MockInstance<Console['error']>;
 
-  afterEach(() => {
-    // expect(error).not.toBeCalled();
-    error.mockReset();
+  beforeEach(() => {
+    error = vi.spyOn(console, 'error').mockImplementation(() => {});
   });
 
-  afterAll(() => error.mockClear());
+  afterEach(() => {
+    const { calls } = error.mock;
+
+    error.mockRestore();
+
+    expect(calls).toEqual([]);
+  });
 
   it('will fetch model', () => {
     class Test extends State {}
@@ -39,7 +54,7 @@ describe('State.get', () => {
     }
 
     const test = Test.new();
-    const didRender = mock();
+    const didRender = vi.fn();
     const hook = renderWith(test, () => {
       didRender();
       return Test.get().foo;
@@ -53,13 +68,53 @@ describe('State.get', () => {
     expect(didRender).toBeCalledTimes(2);
   });
 
+  it('will transition model subscriber dispatch', async () => {
+    class Test extends State {
+      value = 'a';
+      urgent = 0;
+    }
+
+    const test = Test.new();
+    const gate = mockPromise<void>();
+    const Content = () => {
+      const { value } = Test.get();
+      if (value === 'b') throw gate;
+      return <span>{value}</span>;
+    };
+    const Status = () => <strong>{Test.get().urgent}</strong>;
+    const view = render(
+      <Provider for={test}>
+        <Suspense fallback={<i>loading</i>}>
+          <Content />
+        </Suspense>
+        <Status />
+      </Provider>
+    );
+
+    await act(async () => {
+      pending(() => {
+        test.value = 'b';
+      });
+      test.urgent = 1;
+      await Promise.resolve();
+    });
+
+    expect(view.container.textContent).toBe('a1');
+
+    test.value = 'c';
+    gate.resolve();
+    await act(async () => {});
+
+    expect(view.container.textContent).toBe('c1');
+  });
+
   it('will not update on death event', async () => {
     class Test extends State {
       foo = 'foo';
     }
 
     const test = Test.new();
-    const didRender = mock();
+    const didRender = vi.fn();
     const hook = renderWith(test, () => {
       didRender();
       return Test.get().foo;
@@ -76,7 +131,7 @@ describe('State.get', () => {
       value = 1;
     }
 
-    const useTest = mock(() => {
+    const useTest = vi.fn(() => {
       expect(() => Test.get()).toThrow('Could not find Test in context.');
     });
 
@@ -89,7 +144,7 @@ describe('State.get', () => {
       value = 1;
     }
 
-    const useTest = mock(() => {
+    const useTest = vi.fn(() => {
       expect(Test.get(false)).toBeUndefined();
     });
 
@@ -203,7 +258,7 @@ describe('State.get', () => {
         value = 1;
       }
 
-      const useTest = mock(() => {
+      const useTest = vi.fn(() => {
         expect(() => Test.get((x) => x)).toThrow(
           `Could not find ${Test} in context.`
         );
@@ -228,8 +283,8 @@ describe('State.get', () => {
 
     it('will ignore updates with same result', async () => {
       const test = Test.new();
-      const compute = mock();
-      const didRender = mock();
+      const compute = vi.fn();
+      const didRender = vi.fn();
 
       const hook = renderWith(test, () => {
         didRender();
@@ -272,12 +327,12 @@ describe('State.get', () => {
     });
 
     it('will disable updates if null returned', async () => {
-      const factory = mock(($: Test) => {
+      const factory = vi.fn(($: Test) => {
         void $.foo;
         return null;
       });
 
-      const didRender = mock(() => {
+      const didRender = vi.fn(() => {
         return Test.get(factory);
       });
 
@@ -312,8 +367,8 @@ describe('State.get', () => {
         });
 
       const parent = Parent.new();
-      const didUpdateValues = mock();
-      const didPushToValues = mock();
+      const didUpdateValues = vi.fn();
+      const didPushToValues = vi.fn();
 
       parent.get((state) => {
         didUpdateValues(state.values.length);
@@ -343,8 +398,8 @@ describe('State.get', () => {
     }
 
     it('will force a refresh', async () => {
-      const didRender = mock();
-      const didEvaluate = mock();
+      const didRender = vi.fn();
+      const didEvaluate = vi.fn();
       let forceUpdate!: () => void;
 
       renderWith(Test, () => {
@@ -367,8 +422,8 @@ describe('State.get', () => {
     });
 
     it('will refresh without reevaluating', async () => {
-      const didEvaluate = mock();
-      const didRender = mock();
+      const didEvaluate = vi.fn();
+      const didRender = vi.fn();
       let forceUpdate!: () => void;
 
       renderWith(Test, () => {
@@ -392,7 +447,7 @@ describe('State.get', () => {
 
     it('will refresh again after promise', async () => {
       const promise = mockPromise();
-      const didRender = mock();
+      const didRender = vi.fn();
 
       let forceUpdate!: <T>(after: Promise<T>) => Promise<T>;
 
@@ -422,7 +477,7 @@ describe('State.get', () => {
 
     it('will invoke async function', async () => {
       const promise = mockPromise();
-      const didRender = mock();
+      const didRender = vi.fn();
 
       let forceUpdate!: <T>(after: () => Promise<T>) => Promise<T>;
 
@@ -471,7 +526,7 @@ describe('State.get', () => {
       const promise = mockPromise<string>();
 
       const test = Test.new();
-      const didRender = mock();
+      const didRender = vi.fn();
       const hook = renderWith(test, () => {
         didRender();
         return Test.get(async ($) => {
@@ -534,7 +589,7 @@ describe('State.get', () => {
       test2.value = 'second';
 
       let current: State | State.Type | Record<string, any> = test1;
-      const didRender = mock();
+      const didRender = vi.fn();
 
       const Inner = () => {
         didRender();
@@ -572,7 +627,7 @@ describe('State.get', () => {
       test2.value = 'second';
 
       let current: any = test1;
-      const didRender = mock();
+      const didRender = vi.fn();
 
       const Inner = () => {
         didRender();
@@ -621,7 +676,7 @@ describe('State.get', () => {
       test2.value = 'second';
 
       let current: any = test1;
-      const didRender = mock();
+      const didRender = vi.fn();
 
       const Inner = () => {
         didRender();
@@ -663,7 +718,7 @@ describe('State.get', () => {
       const other = Other.new();
 
       let current: any = { test, other };
-      const didRender = mock();
+      const didRender = vi.fn();
 
       const Inner = () => {
         didRender();
@@ -704,7 +759,7 @@ describe('State.get', () => {
       }
 
       const parent = new Parent();
-      const didRender = mock();
+      const didRender = vi.fn();
 
       const Inner = () => {
         didRender();
@@ -742,7 +797,7 @@ describe('State.get', () => {
       }
 
       const parent = new Parent();
-      const didRender = mock();
+      const didRender = vi.fn();
 
       const Inner = () => {
         didRender();
@@ -776,6 +831,50 @@ describe('State.get', () => {
       expect(didRender).toBeCalledTimes(3);
     });
 
+    it('will update when assigned through proxy', async () => {
+      class Test extends State {
+        value = 'foo';
+      }
+
+      const test = Test.new();
+      const didRender = vi.fn();
+
+      const Inner = () => {
+        const state = Test.get();
+
+        didRender();
+
+        return (
+          <button
+            onClick={() => {
+              state.value = 'bar';
+            }}>
+            {state.value}
+          </button>
+        );
+      };
+
+      const element = render(
+        <Provider for={test}>
+          <Inner />
+        </Provider>
+      );
+
+      const button = element.getByRole('button');
+
+      expect(button.textContent).toBe('foo');
+      expect(didRender).toBeCalledTimes(1);
+
+      await act(async () => {
+        button.click();
+        await expect(test).toHaveUpdated('value');
+      });
+
+      expect(test.value).toBe('bar');
+      expect(didRender).toBeCalledTimes(2);
+      expect(button.textContent).toBe('bar');
+    });
+
     it('will use factory with replaced instance', async () => {
       const test1 = Test.new();
       const test2 = Test.new();
@@ -784,7 +883,7 @@ describe('State.get', () => {
       test2.value = 'second';
 
       let current: any = test1;
-      const didCompute = mock();
+      const didCompute = vi.fn();
 
       const Inner = () => {
         return Test.get(($) => {
@@ -892,7 +991,7 @@ describe('State.get', () => {
 
     it('will subscribe peer from context', async () => {
       const bar = Bar.new();
-      const didRender = mock();
+      const didRender = vi.fn();
       const hook = renderWith(bar, () => {
         didRender();
         return Foo.use().bar.value;
@@ -953,7 +1052,7 @@ describe('State.get', () => {
       }
 
       const test = Test.new();
-      const didRender = mock();
+      const didRender = vi.fn();
 
       const Inner = () => {
         didRender();
@@ -1118,7 +1217,7 @@ describe('State.get - nested dependency', () => {
     }
 
     const parent = Parent.new();
-    const didRender = mock();
+    const didRender = vi.fn();
     const hook = renderWith(parent, () => {
       didRender();
       return Parent.get().child.value;
@@ -1132,5 +1231,208 @@ describe('State.get - nested dependency', () => {
 
     expect(hook.result.current).toBe(5);
     expect(didRender).toBeCalledTimes(2);
+  });
+});
+
+describe('State.get - concurrent consistency', () => {
+  class Test extends State {
+    revision = 1;
+  }
+
+  function fixture(test: Test, mutate: (test: Test) => void) {
+    const commits: number[][] = [];
+    let reveal!: () => void;
+    let scheduled = false;
+
+    function Reader({ index }: { index: number }) {
+      const { revision } = Test.get();
+      const started = performance.now();
+
+      while (performance.now() - started < 1) {}
+
+      if (!index && !scheduled) {
+        scheduled = true;
+        setTimeout(() => mutate(test));
+      }
+
+      return <span>{revision}</span>;
+    }
+
+    function Readers() {
+      const root = React.useRef<HTMLDivElement>(null);
+
+      React.useLayoutEffect(() => {
+        commits.push(
+          [...root.current!.querySelectorAll('span')].map((node) =>
+            Number(node.textContent)
+          )
+        );
+      });
+
+      return (
+        <div ref={root}>
+          {Array.from({ length: 40 }, (_, index) => (
+            <Reader key={index} index={index} />
+          ))}
+        </div>
+      );
+    }
+
+    function App() {
+      const [shown, setShown] = React.useState(false);
+      reveal = () => React.startTransition(() => setShown(true));
+      return shown && <Readers />;
+    }
+
+    const view = render(
+      <Provider for={test}>
+        <App />
+      </Provider>
+    );
+
+    return {
+      commits,
+      view,
+      reveal: () => reveal()
+    };
+  }
+
+  it('will not commit mixed revisions across a yielded mount', async () => {
+    const test = Test.new();
+    const { commits, view, reveal } = fixture(test, (test) => {
+      test.revision = 2;
+      test.revision = 3;
+      test.revision = 4;
+    });
+
+    reveal();
+
+    await waitFor(() => {
+      expect(view.container.querySelectorAll('span')).toHaveLength(40);
+    });
+
+    expect(new Set(commits[0]).size).toBe(1);
+
+    await waitFor(() => {
+      expect(view.container.textContent).toBe('4'.repeat(40));
+    });
+  });
+
+  it('will not commit mixed revisions for a transition write', async () => {
+    const test = Test.new();
+    const { commits, view, reveal } = fixture(test, (test) => {
+      pending(() => {
+        test.revision = 2;
+      });
+    });
+
+    reveal();
+
+    await waitFor(() => {
+      expect(view.container.querySelectorAll('span')).toHaveLength(40);
+    });
+
+    expect(new Set(commits[0]).size).toBe(1);
+
+    await waitFor(() => {
+      expect(view.container.textContent).toBe('2'.repeat(40));
+    });
+  });
+});
+
+// Runtime is stubbed with a hand-driven lifecycle (as in runtime.test.ts) so a
+// change can land strictly before vs. after commit - the ordering React itself
+// won't reproduce on demand.
+describe('State.get - pre-commit dispatch', () => {
+  class Test extends State {
+    value = 0;
+  }
+
+  function harness(test: Test) {
+    const refs: { current: any }[] = [];
+    const inited: boolean[] = [];
+    const effects: (() => (() => void) | void)[] = [];
+    const context = new Context({ test });
+    const update = vi.fn();
+    let index = 0;
+
+    Runtime.useContext = (() => context) as typeof Runtime.useContext;
+
+    Runtime.useRef = ((value: any) => {
+      const ref = refs[index] || (refs[index] = { current: value });
+      index++;
+      return ref;
+    }) as typeof Runtime.useRef;
+
+    Runtime.useState = ((value: any) => {
+      const slot = index++;
+      if (!inited[slot]) {
+        inited[slot] = true;
+        if (typeof value === 'function') value();
+      }
+      return [0, update];
+    }) as typeof Runtime.useState;
+
+    Runtime.useEffect = ((fn: any) => void effects.push(fn)) as typeof Runtime.useEffect;
+    Runtime.useSyncExternalStore = undefined;
+
+    return {
+      update,
+      render: () => {
+        index = 0;
+        effects.length = 0;
+        void Test.get().value;
+      },
+      commit: () => effects.forEach((fn) => fn())
+    };
+  }
+
+  let saved: Partial<typeof Runtime>;
+
+  beforeEach(() => void (saved = { ...Runtime }));
+  afterEach(() => void Object.assign(Runtime, saved));
+
+  it('will not dispatch before the attempt commits', async () => {
+    const test = Test.new();
+    const { update, render } = harness(test);
+
+    render();
+    test.value = 1;
+
+    await expect(test).toHaveUpdated();
+
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it('will flush a deferred dispatch once committed', async () => {
+    const test = Test.new();
+    const { update, render, commit } = harness(test);
+
+    render();
+    test.value = 1;
+    test.value = 2;
+
+    await expect(test).toHaveUpdated();
+
+    expect(update).not.toHaveBeenCalled();
+
+    commit();
+
+    expect(update).toHaveBeenCalledTimes(1);
+  });
+
+  it('will dispatch immediately after commit', async () => {
+    const test = Test.new();
+    const { update, render, commit } = harness(test);
+
+    render();
+    commit();
+    update.mockClear();
+
+    test.value = 1;
+
+    await expect(test).toHaveUpdated();
+
+    expect(update).toHaveBeenCalledTimes(1);
   });
 });

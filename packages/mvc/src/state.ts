@@ -1,10 +1,11 @@
-import { Context } from './context';
+import { Context, join } from './context';
 import {
+  capture,
   event,
   listener,
   Observer,
   observer,
-  pending,
+  queued,
   touch,
   watch
 } from './observable';
@@ -16,6 +17,10 @@ const ID = new WeakMap<State, string>();
 
 /** Internal state assigned to states. */
 const STORE = new WeakMap<State, Record<string | number | symbol, unknown>>();
+
+/** States under construction - added on `new`, removed when activated or released.
+ *  Also carries work to run at the deadline, which `def` uses to bound its registry. */
+const PENDING = new Set<State | (() => void)>();
 
 /** External lifecycle listeners for any given State class. */
 const SETUP = new WeakMap<State.Extends, Set<State.Init<any> | State.On<any>>>();
@@ -35,6 +40,13 @@ const GETTERS = new WeakMap<Function, Map<string, () => unknown>>();
 /** Stale flags for compute closures awaiting refresh on next access. */
 const STALE = new WeakSet<() => void>();
 
+/** Whether the deadline which drains `PENDING` is already queued for this tick. */
+let QUEUED = false;
+
+/** Adopters for managed properties which have held a child State. */
+const ADOPT = new WeakMap<State, Map<unknown, (value: unknown) => void>>();
+const CHILDREN = new WeakMap<State, Set<(child: State) => void>>();
+
 declare namespace State {
   /** Any type of State, using own class constructor as its identifier. */
   type Extends<T extends State = State> = (abstract new (...args: any[]) => T) &
@@ -46,6 +58,16 @@ declare namespace State {
 
   /** State constructor arguments */
   type Args<T extends State = any> = (Args<T> | Init<T> | Assign<T> | void)[];
+
+  /**
+   * Value of `static global`. A boolean opts a State in or out of the
+   * process-global root; a resolver decides at activation, receiving the
+   * instance and returning whether it registers - use it to make the choice
+   * conditional (e.g. per environment). A bare literal (`= true` / `= false`)
+   * seals the choice for subclasses; widen a subclass's `static global` type to
+   * `State.Global` to permit a resolver or a later override.
+   */
+  type Global<T extends State = any> = boolean | ((self: T) => boolean);
 
   /**
    * State constructor callback - runs during activation, in argument order,
@@ -180,6 +202,19 @@ declare namespace State {
 }
 
 abstract class State {
+  /**
+   * Whether an instance activated with no enclosing context registers itself
+   * to the process-global root, where `get()` can resolve it from anywhere.
+   * `false` (the default) keeps a context-less instance fully functional but
+   * private - not injectable, though it can still read declared globals. Opt in
+   * with `static readonly global = true`; a resolver (see {@link State.Global})
+   * makes the choice conditional. It must be declared per class - a subclass
+   * that would inherit a global without its own declaration throws on
+   * activation, so an accidental global (a forgotten `Provider`, an extended
+   * global) cannot leak into the shared root.
+   */
+  static readonly global: State.Global = false;
+
   /**
    * Loopback to instance of this state. This is useful when in a subscribed context,
    * to keep write access to `this` after a destructure. You can use it to read variables silently as well.
@@ -393,7 +428,7 @@ abstract class State {
     else if (arg2) apply(self, arg1 as string, arg2);
     else event(self, arg1);
 
-    return pending(self) as State.Updated<this>;
+    return queued(self) as State.Updated<this>;
   }
 
   /**
@@ -492,36 +527,81 @@ function init(state: State, ...args: State.Args) {
 
   function observe() {
     for (const key in state) {
-      const desc = Object.getOwnPropertyDescriptor(state, key)!;
+      const desc: PropertyDescriptor = Object.getOwnPropertyDescriptor(state, key) || {};
+
       if ('value' in desc && desc.configurable) apply(state, key, desc, true);
     }
   }
 
   function register() {
-    if (Context.get(state) === Context.root) return Context.root.add(state);
+    if (Context.get(state) !== Context.root) return;
+
+    const type = state.constructor as typeof State;
+    const g = type.global;
+
+    if (!(typeof g == 'function' ? g(state) : g)) return;
+
+    if (!Object.prototype.hasOwnProperty.call(type, 'global'))
+      throw new Error(
+        `${state} would register as a global by inheritance alone - re-declare \`static global\` on ${type.name} (\`true\` to keep it, \`false\` to opt out).`
+      );
+
+    return Context.root.add(state);
   }
 
-  listener(state, () => {
+  listener(state, (key) => {
+    const rest = trailing(state);
+
+    PENDING.delete(state);
+
+    if (key === null) return null;
+
     parent(state, null);
 
     const queue = [...before, observe, ...args, ...after, register];
 
-    for (let i = 0; i < queue.length; i++) {
-      const arg = queue[i];
-      const out = typeof arg == 'function' ? arg.call(state, state) : arg;
+    capture((release) => {
+      listener(state, () => release(null), null);
 
-      if (out instanceof Promise)
-        out.catch((err) => {
-          console.error(`Async error in constructor for ${state}:`);
-          console.error(err);
-        });
-      else if (Array.isArray(out)) queue.splice(i + 1, 0, ...out);
-      else if (typeof out == 'function') listener(state, out, null);
-      else if (typeof out == 'object') assign(state, out, true);
-    }
+      for (let i = 0; i < queue.length; i++) {
+        const arg = queue[i];
+        const out = typeof arg == 'function' ? arg.call(state, state) : arg;
+
+        if (out instanceof Promise)
+          out.catch((err) => {
+            console.error(`Async error in constructor for ${state}:`);
+            console.error(err);
+          });
+        else if (Array.isArray(out)) queue.splice(i + 1, 0, ...out);
+        else if (typeof out == 'function') listener(state, out, null);
+        else if (typeof out == 'object') assign(state, out, true);
+      }
+    });
+
+    let end = rest.length;
+
+    while (end-- > 0 && PENDING.has(rest[end]));
+
+    for (let i = 0; i < end; i++) PENDING.delete(rest[i]);
 
     return null;
   });
+
+  if (!QUEUED) {
+    QUEUED = true;
+
+    queueMicrotask(() => {
+      QUEUED = false;
+
+      for (const item of PENDING)
+        if (typeof item == 'function') item();
+        else console.warn(`${item} was constructed but never activated.`);
+
+      PENDING.clear();
+    });
+  }
+
+  PENDING.add(state);
 }
 
 /**
@@ -538,10 +618,11 @@ function bootstrap(T: State.Extends) {
   let keys = new Map<string, (value: any) => void>();
   let getters = new Map<string, () => unknown>();
 
-  do {
+  while (true) {
     chain.unshift(T);
+    if (T === State) break;
     T = Object.getPrototypeOf(T);
-  } while (T.name);
+  }
 
   for (const type of chain) {
     for (const handler of SETUP.get(type) || [])
@@ -708,11 +789,8 @@ function apply(
     return;
   }
 
-  const adopt = config.value instanceof State && child(state);
-
   function set(value: unknown, silent?: boolean) {
-    if (!update(state, key, value, silent)) return;
-    if (adopt) adopt(value);
+    update(state, key, value, silent, true);
   }
 
   define(state, key, {
@@ -750,6 +828,13 @@ function apply(
   if ('value' in config) set(config.value, silent);
 }
 
+function provides(ctx: Context, value: State) {
+  while (ctx = ctx.parent!) {
+    const entries = ctx.provide.get(value.constructor as State.Extends);
+    if (entries) for (const [state] of entries) if (state === value) return true;
+  }
+}
+
 function child(state: State) {
   let cleanup: (() => void) | undefined;
   const ctx = Context.get(state);
@@ -766,21 +851,60 @@ function child(state: State) {
 
     if (!(value instanceof State)) return;
 
-    const remove = ctx.add(value);
-
     if (parent(value, state)) {
+      const remove = join(state, value);
       cleanup = () => {
         cancel();
         remove();
         event(value, null);
       };
       const cancel = listener(state, cleanup, null);
-    } else {
-      cleanup = remove;
+    } else if (!provides(ctx, value)) {
+      cleanup = join(state, value);
     }
 
     event(value);
+
+    CHILDREN.get(state)?.forEach((cb) => cb(value));
   };
+}
+
+/**
+ * Pending States constructed after this one - in a parent, the products of
+ * its own initializers, until the last one it kept.
+ */
+function trailing(state: State) {
+  const rest: State[] = [];
+  let seen = false;
+
+  for (const item of PENDING)
+    if (!seen) seen = item === state;
+    else if (item instanceof State) rest.push(item);
+
+  return rest;
+}
+
+/**
+ * Report States adopted by a parent - those already held, then each one
+ * claimed later. Returns a callback to stop watching.
+ */
+function children(state: State, callback: (child: State) => void) {
+  const store = STORE.get(state)!;
+  const keys = ADOPT.get(state);
+
+  if (keys)
+    for (const key of keys.keys()) {
+      const value = store[key as string];
+      if (value instanceof State) callback(value);
+    }
+
+  let set = CHILDREN.get(state);
+
+  if (!set) CHILDREN.set(state, (set = new Set()));
+
+  set.add(callback);
+
+  return () => set!.delete(callback);
 }
 
 /** Currently accumulating export. Stores real values of placeholder properties such as ref() or child states. */
@@ -863,8 +987,8 @@ function assign(state: State, data: State.Assign<State>, silent?: boolean) {
     if (bind) bind.call(state, data[key]);
     else if (getters?.has(key)) continue;
     else if (key in state && key !== 'is') {
-      const desc = Object.getOwnPropertyDescriptor(state, key)!;
-      const set = desc && (desc.set as (value: any, silent?: boolean) => void);
+      const desc: PropertyDescriptor = Object.getOwnPropertyDescriptor(state, key) || {};
+      const set = desc.set as (value: any, silent?: boolean) => void;
 
       if (set) {
         set.call(state, data[key], silent);
@@ -886,7 +1010,8 @@ function update<T>(
   state: State,
   key: State.Event<T>,
   value: T,
-  silent?: boolean
+  silent?: boolean,
+  own?: boolean
 ) {
   if (observer(state) === null) {
     if (silent) return false;
@@ -897,13 +1022,41 @@ function update<T>(
 
   const store = STORE.get(state)!;
 
+  if (value instanceof State) value = value.is as T;
+
   if (key in store && value === store[key]) return false;
 
   store[key] = value;
 
   if (!silent) event(state, key);
 
+  if (own) adopt(state, key, value);
+
   return true;
+}
+
+/**
+ * Hand a value stored by an owning writer to that property's adopter,
+ * creating one the first time a State is stored there. A property which has
+ * held a State keeps its adopter, so a later non-State value releases the
+ * previous child.
+ */
+function adopt(state: State, key: unknown, value: unknown) {
+  let keys = ADOPT.get(state);
+
+  if (!keys) {
+    if (!(value instanceof State)) return;
+    ADOPT.set(state, (keys = new Map()));
+  }
+
+  let claim = keys.get(key);
+
+  if (!claim) {
+    if (!(value instanceof State)) return;
+    keys.set(key, (claim = child(state)));
+  }
+
+  claim(value);
 }
 
 /** Random alphanumberic of length 6; always starts with a letter. */
@@ -935,4 +1088,4 @@ function parent(child: object, value?: State | null) {
   return true;
 }
 
-export { event, unbind, State, parent, STORE, uid, access, update, apply, compute };
+export { event, unbind, State, parent, children, PENDING, STORE, uid, access, update, apply, compute };

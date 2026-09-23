@@ -137,22 +137,25 @@ For a `useEffect` that subscribes to an external source, store the external sour
 
 ```tsx
 class Viewport extends State {
-  width = window.innerWidth;
+  width = Infinity; // desktop-first until measured
 
   get compact() {
     return this.width < 720;
   }
 
-  protected new() {
+  mount() {
     const update = () => {
       this.width = window.innerWidth;
     };
 
+    update();
     window.addEventListener('resize', update);
     return () => window.removeEventListener('resize', update);
   }
 }
 ```
+
+`mount()` runs once when the owning component commits - and never during server render, which is why `window` is safe inside it where a field initializer or `new()` would crash on the server. See [lifecycle hooks](/docs/api/state#lifecycle-hooks).
 
 ### 4c. Move handlers to methods
 
@@ -255,7 +258,7 @@ function Header() {
 }
 ```
 
-> App-wide globals don't even need the Provider - a module-scope `Theme.new()` registers into the root context, findable by `Theme.get()` from anywhere. [See it in the Playground.](/examples/composition/globals)
+> App-wide globals don't even need the Provider - declare the class [`static global`](/docs/guides/context#globals-and-the-root-context) and a module-scope `Theme.new()` registers into the root context, findable by `Theme.get()` from anywhere. [See it in the Playground.](/examples/composition/globals)
 
 Use `Component` instead when the owner needs to exist in the React tree. A `Boundary` may have little UI, but its Suspense/ErrorBoundary placement is the point. A `Toasts` root also belongs in the tree, but it should justify `render()` by injecting toast subcomponents beside the wrapped app.
 
@@ -305,7 +308,7 @@ The class version is shorter, testable without rendering, and shareable across c
 
 <br />
 
-## Step 7 - Bridge to existing hooks with `use()`
+## Step 7 - Bridge to existing React hooks with `use()` method
 
 Some hooks cannot be replaced - `useNavigate`, `useLocation`, `useTranslation`, `useQuery` from a library. To use them inside a State class, define a `use()` method. It runs on every render of the consumer:
 
@@ -330,21 +333,6 @@ function SomeComponent() {
 
 This is the escape hatch - any hook you need can be bridged through `use()`. Use it sparingly; it runs every render. For one-shot setup, prefer `new()`.
 
-The bridge runs the other way too. If an instance already lives outside React - a module-scope controller, a state owned by a non-React system - the free `use()` hook subscribes any component to it:
-
-```tsx
-import { use } from '@expressive/react';
-
-const player = MediaPlayer.new(); // owned elsewhere
-
-function NowPlaying() {
-  const { track, paused } = use(player);
-  return <span>{paused ? '⏸' : '▶'} {track}</span>;
-}
-```
-
-The component subscribes to what it reads, same as always - but lifecycle stays with the owner. Unmounting doesn't destroy the instance.
-
 <br />
 
 ## Step 8 - Leave the rest alone
@@ -366,21 +354,21 @@ this.items.push(item); // no update
 this.items = [...this.items, item]; // works
 ```
 
-Copy-on-write is the habit worth keeping from hooks. But when a collection is mutated *a lot* - a game board, a live buffer, rows edited in place - wrap it with `hot()` and mutate away:
+Copy-on-write is the habit worth keeping from hooks. But when a collection is mutated *a lot* - a game board, a live buffer, rows edited in place - declare it with `has()` and mutate away:
 
 ```ts
-import { hot } from '@expressive/react';
+import { has } from '@expressive/react';
 
 class Game extends State {
-  board = hot(Array(9).fill(''));
+  board = has<string>(Array(9).fill(''));
 
   play(index: number, mark: string) {
-    this.board[index] = mark; // updates, in place
+    this.board.set(index, mark); // updates, in place
   }
 }
 ```
 
-Hot values track per-key, so a component reading `board[4]` only re-renders when that cell changes. See [Arrays & Collections](/docs/guides/collections) for the full contract, or [poke the tic-tac-toe example](/examples/apps/tictactoe) to watch it work.
+A `has()` list tracks per index, so a component reading `board.get(4)` only re-renders when that cell changes; `map()` does the same for entries keyed by name. See [Arrays & Collections](/docs/guides/collections) for the full contract, or [poke the tic-tac-toe example](/examples/featured/tictactoe) to watch it work.
 
 If you just need to signal "this changed" without replacing the value, `this.set('items')` dispatches an update manually.
 
@@ -390,6 +378,8 @@ If you just need to signal "this changed" without replacing the value, `this.set
 const counter = new Counter(); // constructs but does NOT activate
 const counter = Counter.new(); // constructs AND activates - always use this
 ```
+
+The first form warns if nothing activates it before the end of the tick, so this mistake announces itself rather than leaving you with an inert instance.
 
 Inside React, `Counter.use()` handles activation for you.
 
@@ -404,7 +394,7 @@ const { count } = Counter.use();
 count = 5; // just rebinds the local - doesn't update state
 ```
 
-Prefer destructuring `is` first and aliasing it to the state concept, like `const { is: counter, count } = Counter.use();`. Use `counter.count = 5` for writes after destructuring, or don't destructure the fields you write to.
+Writes pass straight through the destructured values, so no alias is needed for most code. Reach for `is` in the one case it earns: retaining the root object alongside sibling values from the same snapshot, like `const { is: counter, count } = Counter.use();`.
 
 <br />
 

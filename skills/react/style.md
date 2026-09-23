@@ -1,10 +1,11 @@
 # Style Profile
 
-These are conventions, not library semantics. They ship with the golden path because they materially improve the auditability of reactive dependency snapshots - the refactor algorithm in [refactor.md](refactor.md) applies them by default. A project may override them; when it does, keep the architectural rules and swap only the formatting.
+Conventions, not library semantics - they keep reactive dependency snapshots auditable, and [refactor.md](refactor.md) applies them by default. A project may override them: keep the architectural rules, swap only the formatting.
 
 ## Snapshot formatting
 
-- When a destructure contains multiple values, put every binding on its own line.
+- A destructure of multiple values puts every binding on its own line.
+- `is` (aliased) is the first binding when retained.
 - Direct properties come first; nested destructures go at the bottom.
 - Expand nested levels vertically - one key per line, closing braces aligned.
 - Optional nested objects take in-place defaults, not a separate unwrap:
@@ -31,13 +32,13 @@ const {
 
 ## Conditions
 
-- Prefer affirmative conditions: test for the state that renders content, not the absence that skips it.
+- Prefer affirmative conditions: test the state that renders content, not the absence that skips it.
 - Conditional JSX uses `condition && <Node />`, not `condition ? <Node /> : null`.
 - Nullish fallback uses `??` where the distinction from `||` matters.
 
 ## Render fallthrough vs operational guards
 
-React accepts `undefined` as an empty render result. A small optional FC uses an affirmative condition and simply falls through when there is nothing to show - no `return null`, no bare terminal `return`:
+React accepts `undefined` as an empty render. A small optional FC uses an affirmative condition and falls through when there is nothing to show - no `return null`, no bare terminal `return`:
 
 ```tsx
 function ResolvedFeeClassifications() {
@@ -49,9 +50,9 @@ function ResolvedFeeClassifications() {
 }
 ```
 
-Do not annotate these components as returning `void` - allow inference.
+Don't annotate them as returning `void` - allow inference. Fallthrough is also how an always-mounted widget owns its gate - step 12 of [refactor.md](refactor.md).
 
-Operational guards are different: a method controlling a workflow uses explicit `return`, because it guards behavior rather than producing a render result:
+Operational guards differ: a workflow method uses explicit `return` - it guards behavior, not a render result:
 
 ```tsx
 downloadIif() {
@@ -60,4 +61,14 @@ downloadIif() {
 }
 ```
 
-If a render guard would skip past most of an already-declared snapshot, the gated content is a candidate for its own component - see step 11 of [refactor.md](refactor.md).
+A render guard skipping most of a declared snapshot marks the gated content as a candidate for its own component - step 13 of [refactor.md](refactor.md).
+
+## Member order
+
+Fields, getters, methods - then lifecycle (`new`/`mount`) and `render()` last, adjacent. Don't park methods between `mount()` and `render()`; the lifecycle pair reads as one unit.
+
+## Layout
+
+Once a route has a model class, colocate: `pages/inbox/` holding `index.tsx` (route shell), page class, domain classes, view slices - not a fat `Inbox.tsx` beside a partial folder. Colocation is project preference, never an audit finding.
+
+Split a module approaching ~400 lines where the cut makes the original easier to read. A single-concern widget earns its file even small; a 30-line wrapper does not - an extraction needs real lines or a real concern unloaded from the parent. Fold back wrappers that turn out to be barrels-in-name. Apply during a conversion like the rest of this profile; report in the style lane.

@@ -1,5 +1,5 @@
 import { listener } from '../observable';
-import { State, STORE, uid, apply } from '../state';
+import { PENDING, State, STORE, uid, apply } from '../state';
 
 declare namespace def {
   /**
@@ -18,11 +18,21 @@ declare namespace def {
   }
 }
 
-const APPLY = new Map<symbol, def.Factory>();
+const APPLY = new Map<symbol, [def.Factory, State[]] | null>();
+const RESET = () => APPLY.clear();
 
 function def<T>(arg1: def.Factory<T>) {
+  if (!PENDING.size || (PENDING.size == 1 && PENDING.has(RESET)))
+    throw new Error(
+      'Instruction created with no State under construction.'
+    );
+
+  PENDING.add(RESET);
+
   const token = Symbol('field-' + uid());
-  APPLY.set(token, arg1);
+
+  APPLY.set(token, [arg1, [...PENDING].filter((x) => x instanceof State) as State[]]);
+
   return token as T extends void ? unknown : T;
 }
 
@@ -30,12 +40,20 @@ State.on((self) => {
   const store = STORE.get(self)!;
 
   for (const key in self) {
-    const property = Object.getOwnPropertyDescriptor(self, key)!;
-    const instruction = APPLY.get(property.value);
+    const property: PropertyDescriptor = Object.getOwnPropertyDescriptor(self, key) || {};
+    const entry = APPLY.get(property.value);
 
-    if (!instruction) continue;
+    if (entry === null)
+      throw new Error(
+        `${self}.${key} has an instruction applied to another State.`
+      );
 
-    APPLY.delete(property.value);
+    if (!entry) continue;
+
+    const [instruction, pending] = entry;
+
+    APPLY.set(property.value, null);
+    discard(self, pending);
     delete (self as any)[key];
 
     const output = instruction.call(self, key, self, store);
@@ -49,5 +67,17 @@ State.on((self) => {
     apply(self, key, desc, true);
   }
 });
+
+/**
+ * Drop pending States constructed after `self` and before the instruction -
+ * products of its own initializers, discarded when this token replaced them.
+ */
+function discard(self: State, pending: State[]) {
+  let seen = false;
+
+  for (const item of pending)
+    if (!seen) seen = item === self;
+    else PENDING.delete(item);
+}
 
 export { def };

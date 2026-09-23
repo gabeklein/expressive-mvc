@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "target": "es2020",
+    "module": "ESNext",
+    "useDefineForClassFields": true,
+    "esModuleInterop": true,
+    "lib": ["ES2023", "DOM"],
+    "moduleResolution": "bundler",
+    "skipLibCheck": true,
+    "noUnusedLocals": true,
+    "sourceMap": true,
+    "strict": true,
+    "types": ["node"],
+    "paths": {
+      "@expressive/mvc/*": ["../mvc/src/*"],
+      "@expressive/*": ["../*/src"]
+    }
+  },
+  "exclude": ["node_modules", "dist", "vitest.config.ts"]
+}

@@ -23,6 +23,26 @@ import State, { Component, Provider, get, set, ref } from '@expressive/react';
 
 > Working with an agent? `npx skills add gabeklein/expressive-mvc` teaches it the whole API in one shot.
 
+### Requirements
+
+React **16.14 or newer** — interacts with `react/jsx-runtime`. React is a peer dependency; nothing else is.
+
+On **React 18+** the adapter will validate model revisions before each commit, so a concurrent render that yields mid-work can never commit a tree mixing two revisions of one model. React 16 and 17 do not yield mid-render, so nothing to validate — behavior is equivalent - no interleaving to protect against. See [Concurrent rendering](/docs/guides/concurrent) for the full contract.
+
+### Size
+
+The whole install is about **11 kB** gzip with everything imported, and closer to **9 kB** for a typical app. Numbers are measured per import shape and gated in CI — see [Bundle size](/docs/guides/bundle-size).
+
+### React Native
+
+The same package covers React Native and Expo — Metro resolves the adapter without extra configuration.
+
+There is nothing renderer-specific to port — the adapter imports only `react` and `react/jsx-runtime` — and it has been exercised on an iOS simulator and an Android emulator in both Debug and Release builds: render and re-render on write through the native renderer, context through a `Provider`, suspense, and error recovery. Every release additionally gates on a check that installs the published tarballs into a throwaway Expo app (SDK 57, React Native 0.86) and asserts Metro resolves them for iOS and Android, that the build compiles to Hermes bytecode, and that class fields keep their semantics under either of Metro's transform paths. Three things to know:
+
+- Testing with `jest-expo` needs `@expressive` added to `transformIgnorePatterns`, because the build is ESM-only and Jest skips `node_modules` by default.
+- `BrowserRouter` from `@expressive/router` reads `window.location`, which React Native does not define. Use `Router` instead — it keeps path and history in memory.
+- `Link` and `NavLinks` render `<a>` and `<ul>`, which have no native host yet. Drive navigation from `Router` and render your own `Pressable`.
+
 <br />
 
 ## Your first state
@@ -101,9 +121,13 @@ class TodoApp extends State {
     return this.items.filter((i) => !i.done).length;
   }
 
-  new() {
+  mount() {
     const saved = localStorage.getItem('todos');
-    if (saved) this.items = JSON.parse(saved);
+
+    if (saved) {
+      this.items = JSON.parse(saved);
+      this.nextId = Math.max(0, ...this.items.map((i) => i.id)) + 1;
+    }
 
     return this.set('items', () => {
       localStorage.setItem('todos', JSON.stringify(this.items));
@@ -158,7 +182,7 @@ function TodoList() {
 }
 ```
 
-> Notice what the component *doesn't* have: no effects, no memoization, no derived state in the render body, no setup. It's a pure projection of the state - `new()` handles persistence, `remaining` keeps itself current, and `set('items', ...)` runs whenever the list changes.
+> Notice what the component *doesn't* have: no effects, no memoization, no derived state in the render body, no setup. It's a pure projection of the state - [`mount()`](/docs/api/state#lifecycle-hooks) handles persistence once the component commits (client-only, so `localStorage` is safe even under server render), `remaining` keeps itself current, and `set('items', ...)` runs whenever the list changes.
 
 <br />
 

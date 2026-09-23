@@ -1,4 +1,4 @@
-import { mock, describe, it, expect } from 'bun:test';
+import { vi, describe, it, expect } from 'vitest';
 import { State } from '../state';
 import { def } from './def';
 
@@ -10,11 +10,29 @@ describe('instruction', () => {
       });
     }
 
-    const didApply = mock();
+    const didApply = vi.fn();
 
     Test.new();
 
     expect(didApply).toBeCalledWith('property');
+  });
+
+  it('will skip enumerable properties inherited from prototype', () => {
+    class Test extends State {
+      property = def(() => ({ value: 'hello' }));
+    }
+
+    Object.defineProperty(Test.prototype, 'legacy', {
+      value: 'world',
+      enumerable: true,
+      writable: true,
+      configurable: true
+    });
+
+    const test = Test.new();
+
+    expect(test.property).toBe('hello');
+    expect((test as any).legacy).toBe('world');
   });
 
   describe('symbol', () => {
@@ -57,7 +75,7 @@ describe('instruction', () => {
 
   describe('getter', () => {
     it('will run upon access', () => {
-      const mockAccess = mock((_subscriber: State) => 'foobar');
+      const mockAccess = vi.fn((_subscriber: State) => 'foobar');
 
       class Test extends State {
         property = def(() => ({ get: mockAccess }));
@@ -71,7 +89,7 @@ describe('instruction', () => {
     });
 
     it('will pass subscriber if within one', () => {
-      const didGetValue = mock();
+      const didGetValue = vi.fn();
 
       class Test extends State {
         property = def(() => ({ get: didGetValue }));
@@ -92,7 +110,7 @@ describe('instruction', () => {
       }
 
       const test = Test.new();
-      const effect = mock((test: Test) => void test.value);
+      const effect = vi.fn((test: Test) => void test.value);
 
       test.get(effect);
       test.value = 'foo';
@@ -118,7 +136,7 @@ describe('instruction', () => {
 
     describe('function', () => {
       it('will ignore update if callback throws false', async () => {
-        const setValue = mock((value) => {
+        const setValue = vi.fn((value) => {
           if (value == 'ignore') throw false;
         });
 
@@ -200,7 +218,7 @@ describe('instruction', () => {
         }
 
         const test = Test.new();
-        const didUpdate = mock();
+        const didUpdate = vi.fn();
 
         test.set(didUpdate);
 
@@ -216,7 +234,7 @@ describe('instruction', () => {
 
   describe('cleanup', () => {
     it('will call cleanup function on destroy', () => {
-      const cleanup = mock();
+      const cleanup = vi.fn();
 
       class Test extends State {
         property = def(() => cleanup);
@@ -230,7 +248,7 @@ describe('instruction', () => {
     });
 
     it('will call config destroy on destroy', () => {
-      const destroy = mock();
+      const destroy = vi.fn();
 
       class Test extends State {
         property = def(() => ({
@@ -246,5 +264,50 @@ describe('instruction', () => {
       test.set(null);
       expect(destroy).toBeCalled();
     });
+  });
+});
+
+describe('reuse', () => {
+  it('will throw if instruction already applied elsewhere', () => {
+    let stolen: any;
+
+    class Source extends State {
+      value: any = (stolen = def(() => ({ value: 42 })));
+    }
+
+    expect(Source.new().value).toBe(42);
+
+    class Thief extends State {
+      value: any = stolen;
+    }
+
+    expect(() => Thief.new()).toThrowError(
+      /has an instruction applied to another State/
+    );
+  });
+
+  it('will throw if created outside a construction', () => {
+    expect(() => def(() => ({ value: 1 }))).toThrowError(
+      /no State under construction/
+    );
+  });
+
+  it('will throw once construction has completed', () => {
+    class Test extends State {
+      value: any = def(() => ({ value: 1 }));
+    }
+
+    expect(Test.new().value).toBe(1);
+    expect(() => def(() => ({ value: 2 }))).toThrowError(
+      /no State under construction/
+    );
+  });
+
+  it('will not throw for an unrelated symbol', () => {
+    class Test extends State {
+      tag: any = Symbol('mine');
+    }
+
+    expect(String(Test.new().tag)).toBe('Symbol(mine)');
   });
 });

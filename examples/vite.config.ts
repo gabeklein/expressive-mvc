@@ -13,6 +13,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@common': fileURLToPath(new URL('./common', import.meta.url)),
+      '@expressive/inspect': src('inspect'),
       '@expressive/router': src('router'),
       '@expressive/react': src('react'),
       '@expressive/mvc': src('mvc')

@@ -1,10 +1,14 @@
 # `ref` - Mutable References
 
+Runnable source: [`ref`](https://expressive.dev/examples/instructions/ref) and [`ref-multiple`](https://expressive.dev/examples/instructions/ref-multiple) - complete programs, served as HTML.
+
 ```ts
 import { ref } from '@expressive/mvc';
 ```
 
-Holds a mutable value (like React's `useRef`). Updates to ref values are part of the state event stream but do not make the property enumerable.
+> React apps import these from `@expressive/react` - the adapter re-exports every instruction. Examples below show the core import; do not add `@expressive/mvc` to a React app's `package.json`.
+
+Holds a mutable value (like React's `useRef`). Writes join the state event stream; the property stays non-enumerable.
 
 ## Overloads
 
@@ -21,7 +25,7 @@ state.element.current; // HTMLDivElement | null
 state.element.current = div; // set via .current
 ```
 
-Returns a `ref.Object<T>` - simultaneously a callable function and an object with `.current`.
+Returns a `ref.Object<T>` - both a callable function and an object with `.current`.
 
 ### Ref with Callback
 
@@ -31,22 +35,14 @@ class MyState extends State {
     console.log('element attached:', el);
     return (next) => console.log('replaced with:', next);
   });
-}
-```
 
-Callback fires when value is set (not on null by default). Return function is called when value is overwritten, receiving the new value.
-
-### Ref with Callback (include null)
-
-```ts
-class MyState extends State {
-  node = ref<HTMLElement | null>((el) => {
+  any = ref<HTMLElement | null>((el) => {
     console.log('value is:', el); // fires for null too
   }, false);
 }
 ```
 
-Pass `false` as second argument to also fire callback when set to `null`.
+The callback fires when a value is set - skipping `null` unless `false` is passed second. A returned function runs when the value is overwritten, receiving the new value.
 
 ### Ref Proxy
 
@@ -62,14 +58,13 @@ const { is: form } = Form.use();
 form.refs.name; // ref.Object<string>
 form.refs.name.current; // current value of form.name
 form.refs.name.current = 'new'; // updates form.name
-form.refs.email; // ref.Object<string>
 ```
 
-Creates ref objects for every enumerable property on the state. Each ref has `.current` (get/set), `.get()` (value or subscribe), `.is` (parent state), and `.key` (property name).
+A ref object for every enumerable property, each with `.current` (get/set), `.get()` (value or subscribe), `.is` (parent state), and `.key` (property name).
 
-- Reactive computed getters (e.g. `get foo() { ... }`) are included but read-only.
-- Factory-based properties (`set(() => ...)`) are excluded (non-enumerable).
-- Must pass `this` - any other object throws.
+- Computed getters (`get foo() { ... }`) are included, read-only.
+- `set(...)` properties are excluded (non-enumerable).
+- Takes a State instance (normally `this`); a plain object throws.
 
 ### Custom Ref Proxy
 
@@ -81,7 +76,7 @@ class Form extends State {
 }
 ```
 
-Map function runs lazily on first access per key. Return value is cached.
+The map function runs lazily on first access per key; its result is cached.
 
 ## `ref.Object<T>` Interface
 
@@ -111,7 +106,6 @@ type ref.CustomProxy<T, R> = { [P in State.Field<T>]-?: R } & { get(): T };
 ## Behavior
 
 - Ref values are exported by `state.get()` (snapshots).
-- Ref values are accessible through tracking proxies in effects.
-- Setting `.current` dispatches an event for the property key.
+- `.current` is imperative: reading it does **not** subscribe, even inside a render or effect. For a reactive read, subscribe with `field.get(callback)` or read the field through the state's tracking proxy (`state.foo`).
+- Writing `.current` dispatches an event for the property key.
 - Callback cleanup resets nested effects (same capture semantics as `set` callbacks).
-- `null` callback is skipped by default; pass `false` as second arg to include it.

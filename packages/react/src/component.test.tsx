@@ -1,9 +1,10 @@
-import { render, screen, act } from '@testing-library/react';
-import { mock, expect, it, describe } from 'bun:test';
-import React from 'react';
+import { render, screen, act, waitFor } from '@testing-library/react';
+import { vi, expect, it, describe } from 'vitest';
+import { renderToString } from 'react-dom/server';
+import React, { Suspense } from 'react';
 
 import { mockError, mockPromise, flushMicrotasks } from '../test.setup';
-import { Component, Consumer, set } from '.';
+import { Component, Consumer, State, pending, set } from '.';
 
 it('will create and provide instance', () => {
   class Control extends Component {
@@ -38,7 +39,7 @@ it('will create instance only once', () => {
     }
   }
 
-  const didConstruct = mock();
+  const didConstruct = vi.fn();
   const { rerender } = render(<Control />);
 
   expect(didConstruct).toBeCalled();
@@ -51,7 +52,7 @@ it('will create instance only once', () => {
 it('will call is method on creation', () => {
   class Control extends Component {}
 
-  const didCreate = mock();
+  const didCreate = vi.fn();
 
   const screen = render(<Control is={didCreate} />);
 
@@ -61,6 +62,117 @@ it('will call is method on creation', () => {
   expect(didCreate).toBeCalledTimes(1);
 
   act(screen.unmount);
+});
+
+it('will transition Component dispatch', async () => {
+  const gate = mockPromise<void>();
+
+  class Control extends Component {
+    value = 'a';
+
+    render() {
+      if (this.value === 'b') throw gate;
+      return <span>{this.value}</span>;
+    }
+  }
+
+  let instance!: Control;
+  let setLocal!: React.Dispatch<React.SetStateAction<string>>;
+
+  function View() {
+    const [local, update] = React.useState('a');
+    setLocal = update;
+
+    return <>{local}<Control is={(current) => void (instance = current)} /></>;
+  }
+
+  const view = render(
+    <Suspense fallback={<i>loading</i>}>
+      <View />
+    </Suspense>
+  );
+
+  await act(async () => {
+    pending(() => {
+      setLocal('b');
+      instance.value = 'b';
+    });
+    await Promise.resolve();
+  });
+
+  // Local state updates urgently - pending() scopes to mvc-driven updates - while
+  // the Component holds its own content rather than suspending to fallback.
+  expect(view.container.querySelector('i')).toBeNull();
+  expect(view.container.textContent).toBe('ba');
+
+  instance.value = 'c';
+  gate.resolve();
+  await act(async () => {});
+
+  expect(view.container.textContent).toBe('bc');
+});
+
+it('will not commit mixed revisions across repeated placement', async () => {
+  let scheduled = false;
+
+  class Control extends Component {
+    revision = 1;
+
+    render() {
+      const { revision } = this;
+      const started = performance.now();
+
+      while (performance.now() - started < 1) {}
+
+      if (!scheduled) {
+        scheduled = true;
+        setTimeout(() => {
+          this.revision = 2;
+        });
+      }
+
+      return <span>{revision}</span>;
+    }
+  }
+
+  const instance = Control.new();
+  const commits: number[][] = [];
+  let reveal!: () => void;
+
+  function Placements() {
+    const root = React.useRef<HTMLDivElement>(null);
+
+    React.useLayoutEffect(() => {
+      commits.push(
+        [...root.current!.querySelectorAll('span')].map((node) =>
+          Number(node.textContent)
+        )
+      );
+    });
+
+    return (
+      <div ref={root}>
+        {Array.from({ length: 40 }, (_, index) => (
+          <div key={index}>{instance}</div>
+        ))}
+      </div>
+    );
+  }
+
+  function App() {
+    const [shown, setShown] = React.useState(false);
+    reveal = () => React.startTransition(() => setShown(true));
+    return shown && <Placements />;
+  }
+
+  const view = render(<App />);
+  reveal();
+
+  await waitFor(() => {
+    expect(view.container.querySelectorAll('span')).toHaveLength(40);
+  });
+
+  expect(new Set(commits[0]).size).toBe(1);
 });
 
 describe('ref prop', () => {
@@ -82,7 +194,7 @@ describe('ref prop', () => {
   it('will invoke callback ref with instance', () => {
     class Control extends Component {}
 
-    const cb = mock();
+    const cb = vi.fn();
     const screen = render(<Control ref={cb} />);
 
     expect(cb).toBeCalled();
@@ -96,7 +208,7 @@ describe('ref prop', () => {
 
 describe('new method', () => {
   it('will call if exists', () => {
-    const didCreate = mock();
+    const didCreate = vi.fn();
 
     class Test extends Component {
       protected new() {
@@ -111,6 +223,91 @@ describe('new method', () => {
     element.rerender(<Test />);
 
     expect(didCreate).toBeCalledTimes(1);
+  });
+});
+
+describe('mount method', () => {
+  it('will call once on commit', () => {
+    const didMount = vi.fn();
+
+    class Test extends Component {
+      mount() {
+        didMount();
+      }
+    }
+
+    const element = render(<Test />);
+
+    expect(didMount).toBeCalledTimes(1);
+
+    element.rerender(<Test />);
+
+    expect(didMount).toBeCalledTimes(1);
+  });
+
+  it('will run returned callback on unmount', () => {
+    const didUnmount = vi.fn();
+
+    class Test extends Component {
+      mount() {
+        return didUnmount;
+      }
+    }
+
+    const element = render(<Test />);
+
+    expect(didUnmount).not.toBeCalled();
+
+    element.unmount();
+
+    expect(didUnmount).toBeCalledTimes(1);
+  });
+
+  it('will not repeat under strict mode', () => {
+    const didMount = vi.fn();
+    const didUnmount = vi.fn();
+
+    class Test extends Component {
+      mount() {
+        didMount();
+        return didUnmount;
+      }
+    }
+
+    const element = render(<Test />, { reactStrictMode: true });
+
+    expect(didMount).toBeCalledTimes(1);
+
+    element.unmount();
+
+    expect(didUnmount).toBeCalledTimes(1);
+  });
+
+  it('will not call during server render', () => {
+    const didMount = vi.fn();
+
+    class Test extends Component {
+      mount() {
+        didMount();
+      }
+
+      render() {
+        return <span>hello</span>;
+      }
+    }
+
+    expect(renderToString(<Test />)).toContain('<span>hello</span>');
+    expect(didMount).not.toBeCalled();
+  });
+});
+
+describe('use method', () => {
+  it('will throw if called as a hook', () => {
+    class Test extends Component {}
+
+    expect(() => (Test as any).use()).toThrow(
+      'Test is a Component - render as an element instead of calling use().'
+    );
   });
 });
 
@@ -166,7 +363,7 @@ describe('element props', () => {
       value = set('foobar', didSet);
     }
 
-    const didSet = mock();
+    const didSet = vi.fn();
 
     render(<Foo value="barfoo" />);
 
@@ -228,7 +425,7 @@ describe('element children', () => {
       children = set<React.ReactNode>(undefined, didUpdate);
     }
 
-    const didUpdate = mock();
+    const didUpdate = vi.fn();
     const screen = render(<Control>Hello</Control>);
 
     expect(screen).toHaveText('Hello');
@@ -267,7 +464,7 @@ describe('props property', () => {
   });
 
   it('will be observable', async () => {
-    const didUpdate = mock();
+    const didUpdate = vi.fn();
 
     class Control extends Component {
       protected new() {
@@ -294,7 +491,7 @@ describe('props property', () => {
   });
 
   it('will not cause redundant render', async () => {
-    const didRender = mock();
+    const didRender = vi.fn();
     let control: Control;
 
     class Control extends Component {
@@ -605,7 +802,7 @@ describe('suspense', () => {
 describe('unmount', () => {
   for (const reactStrictMode of [false, true])
     it('will dispose instance' + (reactStrictMode ? ' (strict)' : ''), () => {
-      const didDispose = mock();
+      const didDispose = vi.fn();
 
       class Control extends Component {
         protected new() {
@@ -679,6 +876,52 @@ describe('state props on rerender', () => {
     view.rerender(<Control value="baz" />);
 
     expect(screen).toHaveText('bar');
+  });
+
+  it('will own a fresh state passed as prop', () => {
+    class Thing extends State {
+      value = 'foo';
+    }
+
+    class Control extends Component {
+      thing?: Thing = undefined;
+
+      render() {
+        return <span>{this.thing!.value}</span>;
+      }
+    }
+
+    const thing = new Thing();
+    const view = render(<Control thing={thing} />);
+
+    expect(screen).toHaveText('foo');
+
+    view.unmount();
+
+    expect(thing.get(null)).toBe(true);
+  });
+
+  it('will not own an active state passed as prop', () => {
+    class Thing extends State {
+      value = 'foo';
+    }
+
+    class Control extends Component {
+      thing?: Thing = undefined;
+
+      render() {
+        return <span>{this.thing!.value}</span>;
+      }
+    }
+
+    const thing = Thing.new();
+    const view = render(<Control thing={thing} />);
+
+    expect(screen).toHaveText('foo');
+
+    view.unmount();
+
+    expect(thing.get(null)).toBe(false);
   });
 });
 
@@ -873,6 +1116,22 @@ describe('subcomponents', () => {
     expect(error).not.toBeCalled();
   });
 
+  it('will render from owner not yet activated', () => {
+    class Control extends Component {
+      value = 'foo';
+
+      Sidebar() {
+        return <span>{this.value}</span>;
+      }
+    }
+
+    const control = new Control({});
+
+    render(<control.Sidebar />);
+
+    expect(screen).toHaveText('foo');
+  });
+
   it('will wrap PascalCase method as reactive component', async () => {
     class Dashboard extends Component {
       label = 'Hello';
@@ -958,6 +1217,88 @@ describe('subcomponents', () => {
 
     await act(async () => {
       dashboard.content = 'updated';
+    });
+
+    expect(screen).toHaveText('Sidebar updated');
+  });
+
+  it('will work with function assigned in constructor', async () => {
+    class Dashboard extends Component {
+      Sidebar(): React.ReactNode {
+        return null;
+      }
+
+      render() {
+        return <this.Sidebar />;
+      }
+    }
+
+    function Sidebar(this: Defined) {
+      return <span>Sidebar {this.content}</span>;
+    }
+
+    class Defined extends Dashboard {
+      content = 'value';
+      Sidebar = Sidebar;
+    }
+
+    class Assigned extends Dashboard {
+      content = 'value';
+
+      constructor(props: {}) {
+        super(props);
+        this.Sidebar = Sidebar as any;
+      }
+    }
+
+    for (const Type of [Defined, Assigned]) {
+      let instance!: Defined;
+
+      const { unmount } = render(
+        <Type is={(x) => (instance = x as Defined)} />
+      );
+
+      expect(screen).toHaveText('Sidebar value');
+
+      await act(async () => {
+        instance.content = 'updated';
+      });
+
+      expect(screen).toHaveText('Sidebar updated');
+      unmount();
+    }
+  });
+
+  it('will work with function assigned after activation', async () => {
+    class Dashboard extends Component {
+      content = 'value';
+
+      Sidebar(): React.ReactNode {
+        return null;
+      }
+
+      render() {
+        return <this.Sidebar />;
+      }
+    }
+
+    let instance!: Dashboard;
+
+    render(
+      <Dashboard
+        is={(x) => {
+          instance = x;
+          x.Sidebar = function (this: Dashboard) {
+            return <span>Sidebar {this.content}</span>;
+          };
+        }}
+      />
+    );
+
+    expect(screen).toHaveText('Sidebar value');
+
+    await act(async () => {
+      instance.content = 'updated';
     });
 
     expect(screen).toHaveText('Sidebar updated');
@@ -1182,8 +1523,8 @@ describe('subcomponents', () => {
 
 describe('strict mode', () => {
   it('will not create two instances', async () => {
-    const didCreate = mock();
-    const didDestroy = mock();
+    const didCreate = vi.fn();
+    const didDestroy = vi.fn();
 
     class Control extends Component {
       foo = 'bar';
@@ -1211,7 +1552,7 @@ describe('strict mode', () => {
   });
 
   it('will refresh via property update', async () => {
-    const didRender = mock();
+    const didRender = vi.fn();
     let instance!: Control;
 
     class Control extends Component {
@@ -1255,7 +1596,7 @@ describe('strict mode', () => {
   });
 
   it('will refresh via props update', async () => {
-    const didRender = mock();
+    const didRender = vi.fn();
 
     class Control extends Component {
       foo = 'bar';
@@ -1290,7 +1631,7 @@ describe('strict mode', () => {
   });
 
   it('will survive define-semantics field clobber', async () => {
-    const didAttemptConstruct = mock();
+    const didAttemptConstruct = vi.fn();
 
     class Control extends Component {
       foo = 'foo';
@@ -1310,7 +1651,7 @@ describe('strict mode', () => {
 
     expect(didAttemptConstruct).toBeCalledTimes(2);
 
-    const effect = mock();
+    const effect = vi.fn();
     instance.get(($) => {
       effect($.foo);
     });

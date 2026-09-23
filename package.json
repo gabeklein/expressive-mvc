@@ -10,24 +10,27 @@
   "scripts": {
     "test": "bun run --filter='./packages/*' test",
     "build": "bun run --filter='./packages/*' build",
-    "build:site": "bun run build && bun run --filter website build",
+    "build:site": "bun run build && bun .github/scripts/size-limit.ts && bun run --filter website build",
     "changeset": "changeset",
     "wrap": "changeset",
     "ci:version": "changeset version && bun install",
-    "ci:publish": "bun run --filter='./packages/*' build && changeset publish",
+    "ci:publish": "bun run --filter='./packages/*' build && bun .github/scripts/dist-smoke.ts && bun .github/scripts/native-check.ts && changeset publish",
     "pr": "bash .github/scripts/pr.sh",
     "tunnel": "cloudflared tunnel --no-autoupdate ${TUNNEL_NAME:+run} --url http://localhost:5173 ${TUNNEL_NAME:-}",
     "watch": "bun test --watch --only-failures",
     "nuke": "find . -name 'node_modules' -type d -prune -exec rm -rf '{}' +"
   },
   "devDependencies": {
-    "@changesets/changelog-github": "^0.7.0",
-    "@changesets/cli": "^2.31.0",
-    "@happy-dom/global-registrator": "^20.9.0",
+    "@changesets/changelog-github": "^1.0.1",
+    "@changesets/cli": "^3.0.3",
     "@types/bun": "^1.3.14",
     "@types/node": "^25.2.0",
     "@types/react": "^19",
-    "typescript": "^5.9.3"
+    "@vitest/coverage-istanbul": "^4.1.10",
+    "@vitest/utils": "^4.1.10",
+    "happy-dom": "^20.11.1",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.10"
   },
   "engines": {
     "node": "^20.19.0 || ^22.12.0 || >=24.0.0"

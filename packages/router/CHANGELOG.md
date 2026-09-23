@@ -1,5 +1,137 @@
 # @expressive/router
 
+## 0.8.0
+
+### Minor Changes
+
+- [#359](https://github.com/gabeklein/expressive-mvc/pull/359) [`d0f6397`](https://github.com/gabeklein/expressive-mvc/commit/d0f63976b2c4b3bfe10aca9041e98c96fe9b8274) Add reactive fragment state through `Router.hash`, preserving fragments across
+  navigation, history, relative links, query changes, and browser synchronization.
+  Fragment navigation does not scroll or focus an element automatically.
+
+- [#360](https://github.com/gabeklein/expressive-mvc/pull/360) [`3e19606`](https://github.com/gabeklein/expressive-mvc/commit/3e196069b7a1a96f620819f6b1b44a692721f018) Add arbitrary history traversal through `Router.go(delta)`, retain `back()` as
+  its common convenience, and remove `forward()`. Memory history storage is now a
+  protected implementation detail.
+
+- [#349](https://github.com/gabeklein/expressive-mvc/pull/349) [`6026bf3`](https://github.com/gabeklein/expressive-mvc/commit/6026bf35d3255b24ac8cb5157a2f0135e3f9ff9e) Navigation now commits through `Router.navigate`, which applies it with `pending()`, so moving to a page that is not ready yet holds the current screen until it is, rather than flashing the route's `fallback`. Cold load still falls back.
+
+  For in-app navigation, `BrowserRouter` now writes the address once the navigation is on screen rather than on click. Pushing on click left the address describing a page nobody had seen, so a Back press during the wait returned to what was already displayed and history collected entries for unseen pages. Browser-driven navigation (`popstate` or an external History API call) necessarily changes the address first, then settles the matching screen.
+
+  Direct `query.set`, `delete`, and `clear` writes use the same navigation path. Overlapping navigation is latest-wins: a superseded navigation cannot later change history or clear the active navigation's status.
+
+  `Router.navigating` reports a navigation which has yet to appear - drive progress bars, `aria-busy`, disabled controls from it. Read it beside the outgoing screen or in a wrapper around it, never inside the page itself, which would render that page urgently against the new path and forfeit the hold.
+
+  Reporting works whether the router is rendered (`<BrowserRouter>...</BrowserRouter>`) or only provided - settlement comes from the subscribers a navigation touched, not from a hook mounted in the tree.
+
+  Override `navigate(work)` to stage the swap differently - `work` applies the navigation and must run. Status and latest-wins settlement wrap that seam, so an override need not call `super`. Every navigation routes through one protected `next()` seam, so `BrowserRouter` overrides only that rather than `goto`.
+
+- [#363](https://github.com/gabeklein/expressive-mvc/pull/363) [`ea80c1a`](https://github.com/gabeklein/expressive-mvc/commit/ea80c1a28416c6ee49b39a4e2e870390240e9915) Rename the scoped no-match `Route` prop from `default` to `none`. Replace
+  `<Route default ...>` with `<Route none ...>`; matching and force-404 behavior
+  are unchanged.
+
+### Patch Changes
+
+- [#358](https://github.com/gabeklein/expressive-mvc/pull/358) [`b8a106b`](https://github.com/gabeklein/expressive-mvc/commit/b8a106b5f252563f9b15324a0e5ef6d6e609305c) `Link` now leaves non-`_self` targets and downloads to the browser instead of
+  hijacking their plain left-clicks for SPA navigation.
+
+- [#357](https://github.com/gabeklein/expressive-mvc/pull/357) [`3b33a40`](https://github.com/gabeklein/expressive-mvc/commit/3b33a40ba6b660ed690a5181e8a79c6ed1b21a74) `Link` now preserves external targets and leaves their clicks to the browser.
+  Scheme-bearing and protocol-relative URLs no longer collapse to the app root or
+  enter SPA navigation.
+
+- [#361](https://github.com/gabeklein/expressive-mvc/pull/361) [`1a60798`](https://github.com/gabeklein/expressive-mvc/commit/1a607980088451d913f789792c12427eeadcb5cb) Routes under a nested Router no longer inherit the base path of an outer Route.
+
+- [#356](https://github.com/gabeklein/expressive-mvc/pull/356) [`5d41ee6`](https://github.com/gabeklein/expressive-mvc/commit/5d41ee699180c8f4978ab0c061ddb13c55383efd) Relative route navigation now preserves its query string. `Route.resolve`,
+  `Route.goto`, and `Link` no longer turn a target such as
+  `./edit?tab=history` into `/edit`.
+
+- [#369](https://github.com/gabeklein/expressive-mvc/pull/369) [`e4422a3`](https://github.com/gabeklein/expressive-mvc/commit/e4422a378a476d89ef7b3bcd1f2c82e4b832aa1d) Re-run a function `redirect` guard when the route's own params change. Navigating `/vault/a` -> `/vault/b` on `vault/:doc` previously reused the first document's verdict; navigation below the route still reuses it.
+
+- [#369](https://github.com/gabeklein/expressive-mvc/pull/369) [`e4422a3`](https://github.com/gabeklein/expressive-mvc/commit/e4422a378a476d89ef7b3bcd1f2c82e4b832aa1d) Fix the app-level `none` Route also rendering when navigation enters a section that ceded its layout slot on the previous screen.
+- Updated dependencies [[`94e741a`](https://github.com/gabeklein/expressive-mvc/commit/94e741a9eace7979b02bd0dda54c9037385c02d8), [`43febba`](https://github.com/gabeklein/expressive-mvc/commit/43febbab17359b099554dfb1a561cf3e463237d5), [`bfdf4ea`](https://github.com/gabeklein/expressive-mvc/commit/bfdf4eaf3cb06ccd8fbdb3d5813a6e45d2d39e53), [`397dae7`](https://github.com/gabeklein/expressive-mvc/commit/397dae7060d9f9ad0ecb657b492b844a1d77b0de), [`d0ea0ed`](https://github.com/gabeklein/expressive-mvc/commit/d0ea0ed4a91db45dd8dd3173975d8cd8d1b87826)]:
+  - @expressive/mvc@0.85.0
+
+## 0.7.1
+
+### Patch Changes
+
+- [#324](https://github.com/gabeklein/expressive-mvc/pull/324) [`ae97d53`](https://github.com/gabeklein/expressive-mvc/commit/ae97d531e7f1988d9d0e6956db4485505f03c398) A `State` stored by an owning writer is now adopted regardless of how it arrives, not only by direct assignment at define time. A child produced by a `set()` factory, or assigned to a property which started empty - including a `Component` prop - is parented, registered in its owner's context, activated, and destroyed with its owner.
+
+  Ownership still follows freshness: an already-active `State` is registered as a guest and outlives the property, matching `map()`. Values a state only reads - a getter, a computed, or a type resolved from context by `get(Type)` - are not adopted; reading a reference does not confer ownership.
+
+  Fixes the `Route.router` fallback in `@expressive/router`, where a `Router` constructed for a route with none in context was never activated.
+
+- Updated dependencies [[`ae97d53`](https://github.com/gabeklein/expressive-mvc/commit/ae97d531e7f1988d9d0e6956db4485505f03c398), [`37ef4e9`](https://github.com/gabeklein/expressive-mvc/commit/37ef4e95ae19285ca902bafdccdbe9bd6304176a), [`0bdb45f`](https://github.com/gabeklein/expressive-mvc/commit/0bdb45f294f77970569747262bae4fd8bbc35071), [`6b34ad5`](https://github.com/gabeklein/expressive-mvc/commit/6b34ad5d967f3aa678cf47820140a6e81fb5f3e2), [`968f596`](https://github.com/gabeklein/expressive-mvc/commit/968f596f217d39b78b2568b4171a96d110b493f9), [`968f596`](https://github.com/gabeklein/expressive-mvc/commit/968f596f217d39b78b2568b4171a96d110b493f9), [`1ff6c32`](https://github.com/gabeklein/expressive-mvc/commit/1ff6c32b0b4dd44a21d32f6231671e15be21a6f4), [`968f596`](https://github.com/gabeklein/expressive-mvc/commit/968f596f217d39b78b2568b4171a96d110b493f9), [`6c9a626`](https://github.com/gabeklein/expressive-mvc/commit/6c9a62612d34b3dc460676cf788723e72c1cd493), [`519c800`](https://github.com/gabeklein/expressive-mvc/commit/519c8003e6a1cefdad4bb025b11d1d1a3717d4e7), [`139e338`](https://github.com/gabeklein/expressive-mvc/commit/139e3388a9375b4159ec520cfeca34c98f10784d)]:
+  - @expressive/mvc@0.84.0
+
+## 0.7.0
+
+### Minor Changes
+
+- [#302](https://github.com/gabeklein/expressive-mvc/pull/302) [`3d0032a`](https://github.com/gabeklein/expressive-mvc/commit/3d0032afaec35f22010680d8c788608f5968cd8c) A section `default` now answers wherever the section is declared. Previously the lexical gate behind sibling `as`-arbitration ignored a scope's own `default`, while the same scope's `matched` counted it - so a section holding a 404 lost its slot whenever it competed with another `as`-bearing sibling (an index route, a second layout), rendering nothing at all, and an outer layout dropped its chrome when an inner section's default caught the path. Both verdicts now come from one predicate: a scope claims a path via a descendant match, or via its own `default`, which catches anything under the scope's path.
+
+  **Breaking:** a scope holding a section 404 now owns everything under its path, per the usual first-match declaration order - and because a later sibling declared under it is statically dead, the router **throws** on that shape rather than leaving the route silently unreachable. A flat `<Route to="docs/team/roster">` declared after a `docs` section that owns a `default` was reachable before; it now raises `Route "/docs/team/roster" is unreachable` - move it above the section (or into it) to restore it.
+
+### Patch Changes
+
+- Updated dependencies [[`25071c7`](https://github.com/gabeklein/expressive-mvc/commit/25071c7d4cd6e57db154a4430ec4f6228a8f2c56), [`3407792`](https://github.com/gabeklein/expressive-mvc/commit/3407792584f2fe07e72777041951e3ab7aad5c8d), [`a4d2011`](https://github.com/gabeklein/expressive-mvc/commit/a4d201152319d845c3df29d9b9769dd864ebcc74), [`9f75bf2`](https://github.com/gabeklein/expressive-mvc/commit/9f75bf2d086a176581815c26940d2647349f728c)]:
+  - @expressive/mvc@0.83.1
+
+## 0.6.3
+
+### Patch Changes
+
+- Updated dependencies [[`1070ef9`](https://github.com/gabeklein/expressive-mvc/commit/1070ef9246bed552c63196fcb21037bb2108dfd7), [`5ade5bd`](https://github.com/gabeklein/expressive-mvc/commit/5ade5bd5bb9c1e25db182f472fd8749b42c053aa)]:
+  - @expressive/mvc@0.83.0
+
+## 0.6.2
+
+### Patch Changes
+
+- [#282](https://github.com/gabeklein/expressive-mvc/pull/282) [`2820e96`](https://github.com/gabeklein/expressive-mvc/commit/2820e964c3a0700e2b092276f0c6ebe236d8c48f) Packaging hygiene: drop the `react` peer dependency and declare `sideEffects: false`.
+
+  The router is host-agnostic - its runtime imports are `@expressive/mvc` entries only, so nothing here requires React itself. The hard peer range (`>=16.8.0 <20.0.0`) produced unmet-peer warnings for non-React hosts and belongs to the adapter, which already declares React as an optional peer. Installing under React is unchanged: the adapter's own peering still applies.
+
+  `sideEffects: false` lets bundlers tree-shake the package like `@expressive/mvc`; no module runs anything at import time. Also aligns publish metadata with sibling packages (`publishConfig.access`) and removes a vestigial npm-based `preversion` script - releases run through changesets CI.
+
+## 0.6.1
+
+### Patch Changes
+
+- [#251](https://github.com/gabeklein/expressive-mvc/pull/251) [`a89bf57`](https://github.com/gabeklein/expressive-mvc/commit/a89bf570e6136b0aaa1783b8f4b181ecb29b392e) Construct `BrowserRouter` safely during server render.
+
+  `BrowserRouter` read `window.location.pathname` in a class-field initializer and bound `window`/`history` in `new()`, both of which run at construction - so activating one during `renderToString` threw `ReferenceError: window is not defined`.
+
+  The field now falls back to `'/'` when there is no `window`, and `new()` skips its browser binding on the server. A `BrowserRouter` activated during server render is inert at `'/'`; provide a `Router` per-request (e.g. via `<Provider>`) to render a request's actual path.
+
+- [#251](https://github.com/gabeklein/expressive-mvc/pull/251) [`a89bf57`](https://github.com/gabeklein/expressive-mvc/commit/a89bf570e6136b0aaa1783b8f4b181ecb29b392e) Make root (global) registration opt-in via `static global`.
+
+  Previously any `State.new()` activated outside a Provider registered itself into the process-global root context, becoming resolvable via `get()` from anywhere. This made an accidental global easy to create — a forgotten `<Provider>` would silently land a per-request instance in the shared root, where it persists for the life of the process and (during server render) is shared across every request.
+
+  **Breaking:** a State now registers to the root context only when it declares `static readonly global = true`. Without it, a context-less instance is still fully functional but private — not resolvable via `get()` from elsewhere, and never shared across server-render requests. A private instance can still _read_ declared globals through the root fallback; it simply isn't one. Scope request state with `<Provider>`, or declare a global for a genuine process-wide singleton (e.g. a router, keyboard, or `localStorage` adapter).
+
+  `global` is `readonly` and typed `State.Global` — a boolean, or a resolver `(self) => boolean` evaluated at activation (after props apply) to decide membership per instance or environment (e.g. `() => typeof window !== 'undefined'`). It is declared per class: a subclass that would be global purely by _inheriting_ a `true` **throws on activation** unless it re-declares (`true` to keep it, `false` to opt out), so a global never propagates silently. A bare-literal `false` additionally locks the subtree at compile time — TypeScript rejects a descendant `= true` — a best-effort vendor lockout that a resolver or wide cast can still override. Using a global class inside a `<Provider>` scopes it to that context and never touches the root, so a process-wide default (e.g. `BrowserRouter`) can still be provided per-request.
+
+  A declared global is intentional and long-lived — process-wide, mutable, and shared across requests, including on the server. Keep request-specific data out of it: scope that with a `<Provider>` instead. A non-global that a consumer expects to inject but that was never provided still throws the usual `Could not find <State> in context`, so a missing Provider surfaces at the point of use.
+
+  `@expressive/router`'s `Router` and `BrowserRouter` declare `static readonly global = () => typeof window !== 'undefined'` — a client-side singleton, but _not_ a shared global during server render, so a per-request `path`/`query` can't bleed across requests. Provide a `Router` per-request (via `<Provider>`) to render a specific path on the server.
+
+- Updated dependencies [[`366ef98`](https://github.com/gabeklein/expressive-mvc/commit/366ef9820c3105de5a6623589a8723e8fe2142a2), [`a89bf57`](https://github.com/gabeklein/expressive-mvc/commit/a89bf570e6136b0aaa1783b8f4b181ecb29b392e)]:
+  - @expressive/mvc@0.82.0
+
+## 0.6.0
+
+### Minor Changes
+
+- [#257](https://github.com/gabeklein/expressive-mvc/pull/257) [`9d95ba3`](https://github.com/gabeklein/expressive-mvc/commit/9d95ba33f4ffc82648b38c3f0a617f0ba55eb641) **Breaking:** `Router.query` (and the `Route.query` facade) is now a reactive `map` (`map.Insert<string, string>`) rather than a proxied record. Read a param with `query.get('foo')`, write with `query.set('foo', value)`, and remove with `query.delete('foo')` - each write still navigates by pushing a history entry, exactly as before. Reading a key subscribes to just that param, and URL-driven changes reconcile the same map in place.
+
+  Migration: replace property access (`query.foo`, `query.foo = x`, `delete query.foo`) with the map methods above. The per-key `declare query: { ... }` narrowing is removed - a `map` cannot carry an object-shaped key type; `query` is uniformly keyed by `string`.
+
+### Patch Changes
+
+- [#253](https://github.com/gabeklein/expressive-mvc/pull/253) [`dd4a6d4`](https://github.com/gabeklein/expressive-mvc/commit/dd4a6d40758dd3b61f8d17f25a927e5bfb02a63e) Refresh npm metadata: package descriptions and keywords aligned with the project's canonical description. The `@expressive/mvc` readme now directs React users to `@expressive/react` and states that the core arrives as its dependency, correcting a common mistake where both packages get added to `package.json`. Publishing also refreshes the package pages that search engines and answer engines currently cite from older releases.
+
+- Updated dependencies [[`1b1c7da`](https://github.com/gabeklein/expressive-mvc/commit/1b1c7da92da4948c5ceaed9f4b95119f215886c9), [`dd4a6d4`](https://github.com/gabeklein/expressive-mvc/commit/dd4a6d40758dd3b61f8d17f25a927e5bfb02a63e), [`f5f2773`](https://github.com/gabeklein/expressive-mvc/commit/f5f2773362209a4d5c18259ed31e7b106034b52c), [`f003b03`](https://github.com/gabeklein/expressive-mvc/commit/f003b035b329ee8e8bbccab579badfb700b3c787), [`f3b7bbd`](https://github.com/gabeklein/expressive-mvc/commit/f3b7bbd89a6128cf74aaeafb17049d5413097335), [`8e34b84`](https://github.com/gabeklein/expressive-mvc/commit/8e34b841177ff85a4aecf6c22c682426ee05ddf8), [`f0122c0`](https://github.com/gabeklein/expressive-mvc/commit/f0122c05cac8ddeb7825dd7f730cd42ce8271cf2)]:
+  - @expressive/mvc@0.81.0
+
 ## 0.5.0
 
 ### Minor Changes
@@ -57,6 +189,7 @@
   When `@expressive/router` was consumed as a built package (outside the monorepo), `<Route>`, `<Link>`, and `<NavLinks>` failed type-checking as JSX (`TS2786`). Their `render` overrides had no explicit return type, so the `.d.ts` emitter baked the host-seam alias's build-time fallback (`unknown`) into the published types, which is not assignable to `ReactNode`.
 
   Two changes fix this:
+
   - `@expressive/router`: the overridden `render` methods are annotated `: Component.Node`, so the emitter preserves the deferred alias by reference and it re-resolves to the host node type (e.g. `ReactNode`) in a consumer.
   - `@expressive/mvc`: `Component.Node` now falls back to `any` instead of `unknown`. `any` is the only fallback assignable to every host's node type, so an un-annotated `render` override in any host-agnostic package still emits a JSX-valid return.
 
@@ -72,6 +205,7 @@
 - [#161](https://github.com/gabeklein/expressive-mvc/pull/161) [`08b85ec`](https://github.com/gabeklein/expressive-mvc/commit/08b85ecfa0a16620f0851d8e2b2f79c805002050) **First release of `@expressive/router`** - a Component-based declarative router, the "C in MVC." Routes are plain `@expressive/mvc` Components authored against the agnostic JSX pragma, so they render under any host; `@expressive/react` is only a dev/test dependency ([#130](https://github.com/gabeklein/expressive-mvc/issues/130), [#131](https://github.com/gabeklein/expressive-mvc/issues/131), [#150](https://github.com/gabeklein/expressive-mvc/issues/150)).
 
   **Features.**
+
   - **Declarative `<Route>` trees** - pages are plain Components; see-through scopes, `*` opaque delegation, and a `default` no-match branch. Sibling routes arbitrate first-match by declaration order, Express/switch-case style ([#137](https://github.com/gabeklein/expressive-mvc/issues/137)).
   - **Matching** - `:param` segments, trailing `*` catch-all, slash normalization, case-insensitive, scored.
   - **`Router` / `BrowserRouter`** - a headless in-memory router (`goto`/`back`/`forward`/`replace`) and a browser binding over `window.location`/`history` with `popstate`, auto-spawned into the root context.

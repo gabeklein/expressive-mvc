@@ -1,11 +1,16 @@
 {
   "name": "@expressive/mvc",
-  "version": "0.80.1",
+  "version": "0.85.0",
+  "description": "Class-based reactive state management - framework-agnostic core of Expressive MVC.",
   "sideEffects": false,
   "keywords": [
     "expressive",
     "mvc",
-    "state"
+    "state",
+    "state-management",
+    "reactive",
+    "observable",
+    "model"
   ],
   "license": "MIT",
   "author": {
@@ -32,6 +37,10 @@
       "types": "./dist/observable.d.ts",
       "default": "./dist/observable.js"
     },
+    "./runtime": {
+      "types": "./dist/runtime.d.ts",
+      "default": "./dist/runtime.js"
+    },
     "./jsx-runtime": {
       "types": "./dist/jsx-runtime.d.ts",
       "default": "./dist/jsx-runtime.js"
@@ -49,7 +58,7 @@
   },
   "scripts": {
     "build": "tsdown",
-    "test": "tsc --noEmit && bun test --coverage --only-failures"
+    "test": "tsc --noEmit && vitest run --coverage"
   },
   "devDependencies": {
     "@types/node": "^18.19.0",
