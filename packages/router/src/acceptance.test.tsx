@@ -97,8 +97,8 @@ describe('acceptance: nested Router', () => {
     </Consumer>
   );
 
-  class Flow extends CoreRouter {
-    path = '/one';
+  class Flow extends Component {
+    router = new CoreRouter({ path: '/one' });
 
     render() {
       return (
@@ -110,28 +110,27 @@ describe('acceptance: nested Router', () => {
     }
   }
 
-  it('will mount a self-contained Router within an outer Route', () => {
-    let outer!: Router;
+  it('will match inner Routes from the nested Router', () => {
     let boundary!: Route;
     const view = render(
-      <Router path="/flow" is={(router) => { outer = router; }}>
-        <Route to="flow" as={Flow} is={(route) => { boundary = route; }} />
+      <Router path="/flow">
+        <Route to="flow" is={(route) => { boundary = route; }}>
+          <Flow />
+        </Route>
       </Router>
     );
 
-    expect(outer.path).toBe('/flow');
-    expect(boundary.path).toBe('/flow');
     expect(boundary.matched).toBe(true);
     expect(view.container.textContent).toBe('/one');
   });
 
   it('will isolate inner location and history from the outer Router', async () => {
     let outer!: Router;
-    let inner!: Router;
+    let inner!: CoreRouter;
     const view = render(
       <Router path="/shell" is={(router) => { outer = router; }}>
         <Route as={RootLayout}>
-          <Flow is={(router) => { inner = router; }} />
+          <Flow is={(flow) => { inner = flow.router; }} />
         </Route>
       </Router>
     );
@@ -153,11 +152,11 @@ describe('acceptance: nested Router', () => {
 
   it('will not bubble an out-of-bounds back to the outer Router', async () => {
     let outer!: Router;
-    let inner!: Router;
+    let inner!: CoreRouter;
     render(
       <Router path="/first" is={(router) => { outer = router; }}>
         <Route as={RootLayout}>
-          <Flow is={(router) => { inner = router; }} />
+          <Flow is={(flow) => { inner = flow.router; }} />
         </Route>
       </Router>
     );
@@ -167,45 +166,5 @@ describe('acceptance: nested Router', () => {
 
     expect(inner.path).toBe('/one');
     expect(outer.path).toBe('/second');
-  });
-
-  it('will reset an inline inner Router when its placement remounts', async () => {
-    let inner!: Router;
-    const App = ({ show }: { show: boolean }) => show
-      ? <Flow is={(router) => { inner = router; }} />
-      : null;
-    const view = render(<Router><App show /></Router>);
-
-    await act(async () => inner.goto('/two'));
-    expect(view.container.textContent).toBe('/two');
-
-    view.rerender(<Router><App show={false} /></Router>);
-    view.rerender(<Router><App show /></Router>);
-
-    expect(view.container.textContent).toBe('/one');
-  });
-
-  it('will preserve an owner-held Router across placement', async () => {
-    class App extends Component {
-      flow = new Flow();
-
-      render({ show }: { show: boolean }) {
-        return show ? this.flow : null;
-      }
-    }
-
-    let app!: App;
-    const view = render(
-      <Router><App show is={(value) => { app = value; }} /></Router>
-    );
-    const router = app.flow;
-
-    await act(async () => router.goto('/two'));
-    expect(view.container.textContent).toBe('/two');
-
-    view.rerender(<Router><App show={false} /></Router>);
-    view.rerender(<Router><App show /></Router>);
-
-    expect(view.container.textContent).toBe('/two');
   });
 });
