@@ -105,7 +105,8 @@ describe('render', () => {
     expect(node.textContent).toBe('children');
     expect(node.style.color).toBe('red');
     expect(node.style.height).toBe('');
-    expect(node.tabIndex).toBe(0);
+    expect(node.tabIndex).toBe(-1);
+    expect(node.hasAttribute('tabindex')).toBe(false);
     expect(objectRef.current).toBe(node);
 
     view.mode = 4;
@@ -214,6 +215,144 @@ describe('render', () => {
 
     expect(renders.mock.calls).toEqual([[1]]);
     expect(root.textContent).toBe('11');
+  });
+
+  it('will remove attributes without leaving reflected values', async () => {
+    class Link extends Component {
+      on = true;
+
+      render() {
+        return <a href={this.on ? '/next' : undefined} id={this.on ? 'link' : undefined}>go</a>;
+      }
+    }
+
+    let view!: Link;
+    const root = document.createElement('main');
+    render(<Link is={(value) => (view = value)} />, root);
+    const node = root.querySelector('a')!;
+
+    view.on = false;
+    await flushMicrotasks();
+    expect(node.hasAttribute('href')).toBe(false);
+    expect(node.hasAttribute('id')).toBe(false);
+  });
+
+  it('will apply select and range values after options and bounds', () => {
+    const root = document.createElement('main');
+
+    render(
+      <>
+        <select value="b">
+          <option value="a">a</option>
+          <option value="b">b</option>
+        </select>
+        <input type="range" value={150} max={200} />
+      </>,
+      root
+    );
+
+    expect(root.querySelector('select')!.value).toBe('b');
+    expect(root.querySelector('input')!.value).toBe('150');
+  });
+
+  it('will restore controlled values when an element re-renders', async () => {
+    class Form extends Component {
+      text = 'fixed';
+      on = false;
+      tick = 0;
+
+      render() {
+        return <>{this.tick}<input value={this.text} /><input type="checkbox" checked={this.on} /></>;
+      }
+    }
+
+    let view!: Form;
+    const root = document.createElement('main');
+    render(<Form is={(value) => (view = value)} />, root);
+    const [text, box] = root.querySelectorAll('input');
+
+    text.value = 'typed';
+    box.checked = true;
+    view.tick++;
+    await flushMicrotasks();
+
+    expect(text.value).toBe('fixed');
+    expect(box.checked).toBe(false);
+  });
+
+  it('will attach refs after children mount', () => {
+    let count = -1;
+    const root = document.createElement('main');
+
+    render(<ul ref={(node) => { if (node) count = node.children.length; }}><li /><li /></ul>, root);
+
+    expect(count).toBe(2);
+  });
+
+  it('will switch from children to raw HTML', async () => {
+    const Child = () => <b>child</b>;
+
+    class View extends Component {
+      raw = false;
+
+      render() {
+        return this.raw
+          ? <div dangerouslySetInnerHTML={{ __html: '<i>raw</i>' }} />
+          : <div><Child /></div>;
+      }
+    }
+
+    let view!: View;
+    const root = document.createElement('main');
+    render(<View is={(value) => (view = value)} />, root);
+
+    view.raw = true;
+    await flushMicrotasks();
+    expect(root.querySelector('div')!.innerHTML).toBe('<i>raw</i>');
+  });
+
+  it('will keep own updates of a child after its parent re-renders', async () => {
+    const renders = vi.fn();
+
+    class Child extends Component {
+      count = 0;
+      label = '';
+
+      render() {
+        renders(this.label);
+        return <span>{this.label}{this.count}</span>;
+      }
+    }
+
+    let child!: Child;
+
+    class Parent extends Component {
+      label = 'a';
+      bump = false;
+
+      render() {
+        if (this.bump) child.count = 5;
+        return <Child label={this.label} is={(value) => (child = value)} />;
+      }
+    }
+
+    let parent!: Parent;
+    const root = document.createElement('main');
+    render(<Parent is={(value) => (parent = value)} />, root);
+
+    parent.label = 'b';
+    await flushMicrotasks();
+    expect(root.textContent).toBe('b0');
+    expect(renders).toHaveBeenLastCalledWith('b');
+
+    child.count = 1;
+    await flushMicrotasks();
+    expect(root.textContent).toBe('b1');
+
+    parent.label = 'c';
+    parent.bump = true;
+    await flushMicrotasks();
+    expect(root.textContent).toBe('c5');
   });
 
   it('will update numeric styles', async () => {

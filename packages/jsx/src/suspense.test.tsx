@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { Component, Provider, State, lazy, pending, render } from './index';
+import { Component, Provider, State, createPortal, lazy, pending, render } from './index';
 import { flushMicrotasks, mockPromise } from '../test.setup';
 
 describe('suspense and recovery', () => {
@@ -243,6 +243,194 @@ describe('suspense and recovery', () => {
     await flushMicrotasks();
     expect(root.textContent).toBe('newlazytail');
     expect(root.querySelectorAll('b')).toHaveLength(1);
+  });
+
+  it('will retry a caught error once, then wait for an update', async () => {
+    const caught = vi.fn();
+
+    class Flag extends State {
+      broken = true;
+    }
+
+    function Leaf() {
+      if (Flag.get().broken) throw new Error('broken');
+      return <b>fixed</b>;
+    }
+
+    class App extends Component {
+      flag = new Flag();
+      fallback = <i>recovering</i>;
+
+      catch(error: Error) {
+        caught(error.message);
+      }
+
+      render() {
+        return <Leaf />;
+      }
+    }
+
+    let app!: App;
+    const root = document.createElement('main');
+    render(<App is={(value) => (app = value)} />, root);
+
+    await flushMicrotasks();
+    await flushMicrotasks();
+    expect(caught).toHaveBeenCalledTimes(2);
+    expect(root.textContent).toBe('recovering');
+
+    app.flag.broken = false;
+    await flushMicrotasks();
+    expect(root.textContent).toBe('fixed');
+  });
+
+  it('will return to the nearest boundary after a caught error', async () => {
+    const loaded = mockPromise<void>();
+
+    class Mode extends State {
+      stage = 0;
+    }
+
+    function Leaf() {
+      const { stage } = Mode.get();
+      if (stage == 0) throw new Error('once');
+      if (stage == 2) throw loaded;
+      return <b>leaf</b>;
+    }
+
+    class Outer extends Component {
+      mode = new Mode();
+      fallback = <i>outer</i>;
+
+      catch() {
+        this.mode.stage = 1;
+      }
+
+      render() {
+        return <Provider for={this.mode} fallback={<i>inner</i>}><Leaf /></Provider>;
+      }
+    }
+
+    let outer!: Outer;
+    const root = document.createElement('main');
+    render(<Outer is={(value) => (outer = value)} />, root);
+
+    await flushMicrotasks();
+    await flushMicrotasks();
+    expect(root.textContent).toBe('leaf');
+
+    outer.mode.stage = 2;
+    await flushMicrotasks();
+    expect(root.textContent).toBe('inner');
+  });
+
+  it('will hide portal content while its boundary shows a fallback', async () => {
+    const loaded = mockPromise<() => Component.Node>();
+    const Lazy = lazy(() => loaded);
+    const target = document.createElement('aside');
+
+    class App extends Component {
+      fallback = <i>loading</i>;
+      extra = true;
+
+      render() {
+        return <>{createPortal(<b>modal</b>, target)}{this.extra && createPortal(<u>extra</u>, target)}<Lazy /></>;
+      }
+    }
+
+    let app!: App;
+    const root = document.createElement('main');
+    render(<App is={(value) => (app = value)} />, root);
+    expect(root.textContent).toBe('loading');
+    expect(target.textContent).toBe('');
+
+    app.extra = false;
+    await flushMicrotasks();
+    loaded.resolve(() => <span>ready</span>);
+    await flushMicrotasks();
+    expect(root.textContent).toBe('ready');
+    expect(target.textContent).toBe('modal');
+  });
+
+  it('will create SVG content resolved while its boundary is hidden', async () => {
+    const loaded = mockPromise<() => Component.Node>();
+    const Lazy = lazy(() => loaded);
+
+    class Chart extends Component {
+      render() {
+        return <Lazy />;
+      }
+    }
+
+    const root = document.createElement('main');
+    render(<svg><Chart /><foreignObject><div /></foreignObject></svg>, root);
+
+    loaded.resolve(() => <circle r="1" />);
+    await flushMicrotasks();
+    expect(root.querySelector('circle')!.namespaceURI).toBe('http://www.w3.org/2000/svg');
+    expect(root.querySelector('div')!.namespaceURI).toBe('http://www.w3.org/1999/xhtml');
+  });
+
+  it('will suspend on a non-native thenable', async () => {
+    let resolve!: () => void;
+    let ready = false;
+    const thenable = {
+      then(done: () => void) {
+        resolve = () => {
+          ready = true;
+          done();
+        };
+      }
+    };
+
+    function Leaf() {
+      if (!ready) throw thenable;
+      return <b>ready</b>;
+    }
+
+    class App extends Component {
+      fallback = <i>loading</i>;
+
+      render() {
+        return <Leaf />;
+      }
+    }
+
+    const root = document.createElement('main');
+    render(<App />, root);
+    expect(root.textContent).toBe('loading');
+
+    resolve();
+    await flushMicrotasks();
+    expect(root.textContent).toBe('ready');
+  });
+
+  it('will re-render a prop-driven child at the priority of a deferred patch', async () => {
+    class Child extends Component {
+      label = '';
+
+      render() {
+        return <span>{this.label}</span>;
+      }
+    }
+
+    class Parent extends Component {
+      label = 'a';
+
+      render() {
+        return <Child label={this.label} />;
+      }
+    }
+
+    let parent!: Parent;
+    const root = document.createElement('main');
+    render(<Parent is={(value) => (parent = value)} />, root);
+
+    await pending(() => {
+      parent.label = 'b';
+    });
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(root.textContent).toBe('b');
   });
 
   it('will retain committed content while a transition suspends', async () => {

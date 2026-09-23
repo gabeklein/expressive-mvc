@@ -45,7 +45,9 @@ interface Fiber {
   portalEnd?: globalThis.Node;
   portalContainer?: Container;
   suspended?: Set<() => void>;
-  ignore?: boolean;
+  applied?: boolean;
+  retried?: boolean;
+  portals?: [Fiber, DocumentFragment][];
   dead?: boolean;
   waitingOn?: Boundary;
   stash?: DocumentFragment;
@@ -55,6 +57,8 @@ interface Fiber {
 const roots = new WeakMap<Container, () => void>();
 const SVG = 'http://www.w3.org/2000/svg';
 const dirty = new Set<Boundary>();
+const stashes = new WeakMap<globalThis.Node, Fiber>();
+const CONTROLS = ['checked', 'value'];
 let passiveRender = false;
 let depth = 0;
 let settling = false;
@@ -208,12 +212,15 @@ function mountComponent(
 
   let first = true;
   let proxy = instance;
-  fiber.release = watch(instance, (current) => {
-    proxy = current;
+  fiber.release = watch(instance, (current, events) => {
+    const { applied, scope } = fiber;
 
-    if (!first && fiber.scope?.active) {
-      if (fiber.ignore) fiber.ignore = false;
-      else schedule(fiber.scope);
+    proxy = current;
+    fiber.applied = undefined;
+
+    if (!first && scope!.active) {
+      if (applied && events.includes('props')) transition(() => schedule(scope!));
+      else schedule(scope!);
     }
 
     first = false;
@@ -318,7 +325,12 @@ function mountPortal(value: VNode, parent: globalThis.Node, before: globalThis.N
 
 function mountElement(value: VNode, parent: globalThis.Node, before: globalThis.Node | null, context: Context, boundary?: Boundary) {
   const tag = value.type as string;
-  const namespace = parent instanceof SVGElement || tag == 'svg' ? SVG : undefined;
+  let host = parent;
+
+  for (let owner = stashes.get(host); owner; owner = stashes.get(host))
+    host = owner.end.parentNode!;
+
+  const namespace = tag == 'svg' || host instanceof SVGElement && host.localName != 'foreignObject' ? SVG : undefined;
   const element = namespace
     ? document.createElementNS(SVG, tag)
     : document.createElement(tag);
@@ -360,6 +372,7 @@ function attempt(fiber: Fiber, passive: boolean, render: () => RenderNode) {
       try {
         reconcile(fiber, render(), fiber.scope!.childContext, fiber.boundary);
         unwait(fiber);
+        fiber.retried = undefined;
         return true;
       } catch (thrown) {
         suspend(fiber, thrown, passive);
@@ -386,7 +399,7 @@ function unwait(fiber: Fiber) {
 
   fiber.waitingOn = undefined;
   boundary.waiting!.delete(fiber);
-  dirty.add(boundary);
+  if (!boundary.owner!.dead) dirty.add(boundary);
 }
 
 function settle() {
@@ -413,6 +426,14 @@ function hide(owner: Fiber, boundary: Boundary) {
 
   for (const child of owner.children) move(child, stash, null);
 
+  owner.portals = portals(owner, []).map((portal) => {
+    const content = document.createDocumentFragment();
+    moveRange(portal.portalStart!, portal.portalEnd!, content);
+    return [portal, content];
+  });
+
+  stashes.set(stash, owner);
+
   const context = owner.childContext!;
   const placeholder = range('fragment', owner.end.parentNode!, owner.end, context);
 
@@ -424,14 +445,39 @@ function hide(owner: Fiber, boundary: Boundary) {
 function reveal(owner: Fiber) {
   unmountFiber(owner.placeholder!);
   owner.end.parentNode!.insertBefore(owner.stash!, owner.end);
+
+  for (const [portal, content] of owner.portals!)
+    if (!portal.dead) portal.portalContainer!.append(content);
+
+  owner.portals = undefined;
   owner.placeholder = undefined;
   owner.stash = undefined;
+}
+
+function portals(fiber: Fiber, found: Fiber[]) {
+  for (const child of fiber.children) {
+    if (child.kind == 'portal') found.push(child);
+    portals(child, found);
+  }
+
+  return found;
+}
+
+function moveRange(start: globalThis.Node, end: globalThis.Node, target: globalThis.Node) {
+  let node: globalThis.Node | null = start;
+
+  while (node) {
+    const next: globalThis.Node | null = node.nextSibling;
+    target.appendChild(node);
+    if (node === end) break;
+    node = next;
+  }
 }
 
 function suspend(fiber: Fiber, thrown: unknown, passive: boolean) {
   const boundary = fiber.boundary;
 
-  if (thrown instanceof Promise) {
+  if (isThenable(thrown)) {
     if (!boundary) throw thrown;
     if (passive && !fiber.children.length && depth > 1) throw thrown;
     if (!passive) wait(fiber, boundary);
@@ -467,32 +513,31 @@ function suspend(fiber: Fiber, thrown: unknown, passive: boolean) {
   recover(fiber, thrown);
 }
 
-function recover(fiber: Fiber, thrown: unknown) {
-  const boundary = fiber.boundary;
+function recover(fiber: Fiber, thrown: unknown, boundary = fiber.boundary) {
   const error = thrown instanceof Error ? thrown : new Error(String(thrown));
 
-  if (!boundary?.catch) {
-    if (boundary?.parent) {
-      fiber.boundary = boundary.parent;
-      recover(fiber, error);
-      return;
-    }
+  while (boundary && !boundary.catch) boundary = boundary.parent;
 
-    throw error;
-  }
+  if (!boundary) throw error;
 
-  wait(fiber, boundary);
+  const handler = boundary;
 
-  Promise.resolve(boundary.catch(error)).then(
+  wait(fiber, handler);
+
+  Promise.resolve(handler.catch!(error)).then(
     () => {
-      if (fiber.scope!.active) schedule(fiber.scope!);
+      if (!fiber.scope!.active || fiber.retried) return;
+      fiber.retried = true;
+      schedule(fiber.scope!);
     },
     (next) => {
-      if (!fiber.scope!.active) return;
-      fiber.boundary = boundary.parent;
-      pass(() => recover(fiber, next));
+      if (fiber.scope!.active) pass(() => recover(fiber, next, handler.parent));
     }
   );
+}
+
+function isThenable(value: unknown): value is PromiseLike<unknown> {
+  return !!value && typeof (value as PromiseLike<unknown>).then == 'function';
 }
 
 function reconcile(fiber: Fiber, value: RenderNode, context: Context, boundary?: Boundary) {
@@ -501,7 +546,7 @@ function reconcile(fiber: Fiber, value: RenderNode, context: Context, boundary?:
 }
 
 function reconcilePortal(fiber: Fiber, value: RenderNode, context: Context, boundary?: Boundary) {
-  reconcileChildren(fiber, fiber.portalContainer!, fiber.portalEnd!, value, context, boundary);
+  reconcileChildren(fiber, fiber.portalEnd!.parentNode!, fiber.portalEnd!, value, context, boundary);
 }
 
 function reconcileChildren(owner: Fiber, parent: globalThis.Node, before: globalThis.Node | null, value: RenderNode, context: Context, boundary?: Boundary) {
@@ -573,7 +618,7 @@ function patch(old: Fiber | undefined, value: RenderNode, parent: globalThis.Nod
   } else if (old.kind == 'component') {
     const props = isVNode(value) ? value.props : old.instance!.props;
     if (isVNode(value) && props !== old.instance!.props) {
-      old.ignore = true;
+      if (passiveRender) old.applied = true;
       (old.instance as any).props = props;
     }
     old.props = props as Record<string, any>;
@@ -629,22 +674,35 @@ function move(fiber: Fiber, parent: globalThis.Node, before: globalThis.Node | n
 function patchProps(fiber: Fiber, next: Record<string, any>) {
   const element = fiber.start as Element;
   const previous = fiber.props!;
+  const raw = 'dangerouslySetInnerHTML' in next;
+
+  if (raw) {
+    for (let index = fiber.children.length - 1; index >= 0; index--)
+      unmountFiber(fiber.children[index]);
+    fiber.children = [];
+  }
 
   for (const key of Object.keys({ ...previous, ...next })) {
-    if (key == 'children' || key == 'key') continue;
+    if (key == 'children' || key == 'key' || key == 'ref' || CONTROLS.includes(key)) continue;
     if (previous[key] === next[key]) continue;
     patchProp(fiber, element, key, previous[key], next[key]);
   }
 
   fiber.props = next;
 
-  if ('dangerouslySetInnerHTML' in next) {
-    for (let index = fiber.children.length - 1; index >= 0; index--)
-      unmountFiber(fiber.children[index]);
-    fiber.children = [];
-  } else {
-    reconcileChildren(fiber, element, null, next.children, fiber.context, fiber.boundary);
+  if (!raw) reconcileChildren(fiber, element, null, next.children, fiber.context, fiber.boundary);
+
+  for (const key of CONTROLS) {
+    const value = next[key];
+    const live = (element as any)[key];
+    const differs = value == null || !(key in element)
+      ? previous[key] !== value
+      : key == 'value' ? String(live) !== String(value) : live !== value;
+
+    if (differs) patchProp(fiber, element, key, previous[key], value);
   }
+
+  if (previous.ref !== next.ref) patchProp(fiber, element, 'ref', previous.ref, next.ref);
 }
 
 function patchProp(fiber: Fiber, element: Element, key: string, previous: any, next: any) {
@@ -686,7 +744,6 @@ function patchProp(fiber: Fiber, element: Element, key: string, previous: any, n
   }
 
   if (next === null || next === undefined || next === false) {
-    element.removeAttribute(name);
     if (key in element && typeof (element as any)[key] != 'function')
       try {
         const current = (element as any)[key];
@@ -696,6 +753,7 @@ function patchProp(fiber: Fiber, element: Element, key: string, previous: any, n
             ? 0
             : '';
       } catch {}
+    element.removeAttribute(name);
     return;
   }
 

@@ -37,7 +37,6 @@ function enter<T>(scope: Scope, render: () => T): T {
   const parent = current;
   const releases = collecting;
   const next: (() => void)[] = [];
-  let complete = false;
 
   current = scope;
   collecting = next;
@@ -50,18 +49,12 @@ function enter<T>(scope: Scope, render: () => T): T {
     if (scope.kind == 'function' && scope.useIndex !== scope.uses.length)
       throw new Error('State.use() calls must keep the same order on every function-component render.');
 
-    complete = true;
     return output;
   } finally {
     current = parent;
     collecting = releases;
-
-    if (complete) {
-      scope.subscriptions.forEach((release) => release());
-      scope.subscriptions = next;
-    } else {
-      next.forEach((release) => release());
-    }
+    scope.subscriptions.forEach((release) => release());
+    scope.subscriptions = next;
   }
 }
 
