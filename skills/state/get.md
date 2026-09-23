@@ -1,8 +1,6 @@
 # `state.get()` - Read & Subscribe
 
-Instance method on State for reading values, running effects, checking status, and fetching from context.
-
-All read-side operations share this one verb so the library's instance surface stays at two methods (`get`/`set`), leaving the rest of the namespace to the model's own fields. Overloads dispatch on the kind of the first argument - property key, effect function, `null`, State class - and each form is individually typed (see [design.md](../design.md)).
+Instance method for reading values, running effects, checking status, and fetching from context - every read-side operation on one verb, dispatched on the first argument's kind (property key, effect function, `null`, State class), each form individually typed (see [design.md](../design.md)).
 
 ## Overloads
 
@@ -12,7 +10,7 @@ All read-side operations share this one verb so the library's instance surface s
 get(): State.Values<this>
 ```
 
-Returns a frozen plain object with all enumerable property values. Recursively exports child states. Exotic values (ref, etc.) are unwrapped via their `.get()` method. Handles circular references (parent/child loops return the same exported object).
+Returns a frozen plain object of all managed values - including non-enumerable `set()` / `ref` fields; lazy factories and computeds appear once computed. Recursively exports child states; exotic values (ref, etc.) unwrap via their `.get()`. Circular references (parent/child loops) return the same exported object.
 
 ```ts
 const values = state.get();
@@ -25,16 +23,16 @@ const values = state.get();
 get<T extends State.Event<this>>(key: T, required?: boolean): State.Value<this, T>
 ```
 
-Returns the underlying value for a property. For exotic values like `ref.Object`, returns the unwrapped value (calls `.get()`).
+Returns the underlying value; exotic values like `ref.Object` unwrap via `.get()`.
 
-- If value is undefined and `required` is not `false`, throws a suspense-compatible `Promise`/`Error`.
-- If value is a method name, returns the unbound (original) method rather than the auto-bound version.
+- A key with no stored value yet (e.g. unset `set<T>()`) throws a suspense-compatible `Promise`/`Error` unless `required` is `false`. A stored `undefined` throws only when `required` is `true`.
+- A method name returns the unbound (original) method, not the auto-bound one.
 
 ```ts
-state.get('count'); // get value
+state.get('count'); // value
 state.get('foo', true); // throws suspense if undefined
-state.get('foo', false); // returns undefined without suspense
-state.get('method'); // returns unbound method
+state.get('foo', false); // undefined, never suspends
+state.get('method'); // unbound method
 ```
 
 ### Tracked effect
@@ -43,39 +41,32 @@ state.get('method'); // returns unbound method
 get(effect: State.Effect<this>): () => void
 ```
 
-Runs `effect` immediately, then re-runs whenever accessed properties change. Returns an unsubscribe function.
+Runs `effect` immediately, then again whenever accessed properties change. Returns an unsubscribe function.
 
 ```ts
 const stop = state.get((current, update) => {
   // `this` = state instance
   // `current` = tracking proxy - reads create subscriptions
-  // `update` = readonly array of changed keys (empty array on first run, undefined before ready)
+  // `update` = readonly array of changed keys (empty on first run, undefined before ready)
   console.log(current.count);
 });
 ```
 
-**Tracking behavior:**
+**Tracking:**
 
-- Only properties accessed via `current` proxy are tracked.
-- Properties accessed via `this` or method calls do NOT create subscriptions.
-- Nested child state properties are tracked deeply (e.g., `current.child.value`).
-- Replacing a child state re-subscribes to the new child.
-- Simultaneous updates to multiple tracked properties produce a single re-run.
+- Only reads via the `current` proxy subscribe - not via `this` or method calls.
+- Nested child state properties track deeply (`current.child.value`); replacing a child re-subscribes to the new one.
+- Simultaneous updates to several tracked properties produce one re-run.
 
-**Return value from effect:**
+**Effect return value:**
 
-- `(event) => void` - cleanup callback. Called with:
-  - `true` - effect is about to re-run (dependency changed)
-  - `false` - effect was manually cancelled (via `stop()`)
-  - `null` - state was destroyed
+- `(event) => void` - cleanup, called with `true` (about to re-run), `false` (cancelled via `stop()`), or `null` (state destroyed)
 - `null` - cancel the effect (one-shot)
-- `Promise<void>` - ignored (no special behavior)
+- `Promise<void>` - ignored
 
-**Suspense in effects:**
-If the effect throws a Promise (e.g., accessing an unset `set<T>()` property), the effect pauses. It retries when the Promise resolves. While pending, updates to other tracked properties do not trigger re-runs.
+**Suspense:** an effect that throws a Promise (e.g. reading an unset `set<T>()`) pauses and retries when it resolves. While pending, updates to other tracked properties do not trigger re-runs.
 
-**Before ready:**
-Effects registered in constructors wait for activation before first run.
+**Before ready:** effects registered in constructors wait for activation before first run.
 
 To watch a specific property or event, use [`set(event, callback)`](set.md).
 
@@ -85,12 +76,10 @@ To watch a specific property or event, use [`set(event, callback)`](set.md).
 get(status: null): boolean
 ```
 
-Returns `true` if state is destroyed, `false` otherwise.
+`true` if destroyed.
 
 ```ts
-if (state.get(null)) {
-  console.log('state is dead');
-}
+if (state.get(null)) console.log('state is dead');
 ```
 
 ### Destroy callback
@@ -99,33 +88,23 @@ if (state.get(null)) {
 get(status: null, callback: () => void): () => void
 ```
 
-Registers a callback for when state is destroyed. Returns unsubscribe function.
+Runs `callback` on destruction. Returns unsubscribe.
 
 ```ts
 const stop = state.get(null, () => console.log('destroyed'));
 ```
 
-### Fetch from context (required)
+### Fetch from context
 
 ```ts
 get<T extends State>(type: State.Type<T>, required?: true): T
-```
-
-Fetches a State of the given type from context. Throws `"Could not find {Type} in context."` if not found.
-
-```ts
-const parent = child.get(ParentState);
-```
-
-### Fetch from context (optional)
-
-```ts
 get<T extends State>(type: State.Type<T>, required: boolean): T | undefined
 ```
 
-Pass `false` to return `undefined` instead of throwing.
+Fetches a State of that type from context. Missing throws `"Could not find {Type} in context."`; pass `false` to get `undefined` instead.
 
 ```ts
+const parent = child.get(ParentState);
 const maybe = child.get(ParentState, false);
 ```
 
@@ -135,7 +114,7 @@ const maybe = child.get(ParentState, false);
 get<T extends State>(type: State.Type<T>, callback: Context.Expect<T>, downstream?: boolean): () => void
 ```
 
-Subscribe to a State becoming available in context. Callback fires immediately if already available. Specify `downstream: true` to only watch children.
+Fires `callback` when a State of that type becomes available - immediately if already present. Searches both directions by default; `downstream: true` watches only children, `false` only parents.
 
 ## Type Signatures
 

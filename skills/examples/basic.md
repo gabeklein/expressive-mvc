@@ -1,6 +1,6 @@
 # Basic Examples
 
-Complete working examples demonstrating Expressive MVC fundamentals.
+Working examples of the fundamentals.
 
 ## Counter (minimal)
 
@@ -189,7 +189,7 @@ function PanelView() {
 ## Component Class (self-rendering)
 
 ```tsx
-import { Component, set } from '@expressive/react';
+import { Component } from '@expressive/react';
 
 class Search extends Component {
   query = '';
@@ -228,7 +228,6 @@ class Search extends Component {
   }
 }
 
-// Use directly in JSX
 function App() {
   return <Search />;
 }

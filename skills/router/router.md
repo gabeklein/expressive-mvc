@@ -4,11 +4,9 @@ Read [production.md](production.md) when choosing a router, integrating async
 page data, testing browser behavior, or checking the supported URL/host
 boundary.
 
-Runnable source: the [`router`](https://expressive.dev/examples/router/overview) section - [`overview`](https://expressive.dev/examples/router/overview), [`browser`](https://expressive.dev/examples/router/browser), [`params`](https://expressive.dev/examples/router/params), [`query`](https://expressive.dev/examples/router/query), [`guards`](https://expressive.dev/examples/router/guards), [`transitions`](https://expressive.dev/examples/router/transitions), [`nav`](https://expressive.dev/examples/router/nav), [`wizard`](https://expressive.dev/examples/router/wizard). Complete programs, served as HTML.
+Runnable source: the [`router`](https://expressive.dev/examples/router/overview) section - [`overview`](https://expressive.dev/examples/router/overview), [`params`](https://expressive.dev/examples/router/params), [`query`](https://expressive.dev/examples/router/query), [`guards`](https://expressive.dev/examples/router/guards), [`transitions`](https://expressive.dev/examples/router/transitions), [`nav`](https://expressive.dev/examples/router/nav). Complete programs, served as HTML.
 
-`@expressive/router` is a host-agnostic, class-based router built on Expressive MVC. Routes are declared as nested JSX, matching is lexical (computed from the JSX tree, not a separate config), and navigation state lives on a reactive `Router` State that any component can read or drive.
-
-Published on npm alongside the core packages:
+Routes are nested JSX, matched lexically from the tree (no config); navigation state is a reactive `Router` State any component can read or drive.
 
 ```bash
 npm install @expressive/router @expressive/react react
@@ -81,25 +79,36 @@ A `none` Route always needs an authored parent scope - a root-level one is the a
 | Returns | Outcome |
 | --- | --- |
 | a truthy `string` | redirect there (replaces history) |
-| `''` / `undefined` / `false` | allow normal render |
+| `''` / `undefined` | allow normal render |
 | `null` | **force-404**: cede the path so the scope falls through to its nearest `none` Route |
 
-The guard may be **async** (return a `Promise`); while it pends, the route's `fallback` shows on cold load, and in-app navigation holds the current screen (see [Deferred presentation](#deferred-presentation)). The verdict is cached per concrete path of the route's own pattern: navigation below it reuses the verdict; re-entry or a change to its own params (`/vault/a` -> `/vault/b` on `vault/:doc`) re-runs the guard.
+The guard takes no arguments - read state from the declaring class. It may be **async**: while it pends, cold load shows `fallback`; in-app navigation holds the current screen ([Deferred presentation](#deferred-presentation)).
+
+The verdict is cached per concrete path of the route's own pattern: navigation below it reuses the verdict; re-entry or a change to its own params (`/document/1` -> `/document/2` on `document/:id`) re-runs the guard.
 
 ```tsx
-<Route to="document/:id"
-  fallback={<Spinner />}
-  redirect={async () => {
-    const res = await fetch(`/api/doc/${id}`);
-    if (res.status === 401) return null;        // force-404 (don't reveal forbidden vs deleted)
-    if (res.status === 302) return '/login';    // redirect
-    // ...allow
-  }}
-  as={Document} />
-<Route none as={DocumentNotFound} />          // the section 404 a null verdict cedes to
+class Documents extends Component {
+  session = new Session();
+  router = new Router();
+
+  async vet() {
+    if (!this.session.user) return '/login';
+    const res = await fetch(`/api${this.router.path}`);
+    if (!res.ok) return null;   // forbidden and missing look the same
+  }
+
+  render() {
+    return (
+      <Route to="document">
+        <Route to=":id" redirect={this.vet} fallback={<Spinner />} as={Document} />
+        <Route none as={DocumentNotFound} />
+      </Route>
+    );
+  }
+}
 ```
 
-Force-404 is path-keyed: it marks only the concrete URL that was declined, so navigating elsewhere clears it. `null` is the deliberate "definitively not here" signal - distinct from a falsy `&&` short-circuit, which allows. The 404 surface is the scope's authored `none` sibling, so a *section*-level not-found requires a parent scope with children (a flat leaf forfeits to the nearest authored `none` Route).
+Force-404 marks only the declined URL; navigating elsewhere clears it. `null` means "definitively not here" - a falsy `&&` short-circuit allows. It cedes to the nearest authored `none`, so a section 404 needs a nested scope; a flat leaf falls through to the app one.
 
 ## Code-split pages
 
@@ -115,7 +124,7 @@ A lazy *layout* suspends its whole scope - child routes register only after its 
 
 ## Deferred presentation
 
-Every navigation (`goto`, `Link`, query writes, `back`/`go`, popstate) commits through `Router.navigate`, whose default marks the commit non-urgent via the host scheduler (React `startTransition`). In-app navigation to a page that isn't ready - a loading chunk, a pending entry guard - holds the current screen until the next resolves, instead of flashing `fallback`. Cold load (initial mount, no prior screen) still shows `fallback`. For `goto`, `Link`, and query writes, `BrowserRouter` writes the address once the navigation is on screen. Browser history traversal and external History API calls change the address before the app receives them, so the old screen may remain while the new address settles.
+Every navigation (`goto`, `Link`, query writes, `back`/`go`, popstate) commits through `Router.navigate`, non-urgent by default (React `startTransition`). Navigating to a page that isn't ready - loading chunk, pending guard - holds the current screen instead of flashing `fallback`; cold load still shows `fallback`. For `goto`, `Link`, and query writes, `BrowserRouter` writes the address once the new screen is on. Back/forward and external History API calls change the address first, so the old screen may linger under the new address.
 
 Override `navigate(work)` on a subclass to stage the swap differently - `work` applies the navigation state and must run:
 
@@ -142,12 +151,13 @@ Hosts whose subscribers carry no scheduler apply navigation at normal priority -
 
 ## Reading match state inside a page
 
-A page reads the nearest `Route` from context (e.g. via `Consumer` or `get(Route)`) and uses its reactive getters:
+A page reads the nearest `Route` from context - `Route.get()` in an FC, `get(Route)` on a class:
 
 ```tsx
-const BlogPost = () => (
-  <Consumer for={Route}>{route => <article>post: {route.match!.slug}</article>}</Consumer>
-);
+const BlogPost = () => {
+  const { match } = Route.get();
+  return <article>post: {match!.slug}</article>;
+};
 ```
 
 | Member            | Type                              | Meaning                                                                 |
@@ -159,6 +169,10 @@ const BlogPost = () => (
 | `route.anchor`    | `string`                          | Directory-style anchor for relative navigation.                         |
 | `route.goto(to)`  | -                                 | Navigate. A string resolves relative to this route; a params object swaps route params in place (see below). |
 | `route.resolve(to)` | `string`                        | Resolve a (possibly relative) url to an absolute pathname.              |
+| `route.parent`    | `Route \| undefined`              | Nearest ancestor Route.                                                 |
+| `route.inner`     | `Route[]`                         | Registered child Routes, declaration order. Filter on `label` for step lists and progress. |
+| `route.active`    | `Route \| undefined \| null`      | Matched child (`null` if ambiguous). Read through a proxy, so compare by `path`, not identity. |
+| `route.matches`   | `string[]`                        | Paths of matched children.                                              |
 
 Same-pattern navigation (`/blog/a` -> `/blog/b`) keeps the page instance mounted: `matched` is unchanged, so the component reconciles and re-reads `match`, rather than unmounting/remounting.
 
@@ -260,11 +274,7 @@ Both `match`/`active` are **lazy**: a `Link` whose render reads neither stays in
 
 There is no `NavLink` - extend `Link` and read `active`/`match` to express activeness however the host wants (a `className` on web, a `style` on native). A subclass that authors its own `render` **fully replaces** the base anchor rather than nesting inside it (see render composition in the Component skill): the base detects subclass-authored content and defers. `route` and `go` are `protected` so the subclass can wire its own anchor.
 
-> **Gotcha - annotate overridden `render` in agnostic packages.** When a host-agnostic package (router, or any package built against `@expressive/mvc` with no adapter in scope) ships its own `.d.ts`, give every overridden `render` an explicit `: Component.Node` return type:
-> ```tsx
-> render(props = {} as { children?: Component.Node }): Component.Node { ... }
-> ```
-> `Component.Node` is a deferred alias over the host seam - it resolves to the host's node type (e.g. `ReactNode`) only once an adapter augments `Host`. With no annotation, the `.d.ts` emitter resolves the alias at *build* time (no adapter present) and bakes the literal fallback into the published types; it never re-resolves in a consumer, so `<NavLink>` fails JSX validity. The explicit annotation makes the emitter preserve the alias *by reference* so it re-resolves per consumer. This never surfaces inside the monorepo, where path mapping reads source and re-infers - only against the built package.
+> **Publishing a host-agnostic package** (built on `@expressive/mvc`, no adapter): annotate every overridden `render` as `: Component.Node`. Unannotated, the `.d.ts` emitter bakes the adapter-less fallback type in, and the subclass fails JSX checks for consumers. Invisible inside a monorepo that maps to source.
 
 ```tsx
 class NavLink extends Link {
@@ -293,7 +303,7 @@ class SideNav extends NavLinks {
 
 ### `Redirect`
 
-Navigates to `to` when mounted, gated on `when` (default `true`). Pushes by default; pass `replace` to overwrite. Renders nothing. (The `Route` `redirect` prop is a always-replace shorthand for this.)
+Navigates to `to` on mount when `when` (default `true`). Pushes unless `replace`. Renders nothing. A string `redirect` prop on `Route` is the always-replace shorthand.
 
 ```tsx
 <Redirect to="/login" when={!user} />
@@ -302,13 +312,7 @@ Navigates to `to` when mounted, gated on `when` (default `true`). Pushes by defa
 
 ## Extending Route: contributing child routes
 
-A `Route` subclass can opine on its own scope's children before matching and
-registration by overriding the `protected get children()` seam. It defaults to the
-children declared in JSX; override it to return the effective set - add, remove,
-or reorder - composing on `super.children`. Both matching and render read the
-result, so contributed routes participate in this scope's control flow
-(matching, `inner` registration, none-resolution, `matches`, and render)
-exactly as if declared in JSX.
+Override `protected get children()` to add, remove, or reorder a scope's child routes, composing on `super.children` (the JSX children). Matching, registration, `none` resolution, and render all read the result, as if declared.
 
 ```tsx
 class Page extends Route {
@@ -320,13 +324,7 @@ class Page extends Route {
 }
 ```
 
-`<Page to="docs/*">…</Page>` now resolves to `None` whenever no child of the
-scope matches - a section fallback the caller never had to write. `None` is
-the subclass's own surface; `Route` exposes only the `children` seam.
-
-The same seam is how you build a **component that generates routes from data** -
-map a source to `Route` elements in `children`, and use the subclass like any
-other route:
+`<Page to="docs/*">…</Page>` now falls back to `None` with no caller-written 404. Generating routes from data uses the same seam:
 
 ```tsx
 class Examples extends Route {
@@ -349,24 +347,11 @@ class Examples extends Route {
 <BrowserRouter><Examples modules={modules} as={Shell} /></BrowserRouter>
 ```
 
-The generated routes match, register, and render exactly as if written in JSX.
-`super.children` splices in whatever the caller passed (e.g. a `<Route none>`),
-so the component stays composable. Caller-passed children are otherwise dropped
-unless you compose `super.children` - the seam fully owns the scope.
+Omit `super.children` and caller-passed children (e.g. a `<Route none>`) are dropped.
 
-Scope and caveats:
-- **Own scope only.** Contributed routes are first-class *within this Route*.
-  They are invisible to walks that inspect this Route as a bare JSX element from
-  the outside - sibling `as`-slot arbitration and a parent scope recursing into
-  this element's lexical children - which have no instance to read `children` from.
-  Same blind spot as class-field `to` (see below).
-- **Classification follows effective children.** Contributing a `none` Route to a
-  `to`-leaf turns it into a see-through scope (matched by prefix rather than
-  exact pattern). Intended - the leaf/scope distinction reflects what the scope
-  effectively contains.
-- Contribute via `children`, not `render()`: it is pure analysis (returns nodes,
-  never runs a page render), so matching can consult it without the circularity
-  and lazy-gate problems of deciding matches from render output.
+- **Own scope only.** Outside walks - sibling `as` arbitration, a parent recursing into this element's JSX - see only the JSX, like class-field `to` below.
+- A contributed `none` turns a leaf into a see-through scope (prefix match).
+- Contribute in `children`, never `render()` - matching reads it without rendering.
 
 ## Lexical matching - the limits
 
@@ -374,4 +359,4 @@ Matching is computed statically from the JSX tree in the same render. It does **
 - class-field `to` on `Route` subclasses (only the JSX `to` prop), or
 - routes declared inside a child component's own render (the `*`-delegation case).
 
-A see-through scope counts as matched when a descendant matches, or when it owns a `none` Route - which claims anything under the scope's path, so the section 404 answers there instead of the app one. Without one the scope is never a greedy prefix. That verdict is the same one sibling `as`-routes arbitrate over, so a scope holding a section 404 owns everything under its path - a later sibling declared under it can never match, and the router **throws** on that shape rather than leaving the route silently unreachable. Declare such a route above the section, or inside it. Put routes where they are lexically visible to the matcher.
+A see-through scope matches when a descendant does, or when it owns a `none` Route - which claims everything under its path. Without one it is never a greedy prefix. So a later sibling under a section with a 404 is unreachable, and the router **throws** on that shape: declare it above the section or inside it.

@@ -8,29 +8,18 @@ import { get } from '@expressive/mvc';
 
 > React apps import these from `@expressive/react` - the adapter re-exports every instruction. Examples below show the core import; do not add `@expressive/mvc` to a React app's `package.json`.
 
-Fetches another State from ambient context hierarchy (upstream or downstream).
+Fetches another State from the context hierarchy, upstream or downstream.
 
 ## Overloads
 
-### Upstream (required)
+### Upstream
 
 ```ts
 class Child extends State {
-  parent = get(ParentState);
+  parent = get(ParentState);          // nearest instance; throws if not found
+  maybe = get(ParentState, false);    // T | undefined; never throws
 }
 ```
-
-Fetches nearest instance of `ParentState` from context. Throws if not found.
-
-### Upstream (optional)
-
-```ts
-class Child extends State {
-  maybe = get(ParentState, false);
-}
-```
-
-Returns `T | undefined`. Does not throw if missing.
 
 ### Upstream with callback
 
@@ -43,50 +32,32 @@ class Child extends State {
 }
 ```
 
-Callback runs when upstream is found/replaced. Return function for cleanup (runs on destruction or replacement). Callback receives `(state, subject)`.
+Receives `(state, subject)`. Runs when the upstream resolves, and again when it is replaced. A returned cleanup runs when the subject is destroyed.
 
 ### Downstream collection
 
 ```ts
 class Parent extends State {
   children = get(ChildState, true);
-}
-```
-
-Returns `readonly T[]`. Collects all instances of type below in context tree. Array updates automatically as children are created/destroyed.
-
-### Downstream collection with callback
-
-```ts
-class Parent extends State {
-  children = get(ChildState, true, (child, self) => {
+  tracked = get(ChildState, true, (child, self) => {
     console.log('registered:', child);
     return () => console.log('removed');
   });
 }
 ```
 
-Callback runs for each child. Return `false` to prevent registration. Return a function for cleanup on removal.
+`readonly T[]` of every instance of the type below in the context tree, updating as children are created and destroyed. The callback runs per child: return `false` to prevent registration, or a function for cleanup on removal.
 
-### Downstream single (required)
-
-```ts
-class Parent extends State {
-  child = get(ChildState, true, true);
-}
-```
-
-Fetches a single downstream child. Throws if not found.
-
-### Downstream single (optional)
+### Downstream single
 
 ```ts
 class Parent extends State {
-  child = get(ChildState, true, false);
+  child = get(ChildState, true, true);   // throws if not found
+  maybe = get(ChildState, true, false);  // T | undefined
 }
 ```
 
-Returns `T | undefined`. Updates when a matching child appears or is removed.
+One downstream child; updates when a matching child appears or is removed.
 
 ## Type Signatures
 
@@ -103,11 +74,10 @@ type get.Callback<T> = (state: T, subject: State) => void | boolean | (() => voi
 ## Behavior
 
 - All `get()` properties are **non-enumerable** (hidden from `Object.keys()`, spread, and `ref(this)`).
-- Upstream lookups check direct parent first, then siblings under each ancestor (nearest wins), then context hierarchy.
-- Siblings under one parent resolve regardless of field order - a required lookup waits for the parent to finish activating before throwing.
-- Will not resolve self as own instance.
-- Upstream callback is not reactive - it runs once per mount, not on value changes.
+- Upstream checks the direct parent first, then siblings under each ancestor (nearest wins), then the context hierarchy.
+- Siblings under one parent resolve regardless of field order - a required lookup waits for the activating ancestor to finish before throwing.
+- Never resolves to itself.
+- The upstream callback is not reactive - the upstream's own value changes do not re-run it.
 - Downstream callbacks run cleanup before both target and recipient are destroyed.
 - Downstream collection ignores redundant registrations of the same instance.
-- Subclasses match: `get(Base, true)` collects instances of `Base` and its subclasses.
-- Superclasses do not match: `get(Derived, true)` will not collect `Base` instances.
+- Subclasses match (`get(Base, true)` collects `Base` and subclasses); superclasses do not (`get(Derived, true)` skips `Base` instances).

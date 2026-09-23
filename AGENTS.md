@@ -118,7 +118,7 @@ A green `tsc --noEmit` + `bun run build` says nothing about whether a browser-fa
 
 ### Releasing
 
-- `@expressive/mvc`, `@expressive/react`, and `@expressive/router` are published; `preact` is private and ignored by changesets.
+- `@expressive/mvc`, `@expressive/react`, `@expressive/router`, and `@expressive/inspect` are published; `preact` is private and ignored by changesets.
 - Merged changesets accumulate on `main`; CI maintains a "Version Packages" PR (`changeset version`). Merging that PR triggers `changeset publish` from CI. No local publishing.
 
 ## Guardrails
@@ -128,7 +128,7 @@ A green `tsc --noEmit` + `bun run build` says nothing about whether a browser-fa
 - Don't introduce framework-specific imports in `packages/mvc`.
 - Instructions (`def`, `ref`, `get`, `set`) are re-exported from adapters - don't duplicate implementations.
 - `new()` lifecycle hook is optional; don't add it unnecessarily.
-- `@expressive/router` is strictly client-side - no SSR or server coupling. Its roadmap priority is stability over features: `to`, `as`, `default`, `fallback`, `redirect`, the protected `children` getter, `Component.catch`, `Link`, and `BrowserRouter` form a de facto compatibility contract consumed by downstream tooling, so treat changes to them as breaking and design new seams once, carefully.
+- `@expressive/router` is strictly client-side - no SSR or server coupling. Its roadmap priority is stability over features: `to`, `as`, `none`, `fallback`, `redirect`, the protected `children` getter, `Component.catch`, `Link`, and `BrowserRouter` form a de facto compatibility contract consumed by downstream tooling, so treat changes to them as breaking and design new seams once, carefully.
 - `@expressive/mvc` and `@expressive/router` declare `"sideEffects": false`, so a bundler may drop any module a consumer does not import from. Import must therefore mutate nothing outside the module - no registry writes, global patching, or feature probes at module scope. Anything that must run belongs behind a call. (`@expressive/react` opts specific files back in via a glob - see its `package.json`.)
 - Event dispatch is batched via `queueMicrotask()` - not synchronous.
 - `State.new()` constructs + activates; plain `new State()` doesn't dispatch ready.

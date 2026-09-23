@@ -4,7 +4,7 @@
 import State from '@expressive/mvc';
 ```
 
-`@expressive/mvc` - framework-agnostic reactive state management built on classes.
+`@expressive/mvc` - framework-agnostic reactive state built on classes.
 
 ## Creating State
 
@@ -24,11 +24,11 @@ const counter = Counter.new(); // creates AND activates
 const counter = Counter.new({ count: 10 }); // with initial values
 ```
 
-> `new Counter()` constructs but does not activate. Use `Counter.new()` for a root instance. Bare `new` is correct for a child State declared on another State, which adopts and activates it, or when activation must be deferred deliberately.
+> `new Counter()` constructs without activating. Use `Counter.new()` for a root instance. Bare `new` is correct for a child State declared on another State (the parent adopts and activates it), or to defer activation deliberately.
 
 ## Properties & Reactivity
 
-Assign class fields normally. Any property write triggers a batched update event.
+Assign class fields normally. Any property write queues a batched update.
 
 ```ts
 class App extends State {
@@ -51,17 +51,16 @@ await pending(() => {
 });
 ```
 
-`pending(work)` runs `work` now and marks the updates it queues non-urgent, resolving once every reader has absorbed them - see [Transitions](../react/component.md#transitions). Under React that waits for presentation, so a replacement which suspends holds the current screen instead of falling back. A free function, not a method: settlement comes from whichever readers the writes touch, and each replays through the scheduler it subscribed with.
+`pending(work)` runs `work` now, marks the updates it queues non-urgent, and resolves once every reader has absorbed them - see [Transitions](../react/component.md#transitions). Under React that waits for presentation, so a replacement that suspends holds the current screen instead of falling back. A free function, not a method: settlement comes from whichever readers the writes touch, each replaying through the scheduler it subscribed with.
 
-With no host registered there is no priority to apply, but the promise still resolves once every subscriber has replayed - awaiting it is how headless code waits out a whole cascade, not just the first flush. A nested call settles its own consequences and joins the outer call. Distinct from `state.set()`, which resolves on the next flush of *that* state (see [set.md](set.md)).
+- **No host registered:** no priority applies, but the promise still resolves once every subscriber has replayed - how headless code waits out a whole cascade, not just the first flush. Contrast `state.set()`, which resolves on the next flush of *that* state ([set.md](set.md)).
+- **Nesting:** a nested call settles its own consequences and joins the outer call.
+- **Suspending effect:** if an effect throws a promise, settlement waits for its retry and any downstream updates the retry causes. Pending updates arriving meanwhile join the same hold and squash into that retry. Fulfillment and rejection both retry through MVC dispatch; cancelling the effect or destroying its state releases the hold and prevents revival.
+- **Errors:** an exception from `work` propagates synchronously; updates queued before it still dispatch. The promise never rejects - a reader throwing during replay is logged, not reported to the writer, so no catch is needed.
 
-If an effect suspends by throwing a promise, settlement waits for its retry and any downstream updates that retry causes. Pending updates arriving meanwhile join the same hold and remain squashed into that retry. Fulfillment and rejection both retry through MVC dispatch; cancelling the effect or destroying its state releases the hold and prevents revival.
+`pending()` with no arguments is the reader half. Inside a replay carrying pending work it returns a release callback, and settlement waits on that instead of on the replay returning - how the React adapter holds until commit. A hand-written `watch` effect can do the same; elsewhere it returns `undefined`.
 
-An exception from `work` propagates synchronously. Updates queued before it threw still dispatch. The promise never rejects - a reader that throws during its replay is logged, not reported to the writer, so awaiting settlement needs no catch.
-
-`pending()` with no arguments is the reader half. Called inside a replay carrying pending work it returns a release callback, and settlement waits on that rather than on the replay returning - which is how the React adapter holds until it commits. A hand-written `watch` effect can do the same; elsewhere it returns `undefined`.
-
-A promise returned by an effect remains ignored. To include other async work, claim during replay and release in `finally`:
+A promise returned by an effect stays ignored. To include other async work, claim during replay and release in `finally`:
 
 ```ts
 watch(state, () => {
@@ -70,11 +69,11 @@ watch(state, () => {
 });
 ```
 
-A renderer passes its non-urgent bracket as `watch`'s fourth argument. The bracket must invoke its callback synchronously; it assigns priority rather than queues the replay.
+A renderer passes its non-urgent bracket as `watch`'s fourth argument. The bracket must invoke its callback synchronously; it assigns priority, it does not queue the replay.
 
 ### Value Equality
 
-Updates are skipped when new value `===` previous value. No event is emitted.
+A write whose value `===` the previous one is skipped - no event.
 
 ### Property Iteration
 
@@ -86,7 +85,7 @@ for (const [key, value] of state) {
 
 ### Unmanaged Instance Data
 
-Opaque handles - unsubscribe functions, timers, snapshots - are not reactive state: writes should not notify, nor throw thru the managed setter after destroy. TypeScript `private` does not opt out (any enumerable own field is managed); ES `#private` escapes management but re-initializes unsafely on Components. Define the field non-enumerable via `def`:
+Opaque handles (unsubscribe functions, timers, snapshots) are not reactive state: writes should neither notify nor throw thru the managed setter after destroy. TypeScript `private` does not opt out (any enumerable own field is managed); ES `#private` escapes management but re-initializes unsafely on Components. Define the field non-enumerable via `def`:
 
 ```ts
 import State, { def } from '@expressive/mvc';
@@ -108,11 +107,11 @@ class Job extends State {
 }
 ```
 
-The `def` factory returns void, so no managed property is applied. A destroyed instance is frozen - run cleanup before then: `const stop = this.unwatch; this.unwatch = null; stop?.();`. A handle only lifecycle touches stays simpler as a `new()` closure variable.
+The `def` factory returns void, so no managed property is applied. A destroyed instance is frozen - clean up before then: `const stop = this.unwatch; this.unwatch = null; stop?.();`. A handle only lifecycle touches is simpler as a `new()` closure variable.
 
 ## The `is` Property
 
-Circular self-reference. Destructure first to retain instance access alongside values, and usually alias it to the state concept (`is: counter`, `is: form`) rather than keeping a local named `is`.
+Circular self-reference. Destructure it to keep instance access alongside values, usually aliased to the concept (`is: counter`, `is: form`) rather than a local named `is`.
 
 ```tsx
 const Component = () => {
@@ -122,71 +121,59 @@ const Component = () => {
 };
 ```
 
-Also use for silent reads inside effects, or when you want to guarantee the unwrapped instance. `state.is` is always the instance whether or not `state` is a proxy. Idempotent, so `state.is.is` is safe.
+Also for silent reads inside effects, or to guarantee the unwrapped instance: `state.is` is the instance whether or not `state` is a proxy. Idempotent (`state.is.is` is safe).
 
 ```ts
-// Silent read - access via `is` bypasses proxy tracking
 state.get((current) => {
   console.log(current.value); // subscribes to 'value'
-  console.log(current.is.other); // does NOT subscribe - silent read
+  console.log(current.is.other); // silent read - no subscription
 });
 ```
 
 ## Child States
 
-Nest states by direct assignment. Children are auto-parented, activated, and destroyed with parent.
+Nest by direct assignment. Children are auto-parented, activated, and destroyed with the parent.
 
 ```ts
 class Parent extends State {
-  child = new ChildState(); // auto-parented and activated when Parent initializes
+  child = new ChildState(); // parented and activated when Parent initializes
 }
 ```
 
-- Replacing a child property destroys the old child (if owned).
-- Non-owned children (assigned from outside) survive replacement.
+- Replacing a child property destroys the old child if owned; non-owned children (assigned from outside) survive.
 - Setting a child property to `null` destroys the owned child.
 
 ## Methods
 
-Methods are auto-bound on first access. Safe to destructure.
+Auto-bound on first access - safe to destructure.
 
 ```ts
 const { increment } = Counter.new();
-increment(); // `this` is correctly bound
+increment(); // `this` is bound
 ```
 
-- Overwriting methods works: `test.method = () => 'bar'`.
+- Overwriting works: `test.method = () => 'bar'`.
 - `super` calls work across inheritance chains.
-- Methods called inside effects do NOT create subscriptions for properties they access.
-- `this` inside a method is the instance, never a tracking proxy - so `this === this.is`, and it is safe as a `Map`/`Set` key or for identity comparison. True however the method was reached, including off a proxy handed to an effect or render. The `new()` hook has the same guarantee (see [lifecycle.md](lifecycle.md#the-new-hook)).
+- Methods called inside effects do NOT subscribe to properties they access.
+- `this` inside a method is the instance, never a tracking proxy (`this === this.is`) - safe as a `Map`/`Set` key or for identity comparison, however the method was reached, including off a proxy handed to an effect or render. The `new()` hook has the same guarantee ([lifecycle.md](lifecycle.md#the-new-hook)).
 
 ## Static Methods
 
 ### `State.new()`
 
-Creates and activates a new instance. Accepts `State.Args` - objects (initial values), callbacks (lifecycle), strings (ID).
+Creates and activates an instance. Takes `State.Args` - objects (initial values) and callbacks (lifecycle), processed in order; return handling in [Constructor Arguments](lifecycle.md#constructor-arguments).
 
 ```ts
 const test = Test.new(
   { foo: 1 }, // initial values
-  (self) => {
-    // lifecycle callback
-    return () => {}; // cleanup on destroy
-  },
+  (self) => () => {}, // lifecycle callback; returned function runs on destroy
   { bar: 2 } // more initial values
 );
 ```
 
-Arguments are processed in order. Callbacks can return:
-
-- `() => void` - cleanup function, called on destroy
-- `object` - merged as initial values
-- `array` - flattened and re-processed
-- `Promise` - caught and logged if rejected
-
 ### `State.is()`
 
-Type guard. Returns true if argument is this class or a subclass.
+Type guard - true if the argument is this class or a subclass.
 
 ```ts
 Counter.is(SubCounter); // true
@@ -195,7 +182,7 @@ Counter.is(OtherState); // false
 
 ### `State.on()`
 
-Register a callback for any instance creation of this class (or subclasses).
+Registers a lifecycle handler for every instance of this class or its subclasses. Returns an unsubscribe function.
 
 ```ts
 const stop = Counter.on(function (this: Counter) {
@@ -206,11 +193,10 @@ const stop = Counter.on(function (this: Counter) {
 });
 ```
 
-- Callbacks run in ancestor-first order.
-- Same callback registered on parent and child runs only once.
-- Returns unsubscribe function.
+- A bare function is per-instance setup before `new()` (sugar for `{ before }`). An object hooks by cadence: `type(Class)` once per class at bootstrap, `before` per instance before `new()`, `after` per instance at the `new()` slot.
+- Handlers run ancestor-first; one registered on both parent and child runs once.
 
-`on()` is the mix-in for environment-specific activation of a shared class. The domain module stays fields-only - no `window`, DOM, or host APIs at module scope or in `new()`; an adapter module re-exports the class and registers `on()` once, so every instance constructed after that import gets the wiring and environments that never import the adapter never run it. Don't subclass (`class ViewSession extends Session`) and don't construct in the adapter - the consumer owns the instance. Recipe: [patterns.md](../react/patterns.md).
+`on()` is the mix-in for environment-specific activation of a shared class. The domain module stays fields-only - no `window`, DOM, or host APIs at module scope or in `new()`; an adapter module re-exports the class and registers `on()` once, so every instance constructed after that import gets the wiring, and environments that never import the adapter never run it. Don't subclass (`class ViewSession extends Session`) and don't construct in the adapter - the consumer owns the instance. Recipe: [patterns.md](../react/patterns.md).
 
 ## Constructor Args (`State.Args`)
 
@@ -218,11 +204,11 @@ const stop = Counter.on(function (this: Counter) {
 type Args<T> = (Args<T> | Init<T> | Assign<T> | void)[];
 ```
 
-Accepts nested arrays (flattened at runtime), objects (assigned), and callbacks (lifecycle).
+Nested arrays (flattened at runtime), objects (assigned), and callbacks (lifecycle).
 
 ## Observable / Event System
 
-State extends Observable. Also usable standalone:
+State extends Observable, also usable standalone:
 
 ```ts
 import { listener, watch, event, observer, touch } from '@expressive/mvc/observable';
@@ -236,7 +222,7 @@ const stop = watch(state, (current) => {
 event(state, 'myEvent'); // manual dispatch
 ```
 
-Use `observer(target, true)` to opt a custom object into the observable protocol, then use `touch(this, key, value)` in getters so `watch()` and adapter hooks can subscribe to accessed fields.
+`observer(target, true)` opts a custom object into the protocol; call `touch(this, key, value)` in its getters so `watch()` and adapter hooks subscribe to accessed fields.
 
 ### Event Semantics
 
@@ -247,13 +233,11 @@ Use `observer(target, true)` to opt a custom object into the observable protocol
 | `null`                       | Destroyed (terminal)       |
 | `string \| symbol \| number` | Property or custom event   |
 
-All events batched and flushed via `queueMicrotask()`.
+All events batch and flush via `queueMicrotask()`.
 
 ## Context
 
-Every active State has a "home context" that determines where its `state.get(Type)` lookups originate. `State.new()` registers to `Context.root` (the global instance) when not already claimed; `new Context(StateClass)` registers to particular context. Home is locked once assigned. Largely advanced/internal.
-
-See [context.md](context.md) for the full Context API, global root semantics, and the `new State()` escape hatch for pre-init context placement.
+Every active State has a home context where its `state.get(Type)` lookups originate - `Context.root` unless a context claims it. It registers into root (findable by others) only with `static global`; a global's home locks to root at activation, while a private instance's stays claimable by the first explicit context. Largely advanced/internal - see [context.md](context.md).
 
 Primarily consumed via the [`get` instruction](../field/get.md) and React [`Provider`](../react/react.md).
 

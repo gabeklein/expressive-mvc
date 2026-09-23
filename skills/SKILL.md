@@ -19,15 +19,13 @@ Class-based reactive state for React. State classes define reactive properties, 
 
 ### Installing
 
-For a React app, `@expressive/react` is the only install:
-
 ```bash
-npm install @expressive/react
+npm install @expressive/react            # + @expressive/router for routing
 ```
 
-`@expressive/mvc` arrives as its dependency - **do not add it to `package.json` as well.** Import `State`, `Component`, and every instruction (`set`, `get`, `ref`, `map`, `has`, `def`) from `@expressive/react`; the adapter re-exports the core. Install `@expressive/mvc` directly only when writing host-agnostic code that must not depend on a UI adapter - a shared domain package, a Node service, or a new adapter. Add `@expressive/router` alongside the adapter when you want routing.
+`@expressive/mvc` comes as a dependency - **do not add it to `package.json`.** Import `State`, `Component`, and every instruction from `@expressive/react`, which re-exports the core. Depend on `@expressive/mvc` directly only for adapter-free code: a shared domain package, a Node service, a new adapter.
 
-React Native and Expo need no extra install and no configuration. Three boundaries, in [react/react.md](react/react.md#react-native): `jest-expo` needs `@expressive` in `transformIgnorePatterns`, `BrowserRouter` is the browser binding - use `Router` on native - and `Link`/`NavLinks` render DOM elements, so drive navigation from `Router` directly.
+React Native / Expo need no setup beyond three boundaries ([react/react.md](react/react.md#react-native)): add `@expressive` to `jest-expo`'s `transformIgnorePatterns`; use `Router`, not `BrowserRouter`; `Link`/`NavLinks` render DOM, so navigate through `Router`.
 
 ## Start With Ownership, Not APIs
 
@@ -203,32 +201,19 @@ Optional nested objects take in-place defaults (`= {}`) rather than a separate u
 
 ## Transparent Writes
 
-Subscription proxies pass assignments through to the real instance - no unwrapping needed:
+Proxies pass assignments through to the instance, nested objects included - no unwrapping:
 
 ```tsx
-const form = LoginForm.get();          // whole object is the only need - take it directly
+const form = LoginForm.get();                   // whole object needed - take it directly
+<input value={form.username} onChange={(e) => (form.username = e.target.value)} />
 
-<input
-  value={form.username}
-  onChange={(e) => (form.username = e.target.value)}
-/>
-```
-
-Nested objects reached through a snapshot are equally writable:
-
-```tsx
 const { transfer, confirmed } = ReviewStep.get();
-
 <button onClick={() => (transfer.step = 'generate')} disabled={!confirmed} />
+
+const { is: review, confirmed, hasBlocking } = ReviewStep.get();  // `is`: root beside siblings
 ```
 
-Use `is` **only** when retaining the root object alongside sibling values from the same snapshot:
-
-```tsx
-const { is: review, confirmed, hasBlocking } = ReviewStep.get();
-```
-
-Do not unwrap every writable object through `is` - that is the most common misuse.
+`is` is **only** for keeping the root alongside sibling destructuring. Unwrapping every writable object through it is the most common misuse.
 
 ## Presence Boundaries & `get(true)`
 
@@ -264,24 +249,7 @@ This gives the child a strong contract - no fallback values threaded through its
 
 ## Provider & Context
 
-Pass the State class directly. If no preconfiguration or external ownership is needed, do not create an instance only to provide it:
-
-```tsx
-<Provider for={TransferState}>
-  <TransferPage />
-</Provider>
-```
-
-Provide an instance only when it is genuinely owned elsewhere:
-
-```tsx
-const counter = Counter.use();
-<Provider for={counter}>
-  <Child />
-</Provider>
-```
-
-Multiple states: `<Provider for={{ app: AppState, user: UserState }}>`. See [react/react.md](react/react.md) for `is` callbacks, fallback, and field props.
+Pass the class: `<Provider for={TransferState}>`. Pass an instance only when something else owns it (`<Provider for={counter}>` after `Counter.use()`). Several: `for={{ app: AppState, user: UserState }}`. `is` callbacks, fallback, field props: [react/react.md](react/react.md).
 
 ## Component Class
 
@@ -307,12 +275,9 @@ const counter = CounterView.new();
 <>{counter}</>;
 ```
 
-Activated Component instances are React elements and may be rendered directly,
-including from an array. Their external owner retains lifecycle ownership, so
-unmount detaches without destroying them. See
-[react/component.md](react/component.md) for details.
+An activated instance renders directly, arrays included; its owner keeps lifecycle, so unmount detaches without destroying.
 
-PascalCase methods become reactive subcomponents - but they are **extension points**, not a general decomposition tool. The test: would a subclass reasonably replace or wrap this renderer? If not, use a freestanding function component that calls `MyComponent.get()`. See [react/component.md](react/component.md).
+PascalCase methods become reactive subcomponents - **extension points** a subclass would replace or wrap, not general decomposition. Otherwise write a freestanding FC calling `MyComponent.get()`. Details: [react/component.md](react/component.md).
 
 ## Rules & Counter-Rules
 
@@ -351,14 +316,7 @@ Fetch these for detailed documentation when the task requires deeper knowledge. 
 - [state/context.md](state/context.md) - Context system, global root, home context, ownership rules
 - [state/types.md](state/types.md) - TypeScript type aliases and utility types
 
-### Instructions & Reactive Helpers
-
-- [field/set.md](field/set.md) - Property descriptors, defaults, factories, setter callbacks
-- [field/get.md](field/get.md) - Context lookup: upstream, downstream, callbacks
-- [field/ref.md](field/ref.md) - Mutable refs, ref proxy, callbacks
-- [field/map.md](field/map.md) - Reactive `Map`: keyed entries, keyed spawner, owned members, direct render
-- [field/has.md](field/has.md) - Owned collections: reactive lists and spawned pools
-- [field/def.md](field/def.md) - Low-level custom property behavior
+Instructions: `field/*.md`, linked from the [helper table](#instructions--reactive-helpers).
 
 ### React
 
@@ -380,7 +338,7 @@ Fetch these for detailed documentation when the task requires deeper knowledge. 
 - [examples/basic.md](examples/basic.md) - Complete working examples from simple to intermediate
 - [examples/audit.md](examples/audit.md) - Guide for evaluating whether Expressive MVC fits a codebase
 
-**Runnable examples** live at `https://expressive.dev/examples/<group>/<name>` and serve every source file of a working program as plain HTML - fetchable without JavaScript. These are optional enrichment: this skill is complete offline, and [examples/basic.md](examples/basic.md) covers the core patterns inline. When you have network access and want a full reference implementation of a specific feature - rather than a snippet - fetch the matching page:
+**Runnable examples** - optional; this skill is complete offline. `https://expressive.dev/examples/<group>/<name>` serves a working program's every source file as plain HTML (no JS needed). Fetch one for a full reference implementation rather than a snippet:
 
 | Group | Pages |
 | --- | --- |
@@ -393,6 +351,6 @@ Fetch these for detailed documentation when the task requires deeper knowledge. 
 
 ## Auditing & Evaluation
 
-Audit a conversion as a separate pass, not while authoring - self-audits under-report the author's architecture gaps; a fresh checklist pass over the diff recovers them.
+Audit a conversion as a separate pass over the diff - self-audits while authoring under-report architecture gaps.
 
-Use [examples/audit.md](examples/audit.md) to assess fit and migration candidates. If migration is approved, follow [react/refactor.md](react/refactor.md) rather than translating hooks mechanically. For recorded design rationale, use [design.md](design.md); for adoption positioning and comparisons, use the website-only [why](https://expressive.dev/llm/why.md) and [comparisons](https://expressive.dev/llm/comparisons.md) pages.
+Fit and migration candidates: [examples/audit.md](examples/audit.md); approved migrations follow [react/refactor.md](react/refactor.md). Positioning: website-only [why](https://expressive.dev/llm/why.md) and [comparisons](https://expressive.dev/llm/comparisons.md).
