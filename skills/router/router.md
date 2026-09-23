@@ -84,7 +84,7 @@ A `none` Route always needs an authored parent scope - a root-level one is the a
 | `''` / `undefined` / `false` | allow normal render |
 | `null` | **force-404**: cede the path so the scope falls through to its nearest `none` Route |
 
-The guard may be **async** (return a `Promise`); while it pends, the route's `fallback` shows on cold load, and in-app navigation holds the current screen (see [Deferred presentation](#deferred-presentation)). The verdict is cached for navigation within the matched space and re-evaluated on re-entry.
+The guard may be **async** (return a `Promise`); while it pends, the route's `fallback` shows on cold load, and in-app navigation holds the current screen (see [Deferred presentation](#deferred-presentation)). The verdict is cached per concrete path of the route's own pattern: navigation below it reuses the verdict; re-entry or a change to its own params (`/vault/a` -> `/vault/b` on `vault/:doc`) re-runs the guard.
 
 ```tsx
 <Route to="document/:id"

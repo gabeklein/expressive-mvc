@@ -1137,6 +1137,51 @@ describe('Route', () => {
           expect(ran).toBe(1);
         });
 
+        it('re-runs the guard when its own param changes', async () => {
+          location('/vault/charter');
+          const seen: string[] = [];
+          const guard = () => {
+            const doc = router.current.path.split('/').pop()!;
+            seen.push(doc);
+            return doc === 'charter' ? undefined : null;
+          };
+          await act(async () => {
+            render(
+              <Route to="vault">
+                <Route to=":doc" redirect={guard} as={() => <h1>doc</h1>} />
+                <Route none as={() => <h1>missing</h1>} />
+              </Route>
+            );
+          });
+          expect(screen.getByText('doc')).toBeDefined();
+
+          await act(async () => router.current.goto('/vault/secrets'));
+          expect(screen.getByText('missing')).toBeDefined();
+          expect(seen).toEqual(['charter', 'secrets']);
+        });
+
+        it('reuses the verdict across descendant params but not its own', async () => {
+          location('/org/1/a');
+          let ran = 0;
+          const guard = () => { ran++; return undefined; };
+          const Layout = (props: { children?: React.ReactNode }) => <main>{props.children}</main>;
+          await act(async () => {
+            render(
+              <Route to="org/:org" redirect={guard} as={Layout}>
+                <Route to=":tab" as={() => <h1>tab</h1>} />
+              </Route>
+            );
+          });
+          expect(ran).toBe(1);
+
+          await act(async () => router.current.goto('/org/1/b'));
+          expect(ran).toBe(1);
+
+          await act(async () => router.current.goto('/org/2/b'));
+          expect(screen.getByText('tab')).toBeDefined();
+          expect(ran).toBe(2);
+        });
+
         it('re-runs the guard on re-entry', async () => {
           location('/admin');
           let ran = 0;
@@ -1291,7 +1336,7 @@ describe('Route', () => {
           await act(async () => {
             render(
               <Route to="document" as={Layout} is={(r) => (router = r.router)}>
-                <Route to=":id" redirect={() => gate} as={Document} />
+                <Route to=":id" redirect={() => router.path === '/document/123' ? gate : undefined} as={Document} />
                 <Route none as={NotFound} />
               </Route>
             );
