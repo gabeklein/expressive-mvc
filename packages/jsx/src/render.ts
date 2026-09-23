@@ -16,7 +16,9 @@ type Kind = 'collection' | 'component' | 'element' | 'fragment' | 'function' | '
 interface Boundary {
   catch?: (error: Error) => Promise<void> | void;
   fallback: () => RenderNode;
+  owner?: Fiber;
   parent?: Boundary;
+  waiting?: Set<Fiber>;
 }
 
 interface Fiber {
@@ -29,7 +31,6 @@ interface Fiber {
   context: Context;
   boundary?: Boundary;
   ownBoundary?: Boundary;
-  parent: globalThis.Node;
   start: globalThis.Node;
   end: globalThis.Node;
   children: Fiber[];
@@ -45,11 +46,18 @@ interface Fiber {
   portalContainer?: Container;
   suspended?: Set<() => void>;
   ignore?: boolean;
+  dead?: boolean;
+  waitingOn?: Boundary;
+  stash?: DocumentFragment;
+  placeholder?: Fiber;
 }
 
 const roots = new WeakMap<Container, () => void>();
 const SVG = 'http://www.w3.org/2000/svg';
+const dirty = new Set<Boundary>();
 let passiveRender = false;
+let depth = 0;
+let settling = false;
 
 function render(node: RenderNode, container: Container): () => void {
   roots.get(container)?.();
@@ -59,7 +67,7 @@ function render(node: RenderNode, container: Container): () => void {
   const fiber = range('fragment', container, null, context);
 
   try {
-    reconcile(fiber, node, context, undefined);
+    pass(() => reconcile(fiber, node, context, undefined));
   } catch (error) {
     unmountFiber(fiber);
     context.pop();
@@ -86,7 +94,7 @@ function range(kind: Kind, parent: globalThis.Node, before: globalThis.Node | nu
   parent.insertBefore(start, before);
   parent.insertBefore(end, before);
 
-  return { kind, context, parent, start, end, children: [] };
+  return { kind, context, start, end, children: [] };
 }
 
 function makeScope(kind: Scope['kind'], context: Context, update: (passive: boolean) => void): Scope {
@@ -117,7 +125,7 @@ function mount(value: RenderNode, parent: globalThis.Node, before: globalThis.No
   if (typeof value == 'string' || typeof value == 'number' || typeof value == 'bigint') {
     const text = document.createTextNode(String(value));
     parent.insertBefore(text, before);
-    return { kind: 'text', value, context, parent, start: text, end: text, children: [] };
+    return { kind: 'text', value, context, start: text, end: text, children: [] };
   }
 
   if (value instanceof Component) return mountComponent(value, parent, before, context, boundary);
@@ -183,6 +191,7 @@ function mountComponent(
     ? {
         catch: instance.catch?.bind(instance),
         fallback: () => instance.fallback,
+        owner: fiber,
         parent: inherited
       }
     : inherited;
@@ -265,7 +274,7 @@ function mountProvider(value: VNode, parent: globalThis.Node, before: globalThis
   const commit = provide(childContext, value.props as any);
 
   const boundary = value.props.fallback !== undefined
-    ? { fallback: () => fiber.props!.fallback, parent: inherited }
+    ? { fallback: () => fiber.props!.fallback, owner: fiber, parent: inherited }
     : inherited;
 
   fiber.boundary = boundary;
@@ -294,7 +303,6 @@ function mountPortal(value: VNode, parent: globalThis.Node, before: globalThis.N
     props: value.props,
     context,
     boundary,
-    parent,
     start: marker,
     end: marker,
     children: [],
@@ -321,7 +329,6 @@ function mountElement(value: VNode, parent: globalThis.Node, before: globalThis.
     props: {},
     context,
     boundary,
-    parent,
     start: element,
     end: element,
     children: [],
@@ -334,19 +341,91 @@ function mountElement(value: VNode, parent: globalThis.Node, before: globalThis.
   });
 }
 
+function pass<T>(work: () => T): T {
+  depth++;
+
+  try {
+    return work();
+  } finally {
+    if (!--depth) settle();
+  }
+}
+
 function attempt(fiber: Fiber, passive: boolean, render: () => RenderNode) {
   const previous = passiveRender;
   passiveRender ||= passive;
 
   try {
-    reconcile(fiber, render(), fiber.scope!.childContext, fiber.boundary);
-    return true;
-  } catch (thrown) {
-    suspend(fiber, thrown, passive);
-    return false;
+    return pass(() => {
+      try {
+        reconcile(fiber, render(), fiber.scope!.childContext, fiber.boundary);
+        unwait(fiber);
+        return true;
+      } catch (thrown) {
+        suspend(fiber, thrown, passive);
+        return false;
+      }
+    });
   } finally {
     passiveRender = previous;
   }
+}
+
+function wait(fiber: Fiber, boundary: Boundary) {
+  if (fiber.waitingOn !== boundary) unwait(fiber);
+
+  fiber.waitingOn = boundary;
+  (boundary.waiting ||= new Set()).add(fiber);
+  dirty.add(boundary);
+}
+
+function unwait(fiber: Fiber) {
+  const boundary = fiber.waitingOn;
+
+  if (!boundary) return;
+
+  fiber.waitingOn = undefined;
+  boundary.waiting!.delete(fiber);
+  dirty.add(boundary);
+}
+
+function settle() {
+  if (settling) return;
+  settling = true;
+
+  try {
+    for (const boundary of dirty) {
+      dirty.delete(boundary);
+
+      const owner = boundary.owner!;
+      const waiting = boundary.waiting!.size > 0;
+
+      if (!owner.dead && waiting != !!owner.stash)
+        waiting ? hide(owner, boundary) : reveal(owner);
+    }
+  } finally {
+    settling = false;
+  }
+}
+
+function hide(owner: Fiber, boundary: Boundary) {
+  const stash = document.createDocumentFragment();
+
+  for (const child of owner.children) move(child, stash, null);
+
+  const context = owner.childContext!;
+  const placeholder = range('fragment', owner.end.parentNode!, owner.end, context);
+
+  owner.stash = stash;
+  owner.placeholder = placeholder;
+  reconcile(placeholder, boundary.fallback(), context, boundary.parent);
+}
+
+function reveal(owner: Fiber) {
+  unmountFiber(owner.placeholder!);
+  owner.end.parentNode!.insertBefore(owner.stash!, owner.end);
+  owner.placeholder = undefined;
+  owner.stash = undefined;
 }
 
 function suspend(fiber: Fiber, thrown: unknown, passive: boolean) {
@@ -354,9 +433,8 @@ function suspend(fiber: Fiber, thrown: unknown, passive: boolean) {
 
   if (thrown instanceof Promise) {
     if (!boundary) throw thrown;
-    if (passive && !fiber.children.length) throw thrown;
-    if (!passive)
-      reconcile(fiber, boundary.fallback(), fiber.context, boundary.parent);
+    if (passive && !fiber.children.length && depth > 1) throw thrown;
+    if (!passive) wait(fiber, boundary);
 
     const scope = fiber.scope!;
     let held = scope.holds;
@@ -381,7 +459,7 @@ function suspend(fiber: Fiber, thrown: unknown, passive: boolean) {
 
     thrown.then(
       () => resume(() => passive ? transition(() => schedule(scope)) : schedule(scope)),
-      (error) => resume(() => recover(fiber, error))
+      (error) => resume(() => pass(() => recover(fiber, error)))
     );
     return;
   }
@@ -403,7 +481,7 @@ function recover(fiber: Fiber, thrown: unknown) {
     throw error;
   }
 
-  reconcile(fiber, boundary.fallback(), fiber.context, boundary.parent);
+  wait(fiber, boundary);
 
   Promise.resolve(boundary.catch(error)).then(
     () => {
@@ -412,13 +490,14 @@ function recover(fiber: Fiber, thrown: unknown) {
     (next) => {
       if (!fiber.scope!.active) return;
       fiber.boundary = boundary.parent;
-      recover(fiber, next);
+      pass(() => recover(fiber, next));
     }
   );
 }
 
 function reconcile(fiber: Fiber, value: RenderNode, context: Context, boundary?: Boundary) {
-  reconcileChildren(fiber, fiber.parent, fiber.end, value, context, boundary);
+  if (fiber.stash) reconcileChildren(fiber, fiber.stash, null, value, context, boundary);
+  else reconcileChildren(fiber, fiber.end.parentNode!, fiber.end, value, context, boundary);
 }
 
 function reconcilePortal(fiber: Fiber, value: RenderNode, context: Context, boundary?: Boundary) {
@@ -435,19 +514,24 @@ function reconcileChildren(owner: Fiber, parent: globalThis.Node, before: global
   for (const child of old)
     if (child.key !== null && child.key !== undefined) keyed.set(child.key, child);
 
-  for (let index = 0; index < values.length; index++) {
-    const value = values[index];
-    const key = keyOf(value);
-    let child = key !== null && key !== undefined
-      ? keyed.get(key)
-      : old[index]?.key == null
-        ? old[index]
-        : undefined;
+  try {
+    for (let index = 0; index < values.length; index++) {
+      const value = values[index];
+      const key = keyOf(value);
+      let child = key !== null && key !== undefined
+        ? keyed.get(key)
+        : old[index]?.key == null
+          ? old[index]
+          : undefined;
 
-    if (child && used.has(child)) child = undefined;
-    if (child) used.add(child);
+      if (child && used.has(child)) child = undefined;
+      if (child) used.add(child);
 
-    next.push(patch(child, value, parent, before, context, boundary));
+      next.push(patch(child, value, parent, before, context, boundary));
+    }
+  } catch (error) {
+    owner.children = [...next, ...old.filter((child) => !child.dead && !next.includes(child))];
+    throw error;
   }
 
   for (const child of old)
@@ -525,7 +609,7 @@ function keyOf(value: RenderNode): Key {
 }
 
 function move(fiber: Fiber, parent: globalThis.Node, before: globalThis.Node | null) {
-  if (fiber.parent === parent && fiber.end.nextSibling === before) return;
+  if (fiber.start.parentNode === parent && fiber.end.nextSibling === before) return;
 
   let node: globalThis.Node | null = fiber.start;
   while (node) {
@@ -534,8 +618,6 @@ function move(fiber: Fiber, parent: globalThis.Node, before: globalThis.Node | n
     if (node === fiber.end) break;
     node = next;
   }
-
-  fiber.parent = parent;
 }
 
 function patchProps(fiber: Fiber, next: Record<string, any>) {
@@ -642,8 +724,13 @@ function applyRef(ref: unknown, value: Element | null) {
 }
 
 function unmountFiber(fiber: Fiber) {
+  fiber.dead = true;
+  unwait(fiber);
+
   for (let index = fiber.children.length - 1; index >= 0; index--)
     unmountFiber(fiber.children[index]);
+
+  if (fiber.placeholder) unmountFiber(fiber.placeholder);
 
   fiber.suspended?.forEach((clear) => clear());
   if (fiber.scope) dispose(fiber.scope);

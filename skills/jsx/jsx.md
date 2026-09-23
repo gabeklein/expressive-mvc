@@ -73,7 +73,7 @@ function Row({ id }: { id: string }) {
 
 ## Lazy, boundaries, transitions
 
-`lazy(loader)` accepts a module default export or a directly exported component. A Component supplies a suspense boundary unless `fallback = false`; `Provider fallback={...}` adds one explicitly. `Component.catch(error)` handles render failures and retries after it completes.
+`lazy(loader)` accepts a module default export or a directly exported component. A Component supplies a suspense boundary unless `fallback = false`; `Provider fallback={...}` adds one explicitly. A suspension or caught error anywhere below replaces the whole boundary with one fallback; its content stays mounted off-document, keeps updating, and reveals at once when every waiting scope renders. `Component.catch(error)` handles render failures and retries after it completes.
 
 ```tsx
 const Settings = lazy(() => import('./Settings'));
