@@ -1,7 +1,5 @@
 # Expressive MVC — Patterns
 
-Recipes and examples for common patterns and use cases with Expressive MVC in React.
-
 ## Counter
 
 ```tsx
@@ -97,7 +95,7 @@ Suspense fits load-once data the view cannot render without. Keep explicit `load
 
 ## Domain Rows in a Pool
 
-State about a collection entry lives on the entry's class, spawned thru a `has` pool - not id-keyed records or `(id, value)` methods on the page. Factory takes the API payload (DTO in); page keeps fetch, the pool, and selection *policy*:
+State about a collection entry lives on the entry's class, spawned thru a `has` pool - not id-keyed records or `(id, value)` methods on the page. The factory takes the API payload (DTO in); the page keeps fetch, the pool, and selection *policy*:
 
 ```tsx
 import State, { Component, get, has, set } from '@expressive/react';
@@ -155,9 +153,9 @@ function MessageList({ list }: { list: Message[] }) {
 }
 ```
 
-Activated Components are React elements: the pool `{inbox.messages}` and plain subsets `{list}` place directly, no `.map`. Each row paints from its own `render()` subscription - selecting one message re-renders one row.
+Activated Components are React elements: the pool `{inbox.messages}` and plain subsets `{list}` place directly, no `.map`. Each row paints from its own `render()` subscription - selecting one re-renders one row.
 
-The factory here earns its line by folding the payload to `info`. A seed already matching the class's init is just `has(Message)` - integration writes declared keys only, skips the rest, and a clashing shared key is a TypeScript error.
+The factory earns its line by folding the payload to `info`. A seed already matching the class's init is just `has(Message)` - integration writes declared keys only, skips the rest; a clashing shared key is a TypeScript error.
 
 A cross-cutting subset can be a second pool instead of a member flag - class-mode `add` admits ready-made members; `pool.has(value)` tracks that member only. Members evict on destroy, so refill clears the subset - use a durable key when selection must survive refresh:
 
@@ -177,7 +175,7 @@ get selected() {
 
 ## Form Chips in a Pool
 
-The same shape covers form entries with their own async lifecycle - an upload, a pending download, an applied filter. The chip owns that lifecycle: started in `new()`, handle in an unmanaged field, torn down on destroy. The form owns the pool and readiness, reading DTOs back out at the API boundary:
+Same shape for form entries with their own async lifecycle - an upload, a pending download, an applied filter. The chip owns that lifecycle: started in `new()`, handle in an unmanaged field, torn down on destroy. The form owns the pool and readiness, reading DTOs back out at the API boundary:
 
 ```tsx
 class Attachment extends Component {
@@ -224,7 +222,7 @@ The owner coordinates readiness only. A method re-finding a chip by id to feed i
 
 ## Region Controllers
 
-When a page State accumulates unrelated clusters - draft fields plus lookups plus request state plus navigation - split each into its own State owned as a field. Owned fields are States; features that paint mount in `render()` as JSX. Unplug test, build-time bias, and the forms table: [refactor.md](refactor.md) steps 3/5. Ownership provides implicitly; views bind the region directly:
+When a page State accumulates unrelated clusters - draft fields plus lookups plus request state plus navigation - split each into its own State owned as a field. Owned fields are States; painting features mount in `render()` as JSX. Unplug test, build-time bias, forms table: [refactor.md](refactor.md) steps 3/5. Ownership provides implicitly; views bind the region directly:
 
 ```tsx
 class ComposePage extends Component {
@@ -256,7 +254,7 @@ Children of a region `.get()` the region, never the page above it and back down.
 
 ## Bridging an Existing Router
 
-Bridge, don't replace: a conversion keeps the app's router; adopting `@expressive/router` needs explicit go-ahead. An outer FC reads router hooks and passes props; alternatively the class encapsulates hooks itself with `use()` (see [react.md](react.md)):
+Bridge, don't replace: a conversion keeps the app's router; adopting `@expressive/router` needs explicit go-ahead. An outer FC reads router hooks and passes props, or the class encapsulates hooks with `use()` ([react.md](react.md)):
 
 ```tsx
 function InboxRoute() {
@@ -294,11 +292,11 @@ class ComposePage extends Component {
 }
 ```
 
-Assign the working field the moment identity is created. Fresh ids threaded thru arguments, or a shadow field remembering the last route - the working field is still a mirror.
+Assign the working field the moment identity is created. Fresh ids threaded thru arguments, or a shadow field remembering the last route, mean the working field is still a mirror.
 
 ## Host-Agnostic Model, View Adapter
 
-A class shared across environments (extension host + webview, server + client) stays fields-only - no `window`, DOM, or host APIs at module scope or in `new()`. The view-side module re-exports the class and registers `State.on()` once; every instance constructed after that import gets the wiring, and hosts that never import the adapter never run it:
+A class shared across environments (extension host + webview, server + client) stays fields-only - no `window`, DOM, or host APIs at module scope or in `new()`. The view-side module re-exports the class and registers `State.on()` once; every instance constructed after that import gets the wiring; hosts never importing the adapter never run it:
 
 ```ts
 // domain/session.ts - loads anywhere
@@ -371,7 +369,7 @@ function App() {
 
 ## Contextual Children (No Prop Drilling)
 
-Children of a provided state declare their own dependencies with `.get()`. Do not thread state values and callbacks through props:
+Children of a provided state declare their own dependencies with `.get()` - don't thread state values and callbacks through props:
 
 ```tsx
 // Before: parent unpacks state and drills it down
@@ -407,7 +405,7 @@ Pure presentation components (a `Metric`, a badge) may still take plain props - 
 
 ## Presence Boundary
 
-The parent owns whether an optional child exists; the child asserts its requirements with `.get(true)`. Declare the gated field optional (`draft?: T`), not `| null`:
+The parent owns whether an optional child exists; the child asserts its requirements with `.get(true)` - `SettingsContent` / `SettingsEditor` in [react.md](react.md#required-values--presence-boundaries). Declare the gated field optional (`draft?: T`), not `| null`:
 
 ```tsx
 class SettingsState extends State {
@@ -415,30 +413,6 @@ class SettingsState extends State {
   saving = false;
 
   async saveSettings() { ... }
-}
-
-function SettingsContent() {
-  const { draft } = SettingsState.get();
-
-  return (
-    <div className="settings-layout">
-      <LocationList />
-      {draft && <SettingsEditor />}
-    </div>
-  );
-}
-
-function SettingsEditor() {
-  const {
-    saveSettings,
-    saving,
-    draft: {
-      bankAccount,
-      categoryAccounts,
-    },
-  } = SettingsState.get(true);
-
-  return <section className="settings-editor">...</section>;
 }
 ```
 
@@ -530,7 +504,7 @@ class TabGroup extends Component {
 
 ## Refactoring Hooks Into State
 
-When converting React hooks, avoid a literal hook-for-field rewrite. Put mutable inputs in fields, derived values in getters, setup/cleanup in `new()`, and event handlers in methods.
+Avoid a literal hook-for-field rewrite. Mutable inputs go in fields, derived values in getters, client setup/cleanup in `mount()`, event handlers in methods.
 
 ```tsx
 // Before: width is source state, compact is derived state kept in sync.
@@ -557,17 +531,18 @@ function LayoutBadge() {
 import State from '@expressive/react';
 
 class Viewport extends State {
-  width = window.innerWidth;
+  width = 0;
 
   get compact() {
     return this.width < 720;
   }
 
-  protected new() {
+  mount() {
     const update = () => {
       this.width = window.innerWidth;
     };
 
+    update();
     window.addEventListener('resize', update);
     return () => window.removeEventListener('resize', update);
   }
@@ -592,7 +567,7 @@ class Timer extends State {
     this.elapsed++;
   }
 
-  protected new() {
+  mount() {
     const id = setInterval(this.tick, 1000); // methods are auto-bound - no arrow wrapper
     return () => clearInterval(id);
   }
