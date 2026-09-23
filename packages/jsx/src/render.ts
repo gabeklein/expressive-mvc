@@ -52,6 +52,12 @@ interface Fiber {
   waitingOn?: Boundary;
   stash?: DocumentFragment;
   placeholder?: Fiber;
+  appearance?: Appearance;
+  consumed?: boolean;
+}
+
+interface Appearance {
+  entries: Style[];
 }
 
 const roots = new WeakMap<Container, () => void>();
@@ -62,6 +68,14 @@ const CONTROLS = ['checked', 'value'];
 let passiveRender = false;
 let depth = 0;
 let settling = false;
+let rendering: object | undefined;
+let touched = false;
+const observed = new WeakMap<object, Record<string, any>>();
+const tickets = new WeakMap<object, Ticket>();
+
+interface Ticket {
+  classes: string[];
+}
 
 function render(node: RenderNode, container: Container): () => void {
   roots.get(container)?.();
@@ -125,48 +139,50 @@ function complete<T extends Fiber>(fiber: T, work: () => void): T {
   return fiber;
 }
 
-function mount(value: RenderNode, parent: globalThis.Node, before: globalThis.Node | null, context: Context, boundary?: Boundary): Fiber {
+function mount(value: RenderNode, parent: globalThis.Node, before: globalThis.Node | null, context: Context, boundary?: Boundary, appearance?: Appearance): Fiber {
   if (typeof value == 'string' || typeof value == 'number' || typeof value == 'bigint') {
     const text = document.createTextNode(String(value));
     parent.insertBefore(text, before);
     return { kind: 'text', value, context, start: text, end: text, children: [] };
   }
 
-  if (value instanceof Component) return mountComponent(value, parent, before, context, boundary);
+  if (value instanceof Component) return mountComponent(value, parent, before, context, boundary, appearance);
   if (value instanceof has.List || value instanceof has.Pool || value instanceof map.Managed)
-    return mountCollection(value, parent, before, context, boundary);
+    return mountCollection(value, parent, before, context, boundary, appearance);
 
   if (!isVNode(value)) throw new TypeError(`Cannot render ${String(value)}.`);
 
-  if (value.type === Fragment) return mountFragment(value, parent, before, context, boundary);
-  if (value.type === PORTAL) return mountPortal(value, parent, before, context, boundary);
-  if (value.type === Provider) return mountProvider(value, parent, before, context, boundary);
-  if (typeof value.type == 'string') return mountElement(value, parent, before, context, boundary);
+  if (value.type === Fragment) return mountFragment(value, parent, before, context, boundary, appearance);
+  if (value.type === PORTAL) return mountPortal(value, parent, before, context, boundary, appearance);
+  if (value.type === Provider) return mountProvider(value, parent, before, context, boundary, appearance);
+  if (typeof value.type == 'string') return mountElement(value, parent, before, context, boundary, appearance);
   if (typeof value.type != 'function')
     throw new Error(`Cannot render ${String(value.type)}.`);
 
   if (value.type.prototype instanceof Component)
-    return mountComponent(new (value.type as new (props: any) => Component)(value.props), parent, before, context, boundary, true, value.key);
+    return mountComponent(new (value.type as new (props: any) => Component)(observe(value.props)), parent, before, context, boundary, appearance, true, value.key);
 
-  return mountFunction(value, parent, before, context, boundary);
+  return mountFunction(value, parent, before, context, boundary, appearance);
 }
 
-function mountFragment(value: VNode, parent: globalThis.Node, before: globalThis.Node | null, context: Context, boundary?: Boundary) {
+function mountFragment(value: VNode, parent: globalThis.Node, before: globalThis.Node | null, context: Context, boundary?: Boundary, appearance?: Appearance) {
   const fiber = range('fragment', parent, before, context);
   fiber.key = value.key;
   fiber.type = Fragment;
+  fiber.appearance = appearance;
 
   return complete(fiber, () => {
-    reconcile(fiber, value.props.children, context, boundary);
+    reconcile(fiber, value.props.children, context, boundary, appearance);
   });
 }
 
-function mountFunction(value: VNode, parent: globalThis.Node, before: globalThis.Node | null, context: Context, boundary?: Boundary) {
+function mountFunction(value: VNode, parent: globalThis.Node, before: globalThis.Node | null, context: Context, boundary?: Boundary, appearance?: Appearance) {
   const fiber = range('function', parent, before, context);
   fiber.key = value.key;
   fiber.type = value.type;
-  fiber.props = value.props;
+  fiber.props = observe(value.props);
   fiber.boundary = boundary;
+  fiber.appearance = appearance;
   fiber.scope = makeScope('function', context, (passive) => runFunction(fiber, passive));
 
   return complete(fiber, () => {
@@ -186,6 +202,7 @@ function mountComponent(
   before: globalThis.Node | null,
   context: Context,
   inherited?: Boundary,
+  appearance?: Appearance,
   owned = false,
   key?: Key
 ) {
@@ -208,6 +225,7 @@ function mountComponent(
   fiber.type = instance.constructor;
   fiber.props = instance.props as Record<string, any>;
   fiber.owned = owned;
+  fiber.appearance = appearance;
   fiber.scope = makeScope('component', childContext, (passive) => runComponent(fiber, passive));
 
   let first = true;
@@ -244,11 +262,12 @@ function runComponent(fiber: Fiber, passive: boolean) {
   );
 }
 
-function mountCollection(value: has.List<unknown> | has.Pool<unknown> | map.Managed<unknown, unknown>, parent: globalThis.Node, before: globalThis.Node | null, context: Context, boundary?: Boundary) {
+function mountCollection(value: has.List<unknown> | has.Pool<unknown> | map.Managed<unknown, unknown>, parent: globalThis.Node, before: globalThis.Node | null, context: Context, boundary?: Boundary, appearance?: Appearance) {
   const fiber = range('collection', parent, before, context);
   fiber.source = value;
   fiber.value = value;
   fiber.boundary = boundary;
+  fiber.appearance = appearance;
   fiber.scope = makeScope('collection', context, (passive) => runCollection(fiber, passive));
 
   let first = true;
@@ -270,13 +289,14 @@ function runCollection(fiber: Fiber, passive: boolean) {
   });
 }
 
-function mountProvider(value: VNode, parent: globalThis.Node, before: globalThis.Node | null, context: Context, inherited?: Boundary) {
+function mountProvider(value: VNode, parent: globalThis.Node, before: globalThis.Node | null, context: Context, inherited?: Boundary, appearance?: Appearance) {
   const fiber = range('provider', parent, before, context);
   const childContext = new Context(context);
 
   fiber.key = value.key;
   fiber.type = Provider;
   fiber.props = value.props;
+  fiber.appearance = appearance;
   fiber.childContext = childContext;
   const commit = provide(childContext, value.props as any);
 
@@ -287,14 +307,14 @@ function mountProvider(value: VNode, parent: globalThis.Node, before: globalThis
   fiber.boundary = boundary;
   if (boundary !== inherited) fiber.ownBoundary = boundary;
   complete(fiber, () => {
-    reconcile(fiber, value.props.children, childContext, boundary);
+    reconcile(fiber, value.props.children, childContext, boundary, appearance);
   });
   commit();
 
   return fiber;
 }
 
-function mountPortal(value: VNode, parent: globalThis.Node, before: globalThis.Node | null, context: Context, boundary?: Boundary) {
+function mountPortal(value: VNode, parent: globalThis.Node, before: globalThis.Node | null, context: Context, boundary?: Boundary, appearance?: Appearance) {
   const marker = document.createComment('portal');
   const container = value.props.container as Container;
   const portalStart = document.createComment('portal-root');
@@ -310,6 +330,7 @@ function mountPortal(value: VNode, parent: globalThis.Node, before: globalThis.N
     props: value.props,
     context,
     boundary,
+    appearance,
     start: marker,
     end: marker,
     children: [],
@@ -319,11 +340,11 @@ function mountPortal(value: VNode, parent: globalThis.Node, before: globalThis.N
   };
 
   return complete(output, () => {
-    reconcilePortal(output, value.props.children, context, boundary);
+    reconcilePortal(output, value.props.children, context, boundary, appearance);
   });
 }
 
-function mountElement(value: VNode, parent: globalThis.Node, before: globalThis.Node | null, context: Context, boundary?: Boundary) {
+function mountElement(value: VNode, parent: globalThis.Node, before: globalThis.Node | null, context: Context, boundary?: Boundary, appearance?: Appearance) {
   const tag = value.type as string;
   let host = parent;
 
@@ -349,7 +370,7 @@ function mountElement(value: VNode, parent: globalThis.Node, before: globalThis.
 
   parent.insertBefore(element, before);
   return complete(fiber, () => {
-    patchProps(fiber, value.props);
+    patchProps(fiber, value.props, appearance);
   });
 }
 
@@ -370,7 +391,8 @@ function attempt(fiber: Fiber, passive: boolean, render: () => RenderNode) {
   try {
     return pass(() => {
       try {
-        reconcile(fiber, render(), fiber.scope!.childContext, fiber.boundary);
+        const output = consume(fiber, render);
+        reconcile(fiber, output, fiber.scope!.childContext, fiber.boundary, renderedAppearance(fiber));
         unwait(fiber);
         fiber.retried = undefined;
         return true;
@@ -381,6 +403,64 @@ function attempt(fiber: Fiber, passive: boolean, render: () => RenderNode) {
     });
   } finally {
     passiveRender = previous;
+  }
+}
+
+function observe(props: Record<string, any>) {
+  if (!('style' in props)) return props;
+
+  let output = observed.get(props);
+
+  if (!output) {
+    const { style } = props;
+    let handle: Style;
+    let resolved = false;
+
+    output = Object.defineProperty({ ...props }, 'style', {
+      enumerable: true,
+      get() {
+        if (rendering === output) touched = true;
+        if (!resolved) {
+          handle = door(style);
+          resolved = true;
+        }
+        return handle;
+      }
+    });
+    observed.set(props, output);
+  }
+
+  return output;
+}
+
+function door(value: Style) {
+  const ticket: Ticket = { classes: [] };
+  const declarations: Record<string, unknown> = {};
+
+  flattenStyle(value, ticket.classes, declarations);
+
+  if (!ticket.classes.length && !Object.keys(declarations).length) return undefined;
+
+  const key = Object.freeze({});
+
+  tickets.set(key, ticket);
+  return Object.freeze({ ...declarations, [Symbol('style')]: key });
+}
+
+function consume(fiber: Fiber, render: () => RenderNode) {
+  const previous = rendering;
+  const read = touched;
+
+  rendering = fiber.props;
+  touched = false;
+
+  try {
+    const output = render();
+    fiber.consumed = touched;
+    return output;
+  } finally {
+    rendering = previous;
+    touched = read;
   }
 }
 
@@ -540,16 +620,16 @@ function isThenable(value: unknown): value is PromiseLike<unknown> {
   return !!value && typeof (value as PromiseLike<unknown>).then == 'function';
 }
 
-function reconcile(fiber: Fiber, value: RenderNode, context: Context, boundary?: Boundary) {
-  if (fiber.stash) reconcileChildren(fiber, fiber.stash, null, value, context, boundary);
-  else reconcileChildren(fiber, fiber.end.parentNode!, fiber.end, value, context, boundary);
+function reconcile(fiber: Fiber, value: RenderNode, context: Context, boundary?: Boundary, appearance?: Appearance) {
+  if (fiber.stash) reconcileChildren(fiber, fiber.stash, null, value, context, boundary, appearance);
+  else reconcileChildren(fiber, fiber.end.parentNode!, fiber.end, value, context, boundary, appearance);
 }
 
-function reconcilePortal(fiber: Fiber, value: RenderNode, context: Context, boundary?: Boundary) {
-  reconcileChildren(fiber, fiber.portalEnd!.parentNode!, fiber.portalEnd!, value, context, boundary);
+function reconcilePortal(fiber: Fiber, value: RenderNode, context: Context, boundary?: Boundary, appearance?: Appearance) {
+  reconcileChildren(fiber, fiber.portalEnd!.parentNode!, fiber.portalEnd!, value, context, boundary, appearance);
 }
 
-function reconcileChildren(owner: Fiber, parent: globalThis.Node, before: globalThis.Node | null, value: RenderNode, context: Context, boundary?: Boundary) {
+function reconcileChildren(owner: Fiber, parent: globalThis.Node, before: globalThis.Node | null, value: RenderNode, context: Context, boundary?: Boundary, appearance?: Appearance) {
   const values = childrenOf(value);
   const old = owner.children;
   const keyed = new Map<Key, Fiber>();
@@ -572,7 +652,7 @@ function reconcileChildren(owner: Fiber, parent: globalThis.Node, before: global
       if (child && used.has(child)) child = undefined;
       if (child) used.add(child);
 
-      next.push(patch(child, value, parent, before, context, boundary));
+      next.push(patch(child, value, parent, before, context, boundary, appearance));
     }
   } catch (error) {
     owner.children = [...next, ...old.filter((child) => !child.dead && !next.includes(child))];
@@ -591,32 +671,40 @@ function reconcileChildren(owner: Fiber, parent: globalThis.Node, before: global
   owner.children = next;
 }
 
-function patch(old: Fiber | undefined, value: RenderNode, parent: globalThis.Node, before: globalThis.Node | null, context: Context, boundary?: Boundary): Fiber {
+function patch(old: Fiber | undefined, value: RenderNode, parent: globalThis.Node, before: globalThis.Node | null, context: Context, boundary?: Boundary, appearance?: Appearance): Fiber {
   if (!old || !compatible(old, value)) {
-    const next = mount(value, parent, old?.start || before, context, boundary);
+    const next = mount(value, parent, old?.start || before, context, boundary, appearance);
     if (old) unmountFiber(old);
     return next;
   }
 
   if (old.ownBoundary) old.ownBoundary.parent = boundary;
   old.boundary = old.ownBoundary || boundary;
-
-  if (old.kind == 'collection') return old;
+  if (old.kind == 'collection') {
+    if (old.appearance !== appearance) {
+      old.appearance = appearance;
+      runCollection(old, passiveRender);
+    }
+    return old;
+  }
 
   if (old.kind == 'text') {
     const next = String(value);
     if (old.start.nodeValue !== next) old.start.nodeValue = next;
     old.value = value;
   } else if (old.kind == 'element') {
-    patchProps(old, (value as VNode).props);
+    patchProps(old, (value as VNode).props, appearance);
   } else if (old.kind == 'fragment') {
     old.context = context;
-    reconcile(old, (value as VNode).props.children, context, old.boundary);
+    old.appearance = appearance;
+    reconcile(old, (value as VNode).props.children, context, old.boundary, appearance);
   } else if (old.kind == 'function') {
-    old.props = (value as VNode).props;
+    old.appearance = appearance;
+    old.props = observe((value as VNode).props);
     rerun(old, () => runFunction(old, passiveRender));
   } else if (old.kind == 'component') {
-    const props = isVNode(value) ? value.props : old.instance!.props;
+    old.appearance = appearance;
+    const props = isVNode(value) ? observe(value.props) : old.instance!.props;
     if (isVNode(value) && props !== old.instance!.props) {
       if (passiveRender) old.applied = true;
       (old.instance as any).props = props;
@@ -624,14 +712,16 @@ function patch(old: Fiber | undefined, value: RenderNode, parent: globalThis.Nod
     old.props = props as Record<string, any>;
     rerun(old, () => runComponent(old, passiveRender));
   } else if (old.kind == 'provider') {
+    old.appearance = appearance;
     old.props = (value as VNode).props;
     const commit = provide(old.childContext!, old.props as any);
-    reconcile(old, old.props!.children, old.childContext!, old.boundary);
+    reconcile(old, old.props!.children, old.childContext!, old.boundary, appearance);
     commit();
   } else {
+    old.appearance = appearance;
     const vnode = value as VNode;
     old.props = vnode.props;
-    reconcilePortal(old, vnode.props.children, context, old.boundary);
+    reconcilePortal(old, vnode.props.children, context, old.boundary, appearance);
   }
 
   return old;
@@ -671,7 +761,7 @@ function move(fiber: Fiber, parent: globalThis.Node, before: globalThis.Node | n
   }
 }
 
-function patchProps(fiber: Fiber, next: Record<string, any>) {
+function patchProps(fiber: Fiber, next: Record<string, any>, appearance?: Appearance) {
   const element = fiber.start as Element;
   const previous = fiber.props!;
   const raw = 'dangerouslySetInnerHTML' in next;
@@ -683,12 +773,16 @@ function patchProps(fiber: Fiber, next: Record<string, any>) {
   }
 
   for (const key of Object.keys({ ...previous, ...next })) {
-    if (key == 'children' || key == 'key' || key == 'ref' || CONTROLS.includes(key)) continue;
+    if (key == 'children' || key == 'class' || key == 'className' || key == 'key' || key == 'ref' || key == 'style' || CONTROLS.includes(key)) continue;
     if (previous[key] === next[key]) continue;
     patchProp(fiber, element, key, previous[key], next[key]);
   }
 
+  if (previous.class !== next.class || previous.style !== next.style || fiber.appearance !== appearance)
+    patchAppearance(element, fiber.appearance, previous.class, previous.style, appearance, next.class, next.style);
+
   fiber.props = next;
+  fiber.appearance = appearance;
 
   if (!raw) reconcileChildren(fiber, element, null, next.children, fiber.context, fiber.boundary);
 
@@ -712,11 +806,6 @@ function patchProp(fiber: Fiber, element: Element, key: string, previous: any, n
     return;
   }
 
-  if (key == 'style') {
-    patchStyle(element as HTMLElement, previous, next);
-    return;
-  }
-
   if (key == 'dangerouslySetInnerHTML') {
     element.innerHTML = next?.__html || '';
     return;
@@ -736,7 +825,7 @@ function patchProp(fiber: Fiber, element: Element, key: string, previous: any, n
     return;
   }
 
-  const name = key == 'className' ? 'class' : key == 'htmlFor' ? 'for' : key;
+  const name = key == 'htmlFor' ? 'for' : key;
 
   if (key.startsWith('aria-') && next != null) {
     element.setAttribute(name, String(next));
@@ -766,29 +855,86 @@ function patchProp(fiber: Fiber, element: Element, key: string, previous: any, n
   element.setAttribute(name, next === true ? '' : String(next));
 }
 
-function patchStyle(element: HTMLElement, previous: string | Record<string, unknown> | undefined, next: string | Record<string, unknown> | undefined) {
-  if (typeof next == 'string') {
-    element.style.cssText = next;
+type Style = string | Record<string, unknown> | false | null | undefined | readonly Style[];
+
+function patchAppearance(
+  element: Element,
+  previousAppearance: Appearance | undefined,
+  previousClass: unknown,
+  previousStyle: Style,
+  nextAppearance: Appearance | undefined,
+  nextClass: unknown,
+  nextStyle: Style
+) {
+  const before = normalizeStyle(previousAppearance, previousClass, previousStyle);
+  const after = normalizeStyle(nextAppearance, nextClass, nextStyle);
+
+  if (before.className !== after.className) {
+    if (after.className) element.setAttribute('class', after.className);
+    else element.removeAttribute('class');
+  }
+
+  const declaration = (element as HTMLElement).style as any;
+  for (const key of Object.keys({ ...before.declarations, ...after.declarations })) {
+    const value = after.declarations[key];
+    if (key.startsWith('--')) {
+      declaration.setProperty(key, value == null ? '' : String(value));
+      continue;
+    }
+    if (typeof value == 'number') declaration[key] = '';
+    declaration[key] = value == null ? '' : value;
+    if (typeof value == 'number' && value !== 0 && !declaration[key])
+      declaration[key] = `${value}px`;
+  }
+}
+
+function normalizeStyle(appearance: Appearance | undefined, className: unknown, value: Style) {
+  const classes: string[] = [];
+  const declarations: Record<string, unknown> = {};
+
+  const entries = appearance?.entries || [];
+
+  appendClasses(classes, className);
+  flattenStyle(value, classes, declarations);
+
+  for (let index = entries.length - 1; index >= 0; index--)
+    flattenStyle(entries[index], classes, declarations);
+
+  return { className: [...new Set(classes)].join(' '), declarations };
+}
+
+function renderedAppearance(fiber: Fiber): Appearance | undefined {
+  const style = fiber.props?.style as Style;
+
+  if (fiber.kind != 'component' && fiber.kind != 'function' || !style || fiber.consumed || fiber.instance && 'style' in fiber.instance)
+    return fiber.appearance;
+
+  return { entries: [...fiber.appearance?.entries || [], style] };
+}
+
+function flattenStyle(value: Style, classes: string[], declarations: Record<string, unknown>) {
+  if (!value) return;
+
+  if (typeof value == 'string') {
+    appendClasses(classes, value);
     return;
   }
 
-  if (typeof previous == 'string') element.style.cssText = '';
-
-  const before = typeof previous == 'object' && previous ? previous : {};
-  const after = typeof next == 'object' && next ? next : {};
-
-  for (const key of Object.keys({ ...before, ...after })) {
-    const value = after[key];
-    const style = element.style as any;
-    if (key.startsWith('--')) {
-      style.setProperty(key, value == null ? '' : String(value));
-      continue;
-    }
-    if (typeof value == 'number') style[key] = '';
-    style[key] = value == null ? '' : value;
-    if (typeof value == 'number' && value !== 0 && !style[key])
-      style[key] = `${value}px`;
+  if (Array.isArray(value)) {
+    value.forEach((entry) => flattenStyle(entry, classes, declarations));
+    return;
   }
+
+  for (const symbol of Object.getOwnPropertySymbols(value)) {
+    const ticket = tickets.get((value as Record<symbol, object>)[symbol]);
+    if (ticket) classes.push(...ticket.classes);
+  }
+
+  for (const key of Object.keys(value)) declarations[key] = (value as Record<string, unknown>)[key];
+}
+
+function appendClasses(classes: string[], value: unknown) {
+  if (typeof value == 'string') classes.push(...value.split(/\s+/).filter(Boolean));
 }
 
 function applyRef(ref: unknown, value: Element | null) {
