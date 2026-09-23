@@ -1,8 +1,24 @@
 import './App.css';
 
-import State, { Provider } from '@expressive/react';
+import State, { Component } from '@expressive/react';
 import { Route, Router } from '@expressive/router';
 import type { ReactNode } from 'react';
+
+export default () => (
+  <div className="container">
+    <h1>Wizard</h1>
+    <p>
+      Steps are sibling routes, not a counter. Each entry guard names the first
+      missing step, so direct navigation, Back, and Continue obey the same rules.
+    </p>
+    <Wizard />
+    <small>
+      The parent Route exposes its children in declaration order and its active
+      child. Progress and controls derive from that route tree instead of
+      duplicating navigation state.
+    </small>
+  </div>
+);
 
 class Application extends State {
   name = '';
@@ -17,42 +33,46 @@ class Application extends State {
   }
 }
 
-const app = Application.new();
+class Wizard extends Component {
+  application = new Application();
+  router = new Router({ path: '/name' });
 
-export default () => (
-  <Provider for={app}>
-    <Router>
+  details() {
+    return this.application.name.trim() ? '' : '/name';
+  }
+
+  review() {
+    return this.application.incomplete;
+  }
+
+  done() {
+    const { incomplete, submitted } = this.application;
+    return submitted ? '' : incomplete || '/review';
+  }
+
+  render() {
+    const { details, done, review } = this;
+
+    return (
       <Route as={Frame}>
-        <Route redirect="/name" />
         <Route to="name" as={Name} label="Name" />
         <Route to="details" as={Details} label="Details"
-          redirect={() => app.name.trim() ? '' : '/name'} />
+          redirect={details} />
         <Route to="review" as={Review} label="Review"
-          redirect={() => app.incomplete} />
+          redirect={review} />
         <Route to="done" as={Done}
-          redirect={() => app.submitted ? '' : app.incomplete || '/review'} />
+          redirect={done} />
+        <Route none redirect="/name" />
       </Route>
-    </Router>
-  </Provider>
-);
+    );
+  }
+}
 
 const Frame = (props: { children?: ReactNode }) => (
-  <div className="container">
-    <h1>Wizard</h1>
-    <p>
-      Steps are plain sibling routes, so the wizard keeps no step counter: each
-      step's <code>redirect</code> guard names the first thing still missing,
-      and admission takes care of itself. The buttons only navigate - click a
-      later step or Continue too early and the guard walks you back.
-    </p>
+  <>
     <Progress />
     <div className="view">{props.children}</div>
-    <small>
-      The parent route's <code>inner</code> lists the steps in declaration
-      order and <code>active</code> marks the current one - progress and the
-      Back/Continue pair are derived from those, never tracked by hand.
-    </small>
-  </div>
+  </>
 );
 
 const Progress = () => {
