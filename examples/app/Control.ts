@@ -48,12 +48,10 @@ export class Control extends Component {
   }
 
   public applyLayout(element: HTMLElement) {
-    const { gap, row } = this;
-    const [x, y] = row ? AXIS : AXIS.slice().reverse();
+    return this.get(({ gap, row, space }) => {
+      const [x, y] = row ? AXIS : AXIS.slice().reverse();
 
-    element.style[x] = `minmax(0, 1fr)`;
-
-    return this.get(({ space }) => {
+      element.style[x] = `minmax(0, 1fr)`;
       element.style[y] = space
         .map((value) => `minmax(0, ${value}fr)`)
         .join(` ${gap}px `);

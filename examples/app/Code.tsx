@@ -76,9 +76,25 @@ function Editor({ file }: { file: Source }) {
 
 // Resizable split powered by the copied Control engine; each half is a plain
 // Pane that ignores the index/parent props Control injects into its children.
+// Below this width the example stacks above its source, which starts hidden.
+const NARROW = '(max-width: 1000px)';
+
 export class Panel extends Control {
   Handle = Handle;
   collapsed = false;
+
+  protected new() {
+    const narrow = window.matchMedia(NARROW);
+    const fit = () => {
+      this.row = !narrow.matches;
+      this.collapsed = narrow.matches;
+    };
+
+    fit();
+    narrow.addEventListener('change', fit);
+
+    return () => narrow.removeEventListener('change', fit);
+  }
 
   render() {
     const grid = this.collapsed ? `${styles.grid} ${styles.collapsed}` : styles.grid;
@@ -172,7 +188,7 @@ export default function Code({ path, children }: { path: string; children: React
   if (!files.length) return <>{children}</>;
 
   return (
-    <Panel row>
+    <Panel>
       <Pane>
         <SourceView path={path} />
       </Pane>
