@@ -7,7 +7,7 @@ import Code from './Code';
 import { Spinner } from './Spinner';
 import styles from './Shell.module.css';
 
-import { frameSrc, type Directory } from '../pages';
+import type { Directory } from '../pages';
 
 const Shell = ({ tree, default: home }: { tree: Directory[]; default?: string }) => {
   return (
@@ -137,7 +137,8 @@ class ExampleFrame extends Component {
         <iframe
           title={label}
           className={`${styles.frame} exampleFrame`}
-          src={frameSrc(file)}
+          src="/"
+          data-example={file}
           ref={frame}
           onLoad={(e) => theme.paint(e.currentTarget)}
         />
