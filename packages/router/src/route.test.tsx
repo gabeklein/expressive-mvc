@@ -1240,6 +1240,34 @@ describe('Route', () => {
           expect(window.location.pathname).toBe('/document/123');
         });
 
+        it('cedes to the none Route after an earlier redirect', async () => {
+          location('/');
+          let gate = mockPromise<string | void | null>();
+          let router!: Router;
+          await act(async () => {
+            render(
+              <Route is={(r) => (router = r.router)}>
+                <Route as={() => <h1>lobby</h1>} />
+                <Route to="login" as={() => <h1>login</h1>} />
+                <Route to="document" as={Layout}>
+                  <Route to=":id" redirect={() => gate} as={Document} />
+                  <Route none as={NotFound} />
+                </Route>
+              </Route>
+            );
+          });
+
+          await act(async () => router.goto('/document/1'));
+          await act(async () => gate.resolve('/login'));
+          expect(screen.getByText('login')).toBeDefined();
+
+          await act(async () => router.goto('/'));
+          gate = mockPromise();
+          await act(async () => router.goto('/document/2'));
+          await act(async () => gate.resolve(null));
+          expect(screen.getByText('not found')).toBeDefined();
+        });
+
         it('a non-null verdict still renders the document (control)', async () => {
           location('/document/123');
           const gate = mockPromise<string | void | null>();

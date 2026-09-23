@@ -50,7 +50,7 @@ class Game extends Component {
         <p className="status">
           {winner ? `${winner.player} wins!` : full ? 'Draw!' : `${turn}'s turn`}
         </p>
-        <div className={`board ${winner && 'done'}`}>
+        <div className={winner ? 'board done' : 'board'}>
           {board.map((cell, i) => (
             <button
               key={i}

@@ -3580,6 +3580,35 @@ describe('computed (getters)', () => {
     expect(test.fooBar).toBe('bar');
   });
 
+  it('will keep nested dependencies when read before refresh', async () => {
+    class Inner extends State {
+      value = 1;
+    }
+
+    class Test extends State {
+      inner = new Inner();
+
+      get double() {
+        return this.inner.value * 2;
+      }
+    }
+
+    const test = Test.new();
+    const effect = vi.fn((state: Test) => void state.double);
+
+    test.get(effect);
+
+    test.inner.value = 2;
+    expect(test.double).toBe(4);
+    await flushMicrotasks();
+
+    test.inner.value = 3;
+    await flushMicrotasks();
+
+    expect(test.double).toBe(6);
+    expect(effect).toHaveBeenCalledTimes(3);
+  });
+
   describe('inheritance', () => {
     it('will use overridden getter from subclass', () => {
       class Test extends State {

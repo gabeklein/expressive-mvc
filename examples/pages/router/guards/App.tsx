@@ -1,10 +1,30 @@
 import './App.css';
 
-import State, { Provider } from '@expressive/react';
+import State, { Component } from '@expressive/react';
 import { Link, Route, Router } from '@expressive/router';
 import type { ReactNode } from 'react';
 
 const DOCS = ['charter', 'ledger'];
+
+export default () => (
+  <div className="container">
+    <h1>Guards</h1>
+    <p>
+      A <code>redirect</code> function is an entry guard: returning a path
+      redirects, returning nothing admits, and <code>null</code> cedes to the
+      scope's <code>none</code> Route. Session and router are fields of the
+      component declaring the routes, so the guard reads both directly.
+    </p>
+    <Guarded />
+    <small>
+      Signed out, both vault links land on sign-in. Signed in, known documents
+      open and unknown ones get the vault's not-found page, not the app's. The
+      verdict is cached while <code>vault/:doc</code> stays matched, so return to
+      the lobby between documents. During the check the current screen
+      holds; <code>fallback</code> shows only on a cold load.
+    </small>
+  </div>
+);
 
 class Session extends State {
   user: string | null = null;
@@ -14,52 +34,45 @@ class Session extends State {
   }
 }
 
-const session = new Session();
-const router = new Router();
+class Guarded extends Component {
+  session = new Session();
+  router = new Router();
 
-const vet = async () => {
-  if (!session.user) return '/login';
+  async vet() {
+    if (!this.session.user) return '/login';
 
-  await new Promise((resolve) => setTimeout(resolve, 600));
+    await new Promise((resolve) => setTimeout(resolve, 600));
 
-  return DOCS.includes(router.path.split('/').pop()!) ? '' : null;
-};
+    return DOCS.includes(this.router.path.split('/').pop()!) ? '' : null;
+  }
 
-export default () => (
-  <Provider for={{ session, router }}>
-    <Route as={Frame}>
-      <Route as={Lobby} />
-      <Route to="login" as={Login} />
-      <Route to="vault/:doc" as={Doc} redirect={vet} fallback={<p className="gate">checking…</p>} />
-      <Route none as={NotFound} />
-    </Route>
-  </Provider>
-);
+  render() {
+    const { vet } = this;
+
+    return (
+      <Route as={Frame}>
+        <Route as={Lobby} />
+        <Route to="login" as={Login} />
+        <Route to="vault">
+          <Route to=":doc" as={Doc} redirect={vet} fallback={<p className="gate">checking…</p>} />
+          <Route none as={VaultNotFound} />
+        </Route>
+        <Route none as={AppNotFound} />
+      </Route>
+    );
+  }
+}
 
 const Frame = (props: { children?: ReactNode }) => (
-  <div className="container">
-    <h1>Guards</h1>
-    <p>
-      A <code>redirect</code> function is an entry guard, run when its route is
-      matched, and one function covers every verdict: a path sends the visitor
-      elsewhere, nothing at all lets the render through, and <code>null</code>{' '}
-      cedes the path - the scope falls through to its <code>none</code> Route rather
-      than admitting whether anything was there.
-    </p>
+  <>
     <nav className="nav">
       <Link to="/">Lobby</Link>
       <Link to="/vault/charter">Charter</Link>
       <Link to="/vault/secrets">Secrets</Link>
+      <Link to="/missing">Outside vault</Link>
     </nav>
     <div className="view">{props.children}</div>
-    <small>
-      Signed out, both vault links land on the sign-in page. The verdict is cached
-      for the space it was decided in, so return to the lobby between attempts.
-      While an async check runs, navigation holds your current page; the route’s{' '}
-      <code>fallback</code> appears only when there is nothing to hold (a cold
-      load).
-    </small>
-  </div>
+  </>
 );
 
 const Lobby = () => {
@@ -85,4 +98,6 @@ const Doc = () => {
   return <p className="doc">Reading {match?.doc}</p>;
 };
 
-const NotFound = () => <p className="gate">No such document in the vault.</p>;
+const VaultNotFound = () => <p className="gate">No such document in the vault.</p>;
+
+const AppNotFound = () => <p className="gate">No application page matches this URL.</p>;
