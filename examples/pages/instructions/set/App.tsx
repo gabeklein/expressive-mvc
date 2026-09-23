@@ -2,17 +2,28 @@ import './App.css';
 
 import { Component, set } from '@expressive/react';
 
-// `set` manages a slot beyond a plain field: a default value, a validator,
-// or a change-effect - each just a callback, no useEffect, no deps array.
+export default () => (
+  <div className="container">
+    <h1>Managed Slots</h1>
+    <p>
+      A value plus a callback makes the field its own gatekeeper. The callback runs
+      on every assignment: <code>throw false</code> rejects the update outright,
+      and a returned function is cleanup, run before the next change - which is all
+      a debounce ever was.
+    </p>
+    <Account />
+    <small>
+      Both fields are still read and written as plain properties. No reducer, no
+      effect, no dependency array - the rule lives with the field it governs.
+    </small>
+  </div>
+);
+
 class Account extends Component {
-  // A default, plus a callback that vets every assignment. `throw false`
-  // rejects the update - the field never exceeds 12 characters.
   name = set('guest', (next) => {
     if (next.length > 12) throw false;
   });
 
-  // The callback may return a cleanup, run before the next change - so a
-  // debounce falls out for free: each keystroke cancels the previous timer.
   query = set('', (next) => {
     this.result = 'typing…';
 
@@ -29,9 +40,7 @@ class Account extends Component {
     const { name, query, result } = this;
 
     return (
-      <div className="container">
-        <h1>Managed Slots</h1>
-
+      <>
         <label>
           Display name <small>(max 12 chars — extra input is rejected)</small>
           <input value={name} onChange={(e) => (this.name = e.target.value)} />
@@ -43,9 +52,7 @@ class Account extends Component {
         </label>
 
         <p className="result">{result}</p>
-      </div>
+      </>
     );
   }
 }
-
-export default () => <Account />;

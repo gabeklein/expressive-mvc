@@ -1,11 +1,40 @@
-.context {
-  max-width: 28rem;
-}
-
-.context-row {
+.counter {
   display: flex;
-  align-items: center;
-  justify-content: center;
+  flex-direction: column;
   gap: var(--s3);
   width: 100%;
+  padding: var(--s4);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+}
+
+.greeting {
+  margin: 0;
+  font-size: var(--t-sm);
+  color: var(--muted);
+}
+
+.shelf {
+  display: flex;
+  gap: var(--s2);
+}
+
+.shelf button {
+  flex: 1;
+}
+
+.badge,
+.total {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--t-sm);
+}
+
+.badge {
+  color: var(--muted);
+}
+
+.total {
+  color: var(--accent);
 }

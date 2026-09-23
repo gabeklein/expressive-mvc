@@ -1,20 +1,25 @@
-import { describe, expect, it, mock } from 'bun:test';
+import { describe, expect, it, vi } from 'vitest';
 
-import { childrenOf, Fragment, host, isElement, jsx, jsxs, propsOf, typeOf } from './jsx-runtime';
+import { flushMicrotasks } from '../test.setup';
+import { State } from './state';
+
+import { childrenOf, Fragment, host, isElement, jsx, jsxs, propsOf, typeOf } from './runtime';
+import { enqueue, pending } from './dispatch';
 import { jsxDEV, Fragment as devFragment } from './jsx-dev-runtime';
-import type { HostRuntime } from './jsx-runtime';
+import * as compat from './jsx-runtime';
+import type { HostRuntime } from './runtime';
 
 const HOST_FRAGMENT = Symbol('host.Fragment');
 
 function mockHost(overrides?: Partial<HostRuntime>): HostRuntime {
   return {
-    jsx: mock((type, props, key) => ({ kind: 'jsx', type, props, key })),
-    jsxs: mock((type, props, key) => ({ kind: 'jsxs', type, props, key })),
+    jsx: vi.fn((type, props, key) => ({ kind: 'jsx', type, props, key })),
+    jsxs: vi.fn((type, props, key) => ({ kind: 'jsxs', type, props, key })),
     Fragment: HOST_FRAGMENT,
-    childrenOf: mock((children) => [children]),
-    isElement: mock((node) => !!node),
-    typeOf: mock((node: any) => node.type),
-    propsOf: mock((node: any) => node.props),
+    childrenOf: vi.fn((children) => [children]),
+    isElement: vi.fn((node) => !!node),
+    typeOf: vi.fn((node: any) => node.type),
+    propsOf: vi.fn((node: any) => node.props),
     ...overrides
   };
 }
@@ -36,6 +41,12 @@ describe('unregistered', () => {
     expect(() => isElement({})).toThrow(noHost);
     expect(() => typeOf({})).toThrow(noHost);
     expect(() => propsOf({})).toThrow(noHost);
+  });
+
+  it('will run transition work inline', () => {
+    const work = vi.fn();
+    expect(() => pending(work)).not.toThrow();
+    expect(work).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -81,11 +92,35 @@ describe('runtime', () => {
     });
   });
 
+  it('will settle headless once subscribers have replayed', async () => {
+    class Model extends State {
+      value = 0;
+    }
+
+    const model = Model.new();
+    const seen: number[] = [];
+
+    model.get(({ value }) => void seen.push(value));
+
+    await pending(() => {
+      model.value = 1;
+    });
+
+    expect(seen).toEqual([0, 1]);
+  });
+
+  it('will run deferred work inline', () => {
+    const work = vi.fn();
+    pending(work);
+    expect(work).toHaveBeenCalledTimes(1);
+  });
+
   it('will delegate jsxDEV when host provides it', () => {
-    // the registered host is ours - giving it a dev runtime is not a re-registration
-    runtime.jsxDEV = mock((type, props, key, isStatic) => ({
+    // same-runtime re-registration is how a host extends its seams
+    runtime.jsxDEV = vi.fn((type, props, key, isStatic) => ({
       kind: 'jsxDEV', type, props, key, isStatic
     }) as any);
+    host(runtime);
 
     expect(jsxDEV('div', {}, 'k', true)).toEqual({
       kind: 'jsxDEV', type: 'div', props: {}, key: 'k', isStatic: true
@@ -104,5 +139,46 @@ describe('introspection', () => {
 
   it('will surface host Fragment as agnostic Fragment', () => {
     expect(typeOf({ type: HOST_FRAGMENT })).toBe(Fragment);
+  });
+});
+
+describe('jsx-runtime module', () => {
+  it('will carry exactly the transform contract', () => {
+    expect(Object.keys(compat).sort()).toEqual(['Fragment', 'jsx', 'jsxs']);
+    expect(compat.jsx).toBe(jsx);
+    expect(compat.jsxs).toBe(jsxs);
+    expect(compat.Fragment).toBe(Fragment);
+  });
+
+  it('will wait on a subscriber which claims absorption', async () => {
+    let release!: () => void;
+    let settled = false;
+
+    const handler = () => {
+      release = pending()!;
+    };
+
+    pending(() => enqueue(handler)).then(() => (settled = true));
+
+    await flushMicrotasks();
+
+    expect(settled).toBe(false);
+
+    release();
+    await flushMicrotasks();
+
+    expect(settled).toBe(true);
+  });
+
+  it('will not claim absorption outside pending work', async () => {
+    let claimed: unknown = 'unset';
+
+    enqueue(() => {
+      claimed = pending();
+    });
+
+    await flushMicrotasks();
+
+    expect(claimed).toBeUndefined();
   });
 });

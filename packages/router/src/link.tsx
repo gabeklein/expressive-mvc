@@ -2,6 +2,7 @@ import { Component, get } from '@expressive/mvc';
 import type { JSX } from '@expressive/mvc/jsx-runtime';
 
 import { Route } from './route';
+import { isExternal } from './url';
 
 /** Host anchor attributes when the adapter declares intrinsics; `{}` agnostically. */
 type AnchorProps = JSX.IntrinsicElements extends { a: infer T } ? T : {};
@@ -55,18 +56,25 @@ export class Link extends Component {
   }
 
   protected go = (e: ClickEvent) => {
-    const { onClick } = this.props as { onClick?: (e: ClickEvent) => void };
+    const { onClick, target, download } = this.props as {
+      onClick?: (e: ClickEvent) => void;
+      target?: string;
+      download?: string | boolean;
+    };
 
     if (onClick) onClick(e);
     if (e.defaultPrevented || e.button !== 0) return;
     if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    if (isExternal(this.to)) return;
+    if (target && target.toLowerCase() !== '_self') return;
+    if (download !== undefined && download !== false) return;
 
     e.preventDefault();
     this.route.goto(this.to, this.replace);
   };
 
   /**
-   * If a subclass authores own render, it will override default anchor wrapping.
+   * A subclass that authors its own render overrides the default anchor wrapping.
    */
   render({ children, to, replace, ...rest } = {} as Link.Props): Component.Node {
     if (children !== this.props.children) return children;

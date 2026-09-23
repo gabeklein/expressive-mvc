@@ -4,6 +4,8 @@ import State from '@expressive/react';
 // #slug and scrolls to a section whose id matches it - so deep-links and
 // in-page anchors resolve on fresh load, past the webfont layout shift.
 export class Hash extends State {
+  static global = true;
+
   active = '';
 
   protected new() {

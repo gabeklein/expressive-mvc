@@ -1,10 +1,17 @@
-import { expect, it, mock } from 'bun:test';
+import { describe, expect, it, vi } from 'vitest';
+import { flushMicrotasks, mockWarn } from '../test.setup';
 import { Component } from './component';
 import { Context } from './context';
-import { describe } from 'bun:test';
+import { pending } from './dispatch';
 
 it('will default fallback to null', () => {
   const foo = Component.new({});
+
+  expect(foo.fallback).toBe(null);
+});
+
+it('will construct without props', () => {
+  const foo = Component.new();
 
   expect(foo.fallback).toBe(null);
 });
@@ -59,7 +66,7 @@ it('will lock key after imperative write', () => {
 });
 
 it('will call is callback once with instance', () => {
-  const is = mock();
+  const is = vi.fn();
   const foo = Component.new({ is });
 
   expect(is).toBeCalledWith(foo);
@@ -112,6 +119,21 @@ it('will dedupe construction by props object', () => {
   const b = new Component(props);
 
   expect(b).toBe(a);
+});
+
+it('will release the twin discarded by dedupe', async () => {
+  const warn = mockWarn();
+  const props = { value: 1 };
+
+  const a = new Component(props);
+  const b = new Component(props);
+
+  expect(b).toBe(a);
+
+  await flushMicrotasks();
+
+  expect(warn).toBeCalledTimes(1);
+  expect(warn).toBeCalledWith(expect.stringContaining(String(a)));
 });
 
 // Seam: React passes context as a constructor argument alongside props.
@@ -201,7 +223,7 @@ describe('render chain', () => {
   // Documented footgun: a wrapper that never reads `props.children` drops the
   // derived content. The children getter is lazy, so inner never even runs.
   it('will drop derived content if wrapper omits children', () => {
-    const inner = mock(() => 'never seen');
+    const inner = vi.fn(() => 'never seen');
 
     class Shell extends Component {
       render(): Component.Node {
@@ -278,7 +300,7 @@ describe('leading function argument', () => {
   });
 
   it('will register returned function as cleanup', () => {
-    const cleanup = mock();
+    const cleanup = vi.fn();
     const test = Component.new(() => cleanup);
 
     expect(cleanup).not.toHaveBeenCalled();
@@ -325,5 +347,25 @@ describe('props (static types)', () => {
     };
 
     expect(props).toBeDefined();
+  });
+});
+
+describe('transition', () => {
+  it('will run work and resolve where nothing observes', async () => {
+    class Test extends Component {
+      value = 'a';
+    }
+
+    const test = Test.new();
+    let settled = false;
+
+    await pending(() => {
+      test.value = 'b';
+    }).then(() => {
+      settled = true;
+    });
+
+    expect(test.value).toBe('b');
+    expect(settled).toBe(true);
   });
 });

@@ -2,6 +2,7 @@ import { listener } from "./observable";
 import { event, State, uid } from "./state";
 
 const LOOKUP = new WeakMap<State, Context>();
+const HELD = new WeakMap<State, Set<State>>();
 let ROOT: Context;
 
 type Accept<T extends State = State> =
@@ -163,11 +164,14 @@ class Context {
    * Context will add or remove States as needed to keep with provided input.
    *
    * @param inputs State, State class, or map of States / State classes to register.
-   * @param forEach Optional callback to run for each State registered.
+   * @param forEach Optional callback to run for each State registered. Receives
+   *   whether this context created the State - and so will destroy it - as
+   *   opposed to it having been provided already active. May return a callback
+   *   to run before that entry is dropped.
    */
   public set<T extends State>(
     inputs: Accept<T>,
-    forEach?: (state: T) => (() => void) | void,
+    forEach?: (state: T, owned: boolean) => (() => void) | void,
   ) {
     const init = new Set<() => void>();
     const { cleanup } = this;
@@ -188,23 +192,27 @@ class Context {
 
       if (!V) continue;
 
-      if (!(State.is(V) || V instanceof State)) {
+      // a class is constructed here - and so destroyed here; an instance is
+      // adopted as-is and outlives this context
+      const owned = State.is(V);
+
+      if (!(owned || V instanceof State)) {
         const as = K == "0" || K == String(V) ? V : `${V} (as '${K}')`;
         throw new Error(
           `Context can only include an instance or class of State but got ${as}.`,
         );
       }
 
-      const state = State.is(V) ? new (V as State.Type)() : V.is;
+      const state = owned ? new (V as State.Type)() : V.is;
       const remove = this.add(state, true);
 
       init.add(() => {
         event(state);
-        const dispose = forEach && forEach(state as T);
+        const dispose = forEach?.(state as T, owned);
         cleanup.set(K, () => {
-          if (dispose) dispose();
+          if (typeof dispose == "function") dispose();
           remove();
-          if (State.is(V)) event(state, null);
+          if (owned) event(state, null);
         });
       });
     }
@@ -225,8 +233,17 @@ class Context {
       const entries = provide.get(T);
       if (entries)
         for (const entry of entries)
-          if (!entry[1] && entry[0] !== I)
+          if (!entry[1] && entry[0] !== I) {
+            const type = I.constructor as State.Extends;
+            const g = type.global;
+
+            if (entry[0].constructor === type && (typeof g == 'function' ? g(I) : g))
+              throw new Error(
+                `Cannot register ${I} as a global - ${entry[0]} already exists in root. Destroy the existing instance first, or provide additional ones via explicit context.`
+              );
+
             return entries.delete(entry);
+          }
     }
 
     for (
@@ -241,23 +258,24 @@ class Context {
 
     for (const T of TT) onDone.add(this.register(T, [I, explicit]));
 
-    function queue(ctx: Context, downstream: boolean) {
+    function queue(ctx: Context, downstream: boolean, same?: boolean) {
       let found = false;
       for (const T of TT) {
         const list = ctx.consume.get(T);
         if (list !== undefined) found = true;
         if (list)
           for (const [cb, filter] of list)
-            if (filter === downstream || filter == null)
+            if (same || filter == null || filter === downstream)
               expects.set(cb, () => {
-                const r = cb(I, downstream);
+                const r = cb(I, filter ?? downstream);
                 if (r) onDone.add(r);
               });
       }
       return found;
     }
 
-    for (let ctx: Context | undefined = this; ctx; ctx = ctx.parent) queue(ctx, true);
+    queue(this, true, true);
+    for (let ctx = this.parent; ctx; ctx = ctx.parent) queue(ctx, true);
     this.traverse((ctx) => queue(ctx, false));
 
     if (!LOOKUP.has(I)) LOOKUP.set(I, this);
@@ -273,8 +291,11 @@ class Context {
       onDone.clear();
     }
 
+    const held = Array.from(HELD.get(I) || [], (child) => this.add(child));
+
     function remove() {
       cleanup.delete(remove);
+      held.forEach((done) => done());
       flush();
     }
 
@@ -319,4 +340,19 @@ Object.defineProperty(Context.prototype, "toString", {
   },
 });
 
-export { Context };
+/**
+ * Add `value` to the context `state` was added to. A context-less `state` holds
+ * it instead - every context adding `state` later adds its held children too.
+ */
+function join(state: State, value: State): () => void {
+  const ctx = LOOKUP.get(state.is);
+
+  if (ctx) return ctx.add(value);
+
+  const held = HELD.get(state) || new Set();
+  HELD.set(state, held.add(value));
+
+  return () => held.delete(value);
+}
+
+export { Context, join };

@@ -6,6 +6,7 @@ import {
   Outlet,
   Scripts,
   ScrollRestoration,
+  useLocation,
 } from 'react-router';
 import type { Route } from './+types/root';
 import './app.css';
@@ -13,8 +14,9 @@ import SearchDialog from '@/components/Search';
 import NotFound from './routes/not-found';
 
 export const links: Route.LinksFunction = () => [
-  { rel: 'icon', type: 'image/png', href: '/brand/icon-512.png' },
-  { rel: 'apple-touch-icon', href: '/brand/icon-512.png' },
+  { rel: 'icon', href: '/favicon.ico', sizes: '48x48 32x32 16x16' },
+  { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' },
+  { rel: 'apple-touch-icon', href: '/brand/icon-touch.png' },
   { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
   {
     rel: 'preconnect',
@@ -27,12 +29,21 @@ export const links: Route.LinksFunction = () => [
   },
 ];
 
+function canonical(pathname: string) {
+  const docs = pathname.match(/^\/llms\.mdx(\/.*?)(?:\/index\.mdx)?\/?$/);
+  const path = (docs ? docs[1] : pathname).replace(/\/+$/, '');
+  return `https://expressive.dev${path || '/'}`;
+}
+
 export function Layout({ children }: { children: React.ReactNode }) {
+  const { pathname } = useLocation();
+
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <link rel="canonical" href={canonical(pathname)} />
         <Meta />
         <Links />
       </head>

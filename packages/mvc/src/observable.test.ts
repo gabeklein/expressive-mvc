@@ -1,7 +1,9 @@
+import { printDiffOrStringify } from '@vitest/utils/diff';
+
 import { event, listener, touch, watch, observer } from './observable';
 import { set } from './field/set';
 import { def } from './field/def';
-import { mock, describe, it, expect } from 'bun:test';
+import { vi, describe, it, expect } from 'vitest';
 import { mockError, mockPromise, flushMicrotasks } from '../test.setup';
 import { State } from './state';
 
@@ -45,7 +47,7 @@ describe('effect', () => {
   });
 
   it('will run after properties', () => {
-    const cb = mock();
+    const cb = vi.fn();
 
     class Test extends State {
       property = def((_key, _state, state) => {
@@ -116,7 +118,7 @@ describe('effect', () => {
     }
 
     const test = Test.new();
-    const didGetValue = mock();
+    const didGetValue = vi.fn();
 
     test.get(($) => {
       didGetValue($.value1, $.value2);
@@ -171,7 +173,7 @@ describe('effect', () => {
     }
 
     const test = Test.new();
-    const didInvoke = mock();
+    const didInvoke = vi.fn();
 
     const done = watch(test, ({ foo }) => {
       watch(test, ({ bar }) => {
@@ -208,8 +210,8 @@ describe('effect', () => {
       value = 1;
     }
 
-    const effect = mock();
-    const cleanup = mock();
+    const effect = vi.fn();
+    const cleanup = vi.fn();
     const test = Test.new();
 
     watch(test, ($) => {
@@ -235,7 +237,7 @@ describe('effect', () => {
       bar?: number = undefined;
     }
 
-    const didUpdate = mock();
+    const didUpdate = vi.fn();
     const test = Test.new();
 
     watch(test, ({ foo, bar }) => {
@@ -273,7 +275,7 @@ describe('effect', () => {
       bar?: number = undefined;
     }
 
-    const didUpdate = mock();
+    const didUpdate = vi.fn();
     const test = Test.new();
 
     watch(test, ({ foo, bar }) => {
@@ -331,13 +333,104 @@ describe('effect', () => {
 
     it('will throw for destroyed subject', () => {
       const test = {};
-      const effect = mock();
+      const effect = vi.fn();
 
       event(test);
       event(test, null);
 
-      expect(() => watch(test, effect)).toThrow('terminated');
+      expect(() => watch(test, effect)).toThrow('was destroyed');
       expect(effect).not.toBeCalled();
+    });
+
+    it('will terminate subject via set(null) within an effect', async () => {
+      class Test extends State {
+        done = false;
+      }
+
+      const test = Test.new();
+
+      test.get(($) => {
+        if ($.done) $.set(null);
+      });
+
+      test.done = true;
+      await expect(test).toHaveUpdated();
+
+      expect(test.get(null)).toBe(true);
+    });
+
+    it('will run cleanup when effect terminates own subject', async () => {
+      class Test extends State {
+        done = false;
+      }
+
+      const test = Test.new();
+      const didCleanup = vi.fn();
+
+      test.get(($) => {
+        if ($.done) $.set(null);
+        return didCleanup;
+      });
+
+      test.done = true;
+      await expect(test).toHaveUpdated();
+
+      expect(test.get(null)).toBe(true);
+      expect(didCleanup).toBeCalledWith(null);
+    });
+
+    it('will run cleanup when first run terminates subject', () => {
+      class Test extends State {
+        done = true;
+      }
+
+      const test = Test.new();
+      const didCleanup = vi.fn();
+
+      test.get(($) => {
+        if ($.done) $.set(null);
+        return didCleanup;
+      });
+
+      expect(test.get(null)).toBe(true);
+      expect(didCleanup).toBeCalledWith(null);
+    });
+
+    it('will run cleanup when uncaptured effect terminates subject', () => {
+      class Test extends State {
+        value = 1;
+      }
+
+      const test = Test.new();
+      const didCleanup = vi.fn();
+
+      watch(test, ($) => {
+        $.set(null);
+        return didCleanup;
+      }, false);
+
+      expect(test.get(null)).toBe(true);
+      expect(didCleanup).toBeCalledWith(null);
+    });
+
+    it('will not terminate subject via derived object', async () => {
+      class Test extends State {
+        value = 1;
+      }
+
+      const test = Test.new();
+      const effect = vi.fn(($: Test) => void $.value);
+
+      watch(test, effect);
+
+      event(Object.create(test), null);
+
+      expect(observer(test)!.listeners.size).toBeGreaterThan(0);
+
+      test.value = 2;
+
+      await expect(test).toHaveUpdated();
+      expect(effect).toBeCalledTimes(2);
     });
 
     it('will throw for get(effect) on destroyed instance', () => {
@@ -346,11 +439,13 @@ describe('effect', () => {
       }
 
       const test = Test.new();
-      const effect = mock(($: Test) => void $.foo);
+      const effect = vi.fn(($: Test) => void $.foo);
 
       test.set(null);
 
-      expect(() => test.get(effect)).toThrow('terminated');
+      expect(() => test.get(effect)).toThrow(
+        /Test-[\w-]+ was destroyed - cannot be rendered, watched or updated\./
+      );
       expect(effect).not.toBeCalled();
     });
 
@@ -360,7 +455,7 @@ describe('effect', () => {
       }
 
       const test = Test.new();
-      const effect = mock(($: Test) => void $.foo);
+      const effect = vi.fn(($: Test) => void $.foo);
 
       test.get(effect);
       expect(effect).toBeCalled();
@@ -474,7 +569,7 @@ describe('observable', () => {
     }
 
     const counter = new Counter();
-    const cb = mock();
+    const cb = vi.fn();
     let proxy!: Counter;
 
     watch(counter, ($) => {
@@ -511,7 +606,7 @@ describe('observable', () => {
 
     it('will not re-fire ready on observable', () => {
       const test = {};
-      const cb = mock();
+      const cb = vi.fn();
 
       event(test);
       listener(test, cb);
@@ -532,7 +627,7 @@ describe('observable', () => {
 
     it('will fire watch effect immediately on ready', () => {
       const test = {};
-      const cb = mock();
+      const cb = vi.fn();
 
       event(test);
       watch(test, () => cb());
@@ -556,7 +651,7 @@ describe('observable', () => {
 
     it('will return with ready=true for ready observable', () => {
       const test = {};
-      const didInit = mock();
+      const didInit = vi.fn();
 
       listener(test, didInit);
       event(test);
@@ -567,7 +662,7 @@ describe('observable', () => {
 
     it('will return null for terminated observable', () => {
       const test = {};
-      const onEvent = mock();
+      const onEvent = vi.fn();
 
       listener(test, onEvent);
       event(test, null);
@@ -582,7 +677,57 @@ describe('observable', () => {
       listener(test, () => {});
       event(test, null);
 
-      expect(() => listener(test, () => {})).toThrow(/terminated/);
+      expect(() => listener(test, () => {})).toThrow(
+        '[object Object] was destroyed - cannot be rendered, watched or updated.'
+      );
+    });
+
+    it('will name the state which was destroyed', () => {
+      class Test extends State {
+        foo = 1;
+      }
+
+      const test = Test.new();
+
+      test.set(null);
+
+      expect(() => listener(test, () => {})).toThrow(
+        `${test} was destroyed - cannot be rendered, watched or updated.`
+      );
+    });
+  });
+
+  describe('proxy', () => {
+    class Test extends State {
+      foo = 'foo';
+    }
+
+    it('will expose is as a writable own property', () => {
+      const test = Test.new();
+
+      test.get(($) => {
+        expect(Object.getOwnPropertyDescriptor($, 'is')).toEqual({
+          value: test,
+          writable: true,
+          enumerable: false,
+          configurable: false
+        });
+      });
+    });
+
+    it('will diff against its own subject', () => {
+      const test = Test.new();
+      const other = Test.new();
+      let output: string | undefined;
+
+      other.foo = 'bar';
+
+      test.get(($) => {
+        output = printDiffOrStringify($, other, {});
+      });
+
+      expect(output).toContain('"foo": "foo"');
+      expect(output).toContain('"foo": "bar"');
     });
   });
 });

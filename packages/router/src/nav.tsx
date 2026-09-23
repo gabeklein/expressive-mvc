@@ -39,7 +39,7 @@ export class NavLinks extends Component {
     return (
       <List>
         {routes.map((route, i) => {
-          if (route.redirect || route.default) return null;
+          if (route.redirect || route.none) return null;
 
           const inner = route.inner.length ? this.branch(route.inner) : null;
 
@@ -71,10 +71,9 @@ class Entry extends Component {
    * `Item` bubbles to NavLinks (or above) rather than blanking one row. */
   fallback = false;
 
-  render(props = {} as { children?: Component.Node }) {
-    const { route, Item } = this;
-
-    if (!route || !Item) return null;
+  render(props: { children?: Component.Node }) {
+    const route = this.route!;
+    const Item = this.Item!;
 
     return (
       <>

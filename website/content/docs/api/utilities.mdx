@@ -1,6 +1,6 @@
 ---
 title: Utilities
-description: Framework-agnostic helpers - Context, unbind, and the observable protocol
+description: Framework-agnostic helpers - pending, Context, unbind, and the observable protocol
 ---
 
 Everything on this page comes from `@expressive/mvc` - the core package under every adapter. Some of it re-exports through `@expressive/react` and some deliberately does not, so the import paths matter here.
@@ -20,6 +20,7 @@ import State, {
   get,
   has,
   map,
+  pending,
   ref,
   set,
   unbind
@@ -47,20 +48,20 @@ import State, {
   get,
   has,
   map,
+  pending,
   Provider,
   ref,
-  set,
-  use
+  set
 } from '@expressive/react';
 ```
 
 Note what's absent: `unbind` and all of the observable helpers. A React project that wants `watch` or `listener` imports them from `@expressive/mvc/observable` directly - the core package is a dependency of the adapter, so it's already in your node_modules.
 
-> There is no `Observable` export. The protocol symbol is named `Observer`, on the `/observable` subpath. (That subpath also exports `pending` and `capture` - plumbing State itself uses; you'll probably never need them.)
+> There is no `Observable` export. The protocol symbol is named `Observer`, on the `/observable` subpath. (That subpath also exports `queued` and `capture` - plumbing State itself uses; you'll probably never need them.)
 
 <br />
 
-## `watch(target, callback)`
+## `watch(target, callback, recursive?, scheduler?)`
 
 Run an effect against any observable, from anywhere. Same mechanism as `state.get(effect)`, as a free function.
 
@@ -81,17 +82,21 @@ stop();
 function watch<T extends object>(
   target: T,
   callback: Effect<T>,
-  recursive?: boolean
+  recursive?: boolean,
+  scheduler?: (work: () => void) => void
 ): () => void;
 
 function watch<T extends object>(
   target: T,
   callback: Effect<Required<T>>,
-  requireValues: true
+  requireValues: true,
+  scheduler?: (work: () => void) => void
 ): () => void;
 ```
 
 The callback receives a tracking proxy and the list of changed keys - reads through the proxy decide what the effect follows.
+
+Adapters may supply `scheduler` to bracket this subscriber's replay when it was queued by `pending(work)`. The scheduler must invoke its callback synchronously; React passes `startTransition`. Omit it for normal effect timing.
 
 - Runs immediately if the target is active; otherwise waits for activation.
 - Re-runs are batched per microtask, once per settled update.
@@ -198,7 +203,9 @@ const counter = new Counter();
 observer(counter, true);
 ```
 
-Now `watch(counter, ...)` works, and so does React's [`use(counter)`](/docs/api/hooks#usesubject) hook. No State required. ✨
+Now `watch(counter, ...)` works - no State required. ✨
+
+This is a headless seam. React components subscribe through [`State.use()` or `State.get()`](/docs/api/hooks), so reaching React with a custom observable means wrapping it in a State; there is no hook that subscribes to an arbitrary object.
 
 <br />
 
@@ -217,6 +224,52 @@ function observer(state: object, create?: boolean): Observer | undefined | null;
 - `observer(obj, true)` opts a plain object into the event system; it throws if the object was already terminated.
 
 `Observer` is also exported - the unique symbol used as the protocol key on participating objects. Useful for tooling; rarely needed in application code.
+
+<br />
+
+## `pending(work)`
+
+Run `work` now, marking the subscriber updates it queues non-urgent. The callback is synchronous and its writes land immediately - only the notifications become pending.
+
+```tsx
+import { pending } from '@expressive/react';
+
+pending(() => {
+  router.path = '/settings';
+});
+```
+
+React interprets the designation with `startTransition`, so a suspending subscriber can keep its previous content visible while the next presentation prepares. MVC still applies every mutation immediately and preserves its normal batching and final-state squashing.
+
+The return value is a promise, resolving once every reader has **absorbed** the update - for React, once it commits; for a plain effect, once its replay returns. A reader which does not claim absorption resolves on replay instead of holding. Scheduling and settlement are independent: an adapter without concurrent deferral may still claim through its commit. Every reader is waited on, so this doubles as a barrier with no host at all.
+
+An effect which suspends by throwing a promise holds settlement through its retry and any downstream updates the retry causes. Pending updates arriving meanwhile join the same hold and remain squashed into that retry. Fulfillment and rejection both retry through MVC dispatch. Cancelling the effect or destroying its state releases the hold and prevents the settled promise from reviving it.
+
+- The scope is synchronous. Writes after an `await` or in a later callback need their own `pending()` call.
+- An exception from the callback propagates synchronously; updates queued before it threw still dispatch.
+- A call made inside another - or from a subscriber while it replays - settles its own consequences and also joins the outer call.
+- It covers **Expressive updates**, not everything in the callback. A raw React setter written alongside keeps its own priority - each subscriber replays through the scheduler it subscribed with, so the bracket lands per subscriber rather than around the block.
+- Updates which must remain urgent, including controlled-input state, belong outside `pending()`.
+- If the same queued watcher receives both non-urgent and urgent invalidation, it runs once as urgent because it can present only the final squashed state.
+- Unrelated watchers retain their own priority; one urgent update does not upgrade the entire batch.
+- Without a host scheduler, work and dispatch keep their normal timing - the promise still resolves.
+
+### `pending()` - the subscriber half
+
+Called with no arguments, from inside a subscriber's replay, `pending()` declares that subscriber has not absorbed its update yet. It returns a release callback, and the writer's promise waits on that rather than on the replay returning - which is how the React adapter holds settlement until it commits.
+
+A promise returned by an effect remains ignored. To include other async work, claim during replay and release in `finally`:
+
+```ts
+watch(state, () => {
+  const release = pending();
+  animate().finally(release);
+});
+```
+
+Only meaningful inside a replay carrying pending work; elsewhere it returns `undefined`.
+
+The writer's promise never rejects. An exception thrown by `work` itself propagates synchronously from the call; a reader that throws while replaying is logged and does not reach the writer.
 
 <br />
 
@@ -295,6 +348,8 @@ A state's home is recorded once, at activation, and is permanent.
 
 > First-wins: once a state has a home, no later context can transfer ownership.
 
+> A bare `State.new()` resolves its `get()` lookups against root either way, but it only *registers* into root - becoming findable by others - when the class declares [`static global`](#root-context-and-globals).
+
 ### Construct vs activate
 
 The escape hatch for "create now, place later" is the difference between `new State()` and `State.new()`:
@@ -329,12 +384,18 @@ Recursive: grandchildren inherit through their immediate parent. Reassigning a c
 
 ### Root context and globals
 
-`Context.root` is a regular `Context` instance serving as the global registry. Any state activated by `State.new()` outside an explicit context lands here - which is why a module-scope `Theme.new()` is findable app-wide with no Provider:
+`Context.root` is a regular `Context` instance serving as the global registry. A state activated by `State.new()` outside an explicit context resolves its own lookups against root either way, but it only *registers* here - becoming findable app-wide with no Provider - when the class declares `static global`:
 
 ```ts
+class Theme extends State {
+  static global = true;
+}
+
 const theme = Theme.new();
 Context.root.get(Theme); // theme - and so does Theme.get(), anywhere
 ```
+
+Without the declaration, a context-less instance stays private. `static global` also takes a resolver (`self => boolean`) to decide at activation, and must be declared per class - a subclass that would be global purely by inheritance throws on activation.
 
 [See globals in action](/examples/composition/globals).
 
@@ -343,10 +404,10 @@ Context.root.get(Theme); // theme - and so does Theme.get(), anywhere
 
 ### Global collision
 
-Two **implicit** instances of the same type in root mutually evict at the contested ancestor:
+Two **implicit** instances of the same global class in root mutually evict at the contested ancestor:
 
 ```ts
-const a = Sub.new();
+const a = Sub.new(); // Sub declares `static global`
 const b = Sub.new();
 Context.root.get(Sub, false); // undefined - both evicted
 ```
@@ -356,8 +417,9 @@ Read it as "implicit collision opts out of global lookup" - if you create two, n
 Eviction is per-ancestor, so sibling subtypes only collide at their shared supertype:
 
 ```ts
-class SubA extends Base {}
-class SubB extends Base {}
+// Base is a widened global; each subtype re-declares (required on extend)
+class SubA extends Base { static readonly global = true; }
+class SubB extends Base { static readonly global = true; }
 
 const a = SubA.new();
 const b = SubB.new();
@@ -393,4 +455,4 @@ Root models "the global instance"; scoped contexts model "candidates available h
 
 - [Context guide](/docs/guides/context) - the React-facing surface: `Provider`, `get` instruction, patterns.
 - [State](/docs/api/state) - `set(callback)` and `get(effect)`, the instance-method forms of these helpers.
-- [Hooks](/docs/api/hooks) - `use(subject)` consumes custom observables in React.
+- [Hooks](/docs/api/hooks) - `State.use` and `State.get`, the React subscription paths.

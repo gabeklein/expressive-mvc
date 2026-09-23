@@ -1,4 +1,4 @@
-import { afterEach, beforeEach } from 'bun:test';
+import { afterEach, beforeEach } from 'vitest';
 import { act, cleanup, render } from '@testing-library/react';
 
 // React is the declared test host. This import is doubly load-bearing: it
@@ -9,7 +9,7 @@ import { act, cleanup, render } from '@testing-library/react';
 import '@expressive/react';
 
 import '../mvc/test.setup';
-import { BrowserRouter } from './src/router';
+import { BrowserRouter } from './src/browser';
 
 afterEach(() => {
   cleanup();

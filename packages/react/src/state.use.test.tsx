@@ -1,8 +1,9 @@
-import React from 'react';
-import { describe, expect, it, mock } from 'bun:test';
+import React, { Suspense } from 'react';
+import { describe, expect, it, vi } from 'vitest';
 import { State, Provider, get, set } from '.';
 import { act, render, renderHook, waitFor } from '@testing-library/react';
-import { flushMicrotasks } from '../test.setup';
+import { flushMicrotasks, mockPromise } from '../test.setup';
+import { pending } from '@expressive/mvc';
 
 describe('State.use', () => {
   class Test extends State {
@@ -17,7 +18,7 @@ describe('State.use', () => {
     });
 
     it('will subscribe to instance of controller', async () => {
-      const willRender = mock();
+      const willRender = vi.fn();
       const { result } = renderHook(() => {
         willRender();
         return Test.use();
@@ -35,6 +36,34 @@ describe('State.use', () => {
       expect(result.current.value).toBe('bar');
     });
 
+    it('will transition owned model dispatch', async () => {
+      let instance!: Test;
+      const gate = mockPromise<void>();
+      const App = () => {
+        instance = Test.use();
+        if (instance.value === 'bar') throw gate;
+        return <span>{instance.value}</span>;
+      };
+      const view = render(
+        <Suspense fallback={<i>loading</i>}>
+          <App />
+        </Suspense>
+      );
+
+      await act(async () => {
+        pending(() => void (instance.value = 'bar'));
+        await Promise.resolve();
+      });
+
+      expect(view.container.textContent).toBe('foo');
+
+      instance.value = 'done';
+      gate.resolve();
+      await act(async () => {});
+
+      expect(view.container.textContent).toBe('done');
+    });
+
     it('will update when assigned through nested proxy', async () => {
       class Child extends State {
         value = 'foo';
@@ -45,7 +74,7 @@ describe('State.use', () => {
       }
 
       let parent!: Parent;
-      const didRender = mock();
+      const didRender = vi.fn();
 
       const Inner = () => {
         const { is, child } = Parent.use();
@@ -92,7 +121,7 @@ describe('State.use', () => {
     });
 
     it('will run callback', () => {
-      const callback = mock();
+      const callback = vi.fn();
 
       renderHook(() => Test.use(callback));
 
@@ -100,7 +129,7 @@ describe('State.use', () => {
     });
 
     it('will destroy instance of given class', async () => {
-      const didDestroy = mock();
+      const didDestroy = vi.fn();
 
       class Test extends State {
         protected new() {
@@ -136,35 +165,29 @@ describe('State.use', () => {
     });
 
     it('will bind methods to instance', async () => {
+      const mock = vi.fn();
+      
       class Test extends State {
-        current = 0;
+        method = mock;
 
         action() {
-          this.current++;
+          this.method();
         }
       }
 
-      const hook = renderHook(() => {
-        const { action, current } = Test.use();
+      renderHook(() => {
+        const { action } = Test.use();
 
         action();
-
-        return current;
       });
 
-      expect(hook.result.current).toBe(0);
-
-      hook.rerender();
-
-      expect(hook.result.current).toBe(1);
-
-      hook.unmount();
+      expect(mock).toHaveBeenCalled();
     });
   });
 
   describe('new method', () => {
     it('will call if exists', () => {
-      const didCreate = mock();
+      const didCreate = vi.fn();
 
       class Test extends State {
         protected new() {
@@ -182,9 +205,97 @@ describe('State.use', () => {
     });
   });
 
+  describe('mount method', () => {
+    it('will call once on commit', () => {
+      const didMount = vi.fn();
+
+      class Test extends State {
+        mount() {
+          didMount();
+        }
+      }
+
+      const element = renderHook(() => Test.use());
+
+      expect(didMount).toBeCalledTimes(1);
+
+      element.rerender();
+
+      expect(didMount).toBeCalledTimes(1);
+    });
+
+    it('will run returned callback on unmount', () => {
+      const didUnmount = vi.fn();
+
+      class Test extends State {
+        mount() {
+          return didUnmount;
+        }
+      }
+
+      const element = renderHook(() => Test.use());
+
+      expect(didUnmount).not.toBeCalled();
+
+      element.unmount();
+
+      expect(didUnmount).toBeCalledTimes(1);
+    });
+
+    it('will not repeat under strict mode', () => {
+      const didMount = vi.fn();
+      const didUnmount = vi.fn();
+
+      class Test extends State {
+        mount() {
+          didMount();
+          return didUnmount;
+        }
+      }
+
+      const element = renderHook(() => Test.use(), { reactStrictMode: true });
+
+      expect(didMount).toBeCalledTimes(1);
+
+      element.unmount();
+
+      expect(didUnmount).toBeCalledTimes(1);
+    });
+
+    it('will ignore a non-function returned by mount', () => {
+      class Test extends State {
+        value = 'x';
+
+        // a plain State is only structurally checked against UseState, where
+        // TypeScript's void-permissive return rule lets this through
+        mount() {
+          return this.value as any;
+        }
+      }
+
+      const element = renderHook(() => Test.use());
+
+      expect(() => element.unmount()).not.toThrow();
+    });
+
+    it('will not call for an instance no component owns', () => {
+      const didMount = vi.fn();
+
+      class Test extends State {
+        mount() {
+          didMount();
+        }
+      }
+
+      Test.new();
+
+      expect(didMount).not.toBeCalled();
+    });
+  });
+
   describe('use method', () => {
     it('will call every render if present', () => {
-      const didUse = mock();
+      const didUse = vi.fn();
 
       class Test extends State {
         use() {
@@ -202,7 +313,7 @@ describe('State.use', () => {
     });
 
     it('will receive arguments', () => {
-      const didUse = mock();
+      const didUse = vi.fn();
 
       class Test extends State {
         use(foo: string, bar: number) {
@@ -216,7 +327,7 @@ describe('State.use', () => {
     });
 
     it('will divert arguments from constructor', () => {
-      const didUse = mock();
+      const didUse = vi.fn();
 
       class Test extends State {
         value = 0;
@@ -256,7 +367,7 @@ describe('State.use', () => {
     }
 
     it('will run callback once', async () => {
-      const callback = mock();
+      const callback = vi.fn();
       const hook = renderHook(() => Test.use(callback));
 
       expect(callback).toBeCalled();
@@ -267,8 +378,8 @@ describe('State.use', () => {
     });
 
     it('will run argument before effects', () => {
-      const effect = mock();
-      const argument = mock(() => {
+      const effect = vi.fn();
+      const argument = vi.fn(() => {
         expect(effect).not.toBeCalled();
       });
 
@@ -300,7 +411,7 @@ describe('State.use', () => {
         bar: 'bar'
       };
 
-      const didRender = mock();
+      const didRender = vi.fn();
 
       const hook = renderHook(() => {
         didRender();
@@ -384,7 +495,7 @@ describe('State.use', () => {
     });
 
     it('will not trigger updates it caused', async () => {
-      const didRender = mock();
+      const didRender = vi.fn();
       const hook = renderHook(
         (props) => {
           didRender();
@@ -399,7 +510,7 @@ describe('State.use', () => {
     });
 
     it('will trigger set instruction', () => {
-      const cb = mock();
+      const cb = vi.fn();
 
       class Test extends State {
         foo = set('foo', cb);
@@ -444,8 +555,8 @@ describe('State.use', () => {
 
   describe('strict mode', () => {
     it('will create once and destroy on unmount', async () => {
-      const didCreate = mock();
-      const didDestroy = mock();
+      const didCreate = vi.fn();
+      const didDestroy = vi.fn();
 
       class Test extends State {
         protected new() {
@@ -486,7 +597,7 @@ describe('State.use', () => {
         }
       }
 
-      const didRender = mock();
+      const didRender = vi.fn();
 
       const Component = () => {
         const test = Test.use();
@@ -514,4 +625,3 @@ describe('State.use', () => {
     });
   });
 });
-

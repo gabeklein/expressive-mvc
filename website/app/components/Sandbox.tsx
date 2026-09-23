@@ -12,13 +12,26 @@ import type {
   KeyboardEvent as ReactKeyboardEvent,
   PointerEvent as ReactPointerEvent,
 } from 'react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { createPortal } from 'react-dom';
+
+import CodeLabel from './CodeLabel';
+import { createSandboxTs, type SandboxTs } from './sandbox/client';
+import { intellisense } from './sandbox/intellisense';
+
+declare const __SANDBOX_DEPS__: Record<string, string>;
 
 class Panes extends State {
   mode: 'preview' | 'code' = 'preview';
   stacked = false;
   ratio = 50;
+  dragging = false;
 
   // Hold Ctrl and two-finger swipe to nudge split
   layout = ref<HTMLDivElement>((el) => {
@@ -49,6 +62,8 @@ class Panes extends State {
     const rect = event.currentTarget.parentElement!.getBoundingClientRect();
     const pointerId = event.pointerId;
 
+    this.dragging = true;
+
     const move = (e: globalThis.PointerEvent) => {
       if (e.pointerId !== pointerId) return;
       e.preventDefault();
@@ -59,6 +74,7 @@ class Panes extends State {
     };
     const up = (e: globalThis.PointerEvent) => {
       if (e.pointerId !== pointerId) return;
+      this.dragging = false;
       document.removeEventListener('pointermove', move);
       document.removeEventListener('pointerup', up);
       document.removeEventListener('pointercancel', up);
@@ -103,18 +119,62 @@ export default function Sandbox({
   const dark = resolvedTheme === 'dark';
 
   // Each example declares its own @expressive/* deps via its imports - scan
-  // the source so router (or any future package) resolves without a hardcoded list.
+  // the source so router (or any future package) resolves without a hardcoded
+  // list. Versions are pinned to the workspace at build time.
   const dependencies = useMemo(() => {
     const deps: Record<string, string> = {};
 
     for (const entry of Object.values(files) as (string | { code: string })[]) {
       const code = typeof entry === 'string' ? entry : entry.code;
-      for (const [pkg] of code.matchAll(/@expressive\/[a-z-]+/g))
-        deps[pkg] = 'latest';
+      for (const [pkg] of code.matchAll(/@expressive\/[a-z-]+/g)) {
+        const version = __SANDBOX_DEPS__[pkg];
+
+        if (!version)
+          throw new Error(`${pkg} is not a published package - a sandbox example cannot import it.`);
+
+        deps[pkg] = version;
+      }
     }
 
     return deps;
   }, [files]);
+
+  // The provider below is keyed on theme, so a toggle remounts it. The language
+  // service lives out here instead, where it survives that - spawning the worker
+  // and re-acquiring @types on every toggle would leave IntelliSense cold.
+  const filesRef = useRef(files);
+  filesRef.current = files;
+
+  const ts = useMemo(() => {
+    let client: SandboxTs | undefined;
+
+    return {
+      ensure() {
+        if (!client) {
+          const source: Record<string, string> = {};
+
+          for (const [path, entry] of Object.entries(filesRef.current) as [
+            string,
+            string | { code: string },
+          ][])
+            source[path] = typeof entry === 'string' ? entry : entry.code;
+
+          client = createSandboxTs(source);
+        }
+
+        return client;
+      },
+      sync(next: Record<string, string>) {
+        client?.sync(next);
+      },
+      dispose() {
+        client?.dispose();
+        client = undefined;
+      },
+    };
+  }, []);
+
+  useEffect(() => () => ts.dispose(), [ts]);
 
   // The preview is a cross-origin Sandpack iframe, so we can't set its theme
   // from here - bake it into the hidden entry, which global.css honors via
@@ -144,6 +204,7 @@ export default function Sandbox({
         label={label}
         navigationOpen={navigationOpen}
         onOpenNavigation={onOpenNavigation}
+        ts={ts}
       />
     </SandpackProvider>
   );
@@ -153,10 +214,15 @@ function Layout({
   label,
   navigationOpen,
   onOpenNavigation,
+  ts,
 }: {
   label: string;
   navigationOpen: boolean;
   onOpenNavigation?: () => void;
+  ts: {
+    ensure(): SandboxTs;
+    sync(files: Record<string, string>): void;
+  };
 }) {
   const {
     onSelect,
@@ -167,6 +233,7 @@ function Layout({
     adjust,
     toggleSplit,
     layout,
+    dragging,
   } = Panes.use();
   const [layoutElement, setLayoutElement] = useState<HTMLDivElement | null>(
     null
@@ -207,6 +274,23 @@ function Layout({
     },
   };
 
+  // The language service is owned by Sandbox (it outlives this remount); keep it
+  // fed as files change, without spawning it if the editor was never used.
+  const { files, activeFile } = sandpack.sandpack;
+  const activeFileRef = useRef(activeFile);
+  activeFileRef.current = activeFile;
+
+  useEffect(() => {
+    const out: Record<string, string> = {};
+    for (const [path, file] of Object.entries(files)) out[path] = file.code;
+    ts.sync(out);
+  }, [files, ts]);
+
+  const extensions = useMemo(
+    () => [intellisense(() => ts.ensure(), () => activeFileRef.current)],
+    [ts],
+  );
+
   // Below the breakpoint the panels can't fit side by side; show one at a time
   // and reveal a toggle. Inline display wins over Sandpack's own layout CSS.
   const { matches: narrow } = MediaQuery.use({ query: '(max-width: 639px)' });
@@ -219,10 +303,12 @@ function Layout({
       style={{ flexDirection: stacked ? 'column' : 'row' }}
       className="relative h-full [--sp-layout-height:100%]">
       <SandpackCodeEditor
+        showLineNumbers
         style={{
           display: showEditor ? 'flex' : 'none',
           flex: narrow ? '1' : `0 0 ${ratio}%`,
         }}
+        extensions={extensions}
         extensionsKeymap={[refreshOnSave]}
       />
       {onOpenNavigation &&
@@ -230,11 +316,13 @@ function Layout({
         tabs &&
         createPortal(
           <button
-            aria-label={`Open examples navigation for ${label}`}
-            className="order-first mr-1 flex max-w-40 shrink-0 items-center gap-1.5 self-stretch pr-4 pl-3 text-sm font-medium text-fd-muted-foreground hover:text-fd-foreground"
+            aria-label={`Open examples navigation for ${label.replace(/`/g, '')}`}
+            className="order-first mr-1 flex max-w-56 shrink-0 items-center gap-1.5 self-stretch pr-4 pl-3 text-sm font-medium text-fd-muted-foreground hover:text-fd-foreground"
             onClick={onOpenNavigation}>
             <PanelLeftOpen className="size-4 shrink-0" />
-            <span className="truncate">{label}</span>
+            <span className="truncate">
+              <CodeLabel label={label} />
+            </span>
           </button>,
           tabs
         )}
@@ -266,6 +354,13 @@ function Layout({
               stacked ? 'h-1.5 w-12' : 'h-12 w-1.5'
             }`}
           />
+          {dragging && (
+            <div
+              className={`fixed inset-0 z-50 ${
+                stacked ? 'cursor-row-resize' : 'cursor-col-resize'
+              }`}
+            />
+          )}
         </div>
       )}
       <SandpackPreview

@@ -23,6 +23,16 @@ jobs:
 
       - run: bun run build
 
+      - name: Dist is consumable
+        run: bun .github/scripts/dist-check.ts
+
+      - name: Bundle size
+        continue-on-error: true
+        run: bun .github/scripts/size-limit.ts
+
+      - name: Docs agree with code
+        run: bun .github/scripts/docs-check.ts
+
       - name: Changeset reminder
         continue-on-error: true
         run: bunx changeset status --since origin/main
@@ -30,6 +40,6 @@ jobs:
       - name: Pack validation
         continue-on-error: true
         run: |
-          for pkg in mvc react; do
+          for pkg in mvc react router; do
             (cd packages/$pkg && npm publish --dry-run)
           done

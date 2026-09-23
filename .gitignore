@@ -1,4 +1,5 @@
 .DS_Store
+/.agents/
 /.claude/
 .next
 .nx
@@ -7,6 +8,8 @@
 build
 coverage
 coverage-badge.json
+size-report.json
+.size-probe
 dist
 node_modules
 package-lock.json

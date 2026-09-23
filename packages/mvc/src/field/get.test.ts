@@ -1,8 +1,9 @@
-import { mock, describe, it, expect } from 'bun:test';
+import { vi, describe, it, expect } from 'vitest';
 import { mockPromise } from '../../test.setup';
 import { Context } from '../context';
 import { State } from '../state';
 import { get } from './get';
+import { has } from './has';
 import { set } from './set';
 
 // is this desirable?
@@ -52,7 +53,7 @@ describe('fetch mode', () => {
     }
 
     const foo = Foo.new();
-    const mockEffect = mock();
+    const mockEffect = vi.fn();
     let promise = mockPromise();
 
     expect(foo.bar.foo).toBe(foo);
@@ -202,7 +203,7 @@ describe('fetch mode', () => {
     }
 
     const { child } = Parent.new();
-    const effect = mock((it: Child) => {
+    const effect = vi.fn((it: Child) => {
       void it.value;
       void it.parent.value;
     });
@@ -261,6 +262,290 @@ describe('fetch mode', () => {
     expect(Object.keys(test)).toMatchObject(['foo']);
   });
 
+  describe('siblings', () => {
+    class Peer extends State {}
+    class Required extends State {
+      peer = get(Peer);
+    }
+    class Optional extends State {
+      peer = get(Peer, false);
+    }
+
+    it('will resolve optional sibling declared earlier', () => {
+      class Parent extends State {
+        peer = new Peer();
+        child = new Optional();
+      }
+
+      const parent = Parent.new();
+
+      expect(parent.child.peer).toBe(parent.peer);
+    });
+
+    it('will keep own sibling when another arrives in context', () => {
+      class Parent extends State {
+        child = new Required();
+        peer = new Peer();
+      }
+      class A extends Parent {}
+      class B extends Parent {}
+
+      const context = new Context({ A, B });
+      const a = context.get(A);
+      const b = context.get(B);
+
+      expect(a.child.peer).toBe(a.peer);
+      expect(b.child.peer).toBe(b.peer);
+
+      context.pop();
+    });
+
+    it('will resolve optional sibling declared later', () => {
+      class Parent extends State {
+        child = new Optional();
+        peer = new Peer();
+      }
+
+      const parent = Parent.new();
+
+      expect(parent.child.peer).toBe(parent.peer);
+    });
+
+    it('will resolve required sibling declared later', () => {
+      class Parent extends State {
+        child = new Required();
+        peer = new Peer();
+      }
+
+      const parent = Parent.new();
+
+      expect(parent.child.peer).toBe(parent.peer);
+    });
+
+    it('will run callback for sibling declared later', () => {
+      const callback = vi.fn();
+
+      class Child extends State {
+        peer = get(Peer, callback);
+      }
+      class Parent extends State {
+        child = new Child();
+        peer = new Peer();
+      }
+
+      const parent = Parent.new();
+
+      expect(callback).toBeCalledTimes(1);
+      expect(callback).toBeCalledWith(parent.peer, parent.child);
+      expect(parent.child.peer).toBe(parent.peer);
+    });
+
+    it('will resolve siblings within explicit context', () => {
+      class Parent extends State {
+        child = new Required();
+        peer = new Peer();
+      }
+
+      const context = new Context(Parent);
+      const parent = context.get(Parent);
+
+      expect(parent.child.peer).toBe(parent.peer);
+      expect(context.get(Peer)).toBe(parent.peer);
+    });
+
+    it('will resolve through an activating grandparent', () => {
+      class Middle extends State {
+        child = new Required();
+      }
+      class Parent extends State {
+        middle = new Middle();
+        peer = new Peer();
+      }
+
+      const parent = Parent.new();
+
+      expect(parent.middle.child.peer).toBe(parent.peer);
+    });
+
+    it('will throw if sibling never arrives', () => {
+      class Parent extends State {
+        child = new Required();
+        other = new Optional();
+      }
+
+      expect(() => Parent.new()).toThrow(
+        /Required Peer not found in context for Required-[\w-]+\./
+      );
+    });
+
+    it('will resolve within own parent when several exist', () => {
+      class Parent extends State {
+        child = new Required();
+        peer = new Peer();
+      }
+
+      const p1 = Parent.new();
+      const p2 = Parent.new();
+      const p3 = Parent.new();
+
+      expect(p1.child.peer).toBe(p1.peer);
+      expect(p2.child.peer).toBe(p2.peer);
+      expect(p3.child.peer).toBe(p3.peer);
+    });
+
+    it('will resolve own sibling declared earlier when another parent exists', () => {
+      class Parent extends State {
+        peer = new Peer();
+        child = new Required();
+      }
+
+      const p1 = Parent.new();
+      const p2 = Parent.new();
+
+      expect(p1.child.peer).toBe(p1.peer);
+      expect(p2.child.peer).toBe(p2.peer);
+    });
+
+    it('will not notify a destroyed child when a later parent activates', () => {
+      class Parent extends State {
+        child = new Required();
+        peer = new Peer();
+      }
+
+      const p1 = Parent.new();
+      p1.set(null);
+
+      const p2 = Parent.new();
+
+      expect(p2.child.peer).toBe(p2.peer);
+    });
+
+    it('will not notify a replaced child when sibling is reassigned', () => {
+      class Parent extends State {
+        child = new Optional();
+        peer = new Peer();
+      }
+
+      const parent = Parent.new();
+      const { child, peer } = parent;
+
+      parent.child = new Optional();
+      parent.peer = new Peer();
+
+      expect(child.peer).toBe(peer);
+      expect(parent.child.peer).toBe(parent.peer);
+    });
+
+    it('will prefer sibling over grandparent sibling', () => {
+      class Middle extends State {
+        child = new Required();
+        peer = new Peer();
+      }
+      class Parent extends State {
+        middle = new Middle();
+        peer = new Peer();
+      }
+
+      const parent = Parent.new();
+
+      expect(parent.middle.child.peer).toBe(parent.middle.peer);
+    });
+
+    it('will not resolve a sibling that was cleared', () => {
+      class Parent extends State {
+        peer: Peer | null = new Peer();
+        child?: Optional = undefined;
+      }
+
+      const parent = Parent.new();
+
+      parent.peer = null;
+      parent.child = new Optional();
+
+      expect(parent.child.peer).toBeUndefined();
+    });
+
+    it('will resolve through context for a pool member', () => {
+      class Theme extends State {}
+      class Item extends State {
+        theme = get(Theme);
+      }
+      class Store extends State {
+        items = has(Item);
+      }
+
+      const context = new Context({ Theme, Store });
+      const item = context.get(Store).items.add();
+
+      expect(item.theme).toBe(context.get(Theme));
+    });
+
+    it('will not resolve to itself', () => {
+      class Node extends State {
+        peer = get(Node, false);
+      }
+      class Parent extends State {
+        a = new Node();
+        b = new Node();
+      }
+
+      const parent = Parent.new();
+
+      expect(parent.a.peer).toBe(parent.b);
+      expect(parent.b.peer).toBe(parent.a);
+    });
+
+    it('will resolve a sibling a subclass initializer replaced', () => {
+      class Workspace extends State {
+        git = 'host';
+      }
+      class HarnessWorkspace extends Workspace {
+        git = 'harness';
+      }
+      class Session extends State {
+        workspace = get(Workspace);
+      }
+      class HarnessSession extends Session {}
+      class Pairing extends State {
+        session = new Session();
+        workspace = new Workspace();
+      }
+      class HarnessPairing extends Pairing {
+        session = new HarnessSession();
+        workspace = new HarnessWorkspace();
+      }
+
+      const p1 = HarnessPairing.new();
+      const p2 = HarnessPairing.new();
+
+      p1.set(null);
+
+      const p3 = HarnessPairing.new();
+
+      for (const p of [p2, p3]) {
+        expect(p.session.workspace).toBe(p.workspace);
+        expect(p.session.workspace.git).toBe('harness');
+      }
+    });
+  });
+
+  it('will not register upstream into own context', () => {
+    class Parent extends State {
+      child = new Child();
+    }
+    class Child extends State {
+      parent = get(Parent);
+    }
+    class Stranger extends State {
+      parent = get(Parent, false);
+    }
+
+    const parent = Parent.new();
+
+    expect(parent.child.parent).toBe(parent);
+    expect(Stranger.new().parent).toBeUndefined();
+  });
+
   describe('subscription', () => {
     it('will update when implicit upstream is replaced', async () => {
       class Peer extends State {}
@@ -276,7 +561,7 @@ describe('fetch mode', () => {
 
       new Context(parent).push(child);
 
-      const effect = mock();
+      const effect = vi.fn();
       const first = parent.peer;
 
       expect(child.peer).toBe(first);
@@ -300,7 +585,7 @@ describe('fetch mode', () => {
       const child = new Child();
       const ambient = Ambient.new();
       const context = new Context();
-      const effect = mock();
+      const effect = vi.fn();
 
       context.push(child);
 
@@ -320,7 +605,7 @@ describe('fetch mode', () => {
         value = 'initial';
       }
 
-      const callback = mock();
+      const callback = vi.fn();
 
       class Owner extends State {
         remote = new Remote();
@@ -335,7 +620,7 @@ describe('fetch mode', () => {
       new Context(owner).push(consumer);
 
       const first = consumer.remote;
-      const effect = mock();
+      const effect = vi.fn();
 
       expect(callback).toBeCalled();
       expect(callback).toBeCalledWith(first, consumer);
@@ -384,6 +669,21 @@ describe('fetch mode', () => {
         new Context(parent).push({ child1, child2 });
 
         expect(parent.children).toEqual([child1, child2]);
+      });
+
+      it('will not collect self through a consumer', () => {
+        class Node extends State {
+          peers = get(Node, true);
+          up = get(Node, false);
+        }
+
+        const parent = new Node();
+        const child = new Node();
+
+        new Context(parent).push(child);
+
+        expect(child.up).toBe(parent);
+        expect(parent.peers).toEqual([child]);
       });
 
       it('will not be enumerable', () => {
@@ -488,7 +788,7 @@ describe('fetch mode', () => {
           children = get(Child, true, gotChild);
         }
 
-        const gotChild = mock();
+        const gotChild = vi.fn();
         const parent = new Parent();
         const child = new Child();
 
@@ -551,7 +851,7 @@ describe('fetch mode', () => {
           baz = get(Baz, true, gotBaz);
         }
 
-        const gotBaz = mock();
+        const gotBaz = vi.fn();
         const foo = new Foo();
         const baz = new Baz();
 
@@ -655,7 +955,7 @@ describe('lifecycle callbacks', () => {
       value = 'foo';
     }
 
-    const remoteCallback = mock();
+    const remoteCallback = vi.fn();
 
     class Test extends State {
       remote = get(Remote, remoteCallback);
@@ -676,7 +976,7 @@ describe('lifecycle callbacks', () => {
       children = get(Child, true, gotChild);
     }
 
-    const gotChild = mock();
+    const gotChild = vi.fn();
     const parent = new Parent();
     const child = new Child();
 
@@ -686,8 +986,8 @@ describe('lifecycle callbacks', () => {
   });
 
   it('will run cleanup on downstream unmount', async () => {
-    const didRemove = mock();
-    const didAdd = mock(() => didRemove);
+    const didRemove = vi.fn();
+    const didAdd = vi.fn(() => didRemove);
 
     class Child extends State {
       value = 0;
@@ -719,7 +1019,7 @@ describe('lifecycle callbacks', () => {
       children = get(Child, true, hasChild);
     }
 
-    const hasChild = mock(() => false);
+    const hasChild = vi.fn(() => false);
     const parent = new Parent();
     const context = new Context(parent);
 
@@ -740,7 +1040,7 @@ describe('lifecycle callbacks', () => {
       value = 'foo';
     }
 
-    const remoteCallback = mock((remote: Remote) => {
+    const remoteCallback = vi.fn((remote: Remote) => {
       // Access value but should not subscribe
       void remote.value;
     });
@@ -766,8 +1066,8 @@ describe('lifecycle callbacks', () => {
   it('will run cleanup on state destruction', async () => {
     class Remote extends State {}
 
-    const cleanup = mock();
-    const remoteCallback = mock(() => cleanup);
+    const cleanup = vi.fn();
+    const remoteCallback = vi.fn(() => cleanup);
 
     class Test extends State {
       remote = get(Remote, remoteCallback);
@@ -787,7 +1087,7 @@ describe('lifecycle callbacks', () => {
   });
 
   it('will receive ready instance', async () => {
-    const didSet = mock();
+    const didSet = vi.fn();
 
     class Child extends State {
       value = set(undefined, didSet);
@@ -821,8 +1121,8 @@ describe('lifecycle callbacks', () => {
       });
     }
 
-    const didNotify = mock();
-    const didRemove = mock();
+    const didNotify = vi.fn();
+    const didRemove = vi.fn();
 
     const context = new Context();
 
@@ -848,8 +1148,8 @@ describe('lifecycle callbacks', () => {
       });
     }
 
-    const didNotify = mock();
-    const didRemove = mock();
+    const didNotify = vi.fn();
+    const didRemove = vi.fn();
 
     const context = new Context(Parent);
     const inner = context.push(Child);

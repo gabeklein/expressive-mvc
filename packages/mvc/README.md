@@ -13,6 +13,10 @@
 
 The core of [Expressive MVC](https://github.com/gabeklein/expressive-mvc): reactive primitives built around plain classes, with no framework dependency. Provides the `State` model, instructions, context, and the renderer-agnostic `Component` that adapters like [`@expressive/react`](https://www.npmjs.com/package/@expressive/react) build on.
 
+> **Building a React app?** Install [`@expressive/react`](https://www.npmjs.com/package/@expressive/react) instead - it depends on this package, so you get the whole core through it and should **not** list `@expressive/mvc` in your `package.json` as well. Import `State`, `Component`, and every instruction from the adapter.
+
+Install this package directly only for host-agnostic code that must not depend on a UI adapter - a shared domain package, a Node service, or a new adapter:
+
 ```bash
 npm install @expressive/mvc
 ```
@@ -22,7 +26,7 @@ npm install @expressive/mvc
 A `State` is a class whose fields are reactive - read to subscribe, assign to update. Getters are cached computed values.
 
 ```ts
-import { State } from '@expressive/mvc';
+import State from '@expressive/mvc';
 
 class Counter extends State {
   count = 0;
@@ -58,7 +62,7 @@ Field initializers that change how a property behaves:
 | `has()` | an owned reactive collection - an ordered list or a spawned pool |
 
 ```ts
-import { State, set, has, map } from '@expressive/mvc';
+import State, { set, has, map } from '@expressive/mvc';
 
 class Cart extends State {
   items = has<Item>();                      // reactive collection
@@ -88,7 +92,7 @@ timer.set(null);             // destroy - runs cleanup, freezes state
 States find each other through context, and compose by holding one another:
 
 ```ts
-import { State, get } from '@expressive/mvc';
+import State, { get } from '@expressive/mvc';
 
 class Session extends State {
   user = 'guest';

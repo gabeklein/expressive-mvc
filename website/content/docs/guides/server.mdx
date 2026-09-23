@@ -1,0 +1,66 @@
+---
+title: Server Rendering and Next.js
+description: Client components, request safety, and what runs where
+---
+
+Expressive components are **client components**. They render fine on the server - `renderToString`, and the SSR pass Next.js gives every client component - without touching the DOM. What they are not is server-resident state: nothing here runs inside React Server Components themselves.
+
+<br />
+
+## 'use client'
+
+In an App Router project, any file that imports from `@expressive/react` is client code:
+
+```tsx
+'use client';
+
+import State from '@expressive/react';
+
+class Panel extends State {
+  open = false;
+}
+
+export function Sidebar() {
+  const { open, is: panel } = Panel.use();
+  return <aside data-open={open} onClick={() => (panel.open = !panel.open)} />;
+}
+```
+
+Server components compose these normally - fetch on the server, pass serializable props down, and let the model take over from there. As with any client component, give the client the same inputs the server rendered with, and hydration lines up.
+
+<br />
+
+## What runs where
+
+| | Server render | Client |
+| --- | --- | --- |
+| constructor, field initializers | ✓ | ✓ |
+| `new()` | ✓ | ✓ |
+| class `use()` method | ✓ | ✓ |
+| `mount()` | never | ✓ |
+| `new()`'s returned teardown | never | ✓ |
+
+The last two rows are the rules that matter. There is no unmount on the server, so a resource opened in `new()` - a socket, a subscription, a file handle - leaks there. `mount()` is the client-only hook for exactly that work, and it is where effects belong.
+
+<br />
+
+## Three rules for request safety
+
+**Request state goes in a `<Provider>`.** Each render builds its own context, so provided instances are isolated - one request never sees another's.
+
+**A `static global` is process-wide - and on the server, that means shared across requests.** Globals are trusted mutable process state: config, feature flags, a warmed cache. Keep per-request data out of them; put it behind a Provider instead.
+
+**Resources belong in `mount()` or the framework's request scope, never `new()`.** `mount()` never fires on the server, so client resources stay client-side for free. Anything the server itself must open and close belongs to the request handler, which actually has a close.
+
+<br />
+
+## The Router on the server
+
+`@expressive/router` runs on the client today. The default `Router` is a client-only global for the same reason as the rules above: on the server it resolves per render, so paths never bleed between requests - but rendering a specific request's path server-side is not yet supported. In a Next.js app the framework owns the URL regardless; the router targets client-routed apps.
+
+<br />
+
+## Next
+
+- [Concurrent React](/docs/guides/concurrent) - consistency and transition priority on React 18+.
+- [Context](/docs/guides/context) - Providers, scoping, and resolution.

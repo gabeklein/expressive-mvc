@@ -284,7 +284,7 @@ test('panel reads theme from parent', () => {
 
 ### Cleaning up globals
 
-Module-scope `State.new()` registers the instance into the global root context. Without cleanup, a global created in one test file (or at module load) leaks into every test that follows. Reset the root between tests:
+A module-scope `State.new()` of a [`static global` class](/docs/guides/context#globals-and-the-root-context) registers the instance into the global root context. Without cleanup, a global created in one test file (or at module load) leaks into every test that follows. Reset the root between tests:
 
 ```ts
 import { afterEach } from 'vitest';

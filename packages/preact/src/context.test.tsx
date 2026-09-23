@@ -1,15 +1,31 @@
 /** @jsxImportSource preact */
 import { StrictMode, Suspense } from 'preact/compat';
-import { mock, spyOn, afterAll, expect, it, describe } from 'bun:test';
+import {
+  vi,
+  afterEach,
+  beforeEach,
+  expect,
+  it,
+  describe,
+  type MockInstance
+} from 'vitest';
 
 import { act, render, screen } from '@testing-library/preact';
-import { State, Consumer, Context, get, Provider, set } from '.';
-import { flushMicrotasks } from '../test.setup';
+import { State, Consumer, Context, get, pending, Provider, set } from '.';
+import { flushMicrotasks, mockPromise } from '../test.setup';
 
-const error = spyOn(console, 'error').mockImplementation(() => {});
+let error: MockInstance<Console['error']>;
 
-afterAll(() => {
-  error.mockReset();
+beforeEach(() => {
+  error = vi.spyOn(console, 'error').mockImplementation(() => {});
+});
+
+afterEach(() => {
+  const { calls } = error.mock;
+
+  error.mockRestore();
+
+  expect(calls).toEqual([]);
 });
 
 class Foo extends State {
@@ -71,7 +87,7 @@ describe('Provider', () => {
       value = 'hello';
     }
 
-    const is = mock();
+    const is = vi.fn();
 
     render(
       <Provider for={Test} is={is}>
@@ -92,7 +108,7 @@ describe('Provider', () => {
       value = 'initial';
     }
 
-    const Child = mock(() => {
+    const Child = vi.fn(() => {
       const { value } = Test.get();
       return <span>{value}</span>;
     });
@@ -136,7 +152,7 @@ describe('Provider', () => {
   });
 
   it('will destroy created model on unmount', async () => {
-    const willDestroy = mock();
+    const willDestroy = vi.fn();
 
     class Test extends State {}
 
@@ -156,7 +172,7 @@ describe('Provider', () => {
   });
 
   it('will not destroy given instance on unmount', async () => {
-    const didUnmount = mock();
+    const didUnmount = vi.fn();
 
     class Test extends State {}
 
@@ -175,7 +191,7 @@ describe('Provider', () => {
   it('will conflict colliding State types', () => {
     const foo = Foo.new();
 
-    const Consumer = mock(() => {
+    const Consumer = vi.fn(() => {
       expect(() => Foo.get()).toThrow(
         'Did find Foo in context, but multiple were defined.'
       );
@@ -192,7 +208,7 @@ describe('Provider', () => {
   });
 
   it('will destroy from bottom-up', async () => {
-    const didDestroy = mock();
+    const didDestroy = vi.fn();
 
     class Test extends State {
       protected new() {
@@ -218,7 +234,7 @@ describe('Provider', () => {
 
   describe('forEach prop', () => {
     it('will call function for each model', () => {
-      const forEach = mock();
+      const forEach = vi.fn();
 
       render(<Provider for={{ Foo, Bar }} is={forEach} />);
 
@@ -227,19 +243,45 @@ describe('Provider', () => {
       expect(forEach).toBeCalledWith(expect.any(Bar));
     });
 
-    it('will cleanup on unmount', async () => {
-      const forEach = mock(() => cleanup);
-      const cleanup = mock();
+    it('will cleanup on unmount through the state', () => {
+      const cleanup = vi.fn();
+      const forEach = vi.fn((state: State) => {
+        state.set(null, cleanup);
+      });
 
       const rendered = render(<Provider for={{ Foo, Bar }} is={forEach} />);
 
       expect(forEach).toBeCalledTimes(2);
-      expect(forEach).toBeCalledWith(expect.any(Foo));
-      expect(forEach).toBeCalledWith(expect.any(Bar));
       expect(cleanup).not.toBeCalled();
 
       rendered.unmount();
+
       expect(cleanup).toBeCalledTimes(2);
+    });
+
+    it('will mount an instance it creates', () => {
+      const didMount = vi.fn();
+      const didUnmount = vi.fn();
+
+      class Test extends State {
+        mount() {
+          didMount();
+          return didUnmount;
+        }
+      }
+
+      const rendered = render(
+        <Provider for={Test}>
+          <span />
+        </Provider>
+      );
+
+      expect(didMount).toBeCalledTimes(1);
+      expect(didUnmount).not.toBeCalled();
+
+      rendered.unmount();
+
+      expect(didUnmount).toBeCalledTimes(1);
     });
   });
 
@@ -306,8 +348,8 @@ describe('Provider', () => {
     // double-invocation of renders or effects. These tests assert the same
     // outcomes as React's, which hold trivially under preact.
     it('will create once and destroy on unmount', async () => {
-      const didCreate = mock();
-      const didDestroy = mock();
+      const didCreate = vi.fn();
+      const didDestroy = vi.fn();
 
       class Test extends State {
         protected new() {
@@ -363,7 +405,7 @@ describe('Consumer', () => {
     }
 
     const instance = Test.new();
-    const didRender = mock();
+    const didRender = vi.fn();
 
     function onRender(instance: Test) {
       const { value } = instance;
@@ -476,7 +518,7 @@ describe('get instruction', () => {
   });
 
   it('will maintain hook', async () => {
-    const Inner = mock(() => {
+    const Inner = vi.fn(() => {
       Foo.use();
       return null;
     });
@@ -548,7 +590,7 @@ describe('has instruction', () => {
       foo = get(Foo);
     }
 
-    const didGetBar = mock();
+    const didGetBar = vi.fn();
     const FooBar = () => void Bar.use();
     const foo = new Foo();
 
@@ -573,7 +615,7 @@ describe('has instruction', () => {
       foo = get(Foo);
     }
 
-    const didGetBar = mock();
+    const didGetBar = vi.fn();
     const FooBar = () => void Bar.use();
 
     const Component = () => {
@@ -622,6 +664,47 @@ describe('suspense', () => {
 
     await screen.findByText('hello!');
   });
+
+  it('will settle when pending work falls back without a scheduler', async () => {
+    class Test extends State {
+      value = 'a';
+    }
+
+    const test = Test.new();
+    const gate = mockPromise<void>();
+    let ready = false;
+    let settled = false;
+
+    gate.then(() => (ready = true));
+
+    const Content = () => {
+      const { value } = Test.get();
+
+      if (value === 'b' && !ready) throw gate;
+      return <span>{value}</span>;
+    };
+
+    render(
+      <Provider for={test}>
+        <Suspense fallback={<i>loading</i>}>
+          <Content />
+        </Suspense>
+      </Provider>
+    );
+
+    pending(() => void (test.value = 'b')).then(() => (settled = true));
+    await flushMicrotasks();
+
+    expect(screen).toHaveText('loading');
+    expect(settled).toBe(true);
+
+    await act(async () => {
+      gate.resolve();
+      await gate;
+    });
+
+    expect(screen).toHaveText('b');
+  });
 });
 
 describe('HMR', () => {
@@ -667,6 +750,7 @@ describe('HMR', () => {
 
 describe('root global', () => {
   class Global extends State {
+    static global = true;
     value = 'root';
   }
 

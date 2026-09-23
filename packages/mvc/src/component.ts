@@ -2,7 +2,7 @@ import { Context } from './context';
 import { set } from './field/set';
 import { State, unbind } from './state';
 
-import type { Host } from './jsx-runtime';
+import type { Host } from './runtime';
 
 const PENDING = new WeakMap<object, Component>();
 
@@ -113,7 +113,10 @@ class Component extends State {
       }
     ]);
 
-    if (copy) return copy;
+    if (copy) {
+      this.set(null);
+      return copy;
+    }
 
     PENDING.set(props, this);
 

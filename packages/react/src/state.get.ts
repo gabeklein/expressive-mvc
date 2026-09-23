@@ -1,6 +1,6 @@
 import { State, Context } from '@expressive/mvc';
 import { observer, watch } from '@expressive/mvc/observable';
-import { Runtime, useFactory, useHook, useReady } from './runtime';
+import { Runtime, useFactory, useSettle, useSetup } from './runtime';
 
 /** Type may not be undefined - instead will be null.  */
 type NoVoid<T> = T extends undefined | void ? null : T;
@@ -74,17 +74,28 @@ State.get = function get<T extends State>(
   this: State.Extends<T>,
   argument?: boolean | State.GetFactory<T, unknown>
 ) {
-  const next = Runtime.useState(0)[1];
+  const Type = this;
+  const [tick, next] = Runtime.useState(0);
+  const claim = useSettle(tick);
   const local = Context.get();
   const render = useFactory(() => {
     let unwatch: (() => void) | undefined;
     let mounted = false;
     let pending = false;
     let value: any;
+    let force!: () => void;
 
     function update() {
       pending = false;
       next((x) => x + 1);
+    }
+
+    function observed() {
+      if (mounted) {
+        claim();
+        update();
+      }
+      else pending = true;
     }
 
     function refresh<T>(action?: Promise<T> | (() => Promise<T>)): any {
@@ -100,6 +111,8 @@ State.get = function get<T extends State>(
     }
 
     function attach(next: T) {
+      if (local.get(Type, false) !== next) return;
+
       unwatch?.();
 
       if (observer(next) === null) {
@@ -123,10 +136,15 @@ State.get = function get<T extends State>(
             value = current;
           }
 
-          if (!first) update();
+          if (!first) observed();
           first = false;
+
+          return (update) => {
+            if (update === true) force();
+          };
         },
-        argument === true
+        argument === true,
+        Runtime.transition
       );
 
       if (mounted) {
@@ -137,12 +155,12 @@ State.get = function get<T extends State>(
       return release;
     }
 
-    const unsubscribe = local.get(this, attach);
+    const unsubscribe = local.get(Type, attach);
 
     if (!unwatch) {
       unsubscribe();
       if (argument === false) return () => undefined;
-      throw new Error(`Could not find ${this} in context.`);
+      throw new Error(`Could not find ${Type} in context.`);
     }
 
     if (value === null) {
@@ -172,8 +190,15 @@ State.get = function get<T extends State>(
 
     return () => {
       pending = false;
-      useReady(() => mounted = true);
-      useHook(() => release);
+      useSetup((_self, reset) => {
+        force = reset;
+
+        return () => {
+          mounted = true;
+          if (pending) update();
+          return release;
+        };
+      });
       return value === undefined ? null : value;
     };
   });

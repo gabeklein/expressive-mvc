@@ -1,8 +1,10 @@
 import State from '@expressive/react';
 
-// App-wide session. One instance for the whole app - login state lives in
-// exactly one place, and every component reads the same source of truth.
 export class Session extends State {
+  // One session for the whole app - the declaration is what makes "the whole
+  // app" true of it, rather than a convention the imports happen to follow.
+  static global = true;
+
   user: string | null = null;
 
   login() {

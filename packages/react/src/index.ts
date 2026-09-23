@@ -1,5 +1,5 @@
 import { Component } from '@expressive/mvc';
-import {
+import React, {
   createContext,
   createElement,
   Suspense,
@@ -29,6 +29,8 @@ Object.assign(Runtime, {
   useEffect,
   useState,
   useRef,
+  useSyncExternalStore: React.useSyncExternalStore,
+  transition: React.startTransition,
   Suspense,
   ignore: [
     'updater',
@@ -38,7 +40,7 @@ Object.assign(Runtime, {
   ]
 });
 
-export { State, State as default, use, Consumer, Provider } from './adapter';
-export { Component, Context, def, get, ref, set } from '@expressive/mvc';
+export { State, State as default, Consumer, Provider } from './adapter';
+export { Component, Context, def, get, ref, set, pending } from '@expressive/mvc';
 export { has } from './has';
 export { map } from './map';

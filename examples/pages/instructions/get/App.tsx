@@ -1,89 +1,83 @@
 import './App.css';
 
-import State, { Component, get, Provider } from '@expressive/react';
+import { Component, get } from '@expressive/react';
+import type { ReactNode } from 'react';
 
-// The same instruction reaches both directions of the context tree.
-// Downstream: get(Candidate, true) collects every Candidate mounted below,
-// and the array tracks them as they mount and unmount - no registration.
-class Poll extends State {
-  candidates = get(Candidate, true);
-  choice = '';
-
-  get leader() {
-    return this.choice || '—';
-  }
-}
-
-// Upstream: get(Poll) hands each Candidate the poll it lives under, so a
-// click writes the shared choice and every candidate restyles.
-class Candidate extends Component {
-  poll = get(Poll);
-  name = '';
-
-  render() {
-    const { poll, name } = this;
-
-    return (
-      <li
-        className={poll.choice === name ? 'candidate chosen' : 'candidate'}
-        onClick={() => (poll.choice = name)}>
-        {name}
-      </li>
-    );
-  }
-}
-
-// A separate consumer reads the collected array - it re-renders as the
-// roster grows or shrinks, and when the shared choice changes.
-function Tally() {
-  const { candidates, leader } = Poll.get();
-
-  return (
-    <p className="tally">
-      {candidates.length} on the ballot · chose <b>{leader}</b>
+export default () => (
+  <div className="container">
+    <h1>Upstream</h1>
+    <p>
+      <code>get(Form)</code> locates the nearest form by class, not by prop. A{' '}
+      <code>Component</code> is in context for everything it renders, so the form
+      provides itself just by being one - and every field below finds it, however
+      deep it sits.
     </p>
-  );
-}
+    <Form />
+    <p>
+      With <code>false</code> the lookup is optional. This is the same Field class,
+      rendered outside any form: it finds nothing, says so, and still works.
+    </p>
+    <Field label="Nickname" />
+    <small>
+      One class covers both placements because the answer is typed{' '}
+      <code>Form | undefined</code> - the compiler makes you handle the standalone
+      case, rather than a missing provider making you find out at runtime.
+    </small>
+  </div>
+);
 
-export default class App extends Component {
-  roster = ['Ada', 'Alan', 'Grace'];
-  draft = '';
-
-  add() {
-    const name = this.draft.trim() || `Guest ${this.roster.length + 1}`;
-    this.roster = [...this.roster, name];
-    this.draft = '';
-  }
+class Form extends Component {
+  locked = false;
 
   render() {
-    const { roster, draft } = this;
+    const { locked } = this;
 
     return (
-      <div className="container">
-        <h1>Context Collection</h1>
+      <form className="signup" onSubmit={(e) => e.preventDefault()}>
+        <Field label="Name" />
 
-        <Provider for={Poll}>
-          <Tally />
-          <ul className="ballot">
-            {roster.map((name) => (
-              <Candidate key={name} name={name} />
-            ))}
-          </ul>
-          <form
-            className="add"
-            onSubmit={(e) => {
-              e.preventDefault();
-              this.add();
-            }}>
-            <input
-              value={draft}
-              placeholder={`Guest ${roster.length + 1}`}
-              onChange={(e) => (this.draft = e.target.value)}
-            />
-            <button type="submit">Add</button>
-          </form>
-        </Provider>
-      </div>
+        <Group title="Contact">
+          <Field label="Email" />
+        </Group>
+
+        <footer>
+          <button type="button" onClick={() => (this.locked = !locked)}>
+            {locked ? 'Unlock' : 'Lock'} form
+          </button>
+        </footer>
+      </form>
     );
   }
 }
+
+class Field extends Component {
+  form = get(Form, false);
+  label = '';
+  value = '';
+
+  render() {
+    const { form, label, value } = this;
+
+    return (
+      <label className="field">
+        <span>
+          {label}
+          <small>{form ? 'in a form' : 'no form above'}</small>
+        </span>
+        <input
+          value={value}
+          disabled={form?.locked}
+          placeholder={form?.locked ? 'locked' : `Your ${label.toLowerCase()}`}
+          onChange={(e) => (this.value = e.target.value)}
+        />
+      </label>
+    );
+  }
+}
+
+const Group = (props: { title: string; children?: ReactNode }) => (
+  <fieldset className="group">
+    <legend>{props.title}</legend>
+    {props.children}
+  </fieldset>
+);

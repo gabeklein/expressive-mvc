@@ -1,39 +1,13 @@
 ---
 title: React Hooks
-description: use, State.use, State.get, Provider, and Consumer
+description: State.use, State.get, Provider, and Consumer
 ---
 
-The React adapter exports a `use` hook, augments the `State` class with two static methods (`use` and `get`), and provides two components (`Provider` and `Consumer`). These are the React-specific entry points to Expressive.
+The React adapter augments the `State` class with two static methods (`use` and `get`), and provides two components (`Provider` and `Consumer`). These are the React-specific entry points to Expressive.
 
 ```tsx
-import State, { use, Provider, Consumer } from '@expressive/react';
+import State, { Provider, Consumer } from '@expressive/react';
 ```
-
-<br />
-
-## `use(subject)`
-
-Subscribes a React component to an existing observable object or `State` instance.
-
-```tsx
-import { use } from '@expressive/react';
-
-function CounterView({ counter }: { counter: Counter }) {
-  const { count, increment } = use(counter);
-  return <button onClick={increment}>{count}</button>;
-}
-```
-
-- Returns a tracking proxy on the initial render; reading properties subscribes the component.
-- Re-renders only when accessed properties change.
-- Re-subscribes if `subject` is replaced.
-- Activates an unready observable instance, but does not own its lifecycle or destroy it on unmount.
-- Throws if `subject` is not observable. A destroyed observable does *not* throw - the hook renders its last-known values and no further updates arrive.
-- Works with any observable, not just State - plain classes can opt in via the [observable protocol](/docs/api/utilities#touchtarget-key-value).
-
-Use this when the state comes from somewhere else - an externally-owned store, a module-scope instance, a prop. That also makes it the natural bridge when [migrating from hooks](/docs/migrating-from-hooks): keep your store where it is, subscribe with `use`.
-`State.use()` is for when the component should create and own the instance.
-`State.get()` is for finding one in context.
 
 <br />
 
@@ -264,6 +238,6 @@ The child function receives a tracking proxy, so property reads subscribe just l
 ## See also
 
 - [Context guide](/docs/guides/context) - `Provider` patterns and the `get` instruction.
-- [Components](/docs/api/component) - the `Component` class as an alternative to `Provider` + `use()`.
+- [Components](/docs/api/component) - the `Component` class as an alternative to `Provider` + `State.use()`.
 - [State](/docs/api/state) - the base class and its methods.
-- [Utilities](/docs/api/utilities) - `watch`, `listener`, and the observable protocol behind `use(subject)`.
+- [Utilities](/docs/api/utilities) - `watch` and `listener` for observing state changes.
