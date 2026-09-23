@@ -1,5 +1,5 @@
 import { listener } from "./observable";
-import { event, State, uid } from "./state";
+import { event, provideHeld, State, uid } from "./state";
 
 const LOOKUP = new WeakMap<State, Context>();
 let ROOT: Context;
@@ -290,8 +290,11 @@ class Context {
       onDone.clear();
     }
 
+    const release = provideHeld(I, this);
+
     function remove() {
       cleanup.delete(remove);
+      release?.();
       flush();
     }
 
