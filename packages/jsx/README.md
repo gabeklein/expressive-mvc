@@ -48,7 +48,7 @@ const unmount = render(<Count />, document.getElementById('app')!);
 />
 ```
 
-`class` and `style` on a component automatically reach its rendered host root, including through component, fragment, provider, portal, and collection boundaries. A fragment applies them to each host root. Explicit placement wins: if the component uses the same class or style value in its returned tree, the renderer applies it there instead of also forwarding it to the root.
+`style` on a component automatically reaches its rendered host root, including through component, fragment, provider, portal, and collection boundaries. A fragment applies it to each host root. A component which reads its `style` prop while rendering owns placement, and nothing is forwarded. `class` applies to elements only.
 
 `Component` retains the React adapter's model: fields read by `render()` are dependencies, owned instances mount and clean up with the DOM range, and an externally activated instance can be placed directly without transferring ownership.
 

@@ -466,21 +466,16 @@ describe('render', () => {
     expect(node.style.height).toBe('');
   });
 
-  it('will forward appearance through component roots', async () => {
+  it('will forward style through component roots', async () => {
     const Leaf = (_props: any) => <div class="leaf" style={['local', { color: 'blue' }]} />;
-    const Middle = (_props: any) => (
-      <Leaf {...({ class: 'middle', style: ['inner', { color: 'green', height: 4 }] } as any)} />
-    );
+    const Middle = (_props: any) => <Leaf style={['inner', { color: 'green', height: 4 }]} />;
 
     class View extends Component {
       active = true;
 
       render() {
         return (
-          <Middle
-            class={this.active ? 'outer' : 'changed'}
-            style={[false, this.active ? 'call' : 'updated', { color: 'red', width: this.active ? 3 : 6 }]}
-          />
+          <Middle style={[false, this.active ? 'call' : 'updated', { color: 'red', width: this.active ? 3 : 6 }]} />
         );
       }
     }
@@ -490,33 +485,106 @@ describe('render', () => {
     render(<View is={(value) => (view = value)} />, root);
     const node = root.querySelector('div')!;
 
-    expect(node.className).toBe('outer call middle inner leaf local');
+    expect(node.className).toBe('call inner leaf local');
     expect(node.style.color).toBe('blue');
     expect(node.style.height).toBe('4px');
     expect(node.style.width).toBe('3px');
 
     view.active = false;
     await flushMicrotasks();
-    expect(node.className).toBe('changed updated middle inner leaf local');
+    expect(node.className).toBe('updated inner leaf local');
     expect(node.style.width).toBe('6px');
   });
 
+  it('will not forward class through components', () => {
+    const Leaf = (_props: any) => <div class="leaf" />;
+    const root = document.createElement('main');
+
+    render(<Leaf {...({ class: 'outer' } as any)} />, root);
+
+    expect(root.querySelector('div')?.className).toBe('leaf');
+  });
+
+  it('will not forward style a component derives from', () => {
+    const Field = ({ style }: { style?: string }) => (
+      <label>
+        <input style={`field ${style}`} />
+      </label>
+    );
+    const root = document.createElement('main');
+
+    render(<Field style="invalid" />, root);
+
+    expect(root.querySelector('label')?.hasAttribute('class')).toBe(false);
+    expect(root.querySelector('input')?.className).toBe('field invalid');
+  });
+
+  it('will keep styled props stable for a reused element', async () => {
+    const received: object[] = [];
+    const Leaf = (props: { style?: string }) => {
+      received.push(props);
+      return <i />;
+    };
+    const leaf = <Leaf style="kept" />;
+
+    class View extends Component {
+      count = 0;
+
+      render() {
+        return <>{this.count}{leaf}</>;
+      }
+    }
+
+    let view!: View;
+    const root = document.createElement('main');
+    render(<View is={(value) => (view = value)} />, root);
+
+    view.count = 1;
+    await flushMicrotasks();
+
+    expect(received).toHaveLength(2);
+    expect(received[0]).toBe(received[1]);
+    expect(root.querySelector('i')?.className).toBe('kept');
+  });
+
+  it('will not forward style a Component reads', () => {
+    class Field extends Component {
+      render() {
+        return <label><input style={(this.props as any).style} /></label>;
+      }
+    }
+
+    class Declared extends Component {
+      style?: string = undefined;
+
+      render() {
+        return <p><b style={this.style} /></p>;
+      }
+    }
+
+    const root = document.createElement('main');
+
+    render(<><Field style="read" /><Declared style="owned" /></>, root);
+
+    expect(root.querySelector('label')?.hasAttribute('class')).toBe(false);
+    expect(root.querySelector('input')?.className).toBe('read');
+    expect(root.querySelector('p')?.hasAttribute('class')).toBe(false);
+    expect(root.querySelector('b')?.className).toBe('owned');
+  });
+
   it('will honor explicit appearance placement', () => {
-    const Placed = ({ class: className, style }: any) => (
+    const Placed = ({ style }: any) => (
       <section>
-        <span class={className} style={style} />
+        <span style={style} />
       </section>
     );
     const root = document.createElement('main');
 
-    render(
-      <Placed {...({ class: 'placed', style: ['selected', { color: 'red' }] } as any)} />,
-      root
-    );
+    render(<Placed style={['selected', { color: 'red' }]} />, root);
 
     expect(root.querySelector('section')?.hasAttribute('class')).toBe(false);
     expect(root.querySelector('section')?.getAttribute('style')).toBeNull();
-    expect(root.querySelector('span')?.className).toBe('placed selected');
+    expect(root.querySelector('span')?.className).toBe('selected');
     expect(root.querySelector('span')?.style.color).toBe('red');
   });
 

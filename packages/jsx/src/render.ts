@@ -53,6 +53,7 @@ interface Fiber {
   stash?: DocumentFragment;
   placeholder?: Fiber;
   appearance?: Appearance;
+  consumed?: boolean;
 }
 
 interface Appearance {
@@ -67,6 +68,9 @@ const CONTROLS = ['checked', 'value'];
 let passiveRender = false;
 let depth = 0;
 let settling = false;
+let rendering: object | undefined;
+let touched = false;
+const observed = new WeakMap<object, Record<string, any>>();
 
 function render(node: RenderNode, container: Container): () => void {
   roots.get(container)?.();
@@ -151,7 +155,7 @@ function mount(value: RenderNode, parent: globalThis.Node, before: globalThis.No
     throw new Error(`Cannot render ${String(value.type)}.`);
 
   if (value.type.prototype instanceof Component)
-    return mountComponent(new (value.type as new (props: any) => Component)(value.props), parent, before, context, boundary, appearance, true, value.key);
+    return mountComponent(new (value.type as new (props: any) => Component)(observe(value.props)), parent, before, context, boundary, appearance, true, value.key);
 
   return mountFunction(value, parent, before, context, boundary, appearance);
 }
@@ -171,7 +175,7 @@ function mountFunction(value: VNode, parent: globalThis.Node, before: globalThis
   const fiber = range('function', parent, before, context);
   fiber.key = value.key;
   fiber.type = value.type;
-  fiber.props = value.props;
+  fiber.props = observe(value.props);
   fiber.boundary = boundary;
   fiber.appearance = appearance;
   fiber.scope = makeScope('function', context, (passive) => runFunction(fiber, passive));
@@ -382,8 +386,8 @@ function attempt(fiber: Fiber, passive: boolean, render: () => RenderNode) {
   try {
     return pass(() => {
       try {
-        const output = render();
-        reconcile(fiber, output, fiber.scope!.childContext, fiber.boundary, renderedAppearance(fiber, output));
+        const output = consume(fiber, render);
+        reconcile(fiber, output, fiber.scope!.childContext, fiber.boundary, renderedAppearance(fiber));
         unwait(fiber);
         fiber.retried = undefined;
         return true;
@@ -394,6 +398,44 @@ function attempt(fiber: Fiber, passive: boolean, render: () => RenderNode) {
     });
   } finally {
     passiveRender = previous;
+  }
+}
+
+function observe(props: Record<string, any>) {
+  if (!('style' in props)) return props;
+
+  let output = observed.get(props);
+
+  if (!output) {
+    const { style } = props;
+
+    output = Object.defineProperty({ ...props }, 'style', {
+      enumerable: true,
+      get() {
+        if (rendering === output) touched = true;
+        return style;
+      }
+    });
+    observed.set(props, output);
+  }
+
+  return output;
+}
+
+function consume(fiber: Fiber, render: () => RenderNode) {
+  const previous = rendering;
+  const read = touched;
+
+  rendering = fiber.props;
+  touched = false;
+
+  try {
+    const output = render();
+    fiber.consumed = touched;
+    return output;
+  } finally {
+    rendering = previous;
+    touched = read;
   }
 }
 
@@ -633,11 +675,11 @@ function patch(old: Fiber | undefined, value: RenderNode, parent: globalThis.Nod
     reconcile(old, (value as VNode).props.children, context, old.boundary, appearance);
   } else if (old.kind == 'function') {
     old.appearance = appearance;
-    old.props = (value as VNode).props;
+    old.props = observe((value as VNode).props);
     rerun(old, () => runFunction(old, passiveRender));
   } else if (old.kind == 'component') {
     old.appearance = appearance;
-    const props = isVNode(value) ? value.props : old.instance!.props;
+    const props = isVNode(value) ? observe(value.props) : old.instance!.props;
     if (isVNode(value) && props !== old.instance!.props) {
       if (passiveRender) old.applied = true;
       (old.instance as any).props = props;
@@ -832,46 +874,13 @@ function normalizeStyle(appearance: Appearance | undefined, className: unknown, 
   return { className: [...new Set(classes)].join(' '), declarations };
 }
 
-function renderedAppearance(fiber: Fiber, output: RenderNode): Appearance | undefined {
-  if (fiber.kind != 'component' && fiber.kind != 'function') return fiber.appearance;
+function renderedAppearance(fiber: Fiber): Appearance | undefined {
+  const style = fiber.props?.style as Style;
 
-  const ownClass = fiber.props?.class;
-  const ownStyle = fiber.props?.style as Style;
-  if (!ownClass && !ownStyle) return fiber.appearance;
+  if (fiber.kind != 'component' && fiber.kind != 'function' || !style || fiber.consumed || fiber.instance && 'style' in fiber.instance)
+    return fiber.appearance;
 
-  const entries = [...fiber.appearance?.entries || []];
-
-  if (typeof ownClass == 'string' && !usesAppearance(output, 'class', ownClass)) entries.push(ownClass);
-  collectStyles(ownStyle, output, entries);
-
-  return entries.length ? { entries } : undefined;
-}
-
-function collectStyles(value: Style, output: RenderNode, entries: Style[]) {
-  if (!value) return;
-  if (Array.isArray(value)) {
-    value.forEach((entry) => collectStyles(entry, output, entries));
-    return;
-  }
-  if (!usesAppearance(output, 'style', value)) entries.push(value);
-}
-
-function usesAppearance(value: unknown, prop: 'class' | 'style', target: unknown): boolean {
-  if (Array.isArray(value)) return value.some((entry) => usesAppearance(entry, prop, target));
-
-  const props = value instanceof Component
-    ? value.props as Record<string, unknown>
-    : isVNode(value)
-      ? value.props as Record<string, unknown>
-      : undefined;
-
-  if (!props) return false;
-  if (prop == 'class' ? props.class === target : containsStyle(props.style, target)) return true;
-  return usesAppearance(props.children, prop, target);
-}
-
-function containsStyle(value: unknown, target: unknown): boolean {
-  return value === target || Array.isArray(value) && value.some((entry) => containsStyle(entry, target));
+  return { entries: [...fiber.appearance?.entries || [], style] };
 }
 
 function flattenStyle(value: Style, classes: string[], declarations: Record<string, unknown>) {
