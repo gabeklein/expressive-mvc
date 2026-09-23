@@ -68,6 +68,8 @@ function Field({ style }: { style?: JSX.IntrinsicElements['div']['style'] }) {
 <Field style={['invalid', { color: 'red' }]} />;
 ```
 
+A component reading `style` receives a frozen object, or `undefined` when nothing was passed. Its own keys are the caller's inline declarations, flattened in written order; classes travel hidden with it. Override with a spread (`{ ...style, color: 'blue' }`), drop a key with rest (`const { width, ...rest } = style`), or merge two with `{ ...a, ...b }` - classes survive all three. Do not branch on its shape.
+
 ## MVC render scopes
 
 FCs have no renderer-owned state cells or effects. Treat them as pre-hooks stateless components whose MVC reads declare a dependency snapshot:

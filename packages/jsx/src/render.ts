@@ -71,6 +71,11 @@ let settling = false;
 let rendering: object | undefined;
 let touched = false;
 const observed = new WeakMap<object, Record<string, any>>();
+const tickets = new WeakMap<object, Ticket>();
+
+interface Ticket {
+  classes: string[];
+}
 
 function render(node: RenderNode, container: Container): () => void {
   roots.get(container)?.();
@@ -408,18 +413,38 @@ function observe(props: Record<string, any>) {
 
   if (!output) {
     const { style } = props;
+    let handle: Style;
+    let resolved = false;
 
     output = Object.defineProperty({ ...props }, 'style', {
       enumerable: true,
       get() {
         if (rendering === output) touched = true;
-        return style;
+        if (!resolved) {
+          handle = door(style);
+          resolved = true;
+        }
+        return handle;
       }
     });
     observed.set(props, output);
   }
 
   return output;
+}
+
+function door(value: Style) {
+  const ticket: Ticket = { classes: [] };
+  const declarations: Record<string, unknown> = {};
+
+  flattenStyle(value, ticket.classes, declarations);
+
+  if (!ticket.classes.length && !Object.keys(declarations).length) return undefined;
+
+  const key = Object.freeze({});
+
+  tickets.set(key, ticket);
+  return Object.freeze({ ...declarations, [Symbol('style')]: key });
 }
 
 function consume(fiber: Fiber, render: () => RenderNode) {
@@ -900,7 +925,12 @@ function flattenStyle(value: Style, classes: string[], declarations: Record<stri
     return;
   }
 
-  Object.assign(declarations, value);
+  for (const symbol of Object.getOwnPropertySymbols(value)) {
+    const ticket = tickets.get((value as Record<symbol, object>)[symbol]);
+    if (ticket) classes.push(...ticket.classes);
+  }
+
+  for (const key of Object.keys(value)) declarations[key] = (value as Record<string, unknown>)[key];
 }
 
 function appendClasses(classes: string[], value: unknown) {

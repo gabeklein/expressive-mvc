@@ -506,17 +506,74 @@ describe('render', () => {
   });
 
   it('will not forward style a component derives from', () => {
-    const Field = ({ style }: { style?: string }) => (
+    const Field = ({ style }: { style?: any }) => (
       <label>
-        <input style={`field ${style}`} />
+        <input style={{ ...style, outlineStyle: 'none' }} />
       </label>
     );
     const root = document.createElement('main');
 
-    render(<Field style="invalid" />, root);
+    render(<Field style={['invalid', { color: 'red' }]} />, root);
 
+    const input = root.querySelector('input')!;
     expect(root.querySelector('label')?.hasAttribute('class')).toBe(false);
-    expect(root.querySelector('input')?.className).toBe('field invalid');
+    expect(input.className).toBe('invalid');
+    expect(input.style.color).toBe('red');
+    expect(input.style.outlineStyle).toBe('none');
+  });
+
+  it('will pass readable, frozen declarations through a component', () => {
+    const received: any[] = [];
+    const Read = ({ style }: { style?: any }) => {
+      received.push(style);
+      return <i />;
+    };
+    const root = document.createElement('main');
+
+    render(<><Read style={[{ color: 'red' }, false, ['tag', { color: 'blue', width: 2 }]]} /><Read style={[false, null]} /></>, root);
+
+    const [style, empty] = received;
+    expect({ ...style }).toMatchObject({ color: 'blue', width: 2 });
+    expect(Object.keys(style)).toEqual(['color', 'width']);
+    expect(Object.isFrozen(style)).toBe(true);
+    expect(empty).toBeUndefined();
+  });
+
+  it('will keep forwarded classes through spread, pluck and merge', () => {
+    const handles: any[] = [];
+    const Capture = ({ style }: { style?: any }) => {
+      handles.push(style);
+      return null;
+    };
+    const root = document.createElement('main');
+
+    render(<><Capture style={['a', { color: 'red', width: 1 }]} /><Capture style={['b', { height: 2 }]} /></>, root);
+
+    const [a, b] = handles;
+    const { color, ...rest } = a;
+    const target = document.createElement('main');
+
+    render(
+      <>
+        <i style={{ ...a, color: 'blue' }} />
+        <b style={rest} />
+        <u style={{ ...a, ...b }} />
+        <s style={{ [Symbol('foreign')]: {}, color: 'red' } as any} />
+      </>,
+      target
+    );
+
+    const [override, plucked, merged, foreign] = [...target.children] as HTMLElement[];
+    expect(color).toBe('red');
+    expect(override.className).toBe('a');
+    expect(override.style.color).toBe('blue');
+    expect(plucked.className).toBe('a');
+    expect(plucked.style.color).toBe('');
+    expect(plucked.style.width).toBe('1px');
+    expect(merged.className).toBe('a b');
+    expect(merged.style.height).toBe('2px');
+    expect(foreign.hasAttribute('class')).toBe(false);
+    expect(foreign.style.color).toBe('red');
   });
 
   it('will keep styled props stable for a reused element', async () => {
