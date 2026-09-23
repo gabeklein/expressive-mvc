@@ -118,7 +118,7 @@ A green `tsc --noEmit` + `bun run build` says nothing about whether a browser-fa
 
 ### Releasing
 
-- `@expressive/mvc`, `@expressive/react`, and `@expressive/router` are published; `preact` is private and ignored by changesets.
+- `@expressive/mvc`, `@expressive/react`, `@expressive/router`, and `@expressive/inspect` are published; `preact` is private and ignored by changesets.
 - Merged changesets accumulate on `main`; CI maintains a "Version Packages" PR (`changeset version`). Merging that PR triggers `changeset publish` from CI. No local publishing.
 
 ## Guardrails
