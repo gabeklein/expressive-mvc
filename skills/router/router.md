@@ -79,7 +79,7 @@ A `none` Route always needs an authored parent scope - a root-level one is the a
 | Returns | Outcome |
 | --- | --- |
 | a truthy `string` | redirect there (replaces history) |
-| `''` / `undefined` / `false` | allow normal render |
+| `''` / `undefined` | allow normal render |
 | `null` | **force-404**: cede the path so the scope falls through to its nearest `none` Route |
 
 The guard takes no arguments - read state from the declaring class. It may be **async**: while it pends, cold load shows `fallback`; in-app navigation holds the current screen ([Deferred presentation](#deferred-presentation)).
