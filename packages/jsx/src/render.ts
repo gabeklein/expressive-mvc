@@ -723,8 +723,8 @@ function reconcilePortal(fiber: Fiber, value: RenderNode, context: Context, boun
 
 function reconcileChildren(owner: Fiber, parent: globalThis.Node, before: globalThis.Node | null, value: RenderNode, context: Context, boundary?: Boundary, appearance?: Appearance) {
   const values = childrenOf(value);
-  const segments = segmentsOf(value);
-  const base = owner.kind == 'component' || owner.kind == 'function' ? `#${typeOf(owner.type!)}` : owner.path;
+  const segments = appearance?.context && segmentsOf(value);
+  const base = segments && (owner.kind == 'component' || owner.kind == 'function' ? `#${typeOf(owner.type!)}` : owner.path);
   const old = owner.children;
   const keyed = new Map<Key, Fiber>();
   const used = new Set<Fiber>();
@@ -746,8 +746,10 @@ function reconcileChildren(owner: Fiber, parent: globalThis.Node, before: global
       if (child && used.has(child)) child = undefined;
       if (child) used.add(child);
 
-      site = `${base}/${segments[index]}`;
-      if (child) child.path = site;
+      if (segments) {
+        site = `${base}/${segments[index]}`;
+        if (child) child.path = site;
+      }
       next.push(patch(child, value, parent, before, context, boundary, appearance));
     }
   } catch (error) {
