@@ -1,5 +1,12 @@
 # @expressive/inspect
 
+## 0.1.1
+
+### Patch Changes
+
+- Updated dependencies [[`94e741a`](https://github.com/gabeklein/expressive-mvc/commit/94e741a9eace7979b02bd0dda54c9037385c02d8), [`43febba`](https://github.com/gabeklein/expressive-mvc/commit/43febbab17359b099554dfb1a561cf3e463237d5), [`bfdf4ea`](https://github.com/gabeklein/expressive-mvc/commit/bfdf4eaf3cb06ccd8fbdb3d5813a6e45d2d39e53), [`397dae7`](https://github.com/gabeklein/expressive-mvc/commit/397dae7060d9f9ad0ecb657b492b844a1d77b0de), [`d0ea0ed`](https://github.com/gabeklein/expressive-mvc/commit/d0ea0ed4a91db45dd8dd3173975d8cd8d1b87826)]:
+  - @expressive/mvc@0.85.0
+
 ## 0.1.0
 
 ### Minor Changes

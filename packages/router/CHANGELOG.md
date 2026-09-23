@@ -1,5 +1,54 @@
 # @expressive/router
 
+## 0.8.0
+
+### Minor Changes
+
+- [#359](https://github.com/gabeklein/expressive-mvc/pull/359) [`d0f6397`](https://github.com/gabeklein/expressive-mvc/commit/d0f63976b2c4b3bfe10aca9041e98c96fe9b8274) Add reactive fragment state through `Router.hash`, preserving fragments across
+  navigation, history, relative links, query changes, and browser synchronization.
+  Fragment navigation does not scroll or focus an element automatically.
+
+- [#360](https://github.com/gabeklein/expressive-mvc/pull/360) [`3e19606`](https://github.com/gabeklein/expressive-mvc/commit/3e196069b7a1a96f620819f6b1b44a692721f018) Add arbitrary history traversal through `Router.go(delta)`, retain `back()` as
+  its common convenience, and remove `forward()`. Memory history storage is now a
+  protected implementation detail.
+
+- [#349](https://github.com/gabeklein/expressive-mvc/pull/349) [`6026bf3`](https://github.com/gabeklein/expressive-mvc/commit/6026bf35d3255b24ac8cb5157a2f0135e3f9ff9e) Navigation now commits through `Router.navigate`, which applies it with `pending()`, so moving to a page that is not ready yet holds the current screen until it is, rather than flashing the route's `fallback`. Cold load still falls back.
+
+  For in-app navigation, `BrowserRouter` now writes the address once the navigation is on screen rather than on click. Pushing on click left the address describing a page nobody had seen, so a Back press during the wait returned to what was already displayed and history collected entries for unseen pages. Browser-driven navigation (`popstate` or an external History API call) necessarily changes the address first, then settles the matching screen.
+
+  Direct `query.set`, `delete`, and `clear` writes use the same navigation path. Overlapping navigation is latest-wins: a superseded navigation cannot later change history or clear the active navigation's status.
+
+  `Router.navigating` reports a navigation which has yet to appear - drive progress bars, `aria-busy`, disabled controls from it. Read it beside the outgoing screen or in a wrapper around it, never inside the page itself, which would render that page urgently against the new path and forfeit the hold.
+
+  Reporting works whether the router is rendered (`<BrowserRouter>...</BrowserRouter>`) or only provided - settlement comes from the subscribers a navigation touched, not from a hook mounted in the tree.
+
+  Override `navigate(work)` to stage the swap differently - `work` applies the navigation and must run. Status and latest-wins settlement wrap that seam, so an override need not call `super`. Every navigation routes through one protected `next()` seam, so `BrowserRouter` overrides only that rather than `goto`.
+
+- [#363](https://github.com/gabeklein/expressive-mvc/pull/363) [`ea80c1a`](https://github.com/gabeklein/expressive-mvc/commit/ea80c1a28416c6ee49b39a4e2e870390240e9915) Rename the scoped no-match `Route` prop from `default` to `none`. Replace
+  `<Route default ...>` with `<Route none ...>`; matching and force-404 behavior
+  are unchanged.
+
+### Patch Changes
+
+- [#358](https://github.com/gabeklein/expressive-mvc/pull/358) [`b8a106b`](https://github.com/gabeklein/expressive-mvc/commit/b8a106b5f252563f9b15324a0e5ef6d6e609305c) `Link` now leaves non-`_self` targets and downloads to the browser instead of
+  hijacking their plain left-clicks for SPA navigation.
+
+- [#357](https://github.com/gabeklein/expressive-mvc/pull/357) [`3b33a40`](https://github.com/gabeklein/expressive-mvc/commit/3b33a40ba6b660ed690a5181e8a79c6ed1b21a74) `Link` now preserves external targets and leaves their clicks to the browser.
+  Scheme-bearing and protocol-relative URLs no longer collapse to the app root or
+  enter SPA navigation.
+
+- [#361](https://github.com/gabeklein/expressive-mvc/pull/361) [`1a60798`](https://github.com/gabeklein/expressive-mvc/commit/1a607980088451d913f789792c12427eeadcb5cb) Routes under a nested Router no longer inherit the base path of an outer Route.
+
+- [#356](https://github.com/gabeklein/expressive-mvc/pull/356) [`5d41ee6`](https://github.com/gabeklein/expressive-mvc/commit/5d41ee699180c8f4978ab0c061ddb13c55383efd) Relative route navigation now preserves its query string. `Route.resolve`,
+  `Route.goto`, and `Link` no longer turn a target such as
+  `./edit?tab=history` into `/edit`.
+
+- [#369](https://github.com/gabeklein/expressive-mvc/pull/369) [`e4422a3`](https://github.com/gabeklein/expressive-mvc/commit/e4422a378a476d89ef7b3bcd1f2c82e4b832aa1d) Re-run a function `redirect` guard when the route's own params change. Navigating `/vault/a` -> `/vault/b` on `vault/:doc` previously reused the first document's verdict; navigation below the route still reuses it.
+
+- [#369](https://github.com/gabeklein/expressive-mvc/pull/369) [`e4422a3`](https://github.com/gabeklein/expressive-mvc/commit/e4422a378a476d89ef7b3bcd1f2c82e4b832aa1d) Fix the app-level `none` Route also rendering when navigation enters a section that ceded its layout slot on the previous screen.
+- Updated dependencies [[`94e741a`](https://github.com/gabeklein/expressive-mvc/commit/94e741a9eace7979b02bd0dda54c9037385c02d8), [`43febba`](https://github.com/gabeklein/expressive-mvc/commit/43febbab17359b099554dfb1a561cf3e463237d5), [`bfdf4ea`](https://github.com/gabeklein/expressive-mvc/commit/bfdf4eaf3cb06ccd8fbdb3d5813a6e45d2d39e53), [`397dae7`](https://github.com/gabeklein/expressive-mvc/commit/397dae7060d9f9ad0ecb657b492b844a1d77b0de), [`d0ea0ed`](https://github.com/gabeklein/expressive-mvc/commit/d0ea0ed4a91db45dd8dd3173975d8cd8d1b87826)]:
+  - @expressive/mvc@0.85.0
+
 ## 0.7.1
 
 ### Patch Changes
