@@ -84,7 +84,7 @@ A `none` Route always needs an authored parent scope - a root-level one is the a
 
 The guard takes no arguments - read state from the declaring class. It may be **async**: while it pends, cold load shows `fallback`; in-app navigation holds the current screen ([Deferred presentation](#deferred-presentation)).
 
-The verdict is cached while the route stays matched and dropped when it unmatches. A param change inside it (`/document/1` -> `/document/2`) reuses the verdict - route through a sibling, or guard per param on the page, when each value needs its own check.
+The verdict is cached per concrete path of the route's own pattern: navigation below it reuses the verdict; re-entry or a change to its own params (`/document/1` -> `/document/2` on `document/:id`) re-runs the guard.
 
 ```tsx
 class Documents extends Component {
