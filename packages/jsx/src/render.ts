@@ -867,9 +867,13 @@ function normalizeStyle(appearance: Appearance | undefined, className: unknown, 
   const classes: string[] = [];
   const declarations: Record<string, unknown> = {};
 
-  appearance?.entries.forEach((entry) => flattenStyle(entry, classes, declarations));
+  const entries = appearance?.entries || [];
+
   appendClasses(classes, className);
   flattenStyle(value, classes, declarations);
+
+  for (let index = entries.length - 1; index >= 0; index--)
+    flattenStyle(entries[index], classes, declarations);
 
   return { className: [...new Set(classes)].join(' '), declarations };
 }

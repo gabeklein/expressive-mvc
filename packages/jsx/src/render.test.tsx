@@ -485,14 +485,14 @@ describe('render', () => {
     render(<View is={(value) => (view = value)} />, root);
     const node = root.querySelector('div')!;
 
-    expect(node.className).toBe('call inner leaf local');
-    expect(node.style.color).toBe('blue');
+    expect(node.className).toBe('leaf local inner call');
+    expect(node.style.color).toBe('red');
     expect(node.style.height).toBe('4px');
     expect(node.style.width).toBe('3px');
 
     view.active = false;
     await flushMicrotasks();
-    expect(node.className).toBe('updated inner leaf local');
+    expect(node.className).toBe('leaf local inner updated');
     expect(node.style.width).toBe('6px');
   });
 

@@ -58,7 +58,7 @@ Events are native `addEventListener` listeners (`onClick`, `onKeyDown`, `onClick
 
 `className` is ignored, including through untyped spreads. A string in `style` is a class token, not CSS declaration text. Treat arrays and objects as immutable render values—replace them when their contents change. Compiler-generated style blocks are not part of the `0.1` contract.
 
-`class` is element-only. `style` on a component forwards through component and transparent boundaries to its host root; fragment output applies it to every host root. Reading `style` during render - destructuring, a spread, `this.props.style`, or a declared `style` field on a Component - takes ownership and suppresses forwarding for that render:
+`class` is element-only. `style` on a component forwards through component and transparent boundaries to its host root; fragment output applies it to every host root. Reading `style` during render - destructuring, a spread, `this.props.style`, or a declared `style` field on a Component - takes ownership and suppresses forwarding for that render. Forwarded style overrides the root's own, and the outermost caller wins; a component wanting the last word consumes `style` and places it first:
 
 ```tsx
 function Field({ style }: { style?: JSX.IntrinsicElements['div']['style'] }) {
