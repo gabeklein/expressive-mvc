@@ -118,6 +118,28 @@ describe('appearance', () => {
     expect(first.className).not.toBe(second.className);
   });
 
+  it('will separate alternating elements at one position by key', async () => {
+    class Toggle extends Component {
+      first = true;
+
+      render() {
+        return this.first ? <div key="a" _mx={1} /> : <div key="b" _mx={2} />;
+      }
+    }
+
+    style(Toggle, { mx: (value?: unknown) => ({ marginLeft: value }) });
+
+    let view!: Toggle;
+    const root = mount(<Toggle is={(value) => (view = value)} />);
+
+    view.first = false;
+    await flushMicrotasks();
+
+    const node = root.querySelector('div')!;
+    expect(node.style.marginLeft).toBe('');
+    expect(getComputedStyle(node).marginLeft).toBe('2px');
+  });
+
   it('will share one site across list rows and keep later positions stable', async () => {
     class List extends Component {
       rows = [1, 2];

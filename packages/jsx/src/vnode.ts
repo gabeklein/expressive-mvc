@@ -42,7 +42,7 @@ function segmentsOf(value: unknown): string[] {
       const fixed = !dynamic && statics.has(child);
       child.forEach((item, index) => add(item, fixed ? String(index) : `${segment}*`, !fixed));
     } else if (child !== null && child !== undefined && typeof child != 'boolean')
-      output.push(segment);
+      output.push(!dynamic && isVNode(child) && child.key != null ? `${segment}~${child.key}` : segment);
   }
 
   add(value, '', false);

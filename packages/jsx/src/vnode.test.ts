@@ -43,6 +43,8 @@ describe('VNode', () => {
     markStatic({ children });
 
     expect(segmentsOf(children)).toEqual(['0', '2*', '2*', '3']);
+    expect(segmentsOf(vnode('i', {}, 'a'))).toEqual(['~a']);
+    expect(segmentsOf([vnode('i', {}, 'a')])).toEqual(['*']);
     expect(segmentsOf(rows)).toEqual(['*', '*']);
     expect(segmentsOf('solo')).toEqual(['']);
   });
