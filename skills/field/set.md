@@ -8,9 +8,9 @@ import { set } from '@expressive/mvc';
 
 > React apps import these from `@expressive/react` - the adapter re-exports every instruction. Examples below show the core import; do not add `@expressive/mvc` to a React app's `package.json`.
 
-Versatile instruction for managed slots: defaults, placeholders, lazy/async factories, validation callbacks.
+Instruction for managed slots: defaults, placeholders, lazy/async factories, validation callbacks.
 
-All `set()` forms are **non-enumerable** - hidden from `Object.keys()`, spread, and `ref(this)` - which distinguishes them from plain assignment (`name = 'foo'`). The one exception is the [computed](#computed-reactive) form, which is enumerable to match a getter. Forms initialized with a factory are **read-only** unless paired with a setter callback; forms initialized with a value are writable by default.
+All `set()` forms are **non-enumerable** - hidden from `Object.keys()`, spread, and `ref(this)`, unlike plain assignment (`name = 'foo'`) - except the [computed](#computed-reactive) form, enumerable to match a getter. Factory forms are **read-only** unless paired with a callback; value forms are writable.
 
 ## Overloads
 
@@ -19,20 +19,13 @@ All `set()` forms are **non-enumerable** - hidden from `Object.keys()`, spread, 
 ```ts
 class MyState extends State {
   data = set<string>();
-}
-```
-
-Required property, initially undefined. Accessing before assignment throws a suspense-compatible `Promise`/`Error` hybrid. Writable. Non-enumerable.
-
-With callback:
-
-```ts
-class MyState extends State {
-  data = set<string>(undefined, (next, prev) => {
+  logged = set<string>(undefined, (next, prev) => {
     console.log('assigned:', next);
   });
 }
 ```
+
+Required, initially undefined. Reading before assignment throws a suspense-compatible `Promise`/`Error` hybrid. Writable.
 
 ### Default Value
 
@@ -42,7 +35,7 @@ class MyState extends State {
 }
 ```
 
-Non-enumerable but writable. Unlike `name = 'default'`, hidden from `Object.keys()` and `ref(this)`.
+Writable; unlike `name = 'default'`, hidden from `Object.keys()` and `ref(this)`.
 
 ### Default Value with Callback
 
@@ -59,13 +52,15 @@ class MyState extends State {
 }
 ```
 
-Callback runs on every assignment. Behaviors:
+Callback runs on every assignment:
 
-- **Throw `false`**: reject the update (value unchanged, no event).
-- **Throw `true`**: accept silently (value changes, no event).
-- **Return a function**: cleanup called on next update with the new value.
-- **Return a promise**: ignored (no special behavior).
-- **Throw an error**: rethrows to caller.
+| Callback does       | Effect                                     |
+| ------------------- | ------------------------------------------ |
+| throws `false`      | reject - value unchanged, no event         |
+| throws `true`       | accept silently - value changes, no event  |
+| returns a function  | cleanup, called on next update with the new value |
+| returns a promise   | ignored                                    |
+| throws an error     | rethrown to the caller                     |
 
 ### Factory
 
@@ -78,13 +73,13 @@ class MyState extends State {
 }
 ```
 
-Zero-argument factory. Computed lazily on first access (unless `true` passed). Read-only.
+Zero-argument factory, computed lazily on first access. Read-only.
 
 - Async factories throw suspense on access until resolved.
-- `false` flag: returns `undefined` while pending instead of suspending.
-- `true` flag: factory runs immediately on init, suspends if async.
-- Factory is bound to the state instance (`this` works).
-- Factories can suspend on other pending `set()` properties - resolution cascades.
+- `false`: `undefined` while pending instead of suspending.
+- `true`: runs immediately on init; suspends if async.
+- Bound to the instance (`this` works).
+- May suspend on other pending `set()` properties - resolution cascades.
 
 Suspense via factory fits load-once data a view cannot render without. Keep explicit `loading` / `error` fields when the operation is user-initiated (submit, refresh), stale content stays visible during refetch, or errors render inline rather than thru a boundary.
 
@@ -101,7 +96,7 @@ class MyState extends State {
 }
 ```
 
-Makes the property writable. Callback runs on both factory resolution and manual assignment.
+Writable. Callback runs on factory resolution and on manual assignment.
 
 ### Computed (Reactive)
 
@@ -113,21 +108,21 @@ class MyState extends State {
 }
 ```
 
-The instruction equivalent of a getter. Unlike a zero-arg factory (which runs once and caches), a function **declaring a parameter** routes into the reactive compute engine: it re-runs whenever any managed property it reads is updated. The instance is passed as both `this` and the first argument, so arrow functions and regular functions both work.
+The instruction equivalent of a getter. A function **declaring a parameter** routes into the compute engine - re-running whenever a managed property it reads updates - where a zero-arg factory runs once and caches. The instance is passed as both `this` and the first argument, so arrow and regular functions both work.
 
-- **Dispatch is by arity.** `set(() => x)` is a one-shot factory; `set(self => x)` is reactive. A function that reads dependencies via `this` still needs to declare the parameter (`set(function (self) { return this.x })`) to be treated as computed.
-- Enumerable and read-only, exactly like a prototype getter. Computes lazily on first access; included in snapshots once accessed.
-- Because the slot is instruction-assigned rather than a concrete getter, a **subclass can refine its type** with `declare` (e.g. a parent declaring a generic computed property that subclasses narrow) - which a getter on the parent class cannot express.
+- **Dispatch is by arity.** `set(() => x)` is a one-shot factory; `set(self => x)` is reactive. A function reading via `this` still must declare the parameter (`set(function (self) { return this.x })`).
+- Enumerable and read-only, like a prototype getter. Computes lazily on first access; in snapshots once accessed.
+- Being instruction-assigned rather than a concrete getter, a **subclass can refine its type** with `declare` (e.g. narrowing a parent's generic computed) - which a parent getter cannot express.
 
 ### Direct Promises Are Not Supported
 
 ```ts
 class MyState extends State {
-  data = set(() => somePromise);
+  data = set(somePromise); // TypeError at init
 }
 ```
 
-Do not pass a raw Promise to `set()`. Use a factory instead (`set(() => promise)` or `set(async () => value)`) so async work starts during activation/access. A promise constructed in a field initializer can keep running for instances React abandons, especially under StrictMode.
+A raw Promise throws `Direct promises are not supported in set(...)`. Use a factory (`set(() => promise)` or `set(async () => value)`) so async work starts during activation/access - a promise constructed in a field initializer can keep running for instances React abandons, especially under StrictMode.
 
 ## Type Signatures
 

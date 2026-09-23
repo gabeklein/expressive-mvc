@@ -8,7 +8,7 @@ import { def } from '@expressive/mvc';
 
 > React apps import these from `@expressive/react` - the adapter re-exports every instruction. Examples below show the core import; do not add `@expressive/mvc` to a React app's `package.json`.
 
-Low-level primitive for defining custom property behavior during initialization. All other instructions (`get`, `set`, `ref`) are built on `def`.
+Low-level primitive for custom property behavior during initialization. Every other instruction (`get`, `set`, `ref`, `map`, `has`) is built on `def`.
 
 ## Usage
 
@@ -23,32 +23,21 @@ class MyState extends State {
 }
 ```
 
-The factory runs during instance initialization (triggered by `State.on`). The property's symbol placeholder is deleted before the factory runs.
+The factory runs during instance initialization (via `State.on`), after the property's symbol placeholder is deleted.
 
 ## Return Values
 
-The factory can return:
-
-### Nothing (void)
-
 ```ts
-custom = def((key, subject) => {
-  // side effect only, no property configuration
-});
-```
+// nothing - side effect only, no property configured
+custom = def((key, subject) => {});
 
-### Cleanup function
-
-```ts
+// cleanup function - runs on destroy
 custom = def((key, subject) => {
   const interval = setInterval(poll, 1000);
-  return () => clearInterval(interval); // runs on destroy
+  return () => clearInterval(interval);
 });
-```
 
-### Configuration object
-
-```ts
+// configuration object
 custom = def<string>((key, subject) => ({
   value: 'initial', // initial property value
   enumerable: true, // appear in Object.keys()
@@ -58,18 +47,15 @@ custom = def<string>((key, subject) => ({
 }));
 ```
 
-#### Getter options
-
-- `function`: called on property access, receives the subscriber (or the instance if none)
-- `true`: property is required - throws suspense if value not yet set
-- `false`: property is optional - returns undefined if not yet set
-- `undefined`: no special getter behavior
-
-#### Setter options
-
-- `function`: called on assignment with `(next, prev)`. Throw `false` to reject. Throw `true` to accept silently. Return a transformed value to override.
-- `false`: property is read-only (throws on assignment)
-- `undefined`: no special setter behavior
+| Option | Value | Meaning |
+| --- | --- | --- |
+| `get` | function | called on access with the subscriber (or the instance if none) |
+| | `true` | required - throws suspense if not yet set |
+| | `false` | optional - `undefined` if not yet set |
+| | `undefined` | no special getter behavior |
+| `set` | function | called on assignment with `(next, prev)`; throw `false` to reject, `true` to accept silently; return a value to override |
+| | `false` | read-only (throws on assignment) |
+| | `undefined` | no special setter behavior |
 
 ## Type Signatures
 
@@ -90,10 +76,4 @@ interface def.Config<T> extends State.Apply<T> {
 
 ## Child State (No Instruction Needed)
 
-Nest states by direct assignment. Children are auto-parented and destroyed with parent.
-
-```ts
-class Parent extends State {
-  child = new ChildState(); // auto-parented and activated when Parent initializes
-}
-```
+Nest states by direct assignment (`child = new ChildState()`) - auto-parented, activated, and destroyed with the parent. See [state.md](../state/state.md#child-states).
