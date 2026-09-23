@@ -1,4 +1,4 @@
-import { listener, capture } from '../observable';
+import { listener, capture, observer } from '../observable';
 import { access, compute, event, State, update } from '../state';
 import { def } from './def';
 
@@ -136,7 +136,10 @@ function set<T = any>(value?: unknown, argument?: unknown): any {
         }
 
         if (output instanceof Promise)
-          output.then(assign, (error) => {
+          output.then((next) => {
+            if (observer(subject) !== null) assign(next);
+          }, (error) => {
+            if (observer(subject) === null) return;
             event(subject, key);
             config.get = () => {
               throw error;
