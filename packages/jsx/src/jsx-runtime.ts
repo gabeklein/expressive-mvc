@@ -75,7 +75,7 @@ declare module '@expressive/mvc/runtime' {
   }
 }
 
-const runtime = {
+host({
   jsx: vnode,
   jsxs: vnode,
   Fragment,
@@ -87,9 +87,7 @@ const runtime = {
   propsOf(node: unknown) {
     return isVNode(node) ? node.props : {};
   }
-};
-
-host(runtime);
+});
 
 const jsx = vnode;
 const jsxs = vnode;
