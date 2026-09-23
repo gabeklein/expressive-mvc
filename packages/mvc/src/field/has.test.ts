@@ -9,12 +9,12 @@ function reactive<T>(initial?: Iterable<T> | false | null): has.List<T>;
 
 function reactive<T extends State>(
   Type: new (...args: State.Args<T>) => T
-): has.Pool<T, State.Args<T> | [T]>;
+): has.Create<T, State.Args<T>>;
 
 function reactive<T extends State, K extends State.Field<T>>(
   Type: new (...args: State.Args<T>) => T,
   fromKey: K
-): has.Pool<T, [T[K]] | [T]>;
+): has.From<T, T[K]>;
 
 function reactive<R, A extends unknown[]>(
   make: (...args: A) => R
@@ -917,6 +917,19 @@ describe('pool key', () => {
 
     expect(member.owner).toBe(owner);
     expect(member.id).toBe('abc');
+  });
+  it('will type keyed pool as has.From', () => {
+    class Member extends State {
+      id = '';
+    }
+
+    class Owner extends State {
+      members = has(Member, 'id');
+    }
+
+    const members: has.From<Member, string> = Owner.new().members;
+
+    expect(members.add('abc').id).toBe('abc');
   });
 });
 
