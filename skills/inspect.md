@@ -160,7 +160,7 @@ curl localhost:5173/__inspect -d '["journal.frames", { "since": 3 }]'   # the on
 - No id with several pages connected: 409 plus the page list - never guesses.
 - Ids are per page load; a reload issues new ones, closed pages drop out.
 - 404 unknown page, 500 the page threw (`{ error }`), 504 no answer within 10s.
-- Local callers only: 403 for a request carrying `Origin`/`Sec-Fetch-Site` (a web page) or a proxy header (`Forwarded`, `X-Forwarded-For`, `X-Real-IP`, `CF-Connecting-IP`). Behind a tunnel, pages still connect; only `curl` on the dev machine reaches the relay.
+- Local callers only: 403 for a request carrying `Origin`/`Sec-Fetch-Site` (a web page) or a proxy header (`Forwarded`, `X-Forwarded-For`, `X-Real-IP`, `CF-Connecting-IP`). Behind a tunnel, pages still connect; only `curl` on the dev machine reaches the relay. A proxy that strips these headers bypasses the guard - securing an exposed dev server is on its owner.
 - No HTML (`appType: 'custom'`): `import 'virtual:expressive-inspect'` first in the entry.
 
 Functions do not cross HTTP - `act` and `around` stay in process or on the bridge.
