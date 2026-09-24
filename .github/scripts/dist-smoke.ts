@@ -102,6 +102,7 @@ import '@expressive/inspect/install';
 import State from '@expressive/mvc';
 import { find, journal } from '@expressive/inspect';
 import { inspect } from '@expressive/inspect/bridge';
+import vite from '@expressive/inspect/vite';
 
 class Composer extends State {
   draft = '';
@@ -120,8 +121,9 @@ const frames = await find('Composer').act((s) => s.submit('hi'));
 assert.equal(frames[0].events[0].key, 'draft');
 assert.equal(composer.draft, 'hi');
 assert.equal(journal.record().level, 'off');
+assert.equal(vite().name, 'expressive-inspect');
 
-console.log('inspect: install + act + bridge ok');
+console.log('inspect: install + act + bridge + vite ok');
 `
 };
 

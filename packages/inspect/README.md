@@ -10,7 +10,7 @@
 
 ---
 
-Query the live model graph of an [Expressive MVC](https://github.com/gabeklein/expressive-mvc) app from a test, a browser driver (Playwright, puppeteer, CDP), or the browser console. No UI, no network - a base layer for agents, devtools, and test helpers.
+Query the live model graph of an [Expressive MVC](https://github.com/gabeklein/expressive-mvc) app from a test, a browser driver (Playwright, puppeteer, CDP), or the browser console. No UI, and no network beyond an opt-in dev-server relay - a base layer for agents, devtools, and test helpers.
 
 ```bash
 npm install --save-dev @expressive/inspect
@@ -46,6 +46,22 @@ const api = inspect(page);                   // anything with evaluate(fn, arg)
 await api.get('Composer.draft');
 const frames = await api.around(() => page.click('#submit'));
 ```
+
+## From a running dev server
+
+```ts
+// vite.config.ts - installs the inspector and relays to open pages
+import inspect from '@expressive/inspect/vite';
+
+export default defineConfig({ plugins: [inspect()] });
+```
+
+```bash
+curl localhost:5173/__inspect                                   # connected pages, iframes included
+curl localhost:5173/__inspect/<id> -d '["get", "Composer.draft"]'
+```
+
+Loopback callers only; browser requests are refused.
 
 Console: `__EXPRESSIVE_INSPECT__.get('Composer.draft')`, `__EXPRESSIVE_INSPECT__.journal.record({ level: 'keys', paths: ['Composer.draft'] })`.
 
