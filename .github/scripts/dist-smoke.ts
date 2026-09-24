@@ -101,7 +101,7 @@ import assert from 'node:assert/strict';
 import '@expressive/inspect/install';
 import State from '@expressive/mvc';
 import { find, journal } from '@expressive/inspect';
-import { inspect } from '@expressive/inspect/playwright';
+import { inspect } from '@expressive/inspect/bridge';
 
 class Composer extends State {
   draft = '';
@@ -121,7 +121,7 @@ assert.equal(frames[0].events[0].key, 'draft');
 assert.equal(composer.draft, 'hi');
 assert.equal(journal.record().level, 'off');
 
-console.log('inspect: install + act + playwright bridge ok');
+console.log('inspect: install + act + bridge ok');
 `
 };
 

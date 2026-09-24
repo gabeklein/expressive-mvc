@@ -2,7 +2,7 @@ import { State } from '@expressive/mvc';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { attach, inspect as local, journal } from './index';
-import { inspect, type Evaluates } from './playwright';
+import { inspect, type Evaluates } from './bridge';
 
 class Composer extends State {
   draft = '';

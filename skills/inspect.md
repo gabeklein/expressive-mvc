@@ -1,6 +1,6 @@
 # Inspect
 
-`@expressive/inspect` - in-process inspector over live State: registry, ownership, path reads, a frame journal with causality. No UI, no network. Base layer for agents (via a browser tool or Playwright `evaluate`), devtools, and test helpers.
+`@expressive/inspect` - in-process inspector over live State: registry, ownership, path reads, a frame journal with causality. No UI, no network. Base layer for agents (via a browser tool or a driver's `evaluate`), devtools, and test helpers.
 
 ## Install
 
@@ -114,12 +114,12 @@ expect(frames[0].events.map((e) => e.key)).toEqual(['draft']);
 
 Host-agnostic packages depending only on `@expressive/mvc` get the same seat.
 
-## Playwright
+## Bridge
 
-`@expressive/inspect/playwright` wraps anything with `evaluate(fn, arg)` - Playwright `Page`, `Frame`, `Locator`, or puppeteer `Page`/`Frame`. Each method is one round trip to the page's global.
+`@expressive/inspect/bridge` drives the page's global from outside, through anything with `evaluate(fn, arg)` - Playwright `Page`, `Frame`, `Locator`, puppeteer `Page`/`Frame`, or a CDP session wrapped to that shape. No driver dependency. Each method is one round trip.
 
 ```ts
-import { inspect } from '@expressive/inspect/playwright';
+import { inspect } from '@expressive/inspect/bridge';
 
 const api = inspect(page);                                  // or a frame - see below
 expect(await api.get('Composer.draft')).toBe('');
