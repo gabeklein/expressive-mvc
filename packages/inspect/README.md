@@ -10,7 +10,7 @@
 
 ---
 
-Query the live model graph of an [Expressive MVC](https://github.com/gabeklein/expressive-mvc) app from a test, a Playwright spec, or the browser console. No UI, no network - a base layer for agents, devtools, and test helpers.
+Query the live model graph of an [Expressive MVC](https://github.com/gabeklein/expressive-mvc) app from a test, a browser driver (Playwright, puppeteer, CDP), or the browser console. No UI, no network - a base layer for agents, devtools, and test helpers.
 
 ```bash
 npm install --save-dev @expressive/inspect
@@ -40,9 +40,9 @@ const frames = await composer.act((s) => s.submit('hi'));   // run, settle, see 
 ## Across a boundary
 
 ```ts
-import { inspect } from '@expressive/inspect/playwright';
+import { inspect } from '@expressive/inspect/bridge';
 
-const api = inspect(page);                   // Page, Frame, or Locator
+const api = inspect(page);                   // anything with evaluate(fn, arg)
 await api.get('Composer.draft');
 const frames = await api.around(() => page.click('#submit'));
 ```

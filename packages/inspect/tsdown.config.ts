@@ -9,7 +9,7 @@ export default defineConfig({
   entry: {
     index: 'src/index.ts',
     install: 'src/install.ts',
-    playwright: 'src/playwright.ts'
+    bridge: 'src/bridge.ts'
   },
   external: ['@expressive/mvc'],
   format: ['esm'],

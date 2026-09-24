@@ -38,9 +38,9 @@
       "types": "./dist/install.d.ts",
       "default": "./dist/install.js"
     },
-    "./playwright": {
-      "types": "./dist/playwright.d.ts",
-      "default": "./dist/playwright.js"
+    "./bridge": {
+      "types": "./dist/bridge.d.ts",
+      "default": "./dist/bridge.js"
     }
   },
   "engines": {

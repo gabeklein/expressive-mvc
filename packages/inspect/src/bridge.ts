@@ -1,4 +1,5 @@
 import type { inspect as Inspect } from './index';
+import { dispatch, type Call } from './dispatch';
 import type { Frame, Options, Query } from './journal';
 
 /**
@@ -9,28 +10,6 @@ export interface Evaluates {
   evaluate(fn: (...args: any[]) => unknown, arg?: unknown): Promise<unknown>;
 }
 
-type Call = [path: string[], args: unknown[]];
-
-function bridge(first: unknown, second?: unknown) {
-  const call = (second ?? first) as Call;
-  const api = (globalThis as { __EXPRESSIVE_INSPECT__?: Record<string, unknown> }).__EXPRESSIVE_INSPECT__;
-
-  if (!api)
-    throw new Error(
-      "@expressive/inspect is not attached in this page - make '@expressive/inspect/install' the first import of the app entry."
-    );
-
-  let target: unknown = api;
-  let owner: unknown;
-
-  for (const key of call[0]) {
-    owner = target;
-    target = (target as Record<string, unknown>)[key];
-  }
-
-  return (target as Function).apply(owner, call[1]);
-}
-
 /**
  * Drive the page's inspector from a test. Every method is one `evaluate`;
  * `around` brackets a step with the journal forced on and returns its frames.
@@ -39,7 +18,7 @@ export function inspect(target: Evaluates) {
   const remote =
     <R>(...path: string[]) =>
     (...args: unknown[]) =>
-      target.evaluate(bridge, [path, args] as Call) as Promise<R>;
+      target.evaluate(dispatch, [path, args] as Call) as Promise<R>;
 
   const record = remote<Required<Options>>('journal', 'record');
   const seq = remote<number>('journal', 'seq');

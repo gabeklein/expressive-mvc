@@ -30,7 +30,7 @@ const SUBPATHS = [
   '@expressive/router',
   '@expressive/inspect',
   '@expressive/inspect/install',
-  '@expressive/inspect/playwright'
+  '@expressive/inspect/bridge'
 ];
 
 const ENTRY = `
