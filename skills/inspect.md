@@ -1,6 +1,6 @@
 # Inspect
 
-`@expressive/inspect` - in-process inspector over live State: registry, ownership, path reads, a frame journal with causality. No UI, no network. Base layer for agents (via a browser tool or a driver's `evaluate`), devtools, and test helpers.
+`@expressive/inspect` - in-process inspector over live State: registry, ownership, path reads, a frame journal with causality. No UI; network only through the dev-server relay ([Vite](#vite)). Base layer for agents (via a browser tool or a driver's `evaluate`), devtools, and test helpers.
 
 ## Install
 
@@ -12,6 +12,8 @@ import '@expressive/inspect/install';
 Attaches to `State` from the same `@expressive/mvc` instance and publishes `globalThis.__EXPRESSIVE_INSPECT__` (typed on `globalThis`). Instances constructed before the import are invisible. Install ships in the app bundle - a Playwright `addInitScript` or userscript imports a different `State` and sees nothing. Gate it yourself: side-effect import for a harness, `attach()` behind a dev flag for a shipped build.
 
 Programmatic: `attach(State)` returns detach; `attach(Sub)` scopes to a subclass.
+
+Under Vite, the plugin installs it - see [Vite](#vite).
 
 ## Two faces, one id
 
@@ -134,6 +136,34 @@ await api.journal.record({ level: 'keys', types: ['Composer'] }); // labels, not
 For an app in an iframe, pass that frame: `inspect(page.frame({ name }))`, or a locator such as `inspect(page.frameLocator('iframe[title="App"]').locator('body'))` - the helper accepts `Locator.evaluate`'s element-first arity. A missing global throws one line naming the install import - that is the install-order check.
 
 Drive input through the UI; assert on the model. Reserve DOM assertions for presentation the model does not express.
+
+## Vite
+
+`@expressive/inspect/vite` reaches the page a developer has open - any browser, no debug port - through the dev server.
+
+```ts
+// vite.config.ts
+import inspect from '@expressive/inspect/vite';
+
+export default defineConfig({ plugins: [inspect()] });
+```
+
+Dev server only. Injects `install` ahead of the app entry (a manual import becomes redundant, harmless) and relays over Vite's HMR socket. Pre-bundles `install` when inspect comes from `node_modules`, so a cold dep cache cannot split mvc into two copies.
+
+```bash
+curl localhost:5173/__inspect                                     # [{ id, url, title, top }] per document, iframes included
+curl localhost:5173/__inspect/4rrsel -d '["get", "Counter.current"]'
+curl localhost:5173/__inspect -d '["journal.frames", { "since": 3 }]'   # the only connected page
+```
+
+- Body `[method, ...args]`, method dotted from the console API (`get`, `set`, `call`, `models`, `tree`, `journal.record`, ...). Response is the JSON result.
+- No id with several pages connected: 409 plus the page list - never guesses.
+- Ids are per page load; a reload issues new ones, closed pages drop out.
+- 404 unknown page, 500 the page threw (`{ error }`), 504 no answer within 10s.
+- Loopback callers only; a request carrying `Origin` or `Sec-Fetch-Site` gets 403, so web pages cannot drive it.
+- No HTML (`appType: 'custom'`): `import 'virtual:expressive-inspect'` first in the entry.
+
+Functions do not cross HTTP - `act` and `around` stay in process or on the bridge.
 
 ## Several instances of one type
 
