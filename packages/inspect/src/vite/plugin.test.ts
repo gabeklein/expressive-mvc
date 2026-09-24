@@ -226,6 +226,12 @@ describe('relay', () => {
     expect((await request('GET', '/', '', { 'sec-fetch-site': 'same-origin' })).statusCode).toBe(403);
   });
 
+  it('will refuse requests relayed by a proxy or tunnel', async () => {
+    const { request } = setup();
+    for (const header of ['forwarded', 'x-forwarded-for', 'x-real-ip', 'cf-connecting-ip'])
+      expect((await request('GET', '/', '', { [header]: '203.0.113.9' })).statusCode).toBe(403);
+  });
+
   it('will refuse non-loopback callers', async () => {
     const { request } = setup();
     expect((await request('GET', '/', '', {}, '192.168.1.4')).statusCode).toBe(403);

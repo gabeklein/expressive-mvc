@@ -96,7 +96,7 @@ export function relay(ws: Pick<WebSocketServer, 'on' | 'clients'>) {
   }
 
   return async (req: IncomingMessage, res: ServerResponse) => {
-    if (!local(req)) return reply(res, 403, { error: 'Loopback callers only; browser requests are refused.' });
+    if (!local(req)) return reply(res, 403, { error: 'Local callers only; browser and proxied requests are refused.' });
 
     const id = decodeURIComponent(req.url!.split('?')[0].slice(1));
 
@@ -124,10 +124,13 @@ export function relay(ws: Pick<WebSocketServer, 'on' | 'clients'>) {
   };
 }
 
-function local(req: IncomingMessage) {
-  const { origin, 'sec-fetch-site': site } = req.headers;
+const FOREIGN = ['origin', 'sec-fetch-site', 'forwarded', 'x-forwarded-for', 'x-real-ip', 'cf-connecting-ip'];
 
-  return !origin && !site && /^(::ffff:)?127\.|^::1$/.test(req.socket.remoteAddress ?? '');
+function local(req: IncomingMessage) {
+  return (
+    !FOREIGN.some((header) => header in req.headers) &&
+    /^(::ffff:)?127\.|^::1$/.test(req.socket.remoteAddress ?? '')
+  );
 }
 
 function parse(text: string): Call | undefined {
