@@ -61,7 +61,7 @@ curl localhost:5173/__inspect                                   # connected page
 curl localhost:5173/__inspect/<id> -d '["get", "Composer.draft"]'
 ```
 
-Loopback callers only; browser requests are refused.
+Local callers only; browser and proxied (tunnel) requests are refused.
 
 Console: `__EXPRESSIVE_INSPECT__.get('Composer.draft')`, `__EXPRESSIVE_INSPECT__.journal.record({ level: 'keys', paths: ['Composer.draft'] })`.
 
