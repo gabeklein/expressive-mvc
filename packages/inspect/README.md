@@ -71,7 +71,7 @@ Off by default. `journal.record({ level, types, paths, keys, calls })`, then `fr
 
 ## Orphans
 
-Instances a host never committed - a render thrown away, a StrictMode twin - stay out of `models()` and `tree()`. `orphans()` lists them, `warnings()` counts them.
+Instances a host never committed - a render thrown away, a StrictMode twin - stay out of `models()` and `tree()`. `orphans()` lists them, `health()` counts them - along with loaded mvc copies and caught reports.
 
 ## Minified builds
 

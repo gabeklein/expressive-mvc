@@ -331,7 +331,7 @@ Instructions: `field/*.md`, linked from the [helper table](#instructions--reacti
 
 ### Inspect
 
-- [inspect.md](inspect.md) - `@expressive/inspect`: install entry, instances in process vs addresses across a boundary, ownership, stored-value reads with `absent`, labels under minification, frame journal with `cause`, `act`, orphans and `warnings()`, Playwright use
+- [inspect.md](inspect.md) - `@expressive/inspect`: install entry, instances in process vs addresses across a boundary, ownership, stored-value reads with `absent`, labels under minification, frame journal with `cause`, `act`, orphans and `health()`, bridge and Vite relay
 
 ### Examples
 
