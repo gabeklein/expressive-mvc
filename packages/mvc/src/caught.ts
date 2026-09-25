@@ -4,7 +4,7 @@ import type { State } from './state';
  * Reported to `State.on({ catch })` handlers instead of being thrown or logged.
  * Unhandled, a `warning` goes to `console.warn`; anything else escapes uncaught.
  */
-class Error extends globalThis.Error {
+class Caught extends Error {
   /** Non-urgent - unhandled, it logs as a warning. */
   readonly warning: boolean = false;
 
@@ -18,7 +18,7 @@ class Error extends globalThis.Error {
   }
 
   /** A write to a destroyed state, dropped. */
-  static Destroyed = class Destroyed extends Error {
+  static Destroyed = class Destroyed extends Caught {
     readonly warning = true;
 
     constructor(state: State, key: string) {
@@ -27,7 +27,7 @@ class Error extends globalThis.Error {
   };
 
   /** A state constructed but never activated. */
-  static Inactive = class Inactive extends Error {
+  static Inactive = class Inactive extends Caught {
     readonly warning = true;
 
     constructor(state: State) {
@@ -36,33 +36,33 @@ class Error extends globalThis.Error {
   };
 
   /** A getter threw while refreshing; `cause` is what it threw. */
-  static Getter = class Getter extends Error {
+  static Getter = class Getter extends Caught {
     constructor(state: State, key: string, cause: unknown) {
       super(state, `An exception was thrown while refreshing ${state}.${key}.`, key, cause);
     }
   };
 
   /** An async initializer rejected; `cause` is the rejection. */
-  static Init = class Init extends Error {
+  static Init = class Init extends Caught {
     constructor(state: State, cause: unknown) {
       super(state, `Async error in constructor for ${state}.`, undefined, cause);
     }
   };
 
   /** An effect or listener threw during a dispatch flush; `cause` is what it threw. */
-  static Effect = class Effect extends Error {
+  static Effect = class Effect extends Caught {
     constructor(state: State, cause: unknown) {
       super(state, `An exception was thrown by an effect of ${state}.`, undefined, cause);
     }
   };
 }
 
-declare namespace Error {
-  type Destroyed = InstanceType<typeof Error.Destroyed>;
-  type Inactive = InstanceType<typeof Error.Inactive>;
-  type Getter = InstanceType<typeof Error.Getter>;
-  type Init = InstanceType<typeof Error.Init>;
-  type Effect = InstanceType<typeof Error.Effect>;
+declare namespace Caught {
+  type Destroyed = InstanceType<typeof Caught.Destroyed>;
+  type Inactive = InstanceType<typeof Caught.Inactive>;
+  type Getter = InstanceType<typeof Caught.Getter>;
+  type Init = InstanceType<typeof Caught.Init>;
+  type Effect = InstanceType<typeof Caught.Effect>;
 }
 
-export { Error };
+export { Caught };

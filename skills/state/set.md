@@ -115,7 +115,7 @@ state.set(42); // number event
 set(status: null): void
 ```
 
-Terminates the state: children destroyed first (inner-to-outer), listeners notified with `null`, cleanups run, state frozen. Afterward, assignment is dropped and reported as `Error.Destroyed`; silent `set(assign, true)` drops without a report. Full order: [lifecycle.md](lifecycle.md#destruction).
+Terminates the state: children destroyed first (inner-to-outer), listeners notified with `null`, cleanups run, state frozen. Afterward, assignment is dropped and reported as `Caught.Destroyed`; silent `set(assign, true)` drops without a report. Full order: [lifecycle.md](lifecycle.md#destruction).
 
 ```ts
 state.set(null);

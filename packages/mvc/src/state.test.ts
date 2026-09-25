@@ -6,7 +6,7 @@ import { ref } from './field/ref';
 import { set } from './field/set';
 import { State, update } from './state';
 import { event, listener, watch } from './observable';
-import { Error as Issue } from './error';
+import { Caught } from './caught';
 import { has } from './field/has';
 
 it('will extend custom class', () => {
@@ -3316,7 +3316,7 @@ describe('on catch stage (static)', () => {
     test.set(null);
     test.foo = 1;
 
-    expect(handler).toBeCalledWith(expect.any(Issue.Destroyed));
+    expect(handler).toBeCalledWith(expect.any(Caught.Destroyed));
     expect(handler.mock.contexts[0]).toBe(test);
     expect(warn).not.toBeCalled();
   });
@@ -3330,7 +3330,7 @@ describe('on catch stage (static)', () => {
 
     const order: string[] = [];
     const pass = (name: string) => ({
-      catch: (issue: Issue) => {
+      catch: (issue: Caught) => {
         order.push(name);
         return issue;
       }
@@ -3348,7 +3348,7 @@ describe('on catch stage (static)', () => {
     sub.foo = 1;
 
     expect(order).toEqual(['shared', 'sub', 'base']);
-    expect(warn).toBeCalledWith(expect.any(Issue.Destroyed));
+    expect(warn).toBeCalledWith(expect.any(Caught.Destroyed));
   });
 
   it('will stop at the first handler returning nothing', () => {
@@ -3377,8 +3377,8 @@ describe('on catch stage (static)', () => {
       foo = 0;
     }
 
-    const base = vi.fn((issue: Issue) => issue);
-    const replaced = new Issue.Init(Test.new(), 'replaced');
+    const base = vi.fn((issue: Caught) => issue);
+    const replaced = new Caught.Init(Test.new(), 'replaced');
 
     State.on({ catch: base });
 
@@ -3410,7 +3410,7 @@ describe('on catch stage (static)', () => {
     test.foo = 1;
     stop();
 
-    expect(handler).toBeCalledWith(expect.any(Issue.Destroyed));
+    expect(handler).toBeCalledWith(expect.any(Caught.Destroyed));
   });
 
   it('will not reach handlers of an unrelated class', () => {
@@ -3430,7 +3430,7 @@ describe('on catch stage (static)', () => {
     test.foo = 1;
 
     expect(handler).not.toBeCalled();
-    expect(warn).toBeCalledWith(expect.any(Issue.Destroyed));
+    expect(warn).toBeCalledWith(expect.any(Caught.Destroyed));
   });
 
   it('will throw to the writer when rethrown at a synchronous site', () => {
@@ -3448,7 +3448,7 @@ describe('on catch stage (static)', () => {
 
     test.set(null);
 
-    expect(() => (test.foo = 1)).toThrow(Issue.Destroyed);
+    expect(() => (test.foo = 1)).toThrow(Caught.Destroyed);
   });
 
   it('will escape uncaught when rethrown at an async site', async () => {
@@ -3465,7 +3465,7 @@ describe('on catch stage (static)', () => {
     new Test();
     await flushMicrotasks();
 
-    expect(caught).toEqual([expect.any(Issue.Inactive)]);
+    expect(caught).toEqual([expect.any(Caught.Inactive)]);
   });
 
   it('will let a handler swallow only warnings', async () => {
@@ -3501,7 +3501,7 @@ describe('on catch stage (static)', () => {
     other.foo = 1;
 
     expect(seen).toEqual([false, true]);
-    expect(caught).toEqual([expect.any(Issue.Getter)]);
+    expect(caught).toEqual([expect.any(Caught.Getter)]);
   });
 
   it('will attribute an effect error to the owner of a collection', async () => {
@@ -3523,7 +3523,7 @@ describe('on catch stage (static)', () => {
     test.list.push(1);
     await flushMicrotasks();
 
-    expect(handler).toBeCalledWith(expect.any(Issue.Effect));
+    expect(handler).toBeCalledWith(expect.any(Caught.Effect));
     expect(handler).toBeCalledWith(expect.objectContaining({ state: test, cause: oops }));
   });
 
@@ -3560,7 +3560,7 @@ describe('on catch stage (static)', () => {
     await flushMicrotasks();
 
     expect(handler).not.toBeCalled();
-    expect(caught).toEqual([expect.any(Issue.Destroyed)]);
+    expect(caught).toEqual([expect.any(Caught.Destroyed)]);
   });
 
   it('will ignore a non-function returned by a listener', async () => {
