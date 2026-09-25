@@ -1,5 +1,5 @@
 import { vi, expect, it, describe } from 'vitest';
-import { flushMicrotasks, mockError, mockPromise, mockWarn } from '../test.setup';
+import { flushMicrotasks, mockError, mockPromise, mockUncaught, mockWarn } from '../test.setup';
 import { Context } from './context';
 import { get } from './field/get';
 import { ref } from './field/ref';
@@ -2205,7 +2205,7 @@ describe('set method', () => {
   });
 
   describe('effect', () => {
-    const error = mockError();
+    mockError();
 
     class Test extends State {
       foo = 0;
@@ -2253,7 +2253,8 @@ describe('set method', () => {
     });
 
     // mockError doesn't work in vitest env
-    it('will log error thrown by async callback', async () => {
+    it('will let an error thrown by async callback escape', async () => {
+      const caught = mockUncaught();
       const test = Test.new();
       const oops = new Error('oops');
 
@@ -2264,7 +2265,7 @@ describe('set method', () => {
       test.foo = 1;
 
       await expect(test).toHaveUpdated();
-      expect(error).toBeCalledWith(expect.objectContaining({ state: test, cause: oops }));
+      expect(caught).toEqual([expect.objectContaining({ state: test, cause: oops })]);
 
       done();
     });
@@ -2795,8 +2796,8 @@ describe('new method (static)', () => {
   });
 
   // TODO: fix. This fails despite error intercept.
-  it('will log error from rejected initializer', async () => {
-    const error = mockError();
+  it('will let a rejected initializer escape', async () => {
+    const caught = mockUncaught();
     const expects = new Error('State callback rejected.');
 
     const init = vi.fn(() => Promise.reject(expects));
@@ -2806,13 +2807,13 @@ describe('new method (static)', () => {
 
     await expect(test).not.toHaveUpdated();
 
-    expect(error).toBeCalledWith(
+    expect(caught).toEqual([
       expect.objectContaining({
         state: test,
         cause: expects,
         message: expect.stringMatching(/Async error in constructor for [\w-]+\./)
       })
-    );
+    ]);
   });
 
   it('will inject both properties and methods', () => {
@@ -3301,22 +3302,6 @@ describe('on catch stage (static)', () => {
   const warn = mockWarn();
   const error = mockError();
 
-  function uncaught() {
-    const caught: unknown[] = [];
-    const queue = globalThis.queueMicrotask;
-    const spy = vi.spyOn(globalThis, 'queueMicrotask').mockImplementation((fn) =>
-      queue(() => {
-        try {
-          fn();
-        } catch (err) {
-          caught.push(err);
-        }
-      })
-    );
-
-    return { caught, restore: () => spy.mockRestore() };
-  }
-
   it('will hand an issue to catch instead of logging it', () => {
     class Test extends State {
       foo = 0;
@@ -3336,7 +3321,7 @@ describe('on catch stage (static)', () => {
     expect(warn).not.toBeCalled();
   });
 
-  it('will run base and subclass handlers once each, base first', () => {
+  it('will pass along subclass then base, last registered first, once each', () => {
     class Base extends State {
       foo = 0;
     }
@@ -3344,11 +3329,17 @@ describe('on catch stage (static)', () => {
     class Sub extends Base {}
 
     const order: string[] = [];
-    const shared = { catch: () => void order.push('shared') };
+    const pass = (name: string) => ({
+      catch: (issue: Issue) => {
+        order.push(name);
+        return issue;
+      }
+    });
+    const shared = pass('shared');
 
-    Base.on({ catch: () => void order.push('base') });
+    Base.on(pass('base'));
     Base.on(shared);
-    Sub.on({ catch: () => void order.push('sub') });
+    Sub.on(pass('sub'));
     Sub.on(shared);
 
     const sub = Sub.new();
@@ -3356,7 +3347,54 @@ describe('on catch stage (static)', () => {
     sub.set(null);
     sub.foo = 1;
 
-    expect(order).toEqual(['base', 'shared', 'sub']);
+    expect(order).toEqual(['shared', 'sub', 'base']);
+    expect(warn).toBeCalledWith(expect.any(Issue.Destroyed));
+  });
+
+  it('will stop at the first handler returning nothing', () => {
+    class Base extends State {
+      foo = 0;
+    }
+
+    class Sub extends Base {}
+
+    const base = vi.fn();
+
+    Base.on({ catch: base });
+    Sub.on({ catch: () => {} });
+
+    const sub = Sub.new();
+
+    sub.set(null);
+    sub.foo = 1;
+
+    expect(base).not.toBeCalled();
+    expect(warn).not.toBeCalled();
+  });
+
+  it('will pass a replacement forward', async () => {
+    class Test extends State {
+      foo = 0;
+    }
+
+    const base = vi.fn((issue: Issue) => issue);
+    const replaced = new Issue.Init(Test.new(), 'replaced');
+
+    State.on({ catch: base });
+
+    const stop = Test.on({ catch: () => replaced });
+    const caught = mockUncaught();
+    const test = Test.new();
+
+    test.set(null);
+    test.foo = 1;
+    stop();
+
+    await flushMicrotasks();
+
+    expect(base).toBeCalledWith(replaced);
+    expect(warn).not.toBeCalled();
+    expect(caught).toEqual([replaced]);
   });
 
   it('will reach a handler registered on State itself', () => {
@@ -3422,11 +3460,10 @@ describe('on catch stage (static)', () => {
       }
     });
 
-    const { caught, restore } = uncaught();
+    const caught = mockUncaught();
 
     new Test();
     await flushMicrotasks();
-    restore();
 
     expect(caught).toEqual([expect.any(Issue.Inactive)]);
   });
@@ -3451,13 +3488,12 @@ describe('on catch stage (static)', () => {
       }
     });
 
-    const { caught, restore } = uncaught();
+    const caught = mockUncaught();
     const test = Test.new();
 
     void test.value;
     test.fail = true;
     await expect(test).toHaveUpdated();
-    restore();
 
     const other = Test.new();
 
@@ -3518,11 +3554,10 @@ describe('on catch stage (static)', () => {
       if ($.value) target.foo = 1;
     });
 
-    const { caught, restore } = uncaught();
+    const caught = mockUncaught();
 
     source.value = 1;
     await flushMicrotasks();
-    restore();
 
     expect(handler).not.toBeCalled();
     expect(caught).toEqual([expect.any(Issue.Destroyed)]);
@@ -3533,6 +3568,7 @@ describe('on catch stage (static)', () => {
       foo = 0;
     }
 
+    const caught = mockUncaught();
     const test = Test.new();
     const seen: unknown[] = [];
 
@@ -3541,22 +3577,28 @@ describe('on catch stage (static)', () => {
     await flushMicrotasks();
 
     expect(seen).toEqual(['foo']);
-    expect(error).not.toBeCalled();
+    expect(caught).toEqual([]);
   });
 
-  it('will log an effect error with no owning State', async () => {
+  it('will let an effect error with no owning State escape', async () => {
+    const caught = mockUncaught();
     const subject = {};
     const oops = new Error('oops');
 
     event(subject);
-    listener(subject, () => () => {
-      throw oops;
-    });
+    listener(
+      subject,
+      () => () => {
+        throw oops;
+      },
+      'value'
+    );
 
     event(subject, 'value');
     await flushMicrotasks();
 
-    expect(error).toBeCalledWith(oops);
+    expect(caught).toEqual([oops]);
+    expect(error).not.toBeCalled();
   });
 });
 
@@ -4002,7 +4044,7 @@ describe('computed (getters)', () => {
       );
     });
 
-    it('will warn if throws on update', async () => {
+    it('will escape if throws on update', async () => {
       class Test extends State {
         shouldFail = false;
 
@@ -4012,6 +4054,7 @@ describe('computed (getters)', () => {
         }
       }
 
+      const caught = mockUncaught();
       const state = Test.new();
 
       void state.value;
@@ -4020,14 +4063,15 @@ describe('computed (getters)', () => {
       await expect(state).toHaveUpdated();
 
       expect(warn).not.toBeCalled();
-      expect(error).toBeCalledWith(
+      expect(error).not.toBeCalled();
+      expect(caught).toEqual([
         expect.objectContaining({
           state,
           key: 'value',
           cause: expect.any(Error),
           message: `An exception was thrown while refreshing ${state}.value.`
         })
-      );
+      ]);
     });
   });
 

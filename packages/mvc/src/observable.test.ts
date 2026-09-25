@@ -4,7 +4,7 @@ import { event, listener, touch, watch, observer } from './observable';
 import { set } from './field/set';
 import { def } from './field/def';
 import { vi, describe, it, expect } from 'vitest';
-import { mockError, mockPromise, flushMicrotasks } from '../test.setup';
+import { mockError, mockPromise, mockUncaught, flushMicrotasks } from '../test.setup';
 import { State } from './state';
 
 describe('effect', () => {
@@ -643,7 +643,7 @@ describe('suspense', () => {
 });
 
 describe('errors', () => {
-  const error = mockError();
+  mockError();
 
   it('will throw sync error to the console', async () => {
     class Test extends State {
@@ -661,12 +661,13 @@ describe('errors', () => {
     expect(attempt).toThrow(`sync error`);
   });
 
-  it('will log async error to the console', async () => {
+  it('will let an unhandled effect error escape uncaught', async () => {
     class Test extends State {
       value = 1;
     }
 
     const expected = new Error('async error');
+    const caught = mockUncaught();
     const test = Test.new();
 
     test.get(($) => {
@@ -677,7 +678,7 @@ describe('errors', () => {
 
     await expect(test).toHaveUpdated();
 
-    expect(error).toBeCalledWith(expect.objectContaining({ state: test, cause: expected }));
+    expect(caught).toEqual([expect.objectContaining({ state: test, cause: expected })]);
   });
 });
 

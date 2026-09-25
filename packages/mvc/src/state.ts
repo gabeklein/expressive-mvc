@@ -107,10 +107,12 @@ declare namespace State {
     after?(this: T, self: T): void | (() => void);
 
     /**
-     * Receives an `Error` mvc would otherwise log, for this State or a subclass.
-     * Returning handles it; rethrowing lets it escape uncaught.
+     * Receives an `Error` mvc reports for this State or a subclass - most-derived
+     * class first, last registered first. Return it (or a replacement) to pass it
+     * on; return nothing to handle it; throw to let it escape uncaught. Passed off
+     * the end, a warning logs and anything else escapes uncaught.
      */
-    catch?(this: T, error: Issue): void;
+    catch?(this: T, error: Issue): Issue | void;
   }
 
   /** Object overlay to override values and methods on a state. */
@@ -575,7 +577,7 @@ function init(state: State, ...args: State.Args) {
         const out = typeof arg == 'function' ? arg.call(state, state) : arg;
 
         if (out instanceof Promise)
-          out.catch((err) => forward(err, () => new Issue.Init(state, `Async error in constructor for ${state}.`, undefined, err)));
+          out.catch((err) => forward(err, () => new Issue.Init(state, err)));
         else if (Array.isArray(out)) queue.splice(i + 1, 0, ...out);
         else if (typeof out == 'function') listener(state, out, null);
         else if (typeof out == 'object') assign(state, out, true);
@@ -599,7 +601,7 @@ function init(state: State, ...args: State.Args) {
 
       for (const item of PENDING)
         if (typeof item == 'function') item();
-        else report(new Issue.Inactive(item, `${item} was constructed but never activated.`));
+        else report(new Issue.Inactive(item));
 
       PENDING.clear();
     });
@@ -737,7 +739,7 @@ function compute(this: State, getter: (self: any) => unknown, key: string) {
         throw err;
       }
 
-      forward(err, () => new Issue.Getter(this, `An exception was thrown while refreshing ${this}.${key}.`, key, err));
+      forward(err, () => new Issue.Getter(this, key, err));
     }
 
     update(this, key, next, !isAsync);
@@ -1016,7 +1018,7 @@ function update<T>(
   own?: boolean
 ) {
   if (observer(state) === null) {
-    if (!silent) report(new Issue.Destroyed(state, `Tried to update ${state}.${String(key)} but state is destroyed.`, String(key)), true);
+    if (!silent) report(new Issue.Destroyed(state, String(key)), true);
     return false;
   }
 
@@ -1036,30 +1038,30 @@ function update<T>(
 }
 
 /**
- * Hand an issue to `catch` handlers along its State's class chain, or log it.
- * A handler which rethrows escapes uncaught - to the caller when `sync`.
+ * Pass an issue along `catch` handlers - most-derived class first, last registered
+ * first - until one returns nothing. Passed off the end, a warning logs and anything
+ * else escapes. A handler which throws escapes uncaught - to the caller when `sync`.
  */
 function report(issue: Issue, sync?: boolean) {
-  const chain: State.Extends[] = [];
   const handlers = new Set<NonNullable<State.On['catch']>>();
+  let error: Issue | void = issue;
 
   for (let T = issue.state.constructor as State.Extends; ; T = Object.getPrototypeOf(T)) {
-    chain.unshift(T);
+    for (const handler of [...(SETUP.get(T) || [])].reverse())
+      if (typeof handler == 'object' && handler.catch) handlers.add(handler.catch);
+
     if (T === State) break;
   }
 
-  for (const type of chain)
-    for (const handler of SETUP.get(type) || [])
-      if (typeof handler == 'object' && handler.catch) handlers.add(handler.catch);
-
-  if (!handlers.size) return console[issue.warning ? 'warn' : 'error'](issue);
-
   try {
-    for (const handler of handlers) handler.call(issue.state, issue);
+    for (const handler of handlers) if (!(error = handler.call(issue.state, error))) return;
   } catch (err) {
     if (sync) throw err;
-    escape(err);
+    return escape(err);
   }
+
+  if (error.warning) console.warn(error);
+  else escape(error);
 }
 
 function escape(err: unknown) {
@@ -1078,8 +1080,8 @@ function forward(err: unknown, create: () => Issue) {
 function fault(err: unknown, owner?: object) {
   const state = owner instanceof State ? owner : owner && PARENT.get(owner);
 
-  if (state) forward(err, () => new Issue.Effect(state, `An exception was thrown by an effect of ${state}.`, undefined, err));
-  else console.error(err);
+  if (state) forward(err, () => new Issue.Effect(state, err));
+  else escape(err);
 }
 
 /**
