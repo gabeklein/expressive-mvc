@@ -16,9 +16,9 @@ import { withWorkspaceLinks } from './workspace-links';
  *
  * Raise a budget with the growth that needs it, in small steps, and update the
  * figures in website/content/docs/guides/bundle-size.mdx. 10 kB is the line the
- * maintainer cares about: `react: typical app`, the site's headline figure, sits
- * at 9.97 kB as of 2026-09 (after State.on({ catch }) and Caught), so growth past
- * it needs a deliberate decision, not just a bump.
+ * maintainer cares about: `react: typical app`, the site's headline figure,
+ * crossed it at 10.01 kB in 2026-09 (State.on({ catch }), Caught, the copies
+ * registry) - further growth there needs a deliberate decision, not just a bump.
  */
 const CASES = [
   {
@@ -33,7 +33,7 @@ const CASES = [
   },
   {
     name: 'react: State only',
-    limit: 9480,
+    limit: 9530,
     code: `import State from '@expressive/react'; console.log(State);`
   },
   {
@@ -54,7 +54,7 @@ const CASES = [
   },
   {
     name: 'inspect: install',
-    limit: 9630,
+    limit: 10080,
     code: `import '@expressive/inspect/install';`
   },
   {

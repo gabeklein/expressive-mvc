@@ -41,6 +41,7 @@ describe('inspect(page)', () => {
     expect(await api.call('Composer.submit', 'sent')).toBe(4);
     expect((await api.models())[0].type).toBe('Composer');
     expect((await api.tree())[0].id).toBe(String(composer));
+    expect((await api.health()).copies).toBe(1);
   });
 
   it('will drive the journal', async () => {

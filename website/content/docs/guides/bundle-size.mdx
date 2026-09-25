@@ -13,10 +13,10 @@ Minified, then gzipped. React is a peer dependency and excluded, as it would alr
 | --- | --- |
 | `@expressive/mvc` — `State` only (headless) | ~5.7 kB |
 | `@expressive/mvc` — every export | ~9.3 kB |
-| `@expressive/react` — `State` only | ~9.2 kB |
+| `@expressive/react` — `State` only | ~9.3 kB |
 | `@expressive/react` — `State`, `Component`, instructions | ~10.0 kB |
-| `@expressive/react` — every export | ~12.0 kB |
-| `@expressive/router` — every export | ~12.1 kB |
+| `@expressive/react` — every export | ~12.1 kB |
+| `@expressive/router` — every export | ~12.2 kB |
 | `@expressive/react` + `@expressive/router` | ~16.1 kB |
 
 A typical React app lands around **10 kB**. There are no runtime dependencies, so that is the whole cost — nothing else arrives behind it.
@@ -35,7 +35,7 @@ If a third-party size service quotes something different from this table, the me
 
 The headless core shakes properly: importing only `State` costs ~5.7 kB against ~9.3 kB for everything, so unused instructions genuinely do not ship. It is built unbundled — one module per source file, `sideEffects: false` — and its module-level work only touches classes the same module exports, which is what makes that declaration safe.
 
-The React adapter has a **floor you cannot shake below: ~9.2 kB**, reached by importing anything at all from it. That is deliberate and worth being plain about. The adapter works by patching types it does not own, at import time:
+The React adapter has a **floor you cannot shake below: ~9.3 kB**, reached by importing anything at all from it. That is deliberate and worth being plain about. The adapter works by patching types it does not own, at import time:
 
 - `Component.prototype.$$typeof`, so an instance can be placed directly as JSX
 - `Component.contextType`, wiring the class into React context
