@@ -14,7 +14,7 @@ class Caught extends Error {
     readonly key?: string,
     cause?: unknown
   ) {
-    super(message, cause === undefined ? undefined : { cause });
+    super(message, cause ? { cause } : undefined);
   }
 
   /** A write to a destroyed state, dropped. */
