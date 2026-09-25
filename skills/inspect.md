@@ -165,6 +165,14 @@ curl localhost:5173/__inspect -d '["journal.frames", { "since": 3 }]'   # the on
 
 Functions do not cross HTTP - `act` and `around` stay in process or on the bridge.
 
+What to reach for, in order:
+
+1. **Observe** - `models`, `tree`, `get`, `journal.*`. Most questions end here.
+2. **Act through the model** - `call("Type.method", ...)` runs the app's own logic; the way to reproduce what a user did.
+3. **Force a state** - `set("Type.key", value)` bypasses the model; for setting up a repro, sparingly.
+
+The relay reaches only the inspector's own members - no `eval`, no property walks beyond them. Arbitrary JS belongs to a driver's `evaluate`, granted by whoever runs the harness.
+
 ## Several instances of one type
 
 `find('Row')` and `get('Row.x')` take the first live instance. Disambiguate by id (`models().filter((m) => m.type === 'Row')`, then `get(`${id}.x`)`), or address through the owner (`Table.rows`, not a bare `Row`).
