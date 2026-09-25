@@ -1,4 +1,5 @@
 import { Context, join } from './context';
+import { Error as Issue } from './error';
 import {
   capture,
   event,
@@ -104,6 +105,12 @@ declare namespace State {
      * observed and constructor args applied. May return a cleanup function.
      */
     after?(this: T, self: T): void | (() => void);
+
+    /**
+     * Receives an `Error` mvc would otherwise log, for this State or a subclass.
+     * Returning handles it; rethrowing lets it escape uncaught.
+     */
+    catch?(this: T, error: Issue): void;
   }
 
   /** Object overlay to override values and methods on a state. */
@@ -333,7 +340,7 @@ abstract class State {
    * Properties which are not managed by this state will be ignored.
    *
    * @param assign - Object with properties to update.
-   * @param silent - If true, listeners will not be notified. If state is destroyed, will squash update without throwing.
+   * @param silent - If true, listeners will not be notified. If state is destroyed, drops the update without reporting it.
    * @returns Array of keys updated, syncronously contains keys updated immediately and may be resolved (to itself) when all updates are settled.
    */
   set(assign?: State.Assign<this>, silent?: boolean): State.Updated<this>;
@@ -568,10 +575,7 @@ function init(state: State, ...args: State.Args) {
         const out = typeof arg == 'function' ? arg.call(state, state) : arg;
 
         if (out instanceof Promise)
-          out.catch((err) => {
-            console.error(`Async error in constructor for ${state}:`);
-            console.error(err);
-          });
+          out.catch((err) => forward(err, () => new Issue.Init(state, `Async error in constructor for ${state}.`, undefined, err)));
         else if (Array.isArray(out)) queue.splice(i + 1, 0, ...out);
         else if (typeof out == 'function') listener(state, out, null);
         else if (typeof out == 'object') assign(state, out, true);
@@ -595,7 +599,7 @@ function init(state: State, ...args: State.Args) {
 
       for (const item of PENDING)
         if (typeof item == 'function') item();
-        else console.warn(`${item} was constructed but never activated.`);
+        else report(new Issue.Inactive(item, `${item} was constructed but never activated.`));
 
       PENDING.clear();
     });
@@ -728,14 +732,12 @@ function compute(this: State, getter: (self: any) => unknown, key: string) {
     try {
       next = getter.call(proxy, proxy);
     } catch (err) {
-      console.warn(
-        `An exception was thrown while ${initial ? 'initializing' : 'refreshing'
-        } ${this}.${key}.`
-      );
+      if (initial) {
+        console.warn(`An exception was thrown while initializing ${this}.${key}.`);
+        throw err;
+      }
 
-      if (initial) throw err;
-
-      console.error(err);
+      forward(err, () => new Issue.Getter(this, `An exception was thrown while refreshing ${this}.${key}.`, key, err));
     }
 
     update(this, key, next, !isAsync);
@@ -976,7 +978,7 @@ function access(state: State, property: string, required?: boolean) {
 }
 
 function assign(state: State, data: State.Assign<State>, silent?: boolean) {
-  if (!silent) event(state);
+  if (!silent && observer(state) !== null) event(state);
 
   const methods = METHODS.get(state.constructor)!;
   const getters = GETTERS.get(state.constructor);
@@ -1004,7 +1006,7 @@ function assign(state: State, data: State.Assign<State>, silent?: boolean) {
  *
  * This is used internally to update properties, but can also be used to update properties which are not managed by state, or to update values without triggering setters.
  *
- * If `silent` is true, the update will not dispatch events and will return `false` instead of throwing if state is destroyed.
+ * A destroyed state drops the write and returns `false` - reported unless `silent`, which also skips dispatch.
  */
 function update<T>(
   state: State,
@@ -1014,10 +1016,8 @@ function update<T>(
   own?: boolean
 ) {
   if (observer(state) === null) {
-    if (silent) return false;
-    throw new Error(
-      `Tried to update ${state}.${String(key)} but state is destroyed.`
-    );
+    if (!silent) report(new Issue.Destroyed(state, `Tried to update ${state}.${String(key)} but state is destroyed.`, String(key)), true);
+    return false;
   }
 
   const store = STORE.get(state)!;
@@ -1033,6 +1033,53 @@ function update<T>(
   if (own) adopt(state, key, value);
 
   return true;
+}
+
+/**
+ * Hand an issue to `catch` handlers along its State's class chain, or log it.
+ * A handler which rethrows escapes uncaught - to the caller when `sync`.
+ */
+function report(issue: Issue, sync?: boolean) {
+  const chain: State.Extends[] = [];
+  const handlers = new Set<NonNullable<State.On['catch']>>();
+
+  for (let T = issue.state.constructor as State.Extends; ; T = Object.getPrototypeOf(T)) {
+    chain.unshift(T);
+    if (T === State) break;
+  }
+
+  for (const type of chain)
+    for (const handler of SETUP.get(type) || [])
+      if (typeof handler == 'object' && handler.catch) handlers.add(handler.catch);
+
+  if (!handlers.size) return console[issue.warning ? 'warn' : 'error'](issue);
+
+  try {
+    for (const handler of handlers) handler.call(issue.state, issue);
+  } catch (err) {
+    if (sync) throw err;
+    escape(err);
+  }
+}
+
+function escape(err: unknown) {
+  queueMicrotask(() => {
+    throw err;
+  });
+}
+
+/** Report `err` as a new issue, unless it is one a handler already rethrew. */
+function forward(err: unknown, create: () => Issue) {
+  if (err instanceof Issue) escape(err);
+  else report(create());
+}
+
+/** Error thrown by a handler replaying in dispatch, attributed to the State which queued it. */
+function fault(err: unknown, owner?: object) {
+  const state = owner instanceof State ? owner : owner && PARENT.get(owner);
+
+  if (state) forward(err, () => new Issue.Effect(state, `An exception was thrown by an effect of ${state}.`, undefined, err));
+  else console.error(err);
 }
 
 /**
@@ -1088,4 +1135,4 @@ function parent(child: object, value?: State | null) {
   return true;
 }
 
-export { event, unbind, State, parent, children, PENDING, STORE, uid, access, update, apply, compute };
+export { event, unbind, State, parent, children, PENDING, STORE, uid, access, update, apply, compute, fault };

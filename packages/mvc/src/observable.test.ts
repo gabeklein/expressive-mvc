@@ -677,7 +677,7 @@ describe('errors', () => {
 
     await expect(test).toHaveUpdated();
 
-    expect(error).toBeCalledWith(expected);
+    expect(error).toBeCalledWith(expect.objectContaining({ state: test, cause: expected }));
   });
 });
 
