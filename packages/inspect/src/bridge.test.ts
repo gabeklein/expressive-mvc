@@ -70,6 +70,20 @@ describe('inspect(page)', () => {
     expect(journal.frames().length).toBe(1);
   });
 
+  it('will wait around a step until deferred work settles', async () => {
+    const composer = Composer.new();
+    const api = inspect(page);
+
+    const frames = await api.around(() => {
+      setTimeout(() => {
+        composer.draft = 'a';
+        setTimeout(() => (composer.draft = 'b'));
+      });
+    });
+
+    expect(frames.map((frame) => frame.events[0].value)).toEqual(['a', 'b']);
+  });
+
   it('will record values around a step while keys are on, then restore keys', async () => {
     const composer = Composer.new();
     const api = inspect(page);
