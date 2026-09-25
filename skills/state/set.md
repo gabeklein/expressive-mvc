@@ -91,7 +91,7 @@ const stop = state.set((key, source) => {
 });
 ```
 
-- Return a function to run it once when the batch settles (deduped across assignments in the same tick); if it throws, the error is logged.
+- Return a function to run it once when the batch settles (deduped across assignments in the same tick); if it throws, it is reported as `Caught.Effect` ([lifecycle.md](lifecycle.md#error-handling)).
 - Return `null` to unsubscribe.
 
 ### Dispatch event
