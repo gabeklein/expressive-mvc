@@ -3528,6 +3528,22 @@ describe('on catch stage (static)', () => {
     expect(caught).toEqual([expect.any(Issue.Destroyed)]);
   });
 
+  it('will ignore a non-function returned by a listener', async () => {
+    class Test extends State {
+      foo = 0;
+    }
+
+    const test = Test.new();
+    const seen: unknown[] = [];
+
+    test.set((key) => seen.push(key) as unknown as void);
+    test.foo = 1;
+    await flushMicrotasks();
+
+    expect(seen).toEqual(['foo']);
+    expect(error).not.toBeCalled();
+  });
+
   it('will log an effect error with no owning State', async () => {
     const subject = {};
     const oops = new Error('oops');
