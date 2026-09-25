@@ -83,7 +83,7 @@ Children always go before parents; nested contexts destroy inner-to-outer.
 
 Afterward:
 
-- Assignment is dropped and reported as `Error.Destroyed` - a warning, see [Error Handling](#error-handling).
+- Assignment is dropped and reported as `Caught.Destroyed` - a warning, see [Error Handling](#error-handling).
 - Silent updates (`state.set(assign, true)`) drop without a report.
 - Subscribing (`get(effect)`, `set(callback)`) still throws.
 
@@ -131,9 +131,9 @@ state.get((current) => {
 
 ## Error Handling
 
-What mvc does not throw it reports as an `Error` (exported from `@expressive/mvc`, cases as static properties) to `catch` handlers on the class chain - [State.on()](state.md#stateon). Unhandled: `console.warn` if `error.warning`, else it escapes uncaught (fails a test run, crashes a Node process). Every report carries `state`; `key` and `cause` where they apply.
+What mvc does not throw it reports as a `Caught` (an `Error` exported from `@expressive/mvc`, cases as static properties) to `catch` handlers on the class chain - [State.on()](state.md#stateon). Unhandled: `console.warn` if `error.warning`, else it escapes uncaught (fails a test run, crashes a Node process). Every report carries `state`; `key` and `cause` where they apply.
 
-| `Error.`    | `warning` | When                                                                   |
+| `Caught.`   | `warning` | When                                                                   |
 | ----------- | --------- | ---------------------------------------------------------------------- |
 | `Destroyed` | `true`    | write to a destroyed state - dropped                                   |
 | `Inactive`  | `true`    | constructed, never activated in that tick                              |

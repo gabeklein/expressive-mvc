@@ -9,4 +9,4 @@ export { State, State as default, unbind } from './state';
 export { Context } from './context';
 export { Component } from './component';
 export { pending } from './dispatch';
-export { Error } from './error';
+export { Caught } from './caught';

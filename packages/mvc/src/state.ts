@@ -1,5 +1,5 @@
 import { Context, join } from './context';
-import { Error as Issue } from './error';
+import { Caught } from './caught';
 import {
   capture,
   event,
@@ -107,12 +107,12 @@ declare namespace State {
     after?(this: T, self: T): void | (() => void);
 
     /**
-     * Receives an `Error` mvc reports for this State or a subclass - most-derived
+     * Receives a `Caught` mvc reports for this State or a subclass - most-derived
      * class first, last registered first. Return it (or a replacement) to pass it
      * on; return nothing to handle it; throw to let it escape uncaught. Passed off
      * the end, a warning logs and anything else escapes uncaught.
      */
-    catch?(this: T, error: Issue): Issue | void;
+    catch?(this: T, error: Caught): Caught | void;
   }
 
   /** Object overlay to override values and methods on a state. */
@@ -577,7 +577,7 @@ function init(state: State, ...args: State.Args) {
         const out = typeof arg == 'function' ? arg.call(state, state) : arg;
 
         if (out instanceof Promise)
-          out.catch((err) => forward(err, () => new Issue.Init(state, err)));
+          out.catch((err) => forward(err, () => new Caught.Init(state, err)));
         else if (Array.isArray(out)) queue.splice(i + 1, 0, ...out);
         else if (typeof out == 'function') listener(state, out, null);
         else if (typeof out == 'object') assign(state, out, true);
@@ -601,7 +601,7 @@ function init(state: State, ...args: State.Args) {
 
       for (const item of PENDING)
         if (typeof item == 'function') item();
-        else report(new Issue.Inactive(item));
+        else report(new Caught.Inactive(item));
 
       PENDING.clear();
     });
@@ -739,7 +739,7 @@ function compute(this: State, getter: (self: any) => unknown, key: string) {
         throw err;
       }
 
-      forward(err, () => new Issue.Getter(this, key, err));
+      forward(err, () => new Caught.Getter(this, key, err));
     }
 
     update(this, key, next, !isAsync);
@@ -1018,7 +1018,7 @@ function update<T>(
   own?: boolean
 ) {
   if (observer(state) === null) {
-    if (!silent) report(new Issue.Destroyed(state, String(key)), true);
+    if (!silent) report(new Caught.Destroyed(state, String(key)), true);
     return false;
   }
 
@@ -1038,15 +1038,15 @@ function update<T>(
 }
 
 /**
- * Pass an issue along `catch` handlers - most-derived class first, last registered
+ * Pass a caught error along `catch` handlers - most-derived class first, last registered
  * first - until one returns nothing. Passed off the end, a warning logs and anything
  * else escapes. A handler which throws escapes uncaught - to the caller when `sync`.
  */
-function report(issue: Issue, sync?: boolean) {
+function report(caught: Caught, sync?: boolean) {
   const handlers = new Set<NonNullable<State.On['catch']>>();
-  let error: Issue | void = issue;
+  let error: Caught | void = caught;
 
-  for (let T = issue.state.constructor as State.Extends; ; T = Object.getPrototypeOf(T)) {
+  for (let T = caught.state.constructor as State.Extends; ; T = Object.getPrototypeOf(T)) {
     for (const handler of [...(SETUP.get(T) || [])].reverse())
       if (typeof handler == 'object' && handler.catch) handlers.add(handler.catch);
 
@@ -1054,7 +1054,7 @@ function report(issue: Issue, sync?: boolean) {
   }
 
   try {
-    for (const handler of handlers) if (!(error = handler.call(issue.state, error))) return;
+    for (const handler of handlers) if (!(error = handler.call(caught.state, error))) return;
   } catch (err) {
     if (sync) throw err;
     return escape(err);
@@ -1070,9 +1070,9 @@ function escape(err: unknown) {
   });
 }
 
-/** Report `err` as a new issue, unless it is one a handler already rethrew. */
-function forward(err: unknown, create: () => Issue) {
-  if (err instanceof Issue) escape(err);
+/** Report `err` as newly caught, unless it is one a handler already rethrew. */
+function forward(err: unknown, create: () => Caught) {
+  if (err instanceof Caught) escape(err);
   else report(create());
 }
 
@@ -1080,7 +1080,7 @@ function forward(err: unknown, create: () => Issue) {
 function fault(err: unknown, owner?: object) {
   const state = owner instanceof State ? owner : owner && PARENT.get(owner);
 
-  if (state) forward(err, () => new Issue.Effect(state, err));
+  if (state) forward(err, () => new Caught.Effect(state, err));
   else escape(err);
 }
 
