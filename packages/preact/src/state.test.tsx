@@ -11,7 +11,7 @@ import {
   type MockInstance
 } from 'vitest';
 import { act, render, renderHook, waitFor } from '@testing-library/preact';
-import { mockPromise, flushMicrotasks } from '../test.setup';
+import { mockPromise, flushMicrotasks, mockWarn } from '../test.setup';
 
 function renderWith<T>(Type: State.Type | State, hook: () => T) {
   return renderHook(hook, {
@@ -85,9 +85,12 @@ describe('State.use', () => {
 
       hook.unmount();
 
-      expect(() => {
-        hook.result.current.value = 'baz';
-      }).toThrow();
+      const warn = mockWarn();
+
+      hook.result.current.value = 'baz';
+
+      expect(hook.result.current.value).toBe('bar');
+      expect(warn).toBeCalledWith(expect.objectContaining({ key: 'value', warning: true }));
     });
 
   });
