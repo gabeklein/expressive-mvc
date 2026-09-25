@@ -155,6 +155,34 @@ describe('error boundary', () => {
     expect(parentCatch).toBeCalledWith('boom');
   });
 
+  it('will escape the root if render throws after recovery', async () => {
+    let resolve!: () => void;
+
+    const Throws = () => {
+      throw new Error('boom');
+    };
+
+    class Boundary extends Component {
+      fallback = (<span>Oops</span>);
+
+      async catch() {
+        await new Promise<void>((r) => (resolve = r));
+      }
+
+      render() {
+        return <Throws />;
+      }
+    }
+
+    const { container } = render(<Boundary />);
+
+    expect(screen).toHaveText('Oops');
+
+    await expect(act(async () => resolve())).rejects.toThrow('boom');
+
+    expect(container.innerHTML).toBe('');
+  });
+
   it('will propagate catch rejection to parent boundary', async () => {
     const parentCatch = vi.fn();
 
