@@ -133,7 +133,7 @@ it('will release the twin discarded by dedupe', async () => {
   await flushMicrotasks();
 
   expect(warn).toBeCalledTimes(1);
-  expect(warn).toBeCalledWith(expect.stringContaining(String(a)));
+  expect(warn).toBeCalledWith(expect.objectContaining({ state: a, warning: true }));
 });
 
 // Seam: React passes context as a constructor argument alongside props.
