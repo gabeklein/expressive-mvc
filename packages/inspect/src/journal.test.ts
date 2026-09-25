@@ -229,6 +229,21 @@ describe('journal', () => {
     expect(journal.frames().length).toBe(1);
   });
 
+  it('will act until work deferred across macrotasks settles', async () => {
+    attach();
+    const composer = Composer.new();
+    const frames = await act(() => {
+      setTimeout(() => {
+        composer.draft = 'a';
+        setTimeout(() => {
+          composer.draft = 'b';
+          setTimeout(() => (composer.draft = 'c'));
+        });
+      });
+    });
+    expect(frames.map((frame) => frame.events[0].value)).toEqual(['a', 'b', 'c']);
+  });
+
   it('will act while recording is already on', async () => {
     attach();
     journal.record({ level: 'keys' });
