@@ -5,7 +5,9 @@ import { get } from './field/get';
 import { ref } from './field/ref';
 import { set } from './field/set';
 import { State, update } from './state';
-import { event } from './observable';
+import { event, listener, watch } from './observable';
+import { Error as Issue } from './error';
+import { has } from './field/has';
 
 it('will extend custom class', () => {
   class Subject extends State {
@@ -2262,7 +2264,7 @@ describe('set method', () => {
       test.foo = 1;
 
       await expect(test).toHaveUpdated();
-      expect(error).toBeCalledWith(oops);
+      expect(error).toBeCalledWith(expect.objectContaining({ state: test, cause: oops }));
 
       done();
     });
@@ -2289,49 +2291,76 @@ describe('set method', () => {
       expect(callback).toBeCalledWith('bar', test);
     });
 
-    it('will disallow update if state is destroyed', () => {
-      class Test extends State {
-        foo = 0;
-      }
+    describe('destroyed', () => {
+      const warn = mockWarn();
 
-      const callback = vi.fn();
-      const test = Test.new();
+      it('will drop an update and warn', () => {
+        class Test extends State {
+          foo = 0;
+        }
 
-      test.set(callback);
-      test.foo++;
+        const callback = vi.fn();
+        const test = Test.new();
 
-      test.set(null);
+        test.set(callback);
+        test.foo++;
 
-      expect(() => test.foo++).toThrow(
-        /Tried to update [\w-]+\.foo but state is destroyed\./
-      );
-      expect(callback).toBeCalledTimes(1);
-    });
+        test.set(null);
+        test.foo++;
 
-    it('will disallow set with config if destroyed', () => {
-      class Test extends State {
-        foo = 0;
-      }
+        expect(test.foo).toBe(1);
+        expect(callback).toBeCalledTimes(1);
+        expect(warn).toBeCalledWith(
+          expect.objectContaining({
+            state: test,
+            key: 'foo',
+            warning: true,
+            message: expect.stringMatching(/Tried to update [\w-]+\.foo but state is destroyed\./)
+          })
+        );
+      });
 
-      const test = Test.new();
+      it('will drop set with config', () => {
+        class Test extends State {
+          foo = 0;
+        }
 
-      test.set(null);
+        const test = Test.new();
 
-      expect(() => test.set('foo', { value: 1 })).toThrow(
-        /Tried to update [\w-]+\.foo but state is destroyed\./
-      );
-    });
+        test.set(null);
+        test.set('foo', { value: 1 });
 
-    it('will disallow assign if destroyed', () => {
-      class Test extends State {
-        foo = 0;
-      }
+        expect(test.foo).toBe(0);
+        expect(warn).toBeCalledWith(expect.objectContaining({ key: 'foo' }));
+      });
 
-      const test = Test.new();
+      it('will drop assign', () => {
+        class Test extends State {
+          foo = 0;
+        }
 
-      test.set(null);
+        const test = Test.new();
 
-      expect(() => test.set({ foo: 1 })).toThrow(/was destroyed/);
+        test.set(null);
+        test.set({ foo: 1 });
+
+        expect(test.foo).toBe(0);
+        expect(warn).toBeCalledWith(expect.objectContaining({ key: 'foo' }));
+      });
+
+      it('will drop assign silently when silent', () => {
+        class Test extends State {
+          foo = 0;
+        }
+
+        const test = Test.new();
+
+        test.set(null);
+        test.set({ foo: 1 }, true);
+
+        expect(test.foo).toBe(0);
+        expect(warn).not.toBeCalled();
+      });
     });
 
     it('will still read values after destroyed', () => {
@@ -2778,9 +2807,12 @@ describe('new method (static)', () => {
     await expect(test).not.toHaveUpdated();
 
     expect(error).toBeCalledWith(
-      expect.stringMatching(/Async error in constructor for [\w-]+:/)
+      expect.objectContaining({
+        state: test,
+        cause: expects,
+        message: expect.stringMatching(/Async error in constructor for [\w-]+\./)
+      })
     );
-    expect(error).toBeCalledWith(expects);
   });
 
   it('will inject both properties and methods', () => {
@@ -3265,6 +3297,253 @@ describe('on before / after stages (static)', () => {
   });
 });
 
+describe('on catch stage (static)', () => {
+  const warn = mockWarn();
+  const error = mockError();
+
+  function uncaught() {
+    const caught: unknown[] = [];
+    const queue = globalThis.queueMicrotask;
+    const spy = vi.spyOn(globalThis, 'queueMicrotask').mockImplementation((fn) =>
+      queue(() => {
+        try {
+          fn();
+        } catch (err) {
+          caught.push(err);
+        }
+      })
+    );
+
+    return { caught, restore: () => spy.mockRestore() };
+  }
+
+  it('will hand an issue to catch instead of logging it', () => {
+    class Test extends State {
+      foo = 0;
+    }
+
+    const handler = vi.fn();
+
+    Test.on({ catch: handler });
+
+    const test = Test.new();
+
+    test.set(null);
+    test.foo = 1;
+
+    expect(handler).toBeCalledWith(expect.any(Issue.Destroyed));
+    expect(handler.mock.contexts[0]).toBe(test);
+    expect(warn).not.toBeCalled();
+  });
+
+  it('will run base and subclass handlers once each, base first', () => {
+    class Base extends State {
+      foo = 0;
+    }
+
+    class Sub extends Base {}
+
+    const order: string[] = [];
+    const shared = { catch: () => void order.push('shared') };
+
+    Base.on({ catch: () => void order.push('base') });
+    Base.on(shared);
+    Sub.on({ catch: () => void order.push('sub') });
+    Sub.on(shared);
+
+    const sub = Sub.new();
+
+    sub.set(null);
+    sub.foo = 1;
+
+    expect(order).toEqual(['base', 'shared', 'sub']);
+  });
+
+  it('will reach a handler registered on State itself', () => {
+    class Test extends State {
+      foo = 0;
+    }
+
+    const handler = vi.fn();
+    const stop = State.on({ catch: handler });
+    const test = Test.new();
+
+    test.set(null);
+    test.foo = 1;
+    stop();
+
+    expect(handler).toBeCalledWith(expect.any(Issue.Destroyed));
+  });
+
+  it('will not reach handlers of an unrelated class', () => {
+    class Test extends State {
+      foo = 0;
+    }
+
+    class Other extends State {}
+
+    const handler = vi.fn();
+
+    Other.on({ catch: handler });
+
+    const test = Test.new();
+
+    test.set(null);
+    test.foo = 1;
+
+    expect(handler).not.toBeCalled();
+    expect(warn).toBeCalledWith(expect.any(Issue.Destroyed));
+  });
+
+  it('will throw to the writer when rethrown at a synchronous site', () => {
+    class Test extends State {
+      foo = 0;
+    }
+
+    Test.on({
+      catch(issue) {
+        throw issue;
+      }
+    });
+
+    const test = Test.new();
+
+    test.set(null);
+
+    expect(() => (test.foo = 1)).toThrow(Issue.Destroyed);
+  });
+
+  it('will escape uncaught when rethrown at an async site', async () => {
+    class Test extends State {}
+
+    Test.on({
+      catch(issue) {
+        throw issue;
+      }
+    });
+
+    const { caught, restore } = uncaught();
+
+    new Test();
+    await flushMicrotasks();
+    restore();
+
+    expect(caught).toEqual([expect.any(Issue.Inactive)]);
+  });
+
+  it('will let a handler swallow only warnings', async () => {
+    class Test extends State {
+      foo = 0;
+      fail = false;
+
+      get value() {
+        if (this.fail) throw new Error('oops');
+        return this.foo;
+      }
+    }
+
+    const seen: boolean[] = [];
+
+    Test.on({
+      catch(issue) {
+        seen.push(issue.warning);
+        if (!issue.warning) throw issue;
+      }
+    });
+
+    const { caught, restore } = uncaught();
+    const test = Test.new();
+
+    void test.value;
+    test.fail = true;
+    await expect(test).toHaveUpdated();
+    restore();
+
+    const other = Test.new();
+
+    other.set(null);
+    other.foo = 1;
+
+    expect(seen).toEqual([false, true]);
+    expect(caught).toEqual([expect.any(Issue.Getter)]);
+  });
+
+  it('will attribute an effect error to the owner of a collection', async () => {
+    class Test extends State {
+      list = has<number>();
+    }
+
+    const handler = vi.fn();
+    const oops = new Error('oops');
+
+    Test.on({ catch: handler });
+
+    const test = Test.new();
+
+    watch(test.list, ($) => {
+      if ($.size) throw oops;
+    });
+
+    test.list.push(1);
+    await flushMicrotasks();
+
+    expect(handler).toBeCalledWith(expect.any(Issue.Effect));
+    expect(handler).toBeCalledWith(expect.objectContaining({ state: test, cause: oops }));
+  });
+
+  it('will not report again an issue a handler rethrew', async () => {
+    class Target extends State {
+      foo = 0;
+    }
+
+    class Source extends State {
+      value = 0;
+    }
+
+    Target.on({
+      catch(issue) {
+        throw issue;
+      }
+    });
+
+    const handler = vi.fn();
+
+    Source.on({ catch: handler });
+
+    const target = Target.new();
+    const source = Source.new();
+
+    target.set(null);
+    source.get(($) => {
+      if ($.value) target.foo = 1;
+    });
+
+    const { caught, restore } = uncaught();
+
+    source.value = 1;
+    await flushMicrotasks();
+    restore();
+
+    expect(handler).not.toBeCalled();
+    expect(caught).toEqual([expect.any(Issue.Destroyed)]);
+  });
+
+  it('will log an effect error with no owning State', async () => {
+    const subject = {};
+    const oops = new Error('oops');
+
+    event(subject);
+    listener(subject, () => () => {
+      throw oops;
+    });
+
+    event(subject, 'value');
+    await flushMicrotasks();
+
+    expect(error).toBeCalledWith(oops);
+  });
+});
+
 describe('computed (getters)', () => {
   describe('destroyed', () => {
     it('will read last value after destroy', () => {
@@ -3724,10 +4003,15 @@ describe('computed (getters)', () => {
 
       await expect(state).toHaveUpdated();
 
-      expect(warn).toBeCalledWith(
-        `An exception was thrown while refreshing ${state}.value.`
+      expect(warn).not.toBeCalled();
+      expect(error).toBeCalledWith(
+        expect.objectContaining({
+          state,
+          key: 'value',
+          cause: expect.any(Error),
+          message: `An exception was thrown while refreshing ${state}.value.`
+        })
       );
-      expect(error).toBeCalled();
     });
   });
 
@@ -3887,7 +4171,7 @@ describe('activation', () => {
     await flushMicrotasks();
 
     expect(warn).toBeCalledWith(
-      `${state} was constructed but never activated.`
+      expect.objectContaining({ state, message: `${state} was constructed but never activated.` })
     );
   });
 
@@ -4023,9 +4307,7 @@ describe('activation', () => {
     await flushMicrotasks();
 
     expect(warn).toBeCalledTimes(1);
-    expect(warn).toBeCalledWith(
-      `${other} was constructed but never activated.`
-    );
+    expect(warn).toBeCalledWith(expect.objectContaining({ state: other }));
   });
 
   it('will not warn if placed in a context', async () => {

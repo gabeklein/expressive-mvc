@@ -1,3 +1,5 @@
+import { fault } from './state';
+
 type Handler = () => void;
 type Transition = (work: Handler) => void;
 
@@ -13,6 +15,7 @@ interface Scheduled {
   transition?: Transition;
   awaiting?: Set<Pending>;
   holds?: number;
+  owner?: object;
 }
 
 const DISPATCH = new Map<Handler, Scheduled>();
@@ -95,7 +98,7 @@ function flush() {
       if (transition) transition(handler);
       else handler();
     } catch (err) {
-      console.error(err);
+      fault(err, scheduled.owner);
     } finally {
       current = replaying = undefined;
     }
@@ -109,14 +112,15 @@ function flush() {
  * subscriber defers - it brackets the replay, but only where the scheduled
  * work asked for one.
  */
-function enqueue(handler: Handler, transition?: Transition) {
+function enqueue(handler: Handler, transition?: Transition, owner?: object) {
   if (!DISPATCH.size) queueMicrotask(flush);
 
   const scheduled = DISPATCH.get(handler);
 
   if (!scheduled) {
     const next: Scheduled = {
-      transition: current ? transition : undefined
+      transition: current ? transition : undefined,
+      owner
     };
 
     DISPATCH.set(handler, next);
