@@ -1,12 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { flushMicrotasks, mockError, mockPromise } from '../test.setup';
+import { flushMicrotasks, mockError, mockPromise, mockUncaught } from '../test.setup';
 import { watch } from './observable';
 import { enqueue, hold, pending } from './dispatch';
 import { State } from './state';
 
 describe('dispatch', () => {
-  const error = mockError();
+  mockError();
 
   function scheduler(log: string[], name = 'transition') {
     return (work: () => void) => {
@@ -271,6 +271,7 @@ describe('dispatch', () => {
   });
 
   it('will squash stacked handlers and continue after errors', async () => {
+    const caught = mockUncaught();
     const after = vi.fn();
     const expected = new Error('failed');
     const fail = () => {
@@ -283,7 +284,7 @@ describe('dispatch', () => {
 
     await flushMicrotasks();
 
-    expect(error).toHaveBeenCalledWith(expected);
+    expect(caught).toEqual([expected]);
     expect(after).toHaveBeenCalledOnce();
   });
 
