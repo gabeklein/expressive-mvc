@@ -52,6 +52,7 @@ describe('inspect(page)', () => {
     composer.draft = 'a';
     expect((await api.journal.frames({ since }))[0].events[0].key).toBe('draft');
     expect((await api.journal.history({ key: 'draft' })).length).toBe(1);
+    expect(JSON.parse(await api.journal.export({ since }))).toMatchObject({ key: 'draft', kind: 'update' });
     await api.journal.clear();
     expect(await api.journal.frames()).toEqual([]);
   });
