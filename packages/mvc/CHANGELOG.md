@@ -1,5 +1,11 @@
 # @expressive/mvc
 
+## 0.85.1
+
+### Patch Changes
+
+- [#381](https://github.com/gabeklein/expressive-mvc/pull/381) [`3ce41fb`](https://github.com/gabeklein/expressive-mvc/commit/3ce41fbf5c24434dd7c44484593a4ee766a221ae) An effect or subscription (`state.get(fn)`, `State.use()` / `State.get()` in components, computed getters) no longer leaves its previous run's subscription attached when it re-runs. Listeners on the watched state - and on child states read through it - used to grow by one per re-run, so every write to a long-lived state slowed down steadily. A suspended run's subscription is released the same way once the effect runs again.
+
 ## 0.85.0
 
 ### Minor Changes
