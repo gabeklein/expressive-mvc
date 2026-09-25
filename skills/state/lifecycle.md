@@ -55,7 +55,7 @@ class Timer extends State {
 - `function` - called with `this` as the instance; may return a cleanup function, an object to assign, an array to process, or a Promise
 - `object` - assigned to state properties
 - `array` - flattened and re-processed
-- `Promise` (returned by a callback) - rejection caught and logged
+- `Promise` (returned by a callback) - a rejection is reported as `Caught.Init` ([Error Handling](#error-handling))
 
 > **Timing:** args (and assigned props, in adapters) apply during activation, *after* field initializers and `State.on` setup. A trailing arg callback - like `new()` and an `on({ after })` handler - sees applied values. The JS constructor body and bare/`before` `State.on` setup run *before* the merge and see only field defaults; don't read an applied prop there.
 
