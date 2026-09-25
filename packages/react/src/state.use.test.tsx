@@ -2,7 +2,7 @@ import React, { Suspense } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { State, Provider, get, set } from '.';
 import { act, render, renderHook, waitFor } from '@testing-library/react';
-import { flushMicrotasks, mockPromise, mockWarn } from '../test.setup';
+import { flushMicrotasks, mockPromise } from '../test.setup';
 import { pending } from '@expressive/mvc';
 
 describe('State.use', () => {
@@ -159,12 +159,9 @@ describe('State.use', () => {
 
       hook.unmount();
 
-      const warn = mockWarn();
-
-      hook.result.current.value = 'baz';
-
-      expect(hook.result.current.value).toBe('bar');
-      expect(warn).toBeCalledWith(expect.objectContaining({ key: 'value', warning: true }));
+      expect(() => {
+        hook.result.current.value = 'baz';
+      }).toThrow();
     });
 
     it('will bind methods to instance', async () => {

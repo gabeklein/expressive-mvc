@@ -8,19 +8,20 @@ class Caught extends Error {
   /** Non-urgent - unhandled, it logs as a warning. */
   readonly warning: boolean = false;
 
+  declare readonly state: State;
+
   constructor(
-    readonly state: State,
+    state: State,
     message: string,
     readonly key?: string,
     cause?: unknown
   ) {
     super(message, cause ? { cause } : undefined);
+    Object.defineProperty(this, 'state', { value: state });
   }
 
-  /** A write to a destroyed state, dropped. */
+  /** A write to a destroyed state - thrown to the writer unless a handler takes it. */
   static Destroyed = class Destroyed extends Caught {
-    readonly warning = true;
-
     constructor(state: State, key: string) {
       super(state, `Tried to update ${state}.${key} but state is destroyed.`, key);
     }
