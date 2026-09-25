@@ -154,7 +154,7 @@ increment(); // `this` is bound
 
 - Overwriting works: `test.method = () => 'bar'`.
 - `super` calls work across inheritance chains.
-- Methods called inside effects do NOT subscribe to properties they access.
+- Methods never subscribe: what a method reads is untracked, whether it is called from an effect, a render, or a getter. To derive from another state, read its fields or getters - `thread.cwd()` inside a getter goes stale; a `get cwd()` does not.
 - `this` inside a method is the instance, never a tracking proxy (`this === this.is`) - safe as a `Map`/`Set` key or for identity comparison, however the method was reached, including off a proxy handed to an effect or render. The `new()` hook has the same guarantee ([lifecycle.md](lifecycle.md#the-new-hook)).
 
 ## Static Methods
