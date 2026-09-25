@@ -3298,6 +3298,17 @@ describe('on before / after stages (static)', () => {
   });
 });
 
+it('will add its State to the global copies list once', () => {
+  class Test extends State {}
+
+  Test.new();
+  Test.new();
+
+  const copies = (globalThis as Record<symbol, unknown[]>)[Symbol.for('@expressive/mvc')];
+
+  expect(copies.filter((entry) => entry === State)).toEqual([State]);
+});
+
 describe('on catch stage (static)', () => {
   const warn = mockWarn();
   const error = mockError();
