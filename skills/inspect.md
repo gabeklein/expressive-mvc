@@ -173,6 +173,47 @@ What to reach for, in order:
 
 The relay reaches only the inspector's own members - no `eval`, no property walks beyond them. Arbitrary JS belongs to a driver's `evaluate`, granted by whoever runs the harness.
 
+## Node process
+
+Install the same way (`import '@expressive/inspect/install'` first), then reach it through Node's debugger - no server in the app:
+
+```bash
+node --inspect app.js     # or, already running: kill -USR1 <pid>
+curl -s 127.0.0.1:9229/json/list   # webSocketDebuggerUrl
+```
+
+A CDP session wrapped as `evaluate` drives the unchanged bridge:
+
+```ts
+import { inspect } from '@expressive/inspect/bridge';
+
+const [target] = await (await fetch('http://127.0.0.1:9229/json/list')).json();
+const socket = new WebSocket(target.webSocketDebuggerUrl);
+await new Promise((resolve) => (socket.onopen = resolve));
+
+let id = 0;
+const waiting = new Map();
+socket.onmessage = ({ data }) => { const m = JSON.parse(data); waiting.get(m.id)?.(m); };
+const send = (method, params) =>
+  new Promise((resolve) => { waiting.set(++id, resolve); socket.send(JSON.stringify({ id, method, params })); });
+
+const api = inspect({
+  async evaluate(fn, arg) {
+    const { result } = await send('Runtime.evaluate', {
+      expression: `(${fn})(${JSON.stringify(arg)})`, awaitPromise: true, returnByValue: true
+    });
+    if (result.exceptionDetails) throw new Error(result.exceptionDetails.exception?.description);
+    return result.result.value;
+  }
+});
+
+await api.get('HostChat.status');
+await api.around(() => api.call('HostChat.send', 'hi'));
+```
+
+- The debug port runs arbitrary code in the process - keep it on `127.0.0.1`.
+- Bun's `--inspect` speaks WebKit Inspector Protocol, not CDP; this recipe is Node-only.
+
 ## Several instances of one type
 
 `find('Row')` and `get('Row.x')` take the first live instance. Disambiguate by id (`models().filter((m) => m.type === 'Row')`, then `get(`${id}.x`)`), or address through the owner (`Table.rows`, not a bare `Row`).
