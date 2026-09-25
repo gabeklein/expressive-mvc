@@ -43,15 +43,26 @@ Ownership: a State in a plain field, `has` pool, or `map` is that owner's child;
 
 ## Orphans
 
-Under a host adapter, an activated instance is **claimed** by a host commit (`mount`), by a claimed owner, or by holding its `static global` slot in the root context. One settled but unclaimed - a render React threw away, a StrictMode twin, a `State.new()` nobody placed - is an orphan; so are its children. Orphans stay out of `models()`, `tree()`, `instances()`, `roots()`; label lookups resolve mainline first. `orphans()` lists them; `warnings()` counts them plus unclaimed instances the collector already reaped. Without a host every instance is mainline.
+Under a host adapter, an activated instance is **claimed** by a host commit (`mount`), by a claimed owner, or by holding its `static global` slot in the root context. One settled but unclaimed - a render React threw away, a StrictMode twin, a `State.new()` nobody placed - is an orphan; so are its children. Orphans stay out of `models()`, `tree()`, `instances()`, `roots()`; label lookups resolve mainline first. `orphans()` lists them; `health()` counts them plus unclaimed instances the collector already reaped. Without a host every instance is mainline.
 
 ```ts
-inspect.warnings()                  // { orphans: 54, collected: 0 } - a suspended first render left a full tree behind
+inspect.health().orphans            // 54 - a suspended first render left a full tree behind
 inspect.orphans().map((o) => o.type)
 instance.claimed
 ```
 
 Unclaimed instances are held weakly - the inspector never pins an abandoned render in memory. A rising `collected` with no `destroy` events is a leak the host cleaned up for you.
+
+## Health
+
+Check before trusting what inspect shows:
+
+```ts
+inspect.health() // { orphans, collected, copies, caught: { Destroyed, Inactive, Getter, Init, Effect } }
+```
+
+- `copies > 1` - more than one `@expressive/mvc` is loaded; inspect sees only States from the copy it imports, and warns once. Usual cause: a bundler resolving mvc twice - dedupe or alias it.
+- `caught` - reports reaching inspect's `catch` handler ([State.on()](state/state.md#stateon)). Inspect passes each on, so behavior is unchanged. A handler registered later, or on a subclass, runs first - one that handles a report hides it from inspect.
 
 ## Addresses (across a boundary)
 
@@ -97,7 +108,7 @@ journal.clear()
 
 Filters OR together; none set records everything. `paths` take a label, `typeId`, or instance id left of the dot and a property right - events key on the instance that changed, so `Chats.openTabs`, never the owner path `Pairing.chats.openTabs`. `keys` match that property on any type.
 
-A frame is one synchronous batch of writes plus its flush, including writes effects make synchronously during it - the unit React commits. Work an effect defers to a later microtask opens a new frame with `cause` set to the scheduling frame; work deferred to a macrotask starts a new root. Events: `update` (stored key), `event` (custom dispatch), `call` (method, `render` excluded), `destroy`. Retains 500 frames.
+A frame is one synchronous batch of writes plus its flush, including writes effects make synchronously during it - the unit React commits. Work an effect defers to a later microtask opens a new frame with `cause` set to the scheduling frame; work deferred to a macrotask starts a new root. Events: `update` (stored key), `event` (custom dispatch), `call` (method, `render` excluded), `destroy`, `caught` (a `Caught` report, `value: { case, message }`). Retains 500 frames.
 
 Bulk analysis belongs outside the page: `export` to a sidecar and query there.
 

@@ -3,7 +3,7 @@ import { host } from '@expressive/mvc/runtime';
 import { describe, expect, it } from 'vitest';
 
 import { flushMicrotasks } from '../test.setup';
-import { attach, find, Instance, instances, models, orphans, warnings } from './index';
+import { attach, find, health, Instance, instances, models, orphans } from './index';
 import { collected } from './inspect';
 
 host({
@@ -59,7 +59,7 @@ describe('orphans under a host', () => {
     expect(models()).toEqual([]);
     expect(orphans().map((o) => o.id)).toEqual([String(plain)]);
     expect(Instance.of(plain).claimed).toBe(false);
-    expect(warnings()).toEqual({ orphans: 1, collected: 0 });
+    expect(health()).toMatchObject({ orphans: 1, collected: 0 });
   });
 
   it('will claim on host mount and forward the original', async () => {
@@ -169,7 +169,7 @@ describe('orphans under a host', () => {
     await flushMicrotasks();
     collected(String(plain));
     collected(String(plain));
-    expect(warnings()).toEqual({ orphans: 0, collected: 1 });
+    expect(health()).toMatchObject({ orphans: 0, collected: 1 });
     expect(Instance.of(plain).alive).toBe(false);
   });
 });
