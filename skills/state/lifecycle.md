@@ -83,8 +83,9 @@ Children always go before parents; nested contexts destroy inner-to-outer.
 
 Afterward:
 
-- Assignment throws `"Tried to update {state}.{key} but state is destroyed."`
-- Silent updates (`state.set(assign, true)`) return without throwing.
+- Assignment is dropped and reported as `Error.Destroyed` - a warning, see [Error Handling](#error-handling).
+- Silent updates (`state.set(assign, true)`) drop without a report.
+- Subscribing (`get(effect)`, `set(callback)`) still throws.
 
 ## Batching
 
@@ -130,7 +131,17 @@ state.get((current) => {
 
 ## Error Handling
 
-- **Async errors in constructors** - logged to `console.error`; the state is still created.
-- **Writing destroyed state** - throws synchronously; silent `state.set(assign, true)` skips instead.
+What mvc does not throw it reports as an `Error` (exported from `@expressive/mvc`, cases as static properties) to `catch` handlers on the class chain - [State.on()](state.md#stateon). Unhandled: `console.warn` if `error.warning`, else `console.error`. Every report carries `state`; `key` and `cause` where they apply.
+
+| `Error.`    | `warning` | When                                                                   |
+| ----------- | --------- | ---------------------------------------------------------------------- |
+| `Destroyed` | `true`    | write to a destroyed state - dropped                                   |
+| `Inactive`  | `true`    | constructed, never activated in that tick                              |
+| `Getter`    | `false`   | getter threw while refreshing - value becomes `undefined`; `cause`     |
+| `Init`      | `false`   | async initializer or `new()` rejected - state still created; `cause`   |
+| `Effect`    | `false`   | effect or listener threw during a flush; `cause` - collections resolve to their owner |
+
+Other failures:
+
 - **Reading uninitialized required values** - throws a Suspense-compatible error (Promise with Error properties) that resolves when the value is assigned, or rejects if the state is destroyed first.
 - **Circular updates** - an effect updating a property it reads does not re-trigger in the same cycle; the update lands in the next batch.

@@ -195,6 +195,16 @@ const stop = Counter.on(function (this: Counter) {
 
 - A bare function is per-instance setup before `new()` (sugar for `{ before }`). An object hooks by cadence: `type(Class)` once per class at bootstrap, `before` per instance before `new()`, `after` per instance at the `new()` slot.
 - Handlers run ancestor-first; one registered on both parent and child runs once.
+- `catch(error)` receives each `Error` mvc would otherwise log for the class ([lifecycle.md](lifecycle.md#error-handling)), `this` the instance. Returning handles it; a rethrow escapes uncaught - to the writer for a destroyed write. All handlers on the chain run.
+
+```ts
+State.on({
+  catch(error) {
+    if (error.warning) return; // swallow non-urgent
+    throw error; // escalate the rest
+  }
+});
+```
 
 `on()` is the mix-in for environment-specific activation of a shared class. The domain module stays fields-only - no `window`, DOM, or host APIs at module scope or in `new()`; an adapter module re-exports the class and registers `on()` once, so every instance constructed after that import gets the wiring, and environments that never import the adapter never run it. Don't subclass (`class ViewSession extends Session`) and don't construct in the adapter - the consumer owns the instance. Recipe: [patterns.md](../react/patterns.md).
 
