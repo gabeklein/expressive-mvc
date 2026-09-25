@@ -1,6 +1,6 @@
 export type Call = [path: string[], args: unknown[]];
 
-/** Serialized by `evaluate` into the page - must stay self-contained. */
+/** Serialized by `evaluate` into the page - must stay self-contained. Walks own members of the inspector only. */
 export function dispatch(first: unknown, second?: unknown) {
   const call = (second ?? first) as Call;
   const api = (globalThis as { __EXPRESSIVE_INSPECT__?: Record<string, unknown> }).__EXPRESSIVE_INSPECT__;
@@ -14,9 +14,14 @@ export function dispatch(first: unknown, second?: unknown) {
   let owner: unknown;
 
   for (const key of call[0]) {
+    if (!Object.prototype.hasOwnProperty.call(target, key))
+      throw new Error(`No inspector method ${call[0].join('.')}.`);
+
     owner = target;
     target = (target as Record<string, unknown>)[key];
   }
 
-  return (target as Function).apply(owner, call[1]);
+  if (typeof target != 'function') throw new Error(`No inspector method ${call[0].join('.')}.`);
+
+  return target.apply(owner, call[1]);
 }
