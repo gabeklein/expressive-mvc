@@ -195,14 +195,14 @@ const stop = Counter.on(function (this: Counter) {
 
 - A bare function is per-instance setup before `new()` (sugar for `{ before }`). An object hooks by cadence: `type(Class)` once per class at bootstrap, `before` per instance before `new()`, `after` per instance at the `new()` slot.
 - Handlers run ancestor-first; one registered on both parent and child runs once.
-- `catch(error)` receives each `Error` mvc would otherwise log for the class ([lifecycle.md](lifecycle.md#error-handling)), `this` the instance. Returning handles it; a rethrow escapes uncaught - to the writer for a destroyed write. All handlers on the chain run.
+- `catch(error)` receives each `Error` mvc reports for the class ([lifecycle.md](lifecycle.md#error-handling)), `this` the instance - like nested `catch` blocks: most-derived class first, last registered first. Return the error (or a replacement `Error`) to pass it on; return nothing to handle it; throw to escape uncaught at once - to the writer for a destroyed write. Passed off the end, a warning logs and anything else escapes uncaught.
 
 ```ts
 State.on({
   catch(error) {
-    if (error.warning) return; // swallow non-urgent
-    throw error; // escalate the rest
-  }
+    record(error); // observe
+    if (!error.warning) return error; // pass on - escapes uncaught
+  } // warnings handled
 });
 ```
 

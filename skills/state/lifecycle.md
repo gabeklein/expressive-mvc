@@ -131,7 +131,7 @@ state.get((current) => {
 
 ## Error Handling
 
-What mvc does not throw it reports as an `Error` (exported from `@expressive/mvc`, cases as static properties) to `catch` handlers on the class chain - [State.on()](state.md#stateon). Unhandled: `console.warn` if `error.warning`, else `console.error`. Every report carries `state`; `key` and `cause` where they apply.
+What mvc does not throw it reports as an `Error` (exported from `@expressive/mvc`, cases as static properties) to `catch` handlers on the class chain - [State.on()](state.md#stateon). Unhandled: `console.warn` if `error.warning`, else it escapes uncaught (fails a test run, crashes a Node process). Every report carries `state`; `key` and `cause` where they apply.
 
 | `Error.`    | `warning` | When                                                                   |
 | ----------- | --------- | ---------------------------------------------------------------------- |
