@@ -31,7 +31,7 @@ So `set(values)` is the wire-snapshot ingest: a host payload may be a superset -
 
 ```ts
 state.set({ count: 5 }); // merge, triggers events
-state.set({ count: 5 }, true); // silent - no events, no throw if destroyed (useful in teardown)
+state.set({ count: 5 }, true); // silent - no events, no report if destroyed (useful in teardown)
 ```
 
 Methods can be replaced:
@@ -115,7 +115,7 @@ state.set(42); // number event
 set(status: null): void
 ```
 
-Terminates the state: children destroyed first (inner-to-outer), listeners notified with `null`, cleanups run, state frozen. Afterward, assignment throws `"Tried to update {state}.{key} but state is destroyed."`; silent `set(assign, true)` returns without throwing. Full order: [lifecycle.md](lifecycle.md#destruction).
+Terminates the state: children destroyed first (inner-to-outer), listeners notified with `null`, cleanups run, state frozen. Afterward, assignment is dropped and reported as `Error.Destroyed`; silent `set(assign, true)` drops without a report. Full order: [lifecycle.md](lifecycle.md#destruction).
 
 ```ts
 state.set(null);
