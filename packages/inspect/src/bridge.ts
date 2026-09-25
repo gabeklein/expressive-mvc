@@ -31,6 +31,7 @@ export function inspect(target: Evaluates) {
     call: remote<unknown>('call') as (address: string, ...args: unknown[]) => Promise<unknown>,
     models: remote<ReturnType<typeof Inspect.models>>('models') as () => Promise<ReturnType<typeof Inspect.models>>,
     tree: remote<ReturnType<typeof Inspect.tree>>('tree') as () => Promise<ReturnType<typeof Inspect.tree>>,
+    health: remote<ReturnType<typeof Inspect.health>>('health') as () => Promise<ReturnType<typeof Inspect.health>>,
 
     journal: {
       record: record as (options?: Options) => Promise<Required<Options>>,

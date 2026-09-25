@@ -199,25 +199,22 @@ describe('health', () => {
   }
 
   it('will count caught reports by case and pass them on', () => {
-    const warn = mockWarn();
     attach();
     const note = Note.new();
 
     note.set(null);
-    note.text = 'late';
 
+    expect(() => (note.text = 'late')).toThrow(Caught.Destroyed);
     expect(health().caught).toEqual({ Destroyed: 1, Inactive: 0, Getter: 0, Init: 0, Effect: 0 });
-    expect(warn).toHaveBeenCalledWith(expect.any(Caught.Destroyed));
   });
 
   it('will record a caught report in the journal', async () => {
-    mockWarn();
     attach();
     journal.record({ level: 'keys' });
     const note = Note.new();
 
     note.set(null);
-    note.text = 'late';
+    expect(() => (note.text = 'late')).toThrow();
     await flushMicrotasks();
 
     expect(journal.history({ key: 'text' }).map(({ event }) => event)).toContainEqual({
@@ -227,6 +224,20 @@ describe('health', () => {
       kind: 'caught',
       value: { case: 'Destroyed', message: `Tried to update ${note}.text but state is destroyed.` }
     });
+  });
+
+  it('will record the stack of a caught report at values level', async () => {
+    attach();
+    journal.record({ level: 'values' });
+    const note = Note.new();
+
+    note.set(null);
+    expect(() => (note.text = 'late')).toThrow();
+    await flushMicrotasks();
+
+    const [event] = journal.history({ key: 'text' }).map(({ event }) => event).filter((e) => e.kind === 'caught');
+
+    expect(event.value).toMatchObject({ case: 'Destroyed', stack: expect.stringContaining('Tried to update') });
   });
 
   it('will record a replacement it has no case for without counting it', async () => {
@@ -242,7 +253,7 @@ describe('health', () => {
     const replaced = Replaced.new();
 
     replaced.set(null);
-    replaced.text = 'late';
+    expect(() => (replaced.text = 'late')).toThrow('replaced');
     stop();
     await flushMicrotasks();
 
@@ -251,7 +262,7 @@ describe('health', () => {
       case: 'Caught',
       message: 'replaced'
     });
-    expect(caught).toEqual([expect.objectContaining({ message: 'replaced' })]);
+    expect(caught).toEqual([]);
   });
 
   it('will count loaded copies of mvc and warn once', () => {

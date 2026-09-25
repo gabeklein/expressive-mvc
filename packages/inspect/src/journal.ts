@@ -195,7 +195,7 @@ export function noteCaught(error: Caught, name: string): void {
     type: labelOf(state.constructor as typeof State),
     key: key ?? '',
     kind: 'caught',
-    value: { case: name, message: error.message }
+    value: config.level === 'values' ? { case: name, message: error.message, stack: error.stack } : { case: name, message: error.message }
   });
 }
 

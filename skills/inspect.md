@@ -58,10 +58,10 @@ Unclaimed instances are held weakly - the inspector never pins an abandoned rend
 Check before trusting what inspect shows:
 
 ```ts
-inspect.health() // { orphans, collected, copies, caught: { Destroyed, Inactive, Getter, Init, Effect } }
+inspect.health() // { orphans, collected, copies, caught: { Destroyed, Inactive, Getter, Init, Effect } } - also on the bridge and relay
 ```
 
-- `copies > 1` - more than one `@expressive/mvc` is loaded; inspect sees only States from the copy it imports, and warns once. Usual cause: a bundler resolving mvc twice - dedupe or alias it.
+- `copies > 1` - more than one `@expressive/mvc` is loaded; inspect sees only States from the copy it imports, and warns once. Usual cause: a bundler resolving mvc twice - dedupe or alias it. Counted only where inspect is loaded; a bundle that never imports it goes unseen.
 - `caught` - reports reaching inspect's `catch` handler ([State.on()](state/state.md#stateon)). Inspect passes each on, so behavior is unchanged. A handler registered later, or on a subclass, runs first - one that handles a report hides it from inspect.
 
 ## Addresses (across a boundary)
@@ -108,7 +108,7 @@ journal.clear()
 
 Filters OR together; none set records everything. `paths` take a label, `typeId`, or instance id left of the dot and a property right - events key on the instance that changed, so `Chats.openTabs`, never the owner path `Pairing.chats.openTabs`. `keys` match that property on any type.
 
-A frame is one synchronous batch of writes plus its flush, including writes effects make synchronously during it - the unit React commits. Work an effect defers to a later microtask opens a new frame with `cause` set to the scheduling frame; work deferred to a macrotask starts a new root. Events: `update` (stored key), `event` (custom dispatch), `call` (method, `render` excluded), `destroy`, `caught` (a `Caught` report, `value: { case, message }`). Retains 500 frames.
+A frame is one synchronous batch of writes plus its flush, including writes effects make synchronously during it - the unit React commits. Work an effect defers to a later microtask opens a new frame with `cause` set to the scheduling frame; work deferred to a macrotask starts a new root. Events: `update` (stored key), `event` (custom dispatch), `call` (method, `render` excluded), `destroy`, `caught` (a `Caught` report, `value: { case, message }`, plus `stack` at `values` - the write site for `Destroyed`). Retains 500 frames.
 
 Bulk analysis belongs outside the page: `export` to a sidecar and query there.
 
