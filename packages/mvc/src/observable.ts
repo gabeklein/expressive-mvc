@@ -227,7 +227,7 @@ function emit(o: Observer, key: Observer.Signal, subject: object): void {
       if (!filter || filter.has(k)) {
         const after = callback(k);
         if (after === null) listeners.delete(callback);
-        else if (after) enqueue(after, undefined, subject);
+        else if (typeof after == 'function') enqueue(after, undefined, subject);
       }
 
   if (key === null) listeners.clear();
