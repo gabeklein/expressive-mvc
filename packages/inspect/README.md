@@ -74,7 +74,7 @@ Off by default (the Vite relay records `keys` from load). `journal.record({ leve
 
 ## Orphans
 
-Instances a host never committed - a render thrown away, a StrictMode twin - stay out of `models()` and `tree()`. `orphans()` lists them, `warnings()` counts them.
+Instances a host never committed - a render thrown away, a StrictMode twin - stay out of `models()` and `tree()`. `orphans()` lists them, `health()` counts them - along with loaded mvc copies and caught reports.
 
 ## Minified builds
 

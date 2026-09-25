@@ -1,4 +1,4 @@
-import { State } from '@expressive/mvc';
+import { Caught, State } from '@expressive/mvc';
 
 import { parsePath, serialize } from './serialize';
 import { bracket } from './bracket';
@@ -23,7 +23,7 @@ export interface Event {
   id: string;
   type: string;
   key: string;
-  kind: 'update' | 'event' | 'call' | 'destroy';
+  kind: 'update' | 'event' | 'call' | 'destroy' | 'caught';
   value?: unknown;
   args?: unknown[];
 }
@@ -214,6 +214,18 @@ export function noteCall(state: State, key: string, args: unknown[]): void {
   const event: Event = { id: String(state), type: labelOf(state.constructor as typeof State), key, kind: 'call' };
   if (config.level === 'values') event.args = args.map((arg) => serialize(arg, 1));
   push(event);
+}
+
+export function noteCaught(error: Caught, name: string): void {
+  const { state, key } = error;
+  if (!wants(state, key)) return;
+  push({
+    id: String(state),
+    type: labelOf(state.constructor as typeof State),
+    key: key ?? '',
+    kind: 'caught',
+    value: { case: name, message: error.message }
+  });
 }
 
 export function noteDestroy(state: State): void {
