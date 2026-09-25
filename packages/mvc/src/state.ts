@@ -110,7 +110,8 @@ declare namespace State {
      * Receives a `Caught` mvc reports for this State or a subclass - most-derived
      * class first, last registered first. Return it (or a replacement) to pass it
      * on; return nothing to handle it; throw to let it escape uncaught. Passed off
-     * the end, a warning logs and anything else escapes uncaught.
+     * the end, a warning logs and anything else is thrown - to the writer for a
+     * destroyed write, else uncaught.
      */
     catch?(this: T, error: Caught): Caught | void;
   }
@@ -739,7 +740,7 @@ function compute(this: State, getter: (self: any) => unknown, key: string) {
         throw err;
       }
 
-      report(new Caught.Getter(this, key, err));
+      if (!(err instanceof Promise)) report(new Caught.Getter(this, key, err));
     }
 
     update(this, key, next, !isAsync);
@@ -1008,7 +1009,7 @@ function assign(state: State, data: State.Assign<State>, silent?: boolean) {
  *
  * This is used internally to update properties, but can also be used to update properties which are not managed by state, or to update values without triggering setters.
  *
- * A destroyed state drops the write and returns `false` - reported unless `silent`, which also skips dispatch.
+ * A destroyed state reports the write - thrown to the writer unless a `catch` handler takes it - and returns `false`; `silent` skips both, and dispatch.
  */
 function update<T>(
   state: State,
@@ -1040,7 +1041,7 @@ function update<T>(
 /**
  * Pass a caught error along `catch` handlers - most-derived class first, last registered
  * first - until one returns nothing. Passed off the end, a warning logs and anything
- * else escapes. A handler which throws escapes uncaught - to the caller when `sync` -
+ * else is thrown - to the caller when `sync`, else uncaught. So is a handler's throw,
  * and one wrapping an error a handler already threw escapes that error unreported.
  */
 function report(caught: Caught, sync?: boolean) {
@@ -1064,6 +1065,7 @@ function report(caught: Caught, sync?: boolean) {
   }
 
   if (error.warning) console.warn(error);
+  else if (sync) throw error;
   else escape(error);
 }
 
