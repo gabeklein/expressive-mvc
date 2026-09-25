@@ -1,6 +1,5 @@
-import { registerAppearance, registerAppearanceRoot, registerEmitter } from './appearance-protocol';
+import { registerAppearance, registerAppearanceRoot } from './appearance-protocol';
 import type { AppearanceContext, Block, Declaration, ResolvedAppearance } from './appearance-protocol';
-import { applyDeclarations } from './declarations';
 
 type Expression = string | Declaration | false | null | undefined | readonly Expression[];
 type Macro = (value?: unknown) => Expression;
@@ -39,16 +38,8 @@ interface AppearanceRoute {
   tag?: string;
 }
 
-interface Sheet {
-  element: HTMLStyleElement;
-  emitted: WeakMap<Block, Map<number, string>>;
-  names: Map<string, string>;
-  positions: [number, number][];
-}
-
 const contexts = new WeakMap<StyleScope, AppearanceContext>();
 const rootScopes = new WeakMap<object, StyleScope>();
-const sheets = new WeakMap<Document, Sheet>();
 const styles = new WeakMap<object, StyleMap[]>();
 const entered = new WeakSet<object>();
 const globals: StyleMap[] = [];
@@ -116,7 +107,6 @@ function style<T extends object>(type: T, rules: StyleMap): T {
   if (entered.has(type)) throw new Error('Cannot add styles after a component has rendered.');
 
   const maps = styles.get(type);
-  registerEmitter(emit);
   if (maps) maps.push(rules);
   else {
     const label = (type as { displayName?: string }).displayName || (type as Function).name;
@@ -134,7 +124,6 @@ function macro(rules: StyleMap): StyleMap {
   if (globalsEntered) throw new Error('Cannot add macros after rendering has started.');
   globals.push(rules);
   globalContext = undefined;
-  registerEmitter(emit);
   registerAppearanceRoot(() => {
     globalsEntered = true;
     return globalContext ||= extendContext(undefined, globals, 'global');
@@ -330,50 +319,6 @@ function expand(scope: StyleScope, value: unknown, stack: string[]): Expansion {
   walk(value, stack);
   if (Object.keys(nested).length) output.nested.push(nested);
   return output;
-}
-
-function emit(block: Block, depth: number, document: Document) {
-  let sheet = sheets.get(document);
-
-  if (!sheet?.element.sheet) {
-    const element = document.createElement('style');
-    element.dataset.expressive = 'jsx';
-    document.head.append(element);
-    sheet = { element, emitted: new WeakMap(), names: new Map(), positions: [] };
-    sheets.set(document, sheet);
-  }
-
-  let byDepth = sheet.emitted.get(block);
-  if (!byDepth) sheet.emitted.set(block, (byDepth = new Map()));
-
-  const cached = byDepth.get(depth);
-  if (cached) return cached;
-
-  const css = serialize(document, block.declarations);
-  const base = (depth ? `${block.name}-d${depth}` : block.name).replace(/[^\w-]/g, '_');
-  let name = base;
-
-  for (let index = 2; sheet.names.has(name) && sheet.names.get(name) !== css; index++)
-    name = `${base}-${index}`;
-
-  if (!sheet.names.has(name)) {
-    const { positions } = sheet;
-    let at = positions.findIndex(([d, o]) => d > depth || d == depth && o > block.ordinal);
-    if (at < 0) at = positions.length;
-
-    sheet.names.set(name, css);
-    positions.splice(at, 0, [depth, block.ordinal]);
-    sheet.element.sheet!.insertRule(`.${name}{${css}}`, at);
-  }
-
-  byDepth.set(depth, name);
-  return name;
-}
-
-function serialize(document: Document, declarations: Declaration) {
-  const value = document.createElement('div').style as any;
-  applyDeclarations(value, declarations);
-  return value.cssText;
 }
 
 function isPresent(value: unknown) {
