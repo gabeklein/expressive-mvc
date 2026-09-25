@@ -33,7 +33,7 @@ Object.defineProperty(State.prototype, 'toJSON', {
 
 afterEach(() => Context.root.pop());
 
-export { mockError, mockPromise, mockWarn, flushMicrotasks };
+export { mockError, mockPromise, mockUncaught, mockWarn, flushMicrotasks };
 export type { MockPromise };
 
 /** Resolve after the task queue drains - flush pending dispatch/effects. */
@@ -171,4 +171,32 @@ function mockWarn() {
 
 function mockError() {
   return spyOnce('error');
+}
+
+let UNCAUGHT: { caught: unknown[]; restore(): void } | undefined;
+
+afterEach(() => {
+  UNCAUGHT?.restore();
+  UNCAUGHT = undefined;
+});
+
+/** Capture errors thrown from queued microtasks - what would escape uncaught. */
+function mockUncaught() {
+  if (!UNCAUGHT) {
+    const caught: unknown[] = [];
+    const queue = globalThis.queueMicrotask;
+    const spy = vi.spyOn(globalThis, 'queueMicrotask').mockImplementation((fn) =>
+      queue(() => {
+        try {
+          fn();
+        } catch (err) {
+          caught.push(err);
+        }
+      })
+    );
+
+    UNCAUGHT = { caught, restore: () => spy.mockRestore() };
+  }
+
+  return UNCAUGHT.caught;
 }
