@@ -9,53 +9,57 @@ import { withWorkspaceLinks } from './workspace-links';
  * Per-shape rather than one aggregate: the point is to notice when the adapter's
  * irreducible floor grows, or when a formerly shakeable export stops shaking.
  *
- * Each carries ~3.5% headroom over the measured figure, because CI does not pin
- * a Bun version and minifier output drifts a little between them - measured at
- * <=0.5% across 1.3.1 and 1.3.14, so the margin is mostly slack. Real growth is
- * structural and clears it; toolchain drift does not. The react floor is the
- * exception: pinned to 9.1 kB, so ~1.9% - still above observed drift, but it
- * will flag sooner than the rest.
+ * Headroom over the measured figure (0.5-3.5% by shape) absorbs minifier drift,
+ * since CI does not pin a Bun version - measured at <=0.5% across 1.3.1 and
+ * 1.3.14. Real growth is structural and clears it; toolchain drift does not. The
+ * react floor carries the least, so it flags first.
+ *
+ * Raise a budget with the growth that needs it, in small steps, and update the
+ * figures in website/content/docs/guides/bundle-size.mdx. 10 kB is the line the
+ * maintainer cares about: `react: typical app`, the site's headline figure, sits
+ * at 9.97 kB as of 2026-09 (after State.on({ catch }) and Caught), so growth past
+ * it needs a deliberate decision, not just a bump.
  */
 const CASES = [
   {
     name: 'mvc: State only',
-    limit: 5940,
+    limit: 6010,
     code: `import State from '@expressive/mvc'; console.log(State);`
   },
   {
     name: 'mvc: everything',
-    limit: 9610,
+    limit: 9670,
     code: `import * as all from '@expressive/mvc'; console.log(all);`
   },
   {
     name: 'react: State only',
-    limit: 9430,
+    limit: 9480,
     code: `import State from '@expressive/react'; console.log(State);`
   },
   {
     name: 'react: typical app',
-    limit: 10370,
+    limit: 10420,
     code: `import State, { Component, get, set, ref, def } from '@expressive/react';
            console.log(State, Component, get, set, ref, def);`
   },
   {
     name: 'react: everything',
-    limit: 12540,
+    limit: 12590,
     code: `import * as all from '@expressive/react'; console.log(all);`
   },
   {
     name: 'router: everything',
-    limit: 12480,
+    limit: 12520,
     code: `import * as all from '@expressive/router'; console.log(all);`
   },
   {
     name: 'inspect: install',
-    limit: 9570,
+    limit: 9630,
     code: `import '@expressive/inspect/install';`
   },
   {
     name: 'react + router',
-    limit: 16890,
+    limit: 16960,
     code: `import * as a from '@expressive/react';
            import * as b from '@expressive/router';
            console.log(a, b);`
