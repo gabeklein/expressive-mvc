@@ -134,7 +134,7 @@ class Profile extends State {
 ## Errors
 
 - **Initial** compute: `console.warn` `An exception was thrown while initializing {state}.{key}.`, then rethrown to the caller.
-- **Later** compute (after a dependency change): `console.warn` (`refreshing`) plus `console.error` with the error; the value becomes `undefined` and the read does not throw.
+- **Later** compute (after a dependency change): reported as `Caught.Getter` with the error as `cause` - unhandled, it escapes uncaught ([lifecycle.md](lifecycle.md#error-handling)). The value becomes `undefined`; the read does not throw.
 
 ## When to Promote a Derivation
 
