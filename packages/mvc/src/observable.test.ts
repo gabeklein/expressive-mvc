@@ -22,6 +22,139 @@ describe('effect', () => {
     expect(observer(test)?.listeners.size).toBe(0);
   });
 
+  it('will not accumulate listeners across re-runs', async () => {
+    class Test extends State {
+      foo = 0;
+      bar = 0;
+    }
+
+    const test = Test.new();
+    const effect = vi.fn(($: Test) => void ($.foo + $.bar));
+
+    watch(test, effect);
+
+    const { listeners } = observer(test)!;
+    const initial = listeners.size;
+
+    for (let i = 1; i <= 3; i++) {
+      test.foo = i;
+      test.bar = i;
+      await expect(test).toHaveUpdated();
+    }
+
+    expect(effect).toHaveBeenCalledTimes(4);
+    expect(listeners.size).toBe(initial);
+
+    test.bar = 10;
+    await expect(test).toHaveUpdated();
+
+    expect(effect).toHaveBeenCalledTimes(5);
+  });
+
+  it('will not accumulate child listeners across re-runs', async () => {
+    class Child extends State {
+      value = 0;
+    }
+
+    class Test extends State {
+      child = new Child();
+      foo = 0;
+    }
+
+    const test = Test.new();
+    const { child } = test;
+    const effect = vi.fn(($: Test) => void ($.child.value + $.foo));
+
+    watch(test, effect);
+
+    const parent = observer(test)!.listeners;
+    const nested = observer(child)!.listeners;
+    const initial = [parent.size, nested.size];
+
+    for (let i = 1; i <= 3; i++) {
+      test.foo = i;
+      await expect(test).toHaveUpdated();
+    }
+
+    for (let i = 1; i <= 3; i++) {
+      child.value = i;
+      await expect(child).toHaveUpdated();
+    }
+
+    expect(effect).toHaveBeenCalledTimes(7);
+    expect([parent.size, nested.size]).toEqual(initial);
+
+    child.value = 10;
+    await expect(child).toHaveUpdated();
+
+    expect(effect).toHaveBeenCalledTimes(8);
+  });
+
+  it('will not accumulate listeners across computed re-runs', async () => {
+    class Test extends State {
+      foo = 0;
+
+      get double() {
+        return this.foo * 2;
+      }
+    }
+
+    const test = Test.new();
+
+    expect(test.double).toBe(0);
+
+    const { listeners } = observer(test)!;
+    const initial = listeners.size;
+
+    for (let i = 1; i <= 3; i++) {
+      test.foo = i;
+      await expect(test).toHaveUpdated();
+      expect(test.double).toBe(i * 2);
+    }
+
+    for (let i = 4; i <= 6; i++) {
+      test.foo = i;
+      expect(test.double).toBe(i * 2);
+      await expect(test).toHaveUpdated();
+    }
+
+    test.foo = 7;
+    await expect(test).toHaveUpdated();
+
+    expect(test.double).toBe(14);
+    expect(listeners.size).toBe(initial);
+  });
+
+  it('will release listeners of a suspended attempt', async () => {
+    class Test extends State {
+      foo = 0;
+    }
+
+    const test = Test.new();
+    const pending = [mockPromise(), mockPromise()];
+    let attempt = 0;
+
+    watch(test, ($) => {
+      void $.foo;
+
+      if (attempt < pending.length) throw pending[attempt++];
+    });
+
+    const { listeners } = observer(test)!;
+    const initial = listeners.size;
+
+    pending[0].resolve();
+    await pending[0];
+    await flushMicrotasks();
+
+    pending[1].resolve();
+    await pending[1];
+    await flushMicrotasks();
+
+    expect(attempt).toBe(2);
+    expect(listeners.size).toBe(initial);
+  });
+
   it('will cleanup safely while suspended', async () => {
     let shouldSuspend = true;
     const pending = mockPromise();
