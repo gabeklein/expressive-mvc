@@ -52,6 +52,7 @@ describe('inspect(page)', () => {
     composer.draft = 'a';
     expect((await api.journal.frames({ since }))[0].events[0].key).toBe('draft');
     expect((await api.journal.history({ key: 'draft' })).length).toBe(1);
+    expect(JSON.parse(await api.journal.export({ since }))).toMatchObject({ key: 'draft', kind: 'update' });
     await api.journal.clear();
     expect(await api.journal.frames()).toEqual([]);
   });
@@ -68,6 +69,20 @@ describe('inspect(page)', () => {
     expect(journal.record().level).toBe('off');
     composer.draft = 'later';
     expect(journal.frames().length).toBe(1);
+  });
+
+  it('will wait around a step until deferred work settles', async () => {
+    const composer = Composer.new();
+    const api = inspect(page);
+
+    const frames = await api.around(() => {
+      setTimeout(() => {
+        composer.draft = 'a';
+        setTimeout(() => (composer.draft = 'b'));
+      });
+    });
+
+    expect(frames.map((frame) => frame.events[0].value)).toEqual(['a', 'b']);
   });
 
   it('will leave an active journal on after around', async () => {

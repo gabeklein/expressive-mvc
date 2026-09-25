@@ -1,5 +1,6 @@
 import type { inspect as Inspect } from './index';
 import { dispatch, type Call } from './dispatch';
+import { settle, tick } from './settle';
 import type { Frame, Options, Query } from './journal';
 
 /**
@@ -38,6 +39,7 @@ export function inspect(target: Evaluates) {
       history: remote<ReturnType<typeof Inspect.journal.history>>('journal', 'history') as (
         query: Query
       ) => Promise<ReturnType<typeof Inspect.journal.history>>,
+      export: remote<string>('journal', 'export') as (query?: Query) => Promise<string>,
       clear: remote<void>('journal', 'clear') as () => Promise<void>
     },
 
@@ -49,7 +51,7 @@ export function inspect(target: Evaluates) {
 
       try {
         await step();
-        await target.evaluate(() => new Promise((resolve) => setTimeout(resolve, 0)));
+        await settle(seq, () => target.evaluate(tick));
         return await frames({ since });
       } finally {
         if (before.level === 'off') await record({ level: 'off' });
