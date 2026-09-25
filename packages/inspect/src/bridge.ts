@@ -39,6 +39,7 @@ export function inspect(target: Evaluates) {
       history: remote<ReturnType<typeof Inspect.journal.history>>('journal', 'history') as (
         query: Query
       ) => Promise<ReturnType<typeof Inspect.journal.history>>,
+      export: remote<string>('journal', 'export') as (query?: Query) => Promise<string>,
       clear: remote<void>('journal', 'clear') as () => Promise<void>
     },
 

@@ -180,7 +180,7 @@ beforeEach(({ onTestFailed }) => {
 });
 ```
 
-The journal keeps the last 500 frames, so a failure carries what led up to it.
+The journal keeps the last 500 frames, so a failure carries what led up to it. `record()` merges settings - a later `record({ paths })` in the app narrows this recording, so skip it under `navigator.webdriver`.
 
 ## Vite
 
