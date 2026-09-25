@@ -1,6 +1,7 @@
 import { State } from '@expressive/mvc';
 
 import { parsePath, serialize } from './serialize';
+import { settle } from './settle';
 import { labelOf, seen } from './types';
 
 export type Level = 'off' | 'keys' | 'values';
@@ -154,7 +155,7 @@ export async function act(work: () => unknown): Promise<Frame[]> {
   if (level === 'off') config.level = 'values';
   try {
     await work();
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await settle(() => seq);
   } finally {
     config.level = level;
   }

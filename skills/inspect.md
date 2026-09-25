@@ -39,7 +39,7 @@ await composer.act((s) => s.submit('x'))  // run, settle, return frames produced
 
 Ownership: a State in a plain field, `has` pool, or `map` is that owner's child; a `get(Type)` reference is not. First owner wins. One `Instance` per state - `find` returns the same object each time; a held reference keeps working after destruction, with `alive` false and `until` set.
 
-`act` records for its window even with the journal off, and returns every frame produced, downstream ones included.
+`act` records for its window even with the journal off, and returns every frame produced, downstream ones included. It settles once a macrotask passes with no new recorded frame - so timer and promise chains finish - capped at 1s for work that never goes quiet. Filtered-out events don't count as activity.
 
 ## Orphans
 
@@ -129,13 +129,58 @@ const since = await api.journal.seq();
 await page.click('#submit');
 const frames = await api.journal.frames({ since, type: 'Composer' });
 
-const produced = await api.around(() => page.click('#submit'));   // act across the wire
+const produced = await api.around(() => page.click('#submit'));   // act across the wire - same settle
 await api.journal.record({ level: 'keys', types: ['Composer'] }); // labels, not classes
 ```
 
 For an app in an iframe, pass that frame: `inspect(page.frame({ name }))`, or a locator such as `inspect(page.frameLocator('iframe[title="App"]').locator('body'))` - the helper accepts `Locator.evaluate`'s element-first arity. A missing global throws one line naming the install import - that is the install-order check.
 
 Drive input through the UI; assert on the model. Reserve DOM assertions for presentation the model does not express.
+
+## Failure journal
+
+Record from the first State in any browser a driver controls - the app turns it on, so nothing is missed before a test attaches:
+
+```ts
+// app entry, after '@expressive/inspect/install' (or with the Vite plugin)
+import { journal } from '@expressive/inspect';
+
+if (navigator.webdriver) journal.record({ level: 'values' });
+```
+
+Attach it to failing tests - Playwright fixture, every frame:
+
+```ts
+import { test as base } from '@playwright/test';
+import { inspect } from '@expressive/inspect/bridge';
+
+export const test = base.extend({
+  page: async ({ page }, use, testInfo) => {
+    await use(page);
+    if (testInfo.status === testInfo.expectedStatus) return;
+    for (const frame of page.frames()) {
+      const log = await inspect(frame).journal.export().catch(() => '');
+      if (log) await testInfo.attach(`journal ${frame.url()}`, { body: log, contentType: 'application/x-ndjson' });
+    }
+  }
+});
+```
+
+In process (vitest setup file):
+
+```ts
+import { beforeEach } from 'vitest';
+import { attach, journal } from '@expressive/inspect';
+
+beforeEach(({ onTestFailed }) => {
+  attach();
+  journal.clear();
+  journal.record({ level: 'values' });
+  onTestFailed(() => console.log(journal.export()));
+});
+```
+
+The journal keeps the last 500 frames, so a failure carries what led up to it.
 
 ## Vite
 
