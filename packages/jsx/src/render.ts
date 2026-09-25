@@ -14,6 +14,7 @@ import {
 } from './appearance-protocol';
 import type { AppearanceContext, ResolvedAppearance } from './appearance-protocol';
 import { Provider, provide } from './context';
+import { applyDeclarations } from './declarations';
 import { claim as dequeue, release, schedule, settle as absorb, transition } from './scheduler';
 import { PORTAL, childrenOf, isVNode, segmentsOf } from './vnode';
 import type { Key, Node as RenderNode, VNode } from './vnode';
@@ -990,18 +991,7 @@ function applyClaim(element: Element, before: Claim | undefined, after: Claim) {
     else element.removeAttribute('class');
   }
 
-  const declaration = (element as HTMLElement).style as any;
-  for (const key of Object.keys({ ...previous.declarations, ...after.declarations })) {
-    const value = after.declarations[key];
-    if (key.startsWith('--')) {
-      declaration.setProperty(key, value == null ? '' : String(value));
-      continue;
-    }
-    if (typeof value == 'number') declaration[key] = '';
-    declaration[key] = value == null ? '' : value;
-    if (typeof value == 'number' && value !== 0 && !declaration[key])
-      declaration[key] = `${value}px`;
-  }
+  applyDeclarations((element as HTMLElement).style, after.declarations, previous.declarations);
 }
 
 function claim(

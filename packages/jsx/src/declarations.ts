@@ -1,9 +1,9 @@
 type Declaration = Record<string, unknown>;
 
-function applyDeclarations(style: CSSStyleDeclaration, declarations: Declaration) {
+function applyDeclarations(style: CSSStyleDeclaration, declarations: Declaration, previous: Declaration = {}) {
   const target = style as any;
 
-  for (const key of Object.keys(declarations)) {
+  for (const key of Object.keys({ ...previous, ...declarations })) {
     const value = declarations[key];
     if (key.startsWith('--')) {
       style.setProperty(key, value == null ? '' : String(value));
