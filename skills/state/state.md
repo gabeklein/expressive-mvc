@@ -56,7 +56,7 @@ await pending(() => {
 - **No host registered:** no priority applies, but the promise still resolves once every subscriber has replayed - how headless code waits out a whole cascade, not just the first flush. Contrast `state.set()`, which resolves on the next flush of *that* state ([set.md](set.md)).
 - **Nesting:** a nested call settles its own consequences and joins the outer call.
 - **Suspending effect:** if an effect throws a promise, settlement waits for its retry and any downstream updates the retry causes. Pending updates arriving meanwhile join the same hold and squash into that retry. Fulfillment and rejection both retry through MVC dispatch; cancelling the effect or destroying its state releases the hold and prevents revival.
-- **Errors:** an exception from `work` propagates synchronously; updates queued before it still dispatch. The promise never rejects - a reader throwing during replay is logged, not reported to the writer, so no catch is needed.
+- **Errors:** an exception from `work` propagates synchronously; updates queued before it still dispatch. The promise never rejects - a reader throwing during replay is reported as `Caught.Effect` ([lifecycle.md](lifecycle.md#error-handling)), never to the writer, so no catch is needed.
 
 `pending()` with no arguments is the reader half. Inside a replay carrying pending work it returns a release callback, and settlement waits on that instead of on the replay returning - how the React adapter holds until commit. A hand-written `watch` effect can do the same; elsewhere it returns `undefined`.
 
@@ -195,6 +195,16 @@ const stop = Counter.on(function (this: Counter) {
 
 - A bare function is per-instance setup before `new()` (sugar for `{ before }`). An object hooks by cadence: `type(Class)` once per class at bootstrap, `before` per instance before `new()`, `after` per instance at the `new()` slot.
 - Handlers run ancestor-first; one registered on both parent and child runs once.
+- `catch(error)` receives each `Caught` mvc reports for the class ([lifecycle.md](lifecycle.md#error-handling)), `this` the instance - like nested `catch` blocks: most-derived class first, last registered first. Return the error (or a replacement `Caught`) to pass it on; return nothing to handle it; throw to escape uncaught at once - to the writer for a destroyed write. Passed off the end, a warning logs and anything else is thrown - to the writer for a destroyed write, otherwise uncaught.
+
+```ts
+State.on({
+  catch(error) {
+    record(error); // observe
+    if (!error.warning) return error; // pass on - unhandled, it throws
+  } // warnings handled
+});
+```
 
 `on()` is the mix-in for environment-specific activation of a shared class. The domain module stays fields-only - no `window`, DOM, or host APIs at module scope or in `new()`; an adapter module re-exports the class and registers `on()` once, so every instance constructed after that import gets the wiring, and environments that never import the adapter never run it. Don't subclass (`class ViewSession extends Session`) and don't construct in the adapter - the consumer owns the instance. Recipe: [patterns.md](../react/patterns.md).
 

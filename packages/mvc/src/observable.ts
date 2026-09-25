@@ -192,23 +192,23 @@ function event(state: object, key?: Observer.Event | null, silent?: boolean) {
     if (!Object.getOwnPropertyDescriptor(state, Observer)) return;
 
     (state as Observable)[Observer] = null;
-    return emit(o, key);
+    return emit(o, key, state);
   }
 
-  if (key === undefined) return emit(o, true);
+  if (key === undefined) return emit(o, true, state);
 
   if (!o.events.size && !silent)
     enqueue(() => {
-      emit(o, false);
+      emit(o, false, state);
       o.events = new Set();
-    });
+    }, undefined, state);
 
   o.events.add(key);
 
-  if (!silent) emit(o, key);
+  if (!silent) emit(o, key, state);
 }
 
-function emit(o: Observer, key: Observer.Signal): void {
+function emit(o: Observer, key: Observer.Signal, subject: object): void {
   const { listeners, pending, ready } = o;
 
   if (key === ready) return;
@@ -227,7 +227,7 @@ function emit(o: Observer, key: Observer.Signal): void {
       if (!filter || filter.has(k)) {
         const after = callback(k);
         if (after === null) listeners.delete(callback);
-        else if (after) enqueue(after);
+        else if (typeof after == 'function') enqueue(after, undefined, subject);
       }
 
   if (key === null) listeners.clear();
@@ -289,7 +289,7 @@ function watch<T extends object>(
 
       if (reset === null) return null;
       if (ignore) {
-        if (queued) enqueue(invoke, transition);
+        if (queued) enqueue(invoke, transition, target);
         return;
       }
 
@@ -299,7 +299,7 @@ function watch<T extends object>(
       unset!(true);
       unset = undefined;
 
-      enqueue(invoke, transition);
+      enqueue(invoke, transition, target);
     }
 
     function run(release?: (update?: boolean | null) => void) {
