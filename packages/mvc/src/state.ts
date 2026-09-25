@@ -44,6 +44,11 @@ const STALE = new WeakSet<() => void>();
 /** Whether the deadline which drains `PENDING` is already queued for this tick. */
 let QUEUED = false;
 
+/** Global list each loaded copy of this module adds its `State` to, on first construction. */
+const COPIES = Symbol.for('@expressive/mvc');
+
+let ANNOUNCED = false;
+
 /** Adopters for managed properties which have held a child State. */
 const ADOPT = new WeakMap<State, Map<unknown, (value: unknown) => void>>();
 const CHILDREN = new WeakMap<State, Set<(child: State) => void>>();
@@ -529,6 +534,11 @@ function init(state: State, ...args: State.Args) {
   const T = state.constructor as State.Extends;
 
   if (T === State) throw new Error('Cannot create base State.');
+
+  if (!ANNOUNCED) {
+    ANNOUNCED = true;
+    ((globalThis as { [COPIES]?: unknown[] })[COPIES] ||= []).push(State);
+  }
 
   const { before, after } = bootstrap(T);
 
