@@ -577,7 +577,7 @@ function init(state: State, ...args: State.Args) {
         const out = typeof arg == 'function' ? arg.call(state, state) : arg;
 
         if (out instanceof Promise)
-          out.catch((err) => forward(err, () => new Caught.Init(state, err)));
+          out.catch((err) => report(new Caught.Init(state, err)));
         else if (Array.isArray(out)) queue.splice(i + 1, 0, ...out);
         else if (typeof out == 'function') listener(state, out, null);
         else if (typeof out == 'object') assign(state, out, true);
@@ -739,7 +739,7 @@ function compute(this: State, getter: (self: any) => unknown, key: string) {
         throw err;
       }
 
-      forward(err, () => new Caught.Getter(this, key, err));
+      report(new Caught.Getter(this, key, err));
     }
 
     update(this, key, next, !isAsync);
@@ -1040,11 +1040,14 @@ function update<T>(
 /**
  * Pass a caught error along `catch` handlers - most-derived class first, last registered
  * first - until one returns nothing. Passed off the end, a warning logs and anything
- * else escapes. A handler which throws escapes uncaught - to the caller when `sync`.
+ * else escapes. A handler which throws escapes uncaught - to the caller when `sync` -
+ * and one wrapping an error a handler already threw escapes that error unreported.
  */
 function report(caught: Caught, sync?: boolean) {
   const handlers = new Set<NonNullable<State.On['catch']>>();
   let error: Caught | void = caught;
+
+  if (caught.cause instanceof Caught) return escape(caught.cause);
 
   for (let T = caught.state.constructor as State.Extends; ; T = Object.getPrototypeOf(T)) {
     for (const handler of [...(SETUP.get(T) || [])].reverse())
@@ -1070,17 +1073,11 @@ function escape(err: unknown) {
   });
 }
 
-/** Report `err` as newly caught, unless it is one a handler already rethrew. */
-function forward(err: unknown, create: () => Caught) {
-  if (err instanceof Caught) escape(err);
-  else report(create());
-}
-
 /** Error thrown by a handler replaying in dispatch, attributed to the State which queued it. */
 function fault(err: unknown, owner?: object) {
   const state = owner instanceof State ? owner : owner && PARENT.get(owner);
 
-  if (state) forward(err, () => new Caught.Effect(state, err));
+  if (state) report(new Caught.Effect(state, err));
   else escape(err);
 }
 
