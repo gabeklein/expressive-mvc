@@ -81,7 +81,7 @@ style(Button, {
 
 Macros are defined only by `macro()`. A function inside a `style()` map is a value, not a definition - rules are static, so call a plain function in place. A key resolves at its topmost definition; a macro returning its own name falls to the next definition down, then through any `'*'` handler, then to the host. The host joins arrays with spaces, rejects a function or object (`No macro handles "mx"`), and never adds units - a macro owns them, so write `padding: '8px'`, not `padding: 8`.
 
-Repeated `style()` calls add layers and return the component unchanged. Within a scope, globals come first, then base class, derived class, and registration order. Register before the component first renders; register all macros before the first render after any macro is installed.
+Repeated `style()` calls add layers and return the component unchanged. Within a scope, globals come first, then base class, derived class, and registration order. A component's registrations close at *its* first render - a lazily loaded module may still call `style()` later for a component that has not rendered. `macro()` is global and closes at the first render of anything.
 
 Inline style always beats classes. Among classes, a caller's rule beats the callee's: a `_rule` on a component element travels as a token through `style`, and each component `style` prop crossed - forwarded or handed on explicitly - adds a door. More doors wins - for classes and for which nested rules reach descendants - independent of render or emission order. Blocks emitted past the first door carry a `-dN` suffix.
 

@@ -263,6 +263,8 @@ describe('appearance', () => {
     expect(getComputedStyle(node).letterSpacing).toBe('2px');
     expect(getComputedStyle(node).fontSize).toBe('3px');
     expect(() => macro({ _late: { color: 'red' } })).toThrow('after rendering');
+    expect(() => macro({ bad: { color: 'red' } }))
+      .toThrow('Macro "bad" must be a function. Use "_bad" to register a rule.');
     expect(() => style(Global, { _late: { color: 'red' } })).toThrow('after a component');
   });
 

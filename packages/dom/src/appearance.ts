@@ -1,4 +1,4 @@
-import { createAppearanceToken, registerAppearance, registerAppearanceRoot } from './appearance-protocol';
+import { appearanceSealed, createAppearanceToken, registerAppearance, registerAppearanceRoot } from './appearance-protocol';
 import type { AppearanceContext, Block, Declaration, ResolvedAppearance } from './appearance-protocol';
 
 type StyleMap = Record<string, unknown>;
@@ -37,7 +37,6 @@ const rootScopes = new WeakMap<object, StyleScope>();
 const styles = new WeakMap<object, StyleMap[]>();
 const entered = new WeakSet<object>();
 const globals: StyleMap[] = [];
-let globalsEntered = false;
 let globalContext: AppearanceContext | undefined;
 
 function createStyleScope(parent: StyleScope | undefined, value: unknown, label?: string, defines?: boolean): StyleScope | undefined {
@@ -162,13 +161,16 @@ function style<T extends object>(type: T, rules: StyleMap): T {
 }
 
 function macro(rules: StyleMap): StyleMap {
-  if (globalsEntered) throw new Error('Cannot add macros after rendering has started.');
+  for (const key of Object.keys(rules))
+    if (key[0] != '_' && key[0] != '$' && typeof rules[key] != 'function')
+      throw new Error(`Macro "${key}" must be a function. Use "_${key}" to register a rule.`);
+
+  if (appearanceSealed())
+    throw new Error('Cannot add macros after rendering has started.');
+
   globals.push(rules);
   globalContext = undefined;
-  registerAppearanceRoot(() => {
-    globalsEntered = true;
-    return globalContext ||= extendContext(undefined, globals, 'global', true);
-  });
+  registerAppearanceRoot(() => globalContext ||= extendContext(undefined, globals, 'global', true));
   return rules;
 }
 
