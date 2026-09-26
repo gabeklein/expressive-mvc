@@ -5,6 +5,8 @@ import type { State } from './state';
  * Unhandled, a `warning` goes to `console.warn`; anything else escapes uncaught.
  */
 class Caught extends Error {
+  readonly name: string = 'Caught';
+
   /** Non-urgent - unhandled, it logs as a warning. */
   readonly warning: boolean = false;
 
@@ -22,6 +24,8 @@ class Caught extends Error {
 
   /** A write to a destroyed state - thrown to the writer unless a handler takes it. */
   static Destroyed = class Destroyed extends Caught {
+    readonly name = 'Caught.Destroyed';
+
     constructor(state: State, key: string) {
       super(state, `Tried to update ${state}.${key} but state is destroyed.`, key);
     }
@@ -29,6 +33,7 @@ class Caught extends Error {
 
   /** A state constructed but never activated. */
   static Inactive = class Inactive extends Caught {
+    readonly name = 'Caught.Inactive';
     readonly warning = true;
 
     constructor(state: State) {
@@ -38,6 +43,8 @@ class Caught extends Error {
 
   /** A getter threw while refreshing; `cause` is what it threw. */
   static Getter = class Getter extends Caught {
+    readonly name = 'Caught.Getter';
+
     constructor(state: State, key: string, cause: unknown) {
       super(state, `An exception was thrown while refreshing ${state}.${key}.`, key, cause);
     }
@@ -45,6 +52,8 @@ class Caught extends Error {
 
   /** An async initializer rejected; `cause` is the rejection. */
   static Init = class Init extends Caught {
+    readonly name = 'Caught.Init';
+
     constructor(state: State, cause: unknown) {
       super(state, `Async error in constructor for ${state}.`, undefined, cause);
     }
@@ -52,6 +61,8 @@ class Caught extends Error {
 
   /** An effect or listener threw during a dispatch flush; `cause` is what it threw. */
   static Effect = class Effect extends Caught {
+    readonly name = 'Caught.Effect';
+
     constructor(state: State, cause: unknown) {
       super(state, `An exception was thrown by an effect of ${state}.`, undefined, cause);
     }
