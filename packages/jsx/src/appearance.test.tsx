@@ -19,6 +19,24 @@ afterEach(() => {
   roots.splice(0).forEach((root) => root.remove());
 });
 
+const called = vi.fn(() => 'zero');
+
+macro({
+  mx: (value?: unknown) => ({ marginLeft: `${value}px`, marginRight: `${value}px` }),
+  pad: (value?: unknown) => ({ mx: value, paddingTop: `${value}px` }),
+  tone: (value?: unknown) => ({ color: value }),
+  glow: () => ['glow', { outlineStyle: 'solid' }],
+  tint: (value?: unknown) => ['tinted', { color: value }],
+  bare: () => 'bare',
+  globalTone: (value?: unknown) => ({ color: value }),
+  _shared: { letterSpacing: '2px', globalTone: 'brand', fontSize: 3 }
+});
+
+macro({
+  globalTone: (value: unknown) => ({ globalTone: value == 'brand' ? 'purple' : value }),
+  '*': (value: unknown, key: string) => ({ [key]: value === 3 ? '3px' : value })
+});
+
 describe('appearance', () => {
   it('will emit named blocks for rules', async () => {
     class Styled extends Component {
@@ -161,10 +179,6 @@ describe('appearance', () => {
     }
 
     style(Card, {
-      mx: (value?: unknown) => ({ marginLeft: `${value}px`, marginRight: `${value}px` }),
-      pad: (value?: unknown) => ({ mx: value, paddingTop: `${value}px` }),
-      tone: (value?: unknown) => ({ color: value }),
-      glow: () => ['glow', { outlineStyle: 'solid' }],
       _raised: { pad: 6, tone: 'red', glow: true, boxShadow: '0 0 1px black', '--depth': 1 }
     });
 
@@ -235,16 +249,6 @@ describe('appearance', () => {
   });
 
   it('will layer global macros and fall through to the layer below', () => {
-    macro({
-      globalTone: (value?: unknown) => ({ color: value }),
-      _shared: { letterSpacing: '2px', globalTone: 'brand', fontSize: 3 }
-    });
-
-    macro({
-      globalTone: (value: unknown) => ({ globalTone: value == 'brand' ? 'purple' : value }),
-      '*': (value: unknown, key: string) => ({ [key]: value === 3 ? '3px' : value })
-    });
-
     function Global() {
       return <i _shared />;
     }
@@ -281,7 +285,6 @@ describe('appearance', () => {
       return <><hr /><br /></>;
     }
 
-    style(Plain, { tint: (value?: unknown) => ['tinted', { color: value }] });
     style(Plain, { tint: 'green', padding: '1px' });
 
     const [rule, line] = [...mount(<Plain />).children] as HTMLElement[];
@@ -294,8 +297,7 @@ describe('appearance', () => {
       return <wbr />;
     }
 
-    style(Bare, { tint: () => 'bare' });
-    style(Bare, { tint: true });
+    style(Bare, { bare: true });
 
     expect(mount(<Bare />).querySelector('wbr')!.className).toBe('bare');
   });
@@ -400,11 +402,12 @@ describe('appearance', () => {
   });
 
   it('will resolve class-only, empty and plain routes', () => {
-    const called = vi.fn(() => 'zero');
-    const scope = createStyleScope(undefined, {
+    const defined = createStyleScope(undefined, {
       empty: () => null,
       token: () => 'one  two',
-      zero: called,
+      zero: called
+    }, 'style', true)!;
+    const scope = createStyleScope(defined, {
       _classes: { token: true, zero: true },
       _blank: { empty: true, token: false },
       _plain: { opacity: 0.5 }

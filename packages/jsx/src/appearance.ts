@@ -40,7 +40,7 @@ const globals: StyleMap[] = [];
 let globalsEntered = false;
 let globalContext: AppearanceContext | undefined;
 
-function createStyleScope(parent: StyleScope | undefined, value: unknown, label?: string): StyleScope | undefined {
+function createStyleScope(parent: StyleScope | undefined, value: unknown, label?: string, defines?: boolean): StyleScope | undefined {
   if (!isObject(value)) return parent;
 
   const cache = parent?.children || rootScopes;
@@ -61,7 +61,7 @@ function createStyleScope(parent: StyleScope | undefined, value: unknown, label?
       const name = key.slice(1);
       own.push(name);
       source[name] = entry;
-    } else if (typeof entry == 'function') {
+    } else if (defines && typeof entry == 'function') {
       own.push(key);
       source[key] = entry;
     } else base[key] = entry;
@@ -112,12 +112,12 @@ function createContext(scope: StyleScope): AppearanceContext {
   return context;
 }
 
-function extendContext(parent: AppearanceContext | undefined, maps: readonly StyleMap[], label: string) {
+function extendContext(parent: AppearanceContext | undefined, maps: readonly StyleMap[], label: string, defines?: boolean) {
   let scope = parent?.scope as StyleScope | undefined;
   const base: Declaration = { ...(scope && bases.get(scope)) };
 
   for (const map of maps) {
-    scope = createStyleScope(scope, map, label);
+    scope = createStyleScope(scope, map, label, defines);
     Object.assign(base, scope!.own);
   }
 
@@ -164,7 +164,7 @@ function macro(rules: StyleMap): StyleMap {
   globalContext = undefined;
   registerAppearanceRoot(() => {
     globalsEntered = true;
-    return globalContext ||= extendContext(undefined, globals, 'global');
+    return globalContext ||= extendContext(undefined, globals, 'global', true);
   });
   return rules;
 }
