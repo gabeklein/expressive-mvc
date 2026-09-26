@@ -35,14 +35,14 @@ describe('appearance', () => {
     }
 
     style(Styled, {
-      active: { fontWeight: 700 },
-      div: { padding: 4 }
+      _active: { fontWeight: 700 },
+      padding: 4
     });
 
     let view!: Styled;
     const node = mount(<Styled is={(value) => (view = value)} />).querySelector('div')!;
 
-    expect(node.className.split(' ')).toEqual(['Styled_div', 'Styled_active']);
+    expect(node.className.split(' ')).toEqual(['Styled_active', 'Styled']);
     expect(node.hasAttribute('_active')).toBe(false);
     expect(getComputedStyle(node).fontWeight).toBe('700');
     expect(getComputedStyle(node).padding).toBe('4px');
@@ -60,20 +60,20 @@ describe('appearance', () => {
       return <button style={{ letterSpacing: 1 }}>go</button>;
     }
 
-    style(Button, { button: { color: 'blue', letterSpacing: 2 } });
+    style(Button, { color: 'blue', letterSpacing: 2 });
 
     function Toolbar() {
-      return <nav><Button /></nav>;
+      return <nav><Button _accent /></nav>;
     }
 
-    style(Toolbar, { Button: { color: 'red', letterSpacing: 3 } });
+    style(Toolbar, { _accent: { color: 'red', letterSpacing: 3 } });
 
     const alone = mount(<Button />).querySelector('button')!;
     expect(getComputedStyle(alone).color).toBe('blue');
     expect(getComputedStyle(alone).letterSpacing).toBe('1px');
 
     const button = mount(<Toolbar />).querySelector('button')!;
-    expect(button.className).toBe('Button_button Toolbar_Button-d1');
+    expect(button.className).toBe('Toolbar_accent-d1 Button');
     expect(getComputedStyle(button).color).toBe('red');
     expect(getComputedStyle(button).letterSpacing).toBe('1px');
   });
@@ -84,20 +84,20 @@ describe('appearance', () => {
     }
 
     function Middle() {
-      return <Leaf />;
+      return <Leaf _leaf />;
     }
 
     function Outer() {
-      return <Middle />;
+      return <Middle _mid />;
     }
 
-    style(Middle, { Leaf: { color: 'green' } });
-    style(Outer, { Middle: { color: 'purple' } });
+    style(Middle, { _leaf: { color: 'green' } });
+    style(Outer, { _mid: { color: 'purple' } });
 
     expect(getComputedStyle(mount(<Middle />).querySelector('span')!).color).toBe('green');
 
     const span = mount(<Outer />).querySelector('span')!;
-    expect(span.className).toBe('Middle_Leaf-d1 Outer_Middle-d2');
+    expect(span.className).toBe('Middle_leaf-d1 Outer_mid-d2');
     expect(getComputedStyle(span).color).toBe('purple');
   });
 
@@ -107,18 +107,18 @@ describe('appearance', () => {
     }
 
     function Outer({ style: forwarded }: { style?: any }) {
-      return <Inner style={[forwarded, 'handed']} />;
+      return <Inner _inner style={[forwarded, 'handed']} />;
     }
 
     function App() {
-      return <Outer />;
+      return <Outer _outer />;
     }
 
-    style(Outer, { Inner: { color: 'green' } });
-    style(App, { Outer: { color: 'purple' } });
+    style(Outer, { _inner: { color: 'green' } });
+    style(App, { _outer: { color: 'purple' } });
 
     const node = mount(<App />).querySelector('b')!;
-    expect(node.className).toBe('handed Outer_Inner-d1 App_Outer-d2');
+    expect(node.className).toBe('handed Outer_inner-d1 App_outer-d2');
     expect(getComputedStyle(node).color).toBe('purple');
   });
 
@@ -131,24 +131,24 @@ describe('appearance', () => {
     }
 
     function Relay({ style: forwarded }: { style?: any }) {
-      return <Capture style={forwarded} />;
+      return <Capture _capture style={forwarded} />;
     }
 
     function Deep() {
-      return <Relay />;
+      return <Relay _relay />;
     }
 
     function Shallow() {
-      return <Capture />;
+      return <Capture _capture />;
     }
 
-    style(Deep, { Relay: { strong: { color: 'red' } } });
-    style(Shallow, { Capture: { strong: { color: 'blue' } } });
+    style(Deep, { _relay: { _em: { color: 'red' } } });
+    style(Shallow, { _capture: { _em: { color: 'blue' } } });
 
     mount(<><Deep /><Shallow /></>);
 
     const [deep, shallow] = handles;
-    const root = mount(<section style={{ ...deep, ...shallow }}><strong>deep</strong></section>);
+    const root = mount(<section style={{ ...deep, ...shallow }}><strong _em>deep</strong></section>);
 
     expect(getComputedStyle(root.querySelector('strong')!).color).toBe('red');
   });
@@ -163,7 +163,7 @@ describe('appearance', () => {
       pad: (value?: unknown) => ({ mx: value, paddingTop: value }),
       tone: (value?: unknown) => ({ color: value }),
       glow: () => ['glow', { outlineStyle: 'solid' }],
-      raised: { pad: 6, tone: 'red', glow: true, boxShadow: '0 0 1px black', '--depth': 1 }
+      _raised: { pad: 6, tone: 'red', glow: true, boxShadow: '0 0 1px black', '--depth': 1 }
     });
 
     const node = mount(<Card />).querySelector('section')!;
@@ -175,28 +175,12 @@ describe('appearance', () => {
     expect(getComputedStyle(node).outlineStyle).toBe('solid');
   });
 
-  it('will match component rules by displayName', () => {
-    const b = () => <button>go</button>;
-    const Button = Object.assign(b, { displayName: 'Button' });
-
-    function Toolbar() {
-      return <nav><Button /></nav>;
-    }
-
-    style(Toolbar, {
-      Button: { color: 'red' },
-      b: { color: 'blue' }
-    });
-
-    expect(getComputedStyle(mount(<Toolbar />).querySelector('button')!).color).toBe('red');
-  });
-
   it('will inherit and shadow function component rules', () => {
     function Child() {
       return <span _tone />;
     }
 
-    style(Child, { tone: { color: 'blue' } });
+    style(Child, { _tone: { color: 'blue' } });
 
     function Parent() {
       return (
@@ -207,7 +191,7 @@ describe('appearance', () => {
       );
     }
 
-    style(Parent, { tone: { color: 'red' } });
+    style(Parent, { _tone: { color: 'red' } });
 
     const root = mount(<Parent />);
     expect(getComputedStyle(root.querySelector('i')!).color).toBe('red');
@@ -230,15 +214,15 @@ describe('appearance', () => {
     }
 
     function Parent() {
-      return <><Child /><Plain /></>;
+      return <><Child _child /><Plain _plain /></>;
     }
 
     style(Parent, {
-      Child: {
+      _child: {
         color: 'red',
-        mark: { fontWeight: 700 }
+        _mark: { fontWeight: 700 }
       },
-      Plain: { color: 'blue' }
+      _plain: { color: 'blue' }
     });
 
     const root = mount(<Parent />);
@@ -251,22 +235,51 @@ describe('appearance', () => {
   it('will register global macros before rendering', () => {
     macro({
       globalTone: (value?: unknown) => ({ color: value }),
-      shared: { letterSpacing: 2, globalTone: 'purple' }
+      _shared: { letterSpacing: 2, globalTone: 'purple' }
     });
 
     function Global() {
       return <i _shared />;
     }
 
-    style(Global, { i: { padding: 2 } });
+    style(Global, { padding: 2 });
     const node = mount(<Global />).querySelector('i')!;
 
-    expect(node.className).toBe('Global_i global_shared');
+    expect(node.className).toBe('global_shared Global');
     expect(getComputedStyle(node).color).toBe('purple');
     expect(getComputedStyle(node).padding).toBe('2px');
     expect(getComputedStyle(node).letterSpacing).toBe('2px');
-    expect(() => macro({ late: { color: 'red' } })).toThrow('after rendering');
-    expect(() => style(Global, { late: { color: 'red' } })).toThrow('after a component');
+    expect(() => macro({ _late: { color: 'red' } })).toThrow('after rendering');
+    expect(() => style(Global, { _late: { color: 'red' } })).toThrow('after a component');
+  });
+
+  it('will apply base declarations to each component root', () => {
+    function Plain() {
+      return <><hr /><br /></>;
+    }
+
+    style(Plain, { tint: (value?: unknown) => ['tinted', { color: value }] });
+    style(Plain, { tint: 'green', padding: 1 });
+
+    const [rule, line] = [...mount(<Plain />).children] as HTMLElement[];
+    expect(rule.className.split(' ')).toEqual(['Plain', 'tinted']);
+    expect(line.className.split(' ')).toEqual(['Plain', 'tinted']);
+    expect(getComputedStyle(rule).color).toBe('green');
+    expect(getComputedStyle(rule).padding).toBe('1px');
+
+    function Bare() {
+      return <wbr />;
+    }
+
+    style(Bare, { tint: () => 'bare' });
+    style(Bare, { tint: true });
+
+    expect(mount(<Bare />).querySelector('wbr')!.className).toBe('bare');
+  });
+
+  it('will throw if a map uses a reserved key', () => {
+    expect(() => createStyleScope(undefined, { $hover: { color: 'red' } }))
+      .toThrow('Reserved key "$hover" in style map.');
   });
 
   it('will compose repeated and inherited registrations', () => {
@@ -277,9 +290,9 @@ describe('appearance', () => {
     }
     class Styled extends Base {}
 
-    style(Base, { tone: { color: 'red', padding: 2 } });
-    style(Styled, { tone: { color: 'blue' } });
-    style(Styled, { tone: { marginLeft: 3 } });
+    style(Base, { _tone: { color: 'red', padding: 2 } });
+    style(Styled, { _tone: { color: 'blue' } });
+    style(Styled, { _tone: { marginLeft: 3 } });
 
     const node = mount(<Styled />).querySelector('div')!;
     expect(node.className).toBe('Styled_tone');
@@ -296,9 +309,9 @@ describe('appearance', () => {
     const Second = Object.assign(second, { displayName: 'Dup' });
     const Third = Object.assign(third, { displayName: 'Dup' });
 
-    style(First, { x: { color: 'red' } });
-    style(Second, { x: { color: 'blue' } });
-    style(Third, { x: { color: 'red' } });
+    style(First, { _x: { color: 'red' } });
+    style(Second, { _x: { color: 'blue' } });
+    style(Third, { _x: { color: 'red' } });
 
     const root = mount(<><First /><Second /><Third /></>);
     expect(root.querySelector('i')!.className).toBe('Dup_x');
@@ -311,35 +324,37 @@ describe('appearance', () => {
     function Nested() {
       return (
         <section _nested _frame>
-          <strong>nested</strong>
-          <em>framed</em>
+          <strong _strong>nested</strong>
+          <em _em>framed</em>
         </section>
       );
     }
 
     style(Nested, {
-      nested: {
+      _nested: {
         fontStyle: 'italic',
-        strong: { fontWeight: 700 }
+        _strong: { fontWeight: 700 }
       },
-      frame: { em: { color: 'red' } }
+      _frame: { _em: { color: 'red' } }
     });
 
     const root = mount(<Nested />);
     expect(getComputedStyle(root.querySelector('strong')!).fontWeight).toBe('700');
-    expect(root.querySelector('strong')!.className).toBe('Nested_section_strong');
+    expect(root.querySelector('strong')!.className).toBe('Nested_strong');
     expect(root.querySelector('section')!.className).toBe('Nested_nested');
     expect(getComputedStyle(root.querySelector('em')!).color).toBe('red');
   });
 
-  it('will open descendant scopes under keys that are also CSS properties', () => {
+  it('will open descendant scopes only under prefixed keys', () => {
     function Icon() {
-      return <svg _frame><filter /></svg>;
+      return <svg _frame><filter _filter /></svg>;
     }
 
-    style(Icon, { frame: { filter: { opacity: 0.5 } } });
+    style(Icon, { _frame: { filter: 'blur(1px)', _filter: { opacity: 0.5 } } });
 
-    expect(mount(<Icon />).querySelector('filter')!.getAttribute('class')).toBe('Icon_svg_filter');
+    const root = mount(<Icon />);
+    expect(root.querySelector('filter')!.getAttribute('class')).toBe('Icon_filter');
+    expect(getComputedStyle(root.querySelector('svg')!).filter).toBe('blur(1px)');
   });
 
   it('will recreate a removed stylesheet', () => {
@@ -351,8 +366,8 @@ describe('appearance', () => {
       return <b _tone />;
     }
 
-    style(First, { tone: { color: 'red' } });
-    style(Second, { tone: { color: 'blue' } });
+    style(First, { _tone: { color: 'red' } });
+    style(Second, { _tone: { color: 'blue' } });
 
     mount(<First />);
     document.head.querySelector('style[data-expressive]')!.remove();
@@ -367,19 +382,19 @@ describe('appearance', () => {
       empty: () => null,
       token: () => 'one  two',
       zero: called,
-      classes: { token: true, zero: true },
-      blank: { empty: true, token: false },
-      plain: { opacity: 0.5 }
+      _classes: { token: true, zero: true },
+      _blank: { empty: true, token: false },
+      _plain: { opacity: 0.5 }
     })!;
     const props = { _classes: true, _blank: true, _plain: false, _token: true };
-    const resolved = resolveAppearance(undefined, scope, 'div', props);
+    const resolved = resolveAppearance(undefined, scope, props);
 
     expect(resolved.appearance).toEqual({ classes: ['one', 'two', 'zero'] });
     expect(called).toHaveBeenCalledWith(undefined);
 
-    const blank = createAppearanceRoute(scope, 'div', { _blank: true });
-    expect(resolveAppearance(blank, scope, 'div', { _blank: true })).toEqual({ route: blank });
-    expect(resolveAppearance(blank, scope, 'div', { _blank: false })).toEqual({ route: blank });
+    const blank = createAppearanceRoute(scope, { _blank: true });
+    expect(resolveAppearance(blank, scope, { _blank: true })).toEqual({ route: blank });
+    expect(resolveAppearance(blank, scope, { _blank: false })).toEqual({ route: blank });
   });
 
   it('will apply custom properties when serializing', () => {
@@ -395,29 +410,29 @@ describe('appearance', () => {
   it('will ignore invalid maps', () => {
     expect(createStyleScope(undefined, null)).toBeUndefined();
     expect(createStyleScope(undefined, [])).toBeUndefined();
-    expect(createAppearanceRoute(undefined, 'div', {})).toBeUndefined();
-    expect(resolveAppearance(undefined, undefined, 'div', {})).toEqual({});
+    expect(createAppearanceRoute(undefined, {})).toBeUndefined();
+    expect(resolveAppearance(undefined, undefined, {})).toEqual({});
   });
 
   it('will share immutable scopes and structural routes', () => {
-    const parentMap = { tone: { color: 'red' } };
-    const childMap = { tone: { color: 'blue' } };
+    const parentMap = { _tone: { color: 'red' } };
+    const childMap = { _tone: { color: 'blue' } };
     const parent = createStyleScope(undefined, parentMap)!;
     const child = createStyleScope(parent, childMap)!;
 
     expect(createStyleScope(undefined, parentMap)).toBe(parent);
     expect(createStyleScope(parent, childMap)).toBe(child);
 
-    const route = createAppearanceRoute(child, 'div', { _tone: true });
-    expect(createAppearanceRoute(child, 'div', { _tone: false })).toBe(route);
+    const route = createAppearanceRoute(child, { _tone: true });
+    expect(createAppearanceRoute(child, { _tone: false })).toBe(route);
   });
 
   it.fails('will discover selector keys added by a dynamic spread', () => {
     const scope = createStyleScope(undefined, {
-      active: { color: 'red' }
+      _active: { color: 'red' }
     })!;
-    const route = createAppearanceRoute(scope, 'div', {});
-    const result = resolveAppearance(route, scope, 'div', { _active: true });
+    const route = createAppearanceRoute(scope, {});
+    const result = resolveAppearance(route, scope, { _active: true });
 
     expect(result.appearance?.blocks).toHaveLength(1);
   });

@@ -15,9 +15,9 @@ interface ResolvedAppearance {
 
 interface AppearanceContext {
   readonly scope?: unknown;
+  readonly base?: object;
   resolve(
     route: unknown,
-    tag: string,
     props: Record<string, unknown>
   ): { appearance?: ResolvedAppearance; route?: unknown };
 }

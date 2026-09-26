@@ -80,6 +80,7 @@ declare module '@expressive/mvc/jsx-runtime' {
   namespace JSX {
     interface IntrinsicAttributes {
       style?: Style;
+      [attribute: `_${string}`]: unknown;
     }
   }
 }

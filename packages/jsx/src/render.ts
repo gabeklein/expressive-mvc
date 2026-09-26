@@ -186,11 +186,7 @@ function componentProps(
   const context = appearance?.context;
   if (!context || typeof type != 'function') return { appearance, props, route };
 
-  const resolved = context.resolve(
-    route,
-    (type as { displayName?: string }).displayName ?? type.name,
-    props
-  );
+  const resolved = context.resolve(route, props);
   const value = resolved.appearance;
   if (!value) return { appearance, props, route: resolved.route };
 
@@ -855,7 +851,7 @@ function patchProps(fiber: Fiber, next: Record<string, any>, appearance?: Appear
   const element = fiber.start as Element;
   const previous = fiber.props!;
   const raw = 'dangerouslySetInnerHTML' in next;
-  const resolved = appearance?.context?.resolve(fiber.appearanceRoute, fiber.type as string, next) || {};
+  const resolved = appearance?.context?.resolve(fiber.appearanceRoute, next) || {};
 
   fiber.appearanceRoute = resolved.route;
 
@@ -1014,6 +1010,9 @@ function renderedAppearance(fiber: Fiber): Appearance | undefined {
   const style = fiber.props?.style as Style;
   const entries = (fiber.appearance?.entries || []).map(({ hops, style }) => ({ hops: hops + 1, style }));
   const context = enterAppearance(fiber.appearance?.context, fiber.type as Function);
+
+  if (context?.base && context !== fiber.appearance?.context)
+    entries.push({ hops: 0, style: context.base as Style });
 
   if (style && !fiber.consumed && !(fiber.instance && 'style' in fiber.instance)) entries.push({ hops: 0, style });
 

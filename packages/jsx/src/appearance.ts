@@ -1,9 +1,7 @@
-import { registerAppearance, registerAppearanceRoot } from './appearance-protocol';
+import { createAppearanceToken, registerAppearance, registerAppearanceRoot } from './appearance-protocol';
 import type { AppearanceContext, Block, Declaration, ResolvedAppearance } from './appearance-protocol';
 
-type Expression = string | Declaration | false | null | undefined | readonly Expression[];
-type Macro = (value?: unknown) => Expression;
-type StyleMap = Record<string, Declaration | Macro>;
+type StyleMap = Record<string, unknown>;
 
 interface Expansion {
   block?: Block;
@@ -18,6 +16,7 @@ interface StyleScope {
   label: string;
   labels: Record<string, string>;
   names: readonly string[];
+  own: Declaration;
   routes: Map<string, AppearanceRoute>;
   rules: StyleMap;
 }
@@ -25,9 +24,9 @@ interface StyleScope {
 interface AppearanceRoute {
   flags: readonly string[];
   scope: StyleScope;
-  tag?: string;
 }
 
+const bases = new WeakMap<StyleScope, Declaration>();
 const contexts = new WeakMap<StyleScope, AppearanceContext>();
 const rootScopes = new WeakMap<object, StyleScope>();
 const styles = new WeakMap<object, StyleMap[]>();
@@ -43,7 +42,26 @@ function createStyleScope(parent: StyleScope | undefined, value: unknown, label?
   const cached = cache.get(value);
   if (cached) return cached;
 
-  const own = Object.keys(value);
+  const own: string[] = [];
+  const source: StyleMap = {};
+  const base: Declaration = {};
+
+  for (const key of Object.keys(value)) {
+    const entry = (value as StyleMap)[key];
+
+    if (key[0] == '$')
+      throw new Error(`Reserved key "${key}" in style map.`);
+
+    if (key[0] == '_') {
+      const name = key.slice(1);
+      own.push(name);
+      source[name] = entry;
+    } else if (typeof entry == 'function') {
+      own.push(key);
+      source[key] = entry;
+    } else base[key] = entry;
+  }
+
   const names = parent
     ? [...parent.names, ...own.filter((name) => !parent.names.includes(name))]
     : own;
@@ -52,7 +70,7 @@ function createStyleScope(parent: StyleScope | undefined, value: unknown, label?
   const scopeLabel = label || parent?.label || 'style';
 
   for (const name of own) {
-    const rule = (value as StyleMap)[name];
+    const rule = source[name];
     const inherited = parent?.rules[name];
     rules[name] = isObject(inherited) && isObject(rule) ? { ...inherited, ...rule } : rule;
     labels[name] = scopeLabel;
@@ -64,6 +82,7 @@ function createStyleScope(parent: StyleScope | undefined, value: unknown, label?
     label: scopeLabel,
     labels,
     names,
+    own: base,
     routes: new Map(),
     rules
   };
@@ -78,8 +97,9 @@ function createContext(scope: StyleScope): AppearanceContext {
 
   const context: AppearanceContext = {
     scope,
-    resolve(route, tag, props) {
-      return resolveAppearance(route as AppearanceRoute | undefined, scope, tag, props);
+    base: baseToken(scope),
+    resolve(route, props) {
+      return resolveAppearance(route as AppearanceRoute | undefined, scope, props);
     }
   };
 
@@ -89,8 +109,31 @@ function createContext(scope: StyleScope): AppearanceContext {
 
 function extendContext(parent: AppearanceContext | undefined, maps: readonly StyleMap[], label: string) {
   let scope = parent?.scope as StyleScope | undefined;
-  for (const map of maps) scope = createStyleScope(scope, map, label);
+  const base: Declaration = { ...(scope && bases.get(scope)) };
+
+  for (const map of maps) {
+    scope = createStyleScope(scope, map, label);
+    Object.assign(base, scope!.own);
+  }
+
+  if (Object.keys(base).length) bases.set(scope!, base);
+
   return createContext(scope!);
+}
+
+function baseToken(scope: StyleScope) {
+  const base = bases.get(scope);
+  if (!base) return undefined;
+
+  const expansion = expand(scope, base, []);
+  const appearance: ResolvedAppearance = {};
+
+  if (Object.keys(expansion.declarations).length)
+    appearance.blocks = [{ declarations: expansion.declarations, name: scope.label, ordinal: -1 }];
+
+  if (expansion.classes.length) appearance.classes = expansion.classes;
+
+  return createAppearanceToken(appearance);
 }
 
 function style<T extends object>(type: T, rules: StyleMap): T {
@@ -123,13 +166,12 @@ function macro(rules: StyleMap): StyleMap {
 
 function createAppearanceRoute(
   scope: StyleScope | undefined,
-  tag: string,
   props: Record<string, unknown>
 ): AppearanceRoute | undefined {
   if (!scope) return undefined;
 
   const keys = Object.keys(props).filter((key) => key.startsWith('_')).sort();
-  const id = `${tag}\0${keys.join('\0')}`;
+  const id = keys.join('\0');
   const cached = scope.routes.get(id);
   if (cached) return cached;
 
@@ -137,16 +179,11 @@ function createAppearanceRoute(
   const flags: string[] = [];
 
   for (const name of scope.names) {
-    const rule = scope.rules[name];
-    if (!present.has(name) || name == tag) continue;
-    if (isObject(rule)) flags.push(name);
+    if (!present.has(name)) continue;
+    if (isObject(scope.rules[name])) flags.push(name);
   }
 
-  const route: AppearanceRoute = {
-    flags,
-    scope,
-    tag: isObject(scope.rules[tag]) ? tag : undefined
-  };
+  const route: AppearanceRoute = { flags, scope };
 
   scope.routes.set(id, route);
   return route;
@@ -155,14 +192,13 @@ function createAppearanceRoute(
 function resolveAppearance(
   route: AppearanceRoute | undefined,
   scope: StyleScope | undefined,
-  tag: string,
   props: Record<string, unknown>
 ): { appearance?: ResolvedAppearance; route?: AppearanceRoute } {
-  if (!route || route.scope !== scope) route = createAppearanceRoute(scope, tag, props);
+  if (!route || route.scope !== scope) route = createAppearanceRoute(scope, props);
   if (!route) return {};
 
   const parts: Expansion[] = [];
-  const names = route.tag ? [route.tag] : [];
+  const names: string[] = [];
 
   for (const name of route.flags)
     if (isPresent(props[`_${name}`])) names.push(name);
@@ -176,7 +212,7 @@ function resolveAppearance(
 
   for (const part of parts)
     for (const nested of part.nested)
-      child = createStyleScope(child, nested, `${route.scope.label}_${tag}`);
+      child = createStyleScope(child, nested, route.scope.label);
 
   if (!blocks.length && !classes.length && child === route.scope)
     return { route };
@@ -226,13 +262,16 @@ function expand(scope: StyleScope, value: unknown, stack: string[]): Expansion {
     }
 
     for (const [name, entry] of Object.entries(value as Declaration)) {
+      if (name[0] == '_') {
+        nested[name] = entry;
+        continue;
+      }
+
       const rule = scope.rules[name];
 
       if (typeof rule == 'function' && !stack.includes(name)) {
         if (isPresent(entry)) walk(rule(entry === true ? undefined : entry), [...stack, name]);
-      } else if (isObject(entry))
-        nested[name] = entry;
-      else output.declarations[name] = entry;
+      } else output.declarations[name] = entry;
     }
   }
 

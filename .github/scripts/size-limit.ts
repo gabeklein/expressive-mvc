@@ -51,7 +51,7 @@ const CASES = [
   },
   {
     name: 'jsx: styling',
-    limit: 17150,
+    limit: 17300,
     code: `import * as all from '@expressive/jsx'; console.log(all);`
   },
   {
