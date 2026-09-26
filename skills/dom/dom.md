@@ -72,8 +72,9 @@ style(Button, {
 });
 ```
 
-- A rule applies when `_name` is truthy on an element, or when the element's host tag is `name`. Each applied rule is one class named after its source, such as `Button_active`. Nested inside a rule body, `_name` opens a descendant scope.
+- A rule applies when `_name` is truthy on an element, or when the element's host tag is `name`. `0` and `''` do not activate - a rule is on or off, while a macro still treats `0` as a value. Each applied rule is one class named after its source, such as `Button_active`. Nested inside a rule body, `_name` opens a descendant scope.
 - Bare keys at the top of a map form a **base rule** applied to each of the component's host roots - `padding` above styles every root `Button` renders, through fragments.
+- A map never reaches inside a child component. Rules, base declarations and tag matches apply to the elements that component renders; a descendant scope handed to a child through `style` covers that child's own output and stops there. Only the class chain inherits - `Derived` sees `Base`'s rules.
 - Component names never match; minifiers rename them. A caller styles a child through `_rule` on the component element, which travels by door.
 - `$name` is reserved for host instructions and throws.
 - `false`, `null`, and `undefined` omit an entry; `0` is a value. `_` attributes are style-only and never reach the DOM.
@@ -84,7 +85,7 @@ Repeated `style()` calls add layers and return the component unchanged. Within a
 
 Inline style always beats classes. Among classes, a caller's rule beats the callee's: a `_rule` on a component element travels as a token through `style`, and each component `style` prop crossed - forwarded or handed on explicitly - adds a door. More doors wins - for classes and for which nested rules reach descendants - independent of render or emission order. Blocks emitted past the first door carry a `-dN` suffix.
 
-Keep each JSX location's `_` attribute names stable; a `_` key added later through a dynamic spread is not detected. Build-time extraction is not part of the `0.1` experiment.
+Build-time extraction is not part of the `0.1` experiment.
 
 `class` is element-only. `style` on a component forwards through component and transparent boundaries to its host root; fragment output applies it to every host root. Reading `style` during render - destructuring, a spread, `this.props.style`, or a declared `style` field on a Component - takes ownership and suppresses forwarding for that render. Forwarded style overrides the root's own, and the outermost caller wins; a component wanting the last word consumes `style` and places it first:
 

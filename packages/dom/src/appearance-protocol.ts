@@ -17,10 +17,9 @@ interface AppearanceContext {
   readonly scope?: unknown;
   readonly base?: object;
   resolve(
-    route: unknown,
     props: Record<string, unknown>,
     tag?: string
-  ): { appearance?: ResolvedAppearance; route?: unknown };
+  ): ResolvedAppearance | undefined;
 }
 
 type EnterAppearance = (parent?: AppearanceContext) => AppearanceContext;

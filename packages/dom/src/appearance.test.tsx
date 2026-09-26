@@ -268,16 +268,16 @@ describe('appearance', () => {
 
   it('will join array values and throw for unhandled keys', () => {
     const joined = createStyleScope(undefined, { _box: { margin: ['1px', '2px'] } })!;
-    const resolved = resolveAppearance(undefined, joined, { _box: true });
+    const resolved = resolveAppearance(joined, { _box: true });
 
-    expect(resolved.appearance?.blocks?.[0].declarations).toEqual({ margin: '1px 2px' });
+    expect(resolved?.blocks?.[0].declarations).toEqual({ margin: '1px 2px' });
 
     const nested = createStyleScope(undefined, { _bad: { margin: { top: '1px' } } })!;
-    expect(() => resolveAppearance(undefined, nested, { _bad: true }))
+    expect(() => resolveAppearance(nested, { _bad: true }))
       .toThrow('No macro handles "margin".');
 
     const fn = createStyleScope(undefined, { _fn: { margin: () => '1px' } })!;
-    expect(() => resolveAppearance(undefined, fn, { _fn: true }))
+    expect(() => resolveAppearance(fn, { _fn: true }))
       .toThrow('No macro handles "margin".');
   });
 
@@ -303,6 +303,20 @@ describe('appearance', () => {
     expect(mount(<Bare />).querySelector('wbr')!.className).toBe('bare');
   });
 
+  it('will not activate a rule for a falsy flag', () => {
+    function Gate() {
+      return <><kbd _on={0} /><samp _on={''} /><var _on={1} /></>;
+    }
+
+    style(Gate, { _on: { color: 'olive' } });
+
+    const root = mount(<Gate />);
+
+    expect(root.querySelector('kbd')!.className).toBe('');
+    expect(root.querySelector('samp')!.className).toBe('');
+    expect(root.querySelector('var')!.className).toBe('Gate_on');
+  });
+
   it('will throw if a rule is not an object', () => {
     expect(() => createStyleScope(undefined, { _bad: (() => null) as any }))
       .toThrow('Rule "_bad" must be an object. Macros are defined by macro().');
@@ -314,10 +328,10 @@ describe('appearance', () => {
     const scope = createStyleScope(undefined, {
       _outer: { color: 'red', _inner: false }
     })!;
-    const resolved = resolveAppearance(undefined, scope, { _outer: true });
+    const resolved = resolveAppearance(scope, { _outer: true });
 
-    expect(resolved.appearance?.context).toBeUndefined();
-    expect(resolved.appearance?.blocks?.[0].declarations).toEqual({ color: 'red' });
+    expect(resolved?.context).toBeUndefined();
+    expect(resolved?.blocks?.[0].declarations).toEqual({ color: 'red' });
   });
 
   it('will throw if a map uses a reserved key', () => {
@@ -542,14 +556,13 @@ describe('appearance', () => {
       _plain: { opacity: 0.5 }
     })!;
     const props = { _classes: true, _blank: true, _plain: false, _token: true };
-    const resolved = resolveAppearance(undefined, scope, props);
+    const resolved = resolveAppearance(scope, props);
 
-    expect(resolved.appearance).toEqual({ classes: ['one', 'two', 'zero'] });
+    expect(resolved).toEqual({ classes: ['one', 'two', 'zero'] });
     expect(called).toHaveBeenCalledWith(undefined, 'zero');
 
-    const blank = createAppearanceRoute(scope, { _blank: true });
-    expect(resolveAppearance(blank, scope, { _blank: true })).toEqual({ route: blank });
-    expect(resolveAppearance(blank, scope, { _blank: false })).toEqual({ route: blank });
+    expect(resolveAppearance(scope, { _blank: true })).toBeUndefined();
+    expect(resolveAppearance(scope, { _blank: false })).toBeUndefined();
   });
 
   it('will apply custom properties when serializing', () => {
@@ -566,7 +579,7 @@ describe('appearance', () => {
     expect(createStyleScope(undefined, null)).toBeUndefined();
     expect(createStyleScope(undefined, [])).toBeUndefined();
     expect(createAppearanceRoute(undefined, {})).toBeUndefined();
-    expect(resolveAppearance(undefined, undefined, {})).toEqual({});
+    expect(resolveAppearance(undefined, {})).toBeUndefined();
   });
 
   it('will share immutable scopes and structural routes', () => {
@@ -582,13 +595,13 @@ describe('appearance', () => {
     expect(createAppearanceRoute(child, { _tone: false })).toBe(route);
   });
 
-  it.fails('will discover selector keys added by a dynamic spread', () => {
+  it('will discover a rule key added after the first render', () => {
     const scope = createStyleScope(undefined, {
       _active: { color: 'red' }
     })!;
-    const route = createAppearanceRoute(scope, {});
-    const result = resolveAppearance(route, scope, { _active: true });
 
-    expect(result.appearance?.blocks).toHaveLength(1);
+    expect(resolveAppearance(scope, {})).toBeUndefined();
+    expect(resolveAppearance(scope, { _active: true })?.blocks).toHaveLength(1);
   });
+
 });

@@ -106,8 +106,8 @@ function createContext(scope: StyleScope): AppearanceContext {
   const context: AppearanceContext = {
     scope,
     base: baseToken(scope),
-    resolve(route, props, tag) {
-      return resolveAppearance(route as AppearanceRoute | undefined, scope, props, tag);
+    resolve(props, tag) {
+      return resolveAppearance(scope, props, tag);
     }
   };
 
@@ -203,19 +203,19 @@ function createAppearanceRoute(
 }
 
 function resolveAppearance(
-  route: AppearanceRoute | undefined,
   scope: StyleScope | undefined,
   props: Record<string, unknown>,
   tag?: string
-): { appearance?: ResolvedAppearance; route?: AppearanceRoute } {
-  if (!route || route.scope !== scope) route = createAppearanceRoute(scope, props, tag);
-  if (!route) return {};
+): ResolvedAppearance | undefined {
+  const route = createAppearanceRoute(scope, props, tag);
+
+  if (!route) return undefined;
 
   const parts: Expansion[] = [];
   const names: string[] = route.tag ? [route.tag] : [];
 
   for (const name of route.flags)
-    if (isPresent(props[`_${name}`])) names.push(name);
+    if (props[`_${name}`]) names.push(name);
 
   for (const name of names)
     parts.push(expandRule(route.scope, name));
@@ -229,14 +229,14 @@ function resolveAppearance(
       child = createStyleScope(child, nested, tag ? `${route.scope.label}_${tag}` : route.scope.label);
 
   if (!blocks.length && !classes.length && child === route.scope)
-    return { route };
+    return undefined;
 
   const appearance: ResolvedAppearance = {};
   if (blocks.length) appearance.blocks = blocks;
   if (classes.length) appearance.classes = classes;
   if (child !== route.scope) appearance.context = createContext(child!);
 
-  return { appearance, route };
+  return appearance;
 }
 
 function expandRule(scope: StyleScope, name: string) {
