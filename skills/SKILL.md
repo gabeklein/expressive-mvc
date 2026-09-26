@@ -13,7 +13,7 @@ Class-based reactive state for React. State classes define reactive properties, 
 | -------------------- | --------- | ----------------------------------------------------------------- |
 | `@expressive/react`  | Published | React adapter. Primary import for State, Component, instructions. |
 | `@expressive/mvc`    | Published | Framework-agnostic core. Rarely imported directly.                |
-| `@expressive/jsx`    | Preview   | MVC-native client DOM renderer without a framework dependency.    |
+| `@expressive/dom`    | Preview   | MVC-native client DOM renderer without a framework dependency.    |
 | `@expressive/preact` | Private   | Thin wrapper over React adapter via preact/hooks. Prerelease.     |
 | `@expressive/router` | Published | Host-agnostic, class-based router built on MVC.                   |
 | `@expressive/inspect` | Published | In-process inspector: registry, ownership tree, path queries, journal. |
@@ -24,11 +24,11 @@ Class-based reactive state for React. State classes define reactive properties, 
 npm install @expressive/react            # + @expressive/router for routing
 ```
 
-`@expressive/mvc` comes as a dependency - **do not add it to `package.json`.** Import `State`, `Component`, and every instruction from `@expressive/react`, which re-exports the core. Depend on `@expressive/mvc` directly only for adapter-free code: a shared domain package, a Node service, a new adapter.
+`@expressive/mvc` comes as a dependency of `@expressive/react` - **do not add it to `package.json`.** Import `State`, `Component`, and every instruction from `@expressive/react`, which re-exports the core. Depend on `@expressive/mvc` directly only for adapter-free code: a shared domain package, a Node service, a new adapter.
 
 React Native / Expo need no setup beyond three boundaries ([react/react.md](react/react.md#react-native)): add `@expressive` to `jest-expo`'s `transformIgnorePatterns`; use `Router`, not `BrowserRouter`; `Link`/`NavLinks` render DOM, so navigate through `Router`.
 
-For a client-only DOM app without React, install `@expressive/jsx`. Its FC model, renderer API, portals, lazy loading, and transition constraints are in [jsx/jsx.md](jsx/jsx.md).
+For a client-only DOM app without React, install `@expressive/mvc` and `@expressive/dom`. `@expressive/dom` is a sidecar and re-exports nothing - `State`, `Component` and instructions come from `@expressive/mvc`, while `render`, `createPortal`, `lazy`, `Provider`, `style` and `macro` come from `@expressive/dom`. Its FC model, renderer API, portals, lazy loading, and transition constraints are in [dom/dom.md](dom/dom.md).
 
 ## Start With Ownership, Not APIs
 
@@ -329,7 +329,7 @@ Instructions: `field/*.md`, linked from the [helper table](#instructions--reacti
 
 ### JSX
 
-- [jsx/jsx.md](jsx/jsx.md) - client DOM render/unmount, stateless FC scopes, MVC snapshots, native events, portals, lazy boundaries, transitions, exclusions
+- [dom/dom.md](dom/dom.md) - client DOM render/unmount, stateless FC scopes, MVC snapshots, native events, portals, lazy boundaries, transitions, exclusions
 
 ### Router
 

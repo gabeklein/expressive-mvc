@@ -1,5 +1,5 @@
 {
-  "name": "@expressive/jsx",
+  "name": "@expressive/dom",
   "version": "0.0.0",
   "description": "MVC-native JSX renderer for the DOM.",
   "license": "MIT",
@@ -48,10 +48,11 @@
     "build": "tsdown",
     "test": "tsc --noEmit && vitest run --coverage"
   },
-  "dependencies": {
+  "peerDependencies": {
     "@expressive/mvc": "workspace:^"
   },
   "devDependencies": {
+    "@expressive/mvc": "workspace:^",
     "@types/node": "^25.2.0",
     "tsdown": "^0.20.1"
   }

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { Component, Provider, State, createPortal, lazy, pending, render } from './index';
+import { Component, State, pending } from '@expressive/mvc';
+import { Provider, createPortal, lazy, render } from './index';
 import { flushMicrotasks, mockPromise } from '../test.setup';
 
 describe('suspense and recovery', () => {

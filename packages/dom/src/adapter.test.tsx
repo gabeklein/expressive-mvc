@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import State, { Component, Consumer, Provider, render } from './index';
+import { State, Component } from '@expressive/mvc';
+import { Consumer, Provider, render } from './index';
 import { Context } from '@expressive/mvc';
 import { commit, dispose, enter } from './adapter';
 import type { Scope } from './adapter';
@@ -168,8 +169,8 @@ describe('MVC adapter', () => {
       }
     }
 
-    expect(() => Value.get()).toThrow('may only run while @expressive/jsx is rendering');
-    expect(() => Value.use()).toThrow('may only run while @expressive/jsx is rendering');
+    expect(() => Value.get()).toThrow('may only run while @expressive/dom is rendering');
+    expect(() => Value.use()).toThrow('may only run while @expressive/dom is rendering');
     expect(() => (View as any).use()).toThrow('render it instead of calling use()');
     expect(() => render(<View />, document.createElement('main'))).toThrow(
       'only available at the top level of a function component'

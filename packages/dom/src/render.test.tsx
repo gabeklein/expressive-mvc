@@ -1,11 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { Component, State, createPortal, has, map, render } from './index';
+import { Component, State, has, map } from '@expressive/mvc';
+import { createPortal, render } from './index';
 import { flushMicrotasks } from '../test.setup';
 import { vnode } from './vnode';
 
 if (false) {
-  // @ts-expect-error @expressive/jsx uses the native class prop.
+  // @ts-expect-error @expressive/dom uses the native class prop.
   <div className="legacy" />;
 }
 

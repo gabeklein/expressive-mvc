@@ -86,7 +86,7 @@ function commit(scope: Scope) {
 
 function requireScope(): Scope {
   if (!current)
-    throw new Error('State.get() and State.use() may only run while @expressive/jsx is rendering.');
+    throw new Error('State.get() and State.use() may only run while @expressive/dom is rendering.');
 
   return current;
 }

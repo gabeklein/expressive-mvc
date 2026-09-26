@@ -1,6 +1,6 @@
 # JSX renderer
 
-`@expressive/jsx` renders MVC components directly to browser DOM. It has no React or Preact dependency.
+`@expressive/dom` renders MVC components directly to browser DOM. It has no React or Preact dependency.
 
 ## Status
 
@@ -10,20 +10,14 @@ The initial `0.1` release is a usable, tested browser renderer for dogfooding, n
 {
   "compilerOptions": {
     "jsx": "react-jsx",
-    "jsxImportSource": "@expressive/jsx"
+    "jsxImportSource": "@expressive/dom"
   }
 }
 ```
 
 ```tsx
-import State, {
-  Component,
-  Provider,
-  createPortal,
-  lazy,
-  pending,
-  render
-} from '@expressive/jsx';
+import State, { Component, pending } from '@expressive/mvc';
+import { Provider, createPortal, lazy, render } from '@expressive/dom';
 ```
 
 ## Render
