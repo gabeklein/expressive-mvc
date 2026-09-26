@@ -22,19 +22,9 @@ interface StyleScope {
   rules: StyleMap;
 }
 
-interface Site {
-  args?: unknown[];
-  block?: Block;
-  expansion?: Expansion;
-  stable?: Declaration;
-  version: number;
-}
-
 interface AppearanceRoute {
   flags: readonly string[];
-  macros: readonly string[];
   scope: StyleScope;
-  sites: Map<string, Site>;
   tag?: string;
 }
 
@@ -88,8 +78,8 @@ function createContext(scope: StyleScope): AppearanceContext {
 
   const context: AppearanceContext = {
     scope,
-    resolve(route, tag, props, site) {
-      return resolveAppearance(route as AppearanceRoute | undefined, scope, tag, props, site);
+    resolve(route, tag, props) {
+      return resolveAppearance(route as AppearanceRoute | undefined, scope, tag, props);
     }
   };
 
@@ -145,20 +135,16 @@ function createAppearanceRoute(
 
   const present = new Set(keys.map((key) => key.slice(1)));
   const flags: string[] = [];
-  const macros: string[] = [];
 
   for (const name of scope.names) {
     const rule = scope.rules[name];
     if (!present.has(name) || name == tag) continue;
-    if (typeof rule == 'function') macros.push(name);
-    else if (isObject(rule)) flags.push(name);
+    if (isObject(rule)) flags.push(name);
   }
 
   const route: AppearanceRoute = {
     flags,
-    macros,
     scope,
-    sites: new Map(),
     tag: isObject(scope.rules[tag]) ? tag : undefined
   };
 
@@ -170,8 +156,7 @@ function resolveAppearance(
   route: AppearanceRoute | undefined,
   scope: StyleScope | undefined,
   tag: string,
-  props: Record<string, unknown>,
-  site = ''
+  props: Record<string, unknown>
 ): { appearance?: ResolvedAppearance; route?: AppearanceRoute } {
   if (!route || route.scope !== scope) route = createAppearanceRoute(scope, tag, props);
   if (!route) return {};
@@ -185,7 +170,6 @@ function resolveAppearance(
   for (const name of names)
     parts.push(expandRule(route.scope, name));
 
-  const inline = locate(route, tag, props, parts, site);
   const blocks = parts.flatMap((part) => part.block ? [part.block] : []);
   const classes = parts.flatMap((part) => part.classes);
   let child: StyleScope | undefined = route.scope;
@@ -194,79 +178,15 @@ function resolveAppearance(
     for (const nested of part.nested)
       child = createStyleScope(child, nested, `${route.scope.label}_${tag}`);
 
-  if (!blocks.length && !classes.length && !inline && child === route.scope)
+  if (!blocks.length && !classes.length && child === route.scope)
     return { route };
 
   const appearance: ResolvedAppearance = {};
   if (blocks.length) appearance.blocks = blocks;
   if (classes.length) appearance.classes = classes;
-  if (inline) appearance.declarations = inline;
   if (child !== route.scope) appearance.context = createContext(child!);
 
   return { appearance, route };
-}
-
-function locate(
-  route: AppearanceRoute,
-  tag: string,
-  props: Record<string, unknown>,
-  parts: Expansion[],
-  path: string
-) {
-  const args = route.macros.map((name) => props[`_${name}`]);
-  if (!args.some(isPresent)) return undefined;
-
-  let site = route.sites.get(path);
-  if (!site) route.sites.set(path, (site = { version: 0 }));
-
-  if (!site.args || args.some((value, index) => !Object.is(value, site.args![index]))) {
-    site.args = args;
-    site.expansion = expand(
-      route.scope,
-      route.macros.map((name, index) => ({ [name]: args[index] })),
-      []
-    );
-  }
-
-  const { declarations } = site.expansion!;
-  let inline: Declaration | undefined;
-
-  if (!site.stable) {
-    site.stable = { ...declarations };
-    site.block = createBlock(route, site, tag, { ...site.stable });
-  } else {
-    let changed = false;
-
-    for (const key of Object.keys(site.stable))
-      if (!Object.is(site.stable[key], declarations[key])) {
-        delete site.stable[key];
-        changed = true;
-      }
-
-    if (changed) {
-      site.version++;
-      site.block = createBlock(route, site, tag, { ...site.stable });
-    }
-  }
-
-  for (const key of Object.keys(declarations))
-    if (!(key in site.stable)) (inline ||= {})[key] = declarations[key];
-
-  parts.push({ ...site.expansion!, block: site.block });
-  return inline;
-}
-
-function createBlock(route: AppearanceRoute, site: Site, tag: string, declarations: Declaration): Block | undefined {
-  if (!Object.keys(declarations).length) return undefined;
-
-  const { scope, macros } = route;
-  const name = `${scope.label}_${tag}-${macros.join('-')}`;
-
-  return {
-    declarations,
-    name: site.version ? `${name}-v${site.version + 1}` : name,
-    ordinal: scope.names.length
-  };
 }
 
 function expandRule(scope: StyleScope, name: string) {

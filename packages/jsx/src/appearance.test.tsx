@@ -20,17 +20,14 @@ afterEach(() => {
 });
 
 describe('appearance', () => {
-  it('will emit named blocks for rules and a location block for macros', async () => {
-    const color = vi.fn((value?: unknown) => ['macro-class', { color: value, marginLeft: 0 }] as const);
-
+  it('will emit named blocks for rules', async () => {
     class Styled extends Component {
       active = true;
-      color = 'red';
       count = 0;
 
       render() {
         return (
-          <div _active={this.active} _color={this.color} data-count={this.count}>
+          <div _active={this.active} data-count={this.count}>
             styled
           </div>
         );
@@ -39,18 +36,15 @@ describe('appearance', () => {
 
     style(Styled, {
       active: { fontWeight: 700 },
-      color,
       div: { padding: 4 }
     });
 
     let view!: Styled;
     const node = mount(<Styled is={(value) => (view = value)} />).querySelector('div')!;
 
-    expect(node.className.split(' ')).toEqual(['Styled_div', 'Styled_active', 'Styled_div-color', 'macro-class']);
+    expect(node.className.split(' ')).toEqual(['Styled_div', 'Styled_active']);
     expect(node.hasAttribute('_active')).toBe(false);
-    expect(getComputedStyle(node).color).toBe('red');
     expect(getComputedStyle(node).fontWeight).toBe('700');
-    expect(getComputedStyle(node).marginLeft).toBe('0px');
     expect(getComputedStyle(node).padding).toBe('4px');
     expect(node.style.color).toBe('');
 
@@ -59,117 +53,6 @@ describe('appearance', () => {
     view.active = false;
     await flushMicrotasks();
     expect(getComputedStyle(node).fontWeight).not.toBe('700');
-    expect(color).toHaveBeenCalledTimes(1);
-
-    view.color = 'blue';
-    await flushMicrotasks();
-    expect(color).toHaveBeenCalledTimes(2);
-    expect(node.className.split(' ')).toContain('Styled_div-color-v2');
-    expect(node.style.color).toBe('blue');
-    expect(getComputedStyle(node).marginLeft).toBe('0px');
-  });
-
-  it('will demote only the properties whose values change', async () => {
-    class Box extends Component {
-      x?: number = 1;
-
-      render() {
-        return <div _mx={this.x} _gap={2} />;
-      }
-    }
-
-    style(Box, {
-      mx: (value?: unknown) => ({ marginLeft: value, marginRight: value }),
-      gap: (value?: unknown) => ({ paddingTop: value })
-    });
-
-    let view!: Box;
-    const node = mount(<Box is={(value) => (view = value)} />).querySelector('div')!;
-
-    expect(node.className).toBe('Box_div-mx-gap');
-    expect(getComputedStyle(node).marginLeft).toBe('1px');
-
-    view.x = 5;
-    await flushMicrotasks();
-    expect(node.className).toBe('Box_div-mx-gap-v2');
-    expect(node.style.marginLeft).toBe('5px');
-    expect(node.style.marginRight).toBe('5px');
-    expect(node.style.paddingTop).toBe('');
-    expect(getComputedStyle(node).paddingTop).toBe('2px');
-
-    view.x = undefined;
-    await flushMicrotasks();
-    expect(node.style.marginLeft).toBe('');
-    expect(getComputedStyle(node).paddingTop).toBe('2px');
-  });
-
-  it('will give same-shaped elements at different positions their own sites', () => {
-    function Card() {
-      return <><div _mx={1} /><div _mx={2} /></>;
-    }
-
-    style(Card, { mx: (value?: unknown) => ({ marginLeft: value }) });
-
-    const [first, second] = [...mount(<Card />).querySelectorAll('div')];
-    expect(first.style.marginLeft).toBe('');
-    expect(second.style.marginLeft).toBe('');
-    expect(getComputedStyle(first).marginLeft).toBe('1px');
-    expect(getComputedStyle(second).marginLeft).toBe('2px');
-    expect(first.className).not.toBe(second.className);
-  });
-
-  it('will separate alternating elements at one position by key', async () => {
-    class Toggle extends Component {
-      first = true;
-
-      render() {
-        return this.first ? <div key="a" _mx={1} /> : <div key="b" _mx={2} />;
-      }
-    }
-
-    style(Toggle, { mx: (value?: unknown) => ({ marginLeft: value }) });
-
-    let view!: Toggle;
-    const root = mount(<Toggle is={(value) => (view = value)} />);
-
-    view.first = false;
-    await flushMicrotasks();
-
-    const node = root.querySelector('div')!;
-    expect(node.style.marginLeft).toBe('');
-    expect(getComputedStyle(node).marginLeft).toBe('2px');
-  });
-
-  it('will share one site across list rows and keep later positions stable', async () => {
-    class List extends Component {
-      rows = [1, 2];
-
-      render() {
-        return (
-          <ul>
-            {this.rows.map((row) => <li key={row} _w={row} />)}
-            <li _w={9} />
-          </ul>
-        );
-      }
-    }
-
-    style(List, { w: (value?: unknown) => ({ marginLeft: value }) });
-
-    let view!: List;
-    const root = mount(<List is={(value) => (view = value)} />);
-    const items = () => [...root.querySelectorAll('li')];
-
-    expect(items()[0].style.marginLeft).toBe('');
-    expect(items()[1].style.marginLeft).toBe('2px');
-
-    const footer = items()[2].className;
-    view.rows = [1, 2, 3];
-    await flushMicrotasks();
-
-    expect(items()[3].className).toBe(footer);
-    expect(items()[3].style.marginLeft).toBe('');
-    expect(getComputedStyle(items()[3]).marginLeft).toBe('9px');
   });
 
   it('will let caller rules win over the callee regardless of emission order', () => {
@@ -272,24 +155,24 @@ describe('appearance', () => {
 
   it('will compose rules from macros without expanding a macro into itself', () => {
     function Card() {
-      return <><section _raised _tone="red" /><em _glow /></>;
+      return <section _raised />;
     }
 
     style(Card, {
       mx: (value?: unknown) => ({ marginLeft: value, marginRight: value }),
       pad: (value?: unknown) => ({ mx: value, paddingTop: value }),
       tone: (value?: unknown) => ({ color: value }),
-      glow: () => 'glow',
-      raised: { pad: 6, boxShadow: '0 0 1px black', '--depth': 1 }
+      glow: () => ['glow', { outlineStyle: 'solid' }],
+      raised: { pad: 6, tone: 'red', glow: true, boxShadow: '0 0 1px black', '--depth': 1 }
     });
 
     const node = mount(<Card />).querySelector('section')!;
-    expect(node.className).toBe('Card_raised Card_section-tone');
+    expect(node.className.split(' ')).toEqual(['Card_raised', 'glow']);
     expect(getComputedStyle(node).marginLeft).toBe('6px');
     expect(getComputedStyle(node).paddingTop).toBe('6px');
     expect(getComputedStyle(node).color).toBe('red');
     expect(getComputedStyle(node).getPropertyValue('--depth')).toBe('1');
-    expect(node.parentElement!.querySelector('em')!.className).toBe('glow');
+    expect(getComputedStyle(node).outlineStyle).toBe('solid');
   });
 
   it('will match component rules by displayName', () => {
@@ -368,17 +251,17 @@ describe('appearance', () => {
   it('will register global macros before rendering', () => {
     macro({
       globalTone: (value?: unknown) => ({ color: value }),
-      shared: { letterSpacing: 2 }
+      shared: { letterSpacing: 2, globalTone: 'purple' }
     });
 
     function Global() {
-      return <i _globalTone="purple" _shared />;
+      return <i _shared />;
     }
 
     style(Global, { i: { padding: 2 } });
     const node = mount(<Global />).querySelector('i')!;
 
-    expect(node.className).toBe('Global_i global_shared Global_i-globalTone');
+    expect(node.className).toBe('Global_i global_shared');
     expect(getComputedStyle(node).color).toBe('purple');
     expect(getComputedStyle(node).padding).toBe('2px');
     expect(getComputedStyle(node).letterSpacing).toBe('2px');
@@ -481,33 +364,22 @@ describe('appearance', () => {
   it('will resolve class-only, empty and plain routes', () => {
     const called = vi.fn(() => 'zero');
     const scope = createStyleScope(undefined, {
-      bad: 'not a rule' as any,
       empty: () => null,
       token: () => 'one  two',
       zero: called,
+      classes: { token: true, zero: true },
+      blank: { empty: true, token: false },
       plain: { opacity: 0.5 }
     })!;
-    const props = { _bad: true, _empty: true, _token: true, _zero: true, _plain: false };
+    const props = { _classes: true, _blank: true, _plain: false, _token: true };
     const resolved = resolveAppearance(undefined, scope, 'div', props);
 
     expect(resolved.appearance).toEqual({ classes: ['one', 'two', 'zero'] });
     expect(called).toHaveBeenCalledWith(undefined);
 
-    const empty = createAppearanceRoute(scope, 'div', { _empty: true });
-    expect(resolveAppearance(empty, scope, 'div', { _empty: true })).toEqual({ route: empty });
-    expect(resolveAppearance(empty, scope, 'div', { _empty: false })).toEqual({ route: empty });
-  });
-
-  it('will distinguish signed zero macro arguments', () => {
-    const scope = createStyleScope(undefined, {
-      signed: (value?: unknown) => ({ zIndex: Object.is(value, -0) ? -1 : 1 })
-    })!;
-    const route = createAppearanceRoute(scope, 'div', { _signed: 0 });
-    const positive = resolveAppearance(route, scope, 'div', { _signed: 0 });
-    const negative = resolveAppearance(route, scope, 'div', { _signed: -0 });
-
-    expect(positive.appearance?.blocks?.[0].declarations).toEqual({ zIndex: 1 });
-    expect(negative.appearance?.declarations).toEqual({ zIndex: -1 });
+    const blank = createAppearanceRoute(scope, 'div', { _blank: true });
+    expect(resolveAppearance(blank, scope, 'div', { _blank: true })).toEqual({ route: blank });
+    expect(resolveAppearance(blank, scope, 'div', { _blank: false })).toEqual({ route: blank });
   });
 
   it('will apply custom properties when serializing', () => {

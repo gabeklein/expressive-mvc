@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { PORTAL, VNODE, childrenOf, createPortal, isVNode, markStatic, segmentsOf, vnode } from './vnode';
+import { PORTAL, VNODE, childrenOf, createPortal, isVNode, vnode } from './vnode';
 
 describe('VNode', () => {
   it('will create and recognize nodes', () => {
@@ -33,19 +33,5 @@ describe('VNode', () => {
     expect(portal.type).toBe(PORTAL);
     expect(portal.key).toBe('modal');
     expect(portal.props).toEqual({ children: 'hello', container });
-  });
-
-  it('will assign static positions and collapse dynamic arrays', () => {
-    const rows = ['a', 'b'];
-    const children = ['head', false, rows, 'foot'];
-
-    markStatic({ children: 'solo' });
-    markStatic({ children });
-
-    expect(segmentsOf(children)).toEqual(['0', '2*', '2*', '3']);
-    expect(segmentsOf(vnode('i', {}, 'a'))).toEqual(['~a']);
-    expect(segmentsOf([vnode('i', {}, 'a')])).toEqual(['*']);
-    expect(segmentsOf(rows)).toEqual(['*', '*']);
-    expect(segmentsOf('solo')).toEqual(['']);
   });
 });
