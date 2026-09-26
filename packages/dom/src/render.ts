@@ -188,13 +188,16 @@ function componentProps(
 
   const resolved = context.resolve(route, props);
   const value = resolved.appearance;
-  if (!value) return { appearance, props, route: resolved.route };
+  const entries = appearance!.entries;
+
+  if (!value)
+    return { appearance: { entries }, props, route: resolved.route };
 
   const token = createAppearanceToken(value);
   return {
     appearance: {
-      context: value.context || context,
-      entries: appearance!.entries
+      context: value.context,
+      entries
     },
     props: { ...props, style: [token, props.style] },
     route: resolved.route
@@ -1009,9 +1012,10 @@ function renderedAppearance(fiber: Fiber): Appearance | undefined {
 
   const style = fiber.props?.style as Style;
   const entries = (fiber.appearance?.entries || []).map(({ hops, style }) => ({ hops: hops + 1, style }));
-  const context = enterAppearance(fiber.appearance?.context, fiber.type as Function);
+  const inherited = fiber.appearance?.context || appearanceRoot();
+  const context = enterAppearance(inherited, fiber.type as Function);
 
-  if (context?.base && context !== fiber.appearance?.context)
+  if (context?.base && context !== inherited)
     entries.push({ hops: 0, style: context.base as Style });
 
   if (style && !fiber.consumed && !(fiber.instance && 'style' in fiber.instance)) entries.push({ hops: 0, style });

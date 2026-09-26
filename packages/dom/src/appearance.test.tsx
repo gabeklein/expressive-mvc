@@ -378,6 +378,83 @@ describe('appearance', () => {
     expect(getComputedStyle(node).color).toBe('green');
   });
 
+  it('will not leak a base rule into a child component', () => {
+    function Inner() {
+      return <b>inner</b>;
+    }
+
+    function Outer() {
+      return <i><Inner /></i>;
+    }
+
+    style(Inner, { color: 'blue' });
+    style(Outer, { padding: '9px' });
+
+    const root = mount(<Outer />);
+
+    expect(getComputedStyle(root.querySelector('i')!).padding).toBe('9px');
+    expect(getComputedStyle(root.querySelector('b')!).padding).toBe('');
+    expect(getComputedStyle(root.querySelector('b')!).color).toBe('blue');
+  });
+
+  it('will not merge a same-named rule across a component', () => {
+    function Kid() {
+      return <u _tone>k</u>;
+    }
+
+    function Host() {
+      return <s><Kid /></s>;
+    }
+
+    style(Kid, { _tone: { color: 'blue' } });
+    style(Host, { _tone: { color: 'red', paddingTop: '7px' } });
+
+    const inside = mount(<Host />).querySelector('u')!;
+    const alone = mount(<Kid />).querySelector('u')!;
+
+    expect(inside.className).toBe(alone.className);
+    expect(getComputedStyle(inside).paddingTop).toBe('');
+    expect(getComputedStyle(inside).color).toBe('blue');
+  });
+
+  it('will not match a tag rule inside a child component', () => {
+    function Leaf() {
+      return <p>leaf</p>;
+    }
+
+    function Shell() {
+      return <div><p>own</p><Leaf /></div>;
+    }
+
+    style(Shell, { _p: { color: 'red' } });
+
+    const [own, leaf] = [...mount(<Shell />).querySelectorAll('p')];
+
+    expect(getComputedStyle(own).color).toBe('red');
+    expect(getComputedStyle(leaf).color).not.toBe('red');
+  });
+
+  it('will carry a descendant scope one component deep', () => {
+    function Deep() {
+      return <em>deep</em>;
+    }
+
+    function Mid() {
+      return <><q _mark>mid</q><Deep /></>;
+    }
+
+    function Top() {
+      return <Mid _wrap />;
+    }
+
+    style(Top, { _wrap: { _mark: { color: 'orange' }, _em: { color: 'teal' } } });
+
+    const root = mount(<Top />);
+
+    expect(getComputedStyle(root.querySelector('q')!).color).toBe('orange');
+    expect(getComputedStyle(root.querySelector('em')!).color).not.toBe('teal');
+  });
+
   it('will keep block names unique and reuse identical blocks', () => {
     const first = () => <i _x />;
     const second = () => <b _x />;
