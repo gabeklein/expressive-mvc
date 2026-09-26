@@ -1,4 +1,4 @@
-# JSX renderer
+# DOM renderer
 
 `@expressive/dom` renders MVC components directly to browser DOM. It has no React or Preact dependency.
 

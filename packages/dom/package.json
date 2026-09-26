@@ -1,7 +1,7 @@
 {
   "name": "@expressive/dom",
   "version": "0.0.0",
-  "description": "MVC-native JSX renderer for the DOM.",
+  "description": "MVC-native DOM renderer.",
   "license": "MIT",
   "author": {
     "name": "Gabe Klein",

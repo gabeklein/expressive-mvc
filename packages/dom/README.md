@@ -72,7 +72,7 @@ Inline style always beats classes; among classes, a caller's rule beats the call
 
 The first release includes keyed reconciliation, native events, refs, SVG, `Provider` / `Consumer`, direct `has` / `map` collection rendering, portals, lazy components, error and suspense fallbacks, generated component appearance rules, and retention of committed content while `pending()` work suspends. It deliberately excludes standalone hooks, synthetic events, memo wrappers, SSR, hydration, and build-time style extraction.
 
-See [the JSX renderer guide](../../skills/dom/dom.md) for the API and constraints. This package currently targets browser DOM; native rendering and build-time expressive-jsx extraction are not included.
+See [the DOM renderer guide](../../skills/dom/dom.md) for the API and constraints. This package currently targets browser DOM; native rendering and build-time expressive-jsx extraction are not included.
 
 ## License
 
