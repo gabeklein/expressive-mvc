@@ -257,12 +257,15 @@ export function attach(Type: typeof State = State): () => void {
   if (!unwatch) watchCopies();
 
   if (!hooks.has(Type)) {
+    const observed = new Map<typeof State, () => void>();
     const stopCatch = Type.on({ catch: caught });
     const stopSetup = Type.on(function (this: State) {
       const self = this.is;
+      const T = self.constructor as typeof State;
       const id = String(self);
       const span: Span = { since: Date.now(), claimed: false, settled: false };
-      seen(self.constructor as typeof State);
+      if (!observed.has(T)) observed.set(T, T.on({ catch: caught }));
+      seen(T);
       live.set(id, { ref: weak(self) });
       spans.set(self, span);
       reaper.register(self, id, self);
@@ -288,6 +291,7 @@ export function attach(Type: typeof State = State): () => void {
     });
 
     hooks.set(Type, () => {
+      for (const stop of observed.values()) stop();
       stopCatch();
       stopSetup();
     });
@@ -345,7 +349,7 @@ export interface Health {
   collected: number;
   /** Loaded copies of `@expressive/mvc` - more than 1 means inspect cannot see every State. */
   copies: number;
-  /** Reports reaching inspect's `catch` handler, by case. */
+  /** `Caught` reports by case, including ones an app handler went on to handle. */
   caught: Record<Case, number>;
 }
 

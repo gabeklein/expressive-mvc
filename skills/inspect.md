@@ -63,7 +63,7 @@ inspect.health() // { orphans, collected, copies, caught: { Destroyed, Inactive,
 ```
 
 - `copies > 1` - more than one `@expressive/mvc` is loaded; inspect sees only States from the copy it imports, and warns once. Usual cause: a bundler resolving mvc twice - dedupe or alias it. Counted only where inspect is loaded; a bundle that never imports it goes unseen.
-- `caught` - reports reaching inspect's `catch` handler ([State.on()](state/state.md#stateon)). Inspect passes each on, so behavior is unchanged. A handler registered later, or on a subclass, runs first - one that handles a report hides it from inspect.
+- `caught` - `Caught` reports by case, handled or not ([State.on()](state/state.md#stateon)). Inspect's `catch` joins each class as its first instance activates, ahead of app handlers registered before then, and passes each report on - behavior is unchanged. A handler registered on that class afterward runs first; one that handles or replaces a report hides the original.
 
 ## Addresses (across a boundary)
 

@@ -208,6 +208,39 @@ describe('health', () => {
     expect(health().caught).toEqual({ Destroyed: 1, Inactive: 0, Getter: 0, Init: 0, Effect: 0 });
   });
 
+  it('will see a report before an app handler takes it', () => {
+    attach();
+
+    class Late extends State {
+      text = '';
+    }
+
+    const stop = State.on({ catch: (error) => (error instanceof Caught.Destroyed ? undefined : error) });
+    const late = Late.new();
+
+    late.set(null);
+    late.text = 'late';
+    stop();
+
+    expect(health().caught.Destroyed).toBe(1);
+  });
+
+  it('will stop observing a class when detached', () => {
+    const stop = attach();
+
+    class Gone extends State {
+      text = '';
+    }
+
+    const gone = Gone.new();
+
+    stop();
+    gone.set(null);
+
+    expect(() => (gone.text = 'late')).toThrow(Caught.Destroyed);
+    expect(health().caught.Destroyed).toBe(0);
+  });
+
   it('will record a caught report in the journal', async () => {
     attach();
     journal.record({ level: 'keys' });
@@ -249,8 +282,8 @@ describe('health', () => {
       text = '';
     }
 
-    const stop = Replaced.on({ catch: (error) => new Caught(error.state, 'replaced') });
     const replaced = Replaced.new();
+    const stop = Replaced.on({ catch: (error) => new Caught(error.state, 'replaced') });
 
     replaced.set(null);
     expect(() => (replaced.text = 'late')).toThrow('replaced');
