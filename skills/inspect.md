@@ -139,13 +139,17 @@ Drive input through the UI; assert on the model. Reserve DOM assertions for pres
 
 ## Failure journal
 
-Record from the first State in any browser a driver controls - the app turns it on, so nothing is missed before a test attaches:
+Record from the first State in any browser a driver controls - the app turns it on, so nothing is missed before a test attaches. The Vite plugin covers the dev server only; e2e against a built app (`vite preview`, a production build) needs the inspector in that build. Gate it on a flag the bundler folds, so a production build drops inspect entirely:
 
 ```ts
-// app entry, after '@expressive/inspect/install' (or with the Vite plugin)
-import { journal } from '@expressive/inspect';
+// debug.ts - first import of the app entry; CI builds with `vite build --mode e2e`
+import { inspect, journal } from '@expressive/inspect';
 
-if (navigator.webdriver) journal.record({ level: 'values' });
+if (import.meta.env.MODE !== 'production') {
+  inspect.attach();
+  globalThis.__EXPRESSIVE_INSPECT__ = inspect; // what the bridge reaches
+  if (navigator.webdriver) journal.record({ level: 'values' });
+}
 ```
 
 Attach it to failing tests - Playwright fixture, every frame:
