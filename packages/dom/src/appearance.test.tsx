@@ -344,6 +344,40 @@ describe('appearance', () => {
     expect(getComputedStyle(node).padding).toBe('2px');
   });
 
+  it('will apply rules from every class in the chain', () => {
+    class Bar extends Component {
+      render() {
+        return <div _a _b />;
+      }
+    }
+    class Foo extends Bar {}
+
+    style(Bar, { _a: { color: 'red' } });
+    style(Foo, { _b: { paddingTop: '4px' } });
+
+    const node = mount(<Foo />).querySelector('div')!;
+
+    expect(node.className.split(' ')).toEqual(['Bar_a', 'Foo_b']);
+    expect(getComputedStyle(node).color).toBe('red');
+    expect(getComputedStyle(node).paddingTop).toBe('4px');
+  });
+
+  it('will resolve an inherited render against the derived scope', () => {
+    class Plain extends Component {
+      render() {
+        return <span _tint>base</span>;
+      }
+    }
+    class Tinted extends Plain {}
+
+    style(Tinted, { _tint: { color: 'green' } });
+
+    const node = mount(<Tinted />).querySelector('span')!;
+
+    expect(node.className).toBe('Tinted_tint');
+    expect(getComputedStyle(node).color).toBe('green');
+  });
+
   it('will keep block names unique and reuse identical blocks', () => {
     const first = () => <i _x />;
     const second = () => <b _x />;
