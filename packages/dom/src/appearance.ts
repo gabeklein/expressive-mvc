@@ -58,6 +58,9 @@ function createStyleScope(parent: StyleScope | undefined, value: unknown, label?
       throw new Error(`Reserved key "${key}" in style map.`);
 
     if (key[0] == '_') {
+      if (!isObject(entry))
+        throw new Error(`Rule "${key}" must be an object. Macros are defined by macro().`);
+
       const name = key.slice(1);
       own.push(name);
       source[name] = entry;
@@ -295,7 +298,7 @@ function expand(scope: StyleScope, value: unknown, depths: Depths): Expansion {
 
     for (const [name, entry] of Object.entries(value as Declaration)) {
       if (name[0] == '_') {
-        nested[name] = entry;
+        if (isObject(entry)) nested[name] = entry;
         continue;
       }
 

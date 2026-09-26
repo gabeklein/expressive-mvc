@@ -303,6 +303,23 @@ describe('appearance', () => {
     expect(mount(<Bare />).querySelector('wbr')!.className).toBe('bare');
   });
 
+  it('will throw if a rule is not an object', () => {
+    expect(() => createStyleScope(undefined, { _bad: (() => null) as any }))
+      .toThrow('Rule "_bad" must be an object. Macros are defined by macro().');
+    expect(() => createStyleScope(undefined, { _also: 'token' as any }))
+      .toThrow('Rule "_also" must be an object.');
+  });
+
+  it('will ignore a non-object descendant scope', () => {
+    const scope = createStyleScope(undefined, {
+      _outer: { color: 'red', _inner: false }
+    })!;
+    const resolved = resolveAppearance(undefined, scope, { _outer: true });
+
+    expect(resolved.appearance?.context).toBeUndefined();
+    expect(resolved.appearance?.blocks?.[0].declarations).toEqual({ color: 'red' });
+  });
+
   it('will throw if a map uses a reserved key', () => {
     expect(() => createStyleScope(undefined, { $hover: { color: 'red' } }))
       .toThrow('Reserved key "$hover" in style map.');

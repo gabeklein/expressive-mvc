@@ -56,4 +56,20 @@ describe('lazy', () => {
     await pending;
     expect(() => Lazy({})).toThrow(0);
   });
+
+  it('will reject a module with no component', async () => {
+    const loaded = mockPromise<any>();
+    const Lazy = lazy(() => loaded);
+    let pending!: Promise<unknown>;
+
+    try {
+      Lazy({});
+    } catch (error) {
+      pending = error as Promise<unknown>;
+    }
+
+    loaded.resolve({});
+    await pending;
+    expect(() => Lazy({})).toThrow('lazy() loader resolved no component.');
+  });
 });
