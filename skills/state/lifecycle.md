@@ -83,7 +83,7 @@ Children always go before parents; nested contexts destroy inner-to-outer.
 
 Afterward:
 
-- Assignment throws `Caught.Destroyed` (`Tried to update {state}.{key} but state is destroyed.`). The throw is an abort signal: a continuation writing after teardown stops there instead of running on against a dead state - loops like `do { this.again = false; await ... } while (this.again)` depend on it. To drop such writes instead, handle them: `State.on({ catch: (e) => e instanceof Caught.Destroyed ? undefined : e })`.
+- Assignment throws `Caught.Destroyed` (`Tried to update {state}.{key} but state is destroyed.`). The throw is an abort signal: a continuation writing after teardown stops there instead of running on against a dead state - loops like `do { this.again = false; await ... } while (this.again)` depend on it. To drop them, handle them on the class whose continuations outlive it - `Poller.on({ catch: (e) => e instanceof Caught.Destroyed ? undefined : e })`. On `State`, the same handler removes the abort from every class.
 - Silent updates (`state.set(assign, true)`) drop without a report.
 - Subscribing (`get(effect)`, `set(callback)`) still throws.
 
@@ -140,6 +140,35 @@ What mvc does not throw it reports as a `Caught` (an `Error` exported from `@exp
 | `Getter`    | `false`   | getter threw while refreshing - value becomes `undefined`; `cause`     |
 | `Init`      | `false`   | async initializer or `new()` rejected - state still created; `cause`   |
 | `Effect`    | `false`   | effect or listener threw during a flush; `cause` - collections resolve to their owner |
+
+`error.name` is the case (`Caught.Effect`), minify-safe - console output and error trackers show it.
+
+`catch` is class-level policy. `Component.catch()` is a separate per-instance boundary for child render errors - a Component's own effect errors reach `State.on({ catch })`, not its boundary.
+
+Error tracker - report with State context, handle the rest, let destroyed writes still abort:
+
+```ts
+State.on({
+  catch(error) {
+    if (error.warning) return error;
+    Sentry.captureException(error, { tags: { state: String(this), key: error.key } });
+    if (error instanceof Caught.Destroyed) return error; // still throws to the writer
+  }
+});
+```
+
+Sentry follows `cause`, so the original error and its stack arrive with the report; the rethrown `Destroyed` is not captured twice.
+
+Tests - assert on reports, not console output. A handled report does not escape to fail the run:
+
+```ts
+const caught: Caught[] = [];
+const stop = Composer.on({ catch: (error) => void caught.push(error) });
+
+// ...trigger the failure, flush
+expect(caught).toEqual([expect.any(Caught.Effect)]);
+stop();
+```
 
 Other failures:
 
