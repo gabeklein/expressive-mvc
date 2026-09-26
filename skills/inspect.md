@@ -161,9 +161,17 @@ curl localhost:5173/__inspect -d '["journal.frames", { "since": 3 }]'   # the on
 - Ids are per page load; a reload issues new ones, closed pages drop out.
 - 404 unknown page, 500 the page threw (`{ error }`), 504 no answer within 10s.
 - Local callers only: 403 for a request carrying `Origin`/`Sec-Fetch-Site` (a web page) or a proxy header (`Forwarded`, `X-Forwarded-For`, `X-Real-IP`, `CF-Connecting-IP`). Behind a tunnel, pages still connect; only `curl` on the dev machine reaches the relay. A proxy that strips these headers bypasses the guard - securing an exposed dev server is on its owner.
+- Dev server in a container or VM: the host's request arrives from a gateway address and gets 403. Run the request inside it (`docker exec <container> curl localhost:5173/__inspect`), or forward the port over SSH (`ssh -L`) or a devcontainer - those arrive as loopback.
 - No HTML (`appType: 'custom'`): `import 'virtual:expressive-inspect'` first in the entry.
 
-Functions do not cross HTTP - `act` and `around` stay in process or on the bridge.
+Functions do not cross HTTP - `act` and `around` stay in process or on the bridge. Their equivalent over the relay:
+
+```bash
+curl … -d '["journal.record", { "level": "values" }]'   # off by default - nothing is recorded before this
+curl … -d '["journal.seq"]'                             # 12
+curl … -d '["call", "Composer.submit", "hi"]'
+curl … -d '["journal.frames", { "since": 12 }]'         # work deferred past the call lands in a later poll
+```
 
 What to reach for, in order:
 
