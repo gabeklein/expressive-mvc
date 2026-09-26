@@ -27,6 +27,7 @@ interface StyleScope {
 interface AppearanceRoute {
   flags: readonly string[];
   scope: StyleScope;
+  tag?: string;
 }
 
 const bases = new WeakMap<StyleScope, Declaration>();
@@ -102,8 +103,8 @@ function createContext(scope: StyleScope): AppearanceContext {
   const context: AppearanceContext = {
     scope,
     base: baseToken(scope),
-    resolve(route, props) {
-      return resolveAppearance(route as AppearanceRoute | undefined, scope, props);
+    resolve(route, props, tag) {
+      return resolveAppearance(route as AppearanceRoute | undefined, scope, props, tag);
     }
   };
 
@@ -170,12 +171,13 @@ function macro(rules: StyleMap): StyleMap {
 
 function createAppearanceRoute(
   scope: StyleScope | undefined,
-  props: Record<string, unknown>
+  props: Record<string, unknown>,
+  tag?: string
 ): AppearanceRoute | undefined {
   if (!scope) return undefined;
 
   const keys = Object.keys(props).filter((key) => key.startsWith('_')).sort();
-  const id = keys.join('\0');
+  const id = `${tag || ''}\0${keys.join('\0')}`;
   const cached = scope.routes.get(id);
   if (cached) return cached;
 
@@ -183,11 +185,15 @@ function createAppearanceRoute(
   const flags: string[] = [];
 
   for (const name of scope.names) {
-    if (!present.has(name)) continue;
+    if (!present.has(name) || name == tag) continue;
     if (isObject(scope.rules[name])) flags.push(name);
   }
 
-  const route: AppearanceRoute = { flags, scope };
+  const route: AppearanceRoute = {
+    flags,
+    scope,
+    tag: tag && isObject(scope.rules[tag]) ? tag : undefined
+  };
 
   scope.routes.set(id, route);
   return route;
@@ -196,13 +202,14 @@ function createAppearanceRoute(
 function resolveAppearance(
   route: AppearanceRoute | undefined,
   scope: StyleScope | undefined,
-  props: Record<string, unknown>
+  props: Record<string, unknown>,
+  tag?: string
 ): { appearance?: ResolvedAppearance; route?: AppearanceRoute } {
-  if (!route || route.scope !== scope) route = createAppearanceRoute(scope, props);
+  if (!route || route.scope !== scope) route = createAppearanceRoute(scope, props, tag);
   if (!route) return {};
 
   const parts: Expansion[] = [];
-  const names: string[] = [];
+  const names: string[] = route.tag ? [route.tag] : [];
 
   for (const name of route.flags)
     if (isPresent(props[`_${name}`])) names.push(name);
@@ -216,7 +223,7 @@ function resolveAppearance(
 
   for (const part of parts)
     for (const nested of part.nested)
-      child = createStyleScope(child, nested, route.scope.label);
+      child = createStyleScope(child, nested, tag ? `${route.scope.label}_${tag}` : route.scope.label);
 
   if (!blocks.length && !classes.length && child === route.scope)
     return { route };

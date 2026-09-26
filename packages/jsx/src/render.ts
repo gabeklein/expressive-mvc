@@ -851,7 +851,7 @@ function patchProps(fiber: Fiber, next: Record<string, any>, appearance?: Appear
   const element = fiber.start as Element;
   const previous = fiber.props!;
   const raw = 'dangerouslySetInnerHTML' in next;
-  const resolved = appearance?.context?.resolve(fiber.appearanceRoute, next) || {};
+  const resolved = appearance?.context?.resolve(fiber.appearanceRoute, next, fiber.type as string) || {};
 
   fiber.appearanceRoute = resolved.route;
 

@@ -36,16 +36,18 @@ describe('appearance', () => {
 
     style(Styled, {
       _active: { fontWeight: 700 },
-      padding: '4px'
+      _div: { padding: '4px' },
+      color: 'blue'
     });
 
     let view!: Styled;
     const node = mount(<Styled is={(value) => (view = value)} />).querySelector('div')!;
 
-    expect(node.className.split(' ')).toEqual(['Styled_active', 'Styled']);
+    expect(node.className.split(' ')).toEqual(['Styled_div', 'Styled_active', 'Styled']);
     expect(node.hasAttribute('_active')).toBe(false);
     expect(getComputedStyle(node).fontWeight).toBe('700');
     expect(getComputedStyle(node).padding).toBe('4px');
+    expect(getComputedStyle(node).color).toBe('blue');
     expect(node.style.color).toBe('');
 
     view.count++;
@@ -142,13 +144,13 @@ describe('appearance', () => {
       return <Capture _capture />;
     }
 
-    style(Deep, { _relay: { _em: { color: 'red' } } });
-    style(Shallow, { _capture: { _em: { color: 'blue' } } });
+    style(Deep, { _relay: { _strong: { color: 'red' } } });
+    style(Shallow, { _capture: { _strong: { color: 'blue' } } });
 
     mount(<><Deep /><Shallow /></>);
 
     const [deep, shallow] = handles;
-    const root = mount(<section style={{ ...deep, ...shallow }}><strong _em>deep</strong></section>);
+    const root = mount(<section style={{ ...deep, ...shallow }}><strong>deep</strong></section>);
 
     expect(getComputedStyle(root.querySelector('strong')!).color).toBe('red');
   });
@@ -345,8 +347,8 @@ describe('appearance', () => {
     function Nested() {
       return (
         <section _nested _frame>
-          <strong _strong>nested</strong>
-          <em _em>framed</em>
+          <strong>nested</strong>
+          <em>framed</em>
         </section>
       );
     }
@@ -361,20 +363,20 @@ describe('appearance', () => {
 
     const root = mount(<Nested />);
     expect(getComputedStyle(root.querySelector('strong')!).fontWeight).toBe('700');
-    expect(root.querySelector('strong')!.className).toBe('Nested_strong');
+    expect(root.querySelector('strong')!.className).toBe('Nested_section_strong');
     expect(root.querySelector('section')!.className).toBe('Nested_nested');
     expect(getComputedStyle(root.querySelector('em')!).color).toBe('red');
   });
 
   it('will open descendant scopes only under prefixed keys', () => {
     function Icon() {
-      return <svg _frame><filter _filter /></svg>;
+      return <svg _frame><filter /></svg>;
     }
 
     style(Icon, { _frame: { filter: 'blur(1px)', _filter: { opacity: 0.5 } } });
 
     const root = mount(<Icon />);
-    expect(root.querySelector('filter')!.getAttribute('class')).toBe('Icon_filter');
+    expect(root.querySelector('filter')!.getAttribute('class')).toBe('Icon_svg_filter');
     expect(getComputedStyle(root.querySelector('svg')!).filter).toBe('blur(1px)');
   });
 
