@@ -98,7 +98,7 @@ Suspense fits load-once data the view cannot render without. Keep explicit `load
 State about a collection entry lives on the entry's class, spawned thru a `has` pool - not id-keyed records or `(id, value)` methods on the page. The factory takes the API payload (DTO in); the page keeps fetch, the pool, and selection *policy*:
 
 ```tsx
-import State, { Component, get, has, set } from '@expressive/react';
+import { State, Component, get, has, set } from '@expressive/mvc';
 
 class Message extends Component {
   info = set<MessageDto>();   // payload stays one subobject - not exploded per key
@@ -325,7 +325,8 @@ Construction stays with the consumer - `session = new Session()` on the entrypoi
 ## Context Sharing
 
 ```tsx
-import State, { Component, get, Provider } from '@expressive/react';
+import { State, Component, get } from '@expressive/mvc';
+import { Provider } from '@expressive/react';
 
 class Theme extends State {
   color = 'blue';
@@ -453,7 +454,7 @@ class Cart extends Component {
 ## Debounced Search
 
 ```ts
-import State, { set } from '@expressive/react';
+import { State, set } from '@expressive/mvc';
 
 class Search extends State {
   query = '';
@@ -474,7 +475,7 @@ class Search extends State {
 ## Downstream Collection
 
 ```tsx
-import State, { Component, get } from '@expressive/react';
+import { State, Component, get } from '@expressive/mvc';
 
 class Tab extends State {
   label = '';
@@ -528,7 +529,7 @@ function LayoutBadge() {
 
 ```tsx
 // After: width is the source field, compact is a getter, and resize belongs to Viewport.
-import State from '@expressive/react';
+import { State } from '@expressive/mvc';
 
 class Viewport extends State {
   width = 0;
@@ -558,7 +559,7 @@ function LayoutBadge() {
 ## Effects & Cleanup
 
 ```ts
-import State from '@expressive/react';
+import { State } from '@expressive/mvc';
 
 class Timer extends State {
   elapsed = 0;

@@ -22,7 +22,7 @@ npm install @expressive/mvc @expressive/dom
 ```
 
 ```tsx
-import State, { Component } from '@expressive/mvc';
+import { State, Component } from '@expressive/mvc';
 import { render } from '@expressive/dom';
 
 class Counter extends State {

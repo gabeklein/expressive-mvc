@@ -3,7 +3,7 @@
 Runnable source: [`has`](https://expressive.dev/examples/instructions/has) and [`has-list`](https://expressive.dev/examples/instructions/has-list) - complete programs, served as HTML.
 
 ```ts
-import State, { has } from '@expressive/mvc';
+import { State, has } from '@expressive/mvc';
 import { watch } from '@expressive/mvc/observable';
 ```
 

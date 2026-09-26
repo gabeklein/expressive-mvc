@@ -16,7 +16,7 @@ The initial `0.1` release is a usable, tested browser renderer for dogfooding, n
 ```
 
 ```tsx
-import State, { Component, pending } from '@expressive/mvc';
+import { State, Component, pending } from '@expressive/mvc';
 import { Provider, createPortal, lazy, render } from '@expressive/dom';
 ```
 

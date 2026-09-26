@@ -1,7 +1,7 @@
 # State - Core Class
 
 ```ts
-import State from '@expressive/mvc';
+import { State } from '@expressive/mvc';
 ```
 
 `@expressive/mvc` - framework-agnostic reactive state built on classes.
@@ -88,7 +88,7 @@ for (const [key, value] of state) {
 Opaque handles (unsubscribe functions, timers, snapshots) are not reactive state: writes should neither notify nor throw thru the managed setter after destroy. TypeScript `private` does not opt out (any enumerable own field is managed); ES `#private` escapes management but re-initializes unsafely on Components. Define the field non-enumerable via `def`:
 
 ```ts
-import State, { def } from '@expressive/mvc';
+import { State, def } from '@expressive/mvc';
 
 function put<T>(initial?: T): T {
   return def((key, self) => {

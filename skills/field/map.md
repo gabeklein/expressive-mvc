@@ -3,7 +3,7 @@
 Runnable source: [`map`](https://expressive.dev/examples/instructions/map) and [`map-insert`](https://expressive.dev/examples/instructions/map-insert) - complete programs, served as HTML.
 
 ```ts
-import State, { map } from '@expressive/mvc';
+import { State, map } from '@expressive/mvc';
 import { watch } from '@expressive/mvc/observable';
 ```
 

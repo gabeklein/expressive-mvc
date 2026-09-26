@@ -21,10 +21,10 @@ Class-based reactive state for React. State classes define reactive properties, 
 ### Installing
 
 ```bash
-npm install @expressive/react            # + @expressive/router for routing
+npm install @expressive/mvc @expressive/react    # + @expressive/router for routing
 ```
 
-`@expressive/mvc` comes as a dependency of `@expressive/react` - **do not add it to `package.json`.** Import `State`, `Component`, and every instruction from `@expressive/react`, which re-exports the core. Depend on `@expressive/mvc` directly only for adapter-free code: a shared domain package, a Node service, a new adapter.
+`@expressive/mvc` is a peer dependency - add it to `package.json` and import `State`, `Component` and every instruction from it, whatever the host. `@expressive/react` supplies the host: import it once from your entry module so it registers, and take `Provider` and `Consumer` from it where needed. Its re-exports of the core are deprecated and will be removed, as is the default export of `State` - adapter-augmented `State.*` types are invisible through the default alias, so import `{ State }` by name.
 
 React Native / Expo need no setup beyond three boundaries ([react/react.md](react/react.md#react-native)): add `@expressive` to `jest-expo`'s `transformIgnorePatterns`; use `Router`, not `BrowserRouter`; `Link`/`NavLinks` render DOM, so navigate through `Router`.
 
@@ -76,18 +76,8 @@ Write output in the conventions of [react/style.md](react/style.md). They are op
 ## Core API
 
 ```tsx
-import State, {
-  Component,
-  ref,
-  def,
-  get,
-  has,
-  map,
-  pending,
-  set,
-  Consumer,
-  Provider
-} from '@expressive/react';
+import { State, Component, ref, def, get, has, map, pending, set } from '@expressive/mvc';
+import { Consumer, Provider } from '@expressive/react';
 ```
 
 ### State Class

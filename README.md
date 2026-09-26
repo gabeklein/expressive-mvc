@@ -25,13 +25,13 @@ Expressive puts application state, behavior, and lifecycle in plain classes. Cla
 ## Install
 
 ```bash
-npm install @expressive/react
+npm install @expressive/mvc @expressive/react
 ```
 
 ## Quick start
 
 ```tsx
-import State from '@expressive/react';
+import { State } from '@expressive/mvc';
 
 class Counter extends State {
   count = 0;

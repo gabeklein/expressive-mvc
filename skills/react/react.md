@@ -19,7 +19,8 @@ export { Provider, Consumer }; // explicit context components
 ## Quick Start
 
 ```tsx
-import State, { Component, get, set, ref, Provider } from '@expressive/react';
+import { State, Component, get, set, ref } from '@expressive/mvc';
+import { Provider } from '@expressive/react';
 
 class Counter extends Component {
   count = 0;
