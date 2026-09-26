@@ -3,6 +3,9 @@ import type { AppearanceContext, Block, Declaration, ResolvedAppearance } from '
 
 type StyleMap = Record<string, unknown>;
 
+type Macro = (value: unknown, key: string) => unknown;
+type Depths = ReadonlyMap<string, number>;
+
 interface Expansion {
   block?: Block;
   classes: string[];
@@ -27,6 +30,7 @@ interface AppearanceRoute {
 }
 
 const bases = new WeakMap<StyleScope, Declaration>();
+const chains = new WeakMap<StyleScope, Map<string, Macro[]>>();
 const contexts = new WeakMap<StyleScope, AppearanceContext>();
 const rootScopes = new WeakMap<object, StyleScope>();
 const styles = new WeakMap<object, StyleMap[]>();
@@ -125,7 +129,7 @@ function baseToken(scope: StyleScope) {
   const base = bases.get(scope);
   if (!base) return undefined;
 
-  const expansion = expand(scope, base, []);
+  const expansion = expand(scope, base, new Map());
   const appearance: ResolvedAppearance = {};
 
   if (Object.keys(expansion.declarations).length)
@@ -229,7 +233,7 @@ function expandRule(scope: StyleScope, name: string) {
   let expansion = scope.expansions.get(name);
 
   if (!expansion) {
-    expansion = expand(scope, scope.rules[name], []);
+    expansion = expand(scope, scope.rules[name], new Map());
 
     if (Object.keys(expansion.declarations).length)
       expansion.block = {
@@ -244,11 +248,32 @@ function expandRule(scope: StyleScope, name: string) {
   return expansion;
 }
 
-function expand(scope: StyleScope, value: unknown, stack: string[]): Expansion {
+function handlers(scope: StyleScope, name: string) {
+  let known = chains.get(scope);
+  if (!known) chains.set(scope, (known = new Map()));
+
+  let chain = known.get(name);
+
+  if (!chain) {
+    chain = [];
+
+    for (const key of [name, '*'])
+      for (let rules: object | null = scope.rules; rules; rules = Object.getPrototypeOf(rules)) {
+        const own = Object.getOwnPropertyDescriptor(rules, key);
+        if (own && typeof own.value == 'function') chain.push(own.value as Macro);
+      }
+
+    known.set(name, chain);
+  }
+
+  return chain;
+}
+
+function expand(scope: StyleScope, value: unknown, depths: Depths): Expansion {
   const output: Expansion = { classes: [], declarations: {}, nested: [] };
   const nested: StyleMap = {};
 
-  function walk(value: unknown, stack: string[]) {
+  function walk(value: unknown, depths: Depths) {
     if (!value) return;
 
     if (typeof value == 'string') {
@@ -257,7 +282,7 @@ function expand(scope: StyleScope, value: unknown, stack: string[]): Expansion {
     }
 
     if (Array.isArray(value)) {
-      value.forEach((entry) => walk(entry, stack));
+      value.forEach((entry) => walk(entry, depths));
       return;
     }
 
@@ -267,17 +292,31 @@ function expand(scope: StyleScope, value: unknown, stack: string[]): Expansion {
         continue;
       }
 
-      const rule = scope.rules[name];
+      const chain = handlers(scope, name);
+      const depth = depths.get(name) || 0;
 
-      if (typeof rule == 'function' && !stack.includes(name)) {
-        if (isPresent(entry)) walk(rule(entry === true ? undefined : entry), [...stack, name]);
-      } else output.declarations[name] = entry;
+      if (depth < chain.length) {
+        if (isPresent(entry))
+          walk(
+            chain[depth](entry === true ? undefined : entry, name),
+            new Map(depths).set(name, depth + 1)
+          );
+      } else output.declarations[name] = terminal(name, entry);
     }
   }
 
-  walk(value, stack);
+  walk(value, depths);
   if (Object.keys(nested).length) output.nested.push(nested);
   return output;
+}
+
+function terminal(name: string, value: unknown) {
+  if (Array.isArray(value)) return value.join(' ');
+
+  if (typeof value == 'function' || isObject(value))
+    throw new Error(`No macro handles "${name}".`);
+
+  return typeof value == 'number' ? String(value) : value;
 }
 
 function isPresent(value: unknown) {

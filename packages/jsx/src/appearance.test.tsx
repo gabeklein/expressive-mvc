@@ -36,7 +36,7 @@ describe('appearance', () => {
 
     style(Styled, {
       _active: { fontWeight: 700 },
-      padding: 4
+      padding: '4px'
     });
 
     let view!: Styled;
@@ -60,13 +60,13 @@ describe('appearance', () => {
       return <button style={{ letterSpacing: 1 }}>go</button>;
     }
 
-    style(Button, { color: 'blue', letterSpacing: 2 });
+    style(Button, { color: 'blue', letterSpacing: '2px' });
 
     function Toolbar() {
       return <nav><Button _accent /></nav>;
     }
 
-    style(Toolbar, { _accent: { color: 'red', letterSpacing: 3 } });
+    style(Toolbar, { _accent: { color: 'red', letterSpacing: '3px' } });
 
     const alone = mount(<Button />).querySelector('button')!;
     expect(getComputedStyle(alone).color).toBe('blue');
@@ -159,8 +159,8 @@ describe('appearance', () => {
     }
 
     style(Card, {
-      mx: (value?: unknown) => ({ marginLeft: value, marginRight: value }),
-      pad: (value?: unknown) => ({ mx: value, paddingTop: value }),
+      mx: (value?: unknown) => ({ marginLeft: `${value}px`, marginRight: `${value}px` }),
+      pad: (value?: unknown) => ({ mx: value, paddingTop: `${value}px` }),
       tone: (value?: unknown) => ({ color: value }),
       glow: () => ['glow', { outlineStyle: 'solid' }],
       _raised: { pad: 6, tone: 'red', glow: true, boxShadow: '0 0 1px black', '--depth': 1 }
@@ -232,25 +232,46 @@ describe('appearance', () => {
     expect(getComputedStyle(root.querySelector('i')!).color).toBe('blue');
   });
 
-  it('will register global macros before rendering', () => {
+  it('will layer global macros and fall through to the layer below', () => {
     macro({
       globalTone: (value?: unknown) => ({ color: value }),
-      _shared: { letterSpacing: 2, globalTone: 'purple' }
+      _shared: { letterSpacing: '2px', globalTone: 'brand', fontSize: 3 }
+    });
+
+    macro({
+      globalTone: (value: unknown) => ({ globalTone: value == 'brand' ? 'purple' : value }),
+      '*': (value: unknown, key: string) => ({ [key]: value === 3 ? '3px' : value })
     });
 
     function Global() {
       return <i _shared />;
     }
 
-    style(Global, { padding: 2 });
+    style(Global, { padding: '2px' });
     const node = mount(<Global />).querySelector('i')!;
 
     expect(node.className).toBe('global_shared Global');
     expect(getComputedStyle(node).color).toBe('purple');
     expect(getComputedStyle(node).padding).toBe('2px');
     expect(getComputedStyle(node).letterSpacing).toBe('2px');
+    expect(getComputedStyle(node).fontSize).toBe('3px');
     expect(() => macro({ _late: { color: 'red' } })).toThrow('after rendering');
     expect(() => style(Global, { _late: { color: 'red' } })).toThrow('after a component');
+  });
+
+  it('will join array values and throw for unhandled keys', () => {
+    const joined = createStyleScope(undefined, { _box: { margin: ['1px', '2px'] } })!;
+    const resolved = resolveAppearance(undefined, joined, { _box: true });
+
+    expect(resolved.appearance?.blocks?.[0].declarations).toEqual({ margin: '1px 2px' });
+
+    const nested = createStyleScope(undefined, { _bad: { margin: { top: '1px' } } })!;
+    expect(() => resolveAppearance(undefined, nested, { _bad: true }))
+      .toThrow('No macro handles "margin".');
+
+    const fn = createStyleScope(undefined, { _fn: { margin: () => '1px' } })!;
+    expect(() => resolveAppearance(undefined, fn, { _fn: true }))
+      .toThrow('No macro handles "margin".');
   });
 
   it('will apply base declarations to each component root', () => {
@@ -259,7 +280,7 @@ describe('appearance', () => {
     }
 
     style(Plain, { tint: (value?: unknown) => ['tinted', { color: value }] });
-    style(Plain, { tint: 'green', padding: 1 });
+    style(Plain, { tint: 'green', padding: '1px' });
 
     const [rule, line] = [...mount(<Plain />).children] as HTMLElement[];
     expect(rule.className.split(' ')).toEqual(['Plain', 'tinted']);
@@ -290,9 +311,9 @@ describe('appearance', () => {
     }
     class Styled extends Base {}
 
-    style(Base, { _tone: { color: 'red', padding: 2 } });
+    style(Base, { _tone: { color: 'red', padding: '2px' } });
     style(Styled, { _tone: { color: 'blue' } });
-    style(Styled, { _tone: { marginLeft: 3 } });
+    style(Styled, { _tone: { marginLeft: '3px' } });
 
     const node = mount(<Styled />).querySelector('div')!;
     expect(node.className).toBe('Styled_tone');
@@ -390,7 +411,7 @@ describe('appearance', () => {
     const resolved = resolveAppearance(undefined, scope, props);
 
     expect(resolved.appearance).toEqual({ classes: ['one', 'two', 'zero'] });
-    expect(called).toHaveBeenCalledWith(undefined);
+    expect(called).toHaveBeenCalledWith(undefined, 'zero');
 
     const blank = createAppearanceRoute(scope, { _blank: true });
     expect(resolveAppearance(blank, scope, { _blank: true })).toEqual({ route: blank });
