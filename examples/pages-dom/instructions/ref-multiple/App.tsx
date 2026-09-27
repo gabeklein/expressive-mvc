@@ -2,7 +2,6 @@
 import './App.css';
 
 import { State, Component, ref } from '@expressive/mvc';
-import type { ChangeEvent } from 'react';
 
 export default () => (
   <div class="container">
@@ -37,8 +36,8 @@ class Bands extends State {
       type: 'range',
       min: 0,
       max: 100,
-      onInput: (event: Event & { currentTarget: HTMLInputElement }) => {
-        bands[band] = event.target.valueAsNumber;
+      onInput: (event: Event) => {
+        bands[band] = (event.currentTarget as HTMLInputElement).valueAsNumber;
       }
     };
   });

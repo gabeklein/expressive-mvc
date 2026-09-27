@@ -105,9 +105,9 @@ const CellView = ({ id }: { id: string }) => {
     <td>
       {sheet.editing === id ? (
         <input
-          autoFocus
+          ref={(el) => el?.focus()}
           value={cell ? cell.input : ''}
-          onInput={(e) => sheet.edit(id, e.target.value)}
+          onInput={(e) => sheet.edit(id, (e.currentTarget as HTMLInputElement).value)}
           onBlur={() => (sheet.editing = '')}
           onKeyDown={(e) => {
             if (e.key === 'Enter' || e.key === 'Escape') sheet.editing = '';

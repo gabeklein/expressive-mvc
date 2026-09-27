@@ -119,7 +119,7 @@ class Card extends Component {
         class={`card${dragging ? ' dragging' : ''}${over ? ' over' : ''}`}
         draggable={!editing}
         onDragStart={(e) => {
-          e.dataTransfer.setData('text/plain', this.key);
+          e.dataTransfer!.setData('text/plain', this.key);
           this.dragging = true;
         }}
         onDragEnd={() => {
@@ -134,21 +134,21 @@ class Card extends Component {
         onDrop={(e) => {
           e.preventDefault();
           e.stopPropagation();
-          board.drop(e.dataTransfer.getData('text/plain'), this.column, this);
+          board.drop(e.dataTransfer!.getData('text/plain'), this.column, this);
         }}>
         {editing ? (
           <input
-            autoFocus
+            ref={(el) => el?.focus()}
             defaultValue={title}
-            onBlur={(e) => this.rename(e.target.value)}
+            onBlur={(e) => this.rename((e.currentTarget as HTMLInputElement).value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') this.rename(e.currentTarget.value);
+              if (e.key === 'Enter') this.rename((e.currentTarget as HTMLInputElement).value);
               if (e.key === 'Escape') this.editing = false;
             }}
           />
         ) : (
           <>
-            <span onDoubleClick={() => (this.editing = true)}>{title}</span>
+            <span onDblClick={() => (this.editing = true)}>{title}</span>
             <button class="remove" onClick={this.remove} aria-label="delete">
               ×
             </button>
@@ -198,7 +198,7 @@ class Column extends Component {
           e.preventDefault();
           board.over = this.id;
         }}
-        onDrop={(e) => board.drop(e.dataTransfer.getData('text/plain'), this.id)}>
+        onDrop={(e) => board.drop(e.dataTransfer!.getData('text/plain'), this.id)}>
         <header>
           <h2>{label}</h2>
           <span class="count">{cards.length}</span>
@@ -212,7 +212,7 @@ class Column extends Component {
           <input
             value={draft}
             placeholder="+ Add a card"
-            onInput={(e) => (this.draft = e.target.value)}
+            onInput={(e) => (this.draft = (e.currentTarget as HTMLInputElement).value)}
           />
         </form>
       </section>

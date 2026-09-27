@@ -54,7 +54,7 @@ class Profile extends Component {
           <input
             value={handle}
             placeholder="Type A Name"
-            onInput={(e) => (this.handle = e.target.value)}
+            onInput={(e) => (this.handle = (e.currentTarget as HTMLInputElement).value)}
           />
         </label>
       </div>

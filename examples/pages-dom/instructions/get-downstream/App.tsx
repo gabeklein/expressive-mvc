@@ -68,7 +68,7 @@ class Ballot extends Component {
           <input
             value={draft}
             placeholder="Add a write-in"
-            onInput={(e) => (this.draft = e.target.value)}
+            onInput={(e) => (this.draft = (e.currentTarget as HTMLInputElement).value)}
           />
           <button type="submit">Add</button>
         </form>

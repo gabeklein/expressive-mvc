@@ -57,7 +57,7 @@ export default class Inventory extends Component {
           <input
             value={item}
             placeholder="Add or bump an item…"
-            onInput={(e) => (this.item = e.target.value)}
+            onInput={(e) => (this.item = (e.currentTarget as HTMLInputElement).value)}
           />
           <button type="submit">Add</button>
         </form>

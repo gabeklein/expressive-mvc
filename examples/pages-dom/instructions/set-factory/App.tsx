@@ -2,7 +2,7 @@
 import './App.css';
 
 import { Component, set } from '@expressive/mvc';
-import { Suspense } from 'react';
+import { Provider } from '@expressive/dom';
 
 export default () => (
   <div class="container">
@@ -18,9 +18,9 @@ export default () => (
       <code>greeting</code> is synchronous yet waits anyway, because reading a
       pending field suspends it too. Resolution cascades.
     </p>
-    <Suspense fallback={<p class="pending">loading profile…</p>}>
+    <Provider for={{}} fallback={<p class="pending">loading profile…</p>}>
       <Profile />
-    </Suspense>
+    </Provider>
     <p>
       Pass <code>false</code> and a factory stops suspending: the field reads{' '}
       <code>undefined</code> until it resolves, then updates like any other.

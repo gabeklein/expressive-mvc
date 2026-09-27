@@ -3,6 +3,7 @@ import './App.css';
 
 import '@expressive/dom';
 import { BrowserRouter, Link, Route } from '@expressive/router';
+import type { Component } from '@expressive/mvc';
 
 export default () => (
   <div class="container">

@@ -130,7 +130,7 @@ class Sheet extends Component {
         rows={3}
         value={this.doc.text}
         placeholder="Write something, then undo it…"
-        onInput={(e) => this.write(e.target.value)}
+        onInput={(e) => this.write((e.currentTarget as HTMLTextAreaElement).value)}
       />
     );
   }

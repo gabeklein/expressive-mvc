@@ -2,7 +2,6 @@
 import './App.css';
 
 import { Component, ref } from '@expressive/mvc';
-import type { PointerEvent } from 'react';
 
 // `ref` is the useRef replacement: a slot for a value outside the render
 // data - here the DOM node being dragged. Its callable form captures the
@@ -24,7 +23,7 @@ class Draggable extends Component {
 
     this.offset = { x: e.clientX - rect.left, y: e.clientY - rect.top };
     this.dragging = true;
-    e.currentTarget.setPointerCapture(e.pointerId);
+    (e.currentTarget as Element).setPointerCapture(e.pointerId);
   }
 
   move(e: PointerEvent) {

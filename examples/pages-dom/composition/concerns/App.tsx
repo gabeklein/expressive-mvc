@@ -84,7 +84,7 @@ class Filters extends Component {
         <input
           value={query.text}
           placeholder="Search titles"
-          onInput={(e) => (query.text = e.target.value)}
+          onInput={(e) => (query.text = (e.currentTarget as HTMLInputElement).value)}
         />
         <div class="tags">
           {TAGS.map((tag) => (

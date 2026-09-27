@@ -78,7 +78,7 @@ class Notes extends Panel {
         rows={2}
         value={text}
         placeholder="Type something, then collapse…"
-        onInput={(e) => (this.text = e.target.value)}
+        onInput={(e) => (this.text = (e.currentTarget as HTMLTextAreaElement).value)}
       />
     );
   }

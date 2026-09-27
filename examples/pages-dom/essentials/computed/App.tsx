@@ -30,7 +30,7 @@ class TipCalculator extends Component {
           <input
             type="number"
             value={bill}
-            onInput={(e) => (this.bill = +e.target.value)}
+            onInput={(e) => (this.bill = +(e.target as HTMLInputElement).value)}
           />
         </label>
 
@@ -41,7 +41,7 @@ class TipCalculator extends Component {
             min={0}
             max={30}
             value={tipPercent}
-            onInput={(e) => (this.tipPercent = +e.target.value)}
+            onInput={(e) => (this.tipPercent = +(e.target as HTMLInputElement).value)}
           />
         </label>
 

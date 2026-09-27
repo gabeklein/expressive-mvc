@@ -30,16 +30,16 @@ export class Arc extends Component {
     return (value - min) / (max - min);
   }
 
-  grab(e: PointerEvent<SVGSVGElement>) {
-    e.currentTarget.setPointerCapture(e.pointerId);
+  grab(e: PointerEvent) {
+    (e.currentTarget as Element).setPointerCapture(e.pointerId);
     this.aim(e);
   }
 
-  drag(e: PointerEvent<SVGSVGElement>) {
-    if (e.currentTarget.hasPointerCapture(e.pointerId)) this.aim(e);
+  drag(e: PointerEvent) {
+    if ((e.currentTarget as Element).hasPointerCapture(e.pointerId)) this.aim(e);
   }
 
-  nudge(e: KeyboardEvent<SVGSVGElement>) {
+  nudge(e: KeyboardEvent) {
     const by = STEP[e.key];
 
     if (!by) return;
@@ -48,7 +48,7 @@ export class Arc extends Component {
     this.scale.to(this.scale.value + by);
   }
 
-  aim(e: PointerEvent<SVGSVGElement>) {
+  aim(e: PointerEvent) {
     const { min, max } = this.scale;
     const box = this.track.current!.getBoundingClientRect();
     const unit = box.width / W;
@@ -81,7 +81,7 @@ export class Arc extends Component {
           onPointerMove={this.drag}
           onKeyDown={this.nudge}>
           <path class="groove" d={TRACK} />
-          <path class="filled" d={TRACK} strokeDasharray={`${progress * SWEEP} ${SWEEP}`} />
+          <path class="filled" d={TRACK} stroke-dasharray={`${progress * SWEEP} ${SWEEP}`} />
           <circle
             class="knob"
             cx={CX + R * Math.cos(angle)}

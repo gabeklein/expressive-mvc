@@ -66,7 +66,7 @@ const Slider = () => {
       min={min}
       max={max}
       value={value}
-      onInput={(e) => scale.to(e.target.valueAsNumber)}
+      onInput={(e) => scale.to((e.currentTarget as HTMLInputElement).valueAsNumber)}
     />
   );
 };
@@ -80,7 +80,7 @@ const Digits = () => {
       min={min}
       max={max}
       value={value}
-      onInput={(e) => scale.to(e.target.valueAsNumber)}
+      onInput={(e) => scale.to((e.currentTarget as HTMLInputElement).valueAsNumber)}
     />
   );
 };

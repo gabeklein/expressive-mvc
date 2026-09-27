@@ -4,6 +4,7 @@ import './App.css';
 import '@expressive/dom';
 
 import { Link, Route, Router } from '@expressive/router';
+import type { Component } from '@expressive/mvc';
 
 class Museum extends Router {
   static global = false;

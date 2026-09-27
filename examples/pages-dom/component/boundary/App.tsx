@@ -105,6 +105,7 @@ class Recoverable extends Fragile {
 class Escalating extends Fragile {
   async catch(error: Error) {
     this.broken = false;
+    await new Promise((settled) => setTimeout(settled));
     throw error;
   }
 }

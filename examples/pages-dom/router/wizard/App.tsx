@@ -123,7 +123,7 @@ const Name = () => {
         <input
           value={name}
           placeholder="Ada Lovelace"
-          onInput={(e) => (me.name = e.target.value)}
+          onInput={(e) => (me.name = (e.currentTarget as HTMLInputElement).value)}
         />
       </label>
       <Controls />
@@ -141,7 +141,7 @@ const Details = () => {
         <input
           value={email}
           placeholder="ada@analytical.engine"
-          onInput={(e) => (me.email = e.target.value)}
+          onInput={(e) => (me.email = (e.currentTarget as HTMLInputElement).value)}
         />
       </label>
       <Controls />
@@ -170,7 +170,7 @@ const Review = () => {
         <input
           type="checkbox"
           checked={agreed}
-          onChange={(e) => (me.agreed = e.target.checked)}
+          onChange={(e) => (me.agreed = (e.currentTarget as HTMLInputElement).checked)}
         />
         Everything above is correct.
       </label>

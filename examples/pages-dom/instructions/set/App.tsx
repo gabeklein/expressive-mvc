@@ -44,12 +44,16 @@ class Account extends Component {
       <>
         <label>
           Display name <small>(max 12 chars — extra input is rejected)</small>
-          <input value={name} onInput={(e) => (this.name = e.target.value)} />
+          <input value={name} onInput={(e) => {
+            const input = e.currentTarget as HTMLInputElement;
+            this.name = input.value;
+            input.value = this.name;
+          }} />
         </label>
 
         <label>
           Search <small>(debounced 500ms by the callback’s cleanup)</small>
-          <input value={query} onInput={(e) => (this.query = e.target.value)} />
+          <input value={query} onInput={(e) => (this.query = (e.currentTarget as HTMLInputElement).value)} />
         </label>
 
         <p class="result">{result}</p>

@@ -68,7 +68,7 @@ class Field extends Component {
           value={value}
           disabled={form?.locked}
           placeholder={form?.locked ? 'locked' : `Your ${label.toLowerCase()}`}
-          onInput={(e) => (this.value = e.target.value)}
+          onInput={(e) => (this.value = (e.currentTarget as HTMLInputElement).value)}
         />
       </label>
     );

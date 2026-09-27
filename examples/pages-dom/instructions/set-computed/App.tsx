@@ -42,7 +42,7 @@ class Invoice extends Component {
           <input
             type="number"
             value={hours}
-            onInput={(e) => (this.hours = +e.target.value)}
+            onInput={(e) => (this.hours = +(e.currentTarget as HTMLInputElement).value)}
           />
         </label>
 
@@ -51,7 +51,7 @@ class Invoice extends Component {
           <input
             type="number"
             value={rate}
-            onInput={(e) => (this.rate = +e.target.value)}
+            onInput={(e) => (this.rate = +(e.currentTarget as HTMLInputElement).value)}
           />
         </label>
 
@@ -61,7 +61,7 @@ class Invoice extends Component {
             type="range"
             max={50}
             value={discount}
-            onInput={(e) => (this.discount = +e.target.value)}
+            onInput={(e) => (this.discount = +(e.currentTarget as HTMLInputElement).value)}
           />
         </label>
 
