@@ -39,7 +39,36 @@ Supported output: intrinsic HTML/SVG elements, fragments, strings/numbers/bigint
 
 Events are native `addEventListener` listeners (`onClick`, `onKeyDown`, `onClickCapture`) with native event objects and propagation. There is no synthetic event layer: `onChange` on a text field fires on commit - use `onInput` per keystroke.
 
-`value` and `checked` apply after children and other props and are compared with the live element on every render, so `<select value>`, range bounds, and bound inputs follow state. A handler that rejects input without changing state leaves the typed value until the next render - set `event.currentTarget.value` to revert immediately. `className`, `class`, `style`, `dangerouslySetInnerHTML`, callback/object refs, DOM properties, `data-*`, and `aria-*` are supported.
+`value` and `checked` apply after children and other props and are compared with the live element on every render, so `<select value>`, range bounds, and bound inputs follow state. A handler that rejects input without changing state leaves the typed value until the next render - set `event.currentTarget.value` to revert immediately. `class`, `style`, `dangerouslySetInnerHTML`, callback/object refs, DOM properties, `data-*`, and `aria-*` are supported.
+
+## Styles
+
+`style` recursively flattens arrays. Falsy entries are ignored, strings become DOM class tokens, and objects merge left-to-right into inline declarations. The inline result follows the browser cascade and normally overrides class rules. Use `class` for an external browser-only class; it is prepended to classes from `style`.
+
+```tsx
+<button
+  class="external-widget"
+  style={[
+    'button',
+    active && 'active',
+    [compact && 'compact', { width }]
+  ]}
+/>
+```
+
+`className` is ignored, including through untyped spreads. A string in `style` is a class token, not CSS declaration text. Treat arrays and objects as immutable render values—replace them when their contents change. Compiler-generated style blocks are not part of the `0.1` contract.
+
+`class` is element-only. `style` on a component forwards through component and transparent boundaries to its host root; fragment output applies it to every host root. Reading `style` during render - destructuring, a spread, `this.props.style`, or a declared `style` field on a Component - takes ownership and suppresses forwarding for that render. Forwarded style overrides the root's own, and the outermost caller wins; a component wanting the last word consumes `style` and places it first:
+
+```tsx
+function Field({ style }: { style?: JSX.IntrinsicElements['div']['style'] }) {
+  return <label><input style={['field', style]} /></label>;
+}
+
+<Field style={['invalid', { color: 'red' }]} />;
+```
+
+A component reading `style` receives a frozen object, or `undefined` when nothing was passed. Its own keys are the caller's inline declarations, flattened in written order; classes travel hidden with it. Override with a spread (`{ ...style, color: 'blue' }`), drop a key with rest (`const { width, ...rest } = style`), or merge two with `{ ...a, ...b }` - classes survive all three. Combine style values with arrays (`[a, b, 'local']`); spread to edit declarations. Do not branch on its shape, and do not clone it - `structuredClone` and JSON drop the classes.
 
 ## MVC render scopes
 
@@ -109,4 +138,4 @@ return createPortal(<Dialog />, document.body);
 
 ## Boundaries
 
-The renderer is browser-only: no native target, SSR, or hydration. It has no general hook API, memo wrapper, synthetic events, devtools ownership, or CSS-in-JS runtime. Ordinary classes/styles work now; the expressive-jsx label-based styling compiler is not included.
+The renderer is browser-only: no native target, SSR, or hydration. It has no general hook API, memo wrapper, synthetic events, devtools ownership, or generated stylesheet runtime. The expressive-jsx label-based styling compiler is not included.

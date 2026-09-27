@@ -4,6 +4,11 @@ import { Component, State, createPortal, has, map, render } from './index';
 import { flushMicrotasks } from '../test.setup';
 import { vnode } from './vnode';
 
+if (false) {
+  // @ts-expect-error @expressive/jsx uses the native class prop.
+  <div className="legacy" />;
+}
+
 describe('render', () => {
   it('will patch native properties, events, styles, refs and raw HTML', async () => {
     const first = vi.fn();
@@ -20,7 +25,7 @@ describe('render', () => {
           return (
             <div
               aria-label="greeting"
-              className="ready"
+              class="ready"
               data-state="open"
               hidden
               onClick={first}
@@ -48,7 +53,7 @@ describe('render', () => {
               hidden={false}
               onClick={second}
               ref={(node) => refs.push(node)}
-              style="height: 12px"
+              style={['next-style', { height: 12 }]}
               tabIndex={undefined}
             >
               after
@@ -61,7 +66,7 @@ describe('render', () => {
         if (this.mode == 3)
           return <div ref={objectRef} style={{ color: 'red', height: null, width: 0 }}>children</div>;
 
-        return <div style={null as any}>unstyled</div>;
+        return <div style={null}>unstyled</div>;
       }
     }
 
@@ -86,11 +91,11 @@ describe('render', () => {
     view.mode = 1;
     await flushMicrotasks();
     expect(root.querySelector('div')).toBe(node);
-    expect(node.className).toBe('next');
+    expect(node.className).toBe('next next-style');
     expect(node.hasAttribute('data-state')).toBe(false);
     expect(node.hidden).toBe(false);
     expect(node.title).toBe('');
-    expect(node.style.cssText).toContain('height: 12px');
+    expect(node.style.height).toBe('12px');
     node.click();
     expect(first).toHaveBeenCalledOnce();
     expect(capture).toHaveBeenCalledOnce();
@@ -401,6 +406,291 @@ describe('render', () => {
     release();
   });
 
+  it('will recursively compose classes and inline styles', async () => {
+    class Styled extends Component {
+      native: string | undefined = 'external';
+      mode = 0;
+      initial = [
+        ' base\ttwo height: 12px ',
+        false,
+        null,
+        undefined,
+        '',
+        [
+          { color: 'red', height: 12, opacity: 1, width: 10 },
+          [{ color: 'blue', height: null, opacity: 0, width: 20 }]
+        ]
+      ] as const;
+
+      render() {
+        return (
+          <div
+            {...({ className: 'legacy' } as any)}
+            class={this.native}
+            style={this.mode == 0 ? this.initial : this.mode == 1 ? ['next', { height: 4 }] : null}
+          />
+        );
+      }
+    }
+
+    let view!: Styled;
+    const root = document.createElement('main');
+    render(<Styled is={(value) => (view = value)} />, root);
+    const node = root.querySelector('div')!;
+
+    expect(node.className).toBe('external base two height: 12px');
+    expect(node.style.color).toBe('blue');
+    expect(node.style.height).toBe('');
+    expect(node.style.opacity).toBe('0');
+    expect(node.style.width).toBe('20px');
+
+    view.native = 'changed';
+    await flushMicrotasks();
+    expect(node.className).toBe('changed base two height: 12px');
+    expect(node.style.width).toBe('20px');
+
+    view.mode = 1;
+    await flushMicrotasks();
+    expect(node.className).toBe('changed next');
+    expect(node.style.color).toBe('');
+    expect(node.style.height).toBe('4px');
+    expect(node.style.width).toBe('');
+
+    view.native = undefined;
+    await flushMicrotasks();
+    expect(node.className).toBe('next');
+
+    view.mode = 2;
+    await flushMicrotasks();
+    expect(node.hasAttribute('class')).toBe(false);
+    expect(node.style.height).toBe('');
+  });
+
+  it('will forward style through component roots', async () => {
+    const Leaf = (_props: any) => <div class="leaf" style={['local', { color: 'blue' }]} />;
+    const Middle = (_props: any) => <Leaf style={['inner', { color: 'green', height: 4 }]} />;
+
+    class View extends Component {
+      active = true;
+
+      render() {
+        return (
+          <Middle style={[false, this.active ? 'call' : 'updated', { color: 'red', width: this.active ? 3 : 6 }]} />
+        );
+      }
+    }
+
+    let view!: View;
+    const root = document.createElement('main');
+    render(<View is={(value) => (view = value)} />, root);
+    const node = root.querySelector('div')!;
+
+    expect(node.className).toBe('leaf local inner call');
+    expect(node.style.color).toBe('red');
+    expect(node.style.height).toBe('4px');
+    expect(node.style.width).toBe('3px');
+
+    view.active = false;
+    await flushMicrotasks();
+    expect(node.className).toBe('leaf local inner updated');
+    expect(node.style.width).toBe('6px');
+  });
+
+  it('will not forward class through components', () => {
+    const Leaf = (_props: any) => <div class="leaf" />;
+    const root = document.createElement('main');
+
+    render(<Leaf {...({ class: 'outer' } as any)} />, root);
+
+    expect(root.querySelector('div')?.className).toBe('leaf');
+  });
+
+  it('will not forward style a component derives from', () => {
+    const Field = ({ style }: { style?: any }) => (
+      <label>
+        <input style={{ ...style, outlineStyle: 'none' }} />
+      </label>
+    );
+    const root = document.createElement('main');
+
+    render(<Field style={['invalid', { color: 'red' }]} />, root);
+
+    const input = root.querySelector('input')!;
+    expect(root.querySelector('label')?.hasAttribute('class')).toBe(false);
+    expect(input.className).toBe('invalid');
+    expect(input.style.color).toBe('red');
+    expect(input.style.outlineStyle).toBe('none');
+  });
+
+  it('will pass readable, frozen declarations through a component', () => {
+    const received: any[] = [];
+    const Read = ({ style }: { style?: any }) => {
+      received.push(style);
+      return <i />;
+    };
+    const root = document.createElement('main');
+
+    render(<><Read style={[{ color: 'red' }, false, ['tag', { color: 'blue', width: 2 }]]} /><Read style={[false, null]} /></>, root);
+
+    const [style, empty] = received;
+    expect({ ...style }).toMatchObject({ color: 'blue', width: 2 });
+    expect(Object.keys(style)).toEqual(['color', 'width']);
+    expect(Object.isFrozen(style)).toBe(true);
+    expect(empty).toBeUndefined();
+  });
+
+  it('will keep forwarded classes through spread, pluck and merge', () => {
+    const handles: any[] = [];
+    const Capture = ({ style }: { style?: any }) => {
+      handles.push(style);
+      return null;
+    };
+    const root = document.createElement('main');
+
+    render(<><Capture style={['a', { color: 'red', width: 1 }]} /><Capture style={['b', { height: 2 }]} /></>, root);
+
+    const [a, b] = handles;
+    const { color, ...rest } = a;
+    const target = document.createElement('main');
+
+    render(
+      <>
+        <i style={{ ...a, color: 'blue' }} />
+        <b style={rest} />
+        <u style={{ ...a, ...b }} />
+        <s style={{ [Symbol('foreign')]: {}, color: 'red' } as any} />
+      </>,
+      target
+    );
+
+    const [override, plucked, merged, foreign] = [...target.children] as HTMLElement[];
+    expect(color).toBe('red');
+    expect(override.className).toBe('a');
+    expect(override.style.color).toBe('blue');
+    expect(plucked.className).toBe('a');
+    expect(plucked.style.color).toBe('');
+    expect(plucked.style.width).toBe('1px');
+    expect(merged.className).toBe('a b');
+    expect(merged.style.height).toBe('2px');
+    expect(foreign.hasAttribute('class')).toBe(false);
+    expect(foreign.style.color).toBe('red');
+  });
+
+  it('will keep styled props stable for a reused element', async () => {
+    const received: object[] = [];
+    const Leaf = (props: { style?: string }) => {
+      received.push(props);
+      return <i />;
+    };
+    const leaf = <Leaf style="kept" />;
+
+    class View extends Component {
+      count = 0;
+
+      render() {
+        return <>{this.count}{leaf}</>;
+      }
+    }
+
+    let view!: View;
+    const root = document.createElement('main');
+    render(<View is={(value) => (view = value)} />, root);
+
+    view.count = 1;
+    await flushMicrotasks();
+
+    expect(received).toHaveLength(2);
+    expect(received[0]).toBe(received[1]);
+    expect(root.querySelector('i')?.className).toBe('kept');
+  });
+
+  it('will not forward style a Component reads', () => {
+    class Field extends Component {
+      render() {
+        return <label><input style={(this.props as any).style} /></label>;
+      }
+    }
+
+    class Declared extends Component {
+      style?: string = undefined;
+
+      render() {
+        return <p><b style={this.style} /></p>;
+      }
+    }
+
+    const root = document.createElement('main');
+
+    render(<><Field style="read" /><Declared style="owned" /></>, root);
+
+    expect(root.querySelector('label')?.hasAttribute('class')).toBe(false);
+    expect(root.querySelector('input')?.className).toBe('read');
+    expect(root.querySelector('p')?.hasAttribute('class')).toBe(false);
+    expect(root.querySelector('b')?.className).toBe('owned');
+  });
+
+  it('will honor explicit appearance placement', () => {
+    const Placed = ({ style }: any) => (
+      <section>
+        <span style={style} />
+      </section>
+    );
+    const root = document.createElement('main');
+
+    render(<Placed style={['selected', { color: 'red' }]} />, root);
+
+    expect(root.querySelector('section')?.hasAttribute('class')).toBe(false);
+    expect(root.querySelector('section')?.getAttribute('style')).toBeNull();
+    expect(root.querySelector('span')?.className).toBe('selected');
+    expect(root.querySelector('span')?.style.color).toBe('red');
+  });
+
+  it('will honor explicit appearance placement through component instances', () => {
+    class Placed extends Component {
+      render() {
+        return <span />;
+      }
+    }
+
+    const Place = ({ style }: any) => new Placed({ style });
+    const root = document.createElement('main');
+
+    render(<Place {...({ style: 'placed' } as any)} />, root);
+
+    expect(root.querySelector('span')?.className).toBe('placed');
+  });
+
+  it('will update forwarded appearance on collection roots', async () => {
+    const items = new has.List([<span />]);
+
+    const Items = (_props: any) => items as any;
+    class View extends Component {
+      active = true;
+
+      render() {
+        return <Items {...({ style: this.active ? 'active' : 'inactive' } as any)} />;
+      }
+    }
+
+    let view!: View;
+    const root = document.createElement('main');
+    render(<View is={(value) => (view = value)} />, root);
+    expect(root.querySelector('span')?.className).toBe('active');
+
+    view.active = false;
+    await flushMicrotasks();
+    expect(root.querySelector('span')?.className).toBe('inactive');
+  });
+
+  it('will forward appearance to fragment roots', () => {
+    const Pair = () => <><i /><b /></>;
+    const root = document.createElement('main');
+
+    render(<Pair style="shared" />, root);
+
+    expect([...root.children].map((node) => node.className)).toEqual(['shared', 'shared']);
+  });
+
   it('will render SVG, fragments and primitive updates', async () => {
     class Shapes extends Component {
       count: number | bigint = 1;
@@ -410,7 +700,16 @@ describe('render', () => {
           <>
             text:{this.count}
             <label htmlFor="shape">shape</label>
-            <svg viewBox="0 0 10 10" {...({ focusable: true } as any)}><circle cx={5} cy={5} r={4} /></svg>
+            <svg viewBox="0 0 10 10" {...({ focusable: true } as any)}>
+              <circle
+                {...({ className: 'legacy' } as any)}
+                class="shape"
+                cx={5}
+                cy={5}
+                r={4}
+                style={['active', { opacity: 0.5 }]}
+              />
+            </svg>
             {false}
           </>
         );
@@ -423,6 +722,8 @@ describe('render', () => {
 
     expect(root.textContent).toBe('text:1shape');
     expect(root.querySelector('circle')?.namespaceURI).toBe('http://www.w3.org/2000/svg');
+    expect(root.querySelector('circle')?.getAttribute('class')).toBe('shape active');
+    expect((root.querySelector('circle') as SVGCircleElement).style.opacity).toBe('0.5');
     expect(root.querySelector('label')?.getAttribute('for')).toBe('shape');
     expect(root.querySelector('svg')?.getAttribute('focusable')).toBe('');
 
