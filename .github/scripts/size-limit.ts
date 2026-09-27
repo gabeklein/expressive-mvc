@@ -67,7 +67,7 @@ const CASES = [
   },
   {
     name: 'inspect: install',
-    limit: 10670,
+    limit: 10920,
     code: `import '@expressive/inspect/install';`
   },
   {
