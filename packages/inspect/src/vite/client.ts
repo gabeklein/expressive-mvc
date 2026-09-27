@@ -26,9 +26,9 @@ async function act(step: unknown, options?: Act) {
     get: (address: string) => dispatch([['get'], [address]])
   };
 
-  const { value, frames, settled, pending } = await bracket(remote, () => dispatch([step[0].split('.'), step.slice(1)]), tick, options, true);
+  const { value, frames, settled, pending, missing } = await bracket(remote, () => dispatch([step[0].split('.'), step.slice(1)]), tick, options, true);
 
-  return { value: value ?? null, frames, settled, pending };
+  return { value: value ?? null, frames, settled, pending, missing };
 }
 
 export function connect(hot: Hot) {

@@ -259,7 +259,7 @@ curl localhost:5173/__inspect -d '["journal.frames", { "since": 3 }]'   # the on
 
 The journal records `keys` from page load - a connected page carries history before anyone asks. A level the app sets wins.
 
-`act` takes one call as its step, and the same options - answers `{ value, frames, settled, pending }`. `settled: false` means the timeout passed first; `pending` lists `until` targets not reached - an answer, not an error:
+`act` takes one call as its step, and the same options - answers `{ value, frames, settled, pending, missing }`. `settled: false` means the timeout passed first; `pending` lists `until` targets not reached, `missing` those that name no instance - an answer, not an error:
 
 ```bash
 curl … -d '["act", ["call", "Composer.submit", "hi"]]'

@@ -85,6 +85,7 @@ describe('connect', () => {
     expect(value.frames[0].events[0]).toMatchObject({ key: 'draft', value: 'hi' });
     expect(value.settled).toBe(true);
     expect(value.pending).toEqual([]);
+    expect(value.missing).toEqual([]);
     expect(journal.record().level).toBe('keys');
   });
 
@@ -107,6 +108,13 @@ describe('connect', () => {
     connect(hot);
     const { value } = await ask(1, [['act'], [['get', 'Composer.draft'], { until: 'Composer.draft', timeout: 20 }]]);
     expect(value).toMatchObject({ settled: false, pending: ['Composer.draft'] });
+  });
+
+  it('will answer value targets that name no instance', async () => {
+    const { hot, ask } = channel();
+    connect(hot);
+    const { value } = await ask(1, [['act'], [['get', 'Composer.draft'], { until: { 'Missing.draft': 'x' }, timeout: 20 }]]);
+    expect(value).toMatchObject({ settled: false, pending: ['Missing.draft'], missing: ['Missing.draft'] });
   });
 
   it('will act until an address holds a value', async () => {

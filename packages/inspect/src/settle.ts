@@ -1,4 +1,4 @@
-import type { Options } from './journal';
+import type { Frame, Options } from './journal';
 
 export const SETTLE_TIMEOUT = 1000;
 
@@ -39,7 +39,7 @@ export function unsettled(timeout = SETTLE_TIMEOUT) {
 }
 
 /** `until` not met within `timeout` - carries the frames recorded so far and what never arrived. */
-export function unreached(timeout: number, pending: string[], missing: string[], frames: unknown[], hint = '') {
+export function unreached(timeout: number, pending: string[], missing: string[], frames: Frame[], hint = '') {
   const list = pending.map((address) => (missing.includes(address) ? `${address} (names no instance)` : address));
   return Object.assign(new Error(`Not reached within ${timeout}ms: ${list.join(', ')}.${hint}`), { frames, pending });
 }
