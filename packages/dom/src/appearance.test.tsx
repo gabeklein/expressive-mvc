@@ -20,6 +20,20 @@ afterEach(() => {
   roots.splice(0).forEach((root) => root.remove());
 });
 
+declare module './stylesheet' {
+  namespace macro {
+    interface Registry {
+      mx(value: any): unknown;
+      pad(value: any): unknown;
+      tone(value: any): unknown;
+      glow(value?: any): unknown;
+      tint(value: any): unknown;
+      bare(value?: any): unknown;
+      globalTone(value: any): unknown;
+    }
+  }
+}
+
 const called = vi.fn(() => 'zero');
 
 macro({
