@@ -105,6 +105,35 @@ it('runs the callback cleanup on unmount', () => {
   expect(unmount).toHaveBeenCalledTimes(1);
 });
 
+it('will defer cleanup following an uncommitted render', async () => {
+  const { render, commit, unwind, unmount } = harness();
+
+  render();
+  commit();
+  render();
+  unwind();
+
+  expect(unmount).not.toHaveBeenCalled();
+
+  await Promise.resolve();
+
+  expect(unmount).toHaveBeenCalledTimes(1);
+});
+
+it('will not cleanup if effects re-run after render', async () => {
+  const { render, commit, unwind, unmount } = harness();
+
+  render();
+  commit();
+  render();
+  unwind();
+  commit();
+
+  await Promise.resolve();
+
+  expect(unmount).not.toHaveBeenCalled();
+});
+
 it('will advance revision on reset', () => {
   const { render, reset } = harness();
   let getRevision!: () => number;

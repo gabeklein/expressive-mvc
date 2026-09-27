@@ -1,6 +1,7 @@
 import React, { Suspense } from 'react';
 import { Component, Context, get, State, Provider, set } from '.';
 import { pending } from '@expressive/mvc';
+import * as Refresh from 'react-refresh/runtime';
 import {
   vi,
   expect,
@@ -1434,5 +1435,37 @@ describe('State.get - pre-commit dispatch', () => {
     await expect(test).toHaveUpdated();
 
     expect(update).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('State.get - fast refresh', () => {
+  it('will keep subscription when effects re-run', async () => {
+    class Test extends State {
+      value = 1;
+    }
+
+    const test = Test.new();
+
+    const Before = () => <>{Test.get().value}</>;
+    const After = () => <>{Test.get().value * 10}</>;
+
+    Refresh.register(Before, 'Reader');
+
+    const element = render(
+      <Provider for={test}>
+        <Before />
+      </Provider>
+    );
+
+    Refresh.register(After, 'Reader');
+    await act(async () => void Refresh.performReactRefresh());
+
+    expect(element.container.textContent).toBe('10');
+
+    await act(async () => {
+      test.value = 2;
+    });
+
+    expect(element.container.textContent).toBe('20');
   });
 });
