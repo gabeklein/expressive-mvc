@@ -195,6 +195,20 @@ Works with no configuration - the adapter imports only `react` and `react/jsx-ru
 - **`BrowserRouter` is the browser binding** - it reads `window.location`, undefined in React Native. Use `Router`, whose path and history are in memory.
 - **`Link` and `NavLinks` render DOM elements** (`<a>`, `<ul>`) with no native host yet. Drive navigation from `Router` directly and render your own `Pressable`.
 
+### Hot reload (Vite)
+
+```ts
+// vite.config.ts
+import react from '@vitejs/plugin-react';
+import expressive from '@expressive/react/vite';
+
+export default defineConfig({ plugins: [react(), expressive()] });
+```
+
+Editing a `State` or `Component` class patches it in place - instances keep their values and re-render with the new methods, getters, `render` and subcomponents. React Refresh keeps function components. A field, constructor or `new()` change reloads the page ([../state/lifecycle.md](../state/lifecycle.md#hot-patching)). Dev server only.
+
+A class must be top-level `class X` or `let X = class` - a `const` binding cannot be patched. An anonymous `export default` is not checked for staleness.
+
 ---
 
 ## State.get() - Context Hook
