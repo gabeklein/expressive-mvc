@@ -24,3 +24,21 @@ describe('name', () => {
     expect(error.stack!.split('\n')[0]).toBe(`Caught.Effect: ${error.message}`);
   });
 });
+
+describe('cause', () => {
+  class Test extends State {}
+
+  it('will keep whatever was thrown, falsy included', () => {
+    const test = Test.new();
+
+    for (const thrown of [0, '', false, null, undefined])
+      expect(new Caught.Effect(test, thrown)).toHaveProperty('cause', thrown);
+  });
+
+  it('will not carry a cause where none applies', () => {
+    const test = Test.new();
+
+    expect('cause' in new Caught.Destroyed(test, 'foo')).toBe(false);
+    expect('cause' in new Caught(test, 'x')).toBe(false);
+  });
+});

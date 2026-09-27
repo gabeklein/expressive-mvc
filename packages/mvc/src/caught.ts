@@ -18,7 +18,7 @@ class Caught extends Error {
     readonly key?: string,
     cause?: unknown
   ) {
-    super(message, cause ? { cause } : undefined);
+    super(message, arguments.length > 3 ? { cause } : undefined);
     Object.defineProperty(this, 'state', { value: state });
   }
 
