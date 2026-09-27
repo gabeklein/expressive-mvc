@@ -4,7 +4,7 @@ import { isElement } from '@expressive/mvc/runtime';
 import { journal, note, noteCall, noteCaught, noteDestroy, recordsCalls, type Frame, type Query } from './journal';
 import { entries, parsePath, project, serialize, walk, type Select } from './serialize';
 import { bracket } from './bracket';
-import { tick, unsettled, type Act } from './settle';
+import { tick, unreached, unsettled, type Act } from './settle';
 import { forget, seen, type TypeInfo } from './types';
 
 export interface Model extends TypeInfo {
@@ -418,8 +418,9 @@ export function tree(): Node[] {
 
 /** Run `work` recording values; returns the frames it produced once `until` holds and activity goes quiet. */
 export async function act(work: () => unknown, options: Act = {}): Promise<Frame[]> {
-  const { frames, settled, pending } = await bracket({ ...journal, get }, work, tick, options, true);
-  if (!settled) unsettled(options.timeout, pending);
+  const { frames, settled, pending, missing, timeout } = await bracket({ ...journal, get }, work, tick, options, true);
+  if (pending.length) throw unreached(timeout, pending, missing, frames);
+  if (!settled) unsettled(timeout);
   return frames;
 }
 

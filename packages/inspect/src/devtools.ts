@@ -35,7 +35,7 @@ export async function devtools(
     if (found.length !== 1)
       throw new Error(
         found.length
-          ? `Several debug targets at ${endpoint} - narrow with pick:${describe(found)}`
+          ? `Several debug targets at ${endpoint} - narrow with pick, e.g. (t) => t.type === 'page' && t.url.includes('…'):${describe(found)}`
           : `No debug target at ${endpoint}${typeof pick == 'string' ? ` matches "${pick}"` : pick ? ' matches pick' : ''}.${describe(targets)}`
       );
 

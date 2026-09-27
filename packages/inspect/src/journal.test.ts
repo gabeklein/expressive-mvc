@@ -331,12 +331,19 @@ describe('journal', () => {
     expect(warn).not.toHaveBeenCalled();
   });
 
-  it('will warn when a value never holds', async () => {
-    const warn = mockWarn();
+  it('will throw when a value never holds', async () => {
     attach();
     Composer.new();
-    await act(() => {}, { until: { 'Composer.draft': 'never' }, timeout: 20 });
-    expect(warn).toHaveBeenCalledWith('Not reached within 20ms: Composer.draft - frames may be incomplete.');
+    await expect(act(() => {}, { until: { 'Composer.draft': 'never' }, timeout: 20 })).rejects.toThrow(
+      'Not reached within 20ms: Composer.draft.'
+    );
+  });
+
+  it('will say when a value names no instance', async () => {
+    attach();
+    await expect(act(() => {}, { until: { 'Missing.draft': 'x' }, timeout: 20 })).rejects.toThrow(
+      'Not reached within 20ms: Missing.draft (names no instance).'
+    );
   });
 
   it('will act until an instance address sees a frame', async () => {

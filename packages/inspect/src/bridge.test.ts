@@ -149,14 +149,20 @@ describe('inspect(page)', () => {
     expect(frames.flatMap((frame) => frame.events.map((event) => event.value))).toEqual(['sending', 'sent']);
   });
 
-  it('will warn naming a target that never saw a frame', async () => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+  it('will throw naming a target that never saw a frame, with the bridge caveat', async () => {
     Composer.new();
 
-    await inspect(page).act(() => {}, { until: ['Composer.draft'], timeout: 20 });
+    await expect(inspect(page).act(() => {}, { until: ['Composer.draft'], timeout: 20 })).rejects.toThrow(
+      /^Not reached within 20ms: Composer\.draft\. On the bridge, activity counts once the step resolves/
+    );
+  });
 
-    expect(warn).toHaveBeenCalledWith('Not reached within 20ms: Composer.draft - frames may be incomplete.');
-    warn.mockRestore();
+  it('will throw for an unmet value without the caveat', async () => {
+    Composer.new();
+
+    await expect(inspect(page).act(() => {}, { until: { 'Composer.draft': 'x' }, timeout: 20 })).rejects.toThrow(
+      /^Not reached within 20ms: Composer\.draft\.$/
+    );
   });
 
 

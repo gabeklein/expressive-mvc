@@ -14,7 +14,9 @@ async function locate(remote: Remote, target: string) {
   const found = (await remote.get(target.slice(0, dot))) as { $ref?: string } | undefined;
   const key = target.slice(dot + 1);
 
-  return (event: Event) => event.key === key && event.id === found?.$ref;
+  if (!found?.$ref) throw new Error(`until ${target}: ${target.slice(0, dot)} names no State.`);
+
+  return (event: Event) => event.key === key && event.id === found.$ref;
 }
 
 /**
@@ -67,8 +69,13 @@ export async function bracket(
     }
 
     const settled = !pending.size && (await settle(remote.seq, wait, Math.max(0, end - Date.now())));
+    const missing: string[] = [];
 
-    return { value, frames: await remote.frames({ since }), settled, pending: [...pending] };
+    if (values)
+      for (const address of pending)
+        if ((await remote.get(address.slice(0, address.lastIndexOf('.')))) === undefined) missing.push(address);
+
+    return { value, frames: await remote.frames({ since }), settled, pending: [...pending], missing, timeout };
   } finally {
     await remote.record(before);
   }

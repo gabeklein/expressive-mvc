@@ -247,50 +247,49 @@ describe('labels shared by several classes', () => {
 });
 
 describe('act until an address', () => {
-  class Child extends State {
+  class Part extends State {
     value = 0;
   }
 
-  class Parent extends State {
-    child = new Child();
+  class Holder extends State {
+    part = new Part();
   }
 
   it('will follow an owner path to the instance it names', async () => {
     attach();
-    const parent = Parent.new();
-    const stray = Child.new();
+    const holder = Holder.new();
+    const stray = Part.new();
 
     const frames = await act(
       () => {
         setTimeout(() => {
           stray.value = 1;
-          setTimeout(() => (parent.child.value = 2), 5);
+          setTimeout(() => (holder.part.value = 2), 5);
         });
       },
-      { until: 'Parent.child.value' }
+      { until: 'Holder.part.value' }
     );
 
-    expect(frames.at(-1)!.events[0]).toMatchObject({ id: String(parent.child), value: 2 });
+    expect(frames.at(-1)!.events[0]).toMatchObject({ id: String(holder.part), value: 2 });
   });
 
   it('will follow a label to its first instance only', async () => {
-    const warn = mockWarn();
     attach();
-    Child.new();
-    const second = Child.new();
+    Part.new();
+    const second = Part.new();
 
-    await act(() => void setTimeout(() => (second.value = 1)), { until: 'Child.value', timeout: 30 });
+    const failed = act(() => void setTimeout(() => (second.value = 1)), { until: 'Part.value', timeout: 30 });
 
-    expect(warn).toHaveBeenCalledWith('Not reached within 30ms: Child.value - frames may be incomplete.');
+    await expect(failed).rejects.toThrow('Not reached within 30ms: Part.value.');
+    await expect(failed).rejects.toMatchObject({ pending: ['Part.value'], frames: [expect.objectContaining({})] });
   });
 
-  it('will wait out an address that names nothing', async () => {
-    const warn = mockWarn();
+  it('will throw for an address that names no State', async () => {
     attach();
+    Holder.new();
 
-    await act(() => {}, { until: 'Missing.value', timeout: 20 });
-
-    expect(warn).toHaveBeenCalledWith('Not reached within 20ms: Missing.value - frames may be incomplete.');
+    await expect(act(() => {}, { until: 'Missing.value' })).rejects.toThrow('until Missing.value: Missing names no State.');
+    await expect(act(() => {}, { until: 'Holder.part.value.x' })).rejects.toThrow('Holder.part.value names no State.');
   });
 });
 

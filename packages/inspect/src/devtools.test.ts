@@ -78,7 +78,7 @@ describe('devtools', () => {
 
   it('will throw listing targets if several match', async () => {
     await expect(devtools()).rejects.toThrow(
-      'Several debug targets at http://127.0.0.1:9229 - narrow with pick:\n  page Other http://other/\n  page App http://localhost:5173/'
+      "Several debug targets at http://127.0.0.1:9229 - narrow with pick, e.g. (t) => t.type === 'page' && t.url.includes('…'):\n  page Other http://other/\n  page App http://localhost:5173/"
     );
   });
 

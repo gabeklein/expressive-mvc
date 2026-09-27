@@ -1,11 +1,14 @@
 import type { inspect as Inspect } from './index';
 import { dispatch, type Call } from './dispatch';
 import { bracket } from './bracket';
-import { tick, unsettled, type Act } from './settle';
+import { tick, unreached, unsettled, type Act } from './settle';
 import type { Frame, Options, Query, Summary } from './journal';
 import type { Select } from './serialize';
 
 export { devtools, type Target } from './devtools';
+
+const BRIDGE_HINT =
+  ' On the bridge, activity counts once the step resolves, so a step that awaits the change never counts for an address - use { [address]: value }.';
 
 /**
  * Anything that can run a function in the page: Playwright `Page`, `Frame`, or
@@ -51,7 +54,12 @@ export function inspect(target: Evaluates) {
 
     async act(step: () => unknown, options: Act = {}): Promise<Frame[]> {
       const result = await bracket({ record, seq, frames, get: remote('get') }, step, () => target.evaluate(tick), options);
-      if (!result.settled) unsettled(options.timeout, result.pending);
+      const addressed = typeof options.until == 'string' || Array.isArray(options.until);
+
+      if (result.pending.length)
+        throw unreached(result.timeout, result.pending, result.missing, result.frames, addressed ? BRIDGE_HINT : '');
+      if (!result.settled) unsettled(result.timeout);
+
       return result.frames;
     }
   };

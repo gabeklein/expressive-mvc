@@ -32,10 +32,14 @@ export async function settle(seq: () => number | Promise<number>, wait: () => un
   }
 }
 
-export function unsettled(timeout = SETTLE_TIMEOUT, pending: string[] = []) {
+export function unsettled(timeout = SETTLE_TIMEOUT) {
   console.warn(
-    pending.length
-      ? `Not reached within ${timeout}ms: ${pending.join(', ')} - frames may be incomplete.`
-      : `Still active after ${timeout}ms - frames may be incomplete. Narrow the recording ({ record: { types, paths, keys } }) to exclude background work, or pass { timeout }.`
+    `Still active after ${timeout}ms - frames may be incomplete. Narrow the recording ({ record: { types, paths, keys } }) to exclude background work, or pass { timeout }.`
   );
+}
+
+/** `until` not met within `timeout` - carries the frames recorded so far and what never arrived. */
+export function unreached(timeout: number, pending: string[], missing: string[], frames: unknown[], hint = '') {
+  const list = pending.map((address) => (missing.includes(address) ? `${address} (names no instance)` : address));
+  return Object.assign(new Error(`Not reached within ${timeout}ms: ${list.join(', ')}.${hint}`), { frames, pending });
 }

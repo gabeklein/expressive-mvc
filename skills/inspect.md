@@ -42,9 +42,9 @@ Ownership: a State in a plain field, `has` pool, or `map` is that owner's child;
 
 `act` records values for its window whatever the journal level, and returns every frame produced, downstream ones included. It settles once a macrotask passes with no new recorded frame - so timer and promise chains finish - capped at `timeout` (default 1s), with a warning that frames may be incomplete.
 
-- `until` - what to wait for first, for work that waits on I/O, where quiet arrives before the change does. `timeout` caps it; the warning names what never arrived.
-  - `{ 'Chat.status': 'ready' }` - each address holds that value (compared as JSON). Precise everywhere: a loading write doesn't count, and a value the step already awaited is met at once. Prefer it.
-  - `'Chat.status'` or a list - each address sees a frame after the step's synchronous writes, so a loading flag it sets doesn't count. The address resolves once, after the step, to the instance `get` would read - label (first instance), id, or owner path (`Sidebar.control.value`). On the bridge the step runs remotely, so activity counts from when it resolves - a step that awaits the change itself waits out the timeout; use the value form there.
+- `until` - what to wait for first, for work that waits on I/O, where quiet arrives before the change does. Unmet within `timeout`, `act` throws - the error names what never arrived and carries `frames` and `pending`.
+  - `{ 'Chat.status': 'ready' }` - each address holds that value, compared as `get` returns it - past its caps (depth 2, 240-char strings) a value never matches, so compare a leaf. Precise everywhere: a loading write doesn't count, and a value the step already awaited is met at once. Prefer it.
+  - `'Chat.status'` or a list - each address sees a frame after the step's synchronous writes, so a loading flag it sets doesn't count. The address resolves once, after the step, to the instance `get` would read - label (first instance), id, or owner path (`Sidebar.control.value`). An address naming no State throws right away. On the bridge the step runs remotely, so activity counts from when it resolves - a step that awaits the change itself never counts; use the value form there.
 - `record` - filters for this window instead of the journal's (`{ types: [], paths: [], keys: [] }` records everything); the journal's recording is restored after. Filtered-out events don't count as activity - narrow to exclude a poller or animation loop rather than raising the timeout.
 
 ## Orphans
@@ -259,7 +259,7 @@ curl localhost:5173/__inspect -d '["journal.frames", { "since": 3 }]'   # the on
 
 The journal records `keys` from page load - a connected page carries history before anyone asks. A level the app sets wins.
 
-`act` takes one call as its step, and the same options - answers `{ value, frames, settled, pending }`. `settled: false` means the timeout passed first; `pending` lists `until` targets that never saw a frame:
+`act` takes one call as its step, and the same options - answers `{ value, frames, settled, pending }`. `settled: false` means the timeout passed first; `pending` lists `until` targets not reached - an answer, not an error:
 
 ```bash
 curl … -d '["act", ["call", "Composer.submit", "hi"]]'
@@ -302,4 +302,4 @@ target.close();
 
 `find('Row')` and `get('Row.x')` take the first live instance. Disambiguate by id (`models().filter((m) => m.type === 'Row')`, then `get(`${id}.x`)`), or address through the owner (`Table.rows`, not a bare `Row`).
 
-A label two classes share - two modules each declaring `class Control` - throws rather than picking one; `models()` lists each class's `typeId` and construction site. Address by id or owner path, or give one a distinct `label()` / `static displayName`. Owner paths are the stable choice in tests: ids change every run.
+A label two classes share - two modules each declaring `class Control` - throws rather than picking one; `models()` lists each class's `typeId` and construction site. Address by id or owner path, or give one a distinct `label()` / `static displayName`. Owner paths are the stable choice in tests: ids change every run. `instance.find()` searches its own subtree and keeps first-wins.
