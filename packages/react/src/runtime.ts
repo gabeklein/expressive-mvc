@@ -13,6 +13,9 @@ interface Setup {
   rendered: number;
   revision: number;
   mounted?: boolean;
+  fresh?: boolean;
+  getRevision?: () => number;
+  lapsed?: boolean;
   commit?: () => (() => void) | void;
   release?: (() => void) | void;
 }
@@ -91,8 +94,10 @@ export function useSettle(tick: number) {
 /**
  * Run `init` once for the life of a hook and clean up when it unmounts, safe
  * under React StrictMode - a remount shares the render counter, so neither the
- * setup nor its cleanup repeats. `reset` invalidates the rendered value so
- * in-flight render attempts revalidate.
+ * setup nor its cleanup repeats. A cleanup following a render not yet committed
+ * - Fast Refresh re-running effects - defers a microtask, and is dropped if the
+ * effect runs again. `reset` invalidates the rendered value so in-flight render
+ * attempts revalidate.
  *
  * @returns The hook's own record, plus the render counter and its setter.
  */
@@ -110,12 +115,19 @@ export function useSetup<T extends Setup>(
     return current.rendered++;
   });
 
-  const getRevision = () => current.revision;
+  const getRevision = (current.getRevision ||= () => current.revision);
+
+  current.fresh = true;
 
   Runtime.useSyncExternalStore?.(noop, getRevision, getRevision);
 
   Runtime.useEffect(() => {
+    current.fresh = false;
+  });
+
+  Runtime.useEffect(() => {
     current.mounted = true;
+    current.lapsed = false;
 
     if (current.commit) {
       current.release = current.commit();
@@ -123,7 +135,16 @@ export function useSetup<T extends Setup>(
     }
 
     return () => {
-      if (--current.rendered <= 0) current.release?.();
+      if (!current.fresh) {
+        if (--current.rendered <= 0) current.release?.();
+        return;
+      }
+
+      current.lapsed = true;
+
+      queueMicrotask(() => {
+        if (current.lapsed) current.release?.();
+      });
     }
   }, []);
 

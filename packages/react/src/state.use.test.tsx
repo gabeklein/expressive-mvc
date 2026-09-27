@@ -4,6 +4,7 @@ import { State, Provider, get, set } from '.';
 import { act, render, renderHook, waitFor } from '@testing-library/react';
 import { flushMicrotasks, mockPromise } from '../test.setup';
 import { pending } from '@expressive/mvc';
+import * as Refresh from 'react-refresh/runtime';
 
 describe('State.use', () => {
   class Test extends State {
@@ -622,6 +623,41 @@ describe('State.use', () => {
       expect(didRender).toBeCalledWith('bar');
 
       element.unmount();
+    });
+  });
+
+  describe('fast refresh', () => {
+    it('will keep instance when effects re-run', async () => {
+      class Test extends State {
+        value = 1;
+      }
+
+      let instance!: Test;
+
+      const Before = () => <>{(instance = Test.use()).value}</>;
+      const After = () => <>{(instance = Test.use()).value * 10}</>;
+
+      Refresh.register(Before, 'Counter');
+
+      const element = render(<Before />);
+      const mounted = instance.is;
+
+      Refresh.register(After, 'Counter');
+      await act(async () => void Refresh.performReactRefresh());
+
+      expect(instance.is).toBe(mounted);
+      expect(mounted.get(null)).toBe(false);
+      expect(element.container.textContent).toBe('10');
+
+      await act(async () => {
+        mounted.value = 2;
+      });
+
+      expect(element.container.textContent).toBe('20');
+
+      element.unmount();
+
+      expect(mounted.get(null)).toBe(true);
     });
   });
 });
