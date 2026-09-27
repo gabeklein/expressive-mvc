@@ -59,7 +59,7 @@ interface Fiber {
   portals?: [Fiber, DocumentFragment][];
   dead?: boolean;
   waitingOn?: Boundary;
-  recovering?: boolean;
+  recovering?: object;
   stash?: DocumentFragment;
   placeholder?: Fiber;
   staging?: DocumentFragment;
@@ -102,7 +102,7 @@ const SVG = 'http://www.w3.org/2000/svg';
 const dirty = new Set<Boundary>();
 const stashes = new WeakMap<globalThis.Node, Fiber>();
 const CONTROLS = ['checked', 'value'];
-const ENUMERATED = ['contenteditable', 'draggable', 'spellcheck'];
+const ENUMERATED = ['contentEditable', 'contenteditable', 'draggable', 'spellcheck'];
 const focusing: Element[] = [];
 let passiveRender = false;
 let inserting: (() => void)[] | undefined;
@@ -716,15 +716,15 @@ function suspend(fiber: Fiber, thrown: unknown, passive: boolean) {
 
     thrown.then(
       () => resume(() => passive ? transition(() => schedule(scope)) : schedule(scope)),
-      (error) => resume(() => pass(() => recover(fiber, error)))
+      (error) => resume(() => pass(() => recover(fiber, error, fiber.boundary)))
     );
     return thrown;
   }
 
-  recover(fiber, thrown);
+  recover(fiber, thrown, fiber.boundary);
 }
 
-function recover(fiber: Fiber, thrown: unknown, boundary = fiber.boundary) {
+function recover(fiber: Fiber, thrown: unknown, boundary: Boundary | undefined) {
   const error = thrown instanceof Error ? thrown : new Error(String(thrown));
 
   while (boundary && !boundary.catch) boundary = boundary.parent;
@@ -733,18 +733,21 @@ function recover(fiber: Fiber, thrown: unknown, boundary = fiber.boundary) {
 
   const handler = boundary;
 
+  const token = {};
+
   wait(fiber, handler);
-  fiber.recovering = true;
+  fiber.recovering = token;
 
   Promise.resolve(handler.catch!(error)).then(
     () => {
+      if (fiber.recovering !== token) return;
       fiber.recovering = undefined;
       if (!fiber.scope!.active || fiber.retried) return;
       fiber.retried = true;
       schedule(fiber.scope!);
     },
     (next) => {
-      if (fiber.scope!.active) pass(() => recover(fiber, next, handler.parent));
+      if (fiber.recovering === token && fiber.scope!.active) pass(() => recover(fiber, next, handler.parent));
     }
   );
 }
@@ -990,7 +993,7 @@ function patchProp(fiber: Fiber, element: Element, key: string, previous: any, n
     return;
   }
 
-  const name = key == 'htmlFor' ? 'for' : key;
+  const name = key == 'htmlFor' ? 'for' : key == 'contentEditable' ? 'contenteditable' : key;
 
   if ((key.startsWith('aria-') || key.startsWith('data-') || ENUMERATED.includes(key)) && next != null) {
     element.setAttribute(name, String(next));
@@ -1007,6 +1010,7 @@ function patchProp(fiber: Fiber, element: Element, key: string, previous: any, n
             ? 0
             : '';
       } catch {}
+    element.removeAttribute(element.namespaceURI === SVG ? name.toLowerCase() : name);
     element.removeAttribute(name);
     return;
   }

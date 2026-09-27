@@ -765,6 +765,34 @@ describe('render', () => {
     expect(svg.getAttribute('viewBox')).toBe('0 0 10 10');
   });
 
+  it('will remove an SVG property attribute when unset', async () => {
+    class Dial extends Component {
+      on = true;
+
+      render() {
+        return <svg tabIndex={this.on ? 0 : undefined} />;
+      }
+    }
+
+    let dial!: Dial;
+    const root = document.createElement('main');
+    render(<Dial is={(value) => (dial = value)} />, root);
+    const svg = root.querySelector('svg')!;
+
+    dial.on = false;
+    await flushMicrotasks();
+    expect(svg.hasAttribute('tabindex')).toBe(false);
+  });
+
+  it('will write contentEditable as an enumerated attribute', () => {
+    const root = document.createElement('main');
+    render(<><div contentEditable={false} /><div contentEditable={true} /></>, root);
+    const [off, on] = root.querySelectorAll('div');
+
+    expect(off.getAttribute('contenteditable')).toBe('false');
+    expect(on.getAttribute('contenteditable')).toBe('true');
+  });
+
   it('will stringify booleans on data and enumerated attributes', async () => {
     class Flags extends Component {
       on = true;

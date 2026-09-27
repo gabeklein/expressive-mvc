@@ -1140,6 +1140,89 @@ describe('suspense and recovery', () => {
     expect(root.textContent).toBe('content');
   });
 
+  it('will stop at the last boundary when a catch rethrows', async () => {
+    const caught = vi.fn();
+    const rejected = vi.fn();
+    const handler = (event: PromiseRejectionEvent | Event) => {
+      rejected();
+      event.preventDefault();
+    };
+
+    class Inner extends Component {
+      fallback = <i>inner</i>;
+
+      async catch(error: Error) {
+        caught(error.message);
+        throw error;
+      }
+
+      render(): Component.Node {
+        throw new Error('broken');
+      }
+    }
+
+    window.addEventListener('unhandledrejection', handler);
+    process.on('unhandledRejection', rejected);
+
+    try {
+      const root = document.createElement('main');
+      render(<Inner />, root);
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      expect(caught).toHaveBeenCalledOnce();
+      expect(root.textContent).toBe('inner');
+    } finally {
+      window.removeEventListener('unhandledrejection', handler);
+      process.off('unhandledRejection', rejected);
+    }
+  });
+
+  it('will hold until the latest catch for a scope completes', async () => {
+    const calls = [mockPromise<void>(), mockPromise<void>()];
+    let count = 0;
+    let inner!: Inner;
+
+    class Inner extends Component {
+      step = 0;
+
+      render() {
+        const { step } = this;
+        if (step < 2) throw new Error(`broken ${step}`);
+        return <p>content</p>;
+      }
+    }
+
+    class Outer extends Component {
+      fallback = <i>outer</i>;
+
+      catch() {
+        return calls[count++];
+      }
+
+      render() {
+        return <Inner is={(value) => (inner = value)} />;
+      }
+    }
+
+    const root = document.createElement('main');
+    render(<Outer />, root);
+    await flushMicrotasks();
+
+    inner.step = 1;
+    await flushMicrotasks();
+    inner.step = 2;
+    await flushMicrotasks();
+
+    calls[0].resolve();
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(count).toBe(2);
+    expect(root.textContent).toBe('outer');
+
+    calls[1].resolve();
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(root.textContent).toBe('content');
+  });
+
   it('will pass a rejected recovery to the next boundary', async () => {
     let restored = false;
     const outer = vi.fn((_message: string) => {
