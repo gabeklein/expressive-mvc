@@ -1,4 +1,4 @@
-import type { Event, Frame, Options, Query } from './journal';
+import type { Frame, Options, Query } from './journal';
 import { SETTLE_TIMEOUT, settle, type Act } from './settle';
 
 export interface Remote {
@@ -9,14 +9,14 @@ export interface Remote {
 }
 
 /** Resolve `address.key` to the instance `address` names - label, id, or owner path - so frames match it alone. */
+/** Resolve `address.key` to the instance `address` names - label, id, or owner path - as the `id.key` its frames carry. */
 async function locate(remote: Remote, target: string) {
   const dot = target.lastIndexOf('.');
   const found = (await remote.get(target.slice(0, dot))) as { $ref?: string } | undefined;
-  const key = target.slice(dot + 1);
 
   if (!found?.$ref) throw new Error(`until ${target}: ${target.slice(0, dot)} names no State.`);
 
-  return (event: Event) => event.key === key && event.id === found.$ref;
+  return `${found.$ref}.${target.slice(dot + 1)}`;
 }
 
 /**
@@ -32,8 +32,13 @@ export async function bracket(
 ) {
   const before = await remote.record();
   const since = await remote.seq();
+  const window = { ...before, ...record };
+  const filtered = window.types.length + window.paths.length + window.keys.length > 0;
+  const values = typeof until == 'string' || Array.isArray(until) ? undefined : until;
+  const addresses = values ? [] : ([] as string[]).concat(until as string | string[]);
+  const paths = filtered ? [...window.paths, ...addresses.filter((address) => address.indexOf('.') === address.lastIndexOf('.'))] : [];
 
-  await remote.record({ ...record, level: 'values' });
+  await remote.record({ ...record, level: 'values', ...(filtered && { paths }) });
 
   try {
     const running = step();
@@ -48,11 +53,13 @@ export async function bracket(
 
     from ??= await remote.seq();
     const end = Date.now() + timeout;
-    const values = typeof until == 'string' || Array.isArray(until) ? undefined : until;
-    const pending = new Set(values ? Object.keys(values) : ([] as string[]).concat(until as string | string[]));
-    const matchers = new Map<string, (event: Event) => boolean>();
+    const pending = new Set(values ? Object.keys(values) : addresses);
+    const targets = new Map<string, string>();
 
-    if (!values) for (const target of pending) matchers.set(target, await locate(remote, target));
+    for (const address of addresses) targets.set(address, await locate(remote, address));
+
+    if (filtered && addresses.some((address) => address.indexOf('.') !== address.lastIndexOf('.')))
+      await remote.record({ paths: [...paths, ...targets.values()] });
 
     while (pending.size) {
       if (values) {
@@ -61,7 +68,7 @@ export async function bracket(
       } else
         for (const frame of await remote.frames({ since: from }))
           for (const event of frame.events)
-            for (const target of pending) if (matchers.get(target)!(event)) pending.delete(target);
+            for (const address of pending) if (targets.get(address) === `${event.id}.${event.key}`) pending.delete(address);
 
       if (!pending.size || Date.now() >= end) break;
 

@@ -283,6 +283,27 @@ describe('journal', () => {
     }
   });
 
+  it('will record an until address the app filter excludes, then restore the filter', async () => {
+    attach();
+    journal.record({ level: 'keys', paths: ['Other.value'] });
+    const composer = Composer.new();
+
+    const frames = await act(() => void setTimeout(() => (composer.draft = 'late'), 5), { until: 'Composer.draft' });
+
+    expect(frames.at(-1)!.events[0]).toMatchObject({ key: 'draft', value: 'late' });
+    expect(journal.record()).toMatchObject({ level: 'keys', paths: ['Other.value'] });
+  });
+
+  it('will read a value target whatever the app records', async () => {
+    attach();
+    journal.record({ level: 'keys', paths: ['Other.value'] });
+    const composer = Composer.new();
+
+    await act(() => void setTimeout(() => (composer.draft = 'late'), 5), { until: { 'Composer.draft': 'late' } });
+
+    expect(composer.draft).toBe('late');
+  });
+
   it('will act past a write the step makes itself', async () => {
     attach();
     const composer = Composer.new();

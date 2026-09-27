@@ -273,6 +273,17 @@ describe('act until an address', () => {
     expect(frames.at(-1)!.events[0]).toMatchObject({ id: String(holder.part), value: 2 });
   });
 
+  it('will record an owner path the app filter excludes', async () => {
+    attach();
+    journal.record({ level: 'keys', types: ['Nope'] });
+    const holder = Holder.new();
+
+    const frames = await act(() => void setTimeout(() => (holder.part.value = 3), 5), { until: 'Holder.part.value' });
+
+    expect(frames.at(-1)!.events[0]).toMatchObject({ id: String(holder.part), value: 3 });
+    expect(journal.record()).toMatchObject({ types: ['Nope'], paths: [] });
+  });
+
   it('will follow a label to its first instance only', async () => {
     attach();
     Part.new();

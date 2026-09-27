@@ -9,7 +9,7 @@
 import '@expressive/inspect/install';
 ```
 
-Attaches to `State` from the same `@expressive/mvc` instance and publishes `globalThis.__EXPRESSIVE_INSPECT__` (typed on `globalThis`). Instances constructed before the import are invisible. Install ships in the app bundle - a Playwright `addInitScript` or userscript imports a different `State` and sees nothing. Gate it yourself: side-effect import for a harness, `attach()` behind a dev flag for a shipped build.
+Attaches to `State` from the same `@expressive/mvc` instance and publishes `globalThis.__EXPRESSIVE_INSPECT__` (typed on `globalThis`). Instances constructed before the import are invisible. Install ships in the app bundle - a Playwright `addInitScript` or userscript imports a different `State` and sees nothing. Gate it yourself: side-effect import for a harness, `attach()` behind a dev flag for a shipped build. A value already on `globalThis.__EXPRESSIVE_INSPECT__` of the form `{ record }` is read first, so a driver can arm recording before the page boots ([below](#failure-journal)).
 
 Programmatic: `attach(State)` returns detach; `attach(Sub)` scopes to a subclass.
 
@@ -43,8 +43,8 @@ Ownership: a State in a plain field, `has` pool, or `map` is that owner's child;
 `act` records values for its window whatever the journal level, and returns every frame produced, downstream ones included. It settles once a macrotask passes with no new recorded frame - so timer and promise chains finish - capped at `timeout` (default 1s), with a warning that frames may be incomplete.
 
 - `until` - what to wait for first, for work that waits on I/O, where quiet arrives before the change does. Unmet within `timeout`, `act` throws - the error names what never arrived and carries `frames` and `pending`.
-  - `{ 'Chat.status': 'ready' }` - each address holds that value, compared as `get` returns it - past its caps (depth 2, 240-char strings) a value never matches, so compare a leaf. Precise everywhere: a loading write doesn't count, and a value the step already awaited is met at once. Prefer it.
-  - `'Chat.status'` or a list - each address sees a frame after the step's synchronous writes, so a loading flag it sets doesn't count. The address resolves once, after the step, to the instance `get` would read - label (first instance), id, or owner path (`Sidebar.control.value`). An address naming no State throws right away. On the bridge the step runs remotely, so activity counts from when it resolves - a step that awaits the change itself never counts; use the value form there.
+  - `{ 'Chat.status': 'ready' }` - each address holds that value, compared as `get` returns it - past its caps (depth 2, 240-char strings) a value never matches, so compare a leaf. Precise everywhere: a loading write doesn't count, a value the step already awaited is met at once, and it reads current values, so the journal's filters don't apply. Prefer it.
+  - `'Chat.status'` or a list - each address sees a frame after the step's synchronous writes, so a loading flag it sets doesn't count. The address resolves once, after the step, to the instance `get` would read - label (first instance), id, or owner path (`Sidebar.control.value`). An address naming no State throws right away. Under an app's recording filters, the addresses join the window's recording. On the bridge the step runs remotely, so activity counts from when it resolves - a step that awaits the change itself never counts; use the value form there.
 - `record` - filters for this window instead of the journal's (`{ types: [], paths: [], keys: [] }` records everything); the journal's recording is restored after. Filtered-out events don't count as activity - narrow to exclude a poller or animation loop rather than raising the timeout.
 
 ## Orphans
@@ -226,6 +226,14 @@ beforeEach(({ onTestFailed }) => {
   journal.record({ level: 'values' });
   onTestFailed(() => console.log(journal.export()));
 });
+```
+
+Across a page reload, `act` can't bracket the step - the journal lives in the page, and the reload starts a new one. Arm recording before boot instead, then read the whole boot back. **Playwright** (puppeteer: `evaluateOnNewDocument`):
+
+```ts
+await page.addInitScript((record) => ((window as any).__EXPRESSIVE_INSPECT__ = { record }), { level: 'values' });
+await page.reload();
+const boot = await inspect(page).journal.frames({ since: 0 });
 ```
 
 The journal keeps the last 500 frames, so a failure carries what led up to it. `record()` merges settings - a later `record({ paths })` in the app narrows this recording, so skip it under `navigator.webdriver`.
