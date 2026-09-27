@@ -77,6 +77,8 @@ failure.
 
 ### Verify runtime, not just build
 
+`bun .github/scripts/cascade-probe.ts` drives `@expressive/dom`'s styling through real Chrome and asserts the cascade with `getComputedStyle` - door ordering, inline over class, descendant scopes, custom properties, stylesheet recreation. happy-dom's CSSOM does not order a stylesheet the way a browser does, so a cascade change is not verified until this passes. It skips when Chrome is absent; set `CHROME` to point at a binary.
+
 A green `tsc --noEmit` + `bun run build` says nothing about whether a browser-facing feature (website, examples, sandbox tooling) actually works. Before calling such work done, drive the real code path: a `bun run` probe importing the module directly, the examples smoke pass (see [examples/AGENTS.md](examples/AGENTS.md)), or the Cloudflare Pages preview - every push publishes one, with a branch alias like `https://feat-x.expressive-state.pages.dev` (branch name sanitized: `/` becomes `-`; exact URLs are in the check-run output). If runtime was not exercised, say so plainly instead of reporting "passes".
 
 ## Conventions
