@@ -45,14 +45,14 @@ export function inspect(target: Evaluates) {
       const before = await record();
       const since = await seq();
 
-      if (before.level === 'off') await record({ level: 'values' });
+      if (before.level !== 'values') await record({ level: 'values' });
 
       try {
         await step();
         await target.evaluate(() => new Promise((resolve) => setTimeout(resolve, 0)));
         return await frames({ since });
       } finally {
-        if (before.level === 'off') await record({ level: 'off' });
+        if (before.level !== 'values') await record({ level: before.level });
       }
     }
   };

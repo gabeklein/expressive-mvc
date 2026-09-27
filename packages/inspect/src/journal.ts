@@ -147,11 +147,11 @@ export function recordsCalls(): boolean {
   return config.calls && config.level !== 'off';
 }
 
-/** Run `work` with recording forced on; returns the frames it produced. */
+/** Run `work` recording values; returns the frames it produced. */
 export async function act(work: () => unknown): Promise<Frame[]> {
   const level = config.level;
   const start = seq;
-  if (level === 'off') config.level = 'values';
+  if (level !== 'values') config.level = 'values';
   try {
     await work();
     await new Promise((resolve) => setTimeout(resolve, 0));
