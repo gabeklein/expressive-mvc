@@ -97,3 +97,9 @@ smoke/diff.sh [pattern]                                      # React vs dom DOM 
 - happy-dom only: no layout, cascade or real focus heuristics. Layout-dependent pages (ref drag, custom arc) stub `getBoundingClientRect`. `.github/scripts/cascade-probe.ts` covers the cascade separately; no real-Chrome pass of the examples was run.
 - Not covered: performance, memory or listener leaks over repeated mount/unmount, large lists, and third-party DOM mutation.
 - Scenarios assert what each page demonstrates. The examples were written for the React adapter, so dom-only features (`style()`/`macro`, `createPortal`, `lazy`) are exercised only incidentally.
+
+## Resolution
+
+Addressed by three stacked PRs: #406 (tracked views: fixes #1, #2, #13, #17), #407 (transition batches: #3, #4), and #408 (parity sweep: #5–#12, #14–#16; this record is linked from its description). The rationale and revisit conditions for each call are in those PR descriptions.
+
+Rerun against #408's stack: dom passes every scenario except `component/boundary > will rebuild an inner fallback under an outer one`, the intended difference documented in #408. On React, `component/injection` and `instructions/set-factory` now fail, because their scenarios pinned the buggy baseline pages that #406 and #408 fix.
