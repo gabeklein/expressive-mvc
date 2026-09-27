@@ -2872,7 +2872,7 @@ describe('new method (static)', () => {
       expect.objectContaining({
         state: test,
         cause: expects,
-        message: expect.stringMatching(/Async error in constructor for [\w-]+\./)
+        message: `Async error in constructor for ${test}: State callback rejected.`
       })
     ]);
   });
