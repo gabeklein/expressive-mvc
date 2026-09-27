@@ -52,7 +52,7 @@ const CASES = [
   },
   {
     name: 'dom: styling',
-    limit: 20700,
+    limit: 20900,
     code: `import * as mvc from '@expressive/mvc';
            import * as dom from '@expressive/dom';
            console.log(mvc, dom);`

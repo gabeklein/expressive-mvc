@@ -5,7 +5,7 @@ import type { macro, style } from './stylesheet';
 declare module './stylesheet' {
   namespace macro {
     interface Registry {
-      mx(value: number): { marginLeft: string };
+      pill(value: number): { marginLeft: string };
     }
   }
 }
@@ -15,7 +15,7 @@ describe('style map types', () => {
     const map: style.Map = {
       color: 'red',
       paddingTop: '4px',
-      mx: 2,
+      pill: 2,
       '--depth': 1,
       _active: { color: 'blue', _icon: { opacity: 0.5 } }
     };
@@ -31,7 +31,7 @@ describe('style map types', () => {
     // @ts-expect-error - a bare key may not open a scope
     const scoped: style.Map = { margin: { top: 1 } };
     // @ts-expect-error - macro declares a number
-    const macro: style.Map = { mx: 'wide' };
+    const macro: style.Map = { pill: 'wide' };
     // @ts-expect-error - a rule must be a map
     const rule: style.Map = { _active: 'yes' };
 
@@ -40,13 +40,13 @@ describe('style map types', () => {
 
   it('will check a declared macro against its declaration', () => {
     const pack: macro.Map = {
-      mx: (value: number) => ({ marginLeft: `${value}px` }),
+      pill: (value: number) => ({ marginLeft: `${value}px` }),
       pad: (value: unknown) => ({ padding: value }),
       _raised: { boxShadow: '0 1px 2px black' }
     };
 
-    // @ts-expect-error - Macros declares mx as (value: number)
-    const wrong: macro.Map = { mx: (value: string) => ({ marginLeft: value }) };
+    // @ts-expect-error - Registry declares pill as (value: number)
+    const wrong: macro.Map = { pill: (value: string) => ({ marginLeft: value }) };
 
     expect([pack, wrong]).toHaveLength(2);
   });

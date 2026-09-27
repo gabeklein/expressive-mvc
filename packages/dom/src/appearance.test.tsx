@@ -23,7 +23,7 @@ afterEach(() => {
 declare module './stylesheet' {
   namespace macro {
     interface Registry {
-      mx(value: any): unknown;
+      mex(value: any): unknown;
       pad(value: any): unknown;
       tone(value: any): unknown;
       glow(value?: any): unknown;
@@ -37,8 +37,8 @@ declare module './stylesheet' {
 const called = vi.fn(() => 'zero');
 
 macro({
-  mx: (value?: unknown) => ({ marginLeft: `${value}px`, marginRight: `${value}px` }),
-  pad: (value?: unknown) => ({ mx: value, paddingTop: `${value}px` }),
+  mex: (value?: unknown) => ({ marginLeft: `${value}px`, marginRight: `${value}px` }),
+  pad: (value?: unknown) => ({ mex: value, paddingTop: `${value}px` }),
   tone: (value?: unknown) => ({ color: value }),
   glow: () => ['glow', { outlineStyle: 'solid' }],
   tint: (value?: unknown) => ['tinted', { color: value }],

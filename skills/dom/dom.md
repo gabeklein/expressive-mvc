@@ -87,6 +87,20 @@ Inline style always beats classes. Among classes, a caller's rule beats the call
 
 Build-time extraction is not part of the `0.1` experiment.
 
+### The web pack
+
+`css` is a macro pack shipped with the renderer. Registering it opts into pixel units for numbers and the axis shorthands CSS lacks:
+
+```ts
+import { css, macro } from '@expressive/dom';
+
+macro(css);
+```
+
+A number gets `px` only where the CSSOM rejects a bare one - probed once per property, so `zIndex: 3`, `lineHeight: 1.5` and `fontWeight: 700` stay unitless while `paddingTop: 5` and `marginBlockEnd: 2` do not. Every entry of a sequence is sized, so `margin: [1, 2]` is `1px 2px`. `mx` / `my` / `px` / `py` set an axis, and `size` sets width and height.
+
+Without the pack the terminal never guesses: a rule needs `padding: '8px'`, and a bare number reaches CSS unchanged.
+
 ### Typing
 
 Maps are typed: a bare key must be a CSS property or a macro declared in `macro.Registry`, `_name` opens a rule, and anything else is rejected - `colr` reports *Did you mean 'color'?* rather than throwing at the terminal. A bare key never takes an object, which is what separates `margin: '0 8px'` from `_margin: { ... }`.
