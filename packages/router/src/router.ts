@@ -46,7 +46,7 @@ const READY = new WeakSet<object>();
 export class Router extends Component {
   /** The default router: a client-side singleton a `Route` resolves when no
    * ambient `Router` is provided. See {@link clientOnly}. */
-  static readonly global: State.Global = clientOnly;
+  static readonly global = clientOnly;
 
   path = '/';
 

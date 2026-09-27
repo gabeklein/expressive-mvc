@@ -1,12 +1,10 @@
-import type { State } from '@expressive/mvc';
-
 import { bindLocation, deltaOf, navigate, Router } from './router';
 
 const SELF_DRIVEN = new WeakSet<object>();
 
 /** Binds the headless core to `window.location` and browser history. */
 export class BrowserRouter extends Router {
-  static readonly global: State.Global = Router.global;
+  static readonly global = Router.global;
 
   path = typeof window == 'undefined' ? '/' : window.location.pathname;
 
