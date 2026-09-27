@@ -38,6 +38,18 @@ const METHODS = new WeakMap<Function, Map<string, (value: any) => void>>();
 /** List of reactive getters defined by a given type. */
 const GETTERS = new WeakMap<Function, Map<string, () => unknown>>();
 
+/** Replace the function behind a method binding, for hot patching. */
+const SWAP = new WeakMap<Function, (next: Function) => void>();
+
+/** Replacement for a getter captured by live computed properties, for hot patching. */
+const LATEST = new WeakMap<Function, Function>();
+
+/** Method implementations replaced by a hot patch. */
+const PAST = new WeakSet<Function>();
+
+/** Live instances, tracked once hot patching is enabled. */
+let LIVE: Set<WeakRef<State>> | undefined;
+
 /** Stale flags for compute closures awaiting refresh on next access. */
 const STALE = new WeakSet<() => void>();
 
@@ -547,6 +559,7 @@ function init(state: State, ...args: State.Args) {
 
   ID.set(state, `${T}-${uid()}`);
   STORE.set(state, {});
+  LIVE?.add(new WeakRef(state));
 
   function observe() {
     for (const key in state) {
@@ -678,58 +691,71 @@ function bootstrap(T: State.Extends) {
     METHODS.set(type, (keys = new Map(keys)));
     GETTERS.set(type, (getters = new Map(getters)));
 
-    for (const [key, desc] of Object.entries(
-      Object.getOwnPropertyDescriptors(type.prototype)
-    )) {
-      if (key == 'constructor' || !desc.configurable) continue;
-
-      const { get, set } = desc;
-
-      if (key[0] == '_' && (get || set)) {
-        define(type.prototype, key, {
-          ...desc,
-          get: get && function (this: State) { return get.call(this.is || this) },
-          set: set && function (this: State, value: unknown) { set.call(this.is || this, value) }
-        });
-
-        continue;
-      }
-
-      if (typeof get == 'function') {
-        if (typeof set != 'function') getters.set(key, get);
-
-        continue;
-      }
-
-      const { value } = desc;
-
-      if (typeof value !== 'function') continue;
-
-      function bind(this: State, original?: Function) {
-        const { is } = this;
-
-        if (is.hasOwnProperty(key) && !original) return value as Function;
-
-        const fn = original || value;
-        const bound = fn.bind(is);
-
-        UNBIND.set(bound, fn);
-        define(is, key, { value: bound, writable: true, configurable: true });
-
-        return bound;
-      }
-
-      UNBIND.set(bind, value);
-
-      keys.set(key, bind);
-      define(type.prototype, key, { get: bind, set: bind });
-    }
+    classify(type, keys, getters);
   }
 
   if (getters.size)
     before.add((self) => getters.forEach(compute, self));
 
   return { before, after };
+}
+
+/** Bind own configurable methods of a type and collect its reactive getters. */
+function classify(
+  type: State.Extends,
+  keys: Map<string, (value: any) => void>,
+  getters: Map<string, () => unknown>
+) {
+  for (const [key, desc] of Object.entries(
+    Object.getOwnPropertyDescriptors(type.prototype)
+  )) {
+    if (key == 'constructor' || !desc.configurable) continue;
+
+    const { get, set } = desc;
+
+    if (key[0] == '_' && (get || set)) {
+      define(type.prototype, key, {
+        ...desc,
+        get: get && function (this: State) { return get.call(this.is || this) },
+        set: set && function (this: State, value: unknown) { set.call(this.is || this, value) }
+      });
+
+      continue;
+    }
+
+    if (typeof get == 'function') {
+      if (typeof set != 'function') getters.set(key, get);
+
+      continue;
+    }
+
+    let { value } = desc;
+
+    if (typeof value !== 'function') continue;
+
+    function bind(this: State, original?: Function) {
+      const { is } = this;
+
+      if (is.hasOwnProperty(key) && !original) return value as Function;
+
+      const fn = original || value;
+      const bound = fn.bind(is);
+
+      UNBIND.set(bound, fn);
+      define(is, key, { value: bound, writable: true, configurable: true });
+
+      return bound;
+    }
+
+    UNBIND.set(bind, value);
+    SWAP.set(bind, (next) => {
+      PAST.add(value);
+      UNBIND.set(bind, (value = next));
+    });
+
+    keys.set(key, bind);
+    define(type.prototype, key, { get: bind, set: bind });
+  }
 }
 
 /**
@@ -769,7 +795,7 @@ function compute(this: State, getter: (self: any) => unknown, key: string) {
     let next: unknown;
 
     try {
-      next = getter.call(proxy, proxy);
+      next = latest(getter).call(proxy, proxy);
     } catch (err) {
       if (initial) {
         console.warn(`An exception was thrown while initializing ${this}.${key}.`);
@@ -1143,6 +1169,97 @@ function adopt(state: State, key: unknown, value: unknown) {
   claim(value);
 }
 
+/** Resolve a getter to its latest hot-patched replacement. */
+function latest(getter: Function) {
+  for (let next; (next = LATEST.get(getter)); ) getter = next;
+  return getter;
+}
+
+/** Begin tracking live instances, so a hot patch can reach them. */
+function track() {
+  LIVE ||= new Set();
+}
+
+/**
+ * Move the members of `next` onto `prev`, which keeps its identity. Returns the
+ * live instances of `prev`, each needing a refresh.
+ */
+function patch(prev: State.Extends, next: State.Extends): State[] {
+  const proto = prev.prototype;
+  const incoming = Object.getOwnPropertyDescriptors(next.prototype);
+  const keys = METHODS.get(prev);
+  const getters = GETTERS.get(prev);
+  const methods = new Map<string, Function>();
+
+  for (const [key, desc] of Object.entries(Object.getOwnPropertyDescriptors(next))) {
+    if (key == 'prototype' || key == 'length' || key == 'name') continue;
+
+    const current = Object.getOwnPropertyDescriptor(prev, key);
+
+    if (!current || current.configurable) define(prev, key, desc);
+    else if (current.writable) (prev as any)[key] = desc.value;
+  }
+
+  for (const key of Object.getOwnPropertyNames(proto))
+    if (key != 'constructor' && !(key in incoming)) {
+      Reflect.deleteProperty(proto, key);
+      getters?.delete(key);
+    }
+
+  for (const [key, desc] of Object.entries(incoming)) {
+    if (key == 'constructor') continue;
+
+    const current = Object.getOwnPropertyDescriptor(proto, key);
+    const bind = keys?.get(key);
+
+    if (typeof desc.value == 'function') methods.set(key, desc.value);
+
+    if (bind && current?.get === bind && typeof desc.value == 'function')
+      SWAP.get(bind)!(desc.value);
+    else if (current && !current.configurable) {
+      if (current.writable) (proto as any)[key] = desc.value;
+    } else {
+      const getter = getters?.get(key);
+
+      if (getter && typeof desc.get == 'function') LATEST.set(getter, desc.get);
+
+      define(proto, key, { ...desc, configurable: true });
+    }
+  }
+
+  if (keys) {
+    for (let T: State.Extends = prev; ; T = Object.getPrototypeOf(T)) {
+      for (const handler of SETUP.get(T) || [])
+        if (typeof handler == 'object' && handler.type) handler.type(prev);
+
+      if (T === State) break;
+    }
+
+    classify(prev, keys, getters!);
+  }
+
+  const live: State[] = [];
+
+  for (const ref of LIVE || []) {
+    const state = ref.deref();
+
+    if (!state) LIVE!.delete(ref);
+    else if (state instanceof prev) live.push(state);
+  }
+
+  for (const state of live)
+    for (const [key, value] of methods) {
+      const own = Object.getOwnPropertyDescriptor(state, key);
+
+      if (!own) continue;
+
+      if (own.set) own.set.call(state, value);
+      else if (PAST.has(UNBIND.get(own.value))) delete (state as any)[key];
+    }
+
+  return live;
+}
+
 /** Random alphanumberic of length 6; always starts with a letter. */
 function uid() {
   return (0.278 + Math.random() * 0.722)
@@ -1172,4 +1289,4 @@ function parent(child: object, value?: State | null) {
   return true;
 }
 
-export { event, unbind, State, parent, children, trailing, PENDING, STORE, uid, access, update, apply, compute, fault };
+export { event, unbind, State, parent, children, trailing, PENDING, STORE, uid, access, update, apply, compute, fault, patch, track };

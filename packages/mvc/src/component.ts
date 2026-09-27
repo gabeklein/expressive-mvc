@@ -7,7 +7,7 @@ import type { Host } from './runtime';
 const PENDING = new WeakMap<object, Component>();
 
 /** Per-class composed content render. */
-const CHAIN = new WeakMap<Function, Function>();
+let CHAIN = new WeakMap<Function, Function>();
 
 type IfEquals<X, Y, A, B> =
   (<T>() => T extends X ? 1 : 2) extends
@@ -127,10 +127,14 @@ class Component extends State {
       this.set(merge(this.props));
     });
 
+    const self = this;
+
     Object.defineProperty(this, 'render', {
       writable: true,
       configurable: true,
-      value: render(this)
+      value(this: Component, props?: {}) {
+        return render(self).call(this, props);
+      }
     });
   }
 
@@ -247,4 +251,9 @@ function compose(outer: Function, inner: Function): Function {
   };
 }
 
-export { Component };
+/** Drop composed renders, so each is rebuilt from current prototypes. */
+function rechain() {
+  CHAIN = new WeakMap();
+}
+
+export { Component, rechain };
