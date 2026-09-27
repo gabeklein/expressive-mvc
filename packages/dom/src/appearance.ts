@@ -1,4 +1,4 @@
-import { createAppearanceToken, registerAppearance, registerAppearanceRoot } from './appearance-protocol';
+import { appearanceSealed, createAppearanceToken, registerAppearance, registerAppearanceRoot } from './appearance-protocol';
 import type { AppearanceContext, Block, Declaration, ResolvedAppearance } from './appearance-protocol';
 
 type StyleMap = Record<string, unknown>;
@@ -37,7 +37,6 @@ const rootScopes = new WeakMap<object, StyleScope>();
 const styles = new WeakMap<object, StyleMap[]>();
 const entered = new WeakSet<object>();
 const globals: StyleMap[] = [];
-let globalsEntered = false;
 let globalContext: AppearanceContext | undefined;
 
 function createStyleScope(parent: StyleScope | undefined, value: unknown, label?: string, defines?: boolean): StyleScope | undefined {
@@ -58,6 +57,9 @@ function createStyleScope(parent: StyleScope | undefined, value: unknown, label?
       throw new Error(`Reserved key "${key}" in style map.`);
 
     if (key[0] == '_') {
+      if (!isObject(entry))
+        throw new Error(`Rule "${key}" must be an object. Macros are defined by macro().`);
+
       const name = key.slice(1);
       own.push(name);
       source[name] = entry;
@@ -103,8 +105,8 @@ function createContext(scope: StyleScope): AppearanceContext {
   const context: AppearanceContext = {
     scope,
     base: baseToken(scope),
-    resolve(route, props, tag) {
-      return resolveAppearance(route as AppearanceRoute | undefined, scope, props, tag);
+    resolve(props, tag) {
+      return resolveAppearance(scope, props, tag);
     }
   };
 
@@ -159,13 +161,16 @@ function style<T extends object>(type: T, rules: StyleMap): T {
 }
 
 function macro(rules: StyleMap): StyleMap {
-  if (globalsEntered) throw new Error('Cannot add macros after rendering has started.');
+  for (const key of Object.keys(rules))
+    if (key[0] != '_' && key[0] != '$' && typeof rules[key] != 'function')
+      throw new Error(`Macro "${key}" must be a function. Use "_${key}" to register a rule.`);
+
+  if (appearanceSealed())
+    throw new Error('Cannot add macros after rendering has started.');
+
   globals.push(rules);
   globalContext = undefined;
-  registerAppearanceRoot(() => {
-    globalsEntered = true;
-    return globalContext ||= extendContext(undefined, globals, 'global', true);
-  });
+  registerAppearanceRoot(() => globalContext ||= extendContext(undefined, globals, 'global', true));
   return rules;
 }
 
@@ -200,19 +205,19 @@ function createAppearanceRoute(
 }
 
 function resolveAppearance(
-  route: AppearanceRoute | undefined,
   scope: StyleScope | undefined,
   props: Record<string, unknown>,
   tag?: string
-): { appearance?: ResolvedAppearance; route?: AppearanceRoute } {
-  if (!route || route.scope !== scope) route = createAppearanceRoute(scope, props, tag);
-  if (!route) return {};
+): ResolvedAppearance | undefined {
+  const route = createAppearanceRoute(scope, props, tag);
+
+  if (!route) return undefined;
 
   const parts: Expansion[] = [];
   const names: string[] = route.tag ? [route.tag] : [];
 
   for (const name of route.flags)
-    if (isPresent(props[`_${name}`])) names.push(name);
+    if (props[`_${name}`]) names.push(name);
 
   for (const name of names)
     parts.push(expandRule(route.scope, name));
@@ -226,14 +231,14 @@ function resolveAppearance(
       child = createStyleScope(child, nested, tag ? `${route.scope.label}_${tag}` : route.scope.label);
 
   if (!blocks.length && !classes.length && child === route.scope)
-    return { route };
+    return undefined;
 
   const appearance: ResolvedAppearance = {};
   if (blocks.length) appearance.blocks = blocks;
   if (classes.length) appearance.classes = classes;
   if (child !== route.scope) appearance.context = createContext(child!);
 
-  return { appearance, route };
+  return appearance;
 }
 
 function expandRule(scope: StyleScope, name: string) {
@@ -295,7 +300,7 @@ function expand(scope: StyleScope, value: unknown, depths: Depths): Expansion {
 
     for (const [name, entry] of Object.entries(value as Declaration)) {
       if (name[0] == '_') {
-        nested[name] = entry;
+        if (isObject(entry)) nested[name] = entry;
         continue;
       }
 

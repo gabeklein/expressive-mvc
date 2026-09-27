@@ -1,7 +1,7 @@
 {
   "name": "@expressive/dom",
   "version": "0.0.0",
-  "description": "MVC-native JSX renderer for the DOM.",
+  "description": "MVC-native DOM renderer.",
   "license": "MIT",
   "author": {
     "name": "Gabe Klein",
@@ -49,7 +49,7 @@
     "test": "tsc --noEmit && vitest run --coverage"
   },
   "peerDependencies": {
-    "@expressive/mvc": "workspace:^"
+    "@expressive/mvc": "^0.85.0"
   },
   "devDependencies": {
     "@expressive/mvc": "workspace:^",

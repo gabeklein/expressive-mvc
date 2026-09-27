@@ -62,5 +62,14 @@ Object.assign(Runtime, {
   ]
 });
 
-export { State, State as default, Consumer, Provider } from '@expressive/react/adapter'
+export { Consumer, Provider } from '@expressive/react/adapter'
+
+import { State } from '@expressive/react/adapter'
+
+/** @deprecated Import `State` from `@expressive/mvc`. This re-export will be removed. */
+export { State }
+
+/** @deprecated Import `{ State }` from `@expressive/mvc`. The default export will be removed. */
+export default State
+/** @deprecated Import from `@expressive/mvc`. These re-exports will be removed. */
 export { Component, Context, def, get, has, ref, set, map, pending } from '@expressive/mvc';

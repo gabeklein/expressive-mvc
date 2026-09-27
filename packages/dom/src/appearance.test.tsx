@@ -263,21 +263,23 @@ describe('appearance', () => {
     expect(getComputedStyle(node).letterSpacing).toBe('2px');
     expect(getComputedStyle(node).fontSize).toBe('3px');
     expect(() => macro({ _late: { color: 'red' } })).toThrow('after rendering');
+    expect(() => macro({ bad: { color: 'red' } }))
+      .toThrow('Macro "bad" must be a function. Use "_bad" to register a rule.');
     expect(() => style(Global, { _late: { color: 'red' } })).toThrow('after a component');
   });
 
   it('will join array values and throw for unhandled keys', () => {
     const joined = createStyleScope(undefined, { _box: { margin: ['1px', '2px'] } })!;
-    const resolved = resolveAppearance(undefined, joined, { _box: true });
+    const resolved = resolveAppearance(joined, { _box: true });
 
-    expect(resolved.appearance?.blocks?.[0].declarations).toEqual({ margin: '1px 2px' });
+    expect(resolved?.blocks?.[0].declarations).toEqual({ margin: '1px 2px' });
 
     const nested = createStyleScope(undefined, { _bad: { margin: { top: '1px' } } })!;
-    expect(() => resolveAppearance(undefined, nested, { _bad: true }))
+    expect(() => resolveAppearance(nested, { _bad: true }))
       .toThrow('No macro handles "margin".');
 
     const fn = createStyleScope(undefined, { _fn: { margin: () => '1px' } })!;
-    expect(() => resolveAppearance(undefined, fn, { _fn: true }))
+    expect(() => resolveAppearance(fn, { _fn: true }))
       .toThrow('No macro handles "margin".');
   });
 
@@ -303,6 +305,37 @@ describe('appearance', () => {
     expect(mount(<Bare />).querySelector('wbr')!.className).toBe('bare');
   });
 
+  it('will not activate a rule for a falsy flag', () => {
+    function Gate() {
+      return <><kbd _on={0} /><samp _on={''} /><var _on={1} /></>;
+    }
+
+    style(Gate, { _on: { color: 'olive' } });
+
+    const root = mount(<Gate />);
+
+    expect(root.querySelector('kbd')!.className).toBe('');
+    expect(root.querySelector('samp')!.className).toBe('');
+    expect(root.querySelector('var')!.className).toBe('Gate_on');
+  });
+
+  it('will throw if a rule is not an object', () => {
+    expect(() => createStyleScope(undefined, { _bad: (() => null) as any }))
+      .toThrow('Rule "_bad" must be an object. Macros are defined by macro().');
+    expect(() => createStyleScope(undefined, { _also: 'token' as any }))
+      .toThrow('Rule "_also" must be an object.');
+  });
+
+  it('will ignore a non-object descendant scope', () => {
+    const scope = createStyleScope(undefined, {
+      _outer: { color: 'red', _inner: false }
+    })!;
+    const resolved = resolveAppearance(scope, { _outer: true });
+
+    expect(resolved?.context).toBeUndefined();
+    expect(resolved?.blocks?.[0].declarations).toEqual({ color: 'red' });
+  });
+
   it('will throw if a map uses a reserved key', () => {
     expect(() => createStyleScope(undefined, { $hover: { color: 'red' } }))
       .toThrow('Reserved key "$hover" in style map.');
@@ -325,6 +358,117 @@ describe('appearance', () => {
     expect(getComputedStyle(node).color).toBe('blue');
     expect(getComputedStyle(node).marginLeft).toBe('3px');
     expect(getComputedStyle(node).padding).toBe('2px');
+  });
+
+  it('will apply rules from every class in the chain', () => {
+    class Bar extends Component {
+      render() {
+        return <div _a _b />;
+      }
+    }
+    class Foo extends Bar {}
+
+    style(Bar, { _a: { color: 'red' } });
+    style(Foo, { _b: { paddingTop: '4px' } });
+
+    const node = mount(<Foo />).querySelector('div')!;
+
+    expect(node.className.split(' ')).toEqual(['Bar_a', 'Foo_b']);
+    expect(getComputedStyle(node).color).toBe('red');
+    expect(getComputedStyle(node).paddingTop).toBe('4px');
+  });
+
+  it('will resolve an inherited render against the derived scope', () => {
+    class Plain extends Component {
+      render() {
+        return <span _tint>base</span>;
+      }
+    }
+    class Tinted extends Plain {}
+
+    style(Tinted, { _tint: { color: 'green' } });
+
+    const node = mount(<Tinted />).querySelector('span')!;
+
+    expect(node.className).toBe('Tinted_tint');
+    expect(getComputedStyle(node).color).toBe('green');
+  });
+
+  it('will not leak a base rule into a child component', () => {
+    function Inner() {
+      return <b>inner</b>;
+    }
+
+    function Outer() {
+      return <i><Inner /></i>;
+    }
+
+    style(Inner, { color: 'blue' });
+    style(Outer, { padding: '9px' });
+
+    const root = mount(<Outer />);
+
+    expect(getComputedStyle(root.querySelector('i')!).padding).toBe('9px');
+    expect(getComputedStyle(root.querySelector('b')!).padding).toBe('');
+    expect(getComputedStyle(root.querySelector('b')!).color).toBe('blue');
+  });
+
+  it('will not merge a same-named rule across a component', () => {
+    function Kid() {
+      return <u _tone>k</u>;
+    }
+
+    function Host() {
+      return <s><Kid /></s>;
+    }
+
+    style(Kid, { _tone: { color: 'blue' } });
+    style(Host, { _tone: { color: 'red', paddingTop: '7px' } });
+
+    const inside = mount(<Host />).querySelector('u')!;
+    const alone = mount(<Kid />).querySelector('u')!;
+
+    expect(inside.className).toBe(alone.className);
+    expect(getComputedStyle(inside).paddingTop).toBe('');
+    expect(getComputedStyle(inside).color).toBe('blue');
+  });
+
+  it('will not match a tag rule inside a child component', () => {
+    function Leaf() {
+      return <p>leaf</p>;
+    }
+
+    function Shell() {
+      return <div><p>own</p><Leaf /></div>;
+    }
+
+    style(Shell, { _p: { color: 'red' } });
+
+    const [own, leaf] = [...mount(<Shell />).querySelectorAll('p')];
+
+    expect(getComputedStyle(own).color).toBe('red');
+    expect(getComputedStyle(leaf).color).not.toBe('red');
+  });
+
+  it('will carry a descendant scope one component deep', () => {
+    function Deep() {
+      return <em>deep</em>;
+    }
+
+    function Mid() {
+      return <><q _mark>mid</q><Deep /></>;
+    }
+
+    function Top() {
+      return <Mid _wrap />;
+    }
+
+    style(Top, { _wrap: { _mark: { color: 'orange' }, _em: { color: 'teal' } } });
+
+    const root = mount(<Top />);
+
+    expect(getComputedStyle(root.querySelector('q')!).color).toBe('orange');
+    expect(getComputedStyle(root.querySelector('em')!).color).not.toBe('teal');
   });
 
   it('will keep block names unique and reuse identical blocks', () => {
@@ -414,14 +558,13 @@ describe('appearance', () => {
       _plain: { opacity: 0.5 }
     })!;
     const props = { _classes: true, _blank: true, _plain: false, _token: true };
-    const resolved = resolveAppearance(undefined, scope, props);
+    const resolved = resolveAppearance(scope, props);
 
-    expect(resolved.appearance).toEqual({ classes: ['one', 'two', 'zero'] });
+    expect(resolved).toEqual({ classes: ['one', 'two', 'zero'] });
     expect(called).toHaveBeenCalledWith(undefined, 'zero');
 
-    const blank = createAppearanceRoute(scope, { _blank: true });
-    expect(resolveAppearance(blank, scope, { _blank: true })).toEqual({ route: blank });
-    expect(resolveAppearance(blank, scope, { _blank: false })).toEqual({ route: blank });
+    expect(resolveAppearance(scope, { _blank: true })).toBeUndefined();
+    expect(resolveAppearance(scope, { _blank: false })).toBeUndefined();
   });
 
   it('will apply custom properties when serializing', () => {
@@ -438,7 +581,7 @@ describe('appearance', () => {
     expect(createStyleScope(undefined, null)).toBeUndefined();
     expect(createStyleScope(undefined, [])).toBeUndefined();
     expect(createAppearanceRoute(undefined, {})).toBeUndefined();
-    expect(resolveAppearance(undefined, undefined, {})).toEqual({});
+    expect(resolveAppearance(undefined, {})).toBeUndefined();
   });
 
   it('will share immutable scopes and structural routes', () => {
@@ -454,13 +597,13 @@ describe('appearance', () => {
     expect(createAppearanceRoute(child, { _tone: false })).toBe(route);
   });
 
-  it.fails('will discover selector keys added by a dynamic spread', () => {
+  it('will discover a rule key added after the first render', () => {
     const scope = createStyleScope(undefined, {
       _active: { color: 'red' }
     })!;
-    const route = createAppearanceRoute(scope, {});
-    const result = resolveAppearance(route, scope, { _active: true });
 
-    expect(result.appearance?.blocks).toHaveLength(1);
+    expect(resolveAppearance(scope, {})).toBeUndefined();
+    expect(resolveAppearance(scope, { _active: true })?.blocks).toHaveLength(1);
   });
+
 });

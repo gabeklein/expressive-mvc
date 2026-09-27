@@ -45,14 +45,14 @@ const CASES = [
   },
   {
     name: 'dom: renderer',
-    limit: 18700,
+    limit: 18800,
     code: `import State, { Component, Context, def, get, has, map, pending, ref, set } from '@expressive/mvc';
            import { Consumer, Provider, createPortal, lazy, render } from '@expressive/dom';
            console.log(State, Component, Context, Consumer, Provider, createPortal, def, get, has, lazy, map, pending, ref, render, set);`
   },
   {
     name: 'dom: styling',
-    limit: 20600,
+    limit: 20700,
     code: `import * as mvc from '@expressive/mvc';
            import * as dom from '@expressive/dom';
            console.log(mvc, dom);`

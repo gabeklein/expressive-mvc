@@ -16,7 +16,15 @@ function lazy<P>(load: () => Promise<Module<P>>): FunctionComponent<P> {
     if (!pending)
       pending = load().then(
         (module) => {
-          resolved = typeof module == 'function' ? module : module.default;
+          const output = typeof module == 'function' ? module : module?.default;
+
+          if (typeof output != 'function') {
+            failed = true;
+            rejected = new Error('lazy() loader resolved no component.');
+            return;
+          }
+
+          resolved = output;
         },
         (error) => {
           failed = true;

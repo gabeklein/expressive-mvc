@@ -63,7 +63,6 @@ interface Fiber {
   placeholder?: Fiber;
   appearance?: Appearance;
   consumed?: boolean;
-  appearanceRoute?: unknown;
   claimed?: Claim;
 }
 
@@ -180,24 +179,22 @@ function complete<T extends Fiber>(fiber: T, work: () => void): T {
 function componentProps(
   type: unknown,
   props: Record<string, any>,
-  appearance: Appearance | undefined,
-  route?: unknown
+  appearance: Appearance | undefined
 ) {
   const context = appearance?.context;
-  if (!context || typeof type != 'function') return { appearance, props, route };
+  if (!context || typeof type != 'function') return { appearance, props };
 
-  const resolved = context.resolve(route, props);
-  const value = resolved.appearance;
-  if (!value) return { appearance, props, route: resolved.route };
+  const value = context.resolve(props);
+  const entries = appearance!.entries;
 
-  const token = createAppearanceToken(value);
+  if (!value) return { appearance: { entries }, props };
+
   return {
     appearance: {
-      context: value.context || context,
-      entries: appearance!.entries
+      context: value.context,
+      entries
     },
-    props: { ...props, style: [token, props.style] },
-    route: resolved.route
+    props: { ...props, style: [createAppearanceToken(value), props.style] }
   };
 }
 
@@ -246,7 +243,6 @@ function mountFunction(value: VNode, parent: globalThis.Node, before: globalThis
   fiber.props = observe(resolved.props);
   fiber.boundary = boundary;
   fiber.appearance = resolved.appearance;
-  fiber.appearanceRoute = resolved.route;
   fiber.scope = makeScope('function', context, (passive) => runFunction(fiber, passive));
 
   return complete(fiber, () => {
@@ -264,7 +260,7 @@ function mountOwnedComponent(
 ) {
   const resolved = componentProps(value.type, value.props, appearance);
   const instance = new (value.type as new (props: any) => Component)(observe(resolved.props));
-  return mountComponent(instance, parent, before, context, boundary, resolved.appearance, true, value.key, resolved.route);
+  return mountComponent(instance, parent, before, context, boundary, resolved.appearance, true, value.key);
 }
 
 function runFunction(fiber: Fiber, passive: boolean) {
@@ -282,7 +278,6 @@ function mountComponent(
   appearance?: Appearance,
   owned = false,
   key?: Key,
-  appearanceRoute?: unknown
 ) {
   const fiber = range('component', parent, before, context);
   const childContext = context.push(instance);
@@ -304,7 +299,6 @@ function mountComponent(
   fiber.props = instance.props as Record<string, any>;
   fiber.owned = owned;
   fiber.appearance = appearance;
-  fiber.appearanceRoute = appearanceRoute;
   fiber.scope = makeScope('component', childContext, (passive) => runComponent(fiber, passive));
 
   let first = true;
@@ -779,17 +773,15 @@ function patch(old: Fiber | undefined, value: RenderNode, parent: globalThis.Nod
     reconcile(old, (value as VNode).props.children, context, old.boundary, appearance);
   } else if (old.kind == 'function') {
     const vnode = value as VNode;
-    const resolved = componentProps(vnode.type, vnode.props, appearance, old.appearanceRoute);
+    const resolved = componentProps(vnode.type, vnode.props, appearance);
     old.appearance = resolved.appearance;
-    old.appearanceRoute = resolved.route;
     old.props = observe(resolved.props);
     rerun(old, () => runFunction(old, passiveRender));
   } else if (old.kind == 'component') {
     const resolved = isVNode(value)
-      ? componentProps(value.type, value.props, appearance, old.appearanceRoute)
-      : { appearance, props: old.instance!.props, route: old.appearanceRoute };
+      ? componentProps(value.type, value.props, appearance)
+      : { appearance, props: old.instance!.props };
     old.appearance = resolved.appearance;
-    old.appearanceRoute = resolved.route;
     const props = isVNode(value) ? observe(resolved.props) : resolved.props;
     if (isVNode(value) && props !== old.instance!.props) {
       if (passiveRender) old.applied = true;
@@ -851,9 +843,7 @@ function patchProps(fiber: Fiber, next: Record<string, any>, appearance?: Appear
   const element = fiber.start as Element;
   const previous = fiber.props!;
   const raw = 'dangerouslySetInnerHTML' in next;
-  const resolved = appearance?.context?.resolve(fiber.appearanceRoute, next, fiber.type as string) || {};
-
-  fiber.appearanceRoute = resolved.route;
+  const resolved = appearance?.context?.resolve(next, fiber.type as string);
 
   if (raw) {
     for (let index = fiber.children.length - 1; index >= 0; index--)
@@ -867,7 +857,7 @@ function patchProps(fiber: Fiber, next: Record<string, any>, appearance?: Appear
     patchProp(fiber, element, key, previous[key], next[key]);
   }
 
-  const claimed = claim(element, appearance, resolved.appearance, next.class, next.style);
+  const claimed = claim(element, appearance, resolved, next.class, next.style);
 
   applyClaim(element, fiber.claimed, claimed);
   fiber.claimed = claimed;
@@ -1009,9 +999,10 @@ function renderedAppearance(fiber: Fiber): Appearance | undefined {
 
   const style = fiber.props?.style as Style;
   const entries = (fiber.appearance?.entries || []).map(({ hops, style }) => ({ hops: hops + 1, style }));
-  const context = enterAppearance(fiber.appearance?.context, fiber.type as Function);
+  const inherited = fiber.appearance?.context || appearanceRoot();
+  const context = enterAppearance(inherited, fiber.type as Function);
 
-  if (context?.base && context !== fiber.appearance?.context)
+  if (context?.base && context !== inherited)
     entries.push({ hops: 0, style: context.base as Style });
 
   if (style && !fiber.consumed && !(fiber.instance && 'style' in fiber.instance)) entries.push({ hops: 0, style });

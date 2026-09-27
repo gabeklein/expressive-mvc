@@ -17,10 +17,9 @@ interface AppearanceContext {
   readonly scope?: unknown;
   readonly base?: object;
   resolve(
-    route: unknown,
     props: Record<string, unknown>,
     tag?: string
-  ): { appearance?: ResolvedAppearance; route?: unknown };
+  ): ResolvedAppearance | undefined;
 }
 
 type EnterAppearance = (parent?: AppearanceContext) => AppearanceContext;
@@ -30,6 +29,7 @@ const registrations = new WeakMap<object, EnterAppearance>();
 const tokens = new WeakMap<object, ResolvedAppearance>();
 let root: (() => AppearanceContext | undefined) | undefined;
 let emitter: Emit | undefined;
+let rendered = false;
 
 function registerAppearance(type: object, enter: EnterAppearance) {
   registrations.set(type, enter);
@@ -48,7 +48,13 @@ function emitClass(block: Block, depth: number, document: Document) {
 }
 
 function appearanceRoot() {
+  rendered = true;
   return root?.();
+}
+
+/** Has anything rendered yet - global registration is closed after it has. */
+function appearanceSealed() {
+  return rendered;
 }
 
 function enterAppearance(parent: AppearanceContext | undefined, type: Function) {
@@ -77,6 +83,7 @@ function appearanceToken(value: unknown) {
 
 export {
   appearanceRoot,
+  appearanceSealed,
   appearanceToken,
   createAppearanceToken,
   emitClass,

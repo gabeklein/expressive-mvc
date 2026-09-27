@@ -24,15 +24,16 @@
     "test": "tsc --noEmit && vitest run --coverage"
   },
   "dependencies": {
-    "@expressive/react": "workspace:^",
-    "@expressive/mvc": "workspace:^"
+    "@expressive/react": "workspace:^"
   },
   "devDependencies": {
+    "@expressive/mvc": "workspace:^",
     "@testing-library/preact": "^3.2.3",
     "preact": "^10.0.0",
     "tsdown": "^0.20.1"
   },
   "peerDependencies": {
+    "@expressive/mvc": "^0.85.0",
     "preact": "^10.0.0"
   }
 }

@@ -31,7 +31,7 @@ function emit(block: Block, depth: number, document: Document) {
 
   if (!sheet?.element.sheet) {
     const element = document.createElement('style');
-    element.dataset.expressive = 'jsx';
+    element.dataset.expressive = 'dom';
     document.head.append(element);
     sheet = { element, emitted: new WeakMap(), names: new Map(), positions: [] };
     sheets.set(document, sheet);

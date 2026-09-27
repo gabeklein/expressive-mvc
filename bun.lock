@@ -77,25 +77,24 @@
       "name": "@expressive/preact",
       "version": "0.0.0",
       "dependencies": {
-        "@expressive/mvc": "workspace:^",
         "@expressive/react": "workspace:^",
       },
       "devDependencies": {
+        "@expressive/mvc": "workspace:^",
         "@testing-library/preact": "^3.2.3",
         "preact": "^10.0.0",
         "tsdown": "^0.20.1",
       },
       "peerDependencies": {
+        "@expressive/mvc": "workspace:^",
         "preact": "^10.0.0",
       },
     },
     "packages/react": {
       "name": "@expressive/react",
       "version": "0.86.0",
-      "dependencies": {
-        "@expressive/mvc": "^0.85.0",
-      },
       "devDependencies": {
+        "@expressive/mvc": "^0.85.0",
         "@testing-library/react": "^16.3.0",
         "@types/react": "^19",
         "@types/react-dom": "^19",
@@ -104,23 +103,25 @@
         "tsdown": "^0.20.1",
       },
       "peerDependencies": {
+        "@expressive/mvc": "^0.85.0",
         "react": ">=16.14.0 <20.0.0",
       },
     },
     "packages/router": {
       "name": "@expressive/router",
       "version": "0.8.0",
-      "dependencies": {
-        "@expressive/mvc": "^0.84.0",
-      },
       "devDependencies": {
-        "@expressive/react": "^0.85.0",
+        "@expressive/mvc": "^0.85.0",
+        "@expressive/react": "^0.86.0",
         "@testing-library/react": "^16.3.0",
         "@types/react": "^19",
         "@types/react-dom": "^19",
         "react": "^19",
         "react-dom": "^19",
         "tsdown": "^0.20.1",
+      },
+      "peerDependencies": {
+        "@expressive/mvc": "^0.85.0",
       },
     },
     "website": {

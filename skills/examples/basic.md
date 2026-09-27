@@ -5,7 +5,7 @@ Working examples of the fundamentals.
 ## Counter (minimal)
 
 ```tsx
-import State from '@expressive/react';
+import { State } from '@expressive/mvc';
 
 class Counter extends State {
   count = 0;
@@ -37,7 +37,7 @@ function CounterApp() {
 Each entry is its own State in a `has` pool - `done` and `toggle` live on the item, not as `(id, value)` methods on the list:
 
 ```tsx
-import State, { has } from '@expressive/react';
+import { State, has } from '@expressive/mvc';
 
 class TodoItem extends State {
   text = '';
@@ -97,7 +97,8 @@ Rows that paint themselves become `Component` members placed as `{state.items}` 
 ## Async Data (with Suspense)
 
 ```tsx
-import State, { set, Provider } from '@expressive/react';
+import { State, set } from '@expressive/mvc';
+import { Provider } from '@expressive/react';
 import { Suspense } from 'react';
 
 interface User {
@@ -140,7 +141,8 @@ function App() {
 ## Shared Context (parent/child communication)
 
 ```tsx
-import State, { get, Provider } from '@expressive/react';
+import { State, get } from '@expressive/mvc';
+import { Provider } from '@expressive/react';
 
 class Theme extends State {
   mode: 'light' | 'dark' = 'light';
@@ -238,7 +240,7 @@ Explicit `loading` keeps previous results visible during refresh - the deliberat
 ## Form Validation (setter callbacks)
 
 ```tsx
-import State, { set } from '@expressive/react';
+import { State, set } from '@expressive/mvc';
 
 class SignupForm extends State {
   name = '';

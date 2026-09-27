@@ -14,13 +14,15 @@
 The React adapter for [Expressive MVC](https://github.com/gabeklein/expressive-mvc). Define state as a class, use it in a component, and reads automatically subscribe - components re-render only when accessed values change.
 
 ```bash
-npm install @expressive/react
+npm install @expressive/mvc @expressive/react
 ```
+
+`@expressive/mvc` is a peer dependency: import `State`, `Component` and instructions from it, and import `@expressive/react` once from your entry so the host registers. `Provider` and `Consumer` come from the adapter. Its re-exports of the core are deprecated.
 
 Works on React DOM, and on React Native and Expo - the adapter imports only `react` and `react/jsx-runtime`, so there is nothing renderer-specific to port. Exercised on an iOS simulator and an Android emulator in both Debug and Release builds, and gated per release on Metro resolution and a Hermes build (Expo SDK 57, React Native 0.86). Under Jest, add `@expressive` to `transformIgnorePatterns`.
 
 ```tsx
-import State from '@expressive/react';
+import { State } from '@expressive/mvc';
 
 class Counter extends State {
   count = 0;
