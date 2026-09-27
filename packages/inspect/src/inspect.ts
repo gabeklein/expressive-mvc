@@ -67,11 +67,24 @@ function counts(): Record<Case, number> {
   return { Destroyed: 0, Inactive: 0, Getter: 0, Init: 0, Effect: 0 };
 }
 
-function caught(error: Caught) {
+const noted = new WeakMap<Caught, { handled: boolean } | undefined>();
+
+function observe(error: Caught) {
   const name = CASES.find((type) => error instanceof Caught[type]);
   if (name) tally[name]++;
-  noteCaught(error, name || 'Caught');
+  noted.set(error, noteCaught(error, name || 'Caught'));
   return error;
+}
+
+function unhandled(error: Caught) {
+  if (!noted.has(error)) observe(error);
+  const event = noted.get(error);
+  if (event) event.handled = false;
+  return error;
+}
+
+export function clearCaught(): void {
+  tally = counts();
 }
 
 /** Count loaded copies of mvc from the list each one joins on first construction; warn once on a second. */
@@ -258,13 +271,13 @@ export function attach(Type: typeof State = State): () => void {
 
   if (!hooks.has(Type)) {
     const observed = new Map<typeof State, () => void>();
-    const stopCatch = Type.on({ catch: caught });
+    const stopCatch = Type.on({ catch: unhandled });
     const stopSetup = Type.on(function (this: State) {
       const self = this.is;
       const T = self.constructor as typeof State;
       const id = String(self);
       const span: Span = { since: Date.now(), claimed: false, settled: false };
-      if (!observed.has(T)) observed.set(T, T.on({ catch: caught }));
+      if (!observed.has(T)) observed.set(T, T.on({ catch: observe }));
       seen(T);
       live.set(id, { ref: weak(self) });
       spans.set(self, span);
@@ -349,7 +362,7 @@ export interface Health {
   collected: number;
   /** Loaded copies of `@expressive/mvc` - more than 1 means inspect cannot see every State. */
   copies: number;
-  /** `Caught` reports by case, including ones an app handler went on to handle. */
+  /** `Caught` reports by case, including ones an app handler went on to handle; zeroed by `journal.clear()`. */
   caught: Record<Case, number>;
 }
 

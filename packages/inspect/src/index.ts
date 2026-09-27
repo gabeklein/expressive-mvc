@@ -1,4 +1,4 @@
-import { attach, call, detach, find, get, health, Instance, instances, models, orphans, roots, set, tree, wrapAll } from './inspect';
+import { attach, call, clearCaught, detach, find, get, health, Instance, instances, models, orphans, roots, set, tree, wrapAll } from './inspect';
 import { act, journal as base, type Options } from './journal';
 import { label, resolve } from './types';
 
@@ -15,6 +15,10 @@ export const journal = {
     const config = base.record(options);
     if (config.calls && config.level !== 'off') wrapAll();
     return config;
+  },
+  clear() {
+    base.clear();
+    clearCaught();
   }
 };
 

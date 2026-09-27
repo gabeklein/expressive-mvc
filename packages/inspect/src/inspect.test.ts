@@ -255,22 +255,71 @@ describe('health', () => {
       type: 'Note',
       key: 'text',
       kind: 'caught',
-      value: { case: 'Destroyed', message: `Tried to update ${note}.text but state is destroyed.` }
+      value: {
+        case: 'Destroyed',
+        message: `Tried to update ${note}.text but state is destroyed.`,
+        stack: expect.stringContaining('Tried to update'),
+        handled: false
+      }
     });
   });
 
-  it('will record the stack of a caught report at values level', async () => {
+  it('will mark a report an app handler took as handled', async () => {
     attach();
-    journal.record({ level: 'values' });
+    journal.record({ level: 'keys' });
+
+    class Dropped extends State {
+      text = '';
+    }
+
+    const stop = State.on({ catch: (error) => (error instanceof Caught.Destroyed ? undefined : error) });
+    const dropped = Dropped.new();
+
+    dropped.set(null);
+    dropped.text = 'late';
+    stop();
+
+    const [event] = journal.history({ type: 'Dropped' }).map(({ event }) => event).filter((e) => e.kind === 'caught');
+
+    expect(event.value).toMatchObject({ case: 'Destroyed', handled: true });
+  });
+
+  it('will count a report from a class it never saw activate', async () => {
+    mockWarn();
+    attach();
+    journal.record({ level: 'keys' });
+
+    class Idle extends State {}
+
+    new Idle();
+    await flushMicrotasks();
+
+    expect(health().caught.Inactive).toBe(1);
+    expect(journal.history({ type: 'Idle' })[0].event.value).toMatchObject({ case: 'Inactive', handled: false });
+  });
+
+  it('will reset caught counts when the journal clears', () => {
+    attach();
+    const note = Note.new();
+
+    note.set(null);
+    expect(() => (note.text = 'late')).toThrow();
+    expect(health().caught.Destroyed).toBe(1);
+
+    journal.clear();
+    expect(health().caught.Destroyed).toBe(0);
+  });
+
+  it('will count caught reports in the summary', async () => {
+    attach();
+    journal.record({ level: 'keys' });
     const note = Note.new();
 
     note.set(null);
     expect(() => (note.text = 'late')).toThrow();
     await flushMicrotasks();
 
-    const [event] = journal.history({ key: 'text' }).map(({ event }) => event).filter((e) => e.kind === 'caught');
-
-    expect(event.value).toMatchObject({ case: 'Destroyed', stack: expect.stringContaining('Tried to update') });
+    expect(journal.summary({ id: String(note) })[0]).toMatchObject({ caught: 1, destroyed: true });
   });
 
   it('will record a replacement it has no case for without counting it', async () => {
@@ -291,10 +340,9 @@ describe('health', () => {
     await flushMicrotasks();
 
     expect(health().caught.Destroyed).toBe(0);
-    expect(journal.history({ type: 'Replaced' }).map(({ event }) => event.value)).toContainEqual({
-      case: 'Caught',
-      message: 'replaced'
-    });
+    expect(journal.history({ type: 'Replaced' }).map(({ event }) => event.value)).toContainEqual(
+      expect.objectContaining({ case: 'Caught', message: 'replaced', handled: false })
+    );
     expect(caught).toEqual([]);
   });
 
