@@ -70,7 +70,7 @@ Console: `__EXPRESSIVE_INSPECT__.get('Composer.draft')`, `__EXPRESSIVE_INSPECT__
 
 ## Journal
 
-Off by default (the Vite relay records `keys` from load). `journal.record({ level, types, paths, keys, calls })`, then `frames({ since })`. A frame is one batch of writes plus its flush; work an effect defers carries a `cause` back to the frame that scheduled it. `export()` emits NDJSON for a sidecar.
+Off by default (the Vite relay records `keys` from load). `journal.record({ level, types, paths, keys, calls })`, then `frames({ since })`. A frame is one batch of writes plus its flush; work an effect defers carries a `cause` back to the frame that scheduled it. `export()` emits NDJSON for a sidecar; `summary()` digests it per instance.
 
 ## Orphans
 

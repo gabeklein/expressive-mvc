@@ -83,7 +83,21 @@ describe('connect', () => {
     const { value } = await ask(1, [['around'], [['call', 'Composer.submit', 'hi']]]);
     expect(value.value).toBe(2);
     expect(value.frames[0].events[0]).toMatchObject({ key: 'draft', value: 'hi' });
+    expect(value.settled).toBe(true);
     expect(journal.record().level).toBe('keys');
+  });
+
+  it('will answer settled false when work outlasts the timeout', async () => {
+    const composer = Composer.new();
+    const { hot, ask } = channel();
+    connect(hot);
+    const loop = setInterval(() => composer.draft += '.', 0);
+    try {
+      const { value } = await ask(1, [['around'], [['get', 'Composer.draft'], { timeout: 20 }]]);
+      expect(value.settled).toBe(false);
+    } finally {
+      clearInterval(loop);
+    }
   });
 
   it('will answer an error for around without a call', async () => {
@@ -91,7 +105,7 @@ describe('connect', () => {
     connect(hot);
     expect(await ask(1, [['around'], ['Composer.submit']])).toEqual({
       rid: 1,
-      error: 'around takes one call: ["around", [method, ...args]].'
+      error: 'around takes one call: ["around", [method, ...args], options?].'
     });
   });
 

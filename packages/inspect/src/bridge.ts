@@ -1,6 +1,8 @@
 import type { inspect as Inspect } from './index';
 import { dispatch, type Call } from './dispatch';
-import type { Frame, Options, Query } from './journal';
+import { bracket } from './bracket';
+import { tick, unsettled, type Settle } from './settle';
+import type { Frame, Options, Query, Summary } from './journal';
 
 export { cdp, type Target } from './cdp';
 
@@ -40,22 +42,15 @@ export function inspect(target: Evaluates) {
       history: remote<ReturnType<typeof Inspect.journal.history>>('journal', 'history') as (
         query: Query
       ) => Promise<ReturnType<typeof Inspect.journal.history>>,
+      export: remote<string>('journal', 'export') as (query?: Query) => Promise<string>,
+      summary: remote<Summary[]>('journal', 'summary') as (query?: Query) => Promise<Summary[]>,
       clear: remote<void>('journal', 'clear') as () => Promise<void>
     },
 
-    async around(step: () => unknown): Promise<Frame[]> {
-      const before = await record();
-      const since = await seq();
-
-      if (before.level !== 'values') await record({ level: 'values' });
-
-      try {
-        await step();
-        await target.evaluate(() => new Promise((resolve) => setTimeout(resolve, 0)));
-        return await frames({ since });
-      } finally {
-        if (before.level !== 'values') await record({ level: before.level });
-      }
+    async around(step: () => unknown, options: Settle = {}): Promise<Frame[]> {
+      const result = await bracket({ record, seq, frames }, step, () => target.evaluate(tick), options);
+      if (!result.settled) unsettled(options.timeout);
+      return result.frames;
     }
   };
 }
