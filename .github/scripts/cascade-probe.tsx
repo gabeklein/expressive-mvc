@@ -1,16 +1,8 @@
 /** @jsxImportSource @expressive/dom */
 import { Component } from '@expressive/mvc';
-import { macro, render, style } from '@expressive/dom';
+import { css, macro, render, style } from '@expressive/dom';
 
-declare module '@expressive/dom' {
-  namespace macro {
-    interface Registry {
-      pad(value: number): style.Map;
-    }
-  }
-}
-
-macro({ pad: (value: number) => ({ paddingTop: `${value}px` }) });
+macro(css);
 
 const out: string[] = [];
 
@@ -52,6 +44,12 @@ function Inline() {
 
 style(Inline, { _hue: { color: 'rgb(8, 8, 8)' } });
 
+function Units() {
+  return <span _box>units</span>;
+}
+
+style(Units, { _box: { paddingTop: 5, zIndex: 3, marginBlockEnd: 2, mx: 4 } });
+
 function Nested() {
   return <section _frame><em>deep</em></section>;
 }
@@ -62,7 +60,7 @@ style(Nested, {
 
 const root = document.getElementById('app')!;
 
-render(<><Outer /><Inline /><Nested /></>, root);
+render(<><Outer /><Inline /><Nested /><Units /></>, root);
 
 const leaf = root.querySelector('b')!;
 const inline = root.querySelector('i')!;
@@ -73,6 +71,12 @@ check('outermost caller wins on door count', getComputedStyle(leaf).color, 'rgb(
 check('inline beats class', getComputedStyle(inline).color, 'rgb(9, 9, 9)');
 check('descendant scope applies', getComputedStyle(em).color, 'rgb(6, 6, 6)');
 check('custom property', getComputedStyle(frame).getPropertyValue('--depth').trim(), '7');
+const box = root.querySelector('span')!;
+
+check('px appended where required', getComputedStyle(box).paddingTop, '5px');
+check('unitless left alone', getComputedStyle(box).zIndex, '3');
+check('logical property sized', getComputedStyle(box).marginBlockEnd, '2px');
+check('axis shorthand', getComputedStyle(box).marginLeft, '4px');
 check('leaf carries door classes', String(leaf.className.includes('-d1') && leaf.className.includes('-d2')), 'true');
 
 document.querySelector('style[data-expressive]')!.remove();
