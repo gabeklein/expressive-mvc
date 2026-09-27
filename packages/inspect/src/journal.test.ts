@@ -283,6 +283,105 @@ describe('journal', () => {
     }
   });
 
+  it('will record an until address the app filter excludes, then restore the filter', async () => {
+    attach();
+    journal.record({ level: 'keys', paths: ['Other.value'] });
+    const composer = Composer.new();
+
+    const frames = await act(() => void setTimeout(() => (composer.draft = 'late'), 5), { until: 'Composer.draft' });
+
+    expect(frames.at(-1)!.events[0]).toMatchObject({ key: 'draft', value: 'late' });
+    expect(journal.record()).toMatchObject({ level: 'keys', paths: ['Other.value'] });
+  });
+
+  it('will read a value target whatever the app records', async () => {
+    attach();
+    journal.record({ level: 'keys', paths: ['Other.value'] });
+    const composer = Composer.new();
+
+    await act(() => void setTimeout(() => (composer.draft = 'late'), 5), { until: { 'Composer.draft': 'late' } });
+
+    expect(composer.draft).toBe('late');
+  });
+
+  it('will act past a write the step makes itself', async () => {
+    attach();
+    const composer = Composer.new();
+    const frames = await act(
+      () => {
+        composer.draft = 'sending';
+        setTimeout(() => (composer.draft = 'sent'), 20);
+      },
+      { until: 'Composer.draft' }
+    );
+    expect(frames.flatMap((frame) => frame.events.map((event) => event.value))).toEqual(['sending', 'sent']);
+  });
+
+  it('will count a write an async step awaited', async () => {
+    const warn = mockWarn();
+    attach();
+    const composer = Composer.new();
+    await act(
+      async () => {
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        composer.draft = 'done';
+      },
+      { until: 'Composer.draft', timeout: 200 }
+    );
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it('will act until an address holds a value', async () => {
+    attach();
+    const composer = Composer.new();
+    const frames = await act(
+      () => {
+        composer.draft = 'sending';
+        setTimeout(() => (composer.draft = 'sent'), 20);
+      },
+      { until: { 'Composer.draft': 'sent' } }
+    );
+    expect(frames.at(-1)!.events[0].value).toBe('sent');
+  });
+
+  it('will not wait for a value already held', async () => {
+    const warn = mockWarn();
+    attach();
+    Composer.new();
+    expect(await act(() => {}, { until: { 'Composer.draft': '' } })).toEqual([]);
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it('will throw when a value never holds', async () => {
+    attach();
+    Composer.new();
+    await expect(act(() => {}, { until: { 'Composer.draft': 'never' }, timeout: 20 })).rejects.toThrow(
+      'Not reached within 20ms: Composer.draft.'
+    );
+  });
+
+  it('will say when a value names no instance', async () => {
+    attach();
+    await expect(act(() => {}, { until: { 'Missing.draft': 'x' }, timeout: 20 })).rejects.toThrow(
+      'Not reached within 20ms: Missing.draft (names no instance).'
+    );
+  });
+
+  it('will act until an instance address sees a frame', async () => {
+    attach();
+    const composer = Composer.new();
+    const frames = await act(
+      () => {
+        setTimeout(() => {
+          composer.draft = 'first';
+          setTimeout(() => (composer.rows = 5), 5);
+        });
+      },
+      { until: `${composer}.rows` }
+    );
+    expect(frames.flatMap((frame) => frame.events.map((event) => event.key))).toEqual(['draft', 'rows']);
+  });
+
   it('will summarize frames per instance, latest first', async () => {
     attach();
     journal.record({ level: 'values', calls: true });

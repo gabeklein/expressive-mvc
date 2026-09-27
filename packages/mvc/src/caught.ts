@@ -1,5 +1,10 @@
 import type { State } from './state';
 
+const about = (cause: unknown) => {
+  const text = cause instanceof Error ? cause.message : String(cause);
+  return text ? `: ${text}` : '.';
+};
+
 /**
  * Reported to `State.on({ catch })` handlers instead of being thrown or logged.
  * Unhandled, a `warning` goes to `console.warn`; anything else escapes uncaught.
@@ -20,6 +25,12 @@ class Caught extends Error {
   ) {
     super(message, arguments.length > 3 ? { cause } : undefined);
     Object.defineProperty(this, 'state', { value: state });
+  }
+
+  /** A `catch` handler logging what would otherwise escape uncaught; warnings and destroyed writes pass on. */
+  static log(error: Caught): Caught | void {
+    if (error.warning || error instanceof Caught.Destroyed) return error;
+    console.error(error);
   }
 
   /** A write to a destroyed state - thrown to the writer unless a handler takes it. */
@@ -46,7 +57,7 @@ class Caught extends Error {
     readonly name = 'Caught.Getter';
 
     constructor(state: State, key: string, cause: unknown) {
-      super(state, `An exception was thrown while refreshing ${state}.${key}.`, key, cause);
+      super(state, `An exception was thrown while refreshing ${state.constructor}.${key}${about(cause)}`, key, cause);
     }
   };
 
@@ -55,7 +66,7 @@ class Caught extends Error {
     readonly name = 'Caught.Init';
 
     constructor(state: State, cause: unknown) {
-      super(state, `Async error in constructor for ${state}.`, undefined, cause);
+      super(state, `Async error in constructor for ${state.constructor}${about(cause)}`, undefined, cause);
     }
   };
 
@@ -64,7 +75,7 @@ class Caught extends Error {
     readonly name = 'Caught.Effect';
 
     constructor(state: State, cause: unknown) {
-      super(state, `An exception was thrown by an effect of ${state}.`, undefined, cause);
+      super(state, `An exception was thrown by an effect of ${state.constructor}${about(cause)}`, undefined, cause);
     }
   };
 }

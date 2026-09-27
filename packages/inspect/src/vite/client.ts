@@ -1,7 +1,7 @@
 import { dispatch, type Call } from '../dispatch';
 import { bracket } from '../bracket';
 import type { Options, Query } from '../journal';
-import { tick, type Settle } from '../settle';
+import { tick, type Act } from '../settle';
 
 export interface Hot {
   on(event: string, listener: (data: any) => unknown): void;
@@ -15,19 +15,20 @@ export interface Ask {
 
 const journal = (method: string, ...args: unknown[]) => dispatch([['journal', method], args]) as any;
 
-async function around(step: unknown, options?: Settle) {
+async function act(step: unknown, options?: Act) {
   if (!Array.isArray(step) || typeof step[0] != 'string')
-    throw new Error('around takes one call: ["around", [method, ...args], options?].');
+    throw new Error('act takes one call: ["act", [method, ...args], options?].');
 
   const remote = {
     record: (...options: Options[]) => journal('record', ...options),
     seq: () => journal('seq'),
-    frames: (query: Query) => journal('frames', query)
+    frames: (query: Query) => journal('frames', query),
+    get: (address: string) => dispatch([['get'], [address]])
   };
 
-  const { value, frames, settled } = await bracket(remote, () => dispatch([step[0].split('.'), step.slice(1)]), tick, options);
+  const { value, frames, settled, pending, missing } = await bracket(remote, () => dispatch([step[0].split('.'), step.slice(1)]), tick, options, true);
 
-  return { value: value ?? null, frames, settled };
+  return { value: value ?? null, frames, settled, pending, missing };
 }
 
 export function connect(hot: Hot) {
@@ -39,8 +40,8 @@ export function connect(hot: Hot) {
     try {
       const value = !call
         ? { id, url: location.href, title: document.title, top: window.self === window.top }
-        : call[0].join('.') == 'around'
-          ? await around(call[1][0], call[1][1] as Settle)
+        : call[0].join('.') == 'act'
+          ? await act(call[1][0], call[1][1] as Act)
           : await dispatch(call);
 
       hot.send('expressive-inspect:answer', { rid, value: JSON.parse(JSON.stringify(value) ?? 'null') });

@@ -1,9 +1,10 @@
 import { Caught, Context, State } from '@expressive/mvc';
 import { isElement } from '@expressive/mvc/runtime';
 
-import { act as run, journal, note, noteCall, noteCaught, noteDestroy, recordsCalls, type Frame, type Query } from './journal';
-import { entries, parsePath, serialize, walk } from './serialize';
-import type { Settle } from './settle';
+import { journal, note, noteCall, noteCaught, noteDestroy, recordsCalls, type Frame, type Query } from './journal';
+import { entries, parsePath, project, serialize, walk, type Select } from './serialize';
+import { bracket } from './bracket';
+import { tick, unreached, unsettled, type Act } from './settle';
 import { forget, seen, type TypeInfo } from './types';
 
 export interface Model extends TypeInfo {
@@ -236,8 +237,9 @@ export class Instance {
     return undefined;
   }
 
-  get(path?: string): unknown {
-    return serialize(walk(this.state, path));
+  get(path?: string, select?: Select): unknown {
+    const value = walk(this.state, path);
+    return select ? project(value, select) : serialize(value);
   }
 
   model(): Model {
@@ -245,8 +247,8 @@ export class Instance {
   }
 
   /** Run `work`, settle, and return the frames it produced. */
-  act(work: (state: State) => unknown, options?: Settle): Promise<Frame[]> {
-    return run(() => work(this.state), options);
+  act(work: (state: State) => unknown, options?: Act): Promise<Frame[]> {
+    return act(() => work(this.state), options);
   }
 
   /** Call `fn` on each update, and with `null` on destroy; `keys` narrows updates. Returns unsubscribe. */
@@ -335,10 +337,25 @@ export function find(target: string): Instance | undefined {
   const byId = live.get(target);
   const held = byId && (byId.held ?? byId.ref.deref());
   if (held) return Instance.of(held);
+
+  const types = new Map<typeof State, string>();
+  let first: State | undefined;
+
   for (const pool of [mainline(), abandoned()])
-    for (const state of pool)
-      if (seen(state.constructor as typeof State).type === target) return Instance.of(state);
-  return undefined;
+    for (const state of pool) {
+      const Type = state.constructor as typeof State;
+      const info = seen(Type);
+      if (info.type !== target) continue;
+      first ??= state;
+      types.set(Type, info.typeId);
+    }
+
+  if (types.size > 1)
+    throw new Error(
+      `${target} matches ${types.size} classes (${[...types.values()].join(', ')}) - address by instance id or owner path, or label() one. models() lists their construction sites.`
+    );
+
+  return first && Instance.of(first);
 }
 
 export function instances(): Instance[] {
@@ -399,10 +416,18 @@ export function tree(): Node[] {
   return out;
 }
 
-export function get(address?: string): unknown {
+/** Run `work` recording values; returns the frames it produced once `until` holds and activity goes quiet. */
+export async function act(work: () => unknown, options: Act = {}): Promise<Frame[]> {
+  const { frames, settled, pending, missing, timeout } = await bracket({ ...journal, get }, work, tick, options, true);
+  if (pending.length) throw unreached(timeout, pending, missing, frames);
+  if (!settled) unsettled(timeout);
+  return frames;
+}
+
+export function get(address?: string, select?: Select): unknown {
   if (!address) return models();
   const { target, path } = parsePath(address);
-  return find(target)?.get(path);
+  return find(target)?.get(path, select);
 }
 
 export function set(address: string, value: unknown): void {

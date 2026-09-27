@@ -44,10 +44,10 @@ import { inspect } from '@expressive/inspect/bridge';
 
 const api = inspect(page);                   // anything with evaluate(fn, arg)
 await api.get('Composer.draft');
-const frames = await api.around(() => page.click('#submit'));
+const frames = await api.act(() => page.click('#submit'));
 ```
 
-A Node process under `--inspect`, or a browser with a debug port: `inspect(await cdp())`, `cdp` from the same entry.
+A Node process under `--inspect`, or a browser with a debug port: `inspect(await devtools())`, `devtools` from the same entry.
 
 ## From a running dev server
 
@@ -61,7 +61,7 @@ export default defineConfig({ plugins: [inspect()] });
 ```bash
 curl localhost:5173/__inspect                                   # connected pages, iframes included
 curl localhost:5173/__inspect/<id> -d '["get", "Composer.draft"]'
-curl localhost:5173/__inspect/<id> -d '["around", ["call", "Composer.submit", "hi"]]'   # { value, frames }
+curl localhost:5173/__inspect/<id> -d '["act", ["call", "Composer.submit", "hi"]]'   # { value, frames, settled, pending }
 ```
 
 Local callers only; browser and proxied (tunnel) requests are refused.

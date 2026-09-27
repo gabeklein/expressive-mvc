@@ -131,7 +131,7 @@ state.get((current) => {
 
 ## Error Handling
 
-What mvc does not throw it reports as a `Caught` (an `Error` exported from `@expressive/mvc`, cases as static properties) to `catch` handlers on the class chain - [State.on()](state.md#stateon). Unhandled: `console.warn` if `error.warning`, else it is thrown - to the writer for a destroyed write, otherwise uncaught (fails a test run, crashes a Node process). Every report carries `state`; `key` and `cause` where they apply.
+What mvc does not throw it reports as a `Caught` (an `Error` exported from `@expressive/mvc`, cases as static properties) to `catch` handlers on the class chain - [State.on()](state.md#stateon). Unhandled: `console.warn` if `error.warning`, else it is thrown - to the writer for a destroyed write, otherwise uncaught (fails a test run, crashes a Node process). Every report carries `state`; `key` and `cause` where they apply. `message` names the class and ends with what was thrown (`An exception was thrown by an effect of Chat: socket closed`), so a tracker groups by it; the instance is `error.state`.
 
 | `Caught.`   | `warning` | When                                                                   |
 | ----------- | --------- | ---------------------------------------------------------------------- |
@@ -159,16 +159,7 @@ State.on({
 
 Sentry follows `cause`, so the original error and its stack arrive with the report; the rethrown `Destroyed` is not captured twice.
 
-Log instead of escaping - a long-running process that should survive a failing effect. Warnings and destroyed writes pass on, so both keep their default:
-
-```ts
-State.on({
-  catch(error) {
-    if (error.warning || error instanceof Caught.Destroyed) return error;
-    console.error(error);
-  }
-});
-```
+Log instead of escaping - a long-running process that should survive a failing effect: `State.on({ catch: Caught.log })`. It logs and handles errors; warnings and destroyed writes pass on, so both keep their default.
 
 Tests - assert on reports, not console output. A handled report does not escape to fail the run:
 

@@ -76,14 +76,16 @@ describe('connect', () => {
     expect(journal.record().level).toBe('values');
   });
 
-  it('will run a call around the journal and answer its value and frames', async () => {
+  it('will act on a call and answer its value and frames', async () => {
     Composer.new();
     const { hot, ask } = channel();
     connect(hot);
-    const { value } = await ask(1, [['around'], [['call', 'Composer.submit', 'hi']]]);
+    const { value } = await ask(1, [['act'], [['call', 'Composer.submit', 'hi']]]);
     expect(value.value).toBe(2);
     expect(value.frames[0].events[0]).toMatchObject({ key: 'draft', value: 'hi' });
     expect(value.settled).toBe(true);
+    expect(value.pending).toEqual([]);
+    expect(value.missing).toEqual([]);
     expect(journal.record().level).toBe('keys');
   });
 
@@ -93,19 +95,43 @@ describe('connect', () => {
     connect(hot);
     const loop = setInterval(() => composer.draft += '.', 0);
     try {
-      const { value } = await ask(1, [['around'], [['get', 'Composer.draft'], { timeout: 20 }]]);
+      const { value } = await ask(1, [['act'], [['get', 'Composer.draft'], { timeout: 20 }]]);
       expect(value.settled).toBe(false);
     } finally {
       clearInterval(loop);
     }
   });
 
-  it('will answer an error for around without a call', async () => {
+  it('will answer the targets that never saw a frame', async () => {
+    Composer.new();
     const { hot, ask } = channel();
     connect(hot);
-    expect(await ask(1, [['around'], ['Composer.submit']])).toEqual({
+    const { value } = await ask(1, [['act'], [['get', 'Composer.draft'], { until: 'Composer.draft', timeout: 20 }]]);
+    expect(value).toMatchObject({ settled: false, pending: ['Composer.draft'] });
+  });
+
+  it('will answer value targets that name no instance', async () => {
+    const { hot, ask } = channel();
+    connect(hot);
+    const { value } = await ask(1, [['act'], [['get', 'Composer.draft'], { until: { 'Missing.draft': 'x' }, timeout: 20 }]]);
+    expect(value).toMatchObject({ settled: false, pending: ['Missing.draft'], missing: ['Missing.draft'] });
+  });
+
+  it('will act until an address holds a value', async () => {
+    const composer = Composer.new();
+    const { hot, ask } = channel();
+    connect(hot);
+    setTimeout(() => (composer.draft = 'ready'), 10);
+    const { value } = await ask(1, [['act'], [['get', 'Composer.draft'], { until: { 'Composer.draft': 'ready' } }]]);
+    expect(value).toMatchObject({ settled: true, pending: [] });
+  });
+
+  it('will answer an error for act without a call', async () => {
+    const { hot, ask } = channel();
+    connect(hot);
+    expect(await ask(1, [['act'], ['Composer.submit']])).toEqual({
       rid: 1,
-      error: 'around takes one call: ["around", [method, ...args], options?].'
+      error: 'act takes one call: ["act", [method, ...args], options?].'
     });
   });
 

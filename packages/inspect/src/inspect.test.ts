@@ -2,7 +2,7 @@ import { Caught, State, has, map, set } from '@expressive/mvc';
 import { describe, expect, it } from 'vitest';
 
 import { flushMicrotasks, mockUncaught, mockWarn } from '../test.setup';
-import { attach, call, detach, get, health, journal, models, set as assign, tree } from './index';
+import { act, attach, call, detach, find, get, health, journal, models, set as assign, tree } from './index';
 
 class Child extends State {
   name = 'kid';
@@ -149,6 +149,158 @@ describe('get', () => {
     Parent.new();
     expect(get('Parent.lazy')).toBeUndefined();
     expect(get('Parent.child.name')).toBe('kid');
+  });
+});
+
+describe('get with a selection', () => {
+  it('will pick keys and follow a child State, keeping refs', () => {
+    attach();
+    const parent = Parent.new();
+
+    expect(get('Parent', { title: true, child: { name: true } })).toEqual({
+      $ref: String(parent),
+      $type: 'Parent',
+      title: 'root',
+      child: { $ref: String(parent.child), $type: 'Child', name: 'kid' }
+    });
+  });
+
+  it('will start from a path', () => {
+    attach();
+    Parent.new();
+    expect(get('Parent.child', { name: true })).toMatchObject({ $type: 'Child', name: 'kid' });
+  });
+
+  it('will apply to each element of a list, capped as get is', () => {
+    class Table extends State {
+      rows = Array.from({ length: 30 }, (_, id) => ({ id, title: `row ${id}`, extra: { big: true } }));
+      few = [{ id: 1, title: 'one' }];
+    }
+
+    attach();
+    Table.new();
+    const rows = (get('Table', { rows: { id: true } }) as { rows: unknown[] }).rows;
+
+    expect(rows.slice(0, 2)).toEqual([{ id: 0 }, { id: 1 }]);
+    expect(rows).toHaveLength(25);
+    expect(rows[24]).toBe('…+6');
+    expect(get('Table', { few: { id: true } })).toMatchObject({ few: [{ id: 1 }] });
+  });
+
+  it('will pick from a Map', () => {
+    attach();
+    const parent = Parent.new();
+    parent.lookup.set('a', new Child());
+
+    expect(get('Parent', { lookup: { a: { name: true } } })).toMatchObject({ lookup: { a: { name: 'kid' } } });
+  });
+
+  it('will take a selected value whole, as get does', () => {
+    attach();
+    Parent.new();
+
+    expect(get('Parent', { child: true })).toMatchObject({ child: get('Parent.child') });
+    expect(get('Parent', { title: { length: true } })).toMatchObject({ title: 'root' });
+  });
+
+  it('will not trigger lazy values or read missing keys', () => {
+    attach();
+    Parent.new();
+
+    const out = get('Parent', { lazy: true, missing: { deep: true } }) as Record<string, unknown>;
+
+    expect(out.lazy).toBeUndefined();
+    expect(out.missing).toBeUndefined();
+  });
+});
+
+describe('labels shared by several classes', () => {
+  const declare = () =>
+    class Control extends State {
+      value = 0;
+    };
+
+  it('will throw rather than pick one', () => {
+    attach();
+    declare().new();
+    declare().new();
+
+    expect(() => find('Control')).toThrow(/^Control matches 2 classes \(T\d+, T\d+\) - address by instance id or owner path, or label\(\) one\./);
+    expect(() => get('Control.value')).toThrow(/matches 2 classes/);
+  });
+
+  it('will reach each by instance id', () => {
+    attach();
+    const first = declare().new();
+    declare().new();
+
+    expect(get(`${first}.value`)).toBe(0);
+  });
+
+  it('will reject an act waiting on one', async () => {
+    attach();
+    declare().new();
+    declare().new();
+
+    await expect(act(() => {}, { until: 'Control.value' })).rejects.toThrow(/matches 2 classes/);
+  });
+});
+
+describe('act until an address', () => {
+  class Part extends State {
+    value = 0;
+  }
+
+  class Holder extends State {
+    part = new Part();
+  }
+
+  it('will follow an owner path to the instance it names', async () => {
+    attach();
+    const holder = Holder.new();
+    const stray = Part.new();
+
+    const frames = await act(
+      () => {
+        setTimeout(() => {
+          stray.value = 1;
+          setTimeout(() => (holder.part.value = 2), 5);
+        });
+      },
+      { until: 'Holder.part.value' }
+    );
+
+    expect(frames.at(-1)!.events[0]).toMatchObject({ id: String(holder.part), value: 2 });
+  });
+
+  it('will record an owner path the app filter excludes', async () => {
+    attach();
+    journal.record({ level: 'keys', types: ['Nope'] });
+    const holder = Holder.new();
+
+    const frames = await act(() => void setTimeout(() => (holder.part.value = 3), 5), { until: 'Holder.part.value' });
+
+    expect(frames.at(-1)!.events[0]).toMatchObject({ id: String(holder.part), value: 3 });
+    expect(journal.record()).toMatchObject({ types: ['Nope'], paths: [] });
+  });
+
+  it('will follow a label to its first instance only', async () => {
+    attach();
+    Part.new();
+    const second = Part.new();
+
+    const failed = act(() => void setTimeout(() => (second.value = 1)), { until: 'Part.value', timeout: 30 });
+
+    await expect(failed).rejects.toThrow('Not reached within 30ms: Part.value.');
+    await expect(failed).rejects.toMatchObject({ pending: ['Part.value'], frames: [expect.objectContaining({})] });
+  });
+
+  it('will throw for an address that names no State', async () => {
+    attach();
+    Holder.new();
+
+    await expect(act(() => {}, { until: 'Missing.value' })).rejects.toThrow('until Missing.value: Missing names no State.');
+    await expect(act(() => {}, { until: 'Holder.part.value.x' })).rejects.toThrow('Holder.part.value names no State.');
   });
 });
 
