@@ -3,6 +3,7 @@ import { dispatch, type Call } from './dispatch';
 import { bracket } from './bracket';
 import { tick, unsettled, type Act } from './settle';
 import type { Frame, Options, Query, Summary } from './journal';
+import type { Select } from './serialize';
 
 export { devtools, type Target } from './devtools';
 
@@ -29,7 +30,7 @@ export function inspect(target: Evaluates) {
   const frames = remote<Frame[]>('journal', 'frames');
 
   return {
-    get: remote<unknown>('get') as (address?: string) => Promise<unknown>,
+    get: remote<unknown>('get') as (address?: string, select?: Select) => Promise<unknown>,
     set: remote<void>('set') as (address: string, value: unknown) => Promise<void>,
     call: remote<unknown>('call') as (address: string, ...args: unknown[]) => Promise<unknown>,
     models: remote<ReturnType<typeof Inspect.models>>('models') as () => Promise<ReturnType<typeof Inspect.models>>,

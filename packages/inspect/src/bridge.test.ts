@@ -44,6 +44,11 @@ describe('inspect(page)', () => {
     expect((await api.health()).copies).toBe(1);
   });
 
+  it('will read a selection in one call', async () => {
+    const composer = Composer.new();
+    expect(await inspect(page).get('Composer', { draft: true })).toEqual({ $ref: String(composer), $type: 'Composer', draft: '' });
+  });
+
   it('will drive the journal', async () => {
     const composer = Composer.new();
     const api = inspect(page);

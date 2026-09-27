@@ -2,7 +2,7 @@ import { Caught, Context, State } from '@expressive/mvc';
 import { isElement } from '@expressive/mvc/runtime';
 
 import { journal, note, noteCall, noteCaught, noteDestroy, recordsCalls, type Frame, type Query } from './journal';
-import { entries, parsePath, serialize, walk } from './serialize';
+import { entries, parsePath, project, serialize, walk, type Select } from './serialize';
 import { bracket } from './bracket';
 import { tick, unsettled, type Act } from './settle';
 import { forget, seen, type TypeInfo } from './types';
@@ -237,8 +237,9 @@ export class Instance {
     return undefined;
   }
 
-  get(path?: string): unknown {
-    return serialize(walk(this.state, path));
+  get(path?: string, select?: Select): unknown {
+    const value = walk(this.state, path);
+    return select ? project(value, select) : serialize(value);
   }
 
   model(): Model {
@@ -422,10 +423,10 @@ export async function act(work: () => unknown, options: Act = {}): Promise<Frame
   return frames;
 }
 
-export function get(address?: string): unknown {
+export function get(address?: string, select?: Select): unknown {
   if (!address) return models();
   const { target, path } = parsePath(address);
-  return find(target)?.get(path);
+  return find(target)?.get(path, select);
 }
 
 export function set(address: string, value: unknown): void {

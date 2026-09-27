@@ -78,11 +78,14 @@ inspect.health() // { orphans, collected, copies, caught: { Destroyed, Inactive,
 inspect.models()                 // flat list with parent ids
 inspect.tree()                   // nested { id, type, children }
 inspect.get('Composer.draft')
+inspect.get('Sidebar', { status: true, control: { value: true }, rows: { id: true } })
 inspect.set('Composer.draft', 'x')
 await inspect.call('Composer.submit', 'x')
 ```
 
 Reads come from stored values, never accessors - no getter, factory, or suspense fires. `absent` lists declared keys with no stored value: lazy `set(factory)`, pending async, uncomputed getters. Nested States serialize to `{ $ref, $type }` - follow one with `get(`${$ref}.key`)`; caps: strings 240 chars, arrays 24, keys 40, depth 2. Query, do not dump.
+
+A selection reads several keys as one snapshot - one synchronous pass, so no write lands between them, unlike separate `get`s over the bridge or relay. `true` takes a value as `get` would; an object picks keys and descends through States (keeping `$ref`), `Map`s and objects, applying to each element of a list (capped at 24). Relay: `["get", "Sidebar", { "status": true }]`.
 
 ## Labels and minified builds
 

@@ -35,6 +35,26 @@ export function ref(state: State) {
   return { $ref: String(state), $type: state.constructor.name };
 }
 
+/** `true` takes a value as `serialize` would; an object picks keys and descends, applying to each element of a list. */
+export type Select = true | { [key: string]: Select };
+
+/** Only the selected keys, read in one synchronous pass - a consistent snapshot. States keep their `$ref`. */
+export function project(value: unknown, select: Select): unknown {
+  if (select === true || value == null || typeof value !== 'object') return serialize(value);
+
+  const items = value instanceof State ? undefined : list(value);
+
+  if (items) {
+    const out = items.slice(0, MAX_ARRAY).map((row) => project(row, select));
+    if (items.length > MAX_ARRAY) out.push(`…+${items.length - MAX_ARRAY}`);
+    return out;
+  }
+
+  const out: Record<string, unknown> = value instanceof State ? ref(value) : {};
+  for (const key in select) out[key] = project(walk(value, key), select[key]);
+  return out;
+}
+
 /** JSON-safe, size-capped view. Nested States collapse to `$ref`. */
 export function serialize(value: unknown, depth = 2): unknown {
   if (value instanceof State) {

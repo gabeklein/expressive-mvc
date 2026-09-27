@@ -152,6 +152,68 @@ describe('get', () => {
   });
 });
 
+describe('get with a selection', () => {
+  it('will pick keys and follow a child State, keeping refs', () => {
+    attach();
+    const parent = Parent.new();
+
+    expect(get('Parent', { title: true, child: { name: true } })).toEqual({
+      $ref: String(parent),
+      $type: 'Parent',
+      title: 'root',
+      child: { $ref: String(parent.child), $type: 'Child', name: 'kid' }
+    });
+  });
+
+  it('will start from a path', () => {
+    attach();
+    Parent.new();
+    expect(get('Parent.child', { name: true })).toMatchObject({ $type: 'Child', name: 'kid' });
+  });
+
+  it('will apply to each element of a list, capped as get is', () => {
+    class Table extends State {
+      rows = Array.from({ length: 30 }, (_, id) => ({ id, title: `row ${id}`, extra: { big: true } }));
+      few = [{ id: 1, title: 'one' }];
+    }
+
+    attach();
+    Table.new();
+    const rows = (get('Table', { rows: { id: true } }) as { rows: unknown[] }).rows;
+
+    expect(rows.slice(0, 2)).toEqual([{ id: 0 }, { id: 1 }]);
+    expect(rows).toHaveLength(25);
+    expect(rows[24]).toBe('…+6');
+    expect(get('Table', { few: { id: true } })).toMatchObject({ few: [{ id: 1 }] });
+  });
+
+  it('will pick from a Map', () => {
+    attach();
+    const parent = Parent.new();
+    parent.lookup.set('a', new Child());
+
+    expect(get('Parent', { lookup: { a: { name: true } } })).toMatchObject({ lookup: { a: { name: 'kid' } } });
+  });
+
+  it('will take a selected value whole, as get does', () => {
+    attach();
+    Parent.new();
+
+    expect(get('Parent', { child: true })).toMatchObject({ child: get('Parent.child') });
+    expect(get('Parent', { title: { length: true } })).toMatchObject({ title: 'root' });
+  });
+
+  it('will not trigger lazy values or read missing keys', () => {
+    attach();
+    Parent.new();
+
+    const out = get('Parent', { lazy: true, missing: { deep: true } }) as Record<string, unknown>;
+
+    expect(out.lazy).toBeUndefined();
+    expect(out.missing).toBeUndefined();
+  });
+});
+
 describe('labels shared by several classes', () => {
   const declare = () =>
     class Control extends State {
