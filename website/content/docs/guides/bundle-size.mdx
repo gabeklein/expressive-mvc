@@ -16,8 +16,8 @@ Minified, then gzipped. React is a peer dependency and excluded, as it would alr
 | `@expressive/react` — `State` only | ~9.4 kB |
 | `@expressive/react` — `State`, `Component`, instructions | ~10.2 kB |
 | `@expressive/react` — every export | ~12.3 kB |
-| `@expressive/mvc` + `@expressive/dom` — renderer without style helpers | ~16.3 kB |
-| `@expressive/mvc` + `@expressive/dom` — every export, including styling | ~18.4 kB |
+| `@expressive/mvc` + `@expressive/dom` — renderer without style helpers | ~16.7 kB |
+| `@expressive/mvc` + `@expressive/dom` — every export, including styling | ~18.8 kB |
 | `@expressive/router` — every export | ~12.4 kB |
 | `@expressive/react` + `@expressive/router` | ~16.2 kB |
 
@@ -37,7 +37,7 @@ If a third-party size service quotes something different from this table, the me
 
 The headless core shakes properly: importing only `State` costs ~5.8 kB against ~9.5 kB for everything, so unused instructions genuinely do not ship. It is built unbundled — one module per source file, `sideEffects: false` — and its module-level work only touches classes the same module exports, which is what makes that declaration safe.
 
-The appearance system is likewise optional: renderer imports measure ~16.3 kB; adding `style` and `macro` raises the total to ~18.4 kB. The renderer retains only the small token protocol needed to accept styles registered elsewhere. Unlike the React rows, these figures include `@expressive/mvc`, which `@expressive/dom` does not re-export and an app therefore imports directly.
+The appearance system is likewise optional: renderer imports measure ~16.7 kB; adding `style` and `macro` raises the total to ~18.8 kB. The renderer retains only the small token protocol needed to accept styles registered elsewhere. Unlike the React rows, these figures include `@expressive/mvc`, which `@expressive/dom` does not re-export and an app therefore imports directly.
 
 The React adapter has a **floor you cannot shake below: ~9.4 kB**, reached by importing anything at all from it. That is deliberate and worth being plain about. The adapter works by patching types it does not own, at import time:
 
