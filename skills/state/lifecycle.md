@@ -83,7 +83,7 @@ Children always go before parents; nested contexts destroy inner-to-outer.
 
 Afterward:
 
-- Assignment throws `Caught.Destroyed` (`Tried to update {state}.{key} but state is destroyed.`). The throw is an abort signal: a continuation writing after teardown stops there instead of running on against a dead state - loops like `do { this.again = false; await ... } while (this.again)` depend on it. To drop them, handle them on the class whose continuations outlive it - `Poller.on({ catch: (e) => e instanceof Caught.Destroyed ? undefined : e })`. On `State`, the same handler removes the abort from every class.
+- Assignment throws `Caught.Destroyed` (`Tried to update {state}.{key} but state is destroyed.`). The throw is an abort signal: a continuation writing after teardown stops there instead of running on against a dead state - loops like `do { this.again = false; await ... } while (this.again)` depend on it. To drop them instead, handle `Caught.Destroyed` - on `State` for the whole app (the usual port of an "ignore updates after unmount" shim), or on one class to keep the abort everywhere else: `State.on({ catch: (e) => e instanceof Caught.Destroyed ? undefined : e })`. A dropped write no longer stops a loop that polls a flag it writes.
 - Silent updates (`state.set(assign, true)`) drop without a report.
 - Subscribing (`get(effect)`, `set(callback)`) still throws.
 
@@ -145,7 +145,7 @@ What mvc does not throw it reports as a `Caught` (an `Error` exported from `@exp
 
 `catch` is class-level policy. `Component.catch()` is a separate per-instance boundary for child render errors - a Component's own effect errors reach `State.on({ catch })`, not its boundary.
 
-Error tracker - report with State context, handle the rest, let destroyed writes still abort:
+Error tracker (Sentry shown - any capture call fits) - report with State context, handle the rest, let destroyed writes still abort:
 
 ```ts
 State.on({
@@ -158,6 +158,17 @@ State.on({
 ```
 
 Sentry follows `cause`, so the original error and its stack arrive with the report; the rethrown `Destroyed` is not captured twice.
+
+Log instead of escaping - a long-running process that should survive a failing effect. Warnings and destroyed writes pass on, so both keep their default:
+
+```ts
+State.on({
+  catch(error) {
+    if (error.warning || error instanceof Caught.Destroyed) return error;
+    console.error(error);
+  }
+});
+```
 
 Tests - assert on reports, not console output. A handled report does not escape to fail the run:
 
