@@ -1,0 +1,23 @@
+{
+  "compilerOptions": {
+    "target": "es2020",
+    "useDefineForClassFields": true,
+    "jsx": "react-jsx",
+    "jsxImportSource": "@expressive/jsx",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "moduleResolution": "bundler",
+    "skipLibCheck": true,
+    "skipDefaultLibCheck": true,
+    "noUnusedLocals": true,
+    "sourceMap": true,
+    "strict": true,
+    "types": ["node"],
+    "paths": {
+      "@expressive/jsx": ["./src"],
+      "@expressive/jsx/*": ["./src/*"],
+      "@expressive/mvc/*": ["../mvc/src/*"],
+      "@expressive/*": ["../*/src"]
+    }
+  },
+  "exclude": ["node_modules", "dist", "vitest.config.ts"]
+}
