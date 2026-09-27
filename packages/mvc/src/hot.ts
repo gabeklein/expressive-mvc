@@ -2,46 +2,66 @@ import { rechain } from './component';
 import { event } from './observable';
 import { State, patch, track } from './state';
 
-/** The subset of a bundler's `import.meta.hot` this module uses. */
-interface Hot {
-  data: Record<string, any>;
-}
-
 interface Entry {
   type: Function;
   shape: string;
+  kinds: Record<string, 'get' | 'fn'>;
 }
 
-const DATA = '@expressive/mvc';
+/** A module as a build integration parsed it. */
+interface Module {
+  /** Stable module id - the same on every run of the module. */
+  id: string;
+  /** Top-level classes bound by `class` or `let`, which can be reassigned. */
+  classes: string[];
+  /** Export name to local binding. */
+  exports: Record<string, string>;
+}
+
+const MODULES = new Map<string, Record<string, Entry>>();
 const REFRESH = Symbol.for('@expressive/mvc.refresh');
 
 function isState(value: unknown): value is State.Extends {
   return typeof value == 'function' && value.prototype instanceof State;
 }
 
-/** Class source, less its methods and accessors - what a patch cannot carry. */
-function shape(type: Function) {
+/** What a patch cannot carry: class source less its members, and member kinds. */
+function describe(type: Function): Entry {
   const text = Function.prototype.toString;
-  let source = text.call(type);
+  const kinds: Entry['kinds'] = {};
+  let shape = text.call(type);
 
   for (const target of [type.prototype, type])
-    for (const desc of Object.values(Object.getOwnPropertyDescriptors(target)))
+    for (const [key, desc] of Object.entries(Object.getOwnPropertyDescriptors(target)))
       for (const fn of [desc.value, desc.get, desc.set])
-        if (typeof fn == 'function' && fn !== type)
-          source = source.replace(text.call(fn), '');
+        if (typeof fn == 'function' && fn !== type) {
+          shape = shape.replace(text.call(fn), '');
+          if (target !== type) kinds[key] = desc.get ? 'get' : 'fn';
+        }
 
-  return source.replace(/\s+/g, ' ');
+  return { type, shape: shape.replace(/\s+/g, ' '), kinds };
+}
+
+function compatible(prev: Entry, next: Entry) {
+  if (prev.shape !== next.shape) return false;
+
+  for (const key in next.kinds)
+    if (key in prev.kinds && prev.kinds[key] !== next.kinds[key]) return false;
+
+  return true;
 }
 
 /**
- * Canonicalize a module's State classes across hot updates. On first run each
- * class is recorded; on later runs a compatible class is patched onto the one
- * recorded, which is returned in its place so identity holds for importers,
- * context and live instances. An incompatible class is returned as-is.
+ * Keep a module's State classes stable across runs. A class seen before is
+ * patched with its replacement and returned in its place, refreshing live
+ * instances; one whose shape changed is returned as-is.
  */
-function accept<T extends Record<string, unknown>>(hot: Hot, classes: T): T {
-  const store: Record<string, Entry> = (hot.data[DATA] ||= {});
-  const output = { ...classes } as Record<string, unknown>;
+function accept<T extends Record<string, unknown>>(id: string, classes: T): T {
+  let known = MODULES.get(id);
+
+  if (!known) MODULES.set(id, (known = {}));
+
+  const output: Record<string, unknown> = { ...classes };
   const refresh = new Set<State>();
 
   track();
@@ -49,20 +69,24 @@ function accept<T extends Record<string, unknown>>(hot: Hot, classes: T): T {
   for (const [name, type] of Object.entries(classes)) {
     if (!isState(type)) continue;
 
-    const prev = store[name];
-    const next = { type, shape: shape(type) };
+    const prev = known[name];
 
-    if (!prev || prev.type === type || prev.shape !== next.shape) {
-      store[name] = next;
+    if (prev?.type === type) continue;
+
+    const next = describe(type);
+
+    if (!prev || !compatible(prev, next)) {
+      known[name] = next;
       continue;
     }
 
     try {
       for (const state of patch(prev.type as State.Extends, type)) refresh.add(state);
+      known[name] = { ...next, type: prev.type };
       output[name] = prev.type;
     } catch (error) {
       console.error(error);
-      store[name] = next;
+      known[name] = next;
     }
   }
 
@@ -75,10 +99,8 @@ function accept<T extends Record<string, unknown>>(hot: Hot, classes: T): T {
 }
 
 /**
- * Compare a module's exports across a hot update. Returns `'reload'` when a
- * State class changed in a way no patch can carry - live instances keep the old
- * shape - or a message when some other export importers hold would go stale.
- * A patched class, or a component the host refreshes itself, passes.
+ * Compare a module's exports across runs. Returns `'reload'` if a State class
+ * changed shape, a message if another export importers hold went stale.
  */
 function verify(prev: Record<string, unknown>, next?: Record<string, unknown>) {
   if (!next) return;
@@ -91,10 +113,36 @@ function verify(prev: Record<string, unknown>, next?: Record<string, unknown>) {
 
     if (isState(before) || isState(after)) return 'reload';
 
-    if (!(key in next) || typeof after != 'function' || !/^[A-Z]/.test(after.name))
-      return `@expressive/mvc: "${key}" export cannot be hot-patched.`;
+    if (typeof after != 'function' || !/^[A-Z]/.test(after.name))
+      return `"${key}" export cannot be hot-patched.`;
   }
 }
 
-export { accept, verify };
-export type { Hot };
+/** Code to append to a module, binding it to `accept` and `verify`. */
+function inject({ id, classes, exports }: Module) {
+  if (!classes.length) return '';
+
+  const assign = classes.map((name) => `${name} = __hot.${name};`).join('\n  ');
+  const record = Object.entries(exports)
+    .map(([name, local]) => `${JSON.stringify(name)}: ${local}`)
+    .join(', ');
+
+  return `
+import { hot as __expressive } from '@expressive/mvc/runtime';
+{
+  const __hot = __expressive.accept(${JSON.stringify(id)}, { ${classes.join(', ')} });
+  ${assign}
+}
+if (import.meta.hot) {
+  const __exports = { ${record} };
+  import.meta.hot.accept((next) => {
+    const verdict = __expressive.verify(__exports, next);
+    if (verdict === 'reload' && typeof location == 'object') location.reload();
+    else if (verdict) import.meta.hot.invalidate(verdict);
+  });
+}
+`;
+}
+
+export { accept, inject, verify };
+export type { Module };

@@ -38,9 +38,6 @@ const METHODS = new WeakMap<Function, Map<string, (value: any) => void>>();
 /** List of reactive getters defined by a given type. */
 const GETTERS = new WeakMap<Function, Map<string, () => unknown>>();
 
-/** Replace the function behind a method binding, for hot patching. */
-const SWAP = new WeakMap<Function, (next: Function) => void>();
-
 /** Replacement for a getter captured by live computed properties, for hot patching. */
 const LATEST = new WeakMap<Function, Function>();
 
@@ -729,7 +726,7 @@ function classify(
       continue;
     }
 
-    let { value } = desc;
+    const { value } = desc;
 
     if (typeof value !== 'function') continue;
 
@@ -748,10 +745,6 @@ function classify(
     }
 
     UNBIND.set(bind, value);
-    SWAP.set(bind, (next) => {
-      PAST.add(value);
-      UNBIND.set(bind, (value = next));
-    });
 
     keys.set(key, bind);
     define(type.prototype, key, { get: bind, set: bind });
@@ -1194,10 +1187,8 @@ function patch(prev: State.Extends, next: State.Extends): State[] {
   for (const [key, desc] of Object.entries(Object.getOwnPropertyDescriptors(next))) {
     if (key == 'prototype' || key == 'length' || key == 'name') continue;
 
-    const current = Object.getOwnPropertyDescriptor(prev, key);
-
-    if (!current || current.configurable) define(prev, key, desc);
-    else if (current.writable) (prev as any)[key] = desc.value;
+    if (Object.getOwnPropertyDescriptor(prev, key)?.configurable !== false)
+      define(prev, key, desc);
   }
 
   for (const key of Object.getOwnPropertyNames(proto))
@@ -1210,21 +1201,21 @@ function patch(prev: State.Extends, next: State.Extends): State[] {
     if (key == 'constructor') continue;
 
     const current = Object.getOwnPropertyDescriptor(proto, key);
-    const bind = keys?.get(key);
 
     if (typeof desc.value == 'function') methods.set(key, desc.value);
 
-    if (bind && current?.get === bind && typeof desc.value == 'function')
-      SWAP.get(bind)!(desc.value);
-    else if (current && !current.configurable) {
+    if (current?.configurable === false) {
       if (current.writable) (proto as any)[key] = desc.value;
-    } else {
-      const getter = getters?.get(key);
-
-      if (getter && typeof desc.get == 'function') LATEST.set(getter, desc.get);
-
-      define(proto, key, { ...desc, configurable: true });
+      continue;
     }
+
+    if (current?.get && keys?.get(key) === current.get) PAST.add(UNBIND.get(current.get));
+
+    const getter = getters?.get(key);
+
+    if (getter) LATEST.set(getter, desc.get!);
+
+    define(proto, key, { ...desc, configurable: true });
   }
 
   if (keys) {
@@ -1240,7 +1231,7 @@ function patch(prev: State.Extends, next: State.Extends): State[] {
 
   const live: State[] = [];
 
-  for (const ref of LIVE || []) {
+  for (const ref of LIVE!) {
     const state = ref.deref();
 
     if (!state) LIVE!.delete(ref);
