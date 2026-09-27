@@ -57,7 +57,7 @@ class Caught extends Error {
     readonly name = 'Caught.Getter';
 
     constructor(state: State, key: string, cause: unknown) {
-      super(state, `An exception was thrown while refreshing ${state}.${key}${about(cause)}`, key, cause);
+      super(state, `An exception was thrown while refreshing ${state.constructor}.${key}${about(cause)}`, key, cause);
     }
   };
 
@@ -66,7 +66,7 @@ class Caught extends Error {
     readonly name = 'Caught.Init';
 
     constructor(state: State, cause: unknown) {
-      super(state, `Async error in constructor for ${state}${about(cause)}`, undefined, cause);
+      super(state, `Async error in constructor for ${state.constructor}${about(cause)}`, undefined, cause);
     }
   };
 
@@ -75,7 +75,7 @@ class Caught extends Error {
     readonly name = 'Caught.Effect';
 
     constructor(state: State, cause: unknown) {
-      super(state, `An exception was thrown by an effect of ${state}${about(cause)}`, undefined, cause);
+      super(state, `An exception was thrown by an effect of ${state.constructor}${about(cause)}`, undefined, cause);
     }
   };
 }

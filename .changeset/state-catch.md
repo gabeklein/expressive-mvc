@@ -2,7 +2,7 @@
 '@expressive/mvc': minor
 ---
 
-Add `State.on({ catch(error) })` and an exported `Caught` error class. Everything mvc used to log arrives as a `Caught` subclass, each a static property: `Inactive` (`warning: true`), `Destroyed`, `Getter`, `Init` and `Effect` (the last three with `cause`). Each carries `state`, and `key` where it applies. `name` is the case (`Caught.Effect`) and `message` ends with what was thrown, so consoles and error trackers title reports by both. Handlers chain like nested `catch` blocks - most-derived class first, last registered first: return the error (or a replacement) to pass it on, return nothing to handle it, throw to escape uncaught at once.
+Add `State.on({ catch(error) })` and an exported `Caught` error class. Everything mvc used to log arrives as a `Caught` subclass, each a static property: `Inactive` (`warning: true`), `Destroyed`, `Getter`, `Init` and `Effect` (the last three with `cause`). Each carries `state`, and `key` where it applies. `name` is the case (`Caught.Effect`) and `message` names the class and ends with what was thrown, so consoles and error trackers title reports by both. Handlers chain like nested `catch` blocks - most-derived class first, last registered first: return the error (or a replacement) to pass it on, return nothing to handle it, throw to escape uncaught at once.
 
 A write to a destroyed state still throws to the writer - now a `Caught.Destroyed` - since that is what stops a continuation writing after teardown. A `catch` handler returning nothing drops it instead.
 

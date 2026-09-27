@@ -49,15 +49,15 @@ describe('message', () => {
   it('will carry what was thrown', () => {
     const test = Test.new();
 
-    expect(new Caught.Effect(test, new Error('boom')).message).toBe(`An exception was thrown by an effect of ${test}: boom`);
-    expect(new Caught.Getter(test, 'foo', 'bad').message).toBe(`An exception was thrown while refreshing ${test}.foo: bad`);
-    expect(new Caught.Init(test, 0).message).toBe(`Async error in constructor for ${test}: 0`);
+    expect(new Caught.Effect(test, new Error('boom')).message).toBe('An exception was thrown by an effect of Test: boom');
+    expect(new Caught.Getter(test, 'foo', 'bad').message).toBe('An exception was thrown while refreshing Test.foo: bad');
+    expect(new Caught.Init(test, 0).message).toBe('Async error in constructor for Test: 0');
   });
 
-  it('will end at the state when the cause has no message', () => {
+  it('will end at the class when the cause has no message', () => {
     const test = Test.new();
 
-    expect(new Caught.Effect(test, new Error()).message).toBe(`An exception was thrown by an effect of ${test}.`);
+    expect(new Caught.Effect(test, new Error()).message).toBe('An exception was thrown by an effect of Test.');
   });
 });
 

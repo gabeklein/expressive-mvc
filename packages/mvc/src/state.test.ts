@@ -2872,7 +2872,7 @@ describe('new method (static)', () => {
       expect.objectContaining({
         state: test,
         cause: expects,
-        message: `Async error in constructor for ${test}: State callback rejected.`
+        message: `Async error in constructor for ${test.constructor}: State callback rejected.`
       })
     ]);
   });
@@ -4163,7 +4163,7 @@ describe('computed (getters)', () => {
           state,
           key: 'value',
           cause: expect.any(Error),
-          message: `An exception was thrown while refreshing ${state}.value.`
+          message: `An exception was thrown while refreshing ${state.constructor}.value.`
         })
       ]);
     });

@@ -131,7 +131,7 @@ state.get((current) => {
 
 ## Error Handling
 
-What mvc does not throw it reports as a `Caught` (an `Error` exported from `@expressive/mvc`, cases as static properties) to `catch` handlers on the class chain - [State.on()](state.md#stateon). Unhandled: `console.warn` if `error.warning`, else it is thrown - to the writer for a destroyed write, otherwise uncaught (fails a test run, crashes a Node process). Every report carries `state`; `key` and `cause` where they apply. `message` ends with what was thrown (`An exception was thrown by an effect of Chat-x1s4: socket closed`).
+What mvc does not throw it reports as a `Caught` (an `Error` exported from `@expressive/mvc`, cases as static properties) to `catch` handlers on the class chain - [State.on()](state.md#stateon). Unhandled: `console.warn` if `error.warning`, else it is thrown - to the writer for a destroyed write, otherwise uncaught (fails a test run, crashes a Node process). Every report carries `state`; `key` and `cause` where they apply. `message` names the class and ends with what was thrown (`An exception was thrown by an effect of Chat: socket closed`), so a tracker groups by it; the instance is `error.state`.
 
 | `Caught.`   | `warning` | When                                                                   |
 | ----------- | --------- | ---------------------------------------------------------------------- |
