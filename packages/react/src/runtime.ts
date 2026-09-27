@@ -14,6 +14,7 @@ interface Setup {
   revision: number;
   mounted?: boolean;
   fresh?: boolean;
+  getRevision?: () => number;
   lapsed?: boolean;
   commit?: () => (() => void) | void;
   release?: (() => void) | void;
@@ -114,7 +115,7 @@ export function useSetup<T extends Setup>(
     return current.rendered++;
   });
 
-  const getRevision = () => current.revision;
+  const getRevision = (current.getRevision ||= () => current.revision);
 
   current.fresh = true;
 
