@@ -2,6 +2,8 @@ import type { inspect as Inspect } from './index';
 import { dispatch, type Call } from './dispatch';
 import type { Frame, Options, Query } from './journal';
 
+export { cdp, type Target } from './cdp';
+
 /**
  * Anything that can run a function in the page: Playwright `Page`, `Frame`, or
  * `Locator` (which passes the element first), puppeteer `Page` or `Frame`.

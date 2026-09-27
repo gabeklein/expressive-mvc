@@ -182,46 +182,27 @@ What to reach for, in order:
 
 The relay reaches only the inspector's own members - no `eval`, no property walks beyond them. Arbitrary JS belongs to a driver's `evaluate`, granted by whoever runs the harness.
 
-## Node process
+## Node process, or a browser with a debug port
 
-Install the same way (`import '@expressive/inspect/install'` first), then reach it through Node's debugger - no server in the app:
+Install the same way (`import '@expressive/inspect/install'` first), then reach it through the debugger - no server in the app. `cdp()` connects to a Chrome DevTools Protocol endpoint as an `evaluate` target for the bridge:
 
 ```bash
 node --inspect app.js     # or, already running: kill -USR1 <pid>
-curl -s 127.0.0.1:9229/json/list   # webSocketDebuggerUrl
 ```
-
-A CDP session wrapped as `evaluate` drives the unchanged bridge:
 
 ```ts
-import { inspect } from '@expressive/inspect/bridge';
+import { cdp, inspect } from '@expressive/inspect/bridge';
 
-const [target] = await (await fetch('http://127.0.0.1:9229/json/list')).json();
-const socket = new WebSocket(target.webSocketDebuggerUrl);
-await new Promise((resolve) => (socket.onopen = resolve));
-
-let id = 0;
-const waiting = new Map();
-socket.onmessage = ({ data }) => { const m = JSON.parse(data); waiting.get(m.id)?.(m); };
-const send = (method, params) =>
-  new Promise((resolve) => { waiting.set(++id, resolve); socket.send(JSON.stringify({ id, method, params })); });
-
-const api = inspect({
-  async evaluate(fn, arg) {
-    const { result } = await send('Runtime.evaluate', {
-      expression: `(${fn})(${JSON.stringify(arg)})`, awaitPromise: true, returnByValue: true
-    });
-    if (result.exceptionDetails) throw new Error(result.exceptionDetails.exception?.description);
-    return result.result.value;
-  }
-});
-
+const target = await cdp();                          // http://127.0.0.1:9229, first target
+const api = inspect(target);
 await api.get('HostChat.status');
 await api.around(() => api.call('HostChat.send', 'hi'));
+target.close();
 ```
 
+- `cdp(endpoint, pick)` takes the first `/json/list` target `pick` accepts, or a `ws://` debugger URL. A browser started with `--remote-debugging-port=9222`: `cdp('http://127.0.0.1:9222', (t) => t.type === 'page' && t.url.startsWith('http://localhost:5173'))`.
 - The debug port runs arbitrary code in the process - keep it on `127.0.0.1`.
-- Bun's `--inspect` speaks WebKit Inspector Protocol, not CDP; this recipe is Node-only.
+- Node only among runtimes - Bun's `--inspect` speaks WebKit Inspector Protocol, not CDP.
 
 ## Several instances of one type
 

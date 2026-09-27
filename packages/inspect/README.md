@@ -47,6 +47,8 @@ await api.get('Composer.draft');
 const frames = await api.around(() => page.click('#submit'));
 ```
 
+A Node process under `--inspect`, or a browser with a debug port: `inspect(await cdp())`, `cdp` from the same entry.
+
 ## From a running dev server
 
 ```ts
