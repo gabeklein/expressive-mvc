@@ -333,6 +333,113 @@ describe('suspense and recovery', () => {
     expect(root.textContent).toBe('Blazy');
   });
 
+  it('will mount staged transition content once it is in the document', async () => {
+    const seen: string[] = [];
+    const connected = () => !!document.querySelector('#chart');
+
+    class Nav extends State {
+      page = 'a';
+    }
+
+    class Probe extends State {
+      mount() {
+        seen.push(`use ${connected()}`);
+      }
+    }
+
+    class Chart extends Component {
+      mount() {
+        seen.push(`mount ${connected()}`);
+      }
+
+      render() {
+        return <div id="chart" ref={(node) => node && seen.push(`ref ${connected()}`)} />;
+      }
+    }
+
+    function Page() {
+      Probe.use();
+      return <section><Chart /></section>;
+    }
+
+    function Swap() {
+      return Nav.get().page == 'b' ? <Page /> : null;
+    }
+
+    class App extends Component {
+      nav = new Nav();
+
+      render() {
+        return <Swap />;
+      }
+    }
+
+    let app!: App;
+    const root = document.body.appendChild(document.createElement('main'));
+    render(<App is={(value) => (app = value)} />, root);
+
+    pending(() => {
+      app.nav.page = 'b';
+    });
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(seen).toEqual(['ref true', 'mount true', 'use true']);
+  });
+
+  it('will not mount staged content dropped before it is inserted', async () => {
+    const gate = mockPromise<void>();
+    const mounted = vi.fn();
+    const attached = vi.fn();
+
+    class Nav extends State {
+      page = 'a';
+    }
+
+    class Child extends Component {
+      mount() {
+        mounted();
+      }
+
+      render() {
+        return <i ref={attached} />;
+      }
+    }
+
+    function Wait(): Component.Node {
+      throw gate;
+    }
+
+    function Swap() {
+      const { page } = Nav.get();
+      return page == 'b' ? <><Child /><Wait /></> : null;
+    }
+
+    class App extends Component {
+      nav = new Nav();
+      shown = true;
+
+      render() {
+        return this.shown ? <Swap /> : null;
+      }
+    }
+
+    let app!: App;
+    const root = document.body.appendChild(document.createElement('main'));
+    render(<App is={(value) => (app = value)} />, root);
+
+    pending(() => {
+      app.nav.page = 'b';
+    });
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    app.shown = false;
+    await flushMicrotasks();
+    gate.resolve();
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    expect(mounted).not.toHaveBeenCalled();
+    expect(attached).not.toHaveBeenCalledWith(expect.anything());
+  });
+
   it('will hold a descendant while its parent suspends in a transition', async () => {
     const gate = mockPromise<void>();
     let open = false;

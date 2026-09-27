@@ -62,6 +62,7 @@ interface Fiber {
   stash?: DocumentFragment;
   placeholder?: Fiber;
   staging?: DocumentFragment;
+  inserted?: (() => void)[];
   render?: () => RenderNode;
   appearance?: Appearance;
   consumed?: boolean;
@@ -101,6 +102,7 @@ const dirty = new Set<Boundary>();
 const stashes = new WeakMap<globalThis.Node, Fiber>();
 const CONTROLS = ['checked', 'value'];
 let passiveRender = false;
+let inserting: (() => void)[] | undefined;
 let depth = 0;
 let settling = false;
 let rendering: object | undefined;
@@ -270,7 +272,7 @@ function mountOwnedComponent(
 function runFunction(fiber: Fiber, passive: boolean) {
   const result = attempt(fiber, passive, fiber.render!);
 
-  if (result === true) commit(fiber.scope!);
+  if (result === true) inserted(fiber, () => commit(fiber.scope!));
   else return result;
 }
 
@@ -342,7 +344,7 @@ function mountComponent(
     runComponent(fiber, passiveRender);
   });
 
-  if (owned) fiber.cleanup = instance.mount?.();
+  if (owned) inserted(fiber, () => (fiber.cleanup = instance.mount?.()));
   return fiber;
 }
 
@@ -485,6 +487,9 @@ function attempt(fiber: Fiber, passive: boolean, render: () => RenderNode): true
   if (passive && !depth && !fiber.children.length && !fiber.stash)
     fiber.staging ||= document.createDocumentFragment();
 
+  const outer = inserting;
+  if (fiber.staging) inserting = fiber.inserted ||= [];
+
   try {
     return pass(() => {
       try {
@@ -492,8 +497,12 @@ function attempt(fiber: Fiber, passive: boolean, render: () => RenderNode): true
         reconcile(fiber, output, scope.childContext, fiber.boundary, renderedAppearance(fiber));
 
         if (fiber.staging) {
+          const queued = fiber.inserted!;
+
           fiber.end.parentNode!.insertBefore(fiber.staging, fiber.end);
-          fiber.staging = undefined;
+          fiber.staging = fiber.inserted = undefined;
+          inserting = outer;
+          queued.forEach((run) => run());
         }
 
         unwait(fiber);
@@ -505,7 +514,13 @@ function attempt(fiber: Fiber, passive: boolean, render: () => RenderNode): true
     });
   } finally {
     passiveRender = previous;
+    inserting = outer;
   }
+}
+
+function inserted(fiber: Fiber, run: () => void) {
+  if (inserting) inserting.push(() => fiber.dead || run());
+  else run();
 }
 
 function observe(props: Record<string, any>) {
@@ -936,7 +951,7 @@ function patchProps(fiber: Fiber, next: Record<string, any>, appearance?: Appear
 function patchProp(fiber: Fiber, element: Element, key: string, previous: any, next: any) {
   if (key == 'ref') {
     applyRef(previous, null);
-    applyRef(next, element);
+    inserted(fiber, () => applyRef(next, element));
     return;
   }
 
