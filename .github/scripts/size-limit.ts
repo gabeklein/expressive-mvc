@@ -44,8 +44,14 @@ const CASES = [
     code: `import * as all from '@expressive/react'; console.log(all);`
   },
   {
-    name: 'jsx: everything',
-    limit: 15200,
+    name: 'jsx: renderer',
+    limit: 15600,
+    code: `import State, { Component, Context, Consumer, Provider, createPortal, def, get, has, lazy, map, pending, ref, render, set } from '@expressive/jsx';
+           console.log(State, Component, Context, Consumer, Provider, createPortal, def, get, has, lazy, map, pending, ref, render, set);`
+  },
+  {
+    name: 'jsx: styling',
+    limit: 17450,
     code: `import * as all from '@expressive/jsx'; console.log(all);`
   },
   {

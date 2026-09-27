@@ -58,6 +58,7 @@ type Attributes<T extends Element> = EventAttributes & {
   key?: string | number | null;
   ref?: ((node: T | null) => unknown) | { current: T | null };
   style?: Style;
+  [attribute: `_${string}`]: unknown;
   [attribute: `data-${string}`]: unknown;
   [attribute: `aria-${string}`]: unknown;
 };
@@ -79,6 +80,7 @@ declare module '@expressive/mvc/jsx-runtime' {
   namespace JSX {
     interface IntrinsicAttributes {
       style?: Style;
+      [attribute: `_${string}`]: unknown;
     }
   }
 }
