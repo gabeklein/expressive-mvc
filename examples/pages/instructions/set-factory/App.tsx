@@ -10,7 +10,8 @@ export default () => (
       A zero-argument function makes the slot a factory: it runs on first access,
       caches its result, and the field is read-only. An <code>async</code> factory
       throws suspense while it pends, so the boundary above decides what waiting
-      looks like - no loading flag, no effect, no deps.
+      looks like - no loading flag, no effect, no deps. A Component is its own
+      boundary unless <code>fallback = false</code> hands waiting up.
     </p>
     <p>
       Factories are bound to the instance, so they read sibling fields freely -{' '}
@@ -33,6 +34,8 @@ export default () => (
 );
 
 class Profile extends Component {
+  fallback = false;
+
   user = set(async () => {
     return await after(700, { name: 'Ada Lovelace', role: 'Engineer' });
   });
