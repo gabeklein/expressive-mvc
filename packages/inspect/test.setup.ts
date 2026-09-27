@@ -5,4 +5,4 @@ import { detach } from './src';
 
 afterEach(() => detach());
 
-export { flushMicrotasks, mockError, mockPromise, mockWarn } from '../mvc/test.setup';
+export { flushMicrotasks, mockError, mockPromise, mockUncaught, mockWarn } from '../mvc/test.setup';

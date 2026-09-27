@@ -1,4 +1,4 @@
-import { State } from '@expressive/mvc';
+import { Caught, State } from '@expressive/mvc';
 
 import { parsePath, serialize } from './serialize';
 import { bracket } from './bracket';
@@ -23,7 +23,7 @@ export interface Event {
   id: string;
   type: string;
   key: string;
-  kind: 'update' | 'event' | 'call' | 'destroy';
+  kind: 'update' | 'event' | 'call' | 'destroy' | 'caught';
   value?: unknown;
   args?: unknown[];
 }
@@ -44,6 +44,8 @@ export interface Summary {
   /** Updates and events per key, with the last recorded value at `values` level. */
   keys: Record<string, { count: number; value?: unknown }>;
   calls: Record<string, number>;
+  /** `caught` reports. */
+  caught: number;
   destroyed: boolean;
 }
 
@@ -123,12 +125,13 @@ export const journal = {
       for (const event of frame.events) {
         let entry = by.get(event.id);
 
-        if (!entry) by.set(event.id, (entry = { id: event.id, type: event.type, last: 0, keys: {}, calls: {}, destroyed: false }));
+        if (!entry) by.set(event.id, (entry = { id: event.id, type: event.type, last: 0, keys: {}, calls: {}, caught: 0, destroyed: false }));
 
         entry.last = frame.seq;
 
         if (event.kind === 'destroy') entry.destroyed = true;
         else if (event.kind === 'call') entry.calls[event.key] = (entry.calls[event.key] || 0) + 1;
+        else if (event.kind === 'caught') entry.caught++;
         else {
           const key = (entry.keys[event.key] ||= { count: 0 });
           key.count++;
@@ -214,6 +217,14 @@ export function noteCall(state: State, key: string, args: unknown[]): void {
   const event: Event = { id: String(state), type: labelOf(state.constructor as typeof State), key, kind: 'call' };
   if (config.level === 'values') event.args = args.map((arg) => serialize(arg, 1));
   push(event);
+}
+
+export function noteCaught(error: Caught, name: string): { handled: boolean } | undefined {
+  const { state, key } = error;
+  if (!wants(state, key)) return;
+  const value = { case: name, message: error.message, stack: error.stack, handled: true };
+  push({ id: String(state), type: labelOf(state.constructor as typeof State), key: key ?? '', kind: 'caught', value });
+  return value;
 }
 
 export function noteDestroy(state: State): void {

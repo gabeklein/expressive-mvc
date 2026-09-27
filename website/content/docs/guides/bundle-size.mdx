@@ -11,17 +11,17 @@ Minified, then gzipped. React is a peer dependency and excluded, as it would alr
 
 | What you import | gzip |
 | --- | --- |
-| `@expressive/mvc` — `State` only (headless) | ~5.3 kB |
-| `@expressive/mvc` — every export | ~8.7 kB |
-| `@expressive/react` — `State` only | ~8.7 kB |
-| `@expressive/react` — `State`, `Component`, instructions | ~9.5 kB |
-| `@expressive/react` — every export | ~11.5 kB |
-| `@expressive/mvc` + `@expressive/dom` — renderer without style helpers | ~15.2 kB |
-| `@expressive/mvc` + `@expressive/dom` — every export, including styling | ~17.3 kB |
-| `@expressive/router` — every export | ~11.6 kB |
-| `@expressive/react` + `@expressive/router` | ~15.5 kB |
+| `@expressive/mvc` — `State` only (headless) | ~5.8 kB |
+| `@expressive/mvc` — every export | ~9.4 kB |
+| `@expressive/react` — `State` only | ~9.4 kB |
+| `@expressive/react` — `State`, `Component`, instructions | ~10.1 kB |
+| `@expressive/react` — every export | ~12.2 kB |
+| `@expressive/mvc` + `@expressive/dom` — renderer without style helpers | ~15.7 kB |
+| `@expressive/mvc` + `@expressive/dom` — every export, including styling | ~17.8 kB |
+| `@expressive/router` — every export | ~12.3 kB |
+| `@expressive/react` + `@expressive/router` | ~16.2 kB |
 
-A typical React app lands around **9.5 kB**. There are no runtime dependencies, so that is the whole cost — nothing else arrives behind it.
+A typical React app lands around **10.1 kB**. There are no runtime dependencies, so that is the whole cost — nothing else arrives behind it.
 
 ## Methodology, and why the numbers differ elsewhere
 
@@ -35,11 +35,11 @@ If a third-party size service quotes something different from this table, the me
 
 ## Tree-shaking
 
-The headless core shakes properly: importing only `State` costs ~5.3 kB against ~8.7 kB for everything, so unused instructions genuinely do not ship. It is built unbundled — one module per source file, `sideEffects: false` — and its module-level work only touches classes the same module exports, which is what makes that declaration safe.
+The headless core shakes properly: importing only `State` costs ~5.8 kB against ~9.4 kB for everything, so unused instructions genuinely do not ship. It is built unbundled — one module per source file, `sideEffects: false` — and its module-level work only touches classes the same module exports, which is what makes that declaration safe.
 
-The appearance system is likewise optional: renderer imports measure ~15.2 kB; adding `style` and `macro` raises the total to ~17.3 kB. The renderer retains only the small token protocol needed to accept styles registered elsewhere. Unlike the React rows, these figures include `@expressive/mvc`, which `@expressive/dom` does not re-export and an app therefore imports directly.
+The appearance system is likewise optional: renderer imports measure ~15.7 kB; adding `style` and `macro` raises the total to ~17.8 kB. The renderer retains only the small token protocol needed to accept styles registered elsewhere. Unlike the React rows, these figures include `@expressive/mvc`, which `@expressive/dom` does not re-export and an app therefore imports directly.
 
-The React adapter has a **floor you cannot shake below: ~8.7 kB**, reached by importing anything at all from it. That is deliberate and worth being plain about. The adapter works by patching types it does not own, at import time:
+The React adapter has a **floor you cannot shake below: ~9.4 kB**, reached by importing anything at all from it. That is deliberate and worth being plain about. The adapter works by patching types it does not own, at import time:
 
 - `Component.prototype.$$typeof`, so an instance can be placed directly as JSX
 - `Component.contextType`, wiring the class into React context

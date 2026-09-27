@@ -1,7 +1,7 @@
-import { Context, State } from '@expressive/mvc';
+import { Caught, Context, State } from '@expressive/mvc';
 import { isElement } from '@expressive/mvc/runtime';
 
-import { act as run, journal, note, noteCall, noteDestroy, recordsCalls, type Frame, type Query } from './journal';
+import { act as run, journal, note, noteCall, noteCaught, noteDestroy, recordsCalls, type Frame, type Query } from './journal';
 import { entries, parsePath, serialize, walk } from './serialize';
 import type { Settle } from './settle';
 import { forget, seen, type TypeInfo } from './types';
@@ -45,7 +45,12 @@ const weak = (state: State): Row['ref'] =>
   typeof WeakRef === 'function' ? new WeakRef(state) : { deref: () => state };
 
 const live = new Map<string, Row>();
-const hooks = new Map<typeof State, () => boolean>();
+const hooks = new Map<typeof State, () => void>();
+
+const CASES = ['Destroyed', 'Inactive', 'Getter', 'Init', 'Effect'] as const;
+const COPIES = Symbol.for('@expressive/mvc');
+
+type Case = (typeof CASES)[number];
 const wrapped = new WeakSet<State>();
 const wrappers = new WeakMap<State, Instance>();
 const spans = new WeakMap<State, Span>();
@@ -54,6 +59,56 @@ const reaper = new Reaper<string>(collected);
 let version = 0;
 let cached: { version: number; parents: Map<State, State> } | undefined;
 let lost = 0;
+let tally = counts();
+let copies = 1;
+let unwatch: (() => void) | undefined;
+
+function counts(): Record<Case, number> {
+  return { Destroyed: 0, Inactive: 0, Getter: 0, Init: 0, Effect: 0 };
+}
+
+const noted = new WeakMap<Caught, { handled: boolean } | undefined>();
+
+function observe(error: Caught) {
+  const name = CASES.find((type) => error instanceof Caught[type]);
+  if (name) tally[name]++;
+  noted.set(error, noteCaught(error, name || 'Caught'));
+  return error;
+}
+
+function unhandled(error: Caught) {
+  if (!noted.has(error)) observe(error);
+  const event = noted.get(error);
+  if (event) event.handled = false;
+  return error;
+}
+
+export function clearCaught(): void {
+  tally = counts();
+}
+
+/** Count loaded copies of mvc from the list each one joins on first construction; warn once on a second. */
+function watchCopies() {
+  const list = ((globalThis as { [COPIES]?: unknown[] })[COPIES] ||= []);
+  const { push } = list;
+  const check = () => {
+    const was = copies;
+    copies = new Set([State, ...list]).size;
+    if (copies > 1 && was === 1)
+      console.warn(`${copies} copies of @expressive/mvc are loaded - inspect sees only the one it imports.`);
+  };
+
+  list.push = (...items) => {
+    const length = push.apply(list, items);
+    check();
+    return length;
+  };
+
+  check();
+  unwatch = () => {
+    list.push = push;
+  };
+}
 
 /** Registered instances still reachable, claimed or not. */
 function registered(): State[] {
@@ -212,38 +267,48 @@ export class Instance {
 }
 
 export function attach(Type: typeof State = State): () => void {
-  if (!hooks.has(Type))
-    hooks.set(
-      Type,
-      Type.on(function (this: State) {
-        const self = this.is;
-        const id = String(self);
-        const span: Span = { since: Date.now(), claimed: false, settled: false };
-        seen(self.constructor as typeof State);
-        live.set(id, { ref: weak(self) });
-        spans.set(self, span);
-        reaper.register(self, id, self);
-        setTimeout(() => {
-          span.settled = true;
-        }, 0);
+  if (!unwatch) watchCopies();
+
+  if (!hooks.has(Type)) {
+    const observed = new Map<typeof State, () => void>();
+    const stopCatch = Type.on({ catch: unhandled });
+    const stopSetup = Type.on(function (this: State) {
+      const self = this.is;
+      const T = self.constructor as typeof State;
+      const id = String(self);
+      const span: Span = { since: Date.now(), claimed: false, settled: false };
+      if (!observed.has(T)) observed.set(T, T.on({ catch: observe }));
+      seen(T);
+      live.set(id, { ref: weak(self) });
+      spans.set(self, span);
+      reaper.register(self, id, self);
+      setTimeout(() => {
+        span.settled = true;
+      }, 0);
+      version++;
+      if (recordsCalls()) wrap(self);
+      mounts(self);
+      const stop = self.set((key) => {
+        const store = entries(self);
+        if (typeof key === 'string' && typeof store.get(key) === 'object') version++;
+        note(self, key, store);
+      });
+      return () => {
+        stop();
+        live.delete(id);
+        reaper.unregister(self);
+        span.until = Date.now();
         version++;
-        if (recordsCalls()) wrap(self);
-        mounts(self);
-        const stop = self.set((key) => {
-          const store = entries(self);
-          if (typeof key === 'string' && typeof store.get(key) === 'object') version++;
-          note(self, key, store);
-        });
-        return () => {
-          stop();
-          live.delete(id);
-          reaper.unregister(self);
-          span.until = Date.now();
-          version++;
-          noteDestroy(self);
-        };
-      })
-    );
+        noteDestroy(self);
+      };
+    });
+
+    hooks.set(Type, () => {
+      for (const stop of observed.values()) stop();
+      stopCatch();
+      stopSetup();
+    });
+  }
 
   return () => {
     hooks.get(Type)?.();
@@ -257,6 +322,10 @@ export function detach(): void {
   live.clear();
   cached = undefined;
   lost = 0;
+  tally = counts();
+  copies = 1;
+  unwatch?.();
+  unwatch = undefined;
   journal.reset();
   forget();
 }
@@ -286,9 +355,20 @@ function* abandoned(): Generator<State> {
   for (const state of registered()) if (orphaned(state, parents)) yield state;
 }
 
-/** Counts worth a look: live orphans, and unclaimed instances the collector already reaped. */
-export function warnings(): { orphans: number; collected: number } {
-  return { orphans: orphans().length, collected: lost };
+export interface Health {
+  /** Live instances no host, owner, or root slot claimed. */
+  orphans: number;
+  /** Unclaimed instances the collector already reaped. */
+  collected: number;
+  /** Loaded copies of `@expressive/mvc` - more than 1 means inspect cannot see every State. */
+  copies: number;
+  /** `Caught` reports by case, including ones an app handler went on to handle; zeroed by `journal.clear()`. */
+  caught: Record<Case, number>;
+}
+
+/** Counts worth a look before trusting what inspect shows. */
+export function health(): Health {
+  return { orphans: orphans().length, collected: lost, copies, caught: { ...tally } };
 }
 
 export function roots(): Instance[] {

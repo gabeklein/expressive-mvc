@@ -10,67 +10,69 @@ import { withWorkspaceLinks } from './workspace-links';
  * Per-shape rather than one aggregate: the point is to notice when the adapter's
  * irreducible floor grows, or when a formerly shakeable export stops shaking.
  *
- * Each carries ~3.5% headroom over the measured figure, because CI does not pin
+ * Each carries ~2% headroom over the measured figure, because CI does not pin
  * a Bun version and minifier output drifts a little between them - measured at
- * <=0.5% across 1.3.1 and 1.3.14, so the margin is mostly slack. Real growth is
- * structural and clears it; toolchain drift does not. The react floor is the
- * exception: pinned to 9.1 kB, so ~1.9% - still above observed drift, but it
- * will flag sooner than the rest.
+ * <=0.5% across 1.3.1 and 1.3.14. Real growth is structural and clears it;
+ * toolchain drift does not.
+ *
+ * 10 kB is the line the maintainer cares about: `react: typical app`, the site's
+ * headline figure, crossed it at 10.14 kB in 2026-09 (State.on({ catch }), Caught,
+ * the copies registry) - further growth there needs a deliberate decision.
  */
 const CASES = [
   {
     name: 'mvc: State only',
-    limit: 5990,
+    limit: 6040,
     code: `import State from '@expressive/mvc'; console.log(State);`
   },
   {
     name: 'mvc: everything',
-    limit: 9760,
+    limit: 9820,
     code: `import * as all from '@expressive/mvc'; console.log(all);`
   },
   {
     name: 'react: State only',
-    limit: 9780,
+    limit: 9810,
     code: `import State from '@expressive/react'; console.log(State);`
   },
   {
     name: 'react: typical app',
-    limit: 10570,
+    limit: 10600,
     code: `import State, { Component, get, set, ref, def } from '@expressive/react';
            console.log(State, Component, get, set, ref, def);`
   },
   {
     name: 'react: everything',
-    limit: 12700,
+    limit: 12730,
     code: `import * as all from '@expressive/react'; console.log(all);`
   },
   {
     name: 'dom: renderer',
-    limit: 16370,
+    limit: 16400,
     code: `import State, { Component, Context, def, get, has, map, pending, ref, set } from '@expressive/mvc';
            import { Consumer, Provider, createPortal, lazy, render } from '@expressive/dom';
            console.log(State, Component, Context, Consumer, Provider, createPortal, def, get, has, lazy, map, pending, ref, render, set);`
   },
   {
     name: 'dom: styling',
-    limit: 18560,
+    limit: 18600,
     code: `import * as mvc from '@expressive/mvc';
            import * as dom from '@expressive/dom';
            console.log(mvc, dom);`
   },
   {
     name: 'router: everything',
-    limit: 12800,
+    limit: 12850,
     code: `import * as all from '@expressive/router'; console.log(all);`
   },
   {
     name: 'inspect: install',
-    limit: 10140,
+    limit: 10670,
     code: `import '@expressive/inspect/install';`
   },
   {
     name: 'react + router',
-    limit: 16870,
+    limit: 16900,
     code: `import * as a from '@expressive/react';
            import * as b from '@expressive/router';
            console.log(a, b);`
