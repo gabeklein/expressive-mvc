@@ -440,6 +440,119 @@ describe('suspense and recovery', () => {
     expect(attached).not.toHaveBeenCalledWith(expect.anything());
   });
 
+  describe('superseded and abandoned transitions', () => {
+    class Nav extends State {
+      page = 'a';
+      show = true;
+    }
+
+    const tick = (ms = 10) => new Promise((resolve) => setTimeout(resolve, ms));
+
+    function setup(gate: PromiseLike<void>) {
+      function Title() {
+        return <h1>{Nav.get().page}</h1>;
+      }
+
+      function Page() {
+        const { page } = Nav.get();
+        if (page == 'b') throw gate;
+        return <p>{page}</p>;
+      }
+
+      function Body() {
+        return Nav.get().show ? <Page /> : null;
+      }
+
+      class App extends Component {
+        nav = new Nav();
+        fallback = <i>loading</i>;
+
+        render() {
+          return <><Title /><Body /></>;
+        }
+      }
+
+      let app!: App;
+      const root = document.createElement('main');
+      render(<App is={(value) => (app = value)} />, root);
+      return { root, nav: () => app.nav };
+    }
+
+    it('will render a newer transition without waiting on a held one', async () => {
+      const gate = mockPromise<void>();
+      const { root, nav } = setup(gate);
+
+      pending(() => {
+        nav().page = 'b';
+      });
+      await tick();
+      expect(root.textContent).toBe('aa');
+
+      let settled = false;
+      pending(() => {
+        nav().page = 'c';
+      }).then(() => (settled = true));
+      await tick();
+      expect(root.textContent).toBe('cc');
+      expect(settled).toBe(true);
+    });
+
+    it('will settle a transition back to the current page', async () => {
+      const gate = mockPromise<void>();
+      const { root, nav } = setup(gate);
+
+      pending(() => {
+        nav().page = 'b';
+      });
+      await tick();
+
+      let settled = false;
+      pending(() => {
+        nav().page = 'a';
+      }).then(() => (settled = true));
+      await tick();
+      expect(root.textContent).toBe('aa');
+      expect(settled).toBe(true);
+    });
+
+    it('will release a held batch when the scope holding it unmounts', async () => {
+      const gate = mockPromise<void>();
+      const { root, nav } = setup(gate);
+
+      let settled = false;
+      pending(() => {
+        nav().page = 'b';
+      }).then(() => (settled = true));
+      await tick();
+      expect(root.textContent).toBe('aa');
+
+      nav().show = false;
+      await tick();
+      expect(root.textContent).toBe('b');
+      expect(settled).toBe(true);
+    });
+
+    it('will take a later transition after the holding scope unmounts', async () => {
+      const gate = mockPromise<void>();
+      const { root, nav } = setup(gate);
+
+      pending(() => {
+        nav().page = 'b';
+      });
+      await tick();
+      nav().show = false;
+      await tick();
+
+      let settled = false;
+      pending(() => {
+        nav().page = 'c';
+      }).then(() => (settled = true));
+      await tick();
+      expect(root.textContent).toBe('c');
+      expect(settled).toBe(true);
+    });
+  });
+
   it('will hold a descendant while its parent suspends in a transition', async () => {
     const gate = mockPromise<void>();
     let open = false;

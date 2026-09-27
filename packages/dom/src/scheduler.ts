@@ -4,6 +4,7 @@ interface Schedulable {
   queued?: 'urgent' | 'passive' | 'deferred';
   holds?: (() => void)[];
   probed?: { output: unknown };
+  blocking?: (() => void)[];
   update(passive: boolean): PromiseLike<unknown> | void;
   probe?(): PromiseLike<unknown> | void;
   empty?(): boolean;
@@ -21,13 +22,16 @@ function flush(scopes: Set<Schedulable>) {
     scopes.delete(scope);
     scope.queued = undefined;
 
+    let waiting: PromiseLike<unknown> | void = undefined;
+
     try {
-      scope.update(false);
+      waiting = scope.update(false);
     } catch (error) {
       console.error(error);
     }
 
     settle(scope);
+    if (!waiting) unblock(scope);
   }
 }
 
@@ -44,7 +48,7 @@ function flushPassive() {
 
   for (const scope of batch) {
     const waiting = scope.probe?.();
-    if (waiting) return defer(batch, waiting);
+    if (waiting) return defer(batch, waiting, scope);
   }
 
   batch.sort((a, b) => Number(!!b.empty?.()) - Number(!!a.empty?.()));
@@ -66,11 +70,12 @@ function flushPassive() {
 
     settle(scope);
 
-    if (waiting) return defer(batch.slice(index + 1), waiting);
+    if (waiting) return defer(batch.slice(index + 1), waiting, scope);
+    unblock(scope);
   }
 }
 
-function defer(scopes: Schedulable[], waiting: PromiseLike<unknown>) {
+function defer(scopes: Schedulable[], waiting: PromiseLike<unknown>, source: Schedulable) {
   const held = scopes.filter((scope) => scope.queued === 'passive');
 
   for (const scope of held) {
@@ -86,7 +91,15 @@ function defer(scopes: Schedulable[], waiting: PromiseLike<unknown>) {
       }
   };
 
+  (source.blocking ||= []).push(resume);
   waiting.then(resume, resume);
+}
+
+function unblock(scope: Schedulable) {
+  const { blocking } = scope;
+
+  scope.blocking = undefined;
+  blocking?.forEach((resume) => resume());
 }
 
 function release(holds?: (() => void)[]) {
@@ -119,7 +132,7 @@ function schedule(scope: Schedulable) {
     return;
   }
 
-  if (scope.queued) return;
+  if (scope.queued && scope.queued !== 'deferred') return;
 
   scope.queued = 'passive';
   passive.add(scope);
@@ -153,6 +166,7 @@ function unschedule(scope: Schedulable) {
   scope.queued = undefined;
   scope.probed = undefined;
   settle(scope);
+  unblock(scope);
 }
 
 export { claim, release, schedule, settle, transition, unschedule };
