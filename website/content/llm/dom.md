@@ -4,9 +4,16 @@ Positioning for the adoption question: whether to render Expressive MVC with `@e
 
 ## What it is
 
-A browser renderer for MVC components with no React underneath. `State`, `Component`, instructions, context and `@expressive/router` are the same packages; what changes is the host. The whole app costs ~16.2 kB gzip, including `@expressive/mvc`, or ~18.3 kB with the styling system ([measured per import shape and CI-gated](https://expressive.dev/docs/guides/bundle-size/)). That figure *replaces* `react` + `react-dom` rather than adding to them.
+A browser renderer for MVC components with no React underneath. `State`, `Component`, instructions, context and `@expressive/router` are the same packages; what changes is the host. [Measured per import shape](https://expressive.dev/docs/guides/bundle-size/), gzip, including `@expressive/mvc`:
 
-Status: `0.1`. It's a tested renderer for applications prepared to track pre-1.0 changes, not an LTS contract.
+- `Component` + `render` alone: ~15.4 kB
+- the renderer and all of mvc: ~16.3 kB
+- the same with the styling system: ~18.4 kB
+- the same with `@expressive/router`: ~20.3 kB
+
+These replace `react` + `react-dom`; they don't add to them. Budgets are checked on every pull request, and an over-budget shape fails the site build.
+
+Status: `0.1`, the first release. It's a tested renderer for applications prepared to track pre-1.0 changes, not an LTS contract.
 
 ## Differences from React, and what each is worth
 
@@ -14,24 +21,26 @@ dom is not a React clone. Where it differs, the difference is meant to be net-po
 
 | | dom | React adapter | Net |
 | --- | --- | --- | --- |
-| Hooks | None. Function components are stateless projections; owned state is `State.use()`, and shared state is `State.get()` | Hooks available beside Expressive | Rules of Hooks, dependency arrays and stale closures have nothing to apply to. Positive, unless the app leans on hook libraries |
-| Update scope | A write re-renders only the scopes that read the field. There is no virtual tree above them to diff, and no `memo` | The same subscriptions, reconciled by React | Isolation without memoization discipline. Positive |
-| Events | Native listeners, native names (`onDblClick`, `onInput` per keystroke) | Synthetic events, React names | Platform semantics and less code. The cost is porting friction |
-| Controlled inputs | `value`/`checked` are live properties only | Also mirrored to attributes | No write per keystroke. The cost: `form.reset()` and `[value=…]` selectors behave differently |
-| Styling | Built in: `style` composes classes and declarations; `style(Component, map)` scopes rules to a component's output | Bring your own | One styling system, with no CSS-in-JS dependency. Positive |
-| Suspense | Every Component is a boundary by default. A suspended boundary keeps its content mounted off-document, where it stays live and reveals at once | `Suspense` elements; a subtree that suspends on first mount is discarded | State survives suspension, including siblings of the component that suspended. Positive |
-| Transitions | `pending()` holds the screen; the scopes one transition updates commit together. There is no work-in-progress tree | Whole-tree concurrent render, committed atomically | The same visible hold for route swaps, guards and page data, without rendering the tree twice. One documented gap: a suspension deep inside content that's already showing holds only that scope |
-| Tearing | Scopes flush synchronously against current state, and there's no time-slicing | Concurrent rendering; the adapter guards against tearing | Nothing to defend against. Positive |
-| Error boundaries | `Component.catch()` holds its fallback until it completes; a rejection escalates | Error boundaries plus logging | Deterministic recovery. Handled errors aren't logged |
+| Hooks | None, beyond `State.use()` for owned state. It keeps one rule: top-level calls in stable order, enforced at runtime. Shared state is `State.get()` | Hooks available beside Expressive | Dependency arrays and stale closures have nothing to apply to. Positive, unless the app leans on hook libraries |
+| Update scope | A write re-renders only the scopes that read the field. A re-rendering scope re-renders its child components; there is no `memo` | Same subscription granularity, and `memo` is available | Same isolation without memoization discipline. The cost: no bailout, so an expensive subtree should read its own state rather than take it as props |
+| Events | Native listeners, native names (`onDblClick`, `onInput` per keystroke) | Synthetic events, React names | Platform semantics with no event layer. The cost is porting friction |
+| Controlled inputs | `value`/`checked` are live properties only | Also mirrored to attributes | No attribute write per keystroke. The cost: `form.reset()` and `[value=…]` selectors behave differently |
+| Styling | Built in: `style` composes classes and declarations; `style(Component, map)` scopes rules to a component's output. Rules are injected at runtime; there is no build-time extraction | Bring your own | One styling system, with no third-party dependency, for ~2.1 kB |
+| Suspense | Every Component is a boundary unless `fallback = false`. A suspended boundary keeps its content mounted off-document, where it stays live, and reveals it at once | Also a boundary per Component; a subtree that suspends on first mount is discarded and rebuilt | State survives suspension, including siblings of the component that suspended. Positive. The cost: hidden content is detached, so it can't be measured while its fallback shows (React keeps it in the page with `display: none`). Note for both: the default fallback is `null`, so a suspending Component with no `fallback` renders blank rather than letting an outer fallback show |
+| Nested boundaries | A boundary hidden inside another keeps its own state through the outer reveal | Rebuilt | State survives. An inner fallback still showing stays showing |
+| Transitions | `pending()` holds the screen; the scopes one transition updates commit together, and a newer transition supersedes a held one. There is no work-in-progress copy, and probed output is reused, so nothing renders twice | Renders the transition off-screen and commits it atomically | The same visible hold for route swaps, guards and page data. One documented gap: when a suspension surfaces deep inside content already on screen, other scopes of the transition can show the new state meanwhile |
+| Tearing | Writes batch to a microtask, and each flush runs to completion without yielding | Concurrent rendering; the adapter guards against tearing | Urgent updates can't tear. Within a transition, the gap above can briefly show mixed versions |
+| Errors | `Component.catch()` holds its fallback until it completes; a rejection escalates to the next boundary. Handled errors aren't logged. An update error with no boundary is logged, and the last good DOM stays mounted | `Component.catch()` through a host error boundary; React logs each caught error, and an unhandled one unmounts the root | Deterministic recovery ([#408](https://github.com/gabeklein/expressive-mvc/pull/408) removed a timing race). Log inside `catch()` if you need a trail |
 
 ## What is checked
 
-- The package's own suite: 150 tests, with statements, branches, functions and lines gated at 100%.
-- The styling cascade, verified in real Chrome with `getComputedStyle` (happy-dom doesn't order stylesheets the way browsers do).
-- Bundle size, gated per import shape on every pull request.
-- A pre-release audit using the examples corpus as user stories. All 42 example pages were driven through the same interaction scenarios on both renderers, with the React adapter as the spec. It found five renderer bugs that the unit suite couldn't see: all five were composition bugs between mvc, the renderer and the router. They were fixed before release ([#406](https://github.com/gabeklein/expressive-mvc/pull/406), [#407](https://github.com/gabeklein/expressive-mvc/pull/407), [#408](https://github.com/gabeklein/expressive-mvc/pull/408)), and each fix is pinned by a unit test.
+- The package's own suite, with statements, branches, functions and lines gated at 100%. Components test in happy-dom with vitest, as this suite does.
+- The styling cascade, verified in real Chrome with `getComputedStyle` by `cascade-probe.ts`. This is run manually, not in CI.
+- Every publish type-checks, bundles and drives a small consumer app built from the packed tarballs.
+- A pre-release audit using the examples corpus as user stories ([record](https://github.com/gabeklein/expressive-mvc/blob/111785fc0/examples/smoke/AUDIT.md)): 53 interaction scenarios over all 42 example pages, run on both renderers in happy-dom, with the React adapter as the spec. It found five renderer bugs the unit suite couldn't see (three of them in how dom composes with mvc's tracking and `pending()`, surfacing on router pages), plus several React-parity differences. All were fixed before release in [#406](https://github.com/gabeklein/expressive-mvc/pull/406)–[#408](https://github.com/gabeklein/expressive-mvc/pull/408), each pinned by a unit test or a type check. On the fixed renderer, dom passes every scenario except the nested-boundary difference above, which is intended. Independent adversarial reviews of each fix then found and fixed further regressions before release, each also pinned by a test.
+- The fixed renderer, driven in real Chrome: all 42 ported example pages loading and surviving interaction, and a consumer app from the packed tarballs.
 
-Not yet measured: performance against other renderers, memory and listener leaks over long sessions, and the example pages in a real browser. None of these is claimed.
+Not yet measured: performance against other renderers, memory and listener leaks over long sessions, and interop with libraries that mutate the DOM themselves. The dom-only features (`style`, `macro`, `createPortal`, `lazy`) have their own suite but were exercised by the audit only incidentally. None of these is claimed.
 
 ## When to prefer the React adapter
 
@@ -43,7 +52,7 @@ Not yet measured: performance against other renderers, memory and listener leaks
 ## When dom fits
 
 - A browser app built on Expressive primitives, with no React dependencies to carry.
-- Embeds and widgets, where shipping React is the dominant cost.
-- Teams that want no hooks at all, rather than hooks kept to the edges.
+- Embeds and widgets, where a React runtime would otherwise be the largest dependency.
+- Teams that want no hooks beyond `State.use()`.
 
-An Expressive codebase moves between the two hosts with the models unchanged. The port is at the view layer: `class` for `className`, native event names and types, and `Provider fallback` in place of `Suspense`. Those are the mechanical changes the audit's codemod made to all 42 example pages.
+An Expressive codebase moves between the two hosts with its models unchanged, apart from import specifiers. The port is at the view layer. The audit's codemod handled imports moving to `@expressive/mvc`, `className` → `class`, and `onChange` → `onInput` on text fields. Other native event names (`onDblClick`), `Suspense` → `Provider fallback`, and `autofocus` were fixed by hand.
