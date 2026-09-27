@@ -1,4 +1,4 @@
-<h1 align="center">@expressive/jsx</h1>
+<h1 align="center">@expressive/dom</h1>
 
 <p align="center">
   MVC-native JSX rendering for the browser DOM.
@@ -6,23 +6,24 @@
 
 ---
 
-`@expressive/jsx` renders Expressive MVC without React or Preact. Function components are renderer-stateless: they project props and MVC snapshots into DOM, while `State.get()` and `State.use()` supply dependency tracking and owned state.
+`@expressive/dom` renders Expressive MVC without React or Preact. Function components are renderer-stateless: they project props and MVC snapshots into DOM, while `State.get()` and `State.use()` supply dependency tracking and owned state.
 
 ```bash
-npm install @expressive/jsx
+npm install @expressive/mvc @expressive/dom
 ```
 
 ```jsonc
 {
   "compilerOptions": {
     "jsx": "react-jsx",
-    "jsxImportSource": "@expressive/jsx"
+    "jsxImportSource": "@expressive/dom"
   }
 }
 ```
 
 ```tsx
-import State, { Component, render } from '@expressive/jsx';
+import State, { Component } from '@expressive/mvc';
+import { render } from '@expressive/dom';
 
 class Counter extends State {
   count = 0;
@@ -71,7 +72,7 @@ Inline style always beats classes; among classes, a caller's rule beats the call
 
 The first release includes keyed reconciliation, native events, refs, SVG, `Provider` / `Consumer`, direct `has` / `map` collection rendering, portals, lazy components, error and suspense fallbacks, generated component appearance rules, and retention of committed content while `pending()` work suspends. It deliberately excludes standalone hooks, synthetic events, memo wrappers, SSR, hydration, and build-time style extraction.
 
-See [the JSX renderer guide](../../skills/jsx/jsx.md) for the API and constraints. This package currently targets browser DOM; native rendering and build-time expressive-jsx extraction are not included.
+See [the JSX renderer guide](../../skills/dom/dom.md) for the API and constraints. This package currently targets browser DOM; native rendering and build-time expressive-jsx extraction are not included.
 
 ## License
 
