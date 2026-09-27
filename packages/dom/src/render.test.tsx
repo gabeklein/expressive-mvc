@@ -775,6 +775,84 @@ describe('render', () => {
     expect(root.textContent).toBe('onetwoPAB');
   });
 
+  it('will render owned collections read through a tracked scope', async () => {
+    class Item extends Component {
+      name = '';
+
+      render() {
+        return <li>{this.name}</li>;
+      }
+    }
+
+    class Lists extends Component {
+      list = has(['one']);
+      pool = has(Item);
+      values = map<string, string>();
+
+      new() {
+        this.pool.add({ name: 'P' });
+        this.values.set('a', 'A');
+      }
+
+      render() {
+        return <>{this.list}<ul>{this.pool}</ul>{this.values}</>;
+      }
+    }
+
+    let lists!: Lists;
+    const root = document.createElement('main');
+    render(<Lists is={(value) => (lists = value)} />, root);
+    expect(root.textContent).toBe('onePA');
+
+    lists.list.push('two');
+    lists.pool.add({ name: 'Q' });
+    lists.values.set('b', 'B');
+    await flushMicrotasks();
+    expect(root.textContent).toBe('onetwoPQAB');
+  });
+
+  it('will keep and move instances read through a tracked scope', async () => {
+    class Item extends Component {
+      name = '';
+      order = 0;
+
+      render() {
+        return <li>{this.name}</li>;
+      }
+    }
+
+    class Items extends Component {
+      items = has(Item);
+      tick = 0;
+
+      new() {
+        this.items.add({ name: 'a', order: 1 });
+        this.items.add({ name: 'b', order: 2 });
+      }
+
+      render() {
+        const { tick, items } = this;
+        const sorted = [...items].sort((x, y) => x.order - y.order);
+
+        return <ul data-tick={tick}>{sorted}</ul>;
+      }
+    }
+
+    let list!: Items;
+    const root = document.createElement('main');
+    render(<Items is={(value) => (list = value)} />, root);
+    const [a, b] = root.querySelectorAll('li');
+
+    list.tick++;
+    await flushMicrotasks();
+    expect([...root.querySelectorAll('li')]).toEqual([a, b]);
+
+    [...list.items][1].order = 0;
+    await flushMicrotasks();
+    expect(root.textContent).toBe('ba');
+    expect([...root.querySelectorAll('li')]).toEqual([b, a]);
+  });
+
   it('will render and move portal children with logical context', async () => {
     const portal = document.createElement('aside');
     const nextPortal = document.createElement('aside');

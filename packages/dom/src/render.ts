@@ -206,7 +206,7 @@ function mount(value: RenderNode, parent: globalThis.Node, before: globalThis.No
   }
 
   if (value instanceof Component) return mountComponent(value, parent, before, context, boundary, appearance);
-  if (value instanceof has.List || value instanceof has.Pool || value instanceof map.Managed)
+  if (isCollection(value))
     return mountCollection(value, parent, before, context, boundary, appearance);
 
   if (!isVNode(value)) throw new TypeError(`Cannot render ${String(value)}.`);
@@ -714,7 +714,7 @@ function reconcileChildren(owner: Fiber, parent: globalThis.Node, before: global
 
   try {
     for (let index = 0; index < values.length; index++) {
-      const value = values[index];
+      const value = source(values[index]);
       const key = keyOf(value);
       let child = key !== null && key !== undefined
         ? keyed.get(key)
@@ -814,12 +814,25 @@ function rerun(fiber: Fiber, run: () => void) {
 function compatible(fiber: Fiber, value: RenderNode) {
   if (fiber.kind == 'text') return ['string', 'number', 'bigint'].includes(typeof value);
   if (value instanceof Component) return fiber.kind == 'component' && fiber.instance === value;
-  if (value instanceof has.List || value instanceof has.Pool || value instanceof map.Managed)
+  if (isCollection(value))
     return fiber.kind == 'collection' && fiber.source === value;
   if (!isVNode(value)) return false;
   if (fiber.key !== value.key || fiber.type !== value.type) return false;
   if (fiber.kind == 'portal') return fiber.portalContainer === value.props.container;
   return true;
+}
+
+function source(value: RenderNode): RenderNode {
+  if (value instanceof Component) return value.is;
+
+  while (isCollection(value) && isCollection(Object.getPrototypeOf(value)))
+    value = Object.getPrototypeOf(value);
+
+  return value;
+}
+
+function isCollection(value: unknown): value is has.List<unknown> | has.Pool<unknown> | map.Managed<unknown, unknown> {
+  return value instanceof has.List || value instanceof has.Pool || value instanceof map.Managed;
 }
 
 function keyOf(value: RenderNode): Key {
