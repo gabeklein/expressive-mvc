@@ -1,7 +1,8 @@
 import { gzipSync } from 'bun';
+import type { BunPlugin } from 'bun';
 import { mkdirSync, rmSync } from 'node:fs';
 import { appendFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { withWorkspaceLinks } from './workspace-links';
 
 /**
@@ -19,47 +20,47 @@ import { withWorkspaceLinks } from './workspace-links';
 const CASES = [
   {
     name: 'mvc: State only',
-    limit: 5570,
+    limit: 5490,
     code: `import State from '@expressive/mvc'; console.log(State);`
   },
   {
     name: 'mvc: everything',
-    limit: 9220,
+    limit: 9250,
     code: `import * as all from '@expressive/mvc'; console.log(all);`
   },
   {
     name: 'react: State only',
-    limit: 9100,
+    limit: 9300,
     code: `import State from '@expressive/react'; console.log(State);`
   },
   {
     name: 'react: typical app',
-    limit: 10040,
+    limit: 10110,
     code: `import State, { Component, get, set, ref, def } from '@expressive/react';
            console.log(State, Component, get, set, ref, def);`
   },
   {
     name: 'react: everything',
-    limit: 12190,
+    limit: 12230,
     code: `import * as all from '@expressive/react'; console.log(all);`
   },
   {
     name: 'dom: renderer',
-    limit: 18800,
+    limit: 15870,
     code: `import State, { Component, Context, def, get, has, map, pending, ref, set } from '@expressive/mvc';
            import { Consumer, Provider, createPortal, lazy, render } from '@expressive/dom';
            console.log(State, Component, Context, Consumer, Provider, createPortal, def, get, has, lazy, map, pending, ref, render, set);`
   },
   {
     name: 'dom: styling',
-    limit: 20900,
+    limit: 18100,
     code: `import * as mvc from '@expressive/mvc';
            import * as dom from '@expressive/dom';
            console.log(mvc, dom);`
   },
   {
     name: 'router: everything',
-    limit: 12110,
+    limit: 12330,
     code: `import * as all from '@expressive/router'; console.log(all);`
   },
   {
@@ -69,12 +70,34 @@ const CASES = [
   },
   {
     name: 'react + router',
-    limit: 16530,
+    limit: 16400,
     code: `import * as a from '@expressive/react';
            import * as b from '@expressive/router';
            console.log(a, b);`
   }
 ];
+
+/**
+ * Resolve `@expressive/*` through each package's exports map, the way a
+ * consumer does. Without this, Bun applies the nearest package `tsconfig.json`
+ * to files it processes - including a dependency's own `dist` - so an import of
+ * `@expressive/mvc` alongside an adapter resolves once to `dist` and once to
+ * `src`, and the probe measures two copies of the core.
+ */
+const published: BunPlugin = {
+  name: 'published-exports',
+  setup(build) {
+    build.onResolve({ filter: /^@expressive\// }, async ({ path }) => {
+      const [, name, ...rest] = path.split('/');
+      const dir = resolve('packages', name);
+      const manifest = await Bun.file(join(dir, 'package.json')).json();
+      const key = rest.length ? `./${rest.join('/')}` : '.';
+      const entry = manifest.exports?.[key]?.default ?? manifest.main;
+
+      return { path: join(dir, entry) };
+    });
+  }
+};
 
 // Measured through bare specifiers, as a consumer writes them, so the exports
 // map and each package's `sideEffects` both take part in the result.
@@ -94,6 +117,7 @@ try {
       entrypoints: [entry],
       minify: true,
       target: 'browser',
+      plugins: [published],
       format: 'esm',
       external: ['react', 'react-dom', 'react/jsx-runtime'],
       define: { 'process.env.NODE_ENV': '"production"' }
