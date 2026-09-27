@@ -21,12 +21,12 @@ type Words =
 type Cased = { [W in Words as Lowercase<W>]: W };
 type EventName<K> = K extends keyof Cased ? Cased[K] : Capitalize<K & string>;
 
-type EventAttributes = {
+type EventAttributes<T extends Element> = {
   [K in keyof GlobalEventHandlersEventMap as `on${EventName<K>}`]?:
-    (event: GlobalEventHandlersEventMap[K]) => unknown;
+    (event: GlobalEventHandlersEventMap[K] & { currentTarget: T }) => unknown;
 } & {
   [K in keyof GlobalEventHandlersEventMap as `on${EventName<K>}Capture`]?:
-    (event: GlobalEventHandlersEventMap[K]) => unknown;
+    (event: GlobalEventHandlersEventMap[K] & { currentTarget: T }) => unknown;
 };
 
 type Declarations = Partial<Record<keyof CSSStyleDeclaration, string | number | null>> & {
@@ -45,7 +45,7 @@ type SVGAttributes = {
     | 'x' | 'x1' | 'x2' | 'xmlns' | 'y' | 'y1' | 'y2']?: string | number;
 };
 
-type Attributes<T extends Element> = EventAttributes & {
+type Attributes<T extends Element> = EventAttributes<T> & {
   [K in keyof T as K extends 'children' | 'className' | 'style'
     ? never
     : T[K] extends Function

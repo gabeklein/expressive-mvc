@@ -59,6 +59,7 @@ interface Fiber {
   portals?: [Fiber, DocumentFragment][];
   dead?: boolean;
   waitingOn?: Boundary;
+  recovering?: boolean;
   stash?: DocumentFragment;
   placeholder?: Fiber;
   staging?: DocumentFragment;
@@ -101,6 +102,8 @@ const SVG = 'http://www.w3.org/2000/svg';
 const dirty = new Set<Boundary>();
 const stashes = new WeakMap<globalThis.Node, Fiber>();
 const CONTROLS = ['checked', 'value'];
+const ENUMERATED = ['contenteditable', 'draggable', 'spellcheck'];
+const focusing: Element[] = [];
 let passiveRender = false;
 let inserting: (() => void)[] | undefined;
 let depth = 0;
@@ -461,9 +464,12 @@ function mountElement(value: VNode, parent: globalThis.Node, before: globalThis.
   };
 
   parent.insertBefore(element, before);
-  return complete(fiber, () => {
+  complete(fiber, () => {
     patchProps(fiber, value.props, appearance);
   });
+
+  if (value.props.autofocus) focusing.push(element);
+  return fiber;
 }
 
 function pass<T>(work: () => T): T {
@@ -472,8 +478,16 @@ function pass<T>(work: () => T): T {
   try {
     return work();
   } finally {
-    if (!--depth) settle();
+    if (!--depth) {
+      settle();
+      focus();
+    }
   }
+}
+
+function focus() {
+  for (const element of focusing.splice(0))
+    if (element.isConnected) (element as HTMLElement).focus();
 }
 
 function attempt(fiber: Fiber, passive: boolean, render: () => RenderNode): true | PromiseLike<unknown> | void {
@@ -505,7 +519,7 @@ function attempt(fiber: Fiber, passive: boolean, render: () => RenderNode): true
           queued.forEach((run) => run());
         }
 
-        unwait(fiber);
+        if (!fiber.recovering) unwait(fiber);
         fiber.retried = undefined;
         return true;
       } catch (thrown) {
@@ -720,9 +734,11 @@ function recover(fiber: Fiber, thrown: unknown, boundary = fiber.boundary) {
   const handler = boundary;
 
   wait(fiber, handler);
+  fiber.recovering = true;
 
   Promise.resolve(handler.catch!(error)).then(
     () => {
+      fiber.recovering = undefined;
       if (!fiber.scope!.active || fiber.retried) return;
       fiber.retried = true;
       schedule(fiber.scope!);
@@ -976,7 +992,7 @@ function patchProp(fiber: Fiber, element: Element, key: string, previous: any, n
 
   const name = key == 'htmlFor' ? 'for' : key;
 
-  if (key.startsWith('aria-') && next != null) {
+  if ((key.startsWith('aria-') || key.startsWith('data-') || ENUMERATED.includes(key)) && next != null) {
     element.setAttribute(name, String(next));
     return;
   }
@@ -995,7 +1011,7 @@ function patchProp(fiber: Fiber, element: Element, key: string, previous: any, n
     return;
   }
 
-  if (key in element && !key.startsWith('data-') && element.namespaceURI !== SVG)
+  if (key in element && (element.namespaceURI !== SVG || settable(element, key)))
     try {
       (element as any)[key] = next;
       return;
@@ -1103,6 +1119,16 @@ function collect(value: Style, collected: Collected, doors: number) {
 
 function appendClasses(classes: string[], value: unknown) {
   if (typeof value == 'string') classes.push(...value.split(/\s+/).filter(Boolean));
+}
+
+function settable(element: Element, key: string) {
+  let target: object = element;
+  let descriptor: PropertyDescriptor | undefined;
+
+  while (!(descriptor = Object.getOwnPropertyDescriptor(target, key)))
+    target = Object.getPrototypeOf(target);
+
+  return !!(descriptor.set || descriptor.writable);
 }
 
 function applyRef(ref: unknown, value: Element | null) {

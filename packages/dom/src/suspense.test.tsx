@@ -1083,6 +1083,63 @@ describe('suspense and recovery', () => {
     expect(root.textContent).toBe('restored');
   });
 
+  it('will let a Provider without state own a fallback', async () => {
+    const loaded = mockPromise<() => Component.Node>();
+    const Lazy = lazy(() => loaded);
+    const root = document.createElement('main');
+
+    render(
+      <Provider fallback={<i>waiting</i>}>
+        <Lazy />
+      </Provider>,
+      root
+    );
+    expect(root.textContent).toBe('waiting');
+
+    loaded.resolve(() => <span>done</span>);
+    await flushMicrotasks();
+    expect(root.textContent).toBe('done');
+  });
+
+  it('will hold an escalated boundary until its catch completes', async () => {
+    const handled = mockPromise<void>();
+
+    class Inner extends Component {
+      broken = true;
+
+      async catch(error: Error) {
+        this.broken = false;
+        throw error;
+      }
+
+      render() {
+        if (this.broken) throw new Error('broken');
+        return <p>content</p>;
+      }
+    }
+
+    class Outer extends Component {
+      fallback = <i>outer</i>;
+
+      catch() {
+        return handled;
+      }
+
+      render() {
+        return <Inner />;
+      }
+    }
+
+    const root = document.createElement('main');
+    render(<Outer />, root);
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(root.textContent).toBe('outer');
+
+    handled.resolve();
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(root.textContent).toBe('content');
+  });
+
   it('will pass a rejected recovery to the next boundary', async () => {
     let restored = false;
     const outer = vi.fn((_message: string) => {

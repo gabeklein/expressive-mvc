@@ -93,7 +93,7 @@ describe('render', () => {
     await flushMicrotasks();
     expect(root.querySelector('div')).toBe(node);
     expect(node.className).toBe('next next-style');
-    expect(node.hasAttribute('data-state')).toBe(false);
+    expect(node.getAttribute('data-state')).toBe('false');
     expect(node.hidden).toBe(false);
     expect(node.title).toBe('');
     expect(node.style.height).toBe('12px');
@@ -753,6 +753,88 @@ describe('render', () => {
 
     expect(after.map((node) => node.textContent)).toEqual(['c', 'a', 'b']);
     expect(after).toEqual([before[2], before[0], before[1]]);
+  });
+
+  it('will assign settable properties on SVG elements', () => {
+    const root = document.createElement('main');
+    render(<svg tabIndex={0} viewBox="0 0 10 10" />, root);
+
+    const svg = root.querySelector('svg')!;
+    expect(svg.getAttribute('tabindex')).toBe('0');
+    expect(svg.hasAttribute('tabIndex')).toBe(false);
+    expect(svg.getAttribute('viewBox')).toBe('0 0 10 10');
+  });
+
+  it('will stringify booleans on data and enumerated attributes', async () => {
+    class Flags extends Component {
+      on = true;
+
+      render() {
+        const { on } = this;
+        return <a data-on={on} draggable={on} spellcheck={!on} aria-hidden={on} />;
+      }
+    }
+
+    let flags!: Flags;
+    const root = document.createElement('main');
+    render(<Flags is={(value) => (flags = value)} />, root);
+    const link = root.querySelector('a')!;
+
+    expect(link.getAttribute('data-on')).toBe('true');
+    expect(link.getAttribute('draggable')).toBe('true');
+    expect(link.getAttribute('spellcheck')).toBe('false');
+    expect(link.getAttribute('aria-hidden')).toBe('true');
+
+    flags.on = false;
+    await flushMicrotasks();
+    expect(link.getAttribute('data-on')).toBe('false');
+    expect(link.getAttribute('draggable')).toBe('false');
+    expect(link.getAttribute('spellcheck')).toBe('true');
+    expect(link.getAttribute('aria-hidden')).toBe('false');
+  });
+
+  it('will focus an autofocus element once it is inserted', async () => {
+    class Editor extends Component {
+      editing = false;
+      tick = 0;
+
+      render() {
+        const { editing, tick } = this;
+        return editing ? <input autofocus data-tick={tick} /> : <button>edit</button>;
+      }
+    }
+
+    let editor!: Editor;
+    const root = document.body.appendChild(document.createElement('main'));
+    render(<Editor is={(value) => (editor = value)} />, root);
+
+    editor.editing = true;
+    await flushMicrotasks();
+    const input = root.querySelector('input')!;
+    expect(document.activeElement).toBe(input);
+
+    input.blur();
+    editor.tick++;
+    await flushMicrotasks();
+    expect(document.activeElement).not.toBe(input);
+  });
+
+  it('will not focus an autofocus element outside the document', () => {
+    const root = document.createElement('main');
+    render(<input autofocus />, root);
+
+    expect(document.activeElement).not.toBe(root.querySelector('input'));
+  });
+
+  it('will type event currentTarget as the host element', () => {
+    const values: string[] = [];
+    const root = document.createElement('main');
+    render(<input onInput={(event) => values.push(event.currentTarget.value)} />, root);
+
+    const input = root.querySelector('input')!;
+    input.value = 'typed';
+    input.dispatchEvent(new Event('input'));
+    expect(values).toEqual(['typed']);
   });
 
   it('will render MVC collections directly', async () => {
