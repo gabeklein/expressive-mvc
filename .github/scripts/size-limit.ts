@@ -20,57 +20,57 @@ import { withWorkspaceLinks } from './workspace-links';
 const CASES = [
   {
     name: 'mvc: State only',
-    limit: 5490,
+    limit: 5990,
     code: `import State from '@expressive/mvc'; console.log(State);`
   },
   {
     name: 'mvc: everything',
-    limit: 9250,
+    limit: 9760,
     code: `import * as all from '@expressive/mvc'; console.log(all);`
   },
   {
     name: 'react: State only',
-    limit: 9300,
+    limit: 9780,
     code: `import State from '@expressive/react'; console.log(State);`
   },
   {
     name: 'react: typical app',
-    limit: 10110,
+    limit: 10570,
     code: `import State, { Component, get, set, ref, def } from '@expressive/react';
            console.log(State, Component, get, set, ref, def);`
   },
   {
     name: 'react: everything',
-    limit: 12230,
+    limit: 12700,
     code: `import * as all from '@expressive/react'; console.log(all);`
   },
   {
     name: 'dom: renderer',
-    limit: 15870,
+    limit: 16370,
     code: `import State, { Component, Context, def, get, has, map, pending, ref, set } from '@expressive/mvc';
            import { Consumer, Provider, createPortal, lazy, render } from '@expressive/dom';
            console.log(State, Component, Context, Consumer, Provider, createPortal, def, get, has, lazy, map, pending, ref, render, set);`
   },
   {
     name: 'dom: styling',
-    limit: 18100,
+    limit: 18560,
     code: `import * as mvc from '@expressive/mvc';
            import * as dom from '@expressive/dom';
            console.log(mvc, dom);`
   },
   {
     name: 'router: everything',
-    limit: 12330,
+    limit: 12800,
     code: `import * as all from '@expressive/router'; console.log(all);`
   },
   {
     name: 'inspect: install',
-    limit: 9690,
+    limit: 10140,
     code: `import '@expressive/inspect/install';`
   },
   {
     name: 'react + router',
-    limit: 16400,
+    limit: 16870,
     code: `import * as a from '@expressive/react';
            import * as b from '@expressive/router';
            console.log(a, b);`

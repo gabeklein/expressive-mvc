@@ -55,7 +55,7 @@ class Timer extends State {
 - `function` - called with `this` as the instance; may return a cleanup function, an object to assign, an array to process, or a Promise
 - `object` - assigned to state properties
 - `array` - flattened and re-processed
-- `Promise` (returned by a callback) - rejection caught and logged
+- `Promise` (returned by a callback) - a rejection is reported as `Caught.Init` ([Error Handling](#error-handling))
 
 > **Timing:** args (and assigned props, in adapters) apply during activation, *after* field initializers and `State.on` setup. A trailing arg callback - like `new()` and an `on({ after })` handler - sees applied values. The JS constructor body and bare/`before` `State.on` setup run *before* the merge and see only field defaults; don't read an applied prop there.
 
@@ -83,8 +83,9 @@ Children always go before parents; nested contexts destroy inner-to-outer.
 
 Afterward:
 
-- Assignment throws `"Tried to update {state}.{key} but state is destroyed."`
-- Silent updates (`state.set(assign, true)`) return without throwing.
+- Assignment throws `Caught.Destroyed` (`Tried to update {state}.{key} but state is destroyed.`). The throw is an abort signal: a continuation writing after teardown stops there instead of running on against a dead state - loops like `do { this.again = false; await ... } while (this.again)` depend on it. To drop them instead, handle `Caught.Destroyed` - on `State` for the whole app (the usual port of an "ignore updates after unmount" shim), or on one class to keep the abort everywhere else: `State.on({ catch: (e) => e instanceof Caught.Destroyed ? undefined : e })`. A dropped write no longer stops a loop that polls a flag it writes.
+- Silent updates (`state.set(assign, true)`) drop without a report.
+- Subscribing (`get(effect)`, `set(callback)`) still throws.
 
 ## Batching
 
@@ -130,7 +131,57 @@ state.get((current) => {
 
 ## Error Handling
 
-- **Async errors in constructors** - logged to `console.error`; the state is still created.
-- **Writing destroyed state** - throws synchronously; silent `state.set(assign, true)` skips instead.
+What mvc does not throw it reports as a `Caught` (an `Error` exported from `@expressive/mvc`, cases as static properties) to `catch` handlers on the class chain - [State.on()](state.md#stateon). Unhandled: `console.warn` if `error.warning`, else it is thrown - to the writer for a destroyed write, otherwise uncaught (fails a test run, crashes a Node process). Every report carries `state`; `key` and `cause` where they apply.
+
+| `Caught.`   | `warning` | When                                                                   |
+| ----------- | --------- | ---------------------------------------------------------------------- |
+| `Destroyed` | `false`   | write to a destroyed state - thrown to the writer; a handler returning nothing drops it |
+| `Inactive`  | `true`    | constructed, never activated in that tick                              |
+| `Getter`    | `false`   | getter threw while refreshing - value becomes `undefined`; `cause`     |
+| `Init`      | `false`   | async initializer or `new()` rejected - state still created; `cause`   |
+| `Effect`    | `false`   | effect or listener threw during a flush; `cause` - collections resolve to their owner |
+
+`error.name` is the case (`Caught.Effect`), minify-safe - console output and error trackers show it.
+
+`catch` is class-level policy. `Component.catch()` is a separate per-instance boundary for child render errors - a Component's own effect errors reach `State.on({ catch })`, not its boundary.
+
+Error tracker (Sentry shown - any capture call fits) - report with State context, handle the rest, let destroyed writes still abort:
+
+```ts
+State.on({
+  catch(error) {
+    if (error.warning) return error;
+    Sentry.captureException(error, { tags: { state: String(this), key: error.key } });
+    if (error instanceof Caught.Destroyed) return error; // still throws to the writer
+  }
+});
+```
+
+Sentry follows `cause`, so the original error and its stack arrive with the report; the rethrown `Destroyed` is not captured twice.
+
+Log instead of escaping - a long-running process that should survive a failing effect. Warnings and destroyed writes pass on, so both keep their default:
+
+```ts
+State.on({
+  catch(error) {
+    if (error.warning || error instanceof Caught.Destroyed) return error;
+    console.error(error);
+  }
+});
+```
+
+Tests - assert on reports, not console output. A handled report does not escape to fail the run:
+
+```ts
+const caught: Caught[] = [];
+const stop = Composer.on({ catch: (error) => void caught.push(error) });
+
+// ...trigger the failure, flush
+expect(caught).toEqual([expect.any(Caught.Effect)]);
+stop();
+```
+
+Other failures:
+
 - **Reading uninitialized required values** - throws a Suspense-compatible error (Promise with Error properties) that resolves when the value is assigned, or rejects if the state is destroyed first.
 - **Circular updates** - an effect updating a property it reads does not re-trigger in the same cycle; the update lands in the next batch.
