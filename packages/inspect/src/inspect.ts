@@ -3,7 +3,7 @@ import { isElement } from '@expressive/mvc/runtime';
 
 import { act as run, journal, note, noteCall, noteCaught, noteDestroy, recordsCalls, type Frame, type Query } from './journal';
 import { entries, parsePath, serialize, walk } from './serialize';
-import type { Settle } from './settle';
+import type { Act } from './settle';
 import { forget, seen, type TypeInfo } from './types';
 
 export interface Model extends TypeInfo {
@@ -245,7 +245,7 @@ export class Instance {
   }
 
   /** Run `work`, settle, and return the frames it produced. */
-  act(work: (state: State) => unknown, options?: Settle): Promise<Frame[]> {
+  act(work: (state: State) => unknown, options?: Act): Promise<Frame[]> {
     return run(() => work(this.state), options);
   }
 

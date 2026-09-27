@@ -1,10 +1,10 @@
 import type { inspect as Inspect } from './index';
 import { dispatch, type Call } from './dispatch';
 import { bracket } from './bracket';
-import { tick, unsettled, type Settle } from './settle';
+import { tick, unsettled, type Act } from './settle';
 import type { Frame, Options, Query, Summary } from './journal';
 
-export { cdp, type Target } from './cdp';
+export { devtools, type Target } from './devtools';
 
 /**
  * Anything that can run a function in the page: Playwright `Page`, `Frame`, or
@@ -16,7 +16,7 @@ export interface Evaluates {
 
 /**
  * Drive the page's inspector from a test. Every method is one `evaluate`;
- * `around` brackets a step with the journal forced on and returns its frames.
+ * `act` runs a step recording values, settles, and returns the frames it produced.
  */
 export function inspect(target: Evaluates) {
   const remote =
@@ -48,9 +48,9 @@ export function inspect(target: Evaluates) {
       clear: remote<void>('journal', 'clear') as () => Promise<void>
     },
 
-    async around(step: () => unknown, options: Settle = {}): Promise<Frame[]> {
+    async act(step: () => unknown, options: Act = {}): Promise<Frame[]> {
       const result = await bracket({ record, seq, frames }, step, () => target.evaluate(tick), options);
-      if (!result.settled) unsettled(options.timeout);
+      if (!result.settled) unsettled(options.timeout, result.pending);
       return result.frames;
     }
   };

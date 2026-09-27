@@ -283,6 +283,19 @@ describe('journal', () => {
     }
   });
 
+  it('will act until an instance address sees a frame', async () => {
+    attach();
+    const composer = Composer.new();
+    const frames = await act(
+      () => {
+        composer.draft = 'first';
+        setTimeout(() => setTimeout(() => (composer.rows = 5), 5));
+      },
+      { until: `${composer}.rows` }
+    );
+    expect(frames.flatMap((frame) => frame.events.map((event) => event.key))).toEqual(['draft', 'rows']);
+  });
+
   it('will summarize frames per instance, latest first', async () => {
     attach();
     journal.record({ level: 'values', calls: true });

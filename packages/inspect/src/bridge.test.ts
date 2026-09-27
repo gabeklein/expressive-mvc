@@ -58,11 +58,11 @@ describe('inspect(page)', () => {
     expect(await api.journal.frames()).toEqual([]);
   });
 
-  it('will bracket a step with around and restore the level', async () => {
+  it('will bracket a step with act and restore the level', async () => {
     const composer = Composer.new();
     const api = inspect(page);
 
-    const frames = await api.around(() => {
+    const frames = await api.act(() => {
       composer.submit('hi');
     });
 
@@ -72,11 +72,11 @@ describe('inspect(page)', () => {
     expect(journal.frames().length).toBe(1);
   });
 
-  it('will wait around a step until deferred work settles', async () => {
+  it('will wait a step until deferred work settles', async () => {
     const composer = Composer.new();
     const api = inspect(page);
 
-    const frames = await api.around(() => {
+    const frames = await api.act(() => {
       setTimeout(() => {
         composer.draft = 'a';
         setTimeout(() => (composer.draft = 'b'));
@@ -86,12 +86,12 @@ describe('inspect(page)', () => {
     expect(frames.map((frame) => frame.events[0].value)).toEqual(['a', 'b']);
   });
 
-  it('will record values around a step while keys are on, then restore keys', async () => {
+  it('will record values a step while keys are on, then restore keys', async () => {
     const composer = Composer.new();
     const api = inspect(page);
     journal.record({ level: 'keys' });
 
-    const frames = await api.around(() => {
+    const frames = await api.act(() => {
       composer.draft = 'x';
     });
 
@@ -99,29 +99,55 @@ describe('inspect(page)', () => {
     expect(journal.record().level).toBe('keys');
   });
 
-  it('will leave a values recording as it is around a step', async () => {
+  it('will record its own filters for the window and restore the journal after', async () => {
     const composer = Composer.new();
     const api = inspect(page);
-    journal.record({ level: 'values' });
-    const record = vi.spyOn(journal, 'record');
+    journal.record({ level: 'keys', types: ['Other'] });
 
-    const frames = await api.around(() => {
-      composer.draft = 'x';
-    });
+    const frames = await api.act(
+      () => {
+        composer.draft = 'x';
+      },
+      { record: { types: [] } }
+    );
 
-    expect(frames[0].events[0].value).toBe('x');
-    expect(record.mock.calls.every(([options]) => options === undefined)).toBe(true);
-    record.mockRestore();
+    expect(frames[0].events[0]).toMatchObject({ type: 'Composer', value: 'x' });
+    expect(journal.record()).toMatchObject({ level: 'keys', types: ['Other'] });
   });
 
-  it('will warn when around outlasts its timeout', async () => {
+  it('will wait until a target sees a frame', async () => {
+    const composer = Composer.new();
+    const api = inspect(page);
+
+    const frames = await api.act(
+      () => {
+        setTimeout(() => setTimeout(() => setTimeout(() => (composer.draft = 'late'), 5)));
+      },
+      { until: 'Composer.draft' }
+    );
+
+    expect(frames.at(-1)!.events[0]).toMatchObject({ key: 'draft', value: 'late' });
+  });
+
+  it('will warn naming a target that never saw a frame', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    Composer.new();
+
+    await inspect(page).act(() => {}, { until: ['Composer.draft'], timeout: 20 });
+
+    expect(warn).toHaveBeenCalledWith('No frame for Composer.draft within 20ms - frames may be incomplete.');
+    warn.mockRestore();
+  });
+
+
+  it('will warn when act outlasts its timeout', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const composer = Composer.new();
     const api = inspect(page);
     const loop = setInterval(() => composer.draft += '.', 0);
 
     try {
-      await api.around(() => {}, { timeout: 20 });
+      await api.act(() => {}, { timeout: 20 });
       expect(warn).toHaveBeenCalledWith(expect.stringContaining('Still active after 20ms'));
     } finally {
       clearInterval(loop);
@@ -132,7 +158,7 @@ describe('inspect(page)', () => {
   it('will summarize the journal', async () => {
     const composer = Composer.new();
     const api = inspect(page);
-    await api.around(() => {
+    await api.act(() => {
       composer.draft = 'x';
     });
     expect(await api.journal.summary()).toMatchObject([{ type: 'Composer', keys: { draft: { count: 1, value: 'x' } } }]);
@@ -142,7 +168,7 @@ describe('inspect(page)', () => {
     const composer = Composer.new();
     const api = inspect(locator);
     expect(await api.get('Composer.draft')).toBe('');
-    const frames = await api.around(() => {
+    const frames = await api.act(() => {
       composer.draft = 'via locator';
     });
     expect(frames[0].events[0].value).toBe('via locator');

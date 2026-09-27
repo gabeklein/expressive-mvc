@@ -13,22 +13,34 @@ type Reply = {
   result?: { result: { value?: unknown }; exceptionDetails?: { text: string; exception?: { description?: string } } };
 };
 
+const describe = (targets: Target[]) => targets.map((target) => `\n  ${target.type} ${target.title} ${target.url}`).join('');
+
 /**
  * Connect to a Chrome DevTools Protocol endpoint - a Node process under `--inspect`, or a browser with a
- * debug port - as an `evaluate` target for `inspect()`. Takes the first target `pick` accepts, or a
- * `ws://` debugger URL directly.
+ * debug port - as an `evaluate` target for `inspect()`. `pick` narrows `/json/list` by predicate, or by a
+ * string matched against title and URL; more than one match throws with the list. A `ws://` URL connects directly.
  */
-export async function cdp(
+export async function devtools(
   endpoint = 'http://127.0.0.1:9229',
-  pick: (target: Target) => boolean = () => true
+  pick?: string | ((target: Target) => boolean)
 ): Promise<Evaluates & { close(): void }> {
-  const url = endpoint.startsWith('ws')
-    ? endpoint
-    : ((await (await fetch(`${endpoint}/json/list`)).json()) as Target[]).find(
-        (target) => target.webSocketDebuggerUrl && pick(target)
-      )?.webSocketDebuggerUrl;
+  let url = endpoint;
 
-  if (!url) throw new Error(`No debug target at ${endpoint}.`);
+  if (!endpoint.startsWith('ws')) {
+    const targets = ((await (await fetch(`${endpoint}/json/list`)).json()) as Target[]).filter((target) => target.webSocketDebuggerUrl);
+    const match =
+      typeof pick == 'string' ? (target: Target) => target.title.includes(pick) || target.url.includes(pick) : pick;
+    const found = match ? targets.filter(match) : targets;
+
+    if (found.length !== 1)
+      throw new Error(
+        found.length
+          ? `Several debug targets at ${endpoint} - narrow with pick:${describe(found)}`
+          : `No debug target at ${endpoint}${typeof pick == 'string' ? ` matches "${pick}"` : pick ? ' matches pick' : ''}.${describe(targets)}`
+      );
+
+    url = found[0].webSocketDebuggerUrl!;
+  }
 
   const socket = new WebSocket(url);
   const waiting = new Map<number, (reply: Reply) => void>();
