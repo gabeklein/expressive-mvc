@@ -3,8 +3,11 @@ import type { Options } from './journal';
 export const SETTLE_TIMEOUT = 1000;
 
 export interface Act {
-  /** `Type.key` or `id.key` addresses that must each see a recorded frame before settling. */
-  until?: string | string[];
+  /**
+   * What to wait for before settling: `Type.key` / `id.key` addresses that must each see a frame after the
+   * step's synchronous writes, or `{ [address]: value }` pairs that must each hold that value.
+   */
+  until?: string | string[] | Record<string, unknown>;
   /** Longest to wait, in ms; default 1000. */
   timeout?: number;
   /** Recording filters for this window, instead of the journal's - `{ paths: [], types: [], keys: [] }` records everything. */
@@ -32,7 +35,7 @@ export async function settle(seq: () => number | Promise<number>, wait: () => un
 export function unsettled(timeout = SETTLE_TIMEOUT, pending: string[] = []) {
   console.warn(
     pending.length
-      ? `No frame for ${pending.join(', ')} within ${timeout}ms - frames may be incomplete.`
+      ? `Not reached within ${timeout}ms: ${pending.join(', ')} - frames may be incomplete.`
       : `Still active after ${timeout}ms - frames may be incomplete. Narrow the recording ({ record: { types, paths, keys } }) to exclude background work, or pass { timeout }.`
   );
 }

@@ -22,10 +22,11 @@ async function act(step: unknown, options?: Act) {
   const remote = {
     record: (...options: Options[]) => journal('record', ...options),
     seq: () => journal('seq'),
-    frames: (query: Query) => journal('frames', query)
+    frames: (query: Query) => journal('frames', query),
+    get: (address: string) => dispatch([['get'], [address]])
   };
 
-  const { value, frames, settled, pending } = await bracket(remote, () => dispatch([step[0].split('.'), step.slice(1)]), tick, options);
+  const { value, frames, settled, pending } = await bracket(remote, () => dispatch([step[0].split('.'), step.slice(1)]), tick, options, true);
 
   return { value: value ?? null, frames, settled, pending };
 }

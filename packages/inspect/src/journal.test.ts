@@ -283,13 +283,71 @@ describe('journal', () => {
     }
   });
 
+  it('will act past a write the step makes itself', async () => {
+    attach();
+    const composer = Composer.new();
+    const frames = await act(
+      () => {
+        composer.draft = 'sending';
+        setTimeout(() => (composer.draft = 'sent'), 20);
+      },
+      { until: 'Composer.draft' }
+    );
+    expect(frames.flatMap((frame) => frame.events.map((event) => event.value))).toEqual(['sending', 'sent']);
+  });
+
+  it('will count a write an async step awaited', async () => {
+    const warn = mockWarn();
+    attach();
+    const composer = Composer.new();
+    await act(
+      async () => {
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        composer.draft = 'done';
+      },
+      { until: 'Composer.draft', timeout: 200 }
+    );
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it('will act until an address holds a value', async () => {
+    attach();
+    const composer = Composer.new();
+    const frames = await act(
+      () => {
+        composer.draft = 'sending';
+        setTimeout(() => (composer.draft = 'sent'), 20);
+      },
+      { until: { 'Composer.draft': 'sent' } }
+    );
+    expect(frames.at(-1)!.events[0].value).toBe('sent');
+  });
+
+  it('will not wait for a value already held', async () => {
+    const warn = mockWarn();
+    attach();
+    Composer.new();
+    expect(await act(() => {}, { until: { 'Composer.draft': '' } })).toEqual([]);
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it('will warn when a value never holds', async () => {
+    const warn = mockWarn();
+    attach();
+    Composer.new();
+    await act(() => {}, { until: { 'Composer.draft': 'never' }, timeout: 20 });
+    expect(warn).toHaveBeenCalledWith('Not reached within 20ms: Composer.draft - frames may be incomplete.');
+  });
+
   it('will act until an instance address sees a frame', async () => {
     attach();
     const composer = Composer.new();
     const frames = await act(
       () => {
-        composer.draft = 'first';
-        setTimeout(() => setTimeout(() => (composer.rows = 5), 5));
+        setTimeout(() => {
+          composer.draft = 'first';
+          setTimeout(() => (composer.rows = 5), 5);
+        });
       },
       { until: `${composer}.rows` }
     );

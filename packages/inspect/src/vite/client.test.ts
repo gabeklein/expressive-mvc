@@ -109,6 +109,15 @@ describe('connect', () => {
     expect(value).toMatchObject({ settled: false, pending: ['Composer.draft'] });
   });
 
+  it('will act until an address holds a value', async () => {
+    const composer = Composer.new();
+    const { hot, ask } = channel();
+    connect(hot);
+    setTimeout(() => (composer.draft = 'ready'), 10);
+    const { value } = await ask(1, [['act'], [['get', 'Composer.draft'], { until: { 'Composer.draft': 'ready' } }]]);
+    expect(value).toMatchObject({ settled: true, pending: [] });
+  });
+
   it('will answer an error for act without a call', async () => {
     const { hot, ask } = channel();
     connect(hot);

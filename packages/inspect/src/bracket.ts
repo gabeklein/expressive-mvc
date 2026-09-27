@@ -5,6 +5,7 @@ export interface Remote {
   record(options?: Options): Required<Options> | Promise<Required<Options>>;
   seq(): number | Promise<number>;
   frames(query: Query): Frame[] | Promise<Frame[]>;
+  get(address: string): unknown;
 }
 
 const hits = (target: string, event: Event) => {
@@ -12,22 +13,46 @@ const hits = (target: string, event: Event) => {
   return event.key === target.slice(dot + 1) && (event.type === target.slice(0, dot) || event.id === target.slice(0, dot));
 };
 
-/** Run `step` recording values, wait for `until`, settle, and return what it produced; the prior recording is restored. */
-export async function bracket(remote: Remote, step: () => unknown, wait: () => unknown, { until = [], timeout = SETTLE_TIMEOUT, record }: Act = {}) {
+/**
+ * Run `step` recording values, wait for `until`, settle, and return what it produced; the prior recording is restored.
+ * `local` steps run here, so activity for `until` counts once their synchronous writes flush, not once they resolve.
+ */
+export async function bracket(
+  remote: Remote,
+  step: () => unknown,
+  wait: () => unknown,
+  { until = [], timeout = SETTLE_TIMEOUT, record }: Act = {},
+  local?: boolean
+) {
   const before = await remote.record();
   const since = await remote.seq();
 
   await remote.record({ ...record, level: 'values' });
 
   try {
-    const value = await step();
+    const running = step();
+    let from: number | undefined;
+
+    if (local) {
+      await undefined;
+      from = await remote.seq();
+    }
+
+    const value = await running;
+
+    from ??= await remote.seq();
     const end = Date.now() + timeout;
-    const pending = new Set(([] as string[]).concat(until));
+    const values = typeof until == 'string' || Array.isArray(until) ? undefined : until;
+    const pending = new Set(values ? Object.keys(values) : ([] as string[]).concat(until as string | string[]));
 
     while (pending.size) {
-      for (const frame of await remote.frames({ since }))
-        for (const event of frame.events)
-          for (const target of pending) if (hits(target, event)) pending.delete(target);
+      if (values) {
+        for (const address of pending)
+          if (JSON.stringify(await remote.get(address)) === JSON.stringify(values[address])) pending.delete(address);
+      } else
+        for (const frame of await remote.frames({ since: from }))
+          for (const event of frame.events)
+            for (const target of pending) if (hits(target, event)) pending.delete(target);
 
       if (!pending.size || Date.now() >= end) break;
 

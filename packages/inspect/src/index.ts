@@ -1,5 +1,5 @@
-import { attach, call, clearCaught, detach, find, get, health, Instance, instances, models, orphans, roots, set, tree, wrapAll } from './inspect';
-import { act, journal as base, type Options } from './journal';
+import { act, attach, call, clearCaught, detach, find, get, health, Instance, instances, models, orphans, roots, set, tree, wrapAll } from './inspect';
+import { journal as base, type Options } from './journal';
 import { label, resolve } from './types';
 
 export type { Health, Model, Node } from './inspect';

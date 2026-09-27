@@ -49,7 +49,7 @@ export function inspect(target: Evaluates) {
     },
 
     async act(step: () => unknown, options: Act = {}): Promise<Frame[]> {
-      const result = await bracket({ record, seq, frames }, step, () => target.evaluate(tick), options);
+      const result = await bracket({ record, seq, frames, get: remote('get') }, step, () => target.evaluate(tick), options);
       if (!result.settled) unsettled(options.timeout, result.pending);
       return result.frames;
     }

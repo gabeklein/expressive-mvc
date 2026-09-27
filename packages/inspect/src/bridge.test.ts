@@ -129,13 +129,28 @@ describe('inspect(page)', () => {
     expect(frames.at(-1)!.events[0]).toMatchObject({ key: 'draft', value: 'late' });
   });
 
+  it('will wait until an address holds a value', async () => {
+    const composer = Composer.new();
+    const api = inspect(page);
+
+    const frames = await api.act(
+      async () => {
+        composer.draft = 'sending';
+        setTimeout(() => (composer.draft = 'sent'), 20);
+      },
+      { until: { 'Composer.draft': 'sent' } }
+    );
+
+    expect(frames.flatMap((frame) => frame.events.map((event) => event.value))).toEqual(['sending', 'sent']);
+  });
+
   it('will warn naming a target that never saw a frame', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     Composer.new();
 
     await inspect(page).act(() => {}, { until: ['Composer.draft'], timeout: 20 });
 
-    expect(warn).toHaveBeenCalledWith('No frame for Composer.draft within 20ms - frames may be incomplete.');
+    expect(warn).toHaveBeenCalledWith('Not reached within 20ms: Composer.draft - frames may be incomplete.');
     warn.mockRestore();
   });
 

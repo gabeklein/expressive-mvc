@@ -35,14 +35,16 @@ composer.model()                     // { id, typeId, type, site?, parent?, keys
 composer.watch((key) => ..., ['draft'])   // key per update, null on destroy; unsubscribe returned
 composer.frames({ since })           // this instance's journal
 await composer.act((s) => s.submit('x'))  // run, settle, return frames produced
-await composer.act(work, { until: 'Composer.sent', timeout: 3000, record: { paths: [] } })
+await composer.act(work, { until: { 'Composer.status': 'sent' }, timeout: 3000, record: { paths: [] } })
 ```
 
 Ownership: a State in a plain field, `has` pool, or `map` is that owner's child; a `get(Type)` reference is not. First owner wins. One `Instance` per state - `find` returns the same object each time; a held reference keeps working after destruction, with `alive` false and `until` set.
 
 `act` records values for its window whatever the journal level, and returns every frame produced, downstream ones included. It settles once a macrotask passes with no new recorded frame - so timer and promise chains finish - capped at `timeout` (default 1s), with a warning that frames may be incomplete.
 
-- `until` - `Type.key` or `id.key` addresses (one or a list) that must each see a frame first; for work that waits on I/O, where quiet arrives before the change does. The warning names any that never did.
+- `until` - what to wait for first, for work that waits on I/O, where quiet arrives before the change does. `timeout` caps it; the warning names what never arrived.
+  - `{ 'Chat.status': 'ready' }` - each address holds that value (compared as JSON). Precise everywhere: a loading write doesn't count, and a value the step already awaited is met at once. Prefer it.
+  - `'Chat.status'` or a list - each address sees a frame after the step's synchronous writes, so a loading flag it sets doesn't count. On the bridge the step runs remotely, so activity counts from when it resolves - a step that awaits the change itself waits out the timeout; use the value form there.
 - `record` - filters for this window instead of the journal's (`{ types: [], paths: [], keys: [] }` records everything); the journal's recording is restored after. Filtered-out events don't count as activity - narrow to exclude a poller or animation loop rather than raising the timeout.
 
 ## Orphans
@@ -145,7 +147,7 @@ const since = await api.journal.seq();
 await page.click('#submit');
 const frames = await api.journal.frames({ since, type: 'Composer' });
 
-const produced = await api.act(() => page.click('#submit'), { until: 'Composer.sent' });   // same act and options, across the wire
+const produced = await api.act(() => page.click('#submit'), { until: { 'Composer.status': 'sent' } });   // same act and options
 await api.journal.record({ level: 'keys', types: ['Composer'] }); // labels, not classes
 ```
 
@@ -258,7 +260,7 @@ The journal records `keys` from page load - a connected page carries history bef
 
 ```bash
 curl … -d '["act", ["call", "Composer.submit", "hi"]]'
-curl … -d '["act", ["call", "Composer.submit", "hi"], { "until": "Composer.sent", "timeout": 3000 }]'
+curl … -d '["act", ["call", "Composer.submit", "hi"], { "until": { "Composer.status": "sent" }, "timeout": 3000 }]'
 ```
 
 For what the developer does in the browser, read back with a cursor: `journal.seq`, then `journal.frames` with `since` once they're done - raise to `values` first if keys are not enough.
@@ -285,7 +287,7 @@ import { devtools, inspect } from '@expressive/inspect/bridge';
 const target = await devtools();                     // http://127.0.0.1:9229
 const api = inspect(target);
 await api.get('HostChat.status');
-await api.act(() => api.call('HostChat.send', 'hi'), { until: 'HostChat.status' });
+await api.act(() => api.call('HostChat.send', 'hi'), { until: { 'HostChat.status': 'sent' } });
 target.close();
 ```
 

@@ -1,9 +1,10 @@
 import { Caught, Context, State } from '@expressive/mvc';
 import { isElement } from '@expressive/mvc/runtime';
 
-import { act as run, journal, note, noteCall, noteCaught, noteDestroy, recordsCalls, type Frame, type Query } from './journal';
+import { journal, note, noteCall, noteCaught, noteDestroy, recordsCalls, type Frame, type Query } from './journal';
 import { entries, parsePath, serialize, walk } from './serialize';
-import type { Act } from './settle';
+import { bracket } from './bracket';
+import { tick, unsettled, type Act } from './settle';
 import { forget, seen, type TypeInfo } from './types';
 
 export interface Model extends TypeInfo {
@@ -246,7 +247,7 @@ export class Instance {
 
   /** Run `work`, settle, and return the frames it produced. */
   act(work: (state: State) => unknown, options?: Act): Promise<Frame[]> {
-    return run(() => work(this.state), options);
+    return act(() => work(this.state), options);
   }
 
   /** Call `fn` on each update, and with `null` on destroy; `keys` narrows updates. Returns unsubscribe. */
@@ -397,6 +398,13 @@ export function tree(): Node[] {
   }
 
   return out;
+}
+
+/** Run `work` recording values; returns the frames it produced once `until` holds and activity goes quiet. */
+export async function act(work: () => unknown, options: Act = {}): Promise<Frame[]> {
+  const { frames, settled, pending } = await bracket({ ...journal, get }, work, tick, options, true);
+  if (!settled) unsettled(options.timeout, pending);
+  return frames;
 }
 
 export function get(address?: string): unknown {

@@ -1,8 +1,6 @@
 import { Caught, State } from '@expressive/mvc';
 
 import { parsePath, serialize } from './serialize';
-import { bracket } from './bracket';
-import { tick, unsettled, type Act } from './settle';
 import { labelOf, seen } from './types';
 
 export type Level = 'off' | 'keys' | 'values';
@@ -187,12 +185,6 @@ export function recordsCalls(): boolean {
   return config.calls && config.level !== 'off';
 }
 
-/** Run `work` recording values; returns the frames it produced once quiet. */
-export async function act(work: () => unknown, options: Act = {}): Promise<Frame[]> {
-  const { frames, settled, pending } = await bracket(journal, work, tick, options);
-  if (!settled) unsettled(options.timeout, pending);
-  return frames;
-}
 
 export function note(state: State, key: unknown, store: Map<string, unknown>): void {
   const name = String(key);
