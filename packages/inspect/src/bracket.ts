@@ -8,10 +8,14 @@ export interface Remote {
   get(address: string): unknown;
 }
 
-const hits = (target: string, event: Event) => {
-  const dot = target.indexOf('.');
-  return event.key === target.slice(dot + 1) && (event.type === target.slice(0, dot) || event.id === target.slice(0, dot));
-};
+/** Resolve `address.key` to the instance `address` names - label, id, or owner path - so frames match it alone. */
+async function locate(remote: Remote, target: string) {
+  const dot = target.lastIndexOf('.');
+  const found = (await remote.get(target.slice(0, dot))) as { $ref?: string } | undefined;
+  const key = target.slice(dot + 1);
+
+  return (event: Event) => event.key === key && event.id === found?.$ref;
+}
 
 /**
  * Run `step` recording values, wait for `until`, settle, and return what it produced; the prior recording is restored.
@@ -44,6 +48,9 @@ export async function bracket(
     const end = Date.now() + timeout;
     const values = typeof until == 'string' || Array.isArray(until) ? undefined : until;
     const pending = new Set(values ? Object.keys(values) : ([] as string[]).concat(until as string | string[]));
+    const matchers = new Map<string, (event: Event) => boolean>();
+
+    if (!values) for (const target of pending) matchers.set(target, await locate(remote, target));
 
     while (pending.size) {
       if (values) {
@@ -52,7 +59,7 @@ export async function bracket(
       } else
         for (const frame of await remote.frames({ since: from }))
           for (const event of frame.events)
-            for (const target of pending) if (hits(target, event)) pending.delete(target);
+            for (const target of pending) if (matchers.get(target)!(event)) pending.delete(target);
 
       if (!pending.size || Date.now() >= end) break;
 

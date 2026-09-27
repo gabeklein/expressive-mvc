@@ -2,7 +2,7 @@ import { Caught, State, has, map, set } from '@expressive/mvc';
 import { describe, expect, it } from 'vitest';
 
 import { flushMicrotasks, mockUncaught, mockWarn } from '../test.setup';
-import { attach, call, detach, get, health, journal, models, set as assign, tree } from './index';
+import { act, attach, call, detach, find, get, health, journal, models, set as assign, tree } from './index';
 
 class Child extends State {
   name = 'kid';
@@ -149,6 +149,86 @@ describe('get', () => {
     Parent.new();
     expect(get('Parent.lazy')).toBeUndefined();
     expect(get('Parent.child.name')).toBe('kid');
+  });
+});
+
+describe('labels shared by several classes', () => {
+  const declare = () =>
+    class Control extends State {
+      value = 0;
+    };
+
+  it('will throw rather than pick one', () => {
+    attach();
+    declare().new();
+    declare().new();
+
+    expect(() => find('Control')).toThrow(/^Control matches 2 classes \(T\d+, T\d+\) - address by instance id or owner path, or label\(\) one\./);
+    expect(() => get('Control.value')).toThrow(/matches 2 classes/);
+  });
+
+  it('will reach each by instance id', () => {
+    attach();
+    const first = declare().new();
+    declare().new();
+
+    expect(get(`${first}.value`)).toBe(0);
+  });
+
+  it('will reject an act waiting on one', async () => {
+    attach();
+    declare().new();
+    declare().new();
+
+    await expect(act(() => {}, { until: 'Control.value' })).rejects.toThrow(/matches 2 classes/);
+  });
+});
+
+describe('act until an address', () => {
+  class Child extends State {
+    value = 0;
+  }
+
+  class Parent extends State {
+    child = new Child();
+  }
+
+  it('will follow an owner path to the instance it names', async () => {
+    attach();
+    const parent = Parent.new();
+    const stray = Child.new();
+
+    const frames = await act(
+      () => {
+        setTimeout(() => {
+          stray.value = 1;
+          setTimeout(() => (parent.child.value = 2), 5);
+        });
+      },
+      { until: 'Parent.child.value' }
+    );
+
+    expect(frames.at(-1)!.events[0]).toMatchObject({ id: String(parent.child), value: 2 });
+  });
+
+  it('will follow a label to its first instance only', async () => {
+    const warn = mockWarn();
+    attach();
+    Child.new();
+    const second = Child.new();
+
+    await act(() => void setTimeout(() => (second.value = 1)), { until: 'Child.value', timeout: 30 });
+
+    expect(warn).toHaveBeenCalledWith('Not reached within 30ms: Child.value - frames may be incomplete.');
+  });
+
+  it('will wait out an address that names nothing', async () => {
+    const warn = mockWarn();
+    attach();
+
+    await act(() => {}, { until: 'Missing.value', timeout: 20 });
+
+    expect(warn).toHaveBeenCalledWith('Not reached within 20ms: Missing.value - frames may be incomplete.');
   });
 });
 

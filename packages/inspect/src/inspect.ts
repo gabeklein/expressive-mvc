@@ -336,10 +336,25 @@ export function find(target: string): Instance | undefined {
   const byId = live.get(target);
   const held = byId && (byId.held ?? byId.ref.deref());
   if (held) return Instance.of(held);
+
+  const types = new Map<typeof State, string>();
+  let first: State | undefined;
+
   for (const pool of [mainline(), abandoned()])
-    for (const state of pool)
-      if (seen(state.constructor as typeof State).type === target) return Instance.of(state);
-  return undefined;
+    for (const state of pool) {
+      const Type = state.constructor as typeof State;
+      const info = seen(Type);
+      if (info.type !== target) continue;
+      first ??= state;
+      types.set(Type, info.typeId);
+    }
+
+  if (types.size > 1)
+    throw new Error(
+      `${target} matches ${types.size} classes (${[...types.values()].join(', ')}) - address by instance id or owner path, or label() one. models() lists their construction sites.`
+    );
+
+  return first && Instance.of(first);
 }
 
 export function instances(): Instance[] {
