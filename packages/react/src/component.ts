@@ -63,8 +63,8 @@ Object.defineProperty(Component, 'use', {
  *
  * - On the root Component, host own-property keys are trapped so each lands as a
  *   plain own property (out of observed state); each adapter assigns its own set.
- * - capitalized methods are rewritten into subcomponents as non-configurable
- *   getters, so bootstrap skips them too.
+ * - capitalized methods are rewritten into subcomponents as get/set accessors,
+ *   so bootstrap skips them too.
  *
  * (Sealing `render` as the content-render seam is handled by core itself.)
  *
@@ -87,7 +87,7 @@ Component.on({
   },
   before(self){
     // capitalized instance fields into subcomponents
-    subcomponents(self, true);
+    subcomponents(self);
   }
 });
 
@@ -166,13 +166,13 @@ function render(from: Component, context: Context) {
 }
 
 /** Rewrite each own capitalized function on `target` into a subcomponent. */
-function subcomponents(target: object, configurable?: boolean) {
+function subcomponents(target: object) {
   for (const key of Object.getOwnPropertyNames(target)) {
     if (!/^[A-Z]/.test(key)) continue;
     const { value } = Object.getOwnPropertyDescriptor(target, key)!;
     if (typeof value != 'function') continue;
     Object.defineProperty(target, key, {
-      configurable,
+      configurable: true,
       get(this: Component) {
         const owner = this.is;
         let render = unbind(value);
@@ -197,7 +197,7 @@ function subcomponents(target: object, configurable?: boolean) {
           configurable: true
         });
 
-        subcomponents(this, true);
+        subcomponents(this);
       }
     });
   }
