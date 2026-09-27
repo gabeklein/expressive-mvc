@@ -1,7 +1,8 @@
 import { State } from '@expressive/mvc';
 
 import { parsePath, serialize } from './serialize';
-import { settle } from './settle';
+import { bracket } from './bracket';
+import { tick, unsettled, type Settle } from './settle';
 import { labelOf, seen } from './types';
 
 export type Level = 'off' | 'keys' | 'values';
@@ -33,6 +34,17 @@ export interface Frame {
   /** Frame whose flush scheduled the work that opened this one. */
   cause?: number;
   events: Event[];
+}
+
+export interface Summary {
+  id: string;
+  type: string;
+  /** Seq of the last frame touching this instance. */
+  last: number;
+  /** Updates and events per key, with the last recorded value at `values` level. */
+  keys: Record<string, { count: number; value?: unknown }>;
+  calls: Record<string, number>;
+  destroyed: boolean;
 }
 
 export interface Query {
@@ -103,6 +115,30 @@ export const journal = {
       .join('\n');
   },
 
+  /** Per-instance digest of recorded frames, most recently active first. */
+  summary(query: Query = {}): Summary[] {
+    const by = new Map<string, Summary>();
+
+    for (const frame of journal.frames(query))
+      for (const event of frame.events) {
+        let entry = by.get(event.id);
+
+        if (!entry) by.set(event.id, (entry = { id: event.id, type: event.type, last: 0, keys: {}, calls: {}, destroyed: false }));
+
+        entry.last = frame.seq;
+
+        if (event.kind === 'destroy') entry.destroyed = true;
+        else if (event.kind === 'call') entry.calls[event.key] = (entry.calls[event.key] || 0) + 1;
+        else {
+          const key = (entry.keys[event.key] ||= { count: 0 });
+          key.count++;
+          if ('value' in event) key.value = event.value;
+        }
+      }
+
+    return [...by.values()].sort((a, b) => b.last - a.last);
+  },
+
   clear(): void {
     frames.length = 0;
     open = undefined;
@@ -148,18 +184,11 @@ export function recordsCalls(): boolean {
   return config.calls && config.level !== 'off';
 }
 
-/** Run `work` recording values; returns the frames it produced. */
-export async function act(work: () => unknown): Promise<Frame[]> {
-  const level = config.level;
-  const start = seq;
-  if (level !== 'values') config.level = 'values';
-  try {
-    await work();
-    await settle(() => seq);
-  } finally {
-    config.level = level;
-  }
-  return journal.frames({ since: start });
+/** Run `work` recording values; returns the frames it produced once quiet. */
+export async function act(work: () => unknown, options: Settle = {}): Promise<Frame[]> {
+  const { frames, settled } = await bracket(journal, work, tick, options);
+  if (!settled) unsettled(options.timeout);
+  return frames;
 }
 
 export function note(state: State, key: unknown, store: Map<string, unknown>): void {

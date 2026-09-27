@@ -1,7 +1,7 @@
 import { State } from '@expressive/mvc';
 import { describe, expect, it } from 'vitest';
 
-import { flushMicrotasks } from '../test.setup';
+import { flushMicrotasks, mockWarn } from '../test.setup';
 import { act, attach, journal, models } from './index';
 
 class Composer extends State {
@@ -267,6 +267,58 @@ describe('journal', () => {
     });
     expect(frames[0].events[0].value).toBe('x');
     expect(journal.record().level).toBe('values');
+  });
+
+  it('will warn when act outlasts its timeout', async () => {
+    const warn = mockWarn();
+    attach();
+    const composer = Composer.new();
+    const loop = setInterval(() => composer.rows++, 0);
+    try {
+      const frames = await act(() => (composer.draft = 'x'), { timeout: 20 });
+      expect(frames[0].events[0].value).toBe('x');
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining('Still active after 20ms'));
+    } finally {
+      clearInterval(loop);
+    }
+  });
+
+  it('will summarize frames per instance, latest first', async () => {
+    attach();
+    journal.record({ level: 'values', calls: true });
+    const composer = Composer.new();
+    const other = Other.new();
+
+    composer.submit('a');
+    await flushMicrotasks();
+    composer.draft = 'b';
+    await flushMicrotasks();
+    other.set(null);
+    await flushMicrotasks();
+
+    const [first, second] = journal.summary();
+
+    expect(first).toMatchObject({ id: String(other), destroyed: true });
+    expect(second).toMatchObject({
+      id: String(composer),
+      type: 'Composer',
+      keys: { draft: { count: 2, value: 'b' } },
+      calls: { submit: 1 },
+      destroyed: false
+    });
+    expect(first.last).toBeGreaterThan(second.last);
+    expect(journal.summary({ type: 'Composer' })).toHaveLength(1);
+  });
+
+  it('will summarize keys without values below values level', async () => {
+    attach();
+    journal.record({ level: 'keys' });
+    const composer = Composer.new();
+
+    composer.draft = 'x';
+    await flushMicrotasks();
+
+    expect(journal.summary()[0].keys).toEqual({ draft: { count: 1 } });
   });
 
   it('will cap retained frames', async () => {

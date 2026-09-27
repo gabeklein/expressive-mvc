@@ -1,5 +1,7 @@
 import { dispatch, type Call } from '../dispatch';
-import type { Frame, Options } from '../journal';
+import { bracket } from '../bracket';
+import type { Options, Query } from '../journal';
+import { tick, type Settle } from '../settle';
 
 export interface Hot {
   on(event: string, listener: (data: any) => unknown): void;
@@ -11,35 +13,34 @@ export interface Ask {
   call?: Call;
 }
 
-async function around(step: unknown) {
+const journal = (method: string, ...args: unknown[]) => dispatch([['journal', method], args]) as any;
+
+async function around(step: unknown, options?: Settle) {
   if (!Array.isArray(step) || typeof step[0] != 'string')
-    throw new Error('around takes one call: ["around", [method, ...args]].');
+    throw new Error('around takes one call: ["around", [method, ...args], options?].');
 
-  let value: unknown;
-  const frames = (await dispatch([
-    ['act'],
-    [
-      async () => {
-        value = await dispatch([step[0].split('.'), step.slice(1)]);
-      }
-    ]
-  ])) as Frame[];
+  const remote = {
+    record: (...options: Options[]) => journal('record', ...options),
+    seq: () => journal('seq'),
+    frames: (query: Query) => journal('frames', query)
+  };
 
-  return { value: value ?? null, frames };
+  const { value, frames, settled } = await bracket(remote, () => dispatch([step[0].split('.'), step.slice(1)]), tick, options);
+
+  return { value: value ?? null, frames, settled };
 }
 
 export function connect(hot: Hot) {
   const id = Math.random().toString(36).slice(2, 8);
-  const record = (...options: Options[]) => dispatch([['journal', 'record'], options]) as Required<Options>;
 
-  if (record().level === 'off') record({ level: 'keys' });
+  if (journal('record').level === 'off') journal('record', { level: 'keys' });
 
   hot.on('expressive-inspect:ask', async ({ rid, call }: Ask) => {
     try {
       const value = !call
         ? { id, url: location.href, title: document.title, top: window.self === window.top }
         : call[0].join('.') == 'around'
-          ? await around(call[1][0])
+          ? await around(call[1][0], call[1][1] as Settle)
           : await dispatch(call);
 
       hot.send('expressive-inspect:answer', { rid, value: JSON.parse(JSON.stringify(value) ?? 'null') });

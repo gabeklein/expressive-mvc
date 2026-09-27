@@ -113,6 +113,30 @@ describe('inspect(page)', () => {
     record.mockRestore();
   });
 
+  it('will warn when around outlasts its timeout', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const composer = Composer.new();
+    const api = inspect(page);
+    const loop = setInterval(() => composer.draft += '.', 0);
+
+    try {
+      await api.around(() => {}, { timeout: 20 });
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining('Still active after 20ms'));
+    } finally {
+      clearInterval(loop);
+      warn.mockRestore();
+    }
+  });
+
+  it('will summarize the journal', async () => {
+    const composer = Composer.new();
+    const api = inspect(page);
+    await api.around(() => {
+      composer.draft = 'x';
+    });
+    expect(await api.journal.summary()).toMatchObject([{ type: 'Composer', keys: { draft: { count: 1, value: 'x' } } }]);
+  });
+
   it('will accept a locator, which passes the element first', async () => {
     const composer = Composer.new();
     const api = inspect(locator);

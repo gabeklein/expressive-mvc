@@ -3,6 +3,7 @@ import { isElement } from '@expressive/mvc/runtime';
 
 import { act as run, journal, note, noteCall, noteDestroy, recordsCalls, type Frame, type Query } from './journal';
 import { entries, parsePath, serialize, walk } from './serialize';
+import type { Settle } from './settle';
 import { forget, seen, type TypeInfo } from './types';
 
 export interface Model extends TypeInfo {
@@ -189,8 +190,8 @@ export class Instance {
   }
 
   /** Run `work`, settle, and return the frames it produced. */
-  act(work: (state: State) => unknown): Promise<Frame[]> {
-    return run(() => work(this.state));
+  act(work: (state: State) => unknown, options?: Settle): Promise<Frame[]> {
+    return run(() => work(this.state), options);
   }
 
   /** Call `fn` on each update, and with `null` on destroy; `keys` narrows updates. Returns unsubscribe. */

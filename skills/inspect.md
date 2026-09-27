@@ -35,11 +35,12 @@ composer.model()                     // { id, typeId, type, site?, parent?, keys
 composer.watch((key) => ..., ['draft'])   // key per update, null on destroy; unsubscribe returned
 composer.frames({ since })           // this instance's journal
 await composer.act((s) => s.submit('x'))  // run, settle, return frames produced
+await composer.act(work, { timeout: 3000 })
 ```
 
 Ownership: a State in a plain field, `has` pool, or `map` is that owner's child; a `get(Type)` reference is not. First owner wins. One `Instance` per state - `find` returns the same object each time; a held reference keeps working after destruction, with `alive` false and `until` set.
 
-`act` records values for its window whatever the journal level, and returns every frame produced, downstream ones included. It settles once a macrotask passes with no new recorded frame - so timer and promise chains finish - capped at 1s for work that never goes quiet. Filtered-out events don't count as activity.
+`act` records values for its window whatever the journal level, and returns every frame produced, downstream ones included. It settles once a macrotask passes with no new recorded frame - so timer and promise chains finish - capped at `timeout` (default 1s) for work that never goes quiet, with a warning that frames may be incomplete. Filtered-out events don't count as activity - narrow `record()` to exclude a poller or animation loop rather than raising the timeout.
 
 ## Orphans
 
@@ -90,6 +91,7 @@ journal.record({ paths: ['Composer.draft', 'T3.openTabs', `${id}.value`], keys: 
 journal.frames({ since, type, id, key, cause })
 journal.history({ id, key })       // flat [{ seq, at, event }]
 journal.downstream(seq)            // frames reachable through cause
+journal.summary({ since })         // per instance, latest first: { id, type, last, keys: { [key]: { count, value } }, calls, destroyed }
 journal.seq()                      // pass back as since
 journal.export({ since })          // NDJSON, one event per line
 journal.clear()
@@ -118,7 +120,7 @@ Host-agnostic packages depending only on `@expressive/mvc` get the same seat.
 
 ## Bridge
 
-`@expressive/inspect/bridge` drives the page's global from outside, through anything with `evaluate(fn, arg)` - Playwright `Page`, `Frame`, `Locator`, puppeteer `Page`/`Frame`, or a CDP session wrapped to that shape. No driver dependency. Each method is one round trip.
+`@expressive/inspect/bridge` drives the page's global from outside, through anything with `evaluate(fn, arg)` - Playwright `Page`, `Frame`, `Locator`, puppeteer `Page`/`Frame`, or `cdp()` ([below](#node-process-or-a-browser-with-a-debug-port)). No driver dependency. Each method is one round trip.
 
 ```ts
 import { inspect } from '@expressive/inspect/bridge';
@@ -129,7 +131,7 @@ const since = await api.journal.seq();
 await page.click('#submit');
 const frames = await api.journal.frames({ since, type: 'Composer' });
 
-const produced = await api.around(() => page.click('#submit'));   // act across the wire - same settle
+const produced = await api.around(() => page.click('#submit'));   // act across the wire - same settle and { timeout }
 await api.journal.record({ level: 'keys', types: ['Composer'] }); // labels, not classes
 ```
 
@@ -152,7 +154,7 @@ if (import.meta.env.MODE !== 'production') {
 }
 ```
 
-Attach it to failing tests - Playwright fixture, every frame:
+Attach it to failing tests. **Playwright** - a fixture covering every page in the test's context and their frames:
 
 ```ts
 import { test as base } from '@playwright/test';
@@ -162,20 +164,42 @@ export const test = base.extend({
   page: async ({ page }, use, testInfo) => {
     await use(page);
     if (testInfo.status === testInfo.expectedStatus) return;
-    for (const frame of page.frames()) {
-      const log = await inspect(frame).journal.export().catch(() => '');
-      if (log) await testInfo.attach(`journal ${frame.url()}`, { body: log, contentType: 'application/x-ndjson' });
-    }
+    for (const [n, tab] of page.context().pages().entries())
+      for (const frame of tab.frames()) {
+        const { journal } = inspect(frame);
+        const summary = await journal.summary().catch(() => []);
+        if (!summary.length) continue;
+        const name = `journal ${n} ${frame.url()}`;
+        await testInfo.attach(`${name} summary`, { body: JSON.stringify(summary, null, 2), contentType: 'application/json' });
+        await testInfo.attach(name, { body: await journal.export(), contentType: 'application/x-ndjson' });
+      }
   }
 });
 ```
 
-In process (vitest setup file):
+In process, **any runner** (vitest, jest, bun, `node:test`, mocha) - wrap the test body:
 
 ```ts
-import { beforeEach } from 'vitest';
 import { attach, journal } from '@expressive/inspect';
 
+export const recorded = (test: () => unknown) => async () => {
+  attach();
+  journal.clear();
+  journal.record({ level: 'values' });
+  try {
+    await test();
+  } catch (error) {
+    console.log(JSON.stringify(journal.summary(), null, 2), `\n${journal.export()}`);
+    throw error;
+  }
+};
+
+it('submits', recorded(async () => { /* ... */ }));
+```
+
+**vitest** - suite-wide from a setup file, no wrapping:
+
+```ts
 beforeEach(({ onTestFailed }) => {
   attach();
   journal.clear();
@@ -215,10 +239,11 @@ curl localhost:5173/__inspect -d '["journal.frames", { "since": 3 }]'   # the on
 
 The journal records `keys` from page load - a connected page carries history before anyone asks. A level the app sets wins.
 
-`around` takes one call as its step - records values, runs it, settles as `act` does, answers `{ value, frames }`:
+`around` takes one call as its step - records values, runs it, settles as `act` does, answers `{ value, frames, settled }`. `settled: false` means the timeout passed first:
 
 ```bash
 curl … -d '["around", ["call", "Composer.submit", "hi"]]'
+curl … -d '["around", ["call", "Composer.submit", "hi"], { "timeout": 3000 }]'
 ```
 
 For what the developer does in the browser, read back with a cursor: `journal.seq`, then `journal.frames` with `since` once they're done - raise to `values` first if keys are not enough.
