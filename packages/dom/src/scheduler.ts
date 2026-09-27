@@ -1,9 +1,12 @@
 import { pending } from '@expressive/mvc';
 
 interface Schedulable {
-  queued?: 'urgent' | 'passive';
+  queued?: 'urgent' | 'passive' | 'deferred';
   holds?: (() => void)[];
-  update(passive: boolean): void;
+  probed?: { output: unknown };
+  update(passive: boolean): PromiseLike<unknown> | void;
+  probe?(): PromiseLike<unknown> | void;
+  empty?(): boolean;
 }
 
 const urgent = new Set<Schedulable>();
@@ -13,16 +16,13 @@ let depth = 0;
 let urgentQueued = false;
 let passiveQueued = false;
 
-function flush(scopes: Set<Schedulable>, isPassive: boolean) {
+function flush(scopes: Set<Schedulable>) {
   for (const scope of scopes) {
     scopes.delete(scope);
-
-    if (isPassive && scope.queued !== 'passive') continue;
-
     scope.queued = undefined;
 
     try {
-      scope.update(isPassive);
+      scope.update(false);
     } catch (error) {
       console.error(error);
     }
@@ -33,12 +33,60 @@ function flush(scopes: Set<Schedulable>, isPassive: boolean) {
 
 function flushUrgent() {
   urgentQueued = false;
-  flush(urgent, false);
+  flush(urgent);
 }
 
 function flushPassive() {
   passiveQueued = false;
-  flush(passive, true);
+
+  const batch = [...passive].filter((scope) => scope.queued === 'passive');
+  passive.clear();
+
+  for (const scope of batch) {
+    const waiting = scope.probe?.();
+    if (waiting) return defer(batch, waiting);
+  }
+
+  batch.sort((a, b) => Number(!!b.empty?.()) - Number(!!a.empty?.()));
+
+  for (let index = 0; index < batch.length; index++) {
+    const scope = batch[index];
+
+    if (scope.queued !== 'passive') continue;
+
+    scope.queued = undefined;
+
+    let waiting: PromiseLike<unknown> | void = undefined;
+
+    try {
+      waiting = scope.update(true);
+    } catch (error) {
+      console.error(error);
+    }
+
+    settle(scope);
+
+    if (waiting) return defer(batch.slice(index + 1), waiting);
+  }
+}
+
+function defer(scopes: Schedulable[], waiting: PromiseLike<unknown>) {
+  const held = scopes.filter((scope) => scope.queued === 'passive');
+
+  for (const scope of held) {
+    scope.queued = 'deferred';
+    scope.probed = undefined;
+  }
+
+  const resume = () => {
+    for (const scope of held)
+      if (scope.queued === 'deferred') {
+        scope.queued = undefined;
+        transition(() => schedule(scope));
+      }
+  };
+
+  waiting.then(resume, resume);
 }
 
 function release(holds?: (() => void)[]) {
@@ -56,6 +104,7 @@ function schedule(scope: Schedulable) {
   const held = pending();
 
   if (held) (scope.holds ||= []).push(held);
+  scope.probed = undefined;
 
   if (!depth) {
     passive.delete(scope);
@@ -95,12 +144,14 @@ function claim(scope: Schedulable) {
   urgent.delete(scope);
   passive.delete(scope);
   scope.queued = undefined;
+  scope.probed = undefined;
 }
 
 function unschedule(scope: Schedulable) {
   urgent.delete(scope);
   passive.delete(scope);
   scope.queued = undefined;
+  scope.probed = undefined;
   settle(scope);
 }
 

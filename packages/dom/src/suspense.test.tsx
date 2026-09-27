@@ -246,6 +246,171 @@ describe('suspense and recovery', () => {
     expect(root.querySelectorAll('b')).toHaveLength(1);
   });
 
+  it('will hold a sibling swap until the incoming scope renders', async () => {
+    const gate = mockPromise<void>();
+    let open = false;
+    gate.then(() => (open = true));
+
+    class Nav extends State {
+      page = 'a';
+    }
+
+    function A() {
+      return Nav.get().page == 'a' ? <p>A</p> : null;
+    }
+
+    function B() {
+      if (Nav.get().page != 'b') return null;
+      if (!open) throw gate;
+      return <p>B</p>;
+    }
+
+    class App extends Component {
+      nav = new Nav();
+      fallback = <i>loading</i>;
+
+      render() {
+        return <div><A /><B /></div>;
+      }
+    }
+
+    let app!: App;
+    let settled = false;
+    const root = document.createElement('main');
+    render(<App is={(value) => (app = value)} />, root);
+
+    pending(() => {
+      app.nav.page = 'b';
+    }).then(() => (settled = true));
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(root.textContent).toBe('A');
+    expect(settled).toBe(false);
+
+    gate.resolve();
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(root.textContent).toBe('B');
+    expect(settled).toBe(true);
+  });
+
+  it('will hold a sibling swap when the incoming scope suspends below its render', async () => {
+    const loaded = mockPromise<() => Component.Node>();
+    const Lazy = lazy(() => loaded);
+
+    class Nav extends State {
+      page = 'a';
+    }
+
+    function A() {
+      return Nav.get().page == 'a' ? <p>A</p> : null;
+    }
+
+    function B() {
+      return Nav.get().page == 'b' ? <><h2>B</h2><Lazy /></> : null;
+    }
+
+    class App extends Component {
+      nav = new Nav();
+      fallback = <i>loading</i>;
+
+      render() {
+        return <div><A /><B /></div>;
+      }
+    }
+
+    let app!: App;
+    const root = document.createElement('main');
+    render(<App is={(value) => (app = value)} />, root);
+
+    pending(() => {
+      app.nav.page = 'b';
+    });
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(root.textContent).toBe('A');
+    expect(root.querySelector('h2')).toBeNull();
+
+    loaded.resolve(() => <b>lazy</b>);
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(root.textContent).toBe('Blazy');
+  });
+
+  it('will hold a descendant while its parent suspends in a transition', async () => {
+    const gate = mockPromise<void>();
+    let open = false;
+    gate.then(() => (open = true));
+
+    class Nav extends State {
+      page = 'a';
+    }
+
+    function Child() {
+      return <p>{Nav.get().page}</p>;
+    }
+
+    function Guard() {
+      if (Nav.get().page == 'b' && !open) throw gate;
+      return <Child />;
+    }
+
+    class App extends Component {
+      nav = new Nav();
+      fallback = <i>loading</i>;
+
+      render() {
+        return <Guard />;
+      }
+    }
+
+    let app!: App;
+    const root = document.createElement('main');
+    render(<App is={(value) => (app = value)} />, root);
+
+    pending(() => {
+      app.nav.page = 'b';
+    });
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(root.textContent).toBe('a');
+
+    gate.resolve();
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(root.textContent).toBe('b');
+  });
+
+  it('will recover an error thrown while probing a transition', async () => {
+    const caught = vi.fn();
+
+    class Flag extends State {
+      on = false;
+    }
+
+    function Broken() {
+      if (Flag.get().on) throw new Error('broken');
+      return <p>fine</p>;
+    }
+
+    class App extends Component {
+      flag = new Flag();
+      fallback = <i>failed</i>;
+
+      catch(error: Error) {
+        caught(error.message);
+      }
+
+      render() {
+        return <Broken />;
+      }
+    }
+
+    let app!: App;
+    const root = document.createElement('main');
+    render(<App is={(value) => (app = value)} />, root);
+
+    pending(() => {
+      app.flag.on = true;
+    });
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(caught).toHaveBeenCalledWith('broken');
+  });
+
   it('will retry a caught error once, then wait for an update', async () => {
     const caught = vi.fn();
 

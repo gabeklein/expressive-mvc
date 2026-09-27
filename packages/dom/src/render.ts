@@ -61,6 +61,8 @@ interface Fiber {
   waitingOn?: Boundary;
   stash?: DocumentFragment;
   placeholder?: Fiber;
+  staging?: DocumentFragment;
+  render?: () => RenderNode;
   appearance?: Appearance;
   consumed?: boolean;
   claimed?: Claim;
@@ -244,6 +246,8 @@ function mountFunction(value: VNode, parent: globalThis.Node, before: globalThis
   fiber.boundary = boundary;
   fiber.appearance = resolved.appearance;
   fiber.scope = makeScope('function', context, (passive) => runFunction(fiber, passive));
+  fiber.render = () => enter(fiber.scope!, () => (fiber.type as Function)(fiber.props));
+  probing(fiber);
 
   return complete(fiber, () => {
     runFunction(fiber, passiveRender);
@@ -264,9 +268,23 @@ function mountOwnedComponent(
 }
 
 function runFunction(fiber: Fiber, passive: boolean) {
-  if (attempt(fiber, passive, () =>
-    enter(fiber.scope!, () => (fiber.type as Function)(fiber.props))
-  )) commit(fiber.scope!);
+  const result = attempt(fiber, passive, fiber.render!);
+
+  if (result === true) commit(fiber.scope!);
+  else return result;
+}
+
+function probing(fiber: Fiber) {
+  const scope = fiber.scope!;
+
+  scope.empty = () => !fiber.children.length;
+  scope.probe = () => {
+    try {
+      scope.probed = { output: consume(fiber, fiber.render!) };
+    } catch (thrown) {
+      if (isThenable(thrown)) return thrown;
+    }
+  };
 }
 
 function mountComponent(
@@ -300,6 +318,8 @@ function mountComponent(
   fiber.owned = owned;
   fiber.appearance = appearance;
   fiber.scope = makeScope('component', childContext, (passive) => runComponent(fiber, passive));
+  fiber.render = () => enter(fiber.scope!, () => instance.render.call(fiber.value, instance.props));
+  probing(fiber);
 
   let first = true;
   let proxy = instance;
@@ -327,12 +347,9 @@ function mountComponent(
 }
 
 function runComponent(fiber: Fiber, passive: boolean) {
-  const instance = fiber.instance!;
-  const content = instance.render;
+  const result = attempt(fiber, passive, fiber.render!);
 
-  attempt(fiber, passive, () =>
-    enter(fiber.scope!, () => content.call(fiber.value, instance.props))
-  );
+  if (result !== true) return result;
 }
 
 function mountCollection(value: has.List<unknown> | has.Pool<unknown> | map.Managed<unknown, unknown>, parent: globalThis.Node, before: globalThis.Node | null, context: Context, boundary?: Boundary, appearance?: Appearance) {
@@ -457,21 +474,33 @@ function pass<T>(work: () => T): T {
   }
 }
 
-function attempt(fiber: Fiber, passive: boolean, render: () => RenderNode) {
+function attempt(fiber: Fiber, passive: boolean, render: () => RenderNode): true | PromiseLike<unknown> | void {
   const previous = passiveRender;
+  const scope = fiber.scope!;
+  const probed = scope.probed;
+
+  scope.probed = undefined;
   passiveRender ||= passive;
+
+  if (passive && !depth && !fiber.children.length && !fiber.stash)
+    fiber.staging ||= document.createDocumentFragment();
 
   try {
     return pass(() => {
       try {
-        const output = consume(fiber, render);
-        reconcile(fiber, output, fiber.scope!.childContext, fiber.boundary, renderedAppearance(fiber));
+        const output = probed ? probed.output as RenderNode : consume(fiber, render);
+        reconcile(fiber, output, scope.childContext, fiber.boundary, renderedAppearance(fiber));
+
+        if (fiber.staging) {
+          fiber.end.parentNode!.insertBefore(fiber.staging, fiber.end);
+          fiber.staging = undefined;
+        }
+
         unwait(fiber);
         fiber.retried = undefined;
         return true;
       } catch (thrown) {
-        suspend(fiber, thrown, passive);
-        return false;
+        return suspend(fiber, thrown, passive);
       }
     });
   } finally {
@@ -660,7 +689,7 @@ function suspend(fiber: Fiber, thrown: unknown, passive: boolean) {
       () => resume(() => passive ? transition(() => schedule(scope)) : schedule(scope)),
       (error) => resume(() => pass(() => recover(fiber, error)))
     );
-    return;
+    return thrown;
   }
 
   recover(fiber, thrown);
@@ -694,7 +723,9 @@ function isThenable(value: unknown): value is PromiseLike<unknown> {
 }
 
 function reconcile(fiber: Fiber, value: RenderNode, context: Context, boundary?: Boundary, appearance?: Appearance) {
-  if (fiber.stash) reconcileChildren(fiber, fiber.stash, null, value, context, boundary, appearance);
+  const detached = fiber.stash || fiber.staging;
+
+  if (detached) reconcileChildren(fiber, detached, null, value, context, boundary, appearance);
   else reconcileChildren(fiber, fiber.end.parentNode!, fiber.end, value, context, boundary, appearance);
 }
 

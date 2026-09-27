@@ -181,7 +181,7 @@ class App extends Component {
 }
 ```
 
-MVC `pending(work)` runs `work` inline and defers subscriber DOM work. If the replacement suspends, the committed range remains until it can complete; an urgent suspension shows its fallback. Its promise resolves after the replacement commits or the affected scope unmounts. Retention is per scope: siblings patched before the suspending child keep their update.
+MVC `pending(work)` runs `work` inline and defers subscriber DOM work. If the replacement suspends, the committed range remains until it can complete; an urgent suspension shows its fallback. Its promise resolves after the replacement commits or the affected scope unmounts. Scopes one transition updates commit together: if one suspends in its own render, or below a scope that currently renders nothing, none commit until it resolves - a route swap holds the outgoing page, and a guarded child does not render past its suspended guard. A suspension found deeper, inside content a scope already shows, retains that scope's range only: scopes of the transition already patched keep their update, as do siblings patched before the suspending child.
 
 `Component.catch` retries once after it completes; a render that fails again keeps the fallback until state it read changes. A portal inside a hidden boundary is hidden with it; one first mounted while the boundary is hidden appears immediately.
 
