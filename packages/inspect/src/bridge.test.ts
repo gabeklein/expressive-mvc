@@ -1,8 +1,8 @@
 import { State } from '@expressive/mvc';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { attach, inspect as local, journal } from './index';
-import { inspect, type Evaluates } from './playwright';
+import { inspect, type Evaluates } from './bridge';
 
 class Composer extends State {
   draft = '';
@@ -70,7 +70,7 @@ describe('inspect(page)', () => {
     expect(journal.frames().length).toBe(1);
   });
 
-  it('will leave an active journal on after around', async () => {
+  it('will record values around a step while keys are on, then restore keys', async () => {
     const composer = Composer.new();
     const api = inspect(page);
     journal.record({ level: 'keys' });
@@ -79,8 +79,23 @@ describe('inspect(page)', () => {
       composer.draft = 'x';
     });
 
-    expect(frames[0].events[0].value).toBeUndefined();
+    expect(frames[0].events[0].value).toBe('x');
     expect(journal.record().level).toBe('keys');
+  });
+
+  it('will leave a values recording as it is around a step', async () => {
+    const composer = Composer.new();
+    const api = inspect(page);
+    journal.record({ level: 'values' });
+    const record = vi.spyOn(journal, 'record');
+
+    const frames = await api.around(() => {
+      composer.draft = 'x';
+    });
+
+    expect(frames[0].events[0].value).toBe('x');
+    expect(record.mock.calls.every(([options]) => options === undefined)).toBe(true);
+    record.mockRestore();
   });
 
   it('will accept a locator, which passes the element first', async () => {

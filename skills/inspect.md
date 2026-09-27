@@ -1,6 +1,6 @@
 # Inspect
 
-`@expressive/inspect` - in-process inspector over live State: registry, ownership, path reads, a frame journal with causality. No UI, no network. Base layer for agents (via a browser tool or Playwright `evaluate`), devtools, and test helpers.
+`@expressive/inspect` - in-process inspector over live State: registry, ownership, path reads, a frame journal with causality. No UI; network only through the dev-server relay ([Vite](#vite)). Base layer for agents (via a browser tool or a driver's `evaluate`), devtools, and test helpers.
 
 ## Install
 
@@ -12,6 +12,8 @@ import '@expressive/inspect/install';
 Attaches to `State` from the same `@expressive/mvc` instance and publishes `globalThis.__EXPRESSIVE_INSPECT__` (typed on `globalThis`). Instances constructed before the import are invisible. Install ships in the app bundle - a Playwright `addInitScript` or userscript imports a different `State` and sees nothing. Gate it yourself: side-effect import for a harness, `attach()` behind a dev flag for a shipped build.
 
 Programmatic: `attach(State)` returns detach; `attach(Sub)` scopes to a subclass.
+
+Under Vite, the plugin installs it - see [Vite](#vite).
 
 ## Two faces, one id
 
@@ -37,7 +39,7 @@ await composer.act((s) => s.submit('x'))  // run, settle, return frames produced
 
 Ownership: a State in a plain field, `has` pool, or `map` is that owner's child; a `get(Type)` reference is not. First owner wins. One `Instance` per state - `find` returns the same object each time; a held reference keeps working after destruction, with `alive` false and `until` set.
 
-`act` records for its window even with the journal off, and returns every frame produced, downstream ones included.
+`act` records values for its window whatever the journal level, and returns every frame produced, downstream ones included.
 
 ## Orphans
 
@@ -114,12 +116,12 @@ expect(frames[0].events.map((e) => e.key)).toEqual(['draft']);
 
 Host-agnostic packages depending only on `@expressive/mvc` get the same seat.
 
-## Playwright
+## Bridge
 
-`@expressive/inspect/playwright` wraps anything with `evaluate(fn, arg)` - Playwright `Page`, `Frame`, `Locator`, or puppeteer `Page`/`Frame`. Each method is one round trip to the page's global.
+`@expressive/inspect/bridge` drives the page's global from outside, through anything with `evaluate(fn, arg)` - Playwright `Page`, `Frame`, `Locator`, puppeteer `Page`/`Frame`, or a CDP session wrapped to that shape. No driver dependency. Each method is one round trip.
 
 ```ts
-import { inspect } from '@expressive/inspect/playwright';
+import { inspect } from '@expressive/inspect/bridge';
 
 const api = inspect(page);                                  // or a frame - see below
 expect(await api.get('Composer.draft')).toBe('');
@@ -134,6 +136,73 @@ await api.journal.record({ level: 'keys', types: ['Composer'] }); // labels, not
 For an app in an iframe, pass that frame: `inspect(page.frame({ name }))`, or a locator such as `inspect(page.frameLocator('iframe[title="App"]').locator('body'))` - the helper accepts `Locator.evaluate`'s element-first arity. A missing global throws one line naming the install import - that is the install-order check.
 
 Drive input through the UI; assert on the model. Reserve DOM assertions for presentation the model does not express.
+
+## Vite
+
+`@expressive/inspect/vite` reaches the page a developer has open - any browser, no debug port - through the dev server.
+
+```ts
+// vite.config.ts
+import inspect from '@expressive/inspect/vite';
+
+export default defineConfig({ plugins: [inspect()] });
+```
+
+Dev server only. Injects `install` ahead of the app entry (a manual import becomes redundant, harmless) and relays over Vite's HMR socket. Pre-bundles `install` when inspect comes from `node_modules`, so a cold dep cache cannot split mvc into two copies.
+
+```bash
+curl localhost:5173/__inspect                                     # [{ id, url, title, top }] per document, iframes included
+curl localhost:5173/__inspect/4rrsel -d '["get", "Counter.current"]'
+curl localhost:5173/__inspect -d '["journal.frames", { "since": 3 }]'   # the only connected page
+```
+
+- Body `[method, ...args]`, method dotted from the console API (`get`, `set`, `call`, `models`, `tree`, `journal.record`, ...). Response is the JSON result.
+- No id with several pages connected: 409 plus the page list - never guesses.
+- Ids are per page load; a reload issues new ones, closed pages drop out.
+- 404 unknown page, 500 the page threw (`{ error }`), 504 no answer within 10s.
+- Local callers only: 403 for a request carrying `Origin`/`Sec-Fetch-Site` (a web page) or a proxy header (`Forwarded`, `X-Forwarded-For`, `X-Real-IP`, `CF-Connecting-IP`). Behind a tunnel, pages still connect; only `curl` on the dev machine reaches the relay. A proxy that strips these headers bypasses the guard - securing an exposed dev server is on its owner.
+- Dev server in a container or VM: the host's request arrives from a gateway address and gets 403. Run the request inside it (`docker exec <container> curl localhost:5173/__inspect`), or forward the port over SSH (`ssh -L`) or a devcontainer - those arrive as loopback.
+- No HTML (`appType: 'custom'`): `import 'virtual:expressive-inspect'` first in the entry.
+
+The journal records `keys` from page load - a connected page carries history before anyone asks. A level the app sets wins.
+
+`around` takes one call as its step - records values, runs it, settles as `act` does, answers `{ value, frames }`:
+
+```bash
+curl … -d '["around", ["call", "Composer.submit", "hi"]]'
+```
+
+For what the developer does in the browser, read back with a cursor: `journal.seq`, then `journal.frames` with `since` once they're done - raise to `values` first if keys are not enough.
+
+What to reach for, in order:
+
+1. **Observe** - `models`, `tree`, `get`, `journal.*`. Most questions end here.
+2. **Act through the model** - `call("Type.method", ...)` runs the app's own logic; the way to reproduce what a user did.
+3. **Force a state** - `set("Type.key", value)` bypasses the model; for setting up a repro, sparingly.
+
+The relay reaches only the inspector's own members - no `eval`, no property walks beyond them. Arbitrary JS belongs to a driver's `evaluate`, granted by whoever runs the harness.
+
+## Node process, or a browser with a debug port
+
+Install the same way (`import '@expressive/inspect/install'` first), then reach it through the debugger - no server in the app. `cdp()` connects to a Chrome DevTools Protocol endpoint as an `evaluate` target for the bridge:
+
+```bash
+node --inspect app.js     # or, already running: kill -USR1 <pid>
+```
+
+```ts
+import { cdp, inspect } from '@expressive/inspect/bridge';
+
+const target = await cdp();                          // http://127.0.0.1:9229, first target
+const api = inspect(target);
+await api.get('HostChat.status');
+await api.around(() => api.call('HostChat.send', 'hi'));
+target.close();
+```
+
+- `cdp(endpoint, pick)` takes the first `/json/list` target `pick` accepts, or a `ws://` debugger URL. A browser started with `--remote-debugging-port=9222`: `cdp('http://127.0.0.1:9222', (t) => t.type === 'page' && t.url.startsWith('http://localhost:5173'))`.
+- The debug port runs arbitrary code in the process - keep it on `127.0.0.1`.
+- Node only among runtimes - Bun's `--inspect` speaks WebKit Inspector Protocol, not CDP.
 
 ## Several instances of one type
 

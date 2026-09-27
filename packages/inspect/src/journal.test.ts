@@ -229,16 +229,29 @@ describe('journal', () => {
     expect(journal.frames().length).toBe(1);
   });
 
-  it('will act while recording is already on', async () => {
+  it('will act with values while keys are on, then keep recording keys', async () => {
     attach();
     journal.record({ level: 'keys' });
     const composer = Composer.new();
     const frames = await act(() => {
       composer.draft = 'x';
     });
-    expect(frames[0].events[0].value).toBeUndefined();
+    expect(frames[0].events[0].value).toBe('x');
     composer.draft = 'y';
+    await flushMicrotasks();
+    expect(journal.frames().at(-1)!.events[0].value).toBeUndefined();
     expect(journal.frames().length).toBe(2);
+  });
+
+  it('will act at values without changing the level', async () => {
+    attach();
+    journal.record({ level: 'values' });
+    const composer = Composer.new();
+    const frames = await act(() => {
+      composer.draft = 'x';
+    });
+    expect(frames[0].events[0].value).toBe('x');
+    expect(journal.record().level).toBe('values');
   });
 
   it('will cap retained frames', async () => {
