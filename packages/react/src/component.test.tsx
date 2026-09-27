@@ -3,7 +3,12 @@ import { vi, expect, it, describe } from 'vitest';
 import { renderToString } from 'react-dom/server';
 import React, { Suspense } from 'react';
 
+<<<<<<< HEAD
 import { mockError, mockPromise, mockWarn, flushMicrotasks } from '../test.setup';
+=======
+import { mockError, mockPromise, flushMicrotasks } from '../test.setup';
+import { hot } from '@expressive/mvc/runtime';
+>>>>>>> 9c2475c2a (test(react): hot patch reaches live and new subcomponents)
 import { Component, Consumer, State, pending, set } from '.';
 
 it('will create and provide instance', () => {
@@ -1518,6 +1523,48 @@ describe('subcomponents', () => {
     // only the "a" instance should have re-rendered
     expect(renders.a).toBe(before.a + 1);
     expect(renders.b).toBe(before.b);
+  });
+});
+
+describe('hot patch', () => {
+  const version = (text: string) => {
+    class Control extends Component {
+      value = 1;
+
+      Label() {
+        return <b>{text}</b>;
+      }
+
+      render() {
+        const { value, Label } = this;
+        return <><Label />{value}</>;
+      }
+    }
+    return Control;
+  };
+
+  it('will patch a subcomponent in place', async () => {
+    const Control = version('before');
+
+    hot.accept('subcomponent-live', { Control });
+
+    const element = render(<Control value={2} />);
+
+    expect(element.container.textContent).toBe('before2');
+
+    await act(async () => void hot.accept('subcomponent-live', { Control: version('after') }));
+
+    expect(element.container.textContent).toBe('after2');
+  });
+
+  it('will patch a subcomponent for new instances', () => {
+    const Control = version('before');
+
+    hot.accept('subcomponent-new', { Control });
+    render(<Control />).unmount();
+    hot.accept('subcomponent-new', { Control: version('after') });
+
+    expect(render(<Control />).container.textContent).toBe('after1');
   });
 });
 
