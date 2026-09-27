@@ -35,12 +35,15 @@ composer.model()                     // { id, typeId, type, site?, parent?, keys
 composer.watch((key) => ..., ['draft'])   // key per update, null on destroy; unsubscribe returned
 composer.frames({ since })           // this instance's journal
 await composer.act((s) => s.submit('x'))  // run, settle, return frames produced
-await composer.act(work, { timeout: 3000 })
+await composer.act(work, { until: 'Composer.sent', timeout: 3000, record: { paths: [] } })
 ```
 
 Ownership: a State in a plain field, `has` pool, or `map` is that owner's child; a `get(Type)` reference is not. First owner wins. One `Instance` per state - `find` returns the same object each time; a held reference keeps working after destruction, with `alive` false and `until` set.
 
-`act` records values for its window whatever the journal level, and returns every frame produced, downstream ones included. It settles once a macrotask passes with no new recorded frame - so timer and promise chains finish - capped at `timeout` (default 1s) for work that never goes quiet, with a warning that frames may be incomplete. Filtered-out events don't count as activity - narrow `record()` to exclude a poller or animation loop rather than raising the timeout.
+`act` records values for its window whatever the journal level, and returns every frame produced, downstream ones included. It settles once a macrotask passes with no new recorded frame - so timer and promise chains finish - capped at `timeout` (default 1s), with a warning that frames may be incomplete.
+
+- `until` - `Type.key` or `id.key` addresses (one or a list) that must each see a frame first; for work that waits on I/O, where quiet arrives before the change does. The warning names any that never did.
+- `record` - filters for this window instead of the journal's (`{ types: [], paths: [], keys: [] }` records everything); the journal's recording is restored after. Filtered-out events don't count as activity - narrow to exclude a poller or animation loop rather than raising the timeout.
 
 ## Orphans
 
@@ -131,7 +134,7 @@ Host-agnostic packages depending only on `@expressive/mvc` get the same seat.
 
 ## Bridge
 
-`@expressive/inspect/bridge` drives the page's global from outside, through anything with `evaluate(fn, arg)` - Playwright `Page`, `Frame`, `Locator`, puppeteer `Page`/`Frame`, or `cdp()` ([below](#node-process-or-a-browser-with-a-debug-port)). No driver dependency. Each method is one round trip.
+`@expressive/inspect/bridge` drives the page's global from outside, through anything with `evaluate(fn, arg)` - Playwright `Page`, `Frame`, `Locator`, puppeteer `Page`/`Frame`, or `devtools()` ([below](#node-process-or-a-browser-with-a-debug-port)). No driver dependency. Each method is one round trip.
 
 ```ts
 import { inspect } from '@expressive/inspect/bridge';
@@ -142,7 +145,7 @@ const since = await api.journal.seq();
 await page.click('#submit');
 const frames = await api.journal.frames({ since, type: 'Composer' });
 
-const produced = await api.around(() => page.click('#submit'));   // act across the wire - same settle and { timeout }
+const produced = await api.act(() => page.click('#submit'), { until: 'Composer.sent' });   // same act and options, across the wire
 await api.journal.record({ level: 'keys', types: ['Composer'] }); // labels, not classes
 ```
 
@@ -177,12 +180,13 @@ export const test = base.extend({
     if (testInfo.status === testInfo.expectedStatus) return;
     for (const [n, tab] of page.context().pages().entries())
       for (const frame of tab.frames()) {
-        const { journal } = inspect(frame);
-        const summary = await journal.summary().catch(() => []);
+        const api = inspect(frame);
+        const summary = await api.journal.summary().catch(() => []);
         if (!summary.length) continue;
         const name = `journal ${n} ${frame.url()}`;
-        await testInfo.attach(`${name} summary`, { body: JSON.stringify(summary, null, 2), contentType: 'application/json' });
-        await testInfo.attach(name, { body: await journal.export(), contentType: 'application/x-ndjson' });
+        const report = { summary, health: await api.health() };
+        await testInfo.attach(`${name} summary`, { body: JSON.stringify(report, null, 2), contentType: 'application/json' });
+        await testInfo.attach(name, { body: await api.journal.export(), contentType: 'application/x-ndjson' });
       }
   }
 });
@@ -250,11 +254,11 @@ curl localhost:5173/__inspect -d '["journal.frames", { "since": 3 }]'   # the on
 
 The journal records `keys` from page load - a connected page carries history before anyone asks. A level the app sets wins.
 
-`around` takes one call as its step - records values, runs it, settles as `act` does, answers `{ value, frames, settled }`. `settled: false` means the timeout passed first:
+`act` takes one call as its step, and the same options - answers `{ value, frames, settled, pending }`. `settled: false` means the timeout passed first; `pending` lists `until` targets that never saw a frame:
 
 ```bash
-curl … -d '["around", ["call", "Composer.submit", "hi"]]'
-curl … -d '["around", ["call", "Composer.submit", "hi"], { "timeout": 3000 }]'
+curl … -d '["act", ["call", "Composer.submit", "hi"]]'
+curl … -d '["act", ["call", "Composer.submit", "hi"], { "until": "Composer.sent", "timeout": 3000 }]'
 ```
 
 For what the developer does in the browser, read back with a cursor: `journal.seq`, then `journal.frames` with `since` once they're done - raise to `values` first if keys are not enough.
@@ -269,23 +273,23 @@ The relay reaches only the inspector's own members - no `eval`, no property walk
 
 ## Node process, or a browser with a debug port
 
-Install the same way (`import '@expressive/inspect/install'` first), then reach it through the debugger - no server in the app. `cdp()` connects to a Chrome DevTools Protocol endpoint as an `evaluate` target for the bridge:
+Install the same way (`import '@expressive/inspect/install'` first), then reach it through the debugger - no server in the app. `devtools()` connects to a Chrome DevTools Protocol endpoint as an `evaluate` target for the bridge:
 
 ```bash
 node --inspect app.js     # or, already running: kill -USR1 <pid>
 ```
 
 ```ts
-import { cdp, inspect } from '@expressive/inspect/bridge';
+import { devtools, inspect } from '@expressive/inspect/bridge';
 
-const target = await cdp();                          // http://127.0.0.1:9229, first target
+const target = await devtools();                     // http://127.0.0.1:9229
 const api = inspect(target);
 await api.get('HostChat.status');
-await api.around(() => api.call('HostChat.send', 'hi'));
+await api.act(() => api.call('HostChat.send', 'hi'), { until: 'HostChat.status' });
 target.close();
 ```
 
-- `cdp(endpoint, pick)` takes the first `/json/list` target `pick` accepts, or a `ws://` debugger URL. A browser started with `--remote-debugging-port=9222`: `cdp('http://127.0.0.1:9222', (t) => t.type === 'page' && t.url.startsWith('http://localhost:5173'))`.
+- `devtools(endpoint, pick)` connects to the one `/json/list` target `pick` selects - a string matched against title and URL, or a predicate - or to a `ws://` debugger URL. Zero or several matches throw with the target list. A browser started with `--remote-debugging-port=9222`: `devtools('http://127.0.0.1:9222', 'localhost:5173')`.
 - The debug port runs arbitrary code in the process - keep it on `127.0.0.1`.
 - Node only among runtimes - Bun's `--inspect` speaks WebKit Inspector Protocol, not CDP.
 

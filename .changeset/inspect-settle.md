@@ -2,6 +2,6 @@
 '@expressive/inspect': minor
 ---
 
-`act()` and the bridge's `around()` settle once a macrotask passes with no new recorded frame, instead of after a single `setTimeout(0)` - work deferred through timer or promise chains now lands in the returned frames. Both take `{ timeout }` (default one second) and warn when it passes first; the Vite relay's `around` answers `settled: false` instead.
+`act()` - in process, on the bridge and over the relay - settles once a macrotask passes with no new recorded frame, instead of after a single `setTimeout(0)` - work deferred through timer or promise chains now lands in the returned frames. It takes `{ until, timeout, record }`: `until` names addresses that must each see a frame before settling (for work waiting on I/O), `timeout` caps the wait (default one second) and warns when it passes first, and `record` sets filters for the window, restoring the journal's after. Over the relay it answers `settled: false` and the `pending` targets instead of warning.
 
 Add `journal.summary(query?)` - a per-instance digest of recorded frames (keys written with counts and last values, calls, destroyed), latest first. Also on the bridge and relay.
