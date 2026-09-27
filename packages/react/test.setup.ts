@@ -1,7 +1,11 @@
 import { afterEach } from 'vitest';
-import { cleanup } from '@testing-library/react';
+import { injectIntoGlobalHook } from 'react-refresh/runtime';
 
 import '../mvc/test.setup';
+
+if (!('__REACT_DEVTOOLS_GLOBAL_HOOK__' in window)) injectIntoGlobalHook(window);
+
+const { cleanup } = await import('@testing-library/react');
 
 afterEach(() => {
   cleanup();
