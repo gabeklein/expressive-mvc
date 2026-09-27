@@ -1,0 +1,17 @@
+.fetch-action {
+  align-self: center;
+}
+
+.fetch-result {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s3);
+  margin: 0;
+  color: var(--fg-soft);
+}
+
+.fetch-status {
+  margin: 0;
+  color: var(--muted);
+}

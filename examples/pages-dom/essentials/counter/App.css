@@ -1,0 +1,29 @@
+/* Counter is a minimal hero - center the title with its controls. */
+.container {
+  text-align: center;
+}
+
+.counter {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.counter pre {
+  font-size: var(--t-2xl);
+  font-weight: 500;
+  width: 5rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  text-align: center;
+  cursor: pointer;
+  color: var(--fg);
+}
+
+.counter .button {
+  width: 56px;
+  height: 56px;
+  font-size: var(--t-xl);
+}

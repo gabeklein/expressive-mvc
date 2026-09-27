@@ -1,0 +1,13 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "jsxImportSource": "@expressive/dom",
+    "paths": {
+      "@common-dom/*": ["./common-dom/*"],
+      "@expressive/dom/*": ["../packages/dom/src/*"],
+      "@expressive/mvc/*": ["../packages/mvc/src/*"],
+      "@expressive/*": ["../packages/*/src"]
+    }
+  },
+  "include": ["pages-dom/**/*.ts", "pages-dom/**/*.tsx", "common-dom/**/*.tsx"]
+}

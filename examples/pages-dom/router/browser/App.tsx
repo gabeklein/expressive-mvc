@@ -1,0 +1,71 @@
+/** @jsxImportSource @expressive/dom */
+import './App.css';
+
+import '@expressive/dom';
+import { BrowserRouter, Link, Route } from '@expressive/router';
+
+export default () => (
+  <div class="container">
+    <h1>Browser history</h1>
+    <p>
+      <code>BrowserRouter</code> binds the router to the address bar and browser
+      history. A nested <code>none</code> Route catches misses inside its section;
+      the root one catches the rest.
+    </p>
+    <BrowserRouter>
+      <Route as={Frame}>
+        <Route as={Home} />
+        <Route to="projects" as={Projects}>
+          <Route as={ProjectIndex} />
+          <Route to=":id" as={Project} />
+          <Route none as={ProjectNotFound} />
+        </Route>
+        <Route none as={NotFound} />
+      </Route>
+    </BrowserRouter>
+    <small>
+      Browser Back and Forward walk these pages - the URL is the source of
+      truth. The projects layout persists across every page
+      below <code>/projects</code>, its own not-found page included.
+    </small>
+  </div>
+);
+
+const Frame = (props: { children?: Component.Node }) => {
+  const { url } = BrowserRouter.get();
+
+  return (
+    <section class="browser">
+      <code class="address">{url}</code>
+      <nav class="nav">
+        <Link to="/">Home</Link>
+        <Link to="/projects">Projects</Link>
+        <Link to="/projects/ada">Ada</Link>
+        <Link to="/projects/ada/files">Section miss</Link>
+        <Link to="/elsewhere">App miss</Link>
+      </nav>
+      <div class="view">{props.children}</div>
+    </section>
+  );
+};
+
+const Home = () => <p>Choose a destination.</p>;
+
+const Projects = (props: { children?: Component.Node }) => (
+  <section class="project">
+    <b>Projects</b>
+    {props.children}
+  </section>
+);
+
+const ProjectIndex = () => <p>Select a project.</p>;
+
+const Project = () => {
+  const { match } = Route.get(true);
+
+  return <p>Project: {match!.id}</p>;
+};
+
+const ProjectNotFound = () => <p>No project page matches this URL.</p>;
+
+const NotFound = () => <p>No application page matches this URL.</p>;

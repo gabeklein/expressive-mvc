@@ -1,0 +1,21 @@
+.nav {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid var(--accent-soft);
+  padding-bottom: 0.75rem;
+}
+
+.nav a {
+  color: var(--accent);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.nav a:hover {
+  text-decoration: underline;
+}
+
+.view {
+  color: var(--fg);
+}

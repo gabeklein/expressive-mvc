@@ -1,0 +1,51 @@
+.panel {
+  display: flex;
+  flex: 1 1 12rem;
+  flex-direction: column;
+  align-self: flex-start;
+  overflow: hidden;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+}
+
+.panel .head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s2);
+  padding: var(--s2) var(--s3);
+  color: var(--fg);
+  background: var(--accent-soft);
+  border: none;
+  border-radius: 0;
+  text-align: left;
+}
+
+.panel .head:hover {
+  background: var(--accent-soft);
+  border: none;
+}
+
+.panel .head span {
+  font-family: var(--font-mono);
+  color: var(--accent);
+}
+
+.panel .body {
+  display: flex;
+  padding: var(--s3);
+}
+
+.tally {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+}
+
+.tally output {
+  min-width: 2rem;
+  font-family: var(--font-mono);
+  font-size: var(--t-lg);
+  color: var(--accent);
+}

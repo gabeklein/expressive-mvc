@@ -1,0 +1,18 @@
+.container label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-bottom: 1rem;
+  color: var(--fg);
+}
+
+.container input[type='number'] {
+  width: 8rem;
+  padding: 0.4rem 0.5rem;
+  font: inherit;
+}
+
+.result {
+  font-size: var(--t-lg);
+  color: var(--fg);
+}

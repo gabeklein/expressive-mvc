@@ -1,0 +1,30 @@
+.picker h2 {
+  margin: 0;
+  font-size: var(--t-lg);
+}
+
+/* Selected wins over hover: without the second selector the global hover tint
+   replaces the fill and leaves accent-fg text on a near-transparent ground. */
+li.active,
+li.active:hover {
+  background: var(--accent);
+  color: var(--accent-fg);
+}
+
+/* Palette variant: lay the items out as a horizontal row of swatches. */
+.palette ul {
+  flex-direction: row;
+  justify-content: center;
+}
+
+.palette .swatch {
+  display: block;
+  width: 2rem;
+  height: 2rem;
+  border-radius: var(--r-sm);
+}
+
+.palette li.active {
+  background: none;
+  outline: 2px solid var(--accent);
+}
