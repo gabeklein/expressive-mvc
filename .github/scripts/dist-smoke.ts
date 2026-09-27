@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
@@ -127,6 +127,117 @@ console.log('inspect: install + act + bridge + vite ok');
 `
 };
 
+/**
+ * A dom app built the way a consumer builds one: type-checked against the
+ * published declarations with `skipLibCheck` off, bundled and minified so
+ * `sideEffects` tree-shaking applies, then driven under happy-dom.
+ */
+const CONSUMER = {
+  'tsconfig.json': JSON.stringify({
+    compilerOptions: {
+      target: 'ES2022',
+      module: 'ESNext',
+      moduleResolution: 'Bundler',
+      lib: ['ES2022', 'DOM', 'DOM.Iterable'],
+      strict: true,
+      noEmit: true,
+      skipLibCheck: false,
+      jsx: 'react-jsx',
+      jsxImportSource: '@expressive/dom'
+    },
+    include: ['app.tsx']
+  }),
+  'app.tsx': `
+import { Component, has } from '@expressive/mvc';
+import { Provider, render } from '@expressive/dom';
+import { Link, Route, Router } from '@expressive/router';
+
+class Item extends Component {
+  name = '';
+
+  render() {
+    return <li>{this.name}</li>;
+  }
+}
+
+class List extends Component {
+  items = has(Item);
+  draft = '';
+
+  new() {
+    this.items.add({ name: 'a' });
+  }
+
+  add() {
+    this.items.add({ name: this.draft });
+    this.draft = '';
+  }
+
+  render() {
+    return (
+      <section>
+        <input id="draft" value={this.draft} onInput={(event) => (this.draft = event.currentTarget.value)} />
+        <button id="add" onClick={this.add}>add</button>
+        <ul id="items">{this.items}</ul>
+      </section>
+    );
+  }
+}
+
+const Frame = (props: { children?: Component.Node }) => (
+  <main>
+    <Link to="/other">other</Link>
+    <Provider fallback={<p>loading</p>}>{props.children}</Provider>
+  </main>
+);
+
+const Other = () => <p id="other">other</p>;
+
+export function mount(root: Element) {
+  return render(
+    <Router>
+      <Route as={Frame}>
+        <Route as={List} />
+        <Route to="other" as={Other} />
+      </Route>
+    </Router>,
+    root
+  );
+}
+`,
+  'consumer.mjs': `
+import assert from 'node:assert/strict';
+import { Window } from 'happy-dom';
+
+const window = new Window({ url: 'http://localhost/' });
+
+for (const key of ['window', 'document', 'navigator', 'location', 'history', 'Node', 'Element', 'HTMLElement', 'SVGElement', 'DocumentFragment', 'CSSStyleSheet', 'getComputedStyle'])
+  Object.defineProperty(globalThis, key, { configurable: true, writable: true, value: key == 'window' ? window : window[key] });
+
+const { mount } = await import('./bundle.js');
+const root = document.body.appendChild(document.createElement('div'));
+const tick = (ms = 0) => new Promise((resolve) => setTimeout(resolve, ms));
+
+mount(root);
+await tick();
+assert.equal(root.querySelector('#items').textContent, 'a');
+
+const draft = root.querySelector('#draft');
+draft.value = 'b';
+draft.dispatchEvent(new window.Event('input', { bubbles: true }));
+root.querySelector('#add').dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+await tick();
+assert.equal(root.querySelector('#items').textContent, 'ab');
+assert.equal(draft.value, '');
+
+root.querySelector('a').dispatchEvent(new window.MouseEvent('click', { bubbles: true, cancelable: true }));
+await tick(20);
+assert.equal(root.querySelector('#other')?.textContent, 'other');
+
+console.log('dom: consumer type-check, bundle and render ok');
+`
+};
+
 function run(cmd: string[], cwd: string) {
   const { exitCode, stdout, stderr } = Bun.spawnSync(cmd, { cwd, stdout: 'pipe', stderr: 'pipe' });
   const out = stdout.toString();
@@ -138,6 +249,7 @@ function run(cmd: string[], cwd: string) {
   return out;
 }
 
+const ROOT = JSON.parse(readFileSync(resolve('package.json'), 'utf8'));
 const fixture = mkdtempSync(join(tmpdir(), 'expressive-dist-smoke-'));
 const tarballs: Record<string, string> = {};
 
@@ -161,7 +273,13 @@ try {
         version: '0.0.0',
         private: true,
         type: 'module',
-        dependencies: { ...tarballs, react: '^19', 'react-dom': '^19' },
+        dependencies: {
+          ...tarballs,
+          react: '^19',
+          'react-dom': '^19',
+          'happy-dom': ROOT.devDependencies['happy-dom'],
+          typescript: ROOT.devDependencies.typescript
+        },
         overrides: tarballs
       },
       null,
@@ -177,6 +295,13 @@ try {
     writeFileSync(join(fixture, probe), source);
     process.stdout.write(run(['node', probe], fixture));
   }
+
+  for (const [file, source] of Object.entries(CONSUMER))
+    writeFileSync(join(fixture, file), source);
+
+  run(['node', 'node_modules/typescript/bin/tsc', '-p', '.'], fixture);
+  run(['bun', 'build', 'app.tsx', '--outfile', 'bundle.js', '--format', 'esm', '--minify'], fixture);
+  process.stdout.write(run(['node', 'consumer.mjs'], fixture));
 } catch (error) {
   console.error(`Fixture kept for inspection: ${fixture}`);
   throw error;
