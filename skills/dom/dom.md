@@ -87,6 +87,26 @@ Inline style always beats classes. Among classes, a caller's rule beats the call
 
 Build-time extraction is not part of the `0.1` experiment.
 
+### Typing
+
+Maps are typed: a bare key must be a CSS property or a macro declared in `macro.Registry`, `_name` opens a rule, and anything else is rejected - `colr` reports *Did you mean 'color'?* rather than throwing at the terminal. A bare key never takes an object, which is what separates `margin: '0 8px'` from `_margin: { ... }`.
+
+A pack declares what it registers:
+
+```ts
+declare module '@expressive/dom' {
+  namespace macro {
+    interface Registry {
+      mx(value: number): style.Map;
+    }
+  }
+}
+
+macro({ mx: (value: number) => ({ marginLeft: `${value}px`, marginRight: `${value}px` }) });
+```
+
+Declaration merging is whole-program, so the augmentation may sit anywhere - above the registration, below it, or in another module. A declared name is checked where it registers *and* where it is called; an undeclared one still registers, but a typed map cannot call it. With no pack at all, CSS properties, rules and `--variables` work as they are.
+
 `class` is element-only. `style` on a component forwards through component and transparent boundaries to its host root; fragment output applies it to every host root. Reading `style` during render - destructuring, a spread, `this.props.style`, or a declared `style` field on a Component - takes ownership and suppresses forwarding for that render. Forwarded style overrides the root's own, and the outermost caller wins; a component wanting the last word consumes `style` and places it first:
 
 ```tsx
