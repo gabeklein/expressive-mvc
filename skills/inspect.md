@@ -39,7 +39,7 @@ await composer.act((s) => s.submit('x'))  // run, settle, return frames produced
 
 Ownership: a State in a plain field, `has` pool, or `map` is that owner's child; a `get(Type)` reference is not. First owner wins. One `Instance` per state - `find` returns the same object each time; a held reference keeps working after destruction, with `alive` false and `until` set.
 
-`act` records for its window even with the journal off, and returns every frame produced, downstream ones included.
+`act` records values for its window whatever the journal level, and returns every frame produced, downstream ones included.
 
 ## Orphans
 
@@ -164,14 +164,15 @@ curl localhost:5173/__inspect -d '["journal.frames", { "since": 3 }]'   # the on
 - Dev server in a container or VM: the host's request arrives from a gateway address and gets 403. Run the request inside it (`docker exec <container> curl localhost:5173/__inspect`), or forward the port over SSH (`ssh -L`) or a devcontainer - those arrive as loopback.
 - No HTML (`appType: 'custom'`): `import 'virtual:expressive-inspect'` first in the entry.
 
-Functions do not cross HTTP - `act` and `around` stay in process or on the bridge. Their equivalent over the relay:
+The journal records `keys` from page load - a connected page carries history before anyone asks. A level the app sets wins.
+
+`around` takes one call as its step - records values, runs it, settles as `act` does, answers `{ value, frames }`:
 
 ```bash
-curl … -d '["journal.record", { "level": "values" }]'   # off by default - nothing is recorded before this
-curl … -d '["journal.seq"]'                             # 12
-curl … -d '["call", "Composer.submit", "hi"]'
-curl … -d '["journal.frames", { "since": 12 }]'         # work deferred past the call lands in a later poll
+curl … -d '["around", ["call", "Composer.submit", "hi"]]'
 ```
+
+For what the developer does in the browser, read back with a cursor: `journal.seq`, then `journal.frames` with `since` once they're done - raise to `values` first if keys are not enough.
 
 What to reach for, in order:
 

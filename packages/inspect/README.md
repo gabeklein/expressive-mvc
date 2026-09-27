@@ -59,6 +59,7 @@ export default defineConfig({ plugins: [inspect()] });
 ```bash
 curl localhost:5173/__inspect                                   # connected pages, iframes included
 curl localhost:5173/__inspect/<id> -d '["get", "Composer.draft"]'
+curl localhost:5173/__inspect/<id> -d '["around", ["call", "Composer.submit", "hi"]]'   # { value, frames }
 ```
 
 Local callers only; browser and proxied (tunnel) requests are refused.
@@ -67,7 +68,7 @@ Console: `__EXPRESSIVE_INSPECT__.get('Composer.draft')`, `__EXPRESSIVE_INSPECT__
 
 ## Journal
 
-Off by default. `journal.record({ level, types, paths, keys, calls })`, then `frames({ since })`. A frame is one batch of writes plus its flush; work an effect defers carries a `cause` back to the frame that scheduled it. `export()` emits NDJSON for a sidecar.
+Off by default (the Vite relay records `keys` from load). `journal.record({ level, types, paths, keys, calls })`, then `frames({ since })`. A frame is one batch of writes plus its flush; work an effect defers carries a `cause` back to the frame that scheduled it. `export()` emits NDJSON for a sidecar.
 
 ## Orphans
 

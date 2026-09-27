@@ -1,7 +1,7 @@
 import { State } from '@expressive/mvc';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { attach, inspect } from '../index';
+import { attach, inspect, journal } from '../index';
 import { connect, type Hot } from './client';
 
 class Composer extends State {
@@ -65,6 +65,36 @@ describe('connect', () => {
     expect((await ask(1)).value.top).toBe(false);
   });
 
+  it('will record keys once connected', () => {
+    connect(channel().hot);
+    expect(journal.record().level).toBe('keys');
+  });
+
+  it('will keep a recording level already set', () => {
+    journal.record({ level: 'values' });
+    connect(channel().hot);
+    expect(journal.record().level).toBe('values');
+  });
+
+  it('will run a call around the journal and answer its value and frames', async () => {
+    Composer.new();
+    const { hot, ask } = channel();
+    connect(hot);
+    const { value } = await ask(1, [['around'], [['call', 'Composer.submit', 'hi']]]);
+    expect(value.value).toBe(2);
+    expect(value.frames[0].events[0]).toMatchObject({ key: 'draft', value: 'hi' });
+    expect(journal.record().level).toBe('keys');
+  });
+
+  it('will answer an error for around without a call', async () => {
+    const { hot, ask } = channel();
+    connect(hot);
+    expect(await ask(1, [['around'], ['Composer.submit']])).toEqual({
+      rid: 1,
+      error: 'around takes one call: ["around", [method, ...args]].'
+    });
+  });
+
   it('will answer a call through the dispatcher', async () => {
     const composer = Composer.new();
     const { hot, ask } = channel();
@@ -88,20 +118,20 @@ describe('connect', () => {
   });
 
   it('will answer an error when the result does not serialize', async () => {
-    globalThis.__EXPRESSIVE_INSPECT__ = { big: () => 1n } as never;
     const { hot, ask } = channel();
     connect(hot);
+    globalThis.__EXPRESSIVE_INSPECT__ = { big: () => 1n } as never;
     expect((await ask(1, [['big'], []])).error).toMatch(/BigInt/);
   });
 
   it('will answer an error for a non-Error throw', async () => {
+    const { hot, ask } = channel();
+    connect(hot);
     globalThis.__EXPRESSIVE_INSPECT__ = {
       fail() {
         throw 'plain';
       }
     } as never;
-    const { hot, ask } = channel();
-    connect(hot);
     expect(await ask(1, [['fail'], []])).toEqual({ rid: 1, error: 'plain' });
   });
 });
