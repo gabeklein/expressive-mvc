@@ -23,12 +23,12 @@ function has<T>(initial?: Iterable<T> | false | null): List<T>;
 
 function has<T extends State>(
   Type: new (...args: State.Args<T>) => T
-): Create<T, State.Args<T>>;
+): Create<T>;
 
 function has<T extends State, K extends State.Field<T>>(
   Type: new (...args: State.Args<T>) => T,
   fromKey: K
-): From<T, T[K]>;
+): From<T, K>;
 
 function has<R, A extends unknown[]>(
   make: (...args: A) => R
@@ -172,12 +172,16 @@ class List<T> {
   }
 }
 
-interface Create<T, A extends unknown[]> extends Pool<T, A> {
-  add(...args: A): T;
+interface Create<T extends State> extends Pool<T, State.Args<T>> {
+  add(...args: State.Args<T>): T;
   add(instance: T): T;
 }
 
-interface From<T, V> extends Create<T, [from: V]> {}
+interface From<T extends State, K extends State.Field<T>>
+  extends Pool<T, [from: T[K]]> {
+  add(from: T[K]): T;
+  add(instance: T): T;
+}
 
 class Pool<T, A extends unknown[] = unknown[], R = T> {
   constructor(make: Function, fromKey?: string) {
