@@ -353,6 +353,111 @@ describe('accept', () => {
     expect(received).toHaveBeenCalledWith(expect.any(Function));
   });
 
+  it('will replace handlers the module registered', () => {
+    const id = module();
+    const before = vi.fn();
+    const after = vi.fn();
+    const outside = vi.fn();
+
+    const version = (handler?: () => void) => {
+      class Test extends State {}
+      if (handler) Test.on(handler);
+      return Test;
+    };
+
+    const Test = version(before);
+
+    accept(id, { Test });
+    Test.on(outside);
+    accept(id, { Test: version(after) });
+    Test.new();
+
+    expect(before).not.toHaveBeenCalled();
+    expect(after).toHaveBeenCalledTimes(1);
+    expect(outside).toHaveBeenCalledTimes(1);
+  });
+
+  it('will add handlers to a class without', () => {
+    const id = module();
+    const handler = vi.fn();
+
+    const version = (handler?: () => void) => {
+      class Test extends State {}
+      if (handler) Test.on(handler);
+      return Test;
+    };
+
+    const Test = version();
+
+    accept(id, { Test });
+    accept(id, { Test: version(handler) });
+    Test.new();
+
+    expect(handler).toHaveBeenCalledTimes(1);
+  });
+
+  it('will extend live subclasses', async () => {
+    const id = module();
+
+    const Before = (() => {
+      class Test extends State {
+        value = 1;
+      }
+      return Test;
+    })();
+
+    const After = (() => {
+      class Test extends State {
+        value = 1;
+        added() {
+          return 'added';
+        }
+        own() {
+          return 'parent';
+        }
+        get double() {
+          return this.value * 2;
+        }
+        get shadowed() {
+          return 'parent';
+        }
+      }
+      return Test;
+    })();
+
+    accept(id, { Test: Before });
+
+    class Sub extends Before {
+      own() {
+        return 'sub';
+      }
+      get shadowed() {
+        return 'sub';
+      }
+    }
+
+    const base = Before.new() as any;
+    const sub = Sub.new() as any;
+
+    accept(id, { Test: After });
+
+    expect(sub.get('added')()).toBe('added');
+    expect(sub.own()).toBe('sub');
+    expect(sub.shadowed).toBe('sub');
+
+    const effect = vi.fn((self: any) => void self.double);
+
+    base.get(effect);
+    expect(base.double).toBe(2);
+
+    base.value = 5;
+    await expect(base).toHaveUpdated();
+
+    expect(base.double).toBe(10);
+    expect(sub.double).toBe(2);
+    expect(effect).toHaveBeenCalledTimes(2);
+  });
+
   it('will drop instances collected', () => {
     const id = module();
 

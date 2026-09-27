@@ -1,11 +1,12 @@
 import { rechain } from './component';
 import { event } from './observable';
-import { State, patch, track } from './state';
+import { State, handlers, patch, track } from './state';
 
 interface Entry {
   type: Function;
   shape: string;
   kinds: Record<string, 'get' | 'fn'>;
+  own: ReturnType<typeof handlers>;
 }
 
 /** A module as a build integration parsed it. */
@@ -39,7 +40,7 @@ function describe(type: Function): Entry {
           if (target !== type) kinds[key] = desc.get ? 'get' : 'fn';
         }
 
-  return { type, shape: shape.replace(/\s+/g, ' '), kinds };
+  return { type, shape: shape.replace(/\s+/g, ' '), kinds, own: handlers(type as State.Extends) };
 }
 
 function compatible(prev: Entry, next: Entry) {
@@ -81,7 +82,7 @@ function accept<T extends Record<string, unknown>>(id: string, classes: T): T {
     }
 
     try {
-      for (const state of patch(prev.type as State.Extends, type)) refresh.add(state);
+      for (const state of patch(prev.type as State.Extends, type, prev.own)) refresh.add(state);
       known[name] = { ...next, type: prev.type };
       output[name] = prev.type;
     } catch (error) {

@@ -24,7 +24,9 @@ const STORE = new WeakMap<State, Record<string | number | symbol, unknown>>();
 const PENDING = new Set<State | (() => void)>();
 
 /** External lifecycle listeners for any given State class. */
-const SETUP = new WeakMap<State.Extends, Set<State.Init<any> | State.On<any>>>();
+type Handler = State.Init<any> | State.On<any>;
+
+const SETUP = new WeakMap<State.Extends, Set<Handler>>();
 
 /** Parent-child relationships. */
 const PARENT = new WeakMap<object, State | null>();
@@ -1177,12 +1179,23 @@ function track() {
  * Move the members of `next` onto `prev`, which keeps its identity. Returns the
  * live instances of `prev`, each needing a refresh.
  */
-function patch(prev: State.Extends, next: State.Extends): State[] {
+function patch(prev: State.Extends, next: State.Extends, own: Handler[]): State[] {
   const proto = prev.prototype;
   const incoming = Object.getOwnPropertyDescriptors(next.prototype);
   const keys = METHODS.get(prev);
   const getters = GETTERS.get(prev);
   const methods = new Map<string, Function>();
+  const knownKeys = new Set(keys?.keys());
+  const knownGetters = new Set(getters?.keys());
+
+  let setup = SETUP.get(prev);
+
+  for (const handler of own) setup!.delete(handler);
+
+  for (const handler of handlers(next)) {
+    if (!setup) SETUP.set(prev, (setup = new Set()));
+    setup.add(handler);
+  }
 
   for (const [key, desc] of Object.entries(Object.getOwnPropertyDescriptors(next))) {
     if (key == 'prototype' || key == 'length' || key == 'name') continue;
@@ -1238,17 +1251,36 @@ function patch(prev: State.Extends, next: State.Extends): State[] {
     else if (state instanceof prev) live.push(state);
   }
 
-  for (const state of live)
+  for (const type of new Set(live.map((state) => state.constructor as State.Extends))) {
+    if (type === prev) continue;
+
+    const inherit = METHODS.get(type)!;
+    const computed = GETTERS.get(type)!;
+
+    for (const [key, bind] of keys!) if (!knownKeys.has(key) && !inherit.has(key)) inherit.set(key, bind);
+    for (const [key, get] of getters!) if (!knownGetters.has(key) && !computed.has(key)) computed.set(key, get);
+  }
+
+  for (const state of live) {
     for (const [key, value] of methods) {
-      const own = Object.getOwnPropertyDescriptor(state, key);
+      const desc = Object.getOwnPropertyDescriptor(state, key);
 
-      if (!own) continue;
+      if (!desc) continue;
 
-      if (own.set) own.set.call(state, value);
-      else if (PAST.has(UNBIND.get(own.value))) delete (state as any)[key];
+      if (desc.set) desc.set.call(state, value);
+      else if (PAST.has(UNBIND.get(desc.value))) delete (state as any)[key];
     }
 
+    for (const [key, get] of GETTERS.get(state.constructor)!)
+      if (!knownGetters.has(key) && get === getters!.get(key)) compute.call(state, get, key);
+  }
+
   return live;
+}
+
+/** Lifecycle handlers registered on a class itself. */
+function handlers(type: State.Extends): Handler[] {
+  return [...(SETUP.get(type) || [])];
 }
 
 /** Random alphanumberic of length 6; always starts with a letter. */
@@ -1280,4 +1312,4 @@ function parent(child: object, value?: State | null) {
   return true;
 }
 
-export { event, unbind, State, parent, children, trailing, PENDING, STORE, uid, access, update, apply, compute, fault, patch, track };
+export { event, unbind, State, parent, children, trailing, PENDING, STORE, uid, access, update, apply, compute, fault, patch, track, handlers };
