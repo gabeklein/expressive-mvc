@@ -39,10 +39,10 @@ class Stopwatch extends Component {
     const { display, running, elapsed, toggle, reset } = this;
 
     return (
-      <div class="stopwatch">
+      <div className="stopwatch">
         <h1>Stopwatch</h1>
-        <p class={`time ${running ? 'running' : ''}`}>{display}</p>
-        <div class="controls">
+        <p className={`time ${running ? 'running' : ''}`}>{display}</p>
+        <div className="controls">
           <button onClick={toggle}>{running ? 'Stop' : 'Start'}</button>
           <button onClick={reset} disabled={!elapsed && !running}>
             Reset

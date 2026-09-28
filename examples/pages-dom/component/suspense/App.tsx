@@ -5,7 +5,7 @@ import Button from '@common-dom/Button';
 import { Component, get, set } from '@expressive/mvc';
 
 export default () => (
-  <div class="container">
+  <div className="container">
     <h1>Suspense</h1>
     <p>
       An async <code>set</code> factory resolves straight into its field, and
@@ -31,12 +31,12 @@ class Demo extends Component {
 
     return (
       <>
-        <div class="card">
+        <div className="card">
           <h2>Its own boundary</h2>
           <Greeter key={`own-${round}`} name="Ada" />
         </div>
 
-        <div class="card">
+        <div className="card">
           <h2>Deferred to an ancestor</h2>
           <Panel key={`panel-${round}`}>
             <Reader fallback={false} />
@@ -64,7 +64,7 @@ class Greeter extends Component {
   fallback = <small>Greeting someone…</small>;
 
   render() {
-    return <p class="result">{this.greeting}</p>;
+    return <p className="result">{this.greeting}</p>;
   }
 }
 
@@ -81,7 +81,7 @@ class Reader extends Component {
   panel = get(Panel);
 
   render() {
-    return <p class="result">{this.panel.farewell}</p>;
+    return <p className="result">{this.panel.farewell}</p>;
   }
 }
 

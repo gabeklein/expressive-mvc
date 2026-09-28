@@ -20,7 +20,7 @@ export default class Sheet extends Component {
 
   render() {
     return (
-      <div class="container sheet">
+      <div className="container sheet">
         <h1>Spreadsheet</h1>
         <p>
           Enter a number, text, or a formula like <code>=A1*2+B1</code>.
@@ -114,7 +114,7 @@ const CellView = ({ id }: { id: string }) => {
           }}
         />
       ) : (
-        <div class="cell" onClick={() => (sheet.editing = id)}>
+        <div className="cell" onClick={() => (sheet.editing = id)}>
           {cell ? cell.value : ''}
         </div>
       )}

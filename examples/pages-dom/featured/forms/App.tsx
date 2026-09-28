@@ -27,7 +27,7 @@ class MyForm extends Form {
     const { to, submit } = this;
 
     return (
-      <div class="form">
+      <div className="form">
         <h1>Example Form</h1>
         <input ref={to.firstname} placeholder="Firstname" />
         <input ref={to.lastname} placeholder="Lastname" />

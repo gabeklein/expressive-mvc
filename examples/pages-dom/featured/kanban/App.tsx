@@ -72,10 +72,10 @@ export default class Board extends Component {
 
   render() {
     return (
-      <div class="container kanban">
+      <div className="container kanban">
         <h1>Kanban</h1>
         <p>Drag cards between columns; double-click a card to rename.</p>
-        <div class="board">{this.columns}</div>
+        <div className="board">{this.columns}</div>
       </div>
     );
   }
@@ -116,7 +116,7 @@ class Card extends Component {
 
     return (
       <li
-        class={`card${dragging ? ' dragging' : ''}${over ? ' over' : ''}`}
+        className={`card${dragging ? ' dragging' : ''}${over ? ' over' : ''}`}
         draggable={!editing}
         onDragStart={(e) => {
           e.dataTransfer!.setData('text/plain', this.key);
@@ -149,7 +149,7 @@ class Card extends Component {
         ) : (
           <>
             <span onDblClick={() => (this.editing = true)}>{title}</span>
-            <button class="remove" onClick={this.remove} aria-label="delete">
+            <button className="remove" onClick={this.remove} aria-label="delete">
               ×
             </button>
           </>
@@ -192,7 +192,7 @@ class Column extends Component {
 
     return (
       <section
-        class={over ? 'column over-end' : 'column'}
+        className={over ? 'column over-end' : 'column'}
         style={{ '--accent': accent } as any}
         onDragOver={(e) => {
           e.preventDefault();
@@ -201,9 +201,9 @@ class Column extends Component {
         onDrop={(e) => board.drop(e.dataTransfer!.getData('text/plain'), this.id)}>
         <header>
           <h2>{label}</h2>
-          <span class="count">{cards.length}</span>
+          <span className="count">{cards.length}</span>
         </header>
-        <ul class="cards">{cards}</ul>
+        <ul className="cards">{cards}</ul>
         <form
           onSubmit={(e) => {
             e.preventDefault();

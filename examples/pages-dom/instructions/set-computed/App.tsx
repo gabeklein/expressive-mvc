@@ -4,7 +4,7 @@ import './App.css';
 import { Component, set } from '@expressive/mvc';
 
 export default () => (
-  <div class="container">
+  <div className="container">
     <h1>Computed</h1>
     <p>
       Declare a parameter and the same instruction becomes a computed slot -{' '}
@@ -36,7 +36,7 @@ class Invoice extends Component {
     const { hours, rate, discount, gross, net } = this;
 
     return (
-      <section class="invoice">
+      <section className="invoice">
         <label>
           Hours
           <input

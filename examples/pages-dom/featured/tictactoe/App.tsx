@@ -46,17 +46,17 @@ class Game extends Component {
     const { board, turn, winner, full, play, reset } = this;
 
     return (
-      <div class="container">
+      <div className="container">
         <h1>Tic Tac Toe</h1>
-        <p class="status">
+        <p className="status">
           {winner ? `${winner.player} wins!` : full ? 'Draw!' : `${turn}'s turn`}
         </p>
-        <div class={winner ? 'board done' : 'board'}>
+        <div className={winner ? 'board done' : 'board'}>
           {board.map((cell, i) => (
             <button
               key={i}
               onClick={() => play(i)}
-              class={`${cell} ${winner?.line.includes(i) ? 'wins' : ''}`}>
+              className={`${cell} ${winner?.line.includes(i) ? 'wins' : ''}`}>
               {cell}
             </button>
           ))}

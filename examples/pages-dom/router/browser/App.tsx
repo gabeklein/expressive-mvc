@@ -6,7 +6,7 @@ import { BrowserRouter, Link, Route } from '@expressive/router';
 import type { Component } from '@expressive/mvc';
 
 export default () => (
-  <div class="container">
+  <div className="container">
     <h1>Browser history</h1>
     <p>
       <code>BrowserRouter</code> binds the router to the address bar and browser
@@ -36,16 +36,16 @@ const Frame = (props: { children?: Component.Node }) => {
   const { url } = BrowserRouter.get();
 
   return (
-    <section class="browser">
-      <code class="address">{url}</code>
-      <nav class="nav">
+    <section className="browser">
+      <code className="address">{url}</code>
+      <nav className="nav">
         <Link to="/">Home</Link>
         <Link to="/projects">Projects</Link>
         <Link to="/projects/ada">Ada</Link>
         <Link to="/projects/ada/files">Section miss</Link>
         <Link to="/elsewhere">App miss</Link>
       </nav>
-      <div class="view">{props.children}</div>
+      <div className="view">{props.children}</div>
     </section>
   );
 };
@@ -53,7 +53,7 @@ const Frame = (props: { children?: Component.Node }) => {
 const Home = () => <p>Choose a destination.</p>;
 
 const Projects = (props: { children?: Component.Node }) => (
-  <section class="project">
+  <section className="project">
     <b>Projects</b>
     {props.children}
   </section>

@@ -10,30 +10,30 @@ const App = () => {
 
   if (dead === true)
     return (
-      <div class="container">
-        <div class="emoji">🙀💥</div>
+      <div className="container">
+        <div className="emoji">🙀💥</div>
         <h2>Unfortunately, the cat exploded.</h2>
       </div>
     );
 
   if (dead === false)
     return (
-      <div class="container">
-        <div class="emoji">😸👍</div>
+      <div className="container">
+        <div className="emoji">😸👍</div>
         <h2>Oh, the cat did not explode.</h2>
       </div>
     );
 
   return (
-    <div class="container">
+    <div className="container">
       <h1>Async Example</h1>
-      <div class="timer">
-        <h1 class="box">📦</h1>
+      <div className="timer">
+        <h1 className="box">📦</h1>
         <p>
           <b>Agent {agent}</b>, we need you to defuse the bomb!
         </p>
         <p>
-          If you can't do it in <span class='seconds'>{remaining}</span> seconds, Schrödinger's cat may or
+          If you can't do it in <span className='seconds'>{remaining}</span> seconds, Schrödinger's cat may or
           may not die. But there's still time!
         </p>
         <p>

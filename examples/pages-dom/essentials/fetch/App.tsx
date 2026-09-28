@@ -22,7 +22,7 @@ const Example = () => {
 
   if (response) 
     return (
-      <p class="fetch-result">
+      <p className="fetch-result">
         <span>Server said: {response}</span>
         <button onClick={reset}>Reset</button>
       </p>
@@ -30,22 +30,22 @@ const Example = () => {
 
   if (error) 
     return (
-      <p class="fetch-result">
+      <p className="fetch-result">
         <span>Error: {error.message}</span>
         <button onClick={reset}>Reset</button>
       </p>
     )
 
   if (waiting) 
-    return <p class="fetch-status">Sent. Waiting on response...</p>
+    return <p className="fetch-status">Sent. Waiting on response...</p>
 
   return (
-    <button class="fetch-action" onClick={run}>Say hello to server</button>
+    <button className="fetch-action" onClick={run}>Say hello to server</button>
   )
 };
 
 export default () => (
-  <div class="container">
+  <div className="container">
     <h1>Fetch Example</h1>
     <Example />
   </div>

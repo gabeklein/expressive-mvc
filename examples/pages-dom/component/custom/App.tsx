@@ -5,7 +5,7 @@ import { Arc } from './Arc';
 import { Scale } from './Scale';
 
 export default () => (
-  <div class="container">
+  <div className="container">
     <h1>Custom Control</h1>
     <p>
       Drag the arc, or focus it and use the arrow keys. The number lives on the
@@ -41,10 +41,10 @@ class Manuscript extends Scale {
     const { volume } = this;
 
     return (
-      <form class="volume" onSubmit={(e) => e.preventDefault()}>
+      <form className="volume" onSubmit={(e) => e.preventDefault()}>
         <Arc>{volume}</Arc>
 
-        <div class="row">
+        <div className="row">
           <Slider />
           <Digits />
         </div>

@@ -39,7 +39,7 @@ export default () => (
 );
 
 const Frame = (props: { children?: Component.Node }) => (
-  <div class="container">
+  <div className="container">
     <h1>Transitions</h1>
     <p>
       Every navigation commits through <code>Router.navigate</code>, which
@@ -51,13 +51,13 @@ const Frame = (props: { children?: Component.Node }) => (
     </p>
     <Address />
     <Progress />
-    <nav class="nav">
+    <nav className="nav">
       <Link to="/">Foyer</Link>
       <Link to="/paintings">Paintings</Link>
       <Link to="/sculpture">Sculpture</Link>
       <Link to="/archives">Archives</Link>
     </nav>
-    <div class="view">{props.children}</div>
+    <div className="view">{props.children}</div>
     <Deferral />
     <small>
       Each wing takes 700ms to unlock (an async entry guard). With deferral, the
@@ -72,18 +72,18 @@ const Frame = (props: { children?: Component.Node }) => (
 const Address = () => {
   const { path } = Museum.get();
 
-  return <code class="address">museum.example{path}</code>;
+  return <code className="address">museum.example{path}</code>;
 };
 
 const Progress = () => (
-  <div class="bar" data-busy={Museum.get().navigating || undefined} />
+  <div className="bar" data-busy={Museum.get().navigating || undefined} />
 );
 
 const Deferral = () => {
   const { deferred, toggle } = Museum.get();
 
   return (
-    <label class="mode">
+    <label className="mode">
       <input type="checkbox" checked={deferred} onChange={toggle} />
       hold the screen while the next page loads (default)
     </label>
@@ -91,7 +91,7 @@ const Deferral = () => {
 };
 
 const Foyer = () => (
-  <section class="room">
+  <section className="room">
     <h2>Foyer</h2>
     <p>Pick a wing. Each one is behind a slow door.</p>
   </section>
@@ -101,11 +101,11 @@ const Wing = () => {
   const { label, meta } = Route.get();
 
   return (
-    <section class={`room ${meta!.tone}`}>
+    <section className={`room ${meta!.tone}`}>
       <h2>{label}</h2>
       <p>The {label!.toLowerCase()} wing, fully loaded.</p>
     </section>
   );
 };
 
-const Opening = () => <p class="gate">unlocking…</p>;
+const Opening = () => <p className="gate">unlocking…</p>;

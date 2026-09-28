@@ -4,7 +4,7 @@ import './App.css';
 import { Picker } from './Picker';
 
 export default () => (
-  <div class="container">
+  <div className="container">
     <h1>Subcomponents</h1>
     <p>
       Picker owns the data and the selection logic; its PascalCase methods are
@@ -12,7 +12,7 @@ export default () => (
       <code>Item</code> alone and inherits the rest. Color replaces{' '}
       <code>Summary</code> too, adding a readout Fruit has no use for.
     </p>
-    <div class="pair">
+    <div className="pair">
       <FruitPicker />
       <PalettePicker />
     </div>
@@ -46,7 +46,7 @@ class PalettePicker extends Picker {
   names = Object.keys(this.colors);
 
   Item({ index }: { index: number }) {
-    return <span class="swatch" style={{ background: this.colors[this.names[index]] }} />;
+    return <span className="swatch" style={{ background: this.colors[this.names[index]] }} />;
   }
 
   Summary() {

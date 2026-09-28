@@ -11,7 +11,7 @@ const SHELF = [
 ];
 
 export default () => (
-  <div class="container">
+  <div className="container">
     <h1>Context</h1>
     <p>
       <code>Provider</code> puts state in context - a class it constructs and will
@@ -20,12 +20,12 @@ export default () => (
       between joining state and creating it.
     </p>
     <Provider for={{ shop: Shop, cart: Cart }}>
-      <div class="counter">
+      <div className="counter">
         <Greeting />
         <Shelf />
         <Badge />
         <Consumer for={Cart}>
-          {(cart) => <p class="total">Total ${cart.total}</p>}
+          {(cart) => <p className="total">Total ${cart.total}</p>}
         </Consumer>
       </div>
     </Provider>
@@ -56,14 +56,14 @@ class Cart extends State {
 const Greeting = () => {
   const { barista } = Shop.get();
 
-  return <p class="greeting">{barista} is on bar</p>;
+  return <p className="greeting">{barista} is on bar</p>;
 };
 
 const Shelf = () => {
   const { is: cart } = Cart.get();
 
   return (
-    <div class="shelf">
+    <div className="shelf">
       {SHELF.map(({ name, price }) => (
         <button key={name} onClick={() => cart.add(price)}>
           {name} <small>${price}</small>
@@ -76,5 +76,5 @@ const Shelf = () => {
 const Badge = () => {
   const { count } = Cart.get();
 
-  return <p class="badge">{count} in cart</p>;
+  return <p className="badge">{count} in cart</p>;
 };

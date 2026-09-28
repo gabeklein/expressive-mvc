@@ -5,7 +5,7 @@ import { State, Component, get, has } from '@expressive/mvc';
 import { Provider } from '@expressive/dom';
 
 export default () => (
-  <div class="container">
+  <div className="container">
     <h1>Downstream</h1>
     <p>
       A <code>true</code> flips the lookup around:{' '}
@@ -45,7 +45,7 @@ class Ballot extends Component {
 
     return (
       <>
-        <ul class="ballot">
+        <ul className="ballot">
           {slate.map((name, i) => (
             <Candidate key={name} name={name} remove={() => slate.pop(i)} />
           ))}
@@ -60,7 +60,7 @@ class Ballot extends Component {
         </ul>
 
         <form
-          class="add"
+          className="add"
           onSubmit={(e) => {
             e.preventDefault();
             this.submit();
@@ -96,7 +96,7 @@ class Candidate extends Component {
 
     return (
       <li
-        class={poll.choice === name ? 'candidate chosen' : 'candidate'}
+        className={poll.choice === name ? 'candidate chosen' : 'candidate'}
         onClick={() => (poll.choice = name)}>
         <span>{name}</span>
         {writeIn && <em>write-in</em>}
@@ -110,7 +110,7 @@ const Tally = () => {
   const { candidates, choice } = Poll.get();
 
   return (
-    <p class="tally">
+    <p className="tally">
       {candidates.length} on the roster · chose <b>{choice || '—'}</b>
     </p>
   );

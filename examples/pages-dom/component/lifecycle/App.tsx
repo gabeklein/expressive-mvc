@@ -5,7 +5,7 @@ import Button from '@common-dom/Button';
 import { Component, get, has, ref } from '@expressive/mvc';
 
 export default () => (
-  <div class="container">
+  <div className="container">
     <h1>Lifecycle</h1>
     <p>
       Three seams, three phases. <code>new()</code> runs at construction,
@@ -37,14 +37,14 @@ class Demo extends Component {
       <>
         {showing && <Probe />}
 
-        <div class="row">
+        <div className="row">
           <Button primary onClick={() => (this.showing = !showing)}>
             {showing ? 'Unmount' : 'Mount'}
           </Button>
           <Button onClick={() => entries.clear()}>Clear</Button>
         </div>
 
-        <ol class="trace">
+        <ol className="trace">
           {entries.map((note, i) => (
             <li key={i}>{note}</li>
           ))}
@@ -90,7 +90,7 @@ class Probe extends Component {
     const { width, ticks } = this;
 
     return (
-      <div class="probe" ref={this.box}>
+      <div className="probe" ref={this.box}>
         <strong>{width}px</strong>
         <small>alive {ticks}s</small>
       </div>

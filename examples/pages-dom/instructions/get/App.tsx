@@ -4,7 +4,7 @@ import './App.css';
 import { Component, get } from '@expressive/mvc';
 
 export default () => (
-  <div class="container">
+  <div className="container">
     <h1>Upstream</h1>
     <p>
       <code>get(Form)</code> locates the nearest form by class, not by prop. A{' '}
@@ -33,7 +33,7 @@ class Form extends Component {
     const { locked } = this;
 
     return (
-      <form class="signup" onSubmit={(e) => e.preventDefault()}>
+      <form className="signup" onSubmit={(e) => e.preventDefault()}>
         <Field label="Name" />
 
         <Group title="Contact">
@@ -59,7 +59,7 @@ class Field extends Component {
     const { form, label, value } = this;
 
     return (
-      <label class="field">
+      <label className="field">
         <span>
           {label}
           <small>{form ? 'in a form' : 'no form above'}</small>
@@ -76,7 +76,7 @@ class Field extends Component {
 }
 
 const Group = (props: { title: string; children?: Component.Node }) => (
-  <fieldset class="group">
+  <fieldset className="group">
     <legend>{props.title}</legend>
     {props.children}
   </fieldset>

@@ -20,7 +20,7 @@ export default () => (
 );
 
 const Frame = (props: { children?: Component.Node }) => (
-  <div class="container">
+  <div className="container">
     <h1>Navigation</h1>
     <p>
       <code>NavLinks</code> renders the menu from the route tree itself, so the
@@ -29,9 +29,9 @@ const Frame = (props: { children?: Component.Node }) => (
       to say how each layer looks; a scope with no page of its own arrives as a
       group.
     </p>
-    <div class="layout">
+    <div className="layout">
       <Menu />
-      <div class="view">{props.children}</div>
+      <div className="view">{props.children}</div>
     </div>
     <small>
       A <code>Link</code> that reads <code>active</code> subscribes to navigation,
@@ -43,7 +43,7 @@ const Frame = (props: { children?: Component.Node }) => (
 
 class Menu extends NavLinks {
   List(props: { children?: Component.Node }) {
-    return <nav class="menu">{props.children}</nav>;
+    return <nav className="menu">{props.children}</nav>;
   }
 
   Item(props: { route: Route; label?: string }) {
@@ -52,7 +52,7 @@ class Menu extends NavLinks {
 
   Group(props: { route: Route; children?: Component.Node }) {
     return (
-      <section class="group">
+      <section className="group">
         <h4>{props.route.label}</h4>
         {props.children}
       </section>
@@ -68,7 +68,7 @@ class Tab extends Link {
       <a
         href={href}
         onClick={this.go}
-        class={match ? 'tab here' : active ? 'tab near' : 'tab'}>
+        className={match ? 'tab here' : active ? 'tab near' : 'tab'}>
         {this.props.children}
       </a>
     );
@@ -84,7 +84,7 @@ class Page extends Component {
     const { label, path } = this.route;
 
     return (
-      <p class="page">
+      <p className="page">
         <b>{label}</b>
         <code>{path}</code>
       </p>

@@ -10,7 +10,7 @@ Session.new();
 Theme.new();
 
 export default () => (
-  <div class="container">
+  <div className="container">
     <h1>Globals</h1>
     <p>
       Three states created once up here, the way you would beside the root render.
@@ -19,7 +19,7 @@ export default () => (
       alone leaves an instance private to whoever made it - which is what keeps a
       forgotten Provider from installing per-request state process-wide.
     </p>
-    <div class="cards">
+    <div className="cards">
       <Size />
       <Account />
       <Appearance />
@@ -35,7 +35,7 @@ const Size = () => {
   const { width, compact } = Viewport.get();
 
   return (
-    <article class="card">
+    <article className="card">
       <h2>Viewport</h2>
       <b>{width}px</b>
       <small>{compact ? 'compact layout' : 'wide layout'}</small>
@@ -47,7 +47,7 @@ const Account = () => {
   const { user, login, logout } = Session.get();
 
   return (
-    <article class="card">
+    <article className="card">
       <h2>Session</h2>
       <b>{user ?? 'signed out'}</b>
       {user ? (
@@ -63,7 +63,7 @@ const Appearance = () => {
   const { dark, toggle } = Theme.get();
 
   return (
-    <article class="card">
+    <article className="card">
       <h2>Theme</h2>
       <b>{dark ? 'dark' : 'light'}</b>
       <button onClick={toggle}>Switch</button>

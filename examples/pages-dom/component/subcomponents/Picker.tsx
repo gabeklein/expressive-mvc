@@ -22,13 +22,13 @@ export class Picker extends Component {
 
   render() {
     return (
-      <div class={`pane picker ${this.className}`}>
+      <div className={`pane picker ${this.className}`}>
         {this.name && <h2>Choose {this.name}</h2>}
         <ul>
           {this.names.map((item, i) => (
             <li
               key={item}
-              class={i === this.selected ? 'active' : ''}
+              className={i === this.selected ? 'active' : ''}
               onClick={() => this.choose(i)}>
               <this.Item index={i} />
             </li>

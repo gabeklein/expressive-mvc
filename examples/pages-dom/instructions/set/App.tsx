@@ -4,7 +4,7 @@ import './App.css';
 import { Component, set } from '@expressive/mvc';
 
 export default () => (
-  <div class="container">
+  <div className="container">
     <h1>Managed Slots</h1>
     <p>
       A value plus a callback makes the field its own gatekeeper. The callback runs
@@ -56,7 +56,7 @@ class Account extends Component {
           <input value={query} onInput={(e) => (this.query = (e.currentTarget as HTMLInputElement).value)} />
         </label>
 
-        <p class="result">{result}</p>
+        <p className="result">{result}</p>
       </>
     );
   }

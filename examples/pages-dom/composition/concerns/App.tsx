@@ -6,7 +6,7 @@ import { State, Component, get } from '@expressive/mvc';
 const TAGS = ['all', 'math', 'code'];
 
 export default () => (
-  <div class="container">
+  <div className="container">
     <h1>Separation of Concerns</h1>
     <p>
       This screen has three concerns - what is being asked for, what there is to
@@ -64,7 +64,7 @@ class Screen extends Component {
 
   render() {
     return (
-      <section class="screen">
+      <section className="screen">
         <Filters />
         <Results />
         <Detail />
@@ -80,17 +80,17 @@ class Filters extends Component {
     const { query } = this;
 
     return (
-      <div class="filters">
+      <div className="filters">
         <input
           value={query.text}
           placeholder="Search titles"
           onInput={(e) => (query.text = (e.currentTarget as HTMLInputElement).value)}
         />
-        <div class="tags">
+        <div className="tags">
           {TAGS.map((tag) => (
             <button
               key={tag}
-              class={query.tag === tag ? 'tag on' : 'tag'}
+              className={query.tag === tag ? 'tag on' : 'tag'}
               onClick={() => (query.tag = tag)}>
               {tag}
             </button>
@@ -111,16 +111,16 @@ class Results extends Component {
     const found = catalog.find(query.text, query.tag);
 
     return (
-      <ul class="results">
+      <ul className="results">
         {found.map(({ title }) => (
           <li
             key={title}
-            class={selection.title === title ? 'hit on' : 'hit'}
+            className={selection.title === title ? 'hit on' : 'hit'}
             onClick={() => (selection.title = title)}>
             {title}
           </li>
         ))}
-        {!found.length && <li class="empty">nothing matches</li>}
+        {!found.length && <li className="empty">nothing matches</li>}
       </ul>
     );
   }
@@ -133,7 +133,7 @@ class Detail extends Component {
     const { selection } = this;
 
     return (
-      <footer class="detail">
+      <footer className="detail">
         {selection.title ?? 'no book selected'}
       </footer>
     );

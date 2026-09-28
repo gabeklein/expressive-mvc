@@ -5,7 +5,7 @@ import Button from '@common-dom/Button';
 import { Component } from '@expressive/mvc';
 
 export default () => (
-  <div class="container">
+  <div className="container">
     <h1>Props</h1>
     <p>
       Every state field is an optional JSX prop, reapplied on each render - so
@@ -32,7 +32,7 @@ class Dashboard extends Component {
 
     return (
       <>
-        <div class="row">
+        <div className="row">
           {Object.keys(presets).map((name) => (
             <Button key={name} primary={name === preset} onClick={() => (this.preset = name)}>
               {name}
@@ -65,7 +65,7 @@ class Gauge extends Component {
     const { label, value, percent, step } = this;
 
     return (
-      <div class="gauge">
+      <div className="gauge">
         <header>
           <span>{label}</span>
           <output>
@@ -73,8 +73,8 @@ class Gauge extends Component {
             {props.unit}
           </output>
         </header>
-        <div class="track">
-          <div class="fill" style={{ width: `${percent}%` }} />
+        <div className="track">
+          <div className="fill" style={{ width: `${percent}%` }} />
         </div>
         <footer>
           <button onClick={() => this.bump(-step)}>−</button>

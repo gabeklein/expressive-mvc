@@ -68,7 +68,7 @@ export class Arc extends Component {
     const angle = Math.PI * (1 - progress);
 
     return (
-      <div class="arc">
+      <div className="arc">
         <svg
           ref={this.track}
           viewBox={`0 0 ${W} ${H}`}
@@ -80,16 +80,16 @@ export class Arc extends Component {
           onPointerDown={this.grab}
           onPointerMove={this.drag}
           onKeyDown={this.nudge}>
-          <path class="groove" d={TRACK} />
-          <path class="filled" d={TRACK} stroke-dasharray={`${progress * SWEEP} ${SWEEP}`} />
+          <path className="groove" d={TRACK} />
+          <path className="filled" d={TRACK} stroke-dasharray={`${progress * SWEEP} ${SWEEP}`} />
           <circle
-            class="knob"
+            className="knob"
             cx={CX + R * Math.cos(angle)}
             cy={CY - R * Math.sin(angle)}
             r={11}
           />
         </svg>
-        <div class="well">{props.children ?? value}</div>
+        <div className="well">{props.children ?? value}</div>
       </div>
     );
   }

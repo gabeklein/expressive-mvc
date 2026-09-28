@@ -44,17 +44,17 @@ class Draggable extends Component {
     const { x, y, dragging } = this;
 
     return (
-      <div class="container drag">
+      <div className="container drag">
         <h1>Refs</h1>
         <p>
           Drag the box. Its position is plain <code>x</code>/<code>y</code>{' '}
           state; <code>ref</code> holds the node so the handler can measure it.
         </p>
 
-        <div class="surface">
+        <div className="surface">
           <div
             ref={this.box}
-            class={dragging ? 'box dragging' : 'box'}
+            className={dragging ? 'box dragging' : 'box'}
             style={{ transform: `translate(${x}px, ${y}px)` }}
             onPointerDown={this.grab}
             onPointerMove={this.move}

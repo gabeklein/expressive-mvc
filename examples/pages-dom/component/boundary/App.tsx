@@ -5,7 +5,7 @@ import Button from '@common-dom/Button';
 import { Component } from '@expressive/mvc';
 
 export default () => (
-  <div class="container">
+  <div className="container">
     <h1>Error Boundary</h1>
     <p>
       Override <code>catch()</code> and a Component becomes the boundary for
@@ -15,12 +15,12 @@ export default () => (
     </p>
 
     <Boundary>
-      <div class="card">
+      <div className="card">
         <h2>Handled in place</h2>
         <Recoverable />
       </div>
 
-      <div class="card">
+      <div className="card">
         <h2>Escalated</h2>
         <Escalating message="The widget gave up." />
       </div>
@@ -40,7 +40,7 @@ class Boundary extends Component {
 
   Fallback() {
     return (
-      <div class="error">
+      <div className="error">
         <p>Reached the boundary: {this.error?.message}</p>
         <Button primary onClick={() => this.resume()}>
           Start over
@@ -79,7 +79,7 @@ class Recoverable extends Fragile {
 
   Fallback() {
     return (
-      <div class="error">
+      <div className="error">
         <p>Caught right here: {this.message}</p>
         <Button onClick={() => this.recover()}>Retry</Button>
       </div>

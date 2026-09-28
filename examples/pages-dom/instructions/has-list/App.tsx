@@ -29,18 +29,18 @@ export default class Editor extends Component {
     const { history, draft } = this;
 
     return (
-      <div class="container log">
+      <div className="container log">
         <h1>Owned List</h1>
         <p>
           <code>has&lt;string&gt;()</code> stores values by position. Push to
           append, pop to undo; <code>get(-1)</code> reads the latest entry.
         </p>
 
-        <ol class="entries">
+        <ol className="entries">
           {[...history].map((entry, i) => (
             <li key={i}>
-              <span class="idx">{i}</span>
-              <span class="entry">{entry}</span>
+              <span className="idx">{i}</span>
+              <span className="entry">{entry}</span>
             </li>
           ))}
         </ol>
@@ -60,7 +60,7 @@ export default class Editor extends Component {
 
         <footer>
           <small>{history.size} entries · latest: {history.get(-1) ?? '—'}</small>
-          <button class="ghost" onClick={() => this.undo()} disabled={!history.size}>
+          <button className="ghost" onClick={() => this.undo()} disabled={!history.size}>
             Undo
           </button>
         </footer>

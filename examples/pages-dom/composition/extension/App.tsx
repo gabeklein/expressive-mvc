@@ -4,7 +4,7 @@ import './App.css';
 import { Component } from '@expressive/mvc';
 
 export default () => (
-  <div class="container">
+  <div className="container">
     <h1>Render Composition</h1>
     <p>
       A subclass that writes its own <code>render</code> does not replace the
@@ -13,7 +13,7 @@ export default () => (
       <code>super.render()</code> to call; you read children where content should
       slot.
     </p>
-    <div class="pair">
+    <div className="pair">
       <Tally />
       <Notes />
     </div>
@@ -38,12 +38,12 @@ class Panel extends Component {
     const { title, open } = this;
 
     return (
-      <section class="panel">
-        <button class="head" aria-expanded={open} onClick={() => this.toggle()}>
+      <section className="panel">
+        <button className="head" aria-expanded={open} onClick={() => this.toggle()}>
           <b>{title}</b>
           <span>{open ? '–' : '+'}</span>
         </button>
-        {open && <div class="body">{props.children}</div>}
+        {open && <div className="body">{props.children}</div>}
       </section>
     );
   }
@@ -57,7 +57,7 @@ class Tally extends Panel {
     const { count } = this;
 
     return (
-      <div class="tally">
+      <div className="tally">
         <button onClick={() => this.count--}>−</button>
         <output>{count}</output>
         <button onClick={() => this.count++}>+</button>

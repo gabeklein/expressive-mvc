@@ -24,26 +24,26 @@ export default class Room extends Component {
     const active = people.get(selected);
 
     return (
-      <div class="container room">
+      <div className="container room">
         <h1>Presence</h1>
         <p>
           Click a name to select; click a status dot to cycle it. The detail
           reads <code>people.get(selected)</code>, so it tracks only that key.
         </p>
 
-        <div class="layout">
-          <ul class="people">{people}</ul>
+        <div className="layout">
+          <ul className="people">{people}</ul>
 
-          <aside class="detail">
+          <aside className="detail">
             {active ? (
               <>
-                <span class={`dot lg ${active.status}`} />
+                <span className={`dot lg ${active.status}`} />
                 <h2>{active.name}</h2>
-                <p class="status">{active.status}</p>
+                <p className="status">{active.status}</p>
                 <button onClick={() => active.cycle()}>Cycle status</button>
               </>
             ) : (
-              <p class="empty">Select someone</p>
+              <p className="empty">Select someone</p>
             )}
           </aside>
         </div>
@@ -69,10 +69,10 @@ class Person extends Component {
 
     return (
       <li
-        class={room.selected === id ? 'person selected' : 'person'}
+        className={room.selected === id ? 'person selected' : 'person'}
         onClick={() => (room.selected = id)}>
-        <span class={`dot ${status}`} onClick={(e) => { e.stopPropagation(); this.cycle(); }} />
-        <span class="name">{name}</span>
+        <span className={`dot ${status}`} onClick={(e) => { e.stopPropagation(); this.cycle(); }} />
+        <span className="name">{name}</span>
       </li>
     );
   }

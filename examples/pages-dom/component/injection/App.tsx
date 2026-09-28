@@ -5,7 +5,7 @@ import Button from '@common-dom/Button';
 import { Component } from '@expressive/mvc';
 
 export default () => (
-  <div class="container">
+  <div className="container">
     <h1>Injection</h1>
     <p>
       An activated instance <em>is</em> an element, so rendering one is a matter of
@@ -33,7 +33,7 @@ class Workspace extends Component {
 
     return (
       <>
-        <div class="row">
+        <div className="row">
           {[draft, review].map((panel) => (
             <Button
               key={panel.key}
@@ -45,7 +45,7 @@ class Workspace extends Component {
           <Button onClick={() => (this.active = undefined)}>Close</Button>
         </div>
 
-        <div class="slot">{active}</div>
+        <div className="slot">{active}</div>
       </>
     );
   }
@@ -60,7 +60,7 @@ class Panel extends Component {
     const count = text.trim() ? text.trim().split(/\s+/).length : 0;
 
     return (
-      <div class="panel">
+      <div className="panel">
         <header>
           <span>{name}</span>
           <small>{count} words</small>

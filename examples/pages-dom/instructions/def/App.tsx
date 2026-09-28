@@ -31,7 +31,7 @@ class Profile extends Component {
     const { volume, handle } = this;
 
     return (
-      <div class="container">
+      <div className="container">
         <h1>Custom Instruction</h1>
 
         <p>
@@ -42,7 +42,7 @@ class Profile extends Component {
 
         <label>
           Volume <small>(clamped to 0–10)</small>
-          <div class="stepper">
+          <div className="stepper">
             <button onClick={() => (this.volume -= 3)}>−3</button>
             <output>{volume}</output>
             <button onClick={() => (this.volume += 3)}>+3</button>

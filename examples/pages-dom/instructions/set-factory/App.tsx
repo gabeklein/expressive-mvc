@@ -5,7 +5,7 @@ import { Component, set } from '@expressive/mvc';
 import { Provider } from '@expressive/dom';
 
 export default () => (
-  <div class="container">
+  <div className="container">
     <h1>Factories</h1>
     <p>
       A zero-argument function makes the slot a factory: it runs on first access,
@@ -18,7 +18,7 @@ export default () => (
       <code>greeting</code> is synchronous yet waits anyway, because reading a
       pending field suspends it too. Resolution cascades.
     </p>
-    <Provider for={{}} fallback={<p class="pending">loading profile…</p>}>
+    <Provider for={{}} fallback={<p className="pending">loading profile…</p>}>
       <Profile />
     </Provider>
     <p>
@@ -48,7 +48,7 @@ class Profile extends Component {
     const { user, greeting } = this;
 
     return (
-      <section class="card">
+      <section className="card">
         <h2>{greeting}</h2>
         <small>{user.role}</small>
       </section>
@@ -65,7 +65,7 @@ class Sidebar extends Component {
     const { followers } = this;
 
     return (
-      <p class="pending">
+      <p className="pending">
         {followers === undefined
           ? 'counting followers…'
           : `${followers.toLocaleString()} followers`}

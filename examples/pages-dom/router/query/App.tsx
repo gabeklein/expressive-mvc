@@ -19,7 +19,7 @@ export default () => (
 );
 
 const Frame = (props: { children?: Component.Node }) => (
-  <div class="container">
+  <div className="container">
     <h1>Query</h1>
     <p>
       <code>query</code> is not a string - it is a reactive map of the search
@@ -49,15 +49,15 @@ class Catalog extends Component {
     );
 
     return (
-      <section class="catalog">
-        <div class="controls">
+      <section className="catalog">
+        <div className="controls">
           <button onClick={() => query.set('sort', 'title')}>Sort title</button>
           <button onClick={() => query.set('sort', 'year')}>Sort year</button>
           <button onClick={() => query.set('tag', 'math')}>Only math</button>
           <button onClick={() => query.delete('tag')}>Clear tag</button>
         </div>
 
-        <ul class="books">
+        <ul className="books">
           {books.map(({ title, year }) => (
             <li key={title}>
               {title} <small>{year}</small>

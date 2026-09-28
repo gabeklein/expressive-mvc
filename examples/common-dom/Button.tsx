@@ -7,9 +7,9 @@ type ButtonProps = JSX.IntrinsicElements['button'] & {
   primary?: boolean;
 };
 
-export default ({ primary, class: className, ...rest }: ButtonProps) => (
+export default ({ primary, className, ...rest }: ButtonProps) => (
   <button
     {...rest}
-    class={['button', primary && 'primary', className].filter(Boolean).join(' ')}
+    className={['button', primary && 'primary', className].filter(Boolean).join(' ')}
   />
 );

@@ -28,7 +28,7 @@ export default class Inventory extends Component {
     const total = [...stock.values()].reduce((sum, n) => sum + n, 0);
 
     return (
-      <div class="container inv">
+      <div className="container inv">
         <h1>Reactive Map</h1>
         <p>
           <code>map&lt;string, number&gt;()</code> keys values you insert with{' '}
@@ -36,11 +36,11 @@ export default class Inventory extends Component {
           place.
         </p>
 
-        <ul class="stock">
+        <ul className="stock">
           {[...stock].map(([name, qty]) => (
             <li key={name}>
-              <span class="name">{name}</span>
-              <span class="qty">
+              <span className="name">{name}</span>
+              <span className="qty">
                 <button onClick={() => stock.set(name, Math.max(0, qty - 1))}>−</button>
                 <output>{qty}</output>
                 <button onClick={() => stock.set(name, qty + 1)}>+</button>

@@ -4,7 +4,7 @@ import './App.css';
 import { State, Component, get, has } from '@expressive/mvc';
 
 export default () => (
-  <div class="container">
+  <div className="container">
     <h1>Nested State</h1>
     <p>
       A state-typed field is state the parent <em>owns</em>: built with it,
@@ -71,7 +71,7 @@ class Editor extends Component {
 
   render() {
     return (
-      <section class="editor">
+      <section className="editor">
         <Toolbar />
         <Sheet />
       </section>
@@ -80,7 +80,7 @@ class Editor extends Component {
 }
 
 const Toolbar = () => (
-  <header class="toolbar">
+  <header className="toolbar">
     <Undo />
     <Words />
   </header>

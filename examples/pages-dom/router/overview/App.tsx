@@ -5,7 +5,7 @@ import { Component, get } from '@expressive/mvc';
 import { Link, Route, Router } from '@expressive/router';
 
 export default () => (
-  <div class="container">
+  <div className="container">
     <h1>Router</h1>
     <p>
       Routes are nested Components. The first matching sibling wins, so the
@@ -30,14 +30,14 @@ export default () => (
 
 const Frame = (props: { children?: Component.Node }) => (
   <>
-    <nav class="nav">
+    <nav className="nav">
       <Link to="/">Home</Link>
       <Link to="/about">About</Link>
       <Link to="/user/new">New user</Link>
       <Link to="/user/ada">User</Link>
       <Link to="/missing">Missing</Link>
     </nav>
-    <div class="view">{props.children}</div>
+    <div className="view">{props.children}</div>
   </>
 );
 

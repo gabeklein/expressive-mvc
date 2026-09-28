@@ -4,7 +4,7 @@ import './App.css';
 import { Component } from '@expressive/mvc';
 
 export default () => (
-  <div class="container">
+  <div className="container">
     <h1>Headless</h1>
     <p>
       A Component without <code>render()</code> draws nothing. Children pass
@@ -18,7 +18,7 @@ export default () => (
 );
 
 const Scopes = () => (
-  <div class="pair">
+  <div className="pair">
     <Ticker rate={100}>
       <Readout />
     </Ticker>
@@ -50,7 +50,7 @@ const Readout = () => {
   const { seconds, rate } = Ticker.get();
 
   return (
-    <div class="readout">
+    <div className="readout">
       <strong>{seconds}s</strong>
       <small>every {rate}ms</small>
     </div>

@@ -32,9 +32,9 @@ class Counter extends Component {
     const { current, increment, decrement, reset } = this;
 
     return (
-      <div class="container">
+      <div className="container">
         <h1>Counter Example</h1>
-        <div class="counter">
+        <div className="counter">
           <Button onClick={decrement}>{'−'}</Button>
           {/* Click the number to reset. */}
           <pre onClick={reset}>{current}</pre>

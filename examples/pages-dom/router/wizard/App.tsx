@@ -5,7 +5,7 @@ import { State, Component } from '@expressive/mvc';
 import { Route, Router } from '@expressive/router';
 
 export default () => (
-  <div class="container">
+  <div className="container">
     <h1>Wizard</h1>
     <p>
       Steps are sibling routes, not a counter. Each entry guard names the first
@@ -71,7 +71,7 @@ class Wizard extends Component {
 const Frame = (props: { children?: Component.Node }) => (
   <>
     <Progress />
-    <div class="view">{props.children}</div>
+    <div className="view">{props.children}</div>
   </>
 );
 
@@ -81,11 +81,11 @@ const Progress = () => {
   const at = steps.findIndex((step) => step.path === active?.path);
 
   return (
-    <nav class="steps">
+    <nav className="steps">
       {steps.map((step, i) => (
         <button
           key={step.path}
-          class={i === at ? 'step here' : at < 0 || i < at ? 'step past' : 'step'}
+          className={i === at ? 'step here' : at < 0 || i < at ? 'step past' : 'step'}
           onClick={() => router.goto(step.path)}>
           <b>{i + 1}</b> {step.label}
         </button>
@@ -102,7 +102,7 @@ const Controls = (props: { children?: Component.Node }) => {
   const next = steps[at + 1];
 
   return (
-    <div class="controls">
+    <div className="controls">
       <button disabled={!back} onClick={() => router.goto(back.path)}>
         Back
       </button>
@@ -117,7 +117,7 @@ const Name = () => {
   const { is: me, name } = Application.get();
 
   return (
-    <div class="card">
+    <div className="card">
       <label>
         Full name
         <input
@@ -135,7 +135,7 @@ const Details = () => {
   const { is: me, email } = Application.get();
 
   return (
-    <div class="card">
+    <div className="card">
       <label>
         Email address
         <input
@@ -159,14 +159,14 @@ const Review = () => {
   };
 
   return (
-    <div class="card">
+    <div className="card">
       <dl>
         <dt>Name</dt>
         <dd>{name}</dd>
         <dt>Email</dt>
         <dd>{email}</dd>
       </dl>
-      <label class="agree">
+      <label className="agree">
         <input
           type="checkbox"
           checked={agreed}
@@ -196,7 +196,7 @@ const Done = () => {
   };
 
   return (
-    <div class="card done">
+    <div className="card done">
       <p>Application received. Thanks, {name}!</p>
       <button onClick={restart}>Start over</button>
     </div>

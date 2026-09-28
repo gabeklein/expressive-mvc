@@ -7,7 +7,7 @@ import { Link, Route, Router } from '@expressive/router';
 const DOCS = ['charter', 'ledger'];
 
 export default () => (
-  <div class="container">
+  <div className="container">
     <h1>Guards</h1>
     <p>
       A <code>redirect</code> function is an entry guard: returning a path
@@ -53,7 +53,7 @@ class Guarded extends Component {
         <Route as={Lobby} />
         <Route to="login" as={Login} />
         <Route to="vault">
-          <Route to=":doc" as={Doc} redirect={vet} fallback={<p class="gate">checking…</p>} />
+          <Route to=":doc" as={Doc} redirect={vet} fallback={<p className="gate">checking…</p>} />
           <Route none as={VaultNotFound} />
         </Route>
         <Route none as={AppNotFound} />
@@ -64,13 +64,13 @@ class Guarded extends Component {
 
 const Frame = (props: { children?: Component.Node }) => (
   <>
-    <nav class="nav">
+    <nav className="nav">
       <Link to="/">Lobby</Link>
       <Link to="/vault/charter">Charter</Link>
       <Link to="/vault/secrets">Secrets</Link>
       <Link to="/missing">Outside vault</Link>
     </nav>
-    <div class="view">{props.children}</div>
+    <div className="view">{props.children}</div>
   </>
 );
 
@@ -78,7 +78,7 @@ const Lobby = () => {
   const { user, toggle } = Session.get();
 
   return (
-    <p class="gate">
+    <p className="gate">
       {user ? `Signed in as ${user}` : 'Signed out'} -{' '}
       <button onClick={toggle}>{user ? 'Sign out' : 'Sign in'}</button>
     </p>
@@ -86,7 +86,7 @@ const Lobby = () => {
 };
 
 const Login = () => (
-  <p class="gate">
+  <p className="gate">
     The guard sent you here. Sign in from the lobby, then try the vault again.
   </p>
 );
@@ -94,9 +94,9 @@ const Login = () => (
 const Doc = () => {
   const { match } = Route.get();
 
-  return <p class="doc">Reading {match?.doc}</p>;
+  return <p className="doc">Reading {match?.doc}</p>;
 };
 
-const VaultNotFound = () => <p class="gate">No such document in the vault.</p>;
+const VaultNotFound = () => <p className="gate">No such document in the vault.</p>;
 
-const AppNotFound = () => <p class="gate">No application page matches this URL.</p>;
+const AppNotFound = () => <p className="gate">No application page matches this URL.</p>;

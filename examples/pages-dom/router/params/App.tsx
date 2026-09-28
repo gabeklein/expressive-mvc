@@ -20,18 +20,18 @@ export default () => (
 );
 
 const Frame = (props: { children?: Component.Node }) => (
-  <div class="container">
+  <div className="container">
     <h1>Params</h1>
     <p>
       A <code>:page</code> segment captures whatever sits in that position, and the
       page reads it back off its own route. Handing <code>goto</code> an object
       swaps a param in place instead of composing a path.
     </p>
-    <nav class="nav">
+    <nav className="nav">
       <Link to="/">Home</Link>
       <Link to="/docs/intro">Docs</Link>
     </nav>
-    <div class="view">{props.children}</div>
+    <div className="view">{props.children}</div>
     <small>
       Same-pattern navigation reconciles rather than remounts, so the instance
       number below holds while you switch pages - and only changes when you leave
@@ -43,7 +43,7 @@ const Frame = (props: { children?: Component.Node }) => (
 const Index = () => <p>Pick Docs above to enter a section with a param.</p>;
 
 const Section = (props: { children?: Component.Node }) => (
-  <div class="section">
+  <div className="section">
     <header>docs section</header>
     {props.children}
   </div>
@@ -60,7 +60,7 @@ class Page extends Component {
       <>
         <h2>{route.match?.page}</h2>
 
-        <div class="row">
+        <div className="row">
           {PAGES.map((page) => (
             <button key={page} onClick={() => route.goto({ page })}>
               {page}

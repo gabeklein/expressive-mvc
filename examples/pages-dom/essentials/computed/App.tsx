@@ -22,7 +22,7 @@ class TipCalculator extends Component {
     const { bill, tipPercent, tip, total } = this;
 
     return (
-      <div class="container">
+      <div className="container">
         <h1>Computed</h1>
 
         <label>
@@ -46,7 +46,7 @@ class TipCalculator extends Component {
         </label>
 
         {/* tip and total recompute on their own when either input changes */}
-        <p class="result">
+        <p className="result">
           Tip <b>${tip.toFixed(2)}</b> · Total <b>${total.toFixed(2)}</b>
         </p>
       </div>

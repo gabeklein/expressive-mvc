@@ -4,7 +4,7 @@ import './App.css';
 import { State, Component, ref } from '@expressive/mvc';
 
 export default () => (
-  <div class="container">
+  <div className="container">
     <h1>Ref Proxy</h1>
     <p>
       <code>ref(this)</code> is the plural form: one call, one handle per field,
@@ -67,7 +67,7 @@ class Desk extends Component {
     const { bands } = this;
 
     return (
-      <section class="desk">
+      <section className="desk">
         {faders(bands).map((band) => (
           <label key={band}>
             <span>{band}</span>

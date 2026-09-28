@@ -34,7 +34,7 @@ export default class TodoList extends Component {
     const { todos, draft, remaining } = this;
 
     return (
-      <div class="container todo">
+      <div className="container todo">
         <h1>Owned Collections</h1>
         <p>
           <code>has(Item)</code> is a pool that spawns and owns its members.
@@ -42,7 +42,7 @@ export default class TodoList extends Component {
           is the whole render.
         </p>
 
-        <div class="card">
+        <div className="card">
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -60,7 +60,7 @@ export default class TodoList extends Component {
 
           <footer>
             <small>{remaining} of {todos.size} left</small>
-            <button class="ghost" onClick={() => this.clearDone()}>
+            <button className="ghost" onClick={() => this.clearDone()}>
               Clear done
             </button>
           </footer>
@@ -88,10 +88,10 @@ class Item extends Component {
 
   render() {
     return (
-      <li class={this.done ? 'done' : ''}>
-        <button class="check" onClick={this.toggle} aria-label="toggle" />
+      <li className={this.done ? 'done' : ''}>
+        <button className="check" onClick={this.toggle} aria-label="toggle" />
         <span onClick={this.toggle}>{this.text}</span>
-        <button class="remove" onClick={this.remove} aria-label="remove">×</button>
+        <button className="remove" onClick={this.remove} aria-label="remove">×</button>
       </li>
     );
   }
