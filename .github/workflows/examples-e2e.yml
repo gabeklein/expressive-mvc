@@ -22,7 +22,7 @@ jobs:
 
       - name: Install Chromium
         working-directory: examples
-        run: ../node_modules/.bin/playwright install --with-deps chromium
+        run: bunx playwright install --with-deps chromium
 
       - name: Specs on React and dom
         working-directory: examples

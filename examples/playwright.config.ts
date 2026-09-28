@@ -15,7 +15,7 @@ export default defineConfig({
     { name: 'dom', use: { baseURL: `http://localhost:${dom}/` } }
   ],
   webServer: [
-    { command: `../node_modules/.bin/vite --port ${react} --strictPort`, port: react, reuseExistingServer: !process.env.CI },
-    { command: `../node_modules/.bin/vite --mode dom --port ${dom} --strictPort`, port: dom, reuseExistingServer: !process.env.CI }
+    { command: `bun run dev --port ${react} --strictPort`, port: react, reuseExistingServer: !process.env.CI },
+    { command: `bun run dev:dom --port ${dom} --strictPort`, port: dom, reuseExistingServer: !process.env.CI }
   ]
 });
