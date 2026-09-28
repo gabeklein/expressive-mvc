@@ -121,7 +121,9 @@ In short:
 | `get _name()` | no | yes, runs on the instance | with a setter; otherwise ignored |
 | `#name = ''` | no | only through a method or `_` accessor | no |
 
-See all of it together in [essentials/unmanaged](/examples/essentials/unmanaged).
+Put `#private` fields on a `State`, not a `Component`. Under React StrictMode a Component can be constructed twice for one element, and the second construction hands back the first instance - a private field can't be initialized twice on the same object, so it throws. A State the Component owns (`session = new Session()`) doesn't have this problem.
+
+See these in action in [essentials/unmanaged](/examples/essentials/unmanaged) and [essentials/private](/examples/essentials/private).
 
 TypeScript's `private` keyword is compile-time only - a `private count = 0` field is still managed.
 

@@ -1,1 +1,1 @@
-export default ['counter', 'computed', 'fetch', 'async', 'unmanaged'];
+export default ['counter', 'computed', 'fetch', 'async', 'unmanaged', 'private'];

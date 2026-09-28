@@ -22,13 +22,15 @@ test('will autosave after a pause and save on demand', async ({ page, open }) =>
   await expect(status).toHaveText('Unsaved changes');
 
   await page.clock.runFor(250);
-  await expect(status).toHaveText('Saved 1 time');
+  await expect(status).toHaveText('Saved');
   await expect(save).toBeDisabled();
 
   await draft.fill('Hello again');
   await save.click();
-  await expect(status).toHaveText('Saved 2 times');
+  await expect(status).toHaveText('Saved');
 
+  await draft.fill('Hello again!');
   await page.clock.runFor(1000);
-  await expect(status).toHaveText('Saved 2 times');
+  await expect(status).toHaveText('Saved');
+  await expect(draft).toHaveValue('Hello again!');
 });

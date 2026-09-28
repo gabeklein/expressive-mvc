@@ -7,52 +7,37 @@ export default () => (
   <div className="container">
     <h1>Unmanaged fields</h1>
     <p>
-      Type, then pause - the draft saves itself. <code>text</code> and{' '}
-      <code>saves</code> are state. A <code>_</code> prefix opts a field out:{' '}
-      <code>_delay</code> and <code>_timer</code> are plain values, so writing
-      them never renders, even from inside an effect. <code>#saved</code> is
-      private; the <code>_saved</code> getter runs on the instance, so the
-      effect, the <code>status</code> computed and <code>render</code> can all
-      read it.
+      Type, then pause - the draft saves itself. A <code>_</code> prefix opts a
+      field out of state: <code>_timer</code> holds the pending save, so the
+      effect and <code>save()</code> can replace or clear it without a render.
     </p>
-    <Draft _delay={600} />
-    <small>
-      <code>_delay</code> arrives as a prop like any field. Only{' '}
-      <code>saves</code> changing re-renders the status after a save -{' '}
-      <code>#saved</code> itself is invisible to subscribers.
-    </small>
+    <Draft delay={600} />
   </div>
 );
 
 class Draft extends Component {
   text = '';
-  saves = 0;
+  saved = '';
+  delay = 1000;
 
-  _delay = 1000;
   _timer?: ReturnType<typeof setTimeout>;
 
-  #saved = '';
-
-  get _saved() {
-    return this.#saved;
-  }
-
   get status() {
-    const { text, saves } = this;
+    const { text, saved } = this;
 
-    if (text !== this._saved) return 'Unsaved changes';
+    if (text !== saved) return 'Unsaved changes';
 
-    return saves ? `Saved ${saves} ${saves == 1 ? 'time' : 'times'}` : 'Nothing to save';
+    return saved ? 'Saved' : 'Nothing to save';
   }
 
   mount() {
     this.get((current) => {
-      const { text } = current;
+      const { text, saved, delay } = current;
 
       clearTimeout(current._timer);
 
-      if (text !== current._saved)
-        current._timer = setTimeout(this.save, current._delay);
+      if (text !== saved)
+        current._timer = setTimeout(this.save, delay);
     });
 
     return () => clearTimeout(this._timer);
@@ -60,15 +45,11 @@ class Draft extends Component {
 
   save() {
     clearTimeout(this._timer);
-
-    if (this.text === this.#saved) return;
-
-    this.#saved = this.text;
-    this.saves++;
+    this.saved = this.text;
   }
 
   render() {
-    const { text, status } = this;
+    const { text, saved, status } = this;
 
     return (
       <div className="draft">
@@ -78,7 +59,7 @@ class Draft extends Component {
           onInput={(e) => (this.text = e.currentTarget.value)}
         />
         <p className="status">{status}</p>
-        <Button onClick={this.save} disabled={text === this._saved}>
+        <Button onClick={this.save} disabled={text === saved}>
           Save now
         </Button>
       </div>
