@@ -43,3 +43,27 @@ jobs:
           for pkg in mvc react router; do
             (cd packages/$pkg && npm publish --dry-run)
           done
+
+  dist-smoke:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: ./.github/actions/setup
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+
+      - name: Cache npm
+        uses: actions/cache@v5
+        with:
+          path: ~/.npm
+          key: dist-smoke-npm-${{ runner.os }}-${{ hashFiles('package.json', 'packages/*/package.json') }}
+          restore-keys: dist-smoke-npm-${{ runner.os }}-
+
+      - run: bun run build
+
+      - name: Packed tarballs install and run
+        run: bun .github/scripts/dist-smoke.ts

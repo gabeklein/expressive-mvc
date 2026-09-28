@@ -46,7 +46,7 @@ const css = {
       : { width: value, height: value }
 } satisfies macro.Map;
 
-declare module './stylesheet' {
+declare module '@expressive/dom' {
   namespace macro {
     interface Registry {
       mx(value: style.Value): style.Map;

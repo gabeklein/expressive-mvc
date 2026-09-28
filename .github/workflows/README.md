@@ -12,6 +12,9 @@ a workspace version that falls outside a sibling's range cannot reach main.
 Non-blocking signals: `changeset status` (a preview of which packages would
 bump) and `npm publish --dry-run` pack validation for the publishable packages.
 
+A parallel `dist-smoke` job runs `dist-smoke.ts` (see below) on Node 24, so a
+dist a consumer cannot load fails the PR that caused it rather than the release.
+
 ## release.yml (push -> main)
 
 `changesets/action` maintains the "Version Packages" PR (`changeset version`
@@ -20,15 +23,16 @@ PR builds the packages, runs `dist-smoke.ts` and `native-check.ts`, then
 `changeset publish`.
 
 `dist-smoke.ts` packs each publishable package, installs the tarballs into a
-throwaway project outside the repo and executes them under native Node ESM - the
+throwaway project outside the repo and executes the probes and consumer app in
+`scripts/dist-smoke/` under native Node ESM - the
 only consumer-shaped check of the built dist, since tests alias the `@expressive`
 scope onto sources. `native-check.ts` is its React Native counterpart: the same
 tarballs into a throwaway Expo app, asserting Metro resolves every published
 subpath for ios and android, `expo export` emits Hermes bytecode, and a `State`
 subclass behaves the same whether Metro keeps native class fields
 (`caller.engine` is `hermes`) or downlevels them to assignment (`jsEngine: jsc`).
-Both sit in `ci:publish` rather than `pr.yml` so a failure blocks the publish,
-and ordinary merges pay nothing for them.
+Both sit in `ci:publish` so a failure blocks the publish. `native-check.ts`
+stays out of `pr.yml` - ordinary merges pay nothing for an Expo build.
 
 Publishing authenticates via npm OIDC trusted publishing - no token secrets.
 Each published package's npm settings trust this exact workflow filename under

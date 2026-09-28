@@ -19,7 +19,7 @@ type Key =
 type Argument<K extends keyof macro.Registry> =
   macro.Registry[K] extends (value: infer A, ...rest: any[]) => any ? A : never;
 
-export declare namespace macro {
+declare namespace macro {
   /**
    * Macros visible to a style map. A pack augments this interface to declare
    * what it registers with `macro()`.
@@ -40,7 +40,7 @@ export declare namespace macro {
     & Record<string, Fn | style.Map | undefined>;
 }
 
-export declare namespace style {
+declare namespace style {
   /** CSS property names, minus the CSSOM's own members. */
   type Property = Exclude<Settable, 'length' | 'parentRule' | 'cssText'>;
 
