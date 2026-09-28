@@ -10,9 +10,10 @@ export default () => (
       Type, then pause - the draft saves itself. A <code>_</code> prefix opts a
       field out of state: <code>_timer</code> holds the pending save, so the
       effect and <code>save()</code> can replace or clear it without a render.
-      The effect reads <code>delay</code> through <code>is</code>, a silent
-      read, so moving the slider sets the next save's delay without restarting
-      a pending one.
+      <code>delay</code> stays state - the label tracks it - but the effect
+      reads it through <code>is</code>, a silent read. A <code>_</code> field
+      opts out everywhere; <code>is</code> opts out one read. Moving the slider
+      sets the next save's delay without restarting a pending one.
     </p>
     <Draft delay={600} />
   </div>
