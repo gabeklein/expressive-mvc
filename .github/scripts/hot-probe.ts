@@ -747,7 +747,8 @@ async function run(mode: Mode) {
 
       for (const [from, to] of [['viewed {', 'one {'], ['one {', 'two {'], ['two {', 'three {']]) {
         await edit('page.tsx', from, to);
-        await sleep(15);
+        // chokidar drops a change to the same file within 50ms of the last, with no trailing event
+        await sleep(100);
       }
 
       await see('#page', 'three 6');
