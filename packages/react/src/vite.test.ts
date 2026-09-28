@@ -84,6 +84,19 @@ it('will resolve the runtime once', async () => {
   expect(resolve).toHaveBeenCalledTimes(1);
 });
 
+it('will name a module by its path from the project root', async () => {
+  const plugin = expressive();
+  const context = { parse: parseAst, resolve: async () => null };
+
+  (plugin.configResolved as Function)({ root: '/project' });
+
+  const { code } = await (plugin.transform as Function).call(context, 'class A {}', '/project/src/app.js');
+  const outside = await (plugin.transform as Function).call(context, 'class A {}', '/elsewhere/app.js');
+
+  expect(code).toContain('accept("/src/app.js",');
+  expect(outside.code).toContain('accept("/elsewhere/app.js",');
+});
+
 it('will append the binding and keep source maps', async () => {
   const { code, map } = (await transform('class A {}', '/src/app.js?t=123'))!;
 
