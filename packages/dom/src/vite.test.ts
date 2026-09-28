@@ -1,5 +1,5 @@
 import { parseAst } from 'vite';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { State } from '@expressive/mvc';
 
@@ -24,12 +24,13 @@ interface Run {
   before?: Record<string, unknown>;
   next?: Record<string, unknown>;
   page?: boolean;
+  data?: Record<string, unknown>;
 }
 
-async function run(code: string, { locals, replace = {}, before, next, page = true }: Run) {
+async function run(code: string, { locals, replace = {}, before, next, page = true, data = {} }: Run) {
   const output = await inject(code);
   const body = output.replace(/^import .*$/gm, '').replaceAll('import.meta.hot', 'hot');
-  const hot = { data: before ? { expressive: before } : ({} as Record<string, unknown>), accept: vi.fn(), invalidate: vi.fn() };
+  const hot = { data: Object.assign(data, before && { expressive: before }), accept: vi.fn(), invalidate: vi.fn() };
   const location = page ? { reload: vi.fn() } : undefined;
   const expressive = { accept: (_id: string, classes: Record<string, unknown>) => ({ ...classes, ...replace }) };
 
@@ -233,5 +234,84 @@ describe('update', () => {
     });
 
     expect(hot.invalidate).toHaveBeenCalledWith('"value" export cannot be hot-patched.');
+  });
+});
+
+describe('private members', () => {
+  class Vault extends State {}
+  const source = 'export class Vault { #key = 1; }\nclass Open {}';
+  const flag = 'expressive:private:/src/app.js:Vault';
+  const note =
+    '[expressive] Vault (/src/app.js) declares #private members, so edits to its module will trigger a full reload. Use _ properties instead to keep HMR.';
+
+  const degrade = (options: Partial<Run> = {}) =>
+    run(source, { locals: { Vault, Open: Vault }, before: { Vault: class Vault extends State {}, Open: Vault }, ...options });
+
+  const load = () => run(source, { locals: { Vault, Open: Vault } });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+    sessionStorage.clear();
+  });
+
+  it('will note only classes declaring them', async () => {
+    const code = await inject('class A { #a; }\nlet B = class { #b() {} };\nclass C { c = 1; }');
+
+    expect(code).toContain('"A": "[expressive] A (/src/app.js)');
+    expect(code).toContain('"B": "[expressive] B (/src/app.js)');
+    expect(code).not.toContain('"C": "[expressive]');
+  });
+
+  it('will warn once, after the reload', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const announce = vi.fn();
+
+    addEventListener('expressive:reload', announce);
+    await degrade();
+    removeEventListener('expressive:reload', announce);
+
+    expect(announce.mock.calls[0][0].detail.reason).toBe('private members');
+    expect(sessionStorage.getItem(flag)).toBe('due');
+    expect(warn).not.toHaveBeenCalled();
+
+    await load();
+
+    expect(warn).toHaveBeenCalledWith(note);
+    expect(sessionStorage.getItem(flag)).toBe('shown');
+
+    await degrade();
+    await load();
+
+    expect(warn).toHaveBeenCalledTimes(1);
+  });
+
+  it('will warn right away without storage', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    vi.stubGlobal('sessionStorage', {
+      getItem() {
+        throw new Error('denied');
+      }
+    });
+
+    await load();
+    await degrade();
+
+    expect(warn).toHaveBeenCalledOnce();
+    expect(warn).toHaveBeenCalledWith(note);
+  });
+
+  it('will warn once where there is no page', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const data = {};
+
+    const first = await degrade({ page: false, data });
+    const second = await degrade({ page: false, data });
+
+    expect(warn).toHaveBeenCalledOnce();
+    expect(warn).toHaveBeenCalledWith(note);
+    expect(first.hot.invalidate).toHaveBeenCalled();
+    expect(second.hot.invalidate).toHaveBeenCalled();
   });
 });
