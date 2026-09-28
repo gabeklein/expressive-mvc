@@ -3,12 +3,8 @@ import { vi, expect, it, describe } from 'vitest';
 import { renderToString } from 'react-dom/server';
 import React, { Suspense } from 'react';
 
-<<<<<<< HEAD
 import { mockError, mockPromise, mockWarn, flushMicrotasks } from '../test.setup';
-=======
-import { mockError, mockPromise, flushMicrotasks } from '../test.setup';
 import { hot } from '@expressive/mvc/runtime';
->>>>>>> 9c2475c2a (test(react): hot patch reaches live and new subcomponents)
 import { Component, Consumer, State, pending, set } from '.';
 
 it('will create and provide instance', () => {
