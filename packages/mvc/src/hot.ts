@@ -11,6 +11,7 @@ interface Entry {
 
 const MODULES = new Map<string, Record<string, Entry>>();
 const REFRESH = Symbol.for('@expressive/mvc.refresh');
+const PRIVATE = /(?:^|[\s;{}*])#[\w$]+(?=[\s=;(}])/;
 
 function isState(value: unknown): value is State.Extends {
   return typeof value == 'function' && value.prototype instanceof State;
@@ -34,7 +35,7 @@ function describe(type: Function): Entry {
 }
 
 function compatible(prev: Entry, next: Entry) {
-  if (prev.shape !== next.shape) return false;
+  if (prev.shape !== next.shape || PRIVATE.test(next.shape)) return false;
 
   for (const key in next.kinds)
     if (key in prev.kinds && prev.kinds[key] !== next.kinds[key]) return false;

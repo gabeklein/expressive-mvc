@@ -515,6 +515,71 @@ describe('accept', () => {
     expect(accept(id, { Test: After }).Test).toBe(After);
   });
 
+  it('will not patch a class with private members', () => {
+    const id = module();
+    const make = (label: string) =>
+      class Test extends State {
+        #hidden = 'x';
+
+        show() {
+          return label + this.#hidden;
+        }
+      };
+
+    const Before = make('a');
+    const After = make('b');
+
+    accept(id, { Test: Before });
+
+    expect(accept(id, { Test: After }).Test).toBe(After);
+  });
+
+  it('will patch a subclass of a class with private members', () => {
+    const id = module();
+
+    class Base extends State {
+      #hidden = 'x';
+
+      reveal() {
+        return this.#hidden;
+      }
+    }
+
+    const make = (label: string) =>
+      class Test extends Base {
+        show() {
+          return label + this.reveal();
+        }
+      };
+
+    const Before = make('a');
+
+    accept(id, { Test: Before });
+
+    const test = Before.new();
+
+    expect(accept(id, { Test: make('b') }).Test).toBe(Before);
+    expect(test.show()).toBe('bx');
+  });
+
+  it('will patch a class with a hash in a field value', () => {
+    const id = module();
+    const make = (label: string) =>
+      class Test extends State {
+        color = '#fff';
+
+        show() {
+          return label;
+        }
+      };
+
+    const Before = make('a');
+
+    accept(id, { Test: Before });
+
+    expect(accept(id, { Test: make('b') }).Test).toBe(Before);
+  });
+
   it('will not patch a member which changed kind', () => {
     const id = module();
 
