@@ -13,7 +13,6 @@ permissions:
 
 jobs:
   verify:
-    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -42,10 +41,8 @@ jobs:
 
   dist-smoke:
     if: >-
-      github.actor != 'github-actions[bot]' && (
-        github.event.pull_request.stack == null ||
-        github.event.pull_request.stack.position == github.event.pull_request.stack.size
-      )
+      github.event.pull_request.stack == null ||
+      github.event.pull_request.stack.position == github.event.pull_request.stack.size
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -70,10 +67,8 @@ jobs:
 
   e2e:
     if: >-
-      github.actor != 'github-actions[bot]' && (
-        github.event.pull_request.stack == null ||
-        github.event.pull_request.stack.position == github.event.pull_request.stack.size
-      )
+      github.event.pull_request.stack == null ||
+      github.event.pull_request.stack.position == github.event.pull_request.stack.size
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5

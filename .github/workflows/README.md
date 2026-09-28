@@ -36,6 +36,13 @@ on another PR's branch, outside a stack, runs nothing: create stacks with
 PR builds the packages, runs `dist-smoke.ts` and `native-check.ts`, then
 `changeset publish`.
 
+The PR is opened and pushed with a GitHub App installation token
+(`vars.RELEASE_APP_ID`, `secrets.RELEASE_APP_PRIVATE_KEY`; the app needs
+Contents and Pull requests read/write on this repo). Events from `GITHUB_TOKEN`
+start no workflow runs - GitHub instead holds them for approval, and `pr.yml`
+would never check the bumped versions. `GITHUB_TOKEN` stays in the step's env for
+`@changesets/changelog-github`'s PR lookups.
+
 `dist-smoke.ts` packs each publishable package, installs the tarballs into a
 throwaway project outside the repo and executes the probes and consumer app in
 `scripts/dist-smoke/` under native Node ESM - the

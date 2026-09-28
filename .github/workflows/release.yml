@@ -16,7 +16,15 @@ jobs:
     runs-on: ubuntu-latest
     environment: release
     steps:
+      - uses: actions/create-github-app-token@v2
+        id: app
+        with:
+          app-id: ${{ vars.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+
       - uses: actions/checkout@v5
+        with:
+          token: ${{ steps.app.outputs.token }}
 
       - uses: ./.github/actions/setup
 
@@ -32,5 +40,6 @@ jobs:
           publish: bun run ci:publish
           commit: 'chore: version packages'
           title: 'chore: version packages'
+          github-token: ${{ steps.app.outputs.token }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
