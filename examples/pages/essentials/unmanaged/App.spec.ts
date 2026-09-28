@@ -29,8 +29,18 @@ test('will autosave after a pause and save on demand', async ({ page, open }) =>
   await save.click();
   await expect(status).toHaveText('Saved');
 
-  await draft.fill('Hello again!');
-  await page.clock.runFor(1000);
+  const delay = page.getByRole('slider');
+
+  await draft.fill('Hello, slider');
+  await page.clock.runFor(300);
+  await delay.fill('2000');
+  await expect(page.getByText('Delay: 2000ms')).toBeVisible();
+  await page.clock.runFor(350);
   await expect(status).toHaveText('Saved');
-  await expect(draft).toHaveValue('Hello again!');
+
+  await draft.fill('Hello, slow save');
+  await page.clock.runFor(1000);
+  await expect(status).toHaveText('Unsaved changes');
+  await page.clock.runFor(1050);
+  await expect(status).toHaveText('Saved');
 });

@@ -21,3 +21,10 @@
   margin: 0;
   color: var(--fg);
 }
+
+.draft label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s1);
+  color: var(--fg);
+}

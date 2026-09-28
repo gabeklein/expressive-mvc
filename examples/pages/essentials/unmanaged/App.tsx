@@ -10,6 +10,9 @@ export default () => (
       Type, then pause - the draft saves itself. A <code>_</code> prefix opts a
       field out of state: <code>_timer</code> holds the pending save, so the
       effect and <code>save()</code> can replace or clear it without a render.
+      The effect reads <code>delay</code> through <code>is</code>, a silent
+      read, so moving the slider sets the next save's delay without restarting
+      a pending one.
     </p>
     <Draft delay={600} />
   </div>
@@ -32,12 +35,12 @@ class Draft extends Component {
 
   mount() {
     this.get((current) => {
-      const { text, saved, delay } = current;
+      const { text, saved, is } = current;
 
       clearTimeout(current._timer);
 
       if (text !== saved)
-        current._timer = setTimeout(this.save, delay);
+        current._timer = setTimeout(this.save, is.delay);
     });
 
     return () => clearTimeout(this._timer);
@@ -49,7 +52,7 @@ class Draft extends Component {
   }
 
   render() {
-    const { text, saved, status } = this;
+    const { text, saved, delay, status } = this;
 
     return (
       <div className="draft">
@@ -58,6 +61,17 @@ class Draft extends Component {
           value={text}
           onInput={(e) => (this.text = e.currentTarget.value)}
         />
+        <label>
+          Delay: {delay}ms
+          <input
+            type="range"
+            min={200}
+            max={2000}
+            step={100}
+            value={delay}
+            onInput={(e) => (this.delay = +e.currentTarget.value)}
+          />
+        </label>
         <p className="status">{status}</p>
         <Button onClick={this.save} disabled={text === saved}>
           Save now
