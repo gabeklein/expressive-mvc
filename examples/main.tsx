@@ -8,7 +8,7 @@ import { home, loadFrame, tree } from './pages';
 
 const root = createRoot(document.getElementById('root')!);
 
-if (window.self === window.top) {
+if (window.self === window.top && !new URLSearchParams(location.search).has('page')) {
   const Shell = lazy(() => import('./app/Shell'));
   root.render(
     <Suspense>
