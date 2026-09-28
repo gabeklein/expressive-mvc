@@ -1,6 +1,8 @@
 import { parseAst } from 'vite';
 import { describe, expect, it, vi } from 'vitest';
 
+import { State } from '@expressive/mvc';
+
 import expressive from './vite';
 
 type Result = Promise<{ code: string; map: null } | undefined>;
@@ -16,19 +18,26 @@ async function inject(code: string) {
   return (await transform(code))!.code.slice(code.length);
 }
 
-async function judge(
-  code: string,
-  locals: Record<string, unknown>,
-  next: Record<string, unknown> | undefined,
-  page = true
-) {
-  const location = page ? { reload: vi.fn() } : undefined;
-  const output = await inject(code);
-  const block = output.slice(output.indexOf('if (import.meta.hot)')).replaceAll('import.meta.hot', 'hot');
-  const hot = { accept: vi.fn(), invalidate: vi.fn() };
+interface Run {
+  locals: Record<string, unknown>;
+  replace?: Record<string, unknown>;
+  before?: Record<string, unknown>;
+  next?: Record<string, unknown>;
+  page?: boolean;
+}
 
-  new Function('hot', 'location', ...Object.keys(locals), block)(hot, location, ...Object.values(locals));
-  hot.accept.mock.calls[0][0](next);
+async function run(code: string, { locals, replace = {}, before, next, page = true }: Run) {
+  const output = await inject(code);
+  const body = output.replace(/^import .*$/gm, '').replaceAll('import.meta.hot', 'hot');
+  const hot = { data: before ? { expressive: before } : ({} as Record<string, unknown>), accept: vi.fn(), invalidate: vi.fn() };
+  const location = page ? { reload: vi.fn() } : undefined;
+  const expressive = { accept: (_id: string, classes: Record<string, unknown>) => ({ ...classes, ...replace }) };
+
+  new Function('hot', 'location', '__expressive', '__State', ...Object.keys(locals), body)(
+    hot, location, expressive, State, ...Object.values(locals)
+  );
+
+  if (next) hot.accept.mock.calls[0][0](next);
 
   return { hot, location: location! };
 }
@@ -123,8 +132,12 @@ describe('exports', () => {
   });
 
   it('will record a default binding', async () => {
-    expect(await exports('export default Store;')).toBe('"default": Store');
     expect(await exports('export default function App() {}')).toBe('"default": App');
+    expect(await exports('export { Store as default };')).toBe('"default": Store');
+  });
+
+  it('will not record a default snapshot', async () => {
+    expect(await exports('export default Store;')).toBe('');
   });
 
   it('will not record an anonymous default', async () => {
@@ -133,44 +146,91 @@ describe('exports', () => {
 });
 
 describe('update', () => {
-  class Store {}
+  class Store extends State {}
+  class Plain {}
   const App = () => null;
-  const source = 'export class Store {}\nexport const App = () => null;\nexport let value = 1;';
+  const source = 'export class Store {}\nclass Local {}\nclass Plain {}\nexport const App = () => null;\nexport let value = 1;';
 
-  it('will pass without next exports', async () => {
-    const { hot, location } = await judge(source, { Store, App, value: 1 }, undefined);
+  it('will remember classes on first run', async () => {
+    const { hot, location } = await run(source, { locals: { Store, Local: Store, Plain, App, value: 1 } });
 
-    expect(hot.invalidate).not.toHaveBeenCalled();
+    expect(hot.data.expressive).toEqual({ Store, Local: Store, Plain });
     expect(location.reload).not.toHaveBeenCalled();
   });
 
-  it('will pass a kept class', async () => {
-    const { hot, location } = await judge(source, { Store, App, value: 1 }, { Store, App, value: 1 });
+  it('will keep patched classes', async () => {
+    const { hot, location } = await run(source, {
+      locals: { Store: class Store extends State {}, Local: Store, Plain, App, value: 1 },
+      replace: { Store },
+      before: { Store, Local: Store, Plain: class Plain {} }
+    });
 
-    expect(hot.invalidate).not.toHaveBeenCalled();
     expect(location.reload).not.toHaveBeenCalled();
+    expect(hot.invalidate).not.toHaveBeenCalled();
   });
 
-  it('will invalidate a changed component', async () => {
-    const { hot } = await judge(source, { Store, App, value: 1 }, { Store, App: () => null, value: 1 });
+  it('will announce and reload for a class it could not patch', async () => {
+    const announce = vi.fn();
+    class Local extends State {}
 
-    expect(hot.invalidate).toHaveBeenCalledWith('"App" export cannot be hot-patched.');
+    addEventListener('expressive:reload', announce);
+
+    const { location } = await run(source, {
+      locals: { Store, Local, Plain, App, value: 1 },
+      before: { Store, Local: class Local extends State {}, Plain }
+    });
+
+    removeEventListener('expressive:reload', announce);
+
+    expect(location.reload).toHaveBeenCalledTimes(1);
+    expect(announce.mock.calls[0][0].detail).toEqual({ module: '/src/app.js', class: 'Local', reason: 'class changed shape' });
   });
 
-  it('will reload for a replaced class', async () => {
-    const { location } = await judge(source, { Store, App, value: 1 }, { Store: class Store {}, App, value: 1 });
-
-    expect(location.reload).toHaveBeenCalled();
-  });
-
-  it('will invalidate a replaced class where there is no page', async () => {
-    const { hot } = await judge(source, { Store, App, value: 1 }, { Store: class Store {}, App, value: 1 }, false);
+  it('will invalidate a class it could not patch where there is no page', async () => {
+    const { hot } = await run(source, {
+      locals: { Store, Local: class Local extends State {}, Plain, App, value: 1 },
+      before: { Store, Local: Store, Plain },
+      page: false
+    });
 
     expect(hot.invalidate).toHaveBeenCalledWith();
   });
 
+  it('will ignore a class no longer declared', async () => {
+    const { location } = await run('class Store {}', { locals: { Store }, before: { Store, Gone: Store } });
+
+    expect(location.reload).not.toHaveBeenCalled();
+  });
+
+  it('will pass without next exports', async () => {
+    const { hot } = await run(source, { locals: { Store, Local: Store, Plain, App, value: 1 }, next: undefined });
+
+    expect(hot.invalidate).not.toHaveBeenCalled();
+  });
+
+  it('will leave a changed State class to the reload', async () => {
+    const { hot } = await run(source, {
+      locals: { Store, Local: Store, Plain, App, value: 1 },
+      next: { Store: class Store extends State {}, App, value: 1 }
+    });
+
+    expect(hot.invalidate).not.toHaveBeenCalled();
+  });
+
+  it('will invalidate a changed component', async () => {
+    const { hot } = await run(source, {
+      locals: { Store, Local: Store, Plain, App, value: 1 },
+      next: { Store, App: () => null, value: 1 }
+    });
+
+    expect(hot.invalidate).toHaveBeenCalledWith('"App" export cannot be hot-patched.');
+  });
+
   it('will invalidate another changed export', async () => {
-    const { hot } = await judge(source, { Store, App, value: 1 }, { Store, App, value: 2 });
+    const { hot } = await run(source, {
+      locals: { Store, Local: Store, Plain, App, value: 1 },
+      next: { Store, App, value: 2 }
+    });
 
     expect(hot.invalidate).toHaveBeenCalledWith('"value" export cannot be hot-patched.');
   });
