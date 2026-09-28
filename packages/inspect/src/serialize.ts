@@ -25,7 +25,7 @@ export function walk(value: unknown, path?: string): unknown {
   for (const part of path.split('.')) {
     if (cur == null || typeof cur !== 'object') return undefined;
     if (cur instanceof State)
-      cur = part[0] == '_' ? Object.getOwnPropertyDescriptor(cur, part)?.value : entries(cur).get(part);
+      cur = part[0] == '_' ? Object.getOwnPropertyDescriptor(cur, part)?.get?.() : entries(cur).get(part);
     else if (cur instanceof Map) cur = cur.get(part);
     else cur = (cur as Record<string, unknown>)[part];
   }

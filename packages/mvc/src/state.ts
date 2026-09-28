@@ -554,7 +554,7 @@ function init(state: State, ...args: State.Args) {
 
       if (!('value' in desc) || !desc.configurable) continue;
 
-      if (key[0] == '_') define(state, key, { ...desc, enumerable: false });
+      if (key[0] == '_') unmanaged(state, key, desc.value);
       else apply(state, key, desc, true);
     }
   }
@@ -627,6 +627,15 @@ function init(state: State, ...args: State.Args) {
   PENDING.add(state);
 }
 
+function unmanaged(state: State, key: string, value: unknown) {
+  define(state, key, {
+    configurable: true,
+    enumerable: false,
+    get: () => value,
+    set: (next) => { value = next }
+  });
+}
+
 /**
  * Apply instructions and inherited event listeners. Ensure class metadata is ready.
  *
@@ -679,8 +688,8 @@ function bootstrap(T: State.Extends) {
       if (key[0] == '_' && (get || set)) {
         define(type.prototype, key, {
           ...desc,
-          get: get && function (this: State) { return get.call(this.is) },
-          set: set && function (this: State, value: unknown) { set.call(this.is, value) }
+          get: get && function (this: State) { return get.call(this.is || this) },
+          set: set && function (this: State, value: unknown) { set.call(this.is || this, value) }
         });
 
         continue;
@@ -1025,7 +1034,7 @@ function assign(state: State, data: State.Assign<State>, silent?: boolean) {
       if (set) {
         set.call(state, data[key], silent);
       } else {
-        (state as any)[key] = data[key];
+        Reflect.set(state, key, data[key]);
       }
     }
   }

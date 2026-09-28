@@ -2663,12 +2663,72 @@ describe('unmanaged keys', () => {
     const test = Test.new();
 
     expect(Object.keys(test)).toEqual(['value']);
-    expect(Object.getOwnPropertyDescriptor(test, '_handle')).toEqual({
-      value: 'foo',
-      writable: true,
+    expect(Object.getOwnPropertyDescriptor(test, '_handle')).toMatchObject({
       enumerable: false,
       configurable: true
     });
+  });
+
+  it('will write _ keys thru a subscriber', async () => {
+    class Test extends State {
+      value = 1;
+      _effect = 'foo';
+      _computed = 0;
+
+      get doubled() {
+        return (this._computed = this.value * 2);
+      }
+    }
+
+    const test = Test.new();
+
+    test.get((self) => {
+      self._effect = `bar-${self.value}`;
+    });
+
+    expect(test._effect).toBe('bar-1');
+    expect(test.doubled).toBe(2);
+    expect(test._computed).toBe(2);
+
+    test.value = 2;
+    await expect(test).toHaveUpdated();
+
+    expect(test._effect).toBe('bar-2');
+  });
+
+  it('will ignore overlay onto a getter-only _ accessor', () => {
+    class Test extends State {
+      get _fixed() {
+        return 'foo';
+      }
+    }
+
+    const test = Test.new({ _fixed: 'bar' } as {});
+
+    expect(() => test.set({ _fixed: 'baz' })).not.toThrow();
+    expect(test._fixed).toBe('foo');
+  });
+
+  it('will run _ accessors against a non-State receiver', () => {
+    class Test extends State {
+      get _self(): unknown {
+        return this;
+      }
+
+      set _self(value: unknown) {
+        (this as any).written = value;
+      }
+    }
+
+    const receiver = {} as { written?: unknown };
+
+    Test.new();
+
+    expect(Reflect.get(Test.prototype, '_self', receiver)).toBe(receiver);
+
+    Reflect.set(Test.prototype, '_self', 1, receiver);
+
+    expect(receiver.written).toBe(1);
   });
 
   it('will accept _ keys from overlay', async () => {
