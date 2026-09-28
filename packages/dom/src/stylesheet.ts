@@ -24,7 +24,13 @@ export declare namespace macro {
    * Macros visible to a style map. A pack augments this interface to declare
    * what it registers with `macro()`.
    */
-  interface Registry {}
+  interface Registry {
+    mx(value: style.Value): style.Map;
+    my(value: style.Value): style.Map;
+    px(value: style.Value): style.Map;
+    py(value: style.Value): style.Map;
+    size(value: style.Value): style.Map;
+  }
 
   /** Maps one argument to style, or to keys which resolve further. */
   type Fn = (value: any, key: string) => unknown;
