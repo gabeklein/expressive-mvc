@@ -1,7 +1,8 @@
 import { Caught, Context, State } from '@expressive/mvc';
+import { listener } from '@expressive/mvc/observable';
 import { isElement } from '@expressive/mvc/runtime';
 
-import { journal, note, noteCall, noteCaught, noteDestroy, recordsCalls, type Frame, type Query } from './journal';
+import { journal, note, noteCall, noteCaught, noteDestroy, notePatch, recordsCalls, type Frame, type Query } from './journal';
 import { entries, parsePath, project, serialize, walk, type Select } from './serialize';
 import { bracket } from './bracket';
 import { tick, unreached, unsettled, type Act } from './settle';
@@ -291,14 +292,18 @@ export function attach(Type: typeof State = State): () => void {
       version++;
       if (recordsCalls()) wrap(self);
       mounts(self);
+      const unpatch = listener(self, () => {
+        if (recordsCalls()) wrap(self);
+        notePatch(self);
+      }, REFRESH);
       const stop = self.set((key) => {
         const store = entries(self);
-        if (key === REFRESH && recordsCalls()) wrap(self);
         if (typeof key === 'string' && typeof store.get(key) === 'object') version++;
         note(self, key, store);
       });
       return () => {
         stop();
+        unpatch();
         live.delete(id);
         reaper.unregister(self);
         span.until = Date.now();
@@ -497,6 +502,12 @@ function wrap(state: State) {
   if (!keys) wrapped.set(state, (keys = new Set(['render'])));
 
   const target = state as unknown as Record<string, Function>;
+
+  for (const key of keys)
+    if (key != 'render' && !(key in Object.getPrototypeOf(state))) {
+      delete target[key];
+      keys.delete(key);
+    }
 
   for (let proto = Object.getPrototypeOf(state); proto !== State.prototype; proto = Object.getPrototypeOf(proto))
     for (const [key, desc] of Object.entries(Object.getOwnPropertyDescriptors(proto))) {

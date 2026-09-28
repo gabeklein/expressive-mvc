@@ -232,12 +232,12 @@ describe('hot', () => {
     vi.stubGlobal('addEventListener', (name: string, listener: (event: unknown) => void) => listeners.set(name, listener));
 
     connect(channel().hot);
-    listeners.get('expressive:reload')!({ detail: { module: '/src/model.ts', export: 'Store', reason: 'class changed shape' } });
+    listeners.get('expressive:reload')!({ detail: { module: '/src/model.ts', class: 'Store', reason: 'class changed shape' } });
 
     journal.reset();
     connect(channel().hot);
 
-    expect(reloads()[0].value).toEqual({ module: '/src/model.ts', export: 'Store', reason: 'class changed shape' });
+    expect(reloads()[0].value).toEqual({ module: '/src/model.ts', class: 'Store', reason: 'class changed shape' });
   });
 
   it('will remember a reload without detail', () => {

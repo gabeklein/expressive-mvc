@@ -58,7 +58,6 @@ export interface Query {
 }
 
 const FRAME_CAP = 500;
-const REFRESH = Symbol.for('@expressive/mvc.refresh');
 
 const frames: Frame[] = [];
 const config: Required<Options> = { level: 'off', types: [], paths: [], keys: [], calls: false };
@@ -205,11 +204,6 @@ export function recordsCalls(): boolean {
 
 
 export function note(state: State, key: unknown, store: Map<string, unknown>): void {
-  if (key === REFRESH) {
-    if (wants(state)) push({ id: String(state), type: labelOf(state.constructor as typeof State), key: 'patch', kind: 'hot' });
-    return;
-  }
-
   const name = String(key);
   if (!wants(state, name)) return;
 
@@ -240,6 +234,10 @@ export function noteCaught(error: Caught, name: string): { handled: boolean } | 
   const value = { case: name, message: error.message, stack: error.stack, handled: true };
   push({ id: String(state), type: labelOf(state.constructor as typeof State), key: key ?? '', kind: 'caught', value });
   return value;
+}
+
+export function notePatch(state: State): void {
+  if (wants(state)) push({ id: String(state), type: labelOf(state.constructor as typeof State), key: 'patch', kind: 'hot' });
 }
 
 export function noteDestroy(state: State): void {
