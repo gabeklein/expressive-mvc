@@ -1,5 +1,34 @@
 # @expressive/mvc
 
+## 0.86.0
+
+### Minor Changes
+
+- [#394](https://github.com/gabeklein/expressive-mvc/pull/394) [`451911b`](https://github.com/gabeklein/expressive-mvc/commit/451911bcf19a1117cf0bd399669a7e1af6b60129) Declare `@expressive/mvc` as a peer dependency rather than a direct one. The adapters need the matching `@expressive/mvc` minor - upgrade them together; a pinned older `@expressive/mvc` beside a newer adapter fails at install. A caret range on a 0.x version resolves to a narrow window, so an app installing `@expressive/mvc` itself could end up with a second copy - two `State` classes, two context registries, and `instanceof` failing across the boundary. As a peer there is exactly one resolution, and a mismatch surfaces at install rather than silently at runtime.
+
+  Core re-exports from `@expressive/react` and `@expressive/preact` are now marked `@deprecated`, along with the default export of `State` in all three packages. Import `{ State }`, `Component` and instructions from `@expressive/mvc`; take `Provider` and `Consumer` from the adapter, and import the adapter once from an entry module so it registers. Nothing is removed yet - the default alias in particular hides adapter-augmented `State.*` types, so the named import is the correct one regardless.
+
+- [#378](https://github.com/gabeklein/expressive-mvc/pull/378) [`99dc2e9`](https://github.com/gabeklein/expressive-mvc/commit/99dc2e9bb182dbde2ac043ff645419cfe72530d9) Add `State.on({ catch(error) })` and an exported `Caught` error class. Everything mvc used to log arrives as a `Caught` subclass, each a static property: `Inactive` (`warning: true`), `Destroyed`, `Getter`, `Init` and `Effect` (the last three with `cause`). Each carries `state`, and `key` where it applies. `name` is the case (`Caught.Effect`) and `message` names the class and ends with what was thrown, so consoles and error trackers title reports by both. Handlers chain like nested `catch` blocks - most-derived class first, last registered first: return the error (or a replacement) to pass it on, return nothing to handle it, throw to escape uncaught at once.
+
+  A write to a destroyed state still throws to the writer - now a `Caught.Destroyed` - since that is what stops a continuation writing after teardown. A `catch` handler returning nothing drops it instead.
+
+  **Behavior change:** unhandled, a warning still goes to `console.warn`, but an error thrown by an effect, a refreshing getter, or an async initializer now escapes uncaught instead of going to `console.error` - it fails a test run and crashes a Node process. Register `catch` to handle them - `State.on({ catch: Caught.log })` logs them instead, passing warnings and destroyed writes on. A getter suspending on a pending value while refreshing is not reported.
+
+  A listener returning a non-function value no longer queues it as a callback.
+
+### Patch Changes
+
+- [#353](https://github.com/gabeklein/expressive-mvc/pull/353) [`522606a`](https://github.com/gabeklein/expressive-mvc/commit/522606a7c64453cc38ebdcceab4c741a63c2a6b3) `has(Type)` now returns `has.Create<T>` and `has(Type, key)` returns `has.From<T, K>`, pools whose `add` is typed as two overloads - spawn from the key value (or constructor args) and admit an instance - instead of a single rest-tuple union, so editor hovers read `add(from: SessionInfo): Row` rather than `add(...args: [SessionInfo] | [Row]): Row`.
+
+- [#389](https://github.com/gabeklein/expressive-mvc/pull/389) [`2d9f0aa`](https://github.com/gabeklein/expressive-mvc/commit/2d9f0aad304397024ae7879b7126e26d0a93afe6) `health()` replaces `warnings()`: `{ orphans, collected, copies, caught }`.
+
+  - `copies` counts loaded copies of `@expressive/mvc` - each copy adds its `State` to `globalThis[Symbol.for('@expressive/mvc')]` the first time it constructs a State. More than one means inspect sees only its own copy's States; it warns once.
+  - `caught` counts `Caught` reports by case, including ones an app handler goes on to handle - inspect's `catch` joins each class as its first instance activates, ahead of app handlers registered before then. Inspect passes each report on, so behavior is unchanged. With the journal recording, each report is also a `caught` event carrying `{ case, message, stack, handled }` at any level; `summary()` counts them per instance. `journal.clear()` also zeroes the counts.
+
+  Inspect now needs the `@expressive/mvc` release that ships `Caught` - upgrade them together.
+
+- [#381](https://github.com/gabeklein/expressive-mvc/pull/381) [`3ce41fb`](https://github.com/gabeklein/expressive-mvc/commit/3ce41fbf5c24434dd7c44484593a4ee766a221ae) An effect or subscription (`state.get(fn)`, `State.use()` / `State.get()` in components, computed getters) no longer leaves its previous run's subscription attached when it re-runs. Listeners on the watched state - and on child states read through it - used to grow by one per re-run, so every write to a long-lived state slowed down steadily. A suspended run's subscription is released the same way once the effect runs again.
+
 ## 0.85.0
 
 ### Minor Changes

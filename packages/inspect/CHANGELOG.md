@@ -1,5 +1,37 @@
 # @expressive/inspect
 
+## 0.2.0
+
+### Minor Changes
+
+- [#405](https://github.com/gabeklein/expressive-mvc/pull/405) [`ae00a73`](https://github.com/gabeklein/expressive-mvc/commit/ae00a7351d698bb6d9f1761b5dd457a971caf6d2) A label shared by more than one class (two modules each declaring `class Control`) now throws from `find`, `get`, `set`, `call` and `act`'s `until` instead of silently picking the first instance of either. The error lists the classes' `typeId`s; address by instance id or owner path, or give one a distinct `label()`.
+
+  `get(address, select)` reads a selection - `{ status: true, control: { value: true } }` - as one consistent snapshot: selected keys only, descending through child States (which keep `$ref`), Maps, objects and each element of a list. Also on the bridge and relay.
+
+- [#389](https://github.com/gabeklein/expressive-mvc/pull/389) [`2d9f0aa`](https://github.com/gabeklein/expressive-mvc/commit/2d9f0aad304397024ae7879b7126e26d0a93afe6) `health()` replaces `warnings()`: `{ orphans, collected, copies, caught }`.
+
+  - `copies` counts loaded copies of `@expressive/mvc` - each copy adds its `State` to `globalThis[Symbol.for('@expressive/mvc')]` the first time it constructs a State. More than one means inspect sees only its own copy's States; it warns once.
+  - `caught` counts `Caught` reports by case, including ones an app handler goes on to handle - inspect's `catch` joins each class as its first instance activates, ahead of app handlers registered before then. Inspect passes each report on, so behavior is unchanged. With the journal recording, each report is also a `caught` event carrying `{ case, message, stack, handled }` at any level; `summary()` counts them per instance. `journal.clear()` also zeroes the counts.
+
+  Inspect now needs the `@expressive/mvc` release that ships `Caught` - upgrade them together.
+
+- [#379](https://github.com/gabeklein/expressive-mvc/pull/379) [`7bec5b3`](https://github.com/gabeklein/expressive-mvc/commit/7bec5b3c767c7a06c09e6a4acac7721e372887eb) `act()` - in process, on the bridge and over the relay - settles once a macrotask passes with no new recorded frame, instead of after a single `setTimeout(0)` - work deferred through timer or promise chains now lands in the returned frames. It takes `{ until, timeout, record }`: `until` waits first for work pending on I/O - `{ [address]: value }` pairs that must each hold, or addresses that must each see a frame after the step's synchronous writes, `timeout` caps the wait (default one second) - an unmet `until` throws with the frames recorded so far, a plain timeout warns, and `record` sets filters for the window, restoring the journal's after. Over the relay it answers `settled: false` with the `pending` targets, and `missing` for those naming no instance, instead.
+
+  Add `journal.summary(query?)` - a per-instance digest of recorded frames (keys written with counts and last values, calls, destroyed), latest first. Also on the bridge and relay.
+
+  `until` works under an app's recording filters: its addresses join the window's recording, and the value form reads current values. A `{ record }` object already on `globalThis.__EXPRESSIVE_INSPECT__` when `install` runs arms recording from boot - set it from a driver's init script to cover a page reload.
+
+- [#377](https://github.com/gabeklein/expressive-mvc/pull/377) [`5bccf67`](https://github.com/gabeklein/expressive-mvc/commit/5bccf6735e6b644e7be390d4395dcae89f4e9629) Rename `@expressive/inspect/playwright` to `@expressive/inspect/bridge` - it drives anything with `evaluate(fn, arg)` (Playwright, puppeteer, a wrapped CDP session). Update the import path, and call `act` where you called `around` - the bridge now uses the in-process name. `/bridge` also exports `devtools(endpoint?, pick?)`, which connects to a Chrome DevTools Protocol endpoint (a Node process under `--inspect`, or a browser with a debug port) as an `evaluate` target; `pick` is a predicate or a string matched against title and URL, and zero or several matches throw with the target list.
+
+  Add `@expressive/inspect/vite`, a dev-server plugin that installs the inspector and relays `GET /__inspect` and `POST /__inspect/:id` (`[method, ...args]`) to open pages over Vite's HMR socket, so an agent can query the page a developer has open with `curl`. A connected page records `keys` from load unless the app sets a level, and `["act", [method, ...args], options?]` runs one call and answers `{ value, frames, settled, pending, missing }`. Dev server only; it answers local callers and refuses browser and proxied (tunnel) requests - a dev server exposed through a proxy that strips forwarding headers is its owner's to secure.
+
+  `act` records values for its window whatever the journal level - previously only when it was off, so a `keys` recording returned frames without values.
+
+### Patch Changes
+
+- Updated dependencies [[`522606a`](https://github.com/gabeklein/expressive-mvc/commit/522606a7c64453cc38ebdcceab4c741a63c2a6b3), [`2d9f0aa`](https://github.com/gabeklein/expressive-mvc/commit/2d9f0aad304397024ae7879b7126e26d0a93afe6), [`451911b`](https://github.com/gabeklein/expressive-mvc/commit/451911bcf19a1117cf0bd399669a7e1af6b60129), [`99dc2e9`](https://github.com/gabeklein/expressive-mvc/commit/99dc2e9bb182dbde2ac043ff645419cfe72530d9), [`3ce41fb`](https://github.com/gabeklein/expressive-mvc/commit/3ce41fbf5c24434dd7c44484593a4ee766a221ae)]:
+  - @expressive/mvc@0.86.0
+
 ## 0.1.1
 
 ### Patch Changes
