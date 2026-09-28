@@ -40,16 +40,16 @@ function Count() {
 const unmount = render(<Count />, document.getElementById('app')!);
 ```
 
-`style` recursively composes conditional class tokens and inline declarations. Strings become classes; objects merge left-to-right and render inline. Use `class` for a browser-specific class outside the composition. `className` and CSS declaration strings are not supported.
+`style` recursively composes conditional class tokens and inline declarations. Strings become classes; objects merge left-to-right and render inline. Use `className` for a browser-specific class outside the composition. The `class` attribute spelling and CSS declaration strings are not supported.
 
 ```tsx
 <button
-  class="external-widget"
+  className="external-widget"
   style={[styles.button, active && 'active', { width }]}
 />
 ```
 
-`style` on a component automatically reaches its rendered host root, including through component, fragment, provider, portal, and collection boundaries. A fragment applies it to each host root. Forwarded style overrides the root's own, with the outermost caller winning. A component which reads its `style` prop while rendering owns placement, and nothing is forwarded. It receives a frozen object of the caller's inline declarations - spread, pluck or merge it freely; the caller's classes travel hidden with it. `class` applies to elements only.
+`style` on a component automatically reaches its rendered host root, including through component, fragment, provider, portal, and collection boundaries. A fragment applies it to each host root. Forwarded style overrides the root's own, with the outermost caller winning. A component which reads its `style` prop while rendering owns placement, and nothing is forwarded. It receives a frozen object of the caller's inline declarations - spread, pluck or merge it freely; the caller's classes travel hidden with it. `className` applies to elements only.
 
 A component may register immutable maps with `style(Component, map)`. A `_name` entry is a rule, applied by a truthy `_name` attribute or a matching host tag and emitted as one class named after its source; nested inside a rule it opens a descendant scope. Component names never match - they do not survive minification. Bare keys are declarations, or macro calls where a macro owns the name, and those at the top of a map form a base rule applied to each of the component's host roots. Macros are defined only by `macro()` - within a map, call a plain function instead. `$name` is reserved. `_` attributes never reach the DOM, and `0` or `''` leaves a rule off. A map never reaches inside a child component; only the class chain inherits.
 

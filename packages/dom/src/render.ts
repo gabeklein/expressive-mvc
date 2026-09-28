@@ -103,6 +103,7 @@ const dirty = new Set<Boundary>();
 const stashes = new WeakMap<globalThis.Node, Fiber>();
 const CONTROLS = ['checked', 'value'];
 const ENUMERATED = ['contentEditable', 'contenteditable', 'draggable', 'spellcheck'];
+const ALIASES: Record<string, string> = { autoFocus: 'autofocus', contentEditable: 'contenteditable', htmlFor: 'for' };
 const focusing: Element[] = [];
 let passiveRender = false;
 let inserting: (() => void)[] | undefined;
@@ -468,7 +469,7 @@ function mountElement(value: VNode, parent: globalThis.Node, before: globalThis.
     patchProps(fiber, value.props, appearance);
   });
 
-  if (value.props.autofocus) focusing.push(element);
+  if (value.props.autofocus || value.props.autoFocus) focusing.push(element);
   return fiber;
 }
 
@@ -930,12 +931,12 @@ function patchProps(fiber: Fiber, next: Record<string, any>, appearance?: Appear
   }
 
   for (const key of Object.keys({ ...previous, ...next })) {
-    if (key.startsWith('_') || key == 'children' || key == 'class' || key == 'className' || key == 'key' || key == 'ref' || key == 'style' || CONTROLS.includes(key)) continue;
+    if (key.startsWith('_') || key == 'children' || key == 'className' || key == 'key' || key == 'ref' || key == 'style' || CONTROLS.includes(key)) continue;
     if (previous[key] === next[key]) continue;
     patchProp(fiber, element, key, previous[key], next[key]);
   }
 
-  const claimed = claim(element, appearance, resolved, next.class, next.style);
+  const claimed = claim(element, appearance, resolved, next.className, next.style);
 
   applyClaim(element, fiber.claimed, claimed);
   fiber.claimed = claimed;
@@ -981,7 +982,8 @@ function patchProp(fiber: Fiber, element: Element, key: string, previous: any, n
 
   if (/^on[A-Z]/.test(key)) {
     const capture = key.endsWith('Capture');
-    const name = (capture ? key.slice(2, -7) : key.slice(2)).toLowerCase();
+    const lower = (capture ? key.slice(2, -7) : key.slice(2)).toLowerCase();
+    const name = lower == 'doubleclick' ? 'dblclick' : lower;
     const id = `${name}:${capture}`;
     const current = fiber.events!.get(id);
 
@@ -993,7 +995,7 @@ function patchProp(fiber: Fiber, element: Element, key: string, previous: any, n
     return;
   }
 
-  const name = key == 'htmlFor' ? 'for' : key == 'contentEditable' ? 'contenteditable' : key;
+  const name = ALIASES[key] || key;
 
   if ((key.startsWith('aria-') || key.startsWith('data-') || ENUMERATED.includes(key)) && next != null) {
     element.setAttribute(name, String(next));

@@ -53,7 +53,9 @@ type Attributes<T extends Element> = EventAttributes<T> & {
       : K]?: T[K] | string | number | boolean;
 } & {
   children?: Node;
-  class?: string;
+  className?: string;
+  autoFocus?: boolean;
+  onDoubleClick?: (event: MouseEvent & { currentTarget: T }) => unknown;
   dangerouslySetInnerHTML?: { __html: string };
   key?: string | number | null;
   ref?: ((node: T | null) => unknown) | { current: T | null };

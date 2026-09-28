@@ -6,8 +6,8 @@ import { flushMicrotasks } from '../test.setup';
 import { vnode } from './vnode';
 
 if (false) {
-  // @ts-expect-error @expressive/dom uses the native class prop.
-  <div className="legacy" />;
+  // @ts-expect-error @expressive/dom uses className, not the class attribute name.
+  <div class="legacy" />;
 }
 
 describe('render', () => {
@@ -26,7 +26,7 @@ describe('render', () => {
           return (
             <div
               aria-label="greeting"
-              class="ready"
+              className="ready"
               data-state="open"
               hidden
               onClick={first}
@@ -49,7 +49,7 @@ describe('render', () => {
         if (this.mode == 1)
           return (
             <div
-              class="next"
+              className="next"
               data-state={false}
               hidden={false}
               onClick={second}
@@ -426,8 +426,8 @@ describe('render', () => {
       render() {
         return (
           <div
-            {...({ className: 'legacy' } as any)}
-            class={this.native}
+            {...({ class: 'legacy' } as any)}
+            className={this.native}
             style={this.mode == 0 ? this.initial : this.mode == 1 ? ['next', { height: 4 }] : null}
           />
         );
@@ -468,7 +468,7 @@ describe('render', () => {
   });
 
   it('will forward style through component roots', async () => {
-    const Leaf = (_props: any) => <div class="leaf" style={['local', { color: 'blue' }]} />;
+    const Leaf = (_props: any) => <div className="leaf" style={['local', { color: 'blue' }]} />;
     const Middle = (_props: any) => <Leaf style={['inner', { color: 'green', height: 4 }]} />;
 
     class View extends Component {
@@ -498,7 +498,7 @@ describe('render', () => {
   });
 
   it('will not forward class through components', () => {
-    const Leaf = (_props: any) => <div class="leaf" />;
+    const Leaf = (_props: any) => <div className="leaf" />;
     const root = document.createElement('main');
 
     render(<Leaf {...({ class: 'outer' } as any)} />, root);
@@ -703,8 +703,8 @@ describe('render', () => {
             <label htmlFor="shape">shape</label>
             <svg viewBox="0 0 10 10" {...({ focusable: true } as any)}>
               <circle
-                {...({ className: 'legacy' } as any)}
-                class="shape"
+                {...({ class: 'legacy' } as any)}
+                className="shape"
                 cx={5}
                 cy={5}
                 r={4}
@@ -845,6 +845,17 @@ describe('render', () => {
     editor.tick++;
     await flushMicrotasks();
     expect(document.activeElement).not.toBe(input);
+  });
+
+  it('will accept React spellings of autofocus and double click', () => {
+    const clicked = vi.fn();
+    const root = document.body.appendChild(document.createElement('main'));
+    render(<><input autoFocus /><span onDoubleClick={clicked} /></>, root);
+
+    expect(document.activeElement).toBe(root.querySelector('input'));
+
+    root.querySelector('span')!.dispatchEvent(new MouseEvent('dblclick'));
+    expect(clicked).toHaveBeenCalledOnce();
   });
 
   it('will not focus an autofocus element outside the document', () => {
