@@ -344,7 +344,10 @@ describe('component/custom', () => {
   it('will render the arc as an accessible SVG slider', async () => {
     const page = await mount('component/custom');
     const svg = $(page.container, 'svg[role=slider]');
-    const dash = () => $$(svg, 'path')[1].getAttribute('stroke-dasharray');
+    const dash = () => {
+      const path = $$(svg, 'path')[1] as SVGElement;
+      return path.getAttribute('stroke-dasharray') ?? path.style.strokeDasharray.replace(/px|,/g, '');
+    };
     const sweep = Math.PI * 100;
 
     expect(svg.namespaceURI).toBe('http://www.w3.org/2000/svg');
@@ -354,7 +357,7 @@ describe('component/custom', () => {
     expect(svg.getAttribute('tabindex')).toBe('0');
     expect(svg.tabIndex).toBe(0);
     expect(svg.getAttributeNames().sort()).toEqual(['aria-valuemax', 'aria-valuemin', 'aria-valuenow', 'role', 'tabindex', 'viewBox']);
-    expect($$(svg, 'path')[1].getAttributeNames().sort()).toEqual(['class', 'd', 'stroke-dasharray']);
+    expect($$(svg, 'path')[1].getAttributeNames().sort()).toEqual(['class', 'd', 'style']);
 
     await act.key(svg, 'ArrowRight');
     expect(dash()).toBe(`${(14 / 99) * sweep} ${sweep}`);

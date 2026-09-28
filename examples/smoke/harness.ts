@@ -3,8 +3,10 @@ import { fireEvent, within } from '@testing-library/dom';
 export const RENDERER = process.env.RENDERER as 'react' | 'dom';
 export const errors: unknown[][] = [];
 
-const reactPages = import.meta.glob('../pages/**/App.tsx');
-const domPages = import.meta.glob('../pages-dom/**/App.tsx');
+const swapPages = import.meta.glob('@swap/pages/**/App.tsx');
+const reactPages = process.env.SWAP ? swapPages : import.meta.glob('../pages/**/App.tsx');
+const domPages = process.env.SWAP ? swapPages : import.meta.glob('../pages-dom/**/App.tsx');
+const key = (dir: string, page: string) => process.env.SWAP ? Object.keys(swapPages).find((k) => k.endsWith(`/pages/${page}/App.tsx`))! : `../${dir}/${page}/App.tsx`;
 
 let teardown: (() => unknown) | undefined;
 let current: HTMLElement | undefined;
@@ -44,7 +46,8 @@ export async function mount(page: string) {
   document.body.append(container);
 
   if (RENDERER == 'react') {
-    const load = reactPages[`../pages/${page}/App.tsx`];
+    await import('@expressive/react');
+    const load = reactPages[key('pages', page)];
     if (!load) throw new Error(`no page ${page}`);
     const { default: App } = (await load()) as any;
     const { createElement, Suspense } = await import('react');
@@ -53,7 +56,7 @@ export async function mount(page: string) {
     await run(() => root.render(createElement(Suspense, null, createElement(App))));
     teardown = () => root.unmount();
   } else {
-    const load = domPages[`../pages-dom/${page}/App.tsx`];
+    const load = domPages[key('pages-dom', page)];
     if (!load) throw new Error(`no page ${page}`);
     const { default: App } = (await load()) as any;
     const { render } = await import('@expressive/dom');
