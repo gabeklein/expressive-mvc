@@ -110,15 +110,18 @@ journal.record({ paths: ['Composer.draft', 'T3.openTabs', `${id}.value`], keys: 
 journal.frames({ since, type, id, key, cause })
 journal.history({ id, key })       // flat [{ seq, at, event }]
 journal.downstream(seq)            // frames reachable through cause
-journal.summary({ since })         // per instance, latest first: { id, type, last, keys: { [key]: { count, value } }, calls, caught, destroyed }
+journal.summary({ since })         // per instance, latest first: { id, type, last, keys: { [key]: { count, value } }, calls, caught, hot, destroyed }
 journal.seq()                      // pass back as since
 journal.export({ since })          // NDJSON, one event per line
+journal.hot(key, value?)           // page-level hot marker; the Vite client records these
 journal.clear()
 ```
 
 Filters OR together; none set records everything. `paths` take a label, `typeId`, or instance id left of the dot and a property right - events key on the instance that changed, so `Chats.openTabs`, never the owner path `Pairing.chats.openTabs`. `keys` match that property on any type.
 
-A frame is one synchronous batch of writes plus its flush, including writes effects make synchronously during it - the unit React commits. Work an effect defers to a later microtask opens a new frame with `cause` set to the scheduling frame; work deferred to a macrotask starts a new root. Events: `update` (stored key), `event` (custom dispatch), `call` (method, `render` excluded), `destroy`, `caught` (a `Caught` report, `value: { case, message, stack, handled }` at any level - `stack` is the write site for `Destroyed`; `handled` is false when the report got past every app handler; a replacement is its own event). Retains 500 frames.
+A frame is one synchronous batch of writes plus its flush, including writes effects make synchronously during it - the unit React commits. Work an effect defers to a later microtask opens a new frame with `cause` set to the scheduling frame; work deferred to a macrotask starts a new root. Events: `update` (stored key), `event` (custom dispatch), `call` (method, `render` excluded), `destroy`, `caught` (a `Caught` report, `value: { case, message, stack, handled }` at any level - `stack` is the write site for `Destroyed`; `handled` is false when the report got past every app handler; a replacement is its own event), `hot` (an HMR update, below). Retains 500 frames.
+
+`hot` events separate state an edit reset from an app bug. On an instance, `key: 'patch'` - its class was hot-patched and the instance survived. Page-level ones carry `id: ''`, `type: 'vite'`: `update` (`value`: module paths) opens each hot update, so a `destroy` in the frames after it is the edit remounting - React Refresh, or dom recreating `State.use()` slots whose order changed; `reload` opens the journal of the page a full reload brought up, `value` the reason - `{ module, export, reason }` when a class changed shape, `{ path, triggeredBy }` for Vite's own reloads.
 
 Bulk analysis belongs outside the page: `export` to a sidecar and query there.
 
@@ -265,7 +268,7 @@ curl localhost:5173/__inspect -d '["journal.frames", { "since": 3 }]'   # the on
 - Dev server in a container or VM: the host's request arrives from a gateway address and gets 403. Run the request inside it (`docker exec <container> curl localhost:5173/__inspect`), or forward the port over SSH (`ssh -L`) or a devcontainer - those arrive as loopback.
 - No HTML (`appType: 'custom'`): `import 'virtual:expressive-inspect'` first in the entry.
 
-The journal records `keys` from page load - a connected page carries history before anyone asks. A level the app sets wins.
+The journal records `keys` from page load - a connected page carries history before anyone asks. A level the app sets wins. The Vite client adds the `hot` markers ([Journal](#journal)); a reload's reason survives the reload through `sessionStorage`.
 
 `act` takes one call as its step, and the same options - answers `{ value, frames, settled, pending, missing }`. `settled: false` means the timeout passed first; `pending` lists `until` targets not reached, `missing` those that name no instance - an answer, not an error:
 
