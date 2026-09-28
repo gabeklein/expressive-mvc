@@ -287,9 +287,10 @@ describe('suspense and recovery', () => {
     expect(settled).toBe(false);
 
     gate.resolve();
-    await new Promise((resolve) => setTimeout(resolve, 10));
-    expect(root.textContent).toBe('B');
-    expect(settled).toBe(true);
+    await vi.waitFor(() => {
+      expect(root.textContent).toBe('B');
+      expect(settled).toBe(true);
+    });
   });
 
   it('will hold a sibling swap when the incoming scope suspends below its render', async () => {
@@ -329,8 +330,7 @@ describe('suspense and recovery', () => {
     expect(root.querySelector('h2')).toBeNull();
 
     loaded.resolve(() => <b>lazy</b>);
-    await new Promise((resolve) => setTimeout(resolve, 10));
-    expect(root.textContent).toBe('Blazy');
+    await vi.waitFor(() => expect(root.textContent).toBe('Blazy'));
   });
 
   it('will mount staged transition content once it is in the document', async () => {
@@ -381,8 +381,7 @@ describe('suspense and recovery', () => {
     pending(() => {
       app.nav.page = 'b';
     });
-    await new Promise((resolve) => setTimeout(resolve, 10));
-    expect(seen).toEqual(['ref true', 'mount true', 'use true']);
+    await vi.waitFor(() => expect(seen).toEqual(['ref true', 'mount true', 'use true']));
   });
 
   it('will not mount staged content dropped before it is inserted', async () => {
@@ -492,9 +491,10 @@ describe('suspense and recovery', () => {
       pending(() => {
         nav().page = 'c';
       }).then(() => (settled = true));
-      await tick();
-      expect(root.textContent).toBe('cc');
-      expect(settled).toBe(true);
+      await vi.waitFor(() => {
+        expect(root.textContent).toBe('cc');
+        expect(settled).toBe(true);
+      });
     });
 
     it('will settle a transition back to the current page', async () => {
@@ -510,9 +510,10 @@ describe('suspense and recovery', () => {
       pending(() => {
         nav().page = 'a';
       }).then(() => (settled = true));
-      await tick();
-      expect(root.textContent).toBe('aa');
-      expect(settled).toBe(true);
+      await vi.waitFor(() => {
+        expect(root.textContent).toBe('aa');
+        expect(settled).toBe(true);
+      });
     });
 
     it('will release a held batch when the scope holding it unmounts', async () => {
@@ -527,9 +528,10 @@ describe('suspense and recovery', () => {
       expect(root.textContent).toBe('aa');
 
       nav().show = false;
-      await tick();
-      expect(root.textContent).toBe('b');
-      expect(settled).toBe(true);
+      await vi.waitFor(() => {
+        expect(root.textContent).toBe('b');
+        expect(settled).toBe(true);
+      });
     });
 
     it('will take a later transition after the holding scope unmounts', async () => {
@@ -547,9 +549,10 @@ describe('suspense and recovery', () => {
       pending(() => {
         nav().page = 'c';
       }).then(() => (settled = true));
-      await tick();
-      expect(root.textContent).toBe('c');
-      expect(settled).toBe(true);
+      await vi.waitFor(() => {
+        expect(root.textContent).toBe('c');
+        expect(settled).toBe(true);
+      });
     });
   });
 
@@ -591,8 +594,7 @@ describe('suspense and recovery', () => {
     expect(root.textContent).toBe('a');
 
     gate.resolve();
-    await new Promise((resolve) => setTimeout(resolve, 10));
-    expect(root.textContent).toBe('b');
+    await vi.waitFor(() => expect(root.textContent).toBe('b'));
   });
 
   it('will recover an error thrown while probing a transition', async () => {
@@ -627,8 +629,7 @@ describe('suspense and recovery', () => {
     pending(() => {
       app.flag.on = true;
     });
-    await new Promise((resolve) => setTimeout(resolve, 10));
-    expect(caught).toHaveBeenCalledWith('broken');
+    await vi.waitFor(() => expect(caught).toHaveBeenCalledWith('broken'));
   });
 
   it('will retry a caught error once, then wait for an update', async () => {
@@ -815,8 +816,7 @@ describe('suspense and recovery', () => {
     await pending(() => {
       parent.label = 'b';
     });
-    await new Promise((resolve) => setTimeout(resolve, 10));
-    expect(root.textContent).toBe('b');
+    await vi.waitFor(() => expect(root.textContent).toBe('b'));
   });
 
   it('will retain committed content while a transition suspends', async () => {
@@ -1132,12 +1132,10 @@ describe('suspense and recovery', () => {
 
     const root = document.createElement('main');
     render(<Outer />, root);
-    await new Promise((resolve) => setTimeout(resolve, 10));
-    expect(root.textContent).toBe('outer');
+    await vi.waitFor(() => expect(root.textContent).toBe('outer'));
 
     handled.resolve();
-    await new Promise((resolve) => setTimeout(resolve, 10));
-    expect(root.textContent).toBe('content');
+    await vi.waitFor(() => expect(root.textContent).toBe('content'));
   });
 
   it('will stop at the last boundary when a catch rethrows', async () => {
@@ -1167,7 +1165,7 @@ describe('suspense and recovery', () => {
     try {
       const root = document.createElement('main');
       render(<Inner />, root);
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      await vi.waitFor(() => expect(rejected).toHaveBeenCalled());
 
       expect(caught).toHaveBeenCalledOnce();
       expect(root.textContent).toBe('inner');
@@ -1214,13 +1212,13 @@ describe('suspense and recovery', () => {
     await flushMicrotasks();
 
     calls[0].resolve();
-    await new Promise((resolve) => setTimeout(resolve, 10));
-    expect(count).toBe(2);
-    expect(root.textContent).toBe('outer');
+    await vi.waitFor(() => {
+      expect(count).toBe(2);
+      expect(root.textContent).toBe('outer');
+    });
 
     calls[1].resolve();
-    await new Promise((resolve) => setTimeout(resolve, 10));
-    expect(root.textContent).toBe('content');
+    await vi.waitFor(() => expect(root.textContent).toBe('content'));
   });
 
   it('will pass a rejected recovery to the next boundary', async () => {
