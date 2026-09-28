@@ -551,6 +551,7 @@ class Browser {
   private pending = new Map<number, (value: any) => void>();
   private proc!: ReturnType<typeof Bun.spawn>;
   errors: string[] = [];
+  warnings: string[] = [];
 
   async open(url: string, profile: string) {
     const port = 9300 + Math.floor(Math.random() * 500);
@@ -570,6 +571,8 @@ class Browser {
     this.ws.onmessage = (event) => {
       const message = JSON.parse(String(event.data));
       if (message.id) this.pending.get(message.id)?.(message);
+      else if (message.method == 'Runtime.consoleAPICalled' && message.params.type == 'warning')
+        this.warnings.push(message.params.args.map((arg: any) => arg.value ?? arg.description).join(' '));
       else if (message.method == 'Runtime.consoleAPICalled' && message.params.type == 'error')
         this.errors.push(message.params.args.map((arg: any) => arg.value ?? arg.description).join(' '));
       else if (message.method == 'Runtime.exceptionThrown')
@@ -1026,8 +1029,18 @@ async function run(mode: Mode) {
         return events.find((e: any) => e.kind == 'hot' && e.key == 'reload' && e.value?.class == 'Vault');
       });
 
-      check(reload, 'no reload recorded for Vault');
+      check(reload.value.reason == 'private members', `reload reason: ${JSON.stringify(reload.value)}`);
+
+      const warned = () => browser.warnings.filter((text) => text.startsWith('[expressive] Vault')).length;
+      await until(async () => warned() == 1).catch(() => {
+        throw new Error(`${warned()} private-member warnings after the reload`);
+      });
+
       await rearm();
+      await edit('vault.tsx', "return 'safe ' +", "return 'vault ' +");
+      await until(async () => !(await alive()) && (await browser.text('#vault')) == 'vault k', 10000);
+      await rearm();
+      check(warned() == 1, `warned ${warned()} times`);
     });
 
     await scenario('renaming a class across modules reloads into a working app', async () => {
