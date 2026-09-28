@@ -3,7 +3,7 @@ import { vi, expect, it, describe } from 'vitest';
 import { renderToString } from 'react-dom/server';
 import React, { Suspense } from 'react';
 
-import { mockError, mockPromise, flushMicrotasks } from '../test.setup';
+import { mockError, mockPromise, mockWarn, flushMicrotasks } from '../test.setup';
 import { Component, Consumer, State, pending, set } from '.';
 
 it('will create and provide instance', () => {
@@ -1522,6 +1522,48 @@ describe('subcomponents', () => {
 });
 
 describe('strict mode', () => {
+  it('will construct once per kept instance', async () => {
+    const warn = mockWarn();
+    const didCreate = vi.fn();
+    const didDestroy = vi.fn();
+
+    class Child extends State {
+      new() {
+        didCreate();
+        return didDestroy;
+      }
+    }
+
+    class Control extends Component {
+      child = new Child();
+      #secret = 'bar';
+
+      render() {
+        return <span>{this.reveal()}</span>;
+      }
+
+      reveal() {
+        return this.#secret;
+      }
+    }
+
+    const element = render(
+      <React.StrictMode>
+        <Control />
+      </React.StrictMode>
+    );
+
+    await flushMicrotasks();
+
+    expect(screen).toHaveText('bar');
+    expect(didCreate).toBeCalledTimes(1);
+    expect(warn).not.toBeCalled();
+
+    element.unmount();
+
+    expect(didDestroy).toBeCalledTimes(1);
+  });
+
   it('will not create two instances', async () => {
     const didCreate = vi.fn();
     const didDestroy = vi.fn();

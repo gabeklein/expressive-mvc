@@ -1146,4 +1146,4 @@ function parent(child: object, value?: State | null) {
   return true;
 }
 
-export { event, unbind, State, parent, children, PENDING, STORE, uid, access, update, apply, compute, fault };
+export { event, unbind, State, parent, children, trailing, PENDING, STORE, uid, access, update, apply, compute, fault };

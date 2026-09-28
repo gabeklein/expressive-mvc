@@ -1,6 +1,6 @@
 import { Context } from './context';
 import { set } from './field/set';
-import { State, unbind } from './state';
+import { State, trailing, unbind } from './state';
 
 import type { Host } from './runtime';
 
@@ -94,7 +94,7 @@ class Component extends State {
     if (props == null) props = {};
 
     const seen = {} as Record<string, undefined>;
-    const copy = PENDING.get(props);
+    const twin = PENDING.get(props);
 
     if (typeof props == 'object') merge(props);
 
@@ -103,20 +103,22 @@ class Component extends State {
       return { ...seen, ...props };
     }
 
-    super(copy ? [] : [
+    super([
       props,
       rest.filter((x) => !(x instanceof Context)),
       () => {
+        const other = twin || PENDING.get(props)!;
+
+        if (other !== this) {
+          trailing(other).forEach((orphan) => orphan.set(null));
+          other.set(null);
+        }
+
         props.is?.(this);
         Object.defineProperty(this, 'props', { enumerable: false });
         PENDING.delete(props);
       }
     ]);
-
-    if (copy) {
-      this.set(null);
-      return copy;
-    }
 
     PENDING.set(props, this);
 
