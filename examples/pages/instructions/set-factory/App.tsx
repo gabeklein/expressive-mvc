@@ -1,6 +1,6 @@
 import './App.css';
 
-import { Component, set } from '@expressive/react';
+import { Component, set } from '@expressive/mvc';
 
 export default () => (
   <div className="container">

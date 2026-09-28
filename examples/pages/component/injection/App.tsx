@@ -1,7 +1,7 @@
 import './App.css';
 
 import Button from '@common/Button';
-import { Component } from '@expressive/react';
+import { Component } from '@expressive/mvc';
 
 export default () => (
   <div className="container">
@@ -68,7 +68,7 @@ class Panel extends Component {
           rows={3}
           value={text}
           placeholder={`Write the ${name.toLowerCase()}…`}
-          onChange={(e) => (this.text = e.target.value)}
+          onInput={(e) => (this.text = e.currentTarget.value)}
         />
       </div>
     );

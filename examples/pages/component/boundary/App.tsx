@@ -1,7 +1,7 @@
 import './App.css';
 
 import Button from '@common/Button';
-import { Component } from '@expressive/react';
+import { Component } from '@expressive/mvc';
 
 export default () => (
   <div className="container">

@@ -1,6 +1,6 @@
 import './App.css';
 
-import State, { Component, get, has } from '@expressive/react';
+import { State, Component, get, has } from '@expressive/mvc';
 
 export default () => (
   <div className="container">
@@ -129,7 +129,7 @@ class Sheet extends Component {
         rows={3}
         value={this.doc.text}
         placeholder="Write something, then undo it…"
-        onChange={(e) => this.write(e.target.value)}
+        onInput={(e) => this.write(e.currentTarget.value)}
       />
     );
   }

@@ -1,8 +1,7 @@
 import './App.css';
+import type { Component } from '@expressive/mvc';
 
-import '@expressive/react';
 import { BrowserRouter, Link, Route } from '@expressive/router';
-import type { ReactNode } from 'react';
 
 export default () => (
   <div className="container">
@@ -31,7 +30,7 @@ export default () => (
   </div>
 );
 
-const Frame = (props: { children?: ReactNode }) => {
+const Frame = (props: { children?: Component.Node }) => {
   const { url } = BrowserRouter.get();
 
   return (
@@ -51,7 +50,7 @@ const Frame = (props: { children?: ReactNode }) => {
 
 const Home = () => <p>Choose a destination.</p>;
 
-const Projects = (props: { children?: ReactNode }) => (
+const Projects = (props: { children?: Component.Node }) => (
   <section className="project">
     <b>Projects</b>
     {props.children}

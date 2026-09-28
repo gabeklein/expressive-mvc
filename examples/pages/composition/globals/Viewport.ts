@@ -1,4 +1,4 @@
-import State from '@expressive/react';
+import { State } from '@expressive/mvc';
 
 // Display-agnostic logic with no render() of its own: mutable inputs are
 // fields, derived values are getters. A global belongs to the app, not a

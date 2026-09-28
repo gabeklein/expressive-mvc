@@ -1,8 +1,7 @@
 import './App.css';
 
-import { Component, get } from '@expressive/react';
+import { Component, get } from '@expressive/mvc';
 import { Route, Router } from '@expressive/router';
-import type { ReactNode } from 'react';
 
 const BOOKS = [
   { title: 'Analysis I', year: 2016, tag: 'math' },
@@ -18,7 +17,7 @@ export default () => (
   </Router>
 );
 
-const Frame = (props: { children?: ReactNode }) => (
+const Frame = (props: { children?: Component.Node }) => (
   <div className="container">
     <h1>Query</h1>
     <p>

@@ -1,8 +1,7 @@
 import './App.css';
 
-import { Component, get } from '@expressive/react';
+import { Component, get } from '@expressive/mvc';
 import { Link, Route, Router } from '@expressive/router';
-import type { ReactNode } from 'react';
 
 export default () => (
   <div className="container">
@@ -28,7 +27,7 @@ export default () => (
   </div>
 );
 
-const Frame = (props: { children?: ReactNode }) => (
+const Frame = (props: { children?: Component.Node }) => (
   <>
     <nav className="nav">
       <Link to="/">Home</Link>

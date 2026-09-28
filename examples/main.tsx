@@ -1,4 +1,5 @@
 import '@expressive/inspect/install';
+import '@expressive/react';
 
 import { lazy, Suspense } from 'react';
 import { createRoot } from 'react-dom/client';

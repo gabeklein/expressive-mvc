@@ -1,4 +1,4 @@
-import State from '@expressive/react';
+import { State } from '@expressive/mvc';
 
 // Most async work has the same shape - we wait for a response, get
 // something back, sometimes get an error. Query handles that scaffolding

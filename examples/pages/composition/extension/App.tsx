@@ -1,7 +1,6 @@
 import './App.css';
 
-import { Component } from '@expressive/react';
-import type { ReactNode } from 'react';
+import { Component } from '@expressive/mvc';
 
 export default () => (
   <div className="container">
@@ -34,7 +33,7 @@ class Panel extends Component {
     this.open = !this.open;
   }
 
-  render(props = {} as { children?: ReactNode }) {
+  render(props = {} as { children?: Component.Node }) {
     const { title, open } = this;
 
     return (
@@ -78,7 +77,7 @@ class Notes extends Panel {
         rows={2}
         value={text}
         placeholder="Type something, then collapse…"
-        onChange={(e) => (this.text = e.target.value)}
+        onInput={(e) => (this.text = e.currentTarget.value)}
       />
     );
   }

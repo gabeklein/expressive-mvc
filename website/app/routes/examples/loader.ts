@@ -20,6 +20,7 @@ const FILES = import.meta.glob('@examples/*/**/*', {
 
 const ENTRY = `\
 import './global.css';
+import '@expressive/react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
 
