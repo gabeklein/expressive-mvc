@@ -350,4 +350,4 @@ Instructions: `field/*.md`, linked from the [helper table](#instructions--reacti
 
 Audit a conversion as a separate pass over the diff - self-audits while authoring under-report architecture gaps.
 
-Fit and migration candidates: [examples/audit.md](examples/audit.md); approved migrations follow [react/refactor.md](react/refactor.md). Positioning: website-only [why](https://expressive.dev/llm/why.md) and [comparisons](https://expressive.dev/llm/comparisons.md).
+Fit and migration candidates: [examples/audit.md](examples/audit.md); approved migrations follow [react/refactor.md](react/refactor.md). Positioning: website-only [why](https://expressive.dev/llm/why.md), [comparisons](https://expressive.dev/llm/comparisons.md), and [dom vs React](https://expressive.dev/llm/dom.md).
