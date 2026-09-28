@@ -85,7 +85,7 @@ for (const [key, value] of state) {
 
 ### Unmanaged Instance Data
 
-A `_` prefix opts a field out of management - handles, config, soft-private values. Writes never notify and never throw after destroy. The field is non-enumerable, so it is absent from `get()`, `Object.keys()`, iteration, `ref(this)`, and `State.Values`. Overlays still assign it: constructor args, `set({ ... })`, and Component props.
+A `_` prefix opts a class field out of management - handles, config, soft-private values. Writes never notify and never throw after destroy, and land on the instance from any context - effect, computed, or render. The field is non-enumerable, so it is absent from `get()`, `Object.keys()`, iteration, `ref(this)`, and `State.Values`. Overlays still assign it: constructor args, `set({ ... })`, and Component props - an omitted prop resets to `undefined`, as for managed props. An overlay onto a getter-only `_` accessor is ignored. The sweep runs at activation - a `_` key first assigned later (e.g. in `new()`) is enumerable; declare it as a field.
 
 ```ts
 class Job extends State {

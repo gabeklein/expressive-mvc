@@ -274,7 +274,7 @@ class ChatRoom extends Component {
 
 ## Props
 
-State fields become optional JSX props, applied to the instance every render.
+State fields become optional JSX props, applied to the instance every render. A prop omitted on a later render resets to `undefined` - unmanaged `_` fields included.
 
 ```tsx
 class Greeting extends Component {

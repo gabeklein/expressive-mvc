@@ -70,7 +70,7 @@ All writes in the same tick batch into a single flush (via `queueMicrotask`), an
 
 Not everything on a class is state the UI should watch. Subscription handles, timers, configuration and bookkeeping belong on the instance, but a write to them shouldn't cause a render. There are two ways to keep a field out of the reactive system, and they work together.
 
-**A `_` prefix** marks a field as unmanaged. It's still an ordinary property on the instance: read and write it as normal. It never notifies anyone, it's hidden from `get()`, iteration and `Object.keys()`, and writing to it after the instance is destroyed doesn't throw. Constructor arguments, `set({ ... })` and Component props can still assign it, so it's a good place for configuration a parent passes in without making it reactive.
+**A `_` prefix** on a class field marks it as unmanaged. Read and write it like any other property - from methods, effects, computeds or `render()`, the write always lands on the instance. It never notifies anyone, it's hidden from `get()`, iteration and `Object.keys()`, and writing to it after the instance is destroyed doesn't throw. Constructor arguments, `set({ ... })` and Component props can still assign it, so it's a good place for configuration a parent passes in without making it reactive. Like any prop, a `_` prop the parent stops passing resets to `undefined`.
 
 ```ts
 class Job extends State {
@@ -117,15 +117,15 @@ In short:
 | | Reactive | Visible to computeds | Set by props / args |
 |---|---|---|---|
 | `name = ''` | yes | yes | yes |
-| `_name = ''` | no | yes, read as-is | yes |
-| `get _name()` | no | yes, runs on the instance | - |
+| `_name = ''` | no | yes, read and write | yes |
+| `get _name()` | no | yes, runs on the instance | with a setter; otherwise ignored |
 | `#name = ''` | no | only through a method or `_` accessor | no |
 
 TypeScript's `private` keyword is compile-time only - a `private count = 0` field is still managed.
 
-A key that first appears after activation - assigned in `new()`, say - is also just a plain property. Prefer `_` so the intent is visible on the class.
+The `_` treatment applies to class fields, set up when the instance activates. A key that first appears later - assigned in `new()`, say - is a plain property too, but an enumerable one, so it shows up in `Object.keys()`. Declare it as a `_` field so the intent is visible on the class.
 
-For the common case - holding a DOM element or a mutable handle - use [`ref`](/docs/guides/forms-and-refs) instead.
+To hold a DOM element, or a mutable value whose changes other code should hear about, use [`ref`](/docs/guides/forms-and-refs).
 
 <br />
 
