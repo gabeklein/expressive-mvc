@@ -106,7 +106,7 @@ class Session extends State {
 }
 ```
 
-- A `_` accessor is never computed or cached and never subscribes - including to managed fields it reads. A computed reads its managed dependencies directly.
+- A `_` accessor is never computed or cached and never subscribes - running on the instance, its reads bypass the tracking subject, managed fields included. Deliberate: a subscribing `_` getter would be an uncached computed hidden behind the unmanaged prefix. Derived from managed state → a plain getter (computed); a computed reads its managed dependencies directly.
 - An instruction on a `_` key throws.
 - TypeScript `private` does not opt out.
 - A handle only lifecycle touches is simpler as a `new()` closure variable.

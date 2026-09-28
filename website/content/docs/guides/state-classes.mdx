@@ -108,7 +108,9 @@ class Session extends State {
 }
 ```
 
-Because a `_` accessor is outside the reactive system, it never creates subscriptions itself, even for managed fields it reads. Above, `greeting` refreshes because it reads `user`, which `signIn` changes. If `_authorized` read a managed field, `greeting` wouldn't subscribe to it that way. A computed should read the managed fields it depends on directly.
+A `_` accessor never creates subscriptions, even for managed fields it reads. That follows from how tracking works: a computed or effect subscribes to whatever it reads *through the tracking proxy*. A `_` accessor runs against the real instance instead, which is what lets it see `#private` fields, so its reads bypass the proxy and nothing is recorded.
+
+This is intentional. A getter that quietly picked up dependencies would be a computed in disguise, without the caching and without being visible as reactive state. Keeping `_` accessors inert means a `_` name always means "outside the reactive system", inside and out. If a value should react to managed fields, make it a regular getter - a computed. Above, `greeting` refreshes because it reads `user` itself, which `signIn` changes. If `_authorized` read a managed field, `greeting` wouldn't pick it up that way.
 
 In short:
 
