@@ -1,3 +1,5 @@
+import type { has, map } from '@expressive/mvc';
+
 const VNODE = Symbol('@expressive/dom.vnode');
 const PORTAL = Symbol('@expressive/dom.portal');
 
@@ -18,7 +20,10 @@ type Node =
   | boolean
   | null
   | undefined
-  | readonly Node[];
+  | readonly Node[]
+  | has.List<Node>
+  | has.Pool<Node, any, any>
+  | map.Managed<unknown, Node>;
 
 interface VNode<P = any> {
   readonly [VNODE]: true;

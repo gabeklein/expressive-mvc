@@ -36,8 +36,8 @@ class Workspace extends Component {
           {[draft, review].map((panel) => (
             <Button
               key={panel.key}
-              primary={panel === active}
-              onClick={() => (this.active = panel)}>
+              primary={panel.is === active?.is}
+              onClick={() => (this.active = panel.is)}>
               {panel.name}
             </Button>
           ))}
