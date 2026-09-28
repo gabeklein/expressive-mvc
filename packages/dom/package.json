@@ -36,6 +36,10 @@
     "./jsx-dev-runtime": {
       "types": "./dist/jsx-dev-runtime.d.ts",
       "default": "./dist/jsx-dev-runtime.js"
+    },
+    "./vite": {
+      "types": "./dist/vite.d.ts",
+      "default": "./dist/vite.js"
     }
   },
   "engines": {
@@ -49,11 +53,18 @@
     "test": "tsc --noEmit && vitest run --coverage"
   },
   "peerDependencies": {
-    "@expressive/mvc": "^0.86.0"
+    "@expressive/mvc": "^0.86.0",
+    "vite": ">=5"
+  },
+  "peerDependenciesMeta": {
+    "vite": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@expressive/mvc": "workspace:^",
     "@types/node": "^25.2.0",
-    "tsdown": "^0.20.1"
+    "tsdown": "^0.20.1",
+    "vite": "^7.3.1"
   }
 }
