@@ -12,6 +12,9 @@ export interface Remote {
 /** Resolve `address.key` to the instance `address` names - label, id, or owner path - as the `id.key` its frames carry. */
 async function locate(remote: Remote, target: string) {
   const dot = target.lastIndexOf('.');
+
+  if (target[dot + 1] == '_')
+    throw new Error(`until ${target}: _ keys are unmanaged and emit no events - wait on a value instead.`);
   const found = (await remote.get(target.slice(0, dot))) as { $ref?: string } | undefined;
 
   if (!found?.$ref) throw new Error(`until ${target}: ${target.slice(0, dot)} names no State.`);

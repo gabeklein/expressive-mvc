@@ -344,6 +344,19 @@ describe('journal', () => {
     expect(frames.at(-1)!.events[0].value).toBe('sent');
   });
 
+  it('will act until an unmanaged _ key holds a value', async () => {
+    class Job extends State {
+      _handle: string | null = 'running';
+    }
+
+    attach();
+    const job = Job.new();
+
+    await act(() => void setTimeout(() => (job._handle = null), 5), { until: { 'Job._handle': null } });
+
+    expect(job._handle).toBeNull();
+  });
+
   it('will not wait for a value already held', async () => {
     const warn = mockWarn();
     attach();

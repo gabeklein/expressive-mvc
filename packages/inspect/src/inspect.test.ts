@@ -302,6 +302,13 @@ describe('act until an address', () => {
     await expect(act(() => {}, { until: 'Missing.value' })).rejects.toThrow('until Missing.value: Missing names no State.');
     await expect(act(() => {}, { until: 'Holder.part.value.x' })).rejects.toThrow('Holder.part.value names no State.');
   });
+
+  it('will throw for an unmanaged _ key', async () => {
+    attach();
+    Holder.new();
+
+    await expect(act(() => {}, { until: 'Holder._handle' })).rejects.toThrow('until Holder._handle: _ keys are unmanaged');
+  });
 });
 
 describe('set', () => {
