@@ -293,6 +293,7 @@ export function attach(Type: typeof State = State): () => void {
       if (recordsCalls()) wrap(self);
       mounts(self);
       const unpatch = listener(self, () => {
+        unwrap(self);
         if (recordsCalls()) wrap(self);
         notePatch(self);
       }, REFRESH);
@@ -503,12 +504,6 @@ function wrap(state: State) {
 
   const target = state as unknown as Record<string, Function>;
 
-  for (const key of keys)
-    if (key != 'render' && !(key in Object.getPrototypeOf(state))) {
-      delete target[key];
-      keys.delete(key);
-    }
-
   for (let proto = Object.getPrototypeOf(state); proto !== State.prototype; proto = Object.getPrototypeOf(proto))
     for (const [key, desc] of Object.entries(Object.getOwnPropertyDescriptors(proto))) {
       if (keys.has(key) || typeof desc.get !== 'function' || desc.get !== desc.set) continue;
@@ -520,6 +515,18 @@ function wrap(state: State) {
         return latest(state, key).apply(this, args);
       };
     }
+}
+
+/** Drop wrappers of methods a hot patch removed. */
+function unwrap(state: State) {
+  const keys = wrapped.get(state);
+
+  if (keys)
+    for (const key of keys)
+      if (key != 'render' && !(key in Object.getPrototypeOf(state))) {
+        delete (state as unknown as Record<string, unknown>)[key];
+        keys.delete(key);
+      }
 }
 
 /** A method's current implementation - through its accessor, so a hot patch is followed. */

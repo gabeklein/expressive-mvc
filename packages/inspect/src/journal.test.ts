@@ -547,6 +547,35 @@ describe('hot', () => {
     expect(counter.gone).toBeUndefined();
   });
 
+  it('will drop a wrapper once calls stop recording', async () => {
+    const id = `journal-${count++}`;
+
+    attach();
+    journal.record({ level: 'keys', calls: true });
+
+    const Before = (() => {
+      class Counter extends State {
+        gone() {}
+      }
+      return Counter;
+    })();
+
+    const After = (() => {
+      class Counter extends State {}
+      return Counter;
+    })();
+
+    hot.accept(id, { Counter: Before });
+
+    const counter = Before.new() as any;
+
+    journal.record({ calls: false });
+    hot.accept(id, { Counter: After });
+    await flushMicrotasks();
+
+    expect(counter.gone).toBeUndefined();
+  });
+
   it('will record a patch as hot', async () => {
     const id = `journal-${count++}`;
 
