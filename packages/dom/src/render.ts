@@ -64,7 +64,6 @@ interface Fiber {
   placeholder?: Fiber;
   staging?: DocumentFragment;
   inserted?: (() => void)[];
-  restore?: () => void;
   render?: () => RenderNode;
   appearance?: Appearance;
   consumed?: boolean;
@@ -106,6 +105,8 @@ const CONTROLS = ['checked', 'value'];
 const ENUMERATED = ['contentEditable', 'contenteditable', 'draggable', 'spellcheck'];
 const ALIASES: Record<string, string> = { autoFocus: 'autofocus', contentEditable: 'contenteditable', htmlFor: 'for' };
 const focusing: Element[] = [];
+const controlled = new WeakMap<Element, Fiber>();
+const restoring = new WeakSet<Document>();
 let passiveRender = false;
 let inserting: (() => void)[] | undefined;
 let depth = 0;
@@ -966,10 +967,16 @@ function patchProps(fiber: Fiber, next: Record<string, any>, appearance?: Appear
     if (differs) patchProp(fiber, element, key, previous[key], value);
   }
 
-  if (!fiber.restore && CONTROLS.some((key) => next[key] != null)) {
-    fiber.restore = () => queueMicrotask(() => afterFlush(() => restore(fiber)));
-    element.addEventListener('input', fiber.restore);
-    element.addEventListener('change', fiber.restore);
+  if (CONTROLS.some((key) => next[key] != null)) {
+    const document = element.ownerDocument;
+
+    controlled.set(element, fiber);
+
+    if (!restoring.has(document)) {
+      restoring.add(document);
+      document.addEventListener('input', restoreTarget);
+      document.addEventListener('change', restoreTarget);
+    }
   }
 
   if (previous.ref !== next.ref) patchProp(fiber, element, 'ref', previous.ref, next.ref);
@@ -1132,6 +1139,20 @@ function collect(value: Style, collected: Collected, doors: number) {
 
 function appendClasses(classes: string[], value: unknown) {
   if (typeof value == 'string') classes.push(...value.split(/\s+/).filter(Boolean));
+}
+
+function restoreTarget(event: Event) {
+  const element = event.target as HTMLInputElement;
+  const fiber = controlled.get(element);
+
+  if (fiber && event.type == settles(fiber.props!, element))
+    queueMicrotask(() => afterFlush(() => restore(fiber)));
+}
+
+function settles(props: Record<string, any>, element: HTMLInputElement) {
+  if (props.onInput) return 'input';
+  if (props.onChange) return 'change';
+  return element.type == 'checkbox' || element.type == 'radio' || element.localName == 'select' ? 'change' : 'input';
 }
 
 function restore(fiber: Fiber) {

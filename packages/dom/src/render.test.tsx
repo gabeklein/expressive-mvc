@@ -864,17 +864,17 @@ describe('render', () => {
       }
     }
 
-    const root = document.createElement('main');
+    const root = document.body.appendChild(document.createElement('main'));
     render(<Name />, root);
     const input = root.querySelector('input')!;
 
     input.value = 'abcd';
-    input.dispatchEvent(new Event('input'));
+    input.dispatchEvent(new Event('input', { bubbles: true }));
     await flushMicrotasks();
     expect(input.value).toBe('abc');
 
     input.value = 'ab';
-    input.dispatchEvent(new Event('input'));
+    input.dispatchEvent(new Event('input', { bubbles: true }));
     await flushMicrotasks();
     expect(input.value).toBe('ab');
   });
@@ -906,26 +906,73 @@ describe('render', () => {
 
     input.value = 'hel!lo';
     writes = 0;
-    input.dispatchEvent(new Event('input'));
+    input.dispatchEvent(new Event('input', { bubbles: true }));
     await flushMicrotasks();
 
     expect(input.value).toBe('hel!lo');
     expect(writes).toBe(0);
   });
 
+  it('will restore after the event a controlled handler listens to', async () => {
+    class Form extends Component {
+      agreed = false;
+      text = 'a';
+
+      render() {
+        const { agreed, text } = this;
+
+        return (
+          <>
+            <input type="checkbox" checked={agreed} onChange={(event) => (this.agreed = event.currentTarget.checked)} />
+            <input value={text} onChange={(event) => (this.text = event.currentTarget.value)} />
+          </>
+        );
+      }
+    }
+
+    const root = document.body.appendChild(document.createElement('main'));
+    render(<Form />, root);
+    const [box, field] = root.querySelectorAll('input');
+
+    box.checked = true;
+    box.dispatchEvent(new Event('input', { bubbles: true }));
+    await flushMicrotasks();
+    box.dispatchEvent(new Event('change', { bubbles: true }));
+    await flushMicrotasks();
+    expect(box.checked).toBe(true);
+
+    field.value = 'ab';
+    field.dispatchEvent(new Event('input', { bubbles: true }));
+    await flushMicrotasks();
+    expect(field.value).toBe('ab');
+
+    field.dispatchEvent(new Event('change', { bubbles: true }));
+    await flushMicrotasks();
+    expect(field.value).toBe('ab');
+  });
+
   it('will keep a controlled field without a handler on its value', async () => {
-    const root = document.createElement('main');
-    render(<><input value="fixed" /><input type="checkbox" checked={false} /></>, root);
-    const [text, box] = root.querySelectorAll('input');
+    const root = document.body.appendChild(document.createElement('main'));
+    render(<><input value="fixed" /><input type="checkbox" checked={false} /><input /><select value="b"><option value="a" /><option value="b" /></select></>, root);
+    const [text, box, free] = root.querySelectorAll('input');
+    const select = root.querySelector('select')!;
+
+    select.value = 'a';
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+
+    free.value = 'free';
+    free.dispatchEvent(new Event('input', { bubbles: true }));
 
     text.value = 'typed';
-    text.dispatchEvent(new Event('input'));
+    text.dispatchEvent(new Event('input', { bubbles: true }));
     box.checked = true;
-    box.dispatchEvent(new Event('change'));
+    box.dispatchEvent(new Event('change', { bubbles: true }));
     await flushMicrotasks();
 
     expect(text.value).toBe('fixed');
     expect(box.checked).toBe(false);
+    expect(free.value).toBe('free');
+    expect(select.value).toBe('b');
   });
 
   it('will accept React spellings of autofocus and double click', () => {
@@ -953,7 +1000,7 @@ describe('render', () => {
 
     const input = root.querySelector('input')!;
     input.value = 'typed';
-    input.dispatchEvent(new Event('input'));
+    input.dispatchEvent(new Event('input', { bubbles: true }));
     expect(values).toEqual(['typed']);
   });
 
