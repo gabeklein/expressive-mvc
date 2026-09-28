@@ -246,6 +246,391 @@ describe('suspense and recovery', () => {
     expect(root.querySelectorAll('b')).toHaveLength(1);
   });
 
+  it('will hold a sibling swap until the incoming scope renders', async () => {
+    const gate = mockPromise<void>();
+    let open = false;
+    gate.then(() => (open = true));
+
+    class Nav extends State {
+      page = 'a';
+    }
+
+    function A() {
+      return Nav.get().page == 'a' ? <p>A</p> : null;
+    }
+
+    function B() {
+      if (Nav.get().page != 'b') return null;
+      if (!open) throw gate;
+      return <p>B</p>;
+    }
+
+    class App extends Component {
+      nav = new Nav();
+      fallback = <i>loading</i>;
+
+      render() {
+        return <div><A /><B /></div>;
+      }
+    }
+
+    let app!: App;
+    let settled = false;
+    const root = document.createElement('main');
+    render(<App is={(value) => (app = value)} />, root);
+
+    pending(() => {
+      app.nav.page = 'b';
+    }).then(() => (settled = true));
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(root.textContent).toBe('A');
+    expect(settled).toBe(false);
+
+    gate.resolve();
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(root.textContent).toBe('B');
+    expect(settled).toBe(true);
+  });
+
+  it('will hold a sibling swap when the incoming scope suspends below its render', async () => {
+    const loaded = mockPromise<() => Component.Node>();
+    const Lazy = lazy(() => loaded);
+
+    class Nav extends State {
+      page = 'a';
+    }
+
+    function A() {
+      return Nav.get().page == 'a' ? <p>A</p> : null;
+    }
+
+    function B() {
+      return Nav.get().page == 'b' ? <><h2>B</h2><Lazy /></> : null;
+    }
+
+    class App extends Component {
+      nav = new Nav();
+      fallback = <i>loading</i>;
+
+      render() {
+        return <div><A /><B /></div>;
+      }
+    }
+
+    let app!: App;
+    const root = document.createElement('main');
+    render(<App is={(value) => (app = value)} />, root);
+
+    pending(() => {
+      app.nav.page = 'b';
+    });
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(root.textContent).toBe('A');
+    expect(root.querySelector('h2')).toBeNull();
+
+    loaded.resolve(() => <b>lazy</b>);
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(root.textContent).toBe('Blazy');
+  });
+
+  it('will mount staged transition content once it is in the document', async () => {
+    const seen: string[] = [];
+    const connected = () => !!document.querySelector('#chart');
+
+    class Nav extends State {
+      page = 'a';
+    }
+
+    class Probe extends State {
+      mount() {
+        seen.push(`use ${connected()}`);
+      }
+    }
+
+    class Chart extends Component {
+      mount() {
+        seen.push(`mount ${connected()}`);
+      }
+
+      render() {
+        return <div id="chart" ref={(node) => node && seen.push(`ref ${connected()}`)} />;
+      }
+    }
+
+    function Page() {
+      Probe.use();
+      return <section><Chart /></section>;
+    }
+
+    function Swap() {
+      return Nav.get().page == 'b' ? <Page /> : null;
+    }
+
+    class App extends Component {
+      nav = new Nav();
+
+      render() {
+        return <Swap />;
+      }
+    }
+
+    let app!: App;
+    const root = document.body.appendChild(document.createElement('main'));
+    render(<App is={(value) => (app = value)} />, root);
+
+    pending(() => {
+      app.nav.page = 'b';
+    });
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(seen).toEqual(['ref true', 'mount true', 'use true']);
+  });
+
+  it('will not mount staged content dropped before it is inserted', async () => {
+    const gate = mockPromise<void>();
+    const mounted = vi.fn();
+    const attached = vi.fn();
+
+    class Nav extends State {
+      page = 'a';
+    }
+
+    class Child extends Component {
+      mount() {
+        mounted();
+      }
+
+      render() {
+        return <i ref={attached} />;
+      }
+    }
+
+    function Wait(): Component.Node {
+      throw gate;
+    }
+
+    function Swap() {
+      const { page } = Nav.get();
+      return page == 'b' ? <><Child /><Wait /></> : null;
+    }
+
+    class App extends Component {
+      nav = new Nav();
+      shown = true;
+
+      render() {
+        return this.shown ? <Swap /> : null;
+      }
+    }
+
+    let app!: App;
+    const root = document.body.appendChild(document.createElement('main'));
+    render(<App is={(value) => (app = value)} />, root);
+
+    pending(() => {
+      app.nav.page = 'b';
+    });
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    app.shown = false;
+    await flushMicrotasks();
+    gate.resolve();
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    expect(mounted).not.toHaveBeenCalled();
+    expect(attached).not.toHaveBeenCalledWith(expect.anything());
+  });
+
+  describe('superseded and abandoned transitions', () => {
+    class Nav extends State {
+      page = 'a';
+      show = true;
+    }
+
+    const tick = (ms = 10) => new Promise((resolve) => setTimeout(resolve, ms));
+
+    function setup(gate: PromiseLike<void>) {
+      function Title() {
+        return <h1>{Nav.get().page}</h1>;
+      }
+
+      function Page() {
+        const { page } = Nav.get();
+        if (page == 'b') throw gate;
+        return <p>{page}</p>;
+      }
+
+      function Body() {
+        return Nav.get().show ? <Page /> : null;
+      }
+
+      class App extends Component {
+        nav = new Nav();
+        fallback = <i>loading</i>;
+
+        render() {
+          return <><Title /><Body /></>;
+        }
+      }
+
+      let app!: App;
+      const root = document.createElement('main');
+      render(<App is={(value) => (app = value)} />, root);
+      return { root, nav: () => app.nav };
+    }
+
+    it('will render a newer transition without waiting on a held one', async () => {
+      const gate = mockPromise<void>();
+      const { root, nav } = setup(gate);
+
+      pending(() => {
+        nav().page = 'b';
+      });
+      await tick();
+      expect(root.textContent).toBe('aa');
+
+      let settled = false;
+      pending(() => {
+        nav().page = 'c';
+      }).then(() => (settled = true));
+      await tick();
+      expect(root.textContent).toBe('cc');
+      expect(settled).toBe(true);
+    });
+
+    it('will settle a transition back to the current page', async () => {
+      const gate = mockPromise<void>();
+      const { root, nav } = setup(gate);
+
+      pending(() => {
+        nav().page = 'b';
+      });
+      await tick();
+
+      let settled = false;
+      pending(() => {
+        nav().page = 'a';
+      }).then(() => (settled = true));
+      await tick();
+      expect(root.textContent).toBe('aa');
+      expect(settled).toBe(true);
+    });
+
+    it('will release a held batch when the scope holding it unmounts', async () => {
+      const gate = mockPromise<void>();
+      const { root, nav } = setup(gate);
+
+      let settled = false;
+      pending(() => {
+        nav().page = 'b';
+      }).then(() => (settled = true));
+      await tick();
+      expect(root.textContent).toBe('aa');
+
+      nav().show = false;
+      await tick();
+      expect(root.textContent).toBe('b');
+      expect(settled).toBe(true);
+    });
+
+    it('will take a later transition after the holding scope unmounts', async () => {
+      const gate = mockPromise<void>();
+      const { root, nav } = setup(gate);
+
+      pending(() => {
+        nav().page = 'b';
+      });
+      await tick();
+      nav().show = false;
+      await tick();
+
+      let settled = false;
+      pending(() => {
+        nav().page = 'c';
+      }).then(() => (settled = true));
+      await tick();
+      expect(root.textContent).toBe('c');
+      expect(settled).toBe(true);
+    });
+  });
+
+  it('will hold a descendant while its parent suspends in a transition', async () => {
+    const gate = mockPromise<void>();
+    let open = false;
+    gate.then(() => (open = true));
+
+    class Nav extends State {
+      page = 'a';
+    }
+
+    function Child() {
+      return <p>{Nav.get().page}</p>;
+    }
+
+    function Guard() {
+      if (Nav.get().page == 'b' && !open) throw gate;
+      return <Child />;
+    }
+
+    class App extends Component {
+      nav = new Nav();
+      fallback = <i>loading</i>;
+
+      render() {
+        return <Guard />;
+      }
+    }
+
+    let app!: App;
+    const root = document.createElement('main');
+    render(<App is={(value) => (app = value)} />, root);
+
+    pending(() => {
+      app.nav.page = 'b';
+    });
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(root.textContent).toBe('a');
+
+    gate.resolve();
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(root.textContent).toBe('b');
+  });
+
+  it('will recover an error thrown while probing a transition', async () => {
+    const caught = vi.fn();
+
+    class Flag extends State {
+      on = false;
+    }
+
+    function Broken() {
+      if (Flag.get().on) throw new Error('broken');
+      return <p>fine</p>;
+    }
+
+    class App extends Component {
+      flag = new Flag();
+      fallback = <i>failed</i>;
+
+      catch(error: Error) {
+        caught(error.message);
+      }
+
+      render() {
+        return <Broken />;
+      }
+    }
+
+    let app!: App;
+    const root = document.createElement('main');
+    render(<App is={(value) => (app = value)} />, root);
+
+    pending(() => {
+      app.flag.on = true;
+    });
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(caught).toHaveBeenCalledWith('broken');
+  });
+
   it('will retry a caught error once, then wait for an update', async () => {
     const caught = vi.fn();
 
