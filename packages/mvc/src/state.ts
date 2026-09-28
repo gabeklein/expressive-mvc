@@ -1218,7 +1218,7 @@ function patch(prev: State.Extends, next: State.Extends, own: Handler[]): State[
       define(prev, key, Object.getOwnPropertyDescriptor(next, key)!);
   }
 
-  const removed = new Map<string, Function>();
+  const removed = new Set<string>();
 
   for (const key of Object.getOwnPropertyNames(proto))
     if (key != 'constructor' && !(key in incoming)) {
@@ -1226,10 +1226,10 @@ function patch(prev: State.Extends, next: State.Extends, own: Handler[]): State[
 
       if (bind && Object.getOwnPropertyDescriptor(proto, key)!.get === bind) {
         PAST.add(UNBIND.get(bind));
-        removed.set(key, bind);
         keys!.delete(key);
       }
 
+      removed.add(key);
       Reflect.deleteProperty(proto, key);
       getters?.delete(key);
     }
@@ -1287,7 +1287,11 @@ function patch(prev: State.Extends, next: State.Extends, own: Handler[]): State[
 
     for (const [key, bind] of keys!) if (!knownKeys.has(key) && !inherit.has(key)) inherit.set(key, bind);
     for (const [key, get] of getters!) if (!knownGetters.has(key) && !computed.has(key)) computed.set(key, get);
-    for (const [key, bind] of removed) if (inherit.get(key) === bind) inherit.delete(key);
+    for (const key of removed)
+      if (!(key in type.prototype)) {
+        inherit.delete(key);
+        computed.delete(key);
+      }
   }
 
   for (const state of live) {
@@ -1300,7 +1304,7 @@ function patch(prev: State.Extends, next: State.Extends, own: Handler[]): State[
       else if (PAST.has(UNBIND.get(desc.value))) delete (state as any)[key];
     }
 
-    for (const key of removed.keys())
+    for (const key of removed)
       if (PAST.has(UNBIND.get(Object.getOwnPropertyDescriptor(state, key)?.value))) delete (state as any)[key];
 
     for (const [key, get] of GETTERS.get(state.constructor)!)

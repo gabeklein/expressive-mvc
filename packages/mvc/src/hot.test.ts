@@ -747,5 +747,70 @@ describe('accept', () => {
 
     expect(accept(id, { Test: After }).Test).toBe(After);
   });
+
+  it('will prune a removed method from subclasses after an earlier patch', () => {
+    const id = module();
+
+    const version = (step?: number) => {
+      class Test extends State {
+        value = 0;
+      }
+
+      if (step)
+        Object.defineProperty(Test.prototype, 'gone', {
+          configurable: true,
+          writable: true,
+          value(this: Test) {
+            this.value += step;
+          }
+        });
+
+      return Test;
+    };
+
+    const Test = version(1);
+
+    accept(id, { Test });
+
+    class Sub extends Test {}
+
+    const sub = Sub.new() as any;
+
+    accept(id, { Test: version(2) });
+    accept(id, { Test: version() });
+
+    expect(() => sub.set({ gone: 5 })).not.toThrow();
+    expect(sub.gone).toBeUndefined();
+  });
+
+  it('will prune a removed getter from subclasses', () => {
+    const id = module();
+
+    const Before = (() => {
+      class Test extends State {
+        value = 2;
+        get double() {
+          return this.value * 2;
+        }
+      }
+      return Test;
+    })();
+
+    const After = (() => {
+      class Test extends State {
+        value = 2;
+      }
+      return Test;
+    })();
+
+    accept(id, { Test: Before });
+
+    class Sub extends Before {}
+
+    Sub.new();
+    accept(id, { Test: After });
+
+    expect(Object.getOwnPropertyDescriptor(Sub.new(), 'double')).toBeUndefined();
+  });
 });
 
