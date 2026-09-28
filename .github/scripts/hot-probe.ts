@@ -1,18 +1,19 @@
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { dirname, join, resolve } from 'node:path';
-import { createServer, type Plugin } from 'vite';
-import react from '@vitejs/plugin-react';
+import type { Plugin } from 'vite';
 
 import inspect from '../../packages/inspect/src/vite';
 import domHot from '../../packages/dom/src/vite';
 import reactHot from '../../packages/react/src/vite';
 
 /**
- * Class and component HMR, end to end: a fixture app per host runs under a Vite
- * dev server with the host's hot plugin and inspect's relay, headless Chrome
- * loads it, and each scenario edits a module and asserts - through the relay
- * where state is the question - that the edit applied, state survived and the
- * app still works. Skips when Chrome is absent; set `CHROME` to a binary.
+ * Class and component HMR, end to end: a fixture app per host, on the examples
+ * app's toolchain, runs under a Vite dev server with the host's hot plugin and
+ * inspect's relay; headless Chrome loads it, and each scenario edits a module
+ * and asserts - through the relay where state is the question - that the edit
+ * applied, state survived and the app still works. Skips when Chrome is
+ * absent; set `CHROME` to a binary.
  */
 const CHROME = process.env.CHROME ?? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 
@@ -23,7 +24,11 @@ if (!(await Bun.file(CHROME).exists())) {
 
 type Mode = 'react' | 'dom';
 
-const ROOT = resolve('.hot-probe');
+const examples = createRequire(resolve('examples/package.json'));
+const { createServer } = (await import(examples.resolve('vite'))) as typeof import('vite');
+const { default: react } = (await import(examples.resolve('@vitejs/plugin-react'))) as typeof import('@vitejs/plugin-react');
+
+const ROOT = resolve('examples/.hot-probe');
 const src = (pkg: string) => resolve('packages', pkg, 'src');
 
 const shared: Record<string, string> = {
