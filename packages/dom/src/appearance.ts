@@ -34,7 +34,7 @@ const bases = new WeakMap<StyleScope, Declaration>();
 const chains = new WeakMap<StyleScope, Map<string, Macro[]>>();
 const contexts = new WeakMap<StyleScope, AppearanceContext>();
 const rootScopes = new WeakMap<object, StyleScope>();
-const styles = new WeakMap<object, StyleMap[]>();
+const STYLES = Symbol('@expressive/dom.styles');
 const entered = new WeakSet<object>();
 const globals: StyleMap[] = [];
 let globalContext: AppearanceContext | undefined;
@@ -146,14 +146,14 @@ function baseToken(scope: StyleScope) {
 function style<T extends object>(type: T, rules: StyleMap): T {
   if (entered.has(type)) throw new Error('Cannot add styles after a component has rendered.');
 
-  const maps = styles.get(type);
-  if (maps) maps.push(rules);
+  if (Object.hasOwn(type, STYLES)) (type as any)[STYLES].push(rules);
   else {
     const label = (type as { displayName?: string }).displayName || (type as Function).name;
-    styles.set(type, [rules]);
+
+    Object.defineProperty(type, STYLES, { configurable: true, value: [rules] });
     registerAppearance(type, (parent) => {
       entered.add(type);
-      return extendContext(parent, styles.get(type)!, label);
+      return extendContext(parent, (type as any)[STYLES], label);
     });
   }
 

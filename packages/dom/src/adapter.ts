@@ -254,11 +254,11 @@ Component.on({
     subcomponents(type.prototype);
   },
   before(self) {
-    subcomponents(self, true);
+    subcomponents(self);
   }
 });
 
-function subcomponents(target: object, configurable?: boolean) {
+function subcomponents(target: object) {
   for (const key of Object.getOwnPropertyNames(target)) {
     if (!/^[A-Z]/.test(key)) continue;
 
@@ -267,7 +267,7 @@ function subcomponents(target: object, configurable?: boolean) {
     if (typeof value != 'function') continue;
 
     Object.defineProperty(target, key, {
-      configurable,
+      configurable: true,
       get(this: Component) {
         const owner = this.is;
         let render = unbind(value);
@@ -292,7 +292,7 @@ function subcomponents(target: object, configurable?: boolean) {
           configurable: true
         });
 
-        subcomponents(this, true);
+        subcomponents(this);
       }
     });
   }
