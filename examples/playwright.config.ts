@@ -6,7 +6,6 @@ const dom = 5181;
 export default defineConfig({
   testMatch: ['pages/**/*.spec.ts', 'coverage.spec.ts'],
   fullyParallel: true,
-  workers: process.env.CI ? '100%' : undefined,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? 'github' : 'list',
