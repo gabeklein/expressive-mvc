@@ -6,8 +6,6 @@ import type { Host } from './runtime';
 
 const PENDING = new WeakMap<object, Component>();
 
-const TWIN = new WeakMap<Component, Component>();
-
 /** Per-class composed content render. */
 const CHAIN = new WeakMap<Function, Function>();
 
@@ -109,12 +107,11 @@ class Component extends State {
       props,
       rest.filter((x) => !(x instanceof Context)),
       () => {
-        const twin = TWIN.get(this);
+        const other = twin || PENDING.get(props)!;
 
-        if (twin) {
-          TWIN.delete(twin);
-          trailing(twin).forEach((orphan) => orphan.set(null));
-          twin.set(null);
+        if (other !== this) {
+          trailing(other).forEach((orphan) => orphan.set(null));
+          other.set(null);
         }
 
         props.is?.(this);
@@ -122,11 +119,6 @@ class Component extends State {
         PENDING.delete(props);
       }
     ]);
-
-    if (twin) {
-      TWIN.set(this, twin);
-      TWIN.set(twin, this);
-    }
 
     PENDING.set(props, this);
 

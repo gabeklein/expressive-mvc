@@ -1522,34 +1522,7 @@ describe('subcomponents', () => {
 });
 
 describe('strict mode', () => {
-  it('will construct private fields', async () => {
-    const warn = mockWarn();
-
-    class Control extends Component {
-      #secret = 'bar';
-
-      reveal() {
-        return this.#secret;
-      }
-
-      render() {
-        return <span>{this.reveal()}</span>;
-      }
-    }
-
-    render(
-      <React.StrictMode>
-        <Control />
-      </React.StrictMode>
-    );
-
-    await flushMicrotasks();
-
-    expect(screen).toHaveText('bar');
-    expect(warn).not.toBeCalled();
-  });
-
-  it('will not leak owned state from the discarded twin', async () => {
+  it('will construct once per kept instance', async () => {
     const warn = mockWarn();
     const didCreate = vi.fn();
     const didDestroy = vi.fn();
@@ -1563,6 +1536,15 @@ describe('strict mode', () => {
 
     class Control extends Component {
       child = new Child();
+      #secret = 'bar';
+
+      render() {
+        return <span>{this.reveal()}</span>;
+      }
+
+      reveal() {
+        return this.#secret;
+      }
     }
 
     const element = render(
@@ -1573,6 +1555,7 @@ describe('strict mode', () => {
 
     await flushMicrotasks();
 
+    expect(screen).toHaveText('bar');
     expect(didCreate).toBeCalledTimes(1);
     expect(warn).not.toBeCalled();
 
