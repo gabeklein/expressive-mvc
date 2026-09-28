@@ -1,7 +1,6 @@
 import './App.css';
 
 import { Component, set } from '@expressive/react';
-import { Suspense } from 'react';
 
 export default () => (
   <div className="container">
@@ -9,18 +8,17 @@ export default () => (
     <p>
       A zero-argument function makes the slot a factory: it runs on first access,
       caches its result, and the field is read-only. An <code>async</code> factory
-      throws suspense while it pends, so the boundary above decides what waiting
-      looks like - no loading flag, no effect, no deps. A Component is its own
-      boundary unless <code>fallback = false</code> hands waiting up.
+      throws suspense while it pends, so the component's <code>fallback</code>{' '}
+      decides what waiting looks like - no loading flag, no effect, no deps. The
+      fallback belongs on the component that owns the pending value: a boundary
+      above it would rebuild it, and rerun its factory, on every retry.
     </p>
     <p>
       Factories are bound to the instance, so they read sibling fields freely -{' '}
       <code>greeting</code> is synchronous yet waits anyway, because reading a
       pending field suspends it too. Resolution cascades.
     </p>
-    <Suspense fallback={<p className="pending">loading profile…</p>}>
-      <Profile />
-    </Suspense>
+    <Profile />
     <p>
       Pass <code>false</code> and a factory stops suspending: the field reads{' '}
       <code>undefined</code> until it resolves, then updates like any other.
@@ -34,7 +32,7 @@ export default () => (
 );
 
 class Profile extends Component {
-  fallback = false;
+  fallback = <p className="pending">loading profile…</p>;
 
   user = set(async () => {
     return await after(700, { name: 'Ada Lovelace', role: 'Engineer' });
