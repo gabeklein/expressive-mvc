@@ -187,10 +187,4 @@ Under a dev server with a class HMR plugin (`@expressive/react/vite`, `@expressi
 
 A change a patch cannot carry reloads instead: a field, the constructor or `new()`, or a member switching between method and getter.
 
-Build integrations bind a module through `hot` on `@expressive/mvc/runtime`:
-
-- `hot.inject(id, program, { refresh })` - code to append. `id` is stable per module; `program` is the module parsed as ESTree (Vite's `this.parse`, oxc, acorn); `refresh: false` for a host which does not refresh function components itself, so a changed one invalidates. Only top-level `class X` / `let X = class` bindings are patched.
-- `hot.accept(id, classes)` - canonical classes for this run; the injected code reassigns each binding.
-- `hot.verify(prev, next, refresh)` - `'reload'`, a stale-export message for `import.meta.hot.invalidate`, or nothing.
-
-The registry is keyed by `id`, not the bundler's hot API, so it holds wherever modules re-run in one process - browser, Vite's server module runner, `bun --hot`.
+Build integrations bind a module through `hot.accept(id, classes)` on `@expressive/mvc/runtime`, called at the end of each run: `id` is stable per module, `classes` its top-level `class X` / `let X = class` bindings. It returns the class to use for each - the one first loaded, patched, or a new one when the change is incompatible - and the module reassigns its bindings. A replaced class means the module should reload. The registry is keyed by `id`, not the bundler's hot API, so it holds wherever modules re-run in one process - browser, Vite's server module runner, `bun --hot`.
