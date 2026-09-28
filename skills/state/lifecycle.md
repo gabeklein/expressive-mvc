@@ -179,7 +179,7 @@ Other failures:
 
 ## Hot Patching
 
-Under a dev server with a class HMR plugin (`@expressive/react/vite`), an edited class is patched onto the one already loaded - identity holds for context, imports and `instanceof`. Live instances keep their values and refresh:
+Under a dev server with a class HMR plugin (`@expressive/react/vite`, `@expressive/dom/vite`), an edited class is patched onto the one already loaded - identity holds for context, imports and `instanceof`. Live instances keep their values and refresh:
 
 - methods, getters, `render`, subcomponents and statics take the new definition; a new getter becomes computed on live instances;
 - handlers the module registered with `on()` are replaced by its new ones; handlers from elsewhere stay;
@@ -189,8 +189,8 @@ A change a patch cannot carry reloads instead: a field, the constructor or `new(
 
 Build integrations bind a module through `hot` on `@expressive/mvc/runtime`:
 
-- `hot.inject({ id, classes, exports })` - code to append. `id` is stable per module; `classes` are top-level `class X` / `let X = class` bindings; `exports` maps export name to local binding.
+- `hot.inject(id, program, { refresh })` - code to append. `id` is stable per module; `program` is the module parsed as ESTree (Vite's `this.parse`, oxc, acorn); `refresh: false` for a host which does not refresh function components itself, so a changed one invalidates. Only top-level `class X` / `let X = class` bindings are patched.
 - `hot.accept(id, classes)` - canonical classes for this run; the injected code reassigns each binding.
-- `hot.verify(prev, next)` - `'reload'`, a stale-export message for `import.meta.hot.invalidate`, or nothing.
+- `hot.verify(prev, next, refresh)` - `'reload'`, a stale-export message for `import.meta.hot.invalidate`, or nothing.
 
 The registry is keyed by `id`, not the bundler's hot API, so it holds wherever modules re-run in one process - browser, Vite's server module runner, `bun --hot`.
