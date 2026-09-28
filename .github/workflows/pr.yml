@@ -115,24 +115,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-        with:
-          fetch-depth: 0
-
-      - name: Touches hot reload
-        id: scope
-        env:
-          LABELED: ${{ contains(github.event.pull_request.labels.*.name, 'hmr') }}
-        run: |
-          if [ "$LABELED" = true ] || git diff --name-only "$(git merge-base origin/main HEAD)" HEAD | grep -qE \
-            '^(packages/mvc/src/(state|hot|component|observable|runtime)\.ts|packages/(react|dom)/src/(vite|hot|render|adapter|component|appearance)\.ts|packages/inspect/src/(inspect|journal)\.ts|packages/inspect/src/vite/|\.github/scripts/hot-probe\.ts|\.github/workflows/pr\.yml)'; then
-            echo "run=true" >> "$GITHUB_OUTPUT"
-          fi
 
       - uses: ./.github/actions/setup
-        if: steps.scope.outputs.run == 'true'
 
       - name: Hot reload in Chrome
-        if: steps.scope.outputs.run == 'true'
         env:
           CHROME: /usr/bin/google-chrome
         run: bun .github/scripts/hot-probe.ts

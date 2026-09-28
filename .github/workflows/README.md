@@ -18,10 +18,8 @@ Beside `verify`, one run per push also holds:
   cannot load fails the PR that caused it rather than the release.
 - `e2e` - every example page's Playwright spec on React and dom.
 - `native` - calls `native.yml` for a PR labeled `react-native`.
-- `hot` - `hot-probe.ts`, the hot-reload gauntlet in Chrome, when the PR is
-  labeled `hmr` or its diff touches code a hot patch depends on (mvc's class
-  internals, dom's renderer, the `/vite` plugins, inspect's journal); otherwise
-  it exits after the path check.
+- `hot` - `hot-probe.ts`, the hot-reload gauntlet in Chrome on React and dom.
+  Not yet a required check.
 
 `verify` and `e2e` are required checks, matched by job name - renaming either
 job needs the branch protection updated with it.
