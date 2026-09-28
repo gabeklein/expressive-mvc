@@ -9,15 +9,8 @@ interface Entry {
   own: ReturnType<typeof handlers>;
 }
 
-/** A module as a build integration parsed it. */
-interface Module {
-  /** Stable module id - the same on every run of the module. */
-  id: string;
-  /** Top-level classes bound by `class` or `let`, which can be reassigned. */
-  classes: string[];
-  /** Export name to local binding. */
-  exports: Record<string, string>;
-}
+/** An ESTree node, as Vite, Rollup, oxc or acorn parse one. */
+type Node = { type: string; [key: string]: any };
 
 const MODULES = new Map<string, Record<string, Entry>>();
 const REFRESH = Symbol.for('@expressive/mvc.refresh');
@@ -120,7 +113,55 @@ function verify(prev: Record<string, unknown>, next?: Record<string, unknown>) {
 }
 
 /** Code to append to a module, binding it to `accept` and `verify`. */
-function inject({ id, classes, exports }: Module) {
+/** Top-level classes a module can reassign, and its exports by local binding. */
+function scan(body: Node[]) {
+  const classes: string[] = [];
+  const exports: Record<string, string> = {};
+
+  function declare(node: Node) {
+    if (node.type == 'ClassDeclaration' && node.id) classes.push(node.id.name);
+    else if (node.type == 'VariableDeclaration' && node.kind != 'const')
+      for (const { id, init } of node.declarations)
+        if (id.type == 'Identifier' && init?.type == 'ClassExpression') classes.push(id.name);
+  }
+
+  function names(node: Node): string[] {
+    if (node.type == 'VariableDeclaration')
+      return node.declarations.flatMap(({ id }: Node) => (id.type == 'Identifier' ? [id.name] : []));
+
+    return [node.id.name];
+  }
+
+  for (const node of body) {
+    if (node.type == 'ExportNamedDeclaration') {
+      if (node.declaration) {
+        declare(node.declaration);
+        for (const name of names(node.declaration)) exports[name] = name;
+      } else if (!node.source)
+        for (const { local, exported } of node.specifiers)
+          exports[exported.name ?? exported.value] = local.name;
+    } else if (node.type == 'ExportDefaultDeclaration') {
+      const { declaration } = node;
+
+      declare(declaration);
+
+      if (declaration.type == 'Identifier') exports.default = declaration.name;
+      else if (declaration.id) exports.default = declaration.id.name;
+    } else declare(node);
+  }
+
+  return { classes, exports };
+}
+
+/**
+ * Code to append to a module, binding it to `accept` and `verify`.
+ *
+ * @param id - Stable per module; the same on every run.
+ * @param program - The module parsed as ESTree.
+ */
+function inject(id: string, program: { body: Node[] }) {
+  const { classes, exports } = scan(program.body);
+
   if (!classes.length) return '';
 
   const assign = classes.map((name) => `${name} = __hot.${name};`).join('\n  ');
@@ -146,4 +187,3 @@ if (import.meta.hot) {
 }
 
 export { accept, inject, verify };
-export type { Module };

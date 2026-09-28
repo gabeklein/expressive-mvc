@@ -1,7 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { Component, State } from '.';
-import { accept, inject, verify } from './hot';
+import { parseAst } from 'vite';
+
+import { accept, inject as hot, verify } from './hot';
 
 let count = 0;
 const module = () => `module-${count++}`;
@@ -599,22 +601,56 @@ describe('verify', () => {
 });
 
 describe('inject', () => {
+  const inject = (code: string, id = '/src/app.js') => hot(id, parseAst(code));
+
+  const exports = (code: string) =>
+    inject(`class Store {}\n${code}`).match(/const __exports = \{ (.*) \};/)![1];
+
   it('will return nothing without classes', () => {
-    expect(inject({ id: '/app.ts', classes: [], exports: {} })).toBe('');
+    expect(inject('export const title = "no class";')).toBe('');
   });
 
-  it('will bind classes and exports', () => {
-    const code = inject({
-      id: '/app.ts',
-      classes: ['Store', 'View'],
-      exports: { default: 'App', Store: 'Store' }
-    });
+  it('will bind top-level classes', () => {
+    const code = inject('class A {}\nlet B = class {};\nvar C = class {};');
 
     expect(code).toContain(`import { hot as __expressive } from '@expressive/mvc/runtime';`);
-    expect(code).toContain(`__expressive.accept("/app.ts", { Store, View })`);
-    expect(code).toContain('Store = __hot.Store;');
-    expect(code).toContain('View = __hot.View;');
-    expect(code).toContain(`const __exports = { "default": App, "Store": Store };`);
+    expect(code).toContain('__expressive.accept("/src/app.js", { A, B, C })');
+    expect(code).toContain('A = __hot.A;');
+    expect(code).toContain('B = __hot.B;');
     expect(code).toContain('import.meta.hot.accept(');
+  });
+
+  it('will not bind a class it cannot reassign', () => {
+    expect(inject('class A {}\nconst B = class {};\nlet c = 1, [d] = [2];')).toContain('{ A }');
+  });
+
+  it('will bind exported classes', () => {
+    const code = inject('export class A {}\nexport default class B {}');
+
+    expect(code).toContain('{ A, B }');
+    expect(code).toContain('const __exports = { "A": A, "default": B };');
+  });
+
+  it('will record declarations', () => {
+    expect(exports('export function helper() {}\nexport let a = 1, [b] = [2];'))
+      .toBe('"helper": helper, "a": a');
+  });
+
+  it('will record specifiers by local name', () => {
+    expect(exports('export { Store as Model, Store as "with-dash" };'))
+      .toBe('"Model": Store, "with-dash": Store');
+  });
+
+  it('will ignore re-exports', () => {
+    expect(exports("export { other } from './other';\nexport { Store };")).toBe('"Store": Store');
+  });
+
+  it('will record a default binding', () => {
+    expect(exports('export default Store;')).toBe('"default": Store');
+    expect(exports('export default function App() {}')).toBe('"default": App');
+  });
+
+  it('will not record an anonymous default', () => {
+    expect(exports('export default function () {}')).toBe('');
   });
 });

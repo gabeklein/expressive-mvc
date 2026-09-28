@@ -53,63 +53,9 @@ it('will resolve the runtime once', async () => {
   expect(resolve).toHaveBeenCalledTimes(1);
 });
 
-describe('classes', () => {
-  it('will bind top-level classes', async () => {
-    const { code } = (await transform('class A {}\nlet B = class {};\nvar C = class {};'))!;
+it('will append the hot binding', async () => {
+  const { code, map } = (await transform('class A {}', '/src/app.js?t=123'))!;
 
-    expect(code).toContain('__expressive.accept("/src/app.js", { A, B, C })');
-    expect(code).toContain('A = __hot.A;');
-    expect(code).toContain('B = __hot.B;');
-  });
-
-  it('will not bind a class it cannot reassign', async () => {
-    const { code } = (await transform('class A {}\nconst B = class {};\nlet c = 1, [d] = [2];'))!;
-
-    expect(code).toContain('{ A }');
-  });
-
-  it('will bind exported classes', async () => {
-    const { code } = (await transform('export class A {}\nexport default class B {}'))!;
-
-    expect(code).toContain('{ A, B }');
-    expect(code).toContain('const __exports = { "A": A, "default": B };');
-  });
-
-  it('will strip the query from the module id', async () => {
-    const { code } = (await transform('class A {}', '/src/app.js?t=123'))!;
-
-    expect(code).toContain('accept("/src/app.js",');
-  });
-
-  it('will preserve source maps', async () => {
-    expect((await transform('class A {}'))!.map).toBeNull();
-  });
-});
-
-describe('exports', () => {
-  const exports = async (code: string) =>
-    (await transform(`class Store {}\n${code}`))!.code.match(/const __exports = \{ (.*) \};/)![1];
-
-  it('will record declarations', async () => {
-    expect(await exports('export function helper() {}\nexport let a = 1, [b] = [2];'))
-      .toBe('"helper": helper, "a": a');
-  });
-
-  it('will record specifiers by local name', async () => {
-    expect(await exports('export { Store as Model, Store as "with-dash" };'))
-      .toBe('"Model": Store, "with-dash": Store');
-  });
-
-  it('will ignore re-exports', async () => {
-    expect(await exports("export { other } from './other';\nexport { Store };")).toBe('"Store": Store');
-  });
-
-  it('will record a default binding', async () => {
-    expect(await exports('export default Store;')).toBe('"default": Store');
-    expect(await exports('export default function App() {}')).toBe('"default": App');
-  });
-
-  it('will not record an anonymous default', async () => {
-    expect(await exports('export default function () {}')).toBe('');
-  });
+  expect(code).toContain('__expressive.accept("/src/app.js", { A })');
+  expect(map).toBeNull();
 });
