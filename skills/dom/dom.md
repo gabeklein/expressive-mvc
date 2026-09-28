@@ -199,6 +199,19 @@ await pending(() => {
 return createPortal(<Dialog />, document.body);
 ```
 
+## Hot reload (Vite)
+
+```ts
+// vite.config.ts
+import expressive from '@expressive/dom/vite';
+
+export default defineConfig({ plugins: [expressive()] });
+```
+
+Editing a `State` or `Component` class patches it in place - instances keep their values and re-render with the new methods, getters, `render`, subcomponents and `style()` maps ([../state/lifecycle.md](../state/lifecycle.md#hot-patching)). A field, constructor or `new()` change reloads the page. Dev server only.
+
+Function components are not refreshed: a module exporting one reloads when edited, and so does a class sharing that module. Keep classes and the function components that render them in separate modules to keep class edits hot.
+
 ## Boundaries
 
 The renderer is browser-only: no native target, SSR, or hydration. It has no general hook API, memo wrapper, synthetic events, or devtools ownership. Build-time expressive-jsx extraction is not included.

@@ -319,7 +319,7 @@ Instructions: `field/*.md`, linked from the [helper table](#instructions--reacti
 
 ### JSX
 
-- [dom/dom.md](dom/dom.md) - client DOM render/unmount, stateless FC scopes, MVC snapshots, native events, portals, lazy boundaries, transitions, exclusions
+- [dom/dom.md](dom/dom.md) - client DOM render/unmount, stateless FC scopes, MVC snapshots, native events, portals, lazy boundaries, transitions, Vite hot reload, exclusions
 
 ### Router
 
