@@ -812,5 +812,31 @@ describe('accept', () => {
 
     expect(Object.getOwnPropertyDescriptor(Sub.new(), 'double')).toBeUndefined();
   });
+
+  it('will patch an unmanaged accessor', () => {
+    const id = module();
+
+    const version = (label: string) => {
+      class Test extends State {
+        value = 1;
+        get _label() {
+          return `${label} ${this.value}`;
+        }
+      }
+      return Test;
+    };
+
+    const Test = version('before');
+
+    accept(id, { Test });
+
+    const test = Test.new() as any;
+
+    expect(test._label).toBe('before 1');
+
+    accept(id, { Test: version('after') });
+
+    expect(test._label).toBe('after 1');
+  });
 });
 
