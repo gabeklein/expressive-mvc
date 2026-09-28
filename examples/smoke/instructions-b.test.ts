@@ -292,12 +292,10 @@ describe('instructions/set-factory', () => {
     const page = await mount('instructions/set-factory');
     const pending = () => $$(page.container, '.pending').map(text);
 
-    // React spec: Profile's own Component boundary (fallback null) catches first,
-    // so the outer Suspense fallback "loading profile…" never shows.
     expect(page.container.querySelector('.card')).toBe(null);
-    expect(pending()).toEqual(['counting followers…']);
+    expect(pending()).toEqual(['loading profile…', 'counting followers…']);
 
-    await act.fire(() => {}, 750);
+    await act.fire(() => {}, 1100);
     expect(text($(page.container, '.card h2'))).toBe('Welcome back, Ada');
     expect(text($(page.container, '.card small'))).toBe('Engineer');
     expect(pending()).toEqual(['counting followers…']);

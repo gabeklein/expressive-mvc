@@ -107,8 +107,7 @@ describe('component/injection', () => {
     const area = () => $<HTMLTextAreaElement>(slot, 'textarea');
     const head = () => norm($(slot, 'header').textContent);
 
-    // page bug on both renderers: `panel === active` compares two tracking proxies, never equal
-    expect(tab('Draft').className).toBe('button');
+    expect(tab('Draft').className).toBe('button primary');
     expect(tab('Review').className).toBe('button');
     expect(head()).toBe('Draft0 words');
     expect(area().placeholder).toBe('Write the draft…');
@@ -117,6 +116,8 @@ describe('component/injection', () => {
     expect(head()).toBe('Draft3 words');
 
     await act.click(tab('Review'));
+    expect(tab('Review').className).toBe('button primary');
+    expect(tab('Draft').className).toBe('button');
     expect($$(slot, '.panel')).toHaveLength(1);
     expect(head()).toBe('Review0 words');
     expect(area().value).toBe('');
