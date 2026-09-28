@@ -121,6 +121,8 @@ In short:
 | `get _name()` | no | yes, runs on the instance | with a setter; otherwise ignored |
 | `#name = ''` | no | only through a method or `_` accessor | no |
 
+See all of it together in [essentials/unmanaged](/examples/essentials/unmanaged).
+
 TypeScript's `private` keyword is compile-time only - a `private count = 0` field is still managed.
 
 The `_` treatment applies to class fields, set up when the instance activates. A key that first appears later - assigned in `new()`, say - is a plain property too, but an enumerable one, so it shows up in `Object.keys()`. Declare it as a `_` field so the intent is visible on the class.
