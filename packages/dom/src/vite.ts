@@ -10,7 +10,7 @@ function scan(body: Node[]) {
   const classes: string[] = [];
   const exports: Record<string, string> = {};
 
-  function declare(node: Node) {
+  function collect(node: Node) {
     if (node.type == 'ClassDeclaration' && node.id) classes.push(node.id.name);
     else if (node.type == 'VariableDeclaration' && node.kind != 'const')
       for (const { id, init } of node.declarations)
@@ -27,7 +27,7 @@ function scan(body: Node[]) {
   for (const node of body) {
     if (node.type == 'ExportNamedDeclaration') {
       if (node.declaration) {
-        declare(node.declaration);
+        collect(node.declaration);
         for (const name of names(node.declaration)) exports[name] = name;
       } else if (!node.source)
         for (const { local, exported } of node.specifiers)
@@ -35,10 +35,10 @@ function scan(body: Node[]) {
     } else if (node.type == 'ExportDefaultDeclaration') {
       const { declaration } = node;
 
-      declare(declaration);
+      collect(declaration);
 
       if (declaration.id) exports.default = declaration.id.name;
-    } else declare(node);
+    } else collect(node);
   }
 
   return { classes, exports };
