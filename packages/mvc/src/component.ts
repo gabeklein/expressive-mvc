@@ -1,10 +1,12 @@
 import { Context } from './context';
 import { set } from './field/set';
-import { State, unbind } from './state';
+import { State, trailing, unbind } from './state';
 
 import type { Host } from './runtime';
 
 const PENDING = new WeakMap<object, Component>();
+
+const TWIN = new WeakMap<Component, Component>();
 
 /** Per-class composed content render. */
 const CHAIN = new WeakMap<Function, Function>();
@@ -94,7 +96,7 @@ class Component extends State {
     if (props == null) props = {};
 
     const seen = {} as Record<string, undefined>;
-    const copy = PENDING.get(props);
+    const twin = PENDING.get(props);
 
     if (typeof props == 'object') merge(props);
 
@@ -103,19 +105,27 @@ class Component extends State {
       return { ...seen, ...props };
     }
 
-    super(copy ? [] : [
+    super([
       props,
       rest.filter((x) => !(x instanceof Context)),
       () => {
+        const twin = TWIN.get(this);
+
+        if (twin) {
+          TWIN.delete(twin);
+          trailing(twin).forEach((orphan) => orphan.set(null));
+          twin.set(null);
+        }
+
         props.is?.(this);
         Object.defineProperty(this, 'props', { enumerable: false });
         PENDING.delete(props);
       }
     ]);
 
-    if (copy) {
-      this.set(null);
-      return copy;
+    if (twin) {
+      TWIN.set(this, twin);
+      TWIN.set(twin, this);
     }
 
     PENDING.set(props, this);

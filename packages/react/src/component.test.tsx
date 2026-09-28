@@ -3,7 +3,7 @@ import { vi, expect, it, describe } from 'vitest';
 import { renderToString } from 'react-dom/server';
 import React, { Suspense } from 'react';
 
-import { mockError, mockPromise, flushMicrotasks } from '../test.setup';
+import { mockError, mockPromise, mockWarn, flushMicrotasks } from '../test.setup';
 import { Component, Consumer, State, pending, set } from '.';
 
 it('will create and provide instance', () => {
@@ -1522,6 +1522,65 @@ describe('subcomponents', () => {
 });
 
 describe('strict mode', () => {
+  it('will construct private fields', async () => {
+    const warn = mockWarn();
+
+    class Control extends Component {
+      #secret = 'bar';
+
+      reveal() {
+        return this.#secret;
+      }
+
+      render() {
+        return <span>{this.reveal()}</span>;
+      }
+    }
+
+    render(
+      <React.StrictMode>
+        <Control />
+      </React.StrictMode>
+    );
+
+    await flushMicrotasks();
+
+    expect(screen).toHaveText('bar');
+    expect(warn).not.toBeCalled();
+  });
+
+  it('will not leak owned state from the discarded twin', async () => {
+    const warn = mockWarn();
+    const didCreate = vi.fn();
+    const didDestroy = vi.fn();
+
+    class Child extends State {
+      new() {
+        didCreate();
+        return didDestroy;
+      }
+    }
+
+    class Control extends Component {
+      child = new Child();
+    }
+
+    const element = render(
+      <React.StrictMode>
+        <Control />
+      </React.StrictMode>
+    );
+
+    await flushMicrotasks();
+
+    expect(didCreate).toBeCalledTimes(1);
+    expect(warn).not.toBeCalled();
+
+    element.unmount();
+
+    expect(didDestroy).toBeCalledTimes(1);
+  });
+
   it('will not create two instances', async () => {
     const didCreate = vi.fn();
     const didDestroy = vi.fn();

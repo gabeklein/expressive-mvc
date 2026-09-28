@@ -3,6 +3,7 @@ import { flushMicrotasks, mockWarn } from '../test.setup';
 import { Component } from './component';
 import { Context } from './context';
 import { pending } from './dispatch';
+import { State, event } from './state';
 
 it('will default fallback to null', () => {
   const foo = Component.new({});
@@ -110,30 +111,53 @@ it('will reset omitted props on reassignment', async () => {
 });
 
 // Seam: React may instantiate the class twice with the same props object
-// (e.g. StrictMode / reconciliation) before init completes. The second
-// construction must return the first instance, not a duplicate.
-it('will dedupe construction by props object', () => {
-  const props = { value: 1 };
+// (StrictMode) and keeps either the first (16-17) or the second (18+). Each
+// construction is a full instance; whichever activates releases the other.
+describe('twin construction', () => {
+  class Child extends State {}
 
-  const a = new Component(props);
-  const b = new Component(props);
+  class Foo extends Component {
+    child = new Child();
+    #secret = 'foo';
 
-  expect(b).toBe(a);
-});
+    reveal() {
+      return this.#secret;
+    }
+  }
 
-it('will release the twin discarded by dedupe', async () => {
-  const warn = mockWarn();
-  const props = { value: 1 };
+  for (const keep of ['first', 'second'] as const)
+    it(`will release the twin when the ${keep} activates`, async () => {
+      const warn = mockWarn();
+      const props = { value: 1 };
 
-  const a = new Component(props);
-  const b = new Component(props);
+      const a = new Foo(props);
+      const b = new Foo(props);
+      const [kept, other] = keep == 'first' ? [a, b] : [b, a];
+      const released = vi.fn();
 
-  expect(b).toBe(a);
+      expect(b).not.toBe(a);
 
-  await flushMicrotasks();
+      other.get(null, released);
+      event(kept);
 
-  expect(warn).toBeCalledTimes(1);
-  expect(warn).toBeCalledWith(expect.objectContaining({ state: a, warning: true }));
+      await flushMicrotasks();
+
+      expect(kept.reveal()).toBe('foo');
+      expect(released).toBeCalledTimes(1);
+      expect(warn).not.toBeCalled();
+    });
+
+  it('will warn for each twin never activated', async () => {
+    const warn = mockWarn();
+    const props = { value: 1 };
+
+    new Component(props);
+    new Component(props);
+
+    await flushMicrotasks();
+
+    expect(warn).toBeCalledTimes(2);
+  });
 });
 
 // Seam: React passes context as a constructor argument alongside props.
