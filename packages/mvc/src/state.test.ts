@@ -2797,10 +2797,12 @@ describe('unmanaged keys', () => {
     const values: State.Values<Test> = { value: 1 };
     const assign: State.Assign<Test> = { _handle: 'bar' };
 
+    const property: State.Property<Test> = '_handle';
+
     // @ts-expect-error - _ keys are not fields
     const field: State.Field<Test> = '_handle';
 
-    expect([values, assign, field]).toBeDefined();
+    expect([values, assign, property, field]).toBeDefined();
   });
 });
 

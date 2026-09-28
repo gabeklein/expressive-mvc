@@ -8,7 +8,8 @@ Namespace types on `State` used throughout the API.
 | ------------------- | ----------------------------------------------------------------------- |
 | `State.Extends<T>`  | Abstract or concrete constructor - for parameters accepting a class     |
 | `State.Type<T>`     | Concrete (instantiable) constructor - when `new` is required            |
-| `State.Field<T>`    | Keys of T excluding inherited State members                             |
+| `State.Property<T>` | Keys of T excluding inherited State members                             |
+| `State.Field<T>`    | Managed keys - `Property<T>` less unmanaged `_` keys                    |
 | `State.Event<T>`    | Valid event keys: `Field<T> \| number \| symbol \| (string & {})`       |
 | `State.Args<T>`     | Constructor argument union: `(Args \| Init \| Assign \| void)[]`        |
 | `State.Assign<T>`   | Object overlay - maps properties preserving function `this`             |
@@ -26,14 +27,14 @@ function lookup<T extends State>(Type: State.Extends<T>): T | undefined;
 function create<T extends State>(Type: State.Type<T>): T;
 ```
 
-## Field
+## Property and Field
 
-Excludes base State members (`get`, `set`, `is`, etc.):
+Both exclude base State members (`get`, `set`, `is`, etc.). `Field` also excludes unmanaged `_` keys - use it for managed state (`Values`, `ref`, `def`, `has`); `Property` for overlays (`Assign`, props):
 
 ```ts
 class MyState extends State {
-  foo = 1; // included in Field<MyState>
-  bar = 'hello'; // included
+  foo = 1; // Property and Field
+  _bar = 'hello'; // Property only
   // get(), set(), is, etc. - excluded
 }
 ```

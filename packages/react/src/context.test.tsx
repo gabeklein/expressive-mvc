@@ -138,6 +138,18 @@ describe('Provider', () => {
     expect(is).toBeCalledTimes(1);
   });
 
+  it('will apply unmanaged _ props alongside is', () => {
+    class Config extends State {
+      _mode = 'light';
+    }
+
+    const is = vi.fn<(instance: Config) => void>();
+
+    render(<Provider for={Config} is={is} _mode="dark" />);
+
+    expect(is.mock.calls[0][0]._mode).toBe('dark');
+  });
+
   it('will use the current is for a later registration', () => {
     class First extends State {}
     class Second extends State {}

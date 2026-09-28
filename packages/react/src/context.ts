@@ -83,7 +83,7 @@ declare namespace Provider {
   type ForSingleProps<T extends State> = SharedProps & {
     for: T | State.Type<T>;
     is: (instance: T) => void;
-  } & { [K in State.Field<T>]?: T[K] };
+  } & { [K in State.Property<T>]?: T[K] };
 
   type ForMultipleProps<T extends State> = SharedProps & {
     for: Context.Accept<T>;

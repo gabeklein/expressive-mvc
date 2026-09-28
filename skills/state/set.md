@@ -46,7 +46,7 @@ state.set({
 
 #### What `Assign<this>` checks
 
-`Assign<T>` is `Record<string, unknown> & { [K in Field<T>]?: ... }`. The intersection means **unknown keys are not rejected** at the type level (ignored at runtime); the only call-site protection is **value-type-correctness of declared fields**:
+`Assign<T>` is `Record<string, unknown> & { [K in Property<T>]?: ... }`. The intersection means **unknown keys are not rejected** at the type level (ignored at runtime); the only call-site protection is **value-type-correctness of declared fields**:
 
 ```ts
 state.set({ count: 'no' }); // error - count is a number
@@ -171,7 +171,7 @@ type OnEvent<T extends State> = (
 ) => void | (() => void) | null;
 
 type Assign<T> = Record<string, unknown> & {
-  [K in Field<T>]?: T[K] extends (...args: infer A) => infer R
+  [K in Property<T>]?: T[K] extends (...args: infer A) => infer R
     ? (this: T, ...args: A) => R
     : T[K];
 };
