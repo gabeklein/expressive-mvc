@@ -46,4 +46,16 @@ const css = {
       : { width: value, height: value }
 } satisfies macro.Map;
 
+declare module '@expressive/dom' {
+  namespace macro {
+    interface Registry {
+      mx(value: style.Value): style.Map;
+      my(value: style.Value): style.Map;
+      px(value: style.Value): style.Map;
+      py(value: style.Value): style.Map;
+      size(value: style.Value): style.Map;
+    }
+  }
+}
+
 export { css };
